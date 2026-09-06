@@ -9,7 +9,7 @@ Specification: [SPEC.md](SPEC.md). Metric glossary: [docs/METRICS.md](docs/METRI
 ```bash
 mix setup            # deps + assets (once)
 mix layoutmaster.corpora   # rebuild shipped corpora from priv/corpora_src (optional; outputs are committed)
-mix phx.server       # http://localhost:4000
+mix phx.server       # http://localhost:4001 (PORT overrides)
 ```
 
 Views: **Analyze** (`/`), **Edit** (`/edit`), **Compare** (`/compare`), **Rules** (`/rules`), **Corpus** (`/corpus`), **Library** (`/library`). Short links to saved layouts: `/l/<id>`; JSON export: `/api/layouts/<id>`.

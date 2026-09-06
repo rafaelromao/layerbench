@@ -20,8 +20,10 @@ if System.get_env("PHX_SERVER") do
   config :layoutmaster, LayoutMasterWeb.Endpoint, server: true
 end
 
-config :layoutmaster, LayoutMasterWeb.Endpoint,
-  http: [port: String.to_integer(System.get_env("PORT", "4000"))]
+# PORT overrides the port configured per environment (dev listens on 4001 by default).
+if port = System.get_env("PORT") do
+  config :layoutmaster, LayoutMasterWeb.Endpoint, http: [port: String.to_integer(port)]
+end
 
 # GitHub data repository storage (SPEC §4.3). With GITHUB_TOKEN and DATA_REPO set the GitHub
 # adapter is used; otherwise documents live in priv/data (Local adapter).
@@ -83,7 +85,8 @@ if config_env() == :prod do
       # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.
       # See the documentation on https://bandit.hexdocs.pm/Bandit.html#t:options/0
       # for details about using IPv6 vs IPv4 and loopback vs public addresses.
-      ip: {0, 0, 0, 0, 0, 0, 0, 0}
+      ip: {0, 0, 0, 0, 0, 0, 0, 0},
+      port: String.to_integer(System.get_env("PORT") || "4000")
     ],
     secret_key_base: secret_key_base
 
