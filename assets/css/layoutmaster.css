@@ -1,0 +1,65 @@
+/* LayoutMaster keyboard canvas + metric styling (imported from app.css) */
+:root {
+  --lm-key-bg: color-mix(in oklab, var(--color-base-200) 70%, var(--color-base-100));
+  --lm-key-stroke: color-mix(in oklab, var(--color-base-content) 18%, transparent);
+  --lm-heat: var(--color-primary);
+  --lm-key-text: var(--color-base-content);
+}
+
+.lm-keyboard {
+  max-height: 46vh;
+  display: block;
+}
+
+.lm-key-cap {
+  stroke: var(--lm-key-stroke);
+  stroke-width: 1.5;
+  transition: fill 0.25s ease, stroke 0.15s ease;
+}
+
+.lm-key-trans .lm-key-cap {
+  stroke-dasharray: 4 4;
+  fill-opacity: 0.55;
+}
+
+.lm-key-tap {
+  fill: var(--lm-key-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 600;
+  dominant-baseline: middle;
+  pointer-events: none;
+}
+
+.lm-key-hold {
+  fill: var(--lm-key-text);
+  opacity: 0.6;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  pointer-events: none;
+}
+
+.lm-key-home {
+  fill: var(--lm-key-text);
+  opacity: 0.5;
+}
+
+.lm-kind-layer { fill: var(--color-secondary); }
+.lm-kind-mod { fill: var(--color-accent); }
+.lm-kind-magic { fill: var(--color-primary); font-style: italic; }
+.lm-kind-repeat { fill: var(--color-info); }
+
+.lm-key:hover .lm-key-cap,
+.lm-key-selected .lm-key-cap {
+  stroke: var(--color-primary);
+  stroke-width: 2.5;
+}
+
+.lm-key-highlight {
+  stroke: var(--color-warning) !important;
+  stroke-width: 3 !important;
+}
+
+.lm-dragging .lm-key { cursor: grabbing !important; }
+.lm-drop-target .lm-key-cap { stroke: var(--color-success); stroke-width: 3; }
+
+.lm-stat { background: color-mix(in oklab, var(--color-base-100) 92%, var(--color-base-200)); min-width: 6.5rem; }
+.lm-items li button { max-width: 5rem; }
