@@ -1,0 +1,34 @@
+{
+  "en-work": {
+    "file": "en-work.txt",
+    "name": "English — work chat/email (Romak)",
+    "language": "en",
+    "license": "MIT (rafaelromao/romak)",
+    "source": "https://github.com/rafaelromao/romak/blob/main/analysis/corpus_en.txt",
+    "description": "1 MB of English generated from the 180 most common work-email/chat words (ChatGPT-4), lowercase."
+  },
+  "pt-br-work": {
+    "file": "pt-br-work.txt",
+    "name": "Português (BR) — trabalho (Romak)",
+    "language": "pt-BR",
+    "license": "MIT (rafaelromao/romak)",
+    "source": "https://github.com/rafaelromao/romak/blob/main/analysis/corpus_pt.txt",
+    "description": "1 MB of Brazilian Portuguese generated from the 180 most common work-email/chat words (ChatGPT-4), lowercase, accents kept."
+  },
+  "en-general": {
+    "file": "en-general.txt",
+    "name": "English — news 2023 (Leipzig)",
+    "language": "en",
+    "license": "CC BY 4.0 (Leipzig Corpora Collection)",
+    "source": "https://wortschatz.uni-leipzig.de/en/download/English (eng_news_2023_30K)",
+    "description": "30,000 English news sentences from the Leipzig Corpora Collection (2023)."
+  },
+  "pt-br-general": {
+    "file": "pt-br-general.txt",
+    "name": "Português (BR) — notícias 2011 (Leipzig)",
+    "language": "pt-BR",
+    "license": "CC BY 4.0 (Leipzig Corpora Collection)",
+    "source": "https://wortschatz.uni-leipzig.de/en/download (por-br_newscrawl_2011_30K)",
+    "description": "30,000 Brazilian Portuguese news sentences from the Leipzig Corpora Collection (por-br_newscrawl_2011_30K)."
+  }
+}
