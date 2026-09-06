@@ -1,0 +1,25 @@
+{
+  "name": "layoutmaster",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Keyboard layout analyzer with faithful ZMK layer semantics (multi-alpha-layer aware)",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter @layoutmaster/core run build && pnpm --filter @layoutmaster/web run build",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r run test",
+    "dev": "pnpm --filter @layoutmaster/web run dev",
+    "corpora": "pnpm --filter @layoutmaster/corpora run build"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

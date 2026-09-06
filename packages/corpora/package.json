@@ -1,0 +1,13 @@
+{
+  "name": "@layoutmaster/corpora",
+  "version": "0.1.0",
+  "description": "Build scripts producing the shipped corpus data (n-gram tables, word lists, samples)",
+  "license": "MIT",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "tsx src/build.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "echo 'no tests'"
+  }
+}
