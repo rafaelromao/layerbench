@@ -424,7 +424,7 @@ defmodule LayoutMasterWeb.RulesLive do
         <section class="card bg-base-100 border border-base-300 shadow-sm">
           <div class="card-body p-3 gap-3">
             <div class="flex flex-wrap items-end gap-3">
-              <form phx-change="load_preset" class="form-control">
+              <form id="rule-set-form" phx-change="load_preset" class="form-control">
                 <span class="label-text text-xs">Rule set</span>
                 <select
                   name="ref"
@@ -464,6 +464,7 @@ defmodule LayoutMasterWeb.RulesLive do
             </div>
 
             <form
+              id="globals-form"
               phx-change="set_global"
               class="flex flex-wrap items-end gap-3 text-xs border-t border-base-300 pt-3"
             >
@@ -576,7 +577,7 @@ defmodule LayoutMasterWeb.RulesLive do
                     </td>
                     <td class="text-[11px]">{Map.get(r, :aggregate, :percent_of_ngrams)}</td>
                     <td>
-                      <form phx-change="set_bounds">
+                      <form id={"bounds-#{r.id}"} phx-change="set_bounds">
                         <input type="hidden" name="rule" value={r.id} />
                         <input
                           name="value"
@@ -589,7 +590,7 @@ defmodule LayoutMasterWeb.RulesLive do
                       </form>
                     </td>
                     <td>
-                      <form phx-change="set_weight">
+                      <form id={"weight-#{r.id}"} phx-change="set_weight">
                         <input type="hidden" name="rule" value={r.id} />
                         <input
                           type="number"
@@ -633,7 +634,12 @@ defmodule LayoutMasterWeb.RulesLive do
         <section class="card bg-base-100 border border-base-300 shadow-sm">
           <div class="card-body p-3 gap-3">
             <h2 class="font-semibold">Compose a new rule</h2>
-            <form phx-change="composer_change" phx-submit="composer_add_rule" class="space-y-3">
+            <form
+              id="composer-form"
+              phx-change="composer_change"
+              phx-submit="composer_add_rule"
+              class="space-y-3"
+            >
               <div class="flex flex-wrap gap-3 items-end">
                 <label class="form-control"><span class="label-text text-xs">Id</span><input
                   name="composer[id]"
@@ -763,7 +769,12 @@ defmodule LayoutMasterWeb.RulesLive do
               <h2 class="font-semibold">JSON</h2>
               <button type="button" class="btn btn-xs btn-outline" phx-click="export">Export current</button>
             </div>
-            <form phx-submit="import" phx-change="import_change" class="space-y-2">
+            <form
+              id="rules-json-form"
+              phx-submit="import"
+              phx-change="import_change"
+              class="space-y-2"
+            >
               <textarea
                 name="json"
                 aria-label="Rule set JSON"

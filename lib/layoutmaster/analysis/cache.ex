@@ -1,8 +1,8 @@
 defmodule LayoutMaster.Analysis.Cache do
   @moduledoc """
-  ETS cache of analysis reports keyed by `{structure_hash, corpus_id, case_mode, max_symbols}` plus
-  an async runner. Long analyses run under `LayoutMaster.TaskSupervisor`; the caller receives
-  `{:analysis_result, ref, {:ok, report} | {:error, reason}}`.
+  ETS cache of analysis reports keyed by `{structure_hash, corpus_id, case_mode, max_symbols}`.
+  LiveViews run `analyze/3` inside `start_async` tasks so results are cached across views and
+  sessions while each socket keeps control (and cancellation) of its own work.
   """
 
   use GenServer
@@ -53,45 +53,7 @@ defmodule LayoutMaster.Analysis.Cache do
 
   def clear, do: :ets.delete_all_objects(@table)
 
-  @doc """
-  Analyze asynchronously. Returns `{:cached, report}` when a cached report exists, otherwise
-  `{:running, ref}` and the caller gets `{:analysis_result, ref, result}` later.
-  `corpus` is a `%Corpus{}`; `opts` are `LayoutMaster.Analysis` options.
-  """
-  def analyze_async(%Layout{} = layout, %Corpus{} = corpus, opts, caller \\ self()) do
-    key = key(layout, corpus.id, opts)
-
-    case get(key) do
-      {:ok, report} ->
-        {:cached, report}
-
-      :miss ->
-        ref = make_ref()
-        stream = Corpus.stream(corpus, Keyword.get(opts, :case_mode, :fold))
-
-        Task.Supervisor.start_child(LayoutMaster.TaskSupervisor, fn ->
-          result =
-            try do
-              case Analysis.analyze(layout, stream, opts) do
-                {:ok, report} ->
-                  put(key, report)
-                  {:ok, report}
-
-                other ->
-                  other
-              end
-            rescue
-              e -> {:error, Exception.message(e)}
-            end
-
-          send(caller, {:analysis_result, ref, result})
-        end)
-
-        {:running, ref}
-    end
-  end
-
-  @doc "Synchronous analyze with caching (used by tests and the compare view)."
+  @doc "Analyze with caching. `corpus` is a `%Corpus{}`; `opts` are `LayoutMaster.Analysis` options."
   def analyze(%Layout{} = layout, %Corpus{} = corpus, opts) do
     key = key(layout, corpus.id, opts)
 

@@ -86,6 +86,12 @@ defmodule LayoutMasterWeb.ViewsTest do
     render_async(view, 30_000)
     html = render_hook(view, "swap", %{"from" => "LTP", "to" => "LTR"})
     assert html =~ "unsaved"
+    # two plain keys: the report is relabeled instantly while the full re-analysis runs
+    assert html =~ "estimate after swap"
+    assert render_async(view, 30_000) =~ "Quick analysis"
+    refute render(view) =~ "estimate after swap"
+
+    view |> element("button[phx-value-panel=save]") |> render_click()
 
     html =
       view |> element("form[phx-submit=save]") |> render_submit(%{"name" => "Qwerty swapped"})

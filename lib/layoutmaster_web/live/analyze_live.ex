@@ -40,7 +40,6 @@ defmodule LayoutMasterWeb.AnalyzeLive do
        report: nil,
        loading: false,
        error: nil,
-       pending_ref: nil,
        highlight: [],
        arcs: [],
        selected_rule: nil,
@@ -117,31 +116,33 @@ defmodule LayoutMasterWeb.AnalyzeLive do
 
   defp start_analysis(socket) do
     %{kb: layout, corpus: corpus, params: p} = socket.assigns
+    opts = analysis_opts(p)
+    socket = cancel_async(socket, :analysis)
 
-    case Cache.analyze_async(layout, corpus, analysis_opts(p)) do
-      {:cached, report} ->
-        socket |> assign(report: report, loading: false, pending_ref: nil) |> refresh_explain()
+    case Cache.get(Cache.key(layout, corpus.id, opts)) do
+      {:ok, report} ->
+        socket |> assign(report: report, loading: false, error: nil) |> refresh_explain()
 
-      {:running, ref} ->
-        assign(socket, loading: true, pending_ref: ref)
+      :miss ->
+        socket
+        |> assign(loading: true)
+        |> start_async(:analysis, fn -> Cache.analyze(layout, corpus, opts) end)
     end
   end
 
   @impl true
-  def handle_info({:analysis_result, ref, result}, %{assigns: %{pending_ref: ref}} = socket) do
-    case result do
-      {:ok, report} ->
-        {:noreply,
-         socket
-         |> assign(report: report, loading: false, pending_ref: nil, error: nil)
-         |> refresh_explain()}
-
-      {:error, reason} ->
-        {:noreply, assign(socket, loading: false, pending_ref: nil, error: inspect(reason))}
-    end
+  def handle_async(:analysis, {:ok, {:ok, report}}, socket) do
+    {:noreply, socket |> assign(report: report, loading: false, error: nil) |> refresh_explain()}
   end
 
-  def handle_info({:analysis_result, _stale, _}, socket), do: {:noreply, socket}
+  def handle_async(:analysis, {:ok, {:error, reason}}, socket),
+    do: {:noreply, assign(socket, loading: false, error: format_reason(reason))}
+
+  def handle_async(:analysis, {:exit, reason}, socket),
+    do: {:noreply, assign(socket, loading: false, error: "analysis failed: #{inspect(reason)}")}
+
+  defp format_reason(errs) when is_list(errs), do: Enum.join(errs, "; ")
+  defp format_reason(other), do: inspect(other)
 
   # ------------------------------------------------------------------ events
 
@@ -349,7 +350,7 @@ defmodule LayoutMasterWeb.AnalyzeLive do
                     {layer.name}
                   </button>
                 </div>
-                <form phx-change="select_heat" class="flex items-center gap-2 text-xs">
+                <form id="heat-form" phx-change="select_heat" class="flex items-center gap-2 text-xs">
                   <label for="heat">Heat</label>
                   <select id="heat" name="heat" class="select select-xs">
                     <option :for={h <- Params.heats()} value={h} selected={@params.heat == h}>
@@ -366,6 +367,7 @@ defmodule LayoutMasterWeb.AnalyzeLive do
 
               <div :if={@compiled} class="relative">
                 <.keyboard
+                  id="kb-analyze"
                   compiled={@compiled}
                   layer={@params.layer}
                   heat={heat_map(@report, @params, @compiled)}
@@ -374,7 +376,12 @@ defmodule LayoutMasterWeb.AnalyzeLive do
                 />
               </div>
 
-              <form phx-submit="explain" phx-change="explain" class="flex items-center gap-2">
+              <form
+                id="explain-form"
+                phx-submit="explain"
+                phx-change="explain"
+                class="flex items-center gap-2"
+              >
                 <label class="text-xs whitespace-nowrap" for="explain-text">How is this typed?</label>
                 <input
                   id="explain-text"
@@ -494,7 +501,11 @@ defmodule LayoutMasterWeb.AnalyzeLive do
 
   defp toolbar(assigns) do
     ~H"""
-    <form phx-change="set" class="card bg-base-100 border border-base-300 shadow-sm">
+    <form
+      id="analyze-toolbar"
+      phx-change="set"
+      class="card bg-base-100 border border-base-300 shadow-sm"
+    >
       <div class="card-body p-3 flex-row flex-wrap items-end gap-3">
         <label class="form-control">
           <span class="label-text text-xs">Layout</span>

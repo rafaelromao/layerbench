@@ -11,8 +11,7 @@ defmodule LayoutMaster.Application do
       LayoutMasterWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:layoutmaster, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: LayoutMaster.PubSub},
-      # Background analyses (simulation + rules) and their ETS result cache
-      {Task.Supervisor, name: LayoutMaster.TaskSupervisor},
+      # ETS cache of analysis reports (analyses themselves run in LiveView start_async tasks)
       LayoutMaster.Analysis.Cache,
       # Start to serve requests, typically the last entry
       LayoutMasterWeb.Endpoint

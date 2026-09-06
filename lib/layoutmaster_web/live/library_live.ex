@@ -148,6 +148,7 @@ defmodule LayoutMasterWeb.LibraryLive do
                   <.link navigate={~p"/?layout=#{layout.id}"} class="btn btn-sm btn-primary">Analyze</.link>
                 </header>
                 <.keyboard
+                  id={"kb-#{layout.id}"}
                   compiled={compiled}
                   layer={0}
                   interactive={false}
@@ -208,6 +209,7 @@ defmodule LayoutMasterWeb.LibraryLive do
               Paste a native JSON layout, three rows of letters (space separated, optional 4th row for thumbs with <code>space</code>), a 30-character cmini string, or a cyanophage 34-character string.
             </p>
             <form
+              id="import-form"
               phx-change="import_change"
               phx-submit="import_open"
               class="grid gap-3 md:grid-cols-[1fr_auto]"
@@ -252,7 +254,13 @@ defmodule LayoutMasterWeb.LibraryLive do
             <p :if={@import_error} class="text-error text-sm">{@import_error}</p>
             <div :if={@import_preview} class="grid gap-2 md:grid-cols-2">
               <% {_layout, compiled, warnings} = @import_preview %>
-              <.keyboard compiled={compiled} layer={0} interactive={false} show_hold={false} />
+              <.keyboard
+                id="kb-import"
+                compiled={compiled}
+                layer={0}
+                interactive={false}
+                show_hold={false}
+              />
               <ul :if={warnings != []} class="text-xs text-warning">
                 <li :for={w <- warnings}>overflow / warning: {w}</li>
               </ul>

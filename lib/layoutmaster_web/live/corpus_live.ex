@@ -190,7 +190,12 @@ defmodule LayoutMasterWeb.CorpusLive do
               <p class="text-sm opacity-70">
                 Paste text (≥ 1,000 characters) or upload a .txt/.md file. It is normalized like the shipped corpora and usable in this session; save it to keep it in the data repository.
               </p>
-              <form phx-submit="custom_build" phx-change="custom_change" class="space-y-2">
+              <form
+                id="custom-corpus-form"
+                phx-submit="custom_build"
+                phx-change="custom_change"
+                class="space-y-2"
+              >
                 <div class="flex flex-wrap gap-2">
                   <input
                     name="name"

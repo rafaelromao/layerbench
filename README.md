@@ -14,6 +14,8 @@ mix phx.server       # http://localhost:4000
 
 Views: **Analyze** (`/`), **Edit** (`/edit`), **Compare** (`/compare`), **Rules** (`/rules`), **Corpus** (`/corpus`), **Library** (`/library`). Short links to saved layouts: `/l/<id>`; JSON export: `/api/layouts/<id>`.
 
+In the editor, swapping two plain keys is re-scored instantly from the existing n-gram tables (marked "estimate after swap"); the full re-simulation replaces the estimate a moment later. Any other edit re-simulates a 100k-symbol sample.
+
 ## Storage
 
 Set these to persist to a GitHub repository (single-tenant, server token, Contents API):

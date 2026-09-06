@@ -52,6 +52,25 @@ defmodule LayoutMaster.Layout do
 
   def format, do: @format
   def mods, do: @mods
+
+  @doc """
+  Swap the bindings of two keys on one layer. Keys without an explicit binding on that layer
+  stay implicit (transparent), so swapping an explicit key with an implicit one moves the binding.
+  """
+  def swap_keys(%__MODULE__{} = layout, layer_idx, from, to) do
+    layers =
+      List.update_at(layout.layers, layer_idx, fn l ->
+        a = Map.get(l.bindings, from)
+        b = Map.get(l.bindings, to)
+        bindings = l.bindings |> Map.delete(from) |> Map.delete(to)
+        bindings = if b, do: Map.put(bindings, from, b), else: bindings
+        bindings = if a, do: Map.put(bindings, to, a), else: bindings
+        %{l | bindings: bindings}
+      end)
+
+    %{layout | layers: layers}
+  end
+
   def host_locales, do: @host_locales
 
   # ------------------------------------------------------------------ parsing

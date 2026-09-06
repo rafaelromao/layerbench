@@ -8,6 +8,7 @@ defmodule LayoutMasterWeb.EditLive do
   import LayoutMasterWeb.Components.Keyboard
   import LayoutMasterWeb.Components.Metrics
 
+  alias LayoutMaster.Analysis
   alias LayoutMaster.Analysis.Cache
   alias LayoutMaster.Corpus
   alias LayoutMaster.Geometry
@@ -37,7 +38,7 @@ defmodule LayoutMasterWeb.EditLive do
        swap_from: nil,
        dirty: false,
        report: nil,
-       pending_ref: nil,
+       pending: false,
        corpus: nil,
        producers: nil,
        behaviors_json: "",
@@ -90,34 +91,40 @@ defmodule LayoutMasterWeb.EditLive do
     end
   end
 
+  # Quick analysis: capped sample, no cross-word n-grams.
+  defp edit_opts(p) do
+    [
+      case_mode: p.case_mode,
+      cross_word: :reset,
+      max_symbols: min(p.sample, 100_000),
+      rule_set: p.preset |> RuleSets.resolve() |> RuleSets.with_universe(p.universe)
+    ]
+  end
+
   defp start_analysis(%{assigns: %{corpus: nil}} = socket), do: socket
   defp start_analysis(%{assigns: %{kb: nil}} = socket), do: socket
 
   defp start_analysis(socket) do
     %{kb: layout, corpus: corpus, params: p} = socket.assigns
-    rule_set = p.preset |> RuleSets.resolve() |> RuleSets.with_universe(p.universe)
+    opts = edit_opts(p)
+    socket = cancel_async(socket, :analysis)
 
-    opts = [
-      case_mode: p.case_mode,
-      cross_word: :reset,
-      max_symbols: min(p.sample, 100_000),
-      rule_set: rule_set
-    ]
+    case Cache.get(Cache.key(layout, corpus.id, opts)) do
+      {:ok, report} ->
+        assign(socket, report: report, pending: false)
 
-    case Cache.analyze_async(layout, corpus, opts) do
-      {:cached, report} -> assign(socket, report: report, pending_ref: nil)
-      {:running, ref} -> assign(socket, pending_ref: ref)
+      :miss ->
+        socket
+        |> assign(pending: true)
+        |> start_async(:analysis, fn -> Cache.analyze(layout, corpus, opts) end)
     end
   end
 
   @impl true
-  def handle_info(
-        {:analysis_result, ref, {:ok, report}},
-        %{assigns: %{pending_ref: ref}} = socket
-      ),
-      do: {:noreply, assign(socket, report: report, pending_ref: nil)}
+  def handle_async(:analysis, {:ok, {:ok, report}}, socket),
+    do: {:noreply, assign(socket, report: report, pending: false)}
 
-  def handle_info({:analysis_result, _ref, _}, socket), do: {:noreply, socket}
+  def handle_async(:analysis, _failed, socket), do: {:noreply, assign(socket, pending: false)}
 
   # ------------------------------------------------------------ key editing
 
@@ -494,13 +501,24 @@ defmodule LayoutMasterWeb.EditLive do
   end
 
   defp swap_keys(socket, from, to) do
-    update_layer_bindings(socket, fn bindings ->
-      a = Map.get(bindings, from)
-      b = Map.get(bindings, to)
-      bindings = bindings |> Map.delete(from) |> Map.delete(to)
-      bindings = if b, do: Map.put(bindings, from, b), else: bindings
-      if a, do: Map.put(bindings, to, a), else: bindings
-    end)
+    %{kb: layout, compiled: c0, layer: idx, report: report, params: p} = socket.assigns
+    swapped = Layout.swap_keys(layout, idx, from, to)
+    socket = set_layout(socket, swapped, true)
+
+    # SPEC §5.6: a swap of two plain keys is shown instantly by relabeling the existing tables;
+    # the full re-analysis started by set_layout/3 replaces the estimate when it completes.
+    with %Compile{key_index: key_index} <- c0,
+         true <- socket.assigns.pending and socket.assigns.kb == swapped,
+         %Analysis.Report{layout: ^layout} <- report,
+         {:ok, pa} <- Map.fetch(key_index, from),
+         {:ok, pb} <- Map.fetch(key_index, to),
+         true <- Analysis.relabel_eligible?(c0, idx, pa, pb) do
+      rule_set = Keyword.fetch!(edit_opts(p), :rule_set)
+      c1 = socket.assigns.compiled
+      assign(socket, report: Analysis.relabel_swap(report, c1, idx, pa, pb, rule_set))
+    else
+      _ -> socket
+    end
   end
 
   defp update_layer_bindings(socket, fun) do
@@ -620,7 +638,11 @@ defmodule LayoutMasterWeb.EditLive do
       <h1 class="sr-only">Edit layout</h1>
       <div :if={@error} class="alert alert-error text-sm">{@error}</div>
       <div :if={@kb} class="space-y-4">
-        <form phx-change="set_meta" class="card bg-base-100 border border-base-300 shadow-sm">
+        <form
+          id="meta-form"
+          phx-change="set_meta"
+          class="card bg-base-100 border border-base-300 shadow-sm"
+        >
           <div class="card-body p-3 flex-row flex-wrap items-end gap-3">
             <label class="form-control"><span class="label-text text-xs">Name</span><input
               name="name"
@@ -687,7 +709,9 @@ defmodule LayoutMasterWeb.EditLive do
                 />
                 <p class="text-[11px] opacity-60">
                   Quick analysis on {fmt_num(min(@params.sample, 100_000) * 1.0, 0)} symbols of {@corpus &&
-                    @corpus.name}<span :if={@pending_ref}> · updating…</span>
+                    @corpus.name}<span :if={@report.provisional}> · estimate after swap</span><span :if={
+                    @pending
+                  }> · updating…</span>
                 </p>
               </div>
             </div>
@@ -843,7 +867,11 @@ defmodule LayoutMasterWeb.EditLive do
               </div>
 
               <div :if={@panel == :geometry} class="space-y-3 text-sm">
-                <form phx-change="set_geometry" class="flex flex-wrap gap-2 items-end">
+                <form
+                  id="geometry-form"
+                  phx-change="set_geometry"
+                  class="flex flex-wrap gap-2 items-end"
+                >
                   <label class="form-control">
                     <span class="label-text text-xs">Preset</span>
                     <select name="preset" class="select select-sm select-bordered">
@@ -870,7 +898,7 @@ defmodule LayoutMasterWeb.EditLive do
                     </select>
                   </label>
                 </form>
-                <form phx-change="set_keys" class="flex flex-wrap gap-2 items-end">
+                <form id="keys-form" phx-change="set_keys" class="flex flex-wrap gap-2 items-end">
                   <label class="form-control">
                     <span class="label-text text-xs">Space key</span>
                     <select name="space" class="select select-sm select-bordered">
@@ -983,7 +1011,7 @@ defmodule LayoutMasterWeb.EditLive do
                 <p class="text-xs opacity-70">
                   Named behaviors (adaptive/magic keys, mod-morphs, macros) as JSON. Reference them from keys with kind <code>ref</code>.
                 </p>
-                <form phx-submit="behaviors_apply" phx-change="behaviors_change">
+                <form id="behaviors-form" phx-submit="behaviors_apply" phx-change="behaviors_change">
                   <textarea
                     name="json"
                     rows="14"
@@ -1044,7 +1072,7 @@ defmodule LayoutMasterWeb.EditLive do
               </div>
 
               <div :if={@panel == :json} class="space-y-2">
-                <form phx-submit="import_json" phx-change="json_change">
+                <form id="json-form" phx-submit="import_json" phx-change="json_change">
                   <textarea
                     name="json"
                     rows="16"

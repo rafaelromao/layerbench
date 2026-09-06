@@ -50,12 +50,16 @@ defmodule LayoutMasterWeb.CompareLive do
         rule_set: rule_set
       ]
 
-      case Cache.analyze_async(layout, corpus, opts) do
-        {:cached, report} ->
-          assign(socket, side, %{layout: layout, compiled: compiled, report: report, ref: nil})
+      socket = cancel_async(socket, {:analysis, side})
 
-        {:running, task_ref} ->
-          assign(socket, side, %{layout: layout, compiled: compiled, report: nil, ref: task_ref})
+      case Cache.get(Cache.key(layout, corpus.id, opts)) do
+        {:ok, report} ->
+          assign(socket, side, %{layout: layout, compiled: compiled, report: report})
+
+        :miss ->
+          socket
+          |> assign(side, %{layout: layout, compiled: compiled, report: nil})
+          |> start_async({:analysis, side}, fn -> Cache.analyze(layout, corpus, opts) end)
       end
     else
       {:error, errs} when is_list(errs) ->
@@ -67,22 +71,23 @@ defmodule LayoutMasterWeb.CompareLive do
   end
 
   @impl true
-  def handle_info({:analysis_result, ref, result}, socket) do
-    socket =
-      Enum.reduce([:a, :b], socket, fn side, s ->
-        case s.assigns[side] do
-          %{ref: ^ref} = st ->
-            case result do
-              {:ok, report} -> assign(s, side, %{st | report: report, ref: nil})
-              {:error, reason} -> assign(s, error: inspect(reason))
-            end
+  def handle_async({:analysis, side}, result, socket) do
+    case {socket.assigns[side], result} do
+      {%{} = st, {:ok, {:ok, report}}} ->
+        {:noreply, assign(socket, side, %{st | report: report})}
 
-          _ ->
-            s
-        end
-      end)
+      {%{}, {:ok, {:error, errs}}} when is_list(errs) ->
+        {:noreply, assign(socket, error: Enum.join(errs, "; "))}
 
-    {:noreply, socket}
+      {%{}, {:ok, {:error, reason}}} ->
+        {:noreply, assign(socket, error: inspect(reason))}
+
+      {%{}, {:exit, reason}} ->
+        {:noreply, assign(socket, error: "analysis failed: #{inspect(reason)}")}
+
+      _ ->
+        {:noreply, socket}
+    end
   end
 
   @impl true
@@ -142,7 +147,11 @@ defmodule LayoutMasterWeb.CompareLive do
     <Layouts.app flash={@flash}>
       <h1 class="sr-only">Compare layouts</h1>
       <div class="space-y-4">
-        <form phx-change="set" class="card bg-base-100 border border-base-300 shadow-sm">
+        <form
+          id="compare-toolbar"
+          phx-change="set"
+          class="card bg-base-100 border border-base-300 shadow-sm"
+        >
           <div class="card-body p-3 flex-row flex-wrap items-end gap-3">
             <label class="form-control">
               <span class="label-text text-xs">Layout A</span>
@@ -269,6 +278,7 @@ defmodule LayoutMasterWeb.CompareLive do
         <h2 class="font-semibold">{@title}: {if @state, do: @state.layout.name, else: "–"}</h2>
         <.keyboard
           :if={@state}
+          id={"kb-#{@title}"}
           compiled={@state.compiled}
           layer={0}
           interactive={false}

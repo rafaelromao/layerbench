@@ -22,6 +22,7 @@ defmodule LayoutMasterWeb.Components.Keyboard do
   attr :class, :string, default: ""
   attr :show_hold, :boolean, default: true
   attr :draggable, :boolean, default: false
+  attr :id, :string, default: nil, doc: "DOM id; required when several keyboards draw arcs"
 
   def keyboard(assigns) do
     c = assigns.compiled
@@ -69,8 +70,18 @@ defmodule LayoutMasterWeb.Components.Keyboard do
         %{x1: ka.cx, y1: ka.cy, x2: kb.cx, y2: kb.cy}
       end
 
+    svg_id = assigns.id || if(assigns.draggable, do: "keyboard-drag", else: nil)
+
     assigns =
-      assign(assigns, keys: key_data, width: width, height: height, arcs: arcs, unit: @unit)
+      assign(assigns,
+        keys: key_data,
+        width: width,
+        height: height,
+        arcs: arcs,
+        unit: @unit,
+        svg_id: svg_id,
+        marker_id: "lm-arrow-#{svg_id || "kb"}"
+      )
 
     ~H"""
     <svg
@@ -79,11 +90,11 @@ defmodule LayoutMasterWeb.Components.Keyboard do
       role={if @interactive, do: "group", else: "img"}
       aria-label="Keyboard layout"
       phx-hook={if @draggable, do: "DragDrop", else: nil}
-      id={if @draggable, do: "keyboard-drag", else: nil}
+      id={@svg_id}
     >
-      <defs>
+      <defs :if={@arcs != []}>
         <marker
-          id="lm-arrow"
+          id={@marker_id}
           viewBox="0 0 10 10"
           refX="9"
           refY="5"
@@ -149,7 +160,7 @@ defmodule LayoutMasterWeb.Components.Keyboard do
           fill="none"
           class="stroke-primary"
           stroke-width="3"
-          marker-end="url(#lm-arrow)"
+          marker-end={"url(##{@marker_id})"}
           opacity="0.85"
         />
       </g>
