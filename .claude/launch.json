@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "phoenix",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["MIX_OS_CONCURRENCY_LOCK=0", "mix", "phx.server"],
+      "port": 4000
+    }
+  ]
+}
