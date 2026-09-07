@@ -29,6 +29,11 @@ if (!Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = () => {};
 }
 
+// Without a layout engine there is nothing under a point; tests that drag say what is.
+if (!document.elementFromPoint) {
+  document.elementFromPoint = () => null;
+}
+
 // jsdom has no layout engine, so pointer capture is a no-op rather than an error.
 if (!Element.prototype.setPointerCapture) {
   Element.prototype.setPointerCapture = () => {};

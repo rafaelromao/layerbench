@@ -1,5 +1,6 @@
 import { type CompiledLayout, legend } from '@layoutmaster/core';
 import { useId, useMemo } from 'react';
+import { useKeyDrag } from './use-key-drag.js';
 
 /** Pixels per key unit, and the gap that separates neighbouring caps. */
 const UNIT = 64;
@@ -22,6 +23,11 @@ export interface KeyboardProps {
   className?: string;
   id?: string;
   onKeyClick?: (keyId: string) => void;
+  /** Enables dragging one key onto another to swap them. */
+  draggable?: boolean;
+  onSwap?: (from: string, to: string) => void;
+  /** Other keystrokes on a focused key, for shortcuts the view defines. */
+  onKeyShortcut?: (key: string, keyId: string) => void;
 }
 
 function fmt(n: number): string {
@@ -44,7 +50,11 @@ export function Keyboard({
   className,
   id,
   onKeyClick,
+  draggable = false,
+  onSwap,
+  onKeyShortcut,
 }: KeyboardProps) {
+  const drag = useKeyDrag(onSwap);
   const generatedId = useId();
   // Arrow markers are referenced by id, so two keyboards on one page must not share one.
   const markerId = `lm-arrow-${(id ?? generatedId).replace(/[^\w-]/g, '')}`;
@@ -102,6 +112,7 @@ export function Keyboard({
       viewBox={`0 0 ${fmt(view.width)} ${fmt(view.height)}`}
       role={interactive ? 'group' : 'img'}
       aria-label="Keyboard layout"
+      {...(draggable ? drag.handlers : {})}
     >
       {arcs.length > 0 && (
         <defs>
@@ -140,14 +151,23 @@ export function Keyboard({
             tabIndex={interactive ? 0 : undefined}
             aria-label={label}
             style={{ cursor: interactive ? 'pointer' : 'default' }}
-            onClick={interactive ? () => onKeyClick?.(k.key.id) : undefined}
+            onClick={
+              interactive
+                ? () => {
+                    if (draggable && drag.consumeClick()) return;
+                    onKeyClick?.(k.key.id);
+                  }
+                : undefined
+            }
             onKeyDown={
               interactive
                 ? (e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
                       onKeyClick?.(k.key.id);
+                      return;
                     }
+                    onKeyShortcut?.(e.key, k.key.id);
                   }
                 : undefined
             }

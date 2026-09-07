@@ -11,6 +11,7 @@ import { type RawSearch, savedRef } from './url/params.js';
 import { AnalyzeView } from './views/AnalyzeView.js';
 import { CompareView } from './views/CompareView.js';
 import { CorpusView } from './views/CorpusView.js';
+import { EditView } from './views/EditView.js';
 import { LibraryView } from './views/LibraryView.js';
 import { PlaceholderView } from './views/PlaceholderView.js';
 
@@ -60,9 +61,7 @@ function view(path: string, component: () => ReactNode) {
   });
 }
 
-const editRoute = view('/edit', () => (
-  <PlaceholderView title="Edit" note="The layout editor arrives with the editing milestone." />
-));
+const editRoute = view('/edit', EditView);
 const rulesRoute = view('/rules', () => (
   <PlaceholderView title="Rules" note="The rule editor arrives with the rules milestone." />
 ));
