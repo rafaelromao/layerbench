@@ -67,5 +67,30 @@ pnpm dev          # http://localhost:5173
 `pnpm bench` runs the performance suite, which is skipped by default. `pnpm corpora` rebuilds the
 corpus samples from `packages/corpora/raw`.
 
-Deployment is a static build: `pnpm build` writes `apps/web/dist`, and the `deploy` workflow
-publishes it to GitHub Pages.
+## Deploy
+
+`pnpm build` writes `apps/web/dist`: hashed assets, the corpus samples, and three files a static
+host reads — `_redirects` (so `/edit` resolves to the app instead of a 404), `_headers` (content
+security policy and caching) and `404.html` (the same fallback for hosts that use it instead).
+
+On **Cloudflare Pages**, connect the repository and set:
+
+| Setting | Value |
+|---|---|
+| Build command | `pnpm build` |
+| Build output directory | `apps/web/dist` |
+| Root directory | `/` |
+| `NODE_VERSION` | `22` |
+
+Leave `VITE_BASE` unset — Pages serves from the root of a domain, which is the default. It only
+needs a value on a host that serves the site from a subdirectory; the `deploy` workflow sets it for
+GitHub Pages.
+
+**Do not point the app's storage at the branch Pages builds from.** Every save is a commit, and
+each commit would trigger a rebuild and redeploy. Use a separate data repository, or exclude the
+data directory in the project's build watch paths. If that repository is public, so is everything
+saved to it.
+
+The page talks to `api.github.com` and to nothing else — `connect-src` in the policy above enforces
+it, so a token in this browser cannot be sent anywhere but GitHub. After deploying, **Storage → Test
+connection** confirms the token, the repository and the browser's cross-origin access in one click.
