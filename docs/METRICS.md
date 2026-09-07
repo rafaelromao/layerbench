@@ -142,7 +142,7 @@ Aggregates: `percent_of_ngrams`, `percent_of_keystrokes`, `count`, `per100`, `su
 
 ## Differences from the Elixir implementation
 
-This engine reproduces the reference implementation on `main` to within 1e-6 on every metric, pinned
+This engine reproduces the reference implementation at `07b81b9` to within 1e-6 on every metric, pinned
 by the reports in `packages/core/golden/`. Three behaviors are deliberately not reproduced, because
 they are defects rather than definitions; `packages/core/golden/DEVIATIONS.md` has the detail.
 

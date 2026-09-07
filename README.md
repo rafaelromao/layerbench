@@ -48,9 +48,10 @@ nothing is lost to a network problem.
 
 ## Relationship to the Elixir implementation
 
-The `main` branch holds a complete Elixir and Phoenix implementation. It is the behavioral
-reference: URL formats, layout and rule-set JSON, storage documents and every metric definition are
-reproduced here unchanged. `packages/core/golden/` holds reports dumped from it, and the parity
+This application replaced a complete Elixir and Phoenix implementation, which remains in the
+repository's history at `07b81b9` (`git show 07b81b9:mix.exs`, or `git checkout 07b81b9`). It is
+the behavioral reference: URL formats, layout and rule-set JSON, storage documents and every metric
+definition are reproduced here unchanged. `packages/core/golden/` holds reports dumped from it, and the parity
 suite asserts this engine matches them to 1e-6. Three deliberate differences are recorded in
 `packages/core/golden/DEVIATIONS.md`.
 

@@ -1,7 +1,7 @@
 # LayoutMaster — v1 Specification
 Keyboard layout analyzer with faithful ZMK layer semantics (multi-alpha-layer aware)
 
-> Implemented twice: Elixir + Phoenix LiveView on `main`, TypeScript static SPA on `ts-implementation` (D10, §10). Sections 2–9 and 11 describe behavior and are stack-neutral; both implementations must satisfy them, and parity between them is asserted by tests.
+> Implemented twice. The current implementation is the TypeScript static SPA (D10, §10). It replaced an Elixir + Phoenix LiveView implementation, which remains in this repository's history at `07b81b9` and is still the behavioral reference. Sections 2–9 and 11 describe behavior and are stack-neutral; both implementations satisfy them, and parity is asserted by tests.
 
 ---
 
@@ -24,7 +24,7 @@ Goal: a nice-looking, responsive, static web app that **simulates how a corpus i
 | D7 | New rules via a **declarative rule composer** (UI + JSON). JS plugins = v2. |
 | D8 | Corpora: per language a **general** corpus (Leipzig/MonkeyRacer-style) **+ the author's work corpora** (`romak/analysis/corpus_en.txt`, `corpus_pt.txt`), EN+PT-BR **mix slider**, custom paste/upload. |
 | D9 | Geometry default **3x5+2 (34 keys)**; presets `1333+2`, `3x5+3`, `3x6+3`, ANSI, ISO (+ angle mod), custom editor. |
-| D10 | Stack (revised 2026-09-07): **TypeScript, static single-page app, no server** — pnpm workspace with the engine in `packages/core` (pure TypeScript, runs in a worker and in Node), corpus build in `packages/corpora`, UI in `apps/web` (React + TanStack Router + Tailwind/daisyUI). The engine runs in a **Web Worker**; analyses never block the interface. **Storage = the browser (IndexedDB) plus, optionally, a repository the user owns**, reached with a fine-grained token that lives only in that browser — see §4.3/§10. Deployed as static files behind a CDN (Cloudflare Pages; any static host works). *The Elixir + Phoenix LiveView implementation (revision 2026-09-05) lives on `main` and is the behavioral reference; this stack reproduces it, with parity asserted against reports dumped from it.* |
+| D10 | Stack (revised 2026-09-07): **TypeScript, static single-page app, no server** — pnpm workspace with the engine in `packages/core` (pure TypeScript, runs in a worker and in Node), corpus build in `packages/corpora`, UI in `apps/web` (React + TanStack Router + Tailwind/daisyUI). The engine runs in a **Web Worker**; analyses never block the interface. **Storage = the browser (IndexedDB) plus, optionally, a repository the user owns**, reached with a fine-grained token that lives only in that browser — see §4.3/§10. Deployed as static files behind a CDN (Cloudflare Pages; any static host works). *The Elixir + Phoenix LiveView implementation (revision 2026-09-05) is the behavioral reference; it was merged into this repository's history and its tip is `07b81b9`. This stack reproduces it, with parity asserted against reports dumped from it.* |
 | D11 | v1 UI: **all six views** (Analyze, Edit, Compare [2-way], Rules, Corpus, Library). |
 | D12 | **English UI only**, no i18n layer. |
 
@@ -372,7 +372,7 @@ layoutmaster/                       pnpm workspace, no server
 
 ## 12. Milestones
 
-Delivered on `ts-implementation`, each milestone gated on the parity suite staying green.
+Each milestone was gated on the parity suite staying green; the eight commits are in the history behind `7e0fca7`.
 
 | M | Scope | Exit criteria (met) |
 |---|---|---|

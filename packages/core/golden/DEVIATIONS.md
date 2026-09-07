@@ -1,6 +1,6 @@
 # Intentional differences from the reference reports
 
-The files in this directory were dumped from the Elixir implementation on `main` and pin every
+The files in this directory were dumped from the Elixir implementation at `07b81b9` and pin every
 number this engine produces. Three behaviors are deliberately **not** reproduced, because they are
 defects in the reference rather than definitions worth keeping. Everything else must match to 1e-6.
 

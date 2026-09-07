@@ -2,7 +2,7 @@ name: ci
 
 on:
   push:
-    branches: [main, ts-implementation]
+    branches: [main]
   pull_request:
 
 jobs:
