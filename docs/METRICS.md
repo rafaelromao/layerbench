@@ -139,3 +139,18 @@ Rules are `where` expressions over an n-gram (`all`, `any`, `none` combinators).
 `same_hand`, `same_finger`, `same_key`, `adjacent_fingers`, `rank_delta` (finger distance in columns, `eq`/`min`), `row_delta` (`abs`, `abs_min`), `x_distance` (`min`, in U), `direction` (`inward` / `outward`), `monotone`, `changes_direction`, `hand_pattern` (`"aba"`, `"aab"`, `"aaa"`…), `finger_name`, `includes_finger_name`, `finger_name_pair`, `row`, `key_kind` (`alpha`, `layer_tap`, `shift`, `space`, `repeat`, `magic`, `combo`, `hold`), `is_inner` / `any_inner`, `is_thumb` / `any_thumb`, `is_chord`, `finger_height_preference: violated`. Numeric thresholds may reference rule-set globals as `"$global.name"`.
 
 Aggregates: `percent_of_ngrams`, `percent_of_keystrokes`, `count`, `per100`, `sum_distance`, `mean_distance`, `per_finger`, `per_hand`, `per_layer`, `per_row`, `per_col`, `weighted_sum`, `ratio`, `histogram`, `top_strings`.
+
+## Differences from the Elixir implementation
+
+This engine reproduces the reference implementation on `main` to within 1e-6 on every metric, pinned
+by the reports in `packages/core/golden/`. Three behaviors are deliberately not reproduced, because
+they are defects rather than definitions; `packages/core/golden/DEVIATIONS.md` has the detail.
+
+- **Lateral stretches now have values.** `lsb` and `lss` compare a distance against a rule-set
+  global. The reference substitutes such a reference only when the whole value is a string, and here
+  it sits inside the numeric condition, so the comparison was a number against literal text and
+  never matched. Both rules reported `0` in every report.
+- **The `travel` heat map reads its rule.** The Analyze view looked the rule up by the heat mode's
+  own name, while the catalog calls it `finger_travel`, so the map silently fell back to usage.
+- **Comparison ranks by the metric's direction.** The reference decided which side won by whether a
+  metric carried bands, which crowned the higher value for unbanded metrics such as SFB distance.

@@ -2,9 +2,9 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "phoenix",
-      "runtimeExecutable": "env",
-      "runtimeArgs": ["MIX_OS_CONCURRENCY_LOCK=0", "PORT=4011", "mix", "phx.server"],
+      "name": "vite",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@layoutmaster/web", "dev", "--port", "4011", "--strictPort"],
       "port": 4011
     }
   ]

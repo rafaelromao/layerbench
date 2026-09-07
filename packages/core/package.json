@@ -1,0 +1,37 @@
+{
+  "name": "@layoutmaster/core",
+  "version": "0.2.0",
+  "description": "LayoutMaster engine: geometry, keymap model, ZMK-faithful typing simulator, n-gram tables, rules, analysis",
+  "license": "MIT",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./geometry": "./src/geometry/index.ts",
+    "./layout": "./src/layout/index.ts",
+    "./layouts": "./src/layouts/index.ts",
+    "./sim": "./src/sim/index.ts",
+    "./tables": "./src/tables/tables.ts",
+    "./host": "./src/host/locale.ts",
+    "./fixtures": "./src/fixtures/index.ts",
+    "./rules": "./src/rules/index.ts",
+    "./storage": "./src/storage/ids.ts",
+    "./corpus": "./src/corpus/index.ts",
+    "./analysis": "./src/analysis/index.ts",
+    "./node": "./src/corpus/node-loader.ts"
+  },
+  "files": [
+    "src",
+    "fixtures"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "zod": "^4.5.4"
+  }
+}

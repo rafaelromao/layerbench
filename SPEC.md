@@ -1,7 +1,7 @@
 # LayoutMaster — v1 Specification
 Keyboard layout analyzer with faithful ZMK layer semantics (multi-alpha-layer aware)
 
-> Deliverable of this session: **spec only, no implementation**. Working name = directory name (`layoutmaster`); rename freely.
+> Implemented twice: Elixir + Phoenix LiveView on `main`, TypeScript static SPA on `ts-implementation` (D10, §10). Sections 2–9 and 11 describe behavior and are stack-neutral; both implementations must satisfy them, and parity between them is asserted by tests.
 
 ---
 
@@ -24,7 +24,7 @@ Goal: a nice-looking, responsive, static web app that **simulates how a corpus i
 | D7 | New rules via a **declarative rule composer** (UI + JSON). JS plugins = v2. |
 | D8 | Corpora: per language a **general** corpus (Leipzig/MonkeyRacer-style) **+ the author's work corpora** (`romak/analysis/corpus_en.txt`, `corpus_pt.txt`), EN+PT-BR **mix slider**, custom paste/upload. |
 | D9 | Geometry default **3x5+2 (34 keys)**; presets `1333+2`, `3x5+3`, `3x6+3`, ANSI, ISO (+ angle mod), custom editor. |
-| D10 | Stack (revised 2026-09-05): **Elixir + Phoenix LiveView**, single OTP app; engine in pure Elixir under `lib/layoutmaster/`, UI in `lib/layoutmaster_web/`; Tailwind + esbuild (Phoenix defaults), JS hooks only for drag/drop, localStorage and URL sync. No Ecto. **Storage = an app-owned GitHub data repository** (server-side token, Contents API) — see §4.3/§10. Deployable as a Docker release (Fly.io or any host). *The earlier TypeScript implementation is archived on branch `ts-implementation`.* |
+| D10 | Stack (revised 2026-09-07): **TypeScript, static single-page app, no server** — pnpm workspace with the engine in `packages/core` (pure TypeScript, runs in a worker and in Node), corpus build in `packages/corpora`, UI in `apps/web` (React + TanStack Router + Tailwind/daisyUI). The engine runs in a **Web Worker**; analyses never block the interface. **Storage = the browser (IndexedDB) plus, optionally, a repository the user owns**, reached with a fine-grained token that lives only in that browser — see §4.3/§10. Deployed as static files (GitHub Pages). *The Elixir + Phoenix LiveView implementation (revision 2026-09-05) lives on `main` and is the behavioral reference; this stack reproduces it, with parity asserted against reports dumped from it.* |
 | D11 | v1 UI: **all six views** (Analyze, Edit, Compare [2-way], Rules, Corpus, Library). |
 | D12 | **English UI only**, no i18n layer. |
 
@@ -132,10 +132,12 @@ Hand balance: even ≤ 52–48, leans ≤ 55–45, heavy beyond. Doc stats came 
 - Empty/error states: invalid layout (missing/duplicate letters for the corpus alphabet), unproducible symbols, corpus too small, worker busy.
 
 ### 4.3 URL, persistence & GitHub storage
-- **URL** carries: layout id (library or saved) or an inline compressed layout, geometry preset id, corpus id(s) + mix, rule set id (+ compressed diff), universe/case toggles, typing-path selections, view. LiveView keeps it in sync with `push_patch`.
-- **GitHub data repository** (single-tenant, app-owned): the server is configured with `GITHUB_TOKEN`, `DATA_REPO` (`owner/name`), `DATA_BRANCH` and `DATA_PATH` (default `data/`). Files: `layouts/<id>.json`, `rulesets/<id>.json`, `corpora/<id>/manifest.json` (+ table files), `index.json` per collection. Reads go through the Contents API with ETag revalidation and an ETS cache; **Save** = `PUT /repos/{repo}/contents/{path}` with the current blob `sha` (optimistic concurrency; conflict → reload and ask). Commit messages record the action and the layout name. Ids are slugs; a saved item's URL is `/l/<id>`.
-- **Storage adapter**: `LayoutMaster.Storage` behaviour with `GitHub` (prod) and `Local` (dev/test, `priv/data/`) implementations; the same JSON schema everywhere.
-- **Browser** localStorage (via a JS hook) keeps per-browser preferences only (theme, last corpus, collapsed panels, unsaved draft). Custom corpora uploaded through the UI are processed server-side and cached in ETS by content hash; the user may save them to the data repo.
+- **URL** carries: layout id (library or saved) or an inline compressed layout, geometry preset id, corpus id(s) + mix, rule set id (+ compressed diff), universe/case toggles, typing-path selections, view. The router keeps it in sync; parameters at their default are omitted, and keys are written in a fixed order, so the same analysis always produces the same link. Inline layouts are `deflate`-compressed and base64url-encoded — byte-compatible with the Elixir implementation, so links are interchangeable between the two.
+- **Browser storage** (always on): documents live in **IndexedDB** — object stores `layouts`, `rulesets`, `corpora`, each document keyed by its slug id, plus a per-collection index and a SHA-1 content hash used as the version. This is the only storage the app needs; it is written first on every save, so nothing is lost to a network problem.
+- **Repository storage** (optional, per browser): the user points the app at **a repository they own** — `owner/name`, branch and directory — and supplies a **fine-grained personal access token** scoped to that repository with read and write on contents. Files: `layouts/<id>.json`, `rulesets/<id>.json`, `corpora/<id>.json`, `index.json` per collection — the same JSON schema as the Elixir implementation, so a data repository can be shared between them. Reads go through the Contents API with ETag revalidation and an in-memory cache; **Save** = `PUT /repos/{repo}/contents/{path}` with the current blob `sha` (optimistic concurrency; a lost race surfaces as a conflict → reload and ask). Commit messages record the action and the document name.
+- **Token handling**: the token is kept in `localStorage` under `layoutmaster:github-token`, in that browser only. It is never written into a link, an export, a commit, or an error message, and is sent to `api.github.com` and nowhere else. **Forget token** clears it. Because there is no server, no token is ever app-owned.
+- **Storage adapter**: a `StorageAdapter` interface with `IndexedDbAdapter` (local), `GitHubAdapter` (remote) and `CompositeStorage` (local first, then remote; reads prefer the local copy, `pushAll` uploads everything saved so far).
+- **Preferences** — theme, collapsed panels, edit-panel state, repository configuration — are kept in `localStorage` separately from documents. Custom corpora pasted or uploaded through the UI are processed in the worker and cached by content hash; the user may save them like any other document.
 
 ---
 
@@ -325,31 +327,37 @@ Every rule outputs: value, band, top offenders (n-grams with %, distance), per-k
 
 ---
 
-## 10. Architecture (D10, Elixir + Phoenix)
+## 10. Architecture (D10, TypeScript static SPA)
 
 ```
-layoutmaster/                       single Phoenix app (mix phx.new layoutmaster --no-ecto)
-  lib/layoutmaster/                 engine (pure functions, no web deps)
-    geometry/    presets.ex, fingering.ex, distance.ex
-    layout/      schema.ex (validation), compile.ex, text.ex (import/export), bundled.ex
-    host/        locale.ex (us, us-intl, abnt2 tables; dead-key composition)
-    sim/         machine.ex (state machine §5.1–5.3), producers.ex, resolver.ex (§5.4), explain.ex
-    tables/      registry.ex (logical keys), ngrams.ex (accumulators), travel.ex
-    rules/       engine.ex, predicates.ex, aggregate.ex, catalog.ex (built-ins as data), presets.ex, bands.ex, score.ex
-    corpus/      normalize.ex, facts.ex, loader.ex (shipped tables, custom uploads, mix)
-    analysis.ex  analyze/1 orchestration, structure hash, fast path, relabel, ETS cache + Task supervision
-    storage/     storage.ex (behaviour), github.ex (Contents API via Req), local.ex (priv/data)
-  lib/layoutmaster_web/
-    live/        analyze_live, edit_live, compare_live, rules_live, corpus_live, library_live
-    components/  keyboard_svg, summary_strip, metric_panel, ngram_list, explain_word, path_picker, rule_composer, …
-  assets/js/hooks/  drag_drop.js, local_store.js, url_sync.js (thin; all logic server-side)
-  priv/data/        local storage adapter root (dev/test) + bundled presets
-  lib/mix/tasks/    layoutmaster.corpora (build tables from raw text), layoutmaster.parity (snapshot checks)
-  test/             ExUnit: engine scenarios (§11.2), Romak traces (§11.3), rules on fixture tables, LiveView tests
+layoutmaster/                       pnpm workspace, no server
+  packages/core/src/                engine — pure TypeScript, no DOM, runs in a worker and in Node
+    geometry/    presets.ts, distance.ts, types.ts (fingering, columns, distance models)
+    layout/      schema.ts (zod validation), compile.ts, text.ts (import/export), json.ts (canonical form), ops.ts, labels.ts
+    host/        locale.ts (us, us-intl, abnt2 tables; dead-key composition)
+    sim/         machine.ts (state machine §5.1–5.3), producers.ts, resolver.ts (§5.4)
+    tables/      tables.ts (logical keys, n-gram accumulators, travel)
+    rules/       engine.ts, predicates.ts (compiled closures), catalog.ts (built-ins as data), presets.ts, bands.ts, effort.ts, serialize.ts
+    corpus/      normalize.ts, corpus.ts, node-loader.ts
+    analysis/    analyze.ts (orchestration), hash.ts (structure hash), relabel.ts, cache.ts (LRU)
+    storage/     ids.ts (slugs, document paths, index entries), the StorageAdapter interface
+    layouts/     bundled layouts (classic, Romak family)
+    golden/      parity suite against reports dumped from the Elixir implementation
+  packages/corpora/src/build.ts     builds the shipped corpus tables from raw text
+  apps/web/src/
+    engine/      analysis.worker.ts, protocol.ts (postMessage RPC), worker-client.ts, direct-client.ts (tests),
+                 report-dto.ts, corpus-loader.ts, heat.ts, use-analysis.ts
+    views/       AnalyzeView, EditView (+ edit/reducer, panels), CompareView, RulesView (+ rules/composer),
+                 CorpusView, LibraryView
+    components/  Keyboard (SVG + drag), LayerTabs, Metrics, Shell
+    url/         params.ts (codec, defaults omitted), inline.ts (deflate + base64url)
+    storage/     indexeddb.ts, github.ts, composite.ts, StorageSettings.tsx, use-storage.tsx
+    state/       session.ts, theme.ts, toasts.ts
 ```
-- **Engine API** (Elixir): `LayoutMaster.Analysis.analyze(layout, corpus, rule_set, opts) :: Report`; `LayoutMaster.Sim.simulate(compiled, stream, opts) :: %Simulation{}`; `LayoutMaster.Sim.Producers.enumerate(compiled, case_mode)`; `LayoutMaster.Sim.explain(compiled, text, opts)`; `LayoutMaster.Tables.relabel/2`; `LayoutMaster.Analysis.structure_hash/2`. Long analyses run in a `Task.Supervisor` and stream progress to the LiveView via PubSub; results cached in ETS by `structure_hash` × corpus × options.
-- **Performance budget** (revised for the BEAM): default simulation sample 300k symbols ≤ 3 s; full 1M-symbol corpus ≤ 10 s in a background task with progress; rules ≤ 200 ms over tables; eligible swap instant via relabel (metadata only); fast path (precomputed tables) for classic layouts. If budgets are missed, the hot loop (resolver + accumulators) moves to a Rustler NIF — the module boundary (`Sim.Machine`/`Tables`) is designed to allow it.
-- **Quality gates**: ExUnit for every behavior, rule and trace; property test for relabel eligibility (StreamData); LiveView tests for each view; `mix format --check-formatted`, `mix credo --strict`, `mix dialyzer` in CI; deploy via Docker release.
+- **Engine API**: `analyze(layout, corpus, ruleSet, opts): Report`; `simulate(compiled, stream, opts): Simulation`; `enumerateProducers(compiled, caseMode)`; `explain(compiled, text, opts)`; `relabel(tables, mapping)`; `structureHash(layout, opts)`. The UI never calls these directly: it talks to an `AnalysisClient` — `WorkerClient` in the app, `DirectClient` in tests — over a `postMessage` protocol, so a long analysis never blocks rendering and can be superseded by a newer request. Results are cached in an LRU keyed by `structureHash` × corpus × options.
+- **Performance** (measured on the reference machine): 300 k-symbol sample **576 ms**; full corpus (~1 M symbols) **1.36 s**; rules over tables well under 200 ms; an eligible swap re-scores existing tables via `relabel` in **12 ms** instead of re-simulating. Budgets from the Elixir revision (3 s / 10 s / 200 ms) are met with room to spare, so no native escape hatch is needed.
+- **Parity**: `packages/core/golden/` holds 38 reports dumped from the Elixir implementation (`golden_dump.exs`) plus the layouts and inline URLs they came from; the suite asserts every metric to 1e-6. Three deliberate differences are recorded in `golden/DEVIATIONS.md` — one of them a defect in the reference (LSB/LSS always zero because a nested `$global.` reference never resolves).
+- **Quality gates**: vitest for every behavior, rule and trace, plus React Testing Library per view; `biome check` (format + lint), `tsc --noEmit` in strict mode, and the full test suite in CI. Deployment is `vite build` to static files published to GitHub Pages, with `index.html` copied to `404.html` so deep links resolve.
 
 ---
 
@@ -362,18 +370,20 @@ layoutmaster/                       single Phoenix app (mix phx.new layoutmaster
 
 ---
 
-## 12. Milestones (implementation plan for a later session)
+## 12. Milestones
 
-| M | Scope | Exit criteria |
+Delivered on `ts-implementation`, each milestone gated on the parity suite staying green.
+
+| M | Scope | Exit criteria (met) |
 |---|---|---|
-| M0 | Phoenix app scaffold (`--no-ecto`), CI (format/credo/test), Dockerfile release, storage adapters skeleton | app boots, CI green |
-| M1 | Engine: geometry + presets, layout schema/compile, host locales, **simulator**, tables, text import/export, bundled layouts | §11.2 scenarios + §11.3 traces green on the checked-in 20 kB fixture corpus |
-| M2 | Engine: rules engine, composer schema, default catalog, presets, bands, score | rules expressible per §7.3; tests on fixture tables |
-| M3 | Corpora: `mix layoutmaster.corpora` pipeline + shipped corpora + mix + upload path + parity snapshots | manifest with licenses; §11.1 parity green; fast path validated |
-| M4 | Web: Analyze LiveView, Library (GitHub storage read), URL state, theming, responsive shell | Magic Romak analyzable end-to-end |
-| M5 | Web: Edit LiveView (drag/drop hook across layers, binding editor, combos/adaptive tables, geometry picker, typing paths panel), Save to GitHub | relabel-based instant editing for eligible swaps; save/load round-trip through the data repo |
-| M6 | Web: Compare (2-way), Rules view + Composer, Corpus view | presets switchable, deltas shown |
-| M7 | Polish: a11y, perf, docs (metric glossary from the Doc), release v1 | budgets in §10 met, docs published |
+| M0 | pnpm workspace, TypeScript strict, Biome, vitest, Vite; CI (check/typecheck/test/build); golden dump from the Elixir app | tooling green, 38 reference reports checked in |
+| M1 | Engine: geometry + presets, layout schema/compile, host locales, **simulator**, tables, text import/export, bundled layouts, rules engine + catalog + presets + bands, analysis + relabel + cache | §11.2 scenarios and §11.3 traces green; all 38 golden reports match to 1e-6 |
+| M2 | Corpora: build pipeline, shipped corpora, mix, custom upload path | corpus tables byte-identical to the Elixir build; Node loader and bench on real corpora |
+| M3 | App shell: routing with byte-compatible URLs, theme, navigation, worker client, Analyze view | Magic Romak analyzable end-to-end; a link round-trips through both implementations |
+| M4 | Library, Compare (2-way) and Corpus views | saved layouts listed and loaded, deltas shown, corpora browsable and buildable |
+| M5 | Edit view: drag/drop across layers, binding editor, combos/adaptive tables, geometry picker, typing-path panel | eligible swaps re-scored by relabel (12 ms), not re-simulated |
+| M6 | Rules view + composer: enable, re-parameterize, compose, save a set | rules expressible per §7.3; sets round-trip through storage and the URL |
+| M7 | Storage (IndexedDB + optional user repository), a11y and responsive pass, docs, static deploy | save/load round-trip locally and to a repository; §10 budgets met; docs published |
 | v1.x | keymap-drawer YAML import, ZMK physical-layout import | |
 | v2 | ZMK `.keymap` importer (cpp + tree-sitter devicetree), timing model, numbers/symbols layers, JS rule plugins, optimizer, alt-fingering | |
 

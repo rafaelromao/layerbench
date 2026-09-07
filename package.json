@@ -1,0 +1,29 @@
+{
+  "name": "layoutmaster",
+  "private": true,
+  "version": "0.2.0",
+  "description": "Keyboard layout analyzer with faithful ZMK layer semantics (multi-alpha-layer aware)",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=11"
+  },
+  "scripts": {
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r run test",
+    "build": "pnpm -r --filter @layoutmaster/core run build && pnpm --filter @layoutmaster/web run build",
+    "dev": "pnpm --filter @layoutmaster/web run dev",
+    "corpora": "pnpm --filter @layoutmaster/corpora run build",
+    "bench": "BENCH=1 pnpm --filter @layoutmaster/core run test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.12",
+    "@types/node": "^26.4.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

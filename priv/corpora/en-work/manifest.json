@@ -1,1 +1,0 @@
-{"built_at":"2026-09-06T12:04:24.005189Z","description":"1 MB of English generated from the 180 most common work-email/chat words (ChatGPT-4), lowercase.","id":"en-work","language":"en","license":"MIT (rafaelromao/romak)","name":"English — work chat/email (Romak)","source":"https://github.com/rafaelromao/romak/blob/main/analysis/corpus_en.txt","symbols":845649,"words":154351}
