@@ -1,8 +1,9 @@
-import { Link } from '@tanstack/react-router';
-import type { ReactNode } from 'react';
+import { Link, useLocation } from '@tanstack/react-router';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { useSession } from '../state/session.js';
 import type { ThemeChoice } from '../state/theme.js';
 import { useToasts } from '../state/toasts.js';
+import { StorageSettings } from '../storage/StorageSettings.js';
 
 const NAV = [
   { to: '/', label: 'Analyze' },
@@ -69,8 +70,32 @@ function ToastRegion() {
   );
 }
 
+/**
+ * Moves focus into the new view when the route changes, so a screen reader announces it and the
+ * next Tab continues from the content. Search parameters change on every control the user touches,
+ * so only the path counts.
+ */
+function useFocusOnRouteChange() {
+  const { pathname } = useLocation();
+  const main = useRef<HTMLElement>(null);
+  const first = useRef(true);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the path is the trigger, not an input.
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    main.current?.focus();
+  }, [pathname]);
+
+  return main;
+}
+
 /** Page frame: navigation, theme control and the toast region every view shares. */
 export function Shell({ children }: { children: ReactNode }) {
+  const main = useFocusOnRouteChange();
+
   return (
     <>
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-2">
@@ -105,11 +130,17 @@ export function Shell({ children }: { children: ReactNode }) {
             ))}
           </ul>
         </details>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <StorageSettings />
           <ThemeToggle />
         </div>
       </header>
-      <main id="main" className="px-3 py-4 sm:px-4 lg:px-6">
+      <main
+        id="main"
+        ref={main}
+        tabIndex={-1}
+        className="px-3 py-4 sm:px-4 lg:px-6 focus:outline-none"
+      >
         <div className="mx-auto max-w-[1600px] space-y-4">{children}</div>
       </main>
       <ToastRegion />

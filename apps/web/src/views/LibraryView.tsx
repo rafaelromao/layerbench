@@ -127,15 +127,16 @@ export function LibraryView() {
 
   return (
     <div className="space-y-6">
+      <h1 className="sr-only">Library</h1>
       <section className="space-y-2">
-        <h1 className="text-sm uppercase tracking-wide opacity-60">Bundled layouts</h1>
+        <h2 className="text-sm uppercase tracking-wide opacity-60">Bundled layouts</h2>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {bundled.map(({ layout, compiled }) => (
             <article key={layout.id} className="card bg-base-100 border border-base-300">
               <div className="card-body gap-2 p-4">
                 <header className="flex items-start justify-between gap-2">
                   <div>
-                    <h2 className="font-semibold text-sm">{layout.name}</h2>
+                    <h3 className="font-semibold text-sm">{layout.name}</h3>
                     <p className="text-xs opacity-60">
                       {[
                         layout.author,

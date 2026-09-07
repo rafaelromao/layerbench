@@ -9,6 +9,9 @@ import {
   useRef,
   useState,
 } from 'react';
+import { gitHubReady, useSession } from '../state/session.js';
+import { CompositeStorage } from './composite.js';
+import { GitHubAdapter } from './github.js';
 import { IndexedDbAdapter } from './indexeddb.js';
 
 const StorageContext = createContext<StorageAdapter | null>(null);
@@ -21,7 +24,17 @@ export function StorageProvider({
   adapter?: StorageAdapter;
   children: ReactNode;
 }) {
-  const value = useMemo(() => adapter ?? new IndexedDbAdapter(), [adapter]);
+  const github = useSession((s) => s.github);
+  const token = useSession((s) => s.githubToken);
+
+  const value = useMemo(() => {
+    if (adapter) return adapter;
+    const local = new IndexedDbAdapter();
+    // The repository only joins in once it is configured and switched on.
+    if (!gitHubReady({ github, githubToken: token })) return local;
+    return new CompositeStorage(local, new GitHubAdapter({ ...github, token }));
+  }, [adapter, github, token]);
+
   return <StorageContext.Provider value={value}>{children}</StorageContext.Provider>;
 }
 

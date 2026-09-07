@@ -29,6 +29,18 @@ if (!Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = () => {};
 }
 
+// jsdom parses <dialog> but does not open it. Toggling `open` is enough for the tests, which are
+// about what the dialog contains, not about the browser's focus trap.
+if (!HTMLDialogElement.prototype.showModal) {
+  HTMLDialogElement.prototype.showModal = function showModal(this: HTMLDialogElement) {
+    this.open = true;
+  };
+  HTMLDialogElement.prototype.close = function close(this: HTMLDialogElement) {
+    this.open = false;
+    this.dispatchEvent(new Event('close'));
+  };
+}
+
 // Without a layout engine there is nothing under a point; tests that drag say what is.
 if (!document.elementFromPoint) {
   document.elementFromPoint = () => null;

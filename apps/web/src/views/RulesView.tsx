@@ -366,8 +366,15 @@ export function RulesView() {
       {FAMILY_TITLES.map(([family, title]) => {
         const rules = ruleSet.rules.filter((r) => (r.family ?? 'other') === family);
         if (rules.length === 0) return null;
+        // The table is wider than a phone, so the card scrolls; tabIndex lets a keyboard reach it.
         return (
-          <section key={family} className="card bg-base-100 border border-base-300 overflow-x-auto">
+          <section
+            key={family}
+            className="card bg-base-100 border border-base-300 overflow-x-auto"
+            // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be reachable by keyboard.
+            tabIndex={0}
+            aria-label={title}
+          >
             <div className="card-body gap-2 p-4">
               <h2 className="text-sm uppercase tracking-wide opacity-60">{title}</h2>
               <table className="table table-xs min-w-[56rem]">

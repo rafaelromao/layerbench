@@ -339,7 +339,12 @@ export function CombosPanel({ state, send }: PanelProps) {
 
   return (
     <div className="space-y-3">
-      <div className="overflow-x-auto">
+      <section
+        className="overflow-x-auto"
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be reachable by keyboard.
+        tabIndex={0}
+        aria-label="Combos"
+      >
         <table className="table table-xs">
           <thead>
             <tr>
@@ -378,7 +383,7 @@ export function CombosPanel({ state, send }: PanelProps) {
             ))}
           </tbody>
         </table>
-      </div>
+      </section>
 
       <form
         className="flex flex-wrap gap-2"

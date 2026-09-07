@@ -244,7 +244,12 @@ export function CompareView() {
       </div>
 
       {rows.length > 0 && (
-        <section className="card bg-base-100 border border-base-300 overflow-x-auto">
+        <section
+          className="card bg-base-100 border border-base-300 overflow-x-auto"
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be reachable by keyboard.
+          tabIndex={0}
+          aria-label="Metric comparison"
+        >
           <table className="table table-sm table-zebra">
             <thead>
               <tr>
