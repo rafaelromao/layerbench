@@ -4,8 +4,8 @@
     {
       "name": "phoenix",
       "runtimeExecutable": "env",
-      "runtimeArgs": ["MIX_OS_CONCURRENCY_LOCK=0", "mix", "phx.server"],
-      "port": 4001
+      "runtimeArgs": ["MIX_OS_CONCURRENCY_LOCK=0", "PORT=4011", "mix", "phx.server"],
+      "port": 4011
     }
   ]
 }
