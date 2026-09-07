@@ -121,6 +121,7 @@ export type Request =
   | { id: number; type: 'explain'; layout: LayoutJson; text: string; caseMode: 'fold' | 'model' }
   | { id: number; type: 'producers'; layout: LayoutJson; caseMode: 'fold' | 'model' }
   | { id: number; type: 'corpusFacts'; corpusId: string }
+  | { id: number; type: 'corpusDocument'; corpusId: string }
   | { id: number; type: 'buildCustomCorpus'; text: string; name: string; language: string }
   | { id: number; type: 'cancel' };
 
@@ -150,5 +151,7 @@ export interface AnalysisClient {
   explain(layout: LayoutJson, text: string, caseMode: 'fold' | 'model'): Promise<ExplainDTO>;
   producers(layout: LayoutJson, caseMode: 'fold' | 'model'): Promise<Record<string, ProducerDTO[]>>;
   corpusFacts(corpusId: string): Promise<CorpusFactsDTO>;
+  /** The storage document for a corpus, including its sample text. */
+  corpusDocument(corpusId: string): Promise<Record<string, unknown>>;
   buildCustomCorpus(text: string, name: string, language: string): Promise<CorpusManifest>;
 }

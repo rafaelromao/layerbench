@@ -5,9 +5,13 @@ import {
   Outlet,
   redirect,
 } from '@tanstack/react-router';
+import type { ReactNode } from 'react';
 import { Shell } from './components/Shell.js';
 import { type RawSearch, savedRef } from './url/params.js';
 import { AnalyzeView } from './views/AnalyzeView.js';
+import { CompareView } from './views/CompareView.js';
+import { CorpusView } from './views/CorpusView.js';
+import { LibraryView } from './views/LibraryView.js';
 import { PlaceholderView } from './views/PlaceholderView.js';
 
 /**
@@ -46,40 +50,25 @@ const analyzeRoute = createRoute({
   component: AnalyzeView,
 });
 
-function placeholder(path: string, title: string, note: string) {
+/** Every view route reads the same raw search object; each view parses what it needs. */
+function view(path: string, component: () => ReactNode) {
   return createRoute({
     getParentRoute: () => rootRoute,
     path,
     validateSearch: (search: Record<string, unknown>): RawSearch => search as RawSearch,
-    component: () => <PlaceholderView title={title} note={note} />,
+    component,
   });
 }
 
-const editRoute = placeholder(
-  '/edit',
-  'Edit',
-  'The layout editor arrives with the editing milestone.',
-);
-const compareRoute = placeholder(
-  '/compare',
-  'Compare',
-  'Side-by-side comparison arrives with the library milestone.',
-);
-const rulesRoute = placeholder(
-  '/rules',
-  'Rules',
-  'The rule editor arrives with the rules milestone.',
-);
-const corpusRoute = placeholder(
-  '/corpus',
-  'Corpus',
-  'Corpus browsing arrives with the library milestone.',
-);
-const libraryRoute = placeholder(
-  '/library',
-  'Library',
-  'The layout library arrives with the library milestone.',
-);
+const editRoute = view('/edit', () => (
+  <PlaceholderView title="Edit" note="The layout editor arrives with the editing milestone." />
+));
+const rulesRoute = view('/rules', () => (
+  <PlaceholderView title="Rules" note="The rule editor arrives with the rules milestone." />
+));
+const compareRoute = view('/compare', CompareView);
+const corpusRoute = view('/corpus', CorpusView);
+const libraryRoute = view('/library', LibraryView);
 
 /** Short link to a saved layout, kept from the reference application. */
 const savedLayoutRoute = createRoute({

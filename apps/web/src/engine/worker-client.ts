@@ -129,6 +129,10 @@ export class WorkerClient implements AnalysisClient {
   buildCustomCorpus(text: string, name: string, language: string): Promise<CorpusManifest> {
     return this.send({ type: 'buildCustomCorpus', text, name, language });
   }
+
+  corpusDocument(corpusId: string): Promise<Record<string, unknown>> {
+    return this.send({ type: 'corpusDocument', corpusId });
+  }
 }
 
 /** Spawn the engine worker and wrap it. */

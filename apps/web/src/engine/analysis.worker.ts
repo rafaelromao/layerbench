@@ -35,6 +35,8 @@ async function handle(req: Request): Promise<unknown> {
       return core.producers(req.layout, req.caseMode);
     case 'corpusFacts':
       return core.corpusFacts(req.corpusId);
+    case 'corpusDocument':
+      return core.corpusDocument(req.corpusId);
     case 'buildCustomCorpus':
       return core.buildCustomCorpus(req.text, req.name, req.language);
     default:

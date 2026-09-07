@@ -7,6 +7,7 @@ import {
   compileLayout,
   corpusSampleFacts,
   corpusStream,
+  corpusToDoc,
   customCorpus,
   enumerateProducers,
   explain,
@@ -123,6 +124,11 @@ export class AnalysisCore {
     };
     this.facts.set(id, dto);
     return dto;
+  }
+
+  /** The document a corpus is saved as, sample included. */
+  async corpusDocument(id: string): Promise<Record<string, unknown>> {
+    return corpusToDoc(await this.corpus(id));
   }
 
   private layoutOf(json: LayoutJson): Layout {

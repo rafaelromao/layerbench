@@ -25,6 +25,7 @@ import {
   toSearch,
 } from '../url/params.js';
 import { useLayout } from './useLayout.js';
+import { useRuleSet } from './useRuleSet.js';
 
 const FAMILIES: [string, string][] = [
   ['bigram', 'Bigrams'],
@@ -97,10 +98,7 @@ export function AnalyzeView() {
     };
   }, [client, params.corpus, params.corpus2, params.mix]);
 
-  const ruleSet = useMemo(() => {
-    const base = getPreset(params.preset.replace(/^saved:/, ''));
-    return { ...base, globals: { ...base.globals, universe: params.universe } };
-  }, [params.preset, params.universe]);
+  const ruleSet = useRuleSet(params.preset, params.universe);
 
   const request: AnalyzeRequest | null = useMemo(() => {
     if (!layout) return null;

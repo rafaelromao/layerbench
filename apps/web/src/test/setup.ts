@@ -1,4 +1,6 @@
 import '@testing-library/jest-dom/vitest';
+// jsdom ships no IndexedDB, so saved documents need an in-memory implementation.
+import 'fake-indexeddb/auto';
 import { cleanup } from '@testing-library/react';
 import { afterEach } from 'vitest';
 

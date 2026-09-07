@@ -1,4 +1,5 @@
 import { resolve } from 'node:path';
+import type { StorageAdapter } from '@layoutmaster/core';
 import { nodeCorpusLoader } from '@layoutmaster/core/node';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import { type RenderResult, render } from '@testing-library/react';
@@ -7,6 +8,7 @@ import { AnalysisClientProvider } from '../engine/client-context.js';
 import { DirectClient } from '../engine/direct-client.js';
 import type { AnalysisClient } from '../engine/protocol.js';
 import { createAppRouter } from '../router.js';
+import { StorageProvider } from '../storage/use-storage.js';
 
 /**
  * The corpora the built site serves, read straight from disk in tests. Resolved from the working
@@ -26,7 +28,7 @@ export function testClient(): AnalysisClient {
  */
 export function renderRoute(
   path: string,
-  opts: { client?: AnalysisClient } = {},
+  opts: { client?: AnalysisClient; storage?: StorageAdapter } = {},
 ): RenderResult & { client: AnalysisClient; currentSearch: () => string } {
   const client = opts.client ?? testClient();
   const router = createAppRouter({
@@ -35,7 +37,9 @@ export function renderRoute(
   });
   const result = render(
     <AnalysisClientProvider client={client}>
-      <RouterProvider router={router} />
+      <StorageProvider adapter={opts.storage}>
+        <RouterProvider router={router} />
+      </StorageProvider>
     </AnalysisClientProvider>,
   );
   // Memory history never touches window.location, so the router is the source of truth for links.

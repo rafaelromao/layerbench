@@ -74,4 +74,8 @@ export class DirectClient implements AnalysisClient {
   buildCustomCorpus(text: string, name: string, language: string): Promise<CorpusManifest> {
     return this.core.buildCustomCorpus(text, name, language);
   }
+
+  corpusDocument(corpusId: string): Promise<Record<string, unknown>> {
+    return this.core.corpusDocument(corpusId);
+  }
 }

@@ -1,5 +1,12 @@
-import { type CompiledLayout, compileLayout, type Layout } from '@layoutmaster/core';
+import {
+  type CompiledLayout,
+  compileLayout,
+  type Layout,
+  type StorageAdapter,
+  safeParseLayout,
+} from '@layoutmaster/core';
 import { useEffect, useMemo, useState } from 'react';
+import { useStorage } from '../storage/use-storage.js';
 import { resolveLayoutRef } from '../url/resolve-layout.js';
 
 export interface LayoutState {
@@ -8,8 +15,20 @@ export interface LayoutState {
   error: string | null;
 }
 
+/** Read a saved layout document and parse it. */
+export function savedLayoutLoader(storage: StorageAdapter) {
+  return async (id: string): Promise<Layout | null> => {
+    const stored = await storage.get('layouts', id);
+    if (!stored) return null;
+    const parsed = safeParseLayout(stored.doc);
+    if (!parsed.ok) throw new Error(parsed.error);
+    return parsed.layout;
+  };
+}
+
 /** Resolve a `?layout=` reference and compile it. Inline layouts decompress, so this is async. */
 export function useLayout(ref: string): LayoutState {
+  const storage = useStorage();
   const [resolved, setResolved] = useState<{ layout: Layout | null; error: string | null }>({
     layout: null,
     error: null,
@@ -17,14 +36,14 @@ export function useLayout(ref: string): LayoutState {
 
   useEffect(() => {
     let cancelled = false;
-    resolveLayoutRef(ref).then((r) => {
+    resolveLayoutRef(ref, savedLayoutLoader(storage)).then((r) => {
       if (cancelled) return;
       setResolved(r.ok ? { layout: r.layout, error: null } : { layout: null, error: r.error });
     });
     return () => {
       cancelled = true;
     };
-  }, [ref]);
+  }, [ref, storage]);
 
   return useMemo(() => {
     if (!resolved.layout) return { layout: null, compiled: null, error: resolved.error };
