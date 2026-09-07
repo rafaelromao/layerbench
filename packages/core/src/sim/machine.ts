@@ -2,18 +2,26 @@ import { composeDeadKey, hasShift, shiftSymbol, translateKeycode } from '../host
 import type { CompiledLayout } from '../layout/compile.js';
 import type { Binding, BindingKind, Mod } from '../layout/types.js';
 
-export type KeyKind = 'alpha' | 'layerTap' | 'shift' | 'space' | 'repeat' | 'magic' | 'combo' | 'hold';
+export type KeyKind =
+  | 'alpha'
+  | 'layer_tap'
+  | 'shift'
+  | 'space'
+  | 'repeat'
+  | 'magic'
+  | 'combo'
+  | 'hold';
 
 export type ProducerKind = 'direct' | 'combo' | 'adaptive' | 'repeat' | 'macro' | 'deadkey';
 
 export type Action =
   | { type: 'tap'; pos: number; taps?: number }
-  | { type: 'holdPress'; pos: number }
-  | { type: 'holdRelease'; pos: number }
+  | { type: 'hold_press'; pos: number }
+  | { type: 'hold_release'; pos: number }
   | { type: 'chord'; combo: number };
 
 export interface KeyEvent {
-  kind: 'tap' | 'holdPress' | 'holdRelease' | 'chord';
+  kind: 'tap' | 'hold_press' | 'hold_release' | 'chord';
   /** Position index (physical key or chord virtual position). */
   pos: number;
   /** Layer whose binding handled the event (highest active layer for chords). */
@@ -78,8 +86,12 @@ export class MachineState {
       oneShots: this.oneShots.map((o) => ({ ...o })),
       held: [...this.held.entries()].map(([k, v]) => [k, { ...v }]),
       stickyMods: this.stickyMods.map((s) => ({ ...s })),
-      capsWord: this.capsWord ? { continueList: [...this.capsWord.continueList], mods: [...this.capsWord.mods] } : null,
-      autoLayer: this.autoLayer ? { layer: this.autoLayer.layer, continueList: [...this.autoLayer.continueList] } : null,
+      capsWord: this.capsWord
+        ? { continueList: [...this.capsWord.continueList], mods: [...this.capsWord.mods] }
+        : null,
+      autoLayer: this.autoLayer
+        ? { layer: this.autoLayer.layer, continueList: [...this.autoLayer.continueList] }
+        : null,
       lastSymbol: this.lastSymbol,
       lastKeycode: this.lastKeycode,
       pendingDeadKey: this.pendingDeadKey,
@@ -92,8 +104,12 @@ export class MachineState {
     this.oneShots = s.oneShots.map((o) => ({ ...o }));
     this.held = new Map(s.held.map(([k, v]) => [k, { ...v }]));
     this.stickyMods = s.stickyMods.map((x) => ({ ...x }));
-    this.capsWord = s.capsWord ? { continueList: new Set(s.capsWord.continueList), mods: [...s.capsWord.mods] } : null;
-    this.autoLayer = s.autoLayer ? { layer: s.autoLayer.layer, continueList: new Set(s.autoLayer.continueList) } : null;
+    this.capsWord = s.capsWord
+      ? { continueList: new Set(s.capsWord.continueList), mods: [...s.capsWord.mods] }
+      : null;
+    this.autoLayer = s.autoLayer
+      ? { layer: s.autoLayer.layer, continueList: new Set(s.autoLayer.continueList) }
+      : null;
     this.lastSymbol = s.lastSymbol;
     this.lastKeycode = s.lastKeycode;
     this.pendingDeadKey = s.pendingDeadKey;
@@ -216,9 +232,9 @@ export class Machine {
         }
         return events;
       }
-      case 'holdPress':
+      case 'hold_press':
         return [this.press(action.pos, 'hold', 1)];
-      case 'holdRelease':
+      case 'hold_release':
         return [this.release(action.pos)];
       case 'chord':
         return [this.chord(action.combo)];
@@ -257,7 +273,7 @@ export class Machine {
     const wasted = this.postStep(ctx, armedBefore, stickyBefore, layer);
     this.recomputeMask();
     return {
-      kind: mode === 'hold' ? 'holdPress' : 'tap',
+      kind: mode === 'hold' ? 'hold_press' : 'tap',
       pos,
       layer,
       symbols: ctx.out.join(''),
@@ -276,12 +292,17 @@ export class Machine {
     this.state.held.delete(pos);
     this.recomputeMask();
     return {
-      kind: 'holdRelease',
+      kind: 'hold_release',
       pos,
       layer,
       symbols: '',
       keyKind: 'hold',
-      label: entry?.layer !== undefined ? `⇩${this.compiled.layers[entry.layer]?.name ?? entry.layer}` : entry?.mod ? `⇩${entry.mod}` : '⇩',
+      label:
+        entry?.layer !== undefined
+          ? `⇩${this.compiled.layers[entry.layer]?.name ?? entry.layer}`
+          : entry?.mod
+            ? `⇩${entry.mod}`
+            : '⇩',
       leafKind: entry?.layer !== undefined ? 'mo' : 'mod',
       wastedOneShot: false,
       underHold: heldBefore,
@@ -318,10 +339,24 @@ export class Machine {
     };
   }
 
-  private postStep(ctx: ExecContext, armedBefore: OneShot[], stickyBefore: StickyMod[], layer: number): boolean {
+  private postStep(
+    ctx: ExecContext,
+    armedBefore: OneShot[],
+    stickyBefore: StickyMod[],
+    layer: number,
+  ): boolean {
     const s = this.state;
     let wasted = false;
-    const layerKinds: BindingKind[] = ['none', 'sl', 'tog', 'to', 'mo', 'lt', 'auto_layer', 'caps_word'];
+    const layerKinds: BindingKind[] = [
+      'none',
+      'sl',
+      'tog',
+      'to',
+      'mo',
+      'lt',
+      'auto_layer',
+      'caps_word',
+    ];
     for (const os of armedBefore) {
       if (ctx.modifierPress && os.ignoreModifiers) continue;
       const i = s.oneShots.indexOf(os);
@@ -365,8 +400,11 @@ export class Machine {
   }
 
   private effectiveShift(ctx: ExecContext, forAlpha: boolean): boolean {
-    for (const m of this.state.heldMods()) if ((m === 'LSHIFT' || m === 'RSHIFT') && !ctx.suppressMods.has(m)) return true;
-    for (const sm of this.state.stickyMods) if ((sm.mod === 'LSHIFT' || sm.mod === 'RSHIFT') && !ctx.suppressMods.has(sm.mod)) return true;
+    for (const m of this.state.heldMods())
+      if ((m === 'LSHIFT' || m === 'RSHIFT') && !ctx.suppressMods.has(m)) return true;
+    for (const sm of this.state.stickyMods)
+      if ((sm.mod === 'LSHIFT' || sm.mod === 'RSHIFT') && !ctx.suppressMods.has(sm.mod))
+        return true;
     if (forAlpha && this.state.capsWord && hasShift(this.state.capsWord.mods)) return true;
     return false;
   }
@@ -389,9 +427,9 @@ export class Machine {
     if (this.compiled.hostLocale === 'symbols') {
       const last = s.lastSymbol;
       if (last === null) return false;
-      const lower = last.toLocaleLowerCase();
+      const lower = last.toLowerCase();
       for (const a of afterAny) {
-        if (a === last || a.toLocaleLowerCase() === lower) return true;
+        if (a === last || a.toLowerCase() === lower) return true;
       }
       return false;
     }
@@ -431,7 +469,8 @@ export class Machine {
               this.state.lastKeycode = b.keycode;
             } else {
               const alpha = isAlphaSymbol(r.symbol);
-              if (alpha && !hasShift(mods) && this.state.capsWord === null) this.emit(ctx, r.symbol, b.keycode);
+              if (alpha && !hasShift(mods) && this.state.capsWord === null)
+                this.emit(ctx, r.symbol, b.keycode);
               else this.emit(ctx, r.symbol, b.keycode);
             }
           }
@@ -485,7 +524,8 @@ export class Machine {
           this.state.locks = bit;
           this.state.oneShots = [];
           this.state.autoLayer = null;
-          for (const [k, v] of this.state.held) if (v.layer !== undefined) this.state.held.delete(k);
+          for (const [k, v] of this.state.held)
+            if (v.layer !== undefined) this.state.held.delete(k);
           return;
         }
         case 'sk':
@@ -505,13 +545,22 @@ export class Machine {
         case 'caps_word':
           ctx.leaf = 'caps_word';
           if (this.state.capsWord) this.state.capsWord = null;
-          else this.state.capsWord = { continueList: new Set(b.continueList ?? ['_', 'Backspace', 'Delete']), mods: b.mods ?? ['LSHIFT'] };
+          else
+            this.state.capsWord = {
+              continueList: new Set(b.continueList ?? ['_', 'Backspace', 'Delete']),
+              mods: b.mods ?? ['LSHIFT'],
+            };
           return;
         case 'auto_layer': {
           ctx.leaf = 'auto_layer';
           const li = this.layerIdx(b.layer);
-          if (this.state.autoLayer && this.state.autoLayer.layer === li) this.state.autoLayer = null;
-          else this.state.autoLayer = { layer: li, continueList: new Set(b.continueList ?? ['_', 'Backspace']) };
+          if (this.state.autoLayer && this.state.autoLayer.layer === li)
+            this.state.autoLayer = null;
+          else
+            this.state.autoLayer = {
+              layer: li,
+              continueList: new Set(b.continueList ?? ['_', 'Backspace']),
+            };
           return;
         }
         case 'key_repeat':
@@ -549,7 +598,10 @@ export class Machine {
         case 'layer_morph': {
           const bits = b.layers.map((l) => 1 << this.layerIdx(l));
           const match = b.match ?? 'any';
-          const on = match === 'all' ? bits.every((x) => (this.mask & x) !== 0) : bits.some((x) => (this.mask & x) !== 0);
+          const on =
+            match === 'all'
+              ? bits.every((x) => (this.mask & x) !== 0)
+              : bits.some((x) => (this.mask & x) !== 0);
           this.run(on ? b.active : b.inactive, ctx);
           return;
         }
@@ -561,7 +613,8 @@ export class Machine {
         case 'macro': {
           const steps: Binding[] = [];
           if (b.steps) steps.push(...b.steps);
-          else if (b.symbols !== undefined) for (const g of splitGraphemes(b.symbols)) steps.push({ kind: 'kp', symbol: g });
+          else if (b.symbols !== undefined)
+            for (const g of splitGraphemes(b.symbols)) steps.push({ kind: 'kp', symbol: g });
           if (b.then) steps.push(...b.then);
           const savedMode = ctx.mode;
           ctx.mode = 'tap';
@@ -612,7 +665,7 @@ function classify(ctx: ExecContext, mode: 'tap' | 'hold'): KeyKind {
     case 'to':
     case 'mo':
     case 'lt':
-      return 'layerTap';
+      return 'layer_tap';
     case 'sk':
     case 'mod':
     case 'caps_word':
@@ -623,7 +676,12 @@ function classify(ctx: ExecContext, mode: 'tap' | 'hold'): KeyKind {
   }
 }
 
-function labelFor(compiled: CompiledLayout, ctx: ExecContext, binding: Binding, _layer: number): string {
+function labelFor(
+  compiled: CompiledLayout,
+  ctx: ExecContext,
+  binding: Binding,
+  _layer: number,
+): string {
   const text = ctx.out.join('');
   if (text.length) return text === ' ' ? '␣' : text;
   const layerName = (id: string) => compiled.layers[compiled.layerIndex.get(id) ?? 0]?.name ?? id;
@@ -688,7 +746,10 @@ export function peelBinding(machine: Machine, b: Binding, mode: 'tap' | 'hold'):
     case 'layer_morph': {
       const bits = b.layers.map((l) => 1 << (machine.compiled.layerIndex.get(l) ?? 0));
       const match = b.match ?? 'any';
-      const on = match === 'all' ? bits.every((x) => (machine.activeMask() & x) !== 0) : bits.some((x) => (machine.activeMask() & x) !== 0);
+      const on =
+        match === 'all'
+          ? bits.every((x) => (machine.activeMask() & x) !== 0)
+          : bits.some((x) => (machine.activeMask() & x) !== 0);
       return peelBinding(machine, on ? b.active : b.inactive, mode);
     }
     default:

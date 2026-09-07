@@ -20,8 +20,8 @@ function machineFor(layout: Layout) {
   const m = new Machine(compiled);
   const pos = (id: string) => compiled.keyIndex.get(id)!;
   const tap = (id: string) => m.perform({ type: 'tap', pos: pos(id) })[0];
-  const hold = (id: string) => m.perform({ type: 'holdPress', pos: pos(id) })[0];
-  const release = (id: string) => m.perform({ type: 'holdRelease', pos: pos(id) })[0];
+  const hold = (id: string) => m.perform({ type: 'hold_press', pos: pos(id) })[0];
+  const release = (id: string) => m.perform({ type: 'hold_release', pos: pos(id) })[0];
   return { compiled, m, pos, tap, hold, release };
 }
 
@@ -39,7 +39,15 @@ describe('Machine — one-shot layers', () => {
 
   it('sticky layer + modifier press consumes the one-shot without output (wasted)', () => {
     const layout = mini([
-      { id: 'base', bindings: { LHP: { kind: 'kp', symbol: 'a' }, LHR: { kind: 'sl', layer: 'one' }, LHM: { kind: 'sk', mod: 'LSHIFT' }, L0: { kind: 'kp', symbol: ' ' } } },
+      {
+        id: 'base',
+        bindings: {
+          LHP: { kind: 'kp', symbol: 'a' },
+          LHR: { kind: 'sl', layer: 'one' },
+          LHM: { kind: 'sk', mod: 'LSHIFT' },
+          L0: { kind: 'kp', symbol: ' ' },
+        },
+      },
       { id: 'one', bindings: { LHP: { kind: 'kp', symbol: 'b' } } },
     ]);
     const { m, tap, compiled } = machineFor(layout);
@@ -198,17 +206,24 @@ describe('Machine — combos, caps word, holds', () => {
 
   it('hold press activates the layer until release', () => {
     const layout = mini([
-      { id: 'base', bindings: { LHP: { kind: 'kp', symbol: 'a' }, LHI: { kind: 'lt', layer: 'one', tap: { kind: 'kp', symbol: 't' } }, L0: { kind: 'kp', symbol: ' ' } } },
+      {
+        id: 'base',
+        bindings: {
+          LHP: { kind: 'kp', symbol: 'a' },
+          LHI: { kind: 'lt', layer: 'one', tap: { kind: 'kp', symbol: 't' } },
+          L0: { kind: 'kp', symbol: ' ' },
+        },
+      },
       { id: 'one', bindings: { LHP: { kind: 'kp', symbol: 'b' } } },
     ]);
     const { tap, hold, release } = machineFor(layout);
     expect(tap('LHI').symbols).toBe('t');
     const h = hold('LHI');
-    expect(h.kind).toBe('holdPress');
+    expect(h.kind).toBe('hold_press');
     expect(h.symbols).toBe('');
     expect(tap('LHP').symbols).toBe('b');
     const r = release('LHI');
-    expect(r.kind).toBe('holdRelease');
+    expect(r.kind).toBe('hold_release');
     expect(tap('LHP').symbols).toBe('a');
   });
 

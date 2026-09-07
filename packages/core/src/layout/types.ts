@@ -2,7 +2,16 @@ import type { Finger, FingeringMode, GeometryKey } from '../geometry/types.js';
 
 export type Mod = 'LSHIFT' | 'RSHIFT' | 'LCTRL' | 'RCTRL' | 'LALT' | 'RALT' | 'LGUI' | 'RGUI';
 
-export const MODS: readonly Mod[] = ['LSHIFT', 'RSHIFT', 'LCTRL', 'RCTRL', 'LALT', 'RALT', 'LGUI', 'RGUI'];
+export const MODS: readonly Mod[] = [
+  'LSHIFT',
+  'RSHIFT',
+  'LCTRL',
+  'RCTRL',
+  'LALT',
+  'RALT',
+  'LGUI',
+  'RGUI',
+];
 
 export type HostLocale = 'symbols' | 'us' | 'us-intl' | 'abnt2';
 
@@ -18,16 +27,34 @@ export type Binding =
   | { kind: 'none' }
   | { kind: 'mo'; layer: string }
   | { kind: 'lt'; layer: string; tap: Binding }
-  | { kind: 'sl'; layer: string; quickRelease?: boolean; ignoreModifiers?: boolean; releaseAfterMs?: number }
+  | {
+      kind: 'sl';
+      layer: string;
+      quickRelease?: boolean;
+      ignoreModifiers?: boolean;
+      releaseAfterMs?: number;
+    }
   | { kind: 'tog'; layer: string; mode?: 'flip' | 'on' | 'off' }
   | { kind: 'to'; layer: string }
-  | { kind: 'sk'; mod: Mod; quickRelease?: boolean; ignoreModifiers?: boolean; releaseAfterMs?: number }
+  | {
+      kind: 'sk';
+      mod: Mod;
+      quickRelease?: boolean;
+      ignoreModifiers?: boolean;
+      releaseAfterMs?: number;
+    }
   | { kind: 'mod'; mod: Mod }
   | { kind: 'caps_word'; continueList?: string[]; mods?: Mod[] }
   | { kind: 'auto_layer'; layer: string; continueList?: string[] }
   | { kind: 'key_repeat' }
   | { kind: 'mod_morph'; mods: Mod[]; default: Binding; morphed: Binding; keepMods?: Mod[] }
-  | { kind: 'layer_morph'; layers: string[]; match?: 'any' | 'all'; active: Binding; inactive: Binding }
+  | {
+      kind: 'layer_morph';
+      layers: string[];
+      match?: 'any' | 'all';
+      active: Binding;
+      inactive: Binding;
+    }
   | { kind: 'tap_dance'; bindings: Binding[] }
   | { kind: 'macro'; steps?: Binding[]; symbols?: string; then?: Binding[]; ref?: string }
   | {

@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeText } from '../corpus/normalize.js';
+import { FIXTURE_MIXED } from '../fixtures/index.js';
 import { compileLayout } from '../layout/compile.js';
 import { importTextLayout } from '../layout/text.js';
 import type { Layout } from '../layout/types.js';
 import { CLASSIC_LAYOUTS } from '../layouts/classic.js';
 import { magicRomak, romak24, romak34 } from '../layouts/romak.js';
-import { FIXTURE_MIXED } from '../fixtures/fixture-corpus.js';
 import { explain, simulate } from './resolver.js';
 
 const opts = { caseMode: 'fold' as const, crossWord: 'reset' as const };
@@ -13,7 +13,11 @@ const opts = { caseMode: 'fold' as const, crossWord: 'reset' as const };
 function trace(layout: Layout, text: string, extra: Partial<Parameters<typeof explain>[2]> = {}) {
   const compiled = compileLayout(layout);
   const r = explain(compiled, text, { ...opts, ...extra });
-  return { ...r, keys: r.steps.filter((s) => s.kind !== 'holdRelease').map((s) => s.key), out: r.steps.map((s) => s.symbols).join('') };
+  return {
+    ...r,
+    keys: r.steps.filter((s) => s.kind !== 'hold_release').map((s) => s.key),
+    out: r.steps.map((s) => s.symbols).join(''),
+  };
 }
 
 describe('Romak acceptance traces (SPEC §11.3)', () => {
@@ -25,7 +29,9 @@ describe('Romak acceptance traces (SPEC §11.3)', () => {
   });
 
   it('ação with the ão macro disabled: a · ² · ç · ã · o (5 presses)', () => {
-    const t = trace(romak24, 'ação', { typingPaths: { ão: [{ producer: 'macro:ccedil/LHI', enabled: false }] } });
+    const t = trace(romak24, 'ação', {
+      typingPaths: { ão: [{ producer: 'macro:ccedil/LHI', enabled: false }] },
+    });
     expect(t.out).toBe('ação');
     expect(t.keys).toEqual(['RHM', 'R0', 'LBM', 'RHI', 'RTM']);
   });
@@ -33,7 +39,7 @@ describe('Romak acceptance traces (SPEC §11.3)', () => {
   it('açúcar needs a second alpha-2 activation (from the Ç extension thumb)', () => {
     const t = trace(romak24, 'açúcar');
     expect(t.out).toBe('açúcar');
-    const activations = t.steps.filter((s) => s.keyKind === 'layerTap');
+    const activations = t.steps.filter((s) => s.keyKind === 'layer_tap');
     expect(activations.length).toBe(2);
     expect(t.keys).toEqual(['RHM', 'R0', 'LBM', 'L1', 'RTR', 'LBM', 'RHM', 'RHI']);
   });
@@ -48,7 +54,7 @@ describe('Romak acceptance traces (SPEC §11.3)', () => {
     const t = trace(magicRomak, 'hello');
     expect(t.out).toBe('hello');
     expect(t.keys).toEqual(['RBI', 'RHR', 'RTI', 'L1', 'RTM']);
-    const t2 = trace(magicRomak, 'hello', { repeatPolicy: 'tapTwice' });
+    const t2 = trace(magicRomak, 'hello', { repeatPolicy: 'tap_twice' });
     expect(t2.keys).toEqual(['RBI', 'RHR', 'RTI', 'RTI', 'RTM']);
   });
 
@@ -87,7 +93,7 @@ describe('simulate — tables and coverage', () => {
     // `#` is dropped by normalization; use a producible stream and check counts
     expect(r.coverage.unproducible.size).toBe(0);
     expect(r.tables.stats.words).toBe(2);
-    const r2 = simulate(compiled, ['a', 'ß', 'b'], opts);
+    const r2 = simulate(compiled, 'aßb', opts);
     expect(r2.coverage.unproducible.get('ß')).toBe(1);
     expect(r2.tables.noSpace.totals.bigram).toBe(0);
   });
@@ -107,7 +113,7 @@ describe('simulate — tables and coverage', () => {
   it('layer taps appear in the key stream and layer stats', () => {
     const compiled = compileLayout(romak24);
     const r = simulate(compiled, normalizeText('quero', opts), opts);
-    expect(r.tables.stats.layerTaps).toBe(1);
+    expect(r.tables.stats.layer_taps).toBe(1);
     expect(r.tables.stats.keystrokes).toBe(5); // ² qu e r o
     expect(r.tables.stats.symbols).toBe(5);
   });
@@ -138,7 +144,10 @@ describe('text import', () => {
   });
 
   it('imports newline rows with a thumb row', () => {
-    const { layout } = importTextLayout('q w e r t y u i o p\na s d f g h j k l ;\nz x c v b n m , . /\ne space', '3x5+2');
+    const { layout } = importTextLayout(
+      'q w e r t y u i o p\na s d f g h j k l ;\nz x c v b n m , . /\ne space',
+      '3x5+2',
+    );
     expect(layout.layers[0].bindings.L1).toEqual({ kind: 'kp', symbol: 'e' });
     expect(layout.keys.space).toBe('L0');
   });

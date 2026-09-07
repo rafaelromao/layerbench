@@ -1,7 +1,7 @@
 {
   "name": "@layoutmaster/corpora",
-  "version": "0.1.0",
-  "description": "Build scripts producing the shipped corpus data (n-gram tables, word lists, samples)",
+  "version": "0.2.0",
+  "description": "Builds the shipped corpus samples and manifests served by the web app",
   "license": "MIT",
   "type": "module",
   "private": true,

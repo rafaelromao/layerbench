@@ -1,6 +1,6 @@
 {
   "name": "@layoutmaster/web",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,22 +8,27 @@
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "echo 'no unit tests in web yet'"
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@layoutmaster/core": "workspace:*",
-    "comlink": "^4.4.2",
+    "@tanstack/react-router": "^1.170.33",
     "idb": "^8.0.3",
-    "lz-string": "^1.5.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
+    "daisyui": "^5.7.28",
+    "fake-indexeddb": "^6.2.5",
+    "jsdom": "^30.0.1",
     "tailwindcss": "^4.3.3",
     "vite": "^8.2.2"
   }

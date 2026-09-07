@@ -2,18 +2,46 @@ export type Hand = 'L' | 'R';
 
 export type Finger = 'LP' | 'LR' | 'LM' | 'LI' | 'LT' | 'RT' | 'RI' | 'RM' | 'RR' | 'RP';
 
-export const FINGERS: readonly Finger[] = ['LP', 'LR', 'LM', 'LI', 'LT', 'RT', 'RI', 'RM', 'RR', 'RP'];
+export const FINGERS: readonly Finger[] = [
+  'LP',
+  'LR',
+  'LM',
+  'LI',
+  'LT',
+  'RT',
+  'RI',
+  'RM',
+  'RR',
+  'RP',
+];
 
 export type FingerName = 'pinky' | 'ring' | 'middle' | 'index' | 'thumb';
 
 /** Rank from the outside of the hand inwards: pinky 0, ring 1, middle 2, index 3, thumb 4. */
 export const FINGER_RANK: Record<Finger, number> = {
-  LP: 0, LR: 1, LM: 2, LI: 3, LT: 4, RT: 4, RI: 3, RM: 2, RR: 1, RP: 0,
+  LP: 0,
+  LR: 1,
+  LM: 2,
+  LI: 3,
+  LT: 4,
+  RT: 4,
+  RI: 3,
+  RM: 2,
+  RR: 1,
+  RP: 0,
 };
 
 export const FINGER_NAME: Record<Finger, FingerName> = {
-  LP: 'pinky', LR: 'ring', LM: 'middle', LI: 'index', LT: 'thumb',
-  RT: 'thumb', RI: 'index', RM: 'middle', RR: 'ring', RP: 'pinky',
+  LP: 'pinky',
+  LR: 'ring',
+  LM: 'middle',
+  LI: 'index',
+  LT: 'thumb',
+  RT: 'thumb',
+  RI: 'index',
+  RM: 'middle',
+  RR: 'ring',
+  RP: 'pinky',
 };
 
 export function fingerHand(f: Finger): Hand {

@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { applyFingering, getGeometryPreset, GEOMETRY_PRESET_IDS } from './presets.js';
 import { keyDistance } from './distance.js';
+import { applyFingering, GEOMETRY_PRESET_IDS, getGeometryPreset } from './presets.js';
 
 describe('geometry presets', () => {
   it('have the expected key counts and unique ids', () => {
-    const expected: Record<string, number> = { '3x5+2': 34, '3x5+3': 36, '3x6+3': 42, '1333+2': 24, ansi: 34, iso: 35 };
+    const expected: Record<string, number> = {
+      '3x5+2': 34,
+      '3x5+3': 36,
+      '3x6+3': 42,
+      '1333+2': 24,
+      ansi: 34,
+      iso: 35,
+    };
     for (const id of GEOMETRY_PRESET_IDS) {
       const g = getGeometryPreset(id);
       expect(g.keys.length, id).toBe(expected[id]);

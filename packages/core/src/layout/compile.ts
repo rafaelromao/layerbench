@@ -75,7 +75,12 @@ export class LayoutCompileError extends Error {
 
 const CHILD_KEYS = ['tap', 'hold', 'default', 'morphed', 'active', 'inactive'] as const;
 
-function resolveRefs(b: Binding, behaviors: Record<string, Binding>, depth: number, errors: string[]): Binding {
+function resolveRefs(
+  b: Binding,
+  behaviors: Record<string, Binding>,
+  depth: number,
+  errors: string[],
+): Binding {
   if (depth > 16) {
     errors.push('Behavior reference chain too deep (cycle?)');
     return { kind: 'none' };
@@ -106,15 +111,20 @@ function resolveRefs(b: Binding, behaviors: Record<string, Binding>, depth: numb
   const out: Record<string, unknown> = { ...(cur as object) };
   for (const k of CHILD_KEYS) {
     const child = (cur as Record<string, unknown>)[k];
-    if (child && typeof child === 'object') out[k] = resolveRefs(child as Binding, behaviors, depth + 1, errors);
+    if (child && typeof child === 'object')
+      out[k] = resolveRefs(child as Binding, behaviors, depth + 1, errors);
   }
-  if (cur.kind === 'tap_dance') out.bindings = cur.bindings.map((x) => resolveRefs(x, behaviors, depth + 1, errors));
+  if (cur.kind === 'tap_dance')
+    out.bindings = cur.bindings.map((x) => resolveRefs(x, behaviors, depth + 1, errors));
   if (cur.kind === 'macro') {
     if (cur.steps) out.steps = cur.steps.map((x) => resolveRefs(x, behaviors, depth + 1, errors));
     if (cur.then) out.then = cur.then.map((x) => resolveRefs(x, behaviors, depth + 1, errors));
   }
   if (cur.kind === 'adaptive' && cur.triggers) {
-    out.triggers = cur.triggers.map((t) => ({ afterAny: t.afterAny, binding: resolveRefs(t.binding, behaviors, depth + 1, errors) }));
+    out.triggers = cur.triggers.map((t) => ({
+      afterAny: t.afterAny,
+      binding: resolveRefs(t.binding, behaviors, depth + 1, errors),
+    }));
   }
   return out as Binding;
 }
@@ -224,7 +234,8 @@ export function buildGeometry(layout: Layout): Geometry {
   let g: Geometry;
   if ('preset' in layout.geometry) {
     const offsets: Record<number, number> = {};
-    for (const [k, v] of Object.entries(layout.geometry.columnOffsets ?? {})) offsets[Number(k)] = v;
+    for (const [k, v] of Object.entries(layout.geometry.columnOffsets ?? {}))
+      offsets[Number(k)] = v;
     g = getGeometryPreset(layout.geometry.preset, offsets);
   } else {
     const keys = layout.geometry.custom.map((k) => ({ ...k }));
@@ -254,7 +265,9 @@ export function compileLayout(layout: Layout): CompiledLayout {
   const geometry = buildGeometry(layout);
   const keys = geometry.keys;
   const keyIndex = new Map<string, number>();
-  keys.forEach((k, i) => keyIndex.set(k.id, i));
+  keys.forEach((k, i) => {
+    keyIndex.set(k.id, i);
+  });
 
   const layerIndex = new Map<string, number>();
   layout.layers.forEach((l, i) => {
@@ -265,10 +278,15 @@ export function compileLayout(layout: Layout): CompiledLayout {
 
   const behaviors = layout.behaviors ?? {};
   const defaults = resolveDefaults(layout.behaviorDefaults);
-  const prep = (b: Binding): Binding => applyDefaults(resolveRefs(b, behaviors, 0, errors), defaults);
+  const prep = (b: Binding): Binding =>
+    applyDefaults(resolveRefs(b, behaviors, 0, errors), defaults);
 
   const layers: CompiledLayer[] = layout.layers.map((l, idx) => {
-    const fallback: Binding = l.bindings['*'] ? prep(l.bindings['*']) : idx === 0 ? { kind: 'none' } : { kind: 'trans' };
+    const fallback: Binding = l.bindings['*']
+      ? prep(l.bindings['*'])
+      : idx === 0
+        ? { kind: 'none' }
+        : { kind: 'trans' };
     const bindings: Binding[] = keys.map(() => fallback);
     const explicit: boolean[] = keys.map(() => false);
     for (const [keyId, b] of Object.entries(l.bindings)) {
@@ -283,11 +301,13 @@ export function compileLayout(layout: Layout): CompiledLayout {
     }
     for (const b of bindings) {
       for (const ref of referencedLayers(b)) {
-        if (!layerIndex.has(ref)) errors.push(`Layer ${l.id}: binding references unknown layer ${ref}`);
+        if (!layerIndex.has(ref))
+          errors.push(`Layer ${l.id}: binding references unknown layer ${ref}`);
       }
     }
     const twin = l.shiftedTwin !== undefined ? layerIndex.get(l.shiftedTwin) : undefined;
-    if (l.shiftedTwin !== undefined && twin === undefined) errors.push(`Layer ${l.id}: unknown shiftedTwin ${l.shiftedTwin}`);
+    if (l.shiftedTwin !== undefined && twin === undefined)
+      errors.push(`Layer ${l.id}: unknown shiftedTwin ${l.shiftedTwin}`);
     return { idx, id: l.id, name: l.name ?? l.id, shiftedTwin: twin ?? null, bindings, explicit };
   });
 
@@ -329,20 +349,32 @@ export function compileLayout(layout: Layout): CompiledLayout {
     const pos = positions.length;
     positions.push({
       idx: pos,
-      id: `combo:${c.id ?? idx}`,
+      id: `combo:${c.id ?? `combo${idx}`}`,
       key: null,
       members: memberIdx,
       hand: hands.size === 1 ? memberKeys[0].hand : 'both',
       fingers: [...new Set(memberKeys.map((k) => k.finger))],
       x: memberKeys.reduce((s, k) => s + k.x, 0) / Math.max(1, memberKeys.length),
       y: memberKeys.reduce((s, k) => s + k.y, 0) / Math.max(1, memberKeys.length),
-      row: memberKeys.length ? Math.round(memberKeys.reduce((s, k) => s + k.row, 0) / memberKeys.length) : 1,
-      col: memberKeys.length ? Math.round(memberKeys.reduce((s, k) => s + k.col, 0) / memberKeys.length) : 3,
+      row: memberKeys.length
+        ? Math.round(memberKeys.reduce((s, k) => s + k.row, 0) / memberKeys.length)
+        : 1,
+      col: memberKeys.length
+        ? Math.round(memberKeys.reduce((s, k) => s + k.col, 0) / memberKeys.length)
+        : 3,
       thumb: memberKeys.every((k) => k.thumb),
       home: memberKeys.every((k) => k.home),
       inner: memberKeys.some((k) => k.inner),
     });
-    return { idx, id: c.id ?? `combo${idx}`, keys: memberIdx, binding, layerMask, role: c.role ?? 'command', pos };
+    return {
+      idx,
+      id: c.id ?? `combo${idx}`,
+      keys: memberIdx,
+      binding,
+      layerMask,
+      role: c.role ?? 'command',
+      pos,
+    };
   });
 
   const conditionalLayers = (layout.conditionalLayers ?? []).map((c) => {
@@ -368,7 +400,7 @@ export function compileLayout(layout: Layout): CompiledLayout {
     else shiftKey = { key: si, kind: layout.keys.shift.kind };
   }
 
-  if (errors.length) throw new LayoutCompileError(errors);
+  if (errors.length) throw new LayoutCompileError(dedupe(errors));
 
   return {
     layout,
@@ -392,4 +424,20 @@ export function compileLayout(layout: Layout): CompiledLayout {
 
 export function modsOf(list: Iterable<Mod>): Set<Mod> {
   return new Set(list);
+}
+
+/** Compile without throwing: returns the accumulated errors instead. */
+export function safeCompile(
+  layout: Layout,
+): { ok: true; compiled: CompiledLayout } | { ok: false; errors: string[] } {
+  try {
+    return { ok: true, compiled: compileLayout(layout) };
+  } catch (e) {
+    if (e instanceof LayoutCompileError) return { ok: false, errors: e.errors };
+    return { ok: false, errors: [e instanceof Error ? e.message : String(e)] };
+  }
+}
+
+function dedupe(errors: string[]): string[] {
+  return [...new Set(errors)];
 }

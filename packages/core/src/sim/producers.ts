@@ -22,7 +22,8 @@ export interface Producer {
   steps: ProducerStep[];
   /** Applicability conditions. */
   afterAny?: string[];
-  mods?: Mod[];
+  /** Modifiers the producer needs held. Always a list, never undefined. */
+  mods: Mod[];
   /** Estimated physical presses including one layer activation when off the base layer. */
   cost: number;
   /** True when the producer is a dynamic branch (adaptive/repeat) whose output depends on state. */
@@ -47,22 +48,46 @@ export function staticOutputs(b: Binding, depth = 0): StaticOutput[] {
   switch (b.kind) {
     case 'kp': {
       if (b.symbol === undefined) return [];
-      const out: StaticOutput[] = [{ symbols: b.symbol, taps: 1, kind: 'direct', suffix: '', dynamic: false }];
-      if (b.shifted !== undefined) out.push({ symbols: b.shifted, taps: 1, kind: 'direct', suffix: '#shifted', mods: ['LSHIFT'], dynamic: false });
+      const out: StaticOutput[] = [
+        { symbols: b.symbol, taps: 1, kind: 'direct', suffix: '', dynamic: false },
+      ];
+      if (b.shifted !== undefined)
+        out.push({
+          symbols: b.shifted,
+          taps: 1,
+          kind: 'direct',
+          suffix: '#shifted',
+          mods: ['LSHIFT'],
+          dynamic: false,
+        });
       return out;
     }
     case 'unicode': {
-      const out: StaticOutput[] = [{ symbols: b.symbol, taps: 1, kind: 'direct', suffix: '', dynamic: false }];
-      if (b.shiftedSymbol) out.push({ symbols: b.shiftedSymbol, taps: 1, kind: 'direct', suffix: '#shifted', mods: ['LSHIFT'], dynamic: false });
+      const out: StaticOutput[] = [
+        { symbols: b.symbol, taps: 1, kind: 'direct', suffix: '', dynamic: false },
+      ];
+      if (b.shiftedSymbol)
+        out.push({
+          symbols: b.shiftedSymbol,
+          taps: 1,
+          kind: 'direct',
+          suffix: '#shifted',
+          mods: ['LSHIFT'],
+          dynamic: false,
+        });
       return out;
     }
     case 'macro': {
       const steps: Binding[] = [];
       if (b.steps) steps.push(...b.steps);
-      else if (b.symbols !== undefined) for (const g of Array.from(b.symbols.normalize('NFC'))) steps.push({ kind: 'kp', symbol: g });
+      else if (b.symbols !== undefined)
+        for (const g of Array.from(b.symbols.normalize('NFC')))
+          steps.push({ kind: 'kp', symbol: g });
       // `then` steps are side effects; they may also emit text (rare) — include them.
       if (b.then) steps.push(...b.then);
-      let combos: { symbols: string; afterAny?: string[]; mods?: Mod[]; dynamic: boolean }[] = [{ symbols: '', dynamic: false }];
+      let combos: { symbols: string; afterAny?: string[]; mods?: Mod[]; dynamic: boolean }[] = [
+        { symbols: '', dynamic: false },
+      ];
       for (const step of steps) {
         const outs = staticOutputs(step, depth + 1);
         if (outs.length === 0) {
@@ -73,7 +98,7 @@ export function staticOutputs(b: Binding, depth = 0): StaticOutput[] {
         const next: typeof combos = [];
         for (const c of combos) {
           for (const o of outs) {
-            if (o.mods && o.mods.length) continue; // shifted variants inside macros are not producers
+            if (o.mods?.length) continue; // shifted variants inside macros are not producers
             next.push({
               symbols: c.symbols + o.symbols,
               afterAny: c.afterAny ?? o.afterAny,
@@ -86,18 +111,36 @@ export function staticOutputs(b: Binding, depth = 0): StaticOutput[] {
       }
       return combos
         .filter((c) => c.symbols.length > 0)
-        .map((c, i) => ({ symbols: c.symbols, taps: 1, kind: 'macro' as ProducerKind, suffix: i ? `#${i}` : '', afterAny: c.afterAny, dynamic: c.dynamic }));
+        .map((c, i) => ({
+          symbols: c.symbols,
+          taps: 1,
+          kind: 'macro' as ProducerKind,
+          suffix: i ? `#${i}` : '',
+          afterAny: c.afterAny,
+          dynamic: c.dynamic,
+        }));
     }
     case 'adaptive': {
       const out: StaticOutput[] = [];
       (b.triggers ?? []).forEach((t, i) => {
         for (const o of staticOutputs(t.binding, depth + 1)) {
-          out.push({ ...o, kind: o.kind === 'direct' || o.kind === 'macro' ? 'adaptive' : o.kind, afterAny: o.afterAny ?? t.afterAny, suffix: `#t${i}${o.suffix}`, dynamic: true });
+          out.push({
+            ...o,
+            kind: o.kind === 'direct' || o.kind === 'macro' ? 'adaptive' : o.kind,
+            afterAny: o.afterAny ?? t.afterAny,
+            suffix: `#t${i}${o.suffix}`,
+            dynamic: true,
+          });
         }
       });
       if (b.default) {
         for (const o of staticOutputs(b.default, depth + 1)) {
-          out.push({ ...o, kind: o.kind === 'direct' || o.kind === 'macro' ? 'adaptive' : o.kind, suffix: `#default${o.suffix}`, dynamic: true });
+          out.push({
+            ...o,
+            kind: o.kind === 'direct' || o.kind === 'macro' ? 'adaptive' : o.kind,
+            suffix: `#default${o.suffix}`,
+            dynamic: true,
+          });
         }
       }
       return out;
@@ -110,18 +153,21 @@ export function staticOutputs(b: Binding, depth = 0): StaticOutput[] {
       return staticOutputs(b.tap, depth + 1);
     case 'mod_morph': {
       const out = staticOutputs(b.default, depth + 1);
-      for (const o of staticOutputs(b.morphed, depth + 1)) out.push({ ...o, mods: [...(o.mods ?? []), ...b.mods], suffix: `#morph${o.suffix}` });
+      for (const o of staticOutputs(b.morphed, depth + 1))
+        out.push({ ...o, mods: [...(o.mods ?? []), ...b.mods], suffix: `#morph${o.suffix}` });
       return out;
     }
     case 'layer_morph': {
       const out = staticOutputs(b.inactive, depth + 1);
-      for (const o of staticOutputs(b.active, depth + 1)) out.push({ ...o, suffix: `#lm${o.suffix}`, dynamic: true });
+      for (const o of staticOutputs(b.active, depth + 1))
+        out.push({ ...o, suffix: `#lm${o.suffix}`, dynamic: true });
       return out;
     }
     case 'tap_dance': {
       const out: StaticOutput[] = [];
       b.bindings.forEach((x, i) => {
-        for (const o of staticOutputs(x, depth + 1)) out.push({ ...o, taps: i + 1, suffix: `#td${i + 1}${o.suffix}` });
+        for (const o of staticOutputs(x, depth + 1))
+          out.push({ ...o, taps: i + 1, suffix: `#td${i + 1}${o.suffix}` });
       });
       return out;
     }
@@ -131,7 +177,14 @@ export function staticOutputs(b: Binding, depth = 0): StaticOutput[] {
 }
 
 function emitsText(b: Binding): boolean {
-  return b.kind === 'kp' || b.kind === 'unicode' || b.kind === 'key_repeat' || b.kind === 'adaptive' || b.kind === 'macro' || b.kind === 'dead_key';
+  return (
+    b.kind === 'kp' ||
+    b.kind === 'unicode' ||
+    b.kind === 'key_repeat' ||
+    b.kind === 'adaptive' ||
+    b.kind === 'macro' ||
+    b.kind === 'dead_key'
+  );
 }
 
 export interface ProducerIndex {
@@ -153,7 +206,10 @@ function graphemeLength(s: string): number {
 /**
  * Enumerate every way to produce each symbol string on the layout (SPEC §5.4.1).
  */
-export function enumerateProducers(compiled: CompiledLayout, caseMode: 'fold' | 'model'): ProducerIndex {
+export function enumerateProducers(
+  compiled: CompiledLayout,
+  caseMode: 'fold' | 'model',
+): ProducerIndex {
   const bySymbol = new Map<string, Producer[]>();
   const byId = new Map<string, Producer>();
   const excludedByCase: Producer[] = [];
@@ -171,24 +227,31 @@ export function enumerateProducers(compiled: CompiledLayout, caseMode: 'fold' | 
       if (b.kind === 'trans' || b.kind === 'none') continue;
       const keyId = compiled.keys[pos].id;
       for (const o of staticOutputs(b)) {
-        const base = o.kind === 'repeat' ? 'repeat' : o.kind === 'adaptive' ? 'adaptive' : o.kind === 'macro' ? 'macro' : 'direct';
+        const base =
+          o.kind === 'repeat'
+            ? 'repeat'
+            : o.kind === 'adaptive'
+              ? 'adaptive'
+              : o.kind === 'macro'
+                ? 'macro'
+                : 'direct';
         const id = `${base}:${layer.id}/${keyId}${o.suffix}`;
-        const symbols = fold ? o.symbols.toLocaleLowerCase() : o.symbols;
+        const symbols = fold ? o.symbols.toLowerCase() : o.symbols;
         const p: Producer = {
           id,
           symbols,
           kind: o.kind,
           steps: [{ layer: layer.idx, pos, binding: b, mode: 'tap', taps: o.taps }],
           afterAny: o.afterAny,
-          mods: o.mods,
+          mods: o.mods ?? [],
           cost: o.taps + (layer.idx === 0 ? 0 : 1) + (o.mods?.length ? 1 : 0),
           dynamic: o.dynamic,
         };
-        if (fold && o.mods && o.mods.length) {
+        if (fold && o.mods?.length) {
           excludedByCase.push(p);
           continue;
         }
-        if (fold && o.afterAny && o.afterAny.every((a) => a !== a.toLocaleLowerCase()) && o.afterAny.length) {
+        if (fold && o.afterAny?.every((a) => a !== a.toLowerCase()) && o.afterAny.length) {
           // Trigger only reachable after an uppercase symbol → unreachable in fold mode.
           excludedByCase.push(p);
           continue;
@@ -203,13 +266,16 @@ export function enumerateProducers(compiled: CompiledLayout, caseMode: 'fold' | 
   for (const c of compiled.combos) {
     if (c.role !== 'typing') continue;
     for (const o of staticOutputs(c.binding)) {
-      if (o.mods && o.mods.length) continue;
+      if (o.mods?.length) continue;
       const p: Producer = {
         id: `combo:${c.id}${o.suffix}`,
-        symbols: fold ? o.symbols.toLocaleLowerCase() : o.symbols,
+        symbols: fold ? o.symbols.toLowerCase() : o.symbols,
         kind: 'combo',
-        steps: [{ layer: null, pos: c.pos, binding: c.binding, mode: 'chord', taps: 1, combo: c.idx }],
+        steps: [
+          { layer: null, pos: c.pos, binding: c.binding, mode: 'chord', taps: 1, combo: c.idx },
+        ],
         afterAny: o.afterAny,
+        mods: [],
         cost: 1.5,
         dynamic: o.dynamic,
       };
@@ -218,7 +284,15 @@ export function enumerateProducers(compiled: CompiledLayout, caseMode: 'fold' | 
   }
   // Default ordering: cheapest first, then non-dynamic before dynamic, then non-combo.
   for (const [, list] of bySymbol) {
-    list.sort((a, b) => a.cost - b.cost || Number(a.dynamic) - Number(b.dynamic) || Number(a.kind === 'combo') - Number(b.kind === 'combo') || a.id.localeCompare(b.id));
+    list.sort(
+      (a, b) =>
+        a.cost - b.cost ||
+        Number(a.dynamic) - Number(b.dynamic) ||
+        Number(a.kind === 'combo') - Number(b.kind === 'combo') ||
+        // Byte order, not locale order: the reference implementation compares binaries, and this
+        // tie-break decides which producer types a symbol.
+        (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+    );
   }
   let maxLen = 1;
   const multiStarts = new Set<string>();

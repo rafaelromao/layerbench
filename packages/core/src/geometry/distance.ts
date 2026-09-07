@@ -3,7 +3,11 @@ import type { GeometryKey } from './types.js';
 export type DistanceModel = 'euclid' | 'squared' | 'manhattan';
 
 /** Distance between two keys in U, or null when the keys are on different hands (undefined per spec §6.1). */
-export function keyDistance(a: GeometryKey, b: GeometryKey, model: DistanceModel = 'euclid'): number | null {
+export function keyDistance(
+  a: GeometryKey,
+  b: GeometryKey,
+  model: DistanceModel = 'euclid',
+): number | null {
   if (a.hand !== b.hand) return null;
   const dx = a.x - b.x;
   const dy = a.y - b.y;

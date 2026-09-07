@@ -15,7 +15,7 @@ export interface LogicalKey {
 /** Registry of (layer, position, kind, label) → small integer ids used as n-gram table keys. */
 export class LogicalKeyRegistry {
   readonly keys: LogicalKey[] = [];
-  private readonly index = new Map<string, number>();
+  readonly index = new Map<string, number>();
 
   idFor(ev: KeyEvent): number {
     const k = `${ev.layer}|${ev.pos}|${ev.keyKind}|${ev.label}`;
@@ -31,6 +31,21 @@ export class LogicalKeyRegistry {
 
   get(id: number): LogicalKey {
     return this.keys[id];
+  }
+
+  /** Every registered key, ordered by id. */
+  all(): readonly LogicalKey[] {
+    return this.keys;
+  }
+
+  /** Copy with independent key records, so relabeling never mutates a cached simulation. */
+  clone(): LogicalKeyRegistry {
+    const r = new LogicalKeyRegistry();
+    for (const k of this.keys) {
+      r.keys.push({ ...k });
+      r.index.set(`${k.layer}|${k.pos}|${k.keyKind}|${k.label}`, k.id);
+    }
+    return r;
   }
 
   /** Move a logical key to another position (relabel, SPEC §5.6). */
@@ -147,17 +162,17 @@ export interface SimulationStats {
   symbols: number;
   words: number;
   keystrokes: number;
-  spacePresses: number;
-  layerTaps: number;
-  oneShotActivations: number;
-  wastedOneShots: number;
-  holdPresses: number;
+  space_presses: number;
+  layer_taps: number;
+  one_shot_activations: number;
+  wasted_one_shots: number;
+  hold_presses: number;
   chords: number;
-  macroPresses: number;
-  adaptivePresses: number;
-  adaptiveTriggerHits: number;
-  repeatPresses: number;
-  perLayer: number[];
+  macro_presses: number;
+  adaptive_presses: number;
+  adaptive_trigger_hits: number;
+  repeat_presses: number;
+  per_layer: number[];
   unproducible: Map<string, number>;
 }
 

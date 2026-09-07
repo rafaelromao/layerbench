@@ -30,21 +30,49 @@ const QUOTE_MAP: Record<string, string> = {
 const LETTER_RE = /\p{L}/u;
 
 /**
- * Normalize raw text into a symbol stream (one grapheme per entry; words separated by single spaces).
- * Newlines and other whitespace collapse to a single space.
+ * Whitespace that collapses to a single space. Deliberately narrower than `/\s/u`: it mirrors the
+ * reference implementation, where anything outside this set is dropped like any other symbol.
  */
-export function normalizeText(text: string, opts: NormalizeOptions): string[] {
+function isSpace(cp: number): boolean {
+  return (
+    cp === 0x20 ||
+    cp === 0x09 ||
+    cp === 0x0a ||
+    cp === 0x0d ||
+    cp === 0x00a0 ||
+    cp === 0x2009 ||
+    cp === 0x202f ||
+    cp === 0x3000 ||
+    (cp >= 0x2000 && cp <= 0x200a)
+  );
+}
+
+function isDigit(cp: number): boolean {
+  return cp >= 0x30 && cp <= 0x39;
+}
+
+/**
+ * Normalize raw text into a symbol stream: a string whose words are separated by single spaces.
+ * Case folding applies to the whole text before the walk, so it matches full Unicode lowercasing.
+ */
+export function normalizeText(text: string, opts: NormalizeOptions): string {
   const keep = new Set(opts.keep ?? DEFAULT_KEEP);
   const dropDigits = opts.dropDigits ?? true;
   const fold = opts.caseMode === 'fold';
+  let nfc = text.normalize('NFC');
+  if (fold) nfc = nfc.toLowerCase();
+
   const out: string[] = [];
   let lastSpace = true;
-  const nfc = text.normalize('NFC');
   for (const raw of nfc) {
     let ch = raw;
-    if (QUOTE_MAP[ch] !== undefined) ch = QUOTE_MAP[ch];
-    if (ch === '') continue;
-    if (/\s/u.test(ch)) {
+    const mapped = QUOTE_MAP[ch];
+    if (mapped !== undefined) {
+      if (mapped === '') continue;
+      ch = mapped;
+    }
+    const cp = ch.codePointAt(0) as number;
+    if (isSpace(cp)) {
       if (!lastSpace) {
         out.push(' ');
         lastSpace = true;
@@ -52,11 +80,11 @@ export function normalizeText(text: string, opts: NormalizeOptions): string[] {
       continue;
     }
     if (LETTER_RE.test(ch)) {
-      out.push(fold ? ch.toLocaleLowerCase() : ch);
+      out.push(ch);
       lastSpace = false;
       continue;
     }
-    if (/\p{N}/u.test(ch)) {
+    if (isDigit(cp)) {
       if (dropDigits) continue;
       out.push(ch);
       lastSpace = false;
@@ -65,12 +93,16 @@ export function normalizeText(text: string, opts: NormalizeOptions): string[] {
     if (keep.has(ch)) {
       out.push(ch);
       lastSpace = false;
-      continue;
     }
-    // Dropped symbol: acts as a soft separator only if it sat between letters without spaces (e.g. "word\"word").
+    // Anything else is dropped without affecting the space state.
   }
   if (out.length && out[out.length - 1] === ' ') out.pop();
-  return out;
+  return out.join('');
+}
+
+/** Word list of a normalized stream. */
+export function words(stream: string): string[] {
+  return stream.split(' ').filter((w) => w.length > 0);
 }
 
 export interface CorpusFacts {
@@ -84,7 +116,7 @@ export interface CorpusFacts {
 }
 
 /** Symbol-level n-gram statistics of a normalized stream (word boundaries reset the n-gram window). */
-export function corpusFacts(stream: string[], crossWord: 'reset' | 'bridge' = 'reset'): CorpusFacts {
+export function corpusFacts(stream: string, crossWord: 'reset' | 'bridge' = 'reset'): CorpusFacts {
   const uni = new Map<string, number>();
   const bi = new Map<string, number>();
   const tri = new Map<string, number>();
@@ -124,5 +156,13 @@ export function corpusFacts(stream: string[], crossWord: 'reset' | 'bridge' = 'r
     inc(words, word);
     wordCount++;
   }
-  return { symbols, words: wordCount, unigram: uni, bigram: bi, trigram: tri, skip1: sk, wordFreq: words };
+  return {
+    symbols,
+    words: wordCount,
+    unigram: uni,
+    bigram: bi,
+    trigram: tri,
+    skip1: sk,
+    wordFreq: words,
+  };
 }

@@ -11,3 +11,15 @@ apps/web/test-results/
 apps/web/playwright-report/
 .pnpm-store/
 .tooling/
+
+# Elixir leftovers from the `main` branch working tree
+_build/
+deps/
+priv/
+
+# scratch (goldens/staging are moved into packages/ before use)
+tmp/
+
+# pnpm project-local store/cache (sandbox cannot write ~/Library/pnpm)
+.pnpm-cache/
+.pnpm-state/

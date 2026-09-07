@@ -4,7 +4,11 @@ const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
 const VOWELS = ['a', 'e', 'i', 'o', 'u', 'á', 'à', 'ã', 'â', 'é', 'ê', 'í', 'ó', 'õ', 'ô', 'ú'];
 
 /** Accented letter: one physical press (dead key + letter sent to the host), then the ALTREP2 one-shot is armed. */
-const accent = (symbol: string): Binding => ({ kind: 'macro', symbols: symbol, then: [{ kind: 'sl', layer: 'altrep2' }] });
+const accent = (symbol: string): Binding => ({
+  kind: 'macro',
+  symbols: symbol,
+  then: [{ kind: 'sl', layer: 'altrep2' }],
+});
 
 function rowBindings(map: Record<string, string | Binding>): Record<string, Binding> {
   const out: Record<string, Binding> = {};
@@ -12,13 +16,17 @@ function rowBindings(map: Record<string, string | Binding>): Record<string, Bind
   return out;
 }
 
-function upperCopy(bindings: Record<string, Binding>, only?: (id: string) => boolean): Record<string, Binding> {
+function upperCopy(
+  bindings: Record<string, Binding>,
+  only?: (id: string) => boolean,
+): Record<string, Binding> {
   const out: Record<string, Binding> = { '*': { kind: 'trans' } };
   for (const [k, b] of Object.entries(bindings)) {
     if (k === '*') continue;
     if (only && !only(k)) continue;
-    if (b.kind === 'kp' && b.symbol && /\p{L}/u.test(b.symbol)) out[k] = kp(b.symbol.toLocaleUpperCase());
-    else if (b.kind === 'macro' && b.symbols && /\p{L}/u.test(b.symbols)) out[k] = { ...b, symbols: b.symbols.toLocaleUpperCase() };
+    if (b.kind === 'kp' && b.symbol && /\p{L}/u.test(b.symbol)) out[k] = kp(b.symbol.toUpperCase());
+    else if (b.kind === 'macro' && b.symbols && /\p{L}/u.test(b.symbols))
+      out[k] = { ...b, symbols: b.symbols.toUpperCase() };
   }
   return out;
 }
@@ -58,9 +66,13 @@ const behaviors: Record<string, Binding> = {
   sentenceSpace: {
     kind: 'adaptive',
     default: kp(' '),
-    triggers: [{ afterAny: ['.', '?', '!'], binding: { kind: 'macro', steps: [kp(' '), { kind: 'sl', layer: 'sen_case' }] } }],
+    triggers: [
+      {
+        afterAny: ['.', '?', '!'],
+        binding: { kind: 'macro', steps: [kp(' '), { kind: 'sl', layer: 'sen_case' }] },
+      },
+    ],
   },
-  capsWord: { kind: 'auto_layer', layer: 'case_a1' },
   shiftOrCaps: {
     kind: 'mod_morph',
     mods: ['LSHIFT', 'RSHIFT'],
@@ -86,50 +98,160 @@ const CCEDIL_BINDINGS: Record<string, Binding> = {
 
 const ALTREP2_BINDINGS: Record<string, Binding> = {
   '*': { kind: 'trans' },
-  L1: { kind: 'adaptive', ref: 'a2AltRepeat' },
+  L1: { kind: 'ref', ref: 'a2AltRepeat' },
 };
 
 // ---------------------------------------------------------------- Romak 24
 
 const ROMAK24_ALPHA1 = rowBindings({
   LHP: 'd',
-  LTR: 'b', LHR: 'n', LBR: 'f',
-  LTM: 'm', LHM: 's', LBM: 'c',
-  LTI: 'g', LHI: 't', LBI: 'p',
-  RTI: 'l', RHI: 'r', RBI: 'h',
-  RTM: 'o', RHM: 'a', RBM: ',',
-  RTR: 'u', RHR: 'e', RBR: '.',
+  LTR: 'b',
+  LHR: 'n',
+  LBR: 'f',
+  LTM: 'm',
+  LHM: 's',
+  LBM: 'c',
+  LTI: 'g',
+  LHI: 't',
+  LBI: 'p',
+  RTI: 'l',
+  RHI: 'r',
+  RBI: 'h',
+  RTM: 'o',
+  RHM: 'a',
+  RBM: ',',
+  RTR: 'u',
+  RHR: 'e',
+  RBR: '.',
   RHP: 'i',
 });
 
 const ROMAK24_ALPHA2: Record<string, Binding> = {
   '*': { kind: 'trans' },
   LHP: kp('y'),
-  LTR: kp('q'), LHR: kp('z'), LBR: kp('j'),
+  LTR: kp('q'),
+  LHR: kp('z'),
+  LBR: kp('j'),
   LTM: { kind: 'macro', symbols: 'qu', then: [{ kind: 'sl', layer: 'altrep2' }] },
   LHM: kp('x'),
   LBM: { kind: 'macro', symbols: 'ç', then: [{ kind: 'sl', layer: 'ccedil' }] },
-  LTI: kp('k'), LHI: kp('w'), LBI: kp('v'),
-  RTI: accent('ô'), RHI: accent('ã'), RBI: accent('õ'),
-  RTM: accent('ó'), RHM: accent('á'), RBM: accent('â'),
-  RTR: accent('ú'), RHR: accent('é'), RBR: accent('ê'),
+  LTI: kp('k'),
+  LHI: kp('w'),
+  LBI: kp('v'),
+  RTI: accent('ô'),
+  RHI: accent('ã'),
+  RBI: accent('õ'),
+  RTM: accent('ó'),
+  RHM: accent('á'),
+  RBM: accent('â'),
+  RTR: accent('ú'),
+  RHR: accent('é'),
+  RBR: accent('ê'),
   RHP: accent('í'),
   L1: kp("'"),
   R1: kp("'"),
 };
 
 const ROMAK24_COMBOS: ComboDef[] = [
-  { id: 'ns', keys: ['LHR', 'LHM'], binding: kp('q'), layers: ['alpha1'], role: 'command' },
-  { id: 'mg', keys: ['LTM', 'LTI'], binding: kp('k'), layers: ['alpha1'], role: 'command' },
-  { id: 'st', keys: ['LHM', 'LHI'], binding: kp('w'), layers: ['alpha1'], role: 'command' },
-  { id: 'cp', keys: ['LBM', 'LBI'], binding: kp('v'), layers: ['alpha1'], role: 'command' },
-  { id: 'lo', keys: ['RTI', 'RTM'], binding: kp('x'), layers: ['alpha1'], role: 'command' },
-  { id: 'ra', keys: ['RHI', 'RHM'], binding: kp('z'), layers: ['alpha1'], role: 'command' },
-  { id: 'hcomma', keys: ['RBI', 'RBM'], binding: kp('j'), layers: ['alpha1'], role: 'command' },
-  { id: 'ae', keys: ['RHM', 'RHR'], binding: kp('y'), layers: ['alpha1'], role: 'command' },
-  { id: 'question', keys: ['RHI', 'RHM'], binding: kp('?'), layers: ['alpha2'], role: 'typing' },
-  { id: 'exclamation', keys: ['RBI', 'RBM'], binding: kp('!'), layers: ['alpha2'], role: 'typing' },
-  { id: 'agrave', keys: ['RHM', 'RHR'], binding: accent('à'), layers: ['alpha2'], role: 'typing' },
+  {
+    id: 'ns',
+    keys: ['LHR', 'LHM'],
+    binding: kp('q'),
+    layers: ['alpha1'],
+    role: 'command',
+    timeoutMs: 30,
+    slowRelease: false,
+  },
+  {
+    id: 'mg',
+    keys: ['LTM', 'LTI'],
+    binding: kp('k'),
+    layers: ['alpha1'],
+    role: 'command',
+    timeoutMs: 30,
+    slowRelease: false,
+  },
+  {
+    id: 'st',
+    keys: ['LHM', 'LHI'],
+    binding: kp('w'),
+    layers: ['alpha1'],
+    role: 'command',
+    timeoutMs: 30,
+    slowRelease: false,
+  },
+  {
+    id: 'cp',
+    keys: ['LBM', 'LBI'],
+    binding: kp('v'),
+    layers: ['alpha1'],
+    role: 'command',
+    timeoutMs: 30,
+    slowRelease: false,
+  },
+  {
+    id: 'lo',
+    keys: ['RTI', 'RTM'],
+    binding: kp('x'),
+    layers: ['alpha1'],
+    role: 'command',
+    timeoutMs: 30,
+    slowRelease: false,
+  },
+  {
+    id: 'ra',
+    keys: ['RHI', 'RHM'],
+    binding: kp('z'),
+    layers: ['alpha1'],
+    role: 'command',
+    timeoutMs: 30,
+    slowRelease: false,
+  },
+  {
+    id: 'hcomma',
+    keys: ['RBI', 'RBM'],
+    binding: kp('j'),
+    layers: ['alpha1'],
+    role: 'command',
+    timeoutMs: 30,
+    slowRelease: false,
+  },
+  {
+    id: 'ae',
+    keys: ['RHM', 'RHR'],
+    binding: kp('y'),
+    layers: ['alpha1'],
+    role: 'command',
+    timeoutMs: 30,
+    slowRelease: false,
+  },
+  {
+    id: 'question',
+    keys: ['RHI', 'RHM'],
+    binding: kp('?'),
+    layers: ['alpha2'],
+    role: 'typing',
+    timeoutMs: 30,
+    slowRelease: false,
+  },
+  {
+    id: 'exclamation',
+    keys: ['RBI', 'RBM'],
+    binding: kp('!'),
+    layers: ['alpha2'],
+    role: 'typing',
+    timeoutMs: 30,
+    slowRelease: false,
+  },
+  {
+    id: 'agrave',
+    keys: ['RHM', 'RHR'],
+    binding: accent('à'),
+    layers: ['alpha2'],
+    role: 'typing',
+    timeoutMs: 30,
+    slowRelease: false,
+  },
 ];
 
 function romak24Base(name: string, id: string, description: string): Layout {
@@ -169,7 +291,11 @@ function romak24Base(name: string, id: string, description: string): Layout {
   };
 }
 
-export const romak24: Layout = romak24Base('Romak 24', 'romak-24', 'Romak for 24 keys (1333+2): two alpha layers, Ç extension, one-shot shift.');
+export const romak24: Layout = romak24Base(
+  'Romak 24',
+  'romak-24',
+  'Romak for 24 keys (1333+2): two alpha layers, Ç extension, one-shot shift.',
+);
 
 export const magicRomak: Layout = (() => {
   const base = romak24Base(
@@ -179,13 +305,16 @@ export const magicRomak: Layout = (() => {
   );
   const alpha1: Record<string, Binding> = {
     ...ROMAK24_ALPHA1,
-    RBI: { kind: 'adaptive', ref: 'magic' },
-    L1: { kind: 'adaptive', ref: 'altRepeat' },
-    L0: { kind: 'adaptive', ref: 'sentenceSpace' },
+    RBI: { kind: 'ref', ref: 'magic' },
+    L1: { kind: 'ref', ref: 'altRepeat' },
+    L0: { kind: 'ref', ref: 'sentenceSpace' },
     R0: { kind: 'ref', ref: 'alpha2OrShifted' },
     R1: { kind: 'ref', ref: 'shiftOrCaps' },
   };
-  const alpha2: Record<string, Binding> = { ...ROMAK24_ALPHA2, LBI: { kind: 'adaptive', ref: 'reversedMagic' } };
+  const alpha2: Record<string, Binding> = {
+    ...ROMAK24_ALPHA2,
+    LBI: { kind: 'ref', ref: 'reversedMagic' },
+  };
   const letterKeys = (id: string) => !['L0', 'L1', 'R0', 'R1'].includes(id);
   return {
     ...base,
@@ -210,12 +339,36 @@ export const magicRomak: Layout = (() => {
 // ---------------------------------------------------------------- Romak 34
 
 const ROMAK34_ALPHA1 = rowBindings({
-  LTP: 'q', LTR: 'b', LTM: 'm', LTI: 'g', LTC: 'k',
-  LHP: 'd', LHR: 'n', LHM: 's', LHI: 't', LHC: 'w',
-  LBP: 'y', LBR: 'f', LBM: 'c', LBI: 'p', LBC: 'v',
-  RTC: 'x', RTI: 'l', RTM: 'o', RTR: 'u', RTP: ';',
-  RHC: 'z', RHI: 'r', RHM: 'a', RHR: 'e', RHP: 'i',
-  RBC: 'j', RBI: 'h', RBM: ',', RBR: '.', RBP: '/',
+  LTP: 'q',
+  LTR: 'b',
+  LTM: 'm',
+  LTI: 'g',
+  LTC: 'k',
+  LHP: 'd',
+  LHR: 'n',
+  LHM: 's',
+  LHI: 't',
+  LHC: 'w',
+  LBP: 'y',
+  LBR: 'f',
+  LBM: 'c',
+  LBI: 'p',
+  LBC: 'v',
+  RTC: 'x',
+  RTI: 'l',
+  RTM: 'o',
+  RTR: 'u',
+  RTP: ';',
+  RHC: 'z',
+  RHI: 'r',
+  RHM: 'a',
+  RHR: 'e',
+  RHP: 'i',
+  RBC: 'j',
+  RBI: 'h',
+  RBM: ',',
+  RBR: '.',
+  RBP: '/',
   L1: { kind: 'key_repeat' },
   L0: ' ',
   R0: { kind: 'sl', layer: 'alpha2' },
@@ -226,9 +379,16 @@ const ROMAK34_ALPHA2: Record<string, Binding> = {
   '*': { kind: 'trans' },
   LTM: { kind: 'macro', symbols: 'qu', then: [{ kind: 'sl', layer: 'altrep2' }] },
   LBM: { kind: 'macro', symbols: 'ç', then: [{ kind: 'sl', layer: 'ccedil' }] },
-  RTI: accent('ô'), RTM: accent('ó'), RTR: accent('ú'),
-  RHI: accent('ã'), RHM: accent('á'), RHR: accent('é'), RHP: accent('í'),
-  RBI: accent('õ'), RBM: accent('â'), RBR: accent('ê'),
+  RTI: accent('ô'),
+  RTM: accent('ó'),
+  RTR: accent('ú'),
+  RHI: accent('ã'),
+  RHM: accent('á'),
+  RHR: accent('é'),
+  RHP: accent('í'),
+  RBI: accent('õ'),
+  RBM: accent('â'),
+  RBR: accent('ê'),
   L1: kp("'"),
   R1: kp("'"),
 };
@@ -255,8 +415,24 @@ export const romak34: Layout = {
     { id: 'altrep2', name: 'Alt repeat 2', bindings: ALTREP2_BINDINGS },
   ],
   combos: [
-    { id: 'question', keys: ['RHI', 'RHM'], binding: kp('?'), layers: ['alpha2'], role: 'typing' },
-    { id: 'exclamation', keys: ['RBI', 'RBM'], binding: kp('!'), layers: ['alpha2'], role: 'typing' },
+    {
+      id: 'question',
+      keys: ['RHI', 'RHM'],
+      binding: kp('?'),
+      layers: ['alpha2'],
+      role: 'typing',
+      timeoutMs: 30,
+      slowRelease: false,
+    },
+    {
+      id: 'exclamation',
+      keys: ['RBI', 'RBM'],
+      binding: kp('!'),
+      layers: ['alpha2'],
+      role: 'typing',
+      timeoutMs: 30,
+      slowRelease: false,
+    },
   ],
   repeatPolicy: { doubledLetters: 'repeatKey' },
 };

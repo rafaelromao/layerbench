@@ -52,7 +52,10 @@ interface ColumnarSpec {
   columnOffsets?: Record<number, number>;
 }
 
-function makeKey(partial: Omit<GeometryKey, 'w' | 'h' | 'rotation' | 'home' | 'thumb' | 'inner'> & Partial<GeometryKey>): GeometryKey {
+function makeKey(
+  partial: Omit<GeometryKey, 'w' | 'h' | 'rotation' | 'home' | 'thumb' | 'inner'> &
+    Partial<GeometryKey>,
+): GeometryKey {
   return {
     w: 1,
     h: 1,
@@ -71,7 +74,8 @@ export function buildColumnar(spec: ColumnarSpec): Geometry {
   const textThumbs: string[] = [];
   const hands: Hand[] = ['L', 'R'];
   for (const hand of hands) {
-    const cols = hand === 'L' ? [...spec.cols].sort((a, b) => a - b) : [...spec.cols].sort((a, b) => b - a);
+    const cols =
+      hand === 'L' ? [...spec.cols].sort((a, b) => a - b) : [...spec.cols].sort((a, b) => b - a);
     for (const row of [0, 1, 2] as Row[]) {
       for (const col of cols) {
         if (row !== 1 && spec.homeOnlyCols?.includes(col)) continue;
@@ -94,15 +98,45 @@ export function buildColumnar(spec: ColumnarSpec): Geometry {
   // Thumbs: left outer→inner then right inner→outer, in reading order.
   for (let i = spec.thumbs - 1; i >= 0; i--) {
     const id = keyId('L', 3, i);
-    keys.push(makeKey({ id, hand: 'L', finger: 'LT', row: 3, col: i, x: columnarThumbX('L', i), y: 3.25, rotation: 10 + 8 * i }));
+    keys.push(
+      makeKey({
+        id,
+        hand: 'L',
+        finger: 'LT',
+        row: 3,
+        col: i,
+        x: columnarThumbX('L', i),
+        y: 3.25,
+        rotation: 10 + 8 * i,
+      }),
+    );
     textThumbs.push(id);
   }
   for (let i = 0; i < spec.thumbs; i++) {
     const id = keyId('R', 3, i);
-    keys.push(makeKey({ id, hand: 'R', finger: 'RT', row: 3, col: i, x: columnarThumbX('R', i), y: 3.25, rotation: -(10 + 8 * i) }));
+    keys.push(
+      makeKey({
+        id,
+        hand: 'R',
+        finger: 'RT',
+        row: 3,
+        col: i,
+        x: columnarThumbX('R', i),
+        y: 3.25,
+        rotation: -(10 + 8 * i),
+      }),
+    );
     textThumbs.push(id);
   }
-  return { id: spec.id, name: spec.name, family: 'columnar', keys, supportsAngleMod: false, textRows, textThumbs };
+  return {
+    id: spec.id,
+    name: spec.name,
+    family: 'columnar',
+    keys,
+    supportsAngleMod: false,
+    textRows,
+    textThumbs,
+  };
 }
 
 interface RowStaggerSpec {
@@ -140,8 +174,12 @@ export function buildRowStagger(spec: RowStaggerSpec): Geometry {
     }
   }
   // Space bar: one physical key, reachable by either thumb → two virtual keys at the same spot.
-  keys.push(makeKey({ id: 'L0', hand: 'L', finger: 'LT', row: 3, col: 0, x: 6.75, y: 3, w: 6, h: 1 }));
-  keys.push(makeKey({ id: 'R0', hand: 'R', finger: 'RT', row: 3, col: 0, x: 6.75, y: 3, w: 6, h: 1 }));
+  keys.push(
+    makeKey({ id: 'L0', hand: 'L', finger: 'LT', row: 3, col: 0, x: 6.75, y: 3, w: 6, h: 1 }),
+  );
+  keys.push(
+    makeKey({ id: 'R0', hand: 'R', finger: 'RT', row: 3, col: 0, x: 6.75, y: 3, w: 6, h: 1 }),
+  );
   return {
     id: spec.id,
     name: spec.name,
@@ -154,11 +192,35 @@ export function buildRowStagger(spec: RowStaggerSpec): Geometry {
 }
 
 export const GEOMETRY_PRESETS: Record<string, () => Geometry> = {
-  '3x5+2': () => buildColumnar({ id: '3x5+2', name: 'Split columnar 3×5 + 2 thumbs (34)', cols: [1, 2, 3, 4, 5], thumbs: 2 }),
-  '3x5+3': () => buildColumnar({ id: '3x5+3', name: 'Split columnar 3×5 + 3 thumbs (36)', cols: [1, 2, 3, 4, 5], thumbs: 3 }),
-  '3x6+3': () => buildColumnar({ id: '3x6+3', name: 'Split columnar 3×6 + 3 thumbs (42, Corne)', cols: [0, 1, 2, 3, 4, 5], thumbs: 3 }),
+  '3x5+2': () =>
+    buildColumnar({
+      id: '3x5+2',
+      name: 'Split columnar 3×5 + 2 thumbs (34)',
+      cols: [1, 2, 3, 4, 5],
+      thumbs: 2,
+    }),
+  '3x5+3': () =>
+    buildColumnar({
+      id: '3x5+3',
+      name: 'Split columnar 3×5 + 3 thumbs (36)',
+      cols: [1, 2, 3, 4, 5],
+      thumbs: 3,
+    }),
+  '3x6+3': () =>
+    buildColumnar({
+      id: '3x6+3',
+      name: 'Split columnar 3×6 + 3 thumbs (42, Corne)',
+      cols: [0, 1, 2, 3, 4, 5],
+      thumbs: 3,
+    }),
   '1333+2': () =>
-    buildColumnar({ id: '1333+2', name: 'Split columnar 1333 + 2 thumbs (24)', cols: [1, 2, 3, 4], homeOnlyCols: [1], thumbs: 2 }),
+    buildColumnar({
+      id: '1333+2',
+      name: 'Split columnar 1333 + 2 thumbs (24)',
+      cols: [1, 2, 3, 4],
+      homeOnlyCols: [1],
+      thumbs: 2,
+    }),
   ansi: () => buildRowStagger({ id: 'ansi', name: 'Row stagger ANSI', iso: false }),
   iso: () => buildRowStagger({ id: 'iso', name: 'Row stagger ISO', iso: true }),
 };
@@ -181,7 +243,10 @@ export function getGeometryPreset(id: string, columnOffsets?: Record<number, num
  * ANSI: Z→ring, X→middle, C/V/B→index (pinky loses its bottom key);
  * ISO: extra key→pinky, Z→ring, X→middle, C/V/B→index.
  */
-export function applyFingering(geometry: Geometry, mode: FingeringMode | Record<string, Finger>): Geometry {
+export function applyFingering(
+  geometry: Geometry,
+  mode: FingeringMode | Record<string, Finger>,
+): Geometry {
   const keys = geometry.keys.map((k) => ({ ...k }));
   if (typeof mode === 'object') {
     for (const k of keys) {

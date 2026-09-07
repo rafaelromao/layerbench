@@ -16,9 +16,17 @@ export interface TextImportResult {
  * - cyanophage 33/34/35-character strings (11+11+10 + `\` + thumb).
  * The optional 4th row holds thumb keys.
  */
-export function parseTextLayout(text: string): { rows: string[][]; thumbs: string[]; extras: string[] } {
+export function parseTextLayout(text: string): {
+  rows: string[][];
+  thumbs: string[];
+  extras: string[];
+} {
   const trimmed = text.trim();
-  const lines = trimmed.includes('\n') ? trimmed.split(/\n+/) : trimmed.includes('/') && trimmed.length > 34 ? trimmed.split('/') : null;
+  const lines = trimmed.includes('\n')
+    ? trimmed.split(/\n+/)
+    : trimmed.includes('/') && trimmed.length > 34
+      ? trimmed.split('/')
+      : null;
   if (lines && lines.length >= 3) {
     const rows = lines.slice(0, 3).map((l) => l.trim().split(/\s+/).filter(Boolean));
     const thumbs = lines.length > 3 ? lines[3].trim().split(/\s+/).filter(Boolean) : [];
@@ -26,7 +34,12 @@ export function parseTextLayout(text: string): { rows: string[][]; thumbs: strin
   }
   const compact = trimmed.replace(/\s+/g, '');
   const chars = Array.from(compact);
-  if (chars.length === 30) return { rows: [chars.slice(0, 10), chars.slice(10, 20), chars.slice(20, 30)], thumbs: [], extras: [] };
+  if (chars.length === 30)
+    return {
+      rows: [chars.slice(0, 10), chars.slice(10, 20), chars.slice(20, 30)],
+      thumbs: [],
+      extras: [],
+    };
   if (chars.length >= 33 && chars.length <= 35) {
     // cyanophage: row0 = 10 + right outer, row1 = 10 + right outer, row2 = 10, then `\` (left outer bottom), then thumb key(s)
     const rows = [chars.slice(0, 10), chars.slice(11, 21), chars.slice(22, 32)];
@@ -37,14 +50,22 @@ export function parseTextLayout(text: string): { rows: string[][]; thumbs: strin
   // Fallback: split on whitespace into 3 equal rows.
   const tokens = trimmed.split(/\s+/).filter(Boolean);
   const per = Math.ceil(tokens.length / 3);
-  return { rows: [tokens.slice(0, per), tokens.slice(per, 2 * per), tokens.slice(2 * per)], thumbs: [], extras: [] };
+  return {
+    rows: [tokens.slice(0, per), tokens.slice(per, 2 * per), tokens.slice(2 * per)],
+    thumbs: [],
+    extras: [],
+  };
 }
 
 /**
  * Map a 3-row text layout onto a geometry preset's base layer.
  * Row tokens are laid out left→right using the geometry's text row order; extra tokens overflow.
  */
-export function importTextLayout(text: string, presetId = '3x5+2', name = 'Imported layout'): TextImportResult {
+export function importTextLayout(
+  text: string,
+  presetId = '3x5+2',
+  name = 'Imported layout',
+): TextImportResult {
   const geometry = getGeometryPreset(presetId);
   const { rows, thumbs, extras } = parseTextLayout(text);
   const bindings: Record<string, Binding> = {};
@@ -93,12 +114,17 @@ export function importTextLayout(text: string, presetId = '3x5+2', name = 'Impor
   return { layout, overflow, warnings };
 }
 
-function placeRow(tokens: string[], ids: string[]): { placed: [string, string][]; overflow: string[] } {
+function placeRow(
+  tokens: string[],
+  ids: string[],
+): { placed: [string, string][]; overflow: string[] } {
   const placed: [string, string][] = [];
   const overflow: string[] = [];
   // Standard case: token count equals key count.
   if (tokens.length === ids.length) {
-    tokens.forEach((t, i) => placed.push([ids[i], t]));
+    tokens.forEach((t, i) => {
+      placed.push([ids[i], t]);
+    });
     return { placed, overflow };
   }
   // 10 tokens onto an 11/12-key row (rowstagger with outer keys): fill from the pinky columns inward.
@@ -129,7 +155,7 @@ export function exportLayerText(geometry: Geometry, bindings: Record<string, Bin
     if (!b) return '·';
     switch (b.kind) {
       case 'kp':
-        return b.symbol === ' ' ? '␣' : b.symbol ?? b.keycode ?? '·';
+        return b.symbol === ' ' ? '␣' : (b.symbol ?? b.keycode ?? '·');
       case 'macro':
         return b.symbols ?? '⋯';
       case 'trans':
@@ -145,6 +171,7 @@ export function exportLayerText(geometry: Geometry, bindings: Record<string, Bin
     }
   };
   const lines = geometry.textRows.map((ids) => ids.map((id) => label(bindings[id])).join(' '));
-  if (geometry.textThumbs.length) lines.push(geometry.textThumbs.map((id) => label(bindings[id])).join(' '));
+  if (geometry.textThumbs.length)
+    lines.push(geometry.textThumbs.map((id) => label(bindings[id])).join(' '));
   return lines.join('\n');
 }

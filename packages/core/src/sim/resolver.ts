@@ -3,21 +3,26 @@ import { FINGERS, type Finger } from '../geometry/types.js';
 import type { CompiledLayout } from '../layout/compile.js';
 import type { ActivatorDef, Binding, Mod, TypingPathEntry } from '../layout/types.js';
 import {
+  type FingerTravel,
   LogicalKeyRegistry,
   NgramAccumulator,
-  type FingerTravel,
   type RunStats,
   type SimulationStats,
   type SimulationTables,
   type WordTrace,
 } from '../tables/tables.js';
-import { Machine, peelBinding, type Action, type KeyEvent } from './machine.js';
-import { enumerateProducers, repeatProducers, type Producer, type ProducerIndex } from './producers.js';
+import { type Action, type KeyEvent, Machine, peelBinding } from './machine.js';
+import {
+  enumerateProducers,
+  type Producer,
+  type ProducerIndex,
+  repeatProducers,
+} from './producers.js';
 
 export interface SimulateOptions {
   caseMode: 'fold' | 'model';
   crossWord: 'reset' | 'bridge';
-  repeatPolicy?: 'repeatKey' | 'tapTwice';
+  repeatPolicy?: 'repeat_key' | 'tap_twice';
   typingPaths?: Record<string, TypingPathEntry[]>;
   activators?: Record<string, ActivatorDef[]>;
   /** Symbols treated as soft boundaries when unproducible (not counted as coverage failures). */
@@ -61,7 +66,14 @@ interface LayerTarget {
   requiredMods?: Mod[];
 }
 
-function collectLayerTargets(compiled: CompiledLayout, b: Binding, mode: 'tap' | 'hold', out: LayerTarget[], depth = 0, requiredMods?: Mod[]): void {
+function collectLayerTargets(
+  compiled: CompiledLayout,
+  b: Binding,
+  mode: 'tap' | 'hold',
+  out: LayerTarget[],
+  depth = 0,
+  requiredMods?: Mod[],
+): void {
   if (depth > 8) return;
   const li = (id: string) => compiled.layerIndex.get(id);
   switch (b.kind) {
@@ -69,12 +81,14 @@ function collectLayerTargets(compiled: CompiledLayout, b: Binding, mode: 'tap' |
     case 'tog':
     case 'to': {
       const t = li(b.layer);
-      if (t !== undefined && mode === 'tap') out.push({ mode, target: t, kind: b.kind, requiredMods });
+      if (t !== undefined && mode === 'tap')
+        out.push({ mode, target: t, kind: b.kind, requiredMods });
       return;
     }
     case 'mo': {
       const t = li(b.layer);
-      if (t !== undefined && mode === 'hold') out.push({ mode, target: t, kind: 'mo', requiredMods });
+      if (t !== undefined && mode === 'hold')
+        out.push({ mode, target: t, kind: 'mo', requiredMods });
       return;
     }
     case 'lt': {
@@ -85,18 +99,29 @@ function collectLayerTargets(compiled: CompiledLayout, b: Binding, mode: 'tap' |
       return;
     }
     case 'hold_tap':
-      collectLayerTargets(compiled, mode === 'hold' ? b.hold : b.tap, mode, out, depth + 1, requiredMods);
+      collectLayerTargets(
+        compiled,
+        mode === 'hold' ? b.hold : b.tap,
+        mode,
+        out,
+        depth + 1,
+        requiredMods,
+      );
       return;
     case 'mod_morph':
       collectLayerTargets(compiled, b.default, mode, out, depth + 1, requiredMods);
-      collectLayerTargets(compiled, b.morphed, mode, out, depth + 1, [...(requiredMods ?? []), b.mods[0]]);
+      collectLayerTargets(compiled, b.morphed, mode, out, depth + 1, [
+        ...(requiredMods ?? []),
+        b.mods[0],
+      ]);
       return;
     case 'layer_morph':
       collectLayerTargets(compiled, b.inactive, mode, out, depth + 1, requiredMods);
       collectLayerTargets(compiled, b.active, mode, out, depth + 1, requiredMods);
       return;
     case 'tap_dance':
-      if (b.bindings[0]) collectLayerTargets(compiled, b.bindings[0], mode, out, depth + 1, requiredMods);
+      if (b.bindings[0])
+        collectLayerTargets(compiled, b.bindings[0], mode, out, depth + 1, requiredMods);
       return;
     case 'adaptive':
       if (b.default) collectLayerTargets(compiled, b.default, mode, out, depth + 1, requiredMods);
@@ -108,10 +133,6 @@ function collectLayerTargets(compiled: CompiledLayout, b: Binding, mode: 'tap' |
 
 const KIND_ORDER: Record<string, number> = { sl: 0, mo: 1, lt: 1, tog: 2, to: 3 };
 
-function graphemes(s: string): string[] {
-  return Array.from(s);
-}
-
 export function findHomeKeys(compiled: CompiledLayout): Record<Finger, number> {
   const home = {} as Record<Finger, number>;
   for (const f of FINGERS) {
@@ -120,7 +141,8 @@ export function findHomeKeys(compiled: CompiledLayout): Record<Finger, number> {
     compiled.keys.forEach((k, i) => {
       if (k.finger !== f) return;
       let score: number;
-      if (k.thumb) score = k.col; // innermost thumb is the resting thumb key
+      if (k.thumb)
+        score = k.col; // innermost thumb is the resting thumb key
       else score = (k.home ? 0 : 10) + Math.abs(k.row - 1);
       if (score < bestScore) {
         bestScore = score;
@@ -143,13 +165,18 @@ export class Simulator {
   private readonly userPaths = new Map<string, TypingPathEntry[]>();
   private readonly plannerHolds = new Set<number>();
   private readonly fold: boolean;
-  private readonly repeatPolicy: 'repeatKey' | 'tapTwice';
+  private readonly repeatPolicy: 'repeat_key' | 'tap_twice';
 
   // accumulation
   readonly registry = new LogicalKeyRegistry();
   private readonly noSpace = new NgramAccumulator();
   private readonly withSpace = new NgramAccumulator();
-  private readonly runs: RunStats = { handRuns: [], handStrings: new Map(), fingerRuns: [], layerRuns: [] };
+  private readonly runs: RunStats = {
+    handRuns: [],
+    handStrings: new Map(),
+    fingerRuns: [],
+    layerRuns: [],
+  };
   private readonly words = new Map<string, WordTrace>();
   private readonly travel: FingerTravel;
   private readonly homeKeys: Record<Finger, number>;
@@ -171,16 +198,27 @@ export class Simulator {
   private readonly softSymbols: Set<string>;
   readonly coverage: Coverage;
 
-  constructor(readonly compiled: CompiledLayout, readonly options: SimulateOptions) {
+  constructor(
+    readonly compiled: CompiledLayout,
+    readonly options: SimulateOptions,
+  ) {
     this.machine = new Machine(compiled);
     this.fold = options.caseMode === 'fold';
     this.index = options.producerIndex ?? enumerateProducers(compiled, options.caseMode);
-    this.repeatPolicy = options.repeatPolicy ?? compiled.layout.repeatPolicy?.doubledLetters ?? 'repeatKey';
+    this.repeatPolicy =
+      options.repeatPolicy ??
+      (compiled.layout.repeatPolicy?.doubledLetters === 'tapTwice' ? 'tap_twice' : 'repeat_key');
     this.collectEvents = options.collectEvents ?? false;
     this.softSymbols = new Set(options.softSymbols ?? ['?', '!']);
-    this.coverage = { unproducible: new Map(), softDropped: new Map(), excludedByCase: this.index.excludedByCase.map((p) => p.id) };
-    for (const [sym, entries] of Object.entries(options.typingPaths ?? compiled.layout.typingPaths ?? {})) {
-      this.userPaths.set(this.fold ? sym.toLocaleLowerCase() : sym, entries);
+    this.coverage = {
+      unproducible: new Map(),
+      softDropped: new Map(),
+      excludedByCase: this.index.excludedByCase.map((p) => p.id),
+    };
+    for (const [sym, entries] of Object.entries(
+      options.typingPaths ?? compiled.layout.typingPaths ?? {},
+    )) {
+      this.userPaths.set(this.fold ? sym.toLowerCase() : sym, entries);
     }
     this.discoverActivators(options.activators ?? compiled.layout.activators ?? {});
     this.homeKeys = findHomeKeys(compiled);
@@ -192,17 +230,17 @@ export class Simulator {
       symbols: 0,
       words: 0,
       keystrokes: 0,
-      spacePresses: 0,
-      layerTaps: 0,
-      oneShotActivations: 0,
-      wastedOneShots: 0,
-      holdPresses: 0,
+      space_presses: 0,
+      layer_taps: 0,
+      one_shot_activations: 0,
+      wasted_one_shots: 0,
+      hold_presses: 0,
       chords: 0,
-      macroPresses: 0,
-      adaptivePresses: 0,
-      adaptiveTriggerHits: 0,
-      repeatPresses: 0,
-      perLayer: compiled.layers.map(() => 0),
+      macro_presses: 0,
+      adaptive_presses: 0,
+      adaptive_trigger_hits: 0,
+      repeat_presses: 0,
+      per_layer: compiled.layers.map(() => 0),
       unproducible: this.coverage.unproducible,
     };
   }
@@ -225,7 +263,8 @@ export class Simulator {
               mode,
               target: t.target,
               user: false,
-              order: (KIND_ORDER[t.kind] ?? 5) * 1000 + (t.requiredMods?.length ? 500 : 0) + order++,
+              order:
+                (KIND_ORDER[t.kind] ?? 5) * 1000 + (t.requiredMods?.length ? 500 : 0) + order++,
               requiredMods: t.requiredMods,
             });
             this.activators.set(t.target, list);
@@ -267,20 +306,25 @@ export class Simulator {
   private candidatesFor(token: string): Producer[] {
     const out: Producer[] = [];
     const last = this.machine.state.lastSymbol;
-    const lastCmp = last === null ? null : this.fold ? last.toLocaleLowerCase() : last;
-    if (this.repeatPolicy === 'repeatKey' && lastCmp !== null && lastCmp === token) {
+    const lastCmp = last === null ? null : this.fold ? last.toLowerCase() : last;
+    if (this.repeatPolicy === 'repeat_key' && lastCmp !== null && lastCmp === token) {
       out.push(...repeatProducers(this.index));
     }
     const base = this.index.bySymbol.get(token) ?? [];
     if (!this.fold) {
-      const lower = token.toLocaleLowerCase();
+      const lower = token.toLowerCase();
       if (lower !== token) {
         const lowerProducers = this.index.bySymbol.get(lower) ?? [];
         out.push(...lowerProducers);
         out.push(...base);
         for (const p of lowerProducers) {
           if (p.kind === 'combo' || p.kind === 'repeat') continue;
-          out.push({ ...p, id: `${p.id}+shift`, mods: [...(p.mods ?? []), 'LSHIFT'], cost: p.cost + 1 });
+          out.push({
+            ...p,
+            id: `${p.id}+shift`,
+            mods: [...(p.mods ?? []), 'LSHIFT'],
+            cost: p.cost + 1,
+          });
         }
         return this.applyUserOrder(lower, out);
       }
@@ -301,7 +345,11 @@ export class Simulator {
         disabled.add(e.producer);
         continue;
       }
-      if (e.when?.afterAny && (last === null || !e.when.afterAny.some((a) => a === last || a.toLocaleLowerCase() === last.toLocaleLowerCase()))) {
+      if (
+        e.when?.afterAny &&
+        (last === null ||
+          !e.when.afterAny.some((a) => a === last || a.toLowerCase() === last.toLowerCase()))
+      ) {
         disabled.add(e.producer);
         continue;
       }
@@ -335,19 +383,24 @@ export class Simulator {
       const holdsBefore = new Set(this.plannerHolds);
       let ok = true;
       const modHolds: number[] = [];
-      if (cand.requiredMods && cand.requiredMods.length) ok = this.ensureMods(cand.requiredMods, events, modHolds);
-      if (ok && !m.isLayerActive(cand.viaLayer)) ok = this.activate(cand.viaLayer, events, depth + 1);
+      if (cand.requiredMods?.length) ok = this.ensureMods(cand.requiredMods, events, modHolds);
+      if (ok && !m.isLayerActive(cand.viaLayer))
+        ok = this.activate(cand.viaLayer, events, depth + 1);
       if (ok) {
         const r = m.resolve(cand.pos);
         if (r.layer !== cand.viaLayer) ok = false;
         else {
           const peeled = peelBinding(m, r.binding, cand.mode);
-          const kinds = cand.mode === 'hold' ? ['mo', 'lt'] : ['sl', 'tog', 'to', 'adaptive', 'macro'];
+          const kinds =
+            cand.mode === 'hold' ? ['mo', 'lt'] : ['sl', 'tog', 'to', 'adaptive', 'macro'];
           if (!kinds.includes(peeled.kind)) ok = false;
         }
       }
       if (ok) {
-        const action: Action = cand.mode === 'hold' ? { type: 'holdPress', pos: cand.pos } : { type: 'tap', pos: cand.pos };
+        const action: Action =
+          cand.mode === 'hold'
+            ? { type: 'hold_press', pos: cand.pos }
+            : { type: 'tap', pos: cand.pos };
         const evs = m.perform(action);
         if (evs.some((e) => e.symbols.length)) ok = false;
         else {
@@ -378,10 +431,13 @@ export class Simulator {
       if (isShift && sk) {
         const r = m.resolve(sk.key);
         const peeled = peelBinding(m, r.binding, sk.kind === 'hold' ? 'hold' : 'tap');
-        if (sk.kind === 'sk' && (peeled.kind === 'sk' || peeled.kind === 'mod_morph' || peeled.kind === 'adaptive')) {
+        if (
+          sk.kind === 'sk' &&
+          (peeled.kind === 'sk' || peeled.kind === 'mod_morph' || peeled.kind === 'adaptive')
+        ) {
           events.push(...m.perform({ type: 'tap', pos: sk.key }));
         } else if (sk.kind === 'hold' && peeled.kind === 'mod') {
-          events.push(...m.perform({ type: 'holdPress', pos: sk.key }));
+          events.push(...m.perform({ type: 'hold_press', pos: sk.key }));
           holdsOut.push(sk.key);
         } else return false;
         if (!m.activeMods().has(mod)) return false;
@@ -399,7 +455,7 @@ export class Simulator {
         }
         const holdPeeled = peelBinding(m, r.binding, 'hold');
         if (holdPeeled.kind === 'mod' && holdPeeled.mod === mod) {
-          events.push(...m.perform({ type: 'holdPress', pos }));
+          events.push(...m.perform({ type: 'hold_press', pos }));
           holdsOut.push(pos);
           found = true;
           break;
@@ -410,17 +466,35 @@ export class Simulator {
     return true;
   }
 
+  /**
+   * A combo fires only when the highest active layer is in its layer list, so activate one of those
+   * layers first when needed (ZMK filters combo candidates against the single highest active layer).
+   */
+  private ensureComboAvailable(comboIdx: number, events: KeyEvent[]): boolean {
+    const m = this.machine;
+    if (m.comboAvailable(comboIdx)) return true;
+    const combo = this.compiled.combos[comboIdx];
+    const mask = combo?.layerMask;
+    if (mask === null || mask === undefined) return false;
+    const top = m.highestActiveLayer();
+    for (let li = top + 1; li < this.compiled.layers.length; li++) {
+      if ((mask & (1 << li)) === 0) continue;
+      if (this.activate(li, events, 0) && m.comboAvailable(comboIdx)) return true;
+    }
+    return false;
+  }
+
   private tryProducer(p: Producer, token: string): KeyEvent[] | null {
     const m = this.machine;
     const snap = m.state.snapshot();
     const events: KeyEvent[] = [];
     const modHolds: number[] = [];
     let ok = true;
-    if (p.mods && p.mods.length) ok = this.ensureMods(p.mods, events, modHolds);
+    if (p.mods?.length) ok = this.ensureMods(p.mods, events, modHolds);
     for (const step of p.steps) {
       if (!ok) break;
       if (step.mode === 'chord') {
-        if (step.combo === undefined || !m.comboAvailable(step.combo)) {
+        if (step.combo === undefined || !this.ensureComboAvailable(step.combo, events)) {
           ok = false;
           break;
         }
@@ -441,10 +515,10 @@ export class Simulator {
       }
       events.push(...m.perform({ type: 'tap', pos: step.pos, taps: step.taps }));
     }
-    for (const pos of modHolds) events.push(...m.perform({ type: 'holdRelease', pos }));
+    for (const pos of modHolds) events.push(...m.perform({ type: 'hold_release', pos }));
     if (ok) {
       const emitted = events.map((e) => e.symbols).join('');
-      ok = this.fold ? emitted.toLocaleLowerCase() === token : emitted === token;
+      ok = this.fold ? emitted.toLowerCase() === token : emitted === token;
     }
     if (!ok) {
       m.state.restore(snap);
@@ -458,7 +532,8 @@ export class Simulator {
 
   private releaseHolds(): KeyEvent[] {
     const out: KeyEvent[] = [];
-    for (const pos of this.plannerHolds) out.push(...this.machine.perform({ type: 'holdRelease', pos }));
+    for (const pos of this.plannerHolds)
+      out.push(...this.machine.perform({ type: 'hold_release', pos }));
     this.plannerHolds.clear();
     return out;
   }
@@ -469,22 +544,22 @@ export class Simulator {
     const c = this.compiled;
     for (const ev of events) {
       if (this.collectEvents) this.events.push(ev);
-      if (ev.kind === 'holdRelease') continue;
+      if (ev.kind === 'hold_release') continue;
       const st = this.stats;
       st.keystrokes++;
-      st.perLayer[ev.layer] = (st.perLayer[ev.layer] ?? 0) + 1;
-      if (ev.kind === 'holdPress') st.holdPresses++;
+      st.per_layer[ev.layer] = (st.per_layer[ev.layer] ?? 0) + 1;
+      if (ev.kind === 'hold_press') st.hold_presses++;
       if (ev.kind === 'chord') st.chords++;
-      if (ev.keyKind === 'layerTap') st.layerTaps++;
-      if (ev.leafKind === 'sl') st.oneShotActivations++;
-      if (ev.wastedOneShot) st.wastedOneShots++;
-      if (ev.leafKind === 'macro') st.macroPresses++;
+      if (ev.keyKind === 'layer_tap') st.layer_taps++;
+      if (ev.leafKind === 'sl') st.one_shot_activations++;
+      if (ev.wastedOneShot) st.wasted_one_shots++;
+      if (ev.leafKind === 'macro') st.macro_presses++;
       if (ev.keyKind === 'magic') {
-        st.adaptivePresses++;
-        if (ev.producerKind === 'adaptive') st.adaptiveTriggerHits++;
+        st.adaptive_presses++;
+        if (ev.producerKind === 'adaptive') st.adaptive_trigger_hits++;
       }
-      if (ev.keyKind === 'repeat') st.repeatPresses++;
-      if (ev.keyKind === 'space') st.spacePresses++;
+      if (ev.keyKind === 'repeat') st.repeat_presses++;
+      if (ev.keyKind === 'space') st.space_presses++;
       const id = this.registry.idFor(ev);
       this.withSpace.push(id);
       const pos = c.positions[ev.pos];
@@ -497,7 +572,8 @@ export class Simulator {
         if (prev >= 0) this.travel.continuous[f] += keyDistance(c.keys[prev], key, 'euclid') ?? 0;
         this.lastFingerPos[f] = member;
         const prevW = this.lastFingerPosWord[f];
-        if (prevW >= 0) this.travel.resetAtWord[f] += keyDistance(c.keys[prevW], key, 'euclid') ?? 0;
+        if (prevW >= 0)
+          this.travel.resetAtWord[f] += keyDistance(c.keys[prevW], key, 'euclid') ?? 0;
         this.lastFingerPosWord[f] = member;
       }
       if (ev.keyKind === 'space' || isSpace) continue;
@@ -545,13 +621,15 @@ export class Simulator {
   }
 
   private flushFingerRun(): void {
-    if (this.runFingerLen > 0) this.runs.fingerRuns[this.runFingerLen] = (this.runs.fingerRuns[this.runFingerLen] ?? 0) + 1;
+    if (this.runFingerLen > 0)
+      this.runs.fingerRuns[this.runFingerLen] = (this.runs.fingerRuns[this.runFingerLen] ?? 0) + 1;
     this.runFingerLen = 0;
     this.runFinger = null;
   }
 
   private flushLayerRun(): void {
-    if (this.runLayerLen > 0 && this.runLayer > 0) this.runs.layerRuns[this.runLayerLen] = (this.runs.layerRuns[this.runLayerLen] ?? 0) + 1;
+    if (this.runLayerLen > 0 && this.runLayer > 0)
+      this.runs.layerRuns[this.runLayerLen] = (this.runs.layerRuns[this.runLayerLen] ?? 0) + 1;
     this.runLayerLen = 0;
     this.runLayer = -1;
   }
@@ -561,7 +639,13 @@ export class Simulator {
       const w = this.curWord.join('');
       const t = this.words.get(w);
       if (t) t.count++;
-      else this.words.set(w, { word: w, count: 1, presses: this.curWordPresses, keys: this.curWordKeys.slice() });
+      else
+        this.words.set(w, {
+          word: w,
+          count: 1,
+          presses: this.curWordPresses,
+          keys: this.curWordKeys.slice(),
+        });
       this.stats.words++;
     }
     this.curWord = [];
@@ -579,26 +663,36 @@ export class Simulator {
 
   // ------------------------------------------------------------------ driver
 
-  /** Candidate tokens at index i, longest first (multi-grapheme producer strings, then the single grapheme). */
-  private tokenCandidates(stream: string[], i: number): [string, number][] {
-    const first = stream[i];
-    const out: [string, number][] = [];
+  /**
+   * Candidate tokens starting at code-unit index `i`, longest first (multi-symbol producer strings,
+   * then the single symbol). Tokens never cross a space. Returns `[token, symbolCount, nextIndex]`.
+   */
+  private tokenCandidates(stream: string, i: number): [string, number, number][] {
+    const first = String.fromCodePoint(stream.codePointAt(i) as number);
+    const out: [string, number, number][] = [];
     if (this.index.multiStarts.has(first)) {
-      for (let len = Math.min(this.index.maxLen, stream.length - i); len >= 2; len--) {
+      for (let len = this.index.maxLen; len >= 2; len--) {
         let s = '';
+        let j = i;
         let bad = false;
         for (let k = 0; k < len; k++) {
-          const g = stream[i + k];
+          if (j >= stream.length) {
+            bad = true;
+            break;
+          }
+          const cp = stream.codePointAt(j) as number;
+          const g = String.fromCodePoint(cp);
           if (g === ' ') {
             bad = true;
             break;
           }
           s += g;
+          j += g.length;
         }
-        if (!bad && this.index.bySymbol.has(s)) out.push([s, len]);
+        if (!bad && this.index.bySymbol.has(s)) out.push([s, len, j]);
       }
     }
-    out.push([first, 1]);
+    out.push([first, 1, i + first.length]);
     return out;
   }
 
@@ -631,52 +725,49 @@ export class Simulator {
       const rel = this.releaseHolds();
       this.commit(rel, false);
       events = m.perform({ type: 'tap', pos: spaceKey });
-      if (events.map((e) => e.symbols).join('') !== ' ') {
-        for (const e of events) {
-          e.keyKind = 'space';
-          e.symbols = ' ';
-          e.label = '␣';
-        }
+      for (const e of events) {
+        if (e.symbols === ' ') continue;
+        e.symbols = ' ';
+        e.keyKind = 'space';
+        e.label = '␣';
       }
     }
     for (const e of events) if (e.symbols === ' ') e.keyKind = 'space';
     this.commit(events, true);
   }
 
-  run(stream: string[]): SimulationResult {
+  run(stream: string): SimulationResult {
     const max = this.options.maxSymbols ?? Infinity;
     let i = 0;
     let symbols = 0;
     while (i < stream.length && symbols < max) {
-      const g = stream[i];
+      const cp = stream.codePointAt(i) as number;
+      const g = String.fromCodePoint(cp);
       if (g === ' ') {
         this.wordBoundary(false);
         this.typeSpace();
-        i++;
+        i += 1;
         continue;
       }
-      let consumed = 0;
       let typed = false;
-      for (const [token, len] of this.tokenCandidates(stream, i)) {
+      for (const [token, len, next] of this.tokenCandidates(stream, i)) {
         if (this.typeToken(token)) {
           this.curWord.push(token);
           this.stats.symbols += len;
-          consumed = len;
+          symbols += len;
+          i = next;
           typed = true;
           break;
         }
-        consumed = len;
       }
       if (!typed) {
-        const token = stream[i];
-        consumed = 1;
-        const soft = this.softSymbols.has(token);
+        const soft = this.softSymbols.has(g);
         const map = soft ? this.coverage.softDropped : this.coverage.unproducible;
-        map.set(token, (map.get(token) ?? 0) + 1);
+        map.set(g, (map.get(g) ?? 0) + 1);
         this.wordBoundary(true);
+        symbols += 1;
+        i += g.length;
       }
-      symbols += consumed;
-      i += consumed;
     }
     this.wordBoundary(false);
     this.commit(this.releaseHolds(), false);
@@ -689,11 +780,20 @@ export class Simulator {
       travel: this.travel,
       stats: this.stats,
     };
-    return { tables, coverage: this.coverage, events: this.collectEvents ? this.events : undefined, producers: this.index };
+    return {
+      tables,
+      coverage: this.coverage,
+      events: this.collectEvents ? this.events : undefined,
+      producers: this.index,
+    };
   }
 }
 
-export function simulate(compiled: CompiledLayout, stream: string[], options: SimulateOptions): SimulationResult {
+export function simulate(
+  compiled: CompiledLayout,
+  stream: string,
+  options: SimulateOptions,
+): SimulationResult {
   return new Simulator(compiled, options).run(stream);
 }
 
@@ -709,8 +809,13 @@ export interface ExplainStep {
 }
 
 /** Trace how a word (or short text) is typed. */
-export function explain(compiled: CompiledLayout, text: string, options: SimulateOptions): { steps: ExplainStep[]; coverage: Coverage; presses: number } {
-  const stream = Array.from(text.normalize('NFC')).map((g) => (options.caseMode === 'fold' ? g.toLocaleLowerCase() : g));
+export function explain(
+  compiled: CompiledLayout,
+  text: string,
+  options: SimulateOptions,
+): { steps: ExplainStep[]; coverage: Coverage; presses: number } {
+  const nfc = text.normalize('NFC');
+  const stream = options.caseMode === 'fold' ? nfc.toLowerCase() : nfc;
   const sim = new Simulator(compiled, { ...options, collectEvents: true });
   const r = sim.run(stream);
   const steps: ExplainStep[] = (r.events ?? []).map((e) => {
@@ -726,5 +831,9 @@ export function explain(compiled: CompiledLayout, text: string, options: Simulat
       wastedOneShot: e.wastedOneShot,
     };
   });
-  return { steps, coverage: r.coverage, presses: steps.filter((s) => s.kind !== 'holdRelease').length };
+  return {
+    steps,
+    coverage: r.coverage,
+    presses: steps.filter((s) => s.kind !== 'hold_release').length,
+  };
 }
