@@ -9,3 +9,8 @@ export function goldenPath(rel: string): string {
 export function fixturePath(rel: string): string {
   return fileURLToPath(new URL(`../../fixtures/${rel}`, import.meta.url));
 }
+
+/** Root of the built corpora the web app serves. */
+export function corporaRoot(): string {
+  return fileURLToPath(new URL('../../../../apps/web/public/corpora', import.meta.url));
+}

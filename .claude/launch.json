@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "vite",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@layoutmaster/web", "dev", "--port", "4011", "--strictPort"],
+      "port": 4011
+    }
+  ]
+}

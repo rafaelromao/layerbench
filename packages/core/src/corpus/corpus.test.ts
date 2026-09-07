@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { FIXTURE_EN, FIXTURE_PT } from '../fixtures/index.js';
+import { corporaRoot } from '../golden/paths.js';
 import { slug } from '../storage/ids.js';
-import { corpusFromDoc, corpusToDoc, customCorpus, mixCorpora } from './corpus.js';
+import {
+  corpusFromDoc,
+  corpusSampleFacts,
+  corpusStream,
+  corpusToDoc,
+  customCorpus,
+  mixCorpora,
+} from './corpus.js';
+import { nodeCorpusLoader } from './node-loader.js';
 import { corpusFacts, normalizeText, words } from './normalize.js';
 
 describe('normalize', () => {
@@ -68,5 +77,44 @@ describe('document ids', () => {
     expect(slug('Magic Romak!')).toBe('magic-romak');
     expect(slug('Português ção')).toBe('portugues-cao');
     expect(slug('!!!').startsWith('item-')).toBe(true);
+  });
+});
+
+describe('shipped corpora', () => {
+  const loader = nodeCorpusLoader(corporaRoot());
+
+  it('are listed with their manifests', async () => {
+    const list = await loader.list();
+    expect(list.map((m) => m.id)).toEqual(['en-general', 'en-work', 'pt-br-general', 'pt-br-work']);
+    const ptGeneral = list.find((m) => m.id === 'pt-br-general')!;
+    expect(ptGeneral.language).toBe('pt-BR');
+    expect(ptGeneral.license).toContain('CC BY');
+    expect(ptGeneral.words).toBeGreaterThan(100_000);
+  });
+
+  it('load with a usable stream', async () => {
+    const c = await loader.load('pt-br-general');
+    const folded = corpusStream(c, 'fold');
+    expect(folded.length).toBeGreaterThan(100_000);
+    expect(folded).toContain('ã');
+    expect(folded).toBe(folded.toLowerCase());
+    const facts = corpusSampleFacts(c);
+    expect(facts.symbols).toBeGreaterThan(10_000);
+    expect((facts.unigram.get('a') ?? 0) > 0).toBe(true);
+  });
+
+  it('mixes two shipped corpora proportionally', async () => {
+    const en = await loader.load('en-work');
+    const pt = await loader.load('pt-br-work');
+    const mixed = mixCorpora(
+      [
+        [en, 1],
+        [pt, 1],
+      ],
+      200_000,
+    );
+    expect(mixed.sample.length).toBeGreaterThan(150_000);
+    expect(mixed.sample).toContain('ã');
+    expect(mixed.sample).toContain(' the ');
   });
 });

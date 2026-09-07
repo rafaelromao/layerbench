@@ -1,8 +1,10 @@
-import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+import { appendFileSync } from 'node:fs';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { analyze } from '../analysis/analyze.js';
 import { relabelEligible, relabelSwap } from '../analysis/relabel.js';
-import { normalizeText } from '../corpus/normalize.js';
+import { corpusStream } from '../corpus/corpus.js';
+import { nodeCorpusLoader } from '../corpus/node-loader.js';
+import { corporaRoot } from '../golden/paths.js';
 import { compileLayout } from '../layout/compile.js';
 import { swapKeys } from '../layout/ops.js';
 import { bundledLayout } from '../layouts/index.js';
@@ -10,10 +12,9 @@ import { layoutsDoc } from '../rules/presets.js';
 
 const RUN = process.env.BENCH === '1';
 
-function rawCorpus(): string {
-  const pt = readFileSync(new URL('../../../corpora/raw/corpus_pt.txt', import.meta.url), 'utf8');
-  const en = readFileSync(new URL('../../../corpora/raw/corpus_en.txt', import.meta.url), 'utf8');
-  return `${pt} ${en}`;
+/** Timings go to a file: vitest hides console output from passing tests. */
+function logLine(text: string): void {
+  appendFileSync(process.env.BENCH_OUT ?? '/dev/null', `${text}\n`);
 }
 
 /**
@@ -24,13 +25,18 @@ describe.skipIf(!RUN)('performance budget (BENCH=1)', () => {
   const ruleSet = layoutsDoc();
   const layout = bundledLayout('magic-romak')!;
   const compiled = compileLayout(layout);
-  const stream = normalizeText(rawCorpus(), { caseMode: 'fold' });
+  let stream = '';
+
+  beforeAll(async () => {
+    const corpus = await nodeCorpusLoader(corporaRoot()).load('pt-br-general');
+    stream = corpusStream(corpus, 'fold');
+  });
 
   it('analyzes 300k symbols within 1.5 s', () => {
     const t = performance.now();
     const r = analyze(compiled, stream, { caseMode: 'fold', maxSymbols: 300_000, ruleSet });
     const ms = performance.now() - t;
-    console.log(
+    logLine(
       `300k: ${ms.toFixed(0)}ms keystrokes=${r.stats.keystrokes} logicalKeys=${r.simulation.registry.all().length} bigrams=${r.simulation.noSpace.bigram.size}`,
     );
     expect(ms).toBeLessThan(1500);
@@ -40,7 +46,7 @@ describe.skipIf(!RUN)('performance budget (BENCH=1)', () => {
     const t = performance.now();
     const r = analyze(compiled, stream, { caseMode: 'fold', maxSymbols: 1_000_000, ruleSet });
     const ms = performance.now() - t;
-    console.log(`1M: ${ms.toFixed(0)}ms symbols=${r.stats.symbols}`);
+    logLine(`1M: ${ms.toFixed(0)}ms symbols=${r.stats.symbols}`);
     expect(ms).toBeLessThan(5000);
   });
 
@@ -55,7 +61,7 @@ describe.skipIf(!RUN)('performance budget (BENCH=1)', () => {
     const t = performance.now();
     relabelSwap(base, c1, 0, posA, posB, ruleSet);
     const ms = performance.now() - t;
-    console.log(`relabel: ${ms.toFixed(1)}ms`);
+    logLine(`relabel: ${ms.toFixed(1)}ms`);
     expect(ms).toBeLessThan(50);
   });
 });

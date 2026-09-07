@@ -6,8 +6,11 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "build": "tsx src/build.ts",
+    "build": "esbuild src/build.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/build.mjs --log-level=warning && node dist/build.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "echo 'no tests'"
+  },
+  "dependencies": {
+    "@layoutmaster/core": "workspace:*"
   }
 }
