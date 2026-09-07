@@ -8,6 +8,7 @@ export * from './geometry/types.js';
 export * from './host/locale.js';
 export * from './layout/compile.js';
 export * from './layout/json.js';
+export * from './layout/labels.js';
 export * from './layout/ops.js';
 export * from './layout/schema.js';
 export * from './layout/text.js';

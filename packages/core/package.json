@@ -18,7 +18,8 @@
     "./rules": "./src/rules/index.ts",
     "./storage": "./src/storage/ids.ts",
     "./corpus": "./src/corpus/index.ts",
-    "./analysis": "./src/analysis/index.ts"
+    "./analysis": "./src/analysis/index.ts",
+    "./node": "./src/corpus/node-loader.ts"
   },
   "files": [
     "src",
