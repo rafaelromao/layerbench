@@ -13,7 +13,7 @@ import { CompareView } from './views/CompareView.js';
 import { CorpusView } from './views/CorpusView.js';
 import { EditView } from './views/EditView.js';
 import { LibraryView } from './views/LibraryView.js';
-import { PlaceholderView } from './views/PlaceholderView.js';
+import { RulesView } from './views/RulesView.js';
 
 /**
  * Search parameters stay strings from end to end. The router must not coerce them: what a value
@@ -62,9 +62,7 @@ function view(path: string, component: () => ReactNode) {
 }
 
 const editRoute = view('/edit', EditView);
-const rulesRoute = view('/rules', () => (
-  <PlaceholderView title="Rules" note="The rule editor arrives with the rules milestone." />
-));
+const rulesRoute = view('/rules', RulesView);
 const compareRoute = view('/compare', CompareView);
 const corpusRoute = view('/corpus', CorpusView);
 const libraryRoute = view('/library', LibraryView);
