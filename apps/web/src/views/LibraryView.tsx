@@ -3,8 +3,10 @@ import {
   type CompiledLayout,
   compileLayout,
   GEOMETRY_PRESET_IDS,
+  getGeometryPreset,
   importTextLayout,
   type Layout,
+  layoutLanguages,
   safeParseLayout,
   slug,
   toCanonicalJson,
@@ -16,6 +18,7 @@ import { toast } from '../state/toasts.js';
 import { useCollection, useStorage } from '../storage/use-storage.js';
 import { encodeInline } from '../url/inline.js';
 import { inlineRef, savedRef } from '../url/params.js';
+import { type NewLayoutSpec, newLayout } from './new-layout.js';
 
 interface Preview {
   layout: Layout;
@@ -51,6 +54,135 @@ function buildPreview(
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
+}
+
+/**
+ * What the layout can write. A language it declares but cannot fully type is shown struck through,
+ * with the missing characters named — the difference between "supports Spanish" and "supports
+ * Spanish except ñ" decides whether an analysis means anything.
+ */
+function LanguageBadges({ compiled }: { compiled: CompiledLayout }) {
+  const coverage = layoutLanguages(compiled);
+  if (coverage.length === 0) return null;
+  return (
+    <p className="mt-0.5 flex flex-wrap gap-1">
+      {coverage.map((c) => (
+        <span
+          key={c.tag}
+          className={`badge badge-xs ${c.missingRequired.length === 0 ? 'badge-ghost' : 'badge-warning'}`}
+          title={
+            c.missingRequired.length === 0
+              ? `Types everything ${c.name} needs`
+              : `Cannot type ${c.missingRequired.join(' ')}`
+          }
+        >
+          {c.tag}
+          {c.missingRequired.length > 0 ? ` −${c.missingRequired.length}` : ''}
+        </span>
+      ))}
+    </p>
+  );
+}
+
+/** New layout: pick a board, a starting point, and whether it gets number and symbol layers. */
+function NewLayoutDialog({ onCreate }: { onCreate: (spec: NewLayoutSpec) => void }) {
+  const [open, setOpen] = useState(false);
+  const [spec, setSpec] = useState<NewLayoutSpec>({
+    name: 'My layout',
+    geometry: '3x5+2',
+    start: 'empty',
+    numbers: false,
+  });
+
+  return (
+    <>
+      <button type="button" className="btn btn-primary btn-sm" onClick={() => setOpen(true)}>
+        New layout
+      </button>
+      {open && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+          <form
+            aria-label="New layout"
+            className="card w-full max-w-md bg-base-100 shadow-xl"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setOpen(false);
+              onCreate(spec);
+            }}
+          >
+            <div className="card-body gap-3 p-4">
+              <h2 className="font-semibold text-sm">New layout</h2>
+
+              <label className="form-control">
+                <span className="label-text text-xs">Name</span>
+                <input
+                  aria-label="New layout name"
+                  className="input input-sm input-bordered"
+                  value={spec.name}
+                  onChange={(e) => setSpec({ ...spec, name: e.target.value })}
+                />
+              </label>
+
+              <label className="form-control">
+                <span className="label-text text-xs">Board</span>
+                <select
+                  aria-label="New layout board"
+                  className="select select-sm select-bordered"
+                  value={spec.geometry}
+                  onChange={(e) => setSpec({ ...spec, geometry: e.target.value })}
+                >
+                  {GEOMETRY_PRESET_IDS.map((id) => (
+                    <option key={id} value={id}>
+                      {getGeometryPreset(id).name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="form-control">
+                <span className="label-text text-xs">Start from</span>
+                <select
+                  aria-label="New layout starting point"
+                  className="select select-sm select-bordered"
+                  value={spec.start}
+                  onChange={(e) =>
+                    setSpec({ ...spec, start: e.target.value as NewLayoutSpec['start'] })
+                  }
+                >
+                  <option value="empty">An empty board</option>
+                  <option value="qwerty">Qwerty, to rearrange</option>
+                </select>
+              </label>
+
+              <label className="label cursor-pointer justify-start gap-2">
+                <input
+                  type="checkbox"
+                  aria-label="Add number and symbol layers"
+                  className="checkbox checkbox-sm"
+                  checked={spec.numbers}
+                  onChange={(e) => setSpec({ ...spec, numbers: e.target.checked })}
+                />
+                <span className="label-text text-xs">Add number and symbol layers</span>
+              </label>
+
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary btn-sm">
+                  Create and edit
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
+    </>
+  );
 }
 
 export function LibraryView() {
@@ -95,21 +227,68 @@ export function LibraryView() {
     navigate({ to: '/', search: { layout: inlineRef(blob) } as never });
   }, [preview, navigate]);
 
+  /**
+   * Save under a free id. Two layouts with the same name used to overwrite each other silently,
+   * because the id is a slug of the name and nothing checked whether it was taken.
+   */
+  const saveNew = useCallback(
+    async (layout: Layout, message: string): Promise<string | null> => {
+      const base = slug(layout.name);
+      const taken = new Set(saved.entries.map((e) => e.id));
+      let id = base;
+      for (let n = 2; taken.has(id); n++) id = `${base}-${n}`;
+      try {
+        await storage.put('layouts', id, toCanonicalJson({ ...layout, id }), { message });
+        saved.refresh();
+        toast.info(id === base ? `Saved as ${id}` : `Saved as ${id} — ${base} was taken`);
+        return id;
+      } catch (e) {
+        toast.error(`Save failed: ${e instanceof Error ? e.message : String(e)}`);
+        return null;
+      }
+    },
+    [storage, saved],
+  );
+
   const saveToLibrary = useCallback(async () => {
     if (!preview) return;
-    const id = slug(preview.layout.name);
-    try {
-      await storage.put('layouts', id, toCanonicalJson({ ...preview.layout, id }), {
-        message: `Import layout ${preview.layout.name}`,
-      });
-      toast.info(`Saved ${preview.layout.name} as ${id}`);
-      setImportText('');
-      setPreview(null);
-      saved.refresh();
-    } catch (e) {
-      toast.error(`Save failed: ${e instanceof Error ? e.message : String(e)}`);
-    }
-  }, [preview, storage, saved]);
+    const id = await saveNew(preview.layout, `Import layout ${preview.layout.name}`);
+    if (id === null) return;
+    setImportText('');
+    setPreview(null);
+  }, [preview, saveNew]);
+
+  /** Duplicate any layout, bundled or saved, and open the copy in the editor. */
+  const duplicate = useCallback(
+    async (layout: Layout) => {
+      const copy = { ...layout, name: `${layout.name} copy` };
+      const id = await saveNew(copy, `Duplicate ${layout.name}`);
+      if (id) navigate({ to: '/edit', search: { layout: savedRef(id) } as never });
+    },
+    [saveNew, navigate],
+  );
+
+  const duplicateSaved = useCallback(
+    async (id: string) => {
+      const doc = await storage.get('layouts', id);
+      const parsed = doc ? safeParseLayout(doc.doc) : null;
+      if (!parsed?.ok) {
+        toast.error(`Could not read ${id}`);
+        return;
+      }
+      await duplicate(parsed.layout);
+    },
+    [storage, duplicate],
+  );
+
+  const createLayout = useCallback(
+    async (spec: NewLayoutSpec) => {
+      const layout = newLayout(spec);
+      const id = await saveNew(layout, `Create layout ${spec.name}`);
+      if (id) navigate({ to: '/edit', search: { layout: savedRef(id) } as never });
+    },
+    [saveNew, navigate],
+  );
 
   const remove = useCallback(
     async (id: string) => {
@@ -128,6 +307,13 @@ export function LibraryView() {
   return (
     <div className="space-y-6">
       <h1 className="sr-only">Library</h1>
+      <div className="flex flex-wrap items-center gap-2">
+        <NewLayoutDialog onCreate={createLayout} />
+        <p className="text-xs opacity-70">
+          Start from an empty board, or duplicate any layout below and change it.
+        </p>
+      </div>
+
       <section className="space-y-2">
         <h2 className="text-sm uppercase tracking-wide opacity-60">Bundled layouts</h2>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -142,19 +328,29 @@ export function LibraryView() {
                         layout.author,
                         compiled.geometry.id,
                         `${compiled.layers.length} layer${compiled.layers.length === 1 ? '' : 's'}`,
-                        (layout.languages ?? []).join(', '),
                       ]
                         .filter(Boolean)
                         .join(' · ')}
                     </p>
+                    <LanguageBadges compiled={compiled} />
                   </div>
-                  <Link
-                    to="/"
-                    search={{ layout: layout.id } as never}
-                    className="btn btn-primary btn-xs"
-                  >
-                    Analyze
-                  </Link>
+                  <div className="flex shrink-0 gap-1">
+                    <Link
+                      to="/"
+                      search={{ layout: layout.id } as never}
+                      className="btn btn-primary btn-xs"
+                    >
+                      Analyze
+                    </Link>
+                    <button
+                      type="button"
+                      aria-label={`Duplicate ${layout.name}`}
+                      className="btn btn-xs"
+                      onClick={() => duplicate(layout)}
+                    >
+                      Duplicate
+                    </button>
+                  </div>
                 </header>
                 <Keyboard
                   id={`kb-${layout.id}`}
@@ -197,7 +393,7 @@ export function LibraryView() {
                       .filter(Boolean)
                       .join(' · ')}
                   </p>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Link
                       to="/"
                       search={{ layout: savedRef(entry.id) } as never}
@@ -205,6 +401,21 @@ export function LibraryView() {
                     >
                       Analyze
                     </Link>
+                    <Link
+                      to="/edit"
+                      search={{ layout: savedRef(entry.id) } as never}
+                      className="btn btn-xs"
+                    >
+                      Edit
+                    </Link>
+                    <button
+                      type="button"
+                      aria-label={`Duplicate ${entry.name}`}
+                      className="btn btn-xs"
+                      onClick={() => duplicateSaved(entry.id)}
+                    >
+                      Duplicate
+                    </button>
                     <button
                       type="button"
                       className="btn btn-ghost btn-xs"
