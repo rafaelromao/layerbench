@@ -1,4 +1,5 @@
-import type { CaseMode, CorpusFacts } from './normalize.js';
+import { languageKeep } from '../lang/profiles.js';
+import type { CaseMode, CorpusFacts, TextClass } from './normalize.js';
 import { corpusFacts, normalizeText, words as splitWords } from './normalize.js';
 
 /** What `manifest.json` holds next to every shipped corpus sample. */
@@ -143,18 +144,30 @@ export function mixCorpora(weighted: [Corpus, number][], maxChars = 1_500_000): 
 
 const streamCache = new Map<string, string>();
 
-/** The normalized symbol stream for a corpus, memoized per case mode. */
-export function corpusStream(corpus: Corpus, caseMode: CaseMode): string {
-  const key = `${corpus.id}|${caseMode}`;
+/** The normalized symbol stream for a corpus, memoized per case mode and text class. */
+export function corpusStream(
+  corpus: Corpus,
+  caseMode: CaseMode,
+  textClass: TextClass = 'letters',
+): string {
+  const key = `${corpus.id}|${caseMode}|${textClass}`;
   const hit = streamCache.get(key);
   if (hit !== undefined) return hit;
-  const s = normalizeText(corpus.sample, { caseMode });
+  const s = normalizeText(corpus.sample, {
+    caseMode,
+    textClass,
+    keepAlso: languageKeep(corpus.language),
+  });
   if (!corpus.custom) streamCache.set(key, s);
   return s;
 }
 
 /** Letter, bigram, trigram and word frequencies over a sample of the folded stream. */
-export function corpusSampleFacts(corpus: Corpus, maxSymbols = 300_000): CorpusFacts {
-  const stream = corpusStream(corpus, 'fold');
+export function corpusSampleFacts(
+  corpus: Corpus,
+  maxSymbols = 300_000,
+  textClass: TextClass = 'letters',
+): CorpusFacts {
+  const stream = corpusStream(corpus, 'fold', textClass);
   return corpusFacts(stream.slice(0, maxSymbols));
 }

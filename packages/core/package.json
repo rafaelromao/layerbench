@@ -19,7 +19,8 @@
     "./storage": "./src/storage/ids.ts",
     "./corpus": "./src/corpus/index.ts",
     "./analysis": "./src/analysis/index.ts",
-    "./node": "./src/corpus/node-loader.ts"
+    "./node": "./src/corpus/node-loader.ts",
+    "./lang": "./src/lang/index.ts"
   },
   "files": [
     "src",
@@ -29,7 +30,8 @@
     "build": "tsc -p tsconfig.json --noEmit",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "goldens": "GOLDENS=1 vitest run src/golden/dump.test.ts"
   },
   "dependencies": {
     "zod": "^4.5.4"

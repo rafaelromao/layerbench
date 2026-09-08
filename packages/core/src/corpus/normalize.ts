@@ -1,30 +1,83 @@
 export type CaseMode = 'fold' | 'model';
 
+/**
+ * Which classes of non-letter text survive normalisation.
+ *
+ * `letters` is the historical behaviour and stays the default: digits are dropped and only the
+ * shared punctuation set survives. A layout with no number layer cannot type a digit, and an
+ * unproducible symbol is a hard word boundary, so counting numbers has to be an explicit choice.
+ */
+export type TextClass = 'letters' | 'letters+digits' | 'letters+digits+symbols';
+
 export interface NormalizeOptions {
   caseMode: CaseMode;
-  /** Non-letter symbols to keep (default `, . ' ; / -` plus `? !`). */
+  /** Default `letters`. */
+  textClass?: TextClass;
+  /** Non-letter symbols to keep. Overrides `textClass` entirely. */
   keep?: string[];
   /** Symbols kept in the stream but treated as soft boundaries when unproducible (default `? !`). */
   soft?: string[];
-  /** Drop digits (default true; numbers are out of scope in v1). */
-  dropDigits?: boolean;
+  /** Extra symbols to keep, such as a language's own punctuation. */
+  keepAlso?: string[];
 }
 
 export const DEFAULT_KEEP = [',', '.', "'", ';', '/', '-', '?', '!'];
 export const DEFAULT_SOFT = ['?', '!'];
 
+/** Added by `letters+digits+symbols`: the punctuation a symbol layer normally carries. */
+export const SYMBOL_KEEP = [
+  ':',
+  '_',
+  '"',
+  '(',
+  ')',
+  '[',
+  ']',
+  '{',
+  '}',
+  '<',
+  '>',
+  '+',
+  '=',
+  '*',
+  '&',
+  '|',
+  '\\',
+  '#',
+  '$',
+  '%',
+  '@',
+  '^',
+  '~',
+  '`',
+];
+
+/** The kept set and whether digits survive, for one text class. */
+export function keepSetFor(tc: TextClass): { keep: string[]; digits: boolean } {
+  if (tc === 'letters') return { keep: DEFAULT_KEEP, digits: false };
+  if (tc === 'letters+digits') return { keep: DEFAULT_KEEP, digits: true };
+  return { keep: [...DEFAULT_KEEP, ...SYMBOL_KEEP], digits: true };
+}
+
 const QUOTE_MAP: Record<string, string> = {
-  '’': "'",
-  '‘': "'",
-  '‛': "'",
-  '′': "'",
-  '“': '',
-  '”': '',
-  '«': '',
-  '»': '',
-  '–': '-',
-  '—': '-',
-  '…': '.',
+  '\u2019': "'",
+  '\u2018': "'",
+  '\u201b': "'",
+  '\u2032': "'",
+  '\u201c': '',
+  '\u201d': '',
+  '\u00ab': '',
+  '\u00bb': '',
+  '\u2013': '-',
+  '\u2014': '-',
+  '\u2026': '.',
+};
+
+/** With a symbol layer in play the straight double quote is typeable, so curly ones fold onto it. */
+const QUOTE_MAP_SYMBOLS: Record<string, string> = {
+  ...QUOTE_MAP,
+  '\u201c': '"',
+  '\u201d': '"',
 };
 
 const LETTER_RE = /\p{L}/u;
@@ -56,8 +109,11 @@ function isDigit(cp: number): boolean {
  * Case folding applies to the whole text before the walk, so it matches full Unicode lowercasing.
  */
 export function normalizeText(text: string, opts: NormalizeOptions): string {
-  const keep = new Set(opts.keep ?? DEFAULT_KEEP);
-  const dropDigits = opts.dropDigits ?? true;
+  const textClass = opts.textClass ?? 'letters';
+  const profile = keepSetFor(textClass);
+  const keep = new Set([...(opts.keep ?? profile.keep), ...(opts.keepAlso ?? [])]);
+  const dropDigits = !profile.digits;
+  const quotes = textClass === 'letters+digits+symbols' ? QUOTE_MAP_SYMBOLS : QUOTE_MAP;
   const fold = opts.caseMode === 'fold';
   let nfc = text.normalize('NFC');
   if (fold) nfc = nfc.toLowerCase();
@@ -66,7 +122,7 @@ export function normalizeText(text: string, opts: NormalizeOptions): string {
   let lastSpace = true;
   for (const raw of nfc) {
     let ch = raw;
-    const mapped = QUOTE_MAP[ch];
+    const mapped = quotes[ch];
     if (mapped !== undefined) {
       if (mapped === '') continue;
       ch = mapped;

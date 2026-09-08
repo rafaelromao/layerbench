@@ -1,10 +1,12 @@
 import type {
   ActivatorDef,
+  AdaptiveTrigger,
   Binding,
   ComboDef,
   GeometryRef,
   LayerDef,
   Layout,
+  LayoutFeatures,
   TypingPathEntry,
 } from './types.js';
 
@@ -32,7 +34,7 @@ export function bindingToJson(b: Binding): Record<string, unknown> {
   let extra: Record<string, unknown> = {};
   switch (b.kind) {
     case 'kp':
-      extra = { symbol: b.symbol, keycode: b.keycode, shifted: b.shifted };
+      extra = { symbol: b.symbol, keycode: b.keycode, shifted: b.shifted, tag: b.tag };
       break;
     case 'mo':
     case 'to':
@@ -94,15 +96,13 @@ export function bindingToJson(b: Binding): Record<string, unknown> {
         symbols: b.symbols,
         then: b.then?.map(bindingToJson),
         ref: b.ref,
+        tag: b.tag,
       };
       break;
     case 'adaptive':
       extra = {
         default: b.default ? bindingToJson(b.default) : undefined,
-        triggers: b.triggers?.map((t) => ({
-          afterAny: t.afterAny,
-          binding: bindingToJson(t.binding),
-        })),
+        triggers: b.triggers?.map(triggerToJson),
         strictModifiers: b.strictModifiers,
         deadKeys: b.deadKeys,
         ref: b.ref,
@@ -139,10 +139,53 @@ function geometryToJson(g: GeometryRef): Record<string, unknown> {
   return compact({ custom: g.custom, family: g.family, name: g.name });
 }
 
+function triggerToJson(t: AdaptiveTrigger): Record<string, unknown> {
+  return compact({
+    afterAny: t.afterAny,
+    afterTags: t.afterTags,
+    binding: bindingToJson(t.binding),
+  });
+}
+
+/** Absent when the layout declares no features, so existing documents stay byte-identical. */
+function featuresToJson(f: LayoutFeatures): Record<string, unknown> {
+  return compact({
+    adaptiveKeys: f.adaptiveKeys?.map((a) =>
+      compact({
+        id: a.id,
+        label: a.label,
+        enabled: a.enabled ?? true,
+        default: bindingToJson(a.default),
+        triggers: a.triggers.map(triggerToJson),
+        strictModifiers: a.strictModifiers,
+        deadKeys: a.deadKeys,
+        at: a.at,
+      }),
+    ),
+    altRepeat:
+      f.altRepeat &&
+      compact({
+        enabled: f.altRepeat.enabled ?? true,
+        id: f.altRepeat.id ?? 'altRepeat',
+        at: f.altRepeat.at,
+        triggers: f.altRepeat.triggers.map(triggerToJson),
+        secondStage:
+          f.altRepeat.secondStage &&
+          compact({
+            afterTags: f.altRepeat.secondStage.afterTags,
+            triggers: f.altRepeat.secondStage.triggers.map(triggerToJson),
+          }),
+      }),
+    sentenceCase:
+      f.sentenceCase && compact({ ...f.sentenceCase, enabled: f.sentenceCase.enabled ?? true }),
+    capsWord: f.capsWord && compact({ ...f.capsWord, enabled: f.capsWord.enabled ?? true }),
+  });
+}
+
 function layerToJson(l: LayerDef): Record<string, unknown> {
   const bindings: Record<string, unknown> = {};
   for (const [k, b] of Object.entries(l.bindings)) bindings[k] = bindingToJson(b);
-  return compact({ id: l.id, name: l.name, shiftedTwin: l.shiftedTwin, bindings });
+  return compact({ id: l.id, name: l.name, bindings });
 }
 
 function comboToJson(c: ComboDef): Record<string, unknown> {
@@ -211,6 +254,7 @@ export function toCanonicalJson(layout: Layout): LayoutJson {
     keys: { space: layout.keys.space, shift: layout.keys.shift ?? null },
     behaviorDefaults,
     layers: layout.layers.map(layerToJson),
+    features: featuresToJson(layout.features ?? {}),
     behaviors,
     combos: (layout.combos ?? []).map(comboToJson),
     conditionalLayers: (layout.conditionalLayers ?? []).map((c) => ({ if: c.if, then: c.then })),

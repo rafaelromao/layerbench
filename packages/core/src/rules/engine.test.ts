@@ -8,7 +8,7 @@ import { simulate } from '../sim/resolver.js';
 import { classifyBand } from './bands.js';
 import { BANDS, catalogRules, sfbWhere } from './catalog.js';
 import { evaluate } from './engine.js';
-import { cyanophage, getPreset, layoutsDoc, romakAuthor } from './presets.js';
+import { cyanophage, getPreset, keysolve, layoutsDoc } from './presets.js';
 import { parseRuleSet, ruleSetFromJson, ruleSetToJson } from './serialize.js';
 import type { RuleSet } from './types.js';
 
@@ -20,6 +20,22 @@ function run(layoutId: string, ruleSet: RuleSet) {
   const sim = simulate(compiled, normalizeText(text, OPTS), OPTS);
   const { results, score } = evaluate(sim.tables, compiled, ruleSet);
   return { results, score, value: (id: string) => results.find((r) => r.id === id)?.value ?? null };
+}
+
+/**
+ * A rule set with weights and scoring on. No shipped preset enables the composite score, so the
+ * scoring path and the weighted JSON round-trip need a set of their own.
+ */
+function weightedSet(): RuleSet {
+  const weights: Record<string, number> = { sfb: 3, sfs: 1, redirect: 1, alternation: 0.5 };
+  return {
+    id: 'weighted',
+    name: 'Weighted',
+    description: 'Doc rules with a few families weighted and the composite score enabled.',
+    globals: {},
+    rules: catalogRules().map((r) => ({ ...r, score: { weight: weights[r.id] ?? 0 } })),
+    score_enabled: true,
+  };
 }
 
 describe('rules engine', () => {
@@ -90,18 +106,25 @@ describe('rules engine', () => {
   it('changes definitions and normalization per preset', () => {
     const cyan = run('qwerty', cyanophage());
     expect(cyan.value('sfb')).toBeLessThan(qwerty.value('sfb') as number);
-    const romak = run('qwerty', romakAuthor());
-    expect(romak.score.enabled).toBe(true);
-    expect(typeof romak.score.value).toBe('number');
     expect(getPreset('nope').id).toBe('layouts_doc');
   });
 
+  it('computes a composite score when the set enables it', () => {
+    const scored = run('qwerty', weightedSet());
+    expect(scored.score.enabled).toBe(true);
+    expect(typeof scored.score.value).toBe('number');
+    // No preset ships with scoring on, so an unweighted set must leave it off.
+    expect(run('qwerty', keysolve()).score.enabled).toBe(false);
+  });
+
   it('round-trips rule sets through JSON', () => {
-    const json = ruleSetToJson(romakAuthor());
+    const json = ruleSetToJson(weightedSet());
     const back = ruleSetFromJson(json);
     expect(back.ok).toBe(true);
     if (!back.ok) return;
-    expect(back.ruleSet.id).toBe('romak_author');
+    expect(back.ruleSet.id).toBe('weighted');
+    expect(back.ruleSet.score_enabled).toBe(true);
+    expect(back.ruleSet.rules.find((r) => r.id === 'sfb')?.score?.weight).toBe(3);
     const sfb = back.ruleSet.rules.find((r) => r.id === 'sfb')!;
     expect(sfb.where).toEqual(sfbWhere());
     expect(sfb.ngram).toEqual({ n: 2, skip: 0 });

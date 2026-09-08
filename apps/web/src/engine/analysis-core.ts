@@ -9,10 +9,12 @@ import {
   corpusStream,
   corpusToDoc,
   customCorpus,
+  DEFAULT_SOFT,
   enumerateProducers,
   explain,
   type Layout,
   type LayoutJson,
+  languageSoft,
   mixCorpora,
   parseLayout,
   type Report,
@@ -150,11 +152,13 @@ export class AnalysisCore {
     return cacheKey({
       structureHash: structureHash(this.layoutOf(request.layout), {
         caseMode: request.caseMode,
+        textClass: request.textClass,
         crossWord: request.crossWord,
         maxSymbols: request.maxSymbols,
         corpusId: request.corpusId,
       }),
       caseMode: request.caseMode,
+      textClass: request.textClass,
       crossWord: request.crossWord,
       maxSymbols: request.maxSymbols,
     });
@@ -172,7 +176,7 @@ export class AnalysisCore {
     if (cached) return toReportDTO(cached, key);
 
     const corpus = await this.corpus(request.corpusId);
-    const stream = corpusStream(corpus, request.caseMode);
+    const stream = corpusStream(corpus, request.caseMode, request.textClass);
     const total = Math.min(request.maxSymbols, [...stream].length);
     onProgress?.({ done: 0, total });
 
@@ -181,6 +185,8 @@ export class AnalysisCore {
       crossWord: request.crossWord,
       maxSymbols: request.maxSymbols,
       ruleSet: request.ruleSet,
+      // The corpus's own punctuation is punctuation, not a letter the layout is failing to write.
+      softSymbols: [...DEFAULT_SOFT, ...languageSoft(corpus.language)],
     });
     onProgress?.({ done: total, total });
     this.reports.set(key, report);

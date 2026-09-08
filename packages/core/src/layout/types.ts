@@ -17,12 +17,18 @@ export type HostLocale = 'symbols' | 'us' | 'us-intl' | 'abnt2';
 
 export interface AdaptiveTrigger {
   /** Last keycodes/symbols that trigger this branch. */
-  afterAny: string[];
+  afterAny?: string[];
+  /**
+   * Tags of the binding that produced the last press. Lets a branch depend on *how* a symbol was
+   * typed, not just which symbol it was — `u` typed by a `qu` macro is not the same as a plain `u`.
+   * When both are given the branch needs the symbol *and* one of the tags.
+   */
+  afterTags?: string[];
   binding: Binding;
 }
 
 export type Binding =
-  | { kind: 'kp'; symbol?: string; keycode?: string; shifted?: string }
+  | { kind: 'kp'; symbol?: string; keycode?: string; shifted?: string; tag?: string }
   | { kind: 'trans' }
   | { kind: 'none' }
   | { kind: 'mo'; layer: string }
@@ -56,7 +62,15 @@ export type Binding =
       inactive: Binding;
     }
   | { kind: 'tap_dance'; bindings: Binding[] }
-  | { kind: 'macro'; steps?: Binding[]; symbols?: string; then?: Binding[]; ref?: string }
+  | {
+      kind: 'macro';
+      steps?: Binding[];
+      symbols?: string;
+      then?: Binding[];
+      ref?: string;
+      /** Recorded as the last press's tag, for adaptive branches that key off it. */
+      tag?: string;
+    }
   | {
       kind: 'adaptive';
       default?: Binding;
@@ -75,8 +89,6 @@ export type BindingKind = Binding['kind'];
 export interface LayerDef {
   id: string;
   name?: string;
-  /** Layer holding pre-shifted copies of this layer's alphas (used by shift modeling). */
-  shiftedTwin?: string;
   /** Key id → binding. The special key `*` sets the default for unlisted keys (default: trans; base layer: none). */
   bindings: Record<string, Binding>;
 }
@@ -122,6 +134,84 @@ export type GeometryRef =
   | { preset: string; columnOffsets?: Record<string, number> }
   | { custom: GeometryKey[]; family?: 'columnar' | 'rowstagger'; name?: string };
 
+/** Where a feature puts its binding: a key on a layer. */
+export interface FeaturePlacement {
+  layer: string;
+  key: string;
+}
+
+/** A key whose output depends on the previous press — a "magic" key. */
+export interface AdaptiveKeyFeature {
+  /** Behaviour name. Also part of the producer id, so renaming it changes typing-path ids. */
+  id: string;
+  label?: string;
+  enabled?: boolean;
+  /** Output when no trigger matches. */
+  default: Binding;
+  triggers: AdaptiveTrigger[];
+  strictModifiers?: boolean;
+  deadKeys?: string[];
+  /** Keys the behaviour is bound to. Omit to place it yourself with `{ kind: 'ref' }`. */
+  at?: FeaturePlacement[];
+}
+
+/** A repeat key whose output depends on the previous press. */
+export interface AltRepeatFeature {
+  enabled?: boolean;
+  /** Behaviour name (default `altRepeat`). */
+  id?: string;
+  at?: FeaturePlacement[];
+  /** First stage; the implicit default is the repeat key. */
+  triggers: AdaptiveTrigger[];
+  /**
+   * Branches that fire only when the previous press carried one of `afterTags` — what replaces the
+   * one-shot "alt repeat 2" layer the firmware needs.
+   */
+  secondStage?: { afterTags: string[]; triggers: AdaptiveTrigger[] };
+}
+
+/** Shift the first letter after sentence-ending punctuation. */
+export interface SentenceCaseFeature {
+  enabled?: boolean;
+  /** Punctuation that ends a sentence (default `.`, `?`, `!`). */
+  after?: string[];
+  /** Key that types the space; `keys.space` when omitted. */
+  key?: string;
+  /** Layers whose space key gets the behaviour; the base layer when omitted. */
+  on?: string[];
+  /** Modifier armed for the next press (default `LSHIFT`). */
+  mod?: Mod;
+}
+
+/** Hold shift for the rest of the word. */
+export interface CapsWordFeature {
+  enabled?: boolean;
+  /** Key that turns it on; `keys.shift.key` when omitted. */
+  key?: string;
+  on?: string[];
+  /** Modifiers that must already be active for the key to turn it on (default: both shifts). */
+  triggerMods?: Mod[];
+  /** Modifiers it applies (default `LSHIFT`). */
+  mods?: Mod[];
+  /** Symbols that do not end the word. */
+  continueList?: string[];
+}
+
+/**
+ * Typing behaviours that firmware implements with layers, declared here as what they are.
+ *
+ * A keymap needs a pre-shifted copy of a layer, or a one-shot layer armed by a macro, only because
+ * of what firmware can express. The simulator has no such limit, so these are declared once and the
+ * compiler desugars them into ordinary bindings. That keeps the layer list the set of layers a
+ * typist actually reaches, and makes the behaviours editable without hand-written JSON.
+ */
+export interface LayoutFeatures {
+  adaptiveKeys?: AdaptiveKeyFeature[];
+  altRepeat?: AltRepeatFeature;
+  sentenceCase?: SentenceCaseFeature;
+  capsWord?: CapsWordFeature;
+}
+
 export interface Layout {
   format: 'layoutmaster/layout@1';
   id?: string;
@@ -138,6 +228,7 @@ export interface Layout {
   };
   behaviorDefaults?: BehaviorDefaults;
   layers: LayerDef[];
+  features?: LayoutFeatures;
   behaviors?: Record<string, Binding>;
   combos?: ComboDef[];
   conditionalLayers?: ConditionalLayerDef[];

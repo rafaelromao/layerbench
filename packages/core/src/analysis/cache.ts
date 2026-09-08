@@ -44,10 +44,11 @@ export class ReportCache {
 export interface CacheKeyParts {
   structureHash: string;
   caseMode: string;
+  textClass?: string;
   crossWord: string;
   maxSymbols?: number;
 }
 
 export function cacheKey(p: CacheKeyParts): string {
-  return `${p.structureHash}|${p.caseMode}|${p.crossWord}|${p.maxSymbols ?? 'all'}`;
+  return `${p.structureHash}|${p.caseMode}|${p.textClass ?? 'letters'}|${p.crossWord}|${p.maxSymbols ?? 'all'}`;
 }

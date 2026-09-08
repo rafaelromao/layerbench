@@ -142,9 +142,10 @@ Aggregates: `percent_of_ngrams`, `percent_of_keystrokes`, `count`, `per100`, `su
 
 ## Differences from the Elixir implementation
 
-This engine reproduces the reference implementation at `07b81b9` to within 1e-6 on every metric, pinned
-by the reports in `packages/core/golden/`. Three behaviors are deliberately not reproduced, because
-they are defects rather than definitions; `packages/core/golden/DEVIATIONS.md` has the detail.
+This engine reproduced the reference implementation at `07b81b9` to within 1e-6 on every metric.
+The reports in `packages/core/golden/` are now regenerated from this engine instead, and pin every
+number here; `packages/core/golden/GOLDENS.md` records what changed. Three reference behaviours were
+deliberately not reproduced, because they are defects rather than definitions.
 
 - **Lateral stretches now have values.** `lsb` and `lss` compare a distance against a rule-set
   global. The reference substitutes such a reference only when the whole value is a string, and here

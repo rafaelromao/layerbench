@@ -1,0 +1,111 @@
+# Golden reports
+
+The files in this directory pin every number the engine produces. A regression in the simulator, the
+n-gram tables or any rule shows up as a failing assertion in `src/golden/reports.test.ts`.
+
+## Regenerating
+
+```bash
+pnpm goldens
+```
+
+On a clean tree this must produce **no change**. A dirty tree means the engine's output moved —
+review the diff and decide whether that was intended before committing it.
+
+The dump runs through vitest (`src/golden/dump.test.ts`, gated on `GOLDENS=1`) because that is the
+repository's only TypeScript runner, and because it must resolve `golden/` and `fixtures/` exactly
+the way the parity suite does. `src/golden/report.ts` holds the matrix and the payload builder, and
+both the dump and the suite use it, so the two cannot drift apart.
+
+## What is covered
+
+`<layout>__<corpus>__<preset>__<case_mode>__<universe>.json`, from `goldenMatrix()`:
+
+| Axis | Values |
+|---|---|
+| layout | `magic-romak`, `romak-34`, `qwerty` |
+| corpus | `fixture_en`, `fixture_pt`, `fixture_enpt` |
+| preset | `layouts_doc`, `cyanophage` |
+| case mode | `fold` everywhere, plus two `model` runs for `magic-romak` |
+| universe | `no_space`, `with_space` |
+
+Layouts are resolved from `layouts/<id>.json`, **not** from the bundled registry, so a layout can
+leave the shipped catalogue and stay regression-tested here. `layouts/` also holds the canonical
+document of every bundled layout, which `src/golden/layouts.test.ts` asserts — those are the
+storage, share-link and hashing formats, so drift there breaks interoperability.
+
+`inline-magic-romak.txt` is the deflate + base64url share blob, asserted by the web app's
+`url/inline.test.ts`.
+
+## History: these were dumped from the Elixir reference, and no longer are
+
+The first set of reports came from the Elixir implementation that this application replaced, which
+survives only in the repository's history at `07b81b9`. Because that generator cannot be run from
+this working tree, the reports were frozen artefacts: the engine could not evolve without either
+abandoning them or hand-editing them.
+
+They have since been regenerated from this engine. Comparing the two sets, with JSON key order
+normalised, the differences were fully accounted for:
+
+- **Nothing structural changed.** Simulation statistics, n-gram totals, the logical-key registry,
+  producer enumeration and ordering, coverage, run histograms and every `explain` trace were
+  identical to the reference.
+- **`lsb` and `lss` gained real values.** Both rules compare a horizontal distance against a
+  rule-set global, `{ x_distance: { min: "$global.lsb_adjacent_u" } }`. The reference substituted
+  `$global.` references only when the whole predicate value was a string; here the reference sits one
+  level deeper, inside the numeric condition, so it was never substituted and the surviving
+  comparison `number >= "$global.lsb_adjacent_u"` is false for every number in Erlang term order.
+  Lateral stretches never matched, and both rules reported `0` with no items. This engine resolves
+  globals wherever they appear, so the rules now report what the metric glossary documents.
+- **The composite score moved in 12 reports**, entirely as a consequence of those two rules
+  contributing real values and bands.
+- **Item lists differ where counts tie at the top-50 cutoff.** The reference emitted tied items in
+  map-hash order, so which member of a tie group survived truncation was arbitrary. This engine's
+  order is deterministic, and the suite now compares item lists exactly.
+
+Two further reference defects were already fixed before the re-baseline and no longer need
+recording as differences: the Analyze view's `travel` heat mode looked up a rule id the catalog calls
+`finger_travel` and silently fell back to usage heat, and `relabel_eligible?` compared a position
+index against the whole `shift_key` map instead of `shift_key.key`.
+
+## Second re-baseline: features instead of layers
+
+Magic Romak lost four layers — `sen_case`, `case_a1`, `sft_a2` and `altrep2` — which existed only
+because firmware needs them. Sentence case now arms a one-shot shift, caps word is the `caps_word`
+behaviour, shifted Alpha 2 is simply shift state, and the alt-repeat follow-ups match on the tag the
+accent macro leaves behind. The layout declares all four in a `features` block, and the compiler
+desugars them into the same primitives it always used — so a golden pins the desugared bindings, and
+a document that spells the behaviours out longhand still simulates identically.
+
+What moved, measured against the previous set:
+
+- **The other 24 reports are byte-identical.** The feature machinery is dormant unless a layout
+  declares it, and Romak 24 and Romak 34 still model their keymaps literally, one-shot layer and all.
+- **Every typing trace is unchanged** — all 15 explain words, in both fold and model mode.
+- **Fold-mode keystrokes are unchanged.** `per_layer` collapses from seven layers to three, and
+  `layer_taps` / `one_shot_activations` fall by the count the sentence-case layer used to add.
+- **`wasted_one_shots` collapses** (38 → 0, 146 → 0, 356 → 37). Nearly all of it was the accent
+  macro arming a layer the typist never had to visit — an artifact of the workaround, reported until
+  now as a real cost. The `Wasted one-shots` rule and `Layer distribution` move accordingly.
+- **Model-mode coverage on the fixtures gets worse, and that is correct.** A one-shot shift cannot
+  be cancelled, so a *lowercase* letter straight after `. ` is genuinely unproducible — the firmware
+  behaves the same way. The pre-shifted layer looked better only because `upperCopy` copied `kp` and
+  `macro` bindings and silently skipped the adaptive magic key, letting `h` and `v` through
+  unshifted.
+
+  The two model-mode cells therefore measure a **fixture artifact**, not shift modelling:
+  `fixture_en` is a shuffled word bag with **136 lowercase sentence starts and no uppercase ones**.
+  On real cased prose the same layout reports zero unproducible symbols and spends no shift press at
+  a sentence start, which `src/layout/features.test.ts` pins directly. Extending the fixtures with
+  real sentences would make these cells meaningful; it would also move every other report, so it is
+  left as its own change.
+
+`tag` on a binding and `afterTags` on an adaptive trigger are LayoutMaster extensions with no ZMK
+counterpart. The firmware distinguishes "the previous press came from Alpha 2" by arming the
+`ALTREP2` one-shot layer; the engine records a tag instead. Observable output is the same, and
+`features.test.ts` pins the case that motivates it — `u` typed by the `qu` macro offers a different
+follow-up from a plain `u`, which `lastSymbol` alone cannot express.
+
+## Not compared
+
+`elapsed_ms` and the structure hash. Everything else in a report file is asserted.

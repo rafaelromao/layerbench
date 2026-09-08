@@ -19,7 +19,7 @@ import { compareRows } from './compare-rows.js';
 import { useLayout } from './useLayout.js';
 import { useRuleSet } from './useRuleSet.js';
 
-const DEFAULT_B = 'romak-34';
+const DEFAULT_B = 'qwerty';
 
 export function CompareView() {
   const search = useSearch({ strict: false }) as RawSearch;
@@ -48,6 +48,7 @@ export function CompareView() {
           layout: toCanonicalJson(layout),
           corpusId: params.corpus,
           caseMode: params.caseMode,
+          textClass: params.textClass,
           crossWord: ruleSet.globals.cross_word ?? 'reset',
           maxSymbols: params.sample,
           ruleSet,

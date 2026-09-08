@@ -1,3 +1,4 @@
+import type { TextClass } from '@layoutmaster/core';
 import { PRESET_IDS } from '@layoutmaster/core/rules';
 
 /**
@@ -22,6 +23,7 @@ export interface Params {
   /** Preset id or `saved:<id>`. */
   preset: string;
   caseMode: CaseMode;
+  textClass: TextClass;
   universe: Universe;
   layer: number;
   heat: HeatMode;
@@ -35,6 +37,7 @@ export const DEFAULT_PARAMS: Params = {
   mix: 50,
   preset: 'layouts_doc',
   caseMode: 'fold',
+  textClass: 'letters',
   universe: 'no_space',
   layer: 0,
   heat: 'usage',
@@ -57,6 +60,19 @@ function int(v: string | undefined, fallback: number, min: number, max: number):
   return Math.min(max, Math.max(min, n));
 }
 
+/** Short URL spellings for the text class; the default is omitted from a link entirely. */
+export const TEXT_CLASS_PARAM: Record<TextClass, string> = {
+  letters: 'letters',
+  'letters+digits': 'num',
+  'letters+digits+symbols': 'sym',
+};
+
+function validTextClass(v: string | undefined): TextClass {
+  if (v === 'num') return 'letters+digits';
+  if (v === 'sym') return 'letters+digits+symbols';
+  return 'letters';
+}
+
 function validPreset(v: string | undefined): string {
   if (v === undefined) return DEFAULT_PARAMS.preset;
   if (v.startsWith('saved:')) return v;
@@ -73,6 +89,7 @@ export function parseParams(raw: RawSearch): Params {
     mix: int(raw.mix, DEFAULT_PARAMS.mix, 0, 100),
     preset: validPreset(raw.rules),
     caseMode: raw.case === 'model' ? 'model' : 'fold',
+    textClass: validTextClass(raw.text),
     universe: raw.space === '1' ? 'with_space' : 'no_space',
     layer: int(raw.layer, DEFAULT_PARAMS.layer, 0, 31),
     heat: heat && HEAT_MODES.includes(heat) ? heat : DEFAULT_PARAMS.heat,
@@ -93,6 +110,7 @@ export function toSearch(p: Params, overrides: Partial<Params> = {}): RawSearch 
   }
   if (q.preset !== DEFAULT_PARAMS.preset) out.rules = q.preset;
   if (q.caseMode === 'model') out.case = 'model';
+  if (q.textClass !== DEFAULT_PARAMS.textClass) out.text = TEXT_CLASS_PARAM[q.textClass];
   if (q.universe === 'with_space') out.space = '1';
   if (q.layer !== DEFAULT_PARAMS.layer) out.layer = String(q.layer);
   if (q.heat !== DEFAULT_PARAMS.heat) out.heat = q.heat;

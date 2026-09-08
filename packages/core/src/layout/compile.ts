@@ -1,12 +1,12 @@
 import { applyFingering, getGeometryPreset } from '../geometry/presets.js';
 import type { Finger, Geometry, GeometryKey, Hand } from '../geometry/types.js';
+import { expandFeatures } from './features.js';
 import type { BehaviorDefaults, Binding, HostLocale, Layout, Mod } from './types.js';
 
 export interface CompiledLayer {
   idx: number;
   id: string;
   name: string;
-  shiftedTwin: number | null;
   /** Binding per position index (physical keys only). Refs resolved, `*` default applied. */
   bindings: Binding[];
   explicit: boolean[];
@@ -48,7 +48,12 @@ export interface ResolvedBehaviorDefaults {
 }
 
 export interface CompiledLayout {
+  /** The authored document. Hashing, storage and share links use this. */
   layout: Layout;
+  /** The document after feature expansion: what the layers and combos were compiled from. */
+  expanded: Layout;
+  /** `layerId` → `keyId` → the feature that generated the binding, for the editor. */
+  featureOwned: Map<string, Map<string, string>>;
   geometry: Geometry;
   keys: GeometryKey[];
   positions: PositionInfo[];
@@ -123,6 +128,7 @@ function resolveRefs(
   if (cur.kind === 'adaptive' && cur.triggers) {
     out.triggers = cur.triggers.map((t) => ({
       afterAny: t.afterAny,
+      afterTags: t.afterTags,
       binding: resolveRefs(t.binding, behaviors, depth + 1, errors),
     }));
   }
@@ -162,7 +168,11 @@ function applyDefaults(b: Binding, defaults: ResolvedBehaviorDefaults): Binding 
         return {
           ...x,
           default: x.default ? walk(x.default) : undefined,
-          triggers: x.triggers?.map((t) => ({ afterAny: t.afterAny, binding: walk(t.binding) })),
+          triggers: x.triggers?.map((t) => ({
+            afterAny: t.afterAny,
+            afterTags: t.afterTags,
+            binding: walk(t.binding),
+          })),
         };
       default:
         return x;
@@ -259,9 +269,14 @@ export function buildGeometry(layout: Layout): Geometry {
   return applyFingering(g, layout.fingering ?? 'standard');
 }
 
-export function compileLayout(layout: Layout): CompiledLayout {
+export function compileLayout(authored: Layout): CompiledLayout {
   const errors: string[] = [];
   const warnings: string[] = [];
+  // Features desugar into behaviours and layer bindings before anything else looks at the layers,
+  // so the rest of the compiler — and the whole simulator — sees only ordinary bindings.
+  const expansion = expandFeatures(authored);
+  const layout = expansion.layout;
+  errors.push(...expansion.errors);
   const geometry = buildGeometry(layout);
   const keys = geometry.keys;
   const keyIndex = new Map<string, number>();
@@ -305,10 +320,7 @@ export function compileLayout(layout: Layout): CompiledLayout {
           errors.push(`Layer ${l.id}: binding references unknown layer ${ref}`);
       }
     }
-    const twin = l.shiftedTwin !== undefined ? layerIndex.get(l.shiftedTwin) : undefined;
-    if (l.shiftedTwin !== undefined && twin === undefined)
-      errors.push(`Layer ${l.id}: unknown shiftedTwin ${l.shiftedTwin}`);
-    return { idx, id: l.id, name: l.name ?? l.id, shiftedTwin: twin ?? null, bindings, explicit };
+    return { idx, id: l.id, name: l.name ?? l.id, bindings, explicit };
   });
 
   const positions: PositionInfo[] = keys.map((k, idx) => ({
@@ -403,7 +415,9 @@ export function compileLayout(layout: Layout): CompiledLayout {
   if (errors.length) throw new LayoutCompileError(dedupe(errors));
 
   return {
-    layout,
+    layout: authored,
+    expanded: layout,
+    featureOwned: expansion.owned,
     geometry,
     keys,
     positions,

@@ -25,6 +25,7 @@ export function fnv1a(text: string): string {
 
 export interface HashOptions {
   caseMode?: string;
+  textClass?: string;
   crossWord?: string;
   maxSymbols?: number | null;
   corpusId?: string | null;
@@ -40,6 +41,7 @@ export function structureHash(layout: Layout, opts: HashOptions = {}): string {
     stableStringify({
       layout: toCanonicalJson(layout),
       case_mode: opts.caseMode ?? 'fold',
+      text_class: opts.textClass ?? 'letters',
       cross_word: opts.crossWord ?? 'reset',
       max_symbols: opts.maxSymbols ?? 'infinity',
       corpus: opts.corpusId ?? null,

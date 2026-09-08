@@ -22,7 +22,7 @@ describe('Analyze', () => {
 
   it('explains how a word is typed', async () => {
     const user = userEvent.setup();
-    renderRoute('/?layout=romak-24&corpus=pt-br-work&sample=20000');
+    renderRoute('/?layout=magic-romak&corpus=pt-br-work&sample=20000');
     await screen.findByText('Same finger bigrams');
 
     await user.type(screen.getByLabelText('How is this typed?'), 'ação');

@@ -42,7 +42,7 @@ describe('Library', () => {
 
   it('shows a layout saved earlier and offers to analyze it', async () => {
     const storage = freshStorage();
-    const layout = bundledLayout('romak-24')!;
+    const layout = bundledLayout('colemak-dh')!;
     await storage.put('layouts', 'my-romak', toCanonicalJson({ ...layout, name: 'My Romak' }));
 
     renderRoute('/library', { storage });
@@ -58,7 +58,7 @@ describe('Library', () => {
 
 describe('Compare', () => {
   it('analyzes both layouts and ranks each metric', async () => {
-    renderRoute('/compare?layout=romak-24&b=romak-34&corpus=pt-br-work&sample=20000', {
+    renderRoute('/compare?layout=magic-romak&b=graphite&corpus=pt-br-work&sample=20000', {
       storage: freshStorage(),
     });
 

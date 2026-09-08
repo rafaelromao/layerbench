@@ -1,4 +1,11 @@
-import type { CorpusManifest, LayoutJson, RuleResult, RuleSet, Score } from '@layoutmaster/core';
+import type {
+  CorpusManifest,
+  LayoutJson,
+  RuleResult,
+  RuleSet,
+  Score,
+  TextClass,
+} from '@layoutmaster/core';
 
 /**
  * What crosses the worker boundary. Tables, the registry and the compiled layout stay inside the
@@ -10,6 +17,8 @@ export interface AnalyzeRequest {
   layout: LayoutJson;
   corpusId: string;
   caseMode: 'fold' | 'model';
+  /** Which non-letter classes the corpus contributes. Default `letters`, as it always was. */
+  textClass: TextClass;
   crossWord: 'reset' | 'bridge';
   maxSymbols: number;
   ruleSet: RuleSet;

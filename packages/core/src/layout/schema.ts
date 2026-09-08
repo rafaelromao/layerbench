@@ -5,6 +5,19 @@ const ModSchema = z.enum(['LSHIFT', 'RSHIFT', 'LCTRL', 'RCTRL', 'LALT', 'RALT', 
 
 const FingerSchema = z.enum(['LP', 'LR', 'LM', 'LI', 'LT', 'RT', 'RI', 'RM', 'RR', 'RP']);
 
+/** An adaptive branch: matched on the previous press's symbol, its binding's tag, or both. */
+const TriggerSchema: z.ZodType<unknown> = z.lazy(() =>
+  z
+    .object({
+      afterAny: z.array(z.string()).optional(),
+      afterTags: z.array(z.string()).optional(),
+      binding: BindingSchema,
+    })
+    .refine((t) => t.afterAny !== undefined || t.afterTags !== undefined, {
+      message: 'a trigger needs afterAny, afterTags, or both',
+    }),
+);
+
 export const BindingSchema: z.ZodType<unknown> = z.lazy(() =>
   z.union([
     z.object({
@@ -12,6 +25,7 @@ export const BindingSchema: z.ZodType<unknown> = z.lazy(() =>
       symbol: z.string().optional(),
       keycode: z.string().optional(),
       shifted: z.string().optional(),
+      tag: z.string().optional(),
     }),
     z.object({ kind: z.literal('trans') }),
     z.object({ kind: z.literal('none') }),
@@ -71,13 +85,12 @@ export const BindingSchema: z.ZodType<unknown> = z.lazy(() =>
       symbols: z.string().optional(),
       then: z.array(BindingSchema).optional(),
       ref: z.string().optional(),
+      tag: z.string().optional(),
     }),
     z.object({
       kind: z.literal('adaptive'),
       default: BindingSchema.optional(),
-      triggers: z
-        .array(z.object({ afterAny: z.array(z.string()), binding: BindingSchema }))
-        .optional(),
+      triggers: z.array(TriggerSchema).optional(),
       strictModifiers: z.boolean().optional(),
       deadKeys: z.array(z.string()).optional(),
       ref: z.string().optional(),
@@ -122,6 +135,59 @@ const GeometryKeySchema = z
     thumb: k.thumb ?? k.row === 3,
     inner: k.inner ?? k.col === 5,
   }));
+
+const PlacementSchema = z.object({ layer: z.string(), key: z.string() });
+
+/** Declarative special features; the compiler desugars them into behaviours and bindings. */
+const FeaturesSchema = z.object({
+  adaptiveKeys: z
+    .array(
+      z.object({
+        id: z.string(),
+        label: z.string().optional(),
+        enabled: z.boolean().optional(),
+        default: BindingSchema,
+        triggers: z.array(TriggerSchema).default([]),
+        strictModifiers: z.boolean().optional(),
+        deadKeys: z.array(z.string()).optional(),
+        at: z.array(PlacementSchema).optional(),
+      }),
+    )
+    .optional(),
+  altRepeat: z
+    .object({
+      enabled: z.boolean().optional(),
+      id: z.string().optional(),
+      at: z.array(PlacementSchema).optional(),
+      triggers: z.array(TriggerSchema).default([]),
+      secondStage: z
+        .object({
+          afterTags: z.array(z.string()).min(1),
+          triggers: z.array(TriggerSchema).default([]),
+        })
+        .optional(),
+    })
+    .optional(),
+  sentenceCase: z
+    .object({
+      enabled: z.boolean().optional(),
+      after: z.array(z.string()).optional(),
+      key: z.string().optional(),
+      on: z.array(z.string()).optional(),
+      mod: ModSchema.optional(),
+    })
+    .optional(),
+  capsWord: z
+    .object({
+      enabled: z.boolean().optional(),
+      key: z.string().optional(),
+      on: z.array(z.string()).optional(),
+      triggerMods: z.array(ModSchema).optional(),
+      mods: z.array(ModSchema).optional(),
+      continueList: z.array(z.string()).optional(),
+    })
+    .optional(),
+});
 
 export const LayoutSchema = z.object({
   format: z.literal('layoutmaster/layout@1'),
@@ -174,11 +240,11 @@ export const LayoutSchema = z.object({
       z.object({
         id: z.string(),
         name: z.string().optional(),
-        shiftedTwin: z.string().optional(),
         bindings: z.record(z.string(), BindingSchema),
       }),
     )
     .min(1),
+  features: FeaturesSchema.optional(),
   behaviors: z.record(z.string(), BindingSchema).optional(),
   combos: z
     .array(

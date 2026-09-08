@@ -15,6 +15,7 @@ import {
   BehaviorsPanel,
   BindingPanel,
   CombosPanel,
+  FeaturesPanel,
   GeometryPanel,
   JsonPanel,
   LayersPanel,
@@ -31,6 +32,7 @@ const EDIT_MAX_SYMBOLS = 100_000;
 const PANELS: [Panel, string][] = [
   ['binding', 'Key'],
   ['layers', 'Layers'],
+  ['features', 'Features'],
   ['geometry', 'Geometry'],
   ['combos', 'Combos'],
   ['behaviors', 'Behaviors'],
@@ -103,11 +105,12 @@ function Editor({
       layout: toCanonicalJson(state.layout),
       corpusId: params.corpus,
       caseMode: params.caseMode,
+      textClass: params.textClass,
       crossWord: 'reset',
       maxSymbols: Math.min(params.sample, EDIT_MAX_SYMBOLS),
       ruleSet,
     }),
-    [state.layout, params.corpus, params.caseMode, params.sample, ruleSet],
+    [state.layout, params.corpus, params.caseMode, params.textClass, params.sample, ruleSet],
   );
 
   const { report, loading } = useAnalysis(request);
@@ -326,6 +329,7 @@ function Editor({
 
             {state.panel === 'binding' && <BindingPanel state={state} send={send} />}
             {state.panel === 'layers' && <LayersPanel state={state} send={send} />}
+            {state.panel === 'features' && <FeaturesPanel state={state} send={send} />}
             {state.panel === 'geometry' && <GeometryPanel state={state} send={send} />}
             {state.panel === 'combos' && <CombosPanel state={state} send={send} />}
             {state.panel === 'behaviors' && <BehaviorsPanel state={state} send={send} />}

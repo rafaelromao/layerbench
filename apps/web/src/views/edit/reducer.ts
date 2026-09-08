@@ -3,6 +3,7 @@ import {
   type CompiledLayout,
   compileLayout,
   type Layout,
+  type LayoutFeatures,
   type Mod,
   safeParseLayout,
   slug,
@@ -12,6 +13,7 @@ import {
 export type Panel =
   | 'binding'
   | 'layers'
+  | 'features'
   | 'geometry'
   | 'combos'
   | 'behaviors'
@@ -49,7 +51,6 @@ export type EditAction =
   | { type: 'addLayer'; name: string }
   | { type: 'removeLayer'; id: string }
   | { type: 'renameLayer'; id: string; name: string }
-  | { type: 'setTwin'; id: string; twin: string | null }
   | {
       type: 'setKeys';
       space?: string;
@@ -68,6 +69,7 @@ export type EditAction =
   | { type: 'exportJson' }
   | { type: 'jsonChange'; text: string }
   | { type: 'importJson'; text: string }
+  | { type: 'setFeatures'; features: LayoutFeatures }
   | { type: 'setPanel'; panel: Panel }
   | { type: 'saved'; id: string; name: string };
 
@@ -227,11 +229,12 @@ export function editReducer(state: EditState, action: EditAction): EditState {
       return withLayout(state, { ...state.layout, layers }, { lastSwap: null });
     }
 
-    case 'setTwin': {
-      const layers = state.layout.layers.map((l) =>
-        l.id === action.id ? { ...l, shiftedTwin: action.twin ?? undefined } : l,
-      );
-      return withLayout(state, { ...state.layout, layers }, { lastSwap: null });
+    case 'setFeatures': {
+      const hasAny = Object.values(action.features).some((v) => v !== undefined);
+      const layout = { ...state.layout };
+      if (hasAny) layout.features = action.features;
+      else delete layout.features;
+      return withLayout(state, layout, { lastSwap: null });
     }
 
     case 'setKeys': {

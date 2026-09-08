@@ -136,4 +136,55 @@ describe('Edit', () => {
     expect(await screen.findByText('cannot remove the base layer')).toBeInTheDocument();
     vi.restoreAllMocks();
   });
+
+  it("shows Magic Romak's special features and lets one be turned off", async () => {
+    const user = userEvent.setup();
+    renderRoute('/edit?layout=magic-romak&corpus=pt-br-work&sample=20000', {
+      storage: freshStorage(),
+    });
+    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+
+    // The four behaviours firmware needs extra layers for are no longer layers.
+    await user.click(screen.getByRole('tab', { name: 'Layers' }));
+    expect(screen.getByLabelText('Name of layer alpha1')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Name of layer sen_case')).toBeNull();
+    expect(screen.queryByLabelText('Name of layer sft_a2')).toBeNull();
+    expect(screen.queryByLabelText('Name of layer altrep2')).toBeNull();
+
+    await user.click(screen.getByRole('tab', { name: 'Features' }));
+    expect(screen.getByLabelText('Sentence case')).toBeChecked();
+    expect(screen.getByLabelText('Caps word')).toBeChecked();
+    expect(screen.getByLabelText('Magic key')).toBeChecked();
+
+    // The adaptive triggers are visible without opening the JSON panel.
+    const magic = screen.getByRole('table', { name: 'Magic key triggers' });
+    expect(within(magic).getByText('v')).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText('Sentence case'));
+    expect(screen.getByLabelText('Sentence case')).not.toBeChecked();
+    expect(await screen.findByText('unsaved')).toBeInTheDocument();
+  });
+
+  it('builds a macro that types text and then arms a layer', async () => {
+    const user = userEvent.setup();
+    renderRoute('/edit?layout=magic-romak&corpus=pt-br-work&sample=20000', {
+      storage: freshStorage(),
+    });
+    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+
+    await user.click(screen.getByRole('button', { name: /^Key LTR/ }));
+    await user.selectOptions(screen.getByLabelText('Binding kind'), 'macro');
+
+    await user.click(screen.getByRole('button', { name: 'Add step' }));
+    await user.type(screen.getByLabelText('Step 1 text'), 'ão');
+    await user.click(screen.getByRole('button', { name: 'Add step' }));
+    await user.selectOptions(screen.getByLabelText('Step 2 kind'), 'sl');
+    await user.selectOptions(screen.getByLabelText('Step 2 layer'), 'alpha2');
+    await user.type(screen.getByLabelText('Binding tag'), 'alpha2');
+    await user.click(screen.getByRole('button', { name: /^Apply to LTR/ }));
+
+    // The key now types the text and arms the layer, and says so on its legend.
+    expect(await screen.findByRole('button', { name: /^Key LTR: ão/ })).toBeInTheDocument();
+    expect(await screen.findByText('unsaved')).toBeInTheDocument();
+  });
 });

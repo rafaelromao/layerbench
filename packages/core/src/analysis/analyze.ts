@@ -14,6 +14,12 @@ export interface AnalyzeOptions {
   maxSymbols?: number;
   ruleSet?: RuleSet;
   typingPaths?: SimulateOptions['typingPaths'];
+  /**
+   * Punctuation that counts as soft-dropped rather than unproducible when the layout cannot type
+   * it. Defaults to the simulator's `?` and `!`; a language's own marks belong here too, or every
+   * Spanish question fills the coverage panel with `¿` on a layout that simply has no key for it.
+   */
+  softSymbols?: string[];
 }
 
 /** Everything one run produces. Tables and the compiled layout stay in memory for relabeling. */
@@ -53,6 +59,7 @@ export function analyze(
     crossWord,
     maxSymbols: opts.maxSymbols,
     typingPaths: opts.typingPaths,
+    softSymbols: opts.softSymbols,
   });
   const { results, score, globals } = evaluate(sim.tables, compiled, ruleSet);
 

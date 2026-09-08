@@ -12,10 +12,10 @@ beforeEach(() => {
 
 describe('saved documents', () => {
   it('stores, lists, reloads and deletes a layout', async () => {
-    const layout = bundledLayout('romak-24')!;
+    const layout = bundledLayout('colemak-dh')!;
     const doc = toCanonicalJson(layout);
     const id = slug(layout.name);
-    expect(id).toBe('romak-24');
+    expect(id).toBe('colemak-dh');
 
     expect(await adapter.list('layouts')).toEqual([]);
 
@@ -24,7 +24,7 @@ describe('saved documents', () => {
 
     const entries = await adapter.list('layouts');
     expect(entries).toHaveLength(1);
-    expect(entries[0]).toMatchObject({ id, name: 'Romak 24', layers: 4, geometry: '1333+2' });
+    expect(entries[0]).toMatchObject({ id, name: 'Colemak-DH', layers: 1, geometry: '3x5+2' });
 
     const loaded = await adapter.get('layouts', id);
     expect(loaded?.doc).toEqual(doc);

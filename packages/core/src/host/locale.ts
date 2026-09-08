@@ -165,15 +165,36 @@ const COMPOSE: Record<string, Record<string, string>> = {
   '`': { a: 'à', e: 'è', i: 'ì', o: 'ò', u: 'ù', A: 'À', E: 'È', I: 'Ì', O: 'Ò', U: 'Ù' },
   '~': { a: 'ã', o: 'õ', n: 'ñ', A: 'Ã', O: 'Õ', N: 'Ñ' },
   '^': { a: 'â', e: 'ê', i: 'î', o: 'ô', u: 'û', A: 'Â', E: 'Ê', I: 'Î', O: 'Ô', U: 'Û' },
-  '¨': { a: 'ä', e: 'ë', i: 'ï', o: 'ö', u: 'ü', A: 'Ä', E: 'Ë', I: 'Ï', O: 'Ö', U: 'Ü' },
+  '\u00a8': {
+    a: '\u00e4',
+    e: '\u00eb',
+    i: '\u00ef',
+    o: '\u00f6',
+    u: '\u00fc',
+    y: '\u00ff',
+    A: '\u00c4',
+    E: '\u00cb',
+    I: '\u00cf',
+    O: '\u00d6',
+    U: '\u00dc',
+    Y: '\u0178',
+  },
+  /**
+   * Ligatures and the sharp s, reached with a compose key rather than a dead key — the same
+   * two-press shape, and the only way `\u0153` or `\u00df` is typeable on a host layout with no key for it.
+   * A layout opts in with `{ kind: 'dead_key', diacritic: 'compose' }`.
+   */
+  compose: { o: '\u0153', a: '\u00e6', O: '\u0152', A: '\u00c6', s: '\u00df' },
 };
 
 const DEAD_STANDALONE: Record<string, string> = {
-  '´': "'",
+  '\u00b4': "'",
   '`': '`',
   '~': '~',
   '^': '^',
-  '¨': '"',
+  '\u00a8': '"',
+  // A compose key that composes with nothing emits nothing, rather than the marker's own name.
+  compose: '',
 };
 
 export interface ParsedKeycode {

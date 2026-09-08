@@ -46,10 +46,22 @@ interface ColumnarSpec {
   name: string;
   /** Columns present per hand (canonical numbering). */
   cols: number[];
-  /** Columns that only carry the home row (e.g. the pinky in 1333+2). */
+  /** Columns that only carry the home row (e.g. the pinky in 1333+2). Sugar for `rowsPerCol`. */
   homeOnlyCols?: number[];
+  /**
+   * Rows a column carries, for columns that carry some but not all of rows 0-2. A board that drops
+   * its bottom row on the shorter fingers, or its corners, is described here; anything unlisted
+   * carries all three rows.
+   */
+  rowsPerCol?: Partial<Record<number, Row[]>>;
   thumbs: number;
   columnOffsets?: Record<number, number>;
+}
+
+/** Rows a column carries, resolving `homeOnlyCols` sugar; `null` means all three. */
+function rowsOf(spec: ColumnarSpec, col: number): Row[] | null {
+  if (spec.homeOnlyCols?.includes(col)) return [1];
+  return spec.rowsPerCol?.[col] ?? null;
 }
 
 function makeKey(
@@ -78,7 +90,8 @@ export function buildColumnar(spec: ColumnarSpec): Geometry {
       hand === 'L' ? [...spec.cols].sort((a, b) => a - b) : [...spec.cols].sort((a, b) => b - a);
     for (const row of [0, 1, 2] as Row[]) {
       for (const col of cols) {
-        if (row !== 1 && spec.homeOnlyCols?.includes(col)) continue;
+        const rows = rowsOf(spec, col);
+        if (rows !== null && !rows.includes(row)) continue;
         const id = keyId(hand, row, col);
         keys.push(
           makeKey({
@@ -219,6 +232,25 @@ export const GEOMETRY_PRESETS: Record<string, () => Geometry> = {
       name: 'Split columnar 1333 + 2 thumbs (24)',
       cols: [1, 2, 3, 4],
       homeOnlyCols: [1],
+      thumbs: 2,
+    }),
+  '1222+2': () =>
+    buildColumnar({
+      id: '1222+2',
+      name: 'Split columnar 1222 + 2 thumbs (18)',
+      cols: [1, 2, 3, 4],
+      homeOnlyCols: [1],
+      // Ring, middle and index keep the home and top rows; the bottom row is the one that goes.
+      rowsPerCol: { 2: [0, 1], 3: [0, 1], 4: [0, 1] },
+      thumbs: 2,
+    }),
+  '23332+2': () =>
+    buildColumnar({
+      id: '23332+2',
+      name: 'Split columnar 23332 + 2 thumbs (30, Hummingbird)',
+      cols: [1, 2, 3, 4, 5],
+      // The pinky loses its bottom key and the inner index its top one: a sub-30 alpha block.
+      rowsPerCol: { 1: [0, 1], 5: [1, 2] },
       thumbs: 2,
     }),
   ansi: () => buildRowStagger({ id: 'ansi', name: 'Row stagger ANSI', iso: false }),

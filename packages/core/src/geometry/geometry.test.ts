@@ -9,9 +9,13 @@ describe('geometry presets', () => {
       '3x5+3': 36,
       '3x6+3': 42,
       '1333+2': 24,
+      '1222+2': 18,
+      '23332+2': 30,
       ansi: 34,
       iso: 35,
     };
+    // A new preset with no entry here would otherwise assert against `undefined` and pass silently.
+    expect(GEOMETRY_PRESET_IDS.sort()).toEqual(Object.keys(expected).sort());
     for (const id of GEOMETRY_PRESET_IDS) {
       const g = getGeometryPreset(id);
       expect(g.keys.length, id).toBe(expected[id]);
@@ -62,5 +66,27 @@ describe('geometry presets', () => {
     expect(keyDistance(a, r)).toBeNull();
     expect(keyDistance(a, b)!).toBeCloseTo(Math.sqrt(1 + 0.25 * 0.25));
     expect(keyDistance(a, b, 'squared')!).toBeCloseTo(1 + 0.0625);
+  });
+});
+
+describe('per-column row sets', () => {
+  it('1222+2 keeps the pinky on home and drops the bottom row elsewhere', () => {
+    const g = getGeometryPreset('1222+2');
+    const left = g.keys.filter((k) => k.hand === 'L' && !k.thumb);
+    expect(left.map((k) => k.id).sort()).toEqual(['LHI', 'LHM', 'LHP', 'LHR', 'LTI', 'LTM', 'LTR']);
+    expect(g.keys.filter((k) => k.row === 2)).toHaveLength(0);
+    expect(g.textRows.map((r) => r.length)).toEqual([6, 8, 0]);
+  });
+
+  it('23332+2 drops the pinky bottom key and the inner index top key', () => {
+    const g = getGeometryPreset('23332+2');
+    const ids = new Set(g.keys.map((k) => k.id));
+    expect(ids.has('LTP')).toBe(true);
+    expect(ids.has('LBP')).toBe(false);
+    expect(ids.has('LHC')).toBe(true);
+    expect(ids.has('LTC')).toBe(false);
+    // Symmetric across hands, 26 alpha keys plus four thumbs.
+    expect(g.keys.filter((k) => k.hand === 'L' && !k.thumb)).toHaveLength(13);
+    expect(g.keys.filter((k) => k.hand === 'R' && !k.thumb)).toHaveLength(13);
   });
 });

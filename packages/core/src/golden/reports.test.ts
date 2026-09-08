@@ -1,70 +1,8 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { normalizeText } from '../corpus/normalize.js';
-import { FIXTURE_EN, FIXTURE_PT } from '../fixtures/index.js';
-import { compileLayout } from '../layout/compile.js';
-import { bundledLayout } from '../layouts/index.js';
-import { classifyBand } from '../rules/bands.js';
-import { evaluate } from '../rules/engine.js';
-import { getPreset } from '../rules/presets.js';
-import type { RuleSet } from '../rules/types.js';
-import { explain, simulate } from '../sim/resolver.js';
 import { goldenPath } from './paths.js';
-
-interface Golden {
-  meta: {
-    layout: string;
-    corpus: string;
-    preset: string;
-    case_mode: 'fold' | 'model';
-    universe: 'no_space' | 'with_space';
-    cross_word: 'reset' | 'bridge';
-  };
-  stats: Record<string, number | Record<string, number>>;
-  totals: Record<string, { unigram: number; bigram: number; trigram: number; skip: number[] }>;
-  results: {
-    id: string;
-    value: number | null;
-    unit: string;
-    band: { index: number | null; label: string | null };
-    items: { label: string; count: number; percent: number }[];
-    per_finger: Record<string, number>;
-    per_hand: Record<string, number>;
-    breakdown: Record<string, number>;
-  }[];
-  score: { enabled: boolean; value: number | null };
-  words_count: number;
-  producers: Record<string, string[]>;
-  explain: Record<
-    string,
-    {
-      presses: number;
-      steps: {
-        key: string;
-        layer: string;
-        finger: string;
-        kind: string;
-        key_kind: string;
-        label: string;
-        symbols: string;
-        wasted_one_shot: boolean;
-      }[];
-    }
-  >;
-}
-
-function corpusText(name: string): string {
-  if (name === 'fixture_en') return FIXTURE_EN;
-  if (name === 'fixture_pt') return FIXTURE_PT;
-  return `${FIXTURE_EN} ${FIXTURE_PT}`;
-}
-
-/**
- * Rules whose reference values are known-wrong and deliberately not reproduced. See DEVIATIONS.md:
- * the reference never resolves a `$global.` reference nested inside a numeric condition, so its
- * lateral-stretch rules match nothing.
- */
-const DEVIATIONS = new Set(['lsb', 'lss']);
+import type { GoldenReport } from './report.js';
+import { buildGoldenReport, goldenMatrix, goldenName } from './report.js';
 
 function close(a: number, b: number, eps = 1e-6): boolean {
   if (Number.isNaN(a) && Number.isNaN(b)) return true;
@@ -72,141 +10,101 @@ function close(a: number, b: number, eps = 1e-6): boolean {
   return Math.abs(a - b) <= eps * scale;
 }
 
-const files = readdirSync(goldenPath('.')).filter((f) => f.endsWith('.json'));
+const cases = goldenMatrix();
 
 /**
- * Reports produced by the reference implementation. Every number the engine computes is pinned
- * here, so a regression in the simulator, the tables or any rule shows up immediately.
+ * Every number the engine computes is pinned by these reports, so a regression in the simulator,
+ * the tables or any rule shows up immediately. The matrix drives the suite and `pnpm goldens`
+ * writes it, so the two cannot drift; layouts are resolved from `golden/layouts/`, which is why a
+ * layout can leave the shipped catalogue and stay covered here.
  */
-describe('reference reports', () => {
-  for (const file of files) {
-    const g: Golden = JSON.parse(readFileSync(goldenPath(file), 'utf8'));
-    const { meta } = g;
+describe('golden reports', () => {
+  it('the files on disk are exactly the matrix', () => {
+    const onDisk = readdirSync(goldenPath('.'))
+      .filter((f) => f.endsWith('.json'))
+      .sort();
+    expect(onDisk).toEqual(cases.map(goldenName).sort());
+  });
+
+  for (const c of cases) {
+    const file = goldenName(c);
 
     describe(file.replace('.json', ''), () => {
-      const layout = bundledLayout(meta.layout)!;
-      const compiled = compileLayout(layout);
-      const stream = normalizeText(corpusText(meta.corpus), { caseMode: meta.case_mode });
-      const sim = simulate(compiled, stream, {
-        caseMode: meta.case_mode,
-        crossWord: meta.cross_word,
+      const want: GoldenReport = JSON.parse(readFileSync(goldenPath(file), 'utf8'));
+      const got = buildGoldenReport(c);
+
+      it('metadata', () => {
+        expect(got.meta.cross_word).toBe(want.meta.cross_word);
+        expect(got.meta.stream_length).toBe(want.meta.stream_length);
       });
-      const base = getPreset(meta.preset);
-      const ruleSet: RuleSet = {
-        ...base,
-        globals: { ...base.globals, universe: meta.universe, top_items: 50 },
-      };
-      const { results, score } = evaluate(sim.tables, compiled, ruleSet);
-      const byId = new Map(results.map((r) => [r.id, r]));
 
       it('simulation statistics', () => {
-        const st = sim.tables.stats as unknown as Record<string, number>;
-        for (const [k, v] of Object.entries(g.stats)) {
-          if (typeof v === 'number') expect(st[k], k).toBe(v);
+        for (const [k, v] of Object.entries(want.stats)) {
+          if (typeof v === 'number') expect(got.stats[k], k).toBe(v);
         }
-        expect(sim.tables.words.size).toBe(g.words_count);
+        expect(got.words_count).toBe(want.words_count);
       });
 
       it('n-gram totals', () => {
-        for (const [universe, t] of Object.entries(g.totals)) {
-          const got = universe === 'no_space' ? sim.tables.noSpace : sim.tables.withSpace;
-          expect(got.totals.unigram, `${universe} unigram`).toBe(t.unigram);
-          expect(got.totals.bigram, `${universe} bigram`).toBe(t.bigram);
-          expect(got.totals.trigram, `${universe} trigram`).toBe(t.trigram);
-          expect(got.totals.skip, `${universe} skip`).toEqual(t.skip);
-        }
+        expect(got.totals).toEqual(want.totals);
       });
 
       it('rule values', () => {
-        expect(results.length).toBe(g.results.length);
-        for (const want of g.results) {
-          if (DEVIATIONS.has(want.id)) continue;
-          const got = byId.get(want.id);
-          expect(got, want.id).toBeDefined();
-          if (!got) continue;
-          expect(got.unit, `${want.id} unit`).toBe(want.unit);
-          if (want.value === null) {
-            expect(got.value, `${want.id} value`).toBeNull();
-          } else {
-            expect(
-              close(got.value as number, want.value),
-              `${want.id}: ${got.value} vs ${want.value}`,
-            ).toBe(true);
-          }
-          expect(got.band.index, `${want.id} band`).toBe(want.band.index);
-          expect(got.band.label, `${want.id} band label`).toBe(want.band.label);
+        expect(got.results.map((r) => r.id)).toEqual(want.results.map((r) => r.id));
+        const byId = new Map(got.results.map((r) => [r.id, r]));
+        for (const w of want.results) {
+          const r = byId.get(w.id);
+          expect(r, w.id).toBeDefined();
+          if (!r) continue;
+          expect(r.unit, `${w.id} unit`).toBe(w.unit);
+          if (w.value === null) expect(r.value, `${w.id} value`).toBeNull();
+          else
+            expect(close(r.value as number, w.value), `${w.id}: ${r.value} vs ${w.value}`).toBe(
+              true,
+            );
+          expect(r.band, `${w.id} band`).toEqual(w.band);
         }
       });
 
+      // Item lists carry the worst offenders the UI shows, including their order — which is what
+      // decides the top-50 cutoff when counts tie.
+      it('rule items and attribution', () => {
+        const byId = new Map(got.results.map((r) => [r.id, r]));
+        for (const w of want.results) {
+          const r = byId.get(w.id);
+          if (!r) continue;
+          expect(r.items, `${w.id} items`).toEqual(w.items);
+          expect(r.per_finger, `${w.id} per_finger`).toEqual(w.per_finger);
+          expect(r.per_hand, `${w.id} per_hand`).toEqual(w.per_hand);
+          expect(r.breakdown, `${w.id} breakdown`).toEqual(w.breakdown);
+        }
+      });
+
+      it('coverage, registry and runs', () => {
+        expect(got.coverage).toEqual(want.coverage);
+        expect(got.registry).toEqual(want.registry);
+        expect(got.runs).toEqual(want.runs);
+      });
+
       it('producer enumeration and ordering', () => {
-        const got = sim.producers.bySymbol;
-        expect([...got.keys()].sort()).toEqual(Object.keys(g.producers).sort());
-        for (const [sym, ids] of Object.entries(g.producers)) {
-          expect(
-            (got.get(sym) ?? []).map((p) => p.id),
-            `producers for ${JSON.stringify(sym)}`,
-          ).toEqual(ids);
+        expect(Object.keys(got.producers).sort()).toEqual(Object.keys(want.producers).sort());
+        for (const [sym, ids] of Object.entries(want.producers)) {
+          expect(got.producers[sym], `producers for ${JSON.stringify(sym)}`).toEqual(ids);
         }
       });
 
       it('explain traces', () => {
-        for (const [word, want] of Object.entries(g.explain)) {
-          const e = explain(compiled, word, {
-            caseMode: meta.case_mode,
-            crossWord: 'reset',
-          });
-          expect(e.presses, `${word} presses`).toBe(want.presses);
-          expect(
-            e.steps.map((s) => [
-              s.key,
-              s.layer,
-              s.finger,
-              s.kind,
-              s.keyKind,
-              s.label,
-              s.symbols,
-              s.wastedOneShot,
-            ]),
-            `${word} steps`,
-          ).toEqual(
-            want.steps.map((s) => [
-              s.key,
-              s.layer,
-              s.finger,
-              s.kind,
-              s.key_kind,
-              s.label,
-              s.symbols,
-              s.wasted_one_shot,
-            ]),
-          );
-        }
+        expect(got.explain).toEqual(want.explain);
       });
 
       it('composite score', () => {
-        expect(score.enabled).toBe(g.score.enabled);
-        // The score aggregates every weighted rule, including the deviating ones, so recompute it
-        // with the reference's own values substituted for those.
-        const wantById = new Map(g.results.map((r) => [r.id, r]));
-        const bandsById = new Map(ruleSet.rules.map((r) => [r.id, r.bands]));
-        let totalW = 0;
-        let sum = 0;
-        for (const r of results) {
-          if (r.score_weight <= 0) continue;
-          const w = wantById.get(r.id);
-          const value = DEVIATIONS.has(r.id) ? (w?.value ?? null) : r.value;
-          if (typeof value !== 'number') continue;
-          const band = DEVIATIONS.has(r.id) ? classifyBand(value, bandsById.get(r.id)) : r.band;
-          if (band.index === null) continue;
-          totalW += r.score_weight;
-          sum += r.score_weight * (band.goodness ?? 0.5);
-        }
-        const rebuilt = totalW > 0 ? (sum / totalW) * 100 : null;
-        if (g.score.value === null) expect(rebuilt).toBeNull();
+        expect(got.score.enabled).toBe(want.score.enabled);
+        if (want.score.value === null) expect(got.score.value).toBeNull();
         else
-          expect(close(rebuilt as number, g.score.value), `${rebuilt} vs ${g.score.value}`).toBe(
-            true,
-          );
+          expect(
+            close(got.score.value as number, want.score.value),
+            `${got.score.value} vs ${want.score.value}`,
+          ).toBe(true);
       });
     });
   }

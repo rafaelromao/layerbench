@@ -98,7 +98,7 @@ Hand balance: even ≤ 52–48, leans ≤ 55–45, heavy beyond. Doc stats came 
 |---|---|
 | **Geometry** | Physical keys: `id`, center `x,y` (U, per-hand origin, post-rotation), `w,h`, `rotation` (render only), `hand`, default `finger`, `row` (0 top, 1 home, 2 bottom, 3 thumb), `col` (canonical 0 outer-pinky … 5 inner), flags `home`, `thumb`, `inner`. Presets §6.1. |
 | **Finger** | `LP LR LM LI LT RT RI RM RR RP`. Per-key assignment editable (standard / angle mod / custom). |
-| **Keymap** | Ordered **layers**; each maps key id → **binding**; plus **combos**, **conditional layers**, named **behaviors**, per-layer optional `shiftedTwin`. Layer 0 = base. |
+| **Keymap** | Ordered **layers**; each maps key id → **binding**; plus **combos**, **conditional layers**, named **behaviors**, and declarative **features** the compiler desugars. Layer 0 = base. |
 | **Binding** | `kp`, `trans`, `none`, `mo`, `lt`, `sl`, `tog`, `to`, `sk`, `caps_word`, `auto_layer`, `key_repeat`, `mod_morph`, `layer_morph`, `tap_dance`, `macro`, `adaptive`, `hold_tap`, `dead_key`, `unicode` (shapes in §9). |
 | **Symbol** | Text unit produced: one grapheme (`a`, `ç`, `'`) or a string (`qu`, `ão`). Case is a separate attribute. |
 | **Producer** | A concrete way to obtain a symbol: `direct(layer,key)`, `combo`, `adaptive(branch)`, `repeat`, `macro`, `deadkey sequence`. Carries applicability conditions (required layer, `afterAny` last-keycode set, required modifiers/case). |
@@ -121,7 +121,7 @@ Hand balance: even ≤ 52–48, leans ≤ 55–45, heavy beyond. Doc stats came 
 3. **Compare** (2-way in v1). Same corpus/rules; delta bars, band labels, per-metric winner; synchronized hover; shareable URL.
 4. **Rules**. Rule list by family (toggle, weight, params, bands); presets (`Layouts Doc`, `cyanophage-like`, `Keysolve-like`, `Romak author`); **Composer** (§7.3) + JSON tab; import/export; reset to preset.
 5. **Corpus**. Language/corpus picker, EN↔PT-BR mix slider, paste/upload (worker → IndexedDB), corpus facts (letter/bigram/trigram/word frequencies), normalization options, coverage check against the current layout.
-6. **Library**. Bundled layouts (Qwerty, Dvorak, Colemak, Colemak-DH, Graphite, Gallium, Canary, Sturdy, APTv3, Hands Down Neu/Promethium, Nerps, Semimak, Recurva, Engram, BEAKL, Romak 34, Romak 24, Magic Romak…), user layouts (local), share links, JSON import/export, text import.
+6. **Library**. Bundled layouts (Magic Romak, Qwerty, Dvorak, Colemak, Colemak-DH, Graphite, Gallium, Canary, Sturdy, APTv3, Hands Down Neu…), user layouts (local), create from scratch or from an existing layout, share links, JSON import/export, text import.
 
 ### 4.2 Visual design
 - Dark theme default + light theme; system preference honored.
@@ -176,7 +176,7 @@ Hand balance: even ≤ 52–48, leans ≤ 55–45, heavy beyond. Doc stats came 
 1. **Producer index** `enumerateProducers(layout, caseMode)`: every producer for every symbol (direct keys per layer, `role: typing` combos, adaptive branches with their `afterAny` sets, repeat, macros with their strings, dead-key sequences). In fold mode, producers requiring an explicit modifier (e.g. `'` only after `LS(I)`) are excluded and listed in Coverage. Symbols with ≥2 producers populate the Typing paths panel (D3); default order = fewest physical presses → already-active layer → non-combo → lower rule penalty.
 2. **Greedy tokenization**: left-to-right **longest match** over the (folded or cased) symbol stream among symbols with an enabled producer (`qu`, `ão`, `ões`), never crossing a word/punctuation boundary; equal length → typing-path order, then default order; **no backtracking** (a match is committed even if the remainder gets costlier). Per-macro opt-out.
 3. **Activation planning**: if the chosen producer needs layer `L` not active, insert the **activator declared for `L` from the current layer** (`activators[L]` entries with `from`); if a one-shot layer is already armed (CCEDIL after `ç`, SEN_CASE after `. `), producers on it are preferred automatically. If no activator path exists, the producer is unavailable (Coverage).
-4. **Case (D4)**: fold mode ignores case. Model mode resolves an uppercase symbol via (a) a producer on the layer's declared `shiftedTwin`, else (b) sticky/held shift **emitted before** the layer activator + lowercase producer (the order "activator then modifier" is rejected because the modifier press would consume the one-shot), honoring caps word/sentence case state.
+4. **Case (D4)**: fold mode ignores case. Model mode resolves an uppercase symbol via a producer that already emits it, else sticky/held shift **emitted before** the layer activator plus the lowercase producer — that order matters, because a layer press does not consume a one-shot modifier but a modifier press would. Caps-word and sentence-case state feed the same check. A one-shot shift cannot be cancelled, so a lowercase symbol while one is armed is unproducible, as on hardware.
 5. **Space**: always a real press on `keys.space`; excluded from the default universe view.
 6. **Unproducible symbols**: dropped from the key stream and treated as a **hard n-gram boundary** (like a word boundary) in both `crossWord` modes; excluded from all denominators; counted in `coverage.unproducible`.
 7. **Determinism & explainability**: each word yields a trace (used by "How is this typed?", Hard words, same-hand strings).
@@ -279,7 +279,7 @@ Every rule outputs: value, band, top offenders (n-grams with %, distance), per-k
   "behaviorDefaults": { "sl": { "quickRelease": true, "ignoreModifiers": false, "releaseAfterMs": 1000 },
                         "sk": { "quickRelease": true, "ignoreModifiers": true, "releaseAfterMs": 1500 } },
   "layers": [
-    { "id": "alpha1", "name": "Alpha 1", "shiftedTwin": "case_a1", "bindings": {
+    { "id": "alpha1", "name": "Alpha 1", "bindings": {
         "LTR": {"kind":"kp","symbol":"b"},
         "RBI": {"kind":"hold_tap","tap":{"kind":"adaptive","ref":"magic"},"hold":{"kind":"mod","mod":"LGUI"}},
         "L1":  {"kind":"hold_tap","tap":{"kind":"adaptive","ref":"altRepeat"},"hold":{"kind":"mo","layer":"nav"}},
@@ -288,7 +288,7 @@ Every rule outputs: value, band, top offenders (n-grams with %, distance), per-k
                 "default":{"kind":"hold_tap","tap":{"kind":"sl","layer":"alpha2"},"hold":{"kind":"mo","layer":"sym"}},
                 "morphed":{"kind":"sl","layer":"sft_a2"}},
         "R1":  {"kind":"sk","mod":"LSHIFT"} } },
-    { "id": "alpha2", "name": "Alpha 2", "shiftedTwin": "sft_a2", "bindings": {
+    { "id": "alpha2", "name": "Alpha 2", "bindings": {
         "LTM": {"kind":"macro","steps":[{"kind":"kp","symbol":"q"},{"kind":"kp","symbol":"u"},{"kind":"sl","layer":"altrep2"}]},
         "LBM": {"kind":"macro","steps":[{"kind":"kp","symbol":"ç"},{"kind":"sl","layer":"ccedil"}]},
         "RHR": {"kind":"macro","symbols":"á","then":[{"kind":"sl","layer":"altrep2"}]},
@@ -356,7 +356,7 @@ layoutmaster/                       pnpm workspace, no server
 ```
 - **Engine API**: `analyze(layout, corpus, ruleSet, opts): Report`; `simulate(compiled, stream, opts): Simulation`; `enumerateProducers(compiled, caseMode)`; `explain(compiled, text, opts)`; `relabel(tables, mapping)`; `structureHash(layout, opts)`. The UI never calls these directly: it talks to an `AnalysisClient` — `WorkerClient` in the app, `DirectClient` in tests — over a `postMessage` protocol, so a long analysis never blocks rendering and can be superseded by a newer request. Results are cached in an LRU keyed by `structureHash` × corpus × options.
 - **Performance** (measured on the reference machine): 300 k-symbol sample **576 ms**; full corpus (~1 M symbols) **1.36 s**; rules over tables well under 200 ms; an eligible swap re-scores existing tables via `relabel` in **12 ms** instead of re-simulating. Budgets from the Elixir revision (3 s / 10 s / 200 ms) are met with room to spare, so no native escape hatch is needed.
-- **Parity**: `packages/core/golden/` holds 38 reports dumped from the Elixir implementation (`golden_dump.exs`) plus the layouts and inline URLs they came from; the suite asserts every metric to 1e-6. Three deliberate differences are recorded in `golden/DEVIATIONS.md` — one of them a defect in the reference (LSB/LSS always zero because a nested `$global.` reference never resolves).
+- **Regression**: `packages/core/golden/` holds 38 reports covering the layout × corpus × preset × case-mode × universe matrix, plus the layout documents and inline URL they came from; the suite asserts every metric to 1e-6 and every item list exactly. `pnpm goldens` regenerates them from this engine and must be a no-op on a clean tree. They began as a dump from the Elixir implementation; `golden/GOLDENS.md` records what the re-baseline changed.
 - **Quality gates**: vitest for every behavior, rule and trace, plus React Testing Library per view; `biome check` (format + lint), `tsc --noEmit` in strict mode, and the full test suite in CI. Deployment is `vite build` to static files behind a CDN. The build emits what a static host needs to serve a client-routed app: `_redirects` (`/* /index.html 200`, so a deep link resolves with a 200 rather than a 404 body), `_headers`, and a `404.html` copy for hosts that use that instead. The same build also writes a content security policy into the page and into `_headers` from one definition — `connect-src 'self' https://api.github.com` is what confines the stored token to GitHub — and the build fails if a chunk gains `eval`/`new Function` or the page gains an inline script, since `script-src 'self'` would block them in production only.
 
 ---
@@ -393,6 +393,7 @@ Each milestone was gated on the parity suite staying green; the eight commits ar
 - **Path explosion** in the resolver: bounded by user-selected paths (D3), no-backtracking tokenization, producer index cached per `structureHash`.
 - **Comparability confusion**: every report labels universe/case/normalization/corpus; presets replicate other analyzers' normalization exactly; `bugCompat` isolated.
 - **Corpus licensing**: manifest with provenance; CC-BY/public-domain sources; user corpora stay local.
+- **Special features**: adaptive keys, alt repeat, sentence case and caps word are declared in a `features` block and desugared by the compiler into `adaptive`, `key_repeat`, `caps_word`, `sk` and `macro`. Firmware needs pre-shifted twin layers and macro-armed one-shot layers for these; the simulator does not, so the layer list stays the set of layers a typist reaches. `tag` on a binding plus `afterTags` on a trigger replace the one-shot layer that firmware uses to remember how the previous symbol was produced.
 - **PT-BR fidelity**: accents are distinct symbols end-to-end; coverage report flags folded/unproducible characters; host-locale tables validated against `zmk-locales keys_pt_abnt2.h`.
 - **Performance on mobile**: fast path + cached tables + worker; reduced sample size with notice.
 

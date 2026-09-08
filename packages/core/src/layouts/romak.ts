@@ -1,33 +1,35 @@
+import { getGeometryPreset } from '../geometry/presets.js';
 import type { Binding, ComboDef, Layout } from '../layout/types.js';
+import { numberLayer, symbolLayer } from './templates.js';
 
 const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
 const VOWELS = ['a', 'e', 'i', 'o', 'u', 'á', 'à', 'ã', 'â', 'é', 'ê', 'í', 'ó', 'õ', 'ô', 'ú'];
 
-/** Accented letter: one physical press (dead key + letter sent to the host), then the ALTREP2 one-shot is armed. */
+/**
+ * Accented letter as the firmware writes it: one physical press, then the ALTREP2 one-shot layer is
+ * armed so the repeat key can offer the follow-ups. Kept for Romak 24 and 34, which model the
+ * keymap literally.
+ */
 const accent = (symbol: string): Binding => ({
   kind: 'macro',
   symbols: symbol,
   then: [{ kind: 'sl', layer: 'altrep2' }],
 });
 
+/**
+ * The same press, tagged instead of arming a layer. The tag is what an adaptive branch matches on,
+ * so the follow-ups live on the alt-repeat key itself rather than on a layer nobody visits.
+ */
+const ALPHA2_TAG = 'alpha2';
+const taggedAccent = (symbol: string): Binding => ({
+  kind: 'macro',
+  symbols: symbol,
+  tag: ALPHA2_TAG,
+});
+
 function rowBindings(map: Record<string, string | Binding>): Record<string, Binding> {
   const out: Record<string, Binding> = {};
   for (const [k, v] of Object.entries(map)) out[k] = typeof v === 'string' ? kp(v) : v;
-  return out;
-}
-
-function upperCopy(
-  bindings: Record<string, Binding>,
-  only?: (id: string) => boolean,
-): Record<string, Binding> {
-  const out: Record<string, Binding> = { '*': { kind: 'trans' } };
-  for (const [k, b] of Object.entries(bindings)) {
-    if (k === '*') continue;
-    if (only && !only(k)) continue;
-    if (b.kind === 'kp' && b.symbol && /\p{L}/u.test(b.symbol)) out[k] = kp(b.symbol.toUpperCase());
-    else if (b.kind === 'macro' && b.symbols && /\p{L}/u.test(b.symbols))
-      out[k] = { ...b, symbols: b.symbols.toUpperCase() };
-  }
   return out;
 }
 
@@ -126,133 +128,145 @@ const ROMAK24_ALPHA1 = rowBindings({
   RHP: 'i',
 });
 
-const ROMAK24_ALPHA2: Record<string, Binding> = {
-  '*': { kind: 'trans' },
-  LHP: kp('y'),
-  LTR: kp('q'),
-  LHR: kp('z'),
-  LBR: kp('j'),
-  LTM: { kind: 'macro', symbols: 'qu', then: [{ kind: 'sl', layer: 'altrep2' }] },
-  LHM: kp('x'),
-  LBM: { kind: 'macro', symbols: 'ç', then: [{ kind: 'sl', layer: 'ccedil' }] },
-  LTI: kp('k'),
-  LHI: kp('w'),
-  LBI: kp('v'),
-  RTI: accent('ô'),
-  RHI: accent('ã'),
-  RBI: accent('õ'),
-  RTM: accent('ó'),
-  RHM: accent('á'),
-  RBM: accent('â'),
-  RTR: accent('ú'),
-  RHR: accent('é'),
-  RBR: accent('ê'),
-  RHP: accent('í'),
-  L1: kp("'"),
-  R1: kp("'"),
-};
+function alpha2Bindings(acc: (symbol: string) => Binding, quTag?: string): Record<string, Binding> {
+  return {
+    '*': { kind: 'trans' },
+    LHP: kp('y'),
+    LTR: kp('q'),
+    LHR: kp('z'),
+    LBR: kp('j'),
+    LTM: {
+      kind: 'macro',
+      symbols: 'qu',
+      ...(quTag ? { tag: quTag } : { then: [{ kind: 'sl', layer: 'altrep2' }] }),
+    },
+    LHM: kp('x'),
+    LBM: { kind: 'macro', symbols: '\u00e7', then: [{ kind: 'sl', layer: 'ccedil' }] },
+    LTI: kp('k'),
+    LHI: kp('w'),
+    LBI: kp('v'),
+    RTI: acc('\u00f4'),
+    RHI: acc('\u00e3'),
+    RBI: acc('\u00f5'),
+    RTM: acc('\u00f3'),
+    RHM: acc('\u00e1'),
+    RBM: acc('\u00e2'),
+    RTR: acc('\u00fa'),
+    RHR: acc('\u00e9'),
+    RBR: acc('\u00ea'),
+    RHP: acc('\u00ed'),
+    L1: kp("'"),
+    R1: kp("'"),
+  };
+}
 
-const ROMAK24_COMBOS: ComboDef[] = [
-  {
-    id: 'ns',
-    keys: ['LHR', 'LHM'],
-    binding: kp('q'),
-    layers: ['alpha1'],
-    role: 'command',
-    timeoutMs: 30,
-    slowRelease: false,
-  },
-  {
-    id: 'mg',
-    keys: ['LTM', 'LTI'],
-    binding: kp('k'),
-    layers: ['alpha1'],
-    role: 'command',
-    timeoutMs: 30,
-    slowRelease: false,
-  },
-  {
-    id: 'st',
-    keys: ['LHM', 'LHI'],
-    binding: kp('w'),
-    layers: ['alpha1'],
-    role: 'command',
-    timeoutMs: 30,
-    slowRelease: false,
-  },
-  {
-    id: 'cp',
-    keys: ['LBM', 'LBI'],
-    binding: kp('v'),
-    layers: ['alpha1'],
-    role: 'command',
-    timeoutMs: 30,
-    slowRelease: false,
-  },
-  {
-    id: 'lo',
-    keys: ['RTI', 'RTM'],
-    binding: kp('x'),
-    layers: ['alpha1'],
-    role: 'command',
-    timeoutMs: 30,
-    slowRelease: false,
-  },
-  {
-    id: 'ra',
-    keys: ['RHI', 'RHM'],
-    binding: kp('z'),
-    layers: ['alpha1'],
-    role: 'command',
-    timeoutMs: 30,
-    slowRelease: false,
-  },
-  {
-    id: 'hcomma',
-    keys: ['RBI', 'RBM'],
-    binding: kp('j'),
-    layers: ['alpha1'],
-    role: 'command',
-    timeoutMs: 30,
-    slowRelease: false,
-  },
-  {
-    id: 'ae',
-    keys: ['RHM', 'RHR'],
-    binding: kp('y'),
-    layers: ['alpha1'],
-    role: 'command',
-    timeoutMs: 30,
-    slowRelease: false,
-  },
-  {
-    id: 'question',
-    keys: ['RHI', 'RHM'],
-    binding: kp('?'),
-    layers: ['alpha2'],
-    role: 'typing',
-    timeoutMs: 30,
-    slowRelease: false,
-  },
-  {
-    id: 'exclamation',
-    keys: ['RBI', 'RBM'],
-    binding: kp('!'),
-    layers: ['alpha2'],
-    role: 'typing',
-    timeoutMs: 30,
-    slowRelease: false,
-  },
-  {
-    id: 'agrave',
-    keys: ['RHM', 'RHR'],
-    binding: accent('à'),
-    layers: ['alpha2'],
-    role: 'typing',
-    timeoutMs: 30,
-    slowRelease: false,
-  },
-];
+const ROMAK24_ALPHA2: Record<string, Binding> = alpha2Bindings(accent);
+
+function romak24Combos(acc: (symbol: string) => Binding): ComboDef[] {
+  return [
+    {
+      id: 'ns',
+      keys: ['LHR', 'LHM'],
+      binding: kp('q'),
+      layers: ['alpha1'],
+      role: 'command',
+      timeoutMs: 30,
+      slowRelease: false,
+    },
+    {
+      id: 'mg',
+      keys: ['LTM', 'LTI'],
+      binding: kp('k'),
+      layers: ['alpha1'],
+      role: 'command',
+      timeoutMs: 30,
+      slowRelease: false,
+    },
+    {
+      id: 'st',
+      keys: ['LHM', 'LHI'],
+      binding: kp('w'),
+      layers: ['alpha1'],
+      role: 'command',
+      timeoutMs: 30,
+      slowRelease: false,
+    },
+    {
+      id: 'cp',
+      keys: ['LBM', 'LBI'],
+      binding: kp('v'),
+      layers: ['alpha1'],
+      role: 'command',
+      timeoutMs: 30,
+      slowRelease: false,
+    },
+    {
+      id: 'lo',
+      keys: ['RTI', 'RTM'],
+      binding: kp('x'),
+      layers: ['alpha1'],
+      role: 'command',
+      timeoutMs: 30,
+      slowRelease: false,
+    },
+    {
+      id: 'ra',
+      keys: ['RHI', 'RHM'],
+      binding: kp('z'),
+      layers: ['alpha1'],
+      role: 'command',
+      timeoutMs: 30,
+      slowRelease: false,
+    },
+    {
+      id: 'hcomma',
+      keys: ['RBI', 'RBM'],
+      binding: kp('j'),
+      layers: ['alpha1'],
+      role: 'command',
+      timeoutMs: 30,
+      slowRelease: false,
+    },
+    {
+      id: 'ae',
+      keys: ['RHM', 'RHR'],
+      binding: kp('y'),
+      layers: ['alpha1'],
+      role: 'command',
+      timeoutMs: 30,
+      slowRelease: false,
+    },
+    {
+      id: 'question',
+      keys: ['RHI', 'RHM'],
+      binding: kp('?'),
+      layers: ['alpha2'],
+      role: 'typing',
+      timeoutMs: 30,
+      slowRelease: false,
+    },
+    {
+      id: 'exclamation',
+      keys: ['RBI', 'RBM'],
+      binding: kp('!'),
+      layers: ['alpha2'],
+      role: 'typing',
+      timeoutMs: 30,
+      slowRelease: false,
+    },
+    {
+      id: 'agrave',
+      keys: ['RHM', 'RHR'],
+      binding: acc('\u00e0'),
+      layers: ['alpha2'],
+      role: 'typing',
+      timeoutMs: 30,
+      slowRelease: false,
+    },
+  ];
+}
+
+const ROMAK24_COMBOS: ComboDef[] = romak24Combos(accent);
 
 function romak24Base(name: string, id: string, description: string): Layout {
   return {
@@ -297,41 +311,102 @@ export const romak24: Layout = romak24Base(
   'Romak for 24 keys (1333+2): two alpha layers, Ç extension, one-shot shift.',
 );
 
+/**
+ * Magic Romak: Romak 24 plus the adaptive behaviours.
+ *
+ * The firmware needs four extra layers for these — pre-shifted copies of the alphas for sentence
+ * case, caps word and shifted Alpha 2, and a one-shot layer armed by every accent macro so the
+ * repeat key can offer follow-ups. None of them is a layer a typist reaches, so here they are
+ * declared as features and the compiler desugars them: sentence case arms a one-shot shift, caps
+ * word is the `caps_word` behaviour, shift is simply shift state, and the alt-repeat follow-ups
+ * match on the tag the accent macro leaves behind. What is left is the three layers you can see.
+ */
 export const magicRomak: Layout = (() => {
   const base = romak24Base(
     'Magic Romak',
     'magic-romak',
-    'Romak 24 with adaptive magic keys (h/v), alt-repeat, sentence case, caps word and shifted twin layers.',
+    'Romak 24 with adaptive magic keys (h/v), alt repeat, sentence case and caps word.',
   );
-  const alpha1: Record<string, Binding> = {
-    ...ROMAK24_ALPHA1,
-    RBI: { kind: 'ref', ref: 'magic' },
-    L1: { kind: 'ref', ref: 'altRepeat' },
-    L0: { kind: 'ref', ref: 'sentenceSpace' },
-    R0: { kind: 'ref', ref: 'alpha2OrShifted' },
-    R1: { kind: 'ref', ref: 'shiftOrCaps' },
-  };
-  const alpha2: Record<string, Binding> = {
-    ...ROMAK24_ALPHA2,
-    LBI: { kind: 'ref', ref: 'reversedMagic' },
-  };
-  const letterKeys = (id: string) => !['L0', 'L1', 'R0', 'R1'].includes(id);
   return {
     ...base,
+    behaviors: {},
+    combos: romak24Combos(taggedAccent),
     layers: [
-      { id: 'alpha1', name: 'Alpha 1', shiftedTwin: 'sen_case', bindings: alpha1 },
-      { id: 'alpha2', name: 'Alpha 2', shiftedTwin: 'sft_a2', bindings: alpha2 },
-      { id: 'ccedil', name: 'Ç extension', bindings: CCEDIL_BINDINGS },
-      { id: 'altrep2', name: 'Alt repeat 2', bindings: ALTREP2_BINDINGS },
-      { id: 'sen_case', name: 'Sentence case', bindings: upperCopy(alpha1, letterKeys) },
-      { id: 'case_a1', name: 'Caps word', bindings: upperCopy(alpha1, letterKeys) },
-      { id: 'sft_a2', name: 'Shifted Alpha 2', bindings: upperCopy(alpha2, letterKeys) },
+      {
+        ...base.layers[0],
+        bindings: {
+          ...base.layers[0].bindings,
+          // Holding space reaches the numbers; the sentence-case feature wraps the tap arm, so
+          // both live on one key. All four thumbs already carry something on a 24-key board.
+          L0: { kind: 'hold_tap', tap: kp(' '), hold: { kind: 'mo', layer: 'num' } },
+        },
+      },
+      { id: 'alpha2', name: 'Alpha 2', bindings: alpha2Bindings(taggedAccent, ALPHA2_TAG) },
+      { id: 'ccedil', name: '\u00c7 extension', bindings: CCEDIL_BINDINGS },
+      numberLayer(getGeometryPreset('1333+2'), { symbolLayer: 'sym' }),
+      symbolLayer(getGeometryPreset('1333+2')),
     ],
+    features: {
+      adaptiveKeys: [
+        {
+          id: 'magic',
+          label: 'Magic key',
+          default: kp('h'),
+          triggers: [{ afterAny: VOWELS, binding: kp('v') }],
+          at: [{ layer: 'alpha1', key: 'RBI' }],
+        },
+        {
+          id: 'reversedMagic',
+          label: 'Reversed magic key',
+          default: kp('v'),
+          triggers: [{ afterAny: VOWELS, binding: kp('h') }],
+          at: [{ layer: 'alpha2', key: 'LBI' }],
+        },
+      ],
+      altRepeat: {
+        at: [{ layer: 'alpha1', key: 'L1' }],
+        triggers: [
+          { afterAny: ['a'], binding: kp('h') },
+          { afterAny: ['y'], binding: kp('d') },
+          { afterAny: ['h'], binding: { kind: 'macro', symbols: '\u00f5es' } },
+          { afterAny: ['v', 'x', 'j'], binding: { kind: 'sl', layer: 'alpha2' } },
+          { afterAny: ["'"], binding: kp('v') },
+          { afterAny: ['I'], binding: kp("'") },
+        ],
+        // Only after a press that came from Alpha 2 — an accent or `qu`, never a plain letter.
+        secondStage: {
+          afterTags: [ALPHA2_TAG],
+          triggers: [
+            {
+              afterAny: [
+                '\u00e1',
+                '\u00e0',
+                '\u00e3',
+                '\u00e2',
+                '\u00f3',
+                '\u00f5',
+                '\u00f4',
+                '\u00e9',
+                '\u00ea',
+              ],
+              binding: kp('x'),
+            },
+            { afterAny: ['\u00ed'], binding: kp('e') },
+            { afterAny: ['u', '\u00fa'], binding: taggedAccent('\u00ea') },
+          ],
+        },
+      },
+      sentenceCase: {},
+      // Matches what the pre-shifted layer allowed through before.
+      capsWord: { continueList: ['_', 'Backspace'] },
+    },
     activators: {
       alpha2: [
         { from: 'alpha1', via: 'key:alpha1/R0' },
         { from: 'ccedil', via: 'key:ccedil/L1' },
       ],
+      num: [{ from: 'alpha1', via: 'key:alpha1/L0' }],
+      sym: [{ from: 'num', via: 'key:num/R0' }],
     },
   };
 })();

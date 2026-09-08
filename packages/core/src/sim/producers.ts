@@ -22,6 +22,8 @@ export interface Producer {
   steps: ProducerStep[];
   /** Applicability conditions. */
   afterAny?: string[];
+  /** Applicable only after a press whose binding carried one of these tags. */
+  afterTags?: string[];
   /** Modifiers the producer needs held. Always a list, never undefined. */
   mods: Mod[];
   /** Estimated physical presses including one layer activation when off the base layer. */
@@ -33,6 +35,7 @@ export interface Producer {
 interface StaticOutput {
   symbols: string;
   afterAny?: string[];
+  afterTags?: string[];
   mods?: Mod[];
   taps: number;
   kind: ProducerKind;
@@ -128,6 +131,7 @@ export function staticOutputs(b: Binding, depth = 0): StaticOutput[] {
             ...o,
             kind: o.kind === 'direct' || o.kind === 'macro' ? 'adaptive' : o.kind,
             afterAny: o.afterAny ?? t.afterAny,
+            afterTags: o.afterTags ?? t.afterTags,
             suffix: `#t${i}${o.suffix}`,
             dynamic: true,
           });
@@ -243,6 +247,7 @@ export function enumerateProducers(
           kind: o.kind,
           steps: [{ layer: layer.idx, pos, binding: b, mode: 'tap', taps: o.taps }],
           afterAny: o.afterAny,
+          afterTags: o.afterTags,
           mods: o.mods ?? [],
           cost: o.taps + (layer.idx === 0 ? 0 : 1) + (o.mods?.length ? 1 : 0),
           dynamic: o.dynamic,
@@ -275,6 +280,7 @@ export function enumerateProducers(
           { layer: null, pos: c.pos, binding: c.binding, mode: 'chord', taps: 1, combo: c.idx },
         ],
         afterAny: o.afterAny,
+        afterTags: o.afterTags,
         mods: [],
         cost: 1.5,
         dynamic: o.dynamic,

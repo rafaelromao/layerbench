@@ -16,10 +16,25 @@ export const EDITABLE_KINDS = [
   'macro',
   'caps_word',
   'auto_layer',
+  'dead_key',
+  'unicode',
   'ref',
 ] as const;
 
 export type EditableKind = (typeof EDITABLE_KINDS)[number];
+
+/**
+ * One row of the macro builder. Rows compile to `steps[]` in order, which is what lets a macro
+ * type some text *and* arm a layer or a modifier — the shape the accent and `qu` keys need.
+ */
+export type MacroStep = { id: string } & (
+  | { kind: 'text'; text: string }
+  | { kind: 'sl'; layer: string }
+  | { kind: 'sk'; mod: Mod }
+  | { kind: 'ref'; ref: string }
+);
+
+export const MACRO_STEP_KINDS = ['text', 'sl', 'sk', 'ref'] as const;
 
 export interface BindingFields {
   kind: EditableKind;
@@ -29,6 +44,10 @@ export interface BindingFields {
   thenLayer: string;
   mod: Mod;
   ref: string;
+  /** Tag recorded as the last press's, for adaptive branches that key off how a symbol was typed. */
+  tag: string;
+  /** Macro steps. Empty falls back to the plain `symbols` + one armed layer shape. */
+  macroSteps: MacroStep[];
 }
 
 export const EMPTY_FIELDS: BindingFields = {
@@ -39,7 +58,58 @@ export const EMPTY_FIELDS: BindingFields = {
   thenLayer: '',
   mod: 'LSHIFT',
   ref: '',
+  tag: '',
+  macroSteps: [],
 };
+
+/** Rows are reordered and can be identical, so each carries an identity of its own for React. */
+let nextStepId = 0;
+function stepId(): string {
+  nextStepId += 1;
+  return `step-${nextStepId}`;
+}
+
+export function emptyMacroStep(kind: MacroStep['kind']): MacroStep {
+  const id = stepId();
+  switch (kind) {
+    case 'text':
+      return { id, kind: 'text', text: '' };
+    case 'sl':
+      return { id, kind: 'sl', layer: '' };
+    case 'sk':
+      return { id, kind: 'sk', mod: 'LSHIFT' };
+    default:
+      return { id, kind: 'ref', ref: '' };
+  }
+}
+
+function stepToBindings(s: MacroStep): Binding[] {
+  switch (s.kind) {
+    case 'text':
+      return [...s.text].map((g) => ({ kind: 'kp', symbol: g }));
+    case 'sl':
+      return [{ kind: 'sl', layer: s.layer }];
+    case 'sk':
+      return [{ kind: 'sk', mod: s.mod }];
+    default:
+      return [{ kind: 'macro', ref: s.ref }];
+  }
+}
+
+/** Read a macro's steps back into rows, coalescing consecutive single keys into one text row. */
+function stepsToRows(steps: Binding[]): MacroStep[] {
+  const rows: MacroStep[] = [];
+  for (const b of steps) {
+    if (b.kind === 'kp' && b.symbol) {
+      const last = rows[rows.length - 1];
+      if (last?.kind === 'text') last.text += b.symbol;
+      else rows.push({ id: stepId(), kind: 'text', text: b.symbol });
+    } else if (b.kind === 'sl') rows.push({ id: stepId(), kind: 'sl', layer: b.layer });
+    else if (b.kind === 'sk') rows.push({ id: stepId(), kind: 'sk', mod: b.mod });
+    else if (b.kind === 'macro' && b.ref) rows.push({ id: stepId(), kind: 'ref', ref: b.ref });
+  }
+  return rows;
+}
 
 /** Build a binding from the form. Only the fields that kind uses are read. */
 export function bindingFromFields(f: BindingFields): Binding {
@@ -49,12 +119,30 @@ export function bindingFromFields(f: BindingFields): Binding {
         kind: 'kp',
         symbol: f.symbol,
         ...(f.shifted ? { shifted: f.shifted } : {}),
+        ...(f.tag ? { tag: f.tag } : {}),
       };
     case 'macro':
+      // A macro built from rows keeps them; one that only types text keeps the compact shape, so
+      // editing an existing macro does not rewrite its document.
+      return f.macroSteps.length > 0
+        ? {
+            kind: 'macro',
+            steps: f.macroSteps.flatMap(stepToBindings),
+            ...(f.tag ? { tag: f.tag } : {}),
+          }
+        : {
+            kind: 'macro',
+            symbols: f.symbol,
+            ...(f.thenLayer ? { then: [{ kind: 'sl', layer: f.thenLayer }] } : {}),
+            ...(f.tag ? { tag: f.tag } : {}),
+          };
+    case 'dead_key':
+      return { kind: 'dead_key', diacritic: f.symbol || '\u00b4' };
+    case 'unicode':
       return {
-        kind: 'macro',
-        symbols: f.symbol,
-        ...(f.thenLayer ? { then: [{ kind: 'sl', layer: f.thenLayer }] } : {}),
+        kind: 'unicode',
+        symbol: f.symbol,
+        ...(f.shifted ? { shiftedSymbol: f.shifted } : {}),
       };
     case 'sl':
     case 'mo':
@@ -80,15 +168,21 @@ export function fieldsFromBinding(b: Binding | undefined): BindingFields {
   const f: BindingFields = { ...EMPTY_FIELDS, kind: b.kind as EditableKind };
   switch (b.kind) {
     case 'kp':
-      return { ...f, symbol: b.symbol ?? '', shifted: b.shifted ?? '' };
+      return { ...f, symbol: b.symbol ?? '', shifted: b.shifted ?? '', tag: b.tag ?? '' };
     case 'macro': {
       const then = b.then?.[0];
       return {
         ...f,
         symbol: b.symbols ?? '',
         thenLayer: then && then.kind === 'sl' ? then.layer : '',
+        tag: b.tag ?? '',
+        macroSteps: b.steps ? stepsToRows(b.steps) : [],
       };
     }
+    case 'dead_key':
+      return { ...f, symbol: b.diacritic };
+    case 'unicode':
+      return { ...f, symbol: b.symbol, shifted: b.shiftedSymbol ?? '' };
     case 'sl':
     case 'mo':
     case 'tog':

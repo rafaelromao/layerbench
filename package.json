@@ -19,7 +19,10 @@
     "build": "pnpm -r --filter @layoutmaster/core run build && pnpm --filter @layoutmaster/web run build",
     "dev": "pnpm --filter @layoutmaster/web run dev",
     "corpora": "pnpm --filter @layoutmaster/corpora run build",
-    "bench": "BENCH=1 pnpm --filter @layoutmaster/core run test"
+    "bench": "BENCH=1 pnpm --filter @layoutmaster/core run test",
+    "goldens": "pnpm --filter @layoutmaster/core run goldens",
+    "corpora:fetch": "pnpm --filter @layoutmaster/corpora run fetch",
+    "corpora:generate": "pnpm --filter @layoutmaster/corpora run generate"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",

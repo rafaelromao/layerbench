@@ -1,7 +1,7 @@
 import { catalogRules, redirectWhere, scissorWhere } from './catalog.js';
 import type { Rule, RuleSet } from './types.js';
 
-export const PRESET_IDS = ['layouts_doc', 'cyanophage', 'keysolve', 'romak_author'] as const;
+export const PRESET_IDS = ['layouts_doc', 'cyanophage', 'keysolve'] as const;
 export type PresetId = (typeof PRESET_IDS)[number];
 
 /** The Layouts Doc definitions, unmodified. */
@@ -136,34 +136,6 @@ export function keysolve(): RuleSet {
   };
 }
 
-const ROMAK_WEIGHTS: Record<string, number> = {
-  sfb: 3.0,
-  sfs: 1.0,
-  fsb: 1.0,
-  lsb: 1.0,
-  redirect: 1.0,
-  alternation: 0.5,
-  rolls: 0.5,
-  pinky_off: 1.0,
-  layer_taps_per_100: 1.0,
-  wasted_one_shots: 1.0,
-  extra_keystrokes: 1.0,
-  hand_balance: 0.5,
-};
-
-/** Doc rules with the layer family weighted and the composite score turned on. */
-export function romakAuthor(): RuleSet {
-  return {
-    id: 'romak_author',
-    name: 'Romak author',
-    description:
-      'Layouts Doc rules with the layer family weighted; composite score enabled; PT-BR + EN focus.',
-    globals: {},
-    rules: catalogRules().map((r) => ({ ...r, score: { weight: ROMAK_WEIGHTS[r.id] ?? 0 } })),
-    score_enabled: true,
-  };
-}
-
 /** A preset by id; unknown ids fall back to the Layouts Doc set. */
 export function getPreset(id: string): RuleSet {
   switch (id) {
@@ -171,8 +143,6 @@ export function getPreset(id: string): RuleSet {
       return cyanophage();
     case 'keysolve':
       return keysolve();
-    case 'romak_author':
-      return romakAuthor();
     default:
       return layoutsDoc();
   }

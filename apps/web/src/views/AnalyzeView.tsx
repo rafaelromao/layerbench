@@ -2,6 +2,7 @@ import {
   BUNDLED_LAYOUTS,
   type CorpusManifest,
   getPreset,
+  layoutLanguageCoverage,
   PRESET_IDS,
   toCanonicalJson,
 } from '@layoutmaster/core';
@@ -24,6 +25,7 @@ import {
   SAMPLE_SIZES,
   toSearch,
 } from '../url/params.js';
+import { groupByLanguage } from './corpus-groups.js';
 import { useLayout } from './useLayout.js';
 import { useRuleSet } from './useRuleSet.js';
 
@@ -108,14 +110,36 @@ export function AnalyzeView() {
       layout: toCanonicalJson(layout),
       corpusId,
       caseMode: params.caseMode,
+      textClass: params.textClass,
       crossWord: ruleSet.globals.cross_word ?? 'reset',
       maxSymbols: params.sample,
       ruleSet,
     };
-  }, [layout, params.corpus, params.corpus2, params.caseMode, params.sample, mixedId, ruleSet]);
+  }, [
+    layout,
+    params.corpus,
+    params.corpus2,
+    params.caseMode,
+    params.textClass,
+    params.sample,
+    mixedId,
+    ruleSet,
+  ]);
 
   const { report, loading, progress, error: analysisError } = useAnalysis(request);
   const error = layoutError ?? analysisError;
+
+  // The single most useful thing to say up front: an unreachable character is a hard word boundary,
+  // so a layout that cannot type the corpus's accents scores well by simply not typing them.
+  const corpusLanguage = corpora.find((c) => c.id === params.corpus)?.language;
+  const languageGap = useMemo(() => {
+    if (!compiled || !corpusLanguage) return null;
+    for (const tag of corpusLanguage.split('+')) {
+      const c = layoutLanguageCoverage(compiled, tag.trim());
+      if (c && c.missingRequired.length > 0) return c;
+    }
+    return null;
+  }, [compiled, corpusLanguage]);
 
   const layerIdx = compiled ? Math.min(params.layer, compiled.layers.length - 1) : 0;
   const heat = useMemo(
@@ -224,10 +248,14 @@ export function AnalyzeView() {
             value={params.corpus}
             onChange={(e) => setParams({ corpus: e.target.value })}
           >
-            {corpora.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
+            {groupByLanguage(corpora).map((g) => (
+              <optgroup key={g.label} label={g.label}>
+                {g.items.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </label>
@@ -242,13 +270,15 @@ export function AnalyzeView() {
             onChange={(e) => setParams({ corpus2: e.target.value === '' ? null : e.target.value })}
           >
             <option value="">—</option>
-            {corpora
-              .filter((c) => c.id !== params.corpus)
-              .map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
+            {groupByLanguage(corpora.filter((c) => c.id !== params.corpus)).map((g) => (
+              <optgroup key={g.label} label={g.label}>
+                {g.items.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
           </select>
         </label>
 
@@ -302,6 +332,21 @@ export function AnalyzeView() {
                 {n >= 1_000_000 ? `${n / 1_000_000}M` : `${n / 1000}k`} symbols
               </option>
             ))}
+          </select>
+        </label>
+
+        <label className="form-control">
+          <span className="label-text text-xs">Counts</span>
+          <select
+            name="text"
+            aria-label="Text to count"
+            className="select select-sm select-bordered"
+            value={params.textClass}
+            onChange={(e) => setParams({ textClass: e.target.value as Params['textClass'] })}
+          >
+            <option value="letters">Letters only</option>
+            <option value="letters+digits">Letters and numbers</option>
+            <option value="letters+digits+symbols">Letters, numbers and symbols</option>
           </select>
         </label>
 
@@ -437,6 +482,21 @@ export function AnalyzeView() {
                 ))}
                 <li className="badge badge-ghost font-mono">{explain.presses} presses</li>
               </ol>
+            )}
+
+            {languageGap && (
+              <div
+                className="alert alert-warning py-2 text-xs"
+                role="status"
+                aria-label="Language coverage"
+              >
+                <span>
+                  This layout cannot type {languageGap.missingRequired.length} character
+                  {languageGap.missingRequired.length === 1 ? '' : 's'} {languageGap.name} needs:{' '}
+                  <span className="font-mono">{languageGap.missingRequired.join(' ')}</span>. Each
+                  one breaks the word it appears in, so the metrics below understate the cost.
+                </span>
+              </div>
             )}
 
             {report && (

@@ -1,11 +1,23 @@
-import { GEOMETRY_PRESET_IDS, type Layout, tapLabel, toCanonicalJson } from '@layoutmaster/core';
+import {
+  type AdaptiveTrigger,
+  type CompiledLayout,
+  GEOMETRY_PRESET_IDS,
+  type Layout,
+  type LayoutFeatures,
+  type Mod,
+  tapLabel,
+  toCanonicalJson,
+} from '@layoutmaster/core';
 import { type Dispatch, useEffect, useState } from 'react';
 import type { ProducerDTO } from '../../engine/protocol.js';
 import {
   type BindingFields,
   bindingFromFields,
   EDITABLE_KINDS,
+  emptyMacroStep,
   fieldsFromBinding,
+  MACRO_STEP_KINDS,
+  type MacroStep,
 } from './binding-form.js';
 import type { EditAction, EditState } from './reducer.js';
 import { MODS } from './reducer.js';
@@ -167,6 +179,26 @@ export function BindingPanel({ state, send }: PanelProps) {
           </select>
         </label>
 
+        <label className="form-control col-span-2">
+          <span className="label-text text-xs">Tag (adaptive branches can match on it)</span>
+          <input
+            aria-label="Binding tag"
+            className="input input-sm input-bordered font-mono"
+            value={fields.tag}
+            onChange={(e) => set({ tag: e.target.value })}
+          />
+        </label>
+
+        {fields.kind === 'macro' ? (
+          <div className="col-span-2">
+            <MacroStepsEditor
+              state={state}
+              steps={fields.macroSteps}
+              onChange={(macroSteps) => set({ macroSteps })}
+            />
+          </div>
+        ) : null}
+
         <button type="submit" className="btn btn-sm btn-primary col-span-2">
           Apply to {selected}
         </button>
@@ -176,6 +208,330 @@ export function BindingPanel({ state, send }: PanelProps) {
 }
 
 /** Layers: rename, pair with a shifted twin, add and remove. */
+/**
+ * Steps of a macro, in order. A macro that only types text keeps the compact `symbols` shape; add a
+ * step and it becomes an explicit list, which is what lets one key type text *and* arm a layer or a
+ * modifier.
+ */
+function MacroStepsEditor({
+  state,
+  steps,
+  onChange,
+}: {
+  state: EditState;
+  steps: MacroStep[];
+  onChange: (steps: MacroStep[]) => void;
+}) {
+  const replace = (i: number, step: MacroStep) =>
+    onChange(steps.map((s, j) => (j === i ? step : s)));
+  const move = (i: number, by: number) => {
+    const next = [...steps];
+    const target = i + by;
+    if (target < 0 || target >= next.length) return;
+    [next[i], next[target]] = [next[target], next[i]];
+    onChange(next);
+  };
+
+  return (
+    <fieldset className="rounded border border-base-300 p-2">
+      <legend className="px-1 text-xs opacity-70">Macro steps</legend>
+      {steps.length === 0 ? (
+        <p className="text-[11px] opacity-60">
+          None — the macro types the text above. Add a step to build a sequence instead.
+        </p>
+      ) : null}
+      <ul className="space-y-1">
+        {steps.map((step, i) => (
+          <li key={step.id} className="flex items-center gap-1">
+            <select
+              aria-label={`Step ${i + 1} kind`}
+              className="select select-xs select-bordered"
+              value={step.kind}
+              onChange={(e) =>
+                replace(i, {
+                  ...emptyMacroStep(e.target.value as MacroStep['kind']),
+                  id: step.id,
+                })
+              }
+            >
+              {MACRO_STEP_KINDS.map((k) => (
+                <option key={k} value={k}>
+                  {k === 'text'
+                    ? 'type text'
+                    : k === 'sl'
+                      ? 'arm layer'
+                      : k === 'sk'
+                        ? 'arm modifier'
+                        : 'run behavior'}
+                </option>
+              ))}
+            </select>
+            {step.kind === 'text' ? (
+              <input
+                aria-label={`Step ${i + 1} text`}
+                className="input input-xs input-bordered font-mono flex-1"
+                value={step.text}
+                onChange={(e) => replace(i, { id: step.id, kind: 'text', text: e.target.value })}
+              />
+            ) : null}
+            {step.kind === 'sl' ? (
+              <select
+                aria-label={`Step ${i + 1} layer`}
+                className="select select-xs select-bordered flex-1"
+                value={step.layer}
+                onChange={(e) => replace(i, { id: step.id, kind: 'sl', layer: e.target.value })}
+              >
+                <option value="">—</option>
+                {state.compiled.layers.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+            {step.kind === 'sk' ? (
+              <select
+                aria-label={`Step ${i + 1} modifier`}
+                className="select select-xs select-bordered flex-1"
+                value={step.mod}
+                onChange={(e) =>
+                  replace(i, { id: step.id, kind: 'sk', mod: e.target.value as Mod })
+                }
+              >
+                {MODS.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+            {step.kind === 'ref' ? (
+              <select
+                aria-label={`Step ${i + 1} behavior`}
+                className="select select-xs select-bordered flex-1"
+                value={step.ref}
+                onChange={(e) => replace(i, { id: step.id, kind: 'ref', ref: e.target.value })}
+              >
+                <option value="">—</option>
+                {Object.keys(state.layout.behaviors ?? {}).map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+            <button
+              type="button"
+              aria-label={`Move step ${i + 1} up`}
+              className="btn btn-ghost btn-xs"
+              onClick={() => move(i, -1)}
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              aria-label={`Remove step ${i + 1}`}
+              className="btn btn-ghost btn-xs"
+              onClick={() => onChange(steps.filter((_, j) => j !== i))}
+            >
+              ✕
+            </button>
+          </li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        className="btn btn-xs mt-1"
+        onClick={() => onChange([...steps, emptyMacroStep('text')])}
+      >
+        Add step
+      </button>
+    </fieldset>
+  );
+}
+
+/** A trigger's condition, as the panel shows it: symbols, tags, or both. */
+function triggerCondition(t: AdaptiveTrigger): string {
+  const parts: string[] = [];
+  if (t.afterAny?.length) parts.push(t.afterAny.join(' '));
+  if (t.afterTags?.length) parts.push(`from ${t.afterTags.join(' ')}`);
+  return parts.join(' · ') || 'always';
+}
+
+function FeatureRow({
+  title,
+  hint,
+  on,
+  onToggle,
+  children,
+}: {
+  title: string;
+  hint: string;
+  on: boolean;
+  onToggle: (next: boolean) => void;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="rounded border border-base-300 p-3">
+      <label className="flex items-start gap-2">
+        <input
+          type="checkbox"
+          aria-label={title}
+          className="toggle toggle-sm mt-0.5"
+          checked={on}
+          onChange={(e) => onToggle(e.target.checked)}
+        />
+        <span>
+          <span className="font-medium text-sm">{title}</span>
+          <span className="block text-[11px] opacity-70">{hint}</span>
+        </span>
+      </label>
+      {on && children ? <div className="mt-2 pl-8">{children}</div> : null}
+    </div>
+  );
+}
+
+/**
+ * Features: the typing behaviours a keymap would otherwise need extra layers for.
+ *
+ * Everything here compiles down to ordinary bindings, so the layer list stays the set of layers a
+ * typist actually reaches. The trigger tables are shown read-only — a trigger can hold any binding,
+ * and the JSON panel is the honest place to edit one.
+ */
+export function FeaturesPanel({ state, send }: PanelProps) {
+  const f: LayoutFeatures = state.layout.features ?? {};
+  const set = (next: LayoutFeatures) => send({ type: 'setFeatures', features: next });
+  const enabled = (v: { enabled?: boolean } | undefined) => v !== undefined && v.enabled !== false;
+
+  return (
+    <div className="space-y-3">
+      <p className="text-[11px] opacity-70">
+        Firmware needs a pre-shifted copy of a layer, or a one-shot layer armed by a macro, to do
+        these. Declared here they are what they are, and the layer list stays honest.
+      </p>
+
+      <FeatureRow
+        title="Sentence case"
+        hint="Capitalise the first letter after sentence-ending punctuation."
+        on={enabled(f.sentenceCase)}
+        onToggle={(on) => set({ ...f, sentenceCase: on ? {} : undefined })}
+      >
+        <label className="form-control">
+          <span className="label-text text-xs">Ends a sentence</span>
+          <input
+            aria-label="Sentence-ending punctuation"
+            className="input input-xs input-bordered w-40 font-mono"
+            value={(f.sentenceCase?.after ?? ['.', '?', '!']).join(' ')}
+            onChange={(e) =>
+              set({
+                ...f,
+                sentenceCase: {
+                  ...f.sentenceCase,
+                  after: e.target.value.split(/\s+/).filter(Boolean),
+                },
+              })
+            }
+          />
+        </label>
+      </FeatureRow>
+
+      <FeatureRow
+        title="Caps word"
+        hint="Hold shift for the rest of the word, from the shift key."
+        on={enabled(f.capsWord)}
+        onToggle={(on) => set({ ...f, capsWord: on ? {} : undefined })}
+      >
+        <label className="form-control">
+          <span className="label-text text-xs">Does not end the word</span>
+          <input
+            aria-label="Caps word continue list"
+            className="input input-xs input-bordered w-40 font-mono"
+            value={(f.capsWord?.continueList ?? []).join(' ')}
+            onChange={(e) =>
+              set({
+                ...f,
+                capsWord: {
+                  ...f.capsWord,
+                  continueList: e.target.value.split(/\s+/).filter(Boolean),
+                },
+              })
+            }
+          />
+        </label>
+      </FeatureRow>
+
+      <FeatureRow
+        title="Alt repeat"
+        hint="A repeat key whose output depends on the previous press."
+        on={enabled(f.altRepeat)}
+        onToggle={(on) =>
+          set({ ...f, altRepeat: on ? (f.altRepeat ?? { triggers: [] }) : undefined })
+        }
+      >
+        {f.altRepeat ? (
+          <TriggerTable
+            compiled={state.compiled}
+            label="Alt repeat"
+            rows={[
+              ...f.altRepeat.triggers,
+              ...(f.altRepeat.secondStage?.triggers ?? []).map((t) => ({
+                ...t,
+                afterTags: f.altRepeat?.secondStage?.afterTags,
+              })),
+            ]}
+          />
+        ) : null}
+      </FeatureRow>
+
+      {(f.adaptiveKeys ?? []).map((a, i) => (
+        <FeatureRow
+          key={a.id}
+          title={a.label ?? a.id}
+          hint={`Adaptive key on ${(a.at ?? []).map((p) => `${p.layer}/${p.key}`).join(', ') || 'no key'}.`}
+          on={a.enabled !== false}
+          onToggle={(on) => {
+            const keys = [...(f.adaptiveKeys ?? [])];
+            keys[i] = { ...a, enabled: on };
+            set({ ...f, adaptiveKeys: keys });
+          }}
+        >
+          <TriggerTable compiled={state.compiled} label={a.label ?? a.id} rows={a.triggers} />
+        </FeatureRow>
+      ))}
+    </div>
+  );
+}
+
+function TriggerTable({
+  compiled,
+  label,
+  rows,
+}: {
+  compiled: CompiledLayout;
+  label: string;
+  rows: AdaptiveTrigger[];
+}) {
+  if (rows.length === 0) return <p className="text-[11px] opacity-60">No triggers.</p>;
+  return (
+    <table className="table table-xs" aria-label={`${label} triggers`}>
+      <thead>
+        <tr>
+          <th>After</th>
+          <th>Types</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((t) => (
+          <tr key={`${triggerCondition(t)}\u2192${tapLabel(compiled, t.binding)}`}>
+            <td className="font-mono">{triggerCondition(t)}</td>
+            <td className="font-mono">{tapLabel(compiled, t.binding)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 export function LayersPanel({ state, send }: PanelProps) {
   const [newLayer, setNewLayer] = useState('');
   return (
@@ -188,21 +544,6 @@ export function LayersPanel({ state, send }: PanelProps) {
             value={layer.name}
             onChange={(e) => send({ type: 'renameLayer', id: layer.id, name: e.target.value })}
           />
-          <select
-            aria-label={`Shifted twin of ${layer.name}`}
-            className="select select-xs select-bordered"
-            value={layer.shiftedTwin ?? ''}
-            onChange={(e) => send({ type: 'setTwin', id: layer.id, twin: e.target.value || null })}
-          >
-            <option value="">—</option>
-            {state.layout.layers
-              .filter((l) => l.id !== layer.id)
-              .map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name}
-                </option>
-              ))}
-          </select>
           <span className="font-mono text-xs opacity-60 w-20 truncate">{layer.id}</span>
           <button
             type="button"

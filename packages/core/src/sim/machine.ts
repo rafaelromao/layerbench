@@ -1,6 +1,6 @@
 import { composeDeadKey, hasShift, shiftSymbol, translateKeycode } from '../host/locale.js';
 import type { CompiledLayout } from '../layout/compile.js';
-import type { Binding, BindingKind, Mod } from '../layout/types.js';
+import type { AdaptiveTrigger, Binding, BindingKind, Mod } from '../layout/types.js';
 
 export type KeyKind =
   | 'alpha'
@@ -64,6 +64,7 @@ export interface Snapshot {
   autoLayer: { layer: number; continueList: string[] } | null;
   lastSymbol: string | null;
   lastKeycode: string | null;
+  lastTag: string | null;
   pendingDeadKey: string | null;
 }
 
@@ -77,6 +78,12 @@ export class MachineState {
   autoLayer: { layer: number; continueList: Set<string> } | null = null;
   lastSymbol: string | null = null;
   lastKeycode: string | null = null;
+  /**
+   * Tag of the binding that produced the last press. Lets an adaptive branch depend on *how* a
+   * symbol was typed: `u` from a `qu` macro is not the same as a plain `u`, and firmware can only
+   * tell them apart by arming a one-shot layer.
+   */
+  lastTag: string | null = null;
   pendingDeadKey: string | null = null;
 
   snapshot(): Snapshot {
@@ -94,6 +101,7 @@ export class MachineState {
         : null,
       lastSymbol: this.lastSymbol,
       lastKeycode: this.lastKeycode,
+      lastTag: this.lastTag,
       pendingDeadKey: this.pendingDeadKey,
     };
   }
@@ -112,6 +120,7 @@ export class MachineState {
       : null;
     this.lastSymbol = s.lastSymbol;
     this.lastKeycode = s.lastKeycode;
+    this.lastTag = s.lastTag;
     this.pendingDeadKey = s.pendingDeadKey;
   }
 
@@ -140,6 +149,8 @@ interface ExecContext {
   emittedKeycode: boolean;
   modifierPress: boolean;
   suppressMods: Set<Mod>;
+  /** Tag of the most recently entered tagged binding, recorded on the next emit. */
+  tag: string | null;
   depth: number;
 }
 
@@ -252,6 +263,7 @@ export class Machine {
       emittedKeycode: false,
       modifierPress: false,
       suppressMods: new Set(),
+      tag: null,
       depth: 0,
     };
   }
@@ -420,6 +432,17 @@ export class Machine {
     ctx.emittedKeycode = true;
     s.lastSymbol = symbol.length ? symbol : s.lastSymbol;
     s.lastKeycode = keycode ?? (symbol.length ? symbol : s.lastKeycode);
+    s.lastTag = ctx.tag;
+  }
+
+  /** Does this adaptive branch apply? Both conditions must hold when both are declared. */
+  private triggerMatches(t: AdaptiveTrigger, strict: boolean): boolean {
+    if (t.afterTags) {
+      const last = this.state.lastTag;
+      if (last === null || !t.afterTags.includes(last)) return false;
+    }
+    if (t.afterAny === undefined) return t.afterTags !== undefined;
+    return this.matchesTrigger(t.afterAny, strict);
   }
 
   private matchesTrigger(afterAny: string[], strict: boolean): boolean {
@@ -445,6 +468,8 @@ export class Machine {
   run(b: Binding, ctx: ExecContext): void {
     if (ctx.depth > 24) return;
     if (ctx.outer === null) ctx.outer = b.kind;
+    const tag = (b as { tag?: string }).tag;
+    if (tag !== undefined) ctx.tag = tag;
     ctx.depth++;
     try {
       switch (b.kind) {
@@ -574,7 +599,7 @@ export class Machine {
           return;
         case 'adaptive': {
           for (const t of b.triggers ?? []) {
-            if (this.matchesTrigger(t.afterAny, b.strictModifiers ?? false)) {
+            if (this.triggerMatches(t, b.strictModifiers ?? false)) {
               this.run(t.binding, ctx);
               return;
             }
