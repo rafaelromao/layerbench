@@ -2,13 +2,18 @@ import {
   type Binding,
   type CompiledLayout,
   compileLayout,
+  copyKey,
   type Layout,
   type LayoutFeatures,
   type Mod,
   safeParseLayout,
+  sendKeyToLayer,
+  setKeyBinding,
   slug,
   swapKeys,
+  type TypingPathEntry,
 } from '@layoutmaster/core';
+import type { DropTarget } from '../../components/use-key-drag.js';
 
 export type Panel =
   | 'binding'
@@ -38,6 +43,12 @@ export interface EditState {
   jsonError: string | null;
   /** The last swap, so the view can ask for an instant estimate. */
   lastSwap: { layerIdx: number; from: string; to: string } | null;
+  /** The key being edited in place, and the character that started it, if it was typed. */
+  editing: { keyId: string; seed: string | null } | null;
+  /** Keys picked on the board for a new combo, or null when not picking. */
+  comboPick: string[] | null;
+  /** Keys to outline, so a combo can point at the keys it is made of. */
+  boardHighlight: string[];
 }
 
 export type EditAction =
@@ -48,6 +59,11 @@ export type EditAction =
   | { type: 'swap'; from: string; to: string }
   | { type: 'setBinding'; binding: Binding }
   | { type: 'clearBinding' }
+  | { type: 'openEditor'; keyId: string; seed: string | null }
+  | { type: 'closeEditor' }
+  | { type: 'commitBinding'; keyId: string; binding: Binding }
+  | { type: 'clearKey'; keyId: string }
+  | { type: 'dropKey'; from: string; to: DropTarget; mode: 'swap' | 'copy' }
   | { type: 'addLayer'; name: string }
   | { type: 'removeLayer'; id: string }
   | { type: 'renameLayer'; id: string; name: string }
@@ -59,13 +75,16 @@ export type EditAction =
       repeat?: 'repeatKey' | 'tapTwice';
     }
   | { type: 'setMeta'; name?: string; author?: string; description?: string }
-  | { type: 'addCombo'; keys: string[]; symbol: string; role: 'typing' | 'command' }
+  | { type: 'addCombo'; keys: string[]; binding: Binding; role: 'typing' | 'command' }
+  | { type: 'comboPickStart' }
+  | { type: 'comboPickToggle'; keyId: string }
+  | { type: 'comboPickCancel' }
+  | { type: 'setBoardHighlight'; keys: string[] }
   | { type: 'removeCombo'; id: string }
   | { type: 'toggleComboRole'; id: string }
   | { type: 'behaviorsChange'; json: string }
   | { type: 'behaviorsApply'; json: string }
-  | { type: 'pathToggle'; symbol: string; producer: string }
-  | { type: 'pathMove'; symbol: string; producer: string; direction: 'up' | 'down' }
+  | { type: 'pathSet'; symbol: string; entries: TypingPathEntry[] }
   | { type: 'exportJson' }
   | { type: 'jsonChange'; text: string }
   | { type: 'importJson'; text: string }
@@ -92,6 +111,9 @@ export function initialState(layout: Layout, compiled: CompiledLayout, layer = 0
     jsonText: '',
     jsonError: null,
     lastSwap: null,
+    editing: null,
+    comboPick: null,
+    boardHighlight: [],
   };
 }
 
@@ -102,13 +124,18 @@ export function initialState(layout: Layout, compiled: CompiledLayout, layer = 0
 function withLayout(state: EditState, layout: Layout, patch: Partial<EditState> = {}): EditState {
   try {
     const compiled = compileLayout(layout);
+    // Re-rendering the behaviours buffer on every edit would throw away whatever is half-typed in
+    // it, so it is only refreshed when the behaviours themselves moved.
+    const behaviorsMoved =
+      JSON.stringify(layout.behaviors ?? {}) !== JSON.stringify(state.layout.behaviors ?? {});
     return {
       ...state,
       layout,
       compiled,
       dirty: true,
       error: null,
-      behaviorsJson: behaviorsText(layout),
+      editing: null,
+      ...(behaviorsMoved ? { behaviorsJson: behaviorsText(layout) } : {}),
       layer: Math.min(state.layer, compiled.layers.length - 1),
       ...patch,
     };
@@ -117,23 +144,21 @@ function withLayout(state: EditState, layout: Layout, patch: Partial<EditState> 
   }
 }
 
-function editLayer(
-  state: EditState,
-  fn: (bindings: Record<string, Binding>) => Record<string, Binding>,
-): Layout {
-  const layers = state.layout.layers.map((l, i) =>
-    i === state.layer ? { ...l, bindings: fn({ ...l.bindings }) } : l,
-  );
-  return { ...state.layout, layers };
-}
-
 export function editReducer(state: EditState, action: EditAction): EditState {
   switch (action.type) {
     case 'selectLayer':
-      return { ...state, layer: action.layer, selected: null, swapFrom: null };
+      return {
+        ...state,
+        layer: action.layer,
+        selected: null,
+        swapFrom: null,
+        editing: null,
+        error: null,
+      };
 
     case 'keyClick': {
-      if (!state.swapFrom) return { ...state, selected: action.keyId };
+      // A stale compile error belongs to the edit that failed, not to the next key clicked.
+      if (!state.swapFrom) return { ...state, selected: action.keyId, error: null };
       if (state.swapFrom === action.keyId) return { ...state, swapFrom: null };
       return editReducer(
         { ...state, swapFrom: null },
@@ -160,27 +185,69 @@ export function editReducer(state: EditState, action: EditAction): EditState {
       });
     }
 
-    case 'setBinding': {
+    case 'setBinding':
       if (!state.selected) return state;
-      const key = state.selected;
-      return withLayout(
-        state,
-        editLayer(state, (b) => ({ ...b, [key]: action.binding })),
-        { lastSwap: null },
-      );
-    }
+      return editReducer(state, {
+        type: 'commitBinding',
+        keyId: state.selected,
+        binding: action.binding,
+      });
 
-    case 'clearBinding': {
+    case 'clearBinding':
       if (!state.selected) return state;
-      const key = state.selected;
+      return editReducer(state, { type: 'clearKey', keyId: state.selected });
+
+    case 'openEditor':
+      return {
+        ...state,
+        selected: action.keyId,
+        swapFrom: null,
+        error: null,
+        editing: { keyId: action.keyId, seed: action.seed },
+      };
+
+    case 'closeEditor':
+      return state.editing ? { ...state, editing: null } : state;
+
+    case 'commitBinding':
       return withLayout(
         state,
-        editLayer(state, (b) => {
-          delete b[key];
-          return b;
-        }),
-        { lastSwap: null },
+        setKeyBinding(state.layout, state.layer, action.keyId, action.binding),
+        { selected: action.keyId, lastSwap: null },
       );
+
+    case 'clearKey':
+      return withLayout(state, setKeyBinding(state.layout, state.layer, action.keyId, undefined), {
+        selected: action.keyId,
+        lastSwap: null,
+      });
+
+    case 'dropKey': {
+      const { from, to, mode } = action;
+      if (to.kind === 'layer') {
+        const target = state.layout.layers.findIndex((l) => l.id === to.layerId);
+        if (target < 0 || target === state.layer) return state;
+        // Following the binding to its new layer is the only way to see that the drop landed.
+        return withLayout(
+          state,
+          sendKeyToLayer(
+            state.layout,
+            state.layer,
+            target,
+            from,
+            mode === 'copy' ? 'copy' : 'move',
+          ),
+          { layer: target, selected: from, lastSwap: null },
+        );
+      }
+      if (from === to.keyId) return state;
+      if (mode === 'copy') {
+        return withLayout(state, copyKey(state.layout, state.layer, from, to.keyId), {
+          selected: to.keyId,
+          lastSwap: null,
+        });
+      }
+      return editReducer(state, { type: 'swap', from, to: to.keyId });
     }
 
     case 'addLayer': {
@@ -266,7 +333,7 @@ export function editReducer(state: EditState, action: EditAction): EditState {
       );
 
     case 'addCombo': {
-      if (action.keys.length < 2 || action.symbol === '') {
+      if (action.keys.length < 2) {
         return { ...state, error: 'a combo needs at least two keys and an output' };
       }
       const layerId = state.layout.layers[state.layer].id;
@@ -275,15 +342,41 @@ export function editReducer(state: EditState, action: EditAction): EditState {
         {
           id: slug(action.keys.join('-')),
           keys: action.keys,
-          binding: { kind: 'kp', symbol: action.symbol } as Binding,
+          binding: action.binding,
           layers: [layerId],
           role: action.role,
           timeoutMs: 50,
           slowRelease: false,
         },
       ];
-      return withLayout(state, { ...state.layout, combos }, { lastSwap: null });
+      return withLayout(
+        state,
+        { ...state.layout, combos },
+        {
+          lastSwap: null,
+          comboPick: null,
+        },
+      );
     }
+
+    case 'comboPickStart':
+      return { ...state, comboPick: [], editing: null, selected: null, swapFrom: null };
+
+    case 'comboPickToggle': {
+      const picked = state.comboPick ?? [];
+      return {
+        ...state,
+        comboPick: picked.includes(action.keyId)
+          ? picked.filter((k) => k !== action.keyId)
+          : [...picked, action.keyId],
+      };
+    }
+
+    case 'comboPickCancel':
+      return { ...state, comboPick: null };
+
+    case 'setBoardHighlight':
+      return { ...state, boardHighlight: action.keys };
 
     case 'removeCombo':
       return withLayout(
@@ -328,23 +421,13 @@ export function editReducer(state: EditState, action: EditAction): EditState {
         : { ...next, behaviorsError: null, lastSwap: null };
     }
 
-    case 'pathToggle': {
-      const paths = { ...(state.layout.typingPaths ?? {}) };
-      const entries = paths[action.symbol] ?? [];
-      paths[action.symbol] = entries.map((e) =>
-        e.producer === action.producer ? { ...e, enabled: !(e.enabled ?? true) } : e,
-      );
-      return withLayout(state, { ...state.layout, typingPaths: paths }, { lastSwap: null });
-    }
-
-    case 'pathMove': {
-      const paths = { ...(state.layout.typingPaths ?? {}) };
-      const entries = [...(paths[action.symbol] ?? [])];
-      const i = entries.findIndex((e) => e.producer === action.producer);
-      const j = action.direction === 'up' ? i - 1 : i + 1;
-      if (i < 0 || j < 0 || j >= entries.length) return state;
-      [entries[i], entries[j]] = [entries[j], entries[i]];
-      paths[action.symbol] = entries;
+    /**
+     * The whole list for one symbol, computed by the panel. A symbol with no declared path is
+     * shown with the producers the engine found, and the panel sends that list back with the
+     * change applied — which is why reordering and toggling one now works the first time.
+     */
+    case 'pathSet': {
+      const paths = { ...(state.layout.typingPaths ?? {}), [action.symbol]: action.entries };
       return withLayout(state, { ...state.layout, typingPaths: paths }, { lastSwap: null });
     }
 

@@ -39,6 +39,8 @@ export const MACRO_STEP_KINDS = ['text', 'sl', 'sk', 'ref'] as const;
 export interface BindingFields {
   kind: EditableKind;
   symbol: string;
+  /** ZMK keycode, e.g. `A`, `N1`, `LS(COMMA)`. Resolved by the host locale; wins over `symbol`. */
+  keycode: string;
   shifted: string;
   layer: string;
   thenLayer: string;
@@ -53,6 +55,7 @@ export interface BindingFields {
 export const EMPTY_FIELDS: BindingFields = {
   kind: 'kp',
   symbol: '',
+  keycode: '',
   shifted: '',
   layer: '',
   thenLayer: '',
@@ -118,6 +121,7 @@ export function bindingFromFields(f: BindingFields): Binding {
       return {
         kind: 'kp',
         symbol: f.symbol,
+        ...(f.keycode ? { keycode: f.keycode } : {}),
         ...(f.shifted ? { shifted: f.shifted } : {}),
         ...(f.tag ? { tag: f.tag } : {}),
       };
@@ -151,7 +155,15 @@ export function bindingFromFields(f: BindingFields): Binding {
     case 'auto_layer':
       return { kind: f.kind, layer: f.layer } as Binding;
     case 'lt':
-      return { kind: 'lt', layer: f.layer, tap: { kind: 'kp', symbol: f.symbol } };
+      return {
+        kind: 'lt',
+        layer: f.layer,
+        tap: {
+          kind: 'kp',
+          symbol: f.symbol,
+          ...(f.keycode ? { keycode: f.keycode } : {}),
+        },
+      };
     case 'sk':
     case 'mod':
       return { kind: f.kind, mod: f.mod || 'LSHIFT' } as Binding;
@@ -168,7 +180,13 @@ export function fieldsFromBinding(b: Binding | undefined): BindingFields {
   const f: BindingFields = { ...EMPTY_FIELDS, kind: b.kind as EditableKind };
   switch (b.kind) {
     case 'kp':
-      return { ...f, symbol: b.symbol ?? '', shifted: b.shifted ?? '', tag: b.tag ?? '' };
+      return {
+        ...f,
+        symbol: b.symbol ?? '',
+        keycode: b.keycode ?? '',
+        shifted: b.shifted ?? '',
+        tag: b.tag ?? '',
+      };
     case 'macro': {
       const then = b.then?.[0];
       return {
@@ -194,6 +212,7 @@ export function fieldsFromBinding(b: Binding | undefined): BindingFields {
         ...f,
         layer: b.layer,
         symbol: b.tap.kind === 'kp' ? (b.tap.symbol ?? '') : '',
+        keycode: b.tap.kind === 'kp' ? (b.tap.keycode ?? '') : '',
       };
     case 'sk':
     case 'mod':

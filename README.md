@@ -17,7 +17,7 @@ unless you point it at a repository of your own.
 | Route | What it does |
 |---|---|
 | `/` | Analyze a layout: heat-mapped keyboard, every metric, and a trace of how any word is typed |
-| `/edit` | Edit a layout: drag keys to swap them, edit bindings, layers, combos, behaviors, typing paths |
+| `/edit` | Edit a layout in place: type ZMK on a key, drag keys to swap, copy or send to another layer; layers, combos, behaviors, typing paths |
 | `/compare` | Two layouts side by side, with a delta for each metric |
 | `/rules` | Enable, re-parameterize or compose rules; save the set |
 | `/corpus` | Browse the shipped corpora and build your own from pasted or uploaded text |
@@ -25,6 +25,59 @@ unless you point it at a repository of your own.
 
 A link carries the whole analysis, so any view can be shared as it stands. `?layout=inline:…` even
 carries a layout that was never saved.
+
+## Editing a key
+
+Select a key and type on it. The text is ZMK's, with the kinds this model has and ZMK does not
+following the same shape:
+
+| Type | Result |
+|---|---|
+| `ç` · `ão` | that symbol |
+| `&kp A` · `&kp N1` · `&kp LS(COMMA)` | a key press, by keycode |
+| `&lt num a` · `&mo sym` · `&sl ccedil` · `&to base` · `&tog num` | layer taps and switches |
+| `&sk LSHIFT` · `&kp LSHIFT` | a sticky modifier, and a plain one |
+| `&macro ão` · `&macro ão then alpha2` | a macro, optionally arming a layer |
+| `&trans` · `&none` · `&key_repeat` · `&caps_word` | the rest |
+| `&magic` | one of the layout's own behaviors |
+
+A layer is named by its id, its name, or the index ZMK would use. A trailing `tag:name` records the
+tag adaptive branches match on. Under the default `symbols` host locale a keycode is resolved to the
+symbol it types, so `&kp N1` becomes `1`, shifted `!`.
+
+### Keys and gestures
+
+| | |
+|---|---|
+| any character | opens the editor on the focused key and starts its binding with that character |
+| `Enter` · `F2` | opens the editor on the whole binding; `Enter` again commits it |
+| `Escape` | abandons the edit |
+| `Delete` · `Backspace` | clears the key |
+| arrow keys | move between keys — the board is one tab stop, not thirty-four |
+| `Space` | selects the key, which is what the **Key** panel follows |
+| `Alt`+`S` | arms a swap; then click or `Enter` on its partner |
+| `Ctrl`/`Cmd`+`Z` | undoes, `Shift` as well redoes |
+
+Dragging a key onto another swaps the two, holding `Alt` copies instead, and dropping a key on a
+layer tab sends it to that layer. The palette under the board holds the bindings worth not typing:
+drag one onto a key, or click it and then click a key — which is also how this works on a touch
+screen, where a drag needs the finger to rest on the key first.
+
+Combos are built by clicking **pick on board** in the Combos panel and then clicking the keys, and
+their output takes the same syntax as a key. Typing-path alternatives reorder by dragging, or with
+the arrows beside them.
+
+### What cannot be typed
+
+Some bindings carry more than this syntax can write: an adaptive key's branches, a hold-tap's two
+arms, a mod-morph, a tap dance, a macro built from steps, a one-shot carrying release options. On
+one of those the editor opens read-only and says which it is, rather than flattening it.
+
+**The Key panel refuses them too.** Its form is built from a fixed set of fields with no room for
+those, so applying it would replace the binding rather than change it — it says so, and disables
+itself until you press **Replace anyway**. A key a feature generated has no way through at all: it
+is rewritten every time the layout compiles, so the panel names the feature and points at
+**Features**, where turning the feature off hands the key back.
 
 ## Structure
 

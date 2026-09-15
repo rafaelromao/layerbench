@@ -1,6 +1,28 @@
 import { type CompiledLayout, legend } from '@layoutmaster/core';
-import { useId, useMemo } from 'react';
-import { useKeyDrag } from './use-key-drag.js';
+import {
+  type KeyboardEvent as ReactKeyboardEvent,
+  type Ref,
+  useCallback,
+  useId,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { type Direction, nearestKey } from './key-nav.js';
+import { type KeyDrop, useKeyDrag } from './use-key-drag.js';
+
+const ARROWS: Record<string, Direction> = {
+  ArrowUp: 'up',
+  ArrowDown: 'down',
+  ArrowLeft: 'left',
+  ArrowRight: 'right',
+};
+
+export interface KeyboardHandle {
+  /** Put keyboard focus back on a key, after an editor or a dialog has had it. */
+  focusKey: (keyId: string) => void;
+}
 
 /** Pixels per key unit, and the gap that separates neighbouring caps. */
 const UNIT = 64;
@@ -23,11 +45,17 @@ export interface KeyboardProps {
   className?: string;
   id?: string;
   onKeyClick?: (keyId: string) => void;
-  /** Enables dragging one key onto another to swap them. */
+  /** Enables dragging a key onto another key, or onto a layer tab. */
   draggable?: boolean;
-  onSwap?: (from: string, to: string) => void;
-  /** Other keystrokes on a focused key, for shortcuts the view defines. */
-  onKeyShortcut?: (key: string, keyId: string) => void;
+  onDropKey?: (drop: KeyDrop) => void;
+  /** Called once a drag begins, so a view can put an open editor away. */
+  onDragStart?: (keyId: string) => void;
+  /**
+   * Other keystrokes on a focused key, for shortcuts the view defines. The whole event is passed:
+   * a view has to tell `z` from ctrl+`z`, and has to be able to stop the browser acting on a key.
+   */
+  onKeyShortcut?: (e: ReactKeyboardEvent<SVGGElement>, keyId: string) => void;
+  ref?: Ref<KeyboardHandle>;
 }
 
 function fmt(n: number): string {
@@ -51,11 +79,23 @@ export function Keyboard({
   id,
   onKeyClick,
   draggable = false,
-  onSwap,
+  onDropKey,
+  onDragStart,
   onKeyShortcut,
+  ref,
 }: KeyboardProps) {
-  const drag = useKeyDrag(onSwap);
+  const nodes = useRef<Record<string, SVGGElement | null>>({});
+  // Which key holds the single tab stop. It follows focus, so tabbing back returns where you were.
+  const [focused, setFocused] = useState<string | null>(null);
   const generatedId = useId();
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      focusKey: (keyId: string) => nodes.current[keyId]?.focus(),
+    }),
+    [],
+  );
   // Arrow markers are referenced by id, so two keyboards on one page must not share one.
   const markerId = `lm-arrow-${(id ?? generatedId).replace(/[^\w-]/g, '')}`;
   const layerIdx = Math.min(layer, compiled.layers.length - 1);
@@ -76,6 +116,18 @@ export function Keyboard({
       height: (maxY - minY + 2 * PAD) * UNIT,
     };
   }, [compiled]);
+
+  const legendOf = useCallback(
+    (keyId: string) => {
+      const idx = compiled.keyIndex.get(keyId);
+      if (idx === undefined) return keyId;
+      const active = compiled.layers[Math.min(layer, compiled.layers.length - 1)];
+      return legend(compiled, active.bindings[idx]).tap || keyId;
+    },
+    [compiled, layer],
+  );
+
+  const drag = useKeyDrag(onDropKey, { legendOf, onDragStart });
 
   const keys = compiled.keys.map((k, idx) => {
     const binding = activeLayer.bindings[idx];
@@ -98,6 +150,30 @@ export function Keyboard({
       selected: selected === k.id,
     };
   });
+
+  // Every key being a tab stop makes a 34-key board 34 stops; one stop plus arrows is what a grid
+  // of controls is expected to do.
+  const tabStop = focused ?? selected ?? compiled.keys[0]?.id ?? null;
+
+  const onKeyDown = (e: ReactKeyboardEvent<SVGGElement>, keyId: string, idx: number) => {
+    const direction = ARROWS[e.key];
+    if (direction && !e.altKey && !e.ctrlKey && !e.metaKey) {
+      const next = nearestKey(compiled.keys, idx, direction);
+      if (next !== undefined) {
+        e.preventDefault();
+        nodes.current[compiled.keys[next].id]?.focus();
+        return;
+      }
+    }
+    // The view gets first refusal, so an editing view can take Enter for itself; a view that does
+    // not handle it leaves the key behaving like the button it says it is.
+    onKeyShortcut?.(e, keyId);
+    if (e.defaultPrevented) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onKeyClick?.(keyId);
+    }
+  };
 
   const centerOf = (pos: number) => {
     const k = compiled.keys[pos];
@@ -147,8 +223,11 @@ export function Keyboard({
               .filter(Boolean)
               .join(' ')}
             data-key={k.key.id}
+            ref={(el) => {
+              nodes.current[k.key.id] = el;
+            }}
             role={interactive ? 'button' : undefined}
-            tabIndex={interactive ? 0 : undefined}
+            tabIndex={interactive ? (k.key.id === tabStop ? 0 : -1) : undefined}
             aria-label={label}
             style={{ cursor: interactive ? 'pointer' : 'default' }}
             onClick={
@@ -159,18 +238,8 @@ export function Keyboard({
                   }
                 : undefined
             }
-            onKeyDown={
-              interactive
-                ? (e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      onKeyClick?.(k.key.id);
-                      return;
-                    }
-                    onKeyShortcut?.(e.key, k.key.id);
-                  }
-                : undefined
-            }
+            onFocus={interactive ? () => setFocused(k.key.id) : undefined}
+            onKeyDown={interactive ? (e) => onKeyDown(e, k.key.id, k.idx) : undefined}
           >
             <rect
               x={fmt(-k.w / 2)}

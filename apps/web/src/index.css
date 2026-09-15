@@ -136,6 +136,14 @@
 .lm-kind-repeat {
   fill: var(--color-info);
 }
+.lm-kind-alpha,
+.lm-kind-trans,
+.lm-kind-none {
+  fill: var(--lm-key-text);
+}
+.lm-key-thumb .lm-key-cap {
+  stroke-width: 2;
+}
 
 .lm-key:hover .lm-key-cap,
 .lm-key-selected .lm-key-cap {
@@ -163,6 +171,68 @@
 .lm-drop-target .lm-key-cap {
   stroke: var(--color-success);
   stroke-width: 3;
+}
+.lm-drop-copy .lm-key-cap {
+  stroke: var(--color-info);
+}
+
+/* The key a drag started from, still in place but clearly no longer under the pointer. */
+.lm-key-source {
+  opacity: 0.35;
+}
+
+/* A layer tab takes a drop too, and is an ordinary button rather than a key. */
+button.lm-drop-target {
+  outline: 2px solid var(--color-success);
+  outline-offset: 2px;
+}
+button.lm-drop-target.lm-drop-copy {
+  outline-color: var(--color-info);
+}
+
+/* What the pointer carries during a drag. Positioned from the pointer, so it owes the SVG
+   nothing: no viewBox scale to undo, and it stays out of the hit test that finds drop targets. */
+.lm-key-ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 60;
+  margin: -1.25rem 0 0 -1.4rem;
+  min-width: 2.8rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 0.5rem;
+  text-align: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 600;
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  border: 2px solid var(--color-primary);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.35);
+  pointer-events: none;
+}
+.lm-key-ghost-copy {
+  border-color: var(--color-info);
+}
+
+/* The editor that opens on a key, anchored inside the board rather than drawn in the SVG. */
+.lm-key-editor {
+  position: absolute;
+  z-index: 50;
+}
+/* While a drag is running the editor must not intercept the hit test that finds the drop. */
+.lm-dragging ~ .lm-key-editor {
+  pointer-events: none;
+}
+
+/* A finger may scroll the page over the board; a drag starts only after the touch has rested. */
+.lm-board .lm-keyboard {
+  touch-action: pan-y;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lm-key-cap {
+    transition: none;
+  }
 }
 
 .lm-stat {

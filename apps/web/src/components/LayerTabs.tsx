@@ -34,6 +34,8 @@ export function LayerTabs({ layers, active, onSelect }: LayerTabsProps) {
               refs.current[i] = el;
             }}
             className={`tab ${isActive ? 'tab-active' : ''}`}
+            // A key dragged onto a tab is sent to that layer; the drag hook looks for this.
+            data-layer-drop={layer.id}
             onClick={() => onSelect(layer.idx)}
             onKeyDown={(e) => {
               if (e.key === 'ArrowRight') {

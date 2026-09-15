@@ -53,6 +53,15 @@ if (!Element.prototype.setPointerCapture) {
   Element.prototype.hasPointerCapture = () => false;
 }
 
+// The in-place editor repositions itself when the board resizes; jsdom never resizes anything.
+if (typeof ResizeObserver === 'undefined') {
+  (globalThis as { ResizeObserver?: unknown }).ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
+
 if (typeof PointerEvent === 'undefined') {
   class PointerEventPolyfill extends MouseEvent {
     readonly pointerId: number;

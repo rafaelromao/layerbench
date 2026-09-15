@@ -1,9 +1,10 @@
-import { bundledLayout, slug, toCanonicalJson } from '@layoutmaster/core';
+import { bundledLayout, type Layout, slug, toCanonicalJson } from '@layoutmaster/core';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { Keyboard } from '../components/Keyboard.js';
+import { Keyboard, type KeyboardHandle } from '../components/Keyboard.js';
 import { LayerTabs } from '../components/LayerTabs.js';
 import { EDIT_SUMMARY_IDS, SummaryStrip } from '../components/Metrics.js';
+import { clearDropTargets, paintDropTarget, targetUnder } from '../components/use-key-drag.js';
 import { useAnalysisClient } from '../engine/client-context.js';
 import type { AnalyzeRequest, ProducerDTO, ReportDTO } from '../engine/protocol.js';
 import { useAnalysis } from '../engine/use-analysis.js';
@@ -11,6 +12,10 @@ import { toast } from '../state/toasts.js';
 import { useStorage } from '../storage/use-storage.js';
 import { encodeInline } from '../url/inline.js';
 import { inlineRef, parseParams, type RawSearch, savedRef, toSearch } from '../url/params.js';
+import { BindingPalette } from './edit/BindingPalette.js';
+import { bindingFromFields } from './edit/binding-form.js';
+import { type BindingTextContext, parseBindingText } from './edit/binding-text.js';
+import { KeyEditor } from './edit/KeyEditor.js';
 import {
   BehaviorsPanel,
   BindingPanel,
@@ -22,9 +27,13 @@ import {
   PathsPanel,
   SavePanel,
 } from './edit/panels.js';
-import { editReducer, initialState, type Panel } from './edit/reducer.js';
+import { editReducer, type Panel } from './edit/reducer.js';
+import { initialUndoState, undoable } from './edit/undo.js';
 import { useLayout } from './useLayout.js';
 import { useRuleSet } from './useRuleSet.js';
+
+/** Built once: a reducer rebuilt on every render would reset the editor's history. */
+const undoableEditReducer = undoable(editReducer);
 
 /** Editing re-analyzes on every change, so it works from a smaller sample than the Analyze view. */
 const EDIT_MAX_SYMBOLS = 100_000;
@@ -93,11 +102,17 @@ function Editor({
   navigate,
 }: EditorProps) {
   const [state, send] = useReducer(
-    editReducer,
-    initialState(initialLayout, initialCompiled, params.layer),
+    undoableEditReducer,
+    initialUndoState(initialLayout, initialCompiled, params.layer),
   );
+  const keyboard = useRef<KeyboardHandle>(null);
+  const [board, setBoard] = useState<HTMLDivElement | null>(null);
+  /** A binding taken from the palette and not yet placed. */
+  const [carried, setCarried] = useState<string | null>(null);
+  /** What to tell a screen reader: a key's changed legend is not announced on its own. */
+  const [message, setMessage] = useState('');
   const [producers, setProducers] = useState<Record<string, ProducerDTO[]>>({});
-  const [estimate, setEstimate] = useState<ReportDTO | null>(null);
+  const [estimate, setEstimate] = useState<{ report: ReportDTO; layout: Layout } | null>(null);
   const previousReport = useRef<ReportDTO | null>(null);
 
   const request: AnalyzeRequest = useMemo(
@@ -154,7 +169,7 @@ function Editor({
         ruleSet,
       })
       .then((dto) => {
-        if (!cancelled && dto) setEstimate(dto);
+        if (!cancelled && dto) setEstimate({ report: dto, layout: state.layout });
       })
       .catch(() => {});
     return () => {
@@ -172,9 +187,46 @@ function Editor({
 
   // While the visible report still describes the layout as it was before the swap, the estimate is
   // the more truthful of the two, so it wins until the real analysis of the edited layout lands.
+  // Only a swap can be estimated, and only for the layout it was computed from: any other edit
+  // would leave the estimate describing a layout that is no longer on screen.
   const reportIsStale = !report || report.key === previousReport.current?.key;
-  const provisional = estimate !== null && reportIsStale;
-  const shown = provisional ? estimate : report;
+  const provisional = estimate !== null && estimate.layout === state.layout && reportIsStale;
+  const shown = provisional && estimate ? estimate.report : report;
+
+  const bindingContext: BindingTextContext = useMemo(
+    () => ({
+      layers: state.compiled.layers.map((l) => ({ id: l.id, name: l.name })),
+      behaviors: Object.keys(state.layout.behaviors ?? {}),
+      hostLocale: state.compiled.hostLocale,
+    }),
+    [state.compiled, state.layout.behaviors],
+  );
+
+  // Everything the board should outline: a key armed for a swap, the keys being picked for a
+  // combo, and the keys of a combo the user asked to see.
+  const highlighted = useMemo(() => {
+    const ids = [
+      ...(state.swapFrom ? [state.swapFrom] : []),
+      ...(state.comboPick ?? []),
+      ...state.boardHighlight,
+    ];
+    return ids
+      .map((id) => state.compiled.keyIndex.get(id))
+      .filter((p): p is number => p !== undefined);
+  }, [state.swapFrom, state.comboPick, state.boardHighlight, state.compiled]);
+
+  const place = useCallback(
+    (text: string, keyId: string) => {
+      const result = parseBindingText(text, bindingContext);
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      send({ type: 'commitBinding', keyId, binding: bindingFromFields(result.fields) });
+      setMessage(`${keyId} set to ${text}`);
+    },
+    [bindingContext],
+  );
 
   const save = useCallback(
     async (name: string) => {
@@ -211,7 +263,19 @@ function Editor({
   }, [state.layout, params, navigate]);
 
   return (
-    <div className="space-y-4">
+    // biome-ignore lint/a11y/noStaticElementInteractions: undo belongs to the whole editor, reached from whatever inside it has focus.
+    <div
+      className="space-y-4"
+      onKeyDown={(e) => {
+        if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z') return;
+        const target = e.target as HTMLElement;
+        // A text field has an undo stack of its own, and it should win inside itself.
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+        e.preventDefault();
+        send({ type: e.shiftKey ? 'redo' : 'undo' });
+        setMessage(e.shiftKey ? 'Redone' : 'Undone');
+      }}
+    >
       <h1 className="sr-only">Edit</h1>
 
       <form
@@ -265,39 +329,128 @@ function Editor({
               />
             </div>
             <p className="text-xs opacity-60">
-              Click a key to select it. Drag one key onto another to swap them, or press S on a
-              selected key and then choose its partner.
+              Type on a key to set it: <span className="font-mono">&amp;kp ç</span>,{' '}
+              <span className="font-mono">&amp;lt num a</span>,{' '}
+              <span className="font-mono">&amp;mo sym</span>. Enter edits, Delete clears, arrow keys
+              move. Drag a key onto another to swap it, hold Alt to copy, or drop it on a layer tab
+              to send it there.
             </p>
 
-            <Keyboard
-              id="kb-edit"
-              compiled={state.compiled}
-              layer={state.layer}
-              selected={state.selected}
-              draggable
-              highlight={
-                state.swapFrom
-                  ? [state.compiled.keyIndex.get(state.swapFrom)].filter(
-                      (p): p is number => p !== undefined,
-                    )
-                  : []
-              }
-              onKeyClick={(keyId) => send({ type: 'keyClick', keyId })}
-              onSwap={(from, to) => send({ type: 'swap', from, to })}
-              onKeyShortcut={(key, keyId) => {
-                // Swapping without a pointer: S arms the focused key, Escape cancels.
-                if (key === 's' || key === 'S') {
-                  send({ type: 'keyClick', keyId });
-                  send({ type: 'startSwap' });
-                } else if (key === 'Escape') {
-                  send({ type: 'cancelSwap' });
-                }
+            {/* biome-ignore lint/a11y/noStaticElementInteractions: the drop handling belongs to the
+                board as a whole; every key inside it is already a button. */}
+            <div
+              ref={setBoard}
+              className="lm-board relative"
+              onDragOver={(e) => {
+                if (!carried) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+                clearDropTargets();
+                const over = targetUnder(e.clientX, e.clientY);
+                if (over?.kind === 'key') paintDropTarget(over, 'copy');
               }}
-            />
+              onDragLeave={clearDropTargets}
+              onDrop={(e) => {
+                e.preventDefault();
+                clearDropTargets();
+                const text = e.dataTransfer.getData('text/plain') || carried;
+                const over = targetUnder(e.clientX, e.clientY);
+                setCarried(null);
+                if (text && over?.kind === 'key') place(text, over.keyId);
+              }}
+            >
+              <Keyboard
+                ref={keyboard}
+                id="kb-edit"
+                compiled={state.compiled}
+                layer={state.layer}
+                selected={state.selected}
+                draggable
+                highlight={highlighted}
+                onKeyClick={(keyId) => {
+                  if (state.comboPick) {
+                    send({ type: 'comboPickToggle', keyId });
+                    return;
+                  }
+                  if (carried) {
+                    place(carried, keyId);
+                    setCarried(null);
+                    return;
+                  }
+                  send({ type: 'keyClick', keyId });
+                }}
+                onDragStart={() => send({ type: 'closeEditor' })}
+                onDropKey={(drop) => {
+                  send({ type: 'dropKey', ...drop });
+                  setMessage(
+                    drop.to.kind === 'layer'
+                      ? `${drop.from} sent to ${drop.to.layerId}`
+                      : `${drop.from} ${drop.mode === 'copy' ? 'copied to' : 'swapped with'} ${drop.to.keyId}`,
+                  );
+                }}
+                onKeyShortcut={(e, keyId) => {
+                  if (e.ctrlKey || e.metaKey) return;
+                  if (e.key === 'Escape') {
+                    e.preventDefault();
+                    send({ type: 'cancelSwap' });
+                    send({ type: 'comboPickCancel' });
+                    send({ type: 'setBoardHighlight', keys: [] });
+                    setCarried(null);
+                    return;
+                  }
+                  // While keys are being picked for a combo, they are all the board is doing.
+                  if (state.comboPick) return;
+                  // Every printable key now types on the key, so arming a swap takes a modifier.
+                  if (e.altKey) {
+                    if (e.code === 'KeyS') {
+                      e.preventDefault();
+                      send({ type: 'keyClick', keyId });
+                      send({ type: 'startSwap' });
+                    }
+                    return;
+                  }
+                  if (e.key === 'Enter' || e.key === 'F2') {
+                    e.preventDefault();
+                    send({ type: 'openEditor', keyId, seed: null });
+                    return;
+                  }
+                  if (e.key === 'Backspace' || e.key === 'Delete') {
+                    e.preventDefault();
+                    send({ type: 'clearKey', keyId });
+                    setMessage(`${keyId} cleared`);
+                    return;
+                  }
+                  // Space keeps activating the key like the button it is; everything else typed
+                  // on a key is the start of its binding.
+                  if (e.key.length === 1 && e.key !== ' ') {
+                    e.preventDefault();
+                    send({ type: 'openEditor', keyId, seed: e.key });
+                  }
+                }}
+              />
+
+              <KeyEditor
+                state={state}
+                send={send}
+                wrapper={board}
+                focusKey={(keyId) => keyboard.current?.focusKey(keyId)}
+                announce={setMessage}
+              />
+            </div>
+
+            <BindingPalette compiled={state.compiled} carried={carried} onCarry={setCarried} />
 
             <p aria-live="polite" className="sr-only">
-              {state.swapFrom ? `${state.swapFrom} armed for a swap` : ''}
+              {state.swapFrom ? `${state.swapFrom} armed for a swap` : message}
             </p>
+
+            {state.comboPick && (
+              <p className="text-xs">
+                Picking keys for a combo:{' '}
+                <span className="font-mono">{state.comboPick.join('+') || 'none yet'}</span> — click
+                them on the board, then add the combo in the Combos panel.
+              </p>
+            )}
 
             {shown && <SummaryStrip results={shown.results} ids={EDIT_SUMMARY_IDS} />}
 
