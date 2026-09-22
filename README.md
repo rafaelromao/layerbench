@@ -55,13 +55,26 @@ symbol it types, so `&kp N1` becomes `1`, shifted `!`.
 | `Delete` · `Backspace` | clears the key |
 | arrow keys | move between keys — the board is one tab stop, not thirty-four |
 | `Space` | selects the key, which is what the **Key** panel follows |
+| tap (touch) | opens the editor, since there is no keystroke to open it with |
 | `Alt`+`S` | arms a swap; then click or `Enter` on its partner |
 | `Ctrl`/`Cmd`+`Z` | undoes, `Shift` as well redoes |
 
 Dragging a key onto another swaps the two, holding `Alt` copies instead, and dropping a key on a
 layer tab sends it to that layer. The palette under the board holds the bindings worth not typing:
-drag one onto a key, or click it and then click a key — which is also how this works on a touch
-screen, where a drag needs the finger to rest on the key first.
+drag one onto a key, or click it and then click a key.
+
+### On a touch screen
+
+A finger cannot type on a key, so **tapping one opens the editor** and the menu it opens with builds
+a whole binding without a keyboard: tap `&lt`, tap the layer, tap **Apply**. The field is not
+focused until you tap it, so the on-screen keyboard stays down until you actually want it, and the
+editor moves out of its way when it comes up.
+
+Everything a drag does has a tap that does the same thing — **swap with…**, **copy to…** and
+**send to…** in the editor, and tap-then-tap for the palette. Dragging works too, after a short
+press so the board can still be scrolled past with a finger. The board keeps its keys at a size a
+finger can hit rather than shrinking a split layout into the width of a phone, so it pans sideways;
+a split layout is worked on one half at a time anyway.
 
 Combos are built by clicking **pick on board** in the Combos panel and then clicking the keys, and
 their output takes the same syntax as a key. Typing-path alternatives reorder by dragging, or with

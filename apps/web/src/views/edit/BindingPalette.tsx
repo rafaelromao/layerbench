@@ -38,7 +38,7 @@ export function BindingPalette({ compiled, carried, onCarry }: BindingPalettePro
   const chips = useMemo(() => items(compiled), [compiled]);
 
   return (
-    <div className="space-y-1">
+    <div className="lm-palette space-y-1">
       <fieldset className="flex flex-wrap gap-1" aria-label="Bindings to place">
         {chips.map((chip) => {
           const armed = carried === chip.text;

@@ -34,6 +34,8 @@ export interface EditState {
   selected: string | null;
   /** Key the user armed for a click-to-swap, if any. */
   swapFrom: string | null;
+  /** What the armed key does when its partner is picked. */
+  swapMode: 'swap' | 'copy';
   dirty: boolean;
   panel: Panel;
   error: string | null;
@@ -54,7 +56,7 @@ export interface EditState {
 export type EditAction =
   | { type: 'selectLayer'; layer: number }
   | { type: 'keyClick'; keyId: string }
-  | { type: 'startSwap' }
+  | { type: 'startSwap'; mode?: 'swap' | 'copy' }
   | { type: 'cancelSwap' }
   | { type: 'swap'; from: string; to: string }
   | { type: 'setBinding'; binding: Binding }
@@ -103,6 +105,7 @@ export function initialState(layout: Layout, compiled: CompiledLayout, layer = 0
     layer: Math.min(layer, compiled.layers.length - 1),
     selected: null,
     swapFrom: null,
+    swapMode: 'swap',
     dirty: false,
     panel: 'binding',
     error: null,
@@ -160,18 +163,23 @@ export function editReducer(state: EditState, action: EditAction): EditState {
       // A stale compile error belongs to the edit that failed, not to the next key clicked.
       if (!state.swapFrom) return { ...state, selected: action.keyId, error: null };
       if (state.swapFrom === action.keyId) return { ...state, swapFrom: null };
+      // Arming a key and then tapping its partner is what a drag is, for anyone not holding a
+      // mouse — so it has to reach copying too, not only swapping.
       return editReducer(
         { ...state, swapFrom: null },
         {
-          type: 'swap',
+          type: 'dropKey',
           from: state.swapFrom,
-          to: action.keyId,
+          to: { kind: 'key', keyId: action.keyId },
+          mode: state.swapMode,
         },
       );
     }
 
     case 'startSwap':
-      return state.selected ? { ...state, swapFrom: state.selected } : state;
+      return state.selected
+        ? { ...state, swapFrom: state.selected, swapMode: action.mode ?? 'swap' }
+        : state;
 
     case 'cancelSwap':
       return { ...state, swapFrom: null };

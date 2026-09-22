@@ -383,9 +383,12 @@ export function bindingText(compiled: CompiledLayout, b: Binding | undefined): B
 export function suggest(text: string, ctx: BindingTextContext): Suggestion[] {
   const raw = text.trimStart();
 
+  // An empty field offers the whole list. On a phone that is the difference between the editor
+  // being usable and not: `&` lives on the symbol page of the on-screen keyboard, so a menu that
+  // only appears once you have typed one is a menu nobody reaches.
   const behavior = /^&([A-Za-z_][A-Za-z0-9_]*)?$/.exec(raw);
-  if (behavior) {
-    const prefix = (behavior[1] ?? '').toLowerCase();
+  if (raw === '' || behavior) {
+    const prefix = (behavior?.[1] ?? '').toLowerCase();
     const builtins = [...new Set(Object.values(BEHAVIORS))]
       .filter((name) => name.startsWith(prefix))
       .map((name) => ({ insert: `&${name}`, label: `&${name}`, hint: 'behaviour' }));
@@ -400,11 +403,19 @@ export function suggest(text: string, ctx: BindingTextContext): Suggestion[] {
     const name = BEHAVIORS[withLayer[1].toLowerCase()];
     const prefix = withLayer[2].toLowerCase();
     if (name !== undefined && (LAYER_BEHAVIORS.includes(name) || name === 'lt')) {
+      // An argument already written in full needs no menu; offering it again is a dead end.
+      if (ctx.layers.some((l) => l.id.toLowerCase() === prefix)) return [];
       return ctx.layers
         .filter((l) => l.id.toLowerCase().startsWith(prefix))
-        .map((l) => ({ insert: `&${withLayer[1]} ${l.id}`, label: l.id, hint: l.name }));
+        .map((l) => ({
+          // A layer tap still wants its tap key, so the space that takes it comes along.
+          insert: `&${withLayer[1]} ${l.id}${name === 'lt' ? ' ' : ''}`,
+          label: l.id,
+          hint: l.name,
+        }));
     }
     if (name === 'sk' || name === 'kp') {
+      if (MODS.some((mod) => mod.toLowerCase() === prefix)) return [];
       return MODS.filter((mod) => mod.toLowerCase().startsWith(prefix)).map((mod) => ({
         insert: `&${withLayer[1]} ${mod}`,
         label: mod,

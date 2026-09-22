@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useCoarsePointer } from '../../components/use-coarse-pointer.js';
 import { type Anchor, anchorKey } from './anchor.js';
 import { bindingFromFields } from './binding-form.js';
 import { type BindingTextContext, bindingText, parseBindingText, suggest } from './binding-text.js';
@@ -56,7 +57,10 @@ function Editor({
   const [text, setText] = useState(() => (written.exact ? (seed ?? written.text) : ''));
   const [error, setError] = useState<string | null>(null);
   const [active, setActive] = useState(-1);
+  /** Whether the reader has changed the text yet, which decides if the menu still offers the root. */
+  const [touched, setTouched] = useState(false);
 
+  const coarse = useCoarsePointer();
   const input = useRef<HTMLInputElement>(null);
   const box = useRef<HTMLFieldSetElement>(null);
   /** Set while focus is deliberately being moved off the input, so blur does not also commit. */
@@ -76,10 +80,18 @@ function Editor({
     [text, ctx],
   );
   const preview = parsed?.ok ? legend(compiled, bindingFromFields(parsed.fields)) : null;
-  const options = useMemo(
-    () => (editable ? suggest(text, ctx).slice(0, 8) : []),
-    [editable, text, ctx],
-  );
+  const options = useMemo(() => {
+    if (!editable) return [];
+    const direct = suggest(text, ctx);
+    if (direct.length > 0) return direct.slice(0, 8);
+    // A finger has no keyboard up to type the `&` that summons the menu, and the editor opens on
+    // the binding already there — so until the reader changes something, offer the whole list.
+    if (coarse && !touched) return suggest('', ctx).slice(0, 8);
+    return [];
+  }, [editable, text, ctx, coarse, touched]);
+  /** Taking a suggestion that needs an argument should leave the next list open, not close it. */
+  const takesArgument = (insert: string) =>
+    /^&(kp|lt|mo|sl|to|tog|auto_layer|sk|macro|dead|uni|ref)$/.test(insert);
 
   const [anchor, setAnchor] = useState<Anchor>(SAME);
   useLayoutEffect(() => {
@@ -92,18 +104,35 @@ function Editor({
       );
     };
     place();
-    if (!wrapper || typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(place);
-    observer.observe(wrapper);
-    return () => observer.disconnect();
+    // The on-screen keyboard opening is a viewport change and nothing else: it resizes no element,
+    // so only the visual viewport reports it.
+    window.visualViewport?.addEventListener('resize', place);
+    // On a narrow screen the board pans, which moves the key out from under the editor.
+    const scroller = wrapper?.querySelector('.lm-board-scroll');
+    scroller?.addEventListener('scroll', place, { passive: true });
+    const observer =
+      wrapper && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(place) : null;
+    if (wrapper) observer?.observe(wrapper);
+    return () => {
+      window.visualViewport?.removeEventListener('resize', place);
+      scroller?.removeEventListener('scroll', place);
+      observer?.disconnect();
+    };
   }, [wrapper, keyId]);
 
   useLayoutEffect(() => {
     if (!editable) return;
+    // On a finger, focusing the field raises the on-screen keyboard over half the screen before
+    // the reader has said they want to type. The suggestions are enough to build most bindings by
+    // tapping, so the field waits to be asked.
+    if (coarse && seed === null) {
+      box.current?.scrollIntoView({ block: 'nearest' });
+      return;
+    }
     input.current?.focus();
     // Opening with Enter offers the whole binding for replacement; a typed character continues it.
     if (seed === null) input.current?.select();
-  }, [editable, seed]);
+  }, [editable, seed, coarse]);
 
   const leave = (run: () => void) => {
     leaving.current = true;
@@ -144,10 +173,14 @@ function Editor({
   };
 
   const take = (option: string) => {
-    setText(option);
+    // A behaviour that still needs an argument gets the space that opens the next list, so a
+    // binding can be built entirely by tapping: `&lt` then `num` then `a`.
+    setText(takesArgument(option) ? `${option} ` : option);
     setActive(-1);
     setError(null);
-    input.current?.focus();
+    setTouched(true);
+    // A finger taking a suggestion has not asked for the on-screen keyboard.
+    if (!coarse) input.current?.focus();
   };
 
   const onKeyDown = (e: ReactKeyboardEvent<HTMLInputElement>) => {
@@ -240,6 +273,7 @@ function Editor({
               setText(e.target.value);
               setError(null);
               setActive(-1);
+              setTouched(true);
             }}
             onKeyDown={onKeyDown}
             onBlur={(e) => {
@@ -269,6 +303,21 @@ function Editor({
 
           {error && <p className="text-error text-xs max-w-56">{error}</p>}
 
+          {/* A finger has no Enter and no Escape: the two that matter are on screen. */}
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className="btn btn-sm btn-primary flex-1"
+              disabled={parsed !== null && !parsed.ok}
+              onClick={() => commit(false)}
+            >
+              Apply
+            </button>
+            <button type="button" className="btn btn-sm btn-ghost" onClick={close}>
+              Cancel
+            </button>
+          </div>
+
           <div className="flex flex-wrap items-center gap-1">
             <button
               type="button"
@@ -283,11 +332,23 @@ function Editor({
               onClick={() =>
                 leave(() => {
                   send({ type: 'closeEditor' });
-                  send({ type: 'startSwap' });
+                  send({ type: 'startSwap', mode: 'swap' });
                 })
               }
             >
               swap with…
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-xs"
+              onClick={() =>
+                leave(() => {
+                  send({ type: 'closeEditor' });
+                  send({ type: 'startSwap', mode: 'copy' });
+                })
+              }
+            >
+              copy to…
             </button>
             {otherLayers.length > 0 && (
               <select

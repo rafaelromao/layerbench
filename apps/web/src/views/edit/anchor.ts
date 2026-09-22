@@ -9,6 +9,16 @@ const GAP = 6;
 const MARGIN = 8;
 
 /**
+ * How much of the page the reader can actually see. On a phone the on-screen keyboard covers the
+ * bottom of the window without changing `innerHeight`, so measuring that would put the editor
+ * underneath the very keyboard being used to type into it.
+ */
+function visibleHeight(): number {
+  if (typeof window === 'undefined') return 0;
+  return window.visualViewport?.height ?? window.innerHeight;
+}
+
+/**
  * Where to put the in-place editor for a key.
  *
  * Both rectangles are measured rather than derived from the viewBox: the keyboard is drawn with
@@ -21,7 +31,7 @@ export function anchorKey(
   wrapper: HTMLElement,
   keyEl: Element,
   popover: HTMLElement | null,
-  viewportHeight = typeof window === 'undefined' ? 0 : window.innerHeight,
+  viewportHeight = visibleHeight(),
 ): Anchor {
   const k = keyEl.getBoundingClientRect();
   const w = wrapper.getBoundingClientRect();

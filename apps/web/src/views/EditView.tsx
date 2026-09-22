@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import { Keyboard, type KeyboardHandle } from '../components/Keyboard.js';
 import { LayerTabs } from '../components/LayerTabs.js';
 import { EDIT_SUMMARY_IDS, SummaryStrip } from '../components/Metrics.js';
+import { useCoarsePointer } from '../components/use-coarse-pointer.js';
 import { clearDropTargets, paintDropTarget, targetUnder } from '../components/use-key-drag.js';
 import { useAnalysisClient } from '../engine/client-context.js';
 import type { AnalyzeRequest, ProducerDTO, ReportDTO } from '../engine/protocol.js';
@@ -105,6 +106,7 @@ function Editor({
     undoableEditReducer,
     initialUndoState(initialLayout, initialCompiled, params.layer),
   );
+  const coarse = useCoarsePointer();
   const keyboard = useRef<KeyboardHandle>(null);
   const [board, setBoard] = useState<HTMLDivElement | null>(null);
   /** A binding taken from the palette and not yet placed. */
@@ -319,8 +321,10 @@ function Editor({
       {state.error && <div className="alert alert-error text-sm">{state.error}</div>}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-        <section className="card bg-base-100 border border-base-300">
-          <div className="card-body gap-3 p-4">
+        {/* min-w-0 all the way down to the board: a grid item and a flex child both refuse to
+            shrink below their content, and the board is deliberately wider than a phone. */}
+        <section className="card bg-base-100 border border-base-300 min-w-0">
+          <div className="card-body gap-3 p-4 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <LayerTabs
                 layers={state.compiled.layers.map((l) => ({ idx: l.idx, id: l.id, name: l.name }))}
@@ -328,12 +332,16 @@ function Editor({
                 onSelect={(layer) => send({ type: 'selectLayer', layer })}
               />
             </div>
-            <p className="text-xs opacity-60">
+            <p className="text-xs opacity-60 lm-pointer-hint">
               Type on a key to set it: <span className="font-mono">&amp;kp ç</span>,{' '}
               <span className="font-mono">&amp;lt num a</span>,{' '}
               <span className="font-mono">&amp;mo sym</span>. Enter edits, Delete clears, arrow keys
               move. Drag a key onto another to swap it, hold Alt to copy, or drop it on a layer tab
               to send it there.
+            </p>
+            <p className="text-xs opacity-60 lm-touch-hint">
+              Tap a key to edit it: the list that opens builds a binding without typing. Tap a
+              binding below and then a key to place it. Press and hold a key to drag it.
             </p>
 
             {/* biome-ignore lint/a11y/noStaticElementInteractions: the drop handling belongs to the
@@ -359,75 +367,85 @@ function Editor({
                 if (text && over?.kind === 'key') place(text, over.keyId);
               }}
             >
-              <Keyboard
-                ref={keyboard}
-                id="kb-edit"
-                compiled={state.compiled}
-                layer={state.layer}
-                selected={state.selected}
-                draggable
-                highlight={highlighted}
-                onKeyClick={(keyId) => {
-                  if (state.comboPick) {
-                    send({ type: 'comboPickToggle', keyId });
-                    return;
-                  }
-                  if (carried) {
-                    place(carried, keyId);
-                    setCarried(null);
-                    return;
-                  }
-                  send({ type: 'keyClick', keyId });
-                }}
-                onDragStart={() => send({ type: 'closeEditor' })}
-                onDropKey={(drop) => {
-                  send({ type: 'dropKey', ...drop });
-                  setMessage(
-                    drop.to.kind === 'layer'
-                      ? `${drop.from} sent to ${drop.to.layerId}`
-                      : `${drop.from} ${drop.mode === 'copy' ? 'copied to' : 'swapped with'} ${drop.to.keyId}`,
-                  );
-                }}
-                onKeyShortcut={(e, keyId) => {
-                  if (e.ctrlKey || e.metaKey) return;
-                  if (e.key === 'Escape') {
-                    e.preventDefault();
-                    send({ type: 'cancelSwap' });
-                    send({ type: 'comboPickCancel' });
-                    send({ type: 'setBoardHighlight', keys: [] });
-                    setCarried(null);
-                    return;
-                  }
-                  // While keys are being picked for a combo, they are all the board is doing.
-                  if (state.comboPick) return;
-                  // Every printable key now types on the key, so arming a swap takes a modifier.
-                  if (e.altKey) {
-                    if (e.code === 'KeyS') {
-                      e.preventDefault();
-                      send({ type: 'keyClick', keyId });
-                      send({ type: 'startSwap' });
+              {/* The board pans inside its own box. The editor cannot live in that box: a
+                  scroll container clips on both axes, whatever only one of them was set to. */}
+              <div className="lm-board-scroll">
+                <Keyboard
+                  ref={keyboard}
+                  id="kb-edit"
+                  compiled={state.compiled}
+                  layer={state.layer}
+                  selected={state.selected}
+                  draggable
+                  highlight={highlighted}
+                  onKeyClick={(keyId) => {
+                    if (state.comboPick) {
+                      send({ type: 'comboPickToggle', keyId });
+                      return;
                     }
-                    return;
-                  }
-                  if (e.key === 'Enter' || e.key === 'F2') {
-                    e.preventDefault();
-                    send({ type: 'openEditor', keyId, seed: null });
-                    return;
-                  }
-                  if (e.key === 'Backspace' || e.key === 'Delete') {
-                    e.preventDefault();
-                    send({ type: 'clearKey', keyId });
-                    setMessage(`${keyId} cleared`);
-                    return;
-                  }
-                  // Space keeps activating the key like the button it is; everything else typed
-                  // on a key is the start of its binding.
-                  if (e.key.length === 1 && e.key !== ' ') {
-                    e.preventDefault();
-                    send({ type: 'openEditor', keyId, seed: e.key });
-                  }
-                }}
-              />
+                    if (carried) {
+                      place(carried, keyId);
+                      setCarried(null);
+                      return;
+                    }
+                    // A finger cannot type on a key to open the editor, so the tap has to do it —
+                    // otherwise there is no way into it at all without a hardware keyboard.
+                    if (coarse && !state.swapFrom) {
+                      send({ type: 'openEditor', keyId, seed: null });
+                      return;
+                    }
+                    send({ type: 'keyClick', keyId });
+                  }}
+                  onDragStart={() => send({ type: 'closeEditor' })}
+                  onDropKey={(drop) => {
+                    send({ type: 'dropKey', ...drop });
+                    setMessage(
+                      drop.to.kind === 'layer'
+                        ? `${drop.from} sent to ${drop.to.layerId}`
+                        : `${drop.from} ${drop.mode === 'copy' ? 'copied to' : 'swapped with'} ${drop.to.keyId}`,
+                    );
+                  }}
+                  onKeyShortcut={(e, keyId) => {
+                    if (e.ctrlKey || e.metaKey) return;
+                    if (e.key === 'Escape') {
+                      e.preventDefault();
+                      send({ type: 'cancelSwap' });
+                      send({ type: 'comboPickCancel' });
+                      send({ type: 'setBoardHighlight', keys: [] });
+                      setCarried(null);
+                      return;
+                    }
+                    // While keys are being picked for a combo, they are all the board is doing.
+                    if (state.comboPick) return;
+                    // Every printable key now types on the key, so arming a swap takes a modifier.
+                    if (e.altKey) {
+                      if (e.code === 'KeyS') {
+                        e.preventDefault();
+                        send({ type: 'keyClick', keyId });
+                        send({ type: 'startSwap' });
+                      }
+                      return;
+                    }
+                    if (e.key === 'Enter' || e.key === 'F2') {
+                      e.preventDefault();
+                      send({ type: 'openEditor', keyId, seed: null });
+                      return;
+                    }
+                    if (e.key === 'Backspace' || e.key === 'Delete') {
+                      e.preventDefault();
+                      send({ type: 'clearKey', keyId });
+                      setMessage(`${keyId} cleared`);
+                      return;
+                    }
+                    // Space keeps activating the key like the button it is; everything else typed
+                    // on a key is the start of its binding.
+                    if (e.key.length === 1 && e.key !== ' ') {
+                      e.preventDefault();
+                      send({ type: 'openEditor', keyId, seed: e.key });
+                    }
+                  }}
+                />
+              </div>
 
               <KeyEditor
                 state={state}
@@ -443,6 +461,16 @@ function Editor({
             <p aria-live="polite" className="sr-only">
               {state.swapFrom ? `${state.swapFrom} armed for a swap` : message}
             </p>
+
+            {state.swapFrom && (
+              <p className="text-xs">
+                <span className="font-mono">{state.swapFrom}</span> is armed —{' '}
+                {state.swapMode === 'copy'
+                  ? 'tap the key to copy it onto'
+                  : 'tap the key to swap it with'}
+                , or press Escape.
+              </p>
+            )}
 
             {state.comboPick && (
               <p className="text-xs">

@@ -218,15 +218,78 @@ button.lm-drop-target.lm-drop-copy {
 .lm-key-editor {
   position: absolute;
   z-index: 50;
+  /* Absolutely positioned, it would otherwise size to its content and hang off the side of a
+     narrow board — which is exactly where the keys on the right half put it. */
+  max-width: min(20rem, calc(100% - 1rem));
+}
+.lm-key-editor .menu {
+  display: block;
 }
 /* While a drag is running the editor must not intercept the hit test that finds the drop. */
 .lm-dragging ~ .lm-key-editor {
   pointer-events: none;
 }
 
-/* A finger may scroll the page over the board; a drag starts only after the touch has rested. */
+/* A finger may scroll and pan over the board; a drag starts only after the touch has rested. */
 .lm-board .lm-keyboard {
-  touch-action: pan-y;
+  touch-action: pan-x pan-y;
+}
+
+/* The touch hint replaces the pointer one, rather than both being shown. */
+.lm-touch-hint {
+  display: none;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .lm-touch-hint {
+    display: block;
+  }
+  .lm-pointer-hint {
+    display: none;
+  }
+
+  /*
+   * Fitting a 34-key split board into 375px draws 25px keys, which is below any usable touch
+   * target and hopeless to drag. The board keeps a width that draws them at roughly 35px instead
+   * and the reader pans to the half they are working on — a split layout is worked on one half at
+   * a time anyway.
+   */
+  /* Without this the board takes its content's width — a flex child refuses to shrink below
+     min-content by default — and nothing scrolls; it just overflows the card. */
+  .lm-board {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .lm-board-scroll {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+  .lm-board .lm-keyboard {
+    min-width: 28rem;
+    max-height: none;
+  }
+
+  /* Tapping a key now offers every binding, so the palette is a shortcut rather than the way in;
+     it keeps two whole rows and scrolls, instead of taking a third of the screen. */
+  .lm-palette fieldset {
+    max-height: 4.75rem;
+    overflow-y: auto;
+  }
+
+  /* Anything meant to be tapped gets a target a finger can actually hit. */
+  .lm-palette .btn-xs,
+  .lm-key-editor .btn-xs,
+  .lm-key-editor .menu :where(li > *) {
+    min-height: 2.25rem;
+    font-size: 0.8rem;
+  }
+  .lm-key-editor .select-xs {
+    min-height: 2.25rem;
+  }
+  /* Four whole suggestions rather than four and a sliver, which reads as a rendering fault. */
+  .lm-key-editor .menu {
+    max-height: 9rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

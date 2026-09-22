@@ -12,9 +12,22 @@ afterEach(cleanup);
  * so stubbing here keeps the tests about behavior rather than about the environment.
  */
 
+/**
+ * Media queries answer false by default, so a test runs as a mouse would. `setPointerKind('touch')`
+ * makes the same run answer as a finger does, which is a different interface rather than the same
+ * one at a different size: a finger cannot hover, and cannot type on a key.
+ */
+let pointerKind: 'mouse' | 'touch' = 'mouse';
+
+export function setPointerKind(kind: 'mouse' | 'touch'): void {
+  pointerKind = kind;
+}
+
 if (!window.matchMedia) {
   window.matchMedia = ((query: string) => ({
-    matches: false,
+    get matches() {
+      return pointerKind === 'touch' && /hover:\s*none|pointer:\s*coarse/.test(query);
+    },
     media: query,
     onchange: null,
     addEventListener: () => {},
@@ -24,6 +37,9 @@ if (!window.matchMedia) {
     dispatchEvent: () => false,
   })) as unknown as typeof window.matchMedia;
 }
+
+// Every test starts as a mouse unless it says otherwise.
+afterEach(() => setPointerKind('mouse'));
 
 if (!Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = () => {};

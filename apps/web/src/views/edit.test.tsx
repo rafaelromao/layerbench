@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { renderRoute, testClient } from '../test/render.js';
+import { setPointerKind } from '../test/setup.js';
 
 let counter = 0;
 const freshStorage = () => new IndexedDbAdapter(`layoutmaster-edit-${++counter}`);
@@ -388,6 +389,59 @@ describe('Edit', () => {
 
     await user.click(key('Key LTR: w'));
     expect(await screen.findByLabelText('Symbol')).toHaveValue('w');
+  });
+
+  it('opens the editor on a tap, since a finger cannot type on a key', async () => {
+    setPointerKind('touch');
+    const user = userEvent.setup();
+    await openEdit();
+
+    await user.click(key('Key LHM: d'));
+    const editor = await screen.findByRole('group', { name: 'Edit LHM' });
+    expect(within(editor).getByRole('textbox', { name: 'Binding for LHM' })).toHaveValue('&kp d');
+    // The on-screen keyboard is not summoned before the reader has asked to type.
+    expect(document.activeElement).not.toBe(
+      within(editor).getByRole('textbox', { name: 'Binding for LHM' }),
+    );
+  });
+
+  it('builds a whole binding by tapping, with nothing typed', async () => {
+    setPointerKind('touch');
+    const user = userEvent.setup();
+    await openEdit();
+
+    await user.click(key('Key LHM: d'));
+    const editor = await screen.findByRole('group', { name: 'Edit LHM' });
+    // `&` sits on the symbol page of an on-screen keyboard, so the menu has to be there already.
+    await user.click(within(editor).getByRole('button', { name: /^&mo/ }));
+    await user.click(await within(editor).findByRole('button', { name: /^base/ }));
+    await user.click(within(editor).getByRole('button', { name: 'Apply' }));
+
+    expect(await screen.findByRole('button', { name: 'Key LHM: ⇩Base' })).toBeInTheDocument();
+    expect(screen.getByText('unsaved')).toBeInTheDocument();
+  });
+
+  it('copies to a key by tapping, the way Alt-drag does with a mouse', async () => {
+    setPointerKind('touch');
+    const user = userEvent.setup();
+    await openEdit();
+
+    await user.click(key('Key LHM: d'));
+    await user.click(await screen.findByRole('button', { name: 'copy to…' }));
+    await user.click(key('Key LHI: f'));
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: /^Key LH[MI]: d$/ })).toHaveLength(2);
+    });
+  });
+
+  it('leaves the mouse alone: a click selects, it does not open the editor', async () => {
+    const user = userEvent.setup();
+    await openEdit();
+
+    await user.click(key('Key LHM: d'));
+    expect(screen.queryByRole('group', { name: 'Edit LHM' })).toBeNull();
+    expect(await screen.findByLabelText('Symbol')).toHaveValue('d');
   });
 
   it('does not swap when the gesture is cancelled', async () => {
