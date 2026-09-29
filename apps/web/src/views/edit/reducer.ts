@@ -3,9 +3,14 @@ import {
   type CompiledLayout,
   compileLayout,
   copyKey,
+  duplicateLayer,
   type Layout,
   type LayoutFeatures,
+  layerReachedFrom,
   type Mod,
+  moveLayer,
+  removeFeaturesAt,
+  removeLayer,
   safeParseLayout,
   sendKeyToLayer,
   setKeyBinding,
@@ -16,7 +21,6 @@ import {
 import type { DropTarget } from '../../components/use-key-drag.js';
 
 export type Panel =
-  | 'binding'
   | 'layers'
   | 'features'
   | 'geometry'
@@ -25,6 +29,16 @@ export type Panel =
   | 'paths'
   | 'json'
   | 'save';
+
+/**
+ * A request to put the caret in the key inspector's text line: a character typed on a key starts
+ * its binding with that character, Enter on a key offers the whole binding for replacing. Each
+ * request is a new object, which is what tells the text line to take focus again.
+ */
+export interface FocusRequest {
+  keyId: string;
+  seed: string | null;
+}
 
 export interface EditState {
   layout: Layout;
@@ -45,8 +59,8 @@ export interface EditState {
   jsonError: string | null;
   /** The last swap, so the view can ask for an instant estimate. */
   lastSwap: { layerIdx: number; from: string; to: string } | null;
-  /** The key being edited in place, and the character that started it, if it was typed. */
-  editing: { keyId: string; seed: string | null } | null;
+  /** Where typing on the board should land next, if a key was typed on. */
+  focusRequest: FocusRequest | null;
   /** Keys picked on the board for a new combo, or null when not picking. */
   comboPick: string[] | null;
   /** Keys to outline, so a combo can point at the keys it is made of. */
@@ -61,14 +75,17 @@ export type EditAction =
   | { type: 'swap'; from: string; to: string }
   | { type: 'setBinding'; binding: Binding }
   | { type: 'clearBinding' }
-  | { type: 'openEditor'; keyId: string; seed: string | null }
-  | { type: 'closeEditor' }
+  | { type: 'typeOnKey'; keyId: string; seed: string | null }
+  | { type: 'deselect' }
   | { type: 'commitBinding'; keyId: string; binding: Binding }
+  | { type: 'setBehavior'; name: string; binding: Binding }
   | { type: 'clearKey'; keyId: string }
   | { type: 'dropKey'; from: string; to: DropTarget; mode: 'swap' | 'copy' }
   | { type: 'addLayer'; name: string }
   | { type: 'removeLayer'; id: string }
   | { type: 'renameLayer'; id: string; name: string }
+  | { type: 'moveLayer'; from: number; to: number }
+  | { type: 'duplicateLayer'; id: string }
   | {
       type: 'setKeys';
       space?: string;
@@ -107,14 +124,14 @@ export function initialState(layout: Layout, compiled: CompiledLayout, layer = 0
     swapFrom: null,
     swapMode: 'swap',
     dirty: false,
-    panel: 'binding',
+    panel: 'layers',
     error: null,
     behaviorsJson: behaviorsText(layout),
     behaviorsError: null,
     jsonText: '',
     jsonError: null,
     lastSwap: null,
-    editing: null,
+    focusRequest: null,
     comboPick: null,
     boardHighlight: [],
   };
@@ -137,7 +154,7 @@ function withLayout(state: EditState, layout: Layout, patch: Partial<EditState> 
       compiled,
       dirty: true,
       error: null,
-      editing: null,
+      focusRequest: null,
       ...(behaviorsMoved ? { behaviorsJson: behaviorsText(layout) } : {}),
       layer: Math.min(state.layer, compiled.layers.length - 1),
       ...patch,
@@ -150,18 +167,20 @@ function withLayout(state: EditState, layout: Layout, patch: Partial<EditState> 
 export function editReducer(state: EditState, action: EditAction): EditState {
   switch (action.type) {
     case 'selectLayer':
+      // The selection stays: the same key on another layer is usually the next thing to look at.
       return {
         ...state,
         layer: action.layer,
-        selected: null,
         swapFrom: null,
-        editing: null,
+        focusRequest: null,
         error: null,
       };
 
     case 'keyClick': {
       // A stale compile error belongs to the edit that failed, not to the next key clicked.
-      if (!state.swapFrom) return { ...state, selected: action.keyId, error: null };
+      if (!state.swapFrom) {
+        return { ...state, selected: action.keyId, focusRequest: null, error: null };
+      }
       if (state.swapFrom === action.keyId) return { ...state, swapFrom: null };
       // Arming a key and then tapping its partner is what a drag is, for anyone not holding a
       // mouse — so it has to reach copying too, not only swapping.
@@ -205,17 +224,19 @@ export function editReducer(state: EditState, action: EditAction): EditState {
       if (!state.selected) return state;
       return editReducer(state, { type: 'clearKey', keyId: state.selected });
 
-    case 'openEditor':
+    case 'typeOnKey':
       return {
         ...state,
         selected: action.keyId,
         swapFrom: null,
         error: null,
-        editing: { keyId: action.keyId, seed: action.seed },
+        focusRequest: { keyId: action.keyId, seed: action.seed },
       };
 
-    case 'closeEditor':
-      return state.editing ? { ...state, editing: null } : state;
+    case 'deselect':
+      return state.selected === null && state.swapFrom === null
+        ? state
+        : { ...state, selected: null, swapFrom: null, focusRequest: null };
 
     case 'commitBinding':
       return withLayout(
@@ -224,11 +245,24 @@ export function editReducer(state: EditState, action: EditAction): EditState {
         { selected: action.keyId, lastSwap: null },
       );
 
-    case 'clearKey':
-      return withLayout(state, setKeyBinding(state.layout, state.layer, action.keyId, undefined), {
+    case 'clearKey': {
+      // Clearing a magic key means the magic goes too, not only the binding under it.
+      const cleared = setKeyBinding(state.layout, state.layer, action.keyId, undefined);
+      return withLayout(state, removeFeaturesAt(cleared, state.layer, action.keyId), {
         selected: action.keyId,
         lastSwap: null,
       });
+    }
+
+    case 'setBehavior':
+      return withLayout(
+        state,
+        {
+          ...state.layout,
+          behaviors: { ...(state.layout.behaviors ?? {}), [action.name]: action.binding },
+        },
+        { lastSwap: null },
+      );
 
     case 'dropKey': {
       const { from, to, mode } = action;
@@ -285,23 +319,47 @@ export function editReducer(state: EditState, action: EditAction): EditState {
       if (state.layout.layers.length <= 1 || state.layout.layers[0].id === action.id) {
         return { ...state, error: 'cannot remove the base layer' };
       }
-      const layers = state.layout.layers.filter((l) => l.id !== action.id);
-      return withLayout(
-        state,
-        { ...state.layout, layers },
-        {
-          layer: 0,
-          selected: null,
-          lastSwap: null,
-        },
-      );
+      // A layer something still reaches cannot go without breaking that key; say which, and let
+      // the author decide what those keys should do instead.
+      const reaching = layerReachedFrom(state.layout, action.id);
+      if (reaching.length > 0) {
+        const name = state.layout.layers.find((l) => l.id === action.id)?.name ?? action.id;
+        return {
+          ...state,
+          error: `${name} is still reached from ${reaching.join(', ')}. Point those at another layer first.`,
+        };
+      }
+      // The view stays where it was, or moves to the layer before the one that went.
+      const gone = state.layout.layers.findIndex((l) => l.id === action.id);
+      const layer = gone <= state.layer ? Math.max(0, state.layer - 1) : state.layer;
+      return withLayout(state, removeLayer(state.layout, action.id), { layer, lastSwap: null });
     }
 
     case 'renameLayer': {
-      const layers = state.layout.layers.map((l) =>
-        l.id === action.id ? { ...l, name: action.name } : l,
-      );
+      const name = action.name.trim();
+      const current = state.layout.layers.find((l) => l.id === action.id);
+      if (!current || name === '' || name === current.name) return state;
+      const layers = state.layout.layers.map((l) => (l.id === action.id ? { ...l, name } : l));
       return withLayout(state, { ...state.layout, layers }, { lastSwap: null });
+    }
+
+    case 'moveLayer': {
+      const moved = moveLayer(state.layout, action.from, action.to);
+      if (moved === state.layout) return state;
+      // The layer on screen stays on screen, wherever it now sits in the list.
+      const shown = state.layout.layers[state.layer]?.id;
+      const layer = Math.max(
+        0,
+        moved.layers.findIndex((l) => l.id === shown),
+      );
+      return withLayout(state, moved, { layer, lastSwap: null });
+    }
+
+    case 'duplicateLayer': {
+      const idx = state.layout.layers.findIndex((l) => l.id === action.id);
+      const copy = duplicateLayer(state.layout, idx);
+      if (!copy) return state;
+      return withLayout(state, copy.layout, { layer: idx + 1, lastSwap: null });
     }
 
     case 'setFeatures': {
@@ -368,7 +426,7 @@ export function editReducer(state: EditState, action: EditAction): EditState {
     }
 
     case 'comboPickStart':
-      return { ...state, comboPick: [], editing: null, selected: null, swapFrom: null };
+      return { ...state, comboPick: [], focusRequest: null, selected: null, swapFrom: null };
 
     case 'comboPickToggle': {
       const picked = state.comboPick ?? [];

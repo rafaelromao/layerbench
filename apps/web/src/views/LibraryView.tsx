@@ -11,14 +11,55 @@ import {
   slug,
   toCanonicalJson,
 } from '@layoutmaster/core';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { formatValue } from '../components/format.js';
+import { HelpLink } from '../components/HelpLink.js';
 import { Keyboard } from '../components/Keyboard.js';
+import {
+  compareBy,
+  type LayoutSummary,
+  type SortKey,
+  type SummaryEntry,
+  type SummaryOptions,
+  useSummaries,
+} from '../engine/use-summaries.js';
+import { HELP } from '../guide/help.js';
 import { toast } from '../state/toasts.js';
 import { useCollection, useStorage } from '../storage/use-storage.js';
 import { encodeInline } from '../url/inline.js';
-import { inlineRef, savedRef } from '../url/params.js';
+import { inlineRef, parseParams, type RawSearch, savedRef } from '../url/params.js';
+import { KeymapDrawerImport } from './library/KeymapDrawerImport.js';
 import { type NewLayoutSpec, newLayout } from './new-layout.js';
+import { useRuleSet } from './useRuleSet.js';
+
+/** Ranking re-analyzes every layout listed, so it works from the editor's smaller sample. */
+const RANK_MAX_SYMBOLS = 100_000;
+
+const SORTS: [SortKey, string][] = [
+  ['effort', 'Effort'],
+  ['sfb', 'SFB'],
+  ['name', 'Name'],
+];
+
+/** The two numbers every card shows, whether or not the list is sorted by them. */
+function Ranking({ summary }: { summary: LayoutSummary | undefined }) {
+  if (!summary) {
+    return <p className="text-xs opacity-50">scoring…</p>;
+  }
+  return (
+    <dl className="flex gap-3 text-xs font-mono tabular-nums m-0">
+      <div className="flex gap-1">
+        <dt className="opacity-60 font-sans">Effort</dt>
+        <dd className="m-0">{formatValue(summary.effort, 'effort')}</dd>
+      </div>
+      <div className="flex gap-1">
+        <dt className="opacity-60 font-sans">SFB</dt>
+        <dd className="m-0">{formatValue(summary.sfb, 'percent')}</dd>
+      </div>
+    </dl>
+  );
+}
 
 interface Preview {
   layout: Layout;
@@ -201,6 +242,73 @@ export function LibraryView() {
     [],
   );
 
+  // Ranking uses the corpus and rule set in the link, so it agrees with what Analyze would show.
+  const search = useSearch({ strict: false }) as RawSearch;
+  const params = useMemo(() => parseParams(search), [search]);
+  const ruleSet = useRuleSet(params.preset, params.universe);
+  const [sortBy, setSortBy] = useState<SortKey>('effort');
+
+  // Saved layouts are listed from their index; ranking needs the documents themselves.
+  const [savedLayouts, setSavedLayouts] = useState<Map<string, Layout>>(() => new Map());
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const out = new Map<string, Layout>();
+      for (const entry of saved.entries) {
+        const doc = await storage.get('layouts', entry.id).catch(() => null);
+        const parsed = doc ? safeParseLayout(doc.doc) : null;
+        if (parsed?.ok) out.set(entry.id, parsed.layout);
+      }
+      if (!cancelled) setSavedLayouts(out);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [saved.entries, storage]);
+
+  const summaryEntries: SummaryEntry[] = useMemo(
+    () => [
+      ...bundled.map(({ layout }) => ({ key: `b:${layout.id}`, layout })),
+      ...saved.entries.map((e) => ({ key: `s:${e.id}`, layout: savedLayouts.get(e.id) ?? null })),
+    ],
+    [bundled, saved.entries, savedLayouts],
+  );
+  const summaryOptions: SummaryOptions = useMemo(
+    () => ({
+      corpusId: params.corpus,
+      caseMode: params.caseMode,
+      textClass: params.textClass,
+      maxSymbols: Math.min(params.sample, RANK_MAX_SYMBOLS),
+      ruleSet,
+    }),
+    [params.corpus, params.caseMode, params.textClass, params.sample, ruleSet],
+  );
+  const { summaries, pending } = useSummaries(summaryEntries, summaryOptions);
+  // Every layout failing at once means the corpus or rule set is at fault, not the layouts.
+  const unscored =
+    summaries.size > 0 && [...summaries.values()].every((s) => s.effort === null && s.sfb === null);
+
+  // Cards would jump around as each score landed, so the list keeps its order until all are in and
+  // then moves once. Sorting by name needs no scores and applies at once.
+  const settled = pending === 0 || sortBy === 'name';
+  const bundledSorted = useMemo(() => {
+    if (!settled) return bundled;
+    const by = compareBy(sortBy, summaries);
+    return [...bundled].sort((a, b) =>
+      by(
+        { key: `b:${a.layout.id}`, name: a.layout.name },
+        { key: `b:${b.layout.id}`, name: b.layout.name },
+      ),
+    );
+  }, [bundled, settled, sortBy, summaries]);
+  const savedSorted = useMemo(() => {
+    if (!settled) return saved.entries;
+    const by = compareBy(sortBy, summaries);
+    return [...saved.entries].sort((a, b) =>
+      by({ key: `s:${a.id}`, name: a.name }, { key: `s:${b.id}`, name: b.name }),
+    );
+  }, [saved.entries, settled, sortBy, summaries]);
+
   // The preview follows the text as it is typed, so a malformed import is obvious immediately.
   useEffect(() => {
     if (importText.trim() === '') {
@@ -290,6 +398,15 @@ export function LibraryView() {
     [saveNew, navigate],
   );
 
+  /** An imported keymap goes straight to the editor, saved, so nothing about it is lost. */
+  const importKeymap = useCallback(
+    async (layout: Layout) => {
+      const id = await saveNew(layout, `Import keymap-drawer layout ${layout.name}`);
+      if (id) navigate({ to: '/edit', search: { layout: savedRef(id) } as never });
+    },
+    [saveNew, navigate],
+  );
+
   const remove = useCallback(
     async (id: string) => {
       if (!window.confirm('Delete this saved layout?')) return;
@@ -314,10 +431,36 @@ export function LibraryView() {
         </p>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <fieldset className="join" aria-label="Sort layouts by">
+          <legend className="text-xs opacity-70 float-left mr-2 self-center">Sort by</legend>
+          {SORTS.map(([key, label]) => (
+            // daisyUI draws a radio styled as a button from its accessible name.
+            <input
+              key={key}
+              type="radio"
+              name="library-sort"
+              aria-label={label}
+              className="join-item btn btn-xs"
+              checked={sortBy === key}
+              onChange={() => setSortBy(key)}
+            />
+          ))}
+        </fieldset>
+        <HelpLink help={HELP.sorting} />
+        <span className="text-xs opacity-60" aria-live="polite">
+          {pending > 0
+            ? `Scoring layouts… ${summaryEntries.length - pending} of ${summaryEntries.length}`
+            : unscored
+              ? `Could not score the layouts on ${params.corpus}.`
+              : `Lower is better for both. ${Math.min(params.sample, RANK_MAX_SYMBOLS).toLocaleString('en-US')} symbols of ${params.corpus}, ${ruleSet.name ?? 'rule set'}.`}
+        </span>
+      </div>
+
       <section className="space-y-2">
         <h2 className="text-sm uppercase tracking-wide opacity-60">Bundled layouts</h2>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {bundled.map(({ layout, compiled }) => (
+          {bundledSorted.map(({ layout, compiled }) => (
             <article key={layout.id} className="card bg-base-100 border border-base-300">
               <div className="card-body gap-2 p-4">
                 <header className="flex items-start justify-between gap-2">
@@ -333,6 +476,7 @@ export function LibraryView() {
                         .join(' · ')}
                     </p>
                     <LanguageBadges compiled={compiled} />
+                    <Ranking summary={summaries.get(`b:${layout.id}`)} />
                   </div>
                   <div className="flex shrink-0 gap-1">
                     <Link
@@ -359,7 +503,13 @@ export function LibraryView() {
                   showHold={false}
                   className="opacity-90"
                 />
-                {layout.description && <p className="text-xs opacity-70">{layout.description}</p>}
+                {layout.description && (
+                  // A description may carry a link, which would otherwise hold the card, and the
+                  // whole list with it, wider than a phone.
+                  <p className="text-xs opacity-70 [overflow-wrap:anywhere]">
+                    {layout.description}
+                  </p>
+                )}
               </div>
             </article>
           ))}
@@ -379,10 +529,11 @@ export function LibraryView() {
           </p>
         ) : (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {saved.entries.map((entry) => (
+            {savedSorted.map((entry) => (
               <article key={entry.id} className="card bg-base-100 border border-base-300">
                 <div className="card-body gap-2 p-4">
                   <h3 className="font-semibold text-sm">{entry.name}</h3>
+                  <Ranking summary={summaries.get(`s:${entry.id}`)} />
                   <p className="text-xs opacity-60">
                     {[
                       entry.author,
@@ -517,6 +668,22 @@ export function LibraryView() {
               )}
             </div>
           )}
+        </div>
+      </section>
+
+      <section className="card bg-base-100 border border-base-300">
+        <div className="card-body gap-3 p-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="font-semibold text-sm">Import from keymap-drawer</h2>
+              <HelpLink help={HELP.importing} />
+            </div>
+            <p className="text-xs opacity-70">
+              A keymap-drawer YAML file: its layers, legends and combos, onto the board it
+              describes. Choose which layers to bring in, and what to call them.
+            </p>
+          </div>
+          <KeymapDrawerImport onImport={importKeymap} />
         </div>
       </section>
     </div>

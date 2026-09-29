@@ -8,13 +8,16 @@ import {
 } from '@layoutmaster/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { HelpLink } from '../components/HelpLink.js';
 import { Keyboard } from '../components/Keyboard.js';
 import { LayerTabs } from '../components/LayerTabs.js';
 import { MetricCard, SummaryStrip } from '../components/Metrics.js';
+import { presetOf } from '../components/RuleSources.js';
 import { useAnalysisClient } from '../engine/client-context.js';
 import { expandPositions, heatMap } from '../engine/heat.js';
 import type { AnalyzeRequest, ExplainDTO } from '../engine/protocol.js';
 import { useAnalysis } from '../engine/use-analysis.js';
+import { HELP } from '../guide/help.js';
 import {
   DEFAULT_PARAMS,
   HEAT_MODES,
@@ -425,6 +428,7 @@ export function AnalyzeView() {
             {compiled && (
               <Keyboard
                 id="kb-analyze"
+                legendList
                 compiled={compiled}
                 layer={layerIdx}
                 heat={heat}
@@ -527,7 +531,10 @@ export function AnalyzeView() {
         <section className="card bg-base-100 border border-base-300">
           <div className="card-body gap-3 p-4">
             <div>
-              <h2 className="font-semibold text-sm">Summary</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="font-semibold text-sm">Summary</h2>
+                <HelpLink help={HELP.headline} />
+              </div>
               <p className="font-mono text-xs opacity-60">
                 {params.universe === 'with_space' ? 'with space' : 'no space'} ·{' '}
                 {params.caseMode === 'model' ? 'shift modeled' : 'case folded'} ·{' '}
@@ -580,6 +587,7 @@ export function AnalyzeView() {
                     result={r}
                     selectedItem={selectedRule === r.id ? selectedItem : null}
                     onHighlightItem={highlightItem}
+                    presetId={presetOf(params.preset)}
                   />
                 ))}
               </div>

@@ -125,6 +125,9 @@ export function bindingToJson(b: Binding): Record<string, unknown> {
     case 'ref':
       extra = { ref: b.ref };
       break;
+    case 'raw':
+      extra = { label: b.label, source: b.source };
+      break;
     default:
       extra = {};
   }

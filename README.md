@@ -7,90 +7,35 @@ Doc metrics (SFB, SFS, scissors, LSB, alternation, rolls, redirects, usage, effo
 **physical key stream**. Every rule is data: toggle it, re-parameterize it, remove it, or compose a
 new one.
 
-Specification: [SPEC.md](SPEC.md). Metric glossary: [docs/METRICS.md](docs/METRICS.md).
+Every layout is shown and sorted by two numbers: **Effort**, cyanophage's measure of how hard the
+keys are to reach, and **SFB**, how often one finger presses two keys in a row.
 
 Everything runs in the browser. There is no server and no account, and nothing leaves the page
 unless you point it at a repository of your own.
+
+**Using it:** the [guide](docs/guide/README.md), also in the app under **Guide**, starts with four
+steps and opens further as you need it. Metric definitions and their sources are in the
+[glossary](docs/METRICS.md); the design is in [SPEC.md](SPEC.md).
 
 ## Views
 
 | Route | What it does |
 |---|---|
 | `/` | Analyze a layout: heat-mapped keyboard, every metric, and a trace of how any word is typed |
-| `/edit` | Edit a layout in place: type ZMK on a key, drag keys to swap, copy or send to another layer; layers, combos, behaviors, typing paths |
+| `/edit` | Edit a layout on the board: select a key and choose what it does, or type it in ZMK's syntax; drag to swap; rename, reorder and duplicate layers |
 | `/compare` | Two layouts side by side, with a delta for each metric |
-| `/rules` | Enable, re-parameterize or compose rules; save the set |
+| `/rules` | Enable, re-parameterize or compose rules, each with its sources; save the set |
 | `/corpus` | Browse the shipped corpora and build your own from pasted or uploaded text |
-| `/library` | Bundled and saved layouts; import from JSON or a classic text layout |
+| `/library` | Bundled and saved layouts, sorted by Effort or SFB; import from keymap-drawer YAML, JSON or a text layout |
+| `/guide` | The user guide and the metric glossary |
 
 A link carries the whole analysis, so any view can be shared as it stands. `?layout=inline:…` even
 carries a layout that was never saved.
 
-## Editing a key
-
-Select a key and type on it. The text is ZMK's, with the kinds this model has and ZMK does not
-following the same shape:
-
-| Type | Result |
-|---|---|
-| `ç` · `ão` | that symbol |
-| `&kp A` · `&kp N1` · `&kp LS(COMMA)` | a key press, by keycode |
-| `&lt num a` · `&mo sym` · `&sl ccedil` · `&to base` · `&tog num` | layer taps and switches |
-| `&sk LSHIFT` · `&kp LSHIFT` | a sticky modifier, and a plain one |
-| `&macro ão` · `&macro ão then alpha2` | a macro, optionally arming a layer |
-| `&trans` · `&none` · `&key_repeat` · `&caps_word` | the rest |
-| `&magic` | one of the layout's own behaviors |
-
-A layer is named by its id, its name, or the index ZMK would use. A trailing `tag:name` records the
-tag adaptive branches match on. Under the default `symbols` host locale a keycode is resolved to the
-symbol it types, so `&kp N1` becomes `1`, shifted `!`.
-
-### Keys and gestures
-
-| | |
-|---|---|
-| any character | opens the editor on the focused key and starts its binding with that character |
-| `Enter` · `F2` | opens the editor on the whole binding; `Enter` again commits it |
-| `Escape` | abandons the edit |
-| `Delete` · `Backspace` | clears the key |
-| arrow keys | move between keys — the board is one tab stop, not thirty-four |
-| `Space` | selects the key, which is what the **Key** panel follows |
-| tap (touch) | opens the editor, since there is no keystroke to open it with |
-| `Alt`+`S` | arms a swap; then click or `Enter` on its partner |
-| `Ctrl`/`Cmd`+`Z` | undoes, `Shift` as well redoes |
-
-Dragging a key onto another swaps the two, holding `Alt` copies instead, and dropping a key on a
-layer tab sends it to that layer. The palette under the board holds the bindings worth not typing:
-drag one onto a key, or click it and then click a key.
-
-### On a touch screen
-
-A finger cannot type on a key, so **tapping one opens the editor** and the menu it opens with builds
-a whole binding without a keyboard: tap `&lt`, tap the layer, tap **Apply**. The field is not
-focused until you tap it, so the on-screen keyboard stays down until you actually want it, and the
-editor moves out of its way when it comes up.
-
-Everything a drag does has a tap that does the same thing — **swap with…**, **copy to…** and
-**send to…** in the editor, and tap-then-tap for the palette. Dragging works too, after a short
-press so the board can still be scrolled past with a finger. The board keeps its keys at a size a
-finger can hit rather than shrinking a split layout into the width of a phone, so it pans sideways;
-a split layout is worked on one half at a time anyway.
-
-Combos are built by clicking **pick on board** in the Combos panel and then clicking the keys, and
-their output takes the same syntax as a key. Typing-path alternatives reorder by dragging, or with
-the arrows beside them.
-
-### What cannot be typed
-
-Some bindings carry more than this syntax can write: an adaptive key's branches, a hold-tap's two
-arms, a mod-morph, a tap dance, a macro built from steps, a one-shot carrying release options. On
-one of those the editor opens read-only and says which it is, rather than flattening it.
-
-**The Key panel refuses them too.** Its form is built from a fixed set of fields with no room for
-those, so applying it would replace the binding rather than change it — it says so, and disables
-itself until you press **Replace anyway**. A key a feature generated has no way through at all: it
-is rewritten every time the layout compiles, so the panel names the feature and points at
-**Features**, where turning the feature off hands the key back.
+The editor works the same with a mouse, a keyboard or a finger: [Editing a
+layout](docs/guide/editing.md) covers every gesture and shortcut, [Special keys](docs/guide/special-keys.md)
+the tap-holds, one-shots, magic and repeat keys, and [Importing and exporting](docs/guide/importing.md)
+the keymap-drawer round trip.
 
 ## Structure
 
@@ -133,6 +78,19 @@ pnpm dev          # http://localhost:5173
 
 `pnpm bench` runs the performance suite, which is skipped by default. `pnpm corpora` rebuilds the
 corpus samples from `packages/corpora/raw`.
+
+`apps/web/e2e` checks the Edit view's layout in a real browser, at two phone sizes and a desktop
+one: nothing wider than the screen, targets a finger can hit, the board in sight while a key is
+edited. Playwright's Chromium is downloaded once:
+
+```bash
+pnpm --filter @layoutmaster/web exec playwright install chromium
+pnpm --filter @layoutmaster/web e2e
+```
+
+On a slow network, `PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT=120000` gives the download two minutes
+instead of thirty seconds. Where the download is blocked altogether, `E2E_CHANNEL=chrome` runs the
+checks on the Google Chrome already installed, with nothing to download.
 
 ## Deploy
 

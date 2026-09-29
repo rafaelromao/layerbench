@@ -1,25 +1,30 @@
 import { bundledLayout, type Layout, slug, toCanonicalJson } from '@layoutmaster/core';
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { Keyboard, type KeyboardHandle } from '../components/Keyboard.js';
+import {
+  type KeyboardEvent as ReactKeyboardEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from 'react';
+import { HelpLink } from '../components/HelpLink.js';
+import { Keyboard, type KeyboardHandle, KeyLegend } from '../components/Keyboard.js';
 import { LayerTabs } from '../components/LayerTabs.js';
 import { EDIT_SUMMARY_IDS, SummaryStrip } from '../components/Metrics.js';
-import { useCoarsePointer } from '../components/use-coarse-pointer.js';
-import { clearDropTargets, paintDropTarget, targetUnder } from '../components/use-key-drag.js';
 import { useAnalysisClient } from '../engine/client-context.js';
 import type { AnalyzeRequest, ProducerDTO, ReportDTO } from '../engine/protocol.js';
 import { useAnalysis } from '../engine/use-analysis.js';
+import { HELP, type HelpTopic } from '../guide/help.js';
 import { toast } from '../state/toasts.js';
 import { useStorage } from '../storage/use-storage.js';
 import { encodeInline } from '../url/inline.js';
 import { inlineRef, parseParams, type RawSearch, savedRef, toSearch } from '../url/params.js';
-import { BindingPalette } from './edit/BindingPalette.js';
-import { bindingFromFields } from './edit/binding-form.js';
-import { type BindingTextContext, parseBindingText } from './edit/binding-text.js';
-import { KeyEditor } from './edit/KeyEditor.js';
+import { TextField } from './edit/inspector/controls.js';
+import { KeyInspector } from './edit/inspector/KeyInspector.js';
 import {
   BehaviorsPanel,
-  BindingPanel,
   CombosPanel,
   FeaturesPanel,
   GeometryPanel,
@@ -39,16 +44,16 @@ const undoableEditReducer = undoable(editReducer);
 /** Editing re-analyzes on every change, so it works from a smaller sample than the Analyze view. */
 const EDIT_MAX_SYMBOLS = 100_000;
 
-const PANELS: [Panel, string][] = [
-  ['binding', 'Key'],
-  ['layers', 'Layers'],
-  ['features', 'Features'],
-  ['geometry', 'Geometry'],
-  ['combos', 'Combos'],
-  ['behaviors', 'Behaviors'],
-  ['paths', 'Typing paths'],
-  ['json', 'JSON'],
-  ['save', 'Save'],
+/** Each panel, and the part of the guide its "?" leads to. */
+const PANELS: [Panel, string, HelpTopic][] = [
+  ['layers', 'Layers', HELP.layers],
+  ['features', 'Features', HELP.features],
+  ['geometry', 'Geometry', HELP.panels],
+  ['combos', 'Combos', HELP.panels],
+  ['behaviors', 'Behaviors', HELP.panels],
+  ['paths', 'Typing paths', HELP.panels],
+  ['json', 'JSON', HELP.exporting],
+  ['save', 'Save', HELP.saving],
 ];
 
 export function EditView() {
@@ -106,11 +111,7 @@ function Editor({
     undoableEditReducer,
     initialUndoState(initialLayout, initialCompiled, params.layer),
   );
-  const coarse = useCoarsePointer();
   const keyboard = useRef<KeyboardHandle>(null);
-  const [board, setBoard] = useState<HTMLDivElement | null>(null);
-  /** A binding taken from the palette and not yet placed. */
-  const [carried, setCarried] = useState<string | null>(null);
   /** What to tell a screen reader: a key's changed legend is not announced on its own. */
   const [message, setMessage] = useState('');
   const [producers, setProducers] = useState<Record<string, ProducerDTO[]>>({});
@@ -195,15 +196,6 @@ function Editor({
   const provisional = estimate !== null && estimate.layout === state.layout && reportIsStale;
   const shown = provisional && estimate ? estimate.report : report;
 
-  const bindingContext: BindingTextContext = useMemo(
-    () => ({
-      layers: state.compiled.layers.map((l) => ({ id: l.id, name: l.name })),
-      behaviors: Object.keys(state.layout.behaviors ?? {}),
-      hostLocale: state.compiled.hostLocale,
-    }),
-    [state.compiled, state.layout.behaviors],
-  );
-
   // Everything the board should outline: a key armed for a swap, the keys being picked for a
   // combo, and the keys of a combo the user asked to see.
   const highlighted = useMemo(() => {
@@ -216,19 +208,6 @@ function Editor({
       .map((id) => state.compiled.keyIndex.get(id))
       .filter((p): p is number => p !== undefined);
   }, [state.swapFrom, state.comboPick, state.boardHighlight, state.compiled]);
-
-  const place = useCallback(
-    (text: string, keyId: string) => {
-      const result = parseBindingText(text, bindingContext);
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
-      send({ type: 'commitBinding', keyId, binding: bindingFromFields(result.fields) });
-      setMessage(`${keyId} set to ${text}`);
-    },
-    [bindingContext],
-  );
 
   const save = useCallback(
     async (name: string) => {
@@ -264,6 +243,60 @@ function Editor({
     navigate({ to: '/', search: toSearch(params, { layoutRef: inlineRef(blob) }) as never });
   }, [state.layout, params, navigate]);
 
+  const focusKey = useCallback((keyId: string) => keyboard.current?.focusKey(keyId), []);
+  const undo = (redo: boolean) => {
+    send({ type: redo ? 'redo' : 'undo' });
+    setMessage(redo ? 'Redone' : 'Undone');
+  };
+
+  /** Keystrokes on a focused key: typing sets it, Enter offers it for typing, Delete clears it. */
+  const onKeyShortcut = (e: ReactKeyboardEvent<SVGGElement>, keyId: string) => {
+    if (e.ctrlKey || e.metaKey) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      const busy =
+        state.swapFrom !== null || state.comboPick !== null || state.boardHighlight.length > 0;
+      if (!busy) {
+        send({ type: 'deselect' });
+        return;
+      }
+      send({ type: 'cancelSwap' });
+      send({ type: 'comboPickCancel' });
+      send({ type: 'setBoardHighlight', keys: [] });
+      return;
+    }
+    // While keys are being picked for a combo, they are all the board is doing.
+    if (state.comboPick) return;
+    // With a swap armed, Enter and Space pick its partner like a click does.
+    if (state.swapFrom && (e.key === 'Enter' || e.key === ' ')) return;
+    // Every printable key types on the key, so arming a swap takes a modifier.
+    if (e.altKey) {
+      if (e.code === 'KeyS') {
+        e.preventDefault();
+        send({ type: 'keyClick', keyId });
+        send({ type: 'startSwap' });
+      }
+      return;
+    }
+    if (e.key === 'Enter' || e.key === 'F2') {
+      e.preventDefault();
+      send({ type: 'typeOnKey', keyId, seed: null });
+      return;
+    }
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      e.preventDefault();
+      send({ type: 'clearKey', keyId });
+      setMessage(`${keyId} cleared`);
+      return;
+    }
+    // Space keeps activating the key like the button it is; everything else typed on a key is
+    // the start of its binding.
+    if (e.key.length === 1 && e.key !== ' ') {
+      e.preventDefault();
+      send({ type: 'typeOnKey', keyId, seed: e.key });
+    }
+  };
+
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: undo belongs to the whole editor, reached from whatever inside it has focus.
     <div
@@ -274,254 +307,282 @@ function Editor({
         // A text field has an undo stack of its own, and it should win inside itself.
         if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
         e.preventDefault();
-        send({ type: e.shiftKey ? 'redo' : 'undo' });
-        setMessage(e.shiftKey ? 'Redone' : 'Undone');
+        undo(e.shiftKey);
       }}
     >
       <h1 className="sr-only">Edit</h1>
 
-      <form
-        id="meta-form"
-        className="card bg-base-100 border border-base-300 p-3 flex flex-row flex-wrap items-end gap-3"
-        onSubmit={(e) => e.preventDefault()}
-      >
-        <label className="form-control">
-          <span className="label-text text-xs">Name</span>
-          <input
-            aria-label="Name"
-            className="input input-sm input-bordered"
-            value={state.layout.name}
-            onChange={(e) => send({ type: 'setMeta', name: e.target.value })}
-          />
-        </label>
-        <label className="form-control">
-          <span className="label-text text-xs">Author</span>
-          <input
-            aria-label="Author"
-            className="input input-sm input-bordered"
-            value={state.layout.author ?? ''}
-            onChange={(e) => send({ type: 'setMeta', author: e.target.value })}
-          />
-        </label>
-        <label className="form-control flex-1 min-w-48">
-          <span className="label-text text-xs">Description</span>
-          <input
-            aria-label="Description"
-            className="input input-sm input-bordered w-full"
-            value={state.layout.description ?? ''}
-            onChange={(e) => send({ type: 'setMeta', description: e.target.value })}
-          />
-        </label>
-        {state.dirty && <span className="badge badge-warning badge-sm">unsaved</span>}
-        <button type="button" className="btn btn-sm" onClick={openInAnalyzer}>
-          Analyze
-        </button>
-      </form>
+      <EditorBar
+        layout={state.layout}
+        dirty={state.dirty}
+        onMeta={(meta) => send({ type: 'setMeta', ...meta })}
+        onAnalyze={openInAnalyzer}
+      />
 
-      {state.error && <div className="alert alert-error text-sm">{state.error}</div>}
+      {state.error && (
+        <div role="alert" className="alert alert-error text-sm">
+          {state.error}
+        </div>
+      )}
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-        {/* min-w-0 all the way down to the board: a grid item and a flex child both refuse to
-            shrink below their content, and the board is deliberately wider than a phone. */}
-        <section className="card bg-base-100 border border-base-300 min-w-0">
-          <div className="card-body gap-3 p-4 min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <LayerTabs
-                layers={state.compiled.layers.map((l) => ({ idx: l.idx, id: l.id, name: l.name }))}
-                active={state.layer}
-                onSelect={(layer) => send({ type: 'selectLayer', layer })}
-              />
-            </div>
-            <p className="text-xs opacity-60 lm-pointer-hint">
-              Type on a key to set it: <span className="font-mono">&amp;kp ç</span>,{' '}
-              <span className="font-mono">&amp;lt num a</span>,{' '}
-              <span className="font-mono">&amp;mo sym</span>. Enter edits, Delete clears, arrow keys
-              move. Drag a key onto another to swap it, hold Alt to copy, or drop it on a layer tab
-              to send it there.
-            </p>
-            <p className="text-xs opacity-60 lm-touch-hint">
-              Tap a key to edit it: the list that opens builds a binding without typing. Tap a
-              binding below and then a key to place it. Press and hold a key to drag it.
-            </p>
-
-            {/* biome-ignore lint/a11y/noStaticElementInteractions: the drop handling belongs to the
-                board as a whole; every key inside it is already a button. */}
-            <div
-              ref={setBoard}
-              className="lm-board relative"
-              onDragOver={(e) => {
-                if (!carried) return;
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'copy';
-                clearDropTargets();
-                const over = targetUnder(e.clientX, e.clientY);
-                if (over?.kind === 'key') paintDropTarget(over, 'copy');
-              }}
-              onDragLeave={clearDropTargets}
-              onDrop={(e) => {
-                e.preventDefault();
-                clearDropTargets();
-                const text = e.dataTransfer.getData('text/plain') || carried;
-                const over = targetUnder(e.clientX, e.clientY);
-                setCarried(null);
-                if (text && over?.kind === 'key') place(text, over.keyId);
-              }}
-            >
-              {/* The board pans inside its own box. The editor cannot live in that box: a
-                  scroll container clips on both axes, whatever only one of them was set to. */}
-              <div className="lm-board-scroll">
-                <Keyboard
-                  ref={keyboard}
-                  id="kb-edit"
-                  compiled={state.compiled}
-                  layer={state.layer}
-                  selected={state.selected}
-                  draggable
-                  highlight={highlighted}
-                  onKeyClick={(keyId) => {
-                    if (state.comboPick) {
-                      send({ type: 'comboPickToggle', keyId });
-                      return;
-                    }
-                    if (carried) {
-                      place(carried, keyId);
-                      setCarried(null);
-                      return;
-                    }
-                    // A finger cannot type on a key to open the editor, so the tap has to do it —
-                    // otherwise there is no way into it at all without a hardware keyboard.
-                    if (coarse && !state.swapFrom) {
-                      send({ type: 'openEditor', keyId, seed: null });
-                      return;
-                    }
-                    send({ type: 'keyClick', keyId });
-                  }}
-                  onDragStart={() => send({ type: 'closeEditor' })}
-                  onDropKey={(drop) => {
-                    send({ type: 'dropKey', ...drop });
-                    setMessage(
-                      drop.to.kind === 'layer'
-                        ? `${drop.from} sent to ${drop.to.layerId}`
-                        : `${drop.from} ${drop.mode === 'copy' ? 'copied to' : 'swapped with'} ${drop.to.keyId}`,
-                    );
-                  }}
-                  onKeyShortcut={(e, keyId) => {
-                    if (e.ctrlKey || e.metaKey) return;
-                    if (e.key === 'Escape') {
-                      e.preventDefault();
-                      send({ type: 'cancelSwap' });
-                      send({ type: 'comboPickCancel' });
-                      send({ type: 'setBoardHighlight', keys: [] });
-                      setCarried(null);
-                      return;
-                    }
-                    // While keys are being picked for a combo, they are all the board is doing.
-                    if (state.comboPick) return;
-                    // Every printable key now types on the key, so arming a swap takes a modifier.
-                    if (e.altKey) {
-                      if (e.code === 'KeyS') {
-                        e.preventDefault();
-                        send({ type: 'keyClick', keyId });
-                        send({ type: 'startSwap' });
-                      }
-                      return;
-                    }
-                    if (e.key === 'Enter' || e.key === 'F2') {
-                      e.preventDefault();
-                      send({ type: 'openEditor', keyId, seed: null });
-                      return;
-                    }
-                    if (e.key === 'Backspace' || e.key === 'Delete') {
-                      e.preventDefault();
-                      send({ type: 'clearKey', keyId });
-                      setMessage(`${keyId} cleared`);
-                      return;
-                    }
-                    // Space keeps activating the key like the button it is; everything else typed
-                    // on a key is the start of its binding.
-                    if (e.key.length === 1 && e.key !== ' ') {
-                      e.preventDefault();
-                      send({ type: 'openEditor', keyId, seed: e.key });
-                    }
-                  }}
-                />
+      {/* One inspector for the selected key, the same on every screen: beside the board where there
+          is room for both; under it where there is not, with the board pinned above it while a key
+          is being edited, so the next key is always a tap away. */}
+      <div className={`lm-edit-grid ${state.selected ? 'lm-editing' : ''}`}>
+        <div className="lm-edit-main">
+          {/* min-w-0 all the way down to the board: a grid item and a flex child both refuse to
+              shrink below their content, and the board is deliberately wider than a phone. */}
+          <section
+            className="lm-edit-board card bg-base-100 border border-base-300 min-w-0"
+            aria-label="Board"
+          >
+            <div className="card-body gap-2 p-3 sm:p-4 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="lm-layer-strip min-w-0 flex-1">
+                  <LayerTabs
+                    layers={state.compiled.layers.map((l) => ({
+                      idx: l.idx,
+                      id: l.id,
+                      name: l.name,
+                    }))}
+                    active={state.layer}
+                    onSelect={(layer) => send({ type: 'selectLayer', layer })}
+                    onRename={(id, name) => send({ type: 'renameLayer', id, name })}
+                  />
+                </div>
+                <div className="join shrink-0">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost join-item"
+                    aria-label="Undo"
+                    title="Undo (Ctrl+Z)"
+                    disabled={state.past.length === 0}
+                    onClick={() => undo(false)}
+                  >
+                    ↶
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost join-item"
+                    aria-label="Redo"
+                    title="Redo (Ctrl+Shift+Z)"
+                    disabled={state.future.length === 0}
+                    onClick={() => undo(true)}
+                  >
+                    ↷
+                  </button>
+                </div>
               </div>
 
-              <KeyEditor
-                state={state}
-                send={send}
-                wrapper={board}
-                focusKey={(keyId) => keyboard.current?.focusKey(keyId)}
-                announce={setMessage}
-              />
+              <div className="lm-board relative">
+                {/* The board pans inside its own box on a narrow screen. */}
+                <div className="lm-board-scroll">
+                  <Keyboard
+                    ref={keyboard}
+                    id="kb-edit"
+                    legendList="separate"
+                    compiled={state.compiled}
+                    layer={state.layer}
+                    selected={state.selected}
+                    draggable
+                    highlight={highlighted}
+                    onKeyClick={(keyId) => {
+                      if (state.comboPick) {
+                        send({ type: 'comboPickToggle', keyId });
+                        return;
+                      }
+                      // A click, a tap and Space all select; the inspector is where editing
+                      // happens, so a finger and a mouse reach it the same way.
+                      send({ type: 'keyClick', keyId });
+                    }}
+                    onDropKey={(drop) => {
+                      send({ type: 'dropKey', ...drop });
+                      setMessage(
+                        drop.to.kind === 'layer'
+                          ? `${drop.from} sent to ${drop.to.layerId}`
+                          : `${drop.from} ${drop.mode === 'copy' ? 'copied to' : 'swapped with'} ${drop.to.keyId}`,
+                      );
+                    }}
+                    onKeyShortcut={onKeyShortcut}
+                  />
+                </div>
+              </div>
+
+              {state.swapFrom && (
+                <p className="text-xs">
+                  <span className="font-mono">{state.swapFrom}</span> is armed —{' '}
+                  {state.swapMode === 'copy'
+                    ? 'tap the key to copy it onto'
+                    : 'tap the key to swap it with'}
+                  , or press Escape.{' '}
+                  <button
+                    type="button"
+                    className="btn btn-xs btn-ghost"
+                    onClick={() => send({ type: 'cancelSwap' })}
+                  >
+                    Cancel
+                  </button>
+                </p>
+              )}
+
+              {state.comboPick && (
+                <p className="text-xs">
+                  Picking keys for a combo:{' '}
+                  <span className="font-mono">{state.comboPick.join('+') || 'none yet'}</span> — tap
+                  them on the board, then add the combo in the Combos panel.
+                </p>
+              )}
             </div>
+          </section>
 
-            <BindingPalette compiled={state.compiled} carried={carried} onCarry={setCarried} />
-
-            <p aria-live="polite" className="sr-only">
-              {state.swapFrom ? `${state.swapFrom} armed for a swap` : message}
-            </p>
-
-            {state.swapFrom && (
-              <p className="text-xs">
-                <span className="font-mono">{state.swapFrom}</span> is armed —{' '}
-                {state.swapMode === 'copy'
-                  ? 'tap the key to copy it onto'
-                  : 'tap the key to swap it with'}
-                , or press Escape.
-              </p>
-            )}
-
-            {state.comboPick && (
-              <p className="text-xs">
-                Picking keys for a combo:{' '}
-                <span className="font-mono">{state.comboPick.join('+') || 'none yet'}</span> — click
-                them on the board, then add the combo in the Combos panel.
-              </p>
-            )}
-
+          <section className="lm-edit-extras space-y-3 min-w-0" aria-label="Legend and analysis">
+            <KeyLegend compiled={state.compiled} layer={state.layer} />
             {shown && <SummaryStrip results={shown.results} ids={EDIT_SUMMARY_IDS} />}
-
             <p className="text-xs opacity-60">
               Quick analysis on {Math.min(params.sample, EDIT_MAX_SYMBOLS).toLocaleString('en-US')}{' '}
               symbols
               {provisional && <span> · estimate after swap</span>}
               {loading && <span> · updating…</span>}
             </p>
-          </div>
-        </section>
+          </section>
 
-        <section className="card bg-base-100 border border-base-300">
-          <div className="card-body gap-3 p-4">
-            <div role="tablist" aria-label="Editor panels" className="tabs tabs-bordered tabs-sm">
-              {PANELS.map(([panel, label]) => (
-                <button
-                  key={panel}
-                  type="button"
-                  role="tab"
-                  aria-selected={state.panel === panel}
-                  className={`tab ${state.panel === panel ? 'tab-active' : ''}`}
-                  onClick={() => send({ type: 'setPanel', panel })}
+          <p aria-live="polite" className="sr-only">
+            {state.swapFrom ? `${state.swapFrom} armed for a swap` : message}
+          </p>
+        </div>
+
+        <div className="lm-edit-side">
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: Escape anywhere in the inspector
+              closes it, the way it would a dialog; the controls inside handle everything else. */}
+          <div
+            className="lm-edit-inspector min-w-0"
+            onKeyDown={(e) => {
+              if (e.key !== 'Escape' || e.defaultPrevented || state.selected === null) return;
+              e.preventDefault();
+              const keyId = state.selected;
+              send({ type: 'deselect' });
+              focusKey(keyId);
+            }}
+          >
+            <KeyInspector state={state} send={send} focusKey={focusKey} announce={setMessage} />
+          </div>
+
+          <section className="lm-edit-panels card bg-base-100 border border-base-300 min-w-0">
+            <div className="card-body gap-3 p-3 sm:p-4 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <div
+                  role="tablist"
+                  aria-label="Editor panels"
+                  className="lm-panel-tabs tabs tabs-bordered tabs-sm min-w-0 flex-1"
                 >
-                  {label}
-                </button>
-              ))}
-            </div>
+                  {PANELS.map(([panel, label]) => (
+                    <button
+                      key={panel}
+                      type="button"
+                      role="tab"
+                      aria-selected={state.panel === panel}
+                      className={`tab ${state.panel === panel ? 'tab-active' : ''}`}
+                      onClick={() => send({ type: 'setPanel', panel })}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <HelpLink help={PANELS.find(([p]) => p === state.panel)?.[2] ?? HELP.panels} />
+              </div>
 
-            {state.panel === 'binding' && <BindingPanel state={state} send={send} />}
-            {state.panel === 'layers' && <LayersPanel state={state} send={send} />}
-            {state.panel === 'features' && <FeaturesPanel state={state} send={send} />}
-            {state.panel === 'geometry' && <GeometryPanel state={state} send={send} />}
-            {state.panel === 'combos' && <CombosPanel state={state} send={send} />}
-            {state.panel === 'behaviors' && <BehaviorsPanel state={state} send={send} />}
-            {state.panel === 'paths' && (
-              <PathsPanel state={state} send={send} producers={producers} />
-            )}
-            {state.panel === 'json' && <JsonPanel state={state} send={send} />}
-            {state.panel === 'save' && <SavePanel layout={state.layout} onSave={save} />}
-          </div>
-        </section>
+              {state.panel === 'layers' && <LayersPanel state={state} send={send} />}
+              {state.panel === 'features' && <FeaturesPanel state={state} send={send} />}
+              {state.panel === 'geometry' && <GeometryPanel state={state} send={send} />}
+              {state.panel === 'combos' && <CombosPanel state={state} send={send} />}
+              {state.panel === 'behaviors' && <BehaviorsPanel state={state} send={send} />}
+              {state.panel === 'paths' && (
+                <PathsPanel state={state} send={send} producers={producers} />
+              )}
+              {state.panel === 'json' && <JsonPanel state={state} send={send} />}
+              {state.panel === 'save' && <SavePanel layout={state.layout} onSave={save} />}
+            </div>
+          </section>
+        </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * The layout's name, whether it is saved, and the way to the analysis — one line on any screen.
+ * Author and description are asked for less often, and wait behind Details.
+ */
+function EditorBar({
+  layout,
+  dirty,
+  onMeta,
+  onAnalyze,
+}: {
+  layout: Layout;
+  dirty: boolean;
+  onMeta: (meta: { name?: string; author?: string; description?: string }) => void;
+  onAnalyze: () => void;
+}) {
+  const [details, setDetails] = useState(false);
+  return (
+    <section
+      className="lm-editor-bar card bg-base-100 border border-base-300 px-3 py-2"
+      aria-label="Layout"
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <TextField
+          label="Name"
+          value={layout.name}
+          mono={false}
+          className="input-ghost font-semibold text-base flex-1 min-w-32 px-1"
+          onCommit={(name) => {
+            if (name.trim()) onMeta({ name: name.trim() });
+          }}
+        />
+        {dirty && <span className="badge badge-warning badge-sm">unsaved</span>}
+        <button
+          type="button"
+          className="btn btn-sm btn-ghost btn-square"
+          aria-label="Layout details"
+          title="Author and description"
+          aria-expanded={details}
+          onClick={() => setDetails((d) => !d)}
+        >
+          ⋯
+        </button>
+        <button type="button" className="btn btn-sm" onClick={onAnalyze}>
+          Analyze
+        </button>
+      </div>
+      {details && (
+        <div className="grid gap-2 pt-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+          <div className="form-control">
+            <span className="label-text text-xs" aria-hidden="true">
+              Author
+            </span>
+            <TextField
+              label="Author"
+              value={layout.author ?? ''}
+              mono={false}
+              className="w-full"
+              onCommit={(author) => onMeta({ author })}
+            />
+          </div>
+          <div className="form-control">
+            <span className="label-text text-xs" aria-hidden="true">
+              Description
+            </span>
+            <TextField
+              label="Description"
+              value={layout.description ?? ''}
+              mono={false}
+              className="w-full"
+              onCommit={(description) => onMeta({ description })}
+            />
+          </div>
+        </div>
+      )}
+    </section>
   );
 }

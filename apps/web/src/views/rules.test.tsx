@@ -17,6 +17,23 @@ describe('Rules', () => {
     expect(screen.getByText('Layer taps per 100 symbols')).toBeInTheDocument();
   });
 
+  it('cites a source under every rule, leading with the definition in force', async () => {
+    renderRoute('/rules?rules=keysolve', { storage: freshStorage() });
+    await screen.findByText('Same finger bigrams');
+
+    const rows = [...document.querySelectorAll('tbody tr')];
+    expect(rows.length).toBeGreaterThan(40);
+    for (const row of rows) {
+      expect(within(row as HTMLElement).getByText(/^Sources \(\d+\)$/)).toBeInTheDocument();
+    }
+
+    // Keysolve redefines full scissors, so its own README is the first source cited for them.
+    const fsb = rows.find((r) => r.textContent?.includes('fsb')) as HTMLElement;
+    const first = within(fsb).getAllByRole('link')[0];
+    expect(first).toHaveTextContent('Keysolve README');
+    expect(first).toHaveAttribute('href', expect.stringContaining('keysolve'));
+  });
+
   it('adds a composed rule to the set', async () => {
     const user = userEvent.setup();
     renderRoute('/rules', { storage: freshStorage() });

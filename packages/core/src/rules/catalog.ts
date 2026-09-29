@@ -1,3 +1,4 @@
+import { CYANOPHAGE_EFFORT_SCALE } from './effort.js';
 import type { Bands, Direction, Family, Predicate, Rule } from './types.js';
 
 /** Band bounds from the Layouts Doc ch. 13.4 (upper bounds of the Min…Max categories). */
@@ -366,10 +367,10 @@ export function effortRules(): Rule[] {
   return [
     rule('effort', 'Effort', 'effort', {
       description:
-        'Mean per-key effort per 100 keystrokes (editable effort grid; thumbs 1, inner column 5).',
+        "cyanophage's Effort: its per-key grid, 577 × effort ÷ keystrokes (thumbs cost nothing; the grid is editable).",
       ngram: { n: 1 },
       aggregate: 'weighted_sum',
-      scale: 100.0,
+      scale: CYANOPHAGE_EFFORT_SCALE,
     }),
     rule('hard_words', 'Hard words', 'effort', {
       description: 'Words ranked by effort per character (includes extra layer/shift presses).',

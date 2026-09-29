@@ -9,6 +9,9 @@ import {
 } from '@layoutmaster/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useReducer, useState } from 'react';
+import { HelpLink } from '../components/HelpLink.js';
+import { presetOf, RuleSources } from '../components/RuleSources.js';
+import { HELP } from '../guide/help.js';
 import { toast } from '../state/toasts.js';
 import { useCollection, useStorage } from '../storage/use-storage.js';
 import type { RawSearch } from '../url/params.js';
@@ -227,6 +230,7 @@ export function RulesView() {
                 )}
               </select>
             </label>
+            <HelpLink help={HELP.rules} className="mb-2" />
 
             <p className="text-xs opacity-70 max-w-xl">{ruleSet.description}</p>
             {state.dirty && <span className="badge badge-warning badge-sm">unsaved changes</span>}
@@ -407,6 +411,9 @@ export function RulesView() {
                           <div className="text-[11px] opacity-60 max-w-xs">{rule.description}</div>
                         )}
                         <div className="text-[10px] font-mono opacity-50">{rule.id}</div>
+                        <div className="max-w-xs mt-1">
+                          <RuleSources ruleId={rule.id} presetId={presetOf(ref)} />
+                        </div>
                       </td>
                       <td className="text-[11px] font-mono opacity-70 max-w-sm truncate">
                         {describeSource(rule)} · {describeWhere(rule.where)}

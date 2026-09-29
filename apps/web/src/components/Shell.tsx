@@ -12,6 +12,7 @@ const NAV = [
   { to: '/rules', label: 'Rules' },
   { to: '/corpus', label: 'Corpus' },
   { to: '/library', label: 'Library' },
+  { to: '/guide', label: 'Guide' },
 ] as const;
 
 const THEMES: { value: ThemeChoice; label: string; icon: string }[] = [

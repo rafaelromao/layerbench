@@ -1,4 +1,4 @@
-import { type CompiledLayout, legend } from '@layoutmaster/core';
+import { type Binding, type CompiledLayout, type Legend, legend } from '@layoutmaster/core';
 import {
   type KeyboardEvent as ReactKeyboardEvent,
   type Ref,
@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { type Fit, fitLabel, legendNumber } from './fit-label.js';
 import { type Direction, nearestKey } from './key-nav.js';
 import { type KeyDrop, useKeyDrag } from './use-key-drag.js';
 
@@ -28,6 +29,111 @@ export interface KeyboardHandle {
 const UNIT = 64;
 const GAP = 6;
 const PAD = 0.8;
+/** Inner margin of a cap, in the same units. */
+const INSET = 5;
+/** Height kept for the band along the bottom of a cap, and for the shifted legend above. */
+const BAND = 12;
+const TOP = 9;
+const TAP_SIZES = [22, 19, 16, 14, 12, 10] as const;
+const SMALL_SIZES = [10, 9, 8, 7] as const;
+
+/** Layers get a colour of their own; the base layer stays the text colour it always was. */
+const LAYER_COLOURS = 7;
+
+function layerColour(compiled: CompiledLayout, layerId: string | null): string | undefined {
+  if (layerId === null) return undefined;
+  const idx = compiled.layerIndex.get(layerId);
+  if (idx === undefined || idx === 0) return undefined;
+  return `var(--lm-layer-${((idx - 1) % LAYER_COLOURS) + 1})`;
+}
+
+/** Bindings whose meaning a cap cannot carry, however it is drawn. */
+function needsDetail(b: Binding | undefined): boolean {
+  switch (b?.kind) {
+    case 'adaptive':
+    case 'tap_dance':
+    case 'mod_morph':
+    case 'layer_morph':
+    case 'raw':
+      return true;
+    case 'hold_tap':
+    case 'lt':
+      return needsDetail(b.tap);
+    default:
+      return false;
+  }
+}
+
+/** The name a screen reader reads, kept to the legend itself; the full meaning is the description. */
+function spokenLegend(l: Legend, tap: string): string {
+  const hold = l.hold === null ? '' : l.holdIsMode ? ` (${l.hold})` : `, hold ${l.hold}`;
+  return `${tap || 'empty'}${hold}`;
+}
+
+interface ModelOptions {
+  showHold: boolean;
+  /** Give a number to each key whose legend cannot say everything. */
+  numbered: boolean;
+  heat?: Record<number, number>;
+  highlighted?: Set<number>;
+  selected?: string | null;
+  /** Top-left of the drawing, in key units; only the drawn board needs it. */
+  origin?: { ox: number; oy: number };
+}
+
+/** Everything drawn for each key of a layer: position, legends and how they fit, and its number. */
+function modelKeys(compiled: CompiledLayout, layerIdx: number, opts: ModelOptions) {
+  const activeLayer = compiled.layers[layerIdx];
+  const origin = opts.origin ?? { ox: 0, oy: 0 };
+  let numbered = 0;
+  return compiled.keys.map((k, idx) => {
+    const binding = activeLayer.bindings[idx];
+    const l = legend(compiled, binding);
+    const explicit = activeLayer.explicit[idx];
+    // A key with no binding of its own on an upper layer is transparent: it falls through. Drawn
+    // empty rather than marked, or a mostly-transparent layer would be a sheet of ▽.
+    const implicit = !explicit && layerIdx > 0;
+    const tap = implicit ? '' : l.tap;
+    const w = k.w * UNIT - GAP;
+    const h = k.h * UNIT - GAP;
+    const hold = opts.showHold ? l.hold : null;
+    const shifted = opts.showHold ? l.shifted : null;
+    const tapFit: Fit = fitLabel(
+      tap,
+      w - 2 * INSET,
+      h - 2 * INSET - (hold ? BAND : 0) - (shifted ? TOP : 0),
+      TAP_SIZES,
+    );
+    const holdFit = hold ? fitLabel(hold, w - 2 * INSET, BAND, SMALL_SIZES) : null;
+    const shiftedFit = shifted ? fitLabel(shifted, w / 2, TOP, SMALL_SIZES) : null;
+    const listed =
+      opts.numbered &&
+      !implicit &&
+      (tapFit.overflow || !!holdFit?.overflow || needsDetail(binding));
+    return {
+      idx,
+      key: k,
+      cx: (k.x - origin.ox) * UNIT,
+      cy: (k.y - origin.oy) * UNIT,
+      w,
+      h,
+      legend: l,
+      tap,
+      tapFit,
+      holdFit,
+      shiftedFit,
+      badge: opts.showHold && !implicit ? l.badge : null,
+      colour: layerColour(compiled, l.layer),
+      number: listed ? ++numbered : null,
+      trans: l.kind === 'trans' || implicit,
+      heat: opts.heat?.[idx] ?? 0,
+      highlighted: opts.highlighted?.has(idx) ?? false,
+      selected: opts.selected === k.id,
+    };
+  });
+}
+
+type KeyModel = ReturnType<typeof modelKeys>[number];
 
 export interface KeyboardProps {
   compiled: CompiledLayout;
@@ -55,6 +161,12 @@ export interface KeyboardProps {
    * a view has to tell `z` from ctrl+`z`, and has to be able to stop the browser acting on a key.
    */
   onKeyShortcut?: (e: ReactKeyboardEvent<SVGGElement>, keyId: string) => void;
+  /**
+   * Number the keys whose legend is cut short or cannot say everything, and list what each does
+   * under the board. For the views where a reader works with the keys, not for previews.
+   * `'separate'` numbers the keys but leaves the list to a `KeyLegend` the view places itself.
+   */
+  legendList?: boolean | 'separate';
   ref?: Ref<KeyboardHandle>;
 }
 
@@ -82,6 +194,7 @@ export function Keyboard({
   onDropKey,
   onDragStart,
   onKeyShortcut,
+  legendList = false,
   ref,
 }: KeyboardProps) {
   const nodes = useRef<Record<string, SVGGElement | null>>({});
@@ -99,7 +212,6 @@ export function Keyboard({
   // Arrow markers are referenced by id, so two keyboards on one page must not share one.
   const markerId = `lm-arrow-${(id ?? generatedId).replace(/[^\w-]/g, '')}`;
   const layerIdx = Math.min(layer, compiled.layers.length - 1);
-  const activeLayer = compiled.layers[layerIdx];
   const highlighted = useMemo(() => new Set(highlight), [highlight]);
 
   const view = useMemo(() => {
@@ -129,26 +241,13 @@ export function Keyboard({
 
   const drag = useKeyDrag(onDropKey, { legendOf, onDragStart });
 
-  const keys = compiled.keys.map((k, idx) => {
-    const binding = activeLayer.bindings[idx];
-    const l = legend(compiled, binding);
-    const explicit = activeLayer.explicit[idx];
-    return {
-      idx,
-      key: k,
-      cx: (k.x - view.ox) * UNIT,
-      cy: (k.y - view.oy) * UNIT,
-      w: k.w * UNIT - GAP,
-      h: k.h * UNIT - GAP,
-      tap: l.tap,
-      hold: l.hold,
-      kind: l.kind,
-      // A key with no binding of its own on an upper layer is transparent: it falls through.
-      trans: l.kind === 'trans' || (!explicit && layerIdx > 0),
-      heat: heat[idx] ?? 0,
-      highlighted: highlighted.has(idx),
-      selected: selected === k.id,
-    };
+  const keys = modelKeys(compiled, layerIdx, {
+    showHold,
+    numbered: legendList !== false,
+    heat,
+    highlighted,
+    selected,
+    origin: view,
   });
 
   // Every key being a tab stop makes a 34-key board 34 stops; one stop plus arrows is what a grid
@@ -181,7 +280,9 @@ export function Keyboard({
     return { x: (k.x - view.ox) * UNIT, y: (k.y - view.oy) * UNIT };
   };
 
-  return (
+  const listedKeys = keys.filter((k) => k.number !== null);
+
+  const board = (
     <svg
       id={id}
       className={`lm-keyboard w-full h-auto select-none ${className ?? ''}`}
@@ -208,7 +309,10 @@ export function Keyboard({
 
       {keys.map((k) => {
         const pct = Math.round(k.heat * 100);
-        const label = `Key ${k.key.id}: ${k.tap || 'empty'}${k.hold ? `, hold ${k.hold}` : ''}`;
+        const label = `Key ${k.key.id}: ${spokenLegend(k.legend, k.tap)}`;
+        const tapY = (k.holdFit ? -BAND / 2 : 0) + (k.shiftedFit ? TOP / 2 : 0) + 1;
+        const tapColour = k.legend.layerIn === 'tap' ? k.colour : undefined;
+        const holdColour = k.legend.layerIn === 'hold' ? k.colour : undefined;
         return (
           // biome-ignore lint/a11y/noStaticElementInteractions: it takes a button role and tab stop whenever it is interactive
           <g
@@ -252,25 +356,82 @@ export function Keyboard({
                 fill: `color-mix(in oklab, var(--lm-key-bg) ${100 - pct}%, var(--lm-heat) ${pct}%)`,
               }}
             />
-            {k.key.home && <circle cx="0" cy={fmt(k.h / 2 - 9)} r="2.2" className="lm-key-home" />}
-            <text
-              x="0"
-              y={k.hold && showHold ? '-2' : '4'}
-              textAnchor="middle"
-              className={`lm-key-tap lm-kind-${k.kind}`}
-              fontSize={[...k.tap].length > 2 ? 15 : 22}
-            >
-              {k.tap}
-            </text>
-            {k.hold && showHold && (
+            {k.legend.detail && <title>{k.legend.detail}</title>}
+            {k.key.home && (
+              // A bar along the bottom edge, clear of every legend, where a homing bump would be.
+              <rect
+                x="-5"
+                y={fmt(k.h / 2 - 3.5)}
+                width="10"
+                height="1.6"
+                rx="0.8"
+                className="lm-key-home"
+              />
+            )}
+            {k.shiftedFit && (
               <text
                 x="0"
-                y={fmt(k.h / 2 - 12)}
+                y={fmt(-k.h / 2 + INSET + 3)}
                 textAnchor="middle"
-                className="lm-key-hold"
-                fontSize="10"
+                className="lm-key-shifted"
+                fontSize={k.shiftedFit.size}
               >
-                {k.hold}
+                {k.shiftedFit.lines[0]}
+              </text>
+            )}
+            {k.badge && (
+              <text
+                x={fmt(k.w / 2 - 4)}
+                y={fmt(-k.h / 2 + INSET + 3)}
+                textAnchor="end"
+                className="lm-key-badge"
+                fontSize="9"
+              >
+                {k.badge}
+              </text>
+            )}
+            {k.number !== null && (
+              <text
+                x={fmt(-k.w / 2 + 4)}
+                y={fmt(-k.h / 2 + INSET + 3)}
+                textAnchor="start"
+                className="lm-key-number"
+                fontSize="9"
+              >
+                {legendNumber(k.number)}
+              </text>
+            )}
+            <text
+              x="0"
+              y={fmt(tapY)}
+              textAnchor="middle"
+              className={`lm-key-tap lm-kind-${k.legend.kind}`}
+              fontSize={k.tapFit.size}
+              style={tapColour ? { fill: tapColour } : undefined}
+            >
+              {k.tapFit.lines.length === 1 ? (
+                k.tapFit.lines[0]
+              ) : (
+                <>
+                  <tspan x="0" dy={fmt(-k.tapFit.size * 0.55)}>
+                    {k.tapFit.lines[0]}
+                  </tspan>
+                  <tspan x="0" dy={fmt(k.tapFit.size * 1.1)}>
+                    {k.tapFit.lines[1]}
+                  </tspan>
+                </>
+              )}
+            </text>
+            {k.holdFit && (
+              <text
+                x="0"
+                y={fmt(k.h / 2 - INSET - BAND / 2 + 1)}
+                textAnchor="middle"
+                className={`lm-key-hold${k.legend.holdIsMode ? ' lm-key-mode' : ''}`}
+                fontSize={k.holdFit.size}
+                style={holdColour ? { fill: holdColour } : undefined}
+              >
+                {k.holdFit.lines[0]}
               </text>
             )}
           </g>
@@ -300,4 +461,46 @@ export function Keyboard({
       </g>
     </svg>
   );
+
+  if (legendList !== true || listedKeys.length === 0) return board;
+  return (
+    <>
+      {board}
+      <LegendList keys={listedKeys} />
+    </>
+  );
+}
+
+function LegendList({ keys }: { keys: KeyModel[] }) {
+  return (
+    <ol className="lm-legend-list" aria-label="Key legend">
+      {keys.map((k) => (
+        <li key={k.key.id}>
+          <span className="lm-legend-number">{legendNumber(k.number as number)}</span>
+          <span className="font-mono opacity-60">{k.key.id}</span>
+          <span>{k.legend.detail}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/**
+ * The list of numbered keys for a board drawn with `legendList="separate"`, wherever the view
+ * wants it. It numbers the keys the same way the board does, from the same inputs.
+ */
+export function KeyLegend({
+  compiled,
+  layer = 0,
+  showHold = true,
+}: {
+  compiled: CompiledLayout;
+  layer?: number;
+  showHold?: boolean;
+}) {
+  const layerIdx = Math.min(layer, compiled.layers.length - 1);
+  const listed = modelKeys(compiled, layerIdx, { showHold, numbered: true }).filter(
+    (k) => k.number !== null,
+  );
+  return listed.length === 0 ? null : <LegendList keys={listed} />;
 }

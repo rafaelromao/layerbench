@@ -17,8 +17,7 @@ import { type BindingFields, EMPTY_FIELDS } from './binding-form.js';
  * shape. A bare token with no `&` is shorthand for `&kp`, so typing `ç` still just works.
  *
  * Everything here goes through `BindingFields`, never straight to a `Binding`, so
- * `bindingFromFields` stays the one place a binding is constructed and the inline editor and the
- * Key panel cannot drift apart.
+ * `bindingFromFields` stays the one place a binding is constructed from text.
  */
 export interface BindingTextContext {
   layers: { id: string; name: string }[];
@@ -332,23 +331,23 @@ function exactText(compiled: CompiledLayout, b: Binding): string | null {
   }
 }
 
-/** What to tell the user when a binding cannot be typed. */
+/** What to tell the user when a binding cannot be typed: what it is, in a few words. */
 function whyNot(b: Binding): string {
   switch (b.kind) {
     case 'adaptive':
-      return 'an adaptive key: its branches are edited in the Key panel and the Features panel';
+      return 'an adaptive key, with branches';
     case 'hold_tap':
-      return 'a hold-tap: its tap and hold arms are edited in the Key panel';
+      return 'a hold-tap';
     case 'mod_morph':
-      return 'a mod-morph: its two arms are edited in the Key panel';
+      return 'a mod-morph';
     case 'layer_morph':
-      return 'a layer-morph: its two arms are edited in the Key panel';
+      return 'a layer-morph';
     case 'tap_dance':
-      return 'a tap dance: its taps are edited in the Key panel';
+      return 'a tap dance';
     case 'macro':
       return b.ref !== undefined
         ? 'a macro that refers to a behaviour'
-        : 'a macro built from steps, which the macro builder in the Key panel edits';
+        : 'a macro built from steps';
     case 'caps_word':
       return 'a caps word carrying its own continue list';
     case 'sl':
@@ -359,9 +358,11 @@ function whyNot(b: Binding): string {
     case 'auto_layer':
       return 'an auto layer carrying its own continue list';
     case 'lt':
-      return 'a layer tap whose tap arm is more than a plain key press';
+      return 'a layer tap whose tap is more than a plain key press';
     case 'kp':
       return 'a key press whose symbol contains a space';
+    case 'raw':
+      return `an imported key (${b.source ?? b.label}) that LayoutMaster keeps but does not simulate`;
     default:
       return 'a binding this syntax has no spelling for';
   }
@@ -369,8 +370,8 @@ function whyNot(b: Binding): string {
 
 /**
  * Write a binding as text, saying whether the text is the whole binding. When `exact` is false the
- * editor opens locked: applying the text would quietly drop what the syntax has no room for, and
- * on a bundled layout full of adaptive keys that would be one keystroke away.
+ * text line starts empty rather than offering the text: committing it back would quietly drop what
+ * the syntax has no room for, and on a layout full of adaptive keys that would be one Enter away.
  */
 export function bindingText(compiled: CompiledLayout, b: Binding | undefined): BindingText {
   if (!b) return { text: '', exact: true };

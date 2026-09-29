@@ -1,11 +1,18 @@
 import '@testing-library/jest-dom/vitest';
 // jsdom ships no IndexedDB, so saved documents need an in-memory implementation.
 import 'fake-indexeddb/auto';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 import { afterEach } from 'vitest';
 
 // Vitest runs without global test functions, so the automatic unmount does not register itself.
 afterEach(cleanup);
+
+/**
+ * What these tests wait for is real work: an analysis running in the test's own thread, or a
+ * document going through IndexedDB. Testing Library's one-second default was enough on an idle
+ * machine and lost the race on a busy one, failing whichever test happened to be waiting.
+ */
+configure({ asyncUtilTimeout: 10_000 });
 
 /**
  * jsdom gaps the interface relies on. Each one is a browser feature the tests exercise indirectly,

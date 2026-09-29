@@ -1,9 +1,16 @@
 import { humanBand, type RuleResult } from '@layoutmaster/core';
 import { formatItem, formatValue, qualityBadge, qualityBorder, shortLabel } from './format.js';
+import { RuleSources } from './RuleSources.js';
 
-/** The metrics shown above the fold, in the order the reference application uses. */
+/**
+ * The two numbers a layout is judged by first, and sorted by wherever layouts are listed: overall
+ * effort as cyanophage computes it, and same-finger bigrams.
+ */
+export const HEADLINE_IDS = ['effort', 'sfb'] as const;
+
+/** The metrics shown above the fold: the headline pair, then the reference application's order. */
 export const SUMMARY_IDS = [
-  'sfb',
+  ...HEADLINE_IDS,
   'sfs',
   'lsb',
   'fsb',
@@ -20,7 +27,7 @@ export const SUMMARY_IDS = [
 
 /** The reduced set the editor shows, where space is tighter. */
 export const EDIT_SUMMARY_IDS = [
-  'sfb',
+  ...HEADLINE_IDS,
   'sfs',
   'lsb',
   'fsb',
@@ -56,24 +63,35 @@ export function SummaryStrip({
       {ids.map((id) => {
         const r = byId.get(id);
         if (!r) return null;
+        const body = (
+          <>
+            <div className="text-[11px] uppercase tracking-wide opacity-70">
+              {shortLabel(r.id, r.label)}
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="font-mono text-lg tabular-nums">{formatValue(r.value, r.unit)}</span>
+              <BandBadge band={r.band} />
+            </div>
+          </>
+        );
+        const look = `lm-stat rounded-xl border px-3 py-2 text-left ${qualityBorder(r.band)}`;
         return (
           <li key={id}>
-            <button
-              type="button"
-              title={r.note ?? r.label}
-              onClick={() => onSelect?.(id)}
-              className={`lm-stat rounded-xl border px-3 py-2 text-left transition hover:border-primary ${qualityBorder(r.band)}`}
-            >
-              <div className="text-[11px] uppercase tracking-wide opacity-70">
-                {shortLabel(r.id, r.label)}
+            {/* A card that leads nowhere is not a button: it would be a tab stop that does nothing. */}
+            {onSelect ? (
+              <button
+                type="button"
+                title={r.note ?? r.label}
+                onClick={() => onSelect(id)}
+                className={`${look} transition hover:border-primary`}
+              >
+                {body}
+              </button>
+            ) : (
+              <div title={r.note ?? r.label} className={look}>
+                {body}
               </div>
-              <div className="flex items-baseline gap-2">
-                <span className="font-mono text-lg tabular-nums">
-                  {formatValue(r.value, r.unit)}
-                </span>
-                <BandBadge band={r.band} />
-              </div>
-            </button>
+            )}
           </li>
         );
       })}
@@ -107,10 +125,13 @@ export function MetricCard({
   result,
   selectedItem,
   onHighlightItem,
+  presetId,
 }: {
   result: RuleResult;
   selectedItem?: number | null;
   onHighlightItem?: (ruleId: string, index: number) => void;
+  /** The preset in force, whose own definition of a rule is then cited first. */
+  presetId?: string;
 }) {
   const hasFingers = Object.keys(result.per_finger).length > 0;
   const hands = Object.entries(result.per_hand).sort(([a], [b]) => a.localeCompare(b));
@@ -187,6 +208,8 @@ export function MetricCard({
             })}
           </ol>
         )}
+
+        <RuleSources ruleId={result.id} presetId={presetId} />
       </div>
     </section>
   );

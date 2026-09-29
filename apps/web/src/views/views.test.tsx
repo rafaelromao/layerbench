@@ -3,7 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
-import { renderRoute } from '../test/render.js';
+import { LIBRARY, renderRoute } from '../test/render.js';
 
 const QWERTY_TEXT = 'q w e r t y u i o p\na s d f g h j k l ;\nz x c v b n m , . /';
 
@@ -16,7 +16,7 @@ function freshStorage(): IndexedDbAdapter {
 
 describe('Library', () => {
   it('lists the bundled layouts', async () => {
-    renderRoute('/library', { storage: freshStorage() });
+    renderRoute(LIBRARY, { storage: freshStorage() });
     expect(await screen.findByText('Bundled layouts')).toBeInTheDocument();
     expect(screen.getByText('Graphite')).toBeInTheDocument();
     expect(screen.getByText('Magic Romak')).toBeInTheDocument();
@@ -25,10 +25,13 @@ describe('Library', () => {
 
   it('previews a text layout as it is typed', async () => {
     const user = userEvent.setup();
-    renderRoute('/library', { storage: freshStorage() });
+    renderRoute(LIBRARY, { storage: freshStorage() });
     await screen.findByText('Bundled layouts');
 
-    await user.type(screen.getByLabelText('Layout to import'), QWERTY_TEXT);
+    // Pasted rather than typed key by key: what is under test is that the preview follows the text,
+    // and forty keystrokes each re-rendering every bundled layout only measures the machine.
+    await user.click(screen.getByLabelText('Layout to import'));
+    await user.paste(QWERTY_TEXT);
 
     // The preview keyboard appears once the text parses.
     await waitFor(
@@ -45,7 +48,7 @@ describe('Library', () => {
     const layout = bundledLayout('colemak-dh')!;
     await storage.put('layouts', 'my-romak', toCanonicalJson({ ...layout, name: 'My Romak' }));
 
-    renderRoute('/library', { storage });
+    renderRoute(LIBRARY, { storage });
 
     expect(await screen.findByText('My Romak')).toBeInTheDocument();
     const card = screen.getByText('My Romak').closest('article') as HTMLElement;

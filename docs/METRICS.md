@@ -1,8 +1,10 @@
 # Metric glossary
 
-Definitions follow the Keyboard Layouts Doc (3rd ed.), chapters 6–13. Where LayoutMaster departs from the Doc, or adds something the Doc does not cover (layers), it is called out under **LayoutMaster notes**.
+Definitions follow the [Keyboard Layouts Doc, 3rd edition](https://docs.google.com/document/d/1W0jhfqJI2ueJ2FNseR4YAFpNfsUM-_FlREHbpNGmC2o) — chiefly chapters 4 (SFBs, SFSs, distance), 6 (scissors), 7 (lateral stretches), 8 (trigrams) and 13 (the stat table and its thresholds). Section numbers below are that edition's. Where LayoutMaster departs from the Doc, or adds something the Doc does not cover (layers), it is called out under **LayoutMaster notes**.
 
 Every metric below is a *rule*: plain data that a rule set can enable, disable, re-parameterize, copy or remove. The Rules view shows the exact predicate expression of each rule; the presets described at the end change some of them.
+
+**Sources.** Each rule's sources — the section of the Doc, the line of another analyzer, or this glossary where the rule is LayoutMaster's own — are listed under the rule in the Rules view and under *Sources* on its card in the Analyze view. They come from one table, `packages/core/src/rules/references.ts`, which a test holds to the catalog: a rule without a source fails the build.
 
 ## How LayoutMaster counts
 
@@ -41,12 +43,12 @@ Two consecutive presses. Normalized as a percentage of bigrams unless the rule s
 
 | Id | Name | Definition |
 |---|---|---|
-| `sfb` | Same finger bigrams | Two consecutive keys pressed by the same finger; repeats of the same key are excluded. Doc ch. 6. |
+| `sfb` | Same finger bigrams | Two consecutive keys pressed by the same finger; repeats of the same key are excluded. Doc §4.1. |
 | `sfb_distance` | SFB distance | Σ frequency × distance of same finger bigrams, in percent-weighted key units. Shows how far the finger has to travel, not only how often. |
 | `sfb_2u` | SFB ≥ 2 rows | Same finger bigrams that jump over the home row (row delta ≥ 2). |
 | `repeats` | Repeated keys | The same physical key pressed twice in a row. Not an SFB in the Doc's sense, listed for completeness. |
-| `lsb` | Lateral stretch bigrams | Same hand, no thumbs: adjacent fingers whose keys are ≥ 2U apart horizontally (`lsb_adjacent_u`), or semi-adjacent fingers ≥ 3.5U apart (`lsb_semi_adjacent_u`). Doc ch. 8. |
-| `fsb` | Full scissor bigrams | Same hand, different fingers, two rows apart, with the finger that prefers to sit higher placed lower (height preference: middle > ring > pinky > index). Adjacent fingers count 1, non-adjacent 0.5. Doc ch. 9. |
+| `lsb` | Lateral stretch bigrams | Same hand, no thumbs: adjacent fingers whose keys are ≥ 2U apart horizontally (`lsb_adjacent_u`), or semi-adjacent fingers ≥ 3.5U apart (`lsb_semi_adjacent_u`). Doc §7.2. |
+| `fsb` | Full scissor bigrams | Same hand, different fingers, two rows apart, with the finger that prefers to sit higher placed lower (height preference: middle > ring > pinky > index). Adjacent fingers count 1, non-adjacent 0.5. Doc §6.2, §6.5. |
 | `hsb` | Half scissor bigrams | As full scissors but one row apart. |
 | `thumb_bigrams` | Thumb bigrams | Consecutive presses on one hand where at least one key is a thumb key. |
 | `thumb_double` | Thumb double taps | The same thumb key twice in a row, which is harder than a repeat on other fingers. |
@@ -54,7 +56,7 @@ Two consecutive presses. Normalized as a percentage of bigrams unless the rule s
 
 ## Skipgrams
 
-Two presses with one (or more) presses in between. Doc ch. 7.
+Two presses with one (or more) presses in between. Doc §4.5 (SFS), §6.6 and §6.8 (scissor skipgrams), §7.3 (LSS).
 
 | Id | Name | Definition |
 |---|---|---|
@@ -67,7 +69,7 @@ Two presses with one (or more) presses in between. Doc ch. 7.
 
 ## Trigrams
 
-Three consecutive presses; hand patterns are written with letters (`aba` = hand changes twice, `aab` = two keys on one hand then the other). Doc ch. 10–11.
+Three consecutive presses; hand patterns are written with letters (`aba` = hand changes twice, `aab` = two keys on one hand then the other). Doc §8.1.
 
 | Id | Name | Definition |
 |---|---|---|
@@ -88,11 +90,11 @@ Three consecutive presses; hand patterns are written with letters (`aba` = hand 
 
 | Id | Name | Definition |
 |---|---|---|
-| `finger_usage` | Finger usage | Share of keystrokes per finger. The headline value is the spread (max − min); per-finger values are in the breakdown. Doc ch. 12. |
+| `finger_usage` | Finger usage | Share of keystrokes per finger. The headline value is the spread (max − min); per-finger values are in the breakdown. Doc §4.8. |
 | `hand_balance` | Hand balance | Share of keystrokes per hand; the value is \|left − right\| in percentage points. |
 | `row_usage` | Row usage | Share of keystrokes per row (top, home, bottom, thumb). |
 | `column_usage` | Column usage | Share of keystrokes per column. |
-| `pinky_off` | Pinky off home | Keystrokes on top- or bottom-row pinky keys. Doc ch. 12. |
+| `pinky_off` | Pinky off home | Keystrokes on top- or bottom-row pinky keys. Doc §13.2. |
 | `home_row` | Home row usage | Keystrokes on the home row, thumbs excluded. |
 | `center_column` | Inner column usage | Keystrokes on the inner (index-stretch) columns. |
 | `finger_travel` | Finger travel | Cumulative Euclidean travel from each finger's previous key, in U per keystroke (continuous model: fingers do not return home between presses). |
@@ -101,7 +103,7 @@ Three consecutive presses; hand patterns are written with letters (`aba` = hand 
 
 | Id | Name | Definition |
 |---|---|---|
-| `effort` | Effort | Mean per-key effort per 100 keystrokes using the layout's effort grid. Default grid: home-row middle/ring/index 0, home-row pinky 1, top and bottom rows 1–3 by finger, inner and outer-pinky columns 5 on the home row and 7 elsewhere, thumbs 1. Editable in the layout. |
+| `effort` | Effort | cyanophage's Effort: `577 × Σ effort ÷ keystrokes`, with each key's effort read from cyanophage's grid by position — top row `5 3 2 1 2 7 │ 7 2 1 2 3 5`, home `5 1 0 0 0 5 │ 5 0 0 0 1 5`, bottom `7 3 2 2 1 8 │ 8 1 2 2 3 7`, from the left outer pinky column to the right one — and thumbs free. Spaces count as keystrokes that cost nothing. The grid is editable per key. Lower is better; with SFB, one of the two numbers layouts are sorted by. |
 | `hard_words` | Hard words | Words ranked by effort per character, including the extra layer and shift presses they need. Minimum length 4, minimum count 2. |
 
 ## Layers (LayoutMaster-specific)

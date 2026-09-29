@@ -82,7 +82,13 @@ export type Binding =
   | { kind: 'hold_tap'; tap: Binding; hold: Binding; flavor?: string; tappingTermMs?: number }
   | { kind: 'dead_key'; diacritic: string }
   | { kind: 'unicode'; symbol: string; shiftedSymbol?: string }
-  | { kind: 'ref'; ref: string };
+  | { kind: 'ref'; ref: string }
+  /**
+   * A key LayoutMaster does not simulate — media, Bluetooth, a firmware behaviour it has no model
+   * of — kept so an imported layout loses nothing. It is drawn with its original legend and can be
+   * placed like any other key, but it types nothing.
+   */
+  | { kind: 'raw'; label: string; source?: string };
 
 export type BindingKind = Binding['kind'];
 

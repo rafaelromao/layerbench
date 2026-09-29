@@ -135,7 +135,8 @@ export function useKeyDrag(
     from.current = key;
     origin.current = { x: e.clientX, y: e.clientY };
     dragging.current = false;
-    e.currentTarget.setPointerCapture?.(e.pointerId);
+    // The pointer is not captured yet: a captured pointer's click is dispatched to the capturing
+    // element, so capturing here would send every plain click to the board instead of the key.
 
     if (e.pointerType === 'touch') {
       armed.current = false;
@@ -162,6 +163,8 @@ export function useKeyDrag(
         if (travelled < THRESHOLD) return;
         dragging.current = true;
         const svg = e.currentTarget;
+        // Now it is a drag, the board keeps the pointer even when it leaves for a layer tab.
+        svg.setPointerCapture?.(e.pointerId);
         svg.classList.add('lm-dragging');
         svg.querySelector(`g[data-key="${from.current}"]`)?.classList.add('lm-key-source');
         const el = document.createElement('div');

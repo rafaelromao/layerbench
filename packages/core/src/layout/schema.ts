@@ -109,6 +109,7 @@ export const BindingSchema: z.ZodType<unknown> = z.lazy(() =>
       shiftedSymbol: z.string().optional(),
     }),
     z.object({ kind: z.literal('ref'), ref: z.string() }),
+    z.object({ kind: z.literal('raw'), label: z.string(), source: z.string().optional() }),
   ]),
 );
 

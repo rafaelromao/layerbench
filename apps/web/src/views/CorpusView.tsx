@@ -1,8 +1,10 @@
 import { type CorpusManifest, slug } from '@layoutmaster/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { HelpLink } from '../components/HelpLink.js';
 import { useAnalysisClient } from '../engine/client-context.js';
 import type { CorpusFactsDTO } from '../engine/protocol.js';
+import { HELP } from '../guide/help.js';
 import { toast } from '../state/toasts.js';
 import { useCollection, useStorage } from '../storage/use-storage.js';
 import type { RawSearch } from '../url/params.js';
@@ -145,7 +147,10 @@ export function CorpusView() {
   return (
     <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
       <aside className="space-y-3">
-        <h1 className="text-sm uppercase tracking-wide opacity-60">Corpora</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-sm uppercase tracking-wide opacity-60">Corpora</h1>
+          <HelpLink help={HELP.corpus} />
+        </div>
         <ul className="menu bg-base-100 border border-base-300 rounded-box p-2">
           {corpora.map((c) => (
             <li key={c.id}>

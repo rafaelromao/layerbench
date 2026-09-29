@@ -12,6 +12,7 @@ import { AnalyzeView } from './views/AnalyzeView.js';
 import { CompareView } from './views/CompareView.js';
 import { CorpusView } from './views/CorpusView.js';
 import { EditView } from './views/EditView.js';
+import { GuideView } from './views/GuideView.js';
 import { LibraryView } from './views/LibraryView.js';
 import { RulesView } from './views/RulesView.js';
 
@@ -66,6 +67,8 @@ const rulesRoute = view('/rules', RulesView);
 const compareRoute = view('/compare', CompareView);
 const corpusRoute = view('/corpus', CorpusView);
 const libraryRoute = view('/library', LibraryView);
+const guideRoute = view('/guide', GuideView);
+const guidePageRoute = view('/guide/$page', GuideView);
 
 /** Short link to a saved layout, kept from the reference application. */
 const savedLayoutRoute = createRoute({
@@ -84,6 +87,8 @@ const routeTree = rootRoute.addChildren([
   rulesRoute,
   corpusRoute,
   libraryRoute,
+  guideRoute,
+  guidePageRoute,
   savedLayoutRoute,
 ]);
 

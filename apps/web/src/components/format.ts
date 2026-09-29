@@ -9,7 +9,8 @@ export function formatValue(value: number | null | undefined, unit: Unit): strin
     case 'distance':
       return `${value.toFixed(2)}U`;
     case 'effort':
-      return value.toFixed(1);
+      // Two places, as cyanophage prints it, so the numbers read the same side by side.
+      return value.toFixed(2);
     case 'count':
       return value.toFixed(0);
     default:
@@ -54,6 +55,7 @@ export function qualityBadge(band: BandResult): string {
 
 /** Compact captions for the summary strip, where the full labels do not fit. */
 const SHORT_LABELS: Record<string, string> = {
+  effort: 'Effort',
   sfb: 'SFB',
   sfs: 'SFS',
   lsb: 'LSB',

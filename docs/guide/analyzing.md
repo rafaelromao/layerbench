@@ -1,0 +1,103 @@
+# Analyzing a layout
+
+**Analyze** types a sample of text on the layout, key by key, and shows what that took: a heat map
+of the keys, the numbers under it, and how any word you give it is typed.
+
+Two numbers lead: **Effort**, how hard the keys are to reach, and **SFB**, how often one finger
+presses two keys in a row. Lower is better for both. Most numbers also carry a badge that places
+them among other layouts: green is good, red is poor.
+
+## Effort and SFB
+
+These are the two numbers every layout is shown and sorted by.
+
+**Effort** is [cyanophage's](https://cyanophage.github.io/playground.html) measure. Each key
+position has a cost, from 0 under the index, middle and ring fingers on the home row to 8 in the
+inner bottom corners. Effort is the average cost of a keystroke, multiplied by 577 as cyanophage's
+playground does, so a layout scores the same here as there on the same text. Thumb keys cost
+nothing, and a space counts as a keystroke that costs nothing.
+
+**SFB**, same finger bigrams, is the share of consecutive key pairs that one finger presses on two
+different keys. It is the first measure of the
+[Keyboard Layouts Doc](https://docs.google.com/document/d/1W0jhfqJI2ueJ2FNseR4YAFpNfsUM-_FlREHbpNGmC2o),
+§4.1. Pressing the same key twice is a repeat, not an SFB.
+
+### Sorting and comparing
+
+**Library** sorts every layout by Effort or by SFB and shows both on each card, all scored on the
+same sample of the same text. **Compare** puts every number for two layouts side by side, with the
+difference and which of the two does better.
+
+### Changing the costs
+
+The cost of each key is a parameter of the Effort rule. **Rules** can give any key another cost,
+and the change applies wherever that rule set is used.
+
+## How a text is typed
+
+LayoutMaster does not look letters up in a table. It works out the physical presses that produce
+each character on this keymap (the layer key first, the shift, the combo, the magic key) and
+measures those presses. A letter on a layer costs its layer key too, and a one-shot that is used up
+by the wrong key counts as wasted.
+
+Type a word into **How is this typed?** to see its presses one by one, with the layer each came
+from. Characters the layout cannot type at all are listed in red above the numbers. Each one
+breaks the word it is in, so a long list means the numbers understate the cost.
+
+### Case and space
+
+By default capitals count as lower case and the space key is left out of the counts, as the
+Keyboard Layouts Doc does. **Model shift**, on **Analyze**, types capitals through the layout's
+shift key instead, and **Include space** keeps the space key in.
+
+### The text itself
+
+**Corpus** lists the texts that come with the app, by language, each with where it came from. Your
+own text can be pasted or uploaded there and analyzed like any other. **Sample size**, on
+**Analyze**, sets how much of the text is typed: more gives steadier numbers, less gives them
+sooner.
+
+## Every other number
+
+Below the summary, the numbers are grouped by what they count:
+
+| Group | What it counts |
+|---|---|
+| Bigrams | two presses in a row: same finger, scissors, lateral stretches |
+| Skipgrams | two presses with one or more between them |
+| Trigrams | three presses: alternation, rolls, redirects |
+| Usage | how the work is shared between fingers, hands, rows and columns |
+| Effort | Effort, and the words that take the most of it |
+| Layers | layer taps, one-shots, macros, combos and magic keys: what layers cost |
+
+A card's breakdown lists the key pairs or words behind its number, and selecting one outlines its
+keys on the board. The [metric glossary](../METRICS.md) defines every number.
+
+### What the badges mean
+
+The Keyboard Layouts Doc sorts layouts into bands for each metric, from *min* to *max*. A badge
+names the band a number falls in, and its colour says whether that is good for that metric. For
+most metrics lower is better; for alternation and rolls, higher is. The
+[glossary](../METRICS.md#bands) lists every band.
+
+## Rules and their sources
+
+Every number is a rule: plain data that says which key sequences count, and how. **Rules** lists
+them. Each can be turned off, given other parameters, copied or removed, and new ones can be
+composed. A rule set is saved and shared like a layout.
+
+Every built-in rule names where its definition comes from: a section of the Keyboard Layouts Doc,
+a line of another analyzer's code, or the glossary where the rule is LayoutMaster's own. Open
+**Sources** under a rule in **Rules**, or on its card in **Analyze**.
+
+### Presets
+
+A preset is a rule set that follows another analyzer's definitions: *Layouts Doc* (the default),
+*cyanophage-like* and *Keysolve-like*. The [glossary](../METRICS.md#presets) says what each one
+changes.
+
+### Writing a rule
+
+The **Composer**, at the bottom of **Rules**, builds a rule from conditions on a sequence of
+presses (same finger, rows apart, a thumb among them) and a way to count them. The whole vocabulary
+is in the [glossary](../METRICS.md#rule-vocabulary).

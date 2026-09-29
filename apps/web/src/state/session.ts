@@ -54,7 +54,7 @@ export const useSession = create<SessionState>()(
         applyTheme(theme);
         set({ theme });
       },
-      editPanel: 'binding',
+      editPanel: 'layers',
       setEditPanel: (editPanel) => set({ editPanel }),
       collapsedFamilies: [],
       toggleFamily: (family) => {

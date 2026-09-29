@@ -106,6 +106,24 @@ counterpart. The firmware distinguishes "the previous press came from Alpha 2" b
 `features.test.ts` pins the case that motivates it — `u` typed by the `qu` macro offers a different
 follow-up from a plain `u`, which `lastSymbol` alone cannot express.
 
+## Third re-baseline: Effort as cyanophage computes it
+
+`effort` was described as cyanophage's grid but was not it: it scaled by 100 rather than 577, charged
+thumbs 1 rather than 0, and read two cells differently (the top-row outer pinky column at 7 rather
+than 5, the bottom-row inner column at 7 rather than 8). It also read the grid by finger, where
+cyanophage reads it by position. It now follows `keyboard_svg.js` exactly — the grid by canonical
+column, thumbs free, `577 × Σ effort ÷ keystrokes` — so a layout scores the number cyanophage would
+give it over the same text. `src/rules/effort.test.ts` pins the grid cell by cell and the formula
+against a hand computation.
+
+What moved, checked rule by rule across all 38 reports:
+
+- **`effort` and `hard_words`, and nothing else.** They are the only two rules that read the effort
+  grid. Every other rule's values, items and bands are identical.
+- **The numbers still differ from cyanophage's site**, which scores Qwerty 1258.15 in ergo mode. The
+  formula is the same; the text is not. cyanophage's word list ships without a license, so the
+  fixtures cannot include it, and the comparison stops at the formula.
+
 ## Not compared
 
 `elapsed_ms` and the structure hash. Everything else in a report file is asserted.

@@ -5,5 +5,6 @@ export * from './effort.js';
 export * from './engine.js';
 export * from './predicates.js';
 export * from './presets.js';
+export * from './references.js';
 export * from './serialize.js';
 export * from './types.js';

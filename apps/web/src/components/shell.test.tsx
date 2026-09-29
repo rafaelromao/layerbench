@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
-import { renderRoute } from '../test/render.js';
+import { LIBRARY, renderRoute } from '../test/render.js';
 
 let counter = 0;
 
@@ -12,7 +12,7 @@ function freshStorage(): IndexedDbAdapter {
 
 describe('the page frame', () => {
   it('offers a skip link to the content', async () => {
-    renderRoute('/library', { storage: freshStorage() });
+    renderRoute(LIBRARY, { storage: freshStorage() });
     const skip = await screen.findByRole('link', { name: 'Skip to content' });
     expect(skip).toHaveAttribute('href', '#main');
     expect(document.getElementById('main')).toBeInTheDocument();
@@ -20,7 +20,7 @@ describe('the page frame', () => {
 
   it('moves focus into the new view when the route changes', async () => {
     const user = userEvent.setup();
-    renderRoute('/library', { storage: freshStorage() });
+    renderRoute(LIBRARY, { storage: freshStorage() });
     await screen.findByText('Bundled layouts');
 
     // The first render must not steal focus from wherever the browser put it.
@@ -34,7 +34,7 @@ describe('the page frame', () => {
   });
 
   it('names the storage state without relying on the tick alone', async () => {
-    renderRoute('/library', { storage: freshStorage() });
+    renderRoute(LIBRARY, { storage: freshStorage() });
     expect(
       await screen.findByRole('button', { name: 'Storage: this browser only' }),
     ).toBeInTheDocument();
@@ -42,7 +42,7 @@ describe('the page frame', () => {
 
   it('opens storage settings as a dialog with a name and a token field that hides itself', async () => {
     const user = userEvent.setup();
-    renderRoute('/library', { storage: freshStorage() });
+    renderRoute(LIBRARY, { storage: freshStorage() });
 
     await user.click(await screen.findByRole('button', { name: /^Storage/ }));
 

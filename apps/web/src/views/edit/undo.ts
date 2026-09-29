@@ -49,7 +49,7 @@ function restore(
     layer: Math.min(snap.layer, compiled.layers.length - 1),
     selected: snap.selected,
     swapFrom: null,
-    editing: null,
+    focusRequest: null,
     error: null,
     lastSwap: null,
     behaviorsJson: JSON.stringify(snap.layout.behaviors ?? {}, null, 2),

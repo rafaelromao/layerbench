@@ -1,29 +1,35 @@
-import { fingerName } from '../geometry/types.js';
 import type { CompiledLayout } from '../layout/compile.js';
 
-const BY_FINGER: Record<string, Record<number, number>> = {
-  pinky: { 0: 3, 1: 1, 2: 3 },
-  ring: { 0: 2, 1: 0, 2: 2 },
-  middle: { 0: 1, 1: 0, 2: 2 },
-  index: { 0: 2, 1: 0, 2: 1 },
-};
+/**
+ * cyanophage's per-key effort grid, exactly as its playground defines it (`keyboard_svg.js`):
+ * rows top, home and bottom; columns from the left outer pinky column to the right one.
+ */
+export const CYANOPHAGE_EFFORT_GRID: readonly (readonly number[])[] = [
+  [5, 3, 2, 1, 2, 7, 7, 2, 1, 2, 3, 5],
+  [5, 1, 0, 0, 0, 5, 5, 0, 0, 0, 1, 5],
+  [7, 3, 2, 2, 1, 8, 8, 1, 2, 2, 3, 7],
+];
 
 /**
- * Default per-key effort: the cyanophage grid extended with thumbs at 1 and the inner and
- * outer-pinky columns at 5 on the home row, 7 elsewhere. Keyed by key id.
+ * cyanophage's displayed Effort is `577 × Σ effort ÷ input length`. Written as the rule's scale, so
+ * a layout scores the same number here as it would there over the same text.
+ */
+export const CYANOPHAGE_EFFORT_SCALE = 577;
+
+/**
+ * Default per-key effort: cyanophage's grid, read by position. Canonical columns already follow
+ * its layout (0 outer pinky … 5 inner), so the left hand reads a column directly and the right
+ * hand mirrors it. Thumbs cost nothing, as they do there. Keyed by key id.
  */
 export function defaultEffort(compiled: CompiledLayout): Record<string, number> {
   const out: Record<string, number> = {};
   for (const k of compiled.keys) {
-    let e: number;
-    if (k.thumb) e = 1;
-    else if (k.inner) e = k.row === 1 ? 5 : 7;
-    else if (k.col === 0) e = k.row === 1 ? 5 : 7;
-    else {
-      const name = k.finger ? fingerName(k.finger) : 'index';
-      e = BY_FINGER[name]?.[k.row] ?? 2;
+    if (k.thumb || k.row > 2) {
+      out[k.id] = 0;
+      continue;
     }
-    out[k.id] = e;
+    const col = Math.max(0, Math.min(5, k.col));
+    out[k.id] = CYANOPHAGE_EFFORT_GRID[k.row][k.hand === 'L' ? col : 11 - col];
   }
   return out;
 }

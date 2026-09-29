@@ -23,6 +23,13 @@ export function testClient(): AnalysisClient {
 }
 
 /**
+ * The Library, for a test about something other than ranking. The Library scores every layout it
+ * lists; the app does that in a worker, but here the engine shares the test's thread, so the
+ * sample stays tiny rather than twenty-odd full analyses competing with the test for the CPU.
+ */
+export const LIBRARY = '/library?sample=1000';
+
+/**
  * Render the application at a route, with the engine running on the same thread. A worker cannot be
  * constructed under jsdom, and running in-thread also keeps assertions deterministic.
  */

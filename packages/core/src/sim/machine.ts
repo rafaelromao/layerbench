@@ -503,7 +503,9 @@ export class Machine {
         }
         case 'trans':
         case 'none':
-          ctx.leaf = b.kind;
+        case 'raw':
+          // An imported key the engine has no model of types nothing, like an empty one.
+          ctx.leaf = b.kind === 'raw' ? 'none' : b.kind;
           return;
         case 'mo':
           ctx.leaf = 'mo';
@@ -750,6 +752,8 @@ function labelFor(
         return b.diacritic;
       case 'unicode':
         return b.symbol;
+      case 'raw':
+        return b.label;
       default:
         return '·';
     }

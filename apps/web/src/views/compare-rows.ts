@@ -1,4 +1,5 @@
 import type { RuleResult } from '@layoutmaster/core';
+import { HEADLINE_IDS } from '../components/Metrics.js';
 
 /**
  * Metrics where a bigger number is the better one. Everything else reads the other way, so a
@@ -51,5 +52,13 @@ export function compareRows(aResults: RuleResult[], bResults: RuleResult[]): Com
 
     rows.push({ id: a.id, label: a.label, family: a.family, unit: a.unit, a, b, delta, winner });
   }
-  return rows;
+  // The two numbers layouts are judged by lead the table; the rest keep the rule set's order.
+  const lead = (id: string) => {
+    const i = (HEADLINE_IDS as readonly string[]).indexOf(id);
+    return i < 0 ? HEADLINE_IDS.length : i;
+  };
+  return rows
+    .map((row, i) => ({ row, i }))
+    .sort((x, y) => lead(x.row.id) - lead(y.row.id) || x.i - y.i)
+    .map((x) => x.row);
 }
