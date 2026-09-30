@@ -1,5 +1,12 @@
-import { type Binding, type CompiledLayout, type Legend, legend } from '@layoutmaster/core';
 import {
+  type Binding,
+  type CompiledLayout,
+  type GeometryKey,
+  type Legend,
+  legend,
+} from '@layoutmaster/core';
+import {
+  type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type Ref,
   useCallback,
@@ -56,13 +63,49 @@ export function typingCombos(
     }));
 }
 
+/** How far a key reaches from its centre, across and down, turned the way it is drawn. */
+export function reach(k: GeometryKey): { x: number; y: number } {
+  const turn = (k.rotation * Math.PI) / 180;
+  const cos = Math.abs(Math.cos(turn));
+  const sin = Math.abs(Math.sin(turn));
+  return { x: (k.w / 2) * cos + (k.h / 2) * sin, y: (k.w / 2) * sin + (k.h / 2) * cos };
+}
+
+/**
+ * Where each key is drawn across the board. A split board's presets keep room for columns it may
+ * not have — a 24-key board's halves sit three keys apart — so its right half is drawn closer,
+ * a third of a key from the left one. Only the drawing moves: every distance the analysis measures is
+ * within one hand, and each hand keeps its shape. A board whose hands meet, like a row-staggered
+ * one, is drawn as it is.
+ */
+export function drawnX(keys: readonly GeometryKey[]): number[] {
+  let leftEdge = Number.NEGATIVE_INFINITY;
+  let rightEdge = Number.POSITIVE_INFINITY;
+  for (const k of keys) {
+    const r = reach(k).x;
+    if (k.hand === 'L') leftEdge = Math.max(leftEdge, k.x + r);
+    else rightEdge = Math.min(rightEdge, k.x - r);
+  }
+  const shift = rightEdge - leftEdge - SPLIT_GAP;
+  if (!Number.isFinite(shift) || shift <= 0) return keys.map((k) => k.x);
+  return keys.map((k) => (k.hand === 'R' ? k.x - shift : k.x));
+}
+
 /** A key being pressed takes the accent colour, whatever the heat map had it at. */
 const PRESSED_FILL = 'color-mix(in oklab, var(--color-primary) 62%, var(--lm-key-bg))';
 
 /** Pixels per key unit, and the gap that separates neighbouring caps. */
 const UNIT = 64;
 const GAP = 6;
-const PAD = 0.8;
+/**
+ * Room around the drawing and between the halves of a split board, in key units. Across, every
+ * bit of width is a bigger key on a phone, so the margin is a hair and the halves sit a third of a
+ * key apart — still three times the gap between two keys, so the split reads. Down, arcs drawn
+ * over the top row need the room.
+ */
+const MARGIN_X = 0.05;
+const MARGIN_Y = 0.12;
+const SPLIT_GAP = 0.3;
 /** Inner margin of a cap, in the same units. */
 const INSET = 5;
 /** Height kept for the band along the bottom of a cap, and for the shifted legend above. */
@@ -114,6 +157,8 @@ interface ModelOptions {
   selected?: string | null;
   /** Top-left of the drawing, in key units; only the drawn board needs it. */
   origin?: { ox: number; oy: number };
+  /** Where each key is drawn across, when that is not where the geometry puts it. */
+  xs?: readonly number[];
 }
 
 /** Everything drawn for each key of a layer: position, legends and how they fit, and its number. */
@@ -148,7 +193,7 @@ function modelKeys(compiled: CompiledLayout, layerIdx: number, opts: ModelOption
     return {
       idx,
       key: k,
-      cx: (k.x - origin.ox) * UNIT,
+      cx: ((opts.xs?.[idx] ?? k.x) - origin.ox) * UNIT,
       cy: (k.y - origin.oy) * UNIT,
       w,
       h,
@@ -257,20 +302,30 @@ export function Keyboard({
   const highlighted = useMemo(() => new Set(highlight), [highlight]);
   const pressing = useMemo(() => new Set(pressed), [pressed]);
 
+  const xs = useMemo(() => drawnX(compiled.keys), [compiled]);
+  // The drawing is as wide as its keys reach, turned thumbs included, and a hair more.
   const view = useMemo(() => {
-    const xs = compiled.keys.map((k) => k.x);
-    const ys = compiled.keys.map((k) => k.y);
-    const minX = Math.min(...xs);
-    const maxX = Math.max(...xs);
-    const minY = Math.min(...ys);
-    const maxY = Math.max(...ys);
+    let minX = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+    compiled.keys.forEach((k, i) => {
+      const r = reach(k);
+      minX = Math.min(minX, xs[i] - r.x);
+      maxX = Math.max(maxX, xs[i] + r.x);
+      minY = Math.min(minY, k.y - r.y);
+      maxY = Math.max(maxY, k.y + r.y);
+    });
+    if (!Number.isFinite(minX)) return { ox: 0, oy: 0, width: UNIT, height: UNIT, units: 1 };
+    const units = maxX - minX + 2 * MARGIN_X;
     return {
-      ox: minX - PAD,
-      oy: minY - PAD,
-      width: (maxX - minX + 2 * PAD) * UNIT,
-      height: (maxY - minY + 2 * PAD) * UNIT,
+      ox: minX - MARGIN_X,
+      oy: minY - MARGIN_Y,
+      width: units * UNIT,
+      height: (maxY - minY + 2 * MARGIN_Y) * UNIT,
+      units,
     };
-  }, [compiled]);
+  }, [compiled, xs]);
 
   const legendOf = useCallback(
     (keyId: string) => {
@@ -292,6 +347,7 @@ export function Keyboard({
     pressed: pressing,
     selected,
     origin: view,
+    xs,
   });
 
   // Every key being a tab stop makes a 34-key board 34 stops; one stop plus arrows is what a grid
@@ -321,7 +377,7 @@ export function Keyboard({
   const centerOf = (pos: number) => {
     const k = compiled.keys[pos];
     if (!k) return null;
-    return { x: (k.x - view.ox) * UNIT, y: (k.y - view.oy) * UNIT };
+    return { x: (xs[pos] - view.ox) * UNIT, y: (k.y - view.oy) * UNIT };
   };
 
   const listedKeys = keys.filter((k) => k.number !== null);
@@ -331,6 +387,8 @@ export function Keyboard({
       id={id}
       className={`lm-keyboard w-full h-auto select-none ${className ?? ''}`}
       viewBox={`0 0 ${fmt(view.width)} ${fmt(view.height)}`}
+      // How many keys wide the drawing is, for a view that must keep them a finger's size.
+      style={{ '--lm-board-units': view.units.toFixed(2) } as CSSProperties}
       role={interactive ? 'group' : 'img'}
       aria-label="Keyboard layout"
       {...(draggable ? drag.handlers : {})}

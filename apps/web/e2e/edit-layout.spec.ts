@@ -60,13 +60,22 @@ test.describe('on a phone', () => {
     }
   });
 
-  test('the keys are drawn big enough to tap, and pan instead of shrinking', async ({ page }) => {
+  test('the keys are drawn big enough to tap, and the whole board fits the screen', async ({
+    page,
+  }) => {
     await openEdit(page);
     const caps = page.locator('#kb-edit g[data-key] rect.lm-key-cap');
     const sizes = await caps.evaluateAll((rects) =>
       rects.map((r) => Math.min(r.getBoundingClientRect().width, r.getBoundingClientRect().height)),
     );
-    expect(Math.min(...sizes)).toBeGreaterThanOrEqual(30);
+    expect(sizes.length).toBeGreaterThan(0);
+    // At least what a phone's own keyboard gives a key on the narrowest screen, 320px.
+    expect(Math.min(...sizes)).toBeGreaterThanOrEqual(28);
+    // A 24-key split board fits a phone with its halves drawn close: nothing to pan.
+    const pans = await page
+      .locator('.lm-board-scroll')
+      .evaluate((el) => el.scrollWidth - el.clientWidth);
+    expect(pans).toBeLessThanOrEqual(1);
   });
 
   test('the inspector opens right under the board, and the board stays up while editing', async ({

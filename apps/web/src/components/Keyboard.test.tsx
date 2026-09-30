@@ -2,7 +2,7 @@ import { bundledLayout, compileLayout } from '@layoutmaster/core';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { Keyboard } from './Keyboard.js';
+import { drawnX, Keyboard, reach } from './Keyboard.js';
 
 const qwerty = compileLayout(bundledLayout('qwerty')!);
 const romak = compileLayout(bundledLayout('magic-romak')!);
@@ -66,5 +66,39 @@ describe('Keyboard', () => {
     const { container } = render(<Keyboard compiled={qwerty} highlight={[pos]} />);
     const cap = container.querySelector('g[data-key="RHI"] .lm-key-cap');
     expect(cap?.classList.contains('lm-key-highlight')).toBe(true);
+  });
+});
+
+describe('drawing a split board', () => {
+  const drawn = (id: string) => {
+    const layout = bundledLayout(id);
+    if (!layout) throw new Error(`no layout ${id}`);
+    const keys = compileLayout(layout).keys;
+    return { keys, xs: drawnX(keys) };
+  };
+  /** The room between the hands as drawn: the left hand's right edge to the right hand's left. */
+  const between = ({ keys, xs }: ReturnType<typeof drawn>) => {
+    // Turned thumbs reach further than their width, and it is the drawn reach that counts.
+    const edge = (i: number, side: number) => xs[i] + side * reach(keys[i]).x;
+    const left = Math.max(...keys.map((k, i) => (k.hand === 'L' ? edge(i, 1) : -Infinity)));
+    const right = Math.min(...keys.map((k, i) => (k.hand === 'R' ? edge(i, -1) : Infinity)));
+    return right - left;
+  };
+
+  it('draws the halves a third of a key apart, whatever room the geometry keeps between them', () => {
+    // A 24-key board's presets place its halves as if it had inner columns; they are drawn close.
+    expect(between(drawn('magic-romak'))).toBeCloseTo(0.3, 6);
+    expect(between(drawn('qwerty'))).toBeCloseTo(0.3, 6);
+  });
+
+  it('moves a hand as one piece, so nothing within it changes', () => {
+    const { keys, xs } = drawn('magic-romak');
+    const right = keys.map((k, i) => [k, xs[i]] as const).filter(([k]) => k.hand === 'R');
+    const shifts = new Set(right.map(([k, x]) => (k.x - x).toFixed(6)));
+    expect(shifts.size).toBe(1);
+    // And the left hand does not move at all.
+    keys.forEach((k, i) => {
+      if (k.hand === 'L') expect(xs[i]).toBe(k.x);
+    });
   });
 });

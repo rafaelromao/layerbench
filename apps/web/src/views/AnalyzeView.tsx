@@ -502,6 +502,7 @@ export function AnalyzeView() {
             {compiled && (
               <Keyboard
                 id="kb-analyze"
+                className="lm-analyze-board"
                 legendList
                 compiled={compiled}
                 layer={boardLayer}

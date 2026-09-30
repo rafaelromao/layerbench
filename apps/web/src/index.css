@@ -564,12 +564,12 @@ button.lm-drop-target.lm-drop-copy {
   }
 
   /*
-   * Fitting a 34-key split board into 375px draws 25px keys, which is below any usable touch
-   * target and hopeless to drag. The board keeps a width that draws them at roughly 35px instead
-   * and the reader pans to the half they are working on — a split layout is worked on one half at
-   * a time anyway.
+   * The board fits the screen as long as its keys stay at least 28px wide — about what a phone's
+   * own keyboard gives a key on a 320px screen. A 24-key split board fits any phone that way and a
+   * 34-key one fits from about 330px, their halves drawn close; a wider board keeps its keys at
+   * that size and pans instead. (A cap is 58/64 of its key's cell, hence 1.93rem a cell.)
    */
-  /* Without this the board takes its content's width — a flex child refuses to shrink below
+  /* Without min-width the board takes its content's width — a flex child refuses to shrink below
      min-content by default — and nothing scrolls; it just overflows the card. */
   .lm-board {
     min-width: 0;
@@ -580,7 +580,7 @@ button.lm-drop-target.lm-drop-copy {
     overscroll-behavior-x: contain;
   }
   .lm-board .lm-keyboard {
-    min-width: 28rem;
+    min-width: calc(var(--lm-board-units, 14) * 1.93rem);
     max-height: none;
   }
 
@@ -633,6 +633,27 @@ button.lm-drop-target.lm-drop-copy {
     > :is(select, textarea, input:not([type="checkbox"], [type="radio"], [type="range"])) {
     width: 100%;
     min-width: 0;
+  }
+}
+
+/*
+ * On a phone every pixel across is a bigger key. The editor's board runs from edge to edge of the
+ * screen, as a keyboard does, with its keys 4px from each side; the analysis's takes most of its
+ * card's padding.
+ */
+@media (max-width: 639.98px) {
+  .lm-edit-board {
+    margin-inline: -0.75rem;
+    border-radius: 0;
+    border-inline-width: 0;
+  }
+  .lm-edit-board .lm-board {
+    margin-inline: -0.5rem;
+    max-width: none;
+  }
+  .lm-analyze-board {
+    margin-inline: -0.75rem;
+    width: calc(100% + 1.5rem);
   }
 }
 
