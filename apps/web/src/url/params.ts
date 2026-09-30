@@ -76,6 +76,20 @@ function validTextClass(v: string | undefined): TextClass {
   return 'letters';
 }
 
+/**
+ * Corpora that were replaced, and what replaced them. The Romak work corpora were 180 words a model
+ * listed; a link naming one opens the conversational corpus of the same language instead of an
+ * analysis that fails.
+ */
+const REPLACED_CORPORA: Record<string, string> = {
+  'en-work': 'en-conv',
+  'pt-br-work': 'pt-br-conv',
+};
+
+function currentCorpus(id: string): string {
+  return REPLACED_CORPORA[id] ?? id;
+}
+
 /** `off=magic,combos`: known features only, each once, always in the same order. */
 function validFeatures(v: string | undefined): FeatureKind[] {
   if (!v) return [];
@@ -92,10 +106,11 @@ function validPreset(v: string | undefined): string {
 /** Read parameters from a query string, falling back to defaults for anything missing or invalid. */
 export function parseParams(raw: RawSearch): Params {
   const heat = raw.heat as HeatMode | undefined;
+  const corpus2 = blankToNull(raw.corpus2);
   return {
     layoutRef: raw.layout ?? raw.l ?? DEFAULT_PARAMS.layoutRef,
-    corpus: raw.corpus ?? DEFAULT_PARAMS.corpus,
-    corpus2: blankToNull(raw.corpus2),
+    corpus: currentCorpus(raw.corpus ?? DEFAULT_PARAMS.corpus),
+    corpus2: corpus2 === null ? null : currentCorpus(corpus2),
     mix: int(raw.mix, DEFAULT_PARAMS.mix, 0, 100),
     preset: validPreset(raw.rules),
     caseMode: raw.case === 'model' ? 'model' : 'fold',

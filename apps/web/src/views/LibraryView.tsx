@@ -86,10 +86,13 @@ function listOf(features: readonly FeatureKind[]): string {
 function Ranking({
   summary,
   lacking,
+  nobodyCan = false,
 }: {
   summary: LayoutSummary | undefined;
   /** Letters the corpus's language needs that the layout cannot type; set when it ranks behind. */
   lacking?: { language: string; letters: string[] };
+  /** Every layout listed lacks some, so none is ranked behind another for it. */
+  nobodyCan?: boolean;
 }) {
   if (!summary) {
     return <p className="text-xs opacity-50">scoring…</p>;
@@ -111,8 +114,8 @@ function Ranking({
       </dl>
       {lacking ? (
         <p className="lm-skips text-xs text-warning" title={`Letters ${lacking.language} needs`}>
-          Cannot type {lacking.letters.join(' ')}: skips {summary.skipped.toFixed(2)}% of the text,
-          ranked after the layouts that can.
+          Cannot type {lacking.letters.join(' ')}: skips {summary.skipped.toFixed(2)}% of the text
+          {nobodyCan ? '.' : ', ranked after the layouts that can.'}
         </p>
       ) : (
         summary.skipped > 0 && (
@@ -445,6 +448,9 @@ export function LibraryView() {
     return out;
   }, [corpusLanguage, ranked]);
   const behind = useMemo(() => new Set(lacking.keys()), [lacking]);
+  // When no layout can write the language, none is behind the others: the list keeps its metric order.
+  const nobodyCan = behind.size > 0 && behind.size === ranked.size;
+  const lackingLanguage = [...lacking.values()][0]?.language;
   // Every layout failing at once means the corpus or rule set is at fault, not the layouts.
   const unscored =
     summaries.size > 0 && [...summaries.values()].every((s) => s.effort === null && s.sfb === null);
@@ -680,9 +686,11 @@ export function LibraryView() {
               : `Lower is better for both. ${Math.min(params.sample, RANK_MAX_SYMBOLS).toLocaleString('en-US')} symbols of ${corpusName}, ${ruleSet.name ?? 'rule set'}${
                   without.length > 0 ? `, typed without ${listOf(without)}` : ''
                 }.${
-                  behind.size > 0 && sortBy !== 'name'
-                    ? ` Layouts that cannot type every letter ${[...lacking.values()][0]?.language} needs come last.`
-                    : ''
+                  nobodyCan
+                    ? ` None of these layouts types every letter ${lackingLanguage} needs.`
+                    : behind.size > 0 && sortBy !== 'name'
+                      ? ` Layouts that cannot type every letter ${lackingLanguage} needs come last.`
+                      : ''
                 }`}
         </span>
       </div>
@@ -709,6 +717,7 @@ export function LibraryView() {
                     <Ranking
                       summary={summaries.get(`b:${layout.id}`)}
                       lacking={lacking.get(`b:${layout.id}`)}
+                      nobodyCan={nobodyCan}
                     />
                   </div>
                   <div className="flex shrink-0 gap-1">
@@ -763,6 +772,7 @@ export function LibraryView() {
                   <Ranking
                     summary={summaries.get(`s:${entry.id}`)}
                     lacking={lacking.get(`s:${entry.id}`)}
+                    nobodyCan={nobodyCan}
                   />
                   {savedCompiled.has(entry.id) && (
                     <LayerStrip

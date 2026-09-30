@@ -25,6 +25,15 @@ describe('analysis parameters', () => {
     expect(parseParams({ rules: 'cyanophage' }).preset).toBe('cyanophage');
   });
 
+  it('opens the corpus that replaced the one an older link names', () => {
+    expect(parseParams({ corpus: 'en-work' }).corpus).toBe('en-conv');
+    expect(parseParams({ corpus: 'pt-br-work', corpus2: 'en-work' })).toMatchObject({
+      corpus: 'pt-br-conv',
+      corpus2: 'en-conv',
+    });
+    expect(parseParams({ corpus: 'en-general' }).corpus).toBe('en-general');
+  });
+
   it('reads the toggles', () => {
     expect(parseParams({ case: 'model' }).caseMode).toBe('model');
     expect(parseParams({ case: 'other' }).caseMode).toBe('fold');
@@ -48,12 +57,12 @@ describe('analysis parameters', () => {
 
   it('drops the mix share when there is no second corpus', () => {
     expect(toSearch(DEFAULT_PARAMS, { mix: 30 }).mix).toBeUndefined();
-    expect(toSearch(DEFAULT_PARAMS, { corpus2: 'en-work', mix: 30 })).toMatchObject({
-      corpus2: 'en-work',
+    expect(toSearch(DEFAULT_PARAMS, { corpus2: 'en-conv', mix: 30 })).toMatchObject({
+      corpus2: 'en-conv',
       mix: '30',
     });
     // At the default share the value is implied, so it stays out of the link.
-    expect(toSearch(DEFAULT_PARAMS, { corpus2: 'en-work' }).mix).toBeUndefined();
+    expect(toSearch(DEFAULT_PARAMS, { corpus2: 'en-conv' }).mix).toBeUndefined();
   });
 
   it('produces links with keys in a stable order', () => {
@@ -73,8 +82,8 @@ describe('analysis parameters', () => {
     const params = {
       ...DEFAULT_PARAMS,
       layoutRef: 'saved:mine',
-      corpus: 'en-work',
-      corpus2: 'pt-br-work',
+      corpus: 'en-conv',
+      corpus2: 'pt-br-conv',
       mix: 70,
       preset: 'keysolve',
       caseMode: 'model' as const,

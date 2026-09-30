@@ -7,7 +7,7 @@
  * implementation produced, so analyses stay comparable across the two engines.
  *
  *   pnpm corpora            # build all
- *   pnpm corpora en-work    # build one
+ *   pnpm corpora en-conv    # build one
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';

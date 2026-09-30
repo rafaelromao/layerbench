@@ -1,6 +1,6 @@
 import { expect, type Page, test } from '@playwright/test';
 
-const EDIT = '/edit?layout=magic-romak&corpus=pt-br-work&sample=20000';
+const EDIT = '/edit?layout=magic-romak&corpus=pt-br-conv&sample=20000';
 
 async function openEdit(page: Page): Promise<void> {
   await page.goto(EDIT);

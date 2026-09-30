@@ -61,7 +61,7 @@ describe('Library', () => {
 
 describe('Compare', () => {
   it('analyzes both layouts and ranks each metric', async () => {
-    renderRoute('/compare?layout=magic-romak&b=graphite&corpus=pt-br-work&sample=20000', {
+    renderRoute('/compare?layout=magic-romak&b=graphite&corpus=pt-br-conv&sample=20000', {
       storage: freshStorage(),
     });
 
@@ -80,9 +80,10 @@ describe('Corpus', () => {
     renderRoute('/corpus', { storage: freshStorage() });
 
     expect(await screen.findByText('Corpora')).toBeInTheDocument();
-    // All four shipped corpora are offered, two of them from the Leipzig collection.
+    // Every shipped corpus is offered: news from the Leipzig collection, and conversation.
     expect(await screen.findAllByText(/Leipzig/)).not.toHaveLength(0);
-    expect(screen.getByText('English — work chat/email (Romak)')).toBeInTheDocument();
+    expect(screen.getAllByText('English — conversational (OpenSubtitles)')).not.toHaveLength(0);
+    expect(screen.getAllByText('Español — conversacional (OpenSubtitles)')).not.toHaveLength(0);
     // Facts are counted over a sample of the selected corpus.
     expect(await screen.findByText('Letters', undefined, { timeout: 25_000 })).toBeInTheDocument();
     expect(screen.getByText('Trigrams')).toBeInTheDocument();

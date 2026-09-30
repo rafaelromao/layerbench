@@ -13,7 +13,7 @@ repository can list corpora whose text you have not downloaded yet.
 
 ```bash
 pnpm corpora              # build every corpus whose raw text is present
-pnpm corpora en-work      # build one
+pnpm corpora en-conv      # build one
 pnpm corpora:fetch        # download the word-frequency lists (needs network)
 pnpm corpora:generate     # build conversational text from those lists
 ```
@@ -22,17 +22,20 @@ The samples keep letters, digits **and** symbols. Each analysis narrows that to 
 asked for — the default is still letters only, so one sample serves every setting and turning
 numbers on does not need a rebuild.
 
-## Provisioning the Spanish, French and Italian corpora
+## Provisioning the corpora
 
-Two corpora per language, matching the split the English and Portuguese ones use.
+Two corpora per language: conversation, generated from word frequencies, and news, sampled from
+the Leipzig collection. English, Brazilian Portuguese, Spanish and French ship their conversational
+corpora; English and Portuguese ship news, and Spanish and French news wait for the manual step
+below. Italian is listed and has neither yet.
 
-### Conversational — `es-conv`, `fr-conv`, `it-conv`
+### Conversational — `en-conv`, `pt-br-conv`, `es-conv`, `fr-conv`, `it-conv`
 
 Generated, and fully automated:
 
 ```bash
-pnpm corpora:fetch es fr it
-pnpm corpora:generate es fr it
+pnpm corpora:fetch en pt_br es fr it
+pnpm corpora:generate en pt_br es fr it
 pnpm corpora
 ```
 
@@ -41,10 +44,19 @@ pnpm corpora
 across the OpenSubtitles corpus — conversational register, accents intact. `corpora:generate` samples
 those words in proportion to their frequency and shapes them into capitalised, punctuated sentences.
 
-This is the same method the existing `en-work` and `pt-br-work` corpora were built with, with one
-improvement: those two are shuffled word bags, so no sentence in them ever starts with a capital.
-Any analysis of shift or sentence-case modelling against them measures that artifact rather than the
-layout. The generated corpora have real sentence boundaries, so they do not.
+They replace the Romak work corpora, `en-work` and `pt-br-work`, which were made the same way from
+the 180 words a language model listed as common in work chat and email, as shuffled word bags with
+no capital anywhere. These draw from the 8,000 most frequent words of each language, and a link
+naming an old corpus opens its replacement. `pt_br` is counted over Brazilian subtitles only.
+
+The lists count words as a tokenizer split them, and the generator puts them back together:
+
+- English clitics go back on a word they follow — `I'm`, `don't`, `you're`, `it's` — and one drawn
+  after a word that cannot take it is written on a likely one instead, so each is written about as
+  often as it was counted. Stems like `didn` only ever appear with their `'t`.
+- French elisions (`c'`, `l'`, `j'`, `qu'`…) join the next word starting with a vowel or an h.
+- Single letters that are not words of the language, and words with letters it does not use — a
+  foreign name, the `º` of an ordinal — are left out. The alphabet is the language profile's.
 
 The generator is deterministic — the same list yields the same text byte for byte — so rebuilding is
 a no-op and the output is reviewable as a diff.

@@ -1,20 +1,20 @@
 {
-  "en-work": {
-    "file": "en-work.txt",
-    "name": "English — work chat/email (Romak)",
+  "en-conv": {
+    "file": "en-conversational.txt",
+    "name": "English — conversational (OpenSubtitles)",
     "language": "en",
-    "license": "MIT (rafaelromao/romak)",
-    "source": "https://github.com/rafaelromao/romak/blob/main/analysis/corpus_en.txt",
-    "description": "1 MB of English generated from the 180 most common work-email/chat words (ChatGPT-4), lowercase.",
+    "license": "MIT (hermitdave/FrequencyWords)",
+    "source": "https://github.com/hermitdave/FrequencyWords/tree/master/content/2018/en",
+    "description": "English sentences generated from the most common conversational words, sampled in proportion to their frequency in the OpenSubtitles corpus. Cased and punctuated.",
     "generated": true
   },
-  "pt-br-work": {
-    "file": "pt-br-work.txt",
-    "name": "Português (BR) — conversas e emails (Romak)",
+  "pt-br-conv": {
+    "file": "pt-br-conversational.txt",
+    "name": "Português (BR) — conversacional (OpenSubtitles)",
     "language": "pt-BR",
-    "license": "MIT (rafaelromao/romak)",
-    "source": "https://github.com/rafaelromao/romak/blob/main/analysis/corpus_pt.txt",
-    "description": "1 MB of Brazilian Portuguese generated from the 180 most common conversation and email words (ChatGPT-4), lowercase, accents kept.",
+    "license": "MIT (hermitdave/FrequencyWords)",
+    "source": "https://github.com/hermitdave/FrequencyWords/tree/master/content/2018/pt_br",
+    "description": "Brazilian Portuguese sentences generated from the most common conversational words, sampled in proportion to their frequency in Brazilian OpenSubtitles. Cased and punctuated, accents kept.",
     "generated": true
   },
   "en-general": {

@@ -85,7 +85,14 @@ describe('shipped corpora', () => {
 
   it('are listed with their manifests', async () => {
     const list = await loader.list();
-    expect(list.map((m) => m.id)).toEqual(['en-general', 'en-work', 'pt-br-general', 'pt-br-work']);
+    expect(list.map((m) => m.id)).toEqual([
+      'en-conv',
+      'en-general',
+      'es-conv',
+      'fr-conv',
+      'pt-br-conv',
+      'pt-br-general',
+    ]);
     const ptGeneral = list.find((m) => m.id === 'pt-br-general')!;
     expect(ptGeneral.language).toBe('pt-BR');
     expect(ptGeneral.license).toContain('CC BY');
@@ -104,8 +111,8 @@ describe('shipped corpora', () => {
   });
 
   it('mixes two shipped corpora proportionally', async () => {
-    const en = await loader.load('en-work');
-    const pt = await loader.load('pt-br-work');
+    const en = await loader.load('en-conv');
+    const pt = await loader.load('pt-br-conv');
     const mixed = mixCorpora(
       [
         [en, 1],

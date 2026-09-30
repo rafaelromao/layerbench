@@ -23,7 +23,7 @@ describe('where the site opens', () => {
     await waitFor(() => expect(currentPath()).toBe('/library'));
   });
 
-  it('still opens the analysis an older link names', async () => {
+  it('still opens the analysis an older link names, on the corpus that replaced its own', async () => {
     const { currentPath, currentSearch } = renderRoute(
       '/?corpus=en-work&layout=qwerty&sample=1000',
       {
@@ -33,7 +33,10 @@ describe('where the site opens', () => {
     expect(await screen.findByLabelText('How is this typed?')).toBeInTheDocument();
     expect(currentPath()).toBe('/analyze');
     expect(currentSearch()).toContain('layout=qwerty');
-    expect(currentSearch()).toContain('corpus=en-work');
+    // The Romak work corpus is gone; its English replacement opens instead.
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: 'Corpus' })).toHaveValue('en-conv'),
+    );
   });
 });
 

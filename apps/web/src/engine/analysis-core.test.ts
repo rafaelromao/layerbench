@@ -11,7 +11,7 @@ function request(ruleSet: RuleSet): AnalyzeRequest {
   if (!layout) throw new Error('qwerty is bundled');
   return {
     layout: toCanonicalJson(layout),
-    corpusId: 'en-work',
+    corpusId: 'en-conv',
     caseMode: 'fold',
     textClass: 'letters',
     crossWord: 'reset',

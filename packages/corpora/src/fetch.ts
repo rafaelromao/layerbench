@@ -1,8 +1,8 @@
 /**
  * Downloads the word-frequency lists the conversational corpora are generated from.
  *
- *   pnpm corpora:fetch          # every language listed below
- *   pnpm corpora:fetch es fr    # just these
+ *   pnpm corpora:fetch                 # every language listed below
+ *   pnpm corpora:fetch en pt_br es fr  # just these
  *
  * Lists come from hermitdave/FrequencyWords (MIT), which counts words across the OpenSubtitles
  * corpus — conversational register, with accents intact. They are plain text, one `word count` per
@@ -18,11 +18,13 @@ const here = dirname(fileURLToPath(import.meta.url));
 const FREQ_DIR = join(here, '..', 'raw', 'freq');
 
 const YEAR = '2018';
+/** The list's directory name. `pt_br` is counted over Brazilian subtitles only; `pt` mixes both. */
 const LANGS: Record<string, string> = {
   es: 'es',
   fr: 'fr',
   it: 'it',
   pt: 'pt',
+  pt_br: 'pt_br',
   en: 'en',
 };
 

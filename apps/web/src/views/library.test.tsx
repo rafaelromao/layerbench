@@ -75,7 +75,7 @@ describe('Ranking layouts', () => {
   it('shows Effort and SFB on every layout, and sorts by either', async () => {
     const user = userEvent.setup();
     // A small sample keeps twenty-odd analyses quick; the ordering is what is under test.
-    renderRoute('/library?corpus=en-work&sample=1000', { storage: freshStorage() });
+    renderRoute('/library?corpus=en-conv&sample=1000', { storage: freshStorage() });
 
     // Every bundled layout gets both numbers once scoring settles.
     await screen.findByText(/^Lower is better for both/, undefined, { timeout: 60_000 });
@@ -180,6 +180,18 @@ describe('Ranking layouts', () => {
     expect(sent).toContain('"symbols":"é"');
   }, 90_000);
 
+  it('ranks by the numbers alone when no layout can write the language', async () => {
+    // No bundled layout has an ñ, so none is behind another for it.
+    renderRoute('/library?corpus=es-conv&sample=10000', { storage: freshStorage() });
+    await screen.findByText(/^Lower is better for both/, undefined, { timeout: 60_000 });
+    expect(
+      screen.getByText(/None of these layouts types every letter Español needs\.$/),
+    ).toBeTruthy();
+    const efforts = cards().map((c) => valueOn(c, 'Effort'));
+    expect(efforts).toEqual([...efforts].sort((a, b) => a - b));
+    expect(document.body.textContent).not.toMatch(/ranked after the layouts that can/);
+  }, 90_000);
+
   it('says what share of the text a layout skips', async () => {
     renderRoute('/library?corpus=pt-br-general&sample=10000', { storage: freshStorage() });
     await screen.findByText(/^Lower is better for both/, undefined, { timeout: 60_000 });
@@ -209,15 +221,15 @@ describe('Choosing what layouts are ranked on', () => {
     const corpus = await screen.findByRole('combobox', { name: 'Corpus' });
     await waitFor(() => expect(within(corpus).getAllByRole('option').length).toBeGreaterThan(1));
 
-    await user.selectOptions(corpus, 'pt-br-work');
+    await user.selectOptions(corpus, 'pt-br-conv');
     await user.selectOptions(screen.getByRole('combobox', { name: 'Rule set' }), 'cyanophage');
     await waitFor(() => expect(currentSearch()).toContain('rules=cyanophage'));
-    expect(currentSearch()).toContain('corpus=pt-br-work');
+    expect(currentSearch()).toContain('corpus=pt-br-conv');
     expect(currentSearch()).not.toContain('layout=');
 
     const card = document.querySelector('article') as HTMLElement;
     const analyze = within(card).getByRole('link', { name: 'Analyze' }) as HTMLAnchorElement;
-    expect(analyze.href).toContain('corpus=pt-br-work');
+    expect(analyze.href).toContain('corpus=pt-br-conv');
     expect(analyze.href).toContain('rules=cyanophage');
   });
 });

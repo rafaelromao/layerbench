@@ -43,7 +43,7 @@ async function dragKey(
 
 /** Open the edit view on Qwerty and wait for its first analysis. */
 async function openEdit(): Promise<void> {
-  renderRoute('/edit?layout=qwerty&corpus=en-work&sample=20000', { storage: freshStorage() });
+  renderRoute('/edit?layout=qwerty&corpus=en-conv&sample=20000', { storage: freshStorage() });
   await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
 }
 
@@ -53,7 +53,7 @@ const key = (name: string) => screen.getByRole('button', { name });
 const inspector = (keyId: string) => screen.findByRole('group', { name: `Edit ${keyId}` });
 
 async function openMagicRomak(): Promise<void> {
-  renderRoute('/edit?layout=magic-romak&corpus=pt-br-work&sample=20000', {
+  renderRoute('/edit?layout=magic-romak&corpus=pt-br-conv&sample=20000', {
     storage: freshStorage(),
   });
   await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
@@ -75,7 +75,7 @@ describe('Edit', () => {
       return report;
     });
 
-    renderRoute('/edit?layout=qwerty&corpus=en-work&sample=20000', {
+    renderRoute('/edit?layout=qwerty&corpus=en-conv&sample=20000', {
       client,
       storage: freshStorage(),
     });
@@ -103,7 +103,7 @@ describe('Edit', () => {
   it('saves the edited layout under a slug of its name', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
-    renderRoute('/edit?layout=qwerty&corpus=en-work&sample=20000', { storage });
+    renderRoute('/edit?layout=qwerty&corpus=en-conv&sample=20000', { storage });
     await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
 
     await user.click(screen.getByRole('tab', { name: 'Save' }));
@@ -195,7 +195,7 @@ describe('Edit', () => {
 
   it("shows Magic Romak's special features and lets one be turned off", async () => {
     const user = userEvent.setup();
-    renderRoute('/edit?layout=magic-romak&corpus=pt-br-work&sample=20000', {
+    renderRoute('/edit?layout=magic-romak&corpus=pt-br-conv&sample=20000', {
       storage: freshStorage(),
     });
     await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
@@ -666,7 +666,7 @@ describe('Edit', () => {
 
   it('reorders a typing path that was never declared', async () => {
     const user = userEvent.setup();
-    renderRoute('/edit?layout=magic-romak&corpus=pt-br-work&sample=20000', {
+    renderRoute('/edit?layout=magic-romak&corpus=pt-br-conv&sample=20000', {
       storage: freshStorage(),
     });
     await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
