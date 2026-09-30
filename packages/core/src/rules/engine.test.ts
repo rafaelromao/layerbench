@@ -109,6 +109,58 @@ describe('rules engine', () => {
     expect(getPreset('nope').id).toBe('layouts_doc');
   });
 
+  it('counts each word’s space once in cyanophage’s keystrokes, whether space is counted or not', () => {
+    const compiled = compileLayout(bundledLayout('qwerty')!);
+    const sim = simulate(compiled, normalizeText(text, OPTS), OPTS);
+    const st = sim.tables.stats;
+    const sfbOf = (rs: RuleSet) =>
+      evaluate(sim.tables, compiled, rs).results.find((r) => r.id === 'sfb')?.value as number;
+    const universe = (rs: RuleSet, u: 'no_space' | 'with_space'): RuleSet => ({
+      ...rs,
+      globals: { ...rs.globals, universe: u },
+    });
+    // The same-finger bigrams themselves, counted over bigrams by the Doc.
+    const sfbs = (sfbOf(layoutsDoc()) / 100) * sim.tables.noSpace.totals.bigram;
+    expect(sfbs).toBeGreaterThan(0);
+
+    // Without space: every other keystroke, plus one space per word.
+    const without = sfbOf(universe(cyanophage(), 'no_space'));
+    expect(without).toBeCloseTo((sfbs / (st.keystrokes - st.space_presses + st.words)) * 100, 9);
+
+    // With space: the space presses are keystrokes already, and nothing is added.
+    const withSfbs =
+      (sfbOf(universe(layoutsDoc(), 'with_space')) / 100) * sim.tables.withSpace.totals.bigram;
+    const withSpace = sfbOf(universe(cyanophage(), 'with_space'));
+    expect(withSpace).toBeCloseTo((withSfbs / st.keystrokes) * 100, 9);
+  });
+
+  it('divides pairs by the text’s own pairs, so extra presses do not thin them out', () => {
+    const tablesOf = (id: string) => {
+      const compiled = compileLayout(bundledLayout(id)!);
+      return simulate(compiled, normalizeText(text, OPTS), OPTS).tables;
+    };
+    // A layout typing each character with one press has exactly the text's totals: nothing it
+    // reports moves.
+    const q = tablesOf('qwerty');
+    expect(q.text.noSpace).toEqual(q.noSpace.totals);
+    expect(q.text.withSpace).toEqual(q.withSpace.totals);
+
+    // Magic Romak's layer taps and holds add pairs of its own, but the text has the pairs it has,
+    // and that is what its same-finger bigrams are a share of.
+    const m = tablesOf('magic-romak');
+    expect(m.noSpace.totals.bigram).toBeGreaterThan(m.text.noSpace.bigram);
+    expect(m.text.noSpace.unigram).toBe(m.stats.symbols);
+    const sfb = catalogRules().find((r) => r.id === 'sfb')!;
+    const counting: RuleSet = {
+      ...layoutsDoc(),
+      rules: [sfb, { ...sfb, id: 'sfb_count', aggregate: 'count' }],
+    };
+    const compiled = compileLayout(bundledLayout('magic-romak')!);
+    const [percent, count] = evaluate(m, compiled, counting).results.map((r) => r.value as number);
+    expect(count).toBeGreaterThan(0);
+    expect(percent).toBeCloseTo((count / m.text.noSpace.bigram) * 100, 9);
+  });
+
   it('computes a composite score when the set enables it', () => {
     const scored = run('qwerty', weightedSet());
     expect(scored.score.enabled).toBe(true);

@@ -130,6 +130,37 @@ export class NgramAccumulator {
   }
 }
 
+export type NgramTotals = NgramTables['totals'];
+
+/**
+ * The n-grams the text itself has: what the tables would hold if every character took one press.
+ * A layout's own tables also count its layer taps, holds and one-shots, which no letter rule can
+ * match, and lose the pairs inside a macro. Dividing by these instead gives every layout typing the
+ * same text the same denominator. Boundaries fall exactly where the layout's tables break.
+ */
+export class TextTotals {
+  readonly totals: NgramTotals = { unigram: 0, bigram: 0, trigram: 0, skip: [0, 0, 0] };
+  private run = 0;
+
+  push(): void {
+    const t = this.totals;
+    const n = this.run;
+    t.unigram++;
+    if (n >= 1) t.bigram++;
+    if (n >= 2) {
+      t.trigram++;
+      t.skip[0]++;
+    }
+    if (n >= 3) t.skip[1]++;
+    if (n >= 4) t.skip[2]++;
+    this.run++;
+  }
+
+  boundary(): void {
+    this.run = 0;
+  }
+}
+
 export interface WordTrace {
   word: string;
   count: number;
@@ -182,6 +213,8 @@ export interface SimulationTables {
   noSpace: NgramTables;
   /** With-space universe. */
   withSpace: NgramTables;
+  /** The text's own n-gram totals in each universe, as if every character took one press. */
+  text: { noSpace: NgramTotals; withSpace: NgramTotals };
   runs: RunStats;
   words: Map<string, WordTrace>;
   travel: FingerTravel;

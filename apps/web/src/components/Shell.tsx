@@ -6,13 +6,14 @@ import { useToasts } from '../state/toasts.js';
 import { StorageSettings } from '../storage/StorageSettings.js';
 import { useDismiss } from './use-dismiss.js';
 
+/** The Library comes first: it is where the site opens, and where a layout is picked. */
 const NAV = [
-  { to: '/', label: 'Analyze' },
+  { to: '/library', label: 'Library' },
+  { to: '/analyze', label: 'Analyze' },
   { to: '/edit', label: 'Edit' },
   { to: '/compare', label: 'Compare' },
   { to: '/rules', label: 'Rules' },
   { to: '/corpus', label: 'Corpus' },
-  { to: '/library', label: 'Library' },
   { to: '/guide', label: 'Guide' },
 ] as const;
 
@@ -119,12 +120,7 @@ function MobileMenu() {
         <ul className="menu w-full p-0">
           {NAV.map((item) => (
             <li key={item.to}>
-              <Link
-                to={item.to}
-                onClick={close}
-                activeProps={{ className: 'menu-active' }}
-                activeOptions={{ exact: item.to === '/' }}
-              >
+              <Link to={item.to} onClick={close} activeProps={{ className: 'menu-active' }}>
                 {item.label}
               </Link>
             </li>
@@ -150,18 +146,14 @@ export function Shell({ children }: { children: ReactNode }) {
         Skip to content
       </a>
       <header className="navbar bg-base-100 border-b border-base-300 px-3 sm:px-4 min-h-12 sticky top-0 z-20">
-        <Link to="/" className="btn btn-ghost btn-sm text-base font-semibold">
+        <Link to="/library" className="btn btn-ghost btn-sm text-base font-semibold">
           <span className="text-primary">Layout</span>Master
         </Link>
         <nav aria-label="Main" className="ml-2 hidden md:block">
           <ul className="menu menu-horizontal menu-sm gap-1">
             {NAV.map((item) => (
               <li key={item.to}>
-                <Link
-                  to={item.to}
-                  activeProps={{ className: 'menu-active' }}
-                  activeOptions={{ exact: item.to === '/' }}
-                >
+                <Link to={item.to} activeProps={{ className: 'menu-active' }}>
                   {item.label}
                 </Link>
               </li>

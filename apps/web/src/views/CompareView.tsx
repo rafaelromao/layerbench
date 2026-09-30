@@ -201,7 +201,7 @@ export function CompareView() {
             />
           </label>
           <Link
-            to="/"
+            to="/analyze"
             search={toSearch(params) as never}
             className="btn btn-sm btn-outline max-sm:flex-1"
           >

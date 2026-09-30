@@ -171,7 +171,7 @@ export function CorpusView() {
         </ul>
         {selectedId && (
           <Link
-            to="/"
+            to="/analyze"
             search={{ corpus: selectedId } as never}
             className="btn btn-primary btn-sm w-full"
           >
@@ -299,7 +299,7 @@ export function CorpusView() {
                       Save to library
                     </button>
                     <Link
-                      to="/"
+                      to="/analyze"
                       search={{ corpus: custom.id } as never}
                       className="btn btn-sm btn-ghost"
                     >

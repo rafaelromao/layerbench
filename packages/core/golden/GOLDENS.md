@@ -143,6 +143,50 @@ What moved, checked across all 38 reports:
 Because the corpora cannot catch a misplaced digit or symbol, `src/layouts/layouts.test.ts` types
 them on each of the three layouts and checks the keys used.
 
+## Fifth re-baseline: each word's space counted once in cyanophage's keystrokes
+
+The `cyanophage` preset divides its bigram and skipgram percentages by keystrokes plus one space per
+word, the way cyanophage counts them. The keystrokes it started from already held the space presses,
+so every word's space was counted twice and each of those percentages came out 12–14% too low.
+Keystrokes now follow SPEC §7.1: a space press is one only in the `with_space` universe. The space
+per word is added only in `no_space`, since in `with_space` the presses are already there.
+`src/rules/engine.test.ts` pins both denominators.
+
+What moved, checked across all 38 reports:
+
+- **The 18 `cyanophage` reports, and only the rules they divide by keystrokes**: `sfb`, `sfb_2u`,
+  `repeats`, `lsb`, `fsb`, `hsb`, `thumb_bigrams`, `thumb_double` and `layer_tap_sfb` where they
+  match anything, and the skipgrams `sfs`, `sfs_weighted`, `lss`, `fss` and `hss`. Each rises by the
+  same factor within a report: Qwerty's `sfb` on `fixture_en` goes from 4.349 to 5.027. Their bands,
+  and the score computed from them, move with them.
+- **Nothing in the `layouts_doc` reports**, which divide by n-grams. Trigram rules, Effort and the
+  layer statistics are untouched in every report.
+
+## Sixth re-baseline: pairs and Effort counted over the text, not the presses
+
+Pair rules divided by the pairs a layout pressed, and Effort by the keystrokes it pressed. A layout
+with layer taps, holds or one-shots presses more than the text has characters, and those presses sit
+on thumbs, where no letter pair can match and Effort charges nothing, so every such layout looked
+better than it types: on English news, 16% of Magic Romak's bigrams were thumb presses. The
+simulator now also counts the text's own totals, the n-grams it would have if every character took
+one press (`SimulationTables.text`), and the rules divide by those:
+
+- **Bigram and skipgram rules** (`percent_of_ngrams`, `sum_distance`) by the text's pairs;
+  `percent_of_keystrokes` by its characters, plus one space per word where space is not counted.
+- **Effort** by the text's characters, space included — cyanophage's keystrokes on any layout it
+  models.
+- **Single-key and trigram rules are unchanged**: they are shares of what was pressed, and the
+  trigram categories must still add up within the trigrams pressed.
+
+What moved, checked across all 38 reports:
+
+- **Only the layouts that press more than the text has characters**: Magic Romak everywhere, and
+  Romak 34 on the two fixtures with Portuguese in them, where its accents take extra presses. Their pair rules rise
+  (Magic Romak's `sfb` on `fixture_en` goes from 0.778 to 0.854) and so does Effort (307.79 to
+  328.50).
+- **Nothing for Qwerty, or for Romak 34 in English**: a layout typing each character with one press
+  has exactly the text's totals, which `src/rules/engine.test.ts` asserts.
+
 ## Not compared
 
 `elapsed_ms` and the structure hash. Everything else in a report file is asserted.

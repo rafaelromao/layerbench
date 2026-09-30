@@ -25,6 +25,8 @@ interface Ctx extends PredicateContext {
   compiled: CompiledLayout;
   attrs: Attrs[];
   tables: SimulationTables['noSpace'];
+  /** The text's own n-gram totals in the same universe, as if every character took one press. */
+  text: SimulationTables['text']['noSpace'];
 }
 
 /** Percentage, with the reference's convention that an empty denominator yields 0. */
@@ -87,6 +89,18 @@ function pairDistance(ngram: Ngram, model: Globals['distance_model']): number | 
   return null;
 }
 
+/**
+ * Keystrokes as the text counts them: one per character, space included only when the universe
+ * counts it (SPEC §7.1). Counting the layout's own presses instead would let its layer taps, holds
+ * and one-shots, which no pair rule can match, thin out every percentage. cyanophage counts one
+ * space per word, which `space_per_word_in_keystrokes` adds where space is not counted; where it
+ * is, the spaces are already there, and adding a word's space on top would count it twice.
+ */
+function textKeystrokes(ctx: Ctx): number {
+  if (ctx.globals.universe === 'with_space') return ctx.text.unigram;
+  return ctx.text.unigram + (ctx.globals.space_per_word_in_keystrokes ? ctx.sim.stats.words : 0);
+}
+
 function per100(m: number, stats: SimulationTables['stats'], per?: string): number {
   const denom =
     per === 'keystrokes' ? stats.keystrokes : per === 'words' ? stats.words : stats.symbols;
@@ -130,15 +144,19 @@ function evalNgram(rule: Rule, ctx: Ctx): RuleResult {
   const skip = spec.skip ?? 0;
   const t = ctx.tables;
 
+  // Pairs are counted over the text's pairs, not the layout's: its extra presses would otherwise add
+  // pairs no rule can match, and a macro would take away pairs it saved. Single keys and trigrams
+  // are shares of what was pressed; trigram categories must still add up within it.
+  const pairs = ctx.text;
   const sources: [Map<number, number>, number, number][] = [];
   if (n === 1) sources.push([t.unigram, t.totals.unigram, 1]);
   else if (n === 3) sources.push([t.trigram, t.totals.trigram, 1]);
   else if (Array.isArray(skip)) {
     for (const k of skip) {
-      sources.push([t.skip[k - 1], t.totals.skip[k - 1], ctx.globals.skip_weights[k - 1] ?? 0]);
+      sources.push([t.skip[k - 1], pairs.skip[k - 1], ctx.globals.skip_weights[k - 1] ?? 0]);
     }
-  } else if (skip > 0) sources.push([t.skip[skip - 1], t.totals.skip[skip - 1], 1]);
-  else sources.push([t.bigram, t.totals.bigram, 1]);
+  } else if (skip > 0) sources.push([t.skip[skip - 1], pairs.skip[skip - 1], 1]);
+  else sources.push([t.bigram, pairs.bigram, 1]);
 
   const match = compilePredicate(rule.where, ctx);
   const aggregate: Aggregate = rule.aggregate ?? 'percent_of_ngrams';
@@ -204,8 +222,7 @@ function evalNgram(rule: Rule, ctx: Ctx): RuleResult {
     }
   }
 
-  const keystrokes =
-    ctx.sim.stats.keystrokes + (ctx.globals.space_per_word_in_keystrokes ? ctx.sim.stats.words : 0);
+  const keystrokes = textKeystrokes(ctx);
   const handPct = distribute(perHand, matched);
 
   let value: number | null;
@@ -252,7 +269,9 @@ function evalNgram(rule: Rule, ctx: Ctx): RuleResult {
         }
         sum += it.c * e;
       }
-      const k = ctx.sim.stats.keystrokes;
+      // Per character typed, space included, which is cyanophage's keystrokes on the layouts it
+      // models. The layout's own presses would make its free thumb taps lower the average.
+      const k = ctx.sim.text.withSpace.unigram;
       value = k > 0 ? (sum / k) * (rule.scale ?? 1) : 0;
       unit = 'effort';
       break;
@@ -491,8 +510,10 @@ export function evaluate(
 ): EvaluationResult {
   const globals: Globals = { ...DEFAULT_GLOBALS, ...ruleSet.globals };
   const attrs = buildAttrs(compiled, sim.registry);
-  const tables = globals.universe === 'with_space' ? sim.withSpace : sim.noSpace;
-  const ctx: Ctx = { sim, compiled, attrs, tables, globals, params: {} };
+  const withSpace = globals.universe === 'with_space';
+  const tables = withSpace ? sim.withSpace : sim.noSpace;
+  const text = withSpace ? sim.text.withSpace : sim.text.noSpace;
+  const ctx: Ctx = { sim, compiled, attrs, tables, text, globals, params: {} };
 
   const enabled = ruleSet.rules.filter((r) => r.enabled !== false);
   const results = enabled.filter((r) => r.aggregate !== 'ratio').map((r) => evaluateRule(r, ctx));

@@ -135,6 +135,28 @@ function resolveRefs(
   return out as Binding;
 }
 
+/**
+ * The same keymap with its features desugared and every behaviour reference replaced by what it
+ * names, so nothing is left to look up. A change to the bindings needs this first: a named behaviour
+ * changed in place would no longer be the kind that refers to it.
+ */
+export function inlineBehaviors(authored: Layout): Layout {
+  const { layout } = expandFeatures(authored);
+  const behaviors = layout.behaviors ?? {};
+  const errors: string[] = [];
+  const inline = (b: Binding) => resolveRefs(b, behaviors, 0, errors);
+  return {
+    ...layout,
+    features: undefined,
+    behaviors: {},
+    layers: layout.layers.map((l) => ({
+      ...l,
+      bindings: Object.fromEntries(Object.entries(l.bindings).map(([k, b]) => [k, inline(b)])),
+    })),
+    combos: layout.combos?.map((c) => ({ ...c, binding: inline(c.binding) })),
+  };
+}
+
 function applyDefaults(b: Binding, defaults: ResolvedBehaviorDefaults): Binding {
   const walk = (x: Binding): Binding => {
     switch (x.kind) {

@@ -45,11 +45,22 @@ const rootRoute = createRootRoute({
   ),
 });
 
-const analyzeRoute = createRoute({
+/**
+ * The front door is the Library. Analyze lived here before it had a path of its own, and a link to
+ * an analysis always names its layout, so one that does still opens that analysis.
+ */
+const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   validateSearch: (search: Record<string, unknown>): RawSearch => search as RawSearch,
-  component: AnalyzeView,
+  beforeLoad: ({ search }) => {
+    throw redirect({
+      to: search.layout === undefined ? '/library' : '/analyze',
+      search,
+      replace: true,
+    });
+  },
+  component: () => null,
 });
 
 /** Every view route reads the same raw search object; each view parses what it needs. */
@@ -62,6 +73,7 @@ function view(path: string, component: () => ReactNode) {
   });
 }
 
+const analyzeRoute = view('/analyze', AnalyzeView);
 const editRoute = view('/edit', EditView);
 const rulesRoute = view('/rules', RulesView);
 const compareRoute = view('/compare', CompareView);
@@ -75,12 +87,13 @@ const savedLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/l/$id',
   beforeLoad: ({ params }) => {
-    throw redirect({ to: '/', search: { layout: savedRef(params.id) } });
+    throw redirect({ to: '/analyze', search: { layout: savedRef(params.id) } });
   },
   component: () => null,
 });
 
 const routeTree = rootRoute.addChildren([
+  homeRoute,
   analyzeRoute,
   editRoute,
   compareRoute,

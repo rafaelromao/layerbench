@@ -4,8 +4,8 @@ LayoutMaster types a text on your keymap the way your keyboard's firmware would,
 comfortable that typing is. Layers, one-shots, tap-holds, magic and repeat keys are all part of it.
 Everything runs in your browser, and nothing leaves it unless you connect a repository of your own.
 
-1. **Pick a layout.** Open **Library** and choose one, or bring your own from a
-   [keymap-drawer file](importing.md).
+1. **Pick a layout.** The site opens on **Library**, ranked by Effort; choose one, or bring your
+   own from a [keymap-drawer file](importing.md).
 2. **Read two numbers.** On **Analyze**, *Effort* is how hard the keys are to reach, and *SFB* how
    often one finger presses two keys in a row. Lower is better for both.
 3. **Change a key.** On **Edit**, tap or click a key and choose what it does. Every change is kept

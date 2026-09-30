@@ -1,10 +1,13 @@
 import {
   BUNDLED_LAYOUTS,
   type CorpusManifest,
+  compileLayout,
+  FEATURE_LABELS,
   getPreset,
   layoutLanguageCoverage,
   PRESET_IDS,
   toCanonicalJson,
+  withoutFeatures,
 } from '@layoutmaster/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -68,7 +71,23 @@ export function AnalyzeView() {
   const client = useAnalysisClient();
   const params = useMemo(() => parseParams(search), [search]);
 
-  const { layout, compiled, error: layoutError } = useLayout(params.layoutRef);
+  const {
+    layout: authored,
+    compiled: authoredCompiled,
+    error: layoutError,
+  } = useLayout(params.layoutRef);
+  // A link from the Library carries the features it ranked without, so the numbers here match the
+  // card's: the layout is analyzed, drawn and explained as it was typed there.
+  const { without } = params;
+  const { layout, compiled } = useMemo(() => {
+    if (!authored || without.length === 0) return { layout: authored, compiled: authoredCompiled };
+    const plain = withoutFeatures(authored, without);
+    try {
+      return { layout: plain, compiled: compileLayout(plain) };
+    } catch {
+      return { layout: authored, compiled: authoredCompiled };
+    }
+  }, [authored, authoredCompiled, without]);
   const [corpora, setCorpora] = useState<CorpusManifest[]>([]);
   const [mixedId, setMixedId] = useState<string | null>(null);
   const [highlight, setHighlight] = useState<number[]>([]);
@@ -83,7 +102,7 @@ export function AnalyzeView() {
 
   const setParams = useCallback(
     (overrides: Partial<Params>) => {
-      navigate({ to: '/', search: toSearch(params, overrides) as never, replace: true });
+      navigate({ to: '/analyze', search: toSearch(params, overrides) as never, replace: true });
     },
     [navigate, params],
   );
@@ -442,6 +461,18 @@ export function AnalyzeView() {
           </div>
         </div>
       </form>
+
+      {without.length > 0 && (
+        <div className="alert text-sm py-2" role="status">
+          <span>
+            Typed without {without.map((f) => FEATURE_LABELS[f].toLowerCase()).join(', ')}, as the
+            Library ranked it.
+          </span>
+          <button type="button" className="btn btn-xs" onClick={() => setParams({ without: [] })}>
+            Use every feature
+          </button>
+        </div>
+      )}
 
       {error && <div className="alert alert-error text-sm">{error}</div>}
 

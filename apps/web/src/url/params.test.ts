@@ -62,6 +62,13 @@ describe('analysis parameters', () => {
     );
   });
 
+  it('reads the features a layout is typed without, known ones only, in one order', () => {
+    expect(parseParams({ off: 'macros,bogus,magic,macros' }).without).toEqual(['magic', 'macros']);
+    expect(parseParams({ off: '' }).without).toEqual([]);
+    expect(toSearch(DEFAULT_PARAMS, { without: ['magic', 'combos'] }).off).toBe('magic,combos');
+    expect(toSearch(DEFAULT_PARAMS).off).toBeUndefined();
+  });
+
   it('round-trips every field', () => {
     const params = {
       ...DEFAULT_PARAMS,
@@ -75,6 +82,7 @@ describe('analysis parameters', () => {
       layer: 3,
       heat: 'effort' as const,
       sample: 100_000,
+      without: ['repeat' as const, 'combos' as const],
     };
     expect(parseParams(toSearch(params))).toEqual(params);
   });

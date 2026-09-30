@@ -150,7 +150,10 @@ export interface AnalysisClient {
     sample: string;
   }): Promise<CorpusManifest>;
   mixCorpora(a: string, b: string, mix: number): Promise<CorpusManifest>;
-  /** Cache lookup only: returns null rather than starting work. */
+  /**
+   * Returns null rather than typing the corpus. A layout already typed under other rules, or with
+   * space counted differently, is only re-scored, which takes milliseconds.
+   */
   peek(request: AnalyzeRequest): Promise<ReportDTO | null>;
   analyze(
     request: AnalyzeRequest,

@@ -240,7 +240,7 @@ function Editor({
 
   const openInAnalyzer = useCallback(async () => {
     const blob = await encodeInline(state.layout);
-    navigate({ to: '/', search: toSearch(params, { layoutRef: inlineRef(blob) }) as never });
+    navigate({ to: '/analyze', search: toSearch(params, { layoutRef: inlineRef(blob) }) as never });
   }, [state.layout, params, navigate]);
 
   const focusKey = useCallback((keyId: string) => keyboard.current?.focusKey(keyId), []);

@@ -3,16 +3,22 @@ import {
   type CompiledLayout,
   type CorpusManifest,
   compileLayout,
+  FEATURE_KINDS,
+  FEATURE_LABELS,
+  type FeatureKind,
   GEOMETRY_PRESET_IDS,
   getGeometryPreset,
   getPreset,
   importTextLayout,
   type Layout,
+  languageCovered,
+  layoutLanguageCoverage,
   layoutLanguages,
   PRESET_IDS,
   safeParseLayout,
   slug,
   toCanonicalJson,
+  withoutFeatures,
 } from '@layoutmaster/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -62,22 +68,60 @@ const SORTS: [SortKey, string][] = [
   ['name', 'Name'],
 ];
 
-/** The two numbers every card shows, whether or not the list is sorted by them. */
-function Ranking({ summary }: { summary: LayoutSummary | undefined }) {
+/** Characters named on a card before the list is cut short. */
+const MISSING_SHOWN = 5;
+
+/** "magic keys, typing combos and multi-letter macros". */
+function listOf(features: readonly FeatureKind[]): string {
+  const names = features.map((f) => FEATURE_LABELS[f].toLowerCase());
+  return names.length <= 1
+    ? (names[0] ?? '')
+    : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
+/**
+ * The two numbers every card shows, whether or not the list is sorted by them, and what the layout
+ * left out of the text to get them.
+ */
+function Ranking({
+  summary,
+  lacking,
+}: {
+  summary: LayoutSummary | undefined;
+  /** Letters the corpus's language needs that the layout cannot type; set when it ranks behind. */
+  lacking?: { language: string; letters: string[] };
+}) {
   if (!summary) {
     return <p className="text-xs opacity-50">scoring…</p>;
   }
+  const missing =
+    summary.missing.slice(0, MISSING_SHOWN).join(' ') +
+    (summary.missing.length > MISSING_SHOWN ? ' …' : '');
   return (
-    <dl className="flex gap-3 text-xs font-mono tabular-nums m-0">
-      <div className="flex gap-1">
-        <dt className="opacity-60 font-sans">Effort</dt>
-        <dd className="m-0">{formatValue(summary.effort, 'effort')}</dd>
-      </div>
-      <div className="flex gap-1">
-        <dt className="opacity-60 font-sans">SFB</dt>
-        <dd className="m-0">{formatValue(summary.sfb, 'percent')}</dd>
-      </div>
-    </dl>
+    <>
+      <dl className="flex gap-3 text-xs font-mono tabular-nums m-0">
+        <div className="flex gap-1">
+          <dt className="opacity-60 font-sans">Effort</dt>
+          <dd className="m-0">{formatValue(summary.effort, 'effort')}</dd>
+        </div>
+        <div className="flex gap-1">
+          <dt className="opacity-60 font-sans">SFB</dt>
+          <dd className="m-0">{formatValue(summary.sfb, 'percent')}</dd>
+        </div>
+      </dl>
+      {lacking ? (
+        <p className="lm-skips text-xs text-warning" title={`Letters ${lacking.language} needs`}>
+          Cannot type {lacking.letters.join(' ')}: skips {summary.skipped.toFixed(2)}% of the text,
+          ranked after the layouts that can.
+        </p>
+      ) : (
+        summary.skipped > 0 && (
+          <p className="lm-skips text-xs opacity-60">
+            Skips {summary.skipped.toFixed(2)}% of the text: {missing}
+          </p>
+        )
+      )}
+    </>
   );
 }
 
@@ -282,6 +326,7 @@ export function LibraryView() {
       .catch(() => setCorpora([]));
   }, [client]);
   const corpusName = corpora.find((c) => c.id === params.corpus)?.name ?? params.corpus;
+  const corpusLanguage = corpora.find((c) => c.id === params.corpus)?.language;
 
   /** The choice lives in the link, so a ranking can be shared and survives a reload. */
   const setParams = useCallback(
@@ -318,13 +363,6 @@ export function LibraryView() {
     };
   }, [saved.entries, storage]);
 
-  const summaryEntries: SummaryEntry[] = useMemo(
-    () => [
-      ...bundled.map(({ layout }) => ({ key: `b:${layout.id}`, layout })),
-      ...saved.entries.map((e) => ({ key: `s:${e.id}`, layout: savedLayouts.get(e.id) ?? null })),
-    ],
-    [bundled, saved.entries, savedLayouts],
-  );
   const savedCompiled = useMemo(() => {
     const out = new Map<string, CompiledLayout>();
     for (const [id, layout] of savedLayouts) {
@@ -336,6 +374,46 @@ export function LibraryView() {
     }
     return out;
   }, [savedLayouts]);
+
+  // Each layout as it is ranked: typed without the features left out. The cards still draw the
+  // layout itself; only its numbers, and what it can type, come from this.
+  const { without } = params;
+  const ranked = useMemo(() => {
+    const out = new Map<string, { layout: Layout; compiled: CompiledLayout }>();
+    const add = (key: string, layout: Layout, compiled: CompiledLayout) => {
+      if (without.length === 0) {
+        out.set(key, { layout, compiled });
+        return;
+      }
+      const plain = withoutFeatures(layout, without);
+      try {
+        out.set(key, { layout: plain, compiled: compileLayout(plain) });
+      } catch {
+        // Left unranked, like a saved layout that will not compile.
+      }
+    };
+    for (const { layout, compiled } of bundled) add(`b:${layout.id}`, layout, compiled);
+    for (const [id, layout] of savedLayouts) {
+      const compiled = savedCompiled.get(id);
+      if (compiled) add(`s:${id}`, layout, compiled);
+    }
+    return out;
+  }, [bundled, savedLayouts, savedCompiled, without]);
+
+  const summaryEntries: SummaryEntry[] = useMemo(
+    () => [
+      ...bundled.map(({ layout }) => {
+        const key = `b:${layout.id}`;
+        return { key, layout: ranked.get(key)?.layout ?? null };
+      }),
+      ...saved.entries.map((e) => {
+        const key = `s:${e.id}`;
+        // One that will not compile is still sent, so it fails and shows as unscored.
+        return { key, layout: ranked.get(key)?.layout ?? savedLayouts.get(e.id) ?? null };
+      }),
+    ],
+    [bundled, saved.entries, ranked, savedLayouts],
+  );
   const summaryOptions: SummaryOptions = useMemo(
     () => ({
       corpusId: params.corpus,
@@ -347,30 +425,47 @@ export function LibraryView() {
     [params.corpus, params.caseMode, params.textClass, params.sample, ruleSet],
   );
   const { summaries, pending } = useSummaries(summaryEntries, summaryOptions);
+
+  // A layout that cannot type letters the corpus's language needs skips them, and skipping is free:
+  // it would rank above one that pays to type them. Those go behind, whatever their numbers.
+  const lacking = useMemo(() => {
+    const out = new Map<string, { language: string; letters: string[] }>();
+    if (!corpusLanguage) return out;
+    const tags = corpusLanguage.split('+').map((t) => t.trim());
+    const check = (key: string, compiled: CompiledLayout) => {
+      for (const tag of tags) {
+        const coverage = layoutLanguageCoverage(compiled, tag);
+        if (coverage && !languageCovered(coverage)) {
+          out.set(key, { language: coverage.name, letters: coverage.missingRequired });
+          return;
+        }
+      }
+    };
+    for (const [key, { compiled }] of ranked) check(key, compiled);
+    return out;
+  }, [corpusLanguage, ranked]);
+  const behind = useMemo(() => new Set(lacking.keys()), [lacking]);
   // Every layout failing at once means the corpus or rule set is at fault, not the layouts.
   const unscored =
     summaries.size > 0 && [...summaries.values()].every((s) => s.effort === null && s.sfb === null);
 
-  // Cards would jump around as each score landed, so the list keeps its order until all are in and
-  // then moves once. Sorting by name needs no scores and applies at once.
-  const settled = pending === 0 || sortBy === 'name';
+  // The chosen order applies from the first score on: each layout takes its place as its score
+  // lands, and those still being scored wait below the ranked ones.
   const bundledSorted = useMemo(() => {
-    if (!settled) return bundled;
-    const by = compareBy(sortBy, summaries);
+    const by = compareBy(sortBy, summaries, behind);
     return [...bundled].sort((a, b) =>
       by(
         { key: `b:${a.layout.id}`, name: a.layout.name },
         { key: `b:${b.layout.id}`, name: b.layout.name },
       ),
     );
-  }, [bundled, settled, sortBy, summaries]);
+  }, [bundled, sortBy, summaries, behind]);
   const savedSorted = useMemo(() => {
-    if (!settled) return saved.entries;
-    const by = compareBy(sortBy, summaries);
+    const by = compareBy(sortBy, summaries, behind);
     return [...saved.entries].sort((a, b) =>
       by({ key: `s:${a.id}`, name: a.name }, { key: `s:${b.id}`, name: b.name }),
     );
-  }, [saved.entries, settled, sortBy, summaries]);
+  }, [saved.entries, sortBy, summaries, behind]);
 
   // The preview follows the text as it is typed, so a malformed import is obvious immediately.
   useEffect(() => {
@@ -395,7 +490,7 @@ export function LibraryView() {
   const openInAnalyzer = useCallback(async () => {
     if (!preview) return;
     const blob = await encodeInline(preview.layout);
-    navigate({ to: '/', search: { layout: inlineRef(blob) } as never });
+    navigate({ to: '/analyze', search: { layout: inlineRef(blob) } as never });
   }, [preview, navigate]);
 
   /**
@@ -539,6 +634,27 @@ export function LibraryView() {
         </label>
       </div>
 
+      <fieldset className="lm-rank-with flex flex-wrap items-center gap-x-3 gap-y-1">
+        <legend className="text-xs opacity-70 float-left mr-1">Rank with</legend>
+        {FEATURE_KINDS.map((kind) => (
+          <label key={kind} className="label cursor-pointer gap-1.5 p-0">
+            <input
+              type="checkbox"
+              className="checkbox checkbox-xs"
+              checked={!without.includes(kind)}
+              onChange={(e) =>
+                setParams({
+                  without: e.target.checked
+                    ? without.filter((k) => k !== kind)
+                    : FEATURE_KINDS.filter((k) => k === kind || without.includes(k)),
+                })
+              }
+            />
+            <span className="label-text text-xs">{FEATURE_LABELS[kind]}</span>
+          </label>
+        ))}
+      </fieldset>
+
       <div className="flex flex-wrap items-center gap-2">
         <fieldset className="join" aria-label="Sort layouts by">
           <legend className="text-xs opacity-70 float-left mr-2 self-center">Sort by</legend>
@@ -561,7 +677,13 @@ export function LibraryView() {
             ? `Scoring layouts… ${summaryEntries.length - pending} of ${summaryEntries.length}`
             : unscored
               ? `Could not score the layouts on ${corpusName}.`
-              : `Lower is better for both. ${Math.min(params.sample, RANK_MAX_SYMBOLS).toLocaleString('en-US')} symbols of ${corpusName}, ${ruleSet.name ?? 'rule set'}.`}
+              : `Lower is better for both. ${Math.min(params.sample, RANK_MAX_SYMBOLS).toLocaleString('en-US')} symbols of ${corpusName}, ${ruleSet.name ?? 'rule set'}${
+                  without.length > 0 ? `, typed without ${listOf(without)}` : ''
+                }.${
+                  behind.size > 0 && sortBy !== 'name'
+                    ? ` Layouts that cannot type every letter ${[...lacking.values()][0]?.language} needs come last.`
+                    : ''
+                }`}
         </span>
       </div>
 
@@ -584,11 +706,14 @@ export function LibraryView() {
                         .join(' · ')}
                     </p>
                     <LanguageBadges compiled={compiled} />
-                    <Ranking summary={summaries.get(`b:${layout.id}`)} />
+                    <Ranking
+                      summary={summaries.get(`b:${layout.id}`)}
+                      lacking={lacking.get(`b:${layout.id}`)}
+                    />
                   </div>
                   <div className="flex shrink-0 gap-1">
                     <Link
-                      to="/"
+                      to="/analyze"
                       search={analyzeSearch(layout.id)}
                       className="btn btn-primary btn-xs"
                     >
@@ -635,7 +760,10 @@ export function LibraryView() {
               <article key={entry.id} className="card bg-base-100 border border-base-300">
                 <div className="card-body gap-2 p-4">
                   <h3 className="font-semibold text-sm">{entry.name}</h3>
-                  <Ranking summary={summaries.get(`s:${entry.id}`)} />
+                  <Ranking
+                    summary={summaries.get(`s:${entry.id}`)}
+                    lacking={lacking.get(`s:${entry.id}`)}
+                  />
                   {savedCompiled.has(entry.id) && (
                     <LayerStrip
                       id={`kb-saved-${entry.id}`}
@@ -655,7 +783,7 @@ export function LibraryView() {
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <Link
-                      to="/"
+                      to="/analyze"
                       search={analyzeSearch(savedRef(entry.id))}
                       className="btn btn-primary btn-xs"
                     >

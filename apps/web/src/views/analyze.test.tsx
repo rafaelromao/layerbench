@@ -9,7 +9,7 @@ import { renderRoute } from '../test/render.js';
  */
 describe('Analyze', () => {
   it('renders Magic Romak and completes the analysis', async () => {
-    renderRoute('/?layout=magic-romak&corpus=pt-br-work&sample=20000');
+    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-work&sample=20000');
 
     // Layer tabs come from the compiled layout, so they appear before any analysis finishes.
     expect(await screen.findByRole('tab', { name: 'Alpha 1' })).toBeInTheDocument();
@@ -22,7 +22,7 @@ describe('Analyze', () => {
 
   it('explains how a word is typed', async () => {
     const user = userEvent.setup();
-    renderRoute('/?layout=magic-romak&corpus=pt-br-work&sample=20000');
+    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-work&sample=20000');
     await screen.findByText('Same finger bigrams');
 
     await user.type(screen.getByLabelText('How is this typed?'), 'ação');
@@ -36,7 +36,7 @@ describe('Analyze', () => {
 
   it('plays a word on the board, press by press, on the layer each press lands on', async () => {
     const user = userEvent.setup();
-    renderRoute('/?layout=magic-romak&corpus=pt-br-work&sample=20000');
+    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-work&sample=20000');
     await screen.findByText('Same finger bigrams');
     await user.type(screen.getByLabelText('How is this typed?'), 'ação');
 
@@ -56,7 +56,7 @@ describe('Analyze', () => {
 
   it('shows the combos that type, and lights one as it is played', async () => {
     const user = userEvent.setup();
-    renderRoute('/?layout=magic-romak&corpus=pt-br-work&sample=20000');
+    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-work&sample=20000');
     await screen.findByText('Same finger bigrams');
     await user.type(screen.getByLabelText('How is this typed?'), 'à');
 
@@ -75,7 +75,7 @@ describe('Analyze', () => {
 
   it('keeps the link canonical as parameters change', async () => {
     const user = userEvent.setup();
-    const { currentSearch } = renderRoute('/?layout=qwerty&corpus=en-work&sample=20000');
+    const { currentSearch } = renderRoute('/analyze?layout=qwerty&corpus=en-work&sample=20000');
     await screen.findByText('Same finger bigrams');
 
     await user.selectOptions(screen.getByLabelText('Sample size'), '100000');
@@ -87,8 +87,27 @@ describe('Analyze', () => {
     expect(currentSearch()).toBe('?corpus=en-work&layout=qwerty&sample=100000');
   });
 
+  it('analyzes a layout without the features a Library link leaves out', async () => {
+    const user = userEvent.setup();
+    const { currentSearch } = renderRoute(
+      '/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000&off=macros',
+    );
+    await screen.findByText('Same finger bigrams');
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Typed without multi-letter macros, as the Library ranked it.',
+    );
+
+    // `qu` is one press with the macro; without it, `q` and then `u`.
+    await user.type(screen.getByLabelText('How is this typed?'), 'qu');
+    expect(await screen.findByText('3 presses')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Use every feature' }));
+    await waitFor(() => expect(currentSearch()).not.toContain('off='));
+    expect(await screen.findByText('2 presses')).toBeInTheDocument();
+  });
+
   it('shows the metrics for a single-layer layout without layer costs', async () => {
-    renderRoute('/?layout=qwerty&corpus=en-work&sample=20000');
+    renderRoute('/analyze?layout=qwerty&corpus=en-work&sample=20000');
     await screen.findByText('Same finger bigrams');
 
     const strip = screen.getByRole('list', { name: 'Summary metrics' });

@@ -21,13 +21,16 @@ steps and opens further as you need it. Metric definitions and their sources are
 
 | Route | What it does |
 |---|---|
-| `/` | Analyze a layout: heat-mapped keyboard, every metric, and a trace of how any word is typed |
+| `/library` | Where the site opens. Bundled and saved layouts, sorted by Effort or SFB; import from keymap-drawer YAML, JSON or a text layout |
+| `/analyze` | Analyze a layout: heat-mapped keyboard, every metric, and a trace of how any word is typed |
 | `/edit` | Edit a layout on the board: select a key and choose what it does, or type it in ZMK's syntax; drag to swap; rename, reorder and duplicate layers |
 | `/compare` | Two layouts side by side, with a delta for each metric |
 | `/rules` | Enable, re-parameterize or compose rules, each with its sources; save the set |
 | `/corpus` | Browse the shipped corpora and build your own from pasted or uploaded text |
-| `/library` | Bundled and saved layouts, sorted by Effort or SFB; import from keymap-drawer YAML, JSON or a text layout |
 | `/guide` | The user guide and the metric glossary |
+
+`/` opens the Library. A link to an analysis from before Analyze had its own path, `/?layout=…`,
+still opens that analysis.
 
 A link carries the whole analysis, so any view can be shared as it stands. `?layout=inline:…` even
 carries a layout that was never saved.

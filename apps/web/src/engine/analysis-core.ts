@@ -12,6 +12,7 @@ import {
   DEFAULT_SOFT,
   enumerateProducers,
   explain,
+  fnv1a,
   type Layout,
   type LayoutJson,
   languageSoft,
@@ -19,8 +20,10 @@ import {
   parseLayout,
   type Report,
   ReportCache,
+  reevaluate,
   relabelEligible,
   relabelSwap,
+  stableStringify,
   structureHash,
 } from '@layoutmaster/core';
 import type {
@@ -39,7 +42,13 @@ import { toReportDTO } from './report-dto.js';
  * here touches the DOM, and the only I/O is through the injected corpus loader.
  */
 export class AnalysisCore {
+  /** Scored reports, one per layout, corpus and rule set. */
   private readonly reports = new ReportCache();
+  /**
+   * The last report typed for each layout and corpus, whatever it was scored by. Typing is what
+   * costs; a different rule set, or counting space, only re-scores the same presses.
+   */
+  private readonly runs = new ReportCache();
   private readonly corpora = new Map<string, Corpus>();
   private readonly compiled = new Map<string, ReturnType<typeof compileLayout>>();
   private readonly facts = new Map<string, CorpusFactsDTO>();
@@ -148,7 +157,8 @@ export class AnalysisCore {
     return c;
   }
 
-  keyFor(request: AnalyzeRequest): string {
+  /** Everything that changes what is typed: the layout, the corpus and how it is read. */
+  private runKey(request: AnalyzeRequest): string {
     return cacheKey({
       structureHash: structureHash(this.layoutOf(request.layout), {
         caseMode: request.caseMode,
@@ -164,15 +174,34 @@ export class AnalysisCore {
     });
   }
 
+  /** A report's identity: what was typed, and the rules it was scored by. */
+  keyFor(request: AnalyzeRequest): string {
+    return `${this.runKey(request)}|${fnv1a(stableStringify(request.ruleSet))}`;
+  }
+
+  /**
+   * The report for a request if nothing needs typing: already scored, or typed before under other
+   * rules and re-scored now, which takes milliseconds.
+   */
+  private cached(request: AnalyzeRequest, key: string): Report | undefined {
+    const hit = this.reports.get(key);
+    if (hit) return hit;
+    const run = this.runs.get(this.runKey(request));
+    if (!run) return undefined;
+    const rescored = reevaluate(run, request.ruleSet);
+    this.reports.set(key, rescored);
+    return rescored;
+  }
+
   peek(request: AnalyzeRequest): ReportDTO | null {
     const key = this.keyFor(request);
-    const hit = this.reports.get(key);
+    const hit = this.cached(request, key);
     return hit ? toReportDTO(hit, key) : null;
   }
 
   async analyze(request: AnalyzeRequest, onProgress?: (p: Progress) => void): Promise<ReportDTO> {
     const key = this.keyFor(request);
-    const cached = this.reports.get(key);
+    const cached = this.cached(request, key);
     if (cached) return toReportDTO(cached, key);
 
     const corpus = await this.corpus(request.corpusId);
@@ -189,6 +218,7 @@ export class AnalysisCore {
       softSymbols: [...DEFAULT_SOFT, ...languageSoft(corpus.language)],
     });
     onProgress?.({ done: total, total });
+    this.runs.set(this.runKey(request), report);
     this.reports.set(key, report);
     return toReportDTO(report, key);
   }

@@ -24,9 +24,26 @@ different keys. It is the first measure of the
 
 ### Sorting and comparing
 
-**Library** sorts every layout by Effort or by SFB and shows both on each card, all scored on the
-same sample of the same text. **Compare** puts every number for two layouts side by side, with the
-difference and which of the two does better.
+**Library**, where the site opens, sorts every layout by Effort or by SFB and shows both on each
+card, all scored on the same sample of the same text. Each layout takes its place as its score
+arrives. **Compare** puts every number for two layouts side by side, with the difference and which
+of the two does better.
+
+Layouts are compared on the text, not on their presses. SFB and the other pair rules are a share of
+the letter pairs the text has, and Effort is per character typed, so a layout's layer taps, holds
+and one-shots, which cost nothing on a thumb and can never be a same-finger letter pair, do not make
+it look better than it types. A layout typing each character with one press gets the same numbers
+either way.
+
+A layout that has no key for letters the text's language needs skips them, and skipping is free.
+Each card says what share of the text it skips, and on a Portuguese text, say, the layouts that
+cannot type `ã` or `ç` are ranked after the ones that can.
+
+**Rank with** switches special features off for the ranking: magic keys (they type their default
+letter), the repeat key (doubled letters are tapped twice), typing combos, and macros that type two
+letters or more, such as `qu` or `ão`. A macro typing one letter, like Magic Romak's accents, is how
+the layout reaches that letter, and stays. What a feature typed is typed another way, or skipped if
+there is none. **Analyze** on a card opens the layout ranked the same way, and says so.
 
 ### Changing the costs
 

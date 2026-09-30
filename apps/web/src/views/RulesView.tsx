@@ -263,7 +263,7 @@ export function RulesView() {
             </form>
 
             <Link
-              to="/"
+              to="/analyze"
               search={{ rules: state.sourceRef } as never}
               className="lm-wide btn btn-sm btn-primary"
             >

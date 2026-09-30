@@ -14,6 +14,10 @@ import type { AnalyzeRequest, ReportDTO } from './protocol.js';
 export interface LayoutSummary {
   effort: number | null;
   sfb: number | null;
+  /** Share of the text's characters the layout could not type, in percent. */
+  skipped: number;
+  /** The characters it could not type, most frequent first. */
+  missing: string[];
 }
 
 export interface SummaryOptions {
@@ -50,7 +54,16 @@ function summarize(report: ReportDTO): LayoutSummary {
     const v = report.results.find((r) => r.id === id)?.value;
     return typeof v === 'number' ? v : null;
   };
-  return { effort: value('effort'), sfb: value('sfb') };
+  // What the layout typed and what it had to leave out are both characters of the same text.
+  const unproducible = report.coverage.unproducible;
+  const left = unproducible.reduce((sum, [, count]) => sum + count, 0);
+  const whole = report.stats.symbols + left;
+  return {
+    effort: value('effort'),
+    sfb: value('sfb'),
+    skipped: whole > 0 ? (left / whole) * 100 : 0,
+    missing: unproducible.map(([symbol]) => symbol),
+  };
 }
 
 function requestFor(layout: Layout, opts: SummaryOptions): AnalyzeRequest {
@@ -121,7 +134,7 @@ export function useSummaries(
         } catch (e) {
           if (cancelled || (e instanceof DOMException && e.name === 'AbortError')) return;
           // A layout that cannot be analyzed ranks last rather than stopping the others.
-          summary = { effort: null, sfb: null };
+          summary = { effort: null, sfb: null, skipped: 0, missing: [] };
         }
         cache.set(r.hash, summary);
         if (!cancelled) setSummaries((prev) => new Map(prev).set(r.key, summary));
@@ -140,13 +153,20 @@ export function useSummaries(
 
 export type SortKey = 'effort' | 'sfb' | 'name';
 
-/** Lower is better for both metrics; a layout without a number goes last. */
+/**
+ * Lower is better for both metrics; a layout without a number, or not scored yet, goes last. Layouts
+ * in `behind` — those missing letters the text's language cannot be written without — rank after
+ * every other, each group in its own order: a layout skipping `ç` is spared what it costs to type.
+ */
 export function compareBy(
   key: SortKey,
   summaries: Map<string, LayoutSummary>,
+  behind: ReadonlySet<string> = new Set(),
 ): (a: { key: string; name: string }, b: { key: string; name: string }) => number {
   return (a, b) => {
     if (key !== 'name') {
+      const group = Number(behind.has(a.key)) - Number(behind.has(b.key));
+      if (group !== 0) return group;
       const va = summaries.get(a.key)?.[key] ?? null;
       const vb = summaries.get(b.key)?.[key] ?? null;
       if (va !== vb) {

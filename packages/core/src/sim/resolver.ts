@@ -9,6 +9,7 @@ import {
   type RunStats,
   type SimulationStats,
   type SimulationTables,
+  TextTotals,
   type WordTrace,
 } from '../tables/tables.js';
 import { type Action, type KeyEvent, Machine, peelBinding } from './machine.js';
@@ -171,6 +172,8 @@ export class Simulator {
   readonly registry = new LogicalKeyRegistry();
   private readonly noSpace = new NgramAccumulator();
   private readonly withSpace = new NgramAccumulator();
+  private readonly textNoSpace = new TextTotals();
+  private readonly textWithSpace = new TextTotals();
   private readonly runs: RunStats = {
     handRuns: [],
     handStrings: new Map(),
@@ -653,11 +656,15 @@ export class Simulator {
     this.curWordPresses = 0;
     if (this.options.crossWord === 'reset' || hard) {
       this.noSpace.boundary();
+      this.textNoSpace.boundary();
       this.flushHandRun();
       this.flushFingerRun();
       this.flushLayerRun();
     }
-    if (hard) this.withSpace.boundary();
+    if (hard) {
+      this.withSpace.boundary();
+      this.textWithSpace.boundary();
+    }
     for (const f of FINGERS) this.lastFingerPosWord[f] = this.homeKeys[f];
   }
 
@@ -746,6 +753,7 @@ export class Simulator {
       if (g === ' ') {
         this.wordBoundary(false);
         this.typeSpace();
+        this.textWithSpace.push();
         i += 1;
         continue;
       }
@@ -753,6 +761,10 @@ export class Simulator {
       for (const [token, len, next] of this.tokenCandidates(stream, i)) {
         if (this.typeToken(token)) {
           this.curWord.push(token);
+          for (let k = 0; k < len; k++) {
+            this.textNoSpace.push();
+            this.textWithSpace.push();
+          }
           this.stats.symbols += len;
           symbols += len;
           i = next;
@@ -775,6 +787,7 @@ export class Simulator {
       registry: this.registry,
       noSpace: this.noSpace.tables,
       withSpace: this.withSpace.tables,
+      text: { noSpace: this.textNoSpace.totals, withSpace: this.textWithSpace.totals },
       runs: this.runs,
       words: this.words,
       travel: this.travel,

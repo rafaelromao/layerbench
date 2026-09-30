@@ -36,7 +36,11 @@ export const LIBRARY = '/library?sample=1000';
 export function renderRoute(
   path: string,
   opts: { client?: AnalysisClient; storage?: StorageAdapter } = {},
-): RenderResult & { client: AnalysisClient; currentSearch: () => string } {
+): RenderResult & {
+  client: AnalysisClient;
+  currentSearch: () => string;
+  currentPath: () => string;
+} {
   const client = opts.client ?? testClient();
   const router = createAppRouter({
     history: createMemoryHistory({ initialEntries: [path] }),
@@ -50,5 +54,10 @@ export function renderRoute(
     </AnalysisClientProvider>,
   );
   // Memory history never touches window.location, so the router is the source of truth for links.
-  return { ...result, client, currentSearch: () => router.state.location.searchStr };
+  return {
+    ...result,
+    client,
+    currentSearch: () => router.state.location.searchStr,
+    currentPath: () => router.state.location.pathname,
+  };
 }

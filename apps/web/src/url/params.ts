@@ -1,4 +1,4 @@
-import type { TextClass } from '@layoutmaster/core';
+import { FEATURE_KINDS, type FeatureKind, isFeatureKind, type TextClass } from '@layoutmaster/core';
 import { PRESET_IDS } from '@layoutmaster/core/rules';
 
 /**
@@ -28,6 +28,8 @@ export interface Params {
   layer: number;
   heat: HeatMode;
   sample: number;
+  /** Special features the layout is typed without, as the Library ranks it. */
+  without: FeatureKind[];
 }
 
 export const DEFAULT_PARAMS: Params = {
@@ -42,6 +44,7 @@ export const DEFAULT_PARAMS: Params = {
   layer: 0,
   heat: 'usage',
   sample: 300_000,
+  without: [],
 };
 
 /** Sample sizes offered in the toolbar. */
@@ -73,6 +76,13 @@ function validTextClass(v: string | undefined): TextClass {
   return 'letters';
 }
 
+/** `off=magic,combos`: known features only, each once, always in the same order. */
+function validFeatures(v: string | undefined): FeatureKind[] {
+  if (!v) return [];
+  const asked = new Set(v.split(',').filter(isFeatureKind));
+  return FEATURE_KINDS.filter((f) => asked.has(f));
+}
+
 function validPreset(v: string | undefined): string {
   if (v === undefined) return DEFAULT_PARAMS.preset;
   if (v.startsWith('saved:')) return v;
@@ -94,6 +104,7 @@ export function parseParams(raw: RawSearch): Params {
     layer: int(raw.layer, DEFAULT_PARAMS.layer, 0, 31),
     heat: heat && HEAT_MODES.includes(heat) ? heat : DEFAULT_PARAMS.heat,
     sample: int(raw.sample, DEFAULT_PARAMS.sample, 10_000, 5_000_000),
+    without: validFeatures(raw.off),
   };
 }
 
@@ -115,6 +126,7 @@ export function toSearch(p: Params, overrides: Partial<Params> = {}): RawSearch 
   if (q.layer !== DEFAULT_PARAMS.layer) out.layer = String(q.layer);
   if (q.heat !== DEFAULT_PARAMS.heat) out.heat = q.heat;
   if (q.sample !== DEFAULT_PARAMS.sample) out.sample = String(q.sample);
+  if (q.without.length > 0) out.off = q.without.join(',');
   return out;
 }
 

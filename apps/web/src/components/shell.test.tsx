@@ -10,6 +10,33 @@ function freshStorage(): IndexedDbAdapter {
   return new IndexedDbAdapter(`layoutmaster-shell-${++counter}`);
 }
 
+describe('where the site opens', () => {
+  it('opens on the Library, and so does the title', async () => {
+    const user = userEvent.setup();
+    const { currentPath } = renderRoute('/', { storage: freshStorage() });
+    expect(await screen.findByText('Bundled layouts')).toBeInTheDocument();
+    expect(currentPath()).toBe('/library');
+
+    await user.click(screen.getAllByRole('link', { name: 'Compare' })[0]);
+    await waitFor(() => expect(currentPath()).toBe('/compare'));
+    await user.click(screen.getByRole('link', { name: 'LayoutMaster' }));
+    await waitFor(() => expect(currentPath()).toBe('/library'));
+  });
+
+  it('still opens the analysis an older link names', async () => {
+    const { currentPath, currentSearch } = renderRoute(
+      '/?corpus=en-work&layout=qwerty&sample=1000',
+      {
+        storage: freshStorage(),
+      },
+    );
+    expect(await screen.findByLabelText('How is this typed?')).toBeInTheDocument();
+    expect(currentPath()).toBe('/analyze');
+    expect(currentSearch()).toContain('layout=qwerty');
+    expect(currentSearch()).toContain('corpus=en-work');
+  });
+});
+
 describe('the page frame', () => {
   it('offers a skip link to the content', async () => {
     renderRoute(LIBRARY, { storage: freshStorage() });

@@ -2,8 +2,9 @@ import { BUNDLED_LAYOUTS, toCanonicalJson } from '@layoutmaster/core';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
+import type { AnalysisClient, AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
-import { LIBRARY, renderRoute } from '../test/render.js';
+import { LIBRARY, renderRoute, testClient } from '../test/render.js';
 
 let counter = 0;
 
@@ -92,6 +93,104 @@ describe('Ranking layouts', () => {
     const sfbs = cards().map((c) => valueOn(c, 'SFB'));
     expect(sfbs).toEqual([...sfbs].sort((a, b) => a - b));
   }, 90_000);
+
+  /**
+   * An engine that scores the first layouts it is asked for with the efforts given, in turn, and
+   * leaves the rest scoring for as long as the test looks.
+   */
+  function scoringOnly(efforts: number[]): {
+    client: AnalysisClient;
+    scored: string[];
+    requests: AnalyzeRequest[];
+  } {
+    const real = testClient();
+    const scored: string[] = [];
+    const requests: AnalyzeRequest[] = [];
+    const analyze = (request: AnalyzeRequest, opts?: { signal?: AbortSignal }) => {
+      requests.push(request);
+      const effort = efforts[scored.length];
+      if (effort === undefined) {
+        return new Promise<ReportDTO>((_, reject) =>
+          opts?.signal?.addEventListener('abort', () =>
+            reject(new DOMException('left the Library', 'AbortError')),
+          ),
+        );
+      }
+      scored.push(String(request.layout.name));
+      const report = {
+        results: [
+          { id: 'effort', value: effort },
+          { id: 'sfb', value: effort / 100 },
+        ],
+        stats: { symbols: 1000 },
+        coverage: { unproducible: [], softDropped: [], excludedByCase: [] },
+      };
+      return Promise.resolve(report as unknown as ReportDTO);
+    };
+    const client = new Proxy(real, {
+      get(target, prop) {
+        if (prop === 'peek') return async () => null;
+        if (prop === 'analyze') return analyze;
+        const member = Reflect.get(target, prop);
+        return typeof member === 'function' ? member.bind(target) : member;
+      },
+    });
+    return { client, scored, requests };
+  }
+
+  it('orders the list from the first score on, not once every layout is scored', async () => {
+    const { client, scored } = scoringOnly([900, 100]);
+    // Scores are kept for the session, so this ranks on a sample no other test ranks on (the
+    // smallest allowed is 10,000): none of its scores can be known already.
+    renderRoute('/library?sample=10001', { client, storage: freshStorage() });
+
+    await screen.findByText(/^Scoring layouts… 2 of/, undefined, { timeout: 60_000 });
+    expect(screen.getByRole('radio', { name: 'Effort' })).toBeChecked();
+    const names = [...document.querySelectorAll('article h3')].map((h) => h.textContent);
+    // The better of the two scored comes first, the worse second, and the unscored wait below.
+    expect(names.slice(0, 2)).toEqual([scored[1], scored[0]]);
+    expect(cards()).toHaveLength(2);
+  }, 90_000);
+
+  it('ranks a layout that cannot write the text’s language after one that can', async () => {
+    // Magic Romak is scored first and types Portuguese; Qwerty, scored second with a far better
+    // effort, has no key for ã or ç and would skip them for free.
+    const { client, scored } = scoringOnly([900, 100]);
+    renderRoute('/library?corpus=pt-br-general&sample=10002', {
+      client,
+      storage: freshStorage(),
+    });
+
+    await screen.findByText(/^Scoring layouts… 2 of/, undefined, { timeout: 60_000 });
+    expect(scored).toEqual(['Magic Romak', 'Qwerty']);
+    const names = [...document.querySelectorAll('article h3')].map((h) => h.textContent);
+    expect(names.slice(0, 2)).toEqual(['Magic Romak', 'Qwerty']);
+    const qwerty = cards().find((c) => c.querySelector('h3')?.textContent === 'Qwerty');
+    expect(qwerty?.textContent).toMatch(/Cannot type .*ç.*ranked after the layouts that can/);
+  }, 90_000);
+
+  it('scores each layout typed without the features left out of the ranking', async () => {
+    const { client, requests } = scoringOnly([500]);
+    renderRoute('/library?off=macros&sample=10003', { client, storage: freshStorage() });
+    await screen.findByText(/^Scoring layouts… 1 of/, undefined, { timeout: 60_000 });
+    expect(requests[0].layout.name).toBe('Magic Romak');
+    const sent = JSON.stringify(requests[0].layout);
+    // `qu` is two letters in one press, and goes; an accent is one letter, and stays.
+    expect(sent).not.toContain('"symbols":"qu"');
+    expect(sent).toContain('"symbols":"é"');
+  }, 90_000);
+
+  it('says what share of the text a layout skips', async () => {
+    renderRoute('/library?corpus=pt-br-general&sample=10000', { storage: freshStorage() });
+    await screen.findByText(/^Lower is better for both/, undefined, { timeout: 60_000 });
+    expect(screen.getByText(/come last\.$/)).toBeInTheDocument();
+    const qwerty = cards().find((c) => c.querySelector('h3')?.textContent === 'Qwerty');
+    expect(qwerty?.querySelector('.lm-skips')?.textContent).toMatch(/skips \d+\.\d\d% of the text/);
+    // Magic Romak can leave out a stray º or ñ, but it types every letter Portuguese needs.
+    const romak = cards().find((c) => c.querySelector('h3')?.textContent === 'Magic Romak');
+    expect(romak?.textContent).not.toMatch(/Cannot type/);
+    expect(cards()[0]).toBe(romak);
+  }, 90_000);
 });
 
 describe('Choosing what layouts are ranked on', () => {
@@ -120,6 +219,28 @@ describe('Choosing what layouts are ranked on', () => {
     const analyze = within(card).getByRole('link', { name: 'Analyze' }) as HTMLAnchorElement;
     expect(analyze.href).toContain('corpus=pt-br-work');
     expect(analyze.href).toContain('rules=cyanophage');
+  });
+});
+
+describe('Choosing which special features a ranking counts', () => {
+  it('ranks without the features left unticked, and hands that to Analyze', async () => {
+    const user = userEvent.setup();
+    const { currentSearch } = renderRoute(LIBRARY, { storage: freshStorage() });
+    const macros = await screen.findByRole('checkbox', { name: 'Multi-letter macros' });
+    for (const name of ['Magic keys', 'Repeat key', 'Typing combos']) {
+      expect(screen.getByRole('checkbox', { name })).toBeChecked();
+    }
+    expect(macros).toBeChecked();
+
+    await user.click(macros);
+    await waitFor(() => expect(currentSearch()).toContain('off=macros'));
+    expect(macros).not.toBeChecked();
+    const card = screen.getByText('Magic Romak', { selector: 'h3' }).closest('article');
+    const analyze = within(card as HTMLElement).getByRole('link', { name: 'Analyze' });
+    expect((analyze as HTMLAnchorElement).href).toContain('off=macros');
+
+    await user.click(macros);
+    await waitFor(() => expect(currentSearch()).not.toContain('off='));
   });
 });
 
