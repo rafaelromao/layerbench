@@ -1,9 +1,10 @@
 import { Link, useLocation } from '@tanstack/react-router';
-import { type ReactNode, useEffect, useRef } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef } from 'react';
 import { useSession } from '../state/session.js';
 import type { ThemeChoice } from '../state/theme.js';
 import { useToasts } from '../state/toasts.js';
 import { StorageSettings } from '../storage/StorageSettings.js';
+import { useDismiss } from './use-dismiss.js';
 
 const NAV = [
   { to: '/', label: 'Analyze' },
@@ -21,7 +22,7 @@ const THEMES: { value: ThemeChoice; label: string; icon: string }[] = [
   { value: 'dark', label: 'Dark theme', icon: '☾' },
 ];
 
-function ThemeToggle() {
+function ThemeToggle({ onPick }: { onPick?: () => void }) {
   const theme = useSession((s) => s.theme);
   const setTheme = useSession((s) => s.setTheme);
   return (
@@ -35,7 +36,10 @@ function ThemeToggle() {
           aria-label={t.label}
           aria-pressed={theme === t.value}
           title={t.label}
-          onClick={() => setTheme(t.value)}
+          onClick={() => {
+            setTheme(t.value);
+            onPick?.();
+          }}
         >
           {t.icon}
         </button>
@@ -93,6 +97,49 @@ function useFocusOnRouteChange() {
   return main;
 }
 
+/**
+ * The views, behind one button on a narrow screen. A `<details>` stays open until it is told
+ * otherwise, so it is closed when a view is chosen, when the pointer goes down anywhere else, and
+ * on Escape — and after any navigation, whatever caused it.
+ */
+function MobileMenu() {
+  const menu = useRef<HTMLDetailsElement>(null);
+  const { pathname } = useLocation();
+  const close = useCallback(() => {
+    if (menu.current) menu.current.open = false;
+  }, []);
+  useDismiss(menu, close);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the path is the trigger, not an input.
+  useEffect(close, [pathname, close]);
+
+  return (
+    <details ref={menu} className="dropdown dropdown-end md:hidden ml-2">
+      <summary className="btn btn-ghost btn-sm">Menu</summary>
+      <div className="dropdown-content bg-base-100 rounded-box z-30 w-56 p-2 shadow space-y-2">
+        <ul className="menu w-full p-0">
+          {NAV.map((item) => (
+            <li key={item.to}>
+              <Link
+                to={item.to}
+                onClick={close}
+                activeProps={{ className: 'menu-active' }}
+                activeOptions={{ exact: item.to === '/' }}
+              >
+                {item.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+        {/* The header has no room for it on a phone; here it is one tap from anywhere. */}
+        <div className="flex items-center justify-between gap-2 border-t border-base-300 px-3 pt-2">
+          <span className="text-sm opacity-70">Theme</span>
+          <ThemeToggle onPick={close} />
+        </div>
+      </div>
+    </details>
+  );
+}
+
 /** Page frame: navigation, theme control and the toast region every view shares. */
 export function Shell({ children }: { children: ReactNode }) {
   const main = useFocusOnRouteChange();
@@ -112,7 +159,7 @@ export function Shell({ children }: { children: ReactNode }) {
               <li key={item.to}>
                 <Link
                   to={item.to}
-                  activeProps={{ className: 'active' }}
+                  activeProps={{ className: 'menu-active' }}
                   activeOptions={{ exact: item.to === '/' }}
                 >
                   {item.label}
@@ -121,19 +168,12 @@ export function Shell({ children }: { children: ReactNode }) {
             ))}
           </ul>
         </nav>
-        <details className="dropdown dropdown-end md:hidden ml-2">
-          <summary className="btn btn-ghost btn-sm">Menu</summary>
-          <ul className="menu dropdown-content bg-base-100 rounded-box z-30 w-40 p-2 shadow">
-            {NAV.map((item) => (
-              <li key={item.to}>
-                <Link to={item.to}>{item.label}</Link>
-              </li>
-            ))}
-          </ul>
-        </details>
+        <MobileMenu />
         <div className="ml-auto flex items-center gap-2">
           <StorageSettings />
-          <ThemeToggle />
+          <div className="hidden md:block">
+            <ThemeToggle />
+          </div>
         </div>
       </header>
       <main

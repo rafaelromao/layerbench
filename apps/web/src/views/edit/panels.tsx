@@ -112,7 +112,7 @@ export function FeaturesPanel({ state, send }: PanelProps) {
 
       <FeatureRow
         title="Caps word"
-        hint="Hold shift for the rest of the word, from the shift key."
+        hint="Capitals until the word ends, from pressing shift while shift is already on."
         on={enabled(f.capsWord)}
         onToggle={(on) => set({ ...f, capsWord: on ? {} : undefined })}
       >
@@ -244,73 +244,75 @@ export function LayersPanel({ state, send }: PanelProps) {
               setDragging(null);
               if (Number.isInteger(from)) send({ type: 'moveLayer', from, to: i });
             }}
-            className={`flex flex-wrap items-center gap-1 rounded px-1 border border-transparent ${
+            className={`lm-layer-row rounded px-1 border border-transparent ${
               i > 0 ? 'hover:border-base-300' : ''
             } ${dragging === i ? 'opacity-50' : ''}`}
           >
-            <span
-              aria-hidden="true"
-              className={i > 0 ? 'cursor-grab opacity-40 w-3' : 'opacity-0 w-3'}
-            >
+            <span aria-hidden="true" className={i > 0 ? 'cursor-grab opacity-40' : 'opacity-0'}>
               ⠿
             </span>
-            <TextField
-              label={`Name of layer ${layer.id}`}
-              value={layer.name ?? layer.id}
-              className="input-xs w-32"
-              mono={false}
-              onCommit={(name) => send({ type: 'renameLayer', id: layer.id, name })}
-            />
-            <span className="font-mono text-xs opacity-60 w-20 truncate">{layer.id}</span>
-            {i === 0 ? (
-              <span className="badge badge-ghost badge-sm">base</span>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-xs"
-                  aria-label={`Move ${nameOf(i)} up`}
-                  disabled={i <= 1}
-                  onClick={() => send({ type: 'moveLayer', from: i, to: i - 1 })}
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-xs"
-                  aria-label={`Move ${nameOf(i)} down`}
-                  disabled={i === layers.length - 1}
-                  onClick={() => send({ type: 'moveLayer', from: i, to: i + 1 })}
-                >
-                  ↓
-                </button>
-              </>
-            )}
-            <button
-              type="button"
-              className="btn btn-ghost btn-xs"
-              aria-label={`Duplicate ${nameOf(i)}`}
-              title="Duplicate"
-              onClick={() => send({ type: 'duplicateLayer', id: layer.id })}
-            >
-              ⧉
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost btn-xs"
-              aria-label={`Remove ${nameOf(i)}`}
-              title={i === 0 ? 'The base layer cannot be removed' : 'Remove'}
-              disabled={i === 0}
-              onClick={() => {
-                // A layer still in use is refused with the keys that use it; only a removal that
-                // lands is worth a message.
-                const blocked = layerReachedFrom(state.layout, layer.id).length > 0;
-                send({ type: 'removeLayer', id: layer.id });
-                if (!blocked) toast.info(`Removed ${nameOf(i)} — Undo brings it back`);
-              }}
-            >
-              ✕
-            </button>
+            <div className="min-w-0">
+              <TextField
+                label={`Name of layer ${layer.id}`}
+                value={layer.name ?? layer.id}
+                className="input-xs w-full"
+                mono={false}
+                onCommit={(name) => send({ type: 'renameLayer', id: layer.id, name })}
+              />
+              <span className="block truncate font-mono text-[10px] opacity-60">{layer.id}</span>
+            </div>
+            {/* Four slots in every row, so the buttons line up down the list. */}
+            <div className="lm-layer-actions">
+              {i === 0 ? (
+                <span className="lm-layer-base badge badge-ghost badge-sm">base</span>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-xs btn-square"
+                    aria-label={`Move ${nameOf(i)} up`}
+                    disabled={i <= 1}
+                    onClick={() => send({ type: 'moveLayer', from: i, to: i - 1 })}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-xs btn-square"
+                    aria-label={`Move ${nameOf(i)} down`}
+                    disabled={i === layers.length - 1}
+                    onClick={() => send({ type: 'moveLayer', from: i, to: i + 1 })}
+                  >
+                    ↓
+                  </button>
+                </>
+              )}
+              <button
+                type="button"
+                className="btn btn-ghost btn-xs btn-square"
+                aria-label={`Duplicate ${nameOf(i)}`}
+                title="Duplicate"
+                onClick={() => send({ type: 'duplicateLayer', id: layer.id })}
+              >
+                ⧉
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-xs btn-square"
+                aria-label={`Remove ${nameOf(i)}`}
+                title={i === 0 ? 'The base layer cannot be removed' : 'Remove'}
+                disabled={i === 0}
+                onClick={() => {
+                  // A layer still in use is refused with the keys that use it; only a removal
+                  // that lands is worth a message.
+                  const blocked = layerReachedFrom(state.layout, layer.id).length > 0;
+                  send({ type: 'removeLayer', id: layer.id });
+                  if (!blocked) toast.info(`Removed ${nameOf(i)} — Undo brings it back`);
+                }}
+              >
+                ✕
+              </button>
+            </div>
           </li>
         ))}
       </ol>
@@ -509,7 +511,7 @@ export function CombosPanel({ state, send }: PanelProps) {
       </section>
 
       <form
-        className="flex flex-wrap items-center gap-2"
+        className="lm-combo-form"
         onSubmit={(e) => {
           e.preventDefault();
           const chosenKeys = picking
@@ -534,13 +536,7 @@ export function CombosPanel({ state, send }: PanelProps) {
           setOutput('');
         }}
       >
-        <button
-          type="button"
-          className={`btn btn-xs ${picking ? 'btn-primary' : ''}`}
-          onClick={() => send({ type: picking ? 'comboPickCancel' : 'comboPickStart' })}
-        >
-          {picking ? 'picking on board…' : 'pick on board'}
-        </button>
+        {/* Keys and output each take the width left beside their small companion. */}
         {picking ? (
           <output className="font-mono text-xs" aria-label="Combo keys picked">
             {chosen.length > 0 ? chosen.join('+') : 'click the keys'}
@@ -548,16 +544,23 @@ export function CombosPanel({ state, send }: PanelProps) {
         ) : (
           <input
             aria-label="Combo keys"
-            placeholder="Keys (e.g. LHR+LHM)"
-            className="input input-xs input-bordered font-mono"
+            placeholder="Keys: LHR+LHM"
+            className="input input-xs input-bordered font-mono w-full"
             value={keys}
             onChange={(e) => setKeys(e.target.value)}
           />
         )}
+        <button
+          type="button"
+          className={`btn btn-xs ${picking ? 'btn-primary' : ''}`}
+          onClick={() => send({ type: picking ? 'comboPickCancel' : 'comboPickStart' })}
+        >
+          {picking ? 'picking on board…' : 'pick on board'}
+        </button>
         <input
           aria-label="Combo output"
-          placeholder="Output (e.g. q, &macro ão)"
-          className="input input-xs input-bordered font-mono w-36"
+          placeholder="Output: q, &macro ão"
+          className="input input-xs input-bordered font-mono w-full"
           value={output}
           onChange={(e) => {
             setOutput(e.target.value);
@@ -573,7 +576,7 @@ export function CombosPanel({ state, send }: PanelProps) {
           <option value="typing">typing</option>
           <option value="command">command</option>
         </select>
-        <button type="submit" className="btn btn-xs">
+        <button type="submit" className="lm-wide btn btn-xs btn-primary">
           Add combo on {layerName}
         </button>
       </form>
@@ -760,6 +763,7 @@ export function JsonPanel({ state, send }: PanelProps) {
           }}
         >
           <textarea
+            wrap="off"
             aria-label="Layout JSON"
             rows={16}
             className="textarea textarea-bordered w-full font-mono text-xs"
@@ -812,6 +816,7 @@ function KeymapDrawerExport({ state }: { state: EditState }) {
   return (
     <div className="space-y-2">
       <textarea
+        wrap="off"
         aria-label="keymap-drawer YAML"
         readOnly
         rows={16}

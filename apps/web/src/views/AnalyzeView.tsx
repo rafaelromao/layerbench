@@ -9,7 +9,7 @@ import {
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { HelpLink } from '../components/HelpLink.js';
-import { Keyboard } from '../components/Keyboard.js';
+import { Keyboard, typingCombos } from '../components/Keyboard.js';
 import { LayerTabs } from '../components/LayerTabs.js';
 import { MetricCard, SummaryStrip } from '../components/Metrics.js';
 import { presetOf } from '../components/RuleSources.js';
@@ -28,9 +28,18 @@ import {
   SAMPLE_SIZES,
   toSearch,
 } from '../url/params.js';
+import { playFrames } from './analyze/playback.js';
 import { groupByLanguage } from './corpus-groups.js';
 import { useLayout } from './useLayout.js';
 import { useRuleSet } from './useRuleSet.js';
+
+/** How long each press of a played word stays lit, and the rest before it plays again. */
+const PLAY_STEP_MS = 750;
+const PLAY_REST_MS = 1200;
+
+function prefersReducedMotion(): boolean {
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+}
 
 const FAMILIES: [string, string][] = [
   ['bigram', 'Bigrams'],
@@ -68,6 +77,9 @@ export function AnalyzeView() {
   const [selectedItem, setSelectedItem] = useState<number | null>(null);
   const [explainText, setExplainText] = useState('');
   const [explain, setExplain] = useState<ExplainDTO | null>(null);
+  /** Which press of the explained word the board shows; `frame` past the last one is the rest. */
+  const [play, setPlay] = useState<{ frame: number; playing: boolean } | null>(null);
+  const [showCombos, setShowCombos] = useState(true);
 
   const setParams = useCallback(
     (overrides: Partial<Params>) => {
@@ -145,10 +157,6 @@ export function AnalyzeView() {
   }, [compiled, corpusLanguage]);
 
   const layerIdx = compiled ? Math.min(params.layer, compiled.layers.length - 1) : 0;
-  const heat = useMemo(
-    () => (report ? heatMap(report, params.heat, layerIdx) : {}),
-    [report, params.heat, layerIdx],
-  );
 
   // Re-run the explanation whenever the text or the way it would be typed changes.
   useEffect(() => {
@@ -163,13 +171,9 @@ export function AnalyzeView() {
         .then((r) => {
           if (cancelled) return;
           setExplain(r);
-          if (!compiled) return;
-          const positions = r.steps
-            .filter((s) => s.kind !== 'hold_release')
-            .map((s) => compiled.keyIndex.get(s.key))
-            .filter((p): p is number => p !== undefined);
-          setHighlight([...new Set(positions)]);
-          setArcs(positions.slice(0, -1).map((p, i) => [p, positions[i + 1]] as [number, number]));
+          // The board plays the word now; whatever was outlined before gives way to it.
+          setHighlight([]);
+          setArcs([]);
         })
         .catch(() => {
           if (!cancelled) setExplain(null);
@@ -179,7 +183,50 @@ export function AnalyzeView() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [client, layout, compiled, explainText, params.caseMode]);
+  }, [client, layout, explainText, params.caseMode]);
+
+  // The word, press by press, on the layer each press lands on.
+  const frames = useMemo(
+    () => (explain && compiled ? playFrames(explain.steps, compiled) : []),
+    [explain, compiled],
+  );
+  // A new word starts from its first press; with motion reduced it waits to be stepped through.
+  // The same word explained again — the layout re-read, say — is not a new word, and a press the
+  // reader stopped on stays where it is.
+  const framesKey = frames.map((f) => `${f.step}:${f.layer}:${f.keys.join('.')}`).join('|');
+  useEffect(() => {
+    setPlay(framesKey ? { frame: 0, playing: !prefersReducedMotion() } : null);
+  }, [framesKey]);
+  // One press after another, slowly enough to follow, then a rest, and round again.
+  useEffect(() => {
+    if (!play?.playing || frames.length === 0) return;
+    const resting = play.frame >= frames.length;
+    const timer = setTimeout(
+      () => setPlay((p) => p && { ...p, frame: resting ? 0 : p.frame + 1 }),
+      resting ? PLAY_REST_MS : PLAY_STEP_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [play, frames]);
+
+  const current = play ? frames[play.frame] : undefined;
+  // While a word plays the board follows it from layer to layer, resting on the one it starts on.
+  const boardLayer = play && frames.length > 0 ? (current ?? frames[0]).layer : layerIdx;
+  const heat = useMemo(
+    () => (report ? heatMap(report, params.heat, boardLayer) : {}),
+    [report, params.heat, boardLayer],
+  );
+  const hasTypingCombos = compiled?.combos.some((c) => c.role === 'typing') ?? false;
+  const boardCombos = useMemo(() => {
+    if (!compiled) return [];
+    const all = typingCombos(compiled, boardLayer, current?.combo ?? null);
+    // Hidden, a combo still shows while it is the press being played.
+    return showCombos ? all : all.filter((c) => c.active);
+  }, [compiled, boardLayer, current, showCombos]);
+  /** A chord's step names its virtual key; the reader knows it by the keys pressed together. */
+  const stepKey = (key: string) => {
+    const combo = compiled?.combos.find((c) => compiled.positions[c.pos]?.id === key);
+    return combo ? combo.keys.map((k) => compiled?.keys[k]?.id ?? '?').join('+') : key;
+  };
 
   const highlightItem = (ruleId: string, index: number) => {
     const rule = report?.results.find((r) => r.id === ruleId);
@@ -206,6 +253,7 @@ export function AnalyzeView() {
     setExplain(null);
     setExplainText('');
     setSelectedItem(null);
+    setPlay(null);
   };
 
   const query = toSearch(params);
@@ -217,10 +265,10 @@ export function AnalyzeView() {
 
       <form
         id="analyze-toolbar"
-        className="card bg-base-100 border border-base-300 p-3 flex flex-row flex-wrap items-end gap-3"
+        className="lm-toolbar card bg-base-100 border border-base-300 p-3 flex flex-row flex-wrap items-end gap-3"
         onSubmit={(e) => e.preventDefault()}
       >
-        <label className="form-control">
+        <label className="form-control lm-wide">
           <span className="label-text text-xs">Layout</span>
           <select
             name="layout"
@@ -242,7 +290,7 @@ export function AnalyzeView() {
           </select>
         </label>
 
-        <label className="form-control">
+        <label className="form-control lm-wide">
           <span className="label-text text-xs">Corpus</span>
           <select
             name="corpus"
@@ -286,7 +334,7 @@ export function AnalyzeView() {
         </label>
 
         {params.corpus2 && (
-          <label className="form-control">
+          <label className="form-control lm-wide">
             <span className="label-text text-xs">
               {params.mix}% first · {100 - params.mix}% second
             </span>
@@ -353,7 +401,7 @@ export function AnalyzeView() {
           </select>
         </label>
 
-        <div className="flex flex-wrap items-center gap-3 sm:ml-auto">
+        <div className="lm-wide flex flex-wrap items-center gap-3 sm:ml-auto">
           <label className="label cursor-pointer gap-2">
             <span className="label-text text-xs">Model shift</span>
             <input
@@ -376,12 +424,22 @@ export function AnalyzeView() {
               }
             />
           </label>
-          <Link to="/edit" search={query as never} className="btn btn-sm btn-ghost">
-            Edit
-          </Link>
-          <Link to="/compare" search={query as never} className="btn btn-sm btn-ghost">
-            Compare
-          </Link>
+          <div className="flex gap-2 max-sm:w-full">
+            <Link
+              to="/edit"
+              search={query as never}
+              className="btn btn-sm btn-outline max-sm:flex-1"
+            >
+              Edit
+            </Link>
+            <Link
+              to="/compare"
+              search={query as never}
+              className="btn btn-sm btn-outline max-sm:flex-1"
+            >
+              Compare
+            </Link>
+          </div>
         </div>
       </form>
 
@@ -394,11 +452,27 @@ export function AnalyzeView() {
               {compiled && (
                 <LayerTabs
                   layers={compiled.layers.map((l) => ({ idx: l.idx, id: l.id, name: l.name }))}
-                  active={layerIdx}
-                  onSelect={(idx) => setParams({ layer: idx })}
+                  active={boardLayer}
+                  onSelect={(idx) => {
+                    // Choosing a layer is looking at it: the word stops playing over it.
+                    setPlay(null);
+                    setParams({ layer: idx });
+                  }}
                 />
               )}
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {hasTypingCombos && (
+                  <label className="label cursor-pointer gap-2">
+                    <span className="label-text text-xs">Combos</span>
+                    <input
+                      type="checkbox"
+                      className="toggle toggle-xs"
+                      aria-label="Show the combos that type"
+                      checked={showCombos}
+                      onChange={(e) => setShowCombos(e.target.checked)}
+                    />
+                  </label>
+                )}
                 <label className="label-text text-xs" htmlFor="heat">
                   Heat
                 </label>
@@ -430,12 +504,15 @@ export function AnalyzeView() {
                 id="kb-analyze"
                 legendList
                 compiled={compiled}
-                layer={layerIdx}
+                layer={boardLayer}
                 heat={heat}
-                highlight={highlight}
-                arcs={arcs}
+                highlight={play ? (current?.held ?? []) : highlight}
+                pressed={current?.keys ?? []}
+                combos={boardCombos}
+                arcs={play ? [] : arcs}
                 onKeyClick={(keyId) => {
                   const pos = compiled.keyIndex.get(keyId);
+                  setPlay(null);
                   setHighlight(pos === undefined ? [] : [pos]);
                   setArcs([]);
                 }}
@@ -461,7 +538,7 @@ export function AnalyzeView() {
                   onChange={(e) => setExplainText(e.target.value)}
                 />
               </div>
-              {highlight.length > 0 && (
+              {(highlight.length > 0 || explain) && (
                 <button type="button" className="btn btn-sm btn-ghost" onClick={clearHighlight}>
                   clear
                 </button>
@@ -469,23 +546,55 @@ export function AnalyzeView() {
             </form>
 
             {explain && (
-              <ol className="flex flex-wrap items-center gap-1">
-                {explain.steps.map((s, i) => (
-                  <li
-                    // biome-ignore lint/suspicious/noArrayIndexKey: a key can be pressed twice in one word
-                    key={`${s.key}-${i}`}
-                    className={`badge badge-outline gap-1 font-mono ${
-                      s.wastedOneShot ? 'badge-warning' : ''
-                    } ${s.kind === 'hold_release' ? 'opacity-50' : ''}`}
-                    title={`${s.key} · ${s.layer} · ${s.finger}`}
-                  >
-                    <span className="opacity-60">{s.key}</span>
-                    <span>{symbolLabel(s.symbols) || s.label}</span>
-                    <span className="opacity-50">{s.layer}</span>
-                  </li>
-                ))}
-                <li className="badge badge-ghost font-mono">{explain.presses} presses</li>
-              </ol>
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  {frames.length > 0 && (
+                    <button
+                      type="button"
+                      className="btn btn-xs"
+                      onClick={() =>
+                        setPlay((p) =>
+                          p?.playing
+                            ? { ...p, playing: false }
+                            : { frame: p && p.frame < frames.length ? p.frame : 0, playing: true },
+                        )
+                      }
+                    >
+                      {play?.playing ? '⏸ Pause' : '▶ Play'}
+                    </button>
+                  )}
+                  <span className="font-mono text-xs opacity-70">{explain.presses} presses</span>
+                </div>
+                {/* Each press, in order: the one lit on the board is marked, and any one can be
+                    looked at on its own. */}
+                <ol className="flex flex-wrap items-center gap-1" aria-label="Presses">
+                  {explain.steps.map((s, i) => {
+                    const frame = frames.findIndex((f) => f.step === i);
+                    const now = current?.step === i;
+                    return (
+                      <li
+                        // biome-ignore lint/suspicious/noArrayIndexKey: a key can be pressed twice in one word
+                        key={`${s.key}-${i}`}
+                      >
+                        <button
+                          type="button"
+                          className={`btn btn-xs gap-1 font-mono ${now ? 'btn-primary' : 'btn-outline'} ${
+                            s.wastedOneShot && !now ? 'btn-warning' : ''
+                          } ${s.kind === 'hold_release' ? 'opacity-50' : ''}`}
+                          title={`${stepKey(s.key)} · ${s.layer} · ${s.finger}`}
+                          aria-current={now ? 'step' : undefined}
+                          disabled={frame < 0}
+                          onClick={() => setPlay({ frame, playing: false })}
+                        >
+                          <span className="opacity-60">{stepKey(s.key)}</span>
+                          <span>{symbolLabel(s.symbols) || s.label}</span>
+                          <span className="opacity-50">{s.layer}</span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
             )}
 
             {languageGap && (

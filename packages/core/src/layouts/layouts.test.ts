@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { producibleSymbols } from '../lang/coverage.js';
 import { compileLayout } from '../layout/compile.js';
+import { explain } from '../sim/resolver.js';
 import { BUNDLED_LAYOUTS, documentedLayouts } from './index.js';
+import { magicRomak, romak24, romak34 } from './romak.js';
 
 const ALPHABET = [...'abcdefghijklmnopqrstuvwxyz'];
 
@@ -43,4 +45,33 @@ describe('bundled layouts', () => {
       expect(layout.description, layout.id).toBeTruthy();
     }
   });
+});
+
+/**
+ * The Numbers and Symbols layers of the author's keymap, `numbers_layer` and `symbols_layer` in
+ * `zmk/definitions/keymap.dtsi` of github.com/rafaelromao/keyboards. The fixture corpora hold
+ * almost none of these characters, so the golden reports cannot tell a misplaced one; this can.
+ */
+describe('Romak numbers and symbols', () => {
+  const KEYMAP_CHARACTERS = [...'0123456789\\{}&()|[].,~#@^$"\'<>`%=:?-+_!/*'];
+  const OPTS = { caseMode: 'fold', crossWord: 'reset' } as const;
+  const romaks = [romak24, magicRomak, romak34].map((l) => [l.name, l] as const);
+
+  it.each(romaks)('%s types every character the two layers carry', (_name, layout) => {
+    const producible = producibleSymbols(compileLayout(layout));
+    expect(KEYMAP_CHARACTERS.filter((c) => !producible.has(c))).toEqual([]);
+  });
+
+  it.each(romaks)(
+    '%s reaches the digits by holding space, and the symbols by holding the Alpha 2 key',
+    (_name, layout) => {
+      const compiled = compileLayout(layout);
+      const keys = (text: string) =>
+        explain(compiled, text, OPTS).steps.map((s) => `${s.key}:${s.kind}`);
+      expect(keys('7')).toEqual(['L0:hold_press', 'RTI:tap', 'L0:hold_release']);
+      expect(keys('=')).toEqual(['R0:hold_press', 'RTM:tap', 'R0:hold_release']);
+      expect(keys('{')).toEqual(['L0:hold_press', 'LTM:tap', 'L0:hold_release']);
+      expect(keys('@')).toEqual(['R0:hold_press', 'LHP:tap', 'R0:hold_release']);
+    },
+  );
 });

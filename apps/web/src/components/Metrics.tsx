@@ -59,22 +59,19 @@ export function SummaryStrip({
 }) {
   const byId = new Map(results.map((r) => [r.id, r]));
   return (
-    <ul className="flex flex-wrap gap-2 list-none p-0 m-0" aria-label="Summary metrics">
+    // Every number in a box of the same width, so the strip reads as a table rather than a pile.
+    <ul className="lm-stats" aria-label="Summary metrics">
       {ids.map((id) => {
         const r = byId.get(id);
         if (!r) return null;
         const body = (
           <>
-            <div className="text-[11px] uppercase tracking-wide opacity-70">
-              {shortLabel(r.id, r.label)}
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="font-mono text-lg tabular-nums">{formatValue(r.value, r.unit)}</span>
-              <BandBadge band={r.band} />
-            </div>
+            <span className="lm-stat-label">{shortLabel(r.id, r.label)}</span>
+            <span className="lm-stat-value">{formatValue(r.value, r.unit)}</span>
+            <BandBadge band={r.band} />
           </>
         );
-        const look = `lm-stat rounded-xl border px-3 py-2 text-left ${qualityBorder(r.band)}`;
+        const look = `lm-stat ${qualityBorder(r.band)}`;
         return (
           <li key={id}>
             {/* A card that leads nowhere is not a button: it would be a tab stop that does nothing. */}

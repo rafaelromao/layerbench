@@ -25,6 +25,40 @@ export interface KeyboardHandle {
   focusKey: (keyId: string) => void;
 }
 
+/** A combo on the board: a small legend between the keys pressed together to fire it. */
+export interface KeyboardCombo {
+  id: string;
+  /** Positions of the keys pressed together. */
+  keys: number[];
+  label: string;
+  /** Drawn as being pressed, as a step of how a word is typed is. */
+  active?: boolean;
+}
+
+/**
+ * The combos marked for typing that fire on a layer, as the board draws them. A command combo is
+ * a shortcut the analysis never presses, so it is not shown among the keys that type.
+ */
+export function typingCombos(
+  compiled: CompiledLayout,
+  layer: number,
+  active: string | null = null,
+): KeyboardCombo[] {
+  return compiled.combos
+    .filter(
+      (c) => c.role === 'typing' && (c.layerMask === null || (c.layerMask & (1 << layer)) !== 0),
+    )
+    .map((c) => ({
+      id: c.id,
+      keys: c.keys,
+      label: legend(compiled, c.binding).tap || '·',
+      active: c.id === active,
+    }));
+}
+
+/** A key being pressed takes the accent colour, whatever the heat map had it at. */
+const PRESSED_FILL = 'color-mix(in oklab, var(--color-primary) 62%, var(--lm-key-bg))';
+
 /** Pixels per key unit, and the gap that separates neighbouring caps. */
 const UNIT = 64;
 const GAP = 6;
@@ -76,6 +110,7 @@ interface ModelOptions {
   numbered: boolean;
   heat?: Record<number, number>;
   highlighted?: Set<number>;
+  pressed?: Set<number>;
   selected?: string | null;
   /** Top-left of the drawing, in key units; only the drawn board needs it. */
   origin?: { ox: number; oy: number };
@@ -128,6 +163,7 @@ function modelKeys(compiled: CompiledLayout, layerIdx: number, opts: ModelOption
       trans: l.kind === 'trans' || implicit,
       heat: opts.heat?.[idx] ?? 0,
       highlighted: opts.highlighted?.has(idx) ?? false,
+      pressed: opts.pressed?.has(idx) ?? false,
       selected: opts.selected === k.id,
     };
   });
@@ -142,6 +178,10 @@ export interface KeyboardProps {
   heat?: Record<number, number>;
   /** Positions to outline, e.g. the keys of a selected n-gram. */
   highlight?: number[];
+  /** Positions drawn as being pressed right now, such as a step of how a word is typed. */
+  pressed?: number[];
+  /** Combos to draw between their keys; only the ones a view wants shown. */
+  combos?: KeyboardCombo[];
   /** Key id drawn as selected. */
   selected?: string | null;
   /** Position pairs to connect with an arrow. */
@@ -183,6 +223,8 @@ export function Keyboard({
   layer = 0,
   heat = {},
   highlight = [],
+  pressed = [],
+  combos = [],
   selected = null,
   arcs = [],
   interactive = true,
@@ -213,6 +255,7 @@ export function Keyboard({
   const markerId = `lm-arrow-${(id ?? generatedId).replace(/[^\w-]/g, '')}`;
   const layerIdx = Math.min(layer, compiled.layers.length - 1);
   const highlighted = useMemo(() => new Set(highlight), [highlight]);
+  const pressing = useMemo(() => new Set(pressed), [pressed]);
 
   const view = useMemo(() => {
     const xs = compiled.keys.map((k) => k.x);
@@ -246,6 +289,7 @@ export function Keyboard({
     numbered: legendList !== false,
     heat,
     highlighted,
+    pressed: pressing,
     selected,
     origin: view,
   });
@@ -351,9 +395,13 @@ export function Keyboard({
               width={fmt(k.w)}
               height={fmt(k.h)}
               rx="9"
-              className={`lm-key-cap${k.highlighted ? ' lm-key-highlight' : ''}`}
+              className={`lm-key-cap${k.highlighted ? ' lm-key-highlight' : ''}${
+                k.pressed ? ' lm-key-pressed' : ''
+              }`}
               style={{
-                fill: `color-mix(in oklab, var(--lm-key-bg) ${100 - pct}%, var(--lm-heat) ${pct}%)`,
+                fill: k.pressed
+                  ? PRESSED_FILL
+                  : `color-mix(in oklab, var(--lm-key-bg) ${100 - pct}%, var(--lm-heat) ${pct}%)`,
               }}
             />
             {k.legend.detail && <title>{k.legend.detail}</title>}
@@ -437,6 +485,33 @@ export function Keyboard({
           </g>
         );
       })}
+
+      {/* Above the keys, but never in the way of a tap or a drag on them. */}
+      {combos.length > 0 && (
+        <g className="lm-combos">
+          {combos.map((c) => {
+            const points = c.keys.map(centerOf).filter((p) => p !== null);
+            if (points.length === 0) return null;
+            const x = points.reduce((sum, p) => sum + p.x, 0) / points.length;
+            const y = points.reduce((sum, p) => sum + p.y, 0) / points.length;
+            const width = Math.max(20, [...c.label].length * 7 + 12);
+            const names = c.keys.map((p) => compiled.keys[p]?.id ?? '?').join(' + ');
+            return (
+              <g
+                key={c.id}
+                className={`lm-combo${c.active ? ' lm-combo-active' : ''}`}
+                transform={`translate(${fmt(x)} ${fmt(y)})`}
+              >
+                <title>{`Combo ${names}: ${c.label}`}</title>
+                <rect x={fmt(-width / 2)} y="-9" width={fmt(width)} height="18" rx="9" />
+                <text y="4" textAnchor="middle" fontSize="11">
+                  {c.label}
+                </text>
+              </g>
+            );
+          })}
+        </g>
+      )}
 
       <g className="lm-arc">
         {arcs.map(([from, to], i) => {

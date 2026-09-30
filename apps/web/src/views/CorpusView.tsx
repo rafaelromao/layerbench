@@ -156,7 +156,7 @@ export function CorpusView() {
             <li key={c.id}>
               <button
                 type="button"
-                className={c.id === selectedId ? 'active' : ''}
+                className={c.id === selectedId ? 'menu-active' : ''}
                 onClick={() => navigate({ to: '/corpus', search: { id: c.id } as never })}
               >
                 <span className="flex flex-col items-start">

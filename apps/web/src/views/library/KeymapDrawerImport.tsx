@@ -158,6 +158,7 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
     <div className="space-y-3">
       <div className="grid gap-3 md:grid-cols-[1fr_auto]">
         <textarea
+          wrap="off"
           aria-label="keymap-drawer YAML"
           rows={6}
           className="textarea textarea-bordered font-mono text-xs"
@@ -268,7 +269,7 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
               {choices.map((c, i) => {
                 const r = c.on ? reportOf(c.name) : undefined;
                 return (
-                  <li key={c.source} className="flex flex-wrap items-center gap-2">
+                  <li key={c.source} className="lm-import-layer">
                     <input
                       type="checkbox"
                       className="checkbox checkbox-sm"
@@ -284,7 +285,7 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
                       label={`Name for ${c.source}`}
                       value={c.name}
                       mono={false}
-                      className="input-xs w-32"
+                      className="input-xs w-full"
                       onCommit={(n) => {
                         const clean = n.trim();
                         if (clean) {
@@ -294,31 +295,40 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
                         }
                       }}
                     />
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-xs"
-                      aria-label={`Move ${c.source} up`}
-                      disabled={i === 0}
-                      onClick={() => move(i, -1)}
-                    >
-                      ↑
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-xs"
-                      aria-label={`Move ${c.source} down`}
-                      disabled={i === choices.length - 1}
-                      onClick={() => move(i, 1)}
-                    >
-                      ↓
-                    </button>
-                    {i === baseIndex && <span className="badge badge-ghost badge-sm">base</span>}
-                    {r && (
-                      <span className="text-[11px] opacity-70">
-                        {r.read} of {r.keys} keys read
-                        {r.kept.length > 0 &&
-                          ` · kept as imported: ${r.kept.slice(0, 8).join(', ')}${r.kept.length > 8 ? ` and ${r.kept.length - 8} more` : ''}`}
-                      </span>
+                    <div className="flex">
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-xs btn-square"
+                        aria-label={`Move ${c.source} up`}
+                        disabled={i === 0}
+                        onClick={() => move(i, -1)}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-xs btn-square"
+                        aria-label={`Move ${c.source} down`}
+                        disabled={i === choices.length - 1}
+                        onClick={() => move(i, 1)}
+                      >
+                        ↓
+                      </button>
+                    </div>
+                    {/* Under the name: what the layer becomes, and how much of it was read. */}
+                    {(i === baseIndex || r) && (
+                      <p className="lm-import-layer-report text-[11px] opacity-70">
+                        {i === baseIndex && (
+                          <span className="badge badge-ghost badge-sm mr-1">base</span>
+                        )}
+                        {r && (
+                          <>
+                            {r.read} of {r.keys} keys read
+                            {r.kept.length > 0 &&
+                              ` · kept as imported: ${r.kept.slice(0, 8).join(', ')}${r.kept.length > 8 ? ` and ${r.kept.length - 8} more` : ''}`}
+                          </>
+                        )}
+                      </p>
                     )}
                   </li>
                 );
@@ -362,14 +372,14 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
               label="Name of the imported layout"
               value={name}
               mono={false}
-              className="w-56"
+              className="w-56 max-sm:w-full"
               onCommit={(n) => {
                 if (n.trim()) setName(n.trim());
               }}
             />
             <button
               type="button"
-              className="btn btn-sm btn-primary"
+              className="btn btn-sm btn-primary max-sm:w-full"
               disabled={!result}
               onClick={() => result && onImport(result.layout)}
             >

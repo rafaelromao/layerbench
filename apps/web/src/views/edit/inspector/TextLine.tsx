@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useDismiss } from '../../../components/use-dismiss.js';
 import { bindingFromFields } from '../binding-form.js';
 import {
   type BindingTextContext,
@@ -53,7 +54,10 @@ export function BindingTextLine({
   const [error, setError] = useState<string | null>(null);
   const [active, setActive] = useState(-1);
   const [focused, setFocused] = useState(false);
+  /** Set by a tap outside the field and its list; typing or coming back to the field clears it. */
+  const [dismissed, setDismissed] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const box = useRef<HTMLDivElement>(null);
   /** Set while focus is deliberately moved off the field, so the blur is not also a commit. */
   const leaving = useRef(false);
   const shown = useRef(initial);
@@ -81,10 +85,16 @@ export function BindingTextLine({
     [text, initial, ctx],
   );
   const preview = parsed?.ok ? legend(compiled, bindingFromFields(parsed.fields)) : null;
-  const options = useMemo(
-    () => (focused && text.trimStart().startsWith('&') ? suggest(text, ctx).slice(0, 8) : []),
-    [focused, text, ctx],
-  );
+  const options = useMemo(() => {
+    if (!focused || dismissed || !text.trimStart().startsWith('&')) return [];
+    const written = text.trim();
+    // Offering exactly what is written, with no argument still to come, is a menu that could
+    // never close: choosing it changes nothing.
+    return suggest(text, ctx)
+      .filter((o) => o.insert !== written || takesArgument(o.insert))
+      .slice(0, 8);
+  }, [focused, dismissed, text, ctx]);
+  useDismiss(box, () => setDismissed(true), { active: options.length > 0, closeOnEscape: false });
 
   const leave = () => {
     leaving.current = true;
@@ -151,7 +161,7 @@ export function BindingTextLine({
   };
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1" ref={box}>
       <div className="flex flex-wrap items-center gap-2">
         <label htmlFor={`lm-text-${keyId}`} className="text-xs font-semibold w-16 shrink-0">
           Or type
@@ -170,11 +180,15 @@ export function BindingTextLine({
           autoComplete="off"
           autoCapitalize="off"
           enterKeyHint="done"
-          onFocus={() => setFocused(true)}
+          onFocus={() => {
+            setFocused(true);
+            setDismissed(false);
+          }}
           onChange={(e) => {
             setText(e.target.value);
             setError(null);
             setActive(-1);
+            setDismissed(false);
           }}
           onKeyDown={onKeyDown}
           onBlur={() => {

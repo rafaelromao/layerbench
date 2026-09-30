@@ -89,8 +89,9 @@ pnpm --filter @layoutmaster/web e2e
 ```
 
 On a slow network, `PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT=120000` gives the download two minutes
-instead of thirty seconds. Where the download is blocked altogether, `E2E_CHANNEL=chrome` runs the
-checks on the Google Chrome already installed, with nothing to download.
+instead of thirty seconds. Playwright's Chromium comes only from `cdn.playwright.dev`, so where that
+host is blocked, run the checks on a browser already installed instead: `E2E_CHANNEL=msedge` for
+Microsoft Edge, `E2E_CHANNEL=chrome` for Google Chrome, with nothing to download.
 
 ## Deploy
 

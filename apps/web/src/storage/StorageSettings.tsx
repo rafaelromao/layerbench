@@ -140,7 +140,7 @@ export function StorageSettings() {
               {status}
             </p>
 
-            <div className="flex flex-wrap gap-2 pt-1">
+            <div className="flex flex-wrap gap-2 pt-1 max-sm:grid max-sm:grid-cols-1">
               <button type="submit" className="btn btn-sm" disabled={checking || !token}>
                 {checking ? 'Checking…' : 'Test connection'}
               </button>

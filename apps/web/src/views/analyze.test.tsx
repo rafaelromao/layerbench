@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { renderRoute } from '../test/render.js';
@@ -32,6 +32,45 @@ describe('Analyze', () => {
     for (const key of ['RHM', 'R0', 'LBM', 'LHI']) {
       expect(screen.getByText(key)).toBeInTheDocument();
     }
+  });
+
+  it('plays a word on the board, press by press, on the layer each press lands on', async () => {
+    const user = userEvent.setup();
+    renderRoute('/?layout=magic-romak&corpus=pt-br-work&sample=20000');
+    await screen.findByText('Same finger bigrams');
+    await user.type(screen.getByLabelText('How is this typed?'), 'ação');
+
+    // It starts on its own.
+    const presses = await screen.findByRole('list', { name: 'Presses' });
+    expect(await within(presses).findByRole('button', { current: 'step' })).toBeInTheDocument();
+
+    // Stepping to the ç stops it there, on Alpha 2, with that key pressed.
+    await user.click(within(presses).getByRole('button', { name: /LBM/ }));
+    expect(screen.getByRole('button', { name: '▶ Play' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Alpha 2', selected: true })).toBeInTheDocument();
+    const key = screen.getByRole('button', { name: /^Key LBM:/ });
+    expect(key.querySelector('.lm-key-pressed')).not.toBeNull();
+    // The board shows the press, not a path of arrows.
+    expect(document.querySelectorAll('#kb-analyze .lm-arc path')).toHaveLength(0);
+  });
+
+  it('shows the combos that type, and lights one as it is played', async () => {
+    const user = userEvent.setup();
+    renderRoute('/?layout=magic-romak&corpus=pt-br-work&sample=20000');
+    await screen.findByText('Same finger bigrams');
+    await user.type(screen.getByLabelText('How is this typed?'), 'à');
+
+    const presses = await screen.findByRole('list', { name: 'Presses' });
+    await user.click(within(presses).getByRole('button', { name: /RHM\+RHR/ }));
+    const names = () =>
+      [...document.querySelectorAll('#kb-analyze .lm-combo title')].map((t) => t.textContent);
+    expect(names()).toEqual(['Combo RHI + RHM: ?', 'Combo RBI + RBM: !', 'Combo RHM + RHR: à']);
+    const lit = document.querySelector('#kb-analyze .lm-combo-active title');
+    expect(lit?.textContent).toBe('Combo RHM + RHR: à');
+
+    // Hidden, the combos give way, except the one being played.
+    await user.click(screen.getByLabelText('Show the combos that type'));
+    expect(names()).toEqual(['Combo RHM + RHR: à']);
   });
 
   it('keeps the link canonical as parameters change', async () => {

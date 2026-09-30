@@ -1,6 +1,4 @@
-import { getGeometryPreset } from '../geometry/presets.js';
 import type { Binding, ComboDef, Layout } from '../layout/types.js';
-import { numberLayer, symbolLayer } from './templates.js';
 
 const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
 const VOWELS = ['a', 'e', 'i', 'o', 'u', 'á', 'à', 'ã', 'â', 'é', 'ê', 'í', 'ó', 'õ', 'ô', 'ú'];
@@ -102,6 +100,102 @@ const ALTREP2_BINDINGS: Record<string, Binding> = {
   '*': { kind: 'trans' },
   L1: { kind: 'ref', ref: 'a2AltRepeat' },
 };
+
+// ---------------------------------------------------------------- Numbers and Symbols
+
+/**
+ * A hold reaching one of the keymap's layers this model does not carry — functions, media, macros.
+ * Kept as an imported key, so the board still says where the layer is; it types nothing.
+ */
+const unmodelled = (layer: string): Binding => ({
+  kind: 'raw',
+  label: layer,
+  source: `&mo ${layer}`,
+});
+const tapOrUnmodelled = (symbol: string, layer: string): Binding => ({
+  kind: 'hold_tap',
+  tap: kp(symbol),
+  hold: unmodelled(layer),
+});
+
+/** The thumbs that reach the two layers from Alpha 1, as `ltn_num_spc` and `msl_sym_a2` do. */
+const SPACE_OR_NUMBERS: Binding = {
+  kind: 'hold_tap',
+  tap: kp(' '),
+  hold: { kind: 'mo', layer: 'num' },
+};
+const ALPHA2_OR_SYMBOLS: Binding = {
+  kind: 'hold_tap',
+  tap: { kind: 'sl', layer: 'alpha2' },
+  hold: { kind: 'mo', layer: 'sym' },
+};
+
+/**
+ * The Numbers and Symbols layers of the author's keymap, `numbers_layer` and `symbols_layer` in
+ * `zmk/definitions/keymap.dtsi` of github.com/rafaelromao/keyboards. They use only the 24-key
+ * core, so the three Romak layouts share them. Each key is what it types: the firmware's symbol
+ * tap-holds jump to the end of the line or past the cursor first when held, which is editing
+ * rather than typing, and are left out. Keys it leaves empty are empty here.
+ */
+const NUMBERS_BINDINGS: Record<string, Binding> = {
+  '*': { kind: 'none' },
+  LTR: kp('\\'),
+  LTM: kp('{'),
+  LTI: kp('}'),
+  LHP: tapOrUnmodelled(',', 'FUN'),
+  LHR: kp('&'),
+  LHM: kp('('),
+  LHI: kp(')'),
+  LBR: kp('|'),
+  LBM: kp('['),
+  LBI: kp(']'),
+  RTI: kp('7'),
+  RTM: kp('8'),
+  RTR: kp('9'),
+  RHI: kp('4'),
+  RHM: kp('5'),
+  RHR: kp('6'),
+  RHP: kp('.'),
+  RBI: kp('1'),
+  RBM: kp('2'),
+  RBR: kp('3'),
+  L1: { kind: 'trans' },
+  L0: { kind: 'trans' },
+  R0: { kind: 'hold_tap', tap: kp(' '), hold: { kind: 'mo', layer: 'sym' } },
+  R1: tapOrUnmodelled('0', 'MEDIA'),
+};
+
+const SYMBOLS_BINDINGS: Record<string, Binding> = {
+  '*': { kind: 'none' },
+  LTR: kp('~'),
+  LTM: kp('#'),
+  LTI: kp("'"),
+  LHP: kp('@'),
+  LHR: kp('^'),
+  LHM: kp('$'),
+  LHI: kp('"'),
+  LBR: kp('<'),
+  LBM: kp('>'),
+  LBI: kp('`'),
+  RTI: kp('%'),
+  RTM: kp('='),
+  RTR: kp(':'),
+  RHI: kp('?'),
+  RHM: kp('-'),
+  RHR: kp('+'),
+  RHP: tapOrUnmodelled('_', 'MACROS'),
+  RBI: kp('!'),
+  RBM: kp('/'),
+  RBR: kp('*'),
+  L1: { kind: 'trans' },
+  // The firmware's hold here reaches a copy of Numbers placed above Symbols, which only its layer
+  // order needs. The digits are one hold away from Alpha 1 either way.
+  L0: kp(' '),
+  R1: { kind: 'trans' },
+};
+
+const NUMBERS_LAYER = { id: 'num', name: 'Numbers', bindings: NUMBERS_BINDINGS };
+const SYMBOLS_LAYER = { id: 'sym', name: 'Symbols', bindings: SYMBOLS_BINDINGS };
 
 // ---------------------------------------------------------------- Romak 24
 
@@ -291,14 +385,16 @@ function romak24Base(name: string, id: string, description: string): Layout {
         bindings: {
           ...ROMAK24_ALPHA1,
           L1: { kind: 'key_repeat' },
-          L0: kp(' '),
-          R0: { kind: 'sl', layer: 'alpha2' },
+          L0: SPACE_OR_NUMBERS,
+          R0: ALPHA2_OR_SYMBOLS,
           R1: { kind: 'sk', mod: 'LSHIFT' },
         },
       },
       { id: 'alpha2', name: 'Alpha 2', bindings: ROMAK24_ALPHA2 },
       { id: 'ccedil', name: 'Ç extension', bindings: CCEDIL_BINDINGS },
       { id: 'altrep2', name: 'Alt repeat 2', bindings: ALTREP2_BINDINGS },
+      NUMBERS_LAYER,
+      SYMBOLS_LAYER,
     ],
     combos: ROMAK24_COMBOS,
     repeatPolicy: { doubledLetters: 'repeatKey' },
@@ -308,7 +404,7 @@ function romak24Base(name: string, id: string, description: string): Layout {
 export const romak24: Layout = romak24Base(
   'Romak 24',
   'romak-24',
-  'Romak for 24 keys (1333+2): two alpha layers, Ç extension, one-shot shift.',
+  'Romak for 24 keys (1333+2): two alpha layers, Ç extension, one-shot shift, and numbers and symbols held from the thumbs.',
 );
 
 /**
@@ -332,19 +428,13 @@ export const magicRomak: Layout = (() => {
     behaviors: {},
     combos: romak24Combos(taggedAccent),
     layers: [
-      {
-        ...base.layers[0],
-        bindings: {
-          ...base.layers[0].bindings,
-          // Holding space reaches the numbers; the sentence-case feature wraps the tap arm, so
-          // both live on one key. All four thumbs already carry something on a 24-key board.
-          L0: { kind: 'hold_tap', tap: kp(' '), hold: { kind: 'mo', layer: 'num' } },
-        },
-      },
+      // Holding space reaches the numbers and holding the Alpha 2 key the symbols; the
+      // sentence-case feature wraps the space's tap arm, so both live on one key.
+      base.layers[0],
       { id: 'alpha2', name: 'Alpha 2', bindings: alpha2Bindings(taggedAccent, ALPHA2_TAG) },
       { id: 'ccedil', name: '\u00c7 extension', bindings: CCEDIL_BINDINGS },
-      numberLayer(getGeometryPreset('1333+2'), { symbolLayer: 'sym' }),
-      symbolLayer(getGeometryPreset('1333+2')),
+      NUMBERS_LAYER,
+      SYMBOLS_LAYER,
     ],
     features: {
       adaptiveKeys: [
@@ -406,7 +496,10 @@ export const magicRomak: Layout = (() => {
         { from: 'ccedil', via: 'key:ccedil/L1' },
       ],
       num: [{ from: 'alpha1', via: 'key:alpha1/L0' }],
-      sym: [{ from: 'num', via: 'key:num/R0' }],
+      sym: [
+        { from: 'alpha1', via: 'key:alpha1/R0' },
+        { from: 'num', via: 'key:num/R0' },
+      ],
     },
   };
 })();
@@ -445,8 +538,8 @@ const ROMAK34_ALPHA1 = rowBindings({
   RBR: '.',
   RBP: '/',
   L1: { kind: 'key_repeat' },
-  L0: ' ',
-  R0: { kind: 'sl', layer: 'alpha2' },
+  L0: SPACE_OR_NUMBERS,
+  R0: ALPHA2_OR_SYMBOLS,
   R1: { kind: 'sk', mod: 'LSHIFT' },
 });
 
@@ -473,7 +566,8 @@ export const romak34: Layout = {
   id: 'romak-34',
   name: 'Romak 34',
   author: 'Rafael Romão',
-  description: 'Romak for 34 keys (3x5+2): accented vowels on a one-shot second alpha layer.',
+  description:
+    'Romak for 34 keys (3x5+2): accented vowels on a one-shot second alpha layer, and numbers and symbols held from the thumbs.',
   languages: ['pt-BR', 'en'],
   hostLocale: 'symbols',
   geometry: { preset: '3x5+2' },
@@ -488,6 +582,8 @@ export const romak34: Layout = {
     { id: 'alpha2', name: 'Alpha 2', bindings: ROMAK34_ALPHA2 },
     { id: 'ccedil', name: 'Ç extension', bindings: CCEDIL_BINDINGS },
     { id: 'altrep2', name: 'Alt repeat 2', bindings: ALTREP2_BINDINGS },
+    NUMBERS_LAYER,
+    SYMBOLS_LAYER,
   ],
   combos: [
     {

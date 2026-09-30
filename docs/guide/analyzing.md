@@ -40,9 +40,18 @@ each character on this keymap (the layer key first, the shift, the combo, the ma
 measures those presses. A letter on a layer costs its layer key too, and a one-shot that is used up
 by the wrong key counts as wasted.
 
-Type a word into **How is this typed?** to see its presses one by one, with the layer each came
-from. Characters the layout cannot type at all are listed in red above the numbers. Each one
-breaks the word it is in, so a long list means the numbers understate the cost.
+Type a word into **How is this typed?** and the board plays it: each press lights up in turn, on
+the layer it lands on, and a thumb held for a layer stays marked while it is held. The presses are
+listed under the field; tap one to stop on it, and **Play** to start again. Characters the layout
+cannot type at all are listed in red above the numbers. Each one breaks the word it is in, so a
+long list means the numbers understate the cost.
+
+### Combos
+
+Combos marked for typing are drawn as small pills between the keys pressed together, on the layers
+where they work, and a pill lights up with its keys when a word uses it. **Combos**, beside
+**Heat**, hides them. Combos marked as commands are shortcuts the analysis never presses, so they
+are not drawn.
 
 ### Case and space
 

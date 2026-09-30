@@ -189,10 +189,14 @@ export function TextField({
 }
 
 /** A labelled row: the role on the left, its control on the right. */
+/**
+ * A label and its controls on one line. The label sits on the baseline of the first control, so it
+ * lines up with a field, a row of chips or a segment alike, at a desk's size and a finger's.
+ */
 export function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-start gap-x-2 gap-y-1">
-      <span className="text-xs font-semibold w-16 pt-1 shrink-0">{label}</span>
+    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+      <span className="text-xs font-semibold w-16 shrink-0">{label}</span>
       <div className="flex-1 min-w-0 space-y-1">{children}</div>
     </div>
   );

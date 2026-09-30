@@ -12,10 +12,11 @@ import {
   toCanonicalJson,
 } from '@layoutmaster/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatValue } from '../components/format.js';
 import { HelpLink } from '../components/HelpLink.js';
 import { Keyboard } from '../components/Keyboard.js';
+import { useDismiss } from '../components/use-dismiss.js';
 import {
   compareBy,
   type LayoutSummary,
@@ -134,6 +135,9 @@ function NewLayoutDialog({ onCreate }: { onCreate: (spec: NewLayoutSpec) => void
     start: 'empty',
     numbers: false,
   });
+  const form = useRef<HTMLFormElement>(null);
+  // A tap on the dimmed page around the dialog, or Escape, is a change of mind.
+  useDismiss(form, () => setOpen(false), { active: open });
 
   return (
     <>
@@ -143,6 +147,7 @@ function NewLayoutDialog({ onCreate }: { onCreate: (spec: NewLayoutSpec) => void
       {open && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
           <form
+            ref={form}
             aria-label="New layout"
             className="card w-full max-w-md bg-base-100 shadow-xl"
             onSubmit={(e) => {
@@ -597,6 +602,7 @@ export function LibraryView() {
               <span className="sr-only">Layout to import</span>
               <textarea
                 id="import-text"
+                wrap="off"
                 aria-label="Layout to import"
                 rows={5}
                 className="textarea textarea-bordered font-mono text-xs"

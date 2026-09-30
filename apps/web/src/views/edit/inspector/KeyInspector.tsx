@@ -277,7 +277,7 @@ function Inspector({
           </>
         )}
 
-        <div className="flex flex-wrap items-center gap-1 border-t border-base-300 pt-2">
+        <div className="lm-key-actions border-t border-base-300 pt-2">
           <button
             type="button"
             className={`btn btn-xs ${state.swapFrom === keyId && state.swapMode === 'swap' ? 'btn-primary' : ''}`}
@@ -320,7 +320,7 @@ function Inspector({
           {owning ? (
             <button
               type="button"
-              className="btn btn-xs btn-ghost"
+              className="btn btn-xs btn-ghost text-error"
               onClick={() => {
                 setFeatures(withoutFeatureAt(layout, owning, activeLayer.id, keyId));
                 announce(`${featureTitle(owning)} removed from ${keyId}`);
@@ -331,7 +331,7 @@ function Inspector({
           ) : (
             <button
               type="button"
-              className="btn btn-xs btn-ghost"
+              className="btn btn-xs btn-ghost text-error"
               disabled={authored === undefined}
               onClick={() => {
                 send({ type: 'clearKey', keyId });

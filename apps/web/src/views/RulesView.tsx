@@ -201,48 +201,54 @@ export function RulesView() {
 
       <section className="card bg-base-100 border border-base-300">
         <div className="card-body gap-3 p-4">
-          <div className="flex flex-wrap items-end gap-3">
-            <label className="form-control">
-              <span className="label-text text-xs">Rule set</span>
-              <select
-                aria-label="Rule set"
-                className="select select-sm select-bordered min-w-56"
-                value={ref}
-                onChange={(e) =>
-                  navigate({ to: '/rules', search: { rules: e.target.value } as never })
-                }
-              >
-                <optgroup label="Presets">
-                  {PRESET_IDS.map((id) => (
-                    <option key={id} value={id}>
-                      {getPreset(id).name}
-                    </option>
-                  ))}
-                </optgroup>
-                {savedSets.entries.length > 0 && (
-                  <optgroup label="Saved">
-                    {savedSets.entries.map((e) => (
-                      <option key={e.id} value={`saved:${e.id}`}>
-                        {e.name}
+          <div className="lm-toolbar flex flex-wrap items-end gap-3">
+            <div className="lm-wide flex items-end gap-2">
+              <label className="form-control max-sm:flex-1">
+                <span className="label-text text-xs">Rule set</span>
+                <select
+                  aria-label="Rule set"
+                  className="select select-sm select-bordered min-w-56"
+                  value={ref}
+                  onChange={(e) =>
+                    navigate({ to: '/rules', search: { rules: e.target.value } as never })
+                  }
+                >
+                  <optgroup label="Presets">
+                    {PRESET_IDS.map((id) => (
+                      <option key={id} value={id}>
+                        {getPreset(id).name}
                       </option>
                     ))}
                   </optgroup>
-                )}
-              </select>
-            </label>
-            <HelpLink help={HELP.rules} className="mb-2" />
+                  {savedSets.entries.length > 0 && (
+                    <optgroup label="Saved">
+                      {savedSets.entries.map((e) => (
+                        <option key={e.id} value={`saved:${e.id}`}>
+                          {e.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+              </label>
+              <HelpLink help={HELP.rules} className="mb-2" />
+            </div>
 
-            <p className="text-xs opacity-70 max-w-xl">{ruleSet.description}</p>
-            {state.dirty && <span className="badge badge-warning badge-sm">unsaved changes</span>}
+            <p className="lm-wide text-xs opacity-70 max-w-xl">{ruleSet.description}</p>
+            {state.dirty && (
+              <span className="lm-wide justify-self-start badge badge-warning badge-sm">
+                unsaved changes
+              </span>
+            )}
 
             <form
-              className="flex items-end gap-2 sm:ml-auto"
+              className="lm-wide flex items-end gap-2 sm:ml-auto"
               onSubmit={(e) => {
                 e.preventDefault();
                 void save();
               }}
             >
-              <label className="form-control">
+              <label className="form-control max-sm:flex-1">
                 <span className="label-text text-xs">Save as</span>
                 <input
                   aria-label="Rule set name"
@@ -259,13 +265,13 @@ export function RulesView() {
             <Link
               to="/"
               search={{ rules: state.sourceRef } as never}
-              className="btn btn-sm btn-primary"
+              className="lm-wide btn btn-sm btn-primary"
             >
               Analyze with this set
             </Link>
           </div>
 
-          <div className="flex flex-wrap items-end gap-3 border-t border-base-300 pt-3">
+          <div className="lm-toolbar flex flex-wrap items-end gap-3 border-t border-base-300 pt-3">
             <label className="form-control">
               <span className="label-text text-xs">Universe</span>
               <select
@@ -381,7 +387,7 @@ export function RulesView() {
           >
             <div className="card-body gap-2 p-4">
               <h2 className="text-sm uppercase tracking-wide opacity-60">{title}</h2>
-              <table className="table table-xs min-w-[56rem]">
+              <table className="lm-rules-table table table-xs min-w-[56rem]">
                 <thead>
                   <tr>
                     <th />
@@ -415,13 +421,16 @@ export function RulesView() {
                           <RuleSources ruleId={rule.id} presetId={presetOf(ref)} />
                         </div>
                       </td>
-                      <td className="text-[11px] font-mono opacity-70 max-w-sm truncate">
+                      <td
+                        data-label="Definition"
+                        className="text-[11px] font-mono opacity-70 max-w-sm truncate"
+                      >
                         {describeSource(rule)} · {describeWhere(rule.where)}
                       </td>
-                      <td className="text-[11px] font-mono">
+                      <td data-label="Aggregate" className="text-[11px] font-mono">
                         {rule.aggregate ?? 'percent_of_ngrams'}
                       </td>
-                      <td>
+                      <td data-label="Bands">
                         <input
                           aria-label={`Band bounds for ${rule.label ?? rule.id}`}
                           placeholder="e.g. 0.5, 1, 1.5"
@@ -432,7 +441,7 @@ export function RulesView() {
                           }
                         />
                       </td>
-                      <td>
+                      <td data-label="Weight">
                         <input
                           type="number"
                           step="0.5"
@@ -686,6 +695,7 @@ export function RulesView() {
             </button>
           </div>
           <textarea
+            wrap="off"
             aria-label="Rule set JSON"
             rows={8}
             className="textarea textarea-bordered w-full font-mono text-xs"

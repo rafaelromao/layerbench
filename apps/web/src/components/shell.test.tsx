@@ -40,6 +40,28 @@ describe('the page frame', () => {
     ).toBeInTheDocument();
   });
 
+  it('closes the narrow-screen menu once a view is chosen, on a tap elsewhere and on Escape', async () => {
+    const user = userEvent.setup();
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    await screen.findByText('Bundled layouts');
+    const summary = screen.getByText('Menu', { selector: 'summary' });
+    const menu = summary.closest('details') as HTMLDetailsElement;
+
+    await user.click(summary);
+    expect(menu.open).toBe(true);
+    await user.click(within(menu).getByRole('link', { name: 'Compare' }));
+    await waitFor(() => expect(menu.open).toBe(false));
+
+    await user.click(summary);
+    expect(menu.open).toBe(true);
+    await user.click(document.getElementById('main') as HTMLElement);
+    expect(menu.open).toBe(false);
+
+    await user.click(summary);
+    await user.keyboard('{Escape}');
+    expect(menu.open).toBe(false);
+  });
+
   it('opens storage settings as a dialog with a name and a token field that hides itself', async () => {
     const user = userEvent.setup();
     renderRoute(LIBRARY, { storage: freshStorage() });

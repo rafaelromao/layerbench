@@ -10,7 +10,7 @@ import {
   useState,
 } from 'react';
 import { HelpLink } from '../components/HelpLink.js';
-import { Keyboard, type KeyboardHandle, KeyLegend } from '../components/Keyboard.js';
+import { Keyboard, type KeyboardHandle, KeyLegend, typingCombos } from '../components/Keyboard.js';
 import { LayerTabs } from '../components/LayerTabs.js';
 import { EDIT_SUMMARY_IDS, SummaryStrip } from '../components/Metrics.js';
 import { useAnalysisClient } from '../engine/client-context.js';
@@ -384,6 +384,7 @@ function Editor({
                     compiled={state.compiled}
                     layer={state.layer}
                     selected={state.selected}
+                    combos={typingCombos(state.compiled, state.layer)}
                     draggable
                     highlight={highlighted}
                     onKeyClick={(keyId) => {
@@ -473,7 +474,7 @@ function Editor({
                 <div
                   role="tablist"
                   aria-label="Editor panels"
-                  className="lm-panel-tabs tabs tabs-bordered tabs-sm min-w-0 flex-1"
+                  className="lm-panel-tabs tabs tabs-border tabs-sm min-w-0 flex-1"
                 >
                   {PANELS.map(([panel, label]) => (
                     <button

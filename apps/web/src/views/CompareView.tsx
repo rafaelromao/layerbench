@@ -101,7 +101,7 @@ export function CompareView() {
 
       <form
         id="compare-toolbar"
-        className="card bg-base-100 border border-base-300 p-3 flex flex-row flex-wrap items-end gap-3"
+        className="lm-toolbar card bg-base-100 border border-base-300 p-3 flex flex-row flex-wrap items-end gap-3"
         onSubmit={(e) => e.preventDefault()}
       >
         <label className="form-control">
@@ -140,7 +140,7 @@ export function CompareView() {
           </select>
         </label>
 
-        <label className="form-control">
+        <label className="form-control lm-wide">
           <span className="label-text text-xs">Corpus</span>
           <select
             aria-label="Corpus"
@@ -188,7 +188,7 @@ export function CompareView() {
           </select>
         </label>
 
-        <div className="flex flex-wrap items-center gap-3 sm:ml-auto">
+        <div className="lm-wide flex flex-wrap items-center gap-3 sm:ml-auto">
           <label className="label cursor-pointer gap-2">
             <span className="label-text text-xs">Include space</span>
             <input
@@ -200,7 +200,11 @@ export function CompareView() {
               }
             />
           </label>
-          <Link to="/" search={toSearch(params) as never} className="btn btn-sm btn-ghost">
+          <Link
+            to="/"
+            search={toSearch(params) as never}
+            className="btn btn-sm btn-outline max-sm:flex-1"
+          >
             Analyze A
           </Link>
         </div>

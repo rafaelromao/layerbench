@@ -6,7 +6,8 @@ import {
   legendText,
   type Mod,
 } from '@layoutmaster/core';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { useDismiss } from '../../../components/use-dismiss.js';
 import { bindingFromFields } from '../binding-form.js';
 import { type BindingTextContext, parseBindingText } from '../binding-text.js';
 import { LayerChips, ModChips, Note, Row, Segment, TextField, words } from './controls.js';
@@ -94,7 +95,10 @@ function KindTiles({
   canRefer: boolean;
   onPick: (k: InspectorKind) => void;
 }) {
-  const [more, setMore] = useState(() => MORE_KINDS.some((k) => k.kind === kind));
+  // The rest of the kinds open like a menu, and close like one: on a pick, or a tap elsewhere.
+  const [more, setMore] = useState(false);
+  const tiles = useRef<HTMLDivElement>(null);
+  useDismiss(tiles, () => setMore(false), { active: more, closeOnEscape: false });
   const tile = (k: KindInfo) => (
     <button
       key={k.kind}
@@ -104,6 +108,7 @@ function KindTiles({
       disabled={k.kind === 'behaviour' && !canRefer}
       className={`lm-kind-tile ${kind === k.kind ? 'lm-kind-tile-on' : ''}`}
       onClick={() => {
+        setMore(false);
         if (kind !== k.kind) onPick(k.kind);
       }}
     >
@@ -113,20 +118,25 @@ function KindTiles({
       <span className="lm-kind-label">{k.label}</span>
     </button>
   );
+  // With the list closed, a kind picked from it stands in the More tile, so it is still shown.
+  const chosen = MORE_KINDS.find((k) => k.kind === kind);
+  const shown = !more && chosen;
   return (
-    <div className="space-y-1">
+    <div className="space-y-1" ref={tiles}>
       <fieldset className="lm-kind-tiles" aria-label="Kind of key">
         {PRIMARY_KINDS.map(tile)}
         <button
           type="button"
-          className="lm-kind-tile"
+          className={`lm-kind-tile ${shown ? 'lm-kind-tile-on' : ''}`}
           aria-expanded={more}
+          aria-label={shown ? `More kinds: ${chosen.label}` : undefined}
+          title={shown ? chosen.hint : undefined}
           onClick={() => setMore((m) => !m)}
         >
           <span aria-hidden="true" className="lm-kind-glyph">
-            {more ? '−' : '+'}
+            {shown ? chosen.glyph : more ? '−' : '+'}
           </span>
-          <span className="lm-kind-label">More</span>
+          <span className="lm-kind-label">{shown ? chosen.label : 'More'}</span>
         </button>
       </fieldset>
       {more && (

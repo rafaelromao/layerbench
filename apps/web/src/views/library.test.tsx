@@ -34,6 +34,20 @@ describe('Creating layouts', () => {
     expect(doc.layers).toHaveLength(3);
   });
 
+  it('puts the new-layout dialog away on a tap around it, or Escape', async () => {
+    const user = userEvent.setup();
+    renderRoute(LIBRARY, { storage: freshStorage() });
+
+    await user.click(await screen.findByRole('button', { name: 'New layout' }));
+    const form = screen.getByRole('form', { name: 'New layout' });
+    await user.click(form.parentElement as HTMLElement);
+    expect(screen.queryByRole('form', { name: 'New layout' })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'New layout' }));
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('form', { name: 'New layout' })).toBeNull();
+  });
+
   it('duplicates a bundled layout under a free id instead of overwriting', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();

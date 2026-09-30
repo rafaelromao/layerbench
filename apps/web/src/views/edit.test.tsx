@@ -415,6 +415,43 @@ describe('Edit', () => {
     await waitFor(() => expect(legendList.textContent).toContain('after a → types h'));
   });
 
+  it('closes the list of more kinds on a choice or a tap elsewhere, and keeps the choice in sight', async () => {
+    const user = userEvent.setup();
+    await openEdit();
+
+    await user.click(key('Key LHM: d'));
+    const editor = await inspector('LHM');
+    await user.click(within(editor).getByRole('button', { name: 'More' }));
+    expect(within(editor).getByRole('group', { name: 'More kinds' })).toBeInTheDocument();
+    // A tap anywhere else puts the list away, like any menu.
+    await user.click(within(editor).getByRole('textbox', { name: 'Binding for LHM' }));
+    expect(within(editor).queryByRole('group', { name: 'More kinds' })).toBeNull();
+
+    await user.click(within(editor).getByRole('button', { name: 'More' }));
+    await user.click(within(editor).getByRole('button', { name: 'Tap dance' }));
+    const after = await inspector('LHM');
+    expect(within(after).queryByRole('group', { name: 'More kinds' })).toBeNull();
+    // The kind chosen from the list now stands in its tile.
+    expect(within(after).getByRole('button', { name: 'More kinds: Tap dance' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+  });
+
+  it('closes the suggestions once one that needs nothing more is taken', async () => {
+    const user = userEvent.setup();
+    await openEdit();
+
+    await user.click(key('Key LHM: d'));
+    const field = within(await inspector('LHM')).getByRole('textbox', { name: 'Binding for LHM' });
+    await user.clear(field);
+    await user.type(field, '&key');
+    const list = await screen.findByRole('list', { name: 'Suggestions' });
+    await user.click(within(list).getByRole('button', { name: /&key_repeat/ }));
+    expect(field).toHaveValue('&key_repeat');
+    expect(screen.queryByRole('list', { name: 'Suggestions' })).toBeNull();
+  });
+
   it('makes a home-row mod out of a letter', async () => {
     const user = userEvent.setup();
     await openEdit();
@@ -659,11 +696,12 @@ describe('Edit', () => {
     const user = userEvent.setup();
     await openMagicRomak();
 
-    // The right inner thumb is a plain one-shot layer; the release options it arrives at the
+    // The Ç extension's thumb is a plain one-shot layer; the release options it arrives at the
     // simulator with are the layout's defaults, not the key's, so they are nothing to protect.
-    await user.click(await screen.findByRole('button', { name: /^Key R0:/ }));
-    const editor = await inspector('R0');
-    expect(within(editor).getByRole('textbox', { name: 'Binding for R0' })).toHaveValue(
+    await user.click(await screen.findByRole('tab', { name: 'Ç extension' }));
+    await user.click(await screen.findByRole('button', { name: /^Key L1:/ }));
+    const editor = await inspector('L1');
+    expect(within(editor).getByRole('textbox', { name: 'Binding for L1' })).toHaveValue(
       '&sl alpha2',
     );
     expect(within(editor).getByRole('radio', { name: 'One-shot' })).toBeChecked();
@@ -674,6 +712,19 @@ describe('Edit', () => {
     expect(screen.queryByText('unsaved')).toBeNull();
 
     await user.click(within(editor).getByRole('radio', { name: 'Hold' }));
-    expect(await screen.findByRole('button', { name: 'Key R0: A2 (hold)' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Key L1: A2 (hold)' })).toBeInTheDocument();
+  });
+
+  it('reaches the symbols from the Alpha 2 thumb, as the author’s keymap does', async () => {
+    const user = userEvent.setup();
+    await openMagicRomak();
+    // Tapped it is Alpha 2 for one key; held it is the Symbols layer.
+    await user.click(await screen.findByRole('button', { name: /^Key R0:/ }));
+    const editor = await inspector('R0');
+    expect(within(editor).getByRole('button', { name: /Tap-hold/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: /^Key R0: A2, hold Symb/ })).toBeInTheDocument();
   });
 });

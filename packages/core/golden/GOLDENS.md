@@ -124,6 +124,25 @@ What moved, checked rule by rule across all 38 reports:
   formula is the same; the text is not. cyanophage's word list ships without a license, so the
   fixtures cannot include it, and the comparison stops at the formula.
 
+## Fourth re-baseline: Romak's Numbers and Symbols from the author's keymap
+
+Magic Romak's Numbers and Symbols layers came from the generic templates, and Romak 24 and 34 had
+none. All three now carry the two layers of the author's keymap, `numbers_layer` and
+`symbols_layer` in `zmk/definitions/keymap.dtsi` of github.com/rafaelromao/keyboards, and reach
+them the way it does: holding the space thumb for Numbers, holding the Alpha 2 thumb for Symbols.
+
+What moved, checked across all 38 reports:
+
+- **No metric value, item or band.** The fixture corpora contain none of the characters the new
+  layers add, and the ones they do contain are typed exactly as before. `qwerty` is untouched.
+- **`producers`**, the ways each character can be typed: Magic Romak's digits and symbols now sit
+  where the keymap puts them, and Romak 34 gains producers for the ten digits and the symbols.
+- **Romak 34's per-layer arrays** (`stats.per_layer`, the `layer_taps_per_100` breakdown) carry the
+  two new layers, at zero.
+
+Because the corpora cannot catch a misplaced digit or symbol, `src/layouts/layouts.test.ts` types
+them on each of the three layouts and checks the keys used.
+
 ## Not compared
 
 `elapsed_ms` and the structure hash. Everything else in a report file is asserted.

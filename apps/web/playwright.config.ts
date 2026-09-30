@@ -15,8 +15,8 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${PORT}`,
     trace: 'retain-on-failure',
-    // `E2E_CHANNEL=chrome` runs on the Google Chrome already installed, for a network that will not
-    // let `playwright install` download its own Chromium.
+    // `E2E_CHANNEL=msedge` or `E2E_CHANNEL=chrome` runs on an Edge or Chrome already installed, for
+    // a network that will not let `playwright install` download its own Chromium.
     channel: process.env.E2E_CHANNEL || undefined,
   },
   projects: [
