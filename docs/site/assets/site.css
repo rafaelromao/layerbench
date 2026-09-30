@@ -1,0 +1,802 @@
+/*
+ * The landing page, in the app's own palette (apps/web/src/index.css): orange on near-white in the
+ * light theme, indigo on slate in the dark one, following the system. Where the app's colours are
+ * too light for text on this page, a deeper shade of the same hue is used, so every pair meets
+ * WCAG AA: links and the primary button's label are all 4.5:1 or better.
+ */
+
+:root {
+  color-scheme: light dark;
+  --bg: oklch(96% 0.001 286.375);
+  --surface: oklch(98% 0 0);
+  --sunken: oklch(92% 0.004 286.32);
+  --line: oklch(86% 0.006 286);
+  --text: oklch(21% 0.006 285.885);
+  --muted: oklch(45% 0.012 286);
+  --link: oklch(50% 0.16 45);
+  --brand: oklch(60% 0.19 46);
+  --fill: oklch(70% 0.213 47.604);
+  --on-fill: oklch(21% 0.006 285.885);
+  --yes: oklch(55% 0.12 182);
+  --partial: oklch(62% 0.16 70);
+  --claimed: oklch(55% 0.18 300);
+  --none: oklch(60% 0.01 286);
+  --ours: oklch(95.5% 0.035 75);
+  --radius: 0.75rem;
+  --sans: ui-sans-serif, system-ui, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: oklch(25.26% 0.014 253.1);
+    --surface: oklch(30.33% 0.016 252.42);
+    --sunken: oklch(20.15% 0.012 254.09);
+    --line: oklch(38% 0.02 255);
+    --text: oklch(97.807% 0.029 256.847);
+    --muted: oklch(80% 0.02 256);
+    --link: oklch(80% 0.12 280);
+    --brand: oklch(70% 0.17 278);
+    --fill: oklch(52% 0.23 277);
+    --on-fill: oklch(96% 0.018 272.314);
+    --yes: oklch(72% 0.12 184);
+    --partial: oklch(78% 0.14 75);
+    --claimed: oklch(75% 0.15 300);
+    --none: oklch(62% 0.02 256);
+    --ours: color-mix(in oklch, var(--fill) 16%, var(--surface));
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+a {
+  color: var(--link);
+  text-underline-offset: 0.18em;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+:focus-visible {
+  outline: 3px solid var(--link);
+  outline-offset: 3px;
+  border-radius: 0.25rem;
+}
+
+code,
+.key {
+  font-family: var(--mono);
+  font-size: 0.9em;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+h2 {
+  font-size: clamp(1.6rem, 1.2rem + 1.6vw, 2.25rem);
+  margin: 0 0 1rem;
+}
+
+h3 {
+  font-size: 1.15rem;
+  margin: 0 0 0.5rem;
+}
+
+p {
+  margin: 0 0 1rem;
+}
+
+.wrap {
+  width: 100%;
+  max-width: 72rem;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+@media (min-width: 48rem) {
+  .wrap {
+    padding-inline: 1.5rem;
+  }
+}
+
+.skip {
+  position: absolute;
+  left: 1rem;
+  top: -3rem;
+  z-index: 10;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface);
+  border-radius: 0.5rem;
+}
+
+.skip:focus {
+  top: 0.75rem;
+}
+
+/* Header: the wordmark and the way into the app, with the page's sections under it on a phone. */
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: color-mix(in oklch, var(--bg) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+  padding-block: 0.6rem;
+}
+
+.wordmark {
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--text);
+  text-decoration: none;
+  margin: 0;
+}
+
+.wordmark span {
+  color: var(--brand);
+}
+
+.site-header nav {
+  order: 3;
+  flex-basis: 100%;
+  min-width: 0;
+}
+
+.site-header nav ul {
+  display: flex;
+  gap: 0.25rem 1.1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+}
+
+.site-header nav a {
+  display: inline-block;
+  padding-block: 0.35rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.site-header nav a:hover {
+  color: var(--text);
+}
+
+.site-header .button {
+  margin-left: auto;
+}
+
+@media (min-width: 56rem) {
+  .site-header nav {
+    order: 0;
+    flex-basis: auto;
+    margin-left: auto;
+  }
+  .site-header .button {
+    margin-left: 0.5rem;
+  }
+}
+
+/* Buttons. */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.55rem 1.1rem;
+  border: 1.5px solid var(--line);
+  border-radius: 0.5rem;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.button:hover {
+  border-color: var(--muted);
+}
+
+.button.primary {
+  background: var(--fill);
+  border-color: var(--fill);
+  color: var(--on-fill);
+}
+
+.button.primary:hover {
+  background: color-mix(in oklch, var(--fill) 88%, var(--text));
+}
+
+.button.small {
+  min-height: 2.25rem;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.95rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+/* Sections. */
+
+main > section {
+  padding-block: 3.5rem;
+  scroll-margin-top: 4.5rem;
+}
+
+main > section + section {
+  border-top: 1px solid var(--line);
+}
+
+@media (min-width: 48rem) {
+  main > section {
+    padding-block: 5rem;
+  }
+}
+
+.section-lede,
+.prose {
+  max-width: 46rem;
+}
+
+.section-lede {
+  color: var(--muted);
+  font-size: 1.1rem;
+  margin-bottom: 2rem;
+}
+
+.note {
+  max-width: 46rem;
+  color: var(--muted);
+  margin-top: 1.5rem;
+}
+
+/* Hero. */
+
+.hero {
+  padding-top: 3rem;
+}
+
+.kicker {
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  color: var(--link);
+  letter-spacing: 0.02em;
+  margin-bottom: 0.75rem;
+}
+
+.hero h1 {
+  font-size: clamp(2.2rem, 1.4rem + 3.6vw, 3.75rem);
+  letter-spacing: -0.02em;
+  margin: 0 0 1rem;
+  max-width: 18ch;
+}
+
+.lede {
+  font-size: clamp(1.1rem, 1rem + 0.5vw, 1.3rem);
+  max-width: 44rem;
+  margin-bottom: 1.5rem;
+}
+
+.proof {
+  color: var(--muted);
+  font-size: 0.95rem;
+  margin: 1rem 0 2.5rem;
+}
+
+/* Screenshots: drawn by the app itself, framed as a card. */
+
+.shot {
+  margin: 0;
+}
+
+.shot picture,
+.shot > a {
+  display: block;
+}
+
+.shot img {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.shot figcaption {
+  color: var(--muted);
+  font-size: 0.95rem;
+  margin-top: 0.6rem;
+}
+
+.hero-shot img {
+  box-shadow: 0 1.5rem 3rem -1.5rem color-mix(in oklch, var(--text) 35%, transparent);
+}
+
+/* The board and its numbers: side by side at a desk, in proportion to their widths. */
+.hero-shot .hero-pair {
+  display: grid;
+  gap: 1rem;
+  align-items: start;
+}
+
+@media (min-width: 56rem) {
+  .hero-shot .hero-pair {
+    grid-template-columns: 640fr 532fr;
+  }
+}
+
+/* The filmstrip: one press per frame, two to a row at a desk, swiped through on a phone. */
+
+.film-title {
+  margin-top: 2.5rem;
+}
+
+.film {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 85%;
+  gap: 1rem;
+  margin: 1rem 0 0;
+  padding: 0 0 0.75rem;
+  list-style: none;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  counter-reset: press;
+}
+
+.film > li {
+  scroll-snap-align: start;
+  counter-increment: press;
+}
+
+.film figcaption::before {
+  content: counter(press) ". ";
+  font-weight: 700;
+  color: var(--text);
+}
+
+@media (min-width: 48rem) {
+  .film {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow-x: visible;
+    padding-bottom: 0;
+  }
+}
+
+.after-film {
+  max-width: 46rem;
+  margin-top: 1.25rem;
+}
+
+/* Keycaps: how the page writes a key or a ZMK behavior. */
+
+.key {
+  display: inline-block;
+  padding: 0.1em 0.5em;
+  border: 1px solid var(--line);
+  border-bottom-width: 3px;
+  border-radius: 0.4rem;
+  background: var(--surface);
+  color: var(--text);
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.behaviors {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.behaviors > li {
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.behaviors .keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.6rem;
+}
+
+.behaviors p:last-child {
+  margin: 0;
+  color: var(--muted);
+}
+
+/*
+ * Features: the words, then the app's own screenshot at the full width of the page, where its text
+ * stays readable. The phone shot is narrow, so it sits beside its words at a desk.
+ */
+
+.features {
+  display: grid;
+  gap: 3.5rem;
+}
+
+.feature {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.feature-text {
+  max-width: 46rem;
+}
+
+.feature-text p {
+  color: var(--muted);
+  margin-bottom: 0;
+}
+
+.phone-shot {
+  max-width: 20rem;
+  justify-self: center;
+}
+
+@media (min-width: 48rem) {
+  .phone-feature {
+    grid-template-columns: minmax(0, 1fr) 20rem;
+    align-items: center;
+    gap: 2.5rem;
+  }
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  gap: 1rem;
+  margin: 3.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cards > li,
+.trust > li,
+.steps > li {
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.cards p,
+.trust p,
+.steps p {
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+}
+
+.cards p:last-child,
+.trust p:last-child,
+.steps p:last-child {
+  margin-bottom: 0;
+}
+
+.layouts-title {
+  margin-top: 3rem;
+}
+
+.layouts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.layouts a {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  min-height: 2.25rem;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--line);
+  border-bottom-width: 3px;
+  border-radius: 0.5rem;
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.layouts a:hover {
+  border-color: var(--muted);
+}
+
+.layouts span {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* Trust. */
+
+.trust {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.evidence {
+  font-size: 0.9rem;
+}
+
+.evidence code {
+  overflow-wrap: anywhere;
+}
+
+.assumptions {
+  margin-top: 2rem;
+  padding: 1.25rem 1.4rem;
+  border: 1px dashed var(--muted);
+  border-radius: var(--radius);
+  background: var(--sunken);
+}
+
+.assumptions ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.assumptions li + li {
+  margin-top: 0.4rem;
+}
+
+/* The comparison: a table that scrolls on its own on a phone, the page never does. */
+
+.table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.compare {
+  width: 100%;
+  min-width: 60rem;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.compare caption {
+  padding: 0.9rem 1rem 0.5rem;
+  text-align: left;
+  font-weight: 700;
+}
+
+.compare th,
+.compare td {
+  padding: 0.6rem 0.75rem;
+  border-top: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.compare thead th {
+  font-size: 0.85rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.compare tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 13rem;
+  background: var(--surface);
+  font-weight: 600;
+}
+
+.compare .lm {
+  background: var(--ours);
+}
+
+/* On a phone the feature names take less room, so two columns of answers show beside them. */
+@media (max-width: 47.99rem) {
+  .compare {
+    font-size: 0.875rem;
+  }
+  .compare tbody th {
+    min-width: 8.5rem;
+  }
+}
+
+.compare thead .lm {
+  color: var(--text);
+}
+
+.yes,
+.partial,
+.claimed,
+.no,
+.nf {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.yes::before,
+.partial::before,
+.claimed::before,
+.no::before,
+.nf::before {
+  display: inline-block;
+  width: 1.1em;
+  font-weight: 700;
+}
+
+.yes::before {
+  content: "✓";
+  color: var(--yes);
+}
+
+.partial::before {
+  content: "◐";
+  color: var(--partial);
+}
+
+.claimed::before {
+  content: "?";
+  color: var(--claimed);
+}
+
+.no::before,
+.nf::before {
+  content: "–";
+  color: var(--none);
+}
+
+.nf {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+sup {
+  line-height: 0;
+  margin-left: 0.15em;
+}
+
+sup a {
+  display: inline-block;
+  min-width: 1.1em;
+  text-align: center;
+}
+
+.notes {
+  margin: 1.25rem 0 3rem;
+  padding-left: 1.4rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.notes li + li {
+  margin-top: 0.4rem;
+}
+
+.notes li:target {
+  color: var(--text);
+}
+
+.grid-2 {
+  display: grid;
+  gap: 2rem;
+}
+
+@media (min-width: 48rem) {
+  .grid-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.plain {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.plain li + li {
+  margin-top: 0.6rem;
+}
+
+/* Start. */
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+  gap: 1rem;
+  margin: 0 0 2rem;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.steps > li {
+  counter-increment: step;
+}
+
+.steps h3::before {
+  content: counter(step);
+  display: inline-grid;
+  place-items: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  margin-right: 0.6rem;
+  border: 1px solid var(--line);
+  border-bottom-width: 3px;
+  border-radius: 0.4rem;
+  background: var(--bg);
+  font-family: var(--mono);
+  font-size: 0.95rem;
+}
+
+/* Footer. */
+
+.site-footer {
+  padding-block: 2.5rem 3rem;
+  border-top: 1px solid var(--line);
+  background: var(--sunken);
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.site-footer .wordmark {
+  margin-bottom: 0.75rem;
+}
+
+.credits {
+  max-width: 52rem;
+}

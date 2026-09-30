@@ -1,5 +1,5 @@
-import { copyFileSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { copyFileSync, cpSync, existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { basename, extname, resolve, sep } from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
@@ -99,11 +99,56 @@ function staticHosting(): Plugin {
   };
 }
 
+/** The landing page: static files, written by hand in `docs/site`, with no build of their own. */
+const LANDING = resolve(import.meta.dirname, '../../docs/site');
+
+const LANDING_TYPES: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+};
+
+/**
+ * The landing page at `/about/`, where the header's About link leads: copied into the build, and
+ * read from `docs/site` by the dev server, so the link works there too. Its paths are relative, so
+ * the page must be asked for with the trailing slash; `/about` alone is sent there.
+ */
+function landingPage(): Plugin {
+  return {
+    name: 'landing-page',
+    configureServer(server) {
+      server.middlewares.use('/about', (req, res, next) => {
+        const path = decodeURIComponent((req.url ?? '/').split('?')[0]);
+        if (req.originalUrl?.split('?')[0] === '/about') {
+          res.writeHead(301, { Location: '/about/' });
+          res.end();
+          return;
+        }
+        const file = resolve(LANDING, `.${path.endsWith('/') ? `${path}index.html` : path}`);
+        if (!file.startsWith(`${LANDING}${sep}`) || !existsSync(file) || !statSync(file).isFile()) {
+          next();
+          return;
+        }
+        res.setHeader('Content-Type', LANDING_TYPES[extname(file)] ?? 'application/octet-stream');
+        res.end(readFileSync(file));
+      });
+    },
+    closeBundle() {
+      // Dotfiles (a Finder `.DS_Store`, an editor's state) are the machine's, not the page's.
+      cpSync(LANDING, resolve(import.meta.dirname, 'dist', 'about'), {
+        recursive: true,
+        filter: (source) => !basename(source).startsWith('.'),
+      });
+    },
+  };
+}
+
 export default defineConfig({
   // Cloudflare Pages serves from the root of a domain, so the default is what production uses;
   // VITE_BASE exists for hosts that serve the site from a subdirectory, such as GitHub Pages.
   base: process.env.VITE_BASE ?? '/',
-  plugins: [react(), tailwindcss(), staticHosting()],
+  plugins: [react(), tailwindcss(), staticHosting(), landingPage()],
   worker: {
     format: 'es',
   },

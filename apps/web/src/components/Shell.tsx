@@ -17,6 +17,12 @@ const NAV = [
   { to: '/guide', label: 'Guide' },
 ] as const;
 
+/**
+ * The landing page: what LayoutMaster is for, how far to trust it and how it compares. It is a
+ * static page served beside the app rather than a view of it, so it is an ordinary link.
+ */
+const ABOUT = `${import.meta.env.BASE_URL}about/`;
+
 const THEMES: { value: ThemeChoice; label: string; icon: string }[] = [
   { value: 'system', label: 'Follow the system theme', icon: '◐' },
   { value: 'light', label: 'Light theme', icon: '☀' },
@@ -125,6 +131,11 @@ function MobileMenu() {
               </Link>
             </li>
           ))}
+          <li>
+            <a href={ABOUT} onClick={close}>
+              About
+            </a>
+          </li>
         </ul>
         {/* The header has no room for it on a phone; here it is one tap from anywhere. */}
         <div className="flex items-center justify-between gap-2 border-t border-base-300 px-3 pt-2">
@@ -158,6 +169,9 @@ export function Shell({ children }: { children: ReactNode }) {
                 </Link>
               </li>
             ))}
+            <li>
+              <a href={ABOUT}>About</a>
+            </li>
           </ul>
         </nav>
         <MobileMenu />

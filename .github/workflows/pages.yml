@@ -1,0 +1,49 @@
+name: pages
+
+# Publishes the landing page, docs/site, to GitHub Pages. Until the project is public it is only
+# served by the app itself, at /about/, so this runs only when started by hand. Going public:
+# Settings → Pages → Source "GitHub Actions", a repository variable APP_ORIGIN with the app's public
+# address, and a trigger here: `push: { branches: [main], paths: ['docs/site/**'] }`.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  # A deployment that has started is left to finish; a newer run waits for it.
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      APP_ORIGIN: ${{ vars.APP_ORIGIN }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      # Fails early, with a clear message, when Pages is not set up for this repository.
+      - uses: actions/configure-pages@v6
+      # In the app the page links to views on its own origin; on Pages those links must name it.
+      - run: |
+          test -n "$APP_ORIGIN" || { echo "Set the APP_ORIGIN repository variable first."; exit 1; }
+          cp -R docs/site _site
+          sed -E -i "s#href=\"/(library|analyze|edit|compare|rules|corpus|guide)#href=\"$APP_ORIGIN/\1#g" _site/index.html
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

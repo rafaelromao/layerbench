@@ -1,0 +1,936 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; img-src 'self'; style-src 'self'; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LayoutMaster — a keyboard layout analyzer that types like your firmware</title>
+    <meta
+      name="description"
+      content="LayoutMaster types a text on your ZMK keymap the way the firmware would — layers, one-shots, magic and repeat keys, combos, macros — and measures the key presses that result."
+    />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#1d232b" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f3f3f4" media="(prefers-color-scheme: light)" />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="assets/site.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <div class="wrap bar">
+        <a class="wordmark" href="/library"><span>Layout</span>Master</a>
+        <nav aria-label="On this page">
+          <ul>
+            <li><a href="#why">Why</a></li>
+            <li><a href="#simulates">Simulation</a></li>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#trust">Trust</a></li>
+            <li><a href="#compare">Compare</a></li>
+            <li><a href="#start">Start</a></li>
+          </ul>
+        </nav>
+        <a class="button primary small" href="/library">Open the app</a>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="wrap">
+          <p class="kicker">Keyboard layout analyzer for ZMK keymaps</p>
+          <h1 id="hero-title">Scores the keys you actually press.</h1>
+          <p class="lede">
+            LayoutMaster types a text on your keymap the way ZMK would — layers, one-shots, magic and
+            repeat keys, combos, macros — and measures SFB, SFS, scissors, rolls and Effort on the
+            presses that result.
+          </p>
+          <p class="actions">
+            <a class="button primary" href="/analyze?layout=magic-romak&amp;corpus=pt-br-conv"
+              >Open Magic Romak</a
+            >
+            <a class="button" href="/guide">Read the guide</a>
+          </p>
+          <p class="proof">Free · Runs in your browser · No account, no tracking</p>
+
+          <figure class="shot hero-shot">
+            <a class="hero-pair" href="/analyze?layout=magic-romak&amp;corpus=pt-br-conv">
+              <picture>
+                <source srcset="assets/img/analyze-board-dark.png" media="(prefers-color-scheme: dark)" />
+                <img
+                  src="assets/img/analyze-board-light.png"
+                  width="640"
+                  height="442"
+                  alt="The Analyze view's board for Magic Romak: tabs for its five layers, Alpha 1 shown, each key shaded by how often it is pressed."
+                  fetchpriority="high"
+                />
+              </picture>
+              <picture>
+                <source srcset="assets/img/analyze-summary-dark.png" media="(prefers-color-scheme: dark)" />
+                <img
+                  src="assets/img/analyze-summary-light.png"
+                  width="532"
+                  height="398"
+                  alt="The summary beside it: Effort, SFB, SFS and eleven more numbers, each with its band."
+                  fetchpriority="high"
+                />
+              </picture>
+            </a>
+            <figcaption>
+              Magic Romak on Brazilian Portuguese conversation: its five layers in the tabs, how often
+              each key of Alpha 1 is pressed, and its numbers, banded by the Keyboard Layouts Doc's
+              thresholds.
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section id="why" aria-labelledby="why-title">
+        <div class="wrap">
+          <h2 id="why-title">Most analyzers score one letter on one key</h2>
+          <div class="prose">
+            <p>
+              That fits a 30-key layout. It doesn't fit many ZMK keymaps: a thumb opens a second alpha
+              layer for the next key, a magic key types what the letter before it calls for, a combo
+              types a letter no key has, a macro types <em>qu</em> and hands the next key to another
+              layer.
+            </p>
+            <p>
+              Some analyzers approximate parts of this, by rewriting the text before scoring it or by
+              charging a cost for each modifier; <a href="#compare">the comparison</a> says which.
+              LayoutMaster simulates the keymap instead, press by press, each on the layer it lands on,
+              and scores what was pressed.
+            </p>
+          </div>
+
+          <h3 class="film-title"><em lang="pt-BR">ação</em> on Magic Romak, in four presses</h3>
+          <ol class="film">
+            <li>
+              <figure class="shot">
+                <picture>
+                  <source srcset="assets/img/trace-1-dark.png" media="(prefers-color-scheme: dark)" />
+                  <img
+                    src="assets/img/trace-1-light.png"
+                    width="640"
+                    height="442"
+                    alt="Press 1: the right hand's home-row middle key, a, lit on Alpha 1."
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+                <figcaption><span class="key">a</span> on Alpha 1, right hand, home row.</figcaption>
+              </figure>
+            </li>
+            <li>
+              <figure class="shot">
+                <picture>
+                  <source srcset="assets/img/trace-2-dark.png" media="(prefers-color-scheme: dark)" />
+                  <img
+                    src="assets/img/trace-2-light.png"
+                    width="640"
+                    height="442"
+                    alt="Press 2: the right inner thumb lit, opening Alpha 2 for the next key."
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+                <figcaption>
+                  <span class="key">R0</span>, the right inner thumb: Alpha 2 for the next key.
+                </figcaption>
+              </figure>
+            </li>
+            <li>
+              <figure class="shot">
+                <picture>
+                  <source srcset="assets/img/trace-3-dark.png" media="(prefers-color-scheme: dark)" />
+                  <img
+                    src="assets/img/trace-3-light.png"
+                    width="640"
+                    height="442"
+                    alt="Press 3: ç lit on Alpha 2."
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+                <figcaption>
+                  <span class="key">ç</span> on Alpha 2, which also opens the Ç extension for the next
+                  key.
+                </figcaption>
+              </figure>
+            </li>
+            <li>
+              <figure class="shot">
+                <picture>
+                  <source srcset="assets/img/trace-4-dark.png" media="(prefers-color-scheme: dark)" />
+                  <img
+                    src="assets/img/trace-4-light.png"
+                    width="640"
+                    height="442"
+                    alt="Press 4: ão, one key, lit on the Ç extension layer."
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+                <figcaption><span class="key">ão</span>, one key on the Ç extension.</figcaption>
+              </figure>
+            </li>
+          </ol>
+          <p class="after-film">
+            With multi-letter macros switched off, the same word takes five presses: a, the thumb, ç,
+            ã and o. The simulator's tests pin traces like these.
+            <a href="/analyze?layout=magic-romak&amp;corpus=pt-br-conv"
+              >Type any word in <strong>How is this typed?</strong></a
+            >
+          </p>
+        </div>
+      </section>
+
+      <section id="simulates" aria-labelledby="simulates-title">
+        <div class="wrap">
+          <h2 id="simulates-title">Your keymap, not a letter map</h2>
+          <p class="section-lede">
+            The simulator follows ZMK's rules for what a press does, and every behavior below is part
+            of how a text is typed.
+          </p>
+          <ul class="behaviors">
+            <li>
+              <p class="keys"><span class="key">&amp;mo</span> <span class="key">&amp;lt</span></p>
+              <p>Layers while a key is held, and layer-taps.</p>
+            </li>
+            <li>
+              <p class="keys"><span class="key">&amp;sl</span></p>
+              <p>One-shot layers: the next press lands there, then the layer is released.</p>
+            </li>
+            <li>
+              <p class="keys"><span class="key">&amp;tog</span> <span class="key">&amp;to</span></p>
+              <p>Toggled and exclusive layers, locking the way ZMK locks them.</p>
+            </li>
+            <li>
+              <p class="keys"><span class="key">conditional layers</span></p>
+              <p>A layer that comes on while the layers it depends on are all on.</p>
+            </li>
+            <li>
+              <p class="keys"><span class="key">&amp;sk</span></p>
+              <p>Sticky shift, and sticky modifiers that combine.</p>
+            </li>
+            <li>
+              <p class="keys"><span class="key">&amp;caps_word</span></p>
+              <p>Caps word, until a key outside its list.</p>
+            </li>
+            <li>
+              <p class="keys"><span class="key">&amp;key_repeat</span></p>
+              <p>The repeat key, and alternate repeat, which types something else after some keys.</p>
+            </li>
+            <li>
+              <p class="keys"><span class="key">magic keys</span></p>
+              <p>
+                Adaptive keys, whose output depends on the key before: as many as the keymap has,
+                chained if it chains them.
+              </p>
+            </li>
+            <li>
+              <p class="keys"><span class="key">combos</span></p>
+              <p>Chords, only on the layers they are for; a typing combo is one more way to a letter.</p>
+            </li>
+            <li>
+              <p class="keys"><span class="key">&amp;macro</span></p>
+              <p>Macros that type several letters, open a layer, or call other macros.</p>
+            </li>
+            <li>
+              <p class="keys">
+                <span class="key">mod-morph</span> <span class="key">tap-dance</span>
+                <span class="key">dead keys</span> <span class="key">Unicode</span>
+              </p>
+              <p>Modeled too.</p>
+            </li>
+          </ul>
+          <p class="note">
+            Layer taps, holds and one-shots are presses too, and the layer metrics say what they cost:
+            layer taps per 100 symbols, wasted one-shots, adaptive key hit rate, and extra keystrokes
+            per symbol.
+          </p>
+        </div>
+      </section>
+
+      <section id="features" aria-labelledby="features-title">
+        <div class="wrap">
+          <h2 id="features-title">What you can do with it</h2>
+
+          <div class="features">
+            <article class="feature">
+              <div class="feature-text">
+                <h3>Rank with, or without</h3>
+                <p>
+                  The Library ranks every layout on the same text, by Effort or SFB, with both on every
+                  card. Untick magic keys, the repeat key, typing combos or multi-letter macros, and
+                  each layout is ranked as it types without them: what each feature is worth, in two
+                  numbers. A card also says how much of the text a layout can't type.
+                </p>
+              </div>
+              <figure class="shot">
+                <picture>
+                  <source srcset="assets/img/library-dark.png" media="(prefers-color-scheme: dark)" />
+                  <img
+                    src="assets/img/library-light.png"
+                    width="1256"
+                    height="534"
+                    alt="The Library: Rank with switches for magic keys, repeat key, typing combos and multi-letter macros, above cards showing each layout's Effort and SFB."
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+              </figure>
+            </article>
+
+            <article class="feature">
+              <div class="feature-text">
+                <h3>Compare two layouts</h3>
+                <p>
+                  Every number side by side, with the difference and which of the two does better.
+                  <strong>Compare with</strong> types both without the same features, so the comparison
+                  stays fair.
+                </p>
+              </div>
+              <figure class="shot">
+                <picture>
+                  <source srcset="assets/img/compare-dark.png" media="(prefers-color-scheme: dark)" />
+                  <img
+                    src="assets/img/compare-light.png"
+                    width="1256"
+                    height="879"
+                    alt="Compare: Magic Romak and Graphite side by side, both typed without multi-letter macros."
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+              </figure>
+            </article>
+
+            <article class="feature">
+              <div class="feature-text">
+                <h3>Edit on the board</h3>
+                <p>
+                  Select a key and choose what it does: a symbol, a layer, a tap-hold, a magic key, a
+                  macro. Or type it in ZMK's own syntax, like <code>&amp;lt num a</code>. Drag one key
+                  onto another to swap them; a plain swap re-scores at once, without typing the text
+                  again.
+                </p>
+              </div>
+              <figure class="shot">
+                <picture>
+                  <source srcset="assets/img/edit-dark.png" media="(prefers-color-scheme: dark)" />
+                  <img
+                    src="assets/img/edit-light.png"
+                    width="1238"
+                    height="448"
+                    alt="The editor with a key selected: what the key does in words, tiles to make it something else, and a field with its ZMK binding."
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+              </figure>
+            </article>
+
+            <article class="feature">
+              <div class="feature-text">
+                <h3>Rules are data</h3>
+                <p>
+                  46 rules, each citing its sources. Switch one off, move its thresholds and bands,
+                  weight it, or compose a new one from predicates, and save the set. Presets follow the
+                  Keyboard Layouts Doc, cyanophage's playground and Keysolve.
+                </p>
+              </div>
+              <figure class="shot">
+                <picture>
+                  <source srcset="assets/img/rules-dark.png" media="(prefers-color-scheme: dark)" />
+                  <img
+                    src="assets/img/rules-light.png"
+                    width="1222"
+                    height="499"
+                    alt="The Rules view: bigram rules with their definitions, aggregates and band bounds."
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+              </figure>
+            </article>
+
+            <article class="feature phone-feature">
+              <div class="feature-text">
+                <h3>On a phone too</h3>
+                <p>
+                  Every view fits a phone. The editor keeps the board in sight while a key is changed,
+                  and every control is a target a finger can hit.
+                </p>
+              </div>
+              <figure class="shot phone-shot">
+                <picture>
+                  <source srcset="assets/img/phone-dark.png" media="(prefers-color-scheme: dark)" />
+                  <img
+                    src="assets/img/phone-light.png"
+                    width="412"
+                    height="839"
+                    alt="The editor on a phone: the board pinned at the top, a key's inspector below it."
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+              </figure>
+            </article>
+          </div>
+
+          <ul class="cards">
+            <li>
+              <h3>Bring your keymap</h3>
+              <p>
+                Import a keymap-drawer YAML file — keymap-drawer reads ZMK and QMK keymaps — and choose
+                which layers to take. Export one back, or LayoutMaster's own JSON. A three-row text
+                layout works too.
+              </p>
+            </li>
+            <li>
+              <h3>Your language, accents intact</h3>
+              <p>
+                English, Brazilian Portuguese, Spanish and French, as news and as conversation. Mix two
+                texts, or paste your own. <span lang="pt-BR">ã</span> and
+                <span lang="pt-BR">ç</span> are letters in their own right, and a layout that can't
+                type them ranks after one that can.
+              </p>
+            </li>
+            <li>
+              <h3>Share the link</h3>
+              <p>
+                The address carries the analysis: the layout, even one never saved, the text, the
+                preset and every switch.
+              </p>
+            </li>
+            <li>
+              <h3>Keep it yours</h3>
+              <p>
+                Layouts, rule sets and texts are saved in your browser. <strong>Storage</strong> can
+                also keep them in a GitHub repository you own, with a token sent to
+                <code>api.github.com</code> and nowhere else.
+              </p>
+            </li>
+          </ul>
+
+          <h3 class="layouts-title">22 layouts to start from</h3>
+          <ul class="layouts">
+            <li><a href="/analyze?layout=magic-romak&amp;corpus=pt-br-conv">Magic Romak <span>Rafael Romão</span></a></li>
+            <li><a href="/analyze?layout=qwerty&amp;corpus=en-general">Qwerty</a></li>
+            <li><a href="/analyze?layout=dvorak&amp;corpus=en-general">Dvorak <span>August Dvorak</span></a></li>
+            <li><a href="/analyze?layout=colemak&amp;corpus=en-general">Colemak <span>Shai Coleman</span></a></li>
+            <li><a href="/analyze?layout=colemak-dh&amp;corpus=en-general">Colemak-DH <span>Shai Coleman / Steve P</span></a></li>
+            <li><a href="/analyze?layout=graphite&amp;corpus=en-general">Graphite <span>StronglyTyped</span></a></li>
+            <li><a href="/analyze?layout=gallium&amp;corpus=en-general">Gallium <span>Bryson</span></a></li>
+            <li><a href="/analyze?layout=canary&amp;corpus=en-general">Canary <span>Eve</span></a></li>
+            <li><a href="/analyze?layout=sturdy&amp;corpus=en-general">Sturdy <span>Oxey</span></a></li>
+            <li><a href="/analyze?layout=aptv3&amp;corpus=en-general">APTv3 <span>Apsu</span></a></li>
+            <li><a href="/analyze?layout=aptmak&amp;corpus=en-general">Aptmak <span>Apsu</span></a></li>
+            <li><a href="/analyze?layout=hands-down-neu&amp;corpus=en-general">Hands Down Neu <span>Alan Reiser</span></a></li>
+            <li><a href="/analyze?layout=night&amp;corpus=en-general">Night <span>Luminespire</span></a></li>
+            <li><a href="/analyze?layout=dusk&amp;corpus=en-general">Dusk <span>Luminespire</span></a></li>
+            <li><a href="/analyze?layout=recurva&amp;corpus=en-general">Recurva <span>GalileoBlues</span></a></li>
+            <li><a href="/analyze?layout=focal&amp;corpus=en-general">Focal <span>Keyhabit</span></a></li>
+            <li><a href="/analyze?layout=nerps&amp;corpus=en-general">Nerps <span>Sertain</span></a></li>
+            <li><a href="/analyze?layout=engram&amp;corpus=en-general">Engram <span>Arno Klein</span></a></li>
+            <li><a href="/analyze?layout=sunlight&amp;corpus=en-general">Sunlight <span>Cyanophage</span></a></li>
+            <li><a href="/analyze?layout=snth&amp;corpus=en-general">SNTH <span>Wren</span></a></li>
+            <li><a href="/analyze?layout=bird&amp;corpus=en-general">Bird <span>jcmkk3</span></a></li>
+            <li><a href="/analyze?layout=bird-30&amp;corpus=en-general">Bird 30 <span>jcmkk3</span></a></li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="trust" aria-labelledby="trust-title">
+        <div class="wrap">
+          <h2 id="trust-title">Why you can trust the numbers</h2>
+          <p class="section-lede">
+            A number is only useful if it means what it says. This is what stands behind
+            LayoutMaster's, and where in the source to look.
+          </p>
+          <ul class="trust">
+            <li>
+              <h3>Every rule cites its source</h3>
+              <p>
+                All 46 rules name where their definition comes from — the Keyboard Layouts Doc (3rd
+                edition), cyanophage's playground, Keysolve, Genkey, ZMK's documentation — and a test
+                fails if one doesn't. Where the Doc is silent, as it is on layer taps, magic keys and
+                combos, the rule says it is a LayoutMaster addition, and the
+                <a href="/guide/metrics">metric glossary</a> explains how it counts.
+              </p>
+              <p class="evidence">In the source: <code>packages/core/src/rules/references.test.ts</code></p>
+            </li>
+            <li>
+              <h3>Every number is pinned</h3>
+              <p>
+                38 reference reports — three layouts, three texts, two presets, with and without
+                space, and two runs that model shift — are checked on every change: each rule's value
+                to a millionth, and every list and every trace exactly. The engine first matched an
+                independent Elixir implementation on these reports; since then, each deliberate change
+                to a number is logged with its reason.
+              </p>
+              <p class="evidence">
+                In the source: <code>packages/core/src/golden/reports.test.ts</code>,
+                <code>packages/core/golden/GOLDENS.md</code>
+              </p>
+            </li>
+            <li>
+              <h3>The firmware's rules are tested one by one</h3>
+              <p>
+                A one-shot layer is consumed by exactly one press, and one wasted on a modifier is
+                counted. Toggles lock. Conditional layers settle. A combo fires only on its layers. A
+                macro can open a layer. The first matching magic trigger wins. Caps word ends where
+                ZMK ends it.
+              </p>
+              <p class="evidence">
+                In the source: <code>packages/core/src/sim/machine.test.ts</code>,
+                <code>packages/core/src/sim/resolver.test.ts</code>
+              </p>
+            </li>
+            <li>
+              <h3>It shows its work</h3>
+              <p>
+                Every analysis says which text and rules it used, and whether space and case were
+                counted. <strong>How is this typed?</strong> shows the presses behind any word. The
+                Library says how much of the text each layout can't type, and the Corpus view where
+                each text comes from.
+              </p>
+            </li>
+            <li>
+              <h3>Private by construction</h3>
+              <p>
+                There is no server and no account, and the app carries no analytics. Its content
+                security policy lets it talk only to itself and, if you connect a repository, to
+                <code>api.github.com</code>; a token is never put in a link, an export or an error.
+                This page loads nothing from anywhere else and runs no JavaScript.
+              </p>
+              <p class="evidence">
+                In the source: <code>apps/web/vite.config.ts</code>,
+                <code>apps/web/src/storage/github.test.ts</code>
+              </p>
+            </li>
+            <li>
+              <h3>Checked on every push</h3>
+              <p>
+                Formatting and lint, a strict type check, the whole test suite and a production build
+                run on every push.
+              </p>
+              <p class="evidence">In the source: <code>.github/workflows/ci.yml</code></p>
+            </li>
+          </ul>
+
+          <aside class="assumptions" aria-labelledby="assumptions-title">
+            <h3 id="assumptions-title">What the numbers assume</h3>
+            <ul>
+              <li>
+                Timing isn't modeled: no tapping-term races, one-shots never time out, and a magic
+                key's idle window is always met. The keymap is typed as you mean it.
+              </li>
+              <li>
+                When a symbol can be typed more than one way, you choose the order, in
+                <strong>Typing paths</strong>.
+              </li>
+              <li>
+                The text is read left to right, taking the longest symbol a key types — <em>qu</em>
+                before <em>q</em> — without looking back.
+              </li>
+              <li>Space is left out and case is folded unless you switch them on.</li>
+              <li>
+                Pairs and Effort are counted per character of the text, so layer taps and holds don't
+                make a layout look better than it types.
+              </li>
+            </ul>
+          </aside>
+        </div>
+      </section>
+
+      <section id="compare" aria-labelledby="compare-title">
+        <div class="wrap">
+          <h2 id="compare-title">How it compares</h2>
+          <p class="section-lede">
+            Checked on 30 September 2026 against each tool's documentation and code.
+            <strong>Not found</strong> means we didn't find the feature in what we checked;
+            <strong>Claimed</strong> means the tool's own description says so and we couldn't confirm
+            it. <strong>No</strong> is only said of LayoutMaster, and of a tool whose sources show it
+            plainly.
+          </p>
+
+          <!-- biome-ignore lint/a11y/noNoninteractiveTabindex: a region that scrolls must be reachable by keyboard. -->
+          <section class="table-scroll" aria-labelledby="compare-caption" tabindex="0">
+            <table class="compare">
+              <caption id="compare-caption">Keyboard layout analyzers, feature by feature</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Feature</th>
+                  <th scope="col" class="lm">LayoutMaster</th>
+                  <th scope="col">cyanophage playground</th>
+                  <th scope="col">Oxeylyzer</th>
+                  <th scope="col">Dario Götz's optimizer</th>
+                  <th scope="col">Mana2</th>
+                  <th scope="col">cmini</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">Runs in the browser, nothing to install</th>
+                  <td class="lm"><span class="yes">Yes</span></td>
+                  <td><span class="yes">Yes</span></td>
+                  <td><span class="partial">Partial</span> desktop app; Oxeylyzer 2 is an early web version<sup><a href="#n3">3</a></sup></td>
+                  <td><span class="yes">Yes</span><sup><a href="#n5">5</a></sup></td>
+                  <td><span class="no">No</span> terminal app<sup><a href="#n7">7</a></sup></td>
+                  <td><span class="partial">Partial</span> a Discord bot<sup><a href="#n8">8</a></sup></td>
+                </tr>
+                <tr>
+                  <th scope="row">Letters on more than one layer</th>
+                  <td class="lm"><span class="yes">Yes</span></td>
+                  <td><span class="nf">Not found</span></td>
+                  <td><span class="partial">Partial</span> shift only<sup><a href="#n4">4</a></sup></td>
+                  <td><span class="yes">Yes</span> layers reached by modifiers<sup><a href="#n6">6</a></sup></td>
+                  <td><span class="claimed">Claimed</span><sup><a href="#n7">7</a></sup></td>
+                  <td><span class="nf">Not found</span></td>
+                </tr>
+                <tr>
+                  <th scope="row">One-shots and the cost of reaching a layer</th>
+                  <td class="lm"><span class="yes">Yes</span> one-shots simulated, layer presses counted</td>
+                  <td><span class="nf">Not found</span></td>
+                  <td><span class="partial">Partial</span> shift only<sup><a href="#n4">4</a></sup></td>
+                  <td><span class="yes">Yes</span> hold, one-shot and long-press costs<sup><a href="#n6">6</a></sup></td>
+                  <td><span class="claimed">Claimed</span> layer-aware analyses<sup><a href="#n7">7</a></sup></td>
+                  <td><span class="nf">Not found</span></td>
+                </tr>
+                <tr>
+                  <th scope="row">Magic (adaptive) keys</th>
+                  <td class="lm"><span class="yes">Yes</span> any number, chained</td>
+                  <td><span class="partial">Partial</span> one, on its magic page<sup><a href="#n1">1</a></sup></td>
+                  <td><span class="nf">Not found</span></td>
+                  <td><span class="nf">Not found</span></td>
+                  <td><span class="claimed">Claimed</span><sup><a href="#n7">7</a></sup></td>
+                  <td><span class="nf">Not found</span></td>
+                </tr>
+                <tr>
+                  <th scope="row">Repeat key</th>
+                  <td class="lm"><span class="yes">Yes</span> and alternate repeat</td>
+                  <td><span class="partial">Partial</span> on its magic page<sup><a href="#n1">1</a></sup></td>
+                  <td><span class="partial">Partial</span> through corpus rules<sup><a href="#n4">4</a></sup></td>
+                  <td><span class="nf">Not found</span></td>
+                  <td><span class="nf">Not found</span></td>
+                  <td><span class="nf">Not found</span></td>
+                </tr>
+                <tr>
+                  <th scope="row">Combos</th>
+                  <td class="lm"><span class="yes">Yes</span> per layer</td>
+                  <td><span class="partial">Partial</span> up to 13, on every layer, on its magic page<sup><a href="#n1">1</a></sup></td>
+                  <td><span class="nf">Not found</span></td>
+                  <td><span class="nf">Not found</span></td>
+                  <td><span class="claimed">Claimed</span><sup><a href="#n7">7</a></sup></td>
+                  <td><span class="nf">Not found</span></td>
+                </tr>
+                <tr>
+                  <th scope="row">Macros that type several letters</th>
+                  <td class="lm"><span class="yes">Yes</span></td>
+                  <td><span class="partial">Partial</span> a magic output can be several letters<sup><a href="#n1">1</a></sup></td>
+                  <td><span class="nf">Not found</span></td>
+                  <td><span class="nf">Not found</span></td>
+                  <td><span class="nf">Not found</span></td>
+                  <td><span class="nf">Not found</span></td>
+                </tr>
+                <tr>
+                  <th scope="row">Reads your firmware keymap</th>
+                  <td class="lm"><span class="yes">Yes</span> through keymap-drawer YAML</td>
+                  <td><span class="nf">Not found</span></td>
+                  <td><span class="nf">Not found</span></td>
+                  <td><span class="nf">Not found</span></td>
+                  <td><span class="nf">Not found</span></td>
+                  <td><span class="nf">Not found</span></td>
+                </tr>
+                <tr>
+                  <th scope="row">Shows the presses behind a word</th>
+                  <td class="lm"><span class="yes">Yes</span></td>
+                  <td><span class="nf">Not found</span></td>
+                  <td><span class="nf">Not found</span></td>
+                  <td><span class="nf">Not found</span></td>
+                  <td><span class="nf">Not found</span></td>
+                  <td><span class="nf">Not found</span></td>
+                </tr>
+                <tr>
+                  <th scope="row">Metrics you can change or define</th>
+                  <td class="lm"><span class="yes">Yes</span> a composer, in the browser</td>
+                  <td><span class="partial">Partial</span> weights in its optimiser<sup><a href="#n2">2</a></sup></td>
+                  <td><span class="partial">Partial</span> weights in a config file<sup><a href="#n3">3</a></sup></td>
+                  <td><span class="partial">Partial</span> parameters; new metrics need Rust<sup><a href="#n6">6</a></sup></td>
+                  <td><span class="claimed">Claimed</span> user-definable stats<sup><a href="#n7">7</a></sup></td>
+                  <td><span class="nf">Not found</span></td>
+                </tr>
+                <tr>
+                  <th scope="row">Your own text</th>
+                  <td class="lm"><span class="yes">Yes</span></td>
+                  <td><span class="yes">Yes</span> lowercased, some accents folded<sup><a href="#n2">2</a></sup></td>
+                  <td><span class="yes">Yes</span></td>
+                  <td><span class="yes">Yes</span></td>
+                  <td><span class="yes">Yes</span><sup><a href="#n7">7</a></sup></td>
+                  <td><span class="no">No</span> a fixed list<sup><a href="#n8">8</a></sup></td>
+                </tr>
+                <tr>
+                  <th scope="row">Languages</th>
+                  <td class="lm">4, accents kept</td>
+                  <td>14, mixable<sup><a href="#n2">2</a></sup></td>
+                  <td>30 and more<sup><a href="#n3">3</a></sup></td>
+                  <td>German, English, Ukrainian<sup><a href="#n6">6</a></sup></td>
+                  <td><span class="nf">Not found</span></td>
+                  <td>a fixed list of corpora<sup><a href="#n8">8</a></sup></td>
+                </tr>
+                <tr>
+                  <th scope="row">A link to the analysis</th>
+                  <td class="lm"><span class="yes">Yes</span></td>
+                  <td><span class="partial">Partial</span> the magic page's settings aren't in it<sup><a href="#n1">1</a></sup></td>
+                  <td><span class="nf">Not found</span></td>
+                  <td><span class="partial">Partial</span> publish to its database<sup><a href="#n5">5</a></sup></td>
+                  <td><span class="nf">Not found</span></td>
+                  <td><span class="partial">Partial</span> within Discord</td>
+                </tr>
+                <tr>
+                  <th scope="row">Generates layouts</th>
+                  <td class="lm"><span class="no">No</span></td>
+                  <td><span class="partial">Partial</span> a beta optimiser<sup><a href="#n2">2</a></sup></td>
+                  <td><span class="yes">Yes</span><sup><a href="#n3">3</a></sup></td>
+                  <td><span class="yes">Yes</span><sup><a href="#n5">5</a></sup></td>
+                  <td><span class="claimed">Claimed</span><sup><a href="#n7">7</a></sup></td>
+                  <td><span class="partial">Partial</span> constrained random<sup><a href="#n8">8</a></sup></td>
+                </tr>
+                <tr>
+                  <th scope="row">Layouts to browse</th>
+                  <td class="lm">22 bundled</td>
+                  <td>a stats page of 20 and more<sup><a href="#n2">2</a></sup></td>
+                  <td><span class="nf">Not found</span></td>
+                  <td>a database of results<sup><a href="#n5">5</a></sup></td>
+                  <td><span class="nf">Not found</span></td>
+                  <td>about 4,100<sup><a href="#n8">8</a></sup></td>
+                </tr>
+                <tr>
+                  <th scope="row">Licence</th>
+                  <td class="lm">not yet published</td>
+                  <td>none declared<sup><a href="#n2">2</a></sup></td>
+                  <td>Apache-2.0<sup><a href="#n3">3</a></sup></td>
+                  <td>GPL-3.0<sup><a href="#n5">5</a></sup></td>
+                  <td>MIT<sup><a href="#n7">7</a></sup></td>
+                  <td>GPL-3.0<sup><a href="#n8">8</a></sup></td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <ol class="notes" aria-label="Sources for the comparison">
+            <li id="n1">
+              cyanophage's magic page takes one magic key keyed on the letter before it, one repeat
+              key and up to 13 combos that apply everywhere; its settings are not written to the link.
+              <a href="https://cyanophage.github.io/magic.html">magic.html</a>,
+              <a href="https://github.com/cyanophage/cyanophage.github.io/blob/main/keyboard_svg_magic.js"
+                >keyboard_svg_magic.js</a
+              >
+            </li>
+            <li id="n2">
+              The playground lowercases a pasted text, drops digits and folds some accents; it offers
+              14 languages that can be mixed, a stats page, and a beta optimiser. The repository has
+              no licence file.
+              <a href="https://cyanophage.github.io/playground.html">playground</a>,
+              <a href="https://cyanophage.github.io/optimiser.html">optimiser</a>,
+              <a href="https://github.com/cyanophage/cyanophage.github.io">repository</a>
+            </li>
+            <li id="n3">
+              Oxeylyzer is a command-line REPL and a desktop app with several search methods, weights
+              in its configuration and over 30 languages; Oxeylyzer 2 runs in the browser and is in
+              early development.
+              <a href="https://github.com/O-X-E-Y/oxeylyzer">oxeylyzer</a>,
+              <a href="https://github.com/O-X-E-Y/oxeylyzer-2">oxeylyzer-2</a>
+            </li>
+            <li id="n4">
+              Oxeylyzer's corpus rules can simulate shift and a repeat key before scoring.
+              <a
+                href="https://github.com/O-X-E-Y/oxeylyzer/blob/data-files/static/corpus_configs/provided/english_repeat.toml"
+                >english_repeat.toml</a
+              >
+            </li>
+            <li id="n5">
+              Dario Götz's optimizer evaluates and optimizes in the browser, and results can be
+              published to a shared database.
+              <a href="https://dariogoetz.github.io/keyboard_layout_optimizer">web app</a>,
+              <a href="https://keyboard-layout-optimizer.fly.dev/">database</a>,
+              <a href="https://github.com/dariogoetz/keyboard_layout_optimizer">repository</a>
+            </li>
+            <li id="n6">
+              Layers are reached by hold, one-shot and long-press modifiers, each with its own cost;
+              configuration sets parameters, while a new metric means writing Rust. Its corpora are
+              German, English and Ukrainian.
+              <a href="https://github.com/dariogoetz/keyboard_layout_optimizer/blob/master/README.md"
+                >README</a
+              >
+            </li>
+            <li id="n7">
+              Mana2 is a terminal app. Its description claims combo-, layer- and magic-aware analyses,
+              user-definable stats and layout generation with magic; it loads a corpus from a file,
+              its layouts carry hold keys, and one-shots aren't mentioned. Version 0.1.0 is MIT
+              licensed.
+              <a href="https://pkg.go.dev/codeberg.org/zakkkk/mana2">pkg.go.dev</a>,
+              <a href="https://pkg.go.dev/codeberg.org/zakkkk/mana2/core">core API</a>,
+              <a href="https://codeberg.org/zakkkk/mana2">repository</a>
+            </li>
+            <li id="n8">
+              cmini is a bot on the alt-layouts Discord with about 4,100 layouts, a fixed list of
+              corpora and a constrained random generator; the community's layout data is moving to
+              AKLDB.
+              <a href="https://github.com/Apsu/cmini">cmini</a>,
+              <a href="https://github.com/akl-infra/db">AKLDB</a>
+            </li>
+          </ol>
+
+          <div class="grid-2">
+            <div>
+              <h3>When another tool is the better choice</h3>
+              <ul class="plain">
+                <li>
+                  <strong>You want a layout generated for you.</strong> LayoutMaster analyzes; it
+                  doesn't optimize. Oxeylyzer, Dario Götz's optimizer, Jalo, keycraft and Mana2 do.
+                </li>
+                <li>
+                  <strong>Your layout is one layer of 30 keys.</strong> cyanophage's playground is
+                  instant, and its numbers are the ones the community quotes.
+                </li>
+                <li>
+                  <strong>You want to browse thousands of layouts.</strong> cmini and AKLDB, akl.gg
+                  and Emulayout have them.
+                </li>
+                <li>
+                  <strong>You want scores from your own typing speed.</strong> Trialyzer uses trigram
+                  speeds you measure yourself; LayoutMaster has no timing model.
+                </li>
+                <li>
+                  <strong>You need a language we don't ship.</strong> Oxeylyzer has over 30 and
+                  cyanophage 14.
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3>Also worth knowing</h3>
+              <ul class="plain">
+                <li>
+                  <a href="http://reeve.garden/keysolve-web/">Keysolve</a>, whose scissor definitions
+                  the Keyboard Layouts Doc recommends; inactive since 2023.
+                </li>
+                <li>
+                  <a href="https://github.com/semilin/genkey">Genkey</a>, an analyzer and generator
+                  that now points its users to Oxeylyzer.
+                </li>
+                <li>
+                  <a href="https://patorjk.com/keyboard-layout-analyzer/">KLA</a> and
+                  <a href="https://klanext.keyboard-design.com/">KLAnext</a>, the classic web
+                  analyzer and its continuation.
+                </li>
+                <li>
+                  <a href="https://github.com/tiagowright/jalo">Jalo</a>, an analyzer and optimizer
+                  whose metrics follow the Keyboard Layouts Doc.
+                </li>
+                <li>
+                  <a href="https://github.com/rbscholtus/keycraft">keycraft</a>, an analyzer, ranker
+                  and optimizer.
+                </li>
+                <li>
+                  <a href="https://github.com/Kawamashi/Kawalyser">Kawalyser</a>, a spreadsheet that
+                  handles a magic key, a repeat key and a dead key.
+                </li>
+                <li>
+                  <a href="https://emulayout.github.io">Emulayout</a>, to filter and try community
+                  layouts, magic ones included.
+                </li>
+                <li>
+                  <a href="https://github.com/caksoylar/keymap-drawer">keymap-drawer</a>, which draws
+                  ZMK and QMK keymaps; LayoutMaster reads and writes its YAML.
+                </li>
+                <li>
+                  <a
+                    href="https://docs.google.com/document/d/1W0jhfqJI2ueJ2FNseR4YAFpNfsUM-_FlREHbpNGmC2o"
+                    >The Keyboard Layouts Doc</a
+                  >, the community's reference for what the metrics mean, and
+                  <a href="https://layouts.wiki/">layouts.wiki</a>.
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="start" aria-labelledby="start-title">
+        <div class="wrap">
+          <h2 id="start-title">Start in four steps</h2>
+          <ol class="steps">
+            <li>
+              <h3>Pick a layout</h3>
+              <p>
+                The Library opens ranked by Effort. Choose one, or
+                <a href="/guide/importing">bring your own from a keymap-drawer file</a>.
+              </p>
+            </li>
+            <li>
+              <h3>Read two numbers</h3>
+              <p>
+                <strong>Effort</strong> is how hard the keys are to reach, and <strong>SFB</strong> how
+                often one finger presses two keys in a row. Lower is better for both.
+              </p>
+            </li>
+            <li>
+              <h3>Change a key</h3>
+              <p>
+                In Edit, select a key and choose what it does. Every change is kept as you make it, and
+                Undo takes it back.
+              </p>
+            </li>
+            <li>
+              <h3>Compare</h3>
+              <p>Two layouts side by side, number by number.</p>
+            </li>
+          </ol>
+          <p class="actions">
+            <a class="button primary" href="/library">Open the Library</a>
+            <a class="button" href="/guide">Read the guide</a>
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap">
+        <p class="wordmark"><span>Layout</span>Master</p>
+        <p>
+          Free to use, and it runs in your browser. <a href="/guide">Guide</a> ·
+          <a href="/guide/metrics">Metric glossary</a> ·
+          <a href="/guide/special-keys">Special keys</a>
+        </p>
+        <p class="credits">
+          Metric definitions follow the
+          <a href="https://docs.google.com/document/d/1W0jhfqJI2ueJ2FNseR4YAFpNfsUM-_FlREHbpNGmC2o"
+            >Keyboard Layouts Doc</a
+          >, 3rd edition; Effort is
+          <a href="https://cyanophage.github.io/playground.html">cyanophage's</a>; the Keysolve preset
+          follows <a href="http://reeve.garden/keysolve-web/">Keysolve</a>. Keymaps come and go as
+          <a href="https://github.com/caksoylar/keymap-drawer">keymap-drawer</a> YAML, and the
+          simulator follows <a href="https://zmk.dev/">ZMK</a> and urob's
+          <a href="https://github.com/urob/zmk-adaptive-key">adaptive key</a> and
+          <a href="https://github.com/urob/zmk-auto-layer">auto layer</a>. The news texts come from the
+          <a href="https://wortschatz.uni-leipzig.de/en/download">Leipzig Corpora Collection</a> (CC
+          BY 4.0); the conversation texts are generated from
+          <a href="https://github.com/hermitdave/FrequencyWords">FrequencyWords</a> counts of
+          OpenSubtitles (CC BY-SA 4.0).
+        </p>
+        <p>
+          Also by the author of Magic Romak:
+          <a href="https://rafaelromao.github.io/romak/">Romak</a> ·
+          <a href="https://rafaelromao.github.io/keyboards/">keyboards</a> ·
+          <a href="https://rafaelromao.github.io/zmk-vim-mode/">zmk-vim-mode</a>
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>

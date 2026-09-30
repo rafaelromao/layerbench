@@ -28,6 +28,7 @@ steps and opens further as you need it. Metric definitions and their sources are
 | `/rules` | Enable, re-parameterize or compose rules, each with its sources; save the set |
 | `/corpus` | Browse the shipped corpora and build your own from pasted or uploaded text |
 | `/guide` | The user guide and the metric glossary |
+| `/about/` | The landing page: what LayoutMaster simulates, why its numbers can be trusted, and how it compares with other analyzers. A static page from `docs/site`, linked as **About** in the header |
 
 `/` opens the Library. A link to an analysis from before Analyze had its own path, `/?layout=…`,
 still opens that analysis.
@@ -98,9 +99,10 @@ Microsoft Edge, `E2E_CHANNEL=chrome` for Google Chrome, with nothing to download
 
 ## Deploy
 
-`pnpm build` writes `apps/web/dist`: hashed assets, the corpus samples, and three files a static
-host reads — `_redirects` (so `/edit` resolves to the app instead of a 404), `_headers` (content
-security policy and caching) and `404.html` (the same fallback for hosts that use it instead).
+`pnpm build` writes `apps/web/dist`: hashed assets, the corpus samples, the landing page at
+`about/`, and three files a static host reads — `_redirects` (so `/edit` resolves to the app
+instead of a 404), `_headers` (content security policy and caching) and `404.html` (the same
+fallback for hosts that use it instead).
 
 On **Cloudflare Pages**, connect the repository and set:
 
@@ -123,3 +125,24 @@ saved to it.
 The page talks to `api.github.com` and to nothing else — `connect-src` in the policy above enforces
 it, so a token in this browser cannot be sent anywhere but GitHub. After deploying, **Storage → Test
 connection** confirms the token, the repository and the browser's cross-origin access in one click.
+
+### Landing page
+
+`docs/site` is the landing page: hand-written HTML and CSS with no build step and no JavaScript,
+whose own content security policy loads nothing from anywhere else. The app's build copies it to
+`/about/`, the dev server serves it there from `docs/site` directly, and the header links to it as
+**About**. `apps/web/src/guide/landing.test.ts` holds it to the app: every link lands on a view,
+layout, corpus or guide section that exists, and every image is the file and the shape the page
+says.
+
+Its screenshots are taken from the running app, in the dark and the light theme, with Edge or
+Chrome already installed:
+
+```bash
+E2E_CHANNEL=msedge pnpm --filter @layoutmaster/web shots
+```
+
+`.github/workflows/pages.yml` publishes `docs/site` to GitHub Pages, and only runs when started by
+hand while the project is private. To make it the public page, set Settings → Pages → Source to
+**GitHub Actions**, add a repository variable `APP_ORIGIN` with the app's public address (the page's
+links into the app are rewritten to it), and give the workflow a `push` trigger on `docs/site/**`.

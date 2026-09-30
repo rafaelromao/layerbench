@@ -41,6 +41,15 @@ describe('where the site opens', () => {
 });
 
 describe('the page frame', () => {
+  it('links to the About page, which is served beside the app rather than routed', async () => {
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    await screen.findByText('Bundled layouts');
+    // One in the header at a desk, one in the phone's menu.
+    const about = screen.getAllByRole('link', { name: 'About' });
+    expect(about).toHaveLength(2);
+    for (const link of about) expect(link).toHaveAttribute('href', '/about/');
+  });
+
   it('offers a skip link to the content', async () => {
     renderRoute(LIBRARY, { storage: freshStorage() });
     const skip = await screen.findByRole('link', { name: 'Skip to content' });

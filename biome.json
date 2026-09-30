@@ -59,6 +59,16 @@
       }
     },
     {
+      "includes": ["docs/site/**/*.css"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noDescendingSpecificity": "off"
+          }
+        }
+      }
+    },
+    {
       "includes": ["apps/web/src/index.css"],
       "linter": {
         "rules": {
