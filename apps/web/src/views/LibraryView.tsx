@@ -1,12 +1,15 @@
 import {
   BUNDLED_LAYOUTS,
   type CompiledLayout,
+  type CorpusManifest,
   compileLayout,
   GEOMETRY_PRESET_IDS,
   getGeometryPreset,
+  getPreset,
   importTextLayout,
   type Layout,
   layoutLanguages,
+  PRESET_IDS,
   safeParseLayout,
   slug,
   toCanonicalJson,
@@ -17,6 +20,7 @@ import { formatValue } from '../components/format.js';
 import { HelpLink } from '../components/HelpLink.js';
 import { Keyboard } from '../components/Keyboard.js';
 import { useDismiss } from '../components/use-dismiss.js';
+import { useAnalysisClient } from '../engine/client-context.js';
 import {
   compareBy,
   type LayoutSummary,
@@ -29,13 +33,28 @@ import { HELP } from '../guide/help.js';
 import { toast } from '../state/toasts.js';
 import { useCollection, useStorage } from '../storage/use-storage.js';
 import { encodeInline } from '../url/inline.js';
-import { inlineRef, parseParams, type RawSearch, savedRef } from '../url/params.js';
+import {
+  inlineRef,
+  type Params,
+  parseParams,
+  type RawSearch,
+  savedRef,
+  toSearch,
+} from '../url/params.js';
+import { groupByLanguage } from './corpus-groups.js';
 import { KeymapDrawerImport } from './library/KeymapDrawerImport.js';
+import { LayerStrip } from './library/LayerStrip.js';
 import { type NewLayoutSpec, newLayout } from './new-layout.js';
 import { useRuleSet } from './useRuleSet.js';
 
 /** Ranking re-analyzes every layout listed, so it works from the editor's smaller sample. */
 const RANK_MAX_SYMBOLS = 100_000;
+
+/**
+ * The Library ranks on English news unless the link says otherwise. Analyze keeps its own default:
+ * that one is part of the link contract, this one only decides what a bare visit here shows.
+ */
+const LIBRARY_DEFAULT_CORPUS = 'en-general';
 
 const SORTS: [SortKey, string][] = [
   ['effort', 'Effort'],
@@ -249,8 +268,36 @@ export function LibraryView() {
 
   // Ranking uses the corpus and rule set in the link, so it agrees with what Analyze would show.
   const search = useSearch({ strict: false }) as RawSearch;
-  const params = useMemo(() => parseParams(search), [search]);
+  const params = useMemo(
+    () => parseParams({ ...search, corpus: search.corpus ?? LIBRARY_DEFAULT_CORPUS }),
+    [search],
+  );
   const ruleSet = useRuleSet(params.preset, params.universe);
+  const client = useAnalysisClient();
+  const [corpora, setCorpora] = useState<CorpusManifest[]>([]);
+  useEffect(() => {
+    client
+      .listCorpora()
+      .then(setCorpora)
+      .catch(() => setCorpora([]));
+  }, [client]);
+  const corpusName = corpora.find((c) => c.id === params.corpus)?.name ?? params.corpus;
+
+  /** The choice lives in the link, so a ranking can be shared and survives a reload. */
+  const setParams = useCallback(
+    (overrides: Partial<Params>) => {
+      // No layout is being looked at here; the one `toSearch` always writes would only be noise.
+      const { layout: _layout, ...rest } = toSearch(params, overrides);
+      navigate({ to: '/library', search: rest as never, replace: true });
+    },
+    [navigate, params],
+  );
+  /** Analyze opens on the corpus and rules the card was ranked by, so the numbers match. */
+  const analyzeSearch = useCallback(
+    (layoutRef: string | undefined) =>
+      toSearch(params, layoutRef === undefined ? {} : { layoutRef }) as never,
+    [params],
+  );
   const [sortBy, setSortBy] = useState<SortKey>('effort');
 
   // Saved layouts are listed from their index; ranking needs the documents themselves.
@@ -278,6 +325,17 @@ export function LibraryView() {
     ],
     [bundled, saved.entries, savedLayouts],
   );
+  const savedCompiled = useMemo(() => {
+    const out = new Map<string, CompiledLayout>();
+    for (const [id, layout] of savedLayouts) {
+      try {
+        out.set(id, compileLayout(layout));
+      } catch {
+        // A document that parses but will not compile is listed without its board.
+      }
+    }
+    return out;
+  }, [savedLayouts]);
   const summaryOptions: SummaryOptions = useMemo(
     () => ({
       corpusId: params.corpus,
@@ -436,6 +494,51 @@ export function LibraryView() {
         </p>
       </div>
 
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="form-control min-w-0 max-sm:w-full">
+          <span className="label-text text-xs">Corpus</span>
+          <select
+            name="corpus"
+            aria-label="Corpus"
+            className="select select-sm select-bordered min-w-0"
+            value={params.corpus}
+            onChange={(e) => setParams({ corpus: e.target.value })}
+          >
+            {groupByLanguage(corpora).map((g) => (
+              <optgroup key={g.label} label={g.label}>
+                {g.items.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+            {!corpora.some((c) => c.id === params.corpus) && (
+              <option value={params.corpus}>{params.corpus}</option>
+            )}
+          </select>
+        </label>
+        <label className="form-control">
+          <span className="label-text text-xs">Rules</span>
+          <select
+            name="rules"
+            aria-label="Rule set"
+            className="select select-sm select-bordered"
+            value={params.preset}
+            onChange={(e) => setParams({ preset: e.target.value })}
+          >
+            {PRESET_IDS.map((id) => (
+              <option key={id} value={id}>
+                {getPreset(id).name}
+              </option>
+            ))}
+            {params.preset.startsWith('saved:') && (
+              <option value={params.preset}>{ruleSet.name ?? params.preset}</option>
+            )}
+          </select>
+        </label>
+      </div>
+
       <div className="flex flex-wrap items-center gap-2">
         <fieldset className="join" aria-label="Sort layouts by">
           <legend className="text-xs opacity-70 float-left mr-2 self-center">Sort by</legend>
@@ -457,8 +560,8 @@ export function LibraryView() {
           {pending > 0
             ? `Scoring layouts… ${summaryEntries.length - pending} of ${summaryEntries.length}`
             : unscored
-              ? `Could not score the layouts on ${params.corpus}.`
-              : `Lower is better for both. ${Math.min(params.sample, RANK_MAX_SYMBOLS).toLocaleString('en-US')} symbols of ${params.corpus}, ${ruleSet.name ?? 'rule set'}.`}
+              ? `Could not score the layouts on ${corpusName}.`
+              : `Lower is better for both. ${Math.min(params.sample, RANK_MAX_SYMBOLS).toLocaleString('en-US')} symbols of ${corpusName}, ${ruleSet.name ?? 'rule set'}.`}
         </span>
       </div>
 
@@ -486,7 +589,7 @@ export function LibraryView() {
                   <div className="flex shrink-0 gap-1">
                     <Link
                       to="/"
-                      search={{ layout: layout.id } as never}
+                      search={analyzeSearch(layout.id)}
                       className="btn btn-primary btn-xs"
                     >
                       Analyze
@@ -501,13 +604,7 @@ export function LibraryView() {
                     </button>
                   </div>
                 </header>
-                <Keyboard
-                  id={`kb-${layout.id}`}
-                  compiled={compiled}
-                  interactive={false}
-                  showHold={false}
-                  className="opacity-90"
-                />
+                <LayerStrip id={`kb-${layout.id}`} compiled={compiled} name={layout.name} />
                 {layout.description && (
                   // A description may carry a link, which would otherwise hold the card, and the
                   // whole list with it, wider than a phone.
@@ -539,6 +636,13 @@ export function LibraryView() {
                 <div className="card-body gap-2 p-4">
                   <h3 className="font-semibold text-sm">{entry.name}</h3>
                   <Ranking summary={summaries.get(`s:${entry.id}`)} />
+                  {savedCompiled.has(entry.id) && (
+                    <LayerStrip
+                      id={`kb-saved-${entry.id}`}
+                      compiled={savedCompiled.get(entry.id) as CompiledLayout}
+                      name={entry.name}
+                    />
+                  )}
                   <p className="text-xs opacity-60">
                     {[
                       entry.author,
@@ -552,7 +656,7 @@ export function LibraryView() {
                   <div className="flex flex-wrap gap-2">
                     <Link
                       to="/"
-                      search={{ layout: savedRef(entry.id) } as never}
+                      search={analyzeSearch(savedRef(entry.id))}
                       className="btn btn-primary btn-xs"
                     >
                       Analyze

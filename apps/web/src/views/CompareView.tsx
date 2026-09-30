@@ -301,7 +301,8 @@ export function CompareView() {
                       <span className="opacity-40">–</span>
                     ) : (
                       <span
-                        className={`badge badge-sm ${row.winner === 'b' ? 'badge-primary' : ''}`}
+                        // A badge is one line tall; a name that wrapped would spill out of it.
+                        className={`badge badge-sm whitespace-nowrap ${row.winner === 'b' ? 'badge-primary' : ''}`}
                       >
                         {row.winner === 'a' ? nameA : nameB}
                       </span>

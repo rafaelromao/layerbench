@@ -1,3 +1,4 @@
+import { BUNDLED_LAYOUTS, toCanonicalJson } from '@layoutmaster/core';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
@@ -91,6 +92,64 @@ describe('Ranking layouts', () => {
     const sfbs = cards().map((c) => valueOn(c, 'SFB'));
     expect(sfbs).toEqual([...sfbs].sort((a, b) => a - b));
   }, 90_000);
+});
+
+describe('Choosing what layouts are ranked on', () => {
+  it('ranks on English news with the Layouts Doc rules unless told otherwise', async () => {
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    const corpus = (await screen.findByRole('combobox', { name: 'Corpus' })) as HTMLSelectElement;
+    const rules = screen.getByRole('combobox', { name: 'Rule set' }) as HTMLSelectElement;
+    await waitFor(() => expect(corpus.selectedOptions[0]?.textContent).toMatch(/Leipzig/));
+    expect(corpus.value).toBe('en-general');
+    expect(rules.value).toBe('layouts_doc');
+  });
+
+  it('keeps the chosen corpus and rules in the link, and hands them to Analyze', async () => {
+    const user = userEvent.setup();
+    const { currentSearch } = renderRoute(LIBRARY, { storage: freshStorage() });
+    const corpus = await screen.findByRole('combobox', { name: 'Corpus' });
+    await waitFor(() => expect(within(corpus).getAllByRole('option').length).toBeGreaterThan(1));
+
+    await user.selectOptions(corpus, 'pt-br-work');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Rule set' }), 'cyanophage');
+    await waitFor(() => expect(currentSearch()).toContain('rules=cyanophage'));
+    expect(currentSearch()).toContain('corpus=pt-br-work');
+    expect(currentSearch()).not.toContain('layout=');
+
+    const card = document.querySelector('article') as HTMLElement;
+    const analyze = within(card).getByRole('link', { name: 'Analyze' }) as HTMLAnchorElement;
+    expect(analyze.href).toContain('corpus=pt-br-work');
+    expect(analyze.href).toContain('rules=cyanophage');
+  });
+});
+
+describe('Layers on a card', () => {
+  const layered = [...BUNDLED_LAYOUTS].sort((a, b) => b.layers.length - a.layers.length)[0];
+
+  it('lays every layer of a layout side by side, with its name', async () => {
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    const strip = await screen.findByRole('region', { name: `${layered.name} layers` });
+    const figures = within(strip).getAllByRole('figure');
+    expect(figures).toHaveLength(layered.layers.length);
+    for (const [i, layer] of layered.layers.entries()) {
+      expect(within(figures[i]).getByText(layer.name ?? layer.id)).toBeTruthy();
+    }
+    const card = strip.closest('article') as HTMLElement;
+    expect(within(card).getByText(`1 / ${layered.layers.length}`)).toBeTruthy();
+    expect(within(card).getByRole('button', { name: 'Previous layer' })).toHaveProperty(
+      'disabled',
+      true,
+    );
+  });
+
+  it('draws the layers of a saved layout too, once it is read', async () => {
+    const storage = freshStorage();
+    const copy = { ...layered, id: 'layered-copy', name: `${layered.name} copy` };
+    await storage.put('layouts', copy.id, toCanonicalJson(copy), { message: 'seed' });
+    renderRoute(LIBRARY, { storage });
+    const strip = await screen.findByRole('region', { name: `${layered.name} copy layers` });
+    expect(within(strip).getAllByRole('figure')).toHaveLength(layered.layers.length);
+  });
 });
 
 /** A keymap-drawer file that only names its keyboard, the way `keymap parse` writes one. */
