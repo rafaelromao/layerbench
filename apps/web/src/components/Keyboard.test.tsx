@@ -49,6 +49,38 @@ describe('Keyboard', () => {
     expect(cap.getAttribute('style')).toContain('var(--lm-heat) 100%');
   });
 
+  describe('legends on a hot key', () => {
+    // Magic Romak's right inner thumb taps into Alpha 2, so its legend is drawn in that layer's colour.
+    const R0 = romak.keyIndex.get('R0') as number;
+    const layerColoured = (container: HTMLElement) =>
+      [...container.querySelectorAll('g[data-key="R0"] text')].filter((t) =>
+        t.getAttribute('style')?.includes('var(--lm-layer-'),
+      );
+    const isHot = (container: HTMLElement) =>
+      container.querySelector('g[data-key="R0"]')?.classList.contains('lm-key-hot');
+
+    it('keeps the layer colour on a key below half heat', () => {
+      const { container } = render(<Keyboard compiled={romak} heat={{ [R0]: 0.49 }} />);
+      expect(isHot(container)).toBe(false);
+      expect(layerColoured(container)).not.toHaveLength(0);
+    });
+
+    it('draws them in the key text colour from half heat on, where the layer colour fades', () => {
+      for (const heat of [0.5, 1]) {
+        const { container, unmount } = render(<Keyboard compiled={romak} heat={{ [R0]: heat }} />);
+        expect(isHot(container), `heat ${heat}`).toBe(true);
+        expect(layerColoured(container), `heat ${heat}`).toEqual([]);
+        unmount();
+      }
+    });
+
+    it('does the same for a key being pressed, whatever its heat', () => {
+      const { container } = render(<Keyboard compiled={romak} pressed={[R0]} />);
+      expect(isHot(container)).toBe(true);
+      expect(layerColoured(container)).toEqual([]);
+    });
+  });
+
   it('gives each instance its own arrow marker', () => {
     const { container } = render(
       <>

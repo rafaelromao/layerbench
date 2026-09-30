@@ -138,8 +138,24 @@
   --lm-layer-5: oklch(0.76 0.13 305);
   --lm-layer-6: oklch(0.8 0.11 195);
   --lm-layer-7: oklch(0.8 0.13 115);
+
+  /*
+   * What kind of key a legend is on — a layer key, a modifier, a magic key, the repeat key — and the
+   * marks beside it, in the theme's own hues at the lightness the layer colours use, so each keeps
+   * 3:1 against its key from no heat up to the point where a hot key takes its text colour instead.
+   */
+  --lm-legend-layer: oklch(0.78 0.12 277);
+  --lm-legend-mod: oklch(0.78 0.14 293);
+  --lm-legend-magic: oklch(0.78 0.13 277);
+  --lm-legend-repeat: oklch(0.78 0.11 242);
+  --lm-legend-number: oklch(0.82 0.12 75);
 }
 [data-theme="light"] {
+  --lm-legend-layer: oklch(0.45 0.03 264);
+  --lm-legend-mod: var(--color-accent);
+  --lm-legend-magic: oklch(0.5 0.17 47);
+  --lm-legend-repeat: oklch(0.48 0.17 260);
+  --lm-legend-number: oklch(0.5 0.13 60);
   --lm-layer-1: oklch(0.5 0.16 255);
   --lm-layer-2: oklch(0.5 0.14 150);
   --lm-layer-3: oklch(0.52 0.13 60);
@@ -198,7 +214,7 @@
 
 /* Marks for what the centre cannot show: ✦ adaptive, ⋯ macro, TD tap dance. */
 .lm-key-badge {
-  fill: var(--color-primary);
+  fill: var(--lm-legend-magic);
   font-family: ui-sans-serif, system-ui, sans-serif;
   font-weight: 700;
   dominant-baseline: middle;
@@ -207,7 +223,7 @@
 
 /* The number that points at the key's entry in the legend under the board. */
 .lm-key-number {
-  fill: var(--color-warning);
+  fill: var(--lm-legend-number);
   font-family: ui-sans-serif, system-ui, sans-serif;
   dominant-baseline: middle;
   pointer-events: none;
@@ -238,27 +254,39 @@
   align-items: baseline;
 }
 .lm-legend-number {
-  color: var(--color-warning);
+  color: var(--lm-legend-number);
   flex: none;
 }
 
 .lm-kind-layer {
-  fill: var(--color-secondary);
+  fill: var(--lm-legend-layer);
 }
 .lm-kind-mod {
-  fill: var(--color-accent);
+  fill: var(--lm-legend-mod);
 }
 .lm-kind-magic {
-  fill: var(--color-primary);
+  fill: var(--lm-legend-magic);
   font-style: italic;
 }
 .lm-kind-repeat {
-  fill: var(--color-info);
+  fill: var(--lm-legend-repeat);
 }
 .lm-kind-alpha,
 .lm-kind-trans,
 .lm-kind-none {
   fill: var(--lm-key-text);
+}
+
+/*
+ * A key at half heat or more, or being pressed, is filled close to the accent colour, where no
+ * coloured legend keeps its contrast. Every legend on it takes the key's text colour instead, at
+ * full strength: over 4:1 at full heat in the dark theme, and 6:1 in the light one.
+ */
+.lm-key-hot :is(.lm-key-tap, .lm-key-hold, .lm-key-shifted, .lm-key-badge, .lm-key-number) {
+  fill: var(--lm-key-text);
+}
+.lm-key-hot :is(.lm-key-hold, .lm-key-shifted, .lm-kind-raw) {
+  opacity: 1;
 }
 .lm-key-thumb .lm-key-cap {
   stroke-width: 2;

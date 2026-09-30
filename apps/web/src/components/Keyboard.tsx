@@ -94,6 +94,13 @@ export function drawnX(keys: readonly GeometryKey[]): number[] {
 /** A key being pressed takes the accent colour, whatever the heat map had it at. */
 const PRESSED_FILL = 'color-mix(in oklab, var(--color-primary) 62%, var(--lm-key-bg))';
 
+/**
+ * From this heat on, a key's fill is too close to the accent colour for a coloured legend: below
+ * it, every legend colour in either theme keeps 3:1 against the key; at it and above, and on a key
+ * being pressed, the legends take the key's text colour, which keeps over 4:1 at full heat.
+ */
+const HOT_HEAT = 0.5;
+
 /** Pixels per key unit, and the gap that separates neighbouring caps. */
 const UNIT = 64;
 const GAP = 6;
@@ -413,8 +420,10 @@ export function Keyboard({
         const pct = Math.round(k.heat * 100);
         const label = `Key ${k.key.id}: ${spokenLegend(k.legend, k.tap)}`;
         const tapY = (k.holdFit ? -BAND / 2 : 0) + (k.shiftedFit ? TOP / 2 : 0) + 1;
-        const tapColour = k.legend.layerIn === 'tap' ? k.colour : undefined;
-        const holdColour = k.legend.layerIn === 'hold' ? k.colour : undefined;
+        const hot = k.pressed || k.heat >= HOT_HEAT;
+        // A hot key's legends are all drawn in its text colour (see `HOT_HEAT`), layer colour too.
+        const tapColour = !hot && k.legend.layerIn === 'tap' ? k.colour : undefined;
+        const holdColour = !hot && k.legend.layerIn === 'hold' ? k.colour : undefined;
         return (
           // biome-ignore lint/a11y/noStaticElementInteractions: it takes a button role and tab stop whenever it is interactive
           <g
@@ -425,6 +434,7 @@ export function Keyboard({
               k.trans && 'lm-key-trans',
               k.key.thumb && 'lm-key-thumb',
               k.selected && 'lm-key-selected',
+              hot && 'lm-key-hot',
             ]
               .filter(Boolean)
               .join(' ')}
