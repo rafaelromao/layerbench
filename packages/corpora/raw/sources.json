@@ -3,7 +3,7 @@
     "file": "en-conversational.txt",
     "name": "English — conversational (OpenSubtitles)",
     "language": "en",
-    "license": "MIT (hermitdave/FrequencyWords)",
+    "license": "CC BY-SA 4.0 (hermitdave/FrequencyWords)",
     "source": "https://github.com/hermitdave/FrequencyWords/tree/master/content/2018/en",
     "description": "English sentences generated from the most common conversational words, sampled in proportion to their frequency in the OpenSubtitles corpus. Cased and punctuated.",
     "generated": true
@@ -12,7 +12,7 @@
     "file": "pt-br-conversational.txt",
     "name": "Português (BR) — conversacional (OpenSubtitles)",
     "language": "pt-BR",
-    "license": "MIT (hermitdave/FrequencyWords)",
+    "license": "CC BY-SA 4.0 (hermitdave/FrequencyWords)",
     "source": "https://github.com/hermitdave/FrequencyWords/tree/master/content/2018/pt_br",
     "description": "Brazilian Portuguese sentences generated from the most common conversational words, sampled in proportion to their frequency in Brazilian OpenSubtitles. Cased and punctuated, accents kept.",
     "generated": true
@@ -37,7 +37,7 @@
     "file": "es-conversational.txt",
     "name": "Español — conversacional (OpenSubtitles)",
     "language": "es",
-    "license": "MIT (hermitdave/FrequencyWords)",
+    "license": "CC BY-SA 4.0 (hermitdave/FrequencyWords)",
     "source": "https://github.com/hermitdave/FrequencyWords/tree/master/content/2018/es",
     "description": "Spanish sentences generated from the most common conversational words, sampled in proportion to their frequency in the OpenSubtitles corpus. Cased and punctuated, accents kept.",
     "generated": true
@@ -54,7 +54,7 @@
     "file": "fr-conversational.txt",
     "name": "Français — conversationnel (OpenSubtitles)",
     "language": "fr",
-    "license": "MIT (hermitdave/FrequencyWords)",
+    "license": "CC BY-SA 4.0 (hermitdave/FrequencyWords)",
     "source": "https://github.com/hermitdave/FrequencyWords/tree/master/content/2018/fr",
     "description": "French sentences generated from the most common conversational words, sampled in proportion to their frequency in the OpenSubtitles corpus. Cased and punctuated, accents kept.",
     "generated": true
@@ -71,7 +71,7 @@
     "file": "it-conversational.txt",
     "name": "Italiano — conversazionale (OpenSubtitles)",
     "language": "it",
-    "license": "MIT (hermitdave/FrequencyWords)",
+    "license": "CC BY-SA 4.0 (hermitdave/FrequencyWords)",
     "source": "https://github.com/hermitdave/FrequencyWords/tree/master/content/2018/it",
     "description": "Italian sentences generated from the most common conversational words, sampled in proportion to their frequency in the OpenSubtitles corpus. Cased and punctuated, accents kept.",
     "generated": true

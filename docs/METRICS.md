@@ -123,7 +123,7 @@ These rules measure the cost of multi-layer alphas. They read simulation statist
 
 ## Composite score
 
-Off by default. When a rule set enables it, the score is the weighted mean of band *goodness* (0 = worst band, 1 = best band) over the rules that carry a weight and a band, scaled to 0–100. Rules without bands never contribute, and the number is only comparable across layouts analyzed with the same rule set. The Romak author preset ships weights (SFB 3, SFS / scissors / LSB / redirects / pinky off / layer taps / wasted one-shots / extra keystrokes 1, alternation / rolls / hand balance 0.5).
+Off by default, and no shipped preset turns it on: in **Rules**, **Composite score** does, and each rule's score weight says how much it counts. When a rule set enables it, the score is the weighted mean of band *goodness* (0 = worst band, 1 = best band) over the rules that carry a weight and a band, scaled to 0–100. Rules without bands never contribute, and the number is only comparable across layouts analyzed with the same rule set.
 
 ## Presets
 
@@ -132,7 +132,6 @@ Off by default. When a rule set enables it, the score is the weighted mean of ba
 | Layouts Doc | Definitions and bands above. Thumbs included, space excluded, no composite score. |
 | cyanophage-like | LSB = inner-column key with a middle-finger key (any rows); scissors = adjacent fingers two rows apart (no height preference); redirects require three different fingers; bigram rules normalized over keystrokes plus one space per word. |
 | Keysolve-like | Ring–middle two-row jumps always count as full scissors and one-row jumps as half scissors, on top of the Doc definition. |
-| Romak author | Doc rules with the layer family weighted and the composite score enabled. |
 
 ## Rule vocabulary
 

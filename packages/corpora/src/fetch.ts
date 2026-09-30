@@ -4,9 +4,10 @@
  *   pnpm corpora:fetch                 # every language listed below
  *   pnpm corpora:fetch en pt_br es fr  # just these
  *
- * Lists come from hermitdave/FrequencyWords (MIT), which counts words across the OpenSubtitles
- * corpus — conversational register, with accents intact. They are plain text, one `word count` per
- * line, so nothing here has to unpack an archive.
+ * Lists come from hermitdave/FrequencyWords, which counts words across the OpenSubtitles corpus —
+ * conversational register, with accents intact. Its code is MIT, but the lists are CC BY-SA 4.0,
+ * and so are the corpora generated from them. They are plain text, one `word count` per line, so
+ * nothing here has to unpack an archive.
  *
  * The larger news corpora are a manual step; `packages/corpora/README.md` has the URLs and why.
  */
@@ -42,7 +43,7 @@ async function fetchList(lang: string): Promise<void> {
 
   const header = [
     `# ${lang} word frequencies, OpenSubtitles ${YEAR}`,
-    '# Source: hermitdave/FrequencyWords (MIT)',
+    '# Source: hermitdave/FrequencyWords (lists CC BY-SA 4.0)',
     `# ${from}`,
     `# Retrieved: ${new Date().toISOString().slice(0, 10)}`,
     '',

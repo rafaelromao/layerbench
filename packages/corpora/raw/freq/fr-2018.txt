@@ -1,5 +1,5 @@
 # fr word frequencies, OpenSubtitles 2018
-# Source: hermitdave/FrequencyWords (MIT)
+# Source: hermitdave/FrequencyWords (lists CC BY-SA 4.0)
 # https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018/fr/fr_50k.txt
 # Retrieved: 2026-09-30
 de 8435682

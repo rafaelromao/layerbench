@@ -40,9 +40,11 @@ pnpm corpora
 ```
 
 `corpora:fetch` downloads word-frequency lists from
-[hermitdave/FrequencyWords](https://github.com/hermitdave/FrequencyWords) (MIT), which counts words
-across the OpenSubtitles corpus — conversational register, accents intact. `corpora:generate` samples
-those words in proportion to their frequency and shapes them into capitalised, punctuated sentences.
+[hermitdave/FrequencyWords](https://github.com/hermitdave/FrequencyWords), which counts words across
+the OpenSubtitles corpus — conversational register, accents intact. Its code is MIT, but the lists
+are [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), so the corpora generated from
+them are shared under it too, as `sources.json` records. `corpora:generate` samples those words in
+proportion to their frequency and shapes them into capitalised, punctuated sentences.
 
 They replace the Romak work corpora, `en-work` and `pt-br-work`, which were made the same way from
 the 180 words a language model listed as common in work chat and email, as shuffled word bags with

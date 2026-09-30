@@ -63,11 +63,11 @@ nothing is lost to a network problem.
 ## Relationship to the Elixir implementation
 
 This application replaced a complete Elixir and Phoenix implementation, which remains in the
-repository's history at `07b81b9` (`git show 07b81b9:mix.exs`, or `git checkout 07b81b9`). It is
-the behavioral reference: URL formats, layout and rule-set JSON, storage documents and every metric
-definition are reproduced here unchanged. `packages/core/golden/` holds reports dumped from it, and the parity
-suite asserts this engine matches them to 1e-6. Three deliberate differences are recorded in
-`packages/core/golden/DEVIATIONS.md`.
+repository's history at `07b81b9` (`git show 07b81b9:mix.exs`, or `git checkout 07b81b9`). URL
+formats, layout and rule-set JSON and storage documents are reproduced here unchanged, so links and
+data repositories work with both. `packages/core/golden/` began as reports dumped from it, which this
+engine matched to 1e-6; they are now regenerated from this engine and pin every number it produces,
+and `packages/core/golden/GOLDENS.md` records each deliberate change to them and why.
 
 ## Develop
 
@@ -112,8 +112,8 @@ On **Cloudflare Pages**, connect the repository and set:
 | `NODE_VERSION` | `22` |
 
 Leave `VITE_BASE` unset — Pages serves from the root of a domain, which is the default. It only
-needs a value on a host that serves the site from a subdirectory; the `deploy` workflow sets it for
-GitHub Pages.
+needs a value on a host that serves the site from a subdirectory, such as a GitHub Pages project
+site.
 
 **Do not point the app's storage at the branch Pages builds from.** Every save is a commit, and
 each commit would trigger a rebuild and redeploy. Use a separate data repository, or exclude the
