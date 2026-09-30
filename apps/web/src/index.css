@@ -864,6 +864,26 @@ button.lm-drop-target.lm-drop-copy {
   }
 }
 
+/*
+ * The features a ranking counts: four switches in a line at a desk. On a touch screen each is a
+ * row a finger can hit, two to a line, with a box at full size rather than the compact one.
+ */
+@media (pointer: coarse) {
+  .lm-rank-with {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .lm-rank-with legend {
+    grid-column: 1 / -1;
+  }
+  .lm-rank-with label {
+    min-height: 2.75rem;
+  }
+  .lm-rank-with .checkbox {
+    --size: calc(var(--size-selector, 0.25rem) * 6);
+  }
+}
+
 .lm-guide {
   display: grid;
   gap: 1.5rem;
