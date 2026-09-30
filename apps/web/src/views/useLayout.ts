@@ -1,9 +1,11 @@
 import {
   type CompiledLayout,
   compileLayout,
+  type FeatureKind,
   type Layout,
   type StorageAdapter,
   safeParseLayout,
+  withoutFeatures,
 } from '@layoutmaster/core';
 import { useEffect, useMemo, useState } from 'react';
 import { useStorage } from '../storage/use-storage.js';
@@ -57,4 +59,25 @@ export function useLayout(ref: string): LayoutState {
       };
     }
   }, [resolved]);
+}
+
+/**
+ * The layout as it is typed without the special features a link leaves out (`off=`), which is how
+ * the Library ranks it: Analyze and Compare analyze, draw and explain this, so their numbers match
+ * the card's. A layout that will not compile without them is typed as authored.
+ */
+export function useTypedLayout(
+  layout: Layout | null,
+  compiled: CompiledLayout | null,
+  without: readonly FeatureKind[],
+): { layout: Layout | null; compiled: CompiledLayout | null } {
+  return useMemo(() => {
+    if (!layout || without.length === 0) return { layout, compiled };
+    const plain = withoutFeatures(layout, without);
+    try {
+      return { layout: plain, compiled: compileLayout(plain) };
+    } catch {
+      return { layout, compiled };
+    }
+  }, [layout, compiled, without]);
 }

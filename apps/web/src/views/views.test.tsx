@@ -2,8 +2,9 @@ import { bundledLayout, toCanonicalJson } from '@layoutmaster/core';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
+import type { AnalysisClient, AnalyzeRequest } from '../engine/protocol.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
-import { LIBRARY, renderRoute } from '../test/render.js';
+import { LIBRARY, renderRoute, testClient } from '../test/render.js';
 
 const QWERTY_TEXT = 'q w e r t y u i o p\na s d f g h j k l ;\nz x c v b n m , . /';
 
@@ -73,6 +74,62 @@ describe('Compare', () => {
     expect(within(table).getByText('Δ (B − A)')).toBeInTheDocument();
     expect(within(table).getByText('Same finger bigrams')).toBeInTheDocument();
   });
+
+  /** The engine, keeping every analysis it is asked for. */
+  function recording(): { client: AnalysisClient; requests: AnalyzeRequest[] } {
+    const real = testClient();
+    const requests: AnalyzeRequest[] = [];
+    const client = new Proxy(real, {
+      get(target, prop) {
+        if (prop === 'analyze') {
+          return (...args: Parameters<AnalysisClient['analyze']>) => {
+            requests.push(args[0]);
+            return target.analyze(...args);
+          };
+        }
+        const member = Reflect.get(target, prop);
+        return typeof member === 'function' ? member.bind(target) : member;
+      },
+    });
+    return { client, requests };
+  }
+
+  it('compares both layouts typed without the features left unticked', async () => {
+    const user = userEvent.setup();
+    const { client, requests } = recording();
+    const { currentSearch } = renderRoute(
+      '/compare?layout=magic-romak&b=graphite&corpus=pt-br-conv&sample=20000&off=macros',
+      { client, storage: freshStorage() },
+    );
+
+    const macros = await screen.findByRole('checkbox', { name: 'Multi-letter macros' });
+    expect(macros).not.toBeChecked();
+    for (const name of ['Magic keys', 'Repeat key', 'Typing combos']) {
+      expect(screen.getByRole('checkbox', { name })).toBeChecked();
+    }
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Both layouts typed without multi-letter macros.',
+    );
+    const romak = () => requests.filter((r) => r.layout.name === 'Magic Romak');
+    await waitFor(() => expect(romak()).not.toHaveLength(0));
+    // `qu` is two letters in one press, and goes; an accent is one letter, and stays.
+    expect(JSON.stringify(romak()[0].layout)).not.toContain('"symbols":"qu"');
+    expect(JSON.stringify(romak()[0].layout)).toContain('"symbols":"é"');
+    const analyzeA = screen.getByRole('link', { name: 'Analyze A' }) as HTMLAnchorElement;
+    expect(analyzeA.href).toContain('off=macros');
+
+    await user.click(macros);
+    await waitFor(() => expect(currentSearch()).not.toContain('off='));
+    expect(currentSearch()).toContain('b=graphite');
+    expect(screen.queryByRole('status')).toBeNull();
+    await waitFor(() =>
+      expect(romak().some((r) => JSON.stringify(r.layout).includes('"symbols":"qu"'))).toBe(true),
+    );
+
+    await user.click(screen.getByRole('checkbox', { name: 'Magic keys' }));
+    await waitFor(() => expect(currentSearch()).toContain('off=magic'));
+    expect(currentSearch()).toContain('b=graphite');
+  }, 60_000);
 });
 
 describe('Corpus', () => {

@@ -7,16 +7,19 @@ import {
 } from '@layoutmaster/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FeatureSwitches, featureList } from '../components/FeatureSwitches.js';
 import { formatValue } from '../components/format.js';
+import { HelpLink } from '../components/HelpLink.js';
 import { Keyboard } from '../components/Keyboard.js';
 import { BandBadge, SummaryStrip } from '../components/Metrics.js';
 import { useAnalysisClient } from '../engine/client-context.js';
 import { expandPositions, usageHeat } from '../engine/heat.js';
 import type { AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { useAnalysis } from '../engine/use-analysis.js';
+import { HELP } from '../guide/help.js';
 import { type Params, parseParams, type RawSearch, SAMPLE_SIZES, toSearch } from '../url/params.js';
 import { compareRows } from './compare-rows.js';
-import { useLayout } from './useLayout.js';
+import { useLayout, useTypedLayout } from './useLayout.js';
 import { useRuleSet } from './useRuleSet.js';
 
 const DEFAULT_B = 'qwerty';
@@ -40,6 +43,10 @@ export function CompareView() {
 
   const a = useLayout(params.layoutRef);
   const b = useLayout(refB);
+  // Both sides are typed without the same features, as the Library ranks them, and drawn that way
+  // so each board's heat lands on the keys it was measured on.
+  const typedA = useTypedLayout(a.layout, a.compiled, params.without);
+  const typedB = useTypedLayout(b.layout, b.compiled, params.without);
   const ruleSet = useRuleSet(params.preset, params.universe);
 
   const requestFor = (layout: typeof a.layout): AnalyzeRequest | null =>
@@ -56,9 +63,9 @@ export function CompareView() {
       : null;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: the request is derived from these
-  const requestA = useMemo(() => requestFor(a.layout), [a.layout, params, ruleSet]);
+  const requestA = useMemo(() => requestFor(typedA.layout), [typedA.layout, params, ruleSet]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: the request is derived from these
-  const requestB = useMemo(() => requestFor(b.layout), [b.layout, params, ruleSet]);
+  const requestB = useMemo(() => requestFor(typedB.layout), [typedB.layout, params, ruleSet]);
 
   const analysisA = useAnalysis(requestA);
   const analysisB = useAnalysis(requestB);
@@ -188,17 +195,29 @@ export function CompareView() {
           </select>
         </label>
 
+        {/* The "?" stays beside the switches: on a phone they fill the width in two columns. */}
+        <div className="lm-wide flex items-start gap-2">
+          <FeatureSwitches
+            legend="Compare with"
+            without={params.without}
+            onChange={(next) => setParams({ without: next })}
+            className="min-w-0 flex-1"
+          />
+          <HelpLink help={HELP.without} />
+        </div>
+
         <div className="lm-wide flex flex-wrap items-center gap-3 sm:ml-auto">
-          <label className="label cursor-pointer gap-2">
-            <span className="label-text text-xs">Include space</span>
+          {/* Drawn like the feature switches above it, since it is the same kind of choice. */}
+          <label className="label lm-check cursor-pointer gap-1.5 p-0">
             <input
               type="checkbox"
-              className="toggle toggle-sm"
+              className="checkbox checkbox-xs"
               checked={params.universe === 'with_space'}
               onChange={(e) =>
                 setParams({ universe: e.target.checked ? 'with_space' : 'no_space' })
               }
             />
+            <span className="label-text text-xs">Include space</span>
           </label>
           <Link
             to="/analyze"
@@ -210,13 +229,26 @@ export function CompareView() {
         </div>
       </form>
 
+      {params.without.length > 0 && (
+        <div className="alert text-sm py-2" role="status">
+          <span>Both layouts typed without {featureList(params.without)}.</span>
+          <button
+            type="button"
+            className="btn btn-xs whitespace-nowrap"
+            onClick={() => setParams({ without: [] })}
+          >
+            Use every feature
+          </button>
+        </div>
+      )}
+
       {error && <div className="alert alert-error text-sm">{error}</div>}
 
       <div className="grid gap-4 md:grid-cols-2">
         {(
           [
-            ['A', nameA, a.compiled, analysisA.report],
-            ['B', nameB, b.compiled, analysisB.report],
+            ['A', nameA, typedA.compiled, analysisA.report],
+            ['B', nameB, typedB.compiled, analysisB.report],
           ] as const
         ).map(([side, name, compiled, report]) => (
           <section key={side} className="card bg-base-100 border border-base-300">

@@ -866,7 +866,8 @@ button.lm-drop-target.lm-drop-copy {
 
 /*
  * The features a ranking counts: four switches in a line at a desk. On a touch screen each is a
- * row a finger can hit, two to a line, with a box at full size rather than the compact one.
+ * row a finger can hit, two to a line, with a box at full size rather than the compact one. A
+ * checkbox drawn beside them (`lm-check`) grows the same way.
  */
 @media (pointer: coarse) {
   .lm-rank-with {
@@ -876,10 +877,12 @@ button.lm-drop-target.lm-drop-copy {
   .lm-rank-with legend {
     grid-column: 1 / -1;
   }
-  .lm-rank-with label {
+  .lm-rank-with label,
+  .lm-check {
     min-height: 2.75rem;
   }
-  .lm-rank-with .checkbox {
+  .lm-rank-with .checkbox,
+  .lm-check .checkbox {
     --size: calc(var(--size-selector, 0.25rem) * 6);
   }
 }

@@ -45,6 +45,9 @@ letters or more, such as `qu` or `ão`. A macro typing one letter, like Magic Ro
 the layout reaches that letter, and stays. What a feature typed is typed another way, or skipped if
 there is none. **Analyze** on a card opens the layout ranked the same way, and says so.
 
+**Compare with**, in **Compare**, is the same set of switches for both layouts at once: each is
+typed and drawn without the features left unticked, and **Analyze A** opens A typed the same way.
+
 ### Changing the costs
 
 The cost of each key is a parameter of the Effort rule. **Rules** can give any key another cost,

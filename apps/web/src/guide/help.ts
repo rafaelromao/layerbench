@@ -25,6 +25,11 @@ export const HELP = {
   saving: { page: '', section: 'keeping-and-sharing-your-work', topic: 'saving' },
   headline: { page: 'analyzing', section: 'effort-and-sfb', topic: 'Effort and SFB' },
   sorting: { page: 'analyzing', section: 'sorting-and-comparing', topic: 'sorting layouts' },
+  without: {
+    page: 'analyzing',
+    section: 'sorting-and-comparing',
+    topic: 'typing without special features',
+  },
   importing: { page: 'importing', topic: 'importing from keymap-drawer' },
   rules: { page: 'analyzing', section: 'rules-and-their-sources', topic: 'rules and sources' },
   corpus: { page: 'analyzing', section: 'the-text-itself', topic: 'corpora' },

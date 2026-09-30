@@ -93,9 +93,7 @@ describe('Analyze', () => {
       '/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000&off=macros',
     );
     await screen.findByText('Same finger bigrams');
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Typed without multi-letter macros, as the Library ranked it.',
-    );
+    expect(screen.getByRole('status')).toHaveTextContent('Typed without multi-letter macros.');
 
     // `qu` is one press with the macro; without it, `q` and then `u`.
     await user.type(screen.getByLabelText('How is this typed?'), 'qu');

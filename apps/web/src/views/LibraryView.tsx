@@ -3,9 +3,6 @@ import {
   type CompiledLayout,
   type CorpusManifest,
   compileLayout,
-  FEATURE_KINDS,
-  FEATURE_LABELS,
-  type FeatureKind,
   GEOMETRY_PRESET_IDS,
   getGeometryPreset,
   getPreset,
@@ -22,6 +19,7 @@ import {
 } from '@layoutmaster/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FeatureSwitches, featureList } from '../components/FeatureSwitches.js';
 import { formatValue } from '../components/format.js';
 import { HelpLink } from '../components/HelpLink.js';
 import { Keyboard } from '../components/Keyboard.js';
@@ -70,14 +68,6 @@ const SORTS: [SortKey, string][] = [
 
 /** Characters named on a card before the list is cut short. */
 const MISSING_SHOWN = 5;
-
-/** "magic keys, typing combos and multi-letter macros". */
-function listOf(features: readonly FeatureKind[]): string {
-  const names = features.map((f) => FEATURE_LABELS[f].toLowerCase());
-  return names.length <= 1
-    ? (names[0] ?? '')
-    : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-}
 
 /**
  * The two numbers every card shows, whether or not the list is sorted by them, and what the layout
@@ -640,26 +630,11 @@ export function LibraryView() {
         </label>
       </div>
 
-      <fieldset className="lm-rank-with flex flex-wrap items-center gap-x-3 gap-y-1">
-        <legend className="text-xs opacity-70 float-left mr-1">Rank with</legend>
-        {FEATURE_KINDS.map((kind) => (
-          <label key={kind} className="label cursor-pointer gap-1.5 p-0">
-            <input
-              type="checkbox"
-              className="checkbox checkbox-xs"
-              checked={!without.includes(kind)}
-              onChange={(e) =>
-                setParams({
-                  without: e.target.checked
-                    ? without.filter((k) => k !== kind)
-                    : FEATURE_KINDS.filter((k) => k === kind || without.includes(k)),
-                })
-              }
-            />
-            <span className="label-text text-xs">{FEATURE_LABELS[kind]}</span>
-          </label>
-        ))}
-      </fieldset>
+      <FeatureSwitches
+        legend="Rank with"
+        without={without}
+        onChange={(next) => setParams({ without: next })}
+      />
 
       <div className="flex flex-wrap items-center gap-2">
         <fieldset className="join" aria-label="Sort layouts by">
@@ -684,7 +659,7 @@ export function LibraryView() {
             : unscored
               ? `Could not score the layouts on ${corpusName}.`
               : `Lower is better for both. ${Math.min(params.sample, RANK_MAX_SYMBOLS).toLocaleString('en-US')} symbols of ${corpusName}, ${ruleSet.name ?? 'rule set'}${
-                  without.length > 0 ? `, typed without ${listOf(without)}` : ''
+                  without.length > 0 ? `, typed without ${featureList(without)}` : ''
                 }.${
                   nobodyCan
                     ? ` None of these layouts types every letter ${lackingLanguage} needs.`
