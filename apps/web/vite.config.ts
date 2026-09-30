@@ -25,7 +25,14 @@ const CONTENT_SECURITY_POLICY = [
   "form-action 'none'",
 ].join('; ');
 
-/** `frame-ancestors` is ignored in a meta tag, so it is only set where real headers are available. */
+/**
+ * `frame-ancestors` is ignored in a meta tag, so it is only set where real headers are available.
+ *
+ * Only `/assets/` has hashed names, so only it may be cached without asking. The corpora keep their
+ * paths when they are rebuilt or replaced, `index.json` included: a browser that kept them for a
+ * day went on listing corpora that were gone. It revalidates now, which costs a 304 when nothing
+ * changed.
+ */
 const HEADERS = `/*
   Content-Security-Policy: ${CONTENT_SECURITY_POLICY}; frame-ancestors 'none'
   Referrer-Policy: no-referrer
@@ -36,7 +43,7 @@ const HEADERS = `/*
   Cache-Control: public, max-age=31536000, immutable
 
 /corpora/*
-  Cache-Control: public, max-age=86400
+  Cache-Control: no-cache
 
 /
   Cache-Control: no-cache
