@@ -1087,3 +1087,12 @@ button.lm-drop-target.lm-drop-copy {
     transition: none;
   }
 }
+
+/* The bar under the header while data loads: still, not sliding, when motion is reduced. */
+@media (prefers-reduced-motion: reduce) {
+  .lm-busy:indeterminate,
+  .lm-busy:indeterminate::-webkit-progress-value,
+  .lm-busy:indeterminate::-moz-progress-bar {
+    animation: none;
+  }
+}

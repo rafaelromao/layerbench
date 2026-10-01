@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
-import { LIBRARY, renderRoute } from '../test/render.js';
+import { LIBRARY, renderRoute, testClient } from '../test/render.js';
 
 let counter = 0;
 
@@ -38,6 +38,34 @@ describe('where the site opens', () => {
       expect(screen.getByRole('combobox', { name: 'Corpus' })).toHaveValue('en-conv'),
     );
   });
+});
+
+describe('while data loads', () => {
+  it('shows a bar under the header until the engine has answered', async () => {
+    const real = testClient();
+    let release: () => void = () => {};
+    const waiting = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    // The corpus list arrives only when the test says so, as over a slow network.
+    const client = new Proxy(real, {
+      get(target, prop) {
+        if (prop === 'listCorpora') return () => waiting.then(() => target.listCorpora());
+        const member = Reflect.get(target, prop);
+        return typeof member === 'function' ? member.bind(target) : member;
+      },
+    });
+    renderRoute('/corpus', { client, storage: freshStorage() });
+
+    expect(await screen.findByRole('progressbar', { name: 'Loading data' })).toBeInTheDocument();
+    release();
+    await waitFor(
+      () => expect(screen.queryByRole('progressbar', { name: 'Loading data' })).toBeNull(),
+      {
+        timeout: 20_000,
+      },
+    );
+  }, 30_000);
 });
 
 describe('the page frame', () => {

@@ -1,5 +1,6 @@
 import { Link, useLocation } from '@tanstack/react-router';
 import { type ReactNode, useCallback, useEffect, useRef } from 'react';
+import { useEngineBusy } from '../engine/client-context.js';
 import { useSession } from '../state/session.js';
 import type { ThemeChoice } from '../state/theme.js';
 import { useToasts } from '../state/toasts.js';
@@ -150,6 +151,7 @@ function MobileMenu() {
 /** Page frame: navigation, theme control and the toast region every view shares. */
 export function Shell({ children }: { children: ReactNode }) {
   const main = useFocusOnRouteChange();
+  const busy = useEngineBusy();
 
   return (
     <>
@@ -181,6 +183,14 @@ export function Shell({ children }: { children: ReactNode }) {
             <ThemeToggle />
           </div>
         </div>
+        {/* The engine is fetching a corpus or running an analysis; shown on every view, as that
+            can be any of them. */}
+        {busy && (
+          <progress
+            className="lm-busy progress progress-primary absolute inset-x-0 bottom-0 h-[3px] rounded-none"
+            aria-label="Loading data"
+          />
+        )}
       </header>
       <main
         id="main"
