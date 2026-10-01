@@ -1,6 +1,8 @@
+import { bundledLayout, type Layout, toCanonicalJson } from '@layoutmaster/core';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import type { AnalysisClient, AnalyzeRequest } from '../engine/protocol.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { renderRoute, testClient } from '../test/render.js';
 import { setPointerKind } from '../test/setup.js';
@@ -48,6 +50,36 @@ async function openEdit(): Promise<void> {
 }
 
 const key = (name: string) => screen.getByRole('button', { name });
+
+/** The bar above the board: the layout's name, author and description, Save, corpus and rules. */
+const bar = () => screen.getByRole('region', { name: 'Layout' });
+
+/** The engine, keeping every analysis it is asked for. */
+function recording(): { client: AnalysisClient; requests: AnalyzeRequest[] } {
+  const real = testClient();
+  const requests: AnalyzeRequest[] = [];
+  const client = new Proxy(real, {
+    get(target, prop) {
+      if (prop === 'analyze') {
+        return (...args: Parameters<AnalysisClient['analyze']>) => {
+          requests.push(args[0]);
+          return target.analyze(...args);
+        };
+      }
+      const member = Reflect.get(target, prop);
+      return typeof member === 'function' ? member.bind(target) : member;
+    },
+  });
+  return { client, requests };
+}
+
+/** A saved copy of a bundled layout, under its own id and name. */
+async function seed(storage: IndexedDbAdapter, from: string, id: string, extra: Partial<Layout>) {
+  const layout = bundledLayout(from) as Layout;
+  await storage.put('layouts', id, toCanonicalJson({ ...layout, id, ...extra }), {
+    message: 'seed',
+  });
+}
 
 /** The inspector for one key, which is where every edit to it is made. */
 const inspector = (keyId: string) => screen.findByRole('group', { name: `Edit ${keyId}` });
@@ -100,25 +132,142 @@ describe('Edit', () => {
     });
   });
 
-  it('saves the edited layout under a slug of its name', async () => {
+  it('saves from beside the unsaved badge, under the name in the bar', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const { currentSearch } = renderRoute('/edit?layout=qwerty&corpus=en-conv&sample=20000', {
+      storage,
+    });
+    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+    // Saving is no longer a panel to go looking for.
+    expect(screen.queryByRole('tab', { name: 'Save' })).toBeNull();
+
+    const name = within(bar()).getByLabelText('Name');
+    await user.clear(name);
+    // Not committed with Enter: leaving the field for Save commits it on the way.
+    await user.type(name, 'Qwerty swapped');
+    await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Saved Qwerty swapped')).toBeInTheDocument();
+    expect((await storage.get('layouts', 'qwerty-swapped'))?.doc.name).toBe('Qwerty swapped');
+    await waitFor(() => expect(currentSearch()).toContain('saved%3Aqwerty-swapped'));
+  });
+
+  it('opens the saved copy after a first save, edits included, and saves it again in place', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
     renderRoute('/edit?layout=qwerty&corpus=en-conv&sample=20000', { storage });
     await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
 
-    await user.click(screen.getByRole('tab', { name: 'Save' }));
-    const panel = screen
-      .getByRole('button', { name: 'Save to library' })
-      .closest('form') as HTMLElement;
-    const name = within(panel).getByLabelText('Layout name');
+    key('Key LHM: d').focus();
+    await user.keyboard('ç{Enter}');
+    await screen.findByRole('button', { name: 'Key LHM: ç' });
+    const name = within(bar()).getByLabelText('Name');
     await user.clear(name);
-    await user.type(name, 'Qwerty swapped');
-    await user.click(within(panel).getByRole('button', { name: 'Save to library' }));
+    await user.type(name, 'Qwerty plus{Enter}');
+    await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Saved Qwerty plus')).toBeInTheDocument();
 
-    expect(await screen.findByText('Saved as qwerty-swapped')).toBeInTheDocument();
-    const stored = await storage.get('layouts', 'qwerty-swapped');
-    expect(stored?.doc.name).toBe('Qwerty swapped');
+    // The editor opens afresh, with no history, on the copy it saved: not on the bundled Qwerty
+    // that was still loaded when the link moved to the copy.
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Undo' })).toBeDisabled(), {
+      timeout: 25_000,
+    });
+    expect(key('Key LHM: ç')).toBeInTheDocument();
+    expect(within(bar()).getByLabelText('Name')).toHaveValue('Qwerty plus');
+
+    key('Key LHI: f').focus();
+    await user.keyboard('ã{Enter}');
+    await screen.findByRole('button', { name: 'Key LHI: ã' });
+    await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+    await waitFor(async () => {
+      const doc = (await storage.get('layouts', 'qwerty-plus'))?.doc as unknown as Layout;
+      expect(doc.layers[0].bindings.LHI).toEqual({ kind: 'kp', symbol: 'ã' });
+    });
+    const doc = (await storage.get('layouts', 'qwerty-plus'))?.doc as unknown as Layout;
+    expect(doc.layers[0].bindings.LHM).toEqual({ kind: 'kp', symbol: 'ç' });
+    expect(await storage.get('layouts', 'qwerty-plus-2')).toBeNull();
+  }, 60_000);
+
+  it('keeps a saved layout under its own id when it is renamed, and says its name', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    await seed(storage, 'qwerty', 'qwerty-copy', { name: 'Qwerty copy' });
+    const { currentSearch } = renderRoute(
+      '/edit?layout=saved%3Aqwerty-copy&corpus=en-conv&sample=20000',
+      { storage },
+    );
+    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+
+    // Author and description are there to fill in, with nothing to open first.
+    expect(screen.queryByRole('button', { name: 'Layout details' })).toBeNull();
+    const fill = async (label: string, text: string) => {
+      const field = within(bar()).getByLabelText(label);
+      await user.clear(field);
+      await user.type(field, `${text}{Enter}`);
+    };
+    await fill('Name', 'My layout');
+    await fill('Author', 'Me');
+    await fill('Description', 'Qwerty, my way');
+    expect(screen.getByText('unsaved')).toBeInTheDocument();
+    await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Saved My layout')).toBeInTheDocument();
+    expect((await storage.get('layouts', 'qwerty-copy'))?.doc).toMatchObject({
+      name: 'My layout',
+      author: 'Me',
+      description: 'Qwerty, my way',
+    });
+    expect(await storage.get('layouts', 'my-layout')).toBeNull();
+    expect(currentSearch()).toContain('saved%3Aqwerty-copy');
+    expect(screen.queryByText('unsaved')).toBeNull();
   });
+
+  it('saves a layout for the first time beside a saved one of the same name, not over it', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    await seed(storage, 'qwerty', 'qwerty', { description: 'mine' });
+    renderRoute('/edit?layout=qwerty&corpus=en-conv&sample=20000', { storage });
+    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+
+    await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Saved Qwerty')).toBeInTheDocument();
+    expect((await storage.get('layouts', 'qwerty'))?.doc.description).toBe('mine');
+    expect((await storage.get('layouts', 'qwerty-2'))?.doc.name).toBe('Qwerty');
+  });
+
+  it('analyzes on English news unless the link names a corpus, and switches without losing edits', async () => {
+    const user = userEvent.setup();
+    const { client, requests } = recording();
+    const { currentSearch } = renderRoute('/edit?layout=qwerty&sample=20000', {
+      client,
+      storage: freshStorage(),
+    });
+    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+    const corpus = within(bar()).getByRole('combobox', { name: 'Corpus' });
+    expect(corpus).toHaveValue('en-general');
+    expect(requests.map((r) => r.corpusId)).toContain('en-general');
+
+    key('Key LHM: d').focus();
+    await user.keyboard('ç{Enter}');
+    await screen.findByRole('button', { name: 'Key LHM: ç' });
+
+    await waitFor(() => expect(within(corpus).getAllByRole('option').length).toBeGreaterThan(1));
+    await user.selectOptions(corpus, 'en-conv');
+    await user.selectOptions(
+      within(bar()).getByRole('combobox', { name: 'Rule set' }),
+      'cyanophage',
+    );
+    await waitFor(() => expect(currentSearch()).toContain('rules=cyanophage'));
+    expect(currentSearch()).toContain('corpus=en-conv');
+
+    // The editor stayed open on the edit, which is still unsaved, and the numbers follow the text.
+    expect(key('Key LHM: ç')).toBeInTheDocument();
+    expect(screen.getByText('unsaved')).toBeInTheDocument();
+    await waitFor(() => expect(requests.some((r) => r.corpusId === 'en-conv')).toBe(true), {
+      timeout: 25_000,
+    });
+  }, 60_000);
 
   it('selects a key and edits its binding', async () => {
     const user = userEvent.setup();

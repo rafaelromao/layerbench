@@ -24,9 +24,10 @@ different keys. It is the first measure of the
 
 ### Sorting and comparing
 
-**Library**, where the site opens, sorts every layout by Effort or by SFB and shows both on each
-card, all scored on the same sample of the same text. Each layout takes its place as its score
-arrives. **Compare** puts every number for two layouts side by side, with the difference and which
+**Library**, where the site opens, sorts every layout by Effort, by SFB or by name, and shows both
+numbers on each card, all scored on the same sample of the same text. The layouts you saved are
+ranked in the same list as the ones that come with the app, marked *saved*. Each layout takes its
+place as its score arrives. **Compare** puts every number for two layouts side by side, with the difference and which
 of the two does better.
 
 Layouts are compared on the text, not on their presses. SFB and the other pair rules are a share of

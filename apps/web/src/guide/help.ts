@@ -22,7 +22,6 @@ export const HELP = {
     topic: 'combos, geometry and the other panels',
   },
   exporting: { page: 'importing', section: 'exporting', topic: 'exporting' },
-  saving: { page: '', section: 'keeping-and-sharing-your-work', topic: 'saving' },
   headline: { page: 'analyzing', section: 'effort-and-sfb', topic: 'Effort and SFB' },
   sorting: { page: 'analyzing', section: 'sorting-and-comparing', topic: 'sorting layouts' },
   without: {

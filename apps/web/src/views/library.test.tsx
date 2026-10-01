@@ -1,7 +1,7 @@
-import { BUNDLED_LAYOUTS, toCanonicalJson } from '@layoutmaster/core';
+import { BUNDLED_LAYOUTS, bundledLayout, type Layout, toCanonicalJson } from '@layoutmaster/core';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { AnalysisClient, AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { LIBRARY, renderRoute, testClient } from '../test/render.js';
@@ -59,6 +59,42 @@ describe('Creating layouts', () => {
     await waitFor(async () =>
       expect((await storage.get('layouts', 'qwerty-copy'))?.doc.name).toBe('Qwerty copy'),
     );
+    // It says what it saved by name; the id is only for links.
+    expect(await screen.findByText('Saved Qwerty copy')).toBeInTheDocument();
+  });
+
+  it('opens the editor on the corpus and rules the Library ranks by', async () => {
+    const user = userEvent.setup();
+    const { currentPath, currentSearch } = renderRoute(LIBRARY, { storage: freshStorage() });
+    const corpus = await screen.findByRole('combobox', { name: 'Corpus' });
+    await waitFor(() => expect(within(corpus).getAllByRole('option').length).toBeGreaterThan(1));
+    await user.selectOptions(corpus, 'pt-br-conv');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Rule set' }), 'cyanophage');
+    await waitFor(() => expect(currentSearch()).toContain('rules=cyanophage'));
+
+    await user.click(screen.getByRole('button', { name: 'Duplicate Qwerty' }));
+    await waitFor(() => expect(currentPath()).toBe('/edit'));
+    expect(currentSearch()).toContain('saved%3Aqwerty-copy');
+    expect(currentSearch()).toContain('corpus=pt-br-conv');
+    expect(currentSearch()).toContain('rules=cyanophage');
+    const bar = await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+    expect(within(bar).getByRole('combobox', { name: 'Corpus' })).toHaveValue('pt-br-conv');
+    expect(within(bar).getByRole('combobox', { name: 'Rule set' })).toHaveValue('cyanophage');
+  }, 60_000);
+
+  it('deletes a saved layout, naming it', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const qwerty = bundledLayout('qwerty') as Layout;
+    await storage.put('layouts', 'mine', toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine' }));
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderRoute(LIBRARY, { storage });
+
+    await user.click(await screen.findByRole('button', { name: 'Delete Mine' }));
+    expect(confirm).toHaveBeenCalledWith('Delete Mine?');
+    expect(await screen.findByText('Deleted Mine')).toBeInTheDocument();
+    expect(await storage.get('layouts', 'mine')).toBeNull();
+    confirm.mockRestore();
   });
 });
 
@@ -94,6 +130,19 @@ describe('Ranking layouts', () => {
     expect(sfbs).toEqual([...sfbs].sort((a, b) => a - b));
   }, 90_000);
 
+  /** What the Library reads from a report: its Effort, an SFB to go with it, and nothing skipped. */
+  function reportWith(effort: number): ReportDTO {
+    const report = {
+      results: [
+        { id: 'effort', value: effort },
+        { id: 'sfb', value: effort / 100 },
+      ],
+      stats: { symbols: 1000 },
+      coverage: { unproducible: [], softDropped: [], excludedByCase: [] },
+    };
+    return report as unknown as ReportDTO;
+  }
+
   /**
    * An engine that scores the first layouts it is asked for with the efforts given, in turn, and
    * leaves the rest scoring for as long as the test looks.
@@ -117,15 +166,7 @@ describe('Ranking layouts', () => {
         );
       }
       scored.push(String(request.layout.name));
-      const report = {
-        results: [
-          { id: 'effort', value: effort },
-          { id: 'sfb', value: effort / 100 },
-        ],
-        stats: { symbols: 1000 },
-        coverage: { unproducible: [], softDropped: [], excludedByCase: [] },
-      };
-      return Promise.resolve(report as unknown as ReportDTO);
+      return Promise.resolve(reportWith(effort));
     };
     const client = new Proxy(real, {
       get(target, prop) {
@@ -150,6 +191,57 @@ describe('Ranking layouts', () => {
     // The better of the two scored comes first, the worse second, and the unscored wait below.
     expect(names.slice(0, 2)).toEqual([scored[1], scored[0]]);
     expect(cards()).toHaveLength(2);
+  }, 90_000);
+
+  /**
+   * An engine that scores each layout by its name, at once. Which layout is scored when depends on
+   * when a saved document has been read, so the score has to follow the layout, not the order.
+   */
+  function scoringByName(effortOf: (name: string) => number): AnalysisClient {
+    const real = testClient();
+    return new Proxy(real, {
+      get(target, prop) {
+        if (prop === 'peek') return async () => null;
+        if (prop === 'analyze') {
+          return async (request: AnalyzeRequest) =>
+            reportWith(effortOf(String(request.layout.name)));
+        }
+        const member = Reflect.get(target, prop);
+        return typeof member === 'function' ? member.bind(target) : member;
+      },
+    });
+  }
+
+  it('ranks a saved layout in the same list as the bundled ones', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const graphite = bundledLayout('graphite') as Layout;
+    await storage.put(
+      'layouts',
+      'my-graphite',
+      toCanonicalJson({ ...graphite, id: 'my-graphite', name: 'My Graphite' }),
+    );
+    const client = scoringByName((name) => (name === 'My Graphite' ? 100 : 500));
+    renderRoute('/library?sample=10004', { client, storage });
+
+    // Not "Lower is better", which does not wait for a saved document still being read.
+    const names = () => [...document.querySelectorAll('article h3')].map((h) => h.textContent);
+    await waitFor(() => expect(names()[0]).toBe('My Graphite'), { timeout: 60_000 });
+    const card = cards()[0];
+    expect(within(card).getByText('saved')).toBeInTheDocument();
+    expect(within(card).getByRole('link', { name: 'Edit' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('saved%3Amy-graphite'),
+    );
+    // The bundled layouts carry no badge.
+    expect(within(cards()[1]).queryByText('saved')).toBeNull();
+
+    // By name, it takes its place among the bundled layouts rather than after them.
+    await user.click(screen.getByRole('radio', { name: 'Name' }));
+    const byName = names();
+    expect(byName).toEqual([...byName].sort((a, b) => (a ?? '').localeCompare(b ?? '')));
+    expect(byName.indexOf('My Graphite')).toBeGreaterThan(0);
+    expect(byName.indexOf('My Graphite')).toBeLessThan(byName.length - 1);
   }, 90_000);
 
   it('ranks a layout that cannot write the text’s language after one that can', async () => {

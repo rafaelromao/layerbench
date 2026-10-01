@@ -77,6 +77,43 @@ describe('undo', () => {
     expect(elsewhere.future).toHaveLength(0);
   });
 
+  it('calls the layout unsaved exactly when it differs from the one saved', () => {
+    const typed = reducer(start(), {
+      type: 'commitBinding',
+      keyId: 'LHM',
+      binding: { kind: 'kp', symbol: 'ç' },
+    });
+    expect(typed.dirty).toBe(true);
+
+    // Saving is nothing to undo.
+    const saved = reducer(typed, { type: 'saved', layout: typed.layout });
+    expect(saved.dirty).toBe(false);
+    expect(saved.layout).toBe(typed.layout);
+    expect(saved.past).toHaveLength(typed.past.length);
+
+    // Undoing past the save is a change the store does not have; redoing back to it is not.
+    const undone = reducer(saved, { type: 'undo' });
+    expect(undone.dirty).toBe(true);
+    expect(reducer(undone, { type: 'redo' }).dirty).toBe(false);
+  });
+
+  it('keeps an edit made while a save was on its way unsaved', () => {
+    const typed = reducer(start(), {
+      type: 'commitBinding',
+      keyId: 'LHM',
+      binding: { kind: 'kp', symbol: 'ç' },
+    });
+    const meanwhile = reducer(typed, {
+      type: 'commitBinding',
+      keyId: 'LHI',
+      binding: { kind: 'kp', symbol: 'ã' },
+    });
+    // The save that lands is of the layout before the second edit.
+    const landed = reducer(meanwhile, { type: 'saved', layout: typed.layout });
+    expect(landed.dirty).toBe(true);
+    expect(reducer(landed, { type: 'undo' }).dirty).toBe(false);
+  });
+
   it('keeps the history bounded', () => {
     let state = start();
     for (let i = 0; i < 60; i++) {

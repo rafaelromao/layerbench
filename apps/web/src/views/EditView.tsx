@@ -1,4 +1,4 @@
-import { bundledLayout, type Layout, slug, toCanonicalJson } from '@layoutmaster/core';
+import { type CorpusManifest, freeId, type Layout, toCanonicalJson } from '@layoutmaster/core';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import {
   type KeyboardEvent as ReactKeyboardEvent,
@@ -20,7 +20,17 @@ import { HELP, type HelpTopic } from '../guide/help.js';
 import { toast } from '../state/toasts.js';
 import { useStorage } from '../storage/use-storage.js';
 import { encodeInline } from '../url/inline.js';
-import { inlineRef, parseParams, type RawSearch, savedRef, toSearch } from '../url/params.js';
+import {
+  ENGLISH_CORPUS,
+  inlineRef,
+  type Params,
+  parseLayoutRef,
+  parseParams,
+  type RawSearch,
+  savedRef,
+  toSearch,
+} from '../url/params.js';
+import { CorpusSelect, RuleSetSelect } from './AnalysisSelects.js';
 import { TextField } from './edit/inspector/controls.js';
 import { KeyInspector } from './edit/inspector/KeyInspector.js';
 import {
@@ -31,10 +41,10 @@ import {
   JsonPanel,
   LayersPanel,
   PathsPanel,
-  SavePanel,
 } from './edit/panels.js';
 import { editReducer, type Panel } from './edit/reducer.js';
 import { initialUndoState, undoable } from './edit/undo.js';
+import { useCorpora } from './useCorpora.js';
 import { useLayout } from './useLayout.js';
 import { useRuleSet } from './useRuleSet.js';
 
@@ -53,7 +63,6 @@ const PANELS: [Panel, string, HelpTopic][] = [
   ['behaviors', 'Behaviors', HELP.panels],
   ['paths', 'Typing paths', HELP.panels],
   ['json', 'JSON', HELP.exporting],
-  ['save', 'Save', HELP.saving],
 ];
 
 export function EditView() {
@@ -61,11 +70,15 @@ export function EditView() {
   const navigate = useNavigate();
   const client = useAnalysisClient();
   const storage = useStorage();
-  const params = useMemo(() => parseParams(search), [search]);
+  const params = useMemo(() => parseParams(search, ENGLISH_CORPUS), [search]);
   const loaded = useLayout(params.layoutRef);
   const ruleSet = useRuleSet(params.preset, params.universe);
+  // The editor reads its layout once, as it mounts. While a new reference is being read, what is
+  // loaded is still the one before it: an editor started from that would show the wrong layout, and
+  // its next save would store it over this one.
+  const current = loaded.ref === params.layoutRef;
 
-  return loaded.compiled && loaded.layout ? (
+  return current && loaded.compiled && loaded.layout ? (
     <Editor
       key={params.layoutRef}
       initialLayout={loaded.layout}
@@ -79,7 +92,7 @@ export function EditView() {
   ) : (
     <div className="space-y-4">
       <h1 className="sr-only">Edit</h1>
-      {loaded.error ? (
+      {current && loaded.error ? (
         <div className="alert alert-error text-sm">{loaded.error}</div>
       ) : (
         <span className="loading loading-dots loading-md" />
@@ -117,6 +130,9 @@ function Editor({
   const [producers, setProducers] = useState<Record<string, ProducerDTO[]>>({});
   const [estimate, setEstimate] = useState<{ report: ReportDTO; layout: Layout } | null>(null);
   const previousReport = useRef<ReportDTO | null>(null);
+  const corpora = useCorpora();
+  /** A save on its way: a second press would store a second copy of a layout saved the first time. */
+  const [saving, setSaving] = useState(false);
 
   const request: AnalyzeRequest = useMemo(
     () => ({
@@ -131,7 +147,7 @@ function Editor({
     [state.layout, params.corpus, params.caseMode, params.textClass, params.sample, ruleSet],
   );
 
-  const { report, loading } = useAnalysis(request);
+  const { report, loading, error: analysisError } = useAnalysis(request);
 
   // Keep the last completed report, so a swap has something to estimate from.
   useEffect(() => {
@@ -209,34 +225,52 @@ function Editor({
       .filter((p): p is number => p !== undefined);
   }, [state.swapFrom, state.comboPick, state.boardHighlight, state.compiled]);
 
-  const save = useCallback(
-    async (name: string) => {
-      const layout = state.layout;
-      const keepsId =
-        layout.id && !bundledLayout(layout.id) && params.layoutRef.startsWith('saved:');
-      const id = keepsId ? slug(layout.id as string) : slug(name);
-      try {
-        await storage.put('layouts', id, toCanonicalJson({ ...layout, id, name }), {
-          message: `Save layout ${name}`,
-        });
-        send({ type: 'saved', id, name });
-        toast.info(`Saved as ${id}`);
+  /**
+   * The corpus and rules live in the link, as on every view. The layout reference stays the same, so
+   * the editor is not opened afresh and nothing unsaved is lost.
+   */
+  const setParams = useCallback(
+    (overrides: Partial<Params>) => {
+      navigate({ to: '/edit', search: toSearch(params, overrides) as never, replace: true });
+    },
+    [navigate, params],
+  );
+
+  const save = useCallback(async () => {
+    const layout = state.layout;
+    const ref = parseLayoutRef(params.layoutRef);
+    setSaving(true);
+    try {
+      // A layout opened from storage goes back under its own id, whatever it is called now, so the
+      // links to it keep working. Anything else takes a free id from its name, rather than
+      // overwriting a saved layout whose name happens to slug the same.
+      const id =
+        ref.kind === 'saved'
+          ? ref.value
+          : freeId(layout.name, new Set((await storage.list('layouts')).map((e) => e.id)));
+      await storage.put('layouts', id, toCanonicalJson({ ...layout, id }), {
+        message: `Save layout ${layout.name}`,
+      });
+      send({ type: 'saved', layout });
+      toast.info(`Saved ${layout.name}`);
+      if (ref.kind !== 'saved') {
         navigate({
           to: '/edit',
           search: toSearch(params, { layoutRef: savedRef(id) }) as never,
           replace: true,
         });
-      } catch (e) {
-        const conflict = e instanceof Error && e.name === 'StorageConflictError';
-        toast.error(
-          conflict
-            ? 'Someone else changed this layout; reload and try again'
-            : `Save failed: ${e instanceof Error ? e.message : String(e)}`,
-        );
       }
-    },
-    [state.layout, params, storage, navigate],
-  );
+    } catch (e) {
+      const conflict = e instanceof Error && e.name === 'StorageConflictError';
+      toast.error(
+        conflict
+          ? 'Someone else changed this layout; reload and try again'
+          : `Save failed: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    } finally {
+      setSaving(false);
+    }
+  }, [state.layout, params, storage, navigate]);
 
   const openInAnalyzer = useCallback(async () => {
     const blob = await encodeInline(state.layout);
@@ -315,8 +349,15 @@ function Editor({
       <EditorBar
         layout={state.layout}
         dirty={state.dirty}
+        saving={saving}
         onMeta={(meta) => send({ type: 'setMeta', ...meta })}
+        onSave={save}
         onAnalyze={openInAnalyzer}
+        corpora={corpora}
+        corpus={params.corpus}
+        preset={params.preset}
+        ruleSetName={ruleSet.name}
+        onParams={setParams}
       />
 
       {state.error && (
@@ -445,6 +486,11 @@ function Editor({
               {provisional && <span> · estimate after swap</span>}
               {loading && <span> · updating…</span>}
             </p>
+            {analysisError && (
+              <p role="alert" className="text-error text-xs">
+                Could not analyze: {analysisError}
+              </p>
+            )}
           </section>
 
           <p aria-live="polite" className="sr-only">
@@ -501,7 +547,6 @@ function Editor({
                 <PathsPanel state={state} send={send} producers={producers} />
               )}
               {state.panel === 'json' && <JsonPanel state={state} send={send} />}
-              {state.panel === 'save' && <SavePanel layout={state.layout} onSave={save} />}
             </div>
           </section>
         </div>
@@ -511,79 +556,113 @@ function Editor({
 }
 
 /**
- * The layout's name, whether it is saved, and the way to the analysis — one line on any screen.
- * Author and description are asked for less often, and wait behind Details.
+ * What the layout is and what it is measured on, all in sight: its name, whether it is saved and the
+ * way to save it, its author and description, then the corpus and rules the numbers under the board
+ * come from. On a phone the rows stay this few: two fields share each, labelled on their border.
  */
 function EditorBar({
   layout,
   dirty,
+  saving,
   onMeta,
+  onSave,
   onAnalyze,
+  corpora,
+  corpus,
+  preset,
+  ruleSetName,
+  onParams,
 }: {
   layout: Layout;
   dirty: boolean;
+  saving: boolean;
   onMeta: (meta: { name?: string; author?: string; description?: string }) => void;
+  onSave: () => void;
   onAnalyze: () => void;
+  corpora: CorpusManifest[];
+  corpus: string;
+  preset: string;
+  ruleSetName?: string;
+  onParams: (overrides: Partial<Params>) => void;
 }) {
-  const [details, setDetails] = useState(false);
   return (
     <section
-      className="lm-editor-bar card bg-base-100 border border-base-300 px-3 py-2"
+      className="lm-editor-bar card bg-base-100 border border-base-300 gap-3 px-3 py-2"
       aria-label="Layout"
     >
-      <div className="flex flex-wrap items-center gap-2">
+      {/* One line at every width: on a narrow phone the name gives the badge its room, rather than
+          the bar taking a line more and the board jumping down on the first edit. The spacing is
+          tighter there, so the name keeps what it can. */}
+      <div className="flex items-center gap-1 sm:gap-2">
         <TextField
           label="Name"
           value={layout.name}
           mono={false}
-          className="input-ghost font-semibold text-base flex-1 min-w-32 px-1"
+          className="input-ghost font-semibold text-base flex-1 min-w-0 px-1"
           onCommit={(name) => {
             if (name.trim()) onMeta({ name: name.trim() });
           }}
         />
-        {dirty && <span className="badge badge-warning badge-sm">unsaved</span>}
+        {dirty && (
+          <span className="badge badge-warning badge-sm shrink-0 max-sm:px-1.5">unsaved</span>
+        )}
         <button
           type="button"
-          className="btn btn-sm btn-ghost btn-square"
-          aria-label="Layout details"
-          title="Author and description"
-          aria-expanded={details}
-          onClick={() => setDetails((d) => !d)}
+          className={`btn btn-sm shrink-0 max-sm:px-2 ${dirty ? 'btn-primary' : ''}`}
+          title="Keep it in the Library"
+          disabled={saving}
+          onClick={onSave}
         >
-          ⋯
+          Save
         </button>
-        <button type="button" className="btn btn-sm" onClick={onAnalyze}>
+        <button type="button" className="btn btn-sm shrink-0 max-sm:px-2" onClick={onAnalyze}>
           Analyze
         </button>
       </div>
-      {details && (
-        <div className="grid gap-2 pt-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-          <div className="form-control">
-            <span className="label-text text-xs" aria-hidden="true">
-              Author
-            </span>
-            <TextField
-              label="Author"
-              value={layout.author ?? ''}
-              mono={false}
-              className="w-full"
-              onCommit={(author) => onMeta({ author })}
-            />
-          </div>
-          <div className="form-control">
-            <span className="label-text text-xs" aria-hidden="true">
-              Description
-            </span>
-            <TextField
-              label="Description"
-              value={layout.description ?? ''}
-              mono={false}
-              className="w-full"
-              onCommit={(description) => onMeta({ description })}
-            />
-          </div>
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-2">
+        <div className="floating-label">
+          <span aria-hidden="true">Author</span>
+          <TextField
+            label="Author"
+            placeholder="Author"
+            value={layout.author ?? ''}
+            mono={false}
+            className="w-full"
+            onCommit={(author) => onMeta({ author })}
+          />
         </div>
-      )}
+        <div className="floating-label">
+          <span aria-hidden="true">Description</span>
+          <TextField
+            label="Description"
+            placeholder="Description"
+            value={layout.description ?? ''}
+            mono={false}
+            className="w-full"
+            onCommit={(description) => onMeta({ description })}
+          />
+        </div>
+      </div>
+      <div className="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-2 sm:flex sm:flex-wrap">
+        <label className="floating-label min-w-0">
+          <span>Corpus</span>
+          <CorpusSelect
+            corpora={corpora}
+            value={corpus}
+            className="w-full"
+            onChange={(next) => onParams({ corpus: next })}
+          />
+        </label>
+        <label className="floating-label min-w-0">
+          <span>Rules</span>
+          <RuleSetSelect
+            value={preset}
+            savedName={ruleSetName}
+            className="w-full"
+            onChange={(next) => onParams({ preset: next })}
+          />
+        </label>
+      </div>
     </section>
   );
 }

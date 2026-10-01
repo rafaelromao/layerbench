@@ -37,6 +37,12 @@
     "enabled": true,
     "rules": {
       "recommended": true,
+      "a11y": {
+        "noLabelWithoutControl": {
+          "level": "error",
+          "options": { "inputComponents": ["CorpusSelect", "RuleSetSelect"] }
+        }
+      },
       "style": {
         "noNonNullAssertion": "off",
         "useNamingConvention": "off"

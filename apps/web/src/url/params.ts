@@ -47,6 +47,13 @@ export const DEFAULT_PARAMS: Params = {
   without: [],
 };
 
+/**
+ * The Library ranks on English news, and the editor analyzes on it, unless the link says otherwise.
+ * Analyze and Compare keep `DEFAULT_PARAMS.corpus`: that one is part of the link contract, this one
+ * only decides what a bare visit to the other two shows.
+ */
+export const ENGLISH_CORPUS = 'en-general';
+
 /** Sample sizes offered in the toolbar. */
 export const SAMPLE_SIZES = [100_000, 300_000, 1_000_000] as const;
 
@@ -103,13 +110,16 @@ function validPreset(v: string | undefined): string {
   return (PRESET_IDS as readonly string[]).includes(v) ? v : DEFAULT_PARAMS.preset;
 }
 
-/** Read parameters from a query string, falling back to defaults for anything missing or invalid. */
-export function parseParams(raw: RawSearch): Params {
+/**
+ * Read parameters from a query string, falling back to defaults for anything missing or invalid. A
+ * view with a default corpus of its own passes it as `corpus`.
+ */
+export function parseParams(raw: RawSearch, corpus: string = DEFAULT_PARAMS.corpus): Params {
   const heat = raw.heat as HeatMode | undefined;
   const corpus2 = blankToNull(raw.corpus2);
   return {
     layoutRef: raw.layout ?? raw.l ?? DEFAULT_PARAMS.layoutRef,
-    corpus: currentCorpus(raw.corpus ?? DEFAULT_PARAMS.corpus),
+    corpus: currentCorpus(raw.corpus ?? corpus),
     corpus2: corpus2 === null ? null : currentCorpus(corpus2),
     mix: int(raw.mix, DEFAULT_PARAMS.mix, 0, 100),
     preset: validPreset(raw.rules),

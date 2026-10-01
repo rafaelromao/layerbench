@@ -71,6 +71,18 @@ export function slug(name: string): string {
   return s === '' ? `item-${randomSuffix()}` : s;
 }
 
+/**
+ * An id for a new document called `name` that none in `taken` has: its slug, numbered (`-2`, `-3`,
+ * …) while that is in use. Two documents whose names slug alike used to overwrite each other
+ * silently, because nothing checked.
+ */
+export function freeId(name: string, taken: ReadonlySet<string>): string {
+  const base = slug(name);
+  let id = base;
+  for (let n = 2; taken.has(id); n++) id = `${base}-${n}`;
+  return id;
+}
+
 export function documentPath(collection: Collection, id: string): string {
   return `${collection}/${id}.json`;
 }

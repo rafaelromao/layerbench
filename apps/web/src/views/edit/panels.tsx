@@ -3,14 +3,13 @@ import {
   type CompiledLayout,
   exportKeymapDrawer,
   GEOMETRY_PRESET_IDS,
-  type Layout,
   type LayoutFeatures,
   layerReachedFrom,
   slug,
   tapLabel,
   toCanonicalJson,
 } from '@layoutmaster/core';
-import { type Dispatch, type ReactNode, useEffect, useMemo, useState } from 'react';
+import { type Dispatch, type ReactNode, useMemo, useState } from 'react';
 import type { ProducerDTO } from '../../engine/protocol.js';
 import { toast } from '../../state/toasts.js';
 import { bindingFromFields } from './binding-form.js';
@@ -846,37 +845,5 @@ function KeymapDrawerExport({ state }: { state: EditState }) {
         imported keys.
       </p>
     </div>
-  );
-}
-
-/** Save: name the layout and store it. */
-export function SavePanel({ layout, onSave }: { layout: Layout; onSave: (name: string) => void }) {
-  const [name, setName] = useState(layout.name);
-  useEffect(() => setName(layout.name), [layout.name]);
-
-  return (
-    <form
-      className="space-y-2"
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSave(name);
-      }}
-    >
-      <label className="form-control">
-        <span className="label-text text-xs">Name</span>
-        <input
-          aria-label="Layout name"
-          className="input input-sm input-bordered"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-      </label>
-      <button type="submit" className="btn btn-sm btn-primary">
-        Save to library
-      </button>
-      <p className="text-[11px] opacity-60">
-        Saved layouts appear in the library and are referenced in links as saved:&lt;id&gt;.
-      </p>
-    </form>
   );
 }

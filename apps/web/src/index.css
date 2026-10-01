@@ -119,6 +119,18 @@
   }
 }
 
+/*
+ * daisyUI makes a select Chromium's customizable `base-select`, which lets a name too long for the
+ * select run on under the arrow drawn in its padding. Where selects are that narrow, a phone or a
+ * narrow window, they stay the browser's own: the text ends in an ellipsis before the arrow, and a
+ * phone opens its usual picker.
+ */
+@media (pointer: coarse), (max-width: 639.98px) {
+  select.select {
+    appearance: none;
+  }
+}
+
 /* Keyboard canvas and metric styling. */
 :root {
   --lm-key-bg: color-mix(in oklab, var(--color-base-200) 70%, var(--color-base-100));

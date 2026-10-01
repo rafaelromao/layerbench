@@ -15,6 +15,12 @@ export interface LayoutState {
   layout: Layout | null;
   compiled: CompiledLayout | null;
   error: string | null;
+  /**
+   * The reference the layout and error belong to, null until one resolves. While another one is
+   * being read the previous result stays, so a view can keep showing it; one that must not start
+   * from it, like the editor, compares this with the reference it asked for.
+   */
+  ref: string | null;
 }
 
 /** Read a saved layout document and parse it. */
@@ -31,16 +37,19 @@ export function savedLayoutLoader(storage: StorageAdapter) {
 /** Resolve a `?layout=` reference and compile it. Inline layouts decompress, so this is async. */
 export function useLayout(ref: string): LayoutState {
   const storage = useStorage();
-  const [resolved, setResolved] = useState<{ layout: Layout | null; error: string | null }>({
-    layout: null,
-    error: null,
-  });
+  const [resolved, setResolved] = useState<{
+    ref: string | null;
+    layout: Layout | null;
+    error: string | null;
+  }>({ ref: null, layout: null, error: null });
 
   useEffect(() => {
     let cancelled = false;
     resolveLayoutRef(ref, savedLayoutLoader(storage)).then((r) => {
       if (cancelled) return;
-      setResolved(r.ok ? { layout: r.layout, error: null } : { layout: null, error: r.error });
+      setResolved(
+        r.ok ? { ref, layout: r.layout, error: null } : { ref, layout: null, error: r.error },
+      );
     });
     return () => {
       cancelled = true;
@@ -48,14 +57,16 @@ export function useLayout(ref: string): LayoutState {
   }, [ref, storage]);
 
   return useMemo(() => {
-    if (!resolved.layout) return { layout: null, compiled: null, error: resolved.error };
+    const { ref: of, layout, error } = resolved;
+    if (!layout) return { layout: null, compiled: null, error, ref: of };
     try {
-      return { layout: resolved.layout, compiled: compileLayout(resolved.layout), error: null };
+      return { layout, compiled: compileLayout(layout), error: null, ref: of };
     } catch (e) {
       return {
-        layout: resolved.layout,
+        layout,
         compiled: null,
         error: e instanceof Error ? e.message : String(e),
+        ref: of,
       };
     }
   }, [resolved]);

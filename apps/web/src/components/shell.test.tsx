@@ -14,7 +14,7 @@ describe('where the site opens', () => {
   it('opens on the Library, and so does the title', async () => {
     const user = userEvent.setup();
     const { currentPath } = renderRoute('/', { storage: freshStorage() });
-    expect(await screen.findByText('Bundled layouts')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Layouts' })).toBeInTheDocument();
     expect(currentPath()).toBe('/library');
 
     await user.click(screen.getAllByRole('link', { name: 'Compare' })[0]);
@@ -71,7 +71,7 @@ describe('while data loads', () => {
 describe('the page frame', () => {
   it('links to the About page, which is served beside the app rather than routed', async () => {
     renderRoute(LIBRARY, { storage: freshStorage() });
-    await screen.findByText('Bundled layouts');
+    await screen.findByRole('heading', { name: 'Layouts' });
     // One in the header at a desk, one in the phone's menu.
     const about = screen.getAllByRole('link', { name: 'About' });
     expect(about).toHaveLength(2);
@@ -88,7 +88,7 @@ describe('the page frame', () => {
   it('moves focus into the new view when the route changes', async () => {
     const user = userEvent.setup();
     renderRoute(LIBRARY, { storage: freshStorage() });
-    await screen.findByText('Bundled layouts');
+    await screen.findByRole('heading', { name: 'Layouts' });
 
     // The first render must not steal focus from wherever the browser put it.
     expect(document.activeElement).toBe(document.body);
@@ -110,7 +110,7 @@ describe('the page frame', () => {
   it('closes the narrow-screen menu once a view is chosen, on a tap elsewhere and on Escape', async () => {
     const user = userEvent.setup();
     renderRoute(LIBRARY, { storage: freshStorage() });
-    await screen.findByText('Bundled layouts');
+    await screen.findByRole('heading', { name: 'Layouts' });
     const summary = screen.getByText('Menu', { selector: 'summary' });
     const menu = summary.closest('details') as HTMLDetailsElement;
 

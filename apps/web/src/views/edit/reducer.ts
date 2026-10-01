@@ -20,15 +20,7 @@ import {
 } from '@layoutmaster/core';
 import type { DropTarget } from '../../components/use-key-drag.js';
 
-export type Panel =
-  | 'layers'
-  | 'features'
-  | 'geometry'
-  | 'combos'
-  | 'behaviors'
-  | 'paths'
-  | 'json'
-  | 'save';
+export type Panel = 'layers' | 'features' | 'geometry' | 'combos' | 'behaviors' | 'paths' | 'json';
 
 /**
  * A request to put the caret in the key inspector's text line: a character typed on a key starts
@@ -50,7 +42,13 @@ export interface EditState {
   swapFrom: string | null;
   /** What the armed key does when its partner is picked. */
   swapMode: 'swap' | 'copy';
+  /** The layout differs from `saved`, so closing the tab would lose it. */
   dirty: boolean;
+  /**
+   * The layout as it was opened or last saved. Undo can come back to it, which is no longer an
+   * unsaved change, and an edit made while a save was on its way is still one.
+   */
+  saved: Layout;
   panel: Panel;
   error: string | null;
   behaviorsJson: string;
@@ -109,7 +107,7 @@ export type EditAction =
   | { type: 'importJson'; text: string }
   | { type: 'setFeatures'; features: LayoutFeatures }
   | { type: 'setPanel'; panel: Panel }
-  | { type: 'saved'; id: string; name: string };
+  | { type: 'saved'; layout: Layout };
 
 function behaviorsText(layout: Layout): string {
   return JSON.stringify(layout.behaviors ?? {}, null, 2);
@@ -124,6 +122,7 @@ export function initialState(layout: Layout, compiled: CompiledLayout, layer = 0
     swapFrom: null,
     swapMode: 'swap',
     dirty: false,
+    saved: layout,
     panel: 'layers',
     error: null,
     behaviorsJson: behaviorsText(layout),
@@ -519,12 +518,9 @@ export function editReducer(state: EditState, action: EditAction): EditState {
     case 'setPanel':
       return { ...state, panel: action.panel };
 
+    // The layout itself is left as it is: saving changes nothing there is to undo.
     case 'saved':
-      return {
-        ...state,
-        dirty: false,
-        layout: { ...state.layout, id: action.id, name: action.name },
-      };
+      return { ...state, saved: action.layout, dirty: state.layout !== action.layout };
 
     default:
       return state;

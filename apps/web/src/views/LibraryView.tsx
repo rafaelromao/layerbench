@@ -1,30 +1,26 @@
 import {
   BUNDLED_LAYOUTS,
   type CompiledLayout,
-  type CorpusManifest,
   compileLayout,
+  freeId,
   GEOMETRY_PRESET_IDS,
   getGeometryPreset,
-  getPreset,
   importTextLayout,
   type Layout,
   languageCovered,
   layoutLanguageCoverage,
   layoutLanguages,
-  PRESET_IDS,
   safeParseLayout,
-  slug,
   toCanonicalJson,
   withoutFeatures,
 } from '@layoutmaster/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FeatureSwitches, featureList } from '../components/FeatureSwitches.js';
 import { formatValue } from '../components/format.js';
 import { HelpLink } from '../components/HelpLink.js';
 import { Keyboard } from '../components/Keyboard.js';
 import { useDismiss } from '../components/use-dismiss.js';
-import { useAnalysisClient } from '../engine/client-context.js';
 import {
   compareBy,
   type LayoutSummary,
@@ -38,6 +34,7 @@ import { toast } from '../state/toasts.js';
 import { useCollection, useStorage } from '../storage/use-storage.js';
 import { encodeInline } from '../url/inline.js';
 import {
+  ENGLISH_CORPUS,
   inlineRef,
   type Params,
   parseParams,
@@ -45,20 +42,15 @@ import {
   savedRef,
   toSearch,
 } from '../url/params.js';
-import { groupByLanguage } from './corpus-groups.js';
+import { CorpusSelect, RuleSetSelect } from './AnalysisSelects.js';
 import { KeymapDrawerImport } from './library/KeymapDrawerImport.js';
 import { LayerStrip } from './library/LayerStrip.js';
 import { type NewLayoutSpec, newLayout } from './new-layout.js';
+import { useCorpora } from './useCorpora.js';
 import { useRuleSet } from './useRuleSet.js';
 
 /** Ranking re-analyzes every layout listed, so it works from the editor's smaller sample. */
 const RANK_MAX_SYMBOLS = 100_000;
-
-/**
- * The Library ranks on English news unless the link says otherwise. Analyze keeps its own default:
- * that one is part of the link contract, this one only decides what a bare visit here shows.
- */
-const LIBRARY_DEFAULT_CORPUS = 'en-general';
 
 const SORTS: [SortKey, string][] = [
   ['effort', 'Effort'],
@@ -92,7 +84,7 @@ function Ranking({
     (summary.missing.length > MISSING_SHOWN ? ' …' : '');
   return (
     <>
-      <dl className="flex gap-3 text-xs font-mono tabular-nums m-0">
+      <dl className="flex flex-wrap gap-x-3 text-xs font-mono tabular-nums m-0">
         <div className="flex gap-1">
           <dt className="opacity-60 font-sans">Effort</dt>
           <dd className="m-0">{formatValue(summary.effort, 'effort')}</dd>
@@ -179,6 +171,77 @@ function LanguageBadges({ compiled }: { compiled: CompiledLayout }) {
         </span>
       ))}
     </p>
+  );
+}
+
+/** A layout as the list shows it, whether it came with the app or was saved here. */
+interface Listed {
+  /** What its score is kept under: `b:<id>` for a bundled layout, `s:<id>` for a saved one. */
+  key: string;
+  name: string;
+  saved: boolean;
+  /** The bundled id, or the id it is saved under. */
+  id: string;
+  /** How a link names it: the bundled id, or `saved:<id>`. */
+  ref: string;
+  /** Missing while a saved document is still being read, or if it will not parse. */
+  layout: Layout | undefined;
+  /** Missing as `layout` is, or if it will not compile. */
+  compiled: CompiledLayout | undefined;
+  /** Author, board and layers, and when a saved one last changed. */
+  meta: string;
+}
+
+function layerCount(n: number): string {
+  return `${n} layer${n === 1 ? '' : 's'}`;
+}
+
+/** One card, the same for a bundled layout and a saved one; a saved one says so. */
+function LayoutCard({
+  item,
+  summary,
+  lacking,
+  nobodyCan,
+  actions,
+}: {
+  item: Listed;
+  summary: LayoutSummary | undefined;
+  lacking: { language: string; letters: string[] } | undefined;
+  nobodyCan: boolean;
+  /** Two to a row, so the four a saved layout has take no more width than a bundled one's two. */
+  actions: ReactNode;
+}) {
+  return (
+    <article className="card bg-base-100 border border-base-300">
+      <div className="card-body gap-2 p-4">
+        <header className="flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-x-2">
+              <h3 className="font-semibold text-sm">{item.name}</h3>
+              {item.saved && (
+                <span className="badge badge-outline badge-primary badge-xs">saved</span>
+              )}
+            </div>
+            {item.meta && <p className="text-xs opacity-60">{item.meta}</p>}
+            {item.compiled && <LanguageBadges compiled={item.compiled} />}
+            <Ranking summary={summary} lacking={lacking} nobodyCan={nobodyCan} />
+          </div>
+          <div className="grid shrink-0 grid-cols-2 gap-1">{actions}</div>
+        </header>
+        {item.compiled && (
+          <LayerStrip
+            id={item.saved ? `kb-saved-${item.id}` : `kb-${item.id}`}
+            compiled={item.compiled}
+            name={item.name}
+          />
+        )}
+        {item.layout?.description && (
+          // A description may carry a link, which would otherwise hold the card, and the whole list
+          // with it, wider than a phone.
+          <p className="text-xs opacity-70 [overflow-wrap:anywhere]">{item.layout.description}</p>
+        )}
+      </div>
+    </article>
   );
 }
 
@@ -299,25 +362,20 @@ export function LibraryView() {
   const [importError, setImportError] = useState<string | null>(null);
 
   const bundled = useMemo(
-    () => BUNDLED_LAYOUTS.map((layout) => ({ layout, compiled: compileLayout(layout) })),
+    () =>
+      BUNDLED_LAYOUTS.map((layout) => ({
+        id: layout.id ?? layout.name,
+        layout,
+        compiled: compileLayout(layout),
+      })),
     [],
   );
 
   // Ranking uses the corpus and rule set in the link, so it agrees with what Analyze would show.
   const search = useSearch({ strict: false }) as RawSearch;
-  const params = useMemo(
-    () => parseParams({ ...search, corpus: search.corpus ?? LIBRARY_DEFAULT_CORPUS }),
-    [search],
-  );
+  const params = useMemo(() => parseParams(search, ENGLISH_CORPUS), [search]);
   const ruleSet = useRuleSet(params.preset, params.universe);
-  const client = useAnalysisClient();
-  const [corpora, setCorpora] = useState<CorpusManifest[]>([]);
-  useEffect(() => {
-    client
-      .listCorpora()
-      .then(setCorpora)
-      .catch(() => setCorpora([]));
-  }, [client]);
+  const corpora = useCorpora();
   const corpusName = corpora.find((c) => c.id === params.corpus)?.name ?? params.corpus;
   const corpusLanguage = corpora.find((c) => c.id === params.corpus)?.language;
 
@@ -332,8 +390,15 @@ export function LibraryView() {
   );
   /** Analyze opens on the corpus and rules the card was ranked by, so the numbers match. */
   const analyzeSearch = useCallback(
-    (layoutRef: string | undefined) =>
-      toSearch(params, layoutRef === undefined ? {} : { layoutRef }) as never,
+    (layoutRef: string) => toSearch(params, { layoutRef }) as never,
+    [params],
+  );
+  /**
+   * So does the editor. It analyzes the layout with everything it has, so the features the ranking
+   * left out stay behind.
+   */
+  const editSearch = useCallback(
+    (layoutRef: string) => toSearch(params, { layoutRef, without: [] }) as never,
     [params],
   );
   const [sortBy, setSortBy] = useState<SortKey>('effort');
@@ -385,7 +450,7 @@ export function LibraryView() {
         // Left unranked, like a saved layout that will not compile.
       }
     };
-    for (const { layout, compiled } of bundled) add(`b:${layout.id}`, layout, compiled);
+    for (const { id, layout, compiled } of bundled) add(`b:${id}`, layout, compiled);
     for (const [id, layout] of savedLayouts) {
       const compiled = savedCompiled.get(id);
       if (compiled) add(`s:${id}`, layout, compiled);
@@ -395,8 +460,8 @@ export function LibraryView() {
 
   const summaryEntries: SummaryEntry[] = useMemo(
     () => [
-      ...bundled.map(({ layout }) => {
-        const key = `b:${layout.id}`;
+      ...bundled.map(({ id }) => {
+        const key = `b:${id}`;
         return { key, layout: ranked.get(key)?.layout ?? null };
       }),
       ...saved.entries.map((e) => {
@@ -445,23 +510,49 @@ export function LibraryView() {
   const unscored =
     summaries.size > 0 && [...summaries.values()].every((s) => s.effort === null && s.sfb === null);
 
+  // Bundled and saved layouts are one list, ranked together: a layout of one's own means something
+  // next to the ones it would replace.
+  const listed: Listed[] = useMemo(
+    () => [
+      ...bundled.map(({ id, layout, compiled }) => ({
+        key: `b:${id}`,
+        name: layout.name,
+        saved: false,
+        id,
+        ref: id,
+        layout,
+        compiled,
+        meta: [layout.author, compiled.geometry.id, layerCount(compiled.layers.length)]
+          .filter(Boolean)
+          .join(' · '),
+      })),
+      ...saved.entries.map((entry) => ({
+        key: `s:${entry.id}`,
+        name: entry.name,
+        saved: true,
+        id: entry.id,
+        ref: savedRef(entry.id),
+        layout: savedLayouts.get(entry.id),
+        compiled: savedCompiled.get(entry.id),
+        meta: [
+          entry.author,
+          entry.geometry,
+          entry.layers ? layerCount(entry.layers) : null,
+          entry.updatedAt ? `updated ${entry.updatedAt.slice(0, 10)}` : null,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+      })),
+    ],
+    [bundled, saved.entries, savedLayouts, savedCompiled],
+  );
+
   // The chosen order applies from the first score on: each layout takes its place as its score
   // lands, and those still being scored wait below the ranked ones.
-  const bundledSorted = useMemo(() => {
-    const by = compareBy(sortBy, summaries, behind);
-    return [...bundled].sort((a, b) =>
-      by(
-        { key: `b:${a.layout.id}`, name: a.layout.name },
-        { key: `b:${b.layout.id}`, name: b.layout.name },
-      ),
-    );
-  }, [bundled, sortBy, summaries, behind]);
-  const savedSorted = useMemo(() => {
-    const by = compareBy(sortBy, summaries, behind);
-    return [...saved.entries].sort((a, b) =>
-      by({ key: `s:${a.id}`, name: a.name }, { key: `s:${b.id}`, name: b.name }),
-    );
-  }, [saved.entries, sortBy, summaries, behind]);
+  const sorted = useMemo(
+    () => [...listed].sort(compareBy(sortBy, summaries, behind)),
+    [listed, sortBy, summaries, behind],
+  );
 
   // The preview follows the text as it is typed, so a malformed import is obvious immediately.
   useEffect(() => {
@@ -489,20 +580,14 @@ export function LibraryView() {
     navigate({ to: '/analyze', search: { layout: inlineRef(blob) } as never });
   }, [preview, navigate]);
 
-  /**
-   * Save under a free id. Two layouts with the same name used to overwrite each other silently,
-   * because the id is a slug of the name and nothing checked whether it was taken.
-   */
+  /** Save under a free id, and say so by the layout's name: the id is only for links. */
   const saveNew = useCallback(
     async (layout: Layout, message: string): Promise<string | null> => {
-      const base = slug(layout.name);
-      const taken = new Set(saved.entries.map((e) => e.id));
-      let id = base;
-      for (let n = 2; taken.has(id); n++) id = `${base}-${n}`;
+      const id = freeId(layout.name, new Set(saved.entries.map((e) => e.id)));
       try {
         await storage.put('layouts', id, toCanonicalJson({ ...layout, id }), { message });
         saved.refresh();
-        toast.info(id === base ? `Saved as ${id}` : `Saved as ${id} — ${base} was taken`);
+        toast.info(`Saved ${layout.name}`);
         return id;
       } catch (e) {
         toast.error(`Save failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -525,9 +610,9 @@ export function LibraryView() {
     async (layout: Layout) => {
       const copy = { ...layout, name: `${layout.name} copy` };
       const id = await saveNew(copy, `Duplicate ${layout.name}`);
-      if (id) navigate({ to: '/edit', search: { layout: savedRef(id) } as never });
+      if (id) navigate({ to: '/edit', search: editSearch(savedRef(id)) });
     },
-    [saveNew, navigate],
+    [saveNew, navigate, editSearch],
   );
 
   const duplicateSaved = useCallback(
@@ -547,26 +632,26 @@ export function LibraryView() {
     async (spec: NewLayoutSpec) => {
       const layout = newLayout(spec);
       const id = await saveNew(layout, `Create layout ${spec.name}`);
-      if (id) navigate({ to: '/edit', search: { layout: savedRef(id) } as never });
+      if (id) navigate({ to: '/edit', search: editSearch(savedRef(id)) });
     },
-    [saveNew, navigate],
+    [saveNew, navigate, editSearch],
   );
 
   /** An imported keymap goes straight to the editor, saved, so nothing about it is lost. */
   const importKeymap = useCallback(
     async (layout: Layout) => {
       const id = await saveNew(layout, `Import keymap-drawer layout ${layout.name}`);
-      if (id) navigate({ to: '/edit', search: { layout: savedRef(id) } as never });
+      if (id) navigate({ to: '/edit', search: editSearch(savedRef(id)) });
     },
-    [saveNew, navigate],
+    [saveNew, navigate, editSearch],
   );
 
   const remove = useCallback(
-    async (id: string) => {
-      if (!window.confirm('Delete this saved layout?')) return;
+    async (id: string, name: string) => {
+      if (!window.confirm(`Delete ${name}?`)) return;
       try {
         await storage.delete('layouts', id);
-        toast.info(`Deleted ${id}`);
+        toast.info(`Deleted ${name}`);
         saved.refresh();
       } catch (e) {
         toast.error(`Delete failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -588,45 +673,19 @@ export function LibraryView() {
       <div className="flex flex-wrap items-end gap-2">
         <label className="form-control min-w-0 max-sm:w-full">
           <span className="label-text text-xs">Corpus</span>
-          <select
-            name="corpus"
-            aria-label="Corpus"
-            className="select select-sm select-bordered min-w-0"
+          <CorpusSelect
+            corpora={corpora}
             value={params.corpus}
-            onChange={(e) => setParams({ corpus: e.target.value })}
-          >
-            {groupByLanguage(corpora).map((g) => (
-              <optgroup key={g.label} label={g.label}>
-                {g.items.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-            {!corpora.some((c) => c.id === params.corpus) && (
-              <option value={params.corpus}>{params.corpus}</option>
-            )}
-          </select>
+            onChange={(corpus) => setParams({ corpus })}
+          />
         </label>
         <label className="form-control">
           <span className="label-text text-xs">Rules</span>
-          <select
-            name="rules"
-            aria-label="Rule set"
-            className="select select-sm select-bordered"
+          <RuleSetSelect
             value={params.preset}
-            onChange={(e) => setParams({ preset: e.target.value })}
-          >
-            {PRESET_IDS.map((id) => (
-              <option key={id} value={id}>
-                {getPreset(id).name}
-              </option>
-            ))}
-            {params.preset.startsWith('saved:') && (
-              <option value={params.preset}>{ruleSet.name ?? params.preset}</option>
-            )}
-          </select>
+            savedName={ruleSet.name}
+            onChange={(preset) => setParams({ preset })}
+          />
         </label>
       </div>
 
@@ -670,138 +729,68 @@ export function LibraryView() {
         </span>
       </div>
 
-      <section className="space-y-2">
-        <h2 className="text-sm uppercase tracking-wide opacity-60">Bundled layouts</h2>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {bundledSorted.map(({ layout, compiled }) => (
-            <article key={layout.id} className="card bg-base-100 border border-base-300">
-              <div className="card-body gap-2 p-4">
-                <header className="flex items-start justify-between gap-2">
-                  <div>
-                    <h3 className="font-semibold text-sm">{layout.name}</h3>
-                    <p className="text-xs opacity-60">
-                      {[
-                        layout.author,
-                        compiled.geometry.id,
-                        `${compiled.layers.length} layer${compiled.layers.length === 1 ? '' : 's'}`,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </p>
-                    <LanguageBadges compiled={compiled} />
-                    <Ranking
-                      summary={summaries.get(`b:${layout.id}`)}
-                      lacking={lacking.get(`b:${layout.id}`)}
-                      nobodyCan={nobodyCan}
-                    />
-                  </div>
-                  <div className="flex shrink-0 gap-1">
-                    <Link
-                      to="/analyze"
-                      search={analyzeSearch(layout.id)}
-                      className="btn btn-primary btn-xs"
-                    >
-                      Analyze
-                    </Link>
-                    <button
-                      type="button"
-                      aria-label={`Duplicate ${layout.name}`}
-                      className="btn btn-xs"
-                      onClick={() => duplicate(layout)}
-                    >
-                      Duplicate
-                    </button>
-                  </div>
-                </header>
-                <LayerStrip id={`kb-${layout.id}`} compiled={compiled} name={layout.name} />
-                {layout.description && (
-                  // A description may carry a link, which would otherwise hold the card, and the
-                  // whole list with it, wider than a phone.
-                  <p className="text-xs opacity-70 [overflow-wrap:anywhere]">
-                    {layout.description}
-                  </p>
-                )}
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="space-y-2">
-        <div className="flex items-center gap-2">
-          <h2 className="text-sm uppercase tracking-wide opacity-60">Saved layouts</h2>
+      <section className="space-y-2" aria-labelledby="library-layouts">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 id="library-layouts" className="text-sm uppercase tracking-wide opacity-60">
+            Layouts
+          </h2>
           {!saved.available && (
             <span className="badge badge-warning badge-sm">storage unavailable</span>
           )}
+          {saved.entries.length === 0 && (
+            <span className="text-xs opacity-70">
+              Nothing saved yet. Save from the editor, or import below.
+            </span>
+          )}
         </div>
-        {saved.entries.length === 0 ? (
-          <p className="text-sm opacity-70">
-            Nothing saved yet. Save from the editor, or import below.
-          </p>
-        ) : (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {savedSorted.map((entry) => (
-              <article key={entry.id} className="card bg-base-100 border border-base-300">
-                <div className="card-body gap-2 p-4">
-                  <h3 className="font-semibold text-sm">{entry.name}</h3>
-                  <Ranking
-                    summary={summaries.get(`s:${entry.id}`)}
-                    lacking={lacking.get(`s:${entry.id}`)}
-                    nobodyCan={nobodyCan}
-                  />
-                  {savedCompiled.has(entry.id) && (
-                    <LayerStrip
-                      id={`kb-saved-${entry.id}`}
-                      compiled={savedCompiled.get(entry.id) as CompiledLayout}
-                      name={entry.name}
-                    />
-                  )}
-                  <p className="text-xs opacity-60">
-                    {[
-                      entry.author,
-                      entry.geometry,
-                      entry.layers ? `${entry.layers} layers` : null,
-                      entry.updatedAt ? `updated ${entry.updatedAt.slice(0, 10)}` : null,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <Link
-                      to="/analyze"
-                      search={analyzeSearch(savedRef(entry.id))}
-                      className="btn btn-primary btn-xs"
-                    >
-                      Analyze
-                    </Link>
-                    <Link
-                      to="/edit"
-                      search={{ layout: savedRef(entry.id) } as never}
-                      className="btn btn-xs"
-                    >
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {sorted.map((item) => (
+            <LayoutCard
+              key={item.key}
+              item={item}
+              summary={summaries.get(item.key)}
+              lacking={lacking.get(item.key)}
+              nobodyCan={nobodyCan}
+              actions={
+                <>
+                  <Link
+                    to="/analyze"
+                    search={analyzeSearch(item.ref)}
+                    className="btn btn-primary btn-xs"
+                  >
+                    Analyze
+                  </Link>
+                  {item.saved && (
+                    <Link to="/edit" search={editSearch(item.ref)} className="btn btn-xs">
                       Edit
                     </Link>
+                  )}
+                  <button
+                    type="button"
+                    aria-label={`Duplicate ${item.name}`}
+                    className="btn btn-xs"
+                    onClick={() => {
+                      if (item.saved) duplicateSaved(item.id);
+                      else if (item.layout) duplicate(item.layout);
+                    }}
+                  >
+                    Duplicate
+                  </button>
+                  {item.saved && (
                     <button
                       type="button"
-                      aria-label={`Duplicate ${entry.name}`}
-                      className="btn btn-xs"
-                      onClick={() => duplicateSaved(entry.id)}
-                    >
-                      Duplicate
-                    </button>
-                    <button
-                      type="button"
+                      aria-label={`Delete ${item.name}`}
                       className="btn btn-ghost btn-xs"
-                      onClick={() => remove(entry.id)}
+                      onClick={() => remove(item.id, item.name)}
                     >
                       Delete
                     </button>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
+                  )}
+                </>
+              }
+            />
+          ))}
+        </div>
       </section>
 
       <section className="card bg-base-100 border border-base-300">

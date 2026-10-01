@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_PARAMS, parseParams, toQueryString, toSearch } from './params.js';
+import { DEFAULT_PARAMS, ENGLISH_CORPUS, parseParams, toQueryString, toSearch } from './params.js';
 
 describe('analysis parameters', () => {
   it('falls back to defaults for an empty query', () => {
@@ -32,6 +32,14 @@ describe('analysis parameters', () => {
       corpus2: 'en-conv',
     });
     expect(parseParams({ corpus: 'en-general' }).corpus).toBe('en-general');
+  });
+
+  it('takes a view’s own default corpus, but never over the one a link names', () => {
+    expect(parseParams({}, ENGLISH_CORPUS).corpus).toBe('en-general');
+    expect(parseParams({ corpus: 'pt-br-conv' }, ENGLISH_CORPUS).corpus).toBe('pt-br-conv');
+    expect(parseParams({ corpus: 'pt-br-work' }, ENGLISH_CORPUS).corpus).toBe('pt-br-conv');
+    // The link contract itself is unchanged.
+    expect(parseParams({}).corpus).toBe(DEFAULT_PARAMS.corpus);
   });
 
   it('reads the toggles', () => {

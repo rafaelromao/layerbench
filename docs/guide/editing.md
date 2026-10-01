@@ -9,8 +9,14 @@ change it.
 3. **Fill in the rest**, such as the symbol it types, the layer it reaches or what a hold does.
 
 Every change is kept as you make it, so there is nothing to apply. **Undo** and **Redo**, beside
-the layer tabs, step back and forth through your changes. **Save**, among the panels, keeps the
-layout in **Library** under a name.
+the layer tabs, step back and forth through your changes. **Save**, beside the layout's name at
+the top, keeps it in **Library**, and until then the name is marked *unsaved*. A layout already in
+**Library** keeps its link when you rename it.
+
+The bar at the top also holds the layout's author and description, and the **Corpus** and
+**Rules** the numbers under the board are worked out with. The editor starts on English news
+unless its link names another text; from **Library** it opens on the text and rules being ranked
+there.
 
 ## Choosing what a key does
 

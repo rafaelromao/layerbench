@@ -18,7 +18,7 @@ function freshStorage(): IndexedDbAdapter {
 describe('Library', () => {
   it('lists the bundled layouts', async () => {
     renderRoute(LIBRARY, { storage: freshStorage() });
-    expect(await screen.findByText('Bundled layouts')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Layouts' })).toBeInTheDocument();
     expect(screen.getByText('Graphite')).toBeInTheDocument();
     expect(screen.getByText('Magic Romak')).toBeInTheDocument();
     expect(screen.getByText(/Nothing saved yet/)).toBeInTheDocument();
@@ -27,7 +27,7 @@ describe('Library', () => {
   it('previews a text layout as it is typed', async () => {
     const user = userEvent.setup();
     renderRoute(LIBRARY, { storage: freshStorage() });
-    await screen.findByText('Bundled layouts');
+    await screen.findByRole('heading', { name: 'Layouts' });
 
     // Pasted rather than typed key by key: what is under test is that the preview follows the text,
     // and forty keystrokes each re-rendering every bundled layout only measures the machine.
