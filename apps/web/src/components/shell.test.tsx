@@ -40,6 +40,51 @@ describe('where the site opens', () => {
   });
 });
 
+describe('moving between views', () => {
+  it('keeps the corpus, the rules and the features chosen in one view in the next', async () => {
+    const user = userEvent.setup();
+    const { currentPath, currentSearch } = renderRoute(LIBRARY, { storage: freshStorage() });
+    const corpus = await screen.findByRole('combobox', { name: 'Corpus' });
+    await waitFor(() => expect(within(corpus).getAllByRole('option').length).toBeGreaterThan(1));
+    await user.selectOptions(corpus, 'en-conv');
+    await waitFor(() => expect(currentSearch()).toContain('corpus=en-conv'));
+
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    await user.click(within(nav).getByRole('link', { name: 'Analyze' }));
+    await waitFor(() => expect(currentPath()).toBe('/analyze'));
+    expect(currentSearch()).toContain('corpus=en-conv');
+    expect(currentSearch()).toContain('sample=1000');
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: 'Corpus' })).toHaveValue('en-conv'),
+    );
+
+    // A feature switched off here is off in Compare too.
+    await user.click(
+      within(screen.getByRole('group', { name: 'Analyze with' })).getByRole('checkbox', {
+        name: 'Repeat key',
+      }),
+    );
+    await waitFor(() => expect(currentSearch()).toContain('off=repeat'));
+    await user.click(within(nav).getByRole('link', { name: 'Compare' }));
+    await waitFor(() => expect(currentPath()).toBe('/compare'));
+    expect(currentSearch()).toContain('corpus=en-conv');
+    expect(
+      within(screen.getByRole('group', { name: 'Compare with' })).getByRole('checkbox', {
+        name: 'Repeat key',
+      }),
+    ).not.toBeChecked();
+
+    // A view that does not analyze opens as it is, and leaving it keeps the choices.
+    await user.click(within(nav).getByRole('link', { name: 'Rules' }));
+    await waitFor(() => expect(currentPath()).toBe('/rules'));
+    expect(currentSearch()).not.toContain('corpus=');
+    await user.click(within(nav).getByRole('link', { name: 'Library' }));
+    await waitFor(() => expect(currentPath()).toBe('/library'));
+    expect(currentSearch()).toContain('corpus=en-conv');
+    expect(currentSearch()).toContain('off=repeat');
+  }, 60_000);
+});
+
 describe('while data loads', () => {
   it('shows a bar under the header until the engine has answered', async () => {
     const real = testClient();

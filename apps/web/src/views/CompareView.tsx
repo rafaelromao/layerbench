@@ -1,23 +1,17 @@
-import {
-  BUNDLED_LAYOUTS,
-  type CorpusManifest,
-  getPreset,
-  PRESET_IDS,
-  toCanonicalJson,
-} from '@layoutmaster/core';
+import { BUNDLED_LAYOUTS, type CorpusManifest, toCanonicalJson } from '@layoutmaster/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FeatureSwitches, featureList } from '../components/FeatureSwitches.js';
+import { featureList } from '../components/FeatureSwitches.js';
 import { formatValue } from '../components/format.js';
-import { HelpLink } from '../components/HelpLink.js';
 import { Keyboard } from '../components/Keyboard.js';
 import { BandBadge, SummaryStrip } from '../components/Metrics.js';
 import { useAnalysisClient } from '../engine/client-context.js';
 import { expandPositions, usageHeat } from '../engine/heat.js';
 import type { AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { useAnalysis } from '../engine/use-analysis.js';
-import { HELP } from '../guide/help.js';
-import { type Params, parseParams, type RawSearch, SAMPLE_SIZES, toSearch } from '../url/params.js';
+import { useRememberSelection } from '../state/selection.js';
+import { type Params, parseParams, type RawSearch, toSearch } from '../url/params.js';
+import { AnalysisSettings, SampleSelect } from './AnalysisSelects.js';
 import { compareRows } from './compare-rows.js';
 import { useLayout, useTypedLayout } from './useLayout.js';
 import { useRuleSet } from './useRuleSet.js';
@@ -29,6 +23,7 @@ export function CompareView() {
   const navigate = useNavigate();
   const client = useAnalysisClient();
   const params = useMemo(() => parseParams(search), [search]);
+  useRememberSelection(params);
   const refB = search.b ?? DEFAULT_B;
 
   const [corpora, setCorpora] = useState<CorpusManifest[]>([]);
@@ -147,86 +142,28 @@ export function CompareView() {
           </select>
         </label>
 
-        <label className="form-control lm-wide">
-          <span className="label-text text-xs">Corpus</span>
-          <select
-            aria-label="Corpus"
-            className="select select-sm select-bordered"
-            value={params.corpus}
-            onChange={(e) => setParams({ corpus: e.target.value })}
-          >
-            {corpora.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="form-control">
-          <span className="label-text text-xs">Rules</span>
-          <select
-            aria-label="Rule set"
-            className="select select-sm select-bordered"
-            value={params.preset}
-            onChange={(e) => setParams({ preset: e.target.value })}
-          >
-            {PRESET_IDS.map((id) => (
-              <option key={id} value={id}>
-                {getPreset(id).name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="form-control">
-          <span className="label-text text-xs">Sample</span>
-          <select
-            aria-label="Sample size"
-            className="select select-sm select-bordered"
-            value={params.sample}
-            onChange={(e) => setParams({ sample: Number(e.target.value) })}
-          >
-            {SAMPLE_SIZES.map((n) => (
-              <option key={n} value={n}>
-                {n >= 1_000_000 ? `${n / 1_000_000}M` : `${n / 1000}k`} symbols
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {/* The "?" stays beside the switches: on a phone they fill the width in two columns. */}
-        <div className="lm-wide flex items-start gap-2">
-          <FeatureSwitches
-            legend="Compare with"
-            without={params.without}
-            onChange={(next) => setParams({ without: next })}
-            className="min-w-0 flex-1"
-          />
-          <HelpLink help={HELP.without} />
-        </div>
-
-        <div className="lm-wide flex flex-wrap items-center gap-3 sm:ml-auto">
-          {/* Drawn like the feature switches above it, since it is the same kind of choice. */}
-          <label className="label lm-check cursor-pointer gap-1.5 p-0">
-            <input
-              type="checkbox"
-              className="checkbox checkbox-xs"
-              checked={params.universe === 'with_space'}
-              onChange={(e) =>
-                setParams({ universe: e.target.checked ? 'with_space' : 'no_space' })
-              }
-            />
-            <span className="label-text text-xs">Include space</span>
-          </label>
-          <Link
-            to="/analyze"
-            search={toSearch(params) as never}
-            className="btn btn-sm btn-outline max-sm:flex-1"
-          >
-            Analyze A
-          </Link>
-        </div>
+        <AnalysisSettings
+          params={params}
+          onChange={setParams}
+          corpora={corpora}
+          ruleSetName={ruleSet.name}
+          verb="Compare"
+          afterCounts={
+            <label className="form-control">
+              <span className="label-text text-xs">Sample</span>
+              <SampleSelect value={params.sample} onChange={(sample) => setParams({ sample })} />
+            </label>
+          }
+          actions={
+            <Link
+              to="/analyze"
+              search={toSearch(params) as never}
+              className="btn btn-sm btn-outline max-sm:flex-1"
+            >
+              Analyze A
+            </Link>
+          }
+        />
       </form>
 
       {params.without.length > 0 && (

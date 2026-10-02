@@ -1,6 +1,7 @@
-import { Link, useLocation } from '@tanstack/react-router';
+import { Link, useLocation, useMatchRoute } from '@tanstack/react-router';
 import { type ReactNode, useCallback, useEffect, useRef } from 'react';
 import { useEngineBusy } from '../engine/client-context.js';
+import { useCarried } from '../state/selection.js';
 import { useSession } from '../state/session.js';
 import type { ThemeChoice } from '../state/theme.js';
 import { useToasts } from '../state/toasts.js';
@@ -17,6 +18,23 @@ const NAV = [
   { to: '/corpus', label: 'Corpus' },
   { to: '/guide', label: 'Guide' },
 ] as const;
+
+/** The views that analyze, which share the choices an analysis is made with. */
+const ANALYZING = new Set<string>(['/library', '/analyze', '/edit', '/compare']);
+
+/**
+ * What a link to a view carries. A view that analyzes opens on the choices in force, so picking a
+ * corpus in one is picking it in all of them; the page already open keeps its whole link, layout
+ * and layer included; the others open as they are.
+ */
+function useNavSearch(): (to: string) => true | Record<string, string | undefined> | undefined {
+  const matchRoute = useMatchRoute();
+  const carried = useCarried();
+  return (to) => {
+    if (matchRoute({ to })) return true;
+    return ANALYZING.has(to) ? carried() : undefined;
+  };
+}
 
 /**
  * The landing page: what LayoutMaster is for, how far to trust it and how it compares. It is a
@@ -113,6 +131,7 @@ function useFocusOnRouteChange() {
 function MobileMenu() {
   const menu = useRef<HTMLDetailsElement>(null);
   const { pathname } = useLocation();
+  const navSearch = useNavSearch();
   const close = useCallback(() => {
     if (menu.current) menu.current.open = false;
   }, []);
@@ -127,7 +146,12 @@ function MobileMenu() {
         <ul className="menu w-full p-0">
           {NAV.map((item) => (
             <li key={item.to}>
-              <Link to={item.to} onClick={close} activeProps={{ className: 'menu-active' }}>
+              <Link
+                to={item.to}
+                search={navSearch(item.to) as never}
+                onClick={close}
+                activeProps={{ className: 'menu-active' }}
+              >
                 {item.label}
               </Link>
             </li>
@@ -152,6 +176,7 @@ function MobileMenu() {
 export function Shell({ children }: { children: ReactNode }) {
   const main = useFocusOnRouteChange();
   const busy = useEngineBusy();
+  const navSearch = useNavSearch();
 
   return (
     <>
@@ -159,14 +184,22 @@ export function Shell({ children }: { children: ReactNode }) {
         Skip to content
       </a>
       <header className="navbar bg-base-100 border-b border-base-300 px-3 sm:px-4 min-h-12 sticky top-0 z-20">
-        <Link to="/library" className="btn btn-ghost btn-sm text-base font-semibold">
+        <Link
+          to="/library"
+          search={navSearch('/library') as never}
+          className="btn btn-ghost btn-sm text-base font-semibold"
+        >
           <span className="text-primary">Layout</span>Master
         </Link>
         <nav aria-label="Main" className="ml-2 hidden md:block">
           <ul className="menu menu-horizontal menu-sm gap-1">
             {NAV.map((item) => (
               <li key={item.to}>
-                <Link to={item.to} activeProps={{ className: 'menu-active' }}>
+                <Link
+                  to={item.to}
+                  search={navSearch(item.to) as never}
+                  activeProps={{ className: 'menu-active' }}
+                >
                   {item.label}
                 </Link>
               </li>

@@ -268,6 +268,31 @@ describe('Edit', () => {
     expect((await storage.get('layouts', 'qwerty-2'))?.doc.name).toBe('Qwerty');
   });
 
+  it('analyzes the layout typed without the features switched off, and still edits it as written', async () => {
+    const user = userEvent.setup();
+    const { client, requests } = recording();
+    const { currentSearch } = renderRoute('/edit?layout=magic-romak&sample=20000', {
+      client,
+      storage: freshStorage(),
+    });
+    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+    const typed = (r: AnalyzeRequest | undefined) => JSON.stringify(r?.layout ?? null);
+    await waitFor(() => expect(typed(requests[0])).toContain('"qu"'));
+
+    await user.click(
+      within(within(bar()).getByRole('group', { name: 'Analyze with' })).getByRole('checkbox', {
+        name: 'Multi-letter macros',
+      }),
+    );
+    await waitFor(() => expect(currentSearch()).toContain('off=macros'));
+    // The numbers are for the layout without its `qu` macro; the layout being edited keeps it.
+    await waitFor(() => expect(typed(requests.at(-1))).not.toContain('"qu"'), {
+      timeout: 25_000,
+    });
+    await user.click(screen.getByRole('tab', { name: 'Alpha 2' }));
+    expect(await screen.findByRole('button', { name: /^Key LTM: qu/ })).toBeInTheDocument();
+  }, 60_000);
+
   it('analyzes on English news unless the link names a corpus, and switches without losing edits', async () => {
     const user = userEvent.setup();
     const { client, requests } = recording();

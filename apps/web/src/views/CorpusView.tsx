@@ -5,6 +5,7 @@ import { HelpLink } from '../components/HelpLink.js';
 import { useAnalysisClient } from '../engine/client-context.js';
 import type { CorpusFactsDTO } from '../engine/protocol.js';
 import { HELP } from '../guide/help.js';
+import { useCarried } from '../state/selection.js';
 import { toast } from '../state/toasts.js';
 import { useCollection, useStorage } from '../storage/use-storage.js';
 import type { RawSearch } from '../url/params.js';
@@ -53,6 +54,9 @@ function Facts({ facts }: { facts: CorpusFactsDTO }) {
 export function CorpusView() {
   const search = useSearch({ strict: false }) as RawSearch;
   const navigate = useNavigate();
+  // Analyzing with a corpus keeps the rules and the rest of the choices in force, and that corpus
+  // alone: a second one mixed in before is left out.
+  const carried = useCarried();
   const client = useAnalysisClient();
   const storage = useStorage();
   const savedCorpora = useCollection('corpora');
@@ -172,7 +176,7 @@ export function CorpusView() {
         {selectedId && (
           <Link
             to="/analyze"
-            search={{ corpus: selectedId } as never}
+            search={carried({ corpus: selectedId, corpus2: undefined, mix: undefined }) as never}
             className="btn btn-primary btn-sm w-full"
           >
             Analyze with this corpus
@@ -300,7 +304,9 @@ export function CorpusView() {
                     </button>
                     <Link
                       to="/analyze"
-                      search={{ corpus: custom.id } as never}
+                      search={
+                        carried({ corpus: custom.id, corpus2: undefined, mix: undefined }) as never
+                      }
                       className="btn btn-sm btn-ghost"
                     >
                       Analyze with it

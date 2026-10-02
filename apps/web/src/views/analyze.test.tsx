@@ -104,6 +104,23 @@ describe('Analyze', () => {
     expect(await screen.findByText('2 presses')).toBeInTheDocument();
   });
 
+  it('switches features off from its own bar, as the Library and Compare do', async () => {
+    const user = userEvent.setup();
+    const { currentSearch } = renderRoute(
+      '/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000',
+    );
+    await screen.findByText('Same finger bigrams');
+    const switches = screen.getByRole('group', { name: 'Analyze with' });
+    const macros = within(switches).getByRole('checkbox', { name: 'Multi-letter macros' });
+    expect(macros).toBeChecked();
+
+    await user.click(macros);
+    await waitFor(() => expect(currentSearch()).toContain('off=macros'));
+    expect(screen.getByRole('status')).toHaveTextContent('Typed without multi-letter macros.');
+    await user.type(screen.getByLabelText('How is this typed?'), 'qu');
+    expect(await screen.findByText('3 presses')).toBeInTheDocument();
+  });
+
   it('shows the metrics for a single-layer layout without layer costs', async () => {
     renderRoute('/analyze?layout=qwerty&corpus=en-conv&sample=20000');
     await screen.findByText('Same finger bigrams');

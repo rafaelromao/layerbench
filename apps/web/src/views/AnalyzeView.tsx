@@ -1,9 +1,7 @@
 import {
   BUNDLED_LAYOUTS,
   type CorpusManifest,
-  getPreset,
   layoutLanguageCoverage,
-  PRESET_IDS,
   toCanonicalJson,
 } from '@layoutmaster/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
@@ -19,6 +17,7 @@ import { expandPositions, heatMap } from '../engine/heat.js';
 import type { AnalyzeRequest, ExplainDTO } from '../engine/protocol.js';
 import { useAnalysis } from '../engine/use-analysis.js';
 import { HELP } from '../guide/help.js';
+import { useRememberSelection } from '../state/selection.js';
 import {
   DEFAULT_PARAMS,
   HEAT_MODES,
@@ -26,9 +25,9 @@ import {
   type Params,
   parseParams,
   type RawSearch,
-  SAMPLE_SIZES,
   toSearch,
 } from '../url/params.js';
+import { AnalysisSettings, SampleSelect } from './AnalysisSelects.js';
 import { playFrames } from './analyze/playback.js';
 import { groupByLanguage } from './corpus-groups.js';
 import { useLayout, useTypedLayout } from './useLayout.js';
@@ -68,14 +67,16 @@ export function AnalyzeView() {
   const navigate = useNavigate();
   const client = useAnalysisClient();
   const params = useMemo(() => parseParams(search), [search]);
+  useRememberSelection(params);
 
   const {
     layout: authored,
     compiled: authoredCompiled,
     error: layoutError,
   } = useLayout(params.layoutRef);
-  // A link from the Library or Compare carries the features it typed without, so the numbers here
-  // match the ones there: the layout is analyzed, drawn and explained as it was typed.
+  // The features it is typed without come from the switches, or with a link from the Library or
+  // Compare, so the numbers match the ones there: the layout is analyzed, drawn and explained as it
+  // was typed.
   const { without } = params;
   const { layout, compiled } = useTypedLayout(authored, authoredCompiled, without);
   const [corpora, setCorpora] = useState<CorpusManifest[]>([]);
@@ -299,157 +300,82 @@ export function AnalyzeView() {
           </select>
         </label>
 
-        <label className="form-control lm-wide">
-          <span className="label-text text-xs">Corpus</span>
-          <select
-            name="corpus"
-            aria-label="Corpus"
-            className="select select-sm select-bordered"
-            value={params.corpus}
-            onChange={(e) => setParams({ corpus: e.target.value })}
-          >
-            {groupByLanguage(corpora).map((g) => (
-              <optgroup key={g.label} label={g.label}>
-                {g.items.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        </label>
-
-        <label className="form-control">
-          <span className="label-text text-xs">Mix with</span>
-          <select
-            name="corpus2"
-            aria-label="Mix with"
-            className="select select-sm select-bordered"
-            value={params.corpus2 ?? ''}
-            onChange={(e) => setParams({ corpus2: e.target.value === '' ? null : e.target.value })}
-          >
-            <option value="">—</option>
-            {groupByLanguage(corpora.filter((c) => c.id !== params.corpus)).map((g) => (
-              <optgroup key={g.label} label={g.label}>
-                {g.items.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        </label>
-
-        {params.corpus2 && (
-          <label className="form-control lm-wide">
-            <span className="label-text text-xs">
-              {params.mix}% first · {100 - params.mix}% second
-            </span>
-            <input
-              type="range"
-              name="mix"
-              aria-label="Corpus mix"
-              className="range range-xs w-40"
-              min={0}
-              max={100}
-              step={5}
-              value={params.mix}
-              onChange={(e) => setParams({ mix: Number(e.target.value) })}
-            />
-          </label>
-        )}
-
-        <label className="form-control">
-          <span className="label-text text-xs">Rules</span>
-          <select
-            name="rules"
-            aria-label="Rule set"
-            className="select select-sm select-bordered"
-            value={params.preset}
-            onChange={(e) => setParams({ preset: e.target.value })}
-          >
-            {PRESET_IDS.map((id) => (
-              <option key={id} value={id}>
-                {getPreset(id).name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="form-control">
-          <span className="label-text text-xs">Sample</span>
-          <select
-            name="sample"
-            aria-label="Sample size"
-            className="select select-sm select-bordered"
-            value={params.sample}
-            onChange={(e) => setParams({ sample: Number(e.target.value) })}
-          >
-            {SAMPLE_SIZES.map((n) => (
-              <option key={n} value={n}>
-                {n >= 1_000_000 ? `${n / 1_000_000}M` : `${n / 1000}k`} symbols
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="form-control">
-          <span className="label-text text-xs">Counts</span>
-          <select
-            name="text"
-            aria-label="Text to count"
-            className="select select-sm select-bordered"
-            value={params.textClass}
-            onChange={(e) => setParams({ textClass: e.target.value as Params['textClass'] })}
-          >
-            <option value="letters">Letters only</option>
-            <option value="letters+digits">Letters and numbers</option>
-            <option value="letters+digits+symbols">Letters, numbers and symbols</option>
-          </select>
-        </label>
-
-        <div className="lm-wide flex flex-wrap items-center gap-3 sm:ml-auto">
-          <label className="label cursor-pointer gap-2">
-            <span className="label-text text-xs">Model shift</span>
-            <input
-              type="checkbox"
-              name="case"
-              className="toggle toggle-sm"
-              checked={params.caseMode === 'model'}
-              onChange={(e) => setParams({ caseMode: e.target.checked ? 'model' : 'fold' })}
-            />
-          </label>
-          <label className="label cursor-pointer gap-2">
-            <span className="label-text text-xs">Include space</span>
-            <input
-              type="checkbox"
-              name="space"
-              className="toggle toggle-sm"
-              checked={params.universe === 'with_space'}
-              onChange={(e) =>
-                setParams({ universe: e.target.checked ? 'with_space' : 'no_space' })
-              }
-            />
-          </label>
-          <div className="flex gap-2 max-sm:w-full">
-            <Link
-              to="/edit"
-              search={query as never}
-              className="btn btn-sm btn-outline max-sm:flex-1"
-            >
-              Edit
-            </Link>
-            <Link
-              to="/compare"
-              search={query as never}
-              className="btn btn-sm btn-outline max-sm:flex-1"
-            >
-              Compare
-            </Link>
-          </div>
-        </div>
+        <AnalysisSettings
+          params={params}
+          onChange={setParams}
+          corpora={corpora}
+          ruleSetName={ruleSet.name}
+          verb="Analyze"
+          afterCorpus={
+            <>
+              <label className="form-control">
+                <span className="label-text text-xs">Mix with</span>
+                <select
+                  name="corpus2"
+                  aria-label="Mix with"
+                  className="select select-sm select-bordered"
+                  value={params.corpus2 ?? ''}
+                  onChange={(e) =>
+                    setParams({ corpus2: e.target.value === '' ? null : e.target.value })
+                  }
+                >
+                  <option value="">—</option>
+                  {groupByLanguage(corpora.filter((c) => c.id !== params.corpus)).map((g) => (
+                    <optgroup key={g.label} label={g.label}>
+                      {g.items.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </label>
+              {params.corpus2 && (
+                <label className="form-control lm-wide">
+                  <span className="label-text text-xs">
+                    {params.mix}% first · {100 - params.mix}% second
+                  </span>
+                  <input
+                    type="range"
+                    name="mix"
+                    aria-label="Corpus mix"
+                    className="range range-xs w-40"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={params.mix}
+                    onChange={(e) => setParams({ mix: Number(e.target.value) })}
+                  />
+                </label>
+              )}
+            </>
+          }
+          afterCounts={
+            <label className="form-control">
+              <span className="label-text text-xs">Sample</span>
+              <SampleSelect value={params.sample} onChange={(sample) => setParams({ sample })} />
+            </label>
+          }
+          actions={
+            <>
+              <Link
+                to="/edit"
+                search={query as never}
+                className="btn btn-sm btn-outline max-sm:flex-1"
+              >
+                Edit
+              </Link>
+              <Link
+                to="/compare"
+                search={query as never}
+                className="btn btn-sm btn-outline max-sm:flex-1"
+              >
+                Compare
+              </Link>
+            </>
+          }
+        />
       </form>
 
       {without.length > 0 && (

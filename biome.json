@@ -40,7 +40,9 @@
       "a11y": {
         "noLabelWithoutControl": {
           "level": "error",
-          "options": { "inputComponents": ["CorpusSelect", "RuleSetSelect"] }
+          "options": {
+            "inputComponents": ["CorpusSelect", "RuleSetSelect", "TextClassSelect", "SampleSelect"]
+          }
         }
       },
       "style": {

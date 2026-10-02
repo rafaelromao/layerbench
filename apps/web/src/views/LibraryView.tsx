@@ -16,7 +16,7 @@ import {
 } from '@layoutmaster/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FeatureSwitches, featureList } from '../components/FeatureSwitches.js';
+import { featureList } from '../components/FeatureSwitches.js';
 import { formatValue } from '../components/format.js';
 import { HelpLink } from '../components/HelpLink.js';
 import { Keyboard } from '../components/Keyboard.js';
@@ -30,6 +30,7 @@ import {
   useSummaries,
 } from '../engine/use-summaries.js';
 import { HELP } from '../guide/help.js';
+import { useRememberSelection } from '../state/selection.js';
 import { toast } from '../state/toasts.js';
 import { useCollection, useStorage } from '../storage/use-storage.js';
 import { encodeInline } from '../url/inline.js';
@@ -42,7 +43,7 @@ import {
   savedRef,
   toSearch,
 } from '../url/params.js';
-import { CorpusSelect, RuleSetSelect } from './AnalysisSelects.js';
+import { AnalysisSettings } from './AnalysisSelects.js';
 import { KeymapDrawerImport } from './library/KeymapDrawerImport.js';
 import { LayerStrip } from './library/LayerStrip.js';
 import { type NewLayoutSpec, newLayout } from './new-layout.js';
@@ -374,6 +375,7 @@ export function LibraryView() {
   // Ranking uses the corpus and rule set in the link, so it agrees with what Analyze would show.
   const search = useSearch({ strict: false }) as RawSearch;
   const params = useMemo(() => parseParams(search, ENGLISH_CORPUS), [search]);
+  useRememberSelection(params);
   const ruleSet = useRuleSet(params.preset, params.universe);
   const corpora = useCorpora();
   const corpusName = corpora.find((c) => c.id === params.corpus)?.name ?? params.corpus;
@@ -393,12 +395,9 @@ export function LibraryView() {
     (layoutRef: string) => toSearch(params, { layoutRef }) as never,
     [params],
   );
-  /**
-   * So does the editor. It analyzes the layout with everything it has, so the features the ranking
-   * left out stay behind.
-   */
+  /** So does the editor, typing the layout without the features the ranking left out. */
   const editSearch = useCallback(
-    (layoutRef: string) => toSearch(params, { layoutRef, without: [] }) as never,
+    (layoutRef: string) => toSearch(params, { layoutRef }) as never,
     [params],
   );
   const [sortBy, setSortBy] = useState<SortKey>('effort');
@@ -577,8 +576,8 @@ export function LibraryView() {
   const openInAnalyzer = useCallback(async () => {
     if (!preview) return;
     const blob = await encodeInline(preview.layout);
-    navigate({ to: '/analyze', search: { layout: inlineRef(blob) } as never });
-  }, [preview, navigate]);
+    navigate({ to: '/analyze', search: toSearch(params, { layoutRef: inlineRef(blob) }) as never });
+  }, [preview, navigate, params]);
 
   /** Save under a free id, and say so by the layout's name: the id is only for links. */
   const saveNew = useCallback(
@@ -670,30 +669,15 @@ export function LibraryView() {
         </p>
       </div>
 
-      <div className="flex flex-wrap items-end gap-2">
-        <label className="form-control min-w-0 max-sm:w-full">
-          <span className="label-text text-xs">Corpus</span>
-          <CorpusSelect
-            corpora={corpora}
-            value={params.corpus}
-            onChange={(corpus) => setParams({ corpus })}
-          />
-        </label>
-        <label className="form-control">
-          <span className="label-text text-xs">Rules</span>
-          <RuleSetSelect
-            value={params.preset}
-            savedName={ruleSet.name}
-            onChange={(preset) => setParams({ preset })}
-          />
-        </label>
+      <div className="lm-toolbar flex flex-row flex-wrap items-end gap-3">
+        <AnalysisSettings
+          params={params}
+          onChange={setParams}
+          corpora={corpora}
+          ruleSetName={ruleSet.name}
+          verb="Rank"
+        />
       </div>
-
-      <FeatureSwitches
-        legend="Rank with"
-        without={without}
-        onChange={(next) => setParams({ without: next })}
-      />
 
       <div className="flex flex-wrap items-center gap-2">
         <fieldset className="join" aria-label="Sort layouts by">

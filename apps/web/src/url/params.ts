@@ -163,6 +163,31 @@ export function toSearch(p: Params, overrides: Partial<Params> = {}): RawSearch 
   return out;
 }
 
+/**
+ * The query keys of the choices an analysis is made with, which every view that analyzes shares
+ * and passes on: the text, the rules, what counts, the features typed without, space and shift,
+ * and the sample. What is looked at (the layout, its layer, the heat) is each view's own.
+ */
+const SELECTION_KEYS = [
+  'corpus',
+  'corpus2',
+  'mix',
+  'rules',
+  'case',
+  'text',
+  'space',
+  'sample',
+  'off',
+];
+
+/** Those choices alone, as `toSearch` writes them, for a link into another view. */
+export function selectionSearch(p: Params): RawSearch {
+  const all = toSearch(p);
+  const out: RawSearch = {};
+  for (const key of SELECTION_KEYS) if (all[key] !== undefined) out[key] = all[key];
+  return out;
+}
+
 /** Query string with keys in a stable order, matching the links the reference implementation emits. */
 export function toQueryString(p: Params, overrides: Partial<Params> = {}): string {
   const search = toSearch(p, overrides);

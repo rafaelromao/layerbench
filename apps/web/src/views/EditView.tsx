@@ -23,6 +23,7 @@ import { useAnalysisClient } from '../engine/client-context.js';
 import type { AnalyzeRequest, ProducerDTO, ReportDTO } from '../engine/protocol.js';
 import { useAnalysis } from '../engine/use-analysis.js';
 import { HELP, type HelpTopic } from '../guide/help.js';
+import { useRememberSelection } from '../state/selection.js';
 import { toast } from '../state/toasts.js';
 import { useStorage } from '../storage/use-storage.js';
 import { encodeInline } from '../url/inline.js';
@@ -36,7 +37,7 @@ import {
   savedRef,
   toSearch,
 } from '../url/params.js';
-import { CorpusSelect, RuleSetSelect } from './AnalysisSelects.js';
+import { AnalysisSettings } from './AnalysisSelects.js';
 import { TextField } from './edit/inspector/controls.js';
 import { KeyInspector } from './edit/inspector/KeyInspector.js';
 import {
@@ -51,7 +52,7 @@ import {
 import { editReducer, type Panel } from './edit/reducer.js';
 import { initialUndoState, undoable } from './edit/undo.js';
 import { useCorpora } from './useCorpora.js';
-import { useLayout } from './useLayout.js';
+import { useLayout, useTypedLayout } from './useLayout.js';
 import { useRuleSet } from './useRuleSet.js';
 
 /** Built once: a reducer rebuilt on every render would reset the editor's history. */
@@ -77,6 +78,7 @@ export function EditView() {
   const client = useAnalysisClient();
   const storage = useStorage();
   const params = useMemo(() => parseParams(search, ENGLISH_CORPUS), [search]);
+  useRememberSelection(params);
   const loaded = useLayout(params.layoutRef);
   const ruleSet = useRuleSet(params.preset, params.universe);
   // The editor reads its layout once, as it mounts. While a new reference is being read, what is
@@ -140,9 +142,13 @@ function Editor({
   /** A save on its way: a second press would store a second copy of a layout saved the first time. */
   const [saving, setSaving] = useState(false);
 
+  // The board shows the layout as it is being written; the numbers are for it as typed, without the
+  // features the switches leave out, as everywhere else.
+  const typed = useTypedLayout(state.layout, state.compiled, params.without).layout ?? state.layout;
+
   const request: AnalyzeRequest = useMemo(
     () => ({
-      layout: toCanonicalJson(state.layout),
+      layout: toCanonicalJson(typed),
       corpusId: params.corpus,
       caseMode: params.caseMode,
       textClass: params.textClass,
@@ -150,7 +156,7 @@ function Editor({
       maxSymbols: Math.min(params.sample, EDIT_MAX_SYMBOLS),
       ruleSet,
     }),
-    [state.layout, params.corpus, params.caseMode, params.textClass, params.sample, ruleSet],
+    [typed, params.corpus, params.caseMode, params.textClass, params.sample, ruleSet],
   );
 
   const { report, loading, error: analysisError } = useAnalysis(request);
@@ -187,7 +193,7 @@ function Editor({
     client
       .relabel({
         baseKey: base.key,
-        layout: toCanonicalJson(state.layout),
+        layout: toCanonicalJson(typed),
         layerIdx: swap.layerIdx,
         posA,
         posB,
@@ -200,7 +206,7 @@ function Editor({
     return () => {
       cancelled = true;
     };
-  }, [state.lastSwap, state.compiled, state.layout, client, ruleSet]);
+  }, [state.lastSwap, state.compiled, state.layout, typed, client, ruleSet]);
 
   // An unsaved layout is easy to lose by closing the tab.
   useEffect(() => {
@@ -377,8 +383,7 @@ function Editor({
         onSave={save}
         onAnalyze={openInAnalyzer}
         corpora={corpora}
-        corpus={params.corpus}
-        preset={params.preset}
+        params={params}
         ruleSetName={ruleSet.name}
         onParams={setParams}
       />
@@ -592,8 +597,7 @@ function EditorBar({
   onSave,
   onAnalyze,
   corpora,
-  corpus,
-  preset,
+  params,
   ruleSetName,
   onParams,
 }: {
@@ -604,8 +608,7 @@ function EditorBar({
   onSave: () => void;
   onAnalyze: () => void;
   corpora: CorpusManifest[];
-  corpus: string;
-  preset: string;
+  params: Params;
   ruleSetName?: string;
   onParams: (overrides: Partial<Params>) => void;
 }) {
@@ -667,25 +670,14 @@ function EditorBar({
           />
         </div>
       </div>
-      <div className="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-2 sm:flex sm:flex-wrap">
-        <label className="floating-label min-w-0">
-          <span>Corpus</span>
-          <CorpusSelect
-            corpora={corpora}
-            value={corpus}
-            className="w-full"
-            onChange={(next) => onParams({ corpus: next })}
-          />
-        </label>
-        <label className="floating-label min-w-0">
-          <span>Rules</span>
-          <RuleSetSelect
-            value={preset}
-            savedName={ruleSetName}
-            className="w-full"
-            onChange={(next) => onParams({ preset: next })}
-          />
-        </label>
+      <div className="lm-toolbar flex flex-row flex-wrap items-end gap-3">
+        <AnalysisSettings
+          params={params}
+          onChange={onParams}
+          corpora={corpora}
+          ruleSetName={ruleSetName}
+          verb="Analyze"
+        />
       </div>
     </section>
   );

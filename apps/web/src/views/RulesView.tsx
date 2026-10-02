@@ -12,6 +12,7 @@ import { useCallback, useEffect, useReducer, useState } from 'react';
 import { HelpLink } from '../components/HelpLink.js';
 import { presetOf, RuleSources } from '../components/RuleSources.js';
 import { HELP } from '../guide/help.js';
+import { useCarried } from '../state/selection.js';
 import { toast } from '../state/toasts.js';
 import { useCollection, useStorage } from '../storage/use-storage.js';
 import type { RawSearch } from '../url/params.js';
@@ -142,6 +143,8 @@ function PredicateValue({
 export function RulesView() {
   const search = useSearch({ strict: false }) as RawSearch;
   const navigate = useNavigate();
+  // Analyzing with a set keeps the corpus and the rest of the choices in force.
+  const carried = useCarried();
   const storage = useStorage();
   const savedSets = useCollection('rulesets');
   const ref = search.rules ?? 'layouts_doc';
@@ -264,7 +267,7 @@ export function RulesView() {
 
             <Link
               to="/analyze"
-              search={{ rules: state.sourceRef } as never}
+              search={carried({ rules: state.sourceRef }) as never}
               className="lm-wide btn btn-sm btn-primary"
             >
               Analyze with this set
