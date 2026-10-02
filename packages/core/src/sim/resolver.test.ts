@@ -152,3 +152,60 @@ describe('text import', () => {
     expect(layout.keys.space).toBe('L0');
   });
 });
+
+describe('the cheapest way to type a character', () => {
+  const kp = (symbol: string) => ({ kind: 'kp' as const, symbol });
+  /** A board where `x` is on two layers: one tapped straight from the base, one through another. */
+  const twoWays = (extra: Partial<Layout> = {}): Layout => ({
+    format: 'layoutmaster/layout@1',
+    name: 'Two ways',
+    hostLocale: 'symbols',
+    geometry: { preset: '3x5+2' },
+    keys: { space: 'L0' },
+    layers: [
+      {
+        id: 'base',
+        bindings: {
+          L0: kp(' '),
+          R0: { kind: 'sl', layer: 'mid' },
+          L1: { kind: 'sl', layer: 'zz' },
+          LBP: kp('y'),
+          RHI: kp('y'),
+        },
+      },
+      { id: 'mid', bindings: { '*': { kind: 'trans' }, LHM: { kind: 'sl', layer: 'aa' } } },
+      // `aa` sorts first, so taking the first way that works would go through `mid` to get here.
+      { id: 'aa', bindings: { '*': { kind: 'trans' }, RHI: kp('x') } },
+      { id: 'zz', bindings: { '*': { kind: 'trans' }, RHI: kp('x') } },
+    ],
+    ...extra,
+  });
+
+  it('takes the layer that is a press closer', () => {
+    const t = trace(twoWays(), 'x');
+    expect(t.keys).toEqual(['L1', 'RHI']);
+    expect(t.presses).toBe(2);
+  });
+
+  it('breaks a tie in presses by Effort: a home-row key over a bottom-row pinky', () => {
+    // Both are one press on the base layer; the pinky's sorts first.
+    expect(trace(twoWays(), 'y').keys).toEqual(['RHI']);
+  });
+
+  it('leaves no layer key held when another way costs the same, so a capital after ! needs no shift', () => {
+    // `!` is two presses either way on Magic Romak: tap Alpha 2 and press a combo, or hold Symbols
+    // and tap. Held, the thumb would still be down through the space, and its release would end
+    // the shift sentence case armed for the capital.
+    const t = trace(magicRomak, 'oi! Ola', { caseMode: 'model' });
+    expect(t.out).toBe('oi! Ola');
+    expect(t.keys).not.toContain('R1');
+    expect(t.presses).toBe(8);
+  });
+
+  it('keeps an order set by hand, whatever it costs', () => {
+    const t = trace(twoWays({ typingPaths: { y: [{ producer: 'direct:base/LBP' }] } }), 'y');
+    expect(t.keys).toEqual(['LBP']);
+    const far = trace(twoWays({ typingPaths: { x: [{ producer: 'direct:aa/RHI' }] } }), 'x');
+    expect(far.keys).toEqual(['R0', 'LHM', 'RHI']);
+  });
+});

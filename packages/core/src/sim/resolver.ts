@@ -2,6 +2,7 @@ import { keyDistance } from '../geometry/distance.js';
 import { FINGERS, type Finger } from '../geometry/types.js';
 import type { CompiledLayout } from '../layout/compile.js';
 import type { ActivatorDef, Mod, TypingPathEntry } from '../layout/types.js';
+import { defaultEffort } from '../rules/effort.js';
 import {
   type FingerTravel,
   LogicalKeyRegistry,
@@ -79,6 +80,8 @@ export class Simulator {
   private readonly activators: Map<number, ActivatorCandidate[]>;
   private readonly userPaths = new Map<string, TypingPathEntry[]>();
   private readonly plannerHolds = new Set<number>();
+  /** Effort of a press at each position, a chord's keys summed: what breaks a tie between ways. */
+  private readonly pressEffort: number[];
   private readonly fold: boolean;
   private readonly repeatPolicy: 'repeat_key' | 'tap_twice';
 
@@ -140,6 +143,10 @@ export class Simulator {
     this.activators = discoverActivators(
       compiled,
       options.activators ?? compiled.layout.activators ?? {},
+    );
+    const effort = defaultEffort(compiled);
+    this.pressEffort = compiled.positions.map((p) =>
+      p.members.reduce((sum, m) => sum + (effort[compiled.keys[m].id] ?? 1), 0),
     );
     this.homeKeys = findHomeKeys(compiled);
     this.lastFingerPos = { ...this.homeKeys };
@@ -564,21 +571,97 @@ export class Simulator {
     return out;
   }
 
+  /**
+   * Type one token the cheapest way the layout offers from where the typist is. A symbol whose
+   * order was set by hand in Typing paths takes the first way that works, in that order.
+   */
   private typeToken(token: string): boolean {
+    const handSet = (this.userPaths.get(this.pathSymbol(token))?.length ?? 0) > 0;
     let cands = this.candidatesFor(token);
     for (let attempt = 0; attempt < 2; attempt++) {
-      for (const p of cands) {
-        const events = this.tryProducer(p, token);
-        if (events) {
-          this.commit(events, false);
-          return true;
-        }
+      const events = handSet ? this.firstThatWorks(cands, token) : this.cheapest(cands, token);
+      if (events) {
+        this.commit(events, false);
+        return true;
       }
       if (this.plannerHolds.size === 0) break;
       this.commit(this.releaseHolds(), false);
       cands = this.candidatesFor(token);
     }
     return false;
+  }
+
+  /** The symbol a token's typing path is kept under, as `candidatesFor` looks it up. */
+  private pathSymbol(token: string): string {
+    if (this.fold) return token;
+    const lower = token.toLowerCase();
+    return lower !== token ? lower : token;
+  }
+
+  private firstThatWorks(cands: Producer[], token: string): KeyEvent[] | null {
+    for (const p of cands) {
+      const events = this.tryProducer(p, token);
+      if (events) return events;
+    }
+    return null;
+  }
+
+  /**
+   * Every way to type the token, each tried from the same state: the fewest presses win; then the
+   * way that leaves fewer layer keys held, since a held key still has to come up, and holding it
+   * through what follows can change that (releasing it ends the one-shot shift a sentence armed);
+   * then the lower Effort over the presses; then the candidates' own order. Effort is the default
+   * grid, not the rule set's, so what is typed never depends on the rules it is scored by.
+   */
+  private cheapest(cands: Producer[], token: string): KeyEvent[] | null {
+    if (cands.length <= 1) return this.firstThatWorks(cands, token);
+    const m = this.machine;
+    const start = m.state.snapshot();
+    const holds = [...this.plannerHolds];
+    const restore = (state: typeof start, held: number[]) => {
+      m.state.restore(state);
+      m.recomputeMask();
+      this.plannerHolds.clear();
+      for (const pos of held) this.plannerHolds.add(pos);
+    };
+    let best: {
+      events: KeyEvent[];
+      presses: number;
+      effort: number;
+      state: typeof start;
+      holds: number[];
+    } | null = null;
+    for (const p of cands) {
+      const events = this.tryProducer(p, token);
+      if (events) {
+        let presses = 0;
+        let effort = 0;
+        for (const e of events) {
+          if (e.kind === 'hold_release') continue;
+          presses++;
+          effort += this.pressEffort[e.pos] ?? 0;
+        }
+        const held = this.plannerHolds.size;
+        if (
+          best === null ||
+          presses < best.presses ||
+          (presses === best.presses && held < best.holds.length) ||
+          (presses === best.presses && held === best.holds.length && effort < best.effort)
+        ) {
+          best = {
+            events,
+            presses,
+            effort,
+            state: m.state.snapshot(),
+            holds: [...this.plannerHolds],
+          };
+        }
+      }
+      restore(start, holds);
+    }
+    if (best === null) return null;
+    restore(best.state, best.holds);
+    return best.events;
   }
 
   private typeSpace(): void {

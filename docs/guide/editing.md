@@ -125,8 +125,10 @@ The other panels hold what is not on a single key:
 - **Combos** are keys pressed together. **Pick on board**, then tap the keys; the output takes
   the same syntax as **Or type**.
 - **Behaviors** are the named bindings keys refer to, such as `&magic`.
-- **Typing paths** list the other ways a character can be typed; drag or use the arrows to change
-  which is tried first.
+- **Typing paths** list the other ways a character can be typed. Left alone, a character is typed
+  the cheapest way from where the typist is: the fewest presses, then the one that leaves no layer
+  key held, then the less effort. Drag or use the arrows to put one way first instead, and that
+  order is kept.
 - **JSON** shows the whole layout as LayoutMaster JSON or as a keymap-drawer file.
 
 ## On a phone
