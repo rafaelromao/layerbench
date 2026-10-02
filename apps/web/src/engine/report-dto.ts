@@ -15,40 +15,39 @@ function coverageOf(report: Report): CoverageDTO {
 }
 
 /**
- * Usage per position for each layer. Layer, shift and space keys count on every layer, because they
- * are what the user presses to reach the layer they are looking at.
+ * Usage per position for each layer. A press counts on the layer whose key was pressed, the one
+ * drawn there, and on no other: a thumb that reaches a layer counts where it is pressed, not on the
+ * layer it leads to, so a key on another layer never takes its heat.
  */
 function usageMaps(report: Report): {
   usageByLayer: number[][];
   usageAll: number[];
-  layerTaps: number[];
+  layerTapsByLayer: number[][];
 } {
   const positions = report.compiled.positions.length;
   const layerCount = report.compiled.layers.length;
-  const usageByLayer = Array.from({ length: layerCount }, () =>
-    new Array<number>(positions).fill(0),
-  );
+  const perLayer = () =>
+    Array.from({ length: layerCount }, () => new Array<number>(positions).fill(0));
+  const usageByLayer = perLayer();
   const usageAll = new Array<number>(positions).fill(0);
-  const layerTaps = new Array<number>(positions).fill(0);
+  const layerTapsByLayer = perLayer();
 
   const unigram = report.simulation.noSpace.unigram;
   for (const lk of report.simulation.registry.all()) {
     const count = unigram.get(lk.id) ?? 0;
     if (count === 0) continue;
     usageAll[lk.pos] += count;
-    if (lk.keyKind === 'layer_tap') layerTaps[lk.pos] += count;
-    const alwaysVisible =
-      lk.keyKind === 'layer_tap' || lk.keyKind === 'shift' || lk.keyKind === 'space';
-    for (let l = 0; l < layerCount; l++) {
-      if (alwaysVisible || lk.layer === l) usageByLayer[l][lk.pos] += count;
-    }
+    const onLayer = usageByLayer[lk.layer];
+    if (!onLayer) continue;
+    onLayer[lk.pos] += count;
+    if (lk.keyKind === 'layer_tap') layerTapsByLayer[lk.layer][lk.pos] += count;
   }
-  return { usageByLayer, usageAll, layerTaps };
+  return { usageByLayer, usageAll, layerTapsByLayer };
 }
 
 /** Strip a report down to what the interface needs. Tables stay behind. */
 export function toReportDTO(report: Report, key: string): ReportDTO {
-  const { usageByLayer, usageAll, layerTaps } = usageMaps(report);
+  const { usageByLayer, usageAll, layerTapsByLayer } = usageMaps(report);
   const st = report.stats;
   const stats: StatsDTO = {
     symbols: st.symbols,
@@ -78,7 +77,7 @@ export function toReportDTO(report: Report, key: string): ReportDTO {
     stats,
     usageByLayer,
     usageAll,
-    layerTaps,
+    layerTapsByLayer,
     members: report.compiled.positions.map((p) => p.members),
   };
 }

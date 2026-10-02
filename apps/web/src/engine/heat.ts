@@ -30,18 +30,22 @@ function fromArray(counts: number[]): Record<number, number> {
   return out;
 }
 
-/** Per-position heat for the selected mode and layer, normalized to 0–1. */
+/**
+ * Per-position heat for the selected mode on one layer, normalized to 0–1. Only what was pressed on
+ * that layer counts, so each key drawn there shows its own presses and no other layer's.
+ */
 export function heatMap(dto: ReportDTO, mode: HeatMode, layer: number): Record<number, number> {
-  if (mode === 'layer_taps') return normalizeHeat(fromArray(dto.layerTaps));
+  // A layer beyond the end clamps rather than blanking the board.
+  const l = Math.max(0, Math.min(layer, dto.usageByLayer.length - 1));
+  if (mode === 'layer_taps') return normalizeHeat(fromArray(dto.layerTapsByLayer[l] ?? []));
   if (mode !== 'usage') {
     const ruleId = HEAT_RULE_ID[mode];
     const rule = ruleId ? dto.results.find((r) => r.id === ruleId) : undefined;
     if (rule && Object.keys(rule.per_key).length > 0) {
-      return normalizeHeat(rule.per_key as Record<number, number>);
+      return normalizeHeat((rule.per_layer_key[l] ?? {}) as Record<number, number>);
     }
   }
-  const byLayer = dto.usageByLayer[Math.min(layer, dto.usageByLayer.length - 1)] ?? dto.usageAll;
-  return normalizeHeat(fromArray(byLayer));
+  return normalizeHeat(fromArray(dto.usageByLayer[l] ?? dto.usageAll));
 }
 
 /** Usage across every layer, for previews that show no particular layer. */

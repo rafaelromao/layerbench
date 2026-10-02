@@ -29,7 +29,7 @@ function reportWith(overrides: Partial<ReportDTO>): ReportDTO {
     },
     usageByLayer: [[0, 0, 0]],
     usageAll: [0, 0, 0],
-    layerTaps: [0, 0, 0],
+    layerTapsByLayer: [[0, 0, 0]],
     members: [[0], [1], [2]],
     ...overrides,
   };
@@ -69,6 +69,7 @@ describe('heat maps', () => {
           items: [],
           per_finger: {},
           per_key: { 2: 8 },
+          per_layer_key: { 0: { 2: 8 } },
           per_hand: {},
           breakdown: {},
           note: null,
@@ -80,6 +81,45 @@ describe('heat maps', () => {
     });
     // The reference looked this rule up under the mode's own name and silently showed usage.
     expect(heatMap(dto, 'travel', 0)).toEqual({ 2: 1 });
+  });
+
+  it('draws a rule and the layer taps on the layer they were pressed on, and nowhere else', () => {
+    const dto = reportWith({
+      usageByLayer: [
+        [1, 0, 0],
+        [0, 1, 0],
+      ],
+      layerTapsByLayer: [
+        [0, 0, 6],
+        [0, 0, 0],
+      ],
+      results: [
+        {
+          id: 'sfb',
+          label: 'Same finger bigrams',
+          family: 'bigram',
+          value: 1,
+          unit: 'percent',
+          band: { index: null, label: null, quality: 'neutral' },
+          items: [],
+          per_finger: {},
+          // Position 0 had SFBs on both layers; position 1 on the upper layer only.
+          per_key: { 0: 6, 1: 2 },
+          per_layer_key: { 0: { 0: 4 }, 1: { 0: 2, 1: 2 } },
+          per_hand: {},
+          breakdown: {},
+          note: null,
+          enabled: true,
+          score_weight: 0,
+          normalized: null,
+        },
+      ],
+    });
+    expect(heatMap(dto, 'sfb', 0)).toEqual({ 0: 1 });
+    expect(heatMap(dto, 'sfb', 1)).toEqual({ 0: 1, 1: 1 });
+    // The thumb that reaches a layer is pressed on the base layer, so it is warm there only.
+    expect(heatMap(dto, 'layer_taps', 0)).toEqual({ 2: 1 });
+    expect(heatMap(dto, 'layer_taps', 1)).toEqual({});
   });
 
   it('falls back to usage when the rule carries no per-key data', () => {

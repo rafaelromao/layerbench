@@ -1,4 +1,10 @@
-import { bundledLayout, getPreset, type RuleSet, toCanonicalJson } from '@layoutmaster/core';
+import {
+  bundledLayout,
+  compileLayout,
+  getPreset,
+  type RuleSet,
+  toCanonicalJson,
+} from '@layoutmaster/core';
 import { nodeCorpusLoader } from '@layoutmaster/core/node';
 import { describe, expect, it } from 'vitest';
 import { withUniverse } from '../storage/rule-sets.js';
@@ -6,9 +12,9 @@ import { testCorporaRoot } from '../test/render.js';
 import { AnalysisCore } from './analysis-core.js';
 import type { AnalyzeRequest, ReportDTO } from './protocol.js';
 
-function request(ruleSet: RuleSet): AnalyzeRequest {
-  const layout = bundledLayout('qwerty');
-  if (!layout) throw new Error('qwerty is bundled');
+function request(ruleSet: RuleSet, layoutId = 'qwerty'): AnalyzeRequest {
+  const layout = bundledLayout(layoutId);
+  if (!layout) throw new Error(`${layoutId} is bundled`);
   return {
     layout: toCanonicalJson(layout),
     corpusId: 'en-conv',
@@ -56,5 +62,28 @@ describe('A report is scored by the rules it was asked for', () => {
     const peeked = core.peek(request(getPreset('cyanophage')));
     expect(peeked).not.toBeNull();
     expect(peeked?.key).toBe(core.keyFor(request(getPreset('cyanophage'))));
+  });
+});
+
+describe('Heat is counted on the layer each key was pressed on', () => {
+  it("never warms a key from another layer's presses", async () => {
+    const core = new AnalysisCore(nodeCorpusLoader(testCorporaRoot()));
+    const report = await core.analyze(request(getPreset('layouts_doc'), 'magic-romak'));
+    const compiled = compileLayout(bundledLayout('magic-romak')!);
+    let warm = 0;
+    report.usageByLayer.forEach((counts, layer) => {
+      compiled.keys.forEach((key, pos) => {
+        if (!(counts[pos] > 0)) return;
+        warm++;
+        // What was pressed there is the key drawn there: never one that shows through or is empty.
+        const kind = compiled.layers[layer].bindings[pos].kind;
+        expect(['trans', 'none'], `${compiled.layers[layer].id}/${key.id}`).not.toContain(kind);
+      });
+    });
+    expect(warm).toBeGreaterThan(0);
+    // Every layer's presses add up to all of them.
+    const all = report.usageAll.reduce((a, b) => a + b, 0);
+    const byLayer = report.usageByLayer.flat().reduce((a, b) => a + b, 0);
+    expect(byLayer).toBe(all);
   });
 });

@@ -111,6 +111,7 @@ interface Extra {
   unit?: Unit;
   items?: RuleItem[];
   per_key?: Record<number, number>;
+  per_layer_key?: Record<number, Record<number, number>>;
   per_finger?: Partial<Record<Finger, number>>;
   per_hand?: Partial<Record<Hand, number>>;
   breakdown?: Record<string, number>;
@@ -127,6 +128,7 @@ function finish(rule: Rule, value: number | null, extra: Extra): RuleResult {
     items: extra.items ?? [],
     per_finger: extra.per_finger ?? {},
     per_key: extra.per_key ?? {},
+    per_layer_key: extra.per_layer_key ?? {},
     per_hand: extra.per_hand ?? {},
     breakdown: extra.breakdown ?? {},
     note: rule.description ?? null,
@@ -168,6 +170,7 @@ function evalNgram(rule: Rule, ctx: Ctx): RuleResult {
   let weightedDistance = 0;
   const items: { ngram: Ngram; c: number; d: number | null }[] = [];
   const perKey = new Map<number, number>();
+  const perLayerKey = new Map<number, Map<number, number>>();
   const perFinger = new Map<Finger, number>();
   const perHand = new Map<Hand, number>();
   const breakdown = new Map<string | number, number>();
@@ -196,7 +199,14 @@ function evalNgram(rule: Rule, ctx: Ctx): RuleResult {
       items.push({ ngram: [...ngram], c, d });
 
       const share = c / ngram.length;
-      for (const k of ngram) for (const m of k.members) bump(perKey, m, share);
+      for (const k of ngram) {
+        const onLayer = perLayerKey.get(k.layer) ?? new Map<number, number>();
+        perLayerKey.set(k.layer, onLayer);
+        for (const m of k.members) {
+          bump(perKey, m, share);
+          bump(onLayer, m, share);
+        }
+      }
 
       const last = ngram[ngram.length - 1];
       if (last.fingers.length > 0) {
@@ -296,6 +306,9 @@ function evalNgram(rule: Rule, ctx: Ctx): RuleResult {
     unit,
     items: itemsOut,
     per_key: toRecord(perKey) as unknown as Record<number, number>,
+    per_layer_key: Object.fromEntries(
+      [...perLayerKey].map(([layer, keys]) => [layer, toRecord(keys)]),
+    ) as unknown as Record<number, Record<number, number>>,
     per_finger: toRecord(distribute(perFinger, matched)) as Partial<Record<Finger, number>>,
     per_hand: toRecord(handPct) as Partial<Record<Hand, number>>,
     breakdown: toRecord(distribute(breakdown, matched)),

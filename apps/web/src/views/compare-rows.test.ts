@@ -15,6 +15,7 @@ function result(id: string, value: number | null, withBand = true): RuleResult {
     items: [],
     per_finger: {},
     per_key: {},
+    per_layer_key: {},
     per_hand: {},
     breakdown: {},
     note: null,

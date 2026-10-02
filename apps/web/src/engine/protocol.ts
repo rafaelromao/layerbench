@@ -68,12 +68,12 @@ export interface ReportDTO {
   globals: Record<string, unknown>;
   coverage: CoverageDTO;
   stats: StatsDTO;
-  /** Keystrokes per position, per layer, for the usage heat map. */
+  /** Keystrokes per position on each layer, counted on the layer whose key was pressed. */
   usageByLayer: number[][];
   /** Keystrokes per position across every layer. */
   usageAll: number[];
-  /** Presses whose only purpose is reaching a layer, per position. */
-  layerTaps: number[];
+  /** Presses whose only purpose is reaching a layer, per position, on the layer pressed. */
+  layerTapsByLayer: number[][];
   /** Physical keys behind each position, so chord positions can be highlighted. */
   members: number[][];
 }

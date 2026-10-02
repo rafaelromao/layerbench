@@ -89,6 +89,21 @@ describe('rules engine', () => {
     expect(Object.keys(dist.breakdown).length).toBeGreaterThanOrEqual(2);
   });
 
+  it("splits each key's share by the layer it typed from, adding up to the whole", () => {
+    for (const id of ['sfb', 'finger_usage']) {
+      const r = magic.results.find((x) => x.id === id)!;
+      expect(Object.keys(r.per_layer_key).length, id).toBeGreaterThan(1);
+      const sum: Record<string, number> = {};
+      for (const keys of Object.values(r.per_layer_key)) {
+        for (const [pos, v] of Object.entries(keys)) sum[pos] = (sum[pos] ?? 0) + v;
+      }
+      expect(Object.keys(sum).sort(), id).toEqual(Object.keys(r.per_key).sort());
+      for (const [pos, v] of Object.entries(r.per_key)) expect(sum[pos], id).toBeCloseTo(v, 9);
+    }
+    // A single-layer layout presses everything on its base layer.
+    expect(Object.keys(qwerty.results.find((x) => x.id === 'sfb')!.per_layer_key)).toEqual(['0']);
+  });
+
   it('computes the in:out ratio after the other rules', () => {
     const expected = (qwerty.value('roll_in') as number) / (qwerty.value('roll_out') as number);
     expect(Math.abs((qwerty.value('in_out_ratio') as number) - expected)).toBeLessThan(1e-6);

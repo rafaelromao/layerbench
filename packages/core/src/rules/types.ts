@@ -209,6 +209,8 @@ export interface RuleResult {
   items: RuleItem[];
   per_finger: Partial<Record<Finger, number>>;
   per_key: Record<number, number>;
+  /** `per_key` for each layer: what was pressed on that layer, by the layer its key typed from. */
+  per_layer_key: Record<number, Record<number, number>>;
   per_hand: Partial<Record<Hand, number>>;
   breakdown: Record<string, number>;
   note: string | null;

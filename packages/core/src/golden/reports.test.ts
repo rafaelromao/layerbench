@@ -75,6 +75,9 @@ describe('golden reports', () => {
           if (!r) continue;
           expect(r.items, `${w.id} items`).toEqual(w.items);
           expect(r.per_finger, `${w.id} per_finger`).toEqual(w.per_finger);
+          // What the heat map draws for the rule, across the board and on each layer.
+          expect(r.per_key, `${w.id} per_key`).toEqual(w.per_key);
+          expect(r.per_layer_key, `${w.id} per_layer_key`).toEqual(w.per_layer_key);
           expect(r.per_hand, `${w.id} per_hand`).toEqual(w.per_hand);
           expect(r.breakdown, `${w.id} breakdown`).toEqual(w.breakdown);
         }
