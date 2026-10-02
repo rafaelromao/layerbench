@@ -5,11 +5,18 @@ on:
     branches: [main]
   pull_request:
 
+# Nothing here writes to the repository, so the job token need not be able to.
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          # Dependency install scripts, tests and the build run after this; none of them needs a token.
+          persist-credentials: false
       # No version here: the action reads `packageManager` from package.json, and specifying both
       # makes it fail with "Multiple versions of pnpm specified".
       - uses: pnpm/action-setup@v4

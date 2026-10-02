@@ -160,6 +160,22 @@ layer: [*t, a, *t]`),
     });
   });
 
+  it('refuses a key that would change the mapping itself', () => {
+    expect(() => parseYaml('__proto__:\n  polluted: true\n')).toThrow(YamlError);
+    expect(() => parseYaml('{ __proto__: { polluted: true } }')).toThrow(YamlError);
+    const parsed = parseYaml('a: 1\n') as Record<string, unknown>;
+    expect(parsed.polluted).toBeUndefined();
+  });
+
+  it('stops before nesting takes the stack down', () => {
+    const deepBlock = Array.from({ length: 200 }, (_, i) => `${' '.repeat(i)}k:`).join('\n');
+    expect(() => parseYaml(`${deepBlock} v\n`)).toThrow(/nested deeper/);
+    expect(() => parseYaml(`${'['.repeat(200)}${']'.repeat(200)}`)).toThrow(/nested deeper/);
+    // Real files are nowhere near the limit.
+    const shallow = Array.from({ length: 20 }, (_, i) => `${' '.repeat(i)}k:`).join('\n');
+    expect(parseYaml(`${shallow} v\n`)).toBeTruthy();
+  });
+
   it('says where the text stops making sense', () => {
     expect(() => parseYaml('a: [1, 2')).toThrow(YamlError);
     expect(() => parseYaml('a: [1, 2')).toThrow(/line 1: unclosed \[/);

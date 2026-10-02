@@ -202,6 +202,57 @@ describe('a repository as storage', () => {
     expect(await adapter.check()).toEqual({ ok: true, rateLimitRemaining: '4999' });
   });
 
+  it('refuses an id that could step out of the data directory, before any request', async () => {
+    const adapter = new GitHubAdapter(CONFIG);
+    for (const id of ['../../../../user#', 'a/b', 'mine?x=1', 'mine#', 'index', '']) {
+      await expect(adapter.get('layouts', id)).rejects.toThrow('invalid document id');
+      await expect(adapter.put('layouts', id, { name: 'x' })).rejects.toThrow(
+        'invalid document id',
+      );
+      await expect(adapter.delete('layouts', id)).rejects.toThrow('invalid document id');
+    }
+    expect(calls).toEqual([]);
+  });
+
+  it('encodes every path segment, so a directory or branch name cannot add one', async () => {
+    const adapter = new GitHubAdapter({ ...CONFIG, path: 'my data/ü', branch: 'feature/x#1' });
+    await adapter.get('layouts', 'mine');
+    expect(calls[0].url).toBe(
+      'https://api.github.com/repos/you/data/contents/my%20data/%C3%BC/layouts/mine.json?ref=feature%2Fx%231',
+    );
+  });
+
+  it('refuses a repository or directory that is not a plain path', async () => {
+    for (const repo of ['you', 'you/data/x', 'you/..', '../data', 'you/data?x']) {
+      const adapter = new GitHubAdapter({ ...CONFIG, repo });
+      await expect(adapter.list('layouts')).rejects.toThrow('invalid repository name');
+      expect(await adapter.check()).toEqual({ ok: false, error: 'could not reach GitHub' });
+    }
+    const adapter = new GitHubAdapter({ ...CONFIG, path: 'data/../..' });
+    await expect(adapter.list('layouts')).rejects.toThrow('invalid repository path');
+    expect(calls).toEqual([]);
+  });
+
+  it('drops index rows that are not index rows, including ids that are not ids', async () => {
+    const rows = [
+      { id: 'mine', name: 'Mine', updatedAt: '2026-01-01T00:00:00Z' },
+      { id: '../../../user', name: 'Evil', updatedAt: '2026-01-01T00:00:00Z' },
+      { id: 'index', name: 'Index', updatedAt: '2026-01-01T00:00:00Z' },
+      { id: 'noname', updatedAt: '2026-01-01T00:00:00Z' },
+      'not a row',
+      null,
+    ];
+    responder = () => json(200, { content: b64(JSON.stringify(rows)), sha: 'abc' });
+    const adapter = new GitHubAdapter(CONFIG);
+    expect((await adapter.list('layouts')).map((e) => e.id)).toEqual(['mine']);
+  });
+
+  it('reports a response that is not a file instead of crashing on it', async () => {
+    responder = () => json(200, [{ name: 'a directory listing' }]);
+    const adapter = new GitHubAdapter(CONFIG);
+    await expect(adapter.get('layouts', 'mine')).rejects.toThrow('something other than a file');
+  });
+
   it('never puts the token anywhere but the authorization header', async () => {
     responder = (call) =>
       call.method === 'GET' ? json(404, {}) : json(201, { content: { sha: 's' } });

@@ -72,6 +72,25 @@ function slugWords(name: string): string {
   );
 }
 
+/** What `slug` and the random suffix can produce: ASCII letters, digits, dashes and underscores. */
+export const ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+
+/** `index` is the collection's own index file, so no document may go by it. */
+const RESERVED_IDS: ReadonlySet<string> = new Set(['index']);
+
+/**
+ * Whether `id` may name a document. Ids arrive from links and from a shared repository's index,
+ * and an adapter turns one into a path, so anything that is not a plain word is refused first.
+ */
+export function isDocumentId(id: string): boolean {
+  return ID_PATTERN.test(id) && !RESERVED_IDS.has(id.toLowerCase());
+}
+
+/** The adapters' guard: an id that could not have been made here never reaches a path. */
+export function assertDocumentId(id: string): void {
+  if (!isDocumentId(id)) throw new Error('invalid document id');
+}
+
 /** Document ids: lowercase ASCII words joined by dashes. */
 export function slug(name: string): string {
   const s = slugWords(name);
@@ -86,7 +105,7 @@ export function slug(name: string): string {
 export function freeId(name: string, taken: ReadonlySet<string>): string {
   const base = slug(name);
   let id = base;
-  for (let n = 2; taken.has(id); n++) id = `${base}-${n}`;
+  for (let n = 2; taken.has(id) || RESERVED_IDS.has(id); n++) id = `${base}-${n}`;
   return id;
 }
 
@@ -97,6 +116,8 @@ export function freeId(name: string, taken: ReadonlySet<string>): string {
  * letters or digits to slug keeps the id it has, as `slug` would make up a new one at every save.
  */
 export function idForName(name: string, currentId: string, taken: ReadonlySet<string>): string {
+  // An id that could not have been made here came in from a link; the document gets a real one.
+  if (!isDocumentId(currentId)) return freeId(name, taken);
   const base = slugWords(name);
   if (base === '' || currentId === base) return currentId;
   const numbered =

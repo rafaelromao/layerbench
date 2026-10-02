@@ -21,7 +21,13 @@ function base64UrlToBytes(blob: string): Uint8Array {
   return out;
 }
 
-async function collect(stream: ReadableStream<Uint8Array>): Promise<Uint8Array> {
+/**
+ * More than any layout document comes to. Deflate reaches a thousand to one, so a link of a few
+ * kilobytes could otherwise unpack into hundreds of megabytes before the JSON is even looked at.
+ */
+export const MAX_INLINE_BYTES = 2_000_000;
+
+async function collect(stream: ReadableStream<Uint8Array>, max = Infinity): Promise<Uint8Array> {
   const chunks: Uint8Array[] = [];
   let total = 0;
   const reader = stream.getReader();
@@ -30,6 +36,10 @@ async function collect(stream: ReadableStream<Uint8Array>): Promise<Uint8Array> 
     if (done) break;
     chunks.push(value);
     total += value.length;
+    if (total > max) {
+      await reader.cancel().catch(() => {});
+      throw new Error('inline layout too large');
+    }
   }
   const out = new Uint8Array(total);
   let at = 0;
@@ -50,7 +60,7 @@ async function pipe(data: Uint8Array, transform: 'deflate' | 'inflate'): Promise
     .write(data as unknown as BufferSource)
     .then(() => writer.close())
     .catch(() => {});
-  const out = await collect(cs.readable);
+  const out = await collect(cs.readable, transform === 'inflate' ? MAX_INLINE_BYTES : Infinity);
   await written;
   return out;
 }

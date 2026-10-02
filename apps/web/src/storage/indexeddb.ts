@@ -1,4 +1,5 @@
 import {
+  assertDocumentId,
   type Collection,
   documentPath,
   type IndexEntry,
@@ -76,6 +77,7 @@ export class IndexedDbAdapter implements StorageAdapter {
     collection: Collection,
     id: string,
   ): Promise<{ doc: JsonObject; meta: StorageMeta } | null> {
+    assertDocumentId(id);
     const db = await this.conn();
     const stored = (await db.get(collection, id)) as StoredDoc | undefined;
     if (!stored) return null;
@@ -91,6 +93,7 @@ export class IndexedDbAdapter implements StorageAdapter {
     doc: JsonObject,
     opts: { expectedSha?: string; message?: string } = {},
   ): Promise<StorageMeta> {
+    assertDocumentId(id);
     const db = await this.conn();
     const json = JSON.stringify(doc);
     const sha = await sha1Hex(json);
@@ -118,6 +121,7 @@ export class IndexedDbAdapter implements StorageAdapter {
   }
 
   async delete(collection: Collection, id: string): Promise<void> {
+    assertDocumentId(id);
     const db = await this.conn();
     const tx = db.transaction([collection, INDEX_STORE], 'readwrite');
     await tx.objectStore(collection).delete(id);

@@ -12,7 +12,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { normalizeText, words as splitWords } from '@layoutmaster/core/corpus';
+import { normalizeText, scrubContacts, words as splitWords } from '@layoutmaster/core/corpus';
 import { languageKeep } from '@layoutmaster/core/lang';
 
 const MAX_SAMPLE_BYTES = 1_000_000;
@@ -77,8 +77,9 @@ const SAMPLE_TEXT_CLASS = 'letters+digits+symbols';
 
 function build(id: string, meta: Source, previous?: Manifest): Manifest {
   const raw = readFileSync(join(RAW_DIR, meta.file), 'utf8');
+  // News text quotes people's phone numbers and addresses; the sample keeps their shape only.
   const sample = cap(
-    normalizeText(raw, {
+    normalizeText(scrubContacts(raw), {
       caseMode: 'model',
       textClass: SAMPLE_TEXT_CLASS,
       keepAlso: languageKeep(meta.language),

@@ -1,9 +1,11 @@
 import {
+  assertDocumentId,
   type Collection,
   documentPath,
   type IndexEntry,
   indexPath,
   indexSummary,
+  isDocumentId,
   type JsonObject,
   type StorageAdapter,
   StorageConflictError,
@@ -11,6 +13,42 @@ import {
 } from '@layoutmaster/core';
 
 const API = 'https://api.github.com';
+
+/** `owner/name`, each a plain name: nothing that could step out of the repository's path. */
+const REPO_SEGMENT = /^(?!\.{1,2}$)[A-Za-z0-9_.-]+$/;
+
+function isRepoName(repo: string): boolean {
+  const parts = repo.split('/');
+  return parts.length === 2 && parts.every((p) => REPO_SEGMENT.test(p));
+}
+
+/** A path inside the repository, as path segments; `.` and `..` have no business in one. */
+function pathSegments(path: string): string[] {
+  const segments = path.split('/').filter((s) => s !== '');
+  if (segments.some((s) => s === '.' || s === '..')) throw new Error('invalid repository path');
+  return segments;
+}
+
+function isIndexEntry(value: unknown): value is IndexEntry {
+  if (!value || typeof value !== 'object') return false;
+  const o = value as Record<string, unknown>;
+  return (
+    typeof o.id === 'string' &&
+    isDocumentId(o.id) &&
+    typeof o.name === 'string' &&
+    typeof o.updatedAt === 'string'
+  );
+}
+
+/** The rows of an index file that are what an index row should be; anything else is dropped. */
+function readIndex(text: string): IndexEntry[] {
+  try {
+    const parsed: unknown = JSON.parse(text);
+    return Array.isArray(parsed) ? parsed.filter(isIndexEntry) : [];
+  } catch {
+    return [];
+  }
+}
 
 export interface GitHubConfig {
   /** Personal access token with read and write on the data repository's contents. */
@@ -54,12 +92,19 @@ export class GitHubAdapter implements StorageAdapter {
 
   constructor(private readonly config: GitHubConfig) {}
 
+  /**
+   * Every segment is encoded on its own, so nothing in a directory name, an id or a branch can
+   * add a segment, a query or a fragment of its own. Ids are also checked before they get here.
+   */
   private url(path: string): string {
-    const prefix = this.config.path.replace(/^\/+|\/+$/g, '');
-    const full = prefix ? `${prefix}/${path}` : path;
-    return `${API}/repos/${this.config.repo}/contents/${encodeURI(full)}?ref=${encodeURIComponent(
-      this.config.branch,
-    )}`;
+    const segments = [...pathSegments(this.config.path), ...pathSegments(path)];
+    const encoded = segments.map(encodeURIComponent).join('/');
+    return `${this.repoUrl()}/contents/${encoded}?ref=${encodeURIComponent(this.config.branch)}`;
+  }
+
+  private repoUrl(): string {
+    if (!isRepoName(this.config.repo)) throw new Error('invalid repository name');
+    return `${API}/repos/${this.config.repo}`;
   }
 
   private headers(extra: Record<string, string> = {}): HeadersInit {
@@ -83,7 +128,10 @@ export class GitHubAdapter implements StorageAdapter {
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(`GitHub responded ${res.status}`);
 
-    const data = (await res.json()) as { content: string; sha: string };
+    const data = (await res.json()) as { content?: unknown; sha?: unknown };
+    if (typeof data.content !== 'string' || typeof data.sha !== 'string') {
+      throw new Error('GitHub returned something other than a file');
+    }
     const content = decodeBase64(data.content);
     this.cache.set(path, { content, sha: data.sha, etag: res.headers.get('etag') });
     return { content, sha: data.sha };
@@ -139,15 +187,7 @@ export class GitHubAdapter implements StorageAdapter {
     const path = indexPath(collection);
     const existing = await this.readFile(path);
     // A missing or unreadable index is rebuilt rather than allowed to break the write.
-    let current: IndexEntry[] = [];
-    if (existing) {
-      try {
-        const parsed = JSON.parse(existing.content);
-        if (Array.isArray(parsed)) current = parsed as IndexEntry[];
-      } catch {
-        current = [];
-      }
-    }
+    const current = existing ? readIndex(existing.content) : [];
     const next = current.filter((e) => e.id !== id);
     if (entry) next.push(entry);
     next.sort((a, b) => a.name.localeCompare(b.name));
@@ -156,19 +196,14 @@ export class GitHubAdapter implements StorageAdapter {
 
   async list(collection: Collection): Promise<IndexEntry[]> {
     const file = await this.readFile(indexPath(collection));
-    if (!file) return [];
-    try {
-      const parsed = JSON.parse(file.content);
-      return Array.isArray(parsed) ? (parsed as IndexEntry[]) : [];
-    } catch {
-      return [];
-    }
+    return file ? readIndex(file.content) : [];
   }
 
   async get(
     collection: Collection,
     id: string,
   ): Promise<{ doc: JsonObject; meta: StorageMeta } | null> {
+    assertDocumentId(id);
     const path = documentPath(collection, id);
     const file = await this.readFile(path);
     if (!file) return null;
@@ -181,6 +216,7 @@ export class GitHubAdapter implements StorageAdapter {
     doc: JsonObject,
     opts: { expectedSha?: string; message?: string } = {},
   ): Promise<StorageMeta> {
+    assertDocumentId(id);
     const path = documentPath(collection, id);
     const message = opts.message ?? `Save ${collection} ${(doc.name as string) ?? id}`;
     const sha = opts.expectedSha ?? (await this.readFile(path))?.sha;
@@ -191,6 +227,7 @@ export class GitHubAdapter implements StorageAdapter {
   }
 
   async delete(collection: Collection, id: string, opts: { message?: string } = {}): Promise<void> {
+    assertDocumentId(id);
     const path = documentPath(collection, id);
     const message = opts.message ?? `Delete ${collection} ${id}`;
     const file = await this.readFile(path);
@@ -203,7 +240,7 @@ export class GitHubAdapter implements StorageAdapter {
     { ok: true; rateLimitRemaining: string | null } | { ok: false; error: string }
   > {
     try {
-      const res = await fetch(`${API}/repos/${this.config.repo}`, { headers: this.headers() });
+      const res = await fetch(this.repoUrl(), { headers: this.headers() });
       if (res.status === 401) return { ok: false, error: 'the token was rejected' };
       if (res.status === 403)
         return { ok: false, error: 'the token lacks access to that repository' };

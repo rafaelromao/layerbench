@@ -67,9 +67,13 @@ interface Props {
   str: boolean;
 }
 
+/** Deeper than any keymap nests; a recursive reader must stop before the stack does. */
+const MAX_DEPTH = 64;
+
 class Reader {
   private readonly s: string;
   private i = 0;
+  private depth = 0;
   private readonly anchors = new Map<string, unknown>();
 
   constructor(source: string) {
@@ -94,6 +98,20 @@ class Reader {
 
   private fail(message: string, at = this.i): never {
     throw new YamlError(message, this.line(at));
+  }
+
+  private enter(): void {
+    if (++this.depth > MAX_DEPTH) this.fail(`nested deeper than ${MAX_DEPTH} levels`);
+  }
+
+  private leave(): void {
+    this.depth--;
+  }
+
+  /** `__proto__` as a key would change what the mapping is, not what it holds. */
+  private checkKey(key: string): string {
+    if (key === '__proto__') this.fail('`__proto__` is not a valid key');
+    return key;
   }
 
   /**
@@ -257,6 +275,7 @@ class Reader {
 
   /** A node that starts at the cursor, inside a parent at `parent` indentation. */
   private nodeAt(parent: number): unknown {
+    this.enter();
     const props = this.props();
     let value: unknown;
     if (this.restOfLineEmpty()) {
@@ -271,6 +290,7 @@ class Reader {
       value = this.inline(parent, props.str);
     }
     if (props.anchor) this.anchors.set(props.anchor, value);
+    this.leave();
     return value;
   }
 
@@ -296,7 +316,7 @@ class Reader {
       const c = this.nextContent();
       if (c !== col || this.isDash() || this.atMarker()) return map;
       if (this.peek() === '?') this.fail('explicit `?` keys are not supported');
-      const key = this.key();
+      const key = this.checkKey(this.key());
       const props = this.props();
       let value: unknown;
       if (this.restOfLineEmpty()) {
@@ -446,6 +466,7 @@ class Reader {
   }
 
   private flow(): unknown {
+    this.enter();
     const open = this.peek();
     const close = open === '[' ? ']' : '}';
     const start = this.i;
@@ -465,9 +486,9 @@ class Reader {
         this.i++;
         this.flowSpace();
         const value = this.peek() === ',' || this.peek() === close ? null : this.flowNode(close);
-        if (open === '{') map[String(first)] = value;
-        else seq.push({ [String(first)]: value });
-      } else if (open === '{') map[String(first)] = null;
+        if (open === '{') map[this.checkKey(String(first))] = value;
+        else seq.push({ [this.checkKey(String(first))]: value });
+      } else if (open === '{') map[this.checkKey(String(first))] = null;
       else seq.push(first);
       this.flowSpace();
       if (this.peek() === ',') {
@@ -481,6 +502,7 @@ class Reader {
       if (this.i >= this.s.length) this.fail(`unclosed ${open}`, start);
       this.fail(`expected \`,\` or \`${close}\` in a flow collection`);
     }
+    this.leave();
     return open === '[' ? seq : map;
   }
 

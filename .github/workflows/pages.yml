@@ -29,6 +29,11 @@ jobs:
       # In the app the page links to views on its own origin; on Pages those links must name it.
       - run: |
           test -n "$APP_ORIGIN" || { echo "Set the APP_ORIGIN repository variable first."; exit 1; }
+          # The value becomes part of a sed program below, so it must be an origin and nothing more.
+          case "$APP_ORIGIN" in
+            https://[A-Za-z0-9.-]*) ;;
+            *) echo "APP_ORIGIN must be an https origin such as https://app.example.com"; exit 1 ;;
+          esac
           cp -R docs/site _site
           sed -E -i "s#href=\"/(library|analyze|edit|compare|rules|corpus|guide)#href=\"$APP_ORIGIN/\1#g" _site/index.html
       - uses: actions/upload-pages-artifact@v5

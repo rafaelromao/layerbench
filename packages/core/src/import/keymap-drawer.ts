@@ -121,11 +121,20 @@ function flatten(value: unknown): unknown[] {
   return value.flatMap((v) => (Array.isArray(v) ? v : [v]));
 }
 
+/**
+ * More keys than any keyboard has. A file is the user's own, but a mistyped or hostile one must
+ * not have the tab build a board of a billion keys before anything else is checked.
+ */
+export const MAX_KEYS = 10_000;
+
 function readOrtho(o: Record<string, unknown>): KdOrtho {
   const rows = Number(o.rows);
   const columns = Number(o.columns);
   if (!Number.isInteger(rows) || !Number.isInteger(columns) || rows < 1 || columns < 1) {
     throw new KeymapDrawerError('ortho_layout needs whole numbers of rows and columns');
+  }
+  if (rows * columns > MAX_KEYS) {
+    throw new KeymapDrawerError(`ortho_layout has more than ${MAX_KEYS} keys`);
   }
   const thumbs = o.thumbs ?? 0;
   if (!(thumbs === 'MIT' || thumbs === '2x2u' || Number.isInteger(thumbs))) {
@@ -174,10 +183,15 @@ export function readKeymapDrawer(source: string): KdDocument {
   if (!o.layers || typeof o.layers !== 'object' || Array.isArray(o.layers)) {
     throw new KeymapDrawerError('not a keymap-drawer file: there is no `layers` mapping');
   }
-  const layers = Object.entries(o.layers as Record<string, unknown>).map(([name, keys]) => ({
-    name,
-    keys: flatten(keys).map(readKey),
-  }));
+  const layers: KdDocument['layers'] = [];
+  let total = 0;
+  for (const [name, keys] of Object.entries(o.layers as Record<string, unknown>)) {
+    const flat = flatten(keys);
+    // Aliases let a few lines of YAML stand for any number of keys; the count is what matters.
+    total += flat.length;
+    if (total > MAX_KEYS) throw new KeymapDrawerError(`the layers have more than ${MAX_KEYS} keys`);
+    layers.push({ name, keys: flat.map(readKey) });
+  }
   if (layers.length === 0) throw new KeymapDrawerError('the file has no layers');
   const combos: KdCombo[] = [];
   for (const c of Array.isArray(o.combos) ? o.combos : []) {

@@ -1,4 +1,10 @@
-import { FEATURE_KINDS, type FeatureKind, isFeatureKind, type TextClass } from '@layoutmaster/core';
+import {
+  FEATURE_KINDS,
+  type FeatureKind,
+  isDocumentId,
+  isFeatureKind,
+  type TextClass,
+} from '@layoutmaster/core';
 import { PRESET_IDS } from '@layoutmaster/core/rules';
 
 /**
@@ -106,7 +112,9 @@ function validFeatures(v: string | undefined): FeatureKind[] {
 
 function validPreset(v: string | undefined): string {
   if (v === undefined) return DEFAULT_PARAMS.preset;
-  if (v.startsWith('saved:')) return v;
+  if (v.startsWith('saved:')) {
+    return isDocumentId(v.slice('saved:'.length)) ? v : DEFAULT_PARAMS.preset;
+  }
   return (PRESET_IDS as readonly string[]).includes(v) ? v : DEFAULT_PARAMS.preset;
 }
 
@@ -176,7 +184,11 @@ export interface LayoutRef {
 
 export function parseLayoutRef(ref: string): LayoutRef {
   if (ref.startsWith('inline:')) return { kind: 'inline', value: ref.slice('inline:'.length) };
-  if (ref.startsWith('saved:')) return { kind: 'saved', value: ref.slice('saved:'.length) };
+  if (ref.startsWith('saved:')) {
+    const id = ref.slice('saved:'.length);
+    // A saved id is a word; anything else in a link is left to be "not found".
+    if (isDocumentId(id)) return { kind: 'saved', value: id };
+  }
   return { kind: 'bundled', value: ref };
 }
 

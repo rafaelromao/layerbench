@@ -15,6 +15,8 @@ import {
   exportKeymapDrawer,
   importKeymapDrawer,
   type KdKey,
+  KeymapDrawerError,
+  MAX_KEYS,
   orthoKeys,
   presetOrder,
   presetsWithKeys,
@@ -507,5 +509,21 @@ describe('writing a file', () => {
     // and one with no default as a key to replace, not as a key that types ✦.
     expect(back.LTR).toEqual({ kind: 'kp', symbol: 'h' });
     expect(back.LTI).toMatchObject({ kind: 'raw', label: '✦' });
+  });
+});
+
+describe('bounds on what a file may ask for', () => {
+  it('refuses an ortho grid of more keys than any keyboard has', () => {
+    const yaml = 'layout: { ortho_layout: { rows: 1000, columns: 1000 } }\nlayers:\n  base: [a]\n';
+    expect(() => readKeymapDrawer(yaml)).toThrow(KeymapDrawerError);
+    expect(() => readKeymapDrawer(yaml)).toThrow(/more than/);
+  });
+
+  it('refuses layers that alias a row into more keys than any keyboard has', () => {
+    const row = `row: &r [${Array.from({ length: 100 }, () => 'a').join(', ')}]`;
+    const layer = `[${Array.from({ length: 100 }, () => '*r').join(', ')}]`;
+    const layers = Array.from({ length: 2 }, (_, i) => `  l${i}: ${layer}`).join('\n');
+    const yaml = `${row}\nlayers:\n${layers}\n`;
+    expect(() => readKeymapDrawer(yaml)).toThrow(new RegExp(`more than ${MAX_KEYS} keys`));
   });
 });

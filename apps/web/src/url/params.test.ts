@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_PARAMS, ENGLISH_CORPUS, parseParams, toQueryString, toSearch } from './params.js';
+import {
+  DEFAULT_PARAMS,
+  ENGLISH_CORPUS,
+  parseLayoutRef,
+  parseParams,
+  toQueryString,
+  toSearch,
+} from './params.js';
 
 describe('analysis parameters', () => {
   it('falls back to defaults for an empty query', () => {
@@ -23,6 +30,19 @@ describe('analysis parameters', () => {
     expect(parseParams({ rules: 'nonsense' }).preset).toBe('layouts_doc');
     expect(parseParams({ rules: 'saved:mine' }).preset).toBe('saved:mine');
     expect(parseParams({ rules: 'cyanophage' }).preset).toBe('cyanophage');
+    // A saved id is a word; a link cannot name a path.
+    expect(parseParams({ rules: 'saved:../../x' }).preset).toBe('layouts_doc');
+  });
+
+  it('reads a saved layout reference only when its id is one storage could have made', () => {
+    expect(parseLayoutRef('saved:mine')).toEqual({ kind: 'saved', value: 'mine' });
+    expect(parseLayoutRef('saved:../../../../user#')).toEqual({
+      kind: 'bundled',
+      value: 'saved:../../../../user#',
+    });
+    expect(parseLayoutRef('saved:index')).toEqual({ kind: 'bundled', value: 'saved:index' });
+    expect(parseLayoutRef('inline:abc')).toEqual({ kind: 'inline', value: 'abc' });
+    expect(parseLayoutRef('qwerty')).toEqual({ kind: 'bundled', value: 'qwerty' });
   });
 
   it('opens the corpus that replaced the one an older link names', () => {
