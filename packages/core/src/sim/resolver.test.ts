@@ -209,3 +209,42 @@ describe('the cheapest way to type a character', () => {
     expect(far.keys).toEqual(['R0', 'LHM', 'RHI']);
   });
 });
+
+describe('the kind of key a press is, in the statistics', () => {
+  it('counts a magic key on the tap of a tap-hold among the adaptive presses', () => {
+    const magic = {
+      kind: 'adaptive' as const,
+      default: { kind: 'kp' as const, symbol: 'h' },
+      triggers: [{ afterAny: ['a'], binding: { kind: 'kp' as const, symbol: 'v' } }],
+    };
+    const layout: Layout = {
+      format: 'layoutmaster/layout@1',
+      name: 'Held magic',
+      hostLocale: 'symbols',
+      geometry: { preset: '3x5+2' },
+      keys: { space: 'L0' },
+      layers: [
+        {
+          id: 'base',
+          bindings: {
+            L0: { kind: 'kp', symbol: ' ' },
+            LHM: { kind: 'kp', symbol: 'a' },
+            LHR: { kind: 'hold_tap', tap: magic, hold: { kind: 'mod', mod: 'LGUI' } },
+          },
+        },
+      ],
+    };
+    // h from the default, then v from the branch after a.
+    const compiled = compileLayout(layout);
+    const sim = simulate(compiled, normalizeText('ha av', { caseMode: 'fold' }), opts);
+    expect(sim.tables.stats.adaptive_presses).toBe(2);
+    expect(sim.tables.stats.adaptive_trigger_hits).toBe(2);
+    // One logical key per legend it typed, both of them the magic key they are.
+    const lhr = compiled.keyIndex.get('LHR');
+    const atKey = sim.tables.registry.all().filter((k) => k.pos === lhr);
+    expect(atKey.map((k) => [k.label, k.keyKind])).toEqual([
+      ['h', 'magic'],
+      ['v', 'magic'],
+    ]);
+  });
+});

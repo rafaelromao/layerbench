@@ -139,6 +139,8 @@ Rules are `where` expressions over an n-gram (`all`, `any`, `none` combinators).
 
 `same_hand`, `same_finger`, `same_key`, `adjacent_fingers`, `rank_delta` (finger distance in columns, `eq`/`min`), `row_delta` (`abs`, `abs_min`), `x_distance` (`min`, in U), `direction` (`inward` / `outward`), `monotone`, `changes_direction`, `hand_pattern` (`"aba"`, `"aab"`, `"aaa"`…), `finger_name`, `includes_finger_name`, `finger_name_pair`, `row`, `key_kind` (`alpha`, `layer_tap`, `shift`, `space`, `repeat`, `magic`, `combo`, `hold`), `is_inner` / `any_inner`, `is_thumb` / `any_thumb`, `is_chord`, `finger_height_preference: violated`. Numeric thresholds may reference rule-set globals as `"$global.name"`.
 
+A press's `key_kind` is the kind of key it reaches: past a tap-hold to its tap, past a morph to the arm the modifiers or layers choose, past a tap dance to the tap it ran, and past a layer-tap that is tapped. So a magic key on the tap of a tap-hold is `magic`, as its legend on the board says, a tap-hold whose tap repeats is `repeat`, and an alt repeat is `magic` whichever branch it takes. Any key held down is `hold`, and a press that types a space is `space`.
+
 Aggregates: `percent_of_ngrams`, `percent_of_keystrokes`, `count`, `per100`, `sum_distance`, `mean_distance`, `per_finger`, `per_hand`, `per_layer`, `per_row`, `per_col`, `weighted_sum`, `ratio`, `histogram`, `top_strings`.
 
 ## Differences from the Elixir implementation

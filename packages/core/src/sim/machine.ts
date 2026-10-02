@@ -137,6 +137,14 @@ export class MachineState {
   }
 }
 
+/** Bindings that only choose which of their arms a press runs: what the press is, is that arm. */
+const ARM_CHOOSERS: ReadonlySet<BindingKind> = new Set([
+  'hold_tap',
+  'mod_morph',
+  'layer_morph',
+  'tap_dance',
+]);
+
 interface ExecContext {
   mode: 'tap' | 'hold';
   pos: number;
@@ -144,7 +152,10 @@ interface ExecContext {
   out: string[];
   /** Binding kind that produced the outcome (innermost executed). */
   leaf: BindingKind;
-  /** Outermost binding kind on the resolved layer (for display classification). */
+  /**
+   * The binding the press reached, past the ones that only choose an arm (`ARM_CHOOSERS`, and a
+   * layer-tap tapped): what classifies the key, as the legend does.
+   */
   outer: BindingKind | null;
   emittedKeycode: boolean;
   modifierPress: boolean;
@@ -473,7 +484,10 @@ export class Machine {
 
   run(b: Binding, ctx: ExecContext): void {
     if (ctx.depth > 24) return;
-    if (ctx.outer === null) ctx.outer = b.kind;
+    // A press is the kind of key its arm is, past the bindings that only choose an arm: a magic key
+    // on a tap-hold's tap is a magic key, as its legend says. A layer-tap tapped is its tap.
+    const choosesArm = ARM_CHOOSERS.has(b.kind) || (b.kind === 'lt' && ctx.mode === 'tap');
+    if (ctx.outer === null && !choosesArm) ctx.outer = b.kind;
     const tag = (b as { tag?: string }).tag;
     if (tag !== undefined) ctx.tag = tag;
     ctx.depth++;
