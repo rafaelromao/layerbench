@@ -255,6 +255,51 @@ describe('Edit', () => {
     expect(await storage.get('layouts', 'qwerty-copy')).toBeNull();
   }, 60_000);
 
+  it('opens a stored layout with nothing unsaved in Analyze as it is stored', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    await seed(storage, 'qwerty', 'mine', { name: 'Mine' });
+    const { currentPath, currentSearch } = renderRoute(
+      '/edit?layout=saved%3Amine&corpus=en-conv&sample=20000',
+      { storage },
+    );
+    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+    await user.click(within(bar()).getByRole('button', { name: 'Analyze' }));
+    await waitFor(() => expect(currentPath()).toBe('/analyze'));
+    expect(currentSearch()).toContain('layout=saved%3Amine');
+  }, 60_000);
+
+  it('saves edits brought back from Analyze as the layout they are edits of, not a copy', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    await seed(storage, 'qwerty', 'qwerty-copy', { name: 'Qwerty copy' });
+    const { currentPath, currentSearch } = renderRoute(
+      '/edit?layout=saved%3Aqwerty-copy&corpus=en-conv&sample=20000',
+      { storage },
+    );
+    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+    key('Key LHM: d').focus();
+    await user.keyboard('ç{Enter}');
+    await screen.findByRole('button', { name: 'Key LHM: ç' });
+
+    // Unsaved edits go to Analyze as a snapshot, and come back the same way.
+    await user.click(within(bar()).getByRole('button', { name: 'Analyze' }));
+    await waitFor(() => expect(currentPath()).toBe('/analyze'));
+    expect(currentSearch()).toContain('layout=inline');
+    const toolbar = document.getElementById('analyze-toolbar') as HTMLElement;
+    await user.click(within(toolbar).getByRole('link', { name: 'Edit' }));
+    await waitFor(() => expect(currentPath()).toBe('/edit'));
+    expect(await screen.findByRole('button', { name: 'Key LHM: ç' })).toBeInTheDocument();
+    expect(screen.getByText('unsaved')).toBeInTheDocument();
+
+    await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Saved Qwerty copy')).toBeInTheDocument();
+    await waitFor(() => expect(currentSearch()).toContain('layout=saved%3Aqwerty-copy'));
+    // The stored layout has the edit, and no copy was made beside it.
+    expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['qwerty-copy']);
+    expect(JSON.stringify((await storage.get('layouts', 'qwerty-copy'))?.doc)).toContain('ç');
+  }, 90_000);
+
   it('saves a layout for the first time beside a saved one of the same name, not over it', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();

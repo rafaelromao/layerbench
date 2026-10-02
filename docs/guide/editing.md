@@ -12,7 +12,9 @@ Every change is kept as you make it, so there is nothing to apply. **Undo** and 
 the layer tabs, step back and forth through your changes. **Save**, beside the layout's name at
 the top, keeps it in **Library**, and until then the name is marked *unsaved*. A layout's link
 follows its name: rename one already in **Library** and save it, and it moves to a link of its new
-name, so a link to it from before no longer opens it.
+name, so a link to it from before no longer opens it. **Analyze**, beside **Save**, takes unsaved
+edits along; brought back with **Edit**, they are still unsaved edits of the same layout, and
+saving them saves it rather than a copy beside it.
 
 The bar at the top also holds the layout's author and description, and the choices the numbers
 under the board are worked out with: **Corpus**, **Rules**, **Counts**, the feature switches,

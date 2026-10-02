@@ -46,9 +46,10 @@ export interface EditState {
   dirty: boolean;
   /**
    * The layout as it was opened or last saved. Undo can come back to it, which is no longer an
-   * unsaved change, and an edit made while a save was on its way is still one.
+   * unsaved change, and an edit made while a save was on its way is still one. Null for edits that
+   * are unsaved from the start, brought back from Analyze, until they are saved.
    */
-  saved: Layout;
+  saved: Layout | null;
   panel: Panel;
   error: string | null;
   behaviorsJson: string;

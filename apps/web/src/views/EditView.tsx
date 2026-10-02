@@ -23,6 +23,7 @@ import { useAnalysisClient } from '../engine/client-context.js';
 import type { AnalyzeRequest, ProducerDTO, ReportDTO } from '../engine/protocol.js';
 import { useAnalysis } from '../engine/use-analysis.js';
 import { HELP, type HelpTopic } from '../guide/help.js';
+import { storedIdOf, useOrigins } from '../state/origins.js';
 import { useRememberSelection } from '../state/selection.js';
 import { toast } from '../state/toasts.js';
 import { useStorage } from '../storage/use-storage.js';
@@ -128,10 +129,14 @@ function Editor({
   storage,
   navigate,
 }: EditorProps) {
-  const [state, send] = useReducer(
-    undoableEditReducer,
-    initialUndoState(initialLayout, initialCompiled, params.layer),
-  );
+  const [state, send] = useReducer(undoableEditReducer, null, () => {
+    const start = initialUndoState(initialLayout, initialCompiled, params.layer);
+    // Edits of a stored layout, back from Analyze as a snapshot, are still unsaved: the layout
+    // stored is not this one yet.
+    const draft =
+      parseLayoutRef(params.layoutRef).kind === 'inline' && storedIdOf(params.layoutRef) !== null;
+    return draft ? { ...start, dirty: true, saved: null } : start;
+  });
   const keyboard = useRef<KeyboardHandle>(null);
   /** What to tell a screen reader: a key's changed legend is not announced on its own. */
   const [message, setMessage] = useState('');
@@ -251,6 +256,8 @@ function Editor({
   const save = useCallback(async () => {
     const layout = state.layout;
     const ref = parseLayoutRef(params.layoutRef);
+    // The stored layout this is: the one opened, or the one a snapshot from this tab was taken of.
+    const stored = storedIdOf(params.layoutRef);
     setSaving(true);
     try {
       // A layout's id follows its name. One opened from storage keeps its id while that still
@@ -258,18 +265,16 @@ function Editor({
       // from its name. Neither overwrites a saved layout whose name happens to slug the same.
       const taken = new Set((await storage.list('layouts')).map((e) => e.id));
       const id =
-        ref.kind === 'saved'
-          ? idForName(layout.name, ref.value, taken)
-          : freeId(layout.name, taken);
+        stored !== null ? idForName(layout.name, stored, taken) : freeId(layout.name, taken);
       await storage.put('layouts', id, toCanonicalJson({ ...layout, id }), {
         message: `Save layout ${layout.name}`,
       });
-      const moved = ref.kind === 'saved' && id !== ref.value;
+      const moved = stored !== null && id !== stored;
       let left = false;
       if (moved) {
         // Only once the new copy is safely stored does the old one go.
         try {
-          await storage.delete('layouts', ref.value, {
+          await storage.delete('layouts', stored, {
             message: `Rename layout to ${layout.name}`,
           });
         } catch {
@@ -301,10 +306,20 @@ function Editor({
     }
   }, [state.layout, params, storage, navigate]);
 
+  const remember = useOrigins((s) => s.remember);
   const openInAnalyzer = useCallback(async () => {
-    const blob = await encodeInline(state.layout);
-    navigate({ to: '/analyze', search: toSearch(params, { layoutRef: inlineRef(blob) }) as never });
-  }, [state.layout, params, navigate]);
+    // A stored layout with nothing unsaved opens there as it is stored. Edits go as a snapshot,
+    // and the tab remembers which stored layout they are edits of, so that when Analyze sends them
+    // back here, saving them saves that layout instead of a copy beside it.
+    if (parseLayoutRef(params.layoutRef).kind === 'saved' && !state.dirty) {
+      navigate({ to: '/analyze', search: toSearch(params) as never });
+      return;
+    }
+    const inline = inlineRef(await encodeInline(state.layout));
+    const stored = storedIdOf(params.layoutRef);
+    if (stored !== null) remember(inline, stored);
+    navigate({ to: '/analyze', search: toSearch(params, { layoutRef: inline }) as never });
+  }, [state.layout, state.dirty, params, navigate, remember]);
 
   const focusKey = useCallback((keyId: string) => keyboard.current?.focusKey(keyId), []);
   const undo = (redo: boolean) => {
