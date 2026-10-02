@@ -216,6 +216,27 @@ What moved, checked across all 38 reports:
   score and traced press is unchanged, and so is the order of every producer list.
 - **Nothing in the Romak 34 and Qwerty reports.**
 
+## Eighth re-baseline: layer keys named as on the key, and where each press was
+
+A key that reaches a layer is labelled the way the board draws it, `→A2` rather than `→Alpha 2`,
+so the lists under the board read like the board. Rule results also say on which layer each key
+was pressed: `per_layer_key` splits `per_key` by that layer for the heat map, `layers` gives the
+layer of each key of an item, and a pair that ends on a layer key lists, under `then`, the keys
+pressed right after it, which are what that key was pressed for.
+
+What moved, checked across all 38 reports:
+
+- **No rule value or band, statistic, n-gram total, run count, coverage entry or producer list.**
+- **The layer key's label, wherever it is written**: 26 registry entries, the typing traces that
+  press it, and the hand strings and items that contain it. `→Alpha 2` is the only one the fixtures
+  press.
+- **The order of `same_hand_strings` in 22 reports**, with the same members: it ranks strings by
+  count times their length in characters, and the layer key now counts three of them rather than
+  eight.
+- **The new fields**: `per_layer_key` on every result, `layers` on every n-gram and word item, and
+  `then` on the pairs that end on a layer key. They are asserted, and so is `per_key`, which was
+  written but not compared before.
+
 ## Not compared
 
 `elapsed_ms` and the structure hash. Everything else in a report file is asserted.

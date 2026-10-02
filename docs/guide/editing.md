@@ -14,10 +14,12 @@ the top, keeps it in **Library**, and until then the name is marked *unsaved*. A
 follows its name: rename one already in **Library** and save it, and it moves to a link of its new
 name, so a link to it from before no longer opens it.
 
-The bar at the top also holds the layout's author and description, and the **Corpus** and
-**Rules** the numbers under the board are worked out with. The editor starts on English news
-unless its link names another text; from **Library** it opens on the text and rules being ranked
-there.
+The bar at the top also holds the layout's author and description, and the choices the numbers
+under the board are worked out with: **Corpus**, **Rules**, **Counts**, the feature switches,
+**Include space** and **Model shift**, the same as in every view that analyzes. The editor starts
+on English news unless its link names another text; from **Library**, or from the menu, it opens on
+the choices made there. A feature switched off changes the numbers only: the keys are edited as
+written.
 
 ## Choosing what a key does
 
@@ -107,8 +109,9 @@ The **Layers** panel lists them in order, and does everything else with them:
 On any layer but the base, the keys you hold or tap to get there carry a ring in the layer's
 colour, and `held` or `tapped` along the bottom: the thumb held for Symbols, the one-shot key
 tapped for Alpha 2, the `ç` macro that turns on Ç extension, an alt repeat branch that arms a
-layer. They are found from the layout itself, so they change as you edit. Select one, or read the
-list under the board, to see where it is pressed and when.
+layer. They are found from the layout itself, so they change as you edit: give a key something else
+to do and it stops being marked, even where the layout names it as a way in. Select one, or read
+the list under the board, to see where it is pressed and when.
 
 ### Which layer wins
 

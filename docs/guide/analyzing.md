@@ -44,10 +44,13 @@ cannot type `ã` or `ç` are ranked after the ones that can.
 letter), the repeat key (doubled letters are tapped twice), typing combos, and macros that type two
 letters or more, such as `qu` or `ão`. A macro typing one letter, like Magic Romak's accents, is how
 the layout reaches that letter, and stays. What a feature typed is typed another way, or skipped if
-there is none. **Analyze** on a card opens the layout ranked the same way, and says so.
+there is none. **Analyze** on a card opens the layout ranked the same way, and says so, and **Edit**
+works its numbers out the same way.
 
-**Compare with**, in **Compare**, is the same set of switches for both layouts at once: each is
-typed and drawn without the features left unticked, and **Analyze A** opens A typed the same way.
+The same switches are in every view that analyzes. **Compare with**, in **Compare**, types and
+draws both layouts without the features left unticked, and **Analyze A** opens A typed the same
+way. **Analyze with**, in **Analyze** and in the editor, does it for the one layout. The editor
+still edits every key as written: only its numbers leave the features out.
 
 ### Changing the costs
 
@@ -68,6 +71,15 @@ listed under the field; tap one to stop on it, and **Play** to start again. Char
 cannot type at all are listed in red above the numbers. Each one breaks the word it is in, so a
 long list means the numbers understate the cost.
 
+### Heat
+
+**Heat** colours each key by its part of the work: how often it is pressed (**Usage**), its share of
+same-finger pairs (**SFB contribution**), of **Effort** or of **Finger travel**, or how often it is
+tapped to reach a layer (**Layer taps**). Each layer counts only what was pressed on it, on the key
+that typed it. The thumb tapped for Alpha 2 is warm on the layer it is tapped on, not on Alpha 2. A
+key that lets the layer below show through is warm on that layer, where the key that types is
+drawn.
+
 ### Combos
 
 Combos marked for typing are drawn as small pills between the keys pressed together, on the layers
@@ -78,15 +90,23 @@ are not drawn.
 ### Case and space
 
 By default capitals count as lower case and the space key is left out of the counts, as the
-Keyboard Layouts Doc does. **Model shift**, on **Analyze**, types capitals through the layout's
-shift key instead, and **Include space** keeps the space key in.
+Keyboard Layouts Doc does. **Model shift** types capitals through the layout's shift key instead,
+and **Include space** keeps the space key in. Both sit beside the feature switches. **Counts** says
+what of the text is counted: letters only, the default, or numbers and symbols as well.
 
 ### The text itself
 
 **Corpus** lists the texts that come with the app, by language, each with where it came from. Your
-own text can be pasted or uploaded there and analyzed like any other. **Sample size**, on
-**Analyze**, sets how much of the text is typed: more gives steadier numbers, less gives them
-sooner.
+own text can be pasted or uploaded there and analyzed like any other. **Sample**, on **Analyze**
+and **Compare**, sets how much of the text is typed: more gives steadier numbers, less gives them
+sooner. The Library and the editor type a quick 100,000 symbols at most.
+
+### The same choices in every view
+
+**Library**, **Analyze**, **Compare** and the editor share their choices: the corpus, the rules,
+what counts, the feature switches, space and shift. Change one in any of them and the menu carries
+it to the others, and so do **Rules** and **Corpus** when they open **Analyze** with a set or a
+text. A link still opens exactly what it names, and a new visit starts from its link.
 
 ## Every other number
 
@@ -101,8 +121,14 @@ Below the summary, the numbers are grouped by what they count:
 | Effort | Effort, and the words that take the most of it |
 | Layers | layer taps, one-shots, macros, combos and magic keys: what layers cost |
 
-A card's breakdown lists the key pairs or words behind its number, and selecting one outlines its
-keys on the board. The [metric glossary](../METRICS.md) defines every number.
+A card's breakdown lists the key pairs or words behind its number. Selecting one outlines its keys
+on the board and turns the board to the layer they are pressed on: `→A2ã`, the thumb for Alpha 2
+and then `ã`, shows Alpha 2. A layer key is named as on the board, `→A2` for the key tapped for
+Alpha 2 and `⇩Symb` for one held for Symbols. A pair that ends on one, such as `a→A2`, is
+underlined with dots, and selecting it also opens what that key was pressed for: the board of the
+layer it reaches, each key warm by its part of the pair, and the same as a list. Click a card
+anywhere else, or its `⤢`, to see it larger. The [metric glossary](../METRICS.md) defines every
+number.
 
 ### What the badges mean
 
