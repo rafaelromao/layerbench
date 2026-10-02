@@ -915,6 +915,10 @@ button.lm-drop-target.lm-drop-copy {
   max-width: 5rem;
 }
 
+.lm-items-large li button {
+  max-width: 12rem;
+}
+
 /* ------------------------------------------------------------------ the guide */
 
 /* 24px is WCAG 2.5.8's minimum target; on a touch screen it matches the close button beside it. */
