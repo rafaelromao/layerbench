@@ -12,6 +12,7 @@
       "!**/node_modules",
       "!packages/core/golden",
       "!packages/core/fixtures",
+      "!data",
       "!packages/corpora/raw",
       "!apps/web/public",
       "!tmp",
