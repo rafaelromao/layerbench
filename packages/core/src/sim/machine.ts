@@ -1,5 +1,6 @@
 import { composeDeadKey, hasShift, shiftSymbol, translateKeycode } from '../host/locale.js';
 import type { CompiledLayout } from '../layout/compile.js';
+import { short } from '../layout/labels.js';
 import type { AdaptiveTrigger, Binding, BindingKind, Mod } from '../layout/types.js';
 
 export type KeyKind =
@@ -731,7 +732,9 @@ function labelFor(
 ): string {
   const text = ctx.out.join('');
   if (text.length) return text === ' ' ? '␣' : text;
-  const layerName = (id: string) => compiled.layers[compiled.layerIndex.get(id) ?? 0]?.name ?? id;
+  // A layer key is named as the board draws it: Alpha 2 is A2.
+  const layerName = (id: string) =>
+    short(compiled.layers[compiled.layerIndex.get(id) ?? 0]?.name ?? id);
   const peel = (b: Binding): string => {
     switch (b.kind) {
       case 'sl':
