@@ -104,6 +104,34 @@ describe('rules engine', () => {
     expect(Object.keys(qwerty.results.find((x) => x.id === 'sfb')!.per_layer_key)).toEqual(['0']);
   });
 
+  it('says what a pair that ends on a layer key was pressed for, adding up to the pair', () => {
+    const ending = magic.results.flatMap((r) => r.items.filter((i) => i.then));
+    expect(ending.length).toBeGreaterThan(0);
+    for (const item of ending) {
+      const then = item.then!;
+      expect(
+        then.reduce((a, t) => a + t.share, 0),
+        item.label,
+      ).toBeCloseTo(1, 9);
+      expect(
+        then.reduce((a, t) => a + t.percent, 0),
+        item.label,
+      ).toBeCloseTo(item.percent!, 9);
+      const counts = then.map((t) => t.count);
+      expect(counts, item.label).toEqual([...counts].sort((a, b) => b - a));
+      // Only a pair whose last key brings a layer on has them.
+      expect(item.keys, item.label).toHaveLength(2);
+    }
+    // Magic Romak's thumb that reaches Alpha 2 is pressed for a key on Alpha 2.
+    const a2 = ending.find((i) => i.label.endsWith('→A2'));
+    expect(a2, 'a pair ending on the A2 thumb').toBeDefined();
+    expect(a2!.then![0].layer).toBe(1);
+    // A pair that starts on it already names the key it was pressed for.
+    const starting = magic.results.flatMap((r) => r.items.filter((i) => /^→A2./.test(i.label)));
+    expect(starting.length).toBeGreaterThan(0);
+    expect(starting.every((i) => i.then === undefined)).toBe(true);
+  });
+
   it('computes the in:out ratio after the other rules', () => {
     const expected = (qwerty.value('roll_in') as number) / (qwerty.value('roll_out') as number);
     expect(Math.abs((qwerty.value('in_out_ratio') as number) - expected)).toBeLessThan(1e-6);

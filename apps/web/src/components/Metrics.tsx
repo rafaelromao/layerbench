@@ -279,11 +279,15 @@ function MetricBody({
               <li key={`${item.label}-${i}`} className={`flex items-center gap-2 ${text}`}>
                 <button
                   type="button"
-                  title={item.label}
+                  title={
+                    item.then ? `${item.label}: what its last key was pressed for` : item.label
+                  }
+                  // A pair ending on a layer key opens what that key was pressed for.
+                  aria-haspopup={item.then ? 'dialog' : undefined}
                   onClick={() => onHighlightItem?.(result.id, i)}
                   className={`font-mono text-left ${large ? 'w-48 break-words' : 'w-16 truncate'} ${
-                    selectedItem === i ? 'text-primary font-bold' : ''
-                  }`}
+                    item.then ? 'underline decoration-dotted underline-offset-2' : ''
+                  } ${selectedItem === i ? 'text-primary font-bold' : ''}`}
                 >
                   {item.label}
                 </button>

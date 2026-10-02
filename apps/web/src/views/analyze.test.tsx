@@ -139,6 +139,36 @@ describe('Analyze', () => {
     expect(screen.getByRole('tab', { name: 'Alpha 2' })).toHaveAttribute('aria-selected', 'true');
   });
 
+  it('shows what a layer key ending a pair was pressed for when the pair is clicked', async () => {
+    const user = userEvent.setup();
+    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000');
+    await screen.findByText('Same finger bigrams');
+
+    // A pair whose last key is the thumb that reaches Alpha 2 opens a popup; others do not.
+    const rows = [...document.querySelectorAll<HTMLButtonElement>('.lm-items li button')];
+    const ending = rows.find((b) => b.getAttribute('aria-haspopup') === 'dialog');
+    expect(ending, 'a listed pair that ends on a layer key').toBeDefined();
+    expect(ending?.textContent).toMatch(/→A2$/);
+    expect(
+      rows
+        .filter((b) => /^→A2./.test(b.textContent ?? ''))
+        .every((b) => !b.hasAttribute('aria-haspopup')),
+    ).toBe(true);
+
+    await user.click(ending as HTMLButtonElement);
+    const dialog = await screen.findByRole('dialog', {
+      name: new RegExp(`^${ending?.textContent}`),
+    });
+    expect(within(dialog).getByText(/the key typed next on Alpha 2/)).toBeInTheDocument();
+    const next = within(dialog).getByRole('list', { name: 'Keys pressed next' });
+    expect(within(next).getAllByRole('listitem').length).toBeGreaterThan(0);
+
+    await user.click(within(dialog).getByRole('button', { name: 'Close' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('list', { name: 'Keys pressed next' })).toBeNull(),
+    );
+  });
+
   it('shows the metrics for a single-layer layout without layer costs', async () => {
     renderRoute('/analyze?layout=qwerty&corpus=en-conv&sample=20000');
     await screen.findByText('Same finger bigrams');

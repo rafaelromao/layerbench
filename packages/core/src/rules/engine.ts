@@ -2,7 +2,7 @@ import type { Finger, Hand } from '../geometry/types.js';
 import { fingerHand } from '../geometry/types.js';
 import type { CompiledLayout } from '../layout/compile.js';
 import type { SimulationTables } from '../tables/tables.js';
-import { unpackBigram, unpackTrigram } from '../tables/tables.js';
+import { packBigram, unpackBigram, unpackTrigram } from '../tables/tables.js';
 import { type Attrs, adjacentFingerPair, attrDistance, buildAttrs } from './attrs.js';
 import { classifyBand } from './bands.js';
 import { defaultEffort, keyEffort } from './effort.js';
@@ -13,6 +13,7 @@ import {
   type Globals,
   type Rule,
   type RuleItem,
+  type RuleItemNext,
   type RuleResult,
   type RuleSet,
   type Score,
@@ -27,6 +28,54 @@ interface Ctx extends PredicateContext {
   tables: SimulationTables['noSpace'];
   /** The text's own n-gram totals in the same universe, as if every character took one press. */
   text: SimulationTables['text']['noSpace'];
+  /** What follows each pair that ends on a layer key, built the first time a rule asks. */
+  followers?: Map<number, Map<number, number>>;
+}
+
+/**
+ * A key pressed to bring a layer on rather than to type: a layer key tapped, or one held. The
+ * machine names a hold that turns a layer on `⇩<layer>`; any other hold is a modifier.
+ */
+function reachesLayer(k: Attrs | undefined): boolean {
+  return k?.key_kind === 'layer_tap' || (k?.key_kind === 'hold' && k.label.startsWith('⇩'));
+}
+
+/** For each pair that ends on a layer key, the keys pressed next and how often. */
+function followersOf(ctx: Ctx): Map<number, Map<number, number>> {
+  if (ctx.followers) return ctx.followers;
+  const out = new Map<number, Map<number, number>>();
+  for (const [key, count] of ctx.tables.trigram) {
+    const [a, b, c] = unpackTrigram(key);
+    if (!reachesLayer(ctx.attrs[b])) continue;
+    const pair = packBigram(a, b);
+    const next = out.get(pair) ?? new Map<number, number>();
+    next.set(c, (next.get(c) ?? 0) + count);
+    out.set(pair, next);
+  }
+  ctx.followers = out;
+  return out;
+}
+
+/** What a pair that ends on a layer key was pressed for, each with its part of the pair's percent. */
+function nextKeys(ctx: Ctx, pair: Ngram, percent: number): RuleItemNext[] | undefined {
+  if (pair.length !== 2 || !reachesLayer(pair[1])) return undefined;
+  const next = followersOf(ctx).get(packBigram(pair[0].id, pair[1].id));
+  if (!next) return undefined;
+  const sum = [...next.values()].reduce((a, b) => a + b, 0);
+  if (!(sum > 0)) return undefined;
+  return [...next.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([id, count]) => {
+      const k = ctx.attrs[id];
+      return {
+        label: k.label,
+        key: k.pos,
+        layer: k.layer,
+        count,
+        share: count / sum,
+        percent: (percent * count) / sum,
+      };
+    });
 }
 
 /** Percentage, with the reference's convention that an empty denominator yields 0. */
@@ -294,14 +343,20 @@ function evalNgram(rule: Rule, ctx: Ctx): RuleResult {
   const itemsOut: RuleItem[] = items
     .sort((a, b) => b.c - a.c)
     .slice(0, ctx.globals.top_items)
-    .map((it) => ({
-      label: it.ngram.map((k) => k.label).join(joiner),
-      keys: it.ngram.map((k) => k.pos),
-      layers: it.ngram.map((k) => k.layer),
-      percent: total > 0 ? (it.c / total) * 100 : 0,
-      count: it.c,
-      distance: it.d,
-    }));
+    .map((it) => {
+      const percent = total > 0 ? (it.c / total) * 100 : 0;
+      // A pair, not a skipgram: what is pressed after it is what came right after its last key.
+      const then = n === 2 && skip === 0 ? nextKeys(ctx, it.ngram, percent) : undefined;
+      return {
+        label: it.ngram.map((k) => k.label).join(joiner),
+        keys: it.ngram.map((k) => k.pos),
+        layers: it.ngram.map((k) => k.layer),
+        percent,
+        count: it.c,
+        distance: it.d,
+        ...(then ? { then } : {}),
+      };
+    });
 
   return finish(rule, value, {
     unit,

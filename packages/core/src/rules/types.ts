@@ -199,6 +199,24 @@ export interface RuleItem {
   percent?: number;
   count?: number;
   distance?: number | null;
+  /**
+   * For a pair that ends on a key pressed to bring a layer on: what it was pressed for, the keys
+   * pressed next, busiest first. Their percents add up to the pair's.
+   */
+  then?: RuleItemNext[];
+}
+
+/** A key pressed right after a pair that ends on a layer key, and its part of that pair. */
+export interface RuleItemNext {
+  label: string;
+  /** Position of the key, and the layer it was pressed on. */
+  key: number;
+  layer: number;
+  count: number;
+  /** Share of the pair, 0–1. */
+  share: number;
+  /** Its part of the pair's percent. */
+  percent: number;
 }
 
 export interface RuleResult {

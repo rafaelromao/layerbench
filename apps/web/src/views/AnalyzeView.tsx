@@ -2,6 +2,7 @@ import {
   BUNDLED_LAYOUTS,
   type CorpusManifest,
   layoutLanguageCoverage,
+  type RuleItem,
   toCanonicalJson,
 } from '@layoutmaster/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
@@ -11,6 +12,7 @@ import { HelpLink } from '../components/HelpLink.js';
 import { Keyboard, typingCombos } from '../components/Keyboard.js';
 import { LayerTabs } from '../components/LayerTabs.js';
 import { MetricCard, SummaryStrip } from '../components/Metrics.js';
+import { PairBreakdown } from '../components/PairBreakdown.js';
 import { presetOf } from '../components/RuleSources.js';
 import { useAnalysisClient } from '../engine/client-context.js';
 import { expandPositions, heatMap } from '../engine/heat.js';
@@ -91,6 +93,8 @@ export function AnalyzeView() {
   /** Which press of the explained word the board shows; `frame` past the last one is the rest. */
   const [play, setPlay] = useState<{ frame: number; playing: boolean } | null>(null);
   const [showCombos, setShowCombos] = useState(true);
+  /** A pair ending on a layer key, opened to show what that key was pressed for. */
+  const [pressedFor, setPressedFor] = useState<{ rule: string; item: RuleItem } | null>(null);
 
   const setParams = useCallback(
     (overrides: Partial<Params>) => {
@@ -251,6 +255,7 @@ export function AnalyzeView() {
     // The board turns to the layer the item happens on, so its keys are the ones drawn.
     const layer = itemLayer(item.layers);
     if (layer !== null && layer !== layerIdx) setParams({ layer });
+    if (item.then?.length) setPressedFor({ rule: rule.label, item });
   };
 
   const selectMetric = (id: string) => {
@@ -661,6 +666,15 @@ export function AnalyzeView() {
             </section>
           );
         })}
+
+      {pressedFor && compiled && (
+        <PairBreakdown
+          compiled={compiled}
+          rule={pressedFor.rule}
+          item={pressedFor.item}
+          onClose={() => setPressedFor(null)}
+        />
+      )}
     </div>
   );
 }
