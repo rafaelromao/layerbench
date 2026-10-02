@@ -59,15 +59,22 @@ function randomSuffix(): string {
     .replace(/=+$/, '');
 }
 
+/** The ASCII words of a name, joined by dashes; empty when it has none. */
+function slugWords(name: string): string {
+  return (
+    name
+      .normalize('NFD')
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: matching the ASCII range is the point
+      .replace(/[^\x00-\x7F]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+  );
+}
+
 /** Document ids: lowercase ASCII words joined by dashes. */
 export function slug(name: string): string {
-  const s = name
-    .normalize('NFD')
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: matching the ASCII range is the point
-    .replace(/[^\x00-\x7F]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+  const s = slugWords(name);
   return s === '' ? `item-${randomSuffix()}` : s;
 }
 
@@ -81,6 +88,23 @@ export function freeId(name: string, taken: ReadonlySet<string>): string {
   let id = base;
   for (let n = 2; taken.has(id); n++) id = `${base}-${n}`;
   return id;
+}
+
+/**
+ * The id a stored document called `name` goes by: the one it has, while that still matches its
+ * name — the name's slug, or the slug numbered as `freeId` numbers it — so saving it again without
+ * renaming never moves it; and once it is renamed, a free id from the new name. A name with no
+ * letters or digits to slug keeps the id it has, as `slug` would make up a new one at every save.
+ */
+export function idForName(name: string, currentId: string, taken: ReadonlySet<string>): string {
+  const base = slugWords(name);
+  if (base === '' || currentId === base) return currentId;
+  const numbered =
+    currentId.startsWith(`${base}-`) && /^\d+$/.test(currentId.slice(base.length + 1));
+  if (numbered) return currentId;
+  const others = new Set(taken);
+  others.delete(currentId);
+  return freeId(name, others);
 }
 
 export function documentPath(collection: Collection, id: string): string {

@@ -191,7 +191,7 @@ describe('Edit', () => {
     expect(await storage.get('layouts', 'qwerty-plus-2')).toBeNull();
   }, 60_000);
 
-  it('keeps a saved layout under its own id when it is renamed, and says its name', async () => {
+  it('moves a saved layout to the id of its new name, and says its name', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
     await seed(storage, 'qwerty', 'qwerty-copy', { name: 'Qwerty copy' });
@@ -215,15 +215,45 @@ describe('Edit', () => {
     await user.click(within(bar()).getByRole('button', { name: 'Save' }));
 
     expect(await screen.findByText('Saved My layout')).toBeInTheDocument();
-    expect((await storage.get('layouts', 'qwerty-copy'))?.doc).toMatchObject({
-      name: 'My layout',
-      author: 'Me',
-      description: 'Qwerty, my way',
-    });
-    expect(await storage.get('layouts', 'my-layout')).toBeNull();
-    expect(currentSearch()).toContain('saved%3Aqwerty-copy');
+    await waitFor(async () =>
+      expect((await storage.get('layouts', 'my-layout'))?.doc).toMatchObject({
+        id: 'my-layout',
+        name: 'My layout',
+        author: 'Me',
+        description: 'Qwerty, my way',
+      }),
+    );
+    // Moved, not copied: the Library shows it once, under its new name.
+    expect(await storage.get('layouts', 'qwerty-copy')).toBeNull();
+    await waitFor(() => expect(currentSearch()).toContain('saved%3Amy-layout'));
+    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+    expect(within(bar()).getByLabelText('Name')).toHaveValue('My layout');
     expect(screen.queryByText('unsaved')).toBeNull();
-  });
+  }, 60_000);
+
+  it('renames onto a name another saved layout has by saving beside it', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    await seed(storage, 'qwerty', 'qwerty-copy', { name: 'Qwerty copy' });
+    await seed(storage, 'colemak-dh', 'my-layout', { name: 'My layout' });
+    renderRoute('/edit?layout=saved%3Aqwerty-copy&corpus=en-conv&sample=20000', { storage });
+    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+
+    const name = within(bar()).getByLabelText('Name');
+    await user.clear(name);
+    await user.type(name, 'My layout{Enter}');
+    await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Saved My layout')).toBeInTheDocument();
+    await waitFor(async () =>
+      expect((await storage.get('layouts', 'my-layout-2'))?.doc.name).toBe('My layout'),
+    );
+    // The other one is left as it was.
+    expect((await storage.get('layouts', 'my-layout'))?.doc.geometry).toEqual(
+      toCanonicalJson(bundledLayout('colemak-dh') as Layout).geometry,
+    );
+    expect(await storage.get('layouts', 'qwerty-copy')).toBeNull();
+  }, 60_000);
 
   it('saves a layout for the first time beside a saved one of the same name, not over it', async () => {
     const user = userEvent.setup();

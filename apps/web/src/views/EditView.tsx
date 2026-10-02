@@ -1,4 +1,10 @@
-import { type CorpusManifest, freeId, type Layout, toCanonicalJson } from '@layoutmaster/core';
+import {
+  type CorpusManifest,
+  freeId,
+  idForName,
+  type Layout,
+  toCanonicalJson,
+} from '@layoutmaster/core';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import {
   type KeyboardEvent as ReactKeyboardEvent,
@@ -241,19 +247,36 @@ function Editor({
     const ref = parseLayoutRef(params.layoutRef);
     setSaving(true);
     try {
-      // A layout opened from storage goes back under its own id, whatever it is called now, so the
-      // links to it keep working. Anything else takes a free id from its name, rather than
-      // overwriting a saved layout whose name happens to slug the same.
+      // A layout's id follows its name. One opened from storage keeps its id while that still
+      // matches its name, and moves to its new name's once renamed; anything else takes a free id
+      // from its name. Neither overwrites a saved layout whose name happens to slug the same.
+      const taken = new Set((await storage.list('layouts')).map((e) => e.id));
       const id =
         ref.kind === 'saved'
-          ? ref.value
-          : freeId(layout.name, new Set((await storage.list('layouts')).map((e) => e.id)));
+          ? idForName(layout.name, ref.value, taken)
+          : freeId(layout.name, taken);
       await storage.put('layouts', id, toCanonicalJson({ ...layout, id }), {
         message: `Save layout ${layout.name}`,
       });
+      const moved = ref.kind === 'saved' && id !== ref.value;
+      let left = false;
+      if (moved) {
+        // Only once the new copy is safely stored does the old one go.
+        try {
+          await storage.delete('layouts', ref.value, {
+            message: `Rename layout to ${layout.name}`,
+          });
+        } catch {
+          left = true;
+        }
+      }
       send({ type: 'saved', layout });
-      toast.info(`Saved ${layout.name}`);
-      if (ref.kind !== 'saved') {
+      if (left) {
+        toast.error(
+          `Saved ${layout.name}; its copy under the old name could not be removed and is still in the Library`,
+        );
+      } else toast.info(`Saved ${layout.name}`);
+      if (ref.kind !== 'saved' || moved) {
         navigate({
           to: '/edit',
           search: toSearch(params, { layoutRef: savedRef(id) }) as never,

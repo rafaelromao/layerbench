@@ -10,8 +10,9 @@ change it.
 
 Every change is kept as you make it, so there is nothing to apply. **Undo** and **Redo**, beside
 the layer tabs, step back and forth through your changes. **Save**, beside the layout's name at
-the top, keeps it in **Library**, and until then the name is marked *unsaved*. A layout already in
-**Library** keeps its link when you rename it.
+the top, keeps it in **Library**, and until then the name is marked *unsaved*. A layout's link
+follows its name: rename one already in **Library** and save it, and it moves to a link of its new
+name, so a link to it from before no longer opens it.
 
 The bar at the top also holds the layout's author and description, and the **Corpus** and
 **Rules** the numbers under the board are worked out with. The editor starts on English news
