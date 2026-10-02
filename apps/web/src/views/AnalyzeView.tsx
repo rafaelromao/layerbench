@@ -473,7 +473,12 @@ export function AnalyzeView() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               {compiled && (
                 <LayerTabs
-                  layers={compiled.layers.map((l) => ({ idx: l.idx, id: l.id, name: l.name }))}
+                  layers={compiled.layers.map((l) => ({
+                    idx: l.idx,
+                    id: l.id,
+                    name: l.name,
+                    color: l.color,
+                  }))}
                   active={boardLayer}
                   onSelect={(idx) => {
                     // Choosing a layer is looking at it: the word stops playing over it.

@@ -21,6 +21,7 @@ import {
 } from 'react';
 import { type Fit, fitLabel, legendNumber } from './fit-label.js';
 import { type Direction, nearestKey } from './key-nav.js';
+import { layerColourOf } from './layer-colour.js';
 import { type KeyDrop, useKeyDrag } from './use-key-drag.js';
 
 const ARROWS: Record<string, Direction> = {
@@ -124,13 +125,9 @@ const TOP = 9;
 const TAP_SIZES = [22, 19, 16, 14, 12, 10] as const;
 const SMALL_SIZES = [10, 9, 8, 7] as const;
 
-/** Layers get a colour of their own; the base layer stays the text colour it always was. */
-const LAYER_COLOURS = 7;
-
-/** A layer's colour by its place in the list; none for the base layer. */
-export function layerColourAt(_compiled: CompiledLayout, idx: number): string | undefined {
-  if (idx <= 0) return undefined;
-  return `var(--lm-layer-${((idx - 1) % LAYER_COLOURS) + 1})`;
+/** A layer's colour: the one it chose, or its place's; none for a base layer that chose none. */
+export function layerColourAt(compiled: CompiledLayout, idx: number): string | undefined {
+  return layerColourOf(idx, compiled.layers[idx]?.color);
 }
 
 function layerColour(compiled: CompiledLayout, layerId: string | null): string | undefined {

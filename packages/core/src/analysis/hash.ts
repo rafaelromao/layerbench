@@ -34,12 +34,16 @@ export interface HashOptions {
 /**
  * Identity of an analysis: everything that changes the simulation. Two layouts that differ only in
  * relabel-eligible symbols still hash differently here, which is deliberate — the cache stores full
- * reports, and relabeling is handled separately.
+ * reports, and relabeling is handled separately. The colour a layer is drawn in types nothing, so
+ * it is left out, and choosing one does not run the analysis again.
  */
 export function structureHash(layout: Layout, opts: HashOptions = {}): string {
+  const uncoloured = layout.layers.some((l) => l.color !== undefined)
+    ? { ...layout, layers: layout.layers.map(({ color: _color, ...l }) => l) }
+    : layout;
   return fnv1a(
     stableStringify({
-      layout: toCanonicalJson(layout),
+      layout: toCanonicalJson(uncoloured),
       case_mode: opts.caseMode ?? 'fold',
       text_class: opts.textClass ?? 'letters',
       cross_word: opts.crossWord ?? 'reset',

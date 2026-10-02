@@ -177,7 +177,7 @@ function featuresToJson(f: LayoutFeatures): Record<string, unknown> {
 function layerToJson(l: LayerDef): Record<string, unknown> {
   const bindings: Record<string, unknown> = {};
   for (const [k, b] of Object.entries(l.bindings)) bindings[k] = bindingToJson(b);
-  return compact({ id: l.id, name: l.name, bindings });
+  return compact({ id: l.id, name: l.name, color: l.color, bindings });
 }
 
 function comboToJson(c: ComboDef): Record<string, unknown> {

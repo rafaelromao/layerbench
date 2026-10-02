@@ -1,13 +1,7 @@
 import type { CompiledLayout } from '@layoutmaster/core';
 import { useRef, useState } from 'react';
 import { Keyboard } from '../../components/Keyboard.js';
-
-/** Matches the board's own palette: the base layer keeps the text colour, the rest cycle. */
-const LAYER_COLOURS = 7;
-
-function captionColour(idx: number): string | undefined {
-  return idx === 0 ? undefined : `var(--lm-layer-${((idx - 1) % LAYER_COLOURS) + 1})`;
-}
+import { layerColourOf } from '../../components/layer-colour.js';
 
 export interface LayerStripProps {
   id: string;
@@ -61,7 +55,7 @@ export function LayerStrip({ id, compiled, name, className }: LayerStripProps) {
             {many && (
               <figcaption
                 className="text-center text-xs opacity-80"
-                style={{ color: captionColour(layer.idx) }}
+                style={{ color: layerColourOf(layer.idx, layer.color) }}
               >
                 {layer.name}
               </figcaption>

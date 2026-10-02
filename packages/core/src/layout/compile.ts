@@ -1,12 +1,14 @@
 import { applyFingering, getGeometryPreset } from '../geometry/presets.js';
 import type { Finger, Geometry, GeometryKey, Hand } from '../geometry/types.js';
 import { expandFeatures, type WrappingFeature } from './features.js';
-import type { BehaviorDefaults, Binding, HostLocale, Layout, Mod } from './types.js';
+import type { BehaviorDefaults, Binding, HostLocale, LayerColor, Layout, Mod } from './types.js';
 
 export interface CompiledLayer {
   idx: number;
   id: string;
   name: string;
+  /** The colour the layer chose, if it chose one. */
+  color?: LayerColor;
   /** Binding per position index (physical keys only). Refs resolved, `*` default applied. */
   bindings: Binding[];
   explicit: boolean[];
@@ -342,7 +344,14 @@ export function compileLayout(authored: Layout): CompiledLayout {
           errors.push(`Layer ${l.id}: binding references unknown layer ${ref}`);
       }
     }
-    return { idx, id: l.id, name: l.name ?? l.id, bindings, explicit };
+    return {
+      idx,
+      id: l.id,
+      name: l.name ?? l.id,
+      ...(l.color ? { color: l.color } : {}),
+      bindings,
+      explicit,
+    };
   });
 
   const positions: PositionInfo[] = keys.map((k, idx) => ({

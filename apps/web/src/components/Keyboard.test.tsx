@@ -151,6 +151,26 @@ describe('Keyboard', () => {
     });
   });
 
+  it("draws a layer in the colour it chose: the keys that reach it, and its reach keys' ring", () => {
+    const layout = bundledLayout('magic-romak')!;
+    const teal = compileLayout({
+      ...layout,
+      layers: layout.layers.map((l) => (l.id === 'sym' ? { ...l, color: 'teal' as const } : l)),
+    });
+    const SYM = teal.layerIndex.get('sym') as number;
+    // On Alpha 1, R0 holds for Symbols: its hold legend takes Symbols' colour.
+    const { container, unmount } = render(<Keyboard compiled={teal} />);
+    const legends = [...container.querySelectorAll('g[data-key="R0"] text')].map(
+      (t) => t.getAttribute('style') ?? '',
+    );
+    expect(legends.some((s) => s.includes('var(--lm-layer-6)'))).toBe(true);
+    unmount();
+    const onSym = render(<Keyboard compiled={teal} layer={SYM} />);
+    expect(
+      onSym.container.querySelector('g[data-key="R0"] .lm-key-reach')?.getAttribute('style'),
+    ).toContain('var(--lm-layer-6)');
+  });
+
   it('gives each instance its own arrow marker', () => {
     const { container } = render(
       <>

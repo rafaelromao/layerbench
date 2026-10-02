@@ -4,6 +4,7 @@ import {
   compileLayout,
   copyKey,
   duplicateLayer,
+  type LayerColor,
   type Layout,
   type LayoutFeatures,
   layerReachedFrom,
@@ -81,6 +82,8 @@ export type EditAction =
   | { type: 'addLayer'; name: string }
   | { type: 'removeLayer'; id: string }
   | { type: 'renameLayer'; id: string; name: string }
+  /** No colour is Automatic: the one the layer's place in the list gives it. */
+  | { type: 'setLayerColor'; id: string; color: LayerColor | undefined }
   | { type: 'moveLayer'; from: number; to: number }
   | { type: 'duplicateLayer'; id: string }
   | {
@@ -335,6 +338,17 @@ export function editReducer(state: EditState, action: EditAction): EditState {
       const current = state.layout.layers.find((l) => l.id === action.id);
       if (!current || name === '' || name === current.name) return state;
       const layers = state.layout.layers.map((l) => (l.id === action.id ? { ...l, name } : l));
+      return withLayout(state, { ...state.layout, layers }, { lastSwap: null });
+    }
+
+    case 'setLayerColor': {
+      const current = state.layout.layers.find((l) => l.id === action.id);
+      if (!current || current.color === action.color) return state;
+      const layers = state.layout.layers.map((l) => {
+        if (l.id !== action.id) return l;
+        const { color: _was, ...rest } = l;
+        return action.color ? { ...rest, color: action.color } : rest;
+      });
       return withLayout(state, { ...state.layout, layers }, { lastSwap: null });
     }
 

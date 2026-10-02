@@ -1018,6 +1018,36 @@ describe('Edit', () => {
     expect(screen.getByRole('button', { name: /^Key R0: A2, hold Symb/ })).toBeInTheDocument();
   });
 
+  it('draws a layer in the colour chosen for it, undoes the choice, and saves it', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    renderRoute('/edit?layout=magic-romak&corpus=pt-br-conv&sample=20000', { storage });
+    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+
+    const dot = () =>
+      screen.getByRole('tab', { name: 'Symbols' }).querySelector('span')?.getAttribute('style');
+    // By its place in the list, Symbols is the fourth colour.
+    expect(dot()).toContain('var(--lm-layer-4)');
+
+    await user.click(screen.getByRole('tab', { name: 'Layers' }));
+    await user.selectOptions(screen.getByLabelText('Colour of layer sym'), 'teal');
+    expect(dot()).toContain('var(--lm-layer-6)');
+    expect(screen.getByText('unsaved')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(dot()).toContain('var(--lm-layer-4)');
+    expect(screen.getByLabelText('Colour of layer sym')).toHaveValue('');
+    await user.click(screen.getByRole('button', { name: 'Redo' }));
+    expect(screen.getByLabelText('Colour of layer sym')).toHaveValue('teal');
+
+    await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Saved Magic Romak')).toBeInTheDocument();
+    await waitFor(async () => {
+      const doc = (await storage.get('layouts', 'magic-romak'))?.doc as unknown as Layout;
+      expect(doc.layers.find((l) => l.id === 'sym')?.color).toBe('teal');
+    });
+  }, 60_000);
+
   it('marks on each layer the keys held or tapped to reach it, and follows an edit', async () => {
     const user = userEvent.setup();
     await openMagicRomak();

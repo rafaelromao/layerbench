@@ -95,6 +95,9 @@ The **Layers** panel lists them in order, and does everything else with them:
   `F2` on the keyboard).
 - **Reorder** with the arrows, or by dragging its row. The base layer stays first.
 - **Duplicate** copies a layer, with all its keys, right after it.
+- **Colour**, under the layer's name, picks the colour its tab and the keys that reach it are
+  drawn in. **Automatic** follows the layer's place in the list; each of the others keeps a shade
+  for the light theme and one for the dark, so legends stay readable in both.
 - **Remove** deletes a layer. It refuses while a key, combo or behaviour still reaches the layer,
   and names each one, so nothing is left pointing at a layer that is gone.
 - **+ layer** adds an empty one at the end.

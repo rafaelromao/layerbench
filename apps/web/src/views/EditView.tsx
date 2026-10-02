@@ -408,6 +408,7 @@ function Editor({
                       idx: l.idx,
                       id: l.id,
                       name: l.name,
+                      color: l.color,
                     }))}
                     active={state.layer}
                     onSelect={(layer) => send({ type: 'selectLayer', layer })}

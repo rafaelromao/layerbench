@@ -1,7 +1,9 @@
+import type { LayerColor } from '@layoutmaster/core';
 import { useEffect, useRef, useState } from 'react';
+import { layerColourOf } from './layer-colour.js';
 
 export interface LayerTabsProps {
-  layers: { idx: number; id: string; name: string }[];
+  layers: { idx: number; id: string; name: string; color?: LayerColor }[];
   active: number;
   onSelect: (idx: number) => void;
   /** Lets a tab be renamed where it stands: double-click it, press F2 on it, or hold a finger on it. */
@@ -59,12 +61,13 @@ export function LayerTabs({ layers, active, onSelect, onRename }: LayerTabsProps
     <div role="tablist" aria-label="Layers" className="tabs tabs-box tabs-sm">
       {layers.map((layer, i) => {
         const isActive = layer.idx === active;
-        const dot = layer.idx > 0 && (
+        const colour = layerColourOf(layer.idx, layer.color);
+        const dot = colour && (
           // The same colour the keys that reach this layer are drawn in.
           <span
             aria-hidden="true"
             className="inline-block size-2 rounded-full mr-1.5"
-            style={{ background: `var(--lm-layer-${((layer.idx - 1) % 7) + 1})` }}
+            style={{ background: colour }}
           />
         );
         if (renaming === layer.id) {

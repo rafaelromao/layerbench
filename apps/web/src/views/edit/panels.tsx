@@ -1,6 +1,8 @@
 import {
   exportKeymapDrawer,
   GEOMETRY_PRESET_IDS,
+  LAYER_COLORS,
+  type LayerColor,
   type LayoutFeatures,
   layerReachedFrom,
   reachKeys,
@@ -9,6 +11,7 @@ import {
   toCanonicalJson,
 } from '@layoutmaster/core';
 import { type Dispatch, type ReactNode, useMemo, useState } from 'react';
+import { layerColourOf } from '../../components/layer-colour.js';
 import type { ProducerDTO } from '../../engine/protocol.js';
 import { toast } from '../../state/toasts.js';
 import { bindingFromFields } from './binding-form.js';
@@ -129,6 +132,56 @@ export function FeaturesPanel({ state, send }: PanelProps) {
   );
 }
 
+const COLOUR_NAMES: Record<LayerColor, string> = {
+  blue: 'Blue',
+  green: 'Green',
+  amber: 'Amber',
+  red: 'Red',
+  violet: 'Violet',
+  teal: 'Teal',
+  lime: 'Lime',
+};
+
+/**
+ * The colour a layer is drawn in: Automatic, the one its place in the list gives it, or one of the
+ * palette's, each tuned for both themes. The swatch shows the colour the layer has now.
+ */
+function LayerColourPicker({
+  layerId,
+  index,
+  value,
+  onChange,
+}: {
+  layerId: string;
+  index: number;
+  value: LayerColor | undefined;
+  onChange: (color: LayerColor | undefined) => void;
+}) {
+  const shown = layerColourOf(index, value);
+  return (
+    <span className="flex items-center gap-1 shrink-0">
+      <span
+        aria-hidden="true"
+        className="lm-layer-swatch"
+        style={shown ? { background: shown } : undefined}
+      />
+      <select
+        aria-label={`Colour of layer ${layerId}`}
+        className="select select-xs select-ghost w-auto"
+        value={value ?? ''}
+        onChange={(e) => onChange((e.target.value || undefined) as LayerColor | undefined)}
+      >
+        <option value="">Automatic</option>
+        {LAYER_COLORS.map((c) => (
+          <option key={c} value={c}>
+            {COLOUR_NAMES[c]}
+          </option>
+        ))}
+      </select>
+    </span>
+  );
+}
+
 /**
  * Layers: their names and their order. Order matters for one thing — when two layers are on at
  * once, a key comes from the one further down — and the base layer, which every key falls back to,
@@ -181,7 +234,15 @@ export function LayersPanel({ state, send }: PanelProps) {
                 mono={false}
                 onCommit={(name) => send({ type: 'renameLayer', id: layer.id, name })}
               />
-              <span className="block truncate font-mono text-[10px] opacity-60">{layer.id}</span>
+              <div className="lm-layer-meta">
+                <span className="truncate font-mono text-[10px] opacity-60">{layer.id}</span>
+                <LayerColourPicker
+                  layerId={layer.id}
+                  index={i}
+                  value={layer.color}
+                  onChange={(color) => send({ type: 'setLayerColor', id: layer.id, color })}
+                />
+              </div>
             </div>
             {/* Four slots in every row, so the buttons line up down the list. */}
             <div className="lm-layer-actions">

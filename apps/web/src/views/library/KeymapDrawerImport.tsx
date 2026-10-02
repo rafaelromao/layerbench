@@ -339,7 +339,12 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
           {result && (
             <div className="space-y-2">
               <LayerTabs
-                layers={result.compiled.layers.map((l) => ({ idx: l.idx, id: l.id, name: l.name }))}
+                layers={result.compiled.layers.map((l) => ({
+                  idx: l.idx,
+                  id: l.id,
+                  name: l.name,
+                  color: l.color,
+                }))}
                 active={Math.min(shown, result.compiled.layers.length - 1)}
                 onSelect={setShown}
               />

@@ -97,9 +97,19 @@ export type Binding =
 
 export type BindingKind = Binding['kind'];
 
+/**
+ * The colours a layer can be drawn in, in the order the app's palette gives them to layers that
+ * choose none. Each has a light and a dark shade tuned to stay readable on a key, so a layer names
+ * one rather than giving a colour of its own.
+ */
+export const LAYER_COLORS = ['blue', 'green', 'amber', 'red', 'violet', 'teal', 'lime'] as const;
+export type LayerColor = (typeof LAYER_COLORS)[number];
+
 export interface LayerDef {
   id: string;
   name?: string;
+  /** The colour its tab, and the keys that reach it, are drawn in; by its place when absent. */
+  color?: LayerColor;
   /** Key id → binding. The special key `*` sets the default for unlisted keys (default: trans; base layer: none). */
   bindings: Record<string, Binding>;
 }

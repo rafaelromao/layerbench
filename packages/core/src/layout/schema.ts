@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { type LegacyLayout, upgradeLegacyFeatures } from './legacy.js';
-import type { Layout } from './types.js';
+import { LAYER_COLORS, type Layout } from './types.js';
 
 const ModSchema = z.enum(['LSHIFT', 'RSHIFT', 'LCTRL', 'RCTRL', 'LALT', 'RALT', 'LGUI', 'RGUI']);
 
@@ -246,6 +246,7 @@ export const LayoutSchema = z.object({
       z.object({
         id: z.string(),
         name: z.string().optional(),
+        color: z.enum(LAYER_COLORS).optional(),
         bindings: z.record(z.string(), BindingSchema),
       }),
     )

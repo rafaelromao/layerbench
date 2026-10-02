@@ -742,6 +742,21 @@ button.lm-drop-target.lm-drop-copy {
   grid-column: span 2;
   justify-self: center;
 }
+/* Under a layer's name: its id, and the colour it is drawn in. */
+.lm-layer-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.lm-layer-swatch {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 9999px;
+  border: 1px solid var(--lm-key-stroke);
+  background: transparent;
+}
 
 /* A layer to import: its switch, name and arrows on one line, what was read of it under the name. */
 .lm-import-layer {
