@@ -3,7 +3,13 @@ import { compileLayout } from '../layout/compile.js';
 import type { Binding, Layout } from '../layout/types.js';
 import { documentedLayouts } from '../layouts/index.js';
 import { magicRomak, romak24 } from '../layouts/romak.js';
-import { describeReach, discoverActivators, type ReachKey, reachKeys } from './activators.js';
+import {
+  bindingReaches,
+  describeReach,
+  discoverActivators,
+  type ReachKey,
+  reachKeys,
+} from './activators.js';
 
 const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
 
@@ -65,8 +71,8 @@ describe('the keys that reach a layer', () => {
         const marked = reachKeys(c, target);
         for (const a of list) {
           if (a.viaLayer === target) continue;
-          const kind = c.layers[a.viaLayer].bindings[a.pos].kind;
-          if (a.user && (kind === 'trans' || kind === 'none')) continue;
+          const b = c.layers[a.viaLayer].bindings[a.pos];
+          if (a.user && !bindingReaches(c, b, target, a.viaLayer)) continue;
           const at = marked.find((k) => k.pos === a.pos);
           expect(
             at?.routes.some((r) => r.via === a.viaLayer && r.mode === a.mode),
@@ -75,6 +81,32 @@ describe('the keys that reach a layer', () => {
         }
       }
     }
+  });
+
+  it('drops a declared key once it is rebound to do something else', () => {
+    const layout = (l1: Binding) =>
+      board(
+        [
+          {
+            id: 'base',
+            bindings: { L0: { kind: 'sl', layer: 'up' }, L1: { kind: 'sl', layer: 'mid' } },
+          },
+          { id: 'mid', bindings: { '*': { kind: 'trans' }, L1: l1 } },
+          { id: 'up', bindings: { '*': { kind: 'trans' } } },
+          { id: 'other', bindings: { '*': { kind: 'trans' } } },
+        ],
+        { activators: { up: [{ from: 'mid', via: 'key:mid/L1' }] } },
+      );
+    const say = (l1: Binding) => {
+      const c = compileLayout(layout(l1));
+      return reachKeys(c, 2).map((k) => `${keyId(c, k.pos)}: ${describeReach(c, 2, k)}`);
+    };
+    expect(say({ kind: 'sl', layer: 'up' })).toEqual([
+      'L1: tapped from mid to reach up',
+      'L0: tapped from base to reach up',
+    ]);
+    expect(say({ kind: 'sl', layer: 'other' })).toEqual(['L0: tapped from base to reach up']);
+    expect(say(kp('a'))).toEqual(['L0: tapped from base to reach up']);
   });
 
   it("marks Romak 24's accent macros for its alt-repeat layer, and not its alt-repeat key", () => {

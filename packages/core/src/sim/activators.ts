@@ -279,6 +279,15 @@ function extraRoutes(
 
 const sameRoute = (a: ReachRoute, b: ReachRoute) => JSON.stringify(a) === JSON.stringify(b);
 
+/** Whether any arm of a binding brings the layer on: a layer key, a macro step, a branch, a tap. */
+export function bindingReaches(c: CompiledLayout, b: Binding, layer: number, via: number): boolean {
+  const out: ReachRoute[] = [];
+  for (const mode of ['tap', 'hold'] as const) {
+    extraRoutes(c, b, mode, layer, via, { extra: true, origin: 'key' }, out);
+  }
+  return out.length > 0;
+}
+
 /** The routes straight into a layer, not through another that turns it on. */
 function directRoutes(
   c: CompiledLayout,
@@ -310,9 +319,9 @@ function directRoutes(
       if (a.from !== undefined) own.from = a.from;
       continue;
     }
-    // The simulator passes over a declared key that does nothing there; so does the board.
-    const kind = c.layers[a.viaLayer]?.bindings[a.pos]?.kind;
-    if (kind === undefined || kind === 'trans' || kind === 'none') continue;
+    // The simulator passes over a declared key that no longer brings the layer on; so does the board.
+    const b = c.layers[a.viaLayer]?.bindings[a.pos];
+    if (!b || !bindingReaches(c, b, layer, a.viaLayer)) continue;
     add(a.pos, {
       mode: a.mode,
       origin: 'activator',
