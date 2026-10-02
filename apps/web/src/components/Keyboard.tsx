@@ -186,7 +186,7 @@ function needsDetail(b: Binding | undefined): boolean {
 /** The name a screen reader reads, kept to the legend itself; the full meaning is the description. */
 function spokenLegend(l: Legend, tap: string): string {
   const hold = l.hold === null ? '' : l.holdIsMode ? ` (${l.hold})` : `, hold ${l.hold}`;
-  return `${tap || 'empty'}${hold}`;
+  return `${l.kind === 'trans' ? 'transparent' : tap || 'empty'}${hold}`;
 }
 
 interface ModelOptions {
@@ -214,12 +214,11 @@ function modelKeys(compiled: CompiledLayout, layerIdx: number, opts: ModelOption
     const binding = activeLayer.bindings[idx];
     const l = legend(compiled, binding);
     const explicit = activeLayer.explicit[idx];
-    // A key with no binding of its own on an upper layer is transparent: it falls through. Drawn
-    // empty rather than marked, or a mostly-transparent layer would be a sheet of ▽.
+    // A key with no binding of its own on an upper layer takes the layer's default. A transparent
+    // key is marked ▽ however it got that way: listed, by default, or held down to get here.
     const implicit = !explicit && layerIdx > 0;
     const reach = opts.reach?.get(idx) ?? null;
-    // A key held down to get here is usually transparent on this layer; its ring says what it is.
-    const tap = implicit || (reach && l.kind === 'trans') ? '' : l.tap;
+    const tap = implicit && l.kind !== 'trans' ? '' : l.tap;
     const w = k.w * UNIT - GAP;
     const h = k.h * UNIT - GAP;
     const hold = opts.showHold ? l.hold : null;

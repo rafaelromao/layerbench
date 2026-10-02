@@ -1065,7 +1065,9 @@ describe('Edit', () => {
     // The only way into Ç extension is the ç macro on Alpha 2, and the key says it.
     await user.click(screen.getByRole('tab', { name: 'Ç extension' }));
     await user.click(
-      await screen.findByRole('button', { name: 'Key LBM: empty, tapped to reach Ç extension' }),
+      await screen.findByRole('button', {
+        name: 'Key LBM: transparent, tapped to reach Ç extension',
+      }),
     );
     expect(
       within(await inspector('LBM')).getByText(

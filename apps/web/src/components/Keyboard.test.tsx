@@ -171,6 +171,20 @@ describe('Keyboard', () => {
     ).toContain('var(--lm-layer-6)');
   });
 
+  it('marks every transparent key ▽, listed or by default, and leaves a key that does nothing empty', () => {
+    const tapOf = (container: HTMLElement, key: string) =>
+      container.querySelector(`g[data-key="${key}"] .lm-key-tap`)?.textContent ?? '';
+    // Ç extension lists only a few keys and lets the rest show through.
+    const ccedil = render(<Keyboard compiled={romak} layer={romak.layerIndex.get('ccedil')} />);
+    expect(tapOf(ccedil.container, 'LHM')).toBe('▽');
+    expect(tapOf(ccedil.container, 'RHI')).toBe('ã');
+    ccedil.unmount();
+    // Numbers leaves its unlisted keys doing nothing; L0, held to get there, shows through.
+    const num = render(<Keyboard compiled={romak} layer={romak.layerIndex.get('num')} />);
+    expect(tapOf(num.container, 'LTP')).toBe('');
+    expect(tapOf(num.container, 'L0')).toBe('▽');
+  });
+
   it('gives each instance its own arrow marker', () => {
     const { container } = render(
       <>
