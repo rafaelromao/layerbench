@@ -1255,6 +1255,8 @@ export function exportKeymapDrawer(
   board: { keys: GeometryKey[]; family: GeometryFamily },
   bindingsOf: (layerIdx: number, keyId: string) => Binding | undefined,
   explicit: (layerIdx: number, keyId: string) => boolean,
+  /** The keys held or tapped to reach a layer, which keymap-drawer marks `held` there. */
+  held?: (layerIdx: number, keyId: string) => boolean,
 ): string {
   const geometryKeys = board.keys;
   const order = drawerOrder(geometryKeys);
@@ -1280,6 +1282,11 @@ export function exportKeymapDrawer(
     for (const [, keys] of [...rows.entries()].sort(([a], [b]) => a - b)) {
       const cells = keys.map((k) => {
         const b = li > 0 && !explicit(li, k.id) ? undefined : bindingsOf(li, k.id);
+        // A key held or tapped to get to this layer is drawn as keymap-drawer's own parser marks
+        // one. Only where it is transparent, unlisted or not: `held` reads back as transparent.
+        if (li > 0 && bindingsOf(li, k.id)?.kind === 'trans' && held?.(li, k.id)) {
+          return flowKey({ type: 'held' });
+        }
         return flowKey(legendOf(b, layerName, li > 0));
       });
       lines.push(`  - [${cells.join(', ')}]`);

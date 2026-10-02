@@ -1,7 +1,7 @@
 import { keyDistance } from '../geometry/distance.js';
 import { FINGERS, type Finger } from '../geometry/types.js';
 import type { CompiledLayout } from '../layout/compile.js';
-import type { ActivatorDef, Binding, Mod, TypingPathEntry } from '../layout/types.js';
+import type { ActivatorDef, Mod, TypingPathEntry } from '../layout/types.js';
 import {
   type FingerTravel,
   LogicalKeyRegistry,
@@ -12,6 +12,7 @@ import {
   TextTotals,
   type WordTrace,
 } from '../tables/tables.js';
+import { type ActivatorCandidate, discoverActivators } from './activators.js';
 import { type Action, type KeyEvent, Machine, peelBinding } from './machine.js';
 import {
   enumerateProducers,
@@ -47,93 +48,6 @@ export interface SimulationResult {
   producers: ProducerIndex;
 }
 
-interface ActivatorCandidate {
-  pos: number;
-  viaLayer: number;
-  mode: 'tap' | 'hold';
-  target: number;
-  user: boolean;
-  order: number;
-  /** Modifiers that must be active for this arm of the binding to be selected (mod-morph arms). */
-  requiredMods?: Mod[];
-  /** Source layer restriction (user-declared activators). */
-  from?: number;
-}
-
-interface LayerTarget {
-  mode: 'tap' | 'hold';
-  target: number;
-  kind: string;
-  requiredMods?: Mod[];
-}
-
-function collectLayerTargets(
-  compiled: CompiledLayout,
-  b: Binding,
-  mode: 'tap' | 'hold',
-  out: LayerTarget[],
-  depth = 0,
-  requiredMods?: Mod[],
-): void {
-  if (depth > 8) return;
-  const li = (id: string) => compiled.layerIndex.get(id);
-  switch (b.kind) {
-    case 'sl':
-    case 'tog':
-    case 'to': {
-      const t = li(b.layer);
-      if (t !== undefined && mode === 'tap')
-        out.push({ mode, target: t, kind: b.kind, requiredMods });
-      return;
-    }
-    case 'mo': {
-      const t = li(b.layer);
-      if (t !== undefined && mode === 'hold')
-        out.push({ mode, target: t, kind: 'mo', requiredMods });
-      return;
-    }
-    case 'lt': {
-      const t = li(b.layer);
-      if (mode === 'hold') {
-        if (t !== undefined) out.push({ mode, target: t, kind: 'lt', requiredMods });
-      } else collectLayerTargets(compiled, b.tap, mode, out, depth + 1, requiredMods);
-      return;
-    }
-    case 'hold_tap':
-      collectLayerTargets(
-        compiled,
-        mode === 'hold' ? b.hold : b.tap,
-        mode,
-        out,
-        depth + 1,
-        requiredMods,
-      );
-      return;
-    case 'mod_morph':
-      collectLayerTargets(compiled, b.default, mode, out, depth + 1, requiredMods);
-      collectLayerTargets(compiled, b.morphed, mode, out, depth + 1, [
-        ...(requiredMods ?? []),
-        b.mods[0],
-      ]);
-      return;
-    case 'layer_morph':
-      collectLayerTargets(compiled, b.inactive, mode, out, depth + 1, requiredMods);
-      collectLayerTargets(compiled, b.active, mode, out, depth + 1, requiredMods);
-      return;
-    case 'tap_dance':
-      if (b.bindings[0])
-        collectLayerTargets(compiled, b.bindings[0], mode, out, depth + 1, requiredMods);
-      return;
-    case 'adaptive':
-      if (b.default) collectLayerTargets(compiled, b.default, mode, out, depth + 1, requiredMods);
-      return;
-    default:
-      return;
-  }
-}
-
-const KIND_ORDER: Record<string, number> = { sl: 0, mo: 1, lt: 1, tog: 2, to: 3 };
-
 export function findHomeKeys(compiled: CompiledLayout): Record<Finger, number> {
   const home = {} as Record<Finger, number>;
   for (const f of FINGERS) {
@@ -162,7 +76,7 @@ export function findHomeKeys(compiled: CompiledLayout): Record<Finger, number> {
 export class Simulator {
   readonly machine: Machine;
   readonly index: ProducerIndex;
-  private readonly activators = new Map<number, ActivatorCandidate[]>();
+  private readonly activators: Map<number, ActivatorCandidate[]>;
   private readonly userPaths = new Map<string, TypingPathEntry[]>();
   private readonly plannerHolds = new Set<number>();
   private readonly fold: boolean;
@@ -223,7 +137,10 @@ export class Simulator {
     )) {
       this.userPaths.set(this.fold ? sym.toLowerCase() : sym, entries);
     }
-    this.discoverActivators(options.activators ?? compiled.layout.activators ?? {});
+    this.activators = discoverActivators(
+      compiled,
+      options.activators ?? compiled.layout.activators ?? {},
+    );
     this.homeKeys = findHomeKeys(compiled);
     this.lastFingerPos = { ...this.homeKeys };
     this.lastFingerPosWord = { ...this.homeKeys };
@@ -246,62 +163,6 @@ export class Simulator {
       per_layer: compiled.layers.map(() => 0),
       unproducible: this.coverage.unproducible,
     };
-  }
-
-  private discoverActivators(user: Record<string, ActivatorDef[]>): void {
-    const c = this.compiled;
-    let order = 0;
-    for (const layer of c.layers) {
-      for (let pos = 0; pos < c.keys.length; pos++) {
-        const b = layer.bindings[pos];
-        if (b.kind === 'trans' || b.kind === 'none') continue;
-        for (const mode of ['tap', 'hold'] as const) {
-          const targets: LayerTarget[] = [];
-          collectLayerTargets(c, b, mode, targets);
-          for (const t of targets) {
-            const list = this.activators.get(t.target) ?? [];
-            list.push({
-              pos,
-              viaLayer: layer.idx,
-              mode,
-              target: t.target,
-              user: false,
-              order:
-                (KIND_ORDER[t.kind] ?? 5) * 1000 + (t.requiredMods?.length ? 500 : 0) + order++,
-              requiredMods: t.requiredMods,
-            });
-            this.activators.set(t.target, list);
-          }
-        }
-      }
-    }
-    for (const [targetId, defs] of Object.entries(user)) {
-      const target = c.layerIndex.get(targetId);
-      if (target === undefined) continue;
-      defs.forEach((d, i) => {
-        const m = /^key:([^/]+)\/(.+)$/.exec(d.via);
-        if (!m) return;
-        const viaLayer = c.layerIndex.get(m[1]);
-        const pos = c.keyIndex.get(m[2]);
-        if (viaLayer === undefined || pos === undefined) return;
-        const list = this.activators.get(target) ?? [];
-        const existing = list.find((a) => a.pos === pos && a.viaLayer === viaLayer);
-        const mode = existing?.mode ?? 'tap';
-        const cand: ActivatorCandidate = {
-          pos,
-          viaLayer,
-          mode,
-          target,
-          user: true,
-          order: -1000 + i,
-          requiredMods: d.requires?.mods ?? existing?.requiredMods,
-        };
-        if (d.from && d.from !== '*') cand.from = c.layerIndex.get(d.from);
-        list.unshift(cand);
-        this.activators.set(target, list);
-      });
-    }
-    for (const list of this.activators.values()) list.sort((a, b) => a.order - b.order);
   }
 
   // ---------------------------------------------------------------- planning

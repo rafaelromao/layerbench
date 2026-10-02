@@ -10,6 +10,7 @@ and how to make it in the editor: select a key, then choose its tile.
 | a small legend at the top | what it types with Shift, where that is not just the capital |
 | `✦` `⋯` `TD` `U+` in the corner | a magic key, a macro, a tap dance, a Unicode character |
 | a colour | the layer the key reaches, matching the dot on that layer's tab |
+| a ring inside the key, `held` or `tapped` along the bottom | on a layer above the base: the key held or tapped to get to this layer |
 | a dashed outline | transparent: the key of the layer below shows through |
 | a pill between keys | a combo that types: press those keys together |
 | a number in the corner | more than fits on the key; the list under the board says it all |

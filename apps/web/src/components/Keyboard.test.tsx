@@ -81,6 +81,76 @@ describe('Keyboard', () => {
     });
   });
 
+  describe('the keys that reach the layer shown', () => {
+    const SYM = romak.layerIndex.get('sym') as number;
+    const ALPHA2 = romak.layerIndex.get('alpha2') as number;
+    const R0 = romak.keyIndex.get('R0') as number;
+    const ringed = (container: HTMLElement) =>
+      [...container.querySelectorAll('g[data-key]')]
+        .filter((g) => g.querySelector('.lm-key-reach'))
+        .map((g) => `${g.getAttribute('data-key')} ${g.getAttribute('data-reach')}`);
+
+    it('marks none on the base layer', () => {
+      const { container } = render(<Keyboard compiled={romak} />);
+      expect(ringed(container)).toEqual([]);
+    });
+
+    it('rings the thumb held for Symbols, and says so', () => {
+      const { container } = render(<Keyboard compiled={romak} layer={SYM} />);
+      expect(ringed(container)).toEqual(['R0 held']);
+      expect(
+        screen.getByRole('button', { name: 'Key R0: empty, held to reach Symbols' }),
+      ).toBeInTheDocument();
+      const band = container.querySelector('g[data-key="R0"] .lm-key-reach-word');
+      expect(band?.textContent).toBe('held');
+      expect(container.querySelector('g[data-key="R0"] title')?.textContent).toContain(
+        'held from Alpha 1 or Numbers to reach Symbols',
+      );
+    });
+
+    it('rings the keys tapped for Alpha 2', () => {
+      const { container } = render(<Keyboard compiled={romak} layer={ALPHA2} />);
+      expect(ringed(container).sort()).toEqual(['L1 tapped', 'R0 tapped']);
+    });
+
+    it("draws the ring in the layer's colour below half heat, and in the text colour above", () => {
+      const ring = (heat: number, pressed: number[] = []) => {
+        const { container, unmount } = render(
+          <Keyboard compiled={romak} layer={SYM} heat={{ [R0]: heat }} pressed={pressed} />,
+        );
+        const style = container
+          .querySelector('g[data-key="R0"] .lm-key-reach')
+          ?.getAttribute('style');
+        unmount();
+        return style ?? '';
+      };
+      expect(ring(0.49)).toContain(`var(--lm-layer-${SYM})`);
+      expect(ring(0.5)).toBe('');
+      expect(ring(1)).toBe('');
+      expect(ring(0, [R0])).toBe('');
+    });
+
+    it('leaves the band to a hold of its own, and to no band at all without holds', () => {
+      const { container } = render(<Keyboard compiled={romak} layer={SYM} showHold={false} />);
+      expect(ringed(container)).toEqual(['R0 held']);
+      expect(container.querySelector('.lm-key-reach-word')).toBeNull();
+    });
+
+    it('keeps one cap per key, so nothing measured by caps changes', () => {
+      const { container } = render(<Keyboard compiled={romak} layer={SYM} />);
+      expect(container.querySelectorAll('.lm-key-cap')).toHaveLength(romak.keys.length);
+    });
+
+    it('lists each way in under the board', () => {
+      render(<Keyboard compiled={romak} layer={ALPHA2} legendList />);
+      const list = screen.getByRole('list', { name: 'Key legend' });
+      expect(list.textContent).toContain(
+        'tapped from Ç extension, or from Alpha 1 after v, x or j, to reach Alpha 2',
+      );
+      expect(list.textContent).toContain('tapped from Alpha 1 to reach Alpha 2');
+    });
+  });
+
   it('gives each instance its own arrow marker', () => {
     const { container } = render(
       <>

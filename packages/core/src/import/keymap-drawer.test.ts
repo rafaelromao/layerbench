@@ -5,6 +5,8 @@ import { toCanonicalJson } from '../layout/json.js';
 import { safeParseLayout } from '../layout/schema.js';
 import type { Binding, Layout } from '../layout/types.js';
 import { bundledLayout } from '../layouts/index.js';
+import { magicRomak } from '../layouts/romak.js';
+import { reachKeys } from '../sim/activators.js';
 import {
   boardFromKeys,
   boardFromPreset,
@@ -304,13 +306,61 @@ describe('importing', () => {
 describe('writing a file', () => {
   function write(layout: Layout): string {
     const compiled = compileLayout(layout);
+    const reach = compiled.layers.map(
+      (l) => new Set(reachKeys(compiled, l.idx).map((k) => compiled.keys[k.pos].id)),
+    );
     return exportKeymapDrawer(
       layout,
       { keys: compiled.keys, family: compiled.geometry.family },
       (li, id) => compiled.layers[li].bindings[compiled.keyIndex.get(id) as number],
       (li, id) => compiled.layers[li].explicit[compiled.keyIndex.get(id) as number],
+      (li, id) => reach[li].has(id),
     );
   }
+
+  it('marks the keys that reach a layer held there, where they are transparent', () => {
+    const held = (layout: Layout) =>
+      readKeymapDrawer(write(layout)).layers.map(
+        (l) => `${l.name}: ${l.keys.filter((k) => k.type === 'held').length}`,
+      );
+    // Numbers is held from L0, transparent there; Symbols' R0 does nothing there, and stays so.
+    expect(held(magicRomak)).toEqual([
+      'Alpha 1: 0',
+      'Alpha 2: 1',
+      'Ç extension: 1',
+      'Numbers: 1',
+      'Symbols: 0',
+    ]);
+    const nav: Layout = {
+      format: 'layoutmaster/layout@1',
+      name: 'Held',
+      hostLocale: 'symbols',
+      geometry: { preset: '3x5+2' },
+      keys: { space: 'L0' },
+      layers: [
+        {
+          id: 'base',
+          name: 'Base',
+          bindings: {
+            L1: { kind: 'sl', layer: 'nav' },
+            R0: { kind: 'mo', layer: 'nav' },
+            LHR: { kind: 'lt', layer: 'nav', tap: { kind: 'kp', symbol: 's' } },
+          },
+        },
+        {
+          id: 'nav',
+          name: 'Nav',
+          bindings: { '*': { kind: 'trans' }, LHR: { kind: 'raw', label: 'PG UP' } },
+        },
+      ],
+    };
+    expect(held(nav)).toEqual(['Base: 0', 'Nav: 2']);
+    // Read back, a key marked held is transparent, as it was; one with a binding keeps it.
+    const back = roundTrip(nav);
+    expect(back.layers[1].bindings.L1).toBeUndefined();
+    expect(back.layers[1].bindings.R0).toBeUndefined();
+    expect(back.layers[1].bindings.LHR).toMatchObject({ kind: 'raw', label: 'PG UP' });
+  });
 
   function roundTrip(layout: Layout): Layout {
     const doc = readKeymapDrawer(write(layout));

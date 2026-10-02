@@ -98,6 +98,14 @@ The **Layers** panel lists them in order, and does everything else with them:
   and names each one, so nothing is left pointing at a layer that is gone.
 - **+ layer** adds an empty one at the end.
 
+### The keys that reach a layer
+
+On any layer but the base, the keys you hold or tap to get there carry a ring in the layer's
+colour, and `held` or `tapped` along the bottom: the thumb held for Symbols, the one-shot key
+tapped for Alpha 2, the `ç` macro that turns on Ç extension, an alt repeat branch that arms a
+layer. They are found from the layout itself, so they change as you edit. Select one, or read the
+list under the board, to see where it is pressed and when.
+
 ### Which layer wins
 
 When two layers are on at once, a key comes from the one further down the list. A key that is

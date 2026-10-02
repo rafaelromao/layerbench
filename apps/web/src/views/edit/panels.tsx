@@ -3,6 +3,7 @@ import {
   GEOMETRY_PRESET_IDS,
   type LayoutFeatures,
   layerReachedFrom,
+  reachKeys,
   slug,
   tapLabel,
   toCanonicalJson,
@@ -716,16 +717,19 @@ export function JsonPanel({ state, send }: PanelProps) {
  */
 function KeymapDrawerExport({ state }: { state: EditState }) {
   const { compiled, layout } = state;
-  const yaml = useMemo(
-    () =>
-      exportKeymapDrawer(
-        layout,
-        { keys: compiled.keys, family: compiled.geometry.family },
-        (li, id) => compiled.layers[li]?.bindings[compiled.keyIndex.get(id) ?? -1],
-        (li, id) => compiled.layers[li]?.explicit[compiled.keyIndex.get(id) ?? -1] ?? false,
-      ),
-    [layout, compiled],
-  );
+  const yaml = useMemo(() => {
+    // The keys that reach each layer, which the file marks `held` there as keymap-drawer does.
+    const reach = compiled.layers.map(
+      (l) => new Set(reachKeys(compiled, l.idx).map((k) => compiled.keys[k.pos].id)),
+    );
+    return exportKeymapDrawer(
+      layout,
+      { keys: compiled.keys, family: compiled.geometry.family },
+      (li, id) => compiled.layers[li]?.bindings[compiled.keyIndex.get(id) ?? -1],
+      (li, id) => compiled.layers[li]?.explicit[compiled.keyIndex.get(id) ?? -1] ?? false,
+      (li, id) => reach[li]?.has(id) ?? false,
+    );
+  }, [layout, compiled]);
   const download = () => {
     const url = URL.createObjectURL(new Blob([yaml], { type: 'application/yaml' }));
     const a = document.createElement('a');

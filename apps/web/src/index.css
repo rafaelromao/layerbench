@@ -269,6 +269,32 @@
   color: var(--lm-legend-number);
   flex: none;
 }
+/* A legend line for the keys that reach the layer shown, led by the ring they carry. */
+.lm-legend-ring {
+  flex: none;
+  align-self: center;
+  width: 0.75rem;
+  height: 0.75rem;
+  border: 2px solid var(--lm-key-text);
+  border-radius: 3px;
+}
+
+/*
+ * A key held or tapped to reach the layer shown: a ring inside the cap, clear of the outline that
+ * selection, focus and a played word use, in the layer's colour while the key is below half heat
+ * (set inline, as the layer colours of legends are) and in the text colour above it.
+ */
+.lm-key-reach {
+  fill: none;
+  stroke: var(--lm-key-text);
+  stroke-width: 2.5;
+  pointer-events: none;
+}
+/* "held", "tapped" in the band of a reach key: a note on how it got here, said plainly. */
+.lm-key-reach-word {
+  font-style: italic;
+  opacity: 1;
+}
 
 .lm-kind-layer {
   fill: var(--lm-legend-layer);

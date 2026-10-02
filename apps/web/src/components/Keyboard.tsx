@@ -1,9 +1,12 @@
 import {
   type Binding,
   type CompiledLayout,
+  describeReach,
   type GeometryKey,
   type Legend,
   legend,
+  type ReachKey,
+  reachKeys,
 } from '@layoutmaster/core';
 import {
   type CSSProperties,
@@ -124,12 +127,47 @@ const SMALL_SIZES = [10, 9, 8, 7] as const;
 /** Layers get a colour of their own; the base layer stays the text colour it always was. */
 const LAYER_COLOURS = 7;
 
+/** A layer's colour by its place in the list; none for the base layer. */
+export function layerColourAt(_compiled: CompiledLayout, idx: number): string | undefined {
+  if (idx <= 0) return undefined;
+  return `var(--lm-layer-${((idx - 1) % LAYER_COLOURS) + 1})`;
+}
+
 function layerColour(compiled: CompiledLayout, layerId: string | null): string | undefined {
   if (layerId === null) return undefined;
   const idx = compiled.layerIndex.get(layerId);
-  if (idx === undefined || idx === 0) return undefined;
-  return `var(--lm-layer-${((idx - 1) % LAYER_COLOURS) + 1})`;
+  return idx === undefined ? undefined : layerColourAt(compiled, idx);
 }
+
+/** How a reach key is pressed to get to the layer shown, as its band and its name say it. */
+const REACH_WORD: Record<ReachKey['how'], string> = {
+  held: 'held',
+  tapped: 'tapped',
+  both: 'held/tapped',
+};
+const REACH_SPOKEN: Record<ReachKey['how'], string> = {
+  held: 'held',
+  tapped: 'tapped',
+  both: 'held or tapped',
+};
+
+/** A key held or tapped to bring the shown layer on: how, and the whole of it in words. */
+interface Reach {
+  how: ReachKey['how'];
+  text: string;
+}
+
+/** The reach keys of one layer, by position, with what each one says. */
+function reachOf(compiled: CompiledLayout, layerIdx: number): Map<number, Reach> {
+  const out = new Map<number, Reach>();
+  for (const k of reachKeys(compiled, layerIdx)) {
+    out.set(k.pos, { how: k.how, text: describeReach(compiled, layerIdx, k) });
+  }
+  return out;
+}
+
+/** Inset of the ring a reach key draws inside its cap. */
+const REACH_INSET = 3;
 
 /** Bindings whose meaning a cap cannot carry, however it is drawn. */
 function needsDetail(b: Binding | undefined): boolean {
@@ -166,6 +204,8 @@ interface ModelOptions {
   origin?: { ox: number; oy: number };
   /** Where each key is drawn across, when that is not where the geometry puts it. */
   xs?: readonly number[];
+  /** The keys held or tapped to reach the layer drawn. */
+  reach?: Map<number, Reach>;
 }
 
 /** Everything drawn for each key of a layer: position, legends and how they fit, and its number. */
@@ -180,18 +220,23 @@ function modelKeys(compiled: CompiledLayout, layerIdx: number, opts: ModelOption
     // A key with no binding of its own on an upper layer is transparent: it falls through. Drawn
     // empty rather than marked, or a mostly-transparent layer would be a sheet of ▽.
     const implicit = !explicit && layerIdx > 0;
-    const tap = implicit ? '' : l.tap;
+    const reach = opts.reach?.get(idx) ?? null;
+    // A key held down to get here is usually transparent on this layer; its ring says what it is.
+    const tap = implicit || (reach && l.kind === 'trans') ? '' : l.tap;
     const w = k.w * UNIT - GAP;
     const h = k.h * UNIT - GAP;
     const hold = opts.showHold ? l.hold : null;
+    // The band says how the key got here, unless the key needs it for a hold of its own.
+    const reachWord = reach && opts.showHold && hold === null ? REACH_WORD[reach.how] : null;
+    const band = hold ?? reachWord;
     const shifted = opts.showHold ? l.shifted : null;
     const tapFit: Fit = fitLabel(
       tap,
       w - 2 * INSET,
-      h - 2 * INSET - (hold ? BAND : 0) - (shifted ? TOP : 0),
+      h - 2 * INSET - (band ? BAND : 0) - (shifted ? TOP : 0),
       TAP_SIZES,
     );
-    const holdFit = hold ? fitLabel(hold, w - 2 * INSET, BAND, SMALL_SIZES) : null;
+    const holdFit = band ? fitLabel(band, w - 2 * INSET, BAND, SMALL_SIZES) : null;
     const shiftedFit = shifted ? fitLabel(shifted, w / 2, TOP, SMALL_SIZES) : null;
     const listed =
       opts.numbered &&
@@ -217,6 +262,9 @@ function modelKeys(compiled: CompiledLayout, layerIdx: number, opts: ModelOption
       highlighted: opts.highlighted?.has(idx) ?? false,
       pressed: opts.pressed?.has(idx) ?? false,
       selected: opts.selected === k.id,
+      reach,
+      /** The band shows how the key reaches the layer, not a hold of its own. */
+      reachBand: reachWord !== null,
     };
   });
 }
@@ -346,6 +394,11 @@ export function Keyboard({
 
   const drag = useKeyDrag(onDropKey, { legendOf, onDragStart });
 
+  const reached = useMemo(() => reachOf(compiled, layerIdx), [compiled, layerIdx]);
+  // The ring and the band word take the colour of the layer they lead to: this one.
+  const shownColour = layerColourAt(compiled, layerIdx);
+  const shownName = compiled.layers[layerIdx]?.name ?? '';
+
   const keys = modelKeys(compiled, layerIdx, {
     showHold,
     numbered: legendList !== false,
@@ -355,6 +408,7 @@ export function Keyboard({
     selected,
     origin: view,
     xs,
+    reach: reached,
   });
 
   // Every key being a tab stop makes a 34-key board 34 stops; one stop plus arrows is what a grid
@@ -418,12 +472,20 @@ export function Keyboard({
 
       {keys.map((k) => {
         const pct = Math.round(k.heat * 100);
-        const label = `Key ${k.key.id}: ${spokenLegend(k.legend, k.tap)}`;
+        const reachSpoken = k.reach ? `, ${REACH_SPOKEN[k.reach.how]} to reach ${shownName}` : '';
+        const label = `Key ${k.key.id}: ${spokenLegend(k.legend, k.tap)}${reachSpoken}`;
         const tapY = (k.holdFit ? -BAND / 2 : 0) + (k.shiftedFit ? TOP / 2 : 0) + 1;
         const hot = k.pressed || k.heat >= HOT_HEAT;
         // A hot key's legends are all drawn in its text colour (see `HOT_HEAT`), layer colour too.
         const tapColour = !hot && k.legend.layerIn === 'tap' ? k.colour : undefined;
-        const holdColour = !hot && k.legend.layerIn === 'hold' ? k.colour : undefined;
+        const holdColour = hot
+          ? undefined
+          : k.reachBand
+            ? shownColour
+            : k.legend.layerIn === 'hold'
+              ? k.colour
+              : undefined;
+        const title = [k.legend.detail, k.reach?.text].filter(Boolean).join('; ');
         return (
           // biome-ignore lint/a11y/noStaticElementInteractions: it takes a button role and tab stop whenever it is interactive
           <g
@@ -439,6 +501,7 @@ export function Keyboard({
               .filter(Boolean)
               .join(' ')}
             data-key={k.key.id}
+            data-reach={k.reach?.how}
             ref={(el) => {
               nodes.current[k.key.id] = el;
             }}
@@ -472,12 +535,26 @@ export function Keyboard({
                   : `color-mix(in oklab, var(--lm-key-bg) ${100 - pct}%, var(--lm-heat) ${pct}%)`,
               }}
             />
-            {k.legend.detail && <title>{k.legend.detail}</title>}
+            {k.reach && (
+              // Inside the cap rather than on its edge, which selection, focus and the outlines
+              // of a played word already use; and in the layer's colour, as a key reaching it is.
+              <rect
+                x={fmt(-k.w / 2 + REACH_INSET)}
+                y={fmt(-k.h / 2 + REACH_INSET)}
+                width={fmt(k.w - 2 * REACH_INSET)}
+                height={fmt(k.h - 2 * REACH_INSET)}
+                rx="6"
+                className="lm-key-reach"
+                style={!hot && shownColour ? { stroke: shownColour } : undefined}
+              />
+            )}
+            {title && <title>{title}</title>}
             {k.key.home && (
-              // A bar along the bottom edge, clear of every legend, where a homing bump would be.
+              // A bar along the bottom edge, clear of every legend, where a homing bump would be;
+              // raised inside the ring on a reach key.
               <rect
                 x="-5"
-                y={fmt(k.h / 2 - 3.5)}
+                y={fmt(k.h / 2 - 3.5 - (k.reach ? REACH_INSET : 0))}
                 width="10"
                 height="1.6"
                 rx="0.8"
@@ -543,7 +620,9 @@ export function Keyboard({
                 x="0"
                 y={fmt(k.h / 2 - INSET - BAND / 2 + 1)}
                 textAnchor="middle"
-                className={`lm-key-hold${k.legend.holdIsMode ? ' lm-key-mode' : ''}`}
+                className={`lm-key-hold${
+                  k.reachBand ? ' lm-key-reach-word' : k.legend.holdIsMode ? ' lm-key-mode' : ''
+                }`}
                 fontSize={k.holdFit.size}
                 style={holdColour ? { fill: holdColour } : undefined}
               >
@@ -605,16 +684,35 @@ export function Keyboard({
     </svg>
   );
 
-  if (legendList !== true || listedKeys.length === 0) return board;
+  const reachLines = reachLinesOf(keys);
+  if (legendList !== true || (listedKeys.length === 0 && reachLines.length === 0)) return board;
   return (
     <>
       {board}
-      <LegendList keys={listedKeys} />
+      <LegendList keys={listedKeys} reach={reachLines} colour={shownColour} />
     </>
   );
 }
 
-function LegendList({ keys }: { keys: KeyModel[] }) {
+/** One line per way into the layer, naming the keys that take it. */
+function reachLinesOf(keys: KeyModel[]): { text: string; ids: string[] }[] {
+  const byText = new Map<string, string[]>();
+  for (const k of keys) {
+    if (!k.reach) continue;
+    byText.set(k.reach.text, [...(byText.get(k.reach.text) ?? []), k.key.id]);
+  }
+  return [...byText].map(([text, ids]) => ({ text, ids }));
+}
+
+function LegendList({
+  keys,
+  reach,
+  colour,
+}: {
+  keys: KeyModel[];
+  reach: { text: string; ids: string[] }[];
+  colour: string | undefined;
+}) {
   return (
     <ol className="lm-legend-list" aria-label="Key legend">
       {keys.map((k) => (
@@ -622,6 +720,17 @@ function LegendList({ keys }: { keys: KeyModel[] }) {
           <span className="lm-legend-number">{legendNumber(k.number as number)}</span>
           <span className="font-mono opacity-60">{k.key.id}</span>
           <span>{k.legend.detail}</span>
+        </li>
+      ))}
+      {reach.map((r) => (
+        <li key={r.text} className="lm-legend-reach">
+          <span
+            className="lm-legend-ring"
+            aria-hidden="true"
+            style={colour ? { borderColor: colour } : undefined}
+          />
+          <span className="font-mono opacity-60">{r.ids.join(' ')}</span>
+          <span>{r.text}</span>
         </li>
       ))}
     </ol>
@@ -642,8 +751,14 @@ export function KeyLegend({
   showHold?: boolean;
 }) {
   const layerIdx = Math.min(layer, compiled.layers.length - 1);
-  const listed = modelKeys(compiled, layerIdx, { showHold, numbered: true }).filter(
-    (k) => k.number !== null,
+  const keys = modelKeys(compiled, layerIdx, {
+    showHold,
+    numbered: true,
+    reach: reachOf(compiled, layerIdx),
+  });
+  const listed = keys.filter((k) => k.number !== null);
+  const reach = reachLinesOf(keys);
+  return listed.length === 0 && reach.length === 0 ? null : (
+    <LegendList keys={listed} reach={reach} colour={layerColourAt(compiled, layerIdx)} />
   );
-  return listed.length === 0 ? null : <LegendList keys={listed} />;
 }

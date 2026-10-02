@@ -987,4 +987,39 @@ describe('Edit', () => {
     );
     expect(screen.getByRole('button', { name: /^Key R0: A2, hold Symb/ })).toBeInTheDocument();
   });
+
+  it('marks on each layer the keys held or tapped to reach it, and follows an edit', async () => {
+    const user = userEvent.setup();
+    await openMagicRomak();
+    // The base layer is always on: nothing reaches it.
+    expect(document.querySelector('#kb-edit .lm-key-reach')).toBeNull();
+
+    await user.click(screen.getByRole('tab', { name: 'Symbols' }));
+    expect(
+      await screen.findByRole('button', { name: 'Key R0: empty, held to reach Symbols' }),
+    ).toBeInTheDocument();
+    expect((await screen.findByRole('list', { name: 'Key legend' })).textContent).toContain(
+      'held from Alpha 1 or Numbers to reach Symbols',
+    );
+
+    // The only way into Ç extension is the ç macro on Alpha 2, and the key says it.
+    await user.click(screen.getByRole('tab', { name: 'Ç extension' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Key LBM: empty, tapped to reach Ç extension' }),
+    );
+    expect(
+      within(await inspector('LBM')).getByText(
+        'Tapped from Alpha 2 by the ç macro to reach Ç extension.',
+      ),
+    ).toBeInTheDocument();
+
+    // Ç extension's L1 re-arms Alpha 2 for one key; made a hold, it is held to get there too.
+    await user.click(await screen.findByRole('button', { name: /^Key L1:/ }));
+    await user.click(within(await inspector('L1')).getByRole('radio', { name: 'Hold' }));
+    await screen.findByRole('button', { name: 'Key L1: A2 (hold)' });
+    await user.click(screen.getByRole('tab', { name: 'Alpha 2' }));
+    expect(
+      await screen.findByRole('button', { name: /^Key L1: .*, held or tapped to reach Alpha 2$/ }),
+    ).toBeInTheDocument();
+  });
 });

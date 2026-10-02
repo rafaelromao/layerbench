@@ -39,7 +39,8 @@ const MOD_GLYPH: Record<Mod, string> = {
   RGUI: '⌘',
 };
 
-const MOD_NAME: Record<Mod, string> = {
+/** A modifier as a sentence names it. */
+export const MOD_NAME: Record<Mod, string> = {
   LSHIFT: 'left Shift',
   RSHIFT: 'right Shift',
   LCTRL: 'left Control',

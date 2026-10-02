@@ -1,4 +1,11 @@
-import { type Binding, keyBinding, type LayoutFeatures, legend } from '@layoutmaster/core';
+import {
+  type Binding,
+  describeReach,
+  keyBinding,
+  type LayoutFeatures,
+  legend,
+  reachKeys,
+} from '@layoutmaster/core';
 import { type Dispatch, useMemo, useState } from 'react';
 import { HelpLink } from '../../../components/HelpLink.js';
 import { HELP } from '../../../guide/help.js';
@@ -99,6 +106,13 @@ function Inspector({
   );
 
   const used = useMemo(() => usedBindings(layout), [layout]);
+  // How this key brings the layer on, said where a phone user can read it.
+  const reach = useMemo(() => {
+    const k = reachKeys(compiled, layer).find((x) => x.pos === pos);
+    if (!k) return null;
+    const text = describeReach(compiled, layer, k);
+    return `${text.charAt(0).toUpperCase()}${text.slice(1)}.`;
+  }, [compiled, layer, pos]);
 
   const commit = (binding: Binding) => {
     send({ type: 'commitBinding', keyId, binding });
@@ -129,6 +143,7 @@ function Inspector({
               </span>
             </p>
             <p className="text-xs opacity-80">{shown.detail}</p>
+            {reach && <p className="text-xs opacity-80">{reach}</p>}
           </div>
           <HelpLink help={owner ? HELP.features : HELP.editKey} className="mt-2" />
           <button
