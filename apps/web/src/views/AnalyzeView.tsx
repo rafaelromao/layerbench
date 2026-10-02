@@ -28,6 +28,7 @@ import {
   toSearch,
 } from '../url/params.js';
 import { AnalysisSettings, SampleSelect } from './AnalysisSelects.js';
+import { itemLayer } from './analyze/item-layer.js';
 import { playFrames } from './analyze/playback.js';
 import { groupByLanguage } from './corpus-groups.js';
 import { useLayout, useTypedLayout } from './useLayout.js';
@@ -247,6 +248,9 @@ export function AnalyzeView() {
     setHighlight(expandPositions(report, item.keys));
     setArcs(item.keys.slice(0, -1).map((p, i) => [p, item.keys[i + 1]] as [number, number]));
     setExplain(null);
+    // The board turns to the layer the item happens on, so its keys are the ones drawn.
+    const layer = itemLayer(item.layers);
+    if (layer !== null && layer !== layerIdx) setParams({ layer });
   };
 
   const selectMetric = (id: string) => {

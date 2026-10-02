@@ -194,6 +194,8 @@ export interface RuleSet {
 export interface RuleItem {
   label: string;
   keys: number[];
+  /** The layer each of `keys` was pressed on, the one its key typed from. */
+  layers?: number[];
   percent?: number;
   count?: number;
   distance?: number | null;

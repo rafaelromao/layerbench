@@ -297,6 +297,7 @@ function evalNgram(rule: Rule, ctx: Ctx): RuleResult {
     .map((it) => ({
       label: it.ngram.map((k) => k.label).join(joiner),
       keys: it.ngram.map((k) => k.pos),
+      layers: it.ngram.map((k) => k.layer),
       percent: total > 0 ? (it.c / total) * 100 : 0,
       count: it.c,
       distance: it.d,
@@ -371,22 +372,30 @@ function evalWord(rule: Rule, ctx: Ctx): RuleResult {
   const table = rule.params?.effort ?? {};
   const fallback = defaultEffort(ctx.compiled);
 
-  const scored: { word: string; count: number; effort: number; perChar: number; keys: number[] }[] =
-    [];
+  const scored: {
+    word: string;
+    count: number;
+    effort: number;
+    perChar: number;
+    keys: number[];
+    layers: number[];
+  }[] = [];
   for (const [w, t] of ctx.sim.words) {
     const len = [...w].length;
     if (len < minLen || t.count < minCount) continue;
     let effort = 0;
     const keys: number[] = [];
+    const layers: number[] = [];
     for (const id of t.keys) {
       const a = ctx.attrs[id];
       if (!a) continue;
       keys.push(a.pos);
+      layers.push(a.layer);
       for (const m of a.members) effort += keyEffort(ctx.compiled, m, table, fallback);
     }
     // Extra presses (layer taps and the like) count as effort too.
     const perChar = (effort + (t.presses - len)) / len;
-    scored.push({ word: w, count: t.count, effort, perChar, keys });
+    scored.push({ word: w, count: t.count, effort, perChar, keys, layers });
   }
 
   const items: RuleItem[] = scored
@@ -398,6 +407,7 @@ function evalWord(rule: Rule, ctx: Ctx): RuleResult {
       percent: s.perChar,
       distance: s.effort,
       keys: s.keys,
+      layers: s.layers,
     }));
 
   const totalWords = ctx.sim.stats.words;

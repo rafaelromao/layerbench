@@ -121,6 +121,24 @@ describe('Analyze', () => {
     expect(await screen.findByText('3 presses')).toBeInTheDocument();
   });
 
+  it('turns the board to the layer a listed pair happens on when it is clicked', async () => {
+    const user = userEvent.setup();
+    const { currentSearch } = renderRoute(
+      '/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000',
+    );
+    await screen.findByText('Same finger bigrams');
+    expect(screen.getByRole('tab', { name: 'Alpha 1' })).toHaveAttribute('aria-selected', 'true');
+
+    // The thumb that reaches Alpha 2 is pressed on Alpha 1, the letter after it on Alpha 2.
+    const row = [...document.querySelectorAll<HTMLButtonElement>('.lm-items li button')].find((b) =>
+      /^→A2./.test(b.textContent ?? ''),
+    );
+    expect(row, 'a listed pair that goes up to Alpha 2').toBeDefined();
+    await user.click(row as HTMLButtonElement);
+    await waitFor(() => expect(currentSearch()).toContain('layer=1'));
+    expect(screen.getByRole('tab', { name: 'Alpha 2' })).toHaveAttribute('aria-selected', 'true');
+  });
+
   it('shows the metrics for a single-layer layout without layer costs', async () => {
     renderRoute('/analyze?layout=qwerty&corpus=en-conv&sample=20000');
     await screen.findByText('Same finger bigrams');
