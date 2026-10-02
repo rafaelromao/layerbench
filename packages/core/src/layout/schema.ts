@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { type LegacyLayout, upgradeLegacyFeatures } from './legacy.js';
 import type { Layout } from './types.js';
 
 const ModSchema = z.enum(['LSHIFT', 'RSHIFT', 'LCTRL', 'RCTRL', 'LALT', 'RALT', 'LGUI', 'RGUI']);
@@ -139,7 +140,11 @@ const GeometryKeySchema = z
 
 const PlacementSchema = z.object({ layer: z.string(), key: z.string() });
 
-/** Declarative special features; the compiler desugars them into behaviours and bindings. */
+/**
+ * Declarative special features; the compiler wraps the keys they belong to. `adaptiveKeys` and
+ * `altRepeat` are read, never written: documents from before magic keys were bindings declare them,
+ * and `parseLayout` turns them into bindings on their keys.
+ */
 const FeaturesSchema = z.object({
   adaptiveKeys: z
     .array(
@@ -294,15 +299,20 @@ export const LayoutSchema = z.object({
     .optional(),
 });
 
+/**
+ * Read a layout document. One that still declares magic keys or the alt repeat as features comes
+ * back with them as bindings on their keys (`legacy.ts`), which is the only shape the rest of the
+ * engine knows.
+ */
 export function parseLayout(input: unknown): Layout {
-  return LayoutSchema.parse(input) as Layout;
+  return upgradeLegacyFeatures(LayoutSchema.parse(input) as LegacyLayout);
 }
 
 export function safeParseLayout(
   input: unknown,
 ): { ok: true; layout: Layout } | { ok: false; error: string } {
   const r = LayoutSchema.safeParse(input);
-  if (r.success) return { ok: true, layout: r.data as Layout };
+  if (r.success) return { ok: true, layout: upgradeLegacyFeatures(r.data as LegacyLayout) };
   return { ok: false, error: z.prettifyError(r.error) };
 }
 

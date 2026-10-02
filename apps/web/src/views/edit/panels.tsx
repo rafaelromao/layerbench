@@ -1,6 +1,4 @@
 import {
-  type AdaptiveTrigger,
-  type CompiledLayout,
   exportKeymapDrawer,
   GEOMETRY_PRESET_IDS,
   type LayoutFeatures,
@@ -22,14 +20,6 @@ type Send = Dispatch<EditAction>;
 interface PanelProps {
   state: EditState;
   send: Send;
-}
-
-/** A trigger's condition, as the panel shows it: symbols, tags, or both. */
-function triggerCondition(t: AdaptiveTrigger): string {
-  const parts: string[] = [];
-  if (t.afterAny?.length) parts.push(t.afterAny.join(' '));
-  if (t.afterTags?.length) parts.push(`from ${t.afterTags.join(' ')}`);
-  return parts.join(' · ') || 'always';
 }
 
 function FeatureRow({
@@ -68,9 +58,9 @@ function FeatureRow({
 /**
  * Features: the typing behaviours a keymap would otherwise need extra layers for.
  *
- * Everything here compiles down to ordinary bindings, so the layer list stays the set of layers a
- * typist actually reaches. The trigger tables are shown read-only — a trigger can hold any binding,
- * and the JSON panel is the honest place to edit one.
+ * Each wraps the key it belongs to — the space key, the shift key — in ordinary bindings, so the
+ * layer list stays the set of layers a typist actually reaches. Magic keys and alt repeats are not
+ * here: they are made on their keys, like any other kind of key.
  */
 export function FeaturesPanel({ state, send }: PanelProps) {
   const f: LayoutFeatures = state.layout.features ?? {};
@@ -80,8 +70,9 @@ export function FeaturesPanel({ state, send }: PanelProps) {
   return (
     <div className="space-y-3">
       <p className="text-[11px] opacity-70">
-        Firmware needs a pre-shifted copy of a layer, or a one-shot layer armed by a macro, to do
-        these. Declared here they are what they are, and the layer list stays honest.
+        Firmware needs a pre-shifted copy of a layer to do these. Declared here they are what they
+        are, and the layer list stays honest. Magic keys and alt repeats are made on the key: Magic,
+        or Alt repeat under More.
       </p>
 
       <FeatureRow
@@ -133,76 +124,7 @@ export function FeaturesPanel({ state, send }: PanelProps) {
           />
         </label>
       </FeatureRow>
-
-      <FeatureRow
-        title="Alt repeat"
-        hint="A repeat key whose output depends on the previous press."
-        on={enabled(f.altRepeat)}
-        onToggle={(on) =>
-          set({ ...f, altRepeat: on ? (f.altRepeat ?? { triggers: [] }) : undefined })
-        }
-      >
-        {f.altRepeat ? (
-          <TriggerTable
-            compiled={state.compiled}
-            label="Alt repeat"
-            rows={[
-              ...f.altRepeat.triggers,
-              ...(f.altRepeat.secondStage?.triggers ?? []).map((t) => ({
-                ...t,
-                afterTags: f.altRepeat?.secondStage?.afterTags,
-              })),
-            ]}
-          />
-        ) : null}
-      </FeatureRow>
-
-      {(f.adaptiveKeys ?? []).map((a, i) => (
-        <FeatureRow
-          key={a.id}
-          title={a.label ?? a.id}
-          hint={`Adaptive key on ${(a.at ?? []).map((p) => `${p.layer}/${p.key}`).join(', ') || 'no key'}.`}
-          on={a.enabled !== false}
-          onToggle={(on) => {
-            const keys = [...(f.adaptiveKeys ?? [])];
-            keys[i] = { ...a, enabled: on };
-            set({ ...f, adaptiveKeys: keys });
-          }}
-        >
-          <TriggerTable compiled={state.compiled} label={a.label ?? a.id} rows={a.triggers} />
-        </FeatureRow>
-      ))}
     </div>
-  );
-}
-
-function TriggerTable({
-  compiled,
-  label,
-  rows,
-}: {
-  compiled: CompiledLayout;
-  label: string;
-  rows: AdaptiveTrigger[];
-}) {
-  if (rows.length === 0) return <p className="text-[11px] opacity-60">No triggers.</p>;
-  return (
-    <table className="table table-xs" aria-label={`${label} triggers`}>
-      <thead>
-        <tr>
-          <th>After</th>
-          <th>Types</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((t) => (
-          <tr key={`${triggerCondition(t)}\u2192${tapLabel(compiled, t.binding)}`}>
-            <td className="font-mono">{triggerCondition(t)}</td>
-            <td className="font-mono">{tapLabel(compiled, t.binding)}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
   );
 }
 

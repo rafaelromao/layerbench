@@ -100,14 +100,14 @@ describe('Machine — adaptive keys', () => {
     expect(tap('RBI').symbols).toBe('v');
   });
 
-  it('adaptive chains: alt-repeat on the accent layer falls back to the base repeat', () => {
+  it('alt repeat: a branch for a tagged accent first, the plain ones after it', () => {
     const { tap } = machineFor(magicRomak);
     tap('RHM'); // a
     tap('R0');
-    expect(tap('RHR').symbols).toBe('é'); // arms altrep2
-    // after é, a2AltRepeat → x
+    expect(tap('RHR').symbols).toBe('é'); // an accent, tagged alpha2
+    // after the tagged é, the tagged branch → x
     expect(tap('L1').symbols).toBe('x');
-    // now altrep2 consumed; base alt-repeat after x → arms alpha2
+    // x carries no tag; the plain branch after x → arms alpha2
     const ev = tap('L1');
     expect(ev.symbols).toBe('');
     expect(ev.leafKind).toBe('sl');

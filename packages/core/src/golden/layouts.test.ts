@@ -19,12 +19,15 @@ describe('layout documents — canonical JSON', () => {
     });
   }
 
-  it('round-trips through the schema and still compiles', () => {
+  it('round-trips through the schema to the same bytes, and still compiles', () => {
     for (const layout of documentedLayouts()) {
       const parsed = safeParseLayout(toCanonicalJson(layout));
       expect(parsed.ok, `${layout.id}: ${parsed.ok ? '' : parsed.error}`).toBe(true);
       if (!parsed.ok) continue;
-      expect(toCanonicalJson(parsed.layout)).toEqual(toCanonicalJson(layout));
+      // Bytes, not structure: a link or a stored document must read back as exactly what it was.
+      expect(JSON.stringify(toCanonicalJson(parsed.layout)), layout.id).toBe(
+        JSON.stringify(toCanonicalJson(layout)),
+      );
       expect(() => compileLayout(parsed.layout)).not.toThrow();
     }
   });

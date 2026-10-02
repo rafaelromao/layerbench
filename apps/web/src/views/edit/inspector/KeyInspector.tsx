@@ -1,10 +1,4 @@
-import {
-  type Binding,
-  keyBinding,
-  type LayoutFeatures,
-  legend,
-  SECOND_STAGE_SUFFIX,
-} from '@layoutmaster/core';
+import { type Binding, keyBinding, type LayoutFeatures, legend } from '@layoutmaster/core';
 import { type Dispatch, useMemo, useState } from 'react';
 import { HelpLink } from '../../../components/HelpLink.js';
 import { HELP } from '../../../guide/help.js';
@@ -12,14 +6,7 @@ import type { BindingTextContext } from '../binding-text.js';
 import type { EditAction, EditState } from '../reducer.js';
 import { BindingEditor, type EditorScope } from './bodies.js';
 import { Note } from './controls.js';
-import {
-  FeatureBody,
-  featureTitle,
-  type OwningFeature,
-  owningFeature,
-  withFeatureAt,
-  withoutFeatureAt,
-} from './features.js';
+import { FeatureBody, featureTitle, withoutFeatureAt } from './features.js';
 import { kindInfo, kindOf } from './kinds.js';
 import { chipLabel, usedBindings } from './layout-bindings.js';
 import { BindingTextLine } from './TextLine.js';
@@ -86,17 +73,12 @@ function Inspector({
   const fallback: Binding =
     layout.layers[layer]?.bindings['*'] ?? (layer === 0 ? { kind: 'none' } : { kind: 'trans' });
   const current = authored ?? fallback;
+  // Sentence case and caps word wrap the tap of the key they belong to; such a key is edited as
+  // its feature, since the next compile would wrap anything written on the key again.
   const owner = compiled.featureOwned.get(activeLayer.id)?.get(keyId);
-  const owning = owner ? owningFeature(layout, owner) : null;
   const [allChips, setAllChips] = useState(false);
 
-  const behaviours = useMemo(
-    () =>
-      Object.keys(compiled.expanded.behaviors ?? {}).filter(
-        (name) => !name.includes(SECOND_STAGE_SUFFIX),
-      ),
-    [compiled],
-  );
+  const behaviours = useMemo(() => Object.keys(compiled.expanded.behaviors ?? {}), [compiled]);
   const text: BindingTextContext = useMemo(
     () => ({
       layers: compiled.layers.map((l) => ({ id: l.id, name: l.name })),
@@ -117,15 +99,6 @@ function Inspector({
   );
 
   const used = useMemo(() => usedBindings(layout), [layout]);
-  const placeable = useMemo(() => {
-    const out: Extract<OwningFeature, { kind: 'adaptive' | 'altRepeat' }>[] = [];
-    (layout.features?.adaptiveKeys ?? []).forEach((feature, index) => {
-      if (feature.id !== owner) out.push({ kind: 'adaptive', index, feature });
-    });
-    const alt = layout.features?.altRepeat;
-    if (alt && (alt.id ?? 'altRepeat') !== owner) out.push({ kind: 'altRepeat', feature: alt });
-    return out;
-  }, [layout.features, owner]);
 
   const commit = (binding: Binding) => {
     send({ type: 'commitBinding', keyId, binding });
@@ -151,13 +124,13 @@ function Inspector({
               <span className="badge badge-neutral badge-sm font-mono">{keyId}</span>
               <span className="opacity-70">{activeLayer.name}</span>
               <span className="opacity-70">
-                {owning ? featureTitle(owning) : kindInfo(kindOf(authored)).label}
-                {authored === undefined && !owning ? ' · layer default' : ''}
+                {owner ? featureTitle(owner) : kindInfo(kindOf(authored)).label}
+                {authored === undefined && !owner ? ' · layer default' : ''}
               </span>
             </p>
             <p className="text-xs opacity-80">{shown.detail}</p>
           </div>
-          <HelpLink help={owning ? HELP.features : HELP.editKey} className="mt-2" />
+          <HelpLink help={owner ? HELP.features : HELP.editKey} className="mt-2" />
           <button
             type="button"
             className="btn btn-ghost btn-sm btn-square"
@@ -171,64 +144,32 @@ function Inspector({
           </button>
         </header>
 
-        {owning ? (
+        {owner ? (
           <>
             <div className="rounded-box bg-base-200 p-2 text-xs">
-              This key is the <strong>{featureTitle(owning)}</strong> feature (
-              <span className="font-mono">{owner}</span>), which the layout declares once and places
-              here.
+              This key's tap is wrapped by <strong>{featureTitle(owner)}</strong> (
+              <span className="font-mono">{owner}</span>), which the layout turns on in Features.
             </div>
-            <FeatureBody
-              scope={scope}
-              layout={layout}
-              owning={owning}
-              layerId={activeLayer.id}
-              keyId={keyId}
-              setFeatures={setFeatures}
-            />
+            <FeatureBody layout={layout} feature={owner} setFeatures={setFeatures} />
             <details className="text-xs">
               <summary className="cursor-pointer opacity-70">The key under the feature</summary>
               <div className="pt-2 space-y-2">
-                <Note>
-                  {owning.kind === 'sentenceCase' || owning.kind === 'capsWord'
-                    ? 'The feature wraps what this key taps; the rest of it is set here.'
-                    : 'The feature takes over the tap. A hold set here still works, and the key goes back to this without the feature.'}
-                </Note>
+                <Note>The feature wraps what this key taps; the rest of it is set here.</Note>
                 <BindingEditor scope={scope} value={current} onChange={commit} />
               </div>
             </details>
           </>
-        ) : owner ? (
-          <Note>
-            Generated by <span className="font-mono">{owner}</span>, which this editor does not know
-            how to change; edit it in JSON.
-          </Note>
         ) : (
           <>
             <BindingEditor scope={scope} value={current} onChange={commit} />
 
-            {(used.length > 0 || placeable.length > 0) && (
+            {used.length > 0 && (
               <div className="space-y-1">
                 <p className="text-xs font-semibold">From this layout</p>
                 <ul
                   className="flex flex-wrap gap-1 list-none p-0 m-0"
                   aria-label="From this layout"
                 >
-                  {placeable.map((f) => (
-                    <li key={f.kind === 'adaptive' ? f.feature.id : 'altRepeat'}>
-                      <button
-                        type="button"
-                        className="btn btn-xs btn-outline btn-primary"
-                        title={`Place ${featureTitle(f)} on ${keyId} too`}
-                        onClick={() => {
-                          setFeatures(withFeatureAt(layout, f, activeLayer.id, keyId));
-                          announce(`${featureTitle(f)} placed on ${keyId}`);
-                        }}
-                      >
-                        {f.kind === 'adaptive' ? '✦' : '⟳✦'} {featureTitle(f)}
-                      </button>
-                    </li>
-                  ))}
                   {chips.map((u) => {
                     const label = chipLabel(compiled, u.binding);
                     return (
@@ -317,16 +258,16 @@ function Inspector({
               ))}
             </select>
           )}
-          {owning ? (
+          {owner ? (
             <button
               type="button"
               className="btn btn-xs btn-ghost text-error"
               onClick={() => {
-                setFeatures(withoutFeatureAt(layout, owning, activeLayer.id, keyId));
-                announce(`${featureTitle(owning)} removed from ${keyId}`);
+                setFeatures(withoutFeatureAt(layout, owner, activeLayer.id));
+                announce(`${featureTitle(owner)} removed from ${keyId}`);
               }}
             >
-              Remove {featureTitle(owning)} from this key
+              Remove {featureTitle(owner)} from this key
             </button>
           ) : (
             <button

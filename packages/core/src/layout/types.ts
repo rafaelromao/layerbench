@@ -15,8 +15,13 @@ export const MODS: readonly Mod[] = [
 
 export type HostLocale = 'symbols' | 'us' | 'us-intl' | 'abnt2';
 
+/**
+ * One branch of an adaptive key. Branches are tried in order and the first that matches wins, so
+ * branches that need a tag go first when a plain one would match the same symbol: that is how an
+ * alt repeat gets a second stage.
+ */
 export interface AdaptiveTrigger {
-  /** Last keycodes/symbols that trigger this branch. */
+  /** Last keycodes/symbols that trigger this branch. Empty or absent with tags: any symbol. */
   afterAny?: string[];
   /**
    * Tags of the binding that produced the last press. Lets a branch depend on *how* a symbol was
@@ -140,42 +145,6 @@ export type GeometryRef =
   | { preset: string; columnOffsets?: Record<string, number> }
   | { custom: GeometryKey[]; family?: 'columnar' | 'rowstagger'; name?: string };
 
-/** Where a feature puts its binding: a key on a layer. */
-export interface FeaturePlacement {
-  layer: string;
-  key: string;
-}
-
-/** A key whose output depends on the previous press — a "magic" key. */
-export interface AdaptiveKeyFeature {
-  /** Behaviour name. Also part of the producer id, so renaming it changes typing-path ids. */
-  id: string;
-  label?: string;
-  enabled?: boolean;
-  /** Output when no trigger matches. */
-  default: Binding;
-  triggers: AdaptiveTrigger[];
-  strictModifiers?: boolean;
-  deadKeys?: string[];
-  /** Keys the behaviour is bound to. Omit to place it yourself with `{ kind: 'ref' }`. */
-  at?: FeaturePlacement[];
-}
-
-/** A repeat key whose output depends on the previous press. */
-export interface AltRepeatFeature {
-  enabled?: boolean;
-  /** Behaviour name (default `altRepeat`). */
-  id?: string;
-  at?: FeaturePlacement[];
-  /** First stage; the implicit default is the repeat key. */
-  triggers: AdaptiveTrigger[];
-  /**
-   * Branches that fire only when the previous press carried one of `afterTags` — what replaces the
-   * one-shot "alt repeat 2" layer the firmware needs.
-   */
-  secondStage?: { afterTags: string[]; triggers: AdaptiveTrigger[] };
-}
-
 /** Shift the first letter after sentence-ending punctuation. */
 export interface SentenceCaseFeature {
   enabled?: boolean;
@@ -206,14 +175,17 @@ export interface CapsWordFeature {
 /**
  * Typing behaviours that firmware implements with layers, declared here as what they are.
  *
- * A keymap needs a pre-shifted copy of a layer, or a one-shot layer armed by a macro, only because
- * of what firmware can express. The simulator has no such limit, so these are declared once and the
- * compiler desugars them into ordinary bindings. That keeps the layer list the set of layers a
- * typist actually reaches, and makes the behaviours editable without hand-written JSON.
+ * A keymap needs a pre-shifted copy of a layer only because of what firmware can express. The
+ * simulator has no such limit, so these are declared once and the compiler wraps the key they
+ * belong to — the space key, the shift key — in ordinary bindings. That keeps the layer list the set
+ * of layers a typist actually reaches.
+ *
+ * Magic keys and alt repeats are not features: they are `adaptive` bindings on their keys, made
+ * and edited like any other. A branch's `afterTags` replaces the one-shot layer an accent macro arms
+ * in firmware so the repeat key can follow up. Documents that still declare `adaptiveKeys` or
+ * `altRepeat` here are converted to those bindings when read (`legacy.ts`).
  */
 export interface LayoutFeatures {
-  adaptiveKeys?: AdaptiveKeyFeature[];
-  altRepeat?: AltRepeatFeature;
   sentenceCase?: SentenceCaseFeature;
   capsWord?: CapsWordFeature;
 }

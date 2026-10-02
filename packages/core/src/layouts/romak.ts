@@ -407,15 +407,48 @@ export const romak24: Layout = romak24Base(
   'Romak for 24 keys (1333+2): two alpha layers, Ç extension, one-shot shift, and numbers and symbols held from the thumbs.',
 );
 
+/** A magic key: types `fallback`, or `afterVowel` when a vowel came just before it. */
+const magicKey = (fallback: string, afterVowel: string): Binding => ({
+  kind: 'adaptive',
+  default: kp(fallback),
+  triggers: [{ afterAny: VOWELS, binding: kp(afterVowel) }],
+});
+
+/**
+ * The alt repeat: repeats the key before it, unless a branch matches. Branches are tried from the
+ * top, so the three that need the `alpha2` tag — a press from an accent or `qu`, never a plain
+ * letter — come first: they do what the firmware's one-shot "alt repeat 2" layer does.
+ */
+const ALT_REPEAT: Binding = {
+  kind: 'adaptive',
+  default: { kind: 'key_repeat' },
+  triggers: [
+    {
+      afterAny: ['á', 'à', 'ã', 'â', 'ó', 'õ', 'ô', 'é', 'ê'],
+      afterTags: [ALPHA2_TAG],
+      binding: kp('x'),
+    },
+    { afterAny: ['í'], afterTags: [ALPHA2_TAG], binding: kp('e') },
+    { afterAny: ['u', 'ú'], afterTags: [ALPHA2_TAG], binding: taggedAccent('ê') },
+    { afterAny: ['a'], binding: kp('h') },
+    { afterAny: ['y'], binding: kp('d') },
+    { afterAny: ['h'], binding: { kind: 'macro', symbols: 'ões' } },
+    { afterAny: ['v', 'x', 'j'], binding: { kind: 'sl', layer: 'alpha2' } },
+    { afterAny: ["'"], binding: kp('v') },
+    { afterAny: ['I'], binding: kp("'") },
+  ],
+};
+
 /**
  * Magic Romak: Romak 24 plus the adaptive behaviours.
  *
  * The firmware needs four extra layers for these — pre-shifted copies of the alphas for sentence
  * case, caps word and shifted Alpha 2, and a one-shot layer armed by every accent macro so the
- * repeat key can offer follow-ups. None of them is a layer a typist reaches, so here they are
- * declared as features and the compiler desugars them: sentence case arms a one-shot shift, caps
- * word is the `caps_word` behaviour, shift is simply shift state, and the alt-repeat follow-ups
- * match on the tag the accent macro leaves behind. What is left is the three layers you can see.
+ * repeat key can offer follow-ups. None of them is a layer a typist reaches. Sentence case and caps
+ * word are declared as features, which wrap the space and shift keys: sentence case arms a one-shot
+ * shift, caps word is the `caps_word` behaviour, and shift is simply shift state. The magic keys and
+ * the alt repeat are adaptive keys on their own keys, and the alt-repeat follow-ups match on the tag
+ * the accent macro leaves behind. What is left is the layers you can see.
  */
 export const magicRomak: Layout = (() => {
   const base = romak24Base(
@@ -423,6 +456,7 @@ export const magicRomak: Layout = (() => {
     'magic-romak',
     'Romak 24 with adaptive magic keys (h/v), alt repeat, sentence case and caps word.',
   );
+  const alpha1 = base.layers[0];
   return {
     ...base,
     behaviors: {},
@@ -430,62 +464,20 @@ export const magicRomak: Layout = (() => {
     layers: [
       // Holding space reaches the numbers and holding the Alpha 2 key the symbols; the
       // sentence-case feature wraps the space's tap arm, so both live on one key.
-      base.layers[0],
-      { id: 'alpha2', name: 'Alpha 2', bindings: alpha2Bindings(taggedAccent, ALPHA2_TAG) },
+      {
+        ...alpha1,
+        bindings: { ...alpha1.bindings, RBI: magicKey('h', 'v'), L1: ALT_REPEAT },
+      },
+      {
+        id: 'alpha2',
+        name: 'Alpha 2',
+        bindings: { ...alpha2Bindings(taggedAccent, ALPHA2_TAG), LBI: magicKey('v', 'h') },
+      },
       { id: 'ccedil', name: '\u00c7 extension', bindings: CCEDIL_BINDINGS },
       NUMBERS_LAYER,
       SYMBOLS_LAYER,
     ],
     features: {
-      adaptiveKeys: [
-        {
-          id: 'magic',
-          label: 'Magic key',
-          default: kp('h'),
-          triggers: [{ afterAny: VOWELS, binding: kp('v') }],
-          at: [{ layer: 'alpha1', key: 'RBI' }],
-        },
-        {
-          id: 'reversedMagic',
-          label: 'Reversed magic key',
-          default: kp('v'),
-          triggers: [{ afterAny: VOWELS, binding: kp('h') }],
-          at: [{ layer: 'alpha2', key: 'LBI' }],
-        },
-      ],
-      altRepeat: {
-        at: [{ layer: 'alpha1', key: 'L1' }],
-        triggers: [
-          { afterAny: ['a'], binding: kp('h') },
-          { afterAny: ['y'], binding: kp('d') },
-          { afterAny: ['h'], binding: { kind: 'macro', symbols: '\u00f5es' } },
-          { afterAny: ['v', 'x', 'j'], binding: { kind: 'sl', layer: 'alpha2' } },
-          { afterAny: ["'"], binding: kp('v') },
-          { afterAny: ['I'], binding: kp("'") },
-        ],
-        // Only after a press that came from Alpha 2 — an accent or `qu`, never a plain letter.
-        secondStage: {
-          afterTags: [ALPHA2_TAG],
-          triggers: [
-            {
-              afterAny: [
-                '\u00e1',
-                '\u00e0',
-                '\u00e3',
-                '\u00e2',
-                '\u00f3',
-                '\u00f5',
-                '\u00f4',
-                '\u00e9',
-                '\u00ea',
-              ],
-              binding: kp('x'),
-            },
-            { afterAny: ['\u00ed'], binding: kp('e') },
-            { afterAny: ['u', '\u00fa'], binding: taggedAccent('\u00ea') },
-          ],
-        },
-      },
       sentenceCase: {},
       // Matches what the pre-shifted layer allowed through before.
       capsWord: { continueList: ['_', 'Backspace'] },

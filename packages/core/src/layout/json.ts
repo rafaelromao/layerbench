@@ -143,45 +143,34 @@ function geometryToJson(g: GeometryRef): Record<string, unknown> {
 }
 
 function triggerToJson(t: AdaptiveTrigger): Record<string, unknown> {
-  return compact({
-    afterAny: t.afterAny,
-    afterTags: t.afterTags,
-    binding: bindingToJson(t.binding),
-  });
+  const binding = bindingToJson(t.binding);
+  // A branch that names no key and no tag never fires — one just added, say. Its empty list is the
+  // one empty field written, so the document reads back instead of failing to.
+  if (!t.afterAny?.length && !t.afterTags?.length) return { afterAny: [], binding };
+  return compact({ afterAny: t.afterAny, afterTags: t.afterTags, binding });
 }
 
-/** Absent when the layout declares no features, so existing documents stay byte-identical. */
+/**
+ * Absent when the layout declares no features, so existing documents stay byte-identical. Fields
+ * are written in the schema's order, so a document reads back to exactly the bytes it was.
+ */
 function featuresToJson(f: LayoutFeatures): Record<string, unknown> {
+  const s = f.sentenceCase;
+  const c = f.capsWord;
   return compact({
-    adaptiveKeys: f.adaptiveKeys?.map((a) =>
-      compact({
-        id: a.id,
-        label: a.label,
-        enabled: a.enabled ?? true,
-        default: bindingToJson(a.default),
-        triggers: a.triggers.map(triggerToJson),
-        strictModifiers: a.strictModifiers,
-        deadKeys: a.deadKeys,
-        at: a.at,
-      }),
-    ),
-    altRepeat:
-      f.altRepeat &&
-      compact({
-        enabled: f.altRepeat.enabled ?? true,
-        id: f.altRepeat.id ?? 'altRepeat',
-        at: f.altRepeat.at,
-        triggers: f.altRepeat.triggers.map(triggerToJson),
-        secondStage:
-          f.altRepeat.secondStage &&
-          compact({
-            afterTags: f.altRepeat.secondStage.afterTags,
-            triggers: f.altRepeat.secondStage.triggers.map(triggerToJson),
-          }),
-      }),
     sentenceCase:
-      f.sentenceCase && compact({ ...f.sentenceCase, enabled: f.sentenceCase.enabled ?? true }),
-    capsWord: f.capsWord && compact({ ...f.capsWord, enabled: f.capsWord.enabled ?? true }),
+      s &&
+      compact({ enabled: s.enabled ?? true, after: s.after, key: s.key, on: s.on, mod: s.mod }),
+    capsWord:
+      c &&
+      compact({
+        enabled: c.enabled ?? true,
+        key: c.key,
+        on: c.on,
+        triggerMods: c.triggerMods,
+        mods: c.mods,
+        continueList: c.continueList,
+      }),
   });
 }
 

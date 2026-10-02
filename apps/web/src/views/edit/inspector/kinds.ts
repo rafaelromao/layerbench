@@ -91,6 +91,12 @@ export const ARM_KINDS: readonly InspectorKind[] = [
   'nothing',
 ];
 
+/**
+ * What the tap of a tap-hold can be: an arm, or a magic key or alt repeat, so a key can be a magic
+ * key on a tap and a layer or a modifier on a hold.
+ */
+export const TAP_KINDS: readonly InspectorKind[] = [...ARM_KINDS, 'magic', 'altrepeat'];
+
 export function kindInfo(kind: InspectorKind): KindInfo {
   return ALL_KINDS.find((k) => k.kind === kind) ?? IMPORTED;
 }
@@ -193,6 +199,21 @@ function modPart(b: Binding | undefined): Mod | undefined {
   }
 }
 
+type Adaptive = Extract<Binding, { kind: 'adaptive' }>;
+
+/** The magic key or alt repeat a binding is, or carries as the tap of a tap-hold. */
+function adaptivePart(b: Binding | undefined): Adaptive | undefined {
+  switch (b?.kind) {
+    case 'adaptive':
+      return b.ref ? undefined : b;
+    case 'lt':
+    case 'hold_tap':
+      return adaptivePart(b.tap);
+    default:
+      return undefined;
+  }
+}
+
 const EMPTY_SYMBOL: Binding = { kind: 'kp', symbol: '' };
 
 /**
@@ -213,6 +234,7 @@ export function convert(
   const layer = layerPart(current) ?? compiled.layers[1]?.id ?? compiled.layers[0].id;
   const mod = modPart(current) ?? 'LSHIFT';
   const symbol = tap.kind === 'kp' ? tap : EMPTY_SYMBOL;
+  const adaptive = adaptivePart(current);
   switch (to) {
     case 'symbol':
       return symbol;
@@ -220,18 +242,22 @@ export function convert(
       return { kind: 'mo', layer };
     case 'modifier':
       return { kind: 'mod', mod };
-    case 'taphold':
+    case 'taphold': {
+      // A magic key, an alt repeat or a repeat key stays the tap, as a symbol does.
+      const tapArm = adaptive ?? (current?.kind === 'key_repeat' ? current : symbol);
       // A modifier key keeps its modifier on hold — a home-row mod — and anything else gets a layer.
       return modPart(current) && !layerPart(current)
-        ? { kind: 'hold_tap', tap: symbol, hold: { kind: 'mod', mod } }
-        : { kind: 'lt', layer, tap: symbol };
+        ? { kind: 'hold_tap', tap: tapArm, hold: { kind: 'mod', mod } }
+        : { kind: 'lt', layer, tap: tapArm };
+    }
     case 'repeat':
       return { kind: 'key_repeat' };
     case 'magic':
-      if (current?.kind === 'adaptive' && !current.ref) {
+      // A magic key that is a tap-hold's tap comes out of it, branches and all.
+      if (adaptive) {
         return {
-          ...current,
-          default: current.default?.kind === 'key_repeat' ? EMPTY_SYMBOL : current.default,
+          ...adaptive,
+          default: adaptive.default?.kind === 'key_repeat' ? EMPTY_SYMBOL : adaptive.default,
         };
       }
       return {
@@ -240,9 +266,7 @@ export function convert(
         triggers: [],
       };
     case 'altrepeat':
-      if (current?.kind === 'adaptive' && !current.ref) {
-        return { ...current, default: { kind: 'key_repeat' } };
-      }
+      if (adaptive) return { ...adaptive, default: { kind: 'key_repeat' } };
       return { kind: 'adaptive', default: { kind: 'key_repeat' }, triggers: [] };
     case 'macro':
       return { kind: 'macro', symbols: symbol.kind === 'kp' ? (symbol.symbol ?? '') : '' };

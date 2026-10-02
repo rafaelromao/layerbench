@@ -25,7 +25,8 @@ A key can do one thing when tapped and another while held, or act once, on the n
 
 A **Tap-hold** key has two parts. The **Tap** is what a quick press does, usually a letter; the
 **Hold** is a layer or a modifier while the key is held down. A letter on the home row with a
-modifier underneath is a home-row modifier.
+modifier underneath is a home-row modifier. The Tap can also be a magic key or an alt repeat, so a
+thumb can adapt when tapped and reach a layer when held.
 
 **Timing**, under the hold, sets the tapping term, how long a press must last to count as a hold,
 and the flavor, ZMK's rule for telling a tap from a hold when another key comes in between. Its
@@ -61,13 +62,8 @@ fingers instead of one.
 An **Alt repeat** key, under **More**, repeats as well, but after chosen keys it types something
 else: after `a`, say, it could type `o`. Each **branch** names the keys it follows and what it
 types after them. On the board it reads `⟳` with a `✦`. A repeat key becomes one with **Make it
-an alt repeat**.
-
-### The layout's own alt repeat
-
-**Features** can declare one alt repeat for the whole layout, with its branches and a second stage
-that follows it. Its key then appears under **From this layout** as a key you can place anywhere,
-and the editor edits its branches on whichever key holds it.
+an alt repeat**, and a layout can have as many as it needs. An alt repeat is a magic key whose
+default is the repeat, so everything below about magic keys holds for it too.
 
 ## Magic keys
 
@@ -83,11 +79,19 @@ as `tag:name` at the end of what you type in **Or type**.
 The idea, and the way LayoutMaster models it, follows
 [urob's zmk-adaptive-key](https://github.com/urob/zmk-adaptive-key).
 
-### Magic keys the layout declares
+### Which branch wins
 
-A magic key declared in **Features** has a name, and can sit on several keys at once. It appears
-under **From this layout** as `✦` and its name; choosing it places it on the selected key. On a key
-that holds one, the editor edits the magic key itself, and **Remove** takes it off that key only.
+Branches are tried from the top, and the first that matches the key before wins; the arrows beside
+a branch move it. A branch that needs a tag goes above a plain one for the same keys, so after an
+accent tagged `alpha2` an alt repeat can type one thing and after the plain letter another. That
+is a second stage, which firmware builds with a one-shot layer the accent arms.
+
+### The same magic key on several keys
+
+A magic key lives on its key, like any other. **Copy to…**, or dragging with `Alt`, puts a copy on
+another key, and **From this layout** lists the layout's magic keys first. Each copy is a key of
+its own: changing one leaves the others as they were. A layout saved when magic keys were declared
+in **Features** opens with each one on the keys it was placed on, typing as it did.
 
 ## Macros
 

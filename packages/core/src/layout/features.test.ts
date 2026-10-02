@@ -77,27 +77,15 @@ describe('feature expansion', () => {
     expect(shift.morphed.kind).toBe('caps_word');
   });
 
-  it('reports a feature that names a layer or key the layout does not have', () => {
-    const e = expandFeatures(
-      mini({
-        adaptiveKeys: [
-          { id: 'x', default: { kind: 'kp' }, triggers: [], at: [{ layer: 'nope', key: 'LHI' }] },
-        ],
-      }),
-    );
-    expect(e.errors).toEqual(['Feature x: unknown layer nope']);
+  it('reports a feature that names a layer the layout does not have', () => {
+    const e = expandFeatures(mini({ sentenceCase: { on: ['nope'] } }));
+    expect(e.errors).toEqual(['Feature sentenceCase: unknown layer nope']);
   });
 
-  it('refuses to overwrite a behaviour the document already defines', () => {
-    const e = expandFeatures(
-      mini(
-        { adaptiveKeys: [{ id: 'magic', default: { kind: 'kp' }, triggers: [] }] },
-        {
-          behaviors: { magic: { kind: 'kp', symbol: 'z' } },
-        },
-      ),
-    );
-    expect(e.errors[0]).toContain('already defined by the document');
+  it('leaves the document behaviours as they are', () => {
+    const behaviors = { magic: { kind: 'kp', symbol: 'z' } } as const;
+    const e = expandFeatures(mini({ sentenceCase: {} }, { behaviors }));
+    expect(e.layout.behaviors).toBe(behaviors);
   });
 });
 
@@ -132,14 +120,16 @@ describe('Magic Romak after the features rewrite', () => {
   it('keeps the authored document separate from the expanded one', () => {
     expect(compiled.layout.features?.sentenceCase).toBeDefined();
     expect(compiled.layout.behaviors).toEqual({});
-    // The expansion is what the layers were compiled from.
-    expect(Object.keys(compiled.expanded.behaviors ?? {}).sort()).toEqual([
-      'altRepeat',
-      'altRepeat@2',
-      'magic',
-      'reversedMagic',
-    ]);
-    expect(compiled.featureOwned.get('alpha1')?.get('L1')).toBe('altRepeat');
+    // Only the space and shift keys are wrapped; the magic keys and the alt repeat are bindings.
+    expect(compiled.expanded.behaviors).toEqual({});
+    expect(compiled.featureOwned.get('alpha1')).toEqual(
+      new Map([
+        ['L0', 'sentenceCase'],
+        ['R1', 'capsWord'],
+      ]),
+    );
+    const altRepeat = compiled.layout.layers[0].bindings.L1;
+    expect(altRepeat.kind === 'adaptive' && altRepeat.default).toEqual({ kind: 'key_repeat' });
   });
 
   // The traces the reference implementation produced, unchanged by the rewrite.

@@ -435,14 +435,20 @@ export class Machine {
     s.lastTag = ctx.tag;
   }
 
-  /** Does this adaptive branch apply? Both conditions must hold when both are declared. */
+  /**
+   * Does this adaptive branch apply? Both conditions must hold when both are declared. An empty
+   * list declares nothing, as the editor writes one: a branch with tags and no symbols follows any
+   * symbol from a tagged key, and one with neither — a branch just added — never fires.
+   */
   private triggerMatches(t: AdaptiveTrigger, strict: boolean): boolean {
-    if (t.afterTags) {
+    const tags = t.afterTags?.length ? t.afterTags : undefined;
+    const keys = t.afterAny?.length ? t.afterAny : undefined;
+    if (tags) {
       const last = this.state.lastTag;
-      if (last === null || !t.afterTags.includes(last)) return false;
+      if (last === null || !tags.includes(last)) return false;
     }
-    if (t.afterAny === undefined) return t.afterTags !== undefined;
-    return this.matchesTrigger(t.afterAny, strict);
+    if (keys === undefined) return tags !== undefined;
+    return this.matchesTrigger(keys, strict);
   }
 
   private matchesTrigger(afterAny: string[], strict: boolean): boolean {

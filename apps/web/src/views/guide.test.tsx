@@ -34,7 +34,7 @@ describe('Guide', () => {
     await screen.findByRole('heading', { level: 1, name: 'Special keys' });
     await user.click(screen.getByRole('button', { name: 'Open every section' }));
     expect(section('Magic keys').open).toBe(true);
-    expect(section('Magic keys the layout declares').open).toBe(true);
+    expect(section('Which branch wins').open).toBe(true);
     await user.click(screen.getByRole('button', { name: 'Close them all' }));
     expect(section('Magic keys').open).toBe(false);
   });

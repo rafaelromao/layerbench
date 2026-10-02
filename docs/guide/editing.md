@@ -43,13 +43,14 @@ layout's own named behaviours. [Special keys](special-keys.md) explains each of 
 
 A tap-hold has a tap and a hold, a magic key has a branch for each key it follows, and a tap dance
 has a binding for each number of taps. Each part has its own small choice of kind, with that
-kind's controls under it, so a hold can reach a layer while the tap types a letter.
+kind's controls under it, so a hold can reach a layer while the tap types a letter, or is a magic
+key.
 
 ### Keys the layout already has
 
-**From this layout** offers the keys the layout already uses, such as its symbols, layer keys,
-modifiers and magic keys, to put on the selected key in one tap. **All** shows every one of them,
-including the keys an import brought in.
+**From this layout** offers the keys the layout already uses, its magic keys and alt repeats first
+and then its symbols, layer keys and modifiers, to put on the selected key in one tap. **All**
+shows every one of them, including the keys an import brought in.
 
 ### Typing a binding
 
@@ -78,7 +79,7 @@ it, and a binding typed into the field replaces it.
 ## Moving keys around
 
 Drag a key onto another to swap the two. Hold `Alt` while dropping to copy it instead, or drop it
-on a layer tab to send it to that layer. Magic keys and alt repeat keys move with it.
+on a layer tab to send it to that layer.
 
 The same moves work without dragging. **Swap with…** and **Copy to…** in the editor ask you to
 tap the other key, and **Send to layer…** picks the layer from a list. **Clear** empties the key.
@@ -93,7 +94,7 @@ The **Layers** panel lists them in order, and does everything else with them:
   `F2` on the keyboard).
 - **Reorder** with the arrows, or by dragging its row. The base layer stays first.
 - **Duplicate** copies a layer, with all its keys, right after it.
-- **Remove** deletes a layer. It refuses while a key, combo or feature still reaches the layer,
+- **Remove** deletes a layer. It refuses while a key, combo or behaviour still reaches the layer,
   and names each one, so nothing is left pointing at a layer that is gone.
 - **+ layer** adds an empty one at the end.
 
@@ -107,7 +108,7 @@ layer in the end, which is why it stays first.
 
 The other panels hold what is not on a single key:
 
-- **Features** turns on sentence case, caps word, alt repeat and the layout's magic keys.
+- **Features** turns on sentence case and caps word.
 - **Geometry** chooses the board and says which keys are space and shift.
 - **Combos** are keys pressed together. **Pick on board**, then tap the keys; the output takes
   the same syntax as **Or type**.

@@ -27,6 +27,17 @@ describe('inline layout links', () => {
     expect(toCanonicalJson(decoded.layout)).toEqual(toCanonicalJson(bundledLayout('magic-romak')!));
   });
 
+  // Links shared while Magic Romak's magic keys and alt repeat were declared as features open as
+  // the layout is now, every key where it was.
+  it('opens a link from when magic keys were features as Magic Romak is now', async () => {
+    const decoded = await decodeInline(blobFixture('inline-magic-romak-features.txt'));
+    expect(decoded.ok).toBe(true);
+    if (!decoded.ok) return;
+    expect(JSON.stringify(toCanonicalJson(decoded.layout))).toBe(
+      JSON.stringify(toCanonicalJson(bundledLayout('magic-romak')!)),
+    );
+  });
+
   // Links shared from the Elixir implementation carry a document written by a different deflate and
   // an older Magic Romak. They must still open, whatever the shipped layout looks like now.
   it('still opens a link written by the Elixir implementation', async () => {

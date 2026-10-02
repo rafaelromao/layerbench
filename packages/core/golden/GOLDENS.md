@@ -37,6 +37,11 @@ storage, share-link and hashing formats, so drift there breaks interoperability.
 `inline-magic-romak.txt` is the deflate + base64url share blob, asserted by the web app's
 `url/inline.test.ts`.
 
+Two files are frozen, never rewritten by `pnpm goldens`: `inline-magic-romak-features.txt` and
+`legacy/magic-romak-features.json`, Magic Romak's share blob and document from when its magic keys
+and alt repeat were declared as features. `src/layout/legacy.test.ts` and `url/inline.test.ts` hold
+them to opening as today's Magic Romak, byte for byte, and typing every report's numbers.
+
 ## History: these were dumped from the Elixir reference, and no longer are
 
 The first set of reports came from the Elixir implementation that this application replaced, which
@@ -186,6 +191,30 @@ What moved, checked across all 38 reports:
   328.50).
 - **Nothing for Qwerty, or for Romak 34 in English**: a layout typing each character with one press
   has exactly the text's totals, which `src/rules/engine.test.ts` asserts.
+
+## Seventh re-baseline: magic keys and the alt repeat as bindings on their keys
+
+A magic key made in the editor was a binding on its key, and Magic Romak's were declared in
+`features` and placed on keys; the editor treated the two differently in a score of ways. Now every
+magic key and alt repeat is an `adaptive` binding on its key, and `features` holds only sentence
+case and caps word. A document that still declares them is converted when it is read
+(`src/layout/legacy.ts`), so stored layouts and old links keep opening and type exactly as before.
+
+The alt repeat's second stage was a second adaptive key wrapped around the first. It is now one list
+of branches with the three that need the `alpha2` tag first: branches are tried in order, so it types
+exactly what the two stages did.
+
+What moved, checked across all 38 reports:
+
+- **Magic Romak's document** (`layouts/magic-romak.json`, `inline-magic-romak.txt`): its keys
+  RBI, LBI and L1 carry their adaptive bindings, and `features` keeps sentence case and caps word,
+  written in schema order (`capsWord` had been read back in a different key order).
+- **Producer ids on the alt-repeat key of the 14 Magic Romak reports, and nothing else**: the first
+  stage's branches go from `adaptive:alpha1/L1#default#t<i>` to `#t<i+3>`, and its repeat from
+  `repeat:alpha1/L1#default#default` to `#default`. Applying those two renames to each previous
+  report gives the new file byte for byte. Every statistic, total, registry entry, run, rule value,
+  score and traced press is unchanged, and so is the order of every producer list.
+- **Nothing in the Romak 34 and Qwerty reports.**
 
 ## Not compared
 

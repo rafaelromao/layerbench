@@ -1,6 +1,6 @@
 import { applyFingering, getGeometryPreset } from '../geometry/presets.js';
 import type { Finger, Geometry, GeometryKey, Hand } from '../geometry/types.js';
-import { expandFeatures } from './features.js';
+import { expandFeatures, type WrappingFeature } from './features.js';
 import type { BehaviorDefaults, Binding, HostLocale, Layout, Mod } from './types.js';
 
 export interface CompiledLayer {
@@ -52,8 +52,8 @@ export interface CompiledLayout {
   layout: Layout;
   /** The document after feature expansion: what the layers and combos were compiled from. */
   expanded: Layout;
-  /** `layerId` → `keyId` → the feature that generated the binding, for the editor. */
-  featureOwned: Map<string, Map<string, string>>;
+  /** `layerId` → `keyId` → the feature that wraps the key's tap, for the editor. */
+  featureOwned: Map<string, Map<string, WrappingFeature>>;
   geometry: Geometry;
   keys: GeometryKey[];
   positions: PositionInfo[];
@@ -136,7 +136,7 @@ function resolveRefs(
 }
 
 /**
- * The same keymap with its features desugared and every behaviour reference replaced by what it
+ * The same keymap with its features expanded and every behaviour reference replaced by what it
  * names, so nothing is left to look up. A change to the bindings needs this first: a named behaviour
  * changed in place would no longer be the kind that refers to it.
  */
@@ -294,8 +294,8 @@ export function buildGeometry(layout: Layout): Geometry {
 export function compileLayout(authored: Layout): CompiledLayout {
   const errors: string[] = [];
   const warnings: string[] = [];
-  // Features desugar into behaviours and layer bindings before anything else looks at the layers,
-  // so the rest of the compiler — and the whole simulator — sees only ordinary bindings.
+  // Features wrap the keys they belong to before anything else looks at the layers, so the rest of
+  // the compiler — and the whole simulator — sees only ordinary bindings.
   const expansion = expandFeatures(authored);
   const layout = expansion.layout;
   errors.push(...expansion.errors);

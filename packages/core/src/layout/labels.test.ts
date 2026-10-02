@@ -45,7 +45,7 @@ suite('legends', () => {
     expect(magic.detail).toMatch(/^adaptive: types h; after a e i/);
   });
 
-  it('describes alt repeat once, however the feature nests it', () => {
+  it('describes alt repeat once, its tagged branches included', () => {
     const d = legend(c, at('L1')).detail;
     expect(d.match(/adaptive:/g)).toHaveLength(1);
     expect(d).toContain('repeats the previous key');

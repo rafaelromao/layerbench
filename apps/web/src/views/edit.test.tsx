@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { bundledLayout, type Layout, toCanonicalJson } from '@layoutmaster/core';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -359,11 +361,9 @@ describe('Edit', () => {
     await user.click(screen.getByRole('tab', { name: 'Features' }));
     expect(screen.getByLabelText('Sentence case')).toBeChecked();
     expect(screen.getByLabelText('Caps word')).toBeChecked();
-    expect(screen.getByLabelText('Magic key')).toBeChecked();
-
-    // The adaptive triggers are visible without opening the JSON panel.
-    const magic = screen.getByRole('table', { name: 'Magic key triggers' });
-    expect(within(magic).getByText('v')).toBeInTheDocument();
+    // Magic keys and the alt repeat are keys like any other, made and edited on the key.
+    expect(screen.queryByLabelText('Magic key')).toBeNull();
+    expect(screen.queryByLabelText('Alt repeat')).toBeNull();
 
     await user.click(screen.getByLabelText('Sentence case'));
     expect(screen.getByLabelText('Sentence case')).not.toBeChecked();
@@ -509,13 +509,19 @@ describe('Edit', () => {
     );
   });
 
-  it("edits a magic key's branches, and takes the magic off a key", async () => {
+  it("edits a layout's own magic key as one made in the editor, and turns it into a symbol", async () => {
     const user = userEvent.setup();
     await openMagicRomak();
 
     await user.click(await screen.findByRole('button', { name: /^Key RBI:/ }));
     const editor = await inspector('RBI');
-    expect(within(editor).getByLabelText('Magic key name')).toHaveValue('Magic key');
+    // The same tile, the same controls and the same text line as for any magic key.
+    expect(within(editor).getByRole('button', { name: 'Magic' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(within(editor).queryByLabelText('Magic key name')).toBeNull();
+    expect(within(editor).getByRole('textbox', { name: 'Binding for RBI' })).toBeInTheDocument();
     const then = within(editor).getByLabelText('Branch 1 symbol');
     expect(then).toHaveValue('v');
     await user.clear(then);
@@ -524,26 +530,28 @@ describe('Edit', () => {
     const legendList = await screen.findByRole('list', { name: 'Key legend' });
     await waitFor(() => expect(legendList.textContent).toContain('→ types w'));
 
-    await user.click(
-      within(await inspector('RBI')).getByRole('button', {
-        name: 'Remove Magic key from this key',
-      }),
-    );
-    // What was under the feature is what the key types now.
+    // A kind change keeps what carries over: the magic key's default letter.
+    await user.click(within(await inspector('RBI')).getByRole('button', { name: 'Symbol' }));
     expect(await screen.findByRole('button', { name: 'Key RBI: h' })).toBeInTheDocument();
   });
 
-  it("places one of the layout's magic keys on another key", async () => {
+  it("puts a copy of one of the layout's magic keys on another key", async () => {
     const user = userEvent.setup();
     await openMagicRomak();
 
     await user.click(await screen.findByRole('button', { name: 'Key LHM: s' }));
     const editor = await inspector('LHM');
-    await user.click(within(editor).getByRole('button', { name: /Magic key$/ }));
+    // Magic keys come first among the keys the layout already has, in sight without "All".
+    await user.click(within(editor).getByRole('button', { name: 'Use h ✦' }));
 
     // The magic key types its default, h, until a vowel comes before it.
     expect(await screen.findByRole('button', { name: 'Key LHM: h' })).toBeInTheDocument();
-    expect(within(await inspector('LHM')).getByLabelText('Magic key name')).toBeInTheDocument();
+    const copy = await inspector('LHM');
+    expect(within(copy).getByRole('button', { name: 'Magic' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(within(copy).getByLabelText('Branch 1 symbol')).toHaveValue('v');
   });
 
   it('creates an alt repeat key from the editor', async () => {
@@ -562,6 +570,109 @@ describe('Edit', () => {
 
     const legendList = await screen.findByRole('list', { name: 'Key legend' });
     await waitFor(() => expect(legendList.textContent).toContain('after a → types h'));
+  });
+
+  it('gives an alt repeat a second stage: a tagged branch, moved above the plain one', async () => {
+    const user = userEvent.setup();
+    await openEdit();
+
+    await user.click(key('Key LHM: d'));
+    await user.click(within(await inspector('LHM')).getByRole('button', { name: 'More' }));
+    await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Alt repeat' }));
+    await screen.findByRole('button', { name: 'Key LHM: ⟳' });
+
+    const field = async (label: string, text: string) =>
+      user.type(within(await inspector('LHM')).getByLabelText(label), `${text}{Enter}`);
+    await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Add branch' }));
+    await field('Branch 1 after', 'a');
+    await field('Branch 1 symbol', 'h');
+    await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Add branch' }));
+    await field('Branch 2 after', 'a');
+    await field('Branch 2 symbol', 'x');
+    const branches = within(await inspector('LHM')).getByRole('list', { name: 'Branches' });
+    const second = within(branches).getAllByRole('listitem')[1];
+    await user.click(within(second).getByText('Only after a tagged key'));
+    await field('Branch 2 tags', 'alpha2');
+
+    // Tried from the top: the tagged branch has to come first, or the plain one always wins.
+    await user.click(
+      within(await inspector('LHM')).getByRole('button', { name: 'Move branch 2 up' }),
+    );
+    const legendList = await screen.findByRole('list', { name: 'Key legend' });
+    await waitFor(() =>
+      expect(legendList.textContent).toContain(
+        'after a, from a key tagged alpha2 → types x; after a → types h',
+      ),
+    );
+  });
+
+  it('opens a layout saved while magic keys were features with each one on its key', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const old = JSON.parse(
+      readFileSync(
+        resolve(process.cwd(), '../../packages/core/golden/legacy/magic-romak-features.json'),
+        'utf8',
+      ),
+    );
+    await storage.put('layouts', 'old-magic', { ...old, id: 'old-magic' }, { message: 'seed' });
+    renderRoute('/edit?layout=saved%3Aold-magic&corpus=pt-br-conv&sample=20000', { storage });
+    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+
+    await user.click(await screen.findByRole('button', { name: /^Key L1:/ }));
+    const editor = await inspector('L1');
+    expect(
+      within(editor).getByRole('button', { name: 'More kinds: Alt repeat' }),
+    ).toBeInTheDocument();
+    // The second stage is the branches at the top, each asking for the tag.
+    expect(within(editor).getByLabelText('Branch 1 tags')).toHaveValue('alpha2');
+    expect(within(editor).getByLabelText('Branch 4 after')).toHaveValue('a');
+    // Opening it is not an edit.
+    expect(screen.queryByText('unsaved')).toBeNull();
+
+    await user.click(screen.getByRole('tab', { name: 'Features' }));
+    expect(screen.queryByLabelText('Magic key')).toBeNull();
+  });
+
+  it('makes a magic key the tap of a tap-hold, keeping its hold', async () => {
+    const user = userEvent.setup();
+    await openEdit();
+
+    await user.click(key('Key LHM: d'));
+    await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Tap-hold' }));
+    await user.selectOptions(within(await inspector('LHM')).getByLabelText('Tap kind'), 'magic');
+    await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Add branch' }));
+    await user.type(
+      within(await inspector('LHM')).getByLabelText('Tap branch 1 after'),
+      'a{Enter}',
+    );
+    await user.type(
+      within(await inspector('LHM')).getByLabelText('Tap branch 1 symbol'),
+      'v{Enter}',
+    );
+
+    const legendList = await screen.findByRole('list', { name: 'Key legend' });
+    await waitFor(() => expect(legendList.textContent).toContain('after a → types v'));
+    // Still a tap-hold: the tap adapts, the hold reaches the layer.
+    expect(
+      within(await inspector('LHM')).getByRole('button', { name: 'Tap-hold' }),
+    ).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('reads a branch back that names no key yet', async () => {
+    const user = userEvent.setup();
+    await openEdit();
+
+    await user.click(key('Key LHM: d'));
+    await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Magic' }));
+    await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Add branch' }));
+    await user.click(screen.getByRole('tab', { name: 'JSON' }));
+    await user.click(screen.getByRole('button', { name: 'Load into editor' }));
+
+    // The document the editor wrote is one it can read: the branch is still there to fill in.
+    expect(screen.queryByText(/a trigger needs/)).toBeNull();
+    await user.click(key('Key LHM: d'));
+    expect(within(await inspector('LHM')).getByLabelText('Branch 1 after')).toHaveValue('');
   });
 
   it('closes the list of more kinds on a choice or a tap elsewhere, and keeps the choice in sight', async () => {

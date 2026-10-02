@@ -9,7 +9,6 @@ import {
   layerReachedFrom,
   type Mod,
   moveLayer,
-  removeFeaturesAt,
   removeLayer,
   safeParseLayout,
   sendKeyToLayer,
@@ -244,14 +243,11 @@ export function editReducer(state: EditState, action: EditAction): EditState {
         { selected: action.keyId, lastSwap: null },
       );
 
-    case 'clearKey': {
-      // Clearing a magic key means the magic goes too, not only the binding under it.
-      const cleared = setKeyBinding(state.layout, state.layer, action.keyId, undefined);
-      return withLayout(state, removeFeaturesAt(cleared, state.layer, action.keyId), {
+    case 'clearKey':
+      return withLayout(state, setKeyBinding(state.layout, state.layer, action.keyId, undefined), {
         selected: action.keyId,
         lastSwap: null,
       });
-    }
 
     case 'setBehavior':
       return withLayout(

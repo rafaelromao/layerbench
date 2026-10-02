@@ -5,8 +5,8 @@ import { type BindingTextContext, bindingText, parseBindingText, suggest } from 
 
 const compiled = compileLayout(bundledLayout('magic-romak') as never);
 
-// Magic Romak declares its adaptive keys as features rather than behaviours, so the behaviour list
-// is given here: what the parser needs is the set of names, whichever way a layout supplies them.
+// Magic Romak's adaptive keys are bindings on their keys, not named behaviours, so the behaviour
+// list is given here: what the parser needs is the set of names, whichever layout supplies them.
 const ctx: BindingTextContext = {
   layers: compiled.layers.map((l) => ({ id: l.id, name: l.name })),
   behaviors: ['magic', 'reversedMagic', 'altRepeat'],

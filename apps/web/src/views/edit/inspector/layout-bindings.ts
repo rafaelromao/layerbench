@@ -14,9 +14,18 @@ export interface UsedBinding {
   count: number;
 }
 
+/** A magic key or alt repeat, on its own or as the tap of a tap-hold. */
+function isAdaptiveKey(b: Binding): boolean {
+  if (b.kind === 'adaptive') return !b.ref;
+  if (b.kind === 'lt' || b.kind === 'hold_tap') return isAdaptiveKey(b.tap);
+  return false;
+}
+
 /**
- * Every distinct binding the layout already uses, most used first — so any key of an imported
- * layout can be put on another key, including ones LayoutMaster keeps but does not simulate.
+ * Every distinct binding the layout already uses, its magic keys and alt repeats first and then the
+ * most used — so any key of an imported layout can be put on another key, including ones
+ * LayoutMaster keeps but does not simulate. A magic key is what an author most often wants again
+ * elsewhere, and among a layout's hundred bindings it would otherwise wait behind "All".
  *
  * Transparent and empty keys are left out: the inspector offers both directly.
  */
@@ -34,7 +43,8 @@ export function usedBindings(layout: Layout): UsedBinding[] {
   }
   for (const combo of layout.combos ?? []) add(combo.binding);
   for (const name of Object.keys(layout.behaviors ?? {})) add({ kind: 'ref', ref: name });
-  return [...seen.values()].sort((a, b) => b.count - a.count);
+  const rank = (u: UsedBinding) => (isAdaptiveKey(u.binding) ? 0 : 1);
+  return [...seen.values()].sort((a, b) => rank(a) - rank(b) || b.count - a.count);
 }
 
 /** A binding as a chip shows it: its legend, or its name when it has none to draw. */

@@ -5,13 +5,12 @@ import {
   keyBinding,
   layerReachedFrom,
   moveLayer,
-  removeFeaturesAt,
   removeLayer,
   sendKeyToLayer,
   setKeyBinding,
   swapKeys,
 } from './ops.js';
-import type { Layout } from './types.js';
+import type { Binding, Layout } from './types.js';
 
 const layout: Layout = {
   format: 'layoutmaster/layout@1',
@@ -80,59 +79,42 @@ describe('layout ops', () => {
   });
 });
 
-describe('layout ops on placed features', () => {
+describe('magic keys move as the bindings they are', () => {
+  const magicKey: Binding = {
+    kind: 'adaptive',
+    default: { kind: 'kp', symbol: 'h' },
+    triggers: [{ afterAny: ['a'], binding: { kind: 'kp', symbol: 'v' } }],
+  };
+  const altRepeat: Binding = { kind: 'adaptive', default: { kind: 'key_repeat' }, triggers: [] };
   const magic: Layout = {
     ...layout,
-    features: {
-      adaptiveKeys: [
-        {
-          id: 'magic',
-          default: { kind: 'kp', symbol: 'h' },
-          triggers: [],
-          at: [{ layer: 'base', key: 'LHM' }],
-        },
-      ],
-      altRepeat: { triggers: [], at: [{ layer: 'upper', key: 'LHI' }] },
-      sentenceCase: {},
-    },
+    layers: [
+      { ...layout.layers[0], bindings: { ...layout.layers[0].bindings, LHM: magicKey } },
+      { ...layout.layers[1], bindings: { ...layout.layers[1].bindings, LHI: altRepeat } },
+    ],
+    features: { sentenceCase: {} },
   };
-  const placed = (l: Layout) => ({
-    magic: l.features?.adaptiveKeys?.[0].at,
-    altRepeat: l.features?.altRepeat?.at,
-  });
 
   it('carries a magic key along when its key is swapped', () => {
     const next = swapKeys(magic, 0, 'LHM', 'LHI');
-    expect(placed(next).magic).toEqual([{ layer: 'base', key: 'LHI' }]);
-    // A feature on another layer, and one that follows a role, are left where they were.
-    expect(placed(next).altRepeat).toBe(magic.features?.altRepeat?.at);
-    expect(next.features?.sentenceCase).toBe(magic.features?.sentenceCase);
+    expect(next.layers[0].bindings.LHI).toBe(magicKey);
+    expect(next.layers[0].bindings.LHM).toEqual({ kind: 'kp', symbol: 'b' });
+    // A feature that follows a role is left where it was.
+    expect(next.features).toBe(magic.features);
   });
 
-  it('places a copied magic key on the target too, and replaces what the target had', () => {
+  it('copies a magic key onto another key as a copy of its own', () => {
     const next = copyKey(magic, 0, 'LHM', 'LHI');
-    expect(placed(next).magic).toEqual([
-      { layer: 'base', key: 'LHM' },
-      { layer: 'base', key: 'LHI' },
-    ]);
-    const over = copyKey(magic, 0, 'LHI', 'LHM');
-    expect(placed(over).magic).toEqual([]);
+    expect(next.layers[0].bindings.LHI).toEqual(magicKey);
+    expect(next.layers[0].bindings.LHM).toBe(magicKey);
   });
 
-  it('moves the alt-repeat key to the layer its key is sent to', () => {
+  it('sends an alt repeat to another layer, keeping it only when copying', () => {
     const moved = sendKeyToLayer(magic, 1, 0, 'LHI', 'move');
-    expect(placed(moved).altRepeat).toEqual([{ layer: 'base', key: 'LHI' }]);
+    expect(moved.layers[0].bindings.LHI).toBe(altRepeat);
+    expect('LHI' in moved.layers[1].bindings).toBe(false);
     const copied = sendKeyToLayer(magic, 1, 0, 'LHI', 'copy');
-    expect(placed(copied).altRepeat).toEqual([
-      { layer: 'upper', key: 'LHI' },
-      { layer: 'base', key: 'LHI' },
-    ]);
-  });
-
-  it('takes a feature off a key, and returns the same document when there was none', () => {
-    expect(placed(removeFeaturesAt(magic, 0, 'LHM')).magic).toEqual([]);
-    expect(removeFeaturesAt(magic, 0, 'LTP')).toBe(magic);
-    expect(swapKeys(layout, 0, 'LHM', 'LHI').features).toBeUndefined();
+    expect(copied.layers[1].bindings.LHI).toBe(altRepeat);
   });
 });
 
@@ -173,7 +155,16 @@ describe('removing a layer', () => {
     layers: [
       {
         id: 'base',
-        bindings: { LHM: { kind: 'kp', symbol: 'a' }, L0: { kind: 'mo', layer: 'nav' } },
+        bindings: {
+          LHM: { kind: 'kp', symbol: 'a' },
+          L0: { kind: 'mo', layer: 'nav' },
+          // A magic key whose branch reaches a layer reaches it like any key would.
+          LHI: {
+            kind: 'adaptive',
+            default: { kind: 'kp', symbol: 'h' },
+            triggers: [{ afterAny: ['a'], binding: { kind: 'sl', layer: 'sym' } }],
+          },
+        },
       },
       { id: 'nav', name: 'Nav', bindings: { LHM: { kind: 'kp', symbol: '←' } } },
       { id: 'sym', name: 'Sym', bindings: { LHI: { kind: 'kp', symbol: '!' } } },
@@ -192,22 +183,13 @@ describe('removing a layer', () => {
         layers: ['base', 'sym'],
       },
     ],
-    features: {
-      adaptiveKeys: [
-        {
-          id: 'magic',
-          default: { kind: 'kp', symbol: 'h' },
-          triggers: [{ afterAny: ['a'], binding: { kind: 'sl', layer: 'sym' } }],
-          at: [{ layer: 'sym', key: 'LHM' }],
-        },
-      ],
-    },
+    features: { sentenceCase: { on: ['base', 'sym'] } },
     typingPaths: { '!': [{ producer: 'direct:sym/LHI' }, { producer: 'combo:both' }] },
   };
 
   it('names what still reaches a layer, so it is not removed out from under a key', () => {
     expect(layerReachedFrom(reached, 'nav')).toEqual(['base L0']);
-    expect(layerReachedFrom(reached, 'sym')).toEqual(['magic']);
+    expect(layerReachedFrom(reached, 'sym')).toEqual(['base LHI']);
     expect(layerReachedFrom(layout, 'upper')).toEqual([]);
   });
 
@@ -215,7 +197,7 @@ describe('removing a layer', () => {
     const next = removeLayer(reached, 'sym');
     expect(next.layers.map((l) => l.id)).toEqual(['base', 'nav']);
     expect(next.combos?.map((c) => [c.id, c.layers])).toEqual([['both', ['base']]]);
-    expect(next.features?.adaptiveKeys?.[0].at).toEqual([]);
+    expect(next.features?.sentenceCase?.on).toEqual(['base']);
     expect(next.typingPaths?.['!']).toEqual([{ producer: 'combo:both' }]);
     // The base layer stays, and an unknown layer changes nothing.
     expect(removeLayer(reached, 'base')).toBe(reached);

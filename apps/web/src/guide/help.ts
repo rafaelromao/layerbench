@@ -15,7 +15,11 @@ export const HELP = {
   editKey: { page: 'editing', section: 'choosing-what-a-key-does', topic: 'editing a key' },
   moving: { page: 'editing', section: 'moving-keys-around', topic: 'moving keys' },
   layers: { page: 'editing', section: 'layers', topic: 'layers' },
-  features: { page: 'special-keys', section: 'magic-keys', topic: 'magic keys and features' },
+  features: {
+    page: 'special-keys',
+    section: 'caps-word-and-sentence-case',
+    topic: 'sentence case and caps word',
+  },
   panels: {
     page: 'editing',
     section: 'combos-typing-paths-and-the-rest',

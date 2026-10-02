@@ -20,13 +20,14 @@ import {
   kindOf,
   MORE_KINDS,
   PRIMARY_KINDS,
+  TAP_KINDS,
 } from './kinds.js';
 import { MacroStepsEditor } from './macro-steps.js';
 
 /** What every editor needs to know about the layout around the binding it edits. */
 export interface EditorScope {
   compiled: CompiledLayout;
-  /** Names a key can refer to: the document's behaviours, and the ones its features define. */
+  /** Names a key can refer to: the document's behaviours. */
   behaviours: string[];
   /** The document's own behaviours, which are edited where a key refers to them. */
   ownBehaviours: Record<string, Binding>;
@@ -458,6 +459,7 @@ function TapHoldBody({ scope, binding, onChange, name, depth }: BodyProps<Of<'lt
         name={named(name, 'Tap')}
         value={binding.tap}
         depth={depth}
+        kinds={TAP_KINDS}
         onChange={(tap) => onChange(build(tap, hold))}
       />
       <Row label="Hold">
@@ -565,29 +567,38 @@ function RepeatBody({ onChange }: BodyProps<Of<'key_repeat'>>) {
 
 // ---------------------------------------------------------------------------- magic
 
-/** Branches of an adaptive key: after these symbols (or a key with this tag), do this instead. */
+/**
+ * Branches of an adaptive key: after these symbols (or a key with this tag), do this instead. They
+ * are tried from the top and the first that matches wins, so a branch that needs a tag goes above a
+ * plain one for the same symbol — which is how an alt repeat gets a second stage.
+ */
 export function TriggersEditor({
   scope,
   triggers,
   onChange,
   depth,
   name = '',
-  fixedTags = false,
 }: {
   scope: EditorScope;
   triggers: AdaptiveTrigger[];
   onChange: (triggers: AdaptiveTrigger[]) => void;
   depth: number;
   name?: string;
-  /** The caller states the tags every branch here needs, so no branch asks for its own. */
-  fixedTags?: boolean;
 }) {
   const set = (i: number, t: AdaptiveTrigger) =>
     onChange(triggers.map((old, j) => (j === i ? t : old)));
+  const move = (i: number, to: number) => {
+    const next = [...triggers];
+    [next[i], next[to]] = [next[to], next[i]];
+    onChange(next);
+  };
   const label = (i: number) => named(name, `Branch ${i + 1}`);
 
   return (
     <div className="space-y-2">
+      {triggers.length > 1 && (
+        <Note>Tried from the top; the first branch that matches the key before wins.</Note>
+      )}
       <ol className="space-y-2 list-none p-0 m-0" aria-label={named(name, 'Branches')}>
         {triggers.map((t, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: a branch is identified by its place
@@ -610,34 +621,53 @@ export function TriggersEditor({
               <button
                 type="button"
                 className="btn btn-ghost btn-xs"
+                aria-label={`Move ${label(i).toLowerCase()} up`}
+                disabled={i === 0}
+                onClick={() => move(i, i - 1)}
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-xs"
+                aria-label={`Move ${label(i).toLowerCase()} down`}
+                disabled={i === triggers.length - 1}
+                onClick={() => move(i, i + 1)}
+              >
+                ↓
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-xs"
                 aria-label={`Remove ${label(i).toLowerCase()}`}
                 onClick={() => onChange(triggers.filter((_, j) => j !== i))}
               >
                 ✕
               </button>
             </div>
-            {!fixedTags && (
-              <details className="text-xs" open={(t.afterTags ?? []).length > 0}>
-                <summary className="cursor-pointer opacity-70">Only after a tagged key</summary>
-                <div className="pt-2">
-                  <TextField
-                    label={`${label(i)} tags`}
-                    value={(t.afterTags ?? []).join(' ')}
-                    placeholder="alpha2"
-                    className="w-40"
-                    onCommit={(text) => {
-                      const next: AdaptiveTrigger = { ...t };
-                      if (words(text).length > 0) next.afterTags = words(text);
-                      else {
-                        delete next.afterTags;
-                        next.afterAny = next.afterAny ?? [];
-                      }
-                      set(i, next);
-                    }}
-                  />
-                </div>
-              </details>
-            )}
+            <details className="text-xs" open={(t.afterTags ?? []).length > 0}>
+              <summary className="cursor-pointer opacity-70">Only after a tagged key</summary>
+              <div className="pt-2">
+                <TextField
+                  label={`${label(i)} tags`}
+                  value={(t.afterTags ?? []).join(' ')}
+                  placeholder="alpha2"
+                  className="w-40"
+                  onCommit={(text) => {
+                    const next: AdaptiveTrigger = { ...t };
+                    if (words(text).length > 0) {
+                      next.afterTags = words(text);
+                      // With a tag to go on, no symbols means any symbol from a tagged key.
+                      if (next.afterAny?.length === 0) delete next.afterAny;
+                    } else {
+                      delete next.afterTags;
+                      next.afterAny = next.afterAny ?? [];
+                    }
+                    set(i, next);
+                  }}
+                />
+              </div>
+            </details>
             <ArmEditor
               scope={scope}
               label="Then"
@@ -919,6 +949,7 @@ function MorphBody({
         name={named(name, 'Plain')}
         value={plain}
         depth={depth}
+        kinds={TAP_KINDS}
         onChange={(b) =>
           onChange(
             binding.kind === 'mod_morph' ? { ...binding, default: b } : { ...binding, inactive: b },
@@ -1044,9 +1075,7 @@ function BehaviourBody({ scope, binding, onChange, name, depth }: BodyProps) {
           </div>
         </details>
       ) : (
-        ref && (
-          <Note>Defined by one of the layout's features; edit it on a key it is placed on.</Note>
-        )
+        ref && <Note>The layout has no behaviour of that name; choose one above.</Note>
       )}
     </div>
   );
