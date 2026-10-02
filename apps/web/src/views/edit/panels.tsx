@@ -787,7 +787,6 @@ function KeymapDrawerExport({ state }: { state: EditState }) {
       layout,
       { keys: compiled.keys, family: compiled.geometry.family },
       (li, id) => compiled.layers[li]?.bindings[compiled.keyIndex.get(id) ?? -1],
-      (li, id) => compiled.layers[li]?.explicit[compiled.keyIndex.get(id) ?? -1] ?? false,
       (li, id) => reach[li]?.has(id) ?? false,
     );
   }, [layout, compiled]);

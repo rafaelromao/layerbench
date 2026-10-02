@@ -75,7 +75,8 @@ imported.
 `keymap draw` on it.
 
 The file draws each key as the board does: magic keys, macros and tap dances carry their mark in
-the corner, and a key held or tapped to reach a layer is marked `held` on that layer where it is
+the corner, a key that lets the layer below show through is `▽` and one that does nothing is
+empty, and a key held or tapped to reach a layer is marked `held` on that layer where it is
 transparent, as keymap-drawer's own examples mark one. Read back in, it gives the same layers, keys and combos,
 a `held` key coming back transparent, except for what keymap-drawer has no field for, such as a
 magic key's branches or a macro's steps.

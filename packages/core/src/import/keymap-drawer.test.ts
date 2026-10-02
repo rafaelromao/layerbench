@@ -313,10 +313,29 @@ describe('writing a file', () => {
       layout,
       { keys: compiled.keys, family: compiled.geometry.family },
       (li, id) => compiled.layers[li].bindings[compiled.keyIndex.get(id) as number],
-      (li, id) => compiled.layers[li].explicit[compiled.keyIndex.get(id) as number],
       (li, id) => reach[li].has(id),
     );
   }
+
+  it('writes a key a layer leaves doing nothing as empty, not transparent, and reads it back so', () => {
+    // Magic Romak's Symbols lists its symbols and leaves every other key doing nothing ('*': none).
+    const before = compileLayout(magicRomak);
+    const after = compileLayout(roundTrip(magicRomak));
+    const SYM = 4;
+    expect(after.layers[SYM].name).toBe('Symbols');
+    const kinds = (c: typeof before) =>
+      Object.fromEntries(c.keys.map((k, pos) => [k.id, c.layers[SYM].bindings[pos].kind]));
+    const was = kinds(before);
+    const now = kinds(after);
+    const nothing = Object.keys(was).filter((id) => was[id] === 'none');
+    expect(nothing).toContain('R0');
+    for (const id of nothing) expect(now[id], id).toBe('none');
+    // A layer whose unlisted keys show through still writes them as transparent.
+    const NUM = 3;
+    for (const [pos, b] of before.layers[NUM].bindings.entries()) {
+      if (b.kind === 'trans') expect(after.layers[NUM].bindings[pos].kind).toBe('trans');
+    }
+  });
 
   it('marks the keys that reach a layer held there, where they are transparent', () => {
     const held = (layout: Layout) =>

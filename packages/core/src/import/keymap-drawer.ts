@@ -1253,8 +1253,11 @@ export function drawerOrder(keys: GeometryKey[]): GeometryKey[] {
 export function exportKeymapDrawer(
   layout: Layout,
   board: { keys: GeometryKey[]; family: GeometryFamily },
+  /**
+   * What a key does on a layer, its layer's `'*'` default applied to a key it does not list: one
+   * that shows through is drawn transparent, one that does nothing is drawn empty.
+   */
   bindingsOf: (layerIdx: number, keyId: string) => Binding | undefined,
-  explicit: (layerIdx: number, keyId: string) => boolean,
   /** The keys held or tapped to reach a layer, which keymap-drawer marks `held` there. */
   held?: (layerIdx: number, keyId: string) => boolean,
 ): string {
@@ -1281,12 +1284,12 @@ export function exportKeymapDrawer(
     for (const k of order) rows.set(k.row, [...(rows.get(k.row) ?? []), k]);
     for (const [, keys] of [...rows.entries()].sort(([a], [b]) => a - b)) {
       const cells = keys.map((k) => {
-        const b = li > 0 && !explicit(li, k.id) ? undefined : bindingsOf(li, k.id);
+        // What the key does, listed or not: a layer that leaves its other keys doing nothing
+        // draws them empty, which reads back as doing nothing, and not as keys that show through.
+        const b = bindingsOf(li, k.id);
         // A key held or tapped to get to this layer is drawn as keymap-drawer's own parser marks
-        // one. Only where it is transparent, unlisted or not: `held` reads back as transparent.
-        if (li > 0 && bindingsOf(li, k.id)?.kind === 'trans' && held?.(li, k.id)) {
-          return flowKey({ type: 'held' });
-        }
+        // one. Only where it is transparent: `held` reads back as transparent.
+        if (li > 0 && b?.kind === 'trans' && held?.(li, k.id)) return flowKey({ type: 'held' });
         return flowKey(legendOf(b, layerName, li > 0));
       });
       lines.push(`  - [${cells.join(', ')}]`);
