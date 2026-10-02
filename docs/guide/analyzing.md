@@ -122,7 +122,8 @@ Below the summary, the numbers are grouped by what they count:
 | Layers | layer taps, one-shots, macros, combos and magic keys: what layers cost |
 
 A card's breakdown lists the key pairs or words behind its number. Selecting one outlines its keys
-on the board and turns the board to the layer they are pressed on: `→A2ã`, the thumb for Alpha 2
+on the board, with a green arrow from each key to the next, and turns the board to the layer they
+are pressed on: `→A2ã`, the thumb for Alpha 2
 and then `ã`, shows Alpha 2. A layer key is named as on the board, `→A2` for the key tapped for
 Alpha 2 and `⇩Symb` for one held for Symbols. A pair that ends on one, such as `a→A2`, is
 underlined with dots, and selecting it also opens what that key was pressed for: the board of the

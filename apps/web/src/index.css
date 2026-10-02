@@ -161,8 +161,15 @@
   --lm-legend-magic: oklch(0.78 0.13 277);
   --lm-legend-repeat: oklch(0.78 0.11 242);
   --lm-legend-number: oklch(0.82 0.12 75);
+
+  /*
+   * The arrows that trace a selected pair or word across the board: green, apart from the heat
+   * under them and from the layer colours, light on a dark key and deep on a light one.
+   */
+  --lm-arc: oklch(0.8 0.18 145);
 }
 [data-theme="light"] {
+  --lm-arc: oklch(0.52 0.15 145);
   --lm-legend-layer: oklch(0.45 0.03 264);
   --lm-legend-mod: var(--color-accent);
   --lm-legend-magic: oklch(0.5 0.17 47);

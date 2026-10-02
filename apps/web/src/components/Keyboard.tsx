@@ -461,7 +461,7 @@ export function Keyboard({
             markerHeight="6"
             orient="auto-start-reverse"
           >
-            <path d="M 0 0 L 10 5 L 0 10 z" className="fill-primary" />
+            <path d="M 0 0 L 10 5 L 0 10 z" style={{ fill: 'var(--lm-arc)' }} />
           </marker>
         </defs>
       )}
@@ -668,7 +668,7 @@ export function Keyboard({
               // biome-ignore lint/suspicious/noArrayIndexKey: an n-gram may repeat the same pair
               key={`${from}-${to}-${i}`}
               d={`M ${fmt(a.x)} ${fmt(a.y)} Q ${fmt(mx)} ${fmt(my)} ${fmt(b.x)} ${fmt(b.y)}`}
-              className="stroke-primary"
+              style={{ stroke: 'var(--lm-arc)' }}
               strokeWidth="3"
               fill="none"
               opacity="0.85"

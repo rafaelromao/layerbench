@@ -197,6 +197,15 @@ describe('Keyboard', () => {
     expect(new Set(ids).size).toBe(2);
   });
 
+  it('draws the arrow tracing a selected pair in green, apart from the heat under it', () => {
+    const { container } = render(<Keyboard compiled={qwerty} arcs={[[0, 1]]} heat={{ 0: 1 }} />);
+    const arc = container.querySelector('.lm-arc path') as SVGPathElement;
+    expect(arc.getAttribute('style')).toContain('var(--lm-arc)');
+    expect(container.querySelector('marker path')?.getAttribute('style')).toContain(
+      'var(--lm-arc)',
+    );
+  });
+
   it('marks highlighted keys', () => {
     const pos = qwerty.keyIndex.get('RHI') as number;
     const { container } = render(<Keyboard compiled={qwerty} highlight={[pos]} />);
