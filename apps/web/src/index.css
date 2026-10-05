@@ -201,6 +201,10 @@
   stroke-dasharray: 4 4;
   fill-opacity: 0.55;
 }
+/* Its ▽ in the colour of its dashed edge: a key that shows through, not one that types. */
+.lm-key-trans .lm-key-tap {
+  fill: var(--lm-key-stroke);
+}
 
 .lm-key-tap {
   fill: var(--lm-key-text);
