@@ -1,5 +1,5 @@
 import {
-  analyze,
+  analyzeSteps,
   type Corpus,
   type CorpusLoader,
   type CorpusManifest,
@@ -13,6 +13,7 @@ import {
   enumerateProducers,
   explain,
   fnv1a,
+  keyStats,
   type Layout,
   type LayoutJson,
   languageSoft,
@@ -30,12 +31,19 @@ import type {
   AnalyzeRequest,
   CorpusFactsDTO,
   ExplainDTO,
+  KeyStatsDTO,
+  KeyStatsRequest,
   ProducerDTO,
   Progress,
   RelabelRequest,
   ReportDTO,
 } from './protocol.js';
 import { toReportDTO } from './report-dto.js';
+
+/** Let a turn of the event loop go by, so messages waiting are handled. */
+function pause(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
 
 /**
  * The engine, with its caches. One instance lives in the worker; tests create one directly. Nothing
@@ -50,6 +58,8 @@ export class AnalysisCore {
    */
   private readonly runs = new ReportCache();
   private readonly corpora = new Map<string, Corpus>();
+  /** Corpora on their way in, so two analyses waiting for the same one fetch it once. */
+  private readonly loading = new Map<string, Promise<Corpus>>();
   private readonly compiled = new Map<string, ReturnType<typeof compileLayout>>();
   private readonly facts = new Map<string, CorpusFactsDTO>();
 
@@ -67,7 +77,12 @@ export class AnalysisCore {
   private async corpus(id: string): Promise<Corpus> {
     const hit = this.corpora.get(id);
     if (hit) return hit;
-    const loaded = await this.loader.load(id);
+    let pending = this.loading.get(id);
+    if (!pending) {
+      pending = this.loader.load(id).finally(() => this.loading.delete(id));
+      this.loading.set(id, pending);
+    }
+    const loaded = await pending;
     this.corpora.set(id, loaded);
     return loaded;
   }
@@ -199,7 +214,17 @@ export class AnalysisCore {
     return hit ? toReportDTO(hit, key) : null;
   }
 
-  async analyze(request: AnalyzeRequest, onProgress?: (p: Progress) => void): Promise<ReportDTO> {
+  /**
+   * Type and score. The typing stops every so many symbols for a moment, so the worker can answer
+   * what came in meanwhile — an estimate after a swap, a word to explain — and give the analysis
+   * up once `isCancelled` says nobody waits for it any more; it then throws an `AbortError` and
+   * keeps nothing.
+   */
+  async analyze(
+    request: AnalyzeRequest,
+    onProgress?: (p: Progress) => void,
+    isCancelled: () => boolean = () => false,
+  ): Promise<ReportDTO> {
     const key = this.keyFor(request);
     const cached = this.cached(request, key);
     if (cached) return toReportDTO(cached, key);
@@ -209,7 +234,7 @@ export class AnalysisCore {
     const total = Math.min(request.maxSymbols, [...stream].length);
     onProgress?.({ done: 0, total });
 
-    const report = analyze(this.compiledFor(request.layout), stream, {
+    const steps = analyzeSteps(this.compiledFor(request.layout), stream, {
       caseMode: request.caseMode,
       crossWord: request.crossWord,
       maxSymbols: request.maxSymbols,
@@ -217,6 +242,17 @@ export class AnalysisCore {
       // The corpus's own punctuation is punctuation, not a letter the layout is failing to write.
       softSymbols: [...DEFAULT_SOFT, ...languageSoft(corpus.language)],
     });
+    let report: Report;
+    for (;;) {
+      if (isCancelled()) throw new DOMException('aborted', 'AbortError');
+      const step = steps.next();
+      if (step.done) {
+        report = step.value;
+        break;
+      }
+      onProgress?.({ done: step.value, total });
+      await pause();
+    }
     onProgress?.({ done: total, total });
     this.runs.set(this.runKey(request), report);
     this.reports.set(key, report);
@@ -242,6 +278,19 @@ export class AnalysisCore {
     );
     // Deliberately not cached: an estimate must never stand in for a real analysis.
     return toReportDTO(estimated, `${request.baseKey}~relabel`);
+  }
+
+  /**
+   * What one key of a kept report takes part in. Null when the report is gone, or never kept — an
+   * estimate after a swap is not — or the key or layer is not on the layout.
+   */
+  keyStats(request: KeyStatsRequest): KeyStatsDTO | null {
+    const report = this.reports.get(request.reportKey);
+    if (!report) return null;
+    const { key, layer } = request;
+    if (!report.compiled.keys[key] || !report.compiled.layers[layer]) return null;
+    const { rules, next } = keyStats(report, key, layer, { limit: request.limit });
+    return { reportKey: request.reportKey, key, layer, rules, next };
   }
 
   explain(json: LayoutJson, text: string, caseMode: 'fold' | 'model'): ExplainDTO {

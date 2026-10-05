@@ -4,6 +4,8 @@ import type {
   AnalyzeRequest,
   CorpusFactsDTO,
   ExplainDTO,
+  KeyStatsDTO,
+  KeyStatsRequest,
   ProducerDTO,
   Progress,
   RelabelRequest,
@@ -68,6 +70,8 @@ export class WorkerClient implements AnalysisClient {
         () => {
           if (!this.pending.delete(id)) return;
           reject(new DOMException('aborted', 'AbortError'));
+          // The worker drops it too: an analysis nobody waits for stops at its next pause.
+          this.worker.postMessage({ id, type: 'cancel' } satisfies Request);
         },
         { once: true },
       );
@@ -109,6 +113,10 @@ export class WorkerClient implements AnalysisClient {
 
   relabel(request: RelabelRequest): Promise<ReportDTO | null> {
     return this.send({ type: 'relabel', request });
+  }
+
+  keyStats(request: KeyStatsRequest): Promise<KeyStatsDTO | null> {
+    return this.send({ type: 'keyStats', request });
   }
 
   explain(layout: LayoutJson, text: string, caseMode: 'fold' | 'model'): Promise<ExplainDTO> {

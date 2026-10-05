@@ -87,3 +87,32 @@ describe('Heat is counted on the layer each key was pressed on', () => {
     expect(byLayer).toBe(all);
   });
 });
+
+describe('A closer look at one key', () => {
+  it("lists a kept report's key, and turns away one it does not keep", async () => {
+    const core = new AnalysisCore(nodeCorpusLoader(testCorporaRoot()));
+    const rules = getPreset('layouts_doc');
+    const report = await core.analyze(request(rules, 'magic-romak'));
+    const compiled = compileLayout(bundledLayout('magic-romak') as never);
+    const r0 = compiled.keyIndex.get('R0') as number;
+    const stats = core.keyStats({ reportKey: report.key, key: r0, layer: 0 });
+    expect(stats?.key).toBe(r0);
+    // The Alpha 2 thumb was pressed for keys on Alpha 2, and the shares add up.
+    expect(stats?.next.length).toBeGreaterThan(0);
+    expect(stats?.next.reduce((s, n) => s + n.share, 0)).toBeCloseTo(1, 9);
+    expect(core.keyStats({ reportKey: 'gone', key: r0, layer: 0 })).toBeNull();
+    expect(core.keyStats({ reportKey: `${report.key}~relabel`, key: r0, layer: 0 })).toBeNull();
+    expect(core.keyStats({ reportKey: report.key, key: 999, layer: 0 })).toBeNull();
+  });
+
+  it('draws Effort by cost, so a free thumb stays cold, and travel by distance', async () => {
+    const core = new AnalysisCore(nodeCorpusLoader(testCorporaRoot()));
+    const report = await core.analyze(request(getPreset('layouts_doc')));
+    const effort = report.results.find((r) => r.id === 'effort');
+    const travel = report.results.find((r) => r.id === 'finger_travel');
+    const compiled = compileLayout(bundledLayout('qwerty') as never);
+    const thumb = compiled.keys.findIndex((k) => k.thumb);
+    expect(effort?.per_layer_key[0]?.[thumb] ?? 0).toBe(0);
+    expect(Object.keys(travel?.per_key ?? {}).length).toBeGreaterThan(5);
+  });
+});

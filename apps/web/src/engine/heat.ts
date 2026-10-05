@@ -2,8 +2,8 @@ import type { HeatMode } from '../url/params.js';
 import type { ReportDTO } from './protocol.js';
 
 /**
- * Heat modes backed by a rule. The reference looked `travel` up by its own name and silently fell
- * back to usage, because the catalog calls that rule `finger_travel`; this map is the fix.
+ * Heat modes backed by a rule, each key drawn by its part of the rule's number: Effort is a key's
+ * cost times its presses, travel the distance its finger moved to press it.
  */
 const HEAT_RULE_ID: Partial<Record<HeatMode, string>> = {
   sfb: 'sfb',
@@ -41,9 +41,9 @@ export function heatMap(dto: ReportDTO, mode: HeatMode, layer: number): Record<n
   if (mode !== 'usage') {
     const ruleId = HEAT_RULE_ID[mode];
     const rule = ruleId ? dto.results.find((r) => r.id === ruleId) : undefined;
-    if (rule && Object.keys(rule.per_key).length > 0) {
-      return normalizeHeat((rule.per_layer_key[l] ?? {}) as Record<number, number>);
-    }
+    // A rule that credits nothing on this layer leaves it cold; only a rule switched off in the
+    // rule set falls back to usage.
+    if (rule) return normalizeHeat((rule.per_layer_key[l] ?? {}) as Record<number, number>);
   }
   return normalizeHeat(fromArray(dto.usageByLayer[l] ?? dto.usageAll));
 }

@@ -70,6 +70,7 @@ describe('heat maps', () => {
           per_finger: {},
           per_key: { 2: 8 },
           per_layer_key: { 0: { 2: 8 } },
+          key_scale: 1 / 8,
           per_hand: {},
           breakdown: {},
           note: null,
@@ -81,6 +82,20 @@ describe('heat maps', () => {
     });
     // The reference looked this rule up under the mode's own name and silently showed usage.
     expect(heatMap(dto, 'travel', 0)).toEqual({ 2: 1 });
+    // A layer the rule credits nothing on is cold, not drawn as usage.
+    expect(
+      heatMap(
+        {
+          ...dto,
+          usageByLayer: [
+            [1, 0, 0],
+            [5, 0, 0],
+          ],
+        },
+        'travel',
+        1,
+      ),
+    ).toEqual({});
   });
 
   it('draws a rule and the layer taps on the layer they were pressed on, and nowhere else', () => {
@@ -106,6 +121,7 @@ describe('heat maps', () => {
           // Position 0 had SFBs on both layers; position 1 on the upper layer only.
           per_key: { 0: 6, 1: 2 },
           per_layer_key: { 0: { 0: 4 }, 1: { 0: 2, 1: 2 } },
+          key_scale: 0.1,
           per_hand: {},
           breakdown: {},
           note: null,
@@ -122,7 +138,7 @@ describe('heat maps', () => {
     expect(heatMap(dto, 'layer_taps', 1)).toEqual({});
   });
 
-  it('falls back to usage when the rule carries no per-key data', () => {
+  it('falls back to usage only when the rule set has no such rule', () => {
     const dto = reportWith({ usageByLayer: [[3, 0, 0]] });
     expect(heatMap(dto, 'sfb', 0)).toEqual({ 0: 1 });
   });

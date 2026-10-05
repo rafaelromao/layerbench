@@ -32,7 +32,10 @@ function usageMaps(report: Report): {
   const usageAll = new Array<number>(positions).fill(0);
   const layerTapsByLayer = perLayer();
 
-  const unigram = report.simulation.noSpace.unigram;
+  const unigram =
+    report.globals.universe === 'with_space'
+      ? report.simulation.withSpace.unigram
+      : report.simulation.noSpace.unigram;
   for (const lk of report.simulation.registry.all()) {
     const count = unigram.get(lk.id) ?? 0;
     if (count === 0) continue;

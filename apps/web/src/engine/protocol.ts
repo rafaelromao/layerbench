@@ -1,6 +1,8 @@
 import type {
   CorpusManifest,
+  FocusRule,
   LayoutJson,
+  RuleItemNext,
   RuleResult,
   RuleSet,
   Score,
@@ -32,6 +34,28 @@ export interface RelabelRequest {
   posA: number;
   posB: number;
   ruleSet: RuleSet;
+}
+
+/** A closer look at one key of an analysis already made. */
+export interface KeyStatsRequest {
+  /** Key of the report, as returned in `ReportDTO.key`. */
+  reportKey: string;
+  /** Physical key index, and the layer it was pressed on. */
+  key: number;
+  layer: number;
+  /** How many n-grams to list per rule; the rule set's own count when absent. */
+  limit?: number;
+}
+
+/** What one key, pressed on one layer, takes part in. */
+export interface KeyStatsDTO {
+  reportKey: string;
+  key: number;
+  layer: number;
+  /** Each rule over pairs or trigrams with n-grams through the key, and the busiest of them. */
+  rules: FocusRule[];
+  /** For a layer key: what it was pressed for, the keys pressed right after it. */
+  next: RuleItemNext[];
 }
 
 export interface CoverageDTO {
@@ -68,7 +92,10 @@ export interface ReportDTO {
   globals: Record<string, unknown>;
   coverage: CoverageDTO;
   stats: StatsDTO;
-  /** Keystrokes per position on each layer, counted on the layer whose key was pressed. */
+  /**
+   * Keystrokes per position on each layer, counted on the layer whose key was pressed. Space
+   * presses count only when the rule set counts space.
+   */
   usageByLayer: number[][];
   /** Keystrokes per position across every layer. */
   usageAll: number[];
@@ -127,6 +154,7 @@ export type Request =
   | { id: number; type: 'peek'; request: AnalyzeRequest }
   | { id: number; type: 'analyze'; request: AnalyzeRequest }
   | { id: number; type: 'relabel'; request: RelabelRequest }
+  | { id: number; type: 'keyStats'; request: KeyStatsRequest }
   | { id: number; type: 'explain'; layout: LayoutJson; text: string; caseMode: 'fold' | 'model' }
   | { id: number; type: 'producers'; layout: LayoutJson; caseMode: 'fold' | 'model' }
   | { id: number; type: 'corpusFacts'; corpusId: string }
@@ -160,6 +188,8 @@ export interface AnalysisClient {
     opts?: { signal?: AbortSignal; onProgress?: (p: Progress) => void },
   ): Promise<ReportDTO>;
   relabel(request: RelabelRequest): Promise<ReportDTO | null>;
+  /** Null when the report is no longer kept, or was an estimate, which never is. */
+  keyStats(request: KeyStatsRequest): Promise<KeyStatsDTO | null>;
   explain(layout: LayoutJson, text: string, caseMode: 'fold' | 'model'): Promise<ExplainDTO>;
   producers(layout: LayoutJson, caseMode: 'fold' | 'model'): Promise<Record<string, ProducerDTO[]>>;
   corpusFacts(corpusId: string): Promise<CorpusFactsDTO>;

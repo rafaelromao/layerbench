@@ -5,6 +5,8 @@ import type {
   AnalyzeRequest,
   CorpusFactsDTO,
   ExplainDTO,
+  KeyStatsDTO,
+  KeyStatsRequest,
   ProducerDTO,
   Progress,
   RelabelRequest,
@@ -47,13 +49,21 @@ export class DirectClient implements AnalysisClient {
     request: AnalyzeRequest,
     opts: { signal?: AbortSignal; onProgress?: (p: Progress) => void } = {},
   ): Promise<ReportDTO> {
-    const report = await this.core.analyze(request, opts.onProgress);
+    const report = await this.core.analyze(
+      request,
+      opts.onProgress,
+      () => opts.signal?.aborted ?? false,
+    );
     if (opts.signal?.aborted) throw new DOMException('aborted', 'AbortError');
     return report;
   }
 
   async relabel(request: RelabelRequest): Promise<ReportDTO | null> {
     return this.core.relabel(request);
+  }
+
+  async keyStats(request: KeyStatsRequest): Promise<KeyStatsDTO | null> {
+    return this.core.keyStats(request);
   }
 
   async explain(layout: LayoutJson, text: string, caseMode: 'fold' | 'model'): Promise<ExplainDTO> {
