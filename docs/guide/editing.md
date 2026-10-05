@@ -1,8 +1,8 @@
 # Editing a layout
 
-**Edit** shows the board one layer at a time, with the layer tabs above it. Tap or click a key to
-select it. The editor beside the board (under it, on a phone) says what the key does and lets you
-change it.
+A layout is edited where it is analyzed, in **Analyze**: the board shows one layer at a time, with
+the layer tabs above it. Tap or click a key to select it. The editor beside the board (under it, on
+a phone) says what the key does, what it adds to the numbers, and lets you change it.
 
 1. **Select a key** on the board.
 2. **Choose what it does** from the tiles: *Symbol*, *Layer*, *Modifier*, *Tap-hold* and so on.
@@ -12,16 +12,29 @@ Every change is kept as you make it, so there is nothing to apply. **Undo** and 
 the layer tabs, step back and forth through your changes. **Save**, beside the layout's name at
 the top, keeps it in **Library**, and until then the name is marked *unsaved*. A layout's link
 follows its name: rename one already in **Library** and save it, and it moves to a link of its new
-name, so a link to it from before no longer opens it. **Analyze**, beside **Save**, takes unsaved
-edits along; brought back with **Edit**, they are still unsaved edits of the same layout, and
-saving them saves it rather than a copy beside it.
+name, so a link to it from before no longer opens it.
+
+The address follows your edits too: a moment after each one, the link holds the layout as it now
+is. Reload the page, or come back to it, and the edits are still there, still unsaved, and saving
+them saves the layout they are edits of rather than a copy beside it. Picking another layout from
+**Layout** asks first when there is something unsaved.
 
 The bar at the top also holds the layout's author and description, and the choices the numbers
-under the board are worked out with: **Corpus**, **Rules**, **Counts**, the feature switches,
-**Include space** and **Model shift**, the same as in every view that analyzes. The editor starts
-on English news unless its link names another text; from **Library**, or from the menu, it opens on
-the choices made there. A feature switched off changes the numbers only: the keys are edited as
-written.
+are worked out with: **Corpus**, **Rules**, **Counts**, the **Sample**, the feature switches,
+**Include space** and **Model shift**, the same as in every view that analyzes. A feature switched
+off changes the numbers only: the keys are edited as written. An old link to the editor, from
+before it was part of **Analyze**, opens there, on English news unless it names another text.
+
+## Numbers while you edit
+
+Every number follows each edit: the summary, every card under it, the heat and the characters the
+layout cannot type. Swapping two keys shows an estimate at once, worked out from the text already
+typed, marked *estimate after swap* until the layout is typed again; any other change is typed
+again straight away, and the numbers say *updating…* meanwhile. A larger **Sample** gives steadier
+numbers, a smaller one quicker updates.
+
+The selected key shows [its own numbers](analyzing.md#a-keys-numbers) on the layer shown, under its
+name.
 
 ## Choosing what a key does
 
@@ -49,7 +62,9 @@ layout's own named behaviours. [Special keys](special-keys.md) explains each of 
 A tap-hold has a tap and a hold, a magic key has a branch for each key it follows, and a tap dance
 has a binding for each number of taps. Each part has its own small choice of kind, with that
 kind's controls under it, so a hold can reach a layer while the tap types a letter, or is a magic
-key.
+key. A hold can be anything a tap can — a layer key of any kind, a modifier, a symbol, a macro, a
+magic key — except another tap-hold, and the analysis presses it held when that is the way to
+type what it does.
 
 ### Keys the layout already has
 
@@ -87,7 +102,7 @@ Drag a key onto another to swap the two. Hold `Alt` while dropping to copy it in
 on a layer tab to send it to that layer.
 
 The same moves work without dragging. **Swap with…** and **Copy to…** in the editor ask you to
-tap the other key, and **Send to layer…** picks the layer from a list. **Clear** empties the key.
+tap the other key, and **Send to layer…** picks the layer from a list. **Clear** makes the key do nothing (*Nothing* `∅`), on any layer, rather than let the layer below show through.
 
 ## Layers
 
@@ -115,6 +130,11 @@ layer. They are found from the layout itself, so they change as you edit: give a
 to do and it stops being marked, even where the layout names it as a way in. Select one, or read
 the list under the board, to see where it is pressed and when.
 
+Several keys can reach a layer the same way, say three one-shots for Alpha 2. Each word is then
+typed with the one that suits it: the one that makes the fewest same-finger pairs with the keys
+around it, two in a row first and then one apart, and then the one with less effort. The first of
+them is pressed when nothing tells them apart. A key held for a layer is always pressed as found.
+
 ### Which layer wins
 
 When two layers are on at once, a key comes from the one further down the list. A key that is
@@ -132,8 +152,9 @@ The other panels hold what is not on a single key:
 - **Behaviors** are the named bindings keys refer to, such as `&magic`.
 - **Typing paths** list the other ways a character can be typed. Left alone, a character is typed
   the cheapest way from where the typist is: the fewest presses, then the one that leaves no layer
-  key held, then the less effort. Drag or use the arrows to put one way first instead, and that
-  order is kept.
+  key held, then the one that makes the fewest same-finger pairs with the keys before it in the
+  word, then the less effort. Drag or use the arrows to put one way first instead, and that order
+  is kept.
 - **JSON** shows the whole layout as LayoutMaster JSON or as a keymap-drawer file.
 
 ## On a phone
@@ -156,7 +177,7 @@ one for each key.
 | any character | starts the key's binding with it, in **Or type** |
 | `Enter` · `F2` | puts the whole binding in **Or type**, ready to replace |
 | `Space` | selects the key |
-| `Delete` · `Backspace` | clears the key |
+| `Delete` · `Backspace` | makes the key do nothing |
 | `Alt`+`S` | starts a swap; then `Enter` or a click on the other key |
-| `Escape` | cancels a swap or a combo pick; otherwise closes the editor |
+| `Escape` | cancels a swap or a combo pick; then clears an outlined pair; then closes the editor |
 | `Ctrl`/`Cmd`+`Z` | undoes; with `Shift` as well, redoes |

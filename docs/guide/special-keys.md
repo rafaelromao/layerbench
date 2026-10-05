@@ -1,7 +1,7 @@
 # Special keys
 
 A key can do more than type a letter. This page shows how each kind of key is drawn on the board,
-and how to make it in the editor: select a key, then choose its tile.
+and how to make it in the editor, in **Analyze**: select a key, then choose its tile.
 
 | On a key | Means |
 |---|---|

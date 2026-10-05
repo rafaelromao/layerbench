@@ -8,8 +8,8 @@ Everything runs in your browser, and nothing leaves it unless you connect a repo
    own from a [keymap-drawer file](importing.md).
 2. **Read two numbers.** On **Analyze**, *Effort* is how hard the keys are to reach, and *SFB* how
    often one finger presses two keys in a row. Lower is better for both.
-3. **Change a key.** On **Edit**, tap or click a key and choose what it does. Every change is kept
-   as you make it, and **Undo** takes it back.
+3. **Change a key.** On **Analyze** too, tap or click a key and choose what it does. Every change
+   is kept as you make it, every number follows it, and **Undo** takes it back.
 4. **Compare.** **Compare** puts two layouts side by side, number by number.
 
 Each topic below starts short. Open it for more, and follow its links for the rest.
@@ -27,9 +27,9 @@ Every layout gets the same two headline numbers, wherever it is shown:
 
 ## Editing keys and layers
 
-Tap or click a key on the board. The editor beside it (under it, on a phone) shows what the key
-does, with a row of tiles (*Symbol*, *Layer*, *Tap-hold*, *Magic* and more) to make it something
-else.
+Tap or click a key on the board, in **Analyze**. The editor beside it (under it, on a phone) shows
+what the key does and what it adds to the numbers, with a row of tiles (*Symbol*, *Layer*,
+*Tap-hold*, *Magic* and more) to make it something else.
 
 Drag a key onto another to swap them. Layers can be renamed, reordered, duplicated and removed.
 [Editing a layout](editing.md) has the details.
@@ -53,4 +53,4 @@ keep them in a GitHub repository of your own, through a token that is sent to `a
 nowhere else.
 
 A link carries everything a view shows, so copying the address shares the analysis as it stands,
-even for a layout that was never saved.
+unsaved edits included, even for a layout that was never saved.

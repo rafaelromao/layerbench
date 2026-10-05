@@ -22,8 +22,7 @@ steps and opens further as you need it. Metric definitions and their sources are
 | Route | What it does |
 |---|---|
 | `/library` | Where the site opens. Bundled and saved layouts in one list, sorted by Effort, SFB or name; import from keymap-drawer YAML, JSON or a text layout |
-| `/analyze` | Analyze a layout: heat-mapped keyboard, every metric, and a trace of how any word is typed |
-| `/edit` | Edit a layout on the board: select a key and choose what it does, or type it in ZMK's syntax; drag to swap; rename, reorder and duplicate layers; save it, and pick the corpus and rules its live numbers use |
+| `/analyze` | Analyze and edit a layout: heat-mapped keyboard, every metric following each edit, a trace of how any word is typed, the characters it cannot type; select a key to see its own numbers and change what it does, or type it in ZMK's syntax; drag to swap; rename, reorder and duplicate layers; save it |
 | `/compare` | Two layouts side by side, with a delta for each metric, both typed with or without the same special features |
 | `/rules` | Enable, re-parameterize or compose rules, each with its sources; save the set |
 | `/corpus` | Browse the shipped corpora and build your own from pasted or uploaded text |
@@ -31,10 +30,11 @@ steps and opens further as you need it. Metric definitions and their sources are
 | `/about/` | The landing page: what LayoutMaster simulates, why its numbers can be trusted, and how it compares with other analyzers. A static page from `docs/site`, linked as **About** in the header |
 
 `/` opens the Library. A link to an analysis from before Analyze had its own path, `/?layout=…`,
-still opens that analysis.
+still opens that analysis, and a link to `/edit`, from before editing moved into Analyze, opens it
+there.
 
 A link carries the whole analysis, so any view can be shared as it stands. `?layout=inline:…` even
-carries a layout that was never saved.
+carries a layout that was never saved, and Analyze writes unsaved edits into its link that way.
 
 The editor works the same with a mouse, a keyboard or a finger: [Editing a
 layout](docs/guide/editing.md) covers every gesture and shortcut, [Special keys](docs/guide/special-keys.md)
@@ -83,7 +83,7 @@ pnpm dev          # http://localhost:5173
 `pnpm bench` runs the performance suite, which is skipped by default. `pnpm corpora` rebuilds the
 corpus samples from `packages/corpora/raw`.
 
-`apps/web/e2e` checks the Edit view's layout in a real browser, at two phone sizes and a desktop
+`apps/web/e2e` checks the layout of Analyze, where layouts are edited, in a real browser, at two phone sizes and a desktop
 one: nothing wider than the screen, targets a finger can hit, the board in sight while a key is
 edited. Playwright's Chromium is downloaded once:
 
@@ -100,7 +100,7 @@ Microsoft Edge, `E2E_CHANNEL=chrome` for Google Chrome, with nothing to download
 ## Deploy
 
 `pnpm build` writes `apps/web/dist`: hashed assets, the corpus samples, the landing page at
-`about/`, and three files a static host reads — `_redirects` (so `/edit` resolves to the app
+`about/`, and three files a static host reads — `_redirects` (so `/analyze` resolves to the app
 instead of a 404), `_headers` (content security policy and caching) and `404.html` (the same
 fallback for hosts that use it instead).
 

@@ -9,6 +9,7 @@ Every metric below is a *rule*: plain data that a rule set can enable, disable, 
 ## How LayoutMaster counts
 
 - **Physical key stream.** The corpus is *typed* on the keymap: every symbol is turned into the physical presses that produce it (letter keys, layer taps, one-shot layers, sticky shifts, macros, combos, adaptive and repeat keys). All n-gram metrics are computed over that stream, so layer taps and shift presses take part in bigrams, trigrams and usage the same way letters do.
+- **Choices while typing.** Where a character can be typed several ways, the fewest presses win, then the way that leaves no layer key held, then the fewest same-finger bigrams and then skipgrams with the keys before it in the word, then the lower Effort on cyanophage's grid. Where several keys tap the same layer the same way, each word takes the one that gives it the fewest same-finger bigrams, then skipgrams, then the lower Effort. These measures are fixed, never the rule set's, so the same text is typed the same way whatever rules score it.
 - **Universes.** The default universe is *no space*: the space key is removed from the stream before n-grams are counted (the Doc's convention). The *with space* universe keeps it. Rule sets pick the universe through the `universe` global.
 - **Word boundary.** `cross_word: reset` (default) restarts n-grams at every word boundary, so the last letter of one word and the first of the next never form a bigram. `bridge` lets n-grams cross words.
 - **Normalization.** `percent_of_ngrams` (default) divides by the number of n-grams of the same size. For pairs — bigrams and skipgrams — that is the number the *text* has, as if every character took one press, not the number the layout pressed: layer taps, holds and one-shots add pairs no letter rule can match, and would otherwise make a layout that needs them look better than it types. Single keys and trigrams are shares of what was pressed. `percent_of_keystrokes` divides by the text's characters, space only when space is counted (cyanophage style; with `space_per_word_in_keystrokes`, one space per word is added when space is not counted, and the spaces themselves stand for it when it is). For a layout that types every character with one press, both ways give the same number.
@@ -17,6 +18,7 @@ Every metric below is a *rule*: plain data that a rule set can enable, disable, 
 - **Thumbs.** Thumb keys are included in usage and in SFB/SFS (a thumb pressing two different keys is a same-finger bigram). They are excluded where the Doc excludes them: lateral stretches, scissors, redirects and one-hand rolls.
 - **Distance.** Key positions are in key units (U). `distance_model` is `euclid` (default), `squared` or `manhattan`; distance across hands is undefined and never counted.
 - **Skip weights.** Weighted skipgram rules combine skip 1, 2 and 3 with the `skip_weights` global (default 0.5 / 0.25 / 0.125).
+- **Per key.** A rule that sums over keys says what each key adds to its number, on each layer it was pressed on: an n-gram's count is split evenly between its keys (a pair counts half on each), a chord's share between the keys pressed together; a distance counts its distance, Effort each key's own cost, Finger travel the travel to the key, layer taps the key tapped. The parts add up to the number. Spreads (finger, hand, row balance), ratios, runs and words have no part per key.
 
 ## Bands
 
@@ -97,13 +99,13 @@ Three consecutive presses; hand patterns are written with letters (`aba` = hand 
 | `pinky_off` | Pinky off home | Keystrokes on top- or bottom-row pinky keys. Doc §13.2. |
 | `home_row` | Home row usage | Keystrokes on the home row, thumbs excluded. |
 | `center_column` | Inner column usage | Keystrokes on the inner (index-stretch) columns. |
-| `finger_travel` | Finger travel | Cumulative Euclidean travel from each finger's previous key, in U per keystroke (continuous model: fingers do not return home between presses). |
+| `finger_travel` | Finger travel | Cumulative Euclidean travel from each finger's previous key, in U per keystroke (continuous model: fingers do not return home between presses). Each key is credited with the travel its finger made to press it. |
 
 ## Effort
 
 | Id | Name | Definition |
 |---|---|---|
-| `effort` | Effort | cyanophage's Effort: `577 × Σ effort ÷ keystrokes`, with each key's effort read from cyanophage's grid by position — top row `5 3 2 1 2 7 │ 7 2 1 2 3 5`, home `5 1 0 0 0 5 │ 5 0 0 0 1 5`, bottom `7 3 2 2 1 8 │ 8 1 2 2 3 7`, from the left outer pinky column to the right one — and thumbs free. The keystrokes are the text's characters, space included, as cyanophage counts them: a layer tap costs nothing and is not a keystroke either, so it cannot lower the average. Spaces cost nothing. The grid is editable per key. Lower is better; with SFB, one of the two numbers layouts are sorted by. |
+| `effort` | Effort | cyanophage's Effort: `577 × Σ effort ÷ keystrokes`, with each key's effort read from cyanophage's grid by position — top row `5 3 2 1 2 7 │ 7 2 1 2 3 5`, home `5 1 0 0 0 5 │ 5 0 0 0 1 5`, bottom `7 3 2 2 1 8 │ 8 1 2 2 3 7`, from the left outer pinky column to the right one — and thumbs free. The keystrokes are the text's characters, space included, as cyanophage counts them: a layer tap costs nothing and is not a keystroke either, so it cannot lower the average. Spaces cost nothing. The grid is editable per key. Lower is better; with SFB, one of the two numbers layouts are sorted by. Each key is credited with its cost times its presses, so thumbs and the free home keys add nothing. |
 | `hard_words` | Hard words | Words ranked by effort per character, including the extra layer and shift presses they need. Minimum length 4, minimum count 2. |
 
 ## Layers (LayoutMaster-specific)
@@ -154,7 +156,10 @@ deliberately not reproduced, because they are defects rather than definitions.
   global. The reference substitutes such a reference only when the whole value is a string, and here
   it sits inside the numeric condition, so the comparison was a number against literal text and
   never matched. Both rules reported `0` in every report.
-- **The `travel` heat map reads its rule.** The Analyze view looked the rule up by the heat mode's
-  own name, while the catalog calls it `finger_travel`, so the map silently fell back to usage.
+- **The `travel` and `effort` heat maps read their rules.** The Analyze view looked the travel rule
+  up by the heat mode's own name, while the catalog calls it `finger_travel`, so the map silently
+  fell back to usage. Looking it up by its id was not enough either: the rule kept no travel per
+  key, so the map still fell back, and the Effort map counted presses, not their cost. Both rules now
+  credit each key its own part, and both maps draw it.
 - **Comparison ranks by the metric's direction.** The reference decided which side won by whether a
   metric carried bands, which crowned the higher value for unbanded metrics such as SFB distance.

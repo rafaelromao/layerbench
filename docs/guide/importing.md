@@ -70,7 +70,7 @@ imported.
 
 ## Exporting
 
-**JSON**, among the panels in **Edit**, shows the layout as LayoutMaster JSON, or, with
+**JSON**, among the editor's panels in **Analyze**, shows the layout as LayoutMaster JSON, or, with
 **keymap-drawer YAML**, as a file for keymap-drawer. Copy it or **Download .yaml**, then run
 `keymap draw` on it.
 

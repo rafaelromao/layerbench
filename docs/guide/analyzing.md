@@ -44,13 +44,12 @@ cannot type `ã` or `ç` are ranked after the ones that can.
 letter), the repeat key (doubled letters are tapped twice), typing combos, and macros that type two
 letters or more, such as `qu` or `ão`. A macro typing one letter, like Magic Romak's accents, is how
 the layout reaches that letter, and stays. What a feature typed is typed another way, or skipped if
-there is none. **Analyze** on a card opens the layout ranked the same way, and says so, and **Edit**
-works its numbers out the same way.
+there is none. **Analyze** on a card opens the layout ranked the same way, and says so.
 
 The same switches are in every view that analyzes. **Compare with**, in **Compare**, types and
 draws both layouts without the features left unticked, and **Analyze A** opens A typed the same
-way. **Analyze with**, in **Analyze** and in the editor, does it for the one layout. The editor
-still edits every key as written: only its numbers leave the features out.
+way. **Analyze with**, in **Analyze**, does it for the one layout, which is still edited as written:
+only its numbers leave the features out.
 
 ### Changing the costs
 
@@ -64,6 +63,12 @@ each character on this keymap (the layer key first, the shift, the combo, the ma
 measures those presses. A letter on a layer costs its layer key too, and a one-shot that is used up
 by the wrong key counts as wasted.
 
+When a character can be typed more than one way, it takes the fewest presses, then the way that
+leaves no layer key held, then the one that makes the fewest same-finger pairs with the keys before
+it in the word, then the one with less effort. When several keys reach a layer the same way, each
+word is typed with the one that makes it the fewest same-finger pairs, so the key tapped for a
+layer can change from word to word, as **How is this typed?** shows.
+
 Type a word into **How is this typed?** and the board plays it: each press lights up in turn, on
 the layer it lands on, and a thumb held for a layer stays marked while it is held. The ring on a
 layer's reach keys, the keys held or tapped to get to it, stays all along. The presses are
@@ -73,12 +78,14 @@ long list means the numbers understate the cost.
 
 ### Heat
 
-**Heat** colours each key by its part of the work: how often it is pressed (**Usage**), its share of
-same-finger pairs (**SFB contribution**), of **Effort** or of **Finger travel**, or how often it is
-tapped to reach a layer (**Layer taps**). Each layer counts only what was pressed on it, on the key
-that typed it. The thumb tapped for Alpha 2 is warm on the layer it is tapped on, not on Alpha 2. A
-key that lets the layer below show through is warm on that layer, where the key that types is
-drawn.
+**Heat** colours each key by its part of the work: how often it is pressed (**Usage**), its part of
+the same-finger pairs (**SFB contribution**), of **Effort** or of **Finger travel**, or how often it
+is tapped to reach a layer (**Layer taps**). A key's part is the same number [its own
+numbers](#a-keys-numbers) give: a pair counts half on each of its keys, Effort is a key's cost times
+its presses, so thumbs and the free home-row keys stay cold, and travel counts on the key a finger
+moved to. Each layer counts only what was pressed on it, on the key that typed it. The thumb tapped
+for Alpha 2 is warm on the layer it is tapped on, not on Alpha 2. A key that lets the layer below
+show through is warm on that layer, where the key that types is drawn.
 
 ### Combos
 
@@ -99,14 +106,32 @@ what of the text is counted: letters only, the default, or numbers and symbols a
 **Corpus** lists the texts that come with the app, by language, each with where it came from. Your
 own text can be pasted or uploaded there and analyzed like any other. **Sample**, on **Analyze**
 and **Compare**, sets how much of the text is typed: more gives steadier numbers, less gives them
-sooner. The Library and the editor type a quick 100,000 symbols at most.
+sooner, which matters most while a layout is being edited, since every edit types it again. The
+Library types a quick 100,000 symbols at most.
 
 ### The same choices in every view
 
-**Library**, **Analyze**, **Compare** and the editor share their choices: the corpus, the rules,
+**Library**, **Analyze** and **Compare** share their choices: the corpus, the rules,
 what counts, the feature switches, space and shift. Change one in any of them and the menu carries
 it to the others, and so do **Rules** and **Corpus** when they open **Analyze** with a set or a
 text. A link still opens exactly what it names, and a new visit starts from its link.
+
+## A key's numbers
+
+Select a key and, under its name, it shows what it adds to the analysis on the layer shown:
+
+- its share of the presses, and how many were made to reach a layer;
+- its part of each number that adds up over keys, with that number and the share it makes of it.
+  A pair counts half on each of its keys, a combo's share is split between the keys pressed
+  together, Effort is the key's cost times its presses and Finger travel the distance its finger
+  moved to press it, so the parts of every key add up to the number. The headline numbers come
+  first; **Every number** shows the rest. Balances, ratios and word lists have no part per key;
+- tap a number to list the pairs and trigrams it counts with the key in them, and tap one of those
+  to outline it on the board;
+- for a key that reaches a layer, what it was **pressed for**: the keys pressed right after it,
+  each with its share, and on the board of the layer it reaches.
+
+The parts follow an edit at once, an estimate after a swap included; the lists come a moment later.
 
 ## Every other number
 
