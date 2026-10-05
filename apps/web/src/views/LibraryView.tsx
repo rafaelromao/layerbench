@@ -50,7 +50,7 @@ import { type NewLayoutSpec, newLayout } from './new-layout.js';
 import { useCorpora } from './useCorpora.js';
 import { useRuleSet } from './useRuleSet.js';
 
-/** Ranking re-analyzes every layout listed, so it works from the editor's smaller sample. */
+/** Ranking re-analyzes every layout listed, so it works from a smaller sample than Analyze's. */
 const RANK_MAX_SYMBOLS = 100_000;
 
 const SORTS: [SortKey, string][] = [
@@ -395,11 +395,6 @@ export function LibraryView() {
     (layoutRef: string) => toSearch(params, { layoutRef }) as never,
     [params],
   );
-  /** So does the editor, typing the layout without the features the ranking left out. */
-  const editSearch = useCallback(
-    (layoutRef: string) => toSearch(params, { layoutRef }) as never,
-    [params],
-  );
   const [sortBy, setSortBy] = useState<SortKey>('effort');
 
   // Saved layouts are listed from their index; ranking needs the documents themselves.
@@ -604,14 +599,14 @@ export function LibraryView() {
     setPreview(null);
   }, [preview, saveNew]);
 
-  /** Duplicate any layout, bundled or saved, and open the copy in the editor. */
+  /** Duplicate any layout, bundled or saved, and open the copy in Analyze, to edit. */
   const duplicate = useCallback(
     async (layout: Layout) => {
       const copy = { ...layout, name: `${layout.name} copy` };
       const id = await saveNew(copy, `Duplicate ${layout.name}`);
-      if (id) navigate({ to: '/edit', search: editSearch(savedRef(id)) });
+      if (id) navigate({ to: '/analyze', search: analyzeSearch(savedRef(id)) });
     },
-    [saveNew, navigate, editSearch],
+    [saveNew, navigate, analyzeSearch],
   );
 
   const duplicateSaved = useCallback(
@@ -631,18 +626,18 @@ export function LibraryView() {
     async (spec: NewLayoutSpec) => {
       const layout = newLayout(spec);
       const id = await saveNew(layout, `Create layout ${spec.name}`);
-      if (id) navigate({ to: '/edit', search: editSearch(savedRef(id)) });
+      if (id) navigate({ to: '/analyze', search: analyzeSearch(savedRef(id)) });
     },
-    [saveNew, navigate, editSearch],
+    [saveNew, navigate, analyzeSearch],
   );
 
-  /** An imported keymap goes straight to the editor, saved, so nothing about it is lost. */
+  /** An imported keymap goes straight to Analyze, saved, so nothing about it is lost. */
   const importKeymap = useCallback(
     async (layout: Layout) => {
       const id = await saveNew(layout, `Import keymap-drawer layout ${layout.name}`);
-      if (id) navigate({ to: '/edit', search: editSearch(savedRef(id)) });
+      if (id) navigate({ to: '/analyze', search: analyzeSearch(savedRef(id)) });
     },
-    [saveNew, navigate, editSearch],
+    [saveNew, navigate, analyzeSearch],
   );
 
   const remove = useCallback(
@@ -723,7 +718,7 @@ export function LibraryView() {
           )}
           {saved.entries.length === 0 && (
             <span className="text-xs opacity-70">
-              Nothing saved yet. Save from the editor, or import below.
+              Nothing saved yet. Save from Analyze, or import below.
             </span>
           )}
         </div>
@@ -744,11 +739,6 @@ export function LibraryView() {
                   >
                     Analyze
                   </Link>
-                  {item.saved && (
-                    <Link to="/edit" search={editSearch(item.ref)} className="btn btn-xs">
-                      Edit
-                    </Link>
-                  )}
                   <button
                     type="button"
                     aria-label={`Duplicate ${item.name}`}

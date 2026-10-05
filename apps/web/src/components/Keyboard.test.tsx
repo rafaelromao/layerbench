@@ -36,6 +36,26 @@ describe('Keyboard', () => {
     expect(onKeyClick).toHaveBeenCalledTimes(2);
   });
 
+  it('rings the selected key outside its cap, so an outline on the cap leaves it in sight', () => {
+    const lhm = qwerty.keyIndex.get('LHM') as number;
+    const lhi = qwerty.keyIndex.get('LHI') as number;
+    const { container } = render(
+      <Keyboard
+        compiled={qwerty}
+        selected="LHM"
+        highlight={[lhm, lhi]}
+        arcs={[[lhm, lhi]]}
+        heat={{ [lhm]: 1 }}
+      />,
+    );
+    const key = container.querySelector('g[data-key="LHM"]') as Element;
+    expect(key.querySelector('.lm-key-select-ring')).not.toBeNull();
+    expect(key.querySelector('.lm-key-cap.lm-key-highlight')).not.toBeNull();
+    expect(container.querySelectorAll('.lm-key-select-ring').length).toBe(1);
+    // The arrows sit in their own group, which the stylesheet keeps out of the pointer's way.
+    expect(container.querySelector('g.lm-arc path')).not.toBeNull();
+  });
+
   it('is inert and unlabelled as a control when not interactive', () => {
     render(<Keyboard compiled={qwerty} interactive={false} />);
     expect(screen.getByRole('img', { name: 'Keyboard layout' })).toBeInTheDocument();

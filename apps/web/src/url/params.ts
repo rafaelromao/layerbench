@@ -54,9 +54,9 @@ export const DEFAULT_PARAMS: Params = {
 };
 
 /**
- * The Library ranks on English news, and the editor analyzes on it, unless the link says otherwise.
- * Analyze and Compare keep `DEFAULT_PARAMS.corpus`: that one is part of the link contract, this one
- * only decides what a bare visit to the other two shows.
+ * The Library ranks on English news unless the link says otherwise, and an old link to the editor,
+ * which did too, opens Analyze on it. Analyze and Compare keep `DEFAULT_PARAMS.corpus`: that one is
+ * part of the link contract, this one only decides what a bare visit to the Library shows.
  */
 export const ENGLISH_CORPUS = 'en-general';
 

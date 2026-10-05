@@ -1,10 +1,12 @@
 import { expect, type Page, test } from '@playwright/test';
 
-const EDIT = '/edit?layout=magic-romak&corpus=pt-br-conv&sample=20000';
+const EDIT = '/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000';
 
 async function openEdit(page: Page): Promise<void> {
   await page.goto(EDIT);
-  await expect(page.getByText(/Quick analysis/)).toBeVisible({ timeout: 45_000 });
+  await expect(page.getByRole('list', { name: 'Summary metrics' })).toBeVisible({
+    timeout: 45_000,
+  });
 }
 
 /** How far the page is wider than the screen. A phone must never scroll sideways. */
@@ -64,7 +66,7 @@ test.describe('on a phone', () => {
     page,
   }) => {
     await openEdit(page);
-    const caps = page.locator('#kb-edit g[data-key] rect.lm-key-cap');
+    const caps = page.locator('#kb-analyze g[data-key] rect.lm-key-cap');
     const sizes = await caps.evaluateAll((rects) =>
       rects.map((r) => Math.min(r.getBoundingClientRect().width, r.getBoundingClientRect().height)),
     );

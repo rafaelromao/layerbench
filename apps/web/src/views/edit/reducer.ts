@@ -56,8 +56,11 @@ export interface EditState {
   behaviorsError: string | null;
   jsonText: string;
   jsonError: string | null;
-  /** The last swap, so the view can ask for an instant estimate. */
-  lastSwap: { layerIdx: number; from: string; to: string } | null;
+  /**
+   * The last swap, so the view can ask for an instant estimate, and the layout it was made on: only
+   * a report of that layout can be re-scored into one of this.
+   */
+  lastSwap: { layerIdx: number; from: string; to: string; before: Layout } | null;
   /** Where typing on the board should land next, if a key was typed on. */
   focusRequest: FocusRequest | null;
   /** Keys picked on the board for a new combo, or null when not picking. */
@@ -210,7 +213,7 @@ export function editReducer(state: EditState, action: EditAction): EditState {
       return withLayout(state, swapped, {
         selected: action.to,
         swapFrom: null,
-        lastSwap: { layerIdx: state.layer, from: action.from, to: action.to },
+        lastSwap: { layerIdx: state.layer, from: action.from, to: action.to, before: state.layout },
       });
     }
 
@@ -248,10 +251,16 @@ export function editReducer(state: EditState, action: EditAction): EditState {
       );
 
     case 'clearKey':
-      return withLayout(state, setKeyBinding(state.layout, state.layer, action.keyId, undefined), {
-        selected: action.keyId,
-        lastSwap: null,
-      });
+      // A cleared key does nothing: it does not fall back to the layer's default, which above the
+      // base would let the key below show through.
+      return withLayout(
+        state,
+        setKeyBinding(state.layout, state.layer, action.keyId, { kind: 'none' }),
+        {
+          selected: action.keyId,
+          lastSwap: null,
+        },
+      );
 
     case 'setBehavior':
       return withLayout(

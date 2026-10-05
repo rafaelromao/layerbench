@@ -30,7 +30,7 @@ describe('undo', () => {
   it('takes back the destructive gestures editing in place adds', () => {
     const before = start();
     const cleared = reducer(before, { type: 'clearKey', keyId: 'LHM' });
-    expect('LHM' in cleared.layout.layers[0].bindings).toBe(false);
+    expect(cleared.layout.layers[0].bindings.LHM).toEqual({ kind: 'none' });
     expect(symbolAt(reducer(cleared, { type: 'undo' }), 'LHM')).toEqual(symbolAt(before, 'LHM'));
 
     const copied = reducer(before, {

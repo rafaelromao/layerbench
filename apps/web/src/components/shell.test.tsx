@@ -188,3 +188,26 @@ describe('the page frame', () => {
     expect(within(dialog).getByRole('button', { name: 'Test connection' })).toBeDisabled();
   });
 });
+
+describe('Edit, joined into Analyze', () => {
+  it('has no view of its own in the header', async () => {
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    const nav = await screen.findByRole('navigation', { name: 'Main' });
+    expect(within(nav).queryByRole('link', { name: 'Edit' })).toBeNull();
+    expect(within(nav).getByRole('link', { name: 'Analyze' })).toBeInTheDocument();
+  });
+
+  it('opens an old link to the editor in Analyze, on English news unless it names a text', async () => {
+    const plain = renderRoute('/edit?layout=qwerty&sample=1000', { storage: freshStorage() });
+    await waitFor(() => expect(plain.currentPath()).toBe('/analyze'));
+    expect(plain.currentSearch()).toContain('layout=qwerty');
+    expect(plain.currentSearch()).toContain('corpus=en-general');
+    plain.unmount();
+
+    const named = renderRoute('/edit?layout=qwerty&corpus=pt-br-conv&sample=1000', {
+      storage: freshStorage(),
+    });
+    await waitFor(() => expect(named.currentPath()).toBe('/analyze'));
+    expect(named.currentSearch()).toContain('corpus=pt-br-conv');
+  });
+});

@@ -427,7 +427,6 @@ function TapHoldBody({ scope, binding, onChange, name, depth }: BodyProps<Of<'lt
   const hold: Binding = binding.kind === 'lt' ? { kind: 'mo', layer: binding.layer } : binding.hold;
   const flavor = binding.kind === 'hold_tap' ? binding.flavor : undefined;
   const term = binding.kind === 'hold_tap' ? binding.tappingTermMs : undefined;
-  const upper = scope.compiled.layers[1]?.id ?? scope.compiled.layers[0].id;
 
   /**
    * ZMK's `&lt` is a layer on hold over a tap, with no timing of its own. A key written as one stays
@@ -449,8 +448,6 @@ function TapHoldBody({ scope, binding, onChange, name, depth }: BodyProps<Of<'lt
     return out;
   };
 
-  const holdKind = hold.kind === 'mo' ? 'layer' : hold.kind === 'mod' ? 'modifier' : null;
-
   return (
     <div className="space-y-2">
       <ArmEditor
@@ -462,49 +459,17 @@ function TapHoldBody({ scope, binding, onChange, name, depth }: BodyProps<Of<'lt
         kinds={TAP_KINDS}
         onChange={(tap) => onChange(build(tap, hold))}
       />
-      <Row label="Hold">
-        <Segment
-          label={named(name, 'What a hold does')}
-          options={[
-            ['layer', 'Layer'],
-            ['modifier', 'Modifier'],
-          ]}
-          value={holdKind}
-          onChange={(k) =>
-            onChange(
-              build(
-                binding.tap,
-                k === 'layer' ? { kind: 'mo', layer: upper } : { kind: 'mod', mod: 'LSHIFT' },
-              ),
-            )
-          }
-        />
-        {hold.kind === 'mo' && (
-          <LayerChips
-            compiled={scope.compiled}
-            label={named(name, 'Hold layer')}
-            value={[hold.layer]}
-            onChange={(layer) => onChange(build(binding.tap, { kind: 'mo', layer }))}
-          />
-        )}
-        {hold.kind === 'mod' && (
-          <ModChips
-            label={named(name, 'Hold modifier')}
-            value={[hold.mod]}
-            onChange={(mod) => onChange(build(binding.tap, { kind: 'mod', mod }))}
-          />
-        )}
-        {holdKind === null && (
-          <ArmEditor
-            scope={scope}
-            label="Holds"
-            name={named(name, 'Hold')}
-            value={hold}
-            depth={depth}
-            onChange={(next) => onChange(build(binding.tap, next))}
-          />
-        )}
-      </Row>
+      {/* The hold can be anything the tap can: a layer, a modifier, a symbol, a macro, a magic
+          key — anything but another tap-hold. */}
+      <ArmEditor
+        scope={scope}
+        label="Hold"
+        name={named(name, 'Hold')}
+        value={hold}
+        depth={depth}
+        kinds={TAP_KINDS}
+        onChange={(next) => onChange(build(binding.tap, next))}
+      />
       <details className="text-xs" open={flavor !== undefined || term !== undefined}>
         <summary className="cursor-pointer opacity-70">Timing</summary>
         <div className="space-y-2 pt-2">

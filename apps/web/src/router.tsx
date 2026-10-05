@@ -7,11 +7,10 @@ import {
 } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { Shell } from './components/Shell.js';
-import { type RawSearch, savedRef } from './url/params.js';
+import { ENGLISH_CORPUS, type RawSearch, savedRef } from './url/params.js';
 import { AnalyzeView } from './views/AnalyzeView.js';
 import { CompareView } from './views/CompareView.js';
 import { CorpusView } from './views/CorpusView.js';
-import { EditView } from './views/EditView.js';
 import { GuideView } from './views/GuideView.js';
 import { LibraryView } from './views/LibraryView.js';
 import { RulesView } from './views/RulesView.js';
@@ -74,7 +73,23 @@ function view(path: string, component: () => ReactNode) {
 }
 
 const analyzeRoute = view('/analyze', AnalyzeView);
-const editRoute = view('/edit', EditView);
+/**
+ * Edit was joined into Analyze, where a layout is edited now. A link to it still opens its layout
+ * there, on English news when it names no text, as Edit opened it.
+ */
+const editRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/edit',
+  validateSearch: (search: Record<string, unknown>): RawSearch => search as RawSearch,
+  beforeLoad: ({ search }) => {
+    throw redirect({
+      to: '/analyze',
+      search: { ...search, corpus: search.corpus || ENGLISH_CORPUS },
+      replace: true,
+    });
+  },
+  component: () => null,
+});
 const rulesRoute = view('/rules', RulesView);
 const compareRoute = view('/compare', CompareView);
 const corpusRoute = view('/corpus', CorpusView);

@@ -644,8 +644,9 @@ export function PathsPanel({
   return (
     <div className="space-y-3">
       <p className="text-[11px] opacity-60">
-        The order is the order the simulator tries. Drag an alternative to move it, or use the
-        arrows.
+        Left alone, a character is typed the cheapest way: the fewest presses, then the fewest
+        same-finger pairs with the keys before it, then the least effort. Drag an alternative or use
+        the arrows to set an order, and that order is tried instead.
       </p>
       {multi.map(([symbol]) => (
         <div key={symbol} className="space-y-1">

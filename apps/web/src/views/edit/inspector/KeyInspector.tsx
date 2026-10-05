@@ -6,7 +6,7 @@ import {
   legend,
   reachKeys,
 } from '@layoutmaster/core';
-import { type Dispatch, useMemo, useState } from 'react';
+import { type Dispatch, type ReactNode, useMemo, useState } from 'react';
 import { HelpLink } from '../../../components/HelpLink.js';
 import { HELP } from '../../../guide/help.js';
 import type { BindingTextContext } from '../binding-text.js';
@@ -25,6 +25,8 @@ export interface KeyInspectorProps {
   focusKey: (keyId: string) => void;
   /** Say what happened, for a screen reader: a changed key legend is not announced on its own. */
   announce: (message: string) => void;
+  /** What the key adds to the analysis, shown under its name, before the controls. */
+  stats?: ReactNode;
 }
 
 /**
@@ -48,8 +50,8 @@ export function KeyInspector(props: KeyInspectorProps) {
           </p>
           <p className="text-xs opacity-70 lm-pointer-hint">
             On a focused key, typing sets it — <span className="font-mono">ç</span>,{' '}
-            <span className="font-mono">&amp;lt nav a</span> — Delete clears it, and the arrow keys
-            move between keys.
+            <span className="font-mono">&amp;lt nav a</span> — Delete makes it do nothing, and the
+            arrow keys move between keys.
           </p>
         </div>
       </section>
@@ -69,6 +71,7 @@ function Inspector({
   focusKey,
   announce,
   keyId,
+  stats,
 }: KeyInspectorProps & { keyId: string }) {
   const { compiled, layout, layer } = state;
   const activeLayer = compiled.layers[layer];
@@ -158,6 +161,8 @@ function Inspector({
             ✕
           </button>
         </header>
+
+        {stats}
 
         {owner ? (
           <>

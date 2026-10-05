@@ -9,11 +9,11 @@ test.describe('on a phone', () => {
   test.skip(({ isMobile }) => !isMobile, 'phone layout only');
 
   test('the list never scrolls sideways, with a saved layout in it', async ({ page }) => {
-    // A saved layout's card has the most on it: its badge and four actions. Duplicate makes one,
-    // and opens it in the editor.
+    // A saved layout's card has the most on it: its badge and every action. Duplicate makes one,
+    // and opens it in Analyze, to edit.
     await page.goto('/library');
     await page.getByRole('button', { name: 'Duplicate Qwerty' }).click();
-    await expect(page).toHaveURL(/\/edit\?/);
+    await expect(page).toHaveURL(/\/analyze\?/);
 
     await page.goto('/library');
     await expect(page.getByRole('button', { name: 'Delete Qwerty copy' })).toBeVisible();

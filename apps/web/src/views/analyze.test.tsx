@@ -17,7 +17,7 @@ describe('Analyze', () => {
 
     expect(await screen.findByText('Same finger bigrams')).toBeInTheDocument();
     expect(screen.getByText('Layer taps per 100 symbols')).toBeInTheDocument();
-    expect(screen.getByText('all symbols producible')).toBeInTheDocument();
+    expect(screen.getByText('every character in the text can be typed')).toBeInTheDocument();
   });
 
   it('explains how a word is typed', async () => {

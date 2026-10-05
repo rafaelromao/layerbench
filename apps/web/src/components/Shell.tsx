@@ -12,7 +12,6 @@ import { useDismiss } from './use-dismiss.js';
 const NAV = [
   { to: '/library', label: 'Library' },
   { to: '/analyze', label: 'Analyze' },
-  { to: '/edit', label: 'Edit' },
   { to: '/compare', label: 'Compare' },
   { to: '/rules', label: 'Rules' },
   { to: '/corpus', label: 'Corpus' },
@@ -20,7 +19,7 @@ const NAV = [
 ] as const;
 
 /** The views that analyze, which share the choices an analysis is made with. */
-const ANALYZING = new Set<string>(['/library', '/analyze', '/edit', '/compare']);
+const ANALYZING = new Set<string>(['/library', '/analyze', '/compare']);
 
 /**
  * What a link to a view carries. A view that analyzes opens on the choices in force, so picking a

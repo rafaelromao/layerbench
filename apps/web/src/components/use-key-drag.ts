@@ -38,13 +38,19 @@ export function clearDropTargets(): void {
   }
 }
 
-/** Put the drop highlight on a target, so it is clear where a release would land. */
-export function paintDropTarget(target: DropTarget, mode: DragMode = 'swap'): void {
-  const selector =
+/**
+ * Put the drop highlight on a target, so it is clear where a release would land. A key is looked
+ * for on the board being dragged on, when given, since a page can draw another board too.
+ */
+export function paintDropTarget(
+  target: DropTarget,
+  mode: DragMode = 'swap',
+  board?: Element | null,
+): void {
+  const el =
     target.kind === 'key'
-      ? `g[data-key="${target.keyId}"]`
-      : `[data-layer-drop="${target.layerId}"]`;
-  const el = document.querySelector(selector);
+      ? (board ?? document).querySelector(`g[data-key="${target.keyId}"]`)
+      : document.querySelector(`[data-layer-drop="${target.layerId}"]`);
   el?.classList.add('lm-drop-target');
   if (mode === 'copy') el?.classList.add('lm-drop-copy');
 }
@@ -59,12 +65,18 @@ function keyAt(target: EventTarget | null): string | undefined {
   return (target.closest('g[data-key]') as HTMLElement | null)?.dataset.key;
 }
 
-/** What lies under the pointer: a key, a layer tab, or nothing that takes a drop. */
-export function targetUnder(x: number, y: number): DropTarget | undefined {
+/**
+ * What lies under the pointer: a key of the board being dragged on, a layer tab, or nothing that
+ * takes a drop. A key of another board on the page is nothing.
+ */
+export function targetUnder(x: number, y: number, board?: Element | null): DropTarget | undefined {
   const el = document.elementFromPoint(x, y);
   if (!(el instanceof Element)) return undefined;
-  const key = (el.closest('g[data-key]') as HTMLElement | null)?.dataset.key;
-  if (key !== undefined) return { kind: 'key', keyId: key };
+  const keyEl = el.closest('g[data-key]') as HTMLElement | null;
+  if (keyEl && (!board || board.contains(keyEl))) {
+    const key = keyEl.dataset.key;
+    if (key !== undefined) return { kind: 'key', keyId: key };
+  }
   const layer = (el.closest('[data-layer-drop]') as HTMLElement | null)?.dataset.layerDrop;
   if (layer !== undefined) return { kind: 'layer', layerId: layer };
   return undefined;
@@ -178,9 +190,9 @@ export function useKeyDrag(
       const mode: DragMode = e.altKey ? 'copy' : 'swap';
       paintGhost(e.clientX, e.clientY, mode);
       clearTargets();
-      const over = targetUnder(e.clientX, e.clientY);
+      const over = targetUnder(e.clientX, e.clientY, e.currentTarget);
       if (!over || (over.kind === 'key' && over.keyId === from.current)) return;
-      paintDropTarget(over, mode);
+      paintDropTarget(over, mode, e.currentTarget);
     },
     [clearTargets, paintGhost, reset],
   );
@@ -189,7 +201,7 @@ export function useKeyDrag(
     (e: ReactPointerEvent<SVGSVGElement>) => {
       const start = from.current;
       const dragged = dragging.current;
-      const to = dragged ? targetUnder(e.clientX, e.clientY) : undefined;
+      const to = dragged ? targetUnder(e.clientX, e.clientY, e.currentTarget) : undefined;
       reset(e.currentTarget);
       if (!start || !dragged) return;
       // A drop must not also register as a click on whatever is underneath.

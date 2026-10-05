@@ -128,12 +128,16 @@ test.describe('at a desk', () => {
   });
 
   test('edit: a key, and what it does', async ({ page }) => {
-    await page.goto('/edit?layout=magic-romak&corpus=pt-br-conv&sample=20000');
-    await expect(page.getByText(/Quick analysis/)).toBeVisible({ timeout: 120_000 });
+    await page.goto('/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000');
+    await expect(page.getByRole('list', { name: 'Summary metrics' })).toBeVisible({
+      timeout: 120_000,
+    });
     await page.getByRole('button', { name: /^Key LHI:/ }).click();
     const inspector = page.getByRole('group', { name: 'Edit LHI' });
     await expect(inspector).toBeVisible();
-    await shootAround(page, 'edit', [...board(page, 'kb-edit'), inspector]);
+    // The key's own numbers, settled: its lists come from the worker a moment after its parts.
+    await expect(inspector.getByText('updating…')).toBeHidden({ timeout: 30_000 });
+    await shootAround(page, 'edit', [...board(page, 'kb-analyze'), inspector]);
   });
 
   test('rules: every rule as data, with its source', async ({ page }) => {
@@ -154,10 +158,14 @@ test.describe('on a phone', () => {
   test.skip(({ isMobile }) => !isMobile, 'phone layout only');
 
   test('edit: the board stays in sight while a key is edited', async ({ page }) => {
-    await page.goto('/edit?layout=magic-romak&corpus=pt-br-conv&sample=20000');
-    await expect(page.getByText(/Quick analysis/)).toBeVisible({ timeout: 120_000 });
+    await page.goto('/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000');
+    await expect(page.getByRole('list', { name: 'Summary metrics' })).toBeVisible({
+      timeout: 120_000,
+    });
     await page.getByRole('button', { name: /^Key LHI:/ }).tap();
-    await expect(page.getByRole('group', { name: 'Edit LHI' })).toBeVisible();
+    const inspector = page.getByRole('group', { name: 'Edit LHI' });
+    await expect(inspector).toBeVisible();
+    await expect(inspector.getByText('updating…')).toBeHidden({ timeout: 30_000 });
     await page.screenshot({ path: file('phone'), animations: 'disabled' });
   });
 });

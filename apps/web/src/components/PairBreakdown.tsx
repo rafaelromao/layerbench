@@ -1,58 +1,52 @@
-import type { CompiledLayout, RuleItem } from '@layoutmaster/core';
-import { useEffect, useRef } from 'react';
+import type { CompiledLayout, RuleItem, RuleItemNext } from '@layoutmaster/core';
+import { type ReactNode, useEffect, useId, useRef } from 'react';
 import { normalizeHeat } from '../engine/heat.js';
 import { formatItem } from './format.js';
 import { Keyboard } from './Keyboard.js';
 
 /**
- * What the layer key at the end of a pair was pressed for: the keys pressed next, which the pair
- * would not exist without. Drawn on the board of the layer it reached, each key warm by its part of
- * the pair, and listed with that part. It opens as it is drawn; its button, Escape or a click
- * beside it closes it.
+ * What a layer key was pressed for: the keys pressed next, drawn on the board of the layer it
+ * reached, each warm by its share, and listed with its part. It opens as it is drawn; its button,
+ * Escape or a click beside it closes it.
  */
-export function PairBreakdown({
+export function PressedFor({
   compiled,
-  rule,
-  item,
+  title,
+  description,
+  next,
   onClose,
 }: {
   compiled: CompiledLayout;
-  /** The rule the pair is listed under. */
-  rule: string;
-  item: RuleItem;
+  title: ReactNode;
+  /** What the list shows, given the name of the layer reached. */
+  description: (reached: string) => ReactNode;
+  next: RuleItemNext[];
   onClose: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const close = useRef<HTMLButtonElement>(null);
+  const titleId = useId();
   useEffect(() => {
     if (!dialog.current?.open) dialog.current?.showModal();
     // Opening on Close, not on the board, which takes no input here.
     close.current?.focus();
   }, []);
 
-  const then = item.then ?? [];
-  // The layer it reached is the one most of what followed was pressed on.
-  const byLayer = new Map<number, number>();
-  for (const t of then) byLayer.set(t.layer, (byLayer.get(t.layer) ?? 0) + t.count);
-  const reached = [...byLayer.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 0;
+  const reached = reachedLayer(next);
   const layerName = (l: number) => compiled.layers[l]?.name ?? String(l);
   const heat = normalizeHeat(
-    Object.fromEntries(then.filter((t) => t.layer === reached).map((t) => [t.key, t.share])),
+    Object.fromEntries(next.filter((t) => t.layer === reached).map((t) => [t.key, t.share])),
   );
-  const top = Math.max(0, ...then.map((t) => t.share));
+  const top = Math.max(0, ...next.map((t) => t.share));
 
   return (
-    <dialog ref={dialog} className="modal" aria-labelledby="pair-breakdown-title" onClose={onClose}>
+    <dialog ref={dialog} className="modal" aria-labelledby={titleId} onClose={onClose}>
       <div className="modal-box max-w-2xl flex flex-col gap-3">
         <header>
-          <h2 id="pair-breakdown-title" className="font-semibold text-lg">
-            <span className="font-mono">{item.label}</span>
-            <span className="font-normal opacity-60"> · {rule}</span>
+          <h2 id={titleId} className="font-semibold text-lg">
+            {title}
           </h2>
-          <p className="text-sm opacity-70">
-            What its last key was pressed for: the key typed next on {layerName(reached)}, and each
-            one's part of the pair's {formatItem(item)}.
-          </p>
+          <p className="text-sm opacity-70">{description(layerName(reached))}</p>
         </header>
 
         <Keyboard
@@ -64,7 +58,7 @@ export function PairBreakdown({
         />
 
         <ol className="lm-items lm-items-large space-y-1" aria-label="Keys pressed next">
-          {then.map((t) => (
+          {next.map((t) => (
             <li key={`${t.layer}-${t.key}-${t.label}`} className="flex items-center gap-2 text-sm">
               <span className="font-mono w-48 break-words">
                 {t.label}
@@ -103,5 +97,46 @@ export function PairBreakdown({
         <button type="submit">close</button>
       </form>
     </dialog>
+  );
+}
+
+/** The layer a key reached: the one most of what followed it was pressed on. */
+export function reachedLayer(next: readonly RuleItemNext[]): number {
+  const byLayer = new Map<number, number>();
+  for (const t of next) byLayer.set(t.layer, (byLayer.get(t.layer) ?? 0) + t.count);
+  return [...byLayer.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 0;
+}
+
+/** What the layer key at the end of a pair was pressed for, the pair's own part split among them. */
+export function PairBreakdown({
+  compiled,
+  rule,
+  item,
+  onClose,
+}: {
+  compiled: CompiledLayout;
+  /** The rule the pair is listed under. */
+  rule: string;
+  item: RuleItem;
+  onClose: () => void;
+}) {
+  return (
+    <PressedFor
+      compiled={compiled}
+      next={item.then ?? []}
+      onClose={onClose}
+      title={
+        <>
+          <span className="font-mono">{item.label}</span>
+          <span className="font-normal opacity-60"> · {rule}</span>
+        </>
+      }
+      description={(reached) => (
+        <>
+          What its last key was pressed for: the key typed next on {reached}, and each one's part of
+          the pair's {formatItem(item)}.
+        </>
+      )}
+    />
   );
 }

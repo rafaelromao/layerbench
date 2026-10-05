@@ -26,18 +26,19 @@ export const SUMMARY_IDS = [
   'extra_keystrokes',
 ];
 
-/** The reduced set the editor shows, where space is tighter. */
-export const EDIT_SUMMARY_IDS = [
+/** The numbers a selected key shows its part of first; the rest are one tap away. */
+export const KEY_STATS_IDS = [
   ...HEADLINE_IDS,
   'sfs',
   'lsb',
   'fsb',
+  'hsb',
   'alternation',
   'rolls',
   'redirect',
   'pinky_off',
+  'finger_travel',
   'layer_taps_per_100',
-  'extra_keystrokes',
 ];
 
 const FINGER_ORDER = ['LP', 'LR', 'LM', 'LI', 'LT', 'RT', 'RI', 'RM', 'RR', 'RP'] as const;

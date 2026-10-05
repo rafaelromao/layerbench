@@ -18,7 +18,7 @@ async function dragKey(
   to: string,
   options: { altKey?: boolean; onto?: Element } = {},
 ): Promise<void> {
-  const svg = document.getElementById('kb-edit') as unknown as SVGSVGElement;
+  const svg = document.getElementById('kb-analyze') as unknown as SVGSVGElement;
   const source = svg.querySelector(`g[data-key="${from}"]`) as Element;
   const target = options.onto ?? (svg.querySelector(`g[data-key="${to}"]`) as Element);
   const { altKey = false } = options;
@@ -45,10 +45,10 @@ async function dragKey(
   elementFromPoint.mockRestore();
 }
 
-/** Open the edit view on Qwerty and wait for its first analysis. */
+/** Open Analyze on Qwerty and wait for its first analysis. */
 async function openEdit(): Promise<void> {
-  renderRoute('/edit?layout=qwerty&corpus=en-conv&sample=20000', { storage: freshStorage() });
-  await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+  renderRoute('/analyze?layout=qwerty&corpus=en-conv&sample=20000', { storage: freshStorage() });
+  await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
 }
 
 const key = (name: string) => screen.getByRole('button', { name });
@@ -87,10 +87,10 @@ async function seed(storage: IndexedDbAdapter, from: string, id: string, extra: 
 const inspector = (keyId: string) => screen.findByRole('group', { name: `Edit ${keyId}` });
 
 async function openMagicRomak(): Promise<void> {
-  renderRoute('/edit?layout=magic-romak&corpus=pt-br-conv&sample=20000', {
+  renderRoute('/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000', {
     storage: freshStorage(),
   });
-  await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+  await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
 }
 
 describe('Edit', () => {
@@ -109,7 +109,7 @@ describe('Edit', () => {
       return report;
     });
 
-    renderRoute('/edit?layout=qwerty&corpus=en-conv&sample=20000', {
+    renderRoute('/analyze?layout=qwerty&corpus=en-conv&sample=20000', {
       client,
       storage: freshStorage(),
     });
@@ -137,10 +137,10 @@ describe('Edit', () => {
   it('saves from beside the unsaved badge, under the name in the bar', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
-    const { currentSearch } = renderRoute('/edit?layout=qwerty&corpus=en-conv&sample=20000', {
+    const { currentSearch } = renderRoute('/analyze?layout=qwerty&corpus=en-conv&sample=20000', {
       storage,
     });
-    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
     // Saving is no longer a panel to go looking for.
     expect(screen.queryByRole('tab', { name: 'Save' })).toBeNull();
 
@@ -155,11 +155,11 @@ describe('Edit', () => {
     await waitFor(() => expect(currentSearch()).toContain('saved%3Aqwerty-swapped'));
   });
 
-  it('opens the saved copy after a first save, edits included, and saves it again in place', async () => {
+  it('keeps editing the copy a first save made, history and all, and saves it again in place', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
-    renderRoute('/edit?layout=qwerty&corpus=en-conv&sample=20000', { storage });
-    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+    renderRoute('/analyze?layout=qwerty&corpus=en-conv&sample=20000', { storage });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
 
     key('Key LHM: d').focus();
     await user.keyboard('ç{Enter}');
@@ -170,11 +170,10 @@ describe('Edit', () => {
     await user.click(within(bar()).getByRole('button', { name: 'Save' }));
     expect(await screen.findByText('Saved Qwerty plus')).toBeInTheDocument();
 
-    // The editor opens afresh, with no history, on the copy it saved: not on the bundled Qwerty
-    // that was still loaded when the link moved to the copy.
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Undo' })).toBeDisabled(), {
-      timeout: 25_000,
-    });
+    // The link moves to the copy, and the editor stays as it was, history and all: undoing the
+    // rename goes back before the save, which is unsaved again.
+    await waitFor(() => expect(screen.queryByText('unsaved')).toBeNull());
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeEnabled();
     expect(key('Key LHM: ç')).toBeInTheDocument();
     expect(within(bar()).getByLabelText('Name')).toHaveValue('Qwerty plus');
 
@@ -196,10 +195,10 @@ describe('Edit', () => {
     const storage = freshStorage();
     await seed(storage, 'qwerty', 'qwerty-copy', { name: 'Qwerty copy' });
     const { currentSearch } = renderRoute(
-      '/edit?layout=saved%3Aqwerty-copy&corpus=en-conv&sample=20000',
+      '/analyze?layout=saved%3Aqwerty-copy&corpus=en-conv&sample=20000',
       { storage },
     );
-    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
 
     // Author and description are there to fill in, with nothing to open first.
     expect(screen.queryByRole('button', { name: 'Layout details' })).toBeNull();
@@ -226,7 +225,7 @@ describe('Edit', () => {
     // Moved, not copied: the Library shows it once, under its new name.
     expect(await storage.get('layouts', 'qwerty-copy')).toBeNull();
     await waitFor(() => expect(currentSearch()).toContain('saved%3Amy-layout'));
-    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
     expect(within(bar()).getByLabelText('Name')).toHaveValue('My layout');
     expect(screen.queryByText('unsaved')).toBeNull();
   }, 60_000);
@@ -236,8 +235,8 @@ describe('Edit', () => {
     const storage = freshStorage();
     await seed(storage, 'qwerty', 'qwerty-copy', { name: 'Qwerty copy' });
     await seed(storage, 'colemak-dh', 'my-layout', { name: 'My layout' });
-    renderRoute('/edit?layout=saved%3Aqwerty-copy&corpus=en-conv&sample=20000', { storage });
-    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+    renderRoute('/analyze?layout=saved%3Aqwerty-copy&corpus=en-conv&sample=20000', { storage });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
 
     const name = within(bar()).getByLabelText('Name');
     await user.clear(name);
@@ -255,57 +254,79 @@ describe('Edit', () => {
     expect(await storage.get('layouts', 'qwerty-copy')).toBeNull();
   }, 60_000);
 
-  it('opens a stored layout with nothing unsaved in Analyze as it is stored', async () => {
+  it('puts unsaved edits in the link, and the stored layout back once they are undone', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
     await seed(storage, 'qwerty', 'mine', { name: 'Mine' });
-    const { currentPath, currentSearch } = renderRoute(
-      '/edit?layout=saved%3Amine&corpus=en-conv&sample=20000',
+    const { currentSearch } = renderRoute(
+      '/analyze?layout=saved%3Amine&corpus=en-conv&sample=20000',
       { storage },
     );
-    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
-    await user.click(within(bar()).getByRole('button', { name: 'Analyze' }));
-    await waitFor(() => expect(currentPath()).toBe('/analyze'));
-    expect(currentSearch()).toContain('layout=saved%3Amine');
-  }, 60_000);
-
-  it('saves edits brought back from Analyze as the layout they are edits of, not a copy', async () => {
-    const user = userEvent.setup();
-    const storage = freshStorage();
-    await seed(storage, 'qwerty', 'qwerty-copy', { name: 'Qwerty copy' });
-    const { currentPath, currentSearch } = renderRoute(
-      '/edit?layout=saved%3Aqwerty-copy&corpus=en-conv&sample=20000',
-      { storage },
-    );
-    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
     key('Key LHM: d').focus();
     await user.keyboard('ç{Enter}');
     await screen.findByRole('button', { name: 'Key LHM: ç' });
+    await waitFor(() => expect(currentSearch()).toContain('layout=inline'));
+    // The editor stayed open on the edit: the link it wrote is its own.
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeEnabled();
 
-    // Unsaved edits go to Analyze as a snapshot, and come back the same way.
-    await user.click(within(bar()).getByRole('button', { name: 'Analyze' }));
-    await waitFor(() => expect(currentPath()).toBe('/analyze'));
-    expect(currentSearch()).toContain('layout=inline');
-    const toolbar = document.getElementById('analyze-toolbar') as HTMLElement;
-    await user.click(within(toolbar).getByRole('link', { name: 'Edit' }));
-    await waitFor(() => expect(currentPath()).toBe('/edit'));
-    expect(await screen.findByRole('button', { name: 'Key LHM: ç' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    await waitFor(() => expect(currentSearch()).toContain('layout=saved%3Amine'));
+    expect(screen.queryByText('unsaved')).toBeNull();
+  }, 60_000);
+
+  it('reopens unsaved edits from their link still unsaved, and saves them as the layout they edit', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    await seed(storage, 'qwerty', 'qwerty-copy', { name: 'Qwerty copy' });
+    const first = renderRoute('/analyze?layout=saved%3Aqwerty-copy&corpus=en-conv&sample=20000', {
+      storage,
+    });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+    key('Key LHM: d').focus();
+    await user.keyboard('ç{Enter}');
+    await screen.findByRole('button', { name: 'Key LHM: ç' });
+    await waitFor(() => expect(first.currentSearch()).toContain('layout=inline'));
+    const link = first.currentSearch();
+    first.unmount();
+
+    // The same link, opened again in this tab — a reload, Back — is the same unsaved edit.
+    const again = renderRoute(`/analyze${link}`, { storage });
+    expect(
+      await screen.findByRole('button', { name: 'Key LHM: ç' }, { timeout: 25_000 }),
+    ).toBeInTheDocument();
     expect(screen.getByText('unsaved')).toBeInTheDocument();
 
     await user.click(within(bar()).getByRole('button', { name: 'Save' }));
     expect(await screen.findByText('Saved Qwerty copy')).toBeInTheDocument();
-    await waitFor(() => expect(currentSearch()).toContain('layout=saved%3Aqwerty-copy'));
+    await waitFor(() => expect(again.currentSearch()).toContain('layout=saved%3Aqwerty-copy'));
     // The stored layout has the edit, and no copy was made beside it.
     expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['qwerty-copy']);
     expect(JSON.stringify((await storage.get('layouts', 'qwerty-copy'))?.doc)).toContain('ç');
   }, 90_000);
 
+  it('compares the layout as edited', async () => {
+    const user = userEvent.setup();
+    const { currentPath, currentSearch } = renderRoute(
+      '/analyze?layout=qwerty&corpus=en-conv&sample=20000',
+      { storage: freshStorage() },
+    );
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+    key('Key LHM: d').focus();
+    await user.keyboard('ç{Enter}');
+    await screen.findByRole('button', { name: 'Key LHM: ç' });
+    // Straight away, before the link has caught up with the edit.
+    await user.click(within(bar()).getByRole('button', { name: 'Compare' }));
+    await waitFor(() => expect(currentPath()).toBe('/compare'));
+    expect(currentSearch()).toContain('layout=inline');
+  }, 60_000);
+
   it('saves a layout for the first time beside a saved one of the same name, not over it', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
     await seed(storage, 'qwerty', 'qwerty', { description: 'mine' });
-    renderRoute('/edit?layout=qwerty&corpus=en-conv&sample=20000', { storage });
-    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+    renderRoute('/analyze?layout=qwerty&corpus=en-conv&sample=20000', { storage });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
 
     await user.click(within(bar()).getByRole('button', { name: 'Save' }));
     expect(await screen.findByText('Saved Qwerty')).toBeInTheDocument();
@@ -316,11 +337,11 @@ describe('Edit', () => {
   it('analyzes the layout typed without the features switched off, and still edits it as written', async () => {
     const user = userEvent.setup();
     const { client, requests } = recording();
-    const { currentSearch } = renderRoute('/edit?layout=magic-romak&sample=20000', {
+    const { currentSearch } = renderRoute('/analyze?layout=magic-romak&sample=20000', {
       client,
       storage: freshStorage(),
     });
-    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
     const typed = (r: AnalyzeRequest | undefined) => JSON.stringify(r?.layout ?? null);
     await waitFor(() => expect(typed(requests[0])).toContain('"qu"'));
 
@@ -338,14 +359,15 @@ describe('Edit', () => {
     expect(await screen.findByRole('button', { name: /^Key LTM: qu/ })).toBeInTheDocument();
   }, 60_000);
 
-  it('analyzes on English news unless the link names a corpus, and switches without losing edits', async () => {
+  it('opens an old link to the editor on English news, and switches text without losing edits', async () => {
     const user = userEvent.setup();
     const { client, requests } = recording();
-    const { currentSearch } = renderRoute('/edit?layout=qwerty&sample=20000', {
+    const { currentSearch, currentPath } = renderRoute('/edit?layout=qwerty&sample=20000', {
       client,
       storage: freshStorage(),
     });
-    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+    expect(currentPath()).toBe('/analyze');
     const corpus = within(bar()).getByRole('combobox', { name: 'Corpus' });
     expect(corpus).toHaveValue('en-general');
     expect(requests.map((r) => r.corpusId)).toContain('en-general');
@@ -446,10 +468,10 @@ describe('Edit', () => {
 
   it("shows Magic Romak's special features and lets one be turned off", async () => {
     const user = userEvent.setup();
-    renderRoute('/edit?layout=magic-romak&corpus=pt-br-conv&sample=20000', {
+    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000', {
       storage: freshStorage(),
     });
-    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
 
     // The four behaviours firmware needs extra layers for are no longer layers.
     await user.click(screen.getByRole('tab', { name: 'Layers' }));
@@ -716,8 +738,8 @@ describe('Edit', () => {
       ),
     );
     await storage.put('layouts', 'old-magic', { ...old, id: 'old-magic' }, { message: 'seed' });
-    renderRoute('/edit?layout=saved%3Aold-magic&corpus=pt-br-conv&sample=20000', { storage });
-    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+    renderRoute('/analyze?layout=saved%3Aold-magic&corpus=pt-br-conv&sample=20000', { storage });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
 
     await user.click(await screen.findByRole('button', { name: /^Key L1:/ }));
     const editor = await inspector('L1');
@@ -823,8 +845,25 @@ describe('Edit', () => {
       await screen.findByRole('button', { name: 'Key LHM: d, hold Base' }),
     ).toBeInTheDocument();
 
-    await user.click(within(await inspector('LHM')).getByRole('radio', { name: 'Modifier' }));
+    await user.selectOptions(
+      within(await inspector('LHM')).getByLabelText('Hold kind'),
+      'modifier',
+    );
     expect(await screen.findByRole('button', { name: 'Key LHM: d, hold ⇧' })).toBeInTheDocument();
+  });
+
+  it('gives a hold anything a tap can be, such as a symbol', async () => {
+    const user = userEvent.setup();
+    await openEdit();
+
+    await user.click(key('Key LHM: d'));
+    await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Tap-hold' }));
+    const kinds = within(await inspector('LHM')).getByLabelText('Hold kind');
+    // Every kind the tap offers, and never another tap-hold.
+    expect([...(kinds as HTMLSelectElement).options].map((o) => o.value)).not.toContain('taphold');
+    await user.selectOptions(kinds, 'symbol');
+    await user.type(within(await inspector('LHM')).getByLabelText('Hold symbol'), '!{Enter}');
+    expect(await screen.findByRole('button', { name: 'Key LHM: d, hold !' })).toBeInTheDocument();
   });
 
   it('moves between keys with the arrow keys, from one tab stop', async () => {
@@ -968,7 +1007,7 @@ describe('Edit', () => {
   it('does not swap when the gesture is cancelled', async () => {
     await openEdit();
 
-    const svg = document.getElementById('kb-edit') as unknown as SVGSVGElement;
+    const svg = document.getElementById('kb-analyze') as unknown as SVGSVGElement;
     const source = svg.querySelector('g[data-key="LHM"]') as Element;
     const target = svg.querySelector('g[data-key="LHI"]') as Element;
     const spy = vi.spyOn(document, 'elementFromPoint').mockImplementation(() => target);
@@ -1006,7 +1045,7 @@ describe('Edit', () => {
     await user.type(screen.getByLabelText('Combo output'), '&macro ão');
     await user.click(screen.getByRole('button', { name: /^Add combo on/ }));
 
-    const combos = within(screen.getByLabelText('Combos'));
+    const combos = within(screen.getByRole('region', { name: 'Combos' }));
     expect(await combos.findByText('LHR+LHM')).toBeInTheDocument();
     expect(combos.getByText('ão')).toBeInTheDocument();
   });
@@ -1021,15 +1060,17 @@ describe('Edit', () => {
     await user.click(screen.getByRole('button', { name: /^Add combo on/ }));
 
     expect(await screen.findByText(/no layer called/)).toBeInTheDocument();
-    expect(within(screen.getByLabelText('Combos')).queryByText('LHR+LHM')).toBeNull();
+    expect(
+      within(screen.getByRole('region', { name: 'Combos' })).queryByText('LHR+LHM'),
+    ).toBeNull();
   });
 
   it('reorders a typing path that was never declared', async () => {
     const user = userEvent.setup();
-    renderRoute('/edit?layout=magic-romak&corpus=pt-br-conv&sample=20000', {
+    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000', {
       storage: freshStorage(),
     });
-    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
     await user.click(screen.getByRole('tab', { name: 'Typing paths' }));
 
     const order = () =>
@@ -1091,8 +1132,8 @@ describe('Edit', () => {
   it('draws a layer in the colour chosen for it, undoes the choice, and saves it', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
-    renderRoute('/edit?layout=magic-romak&corpus=pt-br-conv&sample=20000', { storage });
-    await screen.findByText(/Quick analysis/, undefined, { timeout: 25_000 });
+    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000', { storage });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
 
     const dot = () =>
       screen.getByRole('tab', { name: 'Symbols' }).querySelector('span')?.getAttribute('style');
@@ -1122,7 +1163,7 @@ describe('Edit', () => {
     const user = userEvent.setup();
     await openMagicRomak();
     // The base layer is always on: nothing reaches it.
-    expect(document.querySelector('#kb-edit .lm-key-reach')).toBeNull();
+    expect(document.querySelector('#kb-analyze .lm-key-reach')).toBeNull();
 
     await user.click(screen.getByRole('tab', { name: 'Symbols' }));
     expect(
@@ -1154,4 +1195,58 @@ describe('Edit', () => {
       await screen.findByRole('button', { name: /^Key L1: .*, held or tapped to reach Alpha 2$/ }),
     ).toBeInTheDocument();
   });
+});
+
+describe('Analyze, while editing', () => {
+  it("shows a selected key's numbers on the layer shown, and what a layer key was pressed for", async () => {
+    const user = userEvent.setup();
+    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000', {
+      storage: freshStorage(),
+    });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+    await user.click(screen.getByRole('button', { name: /^Key R0:/ }));
+    const editor = await inspector('R0');
+    expect(within(editor).getByRole('heading', { name: /^Its numbers on / })).toBeInTheDocument();
+    const parts = within(editor).getByRole('list', { name: /^Parts of R0 on / });
+    expect(within(parts).getByText('Effort')).toBeInTheDocument();
+    expect(
+      await within(editor).findByText('Pressed for:', undefined, { timeout: 10_000 }),
+    ).toBeInTheDocument();
+  }, 60_000);
+
+  it('asks before another layout replaces unsaved edits', async () => {
+    const user = userEvent.setup();
+    renderRoute('/analyze?layout=qwerty&corpus=en-conv&sample=20000', { storage: freshStorage() });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+    key('Key LHM: d').focus();
+    await user.keyboard('ç{Enter}');
+    await screen.findByRole('button', { name: 'Key LHM: ç' });
+
+    const picker = within(bar()).getByRole('combobox', { name: 'Layout' });
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    await user.selectOptions(picker, 'colemak');
+    expect(confirm).toHaveBeenCalled();
+    expect(key('Key LHM: ç')).toBeInTheDocument();
+
+    confirm.mockReturnValue(true);
+    await user.selectOptions(picker, 'colemak');
+    expect(
+      await screen.findByRole('button', { name: 'Key LHM: s' }, { timeout: 25_000 }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('unsaved')).toBeNull();
+    confirm.mockRestore();
+  }, 60_000);
+
+  it('lists every character of the text the layout cannot type', async () => {
+    renderRoute('/analyze?layout=qwerty&corpus=pt-br-conv&sample=20000', {
+      storage: freshStorage(),
+    });
+    const list = await screen.findByRole(
+      'list',
+      { name: 'Characters the layout cannot type' },
+      { timeout: 25_000 },
+    );
+    expect(within(list).getByText(/^ã/)).toBeInTheDocument();
+    expect(within(list).getByText(/^ç/)).toBeInTheDocument();
+  }, 60_000);
 });

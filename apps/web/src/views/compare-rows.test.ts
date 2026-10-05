@@ -16,6 +16,7 @@ function result(id: string, value: number | null, withBand = true): RuleResult {
     per_finger: {},
     per_key: {},
     per_layer_key: {},
+    key_scale: null,
     per_hand: {},
     breakdown: {},
     note: null,

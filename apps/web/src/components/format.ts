@@ -18,6 +18,21 @@ export function formatValue(value: number | null | undefined, unit: Unit): strin
   }
 }
 
+/** A key's part of a number runs small, so small parts keep an extra digit. */
+export function formatPart(value: number, unit: Unit): string {
+  const small = Math.abs(value) < (unit === 'distance' ? 0.1 : 1);
+  switch (unit) {
+    case 'percent':
+      return `${value.toFixed(small ? 3 : 2)}%`;
+    case 'distance':
+      return `${value.toFixed(small ? 3 : 2)}U`;
+    case 'count':
+      return value.toFixed(0);
+    default:
+      return value.toFixed(small ? 3 : 2);
+  }
+}
+
 /** Item shares run small, so sub-one-percent values keep an extra digit. */
 export function formatItem(item: RuleItem): string {
   if (item.percent !== undefined) {
@@ -69,6 +84,7 @@ const SHORT_LABELS: Record<string, string> = {
   hand_balance: 'Hand Δ',
   layer_taps_per_100: 'Layer taps',
   extra_keystrokes: 'Extra keys',
+  finger_travel: 'Travel',
 };
 
 export function shortLabel(id: string, fallback: string): string {

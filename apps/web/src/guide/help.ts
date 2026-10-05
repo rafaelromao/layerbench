@@ -36,6 +36,7 @@ export const HELP = {
   importing: { page: 'importing', topic: 'importing from keymap-drawer' },
   rules: { page: 'analyzing', section: 'rules-and-their-sources', topic: 'rules and sources' },
   corpus: { page: 'analyzing', section: 'the-text-itself', topic: 'corpora' },
+  keyNumbers: { page: 'analyzing', section: 'a-keys-numbers', topic: "a key's numbers" },
 } as const satisfies Record<string, HelpTopic>;
 
 /** The guide's address for a topic, under the app's base path. */

@@ -63,7 +63,7 @@ describe('Creating layouts', () => {
     expect(await screen.findByText('Saved Qwerty copy')).toBeInTheDocument();
   });
 
-  it('opens the editor on the corpus and rules the Library ranks by', async () => {
+  it('opens a copy in Analyze, to edit, on the corpus and rules the Library ranks by', async () => {
     const user = userEvent.setup();
     const { currentPath, currentSearch } = renderRoute(LIBRARY, { storage: freshStorage() });
     const corpus = await screen.findByRole('combobox', { name: 'Corpus' });
@@ -73,7 +73,7 @@ describe('Creating layouts', () => {
     await waitFor(() => expect(currentSearch()).toContain('rules=cyanophage'));
 
     await user.click(screen.getByRole('button', { name: 'Duplicate Qwerty' }));
-    await waitFor(() => expect(currentPath()).toBe('/edit'));
+    await waitFor(() => expect(currentPath()).toBe('/analyze'));
     expect(currentSearch()).toContain('saved%3Aqwerty-copy');
     expect(currentSearch()).toContain('corpus=pt-br-conv');
     expect(currentSearch()).toContain('rules=cyanophage');
@@ -229,10 +229,12 @@ describe('Ranking layouts', () => {
     await waitFor(() => expect(names()[0]).toBe('My Graphite'), { timeout: 60_000 });
     const card = cards()[0];
     expect(within(card).getByText('saved')).toBeInTheDocument();
-    expect(within(card).getByRole('link', { name: 'Edit' })).toHaveAttribute(
+    // Analyze is where it is edited too: there is no separate way in.
+    expect(within(card).getByRole('link', { name: 'Analyze' })).toHaveAttribute(
       'href',
       expect.stringContaining('saved%3Amy-graphite'),
     );
+    expect(within(card).queryByRole('link', { name: 'Edit' })).toBeNull();
     // The bundled layouts carry no badge.
     expect(within(cards()[1]).queryByText('saved')).toBeNull();
 

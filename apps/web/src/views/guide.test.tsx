@@ -60,7 +60,7 @@ describe('Guide', () => {
 describe('Help from the views', () => {
   it('opens the part of the guide about a panel, in a tab of its own', async () => {
     const user = userEvent.setup();
-    renderRoute('/edit');
+    renderRoute('/analyze?layout=qwerty&sample=10000');
     const help = await screen.findByRole('link', { name: 'Help on layers (opens in a new tab)' });
     expect(help).toHaveAttribute('href', '/guide/editing#layers');
     expect(help).toHaveAttribute('target', '_blank');
