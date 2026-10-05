@@ -1,169 +1,198 @@
-import { useCallback, useRef, useState } from 'react';
-import { gitHubReady, useSession } from '../state/session.js';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { detectTarget, signIn, signOut, useGitHubSession } from '../auth/github-session.js';
 import { toast } from '../state/toasts.js';
 import { CompositeStorage } from './composite.js';
-import { GitHubAdapter } from './github.js';
 import { IndexedDbAdapter } from './indexeddb.js';
+import type { StorageTarget } from './target.js';
+import { remoteStorage } from './use-storage.js';
+
+function Where({ target, login }: { target: StorageTarget; login: string }) {
+  if (target.kind === 'repo') {
+    return (
+      <p className="text-xs">
+        Saving to{' '}
+        <a
+          className="link font-mono"
+          href={`https://github.com/${target.repo}/tree/${target.branch}/${target.path}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {target.repo}
+        </a>
+        {target.upstream ? '' : ', your fork'}, on the branch{' '}
+        <span className="font-mono">{target.branch}</span>, so its main branch stays as it is.
+      </p>
+    );
+  }
+  return (
+    <p className="text-xs">
+      Saving to secret{' '}
+      <a
+        className="link"
+        href={`https://gist.github.com/${login}`}
+        target="_blank"
+        rel="noreferrer"
+      >
+        gists in your account
+      </a>
+      , one for layouts, one for rule sets and one for corpora. Secret gists are unlisted, not
+      private: anyone with a gist's address can read it.
+    </p>
+  );
+}
 
 /**
  * Where saved documents live. Layouts, rule sets and corpora are always kept in this browser;
- * a repository you own can hold them too, so they follow you between machines.
+ * signing in with GitHub keeps them in the user's account too, so they follow them between
+ * machines: in their fork of layoutmaster when the app may write to one, in gists otherwise.
  */
 export function StorageSettings() {
   const dialog = useRef<HTMLDialogElement>(null);
-  const github = useSession((s) => s.github);
-  const token = useSession((s) => s.githubToken);
-  const setGitHub = useSession((s) => s.setGitHub);
-  const setToken = useSession((s) => s.setGitHubToken);
-  const [checking, setChecking] = useState(false);
-  const [status, setStatus] = useState<string | null>(null);
+  const status = useGitHubSession((s) => s.status);
+  const login = useGitHubSession((s) => s.login);
+  const target = useGitHubSession((s) => s.target);
+  const targetStatus = useGitHubSession((s) => s.targetStatus);
+  const appSlug = useGitHubSession((s) => s.appSlug);
+  const upstream = useGitHubSession((s) => s.upstream);
+  const [copying, setCopying] = useState(false);
 
-  const check = useCallback(async () => {
-    setChecking(true);
-    setStatus(null);
-    const adapter = new GitHubAdapter({ ...github, token });
-    const result = await adapter.check();
-    setChecking(false);
-    setStatus(
-      result.ok
-        ? `Connected. ${result.rateLimitRemaining ?? 'many'} requests left this hour.`
-        : `Not connected: ${result.error}.`,
-    );
-  }, [github, token]);
+  const signedIn = status === 'signed-in' && !!login;
+  const remote = signedIn && !!target;
 
   const copyUp = useCallback(async () => {
-    const composite = new CompositeStorage(
-      new IndexedDbAdapter(),
-      new GitHubAdapter({ ...github, token }),
-    );
+    if (!login || !target) return;
+    setCopying(true);
+    const composite = new CompositeStorage(new IndexedDbAdapter(), remoteStorage(login, target));
     try {
       let total = 0;
       for (const collection of ['layouts', 'rulesets', 'corpora'] as const) {
         total += await composite.pushAll(collection);
       }
-      toast.info(`Copied ${total} document${total === 1 ? '' : 's'} to ${github.repo}`);
+      toast.info(`Copied ${total} document${total === 1 ? '' : 's'} to GitHub`);
     } catch (e) {
       toast.error(`Copy failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setCopying(false);
     }
-  }, [github, token]);
+  }, [login, target]);
 
-  const ready = gitHubReady({ github, githubToken: token });
+  // Access given to a fork in another tab shows here when this one is looked at again.
+  useEffect(() => {
+    if (!signedIn || target?.kind !== 'gist') return;
+    const again = () => {
+      if (dialog.current?.open) void detectTarget();
+    };
+    window.addEventListener('focus', again);
+    return () => window.removeEventListener('focus', again);
+  }, [signedIn, target]);
+
+  const upstreamName = upstream.split('/')[1] ?? 'layoutmaster';
 
   return (
     <>
       <button
         type="button"
         className="btn btn-ghost btn-xs"
-        aria-label={ready ? 'Storage: this browser and a repository' : 'Storage: this browser only'}
+        aria-label={
+          remote ? `Storage: this browser and GitHub (@${login})` : 'Storage: this browser only'
+        }
         onClick={() => dialog.current?.showModal()}
       >
-        Storage{ready ? ' ✓' : ''}
+        Storage{remote ? ' ✓' : ''}
       </button>
 
       <dialog ref={dialog} className="modal" aria-labelledby="storage-settings-title">
-        <div className="modal-box max-w-lg">
-          <h2 id="storage-settings-title" className="font-semibold text-base mb-2">
+        <div className="modal-box max-w-lg space-y-3">
+          <h2 id="storage-settings-title" className="font-semibold text-base">
             Storage
           </h2>
-          <p className="text-xs opacity-70 mb-3">
-            Your layouts, rule sets and corpora are saved in this browser. To keep them in a
-            repository you own as well, give this page a fine-grained personal access token scoped
-            to that one repository, with read and write access to its contents. The token stays in
-            this browser and is sent to GitHub and nowhere else.
+          <p className="text-xs opacity-70">
+            Your layouts, rule sets and corpora are saved in this browser.
+            {status === 'unavailable'
+              ? ' Signing in with GitHub, which keeps them in your account as well, is not set up where this copy of the app runs.'
+              : signedIn
+                ? ' They are kept in your GitHub account as well, so they follow you to other browsers.'
+                : ' Sign in with GitHub to keep them in your account as well, so they follow you to other browsers: in your fork of layoutmaster when you have one, in secret gists otherwise.'}
           </p>
 
-          <form
-            className="space-y-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void check();
-            }}
-          >
-            <label className="form-control">
-              <span className="label-text text-xs">Repository (owner/name)</span>
-              <input
-                aria-label="Repository"
-                placeholder="you/keyboard-data"
-                className="input input-sm input-bordered font-mono"
-                value={github.repo}
-                onChange={(e) => setGitHub({ repo: e.target.value })}
-              />
-            </label>
+          {(status === 'signed-out' || status === 'unknown') && (
+            <button
+              type="button"
+              className="btn btn-sm btn-primary"
+              disabled={status === 'unknown'}
+              onClick={signIn}
+            >
+              Sign in with GitHub
+            </button>
+          )}
 
-            <div className="flex gap-2">
-              <label className="form-control flex-1">
-                <span className="label-text text-xs">Branch</span>
-                <input
-                  aria-label="Branch"
-                  className="input input-sm input-bordered font-mono"
-                  value={github.branch}
-                  onChange={(e) => setGitHub({ branch: e.target.value })}
-                />
-              </label>
-              <label className="form-control flex-1">
-                <span className="label-text text-xs">Directory</span>
-                <input
-                  aria-label="Directory"
-                  className="input input-sm input-bordered font-mono"
-                  value={github.path}
-                  onChange={(e) => setGitHub({ path: e.target.value })}
-                />
-              </label>
-            </div>
+          {signedIn && (
+            <>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs">
+                  Signed in as <span className="font-mono">@{login}</span>
+                </span>
+                <button type="button" className="btn btn-xs" onClick={() => void signOut()}>
+                  Sign out
+                </button>
+              </div>
 
-            <label className="form-control">
-              <span className="label-text text-xs">Token</span>
-              <input
-                type="password"
-                aria-label="Access token"
-                autoComplete="off"
-                placeholder="github_pat_…"
-                className="input input-sm input-bordered font-mono"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-              />
-            </label>
+              {/* Announced, so a change of destination is not only visible. */}
+              <div aria-live="polite" className="space-y-2">
+                {target && <Where target={target} login={login} />}
+                {targetStatus === 'checking' && (
+                  <p className="text-xs opacity-70">Looking for your fork…</p>
+                )}
+                {targetStatus === 'error' && (
+                  <p className="text-xs text-error">
+                    GitHub could not be asked where to save
+                    {target ? '; saving where it last said' : '; saving in this browser only'}.
+                  </p>
+                )}
+              </div>
 
-            <label className="label cursor-pointer justify-start gap-2">
-              <input
-                type="checkbox"
-                aria-label="Use the repository"
-                className="toggle toggle-sm"
-                checked={github.enabled}
-                onChange={(e) => setGitHub({ enabled: e.target.checked })}
-              />
-              <span className="label-text text-xs">Keep documents in this repository too</span>
-            </label>
+              {target?.kind === 'gist' && appSlug && (
+                <p className="text-xs">
+                  {target.forkWithoutAccess ? (
+                    <>
+                      Your fork <span className="font-mono">{target.forkWithoutAccess}</span> is not
+                      shared with the app yet.
+                    </>
+                  ) : (
+                    <>Have a fork of {upstreamName}?</>
+                  )}{' '}
+                  <a
+                    className="link"
+                    href={`https://github.com/apps/${encodeURIComponent(appSlug)}/installations/new`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Give LayoutMaster access to it
+                  </a>{' '}
+                  to save there instead.
+                </p>
+              )}
 
-            {/* Announced, so the result of a connection test is not only visible. */}
-            <p className="text-xs opacity-80" aria-live="polite">
-              {status}
-            </p>
-
-            <div className="flex flex-wrap gap-2 pt-1 max-sm:grid max-sm:grid-cols-1">
-              <button type="submit" className="btn btn-sm" disabled={checking || !token}>
-                {checking ? 'Checking…' : 'Test connection'}
-              </button>
-              <button
-                type="button"
-                className="btn btn-sm"
-                disabled={!ready}
-                onClick={() => void copyUp()}
-              >
-                Copy this browser's documents up
-              </button>
-              <button
-                type="button"
-                className="btn btn-sm btn-ghost"
-                onClick={() => {
-                  setToken('');
-                  setStatus(null);
-                }}
-              >
-                Forget token
-              </button>
-            </div>
-          </form>
+              <div className="flex flex-wrap gap-2 max-sm:grid max-sm:grid-cols-1">
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  disabled={!target || copying}
+                  onClick={() => void copyUp()}
+                >
+                  {copying ? 'Copying…' : "Copy this browser's documents up"}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-ghost"
+                  disabled={targetStatus === 'checking'}
+                  onClick={() => void detectTarget()}
+                >
+                  Check again
+                </button>
+              </div>
+            </>
+          )}
 
           <div className="modal-action">
             <button type="button" className="btn btn-sm" onClick={() => dialog.current?.close()}>

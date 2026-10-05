@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { useGitHubSession } from '../auth/github-session.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { LIBRARY, renderRoute, testClient } from '../test/render.js';
 
@@ -9,6 +10,10 @@ let counter = 0;
 function freshStorage(): IndexedDbAdapter {
   return new IndexedDbAdapter(`layoutmaster-shell-${++counter}`);
 }
+
+afterEach(() => {
+  useGitHubSession.setState({ status: 'unknown', login: null, target: null, targetStatus: 'idle' });
+});
 
 describe('where the site opens', () => {
   it('opens on the Library, and so does the title', async () => {
@@ -174,18 +179,81 @@ describe('the page frame', () => {
     expect(menu.open).toBe(false);
   });
 
-  it('opens storage settings as a dialog with a name and a token field that hides itself', async () => {
+  it('opens storage settings as a dialog that offers to sign in with GitHub', async () => {
+    useGitHubSession.setState({ status: 'signed-out', login: null, target: null });
     const user = userEvent.setup();
     renderRoute(LIBRARY, { storage: freshStorage() });
 
     await user.click(await screen.findByRole('button', { name: /^Storage/ }));
 
     const dialog = await screen.findByRole('dialog', { name: 'Storage' });
-    const token = screen.getByLabelText('Access token');
-    expect(token).toHaveAttribute('type', 'password');
-    expect(token).toHaveAttribute('autocomplete', 'off');
-    // Nothing to connect to yet, so neither remote action is offered.
-    expect(within(dialog).getByRole('button', { name: 'Test connection' })).toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: 'Sign in with GitHub' })).toBeEnabled();
+    expect(within(dialog).queryByLabelText('Access token')).toBeNull();
+  });
+
+  it('says where a signed-in user’s documents go, and how to save them to a fork instead', async () => {
+    useGitHubSession.setState({
+      status: 'signed-in',
+      login: 'you',
+      appSlug: 'layoutmaster-app',
+      upstream: 'rafaelromao/layoutmaster',
+      target: { kind: 'gist', forkWithoutAccess: 'you/layoutmaster' },
+      targetStatus: 'idle',
+    });
+    const user = userEvent.setup();
+    renderRoute(LIBRARY, { storage: freshStorage() });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Storage: this browser and GitHub (@you)' }),
+    );
+    const dialog = await screen.findByRole('dialog', { name: 'Storage' });
+    expect(within(dialog).getByText(/Signed in as/)).toHaveTextContent('Signed in as @you');
+    expect(within(dialog).getByRole('link', { name: 'gists in your account' })).toHaveAttribute(
+      'href',
+      'https://gist.github.com/you',
+    );
+    expect(
+      within(dialog).getByRole('link', { name: 'Give LayoutMaster access to it' }),
+    ).toHaveAttribute('href', 'https://github.com/apps/layoutmaster-app/installations/new');
+    expect(within(dialog).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+  });
+
+  it('names the fork and its branch when documents go there', async () => {
+    useGitHubSession.setState({
+      status: 'signed-in',
+      login: 'you',
+      target: {
+        kind: 'repo',
+        repo: 'you/layoutmaster',
+        branch: 'layoutmaster-data',
+        path: 'data',
+        upstream: false,
+      },
+      targetStatus: 'idle',
+    });
+    const user = userEvent.setup();
+    renderRoute(LIBRARY, { storage: freshStorage() });
+
+    await user.click(await screen.findByRole('button', { name: /^Storage/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Storage' });
+    expect(within(dialog).getByRole('link', { name: 'you/layoutmaster' })).toHaveAttribute(
+      'href',
+      'https://github.com/you/layoutmaster/tree/layoutmaster-data/data',
+    );
+    expect(within(dialog).queryByRole('link', { name: /Give LayoutMaster access/ })).toBeNull();
+  });
+
+  it('says so where sign-in is not set up', async () => {
+    useGitHubSession.setState({ status: 'unavailable', login: null, target: null });
+    const user = userEvent.setup();
+    renderRoute(LIBRARY, { storage: freshStorage() });
+
+    await user.click(await screen.findByRole('button', { name: 'Storage: this browser only' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Storage' });
+    expect(
+      within(dialog).getByText(/not set up where this copy of the app runs/),
+    ).toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: 'Sign in with GitHub' })).toBeNull();
   });
 });
 

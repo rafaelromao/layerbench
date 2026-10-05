@@ -2,7 +2,12 @@ import { StorageConflictError } from '@layoutmaster/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GitHubAdapter } from './github.js';
 
-const CONFIG = { token: 'secret-token', repo: 'you/data', branch: 'main', path: 'data' };
+const CONFIG = {
+  token: async () => 'secret-token',
+  repo: 'you/data',
+  branch: 'main',
+  path: 'data',
+};
 
 interface Call {
   url: string;
@@ -186,20 +191,12 @@ describe('a repository as storage', () => {
     expect(index).toEqual([]);
   });
 
-  it('explains a failed connection without echoing the request', async () => {
-    const adapter = new GitHubAdapter(CONFIG);
-
+  it('tells the session when GitHub no longer accepts the token', async () => {
+    const onUnauthorized = vi.fn();
     responder = () => json(401, { message: 'Bad credentials' });
-    expect(await adapter.check()).toEqual({ ok: false, error: 'the token was rejected' });
-
-    responder = () => json(404, { message: 'Not Found' });
-    expect(await adapter.check()).toEqual({
-      ok: false,
-      error: 'no such repository, or the token cannot see it',
-    });
-
-    responder = () => json(200, { full_name: 'you/data' }, { 'x-ratelimit-remaining': '4999' });
-    expect(await adapter.check()).toEqual({ ok: true, rateLimitRemaining: '4999' });
+    const adapter = new GitHubAdapter({ ...CONFIG, onUnauthorized });
+    await expect(adapter.list('layouts')).rejects.toThrow('GitHub responded 401');
+    expect(onUnauthorized).toHaveBeenCalledOnce();
   });
 
   it('refuses an id that could step out of the data directory, before any request', async () => {
@@ -226,7 +223,6 @@ describe('a repository as storage', () => {
     for (const repo of ['you', 'you/data/x', 'you/..', '../data', 'you/data?x']) {
       const adapter = new GitHubAdapter({ ...CONFIG, repo });
       await expect(adapter.list('layouts')).rejects.toThrow('invalid repository name');
-      expect(await adapter.check()).toEqual({ ok: false, error: 'could not reach GitHub' });
     }
     const adapter = new GitHubAdapter({ ...CONFIG, path: 'data/../..' });
     await expect(adapter.list('layouts')).rejects.toThrow('invalid repository path');

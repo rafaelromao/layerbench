@@ -11,8 +11,7 @@ import {
   StorageConflictError,
   type StorageMeta,
 } from '@layoutmaster/core';
-
-const API = 'https://api.github.com';
+import { API, type GitHubAccess, gitHubFetch } from './github-api.js';
 
 /** `owner/name`, each a plain name: nothing that could step out of the repository's path. */
 const REPO_SEGMENT = /^(?!\.{1,2}$)[A-Za-z0-9_.-]+$/;
@@ -41,7 +40,7 @@ function isIndexEntry(value: unknown): value is IndexEntry {
 }
 
 /** The rows of an index file that are what an index row should be; anything else is dropped. */
-function readIndex(text: string): IndexEntry[] {
+export function readIndex(text: string): IndexEntry[] {
   try {
     const parsed: unknown = JSON.parse(text);
     return Array.isArray(parsed) ? parsed.filter(isIndexEntry) : [];
@@ -50,9 +49,7 @@ function readIndex(text: string): IndexEntry[] {
   }
 }
 
-export interface GitHubConfig {
-  /** Personal access token with read and write on the data repository's contents. */
-  token: string;
+export interface GitHubConfig extends GitHubAccess {
   /** `owner/name`. */
   repo: string;
   branch: string;
@@ -82,9 +79,8 @@ function decodeBase64(base64: string): string {
 }
 
 /**
- * Documents in a GitHub repository the user owns, through the Contents API. The token lives in this
- * browser and is sent to `api.github.com` and nowhere else; it never appears in a link, an export,
- * or an error message.
+ * Documents in a GitHub repository the user owns, through the Contents API. The token is sent to
+ * `api.github.com` and nowhere else; it never appears in a link, an export, or an error message.
  */
 export class GitHubAdapter implements StorageAdapter {
   readonly id = 'github';
@@ -107,21 +103,11 @@ export class GitHubAdapter implements StorageAdapter {
     return `${API}/repos/${this.config.repo}`;
   }
 
-  private headers(extra: Record<string, string> = {}): HeadersInit {
-    return {
-      // The browser sets its own user agent; GitHub accepts that.
-      Authorization: `Bearer ${this.config.token}`,
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-API-Version': '2022-11-28',
-      ...extra,
-    };
-  }
-
   /** Read a file, revalidating against the cached entity tag so unchanged files cost nothing. */
   private async readFile(path: string): Promise<{ content: string; sha: string } | null> {
     const cached = this.cache.get(path);
-    const res = await fetch(this.url(path), {
-      headers: this.headers(cached?.etag ? { 'If-None-Match': cached.etag } : {}),
+    const res = await gitHubFetch(this.config, this.url(path), {
+      headers: cached?.etag ? { 'If-None-Match': cached.etag } : {},
     });
 
     if (res.status === 304 && cached) return { content: cached.content, sha: cached.sha };
@@ -138,9 +124,9 @@ export class GitHubAdapter implements StorageAdapter {
   }
 
   private async writeFile(path: string, content: string, message: string, sha?: string) {
-    const res = await fetch(this.url(path), {
+    const res = await gitHubFetch(this.config, this.url(path), {
       method: 'PUT',
-      headers: this.headers({ 'Content-Type': 'application/json' }),
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         message,
         content: encodeBase64(content),
@@ -168,9 +154,9 @@ export class GitHubAdapter implements StorageAdapter {
   }
 
   private async deleteFile(path: string, message: string, sha: string): Promise<void> {
-    const res = await fetch(this.url(path), {
+    const res = await gitHubFetch(this.config, this.url(path), {
       method: 'DELETE',
-      headers: this.headers({ 'Content-Type': 'application/json' }),
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message, sha, branch: this.config.branch }),
     });
     this.cache.delete(path);
@@ -233,25 +219,5 @@ export class GitHubAdapter implements StorageAdapter {
     const file = await this.readFile(path);
     if (file) await this.deleteFile(path, message, file.sha);
     await this.updateIndex(collection, id, null, message);
-  }
-
-  /** Check the token and repository before the user relies on them. */
-  async check(): Promise<
-    { ok: true; rateLimitRemaining: string | null } | { ok: false; error: string }
-  > {
-    try {
-      const res = await fetch(this.repoUrl(), { headers: this.headers() });
-      if (res.status === 401) return { ok: false, error: 'the token was rejected' };
-      if (res.status === 403)
-        return { ok: false, error: 'the token lacks access to that repository' };
-      if (res.status === 404) {
-        return { ok: false, error: 'no such repository, or the token cannot see it' };
-      }
-      if (!res.ok) return { ok: false, error: `GitHub responded ${res.status}` };
-      return { ok: true, rateLimitRemaining: res.headers.get('x-ratelimit-remaining') };
-    } catch {
-      // Never surface the request itself: it carries the token.
-      return { ok: false, error: 'could not reach GitHub' };
-    }
   }
 }

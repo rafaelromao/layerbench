@@ -23,7 +23,7 @@ interface StoredDoc {
 }
 
 /** Content hash of the stored text, used the same way the reference implementation uses it. */
-async function sha1Hex(text: string): Promise<string> {
+export async function sha1Hex(text: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(text));
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }

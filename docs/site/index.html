@@ -54,7 +54,7 @@
             >
             <a class="button" href="/guide">Read the guide</a>
           </p>
-          <p class="proof">Free · Runs in your browser · No account, no tracking</p>
+          <p class="proof">Free · Runs in your browser · No account needed, no tracking</p>
 
           <figure class="shot hero-shot">
             <a class="hero-pair" href="/analyze?layout=magic-romak&amp;corpus=pt-br-conv">
@@ -410,9 +410,9 @@
             <li>
               <h3>Keep it yours</h3>
               <p>
-                Layouts, rule sets and texts are saved in your browser. <strong>Storage</strong> can
-                also keep them in a GitHub repository you own, with a token sent to
-                <code>api.github.com</code> and nowhere else.
+                Layouts, rule sets and texts are saved in your browser. Sign in with GitHub under
+                <strong>Storage</strong> to keep them in your own account too: in your fork of
+                layoutmaster, or in secret gists.
               </p>
             </li>
           </ul>
@@ -503,14 +503,14 @@
             <li>
               <h3>Private by construction</h3>
               <p>
-                There is no server and no account, and the app carries no analytics. Its content
-                security policy lets it talk only to itself and, if you connect a repository, to
-                <code>api.github.com</code>; a token is never put in a link, an export or an error.
-                This page loads nothing from anywhere else and runs no JavaScript.
+                No account of ours, and no analytics. The only server code signs you in with GitHub
+                and keeps nothing. The app's content security policy lets it talk only to itself
+                and to <code>api.github.com</code>; a token is never put in a link, an export or an
+                error. This page loads nothing from anywhere else and runs no JavaScript.
               </p>
               <p class="evidence">
                 In the source: <code>apps/web/vite.config.ts</code>,
-                <code>apps/web/src/storage/github.test.ts</code>
+                <code>apps/web/src/server/github-auth.test.ts</code>
               </p>
             </li>
             <li>

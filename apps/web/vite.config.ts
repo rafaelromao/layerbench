@@ -2,15 +2,17 @@ import { copyFileSync, cpSync, existsSync, readFileSync, statSync, writeFileSync
 import { basename, extname, resolve, sep } from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig, type Plugin } from 'vite';
+import { type Connect, defineConfig, loadEnv, type Plugin } from 'vite';
+import { type AuthEnv, handleAuth } from './src/server/github-auth.js';
 
 /**
  * Everything the page is allowed to load. The bundle contains no inline script, no `eval` and no
  * `new Function`, and the analysis worker is a same-origin module, so `'self'` covers scripts;
  * inline styles are React writing heat colours and bar widths onto elements.
  *
- * `connect-src` is the one that matters: the access token lives in this browser, and this line is
- * what stops any injected code from sending it anywhere but the GitHub API.
+ * `connect-src` is the one that matters: the GitHub access token is in this page's memory, and this
+ * line is what stops any injected code from sending it anywhere but the GitHub API. `'self'` is
+ * also where the token comes from, the sign-in function under `/api/auth/`.
  */
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
@@ -151,11 +153,64 @@ function landingPage(): Plugin {
   };
 }
 
+const AUTH_ENV_KEYS = [
+  'GITHUB_CLIENT_ID',
+  'GITHUB_CLIENT_SECRET',
+  'GITHUB_APP_SLUG',
+  'SESSION_SECRET',
+  'UPSTREAM_REPO',
+] as const;
+
+/**
+ * Sign-in with GitHub on the dev and preview servers: the same handler the Pages Function runs in
+ * production (`functions/api/auth/[[path]].ts`), with its settings read from `.env.local`. With none
+ * there, the app says sign-in is not set up, and works in the browser alone as it does on any
+ * static host.
+ */
+function githubAuth(): Plugin {
+  let env: AuthEnv = {};
+  const middleware: Connect.NextHandleFunction = (req, res, next) => {
+    const headers = new Headers();
+    for (const [name, value] of Object.entries(req.headers)) {
+      if (value !== undefined) headers.set(name, Array.isArray(value) ? value.join(', ') : value);
+    }
+    const url = `http://${req.headers.host ?? 'localhost'}${req.originalUrl ?? req.url ?? '/'}`;
+    handleAuth(new Request(url, { method: req.method, headers }), env)
+      .then(async (response) => {
+        res.statusCode = response.status;
+        response.headers.forEach((value, name) => {
+          if (name !== 'set-cookie') res.setHeader(name, value);
+        });
+        const cookies = response.headers.getSetCookie();
+        if (cookies.length > 0) res.setHeader('Set-Cookie', cookies);
+        res.end(new Uint8Array(await response.arrayBuffer()));
+      })
+      .catch(next);
+  };
+  return {
+    name: 'github-auth',
+    configResolved(config) {
+      const all = loadEnv(
+        config.mode,
+        typeof config.envDir === 'string' ? config.envDir : config.root,
+        '',
+      );
+      env = Object.fromEntries(AUTH_ENV_KEYS.map((key) => [key, all[key]]));
+    },
+    configureServer(server) {
+      server.middlewares.use('/api/auth', middleware);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use('/api/auth', middleware);
+    },
+  };
+}
+
 export default defineConfig({
   // Cloudflare Pages serves from the root of a domain, so the default is what production uses;
   // VITE_BASE exists for hosts that serve the site from a subdirectory, such as GitHub Pages.
   base: process.env.VITE_BASE ?? '/',
-  plugins: [react(), tailwindcss(), staticHosting(), landingPage()],
+  plugins: [react(), tailwindcss(), staticHosting(), landingPage(), githubAuth()],
   worker: {
     format: 'es',
   },

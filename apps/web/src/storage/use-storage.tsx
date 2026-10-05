@@ -9,12 +9,26 @@ import {
   useRef,
   useState,
 } from 'react';
-import { gitHubReady, useSession } from '../state/session.js';
+import { gistIds, gitHubAccess, useGitHubSession } from '../auth/github-session.js';
 import { CompositeStorage } from './composite.js';
+import { GistAdapter } from './gist.js';
 import { GitHubAdapter } from './github.js';
 import { IndexedDbAdapter } from './indexeddb.js';
+import type { StorageTarget } from './target.js';
 
 const StorageContext = createContext<StorageAdapter | null>(null);
+
+/** The GitHub copy of a signed-in user's documents: their fork, or their gists. */
+export function remoteStorage(login: string, target: StorageTarget): StorageAdapter {
+  return target.kind === 'repo'
+    ? new GitHubAdapter({
+        ...gitHubAccess,
+        repo: target.repo,
+        branch: target.branch,
+        path: target.path,
+      })
+    : new GistAdapter(gitHubAccess, gistIds(login));
+}
 
 /** Makes saved documents available to the view tree. Tests pass their own adapter. */
 export function StorageProvider({
@@ -24,16 +38,17 @@ export function StorageProvider({
   adapter?: StorageAdapter;
   children: ReactNode;
 }) {
-  const github = useSession((s) => s.github);
-  const token = useSession((s) => s.githubToken);
+  const status = useGitHubSession((s) => s.status);
+  const login = useGitHubSession((s) => s.login);
+  const target = useGitHubSession((s) => s.target);
 
   const value = useMemo(() => {
     if (adapter) return adapter;
     const local = new IndexedDbAdapter();
-    // The repository only joins in once it is configured and switched on.
-    if (!gitHubReady({ github, githubToken: token })) return local;
-    return new CompositeStorage(local, new GitHubAdapter({ ...github, token }));
-  }, [adapter, github, token]);
+    // GitHub only joins in once someone is signed in and it is known where their documents go.
+    if (status !== 'signed-in' || !login || !target) return local;
+    return new CompositeStorage(local, remoteStorage(login, target));
+  }, [adapter, status, login, target]);
 
   return <StorageContext.Provider value={value}>{children}</StorageContext.Provider>;
 }

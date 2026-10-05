@@ -10,8 +10,8 @@ new one.
 Every layout is shown and sorted by two numbers: **Effort**, cyanophage's measure of how hard the
 keys are to reach, and **SFB**, how often one finger presses two keys in a row.
 
-Everything runs in the browser. There is no server and no account, and nothing leaves the page
-unless you point it at a repository of your own.
+Everything runs in the browser, and no account is needed. Nothing leaves the page unless you sign
+in with GitHub to keep your work in your own account.
 
 **Using it:** the [guide](docs/guide/README.md), also in the app under **Guide**, starts with four
 steps and opens further as you need it. Metric definitions and their sources are in the
@@ -51,15 +51,21 @@ the keymap-drawer round trip.
 
 ## Storage
 
-Layouts, rule sets and corpora are saved in your browser. To keep them somewhere durable, open
-**Storage** in the header and point the app at a repository you own: give it a fine-grained personal
-access token scoped to that one repository, with read and write access to its contents. Documents
-are written as JSON through the GitHub Contents API, one file per document plus an index per
-collection.
+Layouts, rule sets and corpora are saved in your browser. To keep them in your GitHub account as
+well, open **Storage** in the header and **Sign in with GitHub**. Where they go is worked out for you:
 
-The token is stored in this browser only, sent to `api.github.com` and nowhere else, and never
-appears in a link, an export or an error message. The browser copy is always written first, so
-nothing is lost to a network problem.
+- **Your fork of layoutmaster**, once the app has access to it (the dialog links to where you give
+  it). Saves are commits to a `layoutmaster-data` branch, made from your default branch the first
+  time, under `data/`: one JSON file per document plus an index per collection. Your main branch
+  stays as it is, so syncing the fork never conflicts with saves. If the fork is public, so is
+  everything saved to it.
+- **Secret gists** otherwise, one each for layouts, rule sets and corpora. Secret gists are
+  unlisted, not private: anyone with a gist's address can read it.
+
+The browser copy is always written first, so nothing is lost to a network problem. The page holds
+only a short-lived access token, in memory, and sends it to `api.github.com` and nowhere else; it
+never appears in a link, an export or an error message. The refresh token stays in an encrypted
+cookie the page cannot read.
 
 ## Relationship to the Elixir implementation
 
@@ -79,6 +85,11 @@ pnpm typecheck
 pnpm test
 pnpm dev          # http://localhost:5173
 ```
+
+Signing in works on the dev server too, through the same code the Pages Function runs. Put the
+variables listed under [Sign-in with GitHub](#sign-in-with-github) in `apps/web/.env.local`, which
+git ignores, and register `http://localhost:5173/api/auth/callback` as one of the app's callback
+URLs. Without them the app says sign-in is not set up and saves in the browser only.
 
 `pnpm bench` runs the performance suite, which is skipped by default. `pnpm corpora` rebuilds the
 corpus samples from `packages/corpora/raw`.
@@ -117,14 +128,43 @@ Leave `VITE_BASE` unset — Pages serves from the root of a domain, which is the
 needs a value on a host that serves the site from a subdirectory, such as a GitHub Pages project
 site.
 
-**Do not point the app's storage at the branch Pages builds from.** Every save is a commit, and
-each commit would trigger a rebuild and redeploy. Use a separate data repository, or exclude the
-data directory in the project's build watch paths. If that repository is public, so is everything
-saved to it.
+The page talks to its own origin and `api.github.com` and to nothing else — `connect-src` in the
+policy above enforces it, so the access token in the page cannot be sent anywhere but GitHub.
 
-The page talks to `api.github.com` and to nothing else — `connect-src` in the policy above enforces
-it, so a token in this browser cannot be sent anywhere but GitHub. After deploying, **Storage → Test
-connection** confirms the token, the repository and the browser's cross-origin access in one click.
+### Sign-in with GitHub
+
+`functions/api/auth/[[path]].ts` is a Pages Function, the only code that runs on a server: it
+exchanges GitHub's code for tokens, which needs the app's client secret, and renews them. Its logic
+is `apps/web/src/server/github-auth.ts`. It keeps no documents. On a host without Functions the app
+works the same, saving in the browser only.
+
+1. **Register a GitHub App** (Settings → Developer settings → GitHub Apps → New):
+   - Callback URLs: `https://<your app>/api/auth/callback`, and `http://localhost:5173/api/auth/callback`
+     for development.
+   - Leave **Expire user authorization tokens** on. Leave "Request user authorization (OAuth) during
+     installation" and Device Flow off, and no Setup URL. Webhook: not active.
+   - Repository permissions: **Contents: Read and write** (Metadata: Read-only comes with it).
+     Account permissions: **Gists: Read and write**.
+   - Where can it be installed: **Any account**, so people can give it their forks.
+   - Generate a client secret.
+2. **Set the Pages variables**, under Settings → Variables and Secrets, for **Production and
+   Preview** both, before the deployment that needs them:
+
+   | Variable | Value |
+   |---|---|
+   | `GITHUB_CLIENT_ID` | the app's client ID |
+   | `GITHUB_CLIENT_SECRET` | the client secret (Encrypt) |
+   | `GITHUB_APP_SLUG` | the app's name as it appears in `github.com/apps/<slug>` |
+   | `SESSION_SECRET` | 32 random bytes in base64, e.g. `openssl rand -base64 32` (Encrypt) |
+   | `UPSTREAM_REPO` | optional; `owner/name` whose forks hold documents, `rafaelromao/layoutmaster` by default |
+
+3. **Leave the data branch out of preview builds**: Settings → Builds → Branch control, exclude
+   `layoutmaster-data`, so a save does not start a build.
+4. Behind **Cloudflare Access**, keep the application's cookie SameSite setting at None or Lax;
+   Strict drops the cookie on the way back from GitHub and sends the browser round in redirects.
+
+Redirects in `_redirects` and headers in `_headers` do not apply to the Function, which sets its
+own (`Cache-Control: no-store` among them).
 
 ### Landing page
 

@@ -2,7 +2,8 @@
 
 LayoutMaster types a text on your keymap the way your keyboard's firmware would, and measures how
 comfortable that typing is. Layers, one-shots, tap-holds, magic and repeat keys are all part of it.
-Everything runs in your browser, and nothing leaves it unless you connect a repository of your own.
+Everything runs in your browser, and nothing leaves it unless you sign in with GitHub to keep your
+work in your own account.
 
 1. **Pick a layout.** The site opens on **Library**, ranked by Effort; choose one, or bring your
    own from a [keymap-drawer file](importing.md).
@@ -49,8 +50,10 @@ LayoutMaster's own JSON. See [Importing and exporting](importing.md).
 ## Keeping and sharing your work
 
 Saved layouts, rule sets and corpora stay in this browser. **Storage**, in the header, can also
-keep them in a GitHub repository of your own, through a token that is sent to `api.github.com` and
-nowhere else.
+keep them in your GitHub account: **Sign in with GitHub**, and they go to your fork of layoutmaster
+once you give the app access to it (on a `layoutmaster-data` branch, so your main branch stays as it
+is), or to secret gists in your account otherwise. Secret gists are unlisted, not private: anyone
+with a gist's address can read it. Signing out leaves the copies in this browser where they are.
 
 A link carries everything a view shows, so copying the address shares the analysis as it stands,
 unsaved edits included, even for a layout that was never saved.
