@@ -1250,3 +1250,24 @@ describe('Analyze, while editing', () => {
     expect(within(list).getByText(/^ç/)).toBeInTheDocument();
   }, 60_000);
 });
+
+describe('the layouts Analyze offers', () => {
+  it('lists the saved layouts beside the bundled ones, and opens one picked', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    await seed(storage, 'colemak-dh', 'my-colemak', { name: 'My Colemak' });
+    const { currentSearch } = renderRoute('/analyze?layout=qwerty&corpus=en-conv&sample=20000', {
+      storage,
+    });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+    const picker = within(bar()).getByRole('combobox', { name: 'Layout' });
+    const option = await within(picker).findByRole('option', { name: 'My Colemak' });
+    expect(option.closest('optgroup')).toHaveAttribute('label', 'Saved');
+
+    await user.selectOptions(picker, 'saved:my-colemak');
+    await waitFor(() => expect(currentSearch()).toContain('layout=saved%3Amy-colemak'));
+    await waitFor(() => expect(within(bar()).getByLabelText('Name')).toHaveValue('My Colemak'), {
+      timeout: 25_000,
+    });
+  }, 60_000);
+});

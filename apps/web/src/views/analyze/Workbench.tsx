@@ -37,7 +37,7 @@ import { useKeyStats } from '../../engine/use-key-stats.js';
 import { HELP, type HelpTopic } from '../../guide/help.js';
 import { draftOf, storedIdOf, useOrigins } from '../../state/origins.js';
 import { toast } from '../../state/toasts.js';
-import type { useStorage } from '../../storage/use-storage.js';
+import { useCollection, type useStorage } from '../../storage/use-storage.js';
 import { encodeInline } from '../../url/inline.js';
 import {
   HEAT_MODES,
@@ -162,6 +162,8 @@ export function Workbench({
   /** The link's layout whenever nothing is unsaved: the one opened, or the one last saved. */
   const [cleanRef, setCleanRef] = useState(openedRef);
   const remember = useOrigins((s) => s.remember);
+  /** The saved layouts, for the picker; read again after each save. */
+  const savedLayouts = useCollection('layouts');
 
   // ------------------------------------------------------------------ what is analyzed
 
@@ -284,6 +286,8 @@ export function Workbench({
         to: '/analyze',
         search: ((prev: Record<string, string | undefined>) => ({ ...prev, layout: ref })) as never,
         replace: true,
+        // The same view, written again: the page stays where it was scrolled to.
+        resetScroll: false,
       });
     };
     if (!state.dirty) {
@@ -328,6 +332,7 @@ export function Workbench({
       const { id, leftBehind } = await saveLayout(storage, layout, storedId);
       send({ type: 'saved', layout });
       setStoredId(id);
+      void savedLayouts.refresh();
       setCleanRef(savedRef(id));
       if (leftBehind) {
         toast.error(
@@ -344,7 +349,7 @@ export function Workbench({
     } finally {
       setSaving(false);
     }
-  }, [state.layout, storage, storedId]);
+  }, [state.layout, storage, storedId, savedLayouts.refresh]);
 
   const pick = (ref: string) => {
     if (state.dirty && !window.confirm(`Leave ${state.layout.name}? Its unsaved changes are lost.`))
@@ -642,6 +647,7 @@ export function Workbench({
         onSave={save}
         layoutRef={params.layoutRef}
         onPick={pick}
+        saved={savedLayouts.entries}
         corpora={corpora}
         params={params}
         ruleSetName={ruleSet.name}

@@ -1,5 +1,10 @@
-import { BUNDLED_LAYOUTS, type CorpusManifest, type Layout } from '@layoutmaster/core';
-import type { Params } from '../../url/params.js';
+import {
+  BUNDLED_LAYOUTS,
+  type CorpusManifest,
+  type IndexEntry,
+  type Layout,
+} from '@layoutmaster/core';
+import { type Params, savedRef } from '../../url/params.js';
 import { AnalysisSettings, SampleSelect } from '../AnalysisSelects.js';
 import { groupByLanguage } from '../corpus-groups.js';
 import { TextField } from '../edit/inspector/controls.js';
@@ -18,6 +23,7 @@ export function LayoutBar({
   onSave,
   layoutRef,
   onPick,
+  saved,
   corpora,
   params,
   ruleSetName,
@@ -32,13 +38,20 @@ export function LayoutBar({
   /** The layout the link names, for the picker. */
   layoutRef: string;
   onPick: (layoutRef: string) => void;
+  /** The layouts saved in the Library, offered beside the bundled ones. */
+  saved: IndexEntry[];
   corpora: CorpusManifest[];
   params: Params;
   ruleSetName?: string;
   onParams: (overrides: Partial<Params>) => void;
   onCompare: () => void;
 }) {
-  const bundled = BUNDLED_LAYOUTS.some((l) => l.id === layoutRef);
+  const listed =
+    BUNDLED_LAYOUTS.some((l) => l.id === layoutRef) ||
+    saved.some((e) => savedRef(e.id) === layoutRef);
+  const savedSorted = [...saved].sort(
+    (a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id),
+  );
   return (
     <section
       className="lm-editor-bar card bg-base-100 border border-base-300 gap-3 px-3 py-2"
@@ -114,7 +127,19 @@ export function LayoutBar({
                 </option>
               ))}
             </optgroup>
-            {!bundled && <option value={layoutRef}>{layout.name}</option>}
+            {savedSorted.length > 0 && (
+              <optgroup label="Saved">
+                {savedSorted.map((e) => (
+                  <option key={e.id} value={savedRef(e.id)}>
+                    {/* Two saved layouts can share a name; their ids tell them apart. */}
+                    {saved.filter((o) => o.name === e.name).length > 1
+                      ? `${e.name} (${e.id})`
+                      : e.name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {!listed && <option value={layoutRef}>{layout.name}</option>}
           </select>
         </label>
         <AnalysisSettings
