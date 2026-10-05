@@ -49,6 +49,8 @@ export function AnalyzeView() {
         to: '/analyze',
         search: ((prev: RawSearch) => toSearch(parseParams(prev), overrides)) as never,
         replace: true,
+        // The same view, written again: the page stays where it was scrolled to.
+        resetScroll: false,
       });
     },
     [navigate],
@@ -65,6 +67,8 @@ export function AnalyzeView() {
         to: '/analyze',
         search: toSearch(params, { layoutRef: ref, layer: DEFAULT_PARAMS.layer }) as never,
         replace: true,
+        // The same view, written again: the page stays where it was scrolled to.
+        resetScroll: false,
       });
       reopen((n) => n + 1);
     },

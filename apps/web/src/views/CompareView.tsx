@@ -73,6 +73,8 @@ export function CompareView() {
         to: '/compare',
         search: { ...toSearch(params, rest), b: nextB ?? refB } as never,
         replace: true,
+        // The same view, written again: the page stays where it was scrolled to.
+        resetScroll: false,
       });
     },
     [navigate, params, refB],

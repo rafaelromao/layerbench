@@ -386,7 +386,8 @@ export function LibraryView() {
     (overrides: Partial<Params>) => {
       // No layout is being looked at here; the one `toSearch` always writes would only be noise.
       const { layout: _layout, ...rest } = toSearch(params, overrides);
-      navigate({ to: '/library', search: rest as never, replace: true });
+      // The same view, written again: the page stays where it was scrolled to.
+      navigate({ to: '/library', search: rest as never, replace: true, resetScroll: false });
     },
     [navigate, params],
   );

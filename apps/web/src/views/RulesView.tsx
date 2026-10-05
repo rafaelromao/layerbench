@@ -179,7 +179,12 @@ export function RulesView() {
       send({ type: 'saved', ref: `saved:${id}` });
       toast.info(`Saved rule set ${id}`);
       savedSets.refresh();
-      navigate({ to: '/rules', search: { rules: `saved:${id}` } as never, replace: true });
+      navigate({
+        to: '/rules',
+        search: { rules: `saved:${id}` } as never,
+        replace: true,
+        resetScroll: false,
+      });
     } catch (e) {
       toast.error(`Save failed: ${e instanceof Error ? e.message : String(e)}`);
     }
