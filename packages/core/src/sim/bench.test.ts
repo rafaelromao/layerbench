@@ -42,6 +42,20 @@ describe.skipIf(!RUN)('performance budget (BENCH=1)', () => {
     expect(ms).toBeLessThan(1500);
   });
 
+  it('analyzes 300k symbols within 1.5 s with three keys to tap for Alpha 2, chosen per word', () => {
+    const [alpha1, ...rest] = layout.layers;
+    const sl = { kind: 'sl' as const, layer: 'alpha2' };
+    const threeKeys = compileLayout({
+      ...layout,
+      layers: [{ ...alpha1, bindings: { ...alpha1.bindings, RBM: sl, RBR: sl } }, ...rest],
+    });
+    const t = performance.now();
+    analyze(threeKeys, stream, { caseMode: 'fold', maxSymbols: 300_000, ruleSet });
+    const ms = performance.now() - t;
+    logLine(`300k, three Alpha 2 keys: ${ms.toFixed(0)}ms`);
+    expect(ms).toBeLessThan(1500);
+  });
+
   it('analyzes 1M symbols within 5 s', () => {
     const t = performance.now();
     const r = analyze(compiled, stream, { caseMode: 'fold', maxSymbols: 1_000_000, ruleSet });

@@ -9,6 +9,7 @@ import {
   discoverActivators,
   type ReachKey,
   reachKeys,
+  standInPeers,
 } from './activators.js';
 
 const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
@@ -170,5 +171,68 @@ describe('the keys that reach a layer', () => {
     expect(says.LHR).toBe('tapped from base with left Shift to reach up');
     expect(says.LHP).toBe('tapped twice from base to reach up');
     expect(says.LHI).toBe('tapped from base by the x macro to reach up');
+  });
+});
+
+describe('the keys that could each make the same layer tap', () => {
+  const sl = (layer: string): Binding => ({ kind: 'sl', layer });
+  const layout = board(
+    [
+      {
+        id: 'base',
+        bindings: {
+          L0: kp(' '),
+          RBI: sl('two'),
+          RBM: sl('two'),
+          RBR: sl('two'),
+          LBI: { kind: 'mo', layer: 'two' },
+          LBM: { kind: 'mod_morph', mods: ['LSHIFT'], default: kp('m'), morphed: sl('two') },
+        },
+      },
+      { id: 'two', bindings: { '*': { kind: 'trans' }, LTM: kp('q') } },
+    ],
+    { activators: { two: [{ from: 'base', via: 'key:base/RBR' }] } },
+  );
+  const c = compileLayout(layout);
+  const peers = standInPeers(discoverActivators(c, layout.activators ?? {}));
+  const named = new Map(
+    [...peers].map(([cand, list]) => [
+      `${cand.user ? 'declared ' : ''}${keyId(c, cand.pos)}`,
+      list.map((p) => keyId(c, p.pos)),
+    ]),
+  );
+
+  it('lists, for each tap, the other keys tapped for the same layer after it', () => {
+    // The declared way in comes first; as found on the board, RBR still follows RBI and RBM, for
+    // when the declared one does not apply.
+    expect(named.get('declared RBR')).toEqual(['RBI', 'RBM']);
+    expect(named.get('RBI')).toEqual(['RBM', 'RBR']);
+    expect(named.get('RBM')).toEqual(['RBR']);
+    expect(named.has('RBR')).toBe(false);
+  });
+
+  it('leaves out a held key and a tap that needs a modifier', () => {
+    const all = [...peers.values()].flat().map((p) => keyId(c, p.pos));
+    expect(all).not.toContain('LBI');
+    expect(all).not.toContain('LBM');
+  });
+});
+
+describe("a layer reached from a tap-hold's hold", () => {
+  it('marks the key held for a one-shot on its hold, and a plain one-shot tapped only', () => {
+    const c = compileLayout(
+      board([
+        {
+          id: 'base',
+          bindings: {
+            L0: kp(' '),
+            LHM: { kind: 'hold_tap', tap: kp('a'), hold: { kind: 'sl', layer: 'up' } },
+            RHM: { kind: 'sl', layer: 'up' },
+          },
+        },
+        { id: 'up', bindings: { '*': { kind: 'trans' }, RHI: kp('x') } },
+      ]),
+    );
+    expect(marks(c, 'up')).toEqual(['LHM held', 'RHM tapped']);
   });
 });

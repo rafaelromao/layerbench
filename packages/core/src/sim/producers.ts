@@ -9,7 +9,8 @@ export interface ProducerStep {
   pos: number;
   /** Binding object expected at that position (identity check after resolution). */
   binding: Binding;
-  mode: 'tap' | 'chord';
+  /** A hold is pressed past the tapping term and let go: what a tap-hold's hold does. */
+  mode: 'tap' | 'hold' | 'chord';
   taps: number;
   combo?: number;
 }
@@ -180,6 +181,34 @@ export function staticOutputs(b: Binding, depth = 0): StaticOutput[] {
   }
 }
 
+/**
+ * What a binding types when held: a tap-hold's hold, which can be any behaviour a tap can, found
+ * through the morphs that pick between arms. A tap dance on a hold has one tap only.
+ */
+export function holdOutputs(b: Binding, depth = 0): StaticOutput[] {
+  if (depth > MAX_DEPTH) return [];
+  switch (b.kind) {
+    case 'hold_tap':
+      return staticOutputs(b.hold, depth + 1)
+        .filter((o) => o.taps === 1)
+        .map((o) => ({ ...o, suffix: `#hold${o.suffix}` }));
+    case 'mod_morph': {
+      const out = holdOutputs(b.default, depth + 1);
+      for (const o of holdOutputs(b.morphed, depth + 1))
+        out.push({ ...o, mods: [...(o.mods ?? []), ...b.mods], suffix: `#morph${o.suffix}` });
+      return out;
+    }
+    case 'layer_morph': {
+      const out = holdOutputs(b.inactive, depth + 1);
+      for (const o of holdOutputs(b.active, depth + 1))
+        out.push({ ...o, suffix: `#lm${o.suffix}`, dynamic: true });
+      return out;
+    }
+    default:
+      return [];
+  }
+}
+
 function emitsText(b: Binding): boolean {
   return (
     b.kind === 'kp' ||
@@ -230,7 +259,9 @@ export function enumerateProducers(
       const b = layer.bindings[pos];
       if (b.kind === 'trans' || b.kind === 'none') continue;
       const keyId = compiled.keys[pos].id;
-      for (const o of staticOutputs(b)) {
+      const tapped = staticOutputs(b).map((o) => ['tap', o] as const);
+      const held = holdOutputs(b).map((o) => ['hold', o] as const);
+      for (const [mode, o] of [...tapped, ...held]) {
         const base =
           o.kind === 'repeat'
             ? 'repeat'
@@ -245,7 +276,7 @@ export function enumerateProducers(
           id,
           symbols,
           kind: o.kind,
-          steps: [{ layer: layer.idx, pos, binding: b, mode: 'tap', taps: o.taps }],
+          steps: [{ layer: layer.idx, pos, binding: b, mode, taps: o.taps }],
           afterAny: o.afterAny,
           afterTags: o.afterTags,
           mods: o.mods ?? [],

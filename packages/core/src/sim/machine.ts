@@ -69,6 +69,14 @@ export interface Snapshot {
   pendingDeadKey: string | null;
 }
 
+function sameList<T>(a: readonly T[], b: readonly T[]): boolean {
+  return a.length === b.length && a.every((x, i) => x === b[i]);
+}
+
+function sameSet(a: ReadonlySet<string>, b: readonly string[]): boolean {
+  return a.size === b.length && b.every((x) => a.has(x));
+}
+
 export class MachineState {
   persistentMask = 1;
   locks = 0;
@@ -123,6 +131,62 @@ export class MachineState {
     this.lastKeycode = s.lastKeycode;
     this.lastTag = s.lastTag;
     this.pendingDeadKey = s.pendingDeadKey;
+  }
+
+  /**
+   * Is this the state a snapshot holds? Field by field, allocating nothing: it decides whether two
+   * keys pressed from the same state leave the board in the same place.
+   */
+  matches(s: Snapshot): boolean {
+    if (
+      this.persistentMask !== s.persistentMask ||
+      this.locks !== s.locks ||
+      this.lastSymbol !== s.lastSymbol ||
+      this.lastKeycode !== s.lastKeycode ||
+      this.lastTag !== s.lastTag ||
+      this.pendingDeadKey !== s.pendingDeadKey ||
+      this.oneShots.length !== s.oneShots.length ||
+      this.stickyMods.length !== s.stickyMods.length ||
+      this.held.size !== s.held.length
+    )
+      return false;
+    for (let i = 0; i < this.oneShots.length; i++) {
+      const a = this.oneShots[i];
+      const b = s.oneShots[i];
+      if (
+        a.layer !== b.layer ||
+        a.quickRelease !== b.quickRelease ||
+        a.ignoreModifiers !== b.ignoreModifiers
+      )
+        return false;
+    }
+    for (let i = 0; i < this.stickyMods.length; i++) {
+      const a = this.stickyMods[i];
+      const b = s.stickyMods[i];
+      if (
+        a.mod !== b.mod ||
+        a.quickRelease !== b.quickRelease ||
+        a.ignoreModifiers !== b.ignoreModifiers
+      )
+        return false;
+    }
+    for (const [pos, entry] of s.held) {
+      const h = this.held.get(pos);
+      if (!h || h.layer !== entry.layer || h.mod !== entry.mod) return false;
+    }
+    const caps = this.capsWord;
+    if ((caps === null) !== (s.capsWord === null)) return false;
+    if (caps && s.capsWord) {
+      if (!sameList(caps.mods, s.capsWord.mods)) return false;
+      if (!sameSet(caps.continueList, s.capsWord.continueList)) return false;
+    }
+    const auto = this.autoLayer;
+    if ((auto === null) !== (s.autoLayer === null)) return false;
+    if (auto && s.autoLayer) {
+      if (auto.layer !== s.autoLayer.layer) return false;
+      if (!sameSet(auto.continueList, s.autoLayer.continueList)) return false;
+    }
+    return true;
   }
 
   heldLayerMask(): number {
@@ -702,7 +766,8 @@ export class Machine {
 }
 
 function classify(ctx: ExecContext, mode: 'tap' | 'hold'): KeyKind {
-  if (mode === 'hold') return 'hold';
+  // A hold that types is the key it types with, held a little longer.
+  if (mode === 'hold' && ctx.out.length === 0) return 'hold';
   const outer = ctx.outer;
   if (ctx.out.length && ctx.out.join('') === ' ') return 'space';
   if (outer === 'adaptive') return 'magic';

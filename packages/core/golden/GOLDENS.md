@@ -237,6 +237,27 @@ What moved, checked across all 38 reports:
   `then` on the pairs that end on a layer key. They are asserted, and so is `per_key`, which was
   written but not compared before.
 
+## Ninth re-baseline: each key's part of a number adds up to it
+
+Every rule result says what a key's credit is worth, `key_scale`: a key's part of the value is its
+`per_layer_key` entry times it, and the parts of every key on every layer add up to the value, which
+the suite now checks for every rule that has one. To make them add up, a key is credited with what
+the value sums: an effort sum credits each key its own effort times its count, a distance credits
+the distance times the count, and a chord's share is split between the keys pressed together.
+Finger travel is now kept for the key a finger moved to, and layer taps for the key tapped. The
+simulator also weighs same-finger pairs when it chooses how to type a character, and chooses per
+word between keys that tap a layer the same way; no golden layout has such keys, and no tie in them
+breaks differently, so neither moved anything.
+
+What moved, checked across all 38 reports:
+
+- **No rule value or band, item, statistic, n-gram total, registry entry, run, coverage entry,
+  producer list or typing trace.**
+- **`per_key` and `per_layer_key` of five rules**: `effort` (cost times presses, where it was the
+  presses alone, so thumbs and the home row's free keys are no longer credited), `sfb_distance` and
+  `finger_speed` (distance times count), `finger_travel` and `layer_taps_per_100` (empty before).
+- **The new field** `key_scale` on every result, null where the value is no sum over keys.
+
 ## Not compared
 
 `elapsed_ms` and the structure hash. Everything else in a report file is asserted.

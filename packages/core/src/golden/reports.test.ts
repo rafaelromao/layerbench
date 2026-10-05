@@ -83,6 +83,22 @@ describe('golden reports', () => {
         }
       });
 
+      // A key's part of a number is its credit times the rule's scale, and the parts add up.
+      it("each key's part adds up to the value", () => {
+        for (const r of got.results) {
+          expect(r.key_scale, `${r.id} key_scale`).toBe(
+            want.results.find((w) => w.id === r.id)?.key_scale ?? null,
+          );
+          if (r.key_scale === null || typeof r.value !== 'number') continue;
+          let sum = 0;
+          for (const keys of Object.values(r.per_layer_key))
+            for (const v of Object.values(keys)) sum += v * r.key_scale;
+          expect(Math.abs(sum - r.value), `${r.id}: ${sum} vs ${r.value}`).toBeLessThan(
+            1e-9 * Math.max(1, Math.abs(r.value)),
+          );
+        }
+      });
+
       it('coverage, registry and runs', () => {
         expect(got.coverage).toEqual(want.coverage);
         expect(got.registry).toEqual(want.registry);

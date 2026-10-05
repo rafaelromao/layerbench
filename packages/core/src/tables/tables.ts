@@ -187,6 +187,12 @@ export interface FingerTravel {
   /** Same, but fingers return to their home key at every word start (cyanophage-like). */
   resetAtWord: Record<Finger, number>;
   usage: Record<Finger, number>;
+  /**
+   * The same travel by the key it went to: indexed by logical key id, then by the key's place
+   * among the keys a press makes (one for a single key, each of a chord's). Kept by logical key,
+   * so a swap re-scored over these tables carries each key's travel with it.
+   */
+  byKey: { continuous: number[][]; resetAtWord: number[][] };
 }
 
 export interface SimulationStats {

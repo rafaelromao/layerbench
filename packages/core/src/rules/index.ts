@@ -3,6 +3,7 @@ export * from './bands.js';
 export * from './catalog.js';
 export * from './effort.js';
 export * from './engine.js';
+export * from './parts.js';
 export * from './predicates.js';
 export * from './presets.js';
 export * from './references.js';

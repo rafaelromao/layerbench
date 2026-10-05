@@ -38,8 +38,11 @@ export function relabelEligible(
 
 /**
  * Re-score after a relabel by moving the affected logical keys to their new positions and running
- * the rules again over the existing tables. Exact for every n-gram metric; travel, run and word
- * statistics stay as simulated, so the report is marked provisional.
+ * the rules again over the existing tables. Exact for every n-gram metric as long as the layout
+ * would be typed the same way after the swap; but the simulator weighs same-finger pairs when it
+ * chooses how to type a character and which key taps a layer, so a swap can change those choices.
+ * Travel, run and word statistics stay as simulated. The report is marked provisional either way,
+ * and the full analysis replaces it.
  */
 export function relabelSwap(
   report: Report,
@@ -65,6 +68,7 @@ export function relabelSwap(
     results,
     score,
     globals,
+    ruleSet,
     provisional: true,
   };
 }

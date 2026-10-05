@@ -30,6 +30,8 @@ function collectLayerTargets(
   out: LayerTarget[],
   depth = 0,
   requiredMods?: Mod[],
+  /** Inside a tap-hold's hold, where a tap's behaviour runs when the key is held. */
+  holdArm = false,
 ): void {
   if (depth > 8) return;
   const li = (id: string) => compiled.layerIndex.get(id);
@@ -37,8 +39,9 @@ function collectLayerTargets(
     case 'sl':
     case 'tog':
     case 'to': {
+      // On a tap-hold's hold too: the key is held past its tapping term, and comes up again.
       const t = li(b.layer);
-      if (t !== undefined && mode === 'tap')
+      if (t !== undefined && (mode === 'tap' || holdArm))
         out.push({ mode, target: t, kind: b.kind, requiredMods });
       return;
     }
@@ -52,7 +55,7 @@ function collectLayerTargets(
       const t = li(b.layer);
       if (mode === 'hold') {
         if (t !== undefined) out.push({ mode, target: t, kind: 'lt', requiredMods });
-      } else collectLayerTargets(compiled, b.tap, mode, out, depth + 1, requiredMods);
+      } else collectLayerTargets(compiled, b.tap, mode, out, depth + 1, requiredMods, holdArm);
       return;
     }
     case 'hold_tap':
@@ -63,25 +66,32 @@ function collectLayerTargets(
         out,
         depth + 1,
         requiredMods,
+        mode === 'hold',
       );
       return;
     case 'mod_morph':
-      collectLayerTargets(compiled, b.default, mode, out, depth + 1, requiredMods);
-      collectLayerTargets(compiled, b.morphed, mode, out, depth + 1, [
-        ...(requiredMods ?? []),
-        b.mods[0],
-      ]);
+      collectLayerTargets(compiled, b.default, mode, out, depth + 1, requiredMods, holdArm);
+      collectLayerTargets(
+        compiled,
+        b.morphed,
+        mode,
+        out,
+        depth + 1,
+        [...(requiredMods ?? []), b.mods[0]],
+        holdArm,
+      );
       return;
     case 'layer_morph':
-      collectLayerTargets(compiled, b.inactive, mode, out, depth + 1, requiredMods);
-      collectLayerTargets(compiled, b.active, mode, out, depth + 1, requiredMods);
+      collectLayerTargets(compiled, b.inactive, mode, out, depth + 1, requiredMods, holdArm);
+      collectLayerTargets(compiled, b.active, mode, out, depth + 1, requiredMods, holdArm);
       return;
     case 'tap_dance':
       if (b.bindings[0])
-        collectLayerTargets(compiled, b.bindings[0], mode, out, depth + 1, requiredMods);
+        collectLayerTargets(compiled, b.bindings[0], mode, out, depth + 1, requiredMods, holdArm);
       return;
     case 'adaptive':
-      if (b.default) collectLayerTargets(compiled, b.default, mode, out, depth + 1, requiredMods);
+      if (b.default)
+        collectLayerTargets(compiled, b.default, mode, out, depth + 1, requiredMods, holdArm);
       return;
     default:
       return;
@@ -154,6 +164,38 @@ export function discoverActivators(
   return activators;
 }
 
+/**
+ * The keys that could each make the same tap. For each tap that brings a layer on, the other keys
+ * that bring the same layer on from the same layer by a tap, needing no modifier, in the order they
+ * are tried after it. A declared way in is among them, so it is not a key no other can stand in
+ * for. Whether a key really does stand in is settled when it is pressed: the same kind of tap, and
+ * the board left exactly as the first key leaves it.
+ */
+export function standInPeers(
+  activators: Map<number, ActivatorCandidate[]>,
+): Map<ActivatorCandidate, ActivatorCandidate[]> {
+  const out = new Map<ActivatorCandidate, ActivatorCandidate[]>();
+  for (const list of activators.values()) {
+    const byLayer = new Map<number, ActivatorCandidate[]>();
+    for (const cand of list) {
+      if (cand.mode !== 'tap' || cand.requiredMods?.length) continue;
+      const group = byLayer.get(cand.viaLayer) ?? [];
+      group.push(cand);
+      byLayer.set(cand.viaLayer, group);
+    }
+    for (const group of byLayer.values()) {
+      group.forEach((cand, i) => {
+        const peers: ActivatorCandidate[] = [];
+        for (const other of group.slice(i + 1)) {
+          if (other.pos !== cand.pos && !peers.some((p) => p.pos === other.pos)) peers.push(other);
+        }
+        if (peers.length) out.set(cand, peers);
+      });
+    }
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------- the keys that reach a layer
 
 /** How a press on a key reaches the layer: what kind of thing on the key does it. */
@@ -193,6 +235,8 @@ interface Extra {
   mods?: Mod[];
   after?: ReachRoute['after'];
   taps?: number;
+  /** Inside a tap-hold's hold, where a tap's behaviour runs when the key is held. */
+  holdArm?: boolean;
 }
 
 /**
@@ -226,10 +270,10 @@ function extraRoutes(
     case 'sl':
     case 'tog':
     case 'to':
-      if (ctx.extra && mode === 'tap' && reaches(b.layer)) out.push(route('tap'));
+      if (ctx.extra && (mode === 'tap' || ctx.holdArm) && reaches(b.layer)) out.push(route(mode));
       return;
     case 'auto_layer':
-      if (mode === 'tap' && reaches(b.layer)) out.push(route('tap'));
+      if ((mode === 'tap' || ctx.holdArm) && reaches(b.layer)) out.push(route(mode));
       return;
     case 'mo':
       if (ctx.extra && mode === 'hold' && reaches(b.layer)) out.push(route('hold'));
@@ -240,7 +284,7 @@ function extraRoutes(
       } else next(b.tap, mode);
       return;
     case 'hold_tap':
-      next(mode === 'hold' ? b.hold : b.tap, mode);
+      next(mode === 'hold' ? b.hold : b.tap, mode, { holdArm: mode === 'hold' });
       return;
     case 'mod_morph':
       next(b.default, mode);
@@ -257,7 +301,7 @@ function extraRoutes(
       return;
     case 'adaptive':
       if (b.default) next(b.default, mode);
-      if (mode !== 'tap') return;
+      if (mode !== 'tap' && !ctx.holdArm) return;
       for (const t of b.triggers ?? []) {
         const after = {
           ...(t.afterAny?.length ? { afterAny: t.afterAny } : {}),
@@ -267,7 +311,8 @@ function extraRoutes(
       }
       return;
     case 'macro':
-      if (mode !== 'tap') return;
+      // Held or tapped, the press runs the macro's steps; the key is marked the way it is pressed.
+      if (mode !== 'tap' && !ctx.holdArm) return;
       for (const s of [...(b.steps ?? []), ...(b.then ?? [])]) {
         next(s, mode, { extra: true, origin: ctx.origin === 'key' ? 'macro' : ctx.origin });
       }

@@ -275,8 +275,11 @@ function layerOf(b: Binding): { layer: string; layerIn: 'tap' | 'hold' } | null 
       return { layer: b.layer, layerIn: 'tap' };
     case 'lt':
       return { layer: b.layer, layerIn: 'hold' };
-    case 'hold_tap':
-      return b.hold.kind === 'mo' ? { layer: b.hold.layer, layerIn: 'hold' } : null;
+    case 'hold_tap': {
+      // Any layer key on the hold: held, one-shot, toggle, switch or auto.
+      const held = layerOf(b.hold);
+      return held ? { layer: held.layer, layerIn: 'hold' } : null;
+    }
     default:
       return null;
   }

@@ -231,6 +231,12 @@ export interface RuleResult {
   per_key: Record<number, number>;
   /** `per_key` for each layer: what was pressed on that layer, by the layer its key typed from. */
   per_layer_key: Record<number, Record<number, number>>;
+  /**
+   * What one unit of `per_key` / `per_layer_key` is worth in `value`'s unit. A key's part of the
+   * value is its number times this, and the parts of every key on every layer add up to the value.
+   * Null where the value is not a sum over keys: spreads, ratios, runs, words and most counters.
+   */
+  key_scale: number | null;
   per_hand: Partial<Record<Hand, number>>;
   breakdown: Record<string, number>;
   note: string | null;

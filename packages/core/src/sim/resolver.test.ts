@@ -248,3 +248,208 @@ describe('the kind of key a press is, in the statistics', () => {
     ]);
   });
 });
+
+describe('the key tapped for a layer, chosen word by word', () => {
+  const kp = (symbol: string) => ({ kind: 'kp' as const, symbol });
+  const sl = (layer: string) => ({ kind: 'sl' as const, layer });
+  /**
+   * Three keys tap Alpha 2 on the right bottom row: index (effort 1), middle and ring (2 each). The
+   * letters around them sit on those fingers: l on the index top, n on the index home, o on the
+   * middle top, y on Alpha 2's middle home.
+   */
+  const threeWays = (
+    alpha1: Layout['layers'][number]['bindings'] = {},
+    extra: Partial<Layout> = {},
+  ): Layout => ({
+    format: 'layoutmaster/layout@1',
+    name: 'Three ways',
+    hostLocale: 'symbols',
+    geometry: { preset: '1333+2' },
+    keys: { space: 'L0' },
+    layers: [
+      {
+        id: 'alpha1',
+        name: 'Alpha 1',
+        bindings: {
+          L0: kp(' '),
+          RTI: kp('l'),
+          RTM: kp('o'),
+          RHI: kp('n'),
+          RBI: sl('alpha2'),
+          RBM: sl('alpha2'),
+          RBR: sl('alpha2'),
+          ...alpha1,
+        },
+      },
+      {
+        id: 'alpha2',
+        name: 'Alpha 2',
+        bindings: { '*': { kind: 'trans' }, LTM: kp('q'), RHM: kp('y') },
+      },
+    ],
+    ...extra,
+  });
+
+  it('keeps the first key when no other does better', () => {
+    expect(trace(threeWays(), 'q').keys).toEqual(['RBI', 'LTM']);
+  });
+
+  it('takes the key whose finger did not just press another key', () => {
+    expect(trace(threeWays(), 'lq').keys).toEqual(['RTI', 'RBM', 'LTM']);
+  });
+
+  it('looks at the presses after it too, one press apart', () => {
+    expect(trace(threeWays(), 'qo').keys).toEqual(['RBI', 'LTM', 'RTM']);
+    expect(trace(threeWays(), 'qn').keys).toEqual(['RBM', 'LTM', 'RHI']);
+    expect(trace(threeWays(), 'lqo').keys).toEqual(['RTI', 'RBR', 'LTM', 'RTM']);
+  });
+
+  it('avoids the letter it is tapped for, on the layer it reaches', () => {
+    expect(trace(threeWays(), 'ly').keys).toEqual(['RTI', 'RBR', 'RHM']);
+  });
+
+  it('chooses each word on its own', () => {
+    for (const crossWord of ['reset', 'bridge'] as const) {
+      const t = trace(threeWays(), 'l q', { crossWord });
+      expect(t.keys).toEqual(['RTI', 'L0', 'RBI', 'LTM']);
+    }
+    // A character the layout cannot type ends the word just as a space does.
+    expect(trace(threeWays(), 'lßq').keys).toEqual(['RTI', 'RBI', 'LTM']);
+  });
+
+  it('takes no key that leaves the board differently or is held', () => {
+    const slow = threeWays({ RBM: { kind: 'sl', layer: 'alpha2', quickRelease: false } });
+    expect(trace(slow, 'lq').keys).toEqual(['RTI', 'RBR', 'LTM']);
+    const held = threeWays({ RBM: { kind: 'mo', layer: 'alpha2' }, RBR: kp('.') });
+    expect(trace(held, 'lq').keys).toEqual(['RTI', 'RBI', 'LTM']);
+  });
+
+  it('weighs a declared way in like any other, which it beats only on a tie', () => {
+    const declared = threeWays(
+      {},
+      { activators: { alpha2: [{ from: 'alpha1', via: 'key:alpha1/RBR' }] } },
+    );
+    // Less effort beats it: the index's key costs 1, the ring's 2.
+    expect(trace(declared, 'q').keys).toEqual(['RBI', 'LTM']);
+    // Where the middle's and the ring's keys tie, the declared one is pressed.
+    expect(trace(declared, 'lq').keys).toEqual(['RTI', 'RBR', 'LTM']);
+    expect(trace(declared, 'qn').keys).toEqual(['RBR', 'LTM', 'RHI']);
+  });
+
+  it('counts the shift typed before the layer key, in model case', () => {
+    const shifted = threeWays(
+      { R1: { kind: 'sk', mod: 'LSHIFT' } },
+      { keys: { space: 'L0', shift: { key: 'R1', kind: 'sk' } } },
+    );
+    const t = trace(shifted, 'lQ', { caseMode: 'model' });
+    expect(t.out).toBe('lQ');
+    expect(t.keys).toEqual(['RTI', 'R1', 'RBM', 'LTM']);
+  });
+
+  it('shows the key chosen, and counts each key on its own in the tables', () => {
+    const t = trace(threeWays(), 'lq');
+    const tap = t.steps[1];
+    expect([tap.key, tap.label, tap.layer, tap.keyKind]).toEqual([
+      'RBM',
+      '→A2',
+      'Alpha 1',
+      'layer_tap',
+    ]);
+    const compiled = compileLayout(threeWays());
+    const sim = simulate(compiled, 'lq qn q', opts);
+    const taps = sim.tables.registry.all().filter((k) => k.keyKind === 'layer_tap');
+    expect(taps.map((k) => compiled.positions[k.pos].id)).toEqual(['RBM', 'RBI']);
+    expect(sim.tables.stats.layer_taps).toBe(3);
+  });
+});
+
+describe('the cheapest way to type a character, after the keys before it', () => {
+  const kp = (symbol: string) => ({ kind: 'kp' as const, symbol });
+  /** `y` under the right index on the home row (no effort) and the left pinky's bottom key (3). */
+  const twoYs: Layout = {
+    format: 'layoutmaster/layout@1',
+    name: 'Two ys',
+    hostLocale: 'symbols',
+    geometry: { preset: '3x5+2' },
+    keys: { space: 'L0' },
+    layers: [
+      {
+        id: 'base',
+        bindings: { L0: kp(' '), RHI: kp('y'), LBP: kp('y'), RTI: kp('u'), LHM: kp('a') },
+      },
+    ],
+  };
+
+  it('takes the key with less effort when nothing else differs', () => {
+    expect(trace(twoYs, 'y').keys).toEqual(['RHI']);
+  });
+
+  it('takes a dearer key rather than press two keys in a row with one finger', () => {
+    expect(trace(twoYs, 'uy').keys).toEqual(['RTI', 'LBP']);
+  });
+
+  it('takes a dearer key rather than one finger with one press between', () => {
+    expect(trace(twoYs, 'uay').keys).toEqual(['RTI', 'LHM', 'LBP']);
+  });
+
+  it('weighs the keys before, not the ones still to come', () => {
+    expect(trace(twoYs, 'yu').keys).toEqual(['RHI', 'RTI']);
+  });
+});
+
+describe("a tap-hold's hold, whatever it does", () => {
+  const kp = (symbol: string) => ({ kind: 'kp' as const, symbol });
+  const holdTap = (tap: Layout['layers'][number]['bindings'][string], hold: typeof tap) => ({
+    kind: 'hold_tap' as const,
+    tap,
+    hold,
+  });
+  const layout = (bindings: Layout['layers'][number]['bindings'], more: Layout['layers'] = []) =>
+    ({
+      format: 'layoutmaster/layout@1',
+      name: 'Holds',
+      hostLocale: 'symbols',
+      geometry: { preset: '3x5+2' },
+      keys: { space: 'L0' },
+      layers: [{ id: 'base', name: 'Base', bindings: { L0: kp(' '), ...bindings } }, ...more],
+    }) as Layout;
+
+  it('types a symbol held, as a press that comes up again', () => {
+    const t = trace(layout({ LHM: holdTap(kp('a'), kp('!')) }), 'a!a');
+    expect(t.out).toBe('a!a');
+    expect(t.steps.map((s) => [s.key, s.kind, s.symbols])).toEqual([
+      ['LHM', 'tap', 'a'],
+      ['LHM', 'hold_press', '!'],
+      ['LHM', 'hold_release', ''],
+      ['LHM', 'tap', 'a'],
+    ]);
+    expect(t.presses).toBe(3);
+  });
+
+  it('counts a symbol held among the letters, not among the layer holds', () => {
+    const compiled = compileLayout(layout({ LHM: holdTap(kp('a'), kp('b')) }));
+    const sim = simulate(compiled, 'ab', opts);
+    expect(sim.tables.stats.hold_presses).toBe(1);
+    const kinds = sim.tables.registry.all().map((k) => [k.label, k.keyKind]);
+    expect(kinds).toEqual([
+      ['a', 'alpha'],
+      ['b', 'alpha'],
+    ]);
+  });
+
+  it('reaches a layer through a one-shot on the hold, held and let go before the next key', () => {
+    const t = trace(
+      layout({ LHM: holdTap(kp('a'), { kind: 'sl', layer: 'up' }) }, [
+        { id: 'up', name: 'Up', bindings: { '*': { kind: 'trans' }, RHI: kp('x') } },
+      ]),
+      'ax',
+    );
+    expect(t.out).toBe('ax');
+    expect(t.steps.map((s) => [s.key, s.kind])).toEqual([
+      ['LHM', 'tap'],
+      ['LHM', 'hold_press'],
+      ['LHM', 'hold_release'],
+      ['RHI', 'tap'],
+    ]);
+  });
+});

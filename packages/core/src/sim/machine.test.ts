@@ -334,3 +334,46 @@ describe('Machine — what kind of key a press is', () => {
     expect(tap('L0').keyKind).toBe('space');
   });
 });
+
+describe('MachineState.matches — two presses that leave the board alike', () => {
+  const layout = mini([
+    {
+      id: 'base',
+      bindings: {
+        L0: { kind: 'kp', symbol: ' ' },
+        LHP: { kind: 'kp', symbol: 'a' },
+        LHR: { kind: 'sl', layer: 'one' },
+        LHM: { kind: 'sl', layer: 'one' },
+        LHI: { kind: 'sl', layer: 'one', quickRelease: false },
+        LBI: { kind: 'mo', layer: 'one' },
+      },
+    },
+    { id: 'one', bindings: { '*': { kind: 'trans' }, LHP: { kind: 'kp', symbol: 'b' } } },
+  ]);
+
+  /** The state after a press from a fresh board, as a snapshot. */
+  function after(press: (t: ReturnType<typeof machineFor>) => void) {
+    const t = machineFor(layout);
+    press(t);
+    return t.m.state.snapshot();
+  }
+
+  it('holds for one-shots of the same layer tapped on different keys', () => {
+    const t = machineFor(layout);
+    t.tap('LHM');
+    expect(t.m.state.matches(after((u) => u.tap('LHR')))).toBe(true);
+  });
+
+  it('fails when the one-shot ends differently, a letter was typed, or a key is held', () => {
+    const t = machineFor(layout);
+    t.tap('LHI');
+    expect(t.m.state.matches(after((u) => u.tap('LHR')))).toBe(false);
+    const typed = machineFor(layout);
+    typed.tap('LHP');
+    expect(typed.m.state.matches(after(() => {}))).toBe(false);
+    const held = machineFor(layout);
+    held.hold('LBI');
+    expect(held.m.state.matches(after(() => {}))).toBe(false);
+    expect(held.m.state.matches(after((u) => u.hold('LBI')))).toBe(true);
+  });
+});

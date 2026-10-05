@@ -5,7 +5,7 @@ import { evaluate } from '../rules/engine.js';
 import { layoutsDoc } from '../rules/presets.js';
 import type { Globals, RuleResult, RuleSet, Score } from '../rules/types.js';
 import type { Coverage, SimulateOptions } from '../sim/resolver.js';
-import { simulate } from '../sim/resolver.js';
+import { Simulator } from '../sim/resolver.js';
 import type { SimulationTables } from '../tables/tables.js';
 
 export interface AnalyzeOptions {
@@ -30,6 +30,8 @@ export interface Report {
   results: RuleResult[];
   score: Score;
   globals: Globals;
+  /** The rules it was scored by, for a closer look at one key later. */
+  ruleSet: RuleSet;
   coverage: Coverage;
   stats: SimulationTables['stats'];
   options: Required<Pick<AnalyzeOptions, 'caseMode' | 'crossWord'>> & { maxSymbols?: number };
@@ -44,6 +46,23 @@ export function analyze(
   stream: string,
   opts: AnalyzeOptions = {},
 ): Report {
+  const steps = analyzeSteps(layoutOrCompiled, stream, opts, Infinity);
+  for (;;) {
+    const r = steps.next();
+    if (r.done) return r.value;
+  }
+}
+
+/**
+ * `analyze`, stopping after about every `every` symbols typed to say how many are done, so a
+ * worker can answer other requests in between, or give the analysis up.
+ */
+export function* analyzeSteps(
+  layoutOrCompiled: Layout | CompiledLayout,
+  stream: string,
+  opts: AnalyzeOptions = {},
+  every = 20_000,
+): Generator<number, Report> {
   const started = performance.now();
   const compiled =
     'layers' in layoutOrCompiled && 'positions' in layoutOrCompiled
@@ -54,13 +73,13 @@ export function analyze(
   const caseMode = opts.caseMode ?? 'fold';
   const crossWord = opts.crossWord ?? ruleSet.globals.cross_word ?? 'reset';
 
-  const sim = simulate(compiled, stream, {
+  const sim = yield* new Simulator(compiled, {
     caseMode,
     crossWord,
     maxSymbols: opts.maxSymbols,
     typingPaths: opts.typingPaths,
     softSymbols: opts.softSymbols,
-  });
+  }).steps(stream, every);
   const { results, score, globals } = evaluate(sim.tables, compiled, ruleSet);
 
   return {
@@ -70,6 +89,7 @@ export function analyze(
     results,
     score,
     globals,
+    ruleSet,
     coverage: sim.coverage,
     stats: sim.tables.stats,
     options: { caseMode, crossWord, maxSymbols: opts.maxSymbols },
@@ -81,5 +101,5 @@ export function analyze(
 /** Re-score an existing run, e.g. after editing the rule set. No re-simulation. */
 export function reevaluate(report: Report, ruleSet: RuleSet): Report {
   const { results, score, globals } = evaluate(report.simulation, report.compiled, ruleSet);
-  return { ...report, results, score, globals };
+  return { ...report, results, score, globals, ruleSet };
 }

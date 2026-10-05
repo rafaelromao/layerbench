@@ -1,7 +1,7 @@
 import { keyDistance } from '../geometry/distance.js';
 import { FINGERS, type Finger } from '../geometry/types.js';
 import type { CompiledLayout } from '../layout/compile.js';
-import type { ActivatorDef, Mod, TypingPathEntry } from '../layout/types.js';
+import type { ActivatorDef, BindingKind, Mod, TypingPathEntry } from '../layout/types.js';
 import { defaultEffort } from '../rules/effort.js';
 import {
   type FingerTravel,
@@ -13,8 +13,16 @@ import {
   TextTotals,
   type WordTrace,
 } from '../tables/tables.js';
-import { type ActivatorCandidate, discoverActivators } from './activators.js';
-import { type Action, type KeyEvent, Machine, peelBinding } from './machine.js';
+import { type ActivatorCandidate, discoverActivators, standInPeers } from './activators.js';
+import {
+  type Choosable,
+  chooseKeys,
+  compareCost,
+  type PressCost,
+  type PressMeasure,
+  pressMeasure,
+} from './choice.js';
+import { type Action, type KeyEvent, Machine, peelBinding, type Snapshot } from './machine.js';
 import {
   enumerateProducers,
   type Producer,
@@ -34,6 +42,20 @@ export interface SimulateOptions {
   collectEvents?: boolean;
   /** Per-key effort is not needed here; kept for API symmetry. */
   producerIndex?: ProducerIndex;
+}
+
+/** A run of presses with no space in it enters the tables in pieces of at most this many. */
+const WORD_LIMIT = 128;
+
+/** Layer taps another key can make instead: nothing they do depends on which key it was. */
+const STAND_IN_KINDS: ReadonlySet<BindingKind> = new Set(['sl', 'tog', 'to']);
+
+/** A press of the word another key could make: where it is, and every key's event for it. */
+interface WordSlot extends Choosable {
+  /** Index of the press's event in the word. */
+  event: number;
+  /** The planner's event first, then the other keys'. */
+  options: KeyEvent[];
 }
 
 export interface Coverage {
@@ -78,10 +100,14 @@ export class Simulator {
   readonly machine: Machine;
   readonly index: ProducerIndex;
   private readonly activators: Map<number, ActivatorCandidate[]>;
+  /** For each layer tap, the keys after it that could make the same tap. */
+  private readonly peers: Map<ActivatorCandidate, ActivatorCandidate[]>;
+  /** What a choice between keys is measured by. */
+  private readonly measure: PressMeasure;
+  /** For the token being typed: a layer tap the planner made, and the same tap on other keys. */
+  private readonly standIns = new Map<KeyEvent, KeyEvent[]>();
   private readonly userPaths = new Map<string, TypingPathEntry[]>();
   private readonly plannerHolds = new Set<number>();
-  /** Effort of a press at each position, a chord's keys summed: what breaks a tie between ways. */
-  private readonly pressEffort: number[];
   private readonly fold: boolean;
   private readonly repeatPolicy: 'repeat_key' | 'tap_twice';
 
@@ -113,6 +139,15 @@ export class Simulator {
   private curWord: string[] = [];
   private curWordKeys: number[] = [];
   private curWordPresses = 0;
+  /**
+   * The word being typed, kept until it ends: its presses enter the tables then, in the order they
+   * were made, once each key a choice was left to is chosen (`commitWord`).
+   */
+  private readonly word: KeyEvent[] = [];
+  /** The position of each of the word's presses, a choosable one at the planner's key. */
+  private readonly wordKeys: number[] = [];
+  /** The word's presses that another key could make. */
+  private readonly slots: WordSlot[] = [];
   readonly events: KeyEvent[] = [];
   private readonly collectEvents: boolean;
   private readonly softSymbols: Set<string>;
@@ -144,15 +179,23 @@ export class Simulator {
       compiled,
       options.activators ?? compiled.layout.activators ?? {},
     );
+    this.peers = standInPeers(this.activators);
+    // Effort of a press at each position, a chord's keys summed.
     const effort = defaultEffort(compiled);
-    this.pressEffort = compiled.positions.map((p) =>
+    const pressEffort = compiled.positions.map((p) =>
       p.members.reduce((sum, m) => sum + (effort[compiled.keys[m].id] ?? 1), 0),
     );
+    this.measure = pressMeasure(compiled, pressEffort);
     this.homeKeys = findHomeKeys(compiled);
     this.lastFingerPos = { ...this.homeKeys };
     this.lastFingerPosWord = { ...this.homeKeys };
     const zero = () => Object.fromEntries(FINGERS.map((f) => [f, 0])) as Record<Finger, number>;
-    this.travel = { continuous: zero(), resetAtWord: zero(), usage: zero() };
+    this.travel = {
+      continuous: zero(),
+      resetAtWord: zero(),
+      usage: zero(),
+      byKey: { continuous: [], resetAtWord: [] },
+    };
     this.stats = {
       symbols: 0,
       words: 0,
@@ -254,6 +297,12 @@ export class Simulator {
       const holdsBefore = new Set(this.plannerHolds);
       let ok = true;
       const modHolds: number[] = [];
+      // Where the board is just before a tap other keys could make too, and the kind of that tap.
+      let beforeTap: Snapshot | null = null;
+      let tapKind: BindingKind | null = null;
+      let tapped: KeyEvent | null = null;
+      // A one-shot, toggle or switch on a tap-hold's hold: held past its term, then let go.
+      let heldThenLetGo = false;
       if (cand.requiredMods?.length) ok = this.ensureMods(cand.requiredMods, events, modHolds);
       if (ok && !m.isLayerActive(cand.viaLayer))
         ok = this.activate(cand.viaLayer, events, depth + 1);
@@ -263,8 +312,15 @@ export class Simulator {
         else {
           const peeled = peelBinding(m, r.binding, cand.mode);
           const kinds =
-            cand.mode === 'hold' ? ['mo', 'lt'] : ['sl', 'tog', 'to', 'adaptive', 'macro'];
+            cand.mode === 'hold'
+              ? ['mo', 'lt', 'sl', 'tog', 'to']
+              : ['sl', 'tog', 'to', 'adaptive', 'macro'];
           if (!kinds.includes(peeled.kind)) ok = false;
+          else if (cand.mode === 'hold' && STAND_IN_KINDS.has(peeled.kind)) heldThenLetGo = true;
+          else if (this.peers.has(cand) && STAND_IN_KINDS.has(peeled.kind)) {
+            beforeTap = m.state.snapshot();
+            tapKind = peeled.kind;
+          }
         }
       }
       if (ok) {
@@ -273,15 +329,20 @@ export class Simulator {
             ? { type: 'hold_press', pos: cand.pos }
             : { type: 'tap', pos: cand.pos };
         const evs = m.perform(action);
+        if (heldThenLetGo) evs.push(...m.perform({ type: 'hold_release', pos: cand.pos }));
         if (evs.some((e) => e.symbols.length)) ok = false;
         else {
           events.push(...evs);
-          if (cand.mode === 'hold') this.plannerHolds.add(cand.pos);
+          if (cand.mode === 'hold' && !heldThenLetGo) this.plannerHolds.add(cand.pos);
+          if (evs.length === 1) tapped = evs[0];
         }
       }
       if (ok && m.isLayerActive(target)) {
         // Held modifiers used only to select the activator arm are released after the producer step.
         for (const pos of modHolds) this.plannerHolds.add(pos);
+        if (beforeTap && tapKind && tapped) {
+          this.offerStandIns(tapped, tapKind, this.peers.get(cand) ?? [], beforeTap, top);
+        }
         return true;
       }
       m.state.restore(snap);
@@ -291,6 +352,37 @@ export class Simulator {
       for (const p of holdsBefore) this.plannerHolds.add(p);
     }
     return false;
+  }
+
+  /**
+   * The other keys that could have made a layer tap: each is pressed from where the board was just
+   * before it, and stands in if it is the same kind of tap, types nothing, and leaves the board
+   * exactly where the planner's key left it. Which of them the word presses is chosen when it ends.
+   */
+  private offerStandIns(
+    tapped: KeyEvent,
+    kind: BindingKind,
+    peers: ActivatorCandidate[],
+    beforeTap: Snapshot,
+    top: number,
+  ): void {
+    const m = this.machine;
+    const afterTap = m.state.snapshot();
+    const found: KeyEvent[] = [];
+    for (const peer of peers) {
+      if (peer.from !== undefined && peer.from !== top) continue;
+      m.state.restore(beforeTap);
+      m.recomputeMask();
+      const r = m.resolve(peer.pos);
+      if (r.layer !== peer.viaLayer) continue;
+      if (peelBinding(m, r.binding, 'tap').kind !== kind) continue;
+      const evs = m.perform({ type: 'tap', pos: peer.pos });
+      if (evs.length === 1 && evs[0].symbols === '' && m.state.matches(afterTap))
+        found.push(evs[0]);
+    }
+    m.state.restore(afterTap);
+    m.recomputeMask();
+    if (found.length) this.standIns.set(tapped, found);
   }
 
   private ensureMods(mods: Mod[], events: KeyEvent[], holdsOut: number[]): boolean {
@@ -384,7 +476,10 @@ export class Simulator {
           break;
         }
       }
-      events.push(...m.perform({ type: 'tap', pos: step.pos, taps: step.taps }));
+      if (step.mode === 'hold') {
+        events.push(...m.perform({ type: 'hold_press', pos: step.pos }));
+        events.push(...m.perform({ type: 'hold_release', pos: step.pos }));
+      } else events.push(...m.perform({ type: 'tap', pos: step.pos, taps: step.taps }));
     }
     for (const pos of modHolds) events.push(...m.perform({ type: 'hold_release', pos }));
     if (ok) {
@@ -434,19 +529,29 @@ export class Simulator {
       const id = this.registry.idFor(ev);
       this.withSpace.push(id);
       const pos = c.positions[ev.pos];
-      // finger travel & usage
-      for (const member of pos.members) {
+      // finger travel & usage, by finger and by the key the finger went to
+      const byKey = this.travel.byKey;
+      byKey.continuous[id] ??= pos.members.map(() => 0);
+      byKey.resetAtWord[id] ??= pos.members.map(() => 0);
+      pos.members.forEach((member, slot) => {
         const key = c.keys[member];
         const f = key.finger;
         this.travel.usage[f]++;
         const prev = this.lastFingerPos[f];
-        if (prev >= 0) this.travel.continuous[f] += keyDistance(c.keys[prev], key, 'euclid') ?? 0;
+        if (prev >= 0) {
+          const d = keyDistance(c.keys[prev], key, 'euclid') ?? 0;
+          this.travel.continuous[f] += d;
+          byKey.continuous[id][slot] += d;
+        }
         this.lastFingerPos[f] = member;
         const prevW = this.lastFingerPosWord[f];
-        if (prevW >= 0)
-          this.travel.resetAtWord[f] += keyDistance(c.keys[prevW], key, 'euclid') ?? 0;
+        if (prevW >= 0) {
+          const d = keyDistance(c.keys[prevW], key, 'euclid') ?? 0;
+          this.travel.resetAtWord[f] += d;
+          byKey.resetAtWord[id][slot] += d;
+        }
         this.lastFingerPosWord[f] = member;
-      }
+      });
       if (ev.keyKind === 'space' || isSpace) continue;
       this.noSpace.push(id);
       this.curWordKeys.push(id);
@@ -505,7 +610,50 @@ export class Simulator {
     this.runLayer = -1;
   }
 
+  /** Keep a token's presses with the word they belong to, noting the ones another key could make. */
+  private addToWord(events: KeyEvent[]): void {
+    for (const e of events) {
+      this.word.push(e);
+      if (e.kind === 'hold_release') continue;
+      const others = this.standIns.get(e);
+      if (others) {
+        for (const o of others) o.producerKind = e.producerKind;
+        this.slots.push({
+          at: this.wordKeys.length,
+          keys: [e.pos, ...others.map((o) => o.pos)],
+          event: this.word.length - 1,
+          options: [e, ...others],
+        });
+      }
+      this.wordKeys.push(e.pos);
+    }
+    this.standIns.clear();
+    // A run with no space in it still enters the tables as it goes.
+    if (this.word.length >= WORD_LIMIT) this.commitWord();
+  }
+
+  /**
+   * The word's presses enter the tables, each one another key could make on the key that makes the
+   * word's fewest same-finger pairs, then the least effort (`chooseKeys`); a tie keeps the
+   * planner's.
+   */
+  private commitWord(): void {
+    if (this.word.length === 0) return;
+    if (this.slots.length) {
+      const { pick } = chooseKeys(this.measure, this.wordKeys, this.slots);
+      this.slots.forEach((slot, j) => {
+        this.word[slot.event] = slot.options[pick[j]];
+      });
+    }
+    this.commit(this.word, false);
+    this.word.length = 0;
+    this.wordKeys.length = 0;
+    this.slots.length = 0;
+  }
+
   private wordBoundary(hard: boolean): void {
+    // Before anything else: the word's own presses are what it ends on.
+    this.commitWord();
     if (this.curWord.length) {
       const w = this.curWord.join('');
       const t = this.words.get(w);
@@ -576,16 +724,17 @@ export class Simulator {
    * order was set by hand in Typing paths takes the first way that works, in that order.
    */
   private typeToken(token: string): boolean {
+    this.standIns.clear();
     const handSet = (this.userPaths.get(this.pathSymbol(token))?.length ?? 0) > 0;
     let cands = this.candidatesFor(token);
     for (let attempt = 0; attempt < 2; attempt++) {
       const events = handSet ? this.firstThatWorks(cands, token) : this.cheapest(cands, token);
       if (events) {
-        this.commit(events, false);
+        this.addToWord(events);
         return true;
       }
       if (this.plannerHolds.size === 0) break;
-      this.commit(this.releaseHolds(), false);
+      this.addToWord(this.releaseHolds());
       cands = this.candidatesFor(token);
     }
     return false;
@@ -610,8 +759,10 @@ export class Simulator {
    * Every way to type the token, each tried from the same state: the fewest presses win; then the
    * way that leaves fewer layer keys held, since a held key still has to come up, and holding it
    * through what follows can change that (releasing it ends the one-shot shift a sentence armed);
-   * then the lower Effort over the presses; then the candidates' own order. Effort is the default
-   * grid, not the rule set's, so what is typed never depends on the rules it is scored by.
+   * then the way that makes the word so far the fewest same-finger bigrams, then skipgrams, then
+   * the least effort (`wordCostWith`); then the candidates' own order. Those measures are fixed —
+   * the default effort grid, not the rule set's — so what is typed never depends on the rules it
+   * is scored by.
    */
   private cheapest(cands: Producer[], token: string): KeyEvent[] | null {
     if (cands.length <= 1) return this.firstThatWorks(cands, token);
@@ -627,7 +778,8 @@ export class Simulator {
     let best: {
       events: KeyEvent[];
       presses: number;
-      effort: number;
+      /** Worked out only when another way ties with it in presses and held keys. */
+      cost: PressCost | null;
       state: typeof start;
       holds: number[];
     } | null = null;
@@ -635,23 +787,23 @@ export class Simulator {
       const events = this.tryProducer(p, token);
       if (events) {
         let presses = 0;
-        let effort = 0;
-        for (const e of events) {
-          if (e.kind === 'hold_release') continue;
-          presses++;
-          effort += this.pressEffort[e.pos] ?? 0;
-        }
+        for (const e of events) if (e.kind !== 'hold_release') presses++;
         const held = this.plannerHolds.size;
-        if (
+        let cost: PressCost | null = null;
+        let better =
           best === null ||
           presses < best.presses ||
-          (presses === best.presses && held < best.holds.length) ||
-          (presses === best.presses && held === best.holds.length && effort < best.effort)
-        ) {
+          (presses === best.presses && held < best.holds.length);
+        if (!better && best !== null && presses === best.presses && held === best.holds.length) {
+          cost = this.wordCostWith(events);
+          best.cost ??= this.wordCostWith(best.events);
+          better = compareCost(cost, best.cost) < 0;
+        }
+        if (better) {
           best = {
             events,
             presses,
-            effort,
+            cost,
             state: m.state.snapshot(),
             holds: [...this.plannerHolds],
           };
@@ -664,6 +816,31 @@ export class Simulator {
     return best.events;
   }
 
+  /**
+   * What the word typed so far costs with these presses after it: its same-finger bigrams, then
+   * skipgrams, then effort. A layer tap another key could make, the word's own or one of these,
+   * counts on whichever key costs least — as the word will be committed.
+   */
+  private wordCostWith(events: KeyEvent[]): PressCost {
+    const n = this.wordKeys.length;
+    const extra: Choosable[] = [];
+    for (const e of events) {
+      if (e.kind === 'hold_release') continue;
+      const others = this.standIns.get(e);
+      if (others)
+        extra.push({ at: this.wordKeys.length, keys: [e.pos, ...others.map((o) => o.pos)] });
+      this.wordKeys.push(e.pos);
+    }
+    const { cost } = chooseKeys(
+      this.measure,
+      this.wordKeys,
+      extra.length ? [...this.slots, ...extra] : this.slots,
+    );
+    this.wordKeys.length = n;
+    return cost;
+  }
+
+  /** Always typed right after `wordBoundary`, so no word is waiting and the space commits at once. */
   private typeSpace(): void {
     const m = this.machine;
     const spaceKey = this.compiled.spaceKey;
@@ -688,10 +865,27 @@ export class Simulator {
   }
 
   run(stream: string): SimulationResult {
+    const steps = this.steps(stream, Infinity);
+    for (;;) {
+      const r = steps.next();
+      if (r.done) return r.value;
+    }
+  }
+
+  /**
+   * Type the stream, stopping after about every `every` symbols to say how many are done, so a
+   * caller can let other work in, or give up; `run` goes through without stopping.
+   */
+  *steps(stream: string, every = 20_000): Generator<number, SimulationResult> {
     const max = this.options.maxSymbols ?? Infinity;
     let i = 0;
     let symbols = 0;
+    let pause = every;
     while (i < stream.length && symbols < max) {
+      if (symbols >= pause) {
+        pause = symbols + every;
+        yield symbols;
+      }
       const cp = stream.codePointAt(i) as number;
       const g = String.fromCodePoint(cp);
       if (g === ' ') {
@@ -726,6 +920,7 @@ export class Simulator {
       }
     }
     this.wordBoundary(false);
+    // The last word is in; holds still down come up after it.
     this.commit(this.releaseHolds(), false);
     const tables: SimulationTables = {
       registry: this.registry,

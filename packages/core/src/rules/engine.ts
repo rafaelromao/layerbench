@@ -1,6 +1,7 @@
 import type { Finger, Hand } from '../geometry/types.js';
 import { fingerHand } from '../geometry/types.js';
 import type { CompiledLayout } from '../layout/compile.js';
+import { tableIndex } from '../tables/ngram-index.js';
 import type { SimulationTables } from '../tables/tables.js';
 import { packBigram, unpackBigram, unpackTrigram } from '../tables/tables.js';
 import { type Attrs, adjacentFingerPair, attrDistance, buildAttrs } from './attrs.js';
@@ -117,6 +118,32 @@ function bump<K>(map: Map<K, number>, key: K, by: number): void {
   map.set(key, (map.get(key) ?? 0) + by);
 }
 
+/** Credit a physical key with part of a number, overall and on the layer it was pressed on. */
+function credit(
+  perKey: Map<number, number>,
+  perLayerKey: Map<number, Map<number, number>>,
+  layer: number,
+  key: number,
+  by: number,
+): void {
+  if (by === 0) return;
+  bump(perKey, key, by);
+  let onLayer = perLayerKey.get(layer);
+  if (!onLayer) {
+    onLayer = new Map<number, number>();
+    perLayerKey.set(layer, onLayer);
+  }
+  bump(onLayer, key, by);
+}
+
+function perLayerRecord(
+  perLayerKey: Map<number, Map<number, number>>,
+): Record<number, Record<number, number>> {
+  return Object.fromEntries(
+    [...perLayerKey].map(([layer, keys]) => [layer, toRecord(keys)]),
+  ) as unknown as Record<number, Record<number, number>>;
+}
+
 /** Weight of an n-gram: adjacent and non-adjacent finger pairs can be weighted differently. */
 function weightOf(spec: WeightSpec | null | undefined, ngram: Ngram): number {
   if (!spec) return 1;
@@ -150,9 +177,12 @@ function textKeystrokes(ctx: Ctx): number {
   return ctx.text.unigram + (ctx.globals.space_per_word_in_keystrokes ? ctx.sim.stats.words : 0);
 }
 
+function per100Denominator(stats: SimulationTables['stats'], per?: string): number {
+  return per === 'keystrokes' ? stats.keystrokes : per === 'words' ? stats.words : stats.symbols;
+}
+
 function per100(m: number, stats: SimulationTables['stats'], per?: string): number {
-  const denom =
-    per === 'keystrokes' ? stats.keystrokes : per === 'words' ? stats.words : stats.symbols;
+  const denom = per100Denominator(stats, per);
   return denom > 0 ? (m / denom) * 100 : 0;
 }
 
@@ -161,6 +191,7 @@ interface Extra {
   items?: RuleItem[];
   per_key?: Record<number, number>;
   per_layer_key?: Record<number, Record<number, number>>;
+  key_scale?: number | null;
   per_finger?: Partial<Record<Finger, number>>;
   per_hand?: Partial<Record<Hand, number>>;
   breakdown?: Record<string, number>;
@@ -178,6 +209,7 @@ function finish(rule: Rule, value: number | null, extra: Extra): RuleResult {
     per_finger: extra.per_finger ?? {},
     per_key: extra.per_key ?? {},
     per_layer_key: extra.per_layer_key ?? {},
+    key_scale: extra.key_scale ?? null,
     per_hand: extra.per_hand ?? {},
     breakdown: extra.breakdown ?? {},
     note: rule.description ?? null,
@@ -189,25 +221,91 @@ function finish(rule: Rule, value: number | null, extra: Extra): RuleResult {
 
 // ------------------------------------------------------------------- n-grams
 
-function evalNgram(rule: Rule, ctx: Ctx): RuleResult {
+/** One table an n-gram rule counts over: its entries, what they are a share of, and their weight. */
+export interface NgramSource {
+  table: Map<number, number>;
+  total: number;
+  weight: number;
+  /** Which table of the universe it is. */
+  kind: 'unigram' | 'bigram' | 'trigram' | 'skip1' | 'skip2' | 'skip3';
+}
+
+/**
+ * The tables an n-gram rule counts over. Pairs are counted over the text's pairs, not the layout's:
+ * its extra presses would otherwise add pairs no rule can match, and a macro would take away pairs
+ * it saved. Single keys and trigrams are shares of what was pressed; trigram categories must still
+ * add up within it.
+ */
+function ngramSources(rule: Rule, ctx: Ctx): NgramSource[] {
   const spec = rule.ngram ?? { n: 2 as const, skip: 0 };
   const n = spec.n ?? 2;
   const skip = spec.skip ?? 0;
   const t = ctx.tables;
-
-  // Pairs are counted over the text's pairs, not the layout's: its extra presses would otherwise add
-  // pairs no rule can match, and a macro would take away pairs it saved. Single keys and trigrams
-  // are shares of what was pressed; trigram categories must still add up within it.
   const pairs = ctx.text;
-  const sources: [Map<number, number>, number, number][] = [];
-  if (n === 1) sources.push([t.unigram, t.totals.unigram, 1]);
-  else if (n === 3) sources.push([t.trigram, t.totals.trigram, 1]);
-  else if (Array.isArray(skip)) {
-    for (const k of skip) {
-      sources.push([t.skip[k - 1], pairs.skip[k - 1], ctx.globals.skip_weights[k - 1] ?? 0]);
-    }
-  } else if (skip > 0) sources.push([t.skip[skip - 1], pairs.skip[skip - 1], 1]);
-  else sources.push([t.bigram, pairs.bigram, 1]);
+  const skipKind = (k: number) => `skip${k}` as NgramSource['kind'];
+  if (n === 1) return [{ table: t.unigram, total: t.totals.unigram, weight: 1, kind: 'unigram' }];
+  if (n === 3) return [{ table: t.trigram, total: t.totals.trigram, weight: 1, kind: 'trigram' }];
+  if (Array.isArray(skip)) {
+    return skip.map((k) => ({
+      table: t.skip[k - 1],
+      total: pairs.skip[k - 1],
+      weight: ctx.globals.skip_weights[k - 1] ?? 0,
+      kind: skipKind(k),
+    }));
+  }
+  if (skip > 0)
+    return [
+      { table: t.skip[skip - 1], total: pairs.skip[skip - 1], weight: 1, kind: skipKind(skip) },
+    ];
+  return [{ table: t.bigram, total: pairs.bigram, weight: 1, kind: 'bigram' }];
+}
+
+/** The n-gram a table entry is, its keys' attributes in order. */
+function ngramOf(ctx: Ctx, kind: NgramSource['kind'], key: number, into: Attrs[]): void {
+  if (kind === 'unigram') into[0] = ctx.attrs[key];
+  else if (kind === 'trigram') {
+    const [a, b, c] = unpackTrigram(key);
+    into[0] = ctx.attrs[a];
+    into[1] = ctx.attrs[b];
+    into[2] = ctx.attrs[c];
+  } else {
+    const [a, b] = unpackBigram(key);
+    into[0] = ctx.attrs[a];
+    into[1] = ctx.attrs[b];
+  }
+}
+
+/** An n-gram as a card lists it, with its share of what the rule counts over. */
+function toItem(
+  ctx: Ctx,
+  rule: Rule,
+  ngram: Ngram,
+  c: number,
+  d: number | null,
+  total: number,
+): RuleItem {
+  const spec = rule.ngram ?? { n: 2 as const, skip: 0 };
+  const n = spec.n ?? 2;
+  const skip = spec.skip ?? 0;
+  const joiner = n === 2 && skip !== 0 ? '_' : '';
+  const percent = total > 0 ? (c / total) * 100 : 0;
+  // A pair, not a skipgram: what is pressed after it is what came right after its last key.
+  const then = n === 2 && skip === 0 ? nextKeys(ctx, ngram, percent) : undefined;
+  return {
+    label: ngram.map((k) => k.label).join(joiner),
+    keys: ngram.map((k) => k.pos),
+    layers: ngram.map((k) => k.layer),
+    percent,
+    count: c,
+    distance: d,
+    ...(then ? { then } : {}),
+  };
+}
+
+function evalNgram(rule: Rule, ctx: Ctx): RuleResult {
+  const spec = rule.ngram ?? { n: 2 as const, skip: 0 };
+  const n = spec.n ?? 2;
+  const sources = ngramSources(rule, ctx);
 
   const match = compilePredicate(rule.where, ctx);
   const aggregate: Aggregate = rule.aggregate ?? 'percent_of_ngrams';
@@ -224,36 +322,36 @@ function evalNgram(rule: Rule, ctx: Ctx): RuleResult {
   const perHand = new Map<Hand, number>();
   const breakdown = new Map<string | number, number>();
   const ngram: Attrs[] = new Array(n);
+  // What each key is credited with, so that the keys' parts add up to the value: an n-gram's count
+  // split between its keys, and a chord's share between the keys pressed together; its distance
+  // times its count for a distance; each key's own effort times its count for an effort sum.
+  const byDistance = aggregate === 'sum_distance' || aggregate === 'mean_distance';
+  const effortTable = rule.params?.effort ?? {};
+  const fallback = defaultEffort(ctx.compiled);
+  const memberEffort =
+    aggregate === 'weighted_sum'
+      ? ctx.compiled.keys.map((_, m) => keyEffort(ctx.compiled, m, effortTable, fallback))
+      : null;
+  let effortSum = 0;
 
-  for (const [table, tot, skipW] of sources) {
-    total += tot * skipW;
-    for (const [key, count] of table) {
-      if (n === 1) ngram[0] = ctx.attrs[key];
-      else if (n === 2) {
-        const [a, b] = unpackBigram(key);
-        ngram[0] = ctx.attrs[a];
-        ngram[1] = ctx.attrs[b];
-      } else {
-        const [a, b, c] = unpackTrigram(key);
-        ngram[0] = ctx.attrs[a];
-        ngram[1] = ctx.attrs[b];
-        ngram[2] = ctx.attrs[c];
-      }
+  for (const source of sources) {
+    total += source.total * source.weight;
+    for (const [key, count] of source.table) {
+      ngramOf(ctx, source.kind, key, ngram);
       if (!match(ngram)) continue;
 
-      const c = count * weightOf(rule.weight, ngram) * skipW;
+      const c = count * weightOf(rule.weight, ngram) * source.weight;
       const d = pairDistance(ngram, model);
       matched += c;
       weightedDistance += c * (d ?? 0);
       items.push({ ngram: [...ngram], c, d });
 
-      const share = c / ngram.length;
+      const each = (byDistance ? c * (d ?? 0) : c) / ngram.length;
       for (const k of ngram) {
-        const onLayer = perLayerKey.get(k.layer) ?? new Map<number, number>();
-        perLayerKey.set(k.layer, onLayer);
         for (const m of k.members) {
-          bump(perKey, m, share);
-          bump(onLayer, m, share);
+          const part = memberEffort ? c * memberEffort[m] : each / k.members.length;
+          if (memberEffort) effortSum += part;
+          credit(perKey, perLayerKey, k.layer, m, part);
         }
       }
 
@@ -285,86 +383,75 @@ function evalNgram(rule: Rule, ctx: Ctx): RuleResult {
   const handPct = distribute(perHand, matched);
 
   let value: number | null;
+  /** What a unit of a key's credit is worth in the value; null where the value is no such sum. */
+  let keyScale: number | null;
   let unit: Unit = 'percent';
   switch (aggregate) {
     case 'percent_of_keystrokes':
       value = pct(matched, keystrokes);
+      keyScale = keystrokes > 0 ? 100 / keystrokes : 0;
       break;
     case 'count':
       value = matched;
+      keyScale = 1;
       unit = 'count';
       break;
-    case 'per100':
+    case 'per100': {
+      const denom = per100Denominator(ctx.sim.stats, rule.aggregate_opts?.per ?? 'symbols');
       value = per100(matched, ctx.sim.stats, rule.aggregate_opts?.per ?? 'symbols');
+      keyScale = denom > 0 ? 100 / denom : 0;
       unit = 'per100';
       break;
+    }
     case 'sum_distance':
       value = total > 0 ? (weightedDistance / total) * 100 : null;
+      keyScale = total > 0 ? 100 / total : null;
       unit = 'distance';
       break;
     case 'mean_distance':
       value = matched > 0 ? weightedDistance / matched : null;
+      keyScale = matched > 0 ? 1 / matched : null;
       unit = 'distance';
       break;
     case 'per_finger':
       value = spread(distribute(perFinger, matched) as Map<string | number, number>);
+      keyScale = null;
       break;
     case 'per_hand':
       value = Math.abs((handPct.get('L') ?? 0) - (handPct.get('R') ?? 0));
+      keyScale = null;
       break;
     case 'per_layer':
     case 'per_row':
     case 'per_col':
       value = spread(distribute(breakdown, matched));
+      keyScale = null;
       break;
     case 'weighted_sum': {
-      const table = rule.params?.effort ?? {};
-      const fallback = defaultEffort(ctx.compiled);
-      let sum = 0;
-      for (const it of items) {
-        let e = 0;
-        for (const k of it.ngram) {
-          for (const m of k.members) e += keyEffort(ctx.compiled, m, table, fallback);
-        }
-        sum += it.c * e;
-      }
       // Per character typed, space included, which is cyanophage's keystrokes on the layouts it
       // models. The layout's own presses would make its free thumb taps lower the average.
       const k = ctx.sim.text.withSpace.unigram;
-      value = k > 0 ? (sum / k) * (rule.scale ?? 1) : 0;
+      value = k > 0 ? (effortSum / k) * (rule.scale ?? 1) : 0;
+      keyScale = k > 0 ? (rule.scale ?? 1) / k : 0;
       unit = 'effort';
       break;
     }
     default:
       value = pct(matched, total);
+      keyScale = total > 0 ? 100 / total : 0;
   }
 
-  const joiner = n === 2 && skip !== 0 ? '_' : '';
   const itemsOut: RuleItem[] = items
     .sort((a, b) => b.c - a.c)
     .slice(0, ctx.globals.top_items)
-    .map((it) => {
-      const percent = total > 0 ? (it.c / total) * 100 : 0;
-      // A pair, not a skipgram: what is pressed after it is what came right after its last key.
-      const then = n === 2 && skip === 0 ? nextKeys(ctx, it.ngram, percent) : undefined;
-      return {
-        label: it.ngram.map((k) => k.label).join(joiner),
-        keys: it.ngram.map((k) => k.pos),
-        layers: it.ngram.map((k) => k.layer),
-        percent,
-        count: it.c,
-        distance: it.d,
-        ...(then ? { then } : {}),
-      };
-    });
+    .map((it) => toItem(ctx, rule, it.ngram, it.c, it.d, total));
 
   return finish(rule, value, {
     unit,
     items: itemsOut,
+    key_scale: keyScale,
     per_key: toRecord(perKey) as unknown as Record<number, number>,
-    per_layer_key: Object.fromEntries(
-      [...perLayerKey].map(([layer, keys]) => [layer, toRecord(keys)]),
-    ) as unknown as Record<number, Record<number, number>>,
+    per_layer_key: perLayerRecord(perLayerKey),
     per_finger: toRecord(distribute(perFinger, matched)) as Partial<Record<Finger, number>>,
     per_hand: toRecord(handPct) as Partial<Record<Hand, number>>,
     breakdown: toRecord(distribute(breakdown, matched)),
@@ -511,12 +598,24 @@ function evalStat(rule: Rule, ctx: Ctx): RuleResult {
   }
 
   const breakdown: Record<string, number> = {};
+  const parts: Extra = {};
   if (rule.stat === 'layer_taps_per_100') {
     st.per_layer.forEach((c, l) => {
       breakdown[String(l)] = ratio(c, st.keystrokes) * 100;
     });
+    // Each layer tap on the key it was made on, a chord's split between its keys.
+    const perKey = new Map<number, number>();
+    const perLayerKey = new Map<number, Map<number, number>>();
+    for (const [id, count] of ctx.sim.withSpace.unigram) {
+      const a = ctx.attrs[id];
+      if (a?.key_kind !== 'layer_tap') continue;
+      for (const m of a.members) credit(perKey, perLayerKey, a.layer, m, count / a.members.length);
+    }
+    parts.key_scale = st.symbols > 0 ? 100 / st.symbols : 0;
+    parts.per_key = toRecord(perKey) as unknown as Record<number, number>;
+    parts.per_layer_key = perLayerRecord(perLayerKey);
   }
-  return finish(rule, value, { unit: rule.unit ?? 'percent', breakdown });
+  return finish(rule, value, { unit: rule.unit ?? 'percent', breakdown, ...parts });
 }
 
 // -------------------------------------------------------------------- travel
@@ -535,11 +634,27 @@ function evalTravel(rule: Rule, ctx: Ctx): RuleResult {
   const perHand: Partial<Record<Hand, number>> =
     total > 0 ? { L: (left / total) * 100, R: ((total - left) / total) * 100 } : {};
 
+  // Each key is credited with the travel its finger made to press it.
+  const perKey = new Map<number, number>();
+  const perLayerKey = new Map<number, Map<number, number>>();
+  const byKey = rule.travel_mode === 'reset_at_word' ? tr.byKey.resetAtWord : tr.byKey.continuous;
+  byKey.forEach((slots, id) => {
+    const a = ctx.attrs[id];
+    if (!a || !slots) return;
+    slots.forEach((d, slot) => {
+      const m = a.members[slot];
+      if (m !== undefined) credit(perKey, perLayerKey, a.layer, m, d);
+    });
+  });
+
   return finish(rule, k > 0 ? total / k : 0, {
     unit: 'distance',
     per_finger: perFinger,
     per_hand: perHand,
     breakdown: src as unknown as Record<string, number>,
+    key_scale: k > 0 ? 1 / k : 0,
+    per_key: toRecord(perKey) as unknown as Record<number, number>,
+    per_layer_key: perLayerRecord(perLayerKey),
   });
 }
 
@@ -571,6 +686,122 @@ function computeScore(results: RuleResult[], ruleSet: RuleSet): Score {
   return { enabled: ruleSet.score_enabled ?? false, value };
 }
 
+/** Everything a rule set reads a simulation through, the same for every rule. */
+function contextOf(sim: SimulationTables, compiled: CompiledLayout, ruleSet: RuleSet): Ctx {
+  const globals: Globals = { ...DEFAULT_GLOBALS, ...ruleSet.globals };
+  const attrs = buildAttrs(compiled, sim.registry);
+  const withSpace = globals.universe === 'with_space';
+  const tables = withSpace ? sim.withSpace : sim.noSpace;
+  const text = withSpace ? sim.text.withSpace : sim.text.noSpace;
+  return { sim, compiled, attrs, tables, text, globals, params: {} };
+}
+
+/** One rule's n-grams through a key: how many it matched there, and the busiest of them. */
+export interface FocusRule {
+  id: string;
+  /** Matched n-grams with the key in them, weighted as the rule weighs them. */
+  count: number;
+  /** As a card lists them, its percents of everything the rule counts over; busiest first. */
+  items: RuleItem[];
+}
+
+export interface FocusResult {
+  rules: FocusRule[];
+  /** For a key pressed to bring a layer on: the keys pressed right after it, busiest first. */
+  next: RuleItemNext[];
+}
+
+const SHAPE: Record<NgramSource['kind'], 1 | 2 | 3> = {
+  unigram: 1,
+  bigram: 2,
+  trigram: 3,
+  skip1: 2,
+  skip2: 2,
+  skip3: 2,
+};
+
+/**
+ * What one key, pressed on one layer, takes part in: for every rule over pairs or trigrams, the
+ * n-grams it matched with the key in them, in the order its card lists them. The key is a physical
+ * key; its presses are every logical key typed on it on that layer, a chord it is part of included.
+ */
+export function evaluateFocus(
+  sim: SimulationTables,
+  compiled: CompiledLayout,
+  ruleSet: RuleSet,
+  focus: { key: number; layer: number },
+  opts: { limit?: number } = {},
+): FocusResult {
+  const ctx = contextOf(sim, compiled, ruleSet);
+  const limit = opts.limit ?? ctx.globals.top_items;
+  const ids: number[] = [];
+  ctx.attrs.forEach((a, id) => {
+    if (a && a.layer === focus.layer && a.members.includes(focus.key)) ids.push(id);
+  });
+
+  const rules: FocusRule[] = [];
+  for (const rule of ruleSet.rules) {
+    if (rule.enabled === false || rule.aggregate === 'ratio') continue;
+    if ((rule.source ?? 'ngram') !== 'ngram' || (rule.ngram?.n ?? 2) < 2) continue;
+    const scoped: Ctx = { ...ctx, params: rule.params ?? {} };
+    const match = compilePredicate(rule.where, scoped);
+    const n = rule.ngram?.n ?? 2;
+    const ngram: Attrs[] = new Array(n);
+    const sources = ngramSources(rule, scoped);
+    let total = 0;
+    for (const source of sources) total += source.total * source.weight;
+    let count = 0;
+    const found: { ngram: Ngram; c: number; d: number | null }[] = [];
+    for (const source of sources) {
+      const index = tableIndex(source.table, SHAPE[source.kind]);
+      const ordinals = new Set<number>();
+      for (const id of ids) for (const o of index.through(id)) ordinals.add(o);
+      for (const o of [...ordinals].sort((a, b) => a - b)) {
+        ngramOf(scoped, source.kind, index.keys[o], ngram);
+        if (!match(ngram)) continue;
+        const c = index.counts[o] * weightOf(rule.weight, ngram) * source.weight;
+        count += c;
+        found.push({ ngram: [...ngram], c, d: pairDistance(ngram, scoped.globals.distance_model) });
+      }
+    }
+    if (found.length === 0) continue;
+    const items = found
+      .sort((a, b) => b.c - a.c)
+      .slice(0, limit)
+      .map((it) => toItem(scoped, rule, it.ngram, it.c, it.d, total));
+    rules.push({ id: rule.id, count, items });
+  }
+
+  // What a layer key was pressed for: the presses right after it.
+  const next = new Map<number, number>();
+  const pairs = tableIndex(ctx.tables.bigram, 2);
+  for (const id of ids) {
+    if (!reachesLayer(ctx.attrs[id])) continue;
+    for (const o of pairs.through(id)) {
+      const [a, b] = unpackBigram(pairs.keys[o]);
+      if (a === id) next.set(b, (next.get(b) ?? 0) + pairs.counts[o]);
+    }
+  }
+  const sum = [...next.values()].reduce((x, y) => x + y, 0);
+  const pairTotal = ctx.tables.totals.bigram;
+  return {
+    rules,
+    next: [...next.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([id, c]) => {
+        const k = ctx.attrs[id];
+        return {
+          label: k.label,
+          key: k.pos,
+          layer: k.layer,
+          count: c,
+          share: sum > 0 ? c / sum : 0,
+          percent: pairTotal > 0 ? (c / pairTotal) * 100 : 0,
+        };
+      }),
+  };
+}
+
 export interface EvaluationResult {
   results: RuleResult[];
   score: Score;
@@ -586,12 +817,8 @@ export function evaluate(
   compiled: CompiledLayout,
   ruleSet: RuleSet,
 ): EvaluationResult {
-  const globals: Globals = { ...DEFAULT_GLOBALS, ...ruleSet.globals };
-  const attrs = buildAttrs(compiled, sim.registry);
-  const withSpace = globals.universe === 'with_space';
-  const tables = withSpace ? sim.withSpace : sim.noSpace;
-  const text = withSpace ? sim.text.withSpace : sim.text.noSpace;
-  const ctx: Ctx = { sim, compiled, attrs, tables, text, globals, params: {} };
+  const ctx = contextOf(sim, compiled, ruleSet);
+  const { globals } = ctx;
 
   const enabled = ruleSet.rules.filter((r) => r.enabled !== false);
   const results = enabled.filter((r) => r.aggregate !== 'ratio').map((r) => evaluateRule(r, ctx));
