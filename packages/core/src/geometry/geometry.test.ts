@@ -11,6 +11,10 @@ describe('geometry presets', () => {
       '1333+2': 24,
       '1222+2': 18,
       '23332+2': 30,
+      '23332+1': 28,
+      '13332+2': 28,
+      '13332+1': 26,
+      '13331+2': 26,
       ansi: 34,
       iso: 35,
     };
@@ -88,5 +92,26 @@ describe('per-column row sets', () => {
     // Symmetric across hands, 26 alpha keys plus four thumbs.
     expect(g.keys.filter((k) => k.hand === 'L' && !k.thumb)).toHaveLength(13);
     expect(g.keys.filter((k) => k.hand === 'R' && !k.thumb)).toHaveLength(13);
+  });
+
+  it('the smaller Hummingbirds drop the pinky top key, a thumb, or both', () => {
+    const left = (id: string) =>
+      getGeometryPreset(id)
+        .keys.filter((k) => k.hand === 'L')
+        .map((k) => k.id)
+        .sort();
+    const hummingbird = left('23332+2');
+    expect(left('23332+1')).toEqual(hummingbird.filter((id) => id !== 'L1'));
+    expect(left('13332+2')).toEqual(hummingbird.filter((id) => id !== 'LTP'));
+    expect(left('13332+1')).toEqual(hummingbird.filter((id) => id !== 'LTP' && id !== 'L1'));
+    expect(getGeometryPreset('13332+1').textThumbs).toEqual(['L0', 'R0']);
+  });
+
+  it('13331+2 keeps only the home key of the pinky and the inner index', () => {
+    const g = getGeometryPreset('13331+2');
+    const left = g.keys.filter((k) => k.hand === 'L' && !k.thumb).map((k) => k.id);
+    expect(left.filter((id) => id.endsWith('P'))).toEqual(['LHP']);
+    expect(left.filter((id) => id.endsWith('C'))).toEqual(['LHC']);
+    expect(g.textRows.map((r) => r.length)).toEqual([6, 10, 6]);
   });
 });

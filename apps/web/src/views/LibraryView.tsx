@@ -24,7 +24,6 @@ import { useDismiss } from '../components/use-dismiss.js';
 import {
   compareBy,
   type LayoutSummary,
-  type SortKey,
   type SummaryEntry,
   type SummaryOptions,
   useSummaries,
@@ -44,9 +43,9 @@ import {
   savedRef,
   toSearch,
 } from '../url/params.js';
-import { AnalysisSettings } from './AnalysisSelects.js';
 import { KeymapDrawerImport } from './library/KeymapDrawerImport.js';
 import { LayerStrip } from './library/LayerStrip.js';
+import { type BoardChoice, RankingDialog, SORTS } from './library/RankingDialog.js';
 import { type NewLayoutSpec, newLayout } from './new-layout.js';
 import { useCorpora } from './useCorpora.js';
 import { useRuleSet } from './useRuleSet.js';
@@ -58,11 +57,18 @@ import { useRuleSet } from './useRuleSet.js';
  */
 const RANK_MAX_SYMBOLS = 100_000;
 
-const SORTS: [SortKey, string][] = [
-  ['effort', 'Effort'],
-  ['sfb', 'SFB'],
-  ['name', 'Name'],
-];
+/** Where a layout on a board of its own is filed among the boards. */
+const CUSTOM_BOARD = 'custom';
+
+function boardOf(layout: Layout | undefined): string {
+  return layout && 'preset' in layout.geometry ? layout.geometry.preset : CUSTOM_BOARD;
+}
+
+function boardLabel(id: string): string {
+  if (id === CUSTOM_BOARD || !GEOMETRY_PRESET_IDS.includes(id)) return 'Other boards';
+  // Every columnar board is split; the prefix only lengthens a list of them.
+  return getGeometryPreset(id).name.replace(/^Split columnar /, '');
+}
 
 /** Characters named on a card before the list is cut short. */
 const MISSING_SHOWN = 5;
@@ -196,6 +202,8 @@ interface Listed {
   compiled: CompiledLayout | undefined;
   /** Author, board and layers, and when a saved one last changed. */
   meta: string;
+  /** The board's preset id, or `custom`: what the board filter goes by. */
+  board: string;
 }
 
 function layerCount(n: number): string {
@@ -460,19 +468,76 @@ export function LibraryView() {
     return out;
   }, [bundled, savedLayouts, savedCompiled, without]);
 
-  const summaryEntries: SummaryEntry[] = useMemo(
+  // Bundled and saved layouts are one list, ranked together: a layout of one's own means something
+  // next to the ones it would replace.
+  const listed: Listed[] = useMemo(
     () => [
-      ...bundled.map(({ id }) => {
-        const key = `b:${id}`;
-        return { key, layout: ranked.get(key)?.layout ?? null };
-      }),
-      ...saved.entries.map((e) => {
-        const key = `s:${e.id}`;
-        // One that will not compile is still sent, so it fails and shows as unscored.
-        return { key, layout: ranked.get(key)?.layout ?? savedLayouts.get(e.id) ?? null };
-      }),
+      ...bundled.map(({ id, layout, compiled }) => ({
+        key: `b:${id}`,
+        name: layout.name,
+        saved: false,
+        id,
+        ref: id,
+        layout,
+        compiled,
+        meta: [layout.author, compiled.geometry.id, layerCount(compiled.layers.length)]
+          .filter(Boolean)
+          .join(' · '),
+        board: boardOf(layout),
+      })),
+      ...saved.entries.map((entry) => ({
+        key: `s:${entry.id}`,
+        name: entry.name,
+        saved: true,
+        id: entry.id,
+        ref: savedRef(entry.id),
+        layout: savedLayouts.get(entry.id),
+        compiled: savedCompiled.get(entry.id),
+        meta: [
+          entry.author,
+          entry.geometry,
+          entry.layers ? layerCount(entry.layers) : null,
+          entry.updatedAt ? `updated ${entry.updatedAt.slice(0, 10)}` : null,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+        board: entry.geometry ?? boardOf(savedLayouts.get(entry.id)),
+      })),
     ],
-    [bundled, saved.entries, ranked, savedLayouts],
+    [bundled, saved.entries, savedLayouts, savedCompiled],
+  );
+
+  // The boards the listed layouts are on, in the order the presets are offered, each with how
+  // many layouts it has; only shown boards are listed, and only listed layouts are scored.
+  const hiddenBoards = useSession((s) => s.hiddenBoards);
+  const boards: BoardChoice[] = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const item of listed) counts.set(item.board, (counts.get(item.board) ?? 0) + 1);
+    const order = [...GEOMETRY_PRESET_IDS, CUSTOM_BOARD];
+    return [...counts]
+      .sort(([a], [b]) => order.indexOf(a) - order.indexOf(b))
+      .map(([id, count]) => ({ id, label: boardLabel(id), count }));
+  }, [listed]);
+  const shownListed = useMemo(
+    () => listed.filter((item) => !hiddenBoards.includes(item.board)),
+    [listed, hiddenBoards],
+  );
+  const shownKeys = useMemo(() => new Set(shownListed.map((item) => item.key)), [shownListed]);
+
+  const summaryEntries: SummaryEntry[] = useMemo(
+    () =>
+      [
+        ...bundled.map(({ id }) => {
+          const key = `b:${id}`;
+          return { key, layout: ranked.get(key)?.layout ?? null };
+        }),
+        ...saved.entries.map((e) => {
+          const key = `s:${e.id}`;
+          // One that will not compile is still sent, so it fails and shows as unscored.
+          return { key, layout: ranked.get(key)?.layout ?? savedLayouts.get(e.id) ?? null };
+        }),
+      ].filter((entry) => shownKeys.has(entry.key)),
+    [bundled, saved.entries, ranked, savedLayouts, shownKeys],
   );
   const summaryOptions: SummaryOptions = useMemo(
     () => ({
@@ -512,48 +577,11 @@ export function LibraryView() {
   const unscored =
     summaries.size > 0 && [...summaries.values()].every((s) => s.effort === null && s.sfb === null);
 
-  // Bundled and saved layouts are one list, ranked together: a layout of one's own means something
-  // next to the ones it would replace.
-  const listed: Listed[] = useMemo(
-    () => [
-      ...bundled.map(({ id, layout, compiled }) => ({
-        key: `b:${id}`,
-        name: layout.name,
-        saved: false,
-        id,
-        ref: id,
-        layout,
-        compiled,
-        meta: [layout.author, compiled.geometry.id, layerCount(compiled.layers.length)]
-          .filter(Boolean)
-          .join(' · '),
-      })),
-      ...saved.entries.map((entry) => ({
-        key: `s:${entry.id}`,
-        name: entry.name,
-        saved: true,
-        id: entry.id,
-        ref: savedRef(entry.id),
-        layout: savedLayouts.get(entry.id),
-        compiled: savedCompiled.get(entry.id),
-        meta: [
-          entry.author,
-          entry.geometry,
-          entry.layers ? layerCount(entry.layers) : null,
-          entry.updatedAt ? `updated ${entry.updatedAt.slice(0, 10)}` : null,
-        ]
-          .filter(Boolean)
-          .join(' · '),
-      })),
-    ],
-    [bundled, saved.entries, savedLayouts, savedCompiled],
-  );
-
   // The chosen order applies from the first score on: each layout takes its place as its score
   // lands, and those still being scored wait below the ranked ones.
   const sorted = useMemo(
-    () => [...listed].sort(compareBy(sortBy, summaries, behind)),
-    [listed, sortBy, summaries, behind],
+    () => [...shownListed].sort(compareBy(sortBy, summaries, behind)),
+    [shownListed, sortBy, summaries, behind],
   );
 
   // The preview follows the text as it is typed, so a malformed import is obvious immediately.
@@ -672,33 +700,24 @@ export function LibraryView() {
         </p>
       </div>
 
-      <div className="lm-toolbar flex flex-row flex-wrap items-end gap-3">
-        <AnalysisSettings
+      <div className="flex flex-wrap items-center gap-2">
+        <RankingDialog
           params={params}
           onChange={setParams}
           corpora={corpora}
           ruleSetName={ruleSet.name}
-          verb="Rank"
+          sortBy={sortBy}
+          onSort={setSortBy}
+          boards={boards}
+          summary={`By ${SORTS.find(([key]) => key === sortBy)?.[1] ?? sortBy}${
+            shownListed.length < listed.length
+              ? `, ${shownListed.length} of ${listed.length} layouts on the boards chosen`
+              : ''
+          }.`}
         />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <fieldset className="join" aria-label="Sort layouts by">
-          <legend className="text-xs opacity-70 float-left mr-2 self-center">Sort by</legend>
-          {SORTS.map(([key, label]) => (
-            // daisyUI draws a radio styled as a button from its accessible name.
-            <input
-              key={key}
-              type="radio"
-              name="library-sort"
-              aria-label={label}
-              className="join-item btn btn-xs"
-              checked={sortBy === key}
-              onChange={() => setSortBy(key)}
-            />
-          ))}
-        </fieldset>
-        <HelpLink help={HELP.sorting} />
         <span className="text-xs opacity-60" aria-live="polite">
           {pending > 0
             ? `Scoring layouts on a sample of ${rankSymbols.toLocaleString('en-US')} symbols… ${summaryEntries.length - pending} of ${summaryEntries.length}`

@@ -31,6 +31,7 @@ describe('where the site opens', () => {
   it('keeps the corpus, the rules and the features chosen in one view in the next', async () => {
     const user = userEvent.setup();
     const { currentPath, currentSearch } = renderRoute(LIBRARY, { storage: freshStorage() });
+    await user.click(await screen.findByRole('button', { name: 'Rank and filter' }));
     const corpus = await screen.findByRole('combobox', { name: 'Corpus' });
     await waitFor(() => expect(within(corpus).getAllByRole('option').length).toBeGreaterThan(1));
     await user.selectOptions(corpus, 'en-conv');

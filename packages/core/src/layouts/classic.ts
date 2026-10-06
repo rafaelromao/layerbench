@@ -1,18 +1,62 @@
+import { getGeometryPreset } from '../geometry/presets.js';
 import { importTextLayout } from '../layout/text.js';
-import type { Layout } from '../layout/types.js';
+import type { Binding, ComboDef, Layout } from '../layout/types.js';
 
-interface ClassicDef {
+export interface ClassicDef {
   id: string;
   name: string;
   author?: string;
-  rows: string;
+  /** The letter block, three lines of tokens read left to right across both hands. */
+  rows?: string;
   /** Thumb tokens (left outer→inner, right inner→outer); `space` marks the space key. */
   thumbs?: string;
+  /**
+   * Tokens by key id, for a board whose rows the text cannot describe (one with no bottom row,
+   * say). Used instead of `rows` and `thumbs`.
+   */
+  byKey?: Record<string, string>;
+  /**
+   * Keys that are not one symbol, by the token written for them: a repeat or magic key, a layer
+   * key, a key that types nothing the analysis counts (`null` leaves the position empty).
+   */
+  special?: Record<string, Binding | null>;
+  /** Symbols on chords: the tokens of the keys pressed together, and what the chord types. */
+  combos?: { keys: string; types: string }[];
+  /** Further letter layers, reached from the base layer by a `special` key. */
+  layers?: { id: string; name: string; byKey: Record<string, string> }[];
   /** Board this layout was designed for; the 34-key split columnar board when omitted. */
   geometry?: string;
+  languages?: string[];
   description?: string;
   /** Where the letter arrangement came from. Shown on the card and in the document. */
   source?: string;
+}
+
+const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
+
+/** A raw key: drawn with its legend, typing nothing the analysis counts. */
+export const raw = (label: string): Binding => ({ kind: 'raw', label });
+
+/** Bindings from tokens by key id, with the special ones swapped in. */
+function bindingsOf(
+  byKey: Record<string, string>,
+  special: Record<string, Binding | null>,
+): Record<string, Binding> {
+  const out: Record<string, Binding> = {};
+  for (const [id, token] of Object.entries(byKey)) {
+    const s = token in special ? special[token] : token === 'space' ? kp(' ') : kp(token);
+    if (s) out[id] = s;
+  }
+  return out;
+}
+
+/** The key that types `token` on the base layer; a combo names its keys this way. */
+function keyFor(bindings: Record<string, Binding>, token: string, layout: string): string {
+  const ids = Object.entries(bindings)
+    .filter(([, b]) => b.kind === 'kp' && b.symbol === token)
+    .map(([id]) => id);
+  if (ids.length !== 1) throw new Error(`${layout}: no single key types ${token}`);
+  return ids[0];
 }
 
 /** Classic single-layer layouts (30-key core), from the Layouts Doc / cyanophage listings. */
@@ -181,14 +225,60 @@ export const CLASSIC_DEFS: ClassicDef[] = [
 ];
 
 export function classicLayout(def: ClassicDef): Layout {
-  const text = def.thumbs ? `${def.rows}\n${def.thumbs}` : `${def.rows}\nspace`;
   const preset = def.geometry ?? '3x5+2';
-  const { layout } = importTextLayout(text, preset, def.name);
+  const special = def.special ?? {};
+  let layout: Layout;
+  if (def.byKey) {
+    const ids = new Set(getGeometryPreset(preset).keys.map((k) => k.id));
+    for (const id of Object.keys(def.byKey)) {
+      if (!ids.has(id)) throw new Error(`${def.name}: ${preset} has no key ${id}`);
+    }
+    const bindings = bindingsOf(def.byKey, special);
+    const space = Object.entries(def.byKey).find(([, t]) => t === 'space')?.[0];
+    if (!space) throw new Error(`${def.name}: no key is space`);
+    layout = {
+      format: 'layoutmaster/layout@1',
+      name: def.name,
+      hostLocale: 'symbols',
+      geometry: { preset },
+      keys: { space },
+      layers: [{ id: 'base', name: 'Base', bindings }],
+    };
+  } else {
+    const text = def.thumbs ? `${def.rows}\n${def.thumbs}` : `${def.rows}\nspace`;
+    layout = importTextLayout(text, preset, def.name).layout;
+    const base = layout.layers[0].bindings;
+    for (const [id, b] of Object.entries(base)) {
+      if (b.kind !== 'kp' || b.symbol === undefined || !(b.symbol in special)) continue;
+      const s = special[b.symbol];
+      if (s) base[id] = s;
+      else delete base[id];
+    }
+  }
+  for (const extra of def.layers ?? []) {
+    layout.layers.push({
+      id: extra.id,
+      name: extra.name,
+      bindings: bindingsOf(extra.byKey, special),
+    });
+  }
+  if (def.combos) {
+    const base = layout.layers[0].bindings;
+    layout.combos = def.combos.map(
+      ({ keys, types }): ComboDef => ({
+        id: types,
+        keys: keys.split(' ').map((t) => keyFor(base, t, def.name)),
+        binding: types.length === 1 ? kp(types) : { kind: 'macro', symbols: types },
+        layers: ['base'],
+        role: 'typing',
+      }),
+    );
+  }
   layout.id = def.id;
   layout.author = def.author;
   const where = def.source ? ` Letters from ${def.source}.` : '';
   layout.description = `${def.description ?? `${def.name} on a split columnar board (space on the left thumb).`}${where}`;
-  layout.languages = ['en'];
+  layout.languages = def.languages ?? ['en'];
   return layout;
 }
 

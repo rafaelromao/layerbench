@@ -247,10 +247,46 @@ export const GEOMETRY_PRESETS: Record<string, () => Geometry> = {
   '23332+2': () =>
     buildColumnar({
       id: '23332+2',
-      name: 'Split columnar 23332 + 2 thumbs (30, Hummingbird)',
+      name: 'Split columnar 23332 + 2 thumbs (30, Hummingbird, Rommana)',
       cols: [1, 2, 3, 4, 5],
       // The pinky loses its bottom key and the inner index its top one: a sub-30 alpha block.
       rowsPerCol: { 1: [0, 1], 5: [1, 2] },
+      thumbs: 2,
+    }),
+  '23332+1': () =>
+    buildColumnar({
+      id: '23332+1',
+      name: 'Split columnar 23332 + 1 thumb (28, Grumpy)',
+      cols: [1, 2, 3, 4, 5],
+      rowsPerCol: { 1: [0, 1], 5: [1, 2] },
+      thumbs: 1,
+    }),
+  '13332+2': () =>
+    buildColumnar({
+      id: '13332+2',
+      name: 'Split columnar 13332 + 2 thumbs (28, Zilpzalp)',
+      cols: [1, 2, 3, 4, 5],
+      // The Hummingbird block without the pinky's top key.
+      homeOnlyCols: [1],
+      rowsPerCol: { 5: [1, 2] },
+      thumbs: 2,
+    }),
+  '13332+1': () =>
+    buildColumnar({
+      id: '13332+1',
+      name: 'Split columnar 13332 + 1 thumb (26, ʻākohekohe, Visorbearer)',
+      cols: [1, 2, 3, 4, 5],
+      homeOnlyCols: [1],
+      rowsPerCol: { 5: [1, 2] },
+      thumbs: 1,
+    }),
+  '13331+2': () =>
+    buildColumnar({
+      id: '13331+2',
+      name: 'Split columnar 13331 + 2 thumbs (26, Smallcat)',
+      cols: [1, 2, 3, 4, 5],
+      // Pinky and inner index keep only their home key.
+      homeOnlyCols: [1, 5],
       thumbs: 2,
     }),
   ansi: () => buildRowStagger({ id: 'ansi', name: 'Row stagger ANSI', iso: false }),

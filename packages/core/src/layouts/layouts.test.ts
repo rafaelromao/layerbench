@@ -75,3 +75,84 @@ describe('Romak numbers and symbols', () => {
     },
   );
 });
+
+/**
+ * The small-board layouts lean on more than their letter blocks: chords, magic and repeat keys, a
+ * second letter layer. A chord on the wrong keys, or a magic key that never fires, still types the
+ * alphabet, so these hold each to what its source says.
+ */
+describe('small-board layouts', () => {
+  const OPTS = { caseMode: 'fold', crossWord: 'reset' } as const;
+  const layout = (id: string) => {
+    const found = BUNDLED_LAYOUTS.find((l) => l.id === id);
+    if (!found) throw new Error(`no bundled layout ${id}`);
+    return found;
+  };
+  const keyOf = (id: string, symbol: string) =>
+    Object.entries(layout(id).layers[0].bindings).find(
+      ([, b]) => b.kind === 'kp' && b.symbol === symbol,
+    )?.[0];
+
+  it('puts each chord on the keys its source names', () => {
+    const chords = (id: string) =>
+      Object.fromEntries(
+        (layout(id).combos ?? []).map((c) => [
+          c.id,
+          c.keys.map((k) => {
+            const b = layout(id).layers[0].bindings[k];
+            return b.kind === 'kp' ? b.symbol : k;
+          }),
+        ]),
+      );
+    expect(chords('hands-down-gold')).toEqual({ q: ['g', 'p'], z: ['s', 'd'] });
+    expect(chords('t-34')).toEqual({ q: ['j', 'c'], qu: ['c', 'y'], z: ['y', 'f'] });
+    expect(chords('finch')).toEqual({
+      qu: ['w', 'y'],
+      v: ['l', 'y'],
+      z: ['x', 'g'],
+      j: ['d', 'g'],
+    });
+    expect(chords('caksoylar')).toEqual({
+      q: ['w', 'f'],
+      j: ['f', 'p'],
+      v: ['c', 'd'],
+      z: ['x', 'c'],
+    });
+  });
+
+  it('puts the thumb letter on a thumb', () => {
+    expect(keyOf('hands-down-gold', 't')).toBe('L0');
+    expect(keyOf('rsthd', 'e')).toBe('L1');
+    expect(keyOf('t-34', 'e')).toBe('R0');
+    expect(keyOf('enthium', 'r')).toBe('R0');
+    expect(keyOf('nordrassil', 't')).toBe('R1');
+    expect(keyOf('finch', 'e')).toBe('R0');
+  });
+
+  it('types with the magic key where Magic Sturdy rules say', () => {
+    const compiled = compileLayout(layout('magic-sturdy'));
+    const magic = Object.entries(layout('magic-sturdy').layers[0].bindings).find(
+      ([, b]) => b.kind === 'adaptive',
+    )?.[0];
+    // After a space the magic key types "the" in one press.
+    expect(explain(compiled, 'in the', OPTS).steps.map((s) => s.key)).toContain(magic);
+    // The doubled `o` is the repeat key's.
+    expect(explain(compiled, 'look', OPTS).steps.map((s) => s.key)).toContain('R0');
+  });
+
+  it('types Uno’s adaptive keys as its page says', () => {
+    const compiled = compileLayout(layout('uno'));
+    const keys = (text: string) => explain(compiled, text, OPTS).steps.map((s) => s.key);
+    // `hm` is h at the start of a word and after t, m after a vowel; `on` is o, then n after a vowel.
+    expect(keys('the')).toEqual(['RHI', 'LHR', 'LHI']);
+    expect(keys('em')).toEqual(['LHI', 'LHR']);
+    expect(keys('on')).toEqual(['LHM', 'LHM']);
+  });
+
+  it('reaches the Piano’s second letter layer with a one-shot', () => {
+    const compiled = compileLayout(layout('ben-vallack-piano'));
+    const steps = explain(compiled, 'v', OPTS).steps.map((s) => `${s.key}:${s.kind}`);
+    expect(steps[0]).toBe('R1:tap');
+    expect(steps.at(-1)).toBe('LTR:tap');
+  });
+});

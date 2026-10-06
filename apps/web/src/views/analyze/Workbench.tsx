@@ -16,6 +16,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { Collapsible } from '../../components/Collapsible.js';
 import { FamilyFilter, METRIC_FAMILIES, useFamilyShown } from '../../components/FamilyFilter.js';
 import { featureList } from '../../components/FeatureSwitches.js';
 import { HelpLink } from '../../components/HelpLink.js';
@@ -680,150 +681,154 @@ export function Workbench({
             aria-label="Board"
           >
             <div className="card-body gap-2 p-3 sm:p-4 min-w-0">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="lm-layer-strip min-w-0 flex-1">
-                  <LayerTabs
-                    layers={state.compiled.layers.map((l) => ({
-                      idx: l.idx,
-                      id: l.id,
-                      name: l.name,
-                      color: l.color,
-                    }))}
-                    active={boardLayer}
-                    onSelect={(layer) => {
-                      // Choosing a layer is looking at it: the word stops playing over it.
-                      setPlay(null);
-                      send({ type: 'selectLayer', layer });
-                    }}
-                    onRename={(id, name) => send({ type: 'renameLayer', id, name })}
-                  />
-                </div>
-                <div className="join shrink-0">
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-ghost join-item"
-                    aria-label="Undo"
-                    title="Undo (Ctrl+Z)"
-                    disabled={state.past.length === 0}
-                    onClick={() => undo(false)}
-                  >
-                    ↶
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-ghost join-item"
-                    aria-label="Redo"
-                    title="Redo (Ctrl+Shift+Z)"
-                    disabled={state.future.length === 0}
-                    onClick={() => undo(true)}
-                  >
-                    ↷
-                  </button>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                {hasTypingCombos && (
-                  <label className="label cursor-pointer gap-2">
-                    <span className="label-text text-xs">Combos</span>
-                    <input
-                      type="checkbox"
-                      className="toggle toggle-xs"
-                      aria-label="Show the combos that type"
-                      checked={showCombos}
-                      onChange={(e) => setShowCombos(e.target.checked)}
-                    />
-                  </label>
-                )}
-                <label className="label-text text-xs" htmlFor="heat">
-                  Heat
-                </label>
-                <select
-                  id="heat"
-                  name="heat"
-                  className="select select-xs select-bordered"
-                  value={params.heat}
-                  onChange={(e) => setParams({ heat: e.target.value as HeatMode })}
-                >
-                  {HEAT_MODES.map((m) => (
-                    <option key={m} value={m}>
-                      {HEAT_LABELS[m]}
-                    </option>
-                  ))}
-                </select>
-                {loading && (
-                  <span
-                    className="loading loading-spinner loading-xs"
-                    role="status"
-                    aria-label="Analyzing"
-                  />
-                )}
-              </div>
+              <Collapsible id="analyze.board" title="Board">
+                <div className="flex flex-col gap-2 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="lm-layer-strip min-w-0 flex-1">
+                      <LayerTabs
+                        layers={state.compiled.layers.map((l) => ({
+                          idx: l.idx,
+                          id: l.id,
+                          name: l.name,
+                          color: l.color,
+                        }))}
+                        active={boardLayer}
+                        onSelect={(layer) => {
+                          // Choosing a layer is looking at it: the word stops playing over it.
+                          setPlay(null);
+                          send({ type: 'selectLayer', layer });
+                        }}
+                        onRename={(id, name) => send({ type: 'renameLayer', id, name })}
+                      />
+                    </div>
+                    <div className="join shrink-0">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-ghost join-item"
+                        aria-label="Undo"
+                        title="Undo (Ctrl+Z)"
+                        disabled={state.past.length === 0}
+                        onClick={() => undo(false)}
+                      >
+                        ↶
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-ghost join-item"
+                        aria-label="Redo"
+                        title="Redo (Ctrl+Shift+Z)"
+                        disabled={state.future.length === 0}
+                        onClick={() => undo(true)}
+                      >
+                        ↷
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    {hasTypingCombos && (
+                      <label className="label cursor-pointer gap-2">
+                        <span className="label-text text-xs">Combos</span>
+                        <input
+                          type="checkbox"
+                          className="toggle toggle-xs"
+                          aria-label="Show the combos that type"
+                          checked={showCombos}
+                          onChange={(e) => setShowCombos(e.target.checked)}
+                        />
+                      </label>
+                    )}
+                    <label className="label-text text-xs" htmlFor="heat">
+                      Heat
+                    </label>
+                    <select
+                      id="heat"
+                      name="heat"
+                      className="select select-xs select-bordered"
+                      value={params.heat}
+                      onChange={(e) => setParams({ heat: e.target.value as HeatMode })}
+                    >
+                      {HEAT_MODES.map((m) => (
+                        <option key={m} value={m}>
+                          {HEAT_LABELS[m]}
+                        </option>
+                      ))}
+                    </select>
+                    {loading && (
+                      <span
+                        className="loading loading-spinner loading-xs"
+                        role="status"
+                        aria-label="Analyzing"
+                      />
+                    )}
+                  </div>
 
-              <div className="lm-board relative">
-                {/* The board pans inside its own box on a narrow screen. */}
-                <div className="lm-board-scroll">
-                  <Keyboard
-                    ref={keyboard}
-                    id="kb-analyze"
-                    legendList="separate"
-                    compiled={state.compiled}
-                    layer={boardLayer}
-                    selected={state.selected}
-                    heat={heat}
-                    highlight={highlighted}
-                    pressed={frame?.keys ?? []}
-                    combos={boardCombos}
-                    arcs={playing ? [] : arcs}
-                    draggable
-                    onDragStart={() => stopPlaying()}
-                    onKeyClick={(keyId) => {
-                      if (state.comboPick) {
-                        send({ type: 'comboPickToggle', keyId });
-                        return;
-                      }
-                      stopPlaying();
-                      if (!state.swapFrom) clearOutline();
-                      // A click, a tap and Space all select; the inspector is where editing
-                      // happens, so a finger and a mouse reach it the same way.
-                      send({ type: 'keyClick', keyId });
-                    }}
-                    onDropKey={(drop) => {
-                      send({ type: 'dropKey', ...drop });
-                      setMessage(
-                        drop.to.kind === 'layer'
-                          ? `${drop.from} sent to ${drop.to.layerId}`
-                          : `${drop.from} ${drop.mode === 'copy' ? 'copied to' : 'swapped with'} ${drop.to.keyId}`,
-                      );
-                    }}
-                    onKeyShortcut={onKeyShortcut}
-                  />
+                  <div className="lm-board relative">
+                    {/* The board pans inside its own box on a narrow screen. */}
+                    <div className="lm-board-scroll">
+                      <Keyboard
+                        ref={keyboard}
+                        id="kb-analyze"
+                        legendList="separate"
+                        compiled={state.compiled}
+                        layer={boardLayer}
+                        selected={state.selected}
+                        heat={heat}
+                        highlight={highlighted}
+                        pressed={frame?.keys ?? []}
+                        combos={boardCombos}
+                        arcs={playing ? [] : arcs}
+                        draggable
+                        onDragStart={() => stopPlaying()}
+                        onKeyClick={(keyId) => {
+                          if (state.comboPick) {
+                            send({ type: 'comboPickToggle', keyId });
+                            return;
+                          }
+                          stopPlaying();
+                          if (!state.swapFrom) clearOutline();
+                          // A click, a tap and Space all select; the inspector is where editing
+                          // happens, so a finger and a mouse reach it the same way.
+                          send({ type: 'keyClick', keyId });
+                        }}
+                        onDropKey={(drop) => {
+                          send({ type: 'dropKey', ...drop });
+                          setMessage(
+                            drop.to.kind === 'layer'
+                              ? `${drop.from} sent to ${drop.to.layerId}`
+                              : `${drop.from} ${drop.mode === 'copy' ? 'copied to' : 'swapped with'} ${drop.to.keyId}`,
+                          );
+                        }}
+                        onKeyShortcut={onKeyShortcut}
+                      />
+                    </div>
+                  </div>
+
+                  {state.swapFrom && (
+                    <p className="text-xs">
+                      <span className="font-mono">{state.swapFrom}</span> is armed —{' '}
+                      {state.swapMode === 'copy'
+                        ? 'tap the key to copy it onto'
+                        : 'tap the key to swap it with'}
+                      , or press Escape.{' '}
+                      <button
+                        type="button"
+                        className="btn btn-xs btn-ghost"
+                        onClick={() => send({ type: 'cancelSwap' })}
+                      >
+                        Cancel
+                      </button>
+                    </p>
+                  )}
+
+                  {state.comboPick && (
+                    <p className="text-xs">
+                      Picking keys for a combo:{' '}
+                      <span className="font-mono">{state.comboPick.join('+') || 'none yet'}</span> —
+                      tap them on the board, then add the combo in the Combos panel.
+                    </p>
+                  )}
                 </div>
-              </div>
-
-              {state.swapFrom && (
-                <p className="text-xs">
-                  <span className="font-mono">{state.swapFrom}</span> is armed —{' '}
-                  {state.swapMode === 'copy'
-                    ? 'tap the key to copy it onto'
-                    : 'tap the key to swap it with'}
-                  , or press Escape.{' '}
-                  <button
-                    type="button"
-                    className="btn btn-xs btn-ghost"
-                    onClick={() => send({ type: 'cancelSwap' })}
-                  >
-                    Cancel
-                  </button>
-                </p>
-              )}
-
-              {state.comboPick && (
-                <p className="text-xs">
-                  Picking keys for a combo:{' '}
-                  <span className="font-mono">{state.comboPick.join('+') || 'none yet'}</span> — tap
-                  them on the board, then add the combo in the Combos panel.
-                </p>
-              )}
+              </Collapsible>
             </div>
           </section>
 
@@ -832,95 +837,99 @@ export function Workbench({
             aria-label="A word, typed"
           >
             <div className="card-body gap-2 p-3 sm:p-4">
-              <form
-                id="explain-form"
-                className="flex items-end gap-2"
-                onSubmit={(e) => e.preventDefault()}
-              >
-                <div className="form-control flex-1">
-                  <label className="label-text text-xs" htmlFor="explain-text">
-                    How is this typed?
-                  </label>
-                  <input
-                    id="explain-text"
-                    name="text"
-                    autoComplete="off"
-                    placeholder="ação · chave · hello"
-                    className="input input-sm input-bordered w-full font-mono"
-                    value={explainText}
-                    onChange={(e) => setExplainText(e.target.value)}
-                  />
-                </div>
-                {(outline.length > 0 || explain) && (
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-ghost"
-                    onClick={() => {
-                      clearOutline();
-                      setExplainText('');
-                    }}
+              <Collapsible id="analyze.word" title="A word, typed">
+                <div className="flex flex-col gap-2 min-w-0">
+                  <form
+                    id="explain-form"
+                    className="flex items-end gap-2"
+                    onSubmit={(e) => e.preventDefault()}
                   >
-                    clear
-                  </button>
-                )}
-              </form>
-
-              {explain && (
-                <div className="space-y-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {frames.length > 0 && (
+                    <div className="form-control flex-1">
+                      <label className="label-text text-xs" htmlFor="explain-text">
+                        How is this typed?
+                      </label>
+                      <input
+                        id="explain-text"
+                        name="text"
+                        autoComplete="off"
+                        placeholder="ação · chave · hello"
+                        className="input input-sm input-bordered w-full font-mono"
+                        value={explainText}
+                        onChange={(e) => setExplainText(e.target.value)}
+                      />
+                    </div>
+                    {(outline.length > 0 || explain) && (
                       <button
                         type="button"
-                        className="btn btn-xs"
-                        onClick={() =>
-                          setPlay((p) =>
-                            p?.playing
-                              ? { ...p, playing: false }
-                              : {
-                                  frame: p && p.frame < frames.length ? p.frame : 0,
-                                  playing: true,
-                                },
-                          )
-                        }
+                        className="btn btn-sm btn-ghost"
+                        onClick={() => {
+                          clearOutline();
+                          setExplainText('');
+                        }}
                       >
-                        {play?.playing ? '⏸ Pause' : '▶ Play'}
+                        clear
                       </button>
                     )}
-                    <span className="font-mono text-xs opacity-70">
-                      {explain.dto.presses} presses
-                    </span>
-                  </div>
-                  {/* Each press, in order: the one lit on the board is marked, and any one can be
-                      looked at on its own. */}
-                  <ol className="flex flex-wrap items-center gap-1" aria-label="Presses">
-                    {explain.dto.steps.map((s, i) => {
-                      const at = frames.findIndex((f) => f.step === i);
-                      const now = frame?.step === i;
-                      return (
-                        <li
-                          // biome-ignore lint/suspicious/noArrayIndexKey: a key can be pressed twice in one word
-                          key={`${s.key}-${i}`}
-                        >
+                  </form>
+
+                  {explain && (
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {frames.length > 0 && (
                           <button
                             type="button"
-                            className={`btn btn-xs gap-1 font-mono ${now ? 'btn-primary' : 'btn-outline'} ${
-                              s.wastedOneShot && !now ? 'btn-warning' : ''
-                            } ${s.kind === 'hold_release' ? 'opacity-50' : ''}`}
-                            title={`${stepKey(s.key)} · ${s.layer} · ${s.finger}`}
-                            aria-current={now ? 'step' : undefined}
-                            disabled={at < 0}
-                            onClick={() => setPlay({ frame: at, playing: false })}
+                            className="btn btn-xs"
+                            onClick={() =>
+                              setPlay((p) =>
+                                p?.playing
+                                  ? { ...p, playing: false }
+                                  : {
+                                      frame: p && p.frame < frames.length ? p.frame : 0,
+                                      playing: true,
+                                    },
+                              )
+                            }
                           >
-                            <span className="opacity-60">{stepKey(s.key)}</span>
-                            <span>{symbolLabel(s.symbols) || s.label}</span>
-                            <span className="opacity-50">{s.layer}</span>
+                            {play?.playing ? '⏸ Pause' : '▶ Play'}
                           </button>
-                        </li>
-                      );
-                    })}
-                  </ol>
+                        )}
+                        <span className="font-mono text-xs opacity-70">
+                          {explain.dto.presses} presses
+                        </span>
+                      </div>
+                      {/* Each press, in order: the one lit on the board is marked, and any one can be
+                      looked at on its own. */}
+                      <ol className="flex flex-wrap items-center gap-1" aria-label="Presses">
+                        {explain.dto.steps.map((s, i) => {
+                          const at = frames.findIndex((f) => f.step === i);
+                          const now = frame?.step === i;
+                          return (
+                            <li
+                              // biome-ignore lint/suspicious/noArrayIndexKey: a key can be pressed twice in one word
+                              key={`${s.key}-${i}`}
+                            >
+                              <button
+                                type="button"
+                                className={`btn btn-xs gap-1 font-mono ${now ? 'btn-primary' : 'btn-outline'} ${
+                                  s.wastedOneShot && !now ? 'btn-warning' : ''
+                                } ${s.kind === 'hold_release' ? 'opacity-50' : ''}`}
+                                title={`${stepKey(s.key)} · ${s.layer} · ${s.finger}`}
+                                aria-current={now ? 'step' : undefined}
+                                disabled={at < 0}
+                                onClick={() => setPlay({ frame: at, playing: false })}
+                              >
+                                <span className="opacity-60">{stepKey(s.key)}</span>
+                                <span>{symbolLabel(s.symbols) || s.label}</span>
+                                <span className="opacity-50">{s.layer}</span>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    </div>
+                  )}
                 </div>
-              )}
+              </Collapsible>
             </div>
           </section>
 
@@ -936,7 +945,9 @@ export function Workbench({
           />
 
           <section className="lm-edit-extras min-w-0" aria-label="Legend">
-            <KeyLegend compiled={state.compiled} layer={boardLayer} />
+            <Collapsible id="analyze.legend" title="Legend">
+              <KeyLegend compiled={state.compiled} layer={boardLayer} />
+            </Collapsible>
           </section>
 
           <p aria-live="polite" className="sr-only">
@@ -968,37 +979,41 @@ export function Workbench({
 
           <section className="lm-edit-panels card bg-base-100 border border-base-300 min-w-0">
             <div className="card-body gap-3 p-3 sm:p-4 min-w-0">
-              <div className="flex items-center gap-2 min-w-0">
-                <div
-                  role="tablist"
-                  aria-label="Editor panels"
-                  className="lm-panel-tabs tabs tabs-border tabs-sm min-w-0 flex-1"
-                >
-                  {PANELS.map(([panel, label]) => (
-                    <button
-                      key={panel}
-                      type="button"
-                      role="tab"
-                      aria-selected={state.panel === panel}
-                      className={`tab ${state.panel === panel ? 'tab-active' : ''}`}
-                      onClick={() => send({ type: 'setPanel', panel })}
+              <Collapsible id="analyze.editor" title="Editor">
+                <div className="flex flex-col gap-3 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div
+                      role="tablist"
+                      aria-label="Editor panels"
+                      className="lm-panel-tabs tabs tabs-border tabs-sm min-w-0 flex-1"
                     >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <HelpLink help={PANELS.find(([p]) => p === state.panel)?.[2] ?? HELP.panels} />
-              </div>
+                      {PANELS.map(([panel, label]) => (
+                        <button
+                          key={panel}
+                          type="button"
+                          role="tab"
+                          aria-selected={state.panel === panel}
+                          className={`tab ${state.panel === panel ? 'tab-active' : ''}`}
+                          onClick={() => send({ type: 'setPanel', panel })}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <HelpLink help={PANELS.find(([p]) => p === state.panel)?.[2] ?? HELP.panels} />
+                  </div>
 
-              {state.panel === 'layers' && <LayersPanel state={state} send={send} />}
-              {state.panel === 'features' && <FeaturesPanel state={state} send={send} />}
-              {state.panel === 'geometry' && <GeometryPanel state={state} send={send} />}
-              {state.panel === 'combos' && <CombosPanel state={state} send={send} />}
-              {state.panel === 'behaviors' && <BehaviorsPanel state={state} send={send} />}
-              {state.panel === 'paths' && (
-                <PathsPanel state={state} send={send} producers={producers} />
-              )}
-              {state.panel === 'json' && <JsonPanel state={state} send={send} />}
+                  {state.panel === 'layers' && <LayersPanel state={state} send={send} />}
+                  {state.panel === 'features' && <FeaturesPanel state={state} send={send} />}
+                  {state.panel === 'geometry' && <GeometryPanel state={state} send={send} />}
+                  {state.panel === 'combos' && <CombosPanel state={state} send={send} />}
+                  {state.panel === 'behaviors' && <BehaviorsPanel state={state} send={send} />}
+                  {state.panel === 'paths' && (
+                    <PathsPanel state={state} send={send} producers={producers} />
+                  )}
+                  {state.panel === 'json' && <JsonPanel state={state} send={send} />}
+                </div>
+              </Collapsible>
             </div>
           </section>
         </div>
@@ -1061,113 +1076,125 @@ function SummaryCard({
       aria-label="Summary"
     >
       <div className="card-body gap-3 p-3 sm:p-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="font-semibold text-sm">Summary</h2>
-            <HelpLink help={HELP.headline} />
-            {provisional && <span className="text-xs opacity-70">estimate after swap</span>}
-            {stale && !provisional && <span className="text-xs opacity-70">updating…</span>}
-          </div>
-          <p className="font-mono text-xs opacity-60">
-            {params.universe === 'with_space' ? 'with space' : 'no space'} ·{' '}
-            {params.caseMode === 'model' ? 'shift modeled' : 'case folded'} ·{' '}
-            {String(shown?.globals.normalization ?? 'percent_of_ngrams')} ·{' '}
-            {params.sample.toLocaleString('en-US')} symbols of {corpusName}
-          </p>
-        </div>
-
-        {stale && progress && progress.total > 0 && (
-          <progress
-            className="progress progress-primary w-full h-1"
-            value={progress.done}
-            max={progress.total}
-            aria-label="Analysis progress"
-          />
-        )}
-
-        {shown ? (
-          <>
-            <SummaryStrip results={shown.results} onSelect={onSelect} />
-            {shown.score.enabled && shown.score.value !== null && (
-              <p className="text-sm">
-                Composite score: <span className="font-mono">{shown.score.value.toFixed(1)}</span> /
-                100
+        <Collapsible
+          id="analyze.summary"
+          title="Summary"
+          extra={
+            <>
+              <HelpLink help={HELP.headline} />
+              {provisional && <span className="text-xs opacity-70">estimate after swap</span>}
+              {stale && !provisional && <span className="text-xs opacity-70">updating…</span>}
+            </>
+          }
+        >
+          <div className="flex flex-col gap-3">
+            <div>
+              <p className="font-mono text-xs opacity-60">
+                {params.universe === 'with_space' ? 'with space' : 'no space'} ·{' '}
+                {params.caseMode === 'model' ? 'shift modeled' : 'case folded'} ·{' '}
+                {String(shown?.globals.normalization ?? 'percent_of_ngrams')} ·{' '}
+                {params.sample.toLocaleString('en-US')} symbols of {corpusName}
               </p>
+            </div>
+
+            {stale && progress && progress.total > 0 && (
+              <progress
+                className="progress progress-primary w-full h-1"
+                value={progress.done}
+                max={progress.total}
+                aria-label="Analysis progress"
+              />
             )}
-          </>
-        ) : (
-          <div className="flex items-center gap-3 py-6">
-            <span className="loading loading-dots loading-md" />
-            <p className="text-sm opacity-70 flex-1">
-              Simulating {params.sample.toLocaleString('en-US')} symbols of {corpusName}…
-            </p>
-          </div>
-        )}
 
-        {languageGap && (
-          <div
-            className="alert alert-warning py-2 text-xs"
-            role="note"
-            aria-label="Language coverage"
-          >
-            <span>
-              This layout cannot type {languageGap.missingRequired.length} character
-              {languageGap.missingRequired.length === 1 ? '' : 's'} {languageGap.name} needs:{' '}
-              <span className="font-mono">{languageGap.missingRequired.join(' ')}</span>.
-            </span>
-          </div>
-        )}
-
-        {shown && (
-          <div className="space-y-1 text-xs">
-            {shown.coverage.unproducible.length === 0 ? (
-              <p>
-                <span className="badge badge-success badge-sm">
-                  every character in the text can be typed
-                </span>
-              </p>
-            ) : (
+            {shown ? (
               <>
-                <h3 className="font-semibold">
-                  Cannot type {shown.coverage.unproducible.length} character
-                  {shown.coverage.unproducible.length === 1 ? '' : 's'} of the text
-                </h3>
-                <p className="opacity-70">
-                  Each one ends the word it is in, so the numbers leave those words out.
-                </p>
-                <ul className="flex flex-wrap gap-1" aria-label="Characters the layout cannot type">
-                  {shown.coverage.unproducible.map(([sym, n]) => (
-                    <li
-                      key={sym}
-                      className="badge badge-error badge-sm font-mono gap-1"
-                      title={`${n.toLocaleString('en-US')} times`}
-                    >
-                      {symbolLabel(sym)}
-                      <span className="opacity-80">
-                        ×{n.toLocaleString('en-US')} · {share(n)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                <SummaryStrip results={shown.results} onSelect={onSelect} />
+                {shown.score.enabled && shown.score.value !== null && (
+                  <p className="text-sm">
+                    Composite score:{' '}
+                    <span className="font-mono">{shown.score.value.toFixed(1)}</span> / 100
+                  </p>
+                )}
               </>
+            ) : (
+              <div className="flex items-center gap-3 py-6">
+                <span className="loading loading-dots loading-md" />
+                <p className="text-sm opacity-70 flex-1">
+                  Simulating {params.sample.toLocaleString('en-US')} symbols of {corpusName}…
+                </p>
+              </div>
             )}
-            {shown.coverage.softDropped.length > 0 && (
-              <p className="opacity-70">
-                Punctuation skipped:{' '}
-                {shown.coverage.softDropped.map(([sym, n], i) => (
-                  <span key={sym} className="font-mono">
-                    {i > 0 && ' '}
-                    {symbolLabel(sym)} ×{n.toLocaleString('en-US')}
-                  </span>
-                ))}
-              </p>
+
+            {languageGap && (
+              <div
+                className="alert alert-warning py-2 text-xs"
+                role="note"
+                aria-label="Language coverage"
+              >
+                <span>
+                  This layout cannot type {languageGap.missingRequired.length} character
+                  {languageGap.missingRequired.length === 1 ? '' : 's'} {languageGap.name} needs:{' '}
+                  <span className="font-mono">{languageGap.missingRequired.join(' ')}</span>.
+                </span>
+              </div>
             )}
-            <p className="font-mono opacity-60">
-              {shown.stats.keystrokes.toLocaleString('en-US')} keystrokes ·{' '}
-              {shown.stats.words.toLocaleString('en-US')} words · {Math.round(shown.elapsedMs)} ms
-            </p>
+
+            {shown && (
+              <div className="space-y-1 text-xs">
+                {shown.coverage.unproducible.length === 0 ? (
+                  <p>
+                    <span className="badge badge-success badge-sm">
+                      every character in the text can be typed
+                    </span>
+                  </p>
+                ) : (
+                  <>
+                    <h3 className="font-semibold">
+                      Cannot type {shown.coverage.unproducible.length} character
+                      {shown.coverage.unproducible.length === 1 ? '' : 's'} of the text
+                    </h3>
+                    <p className="opacity-70">
+                      Each one ends the word it is in, so the numbers leave those words out.
+                    </p>
+                    <ul
+                      className="flex flex-wrap gap-1"
+                      aria-label="Characters the layout cannot type"
+                    >
+                      {shown.coverage.unproducible.map(([sym, n]) => (
+                        <li
+                          key={sym}
+                          className="badge badge-error badge-sm font-mono gap-1"
+                          title={`${n.toLocaleString('en-US')} times`}
+                        >
+                          {symbolLabel(sym)}
+                          <span className="opacity-80">
+                            ×{n.toLocaleString('en-US')} · {share(n)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                {shown.coverage.softDropped.length > 0 && (
+                  <p className="opacity-70">
+                    Punctuation skipped:{' '}
+                    {shown.coverage.softDropped.map(([sym, n], i) => (
+                      <span key={sym} className="font-mono">
+                        {i > 0 && ' '}
+                        {symbolLabel(sym)} ×{n.toLocaleString('en-US')}
+                      </span>
+                    ))}
+                  </p>
+                )}
+                <p className="font-mono opacity-60">
+                  {shown.stats.keystrokes.toLocaleString('en-US')} keystrokes ·{' '}
+                  {shown.stats.words.toLocaleString('en-US')} words · {Math.round(shown.elapsedMs)}{' '}
+                  ms
+                </p>
+              </div>
+            )}
           </div>
-        )}
+        </Collapsible>
       </div>
     </section>
   );
@@ -1189,28 +1216,30 @@ const MetricFamilies = memo(function MetricFamilies({
 }) {
   const shown = useFamilyShown();
   return (
-    <div className="lm-edit-results space-y-4 min-w-0">
-      <FamilyFilter />
-      {METRIC_FAMILIES.map(([family, title]) => {
-        const results = report.results.filter((r) => r.family === family);
-        if (results.length === 0 || !shown(family)) return null;
-        return (
-          <section key={family} className="space-y-2">
-            <h2 className="text-sm uppercase tracking-wide opacity-60">{title}</h2>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {results.map((r) => (
-                <MetricCard
-                  key={r.id}
-                  result={r}
-                  selectedItem={selectedRule === r.id ? selectedItem : null}
-                  onHighlightItem={onHighlightItem}
-                  presetId={presetId}
-                />
-              ))}
-            </div>
-          </section>
-        );
-      })}
-    </div>
+    <Collapsible id="analyze.numbers" title="Numbers" className="lm-edit-results">
+      <div className="space-y-4 min-w-0">
+        <FamilyFilter />
+        {METRIC_FAMILIES.map(([family, title]) => {
+          const results = report.results.filter((r) => r.family === family);
+          if (results.length === 0 || !shown(family)) return null;
+          return (
+            <section key={family} className="space-y-2">
+              <h2 className="text-sm uppercase tracking-wide opacity-60">{title}</h2>
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {results.map((r) => (
+                  <MetricCard
+                    key={r.id}
+                    result={r}
+                    selectedItem={selectedRule === r.id ? selectedItem : null}
+                    onHighlightItem={onHighlightItem}
+                    presetId={presetId}
+                  />
+                ))}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+    </Collapsible>
   );
 });

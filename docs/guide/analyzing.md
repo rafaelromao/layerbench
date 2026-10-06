@@ -3,6 +3,10 @@
 **Analyze** types a sample of text on the layout, key by key, and shows what that took: a heat map
 of the keys, the numbers under it, and how any word you give it is typed.
 
+Each group of the page, **Board**, **A word, typed**, **Summary**, **Legend**, **Editor** and
+**Numbers**, folds away under its heading, and so do **Layouts** and **Metric comparison** in
+**Compare**. This browser remembers which you folded.
+
 Two numbers lead: **Effort**, how hard the keys are to reach, and **SFB**, how often one finger
 presses two keys in a row. Lower is better for both. Most numbers also carry a badge that places
 them among other layouts: green is good, red is poor.
@@ -25,9 +29,12 @@ different keys. It is the first measure of the
 ### Sorting and comparing
 
 **Library**, where the site opens, sorts every layout by Effort, by SFB or by name, and shows both
-numbers on each card, all scored on the same sample of the same text. The layouts you saved are
+numbers on each card, all scored on the same sample of the same text. **Rank and filter** holds
+what the ranking is made with, the sort, and **Boards**, which lists only the layouts on the boards
+you tick, so you can keep to the keyboards you own; the layouts on the others are not scored at
+all. The layouts you saved are
 ranked in the same list as the ones that come with the app, marked *saved*. Each layout takes its
-place as its score arrives. This browser remembers the scores and the sort you chose, so the next
+place as its score arrives. This browser remembers the scores, the sort and the boards you chose, so the next
 visit opens already ranked; the scores are checked again quietly, and a layout moves only if its
 numbers changed. **Compare** puts every number for two layouts side by side, with the difference and which
 of the two does better.

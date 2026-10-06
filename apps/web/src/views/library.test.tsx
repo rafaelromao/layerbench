@@ -14,8 +14,13 @@ function freshStorage(): IndexedDbAdapter {
   return new IndexedDbAdapter(`layoutmaster-library-${++counter}`);
 }
 
-// The sort is remembered in this browser; each test starts from the default.
-beforeEach(() => useSession.setState({ librarySort: 'effort' }));
+/** The ranking choices, sort and board filter are in a dialog of their own. */
+async function openRanking() {
+  await userEvent.click(await screen.findByRole('button', { name: 'Rank and filter' }));
+}
+
+// The sort and the boards are remembered in this browser; each test starts from the defaults.
+beforeEach(() => useSession.setState({ librarySort: 'effort', hiddenBoards: [] }));
 
 describe('Creating layouts', () => {
   it('creates a layout from scratch and opens it in the editor', async () => {
@@ -70,6 +75,7 @@ describe('Creating layouts', () => {
   it('opens a copy in Analyze, to edit, on the corpus and rules the Library ranks by', async () => {
     const user = userEvent.setup();
     const { currentPath, currentSearch } = renderRoute(LIBRARY, { storage: freshStorage() });
+    await openRanking();
     const corpus = await screen.findByRole('combobox', { name: 'Corpus' });
     await waitFor(() => expect(within(corpus).getAllByRole('option').length).toBeGreaterThan(1));
     await user.selectOptions(corpus, 'pt-br-conv');
@@ -129,6 +135,7 @@ describe('Ranking layouts', () => {
     const efforts = cards().map((c) => valueOn(c, 'Effort'));
     expect(efforts).toEqual([...efforts].sort((a, b) => a - b));
 
+    await openRanking();
     await user.click(screen.getByRole('radio', { name: 'SFB' }));
     const sfbs = cards().map((c) => valueOn(c, 'SFB'));
     expect(sfbs).toEqual([...sfbs].sort((a, b) => a - b));
@@ -192,6 +199,7 @@ describe('Ranking layouts', () => {
     await screen.findByText(/^Scoring layouts on a sample of [\d,]+ symbols… 2 of/, undefined, {
       timeout: 60_000,
     });
+    await openRanking();
     expect(screen.getByRole('radio', { name: 'Effort' })).toBeChecked();
     const names = [...document.querySelectorAll('article h3')].map((h) => h.textContent);
     // The better of the two scored comes first, the worse second, and the unscored wait below.
@@ -245,6 +253,7 @@ describe('Ranking layouts', () => {
     expect(within(cards()[1]).queryByText('saved')).toBeNull();
 
     // By name, it takes its place among the bundled layouts rather than after them.
+    await openRanking();
     await user.click(screen.getByRole('radio', { name: 'Name' }));
     const byName = names();
     expect(byName).toEqual([...byName].sort((a, b) => (a ?? '').localeCompare(b ?? '')));
@@ -309,9 +318,34 @@ describe('Ranking layouts', () => {
   }, 90_000);
 });
 
+describe('Choosing which boards are listed', () => {
+  it('lists only the layouts on the boards chosen, and remembers the choice', async () => {
+    const user = userEvent.setup();
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    await openRanking();
+    const boards = screen.getByRole('group', { name: 'Boards' });
+    const columnar34 = within(boards).getByRole('checkbox', { name: /^3×5 \+ 2 thumbs \(34\)/ });
+    expect(columnar34).toBeChecked();
+
+    await user.click(columnar34);
+    expect(screen.queryByRole('button', { name: 'Duplicate Qwerty' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Duplicate Bird' })).toBeInTheDocument();
+    expect(screen.getByText(/layouts on the boards chosen/)).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem('layoutmaster:session') ?? '{}').state).toMatchObject({
+      hiddenBoards: ['3x5+2'],
+    });
+
+    const all = within(boards).getByRole('checkbox', { name: 'All' }) as HTMLInputElement;
+    expect(all.indeterminate).toBe(true);
+    await user.click(all);
+    expect(screen.getByRole('button', { name: 'Duplicate Qwerty' })).toBeInTheDocument();
+  });
+});
+
 describe('Choosing what layouts are ranked on', () => {
   it('ranks on English news with the Layouts Doc rules unless told otherwise', async () => {
     renderRoute(LIBRARY, { storage: freshStorage() });
+    await openRanking();
     const corpus = (await screen.findByRole('combobox', { name: 'Corpus' })) as HTMLSelectElement;
     const rules = screen.getByRole('combobox', { name: 'Rule set' }) as HTMLSelectElement;
     await waitFor(() => expect(corpus.selectedOptions[0]?.textContent).toMatch(/Leipzig/));
@@ -322,6 +356,7 @@ describe('Choosing what layouts are ranked on', () => {
   it('keeps the chosen corpus and rules in the link, and hands them to Analyze', async () => {
     const user = userEvent.setup();
     const { currentSearch } = renderRoute(LIBRARY, { storage: freshStorage() });
+    await openRanking();
     const corpus = await screen.findByRole('combobox', { name: 'Corpus' });
     await waitFor(() => expect(within(corpus).getAllByRole('option').length).toBeGreaterThan(1));
 
@@ -342,6 +377,7 @@ describe('Choosing which special features a ranking counts', () => {
   it('ranks without the features left unticked, and hands that to Analyze', async () => {
     const user = userEvent.setup();
     const { currentSearch } = renderRoute(LIBRARY, { storage: freshStorage() });
+    await openRanking();
     const macros = await screen.findByRole('checkbox', { name: 'Multi-letter macros' });
     for (const name of ['Magic keys', 'Repeat key', 'Typing combos']) {
       expect(screen.getByRole('checkbox', { name })).toBeChecked();

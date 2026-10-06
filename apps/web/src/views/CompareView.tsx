@@ -1,6 +1,7 @@
 import { BUNDLED_LAYOUTS, type CorpusManifest, toCanonicalJson } from '@layoutmaster/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Collapsible } from '../components/Collapsible.js';
 import { FamilyFilter, useFamilyShown } from '../components/FamilyFilter.js';
 import { featureList } from '../components/FeatureSwitches.js';
 import { formatValue } from '../components/format.js';
@@ -185,110 +186,120 @@ export function CompareView() {
 
       {error && <div className="alert alert-error text-sm">{error}</div>}
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {(
-          [
-            ['A', nameA, typedA.compiled, analysisA.report],
-            ['B', nameB, typedB.compiled, analysisB.report],
-          ] as const
-        ).map(([side, name, compiled, report]) => (
-          <section key={side} className="card bg-base-100 border border-base-300">
-            <div className="card-body gap-3 p-4">
-              <h2 className="font-semibold text-sm">
-                {side}: {name}
-              </h2>
-              {compiled && (
-                <Keyboard
-                  id={`kb-${side}`}
-                  compiled={compiled}
-                  layer={0}
-                  interactive={false}
-                  showHold={false}
-                  heat={report ? usageHeat(report) : {}}
-                  highlight={highlightFor(report)}
-                />
-              )}
-              {report ? (
-                <SummaryStrip results={report.results} />
-              ) : (
-                <div className="flex items-center gap-2 py-4">
-                  <span className="loading loading-dots loading-xs" />
-                  <span className="text-sm opacity-70">analyzing…</span>
-                </div>
-              )}
-            </div>
-          </section>
-        ))}
-      </div>
+      <Collapsible id="compare.layouts" title="Layouts">
+        <div className="grid gap-4 md:grid-cols-2">
+          {(
+            [
+              ['A', nameA, typedA.compiled, analysisA.report],
+              ['B', nameB, typedB.compiled, analysisB.report],
+            ] as const
+          ).map(([side, name, compiled, report]) => (
+            <section key={side} className="card bg-base-100 border border-base-300">
+              <div className="card-body gap-3 p-4">
+                <h2 className="font-semibold text-sm">
+                  {side}: {name}
+                </h2>
+                {compiled && (
+                  <Keyboard
+                    id={`kb-${side}`}
+                    compiled={compiled}
+                    layer={0}
+                    interactive={false}
+                    showHold={false}
+                    heat={report ? usageHeat(report) : {}}
+                    highlight={highlightFor(report)}
+                  />
+                )}
+                {report ? (
+                  <SummaryStrip results={report.results} />
+                ) : (
+                  <div className="flex items-center gap-2 py-4">
+                    <span className="loading loading-dots loading-xs" />
+                    <span className="text-sm opacity-70">analyzing…</span>
+                  </div>
+                )}
+              </div>
+            </section>
+          ))}
+        </div>
+      </Collapsible>
 
-      {rows.length > 0 && <FamilyFilter />}
       {rows.length > 0 && (
-        <section
-          className="card bg-base-100 border border-base-300 overflow-x-auto"
-          // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be reachable by keyboard.
-          tabIndex={0}
-          aria-label="Metric comparison"
-        >
-          <table className="table table-sm table-zebra">
-            <thead>
-              <tr>
-                <th>Metric</th>
-                <th className="text-right">{nameA}</th>
-                <th className="text-right">{nameB}</th>
-                <th className="text-right">Δ (B − A)</th>
-                <th>Better</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows
-                .filter((row) => shown(row.family))
-                .map((row) => (
-                  <tr
-                    key={row.id}
-                    onMouseEnter={() => setHovered(row.id)}
-                    onMouseLeave={() => setHovered(null)}
-                    onFocus={() => setHovered(row.id)}
-                    onBlur={() => setHovered(null)}
-                  >
-                    <td>
-                      <div className="font-medium">{row.label}</div>
-                      <div className="text-[10px] uppercase tracking-wide opacity-50">
-                        {row.family}
-                      </div>
-                    </td>
-                    <td className="text-right font-mono tabular-nums">
-                      {formatValue(row.a.value, row.unit)} <BandBadge band={row.a.band} />
-                    </td>
-                    <td className="text-right font-mono tabular-nums">
-                      {row.b ? formatValue(row.b.value, row.unit) : '–'}{' '}
-                      {row.b && <BandBadge band={row.b.band} />}
-                    </td>
-                    <td
-                      className={`text-right font-mono tabular-nums ${
-                        row.winner === 'b' ? 'text-success' : row.winner === 'a' ? 'text-error' : ''
-                      }`}
-                    >
-                      {row.delta === null
-                        ? '–'
-                        : `${row.delta > 0 ? '+' : ''}${row.delta.toFixed(2)}`}
-                    </td>
-                    <td>
-                      {row.winner === 'tie' ? (
-                        <span className="opacity-40">–</span>
-                      ) : (
-                        <span
-                          // A badge is one line tall; a name that wrapped would spill out of it.
-                          className={`badge badge-sm whitespace-nowrap ${row.winner === 'b' ? 'badge-primary' : ''}`}
-                        >
-                          {row.winner === 'a' ? nameA : nameB}
-                        </span>
-                      )}
-                    </td>
+        <Collapsible id="compare.metrics" title="Metric comparison">
+          <div className="space-y-2">
+            <FamilyFilter />
+            <section
+              className="card bg-base-100 border border-base-300 overflow-x-auto"
+              // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be reachable by keyboard.
+              tabIndex={0}
+              aria-label="Metric comparison"
+            >
+              <table className="table table-sm table-zebra">
+                <thead>
+                  <tr>
+                    <th>Metric</th>
+                    <th className="text-right">{nameA}</th>
+                    <th className="text-right">{nameB}</th>
+                    <th className="text-right">Δ (B − A)</th>
+                    <th>Better</th>
                   </tr>
-                ))}
-            </tbody>
-          </table>
-        </section>
+                </thead>
+                <tbody>
+                  {rows
+                    .filter((row) => shown(row.family))
+                    .map((row) => (
+                      <tr
+                        key={row.id}
+                        onMouseEnter={() => setHovered(row.id)}
+                        onMouseLeave={() => setHovered(null)}
+                        onFocus={() => setHovered(row.id)}
+                        onBlur={() => setHovered(null)}
+                      >
+                        <td>
+                          <div className="font-medium">{row.label}</div>
+                          <div className="text-[10px] uppercase tracking-wide opacity-50">
+                            {row.family}
+                          </div>
+                        </td>
+                        <td className="text-right font-mono tabular-nums">
+                          {formatValue(row.a.value, row.unit)} <BandBadge band={row.a.band} />
+                        </td>
+                        <td className="text-right font-mono tabular-nums">
+                          {row.b ? formatValue(row.b.value, row.unit) : '–'}{' '}
+                          {row.b && <BandBadge band={row.b.band} />}
+                        </td>
+                        <td
+                          className={`text-right font-mono tabular-nums ${
+                            row.winner === 'b'
+                              ? 'text-success'
+                              : row.winner === 'a'
+                                ? 'text-error'
+                                : ''
+                          }`}
+                        >
+                          {row.delta === null
+                            ? '–'
+                            : `${row.delta > 0 ? '+' : ''}${row.delta.toFixed(2)}`}
+                        </td>
+                        <td>
+                          {row.winner === 'tie' ? (
+                            <span className="opacity-40">–</span>
+                          ) : (
+                            <span
+                              // A badge is one line tall; a name that wrapped would spill out of it.
+                              className={`badge badge-sm whitespace-nowrap ${row.winner === 'b' ? 'badge-primary' : ''}`}
+                            >
+                              {row.winner === 'a' ? nameA : nameB}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </section>
+          </div>
+        </Collapsible>
       )}
     </div>
   );

@@ -1,13 +1,18 @@
 import type { Layout } from '../layout/types.js';
-import { CLASSIC_LAYOUTS } from './classic.js';
+import { CLASSIC_LAYOUTS, classicLayout } from './classic.js';
 import { magicRomak, romak24, romak34 } from './romak.js';
+import { SMALL_DEFS } from './small.js';
 
 export { CLASSIC_DEFS, CLASSIC_LAYOUTS, classicLayout } from './classic.js';
 export { magicRomak, romak24, romak34 } from './romak.js';
+export { SMALL_DEFS } from './small.js';
 export { numberLayer, symbolLayer, templateSymbols } from './templates.js';
 
+/** Layouts made for small boards: thumb letters, chords, magic and repeat keys. */
+export const SMALL_LAYOUTS: Layout[] = SMALL_DEFS.map(classicLayout);
+
 /** The layouts the app offers. */
-export const BUNDLED_LAYOUTS: Layout[] = [magicRomak, ...CLASSIC_LAYOUTS];
+export const BUNDLED_LAYOUTS: Layout[] = [magicRomak, ...CLASSIC_LAYOUTS, ...SMALL_LAYOUTS];
 
 /**
  * Layouts the app no longer offers but the engine still exercises: Romak 24 is Magic Romak without

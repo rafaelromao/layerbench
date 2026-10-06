@@ -18,6 +18,12 @@ interface SessionState {
   /** How the Library sorts its layouts. */
   librarySort: SortKey;
   setLibrarySort: (sort: SortKey) => void;
+  /** Boards whose layouts the Library leaves out, by preset id (`custom` for any other board). */
+  hiddenBoards: string[];
+  showBoards: (boards: readonly string[], shown: boolean) => void;
+  /** The groups of Analyze and Compare folded away, by id; the same in every visit. */
+  collapsedGroups: string[];
+  toggleGroup: (group: string) => void;
 }
 
 export const useSession = create<SessionState>()(
@@ -37,6 +43,20 @@ export const useSession = create<SessionState>()(
       },
       librarySort: 'effort',
       setLibrarySort: (librarySort) => set({ librarySort }),
+      hiddenBoards: [],
+      showBoards: (boards, shown) => {
+        const rest = get().hiddenBoards.filter((b) => !boards.includes(b));
+        set({ hiddenBoards: shown ? rest : [...rest, ...boards] });
+      },
+      collapsedGroups: [],
+      toggleGroup: (group) => {
+        const current = get().collapsedGroups;
+        set({
+          collapsedGroups: current.includes(group)
+            ? current.filter((g) => g !== group)
+            : [...current, group],
+        });
+      },
     }),
     {
       name: 'layoutmaster:session',
@@ -45,6 +65,8 @@ export const useSession = create<SessionState>()(
         editPanel: s.editPanel,
         hiddenFamilies: s.hiddenFamilies,
         librarySort: s.librarySort,
+        hiddenBoards: s.hiddenBoards,
+        collapsedGroups: s.collapsedGroups,
       }),
     },
   ),

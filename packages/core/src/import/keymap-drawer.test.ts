@@ -150,7 +150,8 @@ describe('boards', () => {
     expect(notation('23332+2')).toBe('2^3332v+2 2+2v3332^');
     expect(notation('ansi')).toBeNull();
     // And reading the notation back gives the same board.
-    for (const id of ['3x5+2', '3x6+3', '1333+2', '1222+2', '23332+2']) {
+    const columnar = ['3x5+2', '3x6+3', '1333+2', '1222+2', '23332+2', '23332+1', '13332+2'];
+    for (const id of [...columnar, '13332+1', '13331+2']) {
       expect(boardFromKeys(cptKeys(notation(id) as string), id).geometry).toEqual({ preset: id });
     }
   });
