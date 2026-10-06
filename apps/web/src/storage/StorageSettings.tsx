@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { detectTarget, signIn, signOut, useGitHubSession } from '../auth/github-session.js';
+import { HelpLink } from '../components/HelpLink.js';
+import { HELP } from '../guide/help.js';
 import { toast } from '../state/toasts.js';
 import { CompositeStorage } from './composite.js';
 import { IndexedDbAdapter } from './indexeddb.js';
@@ -103,9 +105,12 @@ export function StorageSettings() {
 
       <dialog ref={dialog} className="modal" aria-labelledby="storage-settings-title">
         <div className="modal-box max-w-lg space-y-3">
-          <h2 id="storage-settings-title" className="font-semibold text-base">
-            Storage
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 id="storage-settings-title" className="font-semibold text-base">
+              Storage
+            </h2>
+            <HelpLink help={HELP.storage} />
+          </div>
           <p className="text-xs opacity-70">
             Your layouts, rule sets and corpora are saved in this browser.
             {status === 'unavailable'

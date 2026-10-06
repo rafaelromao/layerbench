@@ -1,5 +1,13 @@
 # LayoutMaster
 
+> **Using LayoutMaster?** Everything for users is in the [guide](docs/guide/README.md), which is
+> also in the app under **Guide**. Saving your work to GitHub is in
+> [Saving and sharing](docs/guide/saving.md).
+>
+> **This README is for working on LayoutMaster's code and deploying it.** The design is in
+> [SPEC.md](SPEC.md), and metric definitions and their sources are in the
+> [glossary](docs/METRICS.md).
+
 Keyboard layout analyzer that understands ZMK layers. It **simulates** how a text corpus is actually
 typed on a keymap — one-shot and momentary layers, layers armed by macros, adaptive ("magic") keys,
 repeat keys, multi-letter macros, combos, sticky shift, caps word — and computes the Keyboard Layouts
@@ -13,88 +21,47 @@ keys are to reach, and **SFB**, how often one finger presses two keys in a row.
 Everything runs in the browser, and no account is needed. Nothing leaves the page unless you sign
 in with GitHub to keep your work in your own account.
 
-**Using it:** the [guide](docs/guide/README.md), also in the app under **Guide**, starts with four
-steps and opens further as you need it. Metric definitions and their sources are in the
-[glossary](docs/METRICS.md); the design is in [SPEC.md](SPEC.md).
-
-## Views
-
-| Route | What it does |
-|---|---|
-| `/library` | Where the site opens. Bundled and saved layouts in one list, sorted by Effort, SFB or name; import from keymap-drawer YAML, JSON or a text layout |
-| `/analyze` | Analyze and edit a layout: heat-mapped keyboard, every metric following each edit, a trace of how any word is typed, the characters it cannot type; select a key to see its own numbers and change what it does, or type it in ZMK's syntax; drag to swap; rename, reorder and duplicate layers; save it |
-| `/compare` | Two layouts side by side, with a delta for each metric, both typed with or without the same special features |
-| `/rules` | Enable, re-parameterize or compose rules, each with its sources; save the set |
-| `/corpus` | Browse the shipped corpora and build your own from pasted or uploaded text |
-| `/guide` | The user guide and the metric glossary |
-| `/about/` | The landing page: what LayoutMaster simulates, why its numbers can be trusted, and how it compares with other analyzers. A static page from `docs/site`, linked as **About** in the header |
-
-`/` opens the Library. A link to an analysis from before Analyze had its own path, `/?layout=…`,
-still opens that analysis, and a link to `/edit`, from before editing moved into Analyze, opens it
-there.
-
-A link carries the whole analysis, so any view can be shared as it stands. `?layout=inline:…` even
-carries a layout that was never saved, and Analyze writes unsaved edits into its link that way.
-
-The editor works the same with a mouse, a keyboard or a finger: [Editing a
-layout](docs/guide/editing.md) covers every gesture and shortcut, [Special keys](docs/guide/special-keys.md)
-the tap-holds, one-shots, magic and repeat keys, and [Importing and exporting](docs/guide/importing.md)
-the keymap-drawer round trip.
-
 ## Structure
 
-- `packages/core` — the engine: geometry, keymap model, ZMK-faithful simulator, n-gram tables, the
-  rule engine and analysis. Pure TypeScript with one runtime dependency; runs in a worker and in Node.
-- `packages/corpora` — builds the corpus samples the app serves.
-- `apps/web` — the single-page app. The engine runs in a Web Worker, so a million-symbol analysis
+- `packages/core`: the engine, meaning geometry, the keymap model, the ZMK-faithful simulator, n-gram
+  tables, the rule engine and analysis. Pure TypeScript with one runtime dependency; it runs in a
+  worker and in Node.
+- `packages/corpora`: builds the corpus samples the app serves.
+- `apps/web`: the single-page app. The engine runs in a Web Worker, so a million-symbol analysis
   never blocks the interface.
+- `functions/`: the Cloudflare Pages Function for signing in with GitHub, a thin wrapper around
+  `apps/web/src/server/github-auth.ts`.
+- `docs/guide`: the user guide, shown in the app under **Guide**. `docs/site`: the landing page.
 
-## Storage
+## Routes
 
-Layouts, rule sets and corpora are always saved in your browser. To have them on every browser you
-use, sign in with GitHub and they are kept in your GitHub account as well.
+| Route | View |
+|---|---|
+| `/library` | Bundled and saved layouts, sorted by Effort, SFB or name; imports |
+| `/analyze` | Analysis and editing of one layout |
+| `/compare` | Two layouts side by side |
+| `/rules` | Rule sets: enable, re-parameterize, compose, save |
+| `/corpus` | Shipped corpora, and custom ones from pasted or uploaded text |
+| `/guide` | The user guide and the metric glossary, from `docs/` |
+| `/about/` | The landing page, copied from `docs/site` by the build |
 
-**To save in gists** (the default):
+`/` opens the Library, `/?layout=…` opens Analyze, and `/edit` redirects to `/analyze`. A link
+carries the whole analysis, and `?layout=inline:…` carries a layout that was never saved; Analyze
+writes unsaved edits into its link that way.
 
-1. Open **Storage** in the header and click **Sign in with GitHub**.
-2. Approve the app on GitHub. You come back to the page you were on, unsaved edits included.
+## Storage in the code
 
-From then on every save also goes to secret gists in your account, one each for layouts, rule sets
-and corpora. Secret gists are unlisted, not private: anyone with a gist's address can read it.
+`apps/web/src/storage` holds the adapters behind `useStorage()`:
 
-**To save in your fork of layoutmaster instead:**
+- `IndexedDbAdapter` always holds a copy, written first.
+- When someone is signed in, `CompositeStorage` adds a remote copy:
+  - `GitHubAdapter`, using the Contents API, on the `layoutmaster-data` branch of their fork, or of
+    this repository for its owner.
+  - `GistAdapter`, with one secret gist per collection, otherwise.
+- `target.ts` decides between the two from the app's installations.
 
-1. Fork layoutmaster on GitHub, if you have not already. The repository's owner skips this: their
-   documents go to the repository itself.
-2. Sign in as above.
-3. In **Storage**, follow **Give LayoutMaster access to it**. On GitHub, choose your account, then
-   **Only select repositories**, pick your fork, and **Install**.
-4. Back in the app, open **Storage** and click **Check again**. It now says it is saving to your
-   fork, on the branch `layoutmaster-data`.
-
-Saves are commits to `layoutmaster-data`, under `data/`. The branch is made from your default
-branch the first time, so whatever was in `data/` there comes along, and your main branch never
-gets a save commit, so syncing the fork with the original never conflicts. If the fork is public,
-so is everything saved to it.
-
-**Good to know**
-
-- Documents saved before you switched (in this browser, or in gists) are not moved for you. Click
-  **Copy this browser's documents up** to send what this browser holds to wherever Storage now
-  saves.
-- **Sign out** leaves everything in this browser where it is.
-- The browser copy is always written first, so a network problem never loses work.
-- The page holds only a short-lived GitHub token, in memory, and sends it to `api.github.com` and
-  nowhere else. It never appears in a link, an export or an error message.
-
-## Relationship to the Elixir implementation
-
-This application replaced a complete Elixir and Phoenix implementation, which remains in the
-repository's history at `07b81b9` (`git show 07b81b9:mix.exs`, or `git checkout 07b81b9`). URL
-formats, layout and rule-set JSON and storage documents are reproduced here unchanged, so links and
-data repositories work with both. `packages/core/golden/` began as reports dumped from it, which this
-engine matched to 1e-6; they are now regenerated from this engine and pin every number it produces,
-and `packages/core/golden/GOLDENS.md` records each deliberate change to them and why.
+The sign-in state and the in-memory access token are in `apps/web/src/auth/github-session.ts`. The
+server half is `apps/web/src/server/github-auth.ts`. SPEC §4.3 has the details.
 
 ## Develop
 

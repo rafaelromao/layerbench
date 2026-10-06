@@ -3,8 +3,7 @@ import { safeParseLayout, toCanonicalJson } from '@layoutmaster/core';
 
 /**
  * A whole layout carried in a link. The blob is the canonical document, deflate-compressed and
- * base64url-encoded without padding — the same framing the reference implementation uses, so links
- * pass in both directions.
+ * base64url-encoded without padding.
  */
 
 function bytesToBase64Url(bytes: Uint8Array): string {

@@ -9,7 +9,7 @@ import { RuleSources } from './RuleSources.js';
  */
 export const HEADLINE_IDS = ['effort', 'sfb'] as const;
 
-/** The metrics shown above the fold: the headline pair, then the reference application's order. */
+/** The metrics shown above the fold: the headline pair, then the rest in a fixed order. */
 export const SUMMARY_IDS = [
   ...HEADLINE_IDS,
   'sfs',

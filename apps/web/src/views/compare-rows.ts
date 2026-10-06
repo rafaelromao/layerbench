@@ -31,9 +31,8 @@ export interface CompareRow {
 }
 
 /**
- * Pair up two reports metric by metric. The reference decided direction from whether a rule carried
- * a band, which crowned the wrong side for unbanded rules; direction is a property of the metric,
- * so it is read from the metric alone.
+ * Pair up two reports metric by metric. Direction is a property of the metric, so it is read from
+ * the metric alone, never from whether a rule carries a band.
  */
 export function compareRows(aResults: RuleResult[], bResults: RuleResult[]): CompareRow[] {
   const byId = new Map(bResults.map((r) => [r.id, r]));

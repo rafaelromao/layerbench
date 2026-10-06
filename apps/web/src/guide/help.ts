@@ -37,6 +37,7 @@ export const HELP = {
   rules: { page: 'analyzing', section: 'rules-and-their-sources', topic: 'rules and sources' },
   corpus: { page: 'analyzing', section: 'the-text-itself', topic: 'corpora' },
   keyNumbers: { page: 'analyzing', section: 'a-keys-numbers', topic: "a key's numbers" },
+  storage: { page: 'saving', topic: 'saving to GitHub' },
 } as const satisfies Record<string, HelpTopic>;
 
 /** The guide's address for a topic, under the app's base path. */

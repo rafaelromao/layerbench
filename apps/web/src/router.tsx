@@ -17,7 +17,7 @@ import { RulesView } from './views/RulesView.js';
 
 /**
  * Search parameters stay strings from end to end. The router must not coerce them: what a value
- * means is decided by `parseParams`, which mirrors the reference implementation exactly.
+ * means is decided by `parseParams` alone.
  */
 function parseSearch(searchStr: string): RawSearch {
   const out: RawSearch = {};
@@ -97,7 +97,7 @@ const libraryRoute = view('/library', LibraryView);
 const guideRoute = view('/guide', GuideView);
 const guidePageRoute = view('/guide/$page', GuideView);
 
-/** Short link to a saved layout, kept from the reference application. */
+/** Short link to a saved layout. */
 const savedLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/l/$id',

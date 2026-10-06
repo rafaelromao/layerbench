@@ -12,11 +12,6 @@ apps/web/playwright-report/
 .pnpm-store/
 .tooling/
 
-# Elixir leftovers from the `main` branch working tree
-_build/
-deps/
-priv/
-
 # scratch (goldens/staging are moved into packages/ before use)
 tmp/
 

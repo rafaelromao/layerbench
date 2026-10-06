@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { renderRoute } from '../test/render.js';
 
 /**
- * The Analyze view, exercised the way the reference implementation's own tests exercise it: a real
- * analysis over a small sample, then the numbers and the typing trace it produces.
+ * The Analyze view, exercised end to end: a real analysis over a small sample, then the numbers and
+ * the typing trace it produces.
  */
 describe('Analyze', () => {
   it('renders Magic Romak and completes the analysis', async () => {

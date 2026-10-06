@@ -132,7 +132,7 @@ describe('Magic Romak after the features rewrite', () => {
     expect(altRepeat.kind === 'adaptive' && altRepeat.default).toEqual({ kind: 'key_repeat' });
   });
 
-  // The traces the reference implementation produced, unchanged by the rewrite.
+  // The traces from before features replaced layers, unchanged by that rewrite.
   it.each([
     ['ação', ['RHM', 'R0', 'LBM', 'LHI']],
     ['chave', ['LBM', 'RBI', 'RHM', 'RBI', 'RHR']],

@@ -3,6 +3,7 @@ import analyzing from '../../../../docs/guide/analyzing.md?raw';
 import editing from '../../../../docs/guide/editing.md?raw';
 import importing from '../../../../docs/guide/importing.md?raw';
 import index from '../../../../docs/guide/README.md?raw';
+import saving from '../../../../docs/guide/saving.md?raw';
 import specialKeys from '../../../../docs/guide/special-keys.md?raw';
 import metrics from '../../../../docs/METRICS.md?raw';
 
@@ -36,6 +37,7 @@ export const GUIDE_PAGES: readonly GuidePage[] = [
     title: 'Importing and exporting',
     source: importing,
   },
+  { slug: 'saving', path: 'docs/guide/saving.md', title: 'Saving and sharing', source: saving },
   { slug: 'metrics', path: 'docs/METRICS.md', title: 'Metric glossary', source: metrics },
 ];
 

@@ -9,8 +9,8 @@ import { PRESET_IDS } from '@layoutmaster/core/rules';
 
 /**
  * The analysis parameters carried in the query string. This is a contract, not an implementation
- * detail: links produced by the reference implementation must keep working, so the parsing rules,
- * the defaults and the omit-defaults serialization all match it exactly.
+ * detail: links are shared, so the parsing rules, the defaults and the omit-defaults
+ * serialization decide what a shared link means.
  */
 
 export type CaseMode = 'fold' | 'model';
@@ -188,7 +188,7 @@ export function selectionSearch(p: Params): RawSearch {
   return out;
 }
 
-/** Query string with keys in a stable order, matching the links the reference implementation emits. */
+/** Query string with keys in a stable order, so the same analysis always gives the same link. */
 export function toQueryString(p: Params, overrides: Partial<Params> = {}): string {
   const search = toSearch(p, overrides);
   const sp = new URLSearchParams();

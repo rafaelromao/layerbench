@@ -11,9 +11,8 @@ import type {
 } from './types.js';
 
 /**
- * Canonical JSON for a layout: the exact document the reference implementation writes, and the
- * format used for storage, share links and hashing. `null`, `{}` and `[]` are dropped, except where
- * the reference keeps them (`keys.shift` is written as `null` when unset).
+ * Canonical JSON for a layout: the format used for storage, share links and hashing. `null`, `{}`
+ * and `[]` are dropped, except `keys.shift`, which is written as `null` when unset.
  */
 export type LayoutJson = Record<string, unknown>;
 

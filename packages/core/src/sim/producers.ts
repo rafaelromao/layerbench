@@ -326,8 +326,8 @@ export function enumerateProducers(
         a.cost - b.cost ||
         Number(a.dynamic) - Number(b.dynamic) ||
         Number(a.kind === 'combo') - Number(b.kind === 'combo') ||
-        // Byte order, not locale order: the reference implementation compares binaries, and this
-        // tie-break decides which producer types a symbol.
+        // Byte order, not locale order: this tie-break decides which producer types a symbol, and
+        // the pinned reports depend on it.
         (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
     );
   }

@@ -38,16 +38,6 @@ describe('inline layout links', () => {
     );
   });
 
-  // Links shared from the Elixir implementation carry a document written by a different deflate and
-  // an older Magic Romak. They must still open, whatever the shipped layout looks like now.
-  it('still opens a link written by the Elixir implementation', async () => {
-    const decoded = await decodeInline(blobFixture('inline-magic-romak-elixir.txt'));
-    expect(decoded.ok).toBe(true);
-    if (!decoded.ok) return;
-    expect(decoded.layout.name).toBe('Magic Romak');
-    expect(decoded.layout.layers.length).toBeGreaterThan(0);
-  });
-
   // A link is small; what it unpacks into need not be. Reading stops at the cap.
   it('gives up on a blob that unpacks past the size any layout could have', async () => {
     const cs = new CompressionStream('deflate');

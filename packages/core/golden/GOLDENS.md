@@ -42,35 +42,32 @@ Two files are frozen, never rewritten by `pnpm goldens`: `inline-magic-romak-fea
 and alt repeat were declared as features. `src/layout/legacy.test.ts` and `url/inline.test.ts` hold
 them to opening as today's Magic Romak, byte for byte, and typing every report's numbers.
 
-## History: these were dumped from the Elixir reference, and no longer are
+## First re-baseline
 
-The first set of reports came from the Elixir implementation that this application replaced, which
-survives only in the repository's history at `07b81b9`. Because that generator cannot be run from
-this working tree, the reports were frozen artefacts: the engine could not evolve without either
-abandoning them or hand-editing them.
-
+The first set of reports came from a generator that is no longer in this repository, so they were
+frozen artefacts: the engine could not evolve without either abandoning them or hand-editing them.
 They have since been regenerated from this engine. Comparing the two sets, with JSON key order
 normalised, the differences were fully accounted for:
 
 - **Nothing structural changed.** Simulation statistics, n-gram totals, the logical-key registry,
   producer enumeration and ordering, coverage, run histograms and every `explain` trace were
-  identical to the reference.
+  identical to the first set.
 - **`lsb` and `lss` gained real values.** Both rules compare a horizontal distance against a
-  rule-set global, `{ x_distance: { min: "$global.lsb_adjacent_u" } }`. The reference substituted
+  rule-set global, `{ x_distance: { min: "$global.lsb_adjacent_u" } }`. The first generator substituted
   `$global.` references only when the whole predicate value was a string; here the reference sits one
   level deeper, inside the numeric condition, so it was never substituted and the surviving
-  comparison `number >= "$global.lsb_adjacent_u"` is false for every number in Erlang term order.
+  comparison `number >= "$global.lsb_adjacent_u"` is false for every number.
   Lateral stretches never matched, and both rules reported `0` with no items. This engine resolves
   globals wherever they appear, so the rules now report what the metric glossary documents.
 - **The composite score moved in 12 reports**, entirely as a consequence of those two rules
   contributing real values and bands.
-- **Item lists differ where counts tie at the top-50 cutoff.** The reference emitted tied items in
-  map-hash order, so which member of a tie group survived truncation was arbitrary. This engine's
+- **Item lists differ where counts tie at the top-50 cutoff.** The first generator emitted tied items
+  in hash order, so which member of a tie group survived truncation was arbitrary. This engine's
   order is deterministic, and the suite now compares item lists exactly.
 
-Two further reference defects were already fixed before the re-baseline and no longer need
+Two further defects were already fixed before the re-baseline and no longer need
 recording as differences: the Analyze view's `travel` heat mode looked up a rule id the catalog calls
-`finger_travel` and silently fell back to usage heat, and `relabel_eligible?` compared a position
+`finger_travel` and silently fell back to usage heat, and the relabel eligibility check compared a position
 index against the whole `shift_key` map instead of `shift_key.key`.
 
 ## Second re-baseline: features instead of layers

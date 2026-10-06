@@ -2,7 +2,7 @@ import { API, type GitHubAccess, gitHubFetch } from './github-api.js';
 
 /** Saves to a copy of layoutmaster are commits on this branch, so its main branch stays as it is. */
 export const DATA_BRANCH = 'layoutmaster-data';
-/** The directory on that branch, laid out as the Elixir implementation laid out a data repository. */
+/** The directory on that branch, laid out as data repositories have always been. */
 export const DATA_PATH = 'data';
 
 /** Where a signed-in user's documents go. */

@@ -83,8 +83,8 @@ const QUOTE_MAP_SYMBOLS: Record<string, string> = {
 const LETTER_RE = /\p{L}/u;
 
 /**
- * Whitespace that collapses to a single space. Deliberately narrower than `/\s/u`: it mirrors the
- * reference implementation, where anything outside this set is dropped like any other symbol.
+ * Whitespace that collapses to a single space. Deliberately narrower than `/\s/u`: anything outside
+ * this set is dropped like any other symbol, so the shipped corpus tables stay as they are.
  */
 function isSpace(cp: number): boolean {
   return (

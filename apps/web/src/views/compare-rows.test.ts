@@ -47,7 +47,7 @@ describe('comparing two reports', () => {
   });
 
   it('judges unbanded metrics by the same direction rule', () => {
-    // The reference read direction from the presence of a band, which crowned the wrong side here.
+    // Read from the presence of a band, direction would crown the wrong side here.
     const rows = compareRows(
       [result('sfb_distance', 3, false)],
       [result('sfb_distance', 2, false)],

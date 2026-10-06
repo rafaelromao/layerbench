@@ -49,11 +49,7 @@ LayoutMaster's own JSON. See [Importing and exporting](importing.md).
 
 ## Keeping and sharing your work
 
-Saved layouts, rule sets and corpora stay in this browser. **Storage**, in the header, can also
-keep them in your GitHub account: **Sign in with GitHub**, and they go to your fork of layoutmaster
-once you give the app access to it (on a `layoutmaster-data` branch, so your main branch stays as it
-is), or to secret gists in your account otherwise. Secret gists are unlisted, not private: anyone
-with a gist's address can read it. Signing out leaves the copies in this browser where they are.
-
-A link carries everything a view shows, so copying the address shares the analysis as it stands,
-unsaved edits included, even for a layout that was never saved.
+Saved layouts, rule sets and corpora stay in this browser. Sign in with GitHub, under **Storage** in
+the header, to keep them in your GitHub account too, in gists or in your fork of layoutmaster. A
+link carries everything a view shows, unsaved edits included, so copying the address shares it. See
+[Saving and sharing](saving.md).

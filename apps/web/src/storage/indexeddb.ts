@@ -22,7 +22,7 @@ interface StoredDoc {
   updatedAt: string;
 }
 
-/** Content hash of the stored text, used the same way the reference implementation uses it. */
+/** Content hash of the stored text, used as the document's version. */
 export async function sha1Hex(text: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(text));
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
@@ -40,9 +40,8 @@ function open(name: string): Promise<IDBPDatabase> {
 }
 
 /**
- * Saved layouts, rule sets and corpora in the browser. Documents are the same JSON the reference
- * implementation writes, and each collection keeps an index so a library lists without reading
- * every document.
+ * Saved layouts, rule sets and corpora in the browser. Each collection keeps an index, so a library
+ * lists without reading every document.
  */
 export class IndexedDbAdapter implements StorageAdapter {
   readonly id = 'local';

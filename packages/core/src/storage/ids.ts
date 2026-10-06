@@ -1,6 +1,6 @@
 /**
  * Document identity and index entries. These shapes are the storage contract shared by every
- * adapter (browser database, GitHub data repository) and match the reference implementation.
+ * adapter (browser database, GitHub data repository, gists).
  */
 
 export type Collection = 'layouts' | 'rulesets' | 'corpora';

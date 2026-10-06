@@ -145,21 +145,12 @@ A press's `key_kind` is the kind of key it reaches: past a tap-hold to its tap, 
 
 Aggregates: `percent_of_ngrams`, `percent_of_keystrokes`, `count`, `per100`, `sum_distance`, `mean_distance`, `per_finger`, `per_hand`, `per_layer`, `per_row`, `per_col`, `weighted_sum`, `ratio`, `histogram`, `top_strings`.
 
-## Differences from the Elixir implementation
+## Notes on the definitions
 
-This engine reproduced the reference implementation at `07b81b9` to within 1e-6 on every metric.
-The reports in `packages/core/golden/` are now regenerated from this engine instead, and pin every
-number here; `packages/core/golden/GOLDENS.md` records what changed. Three reference behaviours were
-deliberately not reproduced, because they are defects rather than definitions.
-
-- **Lateral stretches now have values.** `lsb` and `lss` compare a distance against a rule-set
-  global. The reference substitutes such a reference only when the whole value is a string, and here
-  it sits inside the numeric condition, so the comparison was a number against literal text and
-  never matched. Both rules reported `0` in every report.
-- **The `travel` and `effort` heat maps read their rules.** The Analyze view looked the travel rule
-  up by the heat mode's own name, while the catalog calls it `finger_travel`, so the map silently
-  fell back to usage. Looking it up by its id was not enough either: the rule kept no travel per
-  key, so the map still fell back, and the Effort map counted presses, not their cost. Both rules now
-  credit each key its own part, and both maps draw it.
-- **Comparison ranks by the metric's direction.** The reference decided which side won by whether a
-  metric carried bands, which crowned the higher value for unbanded metrics such as SFB distance.
+- **Lateral stretches.** `lsb` and `lss` compare a horizontal distance against a rule-set global,
+  `"$global.lsb_adjacent_u"`. Globals are resolved wherever they appear in a rule, including inside a
+  numeric condition.
+- **Travel and Effort heat maps.** `finger_travel` and `effort` credit each key its own part of the
+  total, and the `travel` and `effort` heat maps draw those parts.
+- **Comparison.** Which side of a comparison wins is decided by the metric's direction (lower or
+  higher is better), not by whether it carries bands.

@@ -4,8 +4,7 @@ import type { RuleSet } from './types.js';
 
 /**
  * Rule sets are stored as JSON with the same snake_case keys and enum values used in memory, so
- * serialization is validation plus `JSON.parse` — no key mapping, and documents written by the
- * reference implementation load unchanged.
+ * serialization is validation plus `JSON.parse`, with no key mapping.
  */
 
 const NumSchema = z.union([z.number(), z.string().regex(/^\$global\./)]);

@@ -10,7 +10,7 @@ const WRITE = process.env.GOLDENS === '1';
 
 /**
  * Regenerates every golden report, bundled layout document and the inline share blob from this
- * engine — the artefact that has been missing since the Elixir reference left the working tree.
+ * engine.
  *
  * It runs through vitest because that is the repository's only TypeScript runner, and because
  * resolving `golden/` and `fixtures/` exactly the way the parity suite does is the whole point: a

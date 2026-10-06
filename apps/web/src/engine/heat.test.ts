@@ -80,7 +80,7 @@ describe('heat maps', () => {
         },
       ],
     });
-    // The reference looked this rule up under the mode's own name and silently showed usage.
+    // Looked up under the mode's own name, the rule would be missed and usage shown instead.
     expect(heatMap(dto, 'travel', 0)).toEqual({ 2: 1 });
     // A layer the rule credits nothing on is cold, not drawn as usage.
     expect(

@@ -14,10 +14,7 @@
       "!packages/core/fixtures",
       "!packages/corpora/raw",
       "!apps/web/public",
-      "!tmp",
-      "!priv",
-      "!_build",
-      "!deps"
+      "!tmp"
     ]
   },
   "formatter": {
