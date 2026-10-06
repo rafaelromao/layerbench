@@ -666,7 +666,7 @@ export function Workbench({
       {analysisError && <ErrorAlert message={`Could not analyze: ${analysisError}`} />}
 
       {/* The board first, then the selected key's editor under it on a phone, beside it at a desk,
-          where the board stays pinned while a key is being edited. */}
+          and the board scrolls with the page at every width. */}
       <div className={`lm-edit-grid ${state.selected ? 'lm-editing' : ''}`}>
         <div className="lm-edit-main">
           <section

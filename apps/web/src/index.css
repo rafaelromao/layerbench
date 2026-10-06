@@ -524,13 +524,6 @@ button.lm-drop-target.lm-drop-copy {
   .lm-edit-results {
     grid-column: 1 / -1;
   }
-  /* At a desk the board stays pinned while a key is edited beside it. On a phone it would take
-     most of the screen, so there it scrolls away with the page like everything else. */
-  .lm-editing .lm-edit-board {
-    position: sticky;
-    top: 4rem;
-    z-index: 10;
-  }
 }
 
 /* A notched phone held sideways: nothing goes under the notch or the home indicator. */

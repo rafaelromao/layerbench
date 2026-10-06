@@ -88,7 +88,7 @@ test.describe('on a phone', () => {
     const inspector = page.getByRole('group', { name: 'Edit LHI' });
     await expect(inspector).toBeInViewport();
 
-    // A pinned board would take most of a phone's screen, so it is not pinned: scrolled far enough
+    // The board is not pinned, which on a phone would take most of the screen: scrolled far enough
     // down, it is gone, and the inspector has the room.
     await page.evaluate(() => window.scrollBy(0, 2000));
     await page.waitForTimeout(200);
