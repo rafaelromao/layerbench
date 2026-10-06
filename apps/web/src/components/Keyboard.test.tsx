@@ -49,9 +49,9 @@ describe('Keyboard', () => {
       />,
     );
     const key = container.querySelector('g[data-key="LHM"]') as Element;
-    expect(key.querySelector('.lm-key-select-ring')).not.toBeNull();
+    expect(key).toHaveClass('lm-key-selected');
     expect(key.querySelector('.lm-key-cap.lm-key-highlight')).not.toBeNull();
-    expect(container.querySelectorAll('.lm-key-select-ring').length).toBe(1);
+    expect(container.querySelectorAll('.lm-key-selected').length).toBe(1);
     // The arrows sit in their own group, which the stylesheet keeps out of the pointer's way.
     expect(container.querySelector('g.lm-arc path')).not.toBeNull();
   });

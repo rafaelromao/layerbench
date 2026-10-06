@@ -215,6 +215,8 @@ function KeyItems({
             <button
               type="button"
               className="font-mono text-left flex-1 truncate hover:underline"
+              // A pair ending on a layer key opens what that key was pressed for.
+              aria-haspopup={item.then?.length ? 'dialog' : undefined}
               onClick={() => onSelect(item)}
             >
               {item.label}

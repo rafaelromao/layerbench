@@ -345,12 +345,11 @@
   stroke: var(--color-primary);
   stroke-width: 2.5;
 }
-/* The selected key: a ring outside its cap, apart from the heat and from any outline on the cap. */
-.lm-key-select-ring {
-  fill: none;
+/* The selected key: its own edge in the text colour, which reads on any heat. An outlined pair or
+   a pressed key draws over it on the same edge; the inspector still names the key. */
+.lm-key-selected .lm-key-cap {
   stroke: var(--color-base-content);
-  stroke-width: 2;
-  pointer-events: none;
+  stroke-width: 2.5;
 }
 
 /* Keyboard focus needs the same affordance as the pointer. */

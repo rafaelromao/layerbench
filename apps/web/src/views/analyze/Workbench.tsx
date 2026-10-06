@@ -531,7 +531,14 @@ export function Workbench({
         layer={state.layer}
         stats={keyStats.stats}
         updating={keyStats.updating || provisional || stale}
-        onSelectItem={({ item }: KeyItemSelection) => outlineItem(item)}
+        onSelectItem={({ ruleId, item }: KeyItemSelection) => {
+          outlineItem(item);
+          // A pair ending on a layer key opens what that key was pressed for, as a card's does.
+          if (item.then?.length) {
+            const label = shown.results.find((r) => r.id === ruleId)?.label ?? ruleId;
+            setPressedFor({ rule: label, item });
+          }
+        }}
       />
     ) : null;
 

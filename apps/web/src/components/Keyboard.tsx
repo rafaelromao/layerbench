@@ -165,8 +165,6 @@ function reachOf(compiled: CompiledLayout, layerIdx: number): Map<number, Reach>
 
 /** Inset of the ring a reach key draws inside its cap. */
 const REACH_INSET = 3;
-/** The selected key's ring sits this far outside its cap, clear of every outline drawn on it. */
-const SELECT_GAP = 2;
 
 /** Bindings whose meaning a cap cannot carry, however it is drawn. */
 function needsDetail(b: Binding | undefined): boolean {
@@ -533,18 +531,6 @@ export function Keyboard({
                   : `color-mix(in oklab, var(--lm-key-bg) ${100 - pct}%, var(--lm-heat) ${pct}%)`,
               }}
             />
-            {k.selected && (
-              // Outside the cap, in the text colour: it reads on any heat, and an outlined pair or
-              // a pressed key, drawn on the cap's own edge, leaves it in sight.
-              <rect
-                x={fmt(-k.w / 2 - SELECT_GAP)}
-                y={fmt(-k.h / 2 - SELECT_GAP)}
-                width={fmt(k.w + 2 * SELECT_GAP)}
-                height={fmt(k.h + 2 * SELECT_GAP)}
-                rx="11"
-                className="lm-key-select-ring"
-              />
-            )}
             {k.reach && (
               // Inside the cap rather than on its edge, which selection, focus and the outlines
               // of a played word already use; and in the layer's colour, as a key reaching it is.

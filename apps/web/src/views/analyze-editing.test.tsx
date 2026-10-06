@@ -1183,6 +1183,54 @@ describe('Analyze, while editing', () => {
     ).toBeInTheDocument();
   }, 60_000);
 
+  it("opens what a layer key was pressed for from a pair in a key's numbers", async () => {
+    const user = userEvent.setup();
+    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000', {
+      storage: freshStorage(),
+    });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+    // A pair a card lists as ending on a layer key, such as `t→A2`, and the key it starts on.
+    const card = [...document.querySelectorAll<HTMLButtonElement>('.lm-items li button')].find(
+      (b) => b.getAttribute('aria-haspopup') === 'dialog',
+    );
+    const letter = card?.textContent?.split('→')[0] ?? '';
+    expect(letter).not.toBe('');
+    const first = screen
+      .getAllByRole('button', { name: /^Key \w+: / })
+      .find((b) => b.getAttribute('aria-label')?.endsWith(`: ${letter}`));
+    await user.click(first as HTMLElement);
+    const editor = await screen.findByRole('group', { name: /^Edit / });
+
+    // Open the key's parts until one lists that pair, which opens the same popup.
+    const parts = await within(editor).findByRole('list', { name: /^Parts of / });
+    await waitFor(
+      () =>
+        expect(within(parts).queryAllByRole('button', { expanded: false }).length).toBeGreaterThan(
+          0,
+        ),
+      { timeout: 10_000 },
+    );
+    // The pair may be in a number the key shows only with the rest of them.
+    await user.click(within(editor).getByRole('button', { name: /^Every number/ }));
+    let ending: HTMLElement | undefined;
+    for (const part of within(editor)
+      .getByRole('list', { name: /^Parts of / })
+      .querySelectorAll<HTMLElement>('button[aria-expanded="false"]')) {
+      await user.click(part);
+      ending = within(editor)
+        .queryAllByRole('list', { name: / through / })
+        .flatMap((list) => within(list).queryAllByRole('button'))
+        .find((b) => b.getAttribute('aria-haspopup') === 'dialog');
+      if (ending) break;
+    }
+    expect(ending, 'a pair through the key that ends on a layer key').toBeDefined();
+    await user.click(ending as HTMLElement);
+    const dialog = await screen.findByRole('dialog', {
+      name: new RegExp(`^${ending?.textContent}`),
+    });
+    expect(within(dialog).getByRole('list', { name: 'Keys pressed next' })).toBeInTheDocument();
+  }, 60_000);
+
   it('asks before another layout replaces unsaved edits', async () => {
     const user = userEvent.setup();
     renderRoute('/analyze?layout=qwerty&corpus=en-conv&sample=20000', { storage: freshStorage() });
