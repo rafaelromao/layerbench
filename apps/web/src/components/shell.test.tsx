@@ -218,6 +218,26 @@ describe('the page frame', () => {
     expect(within(dialog).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
   });
 
+  it('still offers to give the app a fork when GitHub could not be asked where to save', async () => {
+    useGitHubSession.setState({
+      status: 'signed-in',
+      login: 'you',
+      appSlug: 'layoutmaster-app',
+      upstream: 'rafaelromao/layoutmaster',
+      target: null,
+      targetStatus: 'error',
+    });
+    const user = userEvent.setup();
+    renderRoute(LIBRARY, { storage: freshStorage() });
+
+    await user.click(await screen.findByRole('button', { name: /^Storage/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Storage' });
+    expect(within(dialog).getByText(/could not be asked where to save/)).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('link', { name: 'Give LayoutMaster access to it' }),
+    ).toBeInTheDocument();
+  });
+
   it('names the fork and its branch when documents go there', async () => {
     useGitHubSession.setState({
       status: 'signed-in',

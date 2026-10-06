@@ -151,9 +151,10 @@ export function StorageSettings() {
                 )}
               </div>
 
-              {target?.kind === 'gist' && appSlug && (
+              {/* Also while the fork cannot be looked up: giving access is how that gets fixed. */}
+              {target?.kind !== 'repo' && appSlug && (
                 <p className="text-xs">
-                  {target.forkWithoutAccess ? (
+                  {target?.forkWithoutAccess ? (
                     <>
                       Your fork <span className="font-mono">{target.forkWithoutAccess}</span> is not
                       shared with the app yet.

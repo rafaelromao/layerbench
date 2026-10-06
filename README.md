@@ -51,21 +51,41 @@ the keymap-drawer round trip.
 
 ## Storage
 
-Layouts, rule sets and corpora are saved in your browser. To keep them in your GitHub account as
-well, open **Storage** in the header and **Sign in with GitHub**. Where they go is worked out for you:
+Layouts, rule sets and corpora are always saved in your browser. To have them on every browser you
+use, sign in with GitHub and they are kept in your GitHub account as well.
 
-- **Your fork of layoutmaster**, once the app has access to it (the dialog links to where you give
-  it). Saves are commits to a `layoutmaster-data` branch, made from your default branch the first
-  time, under `data/`: one JSON file per document plus an index per collection. Your main branch
-  stays as it is, so syncing the fork never conflicts with saves. If the fork is public, so is
-  everything saved to it.
-- **Secret gists** otherwise, one each for layouts, rule sets and corpora. Secret gists are
-  unlisted, not private: anyone with a gist's address can read it.
+**To save in gists** (the default):
 
-The browser copy is always written first, so nothing is lost to a network problem. The page holds
-only a short-lived access token, in memory, and sends it to `api.github.com` and nowhere else; it
-never appears in a link, an export or an error message. The refresh token stays in an encrypted
-cookie the page cannot read.
+1. Open **Storage** in the header and click **Sign in with GitHub**.
+2. Approve the app on GitHub. You come back to the page you were on, unsaved edits included.
+
+From then on every save also goes to secret gists in your account, one each for layouts, rule sets
+and corpora. Secret gists are unlisted, not private: anyone with a gist's address can read it.
+
+**To save in your fork of layoutmaster instead:**
+
+1. Fork layoutmaster on GitHub, if you have not already. The repository's owner skips this: their
+   documents go to the repository itself.
+2. Sign in as above.
+3. In **Storage**, follow **Give LayoutMaster access to it**. On GitHub, choose your account, then
+   **Only select repositories**, pick your fork, and **Install**.
+4. Back in the app, open **Storage** and click **Check again**. It now says it is saving to your
+   fork, on the branch `layoutmaster-data`.
+
+Saves are commits to `layoutmaster-data`, under `data/`. The branch is made from your default
+branch the first time, so whatever was in `data/` there comes along, and your main branch never
+gets a save commit, so syncing the fork with the original never conflicts. If the fork is public,
+so is everything saved to it.
+
+**Good to know**
+
+- Documents saved before you switched (in this browser, or in gists) are not moved for you. Click
+  **Copy this browser's documents up** to send what this browser holds to wherever Storage now
+  saves.
+- **Sign out** leaves everything in this browser where it is.
+- The browser copy is always written first, so a network problem never loses work.
+- The page holds only a short-lived GitHub token, in memory, and sends it to `api.github.com` and
+  nowhere else. It never appears in a link, an export or an error message.
 
 ## Relationship to the Elixir implementation
 
@@ -86,10 +106,10 @@ pnpm test
 pnpm dev          # http://localhost:5173
 ```
 
-Signing in works on the dev server too, through the same code the Pages Function runs. Put the
-variables listed under [Sign-in with GitHub](#sign-in-with-github) in `apps/web/.env.local`, which
-git ignores, and register `http://localhost:5173/api/auth/callback` as one of the app's callback
-URLs. Without them the app says sign-in is not set up and saves in the browser only.
+To sign in on the dev server, set up the GitHub App first (see
+[Setting up sign-in](#setting-up-sign-in)). Then put the same variables as on Pages in
+`apps/web/.env.local`, which git ignores. Without them the app says sign-in is not set up and
+saves in the browser only.
 
 `pnpm bench` runs the performance suite, which is skipped by default. `pnpm corpora` rebuilds the
 corpus samples from `packages/corpora/raw`.
@@ -131,40 +151,71 @@ site.
 The page talks to its own origin and `api.github.com` and to nothing else — `connect-src` in the
 policy above enforces it, so the access token in the page cannot be sent anywhere but GitHub.
 
-### Sign-in with GitHub
+### Setting up sign-in
 
-`functions/api/auth/[[path]].ts` is a Pages Function, the only code that runs on a server: it
-exchanges GitHub's code for tokens, which needs the app's client secret, and renews them. Its logic
-is `apps/web/src/server/github-auth.ts`. It keeps no documents. On a host without Functions the app
-works the same, saving in the browser only.
+Sign-in needs a GitHub App of your own and one server-side piece:
+`functions/api/auth/[[path]].ts`, a Pages Function whose logic is
+`apps/web/src/server/github-auth.ts`. It swaps GitHub's sign-in code for tokens, which needs the
+app's client secret, and renews them. It stores nothing. On a host without Functions the app still
+works, saving in the browser only. Do this once per deployment.
 
-1. **Register a GitHub App** (Settings → Developer settings → GitHub Apps → New):
-   - Callback URLs: `https://<your app>/api/auth/callback`, and `http://localhost:5173/api/auth/callback`
-     for development.
-   - Leave **Expire user authorization tokens** on. Leave "Request user authorization (OAuth) during
-     installation" and Device Flow off, and no Setup URL. Webhook: not active.
-   - Repository permissions: **Contents: Read and write** (Metadata: Read-only comes with it).
-     Account permissions: **Gists: Read and write**.
-   - Where can it be installed: **Any account**, so people can give it their forks.
-   - Generate a client secret.
-2. **Set the Pages variables**, under Settings → Variables and Secrets, for **Production and
-   Preview** both, before the deployment that needs them:
+**1. Create the GitHub App.** On GitHub, go to your avatar → **Settings** → **Developer settings**
+→ **GitHub Apps** → **New GitHub App**, and fill in:
 
-   | Variable | Value |
-   |---|---|
-   | `GITHUB_CLIENT_ID` | the app's client ID |
-   | `GITHUB_CLIENT_SECRET` | the client secret (Encrypt) |
-   | `GITHUB_APP_SLUG` | the app's name as it appears in `github.com/apps/<slug>` |
-   | `SESSION_SECRET` | 32 random bytes in base64, e.g. `openssl rand -base64 32` (Encrypt) |
-   | `UPSTREAM_REPO` | optional; `owner/name` whose forks hold documents, `rafaelromao/layoutmaster` by default |
+| Field | Value |
+|---|---|
+| GitHub App name | any free name; its URL form is the *slug* used below |
+| Homepage URL | your app's address, e.g. `https://layoutmaster-2d7.pages.dev` |
+| Callback URL | `https://<your app>/api/auth/callback`; add `http://localhost:5173/api/auth/callback` to sign in on the dev server |
+| Expire user authorization tokens | on (the default) |
+| Request user authorization (OAuth) during installation | off |
+| Enable Device Flow | off |
+| Setup URL | empty |
+| Webhook → Active | off |
+| Repository permissions → Contents | **Read and write** |
+| Account permissions → Gists | **Read and write** |
+| Where can this GitHub App be installed? | **Any account**, so other people can give it their forks |
 
-3. **Leave the data branch out of preview builds**: Settings → Builds → Branch control, exclude
-   `layoutmaster-data`, so a save does not start a build.
-4. Behind **Cloudflare Access**, keep the application's cookie SameSite setting at None or Lax;
-   Strict drops the cookie on the way back from GitHub and sends the browser round in redirects.
+Create it. On the page that opens, copy the **Client ID**, click **Generate a new client secret** and
+copy the secret, and note the slug from the app's public page, `https://github.com/apps/<slug>`.
 
-Redirects in `_redirects` and headers in `_headers` do not apply to the Function, which sets its
-own (`Cache-Control: no-store` among them).
+**2. Make a session key**, which encrypts the sign-in cookie:
+
+```bash
+openssl rand -base64 32
+```
+
+**3. Add the variables to Cloudflare Pages.** In the Pages project, **Settings** → **Variables and
+Secrets**, add these for **Production** and again for **Preview**:
+
+| Variable | Value | Type |
+|---|---|---|
+| `GITHUB_CLIENT_ID` | the Client ID | Text |
+| `GITHUB_CLIENT_SECRET` | the client secret | Secret |
+| `GITHUB_APP_SLUG` | the slug | Text |
+| `SESSION_SECRET` | the output of step 2 | Secret |
+| `UPSTREAM_REPO` | optional: the `owner/name` whose forks hold documents; `rafaelromao/layoutmaster` if unset | Text |
+
+Variables reach only deployments made after they are set, so deploy again (push, or **Retry
+deployment**) once they are in.
+
+**4. Keep saves from starting builds.** **Settings** → **Builds** → **Branch control**: exclude
+`layoutmaster-data` from preview deployments.
+
+**5. Give the app your own repository.** Open `https://github.com/apps/<slug>/installations/new`,
+choose your account, **Only select repositories**, pick this repository (or your fork of it),
+and **Install**. Skip this and documents go to gists.
+
+**6. Check it.** In the deployed app, open **Storage**, **Sign in with GitHub**, then **Check
+again**. Storage should say it is saving to your repository on `layoutmaster-data`. Save a layout
+and the commit appears on that branch, not on main.
+
+**If signing in loops back to a login page** and the app sits behind **Cloudflare Access**: Access's
+cookie must not be SameSite=Strict. In Cloudflare Zero Trust, **Access** → **Applications** → your
+app → cookie settings, set SameSite to None or Lax. It is None unless someone changed it.
+
+Requests to the Function skip `_redirects` and `_headers`, so it sets its own headers
+(`Cache-Control: no-store` among them).
 
 ### Landing page
 
