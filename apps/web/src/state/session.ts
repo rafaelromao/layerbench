@@ -11,8 +11,9 @@ interface SessionState {
   setTheme: (theme: ThemeChoice) => void;
   editPanel: string;
   setEditPanel: (panel: string) => void;
-  collapsedFamilies: string[];
-  toggleFamily: (family: string) => void;
+  /** Metric families whose sections Analyze and Compare hide; the same in every view. */
+  hiddenFamilies: string[];
+  showFamilies: (families: readonly string[], shown: boolean) => void;
 }
 
 export const useSession = create<SessionState>()(
@@ -25,14 +26,10 @@ export const useSession = create<SessionState>()(
       },
       editPanel: 'layers',
       setEditPanel: (editPanel) => set({ editPanel }),
-      collapsedFamilies: [],
-      toggleFamily: (family) => {
-        const current = get().collapsedFamilies;
-        set({
-          collapsedFamilies: current.includes(family)
-            ? current.filter((f) => f !== family)
-            : [...current, family],
-        });
+      hiddenFamilies: [],
+      showFamilies: (families, shown) => {
+        const rest = get().hiddenFamilies.filter((f) => !families.includes(f));
+        set({ hiddenFamilies: shown ? rest : [...rest, ...families] });
       },
     }),
     {
@@ -40,7 +37,7 @@ export const useSession = create<SessionState>()(
       partialize: (s) => ({
         theme: s.theme,
         editPanel: s.editPanel,
-        collapsedFamilies: s.collapsedFamilies,
+        hiddenFamilies: s.hiddenFamilies,
       }),
     },
   ),

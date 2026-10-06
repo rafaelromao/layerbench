@@ -50,7 +50,11 @@ import { type NewLayoutSpec, newLayout } from './new-layout.js';
 import { useCorpora } from './useCorpora.js';
 import { useRuleSet } from './useRuleSet.js';
 
-/** Ranking re-analyzes every layout listed, so it works from a smaller sample than Analyze's. */
+/**
+ * Ranking types the text once for every layout listed, so it never takes more than this, whatever
+ * sample the other views were set to. The status line names the sample, so nobody takes it for
+ * Analyze's.
+ */
 const RANK_MAX_SYMBOLS = 100_000;
 
 const SORTS: [SortKey, string][] = [
@@ -375,6 +379,7 @@ export function LibraryView() {
   // Ranking uses the corpus and rule set in the link, so it agrees with what Analyze would show.
   const search = useSearch({ strict: false }) as RawSearch;
   const params = useMemo(() => parseParams(search, ENGLISH_CORPUS), [search]);
+  const rankSymbols = Math.min(params.sample, RANK_MAX_SYMBOLS);
   useRememberSelection(params);
   const ruleSet = useRuleSet(params.preset, params.universe);
   const corpora = useCorpora();
@@ -472,10 +477,10 @@ export function LibraryView() {
       corpusId: params.corpus,
       caseMode: params.caseMode,
       textClass: params.textClass,
-      maxSymbols: Math.min(params.sample, RANK_MAX_SYMBOLS),
+      maxSymbols: rankSymbols,
       ruleSet,
     }),
-    [params.corpus, params.caseMode, params.textClass, params.sample, ruleSet],
+    [params.corpus, params.caseMode, params.textClass, rankSymbols, ruleSet],
   );
   const { summaries, pending } = useSummaries(summaryEntries, summaryOptions);
 
@@ -694,10 +699,10 @@ export function LibraryView() {
         <HelpLink help={HELP.sorting} />
         <span className="text-xs opacity-60" aria-live="polite">
           {pending > 0
-            ? `Scoring layouts… ${summaryEntries.length - pending} of ${summaryEntries.length}`
+            ? `Scoring layouts on a sample of ${rankSymbols.toLocaleString('en-US')} symbols… ${summaryEntries.length - pending} of ${summaryEntries.length}`
             : unscored
               ? `Could not score the layouts on ${corpusName}.`
-              : `Lower is better for both. ${Math.min(params.sample, RANK_MAX_SYMBOLS).toLocaleString('en-US')} symbols of ${corpusName}, ${ruleSet.name ?? 'rule set'}${
+              : `Lower is better for both. Ranked on a sample of ${rankSymbols.toLocaleString('en-US')} symbols of ${corpusName}, ${ruleSet.name ?? 'rule set'}${
                   without.length > 0 ? `, typed without ${featureList(without)}` : ''
                 }.${
                   nobodyCan

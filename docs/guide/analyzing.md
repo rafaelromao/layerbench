@@ -105,9 +105,10 @@ what of the text is counted: letters only, the default, or numbers and symbols a
 
 **Corpus** lists the texts that come with the app, by language, each with where it came from. Your
 own text can be pasted or uploaded there and analyzed like any other. **Sample**, on **Analyze**
-and **Compare**, sets how much of the text is typed: more gives steadier numbers, less gives them
-sooner, which matters most while a layout is being edited, since every edit types it again. The
-Library types a quick 100,000 symbols at most.
+and **Compare**, sets how much of the text is typed, 100,000 symbols unless you choose more: more
+gives steadier numbers, less gives them sooner, which matters most while a layout is being edited,
+since every edit types it again. **Library** always ranks on 100,000 symbols, since it types the
+text once for every layout, and says so above the list.
 
 ### The same choices in every view
 
@@ -145,6 +146,10 @@ Below the summary, the numbers are grouped by what they count:
 | Usage | how the work is shared between fingers, hands, rows and columns |
 | Effort | Effort, and the words that take the most of it |
 | Layers | layer taps, one-shots, macros, combos and magic keys: what layers cost |
+
+The **Show** checkboxes above the groups hide the ones you do not need, and **All** shows or hides
+every one at once. The choice holds in **Analyze** and **Compare** alike, and this browser remembers
+it.
 
 A card's breakdown lists the key pairs or words behind its number. Selecting one outlines its keys
 on the board, with a green arrow from each key to the next, and turns the board to the layer they

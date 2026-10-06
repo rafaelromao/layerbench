@@ -16,6 +16,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { FamilyFilter, METRIC_FAMILIES, useFamilyShown } from '../../components/FamilyFilter.js';
 import { featureList } from '../../components/FeatureSwitches.js';
 import { HelpLink } from '../../components/HelpLink.js';
 import {
@@ -74,15 +75,6 @@ const PLAY_STEP_MS = 750;
 const PLAY_REST_MS = 1200;
 /** How long the link waits after the last edit before it takes in the edited layout. */
 const LINK_DELAY_MS = 400;
-
-const FAMILIES: [string, string][] = [
-  ['bigram', 'Bigrams'],
-  ['skipgram', 'Skipgrams'],
-  ['trigram', 'Trigrams'],
-  ['usage', 'Usage'],
-  ['effort', 'Effort'],
-  ['layer', 'Layers'],
-];
 
 const HEAT_LABELS: Record<HeatMode, string> = {
   usage: 'Usage',
@@ -680,7 +672,7 @@ export function Workbench({
       )}
 
       {/* The board first, then the selected key's editor under it on a phone, beside it at a desk,
-          with the board pinned while a key is being edited, so the next key is a tap away. */}
+          where the board stays pinned while a key is being edited. */}
       <div className={`lm-edit-grid ${state.selected ? 'lm-editing' : ''}`}>
         <div className="lm-edit-main">
           <section
@@ -1195,11 +1187,13 @@ const MetricFamilies = memo(function MetricFamilies({
   onHighlightItem: (ruleId: string, index: number) => void;
   presetId?: string;
 }) {
+  const shown = useFamilyShown();
   return (
     <div className="lm-edit-results space-y-4 min-w-0">
-      {FAMILIES.map(([family, title]) => {
+      <FamilyFilter />
+      {METRIC_FAMILIES.map(([family, title]) => {
         const results = report.results.filter((r) => r.family === family);
-        if (results.length === 0) return null;
+        if (results.length === 0 || !shown(family)) return null;
         return (
           <section key={family} className="space-y-2">
             <h2 className="text-sm uppercase tracking-wide opacity-60">{title}</h2>

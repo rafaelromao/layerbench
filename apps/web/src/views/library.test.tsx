@@ -185,7 +185,9 @@ describe('Ranking layouts', () => {
     // smallest allowed is 10,000): none of its scores can be known already.
     renderRoute('/library?sample=10001', { client, storage: freshStorage() });
 
-    await screen.findByText(/^Scoring layouts… 2 of/, undefined, { timeout: 60_000 });
+    await screen.findByText(/^Scoring layouts on a sample of [\d,]+ symbols… 2 of/, undefined, {
+      timeout: 60_000,
+    });
     expect(screen.getByRole('radio', { name: 'Effort' })).toBeChecked();
     const names = [...document.querySelectorAll('article h3')].map((h) => h.textContent);
     // The better of the two scored comes first, the worse second, and the unscored wait below.
@@ -255,7 +257,9 @@ describe('Ranking layouts', () => {
       storage: freshStorage(),
     });
 
-    await screen.findByText(/^Scoring layouts… 2 of/, undefined, { timeout: 60_000 });
+    await screen.findByText(/^Scoring layouts on a sample of [\d,]+ symbols… 2 of/, undefined, {
+      timeout: 60_000,
+    });
     expect(scored).toEqual(['Magic Romak', 'Qwerty']);
     const names = [...document.querySelectorAll('article h3')].map((h) => h.textContent);
     expect(names.slice(0, 2)).toEqual(['Magic Romak', 'Qwerty']);
@@ -266,7 +270,9 @@ describe('Ranking layouts', () => {
   it('scores each layout typed without the features left out of the ranking', async () => {
     const { client, requests } = scoringOnly([500]);
     renderRoute('/library?off=macros&sample=10003', { client, storage: freshStorage() });
-    await screen.findByText(/^Scoring layouts… 1 of/, undefined, { timeout: 60_000 });
+    await screen.findByText(/^Scoring layouts on a sample of [\d,]+ symbols… 1 of/, undefined, {
+      timeout: 60_000,
+    });
     expect(requests[0].layout.name).toBe('Magic Romak');
     const sent = JSON.stringify(requests[0].layout);
     // `qu` is two letters in one press, and goes; an accent is one letter, and stays.

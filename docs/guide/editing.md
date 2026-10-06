@@ -158,9 +158,9 @@ The other panels hold what is not on a single key:
 
 ## On a phone
 
-Everything works by tapping. The board stays at the top of the screen while you edit, with the
-editor under it, so the key you are changing is always in sight. Tiles and chips are sized for a
-finger.
+Everything works by tapping. Selecting a key opens the editor right under the board, and the
+board scrolls away with the page as you work through the editor, leaving it the screen; scroll
+back up for the next key. Tiles and chips are sized for a finger.
 
 To drag a key, rest your finger on it for a moment first; a quick swipe scrolls the page instead.
 **Swap with…**, **Copy to…** and **Send to layer…** do the same without dragging. The on-screen

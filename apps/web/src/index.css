@@ -486,22 +486,7 @@ button.lm-drop-target.lm-drop-copy {
 .lm-edit-results {
   order: 7;
 }
-.lm-editing .lm-edit-board {
-  position: sticky;
-  top: 3rem;
-  z-index: 10;
-}
 @media (max-width: 1023.98px) {
-  /* Typing raises the on-screen keyboard over half the screen; the pinned board would take most of
-     the rest. While a field of the inspector, or the word to explain, has the caret, the board
-     scrolls away like the rest of the page. */
-  .lm-editing:has(
-    :is(.lm-inspector, .lm-edit-explain)
-      :is(input:not([type="checkbox"], [type="radio"]), textarea):focus
-  ) .lm-edit-board {
-    position: relative;
-  }
-
   /* One row of layers, swiped sideways, rather than rows of them pushing the board down. */
   .lm-layer-strip {
     overflow-x: auto;
@@ -539,8 +524,12 @@ button.lm-drop-target.lm-drop-copy {
   .lm-edit-results {
     grid-column: 1 / -1;
   }
+  /* At a desk the board stays pinned while a key is edited beside it. On a phone it would take
+     most of the screen, so there it scrolls away with the page like everything else. */
   .lm-editing .lm-edit-board {
+    position: sticky;
     top: 4rem;
+    z-index: 10;
   }
 }
 

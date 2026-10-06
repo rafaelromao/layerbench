@@ -78,13 +78,18 @@ describe('Analyze', () => {
     const { currentSearch } = renderRoute('/analyze?layout=qwerty&corpus=en-conv&sample=20000');
     await screen.findByText('Same finger bigrams');
 
-    await user.selectOptions(screen.getByLabelText('Sample size'), '100000');
-
+    await user.selectOptions(screen.getByLabelText('Sample size'), '300000');
     await waitFor(() => {
-      expect(currentSearch()).toContain('sample=100000');
+      expect(currentSearch()).toContain('sample=300000');
     });
-    // Defaults never appear in the link, and keys stay in a stable order.
-    expect(currentSearch()).toBe('?corpus=en-conv&layout=qwerty&sample=100000');
+    // Keys stay in a stable order.
+    expect(currentSearch()).toBe('?corpus=en-conv&layout=qwerty&sample=300000');
+
+    // The default, 100,000 symbols, never appears in the link.
+    await user.selectOptions(screen.getByLabelText('Sample size'), '100000');
+    await waitFor(() => {
+      expect(currentSearch()).toBe('?corpus=en-conv&layout=qwerty');
+    });
   });
 
   it('analyzes a layout without the features a Library link leaves out', async () => {

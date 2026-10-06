@@ -80,7 +80,7 @@ test.describe('on a phone', () => {
     expect(pans).toBeLessThanOrEqual(1);
   });
 
-  test('the inspector opens right under the board, and the board stays up while editing', async ({
+  test('the inspector opens right under the board, and the board scrolls away with the page', async ({
     page,
   }) => {
     await openEdit(page);
@@ -88,14 +88,12 @@ test.describe('on a phone', () => {
     const inspector = page.getByRole('group', { name: 'Edit LHI' });
     await expect(inspector).toBeInViewport();
 
-    // Scrolling down through the inspector keeps the board pinned in the top part of the screen,
-    // so the next key is a tap away rather than a scroll back up.
+    // A pinned board would take most of a phone's screen, so it is not pinned: scrolled far enough
+    // down, it is gone, and the inspector has the room.
     await page.evaluate(() => window.scrollBy(0, 2000));
     await page.waitForTimeout(200);
     const board = await page.locator('.lm-edit-board').boundingBox();
-    const height = page.viewportSize()?.height ?? 0;
-    expect(board?.y ?? height).toBeLessThan(height / 3);
-    await expect(page.getByRole('button', { name: /^Key LHM:/ })).toBeInViewport();
+    expect((board?.y ?? 0) + (board?.height ?? 0)).toBeLessThanOrEqual(0);
   });
 
   test('the layer tabs stay on one line', async ({ page }) => {

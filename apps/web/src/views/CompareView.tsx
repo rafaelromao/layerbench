@@ -1,6 +1,7 @@
 import { BUNDLED_LAYOUTS, type CorpusManifest, toCanonicalJson } from '@layoutmaster/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FamilyFilter, useFamilyShown } from '../components/FamilyFilter.js';
 import { featureList } from '../components/FeatureSwitches.js';
 import { formatValue } from '../components/format.js';
 import { Keyboard } from '../components/Keyboard.js';
@@ -23,6 +24,7 @@ export function CompareView() {
   const navigate = useNavigate();
   const client = useAnalysisClient();
   const params = useMemo(() => parseParams(search), [search]);
+  const shown = useFamilyShown();
   useRememberSelection(params);
   const refB = search.b ?? DEFAULT_B;
 
@@ -219,6 +221,7 @@ export function CompareView() {
         ))}
       </div>
 
+      {rows.length > 0 && <FamilyFilter />}
       {rows.length > 0 && (
         <section
           className="card bg-base-100 border border-base-300 overflow-x-auto"
@@ -237,50 +240,52 @@ export function CompareView() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
-                <tr
-                  key={row.id}
-                  onMouseEnter={() => setHovered(row.id)}
-                  onMouseLeave={() => setHovered(null)}
-                  onFocus={() => setHovered(row.id)}
-                  onBlur={() => setHovered(null)}
-                >
-                  <td>
-                    <div className="font-medium">{row.label}</div>
-                    <div className="text-[10px] uppercase tracking-wide opacity-50">
-                      {row.family}
-                    </div>
-                  </td>
-                  <td className="text-right font-mono tabular-nums">
-                    {formatValue(row.a.value, row.unit)} <BandBadge band={row.a.band} />
-                  </td>
-                  <td className="text-right font-mono tabular-nums">
-                    {row.b ? formatValue(row.b.value, row.unit) : '–'}{' '}
-                    {row.b && <BandBadge band={row.b.band} />}
-                  </td>
-                  <td
-                    className={`text-right font-mono tabular-nums ${
-                      row.winner === 'b' ? 'text-success' : row.winner === 'a' ? 'text-error' : ''
-                    }`}
+              {rows
+                .filter((row) => shown(row.family))
+                .map((row) => (
+                  <tr
+                    key={row.id}
+                    onMouseEnter={() => setHovered(row.id)}
+                    onMouseLeave={() => setHovered(null)}
+                    onFocus={() => setHovered(row.id)}
+                    onBlur={() => setHovered(null)}
                   >
-                    {row.delta === null
-                      ? '–'
-                      : `${row.delta > 0 ? '+' : ''}${row.delta.toFixed(2)}`}
-                  </td>
-                  <td>
-                    {row.winner === 'tie' ? (
-                      <span className="opacity-40">–</span>
-                    ) : (
-                      <span
-                        // A badge is one line tall; a name that wrapped would spill out of it.
-                        className={`badge badge-sm whitespace-nowrap ${row.winner === 'b' ? 'badge-primary' : ''}`}
-                      >
-                        {row.winner === 'a' ? nameA : nameB}
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                    <td>
+                      <div className="font-medium">{row.label}</div>
+                      <div className="text-[10px] uppercase tracking-wide opacity-50">
+                        {row.family}
+                      </div>
+                    </td>
+                    <td className="text-right font-mono tabular-nums">
+                      {formatValue(row.a.value, row.unit)} <BandBadge band={row.a.band} />
+                    </td>
+                    <td className="text-right font-mono tabular-nums">
+                      {row.b ? formatValue(row.b.value, row.unit) : '–'}{' '}
+                      {row.b && <BandBadge band={row.b.band} />}
+                    </td>
+                    <td
+                      className={`text-right font-mono tabular-nums ${
+                        row.winner === 'b' ? 'text-success' : row.winner === 'a' ? 'text-error' : ''
+                      }`}
+                    >
+                      {row.delta === null
+                        ? '–'
+                        : `${row.delta > 0 ? '+' : ''}${row.delta.toFixed(2)}`}
+                    </td>
+                    <td>
+                      {row.winner === 'tie' ? (
+                        <span className="opacity-40">–</span>
+                      ) : (
+                        <span
+                          // A badge is one line tall; a name that wrapped would spill out of it.
+                          className={`badge badge-sm whitespace-nowrap ${row.winner === 'b' ? 'badge-primary' : ''}`}
+                        >
+                          {row.winner === 'a' ? nameA : nameB}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </section>

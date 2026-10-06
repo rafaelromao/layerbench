@@ -49,7 +49,7 @@ export const DEFAULT_PARAMS: Params = {
   universe: 'no_space',
   layer: 0,
   heat: 'usage',
-  sample: 300_000,
+  sample: 100_000,
   without: [],
 };
 
