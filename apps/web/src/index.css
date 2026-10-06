@@ -352,7 +352,10 @@
   stroke-width: 2.5;
 }
 
-/* Keyboard focus needs the same affordance as the pointer. */
+/* The browser's own outline is a square round the key's box, drawn by some browsers on a click
+   too; the cap's edge shows focus instead. Keyboard focus needs the same affordance as the
+   pointer. */
+.lm-key:focus,
 .lm-key:focus-visible {
   outline: none;
 }
