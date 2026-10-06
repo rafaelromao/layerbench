@@ -157,7 +157,7 @@ test.describe('at a desk', () => {
 test.describe('on a phone', () => {
   test.skip(({ isMobile }) => !isMobile, 'phone layout only');
 
-  test('edit: the board stays in sight while a key is edited', async ({ page }) => {
+  test('edit: a key selected, its inspector right under the board', async ({ page }) => {
     await page.goto('/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000');
     await expect(page.getByRole('list', { name: 'Summary metrics' })).toBeVisible({
       timeout: 120_000,
