@@ -21,8 +21,7 @@ export interface ExpandedLayout {
  * Rewrite the arm a tap would reach, leaving hold arms and morph structure alone.
  *
  * A feature has to compose with whatever is already on the key: the space key may be a `hold_tap`
- * that reaches a numbers layer on hold, and sentence case belongs on its tap arm only. Documents
- * that placed magic keys this way are converted with the same rule (`legacy.ts`).
+ * that reaches a numbers layer on hold, and sentence case belongs on its tap arm only.
  */
 export function mapTapArm(
   b: Binding | undefined,

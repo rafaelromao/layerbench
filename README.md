@@ -45,7 +45,7 @@ in with GitHub to keep your work in your own account.
 | `/guide` | The user guide and the metric glossary, from `docs/` |
 | `/about/` | The landing page, copied from `docs/site` by the build |
 
-`/` opens the Library, `/?layout=…` opens Analyze, and `/edit` redirects to `/analyze`. A link
+`/` opens the Library. A link
 carries the whole analysis, and `?layout=inline:…` carries a layout that was never saved; Analyze
 writes unsaved edits into its link that way.
 

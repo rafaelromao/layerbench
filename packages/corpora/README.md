@@ -46,10 +46,8 @@ are [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), so the corp
 them are shared under it too, as `sources.json` records. `corpora:generate` samples those words in
 proportion to their frequency and shapes them into capitalised, punctuated sentences.
 
-They replace the Romak work corpora, `en-work` and `pt-br-work`, which were made the same way from
-the 180 words a language model listed as common in work chat and email, as shuffled word bags with
-no capital anywhere. These draw from the 8,000 most frequent words of each language, and a link
-naming an old corpus opens its replacement. `pt_br` is counted over Brazilian subtitles only.
+They draw from the 8,000 most frequent words of each language. `pt_br` is counted over Brazilian
+subtitles only.
 
 The lists count words as a tokenizer split them, and the generator puts them back together:
 

@@ -37,11 +37,6 @@ storage, share-link and hashing formats, so drift there breaks interoperability.
 `inline-magic-romak.txt` is the deflate + base64url share blob, asserted by the web app's
 `url/inline.test.ts`.
 
-Two files are frozen, never rewritten by `pnpm goldens`: `inline-magic-romak-features.txt` and
-`legacy/magic-romak-features.json`, Magic Romak's share blob and document from when its magic keys
-and alt repeat were declared as features. `src/layout/legacy.test.ts` and `url/inline.test.ts` hold
-them to opening as today's Magic Romak, byte for byte, and typing every report's numbers.
-
 ## First re-baseline
 
 The first set of reports came from a generator that is no longer in this repository, so they were
@@ -194,8 +189,7 @@ What moved, checked across all 38 reports:
 A magic key made in the editor was a binding on its key, and Magic Romak's were declared in
 `features` and placed on keys; the editor treated the two differently in a score of ways. Now every
 magic key and alt repeat is an `adaptive` binding on its key, and `features` holds only sentence
-case and caps word. A document that still declares them is converted when it is read
-(`src/layout/legacy.ts`), so stored layouts and old links keep opening and type exactly as before.
+case and caps word.
 
 The alt repeat's second stage was a second adaptive key wrapped around the first. It is now one list
 of branches with the three that need the `alpha2` tag first: branches are tried in order, so it types

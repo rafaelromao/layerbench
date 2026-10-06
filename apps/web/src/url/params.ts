@@ -54,9 +54,9 @@ export const DEFAULT_PARAMS: Params = {
 };
 
 /**
- * The Library ranks on English news unless the link says otherwise, and an old link to the editor,
- * which did too, opens Analyze on it. Analyze and Compare keep `DEFAULT_PARAMS.corpus`: that one is
- * part of the link contract, this one only decides what a bare visit to the Library shows.
+ * The Library ranks on English news unless the link says otherwise. Analyze and Compare keep
+ * `DEFAULT_PARAMS.corpus`: that one is part of the link contract, this one only decides what a bare
+ * visit to the Library shows.
  */
 export const ENGLISH_CORPUS = 'en-general';
 
@@ -89,20 +89,6 @@ function validTextClass(v: string | undefined): TextClass {
   return 'letters';
 }
 
-/**
- * Corpora that were replaced, and what replaced them. The Romak work corpora were 180 words a model
- * listed; a link naming one opens the conversational corpus of the same language instead of an
- * analysis that fails.
- */
-const REPLACED_CORPORA: Record<string, string> = {
-  'en-work': 'en-conv',
-  'pt-br-work': 'pt-br-conv',
-};
-
-function currentCorpus(id: string): string {
-  return REPLACED_CORPORA[id] ?? id;
-}
-
 /** `off=magic,combos`: known features only, each once, always in the same order. */
 function validFeatures(v: string | undefined): FeatureKind[] {
   if (!v) return [];
@@ -127,8 +113,8 @@ export function parseParams(raw: RawSearch, corpus: string = DEFAULT_PARAMS.corp
   const corpus2 = blankToNull(raw.corpus2);
   return {
     layoutRef: raw.layout ?? raw.l ?? DEFAULT_PARAMS.layoutRef,
-    corpus: currentCorpus(raw.corpus ?? corpus),
-    corpus2: corpus2 === null ? null : currentCorpus(corpus2),
+    corpus: raw.corpus ?? corpus,
+    corpus2,
     mix: int(raw.mix, DEFAULT_PARAMS.mix, 0, 100),
     preset: validPreset(raw.rules),
     caseMode: raw.case === 'model' ? 'model' : 'fold',

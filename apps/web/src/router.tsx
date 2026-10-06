@@ -7,7 +7,7 @@ import {
 } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { Shell } from './components/Shell.js';
-import { ENGLISH_CORPUS, type RawSearch, savedRef } from './url/params.js';
+import type { RawSearch } from './url/params.js';
 import { AnalyzeView } from './views/AnalyzeView.js';
 import { CompareView } from './views/CompareView.js';
 import { CorpusView } from './views/CorpusView.js';
@@ -44,20 +44,13 @@ const rootRoute = createRootRoute({
   ),
 });
 
-/**
- * The front door is the Library. Analyze lived here before it had a path of its own, and a link to
- * an analysis always names its layout, so one that does still opens that analysis.
- */
+/** The front door is the Library. */
 const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   validateSearch: (search: Record<string, unknown>): RawSearch => search as RawSearch,
   beforeLoad: ({ search }) => {
-    throw redirect({
-      to: search.layout === undefined ? '/library' : '/analyze',
-      search,
-      replace: true,
-    });
+    throw redirect({ to: '/library', search, replace: true });
   },
   component: () => null,
 });
@@ -73,23 +66,6 @@ function view(path: string, component: () => ReactNode) {
 }
 
 const analyzeRoute = view('/analyze', AnalyzeView);
-/**
- * Edit was joined into Analyze, where a layout is edited now. A link to it still opens its layout
- * there, on English news when it names no text, as Edit opened it.
- */
-const editRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/edit',
-  validateSearch: (search: Record<string, unknown>): RawSearch => search as RawSearch,
-  beforeLoad: ({ search }) => {
-    throw redirect({
-      to: '/analyze',
-      search: { ...search, corpus: search.corpus || ENGLISH_CORPUS },
-      replace: true,
-    });
-  },
-  component: () => null,
-});
 const rulesRoute = view('/rules', RulesView);
 const compareRoute = view('/compare', CompareView);
 const corpusRoute = view('/corpus', CorpusView);
@@ -97,27 +73,15 @@ const libraryRoute = view('/library', LibraryView);
 const guideRoute = view('/guide', GuideView);
 const guidePageRoute = view('/guide/$page', GuideView);
 
-/** Short link to a saved layout. */
-const savedLayoutRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/l/$id',
-  beforeLoad: ({ params }) => {
-    throw redirect({ to: '/analyze', search: { layout: savedRef(params.id) } });
-  },
-  component: () => null,
-});
-
 const routeTree = rootRoute.addChildren([
   homeRoute,
   analyzeRoute,
-  editRoute,
   compareRoute,
   rulesRoute,
   corpusRoute,
   libraryRoute,
   guideRoute,
   guidePageRoute,
-  savedLayoutRoute,
 ]);
 
 export function createAppRouter(

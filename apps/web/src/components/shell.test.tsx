@@ -28,24 +28,6 @@ describe('where the site opens', () => {
     await waitFor(() => expect(currentPath()).toBe('/library'));
   });
 
-  it('still opens the analysis an older link names, on the corpus that replaced its own', async () => {
-    const { currentPath, currentSearch } = renderRoute(
-      '/?corpus=en-work&layout=qwerty&sample=1000',
-      {
-        storage: freshStorage(),
-      },
-    );
-    expect(await screen.findByLabelText('How is this typed?')).toBeInTheDocument();
-    expect(currentPath()).toBe('/analyze');
-    expect(currentSearch()).toContain('layout=qwerty');
-    // The Romak work corpus is gone; its English replacement opens instead.
-    await waitFor(() =>
-      expect(screen.getByRole('combobox', { name: 'Corpus' })).toHaveValue('en-conv'),
-    );
-  });
-});
-
-describe('moving between views', () => {
   it('keeps the corpus, the rules and the features chosen in one view in the next', async () => {
     const user = userEvent.setup();
     const { currentPath, currentSearch } = renderRoute(LIBRARY, { storage: freshStorage() });
@@ -277,25 +259,11 @@ describe('the page frame', () => {
   });
 });
 
-describe('Edit, joined into Analyze', () => {
+describe('Editing, in Analyze', () => {
   it('has no view of its own in the header', async () => {
     renderRoute(LIBRARY, { storage: freshStorage() });
     const nav = await screen.findByRole('navigation', { name: 'Main' });
     expect(within(nav).queryByRole('link', { name: 'Edit' })).toBeNull();
     expect(within(nav).getByRole('link', { name: 'Analyze' })).toBeInTheDocument();
-  });
-
-  it('opens an old link to the editor in Analyze, on English news unless it names a text', async () => {
-    const plain = renderRoute('/edit?layout=qwerty&sample=1000', { storage: freshStorage() });
-    await waitFor(() => expect(plain.currentPath()).toBe('/analyze'));
-    expect(plain.currentSearch()).toContain('layout=qwerty');
-    expect(plain.currentSearch()).toContain('corpus=en-general');
-    plain.unmount();
-
-    const named = renderRoute('/edit?layout=qwerty&corpus=pt-br-conv&sample=1000', {
-      storage: freshStorage(),
-    });
-    await waitFor(() => expect(named.currentPath()).toBe('/analyze'));
-    expect(named.currentSearch()).toContain('corpus=pt-br-conv');
   });
 });

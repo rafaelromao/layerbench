@@ -359,15 +359,14 @@ describe('Edit', () => {
     expect(await screen.findByRole('button', { name: /^Key LTM: qu/ })).toBeInTheDocument();
   }, 60_000);
 
-  it('opens an old link to the editor on English news, and switches text without losing edits', async () => {
+  it('switches text and rules without losing edits', async () => {
     const user = userEvent.setup();
     const { client, requests } = recording();
-    const { currentSearch, currentPath } = renderRoute('/edit?layout=qwerty&sample=20000', {
+    const { currentSearch } = renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000', {
       client,
       storage: freshStorage(),
     });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
-    expect(currentPath()).toBe('/analyze');
     const corpus = within(bar()).getByRole('combobox', { name: 'Corpus' });
     expect(corpus).toHaveValue('en-general');
     expect(requests.map((r) => r.corpusId)).toContain('en-general');
@@ -726,34 +725,6 @@ describe('Edit', () => {
         'after a, from a key tagged alpha2 → types x; after a → types h',
       ),
     );
-  });
-
-  it('opens a layout saved while magic keys were features with each one on its key', async () => {
-    const user = userEvent.setup();
-    const storage = freshStorage();
-    const old = JSON.parse(
-      readFileSync(
-        resolve(process.cwd(), '../../packages/core/golden/legacy/magic-romak-features.json'),
-        'utf8',
-      ),
-    );
-    await storage.put('layouts', 'old-magic', { ...old, id: 'old-magic' }, { message: 'seed' });
-    renderRoute('/analyze?layout=saved%3Aold-magic&corpus=pt-br-conv&sample=20000', { storage });
-    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
-
-    await user.click(await screen.findByRole('button', { name: /^Key L1:/ }));
-    const editor = await inspector('L1');
-    expect(
-      within(editor).getByRole('button', { name: 'More kinds: Alt repeat' }),
-    ).toBeInTheDocument();
-    // The second stage is the branches at the top, each asking for the tag.
-    expect(within(editor).getByLabelText('Branch 1 tags')).toHaveValue('alpha2');
-    expect(within(editor).getByLabelText('Branch 4 after')).toHaveValue('a');
-    // Opening it is not an edit.
-    expect(screen.queryByText('unsaved')).toBeNull();
-
-    await user.click(screen.getByRole('tab', { name: 'Features' }));
-    expect(screen.queryByLabelText('Magic key')).toBeNull();
   });
 
   it('makes a magic key the tap of a tap-hold, keeping its hold', async () => {

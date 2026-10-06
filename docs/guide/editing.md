@@ -22,8 +22,7 @@ them saves the layout they are edits of rather than a copy beside it. Picking an
 The bar at the top also holds the layout's author and description, and the choices the numbers
 are worked out with: **Corpus**, **Rules**, **Counts**, the **Sample**, the feature switches,
 **Include space** and **Model shift**, the same as in every view that analyzes. A feature switched
-off changes the numbers only: the keys are edited as written. An old link to the editor, from
-before it was part of **Analyze**, opens there, on English news unless it names another text.
+off changes the numbers only: the keys are edited as written.
 
 ## Numbers while you edit
 

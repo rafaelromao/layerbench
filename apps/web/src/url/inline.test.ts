@@ -27,17 +27,6 @@ describe('inline layout links', () => {
     expect(toCanonicalJson(decoded.layout)).toEqual(toCanonicalJson(bundledLayout('magic-romak')!));
   });
 
-  // Links shared while Magic Romak's magic keys and alt repeat were declared as features open as
-  // the layout is now, every key where it was.
-  it('opens a link from when magic keys were features as Magic Romak is now', async () => {
-    const decoded = await decodeInline(blobFixture('inline-magic-romak-features.txt'));
-    expect(decoded.ok).toBe(true);
-    if (!decoded.ok) return;
-    expect(JSON.stringify(toCanonicalJson(decoded.layout))).toBe(
-      JSON.stringify(toCanonicalJson(bundledLayout('magic-romak')!)),
-    );
-  });
-
   // A link is small; what it unpacks into need not be. Reading stops at the cap.
   it('gives up on a blob that unpacks past the size any layout could have', async () => {
     const cs = new CompressionStream('deflate');

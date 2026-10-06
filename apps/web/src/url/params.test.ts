@@ -45,19 +45,9 @@ describe('analysis parameters', () => {
     expect(parseLayoutRef('qwerty')).toEqual({ kind: 'bundled', value: 'qwerty' });
   });
 
-  it('opens the corpus that replaced the one an older link names', () => {
-    expect(parseParams({ corpus: 'en-work' }).corpus).toBe('en-conv');
-    expect(parseParams({ corpus: 'pt-br-work', corpus2: 'en-work' })).toMatchObject({
-      corpus: 'pt-br-conv',
-      corpus2: 'en-conv',
-    });
-    expect(parseParams({ corpus: 'en-general' }).corpus).toBe('en-general');
-  });
-
   it('takes a view’s own default corpus, but never over the one a link names', () => {
     expect(parseParams({}, ENGLISH_CORPUS).corpus).toBe('en-general');
     expect(parseParams({ corpus: 'pt-br-conv' }, ENGLISH_CORPUS).corpus).toBe('pt-br-conv');
-    expect(parseParams({ corpus: 'pt-br-work' }, ENGLISH_CORPUS).corpus).toBe('pt-br-conv');
     // The link contract itself is unchanged.
     expect(parseParams({}).corpus).toBe(DEFAULT_PARAMS.corpus);
   });

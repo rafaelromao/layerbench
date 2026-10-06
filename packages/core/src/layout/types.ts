@@ -192,8 +192,7 @@ export interface CapsWordFeature {
  *
  * Magic keys and alt repeats are not features: they are `adaptive` bindings on their keys, made
  * and edited like any other. A branch's `afterTags` replaces the one-shot layer an accent macro arms
- * in firmware so the repeat key can follow up. Documents that still declare `adaptiveKeys` or
- * `altRepeat` here are converted to those bindings when read (`legacy.ts`).
+ * in firmware so the repeat key can follow up.
  */
 export interface LayoutFeatures {
   sentenceCase?: SentenceCaseFeature;

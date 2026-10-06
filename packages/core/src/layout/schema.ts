@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { type LegacyLayout, upgradeLegacyFeatures } from './legacy.js';
 import { LAYER_COLORS, type Layout } from './types.js';
 
 const ModSchema = z.enum(['LSHIFT', 'RSHIFT', 'LCTRL', 'RCTRL', 'LALT', 'RALT', 'LGUI', 'RGUI']);
@@ -138,42 +137,8 @@ const GeometryKeySchema = z
     inner: k.inner ?? k.col === 5,
   }));
 
-const PlacementSchema = z.object({ layer: z.string(), key: z.string() });
-
-/**
- * Declarative special features; the compiler wraps the keys they belong to. `adaptiveKeys` and
- * `altRepeat` are read, never written: documents from before magic keys were bindings declare them,
- * and `parseLayout` turns them into bindings on their keys.
- */
+/** Declarative special features; the compiler wraps the keys they belong to. */
 const FeaturesSchema = z.object({
-  adaptiveKeys: z
-    .array(
-      z.object({
-        id: z.string(),
-        label: z.string().optional(),
-        enabled: z.boolean().optional(),
-        default: BindingSchema,
-        triggers: z.array(TriggerSchema).default([]),
-        strictModifiers: z.boolean().optional(),
-        deadKeys: z.array(z.string()).optional(),
-        at: z.array(PlacementSchema).optional(),
-      }),
-    )
-    .optional(),
-  altRepeat: z
-    .object({
-      enabled: z.boolean().optional(),
-      id: z.string().optional(),
-      at: z.array(PlacementSchema).optional(),
-      triggers: z.array(TriggerSchema).default([]),
-      secondStage: z
-        .object({
-          afterTags: z.array(z.string()).min(1),
-          triggers: z.array(TriggerSchema).default([]),
-        })
-        .optional(),
-    })
-    .optional(),
   sentenceCase: z
     .object({
       enabled: z.boolean().optional(),
@@ -300,20 +265,16 @@ export const LayoutSchema = z.object({
     .optional(),
 });
 
-/**
- * Read a layout document. One that still declares magic keys or the alt repeat as features comes
- * back with them as bindings on their keys (`legacy.ts`), which is the only shape the rest of the
- * engine knows.
- */
+/** Read a layout document. */
 export function parseLayout(input: unknown): Layout {
-  return upgradeLegacyFeatures(LayoutSchema.parse(input) as LegacyLayout);
+  return LayoutSchema.parse(input) as Layout;
 }
 
 export function safeParseLayout(
   input: unknown,
 ): { ok: true; layout: Layout } | { ok: false; error: string } {
   const r = LayoutSchema.safeParse(input);
-  if (r.success) return { ok: true, layout: upgradeLegacyFeatures(r.data as LegacyLayout) };
+  if (r.success) return { ok: true, layout: r.data as Layout };
   return { ok: false, error: z.prettifyError(r.error) };
 }
 
