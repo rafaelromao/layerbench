@@ -1,8 +1,6 @@
 import type { CorpusManifest } from '@layoutmaster/core';
 import { useEffect, useRef } from 'react';
-import { HelpLink } from '../../components/HelpLink.js';
 import type { SortKey } from '../../engine/use-summaries.js';
-import { HELP } from '../../guide/help.js';
 import { useSession } from '../../state/session.js';
 import type { Params } from '../../url/params.js';
 import { AnalysisSettings } from '../AnalysisSelects.js';
@@ -70,16 +68,14 @@ function BoardFilter({ boards }: { boards: BoardChoice[] }) {
 }
 
 /**
- * Everything the Library ranks and lists by, in one dialog: the text, rules and switches the
- * layouts are scored with, the order, and which boards are listed. The page keeps the list.
+ * What the Library ranks and lists by, in one dialog: the text, rules and switches the layouts are
+ * scored with, and which boards are listed. The order stays on the page, beside it.
  */
 export function RankingDialog({
   params,
   onChange,
   corpora,
   ruleSetName,
-  sortBy,
-  onSort,
   boards,
   summary,
 }: {
@@ -87,8 +83,6 @@ export function RankingDialog({
   onChange: (patch: Partial<Params>) => void;
   corpora: CorpusManifest[];
   ruleSetName?: string;
-  sortBy: SortKey;
-  onSort: (sort: SortKey) => void;
   boards: BoardChoice[];
   /** What the button says is chosen, so the choices are visible without opening it. */
   summary: string;
@@ -115,25 +109,6 @@ export function RankingDialog({
               ruleSetName={ruleSetName}
               verb="Rank"
             />
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <fieldset className="join" aria-label="Sort layouts by">
-              <legend className="text-xs opacity-70 float-left mr-2 self-center">Sort by</legend>
-              {SORTS.map(([key, label]) => (
-                // daisyUI draws a radio styled as a button from its accessible name.
-                <input
-                  key={key}
-                  type="radio"
-                  name="library-sort"
-                  aria-label={label}
-                  className="join-item btn btn-xs"
-                  checked={sortBy === key}
-                  onChange={() => onSort(key)}
-                />
-              ))}
-            </fieldset>
-            <HelpLink help={HELP.sorting} />
           </div>
 
           <BoardFilter boards={boards} />

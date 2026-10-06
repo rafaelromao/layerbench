@@ -30,8 +30,7 @@ different keys. It is the first measure of the
 
 **Library**, where the site opens, sorts every layout by Effort, by SFB or by name, and shows both
 numbers on each card, all scored on the same sample of the same text. **Rank and filter** holds
-what the ranking is made with, the sort, and **Boards**, which lists only the layouts on the boards
-you tick, so you can keep to the keyboards you own; the layouts on the others are not scored at
+what the ranking is made with, and **Boards**, which lists only the layouts on the boards you tick, so you can keep to the keyboards you own; the layouts on the others are not scored at
 all. The layouts you saved are
 ranked in the same list as the ones that come with the app, marked *saved*. Each layout takes its
 place as its score arrives. This browser remembers the scores, the sort and the boards you chose, so the next

@@ -706,15 +706,29 @@ export function LibraryView() {
           onChange={setParams}
           corpora={corpora}
           ruleSetName={ruleSet.name}
-          sortBy={sortBy}
-          onSort={setSortBy}
           boards={boards}
-          summary={`By ${SORTS.find(([key]) => key === sortBy)?.[1] ?? sortBy}${
+          summary={
             shownListed.length < listed.length
-              ? `, ${shownListed.length} of ${listed.length} layouts on the boards chosen`
+              ? `${shownListed.length} of ${listed.length} layouts, on the boards chosen.`
               : ''
-          }.`}
+          }
         />
+        <fieldset className="join" aria-label="Sort layouts by">
+          <legend className="text-xs opacity-70 float-left mr-2 self-center">Sort by</legend>
+          {SORTS.map(([key, label]) => (
+            // daisyUI draws a radio styled as a button from its accessible name.
+            <input
+              key={key}
+              type="radio"
+              name="library-sort"
+              aria-label={label}
+              className="join-item btn btn-xs"
+              checked={sortBy === key}
+              onChange={() => setSortBy(key)}
+            />
+          ))}
+        </fieldset>
+        <HelpLink help={HELP.sorting} />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

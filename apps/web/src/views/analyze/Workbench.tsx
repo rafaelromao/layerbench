@@ -17,6 +17,7 @@ import {
   useState,
 } from 'react';
 import { Collapsible } from '../../components/Collapsible.js';
+import { ErrorAlert } from '../../components/ErrorAlert.js';
 import { FamilyFilter, METRIC_FAMILIES, useFamilyShown } from '../../components/FamilyFilter.js';
 import { featureList } from '../../components/FeatureSwitches.js';
 import { HelpLink } from '../../components/HelpLink.js';
@@ -661,16 +662,8 @@ export function Workbench({
         </div>
       )}
 
-      {state.error && (
-        <div role="alert" className="alert alert-error text-sm">
-          {state.error}
-        </div>
-      )}
-      {analysisError && (
-        <div role="alert" className="alert alert-error text-sm">
-          Could not analyze: {analysisError}
-        </div>
-      )}
+      {state.error && <ErrorAlert message={state.error} />}
+      {analysisError && <ErrorAlert message={`Could not analyze: ${analysisError}`} />}
 
       {/* The board first, then the selected key's editor under it on a phone, beside it at a desk,
           where the board stays pinned while a key is being edited. */}

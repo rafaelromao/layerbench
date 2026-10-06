@@ -75,6 +75,36 @@ describe('Compare', () => {
     expect(within(table).getByText('Same finger bigrams')).toBeInTheDocument();
   });
 
+  it('offers the saved layouts on both sides, as Analyze does', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const mine = { ...toCanonicalJson(bundledLayout('qwerty')!), id: 'mine', name: 'Mine' };
+    await storage.put('layouts', 'mine', mine, { message: 'seed' });
+    const { currentSearch } = renderRoute('/compare?layout=qwerty&b=graphite&sample=20000', {
+      storage,
+    });
+
+    const a = await screen.findByLabelText('Layout A');
+    await waitFor(() =>
+      expect(within(a).getByRole('option', { name: 'Mine' })).toBeInTheDocument(),
+    );
+    const b = screen.getByLabelText('Layout B');
+    expect(within(b).getByRole('option', { name: 'Mine' })).toHaveValue('saved:mine');
+
+    // Each group is in alphabetical order.
+    const names = (group: string) =>
+      [...(a.querySelector(`optgroup[label="${group}"]`)?.children ?? [])].map(
+        (o) => o.textContent,
+      );
+    const bundled = names('Bundled');
+    expect(bundled).toEqual(
+      [...bundled].sort((x, y) => x!.localeCompare(y!, 'en', { sensitivity: 'base' })),
+    );
+
+    await user.selectOptions(b, 'saved:mine');
+    await waitFor(() => expect(currentSearch()).toContain('b=saved%3Amine'));
+  });
+
   /** The engine, keeping every analysis it is asked for. */
   function recording(): { client: AnalysisClient; requests: AnalyzeRequest[] } {
     const real = testClient();

@@ -1,7 +1,8 @@
-import { BUNDLED_LAYOUTS, type CorpusManifest, toCanonicalJson } from '@layoutmaster/core';
+import { type CorpusManifest, toCanonicalJson } from '@layoutmaster/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Collapsible } from '../components/Collapsible.js';
+import { ErrorAlert } from '../components/ErrorAlert.js';
 import { FamilyFilter, useFamilyShown } from '../components/FamilyFilter.js';
 import { featureList } from '../components/FeatureSwitches.js';
 import { formatValue } from '../components/format.js';
@@ -12,9 +13,11 @@ import { expandPositions, usageHeat } from '../engine/heat.js';
 import type { AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { useAnalysis } from '../engine/use-analysis.js';
 import { useRememberSelection } from '../state/selection.js';
+import { useCollection } from '../storage/use-storage.js';
 import { type Params, parseParams, type RawSearch, toSearch } from '../url/params.js';
 import { AnalysisSettings, SampleSelect } from './AnalysisSelects.js';
 import { compareRows } from './compare-rows.js';
+import { LayoutOptions } from './LayoutOptions.js';
 import { useLayout, useTypedLayout } from './useLayout.js';
 import { useRuleSet } from './useRuleSet.js';
 
@@ -39,6 +42,7 @@ export function CompareView() {
       .catch(() => setCorpora([]));
   }, [client]);
 
+  const saved = useCollection('layouts');
   const a = useLayout(params.layoutRef);
   const b = useLayout(refB);
   // Both sides are typed without the same features, as the Library ranks them, and drawn that way
@@ -119,14 +123,7 @@ export function CompareView() {
             value={params.layoutRef}
             onChange={(e) => setParams({ layoutRef: e.target.value })}
           >
-            {BUNDLED_LAYOUTS.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-            {!BUNDLED_LAYOUTS.some((l) => l.id === params.layoutRef) && (
-              <option value={params.layoutRef}>{nameA}</option>
-            )}
+            <LayoutOptions saved={saved.entries} current={params.layoutRef} currentName={nameA} />
           </select>
         </label>
 
@@ -138,12 +135,7 @@ export function CompareView() {
             value={refB}
             onChange={(e) => setParams({ b: e.target.value })}
           >
-            {BUNDLED_LAYOUTS.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-            {!BUNDLED_LAYOUTS.some((l) => l.id === refB) && <option value={refB}>{nameB}</option>}
+            <LayoutOptions saved={saved.entries} current={refB} currentName={nameB} />
           </select>
         </label>
 
@@ -184,7 +176,7 @@ export function CompareView() {
         </div>
       )}
 
-      {error && <div className="alert alert-error text-sm">{error}</div>}
+      {error && <ErrorAlert message={error} />}
 
       <Collapsible id="compare.layouts" title="Layouts">
         <div className="grid gap-4 md:grid-cols-2">

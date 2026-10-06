@@ -1,13 +1,9 @@
-import {
-  BUNDLED_LAYOUTS,
-  type CorpusManifest,
-  type IndexEntry,
-  type Layout,
-} from '@layoutmaster/core';
-import { type Params, savedRef } from '../../url/params.js';
+import type { CorpusManifest, IndexEntry, Layout } from '@layoutmaster/core';
+import type { Params } from '../../url/params.js';
 import { AnalysisSettings, SampleSelect } from '../AnalysisSelects.js';
 import { groupByLanguage } from '../corpus-groups.js';
 import { TextField } from '../edit/inspector/controls.js';
+import { LayoutOptions } from '../LayoutOptions.js';
 
 /**
  * What the layout is and what it is measured on, all in sight: its name, whether it is saved and
@@ -46,12 +42,6 @@ export function LayoutBar({
   onParams: (overrides: Partial<Params>) => void;
   onCompare: () => void;
 }) {
-  const listed =
-    BUNDLED_LAYOUTS.some((l) => l.id === layoutRef) ||
-    saved.some((e) => savedRef(e.id) === layoutRef);
-  const savedSorted = [...saved].sort(
-    (a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id),
-  );
   return (
     <section
       className="lm-editor-bar card bg-base-100 border border-base-300 gap-3 px-3 py-2"
@@ -120,26 +110,7 @@ export function LayoutBar({
             value={layoutRef}
             onChange={(e) => onPick(e.target.value)}
           >
-            <optgroup label="Bundled">
-              {BUNDLED_LAYOUTS.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name}
-                </option>
-              ))}
-            </optgroup>
-            {savedSorted.length > 0 && (
-              <optgroup label="Saved">
-                {savedSorted.map((e) => (
-                  <option key={e.id} value={savedRef(e.id)}>
-                    {/* Two saved layouts can share a name; their ids tell them apart. */}
-                    {saved.filter((o) => o.name === e.name).length > 1
-                      ? `${e.name} (${e.id})`
-                      : e.name}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-            {!listed && <option value={layoutRef}>{layout.name}</option>}
+            <LayoutOptions saved={saved} current={layoutRef} currentName={layout.name} />
           </select>
         </label>
         <AnalysisSettings

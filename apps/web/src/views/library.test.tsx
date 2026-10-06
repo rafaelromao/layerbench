@@ -134,8 +134,6 @@ describe('Ranking layouts', () => {
     // Effort is the default order: best first.
     const efforts = cards().map((c) => valueOn(c, 'Effort'));
     expect(efforts).toEqual([...efforts].sort((a, b) => a - b));
-
-    await openRanking();
     await user.click(screen.getByRole('radio', { name: 'SFB' }));
     const sfbs = cards().map((c) => valueOn(c, 'SFB'));
     expect(sfbs).toEqual([...sfbs].sort((a, b) => a - b));
@@ -199,7 +197,6 @@ describe('Ranking layouts', () => {
     await screen.findByText(/^Scoring layouts on a sample of [\d,]+ symbols… 2 of/, undefined, {
       timeout: 60_000,
     });
-    await openRanking();
     expect(screen.getByRole('radio', { name: 'Effort' })).toBeChecked();
     const names = [...document.querySelectorAll('article h3')].map((h) => h.textContent);
     // The better of the two scored comes first, the worse second, and the unscored wait below.
@@ -253,7 +250,6 @@ describe('Ranking layouts', () => {
     expect(within(cards()[1]).queryByText('saved')).toBeNull();
 
     // By name, it takes its place among the bundled layouts rather than after them.
-    await openRanking();
     await user.click(screen.getByRole('radio', { name: 'Name' }));
     const byName = names();
     expect(byName).toEqual([...byName].sort((a, b) => (a ?? '').localeCompare(b ?? '')));
@@ -330,7 +326,7 @@ describe('Choosing which boards are listed', () => {
     await user.click(columnar34);
     expect(screen.queryByRole('button', { name: 'Duplicate Qwerty' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Duplicate Bird' })).toBeInTheDocument();
-    expect(screen.getByText(/layouts on the boards chosen/)).toBeInTheDocument();
+    expect(screen.getByText(/of [0-9]+ layouts, on the boards chosen/)).toBeInTheDocument();
     expect(JSON.parse(localStorage.getItem('layoutmaster:session') ?? '{}').state).toMatchObject({
       hiddenBoards: ['3x5+2'],
     });
