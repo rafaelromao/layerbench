@@ -31,6 +31,7 @@ import {
 } from '../engine/use-summaries.js';
 import { HELP } from '../guide/help.js';
 import { useRememberSelection } from '../state/selection.js';
+import { useSession } from '../state/session.js';
 import { toast } from '../state/toasts.js';
 import { useCollection, useStorage } from '../storage/use-storage.js';
 import { encodeInline } from '../url/inline.js';
@@ -401,7 +402,8 @@ export function LibraryView() {
     (layoutRef: string) => toSearch(params, { layoutRef }) as never,
     [params],
   );
-  const [sortBy, setSortBy] = useState<SortKey>('effort');
+  const sortBy = useSession((s) => s.librarySort);
+  const setSortBy = useSession((s) => s.setLibrarySort);
 
   // Saved layouts are listed from their index; ranking needs the documents themselves.
   const [savedLayouts, setSavedLayouts] = useState<Map<string, Layout>>(() => new Map());

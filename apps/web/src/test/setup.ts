@@ -6,6 +6,8 @@ import { afterEach } from 'vitest';
 
 // Vitest runs without global test functions, so the automatic unmount does not register itself.
 afterEach(cleanup);
+// What one test leaves in this browser's storage (scores, preferences) must not reach the next.
+afterEach(() => localStorage.clear());
 
 /**
  * What these tests wait for is real work: an analysis running in the test's own thread, or a

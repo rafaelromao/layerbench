@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { SortKey } from '../engine/use-summaries.js';
 import { applyTheme, type ThemeChoice } from './theme.js';
 
 /**
@@ -14,6 +15,9 @@ interface SessionState {
   /** Metric families whose sections Analyze and Compare hide; the same in every view. */
   hiddenFamilies: string[];
   showFamilies: (families: readonly string[], shown: boolean) => void;
+  /** How the Library sorts its layouts. */
+  librarySort: SortKey;
+  setLibrarySort: (sort: SortKey) => void;
 }
 
 export const useSession = create<SessionState>()(
@@ -31,6 +35,8 @@ export const useSession = create<SessionState>()(
         const rest = get().hiddenFamilies.filter((f) => !families.includes(f));
         set({ hiddenFamilies: shown ? rest : [...rest, ...families] });
       },
+      librarySort: 'effort',
+      setLibrarySort: (librarySort) => set({ librarySort }),
     }),
     {
       name: 'layoutmaster:session',
@@ -38,6 +44,7 @@ export const useSession = create<SessionState>()(
         theme: s.theme,
         editPanel: s.editPanel,
         hiddenFamilies: s.hiddenFamilies,
+        librarySort: s.librarySort,
       }),
     },
   ),

@@ -1,8 +1,9 @@
 import { BUNDLED_LAYOUTS, bundledLayout, type Layout, toCanonicalJson } from '@layoutmaster/core';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AnalysisClient, AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
+import { useSession } from '../state/session.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { LIBRARY, renderRoute, testClient } from '../test/render.js';
 
@@ -12,6 +13,9 @@ let counter = 0;
 function freshStorage(): IndexedDbAdapter {
   return new IndexedDbAdapter(`layoutmaster-library-${++counter}`);
 }
+
+// The sort is remembered in this browser; each test starts from the default.
+beforeEach(() => useSession.setState({ librarySort: 'effort' }));
 
 describe('Creating layouts', () => {
   it('creates a layout from scratch and opens it in the editor', async () => {

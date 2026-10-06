@@ -33,11 +33,56 @@ export interface SummaryEntry {
   layout: Layout | null;
 }
 
-/**
- * Kept for the session, never persisted: a stored summary would outlive the engine that computed
- * it, and a change to a rule's definition would go on being ranked by the old number.
- */
+/** Summaries this page computed itself: current by definition, so never computed twice. */
 const cache = new Map<string, LayoutSummary>();
+
+/**
+ * Summaries from earlier visits, kept in this browser so the list opens already ranked. They may
+ * have been computed by an older engine or rule definition, so they are only shown until the same
+ * work is done again in the background, which replaces any that changed.
+ */
+const STORE_KEY = 'layoutmaster:summaries';
+/** Enough for every layout on a few texts and rule sets; the oldest go first. */
+const STORE_LIMIT = 400;
+
+function isSummary(value: unknown): value is LayoutSummary {
+  if (!value || typeof value !== 'object') return false;
+  const o = value as Record<string, unknown>;
+  const num = (v: unknown) => v === null || typeof v === 'number';
+  return num(o.effort) && num(o.sfb) && typeof o.skipped === 'number' && Array.isArray(o.missing);
+}
+
+function readStored(): Map<string, LayoutSummary> {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(STORE_KEY) ?? '{}');
+    const out = new Map<string, LayoutSummary>();
+    if (parsed && typeof parsed === 'object') {
+      for (const [hash, summary] of Object.entries(parsed)) {
+        if (isSummary(summary)) out.set(hash, summary);
+      }
+    }
+    return out;
+  } catch {
+    return new Map();
+  }
+}
+
+function store(hash: string, summary: LayoutSummary): void {
+  try {
+    const stored = readStored();
+    // Re-inserted, so the most recently computed are the last to be dropped.
+    stored.delete(hash);
+    stored.set(hash, summary);
+    const kept = [...stored].slice(-STORE_LIMIT);
+    localStorage.setItem(STORE_KEY, JSON.stringify(Object.fromEntries(kept)));
+  } catch {
+    // Without site data the list is simply ranked afresh on each visit.
+  }
+}
+
+function sameSummary(a: LayoutSummary | undefined, b: LayoutSummary): boolean {
+  return !!a && JSON.stringify(a) === JSON.stringify(b);
+}
 
 /**
  * How long the list is left alone before scoring starts: long enough that a reader passing through
@@ -79,9 +124,10 @@ function requestFor(layout: Layout, opts: SummaryOptions): AnalyzeRequest {
 }
 
 /**
- * Score a list of layouts in the background, one at a time. The worker is shared with every other
- * view, so the queue is abandoned the moment the list is left rather than holding up an analysis
- * the reader has since asked for.
+ * Score a list of layouts in the background, one at a time. Scores from an earlier visit are shown
+ * at once and checked again here; one is replaced only when its numbers changed, so a list that
+ * was right does not move. The worker is shared with every other view, so the queue is abandoned
+ * the moment the list is left rather than holding up an analysis the reader has since asked for.
  */
 export function useSummaries(
   entries: SummaryEntry[],
@@ -108,8 +154,9 @@ export function useSummaries(
     const controller = new AbortController();
     let cancelled = false;
     const known = new Map<string, LayoutSummary>();
+    const stored = readStored();
     for (const r of requests) {
-      const hit = cache.get(r.hash);
+      const hit = cache.get(r.hash) ?? stored.get(r.hash);
       if (hit) known.set(r.key, hit);
     }
     setSummaries(known);
@@ -137,7 +184,12 @@ export function useSummaries(
           summary = { effort: null, sfb: null, skipped: 0, missing: [] };
         }
         cache.set(r.hash, summary);
-        if (!cancelled) setSummaries((prev) => new Map(prev).set(r.key, summary));
+        store(r.hash, summary);
+        if (cancelled) return;
+        // The same numbers as already shown change nothing on the page.
+        setSummaries((prev) =>
+          sameSummary(prev.get(r.key), summary) ? prev : new Map(prev).set(r.key, summary),
+        );
       }
     })();
 
