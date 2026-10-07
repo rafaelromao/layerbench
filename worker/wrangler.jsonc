@@ -13,7 +13,7 @@
     // The pages that may sign in here, comma-separated.
     "ALLOWED_ORIGINS": "https://layerbench.github.io",
     // From the GitHub App's settings page. Left empty, sign-in reports itself not set up.
-    "GITHUB_CLIENT_ID": "",
-    "GITHUB_APP_SLUG": ""
+    "GITHUB_CLIENT_ID": "Iv23liSLZPvTOuaUpEim",
+    "GITHUB_APP_SLUG": "layerbench"
   }
 }
