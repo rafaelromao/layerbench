@@ -582,7 +582,9 @@ function evalStat(rule: Rule, ctx: Ctx): RuleResult {
       value = ratio(st.chords, st.keystrokes) * 100;
       break;
     case 'extra_keystrokes':
-      value = st.symbols > 0 ? st.keystrokes / st.symbols - 1 : 0;
+      // Space presses type spaces, which are not symbols here: left in, every layout would look as
+      // if it pressed a key too many per word.
+      value = st.symbols > 0 ? (st.keystrokes - st.space_presses) / st.symbols - 1 : 0;
       break;
     case 'keystrokes':
       value = st.keystrokes;

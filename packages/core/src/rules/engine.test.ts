@@ -85,6 +85,8 @@ describe('rules engine', () => {
     expect(magic.value('layer_taps_per_100')).toBeGreaterThan(0);
     expect(magic.value('extra_keystrokes')).toBeGreaterThan(0);
     expect(qwerty.value('layer_taps_per_100')).toBe(0);
+    // One press per symbol, and the space bar's presses type spaces, which are not symbols.
+    expect(qwerty.value('extra_keystrokes')).toBe(0);
     const dist = magic.results.find((r) => r.id === 'layer_distribution')!;
     expect(Object.keys(dist.breakdown).length).toBeGreaterThanOrEqual(2);
   });
