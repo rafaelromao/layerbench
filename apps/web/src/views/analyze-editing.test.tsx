@@ -1075,7 +1075,8 @@ describe('Edit', () => {
       '&sl alpha2',
     );
     expect(within(editor).getByRole('radio', { name: 'One-shot' })).toBeChecked();
-    expect(within(editor).getByRole('button', { name: /Alpha 2/ })).toHaveAttribute(
+    // Exactly the layer choice: the editor also has an "On Alpha 2 board" button.
+    expect(within(editor).getByRole('button', { name: 'Alpha 2' })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
