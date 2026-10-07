@@ -76,6 +76,11 @@ describe('the landing page', () => {
     }
   });
 
+  it('shares its icon with the app, which is published apart from it', () => {
+    const app = readFileSync(resolve(process.cwd(), 'public/favicon.svg'), 'utf8');
+    expect(app).toBe(readFileSync(resolve(SITE, 'assets/favicon.svg'), 'utf8'));
+  });
+
   it('draws every image at the proportions of the file behind it', () => {
     for (const img of all('img')) {
       const src = attr(img, 'src');
