@@ -48,3 +48,7 @@ everything already in your GitHub account stays there.
 
 A link carries everything a view shows, so copying the address shares the analysis as it stands,
 unsaved edits included, even for a layout that was never saved. Nobody needs to sign in to open it.
+
+A layout that was never saved makes a long link: the whole layout is in it, after the `#`. Copy the
+whole address, and if a link opens on a different layout than it should, check that nothing after
+the `#` was lost on the way.

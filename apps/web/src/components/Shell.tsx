@@ -180,7 +180,17 @@ export function Shell({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-2">
+      {/* biome-ignore lint/a11y/useValidAnchor: a skip link is announced as a link; the click only keeps it from rewriting the address */}
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-2"
+        onClick={(e) => {
+          // Focus moves without the address changing: a layout that was never saved rides after
+          // its `#` (see `url/fragment.ts`), and `#main` there would replace it.
+          e.preventDefault();
+          document.getElementById('main')?.focus();
+        }}
+      >
         Skip to content
       </a>
       <header className="navbar bg-base-100 border-b border-base-300 px-3 sm:px-4 min-h-12 sticky top-0 z-20">

@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { Shell } from './components/Shell.js';
+import { inlineInFragment } from './url/fragment.js';
 import type { RawSearch } from './url/params.js';
 import { AnalyzeView } from './views/AnalyzeView.js';
 import { CompareView } from './views/CompareView.js';
@@ -94,6 +95,8 @@ export function createAppRouter(
     basepath: import.meta.env.BASE_URL,
     parseSearch,
     stringifySearch,
+    // Layouts that were never saved ride after the `#` in the address; see `url/fragment.ts`.
+    rewrite: inlineInFragment,
     defaultPreload: false,
     ...options,
   });

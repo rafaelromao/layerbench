@@ -113,11 +113,16 @@ describe('the page frame', () => {
     }
   });
 
-  it('offers a skip link to the content', async () => {
+  it('offers a skip link to the content, which leaves the address as it is', async () => {
+    const user = userEvent.setup();
     renderRoute(LIBRARY, { storage: freshStorage() });
     const skip = await screen.findByRole('link', { name: 'Skip to content' });
     expect(skip).toHaveAttribute('href', '#main');
-    expect(document.getElementById('main')).toBeInTheDocument();
+    // What follows the `#` can be a layout that was never saved, which `#main` would replace.
+    const before = location.href;
+    await user.click(skip);
+    expect(document.activeElement).toBe(document.getElementById('main'));
+    expect(location.href).toBe(before);
   });
 
   it('moves focus into the new view when the route changes', async () => {
