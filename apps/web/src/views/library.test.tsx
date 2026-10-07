@@ -19,8 +19,10 @@ async function openRanking() {
   await userEvent.click(await screen.findByRole('button', { name: 'Rank and filter' }));
 }
 
-// The sort and the boards are remembered in this browser; each test starts from the defaults.
-beforeEach(() => useSession.setState({ librarySort: 'effort', hiddenBoards: [] }));
+// The sort and the filters are remembered in this browser; each test starts from the defaults.
+beforeEach(() =>
+  useSession.setState({ librarySort: 'effort', hiddenBoards: [], hideSaved: false }),
+);
 
 describe('Creating layouts', () => {
   it('creates a layout from scratch and opens it in the editor', async () => {
@@ -335,6 +337,31 @@ describe('Choosing which boards are listed', () => {
     expect(all.indeterminate).toBe(true);
     await user.click(all);
     expect(screen.getByRole('button', { name: 'Duplicate Qwerty' })).toBeInTheDocument();
+  });
+
+  it('leaves the saved layouts out when asked, and remembers the choice', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const qwerty = bundledLayout('qwerty') as Layout;
+    await storage.put('layouts', 'mine', toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine' }));
+    renderRoute(LIBRARY, { storage });
+    expect(await screen.findByRole('button', { name: 'Duplicate Mine' })).toBeInTheDocument();
+
+    await openRanking();
+    const layouts = screen.getByRole('group', { name: 'Layouts' });
+    const saved = within(layouts).getByRole('checkbox', { name: 'Saved layouts (1)' });
+    expect(saved).toBeChecked();
+
+    await user.click(saved);
+    expect(screen.queryByRole('button', { name: 'Duplicate Mine' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Duplicate Qwerty' })).toBeInTheDocument();
+    expect(screen.getByText(/of [0-9]+ layouts, without the saved ones\./)).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem('layerbench:session') ?? '{}').state).toMatchObject({
+      hideSaved: true,
+    });
+
+    await user.click(saved);
+    expect(screen.getByRole('button', { name: 'Duplicate Mine' })).toBeInTheDocument();
   });
 });
 

@@ -507,21 +507,33 @@ export function LibraryView() {
     [bundled, saved.entries, savedLayouts, savedCompiled],
   );
 
+  // Saved layouts can be left out of the list, and then they count on no board either.
+  const hideSaved = useSession((s) => s.hideSaved);
+  const pool = useMemo(
+    () => (hideSaved ? listed.filter((item) => !item.saved) : listed),
+    [listed, hideSaved],
+  );
+
   // The boards the listed layouts are on, in the order the presets are offered, each with how
   // many layouts it has; only shown boards are listed, and only listed layouts are scored.
   const hiddenBoards = useSession((s) => s.hiddenBoards);
   const boards: BoardChoice[] = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const item of listed) counts.set(item.board, (counts.get(item.board) ?? 0) + 1);
+    for (const item of pool) counts.set(item.board, (counts.get(item.board) ?? 0) + 1);
     const order = [...GEOMETRY_PRESET_IDS, CUSTOM_BOARD];
     return [...counts]
       .sort(([a], [b]) => order.indexOf(a) - order.indexOf(b))
       .map(([id, count]) => ({ id, label: boardLabel(id), count }));
-  }, [listed]);
+  }, [pool]);
   const shownListed = useMemo(
-    () => listed.filter((item) => !hiddenBoards.includes(item.board)),
-    [listed, hiddenBoards],
+    () => pool.filter((item) => !hiddenBoards.includes(item.board)),
+    [pool, hiddenBoards],
   );
+  /** Why fewer layouts are listed than there are, for the line beside the dialog's button. */
+  const leftOut = [
+    pool.length < listed.length ? 'without the saved ones' : '',
+    shownListed.length < pool.length ? 'on the boards chosen' : '',
+  ].filter(Boolean);
   const shownKeys = useMemo(() => new Set(shownListed.map((item) => item.key)), [shownListed]);
 
   const summaryEntries: SummaryEntry[] = useMemo(
@@ -707,9 +719,10 @@ export function LibraryView() {
           corpora={corpora}
           ruleSetName={ruleSet.name}
           boards={boards}
+          savedCount={saved.entries.length}
           summary={
-            shownListed.length < listed.length
-              ? `${shownListed.length} of ${listed.length} layouts, on the boards chosen.`
+            leftOut.length > 0
+              ? `${shownListed.length} of ${listed.length} layouts, ${leftOut.join(', ')}.`
               : ''
           }
         />

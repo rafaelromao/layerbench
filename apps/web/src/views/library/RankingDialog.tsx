@@ -18,6 +18,28 @@ export interface BoardChoice {
   count: number;
 }
 
+/** Whether the layouts saved here are listed among the bundled ones, with how many there are. */
+function SavedFilter({ count }: { count: number }) {
+  const hideSaved = useSession((s) => s.hideSaved);
+  const setHideSaved = useSession((s) => s.setHideSaved);
+  return (
+    <fieldset className="space-y-1">
+      <legend className="text-xs opacity-70 mb-1">Layouts</legend>
+      <label className="label lb-check cursor-pointer justify-start gap-1.5 p-0">
+        <input
+          type="checkbox"
+          className="checkbox checkbox-xs"
+          checked={!hideSaved}
+          onChange={(e) => setHideSaved(!e.target.checked)}
+        />
+        <span className="label-text text-xs">
+          Saved layouts <span className="opacity-60">({count})</span>
+        </span>
+      </label>
+    </fieldset>
+  );
+}
+
 /** Checkboxes for the boards whose layouts are listed, with one for all of them. */
 function BoardFilter({ boards }: { boards: BoardChoice[] }) {
   const hidden = useSession((s) => s.hiddenBoards);
@@ -69,7 +91,8 @@ function BoardFilter({ boards }: { boards: BoardChoice[] }) {
 
 /**
  * What the Library ranks and lists by, in one dialog: the text, rules and switches the layouts are
- * scored with, and which boards are listed. The order stays on the page, beside it.
+ * scored with, whether saved layouts are listed, and which boards are. The order stays on the page,
+ * beside it.
  */
 export function RankingDialog({
   params,
@@ -77,6 +100,7 @@ export function RankingDialog({
   corpora,
   ruleSetName,
   boards,
+  savedCount,
   summary,
 }: {
   params: Params;
@@ -84,6 +108,8 @@ export function RankingDialog({
   corpora: CorpusManifest[];
   ruleSetName?: string;
   boards: BoardChoice[];
+  /** How many layouts are saved here, listed or not. */
+  savedCount: number;
   /** What the button says is chosen, so the choices are visible without opening it. */
   summary: string;
 }) {
@@ -111,6 +137,7 @@ export function RankingDialog({
             />
           </div>
 
+          <SavedFilter count={savedCount} />
           <BoardFilter boards={boards} />
 
           <div className="modal-action">

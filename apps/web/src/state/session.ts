@@ -21,6 +21,9 @@ interface SessionState {
   /** Boards whose layouts the Library leaves out, by preset id (`custom` for any other board). */
   hiddenBoards: string[];
   showBoards: (boards: readonly string[], shown: boolean) => void;
+  /** Whether the Library leaves out the layouts saved in this browser or account. */
+  hideSaved: boolean;
+  setHideSaved: (hide: boolean) => void;
   /** The groups of Analyze and Compare folded away, by id; the same in every visit. */
   collapsedGroups: string[];
   toggleGroup: (group: string) => void;
@@ -48,6 +51,8 @@ export const useSession = create<SessionState>()(
         const rest = get().hiddenBoards.filter((b) => !boards.includes(b));
         set({ hiddenBoards: shown ? rest : [...rest, ...boards] });
       },
+      hideSaved: false,
+      setHideSaved: (hideSaved) => set({ hideSaved }),
       collapsedGroups: [],
       toggleGroup: (group) => {
         const current = get().collapsedGroups;
@@ -66,6 +71,7 @@ export const useSession = create<SessionState>()(
         hiddenFamilies: s.hiddenFamilies,
         librarySort: s.librarySort,
         hiddenBoards: s.hiddenBoards,
+        hideSaved: s.hideSaved,
         collapsedGroups: s.collapsedGroups,
       }),
     },

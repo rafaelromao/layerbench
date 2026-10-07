@@ -32,8 +32,9 @@ different keys. It is the first measure of the
 numbers on each card, all scored on the same sample of the same text. **Rank and filter** holds
 what the ranking is made with, and **Boards**, which lists only the layouts on the boards you tick, so you can keep to the keyboards you own; the layouts on the others are not scored at
 all. The layouts you saved are
-ranked in the same list as the ones that come with the app, marked *saved*. Each layout takes its
-place as its score arrives. This browser remembers the scores, the sort and the boards you chose, so the next
+ranked in the same list as the ones that come with the app, marked *saved*; untick **Saved
+layouts**, in **Rank and filter**, to leave them out. Each layout takes its
+place as its score arrives. This browser remembers the scores, the sort and what you chose to list, so the next
 visit opens already ranked; the scores are checked again quietly, and a layout moves only if its
 numbers changed. **Compare** puts every number for two layouts side by side, with the difference and which
 of the two does better.
