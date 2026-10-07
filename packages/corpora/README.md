@@ -75,6 +75,13 @@ form and shipping an unverifiable unpacker would be worse than one documented in
 That is exactly how `en-general` and `pt-br-general` were produced. The collection is CC BY 4.0;
 `sources.json` records the attribution the licence requires.
 
+## Adding a text
+
+A text joins the ones the app serves by pull request: its raw file here, its entry in
+`sources.json` with an open licence and a linked source, and what `pnpm corpora` builds from them.
+The repository's README, under [Bundled corpora](../../README.md#bundled-corpora), lists each step;
+the `corpora` workflow checks the pull request.
+
 ## Adding a language
 
 1. A `LanguageProfile` in `packages/core/src/lang/profiles.ts` — the characters the language cannot

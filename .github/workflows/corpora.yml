@@ -1,0 +1,59 @@
+name: corpora
+
+# Pull requests that add or change a bundled text (README → Bundled corpora) get the checks a text
+# must pass, a fresh build of what the app serves that must match what was committed, and a summary
+# for whoever reviews them: what each text is, where it comes from and under what licence, what it
+# is made of, and how the bundled layouts fare on it. The summary is on the run's page: a pull
+# request from a fork gets a token that cannot comment.
+on:
+  pull_request:
+    paths:
+      - 'packages/corpora/**'
+      - 'apps/web/public/corpora/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: corpora-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  corpora:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          # The pull request's base, to tell which texts it adds or changes.
+          fetch-depth: 0
+      # No version here: the action reads `packageManager` from package.json.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Each text says what it is, links where it comes from, carries an open licence and is in a
+      # language LayerBench has a profile for; what the app serves matches sources.json.
+      - name: Check the texts
+        run: pnpm --filter @layerbench/web exec vitest run src/engine/corpora.test.ts
+      # The build is deterministic and keeps its timestamps when a sample does not move, so building
+      # again changes nothing when what was committed is what `pnpm corpora` makes.
+      - name: Check what the app serves is built from the raw texts
+        run: |
+          pnpm corpora
+          if [ -n "$(git status --porcelain -- apps/web/public/corpora)" ]; then
+            git status --short -- apps/web/public/corpora
+            echo "::error::apps/web/public/corpora is not what pnpm corpora builds: run it and commit the result."
+            exit 1
+          fi
+      - name: Summarize them for the review
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          ids=$(git diff --name-only --diff-filter=AM "$BASE" HEAD -- 'apps/web/public/corpora/*/*' \
+            | cut -d/ -f5 | sort -u | tr '\n' ' ')
+          CORPUS_REPORT="$ids" CORPUS_REPORT_FILE="$RUNNER_TEMP/corpora.md" \
+            pnpm --filter @layerbench/web exec vitest run src/engine/corpus-report.test.ts
+          cat "$RUNNER_TEMP/corpora.md" >> "$GITHUB_STEP_SUMMARY"

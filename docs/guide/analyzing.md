@@ -113,7 +113,9 @@ what of the text is counted: letters only, the default, or numbers and symbols a
 ### The text itself
 
 **Corpus** lists the texts that come with the app, by language, each with where it came from. Your
-own text can be pasted or uploaded there and analyzed like any other. **Sample**, on **Analyze**
+own text can be pasted or uploaded there and analyzed like any other. A text published under an open
+licence can join the ones that come with the app, by pull request on GitHub; the
+[README](../../README.md#bundled-corpora) lists the steps. **Sample**, on **Analyze**
 and **Compare**, sets how much of the text is typed, 100,000 symbols unless you choose more: more
 gives steadier numbers, less gives them sooner, which matters most while a layout is being edited,
 since every edit types it again. **Library** always ranks on 100,000 symbols, since it types the

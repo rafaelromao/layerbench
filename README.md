@@ -89,6 +89,28 @@ the approval, and the deploy that follows puts it in everyone's Library.
    with its source, a link that opens it in the app as it would be bundled, and its Effort and SFB
    on the texts of its languages, placed among the bundled layouts as the Library ranks them.
 
+## Bundled corpora
+
+The texts that come with the app are built from `packages/corpora/raw/`: each raw text with its
+entry in `sources.json`, which says what it is, its language, its licence and where it comes from.
+`pnpm corpora` normalizes each one, caps it at a megabyte, and writes what the app serves to
+`apps/web/public/corpora/`. A new or updated text joins them by pull request, and merging it is the
+approval.
+
+1. Put the raw text in `packages/corpora/raw/`, as UTF-8 plain text of at most 10 MB: the same kind
+   of text you would paste or upload in **Corpus**. Its language needs a profile in
+   `packages/core/src/lang/profiles.ts`; [packages/corpora/README.md](packages/corpora/README.md#adding-a-language)
+   says how to add one.
+2. Add its entry to `raw/sources.json`, under an id of lower-case words and hyphens: `file`, `name`,
+   `language`, `description`, `source` with a link, and `license`, one of CC0, CC BY, CC BY-SA or
+   public domain, since the text is published with the app; `generated: true` marks a text made from
+   word frequencies. A source not yet credited goes in the credits at the foot of the landing page.
+3. `pnpm corpora <id>` builds it. Commit `apps/web/public/corpora/<id>/` and `index.json` with it.
+4. Open the pull request. `pnpm test` checks the entry, and that what the app serves matches it. The
+   `corpora` workflow also builds every text again, which must change nothing, and writes a summary
+   on its run's page for the review: what the text is, its licence and source, its most frequent
+   letters and any letters outside its language, and how the bundled layouts fare on it.
+
 ## Develop
 
 ```bash
@@ -259,5 +281,5 @@ those links to name it.
 ## Licence
 
 The code is under the [MIT licence](LICENSE). The corpus texts, in `packages/corpora/raw` and in
-the samples built from them in `apps/web/public/corpora`, keep their own licences, CC BY 4.0 and
-CC BY-SA 4.0, recorded with their sources in `packages/corpora/raw/sources.json`.
+the samples built from them in `apps/web/public/corpora`, keep their own licences, recorded with
+their sources in `packages/corpora/raw/sources.json`.
