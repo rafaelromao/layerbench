@@ -5,6 +5,7 @@ import {
   authorizeUrl,
   detectTarget,
   getToken,
+  gitHubAccess,
   initGitHubSession,
   returnFromGitHub,
   signOut,
@@ -231,6 +232,66 @@ describe('the session this browser keeps', () => {
     await signOut();
     expect(localStorage.getItem(SESSION)).toBeNull();
     expect(useGitHubSession.getState().status).toBe('signed-out');
+  });
+});
+
+describe('a token GitHub turns down', () => {
+  /** Signed in with `ghu_one` from `sealed-1`; asked to renew, the server gives `ghu_two`. */
+  async function signedIn(
+    renewed: unknown = { ...SIGNED_IN, token: 'ghu_two', session: 'sealed-2' },
+  ) {
+    localStorage.setItem(SESSION, 'sealed-1');
+    answer = (call) =>
+      reply(!call.body?.session ? SIGNED_OUT : call.body.renew ? renewed : SIGNED_IN);
+    await initGitHubSession();
+    expect(await getToken()).toBe('ghu_one');
+    calls = [];
+  }
+
+  it('is renewed at once rather than handed back until it expires', async () => {
+    await signedIn();
+    gitHubAccess.onUnauthorized?.('ghu_one');
+    await vi.waitFor(() => expect(localStorage.getItem(SESSION)).toBe('sealed-2'));
+    expect(await getToken()).toBe('ghu_two');
+    expect(calls.map((c) => c.body)).toEqual([
+      { session: 'sealed-1' },
+      { session: 'sealed-1', renew: true },
+    ]);
+  });
+
+  it('ends the session when it cannot be renewed', async () => {
+    await signedIn(SIGNED_OUT);
+    gitHubAccess.onUnauthorized?.('ghu_one');
+    await vi.waitFor(() => expect(useGitHubSession.getState().status).toBe('signed-out'));
+    expect(localStorage.getItem(SESSION)).toBeNull();
+    await expect(getToken()).rejects.toThrow('signed out');
+  });
+
+  it('takes the token another tab has renewed meanwhile, without renewing it again', async () => {
+    await signedIn();
+    localStorage.setItem(SESSION, 'sealed-2');
+    answer = (call) =>
+      reply(call.body?.session === 'sealed-2' ? { ...SIGNED_IN, token: 'ghu_two' } : SIGNED_IN);
+    gitHubAccess.onUnauthorized?.('ghu_one');
+    await vi.waitFor(async () => expect(await getToken()).toBe('ghu_two'));
+    expect(calls.some((c) => c.body?.renew)).toBe(false);
+  });
+
+  it('is renewed once, however many requests GitHub turned down with it', async () => {
+    // Tabs and requests take turns, as the browser's lock makes them.
+    let queue: Promise<unknown> = Promise.resolve();
+    const request = (_name: string, work: () => Promise<unknown>) => {
+      const turn = queue.then(work);
+      queue = turn.catch(() => {});
+      return turn;
+    };
+    vi.stubGlobal('navigator', { ...navigator, locks: { request } });
+    await signedIn();
+    gitHubAccess.onUnauthorized?.('ghu_one');
+    gitHubAccess.onUnauthorized?.('ghu_one');
+    await vi.waitFor(() => expect(localStorage.getItem(SESSION)).toBe('sealed-2'));
+    await getToken();
+    expect(calls.filter((c) => c.body?.renew)).toHaveLength(1);
   });
 });
 

@@ -343,6 +343,39 @@ describe('the session', () => {
     expect(await answerOf(await post('session', { session }))).toMatchObject({ signedIn: false });
   });
 
+  it('renews at once a token GitHub turned down, however long it had left', async () => {
+    const session = await signIn();
+    const body = await answerOf(await post('session', { session, renew: true }));
+    expect(body).toMatchObject({ signedIn: true, token: 'ghu_renewed' });
+    expect(body.session).toBeTruthy();
+    expect(body.session).not.toBe(session);
+    const refresh = calls.filter((c) => c.form?.get('grant_type') === 'refresh_token');
+    expect(refresh).toHaveLength(1);
+    expect(refresh[0].form?.get('refresh_token')).toBe('ghr_first');
+  });
+
+  it('signs out when GitHub refuses to renew a token it turned down', async () => {
+    const session = await signIn();
+    responder = (call) =>
+      call.url.endsWith('/access_token') ? json(200, { error: 'bad_refresh_token' }) : github(call);
+    expect(await answerOf(await post('session', { session, renew: true }))).toMatchObject({
+      signedIn: false,
+    });
+  });
+
+  it('signs out when GitHub turned down a token that cannot be renewed', async () => {
+    responder = (call) =>
+      call.url.endsWith('/access_token')
+        ? json(200, { access_token: 'ghu_forever', token_type: 'bearer' })
+        : github(call);
+    const session = await signIn();
+    calls = [];
+    expect(await answerOf(await post('session', { session, renew: true }))).toMatchObject({
+      signedIn: false,
+    });
+    expect(calls).toEqual([]);
+  });
+
   it('says sign-in is unavailable where it is not set up', async () => {
     const res = await post('session', {}, { env: { ALLOWED_ORIGINS: PAGE } });
     expect(await answerOf(res)).toEqual({ available: false, signedIn: false });

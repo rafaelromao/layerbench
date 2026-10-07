@@ -288,9 +288,11 @@ async function token(
 }
 
 /**
- * The page's access token, renewed first when it is about to expire. GitHub's refresh tokens work
- * once, so the page asks one tab at a time (see `src/auth/github-session.ts`), and keeps the new
- * session this hands back in place of the one it sent.
+ * The page's access token, renewed first when it is about to expire, or at once when the page says
+ * GitHub turned it down (`renew: true`): revoked, it would otherwise be handed back until it
+ * expired. GitHub's refresh tokens work once, so the page asks one tab at a time (see
+ * `src/auth/github-session.ts`), and keeps the new session this hands back in place of the one it
+ * sent. A session that cannot be renewed is over.
  */
 async function session(
   body: Record<string, unknown>,
@@ -302,7 +304,9 @@ async function session(
   if (!current) return json(base, 200, cors);
 
   const now = Date.now();
-  const fresh = current.accessExpiresAt === null || current.accessExpiresAt - now > RENEW_MARGIN_MS;
+  const fresh =
+    body.renew !== true &&
+    (current.accessExpiresAt === null || current.accessExpiresAt - now > RENEW_MARGIN_MS);
   if (fresh) return json(signedIn(base, current), 200, cors);
   if (!current.refresh || (current.refreshExpiresAt !== null && current.refreshExpiresAt < now)) {
     return json(base, 200, cors);

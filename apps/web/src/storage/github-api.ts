@@ -2,11 +2,12 @@ export const API = 'https://api.github.com';
 
 /**
  * How a request to GitHub gets its credentials. The token comes from the sign-in session, which
- * renews it before it expires; a 401 still tells the session, so it can find out it is over.
+ * renews it before it expires; a 401 still tells the session which token GitHub turned down, so it
+ * can have that one renewed, or find out the session is over.
  */
 export interface GitHubAccess {
   token: () => Promise<string>;
-  onUnauthorized?: () => void;
+  onUnauthorized?: (rejected: string) => void;
 }
 
 /**
@@ -30,6 +31,6 @@ export async function gitHubFetch(
       ...init.headers,
     },
   });
-  if (res.status === 401) access.onUnauthorized?.();
+  if (res.status === 401) access.onUnauthorized?.(token);
   return res;
 }

@@ -166,10 +166,11 @@ function apply(answer: SessionAnswer | null): void {
 
 /**
  * Where the session stands, asked with the one this browser keeps; a session the server renews
- * replaces it. Called under the lock. Throws, leaving storage alone, when the server or GitHub
- * cannot be reached.
+ * replaces it. `rejected` is a token GitHub turned down, which is renewed at once if the session
+ * still hands it out. Called under the lock. Throws, leaving storage alone, when the server or
+ * GitHub cannot be reached.
  */
-async function renew(): Promise<void> {
+async function renew(rejected?: string): Promise<void> {
   const sent = storedSession();
   let used = sent;
   let answer = await ask('session', sent ? { session: sent } : {});
@@ -179,6 +180,12 @@ async function renew(): Promise<void> {
   if (answer?.available && !answer.signedIn && latest && latest !== sent) {
     used = latest;
     answer = await ask('session', { session: latest });
+  }
+  // Revoked on GitHub, the token would be handed back until it expired, hours away. Renewing it
+  // gets a good one, or ends a session GitHub no longer honours. A token another tab had renewed
+  // meanwhile is simply taken.
+  if (rejected !== undefined && used && answer?.signedIn && answer.token === rejected) {
+    answer = await ask('session', { session: used, renew: true });
   }
   if (answer?.available) {
     if (answer.session) keepSession(answer.session);
@@ -224,10 +231,14 @@ export async function getToken(): Promise<string> {
   return renewed.value;
 }
 
-/** GitHub said the token is no good: find out whether the session is over. */
-function onUnauthorized(): void {
-  token = null;
-  void exclusively(renew).catch(() => {});
+/** GitHub turned this token down: have it renewed, or find out the session is over. */
+function onUnauthorized(rejected: string): void {
+  if (token?.value === rejected) token = null;
+  void exclusively(async () => {
+    // Another request turned down at the same time may have had it renewed already.
+    if (usable(token) && token.value !== rejected) return;
+    await renew(rejected);
+  }).catch(() => {});
 }
 
 export const gitHubAccess: GitHubAccess = { token: getToken, onUnauthorized };
