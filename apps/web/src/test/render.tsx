@@ -2,7 +2,8 @@ import { resolve } from 'node:path';
 import type { StorageAdapter } from '@layerbench/core';
 import { nodeCorpusLoader } from '@layerbench/core/node';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
-import { type RenderResult, render } from '@testing-library/react';
+import { type RenderResult, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { AnalysisCore } from '../engine/analysis-core.js';
 import { AnalysisClientProvider, SavedCorporaProvider } from '../engine/client-context.js';
 import { DirectClient } from '../engine/direct-client.js';
@@ -16,6 +17,12 @@ import { StorageProvider } from '../storage/use-storage.js';
  */
 export function testCorporaRoot(): string {
   return resolve(process.cwd(), 'public/corpora');
+}
+
+/** The Settings dialog of Analyze or Compare, opened: the text, the rules and the switches. */
+export async function openSettings(): Promise<HTMLElement> {
+  await userEvent.click(await screen.findByRole('button', { name: 'Settings' }));
+  return screen.getByRole('dialog', { name: 'Settings' });
 }
 
 export function testClient(): AnalysisClient {

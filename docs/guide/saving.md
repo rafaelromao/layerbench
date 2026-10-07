@@ -90,8 +90,8 @@ new one joins them as a layout saved in LayerBench, added unchanged by pull requ
 Anyone can propose one, their own or someone else's that is published, and it
 joins everyone's Library once the pull request is merged.
 
-1. In **Analyze**, give the layout its name, its author, and a description that says where it comes
-   from, with a link: the author's firmware, keymap or page. **Save** it.
+1. In **Analyze**, give the layout its name, and in **Settings** its author and a description that
+   says where it comes from, with a link: the author's firmware, keymap or page. **Save** it.
 2. If you save to your fork, the layout is already on its `layerbench-data` branch, in the folder it
    goes in on main. Otherwise copy its LayerBench JSON from the editor's **JSON** panel.
 3. Open a pull request on [layerbench](https://github.com/rafaelromao/layerbench) that adds it as a

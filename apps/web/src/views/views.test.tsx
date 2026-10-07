@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import type { AnalysisClient, AnalyzeRequest } from '../engine/protocol.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
-import { LIBRARY, renderRoute, testClient } from '../test/render.js';
+import { LIBRARY, openSettings, renderRoute, testClient } from '../test/render.js';
 
 const QWERTY_TEXT = 'q w e r t y u i o p\na s d f g h j k l ;\nz x c v b n m , . /';
 /** A text long enough to build a corpus from. */
@@ -158,10 +158,11 @@ describe('Compare', () => {
       { client, storage: freshStorage() },
     );
 
-    const macros = await screen.findByRole('checkbox', { name: 'Multi-letter macros' });
+    const settings = await openSettings();
+    const macros = within(settings).getByRole('checkbox', { name: 'Multi-letter macros' });
     expect(macros).not.toBeChecked();
     for (const name of ['Magic keys', 'Repeat key', 'Typing combos']) {
-      expect(screen.getByRole('checkbox', { name })).toBeChecked();
+      expect(within(settings).getByRole('checkbox', { name })).toBeChecked();
     }
     expect(screen.getByRole('status')).toHaveTextContent(
       'Both layouts typed without multi-letter macros.',
@@ -173,6 +174,11 @@ describe('Compare', () => {
     expect(JSON.stringify(romak()[0].layout)).toContain('"symbols":"é"');
     const analyzeA = screen.getByRole('link', { name: 'Analyze A' }) as HTMLAnchorElement;
     expect(analyzeA.href).toContain('off=macros');
+    // Either layout opens in Analyze, typed as it was compared.
+    const analyzeB = screen.getByRole('link', { name: 'Analyze B' }) as HTMLAnchorElement;
+    expect(analyzeB.href).toContain('layout=graphite');
+    expect(analyzeB.href).toContain('off=macros');
+    expect(analyzeB.href).not.toContain('b=');
 
     await user.click(macros);
     await waitFor(() => expect(currentSearch()).not.toContain('off='));
@@ -280,8 +286,8 @@ describe('Saved texts in the pickers', () => {
       client,
       storage: await savedText(),
     });
-    const bar = await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
-    const corpus = within(bar).getByRole('combobox', { name: 'Corpus' });
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+    const corpus = within(await openSettings()).getByRole('combobox', { name: 'Corpus' });
     const option = await within(corpus).findByRole('option', { name: 'My notes' });
     expect(option.closest('optgroup')).toHaveAttribute('label', 'Saved texts');
 

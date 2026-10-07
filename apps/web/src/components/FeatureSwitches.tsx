@@ -1,4 +1,5 @@
 import { FEATURE_KINDS, FEATURE_LABELS, type FeatureKind } from '@layerbench/core';
+import type { ReactNode } from 'react';
 
 /** "magic keys, typing combos and multi-letter macros". */
 export function featureList(features: readonly FeatureKind[]): string {
@@ -9,41 +10,102 @@ export function featureList(features: readonly FeatureKind[]): string {
 }
 
 /**
+ * Checkboxes under a legend, in a grid: two to a line on a phone, three from 640px, so every box of
+ * every group lines up with the ones above it.
+ */
+export function SwitchGroup({
+  legend,
+  help,
+  className = '',
+  children,
+}: {
+  legend: string;
+  /** Drawn after the legend, such as a link to the guide. */
+  help?: ReactNode;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    // Named by the legend's words alone: the help link inside it would otherwise join the name.
+    <fieldset
+      aria-label={legend}
+      className={`lb-rank-with grid grid-cols-2 sm:grid-cols-3 items-center gap-x-4 gap-y-1 ${className}`}
+    >
+      {/* Floated, a legend is laid out as the grid's first row rather than on the border. */}
+      <legend className="float-left col-span-full flex items-center gap-2">
+        <span className="text-xs opacity-70">{legend}</span>
+        {help}
+      </legend>
+      {children}
+    </fieldset>
+  );
+}
+
+/** A checkbox drawn as one of a group's switches. */
+export function Switch({
+  label,
+  name,
+  title,
+  checked,
+  onChange,
+}: {
+  label: string;
+  name?: string;
+  /** What it does, for a label one word long. */
+  title?: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="label cursor-pointer justify-start gap-1.5 p-0" title={title}>
+      <input
+        type="checkbox"
+        name={name}
+        className="checkbox checkbox-xs"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+      <span className="label-text text-xs">{label}</span>
+    </label>
+  );
+}
+
+/**
  * One switch per special feature a layout is typed with. Unticking one types every layout here
  * without it, as `off=` in the link: the Library ranks that way, Compare compares that way, and
- * Analyze, opened from either, analyzes the same way.
+ * Analyze, opened from either, analyzes the same way. Switches of the same kind, such as space and
+ * shift, follow them in the same grid.
  */
 export function FeatureSwitches({
   legend,
+  help,
   without,
   onChange,
-  className = '',
+  children,
 }: {
   legend: string;
+  help?: ReactNode;
   without: readonly FeatureKind[];
   onChange: (without: FeatureKind[]) => void;
-  className?: string;
+  children?: ReactNode;
 }) {
   return (
-    <fieldset className={`lb-rank-with flex flex-wrap items-center gap-x-3 gap-y-1 ${className}`}>
-      <legend className="text-xs opacity-70 float-left mr-1">{legend}</legend>
+    <SwitchGroup legend={legend} help={help}>
       {FEATURE_KINDS.map((kind) => (
-        <label key={kind} className="label cursor-pointer gap-1.5 p-0">
-          <input
-            type="checkbox"
-            className="checkbox checkbox-xs"
-            checked={!without.includes(kind)}
-            onChange={(e) =>
-              onChange(
-                e.target.checked
-                  ? without.filter((k) => k !== kind)
-                  : FEATURE_KINDS.filter((k) => k === kind || without.includes(k)),
-              )
-            }
-          />
-          <span className="label-text text-xs">{FEATURE_LABELS[kind]}</span>
-        </label>
+        <Switch
+          key={kind}
+          label={FEATURE_LABELS[kind]}
+          checked={!without.includes(kind)}
+          onChange={(checked) =>
+            onChange(
+              checked
+                ? without.filter((k) => k !== kind)
+                : FEATURE_KINDS.filter((k) => k === kind || without.includes(k)),
+            )
+          }
+        />
       ))}
-    </fieldset>
+      {children}
+    </SwitchGroup>
   );
 }

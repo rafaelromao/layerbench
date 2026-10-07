@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AnalysisClient, AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { useSession } from '../state/session.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
-import { LIBRARY, renderRoute, testClient } from '../test/render.js';
+import { LIBRARY, openSettings, renderRoute, testClient } from '../test/render.js';
 
 let counter = 0;
 
@@ -89,9 +89,10 @@ describe('Creating layouts', () => {
     expect(currentSearch()).toContain('saved%3Aqwerty-copy');
     expect(currentSearch()).toContain('corpus=pt-br-conv');
     expect(currentSearch()).toContain('rules=cyanophage');
-    const bar = await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
-    expect(within(bar).getByRole('combobox', { name: 'Corpus' })).toHaveValue('pt-br-conv');
-    expect(within(bar).getByRole('combobox', { name: 'Rule set' })).toHaveValue('cyanophage');
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+    const settings = await openSettings();
+    expect(within(settings).getByRole('combobox', { name: 'Corpus' })).toHaveValue('pt-br-conv');
+    expect(within(settings).getByRole('combobox', { name: 'Rule set' })).toHaveValue('cyanophage');
   }, 60_000);
 
   it('deletes a saved layout, naming it', async () => {

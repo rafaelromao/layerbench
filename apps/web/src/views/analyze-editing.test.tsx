@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { AnalysisClient, AnalyzeRequest } from '../engine/protocol.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
-import { renderRoute, testClient } from '../test/render.js';
+import { openSettings, renderRoute, testClient } from '../test/render.js';
 import { setPointerKind } from '../test/setup.js';
 
 let counter = 0;
@@ -198,16 +198,20 @@ describe('Edit', () => {
     );
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
 
-    // Author and description are there to fill in, with nothing to open first.
-    expect(screen.queryByRole('button', { name: 'Layout details' })).toBeNull();
-    const fill = async (label: string, text: string) => {
-      const field = within(bar()).getByLabelText(label);
-      await user.clear(field);
-      await user.type(field, `${text}{Enter}`);
-    };
-    await fill('Name', 'My layout');
-    await fill('Author', 'Me');
-    await fill('Description', 'Qwerty, my way');
+    const name = within(bar()).getByLabelText('Name');
+    await user.clear(name);
+    await user.type(name, 'My layout{Enter}');
+    // Author and description are in Settings, and a description can take more than one line.
+    const settings = await openSettings();
+    const author = within(settings).getByLabelText('Author');
+    await user.clear(author);
+    await user.type(author, 'Me{Enter}');
+    const description = within(settings).getByLabelText('Description');
+    expect(description.tagName).toBe('TEXTAREA');
+    await user.clear(description);
+    await user.type(description, 'Qwerty, my way{Enter}for writing');
+    // Kept when the field is left, as every field here is.
+    await user.click(within(settings).getByRole('button', { name: 'Done' }));
     expect(screen.getByText('unsaved')).toBeInTheDocument();
     await user.click(within(bar()).getByRole('button', { name: 'Save' }));
 
@@ -217,7 +221,7 @@ describe('Edit', () => {
         id: 'my-layout',
         name: 'My layout',
         author: 'Me',
-        description: 'Qwerty, my way',
+        description: 'Qwerty, my way\nfor writing',
       }),
     );
     // Moved, not copied: the Library shows it once, under its new name.
@@ -343,8 +347,9 @@ describe('Edit', () => {
     const typed = (r: AnalyzeRequest | undefined) => JSON.stringify(r?.layout ?? null);
     await waitFor(() => expect(typed(requests[0])).toContain('"qu"'));
 
+    const settings = await openSettings();
     await user.click(
-      within(within(bar()).getByRole('group', { name: 'Analyze with' })).getByRole('checkbox', {
+      within(within(settings).getByRole('group', { name: 'Analyze with' })).getByRole('checkbox', {
         name: 'Multi-letter macros',
       }),
     );
@@ -365,7 +370,8 @@ describe('Edit', () => {
       storage: freshStorage(),
     });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
-    const corpus = within(bar()).getByRole('combobox', { name: 'Corpus' });
+    const settings = await openSettings();
+    const corpus = within(settings).getByRole('combobox', { name: 'Corpus' });
     expect(corpus).toHaveValue('en-general');
     expect(requests.map((r) => r.corpusId)).toContain('en-general');
 

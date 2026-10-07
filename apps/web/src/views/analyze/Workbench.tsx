@@ -654,6 +654,7 @@ export function Workbench({
         ruleSetName={ruleSet.name}
         onParams={setParams}
         onCompare={compare}
+        showCombos={hasTypingCombos ? { on: showCombos, onChange: setShowCombos } : undefined}
       />
 
       {params.without.length > 0 && (
@@ -725,25 +726,13 @@ export function Workbench({
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center justify-end gap-2">
-                    {hasTypingCombos && (
-                      <label className="label cursor-pointer gap-2">
-                        <span className="label-text text-xs">Combos</span>
-                        <input
-                          type="checkbox"
-                          className="toggle toggle-xs"
-                          aria-label="Show the combos that type"
-                          checked={showCombos}
-                          onChange={(e) => setShowCombos(e.target.checked)}
-                        />
-                      </label>
-                    )}
                     <label className="label-text text-xs" htmlFor="heat">
                       Heat
                     </label>
                     <select
                       id="heat"
                       name="heat"
-                      className="select select-xs select-bordered"
+                      className="select select-xs select-bordered w-auto"
                       value={params.heat}
                       onChange={(e) => setParams({ heat: e.target.value as HeatMode })}
                     >

@@ -55,10 +55,10 @@ letters or more, such as `qu` or `ão`. A macro typing one letter, like Magic Ro
 the layout reaches that letter, and stays. What a feature typed is typed another way, or skipped if
 there is none. **Analyze** on a card opens the layout ranked the same way, and says so.
 
-The same switches are in every view that analyzes. **Compare with**, in **Compare**, types and
-draws both layouts without the features left unticked, and **Analyze A** opens A typed the same
-way. **Analyze with**, in **Analyze**, does it for the one layout, which is still edited as written:
-only its numbers leave the features out.
+The same switches are in every view that analyzes, in its **Settings**. **Compare with**, in
+**Compare**, types and draws both layouts without the features left unticked, and **Analyze A** and
+**Analyze B** open either one typed the same way. **Analyze with**, in **Analyze**, does it for the
+one layout, which is still edited as written: only its numbers leave the features out.
 
 ### Changing the costs
 
@@ -100,25 +100,24 @@ show through is warm on that layer, where the key that types is drawn.
 ### Combos
 
 Combos marked for typing are drawn as small pills between the keys pressed together, on the layers
-where they work, and a pill lights up with its keys when a word uses it. **Combos**, beside
-**Heat**, hides them. Combos marked as commands are shortcuts the analysis never presses, so they
+where they work, and a pill lights up with its keys when a word uses it. **Combos**, under *On the
+board* in **Settings**, hides them. Combos marked as commands are shortcuts the analysis never presses, so they
 are not drawn.
 
 ### Case and space
 
 By default capitals count as lower case and the space key is left out of the counts, as the
-Keyboard Layouts Doc does. **Model shift** types capitals through the layout's shift key instead,
-and **Include space** keeps the space key in. Both sit beside the feature switches. **Counts** says
-what of the text is counted: letters only, the default, or numbers and symbols as well.
+Keyboard Layouts Doc does. **Shift** types capitals through the layout's shift key instead, and
+**Space** keeps the space key in. Both are among the feature switches, in **Settings**. **Counts**
+says what of the text is counted: letters only, the default, or numbers and symbols as well.
 
 ### The text itself
 
 **Corpus** lists the texts that come with the app, by language, each with where it came from. Your
 own text can be pasted or uploaded there and analyzed like any other, and **Save to library** keeps
 it: saved texts are listed in **Corpus** and offered in every view that analyzes, after the ones that
-come with the app. A text published under an open
-licence can join the ones that come with the app, by pull request on GitHub; the
-[README](../../README.md#bundled-corpora) lists the steps. **Sample**, on **Analyze**
+come with the app. A text published under an open licence can join the ones that come with the
+app, by pull request on GitHub; the [README](../../README.md#bundled-corpora) lists the steps. **Sample**, on **Analyze**
 and **Compare**, sets how much of the text is typed, 100,000 symbols unless you choose more: more
 gives steadier numbers, less gives them sooner, which matters most while a layout is being edited,
 since every edit types it again. **Library** ranks on at most 100,000 symbols, since it types the

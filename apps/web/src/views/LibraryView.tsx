@@ -214,7 +214,9 @@ function LayoutCard({
         {item.layout?.description && (
           // A description may carry a link, which would otherwise hold the card, and the whole list
           // with it, wider than a phone.
-          <p className="text-xs opacity-70 [overflow-wrap:anywhere]">{item.layout.description}</p>
+          <p className="text-xs opacity-70 whitespace-pre-line [overflow-wrap:anywhere]">
+            {item.layout.description}
+          </p>
         )}
       </div>
     </article>

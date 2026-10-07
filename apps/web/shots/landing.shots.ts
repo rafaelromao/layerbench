@@ -107,12 +107,9 @@ test.describe('at a desk', () => {
     // English news, the Library's own default, where most bundled layouts were made to be typed.
     await page.goto('/library');
     await expect(page.getByText(/^Lower is better for both/)).toBeVisible({ timeout: 150_000 });
+    // Two cards: what is chosen to rank by is in a dialog, and the line above them says it.
     const cards = page.locator('article');
-    await shootAround(page, 'library', [
-      page.locator('.lb-rank-with').first(),
-      cards.nth(0),
-      cards.nth(1),
-    ]);
+    await shootAround(page, 'library', [cards.nth(0), cards.nth(1)]);
   });
 
   test('compare: two layouts typed without the same features', async ({ page }) => {

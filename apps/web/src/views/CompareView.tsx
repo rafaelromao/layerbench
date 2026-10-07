@@ -18,6 +18,7 @@ import { type Params, parseParams, type RawSearch, toSearch } from '../url/param
 import { AnalysisSettings, SampleSelect } from './AnalysisSelects.js';
 import { compareRows } from './compare-rows.js';
 import { LayoutOptions } from './LayoutOptions.js';
+import { SettingsDialog, settingsSummary } from './SettingsDialog.js';
 import { useLayout, useTypedLayout } from './useLayout.js';
 import { useRuleSet } from './useRuleSet.js';
 
@@ -110,10 +111,9 @@ export function CompareView() {
     <div className="space-y-4">
       <h1 className="sr-only">Compare</h1>
 
-      <form
+      <div
         id="compare-toolbar"
         className="lb-toolbar card bg-base-100 border border-base-300 p-3 flex flex-row flex-wrap items-end gap-3"
-        onSubmit={(e) => e.preventDefault()}
       >
         <label className="form-control">
           <span className="label-text text-xs">Layout A</span>
@@ -139,29 +139,47 @@ export function CompareView() {
           </select>
         </label>
 
-        <AnalysisSettings
-          params={params}
-          onChange={setParams}
-          corpora={corpora}
-          ruleSetName={ruleSet.name}
-          verb="Compare"
-          afterCounts={
-            <label className="form-control">
-              <span className="label-text text-xs">Sample</span>
-              <SampleSelect value={params.sample} onChange={(sample) => setParams({ sample })} />
-            </label>
-          }
-          actions={
-            <Link
-              to="/analyze"
-              search={toSearch(params) as never}
-              className="btn btn-sm btn-outline max-sm:flex-1"
-            >
-              Analyze A
-            </Link>
-          }
-        />
-      </form>
+        <div className="lb-wide min-w-0 flex-1">
+          <SettingsDialog summary={settingsSummary(params, corpora, ruleSet.name)}>
+            <div className="lb-toolbar flex flex-row flex-wrap items-end gap-3">
+              <AnalysisSettings
+                params={params}
+                onChange={setParams}
+                corpora={corpora}
+                ruleSetName={ruleSet.name}
+                verb="Compare"
+                afterCounts={
+                  <label className="form-control">
+                    <span className="label-text text-xs">Sample</span>
+                    <SampleSelect
+                      value={params.sample}
+                      onChange={(sample) => setParams({ sample })}
+                    />
+                  </label>
+                }
+              />
+            </div>
+          </SettingsDialog>
+        </div>
+
+        {/* Each opens in Analyze on the text, rules and switches compared on. */}
+        <div className="lb-wide flex gap-2">
+          <Link
+            to="/analyze"
+            search={toSearch(params) as never}
+            className="btn btn-sm btn-outline max-sm:flex-1"
+          >
+            Analyze A
+          </Link>
+          <Link
+            to="/analyze"
+            search={toSearch(params, { layoutRef: refB }) as never}
+            className="btn btn-sm btn-outline max-sm:flex-1"
+          >
+            Analyze B
+          </Link>
+        </div>
+      </div>
 
       {params.without.length > 0 && (
         <div className="alert text-sm py-2" role="status">

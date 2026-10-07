@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { renderRoute } from '../test/render.js';
+import { openSettings, renderRoute } from '../test/render.js';
 
 /**
  * The Analyze view, exercised end to end: a real analysis over a small sample, then the numbers and
@@ -68,8 +68,9 @@ describe('Analyze', () => {
     const lit = document.querySelector('#kb-analyze .lb-combo-active title');
     expect(lit?.textContent).toBe('Combo RHM + RHR: à');
 
-    // Hidden, the combos give way, except the one being played.
-    await user.click(screen.getByLabelText('Show the combos that type'));
+    // Hidden, from Settings, the combos give way, except the one being played.
+    const board = within(await openSettings()).getByRole('group', { name: 'On the board' });
+    await user.click(within(board).getByRole('checkbox', { name: 'Combos' }));
     expect(names()).toEqual(['Combo RHM + RHR: à']);
   });
 
@@ -109,13 +110,13 @@ describe('Analyze', () => {
     expect(await screen.findByText('2 presses')).toBeInTheDocument();
   });
 
-  it('switches features off from its own bar, as the Library and Compare do', async () => {
+  it('switches features off from its Settings, as the Library and Compare do', async () => {
     const user = userEvent.setup();
     const { currentSearch } = renderRoute(
       '/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000',
     );
     await screen.findByText('Same finger bigrams');
-    const switches = screen.getByRole('group', { name: 'Analyze with' });
+    const switches = within(await openSettings()).getByRole('group', { name: 'Analyze with' });
     const macros = within(switches).getByRole('checkbox', { name: 'Multi-letter macros' });
     expect(macros).toBeChecked();
 

@@ -188,6 +188,48 @@ export function TextField({
   );
 }
 
+/**
+ * Words over several lines, such as a description, kept like a `TextField`: when the field is left,
+ * and put back as it was on Escape. Enter starts a new line.
+ */
+export function TextAreaField({
+  label,
+  value,
+  onCommit,
+  rows = 3,
+  className = '',
+}: {
+  label: string;
+  value: string;
+  onCommit: (text: string) => void;
+  rows?: number;
+  className?: string;
+}) {
+  const [text, setText] = useState(value);
+  useEffect(() => setText(value), [value]);
+  return (
+    <textarea
+      aria-label={label}
+      rows={rows}
+      className={`textarea textarea-bordered text-sm ${className}`}
+      value={text}
+      autoComplete="off"
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => {
+        if (text !== value) onCommit(text);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape' && text !== value) {
+          // The field's own Escape; the dialog around it should not also close.
+          e.preventDefault();
+          e.stopPropagation();
+          setText(value);
+        }
+      }}
+    />
+  );
+}
+
 /** A labelled row: the role on the left, its control on the right. */
 /**
  * A label and its controls on one line. The label sits on the baseline of the first control, so it

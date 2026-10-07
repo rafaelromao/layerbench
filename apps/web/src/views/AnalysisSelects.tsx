@@ -1,6 +1,6 @@
 import { type CorpusManifest, getPreset, PRESET_IDS, type TextClass } from '@layerbench/core';
 import type { ReactNode } from 'react';
-import { FeatureSwitches } from '../components/FeatureSwitches.js';
+import { FeatureSwitches, Switch } from '../components/FeatureSwitches.js';
 import { HelpLink } from '../components/HelpLink.js';
 import { HELP } from '../guide/help.js';
 import { type Params, SAMPLE_SIZES } from '../url/params.js';
@@ -99,6 +99,11 @@ export function TextClassSelect({
   );
 }
 
+/** "100k symbols". */
+export function sampleLabel(n: number): string {
+  return `${n >= 1_000_000 ? `${n / 1_000_000}M` : `${n / 1000}k`} symbols`;
+}
+
 /** How much of the corpus a full analysis types. */
 export function SampleSelect({
   value,
@@ -119,7 +124,7 @@ export function SampleSelect({
     >
       {SAMPLE_SIZES.map((n) => (
         <option key={n} value={n}>
-          {n >= 1_000_000 ? `${n / 1_000_000}M` : `${n / 1000}k`} symbols
+          {sampleLabel(n)}
         </option>
       ))}
     </select>
@@ -130,7 +135,7 @@ export function SampleSelect({
  * The choices every analysis is made with, drawn the same in each view that analyzes: the text,
  * the rules, what counts, the features the layouts are typed with, space and shift. A view adds its
  * own around them: a second corpus to mix in after the corpus, the sample after what counts, and
- * its buttons at the end of the switches' line.
+ * switches of its own after the others, lined up with them.
  *
  * Laid out as fields of a toolbar (`lb-toolbar`), into which the fragment is spread: the switches
  * take a line of their own, so every view shows them in the same place.
@@ -143,7 +148,7 @@ export function AnalysisSettings({
   verb,
   afterCorpus,
   afterCounts,
-  actions,
+  afterSwitches,
 }: {
   params: Params;
   onChange: (patch: Partial<Params>) => void;
@@ -154,7 +159,7 @@ export function AnalysisSettings({
   verb: string;
   afterCorpus?: ReactNode;
   afterCounts?: ReactNode;
-  actions?: ReactNode;
+  afterSwitches?: ReactNode;
 }) {
   return (
     <>
@@ -183,36 +188,30 @@ export function AnalysisSettings({
         />
       </label>
       {afterCounts}
-      <div className="lb-wide basis-full flex flex-wrap items-center gap-x-4 gap-y-1">
+      <div className="lb-wide basis-full space-y-3">
         <FeatureSwitches
           legend={`${verb} with`}
+          help={<HelpLink help={HELP.without} />}
           without={params.without}
           onChange={(without) => onChange({ without })}
-          className="max-sm:w-full"
-        />
-        {/* Drawn like the feature switches beside them, since they are the same kind of choice. */}
-        <label className="label lb-check cursor-pointer gap-1.5 p-0">
-          <input
-            type="checkbox"
+        >
+          {/* The same kind of choice as the features, so drawn among them. */}
+          <Switch
+            label="Space"
             name="space"
-            className="checkbox checkbox-xs"
+            title="Count the space bar's presses"
             checked={params.universe === 'with_space'}
-            onChange={(e) => onChange({ universe: e.target.checked ? 'with_space' : 'no_space' })}
+            onChange={(on) => onChange({ universe: on ? 'with_space' : 'no_space' })}
           />
-          <span className="label-text text-xs">Include space</span>
-        </label>
-        <label className="label lb-check cursor-pointer gap-1.5 p-0">
-          <input
-            type="checkbox"
+          <Switch
+            label="Shift"
             name="case"
-            className="checkbox checkbox-xs"
+            title="Type capitals with the shift key, rather than count them as lower case"
             checked={params.caseMode === 'model'}
-            onChange={(e) => onChange({ caseMode: e.target.checked ? 'model' : 'fold' })}
+            onChange={(on) => onChange({ caseMode: on ? 'model' : 'fold' })}
           />
-          <span className="label-text text-xs">Model shift</span>
-        </label>
-        <HelpLink help={HELP.without} />
-        {actions && <div className="flex gap-2 max-sm:w-full sm:ml-auto">{actions}</div>}
+        </FeatureSwitches>
+        {afterSwitches}
       </div>
     </>
   );

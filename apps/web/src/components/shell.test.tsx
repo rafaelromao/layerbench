@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 import { useGitHubSession } from '../auth/github-session.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
-import { LIBRARY, renderRoute, testClient } from '../test/render.js';
+import { LIBRARY, openSettings, renderRoute, testClient } from '../test/render.js';
 
 let counter = 0;
 
@@ -42,24 +42,32 @@ describe('where the site opens', () => {
     await waitFor(() => expect(currentPath()).toBe('/analyze'));
     expect(currentSearch()).toContain('corpus=en-conv');
     expect(currentSearch()).toContain('sample=1000');
+    const analyzeSettings = await openSettings();
     await waitFor(() =>
-      expect(screen.getByRole('combobox', { name: 'Corpus' })).toHaveValue('en-conv'),
+      expect(within(analyzeSettings).getByRole('combobox', { name: 'Corpus' })).toHaveValue(
+        'en-conv',
+      ),
     );
 
     // A feature switched off here is off in Compare too.
     await user.click(
-      within(screen.getByRole('group', { name: 'Analyze with' })).getByRole('checkbox', {
-        name: 'Repeat key',
-      }),
+      within(within(analyzeSettings).getByRole('group', { name: 'Analyze with' })).getByRole(
+        'checkbox',
+        { name: 'Repeat key' },
+      ),
     );
     await waitFor(() => expect(currentSearch()).toContain('off=repeat'));
     await user.click(within(nav).getByRole('link', { name: 'Compare' }));
     await waitFor(() => expect(currentPath()).toBe('/compare'));
     expect(currentSearch()).toContain('corpus=en-conv');
+    const compareSettings = await openSettings();
     expect(
-      within(screen.getByRole('group', { name: 'Compare with' })).getByRole('checkbox', {
-        name: 'Repeat key',
-      }),
+      within(within(compareSettings).getByRole('group', { name: 'Compare with' })).getByRole(
+        'checkbox',
+        {
+          name: 'Repeat key',
+        },
+      ),
     ).not.toBeChecked();
 
     // A view that does not analyze opens as it is, and leaving it keeps the choices.

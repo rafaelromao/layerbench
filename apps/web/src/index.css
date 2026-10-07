@@ -990,18 +990,11 @@ button.lb-drop-target.lb-drop-copy {
 }
 
 /*
- * The features a ranking counts: four switches in a line at a desk. On a touch screen each is a
- * row a finger can hit, two to a line, with a box at full size rather than the compact one. A
- * checkbox drawn beside them (`lb-check`) grows the same way.
+ * A group of switches (`SwitchGroup`), such as the features an analysis types with, laid out in a
+ * grid by its markup. On a touch screen each is a row a finger can hit, with a box at full size
+ * rather than the compact one. A checkbox drawn on its own (`lb-check`) grows the same way.
  */
 @media (pointer: coarse) {
-  .lb-rank-with {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .lb-rank-with legend {
-    grid-column: 1 / -1;
-  }
   .lb-rank-with label,
   .lb-check {
     min-height: 2.75rem;
