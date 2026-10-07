@@ -22,7 +22,7 @@ export function createRequestHandler(
       case 'loadCorpus':
         return core.loadCorpus(req.corpusId);
       case 'registerCorpus':
-        return core.registerCorpus(req.corpus);
+        return core.registerCorpus(req.corpusId, req.doc);
       case 'mixCorpora':
         return core.mix(req.a, req.b, req.mix);
       case 'peek':

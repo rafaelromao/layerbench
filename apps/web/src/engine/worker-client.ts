@@ -87,13 +87,8 @@ export class WorkerClient implements AnalysisClient {
     return this.send({ type: 'loadCorpus', corpusId });
   }
 
-  registerCorpus(corpus: {
-    id: string;
-    name: string;
-    language: string;
-    sample: string;
-  }): Promise<CorpusManifest> {
-    return this.send({ type: 'registerCorpus', corpus });
+  registerCorpus(corpusId: string, doc: Record<string, unknown>): Promise<CorpusManifest> {
+    return this.send({ type: 'registerCorpus', corpusId, doc });
   }
 
   mixCorpora(a: string, b: string, mix: number): Promise<CorpusManifest> {

@@ -4,10 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { HelpLink } from '../components/HelpLink.js';
 import { useAnalysisClient } from '../engine/client-context.js';
 import type { CorpusFactsDTO } from '../engine/protocol.js';
+import { isSavedCorpus, savedCorpusRef } from '../engine/saved-corpora.js';
 import { HELP } from '../guide/help.js';
 import { useCarried } from '../state/selection.js';
 import { toast } from '../state/toasts.js';
-import { useCollection, useStorage } from '../storage/use-storage.js';
+import { useStorage } from '../storage/use-storage.js';
 import type { RawSearch } from '../url/params.js';
 
 const MIN_CUSTOM_CHARS = 1_000;
@@ -51,17 +52,48 @@ function Facts({ facts }: { facts: CorpusFactsDTO }) {
   );
 }
 
+function CorpusList({
+  corpora,
+  selectedId,
+}: {
+  corpora: CorpusManifest[];
+  selectedId: string | null;
+}) {
+  const navigate = useNavigate();
+  return (
+    <ul className="menu bg-base-100 border border-base-300 rounded-box p-2">
+      {corpora.map((c) => (
+        <li key={c.id}>
+          <button
+            type="button"
+            className={c.id === selectedId ? 'menu-active' : ''}
+            onClick={() => navigate({ to: '/corpus', search: { id: c.id } as never })}
+          >
+            <span className="flex flex-col items-start">
+              <span className="text-sm">{c.name}</span>
+              <span className="text-[11px] opacity-60">
+                {c.language} · {c.words.toLocaleString('en-US')} words
+              </span>
+            </span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function CorpusView() {
   const search = useSearch({ strict: false }) as RawSearch;
-  const navigate = useNavigate();
   // Analyzing with a corpus keeps the rules and the rest of the choices in force, and that corpus
   // alone: a second one mixed in before is left out.
   const carried = useCarried();
   const client = useAnalysisClient();
   const storage = useStorage();
-  const savedCorpora = useCollection('corpora');
 
   const [corpora, setCorpora] = useState<CorpusManifest[]>([]);
+  /** The selected corpus as the engine has it, once read: a saved text's list entry lacks a size. */
+  const [details, setDetails] = useState<CorpusManifest | null>(null);
+  const [missing, setMissing] = useState<string | null>(null);
   const [facts, setFacts] = useState<CorpusFactsDTO | null>(null);
   const [customText, setCustomText] = useState('');
   const [customName, setCustomName] = useState('My corpus');
@@ -78,14 +110,27 @@ export function CorpusView() {
 
   const selectedId = search.id ?? corpora[0]?.id ?? null;
   const selected = useMemo(
-    () => corpora.find((c) => c.id === selectedId) ?? null,
-    [corpora, selectedId],
+    () => (details?.id === selectedId ? details : corpora.find((c) => c.id === selectedId)) ?? null,
+    [corpora, details, selectedId],
   );
+  // A text built here has its own card until it is saved, and a blend made in Analyze is not a text
+  // of its own: the list is what comes with the app, and what was saved.
+  const bundled = corpora.filter((c) => !isSavedCorpus(c.id) && !/^(custom|mix)-/.test(c.id));
+  const saved = corpora.filter((c) => isSavedCorpus(c.id));
 
   useEffect(() => {
     let cancelled = false;
     if (!selectedId) return;
     setFacts(null);
+    setMissing(null);
+    client
+      .loadCorpus(selectedId)
+      .then((m) => {
+        if (!cancelled) setDetails(m);
+      })
+      .catch((e) => {
+        if (!cancelled) setMissing(e instanceof Error ? e.message : String(e));
+      });
     client
       .corpusFacts(selectedId)
       .then((f) => {
@@ -111,8 +156,6 @@ export function CorpusView() {
       setCustom(manifest);
       setCustomFacts(await client.corpusFacts(manifest.id));
       setCustomText('');
-      const list = await client.listCorpora();
-      setCorpora(list);
     },
     [client, customName, customLanguage],
   );
@@ -141,12 +184,14 @@ export function CorpusView() {
     const id = slug(custom.name);
     try {
       await storage.put('corpora', id, doc, { message: `Save corpus ${custom.name}` });
+      // Saved again under a name already in use, it replaces the text the engine had by that name.
+      await client.registerCorpus(savedCorpusRef(id), doc);
       toast.info(`Saved corpus ${id}`);
-      savedCorpora.refresh();
+      setCorpora(await client.listCorpora());
     } catch (e) {
       toast.error(`Save failed: ${e instanceof Error ? e.message : String(e)}`);
     }
-  }, [custom, client, storage, savedCorpora]);
+  }, [custom, client, storage]);
 
   return (
     <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
@@ -155,24 +200,13 @@ export function CorpusView() {
           <h1 className="text-sm uppercase tracking-wide opacity-60">Corpora</h1>
           <HelpLink help={HELP.corpus} />
         </div>
-        <ul className="menu bg-base-100 border border-base-300 rounded-box p-2">
-          {corpora.map((c) => (
-            <li key={c.id}>
-              <button
-                type="button"
-                className={c.id === selectedId ? 'menu-active' : ''}
-                onClick={() => navigate({ to: '/corpus', search: { id: c.id } as never })}
-              >
-                <span className="flex flex-col items-start">
-                  <span className="text-sm">{c.name}</span>
-                  <span className="text-[11px] opacity-60">
-                    {c.language} · {c.words.toLocaleString('en-US')} words
-                  </span>
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <CorpusList corpora={bundled} selectedId={selectedId} />
+        {saved.length > 0 && (
+          <>
+            <h2 className="text-xs uppercase tracking-wide opacity-60">Saved texts</h2>
+            <CorpusList corpora={saved} selectedId={selectedId} />
+          </>
+        )}
         {selectedId && (
           <Link
             to="/analyze"
@@ -185,6 +219,11 @@ export function CorpusView() {
       </aside>
 
       <div className="space-y-4">
+        {missing && !selected && (
+          <div role="alert" className="alert alert-warning text-sm">
+            {missing}
+          </div>
+        )}
         {selected && (
           <section className="card bg-base-100 border border-base-300">
             <div className="card-body gap-3 p-4">
@@ -212,8 +251,8 @@ export function CorpusView() {
                 )}
                 <dt className="opacity-60">Size</dt>
                 <dd>
-                  {selected.words.toLocaleString('en-US')} words ·{' '}
-                  {selected.symbols.toLocaleString('en-US')} symbols
+                  {selected.words.toLocaleString('en-US')} words
+                  {selected === details && ` · ${selected.symbols.toLocaleString('en-US')} symbols`}
                 </dd>
               </dl>
               {facts ? (
@@ -233,8 +272,8 @@ export function CorpusView() {
             <div>
               <h2 className="font-semibold text-sm">Custom corpus</h2>
               <p className="text-xs opacity-70">
-                Paste or upload your own text. It is normalized the same way the shipped corpora
-                are, and stays in this browser.
+                Paste or upload your own text. It is normalized the same way the bundled corpora
+                are, and stays in this browser until you save it, when it joins your saved texts.
               </p>
             </div>
 
@@ -323,12 +362,6 @@ export function CorpusView() {
                 </p>
                 {customFacts && <Facts facts={customFacts} />}
               </>
-            )}
-
-            {savedCorpora.entries.length > 0 && (
-              <p className="text-xs opacity-60">
-                Saved corpora: {savedCorpora.entries.map((e) => e.name).join(', ')}
-              </p>
             )}
           </div>
         </section>

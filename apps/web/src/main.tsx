@@ -2,7 +2,7 @@ import { RouterProvider } from '@tanstack/react-router';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { initGitHubSession, returnFromGitHub } from './auth/github-session.js';
-import { AnalysisClientProvider } from './engine/client-context.js';
+import { AnalysisClientProvider, SavedCorporaProvider } from './engine/client-context.js';
 import './index.css';
 import { createAppRouter } from './router.js';
 import { useSession } from './state/session.js';
@@ -30,7 +30,9 @@ if (!framed) {
     <StrictMode>
       <AnalysisClientProvider>
         <StorageProvider>
-          <RouterProvider router={router} />
+          <SavedCorporaProvider>
+            <RouterProvider router={router} />
+          </SavedCorporaProvider>
         </StorageProvider>
       </AnalysisClientProvider>
     </StrictMode>,

@@ -5,6 +5,7 @@ import {
   type CorpusManifest,
   cacheKey,
   compileLayout,
+  corpusFromDoc,
   corpusSampleFacts,
   corpusStream,
   corpusToDoc,
@@ -92,24 +93,14 @@ export class AnalysisCore {
     return manifest;
   }
 
-  /** Register a corpus the main thread owns: a saved document, or one the user just pasted. */
-  registerCorpus(input: {
-    id: string;
-    name: string;
-    language: string;
-    sample: string;
-  }): CorpusManifest {
-    const words = input.sample.split(' ').filter((w) => w.length > 0).length;
-    const corpus: Corpus = {
-      id: input.id,
-      name: input.name,
-      language: input.language,
-      sample: input.sample,
-      symbols: [...input.sample].length - words + 1,
-      words,
-      custom: true,
-    };
-    this.corpora.set(corpus.id, corpus);
+  /**
+   * Take a corpus the main thread holds: a saved text, read from storage as it was saved. Its id is
+   * the caller's to make unique; one made of the text's name alone would let a text saved again
+   * under that name be answered with what was worked out from the old one.
+   */
+  registerCorpus(id: string, doc: Record<string, unknown>): CorpusManifest {
+    const corpus = corpusFromDoc(id, doc);
+    this.corpora.set(id, corpus);
     const { sample: _sample, custom: _custom, ...manifest } = corpus;
     return manifest;
   }

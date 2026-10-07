@@ -145,11 +145,7 @@ export interface Progress {
 export type Request =
   | { id: number; type: 'listCorpora' }
   | { id: number; type: 'loadCorpus'; corpusId: string }
-  | {
-      id: number;
-      type: 'registerCorpus';
-      corpus: { id: string; name: string; language: string; sample: string };
-    }
+  | { id: number; type: 'registerCorpus'; corpusId: string; doc: Record<string, unknown> }
   | { id: number; type: 'mixCorpora'; a: string; b: string; mix: number }
   | { id: number; type: 'peek'; request: AnalyzeRequest }
   | { id: number; type: 'analyze'; request: AnalyzeRequest }
@@ -171,12 +167,8 @@ export type Response =
 export interface AnalysisClient {
   listCorpora(): Promise<CorpusManifest[]>;
   loadCorpus(corpusId: string): Promise<CorpusManifest>;
-  registerCorpus(corpus: {
-    id: string;
-    name: string;
-    language: string;
-    sample: string;
-  }): Promise<CorpusManifest>;
+  /** Take a corpus saved as `doc`, to be known by `corpusId`. */
+  registerCorpus(corpusId: string, doc: Record<string, unknown>): Promise<CorpusManifest>;
   mixCorpora(a: string, b: string, mix: number): Promise<CorpusManifest>;
   /**
    * Returns null rather than typing the corpus. A layout already typed under other rules, or with

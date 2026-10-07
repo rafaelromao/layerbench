@@ -4,7 +4,7 @@ import { nodeCorpusLoader } from '@layerbench/core/node';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import { type RenderResult, render } from '@testing-library/react';
 import { AnalysisCore } from '../engine/analysis-core.js';
-import { AnalysisClientProvider } from '../engine/client-context.js';
+import { AnalysisClientProvider, SavedCorporaProvider } from '../engine/client-context.js';
 import { DirectClient } from '../engine/direct-client.js';
 import type { AnalysisClient } from '../engine/protocol.js';
 import { createAppRouter } from '../router.js';
@@ -49,7 +49,9 @@ export function renderRoute(
   const result = render(
     <AnalysisClientProvider client={client}>
       <StorageProvider adapter={opts.storage}>
-        <RouterProvider router={router} />
+        <SavedCorporaProvider>
+          <RouterProvider router={router} />
+        </SavedCorporaProvider>
       </StorageProvider>
     </AnalysisClientProvider>,
   );

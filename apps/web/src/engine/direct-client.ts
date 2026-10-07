@@ -28,13 +28,8 @@ export class DirectClient implements AnalysisClient {
     return this.core.loadCorpus(corpusId);
   }
 
-  async registerCorpus(corpus: {
-    id: string;
-    name: string;
-    language: string;
-    sample: string;
-  }): Promise<CorpusManifest> {
-    return this.core.registerCorpus(corpus);
+  async registerCorpus(corpusId: string, doc: Record<string, unknown>): Promise<CorpusManifest> {
+    return this.core.registerCorpus(corpusId, doc);
   }
 
   mixCorpora(a: string, b: string, mix: number): Promise<CorpusManifest> {

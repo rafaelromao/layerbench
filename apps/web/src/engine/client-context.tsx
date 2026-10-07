@@ -7,7 +7,9 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
+import { useStorage } from '../storage/use-storage.js';
 import type { AnalysisClient } from './protocol.js';
+import { withSavedCorpora } from './saved-corpora.js';
 import { createWorkerClient } from './worker-client.js';
 
 const ClientContext = createContext<AnalysisClient | null>(null);
@@ -72,6 +74,17 @@ export function AnalysisClientProvider({
       <ClientContext.Provider value={value}>{children}</ClientContext.Provider>
     </BusyContext.Provider>
   );
+}
+
+/**
+ * Offers the texts saved in storage beside the bundled ones, to everything below it: inside both
+ * AnalysisClientProvider and StorageProvider, and reset with the storage when someone signs in.
+ */
+export function SavedCorporaProvider({ children }: { children: ReactNode }) {
+  const client = useAnalysisClient();
+  const storage = useStorage();
+  const value = useMemo(() => withSavedCorpora(client, storage), [client, storage]);
+  return <ClientContext.Provider value={value}>{children}</ClientContext.Provider>;
 }
 
 export function useAnalysisClient(): AnalysisClient {

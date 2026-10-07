@@ -7,6 +7,11 @@ import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { LIBRARY, renderRoute, testClient } from '../test/render.js';
 
 const QWERTY_TEXT = 'q w e r t y u i o p\na s d f g h j k l ;\nz x c v b n m , . /';
+/** A text long enough to build a corpus from. */
+const FOX = Array.from(
+  { length: 30 },
+  (_, i) => `The quick brown fox ${['jumps', 'leaps', 'runs'][i % 3]} over the lazy dog.`,
+).join(' ');
 
 let counter = 0;
 
@@ -186,4 +191,101 @@ describe('Corpus', () => {
 
     expect(await screen.findByText(/at least 1,000 characters/)).toBeInTheDocument();
   });
+
+  it('saves a text, lists it with the saved texts, and opens it again', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const { currentSearch } = renderRoute('/corpus', { storage });
+    await screen.findByText('Custom corpus');
+
+    await user.clear(screen.getByLabelText('Corpus name'));
+    await user.type(screen.getByLabelText('Corpus name'), 'My notes');
+    await user.click(screen.getByLabelText('Corpus text'));
+    await user.paste(FOX);
+    await user.click(screen.getByRole('button', { name: 'Build corpus' }));
+    await user.click(await screen.findByRole('button', { name: 'Save to library' }));
+    expect(await screen.findByText('Saved corpus my-notes')).toBeInTheDocument();
+    expect(await storage.get('corpora', 'my-notes')).not.toBeNull();
+
+    const heading = await screen.findByRole('heading', { name: 'Saved texts' });
+    const saved = heading.nextElementSibling as HTMLElement;
+    await user.click(within(saved).getByRole('button', { name: /My notes/ }));
+    await waitFor(() => expect(currentSearch()).toContain('id=saved%3Amy-notes'));
+    const card = (await screen.findByRole('heading', { name: 'My notes' })).closest(
+      'section',
+    ) as HTMLElement;
+    // Read back from storage, it has its size, its letters, and a way to analyze on it.
+    expect(await within(card).findByText(/words · [\d,]+ symbols/)).toBeInTheDocument();
+    expect(
+      await within(card).findByText('Letters', undefined, { timeout: 25_000 }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Analyze with this corpus' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('corpus=saved%3Amy-notes'),
+    );
+  });
+
+  it('says so when a link names a saved text this browser does not have', async () => {
+    renderRoute('/corpus?id=saved%3Anowhere', { storage: freshStorage() });
+    expect(await screen.findByRole('alert')).toHaveTextContent('There is no saved text nowhere');
+  });
+});
+
+describe('Saved texts in the pickers', () => {
+  /** A text saved as the Corpus view saves one. */
+  async function savedText(): Promise<IndexedDbAdapter> {
+    const storage = freshStorage();
+    const engine = testClient();
+    const built = await engine.buildCustomCorpus(FOX, 'My notes', 'en');
+    await storage.put('corpora', 'my-notes', await engine.corpusDocument(built.id));
+    return storage;
+  }
+
+  it('offers them in Analyze, on their own, and analyzes on the one picked', async () => {
+    const user = userEvent.setup();
+    const recorded: AnalyzeRequest[] = [];
+    const engine = testClient();
+    const client: AnalysisClient = new Proxy(engine, {
+      get(target, prop) {
+        const member = Reflect.get(target, prop);
+        if (prop !== 'analyze' || typeof member !== 'function') return member;
+        return (request: AnalyzeRequest, opts: unknown) => {
+          recorded.push(request);
+          return member.call(target, request, opts);
+        };
+      },
+    });
+    const { currentSearch } = renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000', {
+      client,
+      storage: await savedText(),
+    });
+    const bar = await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+    const corpus = within(bar).getByRole('combobox', { name: 'Corpus' });
+    const option = await within(corpus).findByRole('option', { name: 'My notes' });
+    expect(option.closest('optgroup')).toHaveAttribute('label', 'Saved texts');
+
+    await user.selectOptions(corpus, 'saved:my-notes');
+    await waitFor(() => expect(currentSearch()).toContain('corpus=saved%3Amy-notes'));
+    // The engine is handed the text itself, under a name of its own.
+    await waitFor(() =>
+      expect(recorded.some((r) => r.corpusId.startsWith('saved:my-notes@'))).toBe(true),
+    );
+    expect(await screen.findByText('Same finger bigrams')).toBeInTheDocument();
+  }, 60_000);
+
+  it('ranks the Library on one', async () => {
+    const user = userEvent.setup();
+    renderRoute(`${LIBRARY}&corpus=saved%3Amy-notes`, { storage: await savedText() });
+    // Once every layout is scored on it.
+    expect(
+      await screen.findByText(/symbols of My notes/, undefined, { timeout: 50_000 }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText('Effort', { selector: 'dt' })[0].nextElementSibling?.textContent,
+    ).toMatch(/\d/);
+
+    await user.click(screen.getByRole('button', { name: 'Rank and filter' }));
+    const corpus = await screen.findByRole('combobox', { name: 'Corpus' });
+    expect(corpus).toHaveDisplayValue('My notes');
+  }, 90_000);
 });
