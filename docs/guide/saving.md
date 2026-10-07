@@ -73,16 +73,15 @@ A layout that was never saved makes a long link: the whole layout is in it, afte
 whole address, and if a link opens on a different layout than it should, check that nothing after
 the `#` was lost on the way.
 
-## Suggesting a layout for the Library
+## Adding a layout to the Library
 
-Each layout that comes with LayerBench is copied from where its author published it, and its card
-cites that source, so anyone can check it. To suggest one:
+The layouts that come with LayerBench are layouts saved in LayerBench, added by pull request on
+GitHub, each unchanged. Anyone can propose one, their own or someone else's that is published, and it
+joins everyone's Library once the pull request is merged.
 
-1. Open it in **Analyze**, saved or from its link, and check that it types what its author's keymap
-   types.
-2. Open the [layout suggestion form](https://github.com/rafaelromao/layerbench/issues/new?template=layout-request.yml) on GitHub, which needs a GitHub account.
-3. Give its name, its author, and where the author published it: a firmware repository, a keymap
-   file, a page. Paste the layout's link, or its LayerBench JSON from the **JSON** panel.
-
-It is added once it can be checked against that source. A layout of your own is welcome too, once
-it is published somewhere anyone can read it.
+1. In **Analyze**, give the layout its name, its author, and a description that says where it comes
+   from, with a link: the author's firmware, keymap or page. **Save** it.
+2. Copy its LayerBench JSON from the editor's **JSON** panel.
+3. Open a pull request on [layerbench](https://github.com/rafaelromao/layerbench) that adds it as a
+   file named by the layout's id, with the two lines of code and the line on the landing page that
+   go with it. The [README](../../README.md#bundled-layouts) lists each step.

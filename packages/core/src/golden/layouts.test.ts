@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { compileLayout } from '../layout/compile.js';
 import { toCanonicalJson } from '../layout/json.js';
 import { safeParseLayout } from '../layout/schema.js';
-import { documentedLayouts } from '../layouts/index.js';
+import { documentedLayouts, goldenLayouts } from '../layouts/index.js';
 import { goldenPath } from './paths.js';
 
 /**
@@ -12,7 +12,7 @@ import { goldenPath } from './paths.js';
  * them deliberately; nothing else should change them.
  */
 describe('layout documents — canonical JSON', () => {
-  for (const layout of documentedLayouts()) {
+  for (const layout of goldenLayouts()) {
     it(`${layout.id} matches its checked-in document`, () => {
       const expected = JSON.parse(readFileSync(goldenPath(`layouts/${layout.id}.json`), 'utf8'));
       expect(toCanonicalJson(layout)).toEqual(expected);

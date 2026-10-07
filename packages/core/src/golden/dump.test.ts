@@ -2,7 +2,7 @@ import { mkdirSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 import { describe, it } from 'vitest';
 import { toCanonicalJson } from '../layout/json.js';
-import { bundledLayout, documentedLayout, documentedLayouts } from '../layouts/index.js';
+import { bundledLayout, documentedLayout, goldenLayouts } from '../layouts/index.js';
 import { goldenPath } from './paths.js';
 import { buildGoldenReport, goldenMatrix, goldenName } from './report.js';
 
@@ -27,7 +27,7 @@ describe.skipIf(!WRITE)('golden dump (GOLDENS=1)', () => {
 
     // Documents first: the parity suite resolves a report's layout from `layouts/`, so writing the
     // reports before the documents they describe would pin them against the previous keymap.
-    for (const layout of documentedLayouts()) {
+    for (const layout of goldenLayouts()) {
       writeFileSync(
         goldenPath(`layouts/${layout.id}.json`),
         JSON.stringify(toCanonicalJson(layout)),

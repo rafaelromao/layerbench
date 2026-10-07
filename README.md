@@ -67,20 +67,24 @@ keeps are in `apps/web/src/auth/github-session.ts`. The server half is
 
 ## Bundled layouts
 
-The layouts that come with the app are data in `packages/core/src/layouts/`, each copied from where
-its author published it. People suggest new ones through the
-[layout suggestion form](https://github.com/rafaelromao/layerbench/issues/new?template=layout-request.yml)
-([Suggesting a layout](docs/guide/saving.md#suggesting-a-layout-for-the-library) in the guide). To
-add one:
+The layouts the app started with are written as data in `packages/core/src/layouts/` (`classic.ts`,
+`small.ts`, `romak.ts`), each copied from where its author published it. A new one joins them as a
+document: a layout saved in LayerBench, unchanged, added by pull request. Merging the pull request is
+the approval, and the deploy that follows puts it in everyone's Library.
 
-1. Write it as a `ClassicDef`: in `classic.ts` for a letter block on a standard board, in
-   `small.ts` for thumb letters, chords, magic and repeat keys, or a board of its own. Give it an
-   `id`, `name`, `author`, `languages` and a `source`, the firmware or page it was copied from;
-   where the source left something out, `description` says what.
-2. Name it on the landing page, in the list under the layouts heading in `docs/site/index.html`,
+1. In the app, give the layout its name, its author, and a description that links to where it comes
+   from: the author's firmware, keymap or page. Save it, and copy its LayerBench JSON from the
+   editor's **JSON** panel. A layout you saved while signed in is also on your data branch, as
+   `data/layouts/<id>.json`.
+2. Add it, as copied, as `packages/core/src/layouts/documents/<id>.json`, named by its `"id"`.
+3. In `packages/core/src/layouts/documents.ts`, import the file and add it to `DOCUMENTS` under its
+   id.
+4. Name it on the landing page, in the list under the layouts heading in `docs/site/index.html`,
    and update the count in that heading.
-3. `pnpm goldens` writes its document to `packages/core/golden/layouts/`. `pnpm test` checks that
-   it types the whole alphabet and a space, and that the landing page names every bundled layout.
+5. `pnpm test` checks that it is exactly what LayerBench saves, is named by its id, names an author
+   and links its source, has a name and an id no other layout has, types the whole alphabet and a
+   space, and is on the landing page.
+6. Open the pull request.
 
 ## Develop
 
