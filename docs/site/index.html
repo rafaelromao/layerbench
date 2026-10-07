@@ -608,21 +608,28 @@
             <h3 id="assumptions-title">What the numbers assume</h3>
             <ul>
               <li>
-                Timing isn't modeled: no tapping-term races, one-shots never time out, and a magic
-                key's idle window is always met. The keymap is typed as you mean it.
+                Timing isn't modeled: tap-holds never misfire, combos always fire, one-shots end at
+                the next key and never time out, and a magic key's idle window is always met. The
+                keymap is typed as you mean it.
               </li>
               <li>
-                When a symbol can be typed more than one way, you choose the order, in
-                <strong>Typing paths</strong>.
+                When a character can be typed more than one way, the cheapest way is taken — fewest
+                presses, then fewest same-finger pairs, then least effort — unless you set the order
+                in <strong>Typing paths</strong>. Where several keys tap the same layer, each word
+                uses the one that gives it the fewest same-finger pairs.
               </li>
               <li>
-                The text is read left to right, taking the longest symbol a key types — <em>qu</em>
-                before <em>q</em> — without looking back.
+                The text is read left to right, taking the longest piece one key or combo can type
+                from where you are — <em>qu</em> before <em>q</em> — without looking ahead, and
+                never splitting it again.
               </li>
-              <li>Space is left out and case is folded unless you switch them on.</li>
               <li>
-                Pairs and Effort are counted per character of the text, so layer taps and holds don't
-                make a layout look better than it types.
+                Space presses, numbers and most symbols are left out, pairs don't cross words, and
+                case is folded, unless you switch them on.
+              </li>
+              <li>
+                Pairs are a share of the text's own pairs, and Effort is per character typed, spaces
+                included, not per key press, so layer taps and holds can't thin either number out.
               </li>
             </ul>
           </aside>
