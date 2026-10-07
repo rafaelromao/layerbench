@@ -1,7 +1,8 @@
 # Golden reports
 
-The files in this directory pin every number the engine produces. A regression in the simulator, the
-n-gram tables or any rule shows up as a failing assertion in `src/golden/reports.test.ts`.
+The files in this directory pin the numbers the engine produces (see *Not compared* for what is
+left out). A regression in the simulator, the n-gram tables or any rule shows up as a failing
+assertion in `src/golden/reports.test.ts`.
 
 ## Regenerating
 
@@ -31,8 +32,10 @@ both the dump and the suite use it, so the two cannot drift apart.
 
 Layouts are resolved from `layouts/<id>.json`, **not** from the bundled registry, so a layout can
 leave the shipped catalogue and stay regression-tested here. `layouts/` also holds the canonical
-document of every bundled layout, which `src/golden/layouts.test.ts` asserts — those are the
-storage, share-link and hashing formats, so drift there breaks interoperability.
+document of every layout written in code, bundled or retired (Romak 24 and 34), which
+`src/golden/layouts.test.ts` asserts — those are the storage, share-link and hashing formats, so
+drift there breaks interoperability. A layout added as a document (`src/layouts/documents/`) is its
+own checked-in document.
 
 `inline-magic-romak.txt` is the deflate + base64url share blob, asserted by the web app's
 `url/inline.test.ts`.
@@ -145,7 +148,7 @@ them on each of the three layouts and checks the keys used.
 The `cyanophage` preset divides its bigram and skipgram percentages by keystrokes plus one space per
 word, the way cyanophage counts them. The keystrokes it started from already held the space presses,
 so every word's space was counted twice and each of those percentages came out 12–14% too low.
-Keystrokes now follow SPEC §7.1: a space press is one only in the `with_space` universe. The space
+Keystrokes now count a space press only in the `with_space` universe. The space
 per word is added only in `no_space`, since in `with_space` the presses are already there.
 `src/rules/engine.test.ts` pins both denominators.
 
@@ -251,4 +254,8 @@ What moved, checked across all 38 reports:
 
 ## Not compared
 
-`elapsed_ms` and the structure hash. Everything else in a report file is asserted.
+`globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not
+numbers, meta other than `cross_word` and `stream_length`, and the descriptive fields of each
+result (label, family, note, enabled, score weight, normalized); of the score, only whether it is
+enabled and its value. Everything else is asserted: rule values to a millionth of themselves,
+counts and lists exactly.

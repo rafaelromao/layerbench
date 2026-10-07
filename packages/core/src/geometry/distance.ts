@@ -2,7 +2,7 @@ import type { GeometryKey } from './types.js';
 
 export type DistanceModel = 'euclid' | 'squared' | 'manhattan';
 
-/** Distance between two keys in U, or null when the keys are on different hands (undefined per spec §6.1). */
+/** Distance between two keys in U, or null when the keys are on different hands, where none is defined. */
 export function keyDistance(
   a: GeometryKey,
   b: GeometryKey,

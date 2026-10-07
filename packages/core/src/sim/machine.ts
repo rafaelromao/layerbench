@@ -248,7 +248,7 @@ export interface ResolveResult {
 }
 
 /**
- * Deterministic, timing-free ZMK-like state machine (SPEC §5).
+ * Deterministic, timing-free ZMK-like state machine.
  */
 export class Machine {
   readonly state = new MachineState();

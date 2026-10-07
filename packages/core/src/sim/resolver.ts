@@ -94,7 +94,7 @@ export function findHomeKeys(compiled: CompiledLayout): Record<Finger, number> {
 }
 
 /**
- * Text → physical key events → n-gram tables (SPEC §5.4–§5.6).
+ * Text → physical key events → n-gram tables.
  */
 export class Simulator {
   readonly machine: Machine;

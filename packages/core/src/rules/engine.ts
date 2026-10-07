@@ -167,7 +167,7 @@ function pairDistance(ngram: Ngram, model: Globals['distance_model']): number | 
 
 /**
  * Keystrokes as the text counts them: one per character, space included only when the universe
- * counts it (SPEC §7.1). Counting the layout's own presses instead would let its layer taps, holds
+ * counts it. Counting the layout's own presses instead would let its layer taps, holds
  * and one-shots, which no pair rule can match, thin out every percentage. cyanophage counts one
  * space per word, which `space_per_word_in_keystrokes` adds where space is not counted; where it
  * is, the spaces are already there, and adding a word's space on top would count it twice.

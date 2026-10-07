@@ -63,10 +63,10 @@ describe('the guide', () => {
       slug: 'analyzing',
       hash: 'case-and-space',
     });
-    // The glossary is docs/METRICS.md, so the specification is one directory up from it.
-    expect(resolveLink('../../SPEC.md', analyzing)).toEqual({
+    // The glossary is docs/METRICS.md, so the README is one directory up from it.
+    expect(resolveLink('../../README.md', analyzing)).toEqual({
       kind: 'external',
-      href: new URL('../SPEC.md', GLOSSARY_URL).href,
+      href: new URL('../README.md', GLOSSARY_URL).href,
     });
     expect(resolveLink('https://zmk.dev/docs', analyzing)).toEqual({
       kind: 'external',

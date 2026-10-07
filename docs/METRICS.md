@@ -10,7 +10,7 @@ Every metric below is a *rule*: plain data that a rule set can enable, disable, 
 
 - **Physical key stream.** The corpus is *typed* on the keymap: every symbol is turned into the physical presses that produce it (letter keys, layer taps, one-shot layers, sticky shifts, macros, combos, adaptive and repeat keys). All n-gram metrics are computed over that stream, so layer taps and shift presses take part in bigrams, trigrams and usage the same way letters do.
 - **Choices while typing.** Where a character can be typed several ways, the fewest presses win, then the way that leaves no layer key held, then the fewest same-finger bigrams and then skipgrams with the keys before it in the word, then the lower Effort on cyanophage's grid. Where several keys tap the same layer the same way, each word takes the one that gives it the fewest same-finger bigrams, then skipgrams, then the lower Effort. These measures are fixed, never the rule set's, so the same text is typed the same way whatever rules score it.
-- **Universes.** The default universe is *no space*: the space key is removed from the stream before n-grams are counted (the Doc's convention). The *with space* universe keeps it. Rule sets pick the universe through the `universe` global.
+- **Universes.** The default universe is *no space*: the space key is removed from the stream before n-grams are counted (the Doc's convention). The *with space* universe keeps it. Rule sets pick the universe through the `universe` global; in the app, **Include space** sets it, whatever the rule set says.
 - **Word boundary.** `cross_word: reset` (default) restarts n-grams at every word boundary, so the last letter of one word and the first of the next never form a bigram. `bridge` lets n-grams cross words.
 - **Normalization.** `percent_of_ngrams` (default) divides by the number of n-grams of the same size. For pairs — bigrams and skipgrams — that is the number the *text* has, as if every character took one press, not the number the layout pressed: layer taps, holds and one-shots add pairs no letter rule can match, and would otherwise make a layout that needs them look better than it types. Single keys and trigrams are shares of what was pressed. `percent_of_keystrokes` divides by the text's characters, space only when space is counted (cyanophage style; with `space_per_word_in_keystrokes`, one space per word is added when space is not counted, and the spaces themselves stand for it when it is). For a layout that types every character with one press, both ways give the same number.
 - **Case.** By default case is folded (`A` and `a` are the same symbol). *Model shift* types capitals through the layout's shift key or shifted twin layer, adding the extra presses to the stream.
@@ -22,7 +22,7 @@ Every metric below is a *rule*: plain data that a rule set can enable, disable, 
 
 ## Bands
 
-The Doc groups layouts into categories per metric (ch. 13.4). LayerBench stores each band as a list of ascending *upper bounds*; a value falls in the first category whose bound it does not exceed. Nine-category scales use the labels **min · very low · low · mid-low · mid · mid-high · high · very high · max**; shorter scales use the first labels of that list. Each band declares whether lower or higher values are better, which drives the green / amber / red badges.
+The Doc groups layouts into categories per metric (ch. 13.4). LayerBench stores each band as a list of ascending *upper bounds*; a value falls in the first category whose bound it does not exceed, and a value above the last bound in one more category after it. The labels are **min · very low · low · mid-low · mid · mid-high · high · very high · max**, as many as there are categories: SFB's six bounds make seven, so its worst band, above 1.375, is *high*; alternation's nine make ten, and above 47.0 is a second *max*. Each band declares whether lower or higher values are better, which drives the green / amber / red badges.
 
 | Metric | Direction | Upper bounds (%) |
 |---|---|---|
@@ -54,7 +54,6 @@ Two consecutive presses. Normalized as a percentage of bigrams unless the rule s
 | `hsb` | Half scissor bigrams | As full scissors but one row apart. |
 | `thumb_bigrams` | Thumb bigrams | Consecutive presses on one hand where at least one key is a thumb key. |
 | `thumb_double` | Thumb double taps | The same thumb key twice in a row, which is harder than a repeat on other fingers. |
-| `layer_tap_sfb` | Layer tap → same finger | A layer tap followed by another key on the same finger, typically two thumb taps. **LayerBench-specific.** |
 
 ## Skipgrams
 
@@ -105,23 +104,24 @@ Three consecutive presses; hand patterns are written with letters (`aba` = hand 
 
 | Id | Name | Definition |
 |---|---|---|
-| `effort` | Effort | cyanophage's Effort: `577 × Σ effort ÷ keystrokes`, with each key's effort read from cyanophage's grid by position — top row `5 3 2 1 2 7 │ 7 2 1 2 3 5`, home `5 1 0 0 0 5 │ 5 0 0 0 1 5`, bottom `7 3 2 2 1 8 │ 8 1 2 2 3 7`, from the left outer pinky column to the right one — and thumbs free. The keystrokes are the text's characters, space included, as cyanophage counts them: a layer tap costs nothing and is not a keystroke either, so it cannot lower the average. Spaces cost nothing. The grid is editable per key. Lower is better; with SFB, one of the two numbers layouts are sorted by. Each key is credited with its cost times its presses, so thumbs and the free home keys add nothing. |
+| `effort` | Effort | cyanophage's Effort: `577 × Σ effort ÷ keystrokes`, with each key's effort read from cyanophage's grid by position — top row `5 3 2 1 2 7 │ 7 2 1 2 3 5`, home `5 1 0 0 0 5 │ 5 0 0 0 1 5`, bottom `7 3 2 2 1 8 │ 8 1 2 2 3 7`, from the left outer pinky column to the right one — and thumbs free. The keystrokes are the text's characters, space included, as cyanophage counts them: a layer key is charged its place on the grid, nothing on a thumb, but is not a keystroke, so it cannot lower the average. Spaces cost nothing. The grid is the rule's `params.effort`, changed in the rule set's JSON. Lower is better; with SFB, one of the two numbers layouts are sorted by. Each key is credited with its cost times its presses, so thumbs and the free home keys add nothing. |
 | `hard_words` | Hard words | Words ranked by effort per character, including the extra layer and shift presses they need. Minimum length 4, minimum count 2. |
 
 ## Layers (LayerBench-specific)
 
-These rules measure the cost of multi-layer alphas. They read simulation statistics rather than n-gram tables.
+These rules measure the cost of multi-layer alphas. Most read simulation statistics rather than n-gram tables.
 
 | Id | Name | Definition |
 |---|---|---|
 | `layer_distribution` | Keystrokes per layer | Share of presses resolved on each layer. |
-| `layer_taps_per_100` | Layer taps per 100 symbols | Presses whose only purpose is to reach a layer (momentary, one-shot, toggle, layer-arming macros) per 100 corpus symbols. Bands 1 · 2 · 4 · 6 · 8 · 10 · 15. |
+| `layer_taps_per_100` | Layer taps per 100 symbols | Taps on one-shot, toggle and switch layer keys per 100 corpus symbols. A key held for a layer, an auto-layer key and a macro that turns a layer on after its text are not counted. Bands 1 · 2 · 4 · 6 · 8 · 10 · 15. |
+| `layer_tap_sfb` | Layer tap → same finger | A layer tap followed by another key on the same finger, typically two thumb taps. |
 | `one_shots_per_word` | One-shot activations per word | Mean number of one-shot layer activations per word. |
-| `wasted_one_shots` | Wasted one-shots | Percentage of one-shot activations consumed by a key that resolved on another layer (transparent fall-through) or by a modifier. Bands 1 · 2 · 5 · 10 · 20. |
-| `macro_usage` | Macro presses | Percentage of symbols produced by macros. |
+| `wasted_one_shots` | Wasted one-shots | Percentage of one-shot activations consumed by a key that resolved on another layer (transparent fall-through), by a modifier, by another layer key, or by a key that does nothing. Bands 1 · 2 · 5 · 10 · 20. |
+| `macro_usage` | Macro presses | Share of all presses that are macro presses. |
 | `adaptive_hit_rate` | Adaptive key hit rate | How often an adaptive (magic) key produced one of its trigger outputs rather than its default. |
-| `combo_usage` | Combo presses | Percentage of symbols produced by combos. |
-| `extra_keystrokes` | Extra keystrokes per symbol | Physical presses per corpus symbol minus one: layer taps, shifts, repeats and macro overhead. Bands 0.02 · 0.04 · 0.06 · 0.08 · 0.10 · 0.15. |
+| `combo_usage` | Combo presses | Share of all presses that are combos. |
+| `extra_keystrokes` | Extra keystrokes per symbol | Physical presses per corpus symbol, minus one; space bar presses are left out, as spaces are not symbols. Layer taps, holds and shifts raise it; a macro or a combo that types several symbols at once lowers it. Bands 0.02 · 0.04 · 0.06 · 0.08 · 0.10 · 0.15. |
 
 ## Composite score
 
@@ -132,16 +132,20 @@ Off by default, and no shipped preset turns it on: in **Rules**, **Composite sco
 | Preset | What changes |
 |---|---|
 | Layouts Doc | Definitions and bands above. Thumbs included, space excluded, no composite score. |
-| cyanophage-like | LSB = inner-column key with a middle-finger key (any rows); scissors = adjacent fingers two rows apart (no height preference); redirects require three different fingers; bigram rules normalized over keystrokes plus one space per word. |
+| cyanophage-like | LSB = inner-column key with a middle-finger key (any rows); scissors = adjacent fingers two rows apart (no height preference); redirects require three different fingers; pair rules, skipgrams included, normalized over keystrokes plus one space per word. |
 | Keysolve-like | Ring–middle two-row jumps always count as full scissors and one-row jumps as half scissors, on top of the Doc definition. |
 
 ## Rule vocabulary
 
 Rules are `where` expressions over an n-gram (`all`, `any`, `none` combinators). Predicates, optionally scoped to positions in the n-gram with `at: [i, j]`:
 
-`same_hand`, `same_finger`, `same_key`, `adjacent_fingers`, `rank_delta` (finger distance in columns, `eq`/`min`), `row_delta` (`abs`, `abs_min`), `x_distance` (`min`, in U), `direction` (`inward` / `outward`), `monotone`, `changes_direction`, `hand_pattern` (`"aba"`, `"aab"`, `"aaa"`…), `finger_name`, `includes_finger_name`, `finger_name_pair`, `row`, `key_kind` (`alpha`, `layer_tap`, `shift`, `space`, `repeat`, `magic`, `combo`, `hold`), `is_inner` / `any_inner`, `is_thumb` / `any_thumb`, `is_chord`, `finger_height_preference: violated`. Numeric thresholds may reference rule-set globals as `"$global.name"`.
+- Of each key, which every key selected must match (the `any_` and `includes_` forms need only one): `hand`, `finger`, `includes_finger`, `finger_name`, `includes_finger_name`, `row`, `col`, `is_home`, `is_thumb` / `any_thumb`, `is_inner` / `any_inner`, `key_kind` / `any_key_kind` (`alpha`, `layer_tap`, `shift`, `space`, `repeat`, `magic`, `combo`, `hold`), `layer` / `any_layer`, `is_chord`.
+- Of each two keys in a row: `same_hand`, `same_finger`, `same_key`, `adjacent_fingers`, `rank_delta` (the difference in finger rank, `eq`/`min`), `row_delta` (`abs`, `abs_min`), `col_delta`, `x_distance` and `y_distance` (`min`, in U, on one hand), `distance` (by the rule set's distance model), `direction` (`inward` / `outward`), `finger_name_pair`, `finger_height_preference: violated`.
+- Of the whole n-gram: `hand_pattern` (`"aba"`, `"aab"`, `"aaa"`…), `monotone`, `changes_direction`, `distinct_fingers`, `min_run`.
 
-A press's `key_kind` is the kind of key it reaches: past a tap-hold to its tap, past a morph to the arm the modifiers or layers choose, past a tap dance to the tap it ran, and past a layer-tap that is tapped. So a magic key on the tap of a tap-hold is `magic`, as its legend on the board says, a tap-hold whose tap repeats is `repeat`, and an alt repeat is `magic` whichever branch it takes. Any key held down is `hold`, and a press that types a space is `space`.
+Numeric thresholds may reference rule-set globals as `"$global.name"`.
+
+A press's `key_kind` is the kind of key it reaches: past a tap-hold to its tap, past a morph to the arm the modifiers or layers choose, past a tap dance to the tap it ran, and past a layer-tap that is tapped. So a magic key on the tap of a tap-hold is `magic`, as its legend on the board says, a tap-hold whose tap repeats is `repeat`, and an alt repeat is `magic` whichever branch it takes. A key held down that types nothing is `hold`, and a press that types a space is `space`.
 
 Aggregates: `percent_of_ngrams`, `percent_of_keystrokes`, `count`, `per100`, `sum_distance`, `mean_distance`, `per_finger`, `per_hand`, `per_layer`, `per_row`, `per_col`, `weighted_sum`, `ratio`, `histogram`, `top_strings`.
 
@@ -152,5 +156,7 @@ Aggregates: `percent_of_ngrams`, `percent_of_keystrokes`, `count`, `per100`, `su
   numeric condition.
 - **Travel and Effort heat maps.** `finger_travel` and `effort` credit each key its own part of the
   total, and the `travel` and `effort` heat maps draw those parts.
-- **Comparison.** Which side of a comparison wins is decided by the metric's direction (lower or
-  higher is better), not by whether it carries bands.
+- **Comparison.** Which side of a comparison wins is decided by a fixed list of metrics where
+  higher is better (alternation, rolls, in- and out-rolls, one-hand rolls in and out, the in:out
+  ratio, home row usage and the adaptive key hit rate). Every other metric, a composed one included,
+  is read as lower is better, whatever its bands say.

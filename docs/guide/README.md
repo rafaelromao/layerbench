@@ -5,12 +5,12 @@ comfortable that typing is. Layers, one-shots, tap-holds, magic and repeat keys 
 Everything runs in your browser, and nothing leaves it unless you sign in with GitHub to keep your
 work in your own account.
 
-1. **Pick a layout.** The site opens on **Library**, ranked by Effort; choose one, or bring your
-   own from a [keymap-drawer file](importing.md).
+1. **Pick a layout.** The site opens on **Library**, first ranked by Effort; choose one, or bring
+   your own from a [keymap-drawer file](importing.md).
 2. **Read two numbers.** On **Analyze**, *Effort* is how hard the keys are to reach, and *SFB* how
    often one finger presses two keys in a row. Lower is better for both.
 3. **Change a key.** On **Analyze** too, tap or click a key and choose what it does. Every change
-   is kept as you make it, every number follows it, and **Undo** takes it back.
+   is kept as you make it, every number follows it, and **Undo** (↶) takes it back.
 4. **Compare.** **Compare** puts two layouts side by side, number by number.
 
 Each topic below starts short. Open it for more, and follow its links for the rest.
@@ -49,9 +49,10 @@ LayerBench's own JSON. See [Importing and exporting](importing.md).
 
 ## Keeping and sharing your work
 
-Duplicate a layout, start one or import yours, and **Save** keeps it in **Library**. Saved
-layouts, rule sets and corpora stay in this browser. Sign in with GitHub, under **Storage** in the
-header, to keep them in your GitHub account too, in gists or in your fork of layerbench. A link
-carries everything a view shows, unsaved edits included, so copying the address shares it. A
-layout you saved can join the Library, for everyone, by a pull request. See
+Duplicate a layout, start one or import yours, and it joins **Library**; **Save** keeps your edits
+to it. Saved layouts, rule sets and texts stay in this browser. Sign in with GitHub, under
+**Storage** in the header, to keep them in your GitHub account too, in gists or in your fork of
+layerbench. A link carries the analysis, and a layout with unsaved edits, or one never saved,
+travels whole in it, so copying the address shares it; something saved opens only where it is
+saved. A layout you saved can join the Library, for everyone, by a pull request. See
 [Saving and sharing](saving.md).

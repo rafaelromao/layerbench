@@ -237,7 +237,7 @@ function graphemeLength(s: string): number {
 }
 
 /**
- * Enumerate every way to produce each symbol string on the layout (SPEC §5.4.1).
+ * Enumerate every way to produce each symbol string on the layout.
  */
 export function enumerateProducers(
   compiled: CompiledLayout,

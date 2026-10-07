@@ -8,8 +8,8 @@ Each group of the page, **Board**, **A word, typed**, **Summary**, **Legend**, *
 **Compare**. This browser remembers which you folded.
 
 Two numbers lead: **Effort**, how hard the keys are to reach, and **SFB**, how often one finger
-presses two keys in a row. Lower is better for both. Most numbers also carry a badge that places
-them among other layouts: green is good, red is poor.
+presses two keys in a row. Lower is better for both. Some numbers, SFB among them but not Effort,
+also carry a badge that places them among other layouts: green is good, red is poor.
 
 ## Effort and SFB
 
@@ -62,8 +62,9 @@ only its numbers leave the features out.
 
 ### Changing the costs
 
-The cost of each key is a parameter of the Effort rule. **Rules** can give any key another cost,
-and the change applies wherever that rule set is used.
+The cost of each key is a parameter of the Effort rule, `params.effort`, changed in a rule set's
+**JSON** in **Rules**: **Export current**, edit the costs, then **Import (replace current)** and save
+the set. The change applies wherever that rule set is used.
 
 ## How a text is typed
 
@@ -113,12 +114,14 @@ what of the text is counted: letters only, the default, or numbers and symbols a
 ### The text itself
 
 **Corpus** lists the texts that come with the app, by language, each with where it came from. Your
-own text can be pasted or uploaded there and analyzed like any other. A text published under an open
+own text can be pasted or uploaded there and analyzed like any other, and **Save to library** keeps
+it: saved texts are listed in **Corpus** and offered in every view that analyzes, after the ones that
+come with the app. A text published under an open
 licence can join the ones that come with the app, by pull request on GitHub; the
 [README](../../README.md#bundled-corpora) lists the steps. **Sample**, on **Analyze**
 and **Compare**, sets how much of the text is typed, 100,000 symbols unless you choose more: more
 gives steadier numbers, less gives them sooner, which matters most while a layout is being edited,
-since every edit types it again. **Library** always ranks on 100,000 symbols, since it types the
+since every edit types it again. **Library** ranks on at most 100,000 symbols, since it types the
 text once for every layout, and says so above the list.
 
 ### The same choices in every view
@@ -174,16 +177,18 @@ number.
 
 ### What the badges mean
 
-The Keyboard Layouts Doc sorts layouts into bands for each metric, from *min* to *max*. A badge
-names the band a number falls in, and its colour says whether that is good for that metric. For
-most metrics lower is better; for alternation and rolls, higher is. The
+The Keyboard Layouts Doc sorts layouts into bands for the metrics it covers, from *min* to *max*,
+and LayerBench adds its own for layer taps, wasted one-shots and extra keys. A badge names the band
+a number falls in, and its colour says whether that is good for that metric. For most metrics lower
+is better; for alternation, rolls and the in:out roll ratio, higher is. The
 [glossary](../METRICS.md#bands) lists every band.
 
 ## Rules and their sources
 
 Every number is a rule: plain data that says which key sequences count, and how. **Rules** lists
-them. Each can be turned off, given other parameters, copied or removed, and new ones can be
-composed. A rule set is saved and shared like a layout.
+them. Each can be turned off, given other bands and a score weight, or removed, and new ones can
+be composed; anything else, such as a key's cost, is changed in the set's **JSON**. A rule set is
+saved like a layout, and like a saved layout, its link opens only where it is saved.
 
 Every built-in rule names where its definition comes from: a section of the Keyboard Layouts Doc,
 a line of another analyzer's code, or the glossary where the rule is LayerBench's own. Open
@@ -197,6 +202,6 @@ changes.
 
 ### Writing a rule
 
-The **Composer**, at the bottom of **Rules**, builds a rule from conditions on a sequence of
+The **Composer**, near the bottom of **Rules**, above **JSON**, builds a rule from conditions on a sequence of
 presses (same finger, rows apart, a thumb among them) and a way to count them. The whole vocabulary
 is in the [glossary](../METRICS.md#rule-vocabulary).

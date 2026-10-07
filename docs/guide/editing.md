@@ -8,16 +8,19 @@ a phone) says what the key does, what it adds to the numbers, and lets you chang
 2. **Choose what it does** from the tiles: *Symbol*, *Layer*, *Modifier*, *Tap-hold* and so on.
 3. **Fill in the rest**, such as the symbol it types, the layer it reaches or what a hold does.
 
-Every change is kept as you make it, so there is nothing to apply. **Undo** and **Redo**, beside
-the layer tabs, step back and forth through your changes. **Save**, beside the layout's name at
+Every change is kept as you make it, so there is nothing to apply. **Undo** (↶) and **Redo** (↷),
+beside the layer tabs, step back and forth through your changes. **Save**, beside the layout's name at
 the top, keeps it in **Library**, and until then the name is marked *unsaved*. A layout's link
 follows its name: rename one already in **Library** and save it, and it moves to a link of its new
 name, so a link to it from before no longer opens it.
 
 The address follows your edits too: a moment after each one, the link holds the layout as it now
-is. Reload the page, or come back to it, and the edits are still there, still unsaved, and saving
-them saves the layout they are edits of rather than a copy beside it. Picking another layout from
-**Layout** asks first when there is something unsaved.
+is. Reload the page, or go back to it, in the same tab, and the edits are still there, still
+unsaved, and saving them saves the layout they are edits of rather than a copy beside it. Opened in
+another tab or browser, the same link is a layout of its own: it is not marked *unsaved*, and saving
+it makes a copy. A layout opened from **Open in analyzer**, or from someone's link, is not in
+**Library** until you save it. Picking another layout from **Layout** asks first when there is
+something unsaved.
 
 The bar at the top also holds the layout's author and description, and the choices the numbers
 are worked out with: **Corpus**, **Rules**, **Counts**, the **Sample**, the feature switches,
@@ -101,7 +104,10 @@ Drag a key onto another to swap the two. Hold `Alt` while dropping to copy it in
 on a layer tab to send it to that layer.
 
 The same moves work without dragging. **Swap with…** and **Copy to…** in the editor ask you to
-tap the other key, and **Send to layer…** picks the layer from a list. **Clear** makes the key do nothing (*Nothing* `∅`), on any layer, rather than let the layer below show through.
+tap the other key, and **Send to layer…** picks the layer from a list. `Delete` on a selected key
+makes it do nothing (*Nothing* `∅`), on any layer, rather than let the layer below show through;
+**Clear**, in the editor, does the same for a key with a binding of its own, and is greyed out on
+one that takes its layer's default.
 
 ## Layers
 
@@ -112,13 +118,13 @@ The **Layers** panel lists them in order, and does everything else with them:
 - **Rename** a layer in its name field, or double-click its tab (press and hold it on a phone, or
   `F2` on the keyboard).
 - **Reorder** with the arrows, or by dragging its row. The base layer stays first.
-- **Duplicate** copies a layer, with all its keys, right after it.
+- **Duplicate** (⧉) copies a layer, with all its keys, right after it.
 - **Colour**, under the layer's name, picks the colour its tab and the keys that reach it are
   drawn in. **Automatic** follows the layer's place in the list; each of the others keeps a shade
   for the light theme and one for the dark, so legends stay readable in both.
-- **Remove** deletes a layer. It refuses while a key, combo or behaviour still reaches the layer,
+- **Remove** (✕) deletes a layer. It refuses while a key, combo or behaviour still reaches the layer,
   and names each one, so nothing is left pointing at a layer that is gone.
-- **+ layer** adds an empty one at the end.
+- **+ layer** adds one at the end, whose keys all let the layer below show through.
 
 ### The keys that reach a layer
 
@@ -145,8 +151,10 @@ layer in the end, which is why it stays first.
 The other panels hold what is not on a single key:
 
 - **Features** turns on sentence case and caps word.
-- **Geometry** chooses the board and says which keys are space and shift.
-- **Combos** are keys pressed together. **Pick on board**, then tap the keys; the output takes
+- **Geometry** shows the board, which is chosen when a layout is imported or created and cannot
+  be changed here, and says which keys are space and shift, the kind of shift, and how doubled
+  letters are typed.
+- **Combos** are keys pressed together. **pick on board**, then tap the keys; the output takes
   the same syntax as **Or type**.
 - **Behaviors** are the named bindings keys refer to, such as `&magic`.
 - **Typing paths** list the other ways a character can be typed. Left alone, a character is typed

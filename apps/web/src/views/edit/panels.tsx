@@ -828,8 +828,8 @@ function KeymapDrawerExport({ state }: { state: EditState }) {
       </div>
       <p className="text-[11px] opacity-60">
         Draw it with <span className="font-mono">keymap draw</span>. Keys whose legends cannot say
-        everything they do — magic keys, macros built from steps — come back from this file as
-        imported keys.
+        everything they do come back from this file simpler: a magic key as a plain key typing its
+        default, a macro as the text it types, without its other steps.
       </p>
     </div>
   );

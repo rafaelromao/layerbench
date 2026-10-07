@@ -20,7 +20,7 @@ function trace(layout: Layout, text: string, extra: Partial<Parameters<typeof ex
   };
 }
 
-describe('Romak acceptance traces (SPEC §11.3)', () => {
+describe('Romak acceptance traces', () => {
   it('ação with the ão macro enabled: a · ² · ç · ão (4 presses)', () => {
     const t = trace(romak24, 'ação');
     expect(t.out).toBe('ação');

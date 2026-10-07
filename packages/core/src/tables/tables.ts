@@ -48,7 +48,7 @@ export class LogicalKeyRegistry {
     return r;
   }
 
-  /** Move a logical key to another position (relabel, SPEC §5.6). */
+  /** Move a logical key to another position: a relabel. */
   setPosition(id: number, pos: number): void {
     this.keys[id].pos = pos;
   }

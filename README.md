@@ -5,9 +5,8 @@
 > users is in the [guide](docs/guide/README.md), which is also in the app under **Guide**. Saving
 > your work to GitHub is in [Saving and sharing](docs/guide/saving.md).
 >
-> **This README is for working on LayerBench's code and deploying it.** The design is in
-> [SPEC.md](SPEC.md), and metric definitions and their sources are in the
-> [glossary](docs/METRICS.md).
+> **This README is for working on LayerBench's code and deploying it.** Metric definitions and
+> their sources are in the [glossary](docs/METRICS.md).
 
 Keyboard layout analyzer that understands ZMK layers. It **simulates** how a text corpus is actually
 typed on a keymap — one-shot and momentary layers, layers armed by macros, adaptive ("magic") keys,
@@ -63,7 +62,7 @@ Analyze writes unsaved edits into its link that way.
 
 The sign-in state, the trip to GitHub, the in-memory access token and the sealed session the page
 keeps are in `apps/web/src/auth/github-session.ts`. The server half is
-`apps/web/src/server/github-auth.ts`. SPEC §4.3 has the details.
+`apps/web/src/server/github-auth.ts`.
 
 ## Bundled layouts
 
@@ -75,7 +74,8 @@ the approval, and the deploy that follows puts it in everyone's Library.
 1. In the app, give the layout its name, its author, and a description that links to where it comes
    from: the author's firmware, keymap or page. Save it, and copy its LayerBench JSON from the
    editor's **JSON** panel. A layout you saved while signed in is also on your data branch, as
-   `data/layouts/<id>.json`.
+   `data/layouts/<id>.json`, when Storage saves to your repository; otherwise it is in your
+   "LayerBench: saved layouts" gist.
 2. Add it, as copied, as `packages/core/src/layouts/documents/<id>.json`, named by its `"id"`.
 3. In `packages/core/src/layouts/documents.ts`, import the file and add it to `DOCUMENTS` under its
    id.
@@ -102,8 +102,8 @@ approval.
    `packages/core/src/lang/profiles.ts`; [packages/corpora/README.md](packages/corpora/README.md#adding-a-language)
    says how to add one.
 2. Add its entry to `raw/sources.json`, under an id of lower-case words and hyphens: `file`, `name`,
-   `language`, `description`, `source` with a link, and `license`, one of CC0, CC BY, CC BY-SA or
-   public domain, since the text is published with the app; `generated: true` marks a text made from
+   `language`, `description`, `source` with a link, and `license`, starting `CC0`, `CC BY 4.0`,
+   `CC BY-SA 4.0` (with its version) or `Public domain`, since the text is published with the app; `generated: true` marks a text made from
    word frequencies. A source not yet credited goes in the credits at the foot of the landing page.
 3. `pnpm corpora <id>` builds it. Commit `apps/web/public/corpora/<id>/` and `index.json` with it.
 4. Open the pull request. `pnpm test` checks the entry, and that what the app serves matches it. The
@@ -131,9 +131,11 @@ only.
 `pnpm bench` runs the performance suite, which is skipped by default. `pnpm corpora` rebuilds the
 corpus samples from `packages/corpora/raw`.
 
-`apps/web/e2e` checks the layout of Analyze, where layouts are edited, in a real browser, at two phone sizes and a desktop
-one: nothing wider than the screen, targets a finger can hit, the board in sight while a key is
-edited. Playwright's Chromium is downloaded once:
+`apps/web/e2e` checks, in a real browser at two phone sizes and a desktop one, the layout of
+Analyze, where layouts are edited (nothing wider than the screen, targets a finger can hit, the
+board in sight while a key is edited), the Library and the storage dialog on a phone, and that a
+link to an unsaved layout opens from after the `#`. No workflow runs it. Playwright's Chromium is
+downloaded once:
 
 ```bash
 pnpm --filter @layerbench/web exec playwright install chromium
@@ -251,7 +253,9 @@ again**. Storage should say it is saving to your repository on `layerbench-data`
 and the commit appears on that branch, not on main.
 
 **To sign everyone out**, give the Worker a new `SESSION_SECRET`: every session sealed with the old
-one stops working. Revoking the GitHub App's client secret does it too.
+one fails at its next renewal or page load. Revoking the GitHub App's client secret stops renewals
+instead, so sessions end as their access tokens expire, within about 8 hours; tokens already issued
+stay valid until then.
 
 The Worker answers only the origins in `ALLOWED_ORIGINS`, and its own, and sets its own headers
 (`Cache-Control: no-store` among them).
@@ -266,8 +270,8 @@ where its links into the app work too. `apps/web/src/guide/landing.test.ts` hold
 every link lands on a view, layout, corpus or guide section that exists, and every image is the
 file and the shape the page says.
 
-Its screenshots are taken from the running app, in the dark and the light theme, with Edge or
-Chrome already installed:
+Its screenshots are taken from the running app, in the dark and the light theme, on Playwright's
+Chromium, or on Edge or Chrome with `E2E_CHANNEL`:
 
 ```bash
 E2E_CHANNEL=msedge pnpm --filter @layerbench/web shots

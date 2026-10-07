@@ -46,7 +46,7 @@ are [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), so the corp
 them are shared under it too, as `sources.json` records. `corpora:generate` samples those words in
 proportion to their frequency and shapes them into capitalised, punctuated sentences.
 
-They draw from the 8,000 most frequent words of each language. `pt_br` is counted over Brazilian
+They draw from the 8,000 most frequent usable words of each language. `pt_br` is counted over Brazilian
 subtitles only.
 
 The lists count words as a tokenizer split them, and the generator puts them back together:
@@ -72,7 +72,8 @@ form and shipping an unverifiable unpacker would be worse than one documented in
    text as `raw/es-general.txt`, `raw/fr-general.txt`, `raw/it-general.txt`.
 3. `pnpm corpora`
 
-That is exactly how `en-general` and `pt-br-general` were produced. The collection is CC BY 4.0;
+`en-general` and `pt-br-general` were produced the same way, from `eng_news_2023_30K` and
+`por-br_newscrawl_2011_30K`. The collection is CC BY 4.0;
 `sources.json` records the attribution the licence requires.
 
 ## Adding a text

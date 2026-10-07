@@ -32,7 +32,8 @@ is chosen for you. **Use a QMK info.json…** reads the keyboard's own layout fi
 A board whose columns match one of LayerBench's presets becomes that preset, key for key.
 Anything else is drawn as a board of its own.
 
-LayerBench models up to three rows of up to six columns on each hand, and up to six thumb keys.
+LayerBench models up to three rows of up to six columns on each hand, and up to six thumb keys on
+each hand.
 Keys beyond that, such as a number row or a seventh column, are left out, and the import says how
 many.
 
@@ -77,13 +78,15 @@ imported.
 The file draws each key as the board does: magic keys, macros and tap dances carry their mark in
 the corner, a key that lets the layer below show through is `▽` and one that does nothing is
 empty, and a key held or tapped to reach a layer is marked `held` on that layer where it is
-transparent, as keymap-drawer's own examples mark one. Read back in, it gives the same layers, keys and combos,
-a `held` key coming back transparent, except for what keymap-drawer has no field for, such as a
-magic key's branches or a macro's steps.
+transparent, as keymap-drawer's own examples mark one. Read back in, it gives the same layers,
+keys and combos, a `held` key coming back transparent, except for what keymap-drawer has no field
+for: a magic key comes back as a plain key typing its default, a macro as the text it types without
+its other steps, a dead key as its plain accent, a tap dance as its single tap and a morph as its
+unmodified arm.
 
 ### Other formats
 
-**Import**, in **Library**, also takes LayerBench JSON, or a layout written as text the way
-layouts are often shared: three rows of letters separated by spaces, with an optional thumb row,
-or a single string of 30 to 34 characters as cmini and cyanophage write them. A text layout goes
-onto the board you choose under **Geometry**.
+**Import**, in **Library**, also takes LayerBench JSON, or a layout written as text the way layouts
+are often shared: three rows of letters separated by spaces, with an optional thumb row, or a
+single string of 30 characters as cmini writes them, or of 33 to 35 as cyanophage does. A text
+layout goes onto the board you choose under **Geometry**.

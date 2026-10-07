@@ -827,7 +827,8 @@ export function LibraryView() {
             <h2 className="font-semibold text-sm">Import</h2>
             <p className="text-xs opacity-70">
               A native JSON document, three rows of space-separated letters with an optional fourth
-              thumb row, or a 30- to 34-character string in the cmini and cyanophage conventions.
+              thumb row, or a string of 30 characters as cmini writes one, or 33 to 35 as cyanophage
+              does.
             </p>
           </div>
 
