@@ -29,10 +29,31 @@ describe('Library', () => {
     expect(screen.getByText(/Nothing saved yet/)).toBeInTheDocument();
   });
 
+  it('imports in a dialog of its own, not under the list', async () => {
+    const user = userEvent.setup();
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    await screen.findByRole('heading', { name: 'Layouts' });
+    const dialog = screen
+      .getByRole('heading', { hidden: true, name: 'Import a layout' })
+      .closest('dialog') as HTMLDialogElement;
+    expect(dialog).not.toHaveAttribute('open');
+
+    await user.click(screen.getByRole('button', { name: 'Import' }));
+    expect(dialog).toHaveAttribute('open');
+    expect(within(dialog).getByRole('tab', { name: 'Text or JSON', selected: true })).toBeVisible();
+    await user.click(within(dialog).getByRole('tab', { name: 'keymap-drawer' }));
+    expect(within(dialog).getByLabelText('keymap-drawer YAML')).toBeVisible();
+    expect(within(dialog).queryByLabelText('Layout to import')).not.toBeVisible();
+
+    await user.click(within(dialog).getByRole('button', { name: 'Close' }));
+    expect(dialog).not.toHaveAttribute('open');
+  });
+
   it('previews a text layout as it is typed', async () => {
     const user = userEvent.setup();
     renderRoute(LIBRARY, { storage: freshStorage() });
     await screen.findByRole('heading', { name: 'Layouts' });
+    await user.click(screen.getByRole('button', { name: 'Import' }));
 
     // Pasted rather than typed key by key: what is under test is that the preview follows the text,
     // and forty keystrokes each re-rendering every bundled layout only measures the machine.

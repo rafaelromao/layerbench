@@ -4,7 +4,8 @@
 lists what each key shows, layer by layer. Its `keymap parse` command writes that file from a ZMK
 or QMK keymap, and LayerBench reads it.
 
-1. In **Library**, under **Import from keymap-drawer**, paste the file or **Choose a .yaml file**.
+1. In **Library**, click **Import**, then **keymap-drawer**, and paste the file or **Choose a .yaml
+   file**.
 2. Check the board it goes onto, and look over the preview.
 3. Untick the layers you do not want, and rename or reorder the rest. The first one ticked becomes
    the base layer.
@@ -86,7 +87,7 @@ unmodified arm.
 
 ### Other formats
 
-**Import**, in **Library**, also takes LayerBench JSON, or a layout written as text the way layouts
-are often shared: three rows of letters separated by spaces, with an optional thumb row, or a
-single string of 30 characters as cmini writes them, or of 33 to 35 as cyanophage does. A text
-layout goes onto the board you choose under **Geometry**.
+**Import**, in **Library**, also takes LayerBench JSON under **Text or JSON**, or a layout written
+as text the way layouts are often shared: three rows of letters separated by spaces, with an
+optional thumb row, or a single string of 30 characters as cmini writes them, or of 33 to 35 as
+cyanophage does. A text layout goes onto the board you choose under **Geometry**.

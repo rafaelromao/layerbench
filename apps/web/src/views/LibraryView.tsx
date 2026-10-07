@@ -5,7 +5,6 @@ import {
   freeId,
   GEOMETRY_PRESET_IDS,
   getGeometryPreset,
-  importTextLayout,
   type Layout,
   languageCovered,
   layoutLanguageCoverage,
@@ -19,7 +18,6 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 import { featureList } from '../components/FeatureSwitches.js';
 import { formatValue } from '../components/format.js';
 import { HelpLink } from '../components/HelpLink.js';
-import { Keyboard } from '../components/Keyboard.js';
 import { useDismiss } from '../components/use-dismiss.js';
 import {
   compareBy,
@@ -43,7 +41,7 @@ import {
   savedRef,
   toSearch,
 } from '../url/params.js';
-import { KeymapDrawerImport } from './library/KeymapDrawerImport.js';
+import { ImportDialog } from './library/ImportDialog.js';
 import { LayerStrip } from './library/LayerStrip.js';
 import { type BoardChoice, RankingDialog, SORTS } from './library/RankingDialog.js';
 import { type NewLayoutSpec, newLayout } from './new-layout.js';
@@ -120,42 +118,6 @@ function Ranking({
       )}
     </>
   );
-}
-
-interface Preview {
-  layout: Layout;
-  compiled: CompiledLayout;
-  warnings: string[];
-}
-
-/** Native JSON documents start with a brace; anything else is read as a classic text layout. */
-function buildPreview(
-  text: string,
-  preset: string,
-  name: string,
-): { ok: true; preview: Preview } | { ok: false; error: string } {
-  const trimmed = text.trim();
-  try {
-    if (trimmed.startsWith('{')) {
-      const parsed = safeParseLayout(JSON.parse(trimmed));
-      if (!parsed.ok) return { ok: false, error: parsed.error };
-      return {
-        ok: true,
-        preview: { layout: parsed.layout, compiled: compileLayout(parsed.layout), warnings: [] },
-      };
-    }
-    const { layout, overflow, warnings } = importTextLayout(trimmed, preset, name);
-    return {
-      ok: true,
-      preview: {
-        layout,
-        compiled: compileLayout(layout),
-        warnings: [...overflow.map((t) => `overflow: ${t}`), ...warnings],
-      },
-    };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : String(e) };
-  }
 }
 
 /**
@@ -368,12 +330,6 @@ export function LibraryView() {
   const storage = useStorage();
   const navigate = useNavigate();
   const saved = useCollection('layouts');
-
-  const [importText, setImportText] = useState('');
-  const [importPreset, setImportPreset] = useState('3x5+2');
-  const [importName, setImportName] = useState('Imported layout');
-  const [preview, setPreview] = useState<Preview | null>(null);
-  const [importError, setImportError] = useState<string | null>(null);
 
   const bundled = useMemo(
     () =>
@@ -596,31 +552,17 @@ export function LibraryView() {
     [shownListed, sortBy, summaries, behind],
   );
 
-  // The preview follows the text as it is typed, so a malformed import is obvious immediately.
-  useEffect(() => {
-    if (importText.trim() === '') {
-      setPreview(null);
-      setImportError(null);
-      return;
-    }
-    const timer = setTimeout(() => {
-      const result = buildPreview(importText, importPreset, importName);
-      if (result.ok) {
-        setPreview(result.preview);
-        setImportError(null);
-      } else {
-        setPreview(null);
-        setImportError(result.error);
-      }
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [importText, importPreset, importName]);
-
-  const openInAnalyzer = useCallback(async () => {
-    if (!preview) return;
-    const blob = await encodeInline(preview.layout);
-    navigate({ to: '/analyze', search: toSearch(params, { layoutRef: inlineRef(blob) }) as never });
-  }, [preview, navigate, params]);
+  /** An import opened before it is saved travels whole in the link, as an unsaved edit does. */
+  const openInAnalyzer = useCallback(
+    async (layout: Layout) => {
+      const blob = await encodeInline(layout);
+      navigate({
+        to: '/analyze',
+        search: toSearch(params, { layoutRef: inlineRef(blob) }) as never,
+      });
+    },
+    [navigate, params],
+  );
 
   /** Save under a free id, and say so by the layout's name: the id is only for links. */
   const saveNew = useCallback(
@@ -639,13 +581,10 @@ export function LibraryView() {
     [storage, saved],
   );
 
-  const saveToLibrary = useCallback(async () => {
-    if (!preview) return;
-    const id = await saveNew(preview.layout, `Import layout ${preview.layout.name}`);
-    if (id === null) return;
-    setImportText('');
-    setPreview(null);
-  }, [preview, saveNew]);
+  const saveToLibrary = useCallback(
+    async (layout: Layout) => (await saveNew(layout, `Import layout ${layout.name}`)) !== null,
+    [saveNew],
+  );
 
   /** Duplicate any layout, bundled or saved, and open the copy in Analyze, to edit. */
   const duplicate = useCallback(
@@ -707,8 +646,14 @@ export function LibraryView() {
       <h1 className="sr-only">Library</h1>
       <div className="flex flex-wrap items-center gap-2">
         <NewLayoutDialog onCreate={createLayout} />
+        <ImportDialog
+          canSave={saved.available}
+          onOpen={openInAnalyzer}
+          onSave={saveToLibrary}
+          onImportKeymap={importKeymap}
+        />
         <p className="text-xs opacity-70">
-          Start from an empty board, or duplicate any layout below and change it.
+          Start from an empty board, import yours, or duplicate any layout below and change it.
         </p>
       </div>
 
@@ -772,7 +717,7 @@ export function LibraryView() {
           )}
           {saved.entries.length === 0 && (
             <span className="text-xs opacity-70">
-              Nothing saved yet. Save from Analyze, or import below.
+              Nothing saved yet. Save from Analyze, or import one.
             </span>
           )}
         </div>
@@ -818,113 +763,6 @@ export function LibraryView() {
               }
             />
           ))}
-        </div>
-      </section>
-
-      <section className="card bg-base-100 border border-base-300">
-        <div className="card-body gap-3 p-4">
-          <div>
-            <h2 className="font-semibold text-sm">Import</h2>
-            <p className="text-xs opacity-70">
-              A native JSON document, three rows of space-separated letters with an optional fourth
-              thumb row, or a string of 30 characters as cmini writes one, or 33 to 35 as cyanophage
-              does.
-            </p>
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-            <label className="form-control">
-              <span className="sr-only">Layout to import</span>
-              <textarea
-                id="import-text"
-                wrap="off"
-                aria-label="Layout to import"
-                rows={5}
-                className="textarea textarea-bordered font-mono text-xs"
-                placeholder={'q w e r t  y u i o p\na s d f g  h j k l ;\nz x c v b  n m , . /'}
-                value={importText}
-                onChange={(e) => setImportText(e.target.value)}
-              />
-            </label>
-            <div className="flex flex-col gap-2">
-              <label className="form-control">
-                <span className="label-text text-xs">Name</span>
-                <input
-                  aria-label="Layout name"
-                  className="input input-sm input-bordered"
-                  value={importName}
-                  onChange={(e) => setImportName(e.target.value)}
-                />
-              </label>
-              <label className="form-control">
-                <span className="label-text text-xs">Geometry (text import)</span>
-                <select
-                  aria-label="Geometry"
-                  className="select select-sm select-bordered"
-                  value={importPreset}
-                  onChange={(e) => setImportPreset(e.target.value)}
-                >
-                  {GEOMETRY_PRESET_IDS.map((id) => (
-                    <option key={id} value={id}>
-                      {id}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                type="button"
-                className="btn btn-sm btn-primary"
-                disabled={!preview}
-                onClick={openInAnalyzer}
-              >
-                Open in analyzer
-              </button>
-              <button
-                type="button"
-                className="btn btn-sm"
-                disabled={!preview || !saved.available}
-                onClick={saveToLibrary}
-              >
-                Save to library
-              </button>
-            </div>
-          </div>
-
-          {importError && <p className="text-error text-xs">{importError}</p>}
-
-          {preview && (
-            <div className="grid gap-3 md:grid-cols-2">
-              <Keyboard
-                id="kb-import"
-                compiled={preview.compiled}
-                interactive={false}
-                showHold={false}
-              />
-              {preview.warnings.length > 0 && (
-                <ul className="text-warning text-xs space-y-1">
-                  {preview.warnings.map((w) => (
-                    <li key={w}>{w}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section className="card bg-base-100 border border-base-300">
-        <div className="card-body gap-3 p-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="font-semibold text-sm">Import from keymap-drawer</h2>
-              <HelpLink help={HELP.importing} />
-            </div>
-            <p className="text-xs opacity-70">
-              A keymap-drawer YAML file: its layers, legends and combos, onto the board it
-              describes. Choose which layers to bring in, and what to call them.
-            </p>
-          </div>
-          <KeymapDrawerImport onImport={importKeymap} />
         </div>
       </section>
     </div>

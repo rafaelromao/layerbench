@@ -10,9 +10,9 @@ A layout of your own starts in **Library**, in one of these ways:
 - **Duplicate**, on any layout's card, saves a copy and opens it in **Analyze**.
 - **New layout** starts one on the board you choose, empty or from Qwerty to rearrange, and
   **Create and edit** saves it and opens it.
-- **Import** takes LayerBench JSON or a layout written as text: **Open in analyzer** to edit it
-  before saving it, **Save to library** to keep it as it is. A keymap-drawer file goes in
-  **Import from keymap-drawer**, where **Import and edit** saves it and opens it. See
+- **Import** opens a dialog. Under **Text or JSON**, it takes LayerBench JSON or a layout written
+  as text: **Open in analyzer** to edit it before saving it, **Save to library** to keep it as it
+  is. Under **keymap-drawer**, **Import and edit** saves a keymap-drawer file and opens it. See
   [Importing and exporting](importing.md).
 
 Saved, it is listed in **Library** among the layouts that come with the app, marked *saved* and

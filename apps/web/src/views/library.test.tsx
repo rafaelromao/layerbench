@@ -475,11 +475,18 @@ combos:
 `;
 
 describe('Importing from keymap-drawer', () => {
+  /** The import dialog, on its keymap-drawer tab. */
+  async function openKeymapImport() {
+    await userEvent.click(await screen.findByRole('button', { name: 'Import' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'keymap-drawer' }));
+  }
+
   it('imports the layers chosen, under the names given, and opens the result in the editor', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
     const { currentSearch } = renderRoute(LIBRARY, { storage });
 
+    await openKeymapImport();
     await user.click(await screen.findByLabelText('keymap-drawer YAML'));
     await user.paste(KEYMAP);
 
@@ -519,6 +526,7 @@ describe('Importing from keymap-drawer', () => {
   it('says what is wrong with a file it cannot read', async () => {
     const user = userEvent.setup();
     renderRoute(LIBRARY, { storage: freshStorage() });
+    await openKeymapImport();
     await user.click(await screen.findByLabelText('keymap-drawer YAML'));
     await user.paste('layers: [a, b');
     expect(await screen.findByText(/line 1: unclosed \[/)).toBeInTheDocument();
