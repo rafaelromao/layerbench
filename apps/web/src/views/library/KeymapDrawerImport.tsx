@@ -16,7 +16,7 @@ import {
   qmkInfoKeys,
   type ResolvedBoard,
   readKeymapDrawer,
-} from '@layoutmaster/core';
+} from '@layerbench/core';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { Keyboard } from '../../components/Keyboard.js';
 import { LayerTabs } from '../../components/LayerTabs.js';
@@ -269,7 +269,7 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
               {choices.map((c, i) => {
                 const r = c.on ? reportOf(c.name) : undefined;
                 return (
-                  <li key={c.source} className="lm-import-layer">
+                  <li key={c.source} className="lb-import-layer">
                     <input
                       type="checkbox"
                       className="checkbox checkbox-sm"
@@ -317,7 +317,7 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
                     </div>
                     {/* Under the name: what the layer becomes, and how much of it was read. */}
                     {(i === baseIndex || r) && (
-                      <p className="lm-import-layer-report text-[11px] opacity-70">
+                      <p className="lb-import-layer-report text-[11px] opacity-70">
                         {i === baseIndex && (
                           <span className="badge badge-ghost badge-sm mr-1">base</span>
                         )}

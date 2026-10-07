@@ -33,8 +33,8 @@ export interface KeyDrag {
 
 /** Take the drop highlight off whatever is carrying it. */
 export function clearDropTargets(): void {
-  for (const el of document.querySelectorAll('.lm-drop-target')) {
-    el.classList.remove('lm-drop-target', 'lm-drop-copy');
+  for (const el of document.querySelectorAll('.lb-drop-target')) {
+    el.classList.remove('lb-drop-target', 'lb-drop-copy');
   }
 }
 
@@ -51,8 +51,8 @@ export function paintDropTarget(
     target.kind === 'key'
       ? (board ?? document).querySelector(`g[data-key="${target.keyId}"]`)
       : document.querySelector(`[data-layer-drop="${target.layerId}"]`);
-  el?.classList.add('lm-drop-target');
-  if (mode === 'copy') el?.classList.add('lm-drop-copy');
+  el?.classList.add('lb-drop-target');
+  if (mode === 'copy') el?.classList.add('lb-drop-copy');
 }
 
 /** How far the pointer must travel before a press becomes a drag rather than a click. */
@@ -115,13 +115,13 @@ export function useKeyDrag(
       if (holdTimer.current !== null) clearTimeout(holdTimer.current);
       holdTimer.current = null;
       if (from.current) {
-        svg?.querySelector(`g[data-key="${from.current}"]`)?.classList.remove('lm-key-source');
+        svg?.querySelector(`g[data-key="${from.current}"]`)?.classList.remove('lb-key-source');
       }
       from.current = undefined;
       origin.current = null;
       dragging.current = false;
       armed.current = true;
-      svg?.classList.remove('lm-dragging');
+      svg?.classList.remove('lb-dragging');
       clearTargets();
       clearGhost();
     },
@@ -134,7 +134,7 @@ export function useKeyDrag(
   const paintGhost = useCallback((x: number, y: number, mode: DragMode) => {
     const el = ghost.current;
     if (!el) return;
-    el.className = `lm-key-ghost${mode === 'copy' ? ' lm-key-ghost-copy' : ''}`;
+    el.className = `lb-key-ghost${mode === 'copy' ? ' lb-key-ghost-copy' : ''}`;
     el.style.transform = `translate(${x}px, ${y}px)`;
   }, []);
 
@@ -177,8 +177,8 @@ export function useKeyDrag(
         const svg = e.currentTarget;
         // Now it is a drag, the board keeps the pointer even when it leaves for a layer tab.
         svg.setPointerCapture?.(e.pointerId);
-        svg.classList.add('lm-dragging');
-        svg.querySelector(`g[data-key="${from.current}"]`)?.classList.add('lm-key-source');
+        svg.classList.add('lb-dragging');
+        svg.querySelector(`g[data-key="${from.current}"]`)?.classList.add('lb-key-source');
         const el = document.createElement('div');
         el.textContent = opts.current.legendOf?.(from.current) ?? from.current;
         el.setAttribute('aria-hidden', 'true');

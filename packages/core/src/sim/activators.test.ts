@@ -26,7 +26,7 @@ function marks(c: typeof magic, layer: string): string[] {
 /** A small board with the layers a test needs. */
 function board(layers: Layout['layers'], extra: Partial<Layout> = {}): Layout {
   return {
-    format: 'layoutmaster/layout@1',
+    format: 'layerbench/layout@1',
     name: 'Board',
     hostLocale: 'symbols',
     geometry: { preset: '3x5+2' },

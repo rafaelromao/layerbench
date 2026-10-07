@@ -28,8 +28,8 @@ const SIGNED_IN = {
   login: 'you',
   token: 'ghu_one',
   expiresAt: Date.now() + 8 * 3600_000,
-  appSlug: 'layoutmaster-app',
-  upstream: 'rafaelromao/layoutmaster',
+  appSlug: 'layerbench-app',
+  upstream: 'rafaelromao/layerbench',
 };
 
 beforeEach(() => {
@@ -71,12 +71,12 @@ describe('the GitHub session in the page', () => {
     expect(useGitHubSession.getState()).toMatchObject({
       status: 'signed-in',
       login: 'you',
-      appSlug: 'layoutmaster-app',
+      appSlug: 'layerbench-app',
     });
     expect(findStorageTarget).toHaveBeenCalledWith(
       expect.anything(),
       'you',
-      'rafaelromao/layoutmaster',
+      'rafaelromao/layerbench',
     );
   });
 
@@ -98,7 +98,7 @@ describe('the GitHub session in the page', () => {
     const request = vi.fn((_name: string, work: () => Promise<unknown>) => work());
     vi.stubGlobal('navigator', { ...navigator, locks: { request } });
     await initGitHubSession();
-    expect(request).toHaveBeenCalledWith('layoutmaster:github-session', expect.any(Function));
+    expect(request).toHaveBeenCalledWith('layerbench:github-session', expect.any(Function));
   });
 
   it('keeps sending documents where they went when GitHub cannot be asked', async () => {
@@ -123,15 +123,15 @@ describe('the GitHub session in the page', () => {
 describe('coming back from GitHub', () => {
   it('returns to the page the user signed in from', () => {
     history.replaceState(null, '', '/');
-    sessionStorage.setItem('layoutmaster:after-sign-in', '/analyze?layout=inline:abc');
+    sessionStorage.setItem('layerbench:after-sign-in', '/analyze?layout=inline:abc');
     restoreAfterSignIn();
     expect(location.pathname + location.search).toBe('/analyze?layout=inline:abc');
-    expect(sessionStorage.getItem('layoutmaster:after-sign-in')).toBeNull();
+    expect(sessionStorage.getItem('layerbench:after-sign-in')).toBeNull();
   });
 
   it('goes nowhere but a path on this site', () => {
     history.replaceState(null, '', '/');
-    sessionStorage.setItem('layoutmaster:after-sign-in', '//elsewhere.example/x');
+    sessionStorage.setItem('layerbench:after-sign-in', '//elsewhere.example/x');
     restoreAfterSignIn();
     expect(location.href).toBe(`${location.origin}/`);
   });

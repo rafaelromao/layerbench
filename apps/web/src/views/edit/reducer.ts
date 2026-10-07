@@ -17,7 +17,7 @@ import {
   slug,
   swapKeys,
   type TypingPathEntry,
-} from '@layoutmaster/core';
+} from '@layerbench/core';
 import type { DropTarget } from '../../components/use-key-drag.js';
 
 export type Panel = 'layers' | 'features' | 'geometry' | 'combos' | 'behaviors' | 'paths' | 'json';

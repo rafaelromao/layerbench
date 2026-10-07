@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
-import type { StorageAdapter } from '@layoutmaster/core';
-import { nodeCorpusLoader } from '@layoutmaster/core/node';
+import type { StorageAdapter } from '@layerbench/core';
+import { nodeCorpusLoader } from '@layerbench/core/node';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import { type RenderResult, render } from '@testing-library/react';
 import { AnalysisCore } from '../engine/analysis-core.js';

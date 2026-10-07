@@ -4,8 +4,8 @@ import {
   getPreset,
   type RuleSet,
   toCanonicalJson,
-} from '@layoutmaster/core';
-import { nodeCorpusLoader } from '@layoutmaster/core/node';
+} from '@layerbench/core';
+import { nodeCorpusLoader } from '@layerbench/core/node';
 import { describe, expect, it } from 'vitest';
 import { withUniverse } from '../storage/rule-sets.js';
 import { testCorporaRoot } from '../test/render.js';

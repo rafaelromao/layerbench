@@ -1,4 +1,4 @@
-import type { Collection, IndexEntry, StorageAdapter } from '@layoutmaster/core';
+import type { Collection, IndexEntry, StorageAdapter } from '@layerbench/core';
 import {
   createContext,
   type ReactNode,

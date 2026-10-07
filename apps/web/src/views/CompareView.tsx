@@ -1,4 +1,4 @@
-import { type CorpusManifest, toCanonicalJson } from '@layoutmaster/core';
+import { type CorpusManifest, toCanonicalJson } from '@layerbench/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Collapsible } from '../components/Collapsible.js';
@@ -112,7 +112,7 @@ export function CompareView() {
 
       <form
         id="compare-toolbar"
-        className="lm-toolbar card bg-base-100 border border-base-300 p-3 flex flex-row flex-wrap items-end gap-3"
+        className="lb-toolbar card bg-base-100 border border-base-300 p-3 flex flex-row flex-wrap items-end gap-3"
         onSubmit={(e) => e.preventDefault()}
       >
         <label className="form-control">

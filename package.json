@@ -1,5 +1,5 @@
 {
-  "name": "layoutmaster",
+  "name": "layerbench",
   "private": true,
   "version": "0.2.0",
   "description": "Keyboard layout analyzer with faithful ZMK layer semantics (multi-alpha-layer aware)",
@@ -16,13 +16,13 @@
     "format": "biome format --write .",
     "typecheck": "pnpm -r run typecheck",
     "test": "pnpm -r run test",
-    "build": "pnpm -r --filter @layoutmaster/core run build && pnpm --filter @layoutmaster/web run build",
-    "dev": "pnpm --filter @layoutmaster/web run dev",
-    "corpora": "pnpm --filter @layoutmaster/corpora run build",
-    "bench": "BENCH=1 pnpm --filter @layoutmaster/core run test",
-    "goldens": "pnpm --filter @layoutmaster/core run goldens",
-    "corpora:fetch": "pnpm --filter @layoutmaster/corpora run fetch",
-    "corpora:generate": "pnpm --filter @layoutmaster/corpora run generate"
+    "build": "pnpm -r --filter @layerbench/core run build && pnpm --filter @layerbench/web run build",
+    "dev": "pnpm --filter @layerbench/web run dev",
+    "corpora": "pnpm --filter @layerbench/corpora run build",
+    "bench": "BENCH=1 pnpm --filter @layerbench/core run test",
+    "goldens": "pnpm --filter @layerbench/core run goldens",
+    "corpora:fetch": "pnpm --filter @layerbench/corpora run fetch",
+    "corpora:generate": "pnpm --filter @layerbench/corpora run generate"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",

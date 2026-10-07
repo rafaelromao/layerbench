@@ -4,7 +4,7 @@
     {
       "name": "vite",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@layoutmaster/web", "dev", "--port", "4011", "--strictPort"],
+      "runtimeArgs": ["--filter", "@layerbench/web", "dev", "--port", "4011", "--strictPort"],
       "port": 4011
     }
   ]

@@ -1,4 +1,4 @@
-import type { LayerColor } from '@layoutmaster/core';
+import type { LayerColor } from '@layerbench/core';
 import { useEffect, useRef, useState } from 'react';
 import { layerColourOf } from './layer-colour.js';
 

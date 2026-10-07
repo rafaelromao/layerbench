@@ -97,7 +97,7 @@ What moved, measured against the previous set:
   real sentences would make these cells meaningful; it would also move every other report, so it is
   left as its own change.
 
-`tag` on a binding and `afterTags` on an adaptive trigger are LayoutMaster extensions with no ZMK
+`tag` on a binding and `afterTags` on an adaptive trigger are LayerBench extensions with no ZMK
 counterpart. The firmware distinguishes "the previous press came from Alpha 2" by arming the
 `ALTREP2` one-shot layer; the engine records a tag instead. Observable output is the same, and
 `features.test.ts` pins the case that motivates it — `u` typed by the `qu` macro offers a different

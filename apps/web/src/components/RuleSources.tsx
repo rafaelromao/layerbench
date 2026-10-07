@@ -1,4 +1,4 @@
-import { PRESET_IDS, ruleReferences } from '@layoutmaster/core';
+import { PRESET_IDS, ruleReferences } from '@layerbench/core';
 import { glossaryHash, helpHref } from '../guide/help.js';
 
 /** The glossary is part of the guide, so a rule citing it opens it here rather than on GitHub. */

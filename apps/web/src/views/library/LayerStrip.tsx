@@ -1,4 +1,4 @@
-import type { CompiledLayout } from '@layoutmaster/core';
+import type { CompiledLayout } from '@layerbench/core';
 import { useRef, useState } from 'react';
 import { Keyboard } from '../../components/Keyboard.js';
 import { layerColourOf } from '../../components/layer-colour.js';

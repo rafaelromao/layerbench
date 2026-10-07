@@ -1,4 +1,4 @@
-import { FEATURE_KINDS, FEATURE_LABELS, type FeatureKind } from '@layoutmaster/core';
+import { FEATURE_KINDS, FEATURE_LABELS, type FeatureKind } from '@layerbench/core';
 
 /** "magic keys, typing combos and multi-letter macros". */
 export function featureList(features: readonly FeatureKind[]): string {
@@ -25,7 +25,7 @@ export function FeatureSwitches({
   className?: string;
 }) {
   return (
-    <fieldset className={`lm-rank-with flex flex-wrap items-center gap-x-3 gap-y-1 ${className}`}>
+    <fieldset className={`lb-rank-with flex flex-wrap items-center gap-x-3 gap-y-1 ${className}`}>
       <legend className="text-xs opacity-70 float-left mr-1">{legend}</legend>
       {FEATURE_KINDS.map((kind) => (
         <label key={kind} className="label cursor-pointer gap-1.5 p-0">

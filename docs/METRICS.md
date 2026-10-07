@@ -1,12 +1,12 @@
 # Metric glossary
 
-Definitions follow the [Keyboard Layouts Doc, 3rd edition](https://docs.google.com/document/d/1W0jhfqJI2ueJ2FNseR4YAFpNfsUM-_FlREHbpNGmC2o) — chiefly chapters 4 (SFBs, SFSs, distance), 6 (scissors), 7 (lateral stretches), 8 (trigrams) and 13 (the stat table and its thresholds). Section numbers below are that edition's. Where LayoutMaster departs from the Doc, or adds something the Doc does not cover (layers), it is called out under **LayoutMaster notes**.
+Definitions follow the [Keyboard Layouts Doc, 3rd edition](https://docs.google.com/document/d/1W0jhfqJI2ueJ2FNseR4YAFpNfsUM-_FlREHbpNGmC2o) — chiefly chapters 4 (SFBs, SFSs, distance), 6 (scissors), 7 (lateral stretches), 8 (trigrams) and 13 (the stat table and its thresholds). Section numbers below are that edition's. Where LayerBench departs from the Doc, or adds something the Doc does not cover (layers), it is called out under **LayerBench notes**.
 
 Every metric below is a *rule*: plain data that a rule set can enable, disable, re-parameterize, copy or remove. The Rules view shows the exact predicate expression of each rule; the presets described at the end change some of them.
 
-**Sources.** Each rule's sources — the section of the Doc, the line of another analyzer, or this glossary where the rule is LayoutMaster's own — are listed under the rule in the Rules view and under *Sources* on its card in the Analyze view. They come from one table, `packages/core/src/rules/references.ts`, which a test holds to the catalog: a rule without a source fails the build.
+**Sources.** Each rule's sources — the section of the Doc, the line of another analyzer, or this glossary where the rule is LayerBench's own — are listed under the rule in the Rules view and under *Sources* on its card in the Analyze view. They come from one table, `packages/core/src/rules/references.ts`, which a test holds to the catalog: a rule without a source fails the build.
 
-## How LayoutMaster counts
+## How LayerBench counts
 
 - **Physical key stream.** The corpus is *typed* on the keymap: every symbol is turned into the physical presses that produce it (letter keys, layer taps, one-shot layers, sticky shifts, macros, combos, adaptive and repeat keys). All n-gram metrics are computed over that stream, so layer taps and shift presses take part in bigrams, trigrams and usage the same way letters do.
 - **Choices while typing.** Where a character can be typed several ways, the fewest presses win, then the way that leaves no layer key held, then the fewest same-finger bigrams and then skipgrams with the keys before it in the word, then the lower Effort on cyanophage's grid. Where several keys tap the same layer the same way, each word takes the one that gives it the fewest same-finger bigrams, then skipgrams, then the lower Effort. These measures are fixed, never the rule set's, so the same text is typed the same way whatever rules score it.
@@ -22,7 +22,7 @@ Every metric below is a *rule*: plain data that a rule set can enable, disable, 
 
 ## Bands
 
-The Doc groups layouts into categories per metric (ch. 13.4). LayoutMaster stores each band as a list of ascending *upper bounds*; a value falls in the first category whose bound it does not exceed. Nine-category scales use the labels **min · very low · low · mid-low · mid · mid-high · high · very high · max**; shorter scales use the first labels of that list. Each band declares whether lower or higher values are better, which drives the green / amber / red badges.
+The Doc groups layouts into categories per metric (ch. 13.4). LayerBench stores each band as a list of ascending *upper bounds*; a value falls in the first category whose bound it does not exceed. Nine-category scales use the labels **min · very low · low · mid-low · mid · mid-high · high · very high · max**; shorter scales use the first labels of that list. Each band declares whether lower or higher values are better, which drives the green / amber / red badges.
 
 | Metric | Direction | Upper bounds (%) |
 |---|---|---|
@@ -54,7 +54,7 @@ Two consecutive presses. Normalized as a percentage of bigrams unless the rule s
 | `hsb` | Half scissor bigrams | As full scissors but one row apart. |
 | `thumb_bigrams` | Thumb bigrams | Consecutive presses on one hand where at least one key is a thumb key. |
 | `thumb_double` | Thumb double taps | The same thumb key twice in a row, which is harder than a repeat on other fingers. |
-| `layer_tap_sfb` | Layer tap → same finger | A layer tap followed by another key on the same finger, typically two thumb taps. **LayoutMaster-specific.** |
+| `layer_tap_sfb` | Layer tap → same finger | A layer tap followed by another key on the same finger, typically two thumb taps. **LayerBench-specific.** |
 
 ## Skipgrams
 
@@ -108,7 +108,7 @@ Three consecutive presses; hand patterns are written with letters (`aba` = hand 
 | `effort` | Effort | cyanophage's Effort: `577 × Σ effort ÷ keystrokes`, with each key's effort read from cyanophage's grid by position — top row `5 3 2 1 2 7 │ 7 2 1 2 3 5`, home `5 1 0 0 0 5 │ 5 0 0 0 1 5`, bottom `7 3 2 2 1 8 │ 8 1 2 2 3 7`, from the left outer pinky column to the right one — and thumbs free. The keystrokes are the text's characters, space included, as cyanophage counts them: a layer tap costs nothing and is not a keystroke either, so it cannot lower the average. Spaces cost nothing. The grid is editable per key. Lower is better; with SFB, one of the two numbers layouts are sorted by. Each key is credited with its cost times its presses, so thumbs and the free home keys add nothing. |
 | `hard_words` | Hard words | Words ranked by effort per character, including the extra layer and shift presses they need. Minimum length 4, minimum count 2. |
 
-## Layers (LayoutMaster-specific)
+## Layers (LayerBench-specific)
 
 These rules measure the cost of multi-layer alphas. They read simulation statistics rather than n-gram tables.
 

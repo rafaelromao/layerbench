@@ -1,10 +1,10 @@
-# LayoutMaster
+# LayerBench
 
-> **Using LayoutMaster?** Everything for users is in the [guide](docs/guide/README.md), which is
+> **Using LayerBench?** Everything for users is in the [guide](docs/guide/README.md), which is
 > also in the app under **Guide**. Saving your work to GitHub is in
 > [Saving and sharing](docs/guide/saving.md).
 >
-> **This README is for working on LayoutMaster's code and deploying it.** The design is in
+> **This README is for working on LayerBench's code and deploying it.** The design is in
 > [SPEC.md](SPEC.md), and metric definitions and their sources are in the
 > [glossary](docs/METRICS.md).
 
@@ -55,7 +55,7 @@ writes unsaved edits into its link that way.
 
 - `IndexedDbAdapter` always holds a copy, written first.
 - When someone is signed in, `CompositeStorage` adds a remote copy:
-  - `GitHubAdapter`, using the Contents API, on the `layoutmaster-data` branch of their fork, or of
+  - `GitHubAdapter`, using the Contents API, on the `layerbench-data` branch of their fork, or of
     this repository for its owner.
   - `GistAdapter`, with one secret gist per collection, otherwise.
 - `target.ts` decides between the two from the app's installations.
@@ -86,8 +86,8 @@ one: nothing wider than the screen, targets a finger can hit, the board in sight
 edited. Playwright's Chromium is downloaded once:
 
 ```bash
-pnpm --filter @layoutmaster/web exec playwright install chromium
-pnpm --filter @layoutmaster/web e2e
+pnpm --filter @layerbench/web exec playwright install chromium
+pnpm --filter @layerbench/web e2e
 ```
 
 On a slow network, `PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT=120000` gives the download two minutes
@@ -132,7 +132,7 @@ works, saving in the browser only. Do this once per deployment.
 | Field | Value |
 |---|---|
 | GitHub App name | any free name; its URL form is the *slug* used below |
-| Homepage URL | your app's address, e.g. `https://layoutmaster-2d7.pages.dev` |
+| Homepage URL | your app's address, e.g. `https://layerbench-2d7.pages.dev` |
 | Callback URL | `https://<your app>/api/auth/callback`; add `http://localhost:5173/api/auth/callback` to sign in on the dev server |
 | Expire user authorization tokens | on (the default) |
 | Request user authorization (OAuth) during installation | off |
@@ -161,20 +161,20 @@ Secrets**, add these for **Production** and again for **Preview**:
 | `GITHUB_CLIENT_SECRET` | the client secret | Secret |
 | `GITHUB_APP_SLUG` | the slug | Text |
 | `SESSION_SECRET` | the output of step 2 | Secret |
-| `UPSTREAM_REPO` | optional: the `owner/name` whose forks hold documents; `rafaelromao/layoutmaster` if unset | Text |
+| `UPSTREAM_REPO` | optional: the `owner/name` whose forks hold documents; `rafaelromao/layerbench` if unset | Text |
 
 Variables reach only deployments made after they are set, so deploy again (push, or **Retry
 deployment**) once they are in.
 
 **4. Keep saves from starting builds.** **Settings** → **Builds** → **Branch control**: exclude
-`layoutmaster-data` from preview deployments.
+`layerbench-data` from preview deployments.
 
 **5. Give the app your own repository.** Open `https://github.com/apps/<slug>/installations/new`,
 choose your account, **Only select repositories**, pick this repository (or your fork of it),
 and **Install**. Skip this and documents go to gists.
 
 **6. Check it.** In the deployed app, open **Storage**, **Sign in with GitHub**, then **Check
-again**. Storage should say it is saving to your repository on `layoutmaster-data`. Save a layout
+again**. Storage should say it is saving to your repository on `layerbench-data`. Save a layout
 and the commit appears on that branch, not on main.
 
 **If signing in loops back to a login page** and the app sits behind **Cloudflare Access**: Access's
@@ -197,7 +197,7 @@ Its screenshots are taken from the running app, in the dark and the light theme,
 Chrome already installed:
 
 ```bash
-E2E_CHANNEL=msedge pnpm --filter @layoutmaster/web shots
+E2E_CHANNEL=msedge pnpm --filter @layerbench/web shots
 ```
 
 `.github/workflows/pages.yml` publishes `docs/site` to GitHub Pages, and only runs when started by

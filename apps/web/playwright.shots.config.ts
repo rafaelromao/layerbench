@@ -5,7 +5,7 @@ const PORT = Number(process.env.E2E_PORT ?? 4011);
 /**
  * The screenshots on the landing page (`docs/site`), taken from the running app so the page shows
  * what the app draws. Kept apart from the e2e suite so `pnpm e2e` never rewrites them:
- * `pnpm --filter @layoutmaster/web shots` writes `docs/site/assets/img/`, each shot in the dark and
+ * `pnpm --filter @layerbench/web shots` writes `docs/site/assets/img/`, each shot in the dark and
  * the light theme. Motion is reduced so nothing is caught mid-transition, and a word's presses are
  * stepped through by hand.
  */

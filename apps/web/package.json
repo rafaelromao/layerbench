@@ -1,5 +1,5 @@
 {
-  "name": "@layoutmaster/web",
+  "name": "@layerbench/web",
   "version": "0.2.0",
   "private": true,
   "type": "module",
@@ -13,7 +13,7 @@
     "shots": "playwright test -c playwright.shots.config.ts"
   },
   "dependencies": {
-    "@layoutmaster/core": "workspace:*",
+    "@layerbench/core": "workspace:*",
     "@tanstack/react-router": "^1.170.33",
     "idb": "^8.0.3",
     "react": "^19.2.8",

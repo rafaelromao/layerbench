@@ -21,7 +21,7 @@ describe('which sections of numbers are shown', () => {
     await user.click(box('Trigrams'));
     expect(box('Trigrams')).not.toBeChecked();
     expect(useSession.getState().hiddenFamilies).toEqual(['trigram']);
-    expect(JSON.parse(localStorage.getItem('layoutmaster:session') ?? '{}').state).toMatchObject({
+    expect(JSON.parse(localStorage.getItem('layerbench:session') ?? '{}').state).toMatchObject({
       hiddenFamilies: ['trigram'],
     });
 

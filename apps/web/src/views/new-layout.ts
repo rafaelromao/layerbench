@@ -1,5 +1,5 @@
-import type { Layout } from '@layoutmaster/core';
-import { getGeometryPreset, importTextLayout, numberLayer, symbolLayer } from '@layoutmaster/core';
+import type { Layout } from '@layerbench/core';
+import { getGeometryPreset, importTextLayout, numberLayer, symbolLayer } from '@layerbench/core';
 
 /** Qwerty, as the starting point for a layout you intend to change rather than design. */
 const QWERTY_ROWS = 'q w e r t y u i o p\na s d f g h j k l ;\nz x c v b n m , . /';
@@ -36,7 +36,7 @@ export function newLayout(spec: NewLayoutSpec): Layout {
 
 function emptyLayout(name: string, preset: string, spaceKey: string): Layout {
   return {
-    format: 'layoutmaster/layout@1',
+    format: 'layerbench/layout@1',
     name,
     hostLocale: 'symbols',
     geometry: { preset },

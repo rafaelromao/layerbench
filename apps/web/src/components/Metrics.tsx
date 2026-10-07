@@ -1,4 +1,4 @@
-import { humanBand, type RuleResult } from '@layoutmaster/core';
+import { humanBand, type RuleResult } from '@layerbench/core';
 import { type MouseEvent, useEffect, useRef, useState } from 'react';
 import { formatItem, formatValue, qualityBadge, qualityBorder, shortLabel } from './format.js';
 import { RuleSources } from './RuleSources.js';
@@ -46,7 +46,7 @@ const FINGER_ORDER = ['LP', 'LR', 'LM', 'LI', 'LT', 'RT', 'RI', 'RM', 'RR', 'RP'
 export function BandBadge({ band }: { band: RuleResult['band'] }) {
   if (!band.label) return null;
   return (
-    <span className={`lm-band badge badge-xs ${qualityBadge(band)}`}>{humanBand(band.label)}</span>
+    <span className={`lb-band badge badge-xs ${qualityBadge(band)}`}>{humanBand(band.label)}</span>
   );
 }
 
@@ -62,18 +62,18 @@ export function SummaryStrip({
   const byId = new Map(results.map((r) => [r.id, r]));
   return (
     // Every number in a box of the same width, so the strip reads as a table rather than a pile.
-    <ul className="lm-stats" aria-label="Summary metrics">
+    <ul className="lb-stats" aria-label="Summary metrics">
       {ids.map((id) => {
         const r = byId.get(id);
         if (!r) return null;
         const body = (
           <>
-            <span className="lm-stat-label">{shortLabel(r.id, r.label)}</span>
-            <span className="lm-stat-value">{formatValue(r.value, r.unit)}</span>
+            <span className="lb-stat-label">{shortLabel(r.id, r.label)}</span>
+            <span className="lb-stat-value">{formatValue(r.value, r.unit)}</span>
             <BandBadge band={r.band} />
           </>
         );
-        const look = `lm-stat ${qualityBorder(r.band)}`;
+        const look = `lb-stat ${qualityBorder(r.band)}`;
         return (
           <li key={id}>
             {/* A card that leads nowhere is not a button: it would be a tab stop that does nothing. */}
@@ -165,7 +165,7 @@ export function MetricCard(props: MetricProps) {
       {/* biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents: a click anywhere is a shortcut; the keyboard has the Enlarge button in the header. */}
       <section
         id={`metric-${result.id}`}
-        className={`lm-card card bg-base-100 border shadow-sm cursor-zoom-in ${qualityBorder(result.band)}`}
+        className={`lb-card card bg-base-100 border shadow-sm cursor-zoom-in ${qualityBorder(result.band)}`}
         onClick={(e) => {
           if (!onControl(e)) setOpen(true);
         }}
@@ -271,7 +271,7 @@ function MetricBody({
       )}
 
       {result.items.length > 0 && (
-        <ol className={`lm-items space-y-1 ${large ? 'lm-items-large' : ''}`}>
+        <ol className={`lb-items space-y-1 ${large ? 'lb-items-large' : ''}`}>
           {result.items.map((item, i) => {
             const v = item.percent ?? item.count ?? 0;
             const width = maxItem > 0 ? (v / maxItem) * 100 : 0;

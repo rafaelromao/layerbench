@@ -1,4 +1,4 @@
-import { BUNDLED_LAYOUTS, type IndexEntry } from '@layoutmaster/core';
+import { BUNDLED_LAYOUTS, type IndexEntry } from '@layerbench/core';
 import { savedRef } from '../url/params.js';
 
 const byName = (a: { name: string; id?: string }, b: { name: string; id?: string }) =>

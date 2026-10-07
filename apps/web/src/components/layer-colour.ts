@@ -1,4 +1,4 @@
-import { LAYER_COLORS, type LayerColor } from '@layoutmaster/core';
+import { LAYER_COLORS, type LayerColor } from '@layerbench/core';
 
 /**
  * The colour a layer is drawn in — its tab's dot, the keys that reach it, the ring on the keys that
@@ -9,7 +9,7 @@ import { LAYER_COLORS, type LayerColor } from '@layoutmaster/core';
  * keeps the contrast the palette was tuned for.
  */
 export function layerColourOf(idx: number, color?: LayerColor): string | undefined {
-  if (color) return `var(--lm-layer-${LAYER_COLORS.indexOf(color) + 1})`;
+  if (color) return `var(--lb-layer-${LAYER_COLORS.indexOf(color) + 1})`;
   if (idx <= 0) return undefined;
-  return `var(--lm-layer-${((idx - 1) % LAYER_COLORS.length) + 1})`;
+  return `var(--lb-layer-${((idx - 1) % LAYER_COLORS.length) + 1})`;
 }

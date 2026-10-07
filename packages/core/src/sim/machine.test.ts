@@ -6,7 +6,7 @@ import { Machine } from './machine.js';
 
 function mini(layers: Layout['layers'], extra: Partial<Layout> = {}): Layout {
   return {
-    format: 'layoutmaster/layout@1',
+    format: 'layerbench/layout@1',
     name: 'mini',
     geometry: { preset: '3x5+2' },
     keys: { space: 'L0' },

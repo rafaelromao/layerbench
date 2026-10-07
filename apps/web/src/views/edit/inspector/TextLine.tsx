@@ -1,4 +1,4 @@
-import { type Binding, type CompiledLayout, legend, legendText } from '@layoutmaster/core';
+import { type Binding, type CompiledLayout, legend, legendText } from '@layerbench/core';
 import {
   type KeyboardEvent as ReactKeyboardEvent,
   useEffect,
@@ -163,11 +163,11 @@ export function BindingTextLine({
   return (
     <div className="space-y-1" ref={box}>
       <div className="flex flex-wrap items-center gap-2">
-        <label htmlFor={`lm-text-${keyId}`} className="text-xs font-semibold w-16 shrink-0">
+        <label htmlFor={`lb-text-${keyId}`} className="text-xs font-semibold w-16 shrink-0">
           Or type
         </label>
         <input
-          id={`lm-text-${keyId}`}
+          id={`lb-text-${keyId}`}
           ref={input}
           aria-label={`Binding for ${keyId}`}
           aria-invalid={error !== null}

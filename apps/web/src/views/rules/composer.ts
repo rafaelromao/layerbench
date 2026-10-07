@@ -1,5 +1,5 @@
-import type { Aggregate, Family, FingerName, Globals, Predicate, Rule } from '@layoutmaster/core';
-import { slug } from '@layoutmaster/core';
+import type { Aggregate, Family, FingerName, Globals, Predicate, Rule } from '@layerbench/core';
+import { slug } from '@layerbench/core';
 
 /** How a predicate's value is entered. */
 export type WidgetKind =

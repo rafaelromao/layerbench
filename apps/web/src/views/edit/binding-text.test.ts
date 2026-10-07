@@ -1,4 +1,4 @@
-import { type Binding, bundledLayout, compileLayout } from '@layoutmaster/core';
+import { type Binding, bundledLayout, compileLayout } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
 import { bindingFromFields } from './binding-form.js';
 import { type BindingTextContext, bindingText, parseBindingText, suggest } from './binding-text.js';

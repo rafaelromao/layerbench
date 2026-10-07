@@ -8,7 +8,7 @@ import {
   type StorageAdapter,
   StorageConflictError,
   type StorageMeta,
-} from '@layoutmaster/core';
+} from '@layerbench/core';
 import { type IDBPDatabase, openDB } from 'idb';
 
 const DB_VERSION = 1;
@@ -48,7 +48,7 @@ export class IndexedDbAdapter implements StorageAdapter {
   private db: Promise<IDBPDatabase> | null = null;
 
   /** The database name is injectable so tests can isolate themselves from each other. */
-  constructor(private readonly dbName = 'layoutmaster') {}
+  constructor(private readonly dbName = 'layerbench') {}
 
   private conn(): Promise<IDBPDatabase> {
     this.db ??= open(this.dbName);

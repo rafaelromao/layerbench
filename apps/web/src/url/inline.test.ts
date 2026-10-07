@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { bundledLayout, toCanonicalJson } from '@layoutmaster/core';
+import { bundledLayout, toCanonicalJson } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
 import { decodeInline, encodeInline, MAX_INLINE_BYTES } from './inline.js';
 

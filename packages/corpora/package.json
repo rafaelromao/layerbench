@@ -1,5 +1,5 @@
 {
-  "name": "@layoutmaster/corpora",
+  "name": "@layerbench/corpora",
   "version": "0.2.0",
   "description": "Builds the shipped corpus samples and manifests served by the web app",
   "license": "MIT",
@@ -13,7 +13,7 @@
     "generate": "esbuild src/generate.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/generate.mjs --log-level=warning && node dist/generate.mjs"
   },
   "dependencies": {
-    "@layoutmaster/core": "workspace:*"
+    "@layerbench/core": "workspace:*"
   },
   "devDependencies": {
     "esbuild": "^0.28.2"

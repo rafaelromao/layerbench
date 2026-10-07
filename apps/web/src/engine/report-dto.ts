@@ -1,4 +1,4 @@
-import type { Report } from '@layoutmaster/core';
+import type { Report } from '@layerbench/core';
 import type { CoverageDTO, ReportDTO, StatsDTO } from './protocol.js';
 
 /** Sorted descending by count, so the coverage strip can show the worst offenders first. */

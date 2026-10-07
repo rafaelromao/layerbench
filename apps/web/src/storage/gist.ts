@@ -7,7 +7,7 @@ import {
   type StorageAdapter,
   StorageConflictError,
   type StorageMeta,
-} from '@layoutmaster/core';
+} from '@layerbench/core';
 import { readIndex } from './github.js';
 import { API, type GitHubAccess, gitHubFetch } from './github-api.js';
 import { sha1Hex } from './indexeddb.js';
@@ -15,9 +15,9 @@ import { sha1Hex } from './indexeddb.js';
 const COLLECTIONS: Collection[] = ['layouts', 'rulesets', 'corpora'];
 
 const DESCRIPTIONS: Record<Collection, string> = {
-  layouts: 'LayoutMaster: saved layouts',
-  rulesets: 'LayoutMaster: saved rule sets',
-  corpora: 'LayoutMaster: saved corpora',
+  layouts: 'LayerBench: saved layouts',
+  rulesets: 'LayerBench: saved rule sets',
+  corpora: 'LayerBench: saved corpora',
 };
 
 /**

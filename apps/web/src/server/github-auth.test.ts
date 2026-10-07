@@ -6,7 +6,7 @@ const ORIGIN = 'https://lm.example';
 const ENV: AuthEnv = {
   GITHUB_CLIENT_ID: 'Iv1.client',
   GITHUB_CLIENT_SECRET: 'client-secret',
-  GITHUB_APP_SLUG: 'layoutmaster-app',
+  GITHUB_APP_SLUG: 'layerbench-app',
   SESSION_SECRET: btoa(String.fromCharCode(...new Uint8Array(32).fill(7))),
 };
 
@@ -95,7 +95,7 @@ async function signIn(): Promise<string> {
   const back = await get(`/api/auth/callback?code=the-code&state=${state}`, cookiesOf(login));
   return cookiesOf(back)
     .split('; ')
-    .filter((c) => c.startsWith('__Host-lm-session='))
+    .filter((c) => c.startsWith('__Host-lb-session='))
     .join('; ');
 }
 
@@ -111,7 +111,7 @@ describe('signing in', () => {
     expect(to.searchParams.get('state')).toMatch(/^[\w-]{43}$/);
 
     const [cookie] = res.headers.getSetCookie();
-    expect(cookie).toMatch(/^__Host-lm-oauth=/);
+    expect(cookie).toMatch(/^__Host-lb-oauth=/);
     expect(cookie).toContain('HttpOnly');
     expect(cookie).toContain('Secure');
     expect(cookie).toContain('SameSite=Lax');
@@ -134,7 +134,7 @@ describe('signing in', () => {
     expect(exchange?.form?.get('code_verifier')).toMatch(/^[\w-]{43}$/);
     expect(calls.find((c) => c.url.endsWith('/user'))?.headers.get('User-Agent')).toBeTruthy();
 
-    const session = back.headers.getSetCookie().find((c) => c.startsWith('__Host-lm-session='));
+    const session = back.headers.getSetCookie().find((c) => c.startsWith('__Host-lb-session='));
     expect(session).toContain('HttpOnly');
     expect(session).toContain('SameSite=Strict');
     expect(session).not.toContain('ghu_first');
@@ -157,7 +157,7 @@ describe('signing in', () => {
     const state = new URL(login.headers.get('Location') as string).searchParams.get('state');
     const back = await get(`/api/auth/callback?code=c&state=${state}`, cookiesOf(login));
     expect(back.headers.get('Location')).toBe(`${ORIGIN}/?signin=failed`);
-    expect(back.headers.getSetCookie().some((c) => c.startsWith('__Host-lm-session=x'))).toBe(
+    expect(back.headers.getSetCookie().some((c) => c.startsWith('__Host-lb-session=x'))).toBe(
       false,
     );
   });
@@ -173,8 +173,8 @@ describe('the session', () => {
       signedIn: true,
       login: 'you',
       token: 'ghu_first',
-      appSlug: 'layoutmaster-app',
-      upstream: 'rafaelromao/layoutmaster',
+      appSlug: 'layerbench-app',
+      upstream: 'rafaelromao/layerbench',
     });
     expect(res.headers.get('Cache-Control')).toBe('no-store');
   });
@@ -184,7 +184,7 @@ describe('the session', () => {
       available: true,
       signedIn: false,
     });
-    const forged = await post('/api/auth/session', '__Host-lm-session=bm90LWEtc2Vzc2lvbg');
+    const forged = await post('/api/auth/session', '__Host-lb-session=bm90LWEtc2Vzc2lvbg');
     expect(await forged.json()).toMatchObject({ signedIn: false });
     expect(forged.headers.getSetCookie()[0]).toContain('Max-Age=0');
   });
@@ -235,7 +235,7 @@ describe('signing out', () => {
     calls = [];
     const res = await post('/api/auth/logout', cookie);
     expect(res.status).toBe(204);
-    expect(res.headers.getSetCookie()[0]).toMatch(/^__Host-lm-session=;.*Max-Age=0/);
+    expect(res.headers.getSetCookie()[0]).toMatch(/^__Host-lb-session=;.*Max-Age=0/);
     const revoke = calls.find((c) => c.method === 'DELETE');
     expect(revoke?.url).toBe('https://api.github.com/applications/Iv1.client/token');
     expect(revoke?.headers.get('Authorization')).toBe(`Basic ${btoa('Iv1.client:client-secret')}`);
@@ -246,7 +246,7 @@ describe('the dev server on plain http', () => {
   it('drops the __Host- prefix and the Secure flag, which need https', async () => {
     const res = await handleAuth(new Request('http://localhost:5173/api/auth/login'), ENV);
     const [cookie] = res.headers.getSetCookie();
-    expect(cookie).toMatch(/^lm-oauth=/);
+    expect(cookie).toMatch(/^lb-oauth=/);
     expect(cookie).not.toContain('Secure');
   });
 });

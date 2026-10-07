@@ -1,4 +1,4 @@
-import { bundledLayout, type Layout } from '@layoutmaster/core';
+import { bundledLayout, type Layout } from '@layerbench/core';
 import { decodeInline } from './inline.js';
 import { parseLayoutRef } from './params.js';
 

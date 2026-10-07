@@ -6,26 +6,26 @@ browser you use, sign in with GitHub, and it is kept in your GitHub account as w
 ## Signing in with GitHub
 
 1. Click **Storage** in the header.
-2. Click **Sign in with GitHub**, and approve LayoutMaster on GitHub.
+2. Click **Sign in with GitHub**, and approve LayerBench on GitHub.
 
 You come back to the page you were on, unsaved edits included. From then on, every save is also
 kept in your GitHub account, and **Storage** shows a ✓.
 
-**Storage** says where your work is going. Unless you have given LayoutMaster a fork, it goes to
+**Storage** says where your work is going. Unless you have given LayerBench a fork, it goes to
 secret gists in your account, one for layouts, one for rule sets and one for corpora. Secret gists
 are unlisted, not private: anyone with a gist's address can read it.
 
 ## Saving to your fork instead
 
-If you have a fork of layoutmaster on GitHub, your work can be kept there instead of in gists.
+If you have a fork of layerbench on GitHub, your work can be kept there instead of in gists.
 
 1. Sign in, as above.
-2. In **Storage**, follow **Give LayoutMaster access to it**.
+2. In **Storage**, follow **Give LayerBench access to it**.
 3. On GitHub, choose your account, then **Only select repositories**, pick your fork, and click
    **Install**.
 4. Back here, open **Storage** and click **Check again**.
 
-**Storage** now names your fork. Each save is a commit to a branch called `layoutmaster-data`, in its
+**Storage** now names your fork. Each save is a commit to a branch called `layerbench-data`, in its
 `data` folder, so your fork's main branch stays exactly as it was. If your fork is public, so is
 everything saved to it.
 

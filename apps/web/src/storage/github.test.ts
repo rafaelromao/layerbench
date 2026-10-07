@@ -1,4 +1,4 @@
-import { StorageConflictError } from '@layoutmaster/core';
+import { StorageConflictError } from '@layerbench/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GitHubAdapter } from './github.js';
 

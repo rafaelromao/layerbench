@@ -1,4 +1,4 @@
-import { type CompiledLayout, compileLayout, type Layout } from '@layoutmaster/core';
+import { type CompiledLayout, compileLayout, type Layout } from '@layerbench/core';
 import { type EditAction, type EditState, initialState } from './reducer.js';
 
 /**

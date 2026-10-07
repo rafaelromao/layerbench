@@ -1,11 +1,11 @@
-import type { Collection, JsonObject, StorageAdapter } from '@layoutmaster/core';
-import { StorageConflictError } from '@layoutmaster/core';
+import type { Collection, JsonObject, StorageAdapter } from '@layerbench/core';
+import { StorageConflictError } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
 import { CompositeStorage } from './composite.js';
 import { IndexedDbAdapter } from './indexeddb.js';
 
 let counter = 0;
-const localAdapter = () => new IndexedDbAdapter(`layoutmaster-composite-${++counter}`);
+const localAdapter = () => new IndexedDbAdapter(`layerbench-composite-${++counter}`);
 
 /** A stand-in for the repository, so the tests are about the composition, not the network. */
 function fakeRemote(overrides: Partial<StorageAdapter> = {}): StorageAdapter {

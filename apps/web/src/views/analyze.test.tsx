@@ -49,9 +49,9 @@ describe('Analyze', () => {
     expect(screen.getByRole('button', { name: '▶ Play' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Alpha 2', selected: true })).toBeInTheDocument();
     const key = screen.getByRole('button', { name: /^Key LBM:/ });
-    expect(key.querySelector('.lm-key-pressed')).not.toBeNull();
+    expect(key.querySelector('.lb-key-pressed')).not.toBeNull();
     // The board shows the press, not a path of arrows.
-    expect(document.querySelectorAll('#kb-analyze .lm-arc path')).toHaveLength(0);
+    expect(document.querySelectorAll('#kb-analyze .lb-arc path')).toHaveLength(0);
   });
 
   it('shows the combos that type, and lights one as it is played', async () => {
@@ -63,9 +63,9 @@ describe('Analyze', () => {
     const presses = await screen.findByRole('list', { name: 'Presses' });
     await user.click(within(presses).getByRole('button', { name: /RHM\+RHR/ }));
     const names = () =>
-      [...document.querySelectorAll('#kb-analyze .lm-combo title')].map((t) => t.textContent);
+      [...document.querySelectorAll('#kb-analyze .lb-combo title')].map((t) => t.textContent);
     expect(names()).toEqual(['Combo RHI + RHM: ?', 'Combo RBI + RBM: !', 'Combo RHM + RHR: à']);
-    const lit = document.querySelector('#kb-analyze .lm-combo-active title');
+    const lit = document.querySelector('#kb-analyze .lb-combo-active title');
     expect(lit?.textContent).toBe('Combo RHM + RHR: à');
 
     // Hidden, the combos give way, except the one being played.
@@ -135,7 +135,7 @@ describe('Analyze', () => {
     expect(screen.getByRole('tab', { name: 'Alpha 1' })).toHaveAttribute('aria-selected', 'true');
 
     // The thumb that reaches Alpha 2 is pressed on Alpha 1, the letter after it on Alpha 2.
-    const row = [...document.querySelectorAll<HTMLButtonElement>('.lm-items li button')].find((b) =>
+    const row = [...document.querySelectorAll<HTMLButtonElement>('.lb-items li button')].find((b) =>
       /^→A2./.test(b.textContent ?? ''),
     );
     expect(row, 'a listed pair that goes up to Alpha 2').toBeDefined();
@@ -150,7 +150,7 @@ describe('Analyze', () => {
     await screen.findByText('Same finger bigrams');
 
     // A pair whose last key is the thumb that reaches Alpha 2 opens a popup; others do not.
-    const rows = [...document.querySelectorAll<HTMLButtonElement>('.lm-items li button')];
+    const rows = [...document.querySelectorAll<HTMLButtonElement>('.lb-items li button')];
     const ending = rows.find((b) => b.getAttribute('aria-haspopup') === 'dialog');
     expect(ending, 'a listed pair that ends on a layer key').toBeDefined();
     expect(ending?.textContent).toMatch(/→A2$/);

@@ -1,4 +1,4 @@
-import { bundledLayout, toCanonicalJson } from '@layoutmaster/core';
+import { bundledLayout, toCanonicalJson } from '@layerbench/core';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
@@ -12,7 +12,7 @@ let counter = 0;
 
 /** Each test gets its own database, so saved documents never leak between cases. */
 function freshStorage(): IndexedDbAdapter {
-  return new IndexedDbAdapter(`layoutmaster-view-${++counter}`);
+  return new IndexedDbAdapter(`layerbench-view-${++counter}`);
 }
 
 describe('Library', () => {

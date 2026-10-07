@@ -1,4 +1,4 @@
-import type { Predicate, Rule } from '@layoutmaster/core';
+import type { Predicate, Rule } from '@layerbench/core';
 
 /**
  * A predicate written back out as text. The rule table shows this so a reader can see what a rule

@@ -109,7 +109,7 @@ test.describe('at a desk', () => {
     await expect(page.getByText(/^Lower is better for both/)).toBeVisible({ timeout: 150_000 });
     const cards = page.locator('article');
     await shootAround(page, 'library', [
-      page.locator('.lm-rank-with').first(),
+      page.locator('.lb-rank-with').first(),
       cards.nth(0),
       cards.nth(1),
     ]);

@@ -2,7 +2,7 @@
 
 [keymap-drawer](https://github.com/caksoylar/keymap-drawer) draws keymaps from a YAML file that
 lists what each key shows, layer by layer. Its `keymap parse` command writes that file from a ZMK
-or QMK keymap, and LayoutMaster reads it.
+or QMK keymap, and LayerBench reads it.
 
 1. In **Library**, under **Import from keymap-drawer**, paste the file or **Choose a .yaml file**.
 2. Check the board it goes onto, and look over the preview.
@@ -29,10 +29,10 @@ is chosen for you. **Use a QMK info.json…** reads the keyboard's own layout fi
 
 ### How keys find their place
 
-A board whose columns match one of LayoutMaster's presets becomes that preset, key for key.
+A board whose columns match one of LayerBench's presets becomes that preset, key for key.
 Anything else is drawn as a board of its own.
 
-LayoutMaster models up to three rows of up to six columns on each hand, and up to six thumb keys.
+LayerBench models up to three rows of up to six columns on each hand, and up to six thumb keys.
 Keys beyond that, such as a number row or a seventh column, are left out, and the import says how
 many.
 
@@ -70,7 +70,7 @@ imported.
 
 ## Exporting
 
-**JSON**, among the editor's panels in **Analyze**, shows the layout as LayoutMaster JSON, or, with
+**JSON**, among the editor's panels in **Analyze**, shows the layout as LayerBench JSON, or, with
 **keymap-drawer YAML**, as a file for keymap-drawer. Copy it or **Download .yaml**, then run
 `keymap draw` on it.
 
@@ -83,7 +83,7 @@ magic key's branches or a macro's steps.
 
 ### Other formats
 
-**Import**, in **Library**, also takes LayoutMaster JSON, or a layout written as text the way
+**Import**, in **Library**, also takes LayerBench JSON, or a layout written as text the way
 layouts are often shared: three rows of letters separated by spaces, with an optional thumb row,
 or a single string of 30 to 34 characters as cmini and cyanophage write them. A text layout goes
 onto the board you choose under **Geometry**.

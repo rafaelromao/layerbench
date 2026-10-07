@@ -6,7 +6,7 @@ import {
   type Rule,
   ruleSetFromJson,
   slug,
-} from '@layoutmaster/core';
+} from '@layerbench/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useReducer, useState } from 'react';
 import { HelpLink } from '../components/HelpLink.js';
@@ -209,8 +209,8 @@ export function RulesView() {
 
       <section className="card bg-base-100 border border-base-300">
         <div className="card-body gap-3 p-4">
-          <div className="lm-toolbar flex flex-wrap items-end gap-3">
-            <div className="lm-wide flex items-end gap-2">
+          <div className="lb-toolbar flex flex-wrap items-end gap-3">
+            <div className="lb-wide flex items-end gap-2">
               <label className="form-control max-sm:flex-1">
                 <span className="label-text text-xs">Rule set</span>
                 <select
@@ -242,15 +242,15 @@ export function RulesView() {
               <HelpLink help={HELP.rules} className="mb-2" />
             </div>
 
-            <p className="lm-wide text-xs opacity-70 max-w-xl">{ruleSet.description}</p>
+            <p className="lb-wide text-xs opacity-70 max-w-xl">{ruleSet.description}</p>
             {state.dirty && (
-              <span className="lm-wide justify-self-start badge badge-warning badge-sm">
+              <span className="lb-wide justify-self-start badge badge-warning badge-sm">
                 unsaved changes
               </span>
             )}
 
             <form
-              className="lm-wide flex items-end gap-2 sm:ml-auto"
+              className="lb-wide flex items-end gap-2 sm:ml-auto"
               onSubmit={(e) => {
                 e.preventDefault();
                 void save();
@@ -273,13 +273,13 @@ export function RulesView() {
             <Link
               to="/analyze"
               search={carried({ rules: state.sourceRef }) as never}
-              className="lm-wide btn btn-sm btn-primary"
+              className="lb-wide btn btn-sm btn-primary"
             >
               Analyze with this set
             </Link>
           </div>
 
-          <div className="lm-toolbar flex flex-wrap items-end gap-3 border-t border-base-300 pt-3">
+          <div className="lb-toolbar flex flex-wrap items-end gap-3 border-t border-base-300 pt-3">
             <label className="form-control">
               <span className="label-text text-xs">Universe</span>
               <select
@@ -395,7 +395,7 @@ export function RulesView() {
           >
             <div className="card-body gap-2 p-4">
               <h2 className="text-sm uppercase tracking-wide opacity-60">{title}</h2>
-              <table className="lm-rules-table table table-xs min-w-[56rem]">
+              <table className="lb-rules-table table table-xs min-w-[56rem]">
                 <thead>
                   <tr>
                     <th />

@@ -1,4 +1,4 @@
-import { type Binding, type CompiledLayout, MODS, type Mod } from '@layoutmaster/core';
+import { type Binding, type CompiledLayout, MODS, type Mod } from '@layerbench/core';
 import { useEffect, useRef, useState } from 'react';
 import {
   bindingFromFields,

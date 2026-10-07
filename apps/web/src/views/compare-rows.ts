@@ -1,4 +1,4 @@
-import type { RuleResult } from '@layoutmaster/core';
+import type { RuleResult } from '@layerbench/core';
 import { HEADLINE_IDS } from '../components/Metrics.js';
 
 /**

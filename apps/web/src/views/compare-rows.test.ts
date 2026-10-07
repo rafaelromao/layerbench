@@ -1,4 +1,4 @@
-import type { RuleResult } from '@layoutmaster/core';
+import type { RuleResult } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
 import { compareRows } from './compare-rows.js';
 

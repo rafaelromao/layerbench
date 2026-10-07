@@ -1,4 +1,4 @@
-import { bundledLayout, compileLayout, type Layout } from '@layoutmaster/core';
+import { bundledLayout, compileLayout, type Layout } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
 import { editReducer } from './reducer.js';
 import { initialUndoState, type UndoState, undoable } from './undo.js';

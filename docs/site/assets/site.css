@@ -643,7 +643,7 @@ main > section + section {
   font-weight: 600;
 }
 
-.compare .lm {
+.compare .lb {
   background: var(--ours);
 }
 
@@ -657,7 +657,7 @@ main > section + section {
   }
 }
 
-.compare thead .lm {
+.compare thead .lb {
   color: var(--text);
 }
 

@@ -23,7 +23,7 @@ function html(text: string): string {
 
 describe('reading blocks', () => {
   it('gives headings the anchors GitHub gives them, numbering a repeat', () => {
-    expect(headingId('Layers (LayoutMaster-specific)')).toBe('layers-layoutmaster-specific');
+    expect(headingId('Layers (LayerBench-specific)')).toBe('layers-layerbench-specific');
     expect(headingId('Combos, typing paths and the rest')).toBe('combos-typing-paths-and-the-rest');
     expect(headingId('Effort and `SFB`')).toBe('effort-and-sfb');
     const blocks = parseBlocks('## Presets\n\ntext\n\n## Presets\n');

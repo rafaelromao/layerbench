@@ -1,4 +1,4 @@
-import { bundledLayout, getPreset, type Layout } from '@layoutmaster/core';
+import { bundledLayout, getPreset, type Layout } from '@layerbench/core';
 import { renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';

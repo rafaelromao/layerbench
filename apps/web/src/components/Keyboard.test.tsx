@@ -1,4 +1,4 @@
-import { bundledLayout, compileLayout } from '@layoutmaster/core';
+import { bundledLayout, compileLayout } from '@layerbench/core';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -49,11 +49,11 @@ describe('Keyboard', () => {
       />,
     );
     const key = container.querySelector('g[data-key="LHM"]') as Element;
-    expect(key).toHaveClass('lm-key-selected');
-    expect(key.querySelector('.lm-key-cap.lm-key-highlight')).not.toBeNull();
-    expect(container.querySelectorAll('.lm-key-selected').length).toBe(1);
+    expect(key).toHaveClass('lb-key-selected');
+    expect(key.querySelector('.lb-key-cap.lb-key-highlight')).not.toBeNull();
+    expect(container.querySelectorAll('.lb-key-selected').length).toBe(1);
     // The arrows sit in their own group, which the stylesheet keeps out of the pointer's way.
-    expect(container.querySelector('g.lm-arc path')).not.toBeNull();
+    expect(container.querySelector('g.lb-arc path')).not.toBeNull();
   });
 
   it('is inert and unlabelled as a control when not interactive', () => {
@@ -65,8 +65,8 @@ describe('Keyboard', () => {
   it('paints heat into the key fill', () => {
     const pos = qwerty.keyIndex.get('LHM') as number;
     const { container } = render(<Keyboard compiled={qwerty} heat={{ [pos]: 1 }} />);
-    const cap = container.querySelector(`g[data-key="LHM"] .lm-key-cap`) as SVGRectElement;
-    expect(cap.getAttribute('style')).toContain('var(--lm-heat) 100%');
+    const cap = container.querySelector(`g[data-key="LHM"] .lb-key-cap`) as SVGRectElement;
+    expect(cap.getAttribute('style')).toContain('var(--lb-heat) 100%');
   });
 
   describe('legends on a hot key', () => {
@@ -74,10 +74,10 @@ describe('Keyboard', () => {
     const R0 = romak.keyIndex.get('R0') as number;
     const layerColoured = (container: HTMLElement) =>
       [...container.querySelectorAll('g[data-key="R0"] text')].filter((t) =>
-        t.getAttribute('style')?.includes('var(--lm-layer-'),
+        t.getAttribute('style')?.includes('var(--lb-layer-'),
       );
     const isHot = (container: HTMLElement) =>
-      container.querySelector('g[data-key="R0"]')?.classList.contains('lm-key-hot');
+      container.querySelector('g[data-key="R0"]')?.classList.contains('lb-key-hot');
 
     it('keeps the layer colour on a key below half heat', () => {
       const { container } = render(<Keyboard compiled={romak} heat={{ [R0]: 0.49 }} />);
@@ -107,7 +107,7 @@ describe('Keyboard', () => {
     const R0 = romak.keyIndex.get('R0') as number;
     const ringed = (container: HTMLElement) =>
       [...container.querySelectorAll('g[data-key]')]
-        .filter((g) => g.querySelector('.lm-key-reach'))
+        .filter((g) => g.querySelector('.lb-key-reach'))
         .map((g) => `${g.getAttribute('data-key')} ${g.getAttribute('data-reach')}`);
 
     it('marks none on the base layer', () => {
@@ -121,7 +121,7 @@ describe('Keyboard', () => {
       expect(
         screen.getByRole('button', { name: 'Key R0: empty, held to reach Symbols' }),
       ).toBeInTheDocument();
-      const band = container.querySelector('g[data-key="R0"] .lm-key-reach-word');
+      const band = container.querySelector('g[data-key="R0"] .lb-key-reach-word');
       expect(band?.textContent).toBe('held');
       expect(container.querySelector('g[data-key="R0"] title')?.textContent).toContain(
         'held from Alpha 1 or Numbers to reach Symbols',
@@ -139,12 +139,12 @@ describe('Keyboard', () => {
           <Keyboard compiled={romak} layer={SYM} heat={{ [R0]: heat }} pressed={pressed} />,
         );
         const style = container
-          .querySelector('g[data-key="R0"] .lm-key-reach')
+          .querySelector('g[data-key="R0"] .lb-key-reach')
           ?.getAttribute('style');
         unmount();
         return style ?? '';
       };
-      expect(ring(0.49)).toContain(`var(--lm-layer-${SYM})`);
+      expect(ring(0.49)).toContain(`var(--lb-layer-${SYM})`);
       expect(ring(0.5)).toBe('');
       expect(ring(1)).toBe('');
       expect(ring(0, [R0])).toBe('');
@@ -153,12 +153,12 @@ describe('Keyboard', () => {
     it('leaves the band to a hold of its own, and to no band at all without holds', () => {
       const { container } = render(<Keyboard compiled={romak} layer={SYM} showHold={false} />);
       expect(ringed(container)).toEqual(['R0 held']);
-      expect(container.querySelector('.lm-key-reach-word')).toBeNull();
+      expect(container.querySelector('.lb-key-reach-word')).toBeNull();
     });
 
     it('keeps one cap per key, so nothing measured by caps changes', () => {
       const { container } = render(<Keyboard compiled={romak} layer={SYM} />);
-      expect(container.querySelectorAll('.lm-key-cap')).toHaveLength(romak.keys.length);
+      expect(container.querySelectorAll('.lb-key-cap')).toHaveLength(romak.keys.length);
     });
 
     it('lists each way in under the board', () => {
@@ -183,17 +183,17 @@ describe('Keyboard', () => {
     const legends = [...container.querySelectorAll('g[data-key="R0"] text')].map(
       (t) => t.getAttribute('style') ?? '',
     );
-    expect(legends.some((s) => s.includes('var(--lm-layer-6)'))).toBe(true);
+    expect(legends.some((s) => s.includes('var(--lb-layer-6)'))).toBe(true);
     unmount();
     const onSym = render(<Keyboard compiled={teal} layer={SYM} />);
     expect(
-      onSym.container.querySelector('g[data-key="R0"] .lm-key-reach')?.getAttribute('style'),
-    ).toContain('var(--lm-layer-6)');
+      onSym.container.querySelector('g[data-key="R0"] .lb-key-reach')?.getAttribute('style'),
+    ).toContain('var(--lb-layer-6)');
   });
 
   it('marks every transparent key ▽, listed or by default, and leaves a key that does nothing empty', () => {
     const tapOf = (container: HTMLElement, key: string) =>
-      container.querySelector(`g[data-key="${key}"] .lm-key-tap`)?.textContent ?? '';
+      container.querySelector(`g[data-key="${key}"] .lb-key-tap`)?.textContent ?? '';
     // Ç extension lists only a few keys and lets the rest show through.
     const ccedil = render(<Keyboard compiled={romak} layer={romak.layerIndex.get('ccedil')} />);
     expect(tapOf(ccedil.container, 'LHM')).toBe('▽');
@@ -213,24 +213,24 @@ describe('Keyboard', () => {
       </>,
     );
     const ids = [...container.querySelectorAll('marker')].map((m) => m.id);
-    expect(ids).toEqual(['lm-arrow-kb-a', 'lm-arrow-kb-b']);
+    expect(ids).toEqual(['lb-arrow-kb-a', 'lb-arrow-kb-b']);
     expect(new Set(ids).size).toBe(2);
   });
 
   it('draws the arrow tracing a selected pair in green, apart from the heat under it', () => {
     const { container } = render(<Keyboard compiled={qwerty} arcs={[[0, 1]]} heat={{ 0: 1 }} />);
-    const arc = container.querySelector('.lm-arc path') as SVGPathElement;
-    expect(arc.getAttribute('style')).toContain('var(--lm-arc)');
+    const arc = container.querySelector('.lb-arc path') as SVGPathElement;
+    expect(arc.getAttribute('style')).toContain('var(--lb-arc)');
     expect(container.querySelector('marker path')?.getAttribute('style')).toContain(
-      'var(--lm-arc)',
+      'var(--lb-arc)',
     );
   });
 
   it('marks highlighted keys', () => {
     const pos = qwerty.keyIndex.get('RHI') as number;
     const { container } = render(<Keyboard compiled={qwerty} highlight={[pos]} />);
-    const cap = container.querySelector('g[data-key="RHI"] .lm-key-cap');
-    expect(cap?.classList.contains('lm-key-highlight')).toBe(true);
+    const cap = container.querySelector('g[data-key="RHI"] .lb-key-cap');
+    expect(cap?.classList.contains('lb-key-highlight')).toBe(true);
   });
 });
 

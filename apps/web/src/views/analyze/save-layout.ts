@@ -1,4 +1,4 @@
-import { freeId, idForName, type Layout, toCanonicalJson } from '@layoutmaster/core';
+import { freeId, idForName, type Layout, toCanonicalJson } from '@layerbench/core';
 import type { useStorage } from '../../storage/use-storage.js';
 
 type Storage = ReturnType<typeof useStorage>;

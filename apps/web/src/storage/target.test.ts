@@ -12,7 +12,7 @@ let calls: Call[];
 let routes: Record<string, unknown>;
 
 const API = 'https://api.github.com';
-const UPSTREAM = 'rafaelromao/layoutmaster';
+const UPSTREAM = 'rafaelromao/layerbench';
 const access = { token: async () => 'secret-token' };
 
 function repo(full_name: string, fork = true) {
@@ -67,12 +67,12 @@ describe('where a signed-in user’s documents go', () => {
 
   it('uses a fork of the upstream that the user owns', async () => {
     routes = {
-      ...installedOn(repo('you/dotfiles', false), repo('you/layoutmaster')),
-      'GET /repos/you/layoutmaster': { fork: true, source: { full_name: UPSTREAM } },
-      ...branchExists('you/layoutmaster'),
+      ...installedOn(repo('you/dotfiles', false), repo('you/layerbench')),
+      'GET /repos/you/layerbench': { fork: true, source: { full_name: UPSTREAM } },
+      ...branchExists('you/layerbench'),
     };
     const target = await findStorageTarget(access, 'you', UPSTREAM);
-    expect(target).toMatchObject({ kind: 'repo', repo: 'you/layoutmaster', upstream: false });
+    expect(target).toMatchObject({ kind: 'repo', repo: 'you/layerbench', upstream: false });
   });
 
   it('finds a fork that was renamed, and not a fork of something else', async () => {
@@ -89,14 +89,14 @@ describe('where a signed-in user’s documents go', () => {
 
   it('makes the data branch from the default branch the first time', async () => {
     routes = {
-      ...installedOn(repo('you/layoutmaster')),
-      'GET /repos/you/layoutmaster': {
+      ...installedOn(repo('you/layerbench')),
+      'GET /repos/you/layerbench': {
         fork: true,
         source: { full_name: UPSTREAM },
         default_branch: 'main',
       },
-      'GET /repos/you/layoutmaster/git/ref/heads/main': { object: { sha: 'abc123' } },
-      'POST /repos/you/layoutmaster/git/refs': { ref: `refs/heads/${DATA_BRANCH}` },
+      'GET /repos/you/layerbench/git/ref/heads/main': { object: { sha: 'abc123' } },
+      'POST /repos/you/layerbench/git/refs': { ref: `refs/heads/${DATA_BRANCH}` },
     };
     await findStorageTarget(access, 'you', UPSTREAM);
     const create = calls.find((c) => c.method === 'POST');
@@ -105,9 +105,9 @@ describe('where a signed-in user’s documents go', () => {
 
   it('leaves a data branch that exists alone', async () => {
     routes = {
-      ...installedOn(repo('you/layoutmaster')),
-      'GET /repos/you/layoutmaster': { fork: true, source: { full_name: UPSTREAM } },
-      ...branchExists('you/layoutmaster'),
+      ...installedOn(repo('you/layerbench')),
+      'GET /repos/you/layerbench': { fork: true, source: { full_name: UPSTREAM } },
+      ...branchExists('you/layerbench'),
     };
     await findStorageTarget(access, 'you', UPSTREAM);
     expect(calls.some((c) => c.method === 'POST')).toBe(false);
@@ -121,11 +121,11 @@ describe('where a signed-in user’s documents go', () => {
   it('points out a fork the app was not given', async () => {
     routes = {
       'GET /user/installations?per_page=100&page=1': { installations: [] },
-      'GET /repos/you/layoutmaster': { fork: true, source: { full_name: UPSTREAM } },
+      'GET /repos/you/layerbench': { fork: true, source: { full_name: UPSTREAM } },
     };
     expect(await findStorageTarget(access, 'you', UPSTREAM)).toEqual({
       kind: 'gist',
-      forkWithoutAccess: 'you/layoutmaster',
+      forkWithoutAccess: 'you/layerbench',
     });
   });
 

@@ -154,7 +154,7 @@ The other panels hold what is not on a single key:
   key held, then the one that makes the fewest same-finger pairs with the keys before it in the
   word, then the less effort. Drag or use the arrows to put one way first instead, and that order
   is kept.
-- **JSON** shows the whole layout as LayoutMaster JSON or as a keymap-drawer file.
+- **JSON** shows the whole layout as LayerBench JSON or as a keymap-drawer file.
 
 ## On a phone
 

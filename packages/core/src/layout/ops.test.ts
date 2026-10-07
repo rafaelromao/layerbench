@@ -13,7 +13,7 @@ import {
 import type { Binding, Layout } from './types.js';
 
 const layout: Layout = {
-  format: 'layoutmaster/layout@1',
+  format: 'layerbench/layout@1',
   name: 'Test',
   geometry: { preset: '3x5+2' },
   keys: { space: 'L0' },

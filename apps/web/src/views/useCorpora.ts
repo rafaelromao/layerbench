@@ -1,4 +1,4 @@
-import type { CorpusManifest } from '@layoutmaster/core';
+import type { CorpusManifest } from '@layerbench/core';
 import { useEffect, useState } from 'react';
 import { useAnalysisClient } from '../engine/client-context.js';
 

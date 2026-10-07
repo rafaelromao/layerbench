@@ -13,7 +13,7 @@ import {
   safeParseLayout,
   toCanonicalJson,
   withoutFeatures,
-} from '@layoutmaster/core';
+} from '@layerbench/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { featureList } from '../components/FeatureSwitches.js';
@@ -107,13 +107,13 @@ function Ranking({
         </div>
       </dl>
       {lacking ? (
-        <p className="lm-skips text-xs text-warning" title={`Letters ${lacking.language} needs`}>
+        <p className="lb-skips text-xs text-warning" title={`Letters ${lacking.language} needs`}>
           Cannot type {lacking.letters.join(' ')}: skips {summary.skipped.toFixed(2)}% of the text
           {nobodyCan ? '.' : ', ranked after the layouts that can.'}
         </p>
       ) : (
         summary.skipped > 0 && (
-          <p className="lm-skips text-xs opacity-60">
+          <p className="lb-skips text-xs opacity-60">
             Skips {summary.skipped.toFixed(2)}% of the text: {missing}
           </p>
         )

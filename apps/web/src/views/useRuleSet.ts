@@ -1,4 +1,4 @@
-import { getPreset, type RuleSet } from '@layoutmaster/core';
+import { getPreset, type RuleSet } from '@layerbench/core';
 import { useEffect, useMemo, useState } from 'react';
 import { resolveRuleSet, withUniverse } from '../storage/rule-sets.js';
 import { useStorage } from '../storage/use-storage.js';

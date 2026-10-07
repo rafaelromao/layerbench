@@ -1,4 +1,4 @@
-import { type Binding, bundledLayout, compileLayout } from '@layoutmaster/core';
+import { type Binding, bundledLayout, compileLayout } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
 import { ARM_KINDS, convert, kindOf, TAP_KINDS } from './kinds.js';
 

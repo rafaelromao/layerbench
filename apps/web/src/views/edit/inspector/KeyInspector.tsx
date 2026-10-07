@@ -5,7 +5,7 @@ import {
   type LayoutFeatures,
   legend,
   reachKeys,
-} from '@layoutmaster/core';
+} from '@layerbench/core';
 import { type Dispatch, type ReactNode, useMemo, useState } from 'react';
 import { HelpLink } from '../../../components/HelpLink.js';
 import { HELP } from '../../../guide/help.js';
@@ -38,7 +38,7 @@ export function KeyInspector(props: KeyInspectorProps) {
   const { state } = props;
   if (state.selected === null || !state.compiled.keyIndex.has(state.selected)) {
     return (
-      <section className="lm-inspector lm-inspector-empty card bg-base-100 border border-base-300">
+      <section className="lb-inspector lb-inspector-empty card bg-base-100 border border-base-300">
         <div className="card-body p-3 gap-1">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-sm font-semibold">Key</h2>
@@ -48,7 +48,7 @@ export function KeyInspector(props: KeyInspectorProps) {
             Tap or click a key on the board to edit it. Drag a key onto another to swap the two —
             hold Alt to copy instead — or onto a layer tab to send it there.
           </p>
-          <p className="text-xs opacity-70 lm-pointer-hint">
+          <p className="text-xs opacity-70 lb-pointer-hint">
             On a focused key, typing sets it — <span className="font-mono">ç</span>,{' '}
             <span className="font-mono">&amp;lt nav a</span> — Delete makes it do nothing, and the
             arrow keys move between keys.
@@ -127,14 +127,14 @@ function Inspector({
 
   return (
     <fieldset
-      className="lm-inspector card bg-base-100 border border-base-300 min-w-0"
+      className="lb-inspector card bg-base-100 border border-base-300 min-w-0"
       aria-label={`Edit ${keyId}`}
     >
       <div className="card-body p-3 gap-3 min-w-0">
         <header className="flex items-start gap-3">
-          <div className="lm-inspector-cap" aria-hidden="true">
-            <span className="lm-inspector-cap-tap">{shown.tap || '·'}</span>
-            {shown.hold && <span className="lm-inspector-cap-hold">{shown.hold}</span>}
+          <div className="lb-inspector-cap" aria-hidden="true">
+            <span className="lb-inspector-cap-tap">{shown.tap || '·'}</span>
+            {shown.hold && <span className="lb-inspector-cap-hold">{shown.hold}</span>}
           </div>
           <div className="flex-1 min-w-0 space-y-0.5">
             <p className="flex flex-wrap items-center gap-x-2 text-xs">
@@ -238,7 +238,7 @@ function Inspector({
           </>
         )}
 
-        <div className="lm-key-actions border-t border-base-300 pt-2">
+        <div className="lb-key-actions border-t border-base-300 pt-2">
           <button
             type="button"
             className={`btn btn-xs ${state.swapFrom === keyId && state.swapMode === 'swap' ? 'btn-primary' : ''}`}

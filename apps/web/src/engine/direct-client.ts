@@ -1,4 +1,4 @@
-import type { CorpusManifest, LayoutJson } from '@layoutmaster/core';
+import type { CorpusManifest, LayoutJson } from '@layerbench/core';
 import type { AnalysisCore } from './analysis-core.js';
 import type {
   AnalysisClient,

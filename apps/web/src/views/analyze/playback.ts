@@ -1,4 +1,4 @@
-import type { CompiledLayout } from '@layoutmaster/core';
+import type { CompiledLayout } from '@layerbench/core';
 import type { ExplainStepDTO } from '../../engine/protocol.js';
 
 /**

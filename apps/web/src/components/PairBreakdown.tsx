@@ -1,4 +1,4 @@
-import type { CompiledLayout, RuleItem, RuleItemNext } from '@layoutmaster/core';
+import type { CompiledLayout, RuleItem, RuleItemNext } from '@layerbench/core';
 import { type ReactNode, useEffect, useId, useRef } from 'react';
 import { normalizeHeat } from '../engine/heat.js';
 import { formatItem } from './format.js';
@@ -57,7 +57,7 @@ export function PressedFor({
           className="w-full"
         />
 
-        <ol className="lm-items lm-items-large space-y-1" aria-label="Keys pressed next">
+        <ol className="lb-items lb-items-large space-y-1" aria-label="Keys pressed next">
           {next.map((t) => (
             <li key={`${t.layer}-${t.key}-${t.label}`} className="flex items-center gap-2 text-sm">
               <span className="font-mono w-48 break-words">

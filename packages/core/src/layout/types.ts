@@ -89,7 +89,7 @@ export type Binding =
   | { kind: 'unicode'; symbol: string; shiftedSymbol?: string }
   | { kind: 'ref'; ref: string }
   /**
-   * A key LayoutMaster does not simulate — media, Bluetooth, a firmware behaviour it has no model
+   * A key LayerBench does not simulate — media, Bluetooth, a firmware behaviour it has no model
    * of — kept so an imported layout loses nothing. It is drawn with its original legend and can be
    * placed like any other key, but it types nothing.
    */
@@ -200,7 +200,7 @@ export interface LayoutFeatures {
 }
 
 export interface Layout {
-  format: 'layoutmaster/layout@1';
+  format: 'layerbench/layout@1';
   id?: string;
   name: string;
   author?: string;

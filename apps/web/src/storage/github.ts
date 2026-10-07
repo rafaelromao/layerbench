@@ -10,7 +10,7 @@ import {
   type StorageAdapter,
   StorageConflictError,
   type StorageMeta,
-} from '@layoutmaster/core';
+} from '@layerbench/core';
 import { API, type GitHubAccess, gitHubFetch } from './github-api.js';
 
 /** `owner/name`, each a plain name: nothing that could step out of the repository's path. */

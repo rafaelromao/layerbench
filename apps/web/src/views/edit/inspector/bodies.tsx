@@ -5,7 +5,7 @@ import {
   legend,
   legendText,
   type Mod,
-} from '@layoutmaster/core';
+} from '@layerbench/core';
 import { useRef, useState } from 'react';
 import { useDismiss } from '../../../components/use-dismiss.js';
 import { bindingFromFields } from '../binding-form.js';
@@ -107,16 +107,16 @@ function KindTiles({
       aria-pressed={kind === k.kind}
       title={k.hint}
       disabled={k.kind === 'behaviour' && !canRefer}
-      className={`lm-kind-tile ${kind === k.kind ? 'lm-kind-tile-on' : ''}`}
+      className={`lb-kind-tile ${kind === k.kind ? 'lb-kind-tile-on' : ''}`}
       onClick={() => {
         setMore(false);
         if (kind !== k.kind) onPick(k.kind);
       }}
     >
-      <span aria-hidden="true" className="lm-kind-glyph">
+      <span aria-hidden="true" className="lb-kind-glyph">
         {k.glyph}
       </span>
-      <span className="lm-kind-label">{k.label}</span>
+      <span className="lb-kind-label">{k.label}</span>
     </button>
   );
   // With the list closed, a kind picked from it stands in the More tile, so it is still shown.
@@ -124,24 +124,24 @@ function KindTiles({
   const shown = !more && chosen;
   return (
     <div className="space-y-1" ref={tiles}>
-      <fieldset className="lm-kind-tiles" aria-label="Kind of key">
+      <fieldset className="lb-kind-tiles" aria-label="Kind of key">
         {PRIMARY_KINDS.map(tile)}
         <button
           type="button"
-          className={`lm-kind-tile ${shown ? 'lm-kind-tile-on' : ''}`}
+          className={`lb-kind-tile ${shown ? 'lb-kind-tile-on' : ''}`}
           aria-expanded={more}
           aria-label={shown ? `More kinds: ${chosen.label}` : undefined}
           title={shown ? chosen.hint : undefined}
           onClick={() => setMore((m) => !m)}
         >
-          <span aria-hidden="true" className="lm-kind-glyph">
+          <span aria-hidden="true" className="lb-kind-glyph">
             {shown ? chosen.glyph : more ? '−' : '+'}
           </span>
-          <span className="lm-kind-label">{shown ? chosen.label : 'More'}</span>
+          <span className="lb-kind-label">{shown ? chosen.label : 'More'}</span>
         </button>
       </fieldset>
       {more && (
-        <fieldset className="lm-kind-tiles" aria-label="More kinds">
+        <fieldset className="lb-kind-tiles" aria-label="More kinds">
           {MORE_KINDS.map(tile)}
         </fieldset>
       )}
@@ -196,7 +196,7 @@ export function ArmEditor({
           ))}
         </select>
       </div>
-      <div className="lm-arm">
+      <div className="lb-arm">
         <KindBody scope={scope} value={value} onChange={onChange} name={prefix} depth={depth + 1} />
       </div>
     </div>
@@ -1029,7 +1029,7 @@ function BehaviourBody({ scope, binding, onChange, name, depth }: BodyProps) {
           <summary className="cursor-pointer opacity-70">
             Edit <span className="font-mono">{ref}</span> — every key that runs it changes
           </summary>
-          <div className="pt-2 lm-arm">
+          <div className="pt-2 lb-arm">
             <KindBody
               scope={scope}
               value={own}
@@ -1054,8 +1054,8 @@ function ImportedBody({ binding }: BodyProps<Of<'raw'>>) {
         {binding.source && <span className="opacity-60"> — {binding.source}</span>}
       </p>
       <Note>
-        Kept from the imported layout. LayoutMaster draws it and moves it with the rest, but it
-        types nothing in the analysis. Pick a kind above to replace it.
+        Kept from the imported layout. LayerBench draws it and moves it with the rest, but it types
+        nothing in the analysis. Pick a kind above to replace it.
       </Note>
     </div>
   );

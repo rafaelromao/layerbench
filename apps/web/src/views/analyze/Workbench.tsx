@@ -4,7 +4,7 @@ import {
   layoutLanguageCoverage,
   type RuleItem,
   toCanonicalJson,
-} from '@layoutmaster/core';
+} from '@layerbench/core';
 import type { useNavigate } from '@tanstack/react-router';
 import {
   memo,
@@ -628,7 +628,7 @@ export function Workbench({
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: undo belongs to the whole view, reached from whatever inside it has focus.
     <div
-      className="lm-analyze space-y-4"
+      className="lb-analyze space-y-4"
       onKeyDown={(e) => {
         if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z') return;
         const target = e.target as HTMLElement;
@@ -674,17 +674,17 @@ export function Workbench({
 
       {/* The board first, then the selected key's editor under it on a phone, beside it at a desk,
           and the board scrolls with the page at every width. */}
-      <div className={`lm-edit-grid ${state.selected ? 'lm-editing' : ''}`}>
-        <div className="lm-edit-main">
+      <div className={`lb-edit-grid ${state.selected ? 'lb-editing' : ''}`}>
+        <div className="lb-edit-main">
           <section
-            className="lm-edit-board card bg-base-100 border border-base-300 min-w-0"
+            className="lb-edit-board card bg-base-100 border border-base-300 min-w-0"
             aria-label="Board"
           >
             <div className="card-body gap-2 p-3 sm:p-4 min-w-0">
               <Collapsible id="analyze.board" title="Board">
                 <div className="flex flex-col gap-2 min-w-0">
                   <div className="flex items-center gap-2 min-w-0">
-                    <div className="lm-layer-strip min-w-0 flex-1">
+                    <div className="lb-layer-strip min-w-0 flex-1">
                       <LayerTabs
                         layers={state.compiled.layers.map((l) => ({
                           idx: l.idx,
@@ -762,9 +762,9 @@ export function Workbench({
                     )}
                   </div>
 
-                  <div className="lm-board relative">
+                  <div className="lb-board relative">
                     {/* The board pans inside its own box on a narrow screen. */}
-                    <div className="lm-board-scroll">
+                    <div className="lb-board-scroll">
                       <Keyboard
                         ref={keyboard}
                         id="kb-analyze"
@@ -833,7 +833,7 @@ export function Workbench({
           </section>
 
           <section
-            className="lm-edit-explain card bg-base-100 border border-base-300 min-w-0"
+            className="lb-edit-explain card bg-base-100 border border-base-300 min-w-0"
             aria-label="A word, typed"
           >
             <div className="card-body gap-2 p-3 sm:p-4">
@@ -944,7 +944,7 @@ export function Workbench({
             onSelect={selectMetric}
           />
 
-          <section className="lm-edit-extras min-w-0" aria-label="Legend">
+          <section className="lb-edit-extras min-w-0" aria-label="Legend">
             <Collapsible id="analyze.legend" title="Legend">
               <KeyLegend compiled={state.compiled} layer={boardLayer} />
             </Collapsible>
@@ -955,11 +955,11 @@ export function Workbench({
           </p>
         </div>
 
-        <div className="lm-edit-side">
+        <div className="lb-edit-side">
           {/* biome-ignore lint/a11y/noStaticElementInteractions: Escape anywhere in the inspector
               closes it, the way it would a dialog; the controls inside handle everything else. */}
           <div
-            className="lm-edit-inspector min-w-0"
+            className="lb-edit-inspector min-w-0"
             onKeyDown={(e) => {
               if (e.key !== 'Escape' || e.defaultPrevented || state.selected === null) return;
               e.preventDefault();
@@ -977,7 +977,7 @@ export function Workbench({
             />
           </div>
 
-          <section className="lm-edit-panels card bg-base-100 border border-base-300 min-w-0">
+          <section className="lb-edit-panels card bg-base-100 border border-base-300 min-w-0">
             <div className="card-body gap-3 p-3 sm:p-4 min-w-0">
               <Collapsible id="analyze.editor" title="Editor">
                 <div className="flex flex-col gap-3 min-w-0">
@@ -985,7 +985,7 @@ export function Workbench({
                     <div
                       role="tablist"
                       aria-label="Editor panels"
-                      className="lm-panel-tabs tabs tabs-border tabs-sm min-w-0 flex-1"
+                      className="lb-panel-tabs tabs tabs-border tabs-sm min-w-0 flex-1"
                     >
                       {PANELS.map(([panel, label]) => (
                         <button
@@ -1072,7 +1072,7 @@ function SummaryCard({
   };
   return (
     <section
-      className="lm-edit-summary card bg-base-100 border border-base-300 min-w-0"
+      className="lb-edit-summary card bg-base-100 border border-base-300 min-w-0"
       aria-label="Summary"
     >
       <div className="card-body gap-3 p-3 sm:p-4">
@@ -1216,7 +1216,7 @@ const MetricFamilies = memo(function MetricFamilies({
 }) {
   const shown = useFamilyShown();
   return (
-    <Collapsible id="analyze.numbers" title="Numbers" className="lm-edit-results">
+    <Collapsible id="analyze.numbers" title="Numbers" className="lb-edit-results">
       <div className="space-y-4 min-w-0">
         <FamilyFilter />
         {METRIC_FAMILIES.map(([family, title]) => {

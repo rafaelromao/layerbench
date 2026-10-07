@@ -1,4 +1,4 @@
-import type { CorpusManifest, IndexEntry, Layout } from '@layoutmaster/core';
+import type { CorpusManifest, IndexEntry, Layout } from '@layerbench/core';
 import type { Params } from '../../url/params.js';
 import { AnalysisSettings, SampleSelect } from '../AnalysisSelects.js';
 import { groupByLanguage } from '../corpus-groups.js';
@@ -44,7 +44,7 @@ export function LayoutBar({
 }) {
   return (
     <section
-      className="lm-editor-bar card bg-base-100 border border-base-300 gap-3 px-3 py-2"
+      className="lb-editor-bar card bg-base-100 border border-base-300 gap-3 px-3 py-2"
       aria-label="Layout"
     >
       {/* One line at every width: on a narrow phone the name gives the badge its room, rather than
@@ -98,10 +98,10 @@ export function LayoutBar({
       </div>
       <form
         id="analyze-toolbar"
-        className="lm-toolbar flex flex-row flex-wrap items-end gap-3"
+        className="lb-toolbar flex flex-row flex-wrap items-end gap-3"
         onSubmit={(e) => e.preventDefault()}
       >
-        <label className="form-control lm-wide">
+        <label className="form-control lb-wide">
           <span className="label-text text-xs">Layout</span>
           <select
             name="layout"
@@ -145,7 +145,7 @@ export function LayoutBar({
                 </select>
               </label>
               {params.corpus2 && (
-                <label className="form-control lm-wide">
+                <label className="form-control lb-wide">
                   <span className="label-text text-xs">
                     {params.mix}% first · {100 - params.mix}% second
                   </span>

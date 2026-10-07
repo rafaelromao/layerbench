@@ -1,6 +1,6 @@
 # Guide
 
-LayoutMaster types a text on your keymap the way your keyboard's firmware would, and measures how
+LayerBench types a text on your keymap the way your keyboard's firmware would, and measures how
 comfortable that typing is. Layers, one-shots, tap-holds, magic and repeat keys are all part of it.
 Everything runs in your browser, and nothing leaves it unless you sign in with GitHub to keep your
 work in your own account.
@@ -45,11 +45,11 @@ shows how each is drawn on the board and made in the editor.
 
 A [keymap-drawer](https://github.com/caksoylar/keymap-drawer) YAML file brings a whole keymap in,
 and you choose which of its layers to take. The editor writes one back out, as well as
-LayoutMaster's own JSON. See [Importing and exporting](importing.md).
+LayerBench's own JSON. See [Importing and exporting](importing.md).
 
 ## Keeping and sharing your work
 
 Saved layouts, rule sets and corpora stay in this browser. Sign in with GitHub, under **Storage** in
-the header, to keep them in your GitHub account too, in gists or in your fork of layoutmaster. A
+the header, to keep them in your GitHub account too, in gists or in your fork of layerbench. A
 link carries everything a view shows, unsaved edits included, so copying the address shares it. See
 [Saving and sharing](saving.md).

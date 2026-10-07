@@ -157,7 +157,7 @@ describe('the cheapest way to type a character', () => {
   const kp = (symbol: string) => ({ kind: 'kp' as const, symbol });
   /** A board where `x` is on two layers: one tapped straight from the base, one through another. */
   const twoWays = (extra: Partial<Layout> = {}): Layout => ({
-    format: 'layoutmaster/layout@1',
+    format: 'layerbench/layout@1',
     name: 'Two ways',
     hostLocale: 'symbols',
     geometry: { preset: '3x5+2' },
@@ -218,7 +218,7 @@ describe('the kind of key a press is, in the statistics', () => {
       triggers: [{ afterAny: ['a'], binding: { kind: 'kp' as const, symbol: 'v' } }],
     };
     const layout: Layout = {
-      format: 'layoutmaster/layout@1',
+      format: 'layerbench/layout@1',
       name: 'Held magic',
       hostLocale: 'symbols',
       geometry: { preset: '3x5+2' },
@@ -261,7 +261,7 @@ describe('the key tapped for a layer, chosen word by word', () => {
     alpha1: Layout['layers'][number]['bindings'] = {},
     extra: Partial<Layout> = {},
   ): Layout => ({
-    format: 'layoutmaster/layout@1',
+    format: 'layerbench/layout@1',
     name: 'Three ways',
     hostLocale: 'symbols',
     geometry: { preset: '1333+2' },
@@ -367,7 +367,7 @@ describe('the cheapest way to type a character, after the keys before it', () =>
   const kp = (symbol: string) => ({ kind: 'kp' as const, symbol });
   /** `y` under the right index on the home row (no effort) and the left pinky's bottom key (3). */
   const twoYs: Layout = {
-    format: 'layoutmaster/layout@1',
+    format: 'layerbench/layout@1',
     name: 'Two ys',
     hostLocale: 'symbols',
     geometry: { preset: '3x5+2' },
@@ -406,7 +406,7 @@ describe("a tap-hold's hold, whatever it does", () => {
   });
   const layout = (bindings: Layout['layers'][number]['bindings'], more: Layout['layers'] = []) =>
     ({
-      format: 'layoutmaster/layout@1',
+      format: 'layerbench/layout@1',
       name: 'Holds',
       hostLocale: 'symbols',
       geometry: { preset: '3x5+2' },

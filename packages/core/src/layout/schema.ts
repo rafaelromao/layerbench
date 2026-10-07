@@ -161,7 +161,7 @@ const FeaturesSchema = z.object({
 });
 
 export const LayoutSchema = z.object({
-  format: z.literal('layoutmaster/layout@1'),
+  format: z.literal('layerbench/layout@1'),
   id: z.string().optional(),
   name: z.string(),
   author: z.string().optional(),

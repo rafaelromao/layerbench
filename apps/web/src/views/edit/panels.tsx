@@ -9,7 +9,7 @@ import {
   slug,
   tapLabel,
   toCanonicalJson,
-} from '@layoutmaster/core';
+} from '@layerbench/core';
 import { type Dispatch, type ReactNode, useMemo, useState } from 'react';
 import { layerColourOf } from '../../components/layer-colour.js';
 import type { ProducerDTO } from '../../engine/protocol.js';
@@ -162,7 +162,7 @@ function LayerColourPicker({
     <span className="flex items-center gap-1 shrink-0">
       <span
         aria-hidden="true"
-        className="lm-layer-swatch"
+        className="lb-layer-swatch"
         style={shown ? { background: shown } : undefined}
       />
       <select
@@ -219,7 +219,7 @@ export function LayersPanel({ state, send }: PanelProps) {
               setDragging(null);
               if (Number.isInteger(from)) send({ type: 'moveLayer', from, to: i });
             }}
-            className={`lm-layer-row rounded px-1 border border-transparent ${
+            className={`lb-layer-row rounded px-1 border border-transparent ${
               i > 0 ? 'hover:border-base-300' : ''
             } ${dragging === i ? 'opacity-50' : ''}`}
           >
@@ -234,7 +234,7 @@ export function LayersPanel({ state, send }: PanelProps) {
                 mono={false}
                 onCommit={(name) => send({ type: 'renameLayer', id: layer.id, name })}
               />
-              <div className="lm-layer-meta">
+              <div className="lb-layer-meta">
                 <span className="truncate font-mono text-[10px] opacity-60">{layer.id}</span>
                 <LayerColourPicker
                   layerId={layer.id}
@@ -245,9 +245,9 @@ export function LayersPanel({ state, send }: PanelProps) {
               </div>
             </div>
             {/* Four slots in every row, so the buttons line up down the list. */}
-            <div className="lm-layer-actions">
+            <div className="lb-layer-actions">
               {i === 0 ? (
-                <span className="lm-layer-base badge badge-ghost badge-sm">base</span>
+                <span className="lb-layer-base badge badge-ghost badge-sm">base</span>
               ) : (
                 <>
                   <button
@@ -494,7 +494,7 @@ export function CombosPanel({ state, send }: PanelProps) {
       </section>
 
       <form
-        className="lm-combo-form"
+        className="lb-combo-form"
         onSubmit={(e) => {
           e.preventDefault();
           const chosenKeys = picking
@@ -559,7 +559,7 @@ export function CombosPanel({ state, send }: PanelProps) {
           <option value="typing">typing</option>
           <option value="command">command</option>
         </select>
-        <button type="submit" className="lm-wide btn btn-xs btn-primary">
+        <button type="submit" className="lb-wide btn btn-xs btn-primary">
           Add combo on {layerName}
         </button>
       </form>
@@ -730,7 +730,7 @@ export function JsonPanel({ state, send }: PanelProps) {
       <Segment
         label="Format"
         options={[
-          ['json', 'LayoutMaster JSON'],
+          ['json', 'LayerBench JSON'],
           ['yaml', 'keymap-drawer YAML'],
         ]}
         value={format}

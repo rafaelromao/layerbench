@@ -1,4 +1,4 @@
-import { keyPart, type RuleResult } from '@layoutmaster/core';
+import { keyPart, type RuleResult } from '@layerbench/core';
 import type { ReportDTO } from './protocol.js';
 
 /** One rule's number, and the part of it one key makes on one layer. */

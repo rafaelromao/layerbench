@@ -133,102 +133,102 @@
 
 /* Keyboard canvas and metric styling. */
 :root {
-  --lm-key-bg: color-mix(in oklab, var(--color-base-200) 70%, var(--color-base-100));
-  --lm-key-stroke: color-mix(in oklab, var(--color-base-content) 18%, transparent);
-  --lm-heat: var(--color-primary);
-  --lm-key-text: var(--color-base-content);
+  --lb-key-bg: color-mix(in oklab, var(--color-base-200) 70%, var(--color-base-100));
+  --lb-key-stroke: color-mix(in oklab, var(--color-base-content) 18%, transparent);
+  --lb-heat: var(--color-primary);
+  --lb-key-text: var(--color-base-content);
 
   /*
    * One colour per layer, so a key that reaches a layer reads as belonging to it, and so does that
    * layer's tab. Hues are spread for distinctness and kept off the theme's semantic colours; the
    * lightness is set per theme so each holds its contrast on a key cap.
    */
-  --lm-layer-1: oklch(0.76 0.13 250);
-  --lm-layer-2: oklch(0.78 0.15 150);
-  --lm-layer-3: oklch(0.8 0.14 75);
-  --lm-layer-4: oklch(0.74 0.16 20);
-  --lm-layer-5: oklch(0.76 0.13 305);
-  --lm-layer-6: oklch(0.8 0.11 195);
-  --lm-layer-7: oklch(0.8 0.13 115);
+  --lb-layer-1: oklch(0.76 0.13 250);
+  --lb-layer-2: oklch(0.78 0.15 150);
+  --lb-layer-3: oklch(0.8 0.14 75);
+  --lb-layer-4: oklch(0.74 0.16 20);
+  --lb-layer-5: oklch(0.76 0.13 305);
+  --lb-layer-6: oklch(0.8 0.11 195);
+  --lb-layer-7: oklch(0.8 0.13 115);
 
   /*
    * What kind of key a legend is on — a layer key, a modifier, a magic key, the repeat key — and the
    * marks beside it, in the theme's own hues at the lightness the layer colours use, so each keeps
    * 3:1 against its key from no heat up to the point where a hot key takes its text colour instead.
    */
-  --lm-legend-layer: oklch(0.78 0.12 277);
-  --lm-legend-mod: oklch(0.78 0.14 293);
-  --lm-legend-magic: oklch(0.78 0.13 277);
-  --lm-legend-repeat: oklch(0.78 0.11 242);
-  --lm-legend-number: oklch(0.82 0.12 75);
+  --lb-legend-layer: oklch(0.78 0.12 277);
+  --lb-legend-mod: oklch(0.78 0.14 293);
+  --lb-legend-magic: oklch(0.78 0.13 277);
+  --lb-legend-repeat: oklch(0.78 0.11 242);
+  --lb-legend-number: oklch(0.82 0.12 75);
 
   /*
    * The arrows that trace a selected pair or word across the board: green, apart from the heat
    * under them and from the layer colours, light on a dark key and deep on a light one.
    */
-  --lm-arc: oklch(0.8 0.18 145);
+  --lb-arc: oklch(0.8 0.18 145);
 }
 [data-theme="light"] {
-  --lm-arc: oklch(0.52 0.15 145);
-  --lm-legend-layer: oklch(0.45 0.03 264);
-  --lm-legend-mod: var(--color-accent);
-  --lm-legend-magic: oklch(0.5 0.17 47);
-  --lm-legend-repeat: oklch(0.48 0.17 260);
-  --lm-legend-number: oklch(0.5 0.13 60);
-  --lm-layer-1: oklch(0.5 0.16 255);
-  --lm-layer-2: oklch(0.5 0.14 150);
-  --lm-layer-3: oklch(0.52 0.13 60);
-  --lm-layer-4: oklch(0.52 0.18 22);
-  --lm-layer-5: oklch(0.5 0.16 305);
-  --lm-layer-6: oklch(0.5 0.1 200);
-  --lm-layer-7: oklch(0.5 0.13 120);
+  --lb-arc: oklch(0.52 0.15 145);
+  --lb-legend-layer: oklch(0.45 0.03 264);
+  --lb-legend-mod: var(--color-accent);
+  --lb-legend-magic: oklch(0.5 0.17 47);
+  --lb-legend-repeat: oklch(0.48 0.17 260);
+  --lb-legend-number: oklch(0.5 0.13 60);
+  --lb-layer-1: oklch(0.5 0.16 255);
+  --lb-layer-2: oklch(0.5 0.14 150);
+  --lb-layer-3: oklch(0.52 0.13 60);
+  --lb-layer-4: oklch(0.52 0.18 22);
+  --lb-layer-5: oklch(0.5 0.16 305);
+  --lb-layer-6: oklch(0.5 0.1 200);
+  --lb-layer-7: oklch(0.5 0.13 120);
 }
 
-.lm-keyboard {
+.lb-keyboard {
   max-height: 46vh;
   display: block;
 }
 
-.lm-key-cap {
-  stroke: var(--lm-key-stroke);
+.lb-key-cap {
+  stroke: var(--lb-key-stroke);
   stroke-width: 1.5;
   transition:
     fill 0.25s ease,
     stroke 0.15s ease;
 }
 
-.lm-key-trans .lm-key-cap {
+.lb-key-trans .lb-key-cap {
   stroke-dasharray: 4 4;
   fill-opacity: 0.55;
 }
 /* Its ▽ in the colour of its dashed edge: a key that shows through, not one that types. */
-.lm-key-trans .lm-key-tap {
-  fill: var(--lm-key-stroke);
+.lb-key-trans .lb-key-tap {
+  fill: var(--lb-key-stroke);
 }
 
-.lm-key-tap {
-  fill: var(--lm-key-text);
+.lb-key-tap {
+  fill: var(--lb-key-text);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-weight: 600;
   dominant-baseline: middle;
   pointer-events: none;
 }
 
-.lm-key-hold {
-  fill: var(--lm-key-text);
+.lb-key-hold {
+  fill: var(--lb-key-text);
   opacity: 0.6;
   font-family: ui-sans-serif, system-ui, sans-serif;
   pointer-events: none;
 }
 
 /* How a layer key brings its layer on — "1×", "toggle" — reads as a note, not as a held action. */
-.lm-key-mode {
+.lb-key-mode {
   font-style: italic;
   opacity: 0.55;
 }
 
-.lm-key-shifted {
-  fill: var(--lm-key-text);
+.lb-key-shifted {
+  fill: var(--lb-key-text);
   opacity: 0.6;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   dominant-baseline: middle;
@@ -236,8 +236,8 @@
 }
 
 /* Marks for what the centre cannot show: ✦ adaptive, ⋯ macro, TD tap dance. */
-.lm-key-badge {
-  fill: var(--lm-legend-magic);
+.lb-key-badge {
+  fill: var(--lb-legend-magic);
   font-family: ui-sans-serif, system-ui, sans-serif;
   font-weight: 700;
   dominant-baseline: middle;
@@ -245,24 +245,24 @@
 }
 
 /* The number that points at the key's entry in the legend under the board. */
-.lm-key-number {
-  fill: var(--lm-legend-number);
+.lb-key-number {
+  fill: var(--lb-legend-number);
   font-family: ui-sans-serif, system-ui, sans-serif;
   dominant-baseline: middle;
   pointer-events: none;
 }
 
-.lm-key-home {
-  fill: var(--lm-key-text);
+.lb-key-home {
+  fill: var(--lb-key-text);
   opacity: 0.5;
 }
 
-.lm-kind-raw {
-  fill: var(--lm-key-text);
+.lb-kind-raw {
+  fill: var(--lb-key-text);
   opacity: 0.55;
 }
 
-.lm-legend-list {
+.lb-legend-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
   gap: 0.25rem 1rem;
@@ -271,22 +271,22 @@
   padding: 0;
   margin: 0;
 }
-.lm-legend-list li {
+.lb-legend-list li {
   display: flex;
   gap: 0.5rem;
   align-items: baseline;
 }
-.lm-legend-number {
-  color: var(--lm-legend-number);
+.lb-legend-number {
+  color: var(--lb-legend-number);
   flex: none;
 }
 /* A legend line for the keys that reach the layer shown, led by the ring they carry. */
-.lm-legend-ring {
+.lb-legend-ring {
   flex: none;
   align-self: center;
   width: 0.75rem;
   height: 0.75rem;
-  border: 2px solid var(--lm-key-text);
+  border: 2px solid var(--lb-key-text);
   border-radius: 3px;
 }
 
@@ -295,35 +295,35 @@
  * selection, focus and a played word use, in the layer's colour while the key is below half heat
  * (set inline, as the layer colours of legends are) and in the text colour above it.
  */
-.lm-key-reach {
+.lb-key-reach {
   fill: none;
-  stroke: var(--lm-key-text);
+  stroke: var(--lb-key-text);
   stroke-width: 2.5;
   pointer-events: none;
 }
 /* "held", "tapped" in the band of a reach key: a note on how it got here, said plainly. */
-.lm-key-reach-word {
+.lb-key-reach-word {
   font-style: italic;
   opacity: 1;
 }
 
-.lm-kind-layer {
-  fill: var(--lm-legend-layer);
+.lb-kind-layer {
+  fill: var(--lb-legend-layer);
 }
-.lm-kind-mod {
-  fill: var(--lm-legend-mod);
+.lb-kind-mod {
+  fill: var(--lb-legend-mod);
 }
-.lm-kind-magic {
-  fill: var(--lm-legend-magic);
+.lb-kind-magic {
+  fill: var(--lb-legend-magic);
   font-style: italic;
 }
-.lm-kind-repeat {
-  fill: var(--lm-legend-repeat);
+.lb-kind-repeat {
+  fill: var(--lb-legend-repeat);
 }
-.lm-kind-alpha,
-.lm-kind-trans,
-.lm-kind-none {
-  fill: var(--lm-key-text);
+.lb-kind-alpha,
+.lb-kind-trans,
+.lb-kind-none {
+  fill: var(--lb-key-text);
 }
 
 /*
@@ -331,23 +331,23 @@
  * coloured legend keeps its contrast. Every legend on it takes the key's text colour instead, at
  * full strength: over 4:1 at full heat in the dark theme, and 6:1 in the light one.
  */
-.lm-key-hot :is(.lm-key-tap, .lm-key-hold, .lm-key-shifted, .lm-key-badge, .lm-key-number) {
-  fill: var(--lm-key-text);
+.lb-key-hot :is(.lb-key-tap, .lb-key-hold, .lb-key-shifted, .lb-key-badge, .lb-key-number) {
+  fill: var(--lb-key-text);
 }
-.lm-key-hot :is(.lm-key-hold, .lm-key-shifted, .lm-kind-raw) {
+.lb-key-hot :is(.lb-key-hold, .lb-key-shifted, .lb-kind-raw) {
   opacity: 1;
 }
-.lm-key-thumb .lm-key-cap {
+.lb-key-thumb .lb-key-cap {
   stroke-width: 2;
 }
 
-.lm-key:hover .lm-key-cap {
+.lb-key:hover .lb-key-cap {
   stroke: var(--color-primary);
   stroke-width: 2.5;
 }
 /* The selected key: its own edge in the text colour, which reads on any heat. An outlined pair or
    a pressed key draws over it on the same edge; the inspector still names the key. */
-.lm-key-selected .lm-key-cap {
+.lb-key-selected .lb-key-cap {
   stroke: var(--color-base-content);
   stroke-width: 2.5;
 }
@@ -355,81 +355,81 @@
 /* The browser's own outline is a square round the key's box, drawn by some browsers on a click
    too; the cap's edge shows focus instead. Keyboard focus needs the same affordance as the
    pointer. */
-.lm-key:focus,
-.lm-key:focus-visible {
+.lb-key:focus,
+.lb-key:focus-visible {
   outline: none;
 }
-.lm-key:focus-visible .lm-key-cap {
+.lb-key:focus-visible .lb-key-cap {
   stroke: var(--color-primary);
   stroke-width: 3;
 }
 
 /* The keys of an outlined pair or word: green, like the arrows that join them. */
-.lm-key .lm-key-cap.lm-key-highlight {
-  stroke: var(--lm-arc);
+.lb-key .lb-key-cap.lb-key-highlight {
+  stroke: var(--lb-arc);
   stroke-width: 3;
 }
 /* The key being pressed, as a word is played on the board. */
-.lm-key-pressed {
+.lb-key-pressed {
   stroke: var(--color-primary);
   stroke-width: 3;
 }
 
 /* Combos: a pill between the keys pressed together, lit while one is played. */
-.lm-combos,
-.lm-arc {
+.lb-combos,
+.lb-arc {
   pointer-events: none;
 }
-.lm-combo rect {
+.lb-combo rect {
   fill: var(--color-base-100);
   stroke: color-mix(in oklab, var(--color-primary) 75%, transparent);
   stroke-width: 1.5;
   transition: fill 0.25s ease;
 }
-.lm-combo text {
+.lb-combo text {
   fill: var(--color-base-content);
   font-weight: 600;
 }
-.lm-combo-active rect {
+.lb-combo-active rect {
   fill: var(--color-primary);
 }
-.lm-combo-active text {
+.lb-combo-active text {
   fill: var(--color-primary-content);
 }
 @media (prefers-reduced-motion: reduce) {
-  .lm-combo rect {
+  .lb-combo rect {
     transition: none;
   }
 }
 
-.lm-dragging .lm-key {
+.lb-dragging .lb-key {
   cursor: grabbing !important;
 }
-.lm-drop-target .lm-key-cap {
+.lb-drop-target .lb-key-cap {
   stroke: var(--color-success);
   stroke-width: 3;
 }
-.lm-drop-copy .lm-key-cap {
+.lb-drop-copy .lb-key-cap {
   stroke: var(--color-info);
 }
 
 /* The key a drag started from, still in place but clearly no longer under the pointer. */
-.lm-key-source {
+.lb-key-source {
   opacity: 0.35;
 }
 
 /* A layer tab takes a drop too, and is an ordinary button rather than a key. */
-button.lm-drop-target {
+button.lb-drop-target {
   outline: 2px solid var(--color-success);
   outline-offset: 2px;
 }
-button.lm-drop-target.lm-drop-copy {
+button.lb-drop-target.lb-drop-copy {
   outline-color: var(--color-info);
 }
 
 /* What the pointer carries during a drag. Positioned from the pointer, so it owes the SVG
    nothing: no viewBox scale to undo, and it stays out of the hit test that finds drop targets. */
-.lm-key-ghost {
+.lb-key-ghost {
   position: fixed;
   left: 0;
   top: 0;
@@ -447,7 +447,7 @@ button.lm-drop-target.lm-drop-copy {
   box-shadow: 0 6px 18px rgb(0 0 0 / 0.35);
   pointer-events: none;
 }
-.lm-key-ghost-copy {
+.lb-key-ghost-copy {
   border-color: var(--color-info);
 }
 
@@ -458,72 +458,72 @@ button.lm-drop-target.lm-drop-copy {
  * next key never means scrolling back up to it. From 1024px the board and what reads it take one
  * column, the inspector and the panels the other, and the numbers run under both.
  */
-.lm-edit-grid {
+.lb-edit-grid {
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
-.lm-edit-main,
-.lm-edit-side {
+.lb-edit-main,
+.lb-edit-side {
   display: contents;
 }
-.lm-edit-board {
+.lb-edit-board {
   order: 1;
 }
-.lm-edit-inspector {
+.lb-edit-inspector {
   order: 2;
 }
-.lm-edit-explain {
+.lb-edit-explain {
   order: 3;
 }
-.lm-edit-summary {
+.lb-edit-summary {
   order: 4;
 }
-.lm-edit-extras {
+.lb-edit-extras {
   order: 5;
 }
-.lm-edit-panels {
+.lb-edit-panels {
   order: 6;
 }
-.lm-edit-results {
+.lb-edit-results {
   order: 7;
 }
 @media (max-width: 1023.98px) {
   /* One row of layers, swiped sideways, rather than rows of them pushing the board down. */
-  .lm-layer-strip {
+  .lb-layer-strip {
     overflow-x: auto;
     overscroll-behavior-x: contain;
     scrollbar-width: none;
   }
-  .lm-layer-strip::-webkit-scrollbar {
+  .lb-layer-strip::-webkit-scrollbar {
     display: none;
   }
-  .lm-layer-strip .tabs {
+  .lb-layer-strip .tabs {
     flex-wrap: nowrap;
     width: max-content;
   }
   /* The panels wrap instead: a tab scrolled out of sight is a panel nobody finds. */
-  .lm-panel-tabs {
+  .lb-panel-tabs {
     flex-wrap: wrap;
   }
 }
 @media (min-width: 1024px) {
-  .lm-edit-grid {
+  .lb-edit-grid {
     display: grid;
     grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
     align-items: stretch;
   }
-  .lm-edit-main,
-  .lm-edit-side {
+  .lb-edit-main,
+  .lb-edit-side {
     display: flex;
     flex-direction: column;
     gap: 1rem;
     min-width: 0;
   }
-  .lm-edit-side {
+  .lb-edit-side {
     align-self: start;
   }
-  .lm-edit-results {
+  .lb-edit-results {
     grid-column: 1 / -1;
   }
 }
@@ -538,26 +538,26 @@ button.lm-drop-target.lm-drop-copy {
 }
 
 /* A fieldset sizes to its content by default, which is wider than a phone for a row of tiles. */
-.lm-inspector,
-.lm-inspector fieldset {
+.lb-inspector,
+.lb-inspector fieldset {
   min-width: 0;
 }
-.lm-inspector .menu {
+.lb-inspector .menu {
   display: block;
 }
 /* A disclosure is a control too: 24px at least, where the text alone would make it 16. */
-.lm-inspector summary {
+.lb-inspector summary {
   padding-block: 0.25rem;
 }
 
 /* The selected key as the board draws it, so the inspector says which key it is at a glance. */
-.lm-inspector-cap {
+.lb-inspector-cap {
   flex: none;
   width: 3.5rem;
   height: 3.5rem;
   border-radius: 0.6rem;
-  border: 1.5px solid var(--lm-key-stroke);
-  background: var(--lm-key-bg);
+  border: 1.5px solid var(--lb-key-stroke);
+  background: var(--lb-key-bg);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -566,7 +566,7 @@ button.lm-drop-target.lm-drop-copy {
   overflow: hidden;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
-.lm-inspector-cap-tap {
+.lb-inspector-cap-tap {
   max-width: 100%;
   padding: 0 0.2rem;
   overflow: hidden;
@@ -575,14 +575,14 @@ button.lm-drop-target.lm-drop-copy {
   font-size: 1.1rem;
   font-weight: 600;
 }
-.lm-inspector-cap-hold {
+.lb-inspector-cap-hold {
   font-size: 0.6rem;
   opacity: 0.6;
   font-family: ui-sans-serif, system-ui, sans-serif;
 }
 
 /* What kind of key it is, as tiles a finger can hit: 44px tall, five to a phone's row. */
-.lm-kind-tiles {
+.lb-kind-tiles {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(4.25rem, 1fr));
   gap: 0.25rem;
@@ -590,7 +590,7 @@ button.lm-drop-target.lm-drop-copy {
   padding: 0;
   border: 0;
 }
-.lm-kind-tile {
+.lb-kind-tile {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -606,23 +606,23 @@ button.lm-drop-target.lm-drop-copy {
   line-height: 1.1;
   cursor: pointer;
 }
-.lm-kind-tile:hover {
+.lb-kind-tile:hover {
   border-color: var(--color-primary);
 }
-.lm-kind-tile:focus-visible {
+.lb-kind-tile:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;
 }
-.lm-kind-tile-on {
+.lb-kind-tile-on {
   background: var(--color-primary);
   border-color: var(--color-primary);
   color: var(--color-primary-content);
 }
-.lm-kind-tile:disabled {
+.lb-kind-tile:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
-.lm-kind-glyph {
+.lb-kind-glyph {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.95rem;
   font-weight: 600;
@@ -632,15 +632,15 @@ button.lm-drop-target.lm-drop-copy {
  * A selected key's numbers, in the inspector under its name: one small box per number, two to a
  * row on a phone; a box whose n-grams are open takes the whole row for them.
  */
-.lm-key-parts {
+.lb-key-parts {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
   gap: 0.25rem;
 }
-.lm-key-parts > li:has(> [aria-expanded="true"]) {
+.lb-key-parts > li:has(> [aria-expanded="true"]) {
   grid-column: 1 / -1;
 }
-.lm-key-part {
+.lb-key-part {
   display: flex;
   align-items: baseline;
   gap: 0.35rem;
@@ -649,24 +649,24 @@ button.lm-drop-target.lm-drop-copy {
   border-radius: 0.25rem;
   background: color-mix(in oklab, var(--color-base-200) 60%, transparent);
 }
-.lm-key-part-label {
+.lb-key-part-label {
   opacity: 0.8;
 }
 
 /* An arm of a bigger key, indented under the control that picks its kind. */
-.lm-arm {
+.lb-arm {
   padding-left: 0.5rem;
   border-left: 2px solid var(--color-base-300);
 }
 
 /* A finger may scroll and pan over the board; a drag starts only after the touch has rested. */
-.lm-board .lm-keyboard {
+.lb-board .lb-keyboard {
   touch-action: pan-x pan-y;
 }
 
 @media (hover: none) and (pointer: coarse) {
   /* Typing on a focused key needs a keyboard; a finger is told what it can do instead. */
-  .lm-pointer-hint {
+  .lb-pointer-hint {
     display: none;
   }
 
@@ -678,45 +678,45 @@ button.lm-drop-target.lm-drop-copy {
    */
   /* Without min-width the board takes its content's width — a flex child refuses to shrink below
      min-content by default — and nothing scrolls; it just overflows the card. */
-  .lm-board {
+  .lb-board {
     min-width: 0;
     max-width: 100%;
   }
-  .lm-board-scroll {
+  .lb-board-scroll {
     overflow-x: auto;
     overscroll-behavior-x: contain;
   }
-  .lm-board .lm-keyboard {
-    min-width: calc(var(--lm-board-units, 14) * 1.93rem);
+  .lb-board .lb-keyboard {
+    min-width: calc(var(--lb-board-units, 14) * 1.93rem);
     max-height: none;
   }
 
   /* Anything in the inspector meant to be tapped gets a target a finger can actually hit. */
-  .lm-inspector .btn-xs,
-  .lm-inspector .select-xs,
-  .lm-inspector .input-sm,
-  .lm-inspector .menu :where(li > *) {
+  .lb-inspector .btn-xs,
+  .lb-inspector .select-xs,
+  .lb-inspector .input-sm,
+  .lb-inspector .menu :where(li > *) {
     min-height: 2.25rem;
     font-size: 0.8rem;
   }
-  .lm-inspector summary {
+  .lb-inspector summary {
     padding-block: 0.6rem;
   }
   /* A key's numbers open their lists, and the pairs in them outline on the board: each a target. */
-  .lm-key-stats button {
+  .lb-key-stats button {
     min-height: 2.25rem;
   }
-  .lm-inspector .join-item.btn-xs {
+  .lb-inspector .join-item.btn-xs {
     padding-inline: 0.6rem;
   }
   /* Four whole suggestions rather than four and a sliver, which reads as a rendering fault. */
-  .lm-inspector .menu {
+  .lb-inspector .menu {
     max-height: 9rem;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lm-key-cap {
+  .lb-key-cap {
     transition: none;
   }
 }
@@ -727,19 +727,19 @@ button.lm-drop-target.lm-drop-copy {
  * one wrapping row at their natural width.
  */
 @media (max-width: 639.98px) {
-  .lm-toolbar {
+  .lb-toolbar {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: end;
     gap: 0.75rem;
   }
-  .lm-toolbar > * {
+  .lb-toolbar > * {
     min-width: 0;
   }
-  .lm-toolbar > .lm-wide {
+  .lb-toolbar > .lb-wide {
     grid-column: 1 / -1;
   }
-  .lm-toolbar
+  .lb-toolbar
     .form-control
     > :is(select, textarea, input:not([type="checkbox"], [type="radio"], [type="range"])) {
     width: 100%;
@@ -752,54 +752,54 @@ button.lm-drop-target.lm-drop-copy {
  * a keyboard does, with its keys 4px from each side.
  */
 @media (max-width: 639.98px) {
-  .lm-edit-board {
+  .lb-edit-board {
     margin-inline: -0.75rem;
     border-radius: 0;
     border-inline-width: 0;
   }
-  .lm-edit-board .lm-board {
+  .lb-edit-board .lb-board {
     margin-inline: -0.5rem;
     max-width: none;
   }
 }
 
 /* A layer in the Layers panel: grip, name over id, then the same four button slots in every row. */
-.lm-layer-row {
+.lb-layer-row {
   display: grid;
   grid-template-columns: 0.75rem minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.375rem;
   padding-block: 0.125rem;
 }
-.lm-layer-actions {
+.lb-layer-actions {
   display: grid;
   /* The width of a small square button, at a desk's size or a finger's. */
   grid-template-columns: repeat(4, calc(var(--size-field, 0.25rem) * 6));
   align-items: center;
   gap: 0.125rem;
 }
-.lm-layer-base {
+.lb-layer-base {
   grid-column: span 2;
   justify-self: center;
 }
 /* Under a layer's name: its id, and the colour it is drawn in. */
-.lm-layer-meta {
+.lb-layer-meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
   min-width: 0;
 }
-.lm-layer-swatch {
+.lb-layer-swatch {
   width: 0.625rem;
   height: 0.625rem;
   border-radius: 9999px;
-  border: 1px solid var(--lm-key-stroke);
+  border: 1px solid var(--lb-key-stroke);
   background: transparent;
 }
 
 /* A layer to import: its switch, name and arrows on one line, what was read of it under the name. */
-.lm-import-layer {
+.lb-import-layer {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -807,18 +807,18 @@ button.lm-drop-target.lm-drop-copy {
   row-gap: 0.125rem;
   padding-block: 0.125rem;
 }
-.lm-import-layer-report {
+.lb-import-layer-report {
   grid-column: 2 / -1;
 }
 
 /* A new combo: keys and output each beside their small companion, the button across both. */
-.lm-combo-form {
+.lb-combo-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.5rem;
 }
-.lm-combo-form > .lm-wide {
+.lb-combo-form > .lb-wide {
   grid-column: 1 / -1;
 }
 
@@ -828,17 +828,17 @@ button.lm-drop-target.lm-drop-copy {
  * column, so nothing needs a sideways scroll to be read.
  */
 @media (max-width: 639.98px) {
-  .lm-rules-table {
+  .lb-rules-table {
     min-width: 0;
   }
-  .lm-rules-table thead {
+  .lb-rules-table thead {
     display: none;
   }
-  .lm-rules-table,
-  .lm-rules-table tbody {
+  .lb-rules-table,
+  .lb-rules-table tbody {
     display: block;
   }
-  .lm-rules-table tr {
+  .lb-rules-table tr {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
     column-gap: 0.5rem;
@@ -846,31 +846,31 @@ button.lm-drop-target.lm-drop-copy {
     padding-block: 0.75rem;
     border-bottom: 1px solid var(--color-base-300);
   }
-  .lm-rules-table td {
+  .lb-rules-table td {
     display: block;
     padding: 0;
     border: 0;
     min-width: 0;
   }
-  .lm-rules-table td:nth-child(1) {
+  .lb-rules-table td:nth-child(1) {
     grid-column: 1;
     grid-row: 1;
   }
-  .lm-rules-table td:nth-child(2) {
+  .lb-rules-table td:nth-child(2) {
     grid-column: 2;
     grid-row: 1;
   }
-  .lm-rules-table td:last-child {
+  .lb-rules-table td:last-child {
     grid-column: 3;
     grid-row: 1;
   }
-  .lm-rules-table td[data-label] {
+  .lb-rules-table td[data-label] {
     grid-column: 2 / -1;
     max-width: none;
     white-space: normal;
     overflow-wrap: anywhere;
   }
-  .lm-rules-table td[data-label]::before {
+  .lb-rules-table td[data-label]::before {
     content: attr(data-label);
     display: block;
     font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
@@ -878,31 +878,31 @@ button.lm-drop-target.lm-drop-copy {
     opacity: 0.6;
     margin-bottom: 0.125rem;
   }
-  .lm-rules-table td[data-label] input {
+  .lb-rules-table td[data-label] input {
     width: 100%;
   }
 }
 
 /* What can be done with a selected key as a whole: one row at a desk, an even grid on a phone. */
-.lm-key-actions {
+.lb-key-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.25rem;
 }
 @media (max-width: 639.98px) {
-  .lm-key-actions {
+  .lb-key-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.5rem;
   }
-  .lm-key-actions > * {
+  .lb-key-actions > * {
     width: 100%;
   }
 }
 
 /* The summary: three boxes to a row on a phone, as many as fit from 640px, all the same width. */
-.lm-stats {
+.lb-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.5rem;
@@ -911,15 +911,15 @@ button.lm-drop-target.lm-drop-copy {
   padding: 0;
 }
 @media (min-width: 640px) {
-  .lm-stats {
+  .lb-stats {
     grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
   }
 }
-.lm-stats > li {
+.lb-stats > li {
   display: flex;
   min-width: 0;
 }
-.lm-stat {
+.lb-stat {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -932,14 +932,14 @@ button.lm-drop-target.lm-drop-copy {
   text-align: left;
   background: color-mix(in oklab, var(--color-base-100) 92%, var(--color-base-200));
 }
-.lm-stat-label {
+.lb-stat-label {
   font-size: 0.6875rem;
   line-height: 1.2;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   opacity: 0.7;
 }
-.lm-stat-value {
+.lb-stat-value {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 1.125rem;
   line-height: 1.2;
@@ -947,22 +947,22 @@ button.lm-drop-target.lm-drop-copy {
   white-space: nowrap;
 }
 @media (max-width: 639.98px) {
-  .lm-stat-value {
+  .lb-stat-value {
     font-size: 1rem;
   }
 }
-.lm-items li button {
+.lb-items li button {
   max-width: 5rem;
 }
 
-.lm-items-large li button {
+.lb-items-large li button {
   max-width: 12rem;
 }
 
 /* ------------------------------------------------------------------ the guide */
 
 /* 24px is WCAG 2.5.8's minimum target; on a touch screen it matches the close button beside it. */
-.lm-help {
+.lb-help {
   display: inline-grid;
   place-items: center;
   width: 1.5rem;
@@ -976,13 +976,13 @@ button.lm-drop-target.lm-drop-copy {
   opacity: 0.7;
   flex-shrink: 0;
 }
-.lm-help:hover,
-.lm-help:focus-visible {
+.lb-help:hover,
+.lb-help:focus-visible {
   opacity: 1;
   border-color: var(--color-primary);
 }
 @media (pointer: coarse) {
-  .lm-help {
+  .lb-help {
     width: 2rem;
     height: 2rem;
     font-size: 0.8rem;
@@ -992,41 +992,41 @@ button.lm-drop-target.lm-drop-copy {
 /*
  * The features a ranking counts: four switches in a line at a desk. On a touch screen each is a
  * row a finger can hit, two to a line, with a box at full size rather than the compact one. A
- * checkbox drawn beside them (`lm-check`) grows the same way.
+ * checkbox drawn beside them (`lb-check`) grows the same way.
  */
 @media (pointer: coarse) {
-  .lm-rank-with {
+  .lb-rank-with {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .lm-rank-with legend {
+  .lb-rank-with legend {
     grid-column: 1 / -1;
   }
-  .lm-rank-with label,
-  .lm-check {
+  .lb-rank-with label,
+  .lb-check {
     min-height: 2.75rem;
   }
-  .lm-rank-with .checkbox,
-  .lm-check .checkbox {
+  .lb-rank-with .checkbox,
+  .lb-check .checkbox {
     --size: calc(var(--size-selector, 0.25rem) * 6);
   }
 }
 
-.lm-guide {
+.lb-guide {
   display: grid;
   gap: 1.5rem;
 }
 @media (min-width: 64rem) {
-  .lm-guide {
+  .lb-guide {
     grid-template-columns: 13rem minmax(0, 48rem);
   }
-  .lm-guide-nav {
+  .lb-guide-nav {
     position: sticky;
     top: 4rem;
     align-self: start;
   }
 }
-.lm-guide-nav ul {
+.lb-guide-nav ul {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
@@ -1035,121 +1035,121 @@ button.lm-drop-target.lm-drop-copy {
   padding: 0;
 }
 @media (min-width: 64rem) {
-  .lm-guide-nav ul {
+  .lb-guide-nav ul {
     flex-direction: column;
   }
 }
-.lm-guide-nav a {
+.lb-guide-nav a {
   display: block;
   border-radius: var(--radius-field);
   padding: 0.4rem 0.6rem;
   font-size: 0.85rem;
   text-decoration: none;
 }
-.lm-guide-nav a:hover {
+.lb-guide-nav a:hover {
   background: var(--color-base-200);
 }
-.lm-guide-nav a[aria-current="page"] {
+.lb-guide-nav a[aria-current="page"] {
   background: var(--color-base-300);
   font-weight: 600;
 }
 
-.lm-guide-page {
+.lb-guide-page {
   font-size: 0.95rem;
   line-height: 1.6;
   min-width: 0;
 }
-.lm-guide-page h1 {
+.lb-guide-page h1 {
   font-size: 1.6rem;
   font-weight: 700;
   line-height: 1.25;
   margin-bottom: 0.75rem;
 }
-.lm-guide-page h2 {
+.lb-guide-page h2 {
   font-size: 1.1rem;
   font-weight: 650;
 }
-.lm-guide-page h3 {
+.lb-guide-page h3 {
   font-size: 1rem;
   font-weight: 600;
 }
-.lm-guide-page h4,
-.lm-guide-page h5,
-.lm-guide-page h6 {
+.lb-guide-page h4,
+.lb-guide-page h5,
+.lb-guide-page h6 {
   font-weight: 600;
   margin-top: 1rem;
 }
-.lm-guide-page p,
-.lm-guide-page ul,
-.lm-guide-page ol,
-.lm-guide-page pre,
-.lm-guide-page blockquote,
-.lm-guide-table {
+.lb-guide-page p,
+.lb-guide-page ul,
+.lb-guide-page ol,
+.lb-guide-page pre,
+.lb-guide-page blockquote,
+.lb-guide-table {
   margin-block: 0.6rem;
 }
-.lm-guide-page ul {
+.lb-guide-page ul {
   list-style: disc;
   padding-left: 1.4rem;
 }
-.lm-guide-page ol {
+.lb-guide-page ol {
   list-style: decimal;
   padding-left: 1.6rem;
 }
-.lm-guide-page li + li {
+.lb-guide-page li + li {
   margin-top: 0.3rem;
 }
-.lm-guide-page code {
+.lb-guide-page code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.85em;
   padding: 0.05rem 0.3rem;
   border-radius: 0.25rem;
   background: var(--color-base-200);
 }
-.lm-guide-page pre {
+.lb-guide-page pre {
   overflow-x: auto;
   padding: 0.75rem;
   border-radius: var(--radius-box);
   background: var(--color-base-200);
 }
-.lm-guide-page pre code {
+.lb-guide-page pre code {
   padding: 0;
   background: none;
 }
-.lm-guide-page blockquote {
+.lb-guide-page blockquote {
   border-left: 3px solid var(--color-base-300);
   padding-left: 0.75rem;
   opacity: 0.85;
 }
 /* A wide table scrolls on its own rather than pushing the page sideways. */
-.lm-guide-table {
+.lb-guide-table {
   overflow-x: auto;
 }
-.lm-guide-table table {
+.lb-guide-table table {
   border-collapse: collapse;
   font-size: 0.875rem;
 }
-.lm-guide-table th,
-.lm-guide-table td {
+.lb-guide-table th,
+.lb-guide-table td {
   border-bottom: 1px solid var(--color-base-300);
   padding: 0.35rem 0.6rem;
   text-align: left;
   vertical-align: top;
 }
-.lm-guide-table th {
+.lb-guide-table th {
   font-weight: 600;
 }
-.lm-guide-tools {
+.lb-guide-tools {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
   margin-block: 1rem 0.25rem;
 }
 
-.lm-guide-section {
+.lb-guide-section {
   scroll-margin-top: 4rem;
   border-top: 1px solid var(--color-base-300);
 }
-.lm-guide-section > summary {
+.lb-guide-section > summary {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -1157,39 +1157,39 @@ button.lm-drop-target.lm-drop-copy {
   cursor: pointer;
   list-style: none;
 }
-.lm-guide-section > summary::-webkit-details-marker {
+.lb-guide-section > summary::-webkit-details-marker {
   display: none;
 }
-.lm-guide-section > summary::before {
+.lb-guide-section > summary::before {
   content: "▸";
   display: inline-block;
   width: 1rem;
   opacity: 0.6;
   transition: transform 120ms;
 }
-.lm-guide-section[open] > summary::before {
+.lb-guide-section[open] > summary::before {
   transform: rotate(90deg);
 }
-.lm-guide-section > summary > :is(h2, h3) {
+.lb-guide-section > summary > :is(h2, h3) {
   margin: 0;
 }
-.lm-guide-body {
+.lb-guide-body {
   padding: 0 0 0.75rem 1.5rem;
 }
-.lm-guide-level-3 {
+.lb-guide-level-3 {
   border-top-style: dashed;
 }
 @media (prefers-reduced-motion: reduce) {
-  .lm-guide-section > summary::before {
+  .lb-guide-section > summary::before {
     transition: none;
   }
 }
 
 /* The bar under the header while data loads: still, not sliding, when motion is reduced. */
 @media (prefers-reduced-motion: reduce) {
-  .lm-busy:indeterminate,
-  .lm-busy:indeterminate::-webkit-progress-value,
-  .lm-busy:indeterminate::-moz-progress-bar {
+  .lb-busy:indeterminate,
+  .lb-busy:indeterminate::-webkit-progress-value,
+  .lb-busy:indeterminate::-moz-progress-bar {
     animation: none;
   }
 }

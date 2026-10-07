@@ -364,7 +364,7 @@ const ROMAK24_COMBOS: ComboDef[] = romak24Combos(accent);
 
 function romak24Base(name: string, id: string, description: string): Layout {
   return {
-    format: 'layoutmaster/layout@1',
+    format: 'layerbench/layout@1',
     id,
     name,
     author: 'Rafael Romão',
@@ -554,7 +554,7 @@ const ROMAK34_ALPHA2: Record<string, Binding> = {
 };
 
 export const romak34: Layout = {
-  format: 'layoutmaster/layout@1',
+  format: 'layerbench/layout@1',
   id: 'romak-34',
   name: 'Romak 34',
   author: 'Rafael Romão',

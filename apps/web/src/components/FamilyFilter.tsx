@@ -37,9 +37,9 @@ export function FamilyFilter({ className = '' }: { className?: string }) {
   }, [some]);
 
   return (
-    <fieldset className={`lm-rank-with flex flex-wrap items-center gap-x-3 gap-y-1 ${className}`}>
+    <fieldset className={`lb-rank-with flex flex-wrap items-center gap-x-3 gap-y-1 ${className}`}>
       <legend className="text-xs opacity-70 float-left mr-1">Show</legend>
-      <label className="label lm-check cursor-pointer gap-1.5 p-0">
+      <label className="label lb-check cursor-pointer gap-1.5 p-0">
         <input
           ref={all}
           type="checkbox"
@@ -50,7 +50,7 @@ export function FamilyFilter({ className = '' }: { className?: string }) {
         <span className="label-text text-xs font-medium">All</span>
       </label>
       {METRIC_FAMILIES.map(([family, title]) => (
-        <label key={family} className="label lm-check cursor-pointer gap-1.5 p-0">
+        <label key={family} className="label lb-check cursor-pointer gap-1.5 p-0">
           <input
             type="checkbox"
             className="checkbox checkbox-xs"

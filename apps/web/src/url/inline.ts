@@ -1,5 +1,5 @@
-import type { Layout } from '@layoutmaster/core';
-import { safeParseLayout, toCanonicalJson } from '@layoutmaster/core';
+import type { Layout } from '@layerbench/core';
+import { safeParseLayout, toCanonicalJson } from '@layerbench/core';
 
 /**
  * A whole layout carried in a link. The blob is the canonical document, deflate-compressed and

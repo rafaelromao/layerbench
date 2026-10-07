@@ -7,7 +7,7 @@
     "declaration": false,
     "types": ["vite/client"],
     "paths": {
-      "@layoutmaster/core": ["../../packages/core/src/index.ts"]
+      "@layerbench/core": ["../../packages/core/src/index.ts"]
     }
   },
   "include": ["src", "vite.config.ts", "../../functions"]

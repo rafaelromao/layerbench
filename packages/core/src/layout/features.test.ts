@@ -15,7 +15,7 @@ function trace(layout: Layout, word: string): string[] {
 /** A two-key layout, so a feature's effect on one binding is easy to read. */
 function mini(features?: LayoutFeatures, extra: Partial<Layout> = {}): Layout {
   return {
-    format: 'layoutmaster/layout@1',
+    format: 'layerbench/layout@1',
     name: 'Mini',
     hostLocale: 'symbols',
     geometry: { preset: '3x5+2' },

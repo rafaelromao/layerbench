@@ -5,7 +5,7 @@ import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { renderRoute } from '../test/render.js';
 
 let counter = 0;
-const freshStorage = () => new IndexedDbAdapter(`layoutmaster-rules-${++counter}`);
+const freshStorage = () => new IndexedDbAdapter(`layerbench-rules-${++counter}`);
 
 describe('Rules', () => {
   it('lists the built-in rules by family', async () => {

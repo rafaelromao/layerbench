@@ -26,7 +26,7 @@ import {
   relabelSwap,
   stableStringify,
   structureHash,
-} from '@layoutmaster/core';
+} from '@layerbench/core';
 import type {
   AnalyzeRequest,
   CorpusFactsDTO,

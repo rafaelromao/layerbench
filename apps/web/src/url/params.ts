@@ -4,8 +4,8 @@ import {
   isDocumentId,
   isFeatureKind,
   type TextClass,
-} from '@layoutmaster/core';
-import { PRESET_IDS } from '@layoutmaster/core/rules';
+} from '@layerbench/core';
+import { PRESET_IDS } from '@layerbench/core/rules';
 
 /**
  * The analysis parameters carried in the query string. This is a contract, not an implementation

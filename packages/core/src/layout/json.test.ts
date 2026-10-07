@@ -8,7 +8,7 @@ import type { AdaptiveTrigger, Layout } from './types.js';
 
 function withBranches(triggers: AdaptiveTrigger[]): Layout {
   return {
-    format: 'layoutmaster/layout@1',
+    format: 'layerbench/layout@1',
     name: 'Branches',
     geometry: { preset: '3x5+2' },
     keys: { space: 'L0' },

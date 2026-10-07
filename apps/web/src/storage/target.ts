@@ -1,7 +1,7 @@
 import { API, type GitHubAccess, gitHubFetch } from './github-api.js';
 
-/** Saves to a copy of layoutmaster are commits on this branch, so its main branch stays as it is. */
-export const DATA_BRANCH = 'layoutmaster-data';
+/** Saves to a copy of layerbench are commits on this branch, so its main branch stays as it is. */
+export const DATA_BRANCH = 'layerbench-data';
 /** The directory on that branch, laid out as data repositories have always been. */
 export const DATA_PATH = 'data';
 
@@ -100,7 +100,7 @@ export async function ensureDataBranch(access: GitHubAccess, repo: string): Prom
 }
 
 /**
- * Where to keep a signed-in user's documents: their own copy of layoutmaster when the app may write
+ * Where to keep a signed-in user's documents: their own copy of layerbench when the app may write
  * to it — the upstream itself for its owner, otherwise a fork they own — and secret gists when not.
  *
  * Only repositories the app is installed on are writable with the user's token, so they are looked

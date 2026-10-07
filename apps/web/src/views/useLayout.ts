@@ -6,7 +6,7 @@ import {
   type StorageAdapter,
   safeParseLayout,
   withoutFeatures,
-} from '@layoutmaster/core';
+} from '@layerbench/core';
 import { useEffect, useMemo, useState } from 'react';
 import { useStorage } from '../storage/use-storage.js';
 import { resolveLayoutRef } from '../url/resolve-layout.js';

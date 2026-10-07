@@ -59,7 +59,7 @@ export const useSession = create<SessionState>()(
       },
     }),
     {
-      name: 'layoutmaster:session',
+      name: 'layerbench:session',
       partialize: (s) => ({
         theme: s.theme,
         editPanel: s.editPanel,

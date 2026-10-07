@@ -1,4 +1,4 @@
-import type { Binding, CompiledLayout, Mod } from '@layoutmaster/core';
+import type { Binding, CompiledLayout, Mod } from '@layerbench/core';
 
 /**
  * The kinds the inspector offers, as a reader thinks of keys rather than as the model stores them.
@@ -71,7 +71,7 @@ const IMPORTED: KindInfo = {
   kind: 'imported',
   label: 'Imported',
   glyph: '?',
-  hint: 'a key LayoutMaster keeps but does not simulate',
+  hint: 'a key LayerBench keeps but does not simulate',
 };
 
 export const ALL_KINDS: readonly KindInfo[] = [...PRIMARY_KINDS, ...MORE_KINDS, IMPORTED];

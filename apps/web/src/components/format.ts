@@ -1,4 +1,4 @@
-import type { BandResult, RuleItem, Unit } from '@layoutmaster/core';
+import type { BandResult, RuleItem, Unit } from '@layerbench/core';
 
 /** Numbers are read side by side down a column, so every unit has one fixed shape. */
 export function formatValue(value: number | null | undefined, unit: Unit): string {

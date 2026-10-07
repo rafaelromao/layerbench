@@ -8,7 +8,7 @@ import { LIBRARY, renderRoute, testClient } from '../test/render.js';
 let counter = 0;
 
 function freshStorage(): IndexedDbAdapter {
-  return new IndexedDbAdapter(`layoutmaster-shell-${++counter}`);
+  return new IndexedDbAdapter(`layerbench-shell-${++counter}`);
 }
 
 afterEach(() => {
@@ -24,7 +24,7 @@ describe('where the site opens', () => {
 
     await user.click(screen.getAllByRole('link', { name: 'Compare' })[0]);
     await waitFor(() => expect(currentPath()).toBe('/compare'));
-    await user.click(screen.getByRole('link', { name: 'LayoutMaster' }));
+    await user.click(screen.getByRole('link', { name: 'LayerBench' }));
     await waitFor(() => expect(currentPath()).toBe('/library'));
   });
 
@@ -178,9 +178,9 @@ describe('the page frame', () => {
     useGitHubSession.setState({
       status: 'signed-in',
       login: 'you',
-      appSlug: 'layoutmaster-app',
-      upstream: 'rafaelromao/layoutmaster',
-      target: { kind: 'gist', forkWithoutAccess: 'you/layoutmaster' },
+      appSlug: 'layerbench-app',
+      upstream: 'rafaelromao/layerbench',
+      target: { kind: 'gist', forkWithoutAccess: 'you/layerbench' },
       targetStatus: 'idle',
     });
     const user = userEvent.setup();
@@ -196,8 +196,8 @@ describe('the page frame', () => {
       'https://gist.github.com/you',
     );
     expect(
-      within(dialog).getByRole('link', { name: 'Give LayoutMaster access to it' }),
-    ).toHaveAttribute('href', 'https://github.com/apps/layoutmaster-app/installations/new');
+      within(dialog).getByRole('link', { name: 'Give LayerBench access to it' }),
+    ).toHaveAttribute('href', 'https://github.com/apps/layerbench-app/installations/new');
     expect(within(dialog).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
   });
 
@@ -205,8 +205,8 @@ describe('the page frame', () => {
     useGitHubSession.setState({
       status: 'signed-in',
       login: 'you',
-      appSlug: 'layoutmaster-app',
-      upstream: 'rafaelromao/layoutmaster',
+      appSlug: 'layerbench-app',
+      upstream: 'rafaelromao/layerbench',
       target: null,
       targetStatus: 'error',
     });
@@ -217,7 +217,7 @@ describe('the page frame', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Storage' });
     expect(within(dialog).getByText(/could not be asked where to save/)).toBeInTheDocument();
     expect(
-      within(dialog).getByRole('link', { name: 'Give LayoutMaster access to it' }),
+      within(dialog).getByRole('link', { name: 'Give LayerBench access to it' }),
     ).toBeInTheDocument();
   });
 
@@ -227,8 +227,8 @@ describe('the page frame', () => {
       login: 'you',
       target: {
         kind: 'repo',
-        repo: 'you/layoutmaster',
-        branch: 'layoutmaster-data',
+        repo: 'you/layerbench',
+        branch: 'layerbench-data',
         path: 'data',
         upstream: false,
       },
@@ -239,11 +239,11 @@ describe('the page frame', () => {
 
     await user.click(await screen.findByRole('button', { name: /^Storage/ }));
     const dialog = await screen.findByRole('dialog', { name: 'Storage' });
-    expect(within(dialog).getByRole('link', { name: 'you/layoutmaster' })).toHaveAttribute(
+    expect(within(dialog).getByRole('link', { name: 'you/layerbench' })).toHaveAttribute(
       'href',
-      'https://github.com/you/layoutmaster/tree/layoutmaster-data/data',
+      'https://github.com/you/layerbench/tree/layerbench-data/data',
     );
-    expect(within(dialog).queryByRole('link', { name: /Give LayoutMaster access/ })).toBeNull();
+    expect(within(dialog).queryByRole('link', { name: /Give LayerBench access/ })).toBeNull();
   });
 
   it('says so where sign-in is not set up', async () => {

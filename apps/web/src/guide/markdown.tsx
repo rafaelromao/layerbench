@@ -416,7 +416,7 @@ export function MarkdownBlocks({ blocks, ctx }: { blocks: Block[]; ctx: InlineCo
           }
           case 'table':
             return (
-              <div key={key} className="lm-guide-table">
+              <div key={key} className="lb-guide-table">
                 <table>
                   <thead>
                     <tr>

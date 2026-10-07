@@ -1,4 +1,4 @@
-import { GLOSSARY_URL } from '@layoutmaster/core';
+import { GLOSSARY_URL } from '@layerbench/core';
 import analyzing from '../../../../docs/guide/analyzing.md?raw';
 import editing from '../../../../docs/guide/editing.md?raw';
 import importing from '../../../../docs/guide/importing.md?raw';

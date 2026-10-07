@@ -1,4 +1,4 @@
-import type { Collection } from '@layoutmaster/core';
+import type { Collection } from '@layerbench/core';
 import { create } from 'zustand';
 import type { SessionAnswer } from '../server/github-auth.js';
 import { toast } from '../state/toasts.js';
@@ -43,9 +43,9 @@ let token: { value: string; expiresAt: number | null } | null = null;
 /** A token is used until a minute before it expires; the server renews it before handing it over. */
 const TOKEN_MARGIN_MS = 60_000;
 
-const AFTER_SIGN_IN = 'layoutmaster:after-sign-in';
-const targetKey = (login: string) => `layoutmaster:storage-target:${login}`;
-const gistKey = (login: string) => `layoutmaster:gists:${login}`;
+const AFTER_SIGN_IN = 'layerbench:after-sign-in';
+const targetKey = (login: string) => `layerbench:storage-target:${login}`;
+const gistKey = (login: string) => `layerbench:gists:${login}`;
 
 function readJson<T>(key: string): T | null {
   try {
@@ -71,7 +71,7 @@ function writeJson(key: string, value: unknown): void {
  */
 async function exclusively<T>(work: () => Promise<T>): Promise<T> {
   const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
-  return locks ? locks.request('layoutmaster:github-session', work) : work();
+  return locks ? locks.request('layerbench:github-session', work) : work();
 }
 
 function isAnswer(value: unknown): value is SessionAnswer {

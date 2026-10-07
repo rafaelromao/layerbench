@@ -25,7 +25,7 @@ describe('a group that folds away', () => {
     await user.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByLabelText('Word')).not.toBeVisible();
-    expect(JSON.parse(localStorage.getItem('layoutmaster:session') ?? '{}').state).toMatchObject({
+    expect(JSON.parse(localStorage.getItem('layerbench:session') ?? '{}').state).toMatchObject({
       collapsedGroups: ['analyze.word'],
     });
 

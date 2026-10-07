@@ -1,4 +1,4 @@
-import { GLOSSARY_URL } from '@layoutmaster/core';
+import { GLOSSARY_URL } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
 import { glossaryHash, HELP } from './help.js';
 import { anchorsOf, type Block, parseBlocks, parseGuide } from './markdown.js';

@@ -4,7 +4,7 @@ import type {
   JsonObject,
   StorageAdapter,
   StorageMeta,
-} from '@layoutmaster/core';
+} from '@layerbench/core';
 
 /**
  * Both stores at once. The browser copy is always written, so work is never lost to a network

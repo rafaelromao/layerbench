@@ -46,7 +46,7 @@ function Where({ target, login }: { target: StorageTarget; login: string }) {
 /**
  * Where saved documents live. Layouts, rule sets and corpora are always kept in this browser;
  * signing in with GitHub keeps them in the user's account too, so they follow them between
- * machines: in their fork of layoutmaster when the app may write to one, in gists otherwise.
+ * machines: in their fork of layerbench when the app may write to one, in gists otherwise.
  */
 export function StorageSettings() {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -88,7 +88,7 @@ export function StorageSettings() {
     return () => window.removeEventListener('focus', again);
   }, [signedIn, target]);
 
-  const upstreamName = upstream.split('/')[1] ?? 'layoutmaster';
+  const upstreamName = upstream.split('/')[1] ?? 'layerbench';
 
   return (
     <>
@@ -117,7 +117,7 @@ export function StorageSettings() {
               ? ' Signing in with GitHub, which keeps them in your account as well, is not set up where this copy of the app runs.'
               : signedIn
                 ? ' They are kept in your GitHub account as well, so they follow you to other browsers.'
-                : ' Sign in with GitHub to keep them in your account as well, so they follow you to other browsers: in your fork of layoutmaster when you have one, in secret gists otherwise.'}
+                : ' Sign in with GitHub to keep them in your account as well, so they follow you to other browsers: in your fork of layerbench when you have one, in secret gists otherwise.'}
           </p>
 
           {(status === 'signed-out' || status === 'unknown') && (
@@ -173,7 +173,7 @@ export function StorageSettings() {
                     target="_blank"
                     rel="noreferrer"
                   >
-                    Give LayoutMaster access to it
+                    Give LayerBench access to it
                   </a>{' '}
                   to save there instead.
                 </p>

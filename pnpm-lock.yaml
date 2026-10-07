@@ -23,7 +23,7 @@ importers:
 
   apps/web:
     dependencies:
-      '@layoutmaster/core':
+      '@layerbench/core':
         specifier: workspace:*
         version: link:../../packages/core
       '@tanstack/react-router':
@@ -90,7 +90,7 @@ importers:
 
   packages/corpora:
     dependencies:
-      '@layoutmaster/core':
+      '@layerbench/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:

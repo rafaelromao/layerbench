@@ -7,7 +7,7 @@ import type {
   RuleSet,
   Score,
   TextClass,
-} from '@layoutmaster/core';
+} from '@layerbench/core';
 
 /**
  * What crosses the worker boundary. Tables, the registry and the compiled layout stay inside the

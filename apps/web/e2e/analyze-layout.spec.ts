@@ -54,10 +54,10 @@ test.describe('on a phone', () => {
     const inspector = page.getByRole('group', { name: 'Edit LHI' });
     await expect(inspector).toBeVisible();
     expect(await overflow(page)).toBeLessThanOrEqual(0);
-    expect(await smallTargets(page, '.lm-inspector')).toEqual([]);
+    expect(await smallTargets(page, '.lb-inspector')).toEqual([]);
 
     // The kind tiles are what a finger reaches for first, so they get the full 44px.
-    for (const tile of await inspector.locator('.lm-kind-tile').all()) {
+    for (const tile of await inspector.locator('.lb-kind-tile').all()) {
       expect((await tile.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
     }
   });
@@ -66,7 +66,7 @@ test.describe('on a phone', () => {
     page,
   }) => {
     await openEdit(page);
-    const caps = page.locator('#kb-analyze g[data-key] rect.lm-key-cap');
+    const caps = page.locator('#kb-analyze g[data-key] rect.lb-key-cap');
     const sizes = await caps.evaluateAll((rects) =>
       rects.map((r) => Math.min(r.getBoundingClientRect().width, r.getBoundingClientRect().height)),
     );
@@ -75,7 +75,7 @@ test.describe('on a phone', () => {
     expect(Math.min(...sizes)).toBeGreaterThanOrEqual(28);
     // A 24-key split board fits a phone with its halves drawn close: nothing to pan.
     const pans = await page
-      .locator('.lm-board-scroll')
+      .locator('.lb-board-scroll')
       .evaluate((el) => el.scrollWidth - el.clientWidth);
     expect(pans).toBeLessThanOrEqual(1);
   });
@@ -92,7 +92,7 @@ test.describe('on a phone', () => {
     // down, it is gone, and the inspector has the room.
     await page.evaluate(() => window.scrollBy(0, 2000));
     await page.waitForTimeout(200);
-    const board = await page.locator('.lm-edit-board').boundingBox();
+    const board = await page.locator('.lb-edit-board').boundingBox();
     expect((board?.y ?? 0) + (board?.height ?? 0)).toBeLessThanOrEqual(0);
   });
 
@@ -112,7 +112,7 @@ test.describe('at a desk', () => {
   test('the inspector docks beside the board', async ({ page }) => {
     await openEdit(page);
     await page.getByRole('button', { name: /^Key LHI:/ }).click();
-    const board = await page.locator('.lm-edit-board').boundingBox();
+    const board = await page.locator('.lb-edit-board').boundingBox();
     const inspector = await page.getByRole('group', { name: 'Edit LHI' }).boundingBox();
     expect(board && inspector).toBeTruthy();
     if (!board || !inspector) return;

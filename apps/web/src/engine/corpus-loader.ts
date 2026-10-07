@@ -1,4 +1,4 @@
-import type { Corpus, CorpusLoader, CorpusManifest } from '@layoutmaster/core';
+import type { Corpus, CorpusLoader, CorpusManifest } from '@layerbench/core';
 
 /**
  * Loads the shipped corpora over HTTP. The index exists because a browser cannot list a directory;

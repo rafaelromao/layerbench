@@ -1,4 +1,4 @@
-import { getPreset, type RuleSet, type StorageAdapter, safeParseRuleSet } from '@layoutmaster/core';
+import { getPreset, type RuleSet, type StorageAdapter, safeParseRuleSet } from '@layerbench/core';
 
 /**
  * Resolve a `?rules=` reference: a preset id, or `saved:<id>` for one the user stored. An

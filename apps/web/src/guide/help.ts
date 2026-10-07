@@ -1,4 +1,4 @@
-import { GLOSSARY_URL } from '@layoutmaster/core';
+import { GLOSSARY_URL } from '@layerbench/core';
 
 /**
  * Where each "?" in the app leads: a page of the guide and, most often, one section of it. Kept in

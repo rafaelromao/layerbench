@@ -1,4 +1,4 @@
-import { type Collection, StorageConflictError } from '@layoutmaster/core';
+import { type Collection, StorageConflictError } from '@layerbench/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { documentFile, GistAdapter, type GistIds, indexFile } from './gist.js';
 import { sha1Hex } from './indexeddb.js';
@@ -118,7 +118,7 @@ describe('gists as storage', () => {
     const create = calls.find((c) => c.method === 'POST');
     expect(create?.url).toBe('https://api.github.com/gists');
     expect(create?.body?.public).toBe(false);
-    expect(create?.body?.description).toBe('LayoutMaster: saved layouts');
+    expect(create?.body?.description).toBe('LayerBench: saved layouts');
     const files = create?.body?.files as Record<string, { content: string }>;
     expect(JSON.parse(files[documentFile('layouts', 'mine')].content)).toEqual({ name: 'Mine' });
     expect(

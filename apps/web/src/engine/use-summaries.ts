@@ -5,7 +5,7 @@ import {
   stableStringify,
   type TextClass,
   toCanonicalJson,
-} from '@layoutmaster/core';
+} from '@layerbench/core';
 import { useEffect, useMemo, useState } from 'react';
 import { useAnalysisClient } from './client-context.js';
 import type { AnalyzeRequest, ReportDTO } from './protocol.js';
@@ -41,7 +41,7 @@ const cache = new Map<string, LayoutSummary>();
  * have been computed by an older engine or rule definition, so they are only shown until the same
  * work is done again in the background, which replaces any that changed.
  */
-const STORE_KEY = 'layoutmaster:summaries';
+const STORE_KEY = 'layerbench:summaries';
 /** Enough for every layout on a few texts and rule sets; the oldest go first. */
 const STORE_LIMIT = 400;
 

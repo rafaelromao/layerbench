@@ -1,7 +1,7 @@
 {
-  "name": "@layoutmaster/core",
+  "name": "@layerbench/core",
   "version": "0.2.0",
-  "description": "LayoutMaster engine: geometry, keymap model, ZMK-faithful typing simulator, n-gram tables, rules, analysis",
+  "description": "LayerBench engine: geometry, keymap model, ZMK-faithful typing simulator, n-gram tables, rules, analysis",
   "license": "MIT",
   "type": "module",
   "main": "./src/index.ts",

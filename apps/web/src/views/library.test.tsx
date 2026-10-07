@@ -1,4 +1,4 @@
-import { BUNDLED_LAYOUTS, bundledLayout, type Layout, toCanonicalJson } from '@layoutmaster/core';
+import { BUNDLED_LAYOUTS, bundledLayout, type Layout, toCanonicalJson } from '@layerbench/core';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -11,7 +11,7 @@ let counter = 0;
 
 /** Each test gets its own database, so saved documents never leak between cases. */
 function freshStorage(): IndexedDbAdapter {
-  return new IndexedDbAdapter(`layoutmaster-library-${++counter}`);
+  return new IndexedDbAdapter(`layerbench-library-${++counter}`);
 }
 
 /** The ranking choices, sort and board filter are in a dialog of their own. */
@@ -306,7 +306,7 @@ describe('Ranking layouts', () => {
     await screen.findByText(/^Lower is better for both/, undefined, { timeout: 60_000 });
     expect(screen.getByText(/come last\.$/)).toBeInTheDocument();
     const qwerty = cards().find((c) => c.querySelector('h3')?.textContent === 'Qwerty');
-    expect(qwerty?.querySelector('.lm-skips')?.textContent).toMatch(/skips \d+\.\d\d% of the text/);
+    expect(qwerty?.querySelector('.lb-skips')?.textContent).toMatch(/skips \d+\.\d\d% of the text/);
     // Magic Romak can leave out a stray º or ñ, but it types every letter Portuguese needs.
     const romak = cards().find((c) => c.querySelector('h3')?.textContent === 'Magic Romak');
     expect(romak?.textContent).not.toMatch(/Cannot type/);
@@ -327,7 +327,7 @@ describe('Choosing which boards are listed', () => {
     expect(screen.queryByRole('button', { name: 'Duplicate Qwerty' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Duplicate Bird' })).toBeInTheDocument();
     expect(screen.getByText(/of [0-9]+ layouts, on the boards chosen/)).toBeInTheDocument();
-    expect(JSON.parse(localStorage.getItem('layoutmaster:session') ?? '{}').state).toMatchObject({
+    expect(JSON.parse(localStorage.getItem('layerbench:session') ?? '{}').state).toMatchObject({
       hiddenBoards: ['3x5+2'],
     });
 

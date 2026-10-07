@@ -834,7 +834,7 @@ function legendText(k: KdKey): string {
 function tapBinding(k: KdKey): Binding | null {
   const tap = k.tap.trim();
   if (tap === '') return { kind: 'none' };
-  // The mark LayoutMaster draws in a macro's corner: the legend is the text it types.
+  // The mark LayerBench draws in a macro's corner: the legend is the text it types.
   if (k.tr.trim() === BADGE.macro && [...tap].length > 1) return { kind: 'macro', symbols: tap };
   const upper = tap.toUpperCase();
   if (CAPS_WORD_NAMES.has(upper)) return { kind: 'caps_word' };
@@ -1087,7 +1087,7 @@ export function importKeymapDrawer(
   }
 
   const layout: Layout = {
-    format: 'layoutmaster/layout@1',
+    format: 'layerbench/layout@1',
     name: opts.name,
     description: `Imported from keymap-drawer onto ${opts.board.description}.`,
     hostLocale: 'symbols',

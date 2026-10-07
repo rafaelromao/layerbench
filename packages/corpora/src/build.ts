@@ -12,8 +12,8 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { normalizeText, scrubContacts, words as splitWords } from '@layoutmaster/core/corpus';
-import { languageKeep } from '@layoutmaster/core/lang';
+import { normalizeText, scrubContacts, words as splitWords } from '@layerbench/core/corpus';
+import { languageKeep } from '@layerbench/core/lang';
 
 const MAX_SAMPLE_BYTES = 1_000_000;
 

@@ -1,4 +1,4 @@
-import { type CorpusManifest, slug } from '@layoutmaster/core';
+import { type CorpusManifest, slug } from '@layerbench/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { HelpLink } from '../components/HelpLink.js';

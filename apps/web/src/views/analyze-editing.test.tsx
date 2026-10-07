@@ -1,4 +1,4 @@
-import { bundledLayout, type Layout, toCanonicalJson } from '@layoutmaster/core';
+import { bundledLayout, type Layout, toCanonicalJson } from '@layerbench/core';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -8,7 +8,7 @@ import { renderRoute, testClient } from '../test/render.js';
 import { setPointerKind } from '../test/setup.js';
 
 let counter = 0;
-const freshStorage = () => new IndexedDbAdapter(`layoutmaster-edit-${++counter}`);
+const freshStorage = () => new IndexedDbAdapter(`layerbench-edit-${++counter}`);
 
 /** Drag one key onto another, the way a pointer does it. */
 async function dragKey(
@@ -1107,15 +1107,15 @@ describe('Edit', () => {
     const dot = () =>
       screen.getByRole('tab', { name: 'Symbols' }).querySelector('span')?.getAttribute('style');
     // By its place in the list, Symbols is the fourth colour.
-    expect(dot()).toContain('var(--lm-layer-4)');
+    expect(dot()).toContain('var(--lb-layer-4)');
 
     await user.click(screen.getByRole('tab', { name: 'Layers' }));
     await user.selectOptions(screen.getByLabelText('Colour of layer sym'), 'teal');
-    expect(dot()).toContain('var(--lm-layer-6)');
+    expect(dot()).toContain('var(--lb-layer-6)');
     expect(screen.getByText('unsaved')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Undo' }));
-    expect(dot()).toContain('var(--lm-layer-4)');
+    expect(dot()).toContain('var(--lb-layer-4)');
     expect(screen.getByLabelText('Colour of layer sym')).toHaveValue('');
     await user.click(screen.getByRole('button', { name: 'Redo' }));
     expect(screen.getByLabelText('Colour of layer sym')).toHaveValue('teal');
@@ -1132,7 +1132,7 @@ describe('Edit', () => {
     const user = userEvent.setup();
     await openMagicRomak();
     // The base layer is always on: nothing reaches it.
-    expect(document.querySelector('#kb-analyze .lm-key-reach')).toBeNull();
+    expect(document.querySelector('#kb-analyze .lb-key-reach')).toBeNull();
 
     await user.click(screen.getByRole('tab', { name: 'Symbols' }));
     expect(
@@ -1190,7 +1190,7 @@ describe('Analyze, while editing', () => {
     });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
     // A pair a card lists as ending on a layer key, such as `t→A2`, and the key it starts on.
-    const card = [...document.querySelectorAll<HTMLButtonElement>('.lm-items li button')].find(
+    const card = [...document.querySelectorAll<HTMLButtonElement>('.lb-items li button')].find(
       (b) => b.getAttribute('aria-haspopup') === 'dialog',
     );
     const letter = card?.textContent?.split('→')[0] ?? '';

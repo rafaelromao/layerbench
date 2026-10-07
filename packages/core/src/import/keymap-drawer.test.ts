@@ -354,7 +354,7 @@ describe('writing a file', () => {
       'Symbols: 0',
     ]);
     const nav: Layout = {
-      format: 'layoutmaster/layout@1',
+      format: 'layerbench/layout@1',
       name: 'Held',
       hostLocale: 'symbols',
       geometry: { preset: '3x5+2' },
@@ -423,7 +423,7 @@ describe('writing a file', () => {
       RHM: { kind: 'kp', symbol: ',', shifted: ';' },
     };
     const layout: Layout = {
-      format: 'layoutmaster/layout@1',
+      format: 'layerbench/layout@1',
       name: 'Kinds',
       hostLocale: 'symbols',
       geometry: { preset: '3x5+2' },
@@ -460,7 +460,7 @@ describe('writing a file', () => {
       L0: { kind: 'kp', symbol: ' ' },
     };
     const layout: Layout = {
-      format: 'layoutmaster/layout@1',
+      format: 'layerbench/layout@1',
       name: 'Quoting',
       hostLocale: 'symbols',
       geometry: { preset: '3x5+2' },
@@ -491,7 +491,7 @@ describe('writing a file', () => {
       L0: { kind: 'kp', symbol: ' ' },
     };
     const layout: Layout = {
-      format: 'layoutmaster/layout@1',
+      format: 'layerbench/layout@1',
       name: 'Marks',
       hostLocale: 'symbols',
       geometry: { preset: '3x5+2' },

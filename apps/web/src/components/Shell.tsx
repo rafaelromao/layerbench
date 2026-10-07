@@ -36,7 +36,7 @@ function useNavSearch(): (to: string) => true | Record<string, string | undefine
 }
 
 /**
- * The landing page: what LayoutMaster is for, how far to trust it and how it compares. It is a
+ * The landing page: what LayerBench is for, how far to trust it and how it compares. It is a
  * static page served beside the app rather than a view of it, so it is an ordinary link.
  */
 const ABOUT = `${import.meta.env.BASE_URL}about/`;
@@ -188,7 +188,7 @@ export function Shell({ children }: { children: ReactNode }) {
           search={navSearch('/library') as never}
           className="btn btn-ghost btn-sm text-base font-semibold"
         >
-          <span className="text-primary">Layout</span>Master
+          <span className="text-primary">Layer</span>Bench
         </Link>
         <nav aria-label="Main" className="ml-2 hidden md:block">
           <ul className="menu menu-horizontal menu-sm gap-1">
@@ -219,7 +219,7 @@ export function Shell({ children }: { children: ReactNode }) {
             can be any of them. */}
         {busy && (
           <progress
-            className="lm-busy progress progress-primary absolute inset-x-0 bottom-0 h-[3px] rounded-none"
+            className="lb-busy progress progress-primary absolute inset-x-0 bottom-0 h-[3px] rounded-none"
             aria-label="Loading data"
           />
         )}

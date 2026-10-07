@@ -77,7 +77,7 @@ A branch can also match on a **tag**: a name a key or macro gives itself, so a b
 tag. The key or macro carries it under **Tag** (for a symbol, under **Shifted symbol, tag**), or
 as `tag:name` at the end of what you type in **Or type**.
 
-The idea, and the way LayoutMaster models it, follows
+The idea, and the way LayerBench models it, follows
 [urob's zmk-adaptive-key](https://github.com/urob/zmk-adaptive-key).
 
 ### Which branch wins
@@ -119,7 +119,7 @@ These are under **More**:
 
 ## Imported keys
 
-A key brought in from a keymap-drawer file keeps its legend when LayoutMaster has no model of what
+A key brought in from a keymap-drawer file keeps its legend when LayerBench has no model of what
 it does: Escape, an arrow, a Bluetooth or media key. It is drawn in grey, types nothing in the
 analysis, and moves, swaps and copies like any other key. Choosing another tile replaces it. A
 layer reached by holding such a key still works: the hold is kept, and only the tap is imported.

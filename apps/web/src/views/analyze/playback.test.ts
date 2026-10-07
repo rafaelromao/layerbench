@@ -1,4 +1,4 @@
-import { compileLayout, explain, magicRomak } from '@layoutmaster/core';
+import { compileLayout, explain, magicRomak } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
 import { typingCombos } from '../../components/Keyboard.js';
 import { playFrames } from './playback.js';

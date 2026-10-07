@@ -19,8 +19,8 @@ async function signedIn(page: Page): Promise<void> {
         login: 'someone-with-a-rather-long-name',
         token: 'not-a-token',
         expiresAt: Date.now() + 3600_000,
-        appSlug: 'layoutmaster-app',
-        upstream: 'rafaelromao/layoutmaster',
+        appSlug: 'layerbench-app',
+        upstream: 'rafaelromao/layerbench',
       }),
     }),
   );
@@ -34,7 +34,7 @@ async function signedIn(page: Page): Promise<void> {
         contentType: 'application/json',
         body: JSON.stringify({
           fork: true,
-          source: { full_name: 'rafaelromao/layoutmaster' },
+          source: { full_name: 'rafaelromao/layerbench' },
         }),
       });
     }
@@ -48,7 +48,7 @@ test('the storage dialog fits the screen when signed in', async ({ page }) => {
   await page.getByRole('button', { name: /^Storage: this browser and GitHub/ }).click();
 
   const dialog = page.getByRole('dialog', { name: 'Storage' });
-  await expect(dialog.getByRole('link', { name: 'Give LayoutMaster access to it' })).toBeVisible();
+  await expect(dialog.getByRole('link', { name: 'Give LayerBench access to it' })).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Sign out' })).toBeVisible();
   expect(await overflow(page)).toBeLessThanOrEqual(0);
 

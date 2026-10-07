@@ -1,5 +1,5 @@
-import type { CorpusManifest } from '@layoutmaster/core';
-import { languageProfile } from '@layoutmaster/core';
+import type { CorpusManifest } from '@layerbench/core';
+import { languageProfile } from '@layerbench/core';
 
 /**
  * Corpora grouped by language, for a picker.

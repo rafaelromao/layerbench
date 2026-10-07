@@ -4,7 +4,7 @@ const PORT = Number(process.env.E2E_PORT ?? 4011);
 
 /**
  * What a unit test cannot see: layout, sizes and overflow, measured in a real browser at a phone's
- * width and at a desk's. `pnpm --filter @layoutmaster/web e2e` starts the dev server itself, or
+ * width and at a desk's. `pnpm --filter @layerbench/web e2e` starts the dev server itself, or
  * reuses one already listening on the port.
  */
 export default defineConfig({

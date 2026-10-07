@@ -20,7 +20,7 @@ export interface AuthEnv {
   UPSTREAM_REPO?: string;
 }
 
-export const DEFAULT_UPSTREAM = 'rafaelromao/layoutmaster';
+export const DEFAULT_UPSTREAM = 'rafaelromao/layerbench';
 
 /** What `POST /api/auth/session` answers. */
 export interface SessionAnswer {
@@ -58,7 +58,7 @@ interface TokenGrant {
 const GITHUB = 'https://github.com';
 const API = 'https://api.github.com';
 /** GitHub refuses API requests without one, and a server's fetch sends none of its own. */
-const USER_AGENT = 'LayoutMaster';
+const USER_AGENT = 'LayerBench';
 /** The page is handed a token only while it has this long left; otherwise it is renewed first. */
 const RENEW_MARGIN_MS = 5 * 60_000;
 const OAUTH_MAX_AGE_S = 600;
@@ -156,8 +156,8 @@ function setCookie(
   return `${cookieName(request, name)}=${value}; Path=/; HttpOnly${secure}; SameSite=${opts.sameSite}; Max-Age=${opts.maxAge}`;
 }
 
-const SESSION = 'lm-session';
-const OAUTH = 'lm-oauth';
+const SESSION = 'lb-session';
+const OAUTH = 'lb-oauth';
 
 // ---------------------------------------------------------------------------------------------
 // Responses

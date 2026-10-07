@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { BUNDLED_LAYOUTS } from '@layoutmaster/core';
+import { BUNDLED_LAYOUTS } from '@layerbench/core';
 import { createMemoryHistory } from '@tanstack/react-router';
 import { describe, expect, it } from 'vitest';
 import { createAppRouter } from '../router.js';

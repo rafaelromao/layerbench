@@ -104,7 +104,7 @@ export function importTextLayout(
     } else warnings.push('No free thumb key for space; space shares a key');
   }
   const layout: Layout = {
-    format: 'layoutmaster/layout@1',
+    format: 'layerbench/layout@1',
     name,
     hostLocale: 'symbols',
     geometry: { preset: presetId },

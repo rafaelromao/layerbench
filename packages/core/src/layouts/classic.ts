@@ -237,7 +237,7 @@ export function classicLayout(def: ClassicDef): Layout {
     const space = Object.entries(def.byKey).find(([, t]) => t === 'space')?.[0];
     if (!space) throw new Error(`${def.name}: no key is space`);
     layout = {
-      format: 'layoutmaster/layout@1',
+      format: 'layerbench/layout@1',
       name: def.name,
       hostLocale: 'symbols',
       geometry: { preset },

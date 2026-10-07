@@ -1,4 +1,4 @@
-import { type CorpusManifest, getPreset, PRESET_IDS, type TextClass } from '@layoutmaster/core';
+import { type CorpusManifest, getPreset, PRESET_IDS, type TextClass } from '@layerbench/core';
 import type { ReactNode } from 'react';
 import { FeatureSwitches } from '../components/FeatureSwitches.js';
 import { HelpLink } from '../components/HelpLink.js';
@@ -132,7 +132,7 @@ export function SampleSelect({
  * own around them: a second corpus to mix in after the corpus, the sample after what counts, and
  * its buttons at the end of the switches' line.
  *
- * Laid out as fields of a toolbar (`lm-toolbar`), into which the fragment is spread: the switches
+ * Laid out as fields of a toolbar (`lb-toolbar`), into which the fragment is spread: the switches
  * take a line of their own, so every view shows them in the same place.
  */
 export function AnalysisSettings({
@@ -158,7 +158,7 @@ export function AnalysisSettings({
 }) {
   return (
     <>
-      <label className="form-control lm-wide min-w-0">
+      <label className="form-control lb-wide min-w-0">
         <span className="label-text text-xs">Corpus</span>
         <CorpusSelect
           corpora={corpora}
@@ -183,7 +183,7 @@ export function AnalysisSettings({
         />
       </label>
       {afterCounts}
-      <div className="lm-wide basis-full flex flex-wrap items-center gap-x-4 gap-y-1">
+      <div className="lb-wide basis-full flex flex-wrap items-center gap-x-4 gap-y-1">
         <FeatureSwitches
           legend={`${verb} with`}
           without={params.without}
@@ -191,7 +191,7 @@ export function AnalysisSettings({
           className="max-sm:w-full"
         />
         {/* Drawn like the feature switches beside them, since they are the same kind of choice. */}
-        <label className="label lm-check cursor-pointer gap-1.5 p-0">
+        <label className="label lb-check cursor-pointer gap-1.5 p-0">
           <input
             type="checkbox"
             name="space"
@@ -201,7 +201,7 @@ export function AnalysisSettings({
           />
           <span className="label-text text-xs">Include space</span>
         </label>
-        <label className="label lm-check cursor-pointer gap-1.5 p-0">
+        <label className="label lb-check cursor-pointer gap-1.5 p-0">
           <input
             type="checkbox"
             name="case"

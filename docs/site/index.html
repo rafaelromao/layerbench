@@ -7,10 +7,10 @@
       content="default-src 'none'; img-src 'self'; style-src 'self'; base-uri 'none'; form-action 'none'"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>LayoutMaster — a keyboard layout analyzer that types like your firmware</title>
+    <title>LayerBench — a keyboard layout analyzer that types like your firmware</title>
     <meta
       name="description"
-      content="LayoutMaster types a text on your ZMK keymap the way the firmware would — layers, one-shots, magic and repeat keys, combos, macros — and measures the key presses that result."
+      content="LayerBench types a text on your ZMK keymap the way the firmware would — layers, one-shots, magic and repeat keys, combos, macros — and measures the key presses that result."
     />
     <meta name="color-scheme" content="dark light" />
     <meta name="theme-color" content="#1d232b" media="(prefers-color-scheme: dark)" />
@@ -23,7 +23,7 @@
 
     <header class="site-header">
       <div class="wrap bar">
-        <a class="wordmark" href="/library"><span>Layout</span>Master</a>
+        <a class="wordmark" href="/library"><span>Layer</span>Bench</a>
         <nav aria-label="On this page">
           <ul>
             <li><a href="#why">Why</a></li>
@@ -44,7 +44,7 @@
           <p class="kicker">Keyboard layout analyzer for ZMK keymaps</p>
           <h1 id="hero-title">Scores the keys you actually press.</h1>
           <p class="lede">
-            LayoutMaster types a text on your keymap the way ZMK would — layers, one-shots, magic and
+            LayerBench types a text on your keymap the way ZMK would — layers, one-shots, magic and
             repeat keys, combos, macros — and measures SFB, SFS, scissors, rolls and Effort on the
             presses that result.
           </p>
@@ -101,7 +101,7 @@
             <p>
               Some analyzers approximate parts of this, by rewriting the text before scoring it or by
               charging a cost for each modifier; <a href="#compare">the comparison</a> says which.
-              LayoutMaster simulates the keymap instead, press by press, each on the layer it lands on,
+              LayerBench simulates the keymap instead, press by press, each on the layer it lands on,
               and scores what was pressed.
             </p>
           </div>
@@ -387,7 +387,7 @@
               <h3>Bring your keymap</h3>
               <p>
                 Import a keymap-drawer YAML file — keymap-drawer reads ZMK and QMK keymaps — and choose
-                which layers to take. Export one back, or LayoutMaster's own JSON. A three-row text
+                which layers to take. Export one back, or LayerBench's own JSON. A three-row text
                 layout works too.
               </p>
             </li>
@@ -412,7 +412,7 @@
               <p>
                 Layouts, rule sets and texts are saved in your browser. Sign in with GitHub under
                 <strong>Storage</strong> to keep them in your own account too: in your fork of
-                layoutmaster, or in secret gists.
+                layerbench, or in secret gists.
               </p>
             </li>
           </ul>
@@ -462,7 +462,7 @@
           <h2 id="trust-title">Why you can trust the numbers</h2>
           <p class="section-lede">
             A number is only useful if it means what it says. This is what stands behind
-            LayoutMaster's, and where in the source to look.
+            LayerBench's, and where in the source to look.
           </p>
           <ul class="trust">
             <li>
@@ -471,7 +471,7 @@
                 All 46 rules name where their definition comes from — the Keyboard Layouts Doc (3rd
                 edition), cyanophage's playground, Keysolve, Genkey, ZMK's documentation — and a test
                 fails if one doesn't. Where the Doc is silent, as it is on layer taps, magic keys and
-                combos, the rule says it is a LayoutMaster addition, and the
+                combos, the rule says it is a LayerBench addition, and the
                 <a href="/guide/metrics">metric glossary</a> explains how it counts.
               </p>
               <p class="evidence">In the source: <code>packages/core/src/rules/references.test.ts</code></p>
@@ -566,7 +566,7 @@
             Checked on 30 September 2026 against each tool's documentation and code.
             <strong>Not found</strong> means we didn't find the feature in what we checked;
             <strong>Claimed</strong> means the tool's own description says so and we couldn't confirm
-            it. <strong>No</strong> is only said of LayoutMaster, and of a tool whose sources show it
+            it. <strong>No</strong> is only said of LayerBench, and of a tool whose sources show it
             plainly.
           </p>
 
@@ -577,7 +577,7 @@
               <thead>
                 <tr>
                   <th scope="col">Feature</th>
-                  <th scope="col" class="lm">LayoutMaster</th>
+                  <th scope="col" class="lb">LayerBench</th>
                   <th scope="col">cyanophage playground</th>
                   <th scope="col">Oxeylyzer</th>
                   <th scope="col">Dario Götz's optimizer</th>
@@ -588,7 +588,7 @@
               <tbody>
                 <tr>
                   <th scope="row">Runs in the browser, nothing to install</th>
-                  <td class="lm"><span class="yes">Yes</span></td>
+                  <td class="lb"><span class="yes">Yes</span></td>
                   <td><span class="yes">Yes</span></td>
                   <td><span class="partial">Partial</span> desktop app; Oxeylyzer 2 is an early web version<sup><a href="#n3">3</a></sup></td>
                   <td><span class="yes">Yes</span><sup><a href="#n5">5</a></sup></td>
@@ -597,7 +597,7 @@
                 </tr>
                 <tr>
                   <th scope="row">Letters on more than one layer</th>
-                  <td class="lm"><span class="yes">Yes</span></td>
+                  <td class="lb"><span class="yes">Yes</span></td>
                   <td><span class="nf">Not found</span></td>
                   <td><span class="partial">Partial</span> shift only<sup><a href="#n4">4</a></sup></td>
                   <td><span class="yes">Yes</span> layers reached by modifiers<sup><a href="#n6">6</a></sup></td>
@@ -606,7 +606,7 @@
                 </tr>
                 <tr>
                   <th scope="row">One-shots and the cost of reaching a layer</th>
-                  <td class="lm"><span class="yes">Yes</span> one-shots simulated, layer presses counted</td>
+                  <td class="lb"><span class="yes">Yes</span> one-shots simulated, layer presses counted</td>
                   <td><span class="nf">Not found</span></td>
                   <td><span class="partial">Partial</span> shift only<sup><a href="#n4">4</a></sup></td>
                   <td><span class="yes">Yes</span> hold, one-shot and long-press costs<sup><a href="#n6">6</a></sup></td>
@@ -615,7 +615,7 @@
                 </tr>
                 <tr>
                   <th scope="row">Magic (adaptive) keys</th>
-                  <td class="lm"><span class="yes">Yes</span> any number, chained</td>
+                  <td class="lb"><span class="yes">Yes</span> any number, chained</td>
                   <td><span class="partial">Partial</span> one, on its magic page<sup><a href="#n1">1</a></sup></td>
                   <td><span class="nf">Not found</span></td>
                   <td><span class="nf">Not found</span></td>
@@ -624,7 +624,7 @@
                 </tr>
                 <tr>
                   <th scope="row">Repeat key</th>
-                  <td class="lm"><span class="yes">Yes</span> and alternate repeat</td>
+                  <td class="lb"><span class="yes">Yes</span> and alternate repeat</td>
                   <td><span class="partial">Partial</span> on its magic page<sup><a href="#n1">1</a></sup></td>
                   <td><span class="partial">Partial</span> through corpus rules<sup><a href="#n4">4</a></sup></td>
                   <td><span class="nf">Not found</span></td>
@@ -633,7 +633,7 @@
                 </tr>
                 <tr>
                   <th scope="row">Combos</th>
-                  <td class="lm"><span class="yes">Yes</span> per layer</td>
+                  <td class="lb"><span class="yes">Yes</span> per layer</td>
                   <td><span class="partial">Partial</span> up to 13, on every layer, on its magic page<sup><a href="#n1">1</a></sup></td>
                   <td><span class="nf">Not found</span></td>
                   <td><span class="nf">Not found</span></td>
@@ -642,7 +642,7 @@
                 </tr>
                 <tr>
                   <th scope="row">Macros that type several letters</th>
-                  <td class="lm"><span class="yes">Yes</span></td>
+                  <td class="lb"><span class="yes">Yes</span></td>
                   <td><span class="partial">Partial</span> a magic output can be several letters<sup><a href="#n1">1</a></sup></td>
                   <td><span class="nf">Not found</span></td>
                   <td><span class="nf">Not found</span></td>
@@ -651,7 +651,7 @@
                 </tr>
                 <tr>
                   <th scope="row">Reads your firmware keymap</th>
-                  <td class="lm"><span class="yes">Yes</span> through keymap-drawer YAML</td>
+                  <td class="lb"><span class="yes">Yes</span> through keymap-drawer YAML</td>
                   <td><span class="nf">Not found</span></td>
                   <td><span class="nf">Not found</span></td>
                   <td><span class="nf">Not found</span></td>
@@ -660,7 +660,7 @@
                 </tr>
                 <tr>
                   <th scope="row">Shows the presses behind a word</th>
-                  <td class="lm"><span class="yes">Yes</span></td>
+                  <td class="lb"><span class="yes">Yes</span></td>
                   <td><span class="nf">Not found</span></td>
                   <td><span class="nf">Not found</span></td>
                   <td><span class="nf">Not found</span></td>
@@ -669,7 +669,7 @@
                 </tr>
                 <tr>
                   <th scope="row">Metrics you can change or define</th>
-                  <td class="lm"><span class="yes">Yes</span> a composer, in the browser</td>
+                  <td class="lb"><span class="yes">Yes</span> a composer, in the browser</td>
                   <td><span class="partial">Partial</span> weights in its optimiser<sup><a href="#n2">2</a></sup></td>
                   <td><span class="partial">Partial</span> weights in a config file<sup><a href="#n3">3</a></sup></td>
                   <td><span class="partial">Partial</span> parameters; new metrics need Rust<sup><a href="#n6">6</a></sup></td>
@@ -678,7 +678,7 @@
                 </tr>
                 <tr>
                   <th scope="row">Your own text</th>
-                  <td class="lm"><span class="yes">Yes</span></td>
+                  <td class="lb"><span class="yes">Yes</span></td>
                   <td><span class="yes">Yes</span> lowercased, some accents folded<sup><a href="#n2">2</a></sup></td>
                   <td><span class="yes">Yes</span></td>
                   <td><span class="yes">Yes</span></td>
@@ -687,7 +687,7 @@
                 </tr>
                 <tr>
                   <th scope="row">Languages</th>
-                  <td class="lm">4, accents kept</td>
+                  <td class="lb">4, accents kept</td>
                   <td>14, mixable<sup><a href="#n2">2</a></sup></td>
                   <td>30 and more<sup><a href="#n3">3</a></sup></td>
                   <td>German, English, Ukrainian<sup><a href="#n6">6</a></sup></td>
@@ -696,7 +696,7 @@
                 </tr>
                 <tr>
                   <th scope="row">A link to the analysis</th>
-                  <td class="lm"><span class="yes">Yes</span></td>
+                  <td class="lb"><span class="yes">Yes</span></td>
                   <td><span class="partial">Partial</span> the magic page's settings aren't in it<sup><a href="#n1">1</a></sup></td>
                   <td><span class="nf">Not found</span></td>
                   <td><span class="partial">Partial</span> publish to its database<sup><a href="#n5">5</a></sup></td>
@@ -705,7 +705,7 @@
                 </tr>
                 <tr>
                   <th scope="row">Generates layouts</th>
-                  <td class="lm"><span class="no">No</span></td>
+                  <td class="lb"><span class="no">No</span></td>
                   <td><span class="partial">Partial</span> a beta optimiser<sup><a href="#n2">2</a></sup></td>
                   <td><span class="yes">Yes</span><sup><a href="#n3">3</a></sup></td>
                   <td><span class="yes">Yes</span><sup><a href="#n5">5</a></sup></td>
@@ -714,7 +714,7 @@
                 </tr>
                 <tr>
                   <th scope="row">Layouts to browse</th>
-                  <td class="lm">22 bundled</td>
+                  <td class="lb">22 bundled</td>
                   <td>a stats page of 20 and more<sup><a href="#n2">2</a></sup></td>
                   <td><span class="nf">Not found</span></td>
                   <td>a database of results<sup><a href="#n5">5</a></sup></td>
@@ -723,7 +723,7 @@
                 </tr>
                 <tr>
                   <th scope="row">Licence</th>
-                  <td class="lm">not yet published</td>
+                  <td class="lb">not yet published</td>
                   <td>none declared<sup><a href="#n2">2</a></sup></td>
                   <td>Apache-2.0<sup><a href="#n3">3</a></sup></td>
                   <td>GPL-3.0<sup><a href="#n5">5</a></sup></td>
@@ -803,7 +803,7 @@
               <h3>When another tool is the better choice</h3>
               <ul class="plain">
                 <li>
-                  <strong>You want a layout generated for you.</strong> LayoutMaster analyzes; it
+                  <strong>You want a layout generated for you.</strong> LayerBench analyzes; it
                   doesn't optimize. Oxeylyzer, Dario Götz's optimizer, Jalo, keycraft and Mana2 do.
                 </li>
                 <li>
@@ -816,7 +816,7 @@
                 </li>
                 <li>
                   <strong>You want scores from your own typing speed.</strong> Trialyzer uses trigram
-                  speeds you measure yourself; LayoutMaster has no timing model.
+                  speeds you measure yourself; LayerBench has no timing model.
                 </li>
                 <li>
                   <strong>You need a language we don't ship.</strong> Oxeylyzer has over 30 and
@@ -858,7 +858,7 @@
                 </li>
                 <li>
                   <a href="https://github.com/caksoylar/keymap-drawer">keymap-drawer</a>, which draws
-                  ZMK and QMK keymaps; LayoutMaster reads and writes its YAML.
+                  ZMK and QMK keymaps; LayerBench reads and writes its YAML.
                 </li>
                 <li>
                   <a
@@ -913,7 +913,7 @@
 
     <footer class="site-footer">
       <div class="wrap">
-        <p class="wordmark"><span>Layout</span>Master</p>
+        <p class="wordmark"><span>Layer</span>Bench</p>
         <p>
           Free to use, and it runs in your browser. <a href="/guide">Guide</a> ·
           <a href="/guide/metrics">Metric glossary</a> ·

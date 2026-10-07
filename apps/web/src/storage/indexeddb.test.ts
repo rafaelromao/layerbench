@@ -1,4 +1,4 @@
-import { bundledLayout, StorageConflictError, slug, toCanonicalJson } from '@layoutmaster/core';
+import { bundledLayout, StorageConflictError, slug, toCanonicalJson } from '@layerbench/core';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { IndexedDbAdapter } from './indexeddb.js';
 
@@ -7,7 +7,7 @@ let adapter: IndexedDbAdapter;
 let counter = 0;
 
 beforeEach(() => {
-  adapter = new IndexedDbAdapter(`layoutmaster-test-${++counter}`);
+  adapter = new IndexedDbAdapter(`layerbench-test-${++counter}`);
 });
 
 describe('saved documents', () => {

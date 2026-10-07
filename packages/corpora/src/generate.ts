@@ -15,7 +15,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { languageProfile } from '@layoutmaster/core/lang';
+import { languageProfile } from '@layerbench/core/lang';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const RAW_DIR = join(here, '..', 'raw');

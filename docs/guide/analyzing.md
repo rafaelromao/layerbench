@@ -66,7 +66,7 @@ and the change applies wherever that rule set is used.
 
 ## How a text is typed
 
-LayoutMaster does not look letters up in a table. It works out the physical presses that produce
+LayerBench does not look letters up in a table. It works out the physical presses that produce
 each character on this keymap (the layer key first, the shift, the combo, the magic key) and
 measures those presses. A letter on a layer costs its layer key too, and a one-shot that is used up
 by the wrong key counts as wasted.
@@ -183,7 +183,7 @@ them. Each can be turned off, given other parameters, copied or removed, and new
 composed. A rule set is saved and shared like a layout.
 
 Every built-in rule names where its definition comes from: a section of the Keyboard Layouts Doc,
-a line of another analyzer's code, or the glossary where the rule is LayoutMaster's own. Open
+a line of another analyzer's code, or the glossary where the rule is LayerBench's own. Open
 **Sources** under a rule in **Rules**, or on its card in **Analyze**.
 
 ### Presets

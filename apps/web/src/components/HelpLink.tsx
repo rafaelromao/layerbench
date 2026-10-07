@@ -10,7 +10,7 @@ export function HelpLink({ help, className = '' }: { help: HelpTopic; className?
       href={helpHref(help)}
       target="_blank"
       rel="noopener"
-      className={`lm-help ${className}`}
+      className={`lb-help ${className}`}
       aria-label={`Help on ${help.topic} (opens in a new tab)`}
       title={`Help on ${help.topic}`}
     >

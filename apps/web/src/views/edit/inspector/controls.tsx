@@ -1,4 +1,4 @@
-import type { CompiledLayout, Mod } from '@layoutmaster/core';
+import type { CompiledLayout, Mod } from '@layerbench/core';
 import { type KeyboardEvent, type ReactNode, type Ref, useEffect, useId, useState } from 'react';
 
 /**
@@ -36,7 +36,7 @@ export function Segment<T extends string>({
 }
 
 export function layerColourVar(index: number): string | undefined {
-  return index > 0 ? `var(--lm-layer-${((index - 1) % 7) + 1})` : undefined;
+  return index > 0 ? `var(--lb-layer-${((index - 1) % 7) + 1})` : undefined;
 }
 
 /** Every layer, as buttons in its own colour. */

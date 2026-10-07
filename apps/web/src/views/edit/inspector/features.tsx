@@ -1,4 +1,4 @@
-import type { Layout, LayoutFeatures, WrappingFeature } from '@layoutmaster/core';
+import type { Layout, LayoutFeatures, WrappingFeature } from '@layerbench/core';
 import { ModChips, Note, Row, TextField, words } from './controls.js';
 
 export function featureTitle(feature: WrappingFeature): string {

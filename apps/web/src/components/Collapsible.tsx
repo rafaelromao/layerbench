@@ -30,7 +30,7 @@ export function Collapsible({
         <h2 className="m-0 font-semibold text-sm">
           <button
             type="button"
-            className="lm-collapse-toggle inline-flex items-center gap-1 cursor-pointer"
+            className="lb-collapse-toggle inline-flex items-center gap-1 cursor-pointer"
             aria-expanded={!collapsed}
             aria-controls={bodyId}
             onClick={() => toggle(id)}

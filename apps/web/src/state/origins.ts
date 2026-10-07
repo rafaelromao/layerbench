@@ -14,7 +14,7 @@ interface OriginsState {
   remember: (inline: string, id: string | null) => void;
 }
 
-const STORE_KEY = 'layoutmaster:origins';
+const STORE_KEY = 'layerbench:origins';
 /** Drafts kept; the oldest are forgotten first. */
 const KEEP = 30;
 

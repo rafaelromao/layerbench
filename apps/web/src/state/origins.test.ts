@@ -21,7 +21,7 @@ describe('the drafts a tab made', () => {
 
   it('keeps them for the tab, across a reload', () => {
     useOrigins.getState().remember('inline:aaa', 'mine');
-    expect(JSON.parse(sessionStorage.getItem('layoutmaster:origins') ?? '{}')).toEqual({
+    expect(JSON.parse(sessionStorage.getItem('layerbench:origins') ?? '{}')).toEqual({
       'inline:aaa': 'mine',
     });
   });

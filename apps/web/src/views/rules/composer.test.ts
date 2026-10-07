@@ -6,7 +6,7 @@ import {
   getPreset,
   normalizeText,
   simulate,
-} from '@layoutmaster/core';
+} from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
 import {
   buildRule,

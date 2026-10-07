@@ -1,4 +1,4 @@
-import type { CorpusManifest } from '@layoutmaster/core';
+import type { CorpusManifest } from '@layerbench/core';
 import { useEffect, useRef } from 'react';
 import type { SortKey } from '../../engine/use-summaries.js';
 import { useSession } from '../../state/session.js';
@@ -35,7 +35,7 @@ function BoardFilter({ boards }: { boards: BoardChoice[] }) {
   return (
     <fieldset className="space-y-1">
       <legend className="text-xs opacity-70 mb-1">Boards</legend>
-      <label className="label lm-check cursor-pointer gap-1.5 p-0">
+      <label className="label lb-check cursor-pointer gap-1.5 p-0">
         <input
           ref={all}
           type="checkbox"
@@ -49,7 +49,7 @@ function BoardFilter({ boards }: { boards: BoardChoice[] }) {
         {boards.map((b) => (
           <label
             key={b.id}
-            className="label lm-check cursor-pointer justify-start gap-1.5 p-0 whitespace-normal"
+            className="label lb-check cursor-pointer justify-start gap-1.5 p-0 whitespace-normal"
           >
             <input
               type="checkbox"
@@ -101,7 +101,7 @@ export function RankingDialog({
             Rank and filter
           </h2>
 
-          <div className="lm-toolbar flex flex-row flex-wrap items-end gap-3">
+          <div className="lb-toolbar flex flex-row flex-wrap items-end gap-3">
             <AnalysisSettings
               params={params}
               onChange={onChange}

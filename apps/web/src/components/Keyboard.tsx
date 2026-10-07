@@ -7,7 +7,7 @@ import {
   legend,
   type ReachKey,
   reachKeys,
-} from '@layoutmaster/core';
+} from '@layerbench/core';
 import {
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -96,7 +96,7 @@ export function drawnX(keys: readonly GeometryKey[]): number[] {
 }
 
 /** A key being pressed takes the accent colour, whatever the heat map had it at. */
-const PRESSED_FILL = 'color-mix(in oklab, var(--color-primary) 62%, var(--lm-key-bg))';
+const PRESSED_FILL = 'color-mix(in oklab, var(--color-primary) 62%, var(--lb-key-bg))';
 
 /**
  * From this heat on, a key's fill is too close to the accent colour for a coloured legend: below
@@ -348,7 +348,7 @@ export function Keyboard({
     [],
   );
   // Arrow markers are referenced by id, so two keyboards on one page must not share one.
-  const markerId = `lm-arrow-${(id ?? generatedId).replace(/[^\w-]/g, '')}`;
+  const markerId = `lb-arrow-${(id ?? generatedId).replace(/[^\w-]/g, '')}`;
   const layerIdx = Math.min(layer, compiled.layers.length - 1);
   const highlighted = useMemo(() => new Set(highlight), [highlight]);
   const pressing = useMemo(() => new Set(pressed), [pressed]);
@@ -442,10 +442,10 @@ export function Keyboard({
   const board = (
     <svg
       id={id}
-      className={`lm-keyboard w-full h-auto select-none ${className ?? ''}`}
+      className={`lb-keyboard w-full h-auto select-none ${className ?? ''}`}
       viewBox={`0 0 ${fmt(view.width)} ${fmt(view.height)}`}
       // How many keys wide the drawing is, for a view that must keep them a finger's size.
-      style={{ '--lm-board-units': view.units.toFixed(2) } as CSSProperties}
+      style={{ '--lb-board-units': view.units.toFixed(2) } as CSSProperties}
       role={interactive ? 'group' : 'img'}
       aria-label="Keyboard layout"
       {...(draggable ? drag.handlers : {})}
@@ -461,7 +461,7 @@ export function Keyboard({
             markerHeight="6"
             orient="auto-start-reverse"
           >
-            <path d="M 0 0 L 10 5 L 0 10 z" style={{ fill: 'var(--lm-arc)' }} />
+            <path d="M 0 0 L 10 5 L 0 10 z" style={{ fill: 'var(--lb-arc)' }} />
           </marker>
         </defs>
       )}
@@ -488,11 +488,11 @@ export function Keyboard({
             key={k.key.id}
             transform={`translate(${fmt(k.cx)} ${fmt(k.cy)}) rotate(${fmt(k.key.rotation)})`}
             className={[
-              'lm-key',
-              k.trans && 'lm-key-trans',
-              k.key.thumb && 'lm-key-thumb',
-              k.selected && 'lm-key-selected',
-              hot && 'lm-key-hot',
+              'lb-key',
+              k.trans && 'lb-key-trans',
+              k.key.thumb && 'lb-key-thumb',
+              k.selected && 'lb-key-selected',
+              hot && 'lb-key-hot',
             ]
               .filter(Boolean)
               .join(' ')}
@@ -522,13 +522,13 @@ export function Keyboard({
               width={fmt(k.w)}
               height={fmt(k.h)}
               rx="9"
-              className={`lm-key-cap${k.highlighted ? ' lm-key-highlight' : ''}${
-                k.pressed ? ' lm-key-pressed' : ''
+              className={`lb-key-cap${k.highlighted ? ' lb-key-highlight' : ''}${
+                k.pressed ? ' lb-key-pressed' : ''
               }`}
               style={{
                 fill: k.pressed
                   ? PRESSED_FILL
-                  : `color-mix(in oklab, var(--lm-key-bg) ${100 - pct}%, var(--lm-heat) ${pct}%)`,
+                  : `color-mix(in oklab, var(--lb-key-bg) ${100 - pct}%, var(--lb-heat) ${pct}%)`,
               }}
             />
             {k.reach && (
@@ -540,7 +540,7 @@ export function Keyboard({
                 width={fmt(k.w - 2 * REACH_INSET)}
                 height={fmt(k.h - 2 * REACH_INSET)}
                 rx="6"
-                className="lm-key-reach"
+                className="lb-key-reach"
                 style={!hot && shownColour ? { stroke: shownColour } : undefined}
               />
             )}
@@ -554,7 +554,7 @@ export function Keyboard({
                 width="10"
                 height="1.6"
                 rx="0.8"
-                className="lm-key-home"
+                className="lb-key-home"
               />
             )}
             {k.shiftedFit && (
@@ -562,7 +562,7 @@ export function Keyboard({
                 x="0"
                 y={fmt(-k.h / 2 + INSET + 3)}
                 textAnchor="middle"
-                className="lm-key-shifted"
+                className="lb-key-shifted"
                 fontSize={k.shiftedFit.size}
               >
                 {k.shiftedFit.lines[0]}
@@ -573,7 +573,7 @@ export function Keyboard({
                 x={fmt(k.w / 2 - 4)}
                 y={fmt(-k.h / 2 + INSET + 3)}
                 textAnchor="end"
-                className="lm-key-badge"
+                className="lb-key-badge"
                 fontSize="9"
               >
                 {k.badge}
@@ -584,7 +584,7 @@ export function Keyboard({
                 x={fmt(-k.w / 2 + 4)}
                 y={fmt(-k.h / 2 + INSET + 3)}
                 textAnchor="start"
-                className="lm-key-number"
+                className="lb-key-number"
                 fontSize="9"
               >
                 {legendNumber(k.number)}
@@ -594,7 +594,7 @@ export function Keyboard({
               x="0"
               y={fmt(tapY)}
               textAnchor="middle"
-              className={`lm-key-tap lm-kind-${k.legend.kind}`}
+              className={`lb-key-tap lb-kind-${k.legend.kind}`}
               fontSize={k.tapFit.size}
               style={tapColour ? { fill: tapColour } : undefined}
             >
@@ -616,8 +616,8 @@ export function Keyboard({
                 x="0"
                 y={fmt(k.h / 2 - INSET - BAND / 2 + 1)}
                 textAnchor="middle"
-                className={`lm-key-hold${
-                  k.reachBand ? ' lm-key-reach-word' : k.legend.holdIsMode ? ' lm-key-mode' : ''
+                className={`lb-key-hold${
+                  k.reachBand ? ' lb-key-reach-word' : k.legend.holdIsMode ? ' lb-key-mode' : ''
                 }`}
                 fontSize={k.holdFit.size}
                 style={holdColour ? { fill: holdColour } : undefined}
@@ -631,7 +631,7 @@ export function Keyboard({
 
       {/* Above the keys, but never in the way of a tap or a drag on them. */}
       {combos.length > 0 && (
-        <g className="lm-combos">
+        <g className="lb-combos">
           {combos.map((c) => {
             const points = c.keys.map(centerOf).filter((p) => p !== null);
             if (points.length === 0) return null;
@@ -642,7 +642,7 @@ export function Keyboard({
             return (
               <g
                 key={c.id}
-                className={`lm-combo${c.active ? ' lm-combo-active' : ''}`}
+                className={`lb-combo${c.active ? ' lb-combo-active' : ''}`}
                 transform={`translate(${fmt(x)} ${fmt(y)})`}
               >
                 <title>{`Combo ${names}: ${c.label}`}</title>
@@ -656,7 +656,7 @@ export function Keyboard({
         </g>
       )}
 
-      <g className="lm-arc">
+      <g className="lb-arc">
         {arcs.map(([from, to], i) => {
           const a = centerOf(from);
           const b = centerOf(to);
@@ -668,7 +668,7 @@ export function Keyboard({
               // biome-ignore lint/suspicious/noArrayIndexKey: an n-gram may repeat the same pair
               key={`${from}-${to}-${i}`}
               d={`M ${fmt(a.x)} ${fmt(a.y)} Q ${fmt(mx)} ${fmt(my)} ${fmt(b.x)} ${fmt(b.y)}`}
-              style={{ stroke: 'var(--lm-arc)' }}
+              style={{ stroke: 'var(--lb-arc)' }}
               strokeWidth="3"
               fill="none"
               opacity="0.85"
@@ -710,18 +710,18 @@ function LegendList({
   colour: string | undefined;
 }) {
   return (
-    <ol className="lm-legend-list" aria-label="Key legend">
+    <ol className="lb-legend-list" aria-label="Key legend">
       {keys.map((k) => (
         <li key={k.key.id}>
-          <span className="lm-legend-number">{legendNumber(k.number as number)}</span>
+          <span className="lb-legend-number">{legendNumber(k.number as number)}</span>
           <span className="font-mono opacity-60">{k.key.id}</span>
           <span>{k.legend.detail}</span>
         </li>
       ))}
       {reach.map((r) => (
-        <li key={r.text} className="lm-legend-reach">
+        <li key={r.text} className="lb-legend-reach">
           <span
-            className="lm-legend-ring"
+            className="lb-legend-ring"
             aria-hidden="true"
             style={colour ? { borderColor: colour } : undefined}
           />

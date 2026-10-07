@@ -6,7 +6,7 @@
  * saved or shared rule set therefore shows the same sources as the catalog rule it was made from,
  * without carrying them.
  *
- * Every locator was checked against its source when it was written. A rule LayoutMaster added
+ * Every locator was checked against its source when it was written. A rule LayerBench added
  * cites the glossary and says so, rather than borrowing another tool's authority.
  */
 export interface RuleReference {
@@ -50,17 +50,17 @@ const zmk = (path: string, page: string): RuleReference => ({
 });
 
 /** Anchors are GitHub's slugs of the glossary's headings; a test holds them to the file. */
-export const GLOSSARY_URL = 'https://github.com/rafaelromao/layoutmaster/blob/main/docs/METRICS.md';
+export const GLOSSARY_URL = 'https://github.com/rafaelromao/layerbench/blob/main/docs/METRICS.md';
 const glossary = (anchor: string, locator: string): RuleReference => ({
-  title: 'LayoutMaster metric glossary',
+  title: 'LayerBench metric glossary',
   url: `${GLOSSARY_URL}#${anchor}`,
   locator,
 });
 
 const THRESHOLDS = kld('§13.4 Stats thresholds — bands');
 const TRIGRAMS = kld('§8.1 Alts, rolls, 3rolls & redir — definition');
-const LAYERS = 'layers-layoutmaster-specific';
-const ADDITION = 'LayoutMaster addition';
+const LAYERS = 'layers-layerbench-specific';
+const ADDITION = 'LayerBench addition';
 
 /** The catalog definitions. */
 export const RULE_REFERENCES: Readonly<Record<string, readonly RuleReference[]>> = {

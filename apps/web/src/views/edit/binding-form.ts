@@ -1,4 +1,4 @@
-import type { Binding, Mod } from '@layoutmaster/core';
+import type { Binding, Mod } from '@layerbench/core';
 
 /** The binding kinds the editor can build from its form. */
 export const EDITABLE_KINDS = [

@@ -6,7 +6,7 @@ import {
   legend,
   legendText,
   stableStringify,
-} from '@layoutmaster/core';
+} from '@layerbench/core';
 
 export interface UsedBinding {
   binding: Binding;
@@ -24,7 +24,7 @@ function isAdaptiveKey(b: Binding): boolean {
 /**
  * Every distinct binding the layout already uses, its magic keys and alt repeats first and then the
  * most used — so any key of an imported layout can be put on another key, including ones
- * LayoutMaster keeps but does not simulate. A magic key is what an author most often wants again
+ * LayerBench keeps but does not simulate. A magic key is what an author most often wants again
  * elsewhere, and among a layout's hundred bindings it would otherwise wait behind "All".
  *
  * Transparent and empty keys are left out: the inspector offers both directly.

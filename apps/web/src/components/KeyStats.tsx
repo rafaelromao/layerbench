@@ -1,4 +1,4 @@
-import type { CompiledLayout, RuleItem } from '@layoutmaster/core';
+import type { CompiledLayout, RuleItem } from '@layerbench/core';
 import { useState } from 'react';
 import { type KeyNumberRow, keyNumbers } from '../engine/key-numbers.js';
 import type { KeyStatsDTO, ReportDTO } from '../engine/protocol.js';
@@ -64,7 +64,7 @@ export function KeyStats({
   const headingId = `key-stats-${keyId}`;
 
   return (
-    <section className="lm-key-stats space-y-2" aria-labelledby={headingId}>
+    <section className="lb-key-stats space-y-2" aria-labelledby={headingId}>
       <div className="flex items-center gap-2">
         <h3 id={headingId} className="text-xs font-semibold">
           Its numbers on {layerName}
@@ -96,12 +96,12 @@ export function KeyStats({
       </p>
 
       {pressed > 0 && (
-        <ul className="lm-key-parts" aria-label={`Parts of ${keyId} on ${layerName}`}>
+        <ul className="lb-key-parts" aria-label={`Parts of ${keyId} on ${layerName}`}>
           {shown.map(({ result, part, share }) => {
             const list = listOf(result.id);
             const body = (
               <>
-                <span className="lm-key-part-label">{shortLabel(result.id, result.label)}</span>
+                <span className="lb-key-part-label">{shortLabel(result.id, result.label)}</span>
                 <span className="font-mono tabular-nums">{formatPart(part, result.unit)}</span>
                 <span className="opacity-60 max-sm:sr-only">
                   {' '}
@@ -112,7 +112,7 @@ export function KeyStats({
                 </span>
               </>
             );
-            const look = `lm-key-part border-l-4 ${qualityBorder(result.band)} ${
+            const look = `lb-key-part border-l-4 ${qualityBorder(result.band)} ${
               part === 0 ? 'opacity-50' : ''
             }`;
             return (

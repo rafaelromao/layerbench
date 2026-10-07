@@ -76,14 +76,14 @@ function SectionView({
   return (
     <details
       id={id}
-      className={`lm-guide-section lm-guide-level-${level}`}
+      className={`lb-guide-section lb-guide-level-${level}`}
       open={open.has(id)}
       onToggle={(e) => onToggle(id, e.currentTarget.open)}
     >
       <summary>
         <Heading>{renderInline(section.heading.text, ctx, id)}</Heading>
       </summary>
-      <div className="lm-guide-body">
+      <div className="lb-guide-body">
         <MarkdownBlocks blocks={section.blocks} ctx={ctx} />
         {section.subsections.map((sub) => (
           <SectionView
@@ -150,11 +150,11 @@ function GuidePageView({ page, hash }: { page: GuidePage; hash: string }) {
   );
 
   return (
-    <article className="lm-guide-page" aria-labelledby="lm-guide-title">
-      <h1 id="lm-guide-title">{renderInline(doc.title, ctx, 'title')}</h1>
+    <article className="lb-guide-page" aria-labelledby="lb-guide-title">
+      <h1 id="lb-guide-title">{renderInline(doc.title, ctx, 'title')}</h1>
       <MarkdownBlocks blocks={doc.intro} ctx={ctx} />
       {every.length > 0 && (
-        <div className="lm-guide-tools">
+        <div className="lb-guide-tools">
           <button
             type="button"
             className="btn btn-xs btn-ghost"
@@ -193,8 +193,8 @@ export function GuideView() {
   const page = guidePage(slug);
 
   return (
-    <div className="lm-guide">
-      <nav aria-label="Guide pages" className="lm-guide-nav">
+    <div className="lb-guide">
+      <nav aria-label="Guide pages" className="lb-guide-nav">
         <ul>
           {GUIDE_PAGES.map((p) => (
             <li key={p.slug}>
@@ -207,7 +207,7 @@ export function GuideView() {
         // A page of its own state: what was open on one page means nothing on the next.
         <GuidePageView key={page.slug} page={page} hash={hash} />
       ) : (
-        <article className="lm-guide-page">
+        <article className="lb-guide-page">
           <h1>No such page</h1>
           <p>
             The guide has no page called <code>{slug}</code>.{' '}

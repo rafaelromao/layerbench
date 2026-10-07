@@ -1,4 +1,4 @@
-import { catalogRule, catalogRules, type Rule, type RuleSet } from '@layoutmaster/core';
+import { catalogRule, catalogRules, type Rule, type RuleSet } from '@layerbench/core';
 import {
   buildRule,
   type ComposerPredicate,

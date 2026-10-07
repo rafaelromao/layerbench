@@ -6,7 +6,7 @@ import {
   type Mod,
   tapLabel,
   translateKeycode,
-} from '@layoutmaster/core';
+} from '@layerbench/core';
 import { type BindingFields, EMPTY_FIELDS } from './binding-form.js';
 
 /**
@@ -362,7 +362,7 @@ function whyNot(b: Binding): string {
     case 'kp':
       return 'a key press whose symbol contains a space';
     case 'raw':
-      return `an imported key (${b.source ?? b.label}) that LayoutMaster keeps but does not simulate`;
+      return `an imported key (${b.source ?? b.label}) that LayerBench keeps but does not simulate`;
     default:
       return 'a binding this syntax has no spelling for';
   }
