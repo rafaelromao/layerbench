@@ -1,0 +1,52 @@
+name: layouts
+
+# Pull requests that add or change a bundled layout (README → Bundled layouts) get the checks a
+# layout must pass, sooner than the whole of CI, and a summary for whoever reviews them: what each
+# layout is, where it comes from, a link that opens it, and how it ranks among the bundled ones. The
+# summary is on the run's page: a pull request from a fork gets a token that cannot comment.
+on:
+  pull_request:
+    paths:
+      - 'packages/core/src/layouts/**'
+      - 'docs/site/index.html'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: layouts-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  layouts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          # The pull request's base, to tell which layout documents it adds or changes.
+          fetch-depth: 0
+      # No version here: the action reads `packageManager` from package.json.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # A document is exactly what LayerBench saves, named by its id, with an author and a linked
+      # source; every bundled layout has a name and an id of its own and types the alphabet and a
+      # space; the layouts written in code still match their documents.
+      - name: Check the layouts
+        run: pnpm --filter @layerbench/core exec vitest run src/layouts src/golden/layouts.test.ts
+      - name: Check the landing page names every one
+        run: pnpm --filter @layerbench/web exec vitest run src/guide/landing.test.ts
+      - name: Summarize them for the review
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          APP_ORIGIN: ${{ vars.APP_ORIGIN }}
+        run: |
+          ids=$(git diff --name-only --diff-filter=AM "$BASE" HEAD -- 'packages/core/src/layouts/documents/*.json' \
+            | sed -e 's#.*/##' -e 's#\.json$##' | tr '\n' ' ')
+          LAYOUT_REPORT="$ids" LAYOUT_REPORT_FILE="$RUNNER_TEMP/layouts.md" \
+            pnpm --filter @layerbench/web exec vitest run src/engine/layout-report.test.ts
+          cat "$RUNNER_TEMP/layouts.md" >> "$GITHUB_STEP_SUMMARY"

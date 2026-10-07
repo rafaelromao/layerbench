@@ -84,7 +84,10 @@ the approval, and the deploy that follows puts it in everyone's Library.
 5. `pnpm test` checks that it is exactly what LayerBench saves, is named by its id, names an author
    and links its source, has a name and an id no other layout has, types the whole alphabet and a
    space, and is on the landing page.
-6. Open the pull request.
+6. Open the pull request. The `layouts` workflow runs those checks in a few minutes, sooner than the
+   whole of CI, and writes a summary on its run's page for the review: each new or changed layout
+   with its source, a link that opens it in the app as it would be bundled, and its Effort and SFB
+   on the texts of its languages, placed among the bundled layouts as the Library ranks them.
 
 ## Develop
 

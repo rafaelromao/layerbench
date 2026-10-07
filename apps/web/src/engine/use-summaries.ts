@@ -94,7 +94,8 @@ function pause(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function summarize(report: ReportDTO): LayoutSummary {
+/** A report as the Library shows it: its two numbers, and what of the text it could not type. */
+export function summarize(report: ReportDTO): LayoutSummary {
   const value = (id: string) => {
     const v = report.results.find((r) => r.id === id)?.value;
     return typeof v === 'number' ? v : null;
@@ -111,7 +112,8 @@ function summarize(report: ReportDTO): LayoutSummary {
   };
 }
 
-function requestFor(layout: Layout, opts: SummaryOptions): AnalyzeRequest {
+/** What the Library asks the engine for, to score a layout. */
+export function requestFor(layout: Layout, opts: SummaryOptions): AnalyzeRequest {
   return {
     layout: toCanonicalJson(layout),
     corpusId: opts.corpusId,
