@@ -52,9 +52,11 @@ If you have a fork of layerbench on GitHub, your work can be kept there instead 
    **Install**.
 4. Back here, open **Storage** and click **Check again**.
 
-**Storage** now names your fork. Each save is two commits, the document and the list of them, to a
-branch called `layerbench-data`, in its `data` folder, so your fork's main branch stays exactly as
-it was. If your fork is public, so is everything saved to it.
+**Storage** now names your fork. Each save commits the document, then the list of them, to a branch
+called `layerbench-data`, so your fork's main branch stays exactly as it was. A layout is kept on it
+where the layouts that come with LayerBench are on main, and a text where theirs are, which makes
+proposing one simpler (see below); rule sets and the lists are kept in its `data` folder. If your
+fork is public, so is everything saved to it.
 
 ## Moving what you saved before
 
@@ -90,7 +92,8 @@ joins everyone's Library once the pull request is merged.
 
 1. In **Analyze**, give the layout its name, its author, and a description that says where it comes
    from, with a link: the author's firmware, keymap or page. **Save** it.
-2. Copy its LayerBench JSON from the editor's **JSON** panel.
+2. If you save to your fork, the layout is already on its `layerbench-data` branch, in the folder it
+   goes in on main. Otherwise copy its LayerBench JSON from the editor's **JSON** panel.
 3. Open a pull request on [layerbench](https://github.com/rafaelromao/layerbench) that adds it as a
    file named by the layout's id, with the two lines of code and the line on the landing page that
    go with it. The [README](../../README.md#bundled-layouts) lists each step.

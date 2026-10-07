@@ -15,7 +15,7 @@ function Where({ target, login }: { target: StorageTarget; login: string }) {
         Saving to{' '}
         <a
           className="link font-mono"
-          href={`https://github.com/${target.repo}/tree/${target.branch}/${target.path}`}
+          href={`https://github.com/${target.repo}/tree/${target.branch}`}
           target="_blank"
           rel="noreferrer"
         >

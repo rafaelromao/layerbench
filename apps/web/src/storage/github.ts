@@ -1,9 +1,7 @@
 import {
   assertDocumentId,
   type Collection,
-  documentPath,
   type IndexEntry,
-  indexPath,
   indexSummary,
   isDocumentId,
   type JsonObject,
@@ -53,8 +51,50 @@ export interface GitHubConfig extends GitHubAccess {
   /** `owner/name`. */
   repo: string;
   branch: string;
-  /** Directory inside the repository that holds the collections. */
-  path: string;
+}
+
+/**
+ * Where a document is kept in the repository. A layout and a text are kept where the bundled ones
+ * are on main, so proposing one for everyone's Library is taking its files to a branch made from
+ * main (README → Bundled layouts, Bundled corpora). A rule set has no such place, and is kept under
+ * `data/`, as each collection's index is, which only the app reads.
+ */
+export function documentFile(collection: Collection, id: string): string {
+  switch (collection) {
+    case 'layouts':
+      return `packages/core/src/layouts/documents/${id}.json`;
+    case 'corpora':
+      return `packages/corpora/raw/${id}.json`;
+    default:
+      return `data/${collection}/${id}.json`;
+  }
+}
+
+/** A text's sample, beside its entry, as the bundled texts' raw files are kept. */
+export function sampleFile(id: string): string {
+  return `packages/corpora/raw/${id}.txt`;
+}
+
+export function indexFile(collection: Collection): string {
+  return `data/${collection}/index.json`;
+}
+
+/** A document as a file someone will read in a pull request: indented, ending in a newline. */
+function documentText(doc: JsonObject): string {
+  return `${JSON.stringify(doc, null, 2)}\n`;
+}
+
+/**
+ * A text is kept as the bundled ones are: its sample in a file of its own, and beside it an entry
+ * shaped like a row of `raw/sources.json`, naming that file. Its counts are left out; they come
+ * from the sample when it is read.
+ */
+function corpusFiles(id: string, doc: JsonObject): { entry: JsonObject; sample: string } {
+  const { sample, symbols: _symbols, words: _words, ...rest } = doc;
+  return {
+    entry: { file: `${id}.txt`, ...rest },
+    sample: typeof sample === 'string' ? sample : '',
+  };
 }
 
 interface CacheEntry {
@@ -93,7 +133,7 @@ export class GitHubAdapter implements StorageAdapter {
    * add a segment, a query or a fragment of its own. Ids are also checked before they get here.
    */
   private url(path: string): string {
-    const segments = [...pathSegments(this.config.path), ...pathSegments(path)];
+    const segments = pathSegments(path);
     const encoded = segments.map(encodeURIComponent).join('/');
     return `${this.repoUrl()}/contents/${encoded}?ref=${encodeURIComponent(this.config.branch)}`;
   }
@@ -170,7 +210,7 @@ export class GitHubAdapter implements StorageAdapter {
     entry: IndexEntry | null,
     message: string,
   ): Promise<void> {
-    const path = indexPath(collection);
+    const path = indexFile(collection);
     const existing = await this.readFile(path);
     // A missing or unreadable index is rebuilt rather than allowed to break the write.
     const current = existing ? readIndex(existing.content) : [];
@@ -181,7 +221,7 @@ export class GitHubAdapter implements StorageAdapter {
   }
 
   async list(collection: Collection): Promise<IndexEntry[]> {
-    const file = await this.readFile(indexPath(collection));
+    const file = await this.readFile(indexFile(collection));
     return file ? readIndex(file.content) : [];
   }
 
@@ -190,10 +230,15 @@ export class GitHubAdapter implements StorageAdapter {
     id: string,
   ): Promise<{ doc: JsonObject; meta: StorageMeta } | null> {
     assertDocumentId(id);
-    const path = documentPath(collection, id);
+    const path = documentFile(collection, id);
     const file = await this.readFile(path);
     if (!file) return null;
-    return { doc: JSON.parse(file.content) as JsonObject, meta: { sha: file.sha, path } };
+    const doc = JSON.parse(file.content) as JsonObject;
+    const meta = { sha: file.sha, path };
+    if (collection !== 'corpora') return { doc, meta };
+    const { file: _file, ...entry } = doc;
+    const sample = await this.readFile(sampleFile(id));
+    return { doc: { ...entry, sample: sample?.content ?? '' }, meta };
   }
 
   async put(
@@ -203,21 +248,34 @@ export class GitHubAdapter implements StorageAdapter {
     opts: { expectedSha?: string; message?: string } = {},
   ): Promise<StorageMeta> {
     assertDocumentId(id);
-    const path = documentPath(collection, id);
+    const path = documentFile(collection, id);
     const message = opts.message ?? `Save ${collection} ${(doc.name as string) ?? id}`;
     const sha = opts.expectedSha ?? (await this.readFile(path))?.sha;
 
-    const written = await this.writeFile(path, JSON.stringify(doc), message, sha);
+    let content = documentText(doc);
+    if (collection === 'corpora') {
+      // The sample first: an entry is only ever written beside the text it names.
+      const { entry, sample } = corpusFiles(id, doc);
+      const samplePath = sampleFile(id);
+      const sampleSha = (await this.readFile(samplePath))?.sha;
+      await this.writeFile(samplePath, sample, `${message} (text)`, sampleSha);
+      content = documentText(entry);
+    }
+    const written = await this.writeFile(path, content, message, sha);
     await this.updateIndex(collection, id, indexSummary(collection, id, doc), message);
     return { sha: written.sha, path, commit: written.commit };
   }
 
   async delete(collection: Collection, id: string, opts: { message?: string } = {}): Promise<void> {
     assertDocumentId(id);
-    const path = documentPath(collection, id);
+    const path = documentFile(collection, id);
     const message = opts.message ?? `Delete ${collection} ${id}`;
     const file = await this.readFile(path);
     if (file) await this.deleteFile(path, message, file.sha);
+    if (collection === 'corpora') {
+      const sample = await this.readFile(sampleFile(id));
+      if (sample) await this.deleteFile(sampleFile(id), `${message} (text)`, sample.sha);
+    }
     await this.updateIndex(collection, id, null, message);
   }
 }

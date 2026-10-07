@@ -2,12 +2,10 @@ import { API, type GitHubAccess, gitHubFetch } from './github-api.js';
 
 /** Saves to a copy of layerbench are commits on this branch, so its main branch stays as it is. */
 export const DATA_BRANCH = 'layerbench-data';
-/** The directory on that branch, laid out as data repositories have always been. */
-export const DATA_PATH = 'data';
 
 /** Where a signed-in user's documents go. */
 export type StorageTarget =
-  | { kind: 'repo'; repo: string; branch: string; path: string; upstream: boolean }
+  | { kind: 'repo'; repo: string; branch: string; upstream: boolean }
   | {
       kind: 'gist';
       /** A fork that exists but that the app has not been given, so the dialog can say so. */
@@ -145,7 +143,7 @@ export async function findStorageTarget(
 
   if (chosen) {
     await ensureDataBranch(access, chosen.repo);
-    return { kind: 'repo', branch: DATA_BRANCH, path: DATA_PATH, ...chosen };
+    return { kind: 'repo', branch: DATA_BRANCH, ...chosen };
   }
 
   // A public fork the app cannot write to is still visible, which is worth telling the user.

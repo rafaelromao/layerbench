@@ -236,7 +236,6 @@ describe('the page frame', () => {
         kind: 'repo',
         repo: 'you/layerbench',
         branch: 'layerbench-data',
-        path: 'data',
         upstream: false,
       },
       targetStatus: 'idle',
@@ -248,7 +247,7 @@ describe('the page frame', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Storage' });
     expect(within(dialog).getByRole('link', { name: 'you/layerbench' })).toHaveAttribute(
       'href',
-      'https://github.com/you/layerbench/tree/layerbench-data/data',
+      'https://github.com/you/layerbench/tree/layerbench-data',
     );
     expect(within(dialog).queryByRole('link', { name: /Give LayerBench access/ })).toBeNull();
   });

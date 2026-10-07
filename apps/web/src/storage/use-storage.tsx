@@ -25,7 +25,6 @@ export function remoteStorage(login: string, target: StorageTarget): StorageAdap
         ...gitHubAccess,
         repo: target.repo,
         branch: target.branch,
-        path: target.path,
       })
     : new GistAdapter(gitHubAccess, gistIds(login));
 }

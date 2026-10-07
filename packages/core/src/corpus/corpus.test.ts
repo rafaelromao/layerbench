@@ -54,6 +54,14 @@ describe('corpora', () => {
     expect(back.name).toBe('Doc');
   });
 
+  it('works out the counts of a document kept without them, as a text in a repository is', () => {
+    const c = customCorpus(FIXTURE_EN.slice(0, 400), { name: 'Doc', language: 'en' });
+    const { symbols: _symbols, words: _words, ...kept } = corpusToDoc(c);
+    const back = corpusFromDoc('saved', kept);
+    expect(back.words).toBe(c.words);
+    expect(back.symbols).toBe(c.symbols);
+  });
+
   it('interleaves sentences when mixing corpora', () => {
     const en = customCorpus(FIXTURE_EN, { name: 'EN', language: 'en' });
     const pt = customCorpus(FIXTURE_PT, { name: 'PT', language: 'pt-BR' });

@@ -56,7 +56,10 @@ Analyze writes unsaved edits into its link that way.
 - `IndexedDbAdapter` always holds a copy, written first.
 - When someone is signed in, `CompositeStorage` adds a remote copy:
   - `GitHubAdapter`, using the Contents API, on the `layerbench-data` branch of their fork, or of
-    this repository for its owner.
+    this repository for its owner. A layout is kept in `packages/core/src/layouts/documents/` and a
+    text in `packages/corpora/raw/` (its sample as `<id>.txt`, beside an entry shaped like a row of
+    `sources.json`), where the bundled ones are on main, so a pull request can take them as they
+    are; rule sets and each collection's index are kept in `data/`.
   - `GistAdapter`, with one secret gist per collection, otherwise.
 - `target.ts` decides between the two from the app's installations.
 
@@ -73,10 +76,12 @@ the approval, and the deploy that follows puts it in everyone's Library.
 
 1. In the app, give the layout its name, its author, and a description that links to where it comes
    from: the author's firmware, keymap or page. Save it, and copy its LayerBench JSON from the
-   editor's **JSON** panel. A layout you saved while signed in is also on your data branch, as
-   `data/layouts/<id>.json`, when Storage saves to your repository; otherwise it is in your
-   "LayerBench: saved layouts" gist.
-2. Add it, as copied, as `packages/core/src/layouts/documents/<id>.json`, named by its `"id"`.
+   editor's **JSON** panel. When Storage saves to your repository, it is already on your data
+   branch as `packages/core/src/layouts/documents/<id>.json`, where it goes on main; otherwise it is
+   in your "LayerBench: saved layouts" gist.
+2. On a branch made from main, add it as `packages/core/src/layouts/documents/<id>.json`, named by
+   its `"id"`: as copied, or taken from your data branch with
+   `git checkout layerbench-data -- packages/core/src/layouts/documents/<id>.json`.
 3. In `packages/core/src/layouts/documents.ts`, import the file and add it to `DOCUMENTS` under its
    id.
 4. Name it on the landing page, in the list under the layouts heading in `docs/site/index.html`,
@@ -101,10 +106,14 @@ approval.
    of text you would paste or upload in **Corpus**. Its language needs a profile in
    `packages/core/src/lang/profiles.ts`; [packages/corpora/README.md](packages/corpora/README.md#adding-a-language)
    says how to add one.
+   A text saved in **Corpus** while Storage saves to your repository is already on your data
+   branch as `packages/corpora/raw/<id>.txt`, with its entry beside it as `<id>.json`.
 2. Add its entry to `raw/sources.json`, under an id of lower-case words and hyphens: `file`, `name`,
    `language`, `description`, `source` with a link, and `license`, starting `CC0`, `CC BY 4.0`,
-   `CC BY-SA 4.0` (with its version) or `Public domain`, since the text is published with the app; `generated: true` marks a text made from
-   word frequencies. A source not yet credited goes in the credits at the foot of the landing page.
+   `CC BY-SA 4.0` (with its version) or `Public domain`, since the text is published with the app;
+   `generated: true` marks a text made from word frequencies. A saved text's `<id>.json` is that
+   entry with its licence and source still to fill in. A source not yet credited goes in the
+   credits at the foot of the landing page.
 3. `pnpm corpora <id>` builds it. Commit `apps/web/public/corpora/<id>/` and `index.json` with it.
 4. Open the pull request. `pnpm test` checks the entry, and that what the app serves matches it. The
    `corpora` workflow also builds every text again, which must change nothing, and writes a summary

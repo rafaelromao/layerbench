@@ -6,8 +6,14 @@ const CONFIG = {
   token: async () => 'secret-token',
   repo: 'you/data',
   branch: 'main',
-  path: 'data',
 };
+
+/** The text a write sends, decoded. */
+function written(call: Call | undefined): string {
+  return new TextDecoder().decode(
+    Uint8Array.from(atob(call?.body?.content as string), (c) => c.charCodeAt(0)),
+  );
+}
 
 interface Call {
   url: string;
@@ -49,7 +55,7 @@ afterEach(() => {
 });
 
 describe('a repository as storage', () => {
-  it('addresses files under the configured branch and directory', async () => {
+  it("addresses a collection's index under data/, on the configured branch", async () => {
     const adapter = new GitHubAdapter(CONFIG);
     await adapter.list('layouts');
 
@@ -109,17 +115,13 @@ describe('a repository as storage', () => {
 
     const writes = calls.filter((c) => c.method === 'PUT');
     expect(writes).toHaveLength(2);
-    expect(writes[0].url).toContain('data/layouts/mine.json');
+    expect(writes[0].url).toContain('/contents/packages/core/src/layouts/documents/mine.json?');
     expect(writes[0].body?.message).toBe('Save layouts Mine');
     expect(writes[0].body?.branch).toBe('main');
 
-    expect(writes[1].url).toContain('data/layouts/index.json');
+    expect(writes[1].url).toContain('/contents/data/layouts/index.json?');
     expect(writes[1].body?.message).toBe('Save layouts Mine (index)');
-    const index = JSON.parse(
-      new TextDecoder().decode(
-        Uint8Array.from(atob(writes[1].body?.content as string), (c) => c.charCodeAt(0)),
-      ),
-    );
+    const index = JSON.parse(written(writes[1]));
     expect(index).toHaveLength(1);
     expect(index[0]).toMatchObject({ id: 'mine', name: 'Mine', layers: 2 });
   });
@@ -211,21 +213,19 @@ describe('a repository as storage', () => {
     expect(calls).toEqual([]);
   });
 
-  it('encodes every path segment, so a directory or branch name cannot add one', async () => {
-    const adapter = new GitHubAdapter({ ...CONFIG, path: 'my data/ü', branch: 'feature/x#1' });
-    await adapter.get('layouts', 'mine');
+  it('encodes the branch, so its name cannot add a query or a fragment', async () => {
+    const adapter = new GitHubAdapter({ ...CONFIG, branch: 'feature/x#1' });
+    await adapter.get('rulesets', 'mine');
     expect(calls[0].url).toBe(
-      'https://api.github.com/repos/you/data/contents/my%20data/%C3%BC/layouts/mine.json?ref=feature%2Fx%231',
+      'https://api.github.com/repos/you/data/contents/data/rulesets/mine.json?ref=feature%2Fx%231',
     );
   });
 
-  it('refuses a repository or directory that is not a plain path', async () => {
+  it('refuses a repository that is not a plain name', async () => {
     for (const repo of ['you', 'you/data/x', 'you/..', '../data', 'you/data?x']) {
       const adapter = new GitHubAdapter({ ...CONFIG, repo });
       await expect(adapter.list('layouts')).rejects.toThrow('invalid repository name');
     }
-    const adapter = new GitHubAdapter({ ...CONFIG, path: 'data/../..' });
-    await expect(adapter.list('layouts')).rejects.toThrow('invalid repository path');
     expect(calls).toEqual([]);
   });
 
@@ -259,5 +259,74 @@ describe('a repository as storage', () => {
       expect(call.url).not.toContain('secret-token');
       expect(JSON.stringify(call.body)).not.toContain('secret-token');
     }
+  });
+});
+
+describe('where each kind of document is kept', () => {
+  const saved = () => json(201, { content: { sha: 'new' }, commit: { sha: 'c' } });
+
+  it('keeps a layout where bundled layouts are, indented as a pull request shows it', async () => {
+    responder = (call) => (call.method === 'GET' ? json(404, {}) : saved());
+    await new GitHubAdapter(CONFIG).put('layouts', 'mine', { name: 'Mine', layers: [] });
+    const doc = calls.find((c) => c.method === 'PUT');
+    expect(doc?.url).toContain('/contents/packages/core/src/layouts/documents/mine.json?');
+    expect(written(doc)).toBe('{\n  "name": "Mine",\n  "layers": []\n}\n');
+  });
+
+  it('keeps a rule set under data/, as main has no place for one', async () => {
+    responder = (call) => (call.method === 'GET' ? json(404, {}) : saved());
+    await new GitHubAdapter(CONFIG).put('rulesets', 'mine', { name: 'Mine', rules: [] });
+    expect(calls.find((c) => c.method === 'PUT')?.url).toContain(
+      '/contents/data/rulesets/mine.json?',
+    );
+  });
+
+  it('keeps a text as the raw texts are: its sample, and an entry beside it naming it', async () => {
+    responder = (call) => (call.method === 'GET' ? json(404, {}) : saved());
+    await new GitHubAdapter(CONFIG).put('corpora', 'notes', {
+      name: 'Notes',
+      language: 'en',
+      license: 'user-provided',
+      sample: 'Ação, then more.',
+      symbols: 14,
+      words: 3,
+    });
+
+    const [sample, entry, index] = calls.filter((c) => c.method === 'PUT');
+    expect(sample.url).toContain('/contents/packages/corpora/raw/notes.txt?');
+    expect(written(sample)).toBe('Ação, then more.');
+    expect(entry.url).toContain('/contents/packages/corpora/raw/notes.json?');
+    // Shaped like a row of raw/sources.json; the counts come from the sample.
+    expect(JSON.parse(written(entry))).toEqual({
+      file: 'notes.txt',
+      name: 'Notes',
+      language: 'en',
+      license: 'user-provided',
+    });
+    expect(index.url).toContain('/contents/data/corpora/index.json?');
+    expect(JSON.parse(written(index))[0]).toMatchObject({ id: 'notes', words: 3 });
+  });
+
+  it('reads a text back from its entry and its sample', async () => {
+    responder = (call) =>
+      call.url.includes('notes.txt')
+        ? json(200, { content: b64('Ação, then more.'), sha: 'txt' })
+        : json(200, {
+            content: b64('{"file":"notes.txt","name":"Notes","language":"en"}'),
+            sha: 'entry',
+          });
+    const loaded = await new GitHubAdapter(CONFIG).get('corpora', 'notes');
+    expect(loaded?.doc).toEqual({ name: 'Notes', language: 'en', sample: 'Ação, then more.' });
+    expect(loaded?.meta.sha).toBe('entry');
+  });
+
+  it('removes a text with its sample', async () => {
+    responder = (call) =>
+      call.method === 'GET' ? json(200, { content: b64('[]'), sha: 'x' }) : saved();
+    await new GitHubAdapter(CONFIG).delete('corpora', 'notes');
+    expect(calls.filter((c) => c.method === 'DELETE').map((c) => c.url)).toEqual([
+      expect.stringContaining('/contents/packages/corpora/raw/notes.json?'),
+      expect.stringContaining('/contents/packages/corpora/raw/notes.txt?'),
+    ]);
   });
 });

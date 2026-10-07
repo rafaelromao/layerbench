@@ -41,8 +41,14 @@ export function corpusToDoc(c: Corpus): Record<string, unknown> {
   };
 }
 
+/**
+ * The corpus a stored document holds. A document kept without its counts, as a text is in a
+ * repository, has them worked out from its sample, as `customCorpus` works them out.
+ */
 export function corpusFromDoc(id: string, doc: Record<string, unknown>): Corpus {
   const sample = (doc.sample as string) ?? '';
+  const words = typeof doc.words === 'number' ? doc.words : splitWords(sample).length;
+  const symbols = typeof doc.symbols === 'number' ? doc.symbols : [...sample].length - words + 1;
   return {
     id,
     name: (doc.name as string) ?? id,
@@ -51,8 +57,8 @@ export function corpusFromDoc(id: string, doc: Record<string, unknown>): Corpus 
     source: doc.source as string | undefined,
     description: doc.description as string | undefined,
     sample,
-    symbols: (doc.symbols as number) ?? 0,
-    words: (doc.words as number) ?? 0,
+    symbols,
+    words,
     custom: true,
   };
 }

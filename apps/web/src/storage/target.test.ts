@@ -60,7 +60,6 @@ describe('where a signed-in user’s documents go', () => {
       kind: 'repo',
       repo: UPSTREAM,
       branch: DATA_BRANCH,
-      path: 'data',
       upstream: true,
     });
   });
