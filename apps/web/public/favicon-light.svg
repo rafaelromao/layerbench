@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>LayerBench</title>
+  <rect x="4" y="6" width="56" height="54" rx="12" fill="#c43e00"/>
+  <rect x="4" y="4" width="56" height="48" rx="12" fill="#ff6700"/>
+  <text x="32" y="36" text-anchor="middle" font-family="ui-monospace, Menlo, monospace" font-size="24" font-weight="700" fill="#fff7ed">LB</text>
+</svg>

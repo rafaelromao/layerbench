@@ -7,14 +7,26 @@ export type ThemeChoice = 'system' | 'light' | 'dark';
  */
 export function applyTheme(choice: ThemeChoice): void {
   const root = document.documentElement;
-  if (choice === 'system') {
-    const dark = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
-    root.setAttribute('data-theme', dark ? 'dark' : 'light');
-    root.setAttribute('data-theme-source', 'system');
-  } else {
-    root.setAttribute('data-theme', choice);
-    root.setAttribute('data-theme-source', 'user');
-  }
+  const theme =
+    choice === 'system'
+      ? (window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false)
+        ? 'dark'
+        : 'light'
+      : choice;
+  root.setAttribute('data-theme', theme);
+  root.setAttribute('data-theme-source', choice === 'system' ? 'system' : 'user');
+  applyIcon(theme);
+}
+
+/**
+ * The tab's icon, in the colours of the theme in force. The page starts with one that follows the
+ * system, as the landing page's does; a theme chosen here is one the system cannot know about.
+ */
+function applyIcon(theme: 'light' | 'dark'): void {
+  const link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+  const href = link?.getAttribute('href');
+  if (!link || !href) return;
+  link.setAttribute('href', href.replace(/favicon(-light|-dark)?\.svg$/, `favicon-${theme}.svg`));
 }
 
 /** Keep "system" in step with the operating system for as long as it is selected. */
