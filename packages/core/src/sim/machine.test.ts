@@ -381,3 +381,37 @@ describe('MachineState.matches — two presses that leave the board alike', () =
     expect(held.m.state.matches(after((u) => u.hold('LBI')))).toBe(true);
   });
 });
+
+describe('Machine — magic keys', () => {
+  it('takes the first trigger that matches, in the order they are written', () => {
+    const afterA = { afterAny: ['a'], binding: { kind: 'kp' as const, symbol: 'v' } };
+    const afterAOrB = { afterAny: ['a', 'b'], binding: { kind: 'kp' as const, symbol: 'w' } };
+    const magic = (triggers: (typeof afterA)[]) => ({
+      kind: 'adaptive' as const,
+      default: { kind: 'kp' as const, symbol: 'h' },
+      triggers,
+    });
+    const { tap } = machineFor(
+      mini([
+        {
+          id: 'base',
+          bindings: {
+            LHP: { kind: 'kp', symbol: 'a' },
+            LHR: { kind: 'kp', symbol: 'b' },
+            LHM: magic([afterA, afterAOrB]),
+            LHI: magic([afterAOrB, afterA]),
+            L0: { kind: 'kp', symbol: ' ' },
+          },
+        },
+      ]),
+    );
+    // After a both triggers match: the one written first wins, either way round.
+    tap('LHP');
+    expect(tap('LHM').symbols).toBe('v');
+    tap('LHP');
+    expect(tap('LHI').symbols).toBe('w');
+    // After b only the second matches.
+    tap('LHR');
+    expect(tap('LHM').symbols).toBe('w');
+  });
+});
