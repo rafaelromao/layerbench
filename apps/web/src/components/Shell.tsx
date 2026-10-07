@@ -126,7 +126,8 @@ function useFocusOnRouteChange() {
 /**
  * The views, behind one button on a narrow screen. A `<details>` stays open until it is told
  * otherwise, so it is closed when a view is chosen, when the pointer goes down anywhere else, and
- * on Escape — and after any navigation, whatever caused it.
+ * on Escape — and after any navigation, whatever caused it. It opens across the screen under the
+ * header rather than from the button, which sits too far in for a list that wide to fit beside it.
  */
 function MobileMenu() {
   const menu = useRef<HTMLDetailsElement>(null);
@@ -142,7 +143,7 @@ function MobileMenu() {
   return (
     <details ref={menu} className="dropdown dropdown-end md:hidden ml-2">
       <summary className="btn btn-ghost btn-sm">Menu</summary>
-      <div className="dropdown-content bg-base-100 rounded-box z-30 w-56 p-2 shadow space-y-2">
+      <div className="dropdown-content fixed inset-x-3 top-12 bg-base-100 rounded-box z-30 p-2 shadow space-y-2">
         <ul className="menu w-full p-0">
           {NAV.map((item) => (
             <li key={item.to}>
@@ -199,7 +200,10 @@ export function Shell({ children }: { children: ReactNode }) {
           search={navSearch('/library') as never}
           className="btn btn-ghost btn-sm text-base font-semibold"
         >
-          <span className="text-primary">Layer</span>Bench
+          {/* One word, as on the landing page: the button would set its two parts apart. */}
+          <span>
+            <span className="text-primary">Layer</span>Bench
+          </span>
         </Link>
         <nav aria-label="Main" className="ml-2 hidden md:block">
           <ul className="menu menu-horizontal menu-sm gap-1">
