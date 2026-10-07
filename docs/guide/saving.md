@@ -3,6 +3,26 @@
 Everything you save — layouts, rule sets and corpora — is kept in this browser. To have it on every
 browser you use, sign in with GitHub, and it is kept in your GitHub account as well.
 
+## Saving your own layouts
+
+A layout of your own starts in **Library**, in one of three ways:
+
+- **Duplicate**, on any layout's card, copies it and opens the copy in **Analyze**.
+- **New layout** starts one on the board you choose, empty or from Qwerty to rearrange, and
+  **Create and edit** opens it.
+- **Import** takes a keymap-drawer file, LayerBench JSON or a layout written as text: **Open in
+  analyzer** to edit it first, **Save to library** to keep it as it is. See
+  [Importing and exporting](importing.md).
+
+Edit it in **Analyze**, then press **Save**, beside its name at the top. Until you do, the name is
+marked *unsaved*, and your edits live only in the page's link. Once saved, it is listed in
+**Library** among the layouts that come with the app, marked *saved* and ranked with them, and
+**Delete**, on its card, removes it.
+
+A saved layout is kept in this browser. To keep it anywhere else, sign in with GitHub, below; or
+copy its link; or copy its LayerBench JSON from the editor's **JSON** panel and keep the text, which
+**Import** reads back.
+
 ## Signing in with GitHub
 
 1. Click **Storage** in the header.
@@ -52,3 +72,17 @@ unsaved edits included, even for a layout that was never saved. Nobody needs to 
 A layout that was never saved makes a long link: the whole layout is in it, after the `#`. Copy the
 whole address, and if a link opens on a different layout than it should, check that nothing after
 the `#` was lost on the way.
+
+## Suggesting a layout for the Library
+
+Each layout that comes with LayerBench is copied from where its author published it, and its card
+cites that source, so anyone can check it. To suggest one:
+
+1. Open it in **Analyze**, saved or from its link, and check that it types what its author's keymap
+   types.
+2. Open the [layout suggestion form](https://github.com/rafaelromao/layerbench/issues/new?template=layout-request.yml) on GitHub, which needs a GitHub account.
+3. Give its name, its author, and where the author published it: a firmware repository, a keymap
+   file, a page. Paste the layout's link, or its LayerBench JSON from the **JSON** panel.
+
+It is added once it can be checked against that source. A layout of your own is welcome too, once
+it is published somewhere anyone can read it.

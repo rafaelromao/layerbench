@@ -49,7 +49,9 @@ LayerBench's own JSON. See [Importing and exporting](importing.md).
 
 ## Keeping and sharing your work
 
-Saved layouts, rule sets and corpora stay in this browser. Sign in with GitHub, under **Storage** in
-the header, to keep them in your GitHub account too, in gists or in your fork of layerbench. A
-link carries everything a view shows, unsaved edits included, so copying the address shares it. See
+Duplicate a layout, start one or import yours, and **Save** keeps it in **Library**. Saved
+layouts, rule sets and corpora stay in this browser. Sign in with GitHub, under **Storage** in the
+header, to keep them in your GitHub account too, in gists or in your fork of layerbench. A link
+carries everything a view shows, unsaved edits included, so copying the address shares it. A
+layout you would like to come with the app can be suggested for the Library. See
 [Saving and sharing](saving.md).

@@ -65,6 +65,23 @@ The sign-in state, the trip to GitHub, the in-memory access token and the sealed
 keeps are in `apps/web/src/auth/github-session.ts`. The server half is
 `apps/web/src/server/github-auth.ts`. SPEC §4.3 has the details.
 
+## Bundled layouts
+
+The layouts that come with the app are data in `packages/core/src/layouts/`, each copied from where
+its author published it. People suggest new ones through the
+[layout suggestion form](https://github.com/rafaelromao/layerbench/issues/new?template=layout-request.yml)
+([Suggesting a layout](docs/guide/saving.md#suggesting-a-layout-for-the-library) in the guide). To
+add one:
+
+1. Write it as a `ClassicDef`: in `classic.ts` for a letter block on a standard board, in
+   `small.ts` for thumb letters, chords, magic and repeat keys, or a board of its own. Give it an
+   `id`, `name`, `author`, `languages` and a `source`, the firmware or page it was copied from;
+   where the source left something out, `description` says what.
+2. Name it on the landing page, in the list under the layouts heading in `docs/site/index.html`,
+   and update the count in that heading.
+3. `pnpm goldens` writes its document to `packages/core/golden/layouts/`. `pnpm test` checks that
+   it types the whole alphabet and a space, and that the landing page names every bundled layout.
+
 ## Develop
 
 ```bash

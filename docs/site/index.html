@@ -188,6 +188,67 @@
         </div>
       </section>
 
+      <section id="only" aria-labelledby="only-title">
+        <div class="wrap">
+          <h2 id="only-title">What no other analyzer we checked does</h2>
+          <p class="section-lede">
+            Five other analyzers, checked against their documentation and code on 30 September
+            2026. <a href="#compare">The comparison</a> has each of them, row by row, with sources.
+          </p>
+          <ul class="cards">
+            <li>
+              <h3>Magic keys, as many as you have</h3>
+              <p>
+                Each with its own rules, chained, on any layer, typing one letter or several.
+                Elsewhere we found one at most.
+              </p>
+            </li>
+            <li>
+              <h3>Repeat and alternate repeat</h3>
+              <p>
+                Pressed as your keymap presses them, rather than rewritten into the text before it
+                is scored.
+              </p>
+            </li>
+            <li>
+              <h3>Combos per layer, macros of several letters</h3>
+              <p>
+                A chord that types a letter no key has, on the layers it works on; a key that types
+                <em>qu</em> and hands the next key to another layer.
+              </p>
+            </li>
+            <li>
+              <h3>Your firmware keymap, read in</h3>
+              <p>
+                keymap-drawer's YAML of a ZMK or QMK keymap, layers and combos included. None of
+                the others reads one.
+              </p>
+            </li>
+            <li>
+              <h3>The presses behind any word</h3>
+              <p>
+                Type a word and the board plays it, press by press, on the layer each lands on, with
+                what each one costs.
+              </p>
+            </li>
+            <li>
+              <h3>Metrics you compose</h3>
+              <p>
+                Every rule is data: switch it off, move its thresholds, or write a new one, in the
+                browser. Elsewhere, weights in a file, or new code.
+              </p>
+            </li>
+            <li>
+              <h3>One link, the whole analysis</h3>
+              <p>
+                The layout, even one never saved, the text, the rules and every switch, in an
+                address you can send.
+              </p>
+            </li>
+          </ul>
+        </div>
+      </section>
+
       <section id="simulates" aria-labelledby="simulates-title">
         <div class="wrap">
           <h2 id="simulates-title">Your keymap, not a letter map</h2>
@@ -410,9 +471,11 @@
             <li>
               <h3>Keep it yours</h3>
               <p>
-                Layouts, rule sets and texts are saved in your browser. Sign in with GitHub under
-                <strong>Storage</strong> to keep them in your own account too: in your fork of
-                layerbench, or in secret gists.
+                Duplicate a layout, start one, or import yours, then <strong>Save</strong> it: it
+                joins the Library, ranked with the rest. It is kept in your browser; sign in with
+                GitHub under <strong>Storage</strong> to keep it in your own account too, in your
+                fork of layerbench or in secret gists.
+                <a href="/guide/saving">How to save</a>
               </p>
             </li>
           </ul>
@@ -454,6 +517,10 @@
             <li><a href="/analyze?layout=caksoylar&amp;corpus=en-general">Cem Aksoylar&#39;s Colemak-DH <span>caksoylar</span></a></li>
             <li><a href="/analyze?layout=ben-vallack-piano&amp;corpus=en-general">Ben Vallack Piano <span>Ben Vallack</span></a></li>
           </ul>
+          <p class="layouts-more">
+            Each is copied from where its author published it, and cites it. Missing one?
+            <a href="https://github.com/rafaelromao/layerbench/issues/new?template=layout-request.yml">Suggest a layout</a> for the Library.
+          </p>
         </div>
       </section>
 
@@ -715,7 +782,7 @@
                 </tr>
                 <tr>
                   <th scope="row">Layouts to browse</th>
-                  <td class="lb">22 bundled</td>
+                  <td class="lb">34 bundled</td>
                   <td>a stats page of 20 and more<sup><a href="#n2">2</a></sup></td>
                   <td><span class="nf">Not found</span></td>
                   <td>a database of results<sup><a href="#n5">5</a></sup></td>
