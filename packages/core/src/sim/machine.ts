@@ -231,6 +231,8 @@ interface ExecContext {
 }
 
 const ALPHA_RE = /^\p{L}$/u;
+/** What keeps caps word on besides its continue list, as ZMK has it: letters, digits, underscore. */
+const CAPS_WORD_RE = /^[\p{L}0-9_]$/u;
 
 export function isAlphaSymbol(s: string): boolean {
   return ALPHA_RE.test(s);
@@ -464,7 +466,7 @@ export class Machine {
       if (s.capsWord) {
         for (const sym of ctx.out) {
           for (const g of splitGraphemes(sym)) {
-            if (!(isAlphaSymbol(g) || s.capsWord.continueList.has(g))) {
+            if (!(CAPS_WORD_RE.test(g) || s.capsWord.continueList.has(g))) {
               s.capsWord = null;
               break;
             }

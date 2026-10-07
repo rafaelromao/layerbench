@@ -184,7 +184,7 @@ describe('Machine — combos, caps word, holds', () => {
     expect(m.perform({ type: 'chord', combo: q })[0].symbols).toBe('');
   });
 
-  it('caps word ends on a non-continue key', () => {
+  it('caps word carries on through digits and underscore, as ZMK does, and ends on anything else', () => {
     const layout = mini([
       {
         id: 'base',
@@ -192,6 +192,8 @@ describe('Machine — combos, caps word, holds', () => {
           LHP: { kind: 'kp', symbol: 'a' },
           LHR: { kind: 'kp', symbol: ',' },
           LHM: { kind: 'caps_word' },
+          LTP: { kind: 'kp', symbol: '1' },
+          LTR: { kind: 'kp', symbol: '_' },
           L0: { kind: 'kp', symbol: ' ' },
         },
       },
@@ -199,6 +201,8 @@ describe('Machine — combos, caps word, holds', () => {
     const { tap } = machineFor(layout);
     tap('LHM');
     expect(tap('LHP').symbols).toBe('A');
+    expect(tap('LTP').symbols).toBe('1');
+    expect(tap('LTR').symbols).toBe('_');
     expect(tap('LHP').symbols).toBe('A');
     expect(tap('LHR').symbols).toBe(',');
     expect(tap('LHP').symbols).toBe('a');
