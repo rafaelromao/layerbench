@@ -37,9 +37,10 @@ function useNavSearch(): (to: string) => true | Record<string, string | undefine
 
 /**
  * The landing page: what LayerBench is for, how far to trust it and how it compares. It is a
- * static page served beside the app rather than a view of it, so it is an ordinary link.
+ * static page published on its own (`docs/site`) rather than a view of the app, so it is an
+ * ordinary link.
  */
-const ABOUT = `${import.meta.env.BASE_URL}about/`;
+const ABOUT = 'https://rafaelromao.github.io/layerbench/';
 
 const THEMES: { value: ThemeChoice; label: string; icon: string }[] = [
   { value: 'system', label: 'Follow the system theme', icon: '◐' },

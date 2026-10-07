@@ -5,7 +5,13 @@ on:
     branches: [main]
   pull_request:
 
-# Nothing here writes to the repository, so the job token need not be able to.
+# Pushes to main deploy in the order they were made; a newer push to a pull request replaces the run
+# still going for it.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# The job token never writes: the app is deployed to another repository, with a key of its own.
 permissions:
   contents: read
 
@@ -28,4 +34,65 @@ jobs:
       - run: pnpm check
       - run: pnpm typecheck
       - run: pnpm test
+      # The sign-in Worker's address goes into the page's code and its content security policy. It
+      # is set for this step only: the unit tests expect the page's own origin.
       - run: pnpm build
+        env:
+          VITE_AUTH_ORIGIN: ${{ vars.AUTH_ORIGIN }}
+      - if: github.event_name == 'push'
+        env:
+          AUTH_ORIGIN: ${{ vars.AUTH_ORIGIN }}
+        run: test -n "$AUTH_ORIGIN" || { echo "Set the AUTH_ORIGIN repository variable first."; exit 1; }
+      - if: github.event_name == 'push'
+        uses: actions/upload-artifact@v7
+        with:
+          name: app
+          path: apps/web/dist
+          if-no-files-found: error
+          retention-days: 1
+
+  # The app at https://layerbench.github.io is the GitHub Pages site of the repository
+  # layerbench/layerbench.github.io. Pages publishes only the repository a workflow runs in, so the
+  # build is pushed there, with a deploy key that can write to that repository and nothing else. The
+  # key is a secret of the `app` environment, which only main may use.
+  deploy:
+    needs: test
+    if: github.event_name == 'push' && github.repository == 'rafaelromao/layerbench'
+    runs-on: ubuntu-latest
+    environment:
+      name: app
+      url: https://layerbench.github.io/
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: app
+          path: dist
+      - uses: actions/checkout@v5
+        with:
+          repository: layerbench/layerbench.github.io
+          ref: main
+          ssh-key: ${{ secrets.APP_DEPLOY_KEY }}
+          path: site
+      # The bundles of the deploy before stay one more round, and older ones go: Pages lets a browser
+      # keep a page for ten minutes, and a page asks for the bundles it was built with.
+      - run: |
+          cd site
+          find . -mindepth 1 -maxdepth 1 ! -name .git ! -name assets ! -name .assets -exec rm -rf {} +
+          if [ -d assets ]; then
+            for f in assets/*; do
+              [ -e "../dist/$f" ] || grep -qxF "$f" .assets 2>/dev/null || rm -f "$f"
+            done
+          fi
+          cp -R ../dist/. .
+          (cd ../dist && find assets -type f | sort) > .assets
+          # Published as it is, with no Jekyll build on GitHub's side.
+          touch .nojekyll
+          git add -A
+          if git diff --cached --quiet; then
+            echo "The site already has this build."
+            exit 0
+          fi
+          git -c user.name='github-actions[bot]' \
+            -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -q -m "Deploy rafaelromao/layerbench@${GITHUB_SHA}"
+          git push origin HEAD:main

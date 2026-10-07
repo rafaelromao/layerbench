@@ -1,5 +1,5 @@
-import { copyFileSync, cpSync, existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { basename, extname, resolve, sep } from 'node:path';
+import { copyFileSync, existsSync, readFileSync, statSync } from 'node:fs';
+import { extname, resolve, sep } from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { type Connect, defineConfig, loadEnv, type Plugin } from 'vite';
@@ -53,45 +53,13 @@ function contentSecurityPolicy(authOrigin: string): string {
 }
 
 /**
- * `frame-ancestors` is ignored in a meta tag, so it is only set where real headers are available.
+ * What GitHub Pages needs to serve a single-page app, and what the page must say for itself.
  *
- * Only `/assets/` has hashed names, so only it may be cached without asking. The corpora keep their
- * paths when they are rebuilt or replaced, `index.json` included: a browser that kept them for a
- * day went on listing corpora that were gone. It revalidates now, which costs a 304 when nothing
- * changed.
- */
-function headersFile(policy: string): string {
-  return `/*
-  Content-Security-Policy: ${policy}; frame-ancestors 'none'
-  Referrer-Policy: no-referrer
-  X-Content-Type-Options: nosniff
-  Cross-Origin-Opener-Policy: same-origin
-
-/assets/*
-  Cache-Control: public, max-age=31536000, immutable
-
-/corpora/*
-  Cache-Control: no-cache
-
-/
-  Cache-Control: no-cache
-
-/index.html
-  Cache-Control: no-cache
-`;
-}
-
-/** Anything with no file behind it is a client route, and the app resolves it. */
-const REDIRECTS = '/*  /index.html  200\n';
-
-/**
- * Files a static host needs to serve a single-page app correctly.
- *
- * Cloudflare Pages reads `_redirects` and `_headers` from the output root; without the rewrite it
- * would answer a deep link such as /edit with `404.html` and a 404 status. GitHub Pages ignores
- * both files and uses `404.html` instead, so shipping all three keeps either host working.
- *
- * The policy is written here rather than in `public/` so the meta tag and the header cannot drift.
+ * Pages sends no headers a site can choose, so the policy travels as a meta tag, written here so it
+ * cannot drift from what the build checks. `frame-ancestors`, which a meta tag cannot carry, is the
+ * check at the top of `main.tsx` instead. A deep link such as /analyze has no file behind it, so
+ * Pages answers with `404.html`: a copy of the app, which reads the address and shows the view. The
+ * status says 404; browsers do not mind.
  */
 function staticHosting(policy: string): Plugin {
   return {
@@ -129,8 +97,6 @@ function staticHosting(policy: string): Plugin {
     closeBundle() {
       const dir = resolve(import.meta.dirname, 'dist');
       copyFileSync(resolve(dir, 'index.html'), resolve(dir, '404.html'));
-      writeFileSync(resolve(dir, '_headers'), headersFile(policy));
-      writeFileSync(resolve(dir, '_redirects'), REDIRECTS);
     },
   };
 }
@@ -146,9 +112,10 @@ const LANDING_TYPES: Record<string, string> = {
 };
 
 /**
- * The landing page at `/about/`, where the header's About link leads: copied into the build, and
- * read from `docs/site` by the dev server, so the link works there too. Its paths are relative, so
- * the page must be asked for with the trailing slash; `/about` alone is sent there.
+ * The landing page, on the dev server only, at `/about/`: it is published on its own (see
+ * `.github/workflows/pages.yml`), where the header's About link leads, and served here from
+ * `docs/site` so it can be worked on beside the app its links open. Its paths are relative, so the
+ * page must be asked for with the trailing slash; `/about` alone is sent there.
  */
 function landingPage(): Plugin {
   return {
@@ -168,13 +135,6 @@ function landingPage(): Plugin {
         }
         res.setHeader('Content-Type', LANDING_TYPES[extname(file)] ?? 'application/octet-stream');
         res.end(readFileSync(file));
-      });
-    },
-    closeBundle() {
-      // Dotfiles (a Finder `.DS_Store`, an editor's state) are the machine's, not the page's.
-      cpSync(LANDING, resolve(import.meta.dirname, 'dist', 'about'), {
-        recursive: true,
-        filter: (source) => !basename(source).startsWith('.'),
       });
     },
   };
@@ -241,8 +201,9 @@ function githubAuth(): Plugin {
 export default defineConfig(({ mode }) => {
   const authOrigin = authOriginFrom(loadEnv(mode, import.meta.dirname, 'VITE_').VITE_AUTH_ORIGIN);
   return {
-    // Cloudflare Pages serves from the root of a domain, so the default is what production uses;
-    // VITE_BASE exists for hosts that serve the site from a subdirectory, such as GitHub Pages.
+    // The app is served from the root of a domain of its own (layerbench.github.io), so the
+    // default is what production uses; VITE_BASE exists for a copy served from a subdirectory,
+    // such as a fork's GitHub Pages project site.
     base: process.env.VITE_BASE ?? '/',
     plugins: [
       react(),

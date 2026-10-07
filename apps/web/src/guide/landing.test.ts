@@ -9,9 +9,10 @@ import { anchorsOf, parseGuide } from './markdown.js';
 import { guidePage } from './pages.js';
 
 /**
- * The landing page, `docs/site`, which the build serves at `/about/`. It is hand-written HTML with
- * no build of its own, so this is what keeps it honest: every link lands somewhere real, every
- * image is there at the size the page says, and nothing breaks the policy the page declares.
+ * The landing page, `docs/site`, published on its own by `.github/workflows/pages.yml` and served
+ * by the dev server at `/about/`. It is hand-written HTML with no build of its own, so this is what
+ * keeps it honest: every link lands somewhere real, every image is there at the size the page says,
+ * and nothing breaks the policy the page declares.
  */
 
 /** Resolved from the working directory, as the test corpora are: a jsdom module has an http URL. */

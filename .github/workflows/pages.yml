@@ -1,10 +1,13 @@
 name: pages
 
-# Publishes the landing page, docs/site, to GitHub Pages. Until the project is public it is only
-# served by the app itself, at /about/, so this runs only when started by hand. Going public:
-# Settings → Pages → Source "GitHub Actions", a repository variable APP_ORIGIN with the app's public
-# address, and a trigger here: `push: { branches: [main], paths: ['docs/site/**'] }`.
+# Publishes the landing page, docs/site, as this repository's GitHub Pages site:
+# https://rafaelromao.github.io/layerbench/. It needs Settings → Pages → Source "GitHub Actions", and
+# a repository variable APP_ORIGIN with the app's address, https://layerbench.github.io, which the
+# page's links into the app are rewritten to.
 on:
+  push:
+    branches: [main]
+    paths: ['docs/site/**', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -26,7 +29,8 @@ jobs:
           persist-credentials: false
       # Fails early, with a clear message, when Pages is not set up for this repository.
       - uses: actions/configure-pages@v6
-      # In the app the page links to views on its own origin; on Pages those links must name it.
+      # The page links to the app's views by path, which the dev server's preview at /about/ resolves;
+      # published on its own, the links must name the app's origin.
       - run: |
           test -n "$APP_ORIGIN" || { echo "Set the APP_ORIGIN repository variable first."; exit 1; }
           # The value becomes part of a sed program below, so it must be an origin and nothing more.
@@ -35,7 +39,7 @@ jobs:
             *) echo "APP_ORIGIN must be an https origin such as https://app.example.com"; exit 1 ;;
           esac
           cp -R docs/site _site
-          sed -E -i "s#href=\"/(library|analyze|edit|compare|rules|corpus|guide)#href=\"$APP_ORIGIN/\1#g" _site/index.html
+          sed -E -i "s#href=\"/(library|analyze|compare|rules|corpus|guide)#href=\"$APP_ORIGIN/\1#g" _site/index.html
       - uses: actions/upload-pages-artifact@v5
         with:
           path: _site

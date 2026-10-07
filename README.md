@@ -1,8 +1,9 @@
 # LayerBench
 
-> **Using LayerBench?** Everything for users is in the [guide](docs/guide/README.md), which is
-> also in the app under **Guide**. Saving your work to GitHub is in
-> [Saving and sharing](docs/guide/saving.md).
+> **Using LayerBench?** Open it at [layerbench.github.io](https://layerbench.github.io); what it is
+> and how it compares is on [its page](https://rafaelromao.github.io/layerbench/). Everything for
+> users is in the [guide](docs/guide/README.md), which is also in the app under **Guide**. Saving
+> your work to GitHub is in [Saving and sharing](docs/guide/saving.md).
 >
 > **This README is for working on LayerBench's code and deploying it.** The design is in
 > [SPEC.md](SPEC.md), and metric definitions and their sources are in the
@@ -29,7 +30,7 @@ in with GitHub to keep your work in your own account.
 - `packages/corpora`: builds the corpus samples the app serves.
 - `apps/web`: the single-page app. The engine runs in a Web Worker, so a million-symbol analysis
   never blocks the interface.
-- `functions/`: the Cloudflare Pages Function for signing in with GitHub, a thin wrapper around
+- `worker/`: the Cloudflare Worker for signing in with GitHub, a thin wrapper around
   `apps/web/src/server/github-auth.ts`.
 - `docs/guide`: the user guide, shown in the app under **Guide**. `docs/site`: the landing page.
 
@@ -43,7 +44,6 @@ in with GitHub to keep your work in your own account.
 | `/rules` | Rule sets: enable, re-parameterize, compose, save |
 | `/corpus` | Shipped corpora, and custom ones from pasted or uploaded text |
 | `/guide` | The user guide and the metric glossary, from `docs/` |
-| `/about/` | The landing page, copied from `docs/site` by the build |
 
 `/` opens the Library. A link
 carries the whole analysis, and `?layout=inline:…` carries a layout that was never saved; Analyze
@@ -60,8 +60,9 @@ writes unsaved edits into its link that way.
   - `GistAdapter`, with one secret gist per collection, otherwise.
 - `target.ts` decides between the two from the app's installations.
 
-The sign-in state and the in-memory access token are in `apps/web/src/auth/github-session.ts`. The
-server half is `apps/web/src/server/github-auth.ts`. SPEC §4.3 has the details.
+The sign-in state, the trip to GitHub, the in-memory access token and the sealed session the page
+keeps are in `apps/web/src/auth/github-session.ts`. The server half is
+`apps/web/src/server/github-auth.ts`. SPEC §4.3 has the details.
 
 ## Develop
 
@@ -70,13 +71,15 @@ pnpm install
 pnpm check        # format and lint
 pnpm typecheck
 pnpm test
-pnpm dev          # http://localhost:5173
+pnpm dev          # http://localhost:4011
 ```
 
 To sign in on the dev server, set up the GitHub App first (see
-[Setting up sign-in](#setting-up-sign-in)). Then put the same variables as on Pages in
-`apps/web/.env.local`, which git ignores. Without them the app says sign-in is not set up and
-saves in the browser only.
+[Setting up sign-in](#setting-up-sign-in)). Then put `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`,
+`GITHUB_APP_SLUG` and `SESSION_SECRET` in `apps/web/.env.local`, which git ignores, with a client
+secret and a session key of their own rather than the Worker's. The dev server answers sign-in
+itself, on its own origin. Without them the app says sign-in is not set up and saves in the browser
+only.
 
 `pnpm bench` runs the performance suite, which is skipped by default. `pnpm corpora` rebuilds the
 corpus samples from `packages/corpora/raw`.
@@ -97,43 +100,66 @@ Microsoft Edge, `E2E_CHANNEL=chrome` for Google Chrome, with nothing to download
 
 ## Deploy
 
-`pnpm build` writes `apps/web/dist`: hashed assets, the corpus samples, the landing page at
-`about/`, and three files a static host reads — `_redirects` (so `/analyze` resolves to the app
-instead of a 404), `_headers` (content security policy and caching) and `404.html` (the same
-fallback for hosts that use it instead).
+The app is a static site on GitHub Pages, at `https://layerbench.github.io`, published from the
+repository `layerbench/layerbench.github.io`. Signing in with GitHub is the one part that needs a
+server: the Cloudflare Worker in `worker/`, on a domain of its own.
 
-On **Cloudflare Pages**, connect the repository and set:
+`pnpm build` writes `apps/web/dist`: hashed assets, the corpus samples, and `404.html`, a copy of the
+app that GitHub Pages answers a deep link such as `/analyze` with, so the link opens its view. The
+status says 404, which browsers do not mind. Leave `VITE_BASE` unset: the app is served from the
+root of its domain. It only needs a value for a copy served from a subdirectory, such as a fork's
+GitHub Pages project site.
 
-| Setting | Value |
-|---|---|
-| Build command | `pnpm build` |
-| Build output directory | `apps/web/dist` |
-| Root directory | `/` |
-| `NODE_VERSION` | `22` |
+GitHub Pages sends no headers a site can choose. The content security policy travels as a meta tag
+written by `vite.config.ts`, a check at the top of `main.tsx` stands in for `frame-ancestors`, and a
+meta tag sets the referrer policy; `Cross-Origin-Opener-Policy` and `X-Content-Type-Options` have no
+stand-in. The policy's `connect-src` lets the page talk to its own origin, `api.github.com` and the
+sign-in Worker, and to nothing else, so the token and the session in the page cannot be sent
+anywhere but there.
 
-Leave `VITE_BASE` unset — Pages serves from the root of a domain, which is the default. It only
-needs a value on a host that serves the site from a subdirectory, such as a GitHub Pages project
-site.
+### Publishing the app
 
-The page talks to its own origin and `api.github.com` and to nothing else — `connect-src` in the
-policy above enforces it, so the access token in the page cannot be sent anywhere but GitHub.
+`.github/workflows/ci.yml` builds every push to main and, once the checks pass, pushes the build to
+`layerbench/layerbench.github.io`, whose Pages site serves its `main` branch. Pages publishes only
+the repository a workflow runs in, hence the push. Each deploy keeps the bundles of the one before:
+Pages lets a browser keep a page for ten minutes, and a page asks for the bundles it was built with.
+Set up once:
+
+1. Create `layerbench/layerbench.github.io`, public, with a README so that it has a `main` branch.
+   In its **Settings** → **Pages**, choose **Deploy from a branch**, `main`, `/ (root)`.
+2. Make a deploy key:
+
+   ```bash
+   ssh-keygen -t ed25519 -N "" -C "layerbench app deploy" -f lb-deploy
+   ```
+
+   Give `layerbench.github.io` the public half, `lb-deploy.pub`, under **Settings** → **Deploy
+   keys**, with **Allow write access**.
+3. In this repository, **Settings** → **Environments**, create `app`, limited to the `main` branch,
+   and give it the private half, `lb-deploy`, as the secret `APP_DEPLOY_KEY`. Delete both files.
+4. Add the repository variable `AUTH_ORIGIN`, the sign-in Worker's address (below). A push to main
+   fails without it rather than publishing an app that cannot sign in.
+
+No other repository in the `layerbench` organization may have a Pages site. It would be served on
+the app's origin, where it could read what the app keeps in the browser, the sign-in session
+included.
 
 ### Setting up sign-in
 
-Sign-in needs a GitHub App of your own and one server-side piece:
-`functions/api/auth/[[path]].ts`, a Pages Function whose logic is
+Sign-in needs a GitHub App of your own and the Worker in `worker/`, whose logic is
 `apps/web/src/server/github-auth.ts`. It swaps GitHub's sign-in code for tokens, which needs the
-app's client secret, and renews them. It stores nothing. On a host without Functions the app still
-works, saving in the browser only. Do this once per deployment.
+app's client secret, and renews them. It stores nothing: the page keeps the session, sealed with a
+key only the Worker has. Without the Worker the app still works, saving in the browser only. Do this
+once per deployment.
 
-**1. Create the GitHub App.** On GitHub, go to your avatar → **Settings** → **Developer settings**
-→ **GitHub Apps** → **New GitHub App**, and fill in:
+**1. Create the GitHub App.** On GitHub, go to the owner's **Settings** → **Developer settings** →
+**GitHub Apps** → **New GitHub App**, and fill in:
 
 | Field | Value |
 |---|---|
 | GitHub App name | any free name; its URL form is the *slug* used below |
-| Homepage URL | your app's address, e.g. `https://layerbench-2d7.pages.dev` |
-| Callback URL | `https://<your app>/api/auth/callback`; add `http://localhost:5173/api/auth/callback` to sign in on the dev server |
+| Homepage URL | the app's address, `https://layerbench.github.io/` |
+| Callback URL | the app's address, with its trailing slash; add `http://localhost:4011/` to sign in on the dev server |
 | Expire user authorization tokens | on (the default) |
 | Request user authorization (OAuth) during installation | off |
 | Enable Device Flow | off |
@@ -143,55 +169,55 @@ works, saving in the browser only. Do this once per deployment.
 | Account permissions → Gists | **Read and write** |
 | Where can this GitHub App be installed? | **Any account**, so other people can give it their forks |
 
-Create it. On the page that opens, copy the **Client ID**, click **Generate a new client secret** and
-copy the secret, and note the slug from the app's public page, `https://github.com/apps/<slug>`.
+Create it. On the page that opens, copy the **Client ID**, and note the slug from the app's public
+page, `https://github.com/apps/<slug>`. Click **Generate a new client secret** twice: one for the
+Worker and one for the dev server, so either can be revoked alone.
 
-**2. Make a session key**, which encrypts the sign-in cookie:
+**2. Make a session key** for the Worker, the key it seals sessions with, and another for the dev
+server:
 
 ```bash
 openssl rand -base64 32
 ```
 
-**3. Add the variables to Cloudflare Pages.** In the Pages project, **Settings** → **Variables and
-Secrets**, add these for **Production** and again for **Preview**:
+**3. Deploy the Worker.** Put the Client ID and the slug in `worker/wrangler.jsonc`; they are public.
+Check that `ALLOWED_ORIGINS` there names the app's address. Then, with a Cloudflare account:
 
-| Variable | Value | Type |
-|---|---|---|
-| `GITHUB_CLIENT_ID` | the Client ID | Text |
-| `GITHUB_CLIENT_SECRET` | the client secret | Secret |
-| `GITHUB_APP_SLUG` | the slug | Text |
-| `SESSION_SECRET` | the output of step 2 | Secret |
-| `UPSTREAM_REPO` | optional: the `owner/name` whose forks hold documents; `rafaelromao/layerbench` if unset | Text |
+```bash
+pnpm dlx wrangler@4 login
+pnpm dlx wrangler@4 deploy -c worker/wrangler.jsonc
+pnpm dlx wrangler@4 secret put GITHUB_CLIENT_SECRET -c worker/wrangler.jsonc
+pnpm dlx wrangler@4 secret put SESSION_SECRET -c worker/wrangler.jsonc
+```
 
-Variables reach only deployments made after they are set, so deploy again (push, or **Retry
-deployment**) once they are in.
+The deploy prints the Worker's address, `https://layerbench-auth.<your subdomain>.workers.dev`. Set
+it as the repository variable `AUTH_ORIGIN`, then push, or re-run CI, so the app is built with it.
+Documents are saved to forks of `rafaelromao/layerbench`; a Worker variable `UPSTREAM_REPO` names
+another `owner/name`.
 
-**4. Keep saves from starting builds.** **Settings** → **Builds** → **Branch control**: exclude
-`layerbench-data` from preview deployments.
-
-**5. Give the app your own repository.** Open `https://github.com/apps/<slug>/installations/new`,
+**4. Give the app your own repository.** Open `https://github.com/apps/<slug>/installations/new`,
 choose your account, **Only select repositories**, pick this repository (or your fork of it),
 and **Install**. Skip this and documents go to gists.
 
-**6. Check it.** In the deployed app, open **Storage**, **Sign in with GitHub**, then **Check
+**5. Check it.** In the deployed app, open **Storage**, **Sign in with GitHub**, then **Check
 again**. Storage should say it is saving to your repository on `layerbench-data`. Save a layout
 and the commit appears on that branch, not on main.
 
-**If signing in loops back to a login page** and the app sits behind **Cloudflare Access**: Access's
-cookie must not be SameSite=Strict. In Cloudflare Zero Trust, **Access** → **Applications** → your
-app → cookie settings, set SameSite to None or Lax. It is None unless someone changed it.
+**To sign everyone out**, give the Worker a new `SESSION_SECRET`: every session sealed with the old
+one stops working. Revoking the GitHub App's client secret does it too.
 
-Requests to the Function skip `_redirects` and `_headers`, so it sets its own headers
+The Worker answers only the origins in `ALLOWED_ORIGINS`, and its own, and sets its own headers
 (`Cache-Control: no-store` among them).
 
 ### Landing page
 
 `docs/site` is the landing page: hand-written HTML and CSS with no build step and no JavaScript,
-whose own content security policy loads nothing from anywhere else. The app's build copies it to
-`/about/`, the dev server serves it there from `docs/site` directly, and the header links to it as
-**About**. `apps/web/src/guide/landing.test.ts` holds it to the app: every link lands on a view,
-layout, corpus or guide section that exists, and every image is the file and the shape the page
-says.
+whose own content security policy loads nothing from anywhere else.
+`.github/workflows/pages.yml` publishes it at `https://rafaelromao.github.io/layerbench/` whenever a
+push changes it, and the header's **About** links there. The dev server serves it at `/about/`,
+where its links into the app work too. `apps/web/src/guide/landing.test.ts` holds it to the app:
+every link lands on a view, layout, corpus or guide section that exists, and every image is the
+file and the shape the page says.
 
 Its screenshots are taken from the running app, in the dark and the light theme, with Edge or
 Chrome already installed:
@@ -200,7 +226,13 @@ Chrome already installed:
 E2E_CHANNEL=msedge pnpm --filter @layerbench/web shots
 ```
 
-`.github/workflows/pages.yml` publishes `docs/site` to GitHub Pages, and only runs when started by
-hand while the project is private. To make it the public page, set Settings → Pages → Source to
-**GitHub Actions**, add a repository variable `APP_ORIGIN` with the app's public address (the page's
-links into the app are rewritten to it), and give the workflow a `push` trigger on `docs/site/**`.
+The workflow needs this repository's **Settings** → **Pages** → **Source** set to **GitHub
+Actions**, and the repository variable `APP_ORIGIN`, the app's address
+(`https://layerbench.github.io`). The page links to the app's views by path; the workflow rewrites
+those links to name it.
+
+## Licence
+
+The code is under the [MIT licence](LICENSE). The corpus texts, in `packages/corpora/raw` and in
+the samples built from them in `apps/web/public/corpora`, keep their own licences, CC BY 4.0 and
+CC BY-SA 4.0, recorded with their sources in `packages/corpora/raw/sources.json`.

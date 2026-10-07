@@ -11,6 +11,10 @@ browser you use, sign in with GitHub, and it is kept in your GitHub account as w
 You come back to the page you were on, unsaved edits included. From then on, every save is also
 kept in your GitHub account, and **Storage** shows a ✓.
 
+This browser stays signed in until you sign out, for up to six months. Safari is stricter: once you
+have used it for seven days without opening LayerBench, it clears what LayerBench keeps in it, the
+sign-in and any work saved only in this browser. In Safari, keep your work in GitHub.
+
 **Storage** says where your work is going. Unless you have given LayerBench a fork, it goes to
 secret gists in your account, one for layouts, one for rule sets and one for corpora. Secret gists
 are unlisted, not private: anyone with a gist's address can read it.

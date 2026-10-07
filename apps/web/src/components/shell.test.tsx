@@ -102,13 +102,15 @@ describe('while data loads', () => {
 });
 
 describe('the page frame', () => {
-  it('links to the About page, which is served beside the app rather than routed', async () => {
+  it('links to the About page, which is published on its own rather than routed', async () => {
     renderRoute(LIBRARY, { storage: freshStorage() });
     await screen.findByRole('heading', { name: 'Layouts' });
     // One in the header at a desk, one in the phone's menu.
     const about = screen.getAllByRole('link', { name: 'About' });
     expect(about).toHaveLength(2);
-    for (const link of about) expect(link).toHaveAttribute('href', '/about/');
+    for (const link of about) {
+      expect(link).toHaveAttribute('href', 'https://rafaelromao.github.io/layerbench/');
+    }
   });
 
   it('offers a skip link to the content', async () => {

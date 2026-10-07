@@ -514,10 +514,11 @@
             <li>
               <h3>Private by construction</h3>
               <p>
-                No account of ours, and no analytics. The only server code signs you in with GitHub
-                and keeps nothing. The app's content security policy lets it talk only to itself
-                and to <code>api.github.com</code>; a token is never put in a link, an export or an
-                error. This page loads nothing from anywhere else and runs no JavaScript.
+                No account of ours, and no analytics. The app is static files; the only server code
+                is a small worker that signs you in with GitHub and keeps nothing. The app's content
+                security policy lets it talk only to itself, to <code>api.github.com</code> and to
+                that worker; a token is never put in a link, an export or an error. This page loads
+                nothing from anywhere else and runs no JavaScript.
               </p>
               <p class="evidence">
                 In the source: <code>apps/web/vite.config.ts</code>,
@@ -528,7 +529,7 @@
               <h3>Checked on every push</h3>
               <p>
                 Formatting and lint, a strict type check, the whole test suite and a production build
-                run on every push.
+                run on every push, and only a build that passes them is published.
               </p>
               <p class="evidence">In the source: <code>.github/workflows/ci.yml</code></p>
             </li>
@@ -723,7 +724,9 @@
                 </tr>
                 <tr>
                   <th scope="row">Licence</th>
-                  <td class="lb">not yet published</td>
+                  <td class="lb">
+                    <a href="https://github.com/rafaelromao/layerbench/blob/main/LICENSE">MIT</a>
+                  </td>
                   <td>none declared<sup><a href="#n2">2</a></sup></td>
                   <td>Apache-2.0<sup><a href="#n3">3</a></sup></td>
                   <td>GPL-3.0<sup><a href="#n5">5</a></sup></td>
@@ -915,7 +918,9 @@
       <div class="wrap">
         <p class="wordmark"><span>Layer</span>Bench</p>
         <p>
-          Free to use, and it runs in your browser. <a href="/guide">Guide</a> ·
+          Free and open source, and it runs in your browser.
+          <a href="https://github.com/rafaelromao/layerbench">Source</a> ·
+          <a href="/guide">Guide</a> ·
           <a href="/guide/metrics">Metric glossary</a> ·
           <a href="/guide/special-keys">Special keys</a>
         </p>
