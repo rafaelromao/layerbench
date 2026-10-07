@@ -6,26 +6,51 @@ import { type Connect, defineConfig, loadEnv, type Plugin } from 'vite';
 import { type AuthEnv, handleAuth } from './src/server/github-auth.js';
 
 /**
+ * Where the sign-in server is when it is not the page's own origin: the Worker on its own domain
+ * (`worker/`). Read from the same place Vite reads the page's `import.meta.env`, so the policy and
+ * the page cannot disagree. It becomes part of the policy, so it must be an https origin and nothing
+ * more; unset (or empty, as an unset CI variable is) on the dev server, whose middleware below
+ * answers on the page's own origin.
+ */
+function authOriginFrom(value: string | undefined): string {
+  if (!value) return '';
+  let origin: string | null = null;
+  try {
+    origin = new URL(value).origin;
+  } catch {
+    // Reported below.
+  }
+  if (origin !== value || !value.startsWith('https://')) {
+    throw new Error(
+      `VITE_AUTH_ORIGIN must be an https origin such as https://auth.example.com, not "${value}"`,
+    );
+  }
+  return value;
+}
+
+/**
  * Everything the page is allowed to load. The bundle contains no inline script, no `eval` and no
  * `new Function`, and the analysis worker is a same-origin module, so `'self'` covers scripts;
  * inline styles are React writing heat colours and bar widths onto elements.
  *
- * `connect-src` is the one that matters: the GitHub access token is in this page's memory, and this
- * line is what stops any injected code from sending it anywhere but the GitHub API. `'self'` is
- * also where the token comes from, the sign-in function under `/api/auth/`.
+ * `connect-src` is the one that matters: the GitHub access token and the session it is renewed
+ * with are in this page, and this line is what stops any injected code from sending them anywhere
+ * but the GitHub API and the sign-in server they came from.
  */
-const CONTENT_SECURITY_POLICY = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  "object-src 'none'",
-  "script-src 'self'",
-  "worker-src 'self'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data:",
-  "font-src 'self'",
-  "connect-src 'self' https://api.github.com",
-  "form-action 'none'",
-].join('; ');
+function contentSecurityPolicy(authOrigin: string): string {
+  return [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "script-src 'self'",
+    "worker-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "font-src 'self'",
+    `connect-src 'self' https://api.github.com${authOrigin ? ` ${authOrigin}` : ''}`,
+    "form-action 'none'",
+  ].join('; ');
+}
 
 /**
  * `frame-ancestors` is ignored in a meta tag, so it is only set where real headers are available.
@@ -35,8 +60,9 @@ const CONTENT_SECURITY_POLICY = [
  * day went on listing corpora that were gone. It revalidates now, which costs a 304 when nothing
  * changed.
  */
-const HEADERS = `/*
-  Content-Security-Policy: ${CONTENT_SECURITY_POLICY}; frame-ancestors 'none'
+function headersFile(policy: string): string {
+  return `/*
+  Content-Security-Policy: ${policy}; frame-ancestors 'none'
   Referrer-Policy: no-referrer
   X-Content-Type-Options: nosniff
   Cross-Origin-Opener-Policy: same-origin
@@ -53,6 +79,7 @@ const HEADERS = `/*
 /index.html
   Cache-Control: no-cache
 `;
+}
 
 /** Anything with no file behind it is a client route, and the app resolves it. */
 const REDIRECTS = '/*  /index.html  200\n';
@@ -66,7 +93,7 @@ const REDIRECTS = '/*  /index.html  200\n';
  *
  * The policy is written here rather than in `public/` so the meta tag and the header cannot drift.
  */
-function staticHosting(): Plugin {
+function staticHosting(policy: string): Plugin {
   return {
     name: 'static-hosting',
     apply: 'build',
@@ -96,13 +123,13 @@ function staticHosting(): Plugin {
       handler: (html) =>
         html.replace(
           '<meta charset="UTF-8" />',
-          `<meta charset="UTF-8" />\n    <meta http-equiv="Content-Security-Policy" content="${CONTENT_SECURITY_POLICY}" />`,
+          `<meta charset="UTF-8" />\n    <meta http-equiv="Content-Security-Policy" content="${policy}" />`,
         ),
     },
     closeBundle() {
       const dir = resolve(import.meta.dirname, 'dist');
       copyFileSync(resolve(dir, 'index.html'), resolve(dir, '404.html'));
-      writeFileSync(resolve(dir, '_headers'), HEADERS);
+      writeFileSync(resolve(dir, '_headers'), headersFile(policy));
       writeFileSync(resolve(dir, '_redirects'), REDIRECTS);
     },
   };
@@ -159,33 +186,38 @@ const AUTH_ENV_KEYS = [
   'GITHUB_APP_SLUG',
   'SESSION_SECRET',
   'UPSTREAM_REPO',
+  'ALLOWED_ORIGINS',
 ] as const;
 
 /**
- * Sign-in with GitHub on the dev and preview servers: the same handler the Pages Function runs in
- * production (`functions/api/auth/[[path]].ts`), with its settings read from `.env.local`. With none
- * there, the app says sign-in is not set up, and works in the browser alone as it does on any
- * static host.
+ * Sign-in with GitHub on the dev and preview servers: the same handler the Worker runs in
+ * production (`worker/auth.ts`), on the page's own origin, with its settings read from
+ * `.env.local`. With none there, the app says sign-in is not set up, and works in the browser
+ * alone as it does on any static host.
  */
 function githubAuth(): Plugin {
   let env: AuthEnv = {};
   const middleware: Connect.NextHandleFunction = (req, res, next) => {
-    const headers = new Headers();
-    for (const [name, value] of Object.entries(req.headers)) {
-      if (value !== undefined) headers.set(name, Array.isArray(value) ? value.join(', ') : value);
-    }
-    const url = `http://${req.headers.host ?? 'localhost'}${req.originalUrl ?? req.url ?? '/'}`;
-    handleAuth(new Request(url, { method: req.method, headers }), env)
-      .then(async (response) => {
-        res.statusCode = response.status;
-        response.headers.forEach((value, name) => {
-          if (name !== 'set-cookie') res.setHeader(name, value);
-        });
-        const cookies = response.headers.getSetCookie();
-        if (cookies.length > 0) res.setHeader('Set-Cookie', cookies);
-        res.end(new Uint8Array(await response.arrayBuffer()));
-      })
-      .catch(next);
+    const chunks: Buffer[] = [];
+    req.on('data', (chunk: Buffer) => chunks.push(chunk));
+    req.on('error', next);
+    req.on('end', () => {
+      const headers = new Headers();
+      for (const [name, value] of Object.entries(req.headers)) {
+        if (value !== undefined) headers.set(name, Array.isArray(value) ? value.join(', ') : value);
+      }
+      const url = `http://${req.headers.host ?? 'localhost'}${req.originalUrl ?? req.url ?? '/'}`;
+      const body = chunks.length > 0 ? Buffer.concat(chunks) : undefined;
+      handleAuth(new Request(url, { method: req.method, headers, body }), env)
+        .then(async (response) => {
+          res.statusCode = response.status;
+          response.headers.forEach((value, name) => {
+            res.setHeader(name, value);
+          });
+          res.end(new Uint8Array(await response.arrayBuffer()));
+        })
+        .catch(next);
+    });
   };
   return {
     name: 'github-auth',
@@ -206,19 +238,30 @@ function githubAuth(): Plugin {
   };
 }
 
-export default defineConfig({
-  // Cloudflare Pages serves from the root of a domain, so the default is what production uses;
-  // VITE_BASE exists for hosts that serve the site from a subdirectory, such as GitHub Pages.
-  base: process.env.VITE_BASE ?? '/',
-  plugins: [react(), tailwindcss(), staticHosting(), landingPage(), githubAuth()],
-  worker: {
-    format: 'es',
-  },
-  build: {
-    target: 'es2022',
-    sourcemap: false,
-  },
-  server: {
-    port: 5173,
-  },
+export default defineConfig(({ mode }) => {
+  const authOrigin = authOriginFrom(loadEnv(mode, import.meta.dirname, 'VITE_').VITE_AUTH_ORIGIN);
+  return {
+    // Cloudflare Pages serves from the root of a domain, so the default is what production uses;
+    // VITE_BASE exists for hosts that serve the site from a subdirectory, such as GitHub Pages.
+    base: process.env.VITE_BASE ?? '/',
+    plugins: [
+      react(),
+      tailwindcss(),
+      staticHosting(contentSecurityPolicy(authOrigin)),
+      landingPage(),
+      githubAuth(),
+    ],
+    worker: {
+      format: 'es',
+    },
+    build: {
+      target: 'es2022',
+      sourcemap: false,
+    },
+    server: {
+      // The GitHub App's callback names this port; another one would send sign-in elsewhere.
+      port: 4011,
+      strictPort: true,
+    },
+  };
 });

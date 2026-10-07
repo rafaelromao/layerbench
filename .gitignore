@@ -18,3 +18,7 @@ tmp/
 # pnpm project-local store/cache (sandbox cannot write ~/Library/pnpm)
 .pnpm-cache/
 .pnpm-state/
+
+# wrangler (the sign-in Worker): local secrets and state
+.dev.vars*
+.wrangler/

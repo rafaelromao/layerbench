@@ -125,7 +125,7 @@ export function StorageSettings() {
               type="button"
               className="btn btn-sm btn-primary"
               disabled={status === 'unknown'}
-              onClick={signIn}
+              onClick={() => void signIn()}
             >
               Sign in with GitHub
             </button>

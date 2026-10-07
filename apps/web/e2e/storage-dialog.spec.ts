@@ -5,25 +5,19 @@ function overflow(page: Page): Promise<number> {
   return page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 }
 
-/**
- * Someone signed in with a long name, saving to gists, with a fork the app was not given: the
- * dialog at its fullest. GitHub and the sign-in function are stood in for, so nothing leaves.
- */
-async function signedIn(page: Page): Promise<void> {
-  await page.route('**/api/auth/session', (route) =>
-    route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({
-        available: true,
-        signedIn: true,
-        login: 'someone-with-a-rather-long-name',
-        token: 'not-a-token',
-        expiresAt: Date.now() + 3600_000,
-        appSlug: 'layerbench-app',
-        upstream: 'rafaelromao/layerbench',
-      }),
-    }),
-  );
+const SIGNED_IN = {
+  available: true,
+  signedIn: true,
+  login: 'someone-with-a-rather-long-name',
+  token: 'not-a-token',
+  expiresAt: Date.now() + 3600_000,
+  clientId: 'Iv1.not-a-client',
+  appSlug: 'layerbench-app',
+  upstream: 'rafaelromao/layerbench',
+};
+
+/** GitHub's API, answering as it would for someone saving to gists, with a fork the app was not given. */
+async function github(page: Page): Promise<void> {
   await page.route('https://api.github.com/**', (route) => {
     const url = route.request().url();
     if (url.includes('/user/installations')) {
@@ -41,6 +35,52 @@ async function signedIn(page: Page): Promise<void> {
     return route.fulfill({ contentType: 'application/json', body: '[]' });
   });
 }
+
+/**
+ * Someone signed in with a long name, saving to gists, with a fork the app was not given: the
+ * dialog at its fullest. GitHub and the sign-in server are stood in for, so nothing leaves.
+ */
+async function signedIn(page: Page): Promise<void> {
+  await page.route('**/api/auth/session', (route) =>
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify(SIGNED_IN) }),
+  );
+  await github(page);
+}
+
+test('coming back from GitHub signs in, on the page signed in from', async ({ page }) => {
+  // What the app leaves in the tab before sending it to GitHub.
+  await page.addInitScript(() => {
+    sessionStorage.setItem(
+      'layerbench:sign-in',
+      JSON.stringify({
+        state: 'the-state',
+        verifier: 'v'.repeat(43),
+        returnTo: '/guide/saving',
+        at: Date.now(),
+      }),
+    );
+  });
+  const asked: string[] = [];
+  await page.route('**/api/auth/*', (route) => {
+    asked.push(new URL(route.request().url()).pathname);
+    return route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ ...SIGNED_IN, session: 'sealed-session' }),
+    });
+  });
+  await github(page);
+
+  // GitHub's way back is the app's root, which would otherwise go on to the Library.
+  await page.goto('/?code=the-code&state=the-state');
+  await expect(page).toHaveURL(/\/guide\/saving$/);
+  await expect(
+    page.getByRole('button', { name: /^Storage: this browser and GitHub/ }),
+  ).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem('layerbench:github-session'))).toBe(
+    'sealed-session',
+  );
+  expect(asked).toEqual(['/api/auth/token']);
+});
 
 test('the storage dialog fits the screen when signed in', async ({ page }) => {
   await signedIn(page);

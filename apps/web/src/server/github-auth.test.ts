@@ -1,13 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type AuthEnv, handleAuth, type SessionAnswer } from './github-auth.js';
 
-const ORIGIN = 'https://lm.example';
+/** The app's pages, on a site of their own. */
+const PAGE = 'https://app.example';
+/** Where the sign-in server answers. */
+const AUTH = 'https://auth.example';
+/** What a page's PKCE verifier looks like: 32 random bytes in base64url. */
+const VERIFIER = 'v'.repeat(43);
 
 const ENV: AuthEnv = {
   GITHUB_CLIENT_ID: 'Iv1.client',
   GITHUB_CLIENT_SECRET: 'client-secret',
   GITHUB_APP_SLUG: 'layerbench-app',
   SESSION_SECRET: btoa(String.fromCharCode(...new Uint8Array(32).fill(7))),
+  ALLOWED_ORIGINS: PAGE,
 };
 
 interface Call {
@@ -66,85 +72,103 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-function get(path: string, cookie = ''): Promise<Response> {
-  return handleAuth(new Request(`${ORIGIN}${path}`, { headers: { Cookie: cookie } }), ENV);
+interface Options {
+  origin?: string | null;
+  type?: string;
+  env?: AuthEnv;
+  at?: string;
 }
 
-function post(path: string, cookie = '', site = 'same-origin', env = ENV): Promise<Response> {
+/** A page's request, the way a browser sends it: with its origin, and a JSON body. */
+function post(path: string, body: unknown, options: Options = {}): Promise<Response> {
+  const { origin = PAGE, type = 'application/json', env = ENV, at = AUTH } = options;
+  const headers: Record<string, string> = { 'Content-Type': type };
+  if (origin) headers.Origin = origin;
   return handleAuth(
-    new Request(`${ORIGIN}${path}`, {
+    new Request(`${at}/api/auth/${path}`, {
       method: 'POST',
-      headers: { Cookie: cookie, 'Sec-Fetch-Site': site },
+      headers,
+      body: typeof body === 'string' ? body : JSON.stringify(body),
     }),
     env,
   );
 }
 
-/** `name=value` of each cookie a response sets, the way the browser would send them back. */
-function cookiesOf(res: Response): string {
-  return res.headers
-    .getSetCookie()
-    .map((c) => c.split(';')[0])
-    .join('; ');
+function preflight(origin: string): Promise<Response> {
+  return handleAuth(
+    new Request(`${AUTH}/api/auth/session`, {
+      method: 'OPTIONS',
+      headers: { Origin: origin, 'Access-Control-Request-Method': 'POST' },
+    }),
+    ENV,
+  );
 }
 
-/** Through GitHub and back: the cookie a signed-in browser holds. */
+async function answerOf(res: Response): Promise<SessionAnswer> {
+  return (await res.json()) as SessionAnswer;
+}
+
+/** Through GitHub and back: the sealed session a signed-in page keeps. */
 async function signIn(): Promise<string> {
-  const login = await get('/api/auth/login');
-  const state = new URL(login.headers.get('Location') as string).searchParams.get('state');
-  const back = await get(`/api/auth/callback?code=the-code&state=${state}`, cookiesOf(login));
-  return cookiesOf(back)
-    .split('; ')
-    .filter((c) => c.startsWith('__Host-lb-session='))
-    .join('; ');
+  const res = await post('token', {
+    code: 'the-code',
+    verifier: VERIFIER,
+    redirectUri: `${PAGE}/`,
+  });
+  return (await answerOf(res)).session as string;
 }
 
 describe('signing in', () => {
-  it('sends the browser to GitHub with a state and a PKCE challenge it remembers', async () => {
-    const res = await get('/api/auth/login');
-    expect(res.status).toBe(302);
-    const to = new URL(res.headers.get('Location') as string);
-    expect(to.origin + to.pathname).toBe('https://github.com/login/oauth/authorize');
-    expect(to.searchParams.get('client_id')).toBe('Iv1.client');
-    expect(to.searchParams.get('redirect_uri')).toBe(`${ORIGIN}/api/auth/callback`);
-    expect(to.searchParams.get('code_challenge_method')).toBe('S256');
-    expect(to.searchParams.get('state')).toMatch(/^[\w-]{43}$/);
+  it('trades the code with the secret and the verifier, and seals the tokens for the page', async () => {
+    const res = await post('token', {
+      code: 'the-code',
+      verifier: VERIFIER,
+      redirectUri: `${PAGE}/`,
+    });
 
-    const [cookie] = res.headers.getSetCookie();
-    expect(cookie).toMatch(/^__Host-lb-oauth=/);
-    expect(cookie).toContain('HttpOnly');
-    expect(cookie).toContain('Secure');
-    expect(cookie).toContain('SameSite=Lax');
-    expect(cookie).not.toContain(to.searchParams.get('state') as string);
-  });
+    expect(res.status).toBe(200);
+    const body = await answerOf(res);
+    expect(body).toMatchObject({
+      available: true,
+      signedIn: true,
+      login: 'you',
+      token: 'ghu_first',
+      clientId: 'Iv1.client',
+    });
+    expect(body.session).toMatch(/^[\w-]+$/);
+    expect(body.session).not.toContain('ghu_');
+    expect(body.session).not.toContain('ghr_');
 
-  it('exchanges the code with the secret and the verifier, and keeps the tokens out of sight', async () => {
-    const login = await get('/api/auth/login');
-    const to = new URL(login.headers.get('Location') as string);
-    const back = await get(
-      `/api/auth/callback?code=the-code&state=${to.searchParams.get('state')}`,
-      cookiesOf(login),
-    );
-
-    expect(back.status).toBe(302);
-    expect(back.headers.get('Location')).toBe(`${ORIGIN}/`);
     const exchange = calls.find((c) => c.url.endsWith('/login/oauth/access_token'));
     expect(exchange?.form?.get('client_secret')).toBe('client-secret');
     expect(exchange?.form?.get('code')).toBe('the-code');
-    expect(exchange?.form?.get('code_verifier')).toMatch(/^[\w-]{43}$/);
+    expect(exchange?.form?.get('code_verifier')).toBe(VERIFIER);
+    expect(exchange?.form?.get('redirect_uri')).toBe(`${PAGE}/`);
     expect(calls.find((c) => c.url.endsWith('/user'))?.headers.get('User-Agent')).toBeTruthy();
 
-    const session = back.headers.getSetCookie().find((c) => c.startsWith('__Host-lb-session='));
-    expect(session).toContain('HttpOnly');
-    expect(session).toContain('SameSite=Strict');
-    expect(session).not.toContain('ghu_first');
-    expect(session).not.toContain('ghr_first');
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe(PAGE);
+    expect(res.headers.get('Vary')).toBe('Origin');
+    expect(res.headers.get('Cache-Control')).toBe('no-store');
+    expect(res.headers.getSetCookie()).toEqual([]);
   });
 
-  it('turns away a callback whose state is not the one it sent, without asking GitHub', async () => {
-    const login = await get('/api/auth/login');
-    const back = await get('/api/auth/callback?code=c&state=forged', cookiesOf(login));
-    expect(back.headers.get('Location')).toBe(`${ORIGIN}/?signin=failed`);
+  it('turns away a way back to another site, without asking GitHub', async () => {
+    const res = await post('token', {
+      code: 'the-code',
+      verifier: VERIFIER,
+      redirectUri: 'https://elsewhere.example/',
+    });
+    expect(res.status).toBe(400);
+    expect(calls).toEqual([]);
+  });
+
+  it('turns away a verifier PKCE could not have made, without asking GitHub', async () => {
+    const res = await post('token', {
+      code: 'the-code',
+      verifier: 'short',
+      redirectUri: `${PAGE}/`,
+    });
+    expect(res.status).toBe(400);
     expect(calls).toEqual([]);
   });
 
@@ -153,100 +177,187 @@ describe('signing in', () => {
       call.url.endsWith('/access_token')
         ? json(200, { error: 'bad_verification_code' })
         : github(call);
-    const login = await get('/api/auth/login');
-    const state = new URL(login.headers.get('Location') as string).searchParams.get('state');
-    const back = await get(`/api/auth/callback?code=c&state=${state}`, cookiesOf(login));
-    expect(back.headers.get('Location')).toBe(`${ORIGIN}/?signin=failed`);
-    expect(back.headers.getSetCookie().some((c) => c.startsWith('__Host-lb-session=x'))).toBe(
-      false,
+    const res = await post('token', { code: 'c', verifier: VERIFIER, redirectUri: `${PAGE}/` });
+    const body = await answerOf(res);
+    expect(body).toMatchObject({ available: true, signedIn: false, clientId: 'Iv1.client' });
+    expect(body.session).toBeUndefined();
+  });
+
+  it('says GitHub could not be reached, in an answer the page can read', async () => {
+    responder = () => {
+      throw new TypeError('fetch failed');
+    };
+    const res = await post('token', { code: 'c', verifier: VERIFIER, redirectUri: `${PAGE}/` });
+    expect(res.status).toBe(502);
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe(PAGE);
+  });
+});
+
+describe('who may ask', () => {
+  it("answers the app's preflight, letting it send JSON", async () => {
+    const res = await preflight(PAGE);
+    expect(res.status).toBe(204);
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe(PAGE);
+    expect(res.headers.get('Access-Control-Allow-Methods')).toBe('POST');
+    expect(res.headers.get('Access-Control-Allow-Headers')).toBe('Content-Type');
+    expect(res.headers.get('Access-Control-Max-Age')).toBe('7200');
+    expect(res.headers.get('Access-Control-Allow-Credentials')).toBeNull();
+  });
+
+  it('turns away another site, at the preflight and after it, without asking GitHub', async () => {
+    const before = await preflight('https://evil.example');
+    expect(before.status).toBe(403);
+    expect(before.headers.get('Access-Control-Allow-Origin')).toBeNull();
+
+    const after = await post(
+      'session',
+      { session: await signIn() },
+      { origin: 'https://evil.example' },
     );
+    expect(after.status).toBe(403);
+    expect(after.headers.get('Access-Control-Allow-Origin')).toBeNull();
+    expect(calls.filter((c) => c.form?.get('grant_type'))).toEqual([]);
+  });
+
+  it('turns away a request that names no origin, or carries anything but a JSON object', async () => {
+    expect((await post('session', {}, { origin: null })).status).toBe(403);
+    expect((await post('session', {}, { origin: 'null' })).status).toBe(403);
+
+    const text = await post('session', '{}', { type: 'text/plain' });
+    expect(text.status).toBe(415);
+    expect(text.headers.get('Access-Control-Allow-Origin')).toBe(PAGE);
+
+    expect((await post('session', '[]')).status).toBe(400);
+    expect((await post('session', 'not json')).status).toBe(400);
+    expect((await post('session', { session: 'x'.repeat(9000) })).status).toBe(400);
+  });
+
+  it("answers the dev server's pages, which share its origin", async () => {
+    const dev = 'http://localhost:4011';
+    const res = await post(
+      'session',
+      {},
+      { origin: dev, at: dev, env: { ...ENV, ALLOWED_ORIGINS: undefined } },
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe(dev);
+  });
+
+  it('answers nothing it does not serve', async () => {
+    expect((await post('login', {})).status).toBe(404);
+    const get = await handleAuth(
+      new Request(`${AUTH}/api/auth/session`, { headers: { Origin: PAGE } }),
+      ENV,
+    );
+    expect(get.status).toBe(404);
   });
 });
 
 describe('the session', () => {
   it('says who is signed in and hands over the access token', async () => {
-    const cookie = await signIn();
-    const res = await post('/api/auth/session', cookie);
-    const body = (await res.json()) as SessionAnswer;
+    const session = await signIn();
+    const res = await post('session', { session });
+    const body = await answerOf(res);
     expect(body).toMatchObject({
       available: true,
       signedIn: true,
       login: 'you',
       token: 'ghu_first',
+      clientId: 'Iv1.client',
       appSlug: 'layerbench-app',
       upstream: 'rafaelromao/layerbench',
     });
+    // Nothing changed, so there is no new session to keep.
+    expect(body.session).toBeUndefined();
     expect(res.headers.get('Cache-Control')).toBe('no-store');
   });
 
-  it('answers signed out to a browser without a session, or with one it did not seal', async () => {
-    expect(await (await post('/api/auth/session')).json()).toMatchObject({
+  it('answers signed out to a page without a session, or with one it did not seal', async () => {
+    expect(await answerOf(await post('session', {}))).toEqual({
       available: true,
       signedIn: false,
+      clientId: 'Iv1.client',
+      appSlug: 'layerbench-app',
+      upstream: 'rafaelromao/layerbench',
     });
-    const forged = await post('/api/auth/session', '__Host-lb-session=bm90LWEtc2Vzc2lvbg');
-    expect(await forged.json()).toMatchObject({ signedIn: false });
-    expect(forged.headers.getSetCookie()[0]).toContain('Max-Age=0');
+    const forged = await post('session', { session: 'bm90LWEtc2Vzc2lvbg' });
+    expect(await answerOf(forged)).toMatchObject({ signedIn: false });
   });
 
-  it('renews a token about to expire, and keeps the new refresh token', async () => {
-    const cookie = await signIn();
+  it('renews a token about to expire, and hands back the session to keep', async () => {
+    const session = await signIn();
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(Date.now() + 8 * 3600_000 - 60_000);
 
-    const res = await post('/api/auth/session', cookie);
-    expect(((await res.json()) as SessionAnswer).token).toBe('ghu_renewed');
+    const body = await answerOf(await post('session', { session }));
+    expect(body.token).toBe('ghu_renewed');
+    expect(body.session).toBeTruthy();
+    expect(body.session).not.toBe(session);
     const refresh = calls.filter((c) => c.form?.get('grant_type') === 'refresh_token');
     expect(refresh).toHaveLength(1);
     expect(refresh[0].form?.get('refresh_token')).toBe('ghr_first');
 
-    // The rotated cookie is what the next request holds; GitHub has already retired the old one.
-    const next = await post('/api/auth/session', cookiesOf(res));
-    expect(((await next.json()) as SessionAnswer).token).toBe('ghu_renewed');
+    // The renewed session is the one the page holds next; GitHub has already retired the old one.
+    const next = await answerOf(await post('session', { session: body.session }));
+    expect(next.token).toBe('ghu_renewed');
     expect(calls.filter((c) => c.form?.get('grant_type') === 'refresh_token')).toHaveLength(1);
   });
 
   it('signs out when GitHub refuses the refresh token', async () => {
-    const cookie = await signIn();
+    const session = await signIn();
     responder = (call) =>
       call.url.endsWith('/access_token') ? json(200, { error: 'bad_refresh_token' }) : github(call);
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(Date.now() + 9 * 3600_000);
 
-    const res = await post('/api/auth/session', cookie);
-    expect(await res.json()).toMatchObject({ signedIn: false });
-    expect(res.headers.getSetCookie()[0]).toContain('Max-Age=0');
+    expect(await answerOf(await post('session', { session }))).toMatchObject({ signedIn: false });
   });
 
-  it('turns away a request another site made', async () => {
-    const res = await post('/api/auth/session', await signIn(), 'cross-site');
-    expect(res.status).toBe(403);
+  it('keeps the session when GitHub cannot be reached to renew it', async () => {
+    const session = await signIn();
+    responder = () => {
+      throw new TypeError('fetch failed');
+    };
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(Date.now() + 9 * 3600_000);
+
+    const res = await post('session', { session });
+    expect(res.status).toBe(502);
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe(PAGE);
   });
 
-  it('says sign-in is unavailable where the app is not set up for it', async () => {
-    const res = await post('/api/auth/session', '', 'same-origin', {});
-    expect(await res.json()).toEqual({ available: false, signedIn: false });
+  it('forgets a session after half a year, even one whose token never expires', async () => {
+    responder = (call) =>
+      call.url.endsWith('/access_token')
+        ? json(200, { access_token: 'ghu_forever', token_type: 'bearer' })
+        : github(call);
+    const session = await signIn();
+    expect(await answerOf(await post('session', { session }))).toMatchObject({
+      signedIn: true,
+      token: 'ghu_forever',
+      expiresAt: null,
+    });
+
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(Date.now() + 181 * 24 * 3600_000);
+    expect(await answerOf(await post('session', { session }))).toMatchObject({ signedIn: false });
+  });
+
+  it('says sign-in is unavailable where it is not set up', async () => {
+    const res = await post('session', {}, { env: { ALLOWED_ORIGINS: PAGE } });
+    expect(await answerOf(res)).toEqual({ available: false, signedIn: false });
   });
 });
 
 describe('signing out', () => {
-  it('forgets the session and revokes the token', async () => {
-    const cookie = await signIn();
+  it('revokes the token', async () => {
+    const session = await signIn();
     calls = [];
-    const res = await post('/api/auth/logout', cookie);
+    const res = await post('logout', { session });
     expect(res.status).toBe(204);
-    expect(res.headers.getSetCookie()[0]).toMatch(/^__Host-lb-session=;.*Max-Age=0/);
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe(PAGE);
     const revoke = calls.find((c) => c.method === 'DELETE');
     expect(revoke?.url).toBe('https://api.github.com/applications/Iv1.client/token');
     expect(revoke?.headers.get('Authorization')).toBe(`Basic ${btoa('Iv1.client:client-secret')}`);
-  });
-});
-
-describe('the dev server on plain http', () => {
-  it('drops the __Host- prefix and the Secure flag, which need https', async () => {
-    const res = await handleAuth(new Request('http://localhost:5173/api/auth/login'), ENV);
-    const [cookie] = res.headers.getSetCookie();
-    expect(cookie).toMatch(/^lb-oauth=/);
-    expect(cookie).not.toContain('Secure');
   });
 });

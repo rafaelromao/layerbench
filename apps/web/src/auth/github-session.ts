@@ -8,7 +8,7 @@ import { findStorageTarget, type StorageTarget } from '../storage/target.js';
 
 /**
  * - `unknown`: not asked yet.
- * - `unavailable`: this host has no sign-in (a plain static host, or one not set up for it).
+ * - `unavailable`: this copy of the app has no sign-in (a plain static host, or one not set up for it).
  * - `signed-out`, `signed-in`: as they say.
  */
 export type SignInStatus = 'unknown' | 'unavailable' | 'signed-out' | 'signed-in';
@@ -16,6 +16,8 @@ export type SignInStatus = 'unknown' | 'unavailable' | 'signed-out' | 'signed-in
 interface GitHubSessionState {
   status: SignInStatus;
   login: string | null;
+  /** The app's public id, which the trip to GitHub starts with. */
+  clientId: string;
   /** The app's URL name, for the link that installs it on a fork. */
   appSlug: string;
   /** `owner/name` of the repository whose forks hold documents. */
@@ -28,6 +30,7 @@ interface GitHubSessionState {
 const INITIAL: GitHubSessionState = {
   status: 'unknown',
   login: null,
+  clientId: '',
   appSlug: '',
   upstream: '',
   target: null,
@@ -43,7 +46,24 @@ let token: { value: string; expiresAt: number | null } | null = null;
 /** A token is used until a minute before it expires; the server renews it before handing it over. */
 const TOKEN_MARGIN_MS = 60_000;
 
-const AFTER_SIGN_IN = 'layerbench:after-sign-in';
+/**
+ * Where the sign-in server answers: a domain of its own in production (`VITE_AUTH_ORIGIN`, see
+ * vite.config.ts), this page's own origin on the dev server.
+ */
+const AUTH = import.meta.env.VITE_AUTH_ORIGIN ?? '';
+
+/**
+ * The sealed session: both tokens, encrypted with a key only the server has. The server is on
+ * another site, where a cookie would be a third-party one, so the page keeps it. Whoever holds it
+ * can have tokens renewed until it expires or the user signs out, which is one more reason the page
+ * runs no code from anywhere else.
+ */
+const SESSION_KEY = 'layerbench:github-session';
+/** What coming back from GitHub needs: the state and PKCE verifier sent, and the page to return to. */
+const SIGN_IN = 'layerbench:sign-in';
+/** A trip to GitHub that takes longer than this is abandoned; signing in again starts a new one. */
+const SIGN_IN_MAX_AGE_MS = 10 * 60_000;
+const SIGN_IN_FAILED = 'Signing in with GitHub did not complete';
 const targetKey = (login: string) => `layerbench:storage-target:${login}`;
 const gistKey = (login: string) => `layerbench:gists:${login}`;
 
@@ -64,14 +84,31 @@ function writeJson(key: string, value: unknown): void {
   }
 }
 
+function storedSession(): string | null {
+  try {
+    return localStorage.getItem(SESSION_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function keepSession(value: string | null): void {
+  try {
+    if (value) localStorage.setItem(SESSION_KEY, value);
+    else localStorage.removeItem(SESSION_KEY);
+  } catch {
+    // A browser with site data disabled signs in again on the next visit.
+  }
+}
+
 /**
  * GitHub's refresh tokens work once: two tabs renewing at the same moment would sign each other
- * out. A lock shared by every tab of the app makes them take turns; the second one finds the token
+ * out. A lock shared by every tab of the app makes them take turns; the second one finds the session
  * the first was given.
  */
 async function exclusively<T>(work: () => Promise<T>): Promise<T> {
   const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
-  return locks ? locks.request('layerbench:github-session', work) : work();
+  return locks ? locks.request('layerbench:github-session', () => work()) : work();
 }
 
 function isAnswer(value: unknown): value is SessionAnswer {
@@ -80,13 +117,21 @@ function isAnswer(value: unknown): value is SessionAnswer {
   );
 }
 
+function post(route: 'session' | 'token' | 'logout', body: object): Promise<Response> {
+  return fetch(`${AUTH}/api/auth/${route}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
 /** Ask the server. Anything but its JSON (a static host's `index.html`) means no sign-in here. */
-async function askServer(): Promise<SessionAnswer | null> {
-  const res = await fetch('/api/auth/session', { method: 'POST', credentials: 'same-origin' });
+async function ask(route: 'session' | 'token', body: object): Promise<SessionAnswer | null> {
+  const res = await post(route, body);
   if (res.status === 502) throw new Error('GitHub could not be reached');
   if (!res.ok || !res.headers.get('Content-Type')?.includes('application/json')) return null;
-  const body: unknown = await res.json().catch(() => null);
-  return isAnswer(body) ? body : null;
+  const answer: unknown = await res.json().catch(() => null);
+  return isAnswer(answer) ? answer : null;
 }
 
 function apply(answer: SessionAnswer | null): void {
@@ -95,7 +140,11 @@ function apply(answer: SessionAnswer | null): void {
     useGitHubSession.setState({ ...INITIAL, status: 'unavailable' });
     return;
   }
-  const config = { appSlug: answer.appSlug ?? '', upstream: answer.upstream ?? '' };
+  const config = {
+    clientId: answer.clientId ?? '',
+    appSlug: answer.appSlug ?? '',
+    upstream: answer.upstream ?? '',
+  };
   if (!answer.signedIn || !answer.token || !answer.login) {
     token = null;
     useGitHubSession.setState({ ...INITIAL, ...config, status: 'signed-out' });
@@ -115,6 +164,46 @@ function apply(answer: SessionAnswer | null): void {
   });
 }
 
+/**
+ * Where the session stands, asked with the one this browser keeps; a session the server renews
+ * replaces it. Called under the lock. Throws, leaving storage alone, when the server or GitHub
+ * cannot be reached.
+ */
+async function renew(): Promise<void> {
+  const sent = storedSession();
+  let used = sent;
+  let answer = await ask('session', sent ? { session: sent } : {});
+  // What another tab stores can reach this one late. A session turned down may be one that tab has
+  // just renewed and retired, so the one it stored gets a try before anything is forgotten.
+  const latest = storedSession();
+  if (answer?.available && !answer.signedIn && latest && latest !== sent) {
+    used = latest;
+    answer = await ask('session', { session: latest });
+  }
+  if (answer?.available) {
+    if (answer.session) keepSession(answer.session);
+    else if (!answer.signedIn && used && storedSession() === used) keepSession(null);
+  }
+  apply(answer);
+}
+
+/** Trade the code GitHub came back with for a session. Called under the lock. */
+async function exchange(back: SignInReturn): Promise<void> {
+  let answer: SessionAnswer | null = null;
+  try {
+    answer = await ask('token', { ...back, redirectUri: redirectUri() });
+  } catch {
+    // Reported below, with every other way this can fail.
+  }
+  if (answer?.signedIn && answer.session) {
+    keepSession(answer.session);
+    apply(answer);
+    return;
+  }
+  toast.error(SIGN_IN_FAILED);
+  await renew();
+}
+
 function current(): typeof token {
   return token;
 }
@@ -127,7 +216,7 @@ function usable(t: typeof token): t is NonNullable<typeof token> {
 export async function getToken(): Promise<string> {
   if (usable(token)) return token.value;
   await exclusively(async () => {
-    if (!usable(token)) apply(await askServer());
+    if (!usable(token)) await renew();
   });
   // Read again: the work done under the lock replaced it.
   const renewed = current();
@@ -138,7 +227,7 @@ export async function getToken(): Promise<string> {
 /** GitHub said the token is no good: find out whether the session is over. */
 function onUnauthorized(): void {
   token = null;
-  void exclusively(async () => apply(await askServer())).catch(() => {});
+  void exclusively(renew).catch(() => {});
 }
 
 export const gitHubAccess: GitHubAccess = { token: getToken, onUnauthorized };
@@ -177,30 +266,133 @@ export async function detectTarget(): Promise<void> {
   }
 }
 
-/**
- * Put back the page the user signed in from. Its link can hold a whole unsaved layout, far too
- * long to travel through GitHub and a cookie, so it waits in this tab instead. Call before the
- * router reads the address.
- */
-export function restoreAfterSignIn(): void {
-  const failed = new URLSearchParams(location.search).get('signin') === 'failed';
-  let saved: string | null = null;
-  try {
-    saved = sessionStorage.getItem(AFTER_SIGN_IN);
-    sessionStorage.removeItem(AFTER_SIGN_IN);
-  } catch {
-    // Without session storage the app opens on its first page instead.
-  }
-  // Only a path on this site; anything else is ignored.
-  if (saved?.startsWith('/') && !saved.startsWith('//')) history.replaceState(null, '', saved);
-  else if (failed) history.replaceState(null, '', '/');
-  if (failed) toast.error('Signing in with GitHub did not complete');
+// ---------------------------------------------------------------------------------------------
+// The trip to GitHub
+
+interface PendingSignIn {
+  state: string;
+  verifier: string;
+  returnTo: string;
+  /** Epoch milliseconds when it started. */
+  at: number;
 }
 
-/** Learn whether anyone is signed in, and where their documents go. Called once, at start. */
-export async function initGitHubSession(): Promise<void> {
+/** What the page comes back from GitHub with, to trade for a session. */
+export interface SignInReturn {
+  code: string;
+  verifier: string;
+}
+
+/** What GitHub adds to the address on the way back, whether signing in worked or not. */
+const FROM_GITHUB = ['code', 'state', 'error', 'error_description', 'error_uri'];
+
+function base64url(bytes: Uint8Array): string {
+  let binary = '';
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function randomToken(): string {
+  return base64url(crypto.getRandomValues(new Uint8Array(32)));
+}
+
+/** Where GitHub sends the browser back: the app's root, registered as the GitHub App's callback. */
+function redirectUri(): string {
+  return new URL(import.meta.env.BASE_URL, location.origin).href;
+}
+
+/** A path on this site, and nothing else: `//elsewhere` and `/\elsewhere` are other sites. */
+function onThisSite(path: unknown): path is string {
+  if (typeof path !== 'string') return false;
   try {
-    await exclusively(async () => apply(await askServer()));
+    return new URL(path, location.href).origin === location.origin;
+  } catch {
+    return false;
+  }
+}
+
+/** The sign-in this tab started, taken so it cannot be used twice; null when none, or too old. */
+function takePending(): PendingSignIn | null {
+  try {
+    const raw = sessionStorage.getItem(SIGN_IN);
+    sessionStorage.removeItem(SIGN_IN);
+    const pending = raw ? (JSON.parse(raw) as PendingSignIn) : null;
+    return pending && Date.now() - pending.at < SIGN_IN_MAX_AGE_MS ? pending : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The address that starts signing in at GitHub. What coming back takes (the state to check, the
+ * PKCE verifier, the page to return to) waits in this tab; null when the tab cannot keep it.
+ */
+export async function authorizeUrl(clientId: string): Promise<string | null> {
+  const state = randomToken();
+  const verifier = randomToken();
+  const challenge = base64url(
+    new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))),
+  );
+  const pending: PendingSignIn = {
+    state,
+    verifier,
+    returnTo: location.pathname + location.search + location.hash,
+    at: Date.now(),
+  };
+  try {
+    sessionStorage.setItem(SIGN_IN, JSON.stringify(pending));
+  } catch {
+    return null;
+  }
+  const url = new URL('https://github.com/login/oauth/authorize');
+  url.searchParams.set('client_id', clientId);
+  url.searchParams.set('redirect_uri', redirectUri());
+  url.searchParams.set('state', state);
+  url.searchParams.set('code_challenge', challenge);
+  url.searchParams.set('code_challenge_method', 'S256');
+  return url.href;
+}
+
+/**
+ * Back from GitHub: take its answer off the address before the router reads it, and put back the
+ * page the user signed in from. That page's link can hold a whole unsaved layout, far too long to
+ * travel through GitHub, so it waited in this tab. Returns the code to trade for a session, or
+ * null, saying so when signing in did not complete.
+ */
+export function returnFromGitHub(): SignInReturn | null {
+  const params = new URLSearchParams(location.search);
+  const state = params.get('state');
+  // GitHub comes back to the app's root, always with the state it was sent.
+  if (!state || location.pathname !== import.meta.env.BASE_URL) return null;
+
+  const pending = takePending();
+  const code = params.get('code');
+  const back =
+    pending && pending.state === state && code && !params.has('error')
+      ? { code, verifier: pending.verifier }
+      : null;
+
+  for (const name of FROM_GITHUB) params.delete(name);
+  const rest = params.toString();
+  history.replaceState(
+    null,
+    '',
+    pending && onThisSite(pending.returnTo)
+      ? pending.returnTo
+      : `${location.pathname}${rest ? `?${rest}` : ''}${location.hash}`,
+  );
+  if (!back) toast.error(SIGN_IN_FAILED);
+  return back;
+}
+
+/**
+ * Learn whether anyone is signed in, and where their documents go: called once, at start, with
+ * what `returnFromGitHub` found. One request under the lock either way, so an answer about the
+ * session from before signing in cannot land after the new one and undo it.
+ */
+export async function initGitHubSession(back: SignInReturn | null = null): Promise<void> {
+  try {
+    await exclusively(() => (back ? exchange(back) : renew()));
   } catch {
     // The server or GitHub is unreachable: the browser keeps working on its own.
     useGitHubSession.setState({ status: 'signed-out' });
@@ -209,18 +401,25 @@ export async function initGitHubSession(): Promise<void> {
   void detectTarget();
 }
 
-export function signIn(): void {
-  try {
-    sessionStorage.setItem(AFTER_SIGN_IN, location.pathname + location.search + location.hash);
-  } catch {
-    // The app opens on its first page afterwards instead.
+export async function signIn(): Promise<void> {
+  if (!useGitHubSession.getState().clientId) {
+    // The server could not be asked when the app started: once more, before giving up.
+    await exclusively(renew).catch(() => {});
   }
-  location.assign('/api/auth/login');
+  const { clientId } = useGitHubSession.getState();
+  const url = clientId ? await authorizeUrl(clientId) : null;
+  if (url) location.assign(url);
+  else toast.error('Signing in with GitHub could not start; try again in a moment');
 }
 
 export async function signOut(): Promise<void> {
-  await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => {});
-  token = null;
-  const { appSlug, upstream } = useGitHubSession.getState();
-  useGitHubSession.setState({ ...INITIAL, appSlug, upstream, status: 'signed-out' });
+  await exclusively(async () => {
+    const sent = storedSession();
+    keepSession(null);
+    token = null;
+    // Revoked as a courtesy; signing out does not depend on the server answering.
+    if (sent) await post('logout', { session: sent }).catch(() => {});
+  });
+  const { clientId, appSlug, upstream } = useGitHubSession.getState();
+  useGitHubSession.setState({ ...INITIAL, clientId, appSlug, upstream, status: 'signed-out' });
 }

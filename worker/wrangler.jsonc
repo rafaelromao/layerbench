@@ -1,0 +1,19 @@
+// The sign-in Worker (`auth.ts`). Deploy from the repository root with
+// `pnpm dlx wrangler@4 deploy -c worker/wrangler.jsonc`; README → Deploy → Setting up sign-in.
+//
+// The values below are public. GITHUB_CLIENT_SECRET and SESSION_SECRET are Worker secrets, set with
+// `wrangler secret put`, and never named here: a name that is both a variable and a secret is
+// refused.
+{
+  "name": "layerbench-auth",
+  "main": "auth.ts",
+  "compatibility_date": "2026-06-01",
+  "workers_dev": true,
+  "vars": {
+    // The pages that may sign in here, comma-separated.
+    "ALLOWED_ORIGINS": "https://layerbench.github.io",
+    // From the GitHub App's settings page. Left empty, sign-in reports itself not set up.
+    "GITHUB_CLIENT_ID": "",
+    "GITHUB_APP_SLUG": ""
+  }
+}

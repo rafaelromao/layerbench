@@ -10,5 +10,5 @@
       "@layerbench/core": ["../../packages/core/src/index.ts"]
     }
   },
-  "include": ["src", "vite.config.ts", "../../functions"]
+  "include": ["src", "vite.config.ts", "../../worker"]
 }
