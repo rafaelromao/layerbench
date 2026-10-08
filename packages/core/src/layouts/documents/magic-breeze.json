@@ -386,6 +386,9 @@
         "LBM": {
           "kind": "kp",
           "symbol": "j"
+        },
+        "R0": {
+          "kind": "trans"
         }
       }
     },
@@ -516,6 +519,9 @@
         "LHR": {
           "kind": "macro",
           "symbols": "ões"
+        },
+        "L0": {
+          "kind": "trans"
         }
       }
     },
