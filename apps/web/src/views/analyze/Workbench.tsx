@@ -1,6 +1,7 @@
 import {
   type CorpusManifest,
   type Layout,
+  languagesToJudge,
   layoutLanguageCoverage,
   type RuleItem,
   safeParseLayout,
@@ -675,14 +676,15 @@ export function Workbench({
   };
 
   const corpusLanguage = corpora.find((c) => c.id === params.corpus)?.language;
+  // The text's languages, then those the layout says it is for.
+  const layoutLanguages = state.layout.languages;
   const languageGap = useMemo(() => {
-    if (!corpusLanguage) return null;
-    for (const tag of corpusLanguage.split('+')) {
-      const c = layoutLanguageCoverage(typedCompiled, tag.trim());
+    for (const tag of languagesToJudge(corpusLanguage, layoutLanguages)) {
+      const c = layoutLanguageCoverage(typedCompiled, tag);
       if (c && c.missingRequired.length > 0) return c;
     }
     return null;
-  }, [typedCompiled, corpusLanguage]);
+  }, [typedCompiled, corpusLanguage, layoutLanguages]);
   const corpusName = corpora.find((c) => c.id === params.corpus)?.name ?? params.corpus;
   /** A chord's step names its virtual key; the reader knows it by the keys pressed together. */
   const stepKey = (key: string) => {

@@ -12,7 +12,7 @@ const PAGE = fileURLToPath(new URL('../../../docs/site/index.html', import.meta.
 const DENSITY = 1.5;
 
 /** The analysis every desk shot starts from: Magic Romak, on the conversation it was made for. */
-const ANALYZE = '/analyze?layout=magic-romak&corpus=pt-br-conv';
+const ANALYZE = '/analyze?layout=magic-romak&corpus=pt-br-general';
 
 /** A word whose presses show layers at work: a thumb into Alpha 2, `ç`, then `ão` on its layer. */
 const WORD = 'ação';
@@ -136,7 +136,7 @@ test.describe('at a desk', () => {
   });
 
   test('compare: two layouts typed without the same features', async ({ page }) => {
-    await page.goto('/compare?layout=magic-romak&b=graphite&corpus=pt-br-conv&off=macros');
+    await page.goto('/compare?layout=magic-romak&b=graphite&corpus=pt-br-general&off=macros');
     await expect(page.getByRole('table')).toBeVisible({ timeout: 150_000 });
     // Down to the end of both summaries: every number side by side, and no card cut in half.
     const summaries = page.getByLabel('Summary metrics');
@@ -148,7 +148,7 @@ test.describe('at a desk', () => {
   });
 
   test('edit: a key, and what it does', async ({ page }) => {
-    await page.goto('/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000');
+    await page.goto('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000');
     await expect(page.getByRole('list', { name: 'Summary metrics' })).toBeVisible({
       timeout: 120_000,
     });
@@ -178,7 +178,7 @@ test.describe('on a phone', () => {
   test.skip(({ isMobile }) => !isMobile, 'phone layout only');
 
   test('edit: a key selected, its inspector right under the board', async ({ page }) => {
-    await page.goto('/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000');
+    await page.goto('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000');
     await expect(page.getByRole('list', { name: 'Summary metrics' })).toBeVisible({
       timeout: 120_000,
     });

@@ -63,8 +63,8 @@ function FeatureRow({
  * Features: the typing behaviours a keymap would otherwise need extra layers for.
  *
  * Each wraps the key it belongs to — the space key, the shift key — in ordinary bindings, so the
- * layer list stays the set of layers a typist actually reaches. Magic keys and alt repeats are not
- * here: they are made on their keys, like any other kind of key.
+ * layer list stays the set of layers a typist actually reaches. Adaptive keys and alt repeats are
+ * not here: they are made on their keys, like any other kind of key.
  */
 export function FeaturesPanel({ state, send }: PanelProps) {
   const f: LayoutFeatures = state.layout.features ?? {};
@@ -75,8 +75,8 @@ export function FeaturesPanel({ state, send }: PanelProps) {
     <div className="space-y-3">
       <p className="text-[11px] opacity-70">
         Firmware needs a pre-shifted copy of a layer to do these. Declared here they are what they
-        are, and the layer list stays honest. Magic keys and alt repeats are made on the key: Magic,
-        or Alt repeat under More.
+        are, and the layer list stays honest. Adaptive keys and alt repeats are made on the key,
+        with its Adaptive or Alt repeat tile.
       </p>
 
       <FeatureRow
@@ -775,14 +775,21 @@ export function JsonPanel({ state, send }: PanelProps) {
 
 /**
  * The layout as a keymap-drawer file, to draw it with keymap-drawer or to bring it back later. It
- * is a drawing: what a legend cannot say, such as a magic key's branches, is drawn and not written.
+ * is a drawing: what a legend cannot say, such as an adaptive key's branches, is drawn and not
+ * written.
  */
 function KeymapDrawerExport({ state }: { state: EditState }) {
   const { compiled, layout } = state;
   const yaml = useMemo(() => {
-    // The keys that reach each layer, which the file marks `held` there as keymap-drawer does.
+    // The keys that reach each layer, which the file marks `held` there as keymap-drawer does. A
+    // key on the layer itself that turns it on again is pressed there, not held to get there.
     const reach = compiled.layers.map(
-      (l) => new Set(reachKeys(compiled, l.idx).map((k) => compiled.keys[k.pos].id)),
+      (l) =>
+        new Set(
+          reachKeys(compiled, l.idx)
+            .filter((k) => k.routes.some((r) => r.via !== l.idx))
+            .map((k) => compiled.keys[k.pos].id),
+        ),
     );
     return exportKeymapDrawer(
       layout,
@@ -828,8 +835,8 @@ function KeymapDrawerExport({ state }: { state: EditState }) {
       </div>
       <p className="text-[11px] opacity-60">
         Draw it with <span className="font-mono">keymap draw</span>. Keys whose legends cannot say
-        everything they do come back from this file simpler: a magic key as a plain key typing its
-        default, a macro as the text it types, without its other steps.
+        everything they do come back from this file simpler: an adaptive key as a plain key typing
+        its default, a macro as the text it types, without its other steps.
       </p>
     </div>
   );

@@ -9,7 +9,7 @@ import { openSettings, renderRoute } from '../test/render.js';
  */
 describe('Analyze', () => {
   it('renders Magic Romak and completes the analysis', async () => {
-    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000');
+    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000');
 
     // Layer tabs come from the compiled layout, so they appear before any analysis finishes.
     expect(await screen.findByRole('tab', { name: 'Alpha 1' })).toBeInTheDocument();
@@ -22,7 +22,7 @@ describe('Analyze', () => {
 
   it('explains how a word is typed', async () => {
     const user = userEvent.setup();
-    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000');
+    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000');
     await screen.findByText('Same finger bigrams');
 
     await user.type(screen.getByLabelText('How is this typed?'), 'ação');
@@ -36,7 +36,7 @@ describe('Analyze', () => {
 
   it('plays a word on the board, press by press, on the layer each press lands on', async () => {
     const user = userEvent.setup();
-    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000');
+    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000');
     await screen.findByText('Same finger bigrams');
     await user.type(screen.getByLabelText('How is this typed?'), 'ação');
 
@@ -56,7 +56,7 @@ describe('Analyze', () => {
 
   it('shows the combos that type, and lights one as it is played', async () => {
     const user = userEvent.setup();
-    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000');
+    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000');
     await screen.findByText('Same finger bigrams');
     await user.type(screen.getByLabelText('How is this typed?'), 'à');
 
@@ -76,7 +76,7 @@ describe('Analyze', () => {
 
   it('keeps the link canonical as parameters change', async () => {
     const user = userEvent.setup();
-    const { currentSearch } = renderRoute('/analyze?layout=qwerty&corpus=en-conv&sample=20000');
+    const { currentSearch } = renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000');
     await screen.findByText('Same finger bigrams');
 
     await user.selectOptions(screen.getByLabelText('Sample size'), '300000');
@@ -84,12 +84,12 @@ describe('Analyze', () => {
       expect(currentSearch()).toContain('sample=300000');
     });
     // Keys stay in a stable order.
-    expect(currentSearch()).toBe('?corpus=en-conv&layout=qwerty&sample=300000');
+    expect(currentSearch()).toBe('?corpus=en-general&layout=qwerty&sample=300000');
 
     // The default, 100,000 symbols, never appears in the link.
     await user.selectOptions(screen.getByLabelText('Sample size'), '100000');
     await waitFor(() => {
-      expect(currentSearch()).toBe('?corpus=en-conv&layout=qwerty');
+      expect(currentSearch()).toBe('?corpus=en-general&layout=qwerty');
     });
   });
 
@@ -130,7 +130,7 @@ describe('Analyze', () => {
   it('turns the board to the layer a listed pair happens on when it is clicked', async () => {
     const user = userEvent.setup();
     const { currentSearch } = renderRoute(
-      '/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000',
+      '/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000',
     );
     await screen.findByText('Same finger bigrams');
     expect(screen.getByRole('tab', { name: 'Alpha 1' })).toHaveAttribute('aria-selected', 'true');
@@ -147,17 +147,19 @@ describe('Analyze', () => {
 
   it('shows what a layer key ending a pair was pressed for when the pair is clicked', async () => {
     const user = userEvent.setup();
-    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000');
+    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000');
     await screen.findByText('Same finger bigrams');
 
-    // A pair whose last key is the thumb that reaches Alpha 2 opens a popup; others do not.
+    // A pair whose last key is the thumb that reaches Alpha 2 opens a popup; one that starts there
+    // and ends on a letter does not.
     const rows = [...document.querySelectorAll<HTMLButtonElement>('.lb-items li button')];
-    const ending = rows.find((b) => b.getAttribute('aria-haspopup') === 'dialog');
+    const ending = rows.find(
+      (b) => b.getAttribute('aria-haspopup') === 'dialog' && /→A2$/.test(b.textContent ?? ''),
+    );
     expect(ending, 'a listed pair that ends on a layer key').toBeDefined();
-    expect(ending?.textContent).toMatch(/→A2$/);
     expect(
       rows
-        .filter((b) => /^→A2./.test(b.textContent ?? ''))
+        .filter((b) => /^→A2[^→]/.test(b.textContent ?? ''))
         .every((b) => !b.hasAttribute('aria-haspopup')),
     ).toBe(true);
 
@@ -176,7 +178,7 @@ describe('Analyze', () => {
   });
 
   it('shows the metrics for a single-layer layout without layer costs', async () => {
-    renderRoute('/analyze?layout=qwerty&corpus=en-conv&sample=20000');
+    renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000');
     await screen.findByText('Same finger bigrams');
 
     const strip = screen.getByRole('list', { name: 'Summary metrics' });

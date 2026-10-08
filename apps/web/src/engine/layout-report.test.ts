@@ -39,7 +39,7 @@ function rankedOn(corpusId: string): SummaryOptions {
   };
 }
 
-/** A text for each of the layout's languages, news before conversation; English news without any. */
+/** A text for each of the layout's languages; English news for a layout that names none. */
 function textsFor(layout: Layout, corpora: CorpusManifest[]): CorpusManifest[] {
   const out: CorpusManifest[] = [];
   for (const tag of layout.languages?.length ? layout.languages : ['en']) {

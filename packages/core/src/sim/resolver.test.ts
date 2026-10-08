@@ -44,7 +44,7 @@ describe('Romak acceptance traces', () => {
     expect(t.keys).toEqual(['RHM', 'R0', 'LBM', 'L1', 'RTR', 'LBM', 'RHM', 'RHI']);
   });
 
-  it('chave uses the magic key for h (after consonant) and v (after vowel): 5 presses', () => {
+  it('chave uses the adaptive key for h (after consonant) and v (after vowel): 5 presses', () => {
     const t = trace(magicRomak, 'chave');
     expect(t.out).toBe('chave');
     expect(t.keys).toEqual(['LBM', 'RBI', 'RHM', 'RBI', 'RHR']);
@@ -80,7 +80,7 @@ describe('Romak acceptance traces', () => {
     expect(t.keys).toEqual(['R0', 'LTM', 'RHM', 'LHR', 'LHP', 'RTM']);
   });
 
-  it('Romak 34 types accents and plain letters', () => {
+  it('Romak types accents and plain letters', () => {
     const t = trace(romak34, 'não é');
     expect(t.out).toBe('não é');
   });
@@ -211,15 +211,15 @@ describe('the cheapest way to type a character', () => {
 });
 
 describe('the kind of key a press is, in the statistics', () => {
-  it('counts a magic key on the tap of a tap-hold among the adaptive presses', () => {
-    const magic = {
+  it('counts an adaptive key on the tap of a tap-hold among the adaptive presses', () => {
+    const adaptive = {
       kind: 'adaptive' as const,
       default: { kind: 'kp' as const, symbol: 'h' },
       triggers: [{ afterAny: ['a'], binding: { kind: 'kp' as const, symbol: 'v' } }],
     };
     const layout: Layout = {
       format: 'layerbench/layout@1',
-      name: 'Held magic',
+      name: 'Held adaptive',
       hostLocale: 'symbols',
       geometry: { preset: '3x5+2' },
       keys: { space: 'L0' },
@@ -229,7 +229,7 @@ describe('the kind of key a press is, in the statistics', () => {
           bindings: {
             L0: { kind: 'kp', symbol: ' ' },
             LHM: { kind: 'kp', symbol: 'a' },
-            LHR: { kind: 'hold_tap', tap: magic, hold: { kind: 'mod', mod: 'LGUI' } },
+            LHR: { kind: 'hold_tap', tap: adaptive, hold: { kind: 'mod', mod: 'LGUI' } },
           },
         },
       ],
@@ -239,12 +239,12 @@ describe('the kind of key a press is, in the statistics', () => {
     const sim = simulate(compiled, normalizeText('ha av', { caseMode: 'fold' }), opts);
     expect(sim.tables.stats.adaptive_presses).toBe(2);
     expect(sim.tables.stats.adaptive_trigger_hits).toBe(2);
-    // One logical key per legend it typed, both of them the magic key they are.
+    // One logical key per legend it typed, both of them the adaptive key they are.
     const lhr = compiled.keyIndex.get('LHR');
     const atKey = sim.tables.registry.all().filter((k) => k.pos === lhr);
     expect(atKey.map((k) => [k.label, k.keyKind])).toEqual([
-      ['h', 'magic'],
-      ['v', 'magic'],
+      ['h', 'adaptive'],
+      ['v', 'adaptive'],
     ]);
   });
 });

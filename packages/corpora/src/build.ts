@@ -1,13 +1,13 @@
 /**
  * Turns the raw corpus sources into the files the web app serves.
  *
- * For each entry in `raw/sources.json`: normalize the text, cap it at one megabyte cut on a
- * sentence boundary, then write `apps/web/public/corpora/<id>/{sample.txt,manifest.json}` and an
- * `index.json` listing every manifest. The output is byte-for-byte what the reference
- * implementation produced, so analyses stay comparable across the two engines.
+ * For each entry in `raw/sources.json`: take the text's sentences, one per line, in an order that
+ * looks random but never changes, normalize each, and keep whole sentences up to one megabyte; then
+ * write `apps/web/public/corpora/<id>/{sample.txt,manifest.json}` and an `index.json` listing every
+ * manifest. The same raw text always builds the same sample, byte for byte.
  *
- *   pnpm corpora            # build all
- *   pnpm corpora en-conv    # build one
+ *   pnpm corpora               # build all
+ *   pnpm corpora en-general    # build one
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -28,8 +28,6 @@ interface Source {
   license: string;
   source: string;
   description: string;
-  /** True when the text was produced from a word-frequency list rather than sampled from writing. */
-  generated?: boolean;
   /** When the source text was downloaded, for corpora fetched from the web. */
   retrieved?: string;
 }
@@ -37,7 +35,6 @@ interface Source {
 interface Manifest {
   built_at: string;
   description: string;
-  generated?: boolean;
   id: string;
   language: string;
   license: string;
@@ -50,26 +47,35 @@ interface Manifest {
   text_class: string;
 }
 
-const SENTENCE_ENDS = new Set(['.'.charCodeAt(0), '!'.charCodeAt(0), '?'.charCodeAt(0)]);
-const SPACE = ' '.charCodeAt(0);
+/**
+ * A sentence's place in the sample: a hash of its text (32-bit FNV-1a). Leipzig's files are sorted
+ * alphabetically, and an analysis reads a sample from its start, so in file order it would only ever
+ * see sentences from `$` to `B`; ordered by hash, any stretch of the sample is a fair draw.
+ */
+function placeOf(sentence: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < sentence.length; i++) {
+    h ^= sentence.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+/** A letter of another script: mis-decoded text, or a name the language does not write. */
+const NON_LATIN_LETTER = /[^\P{L}\p{Script=Latin}]/u;
 
 /**
- * Cap the text at `maxBytes`, cutting after the last sentence end so sentence-case modeling still
- * sees well-formed input. Slicing by bytes can split a character; the sentence cut discards it.
+ * The sentences of a raw text, one per line, without those holding letters of another script, in
+ * the order of `placeOf`.
  */
-function cap(text: string, maxBytes: number): string {
-  const bytes = new TextEncoder().encode(text);
-  if (bytes.length <= maxBytes) return text;
-  const head = bytes.subarray(0, maxBytes);
-  let cut = -1;
-  for (let i = head.length - 2; i >= 0; i--) {
-    if (SENTENCE_ENDS.has(head[i]) && head[i + 1] === SPACE) {
-      cut = i;
-      break;
-    }
-  }
-  const kept = cut === -1 ? head : head.subarray(0, cut + 1);
-  return new TextDecoder('utf-8').decode(kept).trim();
+function sentences(raw: string): string[] {
+  return raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !NON_LATIN_LETTER.test(line))
+    .map((line) => ({ line, place: placeOf(line) }))
+    .sort((a, b) => a.place - b.place || (a.line < b.line ? -1 : a.line > b.line ? 1 : 0))
+    .map(({ line }) => line);
 }
 
 /** The sample keeps everything; each analysis narrows it to the class the reader asked for. */
@@ -77,15 +83,23 @@ const SAMPLE_TEXT_CLASS = 'letters+digits+symbols';
 
 function build(id: string, meta: Source, previous?: Manifest): Manifest {
   const raw = readFileSync(join(RAW_DIR, meta.file), 'utf8');
+  const keepAlso = languageKeep(meta.language);
   // News text quotes people's phone numbers and addresses; the sample keeps their shape only.
-  const sample = cap(
-    normalizeText(scrubContacts(raw), {
+  const kept: string[] = [];
+  let bytes = 0;
+  for (const sentence of sentences(scrubContacts(raw))) {
+    const text = normalizeText(sentence, {
       caseMode: 'model',
       textClass: SAMPLE_TEXT_CLASS,
-      keepAlso: languageKeep(meta.language),
-    }),
-    MAX_SAMPLE_BYTES,
-  );
+      keepAlso,
+    });
+    if (text.length === 0) continue;
+    const size = Buffer.byteLength(text) + (kept.length > 0 ? 1 : 0);
+    if (bytes + size > MAX_SAMPLE_BYTES) break;
+    kept.push(text);
+    bytes += size;
+  }
+  const sample = kept.join(' ');
   const wordCount = splitWords(sample).length;
   const dir = join(OUT_DIR, id);
   const unchanged = previous !== undefined && readIfPresent(join(dir, 'sample.txt')) === sample;
@@ -95,7 +109,6 @@ function build(id: string, meta: Source, previous?: Manifest): Manifest {
     // run would dirty every output file for nothing.
     built_at: unchanged ? previous.built_at : new Date().toISOString(),
     description: meta.description,
-    ...(meta.generated ? { generated: true } : {}),
     id,
     language: meta.language,
     license: meta.license,
@@ -163,7 +176,7 @@ function main(): void {
   if (missing.length > 0) {
     console.log(
       `\nNo raw text yet for: ${missing.join(', ')}.\n` +
-        'Run `pnpm corpora:fetch` to download the sources, then `pnpm corpora` again.',
+        'packages/corpora/README.md says where each comes from; then run `pnpm corpora` again.',
     );
   }
 }

@@ -1,9 +1,8 @@
 # Corpora
 
 `raw/sources.json` is the single source of truth. Each entry names a file in `raw/`, the language it
-is in, its licence, where it came from, and whether the text was generated. `pnpm corpora` normalises
-each one, caps it at a megabyte on a sentence boundary, and writes what the web app serves:
-`apps/web/public/corpora/<id>/{sample.txt,manifest.json}` plus an `index.json` the browser's picker
+is in, its licence and where it came from. `pnpm corpora` builds what the web app serves from each:
+`apps/web/public/corpora/<id>/{sample.txt,manifest.json}`, plus an `index.json` the browser's picker
 reads.
 
 A corpus whose raw file is missing is skipped with a note rather than failing the build, so the
@@ -12,69 +11,48 @@ repository can list corpora whose text you have not downloaded yet.
 ## Commands
 
 ```bash
-pnpm corpora              # build every corpus whose raw text is present
-pnpm corpora en-conv      # build one
-pnpm corpora:fetch        # download the word-frequency lists (needs network)
-pnpm corpora:generate     # build conversational text from those lists
+pnpm corpora               # build every corpus whose raw text is present
+pnpm corpora en-general    # build one
 ```
 
-The samples keep letters, digits **and** symbols. Each analysis narrows that to whatever the reader
-asked for — the default is still letters only, so one sample serves every setting and turning
-numbers on does not need a rebuild.
+## One corpus per language
 
-## Provisioning the corpora
+Each language has one text: news sentences from the
+[Leipzig Corpora Collection](https://wortschatz.uni-leipzig.de/en/download), which is
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); `sources.json` records the attribution
+the licence requires.
 
-Two corpora per language: conversation, generated from word frequencies, and news, sampled from
-the Leipzig collection. English, Brazilian Portuguese, Spanish and French ship their conversational
-corpora; English and Portuguese ship news, and Spanish and French news wait for the manual step
-below. Italian is listed and has neither yet.
+| id | Language | Leipzig set |
+|---|---|---|
+| `en-general` | English | `eng_news_2023_30K` |
+| `pt-br-general` | Brazilian Portuguese | `por-br_newscrawl_2011_30K` |
+| `es-general` | Spanish | `spa_news_2023_30K` |
+| `fr-general` | French | `fra_news_2023_30K` |
+| `it-general` | Italian | `ita_news_2023_30K` |
 
-### Conversational — `en-conv`, `pt-br-conv`, `es-conv`, `fr-conv`, `it-conv`
+Getting the text is a manual step, because the collection ships `.tar.gz` archives behind a download
+form, and shipping an unverifiable unpacker would be worse than one documented instruction:
 
-Generated, and fully automated:
+1. Open <https://wortschatz.uni-leipzig.de/en/download> and download the set.
+2. From its archive take `*-sentences.txt`, strip the leading sentence-number column, and save the
+   text as `raw/<id>.txt`, one sentence per line.
+3. `pnpm corpora <id>`
 
-```bash
-pnpm corpora:fetch en pt_br es fr it
-pnpm corpora:generate en pt_br es fr it
-pnpm corpora
-```
+## How a sample is built
 
-`corpora:fetch` downloads word-frequency lists from
-[hermitdave/FrequencyWords](https://github.com/hermitdave/FrequencyWords), which counts words across
-the OpenSubtitles corpus — conversational register, accents intact. Its code is MIT, but the lists
-are [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), so the corpora generated from
-them are shared under it too, as `sources.json` records. `corpora:generate` samples those words in
-proportion to their frequency and shapes them into capitalised, punctuated sentences.
-
-They draw from the 8,000 most frequent usable words of each language. `pt_br` is counted over Brazilian
-subtitles only.
-
-The lists count words as a tokenizer split them, and the generator puts them back together:
-
-- English clitics go back on a word they follow — `I'm`, `don't`, `you're`, `it's` — and one drawn
-  after a word that cannot take it is written on a likely one instead, so each is written about as
-  often as it was counted. Stems like `didn` only ever appear with their `'t`.
-- French elisions (`c'`, `l'`, `j'`, `qu'`…) join the next word starting with a vowel or an h.
-- Single letters that are not words of the language, and words with letters it does not use — a
-  foreign name, the `º` of an ordinal — are left out. The alphabet is the language profile's.
-
-The generator is deterministic — the same list yields the same text byte for byte — so rebuilding is
-a no-op and the output is reviewable as a diff.
-
-### News — `es-general`, `fr-general`, `it-general`
-
-A manual step, because the Leipzig Corpora Collection ships `.tar.gz` archives behind a download
-form and shipping an unverifiable unpacker would be worse than one documented instruction.
-
-1. Open <https://wortschatz.uni-leipzig.de/en/download> and download the 30K sentence sets:
-   `spa_news_2023_30K`, `fra_news_2023_30K`, `ita_news_2023_30K`.
-2. From each archive take `*-sentences.txt`, strip the leading sentence-number column, and save the
-   text as `raw/es-general.txt`, `raw/fr-general.txt`, `raw/it-general.txt`.
-3. `pnpm corpora`
-
-`en-general` and `pt-br-general` were produced the same way, from `eng_news_2023_30K` and
-`por-br_newscrawl_2011_30K`. The collection is CC BY 4.0;
-`sources.json` records the attribution the licence requires.
+- **Sentences, in a fixed shuffle.** The raw text is split into lines, one sentence each, and put in
+  the order of a hash of each sentence. Leipzig's files are sorted alphabetically, and an analysis
+  reads a sample from its start: in file order it would only see sentences from `$` to `B`. Ordered
+  by hash, any stretch is a fair draw, and the same raw text always gives the same sample, byte for
+  byte, so rebuilding is a no-op and the output is reviewable as a diff.
+- **Only Latin letters.** A sentence with a letter of another script is left out: mis-decoded text,
+  or a name in Cyrillic or Greek that the language does not write.
+- **Contacts scrubbed.** E-mail addresses and phone numbers keep their shape, not their digits.
+- **Normalized**, keeping letters, digits **and** symbols. Each analysis narrows that to whatever the
+  reader asked for: the default is still letters only, so one sample serves every setting, and
+  turning numbers on needs no rebuild. Typographic quotes, dashes and the ellipsis become `' " - .`.
+  French keeps `« »`, and Spanish `¿ ¡`.
+- **Capped** at a megabyte of whole sentences.
 
 ## Adding a text
 
@@ -85,12 +63,12 @@ the `corpora` workflow checks the pull request.
 
 ## Adding a language
 
-1. A `LanguageProfile` in `packages/core/src/lang/profiles.ts` — the characters the language cannot
+1. A `LanguageProfile` in `packages/core/src/lang/profiles.ts`: the characters the language cannot
    be written without, and any punctuation of its own. This is what makes the app able to say "this
    layout cannot type 4 characters Spanish needs" instead of silently fragmenting the n-grams at
    every one of them.
-2. Entries in `raw/sources.json`.
-3. The raw text, by either route above.
+2. Its entry in `raw/sources.json`.
+3. The raw text, as above.
 4. `pnpm corpora`.
 
 ## Two things worth knowing

@@ -8,9 +8,7 @@
   "scripts": {
     "build": "esbuild src/build.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/build.mjs --log-level=warning && node dist/build.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "echo 'no tests'",
-    "fetch": "esbuild src/fetch.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/fetch.mjs --log-level=warning && node dist/fetch.mjs",
-    "generate": "esbuild src/generate.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/generate.mjs --log-level=warning && node dist/generate.mjs"
+    "test": "echo 'no tests'"
   },
   "dependencies": {
     "@layerbench/core": "workspace:*"

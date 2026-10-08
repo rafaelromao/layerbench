@@ -2,7 +2,7 @@ import type { AdaptiveTrigger, Binding } from '../layout/types.js';
 import { type ClassicDef, raw } from './classic.js';
 
 /*
- * Layouts made for small boards: a letter on a thumb, letters on chords, magic and repeat keys,
+ * Layouts made for small boards: a letter on a thumb, letters on chords, adaptive and repeat keys,
  * boards under thirty keys. Each arrangement is copied from its author's own firmware or page,
  * named in `source`; where a source left something out, the description says what.
  */
@@ -26,11 +26,11 @@ const COMMON = {
 const REPEAT: Binding = { kind: 'key_repeat' };
 
 /**
- * Pascal Getreuer's magic key for Magic Sturdy (`getreuer.c`, `get_alt_repeat_key_keycode_user`):
- * the rules that type letters. His Vim rule for `n`, the code snippets, and what the repeat key
- * types after the magic key are left out.
+ * Pascal Getreuer's adaptive key, his "magic key", for Magic Sturdy (`getreuer.c`,
+ * `get_alt_repeat_key_keycode_user`): the rules that type letters. His Vim rule for `n`, the code
+ * snippets, and what the repeat key types after the adaptive key are left out.
  */
-const STURDY_MAGIC: Binding = {
+const STURDY_ADAPTIVE: Binding = {
   kind: 'adaptive',
   triggers: [
     after(' ', macro('the')),
@@ -50,8 +50,8 @@ const STURDY_MAGIC: Binding = {
 };
 
 /**
- * Nordrassil's arcane key repeats a letter its own hand typed. After the other hand it is a magic
- * key whose outputs the author publishes only in a pastebin; that half is not modelled.
+ * Nordrassil's arcane key repeats a letter its own hand typed. After the other hand it is an
+ * adaptive key whose outputs the author publishes only in a pastebin; that half is not modelled.
  */
 function arcane(hand: string): Binding {
   return { kind: 'adaptive', triggers: [{ afterAny: hand.split(''), binding: REPEAT }] };
@@ -156,9 +156,9 @@ export const SMALL_DEFS: ClassicDef[] = [
     author: 'Ikcelaks, as Pascal Getreuer types it',
     rows: "v m l c p b ★ u o q\ns t r d y f n e a i\nx k j g w z h , . '",
     thumbs: 'unds space ⟲ esc',
-    special: { ...COMMON, '★': STURDY_MAGIC, '⟲': REPEAT, unds: kp('_') },
+    special: { ...COMMON, '★': STURDY_ADAPTIVE, '⟲': REPEAT, unds: kp('_') },
     description:
-      'Magic Sturdy: a magic key in the letter block and a repeat key on a thumb. The magic rules are the ones that type letters.',
+      'Magic Sturdy: an adaptive key in the letter block and a repeat key on a thumb. Its rules are the ones that type letters.',
     source: 'https://github.com/getreuer/qmk-keymap (getreuer.c)',
   },
   {
@@ -182,7 +182,7 @@ export const SMALL_DEFS: ClassicDef[] = [
     thumbs: '∅ space ⟐l ⟐r t ∅',
     special: { ...COMMON, '⟐l': arcane(NORDRASSIL_LEFT), '⟐r': arcane(NORDRASSIL_RIGHT) },
     description:
-      "Nordrassil as its README publishes it: t on the right thumb and an arcane key on each, modelled as repeating the letter its own hand typed (the author's magic outputs are not published with it). The README notes a 2025 refinement.",
+      "Nordrassil as its README publishes it: t on the right thumb and an arcane key on each, modelled as repeating the letter its own hand typed (the author's adaptive outputs are not published with it). The README notes a 2025 refinement.",
     source: 'https://github.com/empressabyss/nordrassil',
   },
   {

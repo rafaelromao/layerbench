@@ -9,9 +9,9 @@
 > their sources are in the [glossary](docs/METRICS.md).
 
 Keyboard layout analyzer that understands ZMK layers. It **simulates** how a text corpus is actually
-typed on a keymap — one-shot and momentary layers, layers armed by macros, adaptive ("magic") keys,
-repeat keys, multi-letter macros, combos, sticky shift, caps word — and computes the Keyboard Layouts
-Doc metrics (SFB, SFS, scissors, LSB, alternation, rolls, redirects, usage, effort) on the resulting
+typed on a keymap — one-shot and momentary layers, layers armed by macros, adaptive keys, repeat
+keys, multi-letter macros, combos, sticky shift, caps word — and computes the Keyboard Layouts Doc
+metrics (SFB, SFS, scissors, LSB, alternation, rolls, redirects, usage, effort) on the resulting
 **physical key stream**. Every rule is data: toggle it, re-parameterize it, remove it, or compose a
 new one.
 
@@ -100,8 +100,9 @@ the approval, and the deploy that follows puts it in everyone's Library.
 
 The texts that come with the app are built from `packages/corpora/raw/`: each raw text with its
 entry in `sources.json`, which says what it is, its language, its licence and where it comes from.
-`pnpm corpora` normalizes each one, caps it at a megabyte, and writes what the app serves to
-`apps/web/public/corpora/`. A new or updated text joins them by pull request, and merging it is the
+`pnpm corpora` takes each one's sentences, a line each, in an order that looks random but never
+changes, normalizes them, keeps whole sentences up to a megabyte, and writes what the app serves to
+`apps/web/public/corpora/`. There is one text per language, from the Leipzig Corpora Collection. A new or updated text joins them by pull request, and merging it is the
 approval.
 
 1. Put the raw text in `packages/corpora/raw/`, as UTF-8 plain text of at most 10 MB: the same kind
@@ -112,8 +113,8 @@ approval.
    branch as `packages/corpora/raw/<id>.txt`, with its entry beside it as `<id>.json`.
 2. Add its entry to `raw/sources.json`, under an id of lower-case words and hyphens: `file`, `name`,
    `language`, `description`, `source` with a link, and `license`, starting `CC0`, `CC BY 4.0`,
-   `CC BY-SA 4.0` (with its version) or `Public domain`, since the text is published with the app;
-   `generated: true` marks a text made from word frequencies. A saved text's `<id>.json` is that
+   `CC BY-SA 4.0` (with its version) or `Public domain`, since the text is published with the app.
+   A saved text's `<id>.json` is that
    entry with its licence and source still to fill in. A source not yet credited goes in the
    credits at the foot of the landing page.
 3. `pnpm corpora <id>` builds it. Commit `apps/web/public/corpora/<id>/` and `index.json` with it.

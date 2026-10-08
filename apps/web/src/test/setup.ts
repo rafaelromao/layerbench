@@ -22,19 +22,37 @@ configure({ asyncUtilTimeout: 10_000 });
  */
 
 /**
- * Media queries answer false by default, so a test runs as a mouse would. `setPointerKind('touch')`
- * makes the same run answer as a finger does, which is a different interface rather than the same
- * one at a different size: a finger cannot hover, and cannot type on a key.
+ * Media queries answer as a mouse on a desktop's screen would, by default.
+ * `setPointerKind('touch')` makes the same run answer as a finger does, which is a different
+ * interface rather than the same one at a different size: a finger cannot hover, and cannot type on
+ * a key. `setViewportWidth` answers the queries on width, for a phone's screen; the layout itself
+ * is not drawn.
  */
 let pointerKind: 'mouse' | 'touch' = 'mouse';
+const DESKTOP_WIDTH = 1024;
+let viewportWidth = DESKTOP_WIDTH;
 
 export function setPointerKind(kind: 'mouse' | 'touch'): void {
   pointerKind = kind;
 }
 
+export function setViewportWidth(px: number): void {
+  viewportWidth = px;
+}
+
+/** A query on width, `(min-width: 640px)` or `(max-width: 40rem)`, against the viewport set. */
+function widthMatches(query: string): boolean | null {
+  const m = /\((min|max)-width:\s*([\d.]+)(px|rem)\)/.exec(query);
+  if (!m) return null;
+  const px = Number(m[2]) * (m[3] === 'rem' ? 16 : 1);
+  return m[1] === 'min' ? viewportWidth >= px : viewportWidth <= px;
+}
+
 if (!window.matchMedia) {
   window.matchMedia = ((query: string) => ({
     get matches() {
+      const width = widthMatches(query);
+      if (width !== null) return width;
       return pointerKind === 'touch' && /hover:\s*none|pointer:\s*coarse/.test(query);
     },
     media: query,
@@ -47,8 +65,11 @@ if (!window.matchMedia) {
   })) as unknown as typeof window.matchMedia;
 }
 
-// Every test starts as a mouse unless it says otherwise.
-afterEach(() => setPointerKind('mouse'));
+// Every test starts as a mouse on a desktop's screen unless it says otherwise.
+afterEach(() => {
+  setPointerKind('mouse');
+  setViewportWidth(DESKTOP_WIDTH);
+});
 
 if (!Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = () => {};

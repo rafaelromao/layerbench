@@ -31,10 +31,10 @@ describe('Ranking a layout without some of its features', () => {
     expect(after.noSpace.totals).toEqual(before.noSpace.totals);
   });
 
-  it('keeps the magic key as the letter it types by default', () => {
+  it('keeps the adaptive key as the letter it types by default', () => {
     const all = kinds([]);
     expect(all.get('v')).toContain('adaptive');
-    const plain = kinds(['magic']);
+    const plain = kinds(['adaptive']);
     expect(plain.get('h')).not.toContain('adaptive');
     expect(plain.get('v')).not.toContain('adaptive');
     // Alt repeat is a plain repeat key now, and still offered.
@@ -65,16 +65,17 @@ describe('Ranking a layout without some of its features', () => {
   it('types without combos what it can, and leaves out what only a combo types', () => {
     const after = kinds(['combos']);
     expect([...after.values()].flat()).not.toContain('combo');
-    // Magic Romak's à is a combo on Alpha 2 and nothing else.
+    // Magic Romak's à is a combo on Alpha 2; without it, the grave dead key and a still type it.
+    expect(after.get('à')).toEqual(['deadkey']);
     const coverage = layoutLanguageCoverage(
       compileLayout(withoutFeatures(magicRomak, ['combos'])),
       'pt-BR',
     );
-    expect(coverage?.missingRequired).toEqual(['à']);
+    expect(coverage?.missingRequired).toEqual([]);
   });
 
   it('is still a document the engine reads back', () => {
-    const all = withoutFeatures(magicRomak, ['magic', 'repeat', 'combos', 'macros']);
+    const all = withoutFeatures(magicRomak, ['adaptive', 'repeat', 'combos', 'macros']);
     const back = safeParseLayout(JSON.parse(JSON.stringify(toCanonicalJson(all))));
     expect(back.ok).toBe(true);
   });

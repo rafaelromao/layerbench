@@ -1,7 +1,7 @@
 import { FEATURE_KINDS, FEATURE_LABELS, type FeatureKind } from '@layerbench/core';
 import type { ReactNode, Ref } from 'react';
 
-/** "magic keys, typing combos and multi-letter macros". */
+/** "adaptive keys, typing combos and multi-letter macros". */
 export function featureList(features: readonly FeatureKind[]): string {
   const names = features.map((f) => FEATURE_LABELS[f].toLowerCase());
   return names.length <= 1

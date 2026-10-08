@@ -27,7 +27,7 @@ test.describe('on a phone', () => {
   });
 
   test("Analyze's settings open in a dialog that fits the screen", async ({ page }) => {
-    await page.goto('/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000');
+    await page.goto('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000');
     await page.getByRole('button', { name: 'Settings' }).tap();
     const dialog = page.getByRole('dialog', { name: 'Settings' });
     await expect(dialog.getByRole('textbox', { name: 'Author' })).toHaveValue('Rafael Romão');

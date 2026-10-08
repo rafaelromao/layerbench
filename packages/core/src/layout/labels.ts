@@ -1,7 +1,15 @@
 import type { CompiledLayout } from './compile.js';
 import type { AdaptiveTrigger, Binding, Mod } from './types.js';
 
-export type LegendKind = 'alpha' | 'layer' | 'mod' | 'repeat' | 'magic' | 'trans' | 'none' | 'raw';
+export type LegendKind =
+  | 'alpha'
+  | 'layer'
+  | 'mod'
+  | 'repeat'
+  | 'adaptive'
+  | 'trans'
+  | 'none'
+  | 'raw';
 
 /**
  * How a key is drawn, in the places keymap-drawer uses so that one reads like the other.
@@ -80,6 +88,11 @@ const COMBINING: Record<string, string> = {
   '˚': '̊',
 };
 
+/** How a dead key's accent is drawn: on a dotted circle where it can be, as itself otherwise. */
+function accentGlyph(diacritic: string): string {
+  return COMBINING[diacritic] ? `◌${COMBINING[diacritic]}` : diacritic;
+}
+
 /** Layer names are abbreviated to fit a key: initials for multi-word names, else the first four. */
 export function short(name: string): string {
   if ([...name].length <= 4) return name;
@@ -109,6 +122,7 @@ function shiftedOf(c: CompiledLayout, b: Binding): string | null {
     return b.shifted === b.symbol.toUpperCase() ? null : b.shifted;
   }
   if (b.kind === 'unicode' && b.shiftedSymbol !== undefined) return b.shiftedSymbol;
+  if (b.kind === 'dead_key' && b.shifted !== undefined) return accentGlyph(b.shifted);
   if (b.kind === 'mod_morph' && b.mods.some((m) => m === 'LSHIFT' || m === 'RSHIFT')) {
     const morphed = tapLabel(c, b.morphed);
     return morphed === '' ? null : morphed;
@@ -169,7 +183,7 @@ export function tapLabel(c: CompiledLayout, b: Binding): string {
     case 'macro':
       return b.symbols ?? (b.steps ? b.steps.map((s) => tapLabel(c, s)).join('') : '⋯');
     case 'dead_key':
-      return COMBINING[b.diacritic] ? `◌${COMBINING[b.diacritic]}` : b.diacritic;
+      return accentGlyph(b.diacritic);
     case 'unicode':
       return b.symbol;
     case 'raw':
@@ -229,7 +243,7 @@ export function legendKind(b: Binding): LegendKind {
     case 'key_repeat':
       return 'repeat';
     case 'adaptive':
-      return 'magic';
+      return 'adaptive';
     case 'hold_tap':
       return legendKind(b.tap);
     case 'mod_morph':
@@ -372,7 +386,7 @@ export function describe(c: CompiledLayout, b: Binding): string {
       return `adaptive: ${[fallback, ...branches].join('; ')}`;
     }
     case 'dead_key':
-      return `dead key ${b.diacritic}: accents the next letter`;
+      return `dead key ${b.diacritic}${b.shifted ? `, ${b.shifted} with shift` : ''}: accents the next letter`;
     case 'unicode':
       return `types ${b.symbol}${b.shiftedSymbol ? `, ${b.shiftedSymbol} with shift` : ''}`;
     case 'raw':

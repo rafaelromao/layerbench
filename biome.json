@@ -15,7 +15,8 @@
       "!packages/core/fixtures",
       "!packages/corpora/raw",
       "!apps/web/public",
-      "!tmp"
+      "!tmp",
+      "!generated"
     ]
   },
   "formatter": {

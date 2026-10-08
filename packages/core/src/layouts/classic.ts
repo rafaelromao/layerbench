@@ -16,7 +16,7 @@ export interface ClassicDef {
    */
   byKey?: Record<string, string>;
   /**
-   * Keys that are not one symbol, by the token written for them: a repeat or magic key, a layer
+   * Keys that are not one symbol, by the token written for them: a repeat or adaptive key, a layer
    * key, a key that types nothing the analysis counts (`null` leaves the position empty).
    */
   special?: Record<string, Binding | null>;

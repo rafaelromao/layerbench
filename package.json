@@ -21,8 +21,7 @@
     "corpora": "pnpm --filter @layerbench/corpora run build",
     "bench": "BENCH=1 pnpm --filter @layerbench/core run test",
     "goldens": "pnpm --filter @layerbench/core run goldens",
-    "corpora:fetch": "pnpm --filter @layerbench/corpora run fetch",
-    "corpora:generate": "pnpm --filter @layerbench/corpora run generate"
+    "generate": "pnpm --filter @layerbench/core run generate"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",

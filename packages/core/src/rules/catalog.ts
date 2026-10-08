@@ -409,8 +409,7 @@ export function layerRules(): Rule[] {
       unit: 'percent',
     }),
     rule('adaptive_hit_rate', 'Adaptive key hit rate', 'layer', {
-      description:
-        'How often an adaptive (magic) key produced its trigger output rather than the default.',
+      description: 'How often an adaptive key produced its trigger output rather than the default.',
       source: 'stat',
       stat: 'adaptive_hit_rate',
       unit: 'percent',

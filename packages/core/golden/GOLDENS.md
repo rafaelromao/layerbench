@@ -252,6 +252,51 @@ What moved, checked across all 38 reports:
   `finger_speed` (distance times count), `finger_travel` and `layer_taps_per_100` (empty before).
 - **The new field** `key_scale` on every result, null where the value is no sum over keys.
 
+## Tenth re-baseline: dead keys type, and Magic Romak has a Dead keys layer
+
+The simulator now types through a dead key: an accent, then the letter it composes with, as one
+way to type the accented letter, letting go of any layer key held for the accent before the letter,
+and shifting the letter rather than the accent for a capital. Magic Romak gains the default Dead
+keys layer, reached by tapping Alpha 2's R1, which typed a second apostrophe before.
+
+What moved, checked across the 14 Magic Romak reports; nothing else moved:
+
+- **In the 12 fold reports, only the producer lists and the per-layer breakdown**: the dead-key
+  producers join the lists, and every per-layer result gains an empty entry for Dead keys. Alpha 2
+  is still the cheaper way to every Portuguese accent, so no press, value or trace moved.
+- **The Portuguese model-mode report types more of the fixture**: 7,850 symbols where it typed
+  7,789. Accented letters the Alpha 2 route could not type in some states (`é` 8 times, `á` 5, `ú`
+  2, `ã`, `ç`, `ê`) now go through Dead keys, 17 presses on that layer. Each was a hard word
+  boundary before, so the letters around them typed less too, and every unproducible count
+  fell. Every rule value moves with that text: SFB 1.49 → 1.77 and Effort 312.9 → 315.2, and wasted
+  one-shots 7.6 → 10.3 %, since tapping from Alpha 2 to Dead keys spends a one-shot on a layer key.
+  The explained words did not change.
+- **Magic Romak's document and its inline link**, with the new layer, the Alpha 2 key and the
+  description. Dead keys has keys of its own for `ç` and `ñ`; no fixture has an `ñ`, so that moved
+  only the producer lists.
+
+## Eleventh re-baseline: Romak, named so, types `à`
+
+Romak 34 is named Romak, and gains the `à` combo Romak 24 and Magic Romak have, `RHM`+`RHR` on Alpha
+2, which types `à` and arms the alt-repeat layer as its other accents do.
+
+What moved, checked across the 12 Romak reports; nothing else moved:
+
+- **Only the producer lists**, which gain `à`. No fixture has an `à`, so no press, value or trace
+  moved.
+- **Romak's document**, with its name and the combo.
+
+## Twelfth re-baseline: magic keys are adaptive keys
+
+The kind of key a press is, `key_kind`, says `adaptive` where it said `magic`, as the editor and
+the guide now call these keys, and the note of `adaptive_hit_rate` no longer says "(magic)". The
+reports were changed by that text alone; no press, value, item or trace moved.
+
+The layouts say so too, keeping their names: Romak 24's and Romak's behaviours `magic` and
+`reversedMagic`, which no key refers to, are `adaptiveHV` and `adaptiveVH`, and the
+descriptions of Magic Romak, Magic Sturdy and Nordrassil say adaptive key. Only those five
+documents and Magic Romak's inline link changed.
+
 ## Not compared
 
 `globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not

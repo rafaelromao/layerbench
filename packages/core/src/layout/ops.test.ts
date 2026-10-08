@@ -79,41 +79,41 @@ describe('layout ops', () => {
   });
 });
 
-describe('magic keys move as the bindings they are', () => {
-  const magicKey: Binding = {
+describe('adaptive keys move as the bindings they are', () => {
+  const adaptiveKey: Binding = {
     kind: 'adaptive',
     default: { kind: 'kp', symbol: 'h' },
     triggers: [{ afterAny: ['a'], binding: { kind: 'kp', symbol: 'v' } }],
   };
   const altRepeat: Binding = { kind: 'adaptive', default: { kind: 'key_repeat' }, triggers: [] };
-  const magic: Layout = {
+  const withAdaptive: Layout = {
     ...layout,
     layers: [
-      { ...layout.layers[0], bindings: { ...layout.layers[0].bindings, LHM: magicKey } },
+      { ...layout.layers[0], bindings: { ...layout.layers[0].bindings, LHM: adaptiveKey } },
       { ...layout.layers[1], bindings: { ...layout.layers[1].bindings, LHI: altRepeat } },
     ],
     features: { sentenceCase: {} },
   };
 
-  it('carries a magic key along when its key is swapped', () => {
-    const next = swapKeys(magic, 0, 'LHM', 'LHI');
-    expect(next.layers[0].bindings.LHI).toBe(magicKey);
+  it('carries an adaptive key along when its key is swapped', () => {
+    const next = swapKeys(withAdaptive, 0, 'LHM', 'LHI');
+    expect(next.layers[0].bindings.LHI).toBe(adaptiveKey);
     expect(next.layers[0].bindings.LHM).toEqual({ kind: 'kp', symbol: 'b' });
     // A feature that follows a role is left where it was.
-    expect(next.features).toBe(magic.features);
+    expect(next.features).toBe(withAdaptive.features);
   });
 
-  it('copies a magic key onto another key as a copy of its own', () => {
-    const next = copyKey(magic, 0, 'LHM', 'LHI');
-    expect(next.layers[0].bindings.LHI).toEqual(magicKey);
-    expect(next.layers[0].bindings.LHM).toBe(magicKey);
+  it('copies an adaptive key onto another key as a copy of its own', () => {
+    const next = copyKey(withAdaptive, 0, 'LHM', 'LHI');
+    expect(next.layers[0].bindings.LHI).toEqual(adaptiveKey);
+    expect(next.layers[0].bindings.LHM).toBe(adaptiveKey);
   });
 
   it('sends an alt repeat to another layer, keeping it only when copying', () => {
-    const moved = sendKeyToLayer(magic, 1, 0, 'LHI', 'move');
+    const moved = sendKeyToLayer(withAdaptive, 1, 0, 'LHI', 'move');
     expect(moved.layers[0].bindings.LHI).toBe(altRepeat);
     expect('LHI' in moved.layers[1].bindings).toBe(false);
-    const copied = sendKeyToLayer(magic, 1, 0, 'LHI', 'copy');
+    const copied = sendKeyToLayer(withAdaptive, 1, 0, 'LHI', 'copy');
     expect(copied.layers[1].bindings.LHI).toBe(altRepeat);
   });
 });
@@ -158,7 +158,7 @@ describe('removing a layer', () => {
         bindings: {
           LHM: { kind: 'kp', symbol: 'a' },
           L0: { kind: 'mo', layer: 'nav' },
-          // A magic key whose branch reaches a layer reaches it like any key would.
+          // An adaptive key whose branch reaches a layer reaches it like any key would.
           LHI: {
             kind: 'adaptive',
             default: { kind: 'kp', symbol: 'h' },

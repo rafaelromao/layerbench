@@ -89,7 +89,7 @@ function validTextClass(v: string | undefined): TextClass {
   return 'letters';
 }
 
-/** `off=magic,combos`: known features only, each once, always in the same order. */
+/** `off=adaptive,combos`: known features only, each once, always in the same order. */
 function validFeatures(v: string | undefined): FeatureKind[] {
   if (!v) return [];
   const asked = new Set(v.split(',').filter(isFeatureKind));

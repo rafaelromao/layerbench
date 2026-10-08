@@ -11,7 +11,7 @@ const BLOB = readFileSync(
   'utf8',
 ).trim();
 
-const LINK = `/analyze?corpus=pt-br-conv&sample=20000#layout=inline%3A${BLOB}`;
+const LINK = `/analyze?corpus=pt-br-general&sample=20000#layout=inline%3A${BLOB}`;
 
 /** What the browser asks the host for, for the page it shows: the address up to the `#`. */
 function request(page: Page): string {

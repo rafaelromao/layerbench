@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { BUNDLED_LAYOUTS, bundledLayout, type Layout, toCanonicalJson } from '@layerbench/core';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -6,6 +8,12 @@ import type { AnalysisClient, AnalyzeRequest, ReportDTO } from '../engine/protoc
 import { useSession } from '../state/session.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { LIBRARY, openSettings, renderRoute, savedInLink, testClient } from '../test/render.js';
+
+/**
+ * Spanish news is built once its text is downloaded (packages/corpora/README.md); until then the
+ * tests that need a Spanish text wait for it rather than fail.
+ */
+const SPANISH = existsSync(resolve(process.cwd(), 'public/corpora/es-general/manifest.json'));
 
 let counter = 0;
 
@@ -36,15 +44,15 @@ describe('Creating layouts', () => {
     await user.clear(name);
     await user.type(name, 'Bird nest');
     await user.selectOptions(within(dialog).getByLabelText('New layout board'), '23332+2');
-    await user.click(within(dialog).getByLabelText('Add number and symbol layers'));
+    await user.click(within(dialog).getByLabelText('Add the default layers'));
     await user.click(within(dialog).getByRole('button', { name: 'Create and edit' }));
 
     await waitFor(async () => expect(await savedInLink(currentSearch())).toBe('bird-nest'));
     const stored = await storage.get('layouts', 'bird-nest');
     expect(stored).not.toBeNull();
-    const doc = stored?.doc as { name: string; layers: unknown[] };
+    const doc = stored?.doc as { name: string; layers: { id: string }[] };
     expect(doc.name).toBe('Bird nest');
-    expect(doc.layers).toHaveLength(3);
+    expect(doc.layers.map((l) => l.id)).toEqual(['base', 'num', 'sym', 'dead']);
   });
 
   it('puts the new-layout dialog away on a tap around it, or Escape', async () => {
@@ -80,18 +88,18 @@ describe('Creating layouts', () => {
     await openRanking();
     const corpus = await screen.findByRole('combobox', { name: 'Corpus' });
     await waitFor(() => expect(within(corpus).getAllByRole('option').length).toBeGreaterThan(1));
-    await user.selectOptions(corpus, 'pt-br-conv');
+    await user.selectOptions(corpus, 'pt-br-general');
     await user.selectOptions(screen.getByRole('combobox', { name: 'Rule set' }), 'cyanophage');
     await waitFor(() => expect(currentSearch()).toContain('rules=cyanophage'));
 
     await user.click(screen.getByRole('button', { name: 'Duplicate Qwerty' }));
     await waitFor(() => expect(currentPath()).toBe('/analyze'));
     await waitFor(async () => expect(await savedInLink(currentSearch())).toBe('qwerty-copy'));
-    expect(currentSearch()).toContain('corpus=pt-br-conv');
+    expect(currentSearch()).toContain('corpus=pt-br-general');
     expect(currentSearch()).toContain('rules=cyanophage');
     await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
     const settings = await openSettings();
-    expect(within(settings).getByRole('combobox', { name: 'Corpus' })).toHaveValue('pt-br-conv');
+    expect(within(settings).getByRole('combobox', { name: 'Corpus' })).toHaveValue('pt-br-general');
     expect(within(settings).getByRole('combobox', { name: 'Rule set' })).toHaveValue('cyanophage');
   }, 60_000);
 
@@ -124,7 +132,7 @@ describe('Ranking layouts', () => {
   it('shows Effort and SFB on every layout, and sorts by either', async () => {
     const user = userEvent.setup();
     // A small sample keeps twenty-odd analyses quick; the ordering is what is under test.
-    renderRoute('/library?corpus=en-conv&sample=1000', { storage: freshStorage() });
+    renderRoute('/library?corpus=en-general&sample=1000', { storage: freshStorage() });
 
     // Every bundled layout gets both numbers once scoring settles.
     await screen.findByText(/^Lower is better for both/, undefined, { timeout: 60_000 });
@@ -262,7 +270,7 @@ describe('Ranking layouts', () => {
 
   it('ranks a layout that cannot write the text’s language after one that can', async () => {
     // Magic Romak is scored first and types Portuguese; Qwerty, scored after it with a far better
-    // effort, has no key for ã or ç and would skip them for free. Romak 34, between them, gets a
+    // effort, has no key for ã or ç and would skip them for free. Romak, between them, gets a
     // number too, so the scoring can reach Qwerty.
     const { client, scored } = scoringOnly([900, 950, 100]);
     renderRoute('/library?corpus=pt-br-general&sample=10002', {
@@ -273,7 +281,7 @@ describe('Ranking layouts', () => {
     await screen.findByText(/^Scoring layouts on a sample of [\d,]+ symbols… 3 of/, undefined, {
       timeout: 60_000,
     });
-    expect(scored).toEqual(['Magic Romak', 'Romak 34', 'Qwerty']);
+    expect(scored).toEqual(['Magic Romak', 'Romak', 'Qwerty']);
     // First despite its far worse effort: Qwerty is behind it.
     const names = [...document.querySelectorAll('article h3')].map((h) => h.textContent);
     expect(names[0]).toBe('Magic Romak');
@@ -294,17 +302,37 @@ describe('Ranking layouts', () => {
     expect(sent).toContain('"symbols":"é"');
   }, 90_000);
 
-  it('ranks by the numbers alone when no layout can write the language', async () => {
-    // No bundled layout has an ñ, so none is behind another for it.
-    renderRoute('/library?corpus=es-conv&sample=10000', { storage: freshStorage() });
-    await screen.findByText(/^Lower is better for both/, undefined, { timeout: 60_000 });
-    expect(
-      screen.getByText(/None of these layouts types every letter Español needs\.$/),
-    ).toBeTruthy();
-    const efforts = cards().map((c) => valueOn(c, 'Effort'));
-    expect(efforts).toEqual([...efforts].sort((a, b) => a - b));
-    expect(document.body.textContent).not.toMatch(/ranked after the layouts that can/);
-  }, 90_000);
+  it.skipIf(!SPANISH)(
+    'ranks the layouts that can write the language first',
+    async () => {
+      // Magic Romak writes Spanish through its Dead keys layer; no other bundled layout has an ñ.
+      renderRoute('/library?corpus=es-general&sample=10000', { storage: freshStorage() });
+      await screen.findByText(/^Lower is better for both/, undefined, { timeout: 60_000 });
+      expect(document.body.textContent).toMatch(/ranked after the layouts that can/);
+      const romak = cards().find((c) => c.querySelector('h3')?.textContent === 'Magic Romak');
+      expect(romak?.textContent).not.toMatch(/Cannot type/);
+      expect(cards()[0]).toBe(romak);
+    },
+    90_000,
+  );
+
+  it.skipIf(!SPANISH)(
+    'ranks by the numbers alone when no layout listed can write the language',
+    async () => {
+      // With Magic Romak's board left out, no layout listed has an ñ, so none is behind another.
+      useSession.setState({ hiddenBoards: ['1333+2'] });
+      renderRoute('/library?corpus=es-general&sample=10000', { storage: freshStorage() });
+      await screen.findByText(/^Lower is better for both/, undefined, { timeout: 60_000 });
+      // Scores of an earlier test may already be in: wait for every layout's letters to be checked.
+      expect(
+        await screen.findByText(/None of these layouts types every letter Español needs\.$/),
+      ).toBeTruthy();
+      const efforts = cards().map((c) => valueOn(c, 'Effort'));
+      expect(efforts).toEqual([...efforts].sort((a, b) => a - b));
+      expect(document.body.textContent).not.toMatch(/ranked after the layouts that can/);
+    },
+    90_000,
+  );
 
   it('says what share of the text a layout skips', async () => {
     renderRoute('/library?corpus=pt-br-general&sample=10000', { storage: freshStorage() });
@@ -312,10 +340,38 @@ describe('Ranking layouts', () => {
     expect(screen.getByText(/come last\.$/)).toBeInTheDocument();
     const qwerty = cards().find((c) => c.querySelector('h3')?.textContent === 'Qwerty');
     expect(qwerty?.querySelector('.lb-skips')?.textContent).toMatch(/skips \d+\.\d\d% of the text/);
-    // Magic Romak can leave out a stray º or ñ, but it types every letter Portuguese needs.
+    // Magic Romak types every letter Portuguese needs, and Qwerty does not.
     const romak = cards().find((c) => c.querySelector('h3')?.textContent === 'Magic Romak');
     expect(romak?.textContent).not.toMatch(/Cannot type/);
     expect(cards()[0]).toBe(romak);
+  }, 90_000);
+
+  it('flags a layout that cannot write a language it is for, without ranking it last', async () => {
+    const storage = freshStorage();
+    const qwerty = bundledLayout('qwerty') as Layout;
+    await storage.put(
+      'layouts',
+      'mine',
+      toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine', languages: ['en', 'es'] }),
+    );
+    renderRoute('/library?corpus=en-general&sample=10000', { storage });
+    await screen.findByText(/^Lower is better for both/, undefined, { timeout: 60_000 });
+    const mine = await waitFor(
+      () => {
+        const card = cards().find((c) => c.querySelector('h3')?.textContent === 'Mine');
+        expect(card?.querySelector('.lb-lacks')).toBeTruthy();
+        return card as HTMLElement;
+      },
+      { timeout: 30_000 },
+    );
+    expect(mine.querySelector('.lb-lacks')?.textContent).toBe(
+      'Cannot type ñ á é í ó ú ü, which Español needs.',
+    );
+    // On an English text it skips nothing for Spanish: ranked by its numbers, beside Qwerty.
+    expect(mine.textContent).not.toMatch(/ranked after/);
+    expect(document.body.textContent).not.toMatch(/come last/);
+    const qwertyCard = cards().find((c) => c.querySelector('h3')?.textContent === 'Qwerty');
+    expect(valueOn(mine, 'Effort')).toBe(valueOn(qwertyCard as HTMLElement, 'Effort'));
   }, 90_000);
 });
 
@@ -386,15 +442,15 @@ describe('Choosing what layouts are ranked on', () => {
     const corpus = await screen.findByRole('combobox', { name: 'Corpus' });
     await waitFor(() => expect(within(corpus).getAllByRole('option').length).toBeGreaterThan(1));
 
-    await user.selectOptions(corpus, 'pt-br-conv');
+    await user.selectOptions(corpus, 'pt-br-general');
     await user.selectOptions(screen.getByRole('combobox', { name: 'Rule set' }), 'cyanophage');
     await waitFor(() => expect(currentSearch()).toContain('rules=cyanophage'));
-    expect(currentSearch()).toContain('corpus=pt-br-conv');
+    expect(currentSearch()).toContain('corpus=pt-br-general');
     expect(currentSearch()).not.toContain('layout=');
 
     const card = document.querySelector('article') as HTMLElement;
     const analyze = within(card).getByRole('link', { name: 'Analyze' }) as HTMLAnchorElement;
-    expect(analyze.href).toContain('corpus=pt-br-conv');
+    expect(analyze.href).toContain('corpus=pt-br-general');
     expect(analyze.href).toContain('rules=cyanophage');
   });
 });
@@ -405,7 +461,7 @@ describe('Choosing which special features a ranking counts', () => {
     const { currentSearch } = renderRoute(LIBRARY, { storage: freshStorage() });
     await openRanking();
     const macros = await screen.findByRole('checkbox', { name: 'Multi-letter macros' });
-    for (const name of ['Magic keys', 'Repeat key', 'Typing combos']) {
+    for (const name of ['Adaptive keys', 'Repeat key', 'Typing combos']) {
       expect(screen.getByRole('checkbox', { name })).toBeChecked();
     }
     expect(macros).toBeChecked();

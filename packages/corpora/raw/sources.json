@@ -1,22 +1,4 @@
 {
-  "en-conv": {
-    "file": "en-conversational.txt",
-    "name": "English — conversational (OpenSubtitles)",
-    "language": "en",
-    "license": "CC BY-SA 4.0 (hermitdave/FrequencyWords)",
-    "source": "https://github.com/hermitdave/FrequencyWords/tree/master/content/2018/en",
-    "description": "English sentences generated from the most common conversational words, sampled in proportion to their frequency in the OpenSubtitles corpus. Cased and punctuated.",
-    "generated": true
-  },
-  "pt-br-conv": {
-    "file": "pt-br-conversational.txt",
-    "name": "Português (BR) — conversacional (OpenSubtitles)",
-    "language": "pt-BR",
-    "license": "CC BY-SA 4.0 (hermitdave/FrequencyWords)",
-    "source": "https://github.com/hermitdave/FrequencyWords/tree/master/content/2018/pt_br",
-    "description": "Brazilian Portuguese sentences generated from the most common conversational words, sampled in proportion to their frequency in Brazilian OpenSubtitles. Cased and punctuated, accents kept.",
-    "generated": true
-  },
   "en-general": {
     "file": "en-general.txt",
     "name": "English — news 2023 (Leipzig)",
@@ -33,15 +15,6 @@
     "source": "https://wortschatz.uni-leipzig.de/en/download (por-br_newscrawl_2011_30K)",
     "description": "30,000 Brazilian Portuguese news sentences from the Leipzig Corpora Collection (por-br_newscrawl_2011_30K)."
   },
-  "es-conv": {
-    "file": "es-conversational.txt",
-    "name": "Español — conversacional (OpenSubtitles)",
-    "language": "es",
-    "license": "CC BY-SA 4.0 (hermitdave/FrequencyWords)",
-    "source": "https://github.com/hermitdave/FrequencyWords/tree/master/content/2018/es",
-    "description": "Spanish sentences generated from the most common conversational words, sampled in proportion to their frequency in the OpenSubtitles corpus. Cased and punctuated, accents kept.",
-    "generated": true
-  },
   "es-general": {
     "file": "es-general.txt",
     "name": "Español — noticias 2023 (Leipzig)",
@@ -50,15 +23,6 @@
     "source": "https://wortschatz.uni-leipzig.de/en/download (spa_news_2023_30K)",
     "description": "30,000 Spanish news sentences from the Leipzig Corpora Collection (2023)."
   },
-  "fr-conv": {
-    "file": "fr-conversational.txt",
-    "name": "Français — conversationnel (OpenSubtitles)",
-    "language": "fr",
-    "license": "CC BY-SA 4.0 (hermitdave/FrequencyWords)",
-    "source": "https://github.com/hermitdave/FrequencyWords/tree/master/content/2018/fr",
-    "description": "French sentences generated from the most common conversational words, sampled in proportion to their frequency in the OpenSubtitles corpus. Cased and punctuated, accents kept.",
-    "generated": true
-  },
   "fr-general": {
     "file": "fr-general.txt",
     "name": "Français — actualités 2023 (Leipzig)",
@@ -66,15 +30,6 @@
     "license": "CC BY 4.0 (Leipzig Corpora Collection)",
     "source": "https://wortschatz.uni-leipzig.de/en/download (fra_news_2023_30K)",
     "description": "30,000 French news sentences from the Leipzig Corpora Collection (2023)."
-  },
-  "it-conv": {
-    "file": "it-conversational.txt",
-    "name": "Italiano — conversazionale (OpenSubtitles)",
-    "language": "it",
-    "license": "CC BY-SA 4.0 (hermitdave/FrequencyWords)",
-    "source": "https://github.com/hermitdave/FrequencyWords/tree/master/content/2018/it",
-    "description": "Italian sentences generated from the most common conversational words, sampled in proportion to their frequency in the OpenSubtitles corpus. Cased and punctuated, accents kept.",
-    "generated": true
   },
   "it-general": {
     "file": "it-general.txt",

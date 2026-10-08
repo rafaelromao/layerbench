@@ -8,12 +8,21 @@ export { CLASSIC_DEFS, CLASSIC_LAYOUTS, classicLayout } from './classic.js';
 export { DOCUMENT_LAYOUTS, documentLayout } from './documents.js';
 export { magicRomak, romak24, romak34 } from './romak.js';
 export { SMALL_DEFS } from './small.js';
-export { numberLayer, symbolLayer, templateSymbols } from './templates.js';
+export {
+  DEAD_KEYS_CORE,
+  DEFAULT_LAYER_IDS,
+  type DefaultLayers,
+  defaultDeadKeys,
+  defaultLayerSymbols,
+  defaultLayers,
+  NUMBERS_CORE,
+  SYMBOLS_CORE,
+} from './templates.js';
 
-/** Layouts made for small boards: thumb letters, chords, magic and repeat keys. */
+/** Layouts made for small boards: thumb letters, chords, adaptive and repeat keys. */
 export const SMALL_LAYOUTS: Layout[] = SMALL_DEFS.map(classicLayout);
 
-/** The layouts written here in code: the set the app started with, and Romak 34 back among them. */
+/** The layouts written here in code: the set the app started with, and Romak back among them. */
 const BUILT_IN_LAYOUTS: Layout[] = [magicRomak, romak34, ...CLASSIC_LAYOUTS, ...SMALL_LAYOUTS];
 
 /** The layouts the app offers: those written here, then those added since as documents. */

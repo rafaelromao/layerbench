@@ -6,7 +6,7 @@ import { ErrorAlert } from '../components/ErrorAlert.js';
 import { FamilyFilter, useFamilyShown } from '../components/FamilyFilter.js';
 import { featureList } from '../components/FeatureSwitches.js';
 import { formatValue } from '../components/format.js';
-import { Keyboard } from '../components/Keyboard.js';
+import { Keyboard, typingCombos } from '../components/Keyboard.js';
 import { LayerTabs } from '../components/LayerTabs.js';
 import { BandBadge, SummaryStrip } from '../components/Metrics.js';
 import { useAnalysisClient } from '../engine/client-context.js';
@@ -244,6 +244,7 @@ export function CompareView() {
                       layer={layer}
                       interactive={false}
                       showHold={false}
+                      combos={typingCombos(compiled, layer)}
                       // What was pressed on the layer shown, as Analyze's board shows it.
                       heat={report ? heatMap(report, 'usage', layer) : {}}
                       highlight={highlightFor(report)}

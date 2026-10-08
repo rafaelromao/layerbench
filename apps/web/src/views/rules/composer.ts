@@ -56,7 +56,7 @@ export const KEY_KINDS = [
   'shift',
   'space',
   'repeat',
-  'magic',
+  'adaptive',
   'combo',
   'hold',
 ] as const;

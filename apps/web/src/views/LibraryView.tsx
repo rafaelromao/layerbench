@@ -7,6 +7,7 @@ import {
   getGeometryPreset,
   type Layout,
   languageCovered,
+  languagesToJudge,
   layoutLanguageCoverage,
   layoutLanguages,
   safeParseLayout,
@@ -75,14 +76,24 @@ const MISSING_SHOWN = 5;
  * The two numbers every card shows, whether or not the list is sorted by them, and what the layout
  * left out of the text to get them.
  */
+/**
+ * A language the layout cannot write: the text's, which ranks it behind the layouts that can, or one
+ * it says it is for, which is only flagged.
+ */
+interface Lacking {
+  language: string;
+  letters: string[];
+  behind: boolean;
+}
+
 function Ranking({
   summary,
   lacking,
   nobodyCan = false,
 }: {
   summary: LayoutSummary | undefined;
-  /** Letters the corpus's language needs that the layout cannot type; set when it ranks behind. */
-  lacking?: { language: string; letters: string[] };
+  /** Letters a language the layout is held to needs that it cannot type. */
+  lacking?: Lacking;
   /** Every layout listed lacks some, so none is ranked behind another for it. */
   nobodyCan?: boolean;
 }) {
@@ -104,17 +115,24 @@ function Ranking({
           <dd className="m-0">{formatValue(summary.sfb, 'percent')}</dd>
         </div>
       </dl>
-      {lacking ? (
+      {lacking?.behind ? (
         <p className="lb-skips text-xs text-warning" title={`Letters ${lacking.language} needs`}>
           Cannot type {lacking.letters.join(' ')}: skips {summary.skipped.toFixed(2)}% of the text
           {nobodyCan ? '.' : ', ranked after the layouts that can.'}
         </p>
       ) : (
-        summary.skipped > 0 && (
-          <p className="lb-skips text-xs opacity-60">
-            Skips {summary.skipped.toFixed(2)}% of the text: {missing}
-          </p>
-        )
+        <>
+          {lacking && (
+            <p className="lb-lacks text-xs text-warning">
+              Cannot type {lacking.letters.join(' ')}, which {lacking.language} needs.
+            </p>
+          )}
+          {summary.skipped > 0 && (
+            <p className="lb-skips text-xs opacity-60">
+              Skips {summary.skipped.toFixed(2)}% of the text: {missing}
+            </p>
+          )}
+        </>
       )}
     </>
   );
@@ -182,7 +200,7 @@ function LayoutCard({
 }: {
   item: Listed;
   summary: LayoutSummary | undefined;
-  lacking: { language: string; letters: string[] } | undefined;
+  lacking: Lacking | undefined;
   nobodyCan: boolean;
   /** Two to a row, so the four a saved layout has take no more width than a bundled one's two. */
   actions: ReactNode;
@@ -230,7 +248,7 @@ function NewLayoutDialog({ onCreate }: { onCreate: (spec: NewLayoutSpec) => void
     name: 'My layout',
     geometry: '3x5+2',
     start: 'empty',
-    numbers: false,
+    defaultLayers: false,
   });
   const form = useRef<HTMLFormElement>(null);
   // A tap on the dimmed page around the dialog, or Escape, is a change of mind.
@@ -302,12 +320,14 @@ function NewLayoutDialog({ onCreate }: { onCreate: (spec: NewLayoutSpec) => void
               <label className="label cursor-pointer justify-start gap-2">
                 <input
                   type="checkbox"
-                  aria-label="Add number and symbol layers"
+                  aria-label="Add the default layers"
                   className="checkbox checkbox-sm"
-                  checked={spec.numbers}
-                  onChange={(e) => setSpec({ ...spec, numbers: e.target.checked })}
+                  checked={spec.defaultLayers}
+                  onChange={(e) => setSpec({ ...spec, defaultLayers: e.target.checked })}
                 />
-                <span className="label-text text-xs">Add number and symbol layers</span>
+                <span className="label-text text-xs">
+                  Add the default layers: numbers, symbols, dead keys
+                </span>
               </label>
 
               <div className="flex justify-end gap-2">
@@ -524,16 +544,21 @@ export function LibraryView() {
   const { summaries, pending } = useSummaries(summaryEntries, summaryOptions);
 
   // A layout that cannot type letters the corpus's language needs skips them, and skipping is free:
-  // it would rank above one that pays to type them. Those go behind, whatever their numbers.
+  // it would rank above one that pays to type them. Those go behind, whatever their numbers. A
+  // layout is held to the languages it says it is for as well, but only flagged for those: one for
+  // Spanish without an ñ is not what it claims, yet on this text it skipped nothing for it.
   const lacking = useMemo(() => {
-    const out = new Map<string, { language: string; letters: string[] }>();
-    if (!corpusLanguage) return out;
-    const tags = corpusLanguage.split('+').map((t) => t.trim());
+    const out = new Map<string, Lacking>();
+    const fromText = new Set(languagesToJudge(corpusLanguage));
     const check = (key: string, compiled: CompiledLayout) => {
-      for (const tag of tags) {
+      for (const tag of languagesToJudge(corpusLanguage, compiled.layout.languages)) {
         const coverage = layoutLanguageCoverage(compiled, tag);
         if (coverage && !languageCovered(coverage)) {
-          out.set(key, { language: coverage.name, letters: coverage.missingRequired });
+          out.set(key, {
+            language: coverage.name,
+            letters: coverage.missingRequired,
+            behind: fromText.has(tag),
+          });
           return;
         }
       }
@@ -541,10 +566,24 @@ export function LibraryView() {
     for (const [key, { compiled }] of ranked) check(key, compiled);
     return out;
   }, [corpusLanguage, ranked]);
-  const behind = useMemo(() => new Set(lacking.keys()), [lacking]);
-  // When no layout can write the language, none is behind the others: the list keeps its metric order.
-  const nobodyCan = behind.size > 0 && behind.size === ranked.size;
-  const lackingLanguage = [...lacking.values()][0]?.language;
+  const behind = useMemo(
+    () => new Set([...lacking].filter(([, l]) => l.behind).map(([key]) => key)),
+    [lacking],
+  );
+  // When no layout listed can write the language, none is behind the others: the list keeps its
+  // metric order. One that can, on a board left out, does not count.
+  const nobodyCan =
+    behind.size > 0 &&
+    shownListed.length > 0 &&
+    shownListed.every((item) => !ranked.has(item.key) || behind.has(item.key));
+  // A mixed text has two languages, and the layouts behind may each lack a different one.
+  const lackingLanguages = new Set(
+    [...lacking.values()].filter((l) => l.behind).map((l) => l.language),
+  );
+  const lackingWhat =
+    lackingLanguages.size === 1
+      ? `every letter ${[...lackingLanguages][0]} needs`
+      : "every letter the text's languages need";
   // Every layout failing at once means the corpus or rule set is at fault, not the layouts.
   const unscored =
     summaries.size > 0 && [...summaries.values()].every((s) => s.effort === null && s.sfb === null);
@@ -703,9 +742,9 @@ export function LibraryView() {
                   without.length > 0 ? `, typed without ${featureList(without)}` : ''
                 }.${
                   nobodyCan
-                    ? ` None of these layouts types every letter ${lackingLanguage} needs.`
+                    ? ` None of these layouts types ${lackingWhat}.`
                     : behind.size > 0 && sortBy !== 'name'
-                      ? ` Layouts that cannot type every letter ${lackingLanguage} needs come last.`
+                      ? ` Layouts that cannot type ${lackingWhat} come last.`
                       : ''
                 }`}
         </span>

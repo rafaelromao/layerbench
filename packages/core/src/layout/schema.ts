@@ -102,7 +102,11 @@ export const BindingSchema: z.ZodType<unknown> = z.lazy(() =>
       flavor: z.string().optional(),
       tappingTermMs: z.number().optional(),
     }),
-    z.object({ kind: z.literal('dead_key'), diacritic: z.string().default('\u00b4') }),
+    z.object({
+      kind: z.literal('dead_key'),
+      diacritic: z.string().default('\u00b4'),
+      shifted: z.string().optional(),
+    }),
     z.object({
       kind: z.literal('unicode'),
       symbol: z.string().default(''),

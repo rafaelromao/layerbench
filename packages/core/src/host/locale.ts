@@ -271,6 +271,11 @@ export function translateKeycode(
   return { symbol: base[shifted ? 1 : 0] };
 }
 
+/** Each letter a dead key composes with, and what the two make: `[base, composed]`. */
+export function deadKeyCompositions(deadKey: string): [string, string][] {
+  return Object.entries(COMPOSE[deadKey] ?? {});
+}
+
 /** Compose a pending dead key with the next symbol; returns the text to emit. */
 export function composeDeadKey(deadKey: string, next: string): string {
   const table = COMPOSE[deadKey];

@@ -85,7 +85,8 @@ export type Binding =
       ref?: string;
     }
   | { kind: 'hold_tap'; tap: Binding; hold: Binding; flavor?: string; tappingTermMs?: number }
-  | { kind: 'dead_key'; diacritic: string }
+  /** An accent for the next letter; `shifted` is the one armed when shift is on, as `´` and `¨`. */
+  | { kind: 'dead_key'; diacritic: string; shifted?: string }
   | { kind: 'unicode'; symbol: string; shiftedSymbol?: string }
   | { kind: 'ref'; ref: string }
   /**
@@ -190,7 +191,7 @@ export interface CapsWordFeature {
  * belong to — the space key, the shift key — in ordinary bindings. That keeps the layer list the set
  * of layers a typist actually reaches.
  *
- * Magic keys and alt repeats are not features: they are `adaptive` bindings on their keys, made
+ * Adaptive keys and alt repeats are not features: they are `adaptive` bindings on their keys, made
  * and edited like any other. A branch's `afterTags` replaces the one-shot layer an accent macro arms
  * in firmware so the repeat key can follow up.
  */

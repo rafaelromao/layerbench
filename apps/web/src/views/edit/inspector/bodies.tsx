@@ -8,6 +8,7 @@ import {
 } from '@layerbench/core';
 import { useRef, useState } from 'react';
 import { useDismiss } from '../../../components/use-dismiss.js';
+import { useMediaQuery, WIDE } from '../../../components/use-media-query.js';
 import { bindingFromFields } from '../binding-form.js';
 import { type BindingTextContext, parseBindingText } from '../binding-text.js';
 import { LayerChips, ModChips, Note, Row, Segment, TextField, words } from './controls.js';
@@ -96,10 +97,13 @@ function KindTiles({
   canRefer: boolean;
   onPick: (k: InspectorKind) => void;
 }) {
-  // The rest of the kinds open like a menu, and close like one: on a pick, or a tap elsewhere.
+  // Wider than a phone, every kind is a tile: the rest fit in the room a More tile would take to
+  // reveal them. On a phone they open like a menu, and close like one: on a pick, or a tap
+  // elsewhere.
+  const wide = useMediaQuery(WIDE);
   const [more, setMore] = useState(false);
   const tiles = useRef<HTMLDivElement>(null);
-  useDismiss(tiles, () => setMore(false), { active: more, closeOnEscape: false });
+  useDismiss(tiles, () => setMore(false), { active: more && !wide, closeOnEscape: false });
   const tile = (k: KindInfo) => (
     <button
       key={k.kind}
@@ -119,6 +123,14 @@ function KindTiles({
       <span className="lb-kind-label">{k.label}</span>
     </button>
   );
+  if (wide) {
+    return (
+      <fieldset className="lb-kind-tiles" aria-label="Kind of key">
+        {PRIMARY_KINDS.map(tile)}
+        {MORE_KINDS.map(tile)}
+      </fieldset>
+    );
+  }
   // With the list closed, a kind picked from it stands in the More tile, so it is still shown.
   const chosen = MORE_KINDS.find((k) => k.kind === kind);
   const shown = !more && chosen;
@@ -150,9 +162,9 @@ function KindTiles({
 }
 
 /**
- * One arm of a bigger key — the tap of a tap-hold, the output of a magic key's branch — with its
- * kind picked from a short list and its own controls under it. An arm can be anything a key can,
- * so a kind outside the list is offered too whenever the arm already is one.
+ * One arm of a bigger key — the tap of a tap-hold, the output of an adaptive key's branch — with
+ * its kind picked from a short list and its own controls under it. An arm can be anything a key
+ * can, so a kind outside the list is offered too whenever the arm already is one.
  */
 export function ArmEditor({
   scope,
@@ -246,7 +258,7 @@ function KindBody({
       return value.ref ? (
         <BehaviourBody {...common} binding={value} />
       ) : (
-        <MagicBody {...common} binding={value} />
+        <AdaptiveBody {...common} binding={value} />
       );
     case 'macro':
       return value.ref ? (
@@ -338,7 +350,7 @@ function SymbolBody({ scope, binding, onChange, name }: BodyProps<Of<'kp'>>) {
               className="w-32"
               onCommit={(v) => onChange(withOptional(binding, 'tag', v))}
             />
-            <Note>A magic key can branch on the tag of the key pressed before it.</Note>
+            <Note>An adaptive key can branch on the tag of the key pressed before it.</Note>
           </Row>
         </div>
       </details>
@@ -460,8 +472,8 @@ function TapHoldBody({ scope, binding, onChange, name, depth }: BodyProps<Of<'lt
         kinds={TAP_KINDS}
         onChange={(tap) => onChange(build(tap, hold))}
       />
-      {/* The hold can be anything the tap can: a layer, a modifier, a symbol, a macro, a magic
-          key — anything but another tap-hold. */}
+      {/* The hold can be anything the tap can: a layer, a modifier, a symbol, a macro, an
+          adaptive key — anything but another tap-hold. */}
       <ArmEditor
         scope={scope}
         label="Hold"
@@ -531,7 +543,7 @@ function RepeatBody({ onChange }: BodyProps<Of<'key_repeat'>>) {
   );
 }
 
-// ---------------------------------------------------------------------------- magic
+// ---------------------------------------------------------------------------- adaptive
 
 /**
  * Branches of an adaptive key: after these symbols (or a key with this tag), do this instead. They
@@ -658,7 +670,7 @@ export function TriggersEditor({
   );
 }
 
-function MagicBody({ scope, binding, onChange, name, depth }: BodyProps<Of<'adaptive'>>) {
+function AdaptiveBody({ scope, binding, onChange, name, depth }: BodyProps<Of<'adaptive'>>) {
   const alt = binding.default?.kind === 'key_repeat';
   return (
     <div className="space-y-2">
@@ -785,7 +797,7 @@ function MacroBody({ scope, binding, onChange, name }: BodyProps<Of<'macro'>>) {
           className="w-32"
           onCommit={(v) => onChange(withOptional(binding, 'tag', v))}
         />
-        <Note>A magic key can branch on the tag of the key pressed before it.</Note>
+        <Note>An adaptive key can branch on the tag of the key pressed before it.</Note>
       </Row>
     </div>
   );
@@ -987,17 +999,46 @@ function UnicodeBody({ binding, onChange, name }: BodyProps<Of<'unicode'>>) {
 
 const DIACRITICS = ['´', '`', '^', '~', '¨'];
 
+/** The shifted accent's choices: none, or any accent but the key's own. */
+const NO_SHIFTED = 'none';
+
 function DeadKeyBody({ binding, onChange, name }: BodyProps<Of<'dead_key'>>) {
+  const shifted = DIACRITICS.filter((d) => d !== binding.diacritic);
   return (
-    <Row label="Accent">
-      <Segment
-        label={named(name, 'Accent the next letter takes')}
-        options={DIACRITICS.map((d) => [d, d] as const)}
-        value={DIACRITICS.includes(binding.diacritic) ? binding.diacritic : null}
-        onChange={(diacritic) => onChange({ ...binding, diacritic })}
-      />
-      <Note>Types nothing itself; the next letter comes out accented.</Note>
-    </Row>
+    <div className="space-y-2">
+      <Row label="Accent">
+        <Segment
+          label={named(name, 'Accent the next letter takes')}
+          options={DIACRITICS.map((d) => [d, d] as const)}
+          value={DIACRITICS.includes(binding.diacritic) ? binding.diacritic : null}
+          onChange={(diacritic) =>
+            onChange(
+              diacritic === binding.shifted
+                ? { kind: 'dead_key', diacritic }
+                : { ...binding, diacritic },
+            )
+          }
+        />
+      </Row>
+      <Row label="Shifted">
+        <Segment
+          label={named(name, 'Accent with shift')}
+          options={[[NO_SHIFTED, 'None'] as const, ...shifted.map((d) => [d, d] as const)]}
+          value={
+            binding.shifted === undefined
+              ? NO_SHIFTED
+              : shifted.includes(binding.shifted)
+                ? binding.shifted
+                : null
+          }
+          onChange={(v) => onChange(withOptional(binding, 'shifted', v === NO_SHIFTED ? '' : v))}
+        />
+      </Row>
+      <Note>
+        Types nothing itself; the next letter comes out accented, with the shifted accent when shift
+        is on.
+      </Note>
+    </div>
   );
 }
 

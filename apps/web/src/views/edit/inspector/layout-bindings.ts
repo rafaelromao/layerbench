@@ -14,7 +14,7 @@ export interface UsedBinding {
   count: number;
 }
 
-/** A magic key or alt repeat, on its own or as the tap of a tap-hold. */
+/** An adaptive key or alt repeat, on its own or as the tap of a tap-hold. */
 function isAdaptiveKey(b: Binding): boolean {
   if (b.kind === 'adaptive') return !b.ref;
   if (b.kind === 'lt' || b.kind === 'hold_tap') return isAdaptiveKey(b.tap);
@@ -22,9 +22,9 @@ function isAdaptiveKey(b: Binding): boolean {
 }
 
 /**
- * Every distinct binding the layout already uses, its magic keys and alt repeats first and then the
- * most used — so any key of an imported layout can be put on another key, including ones
- * LayerBench keeps but does not simulate. A magic key is what an author most often wants again
+ * Every distinct binding the layout already uses, its adaptive keys and alt repeats first and then
+ * the most used — so any key of an imported layout can be put on another key, including ones
+ * LayerBench keeps but does not simulate. An adaptive key is what an author most often wants again
  * elsewhere, and among a layout's hundred bindings it would otherwise wait behind "All".
  *
  * Transparent and empty keys are left out: the inspector offers both directly.

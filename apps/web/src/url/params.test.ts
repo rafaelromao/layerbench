@@ -47,7 +47,7 @@ describe('analysis parameters', () => {
 
   it('takes a view’s own default corpus, but never over the one a link names', () => {
     expect(parseParams({}, ENGLISH_CORPUS).corpus).toBe('en-general');
-    expect(parseParams({ corpus: 'pt-br-conv' }, ENGLISH_CORPUS).corpus).toBe('pt-br-conv');
+    expect(parseParams({ corpus: 'pt-br-general' }, ENGLISH_CORPUS).corpus).toBe('pt-br-general');
     // The link contract itself is unchanged.
     expect(parseParams({}).corpus).toBe(DEFAULT_PARAMS.corpus);
   });
@@ -75,12 +75,12 @@ describe('analysis parameters', () => {
 
   it('drops the mix share when there is no second corpus', () => {
     expect(toSearch(DEFAULT_PARAMS, { mix: 30 }).mix).toBeUndefined();
-    expect(toSearch(DEFAULT_PARAMS, { corpus2: 'en-conv', mix: 30 })).toMatchObject({
-      corpus2: 'en-conv',
+    expect(toSearch(DEFAULT_PARAMS, { corpus2: 'en-general', mix: 30 })).toMatchObject({
+      corpus2: 'en-general',
       mix: '30',
     });
     // At the default share the value is implied, so it stays out of the link.
-    expect(toSearch(DEFAULT_PARAMS, { corpus2: 'en-conv' }).mix).toBeUndefined();
+    expect(toSearch(DEFAULT_PARAMS, { corpus2: 'en-general' }).mix).toBeUndefined();
   });
 
   it('produces links with keys in a stable order', () => {
@@ -90,9 +90,14 @@ describe('analysis parameters', () => {
   });
 
   it('reads the features a layout is typed without, known ones only, in one order', () => {
-    expect(parseParams({ off: 'macros,bogus,magic,macros' }).without).toEqual(['magic', 'macros']);
+    expect(parseParams({ off: 'macros,bogus,adaptive,macros' }).without).toEqual([
+      'adaptive',
+      'macros',
+    ]);
     expect(parseParams({ off: '' }).without).toEqual([]);
-    expect(toSearch(DEFAULT_PARAMS, { without: ['magic', 'combos'] }).off).toBe('magic,combos');
+    expect(toSearch(DEFAULT_PARAMS, { without: ['adaptive', 'combos'] }).off).toBe(
+      'adaptive,combos',
+    );
     expect(toSearch(DEFAULT_PARAMS).off).toBeUndefined();
   });
 
@@ -100,8 +105,8 @@ describe('analysis parameters', () => {
     const params = {
       ...DEFAULT_PARAMS,
       layoutRef: 'saved:mine',
-      corpus: 'en-conv',
-      corpus2: 'pt-br-conv',
+      corpus: 'en-general',
+      corpus2: 'pt-br-general',
       mix: 70,
       preset: 'keysolve',
       caseMode: 'model' as const,

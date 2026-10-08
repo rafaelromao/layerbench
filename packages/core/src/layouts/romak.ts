@@ -1,4 +1,5 @@
 import type { Binding, ComboDef, Layout } from '../layout/types.js';
+import { DEAD_KEYS_CORE, NUMBERS_CORE, SYMBOLS_CORE } from './templates.js';
 
 const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
 const VOWELS = ['a', 'e', 'i', 'o', 'u', 'á', 'à', 'ã', 'â', 'é', 'ê', 'í', 'ó', 'õ', 'ô', 'ú'];
@@ -32,12 +33,12 @@ function rowBindings(map: Record<string, string | Binding>): Record<string, Bind
 }
 
 const behaviors: Record<string, Binding> = {
-  magic: {
+  adaptiveHV: {
     kind: 'adaptive',
     default: kp('h'),
     triggers: [{ afterAny: VOWELS, binding: kp('v') }],
   },
-  reversedMagic: {
+  adaptiveVH: {
     kind: 'adaptive',
     default: kp('v'),
     triggers: [{ afterAny: VOWELS, binding: kp('h') }],
@@ -133,32 +134,18 @@ const ALPHA2_OR_SYMBOLS: Binding = {
 /**
  * The Numbers and Symbols layers of the author's keymap, `numbers_layer` and `symbols_layer` in
  * `zmk/definitions/keymap.dtsi` of github.com/rafaelromao/keyboards. They use only the 24-key
- * core, so the three Romak layouts share them. Each key is what it types: the firmware's symbol
- * tap-holds jump to the end of the line or past the cursor first when held, which is editing
- * rather than typing, and are left out. Keys it leaves empty are empty here.
+ * core, so the three Romak layouts share them, and every board's default layers start from them
+ * (`templates.ts`). Each key is what it types: the firmware's symbol tap-holds jump to the end of
+ * the line or past the cursor first when held, which is editing rather than typing, and are left
+ * out. Keys it leaves empty are empty here.
  */
+const coreKeys = (table: Readonly<Record<string, string>>): Record<string, Binding> =>
+  Object.fromEntries(Object.entries(table).map(([id, symbol]) => [id, kp(symbol)]));
+
 const NUMBERS_BINDINGS: Record<string, Binding> = {
   '*': { kind: 'none' },
-  LTR: kp('\\'),
-  LTM: kp('{'),
-  LTI: kp('}'),
+  ...coreKeys(NUMBERS_CORE),
   LHP: tapOrUnmodelled(',', 'FUN'),
-  LHR: kp('&'),
-  LHM: kp('('),
-  LHI: kp(')'),
-  LBR: kp('|'),
-  LBM: kp('['),
-  LBI: kp(']'),
-  RTI: kp('7'),
-  RTM: kp('8'),
-  RTR: kp('9'),
-  RHI: kp('4'),
-  RHM: kp('5'),
-  RHR: kp('6'),
-  RHP: kp('.'),
-  RBI: kp('1'),
-  RBM: kp('2'),
-  RBR: kp('3'),
   L1: { kind: 'trans' },
   L0: { kind: 'trans' },
   R0: { kind: 'hold_tap', tap: kp(' '), hold: { kind: 'mo', layer: 'sym' } },
@@ -167,26 +154,8 @@ const NUMBERS_BINDINGS: Record<string, Binding> = {
 
 const SYMBOLS_BINDINGS: Record<string, Binding> = {
   '*': { kind: 'none' },
-  LTR: kp('~'),
-  LTM: kp('#'),
-  LTI: kp("'"),
-  LHP: kp('@'),
-  LHR: kp('^'),
-  LHM: kp('$'),
-  LHI: kp('"'),
-  LBR: kp('<'),
-  LBM: kp('>'),
-  LBI: kp('`'),
-  RTI: kp('%'),
-  RTM: kp('='),
-  RTR: kp(':'),
-  RHI: kp('?'),
-  RHM: kp('-'),
-  RHR: kp('+'),
+  ...coreKeys(SYMBOLS_CORE),
   RHP: tapOrUnmodelled('_', 'MACROS'),
-  RBI: kp('!'),
-  RBM: kp('/'),
-  RBR: kp('*'),
   L1: { kind: 'trans' },
   // The firmware's hold here reaches a copy of Numbers placed above Symbols, which only its layer
   // order needs. The digits are one hold away from Alpha 1 either way.
@@ -196,6 +165,16 @@ const SYMBOLS_BINDINGS: Record<string, Binding> = {
 
 const NUMBERS_LAYER = { id: 'num', name: 'Numbers', bindings: NUMBERS_BINDINGS };
 const SYMBOLS_LAYER = { id: 'sym', name: 'Symbols', bindings: SYMBOLS_BINDINGS };
+
+/**
+ * The default Dead keys layer, which Magic Romak reaches from Alpha 2: the accents Portuguese does
+ * not put on Alpha 2, for Spanish, French and Italian, and the symbols Symbols has no room for.
+ */
+const DEAD_KEYS_LAYER = {
+  id: 'dead',
+  name: 'Dead keys',
+  bindings: { '*': { kind: 'trans' } as Binding, ...DEAD_KEYS_CORE },
+};
 
 // ---------------------------------------------------------------- Romak 24
 
@@ -407,8 +386,8 @@ export const romak24: Layout = romak24Base(
   'Romak for 24 keys (1333+2): two alpha layers, Ç extension, one-shot shift, and numbers and symbols held from the thumbs.',
 );
 
-/** A magic key: types `fallback`, or `afterVowel` when a vowel came just before it. */
-const magicKey = (fallback: string, afterVowel: string): Binding => ({
+/** An adaptive key: types `fallback`, or `afterVowel` when a vowel came just before it. */
+const adaptiveKey = (fallback: string, afterVowel: string): Binding => ({
   kind: 'adaptive',
   default: kp(fallback),
   triggers: [{ afterAny: VOWELS, binding: kp(afterVowel) }],
@@ -446,15 +425,15 @@ const ALT_REPEAT: Binding = {
  * case, caps word and shifted Alpha 2, and a one-shot layer armed by every accent macro so the
  * repeat key can offer follow-ups. None of them is a layer a typist reaches. Sentence case and caps
  * word are declared as features, which wrap the space and shift keys: sentence case arms a one-shot
- * shift, caps word is the `caps_word` behaviour, and shift is simply shift state. The magic keys and
- * the alt repeat are adaptive keys on their own keys, and the alt-repeat follow-ups match on the tag
- * the accent macro leaves behind. What is left is the layers you can see.
+ * shift, caps word is the `caps_word` behaviour, and shift is simply shift state. The `h`/`v` keys
+ * and the alt repeat are adaptive keys on their own keys, and the alt-repeat follow-ups match on
+ * the tag the accent macro leaves behind. What is left is the layers you can see.
  */
 export const magicRomak: Layout = (() => {
   const base = romak24Base(
     'Magic Romak',
     'magic-romak',
-    'Romak 24 with adaptive magic keys (h/v), alt repeat, sentence case and caps word.',
+    'Romak 24 with adaptive keys (h/v), alt repeat, sentence case, caps word, and dead keys for Spanish, French and Italian.',
   );
   const alpha1 = base.layers[0];
   return {
@@ -463,19 +442,26 @@ export const magicRomak: Layout = (() => {
     combos: romak24Combos(taggedAccent),
     layers: [
       // Holding space reaches the numbers and holding the Alpha 2 key the symbols; the
-      // sentence-case feature wraps the space's tap arm, so both live on one key.
+      // sentence-case feature wraps the space's tap arm, so both live on one key. Tapping the
+      // Alpha 2 key, then the right outer thumb, reaches the dead keys.
       {
         ...alpha1,
-        bindings: { ...alpha1.bindings, RBI: magicKey('h', 'v'), L1: ALT_REPEAT },
+        bindings: { ...alpha1.bindings, RBI: adaptiveKey('h', 'v'), L1: ALT_REPEAT },
       },
       {
         id: 'alpha2',
         name: 'Alpha 2',
-        bindings: { ...alpha2Bindings(taggedAccent, ALPHA2_TAG), LBI: magicKey('v', 'h') },
+        bindings: {
+          ...alpha2Bindings(taggedAccent, ALPHA2_TAG),
+          LBI: adaptiveKey('v', 'h'),
+          // The second apostrophe makes way for the accents the other languages need.
+          R1: { kind: 'sl', layer: 'dead' },
+        },
       },
       { id: 'ccedil', name: '\u00c7 extension', bindings: CCEDIL_BINDINGS },
       NUMBERS_LAYER,
       SYMBOLS_LAYER,
+      DEAD_KEYS_LAYER,
     ],
     features: {
       sentenceCase: {},
@@ -492,11 +478,12 @@ export const magicRomak: Layout = (() => {
         { from: 'alpha1', via: 'key:alpha1/R0' },
         { from: 'num', via: 'key:num/R0' },
       ],
+      dead: [{ from: 'alpha2', via: 'key:alpha2/R1' }],
     },
   };
 })();
 
-// ---------------------------------------------------------------- Romak 34
+// ---------------------------------------------------------------- Romak, on 34 keys
 
 const ROMAK34_ALPHA1 = rowBindings({
   LTP: 'q',
@@ -556,7 +543,7 @@ const ROMAK34_ALPHA2: Record<string, Binding> = {
 export const romak34: Layout = {
   format: 'layerbench/layout@1',
   id: 'romak-34',
-  name: 'Romak 34',
+  name: 'Romak',
   author: 'Rafael Romão',
   description:
     'Romak for 34 keys (3x5+2): accented vowels on a one-shot second alpha layer, and numbers and symbols held from the thumbs.',
@@ -591,6 +578,16 @@ export const romak34: Layout = {
       id: 'exclamation',
       keys: ['RBI', 'RBM'],
       binding: kp('!'),
+      layers: ['alpha2'],
+      role: 'typing',
+      timeoutMs: 30,
+      slowRelease: false,
+    },
+    // `à` between the `á` and `é` it sits beside, as on Romak 24 and Magic Romak.
+    {
+      id: 'agrave',
+      keys: ['RHM', 'RHR'],
+      binding: accent('à'),
       layers: ['alpha2'],
       role: 'typing',
       timeoutMs: 30,

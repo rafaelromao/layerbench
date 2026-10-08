@@ -141,7 +141,11 @@ export function bindingFromFields(f: BindingFields): Binding {
             ...(f.tag ? { tag: f.tag } : {}),
           };
     case 'dead_key':
-      return { kind: 'dead_key', diacritic: f.symbol || '\u00b4' };
+      return {
+        kind: 'dead_key',
+        diacritic: f.symbol || '\u00b4',
+        ...(f.shifted ? { shifted: f.shifted } : {}),
+      };
     case 'unicode':
       return {
         kind: 'unicode',
@@ -198,7 +202,7 @@ export function fieldsFromBinding(b: Binding | undefined): BindingFields {
       };
     }
     case 'dead_key':
-      return { ...f, symbol: b.diacritic };
+      return { ...f, symbol: b.diacritic, shifted: b.shifted ?? '' };
     case 'unicode':
       return { ...f, symbol: b.symbol, shifted: b.shiftedSymbol ?? '' };
     case 'sl':

@@ -50,7 +50,7 @@ export function swapKeys(layout: Layout, layerIdx: number, from: string, to: str
 
 /**
  * Put what `from` carries onto `to`, leaving `from` as it was. Overwrites whatever `to` held. A
- * magic key copied this way is a copy of its own, edited apart from the one it came from.
+ * adaptive key copied this way is a copy of its own, edited apart from the one it came from.
  */
 export function copyKey(layout: Layout, layerIdx: number, from: string, to: string): Layout {
   const layer = layout.layers[layerIdx];
@@ -118,9 +118,9 @@ export function duplicateLayer(
 
 /**
  * Everything that still takes a typist to a layer: keys, combos and behaviours whose binding
- * reaches it — a magic key's branch included, since it is part of its key's binding. A layer cannot
- * go while any of these would be left pointing at nothing, and which of them should change instead
- * is the author's call, not something to guess.
+ * reaches it — an adaptive key's branch included, since it is part of its key's binding. A layer
+ * cannot go while any of these would be left pointing at nothing, and which of them should change
+ * instead is the author's call, not something to guess.
  */
 export function layerReachedFrom(layout: Layout, layerId: string): string[] {
   const reaches = (b: Binding | undefined) => b !== undefined && referencedLayers(b).has(layerId);

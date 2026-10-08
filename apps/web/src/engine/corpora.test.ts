@@ -16,7 +16,6 @@ interface Source {
   license: string;
   source: string;
   description: string;
-  generated?: boolean;
   retrieved?: string;
 }
 
@@ -77,7 +76,6 @@ describe('the texts that come with the app', () => {
           license: m.license,
           source: m.source,
           description: m.description,
-          generated: m.generated,
           retrieved: m.retrieved,
         },
         m.id,
@@ -87,7 +85,6 @@ describe('the texts that come with the app', () => {
         license: s.license,
         source: s.source,
         description: s.description,
-        generated: s.generated,
         retrieved: s.retrieved,
       });
       const manifest = JSON.parse(readFileSync(resolve(BUILT, m.id, 'manifest.json'), 'utf8'));

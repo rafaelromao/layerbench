@@ -116,7 +116,7 @@ export function bindingToJson(b: Binding): Record<string, unknown> {
       };
       break;
     case 'dead_key':
-      extra = { diacritic: b.diacritic };
+      extra = { diacritic: b.diacritic, shifted: b.shifted };
       break;
     case 'unicode':
       extra = { symbol: b.symbol, shiftedSymbol: b.shiftedSymbol };

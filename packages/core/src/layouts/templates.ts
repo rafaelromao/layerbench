@@ -2,43 +2,57 @@ import type { Geometry } from '../geometry/types.js';
 import type { Binding, LayerDef } from '../layout/types.js';
 
 /**
- * Number and symbol layers, as a template.
+ * The default layers: Numbers, Symbols and Dead keys, for any board.
  *
- * Placements are given by canonical key id, and only the ids a geometry actually has are bound — so
- * the same template lands sensibly on a 34-key board, on Romak's 24 and on the sub-30 formats,
- * dropping whatever will not fit rather than shifting everything sideways.
+ * Numbers and Symbols are Magic Romak's, which use only the 24-key core. That core is on every
+ * preset but the 18-key one, so every board gets the same grid and the same muscle memory; keys
+ * beyond it stay transparent, free for whatever the layout wants there. Dead keys mirrors Symbols:
+ * each accent sits where its look-alike does (`´` on `'`, `¨` on `"`, `€` on `$`, `«` on `<`), and
+ * with the base layer's letters it writes Portuguese, English, Spanish, French and Italian.
+ *
+ * What changes from board to board is decided by which keys it has, not by its name, so a custom
+ * geometry gets a sensible result too: where `0` goes, which thumbs reach the layers, and, with no
+ * bottom row, a fourth layer for the keys that row would carry.
  *
  * Every symbol is its own `kp`, never the `shifted` half of a pair: producer enumeration moves any
  * output needing a modifier into `excludedByCase` in fold mode, which is the default, so a shifted
  * pair would make the symbol unreachable in an ordinary analysis.
  */
 
+const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
+const dead = (diacritic: string): Binding => ({ kind: 'dead_key', diacritic });
+const tapOrHold = (tap: Binding, layer: string): Binding => ({
+  kind: 'hold_tap',
+  tap,
+  hold: { kind: 'mo', layer },
+});
+
 /** Right hand as a keypad, left hand as brackets and the arithmetic that pairs with them. */
-const NUMBERS: Record<string, string> = {
-  LTR: '[',
-  LTM: ']',
-  LTI: '\\',
-  LHP: '-',
-  LHR: '(',
-  LHM: ')',
-  LHI: '&',
-  LBR: '{',
-  LBM: '}',
-  LBI: '|',
+export const NUMBERS_CORE: Readonly<Record<string, string>> = {
+  LTR: '\\',
+  LTM: '{',
+  LTI: '}',
+  LHP: ',',
+  LHR: '&',
+  LHM: '(',
+  LHI: ')',
+  LBR: '|',
+  LBM: '[',
+  LBI: ']',
   RTI: '7',
   RTM: '8',
   RTR: '9',
   RHI: '4',
   RHM: '5',
   RHR: '6',
+  RHP: '.',
   RBI: '1',
   RBM: '2',
   RBR: '3',
-  RHP: '0',
 };
 
-/** The punctuation a symbol layer carries, with the shifted-number row spread across both hands. */
-const SYMBOLS: Record<string, string> = {
+/** The punctuation that does not fit on the alphas. */
+export const SYMBOLS_CORE: Readonly<Record<string, string>> = {
   LTR: '~',
   LTM: '#',
   LTI: "'",
@@ -55,61 +69,179 @@ const SYMBOLS: Record<string, string> = {
   RHI: '?',
   RHM: '-',
   RHR: '+',
+  RHP: '_',
   RBI: '!',
   RBM: '/',
   RBR: '*',
-  RHP: '_',
 };
 
-function bindingsFor(
-  geometry: Geometry,
-  table: Record<string, string>,
-  extra: Record<string, Binding>,
-): Record<string, Binding> {
-  const have = new Set(geometry.keys.map((k) => k.id));
+/**
+ * The accents, the letters no dead key makes, and the symbols the corpora hold that Symbols has no
+ * room for. `ç` and `ñ`, which an accent and a letter would type too, have keys of their own: each
+ * is common enough in its languages to be worth a press less.
+ */
+export const DEAD_KEYS_CORE: Readonly<Record<string, Binding>> = {
+  LTR: dead('~'),
+  LTM: kp('£'),
+  LTI: dead('´'),
+  LHP: kp('ª'),
+  LHR: dead('^'),
+  LHM: kp('€'),
+  LHI: dead('¨'),
+  LBR: kp('«'),
+  LBM: kp('»'),
+  LBI: dead('`'),
+  RTI: kp('°'),
+  RTM: kp('ñ'),
+  RTR: kp(';'),
+  RHI: kp('¿'),
+  RHM: kp('ç'),
+  RHR: kp('œ'),
+  RHP: kp('º'),
+  RBI: kp('¡'),
+  RBM: kp('æ'),
+  RBR: kp('§'),
+};
+
+/** With no bottom row, `1 2 3` take the left home row on the fingers they use on the right. */
+const NUMBERS_NO_BOTTOM: Readonly<Record<string, string>> = {
+  LTR: '&',
+  LTM: '(',
+  LTI: ')',
+  LHP: ',',
+  LHR: '3',
+  LHM: '2',
+  LHI: '1',
+  RTI: '7',
+  RTM: '8',
+  RTR: '9',
+  RHI: '4',
+  RHM: '5',
+  RHR: '6',
+  RHP: '.',
+};
+
+/** What the missing bottom rows of Numbers, Symbols and Dead keys carried, on a fourth layer. */
+const SYMBOLS2_NO_BOTTOM: Readonly<Record<string, string>> = {
+  LTR: '\\',
+  LTM: '{',
+  LTI: '}',
+  LHP: '`',
+  LHR: '|',
+  LHM: '[',
+  LHI: ']',
+  RTI: '!',
+  RTM: '/',
+  RTR: '*',
+  RHI: '<',
+  RHM: '>',
+  RHR: '«',
+  RHP: '»',
+  L1: '¡',
+  R1: 'æ',
+};
+
+export const DEFAULT_LAYER_IDS = {
+  numbers: 'num',
+  symbols: 'sym',
+  symbols2: 'sym2',
+  deadKeys: 'dead',
+} as const;
+
+export interface DefaultLayers {
+  /** Numbers, Symbols, Symbols 2 when the board has no bottom row, and Dead keys, in that order. */
+  layers: LayerDef[];
+  /** Base-layer bindings for the keys that reach them, space among them. */
+  base: Record<string, Binding>;
+  /** The key that types space. */
+  spaceKey: string;
+}
+
+function bind(have: Set<string>, entries: Record<string, Binding>): Record<string, Binding> {
   const out: Record<string, Binding> = { '*': { kind: 'trans' } };
-  for (const [id, symbol] of Object.entries(table)) {
-    if (have.has(id)) out[id] = { kind: 'kp', symbol };
-  }
-  for (const [id, binding] of Object.entries(extra)) {
-    if (have.has(id)) out[id] = binding;
-  }
+  for (const [id, binding] of Object.entries(entries)) if (have.has(id)) out[id] = binding;
   return out;
 }
 
-export interface NumberLayerOptions {
-  id?: string;
-  name?: string;
-  /** Layer the layer's own thumb reaches, normally the symbol layer. */
-  symbolLayer?: string;
-  /** Extra bindings, merged last. */
-  extra?: Record<string, Binding>;
+function keys(table: Readonly<Record<string, string>>): Record<string, Binding> {
+  return Object.fromEntries(Object.entries(table).map(([id, s]) => [id, kp(s)]));
 }
 
-/** Digits and brackets. */
-export function numberLayer(geometry: Geometry, opts: NumberLayerOptions = {}): LayerDef {
-  const extra: Record<string, Binding> = { ...(opts.extra ?? {}) };
-  if (opts.symbolLayer) extra.R0 = { kind: 'sl', layer: opts.symbolLayer };
-  return {
-    id: opts.id ?? 'num',
-    name: opts.name ?? 'Numbers',
-    bindings: bindingsFor(geometry, NUMBERS, extra),
-  };
+/**
+ * The default layers for a board, and the base-layer keys that reach them.
+ *
+ * On a split board the inner thumbs do it, as on Magic Romak: the left types space and holds
+ * Numbers, the right holds Symbols and taps a one-shot to Dead keys, so an accent is three taps
+ * with no key held. Holding the right thumb from Numbers reaches Symbols too. A row-stagger board
+ * has one space bar for both thumbs: it holds Numbers, and from there the right pinky's outer keys
+ * arm Symbols and Dead keys.
+ */
+export function defaultLayers(geometry: Geometry): DefaultLayers {
+  const have = new Set(geometry.keys.map((k) => k.id));
+  const { numbers, symbols, symbols2, deadKeys } = DEFAULT_LAYER_IDS;
+  const spaceBar = geometry.family === 'rowstagger';
+  const noBottom = !have.has('LBI') && !have.has('RBI');
+  const spaceKey = have.has('L0') ? 'L0' : (geometry.textThumbs[0] ?? geometry.keys[0].id);
+  const space = kp(' ');
+
+  const base: Record<string, Binding> = { [spaceKey]: tapOrHold(space, numbers) };
+  if (spaceBar && have.has('R0')) base.R0 = tapOrHold(space, numbers);
+  else if (have.has('R0')) base.R0 = tapOrHold({ kind: 'sl', layer: deadKeys }, symbols);
+
+  const num: Record<string, Binding> = keys(noBottom ? NUMBERS_NO_BOTTOM : NUMBERS_CORE);
+  const sym: Record<string, Binding> = keys(SYMBOLS_CORE);
+  const acc: Record<string, Binding> = { ...DEAD_KEYS_CORE };
+  if (spaceBar) {
+    // The bar is held for Numbers: pressed again it would be the same key.
+    for (const id of ['L0', 'R0']) {
+      num[id] = { kind: 'none' };
+      sym[id] = { kind: 'none' };
+    }
+    num.RHO = { kind: 'sl', layer: symbols };
+    num.RTO = { kind: 'sl', layer: deadKeys };
+    num.RTP = kp('0');
+  } else {
+    sym[spaceKey] = space;
+    if (have.has('R1')) {
+      num.R0 = tapOrHold(space, symbols);
+      num.R1 = kp('0');
+    } else if (have.has('R0')) num.R0 = tapOrHold(kp('0'), symbols);
+    else num.RTP = kp('0');
+  }
+  if (noBottom) {
+    sym.R1 = { kind: 'sl', layer: symbols2 };
+    // The grave accent's bottom-row key is gone: it takes ñ's, and ñ and § go to the thumbs.
+    acc.RTM = dead('`');
+    acc.L1 = kp('§');
+    acc.R1 = kp('ñ');
+  }
+
+  const layers: LayerDef[] = [
+    { id: numbers, name: 'Numbers', bindings: bind(have, num) },
+    { id: symbols, name: 'Symbols', bindings: bind(have, sym) },
+  ];
+  if (noBottom)
+    layers.push({
+      id: symbols2,
+      name: 'Symbols 2',
+      bindings: bind(have, keys(SYMBOLS2_NO_BOTTOM)),
+    });
+  layers.push({ id: deadKeys, name: 'Dead keys', bindings: bind(have, acc) });
+  return { layers, base, spaceKey };
 }
 
-/** Punctuation that does not fit on the alphas. */
-export function symbolLayer(
-  geometry: Geometry,
-  opts: { id?: string; name?: string; extra?: Record<string, Binding> } = {},
-): LayerDef {
-  return {
-    id: opts.id ?? 'sym',
-    name: opts.name ?? 'Symbols',
-    bindings: bindingsFor(geometry, SYMBOLS, opts.extra ?? {}),
-  };
+/** Every character the default layers type directly, for tests and documentation. */
+export function defaultLayerSymbols(): string[] {
+  const out = new Set<string>([
+    '0',
+    ...Object.values(NUMBERS_CORE),
+    ...Object.values(SYMBOLS_CORE),
+  ]);
+  for (const b of Object.values(DEAD_KEYS_CORE)) if (b.kind === 'kp' && b.symbol) out.add(b.symbol);
+  return [...out];
 }
 
-/** Every symbol the two templates place, for tests and documentation. */
-export function templateSymbols(): string[] {
-  return [...new Set([...Object.values(NUMBERS), ...Object.values(SYMBOLS)])];
+/** The accents the Dead keys layer carries. */
+export function defaultDeadKeys(): string[] {
+  return Object.values(DEAD_KEYS_CORE).flatMap((b) => (b.kind === 'dead_key' ? [b.diacritic] : []));
 }

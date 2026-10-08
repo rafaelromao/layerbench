@@ -786,7 +786,7 @@ function modOf(legend: string): Mod | undefined {
 /** A legend read as the text a key types, where it is one. */
 function symbolOf(legend: string): { symbol: string; shifted?: string } | null {
   const t = legend.trim();
-  // A magic key or a macro drawn only by its mark says what it is, not what it types.
+  // An adaptive key or a macro drawn only by its mark says what it is, not what it types.
   if (t === '' || NAMED_KEY_GLYPHS.has(t) || t === BADGE.adaptive || t === BADGE.macro) {
     return null;
   }
@@ -1197,7 +1197,7 @@ function legendOf(
     case 'unicode':
       return { tap: b.symbol, shifted: b.shiftedSymbol ?? '', tr: BADGE.unicode };
     case 'dead_key':
-      return { tap: b.diacritic };
+      return { tap: b.diacritic, shifted: b.shifted ?? '' };
     case 'adaptive':
       // Drawn as what it types by default, with the board's mark; the branches have no field.
       return b.default

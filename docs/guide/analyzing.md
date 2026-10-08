@@ -48,9 +48,12 @@ either way.
 
 A layout that has no key for letters the text's language needs skips them, and skipping is free.
 Each card says what share of the text it skips, and on a Portuguese text, say, the layouts that
-cannot type `ã` or `ç` are ranked after the ones that can.
+cannot type `ã` or `ç` are ranked after the ones that can. A layout is also held to the languages
+it is for, chosen in **Settings** in **Analyze**: one for Spanish that has no `ñ` says so on its
+card, whatever the text. It is only flagged for that, not ranked after the others: on an English
+text it skipped nothing for Spanish.
 
-**Rank with** switches special features off for the ranking: magic keys (they type their default
+**Rank with** switches special features off for the ranking: adaptive keys (they type their default
 letter), the repeat key (doubled letters are tapped twice), typing combos, and macros that type two
 letters or more, such as `qu` or `ão`. A macro typing one letter, like Magic Romak's accents, is how
 the layout reaches that letter, and stays. What a feature typed is typed another way, or skipped if
@@ -70,7 +73,7 @@ the set. The change applies wherever that rule set is used.
 ## How a text is typed
 
 LayerBench does not look letters up in a table. It works out the physical presses that produce
-each character on this keymap (the layer key first, the shift, the combo, the magic key) and
+each character on this keymap (the layer key first, the shift, the combo, the adaptive key) and
 measures those presses. A letter on a layer costs its layer key too, and a one-shot that is used up
 by the wrong key counts as wasted.
 
@@ -110,7 +113,9 @@ are not drawn.
 By default capitals count as lower case and the space key is left out of the counts, as the
 Keyboard Layouts Doc does. **Shift** types capitals through the layout's shift key instead, and
 **Space** keeps the space key in. Both are among the feature switches, in **Settings**. **Counts**
-says what of the text is counted: letters only, the default, or numbers and symbols as well.
+says what of the text is counted: letters only, the default, or numbers and symbols as well. The
+symbols are those a symbol layer carries, with `€ £ ° § º ª`. Curly quotes, dashes and `…` count as
+`' " - .`, and French `« »` and Spanish `¿ ¡` are kept in any count.
 
 ### The text itself
 
@@ -159,7 +164,7 @@ Below the summary, the numbers are grouped by what they count:
 | Trigrams | three presses: alternation, rolls, redirects |
 | Usage | how the work is shared between fingers, hands, rows and columns |
 | Effort | Effort, and the words that take the most of it |
-| Layers | layer taps, one-shots, macros, combos and magic keys: what layers cost |
+| Layers | layer taps, one-shots, macros, combos and adaptive keys: what layers cost |
 
 The **Show** checkboxes above the groups hide the ones you do not need, and **All** shows or hides
 every one at once. The choice holds in **Analyze** and **Compare** alike, and this browser remembers

@@ -9,7 +9,7 @@ const compiled = compileLayout(bundledLayout('magic-romak') as never);
 // list is given here: what the parser needs is the set of names, whichever layout supplies them.
 const ctx: BindingTextContext = {
   layers: compiled.layers.map((l) => ({ id: l.id, name: l.name })),
-  behaviors: ['magic', 'reversedMagic', 'altRepeat'],
+  behaviors: ['adaptiveHV', 'adaptiveVH', 'altRepeat'],
   hostLocale: compiled.hostLocale,
 };
 
@@ -36,6 +36,7 @@ describe('binding text', () => {
     expect(build('&sk LSHIFT')).toEqual({ kind: 'sk', mod: 'LSHIFT' });
     expect(build('&kp LSHIFT')).toEqual({ kind: 'mod', mod: 'LSHIFT' });
     expect(build('&dead ´')).toEqual({ kind: 'dead_key', diacritic: '´' });
+    expect(build('&dead ´ ¨')).toEqual({ kind: 'dead_key', diacritic: '´', shifted: '¨' });
     expect(build('&uni →')).toMatchObject({ kind: 'unicode', symbol: '→' });
     expect(build('&macro ão')).toMatchObject({ kind: 'macro', symbols: 'ão' });
   });
@@ -95,7 +96,7 @@ describe('binding text', () => {
   });
 
   it('reads a bare name as a reference to one of the layout behaviours', () => {
-    expect(build('&magic')).toEqual({ kind: 'ref', ref: 'magic' });
+    expect(build('&adaptiveHV')).toEqual({ kind: 'ref', ref: 'adaptiveHV' });
     expect(build('&ref altRepeat')).toEqual({ kind: 'ref', ref: 'altRepeat' });
   });
 
@@ -127,11 +128,12 @@ describe('binding text', () => {
       '&sk LSHIFT',
       '&kp LSHIFT',
       '&dead ´',
+      '&dead ´ ¨',
       '&uni →',
       '&macro ão',
       '&macro ão then alpha2',
       '&kp ç tag:cedilla',
-      '&magic',
+      '&adaptiveHV',
     ];
     for (const text of roundTrips) {
       expect(bindingText(compiled, build(text))).toEqual({ text, exact: true });
@@ -179,7 +181,7 @@ describe('binding text', () => {
   it('completes behaviour names, then that behaviour argument', () => {
     expect(suggest('&m', ctx).map((s) => s.insert)).toContain('&mo');
     expect(suggest('&m', ctx).map((s) => s.insert)).toContain('&macro');
-    expect(suggest('&mag', ctx).map((s) => s.insert)).toContain('&magic');
+    expect(suggest('&ada', ctx).map((s) => s.insert)).toContain('&adaptiveHV');
     expect(suggest('&mo ', ctx).map((s) => s.label)).toContain('alpha2');
     expect(suggest('&mo alph', ctx).map((s) => s.insert)).toContain('&mo alpha2');
     expect(suggest('&sk L', ctx).map((s) => s.label)).toContain('LSHIFT');

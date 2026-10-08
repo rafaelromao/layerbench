@@ -34,18 +34,18 @@ describe('where the site opens', () => {
     await user.click(await screen.findByRole('button', { name: 'Rank and filter' }));
     const corpus = await screen.findByRole('combobox', { name: 'Corpus' });
     await waitFor(() => expect(within(corpus).getAllByRole('option').length).toBeGreaterThan(1));
-    await user.selectOptions(corpus, 'en-conv');
-    await waitFor(() => expect(currentSearch()).toContain('corpus=en-conv'));
+    await user.selectOptions(corpus, 'pt-br-general');
+    await waitFor(() => expect(currentSearch()).toContain('corpus=pt-br-general'));
 
     const nav = screen.getByRole('navigation', { name: 'Main' });
     await user.click(within(nav).getByRole('link', { name: 'Analyze' }));
     await waitFor(() => expect(currentPath()).toBe('/analyze'));
-    expect(currentSearch()).toContain('corpus=en-conv');
+    expect(currentSearch()).toContain('corpus=pt-br-general');
     expect(currentSearch()).toContain('sample=1000');
     const analyzeSettings = await openSettings();
     await waitFor(() =>
       expect(within(analyzeSettings).getByRole('combobox', { name: 'Corpus' })).toHaveValue(
-        'en-conv',
+        'pt-br-general',
       ),
     );
 
@@ -59,7 +59,7 @@ describe('where the site opens', () => {
     await waitFor(() => expect(currentSearch()).toContain('off=repeat'));
     await user.click(within(nav).getByRole('link', { name: 'Compare' }));
     await waitFor(() => expect(currentPath()).toBe('/compare'));
-    expect(currentSearch()).toContain('corpus=en-conv');
+    expect(currentSearch()).toContain('corpus=pt-br-general');
     const compareSettings = await openSettings();
     expect(
       within(within(compareSettings).getByRole('group', { name: 'Compare with' })).getByRole(
@@ -76,7 +76,7 @@ describe('where the site opens', () => {
     expect(currentSearch()).not.toContain('corpus=');
     await user.click(within(nav).getByRole('link', { name: 'Library' }));
     await waitFor(() => expect(currentPath()).toBe('/library'));
-    expect(currentSearch()).toContain('corpus=en-conv');
+    expect(currentSearch()).toContain('corpus=pt-br-general');
     expect(currentSearch()).toContain('off=repeat');
   }, 60_000);
 });

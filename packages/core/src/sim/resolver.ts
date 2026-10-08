@@ -450,11 +450,23 @@ export class Simulator {
   private tryProducer(p: Producer, token: string): KeyEvent[] | null {
     const m = this.machine;
     const snap = m.state.snapshot();
+    const holdsBefore = [...this.plannerHolds];
     const events: KeyEvent[] = [];
     const modHolds: number[] = [];
     let ok = true;
-    if (p.mods?.length) ok = this.ensureMods(p.mods, events, modHolds);
-    for (const step of p.steps) {
+    // A dead key's modifier belongs to the letter it accents: shift, then the letter.
+    const modsAt = p.kind === 'deadkey' ? p.steps.length - 1 : 0;
+    // A shifted accent: shift, then the dead key, and shift comes up again before the letter.
+    const deadHolds: number[] = [];
+    for (const [i, step] of p.steps.entries()) {
+      // After the accent the hand lets go of any layer it held for it, then types the letter.
+      if (ok && i === 1 && p.kind === 'deadkey') {
+        if (this.plannerHolds.size > 0) events.push(...this.releaseHolds());
+        for (const pos of deadHolds.splice(0))
+          events.push(...m.perform({ type: 'hold_release', pos }));
+      }
+      if (ok && i === 0 && p.deadMods?.length) ok = this.ensureMods(p.deadMods, events, deadHolds);
+      if (ok && i === modsAt && p.mods?.length) ok = this.ensureMods(p.mods, events, modHolds);
       if (!ok) break;
       if (step.mode === 'chord') {
         if (step.combo === undefined || !this.ensureComboAvailable(step.combo, events)) {
@@ -489,7 +501,8 @@ export class Simulator {
     if (!ok) {
       m.state.restore(snap);
       m.recomputeMask();
-      for (const pos of modHolds) this.plannerHolds.delete(pos);
+      this.plannerHolds.clear();
+      for (const pos of holdsBefore) this.plannerHolds.add(pos);
       return null;
     }
     for (const e of events) if (e.producerKind === undefined) e.producerKind = p.kind;
@@ -520,7 +533,7 @@ export class Simulator {
       if (ev.leafKind === 'sl') st.one_shot_activations++;
       if (ev.wastedOneShot) st.wasted_one_shots++;
       if (ev.leafKind === 'macro') st.macro_presses++;
-      if (ev.keyKind === 'magic') {
+      if (ev.keyKind === 'adaptive') {
         st.adaptive_presses++;
         if (ev.producerKind === 'adaptive') st.adaptive_trigger_hits++;
       }

@@ -33,10 +33,10 @@ describe('Guide', () => {
     renderRoute('/guide/special-keys');
     await screen.findByRole('heading', { level: 1, name: 'Special keys' });
     await user.click(screen.getByRole('button', { name: 'Open every section' }));
-    expect(section('Magic keys').open).toBe(true);
+    expect(section('Adaptive keys').open).toBe(true);
     expect(section('Which branch wins').open).toBe(true);
     await user.click(screen.getByRole('button', { name: 'Close them all' }));
-    expect(section('Magic keys').open).toBe(false);
+    expect(section('Adaptive keys').open).toBe(false);
   });
 
   it('follows a link to another page without leaving the app', async () => {

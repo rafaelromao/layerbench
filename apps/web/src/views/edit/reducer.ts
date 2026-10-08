@@ -109,7 +109,14 @@ export type EditAction =
       shiftKind?: 'sk' | 'hold';
       repeat?: 'repeatKey' | 'tapTwice';
     }
-  | { type: 'setMeta'; name?: string; author?: string; description?: string }
+  | {
+      type: 'setMeta';
+      name?: string;
+      author?: string;
+      description?: string;
+      /** The languages the layout is for, by tag; an empty list says none. */
+      languages?: string[];
+    }
   | { type: 'addCombo'; keys: string[]; binding: Binding; role: 'typing' | 'command' }
   | { type: 'comboPickStart' }
   | { type: 'comboPickToggle'; keyId: string }
@@ -492,6 +499,7 @@ function reduce(state: EditState, action: EditAction): EditState {
           name: action.name ?? state.layout.name,
           author: action.author ?? state.layout.author,
           description: action.description ?? state.layout.description,
+          languages: action.languages ?? state.layout.languages,
         },
         { lastSwap: null },
       );

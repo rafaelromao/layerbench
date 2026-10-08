@@ -181,13 +181,14 @@
   --lb-layer-7: oklch(0.8 0.13 115);
 
   /*
-   * What kind of key a legend is on — a layer key, a modifier, a magic key, the repeat key — and the
-   * marks beside it, in the theme's own hues at the lightness the layer colours use, so each keeps
-   * 3:1 against its key from no heat up to the point where a hot key takes its text colour instead.
+   * What kind of key a legend is on — a layer key, a modifier, an adaptive key, the repeat key —
+   * and the marks beside it, in the theme's own hues at the lightness the layer colours use, so
+   * each keeps 3:1 against its key from no heat up to the point where a hot key takes its text
+   * colour instead.
    */
   --lb-legend-layer: oklch(0.78 0.12 277);
   --lb-legend-mod: oklch(0.78 0.14 293);
-  --lb-legend-magic: oklch(0.78 0.13 277);
+  --lb-legend-adaptive: oklch(0.78 0.13 277);
   --lb-legend-repeat: oklch(0.78 0.11 242);
   --lb-legend-number: oklch(0.82 0.12 75);
 
@@ -201,7 +202,7 @@
   --lb-arc: oklch(0.52 0.15 145);
   --lb-legend-layer: oklch(0.45 0.03 264);
   --lb-legend-mod: var(--color-accent);
-  --lb-legend-magic: oklch(0.5 0.17 47);
+  --lb-legend-adaptive: oklch(0.5 0.17 47);
   --lb-legend-repeat: oklch(0.48 0.17 260);
   --lb-legend-number: oklch(0.5 0.13 60);
   --lb-layer-1: oklch(0.5 0.16 255);
@@ -266,7 +267,7 @@
 
 /* Marks for what the centre cannot show: ✦ adaptive, ⋯ macro, TD tap dance. */
 .lb-key-badge {
-  fill: var(--lb-legend-magic);
+  fill: var(--lb-legend-adaptive);
   font-family: ui-sans-serif, system-ui, sans-serif;
   font-weight: 700;
   dominant-baseline: middle;
@@ -342,8 +343,8 @@
 .lb-kind-mod {
   fill: var(--lb-legend-mod);
 }
-.lb-kind-magic {
-  fill: var(--lb-legend-magic);
+.lb-kind-adaptive {
+  fill: var(--lb-legend-adaptive);
   font-style: italic;
 }
 .lb-kind-repeat {

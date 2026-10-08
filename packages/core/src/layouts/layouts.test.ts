@@ -77,8 +77,8 @@ describe('Romak numbers and symbols', () => {
 });
 
 /**
- * The small-board layouts lean on more than their letter blocks: chords, magic and repeat keys, a
- * second letter layer. A chord on the wrong keys, or a magic key that never fires, still types the
+ * The small-board layouts lean on more than their letter blocks: chords, adaptive and repeat keys, a
+ * second letter layer. A chord on the wrong keys, or an adaptive key that never fires, still types the
  * alphabet, so these hold each to what its source says.
  */
 describe('small-board layouts', () => {
@@ -129,13 +129,13 @@ describe('small-board layouts', () => {
     expect(keyOf('finch', 'e')).toBe('R0');
   });
 
-  it('types with the magic key where Magic Sturdy rules say', () => {
+  it('types with the adaptive key where Magic Sturdy rules say', () => {
     const compiled = compileLayout(layout('magic-sturdy'));
-    const magic = Object.entries(layout('magic-sturdy').layers[0].bindings).find(
+    const adaptive = Object.entries(layout('magic-sturdy').layers[0].bindings).find(
       ([, b]) => b.kind === 'adaptive',
     )?.[0];
-    // After a space the magic key types "the" in one press.
-    expect(explain(compiled, 'in the', OPTS).steps.map((s) => s.key)).toContain(magic);
+    // After a space the adaptive key types "the" in one press.
+    expect(explain(compiled, 'in the', OPTS).steps.map((s) => s.key)).toContain(adaptive);
     // The doubled `o` is the repeat key's.
     expect(explain(compiled, 'look', OPTS).steps.map((s) => s.key)).toContain('R0');
   });

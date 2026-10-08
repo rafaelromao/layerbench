@@ -74,8 +74,7 @@ describe.skipIf(!FILE)('corpus report (CORPUS_REPORT_FILE)', () => {
         manifest.description ?? '',
         '',
         `- Language: ${profile?.name ?? manifest.language} (\`${manifest.language}\`) · ` +
-          `licence: ${manifest.license} · source: ${manifest.source}` +
-          `${(manifest as { generated?: boolean }).generated ? ' · generated from word frequencies' : ''}`,
+          `licence: ${manifest.license} · source: ${manifest.source}`,
         `- Served sample: ${kb} kB, ${manifest.words.toLocaleString('en-US')} words, ` +
           `${manifest.symbols.toLocaleString('en-US')} symbols`,
         `- Most frequent letters: ${counts

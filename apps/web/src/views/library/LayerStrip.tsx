@@ -1,6 +1,6 @@
 import type { CompiledLayout } from '@layerbench/core';
 import { useRef, useState } from 'react';
-import { Keyboard } from '../../components/Keyboard.js';
+import { Keyboard, typingCombos } from '../../components/Keyboard.js';
 import { layerColourOf } from '../../components/layer-colour.js';
 
 export interface LayerStripProps {
@@ -50,6 +50,8 @@ export function LayerStrip({ id, compiled, name, className }: LayerStripProps) {
               layer={layer.idx}
               interactive={false}
               showHold={false}
+              // The combos that type, as Analyze draws them: a letter only a combo types is seen too.
+              combos={typingCombos(compiled, layer.idx)}
               className="opacity-90"
             />
             {many && (

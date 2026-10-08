@@ -23,7 +23,8 @@ where that layout is saved and unchanged, it is the saved layout again. A layout
 **Open in analyzer**, or from someone's link, is not in **Library** until you save it. Picking another layout from **Layout** asks first when there is
 something unsaved.
 
-**Settings**, in the bar at the top, holds the layout's author and description, and the choices
+**Settings**, in the bar at the top, holds the layout's author and description, the languages it
+is for, and the choices
 the numbers are worked out with: **Corpus**, **Mix with**, **Rules**, **Counts**, the **Sample**,
 the feature switches, **Space** and **Shift**, the same as in every view that analyzes, and whether
 the board draws its combos. The line beside it says what is chosen. A feature switched off changes
@@ -53,27 +54,28 @@ the key becomes a tap-hold.
 | Modifier `⇧` | is Shift, Control, Alt or Command, held or for the next key only |
 | Tap-hold `a/⇧` | does one thing when tapped and another when held |
 | Repeat `⟳` | presses the key before it again |
-| Magic `✦` | types something that depends on the key before it |
+| Adaptive `✦` | types something that depends on the key before it |
 | Macro `⋯` | types several things in one press |
 | Transparent `▽` | lets the layer below show through |
 | Nothing `∅` | does nothing |
 
-**More** holds the rest: alt repeat, tap dance, morph, caps word, Unicode, dead key, and the
-layout's own named behaviours. [Special keys](special-keys.md) explains each of them.
+The tiles after them are the rest: alt repeat, tap dance, morph, caps word, Unicode, dead key,
+and the layout's own named behaviours. [Special keys](special-keys.md) explains each of them. On a
+phone they wait under **More**, which then shows the kind chosen from them.
 
 ### Parts of a bigger key
 
-A tap-hold has a tap and a hold, a magic key has a branch for each key it follows, and a tap dance
-has a binding for each number of taps. Each part has its own small choice of kind, with that
-kind's controls under it, so a hold can reach a layer while the tap types a letter, or is a magic
-key. A hold can be anything a tap can — a layer key of any kind, a modifier, a symbol, a macro, a
-magic key — except another tap-hold, and the analysis presses it held when that is the way to
+A tap-hold has a tap and a hold, an adaptive key has a branch for each key it follows, and a tap
+dance has a binding for each number of taps. Each part has its own small choice of kind, with that
+kind's controls under it, so a hold can reach a layer while the tap types a letter, or is an
+adaptive key. A hold can be anything a tap can — a layer key of any kind, a modifier, a symbol, a
+macro, an adaptive key — except another tap-hold, and the analysis presses it held when that is the way to
 type what it does.
 
 ### Keys the layout already has
 
-**From this layout** offers the keys the layout already uses, its magic keys and alt repeats first
-and then its symbols, layer keys and modifiers, to put on the selected key in one tap. **All**
+**From this layout** offers the keys the layout already uses, its adaptive keys and alt repeats
+first and then its symbols, layer keys and modifiers, to put on the selected key in one tap. **All**
 shows every one of them, including the keys an import brought in.
 
 ### Typing a binding
@@ -90,15 +92,15 @@ applies it; `Escape` leaves the key as it was. Starting with `&` lists the behav
 | `&sk LSHIFT` · `&kp LSHIFT` | a one-shot modifier, and a held one |
 | `&macro ão` · `&macro ão then alpha2` | a macro, optionally turning on a layer after it |
 | `&trans` · `&none` · `&key_repeat` · `&caps_word` | the rest |
-| `&magic` | one of the layout's own named behaviours |
+| `&altRepeat` | one of the layout's own named behaviours |
 
 A layer can be named by its id, by its name, or by its number as ZMK counts them. A trailing
-`tag:name` gives the key a tag that magic keys can match on. Under the default `symbols` host
+`tag:name` gives the key a tag that adaptive keys can match on. Under the default `symbols` host
 locale a keycode becomes the symbol it types: `&kp N1` is `1`, and shifted `!`.
 
-Some keys hold more than this syntax can write, such as a magic key's branches or a tap-hold with
-its own timing. For those the field starts empty and says so; the controls above still edit all of
-it, and a binding typed into the field replaces it.
+Some keys hold more than this syntax can write, such as an adaptive key's branches or a tap-hold
+with its own timing. For those the field starts empty and says so; the controls above still edit all
+of it, and a binding typed into the field replaces it.
 
 ## Moving keys around
 
@@ -152,6 +154,36 @@ typed with the one that suits it: the one that makes the fewest same-finger pair
 around it, two in a row first and then one apart, and then the one with less effort. The first of
 them is pressed when nothing tells them apart. A key held for a layer is always pressed as found.
 
+### Default layers
+
+A new layout can start with three more layers, the same on every board: **Numbers**, **Symbols**
+and **Dead keys**. Numbers and Symbols are Magic Romak's. Numbers has the digits as a keypad
+under the right hand, and brackets and `& | \` under the left. Symbols has the rest of the
+punctuation. Dead keys mirrors Symbols, each key where its look-alike is:
+
+- The accents `´ \` ^ ~ ¨` sit where `' \` ^ ~ "` are.
+- `€ £` take `$ #`, and `« »` take `< >`.
+- `¿ ¡ ;` take `? ! :`, and `ª º §` take `@ _ *`.
+- `ç`, `ñ`, `œ` and `æ` fill the rest. An accent and a letter would type `ç` and `ñ` too; a key
+  of their own saves a press on letters this common.
+
+With a base layer's letters, that writes Portuguese, English, Spanish, French and Italian.
+
+The left inner thumb types space and, held, turns on Numbers. The right inner thumb, held, turns on
+Symbols, and tapped turns on Dead keys for one key, so an accent is three taps. `0` is on the right
+outer thumb, or on the inner one where there is no outer one.
+
+Some boards differ:
+
+- **A row-stagger board** holds Numbers on the space bar. On Numbers, the keys right of `p` and `l`
+  turn on Symbols and Dead keys for one key.
+- **The 18-key board** has no bottom row. Its digits move up: `1 2 3` go on the left home row, under
+  the same fingers. What the bottom rows held goes on a fourth layer, **Symbols 2**, which Symbols'
+  right outer thumb turns on for one key. On Dead keys, the grave accent takes `ñ`'s key, and `ñ`
+  and `§` go to the outer thumbs.
+
+Keys beyond the 24 the layers use let the layer below show through.
+
 ### Which layer wins
 
 When two layers are on at once, a key comes from the one further down the list. A key that is
@@ -168,7 +200,7 @@ The other panels hold what is not on a single key:
   letters are typed.
 - **Combos** are keys pressed together. **pick on board**, then tap the keys; the output takes
   the same syntax as **Or type**.
-- **Behaviors** are the named bindings keys refer to, such as `&magic`.
+- **Behaviors** are the named bindings keys refer to, such as `&altRepeat`.
 - **Typing paths** list the other ways a character can be typed. Left alone, a character is typed
   the cheapest way from where the typist is: the fewest presses, then the one that leaves no layer
   key held, then the one that makes the fewest same-finger pairs with the keys before it in the

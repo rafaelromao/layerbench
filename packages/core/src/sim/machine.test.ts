@@ -92,7 +92,7 @@ describe('Machine — one-shot layers', () => {
 });
 
 describe('Machine — adaptive keys', () => {
-  it('magic key outputs h by default and v after vowels', () => {
+  it('adaptive key outputs h by default and v after vowels', () => {
     const { tap } = machineFor(magicRomak);
     tap('LBM'); // c
     expect(tap('RBI').symbols).toBe('h');
@@ -240,7 +240,7 @@ describe('Machine — combos, caps word, holds', () => {
 });
 
 describe('Machine — what kind of key a press is', () => {
-  const magic = {
+  const adaptive = {
     kind: 'adaptive' as const,
     default: { kind: 'kp' as const, symbol: 'h' },
     triggers: [{ afterAny: ['a'], binding: { kind: 'kp' as const, symbol: 'v' } }],
@@ -252,13 +252,13 @@ describe('Machine — what kind of key a press is', () => {
           id: 'base',
           bindings: {
             LHP: { kind: 'kp', symbol: 'a' },
-            // A magic key on the tap of a tap-hold, of a layer-tap, and of a morph's plain arm.
-            LHR: { kind: 'hold_tap', tap: magic, hold: { kind: 'mod', mod: 'LGUI' } },
-            LHM: { kind: 'lt', layer: 'num', tap: magic },
+            // An adaptive key on the tap of a tap-hold, of a layer-tap, and of a morph's plain arm.
+            LHR: { kind: 'hold_tap', tap: adaptive, hold: { kind: 'mod', mod: 'LGUI' } },
+            LHM: { kind: 'lt', layer: 'num', tap: adaptive },
             LHI: {
               kind: 'mod_morph',
               mods: ['LSHIFT', 'RSHIFT'],
-              default: magic,
+              default: adaptive,
               morphed: { kind: 'kp', symbol: 'x' },
             },
             LTI: {
@@ -266,8 +266,8 @@ describe('Machine — what kind of key a press is', () => {
               tap: { kind: 'key_repeat' },
               hold: { kind: 'mo', layer: 'num' },
             },
-            LTM: { kind: 'tap_dance', bindings: [{ kind: 'kp', symbol: 'b' }, magic] },
-            RHI: { kind: 'adaptive', default: { kind: 'key_repeat' }, triggers: magic.triggers },
+            LTM: { kind: 'tap_dance', bindings: [{ kind: 'kp', symbol: 'b' }, adaptive] },
+            RHI: { kind: 'adaptive', default: { kind: 'key_repeat' }, triggers: adaptive.triggers },
             R1: { kind: 'mod', mod: 'LSHIFT' },
             L0: {
               kind: 'hold_tap',
@@ -295,15 +295,15 @@ describe('Machine — what kind of key a press is', () => {
       ]),
     );
 
-  it('is a magic key when the magic key is the tap of a tap-hold or a layer-tap, as its legend says', () => {
+  it('is an adaptive key when the adaptive key is the tap of a tap-hold or a layer-tap, as its legend says', () => {
     const { tap, hold } = board();
     for (const key of ['LHR', 'LHM']) {
       const t = tap(key);
       expect(t.symbols, key).toBe('h');
-      expect(t.keyKind, key).toBe('magic');
+      expect(t.keyKind, key).toBe('adaptive');
     }
     tap('LHP'); // a
-    expect(tap('LHR')).toMatchObject({ symbols: 'v', keyKind: 'magic' });
+    expect(tap('LHR')).toMatchObject({ symbols: 'v', keyKind: 'adaptive' });
     // Held, it is the hold, whatever the tap is.
     expect(hold('LHR').keyKind).toBe('hold');
     expect(hold('LHM').keyKind).toBe('hold');
@@ -311,12 +311,12 @@ describe('Machine — what kind of key a press is', () => {
 
   it('is what the arm a morph or a tap dance runs is', () => {
     const { tap, hold, m, pos } = board();
-    expect(tap('LHI').keyKind).toBe('magic');
+    expect(tap('LHI').keyKind).toBe('adaptive');
     hold('R1');
     // The shift that chose the arm is not applied to it, as in ZMK's mod-morph.
     expect(tap('LHI')).toMatchObject({ symbols: 'x', keyKind: 'alpha' });
     const twice = m.perform({ type: 'tap', pos: pos('LTM'), taps: 2 });
-    expect(twice.at(-1)?.keyKind).toBe('magic');
+    expect(twice.at(-1)?.keyKind).toBe('adaptive');
   });
 
   it('is a repeat key when a tap-hold taps the repeat key', () => {
@@ -325,12 +325,12 @@ describe('Machine — what kind of key a press is', () => {
     expect(tap('LTI')).toMatchObject({ symbols: 'a', keyKind: 'repeat' });
   });
 
-  it('is a magic key when it is an alt repeat, repeating or not, as its legend says', () => {
+  it('is an adaptive key when it is an alt repeat, repeating or not, as its legend says', () => {
     const { tap } = board();
     tap('LHP'); // a: the branch types v
-    expect(tap('RHI')).toMatchObject({ symbols: 'v', keyKind: 'magic' });
+    expect(tap('RHI')).toMatchObject({ symbols: 'v', keyKind: 'adaptive' });
     // after v nothing matches, so it repeats
-    expect(tap('RHI')).toMatchObject({ symbols: 'v', keyKind: 'magic' });
+    expect(tap('RHI')).toMatchObject({ symbols: 'v', keyKind: 'adaptive' });
   });
 
   it('stays a space key when sentence case wraps the space on a tap-hold', () => {
@@ -382,11 +382,11 @@ describe('MachineState.matches — two presses that leave the board alike', () =
   });
 });
 
-describe('Machine — magic keys', () => {
+describe('Machine — adaptive keys', () => {
   it('takes the first trigger that matches, in the order they are written', () => {
     const afterA = { afterAny: ['a'], binding: { kind: 'kp' as const, symbol: 'v' } };
     const afterAOrB = { afterAny: ['a', 'b'], binding: { kind: 'kp' as const, symbol: 'w' } };
-    const magic = (triggers: (typeof afterA)[]) => ({
+    const adaptive = (triggers: (typeof afterA)[]) => ({
       kind: 'adaptive' as const,
       default: { kind: 'kp' as const, symbol: 'h' },
       triggers,
@@ -398,8 +398,8 @@ describe('Machine — magic keys', () => {
           bindings: {
             LHP: { kind: 'kp', symbol: 'a' },
             LHR: { kind: 'kp', symbol: 'b' },
-            LHM: magic([afterA, afterAOrB]),
-            LHI: magic([afterAOrB, afterA]),
+            LHM: adaptive([afterA, afterAOrB]),
+            LHI: adaptive([afterAOrB, afterA]),
             L0: { kind: 'kp', symbol: ' ' },
           },
         },

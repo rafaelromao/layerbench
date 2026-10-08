@@ -10,7 +10,7 @@
     <title>LayerBench — a keyboard layout analyzer that types like your firmware</title>
     <meta
       name="description"
-      content="LayerBench types a text on your ZMK keymap the way the firmware would — layers, one-shots, magic and repeat keys, combos, macros — and measures the key presses that result."
+      content="LayerBench types a text on your ZMK keymap the way the firmware would — layers, one-shots, adaptive and repeat keys, combos, macros — and measures the key presses that result."
     />
     <meta name="color-scheme" content="dark light" />
     <meta name="theme-color" content="#1d232b" media="(prefers-color-scheme: dark)" />
@@ -44,12 +44,12 @@
           <p class="kicker">Keyboard layout analyzer for ZMK keymaps</p>
           <h1 id="hero-title">Scores the keys you actually press.</h1>
           <p class="lede">
-            LayerBench types a text on your keymap the way ZMK would — layers, one-shots, magic and
+            LayerBench types a text on your keymap the way ZMK would — layers, one-shots, adaptive and
             repeat keys, combos, macros — and measures SFB, SFS, scissors, rolls and Effort on the
             presses that result.
           </p>
           <p class="actions">
-            <a class="button primary" href="/analyze?layout=magic-romak&amp;corpus=pt-br-conv"
+            <a class="button primary" href="/analyze?layout=magic-romak&amp;corpus=pt-br-general"
               >Open Magic Romak</a
             >
             <a class="button" href="/guide">Read the guide</a>
@@ -57,14 +57,14 @@
           <p class="proof">Free · Runs in your browser · No account needed, no tracking</p>
 
           <figure class="shot hero-shot">
-            <a class="hero-pair" href="/analyze?layout=magic-romak&amp;corpus=pt-br-conv">
+            <a class="hero-pair" href="/analyze?layout=magic-romak&amp;corpus=pt-br-general">
               <picture>
                 <source srcset="assets/img/analyze-board-dark.png" media="(prefers-color-scheme: dark)" />
                 <img
                   src="assets/img/analyze-board-light.png"
                   width="653"
                   height="420"
-                  alt="The Analyze view's board for Magic Romak: tabs for its five layers, Alpha 1 shown, each key shaded by how often it is pressed."
+                  alt="The Analyze view's board for Magic Romak: tabs for its six layers, Alpha 1 shown, each key shaded by how often it is pressed."
                   fetchpriority="high"
                 />
               </picture>
@@ -80,7 +80,7 @@
               </picture>
             </a>
             <figcaption>
-              Magic Romak on Brazilian Portuguese conversation: its five layers in the tabs, how often
+              Magic Romak on Brazilian Portuguese news: its six layers in the tabs, how often
               each key of Alpha 1 is pressed, and its numbers, most banded by the Keyboard Layouts
               Doc's thresholds.
             </figcaption>
@@ -94,7 +94,7 @@
           <div class="prose">
             <p>
               That fits a 30-key layout. It doesn't fit many ZMK keymaps: a thumb opens a second alpha
-              layer for the next key, a magic key types what the letter before it calls for, a combo
+              layer for the next key, an adaptive key types what the letter before it calls for, a combo
               types a letter no key has, a macro types <em>qu</em> and hands the next key to another
               layer.
             </p>
@@ -181,7 +181,7 @@
           <p class="after-film">
             With multi-letter macros switched off, the same word takes five presses: a, the thumb, ç,
             ã and o. The simulator's tests pin traces like these.
-            <a href="/analyze?layout=magic-romak&amp;corpus=pt-br-conv"
+            <a href="/analyze?layout=magic-romak&amp;corpus=pt-br-general"
               >Type any word in <strong>How is this typed?</strong></a
             >
           </p>
@@ -197,7 +197,7 @@
           </p>
           <ul class="cards">
             <li>
-              <h3>Magic keys, as many as you have</h3>
+              <h3>Adaptive keys, as many as you have</h3>
               <p>
                 Each with its own rules, chained, on any layer, typing one letter or several.
                 Elsewhere we found one at most.
@@ -286,7 +286,7 @@
               <p>The repeat key, and alternate repeat, which types something else after some keys.</p>
             </li>
             <li>
-              <p class="keys"><span class="key">magic keys</span></p>
+              <p class="keys"><span class="key">adaptive keys</span></p>
               <p>
                 Adaptive keys, whose output depends on the key before: as many as the keymap has,
                 chained if it chains them.
@@ -326,7 +326,7 @@
                 <h3>Rank with, or without</h3>
                 <p>
                   The Library ranks every layout on the same text, by Effort or SFB, with both on every
-                  card. Untick magic keys, the repeat key, typing combos or multi-letter macros, and
+                  card. Untick adaptive keys, the repeat key, typing combos or multi-letter macros, and
                   each layout is ranked as it types without them: what each feature is worth, in two
                   numbers. A card also says how much of the text a layout can't type.
                 </p>
@@ -361,7 +361,7 @@
                   <img
                     src="assets/img/compare-light.png"
                     width="1256"
-                    height="868"
+                    height="916"
                     alt="Compare: Magic Romak and Graphite side by side, both typed without multi-letter macros."
                     loading="lazy"
                     decoding="async"
@@ -374,7 +374,7 @@
               <div class="feature-text">
                 <h3>Edit where it is analyzed</h3>
                 <p>
-                  Select a key and choose what it does: a symbol, a layer, a tap-hold, a magic key, a
+                  Select a key and choose what it does: a symbol, a layer, a tap-hold, an adaptive key, a
                   macro. Or type it in ZMK's own syntax, like <code>&amp;lt num a</code>. Every number
                   follows the edit, and the key shows its own part of each. Drag one key onto another
                   to swap them; a plain swap shows an estimate at once, and the full numbers follow.
@@ -386,7 +386,7 @@
                   <img
                     src="assets/img/edit-light.png"
                     width="1238"
-                    height="641"
+                    height="695"
                     alt="Analyze with a key selected: what the key does in words, its numbers, tiles to make it something else, and a field with its ZMK binding."
                     loading="lazy"
                     decoding="async"
@@ -455,8 +455,8 @@
             <li>
               <h3>Your language, accents intact</h3>
               <p>
-                English and Brazilian Portuguese, as news and as conversation; Spanish and French, as
-                conversation. Mix two texts, or paste your own and save it. <span lang="pt-BR">ã</span> and
+                English, Brazilian Portuguese, Spanish, French and Italian, as news. Mix two texts, or
+                paste your own and save it. <span lang="pt-BR">ã</span> and
                 <span lang="pt-BR">ç</span> are letters in their own right, and a layout that can't
                 type them ranks after one that can. Missing your language?
                 <a href="/guide/analyzing#the-text-itself">Add a text</a> by pull request.
@@ -485,8 +485,8 @@
 
           <h3 class="layouts-title">35 layouts to start from</h3>
           <ul class="layouts">
-            <li><a href="/analyze?layout=magic-romak&amp;corpus=pt-br-conv">Magic Romak <span>Rafael Romão</span></a></li>
-            <li><a href="/analyze?layout=romak-34&amp;corpus=pt-br-conv">Romak 34 <span>Rafael Romão</span></a></li>
+            <li><a href="/analyze?layout=magic-romak&amp;corpus=pt-br-general">Magic Romak <span>Rafael Romão</span></a></li>
+            <li><a href="/analyze?layout=romak-34&amp;corpus=pt-br-general">Romak <span>Rafael Romão</span></a></li>
             <li><a href="/analyze?layout=qwerty&amp;corpus=en-general">Qwerty</a></li>
             <li><a href="/analyze?layout=dvorak&amp;corpus=en-general">Dvorak <span>August Dvorak</span></a></li>
             <li><a href="/analyze?layout=colemak&amp;corpus=en-general">Colemak <span>Shai Coleman</span></a></li>
@@ -543,7 +543,7 @@
               <p>
                 All 46 rules name where their definition comes from — the Keyboard Layouts Doc (3rd
                 edition), cyanophage's playground, Keysolve, Genkey, ZMK's documentation — and a test
-                fails if one doesn't. Where the Doc is silent, as it is on layer taps, magic keys and
+                fails if one doesn't. Where the Doc is silent, as it is on layer taps, adaptive keys and
                 combos, the rule says it is a LayerBench addition, and the
                 <a href="/guide/metrics">metric glossary</a> explains how it counts.
               </p>
@@ -567,7 +567,7 @@
               <p>
                 A one-shot layer is consumed by exactly one press, and one wasted on a modifier is
                 counted. Toggles lock. Conditional layers settle. A combo fires only on its layers. A
-                macro can open a layer. The first matching magic trigger wins. Caps word ends where
+                macro can open a layer. The first matching branch of an adaptive key wins. Caps word ends where
                 ZMK ends it.
               </p>
               <p class="evidence">
@@ -616,7 +616,7 @@
             <ul>
               <li>
                 Timing isn't modeled: tap-holds never misfire, combos always fire, one-shots end at
-                the next key and never time out, and a magic key's idle window is always met. The
+                the next key and never time out, and an adaptive key's idle window is always met. The
                 keymap is typed as you mean it.
               </li>
               <li>
@@ -698,7 +698,7 @@
                   <td><span class="nf">Not found</span></td>
                 </tr>
                 <tr>
-                  <th scope="row">Magic (adaptive) keys</th>
+                  <th scope="row">Adaptive (magic) keys</th>
                   <td class="lb"><span class="yes">Yes</span> any number, chained</td>
                   <td><span class="partial">Partial</span> one, on its magic page<sup><a href="#n1">1</a></sup></td>
                   <td><span class="nf">Not found</span></td>
@@ -1026,9 +1026,7 @@
           <a href="https://github.com/urob/zmk-adaptive-key">adaptive key</a> and
           <a href="https://github.com/urob/zmk-auto-layer">auto layer</a>. The news texts come from the
           <a href="https://wortschatz.uni-leipzig.de/en/download">Leipzig Corpora Collection</a> (CC
-          BY 4.0); the conversation texts are generated from
-          <a href="https://github.com/hermitdave/FrequencyWords">FrequencyWords</a> counts of
-          OpenSubtitles (CC BY-SA 4.0).
+          BY 4.0).
         </p>
         <p>
           Also by the author of Magic Romak:

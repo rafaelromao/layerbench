@@ -346,12 +346,14 @@ describe('writing a file', () => {
         (l) => `${l.name}: ${l.keys.filter((k) => k.type === 'held').length}`,
       );
     // Numbers is held from L0, transparent there; Symbols' R0 does nothing there, and stays so.
+    // Dead keys shows through Alpha 2's R1, the key that reaches it, as Alpha 2 shows R0.
     expect(held(magicRomak)).toEqual([
       'Alpha 1: 0',
       'Alpha 2: 1',
       'Ç extension: 1',
       'Numbers: 1',
       'Symbols: 0',
+      'Dead keys: 1',
     ]);
     const nav: Layout = {
       format: 'layerbench/layout@1',
@@ -472,7 +474,7 @@ describe('writing a file', () => {
     expect(roundTrip(layout).layers[0].bindings).toMatchObject(bindings);
   });
 
-  it('marks magic keys, macros and tap dances in the corner, as the board does', () => {
+  it('marks adaptive keys, macros and tap dances in the corner, as the board does', () => {
     const bindings: Record<string, Binding> = {
       LTP: { kind: 'macro', symbols: 'qu' },
       LTR: {
@@ -506,7 +508,7 @@ describe('writing a file', () => {
     const back = roundTrip(layout).layers[0].bindings;
     // The mark tells a macro from a key's name, so its text comes back as a macro.
     expect(back.LTP).toEqual({ kind: 'macro', symbols: 'qu' });
-    // A magic key's branches have no field in the file: it comes back as what it types by default,
+    // An adaptive key's branches have no field in the file: it comes back as what it types by default,
     // and one with no default as a key to replace, not as a key that types ✦.
     expect(back.LTR).toEqual({ kind: 'kp', symbol: 'h' });
     expect(back.LTI).toMatchObject({ kind: 'raw', label: '✦' });

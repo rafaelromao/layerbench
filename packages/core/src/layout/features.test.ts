@@ -83,7 +83,7 @@ describe('feature expansion', () => {
   });
 
   it('leaves the document behaviours as they are', () => {
-    const behaviors = { magic: { kind: 'kp', symbol: 'z' } } as const;
+    const behaviors = { adaptiveHV: { kind: 'kp', symbol: 'z' } } as const;
     const e = expandFeatures(mini({ sentenceCase: {} }, { behaviors }));
     expect(e.layout.behaviors).toBe(behaviors);
   });
@@ -92,8 +92,15 @@ describe('feature expansion', () => {
 describe('Magic Romak after the features rewrite', () => {
   const compiled = compileLayout(magicRomak);
 
-  it('has three alpha layers plus the numbers and symbols the board really has', () => {
-    expect(compiled.layers.map((l) => l.id)).toEqual(['alpha1', 'alpha2', 'ccedil', 'num', 'sym']);
+  it('has three alpha layers plus the numbers, symbols and dead keys the board really has', () => {
+    expect(compiled.layers.map((l) => l.id)).toEqual([
+      'alpha1',
+      'alpha2',
+      'ccedil',
+      'num',
+      'sym',
+      'dead',
+    ]);
   });
 
   it('reaches numbers by holding the space key, without losing sentence case on its tap', () => {
@@ -120,7 +127,7 @@ describe('Magic Romak after the features rewrite', () => {
   it('keeps the authored document separate from the expanded one', () => {
     expect(compiled.layout.features?.sentenceCase).toBeDefined();
     expect(compiled.layout.behaviors).toEqual({});
-    // Only the space and shift keys are wrapped; the magic keys and the alt repeat are bindings.
+    // Only the space and shift keys are wrapped; the adaptive keys and the alt repeat are bindings.
     expect(compiled.expanded.behaviors).toEqual({});
     expect(compiled.featureOwned.get('alpha1')).toEqual(
       new Map([
@@ -164,7 +171,7 @@ describe('Magic Romak after the features rewrite', () => {
   /**
    * The shift a sentence start arms cannot be cancelled — the firmware's `&sk LSHIFT` behaves the
    * same way — so a *lowercase* letter after `. ` is genuinely unproducible. The pre-shifted layer
-   * this replaced looked better only because `upperCopy` skipped the adaptive magic key, letting
+   * this replaced looked better only because `upperCopy` skipped the adaptive key, letting
    * `h` and `v` through unshifted. This pins the honest behaviour.
    */
   it('cannot type a lowercase letter straight after a sentence-ending space', () => {

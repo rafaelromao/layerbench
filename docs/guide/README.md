@@ -1,7 +1,7 @@
 # Guide
 
 LayerBench types a text on your keymap the way your keyboard's firmware would, and measures how
-comfortable that typing is. Layers, one-shots, tap-holds, magic and repeat keys are all part of it.
+comfortable that typing is. Layers, one-shots, tap-holds, adaptive and repeat keys are all part of it.
 Everything runs in your browser, and nothing leaves it unless you sign in with GitHub to keep your
 work in your own account.
 
@@ -30,7 +30,7 @@ Every layout gets the same two headline numbers, wherever it is shown:
 
 Tap or click a key on the board, in **Analyze**. The editor beside it (under it, on a phone) shows
 what the key does and what it adds to the numbers, with a row of tiles (*Symbol*, *Layer*,
-*Tap-hold*, *Magic* and more) to make it something else.
+*Tap-hold*, *Adaptive* and more) to make it something else.
 
 Drag a key onto another to swap them. Layers can be renamed, reordered, duplicated and removed.
 [Editing a layout](editing.md) has the details.

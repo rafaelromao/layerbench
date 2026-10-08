@@ -17,7 +17,7 @@ function request(ruleSet: RuleSet, layoutId = 'qwerty'): AnalyzeRequest {
   if (!layout) throw new Error(`${layoutId} is bundled`);
   return {
     layout: toCanonicalJson(layout),
-    corpusId: 'en-conv',
+    corpusId: 'en-general',
     caseMode: 'fold',
     textClass: 'letters',
     crossWord: 'reset',

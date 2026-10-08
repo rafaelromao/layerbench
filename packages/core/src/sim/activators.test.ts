@@ -119,6 +119,30 @@ describe('the keys that reach a layer', () => {
     expect(marked.length).toBeGreaterThan(5);
   });
 
+  it('marks a key on a layer that types and then turns that layer on again, as a ç macro can', () => {
+    const c = compileLayout(
+      board([
+        { id: 'base', bindings: { R0: { kind: 'sl', layer: 'alpha2' } } },
+        {
+          id: 'alpha2',
+          name: 'Alpha 2',
+          bindings: {
+            '*': { kind: 'trans' },
+            LHP: { kind: 'macro', symbols: 'ç', then: [{ kind: 'sl', layer: 'alpha2' }] },
+            // Staying on, or leaving, is not a way back in.
+            LHR: { kind: 'sl', layer: 'alpha2' },
+            LHM: { kind: 'tap_dance', bindings: [kp('a'), { kind: 'sl', layer: 'alpha2' }] },
+          },
+        },
+      ]),
+    );
+    const marked = reachKeys(c, 1);
+    expect(marked.map((k) => `${keyId(c, k.pos)} ${k.how}`)).toEqual(['LHP tapped', 'R0 tapped']);
+    expect(describeReach(c, 1, marked[0])).toBe(
+      'tapped on Alpha 2 by the ç macro to reach Alpha 2 again',
+    );
+  });
+
   it('reaches a layer that two others turn on through both thumbs, and not directly', () => {
     const c = compileLayout(
       board(

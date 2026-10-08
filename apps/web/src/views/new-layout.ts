@@ -1,5 +1,5 @@
 import type { Layout } from '@layerbench/core';
-import { getGeometryPreset, importTextLayout, numberLayer, symbolLayer } from '@layerbench/core';
+import { defaultLayers, getGeometryPreset, importTextLayout } from '@layerbench/core';
 
 /** Qwerty, as the starting point for a layout you intend to change rather than design. */
 const QWERTY_ROWS = 'q w e r t y u i o p\na s d f g h j k l ;\nz x c v b n m , . /';
@@ -9,8 +9,8 @@ export interface NewLayoutSpec {
   geometry: string;
   /** `empty` leaves every key unbound; `qwerty` fills the base layer so there is something to move. */
   start: 'empty' | 'qwerty';
-  /** Add the number and symbol layer templates. */
-  numbers: boolean;
+  /** Add the default Numbers, Symbols and Dead keys layers, and the thumbs that reach them. */
+  defaultLayers: boolean;
 }
 
 /**
@@ -27,10 +27,21 @@ export function newLayout(spec: NewLayoutSpec): Layout {
       ? importTextLayout(`${QWERTY_ROWS}\nspace`, spec.geometry, spec.name).layout
       : emptyLayout(spec.name, spec.geometry, geometry.textThumbs[0] ?? geometry.keys[0].id);
 
-  if (!spec.numbers) return base;
+  if (!spec.defaultLayers) return base;
+  // The defaults choose the space key, on the thumb that also holds Numbers; any other space goes.
+  const defaults = defaultLayers(geometry);
+  const [first, ...rest] = base.layers;
+  const letters = Object.entries(first.bindings).filter(
+    ([, b]) => !(b.kind === 'kp' && b.symbol === ' '),
+  );
   return {
     ...base,
-    layers: [...base.layers, numberLayer(geometry, { symbolLayer: 'sym' }), symbolLayer(geometry)],
+    keys: { ...base.keys, space: defaults.spaceKey },
+    layers: [
+      { ...first, bindings: { ...Object.fromEntries(letters), ...defaults.base } },
+      ...rest,
+      ...defaults.layers,
+    ],
   };
 }
 

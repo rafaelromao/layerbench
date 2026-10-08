@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { bundledLayout, toCanonicalJson } from '@layerbench/core';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -5,6 +7,12 @@ import { describe, expect, it } from 'vitest';
 import type { AnalysisClient, AnalyzeRequest } from '../engine/protocol.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { LIBRARY, openSettings, renderRoute, testClient } from '../test/render.js';
+
+/**
+ * Spanish news is built once its text is downloaded (packages/corpora/README.md); until then the
+ * tests that need a Spanish text wait for it rather than fail.
+ */
+const SPANISH = existsSync(resolve(process.cwd(), 'public/corpora/es-general/manifest.json'));
 
 const QWERTY_TEXT = 'q w e r t y u i o p\na s d f g h j k l ;\nz x c v b n m , . /';
 /** A text long enough to build a corpus from. */
@@ -88,7 +96,7 @@ describe('Library', () => {
 
 describe('Compare', () => {
   it('analyzes both layouts and ranks each metric', async () => {
-    renderRoute('/compare?layout=magic-romak&b=graphite&corpus=pt-br-conv&sample=20000', {
+    renderRoute('/compare?layout=magic-romak&b=graphite&corpus=pt-br-general&sample=20000', {
       storage: freshStorage(),
     });
 
@@ -103,7 +111,7 @@ describe('Compare', () => {
 
   it('shows every layer of each layout, one at a time', async () => {
     const user = userEvent.setup();
-    renderRoute('/compare?layout=magic-romak&b=graphite&corpus=pt-br-conv&sample=20000', {
+    renderRoute('/compare?layout=magic-romak&b=graphite&corpus=pt-br-general&sample=20000', {
       storage: freshStorage(),
     });
     const tabsA = await screen.findByRole('tablist', { name: 'Layers of A' });
@@ -111,7 +119,7 @@ describe('Compare', () => {
       within(tabsA)
         .getAllByRole('tab')
         .map((t) => t.textContent),
-    ).toEqual(['Alpha 1', 'Alpha 2', 'Ç extension', 'Numbers', 'Symbols']);
+    ).toEqual(['Alpha 1', 'Alpha 2', 'Ç extension', 'Numbers', 'Symbols', 'Dead keys']);
     // A layout of one layer has nothing to choose.
     expect(screen.queryByRole('tablist', { name: 'Layers of B' })).toBeNull();
 
@@ -175,14 +183,14 @@ describe('Compare', () => {
     const user = userEvent.setup();
     const { client, requests } = recording();
     const { currentSearch } = renderRoute(
-      '/compare?layout=magic-romak&b=graphite&corpus=pt-br-conv&sample=20000&off=macros',
+      '/compare?layout=magic-romak&b=graphite&corpus=pt-br-general&sample=20000&off=macros',
       { client, storage: freshStorage() },
     );
 
     const settings = await openSettings();
     const macros = within(settings).getByRole('checkbox', { name: 'Multi-letter macros' });
     expect(macros).not.toBeChecked();
-    for (const name of ['Magic keys', 'Repeat key', 'Typing combos']) {
+    for (const name of ['Adaptive keys', 'Repeat key', 'Typing combos']) {
       expect(within(settings).getByRole('checkbox', { name })).toBeChecked();
     }
     expect(screen.getByRole('status')).toHaveTextContent(
@@ -209,8 +217,8 @@ describe('Compare', () => {
       expect(romak().some((r) => JSON.stringify(r.layout).includes('"symbols":"qu"'))).toBe(true),
     );
 
-    await user.click(screen.getByRole('checkbox', { name: 'Magic keys' }));
-    await waitFor(() => expect(currentSearch()).toContain('off=magic'));
+    await user.click(screen.getByRole('checkbox', { name: 'Adaptive keys' }));
+    await waitFor(() => expect(currentSearch()).toContain('off=adaptive'));
     expect(currentSearch()).toContain('b=graphite');
   }, 60_000);
 });
@@ -220,10 +228,11 @@ describe('Corpus', () => {
     renderRoute('/corpus', { storage: freshStorage() });
 
     expect(await screen.findByText('Corpora')).toBeInTheDocument();
-    // Every shipped corpus is offered: news from the Leipzig collection, and conversation.
+    // Every shipped corpus is offered: news from the Leipzig collection, one per language.
     expect(await screen.findAllByText(/Leipzig/)).not.toHaveLength(0);
-    expect(screen.getAllByText('English — conversational (OpenSubtitles)')).not.toHaveLength(0);
-    expect(screen.getAllByText('Español — conversacional (OpenSubtitles)')).not.toHaveLength(0);
+    expect(screen.getAllByText('English — news 2023 (Leipzig)')).not.toHaveLength(0);
+    if (SPANISH)
+      expect(screen.getAllByText('Español — noticias 2023 (Leipzig)')).not.toHaveLength(0);
     // Facts are counted over a sample of the selected corpus.
     expect(await screen.findByText('Letters', undefined, { timeout: 25_000 })).toBeInTheDocument();
     expect(screen.getByText('Trigrams')).toBeInTheDocument();

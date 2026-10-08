@@ -12,7 +12,7 @@ export type InspectorKind =
   | 'modifier'
   | 'taphold'
   | 'repeat'
-  | 'magic'
+  | 'adaptive'
   | 'altrepeat'
   | 'macro'
   | 'tapdance'
@@ -43,7 +43,7 @@ export const PRIMARY_KINDS: readonly KindInfo[] = [
   { kind: 'modifier', label: 'Modifier', glyph: '⇧', hint: 'Shift, Control, Alt or Command' },
   { kind: 'taphold', label: 'Tap-hold', glyph: 'a/⇧', hint: 'one thing on tap, another on hold' },
   { kind: 'repeat', label: 'Repeat', glyph: '⟳', hint: 'repeats the previous key' },
-  { kind: 'magic', label: 'Magic', glyph: '✦', hint: 'adapts to the key before it' },
+  { kind: 'adaptive', label: 'Adaptive', glyph: '✦', hint: 'adapts to the key before it' },
   { kind: 'macro', label: 'Macro', glyph: '⋯', hint: 'types several things in one press' },
   { kind: 'transparent', label: 'Transparent', glyph: '▽', hint: 'the layer below shows through' },
   { kind: 'nothing', label: 'Nothing', glyph: '∅', hint: 'does nothing' },
@@ -80,7 +80,7 @@ const IMPORTED: KindInfo = {
 export const ALL_KINDS: readonly KindInfo[] = [...PRIMARY_KINDS, ...MORE_KINDS, IMPORTED];
 
 /**
- * What one arm of a bigger key can be — the tap of a tap-hold, a magic key's branch. Arms are
+ * What one arm of a bigger key can be — the tap of a tap-hold, an adaptive key's branch. Arms are
  * simple by nature; an arm that is already something richer keeps its kind in the list.
  */
 export const ARM_KINDS: readonly InspectorKind[] = [
@@ -95,10 +95,10 @@ export const ARM_KINDS: readonly InspectorKind[] = [
 ];
 
 /**
- * What the tap of a tap-hold can be: an arm, or a magic key or alt repeat, so a key can be a magic
- * key on a tap and a layer or a modifier on a hold.
+ * What the tap of a tap-hold can be: an arm, or an adaptive key or alt repeat, so a key can be an
+ * adaptive key on a tap and a layer or a modifier on a hold.
  */
-export const TAP_KINDS: readonly InspectorKind[] = [...ARM_KINDS, 'magic', 'altrepeat'];
+export const TAP_KINDS: readonly InspectorKind[] = [...ARM_KINDS, 'adaptive', 'altrepeat'];
 
 export function kindInfo(kind: InspectorKind): KindInfo {
   return ALL_KINDS.find((k) => k.kind === kind) ?? IMPORTED;
@@ -131,7 +131,7 @@ export function kindOf(b: Binding | undefined): InspectorKind {
     case 'adaptive':
       // An adaptive key that names a behaviour is that behaviour, whatever it overrides.
       if (b.ref) return 'behaviour';
-      return b.default?.kind === 'key_repeat' ? 'altrepeat' : 'magic';
+      return b.default?.kind === 'key_repeat' ? 'altrepeat' : 'adaptive';
     case 'macro':
       return b.ref ? 'behaviour' : 'macro';
     case 'tap_dance':
@@ -204,7 +204,7 @@ function modPart(b: Binding | undefined): Mod | undefined {
 
 type Adaptive = Extract<Binding, { kind: 'adaptive' }>;
 
-/** The magic key or alt repeat a binding is, or carries as the tap of a tap-hold. */
+/** The adaptive key or alt repeat a binding is, or carries as the tap of a tap-hold. */
 function adaptivePart(b: Binding | undefined): Adaptive | undefined {
   switch (b?.kind) {
     case 'adaptive':
@@ -246,7 +246,7 @@ export function convert(
     case 'modifier':
       return { kind: 'mod', mod };
     case 'taphold': {
-      // A magic key, an alt repeat or a repeat key stays the tap, as a symbol does.
+      // An adaptive key, an alt repeat or a repeat key stays the tap, as a symbol does.
       const tapArm = adaptive ?? (current?.kind === 'key_repeat' ? current : symbol);
       // A modifier key keeps its modifier on hold — a home-row mod — and anything else gets a layer.
       return modPart(current) && !layerPart(current)
@@ -255,8 +255,8 @@ export function convert(
     }
     case 'repeat':
       return { kind: 'key_repeat' };
-    case 'magic':
-      // A magic key that is a tap-hold's tap comes out of it, branches and all.
+    case 'adaptive':
+      // An adaptive key that is a tap-hold's tap comes out of it, branches and all.
       if (adaptive) {
         return {
           ...adaptive,

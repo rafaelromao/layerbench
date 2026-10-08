@@ -31,7 +31,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "goldens": "GOLDENS=1 vitest run src/golden/dump.test.ts"
+    "goldens": "GOLDENS=1 vitest run src/golden/dump.test.ts",
+    "generate": "GENERATE=1 vitest run src/generate/run.test.ts"
   },
   "dependencies": {
     "zod": "^4.5.4"

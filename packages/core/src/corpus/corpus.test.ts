@@ -22,6 +22,27 @@ describe('normalize', () => {
     expect(normalizeText('Olá Mundo', { caseMode: 'model' })).toBe('Olá Mundo');
   });
 
+  it('keeps French « » as French marks, and folds them as quotes elsewhere', () => {
+    const text = 'Il a dit « oui ».';
+    const symbols = { caseMode: 'model', textClass: 'letters+digits+symbols' } as const;
+    expect(normalizeText(text, { ...symbols, keepAlso: ['«', '»'] })).toBe('Il a dit « oui ».');
+    expect(normalizeText(text, symbols)).toBe('Il a dit " oui ".');
+    expect(normalizeText(text, { caseMode: 'model' })).toBe('Il a dit oui .');
+  });
+
+  it('keeps currencies, degrees, sections and ordinals with the symbols, not the letters', () => {
+    const text = 'O 1º lugar, a 2ª vez: 20 °C, € 5, £ 3, § 4.';
+    expect(normalizeText(text, { caseMode: 'model', textClass: 'letters+digits+symbols' })).toBe(
+      'O 1º lugar, a 2ª vez: 20 °C, € 5, £ 3, § 4.',
+    );
+    // As letters, the ordinals go with the digits they follow, rather than as letters no key has.
+    expect(normalizeText(text, { caseMode: 'model' })).toBe('O lugar, a vez C, , , .');
+  });
+
+  it('reads a spacing acute as the apostrophe it stands for', () => {
+    expect(normalizeText('copo d´água', { caseMode: 'fold' })).toBe("copo d'água");
+  });
+
   it('counts symbols, words and n-grams', () => {
     const f = corpusFacts('ab ab c');
     expect(f.symbols).toBe(5);
@@ -93,14 +114,11 @@ describe('shipped corpora', () => {
 
   it('are listed with their manifests', async () => {
     const list = await loader.list();
-    expect(list.map((m) => m.id)).toEqual([
-      'en-conv',
-      'en-general',
-      'es-conv',
-      'fr-conv',
-      'pt-br-conv',
-      'pt-br-general',
-    ]);
+    // One corpus per language, of those whose text has been downloaded (packages/corpora/README.md).
+    const ids = list.map((m) => m.id);
+    expect(ids).toContain('en-general');
+    expect(ids).toContain('pt-br-general');
+    expect(ids.every((id) => /^(en|pt-br|es|fr|it)-general$/.test(id))).toBe(true);
     const ptGeneral = list.find((m) => m.id === 'pt-br-general')!;
     expect(ptGeneral.language).toBe('pt-BR');
     expect(ptGeneral.license).toContain('CC BY');
@@ -119,8 +137,8 @@ describe('shipped corpora', () => {
   });
 
   it('mixes two shipped corpora proportionally', async () => {
-    const en = await loader.load('en-conv');
-    const pt = await loader.load('pt-br-conv');
+    const en = await loader.load('en-general');
+    const pt = await loader.load('pt-br-general');
     const mixed = mixCorpora(
       [
         [en, 1],

@@ -231,9 +231,11 @@ export function parseBindingText(text: string, ctx: BindingTextContext): ParseRe
       if (!layer) return err(layerError(then[1], ctx));
       return ok({ kind: 'macro', symbol: symbols, thenLayer: layer, tag });
     }
-    case 'dead_key':
-      if (rest === '') return err('`&dead` needs a diacritic, for example `&dead ´`');
-      return ok({ kind: 'dead_key', symbol: rest });
+    case 'dead_key': {
+      const [symbol = '', shifted = ''] = rest.split(/\s+/);
+      if (symbol === '') return err('`&dead` needs a diacritic, for example `&dead ´`');
+      return ok({ kind: 'dead_key', symbol, shifted });
+    }
     case 'unicode': {
       const [symbol = '', shifted = ''] = rest.split(/\s+/);
       if (symbol === '') return err('`&uni` needs a symbol, for example `&uni →`');
@@ -320,7 +322,7 @@ function exactText(compiled: CompiledLayout, b: Binding): string | null {
       return withTag(`&macro ${b.symbols} then ${layerId(compiled, then[0].layer)}`, b.tag);
     }
     case 'dead_key':
-      return `&dead ${b.diacritic}`;
+      return b.shifted ? `&dead ${b.diacritic} ${b.shifted}` : `&dead ${b.diacritic}`;
     case 'unicode':
       return b.shiftedSymbol ? `&uni ${b.symbol} ${b.shiftedSymbol}` : `&uni ${b.symbol}`;
     case 'ref':

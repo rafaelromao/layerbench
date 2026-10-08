@@ -2,11 +2,11 @@ import { inlineBehaviors } from './compile.js';
 import type { Binding, Layout } from './types.js';
 
 /** The special features a layout can be ranked without. */
-export const FEATURE_KINDS = ['magic', 'repeat', 'combos', 'macros'] as const;
+export const FEATURE_KINDS = ['adaptive', 'repeat', 'combos', 'macros'] as const;
 export type FeatureKind = (typeof FEATURE_KINDS)[number];
 
 export const FEATURE_LABELS: Record<FeatureKind, string> = {
-  magic: 'Magic keys',
+  adaptive: 'Adaptive keys',
   repeat: 'Repeat key',
   combos: 'Typing combos',
   macros: 'Multi-letter macros',
@@ -26,7 +26,7 @@ function macroText(b: Extract<Binding, { kind: 'macro' }>): string {
     .join('');
 }
 
-/** Sentence case types a space, and only shifts what follows: it is not a magic key. */
+/** Sentence case types a space, and only shifts what follows: it is not an adaptive key. */
 function isSentenceCase(b: Extract<Binding, { kind: 'adaptive' }>): boolean {
   return b.default?.kind === 'kp' && b.default.symbol === ' ';
 }
@@ -35,7 +35,7 @@ function isSentenceCase(b: Extract<Binding, { kind: 'adaptive' }>): boolean {
  * The layout as it would be typed without some of its special features: the typist never presses
  * them, and types the text another way, or leaves out what has no other way.
  *
- * - `magic`: adaptive keys keep their default and lose every branch, so the magic key is a plain
+ * - `adaptive`: adaptive keys keep their default and lose every branch, so Magic Romak's is a plain
  *   `h` and alt repeat a plain repeat. Sentence case, which shifts but types only a space, stays.
  * - `repeat`: repeat keys, alt repeat's default included, type nothing, and doubled letters are
  *   tapped twice.
@@ -53,7 +53,7 @@ export function withoutFeatures(layout: Layout, off: readonly FeatureKind[]): La
   const walk = (b: Binding): Binding => {
     switch (b.kind) {
       case 'adaptive':
-        if (drop.has('magic') && !isSentenceCase(b)) return walk(b.default ?? NONE);
+        if (drop.has('adaptive') && !isSentenceCase(b)) return walk(b.default ?? NONE);
         return {
           ...b,
           default: b.default ? walk(b.default) : undefined,

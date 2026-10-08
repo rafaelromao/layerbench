@@ -39,10 +39,10 @@ suite('legends', () => {
   });
 
   it('shows an adaptive key by its default, marked, rather than by every alternative', () => {
-    const magic = legend(c, at('RBI'));
-    expect(magic.tap).toBe('h');
-    expect(magic.badge).toBe(BADGE.adaptive);
-    expect(magic.detail).toMatch(/^adaptive: types h; after a e i/);
+    const adaptiveLegend = legend(c, at('RBI'));
+    expect(adaptiveLegend.tap).toBe('h');
+    expect(adaptiveLegend.badge).toBe(BADGE.adaptive);
+    expect(adaptiveLegend.detail).toMatch(/^adaptive: types h; after a e i/);
   });
 
   it('describes alt repeat once, its tagged branches included', () => {
@@ -87,6 +87,12 @@ suite('legends', () => {
 
   it('draws a dead key on a dotted circle', () => {
     expect(tapLabel(c, { kind: 'dead_key', diacritic: '´' })).toBe('◌́');
+  });
+
+  it('draws a dead key’s shifted accent at the top, as a shifted symbol is', () => {
+    const l = legend(c, { kind: 'dead_key', diacritic: '´', shifted: '¨' });
+    expect([l.tap, l.shifted]).toEqual(['◌́', '◌̈']);
+    expect(l.detail).toBe('dead key ´, ¨ with shift: accents the next letter');
   });
 
   it('keeps an imported key’s own legend, and says it is not simulated', () => {

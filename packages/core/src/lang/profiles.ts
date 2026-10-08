@@ -63,6 +63,27 @@ export function languageProfile(tag: string | undefined): LanguageProfile | unde
 }
 
 /**
+ * The languages a layout is held to: the text's, a mixed text's each, then those the layout says
+ * it is for. A layout that claims Spanish is judged on `ñ` even on an English text. A language
+ * named twice, or by its base tag and its own, counts once.
+ */
+export function languagesToJudge(
+  textLanguage: string | undefined,
+  layoutLanguages: readonly string[] = [],
+): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const fromText = textLanguage?.split('+').map((t) => t.trim()) ?? [];
+  for (const tag of [...fromText, ...layoutLanguages]) {
+    const key = languageProfile(tag)?.tag ?? tag;
+    if (tag === '' || seen.has(key)) continue;
+    seen.add(key);
+    out.push(tag);
+  }
+  return out;
+}
+
+/**
  * Punctuation to keep for a corpus's language, on top of the shared set. A mixed corpus declares
  * its languages joined by `+`, so every component contributes.
  *

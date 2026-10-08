@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AnalysisClient, AnalyzeRequest } from '../engine/protocol.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { openSettings, renderRoute, savedInLink, testClient } from '../test/render.js';
-import { setPointerKind } from '../test/setup.js';
+import { setPointerKind, setViewportWidth } from '../test/setup.js';
 import { decodeInline } from '../url/inline.js';
 
 let counter = 0;
@@ -46,7 +46,7 @@ async function dragKey(
 
 /** Open Analyze on Qwerty and wait for its first analysis. */
 async function openEdit(): Promise<void> {
-  renderRoute('/analyze?layout=qwerty&corpus=en-conv&sample=20000', { storage: freshStorage() });
+  renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000', { storage: freshStorage() });
   await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
 }
 
@@ -113,7 +113,7 @@ async function linkOf(currentSearch: () => string, id: string): Promise<string> 
 const inspector = (keyId: string) => screen.findByRole('group', { name: `Edit ${keyId}` });
 
 async function openMagicRomak(): Promise<void> {
-  renderRoute('/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000', {
+  renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000', {
     storage: freshStorage(),
   });
   await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
@@ -135,7 +135,7 @@ describe('Edit', () => {
       return report;
     });
 
-    renderRoute('/analyze?layout=qwerty&corpus=en-conv&sample=20000', {
+    renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000', {
       client,
       storage: freshStorage(),
     });
@@ -163,7 +163,7 @@ describe('Edit', () => {
   it('saves from beside the unsaved badge, under the name in the bar', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
-    const { currentSearch } = renderRoute('/analyze?layout=qwerty&corpus=en-conv&sample=20000', {
+    const { currentSearch } = renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000', {
       storage,
     });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
@@ -185,7 +185,7 @@ describe('Edit', () => {
   it('keeps editing the copy a first save made, history and all, and saves it again in place', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
-    renderRoute('/analyze?layout=qwerty&corpus=en-conv&sample=20000', { storage });
+    renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000', { storage });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
 
     key('Key LHM: d').focus();
@@ -222,7 +222,7 @@ describe('Edit', () => {
     const storage = freshStorage();
     await seed(storage, 'qwerty', 'qwerty-copy', { name: 'Qwerty copy' });
     const { currentSearch } = renderRoute(
-      '/analyze?layout=saved%3Aqwerty-copy&corpus=en-conv&sample=20000',
+      '/analyze?layout=saved%3Aqwerty-copy&corpus=en-general&sample=20000',
       { storage },
     );
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
@@ -266,7 +266,7 @@ describe('Edit', () => {
     const storage = freshStorage();
     await seed(storage, 'qwerty', 'qwerty-copy', { name: 'Qwerty copy' });
     await seed(storage, 'colemak-dh', 'my-layout', { name: 'My layout' });
-    renderRoute('/analyze?layout=saved%3Aqwerty-copy&corpus=en-conv&sample=20000', { storage });
+    renderRoute('/analyze?layout=saved%3Aqwerty-copy&corpus=en-general&sample=20000', { storage });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
 
     const name = within(bar()).getByLabelText('Name');
@@ -290,7 +290,7 @@ describe('Edit', () => {
     const storage = freshStorage();
     await seed(storage, 'qwerty', 'mine', { name: 'Mine' });
     const { currentSearch } = renderRoute(
-      '/analyze?layout=saved%3Amine&corpus=en-conv&sample=20000',
+      '/analyze?layout=saved%3Amine&corpus=en-general&sample=20000',
       { storage },
     );
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
@@ -312,9 +312,12 @@ describe('Edit', () => {
     const user = userEvent.setup();
     const storage = freshStorage();
     await seed(storage, 'qwerty', 'qwerty-copy', { name: 'Qwerty copy' });
-    const first = renderRoute('/analyze?layout=saved%3Aqwerty-copy&corpus=en-conv&sample=20000', {
-      storage,
-    });
+    const first = renderRoute(
+      '/analyze?layout=saved%3Aqwerty-copy&corpus=en-general&sample=20000',
+      {
+        storage,
+      },
+    );
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
     const clean = await linkOf(first.currentSearch, 'qwerty-copy');
     key('Key LHM: d').focus();
@@ -346,7 +349,7 @@ describe('Edit', () => {
     const user = userEvent.setup();
     const mine = freshStorage();
     await seed(mine, 'qwerty', 'mine', { name: 'Mine', author: 'Me' });
-    const owner = renderRoute('/analyze?layout=saved%3Amine&corpus=en-conv&sample=20000', {
+    const owner = renderRoute('/analyze?layout=saved%3Amine&corpus=en-general&sample=20000', {
       storage: mine,
     });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
@@ -371,7 +374,7 @@ describe('Edit', () => {
     const user = userEvent.setup();
     const mine = freshStorage();
     await seed(mine, 'qwerty', 'mine', { name: 'Mine' });
-    const first = renderRoute('/analyze?layout=saved%3Amine&corpus=en-conv&sample=20000', {
+    const first = renderRoute('/analyze?layout=saved%3Amine&corpus=en-general&sample=20000', {
       storage: mine,
     });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
@@ -398,7 +401,7 @@ describe('Edit', () => {
     const user = userEvent.setup();
     const mine = freshStorage();
     await seed(mine, 'qwerty', 'mine', { name: 'Mine' });
-    const first = renderRoute('/analyze?layout=saved%3Amine&corpus=en-conv&sample=20000', {
+    const first = renderRoute('/analyze?layout=saved%3Amine&corpus=en-general&sample=20000', {
       storage: mine,
     });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
@@ -426,7 +429,7 @@ describe('Edit', () => {
   it('compares the layout as edited', async () => {
     const user = userEvent.setup();
     const { currentPath, currentSearch } = renderRoute(
-      '/analyze?layout=qwerty&corpus=en-conv&sample=20000',
+      '/analyze?layout=qwerty&corpus=en-general&sample=20000',
       { storage: freshStorage() },
     );
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
@@ -443,7 +446,7 @@ describe('Edit', () => {
     const user = userEvent.setup();
     const storage = freshStorage();
     await seed(storage, 'qwerty', 'qwerty', { description: 'mine' });
-    renderRoute('/analyze?layout=qwerty&corpus=en-conv&sample=20000', { storage });
+    renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000', { storage });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
 
     await user.click(within(bar()).getByRole('button', { name: 'Save' }));
@@ -496,18 +499,18 @@ describe('Edit', () => {
     await screen.findByRole('button', { name: 'Key LHM: ç' });
 
     await waitFor(() => expect(within(corpus).getAllByRole('option').length).toBeGreaterThan(1));
-    await user.selectOptions(corpus, 'en-conv');
+    await user.selectOptions(corpus, 'en-general');
     await user.selectOptions(
       within(bar()).getByRole('combobox', { name: 'Rule set' }),
       'cyanophage',
     );
     await waitFor(() => expect(currentSearch()).toContain('rules=cyanophage'));
-    expect(currentSearch()).toContain('corpus=en-conv');
+    expect(currentSearch()).toContain('corpus=en-general');
 
     // The editor stayed open on the edit, which is still unsaved, and the numbers follow the text.
     expect(key('Key LHM: ç')).toBeInTheDocument();
     expect(screen.getByText('unsaved')).toBeInTheDocument();
-    await waitFor(() => expect(requests.some((r) => r.corpusId === 'en-conv')).toBe(true), {
+    await waitFor(() => expect(requests.some((r) => r.corpusId === 'en-general')).toBe(true), {
       timeout: 25_000,
     });
   }, 60_000);
@@ -587,7 +590,7 @@ describe('Edit', () => {
 
   it("shows Magic Romak's special features and lets one be turned off", async () => {
     const user = userEvent.setup();
-    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000', {
+    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000', {
       storage: freshStorage(),
     });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
@@ -602,8 +605,8 @@ describe('Edit', () => {
     await user.click(screen.getByRole('tab', { name: 'Features' }));
     expect(screen.getByLabelText('Sentence case')).toBeChecked();
     expect(screen.getByLabelText('Caps word')).toBeChecked();
-    // Magic keys and the alt repeat are keys like any other, made and edited on the key.
-    expect(screen.queryByLabelText('Magic key')).toBeNull();
+    // Adaptive keys and the alt repeat are keys like any other, made and edited on the key.
+    expect(screen.queryByLabelText('Adaptive key')).toBeNull();
     expect(screen.queryByLabelText('Alt repeat')).toBeNull();
 
     await user.click(screen.getByLabelText('Sentence case'));
@@ -750,18 +753,18 @@ describe('Edit', () => {
     );
   });
 
-  it("edits a layout's own magic key as one made in the editor, and turns it into a symbol", async () => {
+  it("edits a layout's own adaptive key as one made in the editor, and turns it into a symbol", async () => {
     const user = userEvent.setup();
     await openMagicRomak();
 
     await user.click(await screen.findByRole('button', { name: /^Key RBI:/ }));
     const editor = await inspector('RBI');
-    // The same tile, the same controls and the same text line as for any magic key.
-    expect(within(editor).getByRole('button', { name: 'Magic' })).toHaveAttribute(
+    // The same tile, the same controls and the same text line as for any adaptive key.
+    expect(within(editor).getByRole('button', { name: 'Adaptive' })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
-    expect(within(editor).queryByLabelText('Magic key name')).toBeNull();
+    expect(within(editor).queryByLabelText('Adaptive key name')).toBeNull();
     expect(within(editor).getByRole('textbox', { name: 'Binding for RBI' })).toBeInTheDocument();
     const then = within(editor).getByLabelText('Branch 1 symbol');
     expect(then).toHaveValue('v');
@@ -771,24 +774,24 @@ describe('Edit', () => {
     const legendList = await screen.findByRole('list', { name: 'Key legend' });
     await waitFor(() => expect(legendList.textContent).toContain('→ types w'));
 
-    // A kind change keeps what carries over: the magic key's default letter.
+    // A kind change keeps what carries over: the adaptive key's default letter.
     await user.click(within(await inspector('RBI')).getByRole('button', { name: 'Symbol' }));
     expect(await screen.findByRole('button', { name: 'Key RBI: h' })).toBeInTheDocument();
   });
 
-  it("puts a copy of one of the layout's magic keys on another key", async () => {
+  it("puts a copy of one of the layout's adaptive keys on another key", async () => {
     const user = userEvent.setup();
     await openMagicRomak();
 
     await user.click(await screen.findByRole('button', { name: 'Key LHM: s' }));
     const editor = await inspector('LHM');
-    // Magic keys come first among the keys the layout already has, in sight without "All".
+    // Adaptive keys come first among the keys the layout already has, in sight without "All".
     await user.click(within(editor).getByRole('button', { name: 'Use h ✦' }));
 
-    // The magic key types its default, h, until a vowel comes before it.
+    // The adaptive key types its default, h, until a vowel comes before it.
     expect(await screen.findByRole('button', { name: 'Key LHM: h' })).toBeInTheDocument();
     const copy = await inspector('LHM');
-    expect(within(copy).getByRole('button', { name: 'Magic' })).toHaveAttribute(
+    expect(within(copy).getByRole('button', { name: 'Adaptive' })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
@@ -801,7 +804,6 @@ describe('Edit', () => {
 
     await user.click(key('Key LHM: d'));
     const editor = await inspector('LHM');
-    await user.click(within(editor).getByRole('button', { name: 'More' }));
     await user.click(within(editor).getByRole('button', { name: 'Alt repeat' }));
     expect(await screen.findByRole('button', { name: 'Key LHM: ⟳' })).toBeInTheDocument();
 
@@ -818,7 +820,6 @@ describe('Edit', () => {
     await openEdit();
 
     await user.click(key('Key LHM: d'));
-    await user.click(within(await inspector('LHM')).getByRole('button', { name: 'More' }));
     await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Alt repeat' }));
     await screen.findByRole('button', { name: 'Key LHM: ⟳' });
 
@@ -847,13 +848,13 @@ describe('Edit', () => {
     );
   });
 
-  it('makes a magic key the tap of a tap-hold, keeping its hold', async () => {
+  it('makes an adaptive key the tap of a tap-hold, keeping its hold', async () => {
     const user = userEvent.setup();
     await openEdit();
 
     await user.click(key('Key LHM: d'));
     await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Tap-hold' }));
-    await user.selectOptions(within(await inspector('LHM')).getByLabelText('Tap kind'), 'magic');
+    await user.selectOptions(within(await inspector('LHM')).getByLabelText('Tap kind'), 'adaptive');
     await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Add branch' }));
     await user.type(
       within(await inspector('LHM')).getByLabelText('Tap branch 1 after'),
@@ -877,7 +878,7 @@ describe('Edit', () => {
     await openEdit();
 
     await user.click(key('Key LHM: d'));
-    await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Magic' }));
+    await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Adaptive' }));
     await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Add branch' }));
     await user.click(screen.getByRole('tab', { name: 'JSON' }));
     await user.click(screen.getByRole('button', { name: 'Load into editor' }));
@@ -888,7 +889,20 @@ describe('Edit', () => {
     expect(within(await inspector('LHM')).getByLabelText('Branch 1 after')).toHaveValue('');
   });
 
-  it('closes the list of more kinds on a choice or a tap elsewhere, and keeps the choice in sight', async () => {
+  it('shows every kind of key as a tile where there is room, with nothing behind More', async () => {
+    const user = userEvent.setup();
+    await openEdit();
+
+    await user.click(key('Key LHM: d'));
+    const kinds = within(await inspector('LHM')).getByRole('group', { name: 'Kind of key' });
+    for (const name of ['Symbol', 'Nothing', 'Alt repeat', 'Tap dance', 'Dead key']) {
+      expect(within(kinds).getByRole('button', { name })).toBeInTheDocument();
+    }
+    expect(within(kinds).queryByRole('button', { name: 'More' })).toBeNull();
+  });
+
+  it('closes the list of more kinds on a phone on a choice or a tap elsewhere, and keeps the choice in sight', async () => {
+    setViewportWidth(375);
     const user = userEvent.setup();
     await openEdit();
 
@@ -1218,7 +1232,7 @@ describe('Edit', () => {
 
   it('reorders a typing path that was never declared', async () => {
     const user = userEvent.setup();
-    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000', {
+    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000', {
       storage: freshStorage(),
     });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
@@ -1284,7 +1298,7 @@ describe('Edit', () => {
   it('draws a layer in the colour chosen for it, undoes the choice, and saves it', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
-    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000', { storage });
+    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000', { storage });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
 
     const dot = () =>
@@ -1352,7 +1366,7 @@ describe('Edit', () => {
 describe('Analyze, while editing', () => {
   it("shows a selected key's numbers on the layer shown, and what a layer key was pressed for", async () => {
     const user = userEvent.setup();
-    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000', {
+    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000', {
       storage: freshStorage(),
     });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
@@ -1368,7 +1382,7 @@ describe('Analyze, while editing', () => {
 
   it("opens what a layer key was pressed for from a pair in a key's numbers", async () => {
     const user = userEvent.setup();
-    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-conv&sample=20000', {
+    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000', {
       storage: freshStorage(),
     });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
@@ -1416,7 +1430,9 @@ describe('Analyze, while editing', () => {
 
   it('asks before another layout replaces unsaved edits', async () => {
     const user = userEvent.setup();
-    renderRoute('/analyze?layout=qwerty&corpus=en-conv&sample=20000', { storage: freshStorage() });
+    renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000', {
+      storage: freshStorage(),
+    });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
     key('Key LHM: d').focus();
     await user.keyboard('ç{Enter}');
@@ -1438,7 +1454,7 @@ describe('Analyze, while editing', () => {
   }, 60_000);
 
   it('lists every character of the text the layout cannot type', async () => {
-    renderRoute('/analyze?layout=qwerty&corpus=pt-br-conv&sample=20000', {
+    renderRoute('/analyze?layout=qwerty&corpus=pt-br-general&sample=20000', {
       storage: freshStorage(),
     });
     const list = await screen.findByRole(
@@ -1456,7 +1472,7 @@ describe('the layouts Analyze offers', () => {
     const user = userEvent.setup();
     const storage = freshStorage();
     await seed(storage, 'colemak-dh', 'my-colemak', { name: 'My Colemak' });
-    const { currentSearch } = renderRoute('/analyze?layout=qwerty&corpus=en-conv&sample=20000', {
+    const { currentSearch } = renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000', {
       storage,
     });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });

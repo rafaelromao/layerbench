@@ -30,11 +30,11 @@ export function producibleSymbols(compiled: CompiledLayout): Set<string> {
 /**
  * What the layout cannot type of a given language.
  *
- * Known limitation: this reflects what the *resolver* can reach, and `staticOutputs` yields no
- * producer for a `dead_key` binding or a keycode-only `kp`. So a layout that relies on host dead
- * keys to compose its accents reports them as missing, even though `composeDeadKey` models the
- * composition. Keeping coverage and simulation in agreement matters more than flattering the
- * report, so this stays until producer enumeration learns about host locales.
+ * This reflects what the *resolver* can reach. A `dead_key` binding counts, with every letter it
+ * composes with on the layout; a keycode-only `kp` does not, since producer enumeration knows
+ * nothing of host locales. So a layout relying on the host's US-International or ABNT2 dead keys
+ * still reports those accents as missing. Keeping coverage and simulation in agreement matters more
+ * than flattering the report.
  */
 export function layoutLanguageCoverage(
   compiled: CompiledLayout,

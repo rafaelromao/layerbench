@@ -213,7 +213,7 @@ export interface ReachRoute {
   from?: number;
   /** Modifiers held for the arm of the key that does it. */
   mods?: Mod[];
-  /** A magic key's branch: only after these. */
+  /** An adaptive key's branch: only after these. */
   after?: { afterAny?: string[]; afterTags?: string[] };
   /** The tap of a tap dance that does it, from the second on. */
   taps?: number;
@@ -241,8 +241,8 @@ interface Extra {
 
 /**
  * The routes the machine runs but the planner has no need to press for: a macro that arms the
- * layer, a magic key's branch, a later tap of a tap dance, an auto layer. Only those are emitted,
- * so together with the planner's own activators nothing is counted twice.
+ * layer, an adaptive key's branch, a later tap of a tap dance, an auto layer. Only those are
+ * emitted, so together with the planner's own activators nothing is counted twice.
  */
 function extraRoutes(
   c: CompiledLayout,
@@ -377,13 +377,18 @@ function directRoutes(
     });
   }
   c.layers.forEach((l, via) => {
-    if (via === layer) return;
     l.bindings.forEach((b, pos) => {
       if (b.kind === 'trans' || b.kind === 'none') return;
       for (const mode of ['tap', 'hold'] as const) {
         const out: ReachRoute[] = [];
         extraRoutes(c, b, mode, layer, via, { extra: false, origin: 'key' }, out);
-        for (const r of out) add(pos, r);
+        for (const r of out) {
+          // On the layer itself, a key is how to leave it or stay in it, but one that types and
+          // then turns it on again, as a macro ending in a one-shot to it does, brings it back
+          // for the next key after its own press used it up.
+          if (via === layer && r.origin !== 'macro') continue;
+          add(pos, r);
+        }
       }
     });
   });
@@ -501,7 +506,7 @@ export function describeReach(c: CompiledLayout, layer: number, key: ReachKey): 
     if (qualifiers.length === 0) {
       if (!entry.plain.includes(where)) entry.plain.push(where);
     } else {
-      const phrase = `from ${where} ${qualifiers.join(', ')}`;
+      const phrase = `${r.via === layer ? 'on' : 'from'} ${where} ${qualifiers.join(', ')}`;
       if (!entry.qualified.includes(phrase)) entry.qualified.push(phrase);
     }
     verbs.set(verb, entry);
@@ -518,6 +523,8 @@ export function describeReach(c: CompiledLayout, layer: number, key: ReachKey): 
       ? `${verb} ${phrases.join(', or ')},`
       : `${verb} ${phrases.join('')}`;
   });
+  // Pressed only on the layer itself, the key brings it back, after its own press used it up.
+  const again = key.routes.every((r) => r.via === layer) ? ' again' : '';
   const target = through.size > 0 ? [...through].join('; or ') : name(layer);
-  return `${parts.join(' or ')} to reach ${target}`.replace(/,\s+to reach/, ', to reach');
+  return `${parts.join(' or ')} to reach ${target}${again}`.replace(/,\s+to reach/, ', to reach');
 }

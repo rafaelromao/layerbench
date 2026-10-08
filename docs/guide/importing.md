@@ -76,12 +76,12 @@ imported.
 **keymap-drawer YAML**, as a file for keymap-drawer. Copy it or **Download .yaml**, then run
 `keymap draw` on it.
 
-The file draws each key as the board does: magic keys, macros and tap dances carry their mark in
+The file draws each key as the board does: adaptive keys, macros and tap dances carry their mark in
 the corner, a key that lets the layer below show through is `▽` and one that does nothing is
 empty, and a key held or tapped to reach a layer is marked `held` on that layer where it is
 transparent, as keymap-drawer's own examples mark one. Read back in, it gives the same layers,
 keys and combos, a `held` key coming back transparent, except for what keymap-drawer has no field
-for: a magic key comes back as a plain key typing its default, a macro as the text it types without
+for: an adaptive key comes back as a plain key typing its default, a macro as the text it types without
 its other steps, a dead key as its plain accent, a tap dance as its single tap and a morph as its
 unmodified arm.
 

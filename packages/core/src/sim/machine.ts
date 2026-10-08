@@ -9,7 +9,7 @@ export type KeyKind =
   | 'shift'
   | 'space'
   | 'repeat'
-  | 'magic'
+  | 'adaptive'
   | 'combo'
   | 'hold';
 
@@ -551,8 +551,9 @@ export class Machine {
 
   run(b: Binding, ctx: ExecContext): void {
     if (ctx.depth > 24) return;
-    // A press is the kind of key its arm is, past the bindings that only choose an arm: a magic key
-    // on a tap-hold's tap is a magic key, as its legend says. A layer-tap tapped is its tap.
+    // A press is the kind of key its arm is, past the bindings that only choose an arm: an adaptive
+    // key on a tap-hold's tap is an adaptive key, as its legend says. A layer-tap tapped is its
+    // tap.
     const choosesArm = ARM_CHOOSERS.has(b.kind) || (b.kind === 'lt' && ctx.mode === 'tap');
     if (ctx.outer === null && !choosesArm) ctx.outer = b.kind;
     const tag = (b as { tag?: string }).tag;
@@ -742,7 +743,8 @@ export class Machine {
         }
         case 'dead_key':
           ctx.leaf = 'dead_key';
-          this.state.pendingDeadKey = b.diacritic;
+          this.state.pendingDeadKey =
+            b.shifted !== undefined && this.effectiveShift(ctx, false) ? b.shifted : b.diacritic;
           ctx.emittedKeycode = true;
           return;
         case 'unicode': {
@@ -772,7 +774,7 @@ function classify(ctx: ExecContext, mode: 'tap' | 'hold'): KeyKind {
   if (mode === 'hold' && ctx.out.length === 0) return 'hold';
   const outer = ctx.outer;
   if (ctx.out.length && ctx.out.join('') === ' ') return 'space';
-  if (outer === 'adaptive') return 'magic';
+  if (outer === 'adaptive') return 'adaptive';
   if (outer === 'key_repeat' || ctx.leaf === 'key_repeat') return 'repeat';
   switch (ctx.leaf) {
     case 'sl':

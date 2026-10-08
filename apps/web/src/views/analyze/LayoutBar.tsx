@@ -1,4 +1,9 @@
-import type { CorpusManifest, IndexEntry, Layout } from '@layerbench/core';
+import {
+  type CorpusManifest,
+  type IndexEntry,
+  LANGUAGE_PROFILES,
+  type Layout,
+} from '@layerbench/core';
 import { Switch, SwitchGroup } from '../../components/FeatureSwitches.js';
 import type { Params } from '../../url/params.js';
 import { AnalysisSettings, SampleSelect } from '../AnalysisSelects.js';
@@ -32,7 +37,12 @@ export function LayoutBar({
   layout: Layout;
   dirty: boolean;
   saving: boolean;
-  onMeta: (meta: { name?: string; author?: string; description?: string }) => void;
+  onMeta: (meta: {
+    name?: string;
+    author?: string;
+    description?: string;
+    languages?: string[];
+  }) => void;
   onSave: () => void;
   /** The layout the link names, for the picker. */
   layoutRef: string;
@@ -122,6 +132,10 @@ export function LayoutBar({
                     onCommit={(description) => onMeta({ description })}
                   />
                 </div>
+                <LanguagesField
+                  languages={layout.languages ?? []}
+                  onChange={(languages) => onMeta({ languages })}
+                />
               </fieldset>
               <h3 className="text-xs font-semibold">What the numbers are made with</h3>
               <div className="lb-toolbar flex flex-row flex-wrap items-end gap-3">
@@ -163,6 +177,44 @@ export function LayoutBar({
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * The languages the layout is for. Analyze and the Library hold it to them, as well as to the
+ * text's: one that is for Spanish and has no `ñ` is told so on any text. A tag with no profile here,
+ * written into the JSON, is kept as it is.
+ */
+function LanguagesField({
+  languages,
+  onChange,
+}: {
+  languages: string[];
+  onChange: (languages: string[]) => void;
+}) {
+  const known = Object.values(LANGUAGE_PROFILES);
+  const others = languages.filter((tag) => !known.some((p) => p.tag === tag));
+  const toggle = (tag: string, on: boolean) => {
+    const chosen = known.map((p) => p.tag).filter((t) => (t === tag ? on : languages.includes(t)));
+    onChange([...chosen, ...others]);
+  };
+  return (
+    <fieldset className="form-control min-w-0">
+      <legend className="label-text text-xs">Languages it is for</legend>
+      <div className="flex flex-wrap gap-x-3 gap-y-1">
+        {known.map((p) => (
+          <label key={p.tag} className="label cursor-pointer gap-1.5 py-0">
+            <input
+              type="checkbox"
+              className="checkbox checkbox-xs"
+              checked={languages.includes(p.tag)}
+              onChange={(e) => toggle(p.tag, e.target.checked)}
+            />
+            <span className="label-text text-xs">{p.name}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
   );
 }
 

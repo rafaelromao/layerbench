@@ -50,7 +50,21 @@ export const SYMBOL_KEEP = [
   '^',
   '~',
   '`',
+  // What the news texts of the five languages hold beyond ASCII, and the default layers type.
+  '€',
+  '£',
+  '°',
+  '§',
+  'º',
+  'ª',
 ];
+
+/**
+ * Ordinal indicators. Unicode files them as letters, but they follow a number, `1º`, `2ª`, so they
+ * are kept as symbols are: a layout without a symbol layer would otherwise be missing a "letter"
+ * every Portuguese or Spanish text uses.
+ */
+const ORDINALS = new Set(['º', 'ª']);
 
 /** The kept set and whether digits survive, for one text class. */
 export function keepSetFor(tc: TextClass): { keep: string[]; digits: boolean } {
@@ -68,6 +82,8 @@ const QUOTE_MAP: Record<string, string> = {
   '\u201d': '',
   '\u00ab': '',
   '\u00bb': '',
+  // A spacing acute is an apostrophe typed on the wrong key, as in `d´água`.
+  '\u00b4': "'",
   '\u2013': '-',
   '\u2014': '-',
   '\u2026': '.',
@@ -78,6 +94,8 @@ const QUOTE_MAP_SYMBOLS: Record<string, string> = {
   ...QUOTE_MAP,
   '\u201c': '"',
   '\u201d': '"',
+  '\u00ab': '"',
+  '\u00bb': '"',
 };
 
 const LETTER_RE = /\p{L}/u;
@@ -122,7 +140,8 @@ export function normalizeText(text: string, opts: NormalizeOptions): string {
   let lastSpace = true;
   for (const raw of nfc) {
     let ch = raw;
-    const mapped = quotes[ch];
+    // A language's own marks, French `« »` among them, stay as they are rather than folding.
+    const mapped = keep.has(ch) ? undefined : quotes[ch];
     if (mapped !== undefined) {
       if (mapped === '') continue;
       ch = mapped;
@@ -132,6 +151,13 @@ export function normalizeText(text: string, opts: NormalizeOptions): string {
       if (!lastSpace) {
         out.push(' ');
         lastSpace = true;
+      }
+      continue;
+    }
+    if (ORDINALS.has(ch)) {
+      if (keep.has(ch)) {
+        out.push(ch);
+        lastSpace = false;
       }
       continue;
     }

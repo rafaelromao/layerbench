@@ -1,3 +1,4 @@
+import { deadKeyCompositions } from '../host/locale.js';
 import type { CompiledLayout } from '../layout/compile.js';
 import type { Binding, Mod } from '../layout/types.js';
 import type { ProducerKind } from './machine.js';
@@ -27,6 +28,11 @@ export interface Producer {
   afterTags?: string[];
   /** Modifiers the producer needs held. Always a list, never undefined. */
   mods: Mod[];
+  /**
+   * A dead-key producer's modifiers for the accent itself, a dead key's shifted half; `mods` then
+   * belong to the letter it accents.
+   */
+  deadMods?: Mod[];
   /** Estimated physical presses including one layer activation when off the base layer. */
   cost: number;
   /** True when the producer is a dynamic branch (adaptive/repeat) whose output depends on state. */
@@ -319,6 +325,11 @@ export function enumerateProducers(
       add(p);
     }
   }
+  for (const p of deadKeyProducers(compiled, bySymbol, fold)) {
+    // A shifted accent needs a modifier, like a shifted symbol: out of reach when case is folded.
+    if (fold && p.deadMods?.length) excludedByCase.push(p);
+    else add(p);
+  }
   // Default ordering: cheapest first, then non-dynamic before dynamic, then non-combo.
   for (const [, list] of bySymbol) {
     list.sort(
@@ -341,6 +352,60 @@ export function enumerateProducers(
     }
   }
   return { bySymbol, byId, maxLen, multiStarts, excludedByCase };
+}
+
+/** The dead key a binding presses when tapped, past a tap-hold's or layer-tap's tap arm. */
+function tappedDeadKey(b: Binding): Extract<Binding, { kind: 'dead_key' }> | null {
+  if (b.kind === 'dead_key') return b;
+  if (b.kind === 'hold_tap' || b.kind === 'lt') return tappedDeadKey(b.tap);
+  return null;
+}
+
+/**
+ * A dead key, then the letter it accents: one producer per dead key and per way of typing a letter
+ * it composes with. Only plain, tapped letters count — an adaptive key's or a repeat's output
+ * depends on what came before, and a held letter would hold through the accent. A dead key's shifted accent is
+ * a way of its own, with shift on for the accent.
+ */
+function deadKeyProducers(
+  compiled: CompiledLayout,
+  bySymbol: Map<string, Producer[]>,
+  fold: boolean,
+): Producer[] {
+  const out: Producer[] = [];
+  for (const layer of compiled.layers) {
+    for (let pos = 0; pos < compiled.keys.length; pos++) {
+      const b = layer.bindings[pos];
+      const dk = tappedDeadKey(b);
+      if (!dk) continue;
+      const keyId = compiled.keys[pos].id;
+      const accents: [string, string, Mod[]][] = [[dk.diacritic, '', []]];
+      if (dk.shifted !== undefined) accents.push([dk.shifted, '#shifted', ['LSHIFT']]);
+      for (const [diacritic, suffix, deadMods] of accents) {
+        const deadCost = 1 + (layer.idx === 0 ? 0 : 1) + deadMods.length;
+        for (const [base, composed] of deadKeyCompositions(diacritic)) {
+          if (fold && base !== base.toLowerCase()) continue;
+          for (const letter of bySymbol.get(base) ?? []) {
+            if (letter.kind !== 'direct' && letter.kind !== 'combo') continue;
+            if (letter.dynamic || letter.mods.length || letter.afterAny || letter.afterTags)
+              continue;
+            if (letter.steps.some((s) => s.mode === 'hold')) continue;
+            out.push({
+              id: `deadkey:${layer.id}/${keyId}${suffix}+${letter.id}`,
+              symbols: fold ? composed.toLowerCase() : composed,
+              kind: 'deadkey',
+              steps: [{ layer: layer.idx, pos, binding: b, mode: 'tap', taps: 1 }, ...letter.steps],
+              mods: [],
+              ...(deadMods.length ? { deadMods } : {}),
+              cost: deadCost + letter.cost,
+              dynamic: false,
+            });
+          }
+        }
+      }
+    }
+  }
+  return out;
 }
 
 /** Repeat-key producers (output depends on the previous symbol). */

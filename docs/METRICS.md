@@ -119,7 +119,7 @@ These rules measure the cost of multi-layer alphas. Most read simulation statist
 | `one_shots_per_word` | One-shot activations per word | Mean number of one-shot layer activations per word. |
 | `wasted_one_shots` | Wasted one-shots | Percentage of one-shot activations consumed by a key that resolved on another layer (transparent fall-through), by a modifier, by another layer key, or by a key that does nothing. Bands 1 · 2 · 5 · 10 · 20. |
 | `macro_usage` | Macro presses | Share of all presses that are macro presses. |
-| `adaptive_hit_rate` | Adaptive key hit rate | How often an adaptive (magic) key produced one of its trigger outputs rather than its default. |
+| `adaptive_hit_rate` | Adaptive key hit rate | How often an adaptive key produced one of its trigger outputs rather than its default. |
 | `combo_usage` | Combo presses | Share of all presses that are combos. |
 | `extra_keystrokes` | Extra keystrokes per symbol | Physical presses per corpus symbol, minus one; space bar presses are left out, as spaces are not symbols. Layer taps, holds and shifts raise it; a macro or a combo that types several symbols at once lowers it. Bands 0.02 · 0.04 · 0.06 · 0.08 · 0.10 · 0.15. |
 
@@ -139,13 +139,13 @@ Off by default, and no shipped preset turns it on: in **Rules**, **Composite sco
 
 Rules are `where` expressions over an n-gram (`all`, `any`, `none` combinators). Predicates, optionally scoped to positions in the n-gram with `at: [i, j]`:
 
-- Of each key, which every key selected must match (the `any_` and `includes_` forms need only one): `hand`, `finger`, `includes_finger`, `finger_name`, `includes_finger_name`, `row`, `col`, `is_home`, `is_thumb` / `any_thumb`, `is_inner` / `any_inner`, `key_kind` / `any_key_kind` (`alpha`, `layer_tap`, `shift`, `space`, `repeat`, `magic`, `combo`, `hold`), `layer` / `any_layer`, `is_chord`.
+- Of each key, which every key selected must match (the `any_` and `includes_` forms need only one): `hand`, `finger`, `includes_finger`, `finger_name`, `includes_finger_name`, `row`, `col`, `is_home`, `is_thumb` / `any_thumb`, `is_inner` / `any_inner`, `key_kind` / `any_key_kind` (`alpha`, `layer_tap`, `shift`, `space`, `repeat`, `adaptive`, `combo`, `hold`), `layer` / `any_layer`, `is_chord`.
 - Of each two keys in a row: `same_hand`, `same_finger`, `same_key`, `adjacent_fingers`, `rank_delta` (the difference in finger rank, `eq`/`min`), `row_delta` (`abs`, `abs_min`), `col_delta`, `x_distance` and `y_distance` (`min`, in U, on one hand), `distance` (by the rule set's distance model), `direction` (`inward` / `outward`), `finger_name_pair`, `finger_height_preference: violated`.
 - Of the whole n-gram: `hand_pattern` (`"aba"`, `"aab"`, `"aaa"`…), `monotone`, `changes_direction`, `distinct_fingers`, `min_run`.
 
 Numeric thresholds may reference rule-set globals as `"$global.name"`.
 
-A press's `key_kind` is the kind of key it reaches: past a tap-hold to its tap, past a morph to the arm the modifiers or layers choose, past a tap dance to the tap it ran, and past a layer-tap that is tapped. So a magic key on the tap of a tap-hold is `magic`, as its legend on the board says, a tap-hold whose tap repeats is `repeat`, and an alt repeat is `magic` whichever branch it takes. A key held down that types nothing is `hold`, and a press that types a space is `space`.
+A press's `key_kind` is the kind of key it reaches: past a tap-hold to its tap, past a morph to the arm the modifiers or layers choose, past a tap dance to the tap it ran, and past a layer-tap that is tapped. So an adaptive key on the tap of a tap-hold is `adaptive`, as its legend on the board says, a tap-hold whose tap repeats is `repeat`, and an alt repeat is `adaptive` whichever branch it takes. A key held down that types nothing is `hold`, and a press that types a space is `space`.
 
 Aggregates: `percent_of_ngrams`, `percent_of_keystrokes`, `count`, `per100`, `sum_distance`, `mean_distance`, `per_finger`, `per_hand`, `per_layer`, `per_row`, `per_col`, `weighted_sum`, `ratio`, `histogram`, `top_strings`.
 

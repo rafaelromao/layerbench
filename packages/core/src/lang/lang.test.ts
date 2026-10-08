@@ -4,7 +4,7 @@ import { compileLayout } from '../layout/compile.js';
 import { bundledLayout } from '../layouts/index.js';
 import { simulate } from '../sim/resolver.js';
 import { layoutLanguageCoverage, producibleSymbols } from './coverage.js';
-import { languageKeep, languageProfile, languageSoft } from './profiles.js';
+import { languageKeep, languageProfile, languageSoft, languagesToJudge } from './profiles.js';
 
 describe('language profiles', () => {
   it('matches an exact tag, then falls back to the base language', () => {
@@ -13,6 +13,13 @@ describe('language profiles', () => {
     expect(languageProfile('es')?.required).toContain('ñ');
     expect(languageProfile('klingon')).toBeUndefined();
     expect(languageProfile(undefined)).toBeUndefined();
+  });
+
+  it("holds a layout to the text's languages, then to its own, each once", () => {
+    expect(languagesToJudge('en', ['pt-BR', 'en'])).toEqual(['en', 'pt-BR']);
+    expect(languagesToJudge('pt-BR+en', ['es'])).toEqual(['pt-BR', 'en', 'es']);
+    expect(languagesToJudge(undefined, ['fr'])).toEqual(['fr']);
+    expect(languagesToJudge('pt', ['pt-BR'])).toEqual(['pt']);
   });
 
   it('contributes each component language of a mixed corpus', () => {
@@ -65,23 +72,25 @@ describe('layout coverage', () => {
     expect(layoutLanguageCoverage(qwerty, 'pt-BR')?.missingRequired.length).toBeGreaterThan(0);
   });
 
-  it('names the characters Spanish, French and Italian still need', () => {
-    // Magic Romak carries the Portuguese set: acute, tilde and circumflex everywhere, but grave
-    // only on `à`. Italian needs grave on the other vowels, so those are exactly what is missing.
-    expect(layoutLanguageCoverage(magic, 'it')?.missingRequired).toEqual(['è', 'ì', 'î', 'ò', 'ù']);
-    expect(layoutLanguageCoverage(magic, 'es')?.missingRequired).toEqual(['ñ', 'ü']);
-    expect(layoutLanguageCoverage(magic, 'fr')?.missingRequired).toEqual([
-      'è',
-      'ë',
-      'î',
-      'ï',
-      'ù',
-      'û',
+  it('writes Spanish, French and Italian through its Dead keys layer', () => {
+    // Alpha 2 carries the Portuguese set; the accents the others add, a grave on any vowel, the
+    // tilde on `n`, the diaeresis, and `œ`, come from the Dead keys layer.
+    for (const tag of ['en', 'es', 'fr', 'it']) {
+      const c = layoutLanguageCoverage(magic, tag);
+      expect([tag, c?.missingRequired, c?.missingPunctuation]).toEqual([tag, [], []]);
+    }
+  });
+
+  it('names the characters a language still needs on a layout without them', () => {
+    expect(layoutLanguageCoverage(qwerty, 'es')?.missingRequired).toEqual([
+      'ñ',
+      'á',
+      'é',
+      'í',
+      'ó',
+      'ú',
       'ü',
-      'ÿ',
-      'œ',
     ]);
-    expect(layoutLanguageCoverage(magic, 'en')?.missingRequired).toEqual([]);
   });
 
   it('has nothing to say about a language it does not know', () => {
