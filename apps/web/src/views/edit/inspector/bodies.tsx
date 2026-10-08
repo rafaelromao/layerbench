@@ -349,18 +349,19 @@ function SymbolBody({ scope, binding, onChange, name }: BodyProps<Of<'kp'>>) {
 // ---------------------------------------------------------------------------- layer
 
 type LayerKind = 'mo' | 'sl' | 'tog' | 'to' | 'auto_layer';
+/** Named as ZMK and QMK name them: momentary (`&mo`, `MO`), to layer (`&to`, `TO`) and so on. */
 const LAYER_MODES: readonly (readonly [LayerKind, string])[] = [
-  ['mo', 'Hold'],
+  ['mo', 'Momentary'],
   ['sl', 'One-shot'],
   ['tog', 'Toggle'],
-  ['to', 'Switch'],
+  ['to', 'To layer'],
   ['auto_layer', 'Auto'],
 ];
 const LAYER_HINT: Record<LayerKind, string> = {
   mo: 'On while the key is held.',
   sl: 'On for the next key only.',
   tog: 'On until the key is pressed again.',
-  to: 'Switches to it, and stays there.',
+  to: 'Turns it on, and every other layer off but the base.',
   auto_layer: 'On until the word ends.',
 };
 

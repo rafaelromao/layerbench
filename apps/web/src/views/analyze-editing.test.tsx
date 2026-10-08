@@ -1088,7 +1088,7 @@ describe('Edit', () => {
     );
     expect(screen.queryByText('unsaved')).toBeNull();
 
-    await user.click(within(editor).getByRole('radio', { name: 'Hold' }));
+    await user.click(within(editor).getByRole('radio', { name: 'Momentary' }));
     expect(await screen.findByRole('button', { name: 'Key L1: A2 (hold)' })).toBeInTheDocument();
   });
 
@@ -1164,7 +1164,7 @@ describe('Edit', () => {
 
     // Ç extension's L1 re-arms Alpha 2 for one key; made a hold, it is held to get there too.
     await user.click(await screen.findByRole('button', { name: /^Key L1:/ }));
-    await user.click(within(await inspector('L1')).getByRole('radio', { name: 'Hold' }));
+    await user.click(within(await inspector('L1')).getByRole('radio', { name: 'Momentary' }));
     await screen.findByRole('button', { name: 'Key L1: A2 (hold)' });
     await user.click(screen.getByRole('tab', { name: 'Alpha 2' }));
     expect(

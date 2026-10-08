@@ -28,7 +28,10 @@ export type InspectorKind =
 export interface KindInfo {
   kind: InspectorKind;
   label: string;
-  /** Shown on the tile: the glyph the key itself would carry. */
+  /**
+   * Shown on the tile: a mark for what the key does, as the board would draw it. Never the name of
+   * a layer, which would read as one of the kinds ("Nav Layer").
+   */
   glyph: string;
   hint: string;
 }
@@ -36,7 +39,7 @@ export interface KindInfo {
 /** The kinds on the first row, in the order a layout is usually built. */
 export const PRIMARY_KINDS: readonly KindInfo[] = [
   { kind: 'symbol', label: 'Symbol', glyph: 'a', hint: 'types a letter, digit or symbol' },
-  { kind: 'layer', label: 'Layer', glyph: 'Nav', hint: 'reaches another layer' },
+  { kind: 'layer', label: 'Layer', glyph: '❐', hint: 'reaches another layer' },
   { kind: 'modifier', label: 'Modifier', glyph: '⇧', hint: 'Shift, Control, Alt or Command' },
   { kind: 'taphold', label: 'Tap-hold', glyph: 'a/⇧', hint: 'one thing on tap, another on hold' },
   { kind: 'repeat', label: 'Repeat', glyph: '⟳', hint: 'repeats the previous key' },

@@ -50,13 +50,13 @@ between leaves it armed when those defaults say to ignore modifiers, as ZMK does
 
 A **Layer** key turns another layer on in one of five ways:
 
-| Comes on | The layer is on |
-|---|---|
-| Hold | while the key is held |
-| One-shot | for the next key only |
-| Toggle | until the key is pressed again |
-| Switch | from now on, until another switch |
-| Auto | until the word ends |
+| Comes on | The layer is on | ZMK, QMK |
+|---|---|---|
+| Momentary | while the key is held | `&mo`, `MO` |
+| One-shot | for the next key only | `&sl`, `OSL` |
+| Toggle | until the key is pressed again | `&tog`, `TG` |
+| To layer | from now on, with every other layer off but the base | `&to`, `TO` |
+| Auto | until the word ends | urob's auto layer |
 
 ## Repeat and alt repeat
 
