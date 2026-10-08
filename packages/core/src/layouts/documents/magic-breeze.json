@@ -388,7 +388,7 @@
           "symbol": "j"
         },
         "R0": {
-          "kind": "trans"
+          "kind": "none"
         }
       }
     },
