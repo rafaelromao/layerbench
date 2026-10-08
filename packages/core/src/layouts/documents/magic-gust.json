@@ -155,16 +155,8 @@
           "kind": "kp",
           "symbol": "k"
         },
-        "LHM": {
-          "kind": "kp",
-          "symbol": "w"
-        },
         "LTI": {
           "kind": "none"
-        },
-        "LTM": {
-          "kind": "macro",
-          "symbols": "qu"
         },
         "LBM": {
           "kind": "kp",
@@ -176,6 +168,14 @@
         "LBR": {
           "kind": "kp",
           "symbol": "j"
+        },
+        "LTM": {
+          "kind": "macro",
+          "symbols": "qu"
+        },
+        "LHM": {
+          "kind": "kp",
+          "symbol": "w"
         }
       }
     }
