@@ -147,8 +147,8 @@
           "symbol": "z"
         },
         "RHP": {
-          "kind": "dead_key",
-          "diacritic": "`"
+          "kind": "kp",
+          "symbol": "à"
         },
         "LBR": {
           "kind": "kp",
