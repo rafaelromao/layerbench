@@ -396,7 +396,8 @@ export function layerRules(): Rule[] {
       unit: 'ratio',
     }),
     rule('wasted_one_shots', 'Wasted one-shots', 'layer', {
-      description: 'One-shot layers consumed by a key that resolved elsewhere or by a modifier.',
+      description:
+        'One-shot layers spent on a key that fell through to another layer, a modifier, another layer key or a key that does nothing.',
       source: 'stat',
       stat: 'wasted_one_shots_pct',
       unit: 'percent',
@@ -420,7 +421,8 @@ export function layerRules(): Rule[] {
       unit: 'percent',
     }),
     rule('extra_keystrokes', 'Extra keystrokes per symbol', 'layer', {
-      description: 'Physical presses per symbol minus one (layer taps, shifts, repeats…).',
+      description:
+        'Presses per symbol typed, minus one, the space bar left out: layer taps, holds and shifts add to it; a macro or combo typing several symbols takes from it.',
       source: 'stat',
       stat: 'extra_keystrokes',
       unit: 'ratio',
