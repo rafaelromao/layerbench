@@ -43,6 +43,10 @@ async function around(page: Page, parts: Locator[], pad = 12, bottom = pad) {
 
 async function shootAround(page: Page, name: string, parts: Locator[], bottom?: number) {
   const clip = await around(page, parts, 12, bottom);
+  // The pointer stays where the last click left it, and the scroll to the top slides the page under
+  // it: a key that ends up beneath it is drawn hovered, outlined as if it were chosen. To a corner
+  // the shot does not take.
+  await page.mouse.move(0, 0);
   await page.screenshot({ path: file(name), clip, fullPage: true, animations: 'disabled' });
 }
 
