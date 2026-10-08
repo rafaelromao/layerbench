@@ -5,7 +5,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AnalysisClient, AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { useSession } from '../state/session.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
-import { LIBRARY, openSettings, renderRoute, savedInLink, testClient } from '../test/render.js';
+import {
+  LIBRARY,
+  openSettings,
+  rankingSays,
+  renderRoute,
+  savedInLink,
+  testClient,
+} from '../test/render.js';
 
 let counter = 0;
 
@@ -127,7 +134,7 @@ describe('Ranking layouts', () => {
     renderRoute('/library?corpus=en-general&sample=1000', { storage: freshStorage() });
 
     // Every bundled layout gets both numbers once scoring settles.
-    await screen.findByText(/^Lower is better for both/, undefined, { timeout: 60_000 });
+    await rankingSays(/^Lower is better for both/, 60_000);
     expect(cards().length).toBeGreaterThan(10);
     for (const card of cards()) {
       expect(Number.isFinite(valueOn(card, 'Effort'))).toBe(true);
@@ -197,9 +204,7 @@ describe('Ranking layouts', () => {
     // smallest allowed is 10,000): none of its scores can be known already.
     renderRoute('/library?sample=10001', { client, storage: freshStorage() });
 
-    await screen.findByText(/^Scoring layouts on a sample of [\d,]+ symbols… 2 of/, undefined, {
-      timeout: 60_000,
-    });
+    await rankingSays(/^Scoring layouts on a sample of [\d,]+ symbols… 2 of/, 60_000);
     expect(screen.getByRole('radio', { name: 'Effort' })).toBeChecked();
     const names = [...document.querySelectorAll('article h3')].map((h) => h.textContent);
     // The better of the two scored comes first, the worse second, and the unscored wait below.
@@ -270,9 +275,7 @@ describe('Ranking layouts', () => {
       storage: freshStorage(),
     });
 
-    await screen.findByText(/^Scoring layouts on a sample of [\d,]+ symbols… 3 of/, undefined, {
-      timeout: 60_000,
-    });
+    await rankingSays(/^Scoring layouts on a sample of [\d,]+ symbols… 3 of/, 60_000);
     expect(scored).toEqual(['Magic Romak', 'Romak', 'Qwerty']);
     // First despite its far worse effort: Qwerty is behind it.
     const names = [...document.querySelectorAll('article h3')].map((h) => h.textContent);
@@ -284,9 +287,7 @@ describe('Ranking layouts', () => {
   it('scores each layout typed without the features left out of the ranking', async () => {
     const { client, requests } = scoringOnly([500]);
     renderRoute('/library?off=macros&sample=10003', { client, storage: freshStorage() });
-    await screen.findByText(/^Scoring layouts on a sample of [\d,]+ symbols… 1 of/, undefined, {
-      timeout: 60_000,
-    });
+    await rankingSays(/^Scoring layouts on a sample of [\d,]+ symbols… 1 of/, 60_000);
     expect(requests[0].layout.name).toBe('Magic Romak');
     const sent = JSON.stringify(requests[0].layout);
     // `qu` is two letters in one press, and goes; an accent is one letter, and stays.
@@ -297,7 +298,7 @@ describe('Ranking layouts', () => {
   it('ranks the layouts that can write the language first', async () => {
     // Magic Romak writes Spanish through its Dead keys layer; no other bundled layout has an ñ.
     renderRoute('/library?corpus=es-general&sample=10000', { storage: freshStorage() });
-    await screen.findByText(/^Lower is better for both/, undefined, { timeout: 60_000 });
+    await rankingSays(/^Lower is better for both/, 60_000);
     expect(document.body.textContent).toMatch(/ranked after the layouts that can/);
     const romak = cards().find((c) => c.querySelector('h3')?.textContent === 'Magic Romak');
     expect(romak?.textContent).not.toMatch(/Cannot type/);
@@ -308,10 +309,10 @@ describe('Ranking layouts', () => {
     // With Magic Romak's board left out, no layout listed has an ñ, so none is behind another.
     useSession.setState({ hiddenBoards: ['1333+2'] });
     renderRoute('/library?corpus=es-general&sample=10000', { storage: freshStorage() });
-    await screen.findByText(/^Lower is better for both/, undefined, { timeout: 60_000 });
+    await rankingSays(/^Lower is better for both/, 60_000);
     // Scores of an earlier test may already be in: wait for every layout's letters to be checked.
     expect(
-      await screen.findByText(/None of these layouts types every letter Español needs\.$/),
+      await rankingSays(/None of these layouts types every letter Español needs\.$/),
     ).toBeTruthy();
     const efforts = cards().map((c) => valueOn(c, 'Effort'));
     expect(efforts).toEqual([...efforts].sort((a, b) => a - b));
@@ -320,7 +321,7 @@ describe('Ranking layouts', () => {
 
   it('says what share of the text a layout skips', async () => {
     renderRoute('/library?corpus=pt-br-general&sample=10000', { storage: freshStorage() });
-    await screen.findByText(/^Lower is better for both/, undefined, { timeout: 60_000 });
+    await rankingSays(/^Lower is better for both/, 60_000);
     expect(screen.getByText(/come last\.$/)).toBeInTheDocument();
     const qwerty = cards().find((c) => c.querySelector('h3')?.textContent === 'Qwerty');
     expect(qwerty?.querySelector('.lb-skips')?.textContent).toMatch(/skips \d+\.\d\d% of the text/);
@@ -339,7 +340,7 @@ describe('Ranking layouts', () => {
       toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine', languages: ['en', 'es'] }),
     );
     renderRoute('/library?corpus=en-general&sample=10000', { storage });
-    await screen.findByText(/^Lower is better for both/, undefined, { timeout: 60_000 });
+    await rankingSays(/^Lower is better for both/, 60_000);
     const mine = await waitFor(
       () => {
         const card = cards().find((c) => c.querySelector('h3')?.textContent === 'Mine');

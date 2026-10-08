@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import type { AnalysisClient, AnalyzeRequest } from '../engine/protocol.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
-import { LIBRARY, openSettings, renderRoute, testClient } from '../test/render.js';
+import { LIBRARY, openSettings, rankingSays, renderRoute, testClient } from '../test/render.js';
 
 const QWERTY_TEXT = 'q w e r t y u i o p\na s d f g h j k l ;\nz x c v b n m , . /';
 /** A text long enough to build a corpus from. */
@@ -325,9 +325,7 @@ describe('Saved texts in the pickers', () => {
     const user = userEvent.setup();
     renderRoute(`${LIBRARY}&corpus=saved%3Amy-notes`, { storage: await savedText() });
     // Once every layout is scored on it.
-    expect(
-      await screen.findByText(/symbols of My notes/, undefined, { timeout: 50_000 }),
-    ).toBeInTheDocument();
+    expect(await rankingSays(/symbols of My notes/, 50_000)).toBeInTheDocument();
     expect(
       screen.getAllByText('Effort', { selector: 'dt' })[0].nextElementSibling?.textContent,
     ).toMatch(/\d/);

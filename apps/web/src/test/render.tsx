@@ -2,7 +2,7 @@ import { resolve } from 'node:path';
 import type { StorageAdapter } from '@layerbench/core';
 import { nodeCorpusLoader } from '@layerbench/core/node';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
-import { type RenderResult, render, screen } from '@testing-library/react';
+import { type RenderResult, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AnalysisCore } from '../engine/analysis-core.js';
 import { AnalysisClientProvider, SavedCorporaProvider } from '../engine/client-context.js';
@@ -48,6 +48,16 @@ export function testClient(): AnalysisClient {
  * sample stays tiny rather than twenty-odd full analyses competing with the test for the CPU.
  */
 export const LIBRARY = '/library?sample=1000';
+
+/**
+ * Wait for the Library's line on its ranking — what it is scoring, or what it ranked on — to read
+ * `text`. Only that line is watched: the Library redraws every card as each score comes in, and a
+ * query over the whole page after each redraw cost several times the scoring itself.
+ */
+export async function rankingSays(text: RegExp, timeout?: number): Promise<HTMLElement> {
+  const line = await screen.findByText(/^(Scoring layouts|Lower is better|Could not score)/);
+  return within(line).findByText(text, undefined, { timeout });
+}
 
 /**
  * Render the application at a route, with the engine running on the same thread. A worker cannot be
