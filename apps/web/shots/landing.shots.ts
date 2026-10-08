@@ -41,7 +41,18 @@ async function around(page: Page, parts: Locator[], pad = 12, bottom = pad) {
   return { x, y, width: right - x, height: end - y };
 }
 
+/**
+ * Until the engine is idle: the bar under the header that says it is working shows in a shot taken
+ * while it still is. It comes on a moment after work starts and goes a moment after it ends.
+ */
+async function settled(page: Page): Promise<void> {
+  await expect(page.getByRole('progressbar', { name: 'Loading data' })).toBeHidden({
+    timeout: 60_000,
+  });
+}
+
 async function shootAround(page: Page, name: string, parts: Locator[], bottom?: number) {
+  await settled(page);
   const clip = await around(page, parts, 12, bottom);
   // The pointer stays where the last click left it, and the scroll to the top slides the page under
   // it: a key that ends up beneath it is drawn hovered, outlined as if it were chosen. To a corner
@@ -92,9 +103,17 @@ test.describe('at a desk', () => {
   });
 
   test('trace: a word typed press by press', async ({ page }) => {
-    // Layer-tap heat leaves the letter keys plain, so the key each press lights stands out.
-    await page.goto(`${ANALYZE}&heat=layer_taps`);
+    await page.goto(ANALYZE);
     await expect(page.getByText('Same finger bigrams').first()).toBeVisible({ timeout: 120_000 });
+    // The film is of which key each press lands on, so the board carries no heat: any heat colours
+    // keys that are not pressed, the A2 thumb among them, as if they were. The Heat picker goes too,
+    // rather than name a heat the shot does not show.
+    await page.addStyleTag({
+      content: `
+        #kb-analyze .lb-key-cap:not(.lb-key-pressed) { fill: var(--lb-key-bg) !important; }
+        label[for="heat"], #heat { display: none !important; }
+      `,
+    });
     await page.getByLabel('How is this typed?').fill(WORD);
     const presses = page.getByRole('list', { name: 'Presses' }).getByRole('button');
     await expect(presses.first()).toBeVisible();
@@ -167,6 +186,7 @@ test.describe('on a phone', () => {
     const inspector = page.getByRole('group', { name: 'Edit LHI' });
     await expect(inspector).toBeVisible();
     await expect(inspector.getByText('updating…')).toBeHidden({ timeout: 30_000 });
+    await settled(page);
     await page.screenshot({ path: file('phone'), animations: 'disabled' });
   });
 });
