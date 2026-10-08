@@ -197,17 +197,29 @@
           "symbol": "."
         },
         "L0": {
-          "kind": "macro",
-          "steps": [
-            {
-              "kind": "kp",
-              "symbol": ","
-            },
-            {
-              "kind": "kp",
-              "symbol": " "
-            }
-          ]
+          "kind": "hold_tap",
+          "tap": {
+            "kind": "macro",
+            "steps": [
+              {
+                "kind": "kp",
+                "symbol": ","
+              },
+              {
+                "kind": "kp",
+                "symbol": " "
+              }
+            ]
+          },
+          "hold": {
+            "kind": "macro",
+            "steps": [
+              {
+                "kind": "kp",
+                "symbol": ","
+              }
+            ]
+          }
         }
       }
     }
