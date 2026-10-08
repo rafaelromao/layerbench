@@ -350,10 +350,6 @@
         "RHR": {
           "kind": "none"
         },
-        "L0": {
-          "kind": "kp",
-          "symbol": "_"
-        },
         "RHI": {
           "kind": "trans"
         },
@@ -383,12 +379,26 @@
           "kind": "kp",
           "symbol": "j"
         },
-        "R0": {
-          "kind": "none"
-        },
         "L1": {
           "kind": "kp",
           "symbol": ","
+        },
+        "L0": {
+          "kind": "macro",
+          "steps": [
+            {
+              "kind": "kp",
+              "symbol": ","
+            },
+            {
+              "kind": "kp",
+              "symbol": " "
+            }
+          ]
+        },
+        "R0": {
+          "kind": "kp",
+          "symbol": "_"
         }
       }
     },
