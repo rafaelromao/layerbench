@@ -80,45 +80,17 @@
           "kind": "kp",
           "symbol": "w"
         },
-        "LBI": {
-          "kind": "kp",
-          "symbol": "d"
-        },
         "LHI": {
           "kind": "kp",
           "symbol": "t"
-        },
-        "LTI": {
-          "kind": "kp",
-          "symbol": "m"
-        },
-        "LTR": {
-          "kind": "kp",
-          "symbol": "b"
-        },
-        "LHR": {
-          "kind": "kp",
-          "symbol": "n"
-        },
-        "LBR": {
-          "kind": "kp",
-          "symbol": "p"
         },
         "RHI": {
           "kind": "kp",
           "symbol": "s"
         },
-        "LHM": {
-          "kind": "kp",
-          "symbol": "r"
-        },
         "RBI": {
           "kind": "kp",
           "symbol": "g"
-        },
-        "LBM": {
-          "kind": "kp",
-          "symbol": "v"
         },
         "RTR": {
           "kind": "kp",
@@ -127,14 +99,6 @@
         "RBR": {
           "kind": "kp",
           "symbol": ","
-        },
-        "RTI": {
-          "kind": "kp",
-          "symbol": "f"
-        },
-        "LTM": {
-          "kind": "kp",
-          "symbol": "l"
         },
         "RHR": {
           "kind": "kp",
@@ -151,6 +115,42 @@
         "RHC": {
           "kind": "kp",
           "symbol": "x"
+        },
+        "RTI": {
+          "kind": "kp",
+          "symbol": "f"
+        },
+        "LTR": {
+          "kind": "kp",
+          "symbol": "b"
+        },
+        "LHR": {
+          "kind": "kp",
+          "symbol": "n"
+        },
+        "LHM": {
+          "kind": "kp",
+          "symbol": "r"
+        },
+        "LBR": {
+          "kind": "kp",
+          "symbol": "p"
+        },
+        "LBM": {
+          "kind": "kp",
+          "symbol": "v"
+        },
+        "LTM": {
+          "kind": "kp",
+          "symbol": "l"
+        },
+        "LTI": {
+          "kind": "kp",
+          "symbol": "m"
+        },
+        "LBI": {
+          "kind": "kp",
+          "symbol": "d"
         }
       }
     }
