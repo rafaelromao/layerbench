@@ -196,9 +196,18 @@
           "kind": "kp",
           "symbol": "."
         },
-        "R0": {
-          "kind": "kp",
-          "symbol": ","
+        "L0": {
+          "kind": "macro",
+          "steps": [
+            {
+              "kind": "kp",
+              "symbol": ","
+            },
+            {
+              "kind": "kp",
+              "symbol": " "
+            }
+          ]
         }
       }
     }
