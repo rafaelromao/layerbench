@@ -280,10 +280,6 @@
         "*": {
           "kind": "trans"
         },
-        "L1": {
-          "kind": "kp",
-          "symbol": ","
-        },
         "R1": {
           "kind": "kp",
           "symbol": "."
@@ -389,6 +385,10 @@
         },
         "R0": {
           "kind": "none"
+        },
+        "L1": {
+          "kind": "kp",
+          "symbol": ","
         }
       }
     },
@@ -521,7 +521,17 @@
           "symbols": "ões"
         },
         "L0": {
-          "kind": "trans"
+          "kind": "macro",
+          "steps": [
+            {
+              "kind": "kp",
+              "symbol": ","
+            },
+            {
+              "kind": "kp",
+              "symbol": " "
+            }
+          ]
         }
       }
     },
