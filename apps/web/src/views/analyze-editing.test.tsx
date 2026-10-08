@@ -1325,6 +1325,23 @@ describe('Edit', () => {
     });
   }, 60_000);
 
+  it('offers a layer in the inspector in the colour chosen for it', async () => {
+    const user = userEvent.setup();
+    await openMagicRomak();
+    await user.click(screen.getByRole('tab', { name: 'Layers' }));
+    await user.selectOptions(screen.getByLabelText('Colour of layer sym'), 'teal');
+
+    // The Ç extension's thumb is a layer key, so its editor offers every layer as a chip.
+    await user.click(screen.getByRole('tab', { name: 'Ç extension' }));
+    await user.click(await screen.findByRole('button', { name: /^Key L1:/ }));
+    const editor = await inspector('L1');
+    const dot = within(editor)
+      .getByRole('button', { name: 'Symbols' })
+      .querySelector('span')
+      ?.getAttribute('style');
+    expect(dot).toContain('var(--lb-layer-6)');
+  }, 60_000);
+
   it('marks on each layer the keys held or tapped to reach it, and follows an edit', async () => {
     const user = userEvent.setup();
     await openMagicRomak();

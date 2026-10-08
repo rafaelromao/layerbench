@@ -1,5 +1,6 @@
 import type { CompiledLayout, Mod } from '@layerbench/core';
 import { type KeyboardEvent, type ReactNode, type Ref, useEffect, useId, useState } from 'react';
+import { layerColourOf } from '../../../components/layer-colour.js';
 
 /**
  * A choice of one among a few, drawn as joined buttons. Real radio inputs underneath, so the
@@ -35,10 +36,6 @@ export function Segment<T extends string>({
   );
 }
 
-export function layerColourVar(index: number): string | undefined {
-  return index > 0 ? `var(--lb-layer-${((index - 1) % 7) + 1})` : undefined;
-}
-
 /** Every layer, as buttons in its own colour. */
 export function LayerChips({
   compiled,
@@ -55,7 +52,7 @@ export function LayerChips({
     <fieldset className="flex flex-wrap gap-1" aria-label={label}>
       {compiled.layers.map((l) => {
         const on = value.includes(l.id);
-        const colour = layerColourVar(l.idx);
+        const colour = layerColourOf(l.idx, l.color);
         return (
           <button
             key={l.id}
