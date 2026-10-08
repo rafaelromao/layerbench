@@ -253,6 +253,68 @@
               }
             ]
           }
+        },
+        "LTR": {
+          "kind": "kp",
+          "symbol": "q"
+        },
+        "LTM": {
+          "kind": "macro",
+          "symbols": "qu"
+        },
+        "LTI": {
+          "kind": "kp",
+          "symbol": "à"
+        },
+        "LHI": {
+          "kind": "kp",
+          "symbol": "y"
+        },
+        "LHM": {
+          "kind": "kp",
+          "symbol": "w"
+        },
+        "LHR": {
+          "kind": "kp",
+          "symbol": "x"
+        },
+        "LHP": {
+          "kind": "macro",
+          "symbols": "ç",
+          "then": [
+            {
+              "kind": "sl",
+              "layer": "alpha-2"
+            }
+          ]
+        },
+        "LBR": {
+          "kind": "kp",
+          "symbol": "j"
+        },
+        "LBM": {
+          "kind": "kp",
+          "symbol": "z"
+        },
+        "LBI": {
+          "kind": "kp",
+          "symbol": "k"
+        },
+        "L1": {
+          "kind": "kp",
+          "symbol": "'"
+        },
+        "RTI": {
+          "kind": "dead_key",
+          "diacritic": "^"
+        },
+        "RHI": {
+          "kind": "dead_key",
+          "diacritic": "´"
+        },
+        "RBI": {
+          "kind": "dead_key",
+          "diacritic": "~"
         }
       }
     }
