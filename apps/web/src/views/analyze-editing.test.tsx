@@ -4,8 +4,9 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { AnalysisClient, AnalyzeRequest } from '../engine/protocol.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
-import { openSettings, renderRoute, testClient } from '../test/render.js';
+import { openSettings, renderRoute, savedInLink, testClient } from '../test/render.js';
 import { setPointerKind } from '../test/setup.js';
+import { decodeInline } from '../url/inline.js';
 
 let counter = 0;
 const freshStorage = () => new IndexedDbAdapter(`layerbench-edit-${++counter}`);
@@ -81,6 +82,20 @@ async function seed(storage: IndexedDbAdapter, from: string, id: string, extra: 
   });
 }
 
+/** The layout a link carries whole, read back; a saved layout's link carries it so. */
+async function carried(search: string): Promise<Layout | null> {
+  const ref = new URLSearchParams(search).get('layout') ?? '';
+  if (!ref.startsWith('inline:')) return null;
+  const decoded = await decodeInline(ref.slice('inline:'.length));
+  return decoded.ok ? decoded.layout : null;
+}
+
+/** The link a saved layout opened by its id ends up with: the layout itself. */
+async function linkOf(currentSearch: () => string, id: string): Promise<string> {
+  await waitFor(async () => expect((await carried(currentSearch()))?.id).toBe(id));
+  return currentSearch();
+}
+
 /** The inspector for one key, which is where every edit to it is made. */
 const inspector = (keyId: string) => screen.findByRole('group', { name: `Edit ${keyId}` });
 
@@ -150,7 +165,8 @@ describe('Edit', () => {
 
     expect(await screen.findByText('Saved Qwerty swapped')).toBeInTheDocument();
     expect((await storage.get('layouts', 'qwerty-swapped'))?.doc.name).toBe('Qwerty swapped');
-    await waitFor(() => expect(currentSearch()).toContain('saved%3Aqwerty-swapped'));
+    // Its link carries it whole, so it can be sent.
+    await linkOf(currentSearch, 'qwerty-swapped');
   });
 
   it('keeps editing the copy a first save made, history and all, and saves it again in place', async () => {
@@ -226,7 +242,7 @@ describe('Edit', () => {
     );
     // Moved, not copied: the Library shows it once, under its new name.
     expect(await storage.get('layouts', 'qwerty-copy')).toBeNull();
-    await waitFor(() => expect(currentSearch()).toContain('saved%3Amy-layout'));
+    await linkOf(currentSearch, 'my-layout');
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
     expect(within(bar()).getByLabelText('Name')).toHaveValue('My layout');
     expect(screen.queryByText('unsaved')).toBeNull();
@@ -256,7 +272,7 @@ describe('Edit', () => {
     expect(await storage.get('layouts', 'qwerty-copy')).toBeNull();
   }, 60_000);
 
-  it('puts unsaved edits in the link, and the stored layout back once they are undone', async () => {
+  it('puts unsaved edits in the link, and the saved layout back once they are undone', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
     await seed(storage, 'qwerty', 'mine', { name: 'Mine' });
@@ -265,15 +281,17 @@ describe('Edit', () => {
       { storage },
     );
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+    const clean = await linkOf(currentSearch, 'mine');
     key('Key LHM: d').focus();
     await user.keyboard('ç{Enter}');
     await screen.findByRole('button', { name: 'Key LHM: ç' });
-    await waitFor(() => expect(currentSearch()).toContain('layout=inline'));
+    await waitFor(() => expect(currentSearch()).not.toBe(clean));
+    expect(JSON.stringify(await carried(currentSearch()))).toContain('ç');
     // The editor stayed open on the edit: the link it wrote is its own.
     expect(screen.getByRole('button', { name: 'Undo' })).toBeEnabled();
 
     await user.click(screen.getByRole('button', { name: 'Undo' }));
-    await waitFor(() => expect(currentSearch()).toContain('layout=saved%3Amine'));
+    await waitFor(() => expect(currentSearch()).toBe(clean));
     expect(screen.queryByText('unsaved')).toBeNull();
   }, 60_000);
 
@@ -285,10 +303,11 @@ describe('Edit', () => {
       storage,
     });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+    const clean = await linkOf(first.currentSearch, 'qwerty-copy');
     key('Key LHM: d').focus();
     await user.keyboard('ç{Enter}');
     await screen.findByRole('button', { name: 'Key LHM: ç' });
-    await waitFor(() => expect(first.currentSearch()).toContain('layout=inline'));
+    await waitFor(() => expect(first.currentSearch()).not.toBe(clean));
     const link = first.currentSearch();
     first.unmount();
 
@@ -301,10 +320,94 @@ describe('Edit', () => {
 
     await user.click(within(bar()).getByRole('button', { name: 'Save' }));
     expect(await screen.findByText('Saved Qwerty copy')).toBeInTheDocument();
-    await waitFor(() => expect(again.currentSearch()).toContain('layout=saved%3Aqwerty-copy'));
+    await waitFor(async () =>
+      expect(JSON.stringify(await carried(again.currentSearch()))).toContain('ç'),
+    );
+    expect(screen.queryByText('unsaved')).toBeNull();
     // The stored layout has the edit, and no copy was made beside it.
     expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['qwerty-copy']);
     expect(JSON.stringify((await storage.get('layouts', 'qwerty-copy'))?.doc)).toContain('ç');
+  }, 90_000);
+
+  it('shares a saved layout by its link, which opens for someone who has not got it', async () => {
+    const user = userEvent.setup();
+    const mine = freshStorage();
+    await seed(mine, 'qwerty', 'mine', { name: 'Mine', author: 'Me' });
+    const owner = renderRoute('/analyze?layout=saved%3Amine&corpus=en-conv&sample=20000', {
+      storage: mine,
+    });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+    const link = await linkOf(owner.currentSearch, 'mine');
+    owner.unmount();
+
+    // Someone else's browser, with nothing saved: the layout opens as a layout of their own.
+    const theirs = freshStorage();
+    renderRoute(`/analyze${link}`, { storage: theirs });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+    expect(within(bar()).getByLabelText('Name')).toHaveValue('Mine');
+    expect(screen.queryByText('unsaved')).toBeNull();
+    await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Saved Mine')).toBeInTheDocument();
+    expect((await theirs.get('layouts', 'mine'))?.doc).toMatchObject({
+      name: 'Mine',
+      author: 'Me',
+    });
+  }, 90_000);
+
+  it('opens its own link where it is saved as the saved layout, and edits that one', async () => {
+    const user = userEvent.setup();
+    const mine = freshStorage();
+    await seed(mine, 'qwerty', 'mine', { name: 'Mine' });
+    const first = renderRoute('/analyze?layout=saved%3Amine&corpus=en-conv&sample=20000', {
+      storage: mine,
+    });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+    const link = await linkOf(first.currentSearch, 'mine');
+    first.unmount();
+
+    // The same link on another of the owner's devices, where it is saved as it was.
+    renderRoute(`/analyze${link}`, { storage: mine });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+    await waitFor(() =>
+      expect(within(bar()).getByRole('combobox', { name: 'Layout' })).toHaveValue('saved:mine'),
+    );
+    key('Key LHM: d').focus();
+    await user.keyboard('ç{Enter}');
+    await screen.findByRole('button', { name: 'Key LHM: ç' });
+    await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Saved Mine')).toBeInTheDocument();
+    // Saved in place, not as a copy beside it.
+    expect((await mine.list('layouts')).map((e) => e.id)).toEqual(['mine']);
+    expect(JSON.stringify((await mine.get('layouts', 'mine'))?.doc)).toContain('ç');
+  }, 90_000);
+
+  it('never saves a link over a different layout saved under the same id', async () => {
+    const user = userEvent.setup();
+    const mine = freshStorage();
+    await seed(mine, 'qwerty', 'mine', { name: 'Mine' });
+    const first = renderRoute('/analyze?layout=saved%3Amine&corpus=en-conv&sample=20000', {
+      storage: mine,
+    });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+    const link = await linkOf(first.currentSearch, 'mine');
+    first.unmount();
+
+    // Someone who saved a layout of their own as "mine": the link's is not theirs.
+    const theirs = freshStorage();
+    await seed(theirs, 'colemak', 'mine', { name: 'Mine' });
+    renderRoute(`/analyze${link}`, { storage: theirs });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+    expect(key('Key LHM: d')).toBeInTheDocument();
+    await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Saved Mine')).toBeInTheDocument();
+    const ids = (await theirs.list('layouts')).map((e) => e.id).sort();
+    expect(ids).toHaveLength(2);
+    // Theirs is as it was; the link's went beside it.
+    expect(JSON.stringify((await theirs.get('layouts', 'mine'))?.doc)).toBe(
+      JSON.stringify(
+        toCanonicalJson({ ...(bundledLayout('colemak') as Layout), id: 'mine', name: 'Mine' }),
+      ),
+    );
   }, 90_000);
 
   it('compares the layout as edited', async () => {
@@ -1289,7 +1392,7 @@ describe('the layouts Analyze offers', () => {
     expect(option.closest('optgroup')).toHaveAttribute('label', 'Saved');
 
     await user.selectOptions(picker, 'saved:my-colemak');
-    await waitFor(() => expect(currentSearch()).toContain('layout=saved%3Amy-colemak'));
+    await waitFor(async () => expect(await savedInLink(currentSearch())).toBe('my-colemak'));
     await waitFor(() => expect(within(bar()).getByLabelText('Name')).toHaveValue('My Colemak'), {
       timeout: 25_000,
     });

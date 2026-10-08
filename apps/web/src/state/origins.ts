@@ -12,6 +12,8 @@ import { parseLayoutRef } from '../url/params.js';
 interface OriginsState {
   byInline: Record<string, string | null>;
   remember: (inline: string, id: string | null) => void;
+  /** No longer a draft: what it holds was saved, so opening it again is opening the saved layout. */
+  forget: (inline: string) => void;
 }
 
 const STORE_KEY = 'layerbench:origins';
@@ -42,6 +44,12 @@ export const useOrigins = create<OriginsState>()((set, get) => ({
     const { [inline]: _old, ...rest } = get().byInline;
     const entries = Object.entries({ ...rest, [inline]: id });
     const byInline = Object.fromEntries(entries.slice(-KEEP));
+    save(byInline);
+    set({ byInline });
+  },
+  forget: (inline) => {
+    if (!(inline in get().byInline)) return;
+    const { [inline]: _gone, ...byInline } = get().byInline;
     save(byInline);
     set({ byInline });
   },

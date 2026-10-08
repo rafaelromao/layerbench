@@ -18,8 +18,9 @@ The address follows your edits too: a moment after each one, the link holds the 
 is. Reload the page, or go back to it, in the same tab, and the edits are still there, still
 unsaved, and saving them saves the layout they are edits of rather than a copy beside it. Opened in
 another tab or browser, the same link is a layout of its own: it is not marked *unsaved*, and saving
-it makes a copy. A layout opened from **Open in analyzer**, or from someone's link, is not in
-**Library** until you save it. Picking another layout from **Layout** asks first when there is
+it makes a copy. Once saved, the link still carries the layout whole, so it can be sent; opened
+where that layout is saved and unchanged, it is the saved layout again. A layout opened from
+**Open in analyzer**, or from someone's link, is not in **Library** until you save it. Picking another layout from **Layout** asks first when there is
 something unsaved.
 
 **Settings**, in the bar at the top, holds the layout's author and description, and the choices

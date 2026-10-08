@@ -3,6 +3,7 @@ import {
   type Layout,
   layoutLanguageCoverage,
   type RuleItem,
+  safeParseLayout,
   toCanonicalJson,
 } from '@layerbench/core';
 import type { useNavigate } from '@tanstack/react-router';
@@ -47,6 +48,7 @@ import {
   type HeatMode,
   inlineRef,
   type Params,
+  parseLayoutRef,
   savedRef,
   toSearch,
 } from '../../url/params.js';
@@ -105,6 +107,14 @@ function symbolLabel(s: string): string {
   return s === ' ' ? '␣' : s;
 }
 
+/**
+ * The link of a saved layout: the layout itself, after the `#`, so the link opens for anyone it is
+ * sent to. Where that layout is saved and unchanged, opening the link opens it as the saved one.
+ */
+async function snapshotRef(layout: Layout, id: string): Promise<string> {
+  return inlineRef(await encodeInline({ ...layout, id }));
+}
+
 export interface WorkbenchProps {
   initialLayout: Layout;
   initialCompiled: NonNullable<ReturnType<typeof useTypedLayout>['compiled']>;
@@ -156,6 +166,50 @@ export function Workbench({
   /** The link's layout whenever nothing is unsaved: the one opened, or the one last saved. */
   const [cleanRef, setCleanRef] = useState(openedRef);
   const remember = useOrigins((s) => s.remember);
+  const forget = useOrigins((s) => s.forget);
+
+  // A saved layout opened by its id, as the Library and the picker open one, gets the link that
+  // carries it whole, which opens anywhere: an id opens only where the layout is saved.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, for the layout opened
+  useEffect(() => {
+    if (state.dirty || storedId === null || parseLayoutRef(openedRef).kind !== 'saved') return;
+    let cancelled = false;
+    snapshotRef(initialLayout, storedId).then((ref) => {
+      if (!cancelled) setCleanRef(ref);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // A layout from a link is the one saved here when the id it carries is saved here with the same
+  // contents: its owner's link, opened in another tab, browser or device. Anything else, someone
+  // else's layout or one changed since the link was made, stays a layout of its own, saved as a
+  // copy, so nothing saved here is ever overwritten by a link.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, for the layout opened
+  useEffect(() => {
+    const id = initialLayout.id;
+    if (state.dirty || storedId !== null || !id || parseLayoutRef(openedRef).kind !== 'inline')
+      return;
+    let cancelled = false;
+    storage
+      .get('layouts', id)
+      .then((stored) => {
+        const parsed = stored ? safeParseLayout(stored.doc) : null;
+        if (cancelled || !parsed?.ok) return;
+        const same =
+          JSON.stringify(toCanonicalJson(parsed.layout)) ===
+          JSON.stringify(toCanonicalJson(initialLayout));
+        if (same) setStoredId(id);
+      })
+      .catch(() => {
+        // Storage that cannot be read leaves it a layout of its own.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   /** The saved layouts, for the picker; read again after each save. */
   const savedLayouts = useCollection('layouts');
 
@@ -324,10 +378,14 @@ export function Workbench({
     setSaving(true);
     try {
       const { id, leftBehind } = await saveLayout(storage, layout, storedId);
+      // Its link from now on carries it whole, so it can still be sent. A moment ago that may have
+      // been the link of a draft of it, which it no longer is.
+      const ref = await snapshotRef(layout, id);
+      forget(ref);
+      setCleanRef(ref);
       send({ type: 'saved', layout });
       setStoredId(id);
       void savedLayouts.refresh();
-      setCleanRef(savedRef(id));
       if (leftBehind) {
         toast.error(
           `Saved ${layout.name}; its copy under the old name could not be removed and is still in the Library`,
@@ -343,7 +401,7 @@ export function Workbench({
     } finally {
       setSaving(false);
     }
-  }, [state.layout, storage, storedId, savedLayouts.refresh]);
+  }, [state.layout, storage, storedId, savedLayouts.refresh, forget]);
 
   const pick = (ref: string) => {
     if (state.dirty && !window.confirm(`Leave ${state.layout.name}? Its unsaved changes are lost.`))
@@ -646,7 +704,8 @@ export function Workbench({
         saving={saving}
         onMeta={(meta) => send({ type: 'setMeta', ...meta })}
         onSave={save}
-        layoutRef={params.layoutRef}
+        // A saved layout is picked as itself, whatever its link carries.
+        layoutRef={!state.dirty && storedId !== null ? savedRef(storedId) : params.layoutRef}
         onPick={pick}
         saved={savedLayouts.entries}
         corpora={corpora}

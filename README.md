@@ -44,10 +44,12 @@ in with GitHub to keep your work in your own account.
 | `/corpus` | Shipped corpora, and custom ones from pasted or uploaded text |
 | `/guide` | The user guide and the metric glossary, from `docs/` |
 
-`/` opens the Library. A link carries the whole analysis. A layout that was never saved travels in
-it too, as `#layout=inline:…`: after the `#`, which the browser keeps to itself, so a long one
-cannot make the request too long for GitHub Pages to answer (`apps/web/src/url/fragment.ts`).
-Analyze writes unsaved edits into its link that way.
+`/` opens the Library. A link carries the whole analysis. The layout travels in it too, as
+`#layout=inline:…`: after the `#`, which the browser keeps to itself, so a long one cannot make the
+request too long for GitHub Pages to answer (`apps/web/src/url/fragment.ts`). Analyze writes every
+layout it has open into its link that way, a saved one too, with its id inside, so the link can be
+sent: opened where that id is saved with the same contents, it is the saved layout again, and
+anywhere else a layout of its own, saved as a copy.
 
 ## Storage in the code
 

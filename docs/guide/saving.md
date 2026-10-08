@@ -72,16 +72,17 @@ here until you sign in again.
 
 ## Sharing a link
 
-A link carries the analysis as it stands: the layout, the text, the rules and every switch. A
-layout with unsaved edits, or one that was never saved, travels whole in it, so anyone can open it,
-without signing in. A saved layout's link only names it, so it opens only where it is saved: in this
-browser, or in your GitHub account once you sign in. To share one, send its LayerBench JSON, from
-the editor's **JSON** panel. The same goes for a saved text, which opens nowhere else, and a saved
-rule set, which anywhere else opens as the Layouts Doc's rules.
+A link carries the analysis as it stands: the layout, the text, the rules and every switch. The
+layout travels whole in it, saved or not, so anyone can open it, without signing in. Opened by
+someone who has not got it, it is a layout of their own: they can analyze it, edit it and save a
+copy. Opened where it is saved and unchanged, in this browser or your GitHub account, it is your
+saved layout, and saving changes that one. A link never saves over a different layout someone has
+under the same name: that is saved beside it. A saved text and a saved rule set do not travel the
+same way: a text opens nowhere else, and a rule set anywhere else opens as the Layouts Doc's rules.
 
-A layout that was never saved makes a long link: the whole layout is in it, after the `#`. Copy the
-whole address, and if a link opens on a different layout than it should, check that nothing after
-the `#` was lost on the way.
+A link with a whole layout in it is long: the layout is after the `#`. Copy the whole address, and
+if a link opens on a different layout than it should, check that nothing after the `#` was lost on
+the way.
 
 ## Adding a layout to the Library
 

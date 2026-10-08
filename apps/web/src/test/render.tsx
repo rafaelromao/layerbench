@@ -10,6 +10,7 @@ import { DirectClient } from '../engine/direct-client.js';
 import type { AnalysisClient } from '../engine/protocol.js';
 import { createAppRouter } from '../router.js';
 import { StorageProvider } from '../storage/use-storage.js';
+import { decodeInline } from '../url/inline.js';
 
 /**
  * The corpora the built site serves, read straight from disk in tests. Resolved from the working
@@ -17,6 +18,18 @@ import { StorageProvider } from '../storage/use-storage.js';
  */
 export function testCorporaRoot(): string {
   return resolve(process.cwd(), 'public/corpora');
+}
+
+/**
+ * The saved layout a link opens: `saved:<id>` names it, and once Analyze has it open the link
+ * carries it whole, with its id inside. Null for any other layout.
+ */
+export async function savedInLink(search: string): Promise<string | null> {
+  const ref = new URLSearchParams(search).get('layout') ?? '';
+  if (ref.startsWith('saved:')) return ref.slice('saved:'.length);
+  if (!ref.startsWith('inline:')) return null;
+  const decoded = await decodeInline(ref.slice('inline:'.length));
+  return decoded.ok ? (decoded.layout.id ?? null) : null;
 }
 
 /** The Settings dialog of Analyze or Compare, opened: the text, the rules and the switches. */

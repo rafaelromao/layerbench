@@ -52,7 +52,6 @@ LayerBench's own JSON. See [Importing and exporting](importing.md).
 Duplicate a layout, start one or import yours, and it joins **Library**; **Save** keeps your edits
 to it. Saved layouts, rule sets and texts stay in this browser. Sign in with GitHub, under
 **Storage** in the header, to keep them in your GitHub account too, in gists or in your fork of
-layerbench. A link carries the analysis, and a layout with unsaved edits, or one never saved,
-travels whole in it, so copying the address shares it; something saved opens only where it is
-saved. A layout you saved can join the Library, for everyone, by a pull request. See
-[Saving and sharing](saving.md).
+layerbench. A link carries the analysis, and the layout travels whole in it, saved or not, so
+copying the address shares it; a saved text or rule set opens only where it is saved. A layout you
+saved can join the Library, for everyone, by a pull request. See [Saving and sharing](saving.md).

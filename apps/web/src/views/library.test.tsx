@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AnalysisClient, AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { useSession } from '../state/session.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
-import { LIBRARY, openSettings, renderRoute, testClient } from '../test/render.js';
+import { LIBRARY, openSettings, renderRoute, savedInLink, testClient } from '../test/render.js';
 
 let counter = 0;
 
@@ -39,7 +39,7 @@ describe('Creating layouts', () => {
     await user.click(within(dialog).getByLabelText('Add number and symbol layers'));
     await user.click(within(dialog).getByRole('button', { name: 'Create and edit' }));
 
-    await waitFor(() => expect(currentSearch()).toContain('saved%3Abird-nest'));
+    await waitFor(async () => expect(await savedInLink(currentSearch())).toBe('bird-nest'));
     const stored = await storage.get('layouts', 'bird-nest');
     expect(stored).not.toBeNull();
     const doc = stored?.doc as { name: string; layers: unknown[] };
@@ -86,7 +86,7 @@ describe('Creating layouts', () => {
 
     await user.click(screen.getByRole('button', { name: 'Duplicate Qwerty' }));
     await waitFor(() => expect(currentPath()).toBe('/analyze'));
-    expect(currentSearch()).toContain('saved%3Aqwerty-copy');
+    await waitFor(async () => expect(await savedInLink(currentSearch())).toBe('qwerty-copy'));
     expect(currentSearch()).toContain('corpus=pt-br-conv');
     expect(currentSearch()).toContain('rules=cyanophage');
     await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
@@ -509,7 +509,7 @@ describe('Importing from keymap-drawer', () => {
     await user.type(layoutName, 'Humming{Enter}');
     await user.click(screen.getByRole('button', { name: 'Import and edit' }));
 
-    await waitFor(() => expect(currentSearch()).toContain('saved%3Ahumming'));
+    await waitFor(async () => expect(await savedInLink(currentSearch())).toBe('humming'));
     const stored = (await storage.get('layouts', 'humming'))?.doc as {
       geometry: unknown;
       layers: { id: string; name: string; bindings: Record<string, unknown> }[];

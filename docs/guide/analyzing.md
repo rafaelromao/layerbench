@@ -188,7 +188,7 @@ is better; for alternation, rolls and the in:out roll ratio, higher is. The
 Every number is a rule: plain data that says which key sequences count, and how. **Rules** lists
 them. Each can be turned off, given other bands and a score weight, or removed, and new ones can
 be composed; anything else, such as a key's cost, is changed in the set's **JSON**. A rule set is
-saved like a layout, and like a saved layout, its link opens only where it is saved.
+saved like a layout, but its link only names it, so it opens only where it is saved.
 
 Every built-in rule names where its definition comes from: a section of the Keyboard Layouts Doc,
 a line of another analyzer's code, or the glossary where the rule is LayerBench's own. Open
