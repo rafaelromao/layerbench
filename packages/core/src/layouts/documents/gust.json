@@ -20,25 +20,13 @@
           "kind": "kp",
           "symbol": "'"
         },
-        "LTM": {
-          "kind": "kp",
-          "symbol": "l"
-        },
         "RTM": {
           "kind": "kp",
           "symbol": "o"
         },
-        "LHM": {
-          "kind": "kp",
-          "symbol": "r"
-        },
         "RHM": {
           "kind": "kp",
           "symbol": "a"
-        },
-        "RHR": {
-          "kind": "kp",
-          "symbol": "i"
         },
         "RBC": {
           "kind": "kp",
@@ -63,46 +51,6 @@
         "L0": {
           "kind": "kp",
           "symbol": " "
-        },
-        "RTR": {
-          "kind": "kp",
-          "symbol": "u"
-        },
-        "LBI": {
-          "kind": "kp",
-          "symbol": "d"
-        },
-        "LHI": {
-          "kind": "kp",
-          "symbol": "t"
-        },
-        "LTI": {
-          "kind": "kp",
-          "symbol": "m"
-        },
-        "LBR": {
-          "kind": "kp",
-          "symbol": "p"
-        },
-        "RBI": {
-          "kind": "kp",
-          "symbol": "g"
-        },
-        "RHI": {
-          "kind": "kp",
-          "symbol": "s"
-        },
-        "LHR": {
-          "kind": "kp",
-          "symbol": "n"
-        },
-        "LTR": {
-          "kind": "kp",
-          "symbol": "b"
-        },
-        "RTI": {
-          "kind": "kp",
-          "symbol": "f"
         },
         "LBC": {
           "kind": "kp",
@@ -136,21 +84,73 @@
           "kind": "kp",
           "symbol": ","
         },
-        "RHP": {
-          "kind": "kp",
-          "symbol": "h"
-        },
         "LHP": {
           "kind": "kp",
           "symbol": "c"
+        },
+        "LBP": {
+          "kind": "kp",
+          "symbol": "w"
+        },
+        "LBI": {
+          "kind": "kp",
+          "symbol": "d"
+        },
+        "LHI": {
+          "kind": "kp",
+          "symbol": "t"
+        },
+        "LTI": {
+          "kind": "kp",
+          "symbol": "m"
+        },
+        "LTR": {
+          "kind": "kp",
+          "symbol": "b"
+        },
+        "LHR": {
+          "kind": "kp",
+          "symbol": "n"
+        },
+        "LBR": {
+          "kind": "kp",
+          "symbol": "p"
+        },
+        "RTI": {
+          "kind": "kp",
+          "symbol": "f"
+        },
+        "LTM": {
+          "kind": "kp",
+          "symbol": "l"
+        },
+        "RHI": {
+          "kind": "kp",
+          "symbol": "s"
+        },
+        "LHM": {
+          "kind": "kp",
+          "symbol": "r"
+        },
+        "RBI": {
+          "kind": "kp",
+          "symbol": "g"
         },
         "LBM": {
           "kind": "kp",
           "symbol": "v"
         },
-        "LBP": {
+        "RTR": {
           "kind": "kp",
-          "symbol": "w"
+          "symbol": "h"
+        },
+        "RHP": {
+          "kind": "kp",
+          "symbol": "u"
+        },
+        "RHR": {
+          "kind": "kp",
+          "symbol": "i"
         }
       }
     }
