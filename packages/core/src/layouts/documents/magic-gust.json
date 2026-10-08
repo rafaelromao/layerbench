@@ -193,7 +193,8 @@
           "symbol": "à"
         },
         "R1": {
-          "kind": "trans"
+          "kind": "kp",
+          "symbol": "."
         },
         "L0": {
           "kind": "hold_tap",
@@ -219,6 +220,10 @@
               }
             ]
           }
+        },
+        "R0": {
+          "kind": "kp",
+          "symbol": ","
         }
       }
     },
@@ -315,6 +320,14 @@
         "RBI": {
           "kind": "dead_key",
           "diacritic": "~"
+        },
+        "R1": {
+          "kind": "kp",
+          "symbol": "."
+        },
+        "R0": {
+          "kind": "kp",
+          "symbol": ","
         }
       }
     }
