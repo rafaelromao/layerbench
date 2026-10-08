@@ -38,19 +38,42 @@ export function settingsSummary(
  * a button, and beside it a line that says what is chosen, so nothing is hidden by being tucked
  * away.
  */
-export function SettingsDialog({ summary, children }: { summary: string; children: ReactNode }) {
+export function SettingsDialog({
+  summary,
+  compact = false,
+  children,
+}: {
+  summary: string;
+  /** On a phone, a gear and no summary, for a bar that must keep to one line there. */
+  compact?: boolean;
+  children: ReactNode;
+}) {
   const dialog = useRef<HTMLDialogElement>(null);
   const title = useId();
   return (
     <div className="flex min-w-0 items-center gap-2">
       <button
         type="button"
-        className="btn btn-sm shrink-0"
+        aria-label="Settings"
+        title="Settings"
+        className={`btn btn-sm shrink-0 ${compact ? 'max-sm:btn-square' : ''}`}
         onClick={() => dialog.current?.showModal()}
       >
-        Settings
+        {compact ? (
+          <>
+            <span className="sm:hidden text-xl leading-none" aria-hidden="true">
+              {/* Text presentation, so no phone draws it as a coloured emoji. */}
+              {'\u2699\uFE0E'}
+            </span>
+            <span className="max-sm:hidden">Settings</span>
+          </>
+        ) : (
+          'Settings'
+        )}
       </button>
-      <span className="text-xs opacity-70 min-w-0 line-clamp-2">{summary}</span>
+      <span className={`text-xs opacity-70 min-w-0 line-clamp-2 ${compact ? 'max-sm:hidden' : ''}`}>
+        {summary}
+      </span>
 
       <dialog ref={dialog} className="modal" aria-labelledby={title}>
         <div className="modal-box max-w-2xl space-y-4">

@@ -77,22 +77,24 @@ export function LayoutBar({
           Save
         </button>
       </div>
-      <div id="analyze-toolbar" className="lb-toolbar flex flex-row flex-wrap items-end gap-3">
-        <label className="form-control lb-wide">
-          <span className="label-text text-xs">Layout</span>
+      {/* On a phone one line, so the board and the editor under it start within the first screen:
+          the picker shows the layout's name without a caption, and Settings is a gear. */}
+      <div id="analyze-toolbar" className="flex items-end gap-2 sm:gap-3">
+        <label className="form-control min-w-0 flex-1 sm:flex-none">
+          <span className="label-text text-xs max-sm:sr-only">Layout</span>
           <select
             name="layout"
             aria-label="Layout"
-            className="select select-sm select-bordered min-w-48"
+            className="select select-sm select-bordered w-full sm:min-w-48"
             value={layoutRef}
             onChange={(e) => onPick(e.target.value)}
           >
             <LayoutOptions saved={saved} current={layoutRef} currentName={layout.name} />
           </select>
         </label>
-        <div className="lb-wide flex min-w-0 flex-1 items-center gap-2">
-          <div className="min-w-0 flex-1">
-            <SettingsDialog summary={settingsSummary(params, corpora, ruleSetName)}>
+        <div className="flex shrink-0 items-center gap-2 sm:min-w-0 sm:flex-1">
+          <div className="sm:min-w-0 sm:flex-1">
+            <SettingsDialog summary={settingsSummary(params, corpora, ruleSetName)} compact>
               <fieldset className="grid gap-2">
                 <legend className="float-left col-span-full text-xs font-semibold">
                   This layout
