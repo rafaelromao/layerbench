@@ -193,8 +193,7 @@
           "symbol": "à"
         },
         "R1": {
-          "kind": "kp",
-          "symbol": "."
+          "kind": "trans"
         },
         "L0": {
           "kind": "hold_tap",
@@ -217,6 +216,40 @@
               {
                 "kind": "kp",
                 "symbol": ","
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "alpha-3",
+      "name": "Alpha 3",
+      "bindings": {
+        "*": {
+          "kind": "trans"
+        },
+        "L0": {
+          "kind": "hold_tap",
+          "tap": {
+            "kind": "macro",
+            "steps": [
+              {
+                "kind": "kp",
+                "symbol": "."
+              },
+              {
+                "kind": "kp",
+                "symbol": " "
+              }
+            ]
+          },
+          "hold": {
+            "kind": "macro",
+            "steps": [
+              {
+                "kind": "kp",
+                "symbol": "."
               }
             ]
           }
