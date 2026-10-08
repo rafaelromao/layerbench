@@ -147,7 +147,8 @@
           "symbol": "z"
         },
         "RHP": {
-          "kind": "none"
+          "kind": "dead_key",
+          "diacritic": "`"
         },
         "LBR": {
           "kind": "kp",
@@ -180,6 +181,18 @@
         "LHI": {
           "kind": "kp",
           "symbol": "y"
+        },
+        "RHI": {
+          "kind": "dead_key",
+          "diacritic": "´"
+        },
+        "RTI": {
+          "kind": "dead_key",
+          "diacritic": "^"
+        },
+        "RBI": {
+          "kind": "dead_key",
+          "diacritic": "~"
         }
       }
     }
