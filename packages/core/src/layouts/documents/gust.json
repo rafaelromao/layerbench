@@ -402,6 +402,10 @@
           "kind": "kp",
           "symbol": "°"
         },
+        "RTM": {
+          "kind": "kp",
+          "symbol": "ñ"
+        },
         "RTR": {
           "kind": "kp",
           "symbol": ";"
