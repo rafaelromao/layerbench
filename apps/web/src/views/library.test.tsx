@@ -1,4 +1,10 @@
-import { BUNDLED_LAYOUTS, bundledLayout, type Layout, toCanonicalJson } from '@layerbench/core';
+import {
+  BUNDLED_LAYOUTS,
+  bundledLayout,
+  CLASSIC_LAYOUTS,
+  type Layout,
+  toCanonicalJson,
+} from '@layerbench/core';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -19,6 +25,19 @@ let counter = 0;
 /** Each test gets its own database, so saved documents never leak between cases. */
 function freshStorage(): IndexedDbAdapter {
   return new IndexedDbAdapter(`layerbench-library-${++counter}`);
+}
+
+/**
+ * Qwerty as written, its letters alone, saved under the name given: every bundled layout types the
+ * accents through Dead keys, so the one that cannot is a saved one.
+ */
+async function savePlain(
+  storage: IndexedDbAdapter,
+  id: string,
+  extra: Partial<Layout> = {},
+): Promise<void> {
+  const plain = CLASSIC_LAYOUTS.find((l) => l.id === 'qwerty') as Layout;
+  await storage.put('layouts', id, toCanonicalJson({ ...plain, id, name: 'Plain', ...extra }));
 }
 
 /** The ranking choices, sort and board filter are in a dialog of their own. */
@@ -266,24 +285,21 @@ describe('Ranking layouts', () => {
   }, 90_000);
 
   it('ranks a layout that cannot write the text’s language after one that can', async () => {
-    // Magic Romak is scored first and types Portuguese; Qwerty, scored after it with a far better
-    // effort, has no key for ã or ç and would skip them for free. Romak, between them, gets a
-    // number too, so the scoring can reach Qwerty.
-    const { client, scored } = scoringOnly([900, 950, 100]);
-    renderRoute('/library?corpus=pt-br-general&sample=10002', {
-      client,
-      storage: freshStorage(),
-    });
+    // Plain has the best effort by far, but no key for ã or ç: it would skip them for free.
+    const storage = freshStorage();
+    await savePlain(storage, 'plain');
+    const client = scoringByName((name) => (name === 'Plain' ? 100 : 500));
+    renderRoute('/library?corpus=pt-br-general&sample=10002', { client, storage });
 
-    await rankingSays(/^Scoring layouts on a sample of [\d,]+ symbols… 3 of/, 60_000);
-    expect(scored).toEqual(['Magic Romak', 'Romak', 'Qwerty']);
-    // First despite its far worse effort: Qwerty is behind it.
-    const names = [...document.querySelectorAll('article h3')].map((h) => h.textContent);
-    expect(names[0]).toBe('Magic Romak');
-    const qwerty = cards().find((c) => c.querySelector('h3')?.textContent === 'Qwerty');
-    expect(qwerty?.textContent).toMatch(/Cannot type .*ç.*ranked after the layouts that can/);
+    // Scored, and checked for the letters Portuguese needs: behind every layout that has them.
+    const plain = () => cards().find((c) => c.querySelector('h3')?.textContent === 'Plain');
+    await waitFor(
+      () =>
+        expect(plain()?.textContent).toMatch(/Cannot type .*ç.*ranked after the layouts that can/),
+      { timeout: 60_000 },
+    );
+    expect(cards().at(-1)).toBe(plain());
   }, 90_000);
-
   it('scores each layout typed without the features left out of the ranking', async () => {
     const { client, requests } = scoringOnly([500]);
     renderRoute('/library?off=macros&sample=10003', { client, storage: freshStorage() });
@@ -296,49 +312,72 @@ describe('Ranking layouts', () => {
   }, 90_000);
 
   it('ranks the layouts that can write the language first', async () => {
-    // Magic Romak writes Spanish through its Dead keys layer; no other bundled layout has an ñ.
-    renderRoute('/library?corpus=es-general&sample=10000', { storage: freshStorage() });
+    // Every bundled layout writes Spanish through its Dead keys layer; Plain has no ñ.
+    const storage = freshStorage();
+    await savePlain(storage, 'plain');
+    renderRoute('/library?corpus=es-general&sample=10000', { storage });
     await rankingSays(/^Lower is better for both/, 60_000);
-    expect(document.body.textContent).toMatch(/ranked after the layouts that can/);
+    const plain = await waitFor(
+      () => {
+        const card = cards().find((c) => c.querySelector('h3')?.textContent === 'Plain');
+        expect(card?.textContent).toMatch(/ranked after the layouts that can/);
+        return card as HTMLElement;
+      },
+      { timeout: 30_000 },
+    );
+    expect(cards().at(-1)).toBe(plain);
     const romak = cards().find((c) => c.querySelector('h3')?.textContent === 'Magic Romak');
     expect(romak?.textContent).not.toMatch(/Cannot type/);
-    expect(cards()[0]).toBe(romak);
   }, 90_000);
-
   it('ranks by the numbers alone when no layout listed can write the language', async () => {
-    // With Magic Romak's board left out, no layout listed has an ñ, so none is behind another.
-    useSession.setState({ hiddenBoards: ['1333+2'] });
-    renderRoute('/library?corpus=es-general&sample=10000', { storage: freshStorage() });
-    await rankingSays(/^Lower is better for both/, 60_000);
-    // Scores of an earlier test may already be in: wait for every layout's letters to be checked.
+    // Two layouts without an ñ, on a board no bundled layout is on, and only that board listed.
+    const storage = freshStorage();
+    const board = { preset: '3x5+3' } as const;
+    await savePlain(storage, 'plain', { geometry: board });
+    const dvorak = CLASSIC_LAYOUTS.find((l) => l.id === 'dvorak') as Layout;
+    await storage.put(
+      'layouts',
+      'plain-dvorak',
+      toCanonicalJson({ ...dvorak, id: 'plain-dvorak', name: 'Plain Dvorak', geometry: board }),
+    );
+    const bundledBoards = [
+      ...new Set(BUNDLED_LAYOUTS.map((l) => ('preset' in l.geometry ? l.geometry.preset : ''))),
+    ];
+    useSession.setState({ hiddenBoards: bundledBoards });
+    renderRoute('/library?corpus=es-general&sample=10000', { storage });
     expect(
-      await rankingSays(/None of these layouts types every letter Español needs\.$/),
+      await rankingSays(/None of these layouts types every letter Español needs\.$/, 60_000),
     ).toBeTruthy();
+    await waitFor(() => expect(cards()).toHaveLength(2), { timeout: 30_000 });
     const efforts = cards().map((c) => valueOn(c, 'Effort'));
     expect(efforts).toEqual([...efforts].sort((a, b) => a - b));
     expect(document.body.textContent).not.toMatch(/ranked after the layouts that can/);
   }, 90_000);
-
   it('says what share of the text a layout skips', async () => {
-    renderRoute('/library?corpus=pt-br-general&sample=10000', { storage: freshStorage() });
+    const storage = freshStorage();
+    await savePlain(storage, 'plain');
+    renderRoute('/library?corpus=pt-br-general&sample=10000', { storage });
     await rankingSays(/^Lower is better for both/, 60_000);
+    const plain = await waitFor(
+      () => {
+        const card = cards().find((c) => c.querySelector('h3')?.textContent === 'Plain');
+        expect(card?.querySelector('.lb-skips')?.textContent).toMatch(
+          /skips \d+\.\d\d% of the text/,
+        );
+        return card as HTMLElement;
+      },
+      { timeout: 30_000 },
+    );
     expect(screen.getByText(/come last\.$/)).toBeInTheDocument();
+    expect(cards().at(-1)).toBe(plain);
+    // Qwerty as bundled types every letter Portuguese needs, through Dead keys.
     const qwerty = cards().find((c) => c.querySelector('h3')?.textContent === 'Qwerty');
-    expect(qwerty?.querySelector('.lb-skips')?.textContent).toMatch(/skips \d+\.\d\d% of the text/);
-    // Magic Romak types every letter Portuguese needs, and Qwerty does not.
-    const romak = cards().find((c) => c.querySelector('h3')?.textContent === 'Magic Romak');
-    expect(romak?.textContent).not.toMatch(/Cannot type/);
-    expect(cards()[0]).toBe(romak);
+    expect(qwerty?.textContent).not.toMatch(/Cannot type/);
   }, 90_000);
-
   it('flags a layout that cannot write a language it is for, without ranking it last', async () => {
     const storage = freshStorage();
-    const qwerty = bundledLayout('qwerty') as Layout;
-    await storage.put(
-      'layouts',
-      'mine',
-      toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine', languages: ['en', 'es'] }),
-    );
+    await savePlain(storage, 'mine', { name: 'Mine', languages: ['en', 'es'] });
+    await savePlain(storage, 'plain');
     renderRoute('/library?corpus=en-general&sample=10000', { storage });
     await rankingSays(/^Lower is better for both/, 60_000);
     const mine = await waitFor(
@@ -352,11 +391,16 @@ describe('Ranking layouts', () => {
     expect(mine.querySelector('.lb-lacks')?.textContent).toBe(
       'Cannot type ñ á é í ó ú ü, which Español needs.',
     );
-    // On an English text it skips nothing for Spanish: ranked by its numbers, beside Qwerty.
+    // On an English text it skips nothing for Spanish: ranked by its numbers, beside the same
+    // keys saved without the languages.
     expect(mine.textContent).not.toMatch(/ranked after/);
     expect(document.body.textContent).not.toMatch(/come last/);
-    const qwertyCard = cards().find((c) => c.querySelector('h3')?.textContent === 'Qwerty');
-    expect(valueOn(mine, 'Effort')).toBe(valueOn(qwertyCard as HTMLElement, 'Effort'));
+    const plain = await waitFor(() => {
+      const card = cards().find((c) => c.querySelector('h3')?.textContent === 'Plain');
+      expect(card).toBeTruthy();
+      return card as HTMLElement;
+    });
+    expect(valueOn(mine, 'Effort')).toBe(valueOn(plain, 'Effort'));
   }, 90_000);
 });
 

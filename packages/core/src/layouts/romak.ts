@@ -537,7 +537,8 @@ const ROMAK34_ALPHA2: Record<string, Binding> = {
   RBM: accent('â'),
   RBR: accent('ê'),
   L1: kp("'"),
-  R1: kp("'"),
+  // Dead keys, as on Magic Romak: the accents Alpha 2 does not have, for Spanish, French and Italian.
+  R1: { kind: 'sl', layer: 'dead' },
 };
 
 export const romak34: Layout = {
@@ -563,6 +564,7 @@ export const romak34: Layout = {
     { id: 'altrep2', name: 'Alt repeat 2', bindings: ALTREP2_BINDINGS },
     NUMBERS_LAYER,
     SYMBOLS_LAYER,
+    DEAD_KEYS_LAYER,
   ],
   combos: [
     {

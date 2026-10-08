@@ -112,8 +112,13 @@ describe('Compare', () => {
         .getAllByRole('tab')
         .map((t) => t.textContent),
     ).toEqual(['Alpha 1', 'Alpha 2', 'Ç extension', 'Numbers', 'Symbols', 'Dead keys']);
-    // A layout of one layer has nothing to choose.
-    expect(screen.queryByRole('tablist', { name: 'Layers of B' })).toBeNull();
+    // Graphite's own layer, then the default ones every bundled layout has.
+    const tabsB = screen.getByRole('tablist', { name: 'Layers of B' });
+    expect(
+      within(tabsB)
+        .getAllByRole('tab')
+        .map((t) => t.textContent),
+    ).toEqual(['Base', 'Numbers', 'Symbols', 'Dead keys']);
 
     const boardA = () => document.getElementById('kb-A')?.textContent ?? '';
     expect(boardA()).not.toContain('qu');

@@ -24,7 +24,7 @@ describe('saved documents', () => {
 
     const entries = await adapter.list('layouts');
     expect(entries).toHaveLength(1);
-    expect(entries[0]).toMatchObject({ id, name: 'Colemak-DH', layers: 1, geometry: '3x5+2' });
+    expect(entries[0]).toMatchObject({ id, name: 'Colemak-DH', layers: 4, geometry: '3x5+2' });
 
     const loaded = await adapter.get('layouts', id);
     expect(loaded?.doc).toEqual(doc);

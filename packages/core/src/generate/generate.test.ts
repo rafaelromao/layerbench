@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Layout } from '../layout/types.js';
-import { BUNDLED_LAYOUTS } from '../layouts/index.js';
+import { CLASSIC_LAYOUTS, SMALL_LAYOUTS } from '../layouts/index.js';
 import { toLayout } from './emit.js';
 import { scoreLayout } from './engine.js';
 import {
@@ -88,7 +88,8 @@ describe('the sample', () => {
 describe('the exact pass', () => {
   it('scores bundled flat layouts as the engine does', () => {
     let checked = 0;
-    for (const layout of BUNDLED_LAYOUTS) {
+    // The bundled layouts as written, one layer each, before the default layers join them.
+    for (const layout of [...CLASSIC_LAYOUTS, ...SMALL_LAYOUTS]) {
       const design = designOf(layout);
       if (!design) continue;
       const exact = scoreExact(sample, design);

@@ -1,8 +1,10 @@
+import { getGeometryPreset } from '../geometry/presets.js';
 import type { Layout } from '../layout/types.js';
 import { CLASSIC_LAYOUTS, classicLayout } from './classic.js';
 import { DOCUMENT_LAYOUTS } from './documents.js';
 import { magicRomak, romak24, romak34 } from './romak.js';
 import { SMALL_DEFS } from './small.js';
+import { withDefaultLayers } from './templates.js';
 
 export { CLASSIC_DEFS, CLASSIC_LAYOUTS, classicLayout } from './classic.js';
 export { DOCUMENT_LAYOUTS, documentLayout } from './documents.js';
@@ -17,13 +19,28 @@ export {
   defaultLayers,
   NUMBERS_CORE,
   SYMBOLS_CORE,
+  withDefaultLayers,
 } from './templates.js';
 
 /** Layouts made for small boards: thumb letters, chords, adaptive and repeat keys. */
 export const SMALL_LAYOUTS: Layout[] = SMALL_DEFS.map(classicLayout);
 
-/** The layouts written here in code: the set the app started with, and Romak back among them. */
-const BUILT_IN_LAYOUTS: Layout[] = [magicRomak, romak34, ...CLASSIC_LAYOUTS, ...SMALL_LAYOUTS];
+/** A layout with the default Numbers, Symbols and Dead keys layers, and the thumbs that reach them. */
+function withDefaults(layout: Layout): Layout {
+  const g = layout.geometry;
+  return 'preset' in g ? withDefaultLayers(layout, getGeometryPreset(g.preset)) : layout;
+}
+
+/**
+ * The layouts written here in code: the set the app started with, and Romak back among them. Each
+ * has the default layers; Magic Romak and Romak have their own Numbers and Symbols, and Dead keys.
+ */
+const BUILT_IN_LAYOUTS: Layout[] = [
+  magicRomak,
+  romak34,
+  ...CLASSIC_LAYOUTS.map(withDefaults),
+  ...SMALL_LAYOUTS.map(withDefaults),
+];
 
 /** The layouts the app offers: those written here, then those added since as documents. */
 export const BUNDLED_LAYOUTS: Layout[] = [...BUILT_IN_LAYOUTS, ...DOCUMENT_LAYOUTS];

@@ -1,4 +1,4 @@
-import { bundledLayout, type Layout, toCanonicalJson } from '@layerbench/core';
+import { bundledLayout, CLASSIC_LAYOUTS, type Layout, toCanonicalJson } from '@layerbench/core';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -541,35 +541,35 @@ describe('Edit', () => {
     const user = userEvent.setup();
     await openEdit();
 
-    // Layers is the panel the editor opens on.
-    await user.type(screen.getByLabelText('New layer name'), 'Symbols');
+    // Layers is the panel the editor opens on. New layers go after the default ones Qwerty has.
+    await user.type(screen.getByLabelText('New layer name'), 'Nav');
     await user.click(screen.getByRole('button', { name: '+ layer' }));
-    await user.type(screen.getByLabelText('New layer name'), 'Numbers');
+    await user.type(screen.getByLabelText('New layer name'), 'Fun');
     await user.click(screen.getByRole('button', { name: '+ layer' }));
     const order = () =>
       within(screen.getByRole('tablist', { name: 'Layers' }))
         .getAllByRole('tab')
         .map((t) => t.textContent);
-    expect(order()).toEqual(['Base', 'Symbols', 'Numbers']);
+    expect(order()).toEqual(['Base', 'Numbers', 'Symbols', 'Dead keys', 'Nav', 'Fun']);
 
     // The base layer, which every key falls back to, stays first and cannot go.
     expect(screen.getByRole('button', { name: 'Remove Base' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Move Base up' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Move Symbols up' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Move Numbers up' })).toBeDisabled();
 
-    await user.click(screen.getByRole('button', { name: 'Move Numbers up' }));
-    expect(order()).toEqual(['Base', 'Numbers', 'Symbols']);
+    await user.click(screen.getByRole('button', { name: 'Move Fun up' }));
+    expect(order()).toEqual(['Base', 'Numbers', 'Symbols', 'Dead keys', 'Fun', 'Nav']);
 
-    await user.click(screen.getByRole('button', { name: 'Duplicate Symbols' }));
-    expect(order()).toEqual(['Base', 'Numbers', 'Symbols', 'Symbols copy']);
+    await user.click(screen.getByRole('button', { name: 'Duplicate Nav' }));
+    expect(order()).toEqual(['Base', 'Numbers', 'Symbols', 'Dead keys', 'Fun', 'Nav', 'Nav copy']);
 
     // A tab is renamed where it stands.
-    await user.dblClick(screen.getByRole('tab', { name: 'Symbols copy' }));
-    const field = screen.getByLabelText('Rename Symbols copy');
+    await user.dblClick(screen.getByRole('tab', { name: 'Nav copy' }));
+    const field = screen.getByLabelText('Rename Nav copy');
     await user.clear(field);
     await user.type(field, 'Extra{Enter}');
     expect(await screen.findByRole('tab', { name: 'Extra' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Name of layer symbols-copy')).toHaveValue('Extra');
+    expect(screen.getByLabelText('Name of layer nav-copy')).toHaveValue('Extra');
 
     await user.click(screen.getByRole('button', { name: 'Remove Extra' }));
     await waitFor(() => expect(screen.queryByRole('tab', { name: 'Extra' })).toBeNull());
@@ -947,7 +947,7 @@ describe('Edit', () => {
     await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Tap-hold' }));
     // A letter keeps its tap; a layer is the first thing a hold is given.
     expect(
-      await screen.findByRole('button', { name: 'Key LHM: d, hold Base' }),
+      await screen.findByRole('button', { name: 'Key LHM: d, hold Numb' }),
     ).toBeInTheDocument();
 
     await user.selectOptions(
@@ -1001,10 +1001,10 @@ describe('Edit', () => {
     await openEdit();
 
     await user.click(screen.getByRole('tab', { name: 'Layers' }));
-    await user.type(screen.getByLabelText('New layer name'), 'Numbers');
+    await user.type(screen.getByLabelText('New layer name'), 'Nav');
     await user.click(screen.getByRole('button', { name: '+ layer' }));
 
-    const tab = await screen.findByRole('tab', { name: 'Numbers' });
+    const tab = await screen.findByRole('tab', { name: 'Nav' });
     // Adding a layer moves to it; the key being sent lives on the one before.
     await user.click(screen.getByRole('tab', { name: 'Base' }));
     await screen.findByRole('button', { name: 'Key LHM: d' });
@@ -1025,9 +1025,9 @@ describe('Edit', () => {
     await openEdit();
 
     await user.click(screen.getByRole('tab', { name: 'Layers' }));
-    await user.type(screen.getByLabelText('New layer name'), 'Numbers');
+    await user.type(screen.getByLabelText('New layer name'), 'Nav');
     await user.click(screen.getByRole('button', { name: '+ layer' }));
-    const numbers = await screen.findByRole('tab', { name: 'Numbers' });
+    const nav = await screen.findByRole('tab', { name: 'Nav' });
     const base = screen.getByRole('tab', { name: 'Base' });
     await user.click(base);
 
@@ -1042,10 +1042,10 @@ describe('Edit', () => {
 
     await user.selectOptions(
       within(editor).getByRole('combobox', { name: 'Send the selected keys to another layer' }),
-      'Numbers',
+      'Nav',
     );
     await waitFor(() => {
-      expect(numbers).toHaveAttribute('aria-selected', 'true');
+      expect(nav).toHaveAttribute('aria-selected', 'true');
     });
     expect(await screen.findByRole('button', { name: 'Key LHM: d' })).toBeInTheDocument();
     expect(key('Key LHI: f')).toBeInTheDocument();
@@ -1148,10 +1148,10 @@ describe('Edit', () => {
 
     await user.click(key('Key LHM: d'));
     await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Layer' }));
-    expect(await screen.findByRole('button', { name: 'Key LHM: Base (hold)' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Key LHM: Numb (hold)' })).toBeInTheDocument();
 
     await user.click(within(await inspector('LHM')).getByRole('radio', { name: 'One-shot' }));
-    expect(await screen.findByRole('button', { name: 'Key LHM: Base (1×)' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Key LHM: Numb (1×)' })).toBeInTheDocument();
     expect(screen.getByText('unsaved')).toBeInTheDocument();
   });
 
@@ -1471,9 +1471,11 @@ describe('Analyze, while editing', () => {
   }, 60_000);
 
   it('lists every character of the text the layout cannot type', async () => {
-    renderRoute('/analyze?layout=qwerty&corpus=pt-br-general&sample=20000', {
-      storage: freshStorage(),
-    });
+    // Every bundled layout reaches the accents through Dead keys; Qwerty as written does not.
+    const storage = freshStorage();
+    const plain = CLASSIC_LAYOUTS.find((l) => l.id === 'qwerty') as Layout;
+    await seed(storage, 'qwerty', 'plain', { name: 'Plain', layers: plain.layers });
+    renderRoute('/analyze?layout=saved%3Aplain&corpus=pt-br-general&sample=20000', { storage });
     const list = await screen.findByRole(
       'list',
       { name: 'Characters the layout cannot type' },

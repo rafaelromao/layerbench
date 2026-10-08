@@ -48,7 +48,9 @@ either way.
 
 A layout that has no key for letters the text's language needs skips them, and skipping is free.
 Each card says what share of the text it skips, and on a Portuguese text, say, the layouts that
-cannot type `ã` or `ç` are ranked after the ones that can. A layout is also held to the languages
+cannot type `ã` or `ç` are ranked after the ones that can. Every layout that comes with the app types
+them, through its [Dead keys](editing.md#default-layers) layer; a layout of your own without them
+is the one ranked after. A layout is also held to the languages
 it is for, chosen in **Settings** in **Analyze**: one for Spanish that has no `ñ` says so on its
 card, whatever the text. It is only flagged for that, not ranked after the others: on an English
 text it skipped nothing for Spanish.

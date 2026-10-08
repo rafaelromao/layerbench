@@ -5,6 +5,8 @@ import { initialUndoState, type UndoState, undoable } from './undo.js';
 
 const reducer = undoable(editReducer);
 const qwerty = bundledLayout('qwerty') as Layout;
+/** Where the Nav layer lands: after Qwerty's own and default layers. */
+const NAV = qwerty.layers.length;
 
 /** Qwerty with an empty Nav layer after its base, back on the base layer. */
 function withNav(): UndoState {
@@ -41,24 +43,24 @@ describe('several keys selected', () => {
     const before = pick(withNav(), 'LHM', 'LHI');
     const sent = reducer(before, { type: 'sendSelection', layerId: 'nav', mode: 'move' });
     // The board follows them, still selected.
-    expect(sent.layer).toBe(1);
+    expect(sent.layer).toBe(NAV);
     expect(selectionOf(sent)).toEqual(['LHM', 'LHI']);
-    expect(at(sent, 1, 'LHM')).toEqual(at(before, 0, 'LHM'));
-    expect(at(sent, 1, 'LHI')).toEqual(at(before, 0, 'LHI'));
+    expect(at(sent, NAV, 'LHM')).toEqual(at(before, 0, 'LHM'));
+    expect(at(sent, NAV, 'LHI')).toEqual(at(before, 0, 'LHI'));
     expect(at(sent, 0, 'LHM')).toBeUndefined();
     expect(at(sent, 0, 'LHI')).toBeUndefined();
     expect(sent.past).toHaveLength(before.past.length + 1);
 
     const undone = reducer(sent, { type: 'undo' });
     expect(at(undone, 0, 'LHM')).toEqual(at(before, 0, 'LHM'));
-    expect(at(undone, 1, 'LHI')).toBeUndefined();
+    expect(at(undone, NAV, 'LHI')).toBeUndefined();
     expect(selectionOf(undone)).toEqual(['LHM', 'LHI']);
   });
 
   it('copies them, keeping them where they were', () => {
     const before = pick(withNav(), 'LHM', 'LHI');
     const copied = reducer(before, { type: 'sendSelection', layerId: 'nav', mode: 'copy' });
-    expect(at(copied, 1, 'LHM')).toEqual(at(before, 0, 'LHM'));
+    expect(at(copied, NAV, 'LHM')).toEqual(at(before, 0, 'LHM'));
     expect(at(copied, 0, 'LHM')).toEqual(at(before, 0, 'LHM'));
     expect(at(copied, 0, 'LHI')).toEqual(at(before, 0, 'LHI'));
   });
@@ -81,8 +83,8 @@ describe('several keys selected', () => {
       to: { kind: 'layer', layerId: 'nav' },
       mode: 'swap',
     });
-    expect(at(dragged, 1, 'LHM')).toEqual(at(before, 0, 'LHM'));
-    expect(at(dragged, 1, 'LHI')).toEqual(at(before, 0, 'LHI'));
+    expect(at(dragged, NAV, 'LHM')).toEqual(at(before, 0, 'LHM'));
+    expect(at(dragged, NAV, 'LHI')).toEqual(at(before, 0, 'LHI'));
 
     const other = reducer(before, {
       type: 'dropKey',
@@ -90,8 +92,8 @@ describe('several keys selected', () => {
       to: { kind: 'layer', layerId: 'nav' },
       mode: 'swap',
     });
-    expect(at(other, 1, 'LTP')).toEqual(at(before, 0, 'LTP'));
-    expect(at(other, 1, 'LHM')).toBeUndefined();
+    expect(at(other, NAV, 'LTP')).toEqual(at(before, 0, 'LTP'));
+    expect(at(other, NAV, 'LHM')).toBeUndefined();
     expect(selectionOf(other)).toEqual(['LTP']);
   });
 });

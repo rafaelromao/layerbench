@@ -3,7 +3,7 @@ import { structureHash } from '../analysis/hash.js';
 import { normalizeText } from '../corpus/normalize.js';
 import { FIXTURE_EN, FIXTURE_PT } from '../fixtures/index.js';
 import { compileLayout } from '../layout/compile.js';
-import { bundledLayout } from '../layouts/index.js';
+import { bundledLayout, CLASSIC_LAYOUTS } from '../layouts/index.js';
 import { simulate } from '../sim/resolver.js';
 import { classifyBand } from './bands.js';
 import { BANDS, catalogRules, sfbWhere } from './catalog.js';
@@ -15,8 +15,14 @@ import type { RuleSet } from './types.js';
 const OPTS = { caseMode: 'fold', crossWord: 'reset' } as const;
 const text = `${FIXTURE_EN} ${FIXTURE_PT}`;
 
+/**
+ * A layout by id, a classic one as written: its letters on one layer, one press a character. The
+ * bundled one has the default layers, and types the Portuguese accents through Dead keys.
+ */
+const layoutOf = (id: string) => CLASSIC_LAYOUTS.find((l) => l.id === id) ?? bundledLayout(id)!;
+
 function run(layoutId: string, ruleSet: RuleSet) {
-  const compiled = compileLayout(bundledLayout(layoutId)!);
+  const compiled = compileLayout(layoutOf(layoutId));
   const sim = simulate(compiled, normalizeText(text, OPTS), OPTS);
   const { results, score } = evaluate(sim.tables, compiled, ruleSet);
   return { results, score, value: (id: string) => results.find((r) => r.id === id)?.value ?? null };
@@ -155,7 +161,7 @@ describe('rules engine', () => {
   });
 
   it('counts each word’s space once in cyanophage’s keystrokes, whether space is counted or not', () => {
-    const compiled = compileLayout(bundledLayout('qwerty')!);
+    const compiled = compileLayout(layoutOf('qwerty'));
     const sim = simulate(compiled, normalizeText(text, OPTS), OPTS);
     const st = sim.tables.stats;
     const sfbOf = (rs: RuleSet) =>
@@ -181,7 +187,7 @@ describe('rules engine', () => {
 
   it('divides pairs by the text’s own pairs, so extra presses do not thin them out', () => {
     const tablesOf = (id: string) => {
-      const compiled = compileLayout(bundledLayout(id)!);
+      const compiled = compileLayout(layoutOf(id));
       return simulate(compiled, normalizeText(text, OPTS), OPTS).tables;
     };
     // A layout typing each character with one press has exactly the text's totals: nothing it

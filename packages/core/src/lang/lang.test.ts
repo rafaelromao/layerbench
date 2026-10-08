@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SOFT, normalizeText } from '../corpus/normalize.js';
 import { compileLayout } from '../layout/compile.js';
-import { bundledLayout } from '../layouts/index.js';
+import { bundledLayout, CLASSIC_LAYOUTS } from '../layouts/index.js';
 import { simulate } from '../sim/resolver.js';
 import { layoutLanguageCoverage, producibleSymbols } from './coverage.js';
 import { languageKeep, languageProfile, languageSoft, languagesToJudge } from './profiles.js';
+
+/** Qwerty as written, its letters alone: the bundled one has the default layers and their accents. */
+const plainQwerty = () => compileLayout(CLASSIC_LAYOUTS.find((l) => l.id === 'qwerty')!);
 
 describe('language profiles', () => {
   it('matches an exact tag, then falls back to the base language', () => {
@@ -40,7 +43,7 @@ describe('language profiles', () => {
     });
     expect(es).toBe('¿cómo estás? ¡bien!');
 
-    const compiled = compileLayout(bundledLayout('qwerty')!);
+    const compiled = plainQwerty();
     const hard = simulate(compiled, es, { caseMode: 'fold', crossWord: 'reset' });
     expect([...hard.coverage.unproducible.keys()]).toEqual(expect.arrayContaining(['¿', '¡']));
 
@@ -58,7 +61,7 @@ describe('language profiles', () => {
 
 describe('layout coverage', () => {
   const magic = compileLayout(bundledLayout('magic-romak')!);
-  const qwerty = compileLayout(bundledLayout('qwerty')!);
+  const qwerty = plainQwerty();
 
   it('finds every accent Magic Romak can type', () => {
     const p = producibleSymbols(magic);
@@ -67,7 +70,7 @@ describe('layout coverage', () => {
     }
   });
 
-  it('reports Portuguese as fully covered by Magic Romak and not by Qwerty', () => {
+  it('reports Portuguese as fully covered by Magic Romak and not by Qwerty without accents', () => {
     expect(layoutLanguageCoverage(magic, 'pt-BR')?.missingRequired).toEqual([]);
     expect(layoutLanguageCoverage(qwerty, 'pt-BR')?.missingRequired.length).toBeGreaterThan(0);
   });

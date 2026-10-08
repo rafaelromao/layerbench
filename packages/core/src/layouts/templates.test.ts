@@ -5,6 +5,8 @@ import { LANGUAGE_PROFILES } from '../lang/profiles.js';
 import { compileLayout } from '../layout/compile.js';
 import type { Binding, Layout } from '../layout/types.js';
 import { explain } from '../sim/resolver.js';
+import { CLASSIC_LAYOUTS } from './classic.js';
+import { BUNDLED_LAYOUTS, bundledLayout, SMALL_LAYOUTS } from './index.js';
 import { magicRomak } from './romak.js';
 import {
   DEAD_KEYS_CORE,
@@ -154,5 +156,82 @@ describe("Magic Romak's layers are the defaults on its board", () => {
     const t = trace(magicRomak, 'ñ è');
     expect(t.out).toBe('ñ è');
     expect(t.keys).toEqual(['R0', 'R1', 'RTM', 'L0', 'R0', 'R1', 'LBI', 'RHR']);
+  });
+});
+
+describe('the default layers on every bundled layout', () => {
+  const before = new Map([...CLASSIC_LAYOUTS, ...SMALL_LAYOUTS].map((l) => [l.id, l]));
+
+  for (const layout of BUNDLED_LAYOUTS) {
+    describe(layout.name, () => {
+      const compiled = compileLayout(layout);
+      const producible = producibleSymbols(compiled);
+
+      it('types every digit and symbol of the default layers', () => {
+        const missing = [...'0123456789', ...defaultLayerSymbols()].filter(
+          (c) => !producible.has(c),
+        );
+        expect(missing).toEqual([]);
+      });
+
+      it('writes all five languages', () => {
+        for (const tag of Object.keys(LANGUAGE_PROFILES)) {
+          expect([tag, layoutLanguageCoverage(compiled, tag)?.missingRequired]).toEqual([tag, []]);
+        }
+      });
+
+      const original = layout.id ? before.get(layout.id) : undefined;
+      if (original) {
+        it('keeps every key it had, a thumb holding a layer still typing what it typed', () => {
+          const base = layout.layers[0].bindings;
+          for (const [id, b] of Object.entries(original.layers[0].bindings)) {
+            const now = base[id];
+            expect([id, now?.kind === 'hold_tap' ? now.tap : now]).toEqual([id, b]);
+          }
+          expect(layout.layers.slice(0, original.layers.length)).toEqual([
+            { ...original.layers[0], bindings: base },
+            ...original.layers.slice(1),
+          ]);
+        });
+      }
+    });
+  }
+});
+
+describe('the default layers, layout by layout', () => {
+  const base = (id: string) => bundledLayout(id)?.layers[0].bindings ?? {};
+  const num = (id: string) => bundledLayout(id)?.layers.find((l) => l.id === 'num')?.bindings ?? {};
+  const holds = (layer: string, tap: Binding) => ({
+    kind: 'hold_tap',
+    tap,
+    hold: { kind: 'mo', layer },
+  });
+  const space: Binding = { kind: 'kp', symbol: ' ' };
+  const toDead: Binding = { kind: 'sl', layer: 'dead' };
+
+  it('hold Numbers on the space key and Symbols on the inner thumb of the other hand, which taps Dead keys', () => {
+    expect(base('qwerty').L1).toEqual(holds('num', space));
+    expect(base('qwerty').R0).toEqual(holds('sym', toDead));
+    expect(num('qwerty').R0).toEqual(holds('sym', space));
+    expect(num('qwerty').R1).toEqual({ kind: 'kp', symbol: '0' });
+  });
+
+  it('take the innermost free thumb for Symbols, past one with a letter', () => {
+    expect(base('hands-down-neu').R0).toEqual({ kind: 'kp', symbol: 'j' });
+    expect(base('hands-down-neu').R1).toEqual(holds('sym', toDead));
+  });
+
+  it('tap Dead keys from Numbers where every thumb types something, and keep 0 by the keypad', () => {
+    expect(base('finch').R0).toEqual(holds('sym', { kind: 'kp', symbol: 'e' }));
+    expect(num('finch').R0).toEqual(holds('sym', toDead));
+    expect(num('finch').RBC).toEqual({ kind: 'kp', symbol: '0' });
+    const t = trace(bundledLayout('finch') as Layout, 'ñ');
+    expect(t.out).toBe('ñ');
+    expect(t.keys).toEqual(['L0', 'R0', 'RTM']);
+  });
+
+  it('hold Numbers on the left inner thumb when no thumb types space', () => {
+    expect(base('uno').L0).toEqual(holds('num', { kind: 'kp', symbol: 'a' }));
+    expect(base('uno').R0).toEqual(holds('sym', { kind: 'kp', symbol: 'r' }));
   });
 });

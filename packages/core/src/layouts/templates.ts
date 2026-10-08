@@ -1,5 +1,5 @@
-import type { Geometry } from '../geometry/types.js';
-import type { Binding, LayerDef } from '../layout/types.js';
+import type { Geometry, Hand } from '../geometry/types.js';
+import type { Binding, LayerDef, Layout } from '../layout/types.js';
 
 /**
  * The default layers: Numbers, Symbols and Dead keys, for any board.
@@ -228,6 +228,111 @@ export function defaultLayers(geometry: Geometry): DefaultLayers {
     });
   layers.push({ id: deadKeys, name: 'Dead keys', bindings: bind(have, acc) });
   return { layers, base, spaceKey };
+}
+
+/**
+ * A layout given the default layers, keeping every key it has: Numbers, Symbols and Dead keys after
+ * its own layers, and thumbs that reach them, as on a new layout. The key that types space also
+ * holds Numbers, or the left inner thumb does where no thumb types space. A thumb of the other hand
+ * holds Symbols: the innermost with nothing on it, which also taps a one-shot to Dead keys, or else
+ * the innermost, still typing what it typed. Without a free thumb for Dead keys, that thumb taps it
+ * from Numbers. On Numbers it taps space, the space thumb being held, and `0` goes on another thumb
+ * of its hand.
+ *
+ * A layout that already has a layer of the same id, or a board with one space bar for both thumbs,
+ * is left as it is.
+ */
+export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
+  const { numbers, symbols, deadKeys } = DEFAULT_LAYER_IDS;
+  const taken = new Set(layout.layers.map((l) => l.id));
+  if (geometry.family === 'rowstagger') return layout;
+  if (Object.values(DEFAULT_LAYER_IDS).some((id) => taken.has(id))) return layout;
+
+  const [first, ...rest] = layout.layers;
+  const at = (id: string): Binding | undefined => first.bindings[id] ?? first.bindings['*'];
+  const free = (id: string) => {
+    const b = at(id);
+    return !b || b.kind === 'none' || b.kind === 'trans';
+  };
+  // A tap-hold cannot be the tap of another.
+  const holdable = (id: string) => {
+    const b = at(id);
+    return !b || (b.kind !== 'hold_tap' && b.kind !== 'lt');
+  };
+  const types = (id: string, symbol: string) => {
+    const b = at(id);
+    return b?.kind === 'kp' && b.symbol === symbol;
+  };
+  const thumbs = geometry.keys.filter((k) => k.thumb).sort((a, b) => a.col - b.col);
+  const handOf = (id: string) => thumbs.find((k) => k.id === id)?.hand;
+  const ofHand = (hand: Hand) => thumbs.filter((k) => k.hand === hand).map((k) => k.id);
+
+  const declared = layout.keys.space;
+  const spaceThumb =
+    handOf(declared) && types(declared, ' ')
+      ? declared
+      : thumbs.find((k) => types(k.id, ' ') && holdable(k.id))?.id;
+  const numbersKey = spaceThumb ?? ofHand('L').find(holdable);
+  const hand = numbersKey ? handOf(numbersKey) : undefined;
+  if (!numbersKey || !hand || !holdable(numbersKey)) return layout;
+  const otherHand: Hand = hand === 'L' ? 'R' : 'L';
+  const candidates = ofHand(otherHand).filter(holdable);
+  const symbolsKey = candidates.find(free) ?? candidates[0];
+  if (!symbolsKey) return layout;
+
+  const toDeadKeys: Binding = { kind: 'sl', layer: deadKeys };
+  const deadOnSymbolsKey = free(symbolsKey);
+  const deadKey = deadOnSymbolsKey
+    ? undefined
+    : [...ofHand(otherHand), ...ofHand(hand)].find(
+        (id) => id !== numbersKey && id !== symbolsKey && free(id),
+      );
+  const fromNumbers = !deadOnSymbolsKey && deadKey === undefined;
+
+  const baseBindings: Record<string, Binding> = {
+    ...first.bindings,
+    [numbersKey]: {
+      kind: 'hold_tap',
+      tap: at(numbersKey) ?? { kind: 'none' },
+      hold: { kind: 'mo', layer: numbers },
+    },
+    [symbolsKey]: {
+      kind: 'hold_tap',
+      tap: deadOnSymbolsKey ? toDeadKeys : (at(symbolsKey) as Binding),
+      hold: { kind: 'mo', layer: symbols },
+    },
+  };
+  if (deadKey) baseBindings[deadKey] = toDeadKeys;
+
+  // The defaults' thumbs on Numbers and Symbols assume space on L0 and the Symbols thumb on R0:
+  // those go, and the roles are given to the thumbs chosen here. Numbers' thumbs are all roles; on
+  // Symbols, what the defaults put on another thumb stays where it does not land on one of the two,
+  // and the one-shot layers keep theirs, nothing being held there.
+  const thumbIds = new Set(thumbs.map((k) => k.id));
+  const have = (id: string) => geometry.keys.some((k) => k.id === id);
+  const zero = ofHand(otherHand).find((id) => id !== symbolsKey);
+  const roles = new Set(['L0', 'R0', numbersKey, symbolsKey]);
+  const layers = defaultLayers(geometry).layers.map((l): LayerDef => {
+    const bindings = Object.fromEntries(
+      Object.entries(l.bindings).filter(
+        ([id]) => !thumbIds.has(id) || (l.id !== numbers && (l.id !== symbols || !roles.has(id))),
+      ),
+    );
+    if (l.id === numbers) {
+      bindings[symbolsKey] = {
+        kind: 'hold_tap',
+        tap: fromNumbers ? toDeadKeys : kp(' '),
+        hold: { kind: 'mo', layer: symbols },
+      };
+      // With no other thumb there, beside the keypad: the outer top key, or the inner column.
+      const spot = zero ?? ['RTP', 'RBC', 'RHC'].find((id) => have(id) && !bindings[id]);
+      if (spot) bindings[spot] = kp('0');
+    }
+    if (l.id === symbols && types(numbersKey, ' ')) bindings[numbersKey] = kp(' ');
+    return { ...l, bindings };
+  });
+
+  return { ...layout, layers: [{ ...first, bindings: baseBindings }, ...rest, ...layers] };
 }
 
 /** Every character the default layers type directly, for tests and documentation. */

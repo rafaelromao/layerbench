@@ -168,6 +168,12 @@ Symbols, and tapped turns on Dead keys for one key. A board without those thumbs
 bottom row, gets the same layers arranged to fit it, and keys beyond the ones the layers use let the
 layer below show through. The board shows where everything went.
 
+Every layout that comes with the app has them too, with all of its own keys where they were. The key
+that types space also holds Numbers, and a thumb of the other hand holds Symbols and taps Dead keys:
+the innermost one with nothing on it, or else the innermost, still typing what it typed. Where no
+thumb is free, Dead keys is tapped from Numbers instead. Magic Romak and Romak have Numbers and
+Symbols of their own, and reach Dead keys from Alpha 2.
+
 ### Which layer wins
 
 When two layers are on at once, a key comes from the one further down the list. A key that is

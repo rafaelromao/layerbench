@@ -88,10 +88,12 @@ describe('small-board layouts', () => {
     if (!found) throw new Error(`no bundled layout ${id}`);
     return found;
   };
+  // A thumb that also holds a default layer still types its letter when tapped.
   const keyOf = (id: string, symbol: string) =>
-    Object.entries(layout(id).layers[0].bindings).find(
-      ([, b]) => b.kind === 'kp' && b.symbol === symbol,
-    )?.[0];
+    Object.entries(layout(id).layers[0].bindings).find(([, b]) => {
+      const tap = b.kind === 'hold_tap' ? b.tap : b;
+      return tap.kind === 'kp' && tap.symbol === symbol;
+    })?.[0];
 
   it('puts each chord on the keys its source names', () => {
     const chords = (id: string) =>

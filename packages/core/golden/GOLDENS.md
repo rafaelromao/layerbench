@@ -297,6 +297,25 @@ The layouts say so too, keeping their names: Romak 24's and Romak's behaviours `
 descriptions of Magic Romak, Magic Sturdy and Nordrassil say adaptive key. Only those five
 documents and Magic Romak's inline link changed.
 
+## Thirteenth re-baseline: every bundled layout has the default layers
+
+Every bundled layout but Magic Romak and Romak gains Numbers, Symbols and Dead keys, keeping all
+its keys: the space key also holds Numbers, and a thumb of the other hand holds Symbols and taps a
+one-shot to Dead keys, or Dead keys is tapped from Numbers where no thumb is free. Romak, which
+has its own Numbers and Symbols, gains Dead keys as Magic Romak has it, from Alpha 2's right thumb.
+
+What moved, checked across the 38 reports; nothing else moved:
+
+- **Qwerty in English, Romak everywhere, and Magic Romak**: no value, press or trace. Qwerty's
+  and Romak's producer lists and per-layer results gain the new layers.
+- **Qwerty on the Portuguese fixtures** types the 308 accented letters it skipped (`ç` 66, `ã` 63,
+  `é` 50, `á` 49, `ú` 28, `ó` 22, `ê` 20, `í` 10), each as a tap to Dead keys, its accent and its
+  letter; nothing is left unproducible. With no skipped letter breaking a word, the Portuguese
+  fixture has 1,402 words where it had 1,547, and every rule value moves with that text: on the
+  Layouts Doc's rules, SFB 7.13 → 6.82 and Effort 1054.6 → 1064.7, and layer taps go from none to
+  3.62 per 100.
+- **The 34 layouts' documents**, Romak's among them, with the new layers and thumbs.
+
 ## Not compared
 
 `globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not
