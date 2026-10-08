@@ -92,17 +92,9 @@
           "kind": "kp",
           "symbol": "r"
         },
-        "RTR": {
-          "kind": "kp",
-          "symbol": "u"
-        },
         "R0": {
           "kind": "kp",
           "symbol": "e"
-        },
-        "RHR": {
-          "kind": "kp",
-          "symbol": "h"
         },
         "RBR": {
           "kind": "sl",
@@ -111,6 +103,14 @@
         "RBM": {
           "kind": "sl",
           "layer": "alpha-2"
+        },
+        "RHR": {
+          "kind": "kp",
+          "symbol": "u"
+        },
+        "RTR": {
+          "kind": "kp",
+          "symbol": "h"
         }
       }
     },
