@@ -88,10 +88,6 @@
           "kind": "kp",
           "symbol": "i"
         },
-        "RBR": {
-          "kind": "kp",
-          "symbol": ","
-        },
         "LHM": {
           "kind": "kp",
           "symbol": "r"
@@ -104,13 +100,17 @@
           "kind": "kp",
           "symbol": "e"
         },
-        "RBM": {
-          "kind": "sl",
-          "layer": "alpha-2"
-        },
         "RHR": {
           "kind": "kp",
           "symbol": "h"
+        },
+        "RBR": {
+          "kind": "sl",
+          "layer": "alpha-2"
+        },
+        "RBM": {
+          "kind": "sl",
+          "layer": "alpha-2"
         }
       }
     },
@@ -127,10 +127,6 @@
         "RBC": {
           "kind": "none"
         },
-        "R0": {
-          "kind": "kp",
-          "symbol": "'"
-        },
         "LHP": {
           "kind": "macro",
           "symbols": "ç"
@@ -146,10 +142,6 @@
         "RHR": {
           "kind": "kp",
           "symbol": "y"
-        },
-        "RBR": {
-          "kind": "kp",
-          "symbol": "."
         },
         "LHI": {
           "kind": "kp",
@@ -176,6 +168,18 @@
         "LHM": {
           "kind": "kp",
           "symbol": "w"
+        },
+        "L1": {
+          "kind": "kp",
+          "symbol": "'"
+        },
+        "R0": {
+          "kind": "kp",
+          "symbol": "."
+        },
+        "L0": {
+          "kind": "kp",
+          "symbol": ","
         }
       }
     }
