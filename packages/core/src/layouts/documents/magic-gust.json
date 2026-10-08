@@ -122,12 +122,10 @@
           "kind": "trans"
         },
         "LBC": {
-          "kind": "kp",
-          "symbol": ";"
+          "kind": "none"
         },
         "RBC": {
-          "kind": "kp",
-          "symbol": "/"
+          "kind": "none"
         },
         "R0": {
           "kind": "kp",
