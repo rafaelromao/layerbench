@@ -7,3 +7,7 @@ minimumReleaseAgeExclude:
   - '@tanstack/history@1.162.2'
   - '@tanstack/react-router@1.170.33'
   - '@tanstack/router-core@1.171.28'
+
+# Advisory GHSA-68fv-2mgg-jv7q: a build-time dependency of Vite and Vitest, see docs/security-scan-2026-10-08.md.
+overrides:
+  source-map-js: ">=1.2.2"
