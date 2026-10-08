@@ -76,10 +76,6 @@
           "kind": "kp",
           "symbol": "c"
         },
-        "LBP": {
-          "kind": "kp",
-          "symbol": "w"
-        },
         "LHI": {
           "kind": "kp",
           "symbol": "t"
@@ -92,25 +88,9 @@
           "kind": "kp",
           "symbol": "g"
         },
-        "RTR": {
-          "kind": "kp",
-          "symbol": "h"
-        },
         "RBR": {
           "kind": "kp",
           "symbol": ","
-        },
-        "RHR": {
-          "kind": "kp",
-          "symbol": "u"
-        },
-        "RHP": {
-          "kind": "kp",
-          "symbol": "i"
-        },
-        "RTP": {
-          "kind": "kp",
-          "symbol": "j"
         },
         "RHC": {
           "kind": "kp",
@@ -136,10 +116,6 @@
           "kind": "kp",
           "symbol": "p"
         },
-        "LBM": {
-          "kind": "kp",
-          "symbol": "v"
-        },
         "LTM": {
           "kind": "kp",
           "symbol": "l"
@@ -151,6 +127,30 @@
         "LBI": {
           "kind": "kp",
           "symbol": "d"
+        },
+        "RHP": {
+          "kind": "kp",
+          "symbol": "i"
+        },
+        "RHR": {
+          "kind": "kp",
+          "symbol": "u"
+        },
+        "RTR": {
+          "kind": "kp",
+          "symbol": "h"
+        },
+        "RTP": {
+          "kind": "kp",
+          "symbol": "j"
+        },
+        "LBP": {
+          "kind": "kp",
+          "symbol": "v"
+        },
+        "LBM": {
+          "kind": "kp",
+          "symbol": "w"
         }
       }
     }
