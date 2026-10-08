@@ -380,10 +380,10 @@
           "kind": "kp",
           "symbol": "x"
         },
-        "LBM": {
+        "LBR": {
           "kind": "none"
         },
-        "LBR": {
+        "LBM": {
           "kind": "kp",
           "symbol": "j"
         }
