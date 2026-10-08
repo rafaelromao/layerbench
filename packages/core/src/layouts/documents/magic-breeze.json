@@ -211,8 +211,15 @@
           "symbol": "y"
         },
         "RBM": {
-          "kind": "kp",
-          "symbol": "'"
+          "kind": "hold_tap",
+          "tap": {
+            "kind": "kp",
+            "symbol": "'"
+          },
+          "hold": {
+            "kind": "kp",
+            "symbol": "_"
+          }
         },
         "R0": {
           "kind": "lt",
@@ -397,8 +404,7 @@
           ]
         },
         "R0": {
-          "kind": "kp",
-          "symbol": "_"
+          "kind": "trans"
         }
       }
     },
