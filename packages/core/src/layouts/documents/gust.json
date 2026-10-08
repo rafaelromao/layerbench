@@ -116,10 +116,6 @@
           "kind": "kp",
           "symbol": "p"
         },
-        "LTM": {
-          "kind": "kp",
-          "symbol": "l"
-        },
         "LTI": {
           "kind": "kp",
           "symbol": "m"
@@ -147,6 +143,10 @@
         "LBP": {
           "kind": "kp",
           "symbol": "v"
+        },
+        "LTM": {
+          "kind": "kp",
+          "symbol": "l"
         },
         "LBM": {
           "kind": "kp",
