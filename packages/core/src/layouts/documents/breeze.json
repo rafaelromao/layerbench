@@ -40,10 +40,6 @@
           "kind": "kp",
           "symbol": "n"
         },
-        "LTP": {
-          "kind": "kp",
-          "symbol": "y"
-        },
         "RBM": {
           "kind": "kp",
           "symbol": ","
@@ -80,10 +76,6 @@
           "kind": "kp",
           "symbol": "q"
         },
-        "RBC": {
-          "kind": "kp",
-          "symbol": ";"
-        },
         "LHC": {
           "kind": "kp",
           "symbol": "k"
@@ -95,10 +87,6 @@
         "LBC": {
           "kind": "kp",
           "symbol": "/"
-        },
-        "RTP": {
-          "kind": "kp",
-          "symbol": "'"
         },
         "LBM": {
           "kind": "kp",
@@ -131,6 +119,18 @@
         "RTI": {
           "kind": "kp",
           "symbol": "p"
+        },
+        "RBC": {
+          "kind": "kp",
+          "symbol": ";"
+        },
+        "RTP": {
+          "kind": "kp",
+          "symbol": "'"
+        },
+        "LTP": {
+          "kind": "kp",
+          "symbol": "y"
         },
         "LHP": {
           "kind": "kp",
