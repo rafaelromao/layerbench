@@ -19,16 +19,8 @@ pnpm corpora en-general    # build one
 
 Each language has one text: news sentences from the
 [Leipzig Corpora Collection](https://wortschatz.uni-leipzig.de/en/download), which is
-[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); `sources.json` records the attribution
-the licence requires.
-
-| id | Language | Leipzig set |
-|---|---|---|
-| `en-general` | English | `eng_news_2023_30K` |
-| `pt-br-general` | Brazilian Portuguese | `por-br_newscrawl_2011_30K` |
-| `es-general` | Spanish | `spa_news_2023_30K` |
-| `fr-general` | French | `fra_news_2023_30K` |
-| `it-general` | Italian | `ita_news_2023_30K` |
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Its entry in `sources.json` names the
+set it was taken from and records the attribution the licence requires.
 
 Getting the text is a manual step, because the collection ships `.tar.gz` archives behind a download
 form, and shipping an unverifiable unpacker would be worse than one documented instruction:
@@ -42,7 +34,7 @@ form, and shipping an unverifiable unpacker would be worse than one documented i
 
 - **Sentences, in a fixed shuffle.** The raw text is split into lines, one sentence each, and put in
   the order of a hash of each sentence. Leipzig's files are sorted alphabetically, and an analysis
-  reads a sample from its start: in file order it would only see sentences from `$` to `B`. Ordered
+  reads a sample from its start: in file order it would only see the start of the alphabet. Ordered
   by hash, any stretch is a fair draw, and the same raw text always gives the same sample, byte for
   byte, so rebuilding is a no-op and the output is reviewable as a diff.
 - **Only Latin letters.** A sentence with a letter of another script is left out: mis-decoded text,
@@ -50,8 +42,8 @@ form, and shipping an unverifiable unpacker would be worse than one documented i
 - **Contacts scrubbed.** E-mail addresses and phone numbers keep their shape, not their digits.
 - **Normalized**, keeping letters, digits **and** symbols. Each analysis narrows that to whatever the
   reader asked for: the default is still letters only, so one sample serves every setting, and
-  turning numbers on needs no rebuild. Typographic quotes, dashes and the ellipsis become `' " - .`.
-  French keeps `« »`, and Spanish `¿ ¡`.
+  turning numbers on needs no rebuild. Typographic quotes, dashes and the ellipsis become their
+  plain forms, and a language keeps the punctuation its profile names.
 - **Capped** at a megabyte of whole sentences.
 
 ## Adding a text

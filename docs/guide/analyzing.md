@@ -114,8 +114,9 @@ By default capitals count as lower case and the space key is left out of the cou
 Keyboard Layouts Doc does. **Shift** types capitals through the layout's shift key instead, and
 **Space** keeps the space key in. Both are among the feature switches, in **Settings**. **Counts**
 says what of the text is counted: letters only, the default, or numbers and symbols as well. The
-symbols are those a symbol layer carries, with `€ £ ° § º ª`. Curly quotes, dashes and `…` count as
-`' " - .`, and French `« »` and Spanish `¿ ¡` are kept in any count.
+symbols are those a symbol layer carries and those the bundled texts use. Curly quotes, dashes and
+the ellipsis count as their plain forms, and a language's own punctuation, Spanish `¿ ¡` say, is
+kept in any count.
 
 ### The text itself
 

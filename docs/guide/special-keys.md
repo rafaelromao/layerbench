@@ -119,8 +119,8 @@ These are among the editor's other tiles, under **More** on a phone:
 - **Unicode** `U+` types a character the operating system has no key for.
 - **Dead key** puts an accent on the next letter, as `´` then `e` gives `é`. The analysis types
   through them: an accented letter no key types is typed as its accent, then the letter, and a
-  layer held for the accent is let go before the letter. `´` `\`` `^` `~` and `¨` compose with
-  the vowels, `~` with `n` and `´` with `c`. A letter some key types in one press is typed there.
+  layer held for the accent is let go before the letter. Each accent goes on the letters it is
+  written on. A letter some key types in one press is typed there.
   **Shifted** gives the key a second accent for when shift is on, as US-International has `¨`
   over `´`; it is drawn at the top of the key. Like a shifted symbol, it is typed only when
   **Shift** is on, since with capitals folded no shift is pressed.

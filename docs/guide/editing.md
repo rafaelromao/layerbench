@@ -157,32 +157,16 @@ them is pressed when nothing tells them apart. A key held for a layer is always 
 ### Default layers
 
 A new layout can start with three more layers, the same on every board: **Numbers**, **Symbols**
-and **Dead keys**. Numbers and Symbols are Magic Romak's. Numbers has the digits as a keypad
-under the right hand, and brackets and `& | \` under the left. Symbols has the rest of the
-punctuation. Dead keys mirrors Symbols, each key where its look-alike is:
-
-- The accents `´ \` ^ ~ ¨` sit where `' \` ^ ~ "` are.
-- `€ £` take `$ #`, and `« »` take `< >`.
-- `¿ ¡ ;` take `? ! :`, and `ª º §` take `@ _ *`.
-- `ç`, `ñ`, `œ` and `æ` fill the rest. An accent and a letter would type `ç` and `ñ` too; a key
-  of their own saves a press on letters this common.
-
-With a base layer's letters, that writes Portuguese, English, Spanish, French and Italian.
+and **Dead keys**. Numbers and Symbols are Magic Romak's. Dead keys holds the accents, each where
+its look-alike is on Symbols (`´` where `'` is), the letters an accent cannot make, and the symbols
+the bundled texts use that have no room elsewhere. A letter common enough has a key of its own
+there as well, a press less than its accent and the letter. With the base layer's letters, that
+writes every language the app has a text for.
 
 The left inner thumb types space and, held, turns on Numbers. The right inner thumb, held, turns on
-Symbols, and tapped turns on Dead keys for one key, so an accent is three taps. `0` is on the right
-outer thumb, or on the inner one where there is no outer one.
-
-Some boards differ:
-
-- **A row-stagger board** holds Numbers on the space bar. On Numbers, the keys right of `p` and `l`
-  turn on Symbols and Dead keys for one key.
-- **The 18-key board** has no bottom row. Its digits move up: `1 2 3` go on the left home row, under
-  the same fingers. What the bottom rows held goes on a fourth layer, **Symbols 2**, which Symbols'
-  right outer thumb turns on for one key. On Dead keys, the grave accent takes `ñ`'s key, and `ñ`
-  and `§` go to the outer thumbs.
-
-Keys beyond the 24 the layers use let the layer below show through.
+Symbols, and tapped turns on Dead keys for one key. A board without those thumbs, or without a
+bottom row, gets the same layers arranged to fit it, and keys beyond the ones the layers use let the
+layer below show through. The board shows where everything went.
 
 ### Which layer wins
 

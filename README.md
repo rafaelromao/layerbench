@@ -102,7 +102,7 @@ The texts that come with the app are built from `packages/corpora/raw/`: each ra
 entry in `sources.json`, which says what it is, its language, its licence and where it comes from.
 `pnpm corpora` takes each one's sentences, a line each, in an order that looks random but never
 changes, normalizes them, keeps whole sentences up to a megabyte, and writes what the app serves to
-`apps/web/public/corpora/`. There is one text per language, from the Leipzig Corpora Collection. A new or updated text joins them by pull request, and merging it is the
+`apps/web/public/corpora/`. A new or updated text joins them by pull request, and merging it is the
 approval.
 
 1. Put the raw text in `packages/corpora/raw/`, as UTF-8 plain text of at most 10 MB: the same kind
