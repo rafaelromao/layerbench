@@ -57,7 +57,11 @@ export function Switch({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="label cursor-pointer justify-start gap-1.5 p-0" title={title}>
+    // A label wraps rather than push past its column on a narrow phone.
+    <label
+      className="label cursor-pointer justify-start gap-1.5 p-0 min-w-0 whitespace-normal"
+      title={title}
+    >
       <input
         type="checkbox"
         name={name}

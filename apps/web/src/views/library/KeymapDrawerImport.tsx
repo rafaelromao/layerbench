@@ -210,7 +210,8 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
               <div className="flex flex-wrap items-center gap-2">
                 <select
                   aria-label="Board to import onto"
-                  className="select select-sm select-bordered w-auto"
+                  // As wide as its longest board, but never wider than the dialog on a phone.
+                  className="select select-sm select-bordered w-auto max-w-full min-w-0"
                   value={info ? '' : preset || matching[0] || ''}
                   onChange={(e) => {
                     setInfo(null);

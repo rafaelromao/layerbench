@@ -97,6 +97,35 @@
 }
 
 /*
+ * Dialogs. daisyUI caps a dialog at the viewport's height in `vh`, which on a phone is the screen
+ * with the browser's toolbars hidden: a tall dialog then ran on under the toolbar at the bottom,
+ * its last buttons out of reach. The cap is the screen as it is now (`dvh`), with room around it,
+ * and the row of buttons at the foot stays in sight while the rest scrolls. A phone also gets a
+ * narrower margin inside, as every pixel across is room for a field.
+ */
+/* Outside any layer: daisyUI 5 draws its components in the utilities layer, which a layer of ours
+   would not outrank. */
+.modal-box {
+  max-height: calc(100dvh - 2rem);
+}
+.modal-box > .modal-action {
+  position: sticky;
+  bottom: -1.5rem;
+  margin-bottom: -1.5rem;
+  padding-block: 0.75rem;
+  background: inherit;
+}
+@media (max-width: 639.98px) {
+  .modal-box {
+    padding: 1rem;
+  }
+  .modal-box > .modal-action {
+    bottom: -1rem;
+    margin-bottom: -1rem;
+  }
+}
+
+/*
  * On a touch screen every control grows to a size a finger can hit, through the two variables
  * daisyUI derives its sizes from: a small button, select, input or tab is 40px tall rather than
  * 28, an extra-small one 30. Text in a field is 16px, below which a phone zooms the page when the

@@ -39,5 +39,64 @@ test.describe('on a phone', () => {
       .evaluateAll((boxes) => boxes.map((b) => Math.round(b.getBoundingClientRect().left)));
     expect(new Set(lefts).size).toBe(2);
     expect(await overflow(page)).toBeLessThanOrEqual(0);
+    // Taller than the screen, it scrolls inside, with Done in sight at its foot from the start.
+    expect(await fitsTheScreen(page, dialog)).toBe(true);
+    await expect(dialog.getByRole('button', { name: 'Done' })).toBeInViewport({ ratio: 1 });
+  });
+
+  test("the Library's import dialog fits the screen, a keymap-drawer file and all", async ({
+    page,
+  }) => {
+    await page.goto('/library?sample=10000');
+    await page.getByRole('button', { name: 'Import', exact: true }).tap();
+    const dialog = page.getByRole('dialog', { name: 'Import a layout' });
+    await dialog.getByRole('tab', { name: 'keymap-drawer' }).tap();
+    await dialog.getByLabel('keymap-drawer YAML').fill(KEYMAP);
+    // The board it goes onto is offered by name, the longest names wider than a phone.
+    await expect(dialog.getByRole('combobox', { name: 'Board to import onto' })).toBeVisible();
+    expect(await fitsTheScreen(page, dialog)).toBe(true);
+    // Exactly: the backdrop behind every dialog is a button called "close" too.
+    await expect(dialog.getByRole('button', { name: 'Close', exact: true })).toBeInViewport({
+      ratio: 1,
+    });
   });
 });
+
+/** A keymap-drawer file that only names its keyboard, so the board is chosen from a list. */
+const KEYMAP = `layout:
+  zmk_keyboard: hummingbird
+layers:
+  Def:
+  - [W, F, M, P, G, K, U, O, Y, SQT]
+  - [R, S, N, T, B, J, A, E, I, H]
+  - [C, L, D, X, ',', .]
+  - {t: Nav, h: sticky}
+  - SPACE
+  - {t: LSHFT, h: sticky}
+  - {t: Num, h: sticky}
+  Nav:
+  - [F1, F2, F3, F4, F5, ESC, HOME, UARW, END, PG UP]
+  - [LGUI, LALT, LSHFT, LCTRL, LC(Z), DEL, LARW, ENTER, RARW, PG DN]
+  - [LC(X), LC(C), LC(V), BSPC, DARW, TAB]
+  - [{type: held}, '', '', '']
+`;
+
+/**
+ * Whether a dialog's box lies on the screen, top to bottom and side to side, and nothing in it is
+ * wider than the box: it may scroll down inside, never sideways.
+ */
+async function fitsTheScreen(page: Page, dialog: Locator): Promise<boolean> {
+  const box = dialog.locator('.modal-box');
+  const size = page.viewportSize();
+  const rect = await box.boundingBox();
+  const sideways = await box.evaluate((el) => el.scrollWidth - el.clientWidth);
+  return (
+    size !== null &&
+    rect !== null &&
+    rect.x >= 0 &&
+    rect.y >= 0 &&
+    rect.x + rect.width <= size.width &&
+    rect.y + rect.height <= size.height &&
+    sideways <= 0
+  );
+}

@@ -246,7 +246,9 @@ function NewLayoutDialog({ onCreate }: { onCreate: (spec: NewLayoutSpec) => void
           <form
             ref={form}
             aria-label="New layout"
-            className="card w-full max-w-md bg-base-100 shadow-xl"
+            // Capped at the screen as it is now, as the dialogs are, and scrolled inside when that is
+            // less than the form, as on a phone held sideways.
+            className="card w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-base-100 shadow-xl"
             onSubmit={(e) => {
               e.preventDefault();
               setOpen(false);
