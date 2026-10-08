@@ -136,13 +136,13 @@
           "kind": "kp",
           "symbol": "u"
         },
-        "LTI": {
-          "kind": "kp",
-          "symbol": "v"
-        },
         "LHI": {
           "kind": "kp",
           "symbol": "l"
+        },
+        "LTI": {
+          "kind": "kp",
+          "symbol": "v"
         },
         "LBI": {
           "kind": "kp",
