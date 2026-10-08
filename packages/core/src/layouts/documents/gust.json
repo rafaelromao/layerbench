@@ -1,0 +1,161 @@
+{
+  "format": "layerbench/layout@1",
+  "id": "gust",
+  "name": "Gust",
+  "author": "Rafael Romão",
+  "hostLocale": "symbols",
+  "geometry": {
+    "preset": "3x5+2"
+  },
+  "keys": {
+    "space": "L0",
+    "shift": null
+  },
+  "layers": [
+    {
+      "id": "base",
+      "name": "Base",
+      "bindings": {
+        "LTP": {
+          "kind": "kp",
+          "symbol": "'"
+        },
+        "LTM": {
+          "kind": "kp",
+          "symbol": "l"
+        },
+        "RTM": {
+          "kind": "kp",
+          "symbol": "o"
+        },
+        "LHM": {
+          "kind": "kp",
+          "symbol": "r"
+        },
+        "RHM": {
+          "kind": "kp",
+          "symbol": "a"
+        },
+        "RHR": {
+          "kind": "kp",
+          "symbol": "i"
+        },
+        "RBC": {
+          "kind": "kp",
+          "symbol": "/"
+        },
+        "RBM": {
+          "kind": "kp",
+          "symbol": "."
+        },
+        "L1": {
+          "kind": "kp",
+          "symbol": "⟳"
+        },
+        "R0": {
+          "kind": "kp",
+          "symbol": "e"
+        },
+        "R1": {
+          "kind": "kp",
+          "symbol": "⇧"
+        },
+        "L0": {
+          "kind": "kp",
+          "symbol": " "
+        },
+        "RTR": {
+          "kind": "kp",
+          "symbol": "u"
+        },
+        "LBI": {
+          "kind": "kp",
+          "symbol": "d"
+        },
+        "LHI": {
+          "kind": "kp",
+          "symbol": "t"
+        },
+        "LTI": {
+          "kind": "kp",
+          "symbol": "m"
+        },
+        "LBR": {
+          "kind": "kp",
+          "symbol": "p"
+        },
+        "RBI": {
+          "kind": "kp",
+          "symbol": "g"
+        },
+        "RHI": {
+          "kind": "kp",
+          "symbol": "s"
+        },
+        "LHR": {
+          "kind": "kp",
+          "symbol": "n"
+        },
+        "LTR": {
+          "kind": "kp",
+          "symbol": "b"
+        },
+        "RTI": {
+          "kind": "kp",
+          "symbol": "f"
+        },
+        "LBC": {
+          "kind": "kp",
+          "symbol": ";"
+        },
+        "RTC": {
+          "kind": "kp",
+          "symbol": "q"
+        },
+        "LHC": {
+          "kind": "kp",
+          "symbol": "k"
+        },
+        "RHC": {
+          "kind": "kp",
+          "symbol": "j"
+        },
+        "LTC": {
+          "kind": "kp",
+          "symbol": "z"
+        },
+        "RTP": {
+          "kind": "kp",
+          "symbol": "x"
+        },
+        "RBP": {
+          "kind": "kp",
+          "symbol": "y"
+        },
+        "RBR": {
+          "kind": "kp",
+          "symbol": ","
+        },
+        "RHP": {
+          "kind": "kp",
+          "symbol": "h"
+        },
+        "LHP": {
+          "kind": "kp",
+          "symbol": "c"
+        },
+        "LBM": {
+          "kind": "kp",
+          "symbol": "v"
+        },
+        "LBP": {
+          "kind": "kp",
+          "symbol": "w"
+        }
+      }
+    }
+  ],
+  "repeatPolicy": {
+    "doubledLetters": "repeatKey"
+  }
+}
