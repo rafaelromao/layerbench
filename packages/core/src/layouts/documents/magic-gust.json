@@ -194,7 +194,7 @@
           "symbol": "y"
         },
         "RHP": {
-          "kind": "none"
+          "kind": "trans"
         },
         "LTI": {
           "kind": "kp",
