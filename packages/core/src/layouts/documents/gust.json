@@ -16,10 +16,6 @@
       "id": "base",
       "name": "Base",
       "bindings": {
-        "LTP": {
-          "kind": "kp",
-          "symbol": "'"
-        },
         "RTM": {
           "kind": "kp",
           "symbol": "o"
@@ -31,10 +27,6 @@
         "RBC": {
           "kind": "kp",
           "symbol": "/"
-        },
-        "RBM": {
-          "kind": "kp",
-          "symbol": "."
         },
         "L1": {
           "kind": "kp",
@@ -68,10 +60,6 @@
           "kind": "kp",
           "symbol": "z"
         },
-        "RBP": {
-          "kind": "kp",
-          "symbol": "y"
-        },
         "LHP": {
           "kind": "kp",
           "symbol": "c"
@@ -88,10 +76,6 @@
           "kind": "kp",
           "symbol": "g"
         },
-        "RBR": {
-          "kind": "kp",
-          "symbol": ","
-        },
         "RHC": {
           "kind": "kp",
           "symbol": "x"
@@ -99,22 +83,6 @@
         "RTI": {
           "kind": "kp",
           "symbol": "f"
-        },
-        "LTR": {
-          "kind": "kp",
-          "symbol": "b"
-        },
-        "LHR": {
-          "kind": "kp",
-          "symbol": "n"
-        },
-        "LHM": {
-          "kind": "kp",
-          "symbol": "r"
-        },
-        "LBR": {
-          "kind": "kp",
-          "symbol": "p"
         },
         "LTI": {
           "kind": "kp",
@@ -144,13 +112,45 @@
           "kind": "kp",
           "symbol": "v"
         },
+        "LTR": {
+          "kind": "kp",
+          "symbol": "b"
+        },
         "LTM": {
           "kind": "kp",
           "symbol": "l"
         },
+        "LHR": {
+          "kind": "kp",
+          "symbol": "n"
+        },
+        "LHM": {
+          "kind": "kp",
+          "symbol": "r"
+        },
+        "LBR": {
+          "kind": "kp",
+          "symbol": "p"
+        },
+        "RBM": {
+          "kind": "kp",
+          "symbol": "."
+        },
+        "LTP": {
+          "kind": "kp",
+          "symbol": "'"
+        },
         "LBM": {
           "kind": "kp",
           "symbol": "w"
+        },
+        "RBR": {
+          "kind": "kp",
+          "symbol": ","
+        },
+        "RBP": {
+          "kind": "kp",
+          "symbol": "y"
         }
       }
     }
