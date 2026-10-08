@@ -1,5 +1,5 @@
 import { FEATURE_KINDS, FEATURE_LABELS, type FeatureKind } from '@layerbench/core';
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 
 /** "magic keys, typing combos and multi-letter macros". */
 export function featureList(features: readonly FeatureKind[]): string {
@@ -16,12 +16,15 @@ export function featureList(features: readonly FeatureKind[]): string {
 export function SwitchGroup({
   legend,
   help,
+  columns = 'grid-cols-2 sm:grid-cols-3',
   className = '',
   children,
 }: {
   legend: string;
   /** Drawn after the legend, such as a link to the guide. */
   help?: ReactNode;
+  /** How many to a line at each width, for a group longer or shorter than the usual. */
+  columns?: string;
   className?: string;
   children: ReactNode;
 }) {
@@ -29,7 +32,7 @@ export function SwitchGroup({
     // Named by the legend's words alone: the help link inside it would otherwise join the name.
     <fieldset
       aria-label={legend}
-      className={`lb-rank-with grid grid-cols-2 sm:grid-cols-3 items-center gap-x-4 gap-y-1 ${className}`}
+      className={`lb-rank-with grid ${columns} items-center gap-x-4 gap-y-1 ${className}`}
     >
       {/* Floated, a legend is laid out as the grid's first row rather than on the border. */}
       <legend className="float-left col-span-full flex items-center gap-2">
@@ -48,6 +51,8 @@ export function Switch({
   title,
   checked,
   onChange,
+  inputRef,
+  strong = false,
 }: {
   label: string;
   name?: string;
@@ -55,6 +60,10 @@ export function Switch({
   title?: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
+  /** The box itself, for a state no attribute carries, such as "some but not all". */
+  inputRef?: Ref<HTMLInputElement>;
+  /** Drawn bolder, for the one that stands for all the others. */
+  strong?: boolean;
 }) {
   return (
     // A label wraps rather than push past its column on a narrow phone.
@@ -63,13 +72,14 @@ export function Switch({
       title={title}
     >
       <input
+        ref={inputRef}
         type="checkbox"
         name={name}
         className="checkbox checkbox-xs"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
       />
-      <span className="label-text text-xs">{label}</span>
+      <span className={`label-text text-xs ${strong ? 'font-medium' : ''}`}>{label}</span>
     </label>
   );
 }

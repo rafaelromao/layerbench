@@ -222,8 +222,10 @@ function MetricBody({
 
   return (
     <>
+      {/* The title takes the room left, so the number sits at the right of every card, beside the
+          enlarge button, whether or not the card says what it counts. */}
       <header className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0 flex-1">
           <h3 id={titleId} className={`font-semibold ${large ? 'text-lg' : 'text-sm'}`}>
             {result.label}
           </h3>

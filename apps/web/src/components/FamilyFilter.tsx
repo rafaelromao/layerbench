@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useSession } from '../state/session.js';
+import { Switch, SwitchGroup } from './FeatureSwitches.js';
 
 /** The families a report's metrics are grouped in, in the order their sections are drawn. */
 export const METRIC_FAMILIES: readonly (readonly [family: string, title: string])[] = [
@@ -37,29 +38,28 @@ export function FamilyFilter({ className = '' }: { className?: string }) {
   }, [some]);
 
   return (
-    <fieldset className={`lb-rank-with flex flex-wrap items-center gap-x-3 gap-y-1 ${className}`}>
-      <legend className="text-xs opacity-70 float-left mr-1">Show</legend>
-      <label className="label lb-check cursor-pointer gap-1.5 p-0">
-        <input
-          ref={all}
-          type="checkbox"
-          className="checkbox checkbox-xs"
-          checked={shownCount === ALL.length}
-          onChange={(e) => showFamilies(ALL, e.target.checked)}
-        />
-        <span className="label-text text-xs font-medium">All</span>
-      </label>
+    // "Show" on a line of its own and the boxes in columns under it: two to a line on the
+    // narrowest phone, three on most, four on a tablet, all seven in one line at a desk.
+    <SwitchGroup
+      legend="Show"
+      columns="grid-cols-2 min-[360px]:grid-cols-3 sm:grid-cols-4 lg:grid-cols-7"
+      className={className}
+    >
+      <Switch
+        label="All"
+        strong
+        inputRef={all}
+        checked={shownCount === ALL.length}
+        onChange={(on) => showFamilies(ALL, on)}
+      />
       {METRIC_FAMILIES.map(([family, title]) => (
-        <label key={family} className="label lb-check cursor-pointer gap-1.5 p-0">
-          <input
-            type="checkbox"
-            className="checkbox checkbox-xs"
-            checked={!hidden.includes(family)}
-            onChange={(e) => showFamilies([family], e.target.checked)}
-          />
-          <span className="label-text text-xs">{title}</span>
-        </label>
+        <Switch
+          key={family}
+          label={title}
+          checked={!hidden.includes(family)}
+          onChange={(on) => showFamilies([family], on)}
+        />
       ))}
-    </fieldset>
+    </SwitchGroup>
   );
 }
