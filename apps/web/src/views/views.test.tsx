@@ -1,5 +1,3 @@
-import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { bundledLayout, toCanonicalJson } from '@layerbench/core';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -7,12 +5,6 @@ import { describe, expect, it } from 'vitest';
 import type { AnalysisClient, AnalyzeRequest } from '../engine/protocol.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { LIBRARY, openSettings, renderRoute, testClient } from '../test/render.js';
-
-/**
- * Spanish news is built once its text is downloaded (packages/corpora/README.md); until then the
- * tests that need a Spanish text wait for it rather than fail.
- */
-const SPANISH = existsSync(resolve(process.cwd(), 'public/corpora/es-general/manifest.json'));
 
 const QWERTY_TEXT = 'q w e r t y u i o p\na s d f g h j k l ;\nz x c v b n m , . /';
 /** A text long enough to build a corpus from. */
@@ -231,8 +223,7 @@ describe('Corpus', () => {
     // Every shipped corpus is offered: news from the Leipzig collection, one per language.
     expect(await screen.findAllByText(/Leipzig/)).not.toHaveLength(0);
     expect(screen.getAllByText('English — news 2023 (Leipzig)')).not.toHaveLength(0);
-    if (SPANISH)
-      expect(screen.getAllByText('Español — noticias 2023 (Leipzig)')).not.toHaveLength(0);
+    expect(screen.getAllByText('Español — noticias 2023 (Leipzig)')).not.toHaveLength(0);
     // Facts are counted over a sample of the selected corpus.
     expect(await screen.findByText('Letters', undefined, { timeout: 25_000 })).toBeInTheDocument();
     expect(screen.getByText('Trigrams')).toBeInTheDocument();

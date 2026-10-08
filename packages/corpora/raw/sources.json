@@ -21,7 +21,8 @@
     "language": "es",
     "license": "CC BY 4.0 (Leipzig Corpora Collection)",
     "source": "https://wortschatz.uni-leipzig.de/en/download (spa_news_2023_30K)",
-    "description": "30,000 Spanish news sentences from the Leipzig Corpora Collection (2023)."
+    "description": "30,000 Spanish news sentences from the Leipzig Corpora Collection (2023).",
+    "retrieved": "2026-10-08"
   },
   "fr-general": {
     "file": "fr-general.txt",
@@ -29,7 +30,8 @@
     "language": "fr",
     "license": "CC BY 4.0 (Leipzig Corpora Collection)",
     "source": "https://wortschatz.uni-leipzig.de/en/download (fra_news_2023_30K)",
-    "description": "30,000 French news sentences from the Leipzig Corpora Collection (2023)."
+    "description": "30,000 French news sentences from the Leipzig Corpora Collection (2023).",
+    "retrieved": "2026-10-08"
   },
   "it-general": {
     "file": "it-general.txt",
@@ -37,6 +39,7 @@
     "language": "it",
     "license": "CC BY 4.0 (Leipzig Corpora Collection)",
     "source": "https://wortschatz.uni-leipzig.de/en/download (ita_news_2023_30K)",
-    "description": "30,000 Italian news sentences from the Leipzig Corpora Collection (2023)."
+    "description": "30,000 Italian news sentences from the Leipzig Corpora Collection (2023).",
+    "retrieved": "2026-10-08"
   }
 }

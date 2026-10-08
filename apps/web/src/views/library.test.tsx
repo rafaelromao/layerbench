@@ -1,5 +1,3 @@
-import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { BUNDLED_LAYOUTS, bundledLayout, type Layout, toCanonicalJson } from '@layerbench/core';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -8,12 +6,6 @@ import type { AnalysisClient, AnalyzeRequest, ReportDTO } from '../engine/protoc
 import { useSession } from '../state/session.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { LIBRARY, openSettings, renderRoute, savedInLink, testClient } from '../test/render.js';
-
-/**
- * Spanish news is built once its text is downloaded (packages/corpora/README.md); until then the
- * tests that need a Spanish text wait for it rather than fail.
- */
-const SPANISH = existsSync(resolve(process.cwd(), 'public/corpora/es-general/manifest.json'));
 
 let counter = 0;
 
@@ -302,37 +294,29 @@ describe('Ranking layouts', () => {
     expect(sent).toContain('"symbols":"é"');
   }, 90_000);
 
-  it.skipIf(!SPANISH)(
-    'ranks the layouts that can write the language first',
-    async () => {
-      // Magic Romak writes Spanish through its Dead keys layer; no other bundled layout has an ñ.
-      renderRoute('/library?corpus=es-general&sample=10000', { storage: freshStorage() });
-      await screen.findByText(/^Lower is better for both/, undefined, { timeout: 60_000 });
-      expect(document.body.textContent).toMatch(/ranked after the layouts that can/);
-      const romak = cards().find((c) => c.querySelector('h3')?.textContent === 'Magic Romak');
-      expect(romak?.textContent).not.toMatch(/Cannot type/);
-      expect(cards()[0]).toBe(romak);
-    },
-    90_000,
-  );
+  it('ranks the layouts that can write the language first', async () => {
+    // Magic Romak writes Spanish through its Dead keys layer; no other bundled layout has an ñ.
+    renderRoute('/library?corpus=es-general&sample=10000', { storage: freshStorage() });
+    await screen.findByText(/^Lower is better for both/, undefined, { timeout: 60_000 });
+    expect(document.body.textContent).toMatch(/ranked after the layouts that can/);
+    const romak = cards().find((c) => c.querySelector('h3')?.textContent === 'Magic Romak');
+    expect(romak?.textContent).not.toMatch(/Cannot type/);
+    expect(cards()[0]).toBe(romak);
+  }, 90_000);
 
-  it.skipIf(!SPANISH)(
-    'ranks by the numbers alone when no layout listed can write the language',
-    async () => {
-      // With Magic Romak's board left out, no layout listed has an ñ, so none is behind another.
-      useSession.setState({ hiddenBoards: ['1333+2'] });
-      renderRoute('/library?corpus=es-general&sample=10000', { storage: freshStorage() });
-      await screen.findByText(/^Lower is better for both/, undefined, { timeout: 60_000 });
-      // Scores of an earlier test may already be in: wait for every layout's letters to be checked.
-      expect(
-        await screen.findByText(/None of these layouts types every letter Español needs\.$/),
-      ).toBeTruthy();
-      const efforts = cards().map((c) => valueOn(c, 'Effort'));
-      expect(efforts).toEqual([...efforts].sort((a, b) => a - b));
-      expect(document.body.textContent).not.toMatch(/ranked after the layouts that can/);
-    },
-    90_000,
-  );
+  it('ranks by the numbers alone when no layout listed can write the language', async () => {
+    // With Magic Romak's board left out, no layout listed has an ñ, so none is behind another.
+    useSession.setState({ hiddenBoards: ['1333+2'] });
+    renderRoute('/library?corpus=es-general&sample=10000', { storage: freshStorage() });
+    await screen.findByText(/^Lower is better for both/, undefined, { timeout: 60_000 });
+    // Scores of an earlier test may already be in: wait for every layout's letters to be checked.
+    expect(
+      await screen.findByText(/None of these layouts types every letter Español needs\.$/),
+    ).toBeTruthy();
+    const efforts = cards().map((c) => valueOn(c, 'Effort'));
+    expect(efforts).toEqual([...efforts].sort((a, b) => a - b));
+    expect(document.body.textContent).not.toMatch(/ranked after the layouts that can/);
+  }, 90_000);
 
   it('says what share of the text a layout skips', async () => {
     renderRoute('/library?corpus=pt-br-general&sample=10000', { storage: freshStorage() });
