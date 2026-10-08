@@ -48,11 +48,6 @@ export function heatMap(dto: ReportDTO, mode: HeatMode, layer: number): Record<n
   return normalizeHeat(fromArray(dto.usageByLayer[l] ?? dto.usageAll));
 }
 
-/** Usage across every layer, for previews that show no particular layer. */
-export function usageHeat(dto: ReportDTO): Record<number, number> {
-  return normalizeHeat(fromArray(dto.usageAll));
-}
-
 /** Expand positions to the physical keys behind them, so chords highlight all their members. */
 export function expandPositions(dto: ReportDTO, positions: number[]): number[] {
   const out: number[] = [];

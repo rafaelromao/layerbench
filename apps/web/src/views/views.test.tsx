@@ -101,6 +101,27 @@ describe('Compare', () => {
     expect(within(table).getByText('Same finger bigrams')).toBeInTheDocument();
   });
 
+  it('shows every layer of each layout, one at a time', async () => {
+    const user = userEvent.setup();
+    renderRoute('/compare?layout=magic-romak&b=graphite&corpus=pt-br-conv&sample=20000', {
+      storage: freshStorage(),
+    });
+    const tabsA = await screen.findByRole('tablist', { name: 'Layers of A' });
+    expect(
+      within(tabsA)
+        .getAllByRole('tab')
+        .map((t) => t.textContent),
+    ).toEqual(['Alpha 1', 'Alpha 2', 'Ç extension', 'Numbers', 'Symbols']);
+    // A layout of one layer has nothing to choose.
+    expect(screen.queryByRole('tablist', { name: 'Layers of B' })).toBeNull();
+
+    const boardA = () => document.getElementById('kb-A')?.textContent ?? '';
+    expect(boardA()).not.toContain('qu');
+    await user.click(within(tabsA).getByRole('tab', { name: 'Alpha 2' }));
+    expect(within(tabsA).getByRole('tab', { name: 'Alpha 2', selected: true })).toBeInTheDocument();
+    expect(boardA()).toContain('qu');
+  });
+
   it('offers the saved layouts on both sides, as Analyze does', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();

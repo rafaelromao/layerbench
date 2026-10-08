@@ -8,6 +8,8 @@ export interface LayerTabsProps {
   onSelect: (idx: number) => void;
   /** Lets a tab be renamed where it stands: double-click it, press F2 on it, or hold a finger on it. */
   onRename?: (id: string, name: string) => void;
+  /** What the tab list is called, for a page that shows the layers of more than one layout. */
+  label?: string;
 }
 
 /** How long a finger rests on a tab before it is renamed rather than selected. */
@@ -17,7 +19,13 @@ const LONG_PRESS_MS = 550;
  * Layer selection. Arrow keys move between tabs and only the active tab is in the tab order, which
  * is what a screen reader and a keyboard user expect from a tab list.
  */
-export function LayerTabs({ layers, active, onSelect, onRename }: LayerTabsProps) {
+export function LayerTabs({
+  layers,
+  active,
+  onSelect,
+  onRename,
+  label = 'Layers',
+}: LayerTabsProps) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const [renaming, setRenaming] = useState<string | null>(null);
   const press = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -58,7 +66,7 @@ export function LayerTabs({ layers, active, onSelect, onRename }: LayerTabsProps
   };
 
   return (
-    <div role="tablist" aria-label="Layers" className="tabs tabs-box tabs-sm">
+    <div role="tablist" aria-label={label} className="tabs tabs-box tabs-sm">
       {layers.map((layer, i) => {
         const isActive = layer.idx === active;
         const colour = layerColourOf(layer.idx, layer.color);

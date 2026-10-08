@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { expandPositions, heatMap, normalizeHeat, usageHeat } from './heat.js';
+import { expandPositions, heatMap, normalizeHeat } from './heat.js';
 import type { ReportDTO } from './protocol.js';
 
 function reportWith(overrides: Partial<ReportDTO>): ReportDTO {
@@ -141,10 +141,6 @@ describe('heat maps', () => {
   it('falls back to usage only when the rule set has no such rule', () => {
     const dto = reportWith({ usageByLayer: [[3, 0, 0]] });
     expect(heatMap(dto, 'sfb', 0)).toEqual({ 0: 1 });
-  });
-
-  it('sums usage across layers for previews', () => {
-    expect(usageHeat(reportWith({ usageAll: [2, 4, 0] }))).toEqual({ 0: 0.5, 1: 1 });
   });
 
   it('expands a chord position to the keys behind it', () => {

@@ -7,9 +7,10 @@ import { FamilyFilter, useFamilyShown } from '../components/FamilyFilter.js';
 import { featureList } from '../components/FeatureSwitches.js';
 import { formatValue } from '../components/format.js';
 import { Keyboard } from '../components/Keyboard.js';
+import { LayerTabs } from '../components/LayerTabs.js';
 import { BandBadge, SummaryStrip } from '../components/Metrics.js';
 import { useAnalysisClient } from '../engine/client-context.js';
-import { expandPositions, usageHeat } from '../engine/heat.js';
+import { expandPositions, heatMap } from '../engine/heat.js';
 import type { AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { useAnalysis } from '../engine/use-analysis.js';
 import { useRememberSelection } from '../state/selection.js';
@@ -107,6 +108,14 @@ export function CompareView() {
   const nameA = a.layout?.name ?? params.layoutRef;
   const nameB = b.layout?.name ?? refB;
 
+  // Each board shows one layer at a time, chosen on its own; another layout starts on its base.
+  const [layerA, setLayerA] = useState(0);
+  const [layerB, setLayerB] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the layout is the trigger, not an input.
+  useEffect(() => setLayerA(0), [params.layoutRef]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the layout is the trigger, not an input.
+  useEffect(() => setLayerB(0), [refB]);
+
   return (
     <div className="space-y-4">
       <h1 className="sr-only">Compare</h1>
@@ -200,37 +209,58 @@ export function CompareView() {
         <div className="grid gap-4 md:grid-cols-2">
           {(
             [
-              ['A', nameA, typedA.compiled, analysisA.report],
-              ['B', nameB, typedB.compiled, analysisB.report],
+              ['A', nameA, typedA.compiled, analysisA.report, layerA, setLayerA],
+              ['B', nameB, typedB.compiled, analysisB.report, layerB, setLayerB],
             ] as const
-          ).map(([side, name, compiled, report]) => (
-            <section key={side} className="card bg-base-100 border border-base-300">
-              <div className="card-body gap-3 p-4">
-                <h2 className="font-semibold text-sm">
-                  {side}: {name}
-                </h2>
-                {compiled && (
-                  <Keyboard
-                    id={`kb-${side}`}
-                    compiled={compiled}
-                    layer={0}
-                    interactive={false}
-                    showHold={false}
-                    heat={report ? usageHeat(report) : {}}
-                    highlight={highlightFor(report)}
-                  />
-                )}
-                {report ? (
-                  <SummaryStrip results={report.results} />
-                ) : (
-                  <div className="flex items-center gap-2 py-4">
-                    <span className="loading loading-dots loading-xs" />
-                    <span className="text-sm opacity-70">analyzing…</span>
-                  </div>
-                )}
-              </div>
-            </section>
-          ))}
+          ).map(([side, name, compiled, report, chosen, setLayer]) => {
+            // A layer past the end, for a moment after the layout changes, is its base.
+            const layer = compiled && chosen < compiled.layers.length ? chosen : 0;
+            return (
+              // Allowed narrower than its layer tabs, which scroll across rather than widen the page.
+              <section key={side} className="card bg-base-100 border border-base-300 min-w-0">
+                <div className="card-body gap-3 p-4">
+                  <h2 className="font-semibold text-sm">
+                    {side}: {name}
+                  </h2>
+                  {compiled && compiled.layers.length > 1 && (
+                    <div className="lb-layer-strip min-w-0">
+                      <LayerTabs
+                        label={`Layers of ${side}`}
+                        layers={compiled.layers.map((l) => ({
+                          idx: l.idx,
+                          id: l.id,
+                          name: l.name,
+                          color: l.color,
+                        }))}
+                        active={layer}
+                        onSelect={setLayer}
+                      />
+                    </div>
+                  )}
+                  {compiled && (
+                    <Keyboard
+                      id={`kb-${side}`}
+                      compiled={compiled}
+                      layer={layer}
+                      interactive={false}
+                      showHold={false}
+                      // What was pressed on the layer shown, as Analyze's board shows it.
+                      heat={report ? heatMap(report, 'usage', layer) : {}}
+                      highlight={highlightFor(report)}
+                    />
+                  )}
+                  {report ? (
+                    <SummaryStrip results={report.results} />
+                  ) : (
+                    <div className="flex items-center gap-2 py-4">
+                      <span className="loading loading-dots loading-xs" />
+                      <span className="text-sm opacity-70">analyzing…</span>
+                    </div>
+                  )}
+                </div>
+              </section>
+            );
+          })}
         </div>
       </Collapsible>
 
