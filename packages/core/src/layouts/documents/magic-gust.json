@@ -1,0 +1,190 @@
+{
+  "format": "layerbench/layout@1",
+  "id": "magic-gust",
+  "name": "Magic Gust",
+  "author": "Rafael Romão",
+  "hostLocale": "symbols",
+  "geometry": {
+    "preset": "3x5+2"
+  },
+  "keys": {
+    "space": "L0",
+    "shift": null
+  },
+  "layers": [
+    {
+      "id": "base",
+      "name": "Alpha 1",
+      "bindings": {
+        "RTM": {
+          "kind": "kp",
+          "symbol": "o"
+        },
+        "RHM": {
+          "kind": "kp",
+          "symbol": "a"
+        },
+        "L1": {
+          "kind": "kp",
+          "symbol": "⟳"
+        },
+        "R1": {
+          "kind": "kp",
+          "symbol": "⇧"
+        },
+        "L0": {
+          "kind": "kp",
+          "symbol": " "
+        },
+        "LHP": {
+          "kind": "kp",
+          "symbol": "c"
+        },
+        "LHI": {
+          "kind": "kp",
+          "symbol": "t"
+        },
+        "RTI": {
+          "kind": "kp",
+          "symbol": "f"
+        },
+        "LTI": {
+          "kind": "kp",
+          "symbol": "m"
+        },
+        "LBI": {
+          "kind": "kp",
+          "symbol": "d"
+        },
+        "LTR": {
+          "kind": "kp",
+          "symbol": "b"
+        },
+        "LTM": {
+          "kind": "kp",
+          "symbol": "l"
+        },
+        "LHR": {
+          "kind": "kp",
+          "symbol": "n"
+        },
+        "LBR": {
+          "kind": "kp",
+          "symbol": "p"
+        },
+        "LBM": {
+          "kind": "kp",
+          "symbol": "v"
+        },
+        "RBI": {
+          "kind": "kp",
+          "symbol": "g"
+        },
+        "RHI": {
+          "kind": "kp",
+          "symbol": "s"
+        },
+        "RHP": {
+          "kind": "kp",
+          "symbol": "i"
+        },
+        "RBR": {
+          "kind": "kp",
+          "symbol": ","
+        },
+        "LHM": {
+          "kind": "kp",
+          "symbol": "r"
+        },
+        "RTR": {
+          "kind": "kp",
+          "symbol": "u"
+        },
+        "RHR": {
+          "kind": "kp",
+          "symbol": "e"
+        },
+        "R0": {
+          "kind": "sl",
+          "layer": "alpha-2"
+        },
+        "RBM": {
+          "kind": "kp",
+          "symbol": "."
+        }
+      }
+    },
+    {
+      "id": "alpha-2",
+      "name": "Alpha 2",
+      "bindings": {
+        "*": {
+          "kind": "trans"
+        },
+        "LBC": {
+          "kind": "kp",
+          "symbol": ";"
+        },
+        "RBC": {
+          "kind": "kp",
+          "symbol": "/"
+        },
+        "R0": {
+          "kind": "kp",
+          "symbol": "'"
+        },
+        "LHP": {
+          "kind": "macro",
+          "symbols": "ç"
+        },
+        "LHR": {
+          "kind": "kp",
+          "symbol": "x"
+        },
+        "LBR": {
+          "kind": "kp",
+          "symbol": "z"
+        },
+        "LBI": {
+          "kind": "kp",
+          "symbol": "h"
+        },
+        "LBM": {
+          "kind": "kp",
+          "symbol": "w"
+        },
+        "LHM": {
+          "kind": "macro",
+          "symbols": "wh"
+        },
+        "LHI": {
+          "kind": "macro",
+          "symbols": "th"
+        },
+        "LTR": {
+          "kind": "kp",
+          "symbol": "q"
+        },
+        "LTI": {
+          "kind": "macro",
+          "symbols": "qu"
+        },
+        "LTM": {
+          "kind": "kp",
+          "symbol": "k"
+        },
+        "RHR": {
+          "kind": "kp",
+          "symbol": "y"
+        },
+        "RHP": {
+          "kind": "kp",
+          "symbol": "j"
+        }
+      }
+    }
+  ],
+  "repeatPolicy": {
+    "doubledLetters": "repeatKey"
+  }
+}
