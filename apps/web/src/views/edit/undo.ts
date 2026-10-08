@@ -12,7 +12,7 @@ import { type EditAction, type EditState, initialState } from './reducer.js';
 export type UndoAction = EditAction | { type: 'undo' } | { type: 'redo' };
 
 /** The layout and where the user was in it. The compiled form is rebuilt, never stored. */
-type Snapshot = Pick<EditState, 'layout' | 'layer' | 'selected'>;
+type Snapshot = Pick<EditState, 'layout' | 'layer' | 'selected' | 'also'>;
 
 export interface UndoState extends EditState {
   past: Snapshot[];
@@ -26,7 +26,7 @@ export function initialUndoState(layout: Layout, compiled: CompiledLayout, layer
 }
 
 function snapshot(state: EditState): Snapshot {
-  return { layout: state.layout, layer: state.layer, selected: state.selected };
+  return { layout: state.layout, layer: state.layer, selected: state.selected, also: state.also };
 }
 
 function restore(
@@ -48,6 +48,7 @@ function restore(
     compiled,
     layer: Math.min(snap.layer, compiled.layers.length - 1),
     selected: snap.selected,
+    also: snap.also,
     swapFrom: null,
     focusRequest: null,
     error: null,

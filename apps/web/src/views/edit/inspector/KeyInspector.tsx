@@ -16,6 +16,7 @@ import { Note } from './controls.js';
 import { FeatureBody, featureTitle, withoutFeatureAt } from './features.js';
 import { kindInfo, kindOf } from './kinds.js';
 import { chipLabel, usedBindings } from './layout-bindings.js';
+import { SelectionInspector } from './SelectionInspector.js';
 import { BindingTextLine } from './TextLine.js';
 
 export interface KeyInspectorProps {
@@ -36,6 +37,17 @@ export interface KeyInspectorProps {
  */
 export function KeyInspector(props: KeyInspectorProps) {
   const { state } = props;
+  // Several keys: what can be done to them together, rather than the editor of one.
+  if (state.selected !== null && state.also.length > 0) {
+    return (
+      <SelectionInspector
+        state={state}
+        send={props.send}
+        announce={props.announce}
+        focusKey={props.focusKey}
+      />
+    );
+  }
   if (state.selected === null || !state.compiled.keyIndex.has(state.selected)) {
     return (
       <section className="lb-inspector lb-inspector-empty card bg-base-100 border border-base-300">
@@ -46,7 +58,8 @@ export function KeyInspector(props: KeyInspectorProps) {
           </div>
           <p className="text-xs opacity-70">
             Tap or click a key on the board to edit it. Drag a key onto another to swap the two —
-            hold Alt to copy instead — or onto a layer tab to send it there.
+            hold Alt to copy instead — or onto a layer tab to send it there. Shift-click keys, or
+            rest a finger on them, to select several and send, copy or clear them together.
           </p>
           <p className="text-xs opacity-70 lb-pointer-hint">
             On a focused key, typing sets it — <span className="font-mono">ç</span>,{' '}

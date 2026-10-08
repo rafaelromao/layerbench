@@ -14,6 +14,7 @@ export interface HelpTopic {
 export const HELP = {
   editKey: { page: 'editing', section: 'choosing-what-a-key-does', topic: 'editing a key' },
   moving: { page: 'editing', section: 'moving-keys-around', topic: 'moving keys' },
+  severalKeys: { page: 'editing', section: 'several-keys-at-once', topic: 'editing several keys' },
   layers: { page: 'editing', section: 'layers', topic: 'layers' },
   features: {
     page: 'special-keys',

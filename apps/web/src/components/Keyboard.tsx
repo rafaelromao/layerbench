@@ -197,6 +197,8 @@ interface ModelOptions {
   highlighted?: Set<number>;
   pressed?: Set<number>;
   selected?: string | null;
+  /** Other keys selected with it. */
+  alsoSelected?: readonly string[];
   /** Top-left of the drawing, in key units; only the drawn board needs it. */
   origin?: { ox: number; oy: number };
   /** Where each key is drawn across, when that is not where the geometry puts it. */
@@ -257,7 +259,7 @@ function modelKeys(compiled: CompiledLayout, layerIdx: number, opts: ModelOption
       heat: opts.heat?.[idx] ?? 0,
       highlighted: opts.highlighted?.has(idx) ?? false,
       pressed: opts.pressed?.has(idx) ?? false,
-      selected: opts.selected === k.id,
+      selected: opts.selected === k.id || (opts.alsoSelected?.includes(k.id) ?? false),
       reach,
       /** The band shows how the key reaches the layer, not a hold of its own. */
       reachBand: reachWord !== null,
@@ -280,13 +282,19 @@ export interface KeyboardProps {
   combos?: KeyboardCombo[];
   /** Key id drawn as selected. */
   selected?: string | null;
+  /** Other keys drawn as selected with it, when several are. */
+  alsoSelected?: readonly string[];
   /** Position pairs to connect with an arrow. */
   arcs?: [number, number][];
   interactive?: boolean;
   showHold?: boolean;
   className?: string;
   id?: string;
-  onKeyClick?: (keyId: string) => void;
+  /**
+   * A key picked. `add` is a pick that adds the key to the selection, or takes it out: with Shift,
+   * Ctrl or ⌘ held, with Shift and Enter or Space, or a finger resting on the key and lifted.
+   */
+  onKeyClick?: (keyId: string, how?: { add: boolean }) => void;
   /** Enables dragging a key onto another key, or onto a layer tab. */
   draggable?: boolean;
   onDropKey?: (drop: KeyDrop) => void;
@@ -322,6 +330,7 @@ export function Keyboard({
   pressed = [],
   combos = [],
   selected = null,
+  alsoSelected,
   arcs = [],
   interactive = true,
   showHold = true,
@@ -388,7 +397,11 @@ export function Keyboard({
     [compiled, layer],
   );
 
-  const drag = useKeyDrag(onDropKey, { legendOf, onDragStart });
+  const drag = useKeyDrag(onDropKey, {
+    legendOf,
+    onDragStart,
+    onLongPress: onKeyClick ? (keyId) => onKeyClick(keyId, { add: true }) : undefined,
+  });
 
   const reached = useMemo(() => reachOf(compiled, layerIdx), [compiled, layerIdx]);
   // The ring and the band word take the colour of the layer they lead to: this one.
@@ -402,6 +415,7 @@ export function Keyboard({
     highlighted,
     pressed: pressing,
     selected,
+    alsoSelected,
     origin: view,
     xs,
     reach: reached,
@@ -427,7 +441,7 @@ export function Keyboard({
     if (e.defaultPrevented) return;
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      onKeyClick?.(keyId);
+      onKeyClick?.(keyId, { add: e.shiftKey });
     }
   };
 
@@ -507,9 +521,9 @@ export function Keyboard({
             style={{ cursor: interactive ? 'pointer' : 'default' }}
             onClick={
               interactive
-                ? () => {
+                ? (e) => {
                     if (draggable && drag.consumeClick()) return;
-                    onKeyClick?.(k.key.id);
+                    onKeyClick?.(k.key.id, { add: e.shiftKey || e.ctrlKey || e.metaKey });
                   }
                 : undefined
             }

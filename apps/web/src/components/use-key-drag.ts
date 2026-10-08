@@ -1,4 +1,10 @@
-import { type PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef } from 'react';
+import {
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  useCallback,
+  useEffect,
+  useRef,
+} from 'react';
 
 /** Where a drag ended: another key, or a layer tab that takes the binding to that layer. */
 export type DropTarget = { kind: 'key'; keyId: string } | { kind: 'layer'; layerId: string };
@@ -17,6 +23,11 @@ export interface KeyDragOptions {
   legendOf?: (keyId: string) => string;
   /** Called once a gesture becomes a drag, so a view can put an open editor away. */
   onDragStart?: (keyId: string) => void;
+  /**
+   * A finger rested on a key and lifted without moving: the touch way to pick a key beside the ones
+   * already picked. Resting and then moving is still a drag.
+   */
+  onLongPress?: (keyId: string) => void;
 }
 
 export interface KeyDrag {
@@ -26,6 +37,7 @@ export interface KeyDrag {
     onPointerMove: (e: ReactPointerEvent<SVGSVGElement>) => void;
     onPointerUp: (e: ReactPointerEvent<SVGSVGElement>) => void;
     onPointerCancel: (e: ReactPointerEvent<SVGSVGElement>) => void;
+    onContextMenu: (e: ReactMouseEvent<SVGSVGElement>) => void;
   };
   /** True when the click that follows a drop should be ignored. */
   consumeClick: () => boolean;
@@ -96,7 +108,11 @@ export function useKeyDrag(
   const dragging = useRef(false);
   /** A touch is not allowed to drag until it has rested; a mouse or pen may drag at once. */
   const armed = useRef(true);
+  /** A touch that rested on its key long enough to drag it, or to count as a long press. */
+  const rested = useRef(false);
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** The press under way is a finger's. */
+  const touch = useRef(false);
   const ghost = useRef<HTMLDivElement | null>(null);
   const suppressClick = useRef(false);
   // Options are read through a ref so a new object on every render does not re-make the handlers.
@@ -121,6 +137,8 @@ export function useKeyDrag(
       origin.current = null;
       dragging.current = false;
       armed.current = true;
+      rested.current = false;
+      touch.current = false;
       svg?.classList.remove('lb-dragging');
       clearTargets();
       clearGhost();
@@ -150,10 +168,13 @@ export function useKeyDrag(
     // The pointer is not captured yet: a captured pointer's click is dispatched to the capturing
     // element, so capturing here would send every plain click to the board instead of the key.
 
-    if (e.pointerType === 'touch') {
+    touch.current = e.pointerType === 'touch';
+    if (touch.current) {
       armed.current = false;
+      rested.current = false;
       holdTimer.current = setTimeout(() => {
         armed.current = true;
+        rested.current = true;
       }, TOUCH_HOLD_MS);
     } else {
       armed.current = true;
@@ -201,8 +222,15 @@ export function useKeyDrag(
     (e: ReactPointerEvent<SVGSVGElement>) => {
       const start = from.current;
       const dragged = dragging.current;
+      const longPress = !dragged && rested.current;
       const to = dragged ? targetUnder(e.clientX, e.clientY, e.currentTarget) : undefined;
       reset(e.currentTarget);
+      if (start && longPress && opts.current.onLongPress) {
+        // The click that follows would pick the key alone, undoing what the press just did.
+        suppressClick.current = true;
+        opts.current.onLongPress(start);
+        return;
+      }
       if (!start || !dragged) return;
       // A drop must not also register as a click on whatever is underneath.
       suppressClick.current = true;
@@ -223,6 +251,12 @@ export function useKeyDrag(
     [reset],
   );
 
+  const onContextMenu = useCallback((e: ReactMouseEvent<SVGSVGElement>) => {
+    // A finger resting on a key, to drag it or to pick it beside others, is not asking for the
+    // browser's menu.
+    if (touch.current && from.current) e.preventDefault();
+  }, []);
+
   const consumeClick = useCallback(() => {
     if (!suppressClick.current) return false;
     suppressClick.current = false;
@@ -230,7 +264,7 @@ export function useKeyDrag(
   }, []);
 
   return {
-    handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel },
+    handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onContextMenu },
     consumeClick,
   };
 }

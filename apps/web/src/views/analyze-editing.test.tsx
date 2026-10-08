@@ -52,6 +52,19 @@ async function openEdit(): Promise<void> {
 
 const key = (name: string) => screen.getByRole('button', { name });
 
+/** A key of the board being edited, as the pointer meets it. */
+const svgKey = (keyId: string) =>
+  document.querySelector(`#kb-analyze g[data-key="${keyId}"]`) as Element;
+
+/** A finger touching or lifting, where it went down. */
+const touchEvent = (type: 'pointerdown' | 'pointerup') =>
+  new PointerEvent(type, {
+    bubbles: true,
+    clientX: 1,
+    clientY: 1,
+    pointerType: 'touch',
+  }) as Event & PointerEvent;
+
 /** The bar above the board: the layout's name, author and description, Save, corpus and rules. */
 const bar = () => screen.getByRole('region', { name: 'Layout' });
 
@@ -991,6 +1004,66 @@ describe('Edit', () => {
     expect(await screen.findByRole('button', { name: 'Key LHM: d' })).toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: 'Base' }));
     expect(await screen.findByRole('button', { name: 'Key LHM: empty' })).toBeInTheDocument();
+  });
+
+  it('sends keys picked with Shift to another layer together, and one Undo takes them all back', async () => {
+    const user = userEvent.setup();
+    await openEdit();
+
+    await user.click(screen.getByRole('tab', { name: 'Layers' }));
+    await user.type(screen.getByLabelText('New layer name'), 'Numbers');
+    await user.click(screen.getByRole('button', { name: '+ layer' }));
+    const numbers = await screen.findByRole('tab', { name: 'Numbers' });
+    const base = screen.getByRole('tab', { name: 'Base' });
+    await user.click(base);
+
+    await user.click(await screen.findByRole('button', { name: 'Key LHM: d' }));
+    await user.keyboard('{Shift>}');
+    await user.click(key('Key LHI: f'));
+    await user.click(key('Key LHR: s'));
+    // A second Shift-click takes a key back out.
+    await user.click(key('Key LHR: s'));
+    await user.keyboard('{/Shift}');
+    const editor = await screen.findByRole('group', { name: 'Edit 2 keys' });
+
+    await user.selectOptions(
+      within(editor).getByRole('combobox', { name: 'Send the selected keys to another layer' }),
+      'Numbers',
+    );
+    await waitFor(() => {
+      expect(numbers).toHaveAttribute('aria-selected', 'true');
+    });
+    expect(await screen.findByRole('button', { name: 'Key LHM: d' })).toBeInTheDocument();
+    expect(key('Key LHI: f')).toBeInTheDocument();
+    expect(key('Key LHR: transparent')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    await waitFor(() => {
+      expect(base).toHaveAttribute('aria-selected', 'true');
+    });
+    expect(await screen.findByRole('button', { name: 'Key LHM: d' })).toBeInTheDocument();
+    expect(key('Key LHI: f')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Edit 2 keys' })).toBeInTheDocument();
+  });
+
+  it('adds a key to the ones picked when a finger rests on it, and clears them all at once', async () => {
+    setPointerKind('touch');
+    const user = userEvent.setup();
+    await openEdit();
+
+    await user.click(key('Key LHM: d'));
+    const rest = svgKey('LHI');
+    rest.dispatchEvent(touchEvent('pointerdown'));
+    await new Promise((done) => setTimeout(done, 400));
+    rest.dispatchEvent(touchEvent('pointerup'));
+    // The click a lifted finger may still send, with no press before it, must not pick that key
+    // alone.
+    rest.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    const editor = await screen.findByRole('group', { name: 'Edit 2 keys' });
+    await user.click(within(editor).getByRole('button', { name: 'Clear' }));
+    expect(await screen.findByRole('button', { name: 'Key LHM: empty' })).toBeInTheDocument();
+    expect(key('Key LHI: empty')).toBeInTheDocument();
   });
 
   it('reuses a key the layout already has', async () => {

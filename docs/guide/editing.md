@@ -111,6 +111,16 @@ makes it do nothing (*Nothing* `∅`), on any layer, rather than let the layer b
 **Clear**, in the editor, does the same for a key with a binding of its own, and is greyed out on
 one that takes its layer's default.
 
+### Several keys at once
+
+Shift-click a key to select it beside the ones already selected, and again to take it back out; on
+a phone, rest your finger on it and lift. With more than one key selected, the editor gives way to
+what can be done with all of them: **Send to layer…** and **Copy to layer…** put them on another
+layer at the same places, **Make transparent** lets the layer below show through them, and
+**Clear** makes them do nothing, as `Delete` does on any one of them. Dragging one of them onto a
+layer tab sends them all. Each is one change, so one **Undo** takes it back, and the keys stay
+selected for the next.
+
 ## Layers
 
 The tabs above the board switch between layers. A key's colour and dot say which layer it reaches.
@@ -173,8 +183,10 @@ board scrolls away with the page as you work through the editor, leaving it the 
 back up for the next key. Tiles and chips are sized for a finger.
 
 To drag a key, rest your finger on it for a moment first; a quick swipe scrolls the page instead.
-**Swap with…**, **Copy to…** and **Send to layer…** do the same without dragging. The on-screen
-keyboard stays down until you tap a text field, such as **Or type**.
+**Swap with…**, **Copy to…** and **Send to layer…** do the same without dragging. Resting a finger
+on a key and lifting it without moving adds it to the keys selected, to [move or clear several at
+once](#several-keys-at-once). The on-screen keyboard stays down until you tap a text field, such
+as **Or type**.
 
 ## Keyboard shortcuts
 
@@ -185,8 +197,8 @@ one for each key.
 |---|---|
 | any character | starts the key's binding with it, in **Or type** |
 | `Enter` · `F2` | puts the whole binding in **Or type**, ready to replace |
-| `Space` | selects the key |
-| `Delete` · `Backspace` | makes the key do nothing |
+| `Space` | selects the key; with `Shift`, adds it to the keys selected, or takes it out |
+| `Delete` · `Backspace` | makes the key do nothing, or every key selected |
 | `Alt`+`S` | starts a swap; then `Enter` or a click on the other key |
 | `Escape` | cancels a swap or a combo pick; then clears an outlined pair; then closes the editor |
 | `Ctrl`/`Cmd`+`Z` | undoes; with `Shift` as well, redoes |

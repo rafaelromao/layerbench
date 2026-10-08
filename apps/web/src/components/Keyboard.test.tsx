@@ -30,10 +30,17 @@ describe('Keyboard', () => {
     const key = screen.getByRole('button', { name: 'Key LHM: d' });
     key.focus();
     await user.keyboard('{Enter}');
-    expect(onKeyClick).toHaveBeenCalledWith('LHM');
+    expect(onKeyClick).toHaveBeenCalledWith('LHM', { add: false });
 
     await user.keyboard(' ');
     expect(onKeyClick).toHaveBeenCalledTimes(2);
+
+    // Shift adds the key to the ones picked, from the keyboard as with a click.
+    await user.keyboard('{Shift>}{Enter}{/Shift}');
+    expect(onKeyClick).toHaveBeenLastCalledWith('LHM', { add: true });
+    await user.keyboard('{Shift>}');
+    await user.click(screen.getByRole('button', { name: 'Key LHI: f' }));
+    expect(onKeyClick).toHaveBeenLastCalledWith('LHI', { add: true });
   });
 
   it('rings the selected key outside its cap, so an outline on the cap leaves it in sight', () => {

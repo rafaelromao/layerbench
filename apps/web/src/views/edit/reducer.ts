@@ -38,6 +38,11 @@ export interface EditState {
   /** Layer being edited. Independent of the layer shown on the Analyze view. */
   layer: number;
   selected: string | null;
+  /**
+   * The other keys selected with `selected`, added with Shift or a long press: what the actions for
+   * several keys act on, together. Empty when one key, or none, is selected.
+   */
+  also: string[];
   /** Key the user armed for a click-to-swap, if any. */
   swapFrom: string | null;
   /** What the armed key does when its partner is picked. */
@@ -72,6 +77,13 @@ export interface EditState {
 export type EditAction =
   | { type: 'selectLayer'; layer: number }
   | { type: 'keyClick'; keyId: string }
+  /** Add a key to the selection, or take it out: Shift with a click, or a long press. */
+  | { type: 'toggleSelect'; keyId: string }
+  /** The selected keys, to the same places on another layer: moved, or copied. */
+  | { type: 'sendSelection'; layerId: string; mode: 'move' | 'copy' }
+  /** Every selected key made to do nothing, or to let the layer below show through. */
+  | { type: 'clearSelection' }
+  | { type: 'transparentSelection' }
   | { type: 'startSwap'; mode?: 'swap' | 'copy' }
   | { type: 'cancelSwap' }
   | { type: 'swap'; from: string; to: string }
@@ -125,6 +137,7 @@ export function initialState(layout: Layout, compiled: CompiledLayout, layer = 0
     compiled,
     layer: Math.min(layer, compiled.layers.length - 1),
     selected: null,
+    also: [],
     swapFrom: null,
     swapMode: 'swap',
     dirty: false,
@@ -169,7 +182,27 @@ function withLayout(state: EditState, layout: Layout, patch: Partial<EditState> 
   }
 }
 
+/** Every key selected: the one in the inspector first, then the others in the order they came. */
+export function selectionOf(state: Pick<EditState, 'selected' | 'also'>): string[] {
+  return state.selected === null ? [] : [state.selected, ...state.also];
+}
+
+/** The same binding on every selected key of the layer shown. */
+function setSelection(state: EditState, binding: Binding): EditState {
+  const keys = selectionOf(state);
+  if (keys.length === 0) return state;
+  let layout = state.layout;
+  for (const key of keys) layout = setKeyBinding(layout, state.layer, key, binding);
+  return withLayout(state, layout, { lastSwap: null });
+}
+
 export function editReducer(state: EditState, action: EditAction): EditState {
+  const next = reduce(state, action);
+  // No key in the inspector, no keys beside it.
+  return next.selected === null && next.also.length > 0 ? { ...next, also: [] } : next;
+}
+
+function reduce(state: EditState, action: EditAction): EditState {
   switch (action.type) {
     case 'selectLayer':
       // The selection stays: the same key on another layer is usually the next thing to look at.
@@ -184,7 +217,7 @@ export function editReducer(state: EditState, action: EditAction): EditState {
     case 'keyClick': {
       // A stale compile error belongs to the edit that failed, not to the next key clicked.
       if (!state.swapFrom) {
-        return { ...state, selected: action.keyId, focusRequest: null, error: null };
+        return { ...state, selected: action.keyId, also: [], focusRequest: null, error: null };
       }
       if (state.swapFrom === action.keyId) return { ...state, swapFrom: null };
       // Arming a key and then tapping its partner is what a drag is, for anyone not holding a
@@ -200,6 +233,41 @@ export function editReducer(state: EditState, action: EditAction): EditState {
       );
     }
 
+    case 'toggleSelect': {
+      // With a swap waiting for its partner, the key picked is that partner, as a click is.
+      if (state.swapFrom) return reduce(state, { type: 'keyClick', keyId: action.keyId });
+      const keys = selectionOf(state);
+      const next = keys.includes(action.keyId)
+        ? keys.filter((k) => k !== action.keyId)
+        : [...keys, action.keyId];
+      return {
+        ...state,
+        selected: next[0] ?? null,
+        also: next.slice(1),
+        focusRequest: null,
+        error: null,
+      };
+    }
+
+    case 'sendSelection': {
+      const keys = selectionOf(state);
+      const target = state.layout.layers.findIndex((l) => l.id === action.layerId);
+      if (keys.length === 0 || target < 0 || target === state.layer) return state;
+      let layout = state.layout;
+      for (const key of keys) {
+        layout = sendKeyToLayer(layout, state.layer, target, key, action.mode);
+      }
+      // As with one key, the board follows them to their layer, where they are still selected.
+      return withLayout(state, layout, { layer: target, lastSwap: null });
+    }
+
+    case 'clearSelection':
+      // As a cleared key does: nothing, rather than the key below showing through.
+      return setSelection(state, { kind: 'none' });
+
+    case 'transparentSelection':
+      return setSelection(state, { kind: 'trans' });
+
     case 'startSwap':
       return state.selected
         ? { ...state, swapFrom: state.selected, swapMode: action.mode ?? 'swap' }
@@ -212,6 +280,7 @@ export function editReducer(state: EditState, action: EditAction): EditState {
       const swapped = swapKeys(state.layout, state.layer, action.from, action.to);
       return withLayout(state, swapped, {
         selected: action.to,
+        also: [],
         swapFrom: null,
         lastSwap: { layerIdx: state.layer, from: action.from, to: action.to, before: state.layout },
       });
@@ -233,6 +302,7 @@ export function editReducer(state: EditState, action: EditAction): EditState {
       return {
         ...state,
         selected: action.keyId,
+        also: [],
         swapFrom: null,
         error: null,
         focusRequest: { keyId: action.keyId, seed: action.seed },
@@ -241,7 +311,7 @@ export function editReducer(state: EditState, action: EditAction): EditState {
     case 'deselect':
       return state.selected === null && state.swapFrom === null
         ? state
-        : { ...state, selected: null, swapFrom: null, focusRequest: null };
+        : { ...state, selected: null, also: [], swapFrom: null, focusRequest: null };
 
     case 'commitBinding':
       return withLayout(
@@ -274,6 +344,14 @@ export function editReducer(state: EditState, action: EditAction): EditState {
 
     case 'dropKey': {
       const { from, to, mode } = action;
+      // A selected key dragged onto a layer tab takes the rest of the selection with it.
+      if (to.kind === 'layer' && state.also.length > 0 && selectionOf(state).includes(from)) {
+        return reduce(state, {
+          type: 'sendSelection',
+          layerId: to.layerId,
+          mode: mode === 'copy' ? 'copy' : 'move',
+        });
+      }
       if (to.kind === 'layer') {
         const target = state.layout.layers.findIndex((l) => l.id === to.layerId);
         if (target < 0 || target === state.layer) return state;
@@ -287,13 +365,14 @@ export function editReducer(state: EditState, action: EditAction): EditState {
             from,
             mode === 'copy' ? 'copy' : 'move',
           ),
-          { layer: target, selected: from, lastSwap: null },
+          { layer: target, selected: from, also: [], lastSwap: null },
         );
       }
       if (from === to.keyId) return state;
       if (mode === 'copy') {
         return withLayout(state, copyKey(state.layout, state.layer, from, to.keyId), {
           selected: to.keyId,
+          also: [],
           lastSwap: null,
         });
       }

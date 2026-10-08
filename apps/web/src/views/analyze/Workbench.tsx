@@ -62,7 +62,7 @@ import {
   LayersPanel,
   PathsPanel,
 } from '../edit/panels.js';
-import { editReducer, type Panel } from '../edit/reducer.js';
+import { editReducer, type Panel, selectionOf } from '../edit/reducer.js';
 import { initialUndoState, undoable } from '../edit/undo.js';
 import { useTypedLayout } from '../useLayout.js';
 import type { useRuleSet } from '../useRuleSet.js';
@@ -654,6 +654,13 @@ export function Workbench({
     if (e.key === 'Backspace' || e.key === 'Delete') {
       e.preventDefault();
       stopPlaying();
+      // On one of several selected keys, every one of them.
+      const keys = selectionOf(state);
+      if (keys.length > 1 && keys.includes(keyId)) {
+        send({ type: 'clearSelection' });
+        setMessage(`${keys.length} keys do nothing`);
+        return;
+      }
       send({ type: 'clearKey', keyId });
       setMessage(`${keyId} does nothing`);
       return;
@@ -820,6 +827,7 @@ export function Workbench({
                         compiled={state.compiled}
                         layer={boardLayer}
                         selected={state.selected}
+                        alsoSelected={state.also}
                         heat={heat}
                         highlight={highlighted}
                         pressed={frame?.keys ?? []}
@@ -827,7 +835,7 @@ export function Workbench({
                         arcs={playing ? [] : arcs}
                         draggable
                         onDragStart={() => stopPlaying()}
-                        onKeyClick={(keyId) => {
+                        onKeyClick={(keyId, how) => {
                           if (state.comboPick) {
                             send({ type: 'comboPickToggle', keyId });
                             return;
@@ -835,14 +843,22 @@ export function Workbench({
                           stopPlaying();
                           if (!state.swapFrom) clearOutline();
                           // A click, a tap and Space all select; the inspector is where editing
-                          // happens, so a finger and a mouse reach it the same way.
-                          send({ type: 'keyClick', keyId });
+                          // happens, so a finger and a mouse reach it the same way. With Shift, or a
+                          // finger rested on the key, the key joins the others selected or leaves.
+                          send(
+                            how?.add
+                              ? { type: 'toggleSelect', keyId }
+                              : { type: 'keyClick', keyId },
+                          );
                         }}
                         onDropKey={(drop) => {
+                          const keys = selectionOf(state);
+                          const many =
+                            drop.to.kind === 'layer' && keys.length > 1 && keys.includes(drop.from);
                           send({ type: 'dropKey', ...drop });
                           setMessage(
                             drop.to.kind === 'layer'
-                              ? `${drop.from} sent to ${drop.to.layerId}`
+                              ? `${many ? `${keys.length} keys` : drop.from} ${drop.mode === 'copy' ? 'copied' : 'sent'} to ${drop.to.layerId}`
                               : `${drop.from} ${drop.mode === 'copy' ? 'copied to' : 'swapped with'} ${drop.to.keyId}`,
                           );
                         }}
