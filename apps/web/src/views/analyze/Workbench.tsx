@@ -1158,7 +1158,6 @@ function SummaryCard({
               <p className="font-mono text-xs opacity-60">
                 {params.universe === 'with_space' ? 'with space' : 'no space'} ·{' '}
                 {params.caseMode === 'model' ? 'shift modeled' : 'case folded'} ·{' '}
-                {String(shown?.globals.normalization ?? 'percent_of_ngrams')} ·{' '}
                 {params.sample.toLocaleString('en-US')} symbols of {corpusName}
               </p>
             </div>

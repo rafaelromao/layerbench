@@ -12,7 +12,7 @@ Every metric below is a *rule*: plain data that a rule set can enable, disable, 
 - **Choices while typing.** Where a character can be typed several ways, the fewest presses win, then the way that leaves no layer key held, then the fewest same-finger bigrams and then skipgrams with the keys before it in the word, then the lower Effort on cyanophage's grid. Where several keys tap the same layer the same way, each word takes the one that gives it the fewest same-finger bigrams, then skipgrams, then the lower Effort. These measures are fixed, never the rule set's, so the same text is typed the same way whatever rules score it.
 - **Universes.** The default universe is *no space*: the space key is removed from the stream before n-grams are counted (the Doc's convention). The *with space* universe keeps it. Rule sets pick the universe through the `universe` global; in the app, **Space** sets it, whatever the rule set says.
 - **Word boundary.** `cross_word: reset` (default) restarts n-grams at every word boundary, so the last letter of one word and the first of the next never form a bigram. `bridge` lets n-grams cross words.
-- **Normalization.** `percent_of_ngrams` (default) divides by the number of n-grams of the same size. For pairs — bigrams and skipgrams — that is the number the *text* has, as if every character took one press, not the number the layout pressed: layer taps, holds and one-shots add pairs no letter rule can match, and would otherwise make a layout that needs them look better than it types. Single keys and trigrams are shares of what was pressed. `percent_of_keystrokes` divides by the text's characters, space only when space is counted (cyanophage style; with `space_per_word_in_keystrokes`, one space per word is added when space is not counted, and the spaces themselves stand for it when it is). For a layout that types every character with one press, both ways give the same number.
+- **Normalization.** Each rule's `aggregate` says what its percentage is a share of. `percent_of_ngrams` (default) divides by the number of n-grams of the same size. For pairs — bigrams and skipgrams — that is the number the *text* has, as if every character took one press, not the number the layout pressed: layer taps, holds and one-shots add pairs no letter rule can match, and would otherwise make a layout that needs them look better than it types. Single keys and trigrams are shares of what was pressed. `percent_of_keystrokes` divides by the text's characters, space only when space is counted (cyanophage style, and what the cyanophage-like preset gives every pair rule; with `space_per_word_in_keystrokes`, one space per word is added when space is not counted, and the spaces themselves stand for it when it is). For a layout that types every character with one press, both ways give the same number.
 - **Case.** By default case is folded (`A` and `a` are the same symbol). **Shift**, in the app, types capitals through the layout's shift key or shifted twin layer, adding the extra presses to the stream.
 - **Chords.** Combos (chords) are single events pressed with several fingers. Next to a single key, a chord counts as its worst case: it shares a finger with the key if any of its fingers is the key's. A pair of two chords is left out of the bigram-family rules (`is_chord: false`), since "same finger" has no single answer between two multi-finger presses.
 - **Thumbs.** Thumb keys are included in usage and in SFB/SFS (a thumb pressing two different keys is a same-finger bigram). They are excluded where the Doc excludes them: lateral stretches, scissors, redirects and one-hand rolls.
@@ -41,7 +41,7 @@ Bounds are editable per rule in the Rules view ("Bands (upper bounds)").
 
 ## Bigrams
 
-Two consecutive presses. Normalized as a percentage of bigrams unless the rule set says otherwise.
+Two consecutive presses. Normalized as a percentage of bigrams unless the rule's `aggregate` says otherwise.
 
 | Id | Name | Definition |
 |---|---|---|
@@ -141,7 +141,7 @@ Rules are `where` expressions over an n-gram (`all`, `any`, `none` combinators).
 
 - Of each key, which every key selected must match (the `any_` and `includes_` forms need only one): `hand`, `finger`, `includes_finger`, `finger_name`, `includes_finger_name`, `row`, `col`, `is_home`, `is_thumb` / `any_thumb`, `is_inner` / `any_inner`, `key_kind` / `any_key_kind` (`alpha`, `layer_tap`, `shift`, `space`, `repeat`, `adaptive`, `combo`, `hold`), `layer` / `any_layer`, `is_chord`.
 - Of each two keys in a row: `same_hand`, `same_finger`, `same_key`, `adjacent_fingers`, `rank_delta` (the difference in finger rank, `eq`/`min`), `row_delta` (`abs`, `abs_min`), `col_delta`, `x_distance` and `y_distance` (`min`, in U, on one hand), `distance` (by the rule set's distance model), `direction` (`inward` / `outward`), `finger_name_pair`, `finger_height_preference: violated`.
-- Of the whole n-gram: `hand_pattern` (`"aba"`, `"aab"`, `"aaa"`…), `monotone`, `changes_direction`, `distinct_fingers`, `min_run`.
+- Of the whole n-gram: `hand_pattern` (`"aba"`, `"aab"`, `"aaa"`…), `monotone`, `changes_direction`, `distinct_fingers`.
 
 Numeric thresholds may reference rule-set globals as `"$global.name"`.
 

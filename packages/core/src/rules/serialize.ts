@@ -68,7 +68,6 @@ const LeafSchema = z
     changes_direction: z.boolean().optional(),
     distinct_fingers: z.boolean().optional(),
     finger_height_preference: z.literal('violated').optional(),
-    min_run: z.unknown().optional(),
   })
   .strict();
 
@@ -162,10 +161,8 @@ const RuleSchema = z.object({
 const GlobalsSchema = z.object({
   universe: z.enum(['no_space', 'with_space']).optional(),
   cross_word: z.enum(['reset', 'bridge']).optional(),
-  repeats_count_as_sfb: z.boolean().optional(),
   skip_weights: z.array(z.number()).optional(),
   distance_model: z.enum(['euclid', 'squared', 'manhattan']).optional(),
-  normalization: z.enum(['percent_of_ngrams', 'percent_of_keystrokes']).optional(),
   lsb_adjacent_u: z.number().optional(),
   lsb_semi_adjacent_u: z.number().optional(),
   top_items: z.number().int().optional(),

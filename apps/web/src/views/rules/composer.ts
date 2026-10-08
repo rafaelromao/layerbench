@@ -198,8 +198,6 @@ export function coerceGlobal(name: string, value: string): Partial<Globals> {
       return { lsb_semi_adjacent_u: parseNumber(value, 3.5) };
     case 'top_items':
       return { top_items: Math.trunc(parseNumber(value, 12)) };
-    case 'repeats_count_as_sfb':
-      return { repeats_count_as_sfb: value === 'true' };
     case 'space_per_word_in_keystrokes':
       return { space_per_word_in_keystrokes: value === 'true' };
     default:

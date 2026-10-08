@@ -76,7 +76,6 @@ export function cyanophage(): RuleSet {
     description:
       'Column-pair LSBs, adjacency scissors, bigram percentages over keystrokes (+ one space per word), repeats excluded.',
     globals: {
-      normalization: 'percent_of_keystrokes',
       space_per_word_in_keystrokes: true,
       cross_word: 'reset',
     },

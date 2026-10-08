@@ -327,21 +327,6 @@ export function RulesView() {
             </label>
 
             <label className="form-control">
-              <span className="label-text text-xs">Normalization</span>
-              <select
-                aria-label="Normalization"
-                className="select select-xs select-bordered"
-                value={globals.normalization}
-                onChange={(e) =>
-                  send({ type: 'setGlobal', name: 'normalization', value: e.target.value })
-                }
-              >
-                <option value="percent_of_ngrams">% of n-grams</option>
-                <option value="percent_of_keystrokes">% of keystrokes</option>
-              </select>
-            </label>
-
-            <label className="form-control">
               <span className="label-text text-xs">Skip weights</span>
               <input
                 aria-label="Skip weights"

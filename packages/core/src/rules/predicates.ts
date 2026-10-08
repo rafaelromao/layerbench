@@ -223,8 +223,6 @@ function leaf(
       return changesDirection(ng) === value;
     case 'distinct_fingers':
       return (new Set(keys.map((k) => k.finger)).size === keys.length) === value;
-    case 'min_run':
-      return true;
     default:
       throw new Error(`unknown predicate ${name}`);
   }

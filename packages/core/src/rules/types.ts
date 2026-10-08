@@ -96,7 +96,6 @@ export interface PredicateLeaf {
   changes_direction?: boolean;
   distinct_fingers?: boolean;
   finger_height_preference?: 'violated';
-  min_run?: unknown;
 }
 
 export type Predicate =
@@ -159,10 +158,8 @@ export interface Rule {
 export interface Globals {
   universe: 'no_space' | 'with_space';
   cross_word: 'reset' | 'bridge';
-  repeats_count_as_sfb: boolean;
   skip_weights: number[];
   distance_model: DistanceModel;
-  normalization: 'percent_of_ngrams' | 'percent_of_keystrokes';
   lsb_adjacent_u: number;
   lsb_semi_adjacent_u: number;
   top_items: number;
@@ -172,10 +169,8 @@ export interface Globals {
 export const DEFAULT_GLOBALS: Globals = {
   universe: 'no_space',
   cross_word: 'reset',
-  repeats_count_as_sfb: false,
   skip_weights: [0.5, 0.25, 0.125],
   distance_model: 'euclid',
-  normalization: 'percent_of_ngrams',
   lsb_adjacent_u: 2.0,
   lsb_semi_adjacent_u: 3.5,
   top_items: 12,
