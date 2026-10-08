@@ -127,10 +127,6 @@
         "RBC": {
           "kind": "trans"
         },
-        "LHP": {
-          "kind": "macro",
-          "symbols": "ç"
-        },
         "LHR": {
           "kind": "kp",
           "symbol": "x"
@@ -178,10 +174,6 @@
           "kind": "kp",
           "symbol": "k"
         },
-        "LHI": {
-          "kind": "kp",
-          "symbol": "y"
-        },
         "RHI": {
           "kind": "dead_key",
           "diacritic": "´"
@@ -193,6 +185,20 @@
         "RBI": {
           "kind": "dead_key",
           "diacritic": "~"
+        },
+        "LHP": {
+          "kind": "macro",
+          "symbols": "ç",
+          "then": [
+            {
+              "kind": "sl",
+              "layer": "alpha-2"
+            }
+          ]
+        },
+        "LHI": {
+          "kind": "kp",
+          "symbol": "y"
         }
       }
     }
