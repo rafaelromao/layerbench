@@ -261,20 +261,22 @@ describe('Ranking layouts', () => {
   }, 90_000);
 
   it('ranks a layout that cannot write the text’s language after one that can', async () => {
-    // Magic Romak is scored first and types Portuguese; Qwerty, scored second with a far better
-    // effort, has no key for ã or ç and would skip them for free.
-    const { client, scored } = scoringOnly([900, 100]);
+    // Magic Romak is scored first and types Portuguese; Qwerty, scored after it with a far better
+    // effort, has no key for ã or ç and would skip them for free. Romak 34, between them, gets a
+    // number too, so the scoring can reach Qwerty.
+    const { client, scored } = scoringOnly([900, 950, 100]);
     renderRoute('/library?corpus=pt-br-general&sample=10002', {
       client,
       storage: freshStorage(),
     });
 
-    await screen.findByText(/^Scoring layouts on a sample of [\d,]+ symbols… 2 of/, undefined, {
+    await screen.findByText(/^Scoring layouts on a sample of [\d,]+ symbols… 3 of/, undefined, {
       timeout: 60_000,
     });
-    expect(scored).toEqual(['Magic Romak', 'Qwerty']);
+    expect(scored).toEqual(['Magic Romak', 'Romak 34', 'Qwerty']);
+    // First despite its far worse effort: Qwerty is behind it.
     const names = [...document.querySelectorAll('article h3')].map((h) => h.textContent);
-    expect(names.slice(0, 2)).toEqual(['Magic Romak', 'Qwerty']);
+    expect(names[0]).toBe('Magic Romak');
     const qwerty = cards().find((c) => c.querySelector('h3')?.textContent === 'Qwerty');
     expect(qwerty?.textContent).toMatch(/Cannot type .*ç.*ranked after the layouts that can/);
   }, 90_000);

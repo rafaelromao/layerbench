@@ -32,7 +32,7 @@ both the dump and the suite use it, so the two cannot drift apart.
 
 Layouts are resolved from `layouts/<id>.json`, **not** from the bundled registry, so a layout can
 leave the shipped catalogue and stay regression-tested here. `layouts/` also holds the canonical
-document of every layout written in code, bundled or retired (Romak 24 and 34), which
+document of every layout written in code, bundled or retired (Romak 24), which
 `src/golden/layouts.test.ts` asserts — those are the storage, share-link and hashing formats, so
 drift there breaks interoperability. A layout added as a document (`src/layouts/documents/`) is its
 own checked-in document.

@@ -13,18 +13,18 @@ export { numberLayer, symbolLayer, templateSymbols } from './templates.js';
 /** Layouts made for small boards: thumb letters, chords, magic and repeat keys. */
 export const SMALL_LAYOUTS: Layout[] = SMALL_DEFS.map(classicLayout);
 
-/** The layouts written here in code: the set the app started with. */
-const BUILT_IN_LAYOUTS: Layout[] = [magicRomak, ...CLASSIC_LAYOUTS, ...SMALL_LAYOUTS];
+/** The layouts written here in code: the set the app started with, and Romak 34 back among them. */
+const BUILT_IN_LAYOUTS: Layout[] = [magicRomak, romak34, ...CLASSIC_LAYOUTS, ...SMALL_LAYOUTS];
 
 /** The layouts the app offers: those written here, then those added since as documents. */
 export const BUNDLED_LAYOUTS: Layout[] = [...BUILT_IN_LAYOUTS, ...DOCUMENT_LAYOUTS];
 
 /**
  * Layouts the app no longer offers but the engine still exercises: Romak 24 is Magic Romak without
- * the adaptive behaviours, and Romak 34 is its 3×5+2 variant. They stay in the golden matrix, so the
- * one-shot-layer, accent-macro and combo paths they cover remain pinned.
+ * the adaptive behaviours. Its document stays checked in, so the one-shot-layer and accent-macro
+ * paths it models literally remain pinned.
  */
-export const RETIRED_LAYOUTS: Layout[] = [romak24, romak34];
+export const RETIRED_LAYOUTS: Layout[] = [romak24];
 
 export function bundledLayout(id: string): Layout | undefined {
   return BUNDLED_LAYOUTS.find((l) => l.id === id);
