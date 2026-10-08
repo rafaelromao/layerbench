@@ -139,14 +139,6 @@
           "kind": "kp",
           "symbol": "q"
         },
-        "RHR": {
-          "kind": "kp",
-          "symbol": "y"
-        },
-        "LHI": {
-          "kind": "kp",
-          "symbol": "k"
-        },
         "LTI": {
           "kind": "none"
         },
@@ -180,6 +172,14 @@
         "L0": {
           "kind": "kp",
           "symbol": ","
+        },
+        "LBI": {
+          "kind": "kp",
+          "symbol": "k"
+        },
+        "LHI": {
+          "kind": "kp",
+          "symbol": "y"
         }
       }
     }
