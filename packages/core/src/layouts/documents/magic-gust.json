@@ -147,10 +147,6 @@
           "kind": "kp",
           "symbol": "y"
         },
-        "RHP": {
-          "kind": "kp",
-          "symbol": "j"
-        },
         "RBR": {
           "kind": "kp",
           "symbol": "."
@@ -170,12 +166,16 @@
           "kind": "macro",
           "symbols": "qu"
         },
-        "LBR": {
-          "kind": "none"
-        },
         "LBM": {
           "kind": "kp",
           "symbol": "z"
+        },
+        "RHP": {
+          "kind": "none"
+        },
+        "LBR": {
+          "kind": "kp",
+          "symbol": "j"
         }
       }
     }
