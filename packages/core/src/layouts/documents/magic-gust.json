@@ -104,13 +104,13 @@
           "kind": "sl",
           "layer": "alpha-2"
         },
-        "RHR": {
-          "kind": "kp",
-          "symbol": "u"
-        },
         "RTR": {
           "kind": "kp",
           "symbol": "h"
+        },
+        "RHR": {
+          "kind": "kp",
+          "symbol": "u"
         }
       }
     },
