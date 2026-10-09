@@ -1,5 +1,5 @@
 import type { CompiledLayout } from '@layerbench/core';
-import { useRef, useState } from 'react';
+import { memo, useRef, useState } from 'react';
 import { Keyboard, typingCombos } from '../../components/Keyboard.js';
 import { layerColourOf } from '../../components/layer-colour.js';
 
@@ -14,9 +14,16 @@ export interface LayerStripProps {
 /**
  * Every layer of a layout, side by side, one per card width. A finger or a trackpad swipes through
  * them and snaps on each; a mouse has the arrows. A card showing only the base layer said nothing
- * about the symbols and numbers that decide whether a layout is livable.
+ * about the symbols and numbers that decide whether a layout is livable. Drawn again only when the
+ * layout moves: the Library redraws every card as each score comes in, and a card's boards do not
+ * change with its numbers.
  */
-export function LayerStrip({ id, compiled, name, className }: LayerStripProps) {
+export const LayerStrip = memo(function LayerStrip({
+  id,
+  compiled,
+  name,
+  className,
+}: LayerStripProps) {
   const strip = useRef<HTMLElement>(null);
   const [current, setCurrent] = useState(0);
   const layers = compiled.layers;
@@ -92,4 +99,4 @@ export function LayerStrip({ id, compiled, name, className }: LayerStripProps) {
       )}
     </div>
   );
-}
+});

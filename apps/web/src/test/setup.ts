@@ -1,20 +1,45 @@
 import '@testing-library/jest-dom/vitest';
 // jsdom ships no IndexedDB, so saved documents need an in-memory implementation.
 import 'fake-indexeddb/auto';
-import { cleanup, configure } from '@testing-library/react';
+import { cleanup, configure, getConfig } from '@testing-library/react';
 import { afterEach } from 'vitest';
+import { useToasts } from '../state/toasts.js';
 
 // Vitest runs without global test functions, so the automatic unmount does not register itself.
 afterEach(cleanup);
 // What one test leaves in this browser's storage (scores, preferences) must not reach the next.
 afterEach(() => localStorage.clear());
+// Nor its messages: a toast stays six seconds, long enough for the next test to find it instead of
+// its own, and to see it vanish.
+afterEach(() => useToasts.setState({ toasts: [] }));
+
+/**
+ * A query that finds nothing prints the page into its error. A wait retries its query after every
+ * change to the page and keeps only the last error, which it prints the page into again when it
+ * gives up; printing the Library, two dozen cards of boards, on each retry cost more than the work
+ * being waited for. While a wait retries (Testing Library's own flag, not part of its typed API),
+ * the error is the message alone.
+ */
+const printingThePage = getConfig().getElementError;
+type RetryFlag = { _disableExpensiveErrorDiagnostics?: boolean };
+function retrying(): boolean {
+  return (getConfig() as RetryFlag)._disableExpensiveErrorDiagnostics === true;
+}
 
 /**
  * What these tests wait for is real work: an analysis running in the test's own thread, or a
  * document going through IndexedDB. Testing Library's one-second default was enough on an idle
  * machine and lost the race on a busy one, failing whichever test happened to be waiting.
  */
-configure({ asyncUtilTimeout: 10_000 });
+configure({
+  asyncUtilTimeout: 10_000,
+  getElementError(message, container) {
+    if (!retrying()) return printingThePage(message, container);
+    const error = new Error(message ?? '');
+    error.name = 'TestingLibraryElementError';
+    return error;
+  },
+});
 
 /**
  * jsdom gaps the interface relies on. Each one is a browser feature the tests exercise indirectly,
