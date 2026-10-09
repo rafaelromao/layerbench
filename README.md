@@ -73,7 +73,8 @@ keeps are in `apps/web/src/auth/github-session.ts`. The server half is
 
 The layouts the app started with are written as data in `packages/core/src/layouts/` (`classic.ts`,
 `small.ts`, `romak.ts`), each copied from where its author published it, and given the default
-Numbers, Symbols and Dead keys layers (`withDefaultLayers` in `templates.ts`). A new one joins them as a
+Numbers, Symbols and Dead keys layers, Dead keys on the same combo for all of them
+(`withDefaultLayers` in `templates.ts`). A new one joins them as a
 document: a layout saved in LayerBench, unchanged, added by pull request. Merging the pull request is
 the approval, and the deploy that follows puts it in everyone's Library.
 

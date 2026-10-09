@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { normalizeText } from '../corpus/normalize.js';
 import { FIXTURE_EN, FIXTURE_PT } from '../fixtures/index.js';
 import { layoutLanguageCoverage } from '../lang/coverage.js';
+import { bundledLayout } from '../layouts/index.js';
 import { magicRomak } from '../layouts/romak.js';
 import { enumerateProducers } from '../sim/producers.js';
 import { simulate } from '../sim/resolver.js';
 import { compileLayout, inlineBehaviors } from './compile.js';
 import { toCanonicalJson } from './json.js';
 import { safeParseLayout } from './schema.js';
+import type { Layout } from './types.js';
 import { type FeatureKind, withoutFeatures } from './without.js';
 
 const OPTS = { caseMode: 'fold', crossWord: 'reset' } as const;
@@ -71,6 +73,14 @@ describe('Ranking a layout without some of its features', () => {
       compileLayout(withoutFeatures(magicRomak, ['combos'])),
       'pt-BR',
     );
+    expect(coverage?.missingRequired).toEqual([]);
+  });
+
+  it('keeps a combo that only turns a layer on: the way to Dead keys stays, and the accents with it', () => {
+    const qwerty = bundledLayout('qwerty') as Layout;
+    const without = withoutFeatures(qwerty, ['combos']);
+    expect(without.combos?.map((c) => c.id)).toEqual(['dead-keys']);
+    const coverage = layoutLanguageCoverage(compileLayout(without), 'pt-BR');
     expect(coverage?.missingRequired).toEqual([]);
   });
 

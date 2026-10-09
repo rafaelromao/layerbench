@@ -59,12 +59,17 @@ export function typingCombos(
     .filter(
       (c) => c.role === 'typing' && (c.layerMask === null || (c.layerMask & (1 << layer)) !== 0),
     )
-    .map((c) => ({
-      id: c.id,
-      keys: c.keys,
-      label: legend(compiled, c.binding).tap || '·',
-      active: c.id === active,
-    }));
+    .map((c) => {
+      // What it types, and what it types when its keys are held together, as `? / ¿`.
+      const l = legend(compiled, c.binding);
+      const held = l.hold !== null && !l.holdIsMode ? ` / ${l.hold}` : '';
+      return {
+        id: c.id,
+        keys: c.keys,
+        label: `${l.tap || '·'}${held}`,
+        active: c.id === active,
+      };
+    });
 }
 
 /** How far a key reaches from its centre, across and down, turned the way it is drawn. */

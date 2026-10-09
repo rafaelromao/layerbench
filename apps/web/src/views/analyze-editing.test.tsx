@@ -1202,16 +1202,17 @@ describe('Edit', () => {
     await user.click(screen.getByRole('tab', { name: 'Combos' }));
     await user.click(screen.getByRole('button', { name: 'pick on board' }));
 
-    await user.click(key('Key LHR: s'));
+    // Not LHR and LHM, which Qwerty presses together for Dead keys.
     await user.click(key('Key LHM: d'));
-    expect(screen.getByLabelText('Combo keys picked')).toHaveTextContent('LHR+LHM');
+    await user.click(key('Key LHI: f'));
+    expect(screen.getByLabelText('Combo keys picked')).toHaveTextContent('LHM+LHI');
 
     // The output takes the same syntax as a key, so a combo is not limited to a single symbol.
     await user.type(screen.getByLabelText('Combo output'), '&macro ão');
     await user.click(screen.getByRole('button', { name: /^Add combo on/ }));
 
     const combos = within(screen.getByRole('region', { name: 'Combos' }));
-    expect(await combos.findByText('LHR+LHM')).toBeInTheDocument();
+    expect(await combos.findByText('LHM+LHI')).toBeInTheDocument();
     expect(combos.getByText('ão')).toBeInTheDocument();
   });
 
@@ -1220,13 +1221,13 @@ describe('Edit', () => {
     await openEdit();
 
     await user.click(screen.getByRole('tab', { name: 'Combos' }));
-    await user.type(screen.getByLabelText('Combo keys'), 'LHR+LHM');
+    await user.type(screen.getByLabelText('Combo keys'), 'LHM+LHI');
     await user.type(screen.getByLabelText('Combo output'), '&mo nowhere');
     await user.click(screen.getByRole('button', { name: /^Add combo on/ }));
 
     expect(await screen.findByText(/no layer called/)).toBeInTheDocument();
     expect(
-      within(screen.getByRole('region', { name: 'Combos' })).queryByText('LHR+LHM'),
+      within(screen.getByRole('region', { name: 'Combos' })).queryByText('LHM+LHI'),
     ).toBeNull();
   });
 

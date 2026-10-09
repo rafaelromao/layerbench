@@ -316,6 +316,34 @@ What moved, checked across the 38 reports; nothing else moved:
   3.62 per 100.
 - **The 34 layouts' documents**, Romak's among them, with the new layers and thumbs.
 
+## Fourteenth re-baseline: Dead keys from one combo, and Romak's Alpha 2 combos
+
+Every layout with the default layers reaches Dead keys the same way: LHR and LHM pressed
+together on its base layer, a one-shot. No thumb taps it any more; the Symbols thumb only holds
+Symbols, and on Numbers it taps space. The analysis can now press a combo to bring a layer on,
+type a dead key that is a combo, and hold a combo for its hold; a combo that types nothing is
+named as a key with its binding would be (`→DK`, `´`).
+
+Magic Romak and Romak gain the Alpha 2 combos of the author's keymap: the dead keys `` ´ ¨ ` ^ ~ ``
+on LHM+LHI, LTM+LTI, LBM+LBR, LHR+LHM and LBI+LBM, `-` and `:`, and `?` and `!`, which hold `¿`
+and `¡`. Magic Romak keeps its Dead keys layer. Romak loses Alt repeat 2 and Dead keys: its
+accents are plain presses, Alpha 2's `é` holds `œ`, and its right outer thumb types `'` again.
+
+What moved, checked across the 38 reports; nothing else moved:
+
+- **Qwerty in English, and Magic Romak in folded case**: no value or press. Qwerty's traces name
+  the combo where they named the thumb, and Magic Romak's producer lists gain its combos.
+- **Qwerty on the Portuguese fixtures**: its 308 taps into Dead keys are the combo. Effort does not
+  move, both being free on cyanophage's grid, but the combo's ring finger types `^` and `~` next:
+  on the Layouts Doc's rules SFB 6.82 → 8.42 on Portuguese and 7.06 → 7.88 on the mix, layer taps
+  3.62 → 0 per 100, and combo usage 0 → 2.94.
+- **Magic Romak in modelled case on Portuguese**: 17 accents it typed through Dead keys are an
+  Alpha 2 combo, a press less each: SFB 1.769 → 1.525, Effort 315.2 → 313.2.
+- **Romak**: no value of a press. An accent arms no Alt repeat 2 left unused, so wasted one-shots
+  go 91.3 → 11.0 % on Portuguese and 100 → 0 on English; macro usage 3.58 → 1.49, `qu` and `ç`
+  being the only macros left; and the alt repeat's branch leaves the excluded producers.
+- **The 35 layouts' documents**, and Magic Romak's share blob.
+
 ## Not compared
 
 `globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not

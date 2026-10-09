@@ -1,4 +1,4 @@
-import { compileLayout, explain, magicRomak } from '@layerbench/core';
+import { bundledLayout, compileLayout, explain, type Layout, magicRomak } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
 import { typingCombos } from '../../components/Keyboard.js';
 import { playFrames } from './playback.js';
@@ -41,9 +41,33 @@ describe('playing a word on the board', () => {
 
 describe('the combos a board shows', () => {
   it('shows the combos that type on the layer drawn, and not the shortcuts', () => {
-    expect(typingCombos(compiled, layer('alpha2')).map((c) => c.label)).toEqual(['?', '!', 'à']);
+    // The keymap's: the accents as dead keys, and what `?` and `!` type when held.
+    expect(typingCombos(compiled, layer('alpha2')).map((c) => c.label)).toEqual([
+      '-',
+      '◌̈',
+      '◌́',
+      '◌̀',
+      '◌̂',
+      '◌̃',
+      '? / ¿',
+      '! / ¡',
+      ':',
+      'à',
+    ]);
     // Alpha 1's combos type letters, but they are marked as shortcuts: the analysis never uses them.
     expect(typingCombos(compiled, layer('alpha1'))).toEqual([]);
+  });
+
+  it('shows the combo every layout with the default layers presses for Dead keys', () => {
+    const qwerty = compileLayout(bundledLayout('qwerty') as Layout);
+    expect(typingCombos(qwerty, 0)).toEqual([
+      {
+        id: 'dead-keys',
+        keys: ['LHR', 'LHM'].map((id) => qwerty.keyIndex.get(id)),
+        label: 'DK',
+        active: false,
+      },
+    ]);
   });
 
   it('marks the combo being played', () => {

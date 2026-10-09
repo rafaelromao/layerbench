@@ -6,8 +6,8 @@ const VOWELS = ['a', 'e', 'i', 'o', 'u', 'á', 'à', 'ã', 'â', 'é', 'ê', 'í
 
 /**
  * Accented letter as the firmware writes it: one physical press, then the ALTREP2 one-shot layer is
- * armed so the repeat key can offer the follow-ups. Kept for Romak 24 and 34, which model the
- * keymap literally.
+ * armed so the repeat key can offer the follow-ups. Kept for Romak 24, which models the keymap
+ * literally.
  */
 const accent = (symbol: string): Binding => ({
   kind: 'macro',
@@ -236,6 +236,11 @@ function alpha2Bindings(acc: (symbol: string) => Binding, quTag?: string): Recor
 const ROMAK24_ALPHA2: Record<string, Binding> = alpha2Bindings(accent);
 
 function romak24Combos(acc: (symbol: string) => Binding): ComboDef[] {
+  return [...alpha1Combos(), ...romak24Alpha2Combos(acc)];
+}
+
+/** The shortcuts on Alpha 1 for letters Alpha 2 has; never pressed by the analysis. */
+function alpha1Combos(): ComboDef[] {
   return [
     {
       id: 'ns',
@@ -309,33 +314,55 @@ function romak24Combos(acc: (symbol: string) => Binding): ComboDef[] {
       timeoutMs: 30,
       slowRelease: false,
     },
-    {
-      id: 'question',
-      keys: ['RHI', 'RHM'],
-      binding: kp('?'),
-      layers: ['alpha2'],
-      role: 'typing',
-      timeoutMs: 30,
-      slowRelease: false,
-    },
-    {
-      id: 'exclamation',
-      keys: ['RBI', 'RBM'],
-      binding: kp('!'),
-      layers: ['alpha2'],
-      role: 'typing',
-      timeoutMs: 30,
-      slowRelease: false,
-    },
-    {
-      id: 'agrave',
-      keys: ['RHM', 'RHR'],
-      binding: acc('\u00e0'),
-      layers: ['alpha2'],
-      role: 'typing',
-      timeoutMs: 30,
-      slowRelease: false,
-    },
+  ];
+}
+
+/** The Alpha 2 combos Romak 24 models: `?`, `!`, and `\u00e0` between the `\u00e1` and `\u00e9` it sits beside. */
+function romak24Alpha2Combos(acc: (symbol: string) => Binding): ComboDef[] {
+  return [
+    alpha2Combo('question', ['RHI', 'RHM'], kp('?')),
+    alpha2Combo('exclamation', ['RBI', 'RBM'], kp('!')),
+    alpha2Combo('agrave', ['RHM', 'RHR'], acc('\u00e0')),
+  ];
+}
+
+function alpha2Combo(id: string, keys: string[], binding: Binding): ComboDef {
+  return {
+    id,
+    keys,
+    binding,
+    layers: ['alpha2'],
+    role: 'typing',
+    timeoutMs: 30,
+    slowRelease: false,
+  };
+}
+
+const dead = (diacritic: string): Binding => ({ kind: 'dead_key', diacritic });
+const tapOrHeld = (tap: string, held: string): Binding => ({
+  kind: 'hold_tap',
+  tap: kp(tap),
+  hold: kp(held),
+});
+
+/**
+ * Alpha 2's combos in the keymap (`zmk/features/combos.dtsi`): the accents Alpha 2 has no key for,
+ * as dead keys \u2014 the keymap types an apostrophe, a double quote, a grave, a caret and a tilde,
+ * which the host composes with the next letter, so each is the accent it stands for \u2014 then `-` and
+ * `:`, `?` and `!`, which type `\u00bf` and `\u00a1` when held, and `\u00e0`.
+ */
+function alpha2Combos(acc: (symbol: string) => Binding): ComboDef[] {
+  return [
+    alpha2Combo('minus', ['RTI', 'RTM'], kp('-')),
+    alpha2Combo('diaeresis', ['LTM', 'LTI'], dead('\u00a8')),
+    alpha2Combo('acute', ['LHM', 'LHI'], dead('\u00b4')),
+    alpha2Combo('grave', ['LBM', 'LBR'], dead('`')),
+    alpha2Combo('circumflex', ['LHR', 'LHM'], dead('^')),
+    alpha2Combo('tilde', ['LBI', 'LBM'], dead('~')),
+    alpha2Combo('question', ['RHI', 'RHM'], tapOrHeld('?', '\u00bf')),
+    alpha2Combo('exclamation', ['RBI', 'RBM'], tapOrHeld('!', '\u00a1')),
+    alpha2Combo('colon', ['RBM', 'RBR'], kp(':')),
+    alpha2Combo('agrave', ['RHM', 'RHR'], acc('\u00e0')),
   ];
 }
 
@@ -439,7 +466,7 @@ export const magicRomak: Layout = (() => {
   return {
     ...base,
     behaviors: {},
-    combos: romak24Combos(taggedAccent),
+    combos: [...alpha1Combos(), ...alpha2Combos(taggedAccent)],
     layers: [
       // Holding space reaches the numbers and holding the Alpha 2 key the symbols; the
       // sentence-case feature wraps the space's tap arm, so both live on one key. Tapping the
@@ -522,23 +549,26 @@ const ROMAK34_ALPHA1 = rowBindings({
   R1: { kind: 'sk', mod: 'LSHIFT' },
 });
 
+/**
+ * Each accent one press, with no Alt repeat 2 behind it: Romak has a plain repeat key. Held, `é`
+ * types `œ`, which French cannot be written without and no combo composes.
+ */
 const ROMAK34_ALPHA2: Record<string, Binding> = {
   '*': { kind: 'trans' },
-  LTM: { kind: 'macro', symbols: 'qu', then: [{ kind: 'sl', layer: 'altrep2' }] },
+  LTM: { kind: 'macro', symbols: 'qu' },
   LBM: { kind: 'macro', symbols: 'ç', then: [{ kind: 'sl', layer: 'ccedil' }] },
-  RTI: accent('ô'),
-  RTM: accent('ó'),
-  RTR: accent('ú'),
-  RHI: accent('ã'),
-  RHM: accent('á'),
-  RHR: accent('é'),
-  RHP: accent('í'),
-  RBI: accent('õ'),
-  RBM: accent('â'),
-  RBR: accent('ê'),
+  RTI: kp('ô'),
+  RTM: kp('ó'),
+  RTR: kp('ú'),
+  RHI: kp('ã'),
+  RHM: kp('á'),
+  RHR: tapOrHeld('é', 'œ'),
+  RHP: kp('í'),
+  RBI: kp('õ'),
+  RBM: kp('â'),
+  RBR: kp('ê'),
   L1: kp("'"),
-  // Dead keys, as on Magic Romak: the accents Alpha 2 does not have, for Spanish, French and Italian.
-  R1: { kind: 'sl', layer: 'dead' },
+  R1: kp("'"),
 };
 
 export const romak34: Layout = {
@@ -547,7 +577,7 @@ export const romak34: Layout = {
   name: 'Romak',
   author: 'Rafael Romão',
   description:
-    'Romak for 34 keys (3x5+2): accented vowels on a one-shot second alpha layer, and numbers and symbols held from the thumbs.',
+    'Romak for 34 keys (3x5+2): accented vowels on a one-shot second alpha layer, with combos there for the other accents, and numbers and symbols held from the thumbs.',
   languages: ['pt-BR', 'en'],
   hostLocale: 'symbols',
   geometry: { preset: '3x5+2' },
@@ -556,45 +586,13 @@ export const romak34: Layout = {
     sl: { quickRelease: true, ignoreModifiers: false, releaseAfterMs: 1000 },
     sk: { quickRelease: true, ignoreModifiers: true, releaseAfterMs: 1500 },
   },
-  behaviors,
   layers: [
     { id: 'alpha1', name: 'Alpha 1', bindings: ROMAK34_ALPHA1 },
     { id: 'alpha2', name: 'Alpha 2', bindings: ROMAK34_ALPHA2 },
     { id: 'ccedil', name: 'Ç extension', bindings: CCEDIL_BINDINGS },
-    { id: 'altrep2', name: 'Alt repeat 2', bindings: ALTREP2_BINDINGS },
     NUMBERS_LAYER,
     SYMBOLS_LAYER,
-    DEAD_KEYS_LAYER,
   ],
-  combos: [
-    {
-      id: 'question',
-      keys: ['RHI', 'RHM'],
-      binding: kp('?'),
-      layers: ['alpha2'],
-      role: 'typing',
-      timeoutMs: 30,
-      slowRelease: false,
-    },
-    {
-      id: 'exclamation',
-      keys: ['RBI', 'RBM'],
-      binding: kp('!'),
-      layers: ['alpha2'],
-      role: 'typing',
-      timeoutMs: 30,
-      slowRelease: false,
-    },
-    // `à` between the `á` and `é` it sits beside, as on Romak 24 and Magic Romak.
-    {
-      id: 'agrave',
-      keys: ['RHM', 'RHR'],
-      binding: accent('à'),
-      layers: ['alpha2'],
-      role: 'typing',
-      timeoutMs: 30,
-      slowRelease: false,
-    },
-  ],
+  combos: alpha2Combos(kp),
   repeatPolicy: { doubledLetters: 'repeatKey' },
 };

@@ -14,6 +14,8 @@ export interface ProducerStep {
   mode: 'tap' | 'hold' | 'chord';
   taps: number;
   combo?: number;
+  /** A chord held past the tapping term and let go: what a tap-hold's hold does on a combo. */
+  held?: boolean;
 }
 
 export interface Producer {
@@ -307,15 +309,24 @@ export function enumerateProducers(
   }
   for (const c of compiled.combos) {
     if (c.role !== 'typing') continue;
-    for (const o of staticOutputs(c.binding)) {
+    const tapped = staticOutputs(c.binding).map((o) => [false, o] as const);
+    const held = holdOutputs(c.binding).map((o) => [true, o] as const);
+    for (const [hold, o] of [...tapped, ...held]) {
       if (o.mods?.length) continue;
+      const step: ProducerStep = {
+        layer: null,
+        pos: c.pos,
+        binding: c.binding,
+        mode: 'chord',
+        taps: 1,
+        combo: c.idx,
+        ...(hold ? { held: true } : {}),
+      };
       const p: Producer = {
         id: `combo:${c.id}${o.suffix}`,
         symbols: fold ? o.symbols.toLowerCase() : o.symbols,
         kind: 'combo',
-        steps: [
-          { layer: null, pos: c.pos, binding: c.binding, mode: 'chord', taps: 1, combo: c.idx },
-        ],
+        steps: [step],
         afterAny: o.afterAny,
         afterTags: o.afterTags,
         mods: [],
@@ -365,42 +376,65 @@ function tappedDeadKey(b: Binding): Extract<Binding, { kind: 'dead_key' }> | nul
  * A dead key, then the letter it accents: one producer per dead key and per way of typing a letter
  * it composes with. Only plain, tapped letters count — an adaptive key's or a repeat's output
  * depends on what came before, and a held letter would hold through the accent. A dead key's shifted accent is
- * a way of its own, with shift on for the accent.
+ * a way of its own, with shift on for the accent. A dead key is a key on a layer, or a combo.
  */
 function deadKeyProducers(
   compiled: CompiledLayout,
   bySymbol: Map<string, Producer[]>,
   fold: boolean,
 ): Producer[] {
-  const out: Producer[] = [];
+  const sources: {
+    id: string;
+    step: ProducerStep;
+    dk: Extract<Binding, { kind: 'dead_key' }>;
+    cost: number;
+  }[] = [];
   for (const layer of compiled.layers) {
     for (let pos = 0; pos < compiled.keys.length; pos++) {
       const b = layer.bindings[pos];
       const dk = tappedDeadKey(b);
       if (!dk) continue;
-      const keyId = compiled.keys[pos].id;
-      const accents: [string, string, Mod[]][] = [[dk.diacritic, '', []]];
-      if (dk.shifted !== undefined) accents.push([dk.shifted, '#shifted', ['LSHIFT']]);
-      for (const [diacritic, suffix, deadMods] of accents) {
-        const deadCost = 1 + (layer.idx === 0 ? 0 : 1) + deadMods.length;
-        for (const [base, composed] of deadKeyCompositions(diacritic)) {
-          if (fold && base !== base.toLowerCase()) continue;
-          for (const letter of bySymbol.get(base) ?? []) {
-            if (letter.kind !== 'direct' && letter.kind !== 'combo') continue;
-            if (letter.dynamic || letter.mods.length || letter.afterAny || letter.afterTags)
-              continue;
-            if (letter.steps.some((s) => s.mode === 'hold')) continue;
-            out.push({
-              id: `deadkey:${layer.id}/${keyId}${suffix}+${letter.id}`,
-              symbols: fold ? composed.toLowerCase() : composed,
-              kind: 'deadkey',
-              steps: [{ layer: layer.idx, pos, binding: b, mode: 'tap', taps: 1 }, ...letter.steps],
-              mods: [],
-              ...(deadMods.length ? { deadMods } : {}),
-              cost: deadCost + letter.cost,
-              dynamic: false,
-            });
-          }
+      sources.push({
+        id: `${layer.id}/${compiled.keys[pos].id}`,
+        step: { layer: layer.idx, pos, binding: b, mode: 'tap', taps: 1 },
+        dk,
+        cost: 1 + (layer.idx === 0 ? 0 : 1),
+      });
+    }
+  }
+  for (const c of compiled.combos) {
+    const dk = c.role === 'typing' ? tappedDeadKey(c.binding) : null;
+    if (!dk) continue;
+    const onBase = c.layerMask === null || (c.layerMask & 1) !== 0;
+    sources.push({
+      id: `combo:${c.id}`,
+      step: { layer: null, pos: c.pos, binding: c.binding, mode: 'chord', taps: 1, combo: c.idx },
+      dk,
+      cost: 1.5 + (onBase ? 0 : 1),
+    });
+  }
+
+  const out: Producer[] = [];
+  for (const { id, step, dk, cost } of sources) {
+    const accents: [string, string, Mod[]][] = [[dk.diacritic, '', []]];
+    if (dk.shifted !== undefined) accents.push([dk.shifted, '#shifted', ['LSHIFT']]);
+    for (const [diacritic, suffix, deadMods] of accents) {
+      for (const [base, composed] of deadKeyCompositions(diacritic)) {
+        if (fold && base !== base.toLowerCase()) continue;
+        for (const letter of bySymbol.get(base) ?? []) {
+          if (letter.kind !== 'direct' && letter.kind !== 'combo') continue;
+          if (letter.dynamic || letter.mods.length || letter.afterAny || letter.afterTags) continue;
+          if (letter.steps.some((s) => s.mode === 'hold' || s.held)) continue;
+          out.push({
+            id: `deadkey:${id}${suffix}+${letter.id}`,
+            symbols: fold ? composed.toLowerCase() : composed,
+            kind: 'deadkey',
+            steps: [step, ...letter.steps],
+            mods: [],
+            ...(deadMods.length ? { deadMods } : {}),
+            cost: cost + deadMods.length + letter.cost,
+            dynamic: false,
+          });
         }
       }
     }

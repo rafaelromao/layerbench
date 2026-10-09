@@ -74,14 +74,63 @@ describe('the keys that reach a layer', () => {
           if (a.viaLayer === target) continue;
           const b = c.layers[a.viaLayer].bindings[a.pos];
           if (a.user && !bindingReaches(c, b, target, a.viaLayer)) continue;
-          const at = marked.find((k) => k.pos === a.pos);
-          expect(
-            at?.routes.some((r) => r.via === a.viaLayer && r.mode === a.mode),
-            `${layout.id}: ${keyId(c, a.pos)} on ${c.layers[a.viaLayer].id} → ${c.layers[target].id}`,
-          ).toBe(true);
+          // A combo is marked on each of its keys.
+          for (const pos of a.combo === undefined ? [a.pos] : c.combos[a.combo].keys) {
+            const at = marked.find((k) => k.pos === pos);
+            expect(
+              at?.routes.some((r) => r.via === a.viaLayer && r.mode === a.mode),
+              `${layout.id}: ${keyId(c, pos)} on ${c.layers[a.viaLayer].id} → ${c.layers[target].id}`,
+            ).toBe(true);
+          }
         }
       }
     }
+  });
+
+  it('marks both keys of a combo that brings a layer on, each naming the other', () => {
+    const c = compileLayout(
+      board(
+        [
+          { id: 'base', bindings: { LHM: kp('s'), LHR: kp('r') } },
+          { id: 'up', bindings: { '*': { kind: 'trans' }, RHI: kp('§') } },
+        ],
+        {
+          combos: [
+            {
+              id: 'to-up',
+              keys: ['LHR', 'LHM'],
+              binding: { kind: 'sl', layer: 'up' },
+              layers: ['base'],
+              role: 'typing',
+            },
+          ],
+        },
+      ),
+    );
+    const up = layerOf(c, 'up');
+    const [candidate] = discoverActivators(c, {}).get(up) ?? [];
+    expect(candidate).toMatchObject({ combo: 0, viaLayer: 0, mode: 'tap' });
+    // A combo is not a key another key could stand in for.
+    expect(standInPeers(discoverActivators(c, {})).has(candidate)).toBe(false);
+    expect(marks(c, 'up').sort()).toEqual(['LHM tapped', 'LHR tapped']);
+    const lhr = reachKeys(c, up).find((k) => keyId(c, k.pos) === 'LHR') as ReachKey;
+    expect(describeReach(c, up, lhr)).toBe('tapped from base together with LHM to reach up');
+  });
+
+  it('marks nothing for a command combo, which the analysis never presses', () => {
+    const c = compileLayout(
+      board(
+        [
+          { id: 'base', bindings: {} },
+          { id: 'up', bindings: { '*': { kind: 'trans' } } },
+        ],
+        {
+          combos: [{ id: 'to-up', keys: ['LHR', 'LHM'], binding: { kind: 'sl', layer: 'up' } }],
+        },
+      ),
+    );
+    expect(discoverActivators(c, {}).get(layerOf(c, 'up'))).toBeUndefined();
+    expect(marks(c, 'up')).toEqual([]);
   });
 
   it('drops a declared key once it is rebound to do something else', () => {

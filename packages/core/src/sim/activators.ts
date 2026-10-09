@@ -14,6 +14,8 @@ export interface ActivatorCandidate {
   requiredMods?: Mod[];
   /** Source layer restriction (user-declared activators). */
   from?: number;
+  /** A combo rather than a key: its keys pressed together. `pos` is the combo's own position. */
+  combo?: number;
 }
 
 interface LayerTarget {
@@ -102,7 +104,8 @@ const KIND_ORDER: Record<string, number> = { sl: 0, mo: 1, lt: 1, tog: 2, to: 3 
 
 /**
  * Every key the planner may press to bring each layer on, best first: the ones a layout declares
- * in `activators`, then what its keys do when tapped or held — one-shot, hold, toggle, switch.
+ * in `activators`, then what its keys do when tapped or held — one-shot, hold, toggle, switch — and
+ * what its typing combos do when their keys are tapped together, from each layer they fire on.
  * Keyed by target layer index.
  */
 export function discoverActivators(
@@ -131,6 +134,29 @@ export function discoverActivators(
           });
           activators.set(t.target, list);
         }
+      }
+    }
+  }
+  for (const combo of c.combos) {
+    if (combo.role !== 'typing') continue;
+    const targets: LayerTarget[] = [];
+    collectLayerTargets(c, combo.binding, 'tap', targets);
+    for (const t of targets) {
+      for (const layer of c.layers) {
+        const fires = combo.layerMask === null || (combo.layerMask & (1 << layer.idx)) !== 0;
+        if (!fires || layer.idx === t.target) continue;
+        const list = activators.get(t.target) ?? [];
+        list.push({
+          pos: combo.pos,
+          viaLayer: layer.idx,
+          mode: 'tap',
+          target: t.target,
+          user: false,
+          order: (KIND_ORDER[t.kind] ?? 5) * 1000 + (t.requiredMods?.length ? 500 : 0) + order++,
+          requiredMods: t.requiredMods,
+          combo: combo.idx,
+        });
+        activators.set(t.target, list);
       }
     }
   }
@@ -178,7 +204,8 @@ export function standInPeers(
   for (const list of activators.values()) {
     const byLayer = new Map<number, ActivatorCandidate[]>();
     for (const cand of list) {
-      if (cand.mode !== 'tap' || cand.requiredMods?.length) continue;
+      // A combo is not a key another key could stand in for.
+      if (cand.mode !== 'tap' || cand.requiredMods?.length || cand.combo !== undefined) continue;
       const group = byLayer.get(cand.viaLayer) ?? [];
       group.push(cand);
       byLayer.set(cand.viaLayer, group);
@@ -219,6 +246,8 @@ export interface ReachRoute {
   taps?: number;
   /** For a layer that comes on with others: the one this press brings on, and the rest it needs. */
   through?: { layer: number; with: number[] };
+  /** A combo's key: the other keys pressed together with it. */
+  chord?: number[];
 }
 
 /** A key held or tapped to bring a layer on, and every way it does. */
@@ -350,12 +379,19 @@ function directRoutes(
     (a) => a.viaLayer !== layer,
   );
   for (const a of candidates.filter((x) => !x.user)) {
-    add(a.pos, {
+    const route: ReachRoute = {
       mode: a.mode,
       origin: 'key',
       via: a.viaLayer,
       ...(a.requiredMods?.length ? { mods: a.requiredMods } : {}),
-    });
+    };
+    if (a.combo === undefined) {
+      add(a.pos, route);
+      continue;
+    }
+    // Every key of a combo is marked, each naming the others it is pressed with.
+    const keys = c.combos[a.combo].keys;
+    for (const pos of keys) add(pos, { ...route, chord: keys.filter((k) => k !== pos) });
   }
   for (const a of candidates.filter((x) => x.user)) {
     const own = byPos.get(a.pos)?.find((r) => r.via === a.viaLayer && r.mode === a.mode);
@@ -474,6 +510,12 @@ function orList(items: string[]): string {
   return `${items.slice(0, -1).join(', ')} or ${items[items.length - 1]}`;
 }
 
+/** `a`, `a and b`, `a, b and c`. */
+function andList(items: string[]): string {
+  if (items.length <= 1) return items.join('');
+  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
+
 const TIMES = ['', '', 'twice', 'three times', 'four times'];
 
 /**
@@ -496,6 +538,8 @@ export function describeReach(c: CompiledLayout, layer: number, key: ReachKey): 
     if (r.after?.afterAny?.length) qualifiers.push(`after ${orList(r.after.afterAny)}`);
     if (r.after?.afterTags?.length)
       qualifiers.push(`after a key tagged ${orList(r.after.afterTags)}`);
+    if (r.chord?.length)
+      qualifiers.push(`together with ${andList(r.chord.map((p) => c.keys[p].id))}`);
     if (r.mods?.length) qualifiers.push(`with ${orList(r.mods.map((m) => MOD_NAME[m]))}`);
     if (r.origin === 'macro') {
       const text = macroText(c.layers[r.via].bindings[key.pos]);

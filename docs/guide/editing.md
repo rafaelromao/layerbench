@@ -145,7 +145,7 @@ The **Layers** panel lists them in order, and does everything else with them:
 On any layer but the base, the keys you hold or tap to get there carry a ring in the layer's
 colour, and `held` or `tapped` along the bottom: the thumb held for Symbols, the one-shot key
 tapped for Alpha 2, the `ç` macro that turns on Ç extension, an alt repeat branch that arms a
-layer. They are found from the layout itself, so they change as you edit: give a key something else
+layer, both keys of the combo tapped for Dead keys. They are found from the layout itself, so they change as you edit: give a key something else
 to do and it stops being marked, even where the layout names it as a way in. Select one, or read
 the list under the board, to see where it is pressed and when.
 
@@ -164,15 +164,20 @@ there as well, a press less than its accent and the letter. With the base layer'
 writes every language the app has a text for.
 
 The left inner thumb types space and, held, turns on Numbers. The right inner thumb, held, turns on
-Symbols, and tapped turns on Dead keys for one key. A board without those thumbs, or without a
-bottom row, gets the same layers arranged to fit it, and keys beyond the ones the layers use let the
-layer below show through. The board shows where everything went.
+Symbols. Dead keys comes on for one key from the base layer, by the left ring and middle fingers'
+home keys, LHR and LHM, pressed together: a combo, drawn between them, the same on every board. A
+board without those thumbs, or without a bottom row, gets the same layers arranged to fit it, and
+keys beyond the ones the layers use let the layer below show through. The board shows where
+everything went.
 
 Every layout that comes with the app has them too, with all of its own keys where they were. The key
-that types space also holds Numbers, and a thumb of the other hand holds Symbols and taps Dead keys:
-the innermost one with nothing on it, or else the innermost, still typing what it typed. Where no
-thumb is free, Dead keys is tapped from Numbers instead. Magic Romak and Romak have Numbers and
-Symbols of their own, and reach Dead keys from Alpha 2.
+that types space also holds Numbers, and a thumb of the other hand holds Symbols: the innermost one
+with nothing on it, or else the innermost, still typing what it typed. Dead keys is the same combo
+on every one of them, so none is ranked better or worse for where its thumbs happen to be free.
+Magic Romak and Romak have Numbers and Symbols of their own and, as in their author's keymap,
+combos on Alpha 2 for the accents it has no key for, with `?` and `!` typing `¿` and `¡` when held.
+Magic Romak also reaches Dead keys from Alpha 2; Romak has no Dead keys, and types `œ` by holding
+`é` on Alpha 2.
 
 ### Which layer wins
 
@@ -189,7 +194,9 @@ The other panels hold what is not on a single key:
   be changed here, and says which keys are space and shift, the kind of shift, and how doubled
   letters are typed.
 - **Combos** are keys pressed together. **pick on board**, then tap the keys; the output takes
-  the same syntax as **Or type**.
+  the same syntax as **Or type**. One for typing is pressed by the analysis as a key would be: it
+  types, accents the next letter, turns a layer on, or, held, does what its hold does. The board
+  draws it between its keys, its hold after a slash, as `? / ¿`.
 - **Behaviors** are the named bindings keys refer to, such as `&altRepeat`.
 - **Typing paths** list the other ways a character can be typed. Left alone, a character is typed
   the cheapest way from where the typist is: the fewest presses, then the one that leaves no layer

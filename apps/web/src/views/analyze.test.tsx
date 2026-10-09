@@ -64,7 +64,18 @@ describe('Analyze', () => {
     await user.click(within(presses).getByRole('button', { name: /RHM\+RHR/ }));
     const names = () =>
       [...document.querySelectorAll('#kb-analyze .lb-combo title')].map((t) => t.textContent);
-    expect(names()).toEqual(['Combo RHI + RHM: ?', 'Combo RBI + RBM: !', 'Combo RHM + RHR: à']);
+    expect(names()).toEqual([
+      'Combo RTI + RTM: -',
+      'Combo LTM + LTI: ◌̈',
+      'Combo LHM + LHI: ◌́',
+      'Combo LBM + LBR: ◌̀',
+      'Combo LHR + LHM: ◌̂',
+      'Combo LBI + LBM: ◌̃',
+      'Combo RHI + RHM: ? / ¿',
+      'Combo RBI + RBM: ! / ¡',
+      'Combo RBM + RBR: :',
+      'Combo RHM + RHR: à',
+    ]);
     const lit = document.querySelector('#kb-analyze .lb-combo-active title');
     expect(lit?.textContent).toBe('Combo RHM + RHR: à');
 

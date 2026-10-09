@@ -19,7 +19,8 @@ export type Action =
   | { type: 'tap'; pos: number; taps?: number }
   | { type: 'hold_press'; pos: number }
   | { type: 'hold_release'; pos: number }
-  | { type: 'chord'; combo: number };
+  /** `hold`: the keys are held together past the tapping term and let go, for a tap-hold's hold. */
+  | { type: 'chord'; combo: number; hold?: boolean };
 
 export interface KeyEvent {
   kind: 'tap' | 'hold_press' | 'hold_release' | 'chord';
@@ -326,7 +327,7 @@ export class Machine {
       case 'hold_release':
         return [this.release(action.pos)];
       case 'chord':
-        return [this.chord(action.combo)];
+        return [this.chord(action.combo, action.hold ?? false)];
     }
   }
 
@@ -406,14 +407,16 @@ export class Machine {
     return (c.layerMask & (1 << this.highestActiveLayer())) !== 0;
   }
 
-  private chord(comboIdx: number): KeyEvent {
+  private chord(comboIdx: number, hold: boolean): KeyEvent {
     const c = this.compiled.combos[comboIdx];
     const armedBefore = this.state.oneShots.slice();
     const stickyBefore = this.state.stickyMods.slice();
     const heldBefore = this.state.heldLayerMask();
     const layer = this.highestActiveLayer();
-    const ctx = this.newContext('tap', c.pos, 1);
+    const ctx = this.newContext(hold ? 'hold' : 'tap', c.pos, 1);
     if (this.comboAvailable(comboIdx)) this.run(c.binding, ctx);
+    // A held chord is let go in the same action: nothing it held stays down.
+    if (hold) this.state.held.delete(c.pos);
     const wasted = this.postStep(ctx, armedBefore, stickyBefore, layer);
     this.recomputeMask();
     return {
@@ -422,7 +425,8 @@ export class Machine {
       layer,
       symbols: ctx.out.join(''),
       keyKind: 'combo',
-      label: ctx.out.join('') || c.id,
+      // Named as a key with its binding would be: what it types, else the layer or accent it gives.
+      label: labelFor(this.compiled, ctx, c.binding, layer) || c.id,
       leafKind: ctx.leaf,
       wastedOneShot: wasted,
       underHold: heldBefore,

@@ -11,9 +11,11 @@ export { DOCUMENT_LAYOUTS, documentLayout } from './documents.js';
 export { magicRomak, romak24, romak34 } from './romak.js';
 export { SMALL_DEFS } from './small.js';
 export {
+  DEAD_KEYS_COMBO_KEYS,
   DEAD_KEYS_CORE,
   DEFAULT_LAYER_IDS,
   type DefaultLayers,
+  deadKeysCombo,
   defaultDeadKeys,
   defaultLayerSymbols,
   defaultLayers,
@@ -33,7 +35,8 @@ function withDefaults(layout: Layout): Layout {
 
 /**
  * The layouts written here in code: the set the app started with, and Romak back among them. Each
- * has the default layers; Magic Romak and Romak have their own Numbers and Symbols, and Dead keys.
+ * has the default layers; Magic Romak and Romak have their own Numbers and Symbols. Magic Romak has
+ * Dead keys too, reached from Alpha 2; Romak has combos on Alpha 2 for the accents instead.
  */
 const BUILT_IN_LAYOUTS: Layout[] = [
   magicRomak,

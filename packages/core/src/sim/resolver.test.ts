@@ -210,6 +210,51 @@ describe('the cheapest way to type a character', () => {
   });
 });
 
+describe('combos that do more than type a character', () => {
+  const kp = (symbol: string) => ({ kind: 'kp' as const, symbol });
+  const combo = (id: string, keys: string[], binding: Layout['layers'][0]['bindings'][string]) => ({
+    id,
+    keys,
+    binding,
+    layers: ['base'],
+    role: 'typing' as const,
+  });
+  const board: Layout = {
+    format: 'layerbench/layout@1',
+    name: 'Combos',
+    hostLocale: 'symbols',
+    geometry: { preset: '3x5+2' },
+    keys: { space: 'L0' },
+    layers: [
+      { id: 'base', bindings: { L0: kp(' '), LHI: kp('e') } },
+      { id: 'up', bindings: { '*': { kind: 'trans' }, RHP: kp('§') } },
+    ],
+    combos: [
+      combo('acute', ['RHI', 'RHM'], { kind: 'dead_key', diacritic: '´' }),
+      combo('question', ['RTI', 'RTM'], { kind: 'hold_tap', tap: kp('?'), hold: kp('¿') }),
+      combo('up', ['RBI', 'RBM'], { kind: 'sl', layer: 'up' }),
+    ],
+  };
+
+  it('accents the next letter with a dead key on a combo', () => {
+    const t = trace(board, 'é');
+    expect(t.out).toBe('é');
+    expect(t.keys).toEqual(['combo:acute', 'LHI']);
+  });
+
+  it('types what a combo holds when its keys are held together, and its tap when tapped', () => {
+    const t = trace(board, '? ¿');
+    expect(t.out).toBe('? ¿');
+    expect(t.keys).toEqual(['combo:question', 'L0', 'combo:question']);
+  });
+
+  it('presses a combo that brings a layer on to type what is there', () => {
+    const t = trace(board, '§');
+    expect(t.out).toBe('§');
+    expect(t.keys).toEqual(['combo:up', 'RHP']);
+  });
+});
+
 describe('the kind of key a press is, in the statistics', () => {
   it('counts an adaptive key on the tap of a tap-hold among the adaptive presses', () => {
     const adaptive = {

@@ -18,6 +18,11 @@ export function isFeatureKind(value: string): value is FeatureKind {
 
 const NONE: Binding = { kind: 'none' };
 
+/** A binding that only turns a layer on, and types nothing. */
+function onlyReachesLayer(b: Binding): boolean {
+  return b.kind === 'sl' || b.kind === 'mo' || b.kind === 'tog' || b.kind === 'to';
+}
+
 /** The text a macro types, as far as its own keys say: `qu`, `ão`, or one accented letter. */
 function macroText(b: Extract<Binding, { kind: 'macro' }>): string {
   if (b.symbols !== undefined) return b.symbols;
@@ -39,7 +44,9 @@ function isSentenceCase(b: Extract<Binding, { kind: 'adaptive' }>): boolean {
  *   `h` and alt repeat a plain repeat. Sentence case, which shifts but types only a space, stays.
  * - `repeat`: repeat keys, alt repeat's default included, type nothing, and doubled letters are
  *   tapped twice.
- * - `combos`: combos that type are gone; command combos were never typed with anyway.
+ * - `combos`: combos that type are gone; command combos were never typed with anyway. A combo that
+ *   only turns a layer on, as the default layers' one for Dead keys does, types nothing itself: it
+ *   is a way in, like a layer key, and stays.
  * - `macros`: macros that type two letters or more (`qu`, `ão`, `ões`) type nothing. A macro typing
  *   one letter is how the layout reaches that letter — an accent sent through the host, `ç` arming
  *   its extension layer — and stays.
@@ -87,7 +94,7 @@ export function withoutFeatures(layout: Layout, off: readonly FeatureKind[]): La
       bindings: Object.fromEntries(Object.entries(l.bindings).map(([k, b]) => [k, walk(b)])),
     })),
     combos: inlined.combos
-      ?.filter((c) => !(drop.has('combos') && c.role === 'typing'))
+      ?.filter((c) => !(drop.has('combos') && c.role === 'typing' && !onlyReachesLayer(c.binding)))
       .map((c) => ({ ...c, binding: walk(c.binding) })),
     ...(drop.has('repeat')
       ? { repeatPolicy: { ...inlined.repeatPolicy, doubledLetters: 'tapTwice' as const } }

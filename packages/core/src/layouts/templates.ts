@@ -1,5 +1,5 @@
 import type { Geometry, Hand } from '../geometry/types.js';
-import type { Binding, LayerDef, Layout } from '../layout/types.js';
+import type { Binding, ComboDef, LayerDef, Layout } from '../layout/types.js';
 
 /**
  * The default layers: Numbers, Symbols and Dead keys, for any board.
@@ -148,6 +148,24 @@ export const DEFAULT_LAYER_IDS = {
   deadKeys: 'dead',
 } as const;
 
+/** The keys pressed together on the base layer for Dead keys: on every board, and on no thumb. */
+export const DEAD_KEYS_COMBO_KEYS = ['LHR', 'LHM'] as const;
+
+/**
+ * Dead keys, one-shot, from the left ring and middle fingers' home keys pressed together on the
+ * base layer. Every layout with the default layers reaches it the same way, so none is ranked
+ * better or worse for where its own thumbs happen to be free.
+ */
+export function deadKeysCombo(baseLayer: string): ComboDef {
+  return {
+    id: 'dead-keys',
+    keys: [...DEAD_KEYS_COMBO_KEYS],
+    binding: { kind: 'sl', layer: DEFAULT_LAYER_IDS.deadKeys },
+    layers: [baseLayer],
+    role: 'typing',
+  };
+}
+
 export interface DefaultLayers {
   /** Numbers, Symbols, Symbols 2 when the board has no bottom row, and Dead keys, in that order. */
   layers: LayerDef[];
@@ -168,13 +186,13 @@ function keys(table: Readonly<Record<string, string>>): Record<string, Binding> 
 }
 
 /**
- * The default layers for a board, and the base-layer keys that reach them.
+ * The default layers for a board, and the base-layer keys that reach Numbers and Symbols. Dead keys
+ * is reached by `deadKeysCombo`, on the base layer, which the caller adds with that layer's id.
  *
  * On a split board the inner thumbs do it, as on Magic Romak: the left types space and holds
- * Numbers, the right holds Symbols and taps a one-shot to Dead keys, so an accent is three taps
- * with no key held. Holding the right thumb from Numbers reaches Symbols too. A row-stagger board
- * has one space bar for both thumbs: it holds Numbers, and from there the right pinky's outer keys
- * arm Symbols and Dead keys.
+ * Numbers, the right holds Symbols. Holding the right thumb from Numbers reaches Symbols too. A
+ * row-stagger board has one space bar for both thumbs: it holds Numbers, and from there the right
+ * pinky's outer key arms Symbols.
  */
 export function defaultLayers(geometry: Geometry): DefaultLayers {
   const have = new Set(geometry.keys.map((k) => k.id));
@@ -186,7 +204,7 @@ export function defaultLayers(geometry: Geometry): DefaultLayers {
 
   const base: Record<string, Binding> = { [spaceKey]: tapOrHold(space, numbers) };
   if (spaceBar && have.has('R0')) base.R0 = tapOrHold(space, numbers);
-  else if (have.has('R0')) base.R0 = tapOrHold({ kind: 'sl', layer: deadKeys }, symbols);
+  else if (have.has('R0')) base.R0 = { kind: 'mo', layer: symbols };
 
   const num: Record<string, Binding> = keys(noBottom ? NUMBERS_NO_BOTTOM : NUMBERS_CORE);
   const sym: Record<string, Binding> = keys(SYMBOLS_CORE);
@@ -198,7 +216,6 @@ export function defaultLayers(geometry: Geometry): DefaultLayers {
       sym[id] = { kind: 'none' };
     }
     num.RHO = { kind: 'sl', layer: symbols };
-    num.RTO = { kind: 'sl', layer: deadKeys };
     num.RTP = kp('0');
   } else {
     sym[spaceKey] = space;
@@ -232,18 +249,17 @@ export function defaultLayers(geometry: Geometry): DefaultLayers {
 
 /**
  * A layout given the default layers, keeping every key it has: Numbers, Symbols and Dead keys after
- * its own layers, and thumbs that reach them, as on a new layout. The key that types space also
+ * its own layers, and the keys that reach them, as on a new layout. The key that types space also
  * holds Numbers, or the left inner thumb does where no thumb types space. A thumb of the other hand
- * holds Symbols: the innermost with nothing on it, which also taps a one-shot to Dead keys, or else
- * the innermost, still typing what it typed. Without a free thumb for Dead keys, that thumb taps it
- * from Numbers. On Numbers it taps space, the space thumb being held, and `0` goes on another thumb
- * of its hand.
+ * holds Symbols: the innermost with nothing on it, or else the innermost, still typing what it
+ * typed. On Numbers it taps space, the space thumb being held, and `0` goes on another thumb of its
+ * hand. Dead keys is the same on every layout: `deadKeysCombo`, on the base layer.
  *
  * A layout that already has a layer of the same id, or a board with one space bar for both thumbs,
  * is left as it is.
  */
 export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
-  const { numbers, symbols, deadKeys } = DEFAULT_LAYER_IDS;
+  const { numbers, symbols } = DEFAULT_LAYER_IDS;
   const taken = new Set(layout.layers.map((l) => l.id));
   if (geometry.family === 'rowstagger') return layout;
   if (Object.values(DEFAULT_LAYER_IDS).some((id) => taken.has(id))) return layout;
@@ -280,15 +296,7 @@ export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
   const symbolsKey = candidates.find(free) ?? candidates[0];
   if (!symbolsKey) return layout;
 
-  const toDeadKeys: Binding = { kind: 'sl', layer: deadKeys };
-  const deadOnSymbolsKey = free(symbolsKey);
-  const deadKey = deadOnSymbolsKey
-    ? undefined
-    : [...ofHand(otherHand), ...ofHand(hand)].find(
-        (id) => id !== numbersKey && id !== symbolsKey && free(id),
-      );
-  const fromNumbers = !deadOnSymbolsKey && deadKey === undefined;
-
+  const holdSymbols: Binding = { kind: 'mo', layer: symbols };
   const baseBindings: Record<string, Binding> = {
     ...first.bindings,
     [numbersKey]: {
@@ -296,13 +304,10 @@ export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
       tap: at(numbersKey) ?? { kind: 'none' },
       hold: { kind: 'mo', layer: numbers },
     },
-    [symbolsKey]: {
-      kind: 'hold_tap',
-      tap: deadOnSymbolsKey ? toDeadKeys : (at(symbolsKey) as Binding),
-      hold: { kind: 'mo', layer: symbols },
-    },
+    [symbolsKey]: free(symbolsKey)
+      ? holdSymbols
+      : { kind: 'hold_tap', tap: at(symbolsKey) as Binding, hold: holdSymbols },
   };
-  if (deadKey) baseBindings[deadKey] = toDeadKeys;
 
   // The defaults' thumbs on Numbers and Symbols assume space on L0 and the Symbols thumb on R0:
   // those go, and the roles are given to the thumbs chosen here. Numbers' thumbs are all roles; on
@@ -319,11 +324,7 @@ export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
       ),
     );
     if (l.id === numbers) {
-      bindings[symbolsKey] = {
-        kind: 'hold_tap',
-        tap: fromNumbers ? toDeadKeys : kp(' '),
-        hold: { kind: 'mo', layer: symbols },
-      };
+      bindings[symbolsKey] = { kind: 'hold_tap', tap: kp(' '), hold: holdSymbols };
       // With no other thumb there, beside the keypad: the outer top key, or the inner column.
       const spot = zero ?? ['RTP', 'RBC', 'RHC'].find((id) => have(id) && !bindings[id]);
       if (spot) bindings[spot] = kp('0');
@@ -332,7 +333,11 @@ export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
     return { ...l, bindings };
   });
 
-  return { ...layout, layers: [{ ...first, bindings: baseBindings }, ...rest, ...layers] };
+  return {
+    ...layout,
+    layers: [{ ...first, bindings: baseBindings }, ...rest, ...layers],
+    combos: [...(layout.combos ?? []), deadKeysCombo(first.id)],
+  };
 }
 
 /** Every character the default layers type directly, for tests and documentation. */

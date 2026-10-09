@@ -96,15 +96,18 @@ describe('small-board layouts', () => {
     })?.[0];
 
   it('puts each chord on the keys its source names', () => {
+    // The layout's own chords; the one to Dead keys every layout has goes with the default layers.
     const chords = (id: string) =>
       Object.fromEntries(
-        (layout(id).combos ?? []).map((c) => [
-          c.id,
-          c.keys.map((k) => {
-            const b = layout(id).layers[0].bindings[k];
-            return b.kind === 'kp' ? b.symbol : k;
-          }),
-        ]),
+        (layout(id).combos ?? [])
+          .filter((c) => c.id !== 'dead-keys')
+          .map((c) => [
+            c.id,
+            c.keys.map((k) => {
+              const b = layout(id).layers[0].bindings[k];
+              return b.kind === 'kp' ? b.symbol : k;
+            }),
+          ]),
       );
     expect(chords('hands-down-gold')).toEqual({ q: ['g', 'p'], z: ['s', 'd'] });
     expect(chords('t-34')).toEqual({ q: ['j', 'c'], qu: ['c', 'y'], z: ['y', 'f'] });

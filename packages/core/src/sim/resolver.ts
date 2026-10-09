@@ -306,7 +306,15 @@ export class Simulator {
       if (cand.requiredMods?.length) ok = this.ensureMods(cand.requiredMods, events, modHolds);
       if (ok && !m.isLayerActive(cand.viaLayer))
         ok = this.activate(cand.viaLayer, events, depth + 1);
-      if (ok) {
+      if (ok && cand.combo !== undefined) {
+        // A combo's keys pressed together, on a layer it fires on, typing nothing.
+        if (!m.comboAvailable(cand.combo)) ok = false;
+        else {
+          const evs = m.perform({ type: 'chord', combo: cand.combo });
+          if (evs.some((e) => e.symbols.length)) ok = false;
+          else events.push(...evs);
+        }
+      } else if (ok) {
         const r = m.resolve(cand.pos);
         if (r.layer !== cand.viaLayer) ok = false;
         else {
@@ -323,7 +331,7 @@ export class Simulator {
           }
         }
       }
-      if (ok) {
+      if (ok && cand.combo === undefined) {
         const action: Action =
           cand.mode === 'hold'
             ? { type: 'hold_press', pos: cand.pos }
@@ -473,7 +481,7 @@ export class Simulator {
           ok = false;
           break;
         }
-        events.push(...m.perform({ type: 'chord', combo: step.combo }));
+        events.push(...m.perform({ type: 'chord', combo: step.combo, hold: step.held }));
         continue;
       }
       let r = m.resolve(step.pos);
