@@ -356,43 +356,43 @@
         },
         "LTR": {
           "kind": "dead_key",
-          "diacritic": "~"
+          "diacritic": "^"
         },
         "LTM": {
           "kind": "kp",
-          "symbol": "£"
+          "symbol": "€"
         },
         "LTI": {
           "kind": "dead_key",
-          "diacritic": "´"
+          "diacritic": "¨"
         },
         "LHP": {
           "kind": "kp",
           "symbol": "ª"
         },
         "LHR": {
-          "kind": "kp",
-          "symbol": "«"
+          "kind": "dead_key",
+          "diacritic": "~"
         },
         "LHM": {
           "kind": "kp",
-          "symbol": "»"
+          "symbol": "£"
         },
         "LHI": {
           "kind": "dead_key",
-          "diacritic": "`"
+          "diacritic": "´"
         },
         "LBR": {
-          "kind": "dead_key",
-          "diacritic": "^"
+          "kind": "kp",
+          "symbol": "«"
         },
         "LBM": {
           "kind": "kp",
-          "symbol": "€"
+          "symbol": "»"
         },
         "LBI": {
           "kind": "dead_key",
-          "diacritic": "¨"
+          "diacritic": "`"
         },
         "RTI": {
           "kind": "kp",
