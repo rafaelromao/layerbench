@@ -213,7 +213,8 @@
             <li>
               <h3>Combos per layer, macros of several letters</h3>
               <p>
-                A chord that types a letter no key has, on the layers it works on; a key that types
+                A chord that types a letter no key has, accents the next one or opens a layer, on the
+                layers it works on, and does something else when held; a key that types
                 <em>qu</em> and hands the next key to another layer.
               </p>
             </li>
@@ -294,7 +295,10 @@
             </li>
             <li>
               <p class="keys"><span class="key">combos</span></p>
-              <p>Chords, only on the layers they are for; a typing combo is one more way to a letter.</p>
+              <p>
+                Chords, only on the layers they are for: one more way to a letter, an accent or a
+                layer, and another when held.
+              </p>
             </li>
             <li>
               <p class="keys"><span class="key">&amp;macro</span></p>
@@ -458,8 +462,8 @@
                 English, Brazilian Portuguese, Spanish, French and Italian, as news. Mix two texts, or
                 paste your own and save it. <span lang="pt-BR">ã</span> and
                 <span lang="pt-BR">ç</span> are letters in their own right, and a layout that can't
-                type them ranks after one that can. Every layout here types them, with Numbers,
-                Symbols and Dead keys layers its thumbs reach. Missing your language?
+                type them ranks after one that can. Every layout here types them, most through a
+                Dead keys layer one combo away. Missing your language?
                 <a href="/guide/analyzing#the-text-itself">Add a text</a> by pull request.
               </p>
             </li>
@@ -567,8 +571,8 @@
               <h3>The firmware's rules are tested one by one</h3>
               <p>
                 A one-shot layer is consumed by exactly one press, and one wasted on a modifier is
-                counted. Toggles lock. Conditional layers settle. A combo fires only on its layers. A
-                macro can open a layer. The first matching branch of an adaptive key wins. Caps word ends where
+                counted. Toggles lock. Conditional layers settle. A combo fires only on its layers,
+                and can open one. A macro can open a layer. The first matching branch of an adaptive key wins. Caps word ends where
                 ZMK ends it.
               </p>
               <p class="evidence">
@@ -772,7 +776,7 @@
                 </tr>
                 <tr>
                   <th scope="row">Languages</th>
-                  <td class="lb">4, accents kept</td>
+                  <td class="lb">5, accents kept</td>
                   <td>14, mixable<sup><a href="#n2">2</a></sup></td>
                   <td>5 ready; rules for about 30 with your own text<sup><a href="#n3">3</a></sup></td>
                   <td>German, English; Ukrainian outside the web app<sup><a href="#n6">6</a></sup></td>
@@ -1030,10 +1034,11 @@
           BY 4.0).
         </p>
         <p>
-          Also by the author of Magic Romak:
+          Also from the author of LayerBench:
           <a href="https://rafaelromao.github.io/romak/">Romak</a> ·
           <a href="https://rafaelromao.github.io/keyboards/">keyboards</a> ·
-          <a href="https://rafaelromao.github.io/zmk-vim-mode/">zmk-vim-mode</a>
+          <a href="https://rafaelromao.github.io/zmk-vim-mode/">zmk-vim-mode</a> ·
+          <a href="https://rafaelromao.github.io/zmk-layer-hud/">zmk-layer-hud</a>
         </p>
       </div>
     </footer>
