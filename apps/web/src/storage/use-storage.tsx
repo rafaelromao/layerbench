@@ -17,6 +17,12 @@ import { IndexedDbAdapter } from './indexeddb.js';
 import type { StorageTarget } from './target.js';
 
 const StorageContext = createContext<StorageAdapter | null>(null);
+/**
+ * Whether storage is the one documents are kept in for good. While sign-in is still being asked
+ * about, or a signed-in user's repository found, it is the browser's copy alone, which may lack what
+ * is only on GitHub.
+ */
+const SettledContext = createContext(true);
 
 /** The GitHub copy of a signed-in user's documents: their fork, or their gists. */
 export function remoteStorage(login: string, target: StorageTarget): StorageAdapter {
@@ -40,6 +46,10 @@ export function StorageProvider({
   const status = useGitHubSession((s) => s.status);
   const login = useGitHubSession((s) => s.login);
   const target = useGitHubSession((s) => s.target);
+  const targetStatus = useGitHubSession((s) => s.targetStatus);
+  const settled =
+    !!adapter ||
+    !(status === 'unknown' || (status === 'signed-in' && !target && targetStatus !== 'error'));
 
   const value = useMemo(() => {
     if (adapter) return adapter;
@@ -49,7 +59,11 @@ export function StorageProvider({
     return new CompositeStorage(local, remoteStorage(login, target));
   }, [adapter, status, login, target]);
 
-  return <StorageContext.Provider value={value}>{children}</StorageContext.Provider>;
+  return (
+    <StorageContext.Provider value={value}>
+      <SettledContext.Provider value={settled}>{children}</SettledContext.Provider>
+    </StorageContext.Provider>
+  );
 }
 
 export function useStorage(): StorageAdapter {
@@ -65,12 +79,57 @@ export interface CollectionState {
   refresh: () => Promise<void>;
 }
 
-/** The index of one collection, refreshed on demand after a save or a delete. */
+/** Where the last index listed for good is kept, so a visit opens with it. */
+function indexKey(collection: Collection): string {
+  return `layerbench:index:${collection}`;
+}
+
+function isEntry(value: unknown): value is IndexEntry {
+  if (!value || typeof value !== 'object') return false;
+  const o = value as Record<string, unknown>;
+  return typeof o.id === 'string' && typeof o.name === 'string';
+}
+
+function lastIndex(collection: Collection): IndexEntry[] {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(indexKey(collection)) ?? '[]');
+    return Array.isArray(parsed) ? parsed.filter(isEntry) : [];
+  } catch {
+    return [];
+  }
+}
+
+function keepIndex(collection: Collection, entries: IndexEntry[]): void {
+  try {
+    localStorage.setItem(indexKey(collection), JSON.stringify(entries));
+  } catch {
+    // Without site data each visit waits for storage to list.
+  }
+}
+
+/** A provisional list, with what the last visit listed that it lacks. */
+function withLast(list: IndexEntry[], last: IndexEntry[]): IndexEntry[] {
+  const ids = new Set(list.map((e) => e.id));
+  return [...list, ...last.filter((e) => !ids.has(e.id))].sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
+}
+
+/**
+ * The index of one collection, refreshed on demand after a save or a delete. It opens with what the
+ * last visit listed, so a list does not fill in after the page is drawn. Until storage is settled,
+ * what it lists only adds to that: a document held only on GitHub is not dropped, to come back once
+ * sign-in is known.
+ */
 export function useCollection(collection: Collection): CollectionState {
   const storage = useStorage();
-  const [entries, setEntries] = useState<IndexEntry[]>([]);
+  const settled = useContext(SettledContext);
+  const [last] = useState(() => lastIndex(collection));
+  const [entries, setEntries] = useState<IndexEntry[]>(last);
   const [available, setAvailable] = useState(true);
   const mounted = useRef(true);
+  /** Only the latest listing is shown: an earlier one from the browser alone may answer last. */
+  const asked = useRef(0);
 
   useEffect(() => {
     mounted.current = true;
@@ -80,17 +139,19 @@ export function useCollection(collection: Collection): CollectionState {
   }, []);
 
   const refresh = useCallback(async () => {
+    const ask = ++asked.current;
     try {
       const list = await storage.list(collection);
-      if (!mounted.current) return;
-      setEntries(list);
+      if (!mounted.current || ask !== asked.current) return;
+      if (settled) keepIndex(collection, list);
+      setEntries(settled ? list : withLast(list, last));
       setAvailable(true);
     } catch {
-      if (!mounted.current) return;
+      if (!mounted.current || ask !== asked.current) return;
       setEntries([]);
       setAvailable(false);
     }
-  }, [storage, collection]);
+  }, [storage, collection, settled, last]);
 
   useEffect(() => {
     void refresh();

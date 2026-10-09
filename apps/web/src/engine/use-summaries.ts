@@ -9,6 +9,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { useAnalysisClient } from './client-context.js';
 import type { AnalyzeRequest, ReportDTO } from './protocol.js';
+import { recall, rememberSummary } from './ranking-memory.js';
 
 /** The two numbers layouts are ranked by. `null` when the rule set leaves the rule out. */
 export interface LayoutSummary {
@@ -35,50 +36,6 @@ export interface SummaryEntry {
 
 /** Summaries this page computed itself: current by definition, so never computed twice. */
 const cache = new Map<string, LayoutSummary>();
-
-/**
- * Summaries from earlier visits, kept in this browser so the list opens already ranked. They may
- * have been computed by an older engine or rule definition, so they are only shown until the same
- * work is done again in the background, which replaces any that changed.
- */
-const STORE_KEY = 'layerbench:summaries';
-/** Enough for every layout on a few texts and rule sets; the oldest go first. */
-const STORE_LIMIT = 400;
-
-function isSummary(value: unknown): value is LayoutSummary {
-  if (!value || typeof value !== 'object') return false;
-  const o = value as Record<string, unknown>;
-  const num = (v: unknown) => v === null || typeof v === 'number';
-  return num(o.effort) && num(o.sfb) && typeof o.skipped === 'number' && Array.isArray(o.missing);
-}
-
-function readStored(): Map<string, LayoutSummary> {
-  try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(STORE_KEY) ?? '{}');
-    const out = new Map<string, LayoutSummary>();
-    if (parsed && typeof parsed === 'object') {
-      for (const [hash, summary] of Object.entries(parsed)) {
-        if (isSummary(summary)) out.set(hash, summary);
-      }
-    }
-    return out;
-  } catch {
-    return new Map();
-  }
-}
-
-function store(hash: string, summary: LayoutSummary): void {
-  try {
-    const stored = readStored();
-    // Re-inserted, so the most recently computed are the last to be dropped.
-    stored.delete(hash);
-    stored.set(hash, summary);
-    const kept = [...stored].slice(-STORE_LIMIT);
-    localStorage.setItem(STORE_KEY, JSON.stringify(Object.fromEntries(kept)));
-  } catch {
-    // Without site data the list is simply ranked afresh on each visit.
-  }
-}
 
 function sameSummary(a: LayoutSummary | undefined, b: LayoutSummary): boolean {
   return !!a && JSON.stringify(a) === JSON.stringify(b);
@@ -126,14 +83,47 @@ export function requestFor(layout: Layout, opts: SummaryOptions): AnalyzeRequest
 }
 
 /**
- * Score a list of layouts in the background, one at a time. Scores from an earlier visit are shown
- * at once and checked again here; one is replaced only when its numbers changed, so a list that
- * was right does not move. The worker is shared with every other view, so the queue is abandoned
- * the moment the list is left rather than holding up an analysis the reader has since asked for.
+ * What a list opens with: what was shown already, where the list is the same ranking as before, and
+ * otherwise what this page computed, then what the last visit left, for each layout.
+ */
+function opening(
+  entries: SummaryEntry[],
+  hashes: Map<string, string>,
+  context: string,
+  shown?: Map<string, LayoutSummary>,
+): Map<string, LayoutSummary> {
+  const remembered = recall(context).summaries;
+  const out = new Map<string, LayoutSummary>();
+  for (const { key } of entries) {
+    const hash = hashes.get(key);
+    const known =
+      shown?.get(key) ?? (hash === undefined ? undefined : cache.get(hash)) ?? remembered.get(key);
+    if (known) out.set(key, known);
+  }
+  return out;
+}
+
+interface Shown {
+  /** What these summaries are of: the ranking, the layouts listed, and what each is scored on. */
+  listing: string;
+  context: string;
+  summaries: Map<string, LayoutSummary>;
+}
+
+/**
+ * Score a list of layouts in the background, one at a time. The list opens with the scores the last
+ * visit left, kept by `context` (what is ranked on, as the link says it), so it is in the order it
+ * was left from the first render, a layout whose document is still being read included. Every
+ * layout is checked again here; one that had no score shows it as soon as it lands, and those whose
+ * numbers changed are replaced together once all are checked, so a list that was right does not
+ * move and one that was not moves once. The worker is shared with every other view, so the queue is
+ * abandoned the moment the list is left rather than holding up an analysis the reader has since
+ * asked for.
  */
 export function useSummaries(
   entries: SummaryEntry[],
   opts: SummaryOptions,
+  context: string,
 ): { summaries: Map<string, LayoutSummary>; pending: number } {
   const client = useAnalysisClient();
   const requests = useMemo(
@@ -146,22 +136,40 @@ export function useSummaries(
         }),
     [entries, opts],
   );
-  // The work to do is the set of hashes; a new array with the same content is the same work.
-  const identity = requests.map((r) => r.hash).join(',');
+  // A new array with the same content is the same list: what is ranked on, the layouts listed (one
+  // still being read is listed by what was remembered of it), and the work to do for each.
+  const listing = [
+    context,
+    entries.map((e) => e.key).join(','),
+    requests.map((r) => r.hash).join(','),
+  ].join('\n');
 
-  const [summaries, setSummaries] = useState<Map<string, LayoutSummary>>(() => new Map());
+  const [state, setState] = useState<Shown>(() => ({
+    listing,
+    context,
+    summaries: opening(entries, new Map(requests.map((r) => [r.key, r.hash])), context),
+  }));
+  // A different list is worked out while rendering, not after, so no frame shows the old one. The
+  // same ranking keeps what it showed; a different one opens on what is known of it.
+  let shown = state;
+  if (state.listing !== listing) {
+    const hashes = new Map(requests.map((r) => [r.key, r.hash]));
+    const kept = state.context === context ? state.summaries : undefined;
+    shown = { listing, context, summaries: opening(entries, hashes, context, kept) };
+    setState(shown);
+  }
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `identity` is the content of `requests`.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `listing` is the content of `requests` and `context`.
   useEffect(() => {
     const controller = new AbortController();
     let cancelled = false;
-    const known = new Map<string, LayoutSummary>();
-    const stored = readStored();
-    for (const r of requests) {
-      const hit = cache.get(r.hash) ?? stored.get(r.hash);
-      if (hit) known.set(r.key, hit);
-    }
-    setSummaries(known);
+    /** A change to this list only: one the list has moved on from is dropped. */
+    const change = (next: (prev: Map<string, LayoutSummary>) => Map<string, LayoutSummary>) =>
+      setState((prev) => {
+        if (prev.listing !== listing) return prev;
+        const summaries = next(prev.summaries);
+        return summaries === prev.summaries ? prev : { ...prev, summaries };
+      });
 
     (async () => {
       // Scoring is background work and the list is useful without it, so the page renders and
@@ -186,23 +194,34 @@ export function useSummaries(
           summary = { effort: null, sfb: null, skipped: 0, missing: [] };
         }
         cache.set(r.hash, summary);
-        store(r.hash, summary);
+        // Kept as it lands, so a visit left halfway still opens the next on what it found.
+        rememberSummary(context, r.key, summary);
         if (cancelled) return;
-        // The same numbers as already shown change nothing on the page.
-        setSummaries((prev) =>
-          sameSummary(prev.get(r.key), summary) ? prev : new Map(prev).set(r.key, summary),
-        );
+        // A layout with no score yet shows it now; one already showing a score waits for the rest.
+        change((prev) => (prev.has(r.key) ? prev : new Map(prev).set(r.key, summary)));
       }
+      if (cancelled) return;
+      // Every layout checked: those whose numbers changed move together, and only those.
+      change((prev) => {
+        let next: Map<string, LayoutSummary> | null = null;
+        for (const r of requests) {
+          const checked = cache.get(r.hash);
+          if (!checked || sameSummary(prev.get(r.key), checked)) continue;
+          next ??= new Map(prev);
+          next.set(r.key, checked);
+        }
+        return next ?? prev;
+      });
     })();
 
     return () => {
       cancelled = true;
       controller.abort();
     };
-  }, [identity, client]);
+  }, [listing, client]);
 
-  const pending = requests.filter((r) => !summaries.has(r.key)).length;
-  return { summaries, pending };
+  const pending = requests.filter((r) => !shown.summaries.has(r.key)).length;
+  return { summaries: shown.summaries, pending };
 }
 
 export type SortKey = 'effort' | 'sfb' | 'name';

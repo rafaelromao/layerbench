@@ -5,7 +5,7 @@ import {
   type Layout,
   toCanonicalJson,
 } from '@layerbench/core';
-import { screen, waitFor, within } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AnalysisClient, AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
@@ -300,6 +300,71 @@ describe('Ranking layouts', () => {
     );
     expect(cards().at(-1)).toBe(plain());
   }, 90_000);
+
+  /** The same documents, of which none can be read: what a page sees while they are on the way. */
+  function stillReading(storage: IndexedDbAdapter): IndexedDbAdapter {
+    return new Proxy(storage, {
+      get(target, prop) {
+        if (prop === 'get') return () => new Promise(() => {});
+        const member = Reflect.get(target, prop);
+        return typeof member === 'function' ? member.bind(target) : member;
+      },
+    });
+  }
+
+  it('opens in the order the last visit left, before a saved layout is read or scored', async () => {
+    const storage = freshStorage();
+    const graphite = bundledLayout('graphite') as Layout;
+    await storage.put(
+      'layouts',
+      'my-graphite',
+      toCanonicalJson({ ...graphite, id: 'my-graphite', name: 'My Graphite' }),
+    );
+    // Not the order of the names: the saved one first, then the shortest names.
+    const effortOf = (name: string) => (name === 'My Graphite' ? 1 : 100 + name.length);
+    renderRoute('/library?sample=10005', { client: scoringByName(effortOf), storage });
+    const names = () => [...document.querySelectorAll('article h3')].map((h) => h.textContent);
+    await waitFor(() => expect(names()[0]).toBe('My Graphite'), { timeout: 60_000 });
+    await waitFor(() => expect(cards()).toHaveLength(names().length), { timeout: 60_000 });
+    const left = names();
+    cleanup();
+
+    // The next visit: the saved document is never read, and nothing is ever scored.
+    renderRoute('/library?sample=10005', {
+      client: scoringOnly([]).client,
+      storage: stillReading(storage),
+    });
+    await waitFor(() => expect(names()).toHaveLength(left.length));
+    expect(names()).toEqual(left);
+    // Every card has its numbers, the saved one's from the last visit.
+    expect(cards()).toHaveLength(left.length);
+  }, 90_000);
+
+  it('keeps a layout that cannot write the language last while the texts are being listed', async () => {
+    const storage = freshStorage();
+    await savePlain(storage, 'plain');
+    const client = scoringByName((name) => (name === 'Plain' ? 100 : 500));
+    renderRoute('/library?corpus=pt-br-general&sample=10006', { client, storage });
+    const plain = () => cards().find((c) => c.querySelector('h3')?.textContent === 'Plain');
+    await waitFor(() => expect(plain()?.textContent).toMatch(/ranked after the layouts that can/), {
+      timeout: 60_000,
+    });
+    cleanup();
+
+    // The next visit, with texts that are never listed: which language this one is in is unknown.
+    const unlisted = new Proxy(client, {
+      get(target, prop) {
+        if (prop === 'listCorpora') return () => new Promise(() => {});
+        const member = Reflect.get(target, prop);
+        return typeof member === 'function' ? member.bind(target) : member;
+      },
+    });
+    renderRoute('/library?corpus=pt-br-general&sample=10006', { client: unlisted, storage });
+    await waitFor(() => expect(plain()).toBeTruthy());
+    // Its numbers are the best, and it is still where the last visit found it.
+    expect(cards().at(-1)).toBe(plain());
+  }, 90_000);
+
   it('scores each layout typed without the features left out of the ranking', async () => {
     const { client, requests } = scoringOnly([500]);
     renderRoute('/library?off=macros&sample=10003', { client, storage: freshStorage() });

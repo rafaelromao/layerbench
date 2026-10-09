@@ -11,6 +11,7 @@ import {
   layoutLanguageCoverage,
   layoutLanguages,
   safeParseLayout,
+  stableStringify,
   toCanonicalJson,
   withoutFeatures,
 } from '@layerbench/core';
@@ -20,6 +21,7 @@ import { featureList } from '../components/FeatureSwitches.js';
 import { formatValue } from '../components/format.js';
 import { HelpLink } from '../components/HelpLink.js';
 import { useDismiss } from '../components/use-dismiss.js';
+import { recall, rememberBehind } from '../engine/ranking-memory.js';
 import {
   compareBy,
   type LayoutSummary,
@@ -398,13 +400,15 @@ export function LibraryView() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const out = new Map<string, Layout>();
-      for (const entry of saved.entries) {
-        const doc = await storage.get('layouts', entry.id).catch(() => null);
-        const parsed = doc ? safeParseLayout(doc.doc) : null;
-        if (parsed?.ok) out.set(entry.id, parsed.layout);
-      }
-      if (!cancelled) setSavedLayouts(out);
+      // All at once: from GitHub, each is a round trip of its own.
+      const read = await Promise.all(
+        saved.entries.map(async (entry) => {
+          const doc = await storage.get('layouts', entry.id).catch(() => null);
+          const parsed = doc ? safeParseLayout(doc.doc) : null;
+          return parsed?.ok ? ([entry.id, parsed.layout] as const) : null;
+        }),
+      );
+      if (!cancelled) setSavedLayouts(new Map(read.filter((r) => r !== null)));
     })();
     return () => {
       cancelled = true;
@@ -541,7 +545,30 @@ export function LibraryView() {
     }),
     [params.corpus, params.caseMode, params.textClass, rankSymbols, ruleSet],
   );
-  const { summaries, pending } = useSummaries(summaryEntries, summaryOptions);
+  // What is ranked on, as the link says it: the same on every visit with the same choices, and
+  // known before a saved rule set is read. The last ranking on it is what the list opens with.
+  const rankingContext = useMemo(
+    () =>
+      stableStringify({
+        corpus: params.corpus,
+        caseMode: params.caseMode,
+        textClass: params.textClass,
+        symbols: rankSymbols,
+        rules: params.preset,
+        space: params.universe,
+        without: [...without].sort(),
+      }),
+    [
+      params.corpus,
+      params.caseMode,
+      params.textClass,
+      rankSymbols,
+      params.preset,
+      params.universe,
+      without,
+    ],
+  );
+  const { summaries, pending } = useSummaries(summaryEntries, summaryOptions, rankingContext);
 
   // A layout that cannot type letters the corpus's language needs skips them, and skipping is free:
   // it would rank above one that pays to type them. Those go behind, whatever their numbers. A
@@ -566,10 +593,24 @@ export function LibraryView() {
     for (const [key, { compiled }] of ranked) check(key, compiled);
     return out;
   }, [corpusLanguage, ranked]);
-  const behind = useMemo(
-    () => new Set([...lacking].filter(([, l]) => l.behind).map(([key]) => key)),
-    [lacking],
-  );
+  // Which layouts go behind can only be told once the corpora are listed and a layout's document is
+  // read. Until then each is where the last visit found it, so the list does not reorder as they
+  // arrive.
+  const decided = corpora.length > 0;
+  const behindBefore = useMemo(() => recall(rankingContext).behind, [rankingContext]);
+  const behind = useMemo(() => {
+    const out = new Set<string>();
+    for (const { key } of listed) {
+      const known = decided && ranked.has(key);
+      if (known ? lacking.get(key)?.behind : behindBefore.has(key)) out.add(key);
+    }
+    return out;
+  }, [listed, decided, ranked, lacking, behindBefore]);
+  useEffect(() => {
+    if (!decided) return;
+    const found = new Map([...ranked.keys()].map((key) => [key, !!lacking.get(key)?.behind]));
+    rememberBehind(rankingContext, found);
+  }, [decided, ranked, lacking, rankingContext]);
   // When no layout listed can write the language, none is behind the others: the list keeps its
   // metric order. One that can, on a board left out, does not count.
   const nobodyCan =
