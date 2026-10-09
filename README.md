@@ -16,7 +16,8 @@ metrics (SFB, SFS, scissors, LSB, alternation, rolls, redirects, usage, effort) 
 new one.
 
 Every layout is shown and sorted by two numbers: **Effort**, cyanophage's measure of how hard the
-keys are to reach, and **SFB**, how often one finger presses two keys in a row.
+keys are to reach, with thumb presses charged too, and **SFB**, how often one finger presses two
+keys in a row.
 
 Everything runs in the browser, and no account is needed. Nothing leaves the page unless you sign
 in with GitHub to keep your work in your own account.

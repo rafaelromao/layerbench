@@ -20,7 +20,8 @@ Each topic below starts short. Open it for more, and follow its links for the re
 Every layout gets the same two headline numbers, wherever it is shown:
 
 - **Effort**: how hard the keys are to reach, averaged over everything typed, from
-  [cyanophage's](https://cyanophage.github.io/playground.html) cost for each key.
+  [cyanophage's](https://cyanophage.github.io/playground.html) cost for each key, and 1 for each
+  thumb press, a layer tap included.
 - **SFB**, same finger bigrams: how often one finger presses two different keys in a row.
 
 **Library** sorts layouts by either. The other numbers, and how each is worked out, are in

@@ -73,7 +73,8 @@ one layout, which is still edited as written: only its numbers leave the feature
 
 The cost of each key is a parameter of the Effort rule, `params.effort`, changed in a rule set's
 **JSON** in **Rules**: **Export current**, edit the costs, then **Import (replace current)** and save
-the set. The change applies wherever that rule set is used.
+the set. The change applies wherever that rule set is used. A thumb is a key like the others there:
+give it a cost by its key, `L0` or `R1`, and that replaces the 1 every thumb press costs.
 
 ## How a text is typed
 
@@ -84,7 +85,8 @@ by the wrong key counts as wasted.
 
 When a character can be typed more than one way, it takes the fewest presses, then the way that
 leaves no layer key held, then the one that makes the fewest same-finger pairs with the keys before
-it in the word, then the one with less effort. When several keys reach a layer the same way, each
+it in the word, then the one with less effort on cyanophage's grid, where a thumb is free, so what
+is typed never depends on what a thumb costs. When several keys reach a layer the same way, each
 word is typed with the one that makes it the fewest same-finger pairs, so the key tapped for a
 layer can change from word to word, as **How is this typed?** shows.
 

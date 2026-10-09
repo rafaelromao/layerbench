@@ -341,7 +341,7 @@
                   <img
                     src="assets/img/library-light.png"
                     width="841"
-                    height="434"
+                    height="435"
                     alt="Two Library cards, Magic Romak and Ben Vallack Piano, each with its Effort, SFB and the share of the text it skips."
                     loading="lazy"
                     decoding="async"
@@ -626,9 +626,9 @@
               </li>
               <li>
                 When a character can be typed more than one way, the cheapest way is taken — fewest
-                presses, then fewest same-finger pairs, then least effort — unless you set the order
-                in <strong>Typing paths</strong>. Where several keys tap the same layer, each word
-                uses the one that gives it the fewest same-finger pairs.
+                presses, then fewest same-finger pairs, then least effort on cyanophage's grid —
+                unless you set the order in <strong>Typing paths</strong>. Where several keys tap the
+                same layer, each word uses the one that gives it the fewest same-finger pairs.
               </li>
               <li>
                 The text is read left to right, taking the longest piece one key or combo can type
@@ -642,6 +642,12 @@
               <li>
                 Pairs are a share of the text's own pairs, and Effort is per character typed, spaces
                 included, not per key press, so layer taps and holds can't thin either number out.
+              </li>
+              <li>
+                A thumb press costs 1 in Effort, where cyanophage's grid leaves thumbs free, and three
+                presses with a thumb among them are never a roll or an alternation: a one-shot tap or
+                a thumb held for a layer is a press like any other, neither free nor good typing. The
+                space bar still costs nothing.
               </li>
             </ul>
           </aside>
@@ -695,7 +701,7 @@
                 </tr>
                 <tr>
                   <th scope="row">One-shots and the cost of reaching a layer</th>
-                  <td class="lb"><span class="yes">Yes</span> one-shots simulated, layer presses counted</td>
+                  <td class="lb"><span class="yes">Yes</span> one-shots simulated, layer presses counted and charged</td>
                   <td><span class="nf">Not found</span></td>
                   <td><span class="partial">Partial</span> shift only<sup><a href="#n4">4</a></sup></td>
                   <td><span class="yes">Yes</span> hold, one-shot and long-press costs<sup><a href="#n6">6</a></sup></td>
@@ -1024,7 +1030,8 @@
           <a href="https://docs.google.com/document/d/1W0jhfqJI2ueJ2FNseR4YAFpNfsUM-_FlREHbpNGmC2o"
             >Keyboard Layouts Doc</a
           >, 3rd edition; Effort is
-          <a href="https://cyanophage.github.io/playground.html">cyanophage's</a>; the Keysolve preset
+          <a href="https://cyanophage.github.io/playground.html">cyanophage's</a>, with thumb presses
+          charged; the Keysolve preset
           follows <a href="https://galileoblues.github.io/keysolve-web/">Keysolve</a>. Keymaps come and go as
           <a href="https://github.com/caksoylar/keymap-drawer">keymap-drawer</a> YAML, and the
           simulator follows <a href="https://zmk.dev/">ZMK</a> and urob's
