@@ -212,6 +212,41 @@ describe('rules engine', () => {
     expect(percent).toBeCloseTo((count / m.text.noSpace.bigram) * 100, 9);
   });
 
+  it('never counts a trigram with a thumb press as a roll or an alternation, but keeps it in the total', () => {
+    const piano = compileLayout(bundledLayout('ben-vallack-piano')!);
+    const ids = ['alternation', 'rolls', 'roll_in'];
+    const asFingers: RuleSet = {
+      ...layoutsDoc(),
+      rules: [
+        {
+          id: 'in_with_thumbs',
+          ngram: { n: 3 },
+          where: { all: [{ hand_pattern: 'aab' }, { direction: 'inward', at: [0, 1] }] },
+        },
+      ],
+    };
+    const typed = (word: string) => {
+      const tables = simulate(piano, normalizeText(word, OPTS), OPTS).tables;
+      const ruleSet: RuleSet = {
+        ...layoutsDoc(),
+        rules: catalogRules().filter((r) => ids.includes(r.id)),
+      };
+      return {
+        trigrams: tables.noSpace.totals.trigram,
+        values: evaluate(tables, piano, ruleSet).results.map((r) => r.value),
+        asFingers: evaluate(tables, piano, asFingers).results[0].value,
+      };
+    };
+    // s, e, t: left, right, left.
+    expect(typed('set').values).toEqual([100, 0, 0]);
+    // e, the right outer thumb tapping Alpha 2, then v on the left hand. Were the thumb a finger,
+    // middle finger to thumb would roll inward; it is one trigram, and neither.
+    const ev = typed('ev');
+    expect(ev.trigrams).toBe(1);
+    expect(ev.asFingers).toBe(100);
+    expect(ev.values).toEqual([0, 0, 0]);
+  });
+
   it('computes a composite score when the set enables it', () => {
     const scored = run('qwerty', weightedSet());
     expect(scored.score.enabled).toBe(true);

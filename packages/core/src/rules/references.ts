@@ -61,6 +61,11 @@ const THRESHOLDS = kld('§13.4 Stats thresholds — bands');
 const TRIGRAMS = kld('§8.1 Alts, rolls, 3rolls & redir — definition');
 const LAYERS = 'layers-layerbench-specific';
 const ADDITION = 'LayerBench addition';
+const COUNTS = 'how-layerbench-counts';
+const NO_THUMB_TRIGRAM = glossary(
+  COUNTS,
+  'Thumbs — no thumb press rolls or alternates, a LayerBench departure',
+);
 
 /** The catalog definitions. */
 export const RULE_REFERENCES: Readonly<Record<string, readonly RuleReference[]>> = {
@@ -104,11 +109,11 @@ export const RULE_REFERENCES: Readonly<Record<string, readonly RuleReference[]>>
   fss: [kld('§6.6 Full scissor skipgrams (FSSs)')],
   hss: [kld('§6.8 Half scissor skipgrams (HSSs)')],
 
-  alternation: [TRIGRAMS, kld('§18.1 Alternation'), THRESHOLDS],
-  alt_sfs: [cyanophage('"alt sfs" trigram category')],
-  roll_in: [TRIGRAMS, kld('§15.1 In-rolls & out-rolls')],
-  roll_out: [TRIGRAMS, kld('§15.1 In-rolls & out-rolls')],
-  rolls: [TRIGRAMS, kld('§16.1 Rolls & redirects'), THRESHOLDS],
+  alternation: [TRIGRAMS, kld('§18.1 Alternation'), THRESHOLDS, NO_THUMB_TRIGRAM],
+  alt_sfs: [cyanophage('"alt sfs" trigram category'), NO_THUMB_TRIGRAM],
+  roll_in: [TRIGRAMS, kld('§15.1 In-rolls & out-rolls'), NO_THUMB_TRIGRAM],
+  roll_out: [TRIGRAMS, kld('§15.1 In-rolls & out-rolls'), NO_THUMB_TRIGRAM],
+  rolls: [TRIGRAMS, kld('§16.1 Rolls & redirects'), THRESHOLDS, NO_THUMB_TRIGRAM],
   in_out_ratio: [kld('§15.5 In-roll ratio'), THRESHOLDS],
   onehand_in: [TRIGRAMS, kld('§17.1 3rolls')],
   onehand_out: [TRIGRAMS, kld('§17.1 3rolls')],
@@ -135,7 +140,10 @@ export const RULE_REFERENCES: Readonly<Record<string, readonly RuleReference[]>>
   layer_distribution: [glossary(LAYERS, `Keystrokes per layer — ${ADDITION}`)],
   finger_travel: [kld('§4.6 Distance on a layout')],
 
-  effort: [cyanophage('Effort — per-key grid, 577 × Σ effort ÷ input length')],
+  effort: [
+    cyanophage('Effort — per-key grid, 577 × Σ effort ÷ input length'),
+    glossary('effort', 'Effort — a thumb press costs 1, a LayerBench departure'),
+  ],
   hard_words: [
     cyanophage('"Hard Words"'),
     glossary('effort', 'Hard words — per-key effort plus the extra presses a word needs'),

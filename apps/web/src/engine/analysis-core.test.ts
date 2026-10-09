@@ -105,14 +105,20 @@ describe('A closer look at one key', () => {
     expect(core.keyStats({ reportKey: report.key, key: 999, layer: 0 })).toBeNull();
   });
 
-  it('draws Effort by cost, so a free thumb stays cold, and travel by distance', async () => {
+  it('draws Effort by cost, so a free key stays cold and a tapped thumb is warm, and travel by distance', async () => {
     const core = new AnalysisCore(nodeCorpusLoader(testCorporaRoot()));
     const report = await core.analyze(request(getPreset('layouts_doc')));
     const effort = report.results.find((r) => r.id === 'effort');
     const travel = report.results.find((r) => r.id === 'finger_travel');
     const compiled = compileLayout(bundledLayout('qwerty') as never);
-    const thumb = compiled.keys.findIndex((k) => k.thumb);
-    expect(effort?.per_layer_key[0]?.[thumb] ?? 0).toBe(0);
+    const homeIndex = compiled.keyIndex.get('LHI') as number;
+    expect(effort?.per_layer_key[0]?.[homeIndex] ?? 0).toBe(0);
     expect(Object.keys(travel?.per_key ?? {}).length).toBeGreaterThan(5);
+
+    // Magic Romak's Alpha 2 thumb costs what it is tapped.
+    const romak = await core.analyze(request(getPreset('layouts_doc'), 'magic-romak'));
+    const r0 = compileLayout(bundledLayout('magic-romak') as never).keyIndex.get('R0') as number;
+    const romakEffort = romak.results.find((r) => r.id === 'effort');
+    expect(romakEffort?.per_layer_key[0]?.[r0] ?? 0).toBeGreaterThan(0);
   });
 });

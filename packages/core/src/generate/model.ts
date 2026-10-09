@@ -23,9 +23,10 @@ import { type Sample, SPACE } from './tables.js';
  *   and the key itself makes fewer SFBs with the previous press, then fewer SFSs with the press
  *   before that, then costs less, the repeat key on a full tie; a space ends a double, a skipped
  *   character does not;
- * - Effort is the cyanophage grid summed over presses, times 577, over characters typed plus
- *   spaces; SFB is same-finger pairs on different keys over characters typed plus words, a word
- *   being a run of typed characters.
+ * - Effort is the Effort rule's grid (cyanophage's, a thumb at `THUMB_EFFORT`) summed over presses,
+ *   one-shot and repeat taps included, times 577, over characters typed plus spaces; SFB is
+ *   same-finger pairs on different keys over characters typed plus words, a word being a run of
+ *   typed characters.
  */
 
 export const PRESET = '3x5+2';
@@ -45,7 +46,7 @@ export interface Board {
   byId: Map<string, KeyInfo>;
 }
 
-/** The 3×5+2 board with cyanophage's costs, read through the same code the Effort rule uses. */
+/** The 3×5+2 board with the Effort rule's costs, read through the same code the rule uses. */
 export function board3x5(): Board {
   const geometry = getGeometryPreset(PRESET);
   const empty: Layout = {
@@ -231,7 +232,7 @@ export function randomDesign(
 }
 
 export interface Score {
-  /** cyanophage's Effort, as the Library shows it. */
+  /** Effort, as the Library shows it. */
   effort: number;
   /** Same-finger bigrams, percent of characters plus words, as the cyanophage-like rules count. */
   sfb: number;
@@ -322,6 +323,7 @@ export function scoreExact(sample: Sample, d: Design): Score {
     if (repPos >= 0 && lastSym === t) {
       let useRep = alpha2[t] === 1;
       if (!useRep) {
+        // The simulator chooses on cyanophage's grid, where the repeat thumb costs nothing.
         const p = last[t];
         const sfbPlain = sfb(prev, p);
         const sfbRep = sfb(prev, repPos);
@@ -376,6 +378,9 @@ export class FastScorer {
   private readonly keyCost: number[];
   private readonly oslPos: number;
   private readonly repPos: number;
+  /** What a tap of the one-shot thumb and a press of the repeat key cost. */
+  private readonly oslCost: number;
+  private readonly repCost: number;
   private readonly first: Int16Array;
   private readonly last: Int16Array;
   private readonly cost: Float64Array;
@@ -393,6 +398,8 @@ export class FastScorer {
     this.keyCost = design.board.keys.map((k) => k.cost);
     this.oslPos = design.config.osl ? (design.board.byId.get(design.config.osl)?.pos ?? -1) : -1;
     this.repPos = design.config.rep ? (design.board.byId.get(design.config.rep)?.pos ?? -1) : -1;
+    this.oslCost = this.oslPos >= 0 ? this.keyCost[this.oslPos] : 0;
+    this.repCost = this.repPos >= 0 ? this.keyCost[this.repPos] : 0;
     this.first = new Int16Array(this.S);
     this.last = new Int16Array(this.S);
     this.cost = new Float64Array(this.S);
@@ -436,14 +443,16 @@ export class FastScorer {
     this.alpha2[s] = sl.layer === 1 ? 1 : 0;
     this.first[s] = sl.layer === 1 ? this.oslPos : sl.key.pos;
     this.last[s] = sl.key.pos;
-    this.cost[s] = this.keyCost[sl.key.pos];
+    // A symbol on `alpha2` costs its key and the one-shot tap before it.
+    this.cost[s] = this.keyCost[sl.key.pos] + (sl.layer === 1 ? this.oslCost : 0);
     this.rep[s] =
       this.repPos >= 0 && (sl.layer === 1 || this.sfbOf(sl.key.pos, this.repPos) === 0) ? 1 : 0;
   }
 
   private effortOf(s: number): number {
     const { count, doubles } = this.sample;
-    return (count[s] - this.rep[s] * doubles[s]) * this.cost[s];
+    const repeats = this.rep[s] * doubles[s];
+    return (count[s] - repeats) * this.cost[s] + repeats * this.repCost;
   }
 
   private tapsOf(s: number): number {

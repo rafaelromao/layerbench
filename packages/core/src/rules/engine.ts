@@ -324,7 +324,8 @@ function evalNgram(rule: Rule, ctx: Ctx): RuleResult {
   const ngram: Attrs[] = new Array(n);
   // What each key is credited with, so that the keys' parts add up to the value: an n-gram's count
   // split between its keys, and a chord's share between the keys pressed together; its distance
-  // times its count for a distance; each key's own effort times its count for an effort sum.
+  // times its count for a distance; each key's own effort times its count for an effort sum, where
+  // a space costs nothing whichever key types it.
   const byDistance = aggregate === 'sum_distance' || aggregate === 'mean_distance';
   const effortTable = rule.params?.effort ?? {};
   const fallback = defaultEffort(ctx.compiled);
@@ -349,7 +350,11 @@ function evalNgram(rule: Rule, ctx: Ctx): RuleResult {
       const each = (byDistance ? c * (d ?? 0) : c) / ngram.length;
       for (const k of ngram) {
         for (const m of k.members) {
-          const part = memberEffort ? c * memberEffort[m] : each / k.members.length;
+          const part = memberEffort
+            ? k.key_kind === 'space'
+              ? 0
+              : c * memberEffort[m]
+            : each / k.members.length;
           if (memberEffort) effortSum += part;
           credit(perKey, perLayerKey, k.layer, m, part);
         }
@@ -429,7 +434,8 @@ function evalNgram(rule: Rule, ctx: Ctx): RuleResult {
       break;
     case 'weighted_sum': {
       // Per character typed, space included, which is cyanophage's keystrokes on the layouts it
-      // models. The layout's own presses would make its free thumb taps lower the average.
+      // models. The layout's own presses would make its layer taps, which cost less than most
+      // letters, lower the average: they add their cost, never a keystroke.
       const k = ctx.sim.text.withSpace.unigram;
       value = k > 0 ? (effortSum / k) * (rule.scale ?? 1) : 0;
       keyScale = k > 0 ? (rule.scale ?? 1) / k : 0;

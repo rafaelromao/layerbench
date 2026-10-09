@@ -2,7 +2,7 @@ import { keyDistance } from '../geometry/distance.js';
 import { FINGERS, type Finger } from '../geometry/types.js';
 import type { CompiledLayout } from '../layout/compile.js';
 import type { ActivatorDef, BindingKind, Mod, TypingPathEntry } from '../layout/types.js';
-import { defaultEffort } from '../rules/effort.js';
+import { cyanophageEffort } from '../rules/effort.js';
 import {
   type FingerTravel,
   LogicalKeyRegistry,
@@ -180,8 +180,8 @@ export class Simulator {
       options.activators ?? compiled.layout.activators ?? {},
     );
     this.peers = standInPeers(this.activators);
-    // Effort of a press at each position, a chord's keys summed.
-    const effort = defaultEffort(compiled);
+    // Effort of a press at each position, a chord's keys summed, on cyanophage's own grid.
+    const effort = cyanophageEffort(compiled);
     const pressEffort = compiled.positions.map((p) =>
       p.members.reduce((sum, m) => sum + (effort[compiled.keys[m].id] ?? 1), 0),
     );

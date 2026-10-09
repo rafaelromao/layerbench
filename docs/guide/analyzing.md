@@ -18,8 +18,10 @@ These are the two numbers every layout is shown and sorted by.
 **Effort** is [cyanophage's](https://cyanophage.github.io/playground.html) measure. Each key
 position has a cost, from 0 under the index, middle and ring fingers on the home row to 8 in the
 inner bottom corners. Effort is the average cost of a keystroke, multiplied by 577 as cyanophage's
-playground does, so a layout scores the same here as there on the same text. Thumb keys cost
-nothing, and a space counts as a keystroke that costs nothing.
+playground does, so a layout scores the same here as there on the same text, as long as it leaves
+its thumbs to the space bar. A thumb press costs 1 here, where cyanophage charges nothing: a
+one-shot tap, a thumb held for a layer and a letter on a thumb are presses too. A space counts as
+a keystroke that costs nothing.
 
 **SFB**, same finger bigrams, is the share of consecutive key pairs that one finger presses on two
 different keys. It is the first measure of the
@@ -42,9 +44,10 @@ both, warm by what is pressed on the layer shown.
 
 Layouts are compared on the text, not on their presses. SFB and the other pair rules are a share of
 the letter pairs the text has, and Effort is per character typed, so a layout's layer taps, holds
-and one-shots, which cost nothing on a thumb and can never be a same-finger letter pair, do not make
-it look better than it types. A layout typing each character with one press gets the same numbers
-either way.
+and one-shots, which can never be a same-finger letter pair, do not make it look better than it
+types: each adds its cost to Effort but no keystroke. A layout typing each character with one press
+gets the same numbers either way. A thumb press is never part of a roll or an alternation either,
+so a tap between two letters does not pass for a good trigram.
 
 A layout that has no key for letters the text's language needs skips them, and skipping is free.
 Each card says what share of the text it skips, and on a Portuguese text, say, the layouts that
@@ -98,8 +101,8 @@ long list means the numbers understate the cost.
 the same-finger pairs (**SFB contribution**), of **Effort** or of **Finger travel**, or how often it
 is tapped to reach a layer (**Layer taps**). A key's part is the same number [its own
 numbers](#a-keys-numbers) give: a pair counts half on each of its keys, Effort is a key's cost times
-its presses, so thumbs and the free home-row keys stay cold, and travel counts on the key a finger
-moved to. Each layer counts only what was pressed on it, on the key that typed it. The thumb tapped
+its presses, so the free home-row keys and the space bar stay cold, and travel counts on the key a
+finger moved to. Each layer counts only what was pressed on it, on the key that typed it. The thumb tapped
 for Alpha 2 is warm on the layer it is tapped on, not on Alpha 2. A key that lets the layer below
 show through is warm on that layer, where the key that types is drawn.
 

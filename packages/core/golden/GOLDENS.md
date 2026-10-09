@@ -359,6 +359,25 @@ What moved, checked across the 38 reports; nothing else moved:
   SFB distance 12.31 → 12.51 on Portuguese.
 - **The 33 layouts' documents** with a bottom row, Magic Romak's among them, and its share blob.
 
+## Sixteenth re-baseline: thumb presses cost in Effort, and never roll or alternate
+
+Effort charges a thumb press 1 (`THUMB_EFFORT`), where cyanophage's grid leaves thumbs free; a
+space still costs nothing, whichever key types it. A trigram with a thumb press in it, the space
+bar aside, is never an alternation or a roll, and still counts in the total. The simulator chooses
+how to type on cyanophage's own grid, as before, so nothing typed moves.
+
+What moved, checked across the 38 reports; nothing else moved:
+
+- **No press, trace, total or statistic**, in any report: only rule values and the composite
+  score, and the notes of Effort, alternation and rolls.
+- **Magic Romak and Romak 34**, every report: Effort and hard words up by their thumb presses —
+  Magic Romak 328.50 → 384.24 in English, 313.75 → 347.85 in Portuguese; Romak 34 514.77 → 531.68
+  and 400.63 → 423.67, the same with or without the space — and alternation, alt SFS, rolls, in-
+  and out-rolls and the in:out ratio down by the trigrams their taps made: Magic Romak in English,
+  cyanophage-like, alternation 37.35 → 22.49 and rolls 51.02 → 36.88. SFB and the rest stay.
+- **Qwerty**: no value, as the fixtures press none of its thumbs but for the space; the three
+  notes only.
+
 ## Not compared
 
 `globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not

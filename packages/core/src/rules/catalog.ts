@@ -1,4 +1,4 @@
-import { CYANOPHAGE_EFFORT_SCALE } from './effort.js';
+import { CYANOPHAGE_EFFORT_SCALE, THUMB_EFFORT } from './effort.js';
 import type { Bands, Direction, Family, Predicate, Rule } from './types.js';
 
 /** Band bounds from the Layouts Doc ch. 13.4 (upper bounds of the Min…Max categories). */
@@ -26,6 +26,18 @@ export const BANDS: Record<string, Bands> = {
 };
 
 const NO_THUMBS: Predicate = { any_thumb: false };
+/**
+ * No key of a trigram pressed by a thumb, unless it types a space. A one-shot tap, a held layer or
+ * a thumb letter between two keys is a press the hand must make, not a roll or a change of hands;
+ * the trigram still counts in the total, so a tap takes the place of a good one.
+ */
+const NO_THUMB_PRESS: Predicate = {
+  none: [0, 1, 2].map(
+    (i): Predicate => ({
+      all: [{ is_thumb: true, at: [i] }, { none: [{ key_kind: 'space', at: [i] }] }],
+    }),
+  ),
+};
 const NO_CHORDS: Predicate = { is_chord: false };
 const HEIGHT_PREF = { middle: 3, ring: 2, pinky: 1, index: 0 } as const;
 const SCISSOR_WEIGHT = { adjacent_fingers: 1.0, non_adjacent_fingers: 0.5 };
@@ -83,26 +95,36 @@ export function scissorWhere(rows: number): Predicate {
   };
 }
 
-/** A two-key roll on one hand plus a key on the other, in either order. */
+/** A two-key roll on one hand plus a key on the other, in either order, no thumb pressed. */
 export function rollWhere(direction: Direction): Predicate {
   return {
-    any: [
+    all: [
+      NO_THUMB_PRESS,
       {
-        all: [
-          { hand_pattern: 'aab' },
-          { direction, at: [0, 1] },
-          { same_finger: false, at: [0, 1] },
-        ],
-      },
-      {
-        all: [
-          { hand_pattern: 'abb' },
-          { direction, at: [1, 2] },
-          { same_finger: false, at: [1, 2] },
+        any: [
+          {
+            all: [
+              { hand_pattern: 'aab' },
+              { direction, at: [0, 1] },
+              { same_finger: false, at: [0, 1] },
+            ],
+          },
+          {
+            all: [
+              { hand_pattern: 'abb' },
+              { direction, at: [1, 2] },
+              { same_finger: false, at: [1, 2] },
+            ],
+          },
         ],
       },
     ],
   };
+}
+
+/** The hand changes on every key, no thumb pressed. */
+export function alternationWhere(): Predicate {
+  return { all: [{ hand_pattern: 'aba' }, NO_THUMB_PRESS] };
 }
 
 export function redirectWhere(): Predicate {
@@ -234,9 +256,9 @@ export function skipgramRules(): Rule[] {
 export function trigramRules(): Rule[] {
   return [
     rule('alternation', 'Alternation', 'trigram', {
-      description: 'Hand changes on every key (L R L / R L R).',
+      description: 'Hand changes on every key (L R L / R L R), no thumb pressed.',
       ngram: { n: 3 },
-      where: { hand_pattern: 'aba' },
+      where: alternationWhere(),
       aggregate: 'percent_of_ngrams',
       bands: BANDS.alt,
       score: { weight: 0.5 },
@@ -247,6 +269,7 @@ export function trigramRules(): Rule[] {
       where: {
         all: [
           { hand_pattern: 'aba' },
+          NO_THUMB_PRESS,
           { same_finger: true, at: [0, 2] },
           { same_key: false, at: [0, 2] },
         ],
@@ -255,7 +278,7 @@ export function trigramRules(): Rule[] {
     }),
     rule('roll_in', 'Inward rolls', 'trigram', {
       description:
-        'Two keys on one hand moving toward the index, then the other hand (or vice versa).',
+        'Two keys on one hand moving toward the index, then the other hand (or vice versa), no thumb pressed.',
       ngram: { n: 3 },
       where: rollWhere('inward'),
       aggregate: 'percent_of_ngrams',
@@ -266,7 +289,7 @@ export function trigramRules(): Rule[] {
       aggregate: 'percent_of_ngrams',
     }),
     rule('rolls', 'Rolls (in + out)', 'trigram', {
-      description: 'Two-key rolls on one hand plus a key on the other hand.',
+      description: 'Two-key rolls on one hand plus a key on the other hand, no thumb pressed.',
       ngram: { n: 3 },
       where: { any: [rollWhere('inward'), rollWhere('outward')] },
       aggregate: 'percent_of_ngrams',
@@ -366,8 +389,7 @@ export function usageRules(): Rule[] {
 export function effortRules(): Rule[] {
   return [
     rule('effort', 'Effort', 'effort', {
-      description:
-        "cyanophage's Effort: its per-key grid, 577 × effort ÷ keystrokes (thumbs cost nothing; the grid is editable).",
+      description: `cyanophage's Effort: its per-key grid, 577 × effort ÷ keystrokes; a thumb press costs ${THUMB_EFFORT} and a space nothing (the grid is editable).`,
       ngram: { n: 1 },
       aggregate: 'weighted_sum',
       scale: CYANOPHAGE_EFFORT_SCALE,
