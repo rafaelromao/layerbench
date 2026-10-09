@@ -226,6 +226,28 @@ describe('Romak types the other accents by the combos on its Alpha 2', () => {
   });
 });
 
+describe("Romak and Magic Romak type `;` as the keymap's combo", () => {
+  for (const id of ['romak-34', 'magic-romak']) {
+    it(`${id}: RBM and RBR together, on Alpha 1 and on Numbers`, () => {
+      const layout = bundledLayout(id) as Layout;
+      expect(layout.combos?.find((c) => c.id === 'semicolon')).toMatchObject({
+        keys: ['RBM', 'RBR'],
+        binding: { kind: 'kp', symbol: ';' },
+        layers: ['alpha1', 'num'],
+        role: 'typing',
+      });
+      // Numbers held for the digits, the combo between them.
+      const t = trace(layout, '7;8');
+      expect(t.out).toBe('7;8');
+      expect(t.keys).toEqual(['L0', 'RTI', 'combo:semicolon', 'RTM']);
+    });
+  }
+
+  it('magic-romak: the combo, where it had to go through Dead keys', () => {
+    expect(trace(magicRomak, ';').keys).toEqual(['combo:semicolon']);
+  });
+});
+
 describe('the default layers on every bundled layout', () => {
   const before = new Map([...CLASSIC_LAYOUTS, ...SMALL_LAYOUTS].map((l) => [l.id, l]));
   /** What only the Dead keys layer types, past the accents. */

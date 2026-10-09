@@ -54,8 +54,8 @@ describe('the combos a board shows', () => {
       ':',
       'à',
     ]);
-    // Alpha 1's combos type letters, but they are marked as shortcuts: the analysis never uses them.
-    expect(typingCombos(compiled, layer('alpha1'))).toEqual([]);
+    // Alpha 1's letter combos are marked as shortcuts, which the analysis never uses: only `;` types.
+    expect(typingCombos(compiled, layer('alpha1')).map((c) => c.label)).toEqual([';']);
   });
 
   it('shows the combo every layout with the default layers presses for Dead keys', () => {

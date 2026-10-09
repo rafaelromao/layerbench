@@ -394,6 +394,19 @@ What moved, checked across the 38 reports; nothing else moved:
 - **The 34 layouts' documents** with Dead keys, Ben Vallack Piano's now among them, and Magic
   Romak's share blob.
 
+## Eighteenth re-baseline: `;` as a combo on Romak and Magic Romak
+
+Romak and Magic Romak gain the keymap's `cb_semi`: RBM and RBR pressed together type `;` on Alpha 1
+and on Numbers, a typing combo. Its hold, which jumps to the end of the line first, is editing and
+is left out.
+
+What moved, checked across the 38 reports; nothing else moved:
+
+- **No value, press or statistic**: the fixtures are counted as letters. The two layouts' producer
+  lists gain the combo; in Magic Romak's modelled report the combos after it sit a position
+  further on, so the registry and the items that name them do too.
+- **Magic Romak's and Romak's documents**, and Magic Romak's share blob.
+
 ## Not compared
 
 `globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not

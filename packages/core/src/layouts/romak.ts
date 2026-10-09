@@ -366,6 +366,20 @@ function alpha2Combos(acc: (symbol: string) => Binding): ComboDef[] {
   ];
 }
 
+/**
+ * `;` on Alpha 1 and Numbers, the keymap's `cb_semi`. Held, the keymap jumps to the end of the line
+ * before typing it, which is editing rather than typing, and is left out.
+ */
+const SEMICOLON_COMBO: ComboDef = {
+  id: 'semicolon',
+  keys: ['RBM', 'RBR'],
+  binding: kp(';'),
+  layers: ['alpha1', 'num'],
+  role: 'typing',
+  timeoutMs: 30,
+  slowRelease: false,
+};
+
 const ROMAK24_COMBOS: ComboDef[] = romak24Combos(accent);
 
 function romak24Base(name: string, id: string, description: string): Layout {
@@ -466,7 +480,7 @@ export const magicRomak: Layout = (() => {
   return {
     ...base,
     behaviors: {},
-    combos: [...alpha1Combos(), ...alpha2Combos(taggedAccent)],
+    combos: [...alpha1Combos(), SEMICOLON_COMBO, ...alpha2Combos(taggedAccent)],
     layers: [
       // Holding space reaches the numbers and holding the Alpha 2 key the symbols; the
       // sentence-case feature wraps the space's tap arm, so both live on one key. Tapping the
@@ -593,6 +607,6 @@ export const romak34: Layout = {
     NUMBERS_LAYER,
     SYMBOLS_LAYER,
   ],
-  combos: alpha2Combos(kp),
+  combos: [SEMICOLON_COMBO, ...alpha2Combos(kp)],
   repeatPolicy: { doubledLetters: 'repeatKey' },
 };
