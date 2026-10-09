@@ -157,9 +157,10 @@ them is pressed when nothing tells them apart. A key held for a layer is always 
 ### Default layers
 
 A new layout can start with three more layers, the same on every board: **Numbers**, **Symbols**
-and **Dead keys**. Numbers and Symbols are Magic Romak's. Dead keys holds the accents, each where
-its look-alike is on Symbols (`´` where `'` is), the letters an accent cannot make, and the symbols
-the bundled texts use that have no room elsewhere. A letter common enough has a key of its own
+and **Dead keys**. Numbers and Symbols are Magic Romak's. Dead keys holds the accents, each in its
+look-alike's column on Symbols (`´` where `'` is) with the left hand's home and bottom rows swapped
+(`^` under the home row, `` ` `` on it), the letters an accent cannot make, and the symbols the
+bundled texts use that have no room elsewhere. A letter common enough has a key of its own
 there as well, a press less than its accent and the letter. With the base layer's letters, that
 writes every language the app has a text for.
 

@@ -6,9 +6,10 @@ import type { Binding, ComboDef, LayerDef, Layout } from '../layout/types.js';
  *
  * Numbers and Symbols are Magic Romak's, which use only the 24-key core. That core is on every
  * preset but the 18-key one, so every board gets the same grid and the same muscle memory; keys
- * beyond it stay transparent, free for whatever the layout wants there. Dead keys mirrors Symbols:
- * each accent sits where its look-alike does (`´` on `'`, `¨` on `"`, `€` on `$`, `«` on `<`), and
- * with the base layer's letters it writes Portuguese, English, Spanish, French and Italian.
+ * beyond it stay transparent, free for whatever the layout wants there. Dead keys follows Symbols:
+ * each accent sits in its look-alike's column (`´` with `'`, `¨` with `"`, `€` with `$`, `«` with
+ * `<`), the left hand's home and bottom rows swapped, and with the base layer's letters it writes
+ * Portuguese, English, Spanish, French and Italian.
  *
  * What changes from board to board is decided by which keys it has, not by its name, so a custom
  * geometry gets a sensible result too: where `0` goes, which thumbs reach the layers, and, with no
@@ -78,19 +79,20 @@ export const SYMBOLS_CORE: Readonly<Record<string, string>> = {
 /**
  * The accents, the letters no dead key makes, and the symbols the corpora hold that Symbols has no
  * room for. `ç` and `ñ`, which an accent and a letter would type too, have keys of their own: each
- * is common enough in its languages to be worth a press less.
+ * is common enough in its languages to be worth a press less. On the left hand the home and bottom
+ * rows are the other way round from Symbols: `^` `€` `¨` below, `«` `»` `` ` `` on the home row.
  */
 export const DEAD_KEYS_CORE: Readonly<Record<string, Binding>> = {
   LTR: dead('~'),
   LTM: kp('£'),
   LTI: dead('´'),
   LHP: kp('ª'),
-  LHR: dead('^'),
-  LHM: kp('€'),
-  LHI: dead('¨'),
-  LBR: kp('«'),
-  LBM: kp('»'),
-  LBI: dead('`'),
+  LHR: kp('«'),
+  LHM: kp('»'),
+  LHI: dead('`'),
+  LBR: dead('^'),
+  LBM: kp('€'),
+  LBI: dead('¨'),
   RTI: kp('°'),
   RTM: kp('ñ'),
   RTR: kp(';'),
@@ -227,7 +229,11 @@ export function defaultLayers(geometry: Geometry): DefaultLayers {
   }
   if (noBottom) {
     sym.R1 = { kind: 'sl', layer: symbols2 };
-    // The grave accent's bottom-row key is gone: it takes ñ's, and ñ and § go to the thumbs.
+    // With no bottom row to swap with, `^` `€` `¨` stay on the home row, as on Symbols; `«` and `»`
+    // are on Symbols 2, and the grave accent takes ñ's key, ñ and § going to the thumbs.
+    acc.LHR = dead('^');
+    acc.LHM = kp('€');
+    acc.LHI = dead('¨');
     acc.RTM = dead('`');
     acc.L1 = kp('§');
     acc.R1 = kp('ñ');

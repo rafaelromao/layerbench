@@ -344,6 +344,21 @@ What moved, checked across the 38 reports; nothing else moved:
   being the only macros left; and the alt repeat's branch leaves the excluded producers.
 - **The 35 layouts' documents**, and Magic Romak's share blob.
 
+## Fifteenth re-baseline: Dead keys' left home and bottom rows swapped
+
+On Dead keys the left hand's home and bottom rows swap, column by column: `«` `»` `` ` `` on the
+home row, `^` `€` `¨` below it. The right hand, the top row and the pinky stay. A board with no
+bottom row keeps `^` `€` `¨` on its home row, with nothing to swap them with.
+
+What moved, checked across the 38 reports; nothing else moved:
+
+- **Qwerty in English, and Magic Romak**: no value or press; the producer lists, and Qwerty's
+  traces, name the keys where the accents are now.
+- **Qwerty on the Portuguese fixtures**: `^` is a row lower under the same ring finger, so SFB
+  does not move, but the bottom row is not free on cyanophage's grid: Effort 1064.7 → 1067.0, and
+  SFB distance 12.31 → 12.51 on Portuguese.
+- **The 33 layouts' documents** with a bottom row, Magic Romak's among them, and its share blob.
+
 ## Not compared
 
 `globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not
