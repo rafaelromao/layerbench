@@ -378,6 +378,22 @@ What moved, checked across the 38 reports; nothing else moved:
 - **Qwerty**: no value, as the fixtures press none of its thumbs but for the space; the three
   notes only.
 
+## Seventeenth re-baseline: Dead keys' left top and home rows swapped instead
+
+The fifteenth's swap is undone, and the left hand's top and home rows swap instead: the acute and
+the tilde on the home row with `£` between them, `^` `€` `¨` above, `«` `»` `` ` `` below as
+before. Every board has a top row, the 18-key one too, so every Dead keys layer has it.
+
+What moved, checked across the 38 reports; nothing else moved:
+
+- **Qwerty in English, and Magic Romak**: no value or press; the producer lists, and Qwerty's
+  traces, name the keys where the accents are now.
+- **Qwerty on the Portuguese fixtures**: the acute and the tilde, the accents it types most, are
+  under the same fingers a row down, so SFB does not move, but the home row is free on
+  cyanophage's grid: Effort 1067.0 → 1041.2, and SFB distance 12.51 → 12.01 on Portuguese.
+- **The 34 layouts' documents** with Dead keys, Ben Vallack Piano's now among them, and Magic
+  Romak's share blob.
+
 ## Not compared
 
 `globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not

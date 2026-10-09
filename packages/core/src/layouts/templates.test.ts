@@ -94,7 +94,7 @@ describe('the default layers on every board', () => {
 describe('the default layers, board by board', () => {
   it('reach Dead keys with three presses: LHR and LHM together, the accent, the letter', () => {
     const t = trace(boardWithDefaults('3x5+2'), 'è');
-    expect(t.keys).toEqual([DEAD_KEYS, 'LHI', 'LTR']);
+    expect(t.keys).toEqual([DEAD_KEYS, 'LBI', 'LTR']);
   });
 
   it('type ñ and ç with a key each, a press less than the accent and the letter', () => {
@@ -147,29 +147,32 @@ describe('the default layers, board by board', () => {
     expect(defaultDeadKeys().sort()).toEqual(['^', '`', '~', '¨', '´'].sort());
   });
 
-  it("follow Symbols: each accent and extra symbol in its look-alike's column, the left hand's home and bottom rows swapped", () => {
+  it("follow Symbols: each accent and extra symbol in its look-alike's column, the left hand's top and home rows swapped", () => {
     const at = (id: string) => {
       const b = DEAD_KEYS_CORE[id];
       return b.kind === 'dead_key' ? b.diacritic : b.kind === 'kp' ? b.symbol : '';
     };
     // The key of Symbols that sits where a key of Dead keys does, one row over on the left hand.
     const swapped = (id: string) =>
-      /^L[HB][RMI]$/.test(id) ? `L${id[1] === 'H' ? 'B' : 'H'}${id[2]}` : id;
+      /^L[TH][RMI]$/.test(id) ? `L${id[1] === 'T' ? 'H' : 'T'}${id[2]}` : id;
     const pairs = Object.keys(DEAD_KEYS_CORE).map((id) => `${SYMBOLS_CORE[swapped(id)]}${at(id)}`);
     for (const p of ["'´", '"¨', '~~', '^^', '``', '$€', '#£', '<«', '>»', '?¿', '!¡', ':;'])
       expect(pairs).toContain(p);
-    // An accent below the home row, `` ` `` on it.
-    expect([at('LBR'), at('LBI'), at('LHI')]).toEqual(['^', '¨', '`']);
+    // The acute and the tilde on the home row.
+    expect([at('LHR'), at('LHI')]).toEqual(['~', '´']);
   });
 
-  it('keep the accents on the home row of a board with no bottom row to swap with', () => {
+  it('swap the top and home rows on a board with no bottom row too', () => {
     const dead = defaultLayers(getGeometryPreset('1222+2')).layers.find((l) => l.id === 'dead');
     const typed = (id: string) => {
       const b = dead?.bindings[id];
       return b?.kind === 'dead_key' ? b.diacritic : b?.kind === 'kp' ? b.symbol : undefined;
     };
-    expect(['LHR', 'LHM', 'LHI'].map(typed)).toEqual(['^', '€', '¨']);
-    expect(trace(boardWithDefaults('1222+2'), 'ê ü').out).toBe('ê ü');
+    expect(['LHR', 'LHM', 'LHI', 'LTR', 'LTM', 'LTI'].map(typed)).toEqual([
+      ...['~', '£', '´'],
+      ...['^', '€', '¨'],
+    ]);
+    expect(trace(boardWithDefaults('1222+2'), 'ã é ê ü').out).toBe('ã é ê ü');
   });
 });
 
@@ -193,7 +196,7 @@ describe("Magic Romak's layers are the defaults on its board", () => {
     expect(t.keys).toEqual([
       ...['R0', 'combo:tilde', 'LHR', 'L0'],
       ...['R0', 'combo:grave', 'RHR', 'L0'],
-      ...['R0', 'R1', 'LTM'],
+      ...['R0', 'R1', 'LHM'],
     ]);
   });
 });
