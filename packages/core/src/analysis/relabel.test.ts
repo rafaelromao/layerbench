@@ -8,7 +8,7 @@ import { layoutsDoc } from '../rules/presets.js';
 import { analyze } from './analyze.js';
 import { relabelEligible, relabelSwap } from './relabel.js';
 
-const OPTS = { caseMode: 'fold', crossWord: 'reset' } as const;
+const OPTS = { caseMode: 'fold' } as const;
 
 /** Every rule that reads only the n-gram tables, so relabeling must reproduce it exactly. */
 const NGRAM_RULES = [

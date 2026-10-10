@@ -308,13 +308,9 @@ describe('rules engine', () => {
     expect(r.results[0].items.length).toBeGreaterThan(0);
   });
 
-  it('hashes analysis identity stably and by case mode', () => {
+  it("hashes a layout's structure stably, and another layout apart", () => {
     const layout = bundledLayout('qwerty')!;
-    const a = structureHash(layout, { caseMode: 'fold', corpusId: 'x' });
-    expect(structureHash(layout, { caseMode: 'fold', corpusId: 'x' })).toBe(a);
-    expect(structureHash(layout, { caseMode: 'model', corpusId: 'x' })).not.toBe(a);
-    expect(structureHash(bundledLayout('dvorak')!, { caseMode: 'fold', corpusId: 'x' })).not.toBe(
-      a,
-    );
+    expect(structureHash(bundledLayout('qwerty')!)).toBe(structureHash(layout));
+    expect(structureHash(bundledLayout('dvorak')!)).not.toBe(structureHash(layout));
   });
 });

@@ -202,7 +202,6 @@ describe('Analyzing on the settings gives the numbers analyzing by hand gave', (
     const rules = getPreset(preset);
     const byHand = analyze(layout(id), corpusStream(text, caseMode, 'letters'), {
       caseMode,
-      crossWord: 'reset',
       maxSymbols: 5_000,
       ruleSet: { ...rules, globals: { ...rules.globals, universe: 'no_space' } },
       softSymbols: [...DEFAULT_SOFT],

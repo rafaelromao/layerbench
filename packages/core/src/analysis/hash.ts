@@ -23,32 +23,16 @@ export function fnv1a(text: string): string {
   return h.toString(36).padStart(13, '0');
 }
 
-export interface HashOptions {
-  caseMode?: string;
-  textClass?: string;
-  crossWord?: string;
-  maxSymbols?: number | null;
-  corpusId?: string | null;
-}
-
 /**
- * Identity of an analysis: everything that changes the simulation. Two layouts that differ only in
- * relabel-eligible symbols still hash differently here, which is deliberate — the cache stores full
- * reports, and relabeling is handled separately. The colour a layer is drawn in types nothing, so
- * it is left out, and choosing one does not run the analysis again.
+ * Identity of a layout's structure: everything in it that changes what is typed. Two layouts that
+ * differ only in relabel-eligible symbols still hash differently here, which is deliberate — the
+ * cache stores full reports, and relabeling is handled separately. The colour a layer is drawn in
+ * types nothing, so it is left out, and choosing one does not run the analysis again. What the
+ * layout is typed on is the analysis settings' to add (`analysisKey`).
  */
-export function structureHash(layout: Layout, opts: HashOptions = {}): string {
+export function structureHash(layout: Layout): string {
   const uncoloured = layout.layers.some((l) => l.color !== undefined)
     ? { ...layout, layers: layout.layers.map(({ color: _color, ...l }) => l) }
     : layout;
-  return fnv1a(
-    stableStringify({
-      layout: toCanonicalJson(uncoloured),
-      case_mode: opts.caseMode ?? 'fold',
-      text_class: opts.textClass ?? 'letters',
-      cross_word: opts.crossWord ?? 'reset',
-      max_symbols: opts.maxSymbols ?? 'infinity',
-      corpus: opts.corpusId ?? null,
-    }),
-  );
+  return fnv1a(stableStringify(toCanonicalJson(uncoloured)));
 }

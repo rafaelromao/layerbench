@@ -8,9 +8,9 @@ import type { Coverage, SimulateOptions } from '../sim/resolver.js';
 import { Simulator } from '../sim/resolver.js';
 import type { SimulationTables } from '../tables/tables.js';
 
+/** How to type and score. Whether a pair may span two words is the rule set's to say (`cross_word`). */
 export interface AnalyzeOptions {
   caseMode?: 'fold' | 'model';
-  crossWord?: 'reset' | 'bridge';
   maxSymbols?: number;
   ruleSet?: RuleSet;
   typingPaths?: SimulateOptions['typingPaths'];
@@ -34,7 +34,7 @@ export interface Report {
   ruleSet: RuleSet;
   coverage: Coverage;
   stats: SimulationTables['stats'];
-  options: Required<Pick<AnalyzeOptions, 'caseMode' | 'crossWord'>> & { maxSymbols?: number };
+  options: { caseMode: 'fold' | 'model'; crossWord: 'reset' | 'bridge'; maxSymbols?: number };
   elapsedMs: number;
   /** True for a report estimated from an earlier run rather than simulated fresh. */
   provisional: boolean;
@@ -71,7 +71,7 @@ export function* analyzeSteps(
 
   const ruleSet = opts.ruleSet ?? layoutsDoc();
   const caseMode = opts.caseMode ?? 'fold';
-  const crossWord = opts.crossWord ?? ruleSet.globals.cross_word ?? 'reset';
+  const crossWord = ruleSet.globals.cross_word ?? 'reset';
 
   const sim = yield* new Simulator(compiled, {
     caseMode,
