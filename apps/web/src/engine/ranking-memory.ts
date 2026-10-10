@@ -1,3 +1,4 @@
+import { type AnalysisSettings, stableStringify } from '@layerbench/core';
 import type { LayoutSummary } from './use-summaries.js';
 
 /**
@@ -28,6 +29,15 @@ export interface RememberedRanking {
 interface Stored {
   summaries: Record<string, LayoutSummary>;
   behind: string[];
+}
+
+/**
+ * What a ranking is kept by: the analysis settings it was made on, as the link names them, the rules
+ * by their reference. That is known before a saved rule set is read, so the list opens in its order
+ * at once, and whatever setting is added to them tells one ranking from another without a word here.
+ */
+export function rankingKey(settings: AnalysisSettings<string>): string {
+  return stableStringify(settings);
 }
 
 export function isSummary(value: unknown): value is LayoutSummary {

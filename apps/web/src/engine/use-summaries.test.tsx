@@ -1,16 +1,21 @@
-import { bundledLayout, getPreset, type Layout } from '@layerbench/core';
+import {
+  type AnalysisSettings,
+  bundledLayout,
+  DEFAULT_SETTINGS,
+  getPreset,
+  type Layout,
+} from '@layerbench/core';
 import { renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AnalysisClient, ReportDTO } from './protocol.js';
 import type { LayoutSummary, SummaryEntry } from './use-summaries.js';
 
-const OPTS = {
-  corpusId: 'en-general',
-  caseMode: 'fold' as const,
-  textClass: 'letters' as const,
-  maxSymbols: 10_000,
-  ruleSet: getPreset('layouts_doc'),
+const OPTS: AnalysisSettings = {
+  ...DEFAULT_SETTINGS,
+  corpus: 'en-general',
+  sample: 10_000,
+  rules: getPreset('layouts_doc'),
 };
 
 const CONTEXT = 'en-general, layouts_doc';

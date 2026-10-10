@@ -1,29 +1,32 @@
 import {
+  type AnalysisSettings,
+  analysisKey,
   bundledLayout,
   compileLayout,
+  DEFAULT_SETTINGS,
   getPreset,
   type RuleSet,
   toCanonicalJson,
+  withoutFeatures,
 } from '@layerbench/core';
 import { nodeCorpusLoader } from '@layerbench/core/node';
 import { describe, expect, it } from 'vitest';
-import { withUniverse } from '../storage/rule-sets.js';
 import { testCorporaRoot } from '../test/render.js';
 import { AnalysisCore } from './analysis-core.js';
 import type { AnalyzeRequest, ReportDTO } from './protocol.js';
 
-function request(ruleSet: RuleSet, layoutId = 'qwerty'): AnalyzeRequest {
+function settings(rules: RuleSet, over: Partial<AnalysisSettings> = {}): AnalysisSettings {
+  return { ...DEFAULT_SETTINGS, corpus: 'en-general', sample: 5000, rules, ...over };
+}
+
+function request(
+  rules: RuleSet,
+  layoutId = 'qwerty',
+  over: Partial<AnalysisSettings> = {},
+): AnalyzeRequest {
   const layout = bundledLayout(layoutId);
   if (!layout) throw new Error(`${layoutId} is bundled`);
-  return {
-    layout: toCanonicalJson(layout),
-    corpusId: 'en-general',
-    caseMode: 'fold',
-    textClass: 'letters',
-    crossWord: 'reset',
-    maxSymbols: 5000,
-    ruleSet,
-  };
+  return { layout: toCanonicalJson(layout), settings: settings(rules, over) };
 }
 
 const value = (report: ReportDTO, id: string) => report.results.find((r) => r.id === id)?.value;
@@ -49,8 +52,8 @@ describe('A report is scored by the rules it was asked for', () => {
   it('counts space when asked to, and not otherwise', async () => {
     const core = new AnalysisCore(nodeCorpusLoader(testCorporaRoot()));
     const rules = getPreset('layouts_doc');
-    const without = await core.analyze(request(withUniverse(rules, 'no_space')));
-    const withSpace = await core.analyze(request(withUniverse(rules, 'with_space')));
+    const without = await core.analyze(request(rules));
+    const withSpace = await core.analyze(request(rules, 'qwerty', { universe: 'with_space' }));
     expect(withSpace.globals.universe).toBe('with_space');
     expect(value(withSpace, 'sfb')).not.toBe(value(without, 'sfb'));
   });
@@ -61,7 +64,37 @@ describe('A report is scored by the rules it was asked for', () => {
     // Nothing needs typing for other rules: the report is there without an analysis.
     const peeked = core.peek(request(getPreset('cyanophage')));
     expect(peeked).not.toBeNull();
-    expect(peeked?.key).toBe(core.keyFor(request(getPreset('cyanophage'))));
+    const qwerty = bundledLayout('qwerty');
+    if (!qwerty) throw new Error('qwerty is bundled');
+    expect(peeked?.key).toBe(analysisKey(qwerty, settings(getPreset('cyanophage'))).key);
+  });
+});
+
+describe('The engine works out what the settings ask for', () => {
+  it('types the layout as written without the features left out, as if it were written so', async () => {
+    const core = new AnalysisCore(nodeCorpusLoader(testCorporaRoot()));
+    const rules = getPreset('layouts_doc');
+    const off = ['macros', 'combos'] as const;
+    const asked = await core.analyze(request(rules, 'magic-romak', { without: off }));
+    const romak = bundledLayout('magic-romak');
+    if (!romak) throw new Error('magic-romak is bundled');
+    const plain = await core.analyze({
+      layout: toCanonicalJson(withoutFeatures(romak, off)),
+      settings: settings(rules),
+    });
+    expect(asked.results).toEqual(plain.results);
+  });
+
+  it('mixes two texts the first time they are asked for, and never lists the mix', async () => {
+    const core = new AnalysisCore(nodeCorpusLoader(testCorporaRoot()));
+    const listed = await core.listCorpora();
+    const mixed = { corpus2: 'pt-br-general', share: 70 };
+    const report = await core.analyze(request(getPreset('layouts_doc'), 'qwerty', mixed));
+    const alone = await core.analyze(request(getPreset('layouts_doc')));
+    expect(report.results).not.toEqual(alone.results);
+    // Asked again, under other rules, it is not typed again.
+    expect(core.peek(request(getPreset('cyanophage'), 'qwerty', mixed))).not.toBeNull();
+    expect(await core.listCorpora()).toEqual(listed);
   });
 });
 

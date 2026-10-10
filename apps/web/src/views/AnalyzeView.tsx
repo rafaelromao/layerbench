@@ -8,12 +8,13 @@ import {
   type Params,
   parseParams,
   type RawSearch,
+  settingsOf,
   toSearch,
 } from '../url/params.js';
 import { Workbench } from './analyze/Workbench.js';
+import { useAnalysisSettings } from './useAnalysisSettings.js';
 import { useCorpora } from './useCorpora.js';
 import { useLayout } from './useLayout.js';
-import { useRuleSet } from './useRuleSet.js';
 
 /**
  * Analyze, where a layout is also edited. The link names the layout; the workbench opens it once and
@@ -29,7 +30,7 @@ export function AnalyzeView() {
   const corpora = useCorpora();
   const params = useMemo(() => parseParams(search), [search]);
   useRememberSelection(params);
-  const ruleSet = useRuleSet(params.preset, params.universe);
+  const settings = useAnalysisSettings(settingsOf(params));
 
   /** The layout open, and how many times one was opened, which tells one workbench from the next. */
   const opened = useRef({ ref: params.layoutRef, epoch: 0 });
@@ -88,7 +89,7 @@ export function AnalyzeView() {
       setParams={setParams}
       claim={claim}
       open={open}
-      ruleSet={ruleSet}
+      settings={settings}
       corpora={corpora}
       client={client}
       storage={storage}

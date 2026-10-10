@@ -15,13 +15,13 @@ import type { AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { useAnalysis } from '../engine/use-analysis.js';
 import { useRememberSelection } from '../state/selection.js';
 import { useCollection } from '../storage/use-storage.js';
-import { type Params, parseParams, type RawSearch, toSearch } from '../url/params.js';
+import { type Params, parseParams, type RawSearch, settingsOf, toSearch } from '../url/params.js';
 import { SampleSelect, SettingsFields } from './AnalysisSelects.js';
 import { compareRows } from './compare-rows.js';
 import { LayoutOptions } from './LayoutOptions.js';
 import { SettingsDialog, settingsSummary } from './SettingsDialog.js';
+import { useAnalysisSettings } from './useAnalysisSettings.js';
 import { useLayout, useTypedLayout } from './useLayout.js';
-import { useRuleSet } from './useRuleSet.js';
 
 const DEFAULT_B = 'qwerty';
 
@@ -51,25 +51,18 @@ export function CompareView() {
   // so each board's heat lands on the keys it was measured on.
   const typedA = useTypedLayout(a.layout, a.compiled, params.without);
   const typedB = useTypedLayout(b.layout, b.compiled, params.without);
-  const ruleSet = useRuleSet(params.preset, params.universe);
+  const settings = useAnalysisSettings(settingsOf(params));
+  const ruleSet = settings.rules;
 
-  const requestFor = (layout: typeof a.layout): AnalyzeRequest | null =>
-    layout
-      ? {
-          layout: toCanonicalJson(layout),
-          corpusId: params.corpus,
-          caseMode: params.caseMode,
-          textClass: params.textClass,
-          crossWord: ruleSet.globals.cross_word ?? 'reset',
-          maxSymbols: params.sample,
-          ruleSet,
-        }
-      : null;
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the request is derived from these
-  const requestA = useMemo(() => requestFor(typedA.layout), [typedA.layout, params, ruleSet]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the request is derived from these
-  const requestB = useMemo(() => requestFor(typedB.layout), [typedB.layout, params, ruleSet]);
+  // Each side as written, on the same settings: the engine types both without the same features.
+  const requestA: AnalyzeRequest | null = useMemo(
+    () => (a.layout ? { layout: toCanonicalJson(a.layout), settings } : null),
+    [a.layout, settings],
+  );
+  const requestB: AnalyzeRequest | null = useMemo(
+    () => (b.layout ? { layout: toCanonicalJson(b.layout), settings } : null),
+    [b.layout, settings],
+  );
 
   const analysisA = useAnalysis(requestA);
   const analysisB = useAnalysis(requestB);

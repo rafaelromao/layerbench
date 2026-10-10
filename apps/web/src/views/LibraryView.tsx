@@ -2,6 +2,7 @@ import {
   BUNDLED_LAYOUTS,
   type CompiledLayout,
   compileLayout,
+  forRanking,
   freeId,
   GEOMETRY_PRESET_IDS,
   getGeometryPreset,
@@ -11,7 +12,6 @@ import {
   layoutLanguageCoverage,
   layoutLanguages,
   safeParseLayout,
-  stableStringify,
   toCanonicalJson,
   withoutFeatures,
 } from '@layerbench/core';
@@ -21,12 +21,11 @@ import { featureList } from '../components/FeatureSwitches.js';
 import { formatValue } from '../components/format.js';
 import { HelpLink } from '../components/HelpLink.js';
 import { useDismiss } from '../components/use-dismiss.js';
-import { recall, rememberBehind } from '../engine/ranking-memory.js';
+import { rankingKey, recall, rememberBehind } from '../engine/ranking-memory.js';
 import {
   compareBy,
   type LayoutSummary,
   type SummaryEntry,
-  type SummaryOptions,
   useSummaries,
 } from '../engine/use-summaries.js';
 import { HELP } from '../guide/help.js';
@@ -42,21 +41,16 @@ import {
   parseParams,
   type RawSearch,
   savedRef,
+  settingsOf,
   toSearch,
 } from '../url/params.js';
 import { ImportDialog } from './library/ImportDialog.js';
 import { LayerStrip } from './library/LayerStrip.js';
 import { type BoardChoice, RankingDialog, SORTS } from './library/RankingDialog.js';
 import { type NewLayoutSpec, newLayout } from './new-layout.js';
+import { textLanguage, textName } from './text-of.js';
+import { useAnalysisSettings } from './useAnalysisSettings.js';
 import { useCorpora } from './useCorpora.js';
-import { useRuleSet } from './useRuleSet.js';
-
-/**
- * Ranking types the text once for every layout listed, so it never takes more than this, whatever
- * sample the other views were set to. The status line names the sample, so nobody takes it for
- * Analyze's.
- */
-const RANK_MAX_SYMBOLS = 100_000;
 
 /** Where a layout on a board of its own is filed among the boards. */
 const CUSTOM_BOARD = 'custom';
@@ -367,15 +361,17 @@ export function LibraryView() {
     [],
   );
 
-  // Ranking uses the corpus and rule set in the link, so it agrees with what Analyze would show.
+  // Ranking is on the analysis settings in the link, so it agrees with what Analyze would show; the
+  // sample is capped, as twenty-odd layouts are typed one after another, and the status line names
+  // it, so nobody takes it for Analyze's.
   const search = useSearch({ strict: false }) as RawSearch;
   const params = useMemo(() => parseParams(search, ENGLISH_CORPUS), [search]);
-  const rankSymbols = Math.min(params.sample, RANK_MAX_SYMBOLS);
+  const ranking = useMemo(() => forRanking(settingsOf(params)), [params]);
   useRememberSelection(params);
-  const ruleSet = useRuleSet(params.preset, params.universe);
+  const settings = useAnalysisSettings(ranking);
   const corpora = useCorpora();
-  const corpusName = corpora.find((c) => c.id === params.corpus)?.name ?? params.corpus;
-  const corpusLanguage = corpora.find((c) => c.id === params.corpus)?.language;
+  const corpusName = textName(ranking, corpora);
+  const corpusLanguage = textLanguage(ranking, corpora);
 
   /** The choice lives in the link, so a ranking can be shared and survives a reload. */
   const setParams = useCallback(
@@ -387,10 +383,13 @@ export function LibraryView() {
     },
     [navigate, params],
   );
-  /** Analyze opens on the corpus and rules the card was ranked by, so the numbers match. */
+  /**
+   * Analyze opens on what the cards were ranked on, the capped sample included, so a layout opened
+   * from here shows the numbers its card showed.
+   */
   const analyzeSearch = useCallback(
-    (layoutRef: string) => toSearch(params, { layoutRef }) as never,
-    [params],
+    (layoutRef: string) => toSearch(params, { layoutRef, sample: ranking.sample }) as never,
+    [params, ranking.sample],
   );
   const sortBy = useSession((s) => s.librarySort);
   const setSortBy = useSession((s) => s.setLibrarySort);
@@ -523,52 +522,15 @@ export function LibraryView() {
   const summaryEntries: SummaryEntry[] = useMemo(
     () =>
       [
-        ...bundled.map(({ id }) => {
-          const key = `b:${id}`;
-          return { key, layout: ranked.get(key)?.layout ?? null };
-        }),
-        ...saved.entries.map((e) => {
-          const key = `s:${e.id}`;
-          // One that will not compile is still sent, so it fails and shows as unscored.
-          return { key, layout: ranked.get(key)?.layout ?? savedLayouts.get(e.id) ?? null };
-        }),
+        ...bundled.map(({ id, layout }) => ({ key: `b:${id}`, layout })),
+        // One that will not compile is still sent, so it fails and shows as unscored.
+        ...saved.entries.map((e) => ({ key: `s:${e.id}`, layout: savedLayouts.get(e.id) ?? null })),
       ].filter((entry) => shownKeys.has(entry.key)),
-    [bundled, saved.entries, ranked, savedLayouts, shownKeys],
+    [bundled, saved.entries, savedLayouts, shownKeys],
   );
-  const summaryOptions: SummaryOptions = useMemo(
-    () => ({
-      corpusId: params.corpus,
-      caseMode: params.caseMode,
-      textClass: params.textClass,
-      maxSymbols: rankSymbols,
-      ruleSet,
-    }),
-    [params.corpus, params.caseMode, params.textClass, rankSymbols, ruleSet],
-  );
-  // What is ranked on, as the link says it: the same on every visit with the same choices, and
-  // known before a saved rule set is read. The last ranking on it is what the list opens with.
-  const rankingContext = useMemo(
-    () =>
-      stableStringify({
-        corpus: params.corpus,
-        caseMode: params.caseMode,
-        textClass: params.textClass,
-        symbols: rankSymbols,
-        rules: params.preset,
-        space: params.universe,
-        without: [...without].sort(),
-      }),
-    [
-      params.corpus,
-      params.caseMode,
-      params.textClass,
-      rankSymbols,
-      params.preset,
-      params.universe,
-      without,
-    ],
-  );
-  const { summaries, pending } = useSummaries(summaryEntries, summaryOptions, rankingContext);
+  // The last ranking on the same settings is what the list opens with.
+  const rankingContext = rankingKey(ranking);
+  const { summaries, pending } = useSummaries(summaryEntries, settings, rankingContext);
 
   // A layout that cannot type letters the corpus's language needs skips them, and skipping is free:
   // it would rank above one that pays to type them. Those go behind, whatever their numbers. A
@@ -640,12 +602,9 @@ export function LibraryView() {
   const openInAnalyzer = useCallback(
     async (layout: Layout) => {
       const blob = await encodeInline(layout);
-      navigate({
-        to: '/analyze',
-        search: toSearch(params, { layoutRef: inlineRef(blob) }) as never,
-      });
+      navigate({ to: '/analyze', search: analyzeSearch(inlineRef(blob)) });
     },
-    [navigate, params],
+    [navigate, analyzeSearch],
   );
 
   /** Save under a free id, and say so by the layout's name: the id is only for links. */
@@ -746,7 +705,7 @@ export function LibraryView() {
           params={params}
           onChange={setParams}
           corpora={corpora}
-          ruleSetName={ruleSet.name}
+          ruleSetName={settings.rules.name}
           boards={boards}
           savedCount={saved.entries.length}
           summary={
@@ -776,10 +735,10 @@ export function LibraryView() {
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs opacity-60" aria-live="polite">
           {pending > 0
-            ? `Scoring layouts on a sample of ${rankSymbols.toLocaleString('en-US')} symbols… ${summaryEntries.length - pending} of ${summaryEntries.length}`
+            ? `Scoring layouts on a sample of ${ranking.sample.toLocaleString('en-US')} symbols… ${summaryEntries.length - pending} of ${summaryEntries.length}`
             : unscored
               ? `Could not score the layouts on ${corpusName}.`
-              : `Lower is better for both. Ranked on a sample of ${rankSymbols.toLocaleString('en-US')} symbols of ${corpusName}, ${ruleSet.name ?? 'rule set'}${
+              : `Lower is better for both. Ranked on a sample of ${ranking.sample.toLocaleString('en-US')} symbols of ${corpusName}, ${settings.rules.name ?? 'rule set'}${
                   without.length > 0 ? `, typed without ${featureList(without)}` : ''
                 }.${
                   nobodyCan

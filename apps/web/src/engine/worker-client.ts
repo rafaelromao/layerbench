@@ -1,4 +1,4 @@
-import type { CorpusManifest, LayoutJson } from '@layerbench/core';
+import type { AnalysisSettings, CorpusManifest, LayoutJson } from '@layerbench/core';
 import type {
   AnalysisClient,
   AnalyzeRequest,
@@ -91,10 +91,6 @@ export class WorkerClient implements AnalysisClient {
     return this.send({ type: 'registerCorpus', corpusId, doc });
   }
 
-  mixCorpora(a: string, b: string, mix: number): Promise<CorpusManifest> {
-    return this.send({ type: 'mixCorpora', a, b, mix });
-  }
-
   peek(request: AnalyzeRequest): Promise<ReportDTO | null> {
     return this.send({ type: 'peek', request });
   }
@@ -114,8 +110,8 @@ export class WorkerClient implements AnalysisClient {
     return this.send({ type: 'keyStats', request });
   }
 
-  explain(layout: LayoutJson, text: string, caseMode: 'fold' | 'model'): Promise<ExplainDTO> {
-    return this.send({ type: 'explain', layout, text, caseMode });
+  explain(layout: LayoutJson, text: string, settings: AnalysisSettings): Promise<ExplainDTO> {
+    return this.send({ type: 'explain', layout, text, settings });
   }
 
   producers(

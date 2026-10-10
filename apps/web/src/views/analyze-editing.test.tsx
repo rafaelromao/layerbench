@@ -463,8 +463,8 @@ describe('Edit', () => {
       storage: freshStorage(),
     });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
-    const typed = (r: AnalyzeRequest | undefined) => JSON.stringify(r?.layout ?? null);
-    await waitFor(() => expect(typed(requests[0])).toContain('"qu"'));
+    const off = (r: AnalyzeRequest | undefined) => r?.settings.without ?? null;
+    await waitFor(() => expect(off(requests[0])).toEqual([]));
 
     const settings = await openSettings();
     await user.click(
@@ -473,10 +473,10 @@ describe('Edit', () => {
       }),
     );
     await waitFor(() => expect(currentSearch()).toContain('off=macros'));
-    // The numbers are for the layout without its `qu` macro; the layout being edited keeps it.
-    await waitFor(() => expect(typed(requests.at(-1))).not.toContain('"qu"'), {
-      timeout: 25_000,
-    });
+    // The numbers are for the layout without its `qu` macro, which the engine leaves out of the
+    // layout as written; the layout being edited keeps it.
+    await waitFor(() => expect(off(requests.at(-1))).toEqual(['macros']), { timeout: 25_000 });
+    expect(JSON.stringify(requests.at(-1)?.layout)).toContain('"qu"');
     await user.click(screen.getByRole('tab', { name: 'Alpha 2' }));
     expect(await screen.findByRole('button', { name: /^Key LTM: qu/ })).toBeInTheDocument();
   }, 60_000);
@@ -492,7 +492,7 @@ describe('Edit', () => {
     const settings = await openSettings();
     const corpus = within(settings).getByRole('combobox', { name: 'Corpus' });
     expect(corpus).toHaveValue('en-general');
-    expect(requests.map((r) => r.corpusId)).toContain('en-general');
+    expect(requests.map((r) => r.settings.corpus)).toContain('en-general');
 
     key('Key LHM: d').focus();
     await user.keyboard('ç{Enter}');
@@ -510,9 +510,12 @@ describe('Edit', () => {
     // The editor stayed open on the edit, which is still unsaved, and the numbers follow the text.
     expect(key('Key LHM: ç')).toBeInTheDocument();
     expect(screen.getByText('unsaved')).toBeInTheDocument();
-    await waitFor(() => expect(requests.some((r) => r.corpusId === 'en-general')).toBe(true), {
-      timeout: 25_000,
-    });
+    await waitFor(
+      () => expect(requests.some((r) => r.settings.corpus === 'en-general')).toBe(true),
+      {
+        timeout: 25_000,
+      },
+    );
   }, 60_000);
 
   it('selects a key and edits its binding', async () => {

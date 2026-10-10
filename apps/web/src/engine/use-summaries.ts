@@ -1,12 +1,13 @@
 import {
-  fnv1a,
+  type AnalysisSettings,
+  analysisKey,
+  forRanking,
+  getPreset,
   type Layout,
-  type RuleSet,
-  stableStringify,
-  type TextClass,
   toCanonicalJson,
 } from '@layerbench/core';
 import { useEffect, useMemo, useState } from 'react';
+import { parseParams, settingsOf } from '../url/params.js';
 import { useAnalysisClient } from './client-context.js';
 import type { AnalyzeRequest, ReportDTO } from './protocol.js';
 import { recall, rememberSummary } from './ranking-memory.js';
@@ -19,14 +20,6 @@ export interface LayoutSummary {
   skipped: number;
   /** The characters it could not type, most frequent first. */
   missing: string[];
-}
-
-export interface SummaryOptions {
-  corpusId: string;
-  caseMode: AnalyzeRequest['caseMode'];
-  textClass: TextClass;
-  maxSymbols: number;
-  ruleSet: RuleSet;
 }
 
 export interface SummaryEntry {
@@ -69,17 +62,13 @@ export function summarize(report: ReportDTO): LayoutSummary {
   };
 }
 
-/** What the Library asks the engine for, to score a layout. */
-export function requestFor(layout: Layout, opts: SummaryOptions): AnalyzeRequest {
-  return {
-    layout: toCanonicalJson(layout),
-    corpusId: opts.corpusId,
-    caseMode: opts.caseMode,
-    textClass: opts.textClass,
-    crossWord: 'reset',
-    maxSymbols: opts.maxSymbols,
-    ruleSet: opts.ruleSet,
-  };
+/**
+ * What the Library ranks on, with its rules read, for a link that names only `corpus`: what the
+ * workflows' summaries score layouts on, as a reviewer opening the Library on that text sees them.
+ */
+export function libraryRanking(corpus: string): AnalysisSettings {
+  const linked = forRanking(settingsOf(parseParams({ corpus }, corpus)));
+  return { ...linked, rules: getPreset(linked.rules) };
 }
 
 /**
@@ -122,7 +111,7 @@ interface Shown {
  */
 export function useSummaries(
   entries: SummaryEntry[],
-  opts: SummaryOptions,
+  settings: AnalysisSettings,
   context: string,
 ): { summaries: Map<string, LayoutSummary>; pending: number } {
   const client = useAnalysisClient();
@@ -131,10 +120,10 @@ export function useSummaries(
       entries
         .filter((e): e is SummaryEntry & { layout: Layout } => e.layout !== null)
         .map((e) => {
-          const request = requestFor(e.layout, opts);
-          return { key: e.key, request, hash: fnv1a(stableStringify(request)) };
+          const request: AnalyzeRequest = { layout: toCanonicalJson(e.layout), settings };
+          return { key: e.key, request, hash: analysisKey(e.layout, settings).key };
         }),
-    [entries, opts],
+    [entries, settings],
   );
   // A new array with the same content is the same list: what is ranked on, the layouts listed (one
   // still being read is listed by what was remembered of it), and the work to do for each.
