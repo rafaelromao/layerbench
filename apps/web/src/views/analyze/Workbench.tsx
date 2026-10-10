@@ -1,5 +1,6 @@
 import {
   type AnalysisSettings,
+  type CompiledLayout,
   type CorpusManifest,
   type Layout,
   languagesToJudge,
@@ -119,7 +120,7 @@ async function snapshotRef(layout: Layout, id: string): Promise<string> {
 
 export interface WorkbenchProps {
   initialLayout: Layout;
-  initialCompiled: NonNullable<ReturnType<typeof useTypedLayout>['compiled']>;
+  initialCompiled: CompiledLayout;
   /** The reference the layout was opened from. */
   openedRef: string;
   params: Params;
@@ -220,8 +221,7 @@ export function Workbench({
 
   // The board shows the layout as it is written; the numbers are for it as typed, without the
   // features the switches leave out, and so are the heat, the playback and the explanations.
-  const typed = useTypedLayout(state.layout, state.compiled, params.without);
-  const typedCompiled = typed.compiled ?? state.compiled;
+  const typedCompiled = useTypedLayout(state.compiled, settings.without);
 
   const ruleSet = settings.rules;
   // The layout as written: the engine types it without the features the settings leave out, and

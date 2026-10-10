@@ -49,8 +49,8 @@ export function CompareView() {
   const b = useLayout(refB);
   // Both sides are typed without the same features, as the Library ranks them, and drawn that way
   // so each board's heat lands on the keys it was measured on.
-  const typedA = useTypedLayout(a.layout, a.compiled, params.without);
-  const typedB = useTypedLayout(b.layout, b.compiled, params.without);
+  const typedA = useTypedLayout(a.compiled, params.without);
+  const typedB = useTypedLayout(b.compiled, params.without);
   const settings = useAnalysisSettings(settingsOf(params));
   const ruleSet = settings.rules;
 
@@ -202,8 +202,8 @@ export function CompareView() {
         <div className="grid gap-4 md:grid-cols-2">
           {(
             [
-              ['A', nameA, typedA.compiled, analysisA.report, layerA, setLayerA],
-              ['B', nameB, typedB.compiled, analysisB.report, layerB, setLayerB],
+              ['A', nameA, typedA, analysisA.report, layerA, setLayerA],
+              ['B', nameB, typedB, analysisB.report, layerB, setLayerB],
             ] as const
           ).map(([side, name, compiled, report, chosen, setLayer]) => {
             // A layer past the end, for a moment after the layout changes, is its base.

@@ -13,7 +13,7 @@ import {
   layoutLanguages,
   safeParseLayout,
   toCanonicalJson,
-  withoutFeatures,
+  typedLayout,
 } from '@layerbench/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -426,30 +426,15 @@ export function LibraryView() {
     return out;
   }, [savedLayouts]);
 
-  // Each layout as it is ranked: typed without the features left out. The cards still draw the
-  // layout itself; only its numbers, and what it can type, come from this.
+  // Each layout as it is ranked: typed without the features left out, as the engine types it. The
+  // cards still draw the layout itself; only what it can type is judged on this.
   const { without } = params;
   const ranked = useMemo(() => {
-    const out = new Map<string, { layout: Layout; compiled: CompiledLayout }>();
-    const add = (key: string, layout: Layout, compiled: CompiledLayout) => {
-      if (without.length === 0) {
-        out.set(key, { layout, compiled });
-        return;
-      }
-      const plain = withoutFeatures(layout, without);
-      try {
-        out.set(key, { layout: plain, compiled: compileLayout(plain) });
-      } catch {
-        // Left unranked, like a saved layout that will not compile.
-      }
-    };
-    for (const { id, layout, compiled } of bundled) add(`b:${id}`, layout, compiled);
-    for (const [id, layout] of savedLayouts) {
-      const compiled = savedCompiled.get(id);
-      if (compiled) add(`s:${id}`, layout, compiled);
-    }
+    const out = new Map<string, CompiledLayout>();
+    for (const { id, compiled } of bundled) out.set(`b:${id}`, typedLayout(compiled, without));
+    for (const [id, compiled] of savedCompiled) out.set(`s:${id}`, typedLayout(compiled, without));
     return out;
-  }, [bundled, savedLayouts, savedCompiled, without]);
+  }, [bundled, savedCompiled, without]);
 
   // Bundled and saved layouts are one list, ranked together: a layout of one's own means something
   // next to the ones it would replace.
@@ -552,7 +537,7 @@ export function LibraryView() {
         }
       }
     };
-    for (const [key, { compiled }] of ranked) check(key, compiled);
+    for (const [key, compiled] of ranked) check(key, compiled);
     return out;
   }, [corpusLanguage, ranked]);
   // Which layouts go behind can only be told once the corpora are listed and a layout's document is
