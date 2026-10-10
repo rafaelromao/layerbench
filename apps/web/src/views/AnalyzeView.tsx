@@ -1,8 +1,8 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useAnalysisClient } from '../engine/client-context.js';
+import { useLayoutSession } from '../layout-session/use-layout-session.js';
 import { useRememberSelection } from '../state/selection.js';
-import { useStorage } from '../storage/use-storage.js';
 import {
   DEFAULT_PARAMS,
   type Params,
@@ -14,36 +14,25 @@ import {
 import { Workbench } from './analyze/Workbench.js';
 import { useAnalysisSettings } from './useAnalysisSettings.js';
 import { useCorpora } from './useCorpora.js';
-import { useLayout } from './useLayout.js';
 
 /**
- * Analyze, where a layout is also edited. The link names the layout; the workbench opens it once and
- * then owns it, writing each unsaved version back into the link as an inline layout. A reference it
- * wrote itself does not open the layout again — that would lose the editor's history — but any
- * other one does: following a link, going back, picking another layout.
+ * Analyze, where a layout is also edited. The link names the layout; the layout session opens it and
+ * keeps the link holding it as it is edited. A reference the session wrote itself does not open the
+ * layout again — that would lose the editor's history — but any other one does: following a link,
+ * going back, picking another layout.
  */
 export function AnalyzeView() {
   const search = useSearch({ strict: false }) as RawSearch;
   const navigate = useNavigate();
   const client = useAnalysisClient();
-  const storage = useStorage();
   const corpora = useCorpora();
   const params = useMemo(() => parseParams(search), [search]);
   useRememberSelection(params);
   const settings = useAnalysisSettings(settingsOf(params));
-
-  /** The layout open, and how many times one was opened, which tells one workbench from the next. */
-  const opened = useRef({ ref: params.layoutRef, epoch: 0 });
-  /** References the open workbench wrote into the link. */
-  const claimed = useRef(new Set<string>());
-  const [, reopen] = useState(0);
-  if (params.layoutRef !== opened.current.ref && !claimed.current.has(params.layoutRef)) {
-    opened.current = { ref: params.layoutRef, epoch: opened.current.epoch + 1 };
-    claimed.current = new Set();
-  }
+  const session = useLayoutSession();
 
   // Settings are written onto whatever the link holds by then, so they never undo a layout the
-  // workbench has just written into it.
+  // session has just written into it.
   const setParams = useCallback(
     (overrides: Partial<Params>) => {
       navigate({
@@ -56,50 +45,23 @@ export function AnalyzeView() {
     },
     [navigate],
   );
-  const claim = useCallback((ref: string) => {
-    claimed.current.add(ref);
-  }, []);
-  const open = useCallback(
-    (ref: string) => {
-      // The same layout picked again opens afresh, as it was stored.
-      opened.current = { ref, epoch: opened.current.epoch + 1 };
-      claimed.current = new Set();
-      navigate({
-        to: '/analyze',
-        search: toSearch(params, { layoutRef: ref, layer: DEFAULT_PARAMS.layer }) as never,
-        replace: true,
-        // The same view, written again: the page stays where it was scrolled to.
-        resetScroll: false,
-      });
-      reopen((n) => n + 1);
-    },
-    [navigate, params],
-  );
 
-  const loaded = useLayout(opened.current.ref);
-  const ready = loaded.ref === opened.current.ref && loaded.layout && loaded.compiled;
-
-  return ready && loaded.layout && loaded.compiled ? (
+  return session.status === 'open' ? (
     <Workbench
-      key={opened.current.epoch}
-      initialLayout={loaded.layout}
-      initialCompiled={loaded.compiled}
-      openedRef={opened.current.ref}
+      key={session.opening}
+      session={session}
       params={params}
       setParams={setParams}
-      claim={claim}
-      open={open}
       settings={settings}
       corpora={corpora}
       client={client}
-      storage={storage}
       navigate={navigate}
     />
   ) : (
     <div className="space-y-4">
       <h1 className="sr-only">Analyze</h1>
-      {loaded.ref === opened.current.ref && loaded.error ? (
-        <div className="alert alert-error text-sm">{loaded.error}</div>
+      {session.status === 'failed' ? (
+        <div className="alert alert-error text-sm">{session.error}</div>
       ) : (
         <span className="loading loading-dots loading-md" />
       )}

@@ -7,6 +7,9 @@ import { createLayoutSession, type LayoutSession, type SessionState } from './se
 export type LayoutSessionView = SessionState &
   Pick<LayoutSession, 'edited' | 'save' | 'open' | 'link'>;
 
+/** The layout session once its layout is open, as the editor has it. */
+export type OpenSession = Extract<LayoutSessionView, { status: 'open' }>;
+
 const OPENING: SessionState = { status: 'opening', opening: 0 };
 const nothing = () => () => {};
 

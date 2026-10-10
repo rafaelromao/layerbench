@@ -1,12 +1,10 @@
 import {
   type AnalysisSettings,
-  type CompiledLayout,
   type CorpusManifest,
   type Layout,
   languagesToJudge,
   layoutLanguageCoverage,
   type RuleItem,
-  safeParseLayout,
   toCanonicalJson,
 } from '@layerbench/core';
 import type { useNavigate } from '@tanstack/react-router';
@@ -42,19 +40,10 @@ import type { AnalyzeRequest, ExplainDTO, ProducerDTO, ReportDTO } from '../../e
 import { useAnalysis } from '../../engine/use-analysis.js';
 import { useKeyStats } from '../../engine/use-key-stats.js';
 import { HELP, type HelpTopic } from '../../guide/help.js';
-import { draftOf, storedIdOf, useOrigins } from '../../state/origins.js';
+import type { OpenSession } from '../../layout-session/use-layout-session.js';
 import { toast } from '../../state/toasts.js';
-import { useCollection, type useStorage } from '../../storage/use-storage.js';
-import { encodeInline } from '../../url/inline.js';
-import {
-  HEAT_MODES,
-  type HeatMode,
-  inlineRef,
-  type Params,
-  parseLayoutRef,
-  savedRef,
-  toSearch,
-} from '../../url/params.js';
+import { useCollection } from '../../storage/use-storage.js';
+import { HEAT_MODES, type HeatMode, type Params, toSearch } from '../../url/params.js';
 import { KeyInspector } from '../edit/inspector/KeyInspector.js';
 import {
   BehaviorsPanel,
@@ -72,7 +61,6 @@ import { useTypedLayout } from '../useLayout.js';
 import { itemLayer } from './item-layer.js';
 import { LayoutBar } from './LayoutBar.js';
 import { playFrames } from './playback.js';
-import { saveLayout } from './save-layout.js';
 
 /** Built once: a reducer rebuilt on every render would reset the editor's history. */
 const undoableEditReducer = undoable(editReducer);
@@ -80,9 +68,6 @@ const undoableEditReducer = undoable(editReducer);
 /** How long each press of a played word stays lit, and the rest before it plays again. */
 const PLAY_STEP_MS = 750;
 const PLAY_REST_MS = 1200;
-/** How long the link waits after the last edit before it takes in the edited layout. */
-const LINK_DELAY_MS = 400;
-
 const HEAT_LABELS: Record<HeatMode, string> = {
   usage: 'Usage',
   sfb: 'SFB contribution',
@@ -110,30 +95,15 @@ function symbolLabel(s: string): string {
   return s === ' ' ? '␣' : s;
 }
 
-/**
- * The link of a saved layout: the layout itself, after the `#`, so the link opens for anyone it is
- * sent to. Where that layout is saved and unchanged, opening the link opens it as the saved one.
- */
-async function snapshotRef(layout: Layout, id: string): Promise<string> {
-  return inlineRef(await encodeInline({ ...layout, id }));
-}
-
 export interface WorkbenchProps {
-  initialLayout: Layout;
-  initialCompiled: CompiledLayout;
-  /** The reference the layout was opened from. */
-  openedRef: string;
+  /** The layout session, open: the layout as opened, and what is done with it. */
+  session: OpenSession;
   params: Params;
   setParams: (overrides: Partial<Params>) => void;
-  /** Mark a reference this view writes into its own link, so the link changing does not reopen it. */
-  claim: (layoutRef: string) => void;
-  /** Open another layout from the picker, even the same one afresh. */
-  open: (layoutRef: string) => void;
   /** What the layout is analyzed on, the rule set read. */
   settings: AnalysisSettings;
   corpora: CorpusManifest[];
   client: ReturnType<typeof useAnalysisClient>;
-  storage: ReturnType<typeof useStorage>;
   navigate: ReturnType<typeof useNavigate>;
 }
 
@@ -143,76 +113,22 @@ export interface WorkbenchProps {
  * once, re-scored from the tables already typed, until the layout as edited is typed afresh.
  */
 export function Workbench({
-  initialLayout,
-  initialCompiled,
-  openedRef,
+  session,
   params,
   setParams,
-  claim,
-  open,
   settings,
   corpora,
   client,
-  storage,
   navigate,
 }: WorkbenchProps) {
   const [state, send] = useReducer(undoableEditReducer, null, () => {
-    const start = initialUndoState(initialLayout, initialCompiled, params.layer);
+    const start = initialUndoState(session.layout, session.compiled, params.layer);
     // A draft this tab made is still unsaved: the layout stored, if any, is not this one yet.
-    return draftOf(openedRef) ? { ...start, dirty: true, saved: null } : start;
+    return session.startsUnsaved ? { ...start, dirty: true, saved: null } : start;
   });
   const keyboard = useRef<KeyboardHandle>(null);
   /** What to tell a screen reader: a key's changed legend is not announced on its own. */
   const [message, setMessage] = useState('');
-  const [saving, setSaving] = useState(false);
-  /** The stored layout this is, or will be saved as: the one opened, or the one a draft is of. */
-  const [storedId, setStoredId] = useState<string | null>(() => storedIdOf(openedRef));
-  /** The link's layout whenever nothing is unsaved: the one opened, or the one last saved. */
-  const [cleanRef, setCleanRef] = useState(openedRef);
-  const remember = useOrigins((s) => s.remember);
-  const forget = useOrigins((s) => s.forget);
-
-  // A saved layout opened by its id, as the Library and the picker open one, gets the link that
-  // carries it whole, which opens anywhere: an id opens only where the layout is saved.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: once, for the layout opened
-  useEffect(() => {
-    if (state.dirty || storedId === null || parseLayoutRef(openedRef).kind !== 'saved') return;
-    let cancelled = false;
-    snapshotRef(initialLayout, storedId).then((ref) => {
-      if (!cancelled) setCleanRef(ref);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // A layout from a link is the one saved here when the id it carries is saved here with the same
-  // contents: its owner's link, opened in another tab, browser or device. Anything else, someone
-  // else's layout or one changed since the link was made, stays a layout of its own, saved as a
-  // copy, so nothing saved here is ever overwritten by a link.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: once, for the layout opened
-  useEffect(() => {
-    const id = initialLayout.id;
-    if (state.dirty || storedId !== null || !id || parseLayoutRef(openedRef).kind !== 'inline')
-      return;
-    let cancelled = false;
-    storage
-      .get('layouts', id)
-      .then((stored) => {
-        const parsed = stored ? safeParseLayout(stored.doc) : null;
-        if (cancelled || !parsed?.ok) return;
-        const same =
-          JSON.stringify(toCanonicalJson(parsed.layout)) ===
-          JSON.stringify(toCanonicalJson(initialLayout));
-        if (same) setStoredId(id);
-      })
-      .catch(() => {
-        // Storage that cannot be read leaves it a layout of its own.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   /** The saved layouts, for the picker; read again after each save. */
   const savedLayouts = useCollection('layouts');
@@ -279,50 +195,10 @@ export function Workbench({
 
   // ------------------------------------------------------------------ the link
 
-  // The link carries the layout as it is: an unsaved one as an inline snapshot, written a moment
-  // after the last edit, and remembered as a draft of the stored layout it is an edit of; the
-  // stored or opened one again once nothing is unsaved. Nothing is written as the view opens.
-  const pendingLink = useRef<Promise<string> | null>(null);
-  const linkFor = useCallback(async (): Promise<string> => {
-    if (!state.dirty) return cleanRef;
-    const ref = inlineRef(await encodeInline(state.layout));
-    remember(ref, storedId);
-    return ref;
-  }, [state.dirty, state.layout, cleanRef, storedId, remember]);
-  const linkNow = useRef(params.layoutRef);
-  linkNow.current = params.layoutRef;
-  useEffect(() => {
-    const write = (ref: string) => {
-      if (ref === linkNow.current) return;
-      claim(ref);
-      navigate({
-        to: '/analyze',
-        search: ((prev: Record<string, string | undefined>) => ({ ...prev, layout: ref })) as never,
-        replace: true,
-        // The same view, written again: the page stays where it was scrolled to.
-        resetScroll: false,
-      });
-    };
-    if (!state.dirty) {
-      write(cleanRef);
-      return;
-    }
-    // A draft opened from its own link is in the link already.
-    if (state.layout === initialLayout && draftOf(openedRef)) return;
-    let cancelled = false;
-    const timer = setTimeout(() => {
-      const pending = linkFor();
-      pendingLink.current = pending;
-      pending.then((ref) => {
-        if (pendingLink.current === pending) pendingLink.current = null;
-        if (!cancelled) write(ref);
-      });
-    }, LINK_DELAY_MS);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [state.layout, state.dirty, cleanRef, linkFor, initialLayout, openedRef, claim, navigate]);
+  // The link carries the layout as it is: the session is told each change, and writes a draft of
+  // unsaved edits a moment after the last one, or the layout's clean reference once nothing is.
+  const { edited } = session;
+  useEffect(() => edited(state.layout, state.dirty), [edited, state.layout, state.dirty]);
 
   // The layer edited is the one the link names, so a link opens on it.
   // biome-ignore lint/correctness/useExhaustiveDependencies: only the editor moves the layer; the link follows it
@@ -340,42 +216,32 @@ export function Workbench({
 
   const save = useCallback(async () => {
     const layout = state.layout;
-    setSaving(true);
-    try {
-      const { id, leftBehind } = await saveLayout(storage, layout, storedId);
-      // Its link from now on carries it whole, so it can still be sent. A moment ago that may have
-      // been the link of a draft of it, which it no longer is.
-      const ref = await snapshotRef(layout, id);
-      forget(ref);
-      setCleanRef(ref);
-      send({ type: 'saved', layout });
-      setStoredId(id);
-      void savedLayouts.refresh();
-      if (leftBehind) {
-        toast.error(
-          `Saved ${layout.name}; its copy under the old name could not be removed and is still in the Library`,
-        );
-      } else toast.info(`Saved ${layout.name}`);
-    } catch (e) {
-      const conflict = e instanceof Error && e.name === 'StorageConflictError';
+    const saved = await session.save(layout);
+    if (!saved.ok) {
       toast.error(
-        conflict
+        saved.reason === 'conflict'
           ? 'Someone else changed this layout; reload and try again'
-          : `Save failed: ${e instanceof Error ? e.message : String(e)}`,
+          : `Save failed: ${saved.error}`,
       );
-    } finally {
-      setSaving(false);
+      return;
     }
-  }, [state.layout, storage, storedId, savedLayouts.refresh, forget]);
+    send({ type: 'saved', layout });
+    void savedLayouts.refresh();
+    if (saved.leftBehind) {
+      toast.error(
+        `Saved ${layout.name}; its copy under the old name could not be removed and is still in the Library`,
+      );
+    } else toast.info(`Saved ${layout.name}`);
+  }, [state.layout, session.save, savedLayouts.refresh]);
 
   const pick = (ref: string) => {
     if (state.dirty && !window.confirm(`Leave ${state.layout.name}? Its unsaved changes are lost.`))
       return;
-    open(ref);
+    void session.open(ref);
   };
 
   const compare = async () => {
-    const ref = await (pendingLink.current ?? linkFor());
+    const ref = await session.link();
     navigate({ to: '/compare', search: toSearch(params, { layoutRef: ref }) as never });
   };
 
@@ -674,11 +540,11 @@ export function Workbench({
       <LayoutBar
         layout={state.layout}
         dirty={state.dirty}
-        saving={saving}
+        saving={session.saving}
         onMeta={(meta) => send({ type: 'setMeta', ...meta })}
         onSave={save}
         // A saved layout is picked as itself, whatever its link carries.
-        layoutRef={!state.dirty && storedId !== null ? savedRef(storedId) : params.layoutRef}
+        layoutRef={session.pickedRef}
         onPick={pick}
         saved={savedLayouts.entries}
         corpora={corpora}
