@@ -1,10 +1,13 @@
 import { getPreset, type RuleSet } from '@layerbench/core';
-import { useEffect, useMemo, useState } from 'react';
-import { resolveRuleSet, withUniverse } from '../storage/rule-sets.js';
+import { useEffect, useState } from 'react';
+import { resolveRuleSet } from '../storage/rule-sets.js';
 import { useStorage } from '../storage/use-storage.js';
 
-/** Resolve a `?rules=` reference, with the toolbar's universe toggle applied on top. */
-export function useRuleSet(ref: string, universe: 'no_space' | 'with_space'): RuleSet {
+/**
+ * Resolve a `?rules=` reference. Whether space counts is not the rule set's to say in the app: the
+ * analysis settings apply the view's Space to it.
+ */
+export function useRuleSet(ref: string): RuleSet {
   const storage = useStorage();
   const [resolved, setResolved] = useState<RuleSet>(() => getPreset(ref));
 
@@ -18,5 +21,5 @@ export function useRuleSet(ref: string, universe: 'no_space' | 'with_space'): Ru
     };
   }, [ref, storage]);
 
-  return useMemo(() => withUniverse(resolved, universe), [resolved, universe]);
+  return resolved;
 }
