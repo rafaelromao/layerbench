@@ -135,12 +135,15 @@ app, by pull request on GitHub; the [README](../../README.md#bundled-corpora) li
 and **Compare**, sets how much of the text is typed, 100,000 symbols unless you choose more: more
 gives steadier numbers, less gives them sooner, which matters most while a layout is being edited,
 since every edit types it again. **Library** ranks on at most 100,000 symbols, since it types the
-text once for every layout, and says so above the list.
+text once for every layout, and says so above the list; a layout opened from it keeps that sample in
+**Analyze**, so its numbers there are the ones its card showed. **Mix with** blends a second text
+into the first, in the share you choose: **Analyze** analyzes on the mix, **Compare** compares on it
+and **Library** ranks on it.
 
 ### The same choices in every view
 
-**Library**, **Analyze** and **Compare** share their choices: the corpus, the rules,
-what counts, the feature switches, space and shift. Change one in any of them and the menu carries
+**Library**, **Analyze** and **Compare** share their choices: the corpus and a text mixed into it,
+the rules, what counts, the feature switches, space and shift. Change one in any of them and the menu carries
 it to the others, and so do **Rules** and **Corpus** when they open **Analyze** with a set or a
 text. A link still opens exactly what it names, and a new visit starts from its link.
 
@@ -200,7 +203,8 @@ is better; for alternation, rolls and the in:out roll ratio, higher is. The
 
 Every number is a rule: plain data that says which key sequences count, and how. **Rules** lists
 them. Each can be turned off, given other bands and a score weight, or removed, and new ones can
-be composed; anything else, such as a key's cost, is changed in the set's **JSON**. A rule set is
+be composed; anything else, such as a key's cost, is changed in the set's **JSON**. Whether the space
+key counts is not the set's to say: **Space**, where layouts are analyzed, decides it. A rule set is
 saved like a layout, but its link only names it, so it opens only where it is saved.
 
 Every built-in rule names where its definition comes from: a section of the Keyboard Layouts Doc,

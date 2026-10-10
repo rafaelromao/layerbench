@@ -132,21 +132,20 @@ export function SampleSelect({
 }
 
 /**
- * The choices every analysis is made with, drawn the same in each view that analyzes: the text,
- * the rules, what counts, the features the layouts are typed with, space and shift. A view adds its
- * own around them: a second corpus to mix in after the corpus, the sample after what counts, and
- * switches of its own after the others, lined up with them.
+ * The choices every analysis is made with, drawn the same in each view that analyzes: the text and
+ * a second one to mix in, the rules, what counts, the features the layouts are typed with, space
+ * and shift. A view adds its own around them: the sample after what counts, and switches of its
+ * own after the others, lined up with them.
  *
  * Laid out as fields of a toolbar (`lb-toolbar`), into which the fragment is spread: the switches
  * take a line of their own, so every view shows them in the same place.
  */
-export function AnalysisSettings({
+export function SettingsFields({
   params,
   onChange,
   corpora,
   ruleSetName,
   verb,
-  afterCorpus,
   afterCounts,
   afterSwitches,
 }: {
@@ -157,7 +156,6 @@ export function AnalysisSettings({
   ruleSetName?: string;
   /** What the view does with what the switches type: "Rank", "Compare", "Analyze". */
   verb: string;
-  afterCorpus?: ReactNode;
   afterCounts?: ReactNode;
   afterSwitches?: ReactNode;
 }) {
@@ -171,7 +169,7 @@ export function AnalysisSettings({
           onChange={(corpus) => onChange({ corpus })}
         />
       </label>
-      {afterCorpus}
+      <MixWith corpora={corpora} params={params} onParams={onChange} />
       <label className="form-control">
         <span className="label-text text-xs">Rules</span>
         <RuleSetSelect
@@ -213,6 +211,61 @@ export function AnalysisSettings({
         </FeatureSwitches>
         {afterSwitches}
       </div>
+    </>
+  );
+}
+
+/** A second corpus blended into the first, and how much of each. */
+function MixWith({
+  corpora,
+  params,
+  onParams,
+}: {
+  corpora: CorpusManifest[];
+  params: Params;
+  onParams: (overrides: Partial<Params>) => void;
+}) {
+  return (
+    <>
+      <label className="form-control">
+        <span className="label-text text-xs">Mix with</span>
+        <select
+          name="corpus2"
+          aria-label="Mix with"
+          className="select select-sm select-bordered"
+          value={params.corpus2 ?? ''}
+          onChange={(e) => onParams({ corpus2: e.target.value === '' ? null : e.target.value })}
+        >
+          <option value="">—</option>
+          {groupByLanguage(corpora.filter((c) => c.id !== params.corpus)).map((g) => (
+            <optgroup key={g.label} label={g.label}>
+              {g.items.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      </label>
+      {params.corpus2 && (
+        <label className="form-control lb-wide">
+          <span className="label-text text-xs">
+            {params.mix}% first · {100 - params.mix}% second
+          </span>
+          <input
+            type="range"
+            name="mix"
+            aria-label="Corpus mix"
+            className="range range-xs w-40"
+            min={0}
+            max={100}
+            step={5}
+            value={params.mix}
+            onChange={(e) => onParams({ mix: Number(e.target.value) })}
+          />
+        </label>
+      )}
     </>
   );
 }

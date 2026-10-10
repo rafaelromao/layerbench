@@ -15,13 +15,13 @@ import type { AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { useAnalysis } from '../engine/use-analysis.js';
 import { useRememberSelection } from '../state/selection.js';
 import { useCollection } from '../storage/use-storage.js';
-import { type Params, parseParams, type RawSearch, toSearch } from '../url/params.js';
-import { AnalysisSettings, SampleSelect } from './AnalysisSelects.js';
+import { type Params, parseParams, type RawSearch, settingsOf, toSearch } from '../url/params.js';
+import { SampleSelect, SettingsFields } from './AnalysisSelects.js';
 import { compareRows } from './compare-rows.js';
 import { LayoutOptions } from './LayoutOptions.js';
 import { SettingsDialog, settingsSummary } from './SettingsDialog.js';
+import { useAnalysisSettings } from './useAnalysisSettings.js';
 import { useLayout, useTypedLayout } from './useLayout.js';
-import { useRuleSet } from './useRuleSet.js';
 
 const DEFAULT_B = 'qwerty';
 
@@ -49,27 +49,19 @@ export function CompareView() {
   const b = useLayout(refB);
   // Both sides are typed without the same features, as the Library ranks them, and drawn that way
   // so each board's heat lands on the keys it was measured on.
-  const typedA = useTypedLayout(a.layout, a.compiled, params.without);
-  const typedB = useTypedLayout(b.layout, b.compiled, params.without);
-  const ruleSet = useRuleSet(params.preset, params.universe);
+  const typedA = useTypedLayout(a.compiled, params.without);
+  const typedB = useTypedLayout(b.compiled, params.without);
+  const settings = useAnalysisSettings(settingsOf(params));
 
-  const requestFor = (layout: typeof a.layout): AnalyzeRequest | null =>
-    layout
-      ? {
-          layout: toCanonicalJson(layout),
-          corpusId: params.corpus,
-          caseMode: params.caseMode,
-          textClass: params.textClass,
-          crossWord: ruleSet.globals.cross_word ?? 'reset',
-          maxSymbols: params.sample,
-          ruleSet,
-        }
-      : null;
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the request is derived from these
-  const requestA = useMemo(() => requestFor(typedA.layout), [typedA.layout, params, ruleSet]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the request is derived from these
-  const requestB = useMemo(() => requestFor(typedB.layout), [typedB.layout, params, ruleSet]);
+  // Each side as written, on the same settings: the engine types both without the same features.
+  const requestA: AnalyzeRequest | null = useMemo(
+    () => (a.layout ? { layout: toCanonicalJson(a.layout), settings } : null),
+    [a.layout, settings],
+  );
+  const requestB: AnalyzeRequest | null = useMemo(
+    () => (b.layout ? { layout: toCanonicalJson(b.layout), settings } : null),
+    [b.layout, settings],
+  );
 
   const analysisA = useAnalysis(requestA);
   const analysisB = useAnalysis(requestB);
@@ -149,13 +141,13 @@ export function CompareView() {
         </label>
 
         <div className="lb-wide min-w-0 flex-1">
-          <SettingsDialog summary={settingsSummary(params, corpora, ruleSet.name)}>
+          <SettingsDialog summary={settingsSummary(settings, corpora)}>
             <div className="lb-toolbar flex flex-row flex-wrap items-end gap-3">
-              <AnalysisSettings
+              <SettingsFields
                 params={params}
                 onChange={setParams}
                 corpora={corpora}
-                ruleSetName={ruleSet.name}
+                ruleSetName={settings.rules.name}
                 verb="Compare"
                 afterCounts={
                   <label className="form-control">
@@ -209,8 +201,8 @@ export function CompareView() {
         <div className="grid gap-4 md:grid-cols-2">
           {(
             [
-              ['A', nameA, typedA.compiled, analysisA.report, layerA, setLayerA],
-              ['B', nameB, typedB.compiled, analysisB.report, layerB, setLayerB],
+              ['A', nameA, typedA, analysisA.report, layerA, setLayerA],
+              ['B', nameB, typedB, analysisB.report, layerB, setLayerB],
             ] as const
           ).map(([side, name, compiled, report, chosen, setLayer]) => {
             // A layer past the end, for a moment after the layout changes, is its base.

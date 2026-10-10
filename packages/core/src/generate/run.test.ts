@@ -133,7 +133,7 @@ function paretoFront(all: Candidate[]): Candidate[] {
 
 function describeCandidate(c: Candidate, sample: Sample): string {
   const settings =
-    `${sample.corpusId}, ${sample.maxSymbols.toLocaleString('en-US')} symbols, letters only, ` +
+    `${sample.settings.corpus}, ${sample.settings.sample.toLocaleString('en-US')} symbols, letters only, ` +
     'case folded, no space, cyanophage-like rules';
   return (
     `${c.layout.name}: ${CONFIGS[c.config]?.description ?? c.config}. ` +
@@ -268,8 +268,8 @@ describe.skipIf(!RUN)('generate (GENERATE=1)', () => {
       const lines: string[] = [
         `# Generated layouts: ${track.title}`,
         '',
-        `Scored by LayerBench's engine on ${sample.corpusId}, the first ` +
-          `${sample.maxSymbols.toLocaleString('en-US')} symbols, letters only, case folded, no ` +
+        `Scored by LayerBench's engine on ${sample.settings.corpus}, the first ` +
+          `${sample.settings.sample.toLocaleString('en-US')} symbols, letters only, case folded, no ` +
           'space, cyanophage-like rules: the request the Library makes. Places are among the ' +
           `${bundled.size} bundled layouts, lowest first. "Targets" is Effort < ${EFFORT_TARGET} ` +
           `and SFB < ${SFB_TARGET}%.`,
@@ -316,7 +316,7 @@ describe.skipIf(!RUN)('generate (GENERATE=1)', () => {
           '```',
           '',
           `- File: \`generated/${name}.json\` (paste it in Library → Import)`,
-          `- [Open in LayerBench](${link(layout, sample.corpusId)})`,
+          `- [Open in LayerBench](${link(layout, sample.settings.corpus)})`,
         );
       }
       writeFileSync(join(OUT, `report-${TRACK}.md`), `${lines.join('\n')}\n`);

@@ -1,5 +1,6 @@
+import { type AnalysisSettings, DEFAULT_SETTINGS } from '@layerbench/core';
 import { describe, expect, it, vi } from 'vitest';
-import { recall, rememberBehind, rememberSummary } from './ranking-memory.js';
+import { rankingKey, recall, rememberBehind, rememberSummary } from './ranking-memory.js';
 import type { LayoutSummary } from './use-summaries.js';
 
 const SUMMARY: LayoutSummary = { effort: 12.5, sfb: 1.2, skipped: 0, missing: [] };
@@ -69,5 +70,31 @@ describe('the last ranking, kept in this browser', () => {
     vi.resetModules();
     await import('./ranking-memory.js');
     expect(localStorage.getItem('layerbench:summaries')).toBeNull();
+  });
+});
+
+describe('what a ranking is kept by', () => {
+  const ranking: AnalysisSettings<string> = {
+    ...DEFAULT_SETTINGS,
+    corpus: 'en-general',
+    rules: 'layouts_doc',
+  };
+
+  it('is the same for the same settings, however they were put together', () => {
+    expect(rankingKey({ ...ranking })).toBe(rankingKey(ranking));
+  });
+
+  it.each<[string, Partial<AnalysisSettings<string>>]>([
+    ['text', { corpus: 'pt-br-general' }],
+    ['mix', { corpus2: 'pt-br-general' }],
+    ['share of a mix', { corpus2: 'pt-br-general', share: 70 }],
+    ['case', { caseMode: 'model' }],
+    ['what counts', { textClass: 'letters+digits' }],
+    ['sample', { sample: 10_000 }],
+    ['features left out', { without: ['macros'] }],
+    ['rules', { rules: 'cyanophage' }],
+    ['space', { universe: 'with_space' }],
+  ])('tells another %s apart', (_, change) => {
+    expect(rankingKey({ ...ranking, ...change })).not.toBe(rankingKey(ranking));
   });
 });

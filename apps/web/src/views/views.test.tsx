@@ -195,9 +195,9 @@ describe('Compare', () => {
     );
     const romak = () => requests.filter((r) => r.layout.name === 'Magic Romak');
     await waitFor(() => expect(romak()).not.toHaveLength(0));
-    // `qu` is two letters in one press, and goes; an accent is one letter, and stays.
-    expect(JSON.stringify(romak()[0].layout)).not.toContain('"symbols":"qu"');
-    expect(JSON.stringify(romak()[0].layout)).toContain('"symbols":"é"');
+    // Both go as written, and the engine types them without their multi-letter macros.
+    expect(romak()[0].settings.without).toEqual(['macros']);
+    expect(requests.every((r) => r.settings.without.join() === 'macros')).toBe(true);
     const analyzeA = screen.getByRole('link', { name: 'Analyze A' }) as HTMLAnchorElement;
     expect(analyzeA.href).toContain('off=macros');
     // Either layout opens in Analyze, typed as it was compared.
@@ -210,9 +210,7 @@ describe('Compare', () => {
     await waitFor(() => expect(currentSearch()).not.toContain('off='));
     expect(currentSearch()).toContain('b=graphite');
     expect(screen.queryByRole('status')).toBeNull();
-    await waitFor(() =>
-      expect(romak().some((r) => JSON.stringify(r.layout).includes('"symbols":"qu"'))).toBe(true),
-    );
+    await waitFor(() => expect(romak().some((r) => r.settings.without.length === 0)).toBe(true));
 
     await user.click(screen.getByRole('checkbox', { name: 'Adaptive keys' }));
     await waitFor(() => expect(currentSearch()).toContain('off=adaptive'));
@@ -321,7 +319,7 @@ describe('Saved texts in the pickers', () => {
     await waitFor(() => expect(currentSearch()).toContain('corpus=saved%3Amy-notes'));
     // The engine is handed the text itself, under a name of its own.
     await waitFor(() =>
-      expect(recorded.some((r) => r.corpusId.startsWith('saved:my-notes@'))).toBe(true),
+      expect(recorded.some((r) => r.settings.corpus.startsWith('saved:my-notes@'))).toBe(true),
     );
     expect(await screen.findByText('Same finger bigrams')).toBeInTheDocument();
   }, 60_000);

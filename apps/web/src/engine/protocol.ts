@@ -1,12 +1,11 @@
 import type {
+  AnalysisSettings,
   CorpusManifest,
   FocusRule,
   LayoutJson,
   RuleItemNext,
   RuleResult,
-  RuleSet,
   Score,
-  TextClass,
 } from '@layerbench/core';
 
 /**
@@ -16,24 +15,20 @@ import type {
  */
 
 export interface AnalyzeRequest {
+  /** The layout as written: the engine types it without the features the settings leave out. */
   layout: LayoutJson;
-  corpusId: string;
-  caseMode: 'fold' | 'model';
-  /** Which non-letter classes the corpus contributes. Default `letters`, as it always was. */
-  textClass: TextClass;
-  crossWord: 'reset' | 'bridge';
-  maxSymbols: number;
-  ruleSet: RuleSet;
+  settings: AnalysisSettings;
 }
 
 export interface RelabelRequest {
   /** Key of the report to estimate from, as returned in `ReportDTO.key`. */
   baseKey: string;
+  /** The layout after the swap, as written. */
   layout: LayoutJson;
+  settings: AnalysisSettings;
   layerIdx: number;
   posA: number;
   posB: number;
-  ruleSet: RuleSet;
 }
 
 /** A closer look at one key of an analysis already made. */
@@ -146,12 +141,11 @@ export type Request =
   | { id: number; type: 'listCorpora' }
   | { id: number; type: 'loadCorpus'; corpusId: string }
   | { id: number; type: 'registerCorpus'; corpusId: string; doc: Record<string, unknown> }
-  | { id: number; type: 'mixCorpora'; a: string; b: string; mix: number }
   | { id: number; type: 'peek'; request: AnalyzeRequest }
   | { id: number; type: 'analyze'; request: AnalyzeRequest }
   | { id: number; type: 'relabel'; request: RelabelRequest }
   | { id: number; type: 'keyStats'; request: KeyStatsRequest }
-  | { id: number; type: 'explain'; layout: LayoutJson; text: string; caseMode: 'fold' | 'model' }
+  | { id: number; type: 'explain'; layout: LayoutJson; text: string; settings: AnalysisSettings }
   | { id: number; type: 'producers'; layout: LayoutJson; caseMode: 'fold' | 'model' }
   | { id: number; type: 'corpusFacts'; corpusId: string }
   | { id: number; type: 'corpusDocument'; corpusId: string }
@@ -169,7 +163,6 @@ export interface AnalysisClient {
   loadCorpus(corpusId: string): Promise<CorpusManifest>;
   /** Take a corpus saved as `doc`, to be known by `corpusId`. */
   registerCorpus(corpusId: string, doc: Record<string, unknown>): Promise<CorpusManifest>;
-  mixCorpora(a: string, b: string, mix: number): Promise<CorpusManifest>;
   /**
    * Returns null rather than typing the corpus. A layout already typed under other rules, or with
    * space counted differently, is only re-scored, which takes milliseconds.
@@ -182,7 +175,8 @@ export interface AnalysisClient {
   relabel(request: RelabelRequest): Promise<ReportDTO | null>;
   /** Null when the report is no longer kept, or was an estimate, which never is. */
   keyStats(request: KeyStatsRequest): Promise<KeyStatsDTO | null>;
-  explain(layout: LayoutJson, text: string, caseMode: 'fold' | 'model'): Promise<ExplainDTO>;
+  /** How a short text is typed on the layout as written, with the analysis's settings. */
+  explain(layout: LayoutJson, text: string, settings: AnalysisSettings): Promise<ExplainDTO>;
   producers(layout: LayoutJson, caseMode: 'fold' | 'model'): Promise<Record<string, ProducerDTO[]>>;
   corpusFacts(corpusId: string): Promise<CorpusFactsDTO>;
   /** The storage document for a corpus, including its sample text. */

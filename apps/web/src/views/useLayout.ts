@@ -5,7 +5,7 @@ import {
   type Layout,
   type StorageAdapter,
   safeParseLayout,
-  withoutFeatures,
+  typedLayout,
 } from '@layerbench/core';
 import { useEffect, useMemo, useState } from 'react';
 import { useStorage } from '../storage/use-storage.js';
@@ -73,22 +73,18 @@ export function useLayout(ref: string): LayoutState {
 }
 
 /**
- * The layout as it is typed without the special features a link leaves out (`off=`), which is how
- * the Library ranks it: Analyze and Compare analyze, draw and explain this, so their numbers match
- * the card's. A layout that will not compile without them is typed as authored.
+ * The layout as it is typed without the special features a link leaves out (`off=`), as the engine
+ * types it from the analysis settings: Analyze and Compare draw, light and explain this, so a
+ * board's heat lands on the keys it was measured on.
  */
-export function useTypedLayout(
-  layout: Layout | null,
-  compiled: CompiledLayout | null,
+export function useTypedLayout<C extends CompiledLayout | null>(
+  compiled: C,
   without: readonly FeatureKind[],
-): { layout: Layout | null; compiled: CompiledLayout | null } {
-  return useMemo(() => {
-    if (!layout || without.length === 0) return { layout, compiled };
-    const plain = withoutFeatures(layout, without);
-    try {
-      return { layout: plain, compiled: compileLayout(plain) };
-    } catch {
-      return { layout, compiled };
-    }
-  }, [layout, compiled, without]);
+): C {
+  const off = without.join(',');
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `off` is the content of `without`
+  return useMemo(
+    () => (compiled ? typedLayout(compiled, without) : compiled) as C,
+    [compiled, off],
+  );
 }

@@ -1,4 +1,6 @@
 import {
+  type AnalysisSettings,
+  DEFAULT_SETTINGS,
   FEATURE_KINDS,
   type FeatureKind,
   isDocumentId,
@@ -41,16 +43,16 @@ export interface Params {
 export const DEFAULT_PARAMS: Params = {
   layoutRef: 'magic-romak',
   corpus: 'pt-br-general',
-  corpus2: null,
-  mix: 50,
+  corpus2: DEFAULT_SETTINGS.corpus2,
+  mix: DEFAULT_SETTINGS.share,
   preset: 'layouts_doc',
-  caseMode: 'fold',
-  textClass: 'letters',
-  universe: 'no_space',
+  caseMode: DEFAULT_SETTINGS.caseMode,
+  textClass: DEFAULT_SETTINGS.textClass,
+  universe: DEFAULT_SETTINGS.universe,
   layer: 0,
   heat: 'usage',
-  sample: 100_000,
-  without: [],
+  sample: DEFAULT_SETTINGS.sample,
+  without: [...DEFAULT_SETTINGS.without],
 };
 
 /**
@@ -172,6 +174,24 @@ export function selectionSearch(p: Params): RawSearch {
   const out: RawSearch = {};
   for (const key of SELECTION_KEYS) if (all[key] !== undefined) out[key] = all[key];
   return out;
+}
+
+/**
+ * The analysis settings a link names: the choices an analysis is made with, the rules by their
+ * reference. A share left in a link without a second corpus mixes nothing, so it is not read.
+ */
+export function settingsOf(p: Params): AnalysisSettings<string> {
+  return {
+    corpus: p.corpus,
+    corpus2: p.corpus2,
+    share: p.corpus2 === null ? DEFAULT_PARAMS.mix : p.mix,
+    caseMode: p.caseMode,
+    textClass: p.textClass,
+    sample: p.sample,
+    without: p.without,
+    rules: p.preset,
+    universe: p.universe,
+  };
 }
 
 /** Query string with keys in a stable order, so the same analysis always gives the same link. */

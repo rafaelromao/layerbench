@@ -4,6 +4,7 @@ import {
   ENGLISH_CORPUS,
   parseLayoutRef,
   parseParams,
+  settingsOf,
   toQueryString,
   toSearch,
 } from './params.js';
@@ -117,5 +118,39 @@ describe('analysis parameters', () => {
       without: ['repeat' as const, 'combos' as const],
     };
     expect(parseParams(toSearch(params))).toEqual(params);
+  });
+});
+
+describe('The analysis settings a link names', () => {
+  it('are its choices, with the rules by their reference', () => {
+    const p = parseParams({
+      corpus: 'en-general',
+      corpus2: 'pt-br-general',
+      mix: '70',
+      rules: 'cyanophage',
+      case: 'model',
+      text: 'num',
+      space: '1',
+      sample: '300000',
+      off: 'macros,combos',
+      layer: '2',
+      heat: 'sfb',
+    });
+    expect(settingsOf(p)).toEqual({
+      corpus: 'en-general',
+      corpus2: 'pt-br-general',
+      share: 70,
+      caseMode: 'model',
+      textClass: 'letters+digits',
+      sample: 300_000,
+      without: ['combos', 'macros'],
+      rules: 'cyanophage',
+      universe: 'with_space',
+    });
+  });
+
+  it('leave out a share no second corpus is mixed in with, as the link does', () => {
+    const p = parseParams({ corpus: 'en-general', mix: '70' });
+    expect(settingsOf(p)).toEqual(settingsOf(parseParams({ corpus: 'en-general' })));
   });
 });

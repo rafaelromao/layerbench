@@ -1,21 +1,16 @@
 import { analyze } from '../analysis/analyze.js';
+import { stableStringify } from '../analysis/hash.js';
+import { analysisRun, typedLayout } from '../analysis/settings.js';
+import { compileLayout } from '../layout/compile.js';
 import type { Layout } from '../layout/types.js';
 import { BUNDLED_LAYOUTS } from '../layouts/index.js';
-import { getPreset } from '../rules/presets.js';
-import type { RuleItem, RuleSet } from '../rules/types.js';
+import type { RuleItem } from '../rules/types.js';
 import type { Sample } from './tables.js';
 
 /**
- * The engine's own numbers for a layout, on the request the Library makes: case folded, letters
- * only, the first 100,000 symbols, no space, `cross_word: reset`
- * (`apps/web/src/engine/use-summaries.ts`, `requestFor`), with the cyanophage-like rule set in
- * the no-space universe as the app's `withUniverse` sets it.
+ * The engine's own numbers for a layout, on the settings the Library ranks on (`librarySettings`):
+ * the same text, the same cut of it, the same rules, typed and scored by `analyze` as the app does.
  */
-
-export function libraryRuleSet(preset = 'cyanophage'): RuleSet {
-  const p = getPreset(preset);
-  return { ...p, globals: { ...p.globals, universe: 'no_space' } };
-}
 
 export interface EngineScore {
   effort: number;
@@ -33,17 +28,10 @@ export interface EngineScore {
   sfbItems: RuleItem[];
 }
 
-export function scoreLayout(
-  layout: Layout,
-  sample: Sample,
-  ruleSet = libraryRuleSet(),
-): EngineScore {
-  const report = analyze(layout, sample.stream, {
-    caseMode: 'fold',
-    crossWord: 'reset',
-    maxSymbols: sample.maxSymbols,
-    ruleSet,
-  });
+export function scoreLayout(layout: Layout, sample: Sample): EngineScore {
+  const { options } = analysisRun(sample.settings, sample.text);
+  const typed = typedLayout(compileLayout(layout), sample.settings.without);
+  const report = analyze(typed, sample.stream, options);
   const value = (id: string): number => {
     const v = report.results.find((r) => r.id === id)?.value;
     return typeof v === 'number' ? v : Number.NaN;
@@ -69,7 +57,7 @@ const bundledCache = new Map<string, Map<string, EngineScore>>();
 
 /** Every bundled layout on the same request, so a result can be placed among them. */
 export function bundledScores(sample: Sample): Map<string, EngineScore> {
-  const key = `${sample.corpusId}:${sample.maxSymbols}`;
+  const key = stableStringify(sample.settings);
   let scores = bundledCache.get(key);
   if (!scores) {
     scores = new Map();

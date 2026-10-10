@@ -1,4 +1,10 @@
-import { type CorpusManifest, fnv1a, type IndexEntry, type StorageAdapter } from '@layerbench/core';
+import {
+  type AnalysisSettings,
+  type CorpusManifest,
+  fnv1a,
+  type IndexEntry,
+  type StorageAdapter,
+} from '@layerbench/core';
 import type { AnalysisClient } from './protocol.js';
 
 /** How a view, or a link, names a saved text: `saved:<id>`, as it names a saved rule set. */
@@ -60,6 +66,15 @@ export function withSavedCorpora(client: AnalysisClient, storage: StorageAdapter
   const inEngine = async (corpusId: string): Promise<string> =>
     isSavedCorpus(corpusId) ? (await engineManifest(corpusId)).id : corpusId;
 
+  /** The settings with their texts named as the engine knows them, a mix's two included. */
+  const inEngineSettings = async (settings: AnalysisSettings): Promise<AnalysisSettings> => {
+    const [corpus, corpus2] = await Promise.all([
+      inEngine(settings.corpus),
+      settings.corpus2 === null ? null : inEngine(settings.corpus2),
+    ]);
+    return { ...settings, corpus, corpus2 };
+  };
+
   const asSaved = (ref: string, manifest: CorpusManifest): CorpusManifest => ({
     ...manifest,
     id: ref,
@@ -90,18 +105,19 @@ export function withSavedCorpora(client: AnalysisClient, storage: StorageAdapter
         ? asSaved(corpusId, await give(corpusId, Promise.resolve(doc)))
         : client.registerCorpus(corpusId, doc);
     },
-    async mixCorpora(a, b, mix) {
-      return client.mixCorpora(await inEngine(a), await inEngine(b), mix);
-    },
     async peek(request) {
-      return client.peek({ ...request, corpusId: await inEngine(request.corpusId) });
+      return client.peek({ ...request, settings: await inEngineSettings(request.settings) });
     },
     async analyze(request, opts) {
-      return client.analyze({ ...request, corpusId: await inEngine(request.corpusId) }, opts);
+      return client.analyze(
+        { ...request, settings: await inEngineSettings(request.settings) },
+        opts,
+      );
     },
+    // An estimate and an explanation read no text: they wait on nothing in storage.
     relabel: (request) => client.relabel(request),
     keyStats: (request) => client.keyStats(request),
-    explain: (layout, text, caseMode) => client.explain(layout, text, caseMode),
+    explain: (layout, text, settings) => client.explain(layout, text, settings),
     producers: (layout, caseMode) => client.producers(layout, caseMode),
     async corpusFacts(corpusId) {
       return client.corpusFacts(await inEngine(corpusId));

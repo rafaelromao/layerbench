@@ -1,14 +1,30 @@
-import { corpusStream } from '../corpus/corpus.js';
+import {
+  type AnalysisSettings,
+  analysisRun,
+  DEFAULT_SETTINGS,
+  forRanking,
+  loadText,
+} from '../analysis/settings.js';
+import type { Corpus } from '../corpus/corpus.js';
 import { nodeCorpusLoader } from '../corpus/node-loader.js';
 import { corporaRoot } from '../golden/paths.js';
+import { getPreset } from '../rules/presets.js';
 
 /**
  * The text as the Library types it, reduced to the counts the generator's fast scorer needs.
  *
- * The Library ranks on the first `maxSymbols` non-space characters of the normalized text, typed or
+ * The Library ranks on the first `sample` non-space characters of the normalized text, typed or
  * not (`sim/resolver.ts`, the `maxSymbols` loop), so the cut is taken the same way here and every
  * count below is of that cut only.
  */
+
+/**
+ * What the Library ranks on, the generator's numbers included: English news unless another text is
+ * named, with the cyanophage-like rules, as the generator has always been scored.
+ */
+export function librarySettings(corpus = 'en-general', preset = 'cyanophage'): AnalysisSettings {
+  return forRanking({ ...DEFAULT_SETTINGS, corpus, rules: getPreset(preset) });
+}
 
 /** Besides letters, what the `letters` text class keeps (`corpus/normalize.ts`): all of it is placed. */
 export const PUNCTUATION: readonly string[] = [',', '.', "'", '-', ';', '/', '?', '!'];
@@ -22,9 +38,10 @@ export const SPACE = -1;
 export const UNTYPEABLE = -2;
 
 export interface Sample {
-  corpusId: string;
-  maxSymbols: number;
-  /** The normalized text, whole: the engine applies `maxSymbols` itself. */
+  /** What the sample is of: the settings the Library ranks on, and their text. */
+  settings: AnalysisSettings;
+  text: Corpus;
+  /** The normalized text, whole: the engine applies the sample's cut itself. */
   stream: string;
   symbols: readonly string[];
   /** One entry per character of the cut: a symbol index, `SPACE` or `UNTYPEABLE`. */
@@ -46,22 +63,25 @@ export interface Sample {
 }
 
 export interface SampleOptions {
-  corpusId?: string;
-  maxSymbols?: number;
+  settings?: AnalysisSettings;
   symbols?: readonly string[];
 }
 
-/** The shipped corpus, normalized as the Library normalizes it (case folded, letters only). */
+/** The shipped text the settings name, normalized as the Library normalizes it. */
 export async function loadSample(opts: SampleOptions & { root?: string } = {}): Promise<Sample> {
-  const corpusId = opts.corpusId ?? 'en-general';
-  const corpus = await nodeCorpusLoader(opts.root ?? corporaRoot()).load(corpusId);
-  const stream = corpusStream(corpus, 'fold', 'letters');
-  return buildSample(stream, { ...opts, corpusId });
+  const settings = opts.settings ?? librarySettings();
+  const loader = nodeCorpusLoader(opts.root ?? corporaRoot());
+  const text = await loadText(settings, (id) => loader.load(id));
+  return buildSample(text, settings, opts.symbols);
 }
 
-export function buildSample(stream: string, opts: SampleOptions = {}): Sample {
-  const symbols = opts.symbols ?? SYMBOLS;
-  const maxSymbols = opts.maxSymbols ?? 100_000;
+export function buildSample(
+  text: Corpus,
+  settings: AnalysisSettings,
+  symbols: readonly string[] = SYMBOLS,
+): Sample {
+  const { stream } = analysisRun(settings, text);
+  const maxSymbols = settings.sample;
   const S = symbols.length;
   const index = new Map(symbols.map((s, i) => [s, i] as const));
 
@@ -118,8 +138,8 @@ export function buildSample(stream: string, opts: SampleOptions = {}): Sample {
   if (run > 0) words++;
 
   return {
-    corpusId: opts.corpusId ?? 'custom',
-    maxSymbols,
+    settings,
+    text,
     stream,
     symbols,
     tokens,

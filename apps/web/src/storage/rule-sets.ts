@@ -15,8 +15,3 @@ export async function resolveRuleSet(ref: string, storage: StorageAdapter): Prom
     return getPreset('layouts_doc');
   }
 }
-
-/** The universe toggle in the toolbar overrides whatever the rule set declares. */
-export function withUniverse(ruleSet: RuleSet, universe: 'no_space' | 'with_space'): RuleSet {
-  return { ...ruleSet, globals: { ...ruleSet.globals, universe } };
-}

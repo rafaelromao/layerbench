@@ -1,13 +1,19 @@
-import { bundledLayout, getPreset, type Layout, type StorageAdapter } from '@layerbench/core';
+import {
+  bundledLayout,
+  DEFAULT_SETTINGS,
+  getPreset,
+  type Layout,
+  type StorageAdapter,
+  toCanonicalJson,
+} from '@layerbench/core';
 import { nodeCorpusLoader } from '@layerbench/core/node';
 import { describe, expect, it } from 'vitest';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
-import { withUniverse } from '../storage/rule-sets.js';
 import { testCorporaRoot } from '../test/render.js';
 import { AnalysisCore } from './analysis-core.js';
 import { DirectClient } from './direct-client.js';
+import type { AnalyzeRequest } from './protocol.js';
 import { withSavedCorpora } from './saved-corpora.js';
-import { requestFor } from './use-summaries.js';
 
 const FOX = Array.from(
   { length: 60 },
@@ -48,14 +54,17 @@ async function save(
   return built;
 }
 
-function onQwerty(corpusId: string) {
-  return requestFor(bundledLayout('qwerty') as Layout, {
-    corpusId,
-    caseMode: 'fold',
-    textClass: 'letters',
-    maxSymbols: 10_000,
-    ruleSet: withUniverse(getPreset('layouts_doc'), 'no_space'),
-  });
+function onQwerty(corpus: string, corpus2: string | null = null): AnalyzeRequest {
+  return {
+    layout: toCanonicalJson(bundledLayout('qwerty') as Layout),
+    settings: {
+      ...DEFAULT_SETTINGS,
+      corpus,
+      corpus2,
+      sample: 10_000,
+      rules: getPreset('layouts_doc'),
+    },
+  };
 }
 
 describe('saved texts', () => {
@@ -97,10 +106,19 @@ describe('saved texts', () => {
     await Promise.all([
       client.corpusFacts('saved:my-notes'),
       client.analyze(onQwerty('saved:my-notes')),
-      client.mixCorpora('saved:my-notes', 'en-general', 50),
+      client.analyze(onQwerty('saved:my-notes', 'en-general')),
     ]);
     await client.analyze(onQwerty('saved:my-notes'));
     expect(reads).toEqual(['my-notes']);
+  });
+
+  it('are mixed in as the text they were built from', async () => {
+    const { engine, storage, client } = setup();
+    const built = await save(engine, storage, 'my-notes', FOX);
+
+    const saved = await client.analyze(onQwerty('en-general', 'saved:my-notes'));
+    const fresh = await engine.analyze(onQwerty('en-general', built.id));
+    expect(saved.results).toEqual(fresh.results);
   });
 
   it('are a new text when saved again under the same name', async () => {

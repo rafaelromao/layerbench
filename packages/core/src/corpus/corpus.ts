@@ -125,6 +125,16 @@ function interleave(lists: string[][]): string[] {
   return [...new Set(out)];
 }
 
+/** The id of a mix of these corpora, by id and weight: the same mix always has the same one. */
+export function mixId(weighted: [string, number][]): string {
+  return `mix-${weighted.map(([id, w]) => `${id}:${w}`).join('+')}`;
+}
+
+/** The language of a mix: each of its corpora's, once, joined by `+` (`en+pt-BR`). */
+export function mixLanguage(languages: readonly string[]): string {
+  return [...new Set(languages)].join('+');
+}
+
 /**
  * Blend corpora by weight, interleaving whole sentences so the mix keeps roughly the requested
  * share of each source.
@@ -135,11 +145,10 @@ export function mixCorpora(weighted: [Corpus, number][], maxChars = 1_500_000): 
     .filter(([, w]) => w > 0)
     .map(([c, w]) => takeChars(sentences(c.sample), Math.trunc((maxChars * w) / totalW)));
   const sample = interleave(parts).join(' ');
-  const languages = [...new Set(weighted.map(([c]) => c.language))];
   return {
-    id: `mix-${weighted.map(([c, w]) => `${c.id}:${w}`).join('+')}`,
+    id: mixId(weighted.map(([c, w]) => [c.id, w])),
     name: 'Mix',
-    language: languages.join('+'),
+    language: mixLanguage(weighted.map(([c]) => c.language)),
     license: 'see components',
     sample,
     symbols: [...sample].length,

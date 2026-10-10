@@ -1,13 +1,17 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { BUNDLED_LAYOUTS, type CorpusManifest, getPreset, languageProfile } from '@layerbench/core';
+import {
+  BUNDLED_LAYOUTS,
+  type CorpusManifest,
+  languageProfile,
+  toCanonicalJson,
+} from '@layerbench/core';
 import { nodeCorpusLoader } from '@layerbench/core/node';
 import { describe, it } from 'vitest';
 import { formatValue } from '../components/format.js';
-import { withUniverse } from '../storage/rule-sets.js';
 import { testCorporaRoot } from '../test/render.js';
 import { AnalysisCore } from './analysis-core.js';
-import { requestFor, summarize } from './use-summaries.js';
+import { libraryRanking, summarize } from './use-summaries.js';
 
 /**
  * Not a test: the summary a pull request that adds or changes a bundled text gets, for whoever
@@ -93,13 +97,7 @@ describe.skipIf(!FILE)('corpus report (CORPUS_REPORT_FILE)', () => {
 
       const summaries = await Promise.all(
         BUNDLED_LAYOUTS.map(async (layout) => {
-          const request = requestFor(layout, {
-            corpusId: id,
-            caseMode: 'fold',
-            textClass: 'letters',
-            maxSymbols: 100_000,
-            ruleSet: withUniverse(getPreset('layouts_doc'), 'no_space'),
-          });
+          const request = { layout: toCanonicalJson(layout), settings: libraryRanking(id) };
           return { layout, summary: summarize(await core.analyze(request)) };
         }),
       );

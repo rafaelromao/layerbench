@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 import type { SortKey } from '../../engine/use-summaries.js';
 import { useSession } from '../../state/session.js';
 import type { Params } from '../../url/params.js';
-import { AnalysisSettings } from '../AnalysisSelects.js';
+import { SettingsFields } from '../AnalysisSelects.js';
 
 export const SORTS: [SortKey, string][] = [
   ['effort', 'Effort'],
@@ -128,7 +128,7 @@ export function RankingDialog({
           </h2>
 
           <div className="lb-toolbar flex flex-row flex-wrap items-end gap-3">
-            <AnalysisSettings
+            <SettingsFields
               params={params}
               onChange={onChange}
               corpora={corpora}

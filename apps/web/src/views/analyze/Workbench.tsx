@@ -1,4 +1,6 @@
 import {
+  type AnalysisSettings,
+  type CompiledLayout,
   type CorpusManifest,
   type Layout,
   languagesToJudge,
@@ -65,8 +67,8 @@ import {
 } from '../edit/panels.js';
 import { editReducer, type Panel, selectionOf } from '../edit/reducer.js';
 import { initialUndoState, undoable } from '../edit/undo.js';
+import { textLanguage, textName } from '../text-of.js';
 import { useTypedLayout } from '../useLayout.js';
-import type { useRuleSet } from '../useRuleSet.js';
 import { itemLayer } from './item-layer.js';
 import { LayoutBar } from './LayoutBar.js';
 import { playFrames } from './playback.js';
@@ -118,7 +120,7 @@ async function snapshotRef(layout: Layout, id: string): Promise<string> {
 
 export interface WorkbenchProps {
   initialLayout: Layout;
-  initialCompiled: NonNullable<ReturnType<typeof useTypedLayout>['compiled']>;
+  initialCompiled: CompiledLayout;
   /** The reference the layout was opened from. */
   openedRef: string;
   params: Params;
@@ -127,7 +129,8 @@ export interface WorkbenchProps {
   claim: (layoutRef: string) => void;
   /** Open another layout from the picker, even the same one afresh. */
   open: (layoutRef: string) => void;
-  ruleSet: ReturnType<typeof useRuleSet>;
+  /** What the layout is analyzed on, the rule set read. */
+  settings: AnalysisSettings;
   corpora: CorpusManifest[];
   client: ReturnType<typeof useAnalysisClient>;
   storage: ReturnType<typeof useStorage>;
@@ -147,7 +150,7 @@ export function Workbench({
   setParams,
   claim,
   open,
-  ruleSet,
+  settings,
   corpora,
   client,
   storage,
@@ -218,53 +221,14 @@ export function Workbench({
 
   // The board shows the layout as it is written; the numbers are for it as typed, without the
   // features the switches leave out, and so are the heat, the playback and the explanations.
-  const typed = useTypedLayout(state.layout, state.compiled, params.without);
-  const typedLayout = typed.layout ?? state.layout;
-  const typedCompiled = typed.compiled ?? state.compiled;
+  const typedCompiled = useTypedLayout(state.compiled, settings.without);
 
-  // A second corpus is blended in the engine, then referenced by the id of the blend.
-  const [mixedId, setMixedId] = useState<string | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    if (!params.corpus2) {
-      setMixedId(null);
-      return;
-    }
-    client
-      .mixCorpora(params.corpus, params.corpus2, params.mix)
-      .then((m) => {
-        if (!cancelled) setMixedId(m.id);
-      })
-      .catch(() => {
-        if (!cancelled) setMixedId(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [client, params.corpus, params.corpus2, params.mix]);
-
-  const request: AnalyzeRequest | null = useMemo(() => {
-    const corpusId = params.corpus2 ? mixedId : params.corpus;
-    if (!corpusId) return null;
-    return {
-      layout: toCanonicalJson(typedLayout),
-      corpusId,
-      caseMode: params.caseMode,
-      textClass: params.textClass,
-      crossWord: ruleSet.globals.cross_word ?? 'reset',
-      maxSymbols: params.sample,
-      ruleSet,
-    };
-  }, [
-    typedLayout,
-    params.corpus,
-    params.corpus2,
-    mixedId,
-    params.caseMode,
-    params.textClass,
-    params.sample,
-    ruleSet,
-  ]);
+  // The layout as written: the engine types it without the features the settings leave out, and
+  // mixes a second corpus in itself.
+  const request: AnalyzeRequest = useMemo(
+    () => ({ layout: toCanonicalJson(state.layout), settings }),
+    [state.layout, settings],
+  );
 
   const { report, loading, progress, error: analysisError } = useAnalysis(request);
 
@@ -292,11 +256,11 @@ export function Workbench({
     client
       .relabel({
         baseKey: landed.report.key,
-        layout: toCanonicalJson(typedLayout),
+        layout: toCanonicalJson(layout),
         layerIdx: swap.layerIdx,
         posA,
         posB,
-        ruleSet,
+        settings,
       })
       .then((dto) => {
         if (!cancelled && dto) setEstimate({ report: dto, layout });
@@ -461,7 +425,7 @@ export function Workbench({
     }
     const timer = setTimeout(() => {
       client
-        .explain(toCanonicalJson(typedLayout), explainText, params.caseMode)
+        .explain(toCanonicalJson(state.layout), explainText, settings)
         .then((dto) => {
           if (!cancelled) setExplain({ text: explainText, dto });
         })
@@ -473,7 +437,7 @@ export function Workbench({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [client, typedLayout, explainText, params.caseMode]);
+  }, [client, state.layout, explainText, settings]);
 
   const frames = useMemo(
     () => (explain ? playFrames(explain.dto.steps, typedCompiled) : []),
@@ -675,7 +639,7 @@ export function Workbench({
     }
   };
 
-  const corpusLanguage = corpora.find((c) => c.id === params.corpus)?.language;
+  const corpusLanguage = textLanguage(settings, corpora);
   // The text's languages, then those the layout says it is for.
   const layoutLanguages = state.layout.languages;
   const languageGap = useMemo(() => {
@@ -685,7 +649,7 @@ export function Workbench({
     }
     return null;
   }, [typedCompiled, corpusLanguage, layoutLanguages]);
-  const corpusName = corpora.find((c) => c.id === params.corpus)?.name ?? params.corpus;
+  const corpusName = textName(settings, corpora);
   /** A chord's step names its virtual key; the reader knows it by the keys pressed together. */
   const stepKey = (key: string) => {
     const combo = typedCompiled.combos.find((c) => typedCompiled.positions[c.pos]?.id === key);
@@ -719,7 +683,7 @@ export function Workbench({
         saved={savedLayouts.entries}
         corpora={corpora}
         params={params}
-        ruleSetName={ruleSet.name}
+        settings={settings}
         onParams={setParams}
         onCompare={compare}
         showCombos={hasTypingCombos ? { on: showCombos, onChange: setShowCombos } : undefined}

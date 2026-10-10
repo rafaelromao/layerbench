@@ -370,10 +370,9 @@ describe('Ranking layouts', () => {
     renderRoute('/library?off=macros&sample=10003', { client, storage: freshStorage() });
     await rankingSays(/^Scoring layouts on a sample of [\d,]+ symbols… 1 of/, 60_000);
     expect(requests[0].layout.name).toBe('Magic Romak');
-    const sent = JSON.stringify(requests[0].layout);
-    // `qu` is two letters in one press, and goes; an accent is one letter, and stays.
-    expect(sent).not.toContain('"symbols":"qu"');
-    expect(sent).toContain('"symbols":"é"');
+    // The layout goes as written, and the engine types it without its multi-letter macros.
+    expect(requests[0].settings.without).toEqual(['macros']);
+    expect(JSON.stringify(requests[0].layout)).toContain('"symbols":"qu"');
   }, 90_000);
 
   it('ranks the layouts that can write the language first', async () => {

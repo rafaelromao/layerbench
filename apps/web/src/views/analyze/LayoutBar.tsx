@@ -1,4 +1,5 @@
 import {
+  type AnalysisSettings,
   type CorpusManifest,
   type IndexEntry,
   LANGUAGE_PROFILES,
@@ -6,8 +7,7 @@ import {
 } from '@layerbench/core';
 import { Switch, SwitchGroup } from '../../components/FeatureSwitches.js';
 import type { Params } from '../../url/params.js';
-import { AnalysisSettings, SampleSelect } from '../AnalysisSelects.js';
-import { groupByLanguage } from '../corpus-groups.js';
+import { SampleSelect, SettingsFields } from '../AnalysisSelects.js';
 import { TextAreaField, TextField } from '../edit/inspector/controls.js';
 import { LayoutOptions } from '../LayoutOptions.js';
 import { SettingsDialog, settingsSummary } from '../SettingsDialog.js';
@@ -29,7 +29,7 @@ export function LayoutBar({
   saved,
   corpora,
   params,
-  ruleSetName,
+  settings,
   onParams,
   onCompare,
   showCombos,
@@ -51,7 +51,8 @@ export function LayoutBar({
   saved: IndexEntry[];
   corpora: CorpusManifest[];
   params: Params;
-  ruleSetName?: string;
+  /** What the numbers are made on, the rule set read. */
+  settings: AnalysisSettings;
   onParams: (overrides: Partial<Params>) => void;
   onCompare: () => void;
   /** Whether the board draws the combos that type; absent when the layout has none. */
@@ -104,7 +105,7 @@ export function LayoutBar({
         </label>
         <div className="flex shrink-0 items-center gap-2 sm:min-w-0 sm:flex-1">
           <div className="sm:min-w-0 sm:flex-1">
-            <SettingsDialog summary={settingsSummary(params, corpora, ruleSetName)} compact>
+            <SettingsDialog summary={settingsSummary(settings, corpora)} compact>
               <fieldset className="grid gap-2">
                 <legend className="float-left col-span-full text-xs font-semibold">
                   This layout
@@ -139,13 +140,12 @@ export function LayoutBar({
               </fieldset>
               <h3 className="text-xs font-semibold">What the numbers are made with</h3>
               <div className="lb-toolbar flex flex-row flex-wrap items-end gap-3">
-                <AnalysisSettings
+                <SettingsFields
                   params={params}
                   onChange={onParams}
                   corpora={corpora}
-                  ruleSetName={ruleSetName}
+                  ruleSetName={settings.rules.name}
                   verb="Analyze"
-                  afterCorpus={<MixWith corpora={corpora} params={params} onParams={onParams} />}
                   afterCounts={
                     <label className="form-control">
                       <span className="label-text text-xs">Sample</span>
@@ -215,60 +215,5 @@ function LanguagesField({
         ))}
       </div>
     </fieldset>
-  );
-}
-
-/** A second corpus blended into the first, and how much of each. */
-function MixWith({
-  corpora,
-  params,
-  onParams,
-}: {
-  corpora: CorpusManifest[];
-  params: Params;
-  onParams: (overrides: Partial<Params>) => void;
-}) {
-  return (
-    <>
-      <label className="form-control">
-        <span className="label-text text-xs">Mix with</span>
-        <select
-          name="corpus2"
-          aria-label="Mix with"
-          className="select select-sm select-bordered"
-          value={params.corpus2 ?? ''}
-          onChange={(e) => onParams({ corpus2: e.target.value === '' ? null : e.target.value })}
-        >
-          <option value="">—</option>
-          {groupByLanguage(corpora.filter((c) => c.id !== params.corpus)).map((g) => (
-            <optgroup key={g.label} label={g.label}>
-              {g.items.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-      </label>
-      {params.corpus2 && (
-        <label className="form-control lb-wide">
-          <span className="label-text text-xs">
-            {params.mix}% first · {100 - params.mix}% second
-          </span>
-          <input
-            type="range"
-            name="mix"
-            aria-label="Corpus mix"
-            className="range range-xs w-40"
-            min={0}
-            max={100}
-            step={5}
-            value={params.mix}
-            onChange={(e) => onParams({ mix: Number(e.target.value) })}
-          />
-        </label>
-      )}
-    </>
   );
 }

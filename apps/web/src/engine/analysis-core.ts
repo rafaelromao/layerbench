@@ -1,32 +1,32 @@
 import {
+  type AnalysisSettings,
+  analysisKey,
+  analysisPlan,
+  analysisRun,
   analyzeSteps,
+  type CompiledLayout,
   type Corpus,
   type CorpusLoader,
   type CorpusManifest,
-  cacheKey,
   compileLayout,
   corpusFromDoc,
   corpusSampleFacts,
-  corpusStream,
   corpusToDoc,
   customCorpus,
-  DEFAULT_SOFT,
   enumerateProducers,
   explain,
-  fnv1a,
+  type FeatureKind,
   keyStats,
-  type Layout,
   type LayoutJson,
-  languageSoft,
-  mixCorpora,
+  loadText,
   parseLayout,
   type Report,
   ReportCache,
   reevaluate,
   relabelEligible,
   relabelSwap,
-  stableStringify,
   structureHash,
+  typedLayout,
 } from '@layerbench/core';
 import type {
   AnalyzeRequest,
@@ -61,7 +61,13 @@ export class AnalysisCore {
   private readonly corpora = new Map<string, Corpus>();
   /** Corpora on their way in, so two analyses waiting for the same one fetch it once. */
   private readonly loading = new Map<string, Promise<Corpus>>();
-  private readonly compiled = new Map<string, ReturnType<typeof compileLayout>>();
+  /**
+   * Mixes made, by their id. They are kept apart from the corpora, which the pickers list: a mix is
+   * chosen as two texts and a share, never as a text of its own.
+   */
+  private readonly mixes = new Map<string, Promise<Corpus>>();
+  /** Each layout as typed, by its structure and the features left out. */
+  private readonly compiled = new Map<string, CompiledLayout>();
   private readonly facts = new Map<string, CorpusFactsDTO>();
 
   constructor(private readonly loader: CorpusLoader) {}
@@ -101,20 +107,29 @@ export class AnalysisCore {
   registerCorpus(id: string, doc: Record<string, unknown>): CorpusManifest {
     const corpus = corpusFromDoc(id, doc);
     this.corpora.set(id, corpus);
+    // A mix made with the text this replaces is a mix of the old one.
+    this.mixes.clear();
     const { sample: _sample, custom: _custom, ...manifest } = corpus;
     return manifest;
   }
 
-  async mix(aId: string, bId: string, mix: number): Promise<CorpusManifest> {
-    const a = await this.corpus(aId);
-    const b = await this.corpus(bId);
-    const mixed = mixCorpora([
-      [a, mix],
-      [b, 100 - mix],
-    ]);
-    this.corpora.set(mixed.id, mixed);
-    const { sample: _sample, custom: _custom, ...manifest } = mixed;
-    return manifest;
+  /** The text the settings name: a corpus, or the mix of two, made the first time it is asked for. */
+  private text(settings: AnalysisSettings): Promise<Corpus> {
+    const load = (id: string) => this.corpus(id);
+    if (settings.corpus2 === null) return loadText(settings, load);
+    const id = analysisPlan(settings).text;
+    let mix = this.mixes.get(id);
+    if (!mix) {
+      if (this.mixes.size >= 8) this.mixes.clear();
+      const made = loadText(settings, load);
+      // One that could not be made is tried again next time, as a text may have arrived since.
+      made.catch(() => {
+        if (this.mixes.get(id) === made) this.mixes.delete(id);
+      });
+      this.mixes.set(id, made);
+      mix = made;
+    }
+    return mix;
   }
 
   async buildCustomCorpus(text: string, name: string, language: string): Promise<CorpusManifest> {
@@ -148,61 +163,39 @@ export class AnalysisCore {
     return corpusToDoc(await this.corpus(id));
   }
 
-  private layoutOf(json: LayoutJson): Layout {
-    return parseLayout(json);
-  }
-
-  private compiledFor(json: LayoutJson): ReturnType<typeof compileLayout> {
-    const layout = this.layoutOf(json);
-    const key = structureHash(layout);
+  /** The layout as typed: as written, without the features the settings leave out. */
+  private compiledFor(json: LayoutJson, without: readonly FeatureKind[] = []): CompiledLayout {
+    const layout = parseLayout(json);
+    const key = `${structureHash(layout)}|${without.join(',')}`;
     const hit = this.compiled.get(key);
     if (hit) return hit;
-    const c = compileLayout(layout);
+    const c = typedLayout(compileLayout(layout), without);
     if (this.compiled.size > 16) this.compiled.clear();
     this.compiled.set(key, c);
     return c;
   }
 
-  /** Everything that changes what is typed: the layout, the corpus and how it is read. */
-  private runKey(request: AnalyzeRequest): string {
-    return cacheKey({
-      structureHash: structureHash(this.layoutOf(request.layout), {
-        caseMode: request.caseMode,
-        textClass: request.textClass,
-        crossWord: request.crossWord,
-        maxSymbols: request.maxSymbols,
-        corpusId: request.corpusId,
-      }),
-      caseMode: request.caseMode,
-      textClass: request.textClass,
-      crossWord: request.crossWord,
-      maxSymbols: request.maxSymbols,
-    });
-  }
-
-  /** A report's identity: what was typed, and the rules it was scored by. */
-  keyFor(request: AnalyzeRequest): string {
-    return `${this.runKey(request)}|${fnv1a(stableStringify(request.ruleSet))}`;
-  }
-
   /**
    * The report for a request if nothing needs typing: already scored, or typed before under other
-   * rules and re-scored now, which takes milliseconds.
+   * rules, or with space counted differently, and re-scored now, which takes milliseconds.
    */
-  private cached(request: AnalyzeRequest, key: string): Report | undefined {
+  private cached(
+    { typing, key }: { typing: string; key: string },
+    settings: AnalysisSettings,
+  ): Report | undefined {
     const hit = this.reports.get(key);
     if (hit) return hit;
-    const run = this.runs.get(this.runKey(request));
+    const run = this.runs.get(typing);
     if (!run) return undefined;
-    const rescored = reevaluate(run, request.ruleSet);
+    const rescored = reevaluate(run, analysisPlan(settings).ruleSet);
     this.reports.set(key, rescored);
     return rescored;
   }
 
   peek(request: AnalyzeRequest): ReportDTO | null {
-    const key = this.keyFor(request);
-    const hit = this.cached(request, key);
-    return hit ? toReportDTO(hit, key) : null;
+    const id = analysisKey(parseLayout(request.layout), request.settings);
+    const hit = this.cached(id, request.settings);
+    return hit ? toReportDTO(hit, id.key) : null;
   }
 
   /**
@@ -216,23 +209,18 @@ export class AnalysisCore {
     onProgress?: (p: Progress) => void,
     isCancelled: () => boolean = () => false,
   ): Promise<ReportDTO> {
-    const key = this.keyFor(request);
-    const cached = this.cached(request, key);
-    if (cached) return toReportDTO(cached, key);
+    const { settings } = request;
+    const id = analysisKey(parseLayout(request.layout), settings);
+    const cached = this.cached(id, settings);
+    if (cached) return toReportDTO(cached, id.key);
 
-    const corpus = await this.corpus(request.corpusId);
-    const stream = corpusStream(corpus, request.caseMode, request.textClass);
-    const total = Math.min(request.maxSymbols, [...stream].length);
+    const text = await this.text(settings);
+    const run = analysisRun(settings, text);
+    const total = Math.min(settings.sample, [...run.stream].length);
     onProgress?.({ done: 0, total });
 
-    const steps = analyzeSteps(this.compiledFor(request.layout), stream, {
-      caseMode: request.caseMode,
-      crossWord: request.crossWord,
-      maxSymbols: request.maxSymbols,
-      ruleSet: request.ruleSet,
-      // The corpus's own punctuation is punctuation, not a letter the layout is failing to write.
-      softSymbols: [...DEFAULT_SOFT, ...languageSoft(corpus.language)],
-    });
+    const without = analysisPlan(settings).without;
+    const steps = analyzeSteps(this.compiledFor(request.layout, without), run.stream, run.options);
     let report: Report;
     for (;;) {
       if (isCancelled()) throw new DOMException('aborted', 'AbortError');
@@ -245,9 +233,9 @@ export class AnalysisCore {
       await pause();
     }
     onProgress?.({ done: total, total });
-    this.runs.set(this.runKey(request), report);
-    this.reports.set(key, report);
-    return toReportDTO(report, key);
+    this.runs.set(id.typing, report);
+    this.reports.set(id.key, report);
+    return toReportDTO(report, id.key);
   }
 
   /**
@@ -257,7 +245,8 @@ export class AnalysisCore {
   relabel(request: RelabelRequest): ReportDTO | null {
     const base: Report | undefined = this.reports.get(request.baseKey);
     if (!base) return null;
-    const compiled = this.compiledFor(request.layout);
+    const plan = analysisPlan(request.settings);
+    const compiled = this.compiledFor(request.layout, plan.without);
     if (!relabelEligible(base.compiled, request.layerIdx, request.posA, request.posB)) return null;
     const estimated = relabelSwap(
       base,
@@ -265,7 +254,7 @@ export class AnalysisCore {
       request.layerIdx,
       request.posA,
       request.posB,
-      request.ruleSet,
+      plan.ruleSet,
     );
     // Deliberately not cached: an estimate must never stand in for a real analysis.
     return toReportDTO(estimated, `${request.baseKey}~relabel`);
@@ -284,9 +273,14 @@ export class AnalysisCore {
     return { reportKey: request.reportKey, key, layer, rules, next };
   }
 
-  explain(json: LayoutJson, text: string, caseMode: 'fold' | 'model'): ExplainDTO {
-    const compiled = this.compiledFor(json);
-    const r = explain(compiled, text.slice(0, 80), { caseMode, crossWord: 'reset' });
+  /** How a short text is typed, as the analysis on the same settings types it. */
+  explain(json: LayoutJson, text: string, settings: AnalysisSettings): ExplainDTO {
+    const plan = analysisPlan(settings);
+    const compiled = this.compiledFor(json, plan.without);
+    const r = explain(compiled, text.slice(0, 80), {
+      caseMode: plan.caseMode,
+      crossWord: plan.crossWord,
+    });
     return {
       steps: r.steps.map((s) => ({
         key: s.key,

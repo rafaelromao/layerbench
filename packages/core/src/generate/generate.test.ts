@@ -184,5 +184,5 @@ describe('the fast scorer', () => {
 
 /** Same text, fewer symbols: what a flat design leaves out is skipped, as the engine skips it. */
 function rebuild(s: Sample, symbols: readonly string[]): Sample {
-  return buildSample(s.stream, { corpusId: s.corpusId, maxSymbols: s.maxSymbols, symbols });
+  return buildSample(s.text, s.settings, symbols);
 }

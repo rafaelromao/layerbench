@@ -4,18 +4,17 @@ import {
   type CorpusManifest,
   GEOMETRY_PRESET_IDS,
   getGeometryPreset,
-  getPreset,
   type Layout,
+  toCanonicalJson,
 } from '@layerbench/core';
 import { nodeCorpusLoader } from '@layerbench/core/node';
 import { describe, it } from 'vitest';
 import { formatValue } from '../components/format.js';
-import { withUniverse } from '../storage/rule-sets.js';
 import { testCorporaRoot } from '../test/render.js';
 import { encodeInline } from '../url/inline.js';
-import { inlineRef } from '../url/params.js';
+import { inlineRef, parseParams, selectionSearch } from '../url/params.js';
 import { AnalysisCore } from './analysis-core.js';
-import { type LayoutSummary, requestFor, type SummaryOptions, summarize } from './use-summaries.js';
+import { type LayoutSummary, libraryRanking, summarize } from './use-summaries.js';
 
 /**
  * Not a test: the summary a pull request that adds or changes a bundled layout gets, for whoever
@@ -27,17 +26,6 @@ import { type LayoutSummary, requestFor, type SummaryOptions, summarize } from '
 const IDS = (process.env.LAYOUT_REPORT ?? '').split(/\s+/).filter(Boolean);
 const FILE = process.env.LAYOUT_REPORT_FILE ?? '';
 const APP = process.env.APP_ORIGIN || 'https://layerbench.github.io';
-
-/** The Library's own choices: the Layouts Doc's rules, letters only, its sample of the text. */
-function rankedOn(corpusId: string): SummaryOptions {
-  return {
-    corpusId,
-    caseMode: 'fold',
-    textClass: 'letters',
-    maxSymbols: 100_000,
-    ruleSet: withUniverse(getPreset('layouts_doc'), 'no_space'),
-  };
-}
 
 /** A text for each of the layout's languages; English news for a layout that names none. */
 function textsFor(layout: Layout, corpora: CorpusManifest[]): CorpusManifest[] {
@@ -80,7 +68,8 @@ describe.skipIf(!FILE)('layout report (LAYOUT_REPORT_FILE)', () => {
       const key = `${corpusId}:${layout.id}`;
       let summary = scores.get(key);
       if (!summary) {
-        summary = summarize(await core.analyze(requestFor(layout, rankedOn(corpusId))));
+        const settings = libraryRanking(corpusId);
+        summary = summarize(await core.analyze({ layout: toCanonicalJson(layout), settings }));
         scores.set(key, summary);
       }
       return summary;
@@ -95,9 +84,11 @@ describe.skipIf(!FILE)('layout report (LAYOUT_REPORT_FILE)', () => {
         continue;
       }
       const texts = textsFor(layout, corpora);
-      const link = `${APP}/analyze?corpus=${texts[0].id}#${new URLSearchParams({
-        layout: inlineRef(await encodeInline(layout)),
-      })}`;
+      // It opens on what the Library ranks on, so the numbers there are the ones below.
+      const ranking = parseParams({ corpus: texts[0].id }, texts[0].id);
+      const link = `${APP}/analyze?${new URLSearchParams(
+        selectionSearch(ranking) as Record<string, string>,
+      )}#${new URLSearchParams({ layout: inlineRef(await encodeInline(layout)) })}`;
       const others = BUNDLED_LAYOUTS.filter((l) => l.id !== id);
       lines.push(
         `### ${layout.name} (\`${id}\`), by ${layout.author}`,

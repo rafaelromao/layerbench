@@ -148,7 +148,7 @@ export function RulesView() {
   const storage = useStorage();
   const savedSets = useCollection('rulesets');
   const ref = search.rules ?? 'layouts_doc';
-  const resolved = useRuleSet(ref, 'no_space');
+  const resolved = useRuleSet(ref);
 
   const [state, send] = useReducer(rulesReducer, initialRulesState(getPreset(ref), ref));
   const [saveName, setSaveName] = useState('My rules');
@@ -280,21 +280,6 @@ export function RulesView() {
           </div>
 
           <div className="lb-toolbar flex flex-wrap items-end gap-3 border-t border-base-300 pt-3">
-            <label className="form-control">
-              <span className="label-text text-xs">Universe</span>
-              <select
-                aria-label="Universe"
-                className="select select-xs select-bordered"
-                value={globals.universe}
-                onChange={(e) =>
-                  send({ type: 'setGlobal', name: 'universe', value: e.target.value })
-                }
-              >
-                <option value="no_space">no space</option>
-                <option value="with_space">with space</option>
-              </select>
-            </label>
-
             <label className="form-control">
               <span className="label-text text-xs">Word boundary</span>
               <select

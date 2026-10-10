@@ -23,8 +23,6 @@ export function createRequestHandler(
         return core.loadCorpus(req.corpusId);
       case 'registerCorpus':
         return core.registerCorpus(req.corpusId, req.doc);
-      case 'mixCorpora':
-        return core.mix(req.a, req.b, req.mix);
       case 'peek':
         return core.peek(req.request);
       case 'analyze': {
@@ -43,7 +41,7 @@ export function createRequestHandler(
       case 'keyStats':
         return core.keyStats(req.request);
       case 'explain':
-        return core.explain(req.layout, req.text, req.caseMode);
+        return core.explain(req.layout, req.text, req.settings);
       case 'producers':
         return core.producers(req.layout, req.caseMode);
       case 'corpusFacts':
