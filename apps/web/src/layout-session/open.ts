@@ -6,8 +6,8 @@ import {
   safeParseLayout,
   toCanonicalJson,
 } from '@layerbench/core';
-import { decodeInline } from '../url/inline.js';
-import { parseLayoutRef } from '../url/params.js';
+import { decodeInline, encodeInline } from '../url/inline.js';
+import { inlineRef, parseLayoutRef } from '../url/params.js';
 
 /** A layout a reference opened, and the saved layout it is, if any; or why it would not open. */
 export type Opened =
@@ -63,4 +63,22 @@ export async function openLayout(ref: string, storage: StorageAdapter): Promise<
   } catch (e) {
     return { ok: false, error: `storage error: ${e instanceof Error ? e.message : String(e)}` };
   }
+}
+
+/** The link of a saved layout: the layout itself, its id inside, so it opens for anyone sent it. */
+export async function snapshotRef(layout: Layout, id: string): Promise<string> {
+  return inlineRef(await encodeInline({ ...layout, id }));
+}
+
+/**
+ * What a link should carry for a layout `ref` opened: a saved layout named by its id travels whole,
+ * its id inside, as an id opens only where the layout is saved; anything else as it is.
+ */
+export async function carriedRef(
+  ref: string,
+  opened: { layout: Layout; storedId: string | null },
+): Promise<string> {
+  return opened.storedId !== null && parseLayoutRef(ref).kind !== 'inline'
+    ? snapshotRef(opened.layout, opened.storedId)
+    : ref;
 }

@@ -8,9 +8,9 @@ import {
   toCanonicalJson,
 } from '@layerbench/core';
 import { encodeInline } from '../url/inline.js';
-import { inlineRef, parseLayoutRef, savedRef } from '../url/params.js';
+import { inlineRef, savedRef } from '../url/params.js';
 import type { Drafts } from './drafts.js';
-import { openLayout } from './open.js';
+import { carriedRef, openLayout, snapshotRef } from './open.js';
 
 /**
  * The link, as the layout session reaches it: the router in the app, an array in tests. The session
@@ -81,11 +81,6 @@ export interface SessionPorts {
 }
 
 const LINK_DELAY_MS = 400;
-
-/** The link of a saved layout: the layout itself, its id inside, so it opens for anyone sent it. */
-async function snapshotRef(layout: Layout, id: string): Promise<string> {
-  return inlineRef(await encodeInline({ ...layout, id }));
-}
 
 /**
  * Store a layout. Its id follows its name: one already stored keeps its id while that still matches
@@ -212,12 +207,8 @@ export function createLayoutSession(
     }
     const startsUnsaved = origin !== undefined;
     storedId = startsUnsaved ? origin : result.storedId;
-    // A saved layout opened by its id gets the link that carries it whole, which opens anywhere: an
-    // id opens only where the layout is saved.
-    cleanRef =
-      !startsUnsaved && storedId !== null && parseLayoutRef(ref).kind !== 'inline'
-        ? await snapshotRef(result.layout, storedId)
-        : ref;
+    // A saved layout opened by its id gets the link that carries it whole, which opens anywhere.
+    cleanRef = startsUnsaved ? ref : await carriedRef(ref, { layout: result.layout, storedId });
     if (state.opening !== opening || disposed) return;
     opened = { layout: result.layout, startsUnsaved };
     saving = false;

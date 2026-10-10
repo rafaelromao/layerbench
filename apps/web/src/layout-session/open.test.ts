@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { MemoryStorage } from '../test/memory-storage.js';
 import { encodeInline } from '../url/inline.js';
 import { inlineRef } from '../url/params.js';
-import { openLayout } from './open.js';
+import { carriedRef, openLayout } from './open.js';
 
 const qwerty = bundledLayout('qwerty') as Layout;
 const mine: Layout = { ...qwerty, id: 'mine', name: 'Mine' };
@@ -70,5 +70,22 @@ describe('Opening a reference', () => {
       ok: false,
       error: expect.stringMatching(/^storage error: /),
     });
+  });
+});
+
+describe('What a link carries', () => {
+  it('carries a saved layout named by its id whole, its id inside, and anything else as it is', async () => {
+    const storage = await storageWith(mine);
+    for (const ref of ['saved:mine', 'mine']) {
+      const carried = await carriedRef(ref, await opened(ref, storage));
+      expect(carried).toMatch(/^inline:/);
+      expect((await opened(carried, await storageWith())).layout).toMatchObject({
+        id: 'mine',
+        name: 'Mine',
+      });
+    }
+    expect(await carriedRef('qwerty', await opened('qwerty', storage))).toBe('qwerty');
+    const inline = inlineRef(await encodeInline(mine));
+    expect(await carriedRef(inline, await opened(inline, storage))).toBe(inline);
   });
 });
