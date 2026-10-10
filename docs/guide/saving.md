@@ -74,7 +74,10 @@ here until you sign in again.
 ## Sharing a link
 
 A link carries the analysis as it stands: the layout, the text, the rules and every switch. The
-layout travels whole in it, saved or not, so anyone can open it, without signing in. Opened by
+layout travels whole in it, saved or not, in **Analyze** and on both sides of **Compare**, so anyone
+can open it, without signing in. A link that names a saved layout by its id alone opens only where
+it is saved, and there it is that layout; Analyze and Compare put the layout itself in its place as
+soon as it opens. Opened by
 someone who has not got it, it is a layout of their own: they can analyze it, edit it and save a
 copy. Opened where it is saved and unchanged, in this browser or your GitHub account, it is your
 saved layout, and saving changes that one. A link never saves over a different layout someone has

@@ -1,10 +1,12 @@
-import { bundledLayout, toCanonicalJson } from '@layerbench/core';
+import { bundledLayout, type Layout, toCanonicalJson } from '@layerbench/core';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import type { AnalysisClient, AnalyzeRequest } from '../engine/protocol.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
+import { RecordingClient } from '../test/recording-client.js';
 import { LIBRARY, openSettings, rankingSays, renderRoute, testClient } from '../test/render.js';
+import { decodeInline } from '../url/inline.js';
 
 const QWERTY_TEXT = 'q w e r t y u i o p\na s d f g h j k l ;\nz x c v b n m , . /';
 /** A text long enough to build a corpus from. */
@@ -216,6 +218,33 @@ describe('Compare', () => {
     await waitFor(() => expect(currentSearch()).toContain('off=adaptive'));
     expect(currentSearch()).toContain('b=graphite');
   }, 60_000);
+});
+
+describe('Compare, sent', () => {
+  it('carries a saved layout on either side in its link whole, so it opens anywhere', async () => {
+    const storage = freshStorage();
+    const mine = { ...(bundledLayout('colemak') as Layout), id: 'mine', name: 'Mine' };
+    await storage.put('layouts', 'mine', toCanonicalJson(mine));
+    const { currentSearch } = renderRoute(
+      '/compare?layout=saved%3Amine&b=mine&corpus=en-general&sample=20000',
+      { client: new RecordingClient(), storage },
+    );
+    const carried = async (key: string) => {
+      const ref = new URLSearchParams(currentSearch()).get(key) ?? '';
+      const decoded = ref.startsWith('inline:') ? await decodeInline(ref.slice(7)) : null;
+      return decoded?.ok ? decoded.layout : null;
+    };
+    await waitFor(async () => expect((await carried('layout'))?.id).toBe('mine'));
+    await waitFor(async () => expect((await carried('b'))?.name).toBe('Mine'));
+    // Here, where it is saved, both are still picked as the saved layout.
+    const pickers = screen.getAllByRole('combobox', { name: /Layout/ });
+    await waitFor(() =>
+      expect(pickers.map((p) => (p as HTMLSelectElement).value)).toEqual([
+        'saved:mine',
+        'saved:mine',
+      ]),
+    );
+  }, 30_000);
 });
 
 describe('Corpus', () => {

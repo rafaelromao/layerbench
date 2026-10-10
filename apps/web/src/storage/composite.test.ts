@@ -1,6 +1,7 @@
-import type { Collection, JsonObject, StorageAdapter } from '@layerbench/core';
+import type { StorageAdapter } from '@layerbench/core';
 import { StorageConflictError } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
+import { MemoryStorage } from '../test/memory-storage.js';
 import { CompositeStorage } from './composite.js';
 import { IndexedDbAdapter } from './indexeddb.js';
 
@@ -9,29 +10,7 @@ const localAdapter = () => new IndexedDbAdapter(`layerbench-composite-${++counte
 
 /** A stand-in for the repository, so the tests are about the composition, not the network. */
 function fakeRemote(overrides: Partial<StorageAdapter> = {}): StorageAdapter {
-  const docs = new Map<string, JsonObject>();
-  return {
-    id: 'github',
-    async list() {
-      return [...docs.entries()].map(([id, doc]) => ({
-        id,
-        name: (doc.name as string) ?? id,
-        updatedAt: '2026-01-01T00:00:00.000Z',
-      }));
-    },
-    async get(_c: Collection, id: string) {
-      const doc = docs.get(id);
-      return doc ? { doc, meta: { sha: 'remote' } } : null;
-    },
-    async put(_c: Collection, id: string, doc: JsonObject) {
-      docs.set(id, doc);
-      return { sha: 'remote' };
-    },
-    async delete(_c: Collection, id: string) {
-      docs.delete(id);
-    },
-    ...overrides,
-  };
+  return Object.assign(new MemoryStorage('github'), overrides);
 }
 
 describe('two stores at once', () => {
@@ -42,7 +21,7 @@ describe('two stores at once', () => {
 
     await composite.put('layouts', 'mine', { name: 'Mine' });
     expect((await local.get('layouts', 'mine'))?.doc).toEqual({ name: 'Mine' });
-    expect((await composite.get('layouts', 'mine'))?.meta.sha).toBe('remote');
+    expect((await composite.get('layouts', 'mine'))?.meta.sha).toMatch(/^github-/);
   });
 
   it('keeps working when the repository is unreachable', async () => {

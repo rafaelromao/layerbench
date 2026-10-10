@@ -13,17 +13,52 @@ import { useAnalysisClient } from '../engine/client-context.js';
 import { expandPositions, heatMap } from '../engine/heat.js';
 import type { AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { useAnalysis } from '../engine/use-analysis.js';
+import { carriedRef } from '../layout-session/open.js';
 import { useRememberSelection } from '../state/selection.js';
 import { useCollection } from '../storage/use-storage.js';
-import { type Params, parseParams, type RawSearch, settingsOf, toSearch } from '../url/params.js';
+import {
+  type Params,
+  parseParams,
+  type RawSearch,
+  savedRef,
+  settingsOf,
+  toSearch,
+} from '../url/params.js';
 import { SampleSelect, SettingsFields } from './AnalysisSelects.js';
 import { compareRows } from './compare-rows.js';
 import { LayoutOptions } from './LayoutOptions.js';
 import { SettingsDialog, settingsSummary } from './SettingsDialog.js';
 import { useAnalysisSettings } from './useAnalysisSettings.js';
-import { useLayout, useTypedLayout } from './useLayout.js';
+import { type LayoutState, useLayout, useTypedLayout } from './useLayout.js';
 
 const DEFAULT_B = 'qwerty';
+
+/**
+ * Once the layout `ref` names under `key` has opened, a saved one named by its id travels in the link
+ * whole, its id inside, as Analyze's does, so a link to the comparison opens anywhere: an id opens
+ * only where the layout is saved.
+ */
+function useCarriedInLink(key: 'layout' | 'b', ref: string, loaded: LayoutState) {
+  const navigate = useNavigate();
+  const { layout, storedId } = loaded;
+  const opened = loaded.ref === ref;
+  useEffect(() => {
+    if (!opened || !layout) return;
+    let cancelled = false;
+    void carriedRef(ref, { layout, storedId }).then((carried) => {
+      if (cancelled || carried === ref) return;
+      navigate({
+        to: '/compare',
+        search: ((prev: RawSearch) => ({ ...prev, [key]: carried })) as never,
+        replace: true,
+        resetScroll: false,
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [key, ref, opened, layout, storedId, navigate]);
+}
 
 export function CompareView() {
   const search = useSearch({ strict: false }) as RawSearch;
@@ -47,6 +82,8 @@ export function CompareView() {
   const saved = useCollection('layouts');
   const a = useLayout(params.layoutRef);
   const b = useLayout(refB);
+  useCarriedInLink('layout', params.layoutRef, a);
+  useCarriedInLink('b', refB, b);
   // Both sides are typed without the same features, as the Library ranks them, and drawn that way
   // so each board's heat lands on the keys it was measured on.
   const typedA = useTypedLayout(a.compiled, params.without);
@@ -99,6 +136,10 @@ export function CompareView() {
 
   const nameA = a.layout?.name ?? params.layoutRef;
   const nameB = b.layout?.name ?? refB;
+  // A layout carried whole that is a saved one here is picked as that saved layout.
+  const pickedA =
+    a.ref === params.layoutRef && a.storedId ? savedRef(a.storedId) : params.layoutRef;
+  const pickedB = b.ref === refB && b.storedId ? savedRef(b.storedId) : refB;
 
   // Each board shows one layer at a time, chosen on its own; another layout starts on its base.
   const [layerA, setLayerA] = useState(0);
@@ -121,10 +162,10 @@ export function CompareView() {
           <select
             aria-label="Layout A"
             className="select select-sm select-bordered min-w-44"
-            value={params.layoutRef}
+            value={pickedA}
             onChange={(e) => setParams({ layoutRef: e.target.value })}
           >
-            <LayoutOptions saved={saved.entries} current={params.layoutRef} currentName={nameA} />
+            <LayoutOptions saved={saved.entries} current={pickedA} currentName={nameA} />
           </select>
         </label>
 
@@ -133,10 +174,10 @@ export function CompareView() {
           <select
             aria-label="Layout B"
             className="select select-sm select-bordered min-w-44"
-            value={refB}
+            value={pickedB}
             onChange={(e) => setParams({ b: e.target.value })}
           >
-            <LayoutOptions saved={saved.entries} current={refB} currentName={nameB} />
+            <LayoutOptions saved={saved.entries} current={pickedB} currentName={nameB} />
           </select>
         </label>
 
