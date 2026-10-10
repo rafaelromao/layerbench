@@ -1,8 +1,8 @@
-import { type CorpusManifest, getPreset, type TextClass } from '@layerbench/core';
+import type { AnalysisSettings, CorpusManifest, TextClass } from '@layerbench/core';
 import { type ReactNode, useId, useRef } from 'react';
 import { featureList } from '../components/FeatureSwitches.js';
-import type { Params } from '../url/params.js';
 import { sampleLabel } from './AnalysisSelects.js';
+import { textName } from './text-of.js';
 
 const COUNTS: Record<TextClass, string> = {
   letters: 'letters only',
@@ -11,25 +11,16 @@ const COUNTS: Record<TextClass, string> = {
 };
 
 /** What an analysis is made with, in a line: the text, the rules, what counts and what is off. */
-export function settingsSummary(
-  params: Params,
-  corpora: CorpusManifest[],
-  ruleSetName?: string,
-): string {
-  const name = (id: string) => corpora.find((c) => c.id === id)?.name ?? id;
+export function settingsSummary(settings: AnalysisSettings, corpora: CorpusManifest[]): string {
   const parts = [
-    params.corpus2
-      ? `${name(params.corpus)} ${params.mix}% with ${name(params.corpus2)}`
-      : name(params.corpus),
-    params.preset.startsWith('saved:')
-      ? (ruleSetName ?? params.preset)
-      : getPreset(params.preset).name,
-    COUNTS[params.textClass],
-    sampleLabel(params.sample),
+    textName(settings, corpora),
+    settings.rules.name ?? 'Rule set',
+    COUNTS[settings.textClass],
+    sampleLabel(settings.sample),
   ];
-  if (params.universe === 'with_space') parts.push('with space');
-  if (params.caseMode === 'model') parts.push('with shift');
-  if (params.without.length > 0) parts.push(`without ${featureList(params.without)}`);
+  if (settings.universe === 'with_space') parts.push('with space');
+  if (settings.caseMode === 'model') parts.push('with shift');
+  if (settings.without.length > 0) parts.push(`without ${featureList(settings.without)}`);
   return parts.join(' · ');
 }
 

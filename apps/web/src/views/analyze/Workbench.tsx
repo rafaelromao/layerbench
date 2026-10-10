@@ -223,7 +223,6 @@ export function Workbench({
   // features the switches leave out, and so are the heat, the playback and the explanations.
   const typedCompiled = useTypedLayout(state.compiled, settings.without);
 
-  const ruleSet = settings.rules;
   // The layout as written: the engine types it without the features the settings leave out, and
   // mixes a second corpus in itself.
   const request: AnalyzeRequest = useMemo(
@@ -684,7 +683,7 @@ export function Workbench({
         saved={savedLayouts.entries}
         corpora={corpora}
         params={params}
-        ruleSetName={ruleSet.name}
+        settings={settings}
         onParams={setParams}
         onCompare={compare}
         showCombos={hasTypingCombos ? { on: showCombos, onChange: setShowCombos } : undefined}

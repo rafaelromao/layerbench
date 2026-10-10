@@ -1,5 +1,5 @@
 import { type AnalysisSettings, forRanking } from '@layerbench/core';
-import { cleanup, screen, waitFor } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
@@ -81,4 +81,34 @@ describe('One link, the same analysis settings in every view', () => {
     expect(client.explained.at(-1)?.settings).toEqual(client.analyses.at(-1)?.settings);
     expect(client.explained.at(-1)?.settings.without).toEqual(['macros']);
   }, 60_000);
+});
+
+describe('A mix, set and taken off where the settings are', () => {
+  it.each([
+    ['Compare', '/compare?layout=qwerty&b=colemak&corpus=en-general', 'Settings'],
+    ['the Library', '/library?corpus=en-general', 'Rank and filter'],
+  ])(
+    'in %s',
+    async (_, path, button) => {
+      const user = userEvent.setup();
+      const client = new RecordingClient();
+      const { currentSearch } = renderRoute(path, { client, storage: freshStorage() });
+      await user.click(await screen.findByRole('button', { name: button }));
+      const mixWith = await screen.findByRole('combobox', { name: 'Mix with' });
+      await waitFor(() => expect(within(mixWith).getAllByRole('option').length).toBeGreaterThan(1));
+
+      await user.selectOptions(mixWith, 'pt-br-general');
+      await waitFor(() => expect(currentSearch()).toContain('corpus2=pt-br-general'));
+      await waitFor(() => expect(client.analyses.at(-1)?.settings.corpus2).toBe('pt-br-general'), {
+        timeout: 10_000,
+      });
+
+      await user.selectOptions(screen.getByRole('combobox', { name: 'Mix with' }), '');
+      await waitFor(() => expect(currentSearch()).not.toContain('corpus2'));
+      await waitFor(() => expect(client.analyses.at(-1)?.settings.corpus2).toBeNull(), {
+        timeout: 10_000,
+      });
+    },
+    30_000,
+  );
 });

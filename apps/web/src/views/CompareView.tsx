@@ -52,7 +52,6 @@ export function CompareView() {
   const typedA = useTypedLayout(a.compiled, params.without);
   const typedB = useTypedLayout(b.compiled, params.without);
   const settings = useAnalysisSettings(settingsOf(params));
-  const ruleSet = settings.rules;
 
   // Each side as written, on the same settings: the engine types both without the same features.
   const requestA: AnalyzeRequest | null = useMemo(
@@ -142,13 +141,13 @@ export function CompareView() {
         </label>
 
         <div className="lb-wide min-w-0 flex-1">
-          <SettingsDialog summary={settingsSummary(params, corpora, ruleSet.name)}>
+          <SettingsDialog summary={settingsSummary(settings, corpora)}>
             <div className="lb-toolbar flex flex-row flex-wrap items-end gap-3">
               <SettingsFields
                 params={params}
                 onChange={setParams}
                 corpora={corpora}
-                ruleSetName={ruleSet.name}
+                ruleSetName={settings.rules.name}
                 verb="Compare"
                 afterCounts={
                   <label className="form-control">
