@@ -16,7 +16,7 @@ import { useAnalysis } from '../engine/use-analysis.js';
 import { useRememberSelection } from '../state/selection.js';
 import { useCollection } from '../storage/use-storage.js';
 import { type Params, parseParams, type RawSearch, toSearch } from '../url/params.js';
-import { AnalysisSettings, SampleSelect } from './AnalysisSelects.js';
+import { SampleSelect, SettingsFields } from './AnalysisSelects.js';
 import { compareRows } from './compare-rows.js';
 import { LayoutOptions } from './LayoutOptions.js';
 import { SettingsDialog, settingsSummary } from './SettingsDialog.js';
@@ -151,7 +151,7 @@ export function CompareView() {
         <div className="lb-wide min-w-0 flex-1">
           <SettingsDialog summary={settingsSummary(params, corpora, ruleSet.name)}>
             <div className="lb-toolbar flex flex-row flex-wrap items-end gap-3">
-              <AnalysisSettings
+              <SettingsFields
                 params={params}
                 onChange={setParams}
                 corpora={corpora}

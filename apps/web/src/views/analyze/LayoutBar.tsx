@@ -6,7 +6,7 @@ import {
 } from '@layerbench/core';
 import { Switch, SwitchGroup } from '../../components/FeatureSwitches.js';
 import type { Params } from '../../url/params.js';
-import { AnalysisSettings, SampleSelect } from '../AnalysisSelects.js';
+import { SampleSelect, SettingsFields } from '../AnalysisSelects.js';
 import { groupByLanguage } from '../corpus-groups.js';
 import { TextAreaField, TextField } from '../edit/inspector/controls.js';
 import { LayoutOptions } from '../LayoutOptions.js';
@@ -139,7 +139,7 @@ export function LayoutBar({
               </fieldset>
               <h3 className="text-xs font-semibold">What the numbers are made with</h3>
               <div className="lb-toolbar flex flex-row flex-wrap items-end gap-3">
-                <AnalysisSettings
+                <SettingsFields
                   params={params}
                   onChange={onParams}
                   corpora={corpora}

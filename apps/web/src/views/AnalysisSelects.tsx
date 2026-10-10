@@ -140,7 +140,7 @@ export function SampleSelect({
  * Laid out as fields of a toolbar (`lb-toolbar`), into which the fragment is spread: the switches
  * take a line of their own, so every view shows them in the same place.
  */
-export function AnalysisSettings({
+export function SettingsFields({
   params,
   onChange,
   corpora,
