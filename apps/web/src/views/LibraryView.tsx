@@ -11,7 +11,6 @@ import {
   languagesToJudge,
   layoutLanguageCoverage,
   layoutLanguages,
-  safeParseLayout,
   toCanonicalJson,
   typedLayout,
 } from '@layerbench/core';
@@ -29,6 +28,7 @@ import {
   useSummaries,
 } from '../engine/use-summaries.js';
 import { HELP } from '../guide/help.js';
+import { openLayout } from '../layout-session/open.js';
 import { useRememberSelection } from '../state/selection.js';
 import { useSession } from '../state/session.js';
 import { toast } from '../state/toasts.js';
@@ -402,9 +402,8 @@ export function LibraryView() {
       // All at once: from GitHub, each is a round trip of its own.
       const read = await Promise.all(
         saved.entries.map(async (entry) => {
-          const doc = await storage.get('layouts', entry.id).catch(() => null);
-          const parsed = doc ? safeParseLayout(doc.doc) : null;
-          return parsed?.ok ? ([entry.id, parsed.layout] as const) : null;
+          const opened = await openLayout(savedRef(entry.id), storage);
+          return opened.ok ? ([entry.id, opened.layout] as const) : null;
         }),
       );
       if (!cancelled) setSavedLayouts(new Map(read.filter((r) => r !== null)));
@@ -626,13 +625,12 @@ export function LibraryView() {
 
   const duplicateSaved = useCallback(
     async (id: string) => {
-      const doc = await storage.get('layouts', id);
-      const parsed = doc ? safeParseLayout(doc.doc) : null;
-      if (!parsed?.ok) {
+      const opened = await openLayout(savedRef(id), storage);
+      if (!opened.ok) {
         toast.error(`Could not read ${id}`);
         return;
       }
-      await duplicate(parsed.layout);
+      await duplicate(opened.layout);
     },
     [storage, duplicate],
   );
