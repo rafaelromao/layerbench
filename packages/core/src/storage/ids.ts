@@ -60,7 +60,7 @@ function randomSuffix(): string {
 }
 
 /** The ASCII words of a name, joined by dashes; empty when it has none. */
-function slugWords(name: string): string {
+export function slugWords(name: string): string {
   return (
     name
       .normalize('NFD')
@@ -103,9 +103,17 @@ export function slug(name: string): string {
  * silently, because nothing checked.
  */
 export function freeId(name: string, taken: ReadonlySet<string>): string {
-  const base = slug(name);
+  return unusedId(slug(name), { has: (id) => taken.has(id) || RESERVED_IDS.has(id) });
+}
+
+/**
+ * `base`, or `base` numbered `-2`, `-3`, … while that is taken: the one rule for every new id,
+ * whether of a document, a layer or a combo. Layers numbered by how many there were used to land
+ * on an id still in use.
+ */
+export function unusedId(base: string, taken: { has(id: string): boolean }): string {
   let id = base;
-  for (let n = 2; taken.has(id) || RESERVED_IDS.has(id); n++) id = `${base}-${n}`;
+  for (let n = 2; taken.has(id); n++) id = `${base}-${n}`;
   return id;
 }
 
