@@ -258,7 +258,7 @@ function list<T, C>(
       if (!has(i) || !has(to) || i === to) return b;
       const next = [...items];
       [next[i], next[to]] = [next[to], next[i]];
-      return put(next);
+      return same(b, put(next));
     },
   };
 }
@@ -353,7 +353,10 @@ const readers: { [K in KindOfKey]: Reader<K> } = {
     return {
       view,
       set: {
-        form: change(b, (form: MacroForm) => (form === 'steps' ? asSteps(b) : asText(b))),
+        // Not by what a saved layout would hold: a macro with no text and one with no steps are
+        // written alike there, and switching between them is still the switch shown.
+        form: (form: MacroForm) =>
+          form === view.form ? b : form === 'steps' ? asSteps(b) : asText(b),
         symbols: field(b, view.symbols, (symbols) => ({ ...b, symbols })),
         then: change(b, (layer: string) => {
           const out = { ...b };
@@ -584,6 +587,15 @@ function isCharacter(step: Binding): step is Of<'kp'> & { symbol: string } {
   );
 }
 
+/**
+ * Whether characters typed one after another read back as themselves: text is split back into
+ * characters composed, so `e` then a combining accent would come back as one press of `é`.
+ */
+function typedApart(chars: string[]): boolean {
+  const back = characters(chars.join(''));
+  return back.length === chars.length && back.every((c, i) => c === chars[i]);
+}
+
 function tagOf(b: Of<'macro'>): { tag?: string } {
   return b.tag ? { tag: b.tag } : {};
 }
@@ -601,11 +613,18 @@ function asSteps(b: Of<'macro'>): Binding {
  */
 function asText(b: Of<'macro'>): Binding {
   if (b.steps === undefined) return b;
-  const first = b.steps.findIndex((step) => !isCharacter(step));
-  const typed = first < 0 ? b.steps : b.steps.slice(0, first);
-  const after = [...(first < 0 ? [] : b.steps.slice(first)), ...(b.then ?? [])];
-  const symbols = typed.map((step) => (isCharacter(step) ? step.symbol : '')).join('');
-  return { kind: 'macro', symbols, ...(after.length > 0 ? { then: after } : {}), ...tagOf(b) };
+  const typed: string[] = [];
+  for (const step of b.steps) {
+    if (!isCharacter(step) || !typedApart([...typed, step.symbol])) break;
+    typed.push(step.symbol);
+  }
+  const after = [...b.steps.slice(typed.length), ...(b.then ?? [])];
+  return {
+    kind: 'macro',
+    symbols: typed.join(''),
+    ...(after.length > 0 ? { then: after } : {}),
+    ...tagOf(b),
+  };
 }
 
 /** Rows made while editing need identities no row read from a macro already has. */
@@ -647,14 +666,18 @@ function rowOf(step: Binding): MacroRow {
     : { id, kind: 'fixed', step };
 }
 
-/** Read a macro's steps into rows, characters typed one after another as one text row. */
+/**
+ * Read a macro's steps into rows, characters typed one after another as one text row. What it runs
+ * after its steps is read as steps too, as it runs in that order, so every step it holds is a row.
+ */
 export function macroRows(macro: Of<'macro'>): MacroRow[] {
   const rows: MacroRow[] = [];
-  for (const step of macro.steps ?? []) {
+  for (const step of [...(macro.steps ?? []), ...(macro.then ?? [])]) {
     const last = rows[rows.length - 1];
     if (!isCharacter(step)) rows.push(rowOf(step));
-    else if (last?.kind === 'text') last.text += step.symbol;
-    else rows.push({ id: rowId(), kind: 'text', text: step.symbol });
+    else if (last?.kind === 'text' && typedApart([...characters(last.text), step.symbol])) {
+      last.text += step.symbol;
+    } else rows.push({ id: rowId(), kind: 'text', text: step.symbol });
   }
   return rows;
 }
@@ -673,12 +696,11 @@ export function freshRow(kind: RowKind, ctx: BindingTextContext, id = rowId()): 
   }
 }
 
-/** The macro its rows make. With no rows left it types nothing, written as text. */
+/** The macro its rows make, all of it steps. With no rows left it types nothing, written as text. */
 function withRows(b: Of<'macro'>, rows: MacroRow[]): Binding {
-  const kept = { ...(b.then ? { then: b.then } : {}), ...tagOf(b) };
   return rows.length > 0
-    ? { kind: 'macro', steps: rows.flatMap(stepsOf), ...kept }
-    : { kind: 'macro', symbols: '', ...kept };
+    ? { kind: 'macro', steps: rows.flatMap(stepsOf), ...tagOf(b) }
+    : { kind: 'macro', symbols: '', ...tagOf(b) };
 }
 
 // ---------------------------------------------------------------------------- symbols

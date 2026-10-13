@@ -266,6 +266,18 @@ describe('the parts of a bigger key, and lists of them', () => {
     expect(branches.remove(0)).toEqual({ ...twoBranches, triggers: [second] });
   });
 
+  it('gives the key back for a move between two branches that are alike', () => {
+    const blank: Binding = { kind: 'kp', symbol: '' };
+    const alike: Binding = {
+      kind: 'adaptive',
+      triggers: [
+        { afterAny: [], binding: blank },
+        { afterAny: [], binding: blank },
+      ],
+    };
+    expect(fieldsOf('adaptive', alike).set.branches.move(1, 0)).toBe(alike);
+  });
+
   it('holds an adaptive key to keys typed with no modifier, or not', () => {
     const alt: Binding = { kind: 'adaptive', default: { kind: 'key_repeat' }, triggers: [] };
     const strict = fieldsOf('altrepeat', alt).set.strict(true);
@@ -375,8 +387,12 @@ describe('a macro, written as text or as steps', () => {
         const fields = fieldsOf('macro', macro);
         expect(typed(fields.set.form('text'))).toEqual(typed(macro));
         expect(typed(fields.set.form('steps'))).toEqual(typed(macro));
-        if (macro.kind === 'macro' && macro.steps) {
-          expect(fields.set.rows(macroRows(macro))).toBe(macro);
+        // Its rows, as it is written or once written as steps, make the same macro again.
+        const stepped = fields.set.form('steps');
+        for (const m of [macro, stepped]) {
+          if (m.kind === 'macro' && m.steps) {
+            expect(fieldsOf('macro', m).set.rows(macroRows(m))).toBe(m);
+          }
         }
       }
     }
@@ -399,6 +415,48 @@ describe('a macro, written as text or as steps', () => {
       steps: [toggle, kp('a'), kp('b'), quick],
     });
     expect(set.rows([rows[0], rows[2]])).toEqual({ kind: 'macro', steps: [kp('a'), kp('b')] });
+  });
+
+  it('switches a macro with no text to steps, and one with no steps to text', () => {
+    // A saved layout writes both as a bare macro; the switch still goes the way it is asked.
+    const bare: Binding = { kind: 'macro' };
+    const steps = fieldsOf('macro', bare).set.form('steps');
+    expect(steps).toEqual({ kind: 'macro', steps: [] });
+    expect(fieldsOf('macro', steps).view.form).toBe('steps');
+    expect(fieldsOf('macro', steps).set.form('text')).toEqual({ kind: 'macro', symbols: '' });
+    expect(fieldsOf('macro', steps).set.form('steps')).toBe(steps);
+  });
+
+  it('keeps apart characters that would combine, as the presses they are', () => {
+    // An `e` and a combining accent are two presses; as one text they would read back as `é`.
+    const accent = '\u0301';
+    const apart: Extract<Binding, { kind: 'macro' }> = {
+      kind: 'macro',
+      steps: [kp('e'), kp(accent)],
+    };
+    const rows = macroRows(apart);
+    expect(rows).toMatchObject([
+      { kind: 'text', text: 'e' },
+      { kind: 'text', text: accent },
+    ]);
+    expect(fieldsOf('macro', apart).set.rows(rows)).toBe(apart);
+    const text = fieldsOf('macro', apart).set.form('text');
+    expect(text).toEqual({ kind: 'macro', symbols: 'e', then: [kp(accent)] });
+    expect(fieldsOf('macro', text).set.form('steps')).toEqual(apart);
+  });
+
+  it('shows what a macro runs after its steps as rows of its own', () => {
+    const both: Extract<Binding, { kind: 'macro' }> = {
+      kind: 'macro',
+      steps: [kp('a')],
+      then: [toAlpha2],
+    };
+    const rows = macroRows(both);
+    expect(rows.map((r) => r.kind)).toEqual(['text', 'sl']);
+    expect(fieldsOf('macro', both).set.rows([rows[1], rows[0]])).toEqual({
+      kind: 'macro',
+      steps: [toAlpha2, kp('a')],
+    });
   });
 
   it('starts a new row doing something, and becomes text again with no rows left', () => {
