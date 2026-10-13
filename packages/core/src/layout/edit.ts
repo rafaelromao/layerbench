@@ -22,8 +22,8 @@ export type Edit =
   /** The same binding on every key listed: typing on a key, Delete, a selection's Clear. */
   | { kind: 'bind'; layer: string; keys: string[]; binding: Binding }
   | { kind: 'swap' | 'copy'; layer: string; from: string; to: string }
-  /** Keys to the same places on another layer, moved or copied. */
-  | { kind: 'send'; from: string; to: string; keys: string[]; mode: 'move' | 'copy' }
+  /** Keys on `layer` to the same places on `toLayer`, moved or copied. */
+  | { kind: 'send'; layer: string; toLayer: string; keys: string[]; mode: 'move' | 'copy' }
   | { kind: 'addLayer'; name: string }
   | { kind: 'removeLayer' | 'duplicateLayer'; layer: string }
   | { kind: 'renameLayer'; layer: string; name: string }
@@ -87,7 +87,9 @@ export type EditOutcome = { edit: Edit; before: Layout } & (
 /** What one kind of edit makes: a layout and where it landed, the same layout, or a refusal. */
 type Step = { layout: Layout; at?: Landing } | { refused: string };
 
-type Handlers = { [K in Edit['kind']]: (layout: Layout, edit: Extract<Edit, { kind: K }>) => Step };
+// `Edit & { kind: K }` rather than `Extract`: one member names two kinds (swap and copy, say), and
+// `Extract` would hand those handlers `never`, so a misspelt field would still compile.
+type Handlers = { [K in Edit['kind']]: (layout: Layout, edit: Edit & { kind: K }) => Step };
 
 const same = (layout: Layout): Step => ({ layout });
 
@@ -137,13 +139,13 @@ const handlers: Handlers = {
 
   // The board follows the keys to their layer, where they are still selected: the only way to
   // see that they landed.
-  send(layout, { from, to, keys, mode }) {
-    const source = indexOf(layout, from);
-    const target = indexOf(layout, to);
+  send(layout, { layer, toLayer, keys, mode }) {
+    const source = indexOf(layout, layer);
+    const target = indexOf(layout, toLayer);
     if (source < 0 || target < 0 || source === target || keys.length === 0) return same(layout);
     let next = layout;
     for (const key of keys) next = sendKeyToLayer(next, source, target, key, mode);
-    return { layout: next, at: { layer: to, keys } };
+    return { layout: next, at: { layer: toLayer, keys } };
   },
 
   addLayer(layout, edit) {

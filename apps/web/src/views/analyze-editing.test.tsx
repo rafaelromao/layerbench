@@ -332,11 +332,12 @@ describe('Edit', () => {
     expect(info.mock.calls.map(([text]) => text)).toEqual(['Removed Extra — Undo brings it back']);
     info.mockRestore();
 
-    // A layer a key still reaches stays, and the editor says which key, with nothing to undo.
+    // A layer a key still reaches stays, and the editor says which key, once, with nothing to undo.
     await user.click(screen.getByRole('button', { name: 'Remove Numbers' }));
-    expect(await screen.findAllByText(/^Numbers is still reached from Base \w+/)).not.toHaveLength(
-      0,
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /^Numbers is still reached from Base \w+/,
     );
+    expect(screen.getAllByText(/^Numbers is still reached from/)).toHaveLength(1);
     expect(screen.getByRole('tab', { name: 'Numbers' })).toBeInTheDocument();
     expect(screen.queryByText('Removed Numbers — Undo brings it back')).toBeNull();
   }, 60_000);

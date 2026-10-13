@@ -272,8 +272,8 @@ function Inspector({ state, send, focusKey, keyId, stats }: KeyInspectorProps & 
                   type: 'edit',
                   edit: {
                     kind: 'send',
-                    from: activeLayer.id,
-                    to: layerId,
+                    layer: activeLayer.id,
+                    toLayer: layerId,
                     keys: [keyId],
                     mode: 'move',
                   },

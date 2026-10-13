@@ -28,7 +28,7 @@ const at = (state: UndoState, layer: number, key: string) =>
 /** The keys selected sent to Nav, as the selection's Send to layer does. */
 const send = (mode: 'move' | 'copy'): EditAction => ({
   type: 'edit',
-  edit: { kind: 'send', from: 'base', to: 'nav', keys: ['LHM', 'LHI'], mode },
+  edit: { kind: 'send', layer: 'base', toLayer: 'nav', keys: ['LHM', 'LHI'], mode },
 });
 
 /** One binding on every key selected, as the selection's Clear and Make transparent do. */
@@ -126,6 +126,7 @@ describe('where the board goes after an edit', () => {
   });
 
   it('keeps the layer on screen on screen when layers move or one before it goes', () => {
+    // Fun, on screen, comes right after Nav.
     const onFun = reducer(edit(withNav(), { kind: 'addLayer', name: 'Fun' }), {
       type: 'selectLayer',
       layer: NAV + 1,
@@ -133,8 +134,9 @@ describe('where the board goes after an edit', () => {
     const moved = edit(onFun, { kind: 'moveLayer', layer: 'fun', to: NAV });
     expect(shown(moved)).toBe('fun');
     expect(moved.layer).toBe(NAV);
-    const removed = edit(moved, { kind: 'removeLayer', layer: 'nav' });
+    const removed = edit(onFun, { kind: 'removeLayer', layer: 'nav' });
     expect(shown(removed)).toBe('fun');
+    expect(removed.layer).toBe(NAV);
   });
 
   it('shows the layer before one removed from under the board', () => {
@@ -151,6 +153,32 @@ describe('where the board goes after an edit', () => {
     expect(
       edit(picking, { kind: 'renameLayer', layer: 'nav', name: 'Arrows' }).comboPick,
     ).toBeNull();
+  });
+
+  it('selects the key a copy lands on, and nothing once the whole layout is replaced', () => {
+    const copied = reducer(pick(withNav(), 'LHM', 'LHI'), {
+      type: 'dropKey',
+      from: 'LHM',
+      to: { kind: 'key', keyId: 'LHR' },
+      mode: 'copy',
+    });
+    expect(at(copied, 0, 'LHR')).toEqual(at(copied, 0, 'LHM'));
+    expect(selectionOf(copied)).toEqual(['LHR']);
+    const replaced = edit(pick(withNav(), 'LHM'), {
+      kind: 'replaceLayout',
+      json: JSON.stringify(qwerty),
+    });
+    expect(replaced.lastEdit).toMatchObject({ status: 'landed', edit: { kind: 'replaceLayout' } });
+    expect(selectionOf(replaced)).toEqual([]);
+  });
+
+  // Rewriting the text on every edit would throw away whatever is half-typed in it.
+  it('rewrites the behaviours text only when the behaviours change', () => {
+    const typing = reducer(withNav(), { type: 'behaviorsChange', json: '{ "half": ' });
+    const renamed = edit(typing, { kind: 'renameLayer', layer: 'nav', name: 'Arrows' });
+    expect(renamed.behaviorsJson).toBe('{ "half": ');
+    const set = edit(typing, { kind: 'setBehavior', name: 'rep', binding: { kind: 'key_repeat' } });
+    expect(JSON.parse(set.behaviorsJson)).toMatchObject({ rep: { kind: 'key_repeat' } });
   });
 
   it('swaps an armed key with the key clicked next, and selects where it went', () => {

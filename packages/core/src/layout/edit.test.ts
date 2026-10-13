@@ -70,8 +70,8 @@ describe('edits to keys', () => {
   it('sends keys to another layer, clearing them behind only when moving, and lands there', () => {
     const moved = landed(layout, {
       kind: 'send',
-      from: 'base',
-      to: 'upper',
+      layer: 'base',
+      toLayer: 'upper',
       keys: ['LHI'],
       mode: 'move',
     });
@@ -81,8 +81,8 @@ describe('edits to keys', () => {
 
     const copied = landed(layout, {
       kind: 'send',
-      from: 'base',
-      to: 'upper',
+      layer: 'base',
+      toLayer: 'upper',
       keys: ['LHM', 'LHI'],
       mode: 'copy',
     });
@@ -124,8 +124,8 @@ describe('adaptive keys move as the bindings they are', () => {
   it('sends an alt repeat to another layer, keeping it only when copying', () => {
     const send = (mode: 'move' | 'copy'): Edit => ({
       kind: 'send',
-      from: 'upper',
-      to: 'base',
+      layer: 'upper',
+      toLayer: 'base',
       keys: ['LHI'],
       mode,
     });
@@ -352,6 +352,7 @@ describe('behaviours, typing paths, keys, details and features', () => {
       kind: 'hold',
     });
     expect(landed(held, { kind: 'setKeys', shift: null }).layout.keys.shift).toBeUndefined();
+    expect(landed(layout, { kind: 'setKeys', space: 'R0' }).layout.keys.space).toBe('R0');
     const repeat = landed(layout, { kind: 'setKeys', repeat: 'tapTwice' }).layout;
     expect(repeat.repeatPolicy).toEqual({ doubledLetters: 'tapTwice' });
   });
@@ -388,23 +389,30 @@ describe('replacing the whole layout', () => {
 });
 
 describe('every edit', () => {
-  it('is refused with the compile error when the layout it would leave cannot be drawn', () => {
-    const o = applyEdit(layout, {
-      kind: 'bind',
-      layer: 'base',
-      keys: ['LHM'],
-      binding: { kind: 'mo', layer: 'nowhere' },
-    });
-    expect(o).toMatchObject({
-      status: 'refused',
-      before: layout,
-      message: expect.stringMatching(/nowhere/),
-    });
-  });
+  it.each<[Edit, RegExp]>([
+    [
+      { kind: 'bind', layer: 'base', keys: ['LHM'], binding: { kind: 'mo', layer: 'nowhere' } },
+      /nowhere/,
+    ],
+    [
+      { kind: 'addCombo', layer: 'base', keys: ['LHM', 'NOPE'], binding: kp('q'), role: 'typing' },
+      /NOPE/,
+    ],
+    [{ kind: 'setKeys', shift: 'NOPE' }, /NOPE/],
+  ])(
+    'is refused with the compile error when the layout it would leave cannot be drawn: %o',
+    (edit, error) => {
+      expect(applyEdit(layout, edit)).toMatchObject({
+        status: 'refused',
+        before: layout,
+        message: expect.stringMatching(error),
+      });
+    },
+  );
 
   it('leaves the layout it was given as it was', () => {
     const before = JSON.stringify(layout);
-    landed(layout, { kind: 'send', from: 'base', to: 'upper', keys: ['LHM'], mode: 'move' });
+    landed(layout, { kind: 'send', layer: 'base', toLayer: 'upper', keys: ['LHM'], mode: 'move' });
     landed(layout, { kind: 'removeLayer', layer: 'upper' });
     expect(JSON.stringify(layout)).toBe(before);
   });
@@ -414,8 +422,8 @@ describe('every edit', () => {
     { kind: 'bind', layer: 'nowhere', keys: ['LHM'], binding: kp('x') },
     { kind: 'swap', layer: 'base', from: 'LHM', to: 'LHM' },
     { kind: 'copy', layer: 'base', from: 'LHM', to: 'LHM' },
-    { kind: 'send', from: 'base', to: 'base', keys: ['LHM'], mode: 'move' },
-    { kind: 'send', from: 'base', to: 'nowhere', keys: ['LHM'], mode: 'move' },
+    { kind: 'send', layer: 'base', toLayer: 'base', keys: ['LHM'], mode: 'move' },
+    { kind: 'send', layer: 'base', toLayer: 'nowhere', keys: ['LHM'], mode: 'move' },
     { kind: 'removeLayer', layer: 'nowhere' },
     { kind: 'duplicateLayer', layer: 'nowhere' },
     { kind: 'renameLayer', layer: 'upper', name: ' Upper ' },
@@ -424,6 +432,7 @@ describe('every edit', () => {
     { kind: 'moveLayer', layer: 'base', to: 1 },
     { kind: 'moveLayer', layer: 'upper', to: 0 },
     { kind: 'moveLayer', layer: 'upper', to: 1 },
+    { kind: 'moveLayer', layer: 'upper', to: 2 },
     { kind: 'removeCombo', combo: 0 },
     { kind: 'toggleComboRole', combo: 0 },
   ])('changes nothing when there is nothing to change: %o', (edit) => {

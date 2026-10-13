@@ -26,7 +26,7 @@ export function SelectionInspector({
     const name = otherLayers.find((l) => l.id === layerId)?.name ?? layerId;
     send({
       type: 'edit',
-      edit: { kind: 'send', from: layer.id, to: layerId, keys, mode },
+      edit: { kind: 'send', layer: layer.id, toLayer: layerId, keys, mode },
       say: `${keys.length} keys ${mode === 'copy' ? 'copied' : 'sent'} to ${name}`,
     });
   };

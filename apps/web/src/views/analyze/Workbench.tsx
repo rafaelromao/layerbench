@@ -54,7 +54,13 @@ import {
   LayersPanel,
   PathsPanel,
 } from '../edit/panels.js';
-import { editReducer, type Panel, selectionOf, shownLayer } from '../edit/reducer.js';
+import {
+  editReducer,
+  type Panel,
+  refusalShownIn,
+  selectionOf,
+  shownLayer,
+} from '../edit/reducer.js';
 import { initialUndoState, undoable } from '../edit/undo.js';
 import { textLanguage, textName } from '../text-of.js';
 import { useTypedLayout } from '../useLayout.js';
@@ -135,7 +141,8 @@ export function Workbench({
     const last = state.lastEdit;
     if (!last) return;
     if (last.status === 'refused') {
-      setMessage(last.message);
+      // The alert above the board is read out on its own; the reason beside a panel's text is not.
+      if (refusalShownIn(last.edit) !== 'error') setMessage(last.message);
       return;
     }
     if (last.say) setMessage(last.say);

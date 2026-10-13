@@ -126,10 +126,11 @@ export function selectionOf(state: Pick<EditState, 'selected' | 'also'>): string
 }
 
 /** Where a refused edit says why: beside the text it came from, or above the board. */
-const REFUSED_IN: Partial<Record<Edit['kind'], 'behaviorsError' | 'jsonError'>> = {
-  replaceBehaviors: 'behaviorsError',
-  replaceLayout: 'jsonError',
-};
+export function refusalShownIn(edit: Edit): 'error' | 'behaviorsError' | 'jsonError' {
+  if (edit.kind === 'replaceBehaviors') return 'behaviorsError';
+  if (edit.kind === 'replaceLayout') return 'jsonError';
+  return 'error';
+}
 
 /**
  * Adopt how an edit went. One policy for every edit: the board shows the layer it landed on, or
@@ -142,7 +143,7 @@ function land(state: EditState, outcome: EditOutcome, say?: string): EditState {
   if (outcome.status === 'refused') {
     return {
       ...state,
-      [REFUSED_IN[outcome.edit.kind] ?? 'error']: outcome.message,
+      [refusalShownIn(outcome.edit)]: outcome.message,
       lastEdit: outcome,
     };
   }
@@ -190,8 +191,8 @@ function dropped(
   const keys = selectionOf(state);
   return {
     kind: 'send',
-    from: layer,
-    to: to.layerId,
+    layer,
+    toLayer: to.layerId,
     keys: keys.length > 1 && keys.includes(from) ? keys : [from],
     mode: mode === 'copy' ? 'copy' : 'move',
   };
