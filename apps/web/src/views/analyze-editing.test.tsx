@@ -319,19 +319,17 @@ describe('Edit', () => {
 
     await user.click(screen.getByRole('button', { name: 'Remove Extra' }));
     await waitFor(() => expect(screen.queryByRole('tab', { name: 'Extra' })).toBeNull());
+    expect(await screen.findByText('Removed Extra — Undo brings it back')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Undo' }));
     expect(await screen.findByRole('tab', { name: 'Extra' })).toBeInTheDocument();
-  });
 
-  it('will not remove a layer a key still reaches, and says which key', async () => {
-    const user = userEvent.setup();
-    await openMagicRomak();
-
+    // A layer a key still reaches stays, and the editor says which key, with nothing to undo.
     await user.click(screen.getByRole('button', { name: 'Remove Numbers' }));
-    expect(
-      await screen.findByText(/Numbers is still reached from Alpha 1 L0\b/),
-    ).toBeInTheDocument();
+    expect(await screen.findAllByText(/^Numbers is still reached from Base \w+/)).not.toHaveLength(
+      0,
+    );
     expect(screen.getByRole('tab', { name: 'Numbers' })).toBeInTheDocument();
+    expect(screen.queryByText('Removed Numbers — Undo brings it back')).toBeNull();
   });
 
   it("shows Magic Romak's special features and lets one be turned off", async () => {
@@ -467,6 +465,8 @@ describe('Edit', () => {
 
     await user.keyboard('{Delete}');
     expect(await screen.findByRole('button', { name: 'Key LHM: empty' })).toBeInTheDocument();
+    // Said once it has landed, since the key's new legend is not announced on its own.
+    expect(screen.getByText('LHM does nothing')).toBeInTheDocument();
 
     // A second Escape, from the key, puts the inspector away.
     await user.keyboard('{Escape}');

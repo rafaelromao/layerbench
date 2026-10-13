@@ -11,12 +11,10 @@ import { type EditAction, type EditState, selectionOf } from '../reducer.js';
 export function SelectionInspector({
   state,
   send,
-  announce,
   focusKey,
 }: {
   state: EditState;
   send: Dispatch<EditAction>;
-  announce: (message: string) => void;
   focusKey: (keyId: string) => void;
 }) {
   const keys = selectionOf(state);
@@ -25,9 +23,12 @@ export function SelectionInspector({
 
   const toLayer = (mode: 'move' | 'copy') => (layerId: string) => {
     if (!layerId) return;
-    send({ type: 'edit', edit: { kind: 'send', from: layer.id, to: layerId, keys, mode } });
     const name = otherLayers.find((l) => l.id === layerId)?.name ?? layerId;
-    announce(`${keys.length} keys ${mode === 'copy' ? 'copied' : 'sent'} to ${name}`);
+    send({
+      type: 'edit',
+      edit: { kind: 'send', from: layer.id, to: layerId, keys, mode },
+      say: `${keys.length} keys ${mode === 'copy' ? 'copied' : 'sent'} to ${name}`,
+    });
   };
 
   return (
@@ -105,8 +106,8 @@ export function SelectionInspector({
               send({
                 type: 'edit',
                 edit: { kind: 'bind', layer: layer.id, keys, binding: { kind: 'trans' } },
+                say: `${keys.length} keys let the layer below show through`,
               });
-              announce(`${keys.length} keys let the layer below show through`);
             }}
           >
             Make transparent
@@ -119,8 +120,8 @@ export function SelectionInspector({
               send({
                 type: 'edit',
                 edit: { kind: 'bind', layer: layer.id, keys, binding: { kind: 'none' } },
+                say: `${keys.length} keys do nothing`,
               });
-              announce(`${keys.length} keys do nothing`);
             }}
           >
             Clear

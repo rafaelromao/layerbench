@@ -129,6 +129,22 @@ export function Workbench({
   const keyboard = useRef<KeyboardHandle>(null);
   /** What to tell a screen reader: a key's changed legend is not announced on its own. */
   const [message, setMessage] = useState('');
+  // What an edit did, told once it is known: what landed, or why it was refused. A layer removed
+  // says how to get it back.
+  useEffect(() => {
+    const last = state.lastEdit;
+    if (!last) return;
+    if (last.status === 'refused') {
+      setMessage(last.message);
+      return;
+    }
+    if (last.say) setMessage(last.say);
+    const { edit } = last;
+    if (edit.kind === 'removeLayer') {
+      const name = last.before.layers.find((l) => l.id === edit.layer)?.name ?? edit.layer;
+      toast.info(`Removed ${name} — Undo brings it back`);
+    }
+  }, [state.lastEdit]);
 
   /** The saved layouts, for the picker; read again after each save. */
   const savedLayouts = useCollection('layouts');
@@ -494,10 +510,8 @@ export function Workbench({
       send({
         type: 'edit',
         edit: { kind: 'bind', layer: shownLayer(state), keys: cleared, binding: { kind: 'none' } },
+        say: cleared.length > 1 ? `${cleared.length} keys do nothing` : `${keyId} does nothing`,
       });
-      setMessage(
-        cleared.length > 1 ? `${cleared.length} keys do nothing` : `${keyId} does nothing`,
-      );
       return;
     }
     // Space keeps activating the key like the button it is; everything else typed on a key is
@@ -693,12 +707,14 @@ export function Workbench({
                           const keys = selectionOf(state);
                           const many =
                             drop.to.kind === 'layer' && keys.length > 1 && keys.includes(drop.from);
-                          send({ type: 'dropKey', ...drop });
-                          setMessage(
-                            drop.to.kind === 'layer'
-                              ? `${many ? `${keys.length} keys` : drop.from} ${drop.mode === 'copy' ? 'copied' : 'sent'} to ${drop.to.layerId}`
-                              : `${drop.from} ${drop.mode === 'copy' ? 'copied to' : 'swapped with'} ${drop.to.keyId}`,
-                          );
+                          send({
+                            type: 'dropKey',
+                            ...drop,
+                            say:
+                              drop.to.kind === 'layer'
+                                ? `${many ? `${keys.length} keys` : drop.from} ${drop.mode === 'copy' ? 'copied' : 'sent'} to ${drop.to.layerId}`
+                                : `${drop.from} ${drop.mode === 'copy' ? 'copied to' : 'swapped with'} ${drop.to.keyId}`,
+                          });
                         }}
                         onKeyShortcut={onKeyShortcut}
                       />
@@ -870,13 +886,7 @@ export function Workbench({
               focusKey(keyId);
             }}
           >
-            <KeyInspector
-              state={state}
-              send={send}
-              focusKey={focusKey}
-              announce={setMessage}
-              stats={keyStatsView}
-            />
+            <KeyInspector state={state} send={send} focusKey={focusKey} stats={keyStatsView} />
           </div>
 
           <section className="lb-edit-panels card bg-base-100 border border-base-300 min-w-0">

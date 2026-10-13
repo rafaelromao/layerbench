@@ -4,7 +4,6 @@ import {
   LAYER_COLORS,
   type LayerColor,
   type LayoutFeatures,
-  layerReachedFrom,
   reachKeys,
   slug,
   tapLabel,
@@ -305,13 +304,10 @@ export function LayersPanel({ state, send }: PanelProps) {
                 aria-label={`Remove ${nameOf(i)}`}
                 title={i === 0 ? 'The base layer cannot be removed' : 'Remove'}
                 disabled={i === 0}
-                onClick={() => {
-                  // A layer still in use is refused with the keys that use it; only a removal
-                  // that lands is worth a message.
-                  const blocked = layerReachedFrom(state.layout, layer.id).length > 0;
-                  send({ type: 'edit', edit: { kind: 'removeLayer', layer: layer.id } });
-                  if (!blocked) toast.info(`Removed ${nameOf(i)} — Undo brings it back`);
-                }}
+                // A layer still in use is refused with the keys that use it.
+                onClick={() =>
+                  send({ type: 'edit', edit: { kind: 'removeLayer', layer: layer.id } })
+                }
               >
                 ✕
               </button>
