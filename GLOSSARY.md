@@ -50,7 +50,8 @@ _Avoid_: blend, combined corpus
 **Part**:
 A binding inside a bigger key: the tap and the hold of a tap-hold, an adaptive key's default and what
 each of its branches types, a tap dance's binding for each number of taps, a morph's plain and
-changed binding.
+changed binding. It is not a key's part of a number, which is what the key adds to a number that
+adds up over keys.
 _Avoid_: arm, sub-binding
 
 **Saved layout**:
