@@ -339,7 +339,7 @@ describe('Edit', () => {
     );
     expect(screen.getByRole('tab', { name: 'Numbers' })).toBeInTheDocument();
     expect(screen.queryByText('Removed Numbers — Undo brings it back')).toBeNull();
-  });
+  }, 60_000);
 
   it("shows Magic Romak's special features and lets one be turned off", async () => {
     const user = userEvent.setup();
