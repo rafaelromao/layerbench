@@ -218,7 +218,7 @@ describe('the keys that reach a layer', () => {
     );
   });
 
-  it('marks an auto layer, a macro step, a morphed arm and a second tap, but not a way out', () => {
+  it("marks an auto layer, a macro step, a morph's changed part and a second tap, but not a way out", () => {
     const c = compileLayout(
       board([
         {

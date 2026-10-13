@@ -483,7 +483,7 @@ export const magicRomak: Layout = (() => {
     combos: [...alpha1Combos(), SEMICOLON_COMBO, ...alpha2Combos(taggedAccent)],
     layers: [
       // Holding space reaches the numbers and holding the Alpha 2 key the symbols; the
-      // sentence-case feature wraps the space's tap arm, so both live on one key. Tapping the
+      // sentence-case feature wraps the space's tap, so both live on one key. Tapping the
       // Alpha 2 key, then the right outer thumb, reaches the dead keys.
       {
         ...alpha1,

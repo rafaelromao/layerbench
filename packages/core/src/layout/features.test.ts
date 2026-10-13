@@ -108,7 +108,7 @@ describe('Magic Romak after the features rewrite', () => {
     expect(space.kind).toBe('hold_tap');
     if (space.kind !== 'hold_tap') return;
     expect(space.hold).toEqual({ kind: 'mo', layer: 'num' });
-    // The feature wrapped the tap arm rather than replacing the whole binding.
+    // The feature wrapped the tap rather than replacing the whole binding.
     expect(space.tap.kind).toBe('adaptive');
 
     // `explain` takes the text as given, so the digits reach the simulator directly: hold the

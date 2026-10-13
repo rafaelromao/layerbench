@@ -18,23 +18,23 @@ export interface ExpandedLayout {
 }
 
 /**
- * Rewrite the arm a tap would reach, leaving hold arms and morph structure alone.
+ * Rewrite the part a tap would reach, leaving holds and morph structure alone.
  *
  * A feature has to compose with whatever is already on the key: the space key may be a `hold_tap`
- * that reaches a numbers layer on hold, and sentence case belongs on its tap arm only.
+ * that reaches a numbers layer on hold, and sentence case belongs on its tap only.
  */
-export function mapTapArm(
+export function mapTapPart(
   b: Binding | undefined,
   f: (tap: Binding | undefined) => Binding,
 ): Binding {
   if (b === undefined) return f(undefined);
   switch (b.kind) {
     case 'hold_tap':
-      return { ...b, tap: mapTapArm(b.tap, f) };
+      return { ...b, tap: mapTapPart(b.tap, f) };
     case 'lt':
-      return { ...b, tap: mapTapArm(b.tap, f) };
+      return { ...b, tap: mapTapPart(b.tap, f) };
     case 'mod_morph':
-      return { ...b, default: mapTapArm(b.default, f) };
+      return { ...b, default: mapTapPart(b.default, f) };
     default:
       return f(b);
   }
@@ -58,7 +58,7 @@ function place(
     w.errors.push(`Feature ${feature}: unknown layer ${layerId}`);
     return;
   }
-  layer.bindings = { ...layer.bindings, [key]: mapTapArm(layer.bindings[key], wrap) };
+  layer.bindings = { ...layer.bindings, [key]: mapTapPart(layer.bindings[key], wrap) };
   const byKey = w.owned.get(layerId) ?? new Map<string, WrappingFeature>();
   byKey.set(key, feature);
   w.owned.set(layerId, byKey);

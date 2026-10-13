@@ -203,8 +203,8 @@ export class MachineState {
   }
 }
 
-/** Bindings that only choose which of their arms a press runs: what the press is, is that arm. */
-const ARM_CHOOSERS: ReadonlySet<BindingKind> = new Set([
+/** Bindings that only choose which of their parts a press runs: the press is that part. */
+const PART_CHOOSERS: ReadonlySet<BindingKind> = new Set([
   'hold_tap',
   'mod_morph',
   'layer_morph',
@@ -219,7 +219,7 @@ interface ExecContext {
   /** Binding kind that produced the outcome (innermost executed). */
   leaf: BindingKind;
   /**
-   * The binding the press reached, past the ones that only choose an arm (`ARM_CHOOSERS`, and a
+   * The binding the press reached, past the ones that only choose a part (`PART_CHOOSERS`, and a
    * layer-tap tapped): what classifies the key, as the legend does.
    */
   outer: BindingKind | null;
@@ -555,11 +555,11 @@ export class Machine {
 
   run(b: Binding, ctx: ExecContext): void {
     if (ctx.depth > 24) return;
-    // A press is the kind of key its arm is, past the bindings that only choose an arm: an adaptive
+    // A press counts as the part it runs, past the bindings that only choose a part: an adaptive
     // key on a tap-hold's tap is an adaptive key, as its legend says. A layer-tap tapped is its
     // tap.
-    const choosesArm = ARM_CHOOSERS.has(b.kind) || (b.kind === 'lt' && ctx.mode === 'tap');
-    if (ctx.outer === null && !choosesArm) ctx.outer = b.kind;
+    const choosesPart = PART_CHOOSERS.has(b.kind) || (b.kind === 'lt' && ctx.mode === 'tap');
+    if (ctx.outer === null && !choosesPart) ctx.outer = b.kind;
     const tag = (b as { tag?: string }).tag;
     if (tag !== undefined) ctx.tag = tag;
     ctx.depth++;
