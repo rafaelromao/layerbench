@@ -9,7 +9,6 @@ import {
 import { useRef, useState } from 'react';
 import { useDismiss } from '../../../components/use-dismiss.js';
 import { useMediaQuery, WIDE } from '../../../components/use-media-query.js';
-import { bindingFromFields } from '../binding-form.js';
 import { type BindingTextContext, parseBindingText } from '../binding-text.js';
 import { LayerChips, ModChips, Note, Row, Segment, TextField, words } from './controls.js';
 import {
@@ -301,8 +300,8 @@ function symbolField(b: Of<'kp'>): string {
 function symbolFields(text: string, scope: EditorScope): Partial<Of<'kp'>> {
   if ([...text].length <= 1 || text.startsWith('&')) return { symbol: text };
   const parsed = parseBindingText(text, scope.text);
-  if (!parsed.ok || parsed.fields.kind !== 'kp') return { symbol: text };
-  const b = bindingFromFields(parsed.fields) as Of<'kp'>;
+  if (!parsed.ok || parsed.binding.kind !== 'kp') return { symbol: text };
+  const b = parsed.binding;
   return { symbol: b.symbol, keycode: b.keycode, shifted: b.shifted };
 }
 

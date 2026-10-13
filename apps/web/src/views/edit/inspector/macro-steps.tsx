@@ -1,12 +1,11 @@
 import { type Binding, type CompiledLayout, MODS, type Mod } from '@layerbench/core';
 import { useEffect, useRef, useState } from 'react';
 import {
-  bindingFromFields,
-  EMPTY_FIELDS,
   emptyMacroStep,
-  fieldsFromBinding,
   MACRO_STEP_KINDS,
   type MacroStep,
+  macroOfRows,
+  macroRows,
 } from '../binding-form.js';
 import { TextField } from './controls.js';
 
@@ -35,24 +34,19 @@ export function MacroStepsEditor({
   binding: Macro;
   onChange: (b: Binding) => void;
 }) {
-  const [rows, setRows] = useState<MacroStep[]>(() => fieldsFromBinding(binding).macroSteps);
+  const [rows, setRows] = useState<MacroStep[]>(() => macroRows(binding));
   const produced = useRef<Binding>(binding);
   useEffect(() => {
     // An edit made elsewhere — an undo, the text line — starts the rows afresh. One made here does
     // not: re-reading the rows gives each a new identity, which would remount the row being typed in.
     if (binding === produced.current) return;
     produced.current = binding;
-    setRows(fieldsFromBinding(binding).macroSteps);
+    setRows(macroRows(binding));
   }, [binding]);
 
   const commit = (next: MacroStep[]) => {
     setRows(next);
-    const b = bindingFromFields({
-      ...EMPTY_FIELDS,
-      kind: 'macro',
-      macroSteps: next,
-      tag: binding.tag ?? '',
-    });
+    const b = macroOfRows(next, binding.tag);
     produced.current = b;
     onChange(b);
   };

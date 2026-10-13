@@ -13,7 +13,6 @@ import { type Dispatch, type ReactNode, useMemo, useState } from 'react';
 import { layerColourOf } from '../../components/layer-colour.js';
 import type { ProducerDTO } from '../../engine/protocol.js';
 import { toast } from '../../state/toasts.js';
-import { bindingFromFields } from './binding-form.js';
 import { type BindingTextContext, parseBindingText } from './binding-text.js';
 import { Segment, TextField } from './inspector/controls.js';
 import { type EditAction, type EditState, shownLayer } from './reducer.js';
@@ -533,9 +532,9 @@ export function CombosPanel({ state, send }: PanelProps) {
                 .split(/[\s,+]+/)
                 .filter(Boolean)
                 .map((k) => k.toUpperCase());
-          const binding = parseBindingText(output, context);
-          if (!binding.ok) {
-            setError(binding.error);
+          const parsed = parseBindingText(output, context);
+          if (!parsed.ok) {
+            setError(parsed.error);
             return;
           }
           setError(null);
@@ -545,7 +544,7 @@ export function CombosPanel({ state, send }: PanelProps) {
               kind: 'addCombo',
               layer: shownLayer(state),
               keys: chosenKeys,
-              binding: bindingFromFields(binding.fields),
+              binding: parsed.binding,
               role,
             },
           });
