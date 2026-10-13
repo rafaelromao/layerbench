@@ -12,13 +12,13 @@ import { useMediaQuery, WIDE } from '../../../components/use-media-query.js';
 import { type BindingTextContext, parseBindingText } from '../binding-text.js';
 import { LayerChips, ModChips, Note, Row, Segment, TextField, words } from './controls.js';
 import {
-  ARM_KINDS,
   convert,
-  type InspectorKind,
   type KindInfo,
+  type KindOfKey,
   kindInfo,
   kindOf,
   MORE_KINDS,
+  PART_KINDS,
   PRIMARY_KINDS,
   TAP_KINDS,
 } from './kinds.js';
@@ -46,7 +46,7 @@ interface BodyProps<B extends Binding = Binding> {
   depth: number;
 }
 
-/** "Symbol" on its own, "Tap symbol" inside the tap arm of a bigger key. */
+/** "Symbol" on its own, "Tap symbol" inside the tap part of a bigger key. */
 function named(prefix: string, what: string): string {
   return prefix ? `${prefix} ${what.charAt(0).toLowerCase()}${what.slice(1)}` : what;
 }
@@ -59,7 +59,7 @@ function withOptional<B extends object>(b: B, key: string, value: string): B {
   return out as B;
 }
 
-/** Nested arms stop being drawn as editors past this depth; they are still shown and kept. */
+/** Nested parts stop being drawn as editors past this depth; they are still shown and kept. */
 const MAX_DEPTH = 4;
 
 // ---------------------------------------------------------------------------- the editor
@@ -92,9 +92,9 @@ function KindTiles({
   canRefer,
   onPick,
 }: {
-  kind: InspectorKind;
+  kind: KindOfKey;
   canRefer: boolean;
-  onPick: (k: InspectorKind) => void;
+  onPick: (k: KindOfKey) => void;
 }) {
   // Wider than a phone, every kind is a tile: the rest fit in the room a More tile would take to
   // reveal them. On a phone they open like a menu, and close like one: on a pick, or a tap
@@ -161,18 +161,18 @@ function KindTiles({
 }
 
 /**
- * One arm of a bigger key — the tap of a tap-hold, the output of an adaptive key's branch — with
- * its kind picked from a short list and its own controls under it. An arm can be anything a key
- * can, so a kind outside the list is offered too whenever the arm already is one.
+ * One part of a bigger key — the tap of a tap-hold, the output of an adaptive key's branch — with
+ * its kind picked from a short list and its own controls under it. A part can be anything a key
+ * can, so a kind outside the list is offered too whenever the part already is one.
  */
-export function ArmEditor({
+export function PartEditor({
   scope,
   label,
   name,
   value,
   onChange,
   depth,
-  kinds = ARM_KINDS,
+  kinds = PART_KINDS,
 }: {
   scope: EditorScope;
   label: string;
@@ -181,7 +181,7 @@ export function ArmEditor({
   value: Binding | undefined;
   onChange: (b: Binding) => void;
   depth: number;
-  kinds?: readonly InspectorKind[];
+  kinds?: readonly KindOfKey[];
 }) {
   const kind = kindOf(value);
   const prefix = name ?? label;
@@ -195,9 +195,7 @@ export function ArmEditor({
           className="select select-xs select-bordered w-auto"
           value={kind}
           onChange={(e) =>
-            onChange(
-              convert(scope.compiled, value, e.target.value as InspectorKind, scope.behaviours),
-            )
+            onChange(convert(scope.compiled, value, e.target.value as KindOfKey, scope.behaviours))
           }
         >
           {options.map((k) => (
@@ -207,7 +205,7 @@ export function ArmEditor({
           ))}
         </select>
       </div>
-      <div className="lb-arm">
+      <div className="lb-part">
         <KindBody scope={scope} value={value} onChange={onChange} name={prefix} depth={depth + 1} />
       </div>
     </div>
@@ -462,7 +460,7 @@ function TapHoldBody({ scope, binding, onChange, name, depth }: BodyProps<Of<'lt
 
   return (
     <div className="space-y-2">
-      <ArmEditor
+      <PartEditor
         scope={scope}
         label="Tap"
         name={named(name, 'Tap')}
@@ -473,7 +471,7 @@ function TapHoldBody({ scope, binding, onChange, name, depth }: BodyProps<Of<'lt
       />
       {/* The hold can be anything the tap can: a layer, a modifier, a symbol, a macro, an
           adaptive key — anything but another tap-hold. */}
-      <ArmEditor
+      <PartEditor
         scope={scope}
         label="Hold"
         name={named(name, 'Hold')}
@@ -645,7 +643,7 @@ export function TriggersEditor({
                 />
               </div>
             </details>
-            <ArmEditor
+            <PartEditor
               scope={scope}
               label="Then"
               name={label(i)}
@@ -677,7 +675,7 @@ function AdaptiveBody({ scope, binding, onChange, name, depth }: BodyProps<Of<'a
         <Note>Repeats the previous key, unless a branch below matches it.</Note>
       ) : (
         <>
-          <ArmEditor
+          <PartEditor
             scope={scope}
             label="Default"
             name={named(name, 'Default')}
@@ -813,7 +811,7 @@ function TapDanceBody({ scope, binding, onChange, name, depth }: BodyProps<Of<'t
         // biome-ignore lint/suspicious/noArrayIndexKey: a tap count is identified by its place
         <div key={i} className="flex items-start gap-1">
           <div className="flex-1 min-w-0">
-            <ArmEditor
+            <PartEditor
               scope={scope}
               label={`${i + 1}×`}
               name={named(name, `${i + 1} taps`)}
@@ -920,7 +918,7 @@ function MorphBody({
           />
         </Row>
       )}
-      <ArmEditor
+      <PartEditor
         scope={scope}
         label="Plain"
         name={named(name, 'Plain')}
@@ -933,7 +931,7 @@ function MorphBody({
           )
         }
       />
-      <ArmEditor
+      <PartEditor
         scope={scope}
         label="Becomes"
         name={named(name, 'Becomes')}
@@ -1070,7 +1068,7 @@ function BehaviourBody({ scope, binding, onChange, name, depth }: BodyProps) {
           <summary className="cursor-pointer opacity-70">
             Edit <span className="font-mono">{ref}</span> — every key that runs it changes
           </summary>
-          <div className="pt-2 lb-arm">
+          <div className="pt-2 lb-part">
             <KindBody
               scope={scope}
               value={own}

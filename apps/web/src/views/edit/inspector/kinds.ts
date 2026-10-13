@@ -6,7 +6,7 @@ import type { Binding, CompiledLayout, Mod } from '@layerbench/core';
  * only in how the layer comes on, so choosing that is a second, smaller step; the same goes for a
  * modifier that is held or one-shot.
  */
-export type InspectorKind =
+export type KindOfKey =
   | 'symbol'
   | 'layer'
   | 'modifier'
@@ -26,7 +26,7 @@ export type InspectorKind =
   | 'imported';
 
 export interface KindInfo {
-  kind: InspectorKind;
+  kind: KindOfKey;
   label: string;
   /**
    * Shown on the tile: a mark for what the key does, as the board would draw it. Never the name of
@@ -80,10 +80,10 @@ const IMPORTED: KindInfo = {
 export const ALL_KINDS: readonly KindInfo[] = [...PRIMARY_KINDS, ...MORE_KINDS, IMPORTED];
 
 /**
- * What one arm of a bigger key can be — the tap of a tap-hold, an adaptive key's branch. Arms are
- * simple by nature; an arm that is already something richer keeps its kind in the list.
+ * What one part of a bigger key can be — the tap of a tap-hold, an adaptive key's branch. Parts
+ * are simple by nature; a part that is already something richer keeps its kind in the list.
  */
-export const ARM_KINDS: readonly InspectorKind[] = [
+export const PART_KINDS: readonly KindOfKey[] = [
   'symbol',
   'macro',
   'layer',
@@ -95,17 +95,17 @@ export const ARM_KINDS: readonly InspectorKind[] = [
 ];
 
 /**
- * What the tap of a tap-hold can be: an arm, or an adaptive key or alt repeat, so a key can be an
+ * What the tap of a tap-hold can be: a part, or an adaptive key or alt repeat, so a key can be an
  * adaptive key on a tap and a layer or a modifier on a hold.
  */
-export const TAP_KINDS: readonly InspectorKind[] = [...ARM_KINDS, 'adaptive', 'altrepeat'];
+export const TAP_KINDS: readonly KindOfKey[] = [...PART_KINDS, 'adaptive', 'altrepeat'];
 
-export function kindInfo(kind: InspectorKind): KindInfo {
+export function kindInfo(kind: KindOfKey): KindInfo {
   return ALL_KINDS.find((k) => k.kind === kind) ?? IMPORTED;
 }
 
 /** The inspector kind a binding belongs to. */
-export function kindOf(b: Binding | undefined): InspectorKind {
+export function kindOf(b: Binding | undefined): KindOfKey {
   switch (b?.kind) {
     case undefined:
     case 'none':
@@ -227,7 +227,7 @@ const EMPTY_SYMBOL: Binding = { kind: 'kp', symbol: '' };
 export function convert(
   compiled: CompiledLayout,
   current: Binding | undefined,
-  to: InspectorKind,
+  to: KindOfKey,
   behaviours: string[],
 ): Binding {
   if (kindOf(current) === to && current) return current;

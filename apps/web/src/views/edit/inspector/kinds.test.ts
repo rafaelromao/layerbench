@@ -1,6 +1,6 @@
 import { type Binding, bundledLayout, compileLayout } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
-import { ARM_KINDS, convert, kindOf, TAP_KINDS } from './kinds.js';
+import { convert, kindOf, PART_KINDS, TAP_KINDS } from './kinds.js';
 
 const compiled = compileLayout(bundledLayout('magic-romak') as never);
 const to = (b: Binding | undefined, kind: Parameters<typeof convert>[2]) =>
@@ -13,9 +13,9 @@ const adaptiveKey: Binding = {
 };
 
 describe('changing what a key is', () => {
-  it('offers an adaptive key and an alt repeat for the tap of a tap-hold, and not for any arm', () => {
-    expect(TAP_KINDS).toEqual([...ARM_KINDS, 'adaptive', 'altrepeat']);
-    expect(ARM_KINDS).not.toContain('adaptive');
+  it('offers an adaptive key and an alt repeat for the tap of a tap-hold, and not for any part', () => {
+    expect(TAP_KINDS).toEqual([...PART_KINDS, 'adaptive', 'altrepeat']);
+    expect(PART_KINDS).not.toContain('adaptive');
   });
 
   it('keeps an adaptive key as the tap when the key becomes a tap-hold', () => {
