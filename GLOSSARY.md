@@ -15,9 +15,16 @@ _Avoid_: request, request options, scoring options
 
 **Draft**:
 A layout's unsaved edits, carried whole in its link after the `#`. The tab that made a draft knows
-which saved layout it is an edit of, so saving it saves that layout; anywhere else it is a layout of
-its own.
+which saved layout its edits were made on, so saving it saves that layout; anywhere else it is a
+layout of its own.
 _Avoid_: unsaved copy, working copy
+
+**Edit**:
+One change an author makes to a layout, taken whole: keys bound, swapped or sent to another layer; a
+layer added, removed or moved; a combo added; the behaviours replaced. It either lands, leaving a
+layout that can still be drawn, or is refused with its reason and leaves the layout as it was; one
+with nothing to change changes nothing. Undo takes back one edit that landed at a time.
+_Avoid_: action, operation, op, mutation
 
 **Layout session**:
 The layout open in Analyze, from the moment it is opened until another is: which saved layout it is,

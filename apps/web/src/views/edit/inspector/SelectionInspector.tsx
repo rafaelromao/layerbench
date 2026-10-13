@@ -11,12 +11,10 @@ import { type EditAction, type EditState, selectionOf } from '../reducer.js';
 export function SelectionInspector({
   state,
   send,
-  announce,
   focusKey,
 }: {
   state: EditState;
   send: Dispatch<EditAction>;
-  announce: (message: string) => void;
   focusKey: (keyId: string) => void;
 }) {
   const keys = selectionOf(state);
@@ -25,9 +23,12 @@ export function SelectionInspector({
 
   const toLayer = (mode: 'move' | 'copy') => (layerId: string) => {
     if (!layerId) return;
-    send({ type: 'sendSelection', layerId, mode });
     const name = otherLayers.find((l) => l.id === layerId)?.name ?? layerId;
-    announce(`${keys.length} keys ${mode === 'copy' ? 'copied' : 'sent'} to ${name}`);
+    send({
+      type: 'edit',
+      edit: { kind: 'send', layer: layer.id, toLayer: layerId, keys, mode },
+      say: `${keys.length} keys ${mode === 'copy' ? 'copied' : 'sent'} to ${name}`,
+    });
   };
 
   return (
@@ -102,8 +103,11 @@ export function SelectionInspector({
             type="button"
             className="btn btn-xs"
             onClick={() => {
-              send({ type: 'transparentSelection' });
-              announce(`${keys.length} keys let the layer below show through`);
+              send({
+                type: 'edit',
+                edit: { kind: 'bind', layer: layer.id, keys, binding: { kind: 'trans' } },
+                say: `${keys.length} keys let the layer below show through`,
+              });
             }}
           >
             Make transparent
@@ -112,8 +116,12 @@ export function SelectionInspector({
             type="button"
             className="btn btn-xs btn-ghost text-error"
             onClick={() => {
-              send({ type: 'clearSelection' });
-              announce(`${keys.length} keys do nothing`);
+              // As a cleared key does: nothing, rather than the key below showing through.
+              send({
+                type: 'edit',
+                edit: { kind: 'bind', layer: layer.id, keys, binding: { kind: 'none' } },
+                say: `${keys.length} keys do nothing`,
+              });
             }}
           >
             Clear

@@ -1,11 +1,17 @@
-import { bundledLayout, compileLayout, type Layout } from '@layerbench/core';
+import { type Binding, bundledLayout, compileLayout, type Layout } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
-import { editReducer } from './reducer.js';
+import { type EditAction, editReducer } from './reducer.js';
 import { initialUndoState, type UndoState, undoable } from './undo.js';
 
 const layout = bundledLayout('qwerty') as Layout;
 const reducer = undoable(editReducer);
 const start = (): UndoState => initialUndoState(layout, compileLayout(layout));
+
+/** A binding put on one key of the base layer, as typing on the key does. */
+const bind = (keyId: string, binding: Binding): EditAction => ({
+  type: 'edit',
+  edit: { kind: 'bind', layer: 'base', keys: [keyId], binding },
+});
 
 const symbolAt = (state: UndoState, keyId: string): unknown =>
   state.layout.layers[0].bindings[keyId];
@@ -13,11 +19,7 @@ const symbolAt = (state: UndoState, keyId: string): unknown =>
 describe('undo', () => {
   it('takes back an edit and puts it forward again', () => {
     const before = start();
-    const typed = reducer(before, {
-      type: 'commitBinding',
-      keyId: 'LHM',
-      binding: { kind: 'kp', symbol: 'ç' },
-    });
+    const typed = reducer(before, bind('LHM', { kind: 'kp', symbol: 'ç' }));
     expect(symbolAt(typed, 'LHM')).toEqual({ kind: 'kp', symbol: 'ç' });
 
     const undone = reducer(typed, { type: 'undo' });
@@ -29,7 +31,7 @@ describe('undo', () => {
 
   it('takes back the destructive gestures editing in place adds', () => {
     const before = start();
-    const cleared = reducer(before, { type: 'clearKey', keyId: 'LHM' });
+    const cleared = reducer(before, bind('LHM', { kind: 'none' }));
     expect(cleared.layout.layers[0].bindings.LHM).toEqual({ kind: 'none' });
     expect(symbolAt(reducer(cleared, { type: 'undo' }), 'LHM')).toEqual(symbolAt(before, 'LHM'));
 
@@ -53,36 +55,23 @@ describe('undo', () => {
   });
 
   it('restores where the user was, not only what the layout held', () => {
-    const typed = reducer(reducer(start(), { type: 'keyClick', keyId: 'LHM' }), {
-      type: 'commitBinding',
-      keyId: 'LHI',
-      binding: { kind: 'kp', symbol: 'ç' },
-    });
+    const typed = reducer(
+      reducer(start(), { type: 'keyClick', keyId: 'LHM' }),
+      bind('LHI', { kind: 'kp', symbol: 'ç' }),
+    );
     expect(reducer(typed, { type: 'undo' }).selected).toBe('LHM');
   });
 
   it('drops the redo stack once a new edit lands', () => {
-    const typed = reducer(start(), {
-      type: 'commitBinding',
-      keyId: 'LHM',
-      binding: { kind: 'kp', symbol: 'ç' },
-    });
+    const typed = reducer(start(), bind('LHM', { kind: 'kp', symbol: 'ç' }));
     const undone = reducer(typed, { type: 'undo' });
     expect(undone.future).toHaveLength(1);
-    const elsewhere = reducer(undone, {
-      type: 'commitBinding',
-      keyId: 'LHI',
-      binding: { kind: 'kp', symbol: 'ã' },
-    });
+    const elsewhere = reducer(undone, bind('LHI', { kind: 'kp', symbol: 'ã' }));
     expect(elsewhere.future).toHaveLength(0);
   });
 
   it('calls the layout unsaved exactly when it differs from the one saved', () => {
-    const typed = reducer(start(), {
-      type: 'commitBinding',
-      keyId: 'LHM',
-      binding: { kind: 'kp', symbol: 'ç' },
-    });
+    const typed = reducer(start(), bind('LHM', { kind: 'kp', symbol: 'ç' }));
     expect(typed.dirty).toBe(true);
 
     // Saving is nothing to undo.
@@ -98,16 +87,8 @@ describe('undo', () => {
   });
 
   it('keeps an edit made while a save was on its way unsaved', () => {
-    const typed = reducer(start(), {
-      type: 'commitBinding',
-      keyId: 'LHM',
-      binding: { kind: 'kp', symbol: 'ç' },
-    });
-    const meanwhile = reducer(typed, {
-      type: 'commitBinding',
-      keyId: 'LHI',
-      binding: { kind: 'kp', symbol: 'ã' },
-    });
+    const typed = reducer(start(), bind('LHM', { kind: 'kp', symbol: 'ç' }));
+    const meanwhile = reducer(typed, bind('LHI', { kind: 'kp', symbol: 'ã' }));
     // The save that lands is of the layout before the second edit.
     const landed = reducer(meanwhile, { type: 'saved', layout: typed.layout });
     expect(landed.dirty).toBe(true);
@@ -117,12 +98,24 @@ describe('undo', () => {
   it('keeps the history bounded', () => {
     let state = start();
     for (let i = 0; i < 60; i++) {
-      state = reducer(state, {
-        type: 'commitBinding',
-        keyId: 'LHM',
-        binding: { kind: 'kp', symbol: String(i) },
-      });
+      state = reducer(state, bind('LHM', { kind: 'kp', symbol: String(i) }));
     }
     expect(state.past).toHaveLength(50);
+  });
+
+  it('records nothing for an edit that is refused, and says why', () => {
+    const before = start();
+    const refused = reducer(before, bind('LHM', { kind: 'mo', layer: 'nowhere' }));
+    expect(refused.layout).toBe(before.layout);
+    expect(refused.past).toHaveLength(0);
+    expect(refused.dirty).toBe(false);
+    expect(refused.error).toMatch(/nowhere/);
+    expect(refused.lastEdit).toMatchObject({ status: 'refused' });
+  });
+
+  it('forgets the last edit on undo, so nothing reads it as just made', () => {
+    const typed = reducer(start(), bind('LHM', { kind: 'kp', symbol: 'ç' }));
+    expect(typed.lastEdit).toMatchObject({ status: 'landed', edit: { kind: 'bind' } });
+    expect(reducer(typed, { type: 'undo' }).lastEdit).toBeNull();
   });
 });

@@ -291,6 +291,21 @@ describe('importing', () => {
     expect(report.layers[1]).toEqual({ name: 'Nav', keys: 30, read: 30, kept: [] });
   });
 
+  // An id is never made up at random, so importing the same file twice gives the same layout.
+  it('gives each layer an unused id, and one whose name has nothing to spell it `layer`', () => {
+    const { layout } = importKeymapDrawer(doc, {
+      name: 'Hummingbird',
+      layers: [
+        { source: 'Def', name: 'Base' },
+        { source: 'Nav', name: '数字' },
+        { source: 'Sym', name: '記号' },
+      ],
+      board,
+    });
+    expect(layout.layers.map((l) => l.id)).toEqual(['base', 'layer', 'layer-2']);
+    expect(() => compileLayout(layout)).not.toThrow();
+  });
+
   it('takes the combos on the layers imported, and says which it left', () => {
     const { layout, report } = importKeymapDrawer(doc, {
       name: 'Hummingbird',

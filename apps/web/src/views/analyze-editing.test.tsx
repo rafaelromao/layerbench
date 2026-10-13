@@ -3,6 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { AnalysisClient, AnalyzeRequest } from '../engine/protocol.js';
+import { toast } from '../state/toasts.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { openSettings, renderRoute, savedInLink, testClient } from '../test/render.js';
 import { setPointerKind, setViewportWidth } from '../test/setup.js';
@@ -317,22 +318,29 @@ describe('Edit', () => {
     expect(await screen.findByRole('tab', { name: 'Extra' })).toBeInTheDocument();
     expect(screen.getByLabelText('Name of layer nav-copy')).toHaveValue('Extra');
 
+    const info = vi.spyOn(toast, 'info');
     await user.click(screen.getByRole('button', { name: 'Remove Extra' }));
     await waitFor(() => expect(screen.queryByRole('tab', { name: 'Extra' })).toBeNull());
+    expect(await screen.findByText('Removed Extra — Undo brings it back')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Undo' }));
     expect(await screen.findByRole('tab', { name: 'Extra' })).toBeInTheDocument();
-  });
+    expect(screen.getByText('Undone')).toBeInTheDocument();
+    // Undo and Redo are not edits: they say what they did, and the removal is not told again.
+    await user.click(screen.getByRole('button', { name: 'Redo' }));
+    await waitFor(() => expect(screen.queryByRole('tab', { name: 'Extra' })).toBeNull());
+    expect(screen.getByText('Redone')).toBeInTheDocument();
+    expect(info.mock.calls.map(([text]) => text)).toEqual(['Removed Extra — Undo brings it back']);
+    info.mockRestore();
 
-  it('will not remove a layer a key still reaches, and says which key', async () => {
-    const user = userEvent.setup();
-    await openMagicRomak();
-
+    // A layer a key still reaches stays, and the editor says which key, once, with nothing to undo.
     await user.click(screen.getByRole('button', { name: 'Remove Numbers' }));
-    expect(
-      await screen.findByText(/Numbers is still reached from Alpha 1 L0\b/),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /^Numbers is still reached from Base \w+/,
+    );
+    expect(screen.getAllByText(/^Numbers is still reached from/)).toHaveLength(1);
     expect(screen.getByRole('tab', { name: 'Numbers' })).toBeInTheDocument();
-  });
+    expect(screen.queryByText('Removed Numbers — Undo brings it back')).toBeNull();
+  }, 60_000);
 
   it("shows Magic Romak's special features and lets one be turned off", async () => {
     const user = userEvent.setup();
@@ -467,6 +475,8 @@ describe('Edit', () => {
 
     await user.keyboard('{Delete}');
     expect(await screen.findByRole('button', { name: 'Key LHM: empty' })).toBeInTheDocument();
+    // Said once it has landed, since the key's new legend is not announced on its own.
+    expect(screen.getByText('LHM does nothing')).toBeInTheDocument();
 
     // A second Escape, from the key, puts the inspector away.
     await user.keyboard('{Escape}');

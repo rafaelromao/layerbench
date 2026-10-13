@@ -24,8 +24,6 @@ export interface KeyInspectorProps {
   send: Dispatch<EditAction>;
   /** Hand keyboard focus back to a key on the board. */
   focusKey: (keyId: string) => void;
-  /** Say what happened, for a screen reader: a changed key legend is not announced on its own. */
-  announce: (message: string) => void;
   /** What the key adds to the analysis, shown under its name, before the controls. */
   stats?: ReactNode;
 }
@@ -39,14 +37,7 @@ export function KeyInspector(props: KeyInspectorProps) {
   const { state } = props;
   // Several keys: what can be done to them together, rather than the editor of one.
   if (state.selected !== null && state.also.length > 0) {
-    return (
-      <SelectionInspector
-        state={state}
-        send={props.send}
-        announce={props.announce}
-        focusKey={props.focusKey}
-      />
-    );
+    return <SelectionInspector state={state} send={props.send} focusKey={props.focusKey} />;
   }
   if (state.selected === null || !state.compiled.keyIndex.has(state.selected)) {
     return (
@@ -78,14 +69,7 @@ export function KeyInspector(props: KeyInspectorProps) {
 /** How many reusable bindings are shown before the rest are asked for. */
 const FIRST_CHIPS = 10;
 
-function Inspector({
-  state,
-  send,
-  focusKey,
-  announce,
-  keyId,
-  stats,
-}: KeyInspectorProps & { keyId: string }) {
+function Inspector({ state, send, focusKey, keyId, stats }: KeyInspectorProps & { keyId: string }) {
   const { compiled, layout, layer } = state;
   const activeLayer = compiled.layers[layer];
   const pos = compiled.keyIndex.get(keyId) as number;
@@ -115,7 +99,8 @@ function Inspector({
       compiled,
       behaviours,
       ownBehaviours: layout.behaviors ?? {},
-      setBehaviour: (name, binding) => send({ type: 'setBehavior', name, binding }),
+      setBehaviour: (name, binding) =>
+        send({ type: 'edit', edit: { kind: 'setBehavior', name, binding } }),
       text,
     }),
     [compiled, behaviours, layout.behaviors, send, text],
@@ -131,10 +116,22 @@ function Inspector({
   }, [compiled, layer, pos]);
 
   const commit = (binding: Binding) => {
-    send({ type: 'commitBinding', keyId, binding });
-    announce(`${keyId} set to ${legend(compiled, binding).tap || 'nothing'}`);
+    send({
+      type: 'edit',
+      edit: { kind: 'bind', layer: activeLayer.id, keys: [keyId], binding },
+      say: `${keyId} set to ${legend(compiled, binding).tap || 'nothing'}`,
+    });
   };
-  const setFeatures = (features: LayoutFeatures) => send({ type: 'setFeatures', features });
+  const setFeatures = (features: LayoutFeatures, say?: string) =>
+    send({ type: 'edit', edit: { kind: 'setFeatures', features }, say });
+  // A cleared key does nothing: it does not fall back to the layer's default, which above the base
+  // would let the key below show through.
+  const clear = () =>
+    send({
+      type: 'edit',
+      edit: { kind: 'bind', layer: activeLayer.id, keys: [keyId], binding: { kind: 'none' } },
+      say: `${keyId} cleared`,
+    });
   const otherLayers = compiled.layers.filter((l) => l.idx !== layer);
   const chips = allChips ? used : used.slice(0, FIRST_CHIPS);
 
@@ -242,10 +239,7 @@ function Inspector({
               ctx={text}
               focusRequest={state.focusRequest}
               onCommit={commit}
-              onClear={() => {
-                send({ type: 'clearKey', keyId });
-                announce(`${keyId} cleared`);
-              }}
+              onClear={clear}
               onDone={() => focusKey(keyId)}
             />
           </>
@@ -275,12 +269,16 @@ function Inspector({
                 const layerId = e.target.value;
                 if (!layerId) return;
                 send({
-                  type: 'dropKey',
-                  from: keyId,
-                  to: { kind: 'layer', layerId },
-                  mode: 'swap',
+                  type: 'edit',
+                  edit: {
+                    kind: 'send',
+                    layer: activeLayer.id,
+                    toLayer: layerId,
+                    keys: [keyId],
+                    mode: 'move',
+                  },
+                  say: `${keyId} sent to ${layerId}`,
                 });
-                announce(`${keyId} sent to ${layerId}`);
               }}
             >
               <option value="">Send to layer…</option>
@@ -296,8 +294,10 @@ function Inspector({
               type="button"
               className="btn btn-xs btn-ghost text-error"
               onClick={() => {
-                setFeatures(withoutFeatureAt(layout, owner, activeLayer.id));
-                announce(`${featureTitle(owner)} removed from ${keyId}`);
+                setFeatures(
+                  withoutFeatureAt(layout, owner, activeLayer.id),
+                  `${featureTitle(owner)} removed from ${keyId}`,
+                );
               }}
             >
               Remove {featureTitle(owner)} from this key
@@ -307,10 +307,7 @@ function Inspector({
               type="button"
               className="btn btn-xs btn-ghost text-error"
               disabled={authored === undefined}
-              onClick={() => {
-                send({ type: 'clearKey', keyId });
-                announce(`${keyId} cleared`);
-              }}
+              onClick={clear}
             >
               Clear
             </button>

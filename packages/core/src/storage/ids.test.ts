@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { freeId, idForName, isDocumentId, slug } from './ids.js';
+import { freeId, idForName, isDocumentId, slug, unusedId } from './ids.js';
 
 describe('document ids', () => {
   it('makes an id of a name: lowercase ASCII words joined by dashes', () => {
@@ -66,5 +66,19 @@ describe('the id of a renamed document', () => {
   it('replaces an id that could not have been made here', () => {
     expect(idForName('Qwerty', '../../../user', taken)).toBe('qwerty-3');
     expect(idForName('Ρωμαϊκό', '../../../user', taken)).toMatch(/^item-[A-Za-z0-9_-]+$/);
+  });
+});
+
+describe('an unused id', () => {
+  it('is the base while nothing has it, then the base numbered from 2', () => {
+    expect(unusedId('nav', new Set())).toBe('nav');
+    expect(unusedId('nav', new Set(['nav']))).toBe('nav-2');
+    expect(unusedId('nav', new Set(['nav', 'nav-2']))).toBe('nav-3');
+  });
+
+  // Numbering by how many there are lands on a number already in use once one has gone.
+  it('skips every number in use, not just the count', () => {
+    expect(unusedId('nav', new Set(['nav', 'sym', 'nav-3', 'nav-2']))).toBe('nav-4');
+    expect(unusedId('lhm-lhi', new Set(['lhm-lhi', 'lhm-lhi-3']))).toBe('lhm-lhi-2');
   });
 });

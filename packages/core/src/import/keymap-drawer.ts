@@ -8,7 +8,7 @@ import type { GeometryFamily, GeometryKey, Hand, Row } from '../geometry/types.j
 import { parseKeycode, translateKeycode } from '../host/locale.js';
 import { BADGE } from '../layout/labels.js';
 import type { Binding, ComboDef, GeometryRef, LayerDef, Layout, Mod } from '../layout/types.js';
-import { slug } from '../storage/ids.js';
+import { slug, slugWords, unusedId } from '../storage/ids.js';
 import { parseYaml } from './yaml.js';
 
 /**
@@ -975,9 +975,7 @@ export function importKeymapDrawer(
   const notes: string[] = [];
   const taken = new Set<string>();
   const ids = opts.layers.map((l) => {
-    const base = slug(l.name) || 'layer';
-    let id = base;
-    for (let n = 2; taken.has(id); n++) id = `${base}-${n}`;
+    const id = unusedId(slugWords(l.name) || 'layer', taken);
     taken.add(id);
     return id;
   });
@@ -1074,8 +1072,7 @@ export function importKeymapDrawer(
       continue;
     }
     const b = reading.binding;
-    let id = slug(keys.join('-'));
-    for (let n = 2; comboIds.has(id); n++) id = `${slug(keys.join('-'))}-${n}`;
+    const id = unusedId(slug(keys.join('-')), comboIds);
     comboIds.add(id);
     combos.push({
       id,

@@ -1,3 +1,4 @@
+import { unusedId } from '../storage/ids.js';
 import { referencedLayers } from './compile.js';
 import type { Binding, Layout } from './types.js';
 
@@ -103,9 +104,7 @@ export function duplicateLayer(
 ): { layout: Layout; id: string } | null {
   const layer = layout.layers[layerIdx];
   if (!layer) return null;
-  const taken = new Set(layout.layers.map((l) => l.id));
-  let id = `${layer.id}-copy`;
-  for (let n = 2; taken.has(id); n++) id = `${layer.id}-copy-${n}`;
+  const id = unusedId(`${layer.id}-copy`, new Set(layout.layers.map((l) => l.id)));
   const bindings: Record<string, Binding> =
     layerIdx === 0 && layer.bindings['*'] === undefined
       ? { '*': { kind: 'none' }, ...layer.bindings }
