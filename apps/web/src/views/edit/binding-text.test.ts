@@ -86,6 +86,14 @@ describe('binding text', () => {
 
   it('carries a tag, which adaptive branches match on', () => {
     expect(build('&kp ç tag:cedilla')).toMatchObject({ kind: 'kp', symbol: 'ç', tag: 'cedilla' });
+    // A layer tap's tag is its tap's, read back as the text line writes it.
+    const layerTap = build('&lt alpha2 a tag:a2');
+    expect(layerTap).toEqual({
+      kind: 'lt',
+      layer: 'alpha2',
+      tap: { kind: 'kp', symbol: 'a', tag: 'a2' },
+    });
+    expect(bindingText(compiled, layerTap)).toEqual({ text: '&lt alpha2 a tag:a2', exact: true });
     expect(build('&macro ão then alpha2 tag:a2')).toMatchObject({
       kind: 'macro',
       symbols: 'ão',

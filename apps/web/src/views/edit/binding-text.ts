@@ -223,11 +223,12 @@ export function parseBindingText(text: string, ctx: BindingTextContext): ParseRe
       const tap = tail.join(' ');
       if (tap === '') return err('`&lt` needs a layer and a tap, for example `&lt num a`');
       const press = [...tap].length <= 1 ? keyPress(tap) : keycodePress(tap, ctx);
-      // What shift types is not a layer tap's to carry: its text could not say it.
+      // What shift types is not a layer tap's to carry: its text could not say it. Its tag is the
+      // tap's, as the text writes it.
       return ok({
         kind: 'lt',
         layer,
-        tap: keyPress(press.symbol ?? '', { keycode: press.keycode }),
+        tap: keyPress(press.symbol ?? '', { keycode: press.keycode, tag }),
       });
     }
     case 'sk': {
