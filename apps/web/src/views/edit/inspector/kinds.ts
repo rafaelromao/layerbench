@@ -2,10 +2,9 @@ import type { Binding } from '@layerbench/core';
 
 /**
  * The kinds of key the inspector offers, as a reader thinks of keys rather than as the model stores
- * them.
- * One "Layer" kind stands for five bindings (momentary, one-shot, toggle, switch, auto) that differ
- * only in how the layer comes on, so choosing that is a second, smaller step; the same goes for a
- * modifier that is held or one-shot.
+ * them. One "Layer" kind stands for five bindings (momentary, one-shot, toggle, to layer, auto) that
+ * differ only in how the layer comes on, so choosing that is a second, smaller step; the same goes
+ * for a modifier that is held or one-shot.
  */
 export type KindOfKey =
   | 'symbol'

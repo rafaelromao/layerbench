@@ -215,6 +215,23 @@ describe('the parts of a bigger key, and lists of them', () => {
     expect(held.set.term('soon')).toBe(layerTap);
   });
 
+  it('switches a macro inside a part to steps even with nothing in it yet', () => {
+    // A saved layout writes a macro with no text and one with no steps alike; the key holding it
+    // still changes, as the part did.
+    const bare: Binding = { kind: 'macro' };
+    const layerTap: Binding = { kind: 'lt', layer: 'alpha2', tap: bare };
+    const outer = fieldsOf('taphold', layerTap);
+    const held = outer.set.tap(fieldsOf('macro', outer.view.tap).set.form('steps'));
+    expect(held).toEqual({ kind: 'lt', layer: 'alpha2', tap: { kind: 'macro', steps: [] } });
+    const branch: Binding = { kind: 'adaptive', triggers: [{ afterAny: ['a'], binding: bare }] };
+    const then = fieldsOf('adaptive', branch).set.branches.at(0);
+    const stepped = then.then(fieldsOf('macro', bare).set.form('steps'));
+    expect(stepped).toEqual({
+      kind: 'adaptive',
+      triggers: [{ afterAny: ['a'], binding: { kind: 'macro', steps: [] } }],
+    });
+  });
+
   it('carries a change made inside a part up through the key it belongs to', () => {
     const layerTap: Binding = { kind: 'lt', layer: 'alpha2', tap: adaptiveKey };
     const outer = fieldsOf('taphold', layerTap);
@@ -445,6 +462,18 @@ describe('a macro, written as text or as steps', () => {
     expect(fieldsOf('macro', text).set.form('steps')).toEqual(apart);
   });
 
+  it('gives a macro back for rows that make the same presses, however it was written', () => {
+    const both: Extract<Binding, { kind: 'macro' }> = {
+      kind: 'macro',
+      steps: [toAlpha2],
+      then: [toAlpha2],
+    };
+    const rows = macroRows(both);
+    const set = fieldsOf('macro', both).set;
+    expect(set.rows(rows)).toBe(both);
+    expect(set.rows([rows[1], rows[0]])).toBe(both);
+  });
+
   it('shows what a macro runs after its steps as rows of its own', () => {
     const both: Extract<Binding, { kind: 'macro' }> = {
       kind: 'macro',
@@ -488,17 +517,31 @@ function macrosIn(layout: Layout): Binding[] {
   return found;
 }
 
-/** Every key a layout binds, once for each distinct binding. */
+/**
+ * Every binding a layout holds, on its keys, its combos and its behaviours, once each, with a key to
+ * put it on: its own, or the first key of the base layer for a combo's or a behaviour's.
+ */
 function keysOf(layout: Layout): { layer: string; key: string; binding: Binding }[] {
+  const base = layout.layers[0];
+  const first = Object.keys(base.bindings).find((k) => k !== '*') ?? '';
+  const all = [
+    ...layout.layers.flatMap((layer) =>
+      Object.entries(layer.bindings)
+        .filter(([key]) => key !== '*')
+        .map(([key, binding]) => ({ layer: layer.id, key, binding })),
+    ),
+    ...(layout.combos ?? []).map((c) => ({ layer: base.id, key: first, binding: c.binding })),
+    ...Object.values(layout.behaviors ?? {}).map((binding) => ({
+      layer: base.id,
+      key: first,
+      binding,
+    })),
+  ];
   const seen = new Set<string>();
-  const out: { layer: string; key: string; binding: Binding }[] = [];
-  for (const layer of layout.layers) {
-    for (const [key, binding] of Object.entries(layer.bindings)) {
-      const written = stableStringify(bindingToJson(binding));
-      if (key === '*' || seen.has(written)) continue;
-      seen.add(written);
-      out.push({ layer: layer.id, key, binding });
-    }
-  }
-  return out;
+  return all.filter(({ binding }) => {
+    const written = stableStringify(bindingToJson(binding));
+    if (seen.has(written)) return false;
+    seen.add(written);
+    return true;
+  });
 }

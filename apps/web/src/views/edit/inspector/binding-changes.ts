@@ -38,7 +38,7 @@ export type RowKind = (typeof ROW_KINDS)[number];
 /**
  * One row of a macro's steps: text to type, a layer or a modifier to arm for the next key, a
  * behaviour to run. A step no row can hold whole is a fixed row, kept as it is and only moved or
- * removed, so a macro read into rows and written back is the macro it was. Rows are reordered and
+ * removed, so a macro read into rows and written back does what it did. Rows are reordered and
  * can be alike, so each carries an identity of its own.
  */
 export type MacroRow = { id: string } & (
@@ -223,6 +223,19 @@ function change<V>(b: Binding, make: (value: V) => Binding): Change<V> {
   return (value) => same(b, make(value));
 }
 
+/**
+ * A part's change. A part's own changes give the part back when they change nothing, so the key is
+ * given back for the very part it holds, and anything else is a change: even one a saved layout
+ * would write alike, as a macro in the part switched to steps with none yet.
+ */
+function inPart(
+  b: Binding,
+  current: Binding | undefined,
+  make: (next: Binding) => Binding,
+): Change<Binding> {
+  return (next) => (next === current ? b : make(next));
+}
+
 /** A text field's change. Committing what the field already shows changes nothing. */
 function field(b: Binding, shown: string, make: (text: string) => Binding): Change<string> {
   return (text) => (text === shown ? b : same(b, make(text)));
@@ -330,8 +343,8 @@ const readers: { [K in KindOfKey]: Reader<K> } = {
     return {
       view,
       set: {
-        tap: change(b, (tap: Binding) => tapHold(b, tap, hold, flavor, term)),
-        hold: change(b, (next: Binding) => tapHold(b, b.tap, next, flavor, term)),
+        tap: inPart(b, b.tap, (tap) => tapHold(b, tap, hold, flavor, term)),
+        hold: inPart(b, hold, (next) => tapHold(b, b.tap, next, flavor, term)),
         flavor: change(b, (f: string) => tapHold(b, b.tap, hold, f || undefined, term)),
         term: field(b, view.term, (text) => tapHold(b, b.tap, hold, flavor, milliseconds(text))),
       },
@@ -365,7 +378,12 @@ const readers: { [K in KindOfKey]: Reader<K> } = {
           return out;
         }),
         tag: field(b, view.tag, (v) => withOptional(b, 'tag', v)),
-        rows: change(b, (rows: MacroRow[]) => withRows(b, rows)),
+        // Rows read what a macro runs after its steps as steps too, so rows that make the same
+        // presses are the macro as it was, however it was written.
+        rows: (rows: MacroRow[]) => {
+          const next = withRows(b, rows);
+          return presses(next) === presses(b) && next.tag === b.tag ? b : next;
+        },
       },
     };
   },
@@ -373,7 +391,7 @@ const readers: { [K in KindOfKey]: Reader<K> } = {
     const taps = b.bindings;
     const put = (bindings: Binding[]): Binding => ({ ...b, bindings });
     const tap = (i: number) =>
-      change(b, (next: Binding) =>
+      inPart(b, taps[i], (next) =>
         i < taps.length ? put(taps.map((old, j) => (j === i ? next : old))) : b,
       );
     // A tap dance keeps its one tap: with none it would do nothing at all.
@@ -404,10 +422,10 @@ const readers: { [K in KindOfKey]: Reader<K> } = {
           // A layer morph on no layer at all would never morph; the last one stays.
           return layers.length > 0 ? { ...b, layers } : b;
         }),
-        plain: change(b, (next: Binding) =>
+        plain: inPart(b, plain, (next) =>
           b.kind === 'mod_morph' ? { ...b, default: next } : { ...b, inactive: next },
         ),
-        becomes: change(b, (next: Binding) =>
+        becomes: inPart(b, becomes, (next) =>
           b.kind === 'mod_morph' ? { ...b, morphed: next } : { ...b, active: next },
         ),
       },
@@ -520,13 +538,13 @@ function adaptive(b: Of<'adaptive'>): Pick<AdaptiveShape, 'view' | 'set'> {
         }
         return replace(next);
       }),
-      then: change(b, (binding: Binding) => replace({ ...t, binding })),
+      then: inPart(b, t?.binding, (binding) => replace({ ...t, binding })),
     };
   };
   return {
     view: { default: b.default, branches, strict: b.strictModifiers ?? false },
     set: {
-      default: change(b, (d: Binding) => ({ ...b, default: d })),
+      default: inPart(b, b.default, (d) => ({ ...b, default: d })),
       branches: list(b, triggers, put, () => ({ afterAny: [], binding: emptySymbol() }), branch),
       strict: change(b, (on: boolean) => {
         const out = { ...b };
@@ -696,8 +714,14 @@ export function freshRow(kind: RowKind, ctx: BindingTextContext, id = rowId()): 
   }
 }
 
+/** What a macro does, press by press, however it is written. */
+function presses(m: Of<'macro'>): string {
+  const typed = m.steps ?? characters(m.symbols ?? '').map(press);
+  return [...typed, ...(m.then ?? [])].map(written).join('\n');
+}
+
 /** The macro its rows make, all of it steps. With no rows left it types nothing, written as text. */
-function withRows(b: Of<'macro'>, rows: MacroRow[]): Binding {
+function withRows(b: Of<'macro'>, rows: MacroRow[]): Of<'macro'> {
   return rows.length > 0
     ? { kind: 'macro', steps: rows.flatMap(stepsOf), ...tagOf(b) }
     : { kind: 'macro', symbols: '', ...tagOf(b) };
