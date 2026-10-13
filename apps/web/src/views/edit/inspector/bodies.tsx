@@ -10,13 +10,12 @@ import { useRef, useState } from 'react';
 import { useDismiss } from '../../../components/use-dismiss.js';
 import { useMediaQuery, WIDE } from '../../../components/use-media-query.js';
 import { type BindingTextContext, parseBindingText } from '../binding-text.js';
+import { keyFields } from './binding-changes.js';
 import { LayerChips, ModChips, Note, Row, Segment, TextField, words } from './controls.js';
 import {
-  convert,
   type KindInfo,
   type KindOfKey,
   kindInfo,
-  kindOf,
   MORE_KINDS,
   PART_KINDS,
   PRIMARY_KINDS,
@@ -74,13 +73,13 @@ export function BindingEditor({
   value: Binding | undefined;
   onChange: (b: Binding) => void;
 }) {
-  const kind = kindOf(value);
+  const fields = keyFields(value, scope.text);
   return (
     <div className="space-y-3">
       <KindTiles
-        kind={kind}
+        kind={fields.kind}
         canRefer={scope.behaviours.length > 0}
-        onPick={(k) => onChange(convert(scope.compiled, value, k, scope.behaviours))}
+        onPick={(k) => onChange(fields.set.kind(k))}
       />
       <KindBody scope={scope} value={value} onChange={onChange} name="" depth={0} />
     </div>
@@ -183,7 +182,8 @@ export function PartEditor({
   depth: number;
   kinds?: readonly KindOfKey[];
 }) {
-  const kind = kindOf(value);
+  const fields = keyFields(value, scope.text);
+  const kind = fields.kind;
   const prefix = name ?? label;
   const options = kinds.includes(kind) ? kinds : [...kinds, kind];
   return (
@@ -194,9 +194,7 @@ export function PartEditor({
           aria-label={`${prefix} kind`}
           className="select select-xs select-bordered w-auto"
           value={kind}
-          onChange={(e) =>
-            onChange(convert(scope.compiled, value, e.target.value as KindOfKey, scope.behaviours))
-          }
+          onChange={(e) => onChange(fields.set.kind(e.target.value as KindOfKey))}
         >
           {options.map((k) => (
             <option key={k} value={k}>
@@ -520,16 +518,14 @@ function TapHoldBody({ scope, binding, onChange, name, depth }: BodyProps<Of<'lt
 
 // ---------------------------------------------------------------------------- repeat
 
-function RepeatBody({ onChange }: BodyProps<Of<'key_repeat'>>) {
+function RepeatBody({ scope, binding, onChange }: BodyProps<Of<'key_repeat'>>) {
   return (
     <div className="space-y-1">
       <Note>Types the previous key again.</Note>
       <button
         type="button"
         className="btn btn-xs"
-        onClick={() =>
-          onChange({ kind: 'adaptive', default: { kind: 'key_repeat' }, triggers: [] })
-        }
+        onClick={() => onChange(keyFields(binding, scope.text).set.kind('altrepeat'))}
       >
         Make it an alt repeat
       </button>
