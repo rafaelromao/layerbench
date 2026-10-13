@@ -17,7 +17,7 @@ import { toast } from '../../state/toasts.js';
 import { bindingFromFields } from './binding-form.js';
 import { type BindingTextContext, parseBindingText } from './binding-text.js';
 import { Segment, TextField } from './inspector/controls.js';
-import type { EditAction, EditState } from './reducer.js';
+import { type EditAction, type EditState, shownLayer } from './reducer.js';
 
 type Send = Dispatch<EditAction>;
 
@@ -68,7 +68,8 @@ function FeatureRow({
  */
 export function FeaturesPanel({ state, send }: PanelProps) {
   const f: LayoutFeatures = state.layout.features ?? {};
-  const set = (next: LayoutFeatures) => send({ type: 'setFeatures', features: next });
+  const set = (next: LayoutFeatures) =>
+    send({ type: 'edit', edit: { kind: 'setFeatures', features: next } });
   const enabled = (v: { enabled?: boolean } | undefined) => v !== undefined && v.enabled !== false;
 
   return (
@@ -217,7 +218,10 @@ export function LayersPanel({ state, send }: PanelProps) {
               e.preventDefault();
               const from = Number(e.dataTransfer.getData('text/plain'));
               setDragging(null);
-              if (Number.isInteger(from)) send({ type: 'moveLayer', from, to: i });
+              const moved = layers[from]?.id;
+              if (Number.isInteger(from) && moved) {
+                send({ type: 'edit', edit: { kind: 'moveLayer', layer: moved, to: i } });
+              }
             }}
             className={`lb-layer-row rounded px-1 border border-transparent ${
               i > 0 ? 'hover:border-base-300' : ''
@@ -232,7 +236,9 @@ export function LayersPanel({ state, send }: PanelProps) {
                 value={layer.name ?? layer.id}
                 className="input-xs w-full"
                 mono={false}
-                onCommit={(name) => send({ type: 'renameLayer', id: layer.id, name })}
+                onCommit={(name) =>
+                  send({ type: 'edit', edit: { kind: 'renameLayer', layer: layer.id, name } })
+                }
               />
               <div className="lb-layer-meta">
                 <span className="truncate font-mono text-[10px] opacity-60">{layer.id}</span>
@@ -240,7 +246,9 @@ export function LayersPanel({ state, send }: PanelProps) {
                   layerId={layer.id}
                   index={i}
                   value={layer.color}
-                  onChange={(color) => send({ type: 'setLayerColor', id: layer.id, color })}
+                  onChange={(color) =>
+                    send({ type: 'edit', edit: { kind: 'colorLayer', layer: layer.id, color } })
+                  }
                 />
               </div>
             </div>
@@ -255,7 +263,12 @@ export function LayersPanel({ state, send }: PanelProps) {
                     className="btn btn-ghost btn-xs btn-square"
                     aria-label={`Move ${nameOf(i)} up`}
                     disabled={i <= 1}
-                    onClick={() => send({ type: 'moveLayer', from: i, to: i - 1 })}
+                    onClick={() =>
+                      send({
+                        type: 'edit',
+                        edit: { kind: 'moveLayer', layer: layer.id, to: i - 1 },
+                      })
+                    }
                   >
                     ↑
                   </button>
@@ -264,7 +277,12 @@ export function LayersPanel({ state, send }: PanelProps) {
                     className="btn btn-ghost btn-xs btn-square"
                     aria-label={`Move ${nameOf(i)} down`}
                     disabled={i === layers.length - 1}
-                    onClick={() => send({ type: 'moveLayer', from: i, to: i + 1 })}
+                    onClick={() =>
+                      send({
+                        type: 'edit',
+                        edit: { kind: 'moveLayer', layer: layer.id, to: i + 1 },
+                      })
+                    }
                   >
                     ↓
                   </button>
@@ -275,7 +293,9 @@ export function LayersPanel({ state, send }: PanelProps) {
                 className="btn btn-ghost btn-xs btn-square"
                 aria-label={`Duplicate ${nameOf(i)}`}
                 title="Duplicate"
-                onClick={() => send({ type: 'duplicateLayer', id: layer.id })}
+                onClick={() =>
+                  send({ type: 'edit', edit: { kind: 'duplicateLayer', layer: layer.id } })
+                }
               >
                 ⧉
               </button>
@@ -289,7 +309,7 @@ export function LayersPanel({ state, send }: PanelProps) {
                   // A layer still in use is refused with the keys that use it; only a removal
                   // that lands is worth a message.
                   const blocked = layerReachedFrom(state.layout, layer.id).length > 0;
-                  send({ type: 'removeLayer', id: layer.id });
+                  send({ type: 'edit', edit: { kind: 'removeLayer', layer: layer.id } });
                   if (!blocked) toast.info(`Removed ${nameOf(i)} — Undo brings it back`);
                 }}
               >
@@ -304,7 +324,7 @@ export function LayersPanel({ state, send }: PanelProps) {
         className="flex gap-2"
         onSubmit={(e) => {
           e.preventDefault();
-          send({ type: 'addLayer', name: newLayer });
+          send({ type: 'edit', edit: { kind: 'addLayer', name: newLayer } });
           setNewLayer('');
         }}
       >
@@ -355,7 +375,7 @@ export function GeometryPanel({ state, send }: PanelProps) {
           aria-label="Space key"
           className="select select-sm select-bordered"
           value={layout.keys.space}
-          onChange={(e) => send({ type: 'setKeys', space: e.target.value })}
+          onChange={(e) => send({ type: 'edit', edit: { kind: 'setKeys', space: e.target.value } })}
         >
           {compiled.keys.map((k) => (
             <option key={k.id} value={k.id}>
@@ -371,7 +391,9 @@ export function GeometryPanel({ state, send }: PanelProps) {
           aria-label="Shift key"
           className="select select-sm select-bordered"
           value={layout.keys.shift?.key ?? ''}
-          onChange={(e) => send({ type: 'setKeys', shift: e.target.value || null })}
+          onChange={(e) =>
+            send({ type: 'edit', edit: { kind: 'setKeys', shift: e.target.value || null } })
+          }
         >
           <option value="">—</option>
           {compiled.keys.map((k) => (
@@ -388,7 +410,12 @@ export function GeometryPanel({ state, send }: PanelProps) {
           aria-label="Shift kind"
           className="select select-sm select-bordered"
           value={layout.keys.shift?.kind ?? 'sk'}
-          onChange={(e) => send({ type: 'setKeys', shiftKind: e.target.value as 'sk' | 'hold' })}
+          onChange={(e) =>
+            send({
+              type: 'edit',
+              edit: { kind: 'setKeys', shiftKind: e.target.value as 'sk' | 'hold' },
+            })
+          }
         >
           <option value="sk">sticky (one-shot)</option>
           <option value="hold">hold</option>
@@ -402,7 +429,10 @@ export function GeometryPanel({ state, send }: PanelProps) {
           className="select select-sm select-bordered"
           value={layout.repeatPolicy?.doubledLetters ?? 'repeatKey'}
           onChange={(e) =>
-            send({ type: 'setKeys', repeat: e.target.value as 'repeatKey' | 'tapTwice' })
+            send({
+              type: 'edit',
+              edit: { kind: 'setKeys', repeat: e.target.value as 'repeatKey' | 'tapTwice' },
+            })
           }
         >
           <option value="repeatKey">repeat key</option>
@@ -450,8 +480,10 @@ export function CombosPanel({ state, send }: PanelProps) {
             </tr>
           </thead>
           <tbody>
-            {combos.map((c) => (
-              <tr key={c.id}>
+            {combos.map((c, i) => (
+              // By place: a saved layout can hold two combos under one id.
+              // biome-ignore lint/suspicious/noArrayIndexKey: the place is what a row edits
+              <tr key={i}>
                 <td className="font-mono">
                   <button
                     type="button"
@@ -473,7 +505,9 @@ export function CombosPanel({ state, send }: PanelProps) {
                   <button
                     type="button"
                     className={`badge badge-xs ${c.role === 'typing' ? 'badge-primary' : ''}`}
-                    onClick={() => send({ type: 'toggleComboRole', id: c.id as string })}
+                    onClick={() =>
+                      send({ type: 'edit', edit: { kind: 'toggleComboRole', combo: i } })
+                    }
                   >
                     {c.role}
                   </button>
@@ -482,7 +516,7 @@ export function CombosPanel({ state, send }: PanelProps) {
                   <button
                     type="button"
                     className="btn btn-ghost btn-xs"
-                    onClick={() => send({ type: 'removeCombo', id: c.id as string })}
+                    onClick={() => send({ type: 'edit', edit: { kind: 'removeCombo', combo: i } })}
                   >
                     ✕
                   </button>
@@ -510,10 +544,14 @@ export function CombosPanel({ state, send }: PanelProps) {
           }
           setError(null);
           send({
-            type: 'addCombo',
-            keys: chosenKeys,
-            binding: bindingFromFields(binding.fields),
-            role,
+            type: 'edit',
+            edit: {
+              kind: 'addCombo',
+              layer: shownLayer(state),
+              keys: chosenKeys,
+              binding: bindingFromFields(binding.fields),
+              role,
+            },
           });
           setKeys('');
           setOutput('');
@@ -578,7 +616,7 @@ export function BehaviorsPanel({ state, send }: PanelProps) {
       className="space-y-2"
       onSubmit={(e) => {
         e.preventDefault();
-        send({ type: 'behaviorsApply', json: state.behaviorsJson });
+        send({ type: 'edit', edit: { kind: 'replaceBehaviors', json: state.behaviorsJson } });
       }}
     >
       <p className="text-xs opacity-70">
@@ -628,17 +666,14 @@ export function PathsPanel({
     if (from === to || to < 0 || to >= entries.length) return;
     const [moved] = entries.splice(from, 1);
     entries.splice(to, 0, moved);
-    send({ type: 'pathSet', symbol, entries });
+    send({ type: 'edit', edit: { kind: 'setTypingPath', symbol, entries } });
   };
 
   const toggle = (symbol: string, producer: string) => {
-    send({
-      type: 'pathSet',
-      symbol,
-      entries: pathsFor(symbol).map((e) =>
-        e.producer === producer ? { ...e, enabled: !(e.enabled ?? true) } : e,
-      ),
-    });
+    const entries = pathsFor(symbol).map((e) =>
+      e.producer === producer ? { ...e, enabled: !(e.enabled ?? true) } : e,
+    );
+    send({ type: 'edit', edit: { kind: 'setTypingPath', symbol, entries } });
   };
 
   return (
@@ -743,7 +778,7 @@ export function JsonPanel({ state, send }: PanelProps) {
           className="space-y-2"
           onSubmit={(e) => {
             e.preventDefault();
-            send({ type: 'importJson', text });
+            send({ type: 'edit', edit: { kind: 'replaceLayout', json: text } });
           }}
         >
           <textarea

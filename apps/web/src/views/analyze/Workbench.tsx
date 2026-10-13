@@ -54,7 +54,7 @@ import {
   LayersPanel,
   PathsPanel,
 } from '../edit/panels.js';
-import { editReducer, type Panel, selectionOf } from '../edit/reducer.js';
+import { editReducer, type Panel, selectionOf, shownLayer } from '../edit/reducer.js';
 import { initialUndoState, undoable } from '../edit/undo.js';
 import { textLanguage, textName } from '../text-of.js';
 import { useTypedLayout } from '../useLayout.js';
@@ -160,20 +160,23 @@ export function Workbench({
   // A swap changes which key types which symbol, nothing else, so the tables already typed can be
   // re-scored in milliseconds — as long as they are of the layout the swap was made on.
   const [estimate, setEstimate] = useState<{ report: ReportDTO; layout: Layout } | null>(null);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: only a new swap asks for an estimate; a report landing later must not
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a new edit can ask for an estimate; a report landing later must not
   useEffect(() => {
-    const swap = state.lastSwap;
-    if (!swap || !landed || landed.layout !== swap.before) return;
+    const last = state.lastEdit;
+    if (last?.status !== 'landed' || last.edit.kind !== 'swap') return;
+    if (!landed || landed.layout !== last.before) return;
+    const swap = last.edit;
+    const layerIdx = state.compiled.layerIndex.get(swap.layer);
     const posA = state.compiled.keyIndex.get(swap.from);
     const posB = state.compiled.keyIndex.get(swap.to);
-    if (posA === undefined || posB === undefined) return;
+    if (layerIdx === undefined || posA === undefined || posB === undefined) return;
     let cancelled = false;
     const layout = state.layout;
     client
       .relabel({
         baseKey: landed.report.key,
         layout: toCanonicalJson(layout),
-        layerIdx: swap.layerIdx,
+        layerIdx,
         posA,
         posB,
         settings,
@@ -185,7 +188,7 @@ export function Workbench({
     return () => {
       cancelled = true;
     };
-  }, [state.lastSwap]);
+  }, [state.lastEdit]);
 
   const current = landed !== null && landed.layout === state.layout;
   const provisional = !current && estimate !== null && estimate.layout === state.layout;
@@ -487,13 +490,14 @@ export function Workbench({
       stopPlaying();
       // On one of several selected keys, every one of them.
       const keys = selectionOf(state);
-      if (keys.length > 1 && keys.includes(keyId)) {
-        send({ type: 'clearSelection' });
-        setMessage(`${keys.length} keys do nothing`);
-        return;
-      }
-      send({ type: 'clearKey', keyId });
-      setMessage(`${keyId} does nothing`);
+      const cleared = keys.length > 1 && keys.includes(keyId) ? keys : [keyId];
+      send({
+        type: 'edit',
+        edit: { kind: 'bind', layer: shownLayer(state), keys: cleared, binding: { kind: 'none' } },
+      });
+      setMessage(
+        cleared.length > 1 ? `${cleared.length} keys do nothing` : `${keyId} does nothing`,
+      );
       return;
     }
     // Space keeps activating the key like the button it is; everything else typed on a key is
@@ -541,7 +545,7 @@ export function Workbench({
         layout={state.layout}
         dirty={state.dirty}
         saving={session.saving}
-        onMeta={(meta) => send({ type: 'setMeta', ...meta })}
+        onMeta={(meta) => send({ type: 'edit', edit: { kind: 'setMeta', ...meta } })}
         onSave={save}
         // A saved layout is picked as itself, whatever its link carries.
         layoutRef={session.pickedRef}
@@ -597,7 +601,9 @@ export function Workbench({
                           setPlay(null);
                           send({ type: 'selectLayer', layer });
                         }}
-                        onRename={(id, name) => send({ type: 'renameLayer', id, name })}
+                        onRename={(layer, name) =>
+                          send({ type: 'edit', edit: { kind: 'renameLayer', layer, name } })
+                        }
                       />
                     </div>
                     <div className="join shrink-0">

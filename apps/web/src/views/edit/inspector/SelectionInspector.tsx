@@ -25,7 +25,7 @@ export function SelectionInspector({
 
   const toLayer = (mode: 'move' | 'copy') => (layerId: string) => {
     if (!layerId) return;
-    send({ type: 'sendSelection', layerId, mode });
+    send({ type: 'edit', edit: { kind: 'send', from: layer.id, to: layerId, keys, mode } });
     const name = otherLayers.find((l) => l.id === layerId)?.name ?? layerId;
     announce(`${keys.length} keys ${mode === 'copy' ? 'copied' : 'sent'} to ${name}`);
   };
@@ -102,7 +102,10 @@ export function SelectionInspector({
             type="button"
             className="btn btn-xs"
             onClick={() => {
-              send({ type: 'transparentSelection' });
+              send({
+                type: 'edit',
+                edit: { kind: 'bind', layer: layer.id, keys, binding: { kind: 'trans' } },
+              });
               announce(`${keys.length} keys let the layer below show through`);
             }}
           >
@@ -112,7 +115,11 @@ export function SelectionInspector({
             type="button"
             className="btn btn-xs btn-ghost text-error"
             onClick={() => {
-              send({ type: 'clearSelection' });
+              // As a cleared key does: nothing, rather than the key below showing through.
+              send({
+                type: 'edit',
+                edit: { kind: 'bind', layer: layer.id, keys, binding: { kind: 'none' } },
+              });
               announce(`${keys.length} keys do nothing`);
             }}
           >

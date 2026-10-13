@@ -1,6 +1,6 @@
-import { bundledLayout, compileLayout, type Layout } from '@layerbench/core';
+import { type Binding, bundledLayout, compileLayout, type Layout } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
-import { editReducer, selectionOf } from './reducer.js';
+import { type EditAction, editReducer, selectionOf } from './reducer.js';
 import { initialUndoState, type UndoState, undoable } from './undo.js';
 
 const reducer = undoable(editReducer);
@@ -11,7 +11,7 @@ const NAV = qwerty.layers.length;
 /** Qwerty with an empty Nav layer after its base, back on the base layer. */
 function withNav(): UndoState {
   const start = initialUndoState(qwerty, compileLayout(qwerty));
-  const added = reducer(start, { type: 'addLayer', name: 'Nav' });
+  const added = reducer(start, { type: 'edit', edit: { kind: 'addLayer', name: 'Nav' } });
   return reducer(added, { type: 'selectLayer', layer: 0 });
 }
 
@@ -24,6 +24,18 @@ function pick(state: UndoState, ...keys: string[]): UndoState {
 
 const at = (state: UndoState, layer: number, key: string) =>
   state.layout.layers[layer].bindings[key];
+
+/** The keys selected sent to Nav, as the selection's Send to layer does. */
+const send = (mode: 'move' | 'copy'): EditAction => ({
+  type: 'edit',
+  edit: { kind: 'send', from: 'base', to: 'nav', keys: ['LHM', 'LHI'], mode },
+});
+
+/** One binding on every key selected, as the selection's Clear and Make transparent do. */
+const bindAll = (state: UndoState, binding: Binding): EditAction => ({
+  type: 'edit',
+  edit: { kind: 'bind', layer: 'base', keys: selectionOf(state), binding },
+});
 
 describe('several keys selected', () => {
   it('adds a key with a second pick, takes it out with a third, and a plain pick starts over', () => {
@@ -41,7 +53,7 @@ describe('several keys selected', () => {
 
   it('sends them to another layer in one edit, which one Undo takes back', () => {
     const before = pick(withNav(), 'LHM', 'LHI');
-    const sent = reducer(before, { type: 'sendSelection', layerId: 'nav', mode: 'move' });
+    const sent = reducer(before, send('move'));
     // The board follows them, still selected.
     expect(sent.layer).toBe(NAV);
     expect(selectionOf(sent)).toEqual(['LHM', 'LHI']);
@@ -59,7 +71,7 @@ describe('several keys selected', () => {
 
   it('copies them, keeping them where they were', () => {
     const before = pick(withNav(), 'LHM', 'LHI');
-    const copied = reducer(before, { type: 'sendSelection', layerId: 'nav', mode: 'copy' });
+    const copied = reducer(before, send('copy'));
     expect(at(copied, NAV, 'LHM')).toEqual(at(before, 0, 'LHM'));
     expect(at(copied, 0, 'LHM')).toEqual(at(before, 0, 'LHM'));
     expect(at(copied, 0, 'LHI')).toEqual(at(before, 0, 'LHI'));
@@ -67,11 +79,11 @@ describe('several keys selected', () => {
 
   it('makes them do nothing, or lets the layer below show through, all at once', () => {
     const before = pick(withNav(), 'LHM', 'LHI', 'LHR');
-    const cleared = reducer(before, { type: 'clearSelection' });
+    const cleared = reducer(before, bindAll(before, { kind: 'none' }));
     for (const key of ['LHM', 'LHI', 'LHR']) expect(at(cleared, 0, key)).toEqual({ kind: 'none' });
     expect(cleared.past).toHaveLength(before.past.length + 1);
 
-    const shown = reducer(before, { type: 'transparentSelection' });
+    const shown = reducer(before, bindAll(before, { kind: 'trans' }));
     for (const key of ['LHM', 'LHI', 'LHR']) expect(at(shown, 0, key)).toEqual({ kind: 'trans' });
   });
 
@@ -95,5 +107,60 @@ describe('several keys selected', () => {
     expect(at(other, NAV, 'LTP')).toEqual(at(before, 0, 'LTP'));
     expect(at(other, NAV, 'LHM')).toBeUndefined();
     expect(selectionOf(other)).toEqual(['LTP']);
+  });
+});
+
+describe('where the board goes after an edit', () => {
+  const edit = (state: UndoState, e: Extract<EditAction, { type: 'edit' }>['edit']) =>
+    reducer(state, { type: 'edit', edit: e });
+  const shown = (state: UndoState) => state.layout.layers[state.layer].id;
+
+  it('shows a new layer, with nothing selected, and the copy a duplicate makes', () => {
+    const picked = pick(withNav(), 'LHM');
+    const added = edit(picked, { kind: 'addLayer', name: 'Fun' });
+    expect(shown(added)).toBe('fun');
+    expect(selectionOf(added)).toEqual([]);
+    const copied = edit(pick(added, 'LHI'), { kind: 'duplicateLayer', layer: 'nav' });
+    expect(shown(copied)).toBe('nav-copy');
+    expect(selectionOf(copied)).toEqual(['LHI']);
+  });
+
+  it('keeps the layer on screen on screen when layers move or one before it goes', () => {
+    const onFun = reducer(edit(withNav(), { kind: 'addLayer', name: 'Fun' }), {
+      type: 'selectLayer',
+      layer: NAV + 1,
+    });
+    const moved = edit(onFun, { kind: 'moveLayer', layer: 'fun', to: NAV });
+    expect(shown(moved)).toBe('fun');
+    expect(moved.layer).toBe(NAV);
+    const removed = edit(moved, { kind: 'removeLayer', layer: 'nav' });
+    expect(shown(removed)).toBe('fun');
+  });
+
+  it('shows the layer before one removed from under the board', () => {
+    const onNav = reducer(withNav(), { type: 'selectLayer', layer: NAV });
+    const removed = edit(onNav, { kind: 'removeLayer', layer: 'nav' });
+    expect(removed.layer).toBe(NAV - 1);
+  });
+
+  it('ends a swap waiting for its partner, and a combo being picked, once an edit lands', () => {
+    const armed = reducer(pick(withNav(), 'LHM'), { type: 'startSwap' });
+    expect(armed.swapFrom).toBe('LHM');
+    expect(edit(armed, { kind: 'renameLayer', layer: 'nav', name: 'Arrows' }).swapFrom).toBeNull();
+    const picking = reducer(withNav(), { type: 'comboPickStart' });
+    expect(
+      edit(picking, { kind: 'renameLayer', layer: 'nav', name: 'Arrows' }).comboPick,
+    ).toBeNull();
+  });
+
+  it('swaps an armed key with the key clicked next, and selects where it went', () => {
+    const armed = reducer(pick(withNav(), 'LHM'), { type: 'startSwap' });
+    const swapped = reducer(armed, { type: 'keyClick', keyId: 'LHI' });
+    expect(at(swapped, 0, 'LHI')).toEqual(at(armed, 0, 'LHM'));
+    expect(selectionOf(swapped)).toEqual(['LHI']);
+    expect(swapped.lastEdit).toMatchObject({
+      status: 'landed',
+      edit: { kind: 'swap', from: 'LHM', to: 'LHI' },
+    });
   });
 });

@@ -115,7 +115,8 @@ function Inspector({
       compiled,
       behaviours,
       ownBehaviours: layout.behaviors ?? {},
-      setBehaviour: (name, binding) => send({ type: 'setBehavior', name, binding }),
+      setBehaviour: (name, binding) =>
+        send({ type: 'edit', edit: { kind: 'setBehavior', name, binding } }),
       text,
     }),
     [compiled, behaviours, layout.behaviors, send, text],
@@ -131,10 +132,18 @@ function Inspector({
   }, [compiled, layer, pos]);
 
   const commit = (binding: Binding) => {
-    send({ type: 'commitBinding', keyId, binding });
+    send({ type: 'edit', edit: { kind: 'bind', layer: activeLayer.id, keys: [keyId], binding } });
     announce(`${keyId} set to ${legend(compiled, binding).tap || 'nothing'}`);
   };
-  const setFeatures = (features: LayoutFeatures) => send({ type: 'setFeatures', features });
+  const setFeatures = (features: LayoutFeatures) =>
+    send({ type: 'edit', edit: { kind: 'setFeatures', features } });
+  // A cleared key does nothing: it does not fall back to the layer's default, which above the base
+  // would let the key below show through.
+  const clear = () =>
+    send({
+      type: 'edit',
+      edit: { kind: 'bind', layer: activeLayer.id, keys: [keyId], binding: { kind: 'none' } },
+    });
   const otherLayers = compiled.layers.filter((l) => l.idx !== layer);
   const chips = allChips ? used : used.slice(0, FIRST_CHIPS);
 
@@ -243,7 +252,7 @@ function Inspector({
               focusRequest={state.focusRequest}
               onCommit={commit}
               onClear={() => {
-                send({ type: 'clearKey', keyId });
+                clear();
                 announce(`${keyId} cleared`);
               }}
               onDone={() => focusKey(keyId)}
@@ -275,10 +284,14 @@ function Inspector({
                 const layerId = e.target.value;
                 if (!layerId) return;
                 send({
-                  type: 'dropKey',
-                  from: keyId,
-                  to: { kind: 'layer', layerId },
-                  mode: 'swap',
+                  type: 'edit',
+                  edit: {
+                    kind: 'send',
+                    from: activeLayer.id,
+                    to: layerId,
+                    keys: [keyId],
+                    mode: 'move',
+                  },
                 });
                 announce(`${keyId} sent to ${layerId}`);
               }}
@@ -308,7 +321,7 @@ function Inspector({
               className="btn btn-xs btn-ghost text-error"
               disabled={authored === undefined}
               onClick={() => {
-                send({ type: 'clearKey', keyId });
+                clear();
                 announce(`${keyId} cleared`);
               }}
             >
