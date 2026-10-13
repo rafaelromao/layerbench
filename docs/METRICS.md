@@ -145,7 +145,7 @@ Rules are `where` expressions over an n-gram (`all`, `any`, `none` combinators).
 
 Numeric thresholds may reference rule-set globals as `"$global.name"`.
 
-A press's `key_kind` is the kind of key it reaches: past a tap-hold to its tap, past a morph to the arm the modifiers or layers choose, past a tap dance to the tap it ran, and past a layer-tap that is tapped. So an adaptive key on the tap of a tap-hold is `adaptive`, as its legend on the board says, a tap-hold whose tap repeats is `repeat`, and an alt repeat is `adaptive` whichever branch it takes. A key held down that types nothing is `hold`, and a press that types a space is `space`.
+A press's `key_kind` is what the key it reaches counts as: past a tap-hold to its tap, past a morph to the part the modifiers or layers choose, past a tap dance to the tap it ran, and past a layer-tap that is tapped. So an adaptive key on the tap of a tap-hold is `adaptive`, as its legend on the board says, a tap-hold whose tap repeats is `repeat`, and an alt repeat is `adaptive` whichever branch it takes. A key held down that types nothing is `hold`, and a press that types a space is `space`.
 
 Aggregates: `percent_of_ngrams`, `percent_of_keystrokes`, `count`, `per100`, `sum_distance`, `mean_distance`, `per_finger`, `per_hand`, `per_layer`, `per_row`, `per_col`, `weighted_sum`, `ratio`, `histogram`, `top_strings`.
 

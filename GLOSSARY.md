@@ -13,6 +13,11 @@ Every view that shows a layout's numbers analyzes it on its analysis settings, a
 give the same numbers wherever they are used.
 _Avoid_: request, request options, scoring options
 
+**Binding**:
+What a key does on one layer, or a combo does when its keys are pressed together: types a symbol,
+reaches a layer, holds a modifier, or is a bigger key made of parts.
+_Avoid_: action, mapping, keycode
+
 **Draft**:
 A layout's unsaved edits, carried whole in its link after the `#`. The tab that made a draft knows
 which saved layout its edits were made on, so saving it saves that layout; anywhere else it is a
@@ -26,6 +31,12 @@ layout that can still be drawn, or is refused with its reason and leaves the lay
 with nothing to change changes nothing. Undo takes back one edit that landed at a time.
 _Avoid_: action, operation, op, mutation
 
+**Kind of key**:
+A sort of binding as the editor offers it. One kind can stand for several bindings that differ only
+in how they act, as Layer stands for momentary, one-shot, toggle, to-layer and auto. It is not the key
+kind a rule matches, which is what a press counts as in the analysis.
+_Avoid_: binding kind, key type
+
 **Layout session**:
 The layout open in Analyze, from the moment it is opened until another is: which saved layout it is,
 if any, its draft, and the link that carries it. Its own changes to the link never open it again;
@@ -35,6 +46,12 @@ _Avoid_: open layout, editor state
 **Mix**:
 A text made of two corpora, sentence by sentence, each in its share.
 _Avoid_: blend, combined corpus
+
+**Part**:
+A binding inside a bigger key: the tap and the hold of a tap-hold, an adaptive key's default and what
+each of its branches types, a tap dance's binding for each number of taps, a morph's plain and
+changed binding.
+_Avoid_: arm, sub-binding
 
 **Saved layout**:
 A layout kept in the browser or the user's GitHub storage, under an id that follows its name. A link
