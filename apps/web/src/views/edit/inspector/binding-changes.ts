@@ -229,7 +229,7 @@ function field(b: Binding, shown: string, make: (text: string) => Binding): Chan
 }
 
 /** Drop a field entirely rather than store it empty, so the document stays as it was written. */
-function withOptional<B extends Binding>(b: B, key: string, value: string): B {
+function withOptional<B extends Binding>(b: B, key: keyof B & string, value: string): B {
   const out = { ...b } as Record<string, unknown>;
   if (value === '') delete out[key];
   else out[key] = value;
@@ -264,7 +264,7 @@ function list<T, C>(
 }
 
 /** A list field: the words given, or no field at all. */
-function withWords<B extends Binding>(b: B, key: string, text: string): B {
+function withWords<B extends Binding>(b: B, key: keyof B & string, text: string): B {
   const out = { ...b } as Record<string, unknown>;
   if (words(text).length > 0) out[key] = words(text);
   else delete out[key];
@@ -735,29 +735,29 @@ function pressOf(text: string, ctx: BindingTextContext): Partial<Of<'kp'>> {
 
 // ---------------------------------------------------------------------------- kind changes
 
-/** The plain key press a binding amounts to, where it has one: the part worth keeping. */
-function tapPart(b: Binding | undefined): Binding | undefined {
+/** The plain key press a binding amounts to, where it has one: what is worth keeping. */
+function tapOf(b: Binding | undefined): Binding | undefined {
   switch (b?.kind) {
     case 'kp':
     case 'key_repeat':
       return b;
     case 'lt':
     case 'hold_tap':
-      return tapPart(b.tap);
+      return tapOf(b.tap);
     case 'mod_morph':
-      return tapPart(b.default);
+      return tapOf(b.default);
     case 'layer_morph':
-      return tapPart(b.inactive);
+      return tapOf(b.inactive);
     case 'tap_dance':
-      return tapPart(b.bindings[0]);
+      return tapOf(b.bindings[0]);
     case 'adaptive':
-      return tapPart(b.default);
+      return tapOf(b.default);
     default:
       return undefined;
   }
 }
 
-function layerPart(b: Binding | undefined): string | undefined {
+function layerOf(b: Binding | undefined): string | undefined {
   switch (b?.kind) {
     case 'mo':
     case 'sl':
@@ -767,32 +767,32 @@ function layerPart(b: Binding | undefined): string | undefined {
     case 'lt':
       return b.layer;
     case 'hold_tap':
-      return layerPart(b.hold);
+      return layerOf(b.hold);
     default:
       return undefined;
   }
 }
 
-function modPart(b: Binding | undefined): Mod | undefined {
+function modOf(b: Binding | undefined): Mod | undefined {
   switch (b?.kind) {
     case 'sk':
     case 'mod':
       return b.mod;
     case 'hold_tap':
-      return modPart(b.hold);
+      return modOf(b.hold);
     default:
       return undefined;
   }
 }
 
 /** The adaptive key or alt repeat a binding is, or carries as the tap of a tap-hold. */
-function adaptivePart(b: Binding | undefined): Of<'adaptive'> | undefined {
+function adaptiveOf(b: Binding | undefined): Of<'adaptive'> | undefined {
   switch (b?.kind) {
     case 'adaptive':
       return b.ref ? undefined : b;
     case 'lt':
     case 'hold_tap':
-      return adaptivePart(b.tap);
+      return adaptiveOf(b.tap);
     default:
       return undefined;
   }
@@ -806,12 +806,12 @@ const EMPTY_SYMBOL: Binding = { kind: 'kp', symbol: '' };
  * change is a first step, never a loss of what the key already did that the new kind can hold.
  */
 function convert(ctx: BindingTextContext, current: Binding | undefined, to: KindOfKey): Binding {
-  const tapped = tapPart(current);
+  const tapped = tapOf(current);
   const tap = tapped ?? EMPTY_SYMBOL;
-  const layer = layerPart(current) ?? likeliestLayer(ctx);
-  const mod = modPart(current) ?? 'LSHIFT';
+  const layer = layerOf(current) ?? likeliestLayer(ctx);
+  const mod = modOf(current) ?? 'LSHIFT';
   const symbol = tap.kind === 'kp' ? tap : EMPTY_SYMBOL;
-  const adaptive = adaptivePart(current);
+  const adaptive = adaptiveOf(current);
   switch (to) {
     case 'symbol':
       return symbol;
@@ -823,7 +823,7 @@ function convert(ctx: BindingTextContext, current: Binding | undefined, to: Kind
       // An adaptive key, an alt repeat or a repeat key stays the tap, as a symbol does.
       const keptTap = adaptive ?? (current?.kind === 'key_repeat' ? current : symbol);
       // A modifier key keeps its modifier on hold — a home-row mod — and anything else gets a layer.
-      return modPart(current) && !layerPart(current)
+      return modOf(current) && !layerOf(current)
         ? { kind: 'hold_tap', tap: keptTap, hold: { kind: 'mod', mod } }
         : { kind: 'lt', layer, tap: keptTap };
     }

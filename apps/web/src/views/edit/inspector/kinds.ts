@@ -1,7 +1,8 @@
 import type { Binding } from '@layerbench/core';
 
 /**
- * The kinds the inspector offers, as a reader thinks of keys rather than as the model stores them.
+ * The kinds of key the inspector offers, as a reader thinks of keys rather than as the model stores
+ * them.
  * One "Layer" kind stands for five bindings (momentary, one-shot, toggle, switch, auto) that differ
  * only in how the layer comes on, so choosing that is a second, smaller step; the same goes for a
  * modifier that is held or one-shot.
@@ -104,7 +105,7 @@ export function kindInfo(kind: KindOfKey): KindInfo {
   return ALL_KINDS.find((k) => k.kind === kind) ?? IMPORTED;
 }
 
-/** The inspector kind a binding belongs to. */
+/** The kind of key a binding is. */
 export function kindOf(b: Binding | undefined): KindOfKey {
   switch (b?.kind) {
     case undefined:

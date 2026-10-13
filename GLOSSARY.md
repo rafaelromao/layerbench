@@ -34,7 +34,7 @@ _Avoid_: action, operation, op, mutation
 **Kind of key**:
 A sort of binding as the editor offers it. One kind can stand for several bindings that differ only
 in how they act, as Layer stands for momentary, one-shot, toggle, to-layer and auto. It is not the key
-kind a rule matches, which is what a press counts as in the analysis.
+kind a rule matches (`key_kind`), which is what a press counts as in the analysis.
 _Avoid_: binding kind, key type
 
 **Layout session**:
