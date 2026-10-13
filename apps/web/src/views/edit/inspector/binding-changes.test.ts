@@ -175,6 +175,149 @@ describe('what each kind of key shows, and what its controls change', () => {
   });
 });
 
+describe('the parts of a bigger key, and lists of them', () => {
+  const a: Binding = { kind: 'kp', symbol: 'a' };
+  const v: Binding = { kind: 'kp', symbol: 'v' };
+
+  it('keeps a layer tap while its hold is a plain layer key, and makes it a hold-tap for timing', () => {
+    const layerTap: Binding = { kind: 'lt', layer: 'alpha2', tap: a };
+    const held = fieldsOf('taphold', layerTap);
+    expect(held.view.hold).toEqual({ kind: 'mo', layer: 'alpha2' });
+    expect(held.set.hold({ kind: 'mo', layer: 'ccedil' })).toEqual({
+      kind: 'lt',
+      layer: 'ccedil',
+      tap: a,
+    });
+    expect(held.set.hold({ kind: 'mod', mod: 'LCTRL' })).toEqual({
+      kind: 'hold_tap',
+      tap: a,
+      hold: { kind: 'mod', mod: 'LCTRL' },
+    });
+    expect(held.set.flavor('balanced')).toEqual({
+      kind: 'hold_tap',
+      tap: a,
+      hold: { kind: 'mo', layer: 'alpha2' },
+      flavor: 'balanced',
+    });
+    const timed = held.set.term('180');
+    expect(timed).toEqual({
+      kind: 'hold_tap',
+      tap: a,
+      hold: { kind: 'mo', layer: 'alpha2' },
+      tappingTermMs: 180,
+    });
+    // Without its timing it stays a hold-tap: it is never quietly made a layer tap again.
+    expect(fieldsOf('taphold', timed).set.term('')).toEqual({
+      kind: 'hold_tap',
+      tap: a,
+      hold: { kind: 'mo', layer: 'alpha2' },
+    });
+    expect(held.set.term('soon')).toBe(layerTap);
+  });
+
+  it('carries a change made inside a part up through the key it belongs to', () => {
+    const layerTap: Binding = { kind: 'lt', layer: 'alpha2', tap: adaptiveKey };
+    const outer = fieldsOf('taphold', layerTap);
+    const inner = fieldsOf('adaptive', outer.view.tap);
+    expect(outer.set.tap(inner.set.branches.at(0).tags('qu'))).toEqual({
+      kind: 'lt',
+      layer: 'alpha2',
+      tap: { ...adaptiveKey, triggers: [{ afterAny: ['a'], afterTags: ['qu'], binding: v }] },
+    });
+    // Nothing changed inside is nothing changed outside.
+    expect(outer.set.tap(inner.set.branches.at(0).tags(''))).toBe(layerTap);
+  });
+
+  it("reads a branch's symbols and tags, where no symbols with a tag means any symbol", () => {
+    const key = fieldsOf('adaptive', adaptiveKey);
+    expect(key.view.branches).toEqual([{ after: 'a', tags: '', then: v }]);
+    const tagged = key.set.branches.at(0).tags('qu');
+    expect(tagged).toEqual({
+      ...adaptiveKey,
+      triggers: [{ afterAny: ['a'], afterTags: ['qu'], binding: v }],
+    });
+    const anySymbol = fieldsOf('adaptive', tagged).set.branches.at(0).after('');
+    expect(anySymbol).toEqual({ ...adaptiveKey, triggers: [{ afterTags: ['qu'], binding: v }] });
+    // Without a tag, a branch with no symbols is kept as it is written, and never fires.
+    expect(fieldsOf('adaptive', anySymbol).set.branches.at(0).tags('')).toEqual({
+      ...adaptiveKey,
+      triggers: [{ afterAny: [], binding: v }],
+    });
+  });
+
+  it('adds, moves and removes branches, and leaves the key as it was for a move past either end', () => {
+    const second = { afterAny: ['e'], binding: a };
+    const twoBranches: Binding = {
+      kind: 'adaptive',
+      default: { kind: 'kp', symbol: 'h' },
+      triggers: [{ afterAny: ['a'], binding: v }, second],
+    };
+    const branches = fieldsOf('adaptive', twoBranches).set.branches;
+    expect(branches.add()).toMatchObject({
+      triggers: [
+        { afterAny: ['a'] },
+        second,
+        { afterAny: [], binding: { kind: 'kp', symbol: '' } },
+      ],
+    });
+    expect(branches.move(1, 0)).toMatchObject({ triggers: [second, { afterAny: ['a'] }] });
+    expect(branches.move(0, -1)).toBe(twoBranches);
+    expect(branches.move(1, 2)).toBe(twoBranches);
+    expect(branches.remove(0)).toEqual({ ...twoBranches, triggers: [second] });
+  });
+
+  it('holds an adaptive key to keys typed with no modifier, or not', () => {
+    const alt: Binding = { kind: 'adaptive', default: { kind: 'key_repeat' }, triggers: [] };
+    const strict = fieldsOf('altrepeat', alt).set.strict(true);
+    expect(strict).toEqual({ ...alt, strictModifiers: true });
+    expect(fieldsOf('altrepeat', strict).view.strict).toBe(true);
+    expect(fieldsOf('altrepeat', strict).set.strict(false)).toEqual(alt);
+  });
+
+  it('keeps a tap dance to at least one tap', () => {
+    const dance: Binding = { kind: 'tap_dance', bindings: [a] };
+    const taps = fieldsOf('tapdance', dance).set.taps;
+    expect(taps.remove(0)).toBe(dance);
+    const two = taps.add();
+    expect(two).toEqual({ kind: 'tap_dance', bindings: [a, { kind: 'kp', symbol: '' }] });
+    expect(fieldsOf('tapdance', two).set.taps.at(1)(v)).toEqual({
+      kind: 'tap_dance',
+      bindings: [a, v],
+    });
+    expect(fieldsOf('tapdance', two).set.taps.remove(0)).toEqual({
+      kind: 'tap_dance',
+      bindings: [{ kind: 'kp', symbol: '' }],
+    });
+  });
+
+  it('changes a morph with a modifier or on a layer, keeping what it types and its last layer', () => {
+    const comma: Binding = { kind: 'kp', symbol: ',' };
+    const semicolon: Binding = { kind: 'kp', symbol: ';' };
+    const morph: Binding = {
+      kind: 'mod_morph',
+      mods: ['LSHIFT', 'RSHIFT'],
+      default: comma,
+      morphed: semicolon,
+    };
+    const shifted = fieldsOf('morph', morph);
+    expect(shifted.view).toMatchObject({ by: 'mod_morph', family: 'shift', layers: [] });
+    expect(shifted.set.family('ctrl')).toEqual({ ...morph, mods: ['LCTRL', 'RCTRL'] });
+    const onLayer = shifted.set.by('layer_morph');
+    expect(onLayer).toEqual({
+      kind: 'layer_morph',
+      layers: ['alpha2'],
+      inactive: comma,
+      active: semicolon,
+    });
+    const layered = fieldsOf('morph', onLayer);
+    expect(layered.view).toMatchObject({ by: 'layer_morph', family: null, layers: ['alpha2'] });
+    expect(layered.set.toggleLayer('alpha2')).toBe(onLayer);
+    expect(layered.set.toggleLayer('ccedil')).toEqual({ ...onLayer, layers: ['alpha2', 'ccedil'] });
+    expect(layered.set.becomes(a)).toEqual({ ...onLayer, active: a });
+    expect(layered.set.family('alt')).toBe(onLayer);
+  });
+});
+
 /** Every key a layout binds, once for each distinct binding. */
 function keysOf(layout: Layout): { layer: string; key: string; binding: Binding }[] {
   const seen = new Set<string>();

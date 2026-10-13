@@ -1,21 +1,17 @@
-import {
-  type AdaptiveTrigger,
-  type Binding,
-  type CompiledLayout,
-  legend,
-  legendText,
-  type Mod,
-} from '@layerbench/core';
+import { type Binding, type CompiledLayout, legend, legendText } from '@layerbench/core';
 import { useRef, useState } from 'react';
 import { useDismiss } from '../../../components/use-dismiss.js';
 import { useMediaQuery, WIDE } from '../../../components/use-media-query.js';
 import type { BindingTextContext } from '../binding-text.js';
 import {
+  type BranchChanges,
+  type BranchView,
   type FieldsOf,
   type KeyFields,
   keyFields,
   type LayerMode,
-  words,
+  type ListChanges,
+  type MorphFamily,
 } from './binding-changes.js';
 import { LayerChips, ModChips, Note, Row, Segment, TextField } from './controls.js';
 import {
@@ -39,8 +35,6 @@ export interface EditorScope {
   setBehaviour: (name: string, b: Binding) => void;
   text: BindingTextContext;
 }
-
-type Of<K extends Binding['kind']> = Extract<Binding, { kind: K }>;
 
 interface BodyProps<K extends KindOfKey> {
   scope: EditorScope;
@@ -394,41 +388,23 @@ function ModifierBody({ fields: { view, set }, onChange, name }: BodyProps<'modi
 
 const FLAVORS = ['tap-preferred', 'balanced', 'hold-preferred', 'tap-unless-interrupted'];
 
-function TapHoldBody({ scope, fields: { binding }, onChange, name, depth }: BodyProps<'taphold'>) {
-  const hold: Binding = binding.kind === 'lt' ? { kind: 'mo', layer: binding.layer } : binding.hold;
-  const flavor = binding.kind === 'hold_tap' ? binding.flavor : undefined;
-  const term = binding.kind === 'hold_tap' ? binding.tappingTermMs : undefined;
-
-  /**
-   * ZMK's `&lt` is a layer on hold over a tap, with no timing of its own. A key written as one stays
-   * one while it can; anything more is a general hold-tap. A hold-tap is never quietly rewritten
-   * into a layer tap, so the document keeps the shape it was written in.
-   */
-  const build = (tap: Binding, next: Binding, nextFlavor = flavor, nextTerm = term): Binding => {
-    if (
-      binding.kind === 'lt' &&
-      next.kind === 'mo' &&
-      nextFlavor === undefined &&
-      nextTerm === undefined
-    ) {
-      return { kind: 'lt', layer: next.layer, tap };
-    }
-    const out: Of<'hold_tap'> = { kind: 'hold_tap', tap, hold: next };
-    if (nextFlavor !== undefined) out.flavor = nextFlavor;
-    if (nextTerm !== undefined) out.tappingTermMs = nextTerm;
-    return out;
-  };
-
+function TapHoldBody({
+  scope,
+  fields: { view, set },
+  onChange,
+  name,
+  depth,
+}: BodyProps<'taphold'>) {
   return (
     <div className="space-y-2">
       <PartEditor
         scope={scope}
         label="Tap"
         name={named(name, 'Tap')}
-        value={binding.tap}
+        value={view.tap}
         depth={depth}
         kinds={TAP_KINDS}
-        onChange={(tap) => onChange(build(tap, hold))}
+        onChange={(tap) => onChange(set.tap(tap))}
       />
       {/* The hold can be anything the tap can: a layer, a modifier, a symbol, a macro, an
           adaptive key — anything but another tap-hold. */}
@@ -436,20 +412,20 @@ function TapHoldBody({ scope, fields: { binding }, onChange, name, depth }: Body
         scope={scope}
         label="Hold"
         name={named(name, 'Hold')}
-        value={hold}
+        value={view.hold}
         depth={depth}
         kinds={TAP_KINDS}
-        onChange={(next) => onChange(build(binding.tap, next))}
+        onChange={(hold) => onChange(set.hold(hold))}
       />
-      <details className="text-xs" open={flavor !== undefined || term !== undefined}>
+      <details className="text-xs" open={view.flavor !== '' || view.term !== ''}>
         <summary className="cursor-pointer opacity-70">Timing</summary>
         <div className="space-y-2 pt-2">
           <Row label="Flavor">
             <select
               aria-label={named(name, 'Hold-tap flavor')}
               className="select select-xs select-bordered w-auto"
-              value={flavor ?? ''}
-              onChange={(e) => onChange(build(binding.tap, hold, e.target.value || undefined))}
+              value={view.flavor}
+              onChange={(e) => onChange(set.flavor(e.target.value))}
             >
               <option value="">firmware default</option>
               {FLAVORS.map((f) => (
@@ -462,15 +438,10 @@ function TapHoldBody({ scope, fields: { binding }, onChange, name, depth }: Body
           <Row label="Term">
             <TextField
               label={named(name, 'Tapping term in milliseconds')}
-              value={term === undefined ? '' : String(term)}
+              value={view.term}
               placeholder="200"
               className="w-20"
-              onCommit={(text) => {
-                const ms = Number.parseInt(text, 10);
-                onChange(
-                  build(binding.tap, hold, flavor, Number.isFinite(ms) && ms > 0 ? ms : undefined),
-                );
-              }}
+              onCommit={(text) => onChange(set.term(text))}
             />
           </Row>
         </div>
@@ -498,124 +469,98 @@ function RepeatBody({ fields: { set }, onChange }: BodyProps<'repeat'>) {
 // ---------------------------------------------------------------------------- adaptive
 
 /**
- * Branches of an adaptive key: after these symbols (or a key with this tag), do this instead. They
- * are tried from the top and the first that matches wins, so a branch that needs a tag goes above a
- * plain one for the same symbol — which is how an alt repeat gets a second stage.
+ * Branches of an adaptive key, tried from the top: the first that matches the key before wins, so
+ * a branch that needs a tag goes above a plain one for the same symbol.
  */
-export function TriggersEditor({
+function TriggersEditor({
   scope,
-  triggers,
+  branches,
+  set,
   onChange,
   depth,
   name = '',
 }: {
   scope: EditorScope;
-  triggers: AdaptiveTrigger[];
-  onChange: (triggers: AdaptiveTrigger[]) => void;
+  branches: BranchView[];
+  set: ListChanges<BranchChanges>;
+  onChange: (b: Binding) => void;
   depth: number;
   name?: string;
 }) {
-  const set = (i: number, t: AdaptiveTrigger) =>
-    onChange(triggers.map((old, j) => (j === i ? t : old)));
-  const move = (i: number, to: number) => {
-    const next = [...triggers];
-    [next[i], next[to]] = [next[to], next[i]];
-    onChange(next);
-  };
   const label = (i: number) => named(name, `Branch ${i + 1}`);
 
   return (
     <div className="space-y-2">
-      {triggers.length > 1 && (
+      {branches.length > 1 && (
         <Note>Tried from the top; the first branch that matches the key before wins.</Note>
       )}
       <ol className="space-y-2 list-none p-0 m-0" aria-label={named(name, 'Branches')}>
-        {triggers.map((t, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: a branch is identified by its place
-          <li key={i} className="rounded-box border border-base-300 p-2 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold w-16 shrink-0">After</span>
-              <TextField
-                label={`${label(i)} after`}
-                value={(t.afterAny ?? []).join(' ')}
-                placeholder="a e i o u"
-                className="flex-1 min-w-24"
-                onCommit={(text) => {
-                  const next: AdaptiveTrigger = { ...t, afterAny: words(text) };
-                  // With a tag to go on, no symbols means any symbol; without one, a branch with
-                  // no symbols simply never fires — which the document can still hold.
-                  if (next.afterAny?.length === 0 && t.afterTags?.length) delete next.afterAny;
-                  set(i, next);
-                }}
-              />
-              <button
-                type="button"
-                className="btn btn-ghost btn-xs"
-                aria-label={`Move ${label(i).toLowerCase()} up`}
-                disabled={i === 0}
-                onClick={() => move(i, i - 1)}
-              >
-                ↑
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost btn-xs"
-                aria-label={`Move ${label(i).toLowerCase()} down`}
-                disabled={i === triggers.length - 1}
-                onClick={() => move(i, i + 1)}
-              >
-                ↓
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost btn-xs"
-                aria-label={`Remove ${label(i).toLowerCase()}`}
-                onClick={() => onChange(triggers.filter((_, j) => j !== i))}
-              >
-                ✕
-              </button>
-            </div>
-            <details className="text-xs" open={(t.afterTags ?? []).length > 0}>
-              <summary className="cursor-pointer opacity-70">Only after a tagged key</summary>
-              <div className="pt-2">
+        {branches.map((t, i) => {
+          const branch = set.at(i);
+          return (
+            // biome-ignore lint/suspicious/noArrayIndexKey: a branch is identified by its place
+            <li key={i} className="rounded-box border border-base-300 p-2 space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold w-16 shrink-0">After</span>
                 <TextField
-                  label={`${label(i)} tags`}
-                  value={(t.afterTags ?? []).join(' ')}
-                  placeholder="alpha2"
-                  className="w-40"
-                  onCommit={(text) => {
-                    const next: AdaptiveTrigger = { ...t };
-                    if (words(text).length > 0) {
-                      next.afterTags = words(text);
-                      // With a tag to go on, no symbols means any symbol from a tagged key.
-                      if (next.afterAny?.length === 0) delete next.afterAny;
-                    } else {
-                      delete next.afterTags;
-                      next.afterAny = next.afterAny ?? [];
-                    }
-                    set(i, next);
-                  }}
+                  label={`${label(i)} after`}
+                  value={t.after}
+                  placeholder="a e i o u"
+                  className="flex-1 min-w-24"
+                  onCommit={(text) => onChange(branch.after(text))}
                 />
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs"
+                  aria-label={`Move ${label(i).toLowerCase()} up`}
+                  disabled={i === 0}
+                  onClick={() => onChange(set.move(i, i - 1))}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs"
+                  aria-label={`Move ${label(i).toLowerCase()} down`}
+                  disabled={i === branches.length - 1}
+                  onClick={() => onChange(set.move(i, i + 1))}
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs"
+                  aria-label={`Remove ${label(i).toLowerCase()}`}
+                  onClick={() => onChange(set.remove(i))}
+                >
+                  ✕
+                </button>
               </div>
-            </details>
-            <PartEditor
-              scope={scope}
-              label="Then"
-              name={label(i)}
-              value={t.binding}
-              depth={depth}
-              onChange={(binding) => set(i, { ...t, binding })}
-            />
-          </li>
-        ))}
+              <details className="text-xs" open={t.tags !== ''}>
+                <summary className="cursor-pointer opacity-70">Only after a tagged key</summary>
+                <div className="pt-2">
+                  <TextField
+                    label={`${label(i)} tags`}
+                    value={t.tags}
+                    placeholder="alpha2"
+                    className="w-40"
+                    onCommit={(text) => onChange(branch.tags(text))}
+                  />
+                </div>
+              </details>
+              <PartEditor
+                scope={scope}
+                label="Then"
+                name={label(i)}
+                value={t.then}
+                depth={depth}
+                onChange={(binding) => onChange(branch.then(binding))}
+              />
+            </li>
+          );
+        })}
       </ol>
-      <button
-        type="button"
-        className="btn btn-xs"
-        onClick={() =>
-          onChange([...triggers, { afterAny: [], binding: { kind: 'kp', symbol: '' } }])
-        }
-      >
+      <button type="button" className="btn btn-xs" onClick={() => onChange(set.add())}>
         Add branch
       </button>
     </div>
@@ -624,15 +569,14 @@ export function TriggersEditor({
 
 function AdaptiveBody({
   scope,
-  fields: { binding },
+  fields: { kind, view, set },
   onChange,
   name,
   depth,
 }: BodyProps<'adaptive' | 'altrepeat'>) {
-  const alt = binding.default?.kind === 'key_repeat';
   return (
     <div className="space-y-2">
-      {alt ? (
+      {kind === 'altrepeat' ? (
         <Note>Repeats the previous key, unless a branch below matches it.</Note>
       ) : (
         <>
@@ -640,9 +584,9 @@ function AdaptiveBody({
             scope={scope}
             label="Default"
             name={named(name, 'Default')}
-            value={binding.default}
+            value={view.default}
             depth={depth}
-            onChange={(d) => onChange({ ...binding, default: d })}
+            onChange={(d) => onChange(set.default(d))}
           />
           <Note>What it types when no branch matches the key before it.</Note>
         </>
@@ -651,20 +595,16 @@ function AdaptiveBody({
         scope={scope}
         name={name}
         depth={depth}
-        triggers={binding.triggers ?? []}
-        onChange={(triggers) => onChange({ ...binding, triggers })}
+        branches={view.branches}
+        set={set.branches}
+        onChange={onChange}
       />
       <label className="flex items-center gap-2 text-xs">
         <input
           type="checkbox"
           className="checkbox checkbox-xs"
-          checked={binding.strictModifiers ?? false}
-          onChange={(e) => {
-            const out = { ...binding };
-            if (e.target.checked) out.strictModifiers = true;
-            else delete out.strictModifiers;
-            onChange(out);
-          }}
+          checked={view.strict}
+          onChange={(e) => onChange(set.strict(e.target.checked))}
         />
         Only when the key before had no modifier held
       </label>
@@ -765,16 +705,14 @@ function MacroBody({ scope, fields: { binding }, onChange, name }: BodyProps<'ma
 
 function TapDanceBody({
   scope,
-  fields: { binding },
+  fields: { view, set },
   onChange,
   name,
   depth,
 }: BodyProps<'tapdance'>) {
-  const set = (i: number, b: Binding) =>
-    onChange({ ...binding, bindings: binding.bindings.map((old, j) => (j === i ? b : old)) });
   return (
     <div className="space-y-2">
-      {binding.bindings.map((b, i) => (
+      {view.taps.map((b, i) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: a tap count is identified by its place
         <div key={i} className="flex items-start gap-1">
           <div className="flex-1 min-w-0">
@@ -784,30 +722,22 @@ function TapDanceBody({
               name={named(name, `${i + 1} taps`)}
               value={b}
               depth={depth}
-              onChange={(next) => set(i, next)}
+              onChange={(next) => onChange(set.taps.at(i)(next))}
             />
           </div>
-          {binding.bindings.length > 1 && (
+          {view.taps.length > 1 && (
             <button
               type="button"
               className="btn btn-ghost btn-xs"
               aria-label={`Remove ${i + 1} taps`}
-              onClick={() =>
-                onChange({ ...binding, bindings: binding.bindings.filter((_, j) => j !== i) })
-              }
+              onClick={() => onChange(set.taps.remove(i))}
             >
               ✕
             </button>
           )}
         </div>
       ))}
-      <button
-        type="button"
-        className="btn btn-xs"
-        onClick={() =>
-          onChange({ ...binding, bindings: [...binding.bindings, { kind: 'kp', symbol: '' }] })
-        }
-      >
+      <button type="button" className="btn btn-xs" onClick={() => onChange(set.taps.add())}>
         Add a tap
       </button>
     </div>
@@ -816,17 +746,14 @@ function TapDanceBody({
 
 // ---------------------------------------------------------------------------- morph
 
-const MORPH_MODS: readonly (readonly [string, string, Mod[]])[] = [
-  ['shift', 'Shift', ['LSHIFT', 'RSHIFT']],
-  ['ctrl', 'Control', ['LCTRL', 'RCTRL']],
-  ['alt', 'Alt', ['LALT', 'RALT']],
-  ['gui', 'Command', ['LGUI', 'RGUI']],
+const MORPH_FAMILIES: readonly (readonly [MorphFamily, string])[] = [
+  ['shift', 'Shift'],
+  ['ctrl', 'Control'],
+  ['alt', 'Alt'],
+  ['gui', 'Command'],
 ];
 
-function MorphBody({ scope, fields: { binding }, onChange, name, depth }: BodyProps<'morph'>) {
-  const plain = binding.kind === 'mod_morph' ? binding.default : binding.inactive;
-  const morphed = binding.kind === 'mod_morph' ? binding.morphed : binding.active;
-  const upper = scope.compiled.layers[1]?.id ?? scope.compiled.layers[0].id;
+function MorphBody({ scope, fields: { view, set }, onChange, name, depth }: BodyProps<'morph'>) {
   return (
     <div className="space-y-2">
       <Row label="Changes">
@@ -836,31 +763,17 @@ function MorphBody({ scope, fields: { binding }, onChange, name, depth }: BodyPr
             ['mod_morph', 'With a modifier'],
             ['layer_morph', 'On a layer'],
           ]}
-          value={binding.kind}
-          onChange={(kind) =>
-            onChange(
-              kind === 'mod_morph'
-                ? { kind, mods: ['LSHIFT', 'RSHIFT'], default: plain, morphed }
-                : { kind, layers: [upper], inactive: plain, active: morphed },
-            )
-          }
+          value={view.by}
+          onChange={(by) => onChange(set.by(by))}
         />
       </Row>
-      {binding.kind === 'mod_morph' ? (
+      {view.by === 'mod_morph' ? (
         <Row label="With">
           <Segment
             label={named(name, 'Modifier that changes it')}
-            options={MORPH_MODS.map(([v, l]) => [v, l] as const)}
-            value={
-              MORPH_MODS.find(([, , mods]) => mods.some((m) => binding.mods.includes(m)))?.[0] ??
-              null
-            }
-            onChange={(v) =>
-              onChange({
-                ...binding,
-                mods: MORPH_MODS.find(([id]) => id === v)?.[2] ?? binding.mods,
-              })
-            }
+            options={MORPH_FAMILIES}
+            value={view.family}
+            onChange={(family) => onChange(set.family(family))}
           />
         </Row>
       ) : (
@@ -868,14 +781,8 @@ function MorphBody({ scope, fields: { binding }, onChange, name, depth }: BodyPr
           <LayerChips
             compiled={scope.compiled}
             label={named(name, 'Layers that change it')}
-            value={binding.layers}
-            onChange={(layer) => {
-              const layers = binding.layers.includes(layer)
-                ? binding.layers.filter((l) => l !== layer)
-                : [...binding.layers, layer];
-              // A layer morph on no layer at all would never morph; the last one stays.
-              if (layers.length > 0) onChange({ ...binding, layers });
-            }}
+            value={view.layers}
+            onChange={(layer) => onChange(set.toggleLayer(layer))}
           />
         </Row>
       )}
@@ -883,26 +790,18 @@ function MorphBody({ scope, fields: { binding }, onChange, name, depth }: BodyPr
         scope={scope}
         label="Plain"
         name={named(name, 'Plain')}
-        value={plain}
+        value={view.plain}
         depth={depth}
         kinds={TAP_KINDS}
-        onChange={(b) =>
-          onChange(
-            binding.kind === 'mod_morph' ? { ...binding, default: b } : { ...binding, inactive: b },
-          )
-        }
+        onChange={(b) => onChange(set.plain(b))}
       />
       <PartEditor
         scope={scope}
         label="Becomes"
         name={named(name, 'Becomes')}
-        value={morphed}
+        value={view.becomes}
         depth={depth}
-        onChange={(b) =>
-          onChange(
-            binding.kind === 'mod_morph' ? { ...binding, morphed: b } : { ...binding, active: b },
-          )
-        }
+        onChange={(b) => onChange(set.becomes(b))}
       />
     </div>
   );

@@ -1,4 +1,10 @@
-import { type Binding, bindingToJson, type Mod, stableStringify } from '@layerbench/core';
+import {
+  type AdaptiveTrigger,
+  type Binding,
+  bindingToJson,
+  type Mod,
+  stableStringify,
+} from '@layerbench/core';
 import { type BindingTextContext, parseBindingText } from '../binding-text.js';
 import { type KindOfKey, kindOf } from './kinds.js';
 
@@ -18,7 +24,41 @@ export type Change<V> = (value: V) => Binding;
 export type LayerMode = 'mo' | 'sl' | 'tog' | 'to' | 'auto_layer';
 /** How a modifier key acts: held, or one-shot. */
 export type ModMode = 'mod' | 'sk';
+/** What changes a morph: a modifier held, or a layer on. */
+export type MorphBy = 'mod_morph' | 'layer_morph';
+/** A modifier as a morph is changed by it, left or right alike. */
+export type MorphFamily = 'shift' | 'ctrl' | 'alt' | 'gui';
 type Nothing = Record<never, never>;
+
+/** A list of parts inside a key: an adaptive key's branches, a tap dance's taps. */
+export interface ListChanges<C> {
+  /** The changes to one item of the list. */
+  at(i: number): C;
+  add(): Binding;
+  /** Gives the key back as it was where it would leave fewer items than the key needs. */
+  remove(i: number): Binding;
+  move(i: number, to: number): Binding;
+}
+
+/** One branch of an adaptive key: after which symbols or tags, and what it does then. */
+export interface BranchView {
+  after: string;
+  tags: string;
+  then: Binding;
+}
+
+export interface BranchChanges {
+  after: Change<string>;
+  tags: Change<string>;
+  then: Change<Binding>;
+}
+
+/** An adaptive key and an alt repeat show the same controls; the alt repeat has no default. */
+interface AdaptiveShape {
+  binding: Of<'adaptive'>;
+  view: { default: Binding | undefined; branches: BranchView[]; strict: boolean };
+  set: { default: Change<Binding>; branches: ListChanges<BranchChanges>; strict: Change<boolean> };
+}
 
 /** For each kind of key: the bindings it stands for, what its controls show, and their changes. */
 interface Shapes {
@@ -38,13 +78,45 @@ interface Shapes {
     view: { mod: Mod; acts: ModMode };
     set: { mod: Change<Mod>; acts: Change<ModMode> };
   };
-  taphold: { binding: Of<'lt' | 'hold_tap'>; view: Nothing; set: Nothing };
+  taphold: {
+    binding: Of<'lt' | 'hold_tap'>;
+    /** A layer tap's hold is the momentary layer key it amounts to. */
+    view: { tap: Binding; hold: Binding; flavor: string; term: string };
+    set: {
+      tap: Change<Binding>;
+      hold: Change<Binding>;
+      flavor: Change<string>;
+      term: Change<string>;
+    };
+  };
   repeat: { binding: Of<'key_repeat'>; view: Nothing; set: Nothing };
-  adaptive: { binding: Of<'adaptive'>; view: Nothing; set: Nothing };
-  altrepeat: { binding: Of<'adaptive'>; view: Nothing; set: Nothing };
+  adaptive: AdaptiveShape;
+  altrepeat: AdaptiveShape;
   macro: { binding: Of<'macro'>; view: Nothing; set: Nothing };
-  tapdance: { binding: Of<'tap_dance'>; view: Nothing; set: Nothing };
-  morph: { binding: Of<'mod_morph' | 'layer_morph'>; view: Nothing; set: Nothing };
+  tapdance: {
+    binding: Of<'tap_dance'>;
+    view: { taps: Binding[] };
+    set: { taps: ListChanges<Change<Binding>> };
+  };
+  morph: {
+    binding: Of<'mod_morph' | 'layer_morph'>;
+    /** A modifier morph has a family and no layers; a layer morph, layers and no family. */
+    view: {
+      by: MorphBy;
+      family: MorphFamily | null;
+      layers: string[];
+      plain: Binding;
+      becomes: Binding;
+    };
+    set: {
+      by: Change<MorphBy>;
+      family: Change<MorphFamily>;
+      /** Adds the layer, or takes it away while another is left. */
+      toggleLayer: Change<string>;
+      plain: Change<Binding>;
+      becomes: Change<Binding>;
+    };
+  };
   capsword: {
     binding: Of<'caps_word'>;
     /** The symbols that do not end the word, between spaces. */
@@ -130,6 +202,33 @@ function withOptional<B extends Binding>(b: B, key: string, value: string): B {
   return out as B;
 }
 
+/**
+ * The changes to a list of parts: each item's own, and adding, removing and moving one. A key keeps
+ * at least `least` items.
+ */
+function list<T, C>(
+  b: Binding,
+  items: readonly T[],
+  put: (items: T[]) => Binding,
+  fresh: () => T,
+  at: (i: number) => C,
+  least = 0,
+): ListChanges<C> {
+  const has = (i: number) => i >= 0 && i < items.length;
+  return {
+    at,
+    add: () => put([...items, fresh()]),
+    remove: (i) =>
+      has(i) && items.length > least ? same(b, put(items.filter((_, j) => j !== i))) : b,
+    move: (i, to) => {
+      if (!has(i) || !has(to) || i === to) return b;
+      const next = [...items];
+      [next[i], next[to]] = [next[to], next[i]];
+      return put(next);
+    },
+  };
+}
+
 /** A list field: the words given, or no field at all. */
 function withWords<B extends Binding>(b: B, key: string, text: string): B {
   const out = { ...b } as Record<string, unknown>;
@@ -184,13 +283,74 @@ const readers: { [K in KindOfKey]: Reader<K> } = {
       acts: change(b, (acts: ModMode) => (acts === b.kind ? b : { kind: acts, mod: b.mod })),
     },
   }),
-  taphold: () => NONE,
+  taphold(b) {
+    const hold: Binding = b.kind === 'lt' ? { kind: 'mo', layer: b.layer } : b.hold;
+    const flavor = b.kind === 'hold_tap' ? b.flavor : undefined;
+    const term = b.kind === 'hold_tap' ? b.tappingTermMs : undefined;
+    const view = {
+      tap: b.tap,
+      hold,
+      flavor: flavor ?? '',
+      term: term === undefined ? '' : String(term),
+    };
+    return {
+      view,
+      set: {
+        tap: change(b, (tap: Binding) => tapHold(b, tap, hold, flavor, term)),
+        hold: change(b, (next: Binding) => tapHold(b, b.tap, next, flavor, term)),
+        flavor: change(b, (f: string) => tapHold(b, b.tap, hold, f || undefined, term)),
+        term: field(b, view.term, (text) => tapHold(b, b.tap, hold, flavor, milliseconds(text))),
+      },
+    };
+  },
   repeat: () => NONE,
-  adaptive: () => NONE,
-  altrepeat: () => NONE,
+  adaptive: (b) => adaptive(b),
+  altrepeat: (b) => adaptive(b),
   macro: () => NONE,
-  tapdance: () => NONE,
-  morph: () => NONE,
+  tapdance(b) {
+    const taps = b.bindings;
+    const put = (bindings: Binding[]): Binding => ({ ...b, bindings });
+    const tap = (i: number) =>
+      change(b, (next: Binding) =>
+        i < taps.length ? put(taps.map((old, j) => (j === i ? next : old))) : b,
+      );
+    // A tap dance keeps its one tap: with none it would do nothing at all.
+    return { view: { taps }, set: { taps: list(b, taps, put, emptySymbol, tap, 1) } };
+  },
+  morph(b, ctx) {
+    const plain = b.kind === 'mod_morph' ? b.default : b.inactive;
+    const becomes = b.kind === 'mod_morph' ? b.morphed : b.active;
+    const view = {
+      by: b.kind,
+      family: b.kind === 'mod_morph' ? familyOf(b.mods) : null,
+      layers: b.kind === 'layer_morph' ? b.layers : [],
+      plain,
+      becomes,
+    };
+    return {
+      view,
+      set: {
+        by: change(b, (by: MorphBy) => morphBy(b, by, plain, becomes, ctx)),
+        family: change(b, (family: MorphFamily) =>
+          b.kind === 'mod_morph' ? { ...b, mods: [...FAMILY_MODS[family]] } : b,
+        ),
+        toggleLayer: change(b, (layer: string) => {
+          if (b.kind !== 'layer_morph') return b;
+          const layers = b.layers.includes(layer)
+            ? b.layers.filter((l) => l !== layer)
+            : [...b.layers, layer];
+          // A layer morph on no layer at all would never morph; the last one stays.
+          return layers.length > 0 ? { ...b, layers } : b;
+        }),
+        plain: change(b, (next: Binding) =>
+          b.kind === 'mod_morph' ? { ...b, default: next } : { ...b, inactive: next },
+        ),
+        becomes: change(b, (next: Binding) =>
+          b.kind === 'mod_morph' ? { ...b, morphed: next } : { ...b, active: next },
+        ),
+      },
+    };
+  },
   capsword(b) {
     const view = { continues: (b.continueList ?? []).join(' ') };
     return {
@@ -226,6 +386,126 @@ const readers: { [K in KindOfKey]: Reader<K> } = {
   nothing: () => NONE,
   imported: (b) => ({ view: { label: b.label, source: b.source ?? '' }, set: {} }),
 };
+
+// ---------------------------------------------------------------------------- tap-holds
+
+/**
+ * ZMK's `&lt` is a layer on hold over a tap, with no timing of its own. A key written as one stays
+ * one while it can; anything more is a general hold-tap. A hold-tap is never quietly rewritten
+ * into a layer tap, so the document keeps the shape it was written in.
+ */
+function tapHold(
+  b: Of<'lt' | 'hold_tap'>,
+  tap: Binding,
+  hold: Binding,
+  flavor: string | undefined,
+  term: number | undefined,
+): Binding {
+  if (b.kind === 'lt' && hold.kind === 'mo' && flavor === undefined && term === undefined) {
+    return { kind: 'lt', layer: hold.layer, tap };
+  }
+  const out: Of<'hold_tap'> = { kind: 'hold_tap', tap, hold };
+  if (flavor !== undefined) out.flavor = flavor;
+  if (term !== undefined) out.tappingTermMs = term;
+  return out;
+}
+
+/** A tapping term is a positive number of milliseconds; anything else is the firmware's own. */
+function milliseconds(text: string): number | undefined {
+  const ms = Number.parseInt(text, 10);
+  return Number.isFinite(ms) && ms > 0 ? ms : undefined;
+}
+
+// ---------------------------------------------------------------------------- adaptive keys
+
+const emptySymbol = (): Binding => ({ kind: 'kp', symbol: '' });
+
+/**
+ * Branches of an adaptive key: after these symbols (or a key with this tag), do this instead. They
+ * are tried from the top and the first that matches wins, so a branch that needs a tag goes above a
+ * plain one for the same symbol — which is how an alt repeat gets a second stage.
+ */
+function adaptive(b: Of<'adaptive'>): Pick<AdaptiveShape, 'view' | 'set'> {
+  const triggers = b.triggers ?? [];
+  const branches = triggers.map((t) => ({
+    after: (t.afterAny ?? []).join(' '),
+    tags: (t.afterTags ?? []).join(' '),
+    then: t.binding,
+  }));
+  const put = (next: AdaptiveTrigger[]): Binding => ({ ...b, triggers: next });
+  const branch = (i: number): BranchChanges => {
+    const t = triggers[i];
+    const shown = branches[i] ?? { after: '', tags: '' };
+    const replace = (next: AdaptiveTrigger) =>
+      t ? put(triggers.map((old, j) => (j === i ? next : old))) : b;
+    return {
+      after: field(b, shown.after, (text) => {
+        const next: AdaptiveTrigger = { ...t, afterAny: words(text) };
+        // With a tag to go on, no symbols means any symbol; without one, a branch with no symbols
+        // simply never fires — which the document can still hold.
+        if (next.afterAny?.length === 0 && t?.afterTags?.length) delete next.afterAny;
+        return replace(next);
+      }),
+      tags: field(b, shown.tags, (text) => {
+        const next: AdaptiveTrigger = { ...t };
+        if (words(text).length > 0) {
+          next.afterTags = words(text);
+          // With a tag to go on, no symbols means any symbol from a tagged key.
+          if (next.afterAny?.length === 0) delete next.afterAny;
+        } else {
+          delete next.afterTags;
+          next.afterAny = next.afterAny ?? [];
+        }
+        return replace(next);
+      }),
+      then: change(b, (binding: Binding) => replace({ ...t, binding })),
+    };
+  };
+  return {
+    view: { default: b.default, branches, strict: b.strictModifiers ?? false },
+    set: {
+      default: change(b, (d: Binding) => ({ ...b, default: d })),
+      branches: list(b, triggers, put, () => ({ afterAny: [], binding: emptySymbol() }), branch),
+      strict: change(b, (on: boolean) => {
+        const out = { ...b };
+        if (on) out.strictModifiers = true;
+        else delete out.strictModifiers;
+        return out;
+      }),
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------- morphs
+
+/** The modifiers each family stands for, in the order a morph's family is read. */
+const FAMILY_MODS: Record<MorphFamily, Mod[]> = {
+  shift: ['LSHIFT', 'RSHIFT'],
+  ctrl: ['LCTRL', 'RCTRL'],
+  alt: ['LALT', 'RALT'],
+  gui: ['LGUI', 'RGUI'],
+};
+
+function familyOf(mods: Mod[]): MorphFamily | null {
+  const found = Object.entries(FAMILY_MODS).find(([, family]) =>
+    family.some((m) => mods.includes(m)),
+  );
+  return found ? (found[0] as MorphFamily) : null;
+}
+
+/** A morph changed another way keeps what it types, and starts on shift or the likeliest layer. */
+function morphBy(
+  b: Of<'mod_morph' | 'layer_morph'>,
+  by: MorphBy,
+  plain: Binding,
+  becomes: Binding,
+  ctx: BindingTextContext,
+): Binding {
+  if (by === b.kind) return b;
+  return by === 'mod_morph'
+    ? { kind: by, mods: [...FAMILY_MODS.shift], default: plain, morphed: becomes }
+    : { kind: by, layers: [likeliestLayer(ctx)], inactive: plain, active: becomes };
+}
 
 // ---------------------------------------------------------------------------- symbols
 
