@@ -3,6 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { AnalysisClient, AnalyzeRequest } from '../engine/protocol.js';
+import { toast } from '../state/toasts.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { openSettings, renderRoute, savedInLink, testClient } from '../test/render.js';
 import { setPointerKind, setViewportWidth } from '../test/setup.js';
@@ -317,11 +318,19 @@ describe('Edit', () => {
     expect(await screen.findByRole('tab', { name: 'Extra' })).toBeInTheDocument();
     expect(screen.getByLabelText('Name of layer nav-copy')).toHaveValue('Extra');
 
+    const info = vi.spyOn(toast, 'info');
     await user.click(screen.getByRole('button', { name: 'Remove Extra' }));
     await waitFor(() => expect(screen.queryByRole('tab', { name: 'Extra' })).toBeNull());
     expect(await screen.findByText('Removed Extra — Undo brings it back')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Undo' }));
     expect(await screen.findByRole('tab', { name: 'Extra' })).toBeInTheDocument();
+    expect(screen.getByText('Undone')).toBeInTheDocument();
+    // Undo and Redo are not edits: they say what they did, and the removal is not told again.
+    await user.click(screen.getByRole('button', { name: 'Redo' }));
+    await waitFor(() => expect(screen.queryByRole('tab', { name: 'Extra' })).toBeNull());
+    expect(screen.getByText('Redone')).toBeInTheDocument();
+    expect(info.mock.calls.map(([text]) => text)).toEqual(['Removed Extra — Undo brings it back']);
+    info.mockRestore();
 
     // A layer a key still reaches stays, and the editor says which key, with nothing to undo.
     await user.click(screen.getByRole('button', { name: 'Remove Numbers' }));

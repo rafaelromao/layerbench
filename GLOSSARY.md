@@ -15,8 +15,8 @@ _Avoid_: request, request options, scoring options
 
 **Draft**:
 A layout's unsaved edits, carried whole in its link after the `#`. The tab that made a draft knows
-which saved layout it is an edit of, so saving it saves that layout; anywhere else it is a layout of
-its own.
+which saved layout its edits were made on, so saving it saves that layout; anywhere else it is a
+layout of its own.
 _Avoid_: unsaved copy, working copy
 
 **Edit**:
