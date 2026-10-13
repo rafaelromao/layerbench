@@ -11,7 +11,7 @@ import {
 } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
 import type { BindingTextContext } from '../binding-text.js';
-import { type FieldsOf, keyFields } from './binding-changes.js';
+import { type FieldsOf, freshRow, keyFields, macroRows } from './binding-changes.js';
 import { type KindOfKey, kindOf, MORE_KINDS, PRIMARY_KINDS } from './kinds.js';
 
 /** The context the key inspector builds for a layout. */
@@ -317,6 +317,118 @@ describe('the parts of a bigger key, and lists of them', () => {
     expect(layered.set.family('alt')).toBe(onLayer);
   });
 });
+
+describe('a macro, written as text or as steps', () => {
+  const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
+  const toAlpha2: Binding = { kind: 'sl', layer: 'alpha2' };
+
+  it('writes its steps as text and back, without changing what it does', () => {
+    const stepped: Binding = {
+      kind: 'macro',
+      tag: 'qu',
+      steps: [kp('q'), kp('u'), toAlpha2, { kind: 'kp', keycode: 'N1' }],
+    };
+    const text = fieldsOf('macro', stepped).set.form('text');
+    expect(text).toEqual({
+      kind: 'macro',
+      symbols: 'qu',
+      then: [toAlpha2, { kind: 'kp', keycode: 'N1' }],
+      tag: 'qu',
+    });
+    expect(fieldsOf('macro', text).view).toMatchObject({
+      form: 'text',
+      then: '',
+      thenIsMore: true,
+    });
+    expect(fieldsOf('macro', text).set.form('steps')).toEqual(stepped);
+  });
+
+  it('keeps the layer a text macro arms when it is written as steps and back', () => {
+    const cedilla: Binding = {
+      kind: 'macro',
+      symbols: 'ç',
+      then: [{ kind: 'sl', layer: 'ccedil' }],
+    };
+    const shown = fieldsOf('macro', cedilla);
+    expect(shown.view).toMatchObject({
+      form: 'text',
+      symbols: 'ç',
+      then: 'ccedil',
+      thenIsMore: false,
+    });
+    const steps = shown.set.form('steps');
+    expect(steps).toEqual({ kind: 'macro', steps: [kp('ç'), { kind: 'sl', layer: 'ccedil' }] });
+    expect(fieldsOf('macro', steps).set.form('text')).toEqual(cedilla);
+    expect(shown.set.then('')).toEqual({ kind: 'macro', symbols: 'ç' });
+  });
+
+  it('does what it did, written either way, for every macro of the bundled layouts', () => {
+    const typed = (m: Binding) => {
+      if (m.kind !== 'macro') throw new Error(m.kind);
+      const letters = m.steps ?? Array.from((m.symbols ?? '').normalize('NFC')).map(kp);
+      return [...letters, ...(m.then ?? [])].map((s) => stableStringify(bindingToJson(s)));
+    };
+    let macros = 0;
+    for (const layout of BUNDLED_LAYOUTS) {
+      for (const macro of macrosIn(layout)) {
+        macros += 1;
+        const fields = fieldsOf('macro', macro);
+        expect(typed(fields.set.form('text'))).toEqual(typed(macro));
+        expect(typed(fields.set.form('steps'))).toEqual(typed(macro));
+        if (macro.kind === 'macro' && macro.steps) {
+          expect(fields.set.rows(macroRows(macro))).toBe(macro);
+        }
+      }
+    }
+    expect(macros).toBeGreaterThan(0);
+  });
+
+  it('keeps a step its rows cannot edit, to be moved or removed', () => {
+    const quick: Binding = { kind: 'sl', layer: 'alpha2', quickRelease: true };
+    const toggle: Binding = { kind: 'tog', layer: 'alpha2' };
+    const odd: Extract<Binding, { kind: 'macro' }> = {
+      kind: 'macro',
+      steps: [kp('a'), toggle, kp('b'), quick],
+    };
+    const rows = macroRows(odd);
+    expect(rows.map((r) => r.kind)).toEqual(['text', 'fixed', 'text', 'fixed']);
+    const set = fieldsOf('macro', odd).set;
+    expect(set.rows(rows)).toBe(odd);
+    expect(set.rows([rows[1], rows[0], rows[2], rows[3]])).toEqual({
+      kind: 'macro',
+      steps: [toggle, kp('a'), kp('b'), quick],
+    });
+    expect(set.rows([rows[0], rows[2]])).toEqual({ kind: 'macro', steps: [kp('a'), kp('b')] });
+  });
+
+  it('starts a new row doing something, and becomes text again with no rows left', () => {
+    const withBehaviours = { ...ctx, behaviors: ['altRepeat'] };
+    expect(freshRow('sl', ctx)).toMatchObject({ kind: 'sl', layer: 'alpha2' });
+    expect(freshRow('ref', withBehaviours)).toMatchObject({ kind: 'ref', ref: 'altRepeat' });
+    expect(freshRow('text', ctx, 'kept')).toEqual({ id: 'kept', kind: 'text', text: '' });
+    const stepped: Binding = { kind: 'macro', steps: [kp('a')], tag: 'x' };
+    expect(fieldsOf('macro', stepped).set.rows([])).toEqual({
+      kind: 'macro',
+      symbols: '',
+      tag: 'x',
+    });
+  });
+});
+
+/** Every macro a layout holds, on its keys, its combos and its behaviours, however deep. */
+function macrosIn(layout: Layout): Binding[] {
+  const found: Binding[] = [];
+  const walk = (value: unknown): void => {
+    if (Array.isArray(value)) value.forEach(walk);
+    else if (value && typeof value === 'object') {
+      const b = value as Binding;
+      if (b.kind === 'macro' && !b.ref) found.push(b);
+      Object.values(value).forEach(walk);
+    }
+  };
+  walk(layout);
+  return found;
+}
 
 /** Every key a layout binds, once for each distinct binding. */
 function keysOf(layout: Layout): { layer: string; key: string; binding: Binding }[] {

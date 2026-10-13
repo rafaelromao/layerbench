@@ -50,14 +50,6 @@ function named(prefix: string, what: string): string {
   return prefix ? `${prefix} ${what.charAt(0).toLowerCase()}${what.slice(1)}` : what;
 }
 
-/** Drop a field entirely rather than store it empty, so the document stays as it was written. */
-function withOptional<B extends object>(b: B, key: string, value: string): B {
-  const out = { ...b } as Record<string, unknown>;
-  if (value === '') delete out[key];
-  else out[key] = value;
-  return out as B;
-}
-
 /** Nested parts stop being drawn as editors past this depth; they are still shown and kept. */
 const MAX_DEPTH = 4;
 
@@ -614,11 +606,8 @@ function AdaptiveBody({
 
 // ---------------------------------------------------------------------------- macro
 
-function MacroBody({ scope, fields: { binding }, onChange, name }: BodyProps<'macro'>) {
-  const steps = binding.steps !== undefined;
-  const then =
-    binding.then?.length === 1 && binding.then[0].kind === 'sl' ? binding.then[0].layer : '';
-  const otherThen = (binding.then?.length ?? 0) > 0 && then === '';
+function MacroBody({ scope, fields, onChange, name }: BodyProps<'macro'>) {
+  const { view, set } = fields;
   return (
     <div className="space-y-2">
       <Segment
@@ -627,28 +616,14 @@ function MacroBody({ scope, fields: { binding }, onChange, name }: BodyProps<'ma
           ['text', 'Text'],
           ['steps', 'Steps'],
         ]}
-        value={steps ? 'steps' : 'text'}
-        onChange={(v) => {
-          const tag = binding.tag === undefined ? {} : { tag: binding.tag };
-          if (v === 'steps') {
-            const typed: Binding[] = [...(binding.symbols ?? '')].map((g) => ({
-              kind: 'kp',
-              symbol: g,
-            }));
-            onChange({ kind: 'macro', steps: [...typed, ...(binding.then ?? [])], ...tag });
-          } else {
-            const symbols = (binding.steps ?? [])
-              .map((s) => (s.kind === 'kp' ? (s.symbol ?? '') : ''))
-              .join('');
-            onChange({ kind: 'macro', symbols, ...tag });
-          }
-        }}
+        value={view.form}
+        onChange={(form) => onChange(set.form(form))}
       />
-      {steps ? (
+      {view.form === 'steps' ? (
         <MacroStepsEditor
           compiled={scope.compiled}
-          behaviours={scope.behaviours}
-          binding={binding}
+          ctx={scope.text}
+          fields={fields}
           onChange={onChange}
         />
       ) : (
@@ -656,26 +631,21 @@ function MacroBody({ scope, fields: { binding }, onChange, name }: BodyProps<'ma
           <Row label="Types">
             <TextField
               label={named(name, 'Macro text')}
-              value={binding.symbols ?? ''}
+              value={view.symbols}
               placeholder="qu"
               className="w-40"
-              onCommit={(symbols) => onChange({ ...binding, symbols })}
+              onCommit={(symbols) => onChange(set.symbols(symbols))}
             />
           </Row>
           <Row label="Then">
-            {otherThen ? (
+            {view.thenIsMore ? (
               <Note>Runs more after the text; switch to Steps to see it.</Note>
             ) : (
               <select
                 aria-label={named(name, 'Layer armed after the macro')}
                 className="select select-xs select-bordered w-auto"
-                value={then}
-                onChange={(e) => {
-                  const out = { ...binding };
-                  if (e.target.value) out.then = [{ kind: 'sl', layer: e.target.value }];
-                  else delete out.then;
-                  onChange(out);
-                }}
+                value={view.then}
+                onChange={(e) => onChange(set.then(e.target.value))}
               >
                 <option value="">nothing</option>
                 {scope.compiled.layers.map((l) => (
@@ -691,9 +661,9 @@ function MacroBody({ scope, fields: { binding }, onChange, name }: BodyProps<'ma
       <Row label="Tag">
         <TextField
           label={named(name, 'Binding tag')}
-          value={binding.tag ?? ''}
+          value={view.tag}
           className="w-32"
-          onCommit={(v) => onChange(withOptional(binding, 'tag', v))}
+          onCommit={(v) => onChange(set.tag(v))}
         />
         <Note>An adaptive key can branch on the tag of the key pressed before it.</Note>
       </Row>

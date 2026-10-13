@@ -28,6 +28,26 @@ export type ModMode = 'mod' | 'sk';
 export type MorphBy = 'mod_morph' | 'layer_morph';
 /** A modifier as a morph is changed by it, left or right alike. */
 export type MorphFamily = 'shift' | 'ctrl' | 'alt' | 'gui';
+/** How a macro is written: the letters it types, or its steps one by one. */
+export type MacroForm = 'text' | 'steps';
+
+/** The rows an author can add to a macro's steps, in the order they are offered. */
+export const ROW_KINDS = ['text', 'sl', 'sk', 'ref'] as const;
+export type RowKind = (typeof ROW_KINDS)[number];
+
+/**
+ * One row of a macro's steps: text to type, a layer or a modifier to arm for the next key, a
+ * behaviour to run. A step no row can hold whole is a fixed row, kept as it is and only moved or
+ * removed, so a macro read into rows and written back is the macro it was. Rows are reordered and
+ * can be alike, so each carries an identity of its own.
+ */
+export type MacroRow = { id: string } & (
+  | { kind: 'text'; text: string }
+  | { kind: 'sl'; layer: string }
+  | { kind: 'sk'; mod: Mod }
+  | { kind: 'ref'; ref: string }
+  | { kind: 'fixed'; step: Binding }
+);
 type Nothing = Record<never, never>;
 
 /** A list of parts inside a key: an adaptive key's branches, a tap dance's taps. */
@@ -92,7 +112,21 @@ interface Shapes {
   repeat: { binding: Of<'key_repeat'>; view: Nothing; set: Nothing };
   adaptive: AdaptiveShape;
   altrepeat: AdaptiveShape;
-  macro: { binding: Of<'macro'>; view: Nothing; set: Nothing };
+  macro: {
+    binding: Of<'macro'>;
+    /**
+     * As text, `then` is the one layer armed after it, and `thenIsMore` says it runs something
+     * else after the text, which only its steps can show.
+     */
+    view: { form: MacroForm; symbols: string; then: string; thenIsMore: boolean; tag: string };
+    set: {
+      form: Change<MacroForm>;
+      symbols: Change<string>;
+      then: Change<string>;
+      tag: Change<string>;
+      rows: Change<MacroRow[]>;
+    };
+  };
   tapdance: {
     binding: Of<'tap_dance'>;
     view: { taps: Binding[] };
@@ -306,7 +340,32 @@ const readers: { [K in KindOfKey]: Reader<K> } = {
   repeat: () => NONE,
   adaptive: (b) => adaptive(b),
   altrepeat: (b) => adaptive(b),
-  macro: () => NONE,
+  macro(b) {
+    const then = b.then ?? [];
+    const armed = then.length === 1 && then[0].kind === 'sl' ? then[0].layer : '';
+    const view = {
+      form: b.steps === undefined ? ('text' as const) : ('steps' as const),
+      symbols: b.symbols ?? '',
+      then: armed,
+      thenIsMore: then.length > 0 && armed === '',
+      tag: b.tag ?? '',
+    };
+    return {
+      view,
+      set: {
+        form: change(b, (form: MacroForm) => (form === 'steps' ? asSteps(b) : asText(b))),
+        symbols: field(b, view.symbols, (symbols) => ({ ...b, symbols })),
+        then: change(b, (layer: string) => {
+          const out = { ...b };
+          if (layer) out.then = [{ kind: 'sl', layer }];
+          else delete out.then;
+          return out;
+        }),
+        tag: field(b, view.tag, (v) => withOptional(b, 'tag', v)),
+        rows: change(b, (rows: MacroRow[]) => withRows(b, rows)),
+      },
+    };
+  },
   tapdance(b) {
     const taps = b.bindings;
     const put = (bindings: Binding[]): Binding => ({ ...b, bindings });
@@ -505,6 +564,121 @@ function morphBy(
   return by === 'mod_morph'
     ? { kind: by, mods: [...FAMILY_MODS.shift], default: plain, morphed: becomes }
     : { kind: by, layers: [likeliestLayer(ctx)], inactive: plain, active: becomes };
+}
+
+// ---------------------------------------------------------------------------- macros
+
+/** Text split the way the simulator types it: one key press per character, composed. */
+function characters(text: string): string[] {
+  return Array.from(text.normalize('NFC'));
+}
+
+const press = (symbol: string): Binding => ({ kind: 'kp', symbol });
+
+/** A step that is one character typed and nothing more, which text can say as it is. */
+function isCharacter(step: Binding): step is Of<'kp'> & { symbol: string } {
+  if (step.kind !== 'kp' || !step.symbol) return false;
+  const split = characters(step.symbol);
+  return (
+    split.length === 1 && split[0] === step.symbol && written(step) === written(press(step.symbol))
+  );
+}
+
+function tagOf(b: Of<'macro'>): { tag?: string } {
+  return b.tag ? { tag: b.tag } : {};
+}
+
+/** A macro written as steps: its letters one press each, then what it ran after them. */
+function asSteps(b: Of<'macro'>): Binding {
+  if (b.steps !== undefined) return b;
+  const steps = [...characters(b.symbols ?? '').map(press), ...(b.then ?? [])];
+  return { kind: 'macro', steps, ...tagOf(b) };
+}
+
+/**
+ * A macro written as text: the characters its steps start with, and the rest run after them. The
+ * simulator types a macro's text and then runs what comes after it, so nothing it does changes.
+ */
+function asText(b: Of<'macro'>): Binding {
+  if (b.steps === undefined) return b;
+  const first = b.steps.findIndex((step) => !isCharacter(step));
+  const typed = first < 0 ? b.steps : b.steps.slice(0, first);
+  const after = [...(first < 0 ? [] : b.steps.slice(first)), ...(b.then ?? [])];
+  const symbols = typed.map((step) => (isCharacter(step) ? step.symbol : '')).join('');
+  return { kind: 'macro', symbols, ...(after.length > 0 ? { then: after } : {}), ...tagOf(b) };
+}
+
+/** Rows made while editing need identities no row read from a macro already has. */
+let nextRowId = 0;
+function rowId(): string {
+  nextRowId += 1;
+  return `row-${nextRowId}`;
+}
+
+function stepsOf(row: MacroRow): Binding[] {
+  switch (row.kind) {
+    case 'text':
+      return characters(row.text).map(press);
+    case 'sl':
+      return [{ kind: 'sl', layer: row.layer }];
+    case 'sk':
+      return [{ kind: 'sk', mod: row.mod }];
+    case 'ref':
+      return [{ kind: 'macro', ref: row.ref }];
+    case 'fixed':
+      return [row.step];
+  }
+}
+
+/** The row a step reads as: one that writes it back as it is, or a fixed row that keeps it. */
+function rowOf(step: Binding): MacroRow {
+  const id = rowId();
+  const row: MacroRow =
+    step.kind === 'sl'
+      ? { id, kind: 'sl', layer: step.layer }
+      : step.kind === 'sk'
+        ? { id, kind: 'sk', mod: step.mod }
+        : step.kind === 'macro' && step.ref
+          ? { id, kind: 'ref', ref: step.ref }
+          : { id, kind: 'fixed', step };
+  const back = stepsOf(row);
+  return back.length === 1 && written(back[0]) === written(step)
+    ? row
+    : { id, kind: 'fixed', step };
+}
+
+/** Read a macro's steps into rows, characters typed one after another as one text row. */
+export function macroRows(macro: Of<'macro'>): MacroRow[] {
+  const rows: MacroRow[] = [];
+  for (const step of macro.steps ?? []) {
+    const last = rows[rows.length - 1];
+    if (!isCharacter(step)) rows.push(rowOf(step));
+    else if (last?.kind === 'text') last.text += step.symbol;
+    else rows.push({ id: rowId(), kind: 'text', text: step.symbol });
+  }
+  return rows;
+}
+
+/** A new row of a kind, that already does something: a layer or behaviour row never names none. */
+export function freshRow(kind: RowKind, ctx: BindingTextContext, id = rowId()): MacroRow {
+  switch (kind) {
+    case 'text':
+      return { id, kind, text: '' };
+    case 'sl':
+      return { id, kind, layer: likeliestLayer(ctx) };
+    case 'sk':
+      return { id, kind, mod: 'LSHIFT' };
+    case 'ref':
+      return { id, kind, ref: ctx.behaviors[0] ?? '' };
+  }
+}
+
+/** The macro its rows make. With no rows left it types nothing, written as text. */
+function withRows(b: Of<'macro'>, rows: MacroRow[]): Binding {
+  const kept = { ...(b.then ? { then: b.then } : {}), ...tagOf(b) };
+  return rows.length > 0
+    ? { kind: 'macro', steps: rows.flatMap(stepsOf), ...kept }
+    : { kind: 'macro', symbols: '', ...kept };
 }
 
 // ---------------------------------------------------------------------------- symbols
