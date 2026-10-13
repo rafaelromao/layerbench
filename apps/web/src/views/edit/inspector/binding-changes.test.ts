@@ -11,7 +11,7 @@ import {
 } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
 import type { BindingTextContext } from '../binding-text.js';
-import { keyFields } from './binding-changes.js';
+import { type FieldsOf, keyFields } from './binding-changes.js';
 import { type KindOfKey, kindOf, MORE_KINDS, PRIMARY_KINDS } from './kinds.js';
 
 /** The context the key inspector builds for a layout. */
@@ -27,6 +27,13 @@ const romak = compileLayout(bundledLayout('magic-romak') as never);
 // Magic Romak's adaptive keys sit on its keys rather than in named behaviours, so none are offered.
 const ctx: BindingTextContext = { ...contextOf(romak), behaviors: [] };
 const to = (b: Binding | undefined, kind: KindOfKey) => keyFields(b, ctx).set.kind(kind);
+
+/** The fields of a binding that is that kind of key. */
+function fieldsOf<K extends KindOfKey>(kind: K, b: Binding, context = ctx): FieldsOf<K> {
+  const fields = keyFields(b, context);
+  expect(fields.kind).toBe(kind);
+  return fields as FieldsOf<K>;
+}
 
 const adaptiveKey: Binding = {
   kind: 'adaptive',
@@ -99,6 +106,72 @@ describe('changing what a key is', () => {
         expect(outcome.status, `${layout.id} ${layer}/${key}`).not.toBe('refused');
       }
     }
+  });
+});
+
+describe('what each kind of key shows, and what its controls change', () => {
+  it('reads a symbol as the text line does: one character as itself, a longer word as a keycode', () => {
+    const accented = fieldsOf('symbol', { kind: 'kp', symbol: 'a', shifted: 'Á' });
+    // Typed literally, it keeps the shifted symbol it had; a keycode brings its own.
+    expect(accented.set.symbol('ç')).toEqual({ kind: 'kp', symbol: 'ç', shifted: 'Á' });
+    expect(accented.set.symbol('ão')).toEqual({ kind: 'kp', symbol: 'ão', shifted: 'Á' });
+    expect(accented.set.symbol('N1')).toEqual({ kind: 'kp', symbol: '1', shifted: '!' });
+    expect(accented.view.shiftedByDefault).toBe('A');
+  });
+
+  it('changes nothing when a field is committed as it is shown', () => {
+    const space: Binding = { kind: 'kp', symbol: ' ' };
+    const shown = fieldsOf('symbol', space);
+    expect(shown.view.symbol).toBe('SPACE');
+    expect(shown.set.symbol('SPACE')).toBe(space);
+    // Even where the host would keep `SPACE` as a keycode rather than read it as a space.
+    expect(fieldsOf('symbol', space, { ...ctx, hostLocale: 'us' }).set.symbol('SPACE')).toBe(space);
+    expect(shown.set.tag('')).toBe(space);
+  });
+
+  it('drops an optional field emptied, rather than store it empty', () => {
+    const tagged = fieldsOf('symbol', { kind: 'kp', symbol: 'u', shifted: 'Ú', tag: 'qu' });
+    expect(tagged.set.tag('')).toEqual({ kind: 'kp', symbol: 'u', shifted: 'Ú' });
+    expect(tagged.set.shifted('')).toEqual({ kind: 'kp', symbol: 'u', tag: 'qu' });
+    const arrow = fieldsOf('unicode', { kind: 'unicode', symbol: '→', shiftedSymbol: '⇒' });
+    expect(arrow.set.shifted('')).toEqual({ kind: 'unicode', symbol: '→' });
+  });
+
+  it("keeps a layer key's options for another layer, and starts afresh another way of coming on", () => {
+    const oneShot: Binding = { kind: 'sl', layer: 'alpha2', quickRelease: true };
+    const layer = fieldsOf('layer', oneShot);
+    expect(layer.view).toEqual({ layer: 'alpha2', mode: 'sl' });
+    expect(layer.set.layer('ccedil')).toEqual({ kind: 'sl', layer: 'ccedil', quickRelease: true });
+    expect(layer.set.mode('mo')).toEqual({ kind: 'mo', layer: 'alpha2' });
+    expect(layer.set.mode('sl')).toBe(oneShot);
+    const sticky: Binding = { kind: 'sk', mod: 'LSHIFT', quickRelease: true };
+    const modifier = fieldsOf('modifier', sticky);
+    expect(modifier.set.mod('LCTRL')).toEqual({ kind: 'sk', mod: 'LCTRL', quickRelease: true });
+    expect(modifier.set.acts('mod')).toEqual({ kind: 'mod', mod: 'LSHIFT' });
+    expect(modifier.set.acts('sk')).toBe(sticky);
+  });
+
+  it("lists caps word's symbols that do not end the word, or none at all", () => {
+    const caps = fieldsOf('capsword', { kind: 'caps_word' });
+    expect(caps.set.continues('- _')).toEqual({ kind: 'caps_word', continueList: ['-', '_'] });
+    const listed = fieldsOf('capsword', { kind: 'caps_word', continueList: ['-'] });
+    expect(listed.view.continues).toBe('-');
+    expect(listed.set.continues(' ')).toEqual({ kind: 'caps_word' });
+  });
+
+  it('gives a dead key the accent it was shifted to, and no shifted accent then', () => {
+    const acute = fieldsOf('deadkey', { kind: 'dead_key', diacritic: '´', shifted: '¨' });
+    expect(acute.set.accent('¨')).toEqual({ kind: 'dead_key', diacritic: '¨' });
+    expect(acute.set.accent('`')).toEqual({ kind: 'dead_key', diacritic: '`', shifted: '¨' });
+    expect(acute.set.shifted('')).toEqual({ kind: 'dead_key', diacritic: '´' });
+  });
+
+  it('runs another of the layout behaviours, and shows what an import kept', () => {
+    const named = fieldsOf('behaviour', { kind: 'adaptive', ref: 'adaptiveHV' });
+    expect(named.view.runs).toBe('adaptiveHV');
+    expect(named.set.runs('altRepeat')).toEqual({ kind: 'ref', ref: 'altRepeat' });
+    const kept = fieldsOf('imported', { kind: 'raw', label: 'BT1', source: '&bt BT_SEL 1' });
+    expect(kept.view).toEqual({ label: 'BT1', source: '&bt BT_SEL 1' });
   });
 });
 

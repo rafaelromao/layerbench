@@ -1,5 +1,5 @@
 import { type Binding, bindingToJson, type Mod, stableStringify } from '@layerbench/core';
-import type { BindingTextContext } from '../binding-text.js';
+import { type BindingTextContext, parseBindingText } from '../binding-text.js';
 import { type KindOfKey, kindOf } from './kinds.js';
 
 /**
@@ -14,14 +14,30 @@ type Of<K extends Binding['kind']> = Extract<Binding, { kind: K }>;
 /** What one control does: the binding it makes of the value it is given. */
 export type Change<V> = (value: V) => Binding;
 
-type LayerMode = 'mo' | 'sl' | 'tog' | 'to' | 'auto_layer';
+/** How a layer key brings its layer on. */
+export type LayerMode = 'mo' | 'sl' | 'tog' | 'to' | 'auto_layer';
+/** How a modifier key acts: held, or one-shot. */
+export type ModMode = 'mod' | 'sk';
 type Nothing = Record<never, never>;
 
 /** For each kind of key: the bindings it stands for, what its controls show, and their changes. */
 interface Shapes {
-  symbol: { binding: Of<'kp'>; view: Nothing; set: Nothing };
-  layer: { binding: Of<LayerMode>; view: Nothing; set: Nothing };
-  modifier: { binding: Of<'mod' | 'sk'>; view: Nothing; set: Nothing };
+  symbol: {
+    binding: Of<'kp'>;
+    /** `symbol` is the keycode where there is one, and a space is `SPACE`. */
+    view: { symbol: string; shifted: string; tag: string; shiftedByDefault: string };
+    set: { symbol: Change<string>; shifted: Change<string>; tag: Change<string> };
+  };
+  layer: {
+    binding: Of<LayerMode>;
+    view: { layer: string; mode: LayerMode };
+    set: { layer: Change<string>; mode: Change<LayerMode> };
+  };
+  modifier: {
+    binding: Of<ModMode>;
+    view: { mod: Mod; acts: ModMode };
+    set: { mod: Change<Mod>; acts: Change<ModMode> };
+  };
   taphold: { binding: Of<'lt' | 'hold_tap'>; view: Nothing; set: Nothing };
   repeat: { binding: Of<'key_repeat'>; view: Nothing; set: Nothing };
   adaptive: { binding: Of<'adaptive'>; view: Nothing; set: Nothing };
@@ -29,13 +45,30 @@ interface Shapes {
   macro: { binding: Of<'macro'>; view: Nothing; set: Nothing };
   tapdance: { binding: Of<'tap_dance'>; view: Nothing; set: Nothing };
   morph: { binding: Of<'mod_morph' | 'layer_morph'>; view: Nothing; set: Nothing };
-  capsword: { binding: Of<'caps_word'>; view: Nothing; set: Nothing };
-  unicode: { binding: Of<'unicode'>; view: Nothing; set: Nothing };
-  deadkey: { binding: Of<'dead_key'>; view: Nothing; set: Nothing };
-  behaviour: { binding: Of<'ref'> | Of<'adaptive'> | Of<'macro'>; view: Nothing; set: Nothing };
+  capsword: {
+    binding: Of<'caps_word'>;
+    /** The symbols that do not end the word, between spaces. */
+    view: { continues: string };
+    set: { continues: Change<string> };
+  };
+  unicode: {
+    binding: Of<'unicode'>;
+    view: { symbol: string; shifted: string };
+    set: { symbol: Change<string>; shifted: Change<string> };
+  };
+  deadkey: {
+    binding: Of<'dead_key'>;
+    view: { accent: string; shifted: string };
+    set: { accent: Change<string>; shifted: Change<string> };
+  };
+  behaviour: {
+    binding: Of<'ref'> | Of<'adaptive'> | Of<'macro'>;
+    view: { runs: string };
+    set: { runs: Change<string> };
+  };
   transparent: { binding: Of<'trans'>; view: Nothing; set: Nothing };
   nothing: { binding: Of<'none'> | undefined; view: Nothing; set: Nothing };
-  imported: { binding: Of<'raw'>; view: Nothing; set: Nothing };
+  imported: { binding: Of<'raw'>; view: { label: string; source: string }; set: Nothing };
 }
 
 /**
@@ -57,12 +90,15 @@ export type FieldsOf<K extends KindOfKey> = Extract<KeyFields, { kind: K }>;
 /** Read a binding as its kind of key, with a change for each of its controls. */
 export function keyFields(binding: Binding | undefined, ctx: BindingTextContext): KeyFields {
   const kind = kindOf(binding);
-  const set = {
-    kind: (to: KindOfKey) =>
-      to === kind && binding ? binding : same(binding, convert(ctx, binding, to)),
-  };
-  return { kind, binding, view: {}, set } as KeyFields;
+  const read = readers[kind] as Reader<KindOfKey>;
+  const { view, set } = read(binding as never, ctx);
+  const toKind = (to: KindOfKey) =>
+    to === kind && binding ? binding : same(binding, convert(ctx, binding, to));
+  return { kind, binding, view, set: { ...set, kind: toKind } } as KeyFields;
 }
+
+/** The symbols a field lists, between spaces. */
+export const words = (text: string): string[] => text.split(/\s+/).filter(Boolean);
 
 // ---------------------------------------------------------------------------- what changed
 
@@ -76,9 +112,149 @@ function same(before: Binding | undefined, after: Binding): Binding {
   return before !== undefined && written(before) === written(after) ? before : after;
 }
 
+/** A control's change, which gives the binding back when it would change nothing. */
+function change<V>(b: Binding, make: (value: V) => Binding): Change<V> {
+  return (value) => same(b, make(value));
+}
+
+/** A text field's change. Committing what the field already shows changes nothing. */
+function field(b: Binding, shown: string, make: (text: string) => Binding): Change<string> {
+  return (text) => (text === shown ? b : same(b, make(text)));
+}
+
+/** Drop a field entirely rather than store it empty, so the document stays as it was written. */
+function withOptional<B extends Binding>(b: B, key: string, value: string): B {
+  const out = { ...b } as Record<string, unknown>;
+  if (value === '') delete out[key];
+  else out[key] = value;
+  return out as B;
+}
+
+/** A list field: the words given, or no field at all. */
+function withWords<B extends Binding>(b: B, key: string, text: string): B {
+  const out = { ...b } as Record<string, unknown>;
+  if (words(text).length > 0) out[key] = words(text);
+  else delete out[key];
+  return out as B;
+}
+
 /** The first layer above the base is the likeliest a key means when it names none. */
 function likeliestLayer(ctx: BindingTextContext): string {
   return ctx.layers[1]?.id ?? ctx.layers[0].id;
+}
+
+// ---------------------------------------------------------------------------- reading a key
+
+type Reader<K extends KindOfKey> = (
+  b: Shapes[K]['binding'],
+  ctx: BindingTextContext,
+) => Pick<Shapes[K], 'view' | 'set'>;
+
+const NONE = { view: {}, set: {} };
+
+const readers: { [K in KindOfKey]: Reader<K> } = {
+  symbol(b, ctx) {
+    const view = {
+      symbol: symbolText(b),
+      shifted: b.shifted ?? '',
+      tag: b.tag ?? '',
+      shiftedByDefault: (b.symbol ?? '').toUpperCase(),
+    };
+    return {
+      view,
+      set: {
+        symbol: field(b, view.symbol, (text) => typed(b, text, ctx)),
+        shifted: field(b, view.shifted, (v) => withOptional(b, 'shifted', v)),
+        tag: field(b, view.tag, (v) => withOptional(b, 'tag', v)),
+      },
+    };
+  },
+  layer: (b) => ({
+    view: { layer: b.layer, mode: b.kind },
+    set: {
+      layer: change(b, (layer: string) => ({ ...b, layer })),
+      // The options belong to one way of coming on, so another way starts afresh.
+      mode: change(b, (mode: LayerMode) => (mode === b.kind ? b : { kind: mode, layer: b.layer })),
+    },
+  }),
+  modifier: (b) => ({
+    view: { mod: b.mod, acts: b.kind },
+    set: {
+      mod: change(b, (mod: Mod) => ({ ...b, mod })),
+      acts: change(b, (acts: ModMode) => (acts === b.kind ? b : { kind: acts, mod: b.mod })),
+    },
+  }),
+  taphold: () => NONE,
+  repeat: () => NONE,
+  adaptive: () => NONE,
+  altrepeat: () => NONE,
+  macro: () => NONE,
+  tapdance: () => NONE,
+  morph: () => NONE,
+  capsword(b) {
+    const view = { continues: (b.continueList ?? []).join(' ') };
+    return {
+      view,
+      set: { continues: field(b, view.continues, (text) => withWords(b, 'continueList', text)) },
+    };
+  },
+  unicode(b) {
+    const view = { symbol: b.symbol, shifted: b.shiftedSymbol ?? '' };
+    return {
+      view,
+      set: {
+        symbol: field(b, view.symbol, (symbol) => ({ ...b, symbol })),
+        shifted: field(b, view.shifted, (v) => withOptional(b, 'shiftedSymbol', v)),
+      },
+    };
+  },
+  deadkey: (b) => ({
+    view: { accent: b.diacritic, shifted: b.shifted ?? '' },
+    set: {
+      // An accent that was the shifted one is now the key's own, so shift arms no other.
+      accent: change(b, (diacritic: string) =>
+        diacritic === b.shifted ? { kind: 'dead_key', diacritic } : { ...b, diacritic },
+      ),
+      shifted: change(b, (v: string) => withOptional(b, 'shifted', v)),
+    },
+  }),
+  behaviour: (b) => ({
+    view: { runs: b.ref ?? '' },
+    set: { runs: change(b, (ref: string) => ({ kind: 'ref', ref })) },
+  }),
+  transparent: () => NONE,
+  nothing: () => NONE,
+  imported: (b) => ({ view: { label: b.label, source: b.source ?? '' }, set: {} }),
+};
+
+// ---------------------------------------------------------------------------- symbols
+
+/** How a key press is written in its field. A space has no visible spelling, so it takes its name. */
+function symbolText(b: Of<'kp'>): string {
+  if (b.keycode) return b.keycode;
+  return b.symbol === ' ' ? 'SPACE' : (b.symbol ?? '');
+}
+
+/**
+ * Read a field back as a key press. One character is itself; a longer word is tried as a keycode
+ * first, the way the text line reads it, so `SPACE` and `N1` resolve while `ão` stays itself.
+ */
+function typed(b: Of<'kp'>, text: string, ctx: BindingTextContext): Binding {
+  const { symbol: _s, keycode: _k, shifted: _sh, ...rest } = b;
+  const next: Of<'kp'> = { ...rest, ...pressOf(text, ctx) };
+  // A resolved keycode brings its own shifted symbol; one typed literally keeps the old.
+  if (next.shifted === undefined && b.shifted !== undefined) next.shifted = b.shifted;
+  if (!next.keycode) delete next.keycode;
+  if (!next.shifted) delete next.shifted;
+  return next;
+}
+
+function pressOf(text: string, ctx: BindingTextContext): Partial<Of<'kp'>> {
+  if ([...text].length <= 1 || text.startsWith('&')) return { symbol: text };
+  const parsed = parseBindingText(text, ctx);
+  if (!parsed.ok || parsed.binding.kind !== 'kp') return { symbol: text };
+  const { symbol, keycode, shifted } = parsed.binding;
+  return { symbol, keycode, shifted };
 }
 
 // ---------------------------------------------------------------------------- kind changes

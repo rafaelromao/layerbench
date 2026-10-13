@@ -1,5 +1,6 @@
 import type { Layout, LayoutFeatures, WrappingFeature } from '@layerbench/core';
-import { ModChips, Note, Row, TextField, words } from './controls.js';
+import { words } from './binding-changes.js';
+import { ModChips, Note, Row, TextField } from './controls.js';
 
 export function featureTitle(feature: WrappingFeature): string {
   switch (feature) {
