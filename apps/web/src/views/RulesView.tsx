@@ -1,21 +1,24 @@
 import {
   DEFAULT_GLOBALS,
-  getPreset,
   layoutsDoc,
-  PRESET_IDS,
   type Rule,
   ruleSetFromJson,
   slug,
+  stableStringify,
 } from '@layerbench/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
-import { useCallback, useEffect, useReducer, useState } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import { ErrorAlert } from '../components/ErrorAlert.js';
 import { HelpLink } from '../components/HelpLink.js';
 import { presetOf, RuleSources } from '../components/RuleSources.js';
 import { HELP } from '../guide/help.js';
+import { savedRef } from '../saved/ref.js';
+import { useRuleSet } from '../saved/use-rule-set.js';
 import { useCarried } from '../state/selection.js';
 import { toast } from '../state/toasts.js';
 import { useCollection, useStorage } from '../storage/use-storage.js';
-import type { RawSearch } from '../url/params.js';
+import { parseParams, type RawSearch } from '../url/params.js';
+import { RuleSetSelect } from './AnalysisSelects.js';
 import {
   boundsText,
   COMPOSER_AGGREGATES,
@@ -28,7 +31,6 @@ import {
 } from './rules/composer.js';
 import { describeSource, describeWhere } from './rules/describe.js';
 import { initialRulesState, removedBuiltIns, rulesReducer } from './rules/reducer.js';
-import { useRuleSet } from './useRuleSet.js';
 
 const FAMILY_TITLES: [string, string][] = [
   ['bigram', 'Bigrams'],
@@ -147,16 +149,43 @@ export function RulesView() {
   const carried = useCarried();
   const storage = useStorage();
   const savedSets = useCollection('rulesets');
-  const ref = search.rules ?? 'layouts_doc';
-  const resolved = useRuleSet(ref);
+  const ref = parseParams(search).preset;
+  const rules = useRuleSet(ref);
 
-  const [state, send] = useReducer(rulesReducer, initialRulesState(getPreset(ref), ref));
+  // Nothing is edited until a set is read: a saved one opens on itself, never on a stand-in.
+  const [state, send] = useReducer(rulesReducer, null, () =>
+    rules.status === 'read'
+      ? initialRulesState(rules.ruleSet, ref)
+      : initialRulesState(layoutsDoc(), null),
+  );
   const [saveName, setSaveName] = useState('My rules');
 
-  // Loading a different set replaces everything, including anything unsaved.
+  // Loading a different set replaces everything, including anything unsaved, once it is read. The
+  // set this page has just saved is the one it shows already, and is not loaded over what was
+  // edited since; nor is the set it saved from, while the link still names it. The same set read
+  // again with other contents, such as GitHub's newer copy once signed in, replaces it only when
+  // nothing is unsaved.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a set read for a reference loads
   useEffect(() => {
-    send({ type: 'load', ruleSet: resolved, ref });
-  }, [resolved, ref]);
+    if (rules.status !== 'read') return;
+    const other = state.sourceRef !== rules.ref;
+    const changed =
+      !other && !state.dirty && stableStringify(rules.ruleSet) !== stableStringify(state.ruleSet);
+    if (other || changed) send({ type: 'load', ruleSet: rules.ruleSet, ref: rules.ref });
+  }, [rules]);
+  /** The set just saved, which the link names a moment later: it stays shown meanwhile. */
+  const justSaved = useRef<string | null>(null);
+  if (justSaved.current === ref && rules.status !== 'reading') justSaved.current = null;
+  /**
+   * Whether the set shown is the one the link names, as storage now reads it: until it is read,
+   * and when it will not open from storage changed since, nothing is shown. The set just saved
+   * stays shown while it is read back.
+   */
+  const shown =
+    (state.sourceRef === ref && rules.status === 'read') ||
+    (state.sourceRef !== null &&
+      state.sourceRef === justSaved.current &&
+      rules.status !== 'failed');
 
   useEffect(() => {
     if (!state.notice) return;
@@ -176,12 +205,13 @@ export function RulesView() {
         { ...ruleSet, id, name: saveName } as Record<string, unknown>,
         { message: `Save rule set ${saveName}` },
       );
-      send({ type: 'saved', ref: `saved:${id}` });
+      justSaved.current = savedRef(id);
+      send({ type: 'saved', ref: savedRef(id) });
       toast.info(`Saved rule set ${id}`);
       savedSets.refresh();
       navigate({
         to: '/rules',
-        search: { rules: `saved:${id}` } as never,
+        search: { rules: savedRef(id) } as never,
         replace: true,
         resetScroll: false,
       });
@@ -203,6 +233,42 @@ export function RulesView() {
   const setComposer = (patch: Partial<ComposerState>) => send({ type: 'composerChange', patch });
   const removed = removedBuiltIns(ruleSet);
 
+  const picker = (
+    <div className="lb-wide flex items-end gap-2">
+      <label className="form-control max-sm:flex-1">
+        <span className="label-text text-xs">Rule set</span>
+        <RuleSetSelect
+          className="min-w-56"
+          value={ref}
+          onChange={(rules) => navigate({ to: '/rules', search: { rules } as never })}
+        />
+      </label>
+      <HelpLink help={HELP.rules} className="mb-2" />
+    </div>
+  );
+
+  // A set still being read, or one that will not open, shows why there is nothing to edit.
+  if (!shown) {
+    return (
+      <div className="space-y-4">
+        <h1 className="sr-only">Rules</h1>
+        <section className="card bg-base-100 border border-base-300">
+          <div className="card-body gap-3 p-4">
+            <div className="lb-toolbar flex flex-wrap items-end gap-3">{picker}</div>
+            {rules.status === 'failed' ? (
+              <ErrorAlert message={rules.error} />
+            ) : (
+              <p className="flex items-center gap-2 text-xs opacity-70" role="status">
+                <span className="loading loading-dots loading-xs" />
+                Reading rule set {rules.name}…
+              </p>
+            )}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <h1 className="sr-only">Rules</h1>
@@ -210,37 +276,7 @@ export function RulesView() {
       <section className="card bg-base-100 border border-base-300">
         <div className="card-body gap-3 p-4">
           <div className="lb-toolbar flex flex-wrap items-end gap-3">
-            <div className="lb-wide flex items-end gap-2">
-              <label className="form-control max-sm:flex-1">
-                <span className="label-text text-xs">Rule set</span>
-                <select
-                  aria-label="Rule set"
-                  className="select select-sm select-bordered min-w-56"
-                  value={ref}
-                  onChange={(e) =>
-                    navigate({ to: '/rules', search: { rules: e.target.value } as never })
-                  }
-                >
-                  <optgroup label="Presets">
-                    {PRESET_IDS.map((id) => (
-                      <option key={id} value={id}>
-                        {getPreset(id).name}
-                      </option>
-                    ))}
-                  </optgroup>
-                  {savedSets.entries.length > 0 && (
-                    <optgroup label="Saved">
-                      {savedSets.entries.map((e) => (
-                        <option key={e.id} value={`saved:${e.id}`}>
-                          {e.name}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                </select>
-              </label>
-              <HelpLink help={HELP.rules} className="mb-2" />
-            </div>
+            {picker}
 
             <p className="lb-wide text-xs opacity-70 max-w-xl">{ruleSet.description}</p>
             {state.dirty && (
@@ -272,7 +308,7 @@ export function RulesView() {
 
             <Link
               to="/analyze"
-              search={carried({ rules: state.sourceRef }) as never}
+              search={carried({ rules: ref }) as never}
               className="lb-wide btn btn-sm btn-primary"
             >
               Analyze with this set

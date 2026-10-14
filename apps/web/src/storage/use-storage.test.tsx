@@ -3,6 +3,8 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { useGitHubSession } from '../auth/github-session.js';
+import { MemoryStorage } from '../test/memory-storage.js';
+import { CompositeStorage } from './composite.js';
 import { IndexedDbAdapter } from './indexeddb.js';
 import { StorageProvider, useCollection } from './use-storage.js';
 
@@ -54,10 +56,12 @@ describe('the saved index, as the last visit listed it', () => {
     await waitFor(() =>
       expect(names(visit.result.current.entries)).toEqual(['Breeze', 'Gust', 'Mine']),
     );
+    expect(visit.result.current.complete).toBe(false);
 
     // Once it is known nobody is signed in, the browser's copy is the whole list, and is kept.
     act(() => useGitHubSession.setState({ status: 'signed-out' }));
     await waitFor(() => expect(names(visit.result.current.entries)).toEqual(['Gust', 'Mine']));
+    expect(visit.result.current.complete).toBe(true);
     const kept = JSON.parse(localStorage.getItem('layerbench:index:layouts') ?? '[]');
     expect(names(kept)).toEqual(['Gust', 'Mine']);
   });
@@ -67,5 +71,83 @@ describe('the saved index, as the last visit listed it', () => {
     expect(render(listing()).result.current.entries).toEqual([]);
     localStorage.setItem('layerbench:index:layouts', '{');
     expect(render(listing()).result.current.entries).toEqual([]);
+  });
+});
+
+describe('one listing of a collection', () => {
+  function both(adapter: StorageAdapter) {
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <StorageProvider adapter={adapter}>{children}</StorageProvider>
+    );
+    return renderHook(() => ({ a: useCollection('rulesets'), b: useCollection('rulesets') }), {
+      wrapper,
+    });
+  }
+
+  it('is listed once for every list that opens at the same time', async () => {
+    let listed = 0;
+    const adapter = {
+      id: 'test',
+      list: async () => {
+        listed++;
+        return [entry('mine', 'Mine')];
+      },
+    } as unknown as StorageAdapter;
+    const { result } = both(adapter);
+    await waitFor(() => expect(names(result.current.b.entries)).toEqual(['Mine']));
+    expect(names(result.current.a.entries)).toEqual(['Mine']);
+    expect(listed).toBe(1);
+  });
+
+  it('reaches every list when one of them is refreshed', async () => {
+    const entries = [entry('mine', 'Mine')];
+    const adapter = { id: 'test', list: async () => [...entries] } as unknown as StorageAdapter;
+    const { result } = both(adapter);
+    await waitFor(() => expect(names(result.current.b.entries)).toEqual(['Mine']));
+
+    entries.push(entry('strict', 'Strict'));
+    await act(() => result.current.a.refresh());
+    expect(names(result.current.b.entries)).toEqual(['Mine', 'Strict']);
+  });
+
+  it('is refreshed from the storage now in use, by a list that asked before it changed', async () => {
+    let adapter = listing([entry('mine', 'Mine')]);
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <StorageProvider adapter={adapter}>{children}</StorageProvider>
+    );
+    const { result, rerender } = renderHook(() => useCollection('rulesets'), { wrapper });
+    await waitFor(() => expect(names(result.current.entries)).toEqual(['Mine']));
+    const refresh = result.current.refresh;
+
+    // Signing in swaps storage, while a save made before it still goes on to refresh.
+    adapter = listing([entry('mine', 'Mine'), entry('theirs', 'Theirs')]);
+    rerender();
+    await waitFor(() => expect(names(result.current.entries)).toEqual(['Mine', 'Theirs']));
+    await act(() => refresh());
+    expect(names(result.current.entries)).toEqual(['Mine', 'Theirs']);
+  });
+
+  it('is not whole while GitHub cannot be listed, and keeps what was listed last', async () => {
+    localStorage.setItem(
+      'layerbench:index:rulesets',
+      JSON.stringify([entry('github-only', 'GitHub only')]),
+    );
+    const remote = Object.assign(new MemoryStorage('github'), {
+      list: async () => {
+        throw new Error('offline');
+      },
+    });
+    const local = new MemoryStorage('local');
+    await local.put('rulesets', 'mine', { name: 'Mine' });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <StorageProvider adapter={new CompositeStorage(local, remote)}>{children}</StorageProvider>
+    );
+    const { result } = renderHook(() => useCollection('rulesets'), { wrapper });
+
+    await waitFor(() => expect(names(result.current.entries)).toEqual(['GitHub only', 'Mine']));
+    expect(result.current.complete).toBe(false);
+    expect(names(JSON.parse(localStorage.getItem('layerbench:index:rulesets') ?? '[]'))).toEqual([
+      'GitHub only',
+    ]);
   });
 });

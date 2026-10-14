@@ -98,7 +98,6 @@ export function RankingDialog({
   params,
   onChange,
   corpora,
-  ruleSetName,
   boards,
   savedCount,
   summary,
@@ -106,7 +105,6 @@ export function RankingDialog({
   params: Params;
   onChange: (patch: Partial<Params>) => void;
   corpora: CorpusManifest[];
-  ruleSetName?: string;
   boards: BoardChoice[];
   /** How many layouts are saved here, listed or not. */
   savedCount: number;
@@ -128,13 +126,7 @@ export function RankingDialog({
           </h2>
 
           <div className="lb-toolbar flex flex-row flex-wrap items-end gap-3">
-            <SettingsFields
-              params={params}
-              onChange={onChange}
-              corpora={corpora}
-              ruleSetName={ruleSetName}
-              verb="Rank"
-            />
+            <SettingsFields params={params} onChange={onChange} corpora={corpora} verb="Rank" />
           </div>
 
           <SavedFilter count={savedCount} />

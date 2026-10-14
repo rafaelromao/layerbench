@@ -111,18 +111,21 @@ interface Shown {
  */
 export function useSummaries(
   entries: SummaryEntry[],
-  settings: AnalysisSettings,
+  settings: AnalysisSettings | null,
   context: string,
 ): { summaries: Map<string, LayoutSummary>; pending: number } {
   const client = useAnalysisClient();
   const requests = useMemo(
     () =>
-      entries
-        .filter((e): e is SummaryEntry & { layout: Layout } => e.layout !== null)
-        .map((e) => {
-          const request: AnalyzeRequest = { layout: toCanonicalJson(e.layout), settings };
-          return { key: e.key, request, hash: analysisKey(e.layout, settings).key };
-        }),
+      // Settings not yet known score nothing, and nothing is remembered of them.
+      settings === null
+        ? []
+        : entries
+            .filter((e): e is SummaryEntry & { layout: Layout } => e.layout !== null)
+            .map((e) => {
+              const request: AnalyzeRequest = { layout: toCanonicalJson(e.layout), settings };
+              return { key: e.key, request, hash: analysisKey(e.layout, settings).key };
+            }),
     [entries, settings],
   );
   // A new array with the same content is the same list: what is ranked on, the layouts listed (one

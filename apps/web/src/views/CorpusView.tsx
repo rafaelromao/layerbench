@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { HelpLink } from '../components/HelpLink.js';
 import { useAnalysisClient } from '../engine/client-context.js';
 import type { CorpusFactsDTO } from '../engine/protocol.js';
-import { isSavedCorpus, savedCorpusRef } from '../engine/saved-corpora.js';
 import { HELP } from '../guide/help.js';
+import { savedId, savedRef } from '../saved/ref.js';
 import { useCarried } from '../state/selection.js';
 import { toast } from '../state/toasts.js';
 import { useStorage } from '../storage/use-storage.js';
@@ -115,8 +115,8 @@ export function CorpusView() {
   );
   // A text built here has its own card until it is saved, and a blend made in Analyze is not a text
   // of its own: the list is what comes with the app, and what was saved.
-  const bundled = corpora.filter((c) => !isSavedCorpus(c.id) && !/^(custom|mix)-/.test(c.id));
-  const saved = corpora.filter((c) => isSavedCorpus(c.id));
+  const bundled = corpora.filter((c) => savedId(c.id) === null && !/^(custom|mix)-/.test(c.id));
+  const saved = corpora.filter((c) => savedId(c.id) !== null);
 
   useEffect(() => {
     let cancelled = false;
@@ -185,7 +185,7 @@ export function CorpusView() {
     try {
       await storage.put('corpora', id, doc, { message: `Save corpus ${custom.name}` });
       // Saved again under a name already in use, it replaces the text the engine had by that name.
-      await client.registerCorpus(savedCorpusRef(id), doc);
+      await client.registerCorpus(savedRef(id), doc);
       toast.info(`Saved corpus ${id}`);
       setCorpora(await client.listCorpora());
     } catch (e) {

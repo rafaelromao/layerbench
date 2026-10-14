@@ -55,7 +55,7 @@ export class MemoryStorage implements StorageAdapter {
     collection: Collection,
     id: string,
     doc: JsonObject,
-    opts: { expectedSha?: string; message?: string } = {},
+    opts: { expectedSha?: string | null; message?: string } = {},
   ): Promise<StorageMeta> {
     assertDocumentId(id);
     const existing = this.docs.get(`${collection}/${id}`);

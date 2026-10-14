@@ -3,9 +3,9 @@ import {
   isDocumentId,
   type Layout,
   type StorageAdapter,
-  safeParseLayout,
   toCanonicalJson,
 } from '@layerbench/core';
+import { readSaved, savedError } from '../saved/read.js';
 import { decodeInline, encodeInline } from '../url/inline.js';
 import { inlineRef, parseLayoutRef } from '../url/params.js';
 
@@ -13,14 +13,6 @@ import { inlineRef, parseLayoutRef } from '../url/params.js';
 export type Opened =
   | { ok: true; layout: Layout; storedId: string | null }
   | { ok: false; error: string };
-
-async function readSaved(storage: StorageAdapter, id: string): Promise<Layout | null> {
-  const stored = await storage.get('layouts', id);
-  if (!stored) return null;
-  const parsed = safeParseLayout(stored.doc);
-  if (!parsed.ok) throw new Error(parsed.error);
-  return parsed.layout;
-}
 
 const same = (a: Layout, b: Layout) =>
   JSON.stringify(toCanonicalJson(a)) === JSON.stringify(toCanonicalJson(b));
@@ -43,8 +35,9 @@ export async function openLayout(ref: string, storage: StorageAdapter): Promise<
     const { layout } = decoded;
     const id = layout.id;
     if (!id || !isDocumentId(id)) return { ok: true, layout, storedId: null };
-    const stored = await readSaved(storage, id).catch(() => null);
-    return { ok: true, layout, storedId: stored && same(stored, layout) ? id : null };
+    const stored = await readSaved(storage, 'layouts', id);
+    const saved = stored.status === 'read' && same(stored.doc, layout);
+    return { ok: true, layout, storedId: saved ? id : null };
   }
 
   if (parsed.kind === 'bundled') {
@@ -55,14 +48,10 @@ export async function openLayout(ref: string, storage: StorageAdapter): Promise<
   }
 
   const id = parsed.value;
-  try {
-    const layout = await readSaved(storage, id);
-    return layout
-      ? { ok: true, layout, storedId: id }
-      : { ok: false, error: `layout ${id} not found` };
-  } catch (e) {
-    return { ok: false, error: `storage error: ${e instanceof Error ? e.message : String(e)}` };
-  }
+  const read = await readSaved(storage, 'layouts', id);
+  return read.status === 'read'
+    ? { ok: true, layout: read.doc, storedId: id }
+    : { ok: false, error: savedError('layouts', id, read) };
 }
 
 /** The link of a saved layout: the layout itself, its id inside, so it opens for anyone sent it. */

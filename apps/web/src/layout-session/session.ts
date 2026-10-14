@@ -7,8 +7,9 @@ import {
   type StorageAdapter,
   toCanonicalJson,
 } from '@layerbench/core';
+import { savedRef } from '../saved/ref.js';
 import { encodeInline } from '../url/inline.js';
-import { inlineRef, savedRef } from '../url/params.js';
+import { inlineRef } from '../url/params.js';
 import type { Drafts } from './drafts.js';
 import { carriedRef, openLayout, snapshotRef } from './open.js';
 

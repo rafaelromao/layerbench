@@ -5,23 +5,20 @@ import {
   type IndexEntry,
   type StorageAdapter,
 } from '@layerbench/core';
+import { readSaved, savedError } from '../saved/read.js';
+import { savedId, savedRef } from '../saved/ref.js';
 import type { AnalysisClient } from './protocol.js';
 
-/** How a view, or a link, names a saved text: `saved:<id>`, as it names a saved rule set. */
-const SAVED = 'saved:';
-
-export function savedCorpusRef(id: string): string {
-  return `${SAVED}${id}`;
-}
-
-export function isSavedCorpus(corpusId: string): boolean {
-  return corpusId.startsWith(SAVED);
+/** The engine's copy of a saved text, which it knows as `saved:<id>@<hash of its sample>`. */
+function isEngineCopy(corpusId: string): boolean {
+  const at = corpusId.lastIndexOf('@');
+  return at > 0 && savedId(corpusId.slice(0, at)) !== null;
 }
 
 /** What a picker shows for a saved text before it is read: the index has all but its symbols. */
 function listed(entry: IndexEntry): CorpusManifest {
   return {
-    id: savedCorpusRef(entry.id),
+    id: savedRef(entry.id),
     name: entry.name,
     language: entry.language ?? 'custom',
     license: entry.license,
@@ -52,19 +49,21 @@ export function withSavedCorpora(client: AnalysisClient, storage: StorageAdapter
     return manifest;
   };
 
-  const engineManifest = (ref: string): Promise<CorpusManifest> =>
+  const engineManifest = (ref: string, id: string): Promise<CorpusManifest> =>
     given.get(ref) ??
     give(
       ref,
-      storage.get('corpora', ref.slice(SAVED.length)).then((stored) => {
-        if (!stored) throw new Error(`There is no saved text ${ref.slice(SAVED.length)}`);
-        return stored.doc;
+      readSaved(storage, 'corpora', id).then((read) => {
+        if (read.status !== 'read') throw new Error(savedError('corpora', id, read));
+        return read.doc;
       }),
     );
 
   /** The id the engine knows a corpus by. */
-  const inEngine = async (corpusId: string): Promise<string> =>
-    isSavedCorpus(corpusId) ? (await engineManifest(corpusId)).id : corpusId;
+  const inEngine = async (corpusId: string): Promise<string> => {
+    const id = savedId(corpusId);
+    return id === null ? corpusId : (await engineManifest(corpusId, id)).id;
+  };
 
   /** The settings with their texts named as the engine knows them, a mix's two included. */
   const inEngineSettings = async (settings: AnalysisSettings): Promise<AnalysisSettings> => {
@@ -88,20 +87,21 @@ export function withSavedCorpora(client: AnalysisClient, storage: StorageAdapter
       ]);
       const read = await Promise.all(
         saved.map(async (entry) => {
-          const ref = savedCorpusRef(entry.id);
+          const ref = savedRef(entry.id);
           const manifest = await given.get(ref)?.catch(() => null);
           return manifest ? asSaved(ref, manifest) : listed(entry);
         }),
       );
-      return [...engine.filter((m) => !isSavedCorpus(m.id)), ...read];
+      return [...engine.filter((m) => !isEngineCopy(m.id)), ...read];
     },
     async loadCorpus(corpusId) {
-      return isSavedCorpus(corpusId)
-        ? asSaved(corpusId, await engineManifest(corpusId))
-        : client.loadCorpus(corpusId);
+      const id = savedId(corpusId);
+      return id === null
+        ? client.loadCorpus(corpusId)
+        : asSaved(corpusId, await engineManifest(corpusId, id));
     },
     async registerCorpus(corpusId, doc) {
-      return isSavedCorpus(corpusId)
+      return savedId(corpusId) !== null
         ? asSaved(corpusId, await give(corpusId, Promise.resolve(doc)))
         : client.registerCorpus(corpusId, doc);
     },

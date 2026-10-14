@@ -1,5 +1,6 @@
 import {
   assertDocumentId,
+  COLLECTIONS,
   type Collection,
   type IndexEntry,
   indexSummary,
@@ -11,8 +12,6 @@ import {
 import { readIndex } from './github.js';
 import { API, type GitHubAccess, gitHubFetch } from './github-api.js';
 import { sha1Hex } from './indexeddb.js';
-
-const COLLECTIONS: Collection[] = ['layouts', 'rulesets', 'corpora'];
 
 const DESCRIPTIONS: Record<Collection, string> = {
   layouts: 'LayerBench: saved layouts',
@@ -181,7 +180,7 @@ export class GistAdapter implements StorageAdapter {
     collection: Collection,
     id: string,
     doc: JsonObject,
-    opts: { expectedSha?: string; message?: string } = {},
+    opts: { expectedSha?: string | null; message?: string } = {},
   ): Promise<StorageMeta> {
     assertDocumentId(id);
     const path = documentFile(collection, id);
@@ -190,7 +189,10 @@ export class GistAdapter implements StorageAdapter {
 
     const current = gist ? GistAdapter.content(gist, path) : null;
     if (opts.expectedSha !== undefined && current !== null) {
-      if ((await sha1Hex(current)) !== opts.expectedSha) throw new StorageConflictError();
+      // Expected to be absent, or expected at another version.
+      if (opts.expectedSha === null || (await sha1Hex(current)) !== opts.expectedSha) {
+        throw new StorageConflictError();
+      }
     }
 
     const index = gist ? GistAdapter.content(gist, indexFile(collection)) : null;

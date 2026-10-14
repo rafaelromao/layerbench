@@ -9,6 +9,7 @@ import { AnalysisClientProvider, SavedCorporaProvider } from '../engine/client-c
 import { DirectClient } from '../engine/direct-client.js';
 import type { AnalysisClient } from '../engine/protocol.js';
 import { createAppRouter } from '../router.js';
+import { savedId } from '../saved/ref.js';
 import { StorageProvider } from '../storage/use-storage.js';
 import { decodeInline } from '../url/inline.js';
 
@@ -26,7 +27,8 @@ export function testCorporaRoot(): string {
  */
 export async function savedInLink(search: string): Promise<string | null> {
   const ref = new URLSearchParams(search).get('layout') ?? '';
-  if (ref.startsWith('saved:')) return ref.slice('saved:'.length);
+  const id = savedId(ref);
+  if (id !== null) return id;
   if (!ref.startsWith('inline:')) return null;
   const decoded = await decodeInline(ref.slice('inline:'.length));
   return decoded.ok ? (decoded.layout.id ?? null) : null;

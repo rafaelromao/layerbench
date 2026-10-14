@@ -1,5 +1,6 @@
 import {
   assertDocumentId,
+  COLLECTIONS,
   type Collection,
   documentPath,
   type IndexEntry,
@@ -12,7 +13,6 @@ import {
 import { type IDBPDatabase, openDB } from 'idb';
 
 const DB_VERSION = 1;
-const COLLECTIONS: Collection[] = ['layouts', 'rulesets', 'corpora'];
 const INDEX_STORE = 'indexes';
 
 interface StoredDoc {
@@ -68,7 +68,11 @@ export class IndexedDbAdapter implements StorageAdapter {
     if (stored) return stored;
     // No index yet: rebuild it from whatever documents are there.
     const docs = (await db.getAll(collection)) as StoredDoc[];
-    const entries = docs.map((d) => indexSummary(collection, d.id, JSON.parse(d.json)));
+    // Each as of when it was saved, not now: copying up goes by which copy is newer.
+    const entries = docs.map((d) => ({
+      ...indexSummary(collection, d.id, JSON.parse(d.json)),
+      updatedAt: d.updatedAt,
+    }));
     return entries.sort((a, b) => a.name.localeCompare(b.name));
   }
 
@@ -90,7 +94,7 @@ export class IndexedDbAdapter implements StorageAdapter {
     collection: Collection,
     id: string,
     doc: JsonObject,
-    opts: { expectedSha?: string; message?: string } = {},
+    opts: { expectedSha?: string | null; message?: string } = {},
   ): Promise<StorageMeta> {
     assertDocumentId(id);
     const db = await this.conn();

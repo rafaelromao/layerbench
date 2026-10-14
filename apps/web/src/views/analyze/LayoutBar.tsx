@@ -1,5 +1,4 @@
 import {
-  type AnalysisSettings,
   type CorpusManifest,
   type IndexEntry,
   LANGUAGE_PROFILES,
@@ -11,6 +10,7 @@ import { SampleSelect, SettingsFields } from '../AnalysisSelects.js';
 import { TextAreaField, TextField } from '../edit/inspector/controls.js';
 import { LayoutOptions } from '../LayoutOptions.js';
 import { SettingsDialog, settingsSummary } from '../SettingsDialog.js';
+import type { AnalysisSettingsState } from '../useAnalysisSettings.js';
 
 /**
  * The layout in hand and what it is measured on. In sight: its name, whether it is saved and the
@@ -51,8 +51,8 @@ export function LayoutBar({
   saved: IndexEntry[];
   corpora: CorpusManifest[];
   params: Params;
-  /** What the numbers are made on, the rule set read. */
-  settings: AnalysisSettings;
+  /** What the numbers are made on, as far as their rule set is read. */
+  settings: AnalysisSettingsState;
   onParams: (overrides: Partial<Params>) => void;
   onCompare: () => void;
   /** Whether the board draws the combos that type; absent when the layout has none. */
@@ -144,7 +144,6 @@ export function LayoutBar({
                   params={params}
                   onChange={onParams}
                   corpora={corpora}
-                  ruleSetName={settings.rules.name}
                   verb="Analyze"
                   afterCounts={
                     <label className="form-control">

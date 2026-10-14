@@ -1,5 +1,5 @@
 import { BUNDLED_LAYOUTS, type IndexEntry } from '@layerbench/core';
-import { savedRef } from '../url/params.js';
+import { savedRef } from '../saved/ref.js';
 
 const byName = (a: { name: string; id?: string }, b: { name: string; id?: string }) =>
   a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }) ||

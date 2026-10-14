@@ -107,7 +107,10 @@ describe('Opening a layout', () => {
 
   it('says why a layout will not open', async () => {
     const { s } = session('saved:gone');
-    expect(await settled(s)).toMatchObject({ status: 'failed', error: 'layout gone not found' });
+    expect(await settled(s)).toMatchObject({
+      status: 'failed',
+      error: 'layout gone is not saved here',
+    });
   });
 
   it('opens again on a link it did not write, and on a layout picked, even the same one', async () => {

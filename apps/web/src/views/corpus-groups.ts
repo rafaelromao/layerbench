@@ -1,6 +1,6 @@
 import type { CorpusManifest } from '@layerbench/core';
 import { languageProfile } from '@layerbench/core';
-import { isSavedCorpus } from '../engine/saved-corpora.js';
+import { savedId } from '../saved/ref.js';
 
 /** The group a picker lists the user's own saved texts in, after the languages. */
 export const SAVED_TEXTS = 'Saved texts';
@@ -15,9 +15,9 @@ export function groupByLanguage(
   corpora: CorpusManifest[],
 ): { label: string; items: CorpusManifest[] }[] {
   const groups = new Map<string, CorpusManifest[]>();
-  const saved = corpora.filter((c) => isSavedCorpus(c.id));
+  const saved = corpora.filter((c) => savedId(c.id) !== null);
   for (const c of corpora) {
-    if (isSavedCorpus(c.id)) continue;
+    if (savedId(c.id) !== null) continue;
     const label = languageProfile(c.language)?.name ?? c.language;
     const list = groups.get(label);
     if (list) list.push(c);

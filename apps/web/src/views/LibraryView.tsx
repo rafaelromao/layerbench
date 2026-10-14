@@ -29,6 +29,7 @@ import {
 } from '../engine/use-summaries.js';
 import { HELP } from '../guide/help.js';
 import { openLayout } from '../layout-session/open.js';
+import { savedRef } from '../saved/ref.js';
 import { useRememberSelection } from '../state/selection.js';
 import { useSession } from '../state/session.js';
 import { toast } from '../state/toasts.js';
@@ -40,7 +41,6 @@ import {
   type Params,
   parseParams,
   type RawSearch,
-  savedRef,
   settingsOf,
   toSearch,
 } from '../url/params.js';
@@ -514,7 +514,12 @@ export function LibraryView() {
   );
   // The last ranking on the same settings is what the list opens with.
   const rankingContext = rankingKey(ranking);
-  const { summaries, pending } = useSummaries(summaryEntries, settings, rankingContext);
+  // Nothing is scored until the rule set is read, and a rule set that will not open scores nothing.
+  const { summaries, pending } = useSummaries(
+    settings.status === 'failed' ? [] : summaryEntries,
+    settings.settings,
+    rankingContext,
+  );
 
   // A layout that cannot type letters the corpus's language needs skips them, and skipping is free:
   // it would rank above one that pays to type them. Those go behind, whatever their numbers. A
@@ -688,7 +693,6 @@ export function LibraryView() {
           params={params}
           onChange={setParams}
           corpora={corpora}
-          ruleSetName={settings.rules.name}
           boards={boards}
           savedCount={saved.entries.length}
           summary={
@@ -717,19 +721,23 @@ export function LibraryView() {
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs opacity-60" aria-live="polite">
-          {pending > 0
-            ? `Scoring layouts on a sample of ${ranking.sample.toLocaleString('en-US')} symbols… ${summaryEntries.length - pending} of ${summaryEntries.length}`
-            : unscored
-              ? `Could not score the layouts on ${corpusName}.`
-              : `Lower is better for both. Ranked on a sample of ${ranking.sample.toLocaleString('en-US')} symbols of ${corpusName}, ${settings.rules.name ?? 'rule set'}${
-                  without.length > 0 ? `, typed without ${featureList(without)}` : ''
-                }.${
-                  nobodyCan
-                    ? ` None of these layouts types ${lackingWhat}.`
-                    : behind.size > 0 && sortBy !== 'name'
-                      ? ` Layouts that cannot type ${lackingWhat} come last.`
-                      : ''
-                }`}
+          {settings.status === 'reading'
+            ? `Scoring layouts once the rule set ${settings.rulesName} is read…`
+            : settings.status === 'failed'
+              ? `Could not score the layouts: ${settings.error}.`
+              : pending > 0
+                ? `Scoring layouts on a sample of ${ranking.sample.toLocaleString('en-US')} symbols… ${summaryEntries.length - pending} of ${summaryEntries.length}`
+                : unscored
+                  ? `Could not score the layouts on ${corpusName}.`
+                  : `Lower is better for both. Ranked on a sample of ${ranking.sample.toLocaleString('en-US')} symbols of ${corpusName}, ${settings.rulesName}${
+                      without.length > 0 ? `, typed without ${featureList(without)}` : ''
+                    }.${
+                      nobodyCan
+                        ? ` None of these layouts types ${lackingWhat}.`
+                        : behind.size > 0 && sortBy !== 'name'
+                          ? ` Layouts that cannot type ${lackingWhat} come last.`
+                          : ''
+                    }`}
         </span>
       </div>
 

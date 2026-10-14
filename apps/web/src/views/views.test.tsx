@@ -307,7 +307,7 @@ describe('Corpus', () => {
 
   it('says so when a link names a saved text this browser does not have', async () => {
     renderRoute('/corpus?id=saved%3Anowhere', { storage: freshStorage() });
-    expect(await screen.findByRole('alert')).toHaveTextContent('There is no saved text nowhere');
+    expect(await screen.findByRole('alert')).toHaveTextContent('text nowhere is not saved here');
   });
 });
 

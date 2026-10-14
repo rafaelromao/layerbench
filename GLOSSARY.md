@@ -18,6 +18,11 @@ What a key does on one layer, or a combo does when its keys are pressed together
 reaches a layer, holds a modifier, or is a bigger key made of parts.
 _Avoid_: action, mapping, keycode
 
+**Copy up**:
+Sending GitHub the saved documents this browser holds that GitHub lacks, or holds an older copy of.
+Where both hold a document, GitHub's copy is the one opened.
+_Avoid_: sync, push, upload
+
 **Draft**:
 A layout's unsaved edits, carried whole in its link after the `#`. The tab that made a draft knows
 which saved layout its edits were made on, so saving it saves that layout; anywhere else it is a
@@ -54,10 +59,16 @@ changed binding. It is not a key's part of a number, which is what the key adds 
 adds up over keys.
 _Avoid_: arm, sub-binding
 
+**Saved document**:
+A layout, rule set or text the user saved, kept in this browser and, once they sign in, on GitHub
+too, under an id that follows its name. A link names it by `saved:<id>`; where it is not saved it
+does not open, and nothing opens in its place.
+_Avoid_: stored document, saved item
+
 **Saved layout**:
-A layout kept in the browser or the user's GitHub storage, under an id that follows its name. A link
-can name it by its id (`saved:<id>`, or the id alone), or carry it whole with its id inside, which
-opens as the saved layout wherever it is saved with the same contents.
+A saved document that is a layout. Besides `saved:<id>`, a link can name it by its id alone, or
+carry it whole with its id inside, which opens as the saved layout wherever it is saved with the
+same contents.
 _Avoid_: stored layout, my layout
 
 **Ranking**:
