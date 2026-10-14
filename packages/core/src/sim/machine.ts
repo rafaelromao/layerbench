@@ -33,6 +33,11 @@ export interface KeyEvent {
   keyKind: KeyKind;
   label: string;
   leafKind: BindingKind;
+  /**
+   * The layer this press was pressed to reach, when it types nothing and turns a layer on: a layer
+   * key held, a one-shot layer, a toggle, a to-layer or an auto-layer, tapped, held or chorded.
+   */
+  reaches: number | null;
   producerKind?: ProducerKind;
   wastedOneShot: boolean;
   /** Bitmask of layers held (by hold presses) while this event happened. */
@@ -223,6 +228,8 @@ interface ExecContext {
    * layer-tap tapped): what classifies the key, as the legend does.
    */
   outer: BindingKind | null;
+  /** The layer the last layer behaviour that ran named. */
+  reaches: number | null;
   emittedKeycode: boolean;
   modifierPress: boolean;
   suppressMods: Set<Mod>;
@@ -339,6 +346,7 @@ export class Machine {
       out: [],
       leaf: 'none',
       outer: null,
+      reaches: null,
       emittedKeycode: false,
       modifierPress: false,
       suppressMods: new Set(),
@@ -371,6 +379,7 @@ export class Machine {
       keyKind: classify(ctx, mode),
       label: labelFor(this.compiled, ctx, binding, layer),
       leafKind: ctx.leaf,
+      reaches: reachedBy(ctx),
       wastedOneShot: wasted,
       underHold: heldBefore,
     };
@@ -395,6 +404,7 @@ export class Machine {
             ? `⇩${entry.mod}`
             : '⇩',
       leafKind: entry?.layer !== undefined ? 'mo' : 'mod',
+      reaches: null,
       wastedOneShot: false,
       underHold: heldBefore,
     };
@@ -428,6 +438,7 @@ export class Machine {
       // Named as a key with its binding would be: what it types, else the layer or accent it gives.
       label: labelFor(this.compiled, ctx, c.binding, layer) || c.id,
       leafKind: ctx.leaf,
+      reaches: reachedBy(ctx),
       wastedOneShot: wasted,
       underHold: heldBefore,
     };
@@ -601,12 +612,16 @@ export class Machine {
           return;
         case 'mo':
           ctx.leaf = 'mo';
-          if (ctx.mode === 'hold') this.state.held.set(ctx.pos, { layer: this.layerIdx(b.layer) });
+          if (ctx.mode === 'hold') {
+            ctx.reaches = this.layerIdx(b.layer);
+            this.state.held.set(ctx.pos, { layer: ctx.reaches });
+          }
           return;
         case 'lt':
           if (ctx.mode === 'hold') {
             ctx.leaf = 'lt';
-            this.state.held.set(ctx.pos, { layer: this.layerIdx(b.layer) });
+            ctx.reaches = this.layerIdx(b.layer);
+            this.state.held.set(ctx.pos, { layer: ctx.reaches });
           } else this.run(b.tap, ctx);
           return;
         case 'hold_tap':
@@ -615,15 +630,17 @@ export class Machine {
           return;
         case 'sl':
           ctx.leaf = 'sl';
+          ctx.reaches = this.layerIdx(b.layer);
           this.state.oneShots.push({
-            layer: this.layerIdx(b.layer),
+            layer: ctx.reaches,
             quickRelease: b.quickRelease ?? true,
             ignoreModifiers: b.ignoreModifiers ?? false,
           });
           return;
         case 'tog': {
           ctx.leaf = 'tog';
-          const bit = 1 << this.layerIdx(b.layer);
+          ctx.reaches = this.layerIdx(b.layer);
+          const bit = 1 << ctx.reaches;
           const on = (this.state.persistentMask & bit) !== 0;
           const mode = b.mode ?? 'flip';
           const turnOn = mode === 'on' ? true : mode === 'off' ? false : !on;
@@ -638,7 +655,8 @@ export class Machine {
         }
         case 'to': {
           ctx.leaf = 'to';
-          const bit = 1 << this.layerIdx(b.layer);
+          ctx.reaches = this.layerIdx(b.layer);
+          const bit = 1 << ctx.reaches;
           this.state.persistentMask = 1 | bit;
           this.state.locks = bit;
           this.state.oneShots = [];
@@ -673,6 +691,7 @@ export class Machine {
         case 'auto_layer': {
           ctx.leaf = 'auto_layer';
           const li = this.layerIdx(b.layer);
+          ctx.reaches = li;
           if (this.state.autoLayer && this.state.autoLayer.layer === li)
             this.state.autoLayer = null;
           else
@@ -771,6 +790,11 @@ export class Machine {
     if (i === undefined) throw new Error(`Unknown layer ${id}`);
     return i;
   }
+}
+
+/** A press reaches a layer when it types nothing: a key that types and then arms a layer types. */
+function reachedBy(ctx: ExecContext): number | null {
+  return ctx.out.length === 0 ? ctx.reaches : null;
 }
 
 function classify(ctx: ExecContext, mode: 'tap' | 'hold'): KeyKind {
