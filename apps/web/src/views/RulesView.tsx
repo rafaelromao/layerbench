@@ -175,10 +175,17 @@ export function RulesView() {
   }, [rules]);
   /** The set just saved, which the link names a moment later: it stays shown meanwhile. */
   const justSaved = useRef<string | null>(null);
-  if (justSaved.current === ref) justSaved.current = null;
-  /** Whether the set shown is the one the link names: until it is read, nothing is shown. */
+  if (justSaved.current === ref && rules.status !== 'reading') justSaved.current = null;
+  /**
+   * Whether the set shown is the one the link names, as storage now reads it: until it is read,
+   * and when it will not open from storage changed since, nothing is shown. The set just saved
+   * stays shown while it is read back.
+   */
   const shown =
-    state.sourceRef === ref || (state.sourceRef !== null && state.sourceRef === justSaved.current);
+    (state.sourceRef === ref && rules.status === 'read') ||
+    (state.sourceRef !== null &&
+      state.sourceRef === justSaved.current &&
+      rules.status !== 'failed');
 
   useEffect(() => {
     if (!state.notice) return;

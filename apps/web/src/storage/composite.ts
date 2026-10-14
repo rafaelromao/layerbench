@@ -74,15 +74,20 @@ export class CompositeStorage implements StorageAdapter {
     collection: Collection,
     id: string,
   ): Promise<{ doc: JsonObject; meta: StorageMeta } | null> {
+    let unreachable: unknown = null;
     if (this.remote) {
       try {
         const remote = await this.remote.get(collection, id);
         if (remote) return remote;
-      } catch {
+      } catch (e) {
         // Fall back to the browser copy rather than failing the read.
+        unreachable = e;
       }
     }
-    return this.local.get(collection, id);
+    const local = await this.local.get(collection, id);
+    // Without a browser copy, a repository that could not be read does not say there is none.
+    if (!local && unreachable) throw unreachable;
+    return local;
   }
 
   async put(

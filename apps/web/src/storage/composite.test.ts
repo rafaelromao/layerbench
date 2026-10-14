@@ -39,6 +39,8 @@ describe('two stores at once', () => {
     await local.put('layouts', 'mine', { name: 'Mine' });
     expect(await composite.list('layouts')).toHaveLength(1);
     expect((await composite.get('layouts', 'mine'))?.doc).toEqual({ name: 'Mine' });
+    // Without a browser copy, the repository not answering is not the document not existing.
+    await expect(composite.get('layouts', 'only-there')).rejects.toThrow('offline');
   });
 
   it('saves locally before reporting a conflict, so the work survives', async () => {
