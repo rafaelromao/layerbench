@@ -58,7 +58,7 @@ export function RuleSetSelect({
   onChange: (rules: string) => void;
   className?: string;
 }) {
-  const saved = useCollection('rulesets').entries;
+  const { entries: saved, complete } = useCollection('rulesets');
   const id = savedId(value);
   return (
     <select
@@ -85,7 +85,8 @@ export function RuleSetSelect({
         </optgroup>
       )}
       {id !== null && !saved.some((e) => e.id === id) && (
-        <option value={value}>{id} (not saved here)</option>
+        // Not saved here is only known once storage has listed all it holds.
+        <option value={value}>{complete ? `${id} (not saved here)` : id}</option>
       )}
     </select>
   );

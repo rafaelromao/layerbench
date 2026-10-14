@@ -1,6 +1,6 @@
 import { DEFAULT_GLOBALS, layoutsDoc, type Rule, ruleSetFromJson, slug } from '@layerbench/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
-import { useCallback, useEffect, useReducer, useState } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { ErrorAlert } from '../components/ErrorAlert.js';
 import { HelpLink } from '../components/HelpLink.js';
 import { presetOf, RuleSources } from '../components/RuleSources.js';
@@ -162,8 +162,12 @@ export function RulesView() {
       send({ type: 'load', ruleSet: rules.ruleSet, ref: rules.ref });
     }
   }, [rules]);
+  /** The set just saved, which the link names a moment later: it stays shown meanwhile. */
+  const justSaved = useRef<string | null>(null);
+  if (justSaved.current === ref) justSaved.current = null;
   /** Whether the set shown is the one the link names: until it is read, nothing is shown. */
-  const shown = state.sourceRef === ref;
+  const shown =
+    state.sourceRef === ref || (state.sourceRef !== null && state.sourceRef === justSaved.current);
 
   useEffect(() => {
     if (!state.notice) return;
@@ -183,6 +187,7 @@ export function RulesView() {
         { ...ruleSet, id, name: saveName } as Record<string, unknown>,
         { message: `Save rule set ${saveName}` },
       );
+      justSaved.current = savedRef(id);
       send({ type: 'saved', ref: savedRef(id) });
       toast.info(`Saved rule set ${id}`);
       savedSets.refresh();

@@ -96,4 +96,27 @@ describe('the rule set a reference names', () => {
     act(() => useGitHubSession.setState({ status: 'signed-out' }));
     await waitFor(() => expect(result.current.status).toBe('failed'));
   });
+
+  it('is the same set when read again from storage swapped in on sign-in', async () => {
+    let adapter: StorageAdapter = await storageWith('Strict');
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <StorageProvider adapter={adapter}>{children}</StorageProvider>
+    );
+    const { result, rerender } = renderHook(() => useRuleSet('saved:strict'), { wrapper });
+    await waitFor(() => expect(result.current.status).toBe('read'));
+    const first = result.current.status === 'read' ? result.current.ruleSet : null;
+
+    let read = 0;
+    const swapped = await storageWith('Strict');
+    const get = swapped.get.bind(swapped);
+    swapped.get = async (c, id) => {
+      read++;
+      return get(c, id);
+    };
+    adapter = swapped;
+    rerender();
+    await waitFor(() => expect(read).toBe(1));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+    expect(result.current.status === 'read' && result.current.ruleSet).toBe(first);
+  });
 });

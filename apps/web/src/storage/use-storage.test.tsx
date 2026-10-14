@@ -54,10 +54,12 @@ describe('the saved index, as the last visit listed it', () => {
     await waitFor(() =>
       expect(names(visit.result.current.entries)).toEqual(['Breeze', 'Gust', 'Mine']),
     );
+    expect(visit.result.current.complete).toBe(false);
 
     // Once it is known nobody is signed in, the browser's copy is the whole list, and is kept.
     act(() => useGitHubSession.setState({ status: 'signed-out' }));
     await waitFor(() => expect(names(visit.result.current.entries)).toEqual(['Gust', 'Mine']));
+    expect(visit.result.current.complete).toBe(true);
     const kept = JSON.parse(localStorage.getItem('layerbench:index:layouts') ?? '[]');
     expect(names(kept)).toEqual(['Gust', 'Mine']);
   });
@@ -104,5 +106,22 @@ describe('one listing of a collection', () => {
     entries.push(entry('strict', 'Strict'));
     await act(() => result.current.a.refresh());
     expect(names(result.current.b.entries)).toEqual(['Mine', 'Strict']);
+  });
+
+  it('is refreshed from the storage now in use, by a list that asked before it changed', async () => {
+    let adapter = listing([entry('mine', 'Mine')]);
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <StorageProvider adapter={adapter}>{children}</StorageProvider>
+    );
+    const { result, rerender } = renderHook(() => useCollection('rulesets'), { wrapper });
+    await waitFor(() => expect(names(result.current.entries)).toEqual(['Mine']));
+    const refresh = result.current.refresh;
+
+    // Signing in swaps storage, while a save made before it still goes on to refresh.
+    adapter = listing([entry('mine', 'Mine'), entry('theirs', 'Theirs')]);
+    rerender();
+    await waitFor(() => expect(names(result.current.entries)).toEqual(['Mine', 'Theirs']));
+    await act(() => refresh());
+    expect(names(result.current.entries)).toEqual(['Mine', 'Theirs']);
   });
 });

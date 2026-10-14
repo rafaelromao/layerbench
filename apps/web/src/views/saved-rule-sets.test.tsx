@@ -138,9 +138,34 @@ describe('The Rules page', () => {
     expect(await screen.findByText('Saved rule set mine')).toBeInTheDocument();
     await waitFor(() => expect(currentSearch()).toContain('rules=saved%3Amine'));
     expect(screen.getByLabelText('Enable Same finger bigrams')).not.toBeChecked();
+    // An edit after saving is not lost to the saved set when it is read back.
+    await user.click(screen.getByLabelText('Enable SFB distance'));
     release();
     await pause(50);
     expect(screen.getByLabelText('Enable Same finger bigrams')).not.toBeChecked();
-    expect(screen.queryByText('unsaved changes')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Enable SFB distance')).not.toBeChecked();
+    expect(screen.getByText('unsaved changes')).toBeInTheDocument();
+  });
+
+  it('opens a saved set as it was last saved, after another set was looked at', async () => {
+    const user = userEvent.setup();
+    const storage = await withStrict();
+    renderRoute('/rules?rules=saved:strict', { storage });
+    await screen.findByText('Same finger bigrams');
+    expect(screen.getByLabelText('Enable Same finger bigrams')).toBeChecked();
+
+    await user.click(screen.getByLabelText('Enable Same finger bigrams'));
+    const name = screen.getByLabelText('Rule set name');
+    await user.clear(name);
+    await user.type(name, 'Strict');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Saved rule set strict')).toBeInTheDocument();
+
+    const picker = screen.getByRole('combobox', { name: 'Rule set' });
+    await user.selectOptions(picker, 'cyanophage');
+    await waitFor(() => expect(screen.getByLabelText('Enable Same finger bigrams')).toBeChecked());
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Rule set' }), 'saved:strict');
+    await pause(50);
+    expect(screen.getByLabelText('Enable Same finger bigrams')).not.toBeChecked();
   });
 });

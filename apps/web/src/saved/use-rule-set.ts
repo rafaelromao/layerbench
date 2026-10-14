@@ -1,4 +1,4 @@
-import { getPreset, type RuleSet, type StorageAdapter } from '@layerbench/core';
+import { getPreset, type RuleSet, type StorageAdapter, stableStringify } from '@layerbench/core';
 import { useEffect, useMemo, useState } from 'react';
 import { useSettled, useStorage } from '../storage/use-storage.js';
 import { readSaved, type SavedFailure, type SavedRead, savedError } from './read.js';
@@ -22,7 +22,8 @@ export type RuleSetState = {
  * Read the rule set a `rules=` reference names: a preset at once, a saved set from storage. Nothing
  * stands in while a saved set is read, or for one that will not open. Until sign-in is known,
  * storage is the browser's copy alone, so a set it lacks is still being read: it may be on GitHub.
- * A set read stays while storage changes under it, and is read again from the new storage.
+ * A set read stays while storage changes under it, and is read again from the new storage; one
+ * left for another reference is forgotten, so coming back to it reads it again.
  */
 export function useRuleSet(ref: string): RuleSetState {
   const storage = useStorage();
@@ -38,12 +39,26 @@ export function useRuleSet(ref: string): RuleSetState {
     if (id === null) return;
     let cancelled = false;
     void readSaved(storage, 'rulesets', id).then((r) => {
-      if (!cancelled) setRead({ ref, storage, read: r });
+      if (cancelled) return;
+      // The same set read again, from storage signed in since, is the same set: what is analyzed
+      // on it is not asked for again.
+      setRead((prev) =>
+        prev?.ref === ref &&
+        prev.read.status === 'read' &&
+        r.status === 'read' &&
+        stableStringify(prev.read.doc) === stableStringify(r.doc)
+          ? { ...prev, storage }
+          : { ref, storage, read: r },
+      );
     });
     return () => {
       cancelled = true;
     };
   }, [ref, id, storage]);
+
+  // A set looked at before, and asked for again, may have been saved since: it is read afresh.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new reference is the trigger
+  useEffect(() => () => setRead(null), [ref]);
 
   const preset = useMemo<RuleSetState | null>(() => {
     if (id !== null) return null;

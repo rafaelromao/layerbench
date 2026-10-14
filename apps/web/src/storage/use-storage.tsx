@@ -97,6 +97,11 @@ export interface CollectionState {
   entries: IndexEntry[];
   /** False when the browser refuses to open its database, e.g. in a locked-down private window. */
   available: boolean;
+  /**
+   * Whether this is storage's whole list, rather than the last visit's or the browser's copy alone
+   * while sign-in is still being asked about: only then does a document missing from it not exist.
+   */
+  complete: boolean;
   refresh: () => Promise<void>;
 }
 
@@ -142,18 +147,23 @@ type Listed = Omit<CollectionState, 'refresh'>;
  * The index of one collection, shared by everything that lists it: one listing answers them all,
  * and a refresh after a save or a delete reaches every list.
  */
+interface Source {
+  storage: StorageAdapter;
+  settled: boolean;
+}
+
 class Listing {
-  private readonly last: IndexEntry[];
   private state: Listed;
   private readonly listeners = new Set<() => void>();
   /** Only the latest listing is shown: an earlier one from the browser alone may answer last. */
   private asked = 0;
   /** The listing still out, and the storage it asked, which a list opened meanwhile joins. */
-  private pending: { storage: StorageAdapter; settled: boolean; done: Promise<void> } | null = null;
+  private pending: (Source & { done: Promise<void> }) | null = null;
+  /** The storage the lists of it last opened on: a refresh asks it, not one swapped out since. */
+  private source: Source | null = null;
 
   constructor(private readonly collection: Collection) {
-    this.last = lastIndex(collection);
-    this.state = { entries: this.last, available: true };
+    this.state = { entries: lastIndex(collection), available: true, complete: false };
   }
 
   readonly subscribe = (listener: () => void) => {
@@ -166,7 +176,9 @@ class Listing {
   readonly snapshot = (): Listed => this.state;
 
   /** List again, whatever is already being listed: what was just saved or deleted must show. */
-  refresh(storage: StorageAdapter, settled: boolean): Promise<void> {
+  refresh(source: Source | null = this.source): Promise<void> {
+    if (!source) return Promise.resolve();
+    const { storage, settled } = source;
     const ask = ++this.asked;
     const done = this.list(storage, settled, ask);
     this.pending = { storage, settled, done };
@@ -178,10 +190,9 @@ class Listing {
 
   /** List for a list just opened, or a storage just changed, joining a listing already out. */
   open(storage: StorageAdapter, settled: boolean): Promise<void> {
+    this.source = { storage, settled };
     const p = this.pending;
-    return p && p.storage === storage && p.settled === settled
-      ? p.done
-      : this.refresh(storage, settled);
+    return p && p.storage === storage && p.settled === settled ? p.done : this.refresh();
   }
 
   private async list(storage: StorageAdapter, settled: boolean, ask: number): Promise<void> {
@@ -190,10 +201,13 @@ class Listing {
       const list = await storage.list(this.collection);
       if (ask !== this.asked) return;
       if (settled) keepIndex(this.collection, list);
-      next = { entries: settled ? list : withLast(list, this.last), available: true };
+      next = settled
+        ? { entries: list, available: true, complete: true }
+        : // What was kept last, which this visit's own saves and deletes have kept since.
+          { entries: withLast(list, lastIndex(this.collection)), available: true, complete: false };
     } catch {
       if (ask !== this.asked) return;
-      next = { entries: [], available: false };
+      next = { entries: [], available: false, complete: false };
     }
     this.state = next;
     for (const listener of this.listeners) listener();
@@ -225,13 +239,16 @@ export function useCollection(collection: Collection): CollectionState {
     listing = new Listing(collection);
     listings.set(collection, listing);
   }
-  const { entries, available } = useSyncExternalStore(listing.subscribe, listing.snapshot);
+  const { entries, available, complete } = useSyncExternalStore(
+    listing.subscribe,
+    listing.snapshot,
+  );
 
   useEffect(() => {
     void listing.open(storage, settled);
   }, [listing, storage, settled]);
 
-  const refresh = useCallback(() => listing.refresh(storage, settled), [listing, storage, settled]);
+  const refresh = useCallback(() => listing.refresh(), [listing]);
 
-  return { entries, available, refresh };
+  return { entries, available, complete, refresh };
 }
