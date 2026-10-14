@@ -222,9 +222,12 @@ export function Workbench({
 
   const current = landed !== null && landed.layout === state.layout;
   const provisional = !current && estimate !== null && estimate.layout === state.layout;
-  /** What the numbers show: the analysis of this layout, an estimate of it, or the last there was. */
+  /**
+   * What the numbers show: the analysis of this layout, an estimate of it, or the last there was.
+   * None while a saved rule set is read, or when it will not open: the set before's would stand in.
+   */
   const shown =
-    settings.status === 'failed'
+    settings.status !== 'read'
       ? null
       : provisional && estimate
         ? estimate.report

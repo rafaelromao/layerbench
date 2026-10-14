@@ -45,6 +45,20 @@ describe('A saved rule set named by a link', () => {
     expect(client.analyses.every((r) => r.settings.rules.name === 'Strict')).toBe(true);
   });
 
+  it('leaves no numbers of the set before on show in Analyze while it is read', async () => {
+    const user = userEvent.setup();
+    const storage = await withStrict();
+    renderRoute('/analyze?layout=qwerty&sample=10000', { storage });
+    await waitFor(() => expect(screen.queryByText(/^Simulating/)).not.toBeInTheDocument(), {
+      timeout: 20_000,
+    });
+
+    holdRuleSets(storage);
+    const picker = within(await openSettings()).getByRole('combobox', { name: 'Rule set' });
+    await user.selectOptions(picker, 'saved:strict');
+    expect(await screen.findByText(/^Simulating/)).toBeInTheDocument();
+  }, 30_000);
+
   it('is waited for by the Library, which neither scores nor remembers a ranking until then', async () => {
     const storage = await withStrict();
     const { release } = holdRuleSets(storage);
