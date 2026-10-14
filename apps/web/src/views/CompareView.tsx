@@ -14,16 +14,10 @@ import { expandPositions, heatMap } from '../engine/heat.js';
 import type { AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { useAnalysis } from '../engine/use-analysis.js';
 import { carriedRef } from '../layout-session/open.js';
+import { savedRef } from '../saved/ref.js';
 import { useRememberSelection } from '../state/selection.js';
 import { useCollection } from '../storage/use-storage.js';
-import {
-  type Params,
-  parseParams,
-  type RawSearch,
-  savedRef,
-  settingsOf,
-  toSearch,
-} from '../url/params.js';
+import { type Params, parseParams, type RawSearch, settingsOf, toSearch } from '../url/params.js';
 import { SampleSelect, SettingsFields } from './AnalysisSelects.js';
 import { compareRows } from './compare-rows.js';
 import { LayoutOptions } from './LayoutOptions.js';

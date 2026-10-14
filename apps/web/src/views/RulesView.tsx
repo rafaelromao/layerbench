@@ -12,6 +12,7 @@ import { useCallback, useEffect, useReducer, useState } from 'react';
 import { HelpLink } from '../components/HelpLink.js';
 import { presetOf, RuleSources } from '../components/RuleSources.js';
 import { HELP } from '../guide/help.js';
+import { savedRef } from '../saved/ref.js';
 import { useCarried } from '../state/selection.js';
 import { toast } from '../state/toasts.js';
 import { useCollection, useStorage } from '../storage/use-storage.js';
@@ -176,12 +177,12 @@ export function RulesView() {
         { ...ruleSet, id, name: saveName } as Record<string, unknown>,
         { message: `Save rule set ${saveName}` },
       );
-      send({ type: 'saved', ref: `saved:${id}` });
+      send({ type: 'saved', ref: savedRef(id) });
       toast.info(`Saved rule set ${id}`);
       savedSets.refresh();
       navigate({
         to: '/rules',
-        search: { rules: `saved:${id}` } as never,
+        search: { rules: savedRef(id) } as never,
         replace: true,
         resetScroll: false,
       });
@@ -231,7 +232,7 @@ export function RulesView() {
                   {savedSets.entries.length > 0 && (
                     <optgroup label="Saved">
                       {savedSets.entries.map((e) => (
-                        <option key={e.id} value={`saved:${e.id}`}>
+                        <option key={e.id} value={savedRef(e.id)}>
                           {e.name}
                         </option>
                       ))}

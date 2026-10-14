@@ -29,6 +29,7 @@ import {
 } from '../engine/use-summaries.js';
 import { HELP } from '../guide/help.js';
 import { openLayout } from '../layout-session/open.js';
+import { savedRef } from '../saved/ref.js';
 import { useRememberSelection } from '../state/selection.js';
 import { useSession } from '../state/session.js';
 import { toast } from '../state/toasts.js';
@@ -40,7 +41,6 @@ import {
   type Params,
   parseParams,
   type RawSearch,
-  savedRef,
   settingsOf,
   toSearch,
 } from '../url/params.js';

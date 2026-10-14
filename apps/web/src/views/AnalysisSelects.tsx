@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { FeatureSwitches, Switch } from '../components/FeatureSwitches.js';
 import { HelpLink } from '../components/HelpLink.js';
 import { HELP } from '../guide/help.js';
+import { savedId } from '../saved/ref.js';
 import { type Params, SAMPLE_SIZES } from '../url/params.js';
 import { groupByLanguage } from './corpus-groups.js';
 
@@ -69,7 +70,7 @@ export function RuleSetSelect({
           {getPreset(id).name}
         </option>
       ))}
-      {value.startsWith('saved:') && <option value={value}>{savedName ?? value}</option>}
+      {savedId(value) !== null && <option value={value}>{savedName ?? value}</option>}
     </select>
   );
 }

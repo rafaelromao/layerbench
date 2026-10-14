@@ -3,11 +3,11 @@ import {
   DEFAULT_SETTINGS,
   FEATURE_KINDS,
   type FeatureKind,
-  isDocumentId,
   isFeatureKind,
   type TextClass,
 } from '@layerbench/core';
 import { PRESET_IDS } from '@layerbench/core/rules';
+import { savedId } from '../saved/ref.js';
 
 /**
  * The analysis parameters carried in the query string. This is a contract, not an implementation
@@ -100,9 +100,7 @@ function validFeatures(v: string | undefined): FeatureKind[] {
 
 function validPreset(v: string | undefined): string {
   if (v === undefined) return DEFAULT_PARAMS.preset;
-  if (v.startsWith('saved:')) {
-    return isDocumentId(v.slice('saved:'.length)) ? v : DEFAULT_PARAMS.preset;
-  }
+  if (savedId(v) !== null) return v;
   return (PRESET_IDS as readonly string[]).includes(v) ? v : DEFAULT_PARAMS.preset;
 }
 
@@ -215,16 +213,10 @@ export interface LayoutRef {
 
 export function parseLayoutRef(ref: string): LayoutRef {
   if (ref.startsWith('inline:')) return { kind: 'inline', value: ref.slice('inline:'.length) };
-  if (ref.startsWith('saved:')) {
-    const id = ref.slice('saved:'.length);
-    // A saved id is a word; anything else in a link is left to be "not found".
-    if (isDocumentId(id)) return { kind: 'saved', value: id };
-  }
+  // A saved id is a word; anything else in a link is left to be "not found".
+  const id = savedId(ref);
+  if (id !== null) return { kind: 'saved', value: id };
   return { kind: 'bundled', value: ref };
-}
-
-export function savedRef(id: string): string {
-  return `saved:${id}`;
 }
 
 export function inlineRef(blob: string): string {
