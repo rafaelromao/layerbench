@@ -58,7 +58,7 @@ describe('Opening a reference', () => {
     const storage = await storageWith();
     expect(await openLayout('saved:gone', storage)).toEqual({
       ok: false,
-      error: 'layout gone not found',
+      error: 'layout gone is not saved here',
     });
     expect(await openLayout('no such layout', storage)).toEqual({
       ok: false,
@@ -68,7 +68,7 @@ describe('Opening a reference', () => {
     await storage.put('layouts', 'broken', { name: 'Broken' });
     expect(await openLayout('saved:broken', storage)).toMatchObject({
       ok: false,
-      error: expect.stringMatching(/^storage error: /),
+      error: expect.stringMatching(/^layout broken cannot be read: /),
     });
   });
 });

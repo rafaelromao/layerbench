@@ -141,7 +141,7 @@ describe('saved texts', () => {
   it('say so when one is not here, and are looked for again next time', async () => {
     const { engine, storage, client } = setup();
     await expect(client.loadCorpus('saved:my-notes')).rejects.toThrow(
-      'There is no saved text my-notes',
+      'text my-notes is not saved here',
     );
 
     await save(engine, storage, 'my-notes', FOX);

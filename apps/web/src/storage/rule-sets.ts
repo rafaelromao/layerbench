@@ -1,4 +1,5 @@
-import { getPreset, type RuleSet, type StorageAdapter, safeParseRuleSet } from '@layerbench/core';
+import { getPreset, type RuleSet, type StorageAdapter } from '@layerbench/core';
+import { readSaved } from '../saved/read.js';
 import { savedId } from '../saved/ref.js';
 
 /**
@@ -8,12 +9,6 @@ import { savedId } from '../saved/ref.js';
 export async function resolveRuleSet(ref: string, storage: StorageAdapter): Promise<RuleSet> {
   const id = savedId(ref);
   if (id === null) return getPreset(ref);
-  try {
-    const stored = await storage.get('rulesets', id);
-    if (!stored) return getPreset('layouts_doc');
-    const parsed = safeParseRuleSet(stored.doc);
-    return parsed.ok ? parsed.ruleSet : getPreset('layouts_doc');
-  } catch {
-    return getPreset('layouts_doc');
-  }
+  const read = await readSaved(storage, 'rulesets', id);
+  return read.status === 'read' ? read.doc : getPreset('layouts_doc');
 }

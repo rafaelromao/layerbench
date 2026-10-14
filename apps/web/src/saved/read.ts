@@ -1,0 +1,79 @@
+import {
+  type Collection,
+  type JsonObject,
+  type Layout,
+  type RuleSet,
+  type StorageAdapter,
+  safeParseLayout,
+  safeParseRuleSet,
+} from '@layerbench/core';
+
+/** What a saved document of each collection is read as. A text is handed to the engine as it is. */
+export type SavedDoc<C extends Collection> = C extends 'layouts'
+  ? Layout
+  : C extends 'rulesets'
+    ? RuleSet
+    : JsonObject;
+
+/** A saved document read: there and readable, not saved here, or there but not readable. */
+export type SavedRead<T> =
+  | { status: 'read'; doc: T }
+  | { status: 'missing' }
+  | { status: 'unreadable'; why: string };
+
+export type SavedFailure = Exclude<SavedRead<unknown>, { status: 'read' }>;
+
+function parse(
+  collection: Collection,
+  doc: JsonObject,
+): { ok: true; doc: unknown } | { ok: false; error: string } {
+  switch (collection) {
+    case 'layouts': {
+      const parsed = safeParseLayout(doc);
+      return parsed.ok ? { ok: true, doc: parsed.layout } : parsed;
+    }
+    case 'rulesets': {
+      const parsed = safeParseRuleSet(doc);
+      return parsed.ok ? { ok: true, doc: parsed.ruleSet } : parsed;
+    }
+    case 'corpora':
+      return { ok: true, doc };
+  }
+}
+
+/**
+ * Read the saved document `id` of a collection. It never fails: storage that cannot be read, or a
+ * document that is not one of its collection, is unreadable, and one storage does not hold is
+ * missing. Nothing stands in for either.
+ */
+export async function readSaved<C extends Collection>(
+  storage: StorageAdapter,
+  collection: C,
+  id: string,
+): Promise<SavedRead<SavedDoc<C>>> {
+  let stored: Awaited<ReturnType<StorageAdapter['get']>>;
+  try {
+    stored = await storage.get(collection, id);
+  } catch (e) {
+    return { status: 'unreadable', why: e instanceof Error ? e.message : String(e) };
+  }
+  if (!stored) return { status: 'missing' };
+  const parsed = parse(collection, stored.doc);
+  return parsed.ok
+    ? { status: 'read', doc: parsed.doc as SavedDoc<C> }
+    : { status: 'unreadable', why: parsed.error };
+}
+
+const NOUN: Record<Collection, string> = {
+  layouts: 'layout',
+  rulesets: 'rule set',
+  corpora: 'text',
+};
+
+/** What to tell someone a saved document did not open: the same words for every collection. */
+export function savedError(collection: Collection, id: string, failure: SavedFailure): string {
+  const what = `${NOUN[collection]} ${id}`;
+  return failure.status === 'missing'
+    ? `${what} is not saved here`
+    : `${what} cannot be read: ${failure.why}`;
+}

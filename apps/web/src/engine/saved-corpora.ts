@@ -5,6 +5,7 @@ import {
   type IndexEntry,
   type StorageAdapter,
 } from '@layerbench/core';
+import { readSaved, savedError } from '../saved/read.js';
 import { savedId, savedRef } from '../saved/ref.js';
 import type { AnalysisClient } from './protocol.js';
 
@@ -52,9 +53,9 @@ export function withSavedCorpora(client: AnalysisClient, storage: StorageAdapter
     given.get(ref) ??
     give(
       ref,
-      storage.get('corpora', id).then((stored) => {
-        if (!stored) throw new Error(`There is no saved text ${id}`);
-        return stored.doc;
+      readSaved(storage, 'corpora', id).then((read) => {
+        if (read.status !== 'read') throw new Error(savedError('corpora', id, read));
+        return read.doc;
       }),
     );
 
