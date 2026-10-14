@@ -1,4 +1,11 @@
-import { DEFAULT_GLOBALS, layoutsDoc, type Rule, ruleSetFromJson, slug } from '@layerbench/core';
+import {
+  DEFAULT_GLOBALS,
+  layoutsDoc,
+  type Rule,
+  ruleSetFromJson,
+  slug,
+  stableStringify,
+} from '@layerbench/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { ErrorAlert } from '../components/ErrorAlert.js';
@@ -155,12 +162,16 @@ export function RulesView() {
 
   // Loading a different set replaces everything, including anything unsaved, once it is read. The
   // set this page has just saved is the one it shows already, and is not loaded over what was
-  // edited since; nor is the set it saved from, while the link still names it.
+  // edited since; nor is the set it saved from, while the link still names it. The same set read
+  // again with other contents, such as GitHub's newer copy once signed in, replaces it only when
+  // nothing is unsaved.
   // biome-ignore lint/correctness/useExhaustiveDependencies: only a set read for a reference loads
   useEffect(() => {
-    if (rules.status === 'read' && state.sourceRef !== rules.ref) {
-      send({ type: 'load', ruleSet: rules.ruleSet, ref: rules.ref });
-    }
+    if (rules.status !== 'read') return;
+    const other = state.sourceRef !== rules.ref;
+    const changed =
+      !other && !state.dirty && stableStringify(rules.ruleSet) !== stableStringify(state.ruleSet);
+    if (other || changed) send({ type: 'load', ruleSet: rules.ruleSet, ref: rules.ref });
   }, [rules]);
   /** The set just saved, which the link names a moment later: it stays shown meanwhile. */
   const justSaved = useRef<string | null>(null);

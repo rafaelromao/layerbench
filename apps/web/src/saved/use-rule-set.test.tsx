@@ -86,6 +86,18 @@ describe('the rule set a reference names', () => {
     });
   });
 
+  it('is not taken from the browser copy alone while sign-in is not known, as it may be behind', async () => {
+    const id = `kept-${Date.now()}`;
+    await new IndexedDbAdapter().put('rulesets', id, { ...getPreset('keysolve'), name: 'Kept' });
+    const { result } = track(`saved:${id}`);
+    await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
+    expect(result.current.status).toBe('reading');
+
+    act(() => useGitHubSession.setState({ status: 'signed-out' }));
+    await waitFor(() => expect(result.current.status).toBe('read'));
+    expect(result.current.name).toBe('Kept');
+  });
+
   it('is still being read while sign-in is not known, as it may be on GitHub', async () => {
     // No adapter of the test's own: the browser's copy, until it is known nobody is signed in.
     const { result } = track(`saved:gone-${Date.now()}`);

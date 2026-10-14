@@ -4,6 +4,7 @@ import {
   type IndexEntry,
   type JsonObject,
   type StorageAdapter,
+  StorageConflictError,
   type StorageMeta,
 } from '@layerbench/core';
 
@@ -96,8 +97,8 @@ export class CompositeStorage implements StorageAdapter {
   /**
    * Copy up: send the repository each document this browser holds that it lacks, or holds an
    * older copy of, by when each was saved. One saved the same moment, or later, in the repository
-   * is left as it is, as is one whose date cannot be read; nothing is deleted, and nothing comes
-   * down. It stops at the first failure, keeping what went up before it, so trying again carries
+   * is left as it is, as is one whose date cannot be read, or one saved there while copying;
+   * nothing is deleted, and nothing comes down. It stops at the first failure, keeping what went up before it, so trying again carries
    * on from there.
    */
   async copyUp(): Promise<CopiedUp> {
@@ -119,9 +120,25 @@ export class CompositeStorage implements StorageAdapter {
           const stored = await this.local.get(collection, entry.id);
           // Listed, but with nothing behind it to send.
           if (!stored) continue;
-          await remote.put(collection, entry.id, stored.doc, {
-            message: `Copy ${collection} ${entry.name} from the browser`,
-          });
+          // Another browser may have saved it since the repository was listed: its version is
+          // taken first, then the list is checked again, and the copy is written only over that
+          // version, so a save that lands in between is never written over.
+          const version = (await remote.get(collection, entry.id))?.meta.sha;
+          const now = (await remote.list(collection)).find((e) => e.id === entry.id);
+          if (!newer(entry, now)) {
+            done.current++;
+            continue;
+          }
+          try {
+            await remote.put(collection, entry.id, stored.doc, {
+              expectedSha: version,
+              message: `Copy ${collection} ${entry.name} from the browser`,
+            });
+          } catch (e) {
+            if (!(e instanceof StorageConflictError)) throw e;
+            done.current++;
+            continue;
+          }
           done.copied++;
         }
       }

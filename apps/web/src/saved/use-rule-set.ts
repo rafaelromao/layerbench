@@ -21,7 +21,8 @@ export type RuleSetState = {
 /**
  * Read the rule set a `rules=` reference names: a preset at once, a saved set from storage. Nothing
  * stands in while a saved set is read, or for one that will not open. Until sign-in is known,
- * storage is the browser's copy alone, so a set it lacks is still being read: it may be on GitHub.
+ * storage is the browser's copy alone, which may lack a set or hold an older copy of it than
+ * GitHub's, so the set is still being read until settled storage has answered.
  * A set read stays while storage changes under it, and is read again from the new storage; one
  * left for another reference is forgotten, so coming back to it reads it again.
  */
@@ -32,6 +33,8 @@ export function useRuleSet(ref: string): RuleSetState {
   const [read, setRead] = useState<{
     ref: string;
     storage: StorageAdapter;
+    /** Whether the storage it was read from was settled: only then is it the set for good. */
+    settled: boolean;
     read: SavedRead<RuleSet>;
   } | null>(null);
 
@@ -40,21 +43,23 @@ export function useRuleSet(ref: string): RuleSetState {
     let cancelled = false;
     void readSaved(storage, 'rulesets', id).then((r) => {
       if (cancelled) return;
-      // The same set read again, from storage signed in since, is the same set: what is analyzed
-      // on it is not asked for again.
-      setRead((prev) =>
-        prev?.ref === ref &&
-        prev.read.status === 'read' &&
-        r.status === 'read' &&
-        stableStringify(prev.read.doc) === stableStringify(r.doc)
-          ? { ...prev, storage }
-          : { ref, storage, read: r },
-      );
+      setRead((prev) => {
+        if (prev?.ref !== ref) return { ref, storage, settled, read: r };
+        // What settled storage said stands until settled storage says otherwise: a sign-in
+        // under way reads the browser's copy alone, which may be behind GitHub's.
+        if (prev.settled && !settled) return prev;
+        // The same set read again is the same set: what is analyzed on it is not asked again.
+        const same =
+          prev.read.status === 'read' &&
+          r.status === 'read' &&
+          stableStringify(prev.read.doc) === stableStringify(r.doc);
+        return same ? { ...prev, storage, settled } : { ref, storage, settled, read: r };
+      });
     });
     return () => {
       cancelled = true;
     };
-  }, [ref, id, storage]);
+  }, [ref, id, storage, settled]);
 
   // A set looked at before, and asked for again, may have been saved since: it is read afresh.
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new reference is the trigger
@@ -70,7 +75,9 @@ export function useRuleSet(ref: string): RuleSetState {
     if (preset) return preset;
     const known = id !== null && read?.ref === ref ? read : null;
     const name = id ?? ref;
-    if (!known) return { ref, name, status: 'reading' };
+    // Until settled storage has been read, the browser's copy may be behind GitHub's, or lack a
+    // set only GitHub has: nothing is analyzed on it, nor said to be missing.
+    if (!known?.settled) return { ref, name, status: 'reading' };
     const r = known.read;
     if (r.status === 'read')
       return { ref, name: r.doc.name ?? name, status: 'read', ruleSet: r.doc };
