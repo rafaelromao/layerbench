@@ -10,7 +10,7 @@ export interface ActivatorCandidate {
   target: number;
   user: boolean;
   order: number;
-  /** Modifiers that must be active for this arm of the binding to be selected (mod-morph arms). */
+  /** Modifiers that must be active for this part of the binding to be chosen (a mod-morph's). */
   requiredMods?: Mod[];
   /** Source layer restriction (user-declared activators). */
   from?: number;
@@ -238,7 +238,7 @@ export interface ReachRoute {
   declared?: boolean;
   /** A declared way in that applies only from this layer. */
   from?: number;
-  /** Modifiers held for the arm of the key that does it. */
+  /** Modifiers held for the part of the key that does it. */
   mods?: Mod[];
   /** An adaptive key's branch: only after these. */
   after?: { afterAny?: string[]; afterTags?: string[] };
@@ -353,7 +353,7 @@ function extraRoutes(
 
 const sameRoute = (a: ReachRoute, b: ReachRoute) => JSON.stringify(a) === JSON.stringify(b);
 
-/** Whether any arm of a binding brings the layer on: a layer key, a macro step, a branch, a tap. */
+/** Whether any part of a binding brings the layer on: a layer key, a macro step, a branch, a tap. */
 export function bindingReaches(c: CompiledLayout, b: Binding, layer: number, via: number): boolean {
   const out: ReachRoute[] = [];
   for (const mode of ['tap', 'hold'] as const) {
@@ -482,7 +482,7 @@ export function reachKeys(
     });
 }
 
-/** The text a key's macro types, found on the arm a tap reaches: what a reader knows it by. */
+/** The text a key's macro types, found on the part a tap reaches: what a reader knows it by. */
 function macroText(b: Binding | undefined): string {
   switch (b?.kind) {
     case 'macro':

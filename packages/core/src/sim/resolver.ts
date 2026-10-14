@@ -346,7 +346,7 @@ export class Simulator {
         }
       }
       if (ok && m.isLayerActive(target)) {
-        // Held modifiers used only to select the activator arm are released after the producer step.
+        // Held modifiers that only select the activator's part are released after the producer step.
         for (const pos of modHolds) this.plannerHolds.add(pos);
         if (beforeTap && tapKind && tapped) {
           this.offerStandIns(tapped, tapKind, this.peers.get(cand) ?? [], beforeTap, top);

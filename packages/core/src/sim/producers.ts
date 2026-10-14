@@ -191,7 +191,7 @@ export function staticOutputs(b: Binding, depth = 0): StaticOutput[] {
 
 /**
  * What a binding types when held: a tap-hold's hold, which can be any behaviour a tap can, found
- * through the morphs that pick between arms. A tap dance on a hold has one tap only.
+ * through the morphs that pick between parts. A tap dance on a hold has one tap only.
  */
 export function holdOutputs(b: Binding, depth = 0): StaticOutput[] {
   if (depth > MAX_DEPTH) return [];
@@ -365,7 +365,7 @@ export function enumerateProducers(
   return { bySymbol, byId, maxLen, multiStarts, excludedByCase };
 }
 
-/** The dead key a binding presses when tapped, past a tap-hold's or layer-tap's tap arm. */
+/** The dead key a binding presses when tapped, past a tap-hold's or layer-tap's tap. */
 function tappedDeadKey(b: Binding): Extract<Binding, { kind: 'dead_key' }> | null {
   if (b.kind === 'dead_key') return b;
   if (b.kind === 'hold_tap' || b.kind === 'lt') return tappedDeadKey(b.tap);

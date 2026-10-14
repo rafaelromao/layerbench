@@ -683,8 +683,8 @@ button.lb-drop-target.lb-drop-copy {
   opacity: 0.8;
 }
 
-/* An arm of a bigger key, indented under the control that picks its kind. */
-.lb-arm {
+/* A part of a bigger key, indented under the control that picks its kind. */
+.lb-part {
   padding-left: 0.5rem;
   border-left: 2px solid var(--color-base-300);
 }

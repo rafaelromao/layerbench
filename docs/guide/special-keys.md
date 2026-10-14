@@ -101,7 +101,10 @@ declared in **Features** opens with each one on the keys it was placed on, typin
 
 A **Macro** `⋯` types several things with one press. As **Text** it types the letters given, such
 as `qu` or `ão`, and can turn a layer on for the next key after them. As **Steps** it is a list of
-key presses, layer changes and modifiers, in order.
+key presses, layer changes and modifiers, in order. Switching between the two never changes what
+the macro does: steps after its letters still run after them as text, and come back as steps. A
+step the list has no row for, such as one an import brought in, is shown as it is, and can still be
+moved or removed.
 
 ## Caps word and sentence case
 

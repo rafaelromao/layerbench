@@ -8,7 +8,6 @@ import {
   useState,
 } from 'react';
 import { useDismiss } from '../../../components/use-dismiss.js';
-import { bindingFromFields } from '../binding-form.js';
 import {
   type BindingTextContext,
   bindingText,
@@ -84,7 +83,7 @@ export function BindingTextLine({
     () => (text.trim() === '' || text.trim() === initial ? null : parseBindingText(text, ctx)),
     [text, initial, ctx],
   );
-  const preview = parsed?.ok ? legend(compiled, bindingFromFields(parsed.fields)) : null;
+  const preview = parsed?.ok ? legend(compiled, parsed.binding) : null;
   const options = useMemo(() => {
     if (!focused || dismissed || !text.trimStart().startsWith('&')) return [];
     const written = text.trim();
@@ -118,7 +117,7 @@ export function BindingTextLine({
       return;
     }
     setError(null);
-    onCommit(bindingFromFields(result.fields));
+    onCommit(result.binding);
     if (then === 'leave') leave();
   };
 

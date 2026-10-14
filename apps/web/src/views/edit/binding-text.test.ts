@@ -1,6 +1,5 @@
 import { type Binding, bundledLayout, compileLayout } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
-import { bindingFromFields } from './binding-form.js';
 import { type BindingTextContext, bindingText, parseBindingText, suggest } from './binding-text.js';
 
 const compiled = compileLayout(bundledLayout('magic-romak') as never);
@@ -13,11 +12,11 @@ const ctx: BindingTextContext = {
   hostLocale: compiled.hostLocale,
 };
 
-/** Parse and build, the way the editor does. Throws the parse error so a failure names itself. */
+/** Parse the way the editor does. Throws the parse error so a failure names itself. */
 function build(text: string, context: BindingTextContext = ctx): Binding {
   const r = parseBindingText(text, context);
   if (!r.ok) throw new Error(`${text}: ${r.error}`);
-  return bindingFromFields(r.fields);
+  return r.binding;
 }
 
 describe('binding text', () => {
@@ -87,6 +86,14 @@ describe('binding text', () => {
 
   it('carries a tag, which adaptive branches match on', () => {
     expect(build('&kp ç tag:cedilla')).toMatchObject({ kind: 'kp', symbol: 'ç', tag: 'cedilla' });
+    // A layer tap's tag is its tap's, read back as the text line writes it.
+    const layerTap = build('&lt alpha2 a tag:a2');
+    expect(layerTap).toEqual({
+      kind: 'lt',
+      layer: 'alpha2',
+      tap: { kind: 'kp', symbol: 'a', tag: 'a2' },
+    });
+    expect(bindingText(compiled, layerTap)).toEqual({ text: '&lt alpha2 a tag:a2', exact: true });
     expect(build('&macro ão then alpha2 tag:a2')).toMatchObject({
       kind: 'macro',
       symbols: 'ão',
@@ -170,8 +177,8 @@ describe('binding text', () => {
   });
 
   it('locks rather than flattens the bindings a bundled layout actually holds', () => {
-    // The space key on Magic Romak is a hold-tap, and `fieldsFromBinding` flattens one to a bare
-    // `{kind:'hold_tap'}` — with type-to-edit that is one keystroke from destroying it.
+    // The space key on Magic Romak is a hold-tap, which the text has no spelling for: offered as its
+    // legend, it would be one keystroke from becoming a bare key press.
     const pos = compiled.keyIndex.get('L0') as number;
     const space = compiled.layers[0].bindings[pos];
     expect(space.kind).toBe('hold_tap');

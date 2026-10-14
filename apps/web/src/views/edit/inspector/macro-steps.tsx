@@ -1,18 +1,24 @@
-import { type Binding, type CompiledLayout, MODS, type Mod } from '@layerbench/core';
-import { useEffect, useRef, useState } from 'react';
 import {
-  bindingFromFields,
-  EMPTY_FIELDS,
-  emptyMacroStep,
-  fieldsFromBinding,
-  MACRO_STEP_KINDS,
-  type MacroStep,
-} from '../binding-form.js';
+  type Binding,
+  type CompiledLayout,
+  legend,
+  legendText,
+  MODS,
+  type Mod,
+} from '@layerbench/core';
+import { useEffect, useRef, useState } from 'react';
+import type { BindingTextContext } from '../binding-text.js';
+import {
+  type FieldsOf,
+  freshRow,
+  type MacroRow,
+  macroRows,
+  ROW_KINDS,
+  type RowKind,
+} from './binding-changes.js';
 import { TextField } from './controls.js';
 
-type Macro = Extract<Binding, { kind: 'macro' }>;
-
-const STEP_LABEL: Record<MacroStep['kind'], string> = {
+const ROW_LABEL: Record<RowKind, string> = {
   text: 'type text',
   sl: 'arm layer',
   sk: 'arm modifier',
@@ -22,41 +28,37 @@ const STEP_LABEL: Record<MacroStep['kind'], string> = {
 /**
  * The steps of a macro, in order: text to type, a layer or a modifier to arm for the next key, a
  * behaviour to run. Steps are what let one key type text *and* arm something — the shape an accent
- * key that hands over to a follow-up needs.
+ * key that hands over to a follow-up needs. A step no row can edit is shown as it is, and can still
+ * be moved or removed.
  */
 export function MacroStepsEditor({
   compiled,
-  behaviours,
-  binding,
+  ctx,
+  fields: { binding, set },
   onChange,
 }: {
   compiled: CompiledLayout;
-  behaviours: string[];
-  binding: Macro;
+  ctx: BindingTextContext;
+  fields: FieldsOf<'macro'>;
   onChange: (b: Binding) => void;
 }) {
-  const [rows, setRows] = useState<MacroStep[]>(() => fieldsFromBinding(binding).macroSteps);
+  const [rows, setRows] = useState<MacroRow[]>(() => macroRows(binding));
   const produced = useRef<Binding>(binding);
   useEffect(() => {
     // An edit made elsewhere — an undo, the text line — starts the rows afresh. One made here does
     // not: re-reading the rows gives each a new identity, which would remount the row being typed in.
     if (binding === produced.current) return;
     produced.current = binding;
-    setRows(fieldsFromBinding(binding).macroSteps);
+    setRows(macroRows(binding));
   }, [binding]);
 
-  const commit = (next: MacroStep[]) => {
+  const commit = (next: MacroRow[]) => {
     setRows(next);
-    const b = bindingFromFields({
-      ...EMPTY_FIELDS,
-      kind: 'macro',
-      macroSteps: next,
-      tag: binding.tag ?? '',
-    });
+    const b = set.rows(next);
     produced.current = b;
     onChange(b);
   };
-  const replace = (i: number, step: MacroStep) => commit(rows.map((s, j) => (j === i ? step : s)));
+  const replace = (i: number, row: MacroRow) => commit(rows.map((r, j) => (j === i ? row : r)));
   const move = (i: number, by: number) => {
     const target = i + by;
     if (target < 0 || target >= rows.length) return;
@@ -64,47 +66,49 @@ export function MacroStepsEditor({
     [next[i], next[target]] = [next[target], next[i]];
     commit(next);
   };
-  /** A new step that already compiles: a layer or a behaviour step never starts out naming none. */
-  const fresh = (kind: MacroStep['kind'], id?: string): MacroStep => {
-    const step = emptyMacroStep(kind);
-    const withId = id ? { ...step, id } : step;
-    if (withId.kind === 'sl') withId.layer = compiled.layers[1]?.id ?? compiled.layers[0].id;
-    if (withId.kind === 'ref') withId.ref = behaviours[0] ?? '';
-    return withId;
-  };
+  const kinds = ROW_KINDS.filter((k) => k !== 'ref' || ctx.behaviors.length > 0);
 
   return (
     <div className="space-y-1">
       {rows.length === 0 && <p className="text-[11px] opacity-60">No steps yet.</p>}
       <ol className="space-y-1 list-none p-0 m-0" aria-label="Macro steps">
-        {rows.map((step, i) => (
-          <li key={step.id} className="flex flex-wrap items-center gap-1">
-            <select
-              aria-label={`Step ${i + 1} kind`}
-              className="select select-xs select-bordered w-auto"
-              value={step.kind}
-              onChange={(e) => replace(i, fresh(e.target.value as MacroStep['kind'], step.id))}
-            >
-              {MACRO_STEP_KINDS.filter((k) => k !== 'ref' || behaviours.length > 0).map((k) => (
-                <option key={k} value={k}>
-                  {STEP_LABEL[k]}
-                </option>
-              ))}
-            </select>
-            {step.kind === 'text' && (
+        {rows.map((row, i) => (
+          <li key={row.id} className="flex flex-wrap items-center gap-1">
+            {row.kind === 'fixed' ? (
+              <span className="text-xs flex-1 min-w-20">
+                <span className="font-mono">
+                  {legendText(legend(compiled, row.step)) || row.step.kind}
+                </span>
+                <span className="opacity-60"> — kept as it is</span>
+              </span>
+            ) : (
+              <select
+                aria-label={`Step ${i + 1} kind`}
+                className="select select-xs select-bordered w-auto"
+                value={row.kind}
+                onChange={(e) => replace(i, freshRow(e.target.value as RowKind, ctx, row.id))}
+              >
+                {kinds.map((k) => (
+                  <option key={k} value={k}>
+                    {ROW_LABEL[k]}
+                  </option>
+                ))}
+              </select>
+            )}
+            {row.kind === 'text' && (
               <TextField
                 label={`Step ${i + 1} text`}
-                value={step.text}
+                value={row.text}
                 className="input-xs flex-1 min-w-20"
-                onCommit={(text) => replace(i, { ...step, text })}
+                onCommit={(text) => replace(i, { ...row, text })}
               />
             )}
-            {step.kind === 'sl' && (
+            {row.kind === 'sl' && (
               <select
                 aria-label={`Step ${i + 1} layer`}
                 className="select select-xs select-bordered flex-1 min-w-20"
-                value={step.layer}
-                onChange={(e) => replace(i, { ...step, layer: e.target.value })}
+                value={row.layer}
+                onChange={(e) => replace(i, { ...row, layer: e.target.value })}
               >
                 {compiled.layers.map((l) => (
                   <option key={l.id} value={l.id}>
@@ -113,12 +117,12 @@ export function MacroStepsEditor({
                 ))}
               </select>
             )}
-            {step.kind === 'sk' && (
+            {row.kind === 'sk' && (
               <select
                 aria-label={`Step ${i + 1} modifier`}
                 className="select select-xs select-bordered flex-1 min-w-20"
-                value={step.mod}
-                onChange={(e) => replace(i, { ...step, mod: e.target.value as Mod })}
+                value={row.mod}
+                onChange={(e) => replace(i, { ...row, mod: e.target.value as Mod })}
               >
                 {MODS.map((m) => (
                   <option key={m} value={m}>
@@ -127,14 +131,14 @@ export function MacroStepsEditor({
                 ))}
               </select>
             )}
-            {step.kind === 'ref' && (
+            {row.kind === 'ref' && (
               <select
                 aria-label={`Step ${i + 1} behaviour`}
                 className="select select-xs select-bordered flex-1 min-w-20"
-                value={step.ref}
-                onChange={(e) => replace(i, { ...step, ref: e.target.value })}
+                value={row.ref}
+                onChange={(e) => replace(i, { ...row, ref: e.target.value })}
               >
-                {behaviours.map((name) => (
+                {ctx.behaviors.map((name) => (
                   <option key={name} value={name}>
                     {name}
                   </option>
@@ -161,7 +165,11 @@ export function MacroStepsEditor({
           </li>
         ))}
       </ol>
-      <button type="button" className="btn btn-xs" onClick={() => commit([...rows, fresh('text')])}>
+      <button
+        type="button"
+        className="btn btn-xs"
+        onClick={() => commit([...rows, freshRow('text', ctx)])}
+      >
         Add step
       </button>
     </div>

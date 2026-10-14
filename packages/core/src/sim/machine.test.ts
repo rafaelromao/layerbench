@@ -252,7 +252,7 @@ describe('Machine — what kind of key a press is', () => {
           id: 'base',
           bindings: {
             LHP: { kind: 'kp', symbol: 'a' },
-            // An adaptive key on the tap of a tap-hold, of a layer-tap, and of a morph's plain arm.
+            // An adaptive key on the tap of a tap-hold, of a layer-tap, and of a morph's plain part.
             LHR: { kind: 'hold_tap', tap: adaptive, hold: { kind: 'mod', mod: 'LGUI' } },
             LHM: { kind: 'lt', layer: 'num', tap: adaptive },
             LHI: {
@@ -309,11 +309,11 @@ describe('Machine — what kind of key a press is', () => {
     expect(hold('LHM').keyKind).toBe('hold');
   });
 
-  it('is what the arm a morph or a tap dance runs is', () => {
+  it('is what the part a morph or a tap dance runs is', () => {
     const { tap, hold, m, pos } = board();
     expect(tap('LHI').keyKind).toBe('adaptive');
     hold('R1');
-    // The shift that chose the arm is not applied to it, as in ZMK's mod-morph.
+    // The shift that chose the part is not applied to it, as in ZMK's mod-morph.
     expect(tap('LHI')).toMatchObject({ symbols: 'x', keyKind: 'alpha' });
     const twice = m.perform({ type: 'tap', pos: pos('LTM'), taps: 2 });
     expect(twice.at(-1)?.keyKind).toBe('adaptive');

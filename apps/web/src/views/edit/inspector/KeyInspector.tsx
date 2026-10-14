@@ -99,8 +99,11 @@ function Inspector({ state, send, focusKey, keyId, stats }: KeyInspectorProps & 
       compiled,
       behaviours,
       ownBehaviours: layout.behaviors ?? {},
-      setBehaviour: (name, binding) =>
-        send({ type: 'edit', edit: { kind: 'setBehavior', name, binding } }),
+      setBehaviour: (name, binding) => {
+        // A behaviour given back as it was is no edit.
+        if (binding === layout.behaviors?.[name]) return;
+        send({ type: 'edit', edit: { kind: 'setBehavior', name, binding } });
+      },
       text,
     }),
     [compiled, behaviours, layout.behaviors, send, text],
@@ -116,6 +119,9 @@ function Inspector({ state, send, focusKey, keyId, stats }: KeyInspectorProps & 
   }, [compiled, layer, pos]);
 
   const commit = (binding: Binding) => {
+    // A change that changes nothing gives the key's binding back, and is no edit: it would mark
+    // the layout unsaved and leave a step to undo for nothing.
+    if (binding === current) return;
     send({
       type: 'edit',
       edit: { kind: 'bind', layer: activeLayer.id, keys: [keyId], binding },

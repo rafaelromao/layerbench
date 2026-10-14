@@ -83,7 +83,7 @@ transparent, as keymap-drawer's own examples mark one. Read back in, it gives th
 keys and combos, a `held` key coming back transparent, except for what keymap-drawer has no field
 for: an adaptive key comes back as a plain key typing its default, a macro as the text it types without
 its other steps, a dead key as its plain accent, a tap dance as its single tap and a morph as its
-unmodified arm.
+unmodified part.
 
 ### Other formats
 

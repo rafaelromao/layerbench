@@ -244,5 +244,3 @@ export function Row({ label, children }: { label: string; children: ReactNode })
 export function Note({ children }: { children: ReactNode }) {
   return <p className="text-[11px] opacity-60">{children}</p>;
 }
-
-export const words = (text: string) => text.split(/\s+/).filter(Boolean);

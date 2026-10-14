@@ -7,7 +7,6 @@ import {
   tapLabel,
   translateKeycode,
 } from '@layerbench/core';
-import { type BindingFields, EMPTY_FIELDS } from './binding-form.js';
 
 /**
  * A ZMK-flavoured text form for a binding, so a key can be edited by typing on it.
@@ -15,9 +14,6 @@ import { type BindingFields, EMPTY_FIELDS } from './binding-form.js';
  * `&kp A`, `&lt num a`, `&sl sym`, `&mo num`, `&trans` are spelled as ZMK spells them; the kinds
  * this model has and ZMK does not (`&auto_layer`, `&dead`, `&uni`) follow the same `&name args`
  * shape. A bare token with no `&` is shorthand for `&kp`, so typing `ç` still just works.
- *
- * Everything here goes through `BindingFields`, never straight to a `Binding`, so
- * `bindingFromFields` stays the one place a binding is constructed from text.
  */
 export interface BindingTextContext {
   layers: { id: string; name: string }[];
@@ -25,7 +21,7 @@ export interface BindingTextContext {
   hostLocale: HostLocale;
 }
 
-export type ParseResult = { ok: true; fields: BindingFields } | { ok: false; error: string };
+export type ParseResult = { ok: true; binding: Binding } | { ok: false; error: string };
 
 export interface BindingText {
   /** The binding as text. When `exact` is false this is a legend to read, not a source to edit. */
@@ -107,8 +103,24 @@ function err(error: string): ParseResult {
   return { ok: false, error };
 }
 
-function ok(fields: Partial<BindingFields>): ParseResult {
-  return { ok: true, fields: { ...EMPTY_FIELDS, ...fields } as BindingFields };
+function ok(binding: Binding): ParseResult {
+  return { ok: true, binding };
+}
+
+type KeyPress = Extract<Binding, { kind: 'kp' }>;
+
+/** A key press carrying only the fields that say something, so nothing is stored empty. */
+function keyPress(
+  symbol: string,
+  more: { keycode?: string; shifted?: string; tag?: string } = {},
+): KeyPress {
+  return {
+    kind: 'kp',
+    symbol,
+    ...(more.keycode ? { keycode: more.keycode } : {}),
+    ...(more.shifted ? { shifted: more.shifted } : {}),
+    ...(more.tag ? { tag: more.tag } : {}),
+  };
 }
 
 function asMod(token: string): Mod | undefined {
@@ -137,18 +149,14 @@ function layerError(token: string, ctx: BindingTextContext): string {
  * A `kp` argument. Under the `symbols` host locale the simulator never reads `keycode`, so a
  * keycode has to be resolved to the symbol it types or the key would silently type nothing.
  */
-function keycodeFields(token: string, ctx: BindingTextContext): Partial<BindingFields> {
-  if (ctx.hostLocale !== 'symbols') return { kind: 'kp', keycode: token };
+function keycodePress(token: string, ctx: BindingTextContext, tag = ''): KeyPress {
+  if (ctx.hostLocale !== 'symbols') return keyPress('', { keycode: token, tag });
   const plain = translateKeycode('us', token);
-  if (!plain || plain.deadKey || plain.symbol === '') return { kind: 'kp', symbol: token };
+  if (!plain || plain.deadKey || plain.symbol === '') return keyPress(token, { tag });
   const shifted = translateKeycode('us', token, ['LSHIFT']);
   const alt = shifted && !shifted.deadKey ? shifted.symbol : '';
-  return {
-    kind: 'kp',
-    symbol: plain.symbol,
-    // Only worth recording when shift does something the default upper-casing would not.
-    shifted: alt && alt !== plain.symbol.toUpperCase() ? alt : '',
-  };
+  // Only worth recording when shift does something the default upper-casing would not.
+  return keyPress(plain.symbol, { shifted: alt !== plain.symbol.toUpperCase() ? alt : '', tag });
 }
 
 /** A trailing `tag:<name>` is stripped before the behaviour's own arguments are read. */
@@ -166,8 +174,8 @@ export function parseBindingText(text: string, ctx: BindingTextContext): ParseRe
     const { rest, tag } = takeTag(raw);
     // A single grapheme is meant literally; anything longer is read as a keycode name first, so
     // `N1` and `SPACE` resolve while `ç` and `ão` stay themselves.
-    if ([...rest].length <= 1) return ok({ kind: 'kp', symbol: rest, tag });
-    return ok({ ...keycodeFields(rest, ctx), tag });
+    if ([...rest].length <= 1) return ok(keyPress(rest, { tag }));
+    return ok(keycodePress(rest, ctx, tag));
   }
 
   const m = /^&([A-Za-z_][A-Za-z0-9_]*)\s*([\s\S]*)$/.exec(raw);
@@ -192,7 +200,7 @@ export function parseBindingText(text: string, ctx: BindingTextContext): ParseRe
       if (rest === '') return err('`&kp` needs a keycode or a symbol, for example `&kp A`');
       const mod = asMod(rest);
       if (mod) return ok({ kind: 'mod', mod });
-      return ok({ ...keycodeFields(rest, ctx), tag });
+      return ok(keycodePress(rest, ctx, tag));
     }
     case 'trans':
     case 'none':
@@ -214,8 +222,14 @@ export function parseBindingText(text: string, ctx: BindingTextContext): ParseRe
       if (!layer) return err(layerError(layerToken, ctx));
       const tap = tail.join(' ');
       if (tap === '') return err('`&lt` needs a layer and a tap, for example `&lt num a`');
-      const tapFields = [...tap].length <= 1 ? { symbol: tap } : keycodeFields(tap, ctx);
-      return ok({ kind: 'lt', layer, symbol: '', keycode: '', ...tapFields, tag });
+      const press = [...tap].length <= 1 ? keyPress(tap) : keycodePress(tap, ctx);
+      // What shift types is not a layer tap's to carry: its text could not say it. Its tag is the
+      // tap's, as the text writes it.
+      return ok({
+        kind: 'lt',
+        layer,
+        tap: keyPress(press.symbol ?? '', { keycode: press.keycode, tag }),
+      });
     }
     case 'sk': {
       const mod = asMod(rest);
@@ -226,20 +240,24 @@ export function parseBindingText(text: string, ctx: BindingTextContext): ParseRe
       const then = /\s+then\s+([^\s]+)$/.exec(rest);
       const symbols = then ? rest.slice(0, then.index) : rest;
       if (symbols.trim() === '') return err('`&macro` needs text, for example `&macro ão`');
-      if (!then) return ok({ kind: 'macro', symbol: symbols, tag });
-      const layer = resolveLayer(then[1], ctx);
-      if (!layer) return err(layerError(then[1], ctx));
-      return ok({ kind: 'macro', symbol: symbols, thenLayer: layer, tag });
+      const layer = then ? resolveLayer(then[1], ctx) : undefined;
+      if (then && !layer) return err(layerError(then[1], ctx));
+      return ok({
+        kind: 'macro',
+        symbols,
+        ...(layer ? { then: [{ kind: 'sl', layer }] } : {}),
+        ...(tag ? { tag } : {}),
+      });
     }
     case 'dead_key': {
       const [symbol = '', shifted = ''] = rest.split(/\s+/);
       if (symbol === '') return err('`&dead` needs a diacritic, for example `&dead ´`');
-      return ok({ kind: 'dead_key', symbol, shifted });
+      return ok({ kind: 'dead_key', diacritic: symbol, ...(shifted ? { shifted } : {}) });
     }
     case 'unicode': {
       const [symbol = '', shifted = ''] = rest.split(/\s+/);
       if (symbol === '') return err('`&uni` needs a symbol, for example `&uni →`');
-      return ok({ kind: 'unicode', symbol, shifted });
+      return ok({ kind: 'unicode', symbol, ...(shifted ? { shiftedSymbol: shifted } : {}) });
     }
     default: {
       if (rest === '') return err('`&ref` needs a behaviour name');
