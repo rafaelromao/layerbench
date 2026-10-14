@@ -23,7 +23,8 @@ export type RuleSetState = {
  * stands in while a saved set is read, or for one that will not open. Until sign-in is known,
  * storage is the browser's copy alone, which may lack a set or hold an older copy of it than
  * GitHub's, so the set is still being read until settled storage has answered.
- * A set read stays while storage changes under it, and is read again from the new storage; one
+ * When storage changes under it, the set is read again from the new storage and is still being read
+ * until it answers; unchanged, it is the same object as before, so nothing is analyzed again. One
  * left for another reference is forgotten, so coming back to it reads it again.
  */
 export function useRuleSet(ref: string): RuleSetState {
@@ -45,8 +46,8 @@ export function useRuleSet(ref: string): RuleSetState {
       if (cancelled) return;
       setRead((prev) => {
         if (prev?.ref !== ref) return { ref, storage, settled, read: r };
-        // What settled storage said stands until settled storage says otherwise: a sign-in
-        // under way reads the browser's copy alone, which may be behind GitHub's.
+        // What settled storage said is kept until settled storage answers again, so that a set
+        // unchanged there is the same object: a sign-in under way reads the browser's copy alone.
         if (prev.settled && !settled) return prev;
         // The same set read again is the same set: what is analyzed on it is not asked again.
         const same =
@@ -78,11 +79,12 @@ export function useRuleSet(ref: string): RuleSetState {
     // Until settled storage has been read, the browser's copy may be behind GitHub's, or lack a
     // set only GitHub has: nothing is analyzed on it, nor said to be missing.
     if (!known?.settled) return { ref, name, status: 'reading' };
+    // Only the storage now in use, once settled, can say what the set is: another one, signed in
+    // since or found since, may hold it otherwise, or not at all.
+    if (known.storage !== storage || !settled) return { ref, name, status: 'reading' };
     const r = known.read;
     if (r.status === 'read')
       return { ref, name: r.doc.name ?? name, status: 'read', ruleSet: r.doc };
-    // Only the storage now in use, once settled, can say a set will not open.
-    if (known.storage !== storage || !settled) return { ref, name, status: 'reading' };
     return { ref, name, status: 'failed', failure: r, error: savedError('rulesets', name, r) };
   }, [preset, id, ref, read, storage, settled]);
 }

@@ -131,4 +131,32 @@ describe('the rule set a reference names', () => {
     await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
     expect(result.current.status === 'read' && result.current.ruleSet).toBe(first);
   });
+
+  it('is still being read when storage changes, until the storage now in use answers', async () => {
+    let adapter: StorageAdapter = await storageWith('Strict');
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <StorageProvider adapter={adapter}>{children}</StorageProvider>
+    );
+    const { result, rerender } = renderHook(() => useRuleSet('saved:strict'), { wrapper });
+    await waitFor(() => expect(result.current.status).toBe('read'));
+
+    // A fork found since holds another set under the same id, and answers late.
+    const fork = new MemoryStorage('fork');
+    await fork.put('rulesets', 'strict', { ...getPreset('cyanophage'), name: 'Fork strict' });
+    const get = fork.get.bind(fork);
+    let answer = () => {};
+    const held = new Promise<void>((resolve) => {
+      answer = resolve;
+    });
+    fork.get = async (c, id) => {
+      await held;
+      return get(c, id);
+    };
+    adapter = fork;
+    rerender();
+    expect(result.current.status).toBe('reading');
+
+    answer();
+    await waitFor(() => expect(result.current.name).toBe('Fork strict'));
+  });
 });
