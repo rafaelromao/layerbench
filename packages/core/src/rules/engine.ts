@@ -684,7 +684,7 @@ export interface FocusResult {
 /**
  * What one key, pressed on one layer, takes part in: for every rule over pairs or trigrams, the
  * n-grams it matched with the key in them, in the order its card lists them. The key is a physical
- * key; its presses are every logical key typed on it on that layer, a chord it is part of included.
+ * key; its presses are every press made on it on that layer, a chord it is part of included.
  */
 export function evaluateFocus(
   sim: SimulationTables,

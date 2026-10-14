@@ -34,8 +34,9 @@ export interface KeyEvent {
   label: string;
   leafKind: BindingKind;
   /**
-   * The layer this press was pressed to reach, when it types nothing and turns a layer on: a layer
-   * key held, a one-shot layer, a toggle, a to-layer or an auto-layer, tapped, held or chorded.
+   * The layer this press was pressed for, when it types nothing and names one: a layer key held, a
+   * one-shot layer, a toggle, a to-layer or an auto-layer, tapped, held or chorded. A toggle or an
+   * auto-layer names its layer when it turns it off too, so a key is the same press either way.
    */
   reaches: number | null;
   producerKind?: ProducerKind;

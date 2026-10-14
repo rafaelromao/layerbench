@@ -15,7 +15,7 @@ export interface Attrs {
   layer: number;
   key_kind: KeyKind;
   label: string;
-  /** The layer it was pressed to reach, if it typed nothing and turned one on. */
+  /** The layer it was pressed for, if it typed nothing and named one. */
   reaches: number | null;
   hand: Hand | 'both';
   fingers: Finger[];

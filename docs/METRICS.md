@@ -19,7 +19,7 @@ Every metric below is a *rule*: plain data that a rule set can enable, disable, 
 - **Distance.** Key positions are in key units (U). `distance_model` is `euclid` (default), `squared` or `manhattan`; distance across hands is undefined and never counted.
 - **Skip weights.** Weighted skipgram rules combine skip 1, 2 and 3 with the `skip_weights` global (default 0.5 / 0.25 / 0.125).
 - **Per key.** A rule that sums over keys says what each key adds to its number, on each layer it was pressed on: an n-gram's count is split evenly between its keys (a pair counts half on each), a chord's share between the keys pressed together; a distance counts its distance, Effort each key's own cost, Finger travel the travel to the key, layer taps the key tapped. The parts add up to the number. Spreads (finger, hand, row balance), ratios, runs and words have no part per key.
-- **What a layer key was pressed for.** A pair that ends on a press made to bring a layer on, rather than to type, lists the keys pressed right after it, and so does a closer look at such a key: a layer key tapped or held, a one-shot, toggle, to-layer or auto-layer, whether on a key, on a tap-hold's hold or on a combo. A key that types and then turns a layer on, such as a macro, typed.
+- **What a layer key was pressed for.** A pair that ends on a press made to bring a layer on, rather than to type, lists the keys pressed right after it, and so does a closer look at such a key: a layer key held, a one-shot, toggle, to-layer or auto-layer, whether on a key, on a tap-hold's hold or on a combo. A key that types and then turns a layer on, such as a macro, typed.
 
 ## Bands
 

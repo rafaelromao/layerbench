@@ -23,7 +23,7 @@ export interface Press {
   readonly kind: KeyKind;
   /** What the board draws for it: what it typed, else the layer or modifier it gives. */
   readonly label: string;
-  /** The layer it was pressed to reach, if it typed nothing and turned one on. */
+  /** The layer it was pressed for, if it typed nothing and named one: see `KeyEvent.reaches`. */
   readonly reaches: number | null;
 }
 
