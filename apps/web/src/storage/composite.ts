@@ -43,16 +43,29 @@ export class CompositeStorage implements StorageAdapter {
     private readonly remote: StorageAdapter | null,
   ) {}
 
+  /** The collections whose last listing had to do without the repository. */
+  private readonly partial = new Set<Collection>();
+
+  /**
+   * Whether the last listing of a collection was the whole of it: false when the repository could
+   * not be listed, and the browser's copy alone was.
+   */
+  listedWhole(collection: Collection): boolean {
+    return !this.partial.has(collection);
+  }
+
   async list(collection: Collection): Promise<IndexEntry[]> {
     const local = await this.local.list(collection).catch(() => [] as IndexEntry[]);
     if (!this.remote) return local;
     try {
       const remote = await this.remote.list(collection);
+      this.partial.delete(collection);
       // The repository is the shared truth, so its entry wins where both hold the same id.
       const merged = new Map(local.map((e) => [e.id, e]));
       for (const e of remote) merged.set(e.id, e);
       return [...merged.values()].sort((a, b) => a.name.localeCompare(b.name));
     } catch {
+      this.partial.add(collection);
       return local;
     }
   }

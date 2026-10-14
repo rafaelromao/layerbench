@@ -200,8 +200,11 @@ class Listing {
     try {
       const list = await storage.list(this.collection);
       if (ask !== this.asked) return;
-      if (settled) keepIndex(this.collection, list);
-      next = settled
+      // GitHub not reached, the browser's copy alone is no more the whole list than before sign-in.
+      const whole =
+        settled && !(storage instanceof CompositeStorage && !storage.listedWhole(this.collection));
+      if (whole) keepIndex(this.collection, list);
+      next = whole
         ? { entries: list, available: true, complete: true }
         : // What was kept last, which this visit's own saves and deletes have kept since.
           { entries: withLast(list, lastIndex(this.collection)), available: true, complete: false };

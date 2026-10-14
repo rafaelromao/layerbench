@@ -3,6 +3,8 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { useGitHubSession } from '../auth/github-session.js';
+import { MemoryStorage } from '../test/memory-storage.js';
+import { CompositeStorage } from './composite.js';
 import { IndexedDbAdapter } from './indexeddb.js';
 import { StorageProvider, useCollection } from './use-storage.js';
 
@@ -123,5 +125,29 @@ describe('one listing of a collection', () => {
     await waitFor(() => expect(names(result.current.entries)).toEqual(['Mine', 'Theirs']));
     await act(() => refresh());
     expect(names(result.current.entries)).toEqual(['Mine', 'Theirs']);
+  });
+
+  it('is not whole while GitHub cannot be listed, and keeps what was listed last', async () => {
+    localStorage.setItem(
+      'layerbench:index:rulesets',
+      JSON.stringify([entry('github-only', 'GitHub only')]),
+    );
+    const remote = Object.assign(new MemoryStorage('github'), {
+      list: async () => {
+        throw new Error('offline');
+      },
+    });
+    const local = new MemoryStorage('local');
+    await local.put('rulesets', 'mine', { name: 'Mine' });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <StorageProvider adapter={new CompositeStorage(local, remote)}>{children}</StorageProvider>
+    );
+    const { result } = renderHook(() => useCollection('rulesets'), { wrapper });
+
+    await waitFor(() => expect(names(result.current.entries)).toEqual(['GitHub only', 'Mine']));
+    expect(result.current.complete).toBe(false);
+    expect(names(JSON.parse(localStorage.getItem('layerbench:index:rulesets') ?? '[]'))).toEqual([
+      'GitHub only',
+    ]);
   });
 });
