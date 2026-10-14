@@ -3,10 +3,9 @@ import { detectTarget, signIn, signOut, useGitHubSession } from '../auth/github-
 import { HelpLink } from '../components/HelpLink.js';
 import { HELP } from '../guide/help.js';
 import { toast } from '../state/toasts.js';
-import { CompositeStorage } from './composite.js';
-import { IndexedDbAdapter } from './indexeddb.js';
+import { CopyUpError } from './composite.js';
 import type { StorageTarget } from './target.js';
-import { remoteStorage } from './use-storage.js';
+import { useCopyUp } from './use-storage.js';
 
 function Where({ target, login }: { target: StorageTarget; login: string }) {
   if (target.kind === 'repo') {
@@ -43,6 +42,8 @@ function Where({ target, login }: { target: StorageTarget; login: string }) {
   );
 }
 
+const documents = (n: number) => `${n} document${n === 1 ? '' : 's'}`;
+
 /**
  * Where saved documents live. Layouts, rule sets and corpora are always kept in this browser;
  * signing in with GitHub keeps them in the user's account too, so they follow them between
@@ -57,26 +58,28 @@ export function StorageSettings() {
   const appSlug = useGitHubSession((s) => s.appSlug);
   const upstream = useGitHubSession((s) => s.upstream);
   const [copying, setCopying] = useState(false);
+  const copyUp = useCopyUp();
 
   const signedIn = status === 'signed-in' && !!login;
   const remote = signedIn && !!target;
 
-  const copyUp = useCallback(async () => {
-    if (!login || !target) return;
+  const copy = useCallback(async () => {
+    if (!copyUp) return;
     setCopying(true);
-    const composite = new CompositeStorage(new IndexedDbAdapter(), remoteStorage(login, target));
     try {
-      let total = 0;
-      for (const collection of ['layouts', 'rulesets', 'corpora'] as const) {
-        total += await composite.pushAll(collection);
-      }
-      toast.info(`Copied ${total} document${total === 1 ? '' : 's'} to GitHub`);
+      const { copied, current } = await copyUp();
+      toast.info(
+        `Copied ${documents(copied)} to GitHub${current > 0 ? `; ${current} ${current === 1 ? 'was' : 'were'} already up to date` : ''}`,
+      );
     } catch (e) {
-      toast.error(`Copy failed: ${e instanceof Error ? e.message : String(e)}`);
+      const copied = e instanceof CopyUpError ? e.copied : 0;
+      toast.error(
+        `Copying stopped after ${documents(copied)}: ${e instanceof Error ? e.message : String(e)}`,
+      );
     } finally {
       setCopying(false);
     }
-  }, [login, target]);
+  }, [copyUp]);
 
   // Access given to a fork in another tab shows here when this one is looked at again.
   useEffect(() => {
@@ -183,8 +186,8 @@ export function StorageSettings() {
                 <button
                   type="button"
                   className="btn btn-sm"
-                  disabled={!target || copying}
-                  onClick={() => void copyUp()}
+                  disabled={!copyUp || copying}
+                  onClick={() => void copy()}
                 >
                   {copying ? 'Copying…' : "Copy this browser's documents up"}
                 </button>

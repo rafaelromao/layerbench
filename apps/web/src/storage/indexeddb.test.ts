@@ -1,5 +1,6 @@
 import { bundledLayout, StorageConflictError, slug, toCanonicalJson } from '@layerbench/core';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { openDB } from 'idb';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { IndexedDbAdapter } from './indexeddb.js';
 
 /** A fresh database per test, so one test's documents never leak into another. */
@@ -82,5 +83,19 @@ describe('saved documents', () => {
 
     expect((await adapter.list('rulesets'))[0]).toMatchObject({ description: 'd', rules: 3 });
     expect((await adapter.list('corpora'))[0]).toMatchObject({ language: 'en', words: 42 });
+  });
+
+  it('rebuilds a lost index with each document as of when it was saved', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-01T10:00:00Z'));
+    await adapter.put('layouts', 'mine', { name: 'Mine' });
+    vi.useRealTimers();
+    const db = await openDB(`layerbench-test-${counter}`);
+    await db.delete('indexes', 'layouts');
+    db.close();
+
+    expect(await adapter.list('layouts')).toMatchObject([
+      { id: 'mine', updatedAt: '2026-10-01T10:00:00.000Z' },
+    ]);
   });
 });

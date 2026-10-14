@@ -3,7 +3,10 @@
  * adapter (browser database, GitHub data repository, gists).
  */
 
-export type Collection = 'layouts' | 'rulesets' | 'corpora';
+/** The kinds of document a user saves: layouts, rule sets and texts. */
+export const COLLECTIONS = ['layouts', 'rulesets', 'corpora'] as const;
+
+export type Collection = (typeof COLLECTIONS)[number];
 
 export type JsonObject = Record<string, unknown>;
 

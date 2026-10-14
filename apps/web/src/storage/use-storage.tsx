@@ -10,7 +10,7 @@ import {
   useSyncExternalStore,
 } from 'react';
 import { gistIds, gitHubAccess, useGitHubSession } from '../auth/github-session.js';
-import { CompositeStorage } from './composite.js';
+import { CompositeStorage, type CopiedUp } from './composite.js';
 import { GistAdapter } from './gist.js';
 import { GitHubAdapter } from './github.js';
 import { IndexedDbAdapter } from './indexeddb.js';
@@ -25,7 +25,7 @@ const StorageContext = createContext<StorageAdapter | null>(null);
 const SettledContext = createContext(true);
 
 /** The GitHub copy of a signed-in user's documents: their fork, or their gists. */
-export function remoteStorage(login: string, target: StorageTarget): StorageAdapter {
+function remoteStorage(login: string, target: StorageTarget): StorageAdapter {
   return target.kind === 'repo'
     ? new GitHubAdapter({
         ...gitHubAccess,
@@ -75,6 +75,16 @@ export function StorageProvider({
  */
 export function useSettled(): boolean {
   return useContext(SettledContext);
+}
+
+/** Copy up, where storage reaches GitHub; null where it is this browser's alone. */
+export function useCopyUp(): (() => Promise<CopiedUp>) | null {
+  const storage = useStorage();
+  return useMemo(
+    () =>
+      storage instanceof CompositeStorage && storage.reachesRemote ? () => storage.copyUp() : null,
+    [storage],
+  );
 }
 
 export function useStorage(): StorageAdapter {

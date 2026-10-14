@@ -1,5 +1,6 @@
 import {
   assertDocumentId,
+  COLLECTIONS,
   type Collection,
   type IndexEntry,
   indexSummary,
@@ -11,8 +12,6 @@ import {
 import { readIndex } from './github.js';
 import { API, type GitHubAccess, gitHubFetch } from './github-api.js';
 import { sha1Hex } from './indexeddb.js';
-
-const COLLECTIONS: Collection[] = ['layouts', 'rulesets', 'corpora'];
 
 const DESCRIPTIONS: Record<Collection, string> = {
   layouts: 'LayerBench: saved layouts',
