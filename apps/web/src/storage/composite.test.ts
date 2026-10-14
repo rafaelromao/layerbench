@@ -162,4 +162,22 @@ describe('copying up', () => {
     expect(await new CompositeStorage(local, remote).copyUp()).toEqual({ copied: 0, current: 1 });
     expect((await remote.get('layouts', 'busy'))?.doc.name).toBe('theirs');
   });
+
+  it('leaves a document made in the repository while copying, by another browser', async () => {
+    const local = localAdapter();
+    const remote = fakeRemote();
+    await local.put('layouts', 'new', { name: 'mine' });
+    const list = remote.list.bind(remote);
+    let lists = 0;
+    remote.list = async (collection) => {
+      const listed = await list(collection);
+      if (collection === 'layouts' && ++lists === 2) {
+        await remote.put('layouts', 'new', { name: 'theirs' });
+      }
+      return listed;
+    };
+
+    expect(await new CompositeStorage(local, remote).copyUp()).toEqual({ copied: 0, current: 1 });
+    expect((await remote.get('layouts', 'new'))?.doc.name).toBe('theirs');
+  });
 });

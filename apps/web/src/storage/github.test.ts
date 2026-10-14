@@ -307,6 +307,26 @@ describe('where each kind of document is kept', () => {
     expect(JSON.parse(written(index))[0]).toMatchObject({ id: 'notes', words: 3 });
   });
 
+  it('writes nothing of a text when its entry is not at the version expected', async () => {
+    responder = (call) =>
+      call.method === 'GET' && call.url.includes('notes.json')
+        ? json(200, { content: b64('{"name":"Theirs"}'), sha: 'their-sha' })
+        : call.method === 'GET'
+          ? json(404, {})
+          : saved();
+    const adapter = new GitHubAdapter(CONFIG);
+    const doc = { name: 'Notes', language: 'en', sample: 'Mine.', symbols: 4, words: 1 };
+
+    await expect(
+      adapter.put('corpora', 'notes', doc, { expectedSha: 'my-sha' }),
+    ).rejects.toBeInstanceOf(StorageConflictError);
+    // Expected not to be there at all, it is there.
+    await expect(
+      adapter.put('corpora', 'notes', doc, { expectedSha: null }),
+    ).rejects.toBeInstanceOf(StorageConflictError);
+    expect(calls.filter((c) => c.method === 'PUT')).toEqual([]);
+  });
+
   it('reads a text back from its entry and its sample', async () => {
     responder = (call) =>
       call.url.includes('notes.txt')

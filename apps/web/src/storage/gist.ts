@@ -180,7 +180,7 @@ export class GistAdapter implements StorageAdapter {
     collection: Collection,
     id: string,
     doc: JsonObject,
-    opts: { expectedSha?: string; message?: string } = {},
+    opts: { expectedSha?: string | null; message?: string } = {},
   ): Promise<StorageMeta> {
     assertDocumentId(id);
     const path = documentFile(collection, id);
@@ -189,7 +189,10 @@ export class GistAdapter implements StorageAdapter {
 
     const current = gist ? GistAdapter.content(gist, path) : null;
     if (opts.expectedSha !== undefined && current !== null) {
-      if ((await sha1Hex(current)) !== opts.expectedSha) throw new StorageConflictError();
+      // Expected to be absent, or expected at another version.
+      if (opts.expectedSha === null || (await sha1Hex(current)) !== opts.expectedSha) {
+        throw new StorageConflictError();
+      }
     }
 
     const index = gist ? GistAdapter.content(gist, indexFile(collection)) : null;

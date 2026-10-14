@@ -245,12 +245,18 @@ export class GitHubAdapter implements StorageAdapter {
     collection: Collection,
     id: string,
     doc: JsonObject,
-    opts: { expectedSha?: string; message?: string } = {},
+    opts: { expectedSha?: string | null; message?: string } = {},
   ): Promise<StorageMeta> {
     assertDocumentId(id);
     const path = documentFile(collection, id);
     const message = opts.message ?? `Save ${collection} ${(doc.name as string) ?? id}`;
-    const sha = opts.expectedSha ?? (await this.readFile(path))?.sha;
+    const current = (await this.readFile(path))?.sha;
+    // A version expected is checked before anything is written, as a text's sample is written
+    // first; the write itself is conditional too, so one landing in between is refused by GitHub.
+    const expected = opts.expectedSha;
+    if (expected !== undefined && current !== undefined && current !== expected) {
+      throw new StorageConflictError();
+    }
 
     let content = documentText(doc);
     if (collection === 'corpora') {
@@ -261,7 +267,7 @@ export class GitHubAdapter implements StorageAdapter {
       await this.writeFile(samplePath, sample, `${message} (text)`, sampleSha);
       content = documentText(entry);
     }
-    const written = await this.writeFile(path, content, message, sha);
+    const written = await this.writeFile(path, content, message, current);
     await this.updateIndex(collection, id, indexSummary(collection, id, doc), message);
     return { sha: written.sha, path, commit: written.commit };
   }

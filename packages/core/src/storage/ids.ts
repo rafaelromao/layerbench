@@ -40,7 +40,11 @@ export interface StorageAdapter {
     collection: Collection,
     id: string,
     doc: JsonObject,
-    opts?: { expectedSha?: string; message?: string },
+    /**
+     * `expectedSha`: write only over that version, or, when null, only where there is no document
+     * yet; a document missing where a version was expected is written all the same.
+     */
+    opts?: { expectedSha?: string | null; message?: string },
   ): Promise<StorageMeta>;
   delete(collection: Collection, id: string, opts?: { message?: string }): Promise<void>;
 }

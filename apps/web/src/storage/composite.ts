@@ -76,7 +76,7 @@ export class CompositeStorage implements StorageAdapter {
     collection: Collection,
     id: string,
     doc: JsonObject,
-    opts: { expectedSha?: string; message?: string } = {},
+    opts: { expectedSha?: string | null; message?: string } = {},
   ): Promise<StorageMeta> {
     const localMeta = await this.local.put(collection, id, doc, { message: opts.message });
     if (!this.remote) return localMeta;
@@ -131,7 +131,8 @@ export class CompositeStorage implements StorageAdapter {
           }
           try {
             await remote.put(collection, entry.id, stored.doc, {
-              expectedSha: version,
+              // Not there, it must still not be there: one made meanwhile is not written over.
+              expectedSha: version ?? null,
               message: `Copy ${collection} ${entry.name} from the browser`,
             });
           } catch (e) {
