@@ -407,6 +407,20 @@ What moved, checked across the 38 reports; nothing else moved:
   further on, so the registry and the items that name them do too.
 - **Magic Romak's and Romak's documents**, and Magic Romak's share blob.
 
+## Nineteenth re-baseline: a combo that reaches a layer says what came next
+
+A pair that ends on a key pressed to reach a layer lists, under `then`, the keys pressed right after
+it (eighth re-baseline). Which keys those are was read from the legend, `⇩` for a hold, so a combo
+that taps a layer never had them, nor did a hold that arms a one-shot, toggles or jumps to a layer.
+Each press now carries the layer it reached, and every one of them has them.
+
+What moved, checked across the 38 reports; nothing else moved:
+
+- **`then` on the pairs that end on Qwerty's Dead keys combo**, in its eight Portuguese reports:
+  `d→DK`, `s→DK`, `c→DK` and others, and `␣→DK` with space. Compared without `then`, every report
+  is the same as before, byte for byte.
+- **Nothing in the Magic Romak and Romak 34 reports.**
+
 ## Not compared
 
 `globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not

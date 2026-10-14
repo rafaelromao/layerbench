@@ -30,12 +30,9 @@ interface Ctx extends PredicateContext {
   universe: Universe;
 }
 
-/**
- * A key pressed to bring a layer on rather than to type: a layer key tapped, or one held. The
- * machine names a hold that turns a layer on `⇩<layer>`; any other hold is a modifier.
- */
+/** A key pressed to bring a layer on rather than to type, however it does. */
 function reachesLayer(k: Attrs | undefined): boolean {
-  return k?.key_kind === 'layer_tap' || (k?.key_kind === 'hold' && k.label.startsWith('⇩'));
+  return k !== undefined && k.reaches !== null;
 }
 
 /** What a pair that ends on a layer key was pressed for, each with its part of the pair's percent. */
