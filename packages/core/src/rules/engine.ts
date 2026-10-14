@@ -1,6 +1,7 @@
 import type { Finger, Hand } from '../geometry/types.js';
 import { fingerHand } from '../geometry/types.js';
 import type { CompiledLayout } from '../layout/compile.js';
+import { layerTapsByKey } from '../presses/layer-taps.js';
 import type { Ngrams, PressLog, Shape, Universe } from '../presses/press-log.js';
 import type { SimulationTables } from '../tables/tables.js';
 import { type Attrs, adjacentFingerPair, attrDistance, buildAttrs } from './attrs.js';
@@ -579,13 +580,8 @@ function evalStat(rule: Rule, ctx: Ctx): RuleResult {
     // Each layer tap on the key it was made on, a chord's split between its keys.
     const perKey = new Map<number, number>();
     const perLayerKey = new Map<number, Map<number, number>>();
-    const taps = ctx.log.ngrams('with_space', 'unigram');
-    for (let i = 0; i < taps.size; i++) {
-      const a = ctx.attrs[taps.ids[i]];
-      const count = taps.counts[i];
-      if (a?.key_kind !== 'layer_tap') continue;
-      for (const m of a.members) credit(perKey, perLayerKey, a.layer, m, count / a.members.length);
-    }
+    for (const t of layerTapsByKey(ctx.log, ctx.compiled))
+      credit(perKey, perLayerKey, t.layer, t.key, t.taps);
     parts.key_scale = st.symbols > 0 ? 100 / st.symbols : 0;
     parts.per_key = toRecord(perKey) as unknown as Record<number, number>;
     parts.per_layer_key = perLayerRecord(perLayerKey);
