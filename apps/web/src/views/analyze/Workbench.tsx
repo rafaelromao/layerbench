@@ -1,4 +1,5 @@
 import {
+  type AnalysisSettings,
   type CorpusManifest,
   type Layout,
   languagesToJudge,
@@ -178,13 +179,21 @@ export function Workbench({
   const loading = analysis.loading || settings.status === 'reading';
   const analysisError = settings.error ?? analysis.error;
 
-  /** The last report that landed, and the layout it was of. */
-  const [landed, setLanded] = useState<{ report: ReportDTO; layout: Layout } | null>(null);
+  /** The last report that landed, and the layout and settings it was made on. */
+  const [landed, setLanded] = useState<{
+    report: ReportDTO;
+    layout: Layout;
+    settings: AnalysisSettings | null;
+  } | null>(null);
+  const readyNow = useRef(ready);
+  readyNow.current = ready;
   const layoutNow = useRef(state.layout);
   layoutNow.current = state.layout;
   useEffect(() => {
     // A report lands only for the request still standing, so it is of the layout now on screen.
-    if (report && !report.provisional) setLanded({ report, layout: layoutNow.current });
+    if (report && !report.provisional) {
+      setLanded({ report, layout: layoutNow.current, settings: readyNow.current });
+    }
   }, [report]);
 
   // A swap changes which key types which symbol, nothing else, so the tables already typed can be
@@ -194,7 +203,7 @@ export function Workbench({
   useEffect(() => {
     const last = state.lastEdit;
     if (last?.status !== 'landed' || last.edit.kind !== 'swap') return;
-    if (!landed || landed.layout !== last.before) return;
+    if (!landed || landed.layout !== last.before || landed.settings !== ready) return;
     const swap = last.edit;
     const layerIdx = state.compiled.layerIndex.get(swap.layer);
     const posA = state.compiled.keyIndex.get(swap.from);
@@ -220,7 +229,8 @@ export function Workbench({
     };
   }, [state.lastEdit]);
 
-  const current = landed !== null && landed.layout === state.layout;
+  // Of this layout, on these settings: one made on rules changed since is the last there was.
+  const current = landed !== null && landed.layout === state.layout && landed.settings === ready;
   const provisional = !current && estimate !== null && estimate.layout === state.layout;
   /**
    * What the numbers show: the analysis of this layout, an estimate of it, or the last there was.
