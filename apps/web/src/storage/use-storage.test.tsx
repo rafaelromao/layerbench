@@ -69,3 +69,40 @@ describe('the saved index, as the last visit listed it', () => {
     expect(render(listing()).result.current.entries).toEqual([]);
   });
 });
+
+describe('one listing of a collection', () => {
+  function both(adapter: StorageAdapter) {
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <StorageProvider adapter={adapter}>{children}</StorageProvider>
+    );
+    return renderHook(() => ({ a: useCollection('rulesets'), b: useCollection('rulesets') }), {
+      wrapper,
+    });
+  }
+
+  it('is listed once for every list that opens at the same time', async () => {
+    let listed = 0;
+    const adapter = {
+      id: 'test',
+      list: async () => {
+        listed++;
+        return [entry('mine', 'Mine')];
+      },
+    } as unknown as StorageAdapter;
+    const { result } = both(adapter);
+    await waitFor(() => expect(names(result.current.b.entries)).toEqual(['Mine']));
+    expect(names(result.current.a.entries)).toEqual(['Mine']);
+    expect(listed).toBe(1);
+  });
+
+  it('reaches every list when one of them is refreshed', async () => {
+    const entries = [entry('mine', 'Mine')];
+    const adapter = { id: 'test', list: async () => [...entries] } as unknown as StorageAdapter;
+    const { result } = both(adapter);
+    await waitFor(() => expect(names(result.current.b.entries)).toEqual(['Mine']));
+
+    entries.push(entry('strict', 'Strict'));
+    await act(() => result.current.a.refresh());
+    expect(names(result.current.b.entries)).toEqual(['Mine', 'Strict']);
+  });
+});
