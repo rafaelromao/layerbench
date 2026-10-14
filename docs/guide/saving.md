@@ -66,7 +66,9 @@ before. Click **Copy this browser's documents up** in **Storage** to send what t
 where **Storage** now saves: each layout, rule set and text GitHub has not got, or has an older copy
 of. One saved there since, from another browser, stays as it is, so a browser that has fallen behind
 never overwrites newer work. It says how many it copied and how many were already up to date; if it
-stops partway, what went up stays, and copying again carries on from there.
+stops partway, what went up stays, and copying again carries on from there. Copy while no other
+browser is saving to the same account: a save landing at the very moment one is copied may be
+written over.
 
 ## Signing out
 
