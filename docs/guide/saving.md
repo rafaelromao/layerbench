@@ -62,8 +62,11 @@ fork is public, so is everything saved to it.
 ## Moving what you saved before
 
 Switching from this browser alone to GitHub, or from gists to your fork, does not move what was saved
-before. Click **Copy this browser's documents up** in **Storage** to send everything this browser
-holds to where **Storage** now saves.
+before. Click **Copy this browser's documents up** in **Storage** to send what this browser holds to
+where **Storage** now saves: each layout, rule set and text GitHub has not got, or has an older copy
+of. One saved there since, from another browser, stays as it is, so a browser that has fallen behind
+never overwrites newer work. It says how many it copied and how many were already up to date; if it
+stops partway, what went up stays, and copying again carries on from there.
 
 ## Signing out
 
@@ -82,7 +85,8 @@ someone who has not got it, it is a layout of their own: they can analyze it, ed
 copy. Opened where it is saved and unchanged, in this browser or your GitHub account, it is your
 saved layout, and saving changes that one. A link never saves over a different layout someone has
 under the same name: that is saved beside it. A saved text and a saved rule set do not travel the
-same way: a text opens nowhere else, and a rule set anywhere else opens as the Layouts Doc's rules.
+same way: the link only names them, so they open only where they are saved. Anywhere else nothing
+opens in their place: the page says the text or rule set is not saved there, and shows no numbers.
 
 A link with a whole layout in it is long: the layout is after the `#`. Copy the whole address, and
 if a link opens on a different layout than it should, check that nothing after the `#` was lost on
