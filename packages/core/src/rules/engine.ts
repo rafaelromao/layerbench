@@ -1,9 +1,8 @@
 import type { Finger, Hand } from '../geometry/types.js';
 import { fingerHand } from '../geometry/types.js';
 import type { CompiledLayout } from '../layout/compile.js';
-import { tableIndex } from '../tables/ngram-index.js';
+import type { Ngrams, PressLog, Shape, Universe } from '../presses/press-log.js';
 import type { SimulationTables } from '../tables/tables.js';
-import { packBigram, unpackBigram, unpackTrigram } from '../tables/tables.js';
 import { type Attrs, adjacentFingerPair, attrDistance, buildAttrs } from './attrs.js';
 import { classifyBand } from './bands.js';
 import { defaultEffort, keyEffort } from './effort.js';
@@ -26,11 +25,9 @@ interface Ctx extends PredicateContext {
   sim: SimulationTables;
   compiled: CompiledLayout;
   attrs: Attrs[];
-  tables: SimulationTables['noSpace'];
-  /** The text's own n-gram totals in the same universe, as if every character took one press. */
-  text: SimulationTables['text']['noSpace'];
-  /** What follows each pair that ends on a layer key, built the first time a rule asks. */
-  followers?: Map<number, Map<number, number>>;
+  log: PressLog;
+  /** The rule set's universe. */
+  universe: Universe;
 }
 
 /**
@@ -41,27 +38,11 @@ function reachesLayer(k: Attrs | undefined): boolean {
   return k?.key_kind === 'layer_tap' || (k?.key_kind === 'hold' && k.label.startsWith('⇩'));
 }
 
-/** For each pair that ends on a layer key, the keys pressed next and how often. */
-function followersOf(ctx: Ctx): Map<number, Map<number, number>> {
-  if (ctx.followers) return ctx.followers;
-  const out = new Map<number, Map<number, number>>();
-  for (const [key, count] of ctx.tables.trigram) {
-    const [a, b, c] = unpackTrigram(key);
-    if (!reachesLayer(ctx.attrs[b])) continue;
-    const pair = packBigram(a, b);
-    const next = out.get(pair) ?? new Map<number, number>();
-    next.set(c, (next.get(c) ?? 0) + count);
-    out.set(pair, next);
-  }
-  ctx.followers = out;
-  return out;
-}
-
 /** What a pair that ends on a layer key was pressed for, each with its part of the pair's percent. */
 function nextKeys(ctx: Ctx, pair: Ngram, percent: number): RuleItemNext[] | undefined {
   if (pair.length !== 2 || !reachesLayer(pair[1])) return undefined;
-  const next = followersOf(ctx).get(packBigram(pair[0].id, pair[1].id));
-  if (!next) return undefined;
+  const next = ctx.log.next(ctx.universe, [pair[0].id, pair[1].id]);
+  if (next.size === 0) return undefined;
   const sum = [...next.values()].reduce((a, b) => a + b, 0);
   if (!(sum > 0)) return undefined;
   return [...next.entries()]
@@ -173,8 +154,9 @@ function pairDistance(ngram: Ngram, model: Globals['distance_model']): number | 
  * is, the spaces are already there, and adding a word's space on top would count it twice.
  */
 function textKeystrokes(ctx: Ctx): number {
-  if (ctx.globals.universe === 'with_space') return ctx.text.unigram;
-  return ctx.text.unigram + (ctx.globals.space_per_word_in_keystrokes ? ctx.sim.stats.words : 0);
+  const text = ctx.log.ngrams(ctx.universe, 'unigram').textTotal;
+  if (ctx.universe === 'with_space') return text;
+  return text + (ctx.globals.space_per_word_in_keystrokes ? ctx.sim.stats.words : 0);
 }
 
 function per100Denominator(stats: SimulationTables['stats'], per?: string): number {
@@ -223,11 +205,9 @@ function finish(rule: Rule, value: number | null, extra: Extra): RuleResult {
 
 /** One table an n-gram rule counts over: its entries, what they are a share of, and their weight. */
 export interface NgramSource {
-  table: Map<number, number>;
+  ngrams: Ngrams;
   total: number;
   weight: number;
-  /** Which table of the universe it is. */
-  kind: 'unigram' | 'bigram' | 'trigram' | 'skip1' | 'skip2' | 'skip3';
 }
 
 /**
@@ -240,39 +220,26 @@ function ngramSources(rule: Rule, ctx: Ctx): NgramSource[] {
   const spec = rule.ngram ?? { n: 2 as const, skip: 0 };
   const n = spec.n ?? 2;
   const skip = spec.skip ?? 0;
-  const t = ctx.tables;
-  const pairs = ctx.text;
-  const skipKind = (k: number) => `skip${k}` as NgramSource['kind'];
-  if (n === 1) return [{ table: t.unigram, total: t.totals.unigram, weight: 1, kind: 'unigram' }];
-  if (n === 3) return [{ table: t.trigram, total: t.totals.trigram, weight: 1, kind: 'trigram' }];
-  if (Array.isArray(skip)) {
-    return skip.map((k) => ({
-      table: t.skip[k - 1],
-      total: pairs.skip[k - 1],
-      weight: ctx.globals.skip_weights[k - 1] ?? 0,
-      kind: skipKind(k),
-    }));
+  const of = (shape: Shape) => ctx.log.ngrams(ctx.universe, shape);
+  const pairs = (shape: Shape, weight: number): NgramSource => {
+    const ngrams = of(shape);
+    return { ngrams, total: ngrams.textTotal, weight };
+  };
+  const skipShape = (k: number) => `skip${k}` as Shape;
+  if (n === 1 || n === 3) {
+    const ngrams = of(n === 1 ? 'unigram' : 'trigram');
+    return [{ ngrams, total: ngrams.total, weight: 1 }];
   }
-  if (skip > 0)
-    return [
-      { table: t.skip[skip - 1], total: pairs.skip[skip - 1], weight: 1, kind: skipKind(skip) },
-    ];
-  return [{ table: t.bigram, total: pairs.bigram, weight: 1, kind: 'bigram' }];
+  if (Array.isArray(skip))
+    return skip.map((k) => pairs(skipShape(k), ctx.globals.skip_weights[k - 1] ?? 0));
+  if (skip > 0) return [pairs(skipShape(skip), 1)];
+  return [pairs('bigram', 1)];
 }
 
-/** The n-gram a table entry is, its keys' attributes in order. */
-function ngramOf(ctx: Ctx, kind: NgramSource['kind'], key: number, into: Attrs[]): void {
-  if (kind === 'unigram') into[0] = ctx.attrs[key];
-  else if (kind === 'trigram') {
-    const [a, b, c] = unpackTrigram(key);
-    into[0] = ctx.attrs[a];
-    into[1] = ctx.attrs[b];
-    into[2] = ctx.attrs[c];
-  } else {
-    const [a, b] = unpackBigram(key);
-    into[0] = ctx.attrs[a];
-    into[1] = ctx.attrs[b];
-  }
+/** The n-gram entry `i` of a table is, its keys' attributes in order. */
+function ngramAt(ctx: Ctx, g: Ngrams, i: number, into: Attrs[]): void {
+  const at = i * g.n;
+  for (let j = 0; j < g.n; j++) into[j] = ctx.attrs[g.ids[at + j]];
 }
 
 /** An n-gram as a card lists it, with its share of what the rule counts over. */
@@ -337,11 +304,12 @@ function evalNgram(rule: Rule, ctx: Ctx): RuleResult {
 
   for (const source of sources) {
     total += source.total * source.weight;
-    for (const [key, count] of source.table) {
-      ngramOf(ctx, source.kind, key, ngram);
+    const g = source.ngrams;
+    for (let i = 0; i < g.size; i++) {
+      ngramAt(ctx, g, i, ngram);
       if (!match(ngram)) continue;
 
-      const c = count * weightOf(rule.weight, ngram) * source.weight;
+      const c = g.counts[i] * weightOf(rule.weight, ngram) * source.weight;
       const d = pairDistance(ngram, model);
       matched += c;
       weightedDistance += c * (d ?? 0);
@@ -436,7 +404,7 @@ function evalNgram(rule: Rule, ctx: Ctx): RuleResult {
       // Per character typed, space included, which is cyanophage's keystrokes on the layouts it
       // models. The layout's own presses would make its layer taps, which cost less than most
       // letters, lower the average: they add their cost, never a keystroke.
-      const k = ctx.sim.text.withSpace.unigram;
+      const k = ctx.log.ngrams('with_space', 'unigram').textTotal;
       value = k > 0 ? (effortSum / k) * (rule.scale ?? 1) : 0;
       keyScale = k > 0 ? (rule.scale ?? 1) / k : 0;
       unit = 'effort';
@@ -614,8 +582,10 @@ function evalStat(rule: Rule, ctx: Ctx): RuleResult {
     // Each layer tap on the key it was made on, a chord's split between its keys.
     const perKey = new Map<number, number>();
     const perLayerKey = new Map<number, Map<number, number>>();
-    for (const [id, count] of ctx.sim.withSpace.unigram) {
-      const a = ctx.attrs[id];
+    const taps = ctx.log.ngrams('with_space', 'unigram');
+    for (let i = 0; i < taps.size; i++) {
+      const a = ctx.attrs[taps.ids[i]];
+      const count = taps.counts[i];
       if (a?.key_kind !== 'layer_tap') continue;
       for (const m of a.members) credit(perKey, perLayerKey, a.layer, m, count / a.members.length);
     }
@@ -697,11 +667,10 @@ function computeScore(results: RuleResult[], ruleSet: RuleSet): Score {
 /** Everything a rule set reads a simulation through, the same for every rule. */
 function contextOf(sim: SimulationTables, compiled: CompiledLayout, ruleSet: RuleSet): Ctx {
   const globals: Globals = { ...DEFAULT_GLOBALS, ...ruleSet.globals };
-  const attrs = buildAttrs(compiled, sim.registry);
-  const withSpace = globals.universe === 'with_space';
-  const tables = withSpace ? sim.withSpace : sim.noSpace;
-  const text = withSpace ? sim.text.withSpace : sim.text.noSpace;
-  return { sim, compiled, attrs, tables, text, globals, params: {} };
+  const log = sim.presses;
+  const attrs = buildAttrs(compiled, log.presses);
+  const universe = globals.universe === 'with_space' ? 'with_space' : 'no_space';
+  return { sim, compiled, attrs, log, universe, globals, params: {} };
 }
 
 /** One rule's n-grams through a key: how many it matched there, and the busiest of them. */
@@ -718,15 +687,6 @@ export interface FocusResult {
   /** For a key pressed to bring a layer on: the keys pressed right after it, busiest first. */
   next: RuleItemNext[];
 }
-
-const SHAPE: Record<NgramSource['kind'], 1 | 2 | 3> = {
-  unigram: 1,
-  bigram: 2,
-  trigram: 3,
-  skip1: 2,
-  skip2: 2,
-  skip3: 2,
-};
 
 /**
  * What one key, pressed on one layer, takes part in: for every rule over pairs or trigrams, the
@@ -761,13 +721,13 @@ export function evaluateFocus(
     let count = 0;
     const found: { ngram: Ngram; c: number; d: number | null }[] = [];
     for (const source of sources) {
-      const index = tableIndex(source.table, SHAPE[source.kind]);
+      const g = source.ngrams;
       const ordinals = new Set<number>();
-      for (const id of ids) for (const o of index.through(id)) ordinals.add(o);
+      for (const id of ids) for (const o of g.through(id)) ordinals.add(o);
       for (const o of [...ordinals].sort((a, b) => a - b)) {
-        ngramOf(scoped, source.kind, index.keys[o], ngram);
+        ngramAt(scoped, g, o, ngram);
         if (!match(ngram)) continue;
-        const c = index.counts[o] * weightOf(rule.weight, ngram) * source.weight;
+        const c = g.counts[o] * weightOf(rule.weight, ngram) * source.weight;
         count += c;
         found.push({ ngram: [...ngram], c, d: pairDistance(ngram, scoped.globals.distance_model) });
       }
@@ -782,16 +742,12 @@ export function evaluateFocus(
 
   // What a layer key was pressed for: the presses right after it.
   const next = new Map<number, number>();
-  const pairs = tableIndex(ctx.tables.bigram, 2);
   for (const id of ids) {
     if (!reachesLayer(ctx.attrs[id])) continue;
-    for (const o of pairs.through(id)) {
-      const [a, b] = unpackBigram(pairs.keys[o]);
-      if (a === id) next.set(b, (next.get(b) ?? 0) + pairs.counts[o]);
-    }
+    for (const [b, c] of ctx.log.next(ctx.universe, [id])) next.set(b, (next.get(b) ?? 0) + c);
   }
   const sum = [...next.values()].reduce((x, y) => x + y, 0);
-  const pairTotal = ctx.tables.totals.bigram;
+  const pairTotal = ctx.log.ngrams(ctx.universe, 'bigram').total;
   return {
     rules,
     next: [...next.entries()]

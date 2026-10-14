@@ -5,6 +5,7 @@ import type { CompiledLayout } from '../layout/compile.js';
 import { compileLayout } from '../layout/compile.js';
 import { parseLayout } from '../layout/schema.js';
 import type { Layout } from '../layout/types.js';
+import type { PressLog, Shape, Universe } from '../presses/press-log.js';
 import { evaluate } from '../rules/engine.js';
 import { getPreset } from '../rules/presets.js';
 import type { RuleResult, RuleSet, Score } from '../rules/types.js';
@@ -174,15 +175,19 @@ function dense(a: number[]): Record<string, number> {
   return Object.fromEntries(a.map((v, i) => [String(i), v]));
 }
 
-function ngramTotals(t: {
-  totals: { unigram: number; bigram: number; trigram: number; skip: [number, number, number] };
-}) {
+function ngramTotals(log: PressLog, universe: Universe) {
+  const total = (shape: Shape) => log.ngrams(universe, shape).total;
   return {
-    unigram: t.totals.unigram,
-    bigram: t.totals.bigram,
-    trigram: t.totals.trigram,
-    skip: [...t.totals.skip],
+    unigram: total('unigram'),
+    bigram: total('bigram'),
+    trigram: total('trigram'),
+    skip: [total('skip1'), total('skip2'), total('skip3')],
   };
+}
+
+function unigrams(log: PressLog, universe: Universe): Record<string, number> {
+  const g = log.ngrams(universe, 'unigram');
+  return Object.fromEntries(Array.from(g.ids, (id, i) => [String(id), g.counts[i]]));
 }
 
 /**
@@ -223,14 +228,19 @@ export function buildGoldenReport(c: GoldenCase, layout?: Layout): GoldenReport 
     globals: globals as unknown as Record<string, unknown>,
     stats: statsOf(t.stats),
     coverage: coverageOf(sim.coverage),
-    totals: { no_space: ngramTotals(t.noSpace), with_space: ngramTotals(t.withSpace) },
-    registry: t.registry
-      .all()
-      .map((k) => ({ id: k.id, layer: k.layer, pos: k.pos, key_kind: k.keyKind, label: k.label })),
-    unigram_no_space: Object.fromEntries([...t.noSpace.unigram].map(([k, v]) => [String(k), v])),
-    unigram_with_space: Object.fromEntries(
-      [...t.withSpace.unigram].map(([k, v]) => [String(k), v]),
-    ),
+    totals: {
+      no_space: ngramTotals(t.presses, 'no_space'),
+      with_space: ngramTotals(t.presses, 'with_space'),
+    },
+    registry: t.presses.presses.map((k) => ({
+      id: k.id,
+      layer: k.layer,
+      pos: k.pos,
+      key_kind: k.kind,
+      label: k.label,
+    })),
+    unigram_no_space: unigrams(t.presses, 'no_space'),
+    unigram_with_space: unigrams(t.presses, 'with_space'),
     travel: {
       continuous: { ...t.travel.continuous },
       reset_at_word: { ...t.travel.resetAtWord },

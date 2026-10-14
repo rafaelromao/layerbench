@@ -20,6 +20,7 @@ export * from './layout/text.js';
 export * from './layout/types.js';
 export * from './layout/without.js';
 export * from './layouts/index.js';
+export * from './presses/press-log.js';
 export * from './rules/index.js';
 export * from './sim/activators.js';
 export * from './sim/machine.js';

@@ -4,6 +4,7 @@ import { normalizeText } from '../corpus/normalize.js';
 import { FIXTURE_EN, FIXTURE_PT } from '../fixtures/index.js';
 import { compileLayout } from '../layout/compile.js';
 import { bundledLayout, CLASSIC_LAYOUTS } from '../layouts/index.js';
+import { SHAPES } from '../presses/press-log.js';
 import { simulate } from '../sim/resolver.js';
 import { classifyBand } from './bands.js';
 import { BANDS, catalogRules, sfbWhere } from './catalog.js';
@@ -171,7 +172,8 @@ describe('rules engine', () => {
       globals: { ...rs.globals, universe: u },
     });
     // The same-finger bigrams themselves, counted over bigrams by the Doc.
-    const sfbs = (sfbOf(layoutsDoc()) / 100) * sim.tables.noSpace.totals.bigram;
+    const sfbs =
+      (sfbOf(layoutsDoc()) / 100) * sim.tables.presses.ngrams('no_space', 'bigram').total;
     expect(sfbs).toBeGreaterThan(0);
 
     // Without space: every other keystroke, plus one space per word.
@@ -180,7 +182,8 @@ describe('rules engine', () => {
 
     // With space: the space presses are keystrokes already, and nothing is added.
     const withSfbs =
-      (sfbOf(universe(layoutsDoc(), 'with_space')) / 100) * sim.tables.withSpace.totals.bigram;
+      (sfbOf(universe(layoutsDoc(), 'with_space')) / 100) *
+      sim.tables.presses.ngrams('with_space', 'bigram').total;
     const withSpace = sfbOf(universe(cyanophage(), 'with_space'));
     expect(withSpace).toBeCloseTo((withSfbs / st.keystrokes) * 100, 9);
   });
@@ -193,14 +196,19 @@ describe('rules engine', () => {
     // A layout typing each character with one press has exactly the text's totals: nothing it
     // reports moves.
     const q = tablesOf('qwerty');
-    expect(q.text.noSpace).toEqual(q.noSpace.totals);
-    expect(q.text.withSpace).toEqual(q.withSpace.totals);
+    for (const universe of ['no_space', 'with_space'] as const) {
+      for (const shape of SHAPES) {
+        const g = q.presses.ngrams(universe, shape);
+        expect(g.textTotal, `${universe} ${shape}`).toBe(g.total);
+      }
+    }
 
     // Magic Romak's layer taps and holds add pairs of its own, but the text has the pairs it has,
     // and that is what its same-finger bigrams are a share of.
     const m = tablesOf('magic-romak');
-    expect(m.noSpace.totals.bigram).toBeGreaterThan(m.text.noSpace.bigram);
-    expect(m.text.noSpace.unigram).toBe(m.stats.symbols);
+    const pairs = m.presses.ngrams('no_space', 'bigram');
+    expect(pairs.total).toBeGreaterThan(pairs.textTotal);
+    expect(m.presses.ngrams('no_space', 'unigram').textTotal).toBe(m.stats.symbols);
     const sfb = catalogRules().find((r) => r.id === 'sfb')!;
     const counting: RuleSet = {
       ...layoutsDoc(),
@@ -209,7 +217,7 @@ describe('rules engine', () => {
     const compiled = compileLayout(bundledLayout('magic-romak')!);
     const [percent, count] = evaluate(m, compiled, counting).results.map((r) => r.value as number);
     expect(count).toBeGreaterThan(0);
-    expect(percent).toBeCloseTo((count / m.text.noSpace.bigram) * 100, 9);
+    expect(percent).toBeCloseTo((count / pairs.textTotal) * 100, 9);
   });
 
   it('never counts a trigram with a thumb press as a roll or an alternation, but keeps it in the total', () => {
@@ -232,7 +240,7 @@ describe('rules engine', () => {
         rules: catalogRules().filter((r) => ids.includes(r.id)),
       };
       return {
-        trigrams: tables.noSpace.totals.trigram,
+        trigrams: tables.presses.ngrams('no_space', 'trigram').total,
         values: evaluate(tables, piano, ruleSet).results.map((r) => r.value),
         asFingers: evaluate(tables, piano, asFingers).results[0].value,
       };

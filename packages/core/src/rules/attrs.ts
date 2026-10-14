@@ -2,12 +2,12 @@ import type { DistanceModel } from '../geometry/distance.js';
 import type { Finger, Hand } from '../geometry/types.js';
 import { adjacentFingers, FINGER_RANK } from '../geometry/types.js';
 import type { CompiledLayout } from '../layout/compile.js';
+import type { Press } from '../presses/press-log.js';
 import type { KeyKind } from '../sim/machine.js';
-import type { LogicalKeyRegistry } from '../tables/tables.js';
 
 /**
- * Everything a rule predicate can ask about one logical key: where it sits, which finger presses
- * it, which layer it resolved on. Built once per analysis from the registry and the compiled layout.
+ * Everything a rule predicate can ask about one press: where it sits, which finger presses it,
+ * which layer it resolved on. Built once per analysis from the press log and the compiled layout.
  */
 export interface Attrs {
   id: number;
@@ -15,6 +15,8 @@ export interface Attrs {
   layer: number;
   key_kind: KeyKind;
   label: string;
+  /** The layer it was pressed to reach, if it typed nothing and turned one on. */
+  reaches: number | null;
   hand: Hand | 'both';
   fingers: Finger[];
   /** Set only when exactly one finger presses the position; chords leave it null. */
@@ -35,18 +37,19 @@ function worstRank(fingers: Finger[]): number {
   return Math.max(...fingers.map((f) => FINGER_RANK[f]));
 }
 
-/** Attributes indexed by logical key id. */
-export function buildAttrs(compiled: CompiledLayout, registry: LogicalKeyRegistry): Attrs[] {
+/** Attributes indexed by press id. */
+export function buildAttrs(compiled: CompiledLayout, presses: readonly Press[]): Attrs[] {
   const out: Attrs[] = [];
-  for (const lk of registry.all()) {
+  for (const lk of presses) {
     const pos = compiled.positions[lk.pos];
     const finger = pos.fingers.length === 1 ? pos.fingers[0] : null;
     out[lk.id] = {
       id: lk.id,
       pos: lk.pos,
       layer: lk.layer,
-      key_kind: lk.keyKind,
+      key_kind: lk.kind,
       label: lk.label,
+      reaches: lk.reaches,
       hand: pos.hand,
       fingers: pos.fingers,
       finger,

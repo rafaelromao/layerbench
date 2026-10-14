@@ -95,19 +95,19 @@ describe('simulate — tables and coverage', () => {
     expect(r.tables.stats.words).toBe(2);
     const r2 = simulate(compiled, 'aßb', opts);
     expect(r2.coverage.unproducible.get('ß')).toBe(1);
-    expect(r2.tables.noSpace.totals.bigram).toBe(0);
+    expect(r2.tables.presses.ngrams('no_space', 'bigram').total).toBe(0);
   });
 
   it('no-space universe resets at word boundaries in reset mode; with-space includes space keys', () => {
     const compiled = compileLayout(romak24);
     const stream = normalizeText('ab cd', opts);
     const r = simulate(compiled, stream, opts);
-    expect(r.tables.noSpace.totals.unigram).toBe(4);
-    expect(r.tables.noSpace.totals.bigram).toBe(2); // K − W = 4 − 2
-    expect(r.tables.withSpace.totals.unigram).toBe(5);
-    expect(r.tables.withSpace.totals.bigram).toBe(4);
+    expect(r.tables.presses.ngrams('no_space', 'unigram').total).toBe(4);
+    expect(r.tables.presses.ngrams('no_space', 'bigram').total).toBe(2); // K − W = 4 − 2
+    expect(r.tables.presses.ngrams('with_space', 'unigram').total).toBe(5);
+    expect(r.tables.presses.ngrams('with_space', 'bigram').total).toBe(4);
     const bridged = simulate(compiled, stream, { ...opts, crossWord: 'bridge' });
-    expect(bridged.tables.noSpace.totals.bigram).toBe(3);
+    expect(bridged.tables.presses.ngrams('no_space', 'bigram').total).toBe(3);
   });
 
   it('layer taps appear in the key stream and layer stats', () => {
@@ -284,10 +284,10 @@ describe('the kind of key a press is, in the statistics', () => {
     const sim = simulate(compiled, normalizeText('ha av', { caseMode: 'fold' }), opts);
     expect(sim.tables.stats.adaptive_presses).toBe(2);
     expect(sim.tables.stats.adaptive_trigger_hits).toBe(2);
-    // One logical key per legend it typed, both of them the adaptive key they are.
+    // One press per legend it typed, both of them the adaptive key they are.
     const lhr = compiled.keyIndex.get('LHR');
-    const atKey = sim.tables.registry.all().filter((k) => k.pos === lhr);
-    expect(atKey.map((k) => [k.label, k.keyKind])).toEqual([
+    const atKey = sim.tables.presses.presses.filter((k) => k.pos === lhr);
+    expect(atKey.map((k) => [k.label, k.kind])).toEqual([
       ['h', 'adaptive'],
       ['v', 'adaptive'],
     ]);
@@ -402,7 +402,7 @@ describe('the key tapped for a layer, chosen word by word', () => {
     ]);
     const compiled = compileLayout(threeWays());
     const sim = simulate(compiled, 'lq qn q', opts);
-    const taps = sim.tables.registry.all().filter((k) => k.keyKind === 'layer_tap');
+    const taps = sim.tables.presses.presses.filter((k) => k.kind === 'layer_tap');
     expect(taps.map((k) => compiled.positions[k.pos].id)).toEqual(['RBM', 'RBI']);
     expect(sim.tables.stats.layer_taps).toBe(3);
   });
@@ -475,7 +475,7 @@ describe("a tap-hold's hold, whatever it does", () => {
     const compiled = compileLayout(layout({ LHM: holdTap(kp('a'), kp('b')) }));
     const sim = simulate(compiled, 'ab', opts);
     expect(sim.tables.stats.hold_presses).toBe(1);
-    const kinds = sim.tables.registry.all().map((k) => [k.label, k.keyKind]);
+    const kinds = sim.tables.presses.presses.map((k) => [k.label, k.kind]);
     expect(kinds).toEqual([
       ['a', 'alpha'],
       ['b', 'alpha'],

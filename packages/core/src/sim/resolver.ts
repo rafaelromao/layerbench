@@ -2,16 +2,14 @@ import { keyDistance } from '../geometry/distance.js';
 import { FINGERS, type Finger } from '../geometry/types.js';
 import type { CompiledLayout } from '../layout/compile.js';
 import type { ActivatorDef, BindingKind, Mod, TypingPathEntry } from '../layout/types.js';
+import { recordPresses } from '../presses/press-log.js';
 import { cyanophageEffort } from '../rules/effort.js';
-import {
-  type FingerTravel,
-  LogicalKeyRegistry,
-  NgramAccumulator,
-  type RunStats,
-  type SimulationStats,
-  type SimulationTables,
-  TextTotals,
-  type WordTrace,
+import type {
+  FingerTravel,
+  RunStats,
+  SimulationStats,
+  SimulationTables,
+  WordTrace,
 } from '../tables/tables.js';
 import { type ActivatorCandidate, discoverActivators, standInPeers } from './activators.js';
 import {
@@ -112,11 +110,7 @@ export class Simulator {
   private readonly repeatPolicy: 'repeat_key' | 'tap_twice';
 
   // accumulation
-  readonly registry = new LogicalKeyRegistry();
-  private readonly noSpace = new NgramAccumulator();
-  private readonly withSpace = new NgramAccumulator();
-  private readonly textNoSpace = new TextTotals();
-  private readonly textWithSpace = new TextTotals();
+  private readonly presses = recordPresses();
   private readonly runs: RunStats = {
     handRuns: [],
     handStrings: new Map(),
@@ -547,8 +541,7 @@ export class Simulator {
       }
       if (ev.keyKind === 'repeat') st.repeat_presses++;
       if (ev.keyKind === 'space') st.space_presses++;
-      const id = this.registry.idFor(ev);
-      this.withSpace.push(id);
+      const id = this.presses.press(ev, ev.keyKind === 'space' || isSpace ? 'with_space' : 'both');
       const pos = c.positions[ev.pos];
       // finger travel & usage, by finger and by the key the finger went to
       const byKey = this.travel.byKey;
@@ -574,7 +567,6 @@ export class Simulator {
         this.lastFingerPosWord[f] = member;
       });
       if (ev.keyKind === 'space' || isSpace) continue;
-      this.noSpace.push(id);
       this.curWordKeys.push(id);
       this.curWordPresses++;
       // same-hand runs
@@ -692,15 +684,13 @@ export class Simulator {
     this.curWordKeys = [];
     this.curWordPresses = 0;
     if (this.options.crossWord === 'reset' || hard) {
-      this.noSpace.boundary();
-      this.textNoSpace.boundary();
+      this.presses.boundary('no_space');
       this.flushHandRun();
       this.flushFingerRun();
       this.flushLayerRun();
     }
     if (hard) {
-      this.withSpace.boundary();
-      this.textWithSpace.boundary();
+      this.presses.boundary('with_space');
     }
     for (const f of FINGERS) this.lastFingerPosWord[f] = this.homeKeys[f];
   }
@@ -912,7 +902,7 @@ export class Simulator {
       if (g === ' ') {
         this.wordBoundary(false);
         this.typeSpace();
-        this.textWithSpace.push();
+        this.presses.symbol('with_space');
         i += 1;
         continue;
       }
@@ -921,8 +911,7 @@ export class Simulator {
         if (this.typeToken(token)) {
           this.curWord.push(token);
           for (let k = 0; k < len; k++) {
-            this.textNoSpace.push();
-            this.textWithSpace.push();
+            this.presses.symbol('both');
           }
           this.stats.symbols += len;
           symbols += len;
@@ -944,10 +933,7 @@ export class Simulator {
     // The last word is in; holds still down come up after it.
     this.commit(this.releaseHolds(), false);
     const tables: SimulationTables = {
-      registry: this.registry,
-      noSpace: this.noSpace.tables,
-      withSpace: this.withSpace.tables,
-      text: { noSpace: this.textNoSpace.totals, withSpace: this.textWithSpace.totals },
+      presses: this.presses.seal(),
       runs: this.runs,
       words: this.words,
       travel: this.travel,

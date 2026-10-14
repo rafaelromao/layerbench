@@ -38,7 +38,7 @@ describe.skipIf(!RUN)('performance budget (BENCH=1)', () => {
     const r = analyze(compiled, stream, { caseMode: 'fold', maxSymbols: 300_000, ruleSet });
     const ms = performance.now() - t;
     logLine(
-      `300k: ${ms.toFixed(0)}ms keystrokes=${r.stats.keystrokes} logicalKeys=${r.simulation.registry.all().length} bigrams=${r.simulation.noSpace.bigram.size}`,
+      `300k: ${ms.toFixed(0)}ms keystrokes=${r.stats.keystrokes} presses=${r.simulation.presses.presses.length} bigrams=${r.simulation.presses.ngrams('no_space', 'bigram').size}`,
     );
     expect(ms).toBeLessThan(1500);
   });
@@ -53,9 +53,11 @@ describe.skipIf(!RUN)('performance budget (BENCH=1)', () => {
       });
       return times.sort((a, b) => a - b)[2];
     };
-    const busiest = [...r.simulation.noSpace.unigram].sort((a, b) => b[1] - a[1])[0][0];
-    const alpha = r.simulation.registry.get(busiest);
-    const tap = r.simulation.registry.all().find((k) => k.keyKind === 'layer_tap')!;
+    const log = r.simulation.presses;
+    const unigrams = log.ngrams('no_space', 'unigram');
+    const busiest = unigrams.ids[unigrams.counts.indexOf(Math.max(...unigrams.counts))];
+    const alpha = log.presses[busiest];
+    const tap = log.presses.find((k) => k.kind === 'layer_tap')!;
     const rules = median(() => evaluate(r.simulation, compiled, ruleSet));
     const focusAlpha = median(() =>
       evaluateFocus(r.simulation, compiled, ruleSet, { key: alpha.pos, layer: alpha.layer }),

@@ -103,9 +103,11 @@ describe("each key's part of a number", () => {
     expect(keyPart(effort, f, 0) ?? 0).toBe(0);
     expect(keyPart(effort, e, 0)).toBeGreaterThan(0);
     // The part is its cost times its presses, scaled as the value is.
-    const presses = [...report.simulation.noSpace.unigram]
-      .filter(([id]) => report.simulation.registry.get(id)?.pos === e)
-      .reduce((sum, [, c]) => sum + c, 0);
+    const log = report.simulation.presses;
+    const unigrams = log.ngrams('no_space', 'unigram');
+    let presses = 0;
+    for (let i = 0; i < unigrams.size; i++)
+      if (log.presses[unigrams.ids[i]].pos === e) presses += unigrams.counts[i];
     expect(keyPart(effort, e, 0)).toBeCloseTo(grid.LTM * presses * (effort.key_scale ?? 0), 9);
   });
 
