@@ -10,8 +10,8 @@ import {
 
 export interface RulesState {
   ruleSet: RuleSet;
-  /** Where the current set came from: a preset id, or `saved:<id>`. */
-  sourceRef: string;
+  /** Where the current set came from: a preset id, or `saved:<id>`; null until one is loaded. */
+  sourceRef: string | null;
   dirty: boolean;
   composer: ComposerState;
   jsonText: string;
@@ -40,7 +40,7 @@ export type RulesAction =
   | { type: 'saved'; ref: string }
   | { type: 'clearNotice' };
 
-export function initialRulesState(ruleSet: RuleSet, ref: string): RulesState {
+export function initialRulesState(ruleSet: RuleSet, ref: string | null): RulesState {
   return {
     ruleSet,
     sourceRef: ref,

@@ -3,7 +3,8 @@ import type { ReactNode } from 'react';
 import { FeatureSwitches, Switch } from '../components/FeatureSwitches.js';
 import { HelpLink } from '../components/HelpLink.js';
 import { HELP } from '../guide/help.js';
-import { savedId } from '../saved/ref.js';
+import { savedId, savedRef } from '../saved/ref.js';
+import { useCollection } from '../storage/use-storage.js';
 import { type Params, SAMPLE_SIZES } from '../url/params.js';
 import { groupByLanguage } from './corpus-groups.js';
 
@@ -44,19 +45,21 @@ export function CorpusSelect({
   );
 }
 
-/** The rule set a layout is measured with: a preset, or the saved set a link names. */
+/**
+ * The rule set a layout is measured with: a preset, or a set saved here, by the name it is saved
+ * under. A saved set the link names that is not saved here is still shown, and said to be so.
+ */
 export function RuleSetSelect({
   value,
-  savedName,
   onChange,
   className = '',
 }: {
   value: string;
-  /** What to call a saved set (`saved:<id>`), which has no preset to take a name from. */
-  savedName?: string;
-  onChange: (preset: string) => void;
+  onChange: (rules: string) => void;
   className?: string;
 }) {
+  const saved = useCollection('rulesets').entries;
+  const id = savedId(value);
   return (
     <select
       name="rules"
@@ -65,12 +68,25 @@ export function RuleSetSelect({
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >
-      {PRESET_IDS.map((id) => (
-        <option key={id} value={id}>
-          {getPreset(id).name}
-        </option>
-      ))}
-      {savedId(value) !== null && <option value={value}>{savedName ?? value}</option>}
+      <optgroup label="Presets">
+        {PRESET_IDS.map((preset) => (
+          <option key={preset} value={preset}>
+            {getPreset(preset).name}
+          </option>
+        ))}
+      </optgroup>
+      {saved.length > 0 && (
+        <optgroup label="Saved">
+          {saved.map((e) => (
+            <option key={e.id} value={savedRef(e.id)}>
+              {e.name}
+            </option>
+          ))}
+        </optgroup>
+      )}
+      {id !== null && !saved.some((e) => e.id === id) && (
+        <option value={value}>{id} (not saved here)</option>
+      )}
     </select>
   );
 }
@@ -145,7 +161,6 @@ export function SettingsFields({
   params,
   onChange,
   corpora,
-  ruleSetName,
   verb,
   afterCounts,
   afterSwitches,
@@ -153,8 +168,6 @@ export function SettingsFields({
   params: Params;
   onChange: (patch: Partial<Params>) => void;
   corpora: CorpusManifest[];
-  /** What to call a saved rule set the link names. */
-  ruleSetName?: string;
   /** What the view does with what the switches type: "Rank", "Compare", "Analyze". */
   verb: string;
   afterCounts?: ReactNode;
@@ -173,11 +186,7 @@ export function SettingsFields({
       <MixWith corpora={corpora} params={params} onParams={onChange} />
       <label className="form-control">
         <span className="label-text text-xs">Rules</span>
-        <RuleSetSelect
-          value={params.preset}
-          savedName={ruleSetName}
-          onChange={(preset) => onChange({ preset })}
-        />
+        <RuleSetSelect value={params.preset} onChange={(preset) => onChange({ preset })} />
       </label>
       <label className="form-control">
         <span className="label-text text-xs">Counts</span>

@@ -68,6 +68,15 @@ export function StorageProvider({
   );
 }
 
+/**
+ * Whether storage is the one documents are kept in for good, rather than the browser's copy alone
+ * while sign-in is still being asked about: a document that storage lacks until then may be on
+ * GitHub.
+ */
+export function useSettled(): boolean {
+  return useContext(SettledContext);
+}
+
 export function useStorage(): StorageAdapter {
   const adapter = useContext(StorageContext);
   if (!adapter) throw new Error('useStorage must be used inside StorageProvider');

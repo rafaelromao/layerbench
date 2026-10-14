@@ -83,20 +83,22 @@ export function CompareView() {
   const typedA = useTypedLayout(a.compiled, params.without);
   const typedB = useTypedLayout(b.compiled, params.without);
   const settings = useAnalysisSettings(settingsOf(params));
+  /** The settings to analyze on: none until the rule set is read, nor when it will not open. */
+  const ready = settings.settings;
 
   // Each side as written, on the same settings: the engine types both without the same features.
   const requestA: AnalyzeRequest | null = useMemo(
-    () => (a.layout ? { layout: toCanonicalJson(a.layout), settings } : null),
-    [a.layout, settings],
+    () => (a.layout && ready ? { layout: toCanonicalJson(a.layout), settings: ready } : null),
+    [a.layout, ready],
   );
   const requestB: AnalyzeRequest | null = useMemo(
-    () => (b.layout ? { layout: toCanonicalJson(b.layout), settings } : null),
-    [b.layout, settings],
+    () => (b.layout && ready ? { layout: toCanonicalJson(b.layout), settings: ready } : null),
+    [b.layout, ready],
   );
 
   const analysisA = useAnalysis(requestA);
   const analysisB = useAnalysis(requestB);
-  const error = a.error ?? b.error ?? analysisA.error ?? analysisB.error;
+  const error = a.error ?? b.error ?? settings.error ?? analysisA.error ?? analysisB.error;
 
   const setParams = useCallback(
     (overrides: Partial<Params> & { b?: string }) => {
@@ -182,7 +184,6 @@ export function CompareView() {
                 params={params}
                 onChange={setParams}
                 corpora={corpora}
-                ruleSetName={settings.rules.name}
                 verb="Compare"
                 afterCounts={
                   <label className="form-control">
@@ -279,7 +280,7 @@ export function CompareView() {
                   )}
                   {report ? (
                     <SummaryStrip results={report.results} />
-                  ) : (
+                  ) : settings.status === 'failed' ? null : (
                     <div className="flex items-center gap-2 py-4">
                       <span className="loading loading-dots loading-xs" />
                       <span className="text-sm opacity-70">analyzing…</span>

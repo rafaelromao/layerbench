@@ -1,5 +1,4 @@
 import {
-  type AnalysisSettings,
   type CorpusManifest,
   type Layout,
   languagesToJudge,
@@ -63,6 +62,7 @@ import {
 } from '../edit/reducer.js';
 import { initialUndoState, undoable } from '../edit/undo.js';
 import { textLanguage, textName } from '../text-of.js';
+import type { AnalysisSettingsState } from '../useAnalysisSettings.js';
 import { useTypedLayout } from '../useLayout.js';
 import { itemLayer } from './item-layer.js';
 import { LayoutBar } from './LayoutBar.js';
@@ -107,7 +107,8 @@ export interface WorkbenchProps {
   params: Params;
   setParams: (overrides: Partial<Params>) => void;
   /** What the layout is analyzed on, the rule set read. */
-  settings: AnalysisSettings;
+  /** What the numbers are made on, as far as their rule set is read. */
+  settings: AnalysisSettingsState;
   corpora: CorpusManifest[];
   client: ReturnType<typeof useAnalysisClient>;
   navigate: ReturnType<typeof useNavigate>;
@@ -160,16 +161,22 @@ export function Workbench({
 
   // The board shows the layout as it is written; the numbers are for it as typed, without the
   // features the switches leave out, and so are the heat, the playback and the explanations.
-  const typedCompiled = useTypedLayout(state.compiled, settings.without);
+  const typedCompiled = useTypedLayout(state.compiled, settings.linked.without);
+  /** The settings to analyze on: none until the rule set is read, nor when it will not open. */
+  const ready = settings.settings;
 
   // The layout as written: the engine types it without the features the settings leave out, and
   // mixes a second corpus in itself.
-  const request: AnalyzeRequest = useMemo(
-    () => ({ layout: toCanonicalJson(state.layout), settings }),
-    [state.layout, settings],
+  const request: AnalyzeRequest | null = useMemo(
+    () => (ready ? { layout: toCanonicalJson(state.layout), settings: ready } : null),
+    [state.layout, ready],
   );
 
-  const { report, loading, progress, error: analysisError } = useAnalysis(request);
+  const analysis = useAnalysis(request);
+  const { report, progress } = analysis;
+  // Waiting for the rule set is part of analyzing, and a rule set that will not open is why not.
+  const loading = analysis.loading || settings.status === 'reading';
+  const analysisError = settings.error ?? analysis.error;
 
   /** The last report that landed, and the layout it was of. */
   const [landed, setLanded] = useState<{ report: ReportDTO; layout: Layout } | null>(null);
@@ -192,7 +199,7 @@ export function Workbench({
     const layerIdx = state.compiled.layerIndex.get(swap.layer);
     const posA = state.compiled.keyIndex.get(swap.from);
     const posB = state.compiled.keyIndex.get(swap.to);
-    if (layerIdx === undefined || posA === undefined || posB === undefined) return;
+    if (layerIdx === undefined || posA === undefined || posB === undefined || !ready) return;
     let cancelled = false;
     const layout = state.layout;
     client
@@ -202,7 +209,7 @@ export function Workbench({
         layerIdx,
         posA,
         posB,
-        settings,
+        settings: ready,
       })
       .then((dto) => {
         if (!cancelled && dto) setEstimate({ report: dto, layout });
@@ -216,7 +223,12 @@ export function Workbench({
   const current = landed !== null && landed.layout === state.layout;
   const provisional = !current && estimate !== null && estimate.layout === state.layout;
   /** What the numbers show: the analysis of this layout, an estimate of it, or the last there was. */
-  const shown = provisional && estimate ? estimate.report : (landed?.report ?? report);
+  const shown =
+    settings.status === 'failed'
+      ? null
+      : provisional && estimate
+        ? estimate.report
+        : (landed?.report ?? report);
   const stale = shown !== null && !current && !provisional;
 
   // ------------------------------------------------------------------ the link
@@ -310,14 +322,14 @@ export function Workbench({
   // Re-run the explanation whenever the text or the way it would be typed changes.
   useEffect(() => {
     let cancelled = false;
-    if (explainText.trim() === '') {
+    if (explainText.trim() === '' || !ready) {
       setExplain(null);
       setPlay(null);
       return;
     }
     const timer = setTimeout(() => {
       client
-        .explain(toCanonicalJson(state.layout), explainText, settings)
+        .explain(toCanonicalJson(state.layout), explainText, ready)
         .then((dto) => {
           if (!cancelled) setExplain({ text: explainText, dto });
         })
@@ -329,7 +341,7 @@ export function Workbench({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [client, state.layout, explainText, settings]);
+  }, [client, state.layout, explainText, ready]);
 
   const frames = useMemo(
     () => (explain ? playFrames(explain.dto.steps, typedCompiled) : []),
@@ -530,7 +542,7 @@ export function Workbench({
     }
   };
 
-  const corpusLanguage = textLanguage(settings, corpora);
+  const corpusLanguage = textLanguage(settings.linked, corpora);
   // The text's languages, then those the layout says it is for.
   const layoutLanguages = state.layout.languages;
   const languageGap = useMemo(() => {
@@ -540,7 +552,7 @@ export function Workbench({
     }
     return null;
   }, [typedCompiled, corpusLanguage, layoutLanguages]);
-  const corpusName = textName(settings, corpora);
+  const corpusName = textName(settings.linked, corpora);
   /** A chord's step names its virtual key; the reader knows it by the keys pressed together. */
   const stepKey = (key: string) => {
     const combo = typedCompiled.combos.find((c) => typedCompiled.positions[c.pos]?.id === key);
@@ -867,6 +879,7 @@ export function Workbench({
             corpusName={corpusName}
             languageGap={languageGap}
             onSelect={selectMetric}
+            failed={settings.status === 'failed'}
           />
 
           <section className="lb-edit-extras min-w-0" aria-label="Legend">
@@ -973,6 +986,7 @@ function SummaryCard({
   corpusName,
   languageGap,
   onSelect,
+  failed,
 }: {
   shown: ReportDTO | null;
   provisional: boolean;
@@ -982,6 +996,8 @@ function SummaryCard({
   corpusName: string;
   languageGap: { name: string; missingRequired: string[] } | null;
   onSelect: (id: string) => void;
+  /** Whether there will be no numbers to wait for: the analysis cannot be made. */
+  failed: boolean;
 }) {
   const symbols = shown?.stats.symbols ?? 0;
   const share = (n: number) => {
@@ -1034,7 +1050,7 @@ function SummaryCard({
                   </p>
                 )}
               </>
-            ) : (
+            ) : failed ? null : (
               <div className="flex items-center gap-3 py-6">
                 <span className="loading loading-dots loading-md" />
                 <p className="text-sm opacity-70 flex-1">

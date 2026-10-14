@@ -1,8 +1,9 @@
-import type { AnalysisSettings, CorpusManifest, TextClass } from '@layerbench/core';
+import type { CorpusManifest, TextClass } from '@layerbench/core';
 import { type ReactNode, useId, useRef } from 'react';
 import { featureList } from '../components/FeatureSwitches.js';
 import { sampleLabel } from './AnalysisSelects.js';
 import { textName } from './text-of.js';
+import type { AnalysisSettingsState } from './useAnalysisSettings.js';
 
 const COUNTS: Record<TextClass, string> = {
   letters: 'letters only',
@@ -11,10 +12,13 @@ const COUNTS: Record<TextClass, string> = {
 };
 
 /** What an analysis is made with, in a line: the text, the rules, what counts and what is off. */
-export function settingsSummary(settings: AnalysisSettings, corpora: CorpusManifest[]): string {
+export function settingsSummary(
+  { linked: settings, rulesName }: AnalysisSettingsState,
+  corpora: CorpusManifest[],
+): string {
   const parts = [
     textName(settings, corpora),
-    settings.rules.name ?? 'Rule set',
+    rulesName,
     COUNTS[settings.textClass],
     sampleLabel(settings.sample),
   ];
