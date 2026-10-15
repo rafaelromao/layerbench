@@ -59,6 +59,12 @@ changed binding. It is not a key's part of a number, which is what the key adds 
 adds up over keys.
 _Avoid_: arm, sub-binding
 
+**Plain part**:
+The part a key amounts to when nothing chooses another: a tap-hold's tap, a layer-tap's tap, a
+morph's plain binding, a tap dance's first tap, an adaptive key's default. What the board draws on a
+key, and what the editor keeps when a key changes kind, are read from it.
+_Avoid_: resting part, default, base binding
+
 **Press**:
 One key, or one combo, pressed on a layer while typing a text, with what it did: the symbols it typed,
 the modifier it held, or the layer it reached. Presses alike in all of that are the same press, however

@@ -1,6 +1,7 @@
 import { composeDeadKey, hasShift, shiftSymbol, translateKeycode } from '../host/locale.js';
 import type { CompiledLayout } from '../layout/compile.js';
 import { short } from '../layout/labels.js';
+import { type Chooser, type Choosing, partOf } from '../layout/parts.js';
 import {
   type AdaptiveTrigger,
   type Binding,
@@ -265,12 +266,28 @@ export interface ResolveResult {
 /**
  * Deterministic, timing-free ZMK-like state machine.
  */
+/** The resolver looks at a tap dance and an adaptive key as they are, not at the part they type. */
+const AS_THEY_ARE: ReadonlySet<Chooser> = new Set(['tap_dance', 'adaptive']);
+
 export class Machine {
   readonly state = new MachineState();
   private mask = 1;
+  /** How a key is pressed under this machine's state, tapped and held, for `peelBinding`. */
+  readonly pressed: Readonly<Record<'tap' | 'hold', Choosing>>;
 
   constructor(readonly compiled: CompiledLayout) {
     this.recomputeMask();
+    const machine = this;
+    const pressed = (press: 'tap' | 'hold'): Choosing => ({
+      press,
+      // Read only when a morph asks: most keys have none.
+      get mods() {
+        return machine.activeMods();
+      },
+      layerOn: (l) => (machine.mask & (1 << (compiled.layerIndex.get(l) ?? 0))) !== 0,
+      stopAt: AS_THEY_ARE,
+    });
+    this.pressed = { tap: pressed('tap'), hold: pressed('hold') };
   }
 
   /** Active layer bitmask (base | persistent | one-shots | holds | auto-layer, then conditional layers). */
@@ -839,76 +856,47 @@ function labelFor(
   // A layer key is named as the board draws it: Alpha 2 is A2.
   const layerName = (id: string) =>
     short(compiled.layers[compiled.layerIndex.get(id) ?? 0]?.name ?? id);
-  const peel = (b: Binding): string => {
-    switch (b.kind) {
-      case 'sl':
-        return `→${layerName(b.layer)}`;
-      case 'mo':
-        return `⇩${layerName(b.layer)}`;
-      case 'lt':
-        return ctx.mode === 'hold' ? `⇩${layerName(b.layer)}` : peel(b.tap);
-      case 'tog':
-        return `⇄${layerName(b.layer)}`;
-      case 'to':
-        return `⇒${layerName(b.layer)}`;
-      case 'sk':
-        return b.mod.includes('SHIFT') ? '⇧' : `◇${b.mod}`;
-      case 'mod':
-        return b.mod.includes('SHIFT') ? '⇧' : `◆${b.mod}`;
-      case 'caps_word':
-        return '⇪';
-      case 'auto_layer':
-        return `⇪${layerName(b.layer)}`;
-      case 'key_repeat':
-        return '⟳';
-      case 'hold_tap':
-        return ctx.mode === 'hold' ? peel(b.hold) : peel(b.tap);
-      case 'mod_morph':
-        return peel(b.default);
-      case 'layer_morph':
-        return peel(b.inactive);
-      case 'adaptive':
-        return b.default ? peel(b.default) : '✦';
-      case 'tap_dance':
-        return peel(b.bindings[0]);
-      case 'macro':
-        return b.symbols ?? '⋯';
-      case 'kp':
-        return b.symbol ?? b.keycode ?? '';
-      case 'dead_key':
-        return b.diacritic;
-      case 'unicode':
-        return b.symbol;
-      case 'raw':
-        return b.label;
-      default:
-        return '·';
-    }
-  };
-  return peel(binding);
+  const b = partOf(binding, ctx.mode === 'hold' ? HELD : TAPPED);
+  switch (b.kind) {
+    case 'sl':
+      return `→${layerName(b.layer)}`;
+    case 'mo':
+      return `⇩${layerName(b.layer)}`;
+    case 'tog':
+      return `⇄${layerName(b.layer)}`;
+    case 'to':
+      return `⇒${layerName(b.layer)}`;
+    case 'sk':
+      return b.mod.includes('SHIFT') ? '⇧' : `◇${b.mod}`;
+    case 'mod':
+      return b.mod.includes('SHIFT') ? '⇧' : `◆${b.mod}`;
+    case 'caps_word':
+      return '⇪';
+    case 'auto_layer':
+      return `⇪${layerName(b.layer)}`;
+    case 'key_repeat':
+      return '⟳';
+    case 'adaptive':
+      return '✦';
+    case 'macro':
+      return b.symbols ?? '⋯';
+    case 'kp':
+      return b.symbol ?? b.keycode ?? '';
+    case 'dead_key':
+      return b.diacritic;
+    case 'unicode':
+      return b.symbol;
+    case 'raw':
+      return b.label;
+    default:
+      return '·';
+  }
 }
+
+const TAPPED: Choosing = { press: 'tap' };
+const HELD: Choosing = { press: 'hold' };
 
 /** Peel morphs/hold-taps to the binding that would run for the given mode under the current machine state. */
 export function peelBinding(machine: Machine, b: Binding, mode: 'tap' | 'hold'): Binding {
-  switch (b.kind) {
-    case 'hold_tap':
-      return peelBinding(machine, mode === 'hold' ? b.hold : b.tap, mode);
-    case 'lt':
-      return mode === 'hold' ? { kind: 'mo', layer: b.layer } : peelBinding(machine, b.tap, mode);
-    case 'mod_morph': {
-      const active = machine.activeMods();
-      return peelBinding(machine, modsMet(b.mods, active) ? b.morphed : b.default, mode);
-    }
-    case 'layer_morph': {
-      const bits = b.layers.map((l) => 1 << (machine.compiled.layerIndex.get(l) ?? 0));
-      const match = b.match ?? 'any';
-      const on =
-        match === 'all'
-          ? bits.every((x) => (machine.activeMask() & x) !== 0)
-          : bits.some((x) => (machine.activeMask() & x) !== 0);
-      return peelBinding(machine, on ? b.active : b.inactive, mode);
-    }
-    default:
-      return b;
-  }
+  return partOf(b, machine.pressed[mode]);
 }

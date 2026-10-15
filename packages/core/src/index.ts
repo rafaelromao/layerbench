@@ -15,6 +15,7 @@ export * from './layout/features.js';
 export * from './layout/json.js';
 export * from './layout/labels.js';
 export { keyBinding } from './layout/ops.js';
+export * from './layout/parts.js';
 export * from './layout/schema.js';
 export * from './layout/text.js';
 export * from './layout/types.js';
