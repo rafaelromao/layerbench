@@ -37,12 +37,20 @@
           "symbol": "z"
         },
         "R0": {
-          "kind": "kp",
-          "symbol": "e"
+          "kind": "lt",
+          "layer": "sym",
+          "tap": {
+            "kind": "kp",
+            "symbol": "e"
+          }
         },
         "L0": {
-          "kind": "kp",
-          "symbol": " "
+          "kind": "lt",
+          "layer": "num",
+          "tap": {
+            "kind": "kp",
+            "symbol": " "
+          }
         },
         "RTC": {
           "kind": "kp",
