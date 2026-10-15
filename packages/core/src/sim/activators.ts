@@ -2,6 +2,7 @@ import type { CompiledLayout } from '../layout/compile.js';
 import { modChoiceText } from '../layout/labels.js';
 import { partOf } from '../layout/parts.js';
 import type { ActivatorDef, Binding, ModChoice } from '../layout/types.js';
+import { heldChoices, intoMorph, type MorphPath, NO_PATH } from './mod-needs.js';
 
 /** A key the planner can press to bring a layer on. */
 export interface ActivatorCandidate {
@@ -32,69 +33,51 @@ function collectLayerTargets(
   mode: 'tap' | 'hold',
   out: LayerTarget[],
   depth = 0,
-  requiredMods?: ModChoice[],
+  path: MorphPath = NO_PATH,
   /** Inside a tap-hold's hold, where a tap's behaviour runs when the key is held. */
   holdArm = false,
 ): void {
   if (depth > 8) return;
   const li = (id: string) => compiled.layerIndex.get(id);
+  const push = (target: number | undefined, kind: string) => {
+    if (target === undefined) return;
+    // A part no modifiers held can choose is no way in.
+    const requiredMods = heldChoices(path);
+    if (requiredMods === null) return;
+    out.push({ mode, target, kind, ...(requiredMods.length ? { requiredMods } : {}) });
+  };
+  const next = (x: Binding, p = path, arm = holdArm) =>
+    collectLayerTargets(compiled, x, mode, out, depth + 1, p, arm);
   switch (b.kind) {
     case 'sl':
     case 'tog':
-    case 'to': {
+    case 'to':
       // On a tap-hold's hold too: the key is held past its tapping term, and comes up again.
-      const t = li(b.layer);
-      if (t !== undefined && (mode === 'tap' || holdArm))
-        out.push({ mode, target: t, kind: b.kind, requiredMods });
+      if (mode === 'tap' || holdArm) push(li(b.layer), b.kind);
       return;
-    }
-    case 'mo': {
-      const t = li(b.layer);
-      if (t !== undefined && mode === 'hold')
-        out.push({ mode, target: t, kind: 'mo', requiredMods });
+    case 'mo':
+      if (mode === 'hold') push(li(b.layer), 'mo');
       return;
-    }
-    case 'lt': {
-      const t = li(b.layer);
-      if (mode === 'hold') {
-        if (t !== undefined) out.push({ mode, target: t, kind: 'lt', requiredMods });
-      } else collectLayerTargets(compiled, b.tap, mode, out, depth + 1, requiredMods, holdArm);
+    case 'lt':
+      if (mode === 'hold') push(li(b.layer), 'lt');
+      else next(b.tap);
       return;
-    }
     case 'hold_tap':
-      collectLayerTargets(
-        compiled,
-        mode === 'hold' ? b.hold : b.tap,
-        mode,
-        out,
-        depth + 1,
-        requiredMods,
-        mode === 'hold',
-      );
+      next(mode === 'hold' ? b.hold : b.tap, path, mode === 'hold');
       return;
     case 'mod_morph':
-      collectLayerTargets(compiled, b.default, mode, out, depth + 1, requiredMods, holdArm);
-      collectLayerTargets(
-        compiled,
-        b.morphed,
-        mode,
-        out,
-        depth + 1,
-        [...(requiredMods ?? []), b.mods],
-        holdArm,
-      );
+      next(b.default, intoMorph(path, b, false));
+      next(b.morphed, intoMorph(path, b, true));
       return;
     case 'layer_morph':
-      collectLayerTargets(compiled, b.inactive, mode, out, depth + 1, requiredMods, holdArm);
-      collectLayerTargets(compiled, b.active, mode, out, depth + 1, requiredMods, holdArm);
+      next(b.inactive);
+      next(b.active);
       return;
     case 'tap_dance':
-      if (b.bindings[0])
-        collectLayerTargets(compiled, b.bindings[0], mode, out, depth + 1, requiredMods, holdArm);
+      if (b.bindings[0]) next(b.bindings[0]);
       return;
     case 'adaptive':
-      if (b.default)
-        collectLayerTargets(compiled, b.default, mode, out, depth + 1, requiredMods, holdArm);
+      if (b.default) next(b.default);
       return;
     default:
       return;
@@ -262,7 +245,8 @@ interface Extra {
   /** Inside something the planner does not press to change layers: a macro, a branch, a tap dance. */
   extra: boolean;
   origin: ReachOrigin;
-  mods?: ModChoice[];
+  /** What the key's mod morphs need of the modifiers on the way to this part. */
+  path?: MorphPath;
   after?: ReachRoute['after'];
   taps?: number;
   /** Inside a tap-hold's hold, where a tap's behaviour runs when the key is held. */
@@ -286,39 +270,44 @@ function extraRoutes(
 ): void {
   if (depth > 8) return;
   const reaches = (layer: string) => c.layerIndex.get(layer) === target;
-  const route = (m: 'tap' | 'hold'): ReachRoute => ({
-    mode: m,
-    origin: ctx.origin,
-    via,
-    ...(ctx.mods?.length ? { mods: ctx.mods } : {}),
-    ...(ctx.after ? { after: ctx.after } : {}),
-    ...(ctx.taps ? { taps: ctx.taps } : {}),
-  });
+  const reach = (m: 'tap' | 'hold') => {
+    // A part no modifiers held can choose is no way in.
+    const mods = heldChoices(ctx.path ?? NO_PATH);
+    if (mods === null) return;
+    out.push({
+      mode: m,
+      origin: ctx.origin,
+      via,
+      ...(mods.length ? { mods } : {}),
+      ...(ctx.after ? { after: ctx.after } : {}),
+      ...(ctx.taps ? { taps: ctx.taps } : {}),
+    });
+  };
   const next = (x: Binding, m: 'tap' | 'hold', more: Partial<Extra> = {}) =>
     extraRoutes(c, x, m, target, via, { ...ctx, ...more }, out, depth + 1);
   switch (b.kind) {
     case 'sl':
     case 'tog':
     case 'to':
-      if (ctx.extra && (mode === 'tap' || ctx.holdArm) && reaches(b.layer)) out.push(route(mode));
+      if (ctx.extra && (mode === 'tap' || ctx.holdArm) && reaches(b.layer)) reach(mode);
       return;
     case 'auto_layer':
-      if ((mode === 'tap' || ctx.holdArm) && reaches(b.layer)) out.push(route(mode));
+      if ((mode === 'tap' || ctx.holdArm) && reaches(b.layer)) reach(mode);
       return;
     case 'mo':
-      if (ctx.extra && mode === 'hold' && reaches(b.layer)) out.push(route('hold'));
+      if (ctx.extra && mode === 'hold' && reaches(b.layer)) reach('hold');
       return;
     case 'lt':
       if (mode === 'hold') {
-        if (ctx.extra && reaches(b.layer)) out.push(route('hold'));
+        if (ctx.extra && reaches(b.layer)) reach('hold');
       } else next(b.tap, mode);
       return;
     case 'hold_tap':
       next(mode === 'hold' ? b.hold : b.tap, mode, { holdArm: mode === 'hold' });
       return;
     case 'mod_morph':
-      next(b.default, mode);
-      next(b.morphed, mode, { mods: [...(ctx.mods ?? []), b.mods] });
+      next(b.default, mode, { path: intoMorph(ctx.path ?? NO_PATH, b, false) });
+      next(b.morphed, mode, { path: intoMorph(ctx.path ?? NO_PATH, b, true) });
       return;
     case 'layer_morph':
       next(b.inactive, mode);

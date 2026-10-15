@@ -573,6 +573,51 @@ describe("a mod morph's modifiers", () => {
     expect(t.keys).toContain('LHI');
   });
 
+  it('reaches a layer through a morph inside a morph with a modifier the outer one does not hide', () => {
+    // Command and Control rather than Shift: a sticky shift left on would make the `q` a `Q`.
+    const inner: Binding = {
+      kind: 'mod_morph',
+      mods: ['LGUI', 'LCTRL'],
+      default: kp('-'),
+      morphed: { kind: 'sl', layer: 'up' },
+    };
+    const layout = board([], sticky('LGUI'));
+    layout.layers[0].bindings.LHP = {
+      kind: 'mod_morph',
+      mods: ['LGUI', 'LALT'],
+      default: kp(','),
+      morphed: inner,
+    };
+    layout.layers[0].bindings.LHI = sticky('LCTRL');
+    layout.layers.push({ id: 'up', bindings: { '*': { kind: 'trans' }, RHI: kp('q') } });
+    const t = trace(layout, 'aqa', { caseMode: 'model' });
+    expect(t.out).toBe('aqa');
+    // Left Control for the inner morph, left Command for the outer one, in either order.
+    expect([...t.keys].sort()).toEqual(['LHI', 'LHM', 'LHP', 'LHR', 'LHR', 'RHI']);
+  });
+
+  it("types a morph's plain part inside a morph without the modifiers that would change it", () => {
+    // The outer morph keeps left Shift, so the inner one still sees it: `;` needs left Alt.
+    const inner: Binding = {
+      kind: 'mod_morph',
+      mods: ['LSHIFT', 'LCTRL'],
+      default: kp(';'),
+      morphed: kp('z'),
+    };
+    const layout = board([], sticky('LSHIFT'));
+    layout.layers[0].bindings.LHP = {
+      kind: 'mod_morph',
+      mods: ['LSHIFT', 'LALT'],
+      keepMods: ['LSHIFT'],
+      default: kp(','),
+      morphed: inner,
+    };
+    layout.layers[0].bindings.LHI = sticky('LALT');
+    const t = trace(layout, 'a;a', { caseMode: 'model' });
+    expect(t.out).toBe('a;a');
+    expect(t.keys).toEqual(['LHR', 'LHI', 'LHP', 'LHR']);
+  });
+
   it('cannot morph with a modifier it does not name', () => {
     const t = trace(board(['RSHIFT'], sticky('LSHIFT')), 'a;a', { caseMode: 'model' });
     expect(t.out).toBe('aa');

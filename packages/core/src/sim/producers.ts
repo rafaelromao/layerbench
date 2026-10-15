@@ -1,7 +1,8 @@
 import { deadKeyCompositions } from '../host/locale.js';
 import type { CompiledLayout } from '../layout/compile.js';
-import type { Binding, ModChoice } from '../layout/types.js';
+import type { Binding, Mod, ModChoice } from '../layout/types.js';
 import type { ProducerKind } from './machine.js';
+import { heldChoices, throughMorph } from './mod-needs.js';
 
 export interface ProducerStep {
   /** Layer whose binding must handle the press (null for chords). */
@@ -46,6 +47,8 @@ interface StaticOutput {
   afterAny?: string[];
   afterTags?: string[];
   mods?: ModChoice[];
+  /** Modifiers that must not be held: the plain part of a mod morph is chosen without them. */
+  forbid?: Mod[];
   taps: number;
   kind: ProducerKind;
   suffix: string;
@@ -164,11 +167,9 @@ export function staticOutputs(b: Binding, depth = 0): StaticOutput[] {
     case 'lt':
       return staticOutputs(b.tap, depth + 1);
     case 'mod_morph': {
-      const out = staticOutputs(b.default, depth + 1);
-      for (const o of staticOutputs(b.morphed, depth + 1)) {
-        const mods = morphed(o.mods, b);
-        if (mods) out.push({ ...o, mods, suffix: `#morph${o.suffix}` });
-      }
+      const out = staticOutputs(b.default, depth + 1).map((o) => inMorph(o, b, false));
+      for (const o of staticOutputs(b.morphed, depth + 1))
+        out.push({ ...inMorph(o, b, true), suffix: `#morph${o.suffix}` });
       return out;
     }
     case 'layer_morph': {
@@ -202,11 +203,9 @@ export function holdOutputs(b: Binding, depth = 0): StaticOutput[] {
         .filter((o) => o.taps === 1)
         .map((o) => ({ ...o, suffix: `#hold${o.suffix}` }));
     case 'mod_morph': {
-      const out = holdOutputs(b.default, depth + 1);
-      for (const o of holdOutputs(b.morphed, depth + 1)) {
-        const mods = morphed(o.mods, b);
-        if (mods) out.push({ ...o, mods, suffix: `#morph${o.suffix}` });
-      }
+      const out = holdOutputs(b.default, depth + 1).map((o) => inMorph(o, b, false));
+      for (const o of holdOutputs(b.morphed, depth + 1))
+        out.push({ ...inMorph(o, b, true), suffix: `#morph${o.suffix}` });
       return out;
     }
     case 'layer_morph': {
@@ -220,23 +219,14 @@ export function holdOutputs(b: Binding, depth = 0): StaticOutput[] {
   }
 }
 
-/**
- * What a morph's changed part needs held: the morph's own choice, and the choices of what it runs
- * without the modifiers the morph sets aside while it runs it. Null when one of those is left with
- * none, as a shifted symbol inside a shift morph that does not keep shift.
- */
-function morphed(
-  inner: ModChoice[] | undefined,
+/** An output of a morph's plain or changed part, with what that part needs of the modifiers. */
+function inMorph(
+  o: StaticOutput,
   b: Extract<Binding, { kind: 'mod_morph' }>,
-): ModChoice[] | null {
-  const aside = b.mods.filter((m) => !b.keepMods?.includes(m));
-  const choices: ModChoice[] = [];
-  for (const choice of inner ?? []) {
-    const left = choice.filter((m) => !aside.includes(m));
-    if (left.length === 0) return null;
-    choices.push(left);
-  }
-  return [...choices, b.mods];
+  changed: boolean,
+): StaticOutput {
+  const needs = throughMorph({ choices: o.mods ?? [], forbid: o.forbid ?? [] }, b, changed);
+  return { ...o, mods: [...needs.choices], forbid: [...needs.forbid] };
 }
 
 function emitsText(b: Binding): boolean {
@@ -300,6 +290,9 @@ export function enumerateProducers(
               : o.kind === 'macro'
                 ? 'macro'
                 : 'direct';
+        // A part no modifiers held can choose, a morph's that the morph around it hides, is none.
+        const mods = heldChoices({ choices: o.mods ?? [], forbid: o.forbid ?? [] });
+        if (mods === null) continue;
         const id = `${base}:${layer.id}/${keyId}${o.suffix}`;
         const symbols = fold ? o.symbols.toLowerCase() : o.symbols;
         const p: Producer = {
@@ -309,11 +302,11 @@ export function enumerateProducers(
           steps: [{ layer: layer.idx, pos, binding: b, mode, taps: o.taps }],
           afterAny: o.afterAny,
           afterTags: o.afterTags,
-          mods: o.mods ?? [],
-          cost: o.taps + (layer.idx === 0 ? 0 : 1) + (o.mods?.length ? 1 : 0),
+          mods,
+          cost: o.taps + (layer.idx === 0 ? 0 : 1) + (mods.length ? 1 : 0),
           dynamic: o.dynamic,
         };
-        if (fold && o.mods?.length) {
+        if (fold && mods.length) {
           excludedByCase.push(p);
           continue;
         }
