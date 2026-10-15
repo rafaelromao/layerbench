@@ -1,7 +1,14 @@
 import { keyDistance } from '../geometry/distance.js';
 import { FINGERS, type Finger } from '../geometry/types.js';
 import type { CompiledLayout } from '../layout/compile.js';
-import type { ActivatorDef, BindingKind, Mod, TypingPathEntry } from '../layout/types.js';
+import {
+  type ActivatorDef,
+  type BindingKind,
+  type Mod,
+  type ModChoice,
+  modsMet,
+  type TypingPathEntry,
+} from '../layout/types.js';
 import { recordPresses } from '../presses/press-log.js';
 import { cyanophageEffort } from '../rules/effort.js';
 import type {
@@ -230,7 +237,7 @@ export class Simulator {
           out.push({
             ...p,
             id: `${p.id}+shift`,
-            mods: [...(p.mods ?? []), 'LSHIFT'],
+            mods: [...(p.mods ?? []), ['LSHIFT']],
             cost: p.cost + 1,
           });
         }
@@ -387,48 +394,60 @@ export class Simulator {
     if (found.length) this.standIns.set(tapped, found);
   }
 
-  private ensureMods(mods: Mod[], events: KeyEvent[], holdsOut: number[]): boolean {
+  /** Hold one modifier of each choice not already held: the shift key, or a key that holds one. */
+  private ensureMods(
+    choices: readonly ModChoice[],
+    events: KeyEvent[],
+    holdsOut: number[],
+  ): boolean {
     const m = this.machine;
-    for (const mod of mods) {
-      if (m.activeMods().has(mod)) continue;
-      const isShift = mod === 'LSHIFT' || mod === 'RSHIFT';
-      const sk = this.compiled.shiftKey;
-      if (isShift && sk) {
-        const r = m.resolve(sk.key);
-        const peeled = peelBinding(m, r.binding, sk.kind === 'hold' ? 'hold' : 'tap');
-        if (
-          sk.kind === 'sk' &&
-          (peeled.kind === 'sk' || peeled.kind === 'mod_morph' || peeled.kind === 'adaptive')
-        ) {
-          events.push(...m.perform({ type: 'tap', pos: sk.key }));
-        } else if (sk.kind === 'hold' && peeled.kind === 'mod') {
-          events.push(...m.perform({ type: 'hold_press', pos: sk.key }));
-          holdsOut.push(sk.key);
-        } else return false;
-        if (!m.activeMods().has(mod)) return false;
-        continue;
+    for (const choice of choices) {
+      if (modsMet(choice, m.activeMods())) continue;
+      let pressed = false;
+      for (const mod of choice) {
+        pressed = this.holdMod(mod, events, holdsOut);
+        if (pressed) break;
       }
-      // Search active layers for a sticky or held modifier key.
-      let found = false;
-      for (let pos = 0; pos < this.compiled.keys.length && !found; pos++) {
-        const r = m.resolve(pos);
-        const tapPeeled = peelBinding(m, r.binding, 'tap');
-        if (tapPeeled.kind === 'sk' && tapPeeled.mod === mod) {
-          events.push(...m.perform({ type: 'tap', pos }));
-          found = true;
-          break;
-        }
-        const holdPeeled = peelBinding(m, r.binding, 'hold');
-        if (holdPeeled.kind === 'mod' && holdPeeled.mod === mod) {
-          events.push(...m.perform({ type: 'hold_press', pos }));
-          holdsOut.push(pos);
-          found = true;
-          break;
-        }
-      }
-      if (!found || !m.activeMods().has(mod)) return false;
+      if (!pressed || !modsMet(choice, m.activeMods())) return false;
     }
     return true;
+  }
+
+  /** Press a key that holds `mod`: false when there is none, and then nothing was pressed. */
+  private holdMod(mod: Mod, events: KeyEvent[], holdsOut: number[]): boolean {
+    const m = this.machine;
+    const isShift = mod === 'LSHIFT' || mod === 'RSHIFT';
+    const sk = this.compiled.shiftKey;
+    if (isShift && sk) {
+      const r = m.resolve(sk.key);
+      const peeled = peelBinding(m, r.binding, sk.kind === 'hold' ? 'hold' : 'tap');
+      if (
+        sk.kind === 'sk' &&
+        (peeled.kind === 'sk' || peeled.kind === 'mod_morph' || peeled.kind === 'adaptive')
+      ) {
+        events.push(...m.perform({ type: 'tap', pos: sk.key }));
+      } else if (sk.kind === 'hold' && peeled.kind === 'mod') {
+        events.push(...m.perform({ type: 'hold_press', pos: sk.key }));
+        holdsOut.push(sk.key);
+      } else return false;
+      return true;
+    }
+    // Search active layers for a sticky or held modifier key.
+    for (let pos = 0; pos < this.compiled.keys.length; pos++) {
+      const r = m.resolve(pos);
+      const tapPeeled = peelBinding(m, r.binding, 'tap');
+      if (tapPeeled.kind === 'sk' && tapPeeled.mod === mod) {
+        events.push(...m.perform({ type: 'tap', pos }));
+        return true;
+      }
+      const holdPeeled = peelBinding(m, r.binding, 'hold');
+      if (holdPeeled.kind === 'mod' && holdPeeled.mod === mod) {
+        events.push(...m.perform({ type: 'hold_press', pos }));
+        holdsOut.push(pos);
+        return true;
+      }
+    }
+    return false;
   }
 
   /**

@@ -3,7 +3,7 @@ import { normalizeText } from '../corpus/normalize.js';
 import { FIXTURE_MIXED } from '../fixtures/index.js';
 import { compileLayout } from '../layout/compile.js';
 import { importTextLayout } from '../layout/text.js';
-import type { Layout } from '../layout/types.js';
+import type { Binding, Layout, Mod } from '../layout/types.js';
 import { CLASSIC_LAYOUTS } from '../layouts/classic.js';
 import { magicRomak, romak24, romak34 } from '../layouts/romak.js';
 import { explain, simulate } from './resolver.js';
@@ -496,5 +496,53 @@ describe("a tap-hold's hold, whatever it does", () => {
       ['LHM', 'hold_release'],
       ['RHI', 'tap'],
     ]);
+  });
+});
+
+describe("a mod morph's modifiers", () => {
+  const kp = (symbol: string) => ({ kind: 'kp' as const, symbol });
+  /** A comma that is a semicolon with `mods` held, and one shift key. */
+  const board = (mods: Mod[], shift: Binding): Layout => ({
+    format: 'layerbench/layout@1',
+    name: 'Morph',
+    hostLocale: 'symbols',
+    geometry: { preset: '3x5+2' },
+    keys: { space: 'L0' },
+    layers: [
+      {
+        id: 'base',
+        bindings: {
+          L0: kp(' '),
+          LHP: { kind: 'mod_morph', mods, default: kp(','), morphed: kp(';') },
+          LHR: kp('a'),
+          LHM: shift,
+        },
+      },
+    ],
+  });
+  const sticky = (mod: Mod): Binding => ({ kind: 'sk', mod });
+  const held = (mod: Mod): Binding => ({
+    kind: 'hold_tap',
+    tap: kp('e'),
+    hold: { kind: 'mod', mod },
+  });
+
+  it('morphs when any one of them is held, as ZMK does', () => {
+    for (const mods of [
+      ['LSHIFT', 'RSHIFT'],
+      ['RSHIFT', 'LSHIFT'],
+    ] as Mod[][]) {
+      for (const shift of [sticky('LSHIFT'), held('LSHIFT'), sticky('RSHIFT'), held('RSHIFT')]) {
+        const t = trace(board(mods, shift), 'a;a', { caseMode: 'model' });
+        expect(t.out).toBe('a;a');
+        expect(t.keys.filter((k) => k !== 'LHM')).toEqual(['LHR', 'LHP', 'LHR']);
+      }
+    }
+  });
+
+  it('cannot morph with a modifier it does not name', () => {
+    const t = trace(board(['RSHIFT'], sticky('LSHIFT')), 'a;a', { caseMode: 'model' });
+    expect(t.out).toBe('aa');
+    expect(t.coverage.unproducible.get(';')).toBe(1);
   });
 });

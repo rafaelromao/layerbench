@@ -1,6 +1,6 @@
 import type { CompiledLayout } from '../layout/compile.js';
 import { MOD_NAME } from '../layout/labels.js';
-import type { ActivatorDef, Binding, Mod } from '../layout/types.js';
+import type { ActivatorDef, Binding, ModChoice } from '../layout/types.js';
 
 /** A key the planner can press to bring a layer on. */
 export interface ActivatorCandidate {
@@ -11,7 +11,7 @@ export interface ActivatorCandidate {
   user: boolean;
   order: number;
   /** Modifiers that must be active for this part of the binding to be chosen (a mod-morph's). */
-  requiredMods?: Mod[];
+  requiredMods?: ModChoice[];
   /** Source layer restriction (user-declared activators). */
   from?: number;
   /** A combo rather than a key: its keys pressed together. `pos` is the combo's own position. */
@@ -22,7 +22,7 @@ interface LayerTarget {
   mode: 'tap' | 'hold';
   target: number;
   kind: string;
-  requiredMods?: Mod[];
+  requiredMods?: ModChoice[];
 }
 
 function collectLayerTargets(
@@ -31,7 +31,7 @@ function collectLayerTargets(
   mode: 'tap' | 'hold',
   out: LayerTarget[],
   depth = 0,
-  requiredMods?: Mod[],
+  requiredMods?: ModChoice[],
   /** Inside a tap-hold's hold, where a tap's behaviour runs when the key is held. */
   holdArm = false,
 ): void {
@@ -79,7 +79,7 @@ function collectLayerTargets(
         mode,
         out,
         depth + 1,
-        [...(requiredMods ?? []), b.mods[0]],
+        [...(requiredMods ?? []), b.mods],
         holdArm,
       );
       return;
@@ -179,7 +179,7 @@ export function discoverActivators(
         target,
         user: true,
         order: -1000 + i,
-        requiredMods: d.requires?.mods ?? existing?.requiredMods,
+        requiredMods: d.requires?.mods?.map((m) => [m]) ?? existing?.requiredMods,
       };
       if (d.from && d.from !== '*') cand.from = c.layerIndex.get(d.from);
       list.unshift(cand);
@@ -238,8 +238,8 @@ export interface ReachRoute {
   declared?: boolean;
   /** A declared way in that applies only from this layer. */
   from?: number;
-  /** Modifiers held for the part of the key that does it. */
-  mods?: Mod[];
+  /** Modifiers held for the part of the key that does it, a choice each. */
+  mods?: ModChoice[];
   /** An adaptive key's branch: only after these. */
   after?: { afterAny?: string[]; afterTags?: string[] };
   /** The tap of a tap dance that does it, from the second on. */
@@ -261,7 +261,7 @@ interface Extra {
   /** Inside something the planner does not press to change layers: a macro, a branch, a tap dance. */
   extra: boolean;
   origin: ReachOrigin;
-  mods?: Mod[];
+  mods?: ModChoice[];
   after?: ReachRoute['after'];
   taps?: number;
   /** Inside a tap-hold's hold, where a tap's behaviour runs when the key is held. */
@@ -317,7 +317,7 @@ function extraRoutes(
       return;
     case 'mod_morph':
       next(b.default, mode);
-      next(b.morphed, mode, { mods: [...(ctx.mods ?? []), b.mods[0]] });
+      next(b.morphed, mode, { mods: [...(ctx.mods ?? []), b.mods] });
       return;
     case 'layer_morph':
       next(b.inactive, mode);
@@ -540,7 +540,7 @@ export function describeReach(c: CompiledLayout, layer: number, key: ReachKey): 
       qualifiers.push(`after a key tagged ${orList(r.after.afterTags)}`);
     if (r.chord?.length)
       qualifiers.push(`together with ${andList(r.chord.map((p) => c.keys[p].id))}`);
-    if (r.mods?.length) qualifiers.push(`with ${orList(r.mods.map((m) => MOD_NAME[m]))}`);
+    if (r.mods?.length) qualifiers.push(`with ${orList(r.mods.map((c) => MOD_NAME[c[0]]))}`);
     if (r.origin === 'macro') {
       const text = macroText(c.layers[r.via].bindings[key.pos]);
       qualifiers.push(text ? `by the ${text} macro` : 'by its macro');

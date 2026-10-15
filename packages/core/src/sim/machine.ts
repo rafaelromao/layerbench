@@ -1,7 +1,13 @@
 import { composeDeadKey, hasShift, shiftSymbol, translateKeycode } from '../host/locale.js';
 import type { CompiledLayout } from '../layout/compile.js';
 import { short } from '../layout/labels.js';
-import type { AdaptiveTrigger, Binding, BindingKind, Mod } from '../layout/types.js';
+import {
+  type AdaptiveTrigger,
+  type Binding,
+  type BindingKind,
+  type Mod,
+  modsMet,
+} from '../layout/types.js';
 
 export type KeyKind =
   | 'alpha'
@@ -724,7 +730,7 @@ export class Machine {
         }
         case 'mod_morph': {
           const active = this.activeMods();
-          const hit = b.mods.some((m) => active.has(m) && !ctx.suppressMods.has(m));
+          const hit = modsMet(b.mods, active, ctx.suppressMods);
           if (hit) {
             const keep = new Set(b.keepMods ?? []);
             const saved = new Set(ctx.suppressMods);
@@ -891,7 +897,7 @@ export function peelBinding(machine: Machine, b: Binding, mode: 'tap' | 'hold'):
       return mode === 'hold' ? { kind: 'mo', layer: b.layer } : peelBinding(machine, b.tap, mode);
     case 'mod_morph': {
       const active = machine.activeMods();
-      return peelBinding(machine, b.mods.some((m) => active.has(m)) ? b.morphed : b.default, mode);
+      return peelBinding(machine, modsMet(b.mods, active) ? b.morphed : b.default, mode);
     }
     case 'layer_morph': {
       const bits = b.layers.map((l) => 1 << (machine.compiled.layerIndex.get(l) ?? 0));

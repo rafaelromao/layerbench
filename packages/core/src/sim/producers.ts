@@ -1,6 +1,6 @@
 import { deadKeyCompositions } from '../host/locale.js';
 import type { CompiledLayout } from '../layout/compile.js';
-import type { Binding, Mod } from '../layout/types.js';
+import type { Binding, ModChoice } from '../layout/types.js';
 import type { ProducerKind } from './machine.js';
 
 export interface ProducerStep {
@@ -28,13 +28,13 @@ export interface Producer {
   afterAny?: string[];
   /** Applicable only after a press whose binding carried one of these tags. */
   afterTags?: string[];
-  /** Modifiers the producer needs held. Always a list, never undefined. */
-  mods: Mod[];
+  /** Modifiers the producer needs held, a choice each. Always a list, never undefined. */
+  mods: ModChoice[];
   /**
    * A dead-key producer's modifiers for the accent itself, a dead key's shifted half; `mods` then
    * belong to the letter it accents.
    */
-  deadMods?: Mod[];
+  deadMods?: ModChoice[];
   /** Estimated physical presses including one layer activation when off the base layer. */
   cost: number;
   /** True when the producer is a dynamic branch (adaptive/repeat) whose output depends on state. */
@@ -45,7 +45,7 @@ interface StaticOutput {
   symbols: string;
   afterAny?: string[];
   afterTags?: string[];
-  mods?: Mod[];
+  mods?: ModChoice[];
   taps: number;
   kind: ProducerKind;
   suffix: string;
@@ -69,7 +69,7 @@ export function staticOutputs(b: Binding, depth = 0): StaticOutput[] {
           taps: 1,
           kind: 'direct',
           suffix: '#shifted',
-          mods: ['LSHIFT'],
+          mods: [['LSHIFT']],
           dynamic: false,
         });
       return out;
@@ -84,7 +84,7 @@ export function staticOutputs(b: Binding, depth = 0): StaticOutput[] {
           taps: 1,
           kind: 'direct',
           suffix: '#shifted',
-          mods: ['LSHIFT'],
+          mods: [['LSHIFT']],
           dynamic: false,
         });
       return out;
@@ -97,9 +97,8 @@ export function staticOutputs(b: Binding, depth = 0): StaticOutput[] {
           steps.push({ kind: 'kp', symbol: g });
       // `then` steps are side effects; they may also emit text (rare) — include them.
       if (b.then) steps.push(...b.then);
-      let combos: { symbols: string; afterAny?: string[]; mods?: Mod[]; dynamic: boolean }[] = [
-        { symbols: '', dynamic: false },
-      ];
+      let combos: { symbols: string; afterAny?: string[]; mods?: ModChoice[]; dynamic: boolean }[] =
+        [{ symbols: '', dynamic: false }];
       for (const step of steps) {
         const outs = staticOutputs(step, depth + 1);
         if (outs.length === 0) {
@@ -167,7 +166,7 @@ export function staticOutputs(b: Binding, depth = 0): StaticOutput[] {
     case 'mod_morph': {
       const out = staticOutputs(b.default, depth + 1);
       for (const o of staticOutputs(b.morphed, depth + 1))
-        out.push({ ...o, mods: [...(o.mods ?? []), ...b.mods], suffix: `#morph${o.suffix}` });
+        out.push({ ...o, mods: [...(o.mods ?? []), b.mods], suffix: `#morph${o.suffix}` });
       return out;
     }
     case 'layer_morph': {
@@ -203,7 +202,7 @@ export function holdOutputs(b: Binding, depth = 0): StaticOutput[] {
     case 'mod_morph': {
       const out = holdOutputs(b.default, depth + 1);
       for (const o of holdOutputs(b.morphed, depth + 1))
-        out.push({ ...o, mods: [...(o.mods ?? []), ...b.mods], suffix: `#morph${o.suffix}` });
+        out.push({ ...o, mods: [...(o.mods ?? []), b.mods], suffix: `#morph${o.suffix}` });
       return out;
     }
     case 'layer_morph': {
@@ -416,8 +415,8 @@ function deadKeyProducers(
 
   const out: Producer[] = [];
   for (const { id, step, dk, cost } of sources) {
-    const accents: [string, string, Mod[]][] = [[dk.diacritic, '', []]];
-    if (dk.shifted !== undefined) accents.push([dk.shifted, '#shifted', ['LSHIFT']]);
+    const accents: [string, string, ModChoice[]][] = [[dk.diacritic, '', []]];
+    if (dk.shifted !== undefined) accents.push([dk.shifted, '#shifted', [['LSHIFT']]]);
     for (const [diacritic, suffix, deadMods] of accents) {
       for (const [base, composed] of deadKeyCompositions(diacritic)) {
         if (fold && base !== base.toLowerCase()) continue;

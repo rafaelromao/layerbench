@@ -2,7 +2,10 @@ import {
   type AdaptiveTrigger,
   type Binding,
   bindingToJson,
+  FAMILY_MODS,
+  familyOf,
   type Mod,
+  type ModFamily,
   stableStringify,
 } from '@layerbench/core';
 import { type BindingTextContext, parseBindingText } from '../binding-text.js';
@@ -26,8 +29,6 @@ export type LayerMode = 'mo' | 'sl' | 'tog' | 'to' | 'auto_layer';
 export type ModMode = 'mod' | 'sk';
 /** What changes a morph: a modifier held, or a layer on. */
 export type MorphBy = 'mod_morph' | 'layer_morph';
-/** A modifier as a morph is changed by it, left or right alike. */
-export type MorphFamily = 'shift' | 'ctrl' | 'alt' | 'gui';
 /** How a macro is written: the letters it types, or its steps one by one. */
 export type MacroForm = 'text' | 'steps';
 
@@ -137,14 +138,14 @@ interface Shapes {
     /** A modifier morph has a family and no layers; a layer morph, layers and no family. */
     view: {
       by: MorphBy;
-      family: MorphFamily | null;
+      family: ModFamily | null;
       layers: string[];
       plain: Binding;
       becomes: Binding;
     };
     set: {
       by: Change<MorphBy>;
-      family: Change<MorphFamily>;
+      family: Change<ModFamily>;
       /** Adds the layer, or takes it away while another is left. */
       toggleLayer: Change<string>;
       plain: Change<Binding>;
@@ -411,7 +412,7 @@ const readers: { [K in KindOfKey]: Reader<K> } = {
       view,
       set: {
         by: change(b, (by: MorphBy) => morphBy(b, by, plain, becomes, ctx)),
-        family: change(b, (family: MorphFamily) =>
+        family: change(b, (family: ModFamily) =>
           b.kind === 'mod_morph' ? { ...b, mods: [...FAMILY_MODS[family]] } : b,
         ),
         toggleLayer: change(b, (layer: string) => {
@@ -557,21 +558,6 @@ function adaptive(b: Of<'adaptive'>): Pick<AdaptiveShape, 'view' | 'set'> {
 }
 
 // ---------------------------------------------------------------------------- morphs
-
-/** The modifiers each family stands for, in the order a morph's family is read. */
-const FAMILY_MODS: Record<MorphFamily, Mod[]> = {
-  shift: ['LSHIFT', 'RSHIFT'],
-  ctrl: ['LCTRL', 'RCTRL'],
-  alt: ['LALT', 'RALT'],
-  gui: ['LGUI', 'RGUI'],
-};
-
-function familyOf(mods: Mod[]): MorphFamily | null {
-  const found = Object.entries(FAMILY_MODS).find(([, family]) =>
-    family.some((m) => mods.includes(m)),
-  );
-  return found ? (found[0] as MorphFamily) : null;
-}
 
 /** A morph changed another way keeps what it types, and starts on shift or the likeliest layer. */
 function morphBy(
