@@ -165,8 +165,10 @@ export function staticOutputs(b: Binding, depth = 0): StaticOutput[] {
       return staticOutputs(b.tap, depth + 1);
     case 'mod_morph': {
       const out = staticOutputs(b.default, depth + 1);
-      for (const o of staticOutputs(b.morphed, depth + 1))
-        out.push({ ...o, mods: [...(o.mods ?? []), b.mods], suffix: `#morph${o.suffix}` });
+      for (const o of staticOutputs(b.morphed, depth + 1)) {
+        const mods = morphed(o.mods, b);
+        if (mods) out.push({ ...o, mods, suffix: `#morph${o.suffix}` });
+      }
       return out;
     }
     case 'layer_morph': {
@@ -201,8 +203,10 @@ export function holdOutputs(b: Binding, depth = 0): StaticOutput[] {
         .map((o) => ({ ...o, suffix: `#hold${o.suffix}` }));
     case 'mod_morph': {
       const out = holdOutputs(b.default, depth + 1);
-      for (const o of holdOutputs(b.morphed, depth + 1))
-        out.push({ ...o, mods: [...(o.mods ?? []), b.mods], suffix: `#morph${o.suffix}` });
+      for (const o of holdOutputs(b.morphed, depth + 1)) {
+        const mods = morphed(o.mods, b);
+        if (mods) out.push({ ...o, mods, suffix: `#morph${o.suffix}` });
+      }
       return out;
     }
     case 'layer_morph': {
@@ -214,6 +218,25 @@ export function holdOutputs(b: Binding, depth = 0): StaticOutput[] {
     default:
       return [];
   }
+}
+
+/**
+ * What a morph's changed part needs held: the morph's own choice, and the choices of what it runs
+ * without the modifiers the morph sets aside while it runs it. Null when one of those is left with
+ * none, as a shifted symbol inside a shift morph that does not keep shift.
+ */
+function morphed(
+  inner: ModChoice[] | undefined,
+  b: Extract<Binding, { kind: 'mod_morph' }>,
+): ModChoice[] | null {
+  const aside = b.mods.filter((m) => !b.keepMods?.includes(m));
+  const choices: ModChoice[] = [];
+  for (const choice of inner ?? []) {
+    const left = choice.filter((m) => !aside.includes(m));
+    if (left.length === 0) return null;
+    choices.push(left);
+  }
+  return [...choices, b.mods];
 }
 
 function emitsText(b: Binding): boolean {

@@ -551,6 +551,28 @@ describe("a mod morph's modifiers", () => {
     expect(t.keys).toEqual(['LHR', 'LHI', 'LHP', 'LHR']);
   });
 
+  it('needs a modifier the outer morph does not set aside for a morph inside it', () => {
+    // The outer morph sets left Shift and left Alt aside while it runs its changed part, so the
+    // inner morph is changed by left Control only.
+    const inner: Binding = {
+      kind: 'mod_morph',
+      mods: ['LSHIFT', 'LCTRL'],
+      default: kp('-'),
+      morphed: kp(';'),
+    };
+    const layout = board([], sticky('LSHIFT'));
+    layout.layers[0].bindings.LHP = {
+      kind: 'mod_morph',
+      mods: ['LSHIFT', 'LALT'],
+      default: kp(','),
+      morphed: inner,
+    };
+    layout.layers[0].bindings.LHI = sticky('LCTRL');
+    const t = trace(layout, 'a;a', { caseMode: 'model' });
+    expect(t.out).toBe('a;a');
+    expect(t.keys).toContain('LHI');
+  });
+
   it('cannot morph with a modifier it does not name', () => {
     const t = trace(board(['RSHIFT'], sticky('LSHIFT')), 'a;a', { caseMode: 'model' });
     expect(t.out).toBe('aa');
