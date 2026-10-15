@@ -52,6 +52,9 @@ export interface SimulateOptions {
 /** A run of presses with no space in it enters the tables in pieces of at most this many. */
 const WORD_LIMIT = 128;
 
+/** How many times a way of typing a symbol is tried, each time with other modifiers held. */
+const MOD_TRIES = 8;
+
 /** Layer taps another key can make instead: nothing they do depends on which key it was. */
 const STAND_IN_KINDS: ReadonlySet<BindingKind> = new Set(['sl', 'tog', 'to']);
 
@@ -113,6 +116,13 @@ export class Simulator {
   private readonly standIns = new Map<KeyEvent, KeyEvent[]>();
   private readonly userPaths = new Map<string, TypingPathEntry[]>();
   private readonly plannerHolds = new Set<number>();
+  /**
+   * For the way being tried, each choice of more than one modifier in the order it comes up: the
+   * modifier it starts from, and the one it took of how many. A way that fails is tried again with
+   * the last choice that has another modifier left taking the next one (`tryProducer`).
+   */
+  private readonly modStarts: number[] = [];
+  private readonly modPicks: { took: number; of: number }[] = [];
   private readonly fold: boolean;
   private readonly repeatPolicy: 'repeat_key' | 'tap_twice';
 
@@ -394,7 +404,10 @@ export class Simulator {
     if (found.length) this.standIns.set(tapped, found);
   }
 
-  /** Hold one modifier of each choice not already held: the shift key, or a key that holds one. */
+  /**
+   * Hold one modifier of each choice not already held: the shift key, or a key that holds one. A
+   * choice of more than one starts from the modifier this try of the way gives it (`modStarts`).
+   */
   private ensureMods(
     choices: readonly ModChoice[],
     events: KeyEvent[],
@@ -403,15 +416,17 @@ export class Simulator {
     const m = this.machine;
     for (const choice of choices) {
       if (modsMet(choice, m.activeMods())) continue;
-      let met = false;
-      for (const mod of choice) {
+      const several = choice.length > 1;
+      const at = this.modPicks.length;
+      let took = choice.length;
+      for (let i = several ? (this.modStarts[at] ?? 0) : 0; i < choice.length; i++) {
         // A press that holds another modifier, as a shift key holding the other shift, is taken
         // back before the next one is tried.
         const snap = m.state.snapshot();
         const eventsAt = events.length;
         const holdsAt = holdsOut.length;
-        if (this.holdMod(mod, events, holdsOut) && modsMet(choice, m.activeMods())) {
-          met = true;
+        if (this.holdMod(choice[i], events, holdsOut) && modsMet(choice, m.activeMods())) {
+          took = i;
           break;
         }
         m.state.restore(snap);
@@ -419,8 +434,25 @@ export class Simulator {
         events.length = eventsAt;
         holdsOut.length = holdsAt;
       }
-      if (!met) return false;
+      if (several) this.modPicks.push({ took, of: choice.length });
+      if (took === choice.length) return false;
     }
+    return true;
+  }
+
+  /**
+   * After a way failed: the choice nearest its failure that has another modifier left takes the
+   * next one, the choices before it what they took, and those after it start over. False when no
+   * choice has one left.
+   */
+  private nextModStarts(): boolean {
+    const picks = this.modPicks;
+    let k = picks.length - 1;
+    while (k >= 0 && picks[k].took + 1 >= picks[k].of) k--;
+    if (k < 0) return false;
+    this.modStarts.length = 0;
+    for (let j = 0; j < k; j++) this.modStarts.push(picks[j].took);
+    this.modStarts.push(picks[k].took + 1);
     return true;
   }
 
@@ -479,7 +511,22 @@ export class Simulator {
     return false;
   }
 
+  /**
+   * Type the token this way, or null. A modifier held for a choice can still be on for a press
+   * after the one it was held for, and spoil it, as a sticky Shift held for a layer key shifts the
+   * letter on that layer: then the way is tried again with the choice's next modifier, a bounded
+   * number of times. A way with no choice of more than one modifier is tried once.
+   */
   private tryProducer(p: Producer, token: string): KeyEvent[] | null {
+    this.modStarts.length = 0;
+    for (let tries = 1; ; tries++) {
+      this.modPicks.length = 0;
+      const events = this.tryProducerOnce(p, token);
+      if (events || tries === MOD_TRIES || !this.nextModStarts()) return events;
+    }
+  }
+
+  private tryProducerOnce(p: Producer, token: string): KeyEvent[] | null {
     const m = this.machine;
     const snap = m.state.snapshot();
     const holdsBefore = [...this.plannerHolds];
