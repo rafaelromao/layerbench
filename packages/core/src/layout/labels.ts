@@ -1,4 +1,5 @@
 import type { CompiledLayout } from './compile.js';
+import { type Chooser, heldPart, partOf } from './parts.js';
 import {
   type AdaptiveTrigger,
   type Binding,
@@ -7,7 +8,16 @@ import {
   type Mod,
   type ModChoice,
   type ModFamily,
+  modsMet,
 } from './types.js';
+
+const SHIFTS: ReadonlySet<Mod> = new Set(FAMILY_MODS.shift);
+/** A layer-tap is a layer key, and an adaptive key has its own colour, whatever they type. */
+const COLOURED: ReadonlySet<Chooser> = new Set(['lt', 'adaptive']);
+/** The keys marked in a corner, seen before the part they type. */
+const MARKED: ReadonlySet<Chooser> = new Set(['adaptive', 'tap_dance']);
+/** What a key types shifted is read off a mod morph before its plain part. */
+const SHIFT_MORPHS: ReadonlySet<Chooser> = new Set(['mod_morph']);
 
 export type LegendKind =
   | 'alpha'
@@ -152,7 +162,7 @@ function shiftedOf(c: CompiledLayout, b: Binding): string | null {
   }
   if (b.kind === 'unicode' && b.shiftedSymbol !== undefined) return b.shiftedSymbol;
   if (b.kind === 'dead_key' && b.shifted !== undefined) return accentGlyph(b.shifted);
-  if (b.kind === 'mod_morph' && b.mods.some((m) => m === 'LSHIFT' || m === 'RSHIFT')) {
+  if (b.kind === 'mod_morph' && modsMet(b.mods, SHIFTS)) {
     const morphed = tapLabel(c, b.morphed);
     return morphed === '' ? null : morphed;
   }
@@ -161,82 +171,12 @@ function shiftedOf(c: CompiledLayout, b: Binding): string | null {
 
 /** Layer and sticky-modifier keys draw their mode where a held action would otherwise go. */
 function holdIsModeOf(b: Binding): boolean {
-  switch (b.kind) {
-    case 'mo':
-    case 'sl':
-    case 'tog':
-    case 'to':
-    case 'auto_layer':
-    case 'sk':
-      return true;
-    default:
-      return false;
-  }
+  return heldPart(b) === null && modeOf(partOf(b)) !== null;
 }
 
-/** The legend printed in the middle of a key. */
-export function tapLabel(c: CompiledLayout, b: Binding): string {
+/** How a layer or sticky-modifier key brings its layer or modifier on, in the board's words. */
+function modeOf(b: Binding): string | null {
   switch (b.kind) {
-    case 'kp':
-      return symbolText(b.symbol, b.keycode);
-    case 'trans':
-      return '▽';
-    case 'none':
-      return '';
-    case 'sl':
-    case 'mo':
-    case 'tog':
-    case 'to':
-    case 'auto_layer':
-      return short(layerName(c, b.layer));
-    case 'lt':
-      return tapLabel(c, b.tap);
-    case 'sk':
-    case 'mod':
-      return MOD_GLYPH[b.mod];
-    case 'caps_word':
-      return '⇪';
-    case 'key_repeat':
-      return '⟳';
-    case 'hold_tap':
-      return tapLabel(c, b.tap);
-    case 'mod_morph':
-      return tapLabel(c, b.default);
-    case 'layer_morph':
-      return tapLabel(c, b.inactive);
-    case 'adaptive':
-      // Only the default: the alternatives are listed under the board, where they have room.
-      return b.default ? tapLabel(c, b.default) : '';
-    case 'tap_dance':
-      return b.bindings.length > 0 ? tapLabel(c, b.bindings[0]) : '';
-    case 'macro':
-      return b.symbols ?? (b.steps ? b.steps.map((s) => tapLabel(c, s)).join('') : '⋯');
-    case 'dead_key':
-      return accentGlyph(b.diacritic);
-    case 'unicode':
-      return b.symbol;
-    case 'raw':
-      return b.label;
-    default:
-      return '';
-  }
-}
-
-function holdOf(c: CompiledLayout, b: Binding): string {
-  if (b.kind === 'mo') return short(layerName(c, b.layer));
-  if (b.kind === 'mod') return MOD_GLYPH[b.mod];
-  return tapLabel(c, b);
-}
-
-/** The smaller legend along the bottom of a key: what a hold does, or how a layer comes on. */
-export function holdLabel(c: CompiledLayout, b: Binding): string | null {
-  switch (b.kind) {
-    case 'hold_tap':
-      return holdOf(c, b.hold);
-    case 'lt':
-      return short(layerName(c, b.layer));
-    case 'mod_morph':
-      return holdLabel(c, b.default);
     case 'mo':
     case 'sl':
     case 'tog':
@@ -250,9 +190,58 @@ export function holdLabel(c: CompiledLayout, b: Binding): string | null {
   }
 }
 
-/** Which colour family a key belongs to. */
+/** The legend printed in the middle of a key: its Plain part's. */
+export function tapLabel(c: CompiledLayout, b: Binding): string {
+  const p = partOf(b);
+  switch (p.kind) {
+    case 'kp':
+      return symbolText(p.symbol, p.keycode);
+    case 'trans':
+      return '▽';
+    case 'sl':
+    case 'mo':
+    case 'tog':
+    case 'to':
+    case 'auto_layer':
+      return short(layerName(c, p.layer));
+    case 'sk':
+    case 'mod':
+      return MOD_GLYPH[p.mod];
+    case 'caps_word':
+      return '⇪';
+    case 'key_repeat':
+      return '⟳';
+    case 'macro':
+      return p.symbols ?? (p.steps ? p.steps.map((s) => tapLabel(c, s)).join('') : '⋯');
+    case 'dead_key':
+      return accentGlyph(p.diacritic);
+    case 'unicode':
+      return p.symbol;
+    case 'raw':
+      return p.label;
+    default:
+      // Nothing, or an adaptive key with no default: its alternatives are listed under the board,
+      // where they have room.
+      return '';
+  }
+}
+
+function holdOf(c: CompiledLayout, b: Binding): string {
+  if (b.kind === 'mo') return short(layerName(c, b.layer));
+  if (b.kind === 'mod') return MOD_GLYPH[b.mod];
+  return tapLabel(c, b);
+}
+
+/** The smaller legend along the bottom of a key: what a hold does, or how a layer comes on. */
+export function holdLabel(c: CompiledLayout, b: Binding): string | null {
+  const held = heldPart(b);
+  return held ? holdOf(c, held) : modeOf(partOf(b));
+}
+
+/** Which colour family a key belongs to: its Plain part's, or a layer-tap's or an adaptive key's. */
 export function legendKind(b: Binding): LegendKind {
-  switch (b.kind) {
+  const p = partOf(b, { stopAt: COLOURED });
+  switch (p.kind) {
     case 'kp':
     case 'unicode':
     case 'macro':
@@ -273,14 +262,6 @@ export function legendKind(b: Binding): LegendKind {
       return 'repeat';
     case 'adaptive':
       return 'adaptive';
-    case 'hold_tap':
-      return legendKind(b.tap);
-    case 'mod_morph':
-      return legendKind(b.default);
-    case 'layer_morph':
-      return legendKind(b.inactive);
-    case 'tap_dance':
-      return b.bindings.length > 0 ? legendKind(b.bindings[0]) : 'none';
     case 'trans':
       return 'trans';
     case 'raw':
@@ -291,7 +272,8 @@ export function legendKind(b: Binding): LegendKind {
 }
 
 function badgeOf(b: Binding): string | null {
-  switch (b.kind) {
+  const p = partOf(b, { stopAt: MARKED });
+  switch (p.kind) {
     case 'adaptive':
       return BADGE.adaptive;
     case 'macro':
@@ -300,29 +282,26 @@ function badgeOf(b: Binding): string | null {
       return BADGE.tapDance;
     case 'unicode':
       return BADGE.unicode;
-    case 'hold_tap':
-    case 'lt':
-      return badgeOf(b.tap);
     default:
       return null;
   }
 }
 
 function layerOf(b: Binding): { layer: string; layerIn: 'tap' | 'hold' } | null {
+  // Any layer key on a hold: held, one-shot, toggle, switch or auto.
+  const held = heldPart(b);
+  const layer = layerKeyOf(held ? partOf(held) : partOf(b));
+  return layer === null ? null : { layer, layerIn: held ? 'hold' : 'tap' };
+}
+
+function layerKeyOf(b: Binding): string | null {
   switch (b.kind) {
     case 'mo':
     case 'sl':
     case 'tog':
     case 'to':
     case 'auto_layer':
-      return { layer: b.layer, layerIn: 'tap' };
-    case 'lt':
-      return { layer: b.layer, layerIn: 'hold' };
-    case 'hold_tap': {
-      // Any layer key on the hold: held, one-shot, toggle, switch or auto.
-      const held = layerOf(b.hold);
-      return held ? { layer: held.layer, layerIn: 'hold' } : null;
-    }
+      return b.layer;
     default:
       return null;
   }
@@ -430,7 +409,7 @@ export function describe(c: CompiledLayout, b: Binding): string {
 export function legend(c: CompiledLayout, b: Binding): Legend {
   const hold = holdLabel(c, b);
   const layer = layerOf(b);
-  const direct = b.kind === 'hold_tap' || b.kind === 'lt' ? b.tap : b;
+  const direct = partOf(b, { stopAt: SHIFT_MORPHS });
   return {
     tap: tapLabel(c, b),
     hold,

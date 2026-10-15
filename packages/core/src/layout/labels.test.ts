@@ -115,3 +115,44 @@ suite('legends', () => {
     expect(l.detail).toContain('not simulated');
   });
 });
+
+suite("a key's legend is read off its Plain part, past either kind of morph", () => {
+  const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
+  const byLayer = (inactive: Binding): Binding => ({
+    kind: 'layer_morph',
+    layers: ['alpha2'],
+    inactive,
+    active: kp('z'),
+  });
+  const byShift = (plain: Binding): Binding => ({
+    kind: 'mod_morph',
+    mods: ['LSHIFT', 'RSHIFT'],
+    default: plain,
+    morphed: kp('z'),
+  });
+
+  it('draws the hold of a tap-hold inside a layer morph, as inside a mod morph', () => {
+    const tapHold: Binding = {
+      kind: 'hold_tap',
+      tap: kp('a'),
+      hold: { kind: 'mod', mod: 'LCTRL' },
+    };
+    expect(legend(c, byLayer(tapHold)).hold).toBe(legend(c, tapHold).hold);
+    expect(legend(c, byShift(tapHold)).hold).toBe(legend(c, tapHold).hold);
+  });
+
+  it('marks a macro inside a morph as a macro', () => {
+    const macro: Binding = { kind: 'macro', symbols: 'qu' };
+    expect(legend(c, byLayer(macro)).badge).toBe(BADGE.macro);
+    expect(legend(c, byShift(macro)).badge).toBe(BADGE.macro);
+  });
+
+  it('draws a sticky key inside a morph the way it draws a sticky key', () => {
+    const sticky: Binding = { kind: 'sk', mod: 'LSHIFT' };
+    for (const key of [byLayer(sticky), byShift(sticky)]) {
+      const l = legend(c, key);
+      expect(l.hold).toBe(LAYER_MODE.sl);
+      expect(l.holdIsMode).toBe(true);
+    }
+  });
+});

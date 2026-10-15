@@ -340,3 +340,22 @@ describe("a layer reached from a tap-hold's hold", () => {
     expect(marks(c, 'up')).toEqual(['LHM held', 'RHM tapped']);
   });
 });
+
+describe('the macro a reach key is known by', () => {
+  it('is read off its Plain part, past a layer morph too', () => {
+    const macro: Binding = { kind: 'macro', steps: [kp('x'), { kind: 'sl', layer: 'up' }] };
+    const c = compileLayout(
+      board([
+        {
+          id: 'base',
+          bindings: {
+            LHR: { kind: 'layer_morph', layers: ['up'], inactive: macro, active: kp('y') },
+          },
+        },
+        { id: 'up', bindings: { '*': { kind: 'trans' } } },
+      ]),
+    );
+    const [key] = reachKeys(c, 1);
+    expect(describeReach(c, 1, key)).toBe('tapped from base by the x macro to reach up');
+  });
+});

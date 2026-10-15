@@ -1,5 +1,6 @@
 import type { CompiledLayout } from '../layout/compile.js';
 import { modChoiceText } from '../layout/labels.js';
+import { partOf } from '../layout/parts.js';
 import type { ActivatorDef, Binding, ModChoice } from '../layout/types.js';
 
 /** A key the planner can press to bring a layer on. */
@@ -482,26 +483,16 @@ export function reachKeys(
     });
 }
 
-/** The text a key's macro types, found on the part a tap reaches: what a reader knows it by. */
+/** The text a key's macro types, found on its Plain part: what a reader knows it by. */
 function macroText(b: Binding | undefined): string {
-  switch (b?.kind) {
-    case 'macro':
-      return (
-        b.symbols ??
-        (b.steps ?? [])
-          .map((s) => (s.kind === 'kp' ? (s.symbol ?? '') : s.kind === 'macro' ? macroText(s) : ''))
-          .join('')
-      );
-    case 'hold_tap':
-    case 'lt':
-      return macroText(b.tap);
-    case 'mod_morph':
-      return macroText(b.default);
-    case 'tap_dance':
-      return macroText(b.bindings[0]);
-    default:
-      return '';
-  }
+  const p = b && partOf(b);
+  if (p?.kind !== 'macro') return '';
+  return (
+    p.symbols ??
+    (p.steps ?? [])
+      .map((s) => (s.kind === 'kp' ? (s.symbol ?? '') : s.kind === 'macro' ? macroText(s) : ''))
+      .join('')
+  );
 }
 
 /** `a`, `a or b`, `a, b or c`. */
