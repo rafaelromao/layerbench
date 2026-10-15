@@ -415,3 +415,102 @@ describe('Machine — adaptive keys', () => {
     expect(tap('LHM').symbols).toBe('w');
   });
 });
+
+describe('Machine — the layer a press reaches', () => {
+  function board() {
+    return machineFor(
+      mini(
+        [
+          {
+            id: 'base',
+            bindings: {
+              LTP: { kind: 'mo', layer: 'up' },
+              LTR: { kind: 'lt', layer: 'up', tap: { kind: 'kp', symbol: 'a' } },
+              LTM: { kind: 'sl', layer: 'up' },
+              LTI: { kind: 'tog', layer: 'up' },
+              LTC: { kind: 'to', layer: 'up' },
+              LHP: { kind: 'auto_layer', layer: 'up' },
+              LHR: {
+                kind: 'hold_tap',
+                tap: { kind: 'kp', symbol: 'b' },
+                hold: { kind: 'sl', layer: 'up' },
+              },
+              LHM: {
+                kind: 'hold_tap',
+                tap: { kind: 'kp', symbol: 'c' },
+                hold: { kind: 'tog', layer: 'up' },
+              },
+              LHI: {
+                kind: 'hold_tap',
+                tap: { kind: 'kp', symbol: 'd' },
+                hold: { kind: 'to', layer: 'up' },
+              },
+              LHC: {
+                kind: 'hold_tap',
+                tap: { kind: 'kp', symbol: 'e' },
+                hold: { kind: 'mod', mod: 'LSHIFT' },
+              },
+              LBP: { kind: 'macro', symbols: 'q', then: [{ kind: 'sl', layer: 'up' }] },
+              LBR: { kind: 'sk', mod: 'LSHIFT' },
+              L0: { kind: 'kp', symbol: ' ' },
+            },
+          },
+          { id: 'up', bindings: {} },
+        ],
+        {
+          combos: [
+            { id: 'one-shot', keys: ['RHP', 'RHR'], binding: { kind: 'sl', layer: 'up' } },
+            { id: 'held', keys: ['RHM', 'RHI'], binding: { kind: 'mo', layer: 'up' } },
+          ],
+        },
+      ),
+    );
+  }
+
+  it('is the layer a layer key held, a one-shot, a toggle, a to-layer or an auto-layer turns on', () => {
+    const { compiled, tap, hold, release } = board();
+    const upIdx = compiled.layerIndex.get('up')!;
+    for (const id of ['LTP', 'LTR']) {
+      expect(hold(id).reaches).toBe(upIdx);
+      expect(release(id).reaches).toBeNull();
+    }
+    const fresh = () => board();
+    expect(fresh().tap('LTM').reaches).toBe(upIdx);
+    expect(fresh().tap('LTI').reaches).toBe(upIdx);
+    expect(fresh().tap('LTC').reaches).toBe(upIdx);
+    expect(fresh().tap('LHP').reaches).toBe(upIdx);
+    expect(tap('L0').reaches).toBeNull();
+  });
+
+  it('is the layer a tap-hold holds for, whatever turns it on', () => {
+    const { compiled } = board();
+    const upIdx = compiled.layerIndex.get('up')!;
+    for (const id of ['LHR', 'LHM', 'LHI']) {
+      const ev = board().hold(id);
+      expect(ev.keyKind).toBe('hold');
+      expect(ev.reaches).toBe(upIdx);
+    }
+  });
+
+  it('is the layer a combo turns on, tapped or held', () => {
+    const { compiled, m } = board();
+    const upIdx = compiled.layerIndex.get('up')!;
+    const combo = (id: string) => compiled.combos.findIndex((c) => c.id === id);
+    expect(m.perform({ type: 'chord', combo: combo('one-shot') })[0].reaches).toBe(upIdx);
+    const other = board();
+    expect(other.m.perform({ type: 'chord', combo: combo('held'), hold: true })[0].reaches).toBe(
+      upIdx,
+    );
+  });
+
+  it('is none for a key that types, a modifier, a layer key tapped, or one that types and then arms a layer', () => {
+    const { tap, hold } = board();
+    expect(tap('LTR').reaches).toBeNull(); // a layer-tap tapped types a
+    expect(board().tap('LTP').reaches).toBeNull(); // a momentary layer key tapped turns nothing on
+    expect(hold('LHC').reaches).toBeNull();
+    expect(board().tap('LBR').reaches).toBeNull();
+    const macro = board().tap('LBP');
+    expect(macro.symbols).toBe('q');
+    expect(macro.reaches).toBeNull();
+  });
+});

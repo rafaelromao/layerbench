@@ -59,6 +59,17 @@ changed binding. It is not a key's part of a number, which is what the key adds 
 adds up over keys.
 _Avoid_: arm, sub-binding
 
+**Press**:
+One key, or one combo, pressed on a layer while typing a text, with what it did: the symbols it typed,
+the modifier it held, or the layer it reached. Presses alike in all of that are the same press, however
+often they happen.
+_Avoid_: logical key, event, keystroke record
+
+**Press log**:
+Everything typing a text on a layout pressed: each press, how often it came, and which presses came
+together within a word. Every number about the layout is read from it.
+_Avoid_: simulation tables, registry, typing record
+
 **Saved document**:
 A layout, rule set or text the user saved, kept in this browser and, once they sign in, on GitHub
 too, under an id that follows its name. A link names it by `saved:<id>`; where it is not saved it

@@ -8,6 +8,7 @@ import { corporaRoot } from '../golden/paths.js';
 import { compileLayout } from '../layout/compile.js';
 import { swapKeys } from '../layout/ops.js';
 import { bundledLayout } from '../layouts/index.js';
+import { evaluate, evaluateFocus } from '../rules/engine.js';
 import { layoutsDoc } from '../rules/presets.js';
 
 const RUN = process.env.BENCH === '1';
@@ -37,9 +38,37 @@ describe.skipIf(!RUN)('performance budget (BENCH=1)', () => {
     const r = analyze(compiled, stream, { caseMode: 'fold', maxSymbols: 300_000, ruleSet });
     const ms = performance.now() - t;
     logLine(
-      `300k: ${ms.toFixed(0)}ms keystrokes=${r.stats.keystrokes} logicalKeys=${r.simulation.registry.all().length} bigrams=${r.simulation.noSpace.bigram.size}`,
+      `300k: ${ms.toFixed(0)}ms keystrokes=${r.stats.keystrokes} presses=${r.simulation.presses.presses.length} bigrams=${r.simulation.presses.ngrams('no_space', 'bigram').size}`,
     );
     expect(ms).toBeLessThan(1500);
+  });
+
+  it('scores 300k symbols, and one key closer up, within 250 ms', () => {
+    const r = analyze(compiled, stream, { caseMode: 'fold', maxSymbols: 300_000, ruleSet });
+    const median = (run: () => void): number => {
+      const times = Array.from({ length: 5 }, () => {
+        const t = performance.now();
+        run();
+        return performance.now() - t;
+      });
+      return times.sort((a, b) => a - b)[2];
+    };
+    const log = r.simulation.presses;
+    const unigrams = log.ngrams('no_space', 'unigram');
+    const busiest = unigrams.ids[unigrams.counts.indexOf(Math.max(...unigrams.counts))];
+    const alpha = log.presses[busiest];
+    const tap = log.presses.find((k) => k.kind === 'layer_tap')!;
+    const rules = median(() => evaluate(r.simulation, compiled, ruleSet));
+    const focusAlpha = median(() =>
+      evaluateFocus(r.simulation, compiled, ruleSet, { key: alpha.pos, layer: alpha.layer }),
+    );
+    const focusLayer = median(() =>
+      evaluateFocus(r.simulation, compiled, ruleSet, { key: tap.pos, layer: tap.layer }),
+    );
+    logLine(
+      `rules: ${rules.toFixed(1)}ms focus alpha: ${focusAlpha.toFixed(1)}ms focus layer key: ${focusLayer.toFixed(1)}ms`,
+    );
+    expect(rules + focusAlpha + focusLayer).toBeLessThan(250);
   });
 
   it('analyzes 300k symbols within 1.5 s with three keys to tap for Alpha 2, chosen per word', () => {

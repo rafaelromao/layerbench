@@ -3,11 +3,13 @@ import { structureHash } from '../analysis/hash.js';
 import { normalizeText } from '../corpus/normalize.js';
 import { FIXTURE_EN, FIXTURE_PT } from '../fixtures/index.js';
 import { compileLayout } from '../layout/compile.js';
+import type { Binding, Layout } from '../layout/types.js';
 import { bundledLayout, CLASSIC_LAYOUTS } from '../layouts/index.js';
+import { SHAPES } from '../presses/press-log.js';
 import { simulate } from '../sim/resolver.js';
 import { classifyBand } from './bands.js';
 import { BANDS, catalogRules, sfbWhere } from './catalog.js';
-import { evaluate } from './engine.js';
+import { evaluate, evaluateFocus } from './engine.js';
 import { cyanophage, getPreset, keysolve, layoutsDoc } from './presets.js';
 import { parseRuleSet, ruleSetFromJson, ruleSetToJson } from './serialize.js';
 import type { RuleSet } from './types.js';
@@ -171,7 +173,8 @@ describe('rules engine', () => {
       globals: { ...rs.globals, universe: u },
     });
     // The same-finger bigrams themselves, counted over bigrams by the Doc.
-    const sfbs = (sfbOf(layoutsDoc()) / 100) * sim.tables.noSpace.totals.bigram;
+    const sfbs =
+      (sfbOf(layoutsDoc()) / 100) * sim.tables.presses.ngrams('no_space', 'bigram').total;
     expect(sfbs).toBeGreaterThan(0);
 
     // Without space: every other keystroke, plus one space per word.
@@ -180,7 +183,8 @@ describe('rules engine', () => {
 
     // With space: the space presses are keystrokes already, and nothing is added.
     const withSfbs =
-      (sfbOf(universe(layoutsDoc(), 'with_space')) / 100) * sim.tables.withSpace.totals.bigram;
+      (sfbOf(universe(layoutsDoc(), 'with_space')) / 100) *
+      sim.tables.presses.ngrams('with_space', 'bigram').total;
     const withSpace = sfbOf(universe(cyanophage(), 'with_space'));
     expect(withSpace).toBeCloseTo((withSfbs / st.keystrokes) * 100, 9);
   });
@@ -193,14 +197,19 @@ describe('rules engine', () => {
     // A layout typing each character with one press has exactly the text's totals: nothing it
     // reports moves.
     const q = tablesOf('qwerty');
-    expect(q.text.noSpace).toEqual(q.noSpace.totals);
-    expect(q.text.withSpace).toEqual(q.withSpace.totals);
+    for (const universe of ['no_space', 'with_space'] as const) {
+      for (const shape of SHAPES) {
+        const g = q.presses.ngrams(universe, shape);
+        expect(g.textTotal, `${universe} ${shape}`).toBe(g.total);
+      }
+    }
 
     // Magic Romak's layer taps and holds add pairs of its own, but the text has the pairs it has,
     // and that is what its same-finger bigrams are a share of.
     const m = tablesOf('magic-romak');
-    expect(m.noSpace.totals.bigram).toBeGreaterThan(m.text.noSpace.bigram);
-    expect(m.text.noSpace.unigram).toBe(m.stats.symbols);
+    const pairs = m.presses.ngrams('no_space', 'bigram');
+    expect(pairs.total).toBeGreaterThan(pairs.textTotal);
+    expect(m.presses.ngrams('no_space', 'unigram').textTotal).toBe(m.stats.symbols);
     const sfb = catalogRules().find((r) => r.id === 'sfb')!;
     const counting: RuleSet = {
       ...layoutsDoc(),
@@ -209,7 +218,7 @@ describe('rules engine', () => {
     const compiled = compileLayout(bundledLayout('magic-romak')!);
     const [percent, count] = evaluate(m, compiled, counting).results.map((r) => r.value as number);
     expect(count).toBeGreaterThan(0);
-    expect(percent).toBeCloseTo((count / m.text.noSpace.bigram) * 100, 9);
+    expect(percent).toBeCloseTo((count / pairs.textTotal) * 100, 9);
   });
 
   it('never counts a trigram with a thumb press as a roll or an alternation, but keeps it in the total', () => {
@@ -232,7 +241,7 @@ describe('rules engine', () => {
         rules: catalogRules().filter((r) => ids.includes(r.id)),
       };
       return {
-        trigrams: tables.noSpace.totals.trigram,
+        trigrams: tables.presses.ngrams('no_space', 'trigram').total,
         values: evaluate(tables, piano, ruleSet).results.map((r) => r.value),
         asFingers: evaluate(tables, piano, asFingers).results[0].value,
       };
@@ -312,5 +321,76 @@ describe('rules engine', () => {
     const layout = bundledLayout('qwerty')!;
     expect(structureHash(bundledLayout('qwerty')!)).toBe(structureHash(layout));
     expect(structureHash(bundledLayout('dvorak')!)).not.toBe(structureHash(layout));
+  });
+});
+
+describe('what a key that reaches a layer was pressed for', () => {
+  const kp = (symbol: string) => ({ kind: 'kp', symbol }) as const;
+  /**
+   * Letters on the base layer, `q` on Up, and one key that reaches Up as `reach` does. An
+   * auto-layer is left out: the simulator never types through one.
+   */
+  const board = (reach: Binding): Layout => ({
+    format: 'layerbench/layout@1',
+    name: 'reach',
+    geometry: { preset: '3x5+2' },
+    keys: { space: 'L0' },
+    layers: [
+      {
+        id: 'base',
+        bindings: { LHP: kp('a'), LHR: kp('b'), LHC: reach, L0: kp(' ') },
+      },
+      { id: 'up', name: 'Up', bindings: { RHP: kp('q') } },
+    ],
+  });
+  const pairs: RuleSet = {
+    ...layoutsDoc(),
+    rules: [
+      {
+        id: 'pairs',
+        family: 'bigram',
+        source: 'ngram',
+        ngram: { n: 2, skip: 0 },
+        where: { all: [] },
+        aggregate: 'percent_of_ngrams',
+      },
+    ],
+  };
+
+  function typed(reach: Binding, word: string) {
+    const compiled = compileLayout(board(reach));
+    const sim = simulate(compiled, word, OPTS);
+    const items = evaluate(sim.tables, compiled, pairs).results[0].items;
+    const at = compiled.keyIndex.get('LHC')!;
+    const focus = evaluateFocus(sim.tables, compiled, pairs, { key: at, layer: 0 });
+    return { items, focus, up: compiled.layerIndex.get('up')! };
+  }
+
+  for (const [name, reach] of [
+    ['a one-shot held', { kind: 'hold_tap', tap: kp('x'), hold: { kind: 'sl', layer: 'up' } }],
+    ['a toggle held', { kind: 'hold_tap', tap: kp('x'), hold: { kind: 'tog', layer: 'up' } }],
+    ['a to-layer held', { kind: 'hold_tap', tap: kp('x'), hold: { kind: 'to', layer: 'up' } }],
+    ['a layer key held', { kind: 'mo', layer: 'up' }],
+  ] as const) {
+    it(`is the key pressed after it, for ${name}`, () => {
+      const { items, focus, up } = typed(reach, 'aqa');
+      const ending = items.find((i) => i.keys.length === 2 && i.label.startsWith('a') && i.then);
+      expect(ending, 'a pair ending on the key').toBeDefined();
+      expect(ending!.then!.map((t) => [t.label, t.layer])).toEqual([['q', up]]);
+      expect(focus.next.map((n) => [n.label, n.layer])).toEqual([['q', up]]);
+    });
+  }
+  it('is the key pressed after a combo that reaches the layer', () => {
+    const layout: Layout = {
+      ...board(kp('x')),
+      combos: [
+        { id: 'up', keys: ['LHM', 'LHI'], binding: { kind: 'sl', layer: 'up' }, role: 'typing' },
+      ],
+    };
+    const compiled = compileLayout(layout);
+    const sim = simulate(compiled, 'aqa', OPTS);
+    const items = evaluate(sim.tables, compiled, pairs).results[0].items;
+    const ending = items.find((i) => i.label.startsWith('a') && i.then);
+    expect(ending?.then?.map((t) => t.label)).toEqual(['q']);
   });
 });

@@ -37,8 +37,8 @@ export function relabelEligible(
 }
 
 /**
- * Re-score after a relabel by moving the affected logical keys to their new positions and running
- * the rules again over the existing tables. Exact for every n-gram metric as long as the layout
+ * Re-score after a relabel by moving the presses of the two keys to each other's positions and
+ * running the rules again over the same press log. Exact for every n-gram metric as long as the layout
  * would be typed the same way after the swap; but the simulator weighs same-finger pairs when it
  * chooses how to type a character and which key taps a layer, so a swap can change those choices.
  * Travel, run and word statistics stay as simulated. The report is marked provisional either way,
@@ -52,13 +52,8 @@ export function relabelSwap(
   posB: number,
   ruleSet: RuleSet,
 ): Report {
-  const registry = report.simulation.registry.clone();
-  for (const lk of registry.all()) {
-    if (lk.layer !== layerIdx) continue;
-    if (lk.pos === posA) registry.setPosition(lk.id, posB);
-    else if (lk.pos === posB) registry.setPosition(lk.id, posA);
-  }
-  const simulation = { ...report.simulation, registry };
+  const presses = report.simulation.presses.moved(layerIdx, posA, posB);
+  const simulation = { ...report.simulation, presses };
   const { results, score, globals } = evaluate(simulation, compiled, ruleSet);
   return {
     ...report,

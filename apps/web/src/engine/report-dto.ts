@@ -1,4 +1,4 @@
-import type { Report } from '@layerbench/core';
+import { layerTapsByKey, type Report } from '@layerbench/core';
 import type { CoverageDTO, ReportDTO, StatsDTO } from './protocol.js';
 
 /** Sorted descending by count, so the coverage strip can show the worst offenders first. */
@@ -32,19 +32,20 @@ function usageMaps(report: Report): {
   const usageAll = new Array<number>(positions).fill(0);
   const layerTapsByLayer = perLayer();
 
-  const unigram =
-    report.globals.universe === 'with_space'
-      ? report.simulation.withSpace.unigram
-      : report.simulation.noSpace.unigram;
-  for (const lk of report.simulation.registry.all()) {
-    const count = unigram.get(lk.id) ?? 0;
-    if (count === 0) continue;
+  const log = report.simulation.presses;
+  const unigrams = log.ngrams(
+    report.globals.universe === 'with_space' ? 'with_space' : 'no_space',
+    'unigram',
+  );
+  for (let i = 0; i < unigrams.size; i++) {
+    const lk = log.presses[unigrams.ids[i]];
+    const count = unigrams.counts[i];
     usageAll[lk.pos] += count;
     const onLayer = usageByLayer[lk.layer];
     if (!onLayer) continue;
     onLayer[lk.pos] += count;
-    if (lk.keyKind === 'layer_tap') layerTapsByLayer[lk.layer][lk.pos] += count;
   }
+  for (const t of layerTapsByKey(log, report.compiled)) layerTapsByLayer[t.layer][t.key] += t.taps;
   return { usageByLayer, usageAll, layerTapsByLayer };
 }
 

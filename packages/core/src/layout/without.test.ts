@@ -4,6 +4,7 @@ import { FIXTURE_EN, FIXTURE_PT } from '../fixtures/index.js';
 import { layoutLanguageCoverage } from '../lang/coverage.js';
 import { bundledLayout } from '../layouts/index.js';
 import { magicRomak } from '../layouts/romak.js';
+import { SHAPES } from '../presses/press-log.js';
 import { enumerateProducers } from '../sim/producers.js';
 import { simulate } from '../sim/resolver.js';
 import { compileLayout, inlineBehaviors } from './compile.js';
@@ -30,7 +31,8 @@ describe('Ranking a layout without some of its features', () => {
     const before = simulate(compileLayout(magicRomak), text, OPTS).tables;
     const after = simulate(compileLayout(inlineBehaviors(magicRomak)), text, OPTS).tables;
     expect(after.stats).toEqual(before.stats);
-    expect(after.noSpace.totals).toEqual(before.noSpace.totals);
+    const totals = (t: typeof before) => SHAPES.map((s) => t.presses.ngrams('no_space', s).total);
+    expect(totals(after)).toEqual(totals(before));
   });
 
   it('keeps the adaptive key as the letter it types by default', () => {
