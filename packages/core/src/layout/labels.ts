@@ -1,5 +1,5 @@
 import type { CompiledLayout } from './compile.js';
-import { type Chooser, heldPart, partOf } from './parts.js';
+import { type Chooser, type Choosing, heldPart, partOf } from './parts.js';
 import {
   type AdaptiveTrigger,
   type Binding,
@@ -12,6 +12,7 @@ import {
 } from './types.js';
 
 const SHIFTS: ReadonlySet<Mod> = new Set(FAMILY_MODS.shift);
+const HELD: Choosing = { press: 'hold' };
 /** A layer-tap is a layer key, and an adaptive key has its own colour, whatever they type. */
 const COLOURED: ReadonlySet<Chooser> = new Set(['lt', 'adaptive']);
 /** The keys marked in a corner, seen before the part they type. */
@@ -290,7 +291,7 @@ function badgeOf(b: Binding): string | null {
 function layerOf(b: Binding): { layer: string; layerIn: 'tap' | 'hold' } | null {
   // Any layer key on a hold: held, one-shot, toggle, switch or auto.
   const held = heldPart(b);
-  const layer = layerKeyOf(held ? partOf(held) : partOf(b));
+  const layer = layerKeyOf(held ? partOf(held, HELD) : partOf(b));
   return layer === null ? null : { layer, layerIn: held ? 'hold' : 'tap' };
 }
 
