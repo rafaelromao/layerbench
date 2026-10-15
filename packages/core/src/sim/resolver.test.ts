@@ -596,6 +596,22 @@ describe("a mod morph's modifiers", () => {
     expect([...t.keys].sort()).toEqual(['LHI', 'LHM', 'LHP', 'LHR', 'LHR', 'RHI']);
   });
 
+  it('holds the other modifier when the first is still on for the letter the layer key is for', () => {
+    // A sticky left Shift is still on when `q` is typed, and makes it a `Q`: left Alt is not.
+    const layout = board([], sticky('LSHIFT'));
+    layout.layers[0].bindings.LHP = {
+      kind: 'mod_morph',
+      mods: ['LSHIFT', 'LALT'],
+      default: kp(','),
+      morphed: { kind: 'sl', layer: 'up' },
+    };
+    layout.layers[0].bindings.LHI = sticky('LALT');
+    layout.layers.push({ id: 'up', bindings: { '*': { kind: 'trans' }, RHI: kp('q') } });
+    const t = trace(layout, 'aqa', { caseMode: 'model' });
+    expect(t.out).toBe('aqa');
+    expect(t.keys).toEqual(['LHR', 'LHI', 'LHP', 'RHI', 'LHR']);
+  });
+
   it("types a morph's plain part inside a morph without the modifiers that would change it", () => {
     // The outer morph keeps left Shift, so the inner one still sees it: `;` needs left Alt.
     const inner: Binding = {
