@@ -263,12 +263,14 @@ export interface ResolveResult {
   layer: number;
 }
 
-/**
- * Deterministic, timing-free ZMK-like state machine.
- */
+const TAPPED: Choosing = { press: 'tap' };
+const HELD: Choosing = { press: 'hold' };
 /** The resolver looks at a tap dance and an adaptive key as they are, not at the part they type. */
 const AS_THEY_ARE: ReadonlySet<Chooser> = new Set(['tap_dance', 'adaptive']);
 
+/**
+ * Deterministic, timing-free ZMK-like state machine.
+ */
 export class Machine {
   readonly state = new MachineState();
   private mask = 1;
@@ -892,9 +894,6 @@ function labelFor(
       return '·';
   }
 }
-
-const TAPPED: Choosing = { press: 'tap' };
-const HELD: Choosing = { press: 'hold' };
 
 /** Peel morphs/hold-taps to the binding that would run for the given mode under the current machine state. */
 export function peelBinding(machine: Machine, b: Binding, mode: 'tap' | 'hold'): Binding {

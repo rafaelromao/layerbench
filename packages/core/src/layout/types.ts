@@ -23,7 +23,7 @@ export const FAMILY_MODS: Record<ModFamily, readonly Mod[]> = {
   gui: ['LGUI', 'RGUI'],
 };
 
-/** The family of the first modifier in `mods` that has one, or null for none. */
+/** The first family, in `FAMILY_MODS` order, that one of `mods` belongs to, or null for none. */
 export function familyOf(mods: readonly Mod[]): ModFamily | null {
   for (const [family, members] of Object.entries(FAMILY_MODS) as [ModFamily, readonly Mod[]][]) {
     if (members.some((m) => mods.includes(m))) return family;

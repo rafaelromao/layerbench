@@ -55,8 +55,11 @@ function chosen(b: Binding, how: Choosing): Binding | null {
       return how.press === 'hold' ? b.hold : b.tap;
     case 'lt':
       return how.press === 'hold' ? { kind: 'mo', layer: b.layer } : b.tap;
-    case 'mod_morph':
-      return how.mods && modsMet(b.mods, how.mods) ? b.morphed : b.default;
+    case 'mod_morph': {
+      // Read once: the machine's modifiers are worked out each time they are asked for.
+      const held = how.mods;
+      return held && modsMet(b.mods, held) ? b.morphed : b.default;
+    }
     case 'layer_morph': {
       const on = how.layerOn;
       const active =
