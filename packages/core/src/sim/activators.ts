@@ -1,6 +1,8 @@
 import type { CompiledLayout } from '../layout/compile.js';
-import { MOD_NAME } from '../layout/labels.js';
-import type { ActivatorDef, Binding, Mod } from '../layout/types.js';
+import { modChoiceText } from '../layout/labels.js';
+import { partOf } from '../layout/parts.js';
+import type { ActivatorDef, Binding, ModChoice } from '../layout/types.js';
+import { heldChoices, intoMorph, type MorphPath, NO_PATH } from './mod-needs.js';
 
 /** A key the planner can press to bring a layer on. */
 export interface ActivatorCandidate {
@@ -11,7 +13,7 @@ export interface ActivatorCandidate {
   user: boolean;
   order: number;
   /** Modifiers that must be active for this part of the binding to be chosen (a mod-morph's). */
-  requiredMods?: Mod[];
+  requiredMods?: ModChoice[];
   /** Source layer restriction (user-declared activators). */
   from?: number;
   /** A combo rather than a key: its keys pressed together. `pos` is the combo's own position. */
@@ -22,7 +24,7 @@ interface LayerTarget {
   mode: 'tap' | 'hold';
   target: number;
   kind: string;
-  requiredMods?: Mod[];
+  requiredMods?: ModChoice[];
 }
 
 function collectLayerTargets(
@@ -31,69 +33,51 @@ function collectLayerTargets(
   mode: 'tap' | 'hold',
   out: LayerTarget[],
   depth = 0,
-  requiredMods?: Mod[],
+  path: MorphPath = NO_PATH,
   /** Inside a tap-hold's hold, where a tap's behaviour runs when the key is held. */
   holdArm = false,
 ): void {
   if (depth > 8) return;
   const li = (id: string) => compiled.layerIndex.get(id);
+  const push = (target: number | undefined, kind: string) => {
+    if (target === undefined) return;
+    // A part no modifiers held can choose is no way in.
+    const requiredMods = heldChoices(path);
+    if (requiredMods === null) return;
+    out.push({ mode, target, kind, ...(requiredMods.length ? { requiredMods } : {}) });
+  };
+  const next = (x: Binding, p = path, arm = holdArm) =>
+    collectLayerTargets(compiled, x, mode, out, depth + 1, p, arm);
   switch (b.kind) {
     case 'sl':
     case 'tog':
-    case 'to': {
+    case 'to':
       // On a tap-hold's hold too: the key is held past its tapping term, and comes up again.
-      const t = li(b.layer);
-      if (t !== undefined && (mode === 'tap' || holdArm))
-        out.push({ mode, target: t, kind: b.kind, requiredMods });
+      if (mode === 'tap' || holdArm) push(li(b.layer), b.kind);
       return;
-    }
-    case 'mo': {
-      const t = li(b.layer);
-      if (t !== undefined && mode === 'hold')
-        out.push({ mode, target: t, kind: 'mo', requiredMods });
+    case 'mo':
+      if (mode === 'hold') push(li(b.layer), 'mo');
       return;
-    }
-    case 'lt': {
-      const t = li(b.layer);
-      if (mode === 'hold') {
-        if (t !== undefined) out.push({ mode, target: t, kind: 'lt', requiredMods });
-      } else collectLayerTargets(compiled, b.tap, mode, out, depth + 1, requiredMods, holdArm);
+    case 'lt':
+      if (mode === 'hold') push(li(b.layer), 'lt');
+      else next(b.tap);
       return;
-    }
     case 'hold_tap':
-      collectLayerTargets(
-        compiled,
-        mode === 'hold' ? b.hold : b.tap,
-        mode,
-        out,
-        depth + 1,
-        requiredMods,
-        mode === 'hold',
-      );
+      next(mode === 'hold' ? b.hold : b.tap, path, mode === 'hold');
       return;
     case 'mod_morph':
-      collectLayerTargets(compiled, b.default, mode, out, depth + 1, requiredMods, holdArm);
-      collectLayerTargets(
-        compiled,
-        b.morphed,
-        mode,
-        out,
-        depth + 1,
-        [...(requiredMods ?? []), b.mods[0]],
-        holdArm,
-      );
+      next(b.default, intoMorph(path, b, false));
+      next(b.morphed, intoMorph(path, b, true));
       return;
     case 'layer_morph':
-      collectLayerTargets(compiled, b.inactive, mode, out, depth + 1, requiredMods, holdArm);
-      collectLayerTargets(compiled, b.active, mode, out, depth + 1, requiredMods, holdArm);
+      next(b.inactive);
+      next(b.active);
       return;
     case 'tap_dance':
-      if (b.bindings[0])
-        collectLayerTargets(compiled, b.bindings[0], mode, out, depth + 1, requiredMods, holdArm);
+      if (b.bindings[0]) next(b.bindings[0]);
       return;
     case 'adaptive':
-      if (b.default)
-        collectLayerTargets(compiled, b.default, mode, out, depth + 1, requiredMods, holdArm);
+      if (b.default) next(b.default);
       return;
     default:
       return;
@@ -179,7 +163,7 @@ export function discoverActivators(
         target,
         user: true,
         order: -1000 + i,
-        requiredMods: d.requires?.mods ?? existing?.requiredMods,
+        requiredMods: d.requires?.mods?.map((m) => [m]) ?? existing?.requiredMods,
       };
       if (d.from && d.from !== '*') cand.from = c.layerIndex.get(d.from);
       list.unshift(cand);
@@ -238,8 +222,8 @@ export interface ReachRoute {
   declared?: boolean;
   /** A declared way in that applies only from this layer. */
   from?: number;
-  /** Modifiers held for the part of the key that does it. */
-  mods?: Mod[];
+  /** Modifiers held for the part of the key that does it, a choice each. */
+  mods?: ModChoice[];
   /** An adaptive key's branch: only after these. */
   after?: { afterAny?: string[]; afterTags?: string[] };
   /** The tap of a tap dance that does it, from the second on. */
@@ -261,7 +245,8 @@ interface Extra {
   /** Inside something the planner does not press to change layers: a macro, a branch, a tap dance. */
   extra: boolean;
   origin: ReachOrigin;
-  mods?: Mod[];
+  /** What the key's mod morphs need of the modifiers on the way to this part. */
+  path?: MorphPath;
   after?: ReachRoute['after'];
   taps?: number;
   /** Inside a tap-hold's hold, where a tap's behaviour runs when the key is held. */
@@ -285,39 +270,44 @@ function extraRoutes(
 ): void {
   if (depth > 8) return;
   const reaches = (layer: string) => c.layerIndex.get(layer) === target;
-  const route = (m: 'tap' | 'hold'): ReachRoute => ({
-    mode: m,
-    origin: ctx.origin,
-    via,
-    ...(ctx.mods?.length ? { mods: ctx.mods } : {}),
-    ...(ctx.after ? { after: ctx.after } : {}),
-    ...(ctx.taps ? { taps: ctx.taps } : {}),
-  });
+  const reach = (m: 'tap' | 'hold') => {
+    // A part no modifiers held can choose is no way in.
+    const mods = heldChoices(ctx.path ?? NO_PATH);
+    if (mods === null) return;
+    out.push({
+      mode: m,
+      origin: ctx.origin,
+      via,
+      ...(mods.length ? { mods } : {}),
+      ...(ctx.after ? { after: ctx.after } : {}),
+      ...(ctx.taps ? { taps: ctx.taps } : {}),
+    });
+  };
   const next = (x: Binding, m: 'tap' | 'hold', more: Partial<Extra> = {}) =>
     extraRoutes(c, x, m, target, via, { ...ctx, ...more }, out, depth + 1);
   switch (b.kind) {
     case 'sl':
     case 'tog':
     case 'to':
-      if (ctx.extra && (mode === 'tap' || ctx.holdArm) && reaches(b.layer)) out.push(route(mode));
+      if (ctx.extra && (mode === 'tap' || ctx.holdArm) && reaches(b.layer)) reach(mode);
       return;
     case 'auto_layer':
-      if ((mode === 'tap' || ctx.holdArm) && reaches(b.layer)) out.push(route(mode));
+      if ((mode === 'tap' || ctx.holdArm) && reaches(b.layer)) reach(mode);
       return;
     case 'mo':
-      if (ctx.extra && mode === 'hold' && reaches(b.layer)) out.push(route('hold'));
+      if (ctx.extra && mode === 'hold' && reaches(b.layer)) reach('hold');
       return;
     case 'lt':
       if (mode === 'hold') {
-        if (ctx.extra && reaches(b.layer)) out.push(route('hold'));
+        if (ctx.extra && reaches(b.layer)) reach('hold');
       } else next(b.tap, mode);
       return;
     case 'hold_tap':
       next(mode === 'hold' ? b.hold : b.tap, mode, { holdArm: mode === 'hold' });
       return;
     case 'mod_morph':
-      next(b.default, mode);
-      next(b.morphed, mode, { mods: [...(ctx.mods ?? []), b.mods[0]] });
+      next(b.default, mode, { path: intoMorph(ctx.path ?? NO_PATH, b, false) });
+      next(b.morphed, mode, { path: intoMorph(ctx.path ?? NO_PATH, b, true) });
       return;
     case 'layer_morph':
       next(b.inactive, mode);
@@ -482,26 +472,16 @@ export function reachKeys(
     });
 }
 
-/** The text a key's macro types, found on the part a tap reaches: what a reader knows it by. */
+/** The text a key's macro types, found on its Plain part: what a reader knows it by. */
 function macroText(b: Binding | undefined): string {
-  switch (b?.kind) {
-    case 'macro':
-      return (
-        b.symbols ??
-        (b.steps ?? [])
-          .map((s) => (s.kind === 'kp' ? (s.symbol ?? '') : s.kind === 'macro' ? macroText(s) : ''))
-          .join('')
-      );
-    case 'hold_tap':
-    case 'lt':
-      return macroText(b.tap);
-    case 'mod_morph':
-      return macroText(b.default);
-    case 'tap_dance':
-      return macroText(b.bindings[0]);
-    default:
-      return '';
-  }
+  const p = b && partOf(b);
+  if (p?.kind !== 'macro') return '';
+  return (
+    p.symbols ??
+    (p.steps ?? [])
+      .map((s) => (s.kind === 'kp' ? (s.symbol ?? '') : s.kind === 'macro' ? macroText(s) : ''))
+      .join('')
+  );
 }
 
 /** `a`, `a or b`, `a, b or c`. */
@@ -540,7 +520,7 @@ export function describeReach(c: CompiledLayout, layer: number, key: ReachKey): 
       qualifiers.push(`after a key tagged ${orList(r.after.afterTags)}`);
     if (r.chord?.length)
       qualifiers.push(`together with ${andList(r.chord.map((p) => c.keys[p].id))}`);
-    if (r.mods?.length) qualifiers.push(`with ${orList(r.mods.map((m) => MOD_NAME[m]))}`);
+    if (r.mods?.length) qualifiers.push(`with ${andList(r.mods.map(modChoiceText))}`);
     if (r.origin === 'macro') {
       const text = macroText(c.layers[r.via].bindings[key.pos]);
       qualifiers.push(text ? `by the ${text} macro` : 'by its macro');

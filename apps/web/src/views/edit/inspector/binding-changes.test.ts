@@ -42,6 +42,19 @@ const adaptiveKey: Binding = {
 };
 
 describe('changing what a key is', () => {
+  it("keeps the layer or modifier of a morph's plain part, past either kind of morph", () => {
+    const morphs = (plain: Binding): Binding[] => [
+      { kind: 'mod_morph', mods: ['LSHIFT', 'RSHIFT'], default: plain, morphed: { kind: 'none' } },
+      { kind: 'layer_morph', layers: ['num'], inactive: plain, active: { kind: 'none' } },
+    ];
+    for (const key of morphs({ kind: 'sl', layer: 'sym' })) {
+      expect(to(key, 'layer')).toEqual({ kind: 'mo', layer: 'sym' });
+    }
+    for (const key of morphs({ kind: 'sk', mod: 'LALT' })) {
+      expect(to(key, 'modifier')).toEqual({ kind: 'mod', mod: 'LALT' });
+    }
+  });
+
   it('keeps an adaptive key as the tap when the key becomes a tap-hold', () => {
     const held = to(adaptiveKey, 'taphold');
     expect(held).toEqual({ kind: 'lt', layer: 'alpha2', tap: adaptiveKey });

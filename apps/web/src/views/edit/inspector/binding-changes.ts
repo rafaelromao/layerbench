@@ -2,7 +2,13 @@ import {
   type AdaptiveTrigger,
   type Binding,
   bindingToJson,
+  type Choosing,
+  FAMILY_MODS,
+  familyOf,
+  heldPart,
   type Mod,
+  type ModFamily,
+  partOf,
   stableStringify,
 } from '@layerbench/core';
 import { type BindingTextContext, parseBindingText } from '../binding-text.js';
@@ -26,8 +32,6 @@ export type LayerMode = 'mo' | 'sl' | 'tog' | 'to' | 'auto_layer';
 export type ModMode = 'mod' | 'sk';
 /** What changes a morph: a modifier held, or a layer on. */
 export type MorphBy = 'mod_morph' | 'layer_morph';
-/** A modifier as a morph is changed by it, left or right alike. */
-export type MorphFamily = 'shift' | 'ctrl' | 'alt' | 'gui';
 /** How a macro is written: the letters it types, or its steps one by one. */
 export type MacroForm = 'text' | 'steps';
 
@@ -137,14 +141,14 @@ interface Shapes {
     /** A modifier morph has a family and no layers; a layer morph, layers and no family. */
     view: {
       by: MorphBy;
-      family: MorphFamily | null;
+      family: ModFamily | null;
       layers: string[];
       plain: Binding;
       becomes: Binding;
     };
     set: {
       by: Change<MorphBy>;
-      family: Change<MorphFamily>;
+      family: Change<ModFamily>;
       /** Adds the layer, or takes it away while another is left. */
       toggleLayer: Change<string>;
       plain: Change<Binding>;
@@ -411,7 +415,7 @@ const readers: { [K in KindOfKey]: Reader<K> } = {
       view,
       set: {
         by: change(b, (by: MorphBy) => morphBy(b, by, plain, becomes, ctx)),
-        family: change(b, (family: MorphFamily) =>
+        family: change(b, (family: ModFamily) =>
           b.kind === 'mod_morph' ? { ...b, mods: [...FAMILY_MODS[family]] } : b,
         ),
         toggleLayer: change(b, (layer: string) => {
@@ -557,21 +561,6 @@ function adaptive(b: Of<'adaptive'>): Pick<AdaptiveShape, 'view' | 'set'> {
 }
 
 // ---------------------------------------------------------------------------- morphs
-
-/** The modifiers each family stands for, in the order a morph's family is read. */
-const FAMILY_MODS: Record<MorphFamily, Mod[]> = {
-  shift: ['LSHIFT', 'RSHIFT'],
-  ctrl: ['LCTRL', 'RCTRL'],
-  alt: ['LALT', 'RALT'],
-  gui: ['LGUI', 'RGUI'],
-};
-
-function familyOf(mods: Mod[]): MorphFamily | null {
-  const found = Object.entries(FAMILY_MODS).find(([, family]) =>
-    family.some((m) => mods.includes(m)),
-  );
-  return found ? (found[0] as MorphFamily) : null;
-}
 
 /** A morph changed another way keeps what it types, and starts on shift or the likeliest layer. */
 function morphBy(
@@ -761,52 +750,34 @@ function pressOf(text: string, ctx: BindingTextContext): Partial<Of<'kp'>> {
 
 /** The plain key press a binding amounts to, where it has one: what is worth keeping. */
 function tapOf(b: Binding | undefined): Binding | undefined {
-  switch (b?.kind) {
-    case 'kp':
-    case 'key_repeat':
-      return b;
-    case 'lt':
-    case 'hold_tap':
-      return tapOf(b.tap);
-    case 'mod_morph':
-      return tapOf(b.default);
-    case 'layer_morph':
-      return tapOf(b.inactive);
-    case 'tap_dance':
-      return tapOf(b.bindings[0]);
-    case 'adaptive':
-      return tapOf(b.default);
-    default:
-      return undefined;
-  }
+  const p = b && partOf(b);
+  return p?.kind === 'kp' || p?.kind === 'key_repeat' ? p : undefined;
+}
+
+/** What the key does when held where that differs, or else its Plain part: a layer or modifier key. */
+function keyOf(b: Binding | undefined): Binding | undefined {
+  if (b === undefined) return undefined;
+  const held = heldPart(b);
+  return held ? partOf(held, HELD) : partOf(b);
 }
 
 function layerOf(b: Binding | undefined): string | undefined {
-  switch (b?.kind) {
+  const k = keyOf(b);
+  switch (k?.kind) {
     case 'mo':
     case 'sl':
     case 'tog':
     case 'to':
     case 'auto_layer':
-    case 'lt':
-      return b.layer;
-    case 'hold_tap':
-      return layerOf(b.hold);
+      return k.layer;
     default:
       return undefined;
   }
 }
 
 function modOf(b: Binding | undefined): Mod | undefined {
-  switch (b?.kind) {
-    case 'sk':
-    case 'mod':
-      return b.mod;
-    case 'hold_tap':
-      return modOf(b.hold);
-    default:
-      return undefined;
-  }
+  const k = keyOf(b);
+  return k?.kind === 'sk' || k?.kind === 'mod' ? k.mod : undefined;
 }
 
 /** The adaptive key or alt repeat a binding is, or carries as the tap of a tap-hold. */
@@ -823,6 +794,7 @@ function adaptiveOf(b: Binding | undefined): Of<'adaptive'> | undefined {
 }
 
 const EMPTY_SYMBOL: Binding = { kind: 'kp', symbol: '' };
+const HELD: Choosing = { press: 'hold' };
 
 /**
  * Turn a binding into another kind, keeping whatever carries over: the symbol of a key made into

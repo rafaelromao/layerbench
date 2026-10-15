@@ -3,7 +3,7 @@ import { normalizeText } from '../corpus/normalize.js';
 import { FIXTURE_MIXED } from '../fixtures/index.js';
 import { compileLayout } from '../layout/compile.js';
 import { importTextLayout } from '../layout/text.js';
-import type { Layout } from '../layout/types.js';
+import type { Binding, Layout, Mod } from '../layout/types.js';
 import { CLASSIC_LAYOUTS } from '../layouts/classic.js';
 import { magicRomak, romak24, romak34 } from '../layouts/romak.js';
 import { explain, simulate } from './resolver.js';
@@ -496,5 +496,131 @@ describe("a tap-hold's hold, whatever it does", () => {
       ['LHM', 'hold_release'],
       ['RHI', 'tap'],
     ]);
+  });
+});
+
+describe("a mod morph's modifiers", () => {
+  const kp = (symbol: string) => ({ kind: 'kp' as const, symbol });
+  /** A comma that is a semicolon with `mods` held, and one shift key. */
+  const board = (mods: Mod[], shift: Binding): Layout => ({
+    format: 'layerbench/layout@1',
+    name: 'Morph',
+    hostLocale: 'symbols',
+    geometry: { preset: '3x5+2' },
+    keys: { space: 'L0' },
+    layers: [
+      {
+        id: 'base',
+        bindings: {
+          L0: kp(' '),
+          LHP: { kind: 'mod_morph', mods, default: kp(','), morphed: kp(';') },
+          LHR: kp('a'),
+          LHM: shift,
+        },
+      },
+    ],
+  });
+  const sticky = (mod: Mod): Binding => ({ kind: 'sk', mod });
+  const held = (mod: Mod): Binding => ({
+    kind: 'hold_tap',
+    tap: kp('e'),
+    hold: { kind: 'mod', mod },
+  });
+
+  it('morphs when any one of them is held, as ZMK does', () => {
+    for (const mods of [
+      ['LSHIFT', 'RSHIFT'],
+      ['RSHIFT', 'LSHIFT'],
+    ] as Mod[][]) {
+      for (const shift of [sticky('LSHIFT'), held('LSHIFT'), sticky('RSHIFT'), held('RSHIFT')]) {
+        const t = trace(board(mods, shift), 'a;a', { caseMode: 'model' });
+        expect(t.out).toBe('a;a');
+        expect(t.keys.filter((k) => k !== 'LHM')).toEqual(['LHR', 'LHP', 'LHR']);
+      }
+    }
+  });
+
+  it("tries the choice's other modifiers when the shift key holds the other shift", () => {
+    const layout: Layout = {
+      ...board(['LSHIFT', 'LALT'], sticky('RSHIFT')),
+      keys: { space: 'L0', shift: { key: 'LHM', kind: 'sk' } },
+    };
+    layout.layers[0].bindings.LHI = sticky('LALT');
+    const t = trace(layout, 'a;a', { caseMode: 'model' });
+    expect(t.out).toBe('a;a');
+    expect(t.keys).toEqual(['LHR', 'LHI', 'LHP', 'LHR']);
+  });
+
+  it('needs a modifier the outer morph does not set aside for a morph inside it', () => {
+    // The outer morph sets left Shift and left Alt aside while it runs its changed part, so the
+    // inner morph is changed by left Control only.
+    const inner: Binding = {
+      kind: 'mod_morph',
+      mods: ['LSHIFT', 'LCTRL'],
+      default: kp('-'),
+      morphed: kp(';'),
+    };
+    const layout = board([], sticky('LSHIFT'));
+    layout.layers[0].bindings.LHP = {
+      kind: 'mod_morph',
+      mods: ['LSHIFT', 'LALT'],
+      default: kp(','),
+      morphed: inner,
+    };
+    layout.layers[0].bindings.LHI = sticky('LCTRL');
+    const t = trace(layout, 'a;a', { caseMode: 'model' });
+    expect(t.out).toBe('a;a');
+    expect(t.keys).toContain('LHI');
+  });
+
+  it('reaches a layer through a morph inside a morph with a modifier the outer one does not hide', () => {
+    // Command and Control rather than Shift: a sticky shift left on would make the `q` a `Q`.
+    const inner: Binding = {
+      kind: 'mod_morph',
+      mods: ['LGUI', 'LCTRL'],
+      default: kp('-'),
+      morphed: { kind: 'sl', layer: 'up' },
+    };
+    const layout = board([], sticky('LGUI'));
+    layout.layers[0].bindings.LHP = {
+      kind: 'mod_morph',
+      mods: ['LGUI', 'LALT'],
+      default: kp(','),
+      morphed: inner,
+    };
+    layout.layers[0].bindings.LHI = sticky('LCTRL');
+    layout.layers.push({ id: 'up', bindings: { '*': { kind: 'trans' }, RHI: kp('q') } });
+    const t = trace(layout, 'aqa', { caseMode: 'model' });
+    expect(t.out).toBe('aqa');
+    // Left Control for the inner morph, left Command for the outer one, in either order.
+    expect([...t.keys].sort()).toEqual(['LHI', 'LHM', 'LHP', 'LHR', 'LHR', 'RHI']);
+  });
+
+  it("types a morph's plain part inside a morph without the modifiers that would change it", () => {
+    // The outer morph keeps left Shift, so the inner one still sees it: `;` needs left Alt.
+    const inner: Binding = {
+      kind: 'mod_morph',
+      mods: ['LSHIFT', 'LCTRL'],
+      default: kp(';'),
+      morphed: kp('z'),
+    };
+    const layout = board([], sticky('LSHIFT'));
+    layout.layers[0].bindings.LHP = {
+      kind: 'mod_morph',
+      mods: ['LSHIFT', 'LALT'],
+      keepMods: ['LSHIFT'],
+      default: kp(','),
+      morphed: inner,
+    };
+    layout.layers[0].bindings.LHI = sticky('LALT');
+    const t = trace(layout, 'a;a', { caseMode: 'model' });
+    expect(t.out).toBe('a;a');
+    expect(t.keys).toEqual(['LHR', 'LHI', 'LHP', 'LHR']);
+  });
+
+  it('cannot morph with a modifier it does not name', () => {
+    const t = trace(board(['RSHIFT'], sticky('LSHIFT')), 'a;a', { caseMode: 'model' });
+    expect(t.out).toBe('aa');
+    expect(t.coverage.unproducible.get(';')).toBe(1);
   });
 });

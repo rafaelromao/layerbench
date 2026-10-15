@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { compileLayout } from '../layout/compile.js';
-import type { Binding, Layout } from '../layout/types.js';
+import type { Binding, Layout, Mod } from '../layout/types.js';
 import { documentedLayouts } from '../layouts/index.js';
 import { magicRomak, romak24 } from '../layouts/romak.js';
 import {
@@ -245,6 +245,37 @@ describe('the keys that reach a layer', () => {
     expect(says.LHP).toBe('tapped twice from base to reach up');
     expect(says.LHI).toBe('tapped from base by the x macro to reach up');
   });
+
+  it('names the modifiers a morph needs: a family as one, a choice with or, morphs inside morphs with and', () => {
+    const morph = (mods: Mod[], morphed: Binding): Binding => ({
+      kind: 'mod_morph',
+      mods,
+      default: kp('a'),
+      morphed,
+    });
+    const c = compileLayout(
+      board([
+        {
+          id: 'base',
+          bindings: {
+            LHR: morph(['RSHIFT', 'LSHIFT'], { kind: 'sl', layer: 'up' }),
+            LHM: morph(['LSHIFT', 'LALT'], { kind: 'sl', layer: 'up' }),
+            LHI: morph(
+              ['LSHIFT', 'RSHIFT'],
+              morph(['LCTRL', 'RCTRL'], { kind: 'sl', layer: 'up' }),
+            ),
+          },
+        },
+        { id: 'up', bindings: { '*': { kind: 'trans' } } },
+      ]),
+    );
+    const says = Object.fromEntries(
+      reachKeys(c, 1).map((k) => [keyId(c, k.pos), describeReach(c, 1, k)]),
+    );
+    expect(says.LHR).toBe('tapped from base with Shift to reach up');
+    expect(says.LHM).toBe('tapped from base with left Shift or left Alt to reach up');
+    expect(says.LHI).toBe('tapped from base with Shift and Control to reach up');
+  });
 });
 
 describe('the keys that could each make the same layer tap', () => {
@@ -307,5 +338,24 @@ describe("a layer reached from a tap-hold's hold", () => {
       ]),
     );
     expect(marks(c, 'up')).toEqual(['LHM held', 'RHM tapped']);
+  });
+});
+
+describe('the macro a reach key is known by', () => {
+  it('is read off its Plain part, past a layer morph too', () => {
+    const macro: Binding = { kind: 'macro', steps: [kp('x'), { kind: 'sl', layer: 'up' }] };
+    const c = compileLayout(
+      board([
+        {
+          id: 'base',
+          bindings: {
+            LHR: { kind: 'layer_morph', layers: ['up'], inactive: macro, active: kp('y') },
+          },
+        },
+        { id: 'up', bindings: { '*': { kind: 'trans' } } },
+      ]),
+    );
+    const [key] = reachKeys(c, 1);
+    expect(describeReach(c, 1, key)).toBe('tapped from base by the x macro to reach up');
   });
 });

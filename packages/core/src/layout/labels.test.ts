@@ -2,7 +2,7 @@ import { expect, it, describe as suite } from 'vitest';
 import { bundledLayout } from '../layouts/index.js';
 import { compileLayout } from './compile.js';
 import { BADGE, describe, LAYER_MODE, legend, legendText, tapLabel } from './labels.js';
-import type { Binding } from './types.js';
+import type { Binding, Mod } from './types.js';
 
 const c = compileLayout(bundledLayout('magic-romak')!);
 const at = (keyId: string, layer = 0) => c.layers[layer].bindings[c.keyIndex.get(keyId)!];
@@ -80,6 +80,20 @@ suite('legends', () => {
     );
   });
 
+  it('says which modifiers change a morph, naming both shifts as Shift', () => {
+    const morph = (mods: Mod[]): Binding => ({
+      kind: 'mod_morph',
+      mods,
+      default: { kind: 'kp', symbol: ',' },
+      morphed: { kind: 'kp', symbol: ';' },
+    });
+    expect(describe(c, morph(['LSHIFT', 'RSHIFT']))).toBe('types ,; with Shift: types ;');
+    expect(describe(c, morph(['RCTRL']))).toBe('types ,; with right Control: types ;');
+    expect(describe(c, morph(['LSHIFT', 'LGUI']))).toBe(
+      'types ,; with left Shift or left Command: types ;',
+    );
+  });
+
   it('shows what shift types only when it is not the capital', () => {
     expect(legend(c, { kind: 'kp', symbol: 'a', shifted: 'A' }).shifted).toBeNull();
     expect(legend(c, { kind: 'kp', symbol: ',', shifted: ';' }).shifted).toBe(';');
@@ -99,5 +113,46 @@ suite('legends', () => {
     const l = legend(c, { kind: 'raw', label: 'BT1', source: '&bt BT_SEL 1' });
     expect([l.tap, l.kind]).toEqual(['BT1', 'raw']);
     expect(l.detail).toContain('not simulated');
+  });
+});
+
+suite("a key's legend is read off its Plain part, past either kind of morph", () => {
+  const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
+  const byLayer = (inactive: Binding): Binding => ({
+    kind: 'layer_morph',
+    layers: ['alpha2'],
+    inactive,
+    active: kp('z'),
+  });
+  const byShift = (plain: Binding): Binding => ({
+    kind: 'mod_morph',
+    mods: ['LSHIFT', 'RSHIFT'],
+    default: plain,
+    morphed: kp('z'),
+  });
+
+  it('draws the hold of a tap-hold inside a layer morph, as inside a mod morph', () => {
+    const tapHold: Binding = {
+      kind: 'hold_tap',
+      tap: kp('a'),
+      hold: { kind: 'mod', mod: 'LCTRL' },
+    };
+    expect(legend(c, byLayer(tapHold)).hold).toBe(legend(c, tapHold).hold);
+    expect(legend(c, byShift(tapHold)).hold).toBe(legend(c, tapHold).hold);
+  });
+
+  it('marks a macro inside a morph as a macro', () => {
+    const macro: Binding = { kind: 'macro', symbols: 'qu' };
+    expect(legend(c, byLayer(macro)).badge).toBe(BADGE.macro);
+    expect(legend(c, byShift(macro)).badge).toBe(BADGE.macro);
+  });
+
+  it('draws a sticky key inside a morph the way it draws a sticky key', () => {
+    const sticky: Binding = { kind: 'sk', mod: 'LSHIFT' };
+    for (const key of [byLayer(sticky), byShift(sticky)]) {
+      const l = legend(c, key);
+      expect(l.hold).toBe(LAYER_MODE.sl);
+      expect(l.holdIsMode).toBe(true);
+    }
   });
 });

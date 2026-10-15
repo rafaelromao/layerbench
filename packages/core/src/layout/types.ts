@@ -13,6 +13,40 @@ export const MODS: readonly Mod[] = [
   'RGUI',
 ];
 
+/** A modifier and its twin on the other side of the board. */
+export type ModFamily = 'shift' | 'ctrl' | 'alt' | 'gui';
+
+export const FAMILY_MODS: Record<ModFamily, readonly Mod[]> = {
+  shift: ['LSHIFT', 'RSHIFT'],
+  ctrl: ['LCTRL', 'RCTRL'],
+  alt: ['LALT', 'RALT'],
+  gui: ['LGUI', 'RGUI'],
+};
+
+/** The first family, in `FAMILY_MODS` order, that one of `mods` belongs to, or null for none. */
+export function familyOf(mods: readonly Mod[]): ModFamily | null {
+  for (const [family, members] of Object.entries(FAMILY_MODS) as [ModFamily, readonly Mod[]][]) {
+    if (members.some((m) => mods.includes(m))) return family;
+  }
+  return null;
+}
+
+/**
+ * Modifiers any one of which will do, as a mod morph's: it morphs when one of them is held. A key
+ * that needs several held at once needs several choices.
+ */
+export type ModChoice = readonly Mod[];
+
+/** Whether one of the choice's modifiers is held and not set aside. */
+export function modsMet(
+  choice: ModChoice,
+  held: ReadonlySet<Mod>,
+  except?: ReadonlySet<Mod>,
+): boolean {
+  for (const m of choice) if (held.has(m) && !except?.has(m)) return true;
+  return false;
+}
+
 export type HostLocale = 'symbols' | 'us' | 'us-intl' | 'abnt2';
 
 /**

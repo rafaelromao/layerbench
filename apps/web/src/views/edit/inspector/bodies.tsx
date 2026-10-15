@@ -1,4 +1,10 @@
-import { type Binding, type CompiledLayout, legend, legendText } from '@layerbench/core';
+import {
+  type Binding,
+  type CompiledLayout,
+  legend,
+  legendText,
+  type ModFamily,
+} from '@layerbench/core';
 import { useRef, useState } from 'react';
 import { useDismiss } from '../../../components/use-dismiss.js';
 import { useMediaQuery, WIDE } from '../../../components/use-media-query.js';
@@ -11,7 +17,6 @@ import {
   keyFields,
   type LayerMode,
   type ListChanges,
-  type MorphFamily,
 } from './binding-changes.js';
 import { LayerChips, ModChips, Note, Row, Segment, TextField } from './controls.js';
 import {
@@ -716,7 +721,7 @@ function TapDanceBody({
 
 // ---------------------------------------------------------------------------- morph
 
-const MORPH_FAMILIES: readonly (readonly [MorphFamily, string])[] = [
+const MORPH_FAMILIES: readonly (readonly [ModFamily, string])[] = [
   ['shift', 'Shift'],
   ['ctrl', 'Control'],
   ['alt', 'Alt'],
