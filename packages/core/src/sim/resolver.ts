@@ -403,12 +403,23 @@ export class Simulator {
     const m = this.machine;
     for (const choice of choices) {
       if (modsMet(choice, m.activeMods())) continue;
-      let pressed = false;
+      let met = false;
       for (const mod of choice) {
-        pressed = this.holdMod(mod, events, holdsOut);
-        if (pressed) break;
+        // A press that holds another modifier, as a shift key holding the other shift, is taken
+        // back before the next one is tried.
+        const snap = m.state.snapshot();
+        const eventsAt = events.length;
+        const holdsAt = holdsOut.length;
+        if (this.holdMod(mod, events, holdsOut) && modsMet(choice, m.activeMods())) {
+          met = true;
+          break;
+        }
+        m.state.restore(snap);
+        m.recomputeMask();
+        events.length = eventsAt;
+        holdsOut.length = holdsAt;
       }
-      if (!pressed || !modsMet(choice, m.activeMods())) return false;
+      if (!met) return false;
     }
     return true;
   }

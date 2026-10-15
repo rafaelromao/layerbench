@@ -540,6 +540,17 @@ describe("a mod morph's modifiers", () => {
     }
   });
 
+  it("tries the choice's other modifiers when the shift key holds the other shift", () => {
+    const layout: Layout = {
+      ...board(['LSHIFT', 'LALT'], sticky('RSHIFT')),
+      keys: { space: 'L0', shift: { key: 'LHM', kind: 'sk' } },
+    };
+    layout.layers[0].bindings.LHI = sticky('LALT');
+    const t = trace(layout, 'a;a', { caseMode: 'model' });
+    expect(t.out).toBe('a;a');
+    expect(t.keys).toEqual(['LHR', 'LHI', 'LHP', 'LHR']);
+  });
+
   it('cannot morph with a modifier it does not name', () => {
     const t = trace(board(['RSHIFT'], sticky('LSHIFT')), 'a;a', { caseMode: 'model' });
     expect(t.out).toBe('aa');
