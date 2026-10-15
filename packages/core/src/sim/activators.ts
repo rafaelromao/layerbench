@@ -1,5 +1,5 @@
 import type { CompiledLayout } from '../layout/compile.js';
-import { MOD_NAME } from '../layout/labels.js';
+import { modChoiceText } from '../layout/labels.js';
 import type { ActivatorDef, Binding, ModChoice } from '../layout/types.js';
 
 /** A key the planner can press to bring a layer on. */
@@ -540,7 +540,7 @@ export function describeReach(c: CompiledLayout, layer: number, key: ReachKey): 
       qualifiers.push(`after a key tagged ${orList(r.after.afterTags)}`);
     if (r.chord?.length)
       qualifiers.push(`together with ${andList(r.chord.map((p) => c.keys[p].id))}`);
-    if (r.mods?.length) qualifiers.push(`with ${orList(r.mods.map((c) => MOD_NAME[c[0]]))}`);
+    if (r.mods?.length) qualifiers.push(`with ${andList(r.mods.map(modChoiceText))}`);
     if (r.origin === 'macro') {
       const text = macroText(c.layers[r.via].bindings[key.pos]);
       qualifiers.push(text ? `by the ${text} macro` : 'by its macro');

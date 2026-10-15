@@ -2,7 +2,7 @@ import { expect, it, describe as suite } from 'vitest';
 import { bundledLayout } from '../layouts/index.js';
 import { compileLayout } from './compile.js';
 import { BADGE, describe, LAYER_MODE, legend, legendText, tapLabel } from './labels.js';
-import type { Binding } from './types.js';
+import type { Binding, Mod } from './types.js';
 
 const c = compileLayout(bundledLayout('magic-romak')!);
 const at = (keyId: string, layer = 0) => c.layers[layer].bindings[c.keyIndex.get(keyId)!];
@@ -77,6 +77,20 @@ suite('legends', () => {
     };
     expect(describe(c, b)).toBe(
       'types ão, then left Shift for the next key (one-shot), then types x',
+    );
+  });
+
+  it('says which modifiers change a morph, naming both shifts as Shift', () => {
+    const morph = (mods: Mod[]): Binding => ({
+      kind: 'mod_morph',
+      mods,
+      default: { kind: 'kp', symbol: ',' },
+      morphed: { kind: 'kp', symbol: ';' },
+    });
+    expect(describe(c, morph(['LSHIFT', 'RSHIFT']))).toBe('types ,; with Shift: types ;');
+    expect(describe(c, morph(['RCTRL']))).toBe('types ,; with right Control: types ;');
+    expect(describe(c, morph(['LSHIFT', 'LGUI']))).toBe(
+      'types ,; with left Shift or left Command: types ;',
     );
   });
 

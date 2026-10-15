@@ -1,5 +1,13 @@
 import type { CompiledLayout } from './compile.js';
-import type { AdaptiveTrigger, Binding, Mod } from './types.js';
+import {
+  type AdaptiveTrigger,
+  type Binding,
+  FAMILY_MODS,
+  familyOf,
+  type Mod,
+  type ModChoice,
+  type ModFamily,
+} from './types.js';
 
 export type LegendKind =
   | 'alpha'
@@ -58,6 +66,27 @@ export const MOD_NAME: Record<Mod, string> = {
   LGUI: 'left Command',
   RGUI: 'right Command',
 };
+
+/** A modifier family as a sentence names it, either side alike. */
+export const FAMILY_NAME: Record<ModFamily, string> = {
+  shift: 'Shift',
+  ctrl: 'Control',
+  alt: 'Alt',
+  gui: 'Command',
+};
+
+/** A choice of modifiers in words: "Shift" for both shifts, "left Shift or left Alt" otherwise. */
+export function modChoiceText(choice: ModChoice): string {
+  const family = familyOf(choice);
+  if (family && sameMods(choice, FAMILY_MODS[family])) return FAMILY_NAME[family];
+  const names = [...new Set(choice)].map((m) => MOD_NAME[m]);
+  if (names.length <= 1) return names.join('');
+  return `${names.slice(0, -1).join(', ')} or ${names[names.length - 1]}`;
+}
+
+function sameMods(a: ModChoice, b: ModChoice): boolean {
+  return a.every((m) => b.includes(m)) && b.every((m) => a.includes(m));
+}
 
 /** The words drawn under a layer key, for each way it can bring the layer on. */
 export const LAYER_MODE = {
@@ -345,7 +374,7 @@ export function describe(c: CompiledLayout, b: Binding): string {
     case 'hold_tap':
       return `tap: ${describe(c, b.tap)}; hold: ${describe(c, b.hold)}`;
     case 'mod_morph':
-      return `${describe(c, b.default)}; with ${b.mods.map((m) => MOD_NAME[m]).join(' or ')}: ${describe(c, b.morphed)}`;
+      return `${describe(c, b.default)}; with ${modChoiceText(b.mods)}: ${describe(c, b.morphed)}`;
     case 'layer_morph':
       return `${describe(c, b.inactive)}; on ${b.layers.map((l) => layerName(c, l)).join(' or ')}: ${describe(c, b.active)}`;
     case 'tap_dance':
