@@ -120,6 +120,9 @@ function sameValue(a: unknown, b: unknown): boolean {
 
 type ComboOf = NonNullable<Layout['combos']>[number];
 
+/** The id the compiler knows a combo by: the one it has, or `combo` and its place. */
+const comboId = (c: ComboOf, place: number) => c.id ?? `combo${place}`;
+
 /** Whether two lists of keys name the same keys, in any order. */
 const sameKeySet = (a: string[], b: string[]) =>
   a.length === b.length && a.every((k) => b.includes(k));
@@ -308,13 +311,15 @@ const handlers: Handlers = {
     const typingPaths = layout.typingPaths;
     let renamedPaths = typingPaths;
     if (!sameKeys) {
-      const taken = new Set(combos.filter((_, i) => i !== edit.combo).map((c) => c.id));
+      const others = combos.flatMap((c, i) => (i === edit.combo ? [] : [comboId(c, i)]));
+      const taken = new Set(others);
       next = { ...next, id: unusedId(slugWords(next.keys.join('-')) || 'combo', taken) };
       // Twins under one id (older saved layouts) are told apart only by place, so a path naming
       // that id is left to whichever the resolver reads it as; only a combo's own id is followed.
-      const owned = !combos.some((c, i) => i !== edit.combo && c.id === current.id);
-      if (typingPaths && owned && next.id !== current.id) {
-        const from = `combo:${current.id}`;
+      const was = comboId(current, edit.combo);
+      const owned = !others.includes(was);
+      if (typingPaths && owned && next.id !== was) {
+        const from = `combo:${was}`;
         const rewrite = (producer: string) =>
           producer === from || producer.startsWith(`${from}#`)
             ? `combo:${next.id}${producer.slice(from.length)}`

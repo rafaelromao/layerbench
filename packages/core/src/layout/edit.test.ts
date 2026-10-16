@@ -376,6 +376,23 @@ describe('changing a combo', () => {
     expect(o.layout.typingPaths).toBe(twins.typingPaths);
   });
 
+  it('follows an unnamed combo by the id the compiler gives it', () => {
+    const unnamed: Layout = {
+      ...withCombos,
+      combos: [
+        { keys: ['LHM', 'LHI'], binding: kp('q'), layers: ['base'], role: 'typing' },
+        { keys: ['LHM', 'LHR'], binding: kp('z'), layers: ['upper'], role: 'typing' },
+      ],
+      typingPaths: { q: [{ producer: 'combo:combo0' }], z: [{ producer: 'combo:combo1' }] },
+    };
+    const o = landed(unnamed, { kind: 'updateCombo', combo: 0, keys: ['LHR', 'LHI'] });
+    expect(o.layout.combos?.[0].id).toBe('lhr-lhi');
+    expect(o.layout.typingPaths).toEqual({
+      q: [{ producer: 'combo:lhr-lhi' }],
+      z: [{ producer: 'combo:combo1' }],
+    });
+  });
+
   it('tells key sets apart by their keys, whatever characters the ids hold', () => {
     const key = (id: string, x: number) => ({
       id,
