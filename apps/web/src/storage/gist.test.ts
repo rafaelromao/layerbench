@@ -118,7 +118,7 @@ describe('gists as storage', () => {
     const create = calls.find((c) => c.method === 'POST');
     expect(create?.url).toBe('https://api.github.com/gists');
     expect(create?.body?.public).toBe(false);
-    expect(create?.body?.description).toBe('LayerBench: custom layouts');
+    expect(create?.body?.description).toBe('LayerBench: saved layouts');
     const files = create?.body?.files as Record<string, { content: string }>;
     expect(JSON.parse(files[documentFile('layouts', 'mine')].content)).toEqual({ name: 'Mine' });
     expect(

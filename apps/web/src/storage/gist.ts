@@ -14,9 +14,9 @@ import { API, type GitHubAccess, gitHubFetch } from './github-api.js';
 import { sha1Hex } from './indexeddb.js';
 
 const DESCRIPTIONS: Record<Collection, string> = {
-  layouts: 'LayerBench: custom layouts',
-  rulesets: 'LayerBench: custom rule sets',
-  corpora: 'LayerBench: custom corpora',
+  layouts: 'LayerBench: saved layouts',
+  rulesets: 'LayerBench: saved rule sets',
+  corpora: 'LayerBench: saved corpora',
 };
 
 /**
