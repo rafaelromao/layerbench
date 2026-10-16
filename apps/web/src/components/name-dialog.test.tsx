@@ -49,6 +49,27 @@ describe('NameDialog', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  it('keeps its keys from the page under it, whose Undo would change the layout behind', async () => {
+    const user = userEvent.setup();
+    const heard = vi.fn();
+    render(
+      // biome-ignore lint/a11y/noStaticElementInteractions: stands in for the editor's shortcuts
+      <div onKeyDown={heard}>
+        <NameDialog
+          title="Save a copy"
+          nameLabel="Name of the copy"
+          initialName="Qwerty copy"
+          submitLabel="Save copy"
+          onSubmit={() => {}}
+          onClose={() => {}}
+        />
+      </div>,
+    );
+    screen.getByRole('button', { name: 'Cancel' }).focus();
+    await user.keyboard('{Control>}z{/Control}');
+    expect(heard).not.toHaveBeenCalled();
+  });
+
   it('tells its caller it was closed, by Cancel or by the browser', async () => {
     const user = userEvent.setup();
     const { onClose } = open();

@@ -41,7 +41,15 @@ export function NameDialog({
 
   const trimmed = name.trim();
   return (
-    <dialog ref={dialog} className="modal" aria-labelledby={titleId} onClose={onClose}>
+    <dialog
+      ref={dialog}
+      className="modal"
+      aria-labelledby={titleId}
+      onClose={onClose}
+      // The page under a modal dialog is out of reach: its shortcuts, Undo among them, must not
+      // hear a key pressed in here.
+      onKeyDown={(e) => e.stopPropagation()}
+    >
       <form
         className="modal-box max-w-md space-y-3"
         onSubmit={(e) => {
