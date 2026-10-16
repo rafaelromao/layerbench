@@ -774,7 +774,10 @@ export function Workbench({
                     <p className="text-xs">
                       Picking keys for a combo:{' '}
                       <span className="font-mono">{state.comboPick.join('+') || 'none yet'}</span> —
-                      tap them on the board, then add the combo in the Combos panel.
+                      tap them on the board, then{' '}
+                      {state.comboPickFor === null
+                        ? 'add the combo in the Combos panel.'
+                        : 'apply them in the Combos panel.'}
                     </p>
                   )}
                 </div>
