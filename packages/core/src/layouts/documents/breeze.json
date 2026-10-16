@@ -280,14 +280,6 @@
           "kind": "kp",
           "symbol": "@"
         },
-        "LHR": {
-          "kind": "kp",
-          "symbol": "^"
-        },
-        "LHM": {
-          "kind": "kp",
-          "symbol": "$"
-        },
         "RTI": {
           "kind": "kp",
           "symbol": "%"
@@ -332,22 +324,6 @@
           "kind": "kp",
           "symbol": " "
         },
-        "LBM": {
-          "kind": "kp",
-          "symbol": "\""
-        },
-        "LBI": {
-          "kind": "kp",
-          "symbol": "'"
-        },
-        "LBR": {
-          "kind": "kp",
-          "symbol": "`"
-        },
-        "LHI": {
-          "kind": "kp",
-          "symbol": "~"
-        },
         "LTR": {
           "kind": "kp",
           "symbol": "<"
@@ -359,6 +335,30 @@
         "LTM": {
           "kind": "kp",
           "symbol": ">"
+        },
+        "LBR": {
+          "kind": "kp",
+          "symbol": "^"
+        },
+        "LHR": {
+          "kind": "kp",
+          "symbol": "`"
+        },
+        "LBM": {
+          "kind": "kp",
+          "symbol": "$"
+        },
+        "LHM": {
+          "kind": "kp",
+          "symbol": "\""
+        },
+        "LBI": {
+          "kind": "kp",
+          "symbol": "~"
+        },
+        "LHI": {
+          "kind": "kp",
+          "symbol": "'"
         }
       }
     },
@@ -372,10 +372,6 @@
         "LHP": {
           "kind": "kp",
           "symbol": "ª"
-        },
-        "LHM": {
-          "kind": "kp",
-          "symbol": "£"
         },
         "RTI": {
           "kind": "kp",
@@ -425,29 +421,33 @@
           "kind": "kp",
           "symbol": "«"
         },
-        "LBR": {
-          "kind": "dead_key",
-          "diacritic": "`"
-        },
-        "LBI": {
-          "kind": "dead_key",
-          "diacritic": "´"
-        },
-        "LHI": {
-          "kind": "dead_key",
-          "diacritic": "~"
-        },
-        "LHR": {
-          "kind": "dead_key",
-          "diacritic": "^"
-        },
         "LTI": {
           "kind": "kp",
           "symbol": "€"
         },
+        "LBI": {
+          "kind": "dead_key",
+          "diacritic": "~"
+        },
+        "LHI": {
+          "kind": "dead_key",
+          "diacritic": "´"
+        },
         "LBM": {
+          "kind": "kp",
+          "symbol": "£"
+        },
+        "LHM": {
           "kind": "dead_key",
           "diacritic": "¨"
+        },
+        "LBR": {
+          "kind": "dead_key",
+          "diacritic": "^"
+        },
+        "LHR": {
+          "kind": "dead_key",
+          "diacritic": "`"
         }
       }
     }
