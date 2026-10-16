@@ -290,6 +290,60 @@ describe('Saving', () => {
     expect(JSON.stringify((await storage.get('layouts', 'qwerty-copy'))?.doc)).toContain('ç');
   });
 
+  it('finds the layout the browser wrote when a first save failed after that, and makes no second', async () => {
+    // With a repository as well, the browser's copy is written first and the repository can fail.
+    const storage = new MemoryStorage();
+    const put = storage.put.bind(storage);
+    storage.put = async (...args) => {
+      await put(...args);
+      throw new Error('offline');
+    };
+    const { s } = session('qwerty', { storage });
+    const state = await opened(s);
+    const copy = { ...state.layout, name: 'Mine' };
+    expect(await s.save(copy)).toMatchObject({ ok: false, reason: 'failed', error: 'offline' });
+    expect(s.getState()).toMatchObject({ storedId: null });
+
+    storage.put = put;
+    expect(await s.save(copy)).toEqual({ ok: true, id: 'mine', leftBehind: false });
+    expect(await ids(storage)).toEqual(['mine']);
+    expect(s.getState()).toMatchObject({ storedId: 'mine' });
+  });
+
+  it("moves the browser's copy of a failed first save to the name a retry gives", async () => {
+    const storage = new MemoryStorage();
+    const put = storage.put.bind(storage);
+    storage.put = async (...args) => {
+      await put(...args);
+      throw new Error('offline');
+    };
+    const { s } = session('qwerty', { storage });
+    const state = await opened(s);
+    await s.save({ ...state.layout, name: 'Mine' });
+
+    storage.put = put;
+    expect(await s.save({ ...state.layout, name: 'Yours' })).toMatchObject({
+      ok: true,
+      id: 'yours',
+    });
+    expect(await ids(storage)).toEqual(['yours']);
+  });
+
+  it('takes a free id on a retry when nothing was written by the failed save', async () => {
+    const storage = new MemoryStorage();
+    const put = storage.put.bind(storage);
+    storage.put = async () => {
+      throw new Error('browser store full');
+    };
+    const { s } = session('qwerty', { storage });
+    const state = await opened(s);
+    expect(await s.save({ ...state.layout, name: 'Mine' })).toMatchObject({ ok: false });
+
+    storage.put = put;
+    expect(await s.save({ ...state.layout, name: 'Mine' })).toMatchObject({ ok: true, id: 'mine' });
+    expect(await ids(storage)).toEqual(['mine']);
+  });
+
   it('does the same for a layout carried in a link that is not saved here', async () => {
     const owner = new MemoryStorage();
     await seed(owner, 'qwerty', 'mine', { name: 'Mine' });

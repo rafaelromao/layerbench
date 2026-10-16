@@ -4,15 +4,18 @@ import { freeId, type Layout, type StorageAdapter, toCanonicalJson } from '@laye
  * Store a layout as a custom layout of its own, under a free id from its name: a card another layout
  * has the id of is never overwritten. The one way a layout becomes a new custom layout, whether it
  * comes from New layout, an import or Save in Analyze; the id is only for links, and the layout is
- * known by its name.
+ * known by its name. `onId` hears the id before anything is written: a save that falls over may
+ * still have been written here, and whoever tries again needs to know where.
  */
 export async function saveNewLayout(
   storage: StorageAdapter,
   layout: Layout,
   message: string,
+  onId: (id: string) => void = () => {},
 ): Promise<{ id: string }> {
   const taken = new Set((await storage.list('layouts')).map((e) => e.id));
   const id = freeId(layout.name, taken);
+  onId(id);
   await storage.put('layouts', id, toCanonicalJson({ ...layout, id }), { message });
   return { id };
 }

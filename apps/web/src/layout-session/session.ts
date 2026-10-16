@@ -93,9 +93,11 @@ async function store(
   storage: StorageAdapter,
   layout: Layout,
   storedId: string | null,
+  /** Hears the id a layout not stored yet is saved under, before it is written. */
+  onNewId: (id: string) => void,
 ): Promise<{ id: string; leftBehind: boolean }> {
   if (storedId === null) {
-    const { id } = await saveNewLayout(storage, layout, `Save layout ${layout.name}`);
+    const { id } = await saveNewLayout(storage, layout, `Save layout ${layout.name}`, onNewId);
     return { id, leftBehind: false };
   }
   const taken = new Set((await storage.list('layouts')).map((e) => e.id));
@@ -141,6 +143,12 @@ export function createLayoutSession(
   let pending: { timer: ReturnType<typeof setTimeout> | null; ref: Promise<string> } | null = null;
   let saves: Promise<unknown> = Promise.resolve();
   let saving = false;
+  /**
+   * The id a first save took, until one has gone through: with a repository to write to as well, a
+   * save can fail after the browser has written the layout, and trying again must find that one
+   * rather than make a second.
+   */
+  let attempted: string | null = null;
 
   const pickedRef = (): string =>
     !(editor?.unsaved ?? opened?.startsUnsaved) && storedId !== null
@@ -211,6 +219,7 @@ export function createLayoutSession(
     }
     const startsUnsaved = origin !== undefined;
     storedId = startsUnsaved ? origin : result.storedId;
+    attempted = null;
     // A custom layout opened by its id gets the link that carries it whole, which opens anywhere.
     cleanRef = startsUnsaved ? ref : await carriedRef(ref, { layout: result.layout, storedId });
     if (state.opening !== opening || disposed) return;
@@ -275,7 +284,18 @@ export function createLayoutSession(
         saving = true;
         publish();
         try {
-          const { id, leftBehind } = await store(ports.storage(), layout, storedId);
+          let from = storedId;
+          if (from === null && attempted !== null) {
+            const there = await ports
+              .storage()
+              .get('layouts', attempted)
+              .catch(() => null);
+            if (there) from = attempted;
+          }
+          const { id, leftBehind } = await store(ports.storage(), layout, from, (taken) => {
+            attempted = taken;
+          });
+          attempted = null;
           // Its link from now on carries it whole, so it can still be sent. A moment ago that may
           // have been the link of a draft of it, which it no longer is.
           const ref = await snapshotRef(layout, id);

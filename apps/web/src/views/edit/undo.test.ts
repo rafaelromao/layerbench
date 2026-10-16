@@ -119,6 +119,15 @@ describe('undo', () => {
     expect(JSON.stringify(saved.layout)).toContain('ç');
   });
 
+  it('keeps a name typed while a copy was being saved, unsaved', () => {
+    const before = start();
+    const copy = { ...before.layout, name: 'Mine' };
+    const typed = reducer(before, { type: 'edit', edit: { kind: 'setMeta', name: 'Newer' } });
+    const saved = reducer(typed, { type: 'savedAs', from: before.layout, layout: copy });
+    expect(saved.layout.name).toBe('Newer');
+    expect(saved.dirty).toBe(true);
+  });
+
   it('keeps the history bounded', () => {
     let state = start();
     for (let i = 0; i < 60; i++) {

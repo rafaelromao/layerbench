@@ -26,6 +26,20 @@ describe('saveNewLayout', () => {
     ]);
   });
 
+  it('says which id it took before it writes, so a save that fails can be found again', async () => {
+    const storage = new MemoryStorage();
+    await saveNewLayout(storage, { ...qwerty, name: 'Mine' }, 'First');
+    const heard: string[] = [];
+    storage.put = async () => {
+      expect(heard).toEqual(['mine-2']);
+      throw new Error('offline');
+    };
+    await expect(
+      saveNewLayout(storage, { ...qwerty, name: 'Mine' }, 'Second', (id) => heard.push(id)),
+    ).rejects.toThrow('offline');
+    expect(heard).toEqual(['mine-2']);
+  });
+
   it('passes the commit message on', async () => {
     const storage = new MemoryStorage();
     const put = storage.put.bind(storage);

@@ -320,6 +320,10 @@ function reduce(state: EditState, action: EditAction): EditState {
     // The name is the one thing saving changes, and it is an edit as any other: one Undo gives the
     // layout its old name back, as unsaved. An edit made while the save was on its way stays unsaved.
     case 'savedAs': {
+      // A name typed while the copy was being saved is the user's newer word: it stays, unsaved.
+      if (state.layout.name !== action.from.name) {
+        return { ...state, saved: action.layout, dirty: true };
+      }
       const renamed = make(state, { kind: 'setMeta', name: action.layout.name });
       return state.layout === action.from
         ? { ...renamed, saved: renamed.layout, dirty: false }
