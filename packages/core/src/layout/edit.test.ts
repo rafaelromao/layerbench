@@ -317,6 +317,115 @@ describe('combos', () => {
   });
 });
 
+describe('changing a combo', () => {
+  const withCombos: Layout = {
+    ...layout,
+    combos: [
+      { id: 'lhm-lhi', keys: ['LHM', 'LHI'], binding: kp('q'), layers: ['base'], role: 'typing' },
+      { id: 'lhm-lhr', keys: ['LHM', 'LHR'], binding: kp('z'), layers: ['upper'], role: 'command' },
+    ],
+    typingPaths: { q: [{ producer: 'combo:lhm-lhi' }, { producer: 'combo:lhm-lhi#t1' }] },
+  };
+  const update = (change: Omit<Extract<Edit, { kind: 'updateCombo' }>, 'kind' | 'combo'>, at = 0) =>
+    applyEdit(withCombos, { kind: 'updateCombo', combo: at, ...change });
+
+  it('changes the output to any binding, keeping the id, the keys and the rest', () => {
+    const tapHold: Binding = { kind: 'hold_tap', tap: kp('a'), hold: kp('b') };
+    const o = landed(withCombos, { kind: 'updateCombo', combo: 0, binding: tapHold });
+    expect(o.layout.combos?.[0]).toEqual({ ...withCombos.combos?.[0], binding: tapHold });
+    expect(o.layout.combos?.[1]).toEqual(withCombos.combos?.[1]);
+  });
+
+  it('switches the role and sets the timeout', () => {
+    const o = landed(withCombos, { kind: 'updateCombo', combo: 1, role: 'typing', timeoutMs: 80 });
+    expect(o.layout.combos?.[1]).toMatchObject({ role: 'typing', timeoutMs: 80, id: 'lhm-lhr' });
+  });
+
+  it('changes the layers to those chosen, more than one', () => {
+    const o = landed(withCombos, {
+      kind: 'updateCombo',
+      combo: 0,
+      layers: ['base', 'upper', 'base'],
+    });
+    expect(o.layout.combos?.[0].layers).toEqual(['base', 'upper']);
+  });
+
+  it('gives a combo on other keys the id of those keys, kept free, and its typing path follows', () => {
+    const o = landed(withCombos, { kind: 'updateCombo', combo: 0, keys: ['LHR', 'LHI'] });
+    expect(o.layout.combos?.[0]).toMatchObject({ id: 'lhr-lhi', keys: ['LHR', 'LHI'] });
+    expect(o.layout.typingPaths?.q.map((e) => e.producer)).toEqual([
+      'combo:lhr-lhi',
+      'combo:lhr-lhi#t1',
+    ]);
+    // Another combo already has the id of the keys, though not their layer: the id is numbered.
+    const numbered = landed(withCombos, { kind: 'updateCombo', combo: 0, keys: ['LHM', 'LHR'] });
+    expect(numbered.layout.combos?.[0].id).toBe('lhm-lhr-2');
+  });
+
+  it('keeps the id when the same keys come in another order', () => {
+    const o = landed(withCombos, { kind: 'updateCombo', combo: 0, keys: ['LHI', 'LHM'] });
+    expect(o.layout.combos?.[0]).toMatchObject({ id: 'lhm-lhi', keys: ['LHI', 'LHM'] });
+    expect(o.layout.typingPaths).toBe(withCombos.typingPaths);
+  });
+
+  it('is refused with a reason when the combo could not be drawn or would clash', () => {
+    expect(update({ keys: ['LHM'] })).toMatchObject({
+      status: 'refused',
+      message: 'a combo needs at least two keys',
+    });
+    expect(update({ keys: ['LHM', 'LHM'] })).toMatchObject({ status: 'refused' });
+    expect(update({ keys: ['LHM', 'NOPE'] })).toMatchObject({
+      status: 'refused',
+      message: 'the board has no key NOPE',
+    });
+    expect(update({ layers: [] })).toMatchObject({
+      status: 'refused',
+      message: 'a combo needs at least one layer',
+    });
+    expect(update({ layers: ['nowhere'] })).toMatchObject({
+      status: 'refused',
+      message: 'the layout has no layer nowhere',
+    });
+    expect(update({ timeoutMs: 0 })).toMatchObject({ status: 'refused' });
+    // The same keys as the second combo, once the first is on its layer too.
+    expect(update({ keys: ['LHR', 'LHM'], layers: ['upper'] })).toMatchObject({
+      status: 'refused',
+      message: expect.stringMatching(/already uses LHR\+LHM/),
+    });
+    // The same keys on another layer are another combo.
+    expect(update({ keys: ['LHR', 'LHM'] }).status).toBe('landed');
+  });
+
+  it('counts a combo with no layers as on every layer when looking for a clash', () => {
+    const everywhere: Layout = {
+      ...withCombos,
+      combos: [
+        { id: 'a', keys: ['LHM', 'LHI'], binding: kp('q'), role: 'typing' },
+        { id: 'b', keys: ['LHM', 'LHR'], binding: kp('z'), layers: ['upper'], role: 'typing' },
+      ],
+    };
+    const o = applyEdit(everywhere, { kind: 'updateCombo', combo: 1, keys: ['LHM', 'LHI'] });
+    expect(o.status).toBe('refused');
+  });
+
+  it('changes nothing when what it says is what the combo has', () => {
+    for (const change of [
+      {},
+      { keys: ['LHM', 'LHI'] },
+      { layers: ['base'] },
+      { binding: kp('q') },
+      { role: 'typing' as const },
+    ]) {
+      expect(update(change)).toEqual({
+        edit: { kind: 'updateCombo', combo: 0, ...change },
+        before: withCombos,
+        status: 'unchanged',
+      });
+    }
+    expect(update({ role: 'command' }, 7).status).toBe('unchanged');
+  });
+});
+
 describe('behaviours, typing paths, keys, details and features', () => {
   it('sets one behaviour by name, or replaces them all from JSON', () => {
     const one = landed(layout, { kind: 'setBehavior', name: 'hm', binding: kp('x') });
@@ -435,6 +544,7 @@ describe('every edit', () => {
     { kind: 'moveLayer', layer: 'upper', to: 2 },
     { kind: 'removeCombo', combo: 0 },
     { kind: 'toggleComboRole', combo: 0 },
+    { kind: 'updateCombo', combo: 0, role: 'typing' },
   ])('changes nothing when there is nothing to change: %o', (edit) => {
     const o: EditOutcome = applyEdit(layout, edit);
     expect(o).toEqual({ edit, before: layout, status: 'unchanged' });

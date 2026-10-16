@@ -1,5 +1,5 @@
 import { slugWords, unusedId } from '../storage/ids.js';
-import { type CompiledLayout, compileLayout } from './compile.js';
+import { buildGeometry, type CompiledLayout, compileLayout } from './compile.js';
 import {
   copyKey,
   duplicateLayer,
@@ -39,6 +39,19 @@ export type Edit =
       role: 'typing' | 'command';
     }
   | { kind: 'removeCombo' | 'toggleComboRole'; combo: number }
+  /**
+   * What the fields given change in the combo at that place; the others stay. Any binding goes, as
+   * on a key. The id follows the keys when they change.
+   */
+  | {
+      kind: 'updateCombo';
+      combo: number;
+      keys?: string[];
+      layers?: string[];
+      binding?: Binding;
+      role?: 'typing' | 'command';
+      timeoutMs?: number;
+    }
   | { kind: 'setBehavior'; name: string; binding: Binding }
   /** Every behaviour, from the JSON an author wrote. */
   | { kind: 'replaceBehaviors'; json: string }
@@ -92,6 +105,24 @@ type Step = { layout: Layout; at?: Landing } | { refused: string };
 type Handlers = { [K in Edit['kind']]: (layout: Layout, edit: Edit & { kind: K }) => Step };
 
 const same = (layout: Layout): Step => ({ layout });
+
+/** Whether two plain JSON values hold the same, however their fields are ordered. */
+function sameValue(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== 'object' || typeof b !== 'object' || !a || !b) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  const x = a as Record<string, unknown>;
+  const y = b as Record<string, unknown>;
+  const names = Object.keys(x).filter((k) => x[k] !== undefined);
+  const others = Object.keys(y).filter((k) => y[k] !== undefined);
+  return names.length === others.length && names.every((k) => sameValue(x[k], y[k]));
+}
+
+type ComboOf = NonNullable<Layout['combos']>[number];
+
+/** Whether two combos can fire on the same layer; one with no layers fires on all of them. */
+const sharesLayer = (a: ComboOf, b: ComboOf) =>
+  !a.layers || !b.layers || a.layers.some((l) => b.layers?.includes(l));
 
 const indexOf = (layout: Layout, id: string) => layout.layers.findIndex((l) => l.id === id);
 
@@ -223,6 +254,79 @@ const handlers: Handlers = {
     return {
       layout: { ...layout, combos: combos.map((x, i) => (i === combo ? { ...c, role } : x)) },
     };
+  },
+
+  updateCombo(layout, edit) {
+    const combos = layout.combos ?? [];
+    const current = combos[edit.combo];
+    if (!current) return same(layout);
+    let next: ComboOf = { ...current };
+
+    if (edit.keys) {
+      const keys = [...new Set(edit.keys)];
+      if (keys.length < 2) return { refused: 'a combo needs at least two keys' };
+      const known = new Set(buildGeometry(layout).keys.map((k) => k.id));
+      const unknown = keys.find((k) => !known.has(k));
+      if (unknown !== undefined) return { refused: `the board has no key ${unknown}` };
+      next.keys = keys;
+    }
+
+    if (edit.layers) {
+      const layers = [...new Set(edit.layers)];
+      if (layers.length === 0) return { refused: 'a combo needs at least one layer' };
+      const unknown = layers.find((l) => indexOf(layout, l) < 0);
+      if (unknown !== undefined) return { refused: `the layout has no layer ${unknown}` };
+      next.layers = layers;
+    }
+
+    if (edit.keys || edit.layers) {
+      const wanted = [...next.keys].sort().join('+');
+      const clash = combos.find(
+        (c, i) =>
+          i !== edit.combo && [...c.keys].sort().join('+') === wanted && sharesLayer(c, next),
+      );
+      if (clash) {
+        return {
+          refused: `another combo already uses ${next.keys.join('+')} on a layer of this one`,
+        };
+      }
+    }
+
+    if (edit.binding) next.binding = edit.binding;
+    if (edit.role) next.role = edit.role;
+    if (edit.timeoutMs !== undefined) {
+      if (!(edit.timeoutMs > 0)) return { refused: 'a combo timeout is a positive number of ms' };
+      next.timeoutMs = edit.timeoutMs;
+    }
+
+    // The id names the keys, so it follows them when they are others, and what a typing path says
+    // about the combo follows the id.
+    const sameKeys =
+      next.keys.length === current.keys.length && next.keys.every((k) => current.keys.includes(k));
+    const typingPaths = layout.typingPaths;
+    let renamedPaths = typingPaths;
+    if (!sameKeys) {
+      const taken = new Set(combos.filter((_, i) => i !== edit.combo).map((c) => c.id));
+      next = { ...next, id: unusedId(slugWords(next.keys.join('-')) || 'combo', taken) };
+      if (typingPaths && next.id !== current.id) {
+        const from = `combo:${current.id}`;
+        const rewrite = (producer: string) =>
+          producer === from || producer.startsWith(`${from}#`)
+            ? `combo:${next.id}${producer.slice(from.length)}`
+            : producer;
+        renamedPaths = Object.fromEntries(
+          Object.entries(typingPaths).map(([symbol, entries]) => [
+            symbol,
+            entries.map((e) => ({ ...e, producer: rewrite(e.producer) })),
+          ]),
+        );
+      }
+    }
+
+    if (sameValue(next, current) && renamedPaths === typingPaths) return same(layout);
+    const out: Layout = { ...layout, combos: combos.map((c, i) => (i === edit.combo ? next : c)) };
+    if (renamedPaths) out.typingPaths = renamedPaths;
+    return { layout: out };
   },
 
   setBehavior(layout, { name, binding }) {
