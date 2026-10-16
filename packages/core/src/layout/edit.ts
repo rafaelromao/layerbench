@@ -120,6 +120,10 @@ function sameValue(a: unknown, b: unknown): boolean {
 
 type ComboOf = NonNullable<Layout['combos']>[number];
 
+/** Whether two lists of keys name the same keys, in any order. */
+const sameKeySet = (a: string[], b: string[]) =>
+  a.length === b.length && a.every((k) => b.includes(k));
+
 /** Whether two combos can fire on the same layer; one with no layers fires on all of them. */
 const sharesLayer = (a: ComboOf, b: ComboOf) =>
   !a.layers || !b.layers || a.layers.some((l) => b.layers?.includes(l));
@@ -269,9 +273,7 @@ const handlers: Handlers = {
       const unknown = keys.find((k) => !known.has(k));
       if (unknown !== undefined) return { refused: `the board has no key ${unknown}` };
       // The same keys in another order are the same combo: nothing to change.
-      if (keys.length !== current.keys.length || !keys.every((k) => current.keys.includes(k))) {
-        next.keys = keys;
-      }
+      if (!sameKeySet(keys, current.keys)) next.keys = keys;
     }
 
     if (edit.layers) {
@@ -283,10 +285,8 @@ const handlers: Handlers = {
     }
 
     if (edit.keys || edit.layers) {
-      const wanted = [...next.keys].sort().join('+');
       const clash = combos.find(
-        (c, i) =>
-          i !== edit.combo && [...c.keys].sort().join('+') === wanted && sharesLayer(c, next),
+        (c, i) => i !== edit.combo && sameKeySet(c.keys, next.keys) && sharesLayer(c, next),
       );
       if (clash) {
         return {
@@ -304,14 +304,16 @@ const handlers: Handlers = {
 
     // The id names the keys, so it follows them when they are others, and what a typing path says
     // about the combo follows the id.
-    const sameKeys =
-      next.keys.length === current.keys.length && next.keys.every((k) => current.keys.includes(k));
+    const sameKeys = sameKeySet(next.keys, current.keys);
     const typingPaths = layout.typingPaths;
     let renamedPaths = typingPaths;
     if (!sameKeys) {
       const taken = new Set(combos.filter((_, i) => i !== edit.combo).map((c) => c.id));
       next = { ...next, id: unusedId(slugWords(next.keys.join('-')) || 'combo', taken) };
-      if (typingPaths && next.id !== current.id) {
+      // Twins under one id (older saved layouts) are told apart only by place, so a path naming
+      // that id is left to whichever the resolver reads it as; only a combo's own id is followed.
+      const owned = !combos.some((c, i) => i !== edit.combo && c.id === current.id);
+      if (typingPaths && owned && next.id !== current.id) {
         const from = `combo:${current.id}`;
         const rewrite = (producer: string) =>
           producer === from || producer.startsWith(`${from}#`)

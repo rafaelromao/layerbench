@@ -663,50 +663,6 @@ export function CombosPanel({ state, send }: PanelProps) {
                 </tr>
               );
             })}
-||||||| 812af0b
-            {combos.map((c, i) => (
-              // By place: a custom layout can hold two combos under one id.
-              // biome-ignore lint/suspicious/noArrayIndexKey: the place is what a row edits
-              <tr key={i}>
-                <td className="font-mono">
-                  <button
-                    type="button"
-                    className="link link-hover"
-                    aria-label={`Show the keys of ${c.keys.join('+')}`}
-                    onClick={() =>
-                      send({
-                        type: 'setBoardHighlight',
-                        keys: state.boardHighlight.length > 0 ? [] : c.keys,
-                      })
-                    }
-                  >
-                    {c.keys.join('+')}
-                  </button>
-                </td>
-                <td className="font-mono">{tapLabel(state.compiled, c.binding)}</td>
-                <td className="text-xs opacity-70">{(c.layers ?? []).join(', ') || 'all'}</td>
-                <td>
-                  <button
-                    type="button"
-                    className={`badge badge-xs ${c.role === 'typing' ? 'badge-primary' : ''}`}
-                    onClick={() =>
-                      send({ type: 'edit', edit: { kind: 'toggleComboRole', combo: i } })
-                    }
-                  >
-                    {c.role}
-                  </button>
-                </td>
-                <td>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-xs"
-                    onClick={() => send({ type: 'edit', edit: { kind: 'removeCombo', combo: i } })}
-                  >
-                    ✕
-                  </button>
-                </td>
-              </tr>
-            ))}
           </tbody>
         </table>
       </section>

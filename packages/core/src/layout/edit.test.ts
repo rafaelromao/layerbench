@@ -362,6 +362,54 @@ describe('changing a combo', () => {
     expect(numbered.layout.combos?.[0].id).toBe('lhm-lhr-2');
   });
 
+  it('leaves the typing paths of twins under one id as they are', () => {
+    const twins: Layout = {
+      ...withCombos,
+      combos: [
+        { id: 'twin', keys: ['LHM', 'LHI'], binding: kp('q'), layers: ['base'], role: 'typing' },
+        { id: 'twin', keys: ['LHM', 'LHR'], binding: kp('z'), layers: ['base'], role: 'typing' },
+      ],
+      typingPaths: { q: [{ producer: 'combo:twin' }] },
+    };
+    const o = landed(twins, { kind: 'updateCombo', combo: 0, keys: ['LHR', 'LHI'] });
+    expect(o.layout.combos?.[0].id).toBe('lhr-lhi');
+    expect(o.layout.typingPaths).toBe(twins.typingPaths);
+  });
+
+  it('tells key sets apart by their keys, whatever characters the ids hold', () => {
+    const key = (id: string, x: number) => ({
+      id,
+      hand: 'L' as const,
+      finger: 'LI' as const,
+      row: 1 as const,
+      col: 4,
+      x,
+      y: 0,
+      w: 1,
+      h: 1,
+      rotation: 0,
+      home: false,
+      thumb: false,
+      inner: false,
+    });
+    const custom: Layout = {
+      ...layout,
+      keys: { space: 'C' },
+      geometry: { custom: [key('A+B', 0), key('A', 1), key('B+C', 2), key('C', 3)] },
+      layers: [{ id: 'base', name: 'Base', bindings: { '*': { kind: 'trans' } } }],
+      combos: [
+        { id: 'one', keys: ['A+B', 'C'], binding: kp('q'), layers: ['base'], role: 'typing' },
+        { id: 'two', keys: ['A', 'B+C'], binding: kp('z'), layers: ['base'], role: 'typing' },
+      ],
+    };
+    // 'A+B','C' and 'A','B+C' both read A+B+C when joined, but they are not the same keys.
+    landed(custom, { kind: 'updateCombo', combo: 1, layers: ['base'], role: 'command' });
+    expect(applyEdit(custom, { kind: 'updateCombo', combo: 1, keys: ['C', 'A+B'] })).toMatchObject({
+      status: 'refused',
+      message: expect.stringMatching(/already uses/),
+    });
+  });
+
   it('leaves the combo as it is when its keys come in another order', () => {
     expect(update({ keys: ['LHI', 'LHM'] }).status).toBe('unchanged');
   });
