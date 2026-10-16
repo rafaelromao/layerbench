@@ -273,10 +273,6 @@
         "*": {
           "kind": "trans"
         },
-        "LHP": {
-          "kind": "kp",
-          "symbol": "@"
-        },
         "RTI": {
           "kind": "kp",
           "symbol": "%"
@@ -284,10 +280,6 @@
         "RTM": {
           "kind": "kp",
           "symbol": "="
-        },
-        "RTR": {
-          "kind": "kp",
-          "symbol": ":"
         },
         "RHI": {
           "kind": "kp",
@@ -356,6 +348,14 @@
         "RHP": {
           "kind": "kp",
           "symbol": ";"
+        },
+        "RTR": {
+          "kind": "kp",
+          "symbol": "@"
+        },
+        "LHP": {
+          "kind": "kp",
+          "symbol": ":"
         }
       }
     },
