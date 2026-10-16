@@ -125,40 +125,70 @@ type ComboOf = NonNullable<Layout['combos']>[number];
 const comboId = (c: ComboOf, place: number) => c.id ?? `combo${place}`;
 
 /**
- * How a producer id changes when the combo at `place` takes the id `now`. Producer ids are not
- * taken apart as text, since ids may hold the very characters that join them: the simulator's own
- * producers say which of their steps the combo is, and so which part of the id is its. A combo is
- * the source of a dead key's producer (`deadkey:combo:<id>…+<letter>`), the letter it accents
- * (`deadkey:<source>+combo:<id>…`), or the producer itself (`combo:<id>…`).
+ * The typing paths of `after`, which is `before` with the combo at `place` changed: what its paths
+ * say about the combo follows it. Producer ids are not taken apart as text, since ids may hold the
+ * very characters that join them: the simulator's own producers say which of their steps the combo
+ * is, and so which part of the id is its. A combo is the source of a dead key's producer
+ * (`deadkey:combo:<id>…+<letter>`), the letter it accents (`deadkey:<source>+combo:<id>…`), or the
+ * producer itself (`combo:<id>…`). A path that names the combo goes to its new id, and is dropped
+ * when the combo no longer makes that symbol that way; the others stay as they were.
  */
-function comboRenamer(layout: Layout, place: number, now: string): (producer: string) => string {
-  let compiled: CompiledLayout;
+function followCombo(before: Layout, after: Layout, place: number): Layout['typingPaths'] {
+  const paths = before.typingPaths;
+  if (!paths) return paths;
+  let was: CompiledLayout;
+  let now: CompiledLayout;
   try {
-    compiled = compileLayout(layout);
+    was = compileLayout(before);
+    now = compileLayout(after);
   } catch {
-    return (producer) => producer;
+    return paths;
   }
-  const { byId } = enumerateProducers(compiled, 'model');
-  const own = `combo:${compiled.combos[place]?.id}`;
-  const swap = (id: string) => (id.startsWith(own) ? `combo:${now}${id.slice(own.length)}` : id);
-  return (producer) => {
-    const p = byId.get(producer);
+  const old = enumerateProducers(was, 'model').byId;
+  const made = enumerateProducers(now, 'model').byId;
+  const from = `combo:${was.combos[place]?.id}`;
+  const to = `combo:${now.combos[place]?.id}`;
+  const swap = (id: string) => (id.startsWith(from) ? `${to}${id.slice(from.length)}` : id);
+  /** The id the producer has once the combo is the one it now is. */
+  const renamed = (producer: string): string => {
+    const p = old.get(producer);
     if (!p) return producer;
-    if (p.kind === 'combo') return p.steps[0]?.combo === place ? swap(producer) : producer;
-    if (p.kind !== 'deadkey') return producer;
+    if (p.kind === 'combo') return swap(producer);
     const [first, ...rest] = p.steps;
     const source =
       first.combo !== undefined
-        ? `combo:${compiled.combos[first.combo]?.id}`
-        : `${compiled.layers[first.layer ?? 0]?.id}/${compiled.keys[first.pos]?.id}`;
+        ? `combo:${was.combos[first.combo]?.id}`
+        : `${was.layers[first.layer ?? 0]?.id}/${was.keys[first.pos]?.id}`;
     const accent = producer.startsWith(`deadkey:${source}#shifted+`) ? '#shifted' : '';
     const head = `deadkey:${source}${accent}+`;
-    if (!producer.startsWith(head)) return producer;
+    if (p.kind !== 'deadkey' || !producer.startsWith(head)) return producer;
     const letter = producer.slice(head.length);
     const sourceNow = first.combo === place ? swap(source) : source;
     const letterNow = rest.some((st) => st.combo === place) ? swap(letter) : letter;
     return `deadkey:${sourceNow}${accent}+${letterNow}`;
   };
+  let changed = false;
+  const next: NonNullable<Layout['typingPaths']> = {};
+  for (const [symbol, entries] of Object.entries(paths)) {
+    const kept: TypingPathEntry[] = [];
+    for (const e of entries) {
+      if (!old.get(e.producer)?.steps.some((st) => st.combo === place)) {
+        kept.push(e);
+        continue;
+      }
+      const producer = renamed(e.producer);
+      if (made.get(producer)?.symbols.toLowerCase() !== symbol.toLowerCase()) {
+        changed = true;
+        continue;
+      }
+      if (producer !== e.producer) changed = true;
+      kept.push({ ...e, producer });
+    }
+    // A list that only named this combo goes with it, rather than staying as an empty ordering.
+    if (kept.length > 0 || entries.length === 0) next[symbol] = kept;
+    else changed = true;
+  }
+  return changed ? next : paths;
 }
 
 /** Whether two lists of keys name the same keys, in any order. */
@@ -343,33 +373,20 @@ const handlers: Handlers = {
       next.timeoutMs = edit.timeoutMs;
     }
 
-    // The id names the keys, so it follows them when they are others, and what a typing path says
-    // about the combo follows the id.
-    const sameKeys = sameKeySet(next.keys, current.keys);
-    const typingPaths = layout.typingPaths;
-    let renamedPaths = typingPaths;
-    if (!sameKeys) {
-      const others = combos.flatMap((c, i) => (i === edit.combo ? [] : [comboId(c, i)]));
-      const taken = new Set(others);
-      next = { ...next, id: unusedId(slugWords(next.keys.join('-')) || 'combo', taken) };
-      // Twins under one id (older saved layouts) are told apart only by place, so a path naming
-      // that id is left to whichever the resolver reads it as; only a combo's own id is followed.
-      const was = comboId(current, edit.combo);
-      const owned = !others.includes(was);
-      if (typingPaths && owned && next.id !== was) {
-        const rewrite = comboRenamer(layout, edit.combo, next.id as string);
-        renamedPaths = Object.fromEntries(
-          Object.entries(typingPaths).map(([symbol, entries]) => [
-            symbol,
-            entries.map((e) => ({ ...e, producer: rewrite(e.producer) })),
-          ]),
-        );
-      }
+    // The id names the keys, so it follows them when they are others.
+    const others = combos.flatMap((c, i) => (i === edit.combo ? [] : [comboId(c, i)]));
+    if (!sameKeySet(next.keys, current.keys)) {
+      next = { ...next, id: unusedId(slugWords(next.keys.join('-')) || 'combo', new Set(others)) };
     }
 
-    if (sameValue(next, current) && renamedPaths === typingPaths) return same(layout);
+    if (sameValue(next, current)) return same(layout);
     const out: Layout = { ...layout, combos: combos.map((c, i) => (i === edit.combo ? next : c)) };
-    if (renamedPaths) out.typingPaths = renamedPaths;
+    // Twins under one id (older saved layouts) are told apart only by place, so a path naming that
+    // id is left to whichever the resolver reads it as; only a combo's own id is followed.
+    if (layout.typingPaths && !others.includes(comboId(current, edit.combo))) {
+      const paths = followCombo(layout, out, edit.combo);
+      if (paths !== layout.typingPaths) out.typingPaths = paths;
+    }
     return { layout: out };
   },
 

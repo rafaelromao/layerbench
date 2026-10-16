@@ -491,6 +491,40 @@ describe('changing a combo', () => {
     expect(producerIds(o.layout)).toContain('deadkey:base/A+combo:x+combo:a-d');
   });
 
+  it('drops a typing path the combo no longer makes, and keeps the ones it still does', () => {
+    const paths: Layout = {
+      ...withCombos,
+      typingPaths: {
+        q: [{ producer: 'combo:lhm-lhi' }, { producer: 'direct:base/LHM' }],
+        z: [{ producer: 'combo:lhm-lhi' }],
+        // Not about the combo: left alone, even though nothing makes it.
+        w: [{ producer: 'combo:gone' }],
+      },
+    };
+    // Another symbol: the entry under q goes, and z, which is now what it makes, stays out of
+    // q's list but is not given an entry it never had.
+    const other = landed(paths, { kind: 'updateCombo', combo: 0, binding: kp('z') });
+    expect(pathOf(other.layout, 'q')).toEqual(['direct:base/LHM']);
+    expect(pathOf(other.layout, 'z')).toEqual(['combo:lhm-lhi']);
+    expect(pathOf(other.layout, 'w')).toEqual(['combo:gone']);
+    // A list that only named the combo goes with it.
+    const gone = landed(
+      { ...paths, typingPaths: { q: [{ producer: 'combo:lhm-lhi' }] } },
+      { kind: 'updateCombo', combo: 0, binding: kp('x') },
+    );
+    expect(gone.layout.typingPaths).toEqual({});
+    // The same symbol another way: the path stays.
+    const same = landed(paths, {
+      kind: 'updateCombo',
+      combo: 0,
+      binding: { kind: 'kp', symbol: 'q', tag: 'x' },
+    });
+    expect(pathOf(same.layout, 'q')).toEqual(['combo:lhm-lhi', 'direct:base/LHM']);
+    // Taking the combo off the layer it types on takes its paths with it.
+    const moved = landed(paths, { kind: 'updateCombo', combo: 0, role: 'command' });
+    expect(pathOf(moved.layout, 'q')).toEqual(['direct:base/LHM']);
+  });
+
   it('follows an unnamed combo by the id the compiler gives it', () => {
     const unnamed: Layout = {
       ...withCombos,
