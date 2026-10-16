@@ -35,7 +35,8 @@ numbers on each card, all scored on the same sample of the same text. **Rank and
 what the ranking is made with, and **Boards**, which lists only the layouts on the boards you tick, so you can keep to the keyboards you own; the layouts on the others are not scored at
 all. Your custom layouts, the ones you keep, are
 ranked in the same list as the ones that come with the app, marked *custom*; untick **Custom
-layouts**, in **Rank and filter**, to leave them out. Each layout takes its
+layouts**, in **Rank and filter**, to leave them out. When that or the boards leave some layouts
+out, a line under **Sort by** says how many are listed and why. Each layout takes its
 place as its score arrives. This browser remembers the scores, the sort and what you chose to list, so the next
 visit opens already ranked; the scores are checked again quietly, and a layout moves only if its
 numbers changed. **Compare** puts every number for two layouts side by side, with the difference and which

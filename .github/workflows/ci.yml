@@ -33,7 +33,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
       - run: pnpm typecheck
-      - run: pnpm test
+      # Tests with coverage: a package below 80% on lines, statements, functions or branches fails here.
+      - run: pnpm test:coverage
       # The sign-in Worker's address goes into the page's code and its content security policy. It
       # is set for this step only: the unit tests expect the page's own origin.
       - run: pnpm build

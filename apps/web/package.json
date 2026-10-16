@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests",
+    "test:coverage": "vitest run --passWithNoTests --coverage",
     "e2e": "playwright test",
     "shots": "playwright test -c playwright.shots.config.ts"
   },
@@ -29,6 +30,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
+    "@vitest/coverage-v8": "5.0.0",
     "daisyui": "^5.7.28",
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^30.0.1",

@@ -45,10 +45,15 @@ async function dragKey(
   elementFromPoint.mockRestore();
 }
 
+/** Open Analyze on Qwerty, in `storage`, and wait for its first analysis. */
+async function openEditOn(storage: IndexedDbAdapter): Promise<void> {
+  renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000', { storage });
+  await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+}
+
 /** Open Analyze on Qwerty and wait for its first analysis. */
 async function openEdit(): Promise<void> {
-  renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000', { storage: freshStorage() });
-  await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+  await openEditOn(freshStorage());
 }
 
 const key = (name: string) => screen.getByRole('button', { name });
@@ -68,6 +73,21 @@ const touchEvent = (type: 'pointerdown' | 'pointerup') =>
 
 /** The bar above the board: the layout's name, author and description, Save, corpus and rules. */
 const bar = () => screen.getByRole('region', { name: 'Layout' });
+
+/** The dialog Save opens for a layout that is not yours, asking what to call the copy. */
+const copyDialog = () => screen.getByRole('dialog', { name: 'Save a copy' });
+
+/** Save a layout that is not yours: answer the dialog, with `name` if one is to be given. */
+async function saveCopy(user: ReturnType<typeof userEvent.setup>, name?: string): Promise<void> {
+  await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+  const dialog = copyDialog();
+  if (name !== undefined) {
+    const field = within(dialog).getByLabelText('Name of the copy');
+    await user.clear(field);
+    await user.type(field, name);
+  }
+  await user.click(within(dialog).getByRole('button', { name: 'Save copy' }));
+}
 
 /** The engine, keeping every analysis it is asked for. */
 function recording(): { client: AnalysisClient; requests: AnalyzeRequest[] } {
@@ -161,7 +181,7 @@ describe('Edit', () => {
     });
   });
 
-  it('saves from beside the unsaved badge, under the name in the bar', async () => {
+  it('saves a bundled layout as a copy, asking what to call it', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
     const { currentSearch } = renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000', {
@@ -170,18 +190,105 @@ describe('Edit', () => {
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
     // Saving is no longer a panel to go looking for.
     expect(screen.queryByRole('tab', { name: 'Save' })).toBeNull();
+    expect(within(bar()).getByRole('button', { name: 'Save' })).toHaveAttribute(
+      'title',
+      'Save a copy in your custom layouts',
+    );
 
-    const name = within(bar()).getByLabelText('Name');
-    await user.clear(name);
-    // Not committed with Enter: leaving the field for Save commits it on the way.
-    await user.type(name, 'Qwerty swapped');
     await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+    const dialog = copyDialog();
+    // It says it makes a copy, and offers a name no layout has.
+    expect(
+      within(dialog).getByText(/makes a copy of this layout in your custom layouts/),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByLabelText('Name of the copy')).toHaveValue('Qwerty copy');
+    expect(await storage.list('layouts')).toEqual([]);
+
+    const field = within(dialog).getByLabelText('Name of the copy');
+    await user.clear(field);
+    await user.type(field, 'Qwerty swapped');
+    await user.click(within(dialog).getByRole('button', { name: 'Save copy' }));
 
     expect(await screen.findByText('Saved Qwerty swapped')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Save a copy' })).toBeNull();
     expect((await storage.get('layouts', 'qwerty-swapped'))?.doc.name).toBe('Qwerty swapped');
-    // Its link carries it whole, so it can be sent.
+    // The layout in the bar is the copy now, and its link carries it whole, so it can be sent.
+    expect(within(bar()).getByLabelText('Name')).toHaveValue('Qwerty swapped');
     await linkOf(currentSearch, 'qwerty-swapped');
+    expect(screen.queryByText('unsaved')).toBeNull();
   });
+
+  it('saves the copy again without asking, and makes no second card', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    await openEditOn(storage);
+    await saveCopy(user);
+    expect(await screen.findByText('Saved Qwerty copy')).toBeInTheDocument();
+    expect(within(bar()).getByRole('button', { name: 'Save' })).toHaveAttribute(
+      'title',
+      'Keep it in the Library',
+    );
+
+    key('Key LHM: d').focus();
+    await user.keyboard('ç{Enter}');
+    await screen.findByRole('button', { name: 'Key LHM: ç' });
+    expect(screen.getByText('unsaved')).toBeInTheDocument();
+    await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+
+    // Straight away: no dialog, and the card holds the edit.
+    expect(screen.queryByRole('dialog', { name: 'Save a copy' })).toBeNull();
+    await waitFor(async () =>
+      expect(JSON.stringify((await storage.get('layouts', 'qwerty-copy'))?.doc)).toContain('ç'),
+    );
+    expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['qwerty-copy']);
+  }, 60_000);
+
+  it('keeps the layout as it was when the copy cannot be saved, and offers the name given again', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    await openEditOn(storage);
+    vi.spyOn(storage, 'put').mockRejectedValueOnce(new Error('offline'));
+
+    await saveCopy(user, 'Mine');
+    expect(await screen.findByText('Save failed: offline')).toBeInTheDocument();
+    // Nothing was saved, so nothing was renamed, and the next try does not name a copy of a copy.
+    expect(within(bar()).getByLabelText('Name')).toHaveValue('Qwerty');
+    expect(await storage.list('layouts')).toEqual([]);
+
+    await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+    expect(within(copyDialog()).getByLabelText('Name of the copy')).toHaveValue('Mine');
+    await user.click(within(copyDialog()).getByRole('button', { name: 'Save copy' }));
+    expect(await screen.findByText('Saved Mine')).toBeInTheDocument();
+    expect(within(bar()).getByLabelText('Name')).toHaveValue('Mine');
+    expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['mine']);
+  }, 60_000);
+
+  it('offers a free name for the copy, and refuses none or leaves the layout alone on Cancel', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const qwerty = bundledLayout('qwerty') as Layout;
+    await storage.put(
+      'layouts',
+      'qwerty-copy',
+      toCanonicalJson({ ...qwerty, id: 'qwerty-copy', name: 'Qwerty copy' }),
+    );
+    await openEditOn(storage);
+
+    await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+    const dialog = copyDialog();
+    // One of the user's has "Qwerty copy" already, so the offer is numbered.
+    expect(within(dialog).getByLabelText('Name of the copy')).toHaveValue('Qwerty copy 2');
+
+    await user.clear(within(dialog).getByLabelText('Name of the copy'));
+    expect(within(dialog).getByRole('button', { name: 'Save copy' })).toBeDisabled();
+    await user.type(within(dialog).getByLabelText('Name of the copy'), '  ');
+    expect(within(dialog).getByRole('button', { name: 'Save copy' })).toBeDisabled();
+
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog', { name: 'Save a copy' })).toBeNull();
+    expect(within(bar()).getByLabelText('Name')).toHaveValue('Qwerty');
+    expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['qwerty-copy']);
+  }, 60_000);
 
   it('compares the layout as edited', async () => {
     const user = userEvent.setup();
@@ -1150,10 +1257,10 @@ describe('Edit', () => {
     await user.click(screen.getByRole('button', { name: 'Redo' }));
     expect(screen.getByLabelText('Colour of layer sym')).toHaveValue('teal');
 
-    await user.click(within(bar()).getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('Saved Magic Romak')).toBeInTheDocument();
+    await saveCopy(user);
+    expect(await screen.findByText('Saved Magic Romak copy')).toBeInTheDocument();
     await waitFor(async () => {
-      const doc = (await storage.get('layouts', 'magic-romak'))?.doc as unknown as Layout;
+      const doc = (await storage.get('layouts', 'magic-romak-copy'))?.doc as unknown as Layout;
       expect(doc.layers.find((l) => l.id === 'sym')?.color).toBe('teal');
     });
   }, 60_000);
