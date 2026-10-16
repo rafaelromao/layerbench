@@ -1,5 +1,5 @@
 import { BUNDLED_LAYOUTS, type IndexEntry } from '@layerbench/core';
-import { savedRef } from '../saved/ref.js';
+import { customRef } from '../custom/ref.js';
 
 const byName = (a: { name: string; id?: string }, b: { name: string; id?: string }) =>
   a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }) ||
@@ -11,24 +11,25 @@ const BUNDLED_BY_NAME = [...BUNDLED_LAYOUTS].sort((a, b) =>
 );
 
 /**
- * The options of a layout picker: the bundled layouts, then the ones saved in the Library, each
+ * The options of a layout picker: the bundled layouts, then the custom ones, each
  * group by name, and the layout the link names when it is neither (one carried inline, or not
  * stored any more).
  */
 export function LayoutOptions({
-  saved,
+  custom,
   current,
   currentName,
 }: {
-  saved: IndexEntry[];
+  custom: IndexEntry[];
   /** The value the picker holds. */
   current: string;
   /** What to call it when no option is it. */
   currentName: string;
 }) {
   const listed =
-    BUNDLED_LAYOUTS.some((l) => l.id === current) || saved.some((e) => savedRef(e.id) === current);
-  const savedSorted = [...saved].sort(byName);
+    BUNDLED_LAYOUTS.some((l) => l.id === current) ||
+    custom.some((e) => customRef(e.id) === current);
+  const customSorted = [...custom].sort(byName);
   return (
     <>
       <optgroup label="Bundled">
@@ -38,12 +39,12 @@ export function LayoutOptions({
           </option>
         ))}
       </optgroup>
-      {savedSorted.length > 0 && (
-        <optgroup label="Saved">
-          {savedSorted.map((e) => (
-            <option key={e.id} value={savedRef(e.id)}>
-              {/* Two saved layouts can share a name; their ids tell them apart. */}
-              {saved.filter((o) => o.name === e.name).length > 1 ? `${e.name} (${e.id})` : e.name}
+      {customSorted.length > 0 && (
+        <optgroup label="Custom">
+          {customSorted.map((e) => (
+            <option key={e.id} value={customRef(e.id)}>
+              {/* Two custom layouts can share a name; their ids tell them apart. */}
+              {custom.filter((o) => o.name === e.name).length > 1 ? `${e.name} (${e.id})` : e.name}
             </option>
           ))}
         </optgroup>

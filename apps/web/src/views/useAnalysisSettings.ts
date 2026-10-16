@@ -1,11 +1,11 @@
 import { type AnalysisSettings, stableStringify } from '@layerbench/core';
 import { useMemo } from 'react';
-import { useRuleSet } from '../saved/use-rule-set.js';
+import { useRuleSet } from '../custom/use-rule-set.js';
 
 /**
  * The analysis settings a link names, as far as they are known: their rule set still being read,
  * read, or not opened and why. Nothing is analyzed on settings that are not read: no other rules
- * stand in for a saved set.
+ * stand in for a custom set.
  */
 export type AnalysisSettingsState = {
   /** The settings as the link names them, the rules by their reference. */

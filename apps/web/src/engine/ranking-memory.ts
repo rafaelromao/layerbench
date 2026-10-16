@@ -4,7 +4,7 @@ import type { LayoutSummary } from './use-summaries.js';
 /**
  * The last ranking seen on each set of choices, kept in this browser so the Library opens in the
  * order it was left: each layout's numbers, and which layouts went behind for the text's language.
- * They are kept by layout rather than by what was analyzed, so a saved layout takes its place before
+ * They are kept by layout rather than by what was analyzed, so a custom layout takes its place before
  * its document is read. They may have been computed by an older engine, rule definition or version
  * of the layout, so they are only shown until the same work is done again in the background.
  */
@@ -33,7 +33,7 @@ interface Stored {
 
 /**
  * What a ranking is kept by: the analysis settings it was made on, as the link names them, the rules
- * by their reference. That is known before a saved rule set is read, so the list opens in its order
+ * by their reference. That is known before a custom rule set is read, so the list opens in its order
  * at once, and whatever setting is added to them tells one ranking from another without a word here.
  */
 export function rankingKey(settings: AnalysisSettings<string>): string {
@@ -45,6 +45,11 @@ export function isSummary(value: unknown): value is LayoutSummary {
   const o = value as Record<string, unknown>;
   const num = (v: unknown) => v === null || typeof v === 'number';
   return num(o.effort) && num(o.sfb) && typeof o.skipped === 'number' && Array.isArray(o.missing);
+}
+
+/** A custom layout was once kept as `s:<id>`, now `c:<id>`; the old scores are dropped, not read. */
+function isOldCustomKey(key: string): boolean {
+  return key.startsWith('s:');
 }
 
 /** Every ranking kept, oldest first, with whatever does not read as one left out. */
@@ -59,10 +64,12 @@ function readAll(): Map<string, Stored> {
       const kept: Stored = { summaries: {}, behind: [] };
       if (summaries && typeof summaries === 'object') {
         for (const [key, summary] of Object.entries(summaries)) {
-          if (isSummary(summary)) kept.summaries[key] = summary;
+          if (!isOldCustomKey(key) && isSummary(summary)) kept.summaries[key] = summary;
         }
       }
-      if (Array.isArray(behind)) kept.behind = behind.filter((k) => typeof k === 'string');
+      if (Array.isArray(behind)) {
+        kept.behind = behind.filter((k) => typeof k === 'string' && !isOldCustomKey(k));
+      }
       out.set(context, kept);
     }
   } catch {

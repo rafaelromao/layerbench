@@ -130,10 +130,10 @@ describe('scores kept between visits', () => {
   });
 
   it('shows a layout’s score while its document is still being read', async () => {
-    await remembered(CONTEXT, [['s:mine', summary(8, 1)]]);
+    await remembered(CONTEXT, [['c:mine', summary(8, 1)]]);
     const c = client();
-    const visit = await freshHook(c.client, [QWERTY, { key: 's:mine', layout: null }]);
-    expect(visit.result.current.summaries.get('s:mine')?.effort).toBe(8);
+    const visit = await freshHook(c.client, [QWERTY, { key: 'c:mine', layout: null }]);
+    expect(visit.result.current.summaries.get('c:mine')?.effort).toBe(8);
     // Only the layout it has is counted as waiting, and only that one is analyzed.
     expect(visit.result.current.pending).toBe(1);
     await waitFor(() => expect(c.asked()).toBe(1));

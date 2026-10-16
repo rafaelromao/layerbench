@@ -8,20 +8,20 @@ import {
   safeParseRuleSet,
 } from '@layerbench/core';
 
-/** What a saved document of each collection is read as. A text is handed to the engine as it is. */
-export type SavedDoc<C extends Collection> = C extends 'layouts'
+/** What a custom document of each collection is read as. A text is handed to the engine as it is. */
+export type CustomDoc<C extends Collection> = C extends 'layouts'
   ? Layout
   : C extends 'rulesets'
     ? RuleSet
     : JsonObject;
 
-/** A saved document read: there and readable, not saved here, or there but not readable. */
-export type SavedRead<T> =
+/** A custom document read: there and readable, not saved here, or there but not readable. */
+export type CustomRead<T> =
   | { status: 'read'; doc: T }
   | { status: 'missing' }
   | { status: 'unreadable'; why: string };
 
-export type SavedFailure = Exclude<SavedRead<unknown>, { status: 'read' }>;
+export type CustomFailure = Exclude<CustomRead<unknown>, { status: 'read' }>;
 
 function parse(
   collection: Collection,
@@ -42,15 +42,15 @@ function parse(
 }
 
 /**
- * Read the saved document `id` of a collection. It never fails: storage that cannot be read, or a
+ * Read the custom document `id` of a collection. It never fails: storage that cannot be read, or a
  * document that is not one of its collection, is unreadable, and one storage does not hold is
  * missing. Nothing stands in for either.
  */
-export async function readSaved<C extends Collection>(
+export async function readCustom<C extends Collection>(
   storage: StorageAdapter,
   collection: C,
   id: string,
-): Promise<SavedRead<SavedDoc<C>>> {
+): Promise<CustomRead<CustomDoc<C>>> {
   let stored: Awaited<ReturnType<StorageAdapter['get']>>;
   try {
     stored = await storage.get(collection, id);
@@ -60,7 +60,7 @@ export async function readSaved<C extends Collection>(
   if (!stored) return { status: 'missing' };
   const parsed = parse(collection, stored.doc);
   return parsed.ok
-    ? { status: 'read', doc: parsed.doc as SavedDoc<C> }
+    ? { status: 'read', doc: parsed.doc as CustomDoc<C> }
     : { status: 'unreadable', why: parsed.error };
 }
 
@@ -70,8 +70,8 @@ const NOUN: Record<Collection, string> = {
   corpora: 'text',
 };
 
-/** What to tell someone a saved document did not open: the same words for every collection. */
-export function savedError(collection: Collection, id: string, failure: SavedFailure): string {
+/** What to tell someone a custom document did not open: the same words for every collection. */
+export function customError(collection: Collection, id: string, failure: CustomFailure): string {
   const what = `${NOUN[collection]} ${id}`;
   return failure.status === 'missing'
     ? `${what} is not saved here`

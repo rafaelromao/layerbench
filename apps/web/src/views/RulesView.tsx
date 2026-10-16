@@ -11,9 +11,9 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { ErrorAlert } from '../components/ErrorAlert.js';
 import { HelpLink } from '../components/HelpLink.js';
 import { presetOf, RuleSources } from '../components/RuleSources.js';
+import { customRef } from '../custom/ref.js';
+import { useRuleSet } from '../custom/use-rule-set.js';
 import { HELP } from '../guide/help.js';
-import { savedRef } from '../saved/ref.js';
-import { useRuleSet } from '../saved/use-rule-set.js';
 import { useCarried } from '../state/selection.js';
 import { toast } from '../state/toasts.js';
 import { useCollection, useStorage } from '../storage/use-storage.js';
@@ -148,11 +148,11 @@ export function RulesView() {
   // Analyzing with a set keeps the corpus and the rest of the choices in force.
   const carried = useCarried();
   const storage = useStorage();
-  const savedSets = useCollection('rulesets');
+  const customSets = useCollection('rulesets');
   const ref = parseParams(search).preset;
   const rules = useRuleSet(ref);
 
-  // Nothing is edited until a set is read: a saved one opens on itself, never on a stand-in.
+  // Nothing is edited until a set is read: a custom one opens on itself, never on a stand-in.
   const [state, send] = useReducer(rulesReducer, null, () =>
     rules.status === 'read'
       ? initialRulesState(rules.ruleSet, ref)
@@ -205,20 +205,20 @@ export function RulesView() {
         { ...ruleSet, id, name: saveName } as Record<string, unknown>,
         { message: `Save rule set ${saveName}` },
       );
-      justSaved.current = savedRef(id);
-      send({ type: 'saved', ref: savedRef(id) });
+      justSaved.current = customRef(id);
+      send({ type: 'saved', ref: customRef(id) });
       toast.info(`Saved rule set ${id}`);
-      savedSets.refresh();
+      customSets.refresh();
       navigate({
         to: '/rules',
-        search: { rules: savedRef(id) } as never,
+        search: { rules: customRef(id) } as never,
         replace: true,
         resetScroll: false,
       });
     } catch (e) {
       toast.error(`Save failed: ${e instanceof Error ? e.message : String(e)}`);
     }
-  }, [saveName, ruleSet, storage, savedSets, navigate]);
+  }, [saveName, ruleSet, storage, customSets, navigate]);
 
   const importJson = useCallback(() => {
     const parsed = ruleSetFromJson(state.jsonText);

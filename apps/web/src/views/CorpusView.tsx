@@ -2,10 +2,10 @@ import { type CorpusManifest, slug } from '@layerbench/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { HelpLink } from '../components/HelpLink.js';
+import { customId, customRef } from '../custom/ref.js';
 import { useAnalysisClient } from '../engine/client-context.js';
 import type { CorpusFactsDTO } from '../engine/protocol.js';
 import { HELP } from '../guide/help.js';
-import { savedId, savedRef } from '../saved/ref.js';
 import { useCarried } from '../state/selection.js';
 import { toast } from '../state/toasts.js';
 import { useStorage } from '../storage/use-storage.js';
@@ -91,7 +91,7 @@ export function CorpusView() {
   const storage = useStorage();
 
   const [corpora, setCorpora] = useState<CorpusManifest[]>([]);
-  /** The selected corpus as the engine has it, once read: a saved text's list entry lacks a size. */
+  /** The selected corpus as the engine has it, once read: a custom text's list entry lacks a size. */
   const [details, setDetails] = useState<CorpusManifest | null>(null);
   const [missing, setMissing] = useState<string | null>(null);
   const [facts, setFacts] = useState<CorpusFactsDTO | null>(null);
@@ -115,8 +115,8 @@ export function CorpusView() {
   );
   // A text built here has its own card until it is saved, and a blend made in Analyze is not a text
   // of its own: the list is what comes with the app, and what was saved.
-  const bundled = corpora.filter((c) => savedId(c.id) === null && !/^(custom|mix)-/.test(c.id));
-  const saved = corpora.filter((c) => savedId(c.id) !== null);
+  const bundled = corpora.filter((c) => customId(c.id) === null && !/^(custom|mix)-/.test(c.id));
+  const customTexts = corpora.filter((c) => customId(c.id) !== null);
 
   useEffect(() => {
     let cancelled = false;
@@ -185,7 +185,7 @@ export function CorpusView() {
     try {
       await storage.put('corpora', id, doc, { message: `Save corpus ${custom.name}` });
       // Saved again under a name already in use, it replaces the text the engine had by that name.
-      await client.registerCorpus(savedRef(id), doc);
+      await client.registerCorpus(customRef(id), doc);
       toast.info(`Saved corpus ${id}`);
       setCorpora(await client.listCorpora());
     } catch (e) {
@@ -201,10 +201,10 @@ export function CorpusView() {
           <HelpLink help={HELP.corpus} />
         </div>
         <CorpusList corpora={bundled} selectedId={selectedId} />
-        {saved.length > 0 && (
+        {customTexts.length > 0 && (
           <>
-            <h2 className="text-xs uppercase tracking-wide opacity-60">Saved texts</h2>
-            <CorpusList corpora={saved} selectedId={selectedId} />
+            <h2 className="text-xs uppercase tracking-wide opacity-60">Custom texts</h2>
+            <CorpusList corpora={customTexts} selectedId={selectedId} />
           </>
         )}
         {selectedId && (
@@ -273,7 +273,7 @@ export function CorpusView() {
               <h2 className="font-semibold text-sm">Custom corpus</h2>
               <p className="text-xs opacity-70">
                 Paste or upload your own text. It is normalized the same way the bundled corpora
-                are, and stays in this browser until you save it, when it joins your saved texts.
+                are, and stays in this browser until you save it, when it joins your custom texts.
               </p>
             </div>
 

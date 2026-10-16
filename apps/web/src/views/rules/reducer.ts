@@ -10,7 +10,7 @@ import {
 
 export interface RulesState {
   ruleSet: RuleSet;
-  /** Where the current set came from: a preset id, or `saved:<id>`; null until one is loaded. */
+  /** Where the current set came from: a preset id, or `custom:<id>`; null until one is loaded. */
   sourceRef: string | null;
   dirty: boolean;
   composer: ComposerState;

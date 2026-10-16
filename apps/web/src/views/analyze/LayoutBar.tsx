@@ -26,7 +26,7 @@ export function LayoutBar({
   onSave,
   layoutRef,
   onPick,
-  saved,
+  custom,
   corpora,
   params,
   settings,
@@ -47,8 +47,8 @@ export function LayoutBar({
   /** The layout the link names, for the picker. */
   layoutRef: string;
   onPick: (layoutRef: string) => void;
-  /** The layouts saved in the Library, offered beside the bundled ones. */
-  saved: IndexEntry[];
+  /** The custom layouts in the Library, offered beside the bundled ones. */
+  custom: IndexEntry[];
   corpora: CorpusManifest[];
   params: Params;
   /** What the numbers are made on, as far as their rule set is read. */
@@ -100,7 +100,7 @@ export function LayoutBar({
             value={layoutRef}
             onChange={(e) => onPick(e.target.value)}
           >
-            <LayoutOptions saved={saved} current={layoutRef} currentName={layout.name} />
+            <LayoutOptions custom={custom} current={layoutRef} currentName={layout.name} />
           </select>
         </label>
         <div className="flex shrink-0 items-center gap-2 sm:min-w-0 sm:flex-1">

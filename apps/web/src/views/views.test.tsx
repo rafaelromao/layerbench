@@ -17,7 +17,7 @@ const FOX = Array.from(
 
 let counter = 0;
 
-/** Each test gets its own database, so saved documents never leak between cases. */
+/** Each test gets its own database, so custom documents never leak between cases. */
 function freshStorage(): IndexedDbAdapter {
   return new IndexedDbAdapter(`layerbench-view-${++counter}`);
 }
@@ -28,7 +28,7 @@ describe('Library', () => {
     expect(await screen.findByRole('heading', { name: 'Layouts' })).toBeInTheDocument();
     expect(screen.getByText('Graphite')).toBeInTheDocument();
     expect(screen.getByText('Magic Romak')).toBeInTheDocument();
-    expect(screen.getByText(/Nothing saved yet/)).toBeInTheDocument();
+    expect(screen.getByText(/Nothing custom yet/)).toBeInTheDocument();
   });
 
   it('imports in a dialog of its own, not under the list', async () => {
@@ -72,7 +72,7 @@ describe('Library', () => {
     expect(screen.getByRole('button', { name: 'Open in analyzer' })).toBeEnabled();
   });
 
-  it('shows a layout saved earlier and offers to analyze it', async () => {
+  it('shows a custom layout saved earlier and offers to analyze it', async () => {
     const storage = freshStorage();
     const layout = bundledLayout('colemak-dh')!;
     await storage.put('layouts', 'my-romak', toCanonicalJson({ ...layout, name: 'My Romak' }));
@@ -83,7 +83,7 @@ describe('Library', () => {
     const card = screen.getByText('My Romak').closest('article') as HTMLElement;
     expect(within(card).getByRole('link', { name: 'Analyze' })).toHaveAttribute(
       'href',
-      expect.stringContaining('saved%3Amy-romak'),
+      expect.stringContaining('custom%3Amy-romak'),
     );
   });
 });
@@ -129,7 +129,7 @@ describe('Compare', () => {
     expect(boardA()).toContain('qu');
   });
 
-  it('offers the saved layouts on both sides, as Analyze does', async () => {
+  it('offers the custom layouts on both sides, as Analyze does', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
     const mine = { ...toCanonicalJson(bundledLayout('qwerty')!), id: 'mine', name: 'Mine' };
@@ -143,7 +143,7 @@ describe('Compare', () => {
       expect(within(a).getByRole('option', { name: 'Mine' })).toBeInTheDocument(),
     );
     const b = screen.getByLabelText('Layout B');
-    expect(within(b).getByRole('option', { name: 'Mine' })).toHaveValue('saved:mine');
+    expect(within(b).getByRole('option', { name: 'Mine' })).toHaveValue('custom:mine');
 
     // Each group is in alphabetical order.
     const names = (group: string) =>
@@ -155,8 +155,8 @@ describe('Compare', () => {
       [...bundled].sort((x, y) => x!.localeCompare(y!, 'en', { sensitivity: 'base' })),
     );
 
-    await user.selectOptions(b, 'saved:mine');
-    await waitFor(() => expect(currentSearch()).toContain('b=saved%3Amine'));
+    await user.selectOptions(b, 'custom:mine');
+    await waitFor(() => expect(currentSearch()).toContain('b=custom%3Amine'));
   });
 
   /** The engine, keeping every analysis it is asked for. */
@@ -221,12 +221,12 @@ describe('Compare', () => {
 });
 
 describe('Compare, sent', () => {
-  it('carries a saved layout on either side in its link whole, so it opens anywhere', async () => {
+  it('carries a custom layout on either side in its link whole, so it opens anywhere', async () => {
     const storage = freshStorage();
     const mine = { ...(bundledLayout('colemak') as Layout), id: 'mine', name: 'Mine' };
     await storage.put('layouts', 'mine', toCanonicalJson(mine));
     const { currentSearch } = renderRoute(
-      '/compare?layout=saved%3Amine&b=mine&corpus=en-general&sample=20000',
+      '/compare?layout=custom%3Amine&b=mine&corpus=en-general&sample=20000',
       { client: new RecordingClient(), storage },
     );
     const carried = async (key: string) => {
@@ -236,12 +236,12 @@ describe('Compare, sent', () => {
     };
     await waitFor(async () => expect((await carried('layout'))?.id).toBe('mine'));
     await waitFor(async () => expect((await carried('b'))?.name).toBe('Mine'));
-    // Here, where it is saved, both are still picked as the saved layout.
+    // Here, where it is saved, both are still picked as the custom layout.
     const pickers = screen.getAllByRole('combobox', { name: /Layout/ });
     await waitFor(() =>
       expect(pickers.map((p) => (p as HTMLSelectElement).value)).toEqual([
-        'saved:mine',
-        'saved:mine',
+        'custom:mine',
+        'custom:mine',
       ]),
     );
   }, 30_000);
@@ -272,7 +272,7 @@ describe('Corpus', () => {
     expect(await screen.findByText(/at least 1,000 characters/)).toBeInTheDocument();
   });
 
-  it('saves a text, lists it with the saved texts, and opens it again', async () => {
+  it('saves a text, lists it with the custom texts, and opens it again', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
     const { currentSearch } = renderRoute('/corpus', { storage });
@@ -287,10 +287,10 @@ describe('Corpus', () => {
     expect(await screen.findByText('Saved corpus my-notes')).toBeInTheDocument();
     expect(await storage.get('corpora', 'my-notes')).not.toBeNull();
 
-    const heading = await screen.findByRole('heading', { name: 'Saved texts' });
-    const saved = heading.nextElementSibling as HTMLElement;
-    await user.click(within(saved).getByRole('button', { name: /My notes/ }));
-    await waitFor(() => expect(currentSearch()).toContain('id=saved%3Amy-notes'));
+    const heading = await screen.findByRole('heading', { name: 'Custom texts' });
+    const custom = heading.nextElementSibling as HTMLElement;
+    await user.click(within(custom).getByRole('button', { name: /My notes/ }));
+    await waitFor(() => expect(currentSearch()).toContain('id=custom%3Amy-notes'));
     const card = (await screen.findByRole('heading', { name: 'My notes' })).closest(
       'section',
     ) as HTMLElement;
@@ -301,17 +301,17 @@ describe('Corpus', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Analyze with this corpus' })).toHaveAttribute(
       'href',
-      expect.stringContaining('corpus=saved%3Amy-notes'),
+      expect.stringContaining('corpus=custom%3Amy-notes'),
     );
   });
 
-  it('says so when a link names a saved text this browser does not have', async () => {
-    renderRoute('/corpus?id=saved%3Anowhere', { storage: freshStorage() });
+  it('says so when a link names a custom text this browser does not have', async () => {
+    renderRoute('/corpus?id=custom%3Anowhere', { storage: freshStorage() });
     expect(await screen.findByRole('alert')).toHaveTextContent('text nowhere is not saved here');
   });
 });
 
-describe('Saved texts in the pickers', () => {
+describe('Custom texts in the pickers', () => {
   /** A text saved as the Corpus view saves one. */
   async function savedText(): Promise<IndexedDbAdapter> {
     const storage = freshStorage();
@@ -342,20 +342,20 @@ describe('Saved texts in the pickers', () => {
     await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
     const corpus = within(await openSettings()).getByRole('combobox', { name: 'Corpus' });
     const option = await within(corpus).findByRole('option', { name: 'My notes' });
-    expect(option.closest('optgroup')).toHaveAttribute('label', 'Saved texts');
+    expect(option.closest('optgroup')).toHaveAttribute('label', 'Custom texts');
 
-    await user.selectOptions(corpus, 'saved:my-notes');
-    await waitFor(() => expect(currentSearch()).toContain('corpus=saved%3Amy-notes'));
+    await user.selectOptions(corpus, 'custom:my-notes');
+    await waitFor(() => expect(currentSearch()).toContain('corpus=custom%3Amy-notes'));
     // The engine is handed the text itself, under a name of its own.
     await waitFor(() =>
-      expect(recorded.some((r) => r.settings.corpus.startsWith('saved:my-notes@'))).toBe(true),
+      expect(recorded.some((r) => r.settings.corpus.startsWith('custom:my-notes@'))).toBe(true),
     );
     expect(await screen.findByText('Same finger bigrams')).toBeInTheDocument();
   }, 60_000);
 
   it('ranks the Library on one', async () => {
     const user = userEvent.setup();
-    renderRoute(`${LIBRARY}&corpus=saved%3Amy-notes`, { storage: await savedText() });
+    renderRoute(`${LIBRARY}&corpus=custom%3Amy-notes`, { storage: await savedText() });
     // Once every layout is scored on it.
     expect(await rankingSays(/symbols of My notes/, 50_000)).toBeInTheDocument();
     expect(

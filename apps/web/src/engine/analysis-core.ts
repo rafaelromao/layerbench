@@ -100,7 +100,7 @@ export class AnalysisCore {
   }
 
   /**
-   * Take a corpus the main thread holds: a saved text, read from storage as it was saved. Its id is
+   * Take a corpus the main thread holds: a custom text, read from storage as it was saved. Its id is
    * the caller's to make unique; one made of the text's name alone would let a text saved again
    * under that name be answered with what was worked out from the old one.
    */

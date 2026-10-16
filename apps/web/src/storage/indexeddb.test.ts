@@ -11,7 +11,7 @@ beforeEach(() => {
   adapter = new IndexedDbAdapter(`layerbench-test-${++counter}`);
 });
 
-describe('saved documents', () => {
+describe('custom documents', () => {
   it('stores, lists, reloads and deletes a layout', async () => {
     const layout = bundledLayout('colemak-dh')!;
     const doc = toCanonicalJson(layout);
