@@ -301,10 +301,6 @@
           "kind": "kp",
           "symbol": "+"
         },
-        "RHP": {
-          "kind": "kp",
-          "symbol": "_"
-        },
         "RBI": {
           "kind": "kp",
           "symbol": "!"
@@ -356,6 +352,10 @@
         "LHI": {
           "kind": "kp",
           "symbol": "'"
+        },
+        "RHP": {
+          "kind": "kp",
+          "symbol": ";"
         }
       }
     },
@@ -373,10 +373,6 @@
         "RTI": {
           "kind": "kp",
           "symbol": "°"
-        },
-        "RTR": {
-          "kind": "kp",
-          "symbol": ";"
         },
         "RHI": {
           "kind": "kp",
@@ -445,6 +441,10 @@
         "LTI": {
           "kind": "kp",
           "symbol": "ñ"
+        },
+        "RTR": {
+          "kind": "kp",
+          "symbol": "_"
         }
       }
     }
