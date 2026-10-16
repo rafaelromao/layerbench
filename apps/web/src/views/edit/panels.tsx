@@ -437,6 +437,50 @@ export function GeometryPanel({ state, send }: PanelProps) {
   );
 }
 
+/**
+ * A combo's output as a field to type in. It keeps its place, and the keyboard focus with it, when
+ * an edit lands and the output is another; what is half-typed is only replaced then.
+ */
+function ComboOutput({
+  name,
+  text,
+  exact,
+  why,
+  onChange,
+  onCommit,
+}: {
+  name: string;
+  text: string;
+  exact: boolean;
+  why?: string;
+  onChange: () => void;
+  onCommit: (text: string) => void;
+}) {
+  const [draft, setDraft] = useState(text);
+  const [seen, setSeen] = useState(text);
+  if (seen !== text) {
+    setSeen(text);
+    setDraft(text);
+  }
+  return (
+    <input
+      aria-label={`Output of ${name}`}
+      title={why}
+      readOnly={!exact}
+      className="input input-xs input-bordered font-mono w-full min-w-24"
+      value={draft}
+      onChange={(e) => {
+        setDraft(e.target.value);
+        onChange();
+      }}
+      onBlur={() => onCommit(draft)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') onCommit(draft);
+      }}
+    />
+  );
+}
+
 /** Combos: chords that produce a symbol or a command. */
 export function CombosPanel({ state, send }: PanelProps) {
   const [keys, setKeys] = useState('');
@@ -507,10 +551,14 @@ export function CombosPanel({ state, send }: PanelProps) {
                           className="btn btn-xs btn-primary"
                           aria-label={`Use the picked keys for ${name}`}
                           onClick={() =>
-                            send({
-                              type: 'edit',
-                              edit: { kind: 'updateCombo', combo: i, keys: chosen },
-                            })
+                            // The keys it already has are nothing to change: the pick just ends.
+                            chosen.length === c.keys.length &&
+                            chosen.every((k) => c.keys.includes(k))
+                              ? send({ type: 'comboPickCancel' })
+                              : send({
+                                  type: 'edit',
+                                  edit: { kind: 'updateCombo', combo: i, keys: chosen },
+                                })
                           }
                         >
                           Use
@@ -550,19 +598,13 @@ export function CombosPanel({ state, send }: PanelProps) {
                     )}
                   </td>
                   <td>
-                    {/* A fresh field once the output is another, so it never shows what was replaced. */}
-                    <input
-                      key={out.text}
-                      aria-label={`Output of ${name}`}
-                      title={out.why}
-                      readOnly={!out.exact}
-                      className="input input-xs input-bordered font-mono w-full min-w-24"
-                      defaultValue={out.text}
+                    <ComboOutput
+                      name={name}
+                      text={out.text}
+                      exact={out.exact}
+                      why={out.why}
                       onChange={() => setError(null)}
-                      onBlur={(e) => commitOutput(i, e.target.value, out.text)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') commitOutput(i, e.currentTarget.value, out.text);
-                      }}
+                      onCommit={(text) => commitOutput(i, text, out.text)}
                     />
                   </td>
                   <td>

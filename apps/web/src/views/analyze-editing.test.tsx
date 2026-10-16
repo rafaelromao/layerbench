@@ -988,6 +988,8 @@ describe('Edit', () => {
     await user.clear(output);
     await user.type(output, '&macro ão{Enter}');
     await waitFor(() => expect(pills()).toEqual(['Combo LHR + LHM: ão']));
+    // Typing on goes on in the same field: the keyboard is not sent back to the top of the page.
+    expect(combos.getByLabelText('Output of LHR+LHM')).toHaveFocus();
     // What the syntax cannot read is refused, and the combo keeps what it had.
     const again = combos.getByLabelText('Output of LHR+LHM');
     await user.clear(again);
@@ -1032,6 +1034,14 @@ describe('Edit', () => {
       combos.getByRole('button', { name: 'Pick the keys of LHR+LHM again on the board' }),
     );
     expect(combos.getByLabelText('Keys picked for LHR+LHM')).toHaveTextContent('click the keys');
+    // Picking the keys it already has is nothing to change, and ends the pick.
+    await user.click(key('Key LHM: d'));
+    await user.click(key('Key LHR: s'));
+    await user.click(combos.getByRole('button', { name: 'Use the picked keys for LHR+LHM' }));
+    expect(combos.queryByLabelText('Keys picked for LHR+LHM')).toBeNull();
+    await user.click(
+      combos.getByRole('button', { name: 'Pick the keys of LHR+LHM again on the board' }),
+    );
     // The add form is not the one picking.
     expect(screen.getByRole('button', { name: 'pick on board' })).toBeInTheDocument();
     await user.click(combos.getByRole('button', { name: 'Cancel' }));

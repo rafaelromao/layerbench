@@ -362,10 +362,8 @@ describe('changing a combo', () => {
     expect(numbered.layout.combos?.[0].id).toBe('lhm-lhr-2');
   });
 
-  it('keeps the id when the same keys come in another order', () => {
-    const o = landed(withCombos, { kind: 'updateCombo', combo: 0, keys: ['LHI', 'LHM'] });
-    expect(o.layout.combos?.[0]).toMatchObject({ id: 'lhm-lhi', keys: ['LHI', 'LHM'] });
-    expect(o.layout.typingPaths).toBe(withCombos.typingPaths);
+  it('leaves the combo as it is when its keys come in another order', () => {
+    expect(update({ keys: ['LHI', 'LHM'] }).status).toBe('unchanged');
   });
 
   it('is refused with a reason when the combo could not be drawn or would clash', () => {

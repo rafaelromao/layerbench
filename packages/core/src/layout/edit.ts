@@ -268,7 +268,10 @@ const handlers: Handlers = {
       const known = new Set(buildGeometry(layout).keys.map((k) => k.id));
       const unknown = keys.find((k) => !known.has(k));
       if (unknown !== undefined) return { refused: `the board has no key ${unknown}` };
-      next.keys = keys;
+      // The same keys in another order are the same combo: nothing to change.
+      if (keys.length !== current.keys.length || !keys.every((k) => current.keys.includes(k))) {
+        next.keys = keys;
+      }
     }
 
     if (edit.layers) {
