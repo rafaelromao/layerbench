@@ -2,12 +2,13 @@ import {
   type CompiledLayout,
   compileLayout,
   idForName,
+  type JsonObject,
   type Layout,
   type StorageAdapter,
   toCanonicalJson,
 } from '@layerbench/core';
 import { customRef } from '../custom/ref.js';
-import { saveNewLayout } from '../custom/save-new.js';
+import { sameDocument, saveNewLayout } from '../custom/save-new.js';
 import { encodeInline } from '../url/inline.js';
 import { inlineRef } from '../url/params.js';
 import type { Drafts } from './drafts.js';
@@ -93,11 +94,11 @@ async function store(
   storage: StorageAdapter,
   layout: Layout,
   storedId: string | null,
-  /** Hears the id a layout not stored yet is saved under, before it is written. */
-  onNewId: (id: string) => void,
+  /** Hears the id and document a layout not stored yet is saved as, before it is written. */
+  onNew: (id: string, doc: JsonObject) => void,
 ): Promise<{ id: string; leftBehind: boolean }> {
   if (storedId === null) {
-    const { id } = await saveNewLayout(storage, layout, `Save layout ${layout.name}`, onNewId);
+    const { id } = await saveNewLayout(storage, layout, `Save layout ${layout.name}`, onNew);
     return { id, leftBehind: false };
   }
   const taken = new Set((await storage.list('layouts')).map((e) => e.id));
@@ -144,11 +145,11 @@ export function createLayoutSession(
   let saves: Promise<unknown> = Promise.resolve();
   let saving = false;
   /**
-   * The id a first save took, until one has gone through: with a repository to write to as well, a
+   * What a first save wrote, until one has gone through: with a repository to write to as well, a
    * save can fail after the browser has written the layout, and trying again must find that one
-   * rather than make a second.
+   * rather than make a second. Only a document that is exactly what was written counts as it.
    */
-  let attempted: string | null = null;
+  let attempted: { id: string; doc: JsonObject } | null = null;
 
   const pickedRef = (): string =>
     !(editor?.unsaved ?? opened?.startsUnsaved) && storedId !== null
@@ -288,12 +289,12 @@ export function createLayoutSession(
           if (from === null && attempted !== null) {
             const there = await ports
               .storage()
-              .get('layouts', attempted)
+              .get('layouts', attempted.id)
               .catch(() => null);
-            if (there) from = attempted;
+            if (there && sameDocument(there.doc, attempted.doc)) from = attempted.id;
           }
-          const { id, leftBehind } = await store(ports.storage(), layout, from, (taken) => {
-            attempted = taken;
+          const { id, leftBehind } = await store(ports.storage(), layout, from, (taken, doc) => {
+            attempted = { id: taken, doc };
           });
           attempted = null;
           // Its link from now on carries it whole, so it can still be sent. A moment ago that may

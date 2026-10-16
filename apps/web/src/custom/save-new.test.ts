@@ -1,7 +1,7 @@
 import { bundledLayout, type Layout } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
 import { MemoryStorage } from '../test/memory-storage.js';
-import { freeCopyName, saveNewLayout } from './save-new.js';
+import { freeCopyName, sameDocument, saveNewLayout } from './save-new.js';
 
 const qwerty = bundledLayout('qwerty') as Layout;
 
@@ -29,15 +29,18 @@ describe('saveNewLayout', () => {
   it('says which id it took before it writes, so a save that fails can be found again', async () => {
     const storage = new MemoryStorage();
     await saveNewLayout(storage, { ...qwerty, name: 'Mine' }, 'First');
-    const heard: string[] = [];
+    const heard: [string, unknown][] = [];
     storage.put = async () => {
-      expect(heard).toEqual(['mine-2']);
+      expect(heard.map(([id]) => id)).toEqual(['mine-2']);
       throw new Error('offline');
     };
     await expect(
-      saveNewLayout(storage, { ...qwerty, name: 'Mine' }, 'Second', (id) => heard.push(id)),
+      saveNewLayout(storage, { ...qwerty, name: 'Mine' }, 'Second', (id, doc) =>
+        heard.push([id, doc]),
+      ),
     ).rejects.toThrow('offline');
-    expect(heard).toEqual(['mine-2']);
+    expect(heard).toHaveLength(1);
+    expect(heard[0][1]).toMatchObject({ id: 'mine-2', name: 'Mine' });
   });
 
   it('passes the commit message on', async () => {
@@ -65,5 +68,22 @@ describe('freeCopyName', () => {
 
   it('compares names as they read, not as they are written', () => {
     expect(freeCopyName('  Qwerty ', ['qwerty COPY '])).toBe('Qwerty copy 2');
+  });
+});
+
+describe('sameDocument', () => {
+  it('reads documents alike whichever order their keys came in', () => {
+    expect(
+      sameDocument(
+        { a: 1, b: { c: 2, d: [1, { e: 1, f: 2 }] } },
+        { b: { d: [1, { f: 2, e: 1 }], c: 2 }, a: 1 },
+      ),
+    ).toBe(true);
+  });
+
+  it('tells documents that differ, in a value or in the order of a list', () => {
+    expect(sameDocument({ a: 1 }, { a: 2 })).toBe(false);
+    expect(sameDocument({ a: [1, 2] }, { a: [2, 1] })).toBe(false);
+    expect(sameDocument({ a: 1 }, { a: 1, b: 1 })).toBe(false);
   });
 });

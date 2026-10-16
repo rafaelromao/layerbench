@@ -329,6 +329,26 @@ describe('Saving', () => {
     expect(await ids(storage)).toEqual(['yours']);
   });
 
+  it('leaves alone a different layout that has the id a failed first save took', async () => {
+    // The repository could not be listed, so the id looked free; once it can be read, the layout
+    // that is there is someone else's, and is not this one's to overwrite.
+    const storage = new MemoryStorage();
+    const put = storage.put.bind(storage);
+    storage.put = async () => {
+      throw new Error('offline');
+    };
+    const { s } = session('qwerty', { storage });
+    const state = await opened(s);
+    const copy = { ...state.layout, name: 'Mine' };
+    expect(await s.save(copy)).toMatchObject({ ok: false });
+
+    storage.put = put;
+    await seed(storage, 'colemak', 'mine', { name: 'Theirs' });
+    expect(await s.save(copy)).toEqual({ ok: true, id: 'mine-2', leftBehind: false });
+    expect((await storage.get('layouts', 'mine'))?.doc.name).toBe('Theirs');
+    expect(await ids(storage)).toEqual(['mine', 'mine-2']);
+  });
+
   it('takes a free id on a retry when nothing was written by the failed save', async () => {
     const storage = new MemoryStorage();
     const put = storage.put.bind(storage);
