@@ -39,7 +39,7 @@ layouts**, in **Rank and filter**, to leave them out. Each layout takes its
 place as its score arrives. This browser remembers the scores, the sort and what you chose to list, so the next
 visit opens already ranked; the scores are checked again quietly, and a layout moves only if its
 numbers changed. **Compare** puts every number for two layouts side by side, with the difference and which
-of the two does better. Each layout's board has its own layer tabs, to look through every layer of
+of the two does better. Each layout's board has its own layer navigator, to look through every layer of
 both, warm by what is pressed on the layer shown.
 
 Layouts are compared on the text, not on their presses. SFB and the other pair rules are a share of
