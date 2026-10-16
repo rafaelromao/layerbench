@@ -525,6 +525,34 @@ describe('changing a combo', () => {
     expect(pathOf(moved.layout, 'q')).toEqual(['direct:base/LHM']);
   });
 
+  it("reads a path among its symbol's producers when one combo's id is another's id and a suffix", () => {
+    const clash: Layout = {
+      ...layout,
+      combos: [
+        {
+          id: 'old',
+          keys: ['LHM', 'LHI'],
+          binding: { kind: 'hold_tap', tap: kp('q'), hold: kp('z') },
+          layers: ['base'],
+          role: 'typing',
+        },
+        {
+          id: 'old#hold',
+          keys: ['LHM', 'LHR'],
+          binding: kp('b'),
+          layers: ['base'],
+          role: 'typing',
+        },
+      ],
+      typingPaths: { z: [{ producer: 'combo:old#hold' }], b: [{ producer: 'combo:old#hold' }] },
+    };
+    expect(producerIds(clash)).toContain('combo:old#hold');
+    const o = landed(clash, { kind: 'updateCombo', combo: 0, keys: ['LHP', 'LHI'] });
+    // z is what the first combo makes with a hold; b is the other's, and stays as it is.
+    expect(pathOf(o.layout, 'z')).toEqual(['combo:lhp-lhi#hold']);
+    expect(pathOf(o.layout, 'b')).toEqual(['combo:old#hold']);
+  });
+
   it('follows an unnamed combo by the id the compiler gives it', () => {
     const unnamed: Layout = {
       ...withCombos,

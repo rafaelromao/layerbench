@@ -1,4 +1,4 @@
-import { enumerateProducers } from '../sim/producers.js';
+import { enumerateProducers, type Producer } from '../sim/producers.js';
 import { slugWords, unusedId } from '../storage/ids.js';
 import { buildGeometry, type CompiledLayout, compileLayout } from './compile.js';
 import {
@@ -144,15 +144,21 @@ function followCombo(before: Layout, after: Layout, place: number): Layout['typi
   } catch {
     return paths;
   }
-  const old = enumerateProducers(was, 'model').byId;
-  const made = enumerateProducers(now, 'model').byId;
+  // Ids are not unique across symbols: a combo's own id can be another's id with a suffix. So a
+  // path is read among the producers of its symbol, and left alone when even those disagree.
+  const listed = (c: CompiledLayout) => {
+    const index = enumerateProducers(c, 'model');
+    return [...index.bySymbol.values()].flat().concat(index.excludedByCase);
+  };
+  const oldProducers = listed(was);
+  const madeProducers = listed(now);
+  const lookup = (all: Producer[], id: string, symbol: string) =>
+    all.filter((p) => p.id === id && p.symbols.toLowerCase() === symbol.toLowerCase());
   const from = `combo:${was.combos[place]?.id}`;
   const to = `combo:${now.combos[place]?.id}`;
   const swap = (id: string) => (id.startsWith(from) ? `${to}${id.slice(from.length)}` : id);
   /** The id the producer has once the combo is the one it now is. */
-  const renamed = (producer: string): string => {
-    const p = old.get(producer);
-    if (!p) return producer;
+  const renamed = (producer: string, p: Producer): string => {
     if (p.kind === 'combo') return swap(producer);
     const [first, ...rest] = p.steps;
     const source =
@@ -172,12 +178,14 @@ function followCombo(before: Layout, after: Layout, place: number): Layout['typi
   for (const [symbol, entries] of Object.entries(paths)) {
     const kept: TypingPathEntry[] = [];
     for (const e of entries) {
-      if (!old.get(e.producer)?.steps.some((st) => st.combo === place)) {
+      const named = lookup(oldProducers, e.producer, symbol);
+      const ours = named.filter((p) => p.steps.some((st) => st.combo === place));
+      if (ours.length === 0 || ours.length < named.length) {
         kept.push(e);
         continue;
       }
-      const producer = renamed(e.producer);
-      if (made.get(producer)?.symbols.toLowerCase() !== symbol.toLowerCase()) {
+      const producer = renamed(e.producer, ours[0]);
+      if (lookup(madeProducers, producer, symbol).length === 0) {
         changed = true;
         continue;
       }
