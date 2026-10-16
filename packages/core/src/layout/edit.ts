@@ -1,3 +1,4 @@
+import { enumerateProducers } from '../sim/producers.js';
 import { slugWords, unusedId } from '../storage/ids.js';
 import { buildGeometry, type CompiledLayout, compileLayout } from './compile.js';
 import {
@@ -124,54 +125,39 @@ type ComboOf = NonNullable<Layout['combos']>[number];
 const comboId = (c: ComboOf, place: number) => c.id ?? `combo${place}`;
 
 /**
- * How a producer id changes when the combo `was` takes the id `now`. A producer is one component:
- * `combo:<id>`, or `direct:<layer>/<key>`, either with a `#…` suffix for some. A dead key's is two
- * joined with a plus, `deadkey:<source>+<letter>`, where the source is a component or a plain
- * `<layer>/<key>` and may carry `#shifted`. Ids may hold a plus or a hash of their own, so each side
- * has to be something the layout has (a combo by its whole id first, then by an id before a `#`
- * suffix) for a split to count. Anything else is left as it was.
+ * How a producer id changes when the combo at `place` takes the id `now`. Producer ids are not
+ * taken apart as text, since ids may hold the very characters that join them: the simulator's own
+ * producers say which of their steps the combo is, and so which part of the id is its. A combo is
+ * the source of a dead key's producer (`deadkey:combo:<id>…+<letter>`), the letter it accents
+ * (`deadkey:<source>+combo:<id>…`), or the producer itself (`combo:<id>…`).
  */
-function comboRenamer(
-  layout: Layout,
-  combos: ComboOf[],
-  was: string,
-  now: string,
-): (producer: string) => string {
-  const keyIds = [...new Set(buildGeometry(layout).keys.map((k) => k.id))];
-  const comboIds = new Set(combos.map(comboId));
-  /** The combo a `combo:` component names: its whole id if some combo has it, else the longest before a `#`. */
-  const comboOf = (rest: string): string | null => {
-    if (comboIds.has(rest)) return rest;
-    let found: string | null = null;
-    for (const id of comboIds) {
-      if (rest.startsWith(`${id}#`) && (found === null || id.length > found.length)) found = id;
-    }
-    return found;
-  };
-  /** Whether `rest` is a key of the board, with a `#…` suffix or none. */
-  const keyOf = (rest: string) => keyIds.some((k) => rest === k || rest.startsWith(`${k}#`));
-  /** Whether `rest` is `<layer>/<key>` of the layout's. */
-  const onLayer = (rest: string) =>
-    layout.layers.some((l) => rest.startsWith(`${l.id}/`) && keyOf(rest.slice(l.id.length + 1)));
-  const isComponent = (c: string, plain: boolean): boolean => {
-    if (c.startsWith('combo:')) return comboOf(c.slice(6)) !== null;
-    if (c.startsWith('direct:')) return onLayer(c.slice(7));
-    return plain && onLayer(c);
-  };
-  const renamed = (c: string) => {
-    if (!c.startsWith('combo:') || comboOf(c.slice(6)) !== was) return c;
-    return `combo:${now}${c.slice(6 + was.length)}`;
-  };
+function comboRenamer(layout: Layout, place: number, now: string): (producer: string) => string {
+  let compiled: CompiledLayout;
+  try {
+    compiled = compileLayout(layout);
+  } catch {
+    return (producer) => producer;
+  }
+  const { byId } = enumerateProducers(compiled, 'model');
+  const own = `combo:${compiled.combos[place]?.id}`;
+  const swap = (id: string) => (id.startsWith(own) ? `combo:${now}${id.slice(own.length)}` : id);
   return (producer) => {
-    if (!producer.startsWith('deadkey:')) return renamed(producer);
-    const rest = producer.slice(8);
-    for (let at = rest.indexOf('+'); at >= 0; at = rest.indexOf('+', at + 1)) {
-      const [source, letter] = [rest.slice(0, at), rest.slice(at + 1)];
-      if (isComponent(source, true) && isComponent(letter, false)) {
-        return `deadkey:${renamed(source)}+${renamed(letter)}`;
-      }
-    }
-    return producer;
+    const p = byId.get(producer);
+    if (!p) return producer;
+    if (p.kind === 'combo') return p.steps[0]?.combo === place ? swap(producer) : producer;
+    if (p.kind !== 'deadkey') return producer;
+    const [first, ...rest] = p.steps;
+    const source =
+      first.combo !== undefined
+        ? `combo:${compiled.combos[first.combo]?.id}`
+        : `${compiled.layers[first.layer ?? 0]?.id}/${compiled.keys[first.pos]?.id}`;
+    const accent = producer.startsWith(`deadkey:${source}#shifted+`) ? '#shifted' : '';
+    const head = `deadkey:${source}${accent}+`;
+    if (!producer.startsWith(head)) return producer;
+    const letter = producer.slice(head.length);
+    const sourceNow = first.combo === place ? swap(source) : source;
+    const letterNow = rest.some((st) => st.combo === place) ? swap(letter) : letter;
+    return `deadkey:${sourceNow}${accent}+${letterNow}`;
   };
 }
 
@@ -371,7 +357,7 @@ const handlers: Handlers = {
       const was = comboId(current, edit.combo);
       const owned = !others.includes(was);
       if (typingPaths && owned && next.id !== was) {
-        const rewrite = comboRenamer(layout, combos, was, next.id as string);
+        const rewrite = comboRenamer(layout, edit.combo, next.id as string);
         renamedPaths = Object.fromEntries(
           Object.entries(typingPaths).map(([symbol, entries]) => [
             symbol,
