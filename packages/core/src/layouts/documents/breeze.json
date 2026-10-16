@@ -126,7 +126,7 @@
         },
         "L1": {
           "kind": "lt",
-          "layer": "sym",
+          "layer": "num",
           "tap": {
             "kind": "key_repeat"
           }
