@@ -683,6 +683,19 @@ describe('Importing from keymap-drawer', () => {
     expect(await screen.findByRole('button', { name: 'Key LTP: w' })).toBeInTheDocument();
   }, 60_000);
 
+  it('previews the file with what a hold does, since that is half of a binding', async () => {
+    const user = userEvent.setup();
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    await openKeymapImport();
+    await user.click(await screen.findByLabelText('keymap-drawer YAML'));
+    await user.paste(KEYMAP);
+
+    await screen.findByRole('combobox', { name: 'Board to import onto' });
+    const board = document.getElementById('kb-kd-import') as HTMLElement;
+    // The sticky keys' `1×` is drawn under what they tap; a preview of only what is typed has none.
+    expect(board.textContent).toContain('1×');
+  }, 60_000);
+
   it('says what is wrong with a file it cannot read', async () => {
     const user = userEvent.setup();
     renderRoute(LIBRARY, { storage: freshStorage() });

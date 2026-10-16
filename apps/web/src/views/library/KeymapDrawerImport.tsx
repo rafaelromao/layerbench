@@ -344,6 +344,8 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
                 compiled={result.compiled}
                 layer={Math.min(shown, result.compiled.layers.length - 1)}
                 onLayer={setShown}
+                // What a hold does is half of a binding, and the import is where to check it.
+                showHold
               />
               <LayerNav
                 layers={result.compiled.layers}

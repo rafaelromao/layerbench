@@ -13,6 +13,8 @@ export interface PreviewBoardProps {
   heat?: Record<number, number>;
   /** Positions to outline. */
   highlight?: number[];
+  /** Draw what a hold does under what a tap does; the default is a preview of what is typed. */
+  showHold?: boolean;
   className?: string;
 }
 
@@ -27,6 +29,7 @@ export function PreviewBoard({
   onLayer,
   heat,
   highlight,
+  showHold = false,
   className,
 }: PreviewBoardProps) {
   const swipe = useLayerSwipe(compiled.layers, layer, onLayer);
@@ -37,7 +40,7 @@ export function PreviewBoard({
         compiled={compiled}
         layer={layer}
         interactive={false}
-        showHold={false}
+        showHold={showHold}
         combos={typingCombos(compiled, layer)}
         heat={heat}
         highlight={highlight}
