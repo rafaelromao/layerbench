@@ -384,7 +384,7 @@ describe('changing a combo', () => {
           á: [
             { producer: 'deadkey:combo:lhm-lhi+direct:base/LHM' },
             { producer: 'deadkey:combo:lhm-lhi#shifted+direct:base/LHM' },
-            { producer: 'deadkey:direct:base/LHR+combo:lhm-lhi' },
+            { producer: 'deadkey:base/LHR+combo:lhm-lhi' },
             { producer: 'deadkey:combo:lhm-lhr+direct:base/LHM' },
           ],
         },
@@ -394,7 +394,7 @@ describe('changing a combo', () => {
     expect(o.layout.typingPaths?.á.map((e) => e.producer)).toEqual([
       'deadkey:combo:lhr-lhi+direct:base/LHM',
       'deadkey:combo:lhr-lhi#shifted+direct:base/LHM',
-      'deadkey:direct:base/LHR+combo:lhr-lhi',
+      'deadkey:base/LHR+combo:lhr-lhi',
       'deadkey:combo:lhm-lhr+direct:base/LHM',
     ]);
   });
@@ -424,7 +424,7 @@ describe('changing a combo', () => {
       typingPaths: {
         á: [
           { producer: 'deadkey:combo:old+direct:base/A+combo:old' },
-          { producer: 'deadkey:direct:base/A+combo:old+combo:old#shifted' },
+          { producer: 'deadkey:base/A+combo:old+combo:old#shifted' },
           { producer: 'direct:base/A+combo:old' },
           { producer: 'deadkey:combo:nothing+direct:base/A' },
         ],
@@ -433,9 +433,40 @@ describe('changing a combo', () => {
     const o = landed(custom, { kind: 'updateCombo', combo: 0, keys: ['A', 'D'] });
     expect(o.layout.typingPaths?.á.map((e) => e.producer)).toEqual([
       'deadkey:combo:a-d+direct:base/A+combo:old',
-      'deadkey:direct:base/A+combo:old+combo:a-d#shifted',
+      'deadkey:base/A+combo:old+combo:a-d#shifted',
       'direct:base/A+combo:old',
       'deadkey:combo:nothing+direct:base/A',
+    ]);
+  });
+
+  it('names a combo by its whole id before reading a # in it as a suffix', () => {
+    const twins: Layout = {
+      ...withCombos,
+      combos: [
+        { id: 'old', keys: ['LHM', 'LHI'], binding: kp('q'), layers: ['base'], role: 'typing' },
+        {
+          id: 'old#custom',
+          keys: ['LHM', 'LHR'],
+          binding: kp('z'),
+          layers: ['base'],
+          role: 'typing',
+        },
+      ],
+      typingPaths: {
+        q: [
+          { producer: 'combo:old' },
+          { producer: 'combo:old#shifted' },
+          { producer: 'combo:old#custom' },
+          { producer: 'deadkey:combo:old#custom+direct:base/LHM' },
+        ],
+      },
+    };
+    const o = landed(twins, { kind: 'updateCombo', combo: 0, keys: ['LHR', 'LHI'] });
+    expect(o.layout.typingPaths?.q.map((e) => e.producer)).toEqual([
+      'combo:lhr-lhi',
+      'combo:lhr-lhi#shifted',
+      'combo:old#custom',
+      'deadkey:combo:old#custom+direct:base/LHM',
     ]);
   });
 

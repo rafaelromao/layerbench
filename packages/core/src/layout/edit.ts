@@ -124,11 +124,12 @@ type ComboOf = NonNullable<Layout['combos']>[number];
 const comboId = (c: ComboOf, place: number) => c.id ?? `combo${place}`;
 
 /**
- * How a producer id changes when the combo `was` takes the id `now`. A producer is named by one
- * component (`combo:<id>`, with `#shifted` or `#<n>` after it for some), or, for a dead key, by two
- * joined with a plus: `deadkey:<component>+<component>`. A key or layer id may hold a plus too, so
- * the split is the one where both sides are components the layout has: a `direct:<layer>/<key>`
- * of its own, or a combo of its own. Anything else is left as it was.
+ * How a producer id changes when the combo `was` takes the id `now`. A producer is one component:
+ * `combo:<id>`, or `direct:<layer>/<key>`, either with a `#…` suffix for some. A dead key's is two
+ * joined with a plus, `deadkey:<source>+<letter>`, where the source is a component or a plain
+ * `<layer>/<key>` and may carry `#shifted`. Ids may hold a plus or a hash of their own, so each side
+ * has to be something the layout has (a combo by its whole id first, then by an id before a `#`
+ * suffix) for a split to count. Anything else is left as it was.
  */
 function comboRenamer(
   layout: Layout,
@@ -136,25 +137,39 @@ function comboRenamer(
   was: string,
   now: string,
 ): (producer: string) => string {
-  const keyIds = new Set(buildGeometry(layout).keys.map((k) => k.id));
+  const keyIds = [...new Set(buildGeometry(layout).keys.map((k) => k.id))];
   const comboIds = new Set(combos.map(comboId));
-  const isComponent = (c: string): boolean => {
-    if (c.startsWith('combo:')) return comboIds.has(c.slice(6).replace(/#.*$/, ''));
-    if (!c.startsWith('direct:')) return false;
-    return layout.layers.some(
-      (l) => c.startsWith(`direct:${l.id}/`) && keyIds.has(c.slice(8 + l.id.length)),
-    );
+  /** The combo a `combo:` component names: its whole id if some combo has it, else the longest before a `#`. */
+  const comboOf = (rest: string): string | null => {
+    if (comboIds.has(rest)) return rest;
+    let found: string | null = null;
+    for (const id of comboIds) {
+      if (rest.startsWith(`${id}#`) && (found === null || id.length > found.length)) found = id;
+    }
+    return found;
   };
-  const own = `combo:${was}`;
-  const renamed = (c: string) =>
-    c === own || c.startsWith(`${own}#`) ? `combo:${now}${c.slice(own.length)}` : c;
+  /** Whether `rest` is a key of the board, with a `#…` suffix or none. */
+  const keyOf = (rest: string) => keyIds.some((k) => rest === k || rest.startsWith(`${k}#`));
+  /** Whether `rest` is `<layer>/<key>` of the layout's. */
+  const onLayer = (rest: string) =>
+    layout.layers.some((l) => rest.startsWith(`${l.id}/`) && keyOf(rest.slice(l.id.length + 1)));
+  const isComponent = (c: string, plain: boolean): boolean => {
+    if (c.startsWith('combo:')) return comboOf(c.slice(6)) !== null;
+    if (c.startsWith('direct:')) return onLayer(c.slice(7));
+    return plain && onLayer(c);
+  };
+  const renamed = (c: string) => {
+    if (!c.startsWith('combo:') || comboOf(c.slice(6)) !== was) return c;
+    return `combo:${now}${c.slice(6 + was.length)}`;
+  };
   return (producer) => {
     if (!producer.startsWith('deadkey:')) return renamed(producer);
     const rest = producer.slice(8);
     for (let at = rest.indexOf('+'); at >= 0; at = rest.indexOf('+', at + 1)) {
       const [source, letter] = [rest.slice(0, at), rest.slice(at + 1)];
-      if (isComponent(source) && isComponent(letter))
+      if (isComponent(source, true) && isComponent(letter, false)) {
         return `deadkey:${renamed(source)}+${renamed(letter)}`;
+      }
     }
     return producer;
   };
