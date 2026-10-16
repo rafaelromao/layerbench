@@ -29,19 +29,22 @@ describe('analysis parameters', () => {
     expect(parseParams({ sample: '9999999' }).sample).toBe(5_000_000);
     expect(parseParams({ heat: 'nonsense' }).heat).toBe('usage');
     expect(parseParams({ rules: 'nonsense' }).preset).toBe('layouts_doc');
-    expect(parseParams({ rules: 'saved:mine' }).preset).toBe('saved:mine');
+    expect(parseParams({ rules: 'custom:mine' }).preset).toBe('custom:mine');
     expect(parseParams({ rules: 'cyanophage' }).preset).toBe('cyanophage');
-    // A saved id is a word; a link cannot name a path.
-    expect(parseParams({ rules: 'saved:../../x' }).preset).toBe('layouts_doc');
+    // The old spelling opens nothing.
+    expect(parseParams({ rules: 'saved:mine' }).preset).toBe('layouts_doc');
+    // A custom id is a word; a link cannot name a path.
+    expect(parseParams({ rules: 'custom:../../x' }).preset).toBe('layouts_doc');
   });
 
-  it('reads a saved layout reference only when its id is one storage could have made', () => {
-    expect(parseLayoutRef('saved:mine')).toEqual({ kind: 'saved', value: 'mine' });
-    expect(parseLayoutRef('saved:../../../../user#')).toEqual({
+  it('reads a custom layout reference only when its id is one storage could have made', () => {
+    expect(parseLayoutRef('custom:mine')).toEqual({ kind: 'custom', value: 'mine' });
+    expect(parseLayoutRef('custom:../../../../user#')).toEqual({
       kind: 'bundled',
-      value: 'saved:../../../../user#',
+      value: 'custom:../../../../user#',
     });
-    expect(parseLayoutRef('saved:index')).toEqual({ kind: 'bundled', value: 'saved:index' });
+    expect(parseLayoutRef('saved:mine')).toEqual({ kind: 'bundled', value: 'saved:mine' });
+    expect(parseLayoutRef('custom:index')).toEqual({ kind: 'bundled', value: 'custom:index' });
     expect(parseLayoutRef('inline:abc')).toEqual({ kind: 'inline', value: 'abc' });
     expect(parseLayoutRef('qwerty')).toEqual({ kind: 'bundled', value: 'qwerty' });
   });
@@ -105,7 +108,7 @@ describe('analysis parameters', () => {
   it('round-trips every field', () => {
     const params = {
       ...DEFAULT_PARAMS,
-      layoutRef: 'saved:mine',
+      layoutRef: 'custom:mine',
       corpus: 'en-general',
       corpus2: 'pt-br-general',
       mix: 70,

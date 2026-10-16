@@ -476,7 +476,7 @@ export function CombosPanel({ state, send }: PanelProps) {
           </thead>
           <tbody>
             {combos.map((c, i) => (
-              // By place: a saved layout can hold two combos under one id.
+              // By place: a custom layout can hold two combos under one id.
               // biome-ignore lint/suspicious/noArrayIndexKey: the place is what a row edits
               <tr key={i}>
                 <td className="font-mono">

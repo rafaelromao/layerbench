@@ -3,7 +3,7 @@
  *
  * Kept apart from the rules themselves on purpose: a rule set is a document, written and read by
  * another engine too, and citations are facts about the catalog rather than settings of a set. A
- * saved or shared rule set therefore shows the same sources as the catalog rule it was made from,
+ * custom or shared rule set therefore shows the same sources as the catalog rule it was made from,
  * without carrying them.
  *
  * Every locator was checked against its source when it was written. A rule LayerBench added

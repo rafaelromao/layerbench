@@ -4,7 +4,7 @@ import type { Layout } from '../layout/types.js';
 
 /**
  * Bundled layouts added as documents: each file in `documents/` is a layout exactly as LayerBench
- * saves it, its LayerBench JSON, named by its id. This is how a saved layout joins the Library, by a
+ * saves it, its LayerBench JSON, named by its id. This is how a custom layout joins the Library, by a
  * pull request (README → Bundled layouts): the file, one import and one entry below, and a line on
  * the landing page.
  */

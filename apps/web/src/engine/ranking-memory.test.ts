@@ -8,19 +8,19 @@ const SUMMARY: LayoutSummary = { effort: 12.5, sfb: 1.2, skipped: 0, missing: []
 describe('the last ranking, kept in this browser', () => {
   it('gives back each layout’s numbers and which went behind, on the same choices only', () => {
     rememberSummary('en', 'b:qwerty', SUMMARY);
-    rememberSummary('en', 's:mine', { ...SUMMARY, effort: null });
+    rememberSummary('en', 'c:mine', { ...SUMMARY, effort: null });
     rememberBehind(
       'en',
       new Map([
-        ['s:mine', true],
+        ['c:mine', true],
         ['b:qwerty', false],
       ]),
     );
 
     const en = recall('en');
     expect(en.summaries.get('b:qwerty')).toEqual(SUMMARY);
-    expect(en.summaries.get('s:mine')?.effort).toBeNull();
-    expect([...en.behind]).toEqual(['s:mine']);
+    expect(en.summaries.get('c:mine')?.effort).toBeNull();
+    expect([...en.behind]).toEqual(['c:mine']);
 
     const pt = recall('pt');
     expect(pt.summaries.size).toBe(0);
@@ -28,9 +28,24 @@ describe('the last ranking, kept in this browser', () => {
   });
 
   it('takes a layout out from behind once it is found to type the language', () => {
-    rememberBehind('pt', new Map([['s:mine', true]]));
-    rememberBehind('pt', new Map([['s:mine', false]]));
+    rememberBehind('pt', new Map([['c:mine', true]]));
+    rememberBehind('pt', new Map([['c:mine', false]]));
     expect(recall('pt').behind.size).toBe(0);
+  });
+
+  it('drops what was kept under the old `s:` key of a custom layout', () => {
+    localStorage.setItem(
+      'layerbench:ranking',
+      JSON.stringify({
+        old: {
+          summaries: { 's:mine': SUMMARY, 'b:qwerty': SUMMARY },
+          behind: ['s:mine', 'b:dvorak'],
+        },
+      }),
+    );
+    const old = recall('old');
+    expect([...old.summaries.keys()]).toEqual(['b:qwerty']);
+    expect([...old.behind]).toEqual(['b:dvorak']);
   });
 
   it('keeps only the rankings written last', () => {

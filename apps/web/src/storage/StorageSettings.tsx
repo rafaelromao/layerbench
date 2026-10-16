@@ -45,7 +45,7 @@ function Where({ target, login }: { target: StorageTarget; login: string }) {
 const documents = (n: number) => `${n} document${n === 1 ? '' : 's'}`;
 
 /**
- * Where saved documents live. Layouts, rule sets and corpora are always kept in this browser;
+ * Where custom documents live. Layouts, rule sets and corpora are always kept in this browser;
  * signing in with GitHub keeps them in the user's account too, so they follow them between
  * machines: in their fork of layerbench when the app may write to one, in gists otherwise.
  */

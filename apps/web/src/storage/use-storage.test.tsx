@@ -31,7 +31,7 @@ const names = (entries: IndexEntry[]) => entries.map((e) => e.name);
 
 afterEach(() => useGitHubSession.setState({ status: 'unknown' }));
 
-describe('the saved index, as the last visit listed it', () => {
+describe('the custom index, as the last visit listed it', () => {
   it('lists what the last visit listed at once, before storage answers', async () => {
     const first = render(listing([entry('breeze', 'Breeze'), entry('gust', 'Gust')]));
     await waitFor(() => expect(names(first.result.current.entries)).toEqual(['Breeze', 'Gust']));

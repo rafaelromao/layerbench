@@ -1,8 +1,8 @@
 import { getPreset, type RuleSet, type StorageAdapter, stableStringify } from '@layerbench/core';
 import { useEffect, useMemo, useState } from 'react';
 import { useSettled, useStorage } from '../storage/use-storage.js';
-import { readSaved, type SavedFailure, type SavedRead, savedError } from './read.js';
-import { savedId } from './ref.js';
+import { type CustomFailure, type CustomRead, customError, readCustom } from './read.js';
+import { customId } from './ref.js';
 
 /**
  * The rule set a reference names, as far as it is known: still being read, read, or not opened and
@@ -15,12 +15,12 @@ export type RuleSetState = {
 } & (
   | { status: 'reading' }
   | { status: 'read'; ruleSet: RuleSet }
-  | { status: 'failed'; failure: SavedFailure; error: string }
+  | { status: 'failed'; failure: CustomFailure; error: string }
 );
 
 /**
- * Read the rule set a `rules=` reference names: a preset at once, a saved set from storage. Nothing
- * stands in while a saved set is read, or for one that will not open. Until sign-in is known,
+ * Read the rule set a `rules=` reference names: a preset at once, a custom set from storage. Nothing
+ * stands in while a custom set is read, or for one that will not open. Until sign-in is known,
  * storage is the browser's copy alone, which may lack a set or hold an older copy of it than
  * GitHub's, so the set is still being read until settled storage has answered.
  * When storage changes under it, the set is read again from the new storage and is still being read
@@ -30,19 +30,19 @@ export type RuleSetState = {
 export function useRuleSet(ref: string): RuleSetState {
   const storage = useStorage();
   const settled = useSettled();
-  const id = savedId(ref);
+  const id = customId(ref);
   const [read, setRead] = useState<{
     ref: string;
     storage: StorageAdapter;
     /** Whether the storage it was read from was settled: only then is it the set for good. */
     settled: boolean;
-    read: SavedRead<RuleSet>;
+    read: CustomRead<RuleSet>;
   } | null>(null);
 
   useEffect(() => {
     if (id === null) return;
     let cancelled = false;
-    void readSaved(storage, 'rulesets', id).then((r) => {
+    void readCustom(storage, 'rulesets', id).then((r) => {
       if (cancelled) return;
       setRead((prev) => {
         if (prev?.ref !== ref) return { ref, storage, settled, read: r };
@@ -85,6 +85,6 @@ export function useRuleSet(ref: string): RuleSetState {
     const r = known.read;
     if (r.status === 'read')
       return { ref, name: r.doc.name ?? name, status: 'read', ruleSet: r.doc };
-    return { ref, name, status: 'failed', failure: r, error: savedError('rulesets', name, r) };
+    return { ref, name, status: 'failed', failure: r, error: customError('rulesets', name, r) };
   }, [preset, id, ref, read, storage, settled]);
 }

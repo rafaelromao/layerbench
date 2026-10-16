@@ -12,7 +12,7 @@ import { useStorage } from '../storage/use-storage.js';
 export interface LayoutState {
   layout: Layout | null;
   compiled: CompiledLayout | null;
-  /** The saved layout it is, if any (`openLayout`). */
+  /** The custom layout it is, if any (`openLayout`). */
   storedId: string | null;
   error: string | null;
   /**

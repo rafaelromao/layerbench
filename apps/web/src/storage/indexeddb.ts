@@ -40,7 +40,7 @@ function open(name: string): Promise<IDBPDatabase> {
 }
 
 /**
- * Saved layouts, rule sets and corpora in the browser. Each collection keeps an index, so a library
+ * Custom layouts, rule sets and corpora in the browser. Each collection keeps an index, so a library
  * lists without reading every document.
  */
 export class IndexedDbAdapter implements StorageAdapter {

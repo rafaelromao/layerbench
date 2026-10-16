@@ -1,6 +1,6 @@
 # Saving and sharing
 
-Everything you save — layouts, rule sets and texts — is kept in this browser. To have it on every
+Everything you save — your custom layouts, rule sets and texts — is kept in this browser. To have it on every
 browser you use, sign in with GitHub, and it is kept in your GitHub account as well.
 
 ## Saving your own layouts
@@ -16,13 +16,13 @@ A layout of your own starts in **Library**, in one of these ways:
   is. Under **keymap-drawer**, **Import and edit** saves a keymap-drawer file and opens it. See
   [Importing and exporting](importing.md).
 
-Saved, it is listed in **Library** among the layouts that come with the app, marked *saved* and
+Saved, it is a custom layout: listed in **Library** among the layouts that come with the app, marked *custom* and
 ranked with them, and **Delete**, on its card, removes it. Edit it in **Analyze**, then press
 **Save**, beside its name at the top, to keep the edits. Until you do, the name is marked
 *unsaved*, and your edits live only in the page's link and in this tab: opened in another tab or
 browser, the same link is a layout of its own, and saving it there makes a copy.
 
-A saved layout is kept in this browser. To keep it anywhere else, sign in with GitHub, below; or
+A custom layout is kept in this browser. To keep it anywhere else, sign in with GitHub, below; or
 copy its LayerBench JSON from the editor's **JSON** panel and keep the text, which **Import** reads
 back.
 
@@ -80,13 +80,13 @@ here until you sign in again.
 
 A link carries the analysis as it stands: the layout, the text, the rules and every switch. The
 layout travels whole in it, saved or not, in **Analyze** and on both sides of **Compare**, so anyone
-can open it, without signing in. A link that names a saved layout by its id alone opens only where
+can open it, without signing in. A link that names a custom layout by its id alone opens only where
 it is saved, and there it is that layout; Analyze and Compare put the layout itself in its place as
 soon as it opens. Opened by
 someone who has not got it, it is a layout of their own: they can analyze it, edit it and save a
 copy. Opened where it is saved and unchanged, in this browser or your GitHub account, it is your
-saved layout, and saving changes that one. A link never saves over a different layout someone has
-under the same name: that is saved beside it. A saved text and a saved rule set do not travel the
+custom layout, and saving changes that one. A link never saves over a different layout someone has
+under the same name: that is saved beside it. A custom text and a custom rule set do not travel the
 same way: the link only names them, so they open only where they are saved. Anywhere else nothing
 opens in their place: the page says the text or rule set is not saved there, and shows no numbers.
 
@@ -97,7 +97,7 @@ the way.
 ## Adding a layout to the Library
 
 The layouts LayerBench came with were written into it from where their authors published them. A
-new one joins them as a layout saved in LayerBench, added unchanged by pull request on GitHub.
+new one joins them as a custom layout in LayerBench, added unchanged by pull request on GitHub.
 Anyone can propose one, their own or someone else's that is published, and it
 joins everyone's Library once the pull request is merged.
 

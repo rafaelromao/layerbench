@@ -7,7 +7,7 @@ import {
   type StorageAdapter,
   toCanonicalJson,
 } from '@layerbench/core';
-import { savedRef } from '../saved/ref.js';
+import { customRef } from '../custom/ref.js';
 import { encodeInline } from '../url/inline.js';
 import { inlineRef } from '../url/params.js';
 import type { Drafts } from './drafts.js';
@@ -41,9 +41,9 @@ export type SessionState =
       compiled: CompiledLayout;
       /** A draft this tab made, opened from its own link: its edits are still unsaved. */
       startsUnsaved: boolean;
-      /** The saved layout this is, or will be saved as; null for one never saved. */
+      /** The custom layout this is, or will be saved as; null for one never saved. */
       storedId: string | null;
-      /** What a layout picker shows: the saved layout while nothing is unsaved, else the link. */
+      /** What a layout picker shows: the custom layout while nothing is unsaved, else the link. */
       pickedRef: string;
       saving: boolean;
     };
@@ -86,7 +86,7 @@ const LINK_DELAY_MS = 400;
 /**
  * Store a layout. Its id follows its name: one already stored keeps its id while that still matches
  * its name, and moves to its new name's once renamed; anything else takes a free id from its name.
- * Neither overwrites a saved layout whose name happens to slug the same. A renamed layout's old copy
+ * Neither overwrites a custom layout whose name happens to slug the same. A renamed layout's old copy
  * goes only once the new one is safely stored.
  */
 async function store(
@@ -113,7 +113,7 @@ async function store(
 
 /**
  * The layout session: the layout open in Analyze, from the moment it is opened until another is.
- * It opens the layout the link names, knows which saved layout it is, keeps the link holding the
+ * It opens the layout the link names, knows which custom layout it is, keeps the link holding the
  * layout as it is — its clean reference, or a draft of its unsaved edits — and saves it. A link it
  * wrote never opens it again; any other does, Back and a followed link included.
  */
@@ -141,7 +141,7 @@ export function createLayoutSession(
 
   const pickedRef = (): string =>
     !(editor?.unsaved ?? opened?.startsUnsaved) && storedId !== null
-      ? savedRef(storedId)
+      ? customRef(storedId)
       : link.current();
 
   const publish = () => {
@@ -171,7 +171,7 @@ export function createLayoutSession(
     pending = null;
   };
 
-  /** Write the layout in the editor as a draft of the saved layout it is an edit of. */
+  /** Write the layout in the editor as a draft of the custom layout it is an edit of. */
   const writeDraft = async (layout: Layout, opening: number): Promise<string> => {
     const ref = inlineRef(await encodeInline(layout));
     if (state.opening === opening && !disposed) {
@@ -208,7 +208,7 @@ export function createLayoutSession(
     }
     const startsUnsaved = origin !== undefined;
     storedId = startsUnsaved ? origin : result.storedId;
-    // A saved layout opened by its id gets the link that carries it whole, which opens anywhere.
+    // A custom layout opened by its id gets the link that carries it whole, which opens anywhere.
     cleanRef = startsUnsaved ? ref : await carriedRef(ref, { layout: result.layout, storedId });
     if (state.opening !== opening || disposed) return;
     opened = { layout: result.layout, startsUnsaved };

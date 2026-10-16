@@ -19,13 +19,26 @@ reaches a layer, holds a modifier, or is a bigger key made of parts.
 _Avoid_: action, mapping, keycode
 
 **Copy up**:
-Sending GitHub the saved documents this browser holds that GitHub lacks, or holds an older copy of.
+Sending GitHub the custom documents this browser holds that GitHub lacks, or holds an older copy of.
 Where both hold a document, GitHub's copy is the one opened.
 _Avoid_: sync, push, upload
 
+**Custom document**:
+A layout, rule set or text the user keeps, saved in this browser and, once they sign in, on GitHub
+too, under an id that follows its name. A link names it by `custom:<id>`; where it is not saved it
+does not open, and nothing opens in its place. Links once named it `saved:<id>`, and those no longer
+open.
+_Avoid_: saved document, stored document, saved item
+
+**Custom layout**:
+A custom document that is a layout. Besides `custom:<id>`, a link can name it by its id alone, or
+carry it whole with its id inside, which opens as the custom layout wherever it is saved with the
+same contents.
+_Avoid_: saved layout, stored layout, my layout
+
 **Draft**:
 A layout's unsaved edits, carried whole in its link after the `#`. The tab that made a draft knows
-which saved layout its edits were made on, so saving it saves that layout; anywhere else it is a
+which custom layout its edits were made on, so saving it saves that layout; anywhere else it is a
 layout of its own.
 _Avoid_: unsaved copy, working copy
 
@@ -43,7 +56,7 @@ kind a rule matches (`key_kind`), which is what a press counts as in the analysi
 _Avoid_: binding kind, key type
 
 **Layout session**:
-The layout open in Analyze, from the moment it is opened until another is: which saved layout it is,
+The layout open in Analyze, from the moment it is opened until another is: which custom layout it is,
 if any, its draft, and the link that carries it. Its own changes to the link never open it again;
 any other link does, even one naming the same layout.
 _Avoid_: open layout, editor state
@@ -75,18 +88,6 @@ _Avoid_: logical key, event, keystroke record
 Everything typing a text on a layout pressed: each press, how often it came, and which presses came
 together within a word. Every number about the layout is read from it.
 _Avoid_: simulation tables, registry, typing record
-
-**Saved document**:
-A layout, rule set or text the user saved, kept in this browser and, once they sign in, on GitHub
-too, under an id that follows its name. A link names it by `saved:<id>`; where it is not saved it
-does not open, and nothing opens in its place.
-_Avoid_: stored document, saved item
-
-**Saved layout**:
-A saved document that is a layout. Besides `saved:<id>`, a link can name it by its id alone, or
-carry it whole with its id inside, which opens as the saved layout wherever it is saved with the
-same contents.
-_Avoid_: stored layout, my layout
 
 **Ranking**:
 The Library's order of layouts by their numbers, on the analysis settings in its link with the sample
