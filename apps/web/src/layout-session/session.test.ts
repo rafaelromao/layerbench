@@ -349,6 +349,48 @@ describe('Saving', () => {
     expect(await ids(storage)).toEqual(['mine', 'mine-2']);
   });
 
+  it('does not carry a failed first save over to the next layout opened', async () => {
+    const storage = new MemoryStorage();
+    const put = storage.put.bind(storage);
+    const list = storage.list.bind(storage);
+    let release: () => void = () => {};
+    const held = new Promise<void>((r) => {
+      release = r;
+    });
+    let holding = true;
+    storage.list = async (...args) => {
+      // Only the first save waits, before it has chosen its id.
+      if (holding) {
+        holding = false;
+        await held;
+      }
+      return list(...args);
+    };
+    storage.put = async (...args) => {
+      await put(...args);
+      throw new Error('offline');
+    };
+    const { s } = session('qwerty', { storage });
+    const state = await opened(s);
+    const slow = s.save({ ...state.layout, name: 'Mine' });
+    await vi.waitFor(() => expect(s.getState()).toMatchObject({ saving: true }));
+    // Another layout is picked while that save waits for storage, and the save lands late.
+    await s.open('colemak');
+    const next = await opened(s);
+    release();
+    expect(await slow).toMatchObject({ ok: false });
+
+    storage.put = put;
+    // The late attempt is not this layout's: its first save is a layout of its own, and the one the
+    // late save wrote is left where it is.
+    expect(await s.save({ ...next.layout, name: 'Other' })).toEqual({
+      ok: true,
+      id: 'other',
+      leftBehind: false,
+    });
+    expect(await ids(storage)).toEqual(['mine', 'other']);
+  });
+
   it('takes a free id on a retry when nothing was written by the failed save', async () => {
     const storage = new MemoryStorage();
     const put = storage.put.bind(storage);

@@ -293,10 +293,11 @@ export function createLayoutSession(
               .catch(() => null);
             if (there && sameDocument(there.doc, attempted.doc)) from = attempted.id;
           }
+          // Only this opening's own attempt is kept: a save of a layout since left may land late.
           const { id, leftBehind } = await store(ports.storage(), layout, from, (taken, doc) => {
-            attempted = { id: taken, doc };
+            if (state.opening === opening) attempted = { id: taken, doc };
           });
-          attempted = null;
+          if (state.opening === opening) attempted = null;
           // Its link from now on carries it whole, so it can still be sent. A moment ago that may
           // have been the link of a draft of it, which it no longer is.
           const ref = await snapshotRef(layout, id);

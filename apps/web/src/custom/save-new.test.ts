@@ -1,7 +1,7 @@
 import { bundledLayout, type Layout } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
 import { MemoryStorage } from '../test/memory-storage.js';
-import { freeCopyName, sameDocument, saveNewLayout } from './save-new.js';
+import { freeCopyName, retryingSaver, sameDocument, saveNewLayout } from './save-new.js';
 
 const qwerty = bundledLayout('qwerty') as Layout;
 
@@ -85,5 +85,62 @@ describe('sameDocument', () => {
     expect(sameDocument({ a: 1 }, { a: 2 })).toBe(false);
     expect(sameDocument({ a: [1, 2] }, { a: [2, 1] })).toBe(false);
     expect(sameDocument({ a: 1 }, { a: 1, b: 1 })).toBe(false);
+  });
+});
+
+describe('retryingSaver', () => {
+  /** Storage whose writes land and then fail, as a repository that is down does after the browser. */
+  function writesThenFails(storage: MemoryStorage) {
+    const put = storage.put.bind(storage);
+    storage.put = async (...args) => {
+      await put(...args);
+      throw new Error('offline');
+    };
+    return () => {
+      storage.put = put;
+    };
+  }
+
+  it('saves as saveNewLayout does when nothing failed before', async () => {
+    const storage = new MemoryStorage();
+    const save = retryingSaver();
+    expect(await save(storage, { ...qwerty, name: 'Mine' }, 'One')).toEqual({ id: 'mine' });
+    expect(await save(storage, { ...qwerty, name: 'Mine' }, 'Two')).toEqual({ id: 'mine-2' });
+  });
+
+  it('takes over what a failed save wrote when the same layout is saved again', async () => {
+    const storage = new MemoryStorage();
+    const save = retryingSaver();
+    const mend = writesThenFails(storage);
+    await expect(save(storage, { ...qwerty, name: 'Mine' }, 'One')).rejects.toThrow('offline');
+    mend();
+    expect(await save(storage, { ...qwerty, name: 'Mine' }, 'Two')).toEqual({ id: 'mine' });
+    expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['mine']);
+  });
+
+  it('makes a layout of its own of a different one saved after a failure', async () => {
+    const storage = new MemoryStorage();
+    const save = retryingSaver();
+    const mend = writesThenFails(storage);
+    await expect(save(storage, { ...qwerty, name: 'Mine' }, 'One')).rejects.toThrow('offline');
+    mend();
+    expect(await save(storage, { ...qwerty, name: 'Yours' }, 'Two')).toEqual({ id: 'yours' });
+    expect((await storage.list('layouts')).map((e) => e.id).sort()).toEqual(['mine', 'yours']);
+  });
+
+  it('leaves alone a different layout that has the id the failed save took', async () => {
+    const storage = new MemoryStorage();
+    const save = retryingSaver();
+    const put = storage.put.bind(storage);
+    storage.put = async () => {
+      throw new Error('offline');
+    };
+    await expect(save(storage, { ...qwerty, name: 'Mine' }, 'One')).rejects.toThrow('offline');
+    storage.put = put;
+    await saveNewLayout(storage, { ...qwerty, name: 'Theirs', description: 'not mine' }, 'Theirs');
+    // Theirs took "theirs"; put another there under the failed id to be sure it is not overwritten.
+    await put('layouts', 'mine', { ...(await storage.get('layouts', 'theirs'))?.doc, id: 'mine' });
+    expect(await save(storage, { ...qwerty, name: 'Mine' }, 'Two')).toEqual({ id: 'mine-2' });
+    expect((await storage.get('layouts', 'mine'))?.doc.description).toBe('not mine');
   });
 });

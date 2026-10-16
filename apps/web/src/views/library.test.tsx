@@ -124,6 +124,28 @@ describe('Creating layouts', () => {
     expect(await screen.findByText('Saved Mine')).toBeInTheDocument();
   });
 
+  it('makes no second layout when a create that failed after the browser wrote it is tried again', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    renderRoute(LIBRARY, { storage });
+    const create = async () => {
+      await user.click(await screen.findByRole('button', { name: 'New layout' }));
+      await user.click(screen.getByRole('button', { name: 'Create and edit' }));
+    };
+    const put = storage.put.bind(storage);
+    storage.put = async (...args) => {
+      await put(...args);
+      throw new Error('offline');
+    };
+    await create();
+    expect(await screen.findByText('Save failed: offline')).toBeInTheDocument();
+
+    storage.put = put;
+    await create();
+    expect(await screen.findByText('Saved My layout')).toBeInTheDocument();
+    expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['my-layout']);
+  });
+
   it('opens a layout in Analyze on the corpus and rules the Library ranks by', async () => {
     const user = userEvent.setup();
     const { currentPath, currentSearch } = renderRoute(LIBRARY, { storage: freshStorage() });

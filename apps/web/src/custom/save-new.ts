@@ -54,3 +54,38 @@ export function freeCopyName(name: string, taken: Iterable<string>): string {
   for (let n = 2; used.has(copy.toLowerCase()); n++) copy = `${base} ${n}`;
   return copy;
 }
+
+/**
+ * A way to save new layouts that remembers its last failed save. With a repository as well as the
+ * browser, a save can fail after the browser has written the layout; saving the same layout again,
+ * from a dialog still open or one opened afresh, then takes over that document rather than make a
+ * second beside it. Only a document that is exactly what was written, and exactly what is being
+ * saved now, is taken over: anything else there is someone else's, and a free id is taken.
+ */
+export function retryingSaver(): (
+  storage: StorageAdapter,
+  layout: Layout,
+  message: string,
+) => Promise<{ id: string }> {
+  let attempted: { id: string; doc: JsonObject } | null = null;
+  return async (storage, layout, message) => {
+    if (attempted) {
+      const { id, doc } = attempted;
+      const there = await storage.get('layouts', id).catch(() => null);
+      if (
+        there &&
+        sameDocument(there.doc, doc) &&
+        sameDocument(toCanonicalJson({ ...layout, id }), doc)
+      ) {
+        await storage.put('layouts', id, doc, { message });
+        attempted = null;
+        return { id };
+      }
+    }
+    const saved = await saveNewLayout(storage, layout, message, (id, doc) => {
+      attempted = { id, doc };
+    });
+    attempted = null;
+    return saved;
+  };
+}

@@ -13,13 +13,13 @@ import {
   typedLayout,
 } from '@layerbench/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { featureList } from '../components/FeatureSwitches.js';
 import { formatValue } from '../components/format.js';
 import { HelpLink } from '../components/HelpLink.js';
 import { NameDialog } from '../components/NameDialog.js';
 import { customRef } from '../custom/ref.js';
-import { saveNewLayout } from '../custom/save-new.js';
+import { retryingSaver } from '../custom/save-new.js';
 import { rankingKey, recall, rememberBehind } from '../engine/ranking-memory.js';
 import {
   compareBy,
@@ -565,10 +565,11 @@ export function LibraryView() {
   );
 
   /** Save as a custom layout of its own, and say so by the layout's name: the id is only for links. */
+  const saver = useRef(retryingSaver());
   const saveNew = useCallback(
     async (layout: Layout, message: string): Promise<string | null> => {
       try {
-        const { id } = await saveNewLayout(storage, layout, message);
+        const { id } = await saver.current(storage, layout, message);
         custom.refresh();
         toast.info(`Saved ${layout.name}`);
         return id;
