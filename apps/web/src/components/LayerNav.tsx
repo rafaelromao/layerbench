@@ -47,7 +47,8 @@ export function LayerNav({
   label = 'Layers',
   className = '',
 }: LayerNavProps) {
-  const [renaming, setRenaming] = useState(false);
+  /** The id of the layer being renamed. */
+  const [renaming, setRenaming] = useState<string | null>(null);
   const field = useRef<HTMLInputElement>(null);
   const name = useRef<HTMLButtonElement>(null);
   const press = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -56,7 +57,7 @@ export function LayerNav({
   const settled = useRef(false);
 
   useEffect(() => {
-    if (!renaming) return;
+    if (renaming === null) return;
     settled.current = false;
     field.current?.focus();
     field.current?.select();
@@ -71,6 +72,11 @@ export function LayerNav({
   const found = layers.findIndex((l) => l.idx === active);
   const at = found < 0 ? 0 : found;
   const layer = layers[at];
+  // The board can turn while a name is being typed, as it does with a word playing: the field then
+  // belongs to a layer no longer shown, and would rename the wrong one.
+  useEffect(() => {
+    if (renaming !== null && renaming !== layer?.id) setRenaming(null);
+  }, [renaming, layer?.id]);
   if (!layer) return null;
   const many = layers.length > 1;
   const colour = layerColourOf(layer.idx, layer.color);
@@ -86,7 +92,7 @@ export function LayerNav({
   const finish = (value: string | null) => {
     if (settled.current) return;
     settled.current = true;
-    setRenaming(false);
+    setRenaming(null);
     if (value !== null) onRename?.(layer.id, value);
     // The name comes back where the field was; focus goes with it, so the keyboard is not lost.
     requestAnimationFrame(() => name.current?.focus());
@@ -128,7 +134,7 @@ export function LayerNav({
       }}
     >
       {many && arrow(-1, '‹', 'Previous layer')}
-      {renaming ? (
+      {renaming === layer.id ? (
         <input
           ref={field}
           aria-label={`Rename ${layer.name}`}
@@ -154,13 +160,13 @@ export function LayerNav({
           style={nameStyle}
           title="Double-click or press F2 to rename"
           // Enter and Space reach here with no pointer (detail 0): they are the keyboard's way in.
-          onClick={(e) => e.detail === 0 && setRenaming(true)}
-          onDoubleClick={() => setRenaming(true)}
+          onClick={(e) => e.detail === 0 && setRenaming(layer.id)}
+          onDoubleClick={() => setRenaming(layer.id)}
           onPointerDown={(e: PointerEvent<HTMLButtonElement>) => {
             pointer.current = e.pointerType;
             if (e.pointerType !== 'touch') return;
             cancelPress();
-            press.current = setTimeout(() => setRenaming(true), LONG_PRESS_MS);
+            press.current = setTimeout(() => setRenaming(layer.id), LONG_PRESS_MS);
           }}
           onPointerUp={cancelPress}
           onPointerLeave={cancelPress}
@@ -172,7 +178,7 @@ export function LayerNav({
           onKeyDown={(e) => {
             if (e.key === 'F2') {
               e.preventDefault();
-              setRenaming(true);
+              setRenaming(layer.id);
             }
           }}
         >
@@ -202,18 +208,39 @@ const SWIPE_MAX_MS = 800;
 const WHEEL_GESTURE_GAP_MS = 200;
 const WHEEL_MIN_PX = 30;
 
+/** The boxes between a touch and the element holding the board that scroll sideways, as they stand. */
+function scrollBoxes(from: EventTarget, root: Element): [Element, number][] {
+  const boxes: [Element, number][] = [];
+  for (let el = from instanceof Element ? from : null; el; el = el.parentElement) {
+    if (el.scrollWidth > el.clientWidth && /auto|scroll/.test(getComputedStyle(el).overflowX)) {
+      boxes.push([el, el.scrollLeft]);
+    }
+    if (el === root) break;
+  }
+  return boxes;
+}
+
 /**
  * Props for the element holding a board, so a swipe on it changes layer: a quick horizontal swipe
  * of a finger, or a sideways scroll on a trackpad. A finger that rests on a key first is dragging
- * it, and a gesture that panned or scrolled the board is not a swipe; vertical scrolling is never
- * touched. Touch events are only listened to, so the page scrolls and the board pans as ever.
+ * it, and a gesture that panned or scrolled the board is not a swipe (so on a board wider than the
+ * screen, the finger pans first and only a swipe from the edge turns the layer); vertical scrolling is
+ * never touched. Touch events are only listened to, so the page scrolls and the board pans as ever.
  */
 export function useLayerSwipe(
   layers: readonly { idx: number }[],
   active: number,
   onSelect: (idx: number) => void,
+  /** Whether a finger resting on a key drags it, which a swipe starting on a key must not be. */
+  draggable = false,
 ) {
-  const start = useRef<{ x: number; y: number; at: number; onKey: boolean } | null>(null);
+  const start = useRef<{
+    x: number;
+    y: number;
+    at: number;
+    onKey: boolean;
+    boxes: [Element, number][];
+  } | null>(null);
   const scrolled = useRef(false);
   const lastWheel = useRef(Number.NEGATIVE_INFINITY);
   const found = layers.findIndex((l) => l.idx === active);
@@ -237,14 +264,18 @@ export function useLayerSwipe(
         x: t.clientX,
         y: t.clientY,
         at: performance.now(),
-        onKey: e.target instanceof Element && e.target.closest('g[data-key]') !== null,
+        onKey: draggable && e.target instanceof Element && e.target.closest('g[data-key]') !== null,
+        boxes: scrollBoxes(e.target, e.currentTarget),
       };
     },
     onTouchEnd(e: TouchEvent<HTMLElement>) {
       const s = start.current;
       start.current = null;
       const t = e.changedTouches[0];
-      if (!s || !t || scrolled.current) return;
+      // A box that panned under the finger was the finger's work, not a swipe.
+      if (!s || !t || scrolled.current || s.boxes.some(([box, left]) => box.scrollLeft !== left)) {
+        return;
+      }
       const dx = t.clientX - s.x;
       const dy = t.clientY - s.y;
       if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < SWIPE_STRAIGHTNESS * Math.abs(dy)) return;
@@ -254,7 +285,6 @@ export function useLayerSwipe(
     onTouchCancel() {
       start.current = null;
     },
-    // The board panned inside its own box: that was the finger's work, not a swipe.
     onScrollCapture() {
       scrolled.current = true;
     },

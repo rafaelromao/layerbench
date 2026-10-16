@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { layerNames, shownLayer } from '../test/layers.js';
@@ -162,6 +162,21 @@ describe('Analyze', () => {
     await user.click(row as HTMLButtonElement);
     await waitFor(() => expect(currentSearch()).toContain('layer=1'));
     expect(shownLayer()).toBe('Alpha 2');
+  });
+
+  it('turns the board to the next layer when it is swiped, and stops a word playing', async () => {
+    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000');
+    await screen.findByText('Same finger bigrams');
+    expect(shownLayer()).toBe('Alpha 1');
+
+    const board = document.querySelector('.lb-board') as HTMLElement;
+    const finger = (x: number) => ({ clientX: x, clientY: 10 });
+    fireEvent.touchStart(board, { touches: [finger(220)] });
+    fireEvent.touchEnd(board, { changedTouches: [finger(100)] });
+    await waitFor(() => expect(shownLayer()).toBe('Alpha 2'));
+    fireEvent.touchStart(board, { touches: [finger(100)] });
+    fireEvent.touchEnd(board, { changedTouches: [finger(220)] });
+    await waitFor(() => expect(shownLayer()).toBe('Alpha 1'));
   });
 
   it('shows what a layer key ending a pair was pressed for when the pair is clicked', async () => {

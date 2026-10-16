@@ -136,7 +136,7 @@ The **Layers** panel lists them in order, and does everything else with them:
   it on a phone, or `F2` on the keyboard).
 - **Reorder** with the arrows, or by dragging its row. The base layer stays first.
 - **Duplicate** (⧉) copies a layer, with all its keys, right after it.
-- **Colour**, under the layer's name, picks the colour its tab and the keys that reach it are
+- **Colour**, under the layer's name, picks the colour its name and the keys that reach it are
   drawn in. **Automatic** follows the layer's place in the list; each of the others keeps a shade
   for the light theme and one for the dark, so legends stay readable in both.
 - **Remove** (✕) deletes a layer. It refuses while a key, combo or behaviour still reaches the layer,
@@ -215,12 +215,15 @@ Everything works by tapping. Selecting a key opens the editor right under the bo
 board scrolls away with the page as you work through the editor, leaving it the screen; scroll
 back up for the next key. Tiles and chips are sized for a finger.
 
-To drag a key, rest your finger on it for a moment first; a quick swipe up or down scrolls the page
-instead, and a quick swipe sideways turns the board to the next or the previous layer.
+To drag a key, rest your finger on it for a moment first.
 **Swap with…**, **Copy to…** and **Send to layer…** do the same without dragging. Resting a finger
 on a key and lifting it without moving adds it to the keys selected, to [move or clear several at
 once](#several-keys-at-once). The on-screen keyboard stays down until you tap a text field, such
 as **Or type**.
+
+A quick swipe up or down scrolls the page, and a quick swipe sideways on the board turns it to the
+next or the previous layer. A board wider than the screen pans under your finger first; swipe from
+its edge to turn the layer.
 
 ## Keyboard shortcuts
 

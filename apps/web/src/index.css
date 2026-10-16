@@ -169,8 +169,8 @@
 
   /*
    * One colour per layer, so a key that reaches a layer reads as belonging to it, and so does that
-   * layer's tab. Hues are spread for distinctness and kept off the theme's semantic colours; the
-   * lightness is set per theme so each holds its contrast on a key cap.
+   * layer's name in the navigator. Hues are spread for distinctness and kept off the theme's
+   * semantic colours; the lightness is set per theme so each holds its contrast on a key cap.
    */
   --lb-layer-1: oklch(0.76 0.13 250);
   --lb-layer-2: oklch(0.78 0.15 150);

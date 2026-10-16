@@ -406,7 +406,7 @@ export function Workbench({
     setPlay(null);
     send({ type: 'selectLayer', layer });
   };
-  const swipe = useLayerSwipe(state.compiled.layers, boardLayer, selectLayer);
+  const swipe = useLayerSwipe(state.compiled.layers, boardLayer, selectLayer, true);
 
   const heat = useMemo(
     () => (shown ? heatMap(shown, params.heat, boardLayer) : {}),

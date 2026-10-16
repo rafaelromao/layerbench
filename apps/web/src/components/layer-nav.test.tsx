@@ -184,6 +184,23 @@ describe('the layer navigator', () => {
       }
     });
 
+    it('drops a rename when the board turns to another layer under it', async () => {
+      const user = userEvent.setup();
+      const onRename = vi.fn();
+      const { rerender } = render(
+        <LayerNav layers={LAYERS} active={0} onSelect={() => {}} onRename={onRename} />,
+      );
+      await user.dblClick(within(nav()).getByText('Base'));
+      await user.type(screen.getByLabelText('Rename Base'), 'x');
+      // A word playing turns the board; the field must not rename the layer it turns to.
+      rerender(<LayerNav layers={LAYERS} active={1} onSelect={() => {}} onRename={onRename} />);
+      expect(screen.queryByLabelText(/^Rename/)).toBeNull();
+      expect(within(nav()).getByText('Nav')).toBeInTheDocument();
+      rerender(<LayerNav layers={LAYERS} active={0} onSelect={() => {}} onRename={onRename} />);
+      expect(screen.queryByLabelText(/^Rename/)).toBeNull();
+      expect(onRename).not.toHaveBeenCalled();
+    });
+
     it('leaves the name as plain text where nothing can rename it', async () => {
       const user = userEvent.setup();
       render(<LayerNav layers={LAYERS} active={0} onSelect={() => {}} />);
@@ -195,19 +212,32 @@ describe('the layer navigator', () => {
 });
 
 /** A board with the swipe of a navigator on it, which keys are drawn on as they are on a board. */
-function Board({ onSelect }: { onSelect: (idx: number) => void }) {
+function Board({
+  onSelect,
+  draggable = true,
+}: {
+  onSelect: (idx: number) => void;
+  draggable?: boolean;
+}) {
   const [active, setActive] = useState(1);
-  const swipe = useLayerSwipe(LAYERS, active, (idx) => {
-    setActive(idx);
-    onSelect(idx);
-  });
+  const swipe = useLayerSwipe(
+    LAYERS,
+    active,
+    (idx) => {
+      setActive(idx);
+      onSelect(idx);
+    },
+    draggable,
+  );
   return (
     <div data-testid="board" {...swipe}>
-      <svg role="img" aria-label="keys">
-        <g data-key="K">
-          <rect width="1" height="1" />
-        </g>
-      </svg>
+      <div data-testid="box" style={{ overflowX: 'auto' }}>
+        <svg role="img" aria-label="keys">
+          <g data-key="K">
+            <rect width="1" height="1" />
+          </g>
+        </svg>
+      </div>
       <span>{active}</span>
     </div>
   );
@@ -269,6 +299,32 @@ describe('a swipe on a board', () => {
     // A quick swipe that happens to start on a key is a swipe.
     swipe(key, [200, 10], [80, 10], { duration: 200 });
     expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets a swipe that starts on a key turn the layer when no key there can be dragged', () => {
+    const onSelect = vi.fn();
+    render(<Board onSelect={onSelect} draggable={false} />);
+    const key = screen.getByTestId('board').querySelector('g[data-key]') as Element;
+    swipe(key, [200, 10], [80, 10], { duration: 600 });
+    expect(onSelect).toHaveBeenCalledWith(2);
+  });
+
+  it('leaves a board that panned under the finger, and turns the layer from its edge', () => {
+    const { onSelect } = setup();
+    const box = screen.getByTestId('box');
+    Object.defineProperty(box, 'scrollWidth', { value: 500 });
+    Object.defineProperty(box, 'clientWidth', { value: 100 });
+    // The finger panned the board: its offset moved between the touch and its end.
+    now = 1000;
+    fireEvent.touchStart(box, { touches: [finger(200)] });
+    box.scrollLeft = 60;
+    now = 1100;
+    fireEvent.touchEnd(box, { changedTouches: [finger(80)] });
+    expect(onSelect).not.toHaveBeenCalled();
+
+    // At the edge there is nothing left to pan, so the same swipe turns the layer.
+    swipe(box, [200, 10], [80, 10]);
+    expect(onSelect).toHaveBeenCalledWith(2);
   });
 
   it('leaves a pinch, a cancelled touch and a board that panned alone', () => {
