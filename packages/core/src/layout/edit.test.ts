@@ -399,6 +399,46 @@ describe('changing a combo', () => {
     ]);
   });
 
+  it('leaves alone what only looks like the combo in a path, as a key whose id holds it', () => {
+    const key = (id: string, x: number) => ({
+      id,
+      hand: 'L' as const,
+      finger: 'LI' as const,
+      row: 1 as const,
+      col: 4,
+      x,
+      y: 0,
+      w: 1,
+      h: 1,
+      rotation: 0,
+      home: false,
+      thumb: false,
+      inner: false,
+    });
+    const custom: Layout = {
+      ...layout,
+      keys: { space: 'A' },
+      geometry: { custom: [key('A', 0), key('A+combo:old', 1), key('C', 2), key('D', 3)] },
+      layers: [{ id: 'base', name: 'Base', bindings: { '*': { kind: 'trans' } } }],
+      combos: [{ id: 'old', keys: ['A', 'C'], binding: kp('q'), layers: ['base'], role: 'typing' }],
+      typingPaths: {
+        á: [
+          { producer: 'deadkey:combo:old+direct:base/A+combo:old' },
+          { producer: 'deadkey:direct:base/A+combo:old+combo:old#shifted' },
+          { producer: 'direct:base/A+combo:old' },
+          { producer: 'deadkey:combo:nothing+direct:base/A' },
+        ],
+      },
+    };
+    const o = landed(custom, { kind: 'updateCombo', combo: 0, keys: ['A', 'D'] });
+    expect(o.layout.typingPaths?.á.map((e) => e.producer)).toEqual([
+      'deadkey:combo:a-d+direct:base/A+combo:old',
+      'deadkey:direct:base/A+combo:old+combo:a-d#shifted',
+      'direct:base/A+combo:old',
+      'deadkey:combo:nothing+direct:base/A',
+    ]);
+  });
+
   it('follows an unnamed combo by the id the compiler gives it', () => {
     const unnamed: Layout = {
       ...withCombos,

@@ -123,6 +123,43 @@ type ComboOf = NonNullable<Layout['combos']>[number];
 /** The id the compiler knows a combo by: the one it has, or `combo` and its place. */
 const comboId = (c: ComboOf, place: number) => c.id ?? `combo${place}`;
 
+/**
+ * How a producer id changes when the combo `was` takes the id `now`. A producer is named by one
+ * component (`combo:<id>`, with `#shifted` or `#<n>` after it for some), or, for a dead key, by two
+ * joined with a plus: `deadkey:<component>+<component>`. A key or layer id may hold a plus too, so
+ * the split is the one where both sides are components the layout has: a `direct:<layer>/<key>`
+ * of its own, or a combo of its own. Anything else is left as it was.
+ */
+function comboRenamer(
+  layout: Layout,
+  combos: ComboOf[],
+  was: string,
+  now: string,
+): (producer: string) => string {
+  const keyIds = new Set(buildGeometry(layout).keys.map((k) => k.id));
+  const comboIds = new Set(combos.map(comboId));
+  const isComponent = (c: string): boolean => {
+    if (c.startsWith('combo:')) return comboIds.has(c.slice(6).replace(/#.*$/, ''));
+    if (!c.startsWith('direct:')) return false;
+    return layout.layers.some(
+      (l) => c.startsWith(`direct:${l.id}/`) && keyIds.has(c.slice(8 + l.id.length)),
+    );
+  };
+  const own = `combo:${was}`;
+  const renamed = (c: string) =>
+    c === own || c.startsWith(`${own}#`) ? `combo:${now}${c.slice(own.length)}` : c;
+  return (producer) => {
+    if (!producer.startsWith('deadkey:')) return renamed(producer);
+    const rest = producer.slice(8);
+    for (let at = rest.indexOf('+'); at >= 0; at = rest.indexOf('+', at + 1)) {
+      const [source, letter] = [rest.slice(0, at), rest.slice(at + 1)];
+      if (isComponent(source) && isComponent(letter))
+        return `deadkey:${renamed(source)}+${renamed(letter)}`;
+    }
+    return producer;
+  };
+}
+
 /** Whether two lists of keys name the same keys, in any order. */
 const sameKeySet = (a: string[], b: string[]) =>
   a.length === b.length && a.every((k) => b.includes(k));
@@ -319,13 +356,7 @@ const handlers: Handlers = {
       const was = comboId(current, edit.combo);
       const owned = !others.includes(was);
       if (typingPaths && owned && next.id !== was) {
-        // The combo is named in a producer on its own, and inside a dead key's composed one
-        // (`deadkey:combo:<id>+direct:…`, or with the combo as the letter), after a colon or a plus.
-        const named = new RegExp(
-          `(?<=^|[:+])combo:${was.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=$|[#+])`,
-          'g',
-        );
-        const rewrite = (producer: string) => producer.replace(named, `combo:${next.id}`);
+        const rewrite = comboRenamer(layout, combos, was, next.id as string);
         renamedPaths = Object.fromEntries(
           Object.entries(typingPaths).map(([symbol, entries]) => [
             symbol,
