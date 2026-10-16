@@ -268,37 +268,39 @@ export function Workbench({
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [state.dirty]);
 
-  const store = useCallback(async () => {
-    const layout = state.layout;
-    const saved = await session.save(layout);
-    if (!saved.ok) {
-      toast.error(
-        saved.reason === 'conflict'
-          ? 'Someone else changed this layout; reload and try again'
-          : `Save failed: ${saved.error}`,
-      );
-      return;
-    }
-    send({ type: 'saved', layout });
-    void customLayouts.refresh();
-    if (saved.leftBehind) {
-      toast.error(
-        `Saved ${layout.name}; its copy under the old name could not be removed and is still in the Library`,
-      );
-    } else toast.info(`Saved ${layout.name}`);
-  }, [state.layout, session.save, customLayouts.refresh]);
+  /** Save the layout; as a copy under `copyAs` when it is not stored here yet. */
+  const store = useCallback(
+    async (copyAs?: string) => {
+      const from = state.layout;
+      const layout = copyAs === undefined ? from : { ...from, name: copyAs };
+      const saved = await session.save(layout);
+      if (!saved.ok) {
+        toast.error(
+          saved.reason === 'conflict'
+            ? 'Someone else changed this layout; reload and try again'
+            : `Save failed: ${saved.error}`,
+        );
+        return;
+      }
+      // The layout takes the copy's name only once the copy is saved.
+      send(copyAs === undefined ? { type: 'saved', layout } : { type: 'savedAs', from, layout });
+      setCopyNamed(null);
+      void customLayouts.refresh();
+      if (saved.leftBehind) {
+        toast.error(
+          `Saved ${layout.name}; its copy under the old name could not be removed and is still in the Library`,
+        );
+      } else toast.info(`Saved ${layout.name}`);
+    },
+    [state.layout, session.save, customLayouts.refresh],
+  );
 
   // A layout that is not stored here, bundled or carried in a link, is not the user's to overwrite:
   // its first save makes a copy, and asks what to call it. Later saves are of the copy, and ask
   // nothing.
   const [naming, setNaming] = useState(false);
-  /** The copy's name, given and set on the layout, while the save of the layout under it waits. */
-  const [named, setNamed] = useState<string | null>(null);
-  useEffect(() => {
-    if (named === null || state.layout.name !== named) return;
-    setNamed(null);
-    void store();
-  }, [named, state.layout.name, store]);
+  /** The name given for a copy whose save failed, offered again on the next try. */
+  const [copyNamed, setCopyNamed] = useState<string | null>(null);
   const copyName = useMemo(
     () =>
       freeCopyName(state.layout.name, [
@@ -638,14 +640,17 @@ export function Workbench({
           title="Save a copy"
           intro="Save makes a copy of this layout in your custom layouts. What should the copy be called?"
           nameLabel="Name of the copy"
-          initialName={copyName}
+          initialName={copyNamed ?? copyName}
           submitLabel="Save copy"
           onSubmit={(name) => {
             setNaming(false);
-            send({ type: 'edit', edit: { kind: 'setMeta', name } });
-            setNamed(name);
+            setCopyNamed(name);
+            void store(name);
           }}
-          onClose={() => setNaming(false)}
+          onClose={() => {
+            setNaming(false);
+            setCopyNamed(null);
+          }}
         />
       )}
 

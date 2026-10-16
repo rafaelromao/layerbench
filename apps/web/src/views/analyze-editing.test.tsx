@@ -243,6 +243,26 @@ describe('Edit', () => {
     expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['qwerty-copy']);
   }, 60_000);
 
+  it('keeps the layout as it was when the copy cannot be saved, and offers the name given again', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    await openEditOn(storage);
+    vi.spyOn(storage, 'put').mockRejectedValueOnce(new Error('offline'));
+
+    await saveCopy(user, 'Mine');
+    expect(await screen.findByText('Save failed: offline')).toBeInTheDocument();
+    // Nothing was saved, so nothing was renamed, and the next try does not name a copy of a copy.
+    expect(within(bar()).getByLabelText('Name')).toHaveValue('Qwerty');
+    expect(await storage.list('layouts')).toEqual([]);
+
+    await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+    expect(within(copyDialog()).getByLabelText('Name of the copy')).toHaveValue('Mine');
+    await user.click(within(copyDialog()).getByRole('button', { name: 'Save copy' }));
+    expect(await screen.findByText('Saved Mine')).toBeInTheDocument();
+    expect(within(bar()).getByLabelText('Name')).toHaveValue('Mine');
+    expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['mine']);
+  }, 60_000);
+
   it('offers a free name for the copy, and refuses none or leaves the layout alone on Cancel', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();

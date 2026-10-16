@@ -95,6 +95,30 @@ describe('undo', () => {
     expect(reducer(landed, { type: 'undo' }).dirty).toBe(false);
   });
 
+  it('names the layout after its copy once saved, as one edit that Undo takes back as unsaved', () => {
+    const before = start();
+    const copy = { ...before.layout, name: 'Mine' };
+    const saved = reducer(before, { type: 'savedAs', from: before.layout, layout: copy });
+    expect(saved.layout.name).toBe('Mine');
+    expect(saved.dirty).toBe(false);
+    expect(saved.past).toHaveLength(before.past.length + 1);
+
+    const undone = reducer(saved, { type: 'undo' });
+    expect(undone.layout.name).toBe(before.layout.name);
+    expect(undone.dirty).toBe(true);
+    expect(reducer(undone, { type: 'redo' }).dirty).toBe(false);
+  });
+
+  it('keeps an edit made while a copy was being saved unsaved', () => {
+    const before = start();
+    const copy = { ...before.layout, name: 'Mine' };
+    const meanwhile = reducer(before, bind('LHM', { kind: 'kp', symbol: 'ç' }));
+    const saved = reducer(meanwhile, { type: 'savedAs', from: before.layout, layout: copy });
+    expect(saved.layout.name).toBe('Mine');
+    expect(saved.dirty).toBe(true);
+    expect(JSON.stringify(saved.layout)).toContain('ç');
+  });
+
   it('keeps the history bounded', () => {
     let state = start();
     for (let i = 0; i < 60; i++) {
