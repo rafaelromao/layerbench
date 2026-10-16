@@ -9,6 +9,10 @@ export default defineConfig({
     setupFiles: ['src/test/setup.ts'],
     // Analyses run for real in these tests, on a small sample.
     testTimeout: 30_000,
+    // Coverage slows every test, and the heavy ones run for tens of seconds on a CI runner with
+    // dozens of jsdom workers sharing a few cores; one that passes in a minute on a laptop has
+    // been seen to miss its limit there. A second try tells that apart from a test that is broken.
+    retry: process.env.CI ? 2 : 0,
     coverage: {
       provider: 'v8',
       include: ['src/**'],
