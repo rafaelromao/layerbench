@@ -374,10 +374,6 @@
           "kind": "kp",
           "symbol": "°"
         },
-        "RTM": {
-          "kind": "kp",
-          "symbol": "ñ"
-        },
         "RTR": {
           "kind": "kp",
           "symbol": ";"
@@ -385,10 +381,6 @@
         "RHI": {
           "kind": "kp",
           "symbol": "¿"
-        },
-        "RHM": {
-          "kind": "kp",
-          "symbol": "ç"
         },
         "RHR": {
           "kind": "kp",
@@ -418,10 +410,6 @@
           "kind": "kp",
           "symbol": "«"
         },
-        "LTI": {
-          "kind": "kp",
-          "symbol": "€"
-        },
         "LBI": {
           "kind": "dead_key",
           "diacritic": "~"
@@ -429,10 +417,6 @@
         "LHI": {
           "kind": "dead_key",
           "diacritic": "´"
-        },
-        "LBM": {
-          "kind": "kp",
-          "symbol": "£"
         },
         "LHM": {
           "kind": "dead_key",
@@ -445,6 +429,22 @@
         "LHR": {
           "kind": "dead_key",
           "diacritic": "`"
+        },
+        "LBM": {
+          "kind": "kp",
+          "symbol": "ç"
+        },
+        "RHM": {
+          "kind": "kp",
+          "symbol": "£"
+        },
+        "RTM": {
+          "kind": "kp",
+          "symbol": "€"
+        },
+        "LTI": {
+          "kind": "kp",
+          "symbol": "ñ"
         }
       }
     }
