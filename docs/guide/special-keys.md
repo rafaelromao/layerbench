@@ -94,7 +94,7 @@ is a second stage, which firmware builds with a one-shot layer the accent arms.
 
 An adaptive key lives on its key, like any other. **Copy to…**, or dragging with `Alt`, puts a copy
 on another key, and **From this layout** lists the layout's adaptive keys first. Each copy is a key
-of its own: changing one leaves the others as they were. A layout saved when adaptive keys were
+of its own: changing one leaves the others as they were. A custom layout saved when adaptive keys were
 declared in **Features** opens with each one on the keys it was placed on, typing as it did.
 
 ## Macros

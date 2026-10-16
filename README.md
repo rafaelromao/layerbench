@@ -38,7 +38,7 @@ in with GitHub to keep your work in your own account.
 
 | Route | View |
 |---|---|
-| `/library` | Bundled and saved layouts, sorted by Effort, SFB or name; imports |
+| `/library` | Bundled and custom layouts, sorted by Effort, SFB or name; imports |
 | `/analyze` | Analysis and editing of one layout |
 | `/compare` | Two layouts side by side |
 | `/rules` | Rule sets: enable, re-parameterize, compose, save |
@@ -48,9 +48,10 @@ in with GitHub to keep your work in your own account.
 `/` opens the Library. A link carries the whole analysis. The layout travels in it too, as
 `#layout=inline:…`: after the `#`, which the browser keeps to itself, so a long one cannot make the
 request too long for GitHub Pages to answer (`apps/web/src/url/fragment.ts`). Analyze writes every
-layout it has open into its link that way, a saved one too, with its id inside, so the link can be
-sent: opened where that id is saved with the same contents, it is the saved layout again, and
-anywhere else a layout of its own, saved as a copy.
+layout it has open into its link that way, a custom one too, with its id inside, so the link can be
+sent: opened where that id is saved with the same contents, it is the custom layout again, and
+anywhere else a layout of its own, saved as a copy. Links name a custom document as `custom:<id>`;
+`saved:` links from before the name changed no longer open.
 
 ## Storage in the code
 
@@ -76,7 +77,7 @@ The layouts the app started with are written as data in `packages/core/src/layou
 `small.ts`, `romak.ts`), each copied from where its author published it, and given the default
 Numbers, Symbols and Dead keys layers, Dead keys on the same combo for all of them
 (`withDefaultLayers` in `templates.ts`). A new one joins them as a
-document: a layout saved in LayerBench, unchanged, added by pull request. Merging the pull request is
+document: a custom layout, unchanged, added by pull request. Merging the pull request is
 the approval, and the deploy that follows puts it in everyone's Library.
 
 1. In the app, give the layout its name, its author, and a description that links to where it comes
@@ -112,12 +113,12 @@ approval.
    of text you would paste or upload in **Corpus**. Its language needs a profile in
    `packages/core/src/lang/profiles.ts`; [packages/corpora/README.md](packages/corpora/README.md#adding-a-language)
    says how to add one.
-   A text saved in **Corpus** while Storage saves to your repository is already on your data
+   A custom text, saved in **Corpus**, while Storage saves to your repository is already on your data
    branch as `packages/corpora/raw/<id>.txt`, with its entry beside it as `<id>.json`.
 2. Add its entry to `raw/sources.json`, under an id of lower-case words and hyphens: `file`, `name`,
    `language`, `description`, `source` with a link, and `license`, starting `CC0`, `CC BY 4.0`,
    `CC BY-SA 4.0` (with its version) or `Public domain`, since the text is published with the app.
-   A saved text's `<id>.json` is that
+   A custom text's `<id>.json` is that
    entry with its licence and source still to fill in. A source not yet credited goes in the
    credits at the foot of the landing page.
 3. `pnpm corpora <id>` builds it. Commit `apps/web/public/corpora/<id>/` and `index.json` with it.
