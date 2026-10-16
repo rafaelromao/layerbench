@@ -12,7 +12,12 @@ import { type Dispatch, type ReactNode, useMemo, useState } from 'react';
 import { layerColourOf } from '../../components/layer-colour.js';
 import type { ProducerDTO } from '../../engine/protocol.js';
 import { toast } from '../../state/toasts.js';
-import { type BindingTextContext, bindingText, parseBindingText } from './binding-text.js';
+import {
+  type BindingTextContext,
+  bindingText,
+  parseBindingText,
+  roundTrips,
+} from './binding-text.js';
 import { Segment, TextField } from './inspector/controls.js';
 import { type EditAction, type EditState, shownLayer } from './reducer.js';
 
@@ -535,7 +540,14 @@ export function CombosPanel({ state, send }: PanelProps) {
               const name = c.keys.join('+');
               const repicking = state.comboPick !== null && state.comboPickFor === i;
               const layerIds = c.layers ?? state.layout.layers.map((l) => l.id);
-              const out = bindingText(state.compiled, c.binding);
+              const written = bindingText(state.compiled, c.binding);
+              // Text that reads back as another binding would change it by being kept.
+              const exact = written.exact && roundTrips(written.text, c.binding, context);
+              const out = {
+                ...written,
+                exact,
+                why: written.why ?? (exact ? undefined : 'it has more than the text can say'),
+              };
               return (
                 // By place: a custom layout can hold two combos under one id.
                 // biome-ignore lint/suspicious/noArrayIndexKey: the place is what a row edits

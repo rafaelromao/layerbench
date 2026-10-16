@@ -1,6 +1,12 @@
 import { type Binding, bundledLayout, compileLayout } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
-import { type BindingTextContext, bindingText, parseBindingText, suggest } from './binding-text.js';
+import {
+  type BindingTextContext,
+  bindingText,
+  parseBindingText,
+  roundTrips,
+  suggest,
+} from './binding-text.js';
 
 const compiled = compileLayout(bundledLayout('magic-romak') as never);
 
@@ -193,5 +199,22 @@ describe('binding text', () => {
     expect(suggest('&mo alph', ctx).map((s) => s.insert)).toContain('&mo alpha2');
     expect(suggest('&sk L', ctx).map((s) => s.label)).toContain('LSHIFT');
     expect(suggest('&kp a b c', ctx)).toEqual([]);
+  });
+});
+
+describe('whether text reads back as the binding it was written for', () => {
+  const textOf = (b: Binding) => bindingText(compiled, b).text;
+
+  it('does for what the syntax says whole, whatever order the fields come in', () => {
+    const macro = build('&macro ão');
+    expect(roundTrips(textOf(macro), macro, ctx)).toBe(true);
+    const reordered: Binding = { symbol: 'q', kind: 'kp' };
+    expect(roundTrips(textOf(reordered), reordered, ctx)).toBe(true);
+  });
+
+  it('does not for a key press with a shifted output the text has no room for', () => {
+    const odd: Binding = { kind: 'kp', symbol: ',', shifted: ';' };
+    expect(bindingText(compiled, odd).exact).toBe(true);
+    expect(roundTrips(textOf(odd), odd, ctx)).toBe(false);
   });
 });
