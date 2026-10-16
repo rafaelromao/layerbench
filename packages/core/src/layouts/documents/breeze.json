@@ -345,15 +345,15 @@
           "kind": "kp",
           "symbol": "'"
         },
-        "RHP": {
-          "kind": "kp",
-          "symbol": ";"
-        },
         "RTR": {
           "kind": "kp",
           "symbol": "@"
         },
         "LHP": {
+          "kind": "kp",
+          "symbol": ";"
+        },
+        "RHP": {
           "kind": "kp",
           "symbol": ":"
         }
