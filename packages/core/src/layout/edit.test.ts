@@ -588,6 +588,35 @@ describe('changing a combo', () => {
     expect(added.layout.combos?.[2].id).toBe('lhp-lhi-2');
   });
 
+  it("refuses an output that would give it a producer another combo's id already names", () => {
+    const imported: Layout = {
+      ...layout,
+      combos: [
+        { id: 'old', keys: ['LHM', 'LHI'], binding: kp('a'), layers: ['base'], role: 'typing' },
+        {
+          id: 'old#hold',
+          keys: ['LHM', 'LHR'],
+          binding: kp('b'),
+          layers: ['base'],
+          role: 'typing',
+        },
+      ],
+    };
+    const tapHold: Binding = { kind: 'hold_tap', tap: kp('q'), hold: kp('z') };
+    expect(applyEdit(imported, { kind: 'updateCombo', combo: 0, binding: tapHold })).toMatchObject({
+      status: 'refused',
+      message: expect.stringMatching(/^combo:old#hold would name an output of another combo too/),
+    });
+    // A clash the layout already had is not this edit's to refuse.
+    const already: Layout = {
+      ...imported,
+      combos: [{ ...imported.combos![0], binding: tapHold }, imported.combos![1]],
+    };
+    expect(applyEdit(already, { kind: 'updateCombo', combo: 0, role: 'command' }).status).toBe(
+      'landed',
+    );
+  });
+
   it('follows an unnamed combo by the id the compiler gives it', () => {
     const unnamed: Layout = {
       ...withCombos,

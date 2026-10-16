@@ -210,6 +210,25 @@ function freeComboId(keys: string[], others: string[]): string {
   });
 }
 
+/**
+ * The producer ids of the combo at `place` that something else in the layout also makes: a typing
+ * path naming one of them would name both. None when the layout does not compile, which the edit
+ * then refuses on its own.
+ */
+function sharedProducerIds(layout: Layout, place: number): string[] {
+  let compiled: CompiledLayout;
+  try {
+    compiled = compileLayout(layout);
+  } catch {
+    return [];
+  }
+  const index = enumerateProducers(compiled, 'model');
+  const all = [...index.bySymbol.values()].flat().concat(index.excludedByCase);
+  const ours = (p: Producer) => p.kind === 'combo' && p.steps[0]?.combo === place;
+  const mine = new Set(all.filter(ours).map((p) => p.id));
+  return [...new Set(all.filter((p) => !ours(p) && mine.has(p.id)).map((p) => p.id))];
+}
+
 /** Whether two lists of keys name the same keys, in any order. */
 const sameKeySet = (a: string[], b: string[]) =>
   a.length === b.length && a.every((k) => b.includes(k));
@@ -399,6 +418,16 @@ const handlers: Handlers = {
 
     if (sameValue(next, current)) return same(layout);
     const out: Layout = { ...layout, combos: combos.map((c, i) => (i === edit.combo ? next : c)) };
+    // A new output can bring a producer whose id another combo's already has (an imported `old`
+    // beside an `old#shifted`); a path naming it would then name both, so that is refused.
+    const shared = sharedProducerIds(out, edit.combo).filter(
+      (id) => !sharedProducerIds(layout, edit.combo).includes(id),
+    );
+    if (shared.length > 0) {
+      return {
+        refused: `${shared[0]} would name an output of another combo too. Give that combo another id first.`,
+      };
+    }
     // Twins under one id (older saved layouts) are told apart only by place, so a path naming that
     // id is left to whichever the resolver reads it as; only a combo's own id is followed.
     if (layout.typingPaths && !others.includes(comboId(current, edit.combo))) {
