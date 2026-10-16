@@ -8,8 +8,8 @@ import {
   useSyncExternalStore,
 } from 'react';
 import { useStorage } from '../storage/use-storage.js';
+import { withCustomCorpora } from './custom-corpora.js';
 import type { AnalysisClient } from './protocol.js';
-import { withSavedCorpora } from './saved-corpora.js';
 import { createWorkerClient } from './worker-client.js';
 
 const ClientContext = createContext<AnalysisClient | null>(null);
@@ -77,13 +77,13 @@ export function AnalysisClientProvider({
 }
 
 /**
- * Offers the texts saved in storage beside the bundled ones, to everything below it: inside both
+ * Offers the custom texts in storage beside the bundled ones, to everything below it: inside both
  * AnalysisClientProvider and StorageProvider, and reset with the storage when someone signs in.
  */
-export function SavedCorporaProvider({ children }: { children: ReactNode }) {
+export function CustomCorporaProvider({ children }: { children: ReactNode }) {
   const client = useAnalysisClient();
   const storage = useStorage();
-  const value = useMemo(() => withSavedCorpora(client, storage), [client, storage]);
+  const value = useMemo(() => withCustomCorpora(client, storage), [client, storage]);
   return <ClientContext.Provider value={value}>{children}</ClientContext.Provider>;
 }
 

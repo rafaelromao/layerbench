@@ -5,20 +5,20 @@ import {
   type IndexEntry,
   type StorageAdapter,
 } from '@layerbench/core';
-import { readSaved, savedError } from '../saved/read.js';
-import { savedId, savedRef } from '../saved/ref.js';
+import { customError, readCustom } from '../custom/read.js';
+import { customId, customRef } from '../custom/ref.js';
 import type { AnalysisClient } from './protocol.js';
 
-/** The engine's copy of a saved text, which it knows as `saved:<id>@<hash of its sample>`. */
+/** The engine's copy of a custom text, which it knows as `custom:<id>@<hash of its sample>`. */
 function isEngineCopy(corpusId: string): boolean {
   const at = corpusId.lastIndexOf('@');
-  return at > 0 && savedId(corpusId.slice(0, at)) !== null;
+  return at > 0 && customId(corpusId.slice(0, at)) !== null;
 }
 
-/** What a picker shows for a saved text before it is read: the index has all but its symbols. */
+/** What a picker shows for a custom text before it is read: the index has all but its symbols. */
 function listed(entry: IndexEntry): CorpusManifest {
   return {
-    id: savedRef(entry.id),
+    id: customRef(entry.id),
     name: entry.name,
     language: entry.language ?? 'custom',
     license: entry.license,
@@ -28,13 +28,13 @@ function listed(entry: IndexEntry): CorpusManifest {
 }
 
 /**
- * The engine, with the texts saved in `storage` offered beside the bundled ones. A saved text is
+ * The engine, with the custom texts in `storage` offered beside the bundled ones. A custom text is
  * read the first time it is used and handed to the engine, which knows it by its name and a hash of
  * its sample: saved again under the same name, it is a new text there, and nothing worked out from
  * the old one is taken for it. Everything else goes through unchanged.
  */
-export function withSavedCorpora(client: AnalysisClient, storage: StorageAdapter): AnalysisClient {
-  /** What the engine was given for each saved text this session, by the name views use. */
+export function withCustomCorpora(client: AnalysisClient, storage: StorageAdapter): AnalysisClient {
+  /** What the engine was given for each custom text this session, by the name views use. */
   const given = new Map<string, Promise<CorpusManifest>>();
 
   const give = (ref: string, doc: Promise<Record<string, unknown>>): Promise<CorpusManifest> => {
@@ -53,15 +53,15 @@ export function withSavedCorpora(client: AnalysisClient, storage: StorageAdapter
     given.get(ref) ??
     give(
       ref,
-      readSaved(storage, 'corpora', id).then((read) => {
-        if (read.status !== 'read') throw new Error(savedError('corpora', id, read));
+      readCustom(storage, 'corpora', id).then((read) => {
+        if (read.status !== 'read') throw new Error(customError('corpora', id, read));
         return read.doc;
       }),
     );
 
   /** The id the engine knows a corpus by. */
   const inEngine = async (corpusId: string): Promise<string> => {
-    const id = savedId(corpusId);
+    const id = customId(corpusId);
     return id === null ? corpusId : (await engineManifest(corpusId, id)).id;
   };
 
@@ -74,35 +74,35 @@ export function withSavedCorpora(client: AnalysisClient, storage: StorageAdapter
     return { ...settings, corpus, corpus2 };
   };
 
-  const asSaved = (ref: string, manifest: CorpusManifest): CorpusManifest => ({
+  const asCustom = (ref: string, manifest: CorpusManifest): CorpusManifest => ({
     ...manifest,
     id: ref,
   });
 
   return {
     async listCorpora() {
-      const [engine, saved] = await Promise.all([
+      const [engine, custom] = await Promise.all([
         client.listCorpora(),
         storage.list('corpora').catch(() => [] as IndexEntry[]),
       ]);
       const read = await Promise.all(
-        saved.map(async (entry) => {
-          const ref = savedRef(entry.id);
+        custom.map(async (entry) => {
+          const ref = customRef(entry.id);
           const manifest = await given.get(ref)?.catch(() => null);
-          return manifest ? asSaved(ref, manifest) : listed(entry);
+          return manifest ? asCustom(ref, manifest) : listed(entry);
         }),
       );
       return [...engine.filter((m) => !isEngineCopy(m.id)), ...read];
     },
     async loadCorpus(corpusId) {
-      const id = savedId(corpusId);
+      const id = customId(corpusId);
       return id === null
         ? client.loadCorpus(corpusId)
-        : asSaved(corpusId, await engineManifest(corpusId, id));
+        : asCustom(corpusId, await engineManifest(corpusId, id));
     },
     async registerCorpus(corpusId, doc) {
-      return savedId(corpusId) !== null
-        ? asSaved(corpusId, await give(corpusId, Promise.resolve(doc)))
+      return customId(corpusId) !== null
+        ? asCustom(corpusId, await give(corpusId, Promise.resolve(doc)))
         : client.registerCorpus(corpusId, doc);
     },
     async peek(request) {

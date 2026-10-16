@@ -9,12 +9,12 @@ import { formatValue } from '../components/format.js';
 import { Keyboard, typingCombos } from '../components/Keyboard.js';
 import { LayerTabs } from '../components/LayerTabs.js';
 import { BandBadge, SummaryStrip } from '../components/Metrics.js';
+import { customRef } from '../custom/ref.js';
 import { useAnalysisClient } from '../engine/client-context.js';
 import { expandPositions, heatMap } from '../engine/heat.js';
 import type { AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { useAnalysis } from '../engine/use-analysis.js';
 import { carriedRef } from '../layout-session/open.js';
-import { savedRef } from '../saved/ref.js';
 import { useRememberSelection } from '../state/selection.js';
 import { useCollection } from '../storage/use-storage.js';
 import { type Params, parseParams, type RawSearch, settingsOf, toSearch } from '../url/params.js';
@@ -28,7 +28,7 @@ import { type LayoutState, useLayout, useTypedLayout } from './useLayout.js';
 const DEFAULT_B = 'qwerty';
 
 /**
- * Once the layout `ref` names under `key` has opened, a saved one named by its id travels in the link
+ * Once the layout `ref` names under `key` has opened, a custom one named by its id travels in the link
  * whole, its id inside, as Analyze's does, so a link to the comparison opens anywhere: an id opens
  * only where the layout is saved.
  */
@@ -73,7 +73,7 @@ export function CompareView() {
       .catch(() => setCorpora([]));
   }, [client]);
 
-  const saved = useCollection('layouts');
+  const custom = useCollection('layouts');
   const a = useLayout(params.layoutRef);
   const b = useLayout(refB);
   useCarriedInLink('layout', params.layoutRef, a);
@@ -132,10 +132,10 @@ export function CompareView() {
 
   const nameA = a.layout?.name ?? params.layoutRef;
   const nameB = b.layout?.name ?? refB;
-  // A layout carried whole that is a saved one here is picked as that saved layout.
+  // A layout carried whole that is a custom one here is picked as that custom layout.
   const pickedA =
-    a.ref === params.layoutRef && a.storedId ? savedRef(a.storedId) : params.layoutRef;
-  const pickedB = b.ref === refB && b.storedId ? savedRef(b.storedId) : refB;
+    a.ref === params.layoutRef && a.storedId ? customRef(a.storedId) : params.layoutRef;
+  const pickedB = b.ref === refB && b.storedId ? customRef(b.storedId) : refB;
 
   // Each board shows one layer at a time, chosen on its own; another layout starts on its base.
   const [layerA, setLayerA] = useState(0);
@@ -161,7 +161,7 @@ export function CompareView() {
             value={pickedA}
             onChange={(e) => setParams({ layoutRef: e.target.value })}
           >
-            <LayoutOptions saved={saved.entries} current={pickedA} currentName={nameA} />
+            <LayoutOptions custom={custom.entries} current={pickedA} currentName={nameA} />
           </select>
         </label>
 
@@ -173,7 +173,7 @@ export function CompareView() {
             value={pickedB}
             onChange={(e) => setParams({ b: e.target.value })}
           >
-            <LayoutOptions saved={saved.entries} current={pickedB} currentName={nameB} />
+            <LayoutOptions custom={custom.entries} current={pickedB} currentName={nameB} />
           </select>
         </label>
 

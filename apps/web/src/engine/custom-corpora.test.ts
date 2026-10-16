@@ -11,9 +11,9 @@ import { describe, expect, it } from 'vitest';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { testCorporaRoot } from '../test/render.js';
 import { AnalysisCore } from './analysis-core.js';
+import { withCustomCorpora } from './custom-corpora.js';
 import { DirectClient } from './direct-client.js';
 import type { AnalyzeRequest } from './protocol.js';
-import { withSavedCorpora } from './saved-corpora.js';
 
 const FOX = Array.from(
   { length: 60 },
@@ -26,7 +26,7 @@ let counter = 0;
 /** An engine on this thread, a fresh browser store, and the engine as the views see it. */
 function setup() {
   const engine = new DirectClient(new AnalysisCore(nodeCorpusLoader(testCorporaRoot())));
-  const local = new IndexedDbAdapter(`layerbench-saved-corpora-${++counter}`);
+  const local = new IndexedDbAdapter(`layerbench-custom-corpora-${++counter}`);
   const reads: string[] = [];
   const storage: StorageAdapter = new Proxy(local, {
     get(target, prop) {
@@ -38,7 +38,7 @@ function setup() {
       };
     },
   });
-  return { engine, storage, reads, client: withSavedCorpora(engine, storage) };
+  return { engine, storage, reads, client: withCustomCorpora(engine, storage) };
 }
 
 /** Build a text as the Corpus view does, and save it under `id`. */
@@ -67,22 +67,22 @@ function onQwerty(corpus: string, corpus2: string | null = null): AnalyzeRequest
   };
 }
 
-describe('saved texts', () => {
-  it('are offered after the bundled ones, by `saved:` and their id', async () => {
+describe('custom texts', () => {
+  it('are offered after the bundled ones, by `custom:` and their id', async () => {
     const { engine, storage, client } = setup();
     const built = await save(engine, storage, 'my-notes', FOX);
 
     const listed = await client.listCorpora();
     expect(listed.map((c) => c.id)).toContain('en-general');
     expect(listed.at(-1)).toMatchObject({
-      id: 'saved:my-notes',
+      id: 'custom:my-notes',
       name: 'My notes',
       language: 'en',
       words: built.words,
     });
     // Read, it has its size too.
-    expect(await client.loadCorpus('saved:my-notes')).toMatchObject({
-      id: 'saved:my-notes',
+    expect(await client.loadCorpus('custom:my-notes')).toMatchObject({
+      id: 'custom:my-notes',
       symbols: built.symbols,
       words: built.words,
     });
@@ -92,11 +92,11 @@ describe('saved texts', () => {
     const { engine, storage, client } = setup();
     const built = await save(engine, storage, 'my-notes', FOX);
 
-    const saved = await client.analyze(onQwerty('saved:my-notes'));
+    const custom = await client.analyze(onQwerty('custom:my-notes'));
     const fresh = await engine.analyze(onQwerty(built.id));
-    expect(saved.results).toEqual(fresh.results);
-    expect(saved.score).toEqual(fresh.score);
-    expect(await client.corpusFacts('saved:my-notes')).toEqual(await engine.corpusFacts(built.id));
+    expect(custom.results).toEqual(fresh.results);
+    expect(custom.score).toEqual(fresh.score);
+    expect(await client.corpusFacts('custom:my-notes')).toEqual(await engine.corpusFacts(built.id));
   });
 
   it('are read from storage once, however many ask at the same time', async () => {
@@ -104,11 +104,11 @@ describe('saved texts', () => {
     await save(engine, storage, 'my-notes', FOX);
 
     await Promise.all([
-      client.corpusFacts('saved:my-notes'),
-      client.analyze(onQwerty('saved:my-notes')),
-      client.analyze(onQwerty('saved:my-notes', 'en-general')),
+      client.corpusFacts('custom:my-notes'),
+      client.analyze(onQwerty('custom:my-notes')),
+      client.analyze(onQwerty('custom:my-notes', 'en-general')),
     ]);
-    await client.analyze(onQwerty('saved:my-notes'));
+    await client.analyze(onQwerty('custom:my-notes'));
     expect(reads).toEqual(['my-notes']);
   });
 
@@ -116,36 +116,36 @@ describe('saved texts', () => {
     const { engine, storage, client } = setup();
     const built = await save(engine, storage, 'my-notes', FOX);
 
-    const saved = await client.analyze(onQwerty('en-general', 'saved:my-notes'));
+    const custom = await client.analyze(onQwerty('en-general', 'custom:my-notes'));
     const fresh = await engine.analyze(onQwerty('en-general', built.id));
-    expect(saved.results).toEqual(fresh.results);
+    expect(custom.results).toEqual(fresh.results);
   });
 
   it('are a new text when saved again under the same name', async () => {
     const { engine, storage, client } = setup();
     await save(engine, storage, 'my-notes', FOX);
-    const before = await client.analyze(onQwerty('saved:my-notes'));
+    const before = await client.analyze(onQwerty('custom:my-notes'));
 
     // As the Corpus view does after saving: the engine is given the new text by the same name.
     const built = await engine.buildCustomCorpus(JUGS, 'My notes', 'en');
     const doc = await engine.corpusDocument(built.id);
     await storage.put('corpora', 'my-notes', doc);
-    await client.registerCorpus('saved:my-notes', doc);
+    await client.registerCorpus('custom:my-notes', doc);
 
-    const after = await client.analyze(onQwerty('saved:my-notes'));
+    const after = await client.analyze(onQwerty('custom:my-notes'));
     expect(after.results).not.toEqual(before.results);
     expect(after.results).toEqual((await engine.analyze(onQwerty(built.id))).results);
-    expect((await client.loadCorpus('saved:my-notes')).words).toBe(built.words);
+    expect((await client.loadCorpus('custom:my-notes')).words).toBe(built.words);
   });
 
   it('say so when one is not here, and are looked for again next time', async () => {
     const { engine, storage, client } = setup();
-    await expect(client.loadCorpus('saved:my-notes')).rejects.toThrow(
+    await expect(client.loadCorpus('custom:my-notes')).rejects.toThrow(
       'text my-notes is not saved here',
     );
 
     await save(engine, storage, 'my-notes', FOX);
-    expect((await client.loadCorpus('saved:my-notes')).name).toBe('My notes');
+    expect((await client.loadCorpus('custom:my-notes')).name).toBe('My notes');
   });
 
   it('leave the rest of the engine as it is', async () => {

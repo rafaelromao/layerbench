@@ -12,24 +12,24 @@ import type { AnalysisClient, AnalyzeRequest, ReportDTO } from '../engine/protoc
 import { useSession } from '../state/session.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import {
+  customInLink,
   LIBRARY,
   openSettings,
   rankingSays,
   renderRoute,
-  savedInLink,
   testClient,
 } from '../test/render.js';
 
 let counter = 0;
 
-/** Each test gets its own database, so saved documents never leak between cases. */
+/** Each test gets its own database, so custom documents never leak between cases. */
 function freshStorage(): IndexedDbAdapter {
   return new IndexedDbAdapter(`layerbench-library-${++counter}`);
 }
 
 /**
  * Qwerty as written, its letters alone, saved under the name given: every bundled layout types the
- * accents through Dead keys, so the one that cannot is a saved one.
+ * accents through Dead keys, so the one that cannot is a custom one.
  */
 async function savePlain(
   storage: IndexedDbAdapter,
@@ -47,7 +47,7 @@ async function openRanking() {
 
 // The sort and the filters are remembered in this browser; each test starts from the defaults.
 beforeEach(() =>
-  useSession.setState({ librarySort: 'effort', hiddenBoards: [], hideSaved: false }),
+  useSession.setState({ librarySort: 'effort', hiddenBoards: [], hideCustom: false }),
 );
 
 describe('Creating layouts', () => {
@@ -65,7 +65,7 @@ describe('Creating layouts', () => {
     await user.click(within(dialog).getByLabelText('Add the default layers'));
     await user.click(within(dialog).getByRole('button', { name: 'Create and edit' }));
 
-    await waitFor(async () => expect(await savedInLink(currentSearch())).toBe('bird-nest'));
+    await waitFor(async () => expect(await customInLink(currentSearch())).toBe('bird-nest'));
     const stored = await storage.get('layouts', 'bird-nest');
     expect(stored).not.toBeNull();
     const doc = stored?.doc as { name: string; layers: { id: string }[] };
@@ -112,7 +112,7 @@ describe('Creating layouts', () => {
 
     await user.click(screen.getByRole('button', { name: 'Duplicate Qwerty' }));
     await waitFor(() => expect(currentPath()).toBe('/analyze'));
-    await waitFor(async () => expect(await savedInLink(currentSearch())).toBe('qwerty-copy'));
+    await waitFor(async () => expect(await customInLink(currentSearch())).toBe('qwerty-copy'));
     expect(currentSearch()).toContain('corpus=pt-br-general');
     expect(currentSearch()).toContain('rules=cyanophage');
     await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
@@ -121,7 +121,7 @@ describe('Creating layouts', () => {
     expect(within(settings).getByRole('combobox', { name: 'Rule set' })).toHaveValue('cyanophage');
   }, 60_000);
 
-  it('deletes a saved layout, naming it', async () => {
+  it('deletes a custom layout, naming it', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
     const qwerty = bundledLayout('qwerty') as Layout;
@@ -233,7 +233,7 @@ describe('Ranking layouts', () => {
 
   /**
    * An engine that scores each layout by its name, at once. Which layout is scored when depends on
-   * when a saved document has been read, so the score has to follow the layout, not the order.
+   * when a custom document has been read, so the score has to follow the layout, not the order.
    */
   function scoringByName(effortOf: (name: string) => number): AnalysisClient {
     const real = testClient();
@@ -250,7 +250,7 @@ describe('Ranking layouts', () => {
     });
   }
 
-  it('ranks a saved layout in the same list as the bundled ones', async () => {
+  it('ranks a custom layout in the same list as the bundled ones', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
     const graphite = bundledLayout('graphite') as Layout;
@@ -262,19 +262,19 @@ describe('Ranking layouts', () => {
     const client = scoringByName((name) => (name === 'My Graphite' ? 100 : 500));
     renderRoute('/library?sample=10004', { client, storage });
 
-    // Not "Lower is better", which does not wait for a saved document still being read.
+    // Not "Lower is better", which does not wait for a custom document still being read.
     const names = () => [...document.querySelectorAll('article h3')].map((h) => h.textContent);
     await waitFor(() => expect(names()[0]).toBe('My Graphite'), { timeout: 60_000 });
     const card = cards()[0];
-    expect(within(card).getByText('saved')).toBeInTheDocument();
+    expect(within(card).getByText('custom')).toBeInTheDocument();
     // Analyze is where it is edited too: there is no separate way in.
     expect(within(card).getByRole('link', { name: 'Analyze' })).toHaveAttribute(
       'href',
-      expect.stringContaining('saved%3Amy-graphite'),
+      expect.stringContaining('custom%3Amy-graphite'),
     );
     expect(within(card).queryByRole('link', { name: 'Edit' })).toBeNull();
     // The bundled layouts carry no badge.
-    expect(within(cards()[1]).queryByText('saved')).toBeNull();
+    expect(within(cards()[1]).queryByText('custom')).toBeNull();
 
     // By name, it takes its place among the bundled layouts rather than after them.
     await user.click(screen.getByRole('radio', { name: 'Name' }));
@@ -312,7 +312,7 @@ describe('Ranking layouts', () => {
     });
   }
 
-  it('opens in the order the last visit left, before a saved layout is read or scored', async () => {
+  it('opens in the order the last visit left, before a custom layout is read or scored', async () => {
     const storage = freshStorage();
     const graphite = bundledLayout('graphite') as Layout;
     await storage.put(
@@ -320,7 +320,7 @@ describe('Ranking layouts', () => {
       'my-graphite',
       toCanonicalJson({ ...graphite, id: 'my-graphite', name: 'My Graphite' }),
     );
-    // Not the order of the names: the saved one first, then the shortest names.
+    // Not the order of the names: the custom one first, then the shortest names.
     const effortOf = (name: string) => (name === 'My Graphite' ? 1 : 100 + name.length);
     renderRoute('/library?sample=10005', { client: scoringByName(effortOf), storage });
     const names = () => [...document.querySelectorAll('article h3')].map((h) => h.textContent);
@@ -329,14 +329,14 @@ describe('Ranking layouts', () => {
     const left = names();
     cleanup();
 
-    // The next visit: the saved document is never read, and nothing is ever scored.
+    // The next visit: the custom document is never read, and nothing is ever scored.
     renderRoute('/library?sample=10005', {
       client: scoringOnly([]).client,
       storage: stillReading(storage),
     });
     await waitFor(() => expect(names()).toHaveLength(left.length));
     expect(names()).toEqual(left);
-    // Every card has its numbers, the saved one's from the last visit.
+    // Every card has its numbers, the custom one's from the last visit.
     expect(cards()).toHaveLength(left.length);
   }, 90_000);
 
@@ -491,7 +491,7 @@ describe('Choosing which boards are listed', () => {
     expect(screen.getByRole('button', { name: 'Duplicate Qwerty' })).toBeInTheDocument();
   });
 
-  it('leaves the saved layouts out when asked, and remembers the choice', async () => {
+  it('leaves the custom layouts out when asked, and remembers the choice', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
     const qwerty = bundledLayout('qwerty') as Layout;
@@ -501,18 +501,18 @@ describe('Choosing which boards are listed', () => {
 
     await openRanking();
     const layouts = screen.getByRole('group', { name: 'Layouts' });
-    const saved = within(layouts).getByRole('checkbox', { name: 'Saved layouts (1)' });
-    expect(saved).toBeChecked();
+    const custom = within(layouts).getByRole('checkbox', { name: 'Custom layouts (1)' });
+    expect(custom).toBeChecked();
 
-    await user.click(saved);
+    await user.click(custom);
     expect(screen.queryByRole('button', { name: 'Duplicate Mine' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Duplicate Qwerty' })).toBeInTheDocument();
-    expect(screen.getByText(/of [0-9]+ layouts, without the saved ones\./)).toBeInTheDocument();
+    expect(screen.getByText(/of [0-9]+ layouts, without the custom ones\./)).toBeInTheDocument();
     expect(JSON.parse(localStorage.getItem('layerbench:session') ?? '{}').state).toMatchObject({
-      hideSaved: true,
+      hideCustom: true,
     });
 
-    await user.click(saved);
+    await user.click(custom);
     expect(screen.getByRole('button', { name: 'Duplicate Mine' })).toBeInTheDocument();
   });
 });
@@ -590,7 +590,7 @@ describe('Layers on a card', () => {
     );
   });
 
-  it('draws the layers of a saved layout too, once it is read', async () => {
+  it('draws the layers of a custom layout too, once it is read', async () => {
     const storage = freshStorage();
     const copy = { ...layered, id: 'layered-copy', name: `${layered.name} copy` };
     await storage.put('layouts', copy.id, toCanonicalJson(copy), { message: 'seed' });
@@ -660,7 +660,7 @@ describe('Importing from keymap-drawer', () => {
     await user.type(layoutName, 'Humming{Enter}');
     await user.click(screen.getByRole('button', { name: 'Import and edit' }));
 
-    await waitFor(async () => expect(await savedInLink(currentSearch())).toBe('humming'));
+    await waitFor(async () => expect(await customInLink(currentSearch())).toBe('humming'));
     const stored = (await storage.get('layouts', 'humming'))?.doc as {
       geometry: unknown;
       layers: { id: string; name: string; bindings: Record<string, unknown> }[];

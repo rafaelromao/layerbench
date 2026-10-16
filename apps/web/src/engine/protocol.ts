@@ -161,7 +161,7 @@ export type Response =
 export interface AnalysisClient {
   listCorpora(): Promise<CorpusManifest[]>;
   loadCorpus(corpusId: string): Promise<CorpusManifest>;
-  /** Take a corpus saved as `doc`, to be known by `corpusId`. */
+  /** Take a custom corpus, saved as `doc`, to be known by `corpusId`. */
   registerCorpus(corpusId: string, doc: Record<string, unknown>): Promise<CorpusManifest>;
   /**
    * Returns null rather than typing the corpus. A layout already typed under other rules, or with

@@ -7,7 +7,7 @@ function hrefOf(url: string): string {
   return hash === null ? url : helpHref({ page: 'metrics', section: hash || undefined });
 }
 
-/** A rule-set reference names a preset only when it is one; a saved set cites the catalog. */
+/** A rule-set reference names a preset only when it is one; a custom set cites the catalog. */
 export function presetOf(ref: string | undefined): string | undefined {
   return ref && (PRESET_IDS as readonly string[]).includes(ref) ? ref : undefined;
 }

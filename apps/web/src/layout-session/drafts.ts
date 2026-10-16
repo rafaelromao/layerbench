@@ -1,15 +1,15 @@
 /**
- * The drafts this tab made: each inline link of unsaved edits it wrote, and the saved layout it is an
+ * The drafts this tab made: each inline link of unsaved edits it wrote, and the custom layout it is an
  * edit of, or null for a layout never saved. Saving a draft saves that layout rather than a copy
  * beside it, and opening the link again — a reload, Back — still shows the edits as unsaved. Only
  * this tab knows, and it keeps knowing across a reload: the same link opened anywhere else is a
  * layout of its own.
  */
 export interface Drafts {
-  /** The saved layout a draft is an edit of, null for one never saved; undefined if not a draft. */
+  /** The custom layout a draft is an edit of, null for one never saved; undefined if not a draft. */
   originOf(ref: string): string | null | undefined;
   remember(ref: string, storedId: string | null): void;
-  /** No longer a draft: what it holds was saved, so opening it again is opening the saved layout. */
+  /** No longer a draft: what it holds was saved, so opening it again is opening the custom layout. */
   forget(ref: string): void;
 }
 

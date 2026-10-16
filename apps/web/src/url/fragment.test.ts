@@ -25,10 +25,10 @@ describe('layouts never saved, in the address', () => {
     );
   });
 
-  it('leaves bundled and saved layouts in the query', () => {
+  it('leaves bundled and custom layouts in the query', () => {
     for (const path of [
       '/analyze?corpus=en-general&layout=magic-romak',
-      '/analyze?corpus=en-general&layout=saved%3Amine',
+      '/analyze?corpus=en-general&layout=custom%3Amine',
     ]) {
       expect(outgoing(path)).toBe(path);
     }

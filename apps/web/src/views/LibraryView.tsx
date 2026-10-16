@@ -20,6 +20,7 @@ import { featureList } from '../components/FeatureSwitches.js';
 import { formatValue } from '../components/format.js';
 import { HelpLink } from '../components/HelpLink.js';
 import { useDismiss } from '../components/use-dismiss.js';
+import { customRef } from '../custom/ref.js';
 import { rankingKey, recall, rememberBehind } from '../engine/ranking-memory.js';
 import {
   compareBy,
@@ -29,7 +30,6 @@ import {
 } from '../engine/use-summaries.js';
 import { HELP } from '../guide/help.js';
 import { openLayout } from '../layout-session/open.js';
-import { savedRef } from '../saved/ref.js';
 import { useRememberSelection } from '../state/selection.js';
 import { useSession } from '../state/session.js';
 import { toast } from '../state/toasts.js';
@@ -162,21 +162,21 @@ function LanguageBadges({ compiled }: { compiled: CompiledLayout }) {
   );
 }
 
-/** A layout as the list shows it, whether it came with the app or was saved here. */
+/** A layout as the list shows it, whether it came with the app or is a custom layout. */
 interface Listed {
-  /** What its score is kept under: `b:<id>` for a bundled layout, `s:<id>` for a saved one. */
+  /** What its score is kept under: `b:<id>` for a bundled layout, `c:<id>` for a custom one. */
   key: string;
   name: string;
-  saved: boolean;
-  /** The bundled id, or the id it is saved under. */
+  custom: boolean;
+  /** The bundled id, or the id it is kept under. */
   id: string;
-  /** How a link names it: the bundled id, or `saved:<id>`. */
+  /** How a link names it: the bundled id, or `custom:<id>`. */
   ref: string;
-  /** Missing while a saved document is still being read, or if it will not parse. */
+  /** Missing while a custom document is still being read, or if it will not parse. */
   layout: Layout | undefined;
   /** Missing as `layout` is, or if it will not compile. */
   compiled: CompiledLayout | undefined;
-  /** Author, board and layers, and when a saved one last changed. */
+  /** Author, board and layers, and when a custom one last changed. */
   meta: string;
   /** The board's preset id, or `custom`: what the board filter goes by. */
   board: string;
@@ -186,7 +186,7 @@ function layerCount(n: number): string {
   return `${n} layer${n === 1 ? '' : 's'}`;
 }
 
-/** One card, the same for a bundled layout and a saved one; a saved one says so. */
+/** One card, the same for a bundled layout and a custom one; a custom one says so. */
 function LayoutCard({
   item,
   summary,
@@ -198,7 +198,7 @@ function LayoutCard({
   summary: LayoutSummary | undefined;
   lacking: Lacking | undefined;
   nobodyCan: boolean;
-  /** Two to a row, so the four a saved layout has take no more width than a bundled one's two. */
+  /** Two to a row, so the four a custom layout has take no more width than a bundled one's two. */
   actions: ReactNode;
 }) {
   return (
@@ -208,8 +208,8 @@ function LayoutCard({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-x-2">
               <h3 className="font-semibold text-sm">{item.name}</h3>
-              {item.saved && (
-                <span className="badge badge-outline badge-primary badge-xs">saved</span>
+              {item.custom && (
+                <span className="badge badge-outline badge-primary badge-xs">custom</span>
               )}
             </div>
             {item.meta && <p className="text-xs opacity-60">{item.meta}</p>}
@@ -220,7 +220,7 @@ function LayoutCard({
         </header>
         {item.compiled && (
           <LayerStrip
-            id={item.saved ? `kb-saved-${item.id}` : `kb-${item.id}`}
+            id={item.custom ? `kb-custom-${item.id}` : `kb-${item.id}`}
             compiled={item.compiled}
             name={item.name}
           />
@@ -349,7 +349,7 @@ function NewLayoutDialog({ onCreate }: { onCreate: (spec: NewLayoutSpec) => void
 export function LibraryView() {
   const storage = useStorage();
   const navigate = useNavigate();
-  const saved = useCollection('layouts');
+  const custom = useCollection('layouts');
 
   const bundled = useMemo(
     () =>
@@ -394,28 +394,28 @@ export function LibraryView() {
   const sortBy = useSession((s) => s.librarySort);
   const setSortBy = useSession((s) => s.setLibrarySort);
 
-  // Saved layouts are listed from their index; ranking needs the documents themselves.
-  const [savedLayouts, setSavedLayouts] = useState<Map<string, Layout>>(() => new Map());
+  // Custom layouts are listed from their index; ranking needs the documents themselves.
+  const [customLayouts, setCustomLayouts] = useState<Map<string, Layout>>(() => new Map());
   useEffect(() => {
     let cancelled = false;
     (async () => {
       // All at once: from GitHub, each is a round trip of its own.
       const read = await Promise.all(
-        saved.entries.map(async (entry) => {
-          const opened = await openLayout(savedRef(entry.id), storage);
+        custom.entries.map(async (entry) => {
+          const opened = await openLayout(customRef(entry.id), storage);
           return opened.ok ? ([entry.id, opened.layout] as const) : null;
         }),
       );
-      if (!cancelled) setSavedLayouts(new Map(read.filter((r) => r !== null)));
+      if (!cancelled) setCustomLayouts(new Map(read.filter((r) => r !== null)));
     })();
     return () => {
       cancelled = true;
     };
-  }, [saved.entries, storage]);
+  }, [custom.entries, storage]);
 
-  const savedCompiled = useMemo(() => {
+  const customCompiled = useMemo(() => {
     const out = new Map<string, CompiledLayout>();
-    for (const [id, layout] of savedLayouts) {
+    for (const [id, layout] of customLayouts) {
       try {
         out.set(id, compileLayout(layout));
       } catch {
@@ -423,7 +423,7 @@ export function LibraryView() {
       }
     }
     return out;
-  }, [savedLayouts]);
+  }, [customLayouts]);
 
   // Each layout as it is ranked: typed without the features left out, as the engine types it. The
   // cards still draw the layout itself; only what it can type is judged on this.
@@ -431,18 +431,18 @@ export function LibraryView() {
   const ranked = useMemo(() => {
     const out = new Map<string, CompiledLayout>();
     for (const { id, compiled } of bundled) out.set(`b:${id}`, typedLayout(compiled, without));
-    for (const [id, compiled] of savedCompiled) out.set(`s:${id}`, typedLayout(compiled, without));
+    for (const [id, compiled] of customCompiled) out.set(`c:${id}`, typedLayout(compiled, without));
     return out;
-  }, [bundled, savedCompiled, without]);
+  }, [bundled, customCompiled, without]);
 
-  // Bundled and saved layouts are one list, ranked together: a layout of one's own means something
+  // Bundled and custom layouts are one list, ranked together: a layout of one's own means something
   // next to the ones it would replace.
   const listed: Listed[] = useMemo(
     () => [
       ...bundled.map(({ id, layout, compiled }) => ({
         key: `b:${id}`,
         name: layout.name,
-        saved: false,
+        custom: false,
         id,
         ref: id,
         layout,
@@ -452,14 +452,14 @@ export function LibraryView() {
           .join(' · '),
         board: boardOf(layout),
       })),
-      ...saved.entries.map((entry) => ({
-        key: `s:${entry.id}`,
+      ...custom.entries.map((entry) => ({
+        key: `c:${entry.id}`,
         name: entry.name,
-        saved: true,
+        custom: true,
         id: entry.id,
-        ref: savedRef(entry.id),
-        layout: savedLayouts.get(entry.id),
-        compiled: savedCompiled.get(entry.id),
+        ref: customRef(entry.id),
+        layout: customLayouts.get(entry.id),
+        compiled: customCompiled.get(entry.id),
         meta: [
           entry.author,
           entry.geometry,
@@ -468,17 +468,17 @@ export function LibraryView() {
         ]
           .filter(Boolean)
           .join(' · '),
-        board: entry.geometry ?? boardOf(savedLayouts.get(entry.id)),
+        board: entry.geometry ?? boardOf(customLayouts.get(entry.id)),
       })),
     ],
-    [bundled, saved.entries, savedLayouts, savedCompiled],
+    [bundled, custom.entries, customLayouts, customCompiled],
   );
 
-  // Saved layouts can be left out of the list, and then they count on no board either.
-  const hideSaved = useSession((s) => s.hideSaved);
+  // Custom layouts can be left out of the list, and then they count on no board either.
+  const hideCustom = useSession((s) => s.hideCustom);
   const pool = useMemo(
-    () => (hideSaved ? listed.filter((item) => !item.saved) : listed),
-    [listed, hideSaved],
+    () => (hideCustom ? listed.filter((item) => !item.custom) : listed),
+    [listed, hideCustom],
   );
 
   // The boards the listed layouts are on, in the order the presets are offered, each with how
@@ -498,7 +498,7 @@ export function LibraryView() {
   );
   /** Why fewer layouts are listed than there are, for the line beside the dialog's button. */
   const leftOut = [
-    pool.length < listed.length ? 'without the saved ones' : '',
+    pool.length < listed.length ? 'without the custom ones' : '',
     shownListed.length < pool.length ? 'on the boards chosen' : '',
   ].filter(Boolean);
   const shownKeys = useMemo(() => new Set(shownListed.map((item) => item.key)), [shownListed]);
@@ -508,9 +508,12 @@ export function LibraryView() {
       [
         ...bundled.map(({ id, layout }) => ({ key: `b:${id}`, layout })),
         // One that will not compile is still sent, so it fails and shows as unscored.
-        ...saved.entries.map((e) => ({ key: `s:${e.id}`, layout: savedLayouts.get(e.id) ?? null })),
+        ...custom.entries.map((e) => ({
+          key: `c:${e.id}`,
+          layout: customLayouts.get(e.id) ?? null,
+        })),
       ].filter((entry) => shownKeys.has(entry.key)),
-    [bundled, saved.entries, savedLayouts, shownKeys],
+    [bundled, custom.entries, customLayouts, shownKeys],
   );
   // The last ranking on the same settings is what the list opens with.
   const rankingContext = rankingKey(ranking);
@@ -599,10 +602,10 @@ export function LibraryView() {
   /** Save under a free id, and say so by the layout's name: the id is only for links. */
   const saveNew = useCallback(
     async (layout: Layout, message: string): Promise<string | null> => {
-      const id = freeId(layout.name, new Set(saved.entries.map((e) => e.id)));
+      const id = freeId(layout.name, new Set(custom.entries.map((e) => e.id)));
       try {
         await storage.put('layouts', id, toCanonicalJson({ ...layout, id }), { message });
-        saved.refresh();
+        custom.refresh();
         toast.info(`Saved ${layout.name}`);
         return id;
       } catch (e) {
@@ -610,7 +613,7 @@ export function LibraryView() {
         return null;
       }
     },
-    [storage, saved],
+    [storage, custom],
   );
 
   const saveToLibrary = useCallback(
@@ -618,19 +621,19 @@ export function LibraryView() {
     [saveNew],
   );
 
-  /** Duplicate any layout, bundled or saved, and open the copy in Analyze, to edit. */
+  /** Duplicate any layout, bundled or custom, and open the copy in Analyze, to edit. */
   const duplicate = useCallback(
     async (layout: Layout) => {
       const copy = { ...layout, name: `${layout.name} copy` };
       const id = await saveNew(copy, `Duplicate ${layout.name}`);
-      if (id) navigate({ to: '/analyze', search: analyzeSearch(savedRef(id)) });
+      if (id) navigate({ to: '/analyze', search: analyzeSearch(customRef(id)) });
     },
     [saveNew, navigate, analyzeSearch],
   );
 
-  const duplicateSaved = useCallback(
+  const duplicateCustom = useCallback(
     async (id: string) => {
-      const opened = await openLayout(savedRef(id), storage);
+      const opened = await openLayout(customRef(id), storage);
       if (!opened.ok) {
         toast.error(`Could not read ${id}`);
         return;
@@ -644,7 +647,7 @@ export function LibraryView() {
     async (spec: NewLayoutSpec) => {
       const layout = newLayout(spec);
       const id = await saveNew(layout, `Create layout ${spec.name}`);
-      if (id) navigate({ to: '/analyze', search: analyzeSearch(savedRef(id)) });
+      if (id) navigate({ to: '/analyze', search: analyzeSearch(customRef(id)) });
     },
     [saveNew, navigate, analyzeSearch],
   );
@@ -653,7 +656,7 @@ export function LibraryView() {
   const importKeymap = useCallback(
     async (layout: Layout) => {
       const id = await saveNew(layout, `Import keymap-drawer layout ${layout.name}`);
-      if (id) navigate({ to: '/analyze', search: analyzeSearch(savedRef(id)) });
+      if (id) navigate({ to: '/analyze', search: analyzeSearch(customRef(id)) });
     },
     [saveNew, navigate, analyzeSearch],
   );
@@ -664,12 +667,12 @@ export function LibraryView() {
       try {
         await storage.delete('layouts', id);
         toast.info(`Deleted ${name}`);
-        saved.refresh();
+        custom.refresh();
       } catch (e) {
         toast.error(`Delete failed: ${e instanceof Error ? e.message : String(e)}`);
       }
     },
-    [storage, saved],
+    [storage, custom],
   );
 
   return (
@@ -678,7 +681,7 @@ export function LibraryView() {
       <div className="flex flex-wrap items-center gap-2">
         <NewLayoutDialog onCreate={createLayout} />
         <ImportDialog
-          canSave={saved.available}
+          canSave={custom.available}
           onOpen={openInAnalyzer}
           onSave={saveToLibrary}
           onImportKeymap={importKeymap}
@@ -694,7 +697,7 @@ export function LibraryView() {
           onChange={setParams}
           corpora={corpora}
           boards={boards}
-          savedCount={saved.entries.length}
+          customCount={custom.entries.length}
           summary={
             leftOut.length > 0
               ? `${shownListed.length} of ${listed.length} layouts, ${leftOut.join(', ')}.`
@@ -746,12 +749,12 @@ export function LibraryView() {
           <h2 id="library-layouts" className="text-sm uppercase tracking-wide opacity-60">
             Layouts
           </h2>
-          {!saved.available && (
+          {!custom.available && (
             <span className="badge badge-warning badge-sm">storage unavailable</span>
           )}
-          {saved.entries.length === 0 && (
+          {custom.entries.length === 0 && (
             <span className="text-xs opacity-70">
-              Nothing saved yet. Save from Analyze, or import one.
+              Nothing custom yet. Save from Analyze, or import one.
             </span>
           )}
         </div>
@@ -777,13 +780,13 @@ export function LibraryView() {
                     aria-label={`Duplicate ${item.name}`}
                     className="btn btn-xs"
                     onClick={() => {
-                      if (item.saved) duplicateSaved(item.id);
+                      if (item.custom) duplicateCustom(item.id);
                       else if (item.layout) duplicate(item.layout);
                     }}
                   >
                     Duplicate
                   </button>
-                  {item.saved && (
+                  {item.custom && (
                     <button
                       type="button"
                       aria-label={`Delete ${item.name}`}

@@ -19,7 +19,7 @@ function mapStore() {
   };
 }
 
-/** A saved copy of a bundled layout, under its own id and name. */
+/** A custom copy of a bundled layout, under its own id and name. */
 async function seed(storage: MemoryStorage, from: string, id: string, extra: Partial<Layout> = {}) {
   const layout = bundledLayout(from) as Layout;
   await storage.put('layouts', id, toCanonicalJson({ ...layout, id, ...extra }));
@@ -91,14 +91,14 @@ describe('Opening a layout', () => {
     expect(link.writes).toEqual([]);
   });
 
-  it('opens a saved layout, by `saved:` or by its id alone, and puts it in the link whole', async () => {
-    for (const ref of ['saved:mine', 'mine']) {
+  it('opens a custom layout, by `custom:` or by its id alone, and puts it in the link whole', async () => {
+    for (const ref of ['custom:mine', 'mine']) {
       const storage = new MemoryStorage();
       await seed(storage, 'qwerty', 'mine', { name: 'Mine' });
       const { s, link } = session(ref, { storage });
       const state = await opened(s);
       expect(state.storedId).toBe('mine');
-      expect(state.pickedRef).toBe('saved:mine');
+      expect(state.pickedRef).toBe('custom:mine');
       // The link carries it whole, its id inside, so it opens for anyone it is sent to.
       expect(link.writes).toHaveLength(1);
       expect((await carried(link.current()))?.id).toBe('mine');
@@ -106,7 +106,7 @@ describe('Opening a layout', () => {
   });
 
   it('says why a layout will not open', async () => {
-    const { s } = session('saved:gone');
+    const { s } = session('custom:gone');
     expect(await settled(s)).toMatchObject({
       status: 'failed',
       error: 'layout gone is not saved here',
@@ -130,10 +130,10 @@ describe('Opening a layout', () => {
 });
 
 describe('The link', () => {
-  it('holds unsaved edits a moment after the last one, as a draft, and the saved layout once they are undone', async () => {
+  it('holds unsaved edits a moment after the last one, as a draft, and the custom layout once they are undone', async () => {
     const storage = new MemoryStorage();
     await seed(storage, 'qwerty', 'mine', { name: 'Mine' });
-    const { s, link, drafts } = session('saved:mine', { storage });
+    const { s, link, drafts } = session('custom:mine', { storage });
     const state = await opened(s);
     const clean = link.current();
 
@@ -148,7 +148,7 @@ describe('The link', () => {
     s.edited(state.layout, false);
     expect(link.current()).toBe(clean);
     // The links it wrote are its own: the layout was never opened again.
-    expect(s.getState()).toMatchObject({ opening: state.opening, pickedRef: 'saved:mine' });
+    expect(s.getState()).toMatchObject({ opening: state.opening, pickedRef: 'custom:mine' });
   });
 
   it('gives the link as it is about to be, a draft not yet written included', async () => {
@@ -166,7 +166,7 @@ describe('Drafts', () => {
     const storage = new MemoryStorage();
     await seed(storage, 'qwerty', 'qwerty-copy', { name: 'Qwerty copy' });
     const drafts = webDrafts(mapStore());
-    const first = session('saved:qwerty-copy', { storage, drafts });
+    const first = session('custom:qwerty-copy', { storage, drafts });
     const state = await opened(first.s);
     first.s.edited(withCedilla(state.layout), true);
     const draft = await first.s.link();
@@ -195,7 +195,7 @@ describe('Drafts', () => {
   it('opens a draft another tab made as a layout of its own', async () => {
     const storage = new MemoryStorage();
     await seed(storage, 'qwerty', 'qwerty-copy', { name: 'Qwerty copy' });
-    const first = session('saved:qwerty-copy', { storage });
+    const first = session('custom:qwerty-copy', { storage });
     first.s.edited(withCedilla((await opened(first.s)).layout), true);
     const draft = await first.s.link();
 
@@ -205,11 +205,11 @@ describe('Drafts', () => {
   });
 });
 
-describe('A saved layout sent by its link', () => {
+describe('A custom layout sent by its link', () => {
   async function ownersLink(): Promise<string> {
     const storage = new MemoryStorage();
     await seed(storage, 'qwerty', 'mine', { name: 'Mine', author: 'Me' });
-    const owner = session('saved:mine', { storage });
+    const owner = session('custom:mine', { storage });
     await opened(owner.s);
     return owner.link.current();
   }
@@ -226,13 +226,13 @@ describe('A saved layout sent by its link', () => {
     });
   });
 
-  it('opens as the saved layout where it is saved with the same contents, and saves in place', async () => {
+  it('opens as the custom layout where it is saved with the same contents, and saves in place', async () => {
     const link = await ownersLink();
     const mine = new MemoryStorage();
     await seed(mine, 'qwerty', 'mine', { name: 'Mine', author: 'Me' });
     const { s } = session(link, { storage: mine });
     const state = await opened(s);
-    expect(state).toMatchObject({ storedId: 'mine', pickedRef: 'saved:mine' });
+    expect(state).toMatchObject({ storedId: 'mine', pickedRef: 'custom:mine' });
     const edited = withCedilla(state.layout);
     s.edited(edited, true);
     expect(await s.save(edited)).toMatchObject({ ok: true, id: 'mine' });
@@ -257,7 +257,7 @@ describe('A saved layout sent by its link', () => {
 });
 
 describe('Saving', () => {
-  it('stores a layout under the id its name gives, beside a saved one of the same name, and puts it in the link', async () => {
+  it('stores a layout under the id its name gives, beside a custom one of the same name, and puts it in the link', async () => {
     const storage = new MemoryStorage();
     await seed(storage, 'qwerty', 'qwerty', { description: 'mine' });
     const { s, link } = session('qwerty', { storage });
@@ -266,7 +266,7 @@ describe('Saving', () => {
     expect(await s.save(state.layout)).toEqual({ ok: true, id: 'qwerty-2', leftBehind: false });
     expect((await storage.get('layouts', 'qwerty'))?.doc.description).toBe('mine');
     expect((await carried(link.current()))?.id).toBe('qwerty-2');
-    expect(s.getState()).toMatchObject({ storedId: 'qwerty-2', pickedRef: 'saved:qwerty-2' });
+    expect(s.getState()).toMatchObject({ storedId: 'qwerty-2', pickedRef: 'custom:qwerty-2' });
   });
 
   it('keeps the id its first save gave while the name keeps it, and saves there again', async () => {
@@ -286,7 +286,7 @@ describe('Saving', () => {
   it("moves a renamed layout to its new name's id, or beside one already there", async () => {
     const storage = new MemoryStorage();
     await seed(storage, 'qwerty', 'qwerty-copy', { name: 'Qwerty copy' });
-    const { s } = session('saved:qwerty-copy', { storage });
+    const { s } = session('custom:qwerty-copy', { storage });
     const state = await opened(s);
     expect(await s.save({ ...state.layout, name: 'My layout' })).toEqual({
       ok: true,
@@ -306,7 +306,7 @@ describe('Saving', () => {
     storage.delete = async () => {
       throw new Error('offline');
     };
-    const { s } = session('saved:qwerty-copy', { storage });
+    const { s } = session('custom:qwerty-copy', { storage });
     const state = await opened(s);
     expect(await s.save({ ...state.layout, name: 'My layout' })).toMatchObject({
       ok: true,
@@ -318,7 +318,7 @@ describe('Saving', () => {
   it('tells a conflict from another failure, and changes nothing on either', async () => {
     const storage = new MemoryStorage();
     await seed(storage, 'qwerty', 'mine', { name: 'Mine' });
-    const { s } = session('saved:mine', { storage });
+    const { s } = session('custom:mine', { storage });
     const state = await opened(s);
     const put = storage.put.bind(storage);
     storage.put = async () => {

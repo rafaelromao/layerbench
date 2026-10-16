@@ -11,7 +11,7 @@ function mapStore() {
 }
 
 describe('the drafts a tab made', () => {
-  it('knows a draft of a saved layout, of one never saved, and nothing of anyone else’s link', () => {
+  it('knows a draft of a custom layout, of one never saved, and nothing of anyone else’s link', () => {
     const drafts = webDrafts(mapStore());
     drafts.remember('inline:aaa', 'mine');
     drafts.remember('inline:bbb', null);

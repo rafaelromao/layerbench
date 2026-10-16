@@ -2,8 +2,8 @@ import { type CorpusManifest, getPreset, PRESET_IDS, type TextClass } from '@lay
 import type { ReactNode } from 'react';
 import { FeatureSwitches, Switch } from '../components/FeatureSwitches.js';
 import { HelpLink } from '../components/HelpLink.js';
+import { customId, customRef } from '../custom/ref.js';
 import { HELP } from '../guide/help.js';
-import { savedId, savedRef } from '../saved/ref.js';
 import { useCollection } from '../storage/use-storage.js';
 import { type Params, SAMPLE_SIZES } from '../url/params.js';
 import { groupByLanguage } from './corpus-groups.js';
@@ -46,8 +46,8 @@ export function CorpusSelect({
 }
 
 /**
- * The rule set a layout is measured with: a preset, or a set saved here, by the name it is saved
- * under. A saved set the link names that is not saved here is still shown, and said to be so.
+ * The rule set a layout is measured with: a preset, or a custom set, by the name it is saved
+ * under. A custom set the link names that is not saved here is still shown, and said to be so.
  */
 export function RuleSetSelect({
   value,
@@ -58,8 +58,8 @@ export function RuleSetSelect({
   onChange: (rules: string) => void;
   className?: string;
 }) {
-  const { entries: saved, complete } = useCollection('rulesets');
-  const id = savedId(value);
+  const { entries: custom, complete } = useCollection('rulesets');
+  const id = customId(value);
   return (
     <select
       name="rules"
@@ -75,16 +75,16 @@ export function RuleSetSelect({
           </option>
         ))}
       </optgroup>
-      {saved.length > 0 && (
-        <optgroup label="Saved">
-          {saved.map((e) => (
-            <option key={e.id} value={savedRef(e.id)}>
+      {custom.length > 0 && (
+        <optgroup label="Custom">
+          {custom.map((e) => (
+            <option key={e.id} value={customRef(e.id)}>
               {e.name}
             </option>
           ))}
         </optgroup>
       )}
-      {id !== null && !saved.some((e) => e.id === id) && (
+      {id !== null && !custom.some((e) => e.id === id) && (
         // Not saved here is only known once storage has listed all it holds.
         <option value={value}>{complete ? `${id} (not saved here)` : id}</option>
       )}

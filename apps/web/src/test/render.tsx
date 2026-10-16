@@ -4,12 +4,12 @@ import { nodeCorpusLoader } from '@layerbench/core/node';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import { type RenderResult, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { customId } from '../custom/ref.js';
 import { AnalysisCore } from '../engine/analysis-core.js';
-import { AnalysisClientProvider, SavedCorporaProvider } from '../engine/client-context.js';
+import { AnalysisClientProvider, CustomCorporaProvider } from '../engine/client-context.js';
 import { DirectClient } from '../engine/direct-client.js';
 import type { AnalysisClient } from '../engine/protocol.js';
 import { createAppRouter } from '../router.js';
-import { savedId } from '../saved/ref.js';
 import { StorageProvider } from '../storage/use-storage.js';
 import { decodeInline } from '../url/inline.js';
 
@@ -22,12 +22,12 @@ export function testCorporaRoot(): string {
 }
 
 /**
- * The saved layout a link opens: `saved:<id>` names it, and once Analyze has it open the link
+ * The custom layout a link opens: `custom:<id>` names it, and once Analyze has it open the link
  * carries it whole, with its id inside. Null for any other layout.
  */
-export async function savedInLink(search: string): Promise<string | null> {
+export async function customInLink(search: string): Promise<string | null> {
   const ref = new URLSearchParams(search).get('layout') ?? '';
-  const id = savedId(ref);
+  const id = customId(ref);
   if (id !== null) return id;
   if (!ref.startsWith('inline:')) return null;
   const decoded = await decodeInline(ref.slice('inline:'.length));
@@ -81,9 +81,9 @@ export function renderRoute(
   const result = render(
     <AnalysisClientProvider client={client}>
       <StorageProvider adapter={opts.storage}>
-        <SavedCorporaProvider>
+        <CustomCorporaProvider>
           <RouterProvider router={router} />
-        </SavedCorporaProvider>
+        </CustomCorporaProvider>
       </StorageProvider>
     </AnalysisClientProvider>,
   );

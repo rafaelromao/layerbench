@@ -212,7 +212,7 @@ export const words = (text: string): string[] => text.split(/\s+/).filter(Boolea
 
 // ---------------------------------------------------------------------------- what changed
 
-/** The same binding as written, by what a saved layout would hold: absent and empty are alike. */
+/** The same binding as written, by what a custom layout would hold: absent and empty are alike. */
 function written(b: Binding): string {
   return stableStringify(bindingToJson(b));
 }
@@ -229,7 +229,7 @@ function change<V>(b: Binding, make: (value: V) => Binding): Change<V> {
 
 /**
  * A part's change. A part's own changes give the part back when they change nothing, so the key is
- * given back for the very part it holds, and anything else is a change: even one a saved layout
+ * given back for the very part it holds, and anything else is a change: even one a custom layout
  * would write alike, as a macro in the part switched to steps with none yet.
  */
 function inPart(
@@ -370,7 +370,7 @@ const readers: { [K in KindOfKey]: Reader<K> } = {
     return {
       view,
       set: {
-        // Not by what a saved layout would hold: a macro with no text and one with no steps are
+        // Not by what a custom layout would hold: a macro with no text and one with no steps are
         // written alike there, and switching between them is still the switch shown.
         form: (form: MacroForm) =>
           form === view.form ? b : form === 'steps' ? asSteps(b) : asText(b),

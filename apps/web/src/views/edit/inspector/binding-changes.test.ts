@@ -229,7 +229,7 @@ describe('the parts of a bigger key, and lists of them', () => {
   });
 
   it('switches a macro inside a part to steps even with nothing in it yet', () => {
-    // A saved layout writes a macro with no text and one with no steps alike; the key holding it
+    // A custom layout writes a macro with no text and one with no steps alike; the key holding it
     // still changes, as the part did.
     const bare: Binding = { kind: 'macro' };
     const layerTap: Binding = { kind: 'lt', layer: 'alpha2', tap: bare };
@@ -448,7 +448,7 @@ describe('a macro, written as text or as steps', () => {
   });
 
   it('switches a macro with no text to steps, and one with no steps to text', () => {
-    // A saved layout writes both as a bare macro; the switch still goes the way it is asked.
+    // A custom layout writes both as a bare macro; the switch still goes the way it is asked.
     const bare: Binding = { kind: 'macro' };
     const steps = fieldsOf('macro', bare).set.form('steps');
     expect(steps).toEqual({ kind: 'macro', steps: [] });

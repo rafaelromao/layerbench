@@ -5,11 +5,11 @@ import {
   type StorageAdapter,
   toCanonicalJson,
 } from '@layerbench/core';
-import { readSaved, savedError } from '../saved/read.js';
+import { customError, readCustom } from '../custom/read.js';
 import { decodeInline, encodeInline } from '../url/inline.js';
 import { inlineRef, parseLayoutRef } from '../url/params.js';
 
-/** A layout a reference opened, and the saved layout it is, if any; or why it would not open. */
+/** A layout a reference opened, and the custom layout it is, if any; or why it would not open. */
 export type Opened =
   | { ok: true; layout: Layout; storedId: string | null }
   | { ok: false; error: string };
@@ -18,9 +18,9 @@ const same = (a: Layout, b: Layout) =>
   JSON.stringify(toCanonicalJson(a)) === JSON.stringify(toCanonicalJson(b));
 
 /**
- * Open a reference: a bundled layout's id, `saved:<id>`, an id alone, which names a saved layout when
+ * Open a reference: a bundled layout's id, `custom:<id>`, an id alone, which names a custom layout when
  * no bundled one has it (how short links work), or `inline:` and the layout itself. Each says which
- * saved layout it is: a saved one is itself, and a layout carried whole is the one saved here under
+ * custom layout it is: a custom one is itself, and a layout carried whole is the one saved here under
  * the id it carries when that has the same contents — its owner's link, opened in another tab,
  * browser or device. Anything else, someone else's layout or one changed since the link was made, is
  * a layout of its own, so nothing saved here is ever overwritten by a link. Storage that cannot be
@@ -35,7 +35,7 @@ export async function openLayout(ref: string, storage: StorageAdapter): Promise<
     const { layout } = decoded;
     const id = layout.id;
     if (!id || !isDocumentId(id)) return { ok: true, layout, storedId: null };
-    const stored = await readSaved(storage, 'layouts', id);
+    const stored = await readCustom(storage, 'layouts', id);
     const saved = stored.status === 'read' && same(stored.doc, layout);
     return { ok: true, layout, storedId: saved ? id : null };
   }
@@ -48,19 +48,19 @@ export async function openLayout(ref: string, storage: StorageAdapter): Promise<
   }
 
   const id = parsed.value;
-  const read = await readSaved(storage, 'layouts', id);
+  const read = await readCustom(storage, 'layouts', id);
   return read.status === 'read'
     ? { ok: true, layout: read.doc, storedId: id }
-    : { ok: false, error: savedError('layouts', id, read) };
+    : { ok: false, error: customError('layouts', id, read) };
 }
 
-/** The link of a saved layout: the layout itself, its id inside, so it opens for anyone sent it. */
+/** The link of a custom layout: the layout itself, its id inside, so it opens for anyone sent it. */
 export async function snapshotRef(layout: Layout, id: string): Promise<string> {
   return inlineRef(await encodeInline({ ...layout, id }));
 }
 
 /**
- * What a link should carry for a layout `ref` opened: a saved layout named by its id travels whole,
+ * What a link should carry for a layout `ref` opened: a custom layout named by its id travels whole,
  * its id inside, as an id opens only where the layout is saved; anything else as it is.
  */
 export async function carriedRef(

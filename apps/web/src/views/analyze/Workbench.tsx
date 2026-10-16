@@ -155,8 +155,8 @@ export function Workbench({
     }
   }, [state.lastEdit]);
 
-  /** The saved layouts, for the picker; read again after each save. */
-  const savedLayouts = useCollection('layouts');
+  /** The custom layouts, for the picker; read again after each save. */
+  const customLayouts = useCollection('layouts');
 
   // ------------------------------------------------------------------ what is analyzed
 
@@ -234,7 +234,7 @@ export function Workbench({
   const provisional = !current && estimate !== null && estimate.layout === state.layout;
   /**
    * What the numbers show: the analysis of this layout, an estimate of it, or the last there was.
-   * None while a saved rule set is read, or when it will not open: the set before's would stand in.
+   * None while a custom rule set is read, or when it will not open: the set before's would stand in.
    */
   const shown =
     settings.status !== 'read'
@@ -277,13 +277,13 @@ export function Workbench({
       return;
     }
     send({ type: 'saved', layout });
-    void savedLayouts.refresh();
+    void customLayouts.refresh();
     if (saved.leftBehind) {
       toast.error(
         `Saved ${layout.name}; its copy under the old name could not be removed and is still in the Library`,
       );
     } else toast.info(`Saved ${layout.name}`);
-  }, [state.layout, session.save, savedLayouts.refresh]);
+  }, [state.layout, session.save, customLayouts.refresh]);
 
   const pick = (ref: string) => {
     if (state.dirty && !window.confirm(`Leave ${state.layout.name}? Its unsaved changes are lost.`))
@@ -593,10 +593,10 @@ export function Workbench({
         saving={session.saving}
         onMeta={(meta) => send({ type: 'edit', edit: { kind: 'setMeta', ...meta } })}
         onSave={save}
-        // A saved layout is picked as itself, whatever its link carries.
+        // A custom layout is picked as itself, whatever its link carries.
         layoutRef={session.pickedRef}
         onPick={pick}
-        saved={savedLayouts.entries}
+        custom={customLayouts.entries}
         corpora={corpora}
         params={params}
         settings={settings}

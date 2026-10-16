@@ -35,7 +35,7 @@ function remoteStorage(login: string, target: StorageTarget): StorageAdapter {
     : new GistAdapter(gitHubAccess, gistIds(login));
 }
 
-/** Makes saved documents available to the view tree. Tests pass their own adapter. */
+/** Makes custom documents available to the view tree. Tests pass their own adapter. */
 export function StorageProvider({
   adapter,
   children,

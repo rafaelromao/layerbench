@@ -7,7 +7,7 @@ import {
   type TextClass,
 } from '@layerbench/core';
 import { PRESET_IDS } from '@layerbench/core/rules';
-import { savedId } from '../saved/ref.js';
+import { customId } from '../custom/ref.js';
 
 /**
  * The analysis parameters carried in the query string. This is a contract, not an implementation
@@ -22,13 +22,13 @@ export type HeatMode = 'usage' | 'sfb' | 'effort' | 'travel' | 'layer_taps';
 export const HEAT_MODES: readonly HeatMode[] = ['usage', 'sfb', 'effort', 'travel', 'layer_taps'];
 
 export interface Params {
-  /** Bundled id, `saved:<id>` or `inline:<blob>`. */
+  /** Bundled id, `custom:<id>` or `inline:<blob>`. */
   layoutRef: string;
   corpus: string;
   corpus2: string | null;
   /** Share of the first corpus when two are mixed, 0–100. */
   mix: number;
-  /** Preset id or `saved:<id>`. */
+  /** Preset id or `custom:<id>`. */
   preset: string;
   caseMode: CaseMode;
   textClass: TextClass;
@@ -100,7 +100,7 @@ function validFeatures(v: string | undefined): FeatureKind[] {
 
 function validPreset(v: string | undefined): string {
   if (v === undefined) return DEFAULT_PARAMS.preset;
-  if (savedId(v) !== null) return v;
+  if (customId(v) !== null) return v;
   return (PRESET_IDS as readonly string[]).includes(v) ? v : DEFAULT_PARAMS.preset;
 }
 
@@ -203,19 +203,19 @@ export function toQueryString(p: Params, overrides: Partial<Params> = {}): strin
   return sp.toString();
 }
 
-export type LayoutRefKind = 'bundled' | 'saved' | 'inline';
+export type LayoutRefKind = 'bundled' | 'custom' | 'inline';
 
 export interface LayoutRef {
   kind: LayoutRefKind;
-  /** Bundled or saved id; for an inline layout, the compressed blob. */
+  /** Bundled or custom id; for an inline layout, the compressed blob. */
   value: string;
 }
 
 export function parseLayoutRef(ref: string): LayoutRef {
   if (ref.startsWith('inline:')) return { kind: 'inline', value: ref.slice('inline:'.length) };
-  // A saved id is a word; anything else in a link is left to be "not found".
-  const id = savedId(ref);
-  if (id !== null) return { kind: 'saved', value: id };
+  // A custom id is a word; anything else in a link is left to be "not found".
+  const id = customId(ref);
+  if (id !== null) return { kind: 'custom', value: id };
   return { kind: 'bundled', value: ref };
 }
 

@@ -18,10 +18,10 @@ export interface BoardChoice {
   count: number;
 }
 
-/** Whether the layouts saved here are listed among the bundled ones, with how many there are. */
-function SavedFilter({ count }: { count: number }) {
-  const hideSaved = useSession((s) => s.hideSaved);
-  const setHideSaved = useSession((s) => s.setHideSaved);
+/** Whether the custom layouts are listed among the bundled ones, with how many there are. */
+function CustomFilter({ count }: { count: number }) {
+  const hideCustom = useSession((s) => s.hideCustom);
+  const setHideCustom = useSession((s) => s.setHideCustom);
   return (
     <fieldset className="space-y-1">
       <legend className="text-xs opacity-70 mb-1">Layouts</legend>
@@ -29,11 +29,11 @@ function SavedFilter({ count }: { count: number }) {
         <input
           type="checkbox"
           className="checkbox checkbox-xs"
-          checked={!hideSaved}
-          onChange={(e) => setHideSaved(!e.target.checked)}
+          checked={!hideCustom}
+          onChange={(e) => setHideCustom(!e.target.checked)}
         />
         <span className="label-text text-xs">
-          Saved layouts <span className="opacity-60">({count})</span>
+          Custom layouts <span className="opacity-60">({count})</span>
         </span>
       </label>
     </fieldset>
@@ -91,7 +91,7 @@ function BoardFilter({ boards }: { boards: BoardChoice[] }) {
 
 /**
  * What the Library ranks and lists by, in one dialog: the text, rules and switches the layouts are
- * scored with, whether saved layouts are listed, and which boards are. The order stays on the page,
+ * scored with, whether custom layouts are listed, and which boards are. The order stays on the page,
  * beside it.
  */
 export function RankingDialog({
@@ -99,15 +99,15 @@ export function RankingDialog({
   onChange,
   corpora,
   boards,
-  savedCount,
+  customCount,
   summary,
 }: {
   params: Params;
   onChange: (patch: Partial<Params>) => void;
   corpora: CorpusManifest[];
   boards: BoardChoice[];
-  /** How many layouts are saved here, listed or not. */
-  savedCount: number;
+  /** How many custom layouts there are, listed or not. */
+  customCount: number;
   /** What the button says is chosen, so the choices are visible without opening it. */
   summary: string;
 }) {
@@ -129,7 +129,7 @@ export function RankingDialog({
             <SettingsFields params={params} onChange={onChange} corpora={corpora} verb="Rank" />
           </div>
 
-          <SavedFilter count={savedCount} />
+          <CustomFilter count={customCount} />
           <BoardFilter boards={boards} />
 
           <div className="modal-action">

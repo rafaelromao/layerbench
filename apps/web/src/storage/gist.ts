@@ -118,7 +118,7 @@ export class GistAdapter implements StorageAdapter {
     return gist;
   }
 
-  /** A file's text. A truncated one is over a megabyte, which no saved document reaches. */
+  /** A file's text. A truncated one is over a megabyte, which no custom document reaches. */
   private static content(gist: Gist, name: string): string | null {
     const file = gist.files[name];
     if (!file) return null;

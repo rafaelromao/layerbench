@@ -15,7 +15,7 @@ import { fnv1a, stableStringify, structureHash } from './hash.js';
  * wherever they are used.
  *
  * `AnalysisSettings<string>` names the rules by their reference, as a link does (a preset id or
- * `saved:<id>`), which is known before a saved set is read; the engine is given them resolved.
+ * `custom:<id>`), which is known before a custom set is read; the engine is given them resolved.
  */
 export interface AnalysisSettings<Rules = RuleSet> {
   /** The corpus typed, by the id the engine knows it by. */

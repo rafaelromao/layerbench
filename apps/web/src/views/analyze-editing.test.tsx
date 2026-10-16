@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AnalysisClient, AnalyzeRequest } from '../engine/protocol.js';
 import { toast } from '../state/toasts.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
-import { openSettings, renderRoute, savedInLink, testClient } from '../test/render.js';
+import { customInLink, openSettings, renderRoute, testClient } from '../test/render.js';
 import { setPointerKind, setViewportWidth } from '../test/setup.js';
 import { decodeInline } from '../url/inline.js';
 
@@ -88,7 +88,7 @@ function recording(): { client: AnalysisClient; requests: AnalyzeRequest[] } {
   return { client, requests };
 }
 
-/** A saved copy of a bundled layout, under its own id and name. */
+/** A custom copy of a bundled layout, under its own id and name. */
 async function seed(storage: IndexedDbAdapter, from: string, id: string, extra: Partial<Layout>) {
   const layout = bundledLayout(from) as Layout;
   await storage.put('layouts', id, toCanonicalJson({ ...layout, id, ...extra }), {
@@ -96,7 +96,7 @@ async function seed(storage: IndexedDbAdapter, from: string, id: string, extra: 
   });
 }
 
-/** The layout a link carries whole, read back; a saved layout's link carries it so. */
+/** The layout a link carries whole, read back; a custom layout's link carries it so. */
 async function carried(search: string): Promise<Layout | null> {
   const ref = new URLSearchParams(search).get('layout') ?? '';
   if (!ref.startsWith('inline:')) return null;
@@ -104,7 +104,7 @@ async function carried(search: string): Promise<Layout | null> {
   return decoded.ok ? decoded.layout : null;
 }
 
-/** The link a saved layout opened by its id ends up with: the layout itself. */
+/** The link a custom layout opened by its id ends up with: the layout itself. */
 async function linkOf(currentSearch: () => string, id: string): Promise<string> {
   await waitFor(async () => expect((await carried(currentSearch()))?.id).toBe(id));
   return currentSearch();
@@ -1308,7 +1308,7 @@ describe('Analyze, while editing', () => {
     const storage = freshStorage();
     const plain = CLASSIC_LAYOUTS.find((l) => l.id === 'qwerty') as Layout;
     await seed(storage, 'qwerty', 'plain', { name: 'Plain', layers: plain.layers });
-    renderRoute('/analyze?layout=saved%3Aplain&corpus=pt-br-general&sample=20000', { storage });
+    renderRoute('/analyze?layout=custom%3Aplain&corpus=pt-br-general&sample=20000', { storage });
     const list = await screen.findByRole(
       'list',
       { name: 'Characters the layout cannot type' },
@@ -1320,7 +1320,7 @@ describe('Analyze, while editing', () => {
 });
 
 describe('the layouts Analyze offers', () => {
-  it('lists the saved layouts beside the bundled ones, and opens one picked', async () => {
+  it('lists the custom layouts beside the bundled ones, and opens one picked', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
     await seed(storage, 'colemak-dh', 'my-colemak', { name: 'My Colemak' });
@@ -1330,10 +1330,10 @@ describe('the layouts Analyze offers', () => {
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
     const picker = within(bar()).getByRole('combobox', { name: 'Layout' });
     const option = await within(picker).findByRole('option', { name: 'My Colemak' });
-    expect(option.closest('optgroup')).toHaveAttribute('label', 'Saved');
+    expect(option.closest('optgroup')).toHaveAttribute('label', 'Custom');
 
-    await user.selectOptions(picker, 'saved:my-colemak');
-    await waitFor(async () => expect(await savedInLink(currentSearch())).toBe('my-colemak'));
+    await user.selectOptions(picker, 'custom:my-colemak');
+    await waitFor(async () => expect(await customInLink(currentSearch())).toBe('my-colemak'));
     await waitFor(() => expect(within(bar()).getByLabelText('Name')).toHaveValue('My Colemak'), {
       timeout: 25_000,
     });

@@ -27,13 +27,13 @@ describe('Opening a reference', () => {
     expect(o.storedId).toBeNull();
   });
 
-  it('opens a saved layout, by `saved:` or by its id alone, as that saved layout', async () => {
+  it('opens a custom layout, by `custom:` or by its id alone, as that custom layout', async () => {
     const storage = await storageWith(mine);
-    expect(await opened('saved:mine', storage)).toMatchObject({ storedId: 'mine' });
+    expect(await opened('custom:mine', storage)).toMatchObject({ storedId: 'mine' });
     expect(await opened('mine', storage)).toMatchObject({ storedId: 'mine' });
   });
 
-  it('opens a layout carried whole as the saved one only where that is saved with the same contents', async () => {
+  it('opens a layout carried whole as the custom one only where that is saved with the same contents', async () => {
     const ref = inlineRef(await encodeInline(mine));
     expect((await opened(ref, await storageWith(mine))).storedId).toBe('mine');
     expect((await opened(ref, await storageWith())).storedId).toBeNull();
@@ -56,7 +56,7 @@ describe('Opening a reference', () => {
 
   it('says why one will not open', async () => {
     const storage = await storageWith();
-    expect(await openLayout('saved:gone', storage)).toEqual({
+    expect(await openLayout('custom:gone', storage)).toEqual({
       ok: false,
       error: 'layout gone is not saved here',
     });
@@ -66,7 +66,7 @@ describe('Opening a reference', () => {
     });
     expect((await openLayout('inline:garbage', storage)).ok).toBe(false);
     await storage.put('layouts', 'broken', { name: 'Broken' });
-    expect(await openLayout('saved:broken', storage)).toMatchObject({
+    expect(await openLayout('custom:broken', storage)).toMatchObject({
       ok: false,
       error: expect.stringMatching(/^layout broken cannot be read: /),
     });
@@ -74,9 +74,9 @@ describe('Opening a reference', () => {
 });
 
 describe('What a link carries', () => {
-  it('carries a saved layout named by its id whole, its id inside, and anything else as it is', async () => {
+  it('carries a custom layout named by its id whole, its id inside, and anything else as it is', async () => {
     const storage = await storageWith(mine);
-    for (const ref of ['saved:mine', 'mine']) {
+    for (const ref of ['custom:mine', 'mine']) {
       const carried = await carriedRef(ref, await opened(ref, storage));
       expect(carried).toMatch(/^inline:/);
       expect((await opened(carried, await storageWith())).layout).toMatchObject({
