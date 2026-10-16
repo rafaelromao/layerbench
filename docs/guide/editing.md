@@ -1,7 +1,7 @@
 # Editing a layout
 
 A layout is edited where it is analyzed, in **Analyze**: the board shows one layer at a time, with
-the layer tabs above it. Tap or click a key to select it. The editor beside the board (under it, on
+the layer navigator above it. Tap or click a key to select it. The editor beside the board (under it, on
 a phone) says what the key does, what it adds to the numbers, and lets you change it.
 
 1. **Select a key** on the board.
@@ -9,7 +9,7 @@ a phone) says what the key does, what it adds to the numbers, and lets you chang
 3. **Fill in the rest**, such as the symbol it types, the layer it reaches or what a hold does.
 
 Every change is kept as you make it, so there is nothing to apply. **Undo** (↶) and **Redo** (↷),
-beside the layer tabs, step back and forth through your changes. **Save**, beside the layout's name at
+beside the layer's name, step back and forth through your changes. **Save**, beside the layout's name at
 the top, keeps it in **Library**, and until then the name is marked *unsaved*. On a layout that is
 not yours yet, such as one that comes with the app, the first **Save** makes a copy in your custom
 layouts and asks what to call it; after that, **Save** keeps your edits to the copy. A layout's link
@@ -106,11 +106,11 @@ of it, and a binding typed into the field replaces it.
 
 ## Moving keys around
 
-Drag a key onto another to swap the two. Hold `Alt` while dropping to copy it instead, or drop it
-on a layer tab to send it to that layer.
+Drag a key onto another to swap the two. Hold `Alt` while dropping to copy it instead.
 
 The same moves work without dragging. **Swap with…** and **Copy to…** in the editor ask you to
-tap the other key, and **Send to layer…** picks the layer from a list. `Delete` on a selected key
+tap the other key. **Send to layer…** puts a key at the same place on another layer, picked from
+a list, and so is the way to move a key to another layer. `Delete` on a selected key
 makes it do nothing (*Nothing* `∅`), on any layer, rather than let the layer below show through;
 **Clear**, in the editor, does the same for a key with a binding of its own, and is greyed out on
 one that takes its layer's default.
@@ -121,21 +121,24 @@ Shift-click a key to select it beside the ones already selected, and again to ta
 a phone, rest your finger on it and lift. With more than one key selected, the editor gives way to
 what can be done with all of them: **Send to layer…** and **Copy to layer…** put them on another
 layer at the same places, **Make transparent** lets the layer below show through them, and
-**Clear** makes them do nothing, as `Delete` does on any one of them. Dragging one of them onto a
-layer tab sends them all. Each is one change, so one **Undo** takes it back, and the keys stay
+**Clear** makes them do nothing, as `Delete` does on any one of them. Each is one change, so one **Undo** takes it back, and the keys stay
 selected for the next.
 
 ## Layers
 
-The tabs above the board switch between layers. A key's colour and dot say which layer it reaches.
+The layer navigator above the board switches between layers: ‹ and › step through them, the
+counter says which of how many is shown, and the layer's name is written in its colour. Swipe the
+board sideways to do the same on a phone, or press `←` and `→` while the navigator has focus. The
+same navigator shows the layers of a card in **Library** and of each layout in **Compare**. A key's
+colour says which layer it reaches.
 
 The **Layers** panel lists them in order, and does everything else with them:
 
-- **Rename** a layer in its name field, or double-click its tab (press and hold it on a phone, or
-  `F2` on the keyboard).
+- **Rename** a layer in its name field, or double-click its name in the navigator (press and hold
+  it on a phone, or `F2` on the keyboard).
 - **Reorder** with the arrows, or by dragging its row. The base layer stays first.
 - **Duplicate** (⧉) copies a layer, with all its keys, right after it.
-- **Colour**, under the layer's name, picks the colour its tab and the keys that reach it are
+- **Colour**, under the layer's name, picks the colour its name and the keys that reach it are
   drawn in. **Automatic** follows the layer's place in the list; each of the others keeps a shade
   for the light theme and one for the dark, so legends stay readable in both.
 - **Remove** (✕) deletes a layer. It refuses while a key, combo or behaviour still reaches the layer,
@@ -221,11 +224,15 @@ Everything works by tapping. Selecting a key opens the editor right under the bo
 board scrolls away with the page as you work through the editor, leaving it the screen; scroll
 back up for the next key. Tiles and chips are sized for a finger.
 
-To drag a key, rest your finger on it for a moment first; a quick swipe scrolls the page instead.
+To drag a key, rest your finger on it for a moment first.
 **Swap with…**, **Copy to…** and **Send to layer…** do the same without dragging. Resting a finger
 on a key and lifting it without moving adds it to the keys selected, to [move or clear several at
 once](#several-keys-at-once). The on-screen keyboard stays down until you tap a text field, such
 as **Or type**.
+
+A quick swipe up or down scrolls the page, and a quick swipe sideways on the board turns it to the
+next or the previous layer. A board wider than the screen pans under your finger first; swipe from
+its edge to turn the layer.
 
 ## Keyboard shortcuts
 
@@ -238,6 +245,8 @@ one for each key.
 | `Enter` · `F2` | puts the whole binding in **Or type**, ready to replace |
 | `Space` | selects the key; with `Shift`, adds it to the keys selected, or takes it out |
 | `Delete` · `Backspace` | makes the key do nothing, or every key selected |
+| `←` · `→` | on the layer navigator, goes to the previous or the next layer |
+| `F2` | on the layer's name in the navigator, renames the layer |
 | `Alt`+`S` | starts a swap; then `Enter` or a click on the other key |
 | `Escape` | cancels a swap or a combo pick; then clears an outlined pair; then closes the editor |
 | `Ctrl`/`Cmd`+`Z` | undoes; with `Shift` as well, redoes |

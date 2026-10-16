@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import type { AnalysisClient, AnalyzeRequest } from '../engine/protocol.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
+import { layerNames, showLayer, shownLayer } from '../test/layers.js';
 import { RecordingClient } from '../test/recording-client.js';
 import { LIBRARY, openSettings, rankingSays, renderRoute, testClient } from '../test/render.js';
 import { decodeInline } from '../url/inline.js';
@@ -108,24 +109,30 @@ describe('Compare', () => {
     renderRoute('/compare?layout=magic-romak&b=graphite&corpus=pt-br-general&sample=20000', {
       storage: freshStorage(),
     });
-    const tabsA = await screen.findByRole('tablist', { name: 'Layers of A' });
-    expect(
-      within(tabsA)
-        .getAllByRole('tab')
-        .map((t) => t.textContent),
-    ).toEqual(['Alpha 1', 'Alpha 2', 'Ç extension', 'Numbers', 'Symbols', 'Dead keys']);
+    await screen.findByRole('group', { name: 'Layers of A' });
+    expect(await layerNames(user, 'Layers of A')).toEqual([
+      'Alpha 1',
+      'Alpha 2',
+      'Ç extension',
+      'Numbers',
+      'Symbols',
+      'Dead keys',
+    ]);
     // Graphite's own layer, then the default ones every bundled layout has.
-    const tabsB = screen.getByRole('tablist', { name: 'Layers of B' });
-    expect(
-      within(tabsB)
-        .getAllByRole('tab')
-        .map((t) => t.textContent),
-    ).toEqual(['Base', 'Numbers', 'Symbols', 'Dead keys']);
+    expect(await layerNames(user, 'Layers of B')).toEqual([
+      'Base',
+      'Numbers',
+      'Symbols',
+      'Dead keys',
+    ]);
 
+    // Each side turns on its own, and the other keeps the layer it was on.
     const boardA = () => document.getElementById('kb-A')?.textContent ?? '';
+    await showLayer(user, 'Alpha 1', 'Layers of A');
     expect(boardA()).not.toContain('qu');
-    await user.click(within(tabsA).getByRole('tab', { name: 'Alpha 2' }));
-    expect(within(tabsA).getByRole('tab', { name: 'Alpha 2', selected: true })).toBeInTheDocument();
+    await showLayer(user, 'Alpha 2', 'Layers of A');
+    expect(shownLayer('Layers of A')).toBe('Alpha 2');
+    expect(shownLayer('Layers of B')).toBe('Dead keys');
     expect(boardA()).toContain('qu');
   });
 

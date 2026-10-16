@@ -5,7 +5,6 @@ import {
   type EditOutcome,
   type Layout,
 } from '@layerbench/core';
-import type { DropTarget } from '../../components/use-key-drag.js';
 
 export type Panel = 'layers' | 'features' | 'geometry' | 'combos' | 'behaviors' | 'paths' | 'json';
 
@@ -76,8 +75,8 @@ export type EditAction =
   | { type: 'cancelSwap' }
   | { type: 'typeOnKey'; keyId: string; seed: string | null }
   | { type: 'deselect' }
-  /** A key dragged onto another key or onto a layer tab: swapped, copied or sent there. */
-  | { type: 'dropKey'; from: string; to: DropTarget; mode: 'swap' | 'copy'; say?: string }
+  /** A key dragged onto another key: swapped with it, or copied over it. */
+  | { type: 'dropKey'; from: string; to: string; mode: 'swap' | 'copy'; say?: string }
   /** With `combo`, the keys picked are the new keys of that combo rather than a new combo's. */
   | { type: 'comboPickStart'; combo?: number }
   | { type: 'comboPickToggle'; keyId: string }
@@ -188,24 +187,12 @@ function make(state: EditState, edit: Edit, say?: string): EditState {
   return land(state, applyEdit(state.layout, edit), say);
 }
 
-/**
- * The edit a drop makes: onto a key, a swap or a copy; onto a layer tab, the key sent there — with
- * the rest of the selection, when it was one of several selected.
- */
+/** The edit a drop makes: the key dropped on swaps places with the one dragged, or is copied over. */
 function dropped(
   state: EditState,
-  { from, to, mode }: { from: string; to: DropTarget; mode: 'swap' | 'copy' },
+  { from, to, mode }: { from: string; to: string; mode: 'swap' | 'copy' },
 ): Edit {
-  const layer = shownLayer(state);
-  if (to.kind === 'key') return { kind: mode, layer, from, to: to.keyId };
-  const keys = selectionOf(state);
-  return {
-    kind: 'send',
-    layer,
-    toLayer: to.layerId,
-    keys: keys.length > 1 && keys.includes(from) ? keys : [from],
-    mode: mode === 'copy' ? 'copy' : 'move',
-  };
+  return { kind: mode, layer: shownLayer(state), from, to };
 }
 
 export function editReducer(state: EditState, action: EditAction): EditState {
@@ -242,7 +229,7 @@ function reduce(state: EditState, action: EditAction): EditState {
         armed,
         dropped(armed, {
           from: state.swapFrom,
-          to: { kind: 'key', keyId: action.keyId },
+          to: action.keyId,
           mode: state.swapMode,
         }),
       );
