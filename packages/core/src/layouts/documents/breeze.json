@@ -37,12 +37,8 @@
           "symbol": "z"
         },
         "L0": {
-          "kind": "lt",
-          "layer": "num",
-          "tap": {
-            "kind": "kp",
-            "symbol": " "
-          }
+          "kind": "kp",
+          "symbol": " "
         },
         "RTC": {
           "kind": "kp",
@@ -121,11 +117,19 @@
           "symbol": "h"
         },
         "R1": {
-          "kind": "sk",
-          "mod": "LSHIFT"
+          "kind": "lt",
+          "layer": "sym",
+          "tap": {
+            "kind": "sk",
+            "mod": "LSHIFT"
+          }
         },
         "L1": {
-          "kind": "key_repeat"
+          "kind": "lt",
+          "layer": "sym",
+          "tap": {
+            "kind": "key_repeat"
+          }
         },
         "RBM": {
           "kind": "kp",
@@ -152,12 +156,8 @@
           "symbol": "."
         },
         "R0": {
-          "kind": "lt",
-          "layer": "sym",
-          "tap": {
-            "kind": "kp",
-            "symbol": "a"
-          }
+          "kind": "kp",
+          "symbol": "a"
         },
         "RHM": {
           "kind": "kp",
