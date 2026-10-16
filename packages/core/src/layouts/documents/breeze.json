@@ -370,10 +370,6 @@
           "kind": "kp",
           "symbol": "ª"
         },
-        "RTI": {
-          "kind": "kp",
-          "symbol": "°"
-        },
         "RHI": {
           "kind": "kp",
           "symbol": "¿"
@@ -442,9 +438,13 @@
           "kind": "kp",
           "symbol": "ñ"
         },
-        "RTR": {
+        "RTI": {
           "kind": "kp",
           "symbol": "_"
+        },
+        "RTR": {
+          "kind": "kp",
+          "symbol": "°"
         }
       }
     }
@@ -453,8 +453,8 @@
     {
       "id": "dead-keys",
       "keys": [
-        "LHR",
-        "LHM"
+        "RHR",
+        "RHM"
       ],
       "binding": {
         "kind": "sl",
