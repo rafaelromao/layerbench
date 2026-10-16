@@ -4,6 +4,9 @@ export default defineConfig({
   test: {
     include: ['src/**/*.test.ts'],
     environment: 'node',
+    // Some tests run every bundled layout through the simulator, which takes a few seconds and
+    // about three times that under coverage on a CI runner; Vitest's default of five is too short.
+    testTimeout: 30_000,
     coverage: {
       provider: 'v8',
       include: ['src/**'],
