@@ -269,6 +269,50 @@ describe('Saving', () => {
     expect(s.getState()).toMatchObject({ storedId: 'qwerty-2', pickedRef: 'custom:qwerty-2' });
   });
 
+  it('has no custom layout behind a bundled one until it is saved: the first save is the copy', async () => {
+    const storage = new MemoryStorage();
+    const { s } = session('qwerty', { storage });
+    const state = await opened(s);
+    // The editor asks for the copy's name while this is null.
+    expect(state.storedId).toBeNull();
+
+    const copy = { ...state.layout, name: 'Qwerty copy' };
+    expect(await s.save(copy)).toEqual({ ok: true, id: 'qwerty-copy', leftBehind: false });
+    expect(await ids(storage)).toEqual(['qwerty-copy']);
+    expect((await storage.get('layouts', 'qwerty-copy'))?.doc.name).toBe('Qwerty copy');
+    expect(s.getState()).toMatchObject({ storedId: 'qwerty-copy' });
+
+    // The copy is the layout now: saving it again asks nothing and makes no second card.
+    const edited = withCedilla(copy);
+    s.edited(edited, true);
+    expect(await s.save(edited)).toEqual({ ok: true, id: 'qwerty-copy', leftBehind: false });
+    expect(await ids(storage)).toEqual(['qwerty-copy']);
+    expect(JSON.stringify((await storage.get('layouts', 'qwerty-copy'))?.doc)).toContain('ç');
+  });
+
+  it('does the same for a layout carried in a link that is not saved here', async () => {
+    const owner = new MemoryStorage();
+    await seed(owner, 'qwerty', 'mine', { name: 'Mine' });
+    const sent = session('custom:mine', { storage: owner });
+    await opened(sent.s);
+
+    const storage = new MemoryStorage();
+    const { s } = session(sent.link.current(), { storage });
+    const state = await opened(s);
+    expect(state.storedId).toBeNull();
+
+    expect(await s.save({ ...state.layout, name: 'Mine copy' })).toMatchObject({
+      ok: true,
+      id: 'mine-copy',
+    });
+    expect(s.getState()).toMatchObject({ storedId: 'mine-copy' });
+    expect(await s.save({ ...state.layout, name: 'Mine copy' })).toMatchObject({
+      ok: true,
+      id: 'mine-copy',
+    });
+    expect(await ids(storage)).toEqual(['mine-copy']);
+  });
+
   it('keeps the id its first save gave while the name keeps it, and saves there again', async () => {
     const storage = new MemoryStorage();
     const { s } = session('qwerty', { storage });

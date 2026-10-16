@@ -1,5 +1,6 @@
 import {
   type AnalysisSettings,
+  BUNDLED_LAYOUTS,
   type CorpusManifest,
   type Layout,
   languagesToJudge,
@@ -32,8 +33,10 @@ import {
 import { type KeyItemSelection, KeyStats } from '../../components/KeyStats.js';
 import { LayerTabs } from '../../components/LayerTabs.js';
 import { MetricCard, SummaryStrip } from '../../components/Metrics.js';
+import { NameDialog } from '../../components/NameDialog.js';
 import { PairBreakdown } from '../../components/PairBreakdown.js';
 import { presetOf } from '../../components/RuleSources.js';
+import { freeCopyName } from '../../custom/save-new.js';
 import type { useAnalysisClient } from '../../engine/client-context.js';
 import { expandPositions, heatMap } from '../../engine/heat.js';
 import type { AnalyzeRequest, ExplainDTO, ProducerDTO, ReportDTO } from '../../engine/protocol.js';
@@ -265,7 +268,7 @@ export function Workbench({
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [state.dirty]);
 
-  const save = useCallback(async () => {
+  const store = useCallback(async () => {
     const layout = state.layout;
     const saved = await session.save(layout);
     if (!saved.ok) {
@@ -284,6 +287,30 @@ export function Workbench({
       );
     } else toast.info(`Saved ${layout.name}`);
   }, [state.layout, session.save, customLayouts.refresh]);
+
+  // A layout that is not stored here, bundled or carried in a link, is not the user's to overwrite:
+  // its first save makes a copy, and asks what to call it. Later saves are of the copy, and ask
+  // nothing.
+  const [naming, setNaming] = useState(false);
+  /** The copy's name, given and set on the layout, while the save of the layout under it waits. */
+  const [named, setNamed] = useState<string | null>(null);
+  useEffect(() => {
+    if (named === null || state.layout.name !== named) return;
+    setNamed(null);
+    void store();
+  }, [named, state.layout.name, store]);
+  const copyName = useMemo(
+    () =>
+      freeCopyName(state.layout.name, [
+        ...BUNDLED_LAYOUTS.map((l) => l.name),
+        ...customLayouts.entries.map((e) => e.name),
+      ]),
+    [state.layout.name, customLayouts.entries],
+  );
+  const save = useCallback(() => {
+    if (session.storedId === null) setNaming(true);
+    else void store();
+  }, [session.storedId, store]);
 
   const pick = (ref: string) => {
     if (state.dirty && !window.confirm(`Leave ${state.layout.name}? Its unsaved changes are lost.`))
@@ -593,6 +620,7 @@ export function Workbench({
         saving={session.saving}
         onMeta={(meta) => send({ type: 'edit', edit: { kind: 'setMeta', ...meta } })}
         onSave={save}
+        copiesOnSave={session.storedId === null}
         // A custom layout is picked as itself, whatever its link carries.
         layoutRef={session.pickedRef}
         onPick={pick}
@@ -604,6 +632,22 @@ export function Workbench({
         onCompare={compare}
         showCombos={hasTypingCombos ? { on: showCombos, onChange: setShowCombos } : undefined}
       />
+
+      {naming && (
+        <NameDialog
+          title="Save a copy"
+          intro="Save makes a copy of this layout in your custom layouts. What should the copy be called?"
+          nameLabel="Name of the copy"
+          initialName={copyName}
+          submitLabel="Save copy"
+          onSubmit={(name) => {
+            setNaming(false);
+            send({ type: 'edit', edit: { kind: 'setMeta', name } });
+            setNamed(name);
+          }}
+          onClose={() => setNaming(false)}
+        />
+      )}
 
       {params.without.length > 0 && (
         <div className="alert text-sm py-2" role="status">

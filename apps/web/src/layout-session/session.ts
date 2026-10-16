@@ -1,13 +1,13 @@
 import {
   type CompiledLayout,
   compileLayout,
-  freeId,
   idForName,
   type Layout,
   type StorageAdapter,
   toCanonicalJson,
 } from '@layerbench/core';
 import { customRef } from '../custom/ref.js';
+import { saveNewLayout } from '../custom/save-new.js';
 import { encodeInline } from '../url/inline.js';
 import { inlineRef } from '../url/params.js';
 import type { Drafts } from './drafts.js';
@@ -84,24 +84,27 @@ export interface SessionPorts {
 const LINK_DELAY_MS = 400;
 
 /**
- * Store a layout. Its id follows its name: one already stored keeps its id while that still matches
- * its name, and moves to its new name's once renamed; anything else takes a free id from its name.
- * Neither overwrites a custom layout whose name happens to slug the same. A renamed layout's old copy
- * goes only once the new one is safely stored.
+ * Store a layout. One not stored yet becomes a custom layout of its own, under a free id from its
+ * name. One already stored keeps its id while that still matches its name, and moves to its new
+ * name's once renamed; it never overwrites a custom layout whose name happens to slug the same. A
+ * renamed layout's old copy goes only once the new one is safely stored.
  */
 async function store(
   storage: StorageAdapter,
   layout: Layout,
   storedId: string | null,
 ): Promise<{ id: string; leftBehind: boolean }> {
+  if (storedId === null) {
+    const { id } = await saveNewLayout(storage, layout, `Save layout ${layout.name}`);
+    return { id, leftBehind: false };
+  }
   const taken = new Set((await storage.list('layouts')).map((e) => e.id));
-  const id =
-    storedId !== null ? idForName(layout.name, storedId, taken) : freeId(layout.name, taken);
+  const id = idForName(layout.name, storedId, taken);
   await storage.put('layouts', id, toCanonicalJson({ ...layout, id }), {
     message: `Save layout ${layout.name}`,
   });
   let leftBehind = false;
-  if (storedId !== null && id !== storedId) {
+  if (id !== storedId) {
     try {
       await storage.delete('layouts', storedId, { message: `Rename layout to ${layout.name}` });
     } catch {
