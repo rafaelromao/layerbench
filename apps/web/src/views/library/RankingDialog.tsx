@@ -100,7 +100,6 @@ export function RankingDialog({
   corpora,
   boards,
   customCount,
-  summary,
 }: {
   params: Params;
   onChange: (patch: Partial<Params>) => void;
@@ -108,8 +107,6 @@ export function RankingDialog({
   boards: BoardChoice[];
   /** How many custom layouts there are, listed or not. */
   customCount: number;
-  /** What the button says is chosen, so the choices are visible without opening it. */
-  summary: string;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   return (
@@ -117,7 +114,6 @@ export function RankingDialog({
       <button type="button" className="btn btn-sm" onClick={() => dialog.current?.showModal()}>
         Rank and filter
       </button>
-      <span className="text-xs opacity-70">{summary}</span>
 
       <dialog ref={dialog} className="modal" aria-labelledby="ranking-title">
         <div className="modal-box max-w-2xl space-y-4">

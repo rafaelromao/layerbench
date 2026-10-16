@@ -269,6 +269,166 @@ describe('Saving', () => {
     expect(s.getState()).toMatchObject({ storedId: 'qwerty-2', pickedRef: 'custom:qwerty-2' });
   });
 
+  it('has no custom layout behind a bundled one until it is saved: the first save is the copy', async () => {
+    const storage = new MemoryStorage();
+    const { s } = session('qwerty', { storage });
+    const state = await opened(s);
+    // The editor asks for the copy's name while this is null.
+    expect(state.storedId).toBeNull();
+
+    const copy = { ...state.layout, name: 'Qwerty copy' };
+    expect(await s.save(copy)).toEqual({ ok: true, id: 'qwerty-copy', leftBehind: false });
+    expect(await ids(storage)).toEqual(['qwerty-copy']);
+    expect((await storage.get('layouts', 'qwerty-copy'))?.doc.name).toBe('Qwerty copy');
+    expect(s.getState()).toMatchObject({ storedId: 'qwerty-copy' });
+
+    // The copy is the layout now: saving it again asks nothing and makes no second card.
+    const edited = withCedilla(copy);
+    s.edited(edited, true);
+    expect(await s.save(edited)).toEqual({ ok: true, id: 'qwerty-copy', leftBehind: false });
+    expect(await ids(storage)).toEqual(['qwerty-copy']);
+    expect(JSON.stringify((await storage.get('layouts', 'qwerty-copy'))?.doc)).toContain('ç');
+  });
+
+  it('finds the layout the browser wrote when a first save failed after that, and makes no second', async () => {
+    // With a repository as well, the browser's copy is written first and the repository can fail.
+    const storage = new MemoryStorage();
+    const put = storage.put.bind(storage);
+    storage.put = async (...args) => {
+      await put(...args);
+      throw new Error('offline');
+    };
+    const { s } = session('qwerty', { storage });
+    const state = await opened(s);
+    const copy = { ...state.layout, name: 'Mine' };
+    expect(await s.save(copy)).toMatchObject({ ok: false, reason: 'failed', error: 'offline' });
+    expect(s.getState()).toMatchObject({ storedId: null });
+
+    storage.put = put;
+    expect(await s.save(copy)).toEqual({ ok: true, id: 'mine', leftBehind: false });
+    expect(await ids(storage)).toEqual(['mine']);
+    expect(s.getState()).toMatchObject({ storedId: 'mine' });
+  });
+
+  it("moves the browser's copy of a failed first save to the name a retry gives", async () => {
+    const storage = new MemoryStorage();
+    const put = storage.put.bind(storage);
+    storage.put = async (...args) => {
+      await put(...args);
+      throw new Error('offline');
+    };
+    const { s } = session('qwerty', { storage });
+    const state = await opened(s);
+    await s.save({ ...state.layout, name: 'Mine' });
+
+    storage.put = put;
+    expect(await s.save({ ...state.layout, name: 'Yours' })).toMatchObject({
+      ok: true,
+      id: 'yours',
+    });
+    expect(await ids(storage)).toEqual(['yours']);
+  });
+
+  it('leaves alone a different layout that has the id a failed first save took', async () => {
+    // The repository could not be listed, so the id looked free; once it can be read, the layout
+    // that is there is someone else's, and is not this one's to overwrite.
+    const storage = new MemoryStorage();
+    const put = storage.put.bind(storage);
+    storage.put = async () => {
+      throw new Error('offline');
+    };
+    const { s } = session('qwerty', { storage });
+    const state = await opened(s);
+    const copy = { ...state.layout, name: 'Mine' };
+    expect(await s.save(copy)).toMatchObject({ ok: false });
+
+    storage.put = put;
+    await seed(storage, 'colemak', 'mine', { name: 'Theirs' });
+    expect(await s.save(copy)).toEqual({ ok: true, id: 'mine-2', leftBehind: false });
+    expect((await storage.get('layouts', 'mine'))?.doc.name).toBe('Theirs');
+    expect(await ids(storage)).toEqual(['mine', 'mine-2']);
+  });
+
+  it('does not carry a failed first save over to the next layout opened', async () => {
+    const storage = new MemoryStorage();
+    const put = storage.put.bind(storage);
+    const list = storage.list.bind(storage);
+    let release: () => void = () => {};
+    const held = new Promise<void>((r) => {
+      release = r;
+    });
+    let holding = true;
+    storage.list = async (...args) => {
+      // Only the first save waits, before it has chosen its id.
+      if (holding) {
+        holding = false;
+        await held;
+      }
+      return list(...args);
+    };
+    storage.put = async (...args) => {
+      await put(...args);
+      throw new Error('offline');
+    };
+    const { s } = session('qwerty', { storage });
+    const state = await opened(s);
+    const slow = s.save({ ...state.layout, name: 'Mine' });
+    await vi.waitFor(() => expect(s.getState()).toMatchObject({ saving: true }));
+    // Another layout is picked while that save waits for storage, and the save lands late.
+    await s.open('colemak');
+    const next = await opened(s);
+    release();
+    expect(await slow).toMatchObject({ ok: false });
+
+    storage.put = put;
+    // The late attempt is not this layout's: its first save is a layout of its own, and the one the
+    // late save wrote is left where it is.
+    expect(await s.save({ ...next.layout, name: 'Other' })).toEqual({
+      ok: true,
+      id: 'other',
+      leftBehind: false,
+    });
+    expect(await ids(storage)).toEqual(['mine', 'other']);
+  });
+
+  it('takes a free id on a retry when nothing was written by the failed save', async () => {
+    const storage = new MemoryStorage();
+    const put = storage.put.bind(storage);
+    storage.put = async () => {
+      throw new Error('browser store full');
+    };
+    const { s } = session('qwerty', { storage });
+    const state = await opened(s);
+    expect(await s.save({ ...state.layout, name: 'Mine' })).toMatchObject({ ok: false });
+
+    storage.put = put;
+    expect(await s.save({ ...state.layout, name: 'Mine' })).toMatchObject({ ok: true, id: 'mine' });
+    expect(await ids(storage)).toEqual(['mine']);
+  });
+
+  it('does the same for a layout carried in a link that is not saved here', async () => {
+    const owner = new MemoryStorage();
+    await seed(owner, 'qwerty', 'mine', { name: 'Mine' });
+    const sent = session('custom:mine', { storage: owner });
+    await opened(sent.s);
+
+    const storage = new MemoryStorage();
+    const { s } = session(sent.link.current(), { storage });
+    const state = await opened(s);
+    expect(state.storedId).toBeNull();
+
+    expect(await s.save({ ...state.layout, name: 'Mine copy' })).toMatchObject({
+      ok: true,
+      id: 'mine-copy',
+    });
+    expect(s.getState()).toMatchObject({ storedId: 'mine-copy' });
+    expect(await s.save({ ...state.layout, name: 'Mine copy' })).toMatchObject({
+      ok: true,
+      id: 'mine-copy',
+    });
+    expect(await ids(storage)).toEqual(['mine-copy']);
+  });
+
   it('keeps the id its first save gave while the name keeps it, and saves there again', async () => {
     const storage = new MemoryStorage();
     const { s } = session('qwerty', { storage });
