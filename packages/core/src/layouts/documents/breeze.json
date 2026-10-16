@@ -253,19 +253,16 @@
           "symbol": "3"
         },
         "R0": {
-          "kind": "hold_tap",
-          "tap": {
-            "kind": "kp",
-            "symbol": " "
-          },
-          "hold": {
-            "kind": "mo",
-            "layer": "sym"
-          }
+          "kind": "kp",
+          "symbol": " "
         },
         "R1": {
-          "kind": "kp",
-          "symbol": "0"
+          "kind": "lt",
+          "layer": "sym",
+          "tap": {
+            "kind": "kp",
+            "symbol": "0"
+          }
         }
       }
     },
