@@ -34,7 +34,7 @@ describe('key distance', () => {
     expect(yDistance(b, a)).toBe(4);
   });
 
-  it('is undefined between hands', () => {
+  it('is null between hands', () => {
     const other = key('R', 1, 1);
     expect(keyDistance(a, other)).toBeNull();
     expect(xDistance(a, other)).toBeNull();

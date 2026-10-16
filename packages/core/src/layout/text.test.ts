@@ -88,10 +88,14 @@ describe('importing a text layout onto a geometry', () => {
     expect(overflow).toEqual(['e', 'f']);
   });
 
-  it('places the outer keys of a cyanophone string on an ANSI board', () => {
+  it('places the outer keys of a cyanophage string on an ANSI board', () => {
     const { layout, overflow } = importTextLayout("qwertyuiop-asdfghjkl;'zxcvbnm,./\\^", 'ansi');
-    expect(layout.layers[0].bindings).toBeDefined();
-    expect(Array.isArray(overflow)).toBe(true);
+    const base = layout.layers[0].bindings;
+    expect(overflow).toEqual([]);
+    expect(base.RTO).toEqual({ kind: 'kp', symbol: '-' });
+    expect(base.RHO).toEqual({ kind: 'kp', symbol: "'" });
+    expect(base.LTP).toEqual({ kind: 'kp', symbol: 'q' });
+    expect(base.RBP).toEqual({ kind: 'kp', symbol: '/' });
   });
 
   it('sends an extra outer symbol to overflow where the geometry has no outer key', () => {
@@ -101,7 +105,14 @@ describe('importing a text layout onto a geometry', () => {
 
   it('spreads a row that is shorter than the geometry from the inner keys out', () => {
     const { layout } = importTextLayout('q w e r\na s d f\nz x c v', 'ansi');
-    expect(Object.keys(layout.layers[0].bindings).length).toBeGreaterThanOrEqual(12);
+    const base = layout.layers[0].bindings;
+    // Two tokens a hand, aligned to the innermost columns; the outer keys stay empty.
+    expect(base.LTI).toEqual({ kind: 'kp', symbol: 'q' });
+    expect(base.LTC).toEqual({ kind: 'kp', symbol: 'w' });
+    expect(base.RTC).toEqual({ kind: 'kp', symbol: 'e' });
+    expect(base.RTI).toEqual({ kind: 'kp', symbol: 'r' });
+    expect(base.LTP).toBeUndefined();
+    expect(base.RTP).toBeUndefined();
   });
 
   it('overflows a row longer than the geometry', () => {
@@ -109,7 +120,24 @@ describe('importing a text layout onto a geometry', () => {
       "q w e r t y u i o p [ ] \\ 1\na s d f g h j k l ; ' 1 2 3 4 5 6\nz x c v b n m , . / 1 2 3 4 5 6",
       'ansi',
     );
-    expect(overflow.length).toBeGreaterThan(0);
+    // Each row's tokens are halved between the hands, and what a hand has no key for is left over.
+    expect(overflow).toEqual([
+      'y',
+      'u',
+      '1',
+      'h',
+      'j',
+      'k',
+      'l',
+      '5',
+      '6',
+      'n',
+      'm',
+      ',',
+      '4',
+      '5',
+      '6',
+    ]);
   });
 });
 
