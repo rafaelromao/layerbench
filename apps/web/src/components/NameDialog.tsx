@@ -1,0 +1,87 @@
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
+
+/**
+ * A dialog that asks for a layout's name, with whatever else its caller needs to ask beside it
+ * (`children`): New layout's board, Save a copy's none. It is a native `<dialog>`, as the settings
+ * dialogs are, so Escape and a tap on the dimmed page around it are a change of mind and call
+ * `onClose`. Mount it while it is open: it opens as it mounts, with the name selected to be typed
+ * over, and an empty name is refused.
+ */
+export function NameDialog({
+  title,
+  intro,
+  nameLabel,
+  initialName,
+  submitLabel,
+  onSubmit,
+  onClose,
+  children,
+}: {
+  title: string;
+  /** What the name is for, above the field. */
+  intro?: string;
+  /** The field's accessible name. */
+  nameLabel: string;
+  initialName: string;
+  submitLabel: string;
+  /** The name, trimmed and not empty. The caller closes the dialog. */
+  onSubmit: (name: string) => void;
+  onClose: () => void;
+  children?: ReactNode;
+}) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const input = useRef<HTMLInputElement>(null);
+  const titleId = useId();
+  const [name, setName] = useState(initialName);
+
+  useEffect(() => {
+    if (!dialog.current?.open) dialog.current?.showModal();
+    input.current?.select();
+  }, []);
+
+  const trimmed = name.trim();
+  return (
+    <dialog ref={dialog} className="modal" aria-labelledby={titleId} onClose={onClose}>
+      <form
+        className="modal-box max-w-md space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (trimmed) onSubmit(trimmed);
+        }}
+      >
+        <h2 id={titleId} className="font-semibold text-base">
+          {title}
+        </h2>
+        {intro && <p className="text-xs opacity-70">{intro}</p>}
+
+        <label className="form-control">
+          <span className="label-text text-xs">Name</span>
+          <input
+            ref={input}
+            aria-label={nameLabel}
+            className="input input-sm input-bordered"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </label>
+        {children}
+
+        <div className="modal-action">
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => dialog.current?.close()}
+          >
+            Cancel
+          </button>
+          <button type="submit" className="btn btn-primary btn-sm" disabled={!trimmed}>
+            {submitLabel}
+          </button>
+        </div>
+      </form>
+      <form method="dialog" className="modal-backdrop">
+        <button type="submit">close</button>
+      </form>
+    </dialog>
+  );
+}

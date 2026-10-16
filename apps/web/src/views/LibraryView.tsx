@@ -3,7 +3,6 @@ import {
   type CompiledLayout,
   compileLayout,
   forRanking,
-  freeId,
   GEOMETRY_PRESET_IDS,
   getGeometryPreset,
   type Layout,
@@ -11,16 +10,16 @@ import {
   languagesToJudge,
   layoutLanguageCoverage,
   layoutLanguages,
-  toCanonicalJson,
   typedLayout,
 } from '@layerbench/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { featureList } from '../components/FeatureSwitches.js';
 import { formatValue } from '../components/format.js';
 import { HelpLink } from '../components/HelpLink.js';
-import { useDismiss } from '../components/use-dismiss.js';
+import { NameDialog } from '../components/NameDialog.js';
 import { customRef } from '../custom/ref.js';
+import { saveNewLayout } from '../custom/save-new.js';
 import { rankingKey, recall, rememberBehind } from '../engine/ranking-memory.js';
 import {
   compareBy,
@@ -198,7 +197,7 @@ function LayoutCard({
   summary: LayoutSummary | undefined;
   lacking: Lacking | undefined;
   nobodyCan: boolean;
-  /** Two to a row, so the four a custom layout has take no more width than a bundled one's two. */
+  /** Analyze, and Delete beside it on a custom layout. */
   actions: ReactNode;
 }) {
   return (
@@ -237,18 +236,14 @@ function LayoutCard({
   );
 }
 
-/** New layout: pick a board, a starting point, and whether it gets number and symbol layers. */
+/** New layout: a name, a board, a starting point, and whether it gets number and symbol layers. */
 function NewLayoutDialog({ onCreate }: { onCreate: (spec: NewLayoutSpec) => void }) {
   const [open, setOpen] = useState(false);
-  const [spec, setSpec] = useState<NewLayoutSpec>({
-    name: 'My layout',
+  const [rest, setRest] = useState<Omit<NewLayoutSpec, 'name'>>({
     geometry: '3x5+2',
     start: 'empty',
     defaultLayers: false,
   });
-  const form = useRef<HTMLFormElement>(null);
-  // A tap on the dimmed page around the dialog, or Escape, is a change of mind.
-  useDismiss(form, () => setOpen(false), { active: open });
 
   return (
     <>
@@ -256,91 +251,61 @@ function NewLayoutDialog({ onCreate }: { onCreate: (spec: NewLayoutSpec) => void
         New layout
       </button>
       {open && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-          <form
-            ref={form}
-            aria-label="New layout"
-            // Capped at the screen as it is now, as the dialogs are, and scrolled inside when that is
-            // less than the form, as on a phone held sideways.
-            className="card w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-base-100 shadow-xl"
-            onSubmit={(e) => {
-              e.preventDefault();
-              setOpen(false);
-              onCreate(spec);
-            }}
-          >
-            <div className="card-body gap-3 p-4">
-              <h2 className="font-semibold text-sm">New layout</h2>
+        <NameDialog
+          title="New layout"
+          nameLabel="New layout name"
+          initialName="My layout"
+          submitLabel="Create and edit"
+          onSubmit={(name) => {
+            setOpen(false);
+            onCreate({ ...rest, name });
+          }}
+          onClose={() => setOpen(false)}
+        >
+          <label className="form-control">
+            <span className="label-text text-xs">Board</span>
+            <select
+              aria-label="New layout board"
+              className="select select-sm select-bordered"
+              value={rest.geometry}
+              onChange={(e) => setRest({ ...rest, geometry: e.target.value })}
+            >
+              {GEOMETRY_PRESET_IDS.map((id) => (
+                <option key={id} value={id}>
+                  {getGeometryPreset(id).name}
+                </option>
+              ))}
+            </select>
+          </label>
 
-              <label className="form-control">
-                <span className="label-text text-xs">Name</span>
-                <input
-                  aria-label="New layout name"
-                  className="input input-sm input-bordered"
-                  value={spec.name}
-                  onChange={(e) => setSpec({ ...spec, name: e.target.value })}
-                />
-              </label>
+          <label className="form-control">
+            <span className="label-text text-xs">Start from</span>
+            <select
+              aria-label="New layout starting point"
+              className="select select-sm select-bordered"
+              value={rest.start}
+              onChange={(e) =>
+                setRest({ ...rest, start: e.target.value as NewLayoutSpec['start'] })
+              }
+            >
+              <option value="empty">An empty board</option>
+              <option value="qwerty">Qwerty, to rearrange</option>
+            </select>
+          </label>
 
-              <label className="form-control">
-                <span className="label-text text-xs">Board</span>
-                <select
-                  aria-label="New layout board"
-                  className="select select-sm select-bordered"
-                  value={spec.geometry}
-                  onChange={(e) => setSpec({ ...spec, geometry: e.target.value })}
-                >
-                  {GEOMETRY_PRESET_IDS.map((id) => (
-                    <option key={id} value={id}>
-                      {getGeometryPreset(id).name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="form-control">
-                <span className="label-text text-xs">Start from</span>
-                <select
-                  aria-label="New layout starting point"
-                  className="select select-sm select-bordered"
-                  value={spec.start}
-                  onChange={(e) =>
-                    setSpec({ ...spec, start: e.target.value as NewLayoutSpec['start'] })
-                  }
-                >
-                  <option value="empty">An empty board</option>
-                  <option value="qwerty">Qwerty, to rearrange</option>
-                </select>
-              </label>
-
-              <label className="label cursor-pointer justify-start gap-2">
-                <input
-                  type="checkbox"
-                  aria-label="Add the default layers"
-                  className="checkbox checkbox-sm"
-                  checked={spec.defaultLayers}
-                  onChange={(e) => setSpec({ ...spec, defaultLayers: e.target.checked })}
-                />
-                <span className="label-text text-xs">
-                  Add the default layers: numbers, symbols, dead keys
-                </span>
-              </label>
-
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => setOpen(false)}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary btn-sm">
-                  Create and edit
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
+          <label className="label cursor-pointer justify-start gap-2">
+            <input
+              type="checkbox"
+              aria-label="Add the default layers"
+              className="checkbox checkbox-sm"
+              checked={rest.defaultLayers}
+              onChange={(e) => setRest({ ...rest, defaultLayers: e.target.checked })}
+            />
+            <span className="label-text text-xs">
+              Add the default layers: numbers, symbols, dead keys
+            </span>
+          </label>
+        </NameDialog>
       )}
     </>
   );
@@ -496,7 +461,7 @@ export function LibraryView() {
     () => pool.filter((item) => !hiddenBoards.includes(item.board)),
     [pool, hiddenBoards],
   );
-  /** Why fewer layouts are listed than there are, for the line beside the dialog's button. */
+  /** Why fewer layouts are listed than there are, for the line under the sort. */
   const leftOut = [
     pool.length < listed.length ? 'without the custom ones' : '',
     shownListed.length < pool.length ? 'on the boards chosen' : '',
@@ -599,12 +564,11 @@ export function LibraryView() {
     [navigate, analyzeSearch],
   );
 
-  /** Save under a free id, and say so by the layout's name: the id is only for links. */
+  /** Save as a custom layout of its own, and say so by the layout's name: the id is only for links. */
   const saveNew = useCallback(
     async (layout: Layout, message: string): Promise<string | null> => {
-      const id = freeId(layout.name, new Set(custom.entries.map((e) => e.id)));
       try {
-        await storage.put('layouts', id, toCanonicalJson({ ...layout, id }), { message });
+        const { id } = await saveNewLayout(storage, layout, message);
         custom.refresh();
         toast.info(`Saved ${layout.name}`);
         return id;
@@ -619,28 +583,6 @@ export function LibraryView() {
   const saveToLibrary = useCallback(
     async (layout: Layout) => (await saveNew(layout, `Import layout ${layout.name}`)) !== null,
     [saveNew],
-  );
-
-  /** Duplicate any layout, bundled or custom, and open the copy in Analyze, to edit. */
-  const duplicate = useCallback(
-    async (layout: Layout) => {
-      const copy = { ...layout, name: `${layout.name} copy` };
-      const id = await saveNew(copy, `Duplicate ${layout.name}`);
-      if (id) navigate({ to: '/analyze', search: analyzeSearch(customRef(id)) });
-    },
-    [saveNew, navigate, analyzeSearch],
-  );
-
-  const duplicateCustom = useCallback(
-    async (id: string) => {
-      const opened = await openLayout(customRef(id), storage);
-      if (!opened.ok) {
-        toast.error(`Could not read ${id}`);
-        return;
-      }
-      await duplicate(opened.layout);
-    },
-    [storage, duplicate],
   );
 
   const createLayout = useCallback(
@@ -687,7 +629,8 @@ export function LibraryView() {
           onImportKeymap={importKeymap}
         />
         <p className="text-xs opacity-70">
-          Start from an empty board, import yours, or duplicate any layout below and change it.
+          Start from an empty board or import yours. Or open any layout below in Analyze and change
+          it.
         </p>
       </div>
 
@@ -698,11 +641,6 @@ export function LibraryView() {
           corpora={corpora}
           boards={boards}
           customCount={custom.entries.length}
-          summary={
-            leftOut.length > 0
-              ? `${shownListed.length} of ${listed.length} layouts, ${leftOut.join(', ')}.`
-              : ''
-          }
         />
         <fieldset className="join" aria-label="Sort layouts by">
           <legend className="text-xs opacity-70 float-left mr-2 self-center">Sort by</legend>
@@ -722,8 +660,14 @@ export function LibraryView() {
         <HelpLink help={HELP.sorting} />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs opacity-60" aria-live="polite">
+      <div className="space-y-1">
+        {/* What the choices in Rank and filter leave out, so they are visible without opening it. */}
+        <p className="text-xs opacity-70 empty:hidden" aria-live="polite">
+          {leftOut.length > 0
+            ? `${shownListed.length} of ${listed.length} layouts, ${leftOut.join(', ')}.`
+            : ''}
+        </p>
+        <p className="text-xs opacity-60" aria-live="polite">
           {settings.status === 'reading'
             ? `Scoring layouts once the rule set ${settings.rulesName} is read…`
             : settings.status === 'failed'
@@ -741,7 +685,7 @@ export function LibraryView() {
                           ? ` Layouts that cannot type ${lackingWhat} come last.`
                           : ''
                     }`}
-        </span>
+        </p>
       </div>
 
       <section className="space-y-2" aria-labelledby="library-layouts">
@@ -775,22 +719,11 @@ export function LibraryView() {
                   >
                     Analyze
                   </Link>
-                  <button
-                    type="button"
-                    aria-label={`Duplicate ${item.name}`}
-                    className="btn btn-xs"
-                    onClick={() => {
-                      if (item.custom) duplicateCustom(item.id);
-                      else if (item.layout) duplicate(item.layout);
-                    }}
-                  >
-                    Duplicate
-                  </button>
                   {item.custom && (
                     <button
                       type="button"
                       aria-label={`Delete ${item.name}`}
-                      className="btn btn-ghost btn-xs"
+                      className="btn btn-xs"
                       onClick={() => remove(item.id, item.name)}
                     >
                       Delete
