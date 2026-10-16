@@ -25,28 +25,30 @@ export const layerCounter = (label = 'Layers'): string =>
 
 const atEdge = (button: HTMLElement) => button.getAttribute('aria-disabled') === 'true';
 
-async function firstLayer(user: UserEvent, label: string): Promise<void> {
-  const nav = within(layerNav(label));
-  const previous = () => nav.queryByRole('button', { name: 'Previous layer' });
-  for (let back = previous(); back && !atEdge(back); back = previous()) await user.click(back);
-}
-
-/** Step to the first layer, then on to the one named, the way a person with the buttons would. */
+/**
+ * Step to the layer named: forward from the one shown, then back if it was behind, the way a person
+ * with the buttons would. Every step draws the whole board again, so no step is spent on the way.
+ */
 export async function showLayer(user: UserEvent, name: string, label = 'Layers'): Promise<void> {
   const nav = within(layerNav(label));
-  await firstLayer(user, label);
-  for (;;) {
-    if (shownLayer(label) === name) return;
-    const next = nav.queryByRole('button', { name: 'Next layer' });
-    if (!next || atEdge(next)) throw new Error(`no layer named ${name}`);
-    await user.click(next);
+  for (const direction of ['Next layer', 'Previous layer']) {
+    for (;;) {
+      if (shownLayer(label) === name) return;
+      const button = nav.queryByRole('button', { name: direction });
+      if (!button || atEdge(button)) break;
+      await user.click(button);
+    }
   }
+  throw new Error(`no layer named ${name}`);
 }
 
 /** The names of every layer, in order, read by stepping through them. Leaves the last one shown. */
 export async function layerNames(user: UserEvent, label = 'Layers'): Promise<string[]> {
   const nav = within(layerNav(label));
-  await firstLayer(user, label);
+  for (let back = nav.queryByRole('button', { name: 'Previous layer' }); back && !atEdge(back); ) {
+    await user.click(back);
+    back = nav.queryByRole('button', { name: 'Previous layer' });
+  }
   const names = [shownLayer(label)];
   for (;;) {
     const next = nav.queryByRole('button', { name: 'Next layer' });

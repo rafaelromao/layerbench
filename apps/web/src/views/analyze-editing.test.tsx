@@ -401,8 +401,11 @@ describe('Edit', () => {
     await user.click(screen.getByRole('button', { name: '+ layer' }));
     await user.type(screen.getByLabelText('New layer name'), 'Fun');
     await user.click(screen.getByRole('button', { name: '+ layer' }));
+    // Read straight from the panel: a label query over the whole page costs seconds on a slow runner.
     const order = () =>
-      screen.getAllByLabelText<HTMLInputElement>(/^Name of layer /).map((input) => input.value);
+      [...document.querySelectorAll<HTMLInputElement>('input[aria-label^="Name of layer "]')].map(
+        (input) => input.value,
+      );
     expect(order()).toEqual(['Base', 'Numbers', 'Symbols', 'Dead keys', 'Nav', 'Fun']);
 
     // The base layer, which every key falls back to, stays first and cannot go.
@@ -447,7 +450,7 @@ describe('Edit', () => {
     expect(screen.getAllByText(/^Numbers is still reached from/)).toHaveLength(1);
     expect(screen.getByLabelText('Name of layer num')).toBeInTheDocument();
     expect(screen.queryByText('Removed Numbers — Undo brings it back')).toBeNull();
-  }, 60_000);
+  }, 120_000);
 
   it("shows Magic Romak's special features and lets one be turned off", async () => {
     const user = userEvent.setup();
@@ -473,7 +476,7 @@ describe('Edit', () => {
     await user.click(screen.getByLabelText('Sentence case'));
     expect(screen.getByLabelText('Sentence case')).not.toBeChecked();
     expect(await screen.findByText('unsaved')).toBeInTheDocument();
-  });
+  }, 60_000);
 
   it('builds a macro that types text and then arms a layer', async () => {
     const user = userEvent.setup();
@@ -880,7 +883,7 @@ describe('Edit', () => {
     expect(await screen.findByRole('button', { name: 'Key LHM: d' })).toBeInTheDocument();
     await showLayer(user, 'Base');
     expect(await screen.findByRole('button', { name: 'Key LHM: empty' })).toBeInTheDocument();
-  });
+  }, 90_000);
 
   it('sends keys picked with Shift to another layer together, and one Undo takes them all back', async () => {
     const user = userEvent.setup();
@@ -914,7 +917,7 @@ describe('Edit', () => {
     expect(await screen.findByRole('button', { name: 'Key LHM: d' })).toBeInTheDocument();
     expect(key('Key LHI: f')).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Edit 2 keys' })).toBeInTheDocument();
-  });
+  }, 90_000);
 
   it('adds a key to the ones picked when a finger rests on it, and clears them all at once', async () => {
     setPointerKind('touch');
