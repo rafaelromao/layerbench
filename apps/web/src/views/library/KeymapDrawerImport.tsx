@@ -18,8 +18,8 @@ import {
   readKeymapDrawer,
 } from '@layerbench/core';
 import { useEffect, useId, useMemo, useState } from 'react';
-import { Keyboard } from '../../components/Keyboard.js';
-import { LayerTabs } from '../../components/LayerTabs.js';
+import { LayerNav } from '../../components/LayerNav.js';
+import { PreviewBoard } from '../../components/PreviewBoard.js';
 import { TextField } from '../edit/inspector/controls.js';
 
 interface LayerChoice {
@@ -339,21 +339,17 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
 
           {result && (
             <div className="space-y-2">
-              <LayerTabs
-                layers={result.compiled.layers.map((l) => ({
-                  idx: l.idx,
-                  id: l.id,
-                  name: l.name,
-                  color: l.color,
-                }))}
-                active={Math.min(shown, result.compiled.layers.length - 1)}
-                onSelect={setShown}
-              />
-              <Keyboard
+              <PreviewBoard
                 id="kb-kd-import"
                 compiled={result.compiled}
                 layer={Math.min(shown, result.compiled.layers.length - 1)}
-                interactive={false}
+                onLayer={setShown}
+              />
+              <LayerNav
+                layers={result.compiled.layers}
+                active={Math.min(shown, result.compiled.layers.length - 1)}
+                onSelect={setShown}
+                className="justify-center"
               />
               <p className="text-xs opacity-70">
                 {result.report.combos.imported} combo

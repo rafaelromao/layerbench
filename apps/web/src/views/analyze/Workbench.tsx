@@ -30,7 +30,7 @@ import {
   typingCombos,
 } from '../../components/Keyboard.js';
 import { type KeyItemSelection, KeyStats } from '../../components/KeyStats.js';
-import { LayerTabs } from '../../components/LayerTabs.js';
+import { LayerNav, useLayerSwipe } from '../../components/LayerNav.js';
 import { MetricCard, SummaryStrip } from '../../components/Metrics.js';
 import { PairBreakdown } from '../../components/PairBreakdown.js';
 import { presetOf } from '../../components/RuleSources.js';
@@ -401,6 +401,13 @@ export function Workbench({
     setPlay(null);
   };
 
+  /** Choosing a layer is looking at it: the word stops playing over it. */
+  const selectLayer = (layer: number) => {
+    setPlay(null);
+    send({ type: 'selectLayer', layer });
+  };
+  const swipe = useLayerSwipe(state.compiled.layers, boardLayer, selectLayer);
+
   const heat = useMemo(
     () => (shown ? heatMap(shown, params.heat, boardLayer) : {}),
     [shown, params.heat, boardLayer],
@@ -633,25 +640,15 @@ export function Workbench({
               <Collapsible id="analyze.board" title="Board">
                 <div className="flex flex-col gap-2 min-w-0">
                   <div className="flex items-center gap-2 min-w-0">
-                    <div className="lb-layer-strip min-w-0 flex-1">
-                      <LayerTabs
-                        layers={state.compiled.layers.map((l) => ({
-                          idx: l.idx,
-                          id: l.id,
-                          name: l.name,
-                          color: l.color,
-                        }))}
-                        active={boardLayer}
-                        onSelect={(layer) => {
-                          // Choosing a layer is looking at it: the word stops playing over it.
-                          setPlay(null);
-                          send({ type: 'selectLayer', layer });
-                        }}
-                        onRename={(layer, name) =>
-                          send({ type: 'edit', edit: { kind: 'renameLayer', layer, name } })
-                        }
-                      />
-                    </div>
+                    <LayerNav
+                      className="min-w-0 flex-1"
+                      layers={state.compiled.layers}
+                      active={boardLayer}
+                      onSelect={selectLayer}
+                      onRename={(layer, name) =>
+                        send({ type: 'edit', edit: { kind: 'renameLayer', layer, name } })
+                      }
+                    />
                     <div className="join shrink-0">
                       <button
                         type="button"
@@ -701,7 +698,7 @@ export function Workbench({
                     )}
                   </div>
 
-                  <div className="lb-board relative">
+                  <div className="lb-board relative" {...swipe}>
                     {/* The board pans inside its own box on a narrow screen. */}
                     <div className="lb-board-scroll">
                       <Keyboard
@@ -735,19 +732,13 @@ export function Workbench({
                               : { type: 'keyClick', keyId },
                           );
                         }}
-                        onDropKey={(drop) => {
-                          const keys = selectionOf(state);
-                          const many =
-                            drop.to.kind === 'layer' && keys.length > 1 && keys.includes(drop.from);
+                        onDropKey={(drop) =>
                           send({
                             type: 'dropKey',
                             ...drop,
-                            say:
-                              drop.to.kind === 'layer'
-                                ? `${many ? `${keys.length} keys` : drop.from} ${drop.mode === 'copy' ? 'copied' : 'sent'} to ${drop.to.layerId}`
-                                : `${drop.from} ${drop.mode === 'copy' ? 'copied to' : 'swapped with'} ${drop.to.keyId}`,
-                          });
-                        }}
+                            say: `${drop.from} ${drop.mode === 'copy' ? 'copied to' : 'swapped with'} ${drop.to}`,
+                          })
+                        }
                         onKeyShortcut={onKeyShortcut}
                       />
                     </div>

@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AnalysisClient, AnalyzeRequest } from '../engine/protocol.js';
 import { toast } from '../state/toasts.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
+import { layerNameEl, showLayer, shownLayer } from '../test/layers.js';
 import { customInLink, openSettings, renderRoute, testClient } from '../test/render.js';
 import { setPointerKind, setViewportWidth } from '../test/setup.js';
 import { decodeInline } from '../url/inline.js';
@@ -16,11 +17,11 @@ const freshStorage = () => new IndexedDbAdapter(`layerbench-edit-${++counter}`);
 async function dragKey(
   from: string,
   to: string,
-  options: { altKey?: boolean; onto?: Element } = {},
+  options: { altKey?: boolean } = {},
 ): Promise<void> {
   const svg = document.getElementById('kb-analyze') as unknown as SVGSVGElement;
   const source = svg.querySelector(`g[data-key="${from}"]`) as Element;
-  const target = options.onto ?? (svg.querySelector(`g[data-key="${to}"]`) as Element);
+  const target = svg.querySelector(`g[data-key="${to}"]`) as Element;
   const { altKey = false } = options;
 
   // jsdom has no layout, so hit testing has to be told what is under the pointer.
@@ -221,7 +222,7 @@ describe('Edit', () => {
     // layout as written; the layout being edited keeps it.
     await waitFor(() => expect(off(requests.at(-1))).toEqual(['macros']), { timeout: 25_000 });
     expect(JSON.stringify(requests.at(-1)?.layout)).toContain('"qu"');
-    await user.click(screen.getByRole('tab', { name: 'Alpha 2' }));
+    await showLayer(user, 'Alpha 2');
     expect(await screen.findByRole('button', { name: /^Key LTM: qu/ })).toBeInTheDocument();
   }, 60_000);
 
@@ -294,9 +295,7 @@ describe('Edit', () => {
     await user.type(screen.getByLabelText('New layer name'), 'Fun');
     await user.click(screen.getByRole('button', { name: '+ layer' }));
     const order = () =>
-      within(screen.getByRole('tablist', { name: 'Layers' }))
-        .getAllByRole('tab')
-        .map((t) => t.textContent);
+      screen.getAllByLabelText<HTMLInputElement>(/^Name of layer /).map((input) => input.value);
     expect(order()).toEqual(['Base', 'Numbers', 'Symbols', 'Dead keys', 'Nav', 'Fun']);
 
     // The base layer, which every key falls back to, stays first and cannot go.
@@ -310,24 +309,25 @@ describe('Edit', () => {
     await user.click(screen.getByRole('button', { name: 'Duplicate Nav' }));
     expect(order()).toEqual(['Base', 'Numbers', 'Symbols', 'Dead keys', 'Fun', 'Nav', 'Nav copy']);
 
-    // A tab is renamed where it stands.
-    await user.dblClick(screen.getByRole('tab', { name: 'Nav copy' }));
+    // The board has turned to the copy; its name is renamed where it stands.
+    expect(shownLayer()).toBe('Nav copy');
+    await user.dblClick(layerNameEl());
     const field = screen.getByLabelText('Rename Nav copy');
     await user.clear(field);
     await user.type(field, 'Extra{Enter}');
-    expect(await screen.findByRole('tab', { name: 'Extra' })).toBeInTheDocument();
+    await waitFor(() => expect(shownLayer()).toBe('Extra'));
     expect(screen.getByLabelText('Name of layer nav-copy')).toHaveValue('Extra');
 
     const info = vi.spyOn(toast, 'info');
     await user.click(screen.getByRole('button', { name: 'Remove Extra' }));
-    await waitFor(() => expect(screen.queryByRole('tab', { name: 'Extra' })).toBeNull());
+    await waitFor(() => expect(screen.queryByLabelText('Name of layer nav-copy')).toBeNull());
     expect(await screen.findByText('Removed Extra — Undo brings it back')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Undo' }));
-    expect(await screen.findByRole('tab', { name: 'Extra' })).toBeInTheDocument();
+    expect(await screen.findByLabelText('Name of layer nav-copy')).toHaveValue('Extra');
     expect(screen.getByText('Undone')).toBeInTheDocument();
     // Undo and Redo are not edits: they say what they did, and the removal is not told again.
     await user.click(screen.getByRole('button', { name: 'Redo' }));
-    await waitFor(() => expect(screen.queryByRole('tab', { name: 'Extra' })).toBeNull());
+    await waitFor(() => expect(screen.queryByLabelText('Name of layer nav-copy')).toBeNull());
     expect(screen.getByText('Redone')).toBeInTheDocument();
     expect(info.mock.calls.map(([text]) => text)).toEqual(['Removed Extra — Undo brings it back']);
     info.mockRestore();
@@ -338,7 +338,7 @@ describe('Edit', () => {
       /^Numbers is still reached from Base \w+/,
     );
     expect(screen.getAllByText(/^Numbers is still reached from/)).toHaveLength(1);
-    expect(screen.getByRole('tab', { name: 'Numbers' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Name of layer num')).toBeInTheDocument();
     expect(screen.queryByText('Removed Numbers — Undo brings it back')).toBeNull();
   }, 60_000);
 
@@ -752,27 +752,26 @@ describe('Edit', () => {
     });
   });
 
-  it('sends a key to another layer when it is dropped on that tab', async () => {
+  it('sends a key to another layer from its editor, leaving its place empty', async () => {
     const user = userEvent.setup();
     await openEdit();
 
     await user.click(screen.getByRole('tab', { name: 'Layers' }));
     await user.type(screen.getByLabelText('New layer name'), 'Nav');
     await user.click(screen.getByRole('button', { name: '+ layer' }));
-
-    const tab = await screen.findByRole('tab', { name: 'Nav' });
     // Adding a layer moves to it; the key being sent lives on the one before.
-    await user.click(screen.getByRole('tab', { name: 'Base' }));
-    await screen.findByRole('button', { name: 'Key LHM: d' });
+    await showLayer(user, 'Base');
+    await user.click(await screen.findByRole('button', { name: 'Key LHM: d' }));
 
-    await dragKey('LHM', '', { onto: tab });
+    await user.selectOptions(
+      await screen.findByRole('combobox', { name: 'Send LHM to another layer' }),
+      'Nav',
+    );
 
     // The view follows the binding to the layer it landed on, and the source is left empty.
-    await waitFor(() => {
-      expect(tab).toHaveAttribute('aria-selected', 'true');
-    });
+    await waitFor(() => expect(shownLayer()).toBe('Nav'));
     expect(await screen.findByRole('button', { name: 'Key LHM: d' })).toBeInTheDocument();
-    await user.click(screen.getByRole('tab', { name: 'Base' }));
+    await showLayer(user, 'Base');
     expect(await screen.findByRole('button', { name: 'Key LHM: empty' })).toBeInTheDocument();
   });
 
@@ -783,9 +782,7 @@ describe('Edit', () => {
     await user.click(screen.getByRole('tab', { name: 'Layers' }));
     await user.type(screen.getByLabelText('New layer name'), 'Nav');
     await user.click(screen.getByRole('button', { name: '+ layer' }));
-    const nav = await screen.findByRole('tab', { name: 'Nav' });
-    const base = screen.getByRole('tab', { name: 'Base' });
-    await user.click(base);
+    await showLayer(user, 'Base');
 
     await user.click(await screen.findByRole('button', { name: 'Key LHM: d' }));
     await user.keyboard('{Shift>}');
@@ -800,17 +797,13 @@ describe('Edit', () => {
       within(editor).getByRole('combobox', { name: 'Send the selected keys to another layer' }),
       'Nav',
     );
-    await waitFor(() => {
-      expect(nav).toHaveAttribute('aria-selected', 'true');
-    });
+    await waitFor(() => expect(shownLayer()).toBe('Nav'));
     expect(await screen.findByRole('button', { name: 'Key LHM: d' })).toBeInTheDocument();
     expect(key('Key LHI: f')).toBeInTheDocument();
     expect(key('Key LHR: transparent')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Undo' }));
-    await waitFor(() => {
-      expect(base).toHaveAttribute('aria-selected', 'true');
-    });
+    await waitFor(() => expect(shownLayer()).toBe('Base'));
     expect(await screen.findByRole('button', { name: 'Key LHM: d' })).toBeInTheDocument();
     expect(key('Key LHI: f')).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Edit 2 keys' })).toBeInTheDocument();
@@ -1021,7 +1014,7 @@ describe('Edit', () => {
 
     // The Ç extension's thumb is a plain one-shot layer; the release options it arrives at the
     // simulator with are the layout's defaults, not the key's, so they are nothing to protect.
-    await user.click(await screen.findByRole('tab', { name: 'Ç extension' }));
+    await showLayer(user, 'Ç extension');
     await user.click(await screen.findByRole('button', { name: /^Key L1:/ }));
     const editor = await inspector('L1');
     expect(within(editor).getByRole('textbox', { name: 'Binding for L1' })).toHaveValue(
@@ -1058,8 +1051,9 @@ describe('Edit', () => {
     renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000', { storage });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
 
-    const dot = () =>
-      screen.getByRole('tab', { name: 'Symbols' }).querySelector('span')?.getAttribute('style');
+    // The navigator writes the layer's name in the colour its keys are drawn in.
+    await showLayer(user, 'Symbols');
+    const dot = () => layerNameEl().getAttribute('style');
     // By its place in the list, Symbols is the fourth colour.
     expect(dot()).toContain('var(--lb-layer-4)');
 
@@ -1089,7 +1083,7 @@ describe('Edit', () => {
     await user.selectOptions(screen.getByLabelText('Colour of layer sym'), 'teal');
 
     // The Ç extension's thumb is a layer key, so its editor offers every layer as a chip.
-    await user.click(screen.getByRole('tab', { name: 'Ç extension' }));
+    await showLayer(user, 'Ç extension');
     await user.click(await screen.findByRole('button', { name: /^Key L1:/ }));
     const editor = await inspector('L1');
     const dot = within(editor)
@@ -1105,7 +1099,7 @@ describe('Edit', () => {
     // The base layer is always on: nothing reaches it.
     expect(document.querySelector('#kb-analyze .lb-key-reach')).toBeNull();
 
-    await user.click(screen.getByRole('tab', { name: 'Symbols' }));
+    await showLayer(user, 'Symbols');
     expect(
       await screen.findByRole('button', { name: 'Key R0: empty, held to reach Symbols' }),
     ).toBeInTheDocument();
@@ -1114,7 +1108,7 @@ describe('Edit', () => {
     );
 
     // The only way into Ç extension is the ç macro on Alpha 2, and the key says it.
-    await user.click(screen.getByRole('tab', { name: 'Ç extension' }));
+    await showLayer(user, 'Ç extension');
     await user.click(
       await screen.findByRole('button', {
         name: 'Key LBM: transparent, tapped to reach Ç extension',
@@ -1130,7 +1124,7 @@ describe('Edit', () => {
     await user.click(await screen.findByRole('button', { name: /^Key L1:/ }));
     await user.click(within(await inspector('L1')).getByRole('radio', { name: 'Momentary' }));
     await screen.findByRole('button', { name: 'Key L1: A2 (hold)' });
-    await user.click(screen.getByRole('tab', { name: 'Alpha 2' }));
+    await showLayer(user, 'Alpha 2');
     expect(
       await screen.findByRole('button', { name: /^Key L1: .*, held or tapped to reach Alpha 2$/ }),
     ).toBeInTheDocument();

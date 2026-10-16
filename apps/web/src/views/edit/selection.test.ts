@@ -86,28 +86,6 @@ describe('several keys selected', () => {
     const shown = reducer(before, bindAll(before, { kind: 'trans' }));
     for (const key of ['LHM', 'LHI', 'LHR']) expect(at(shown, 0, key)).toEqual({ kind: 'trans' });
   });
-
-  it('takes the others along when one of them is dragged onto a layer tab, and only that key otherwise', () => {
-    const before = pick(withNav(), 'LHM', 'LHI');
-    const dragged = reducer(before, {
-      type: 'dropKey',
-      from: 'LHI',
-      to: { kind: 'layer', layerId: 'nav' },
-      mode: 'swap',
-    });
-    expect(at(dragged, NAV, 'LHM')).toEqual(at(before, 0, 'LHM'));
-    expect(at(dragged, NAV, 'LHI')).toEqual(at(before, 0, 'LHI'));
-
-    const other = reducer(before, {
-      type: 'dropKey',
-      from: 'LTP',
-      to: { kind: 'layer', layerId: 'nav' },
-      mode: 'swap',
-    });
-    expect(at(other, NAV, 'LTP')).toEqual(at(before, 0, 'LTP'));
-    expect(at(other, NAV, 'LHM')).toBeUndefined();
-    expect(selectionOf(other)).toEqual(['LTP']);
-  });
 });
 
 describe('where the board goes after an edit', () => {
@@ -159,7 +137,7 @@ describe('where the board goes after an edit', () => {
     const copied = reducer(pick(withNav(), 'LHM', 'LHI'), {
       type: 'dropKey',
       from: 'LHM',
-      to: { kind: 'key', keyId: 'LHR' },
+      to: 'LHR',
       mode: 'copy',
     });
     expect(at(copied, 0, 'LHR')).toEqual(at(copied, 0, 'LHM'));

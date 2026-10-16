@@ -45,7 +45,7 @@ import {
   toSearch,
 } from '../url/params.js';
 import { ImportDialog } from './library/ImportDialog.js';
-import { LayerStrip } from './library/LayerStrip.js';
+import { LayerPreview } from './library/LayerPreview.js';
 import { type BoardChoice, RankingDialog, SORTS } from './library/RankingDialog.js';
 import { type NewLayoutSpec, newLayout } from './new-layout.js';
 import { textLanguage, textName } from './text-of.js';
@@ -219,7 +219,7 @@ function LayoutCard({
           <div className="grid shrink-0 grid-cols-2 gap-1">{actions}</div>
         </header>
         {item.compiled && (
-          <LayerStrip
+          <LayerPreview
             id={item.custom ? `kb-custom-${item.id}` : `kb-${item.id}`}
             compiled={item.compiled}
             name={item.name}

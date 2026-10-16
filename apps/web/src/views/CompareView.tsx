@@ -6,9 +6,9 @@ import { ErrorAlert } from '../components/ErrorAlert.js';
 import { FamilyFilter, useFamilyShown } from '../components/FamilyFilter.js';
 import { featureList } from '../components/FeatureSwitches.js';
 import { formatValue } from '../components/format.js';
-import { Keyboard, typingCombos } from '../components/Keyboard.js';
-import { LayerTabs } from '../components/LayerTabs.js';
+import { LayerNav } from '../components/LayerNav.js';
 import { BandBadge, SummaryStrip } from '../components/Metrics.js';
+import { PreviewBoard } from '../components/PreviewBoard.js';
 import { customRef } from '../custom/ref.js';
 import { useAnalysisClient } from '../engine/client-context.js';
 import { expandPositions, heatMap } from '../engine/heat.js';
@@ -244,39 +244,30 @@ export function CompareView() {
             // A layer past the end, for a moment after the layout changes, is its base.
             const layer = compiled && chosen < compiled.layers.length ? chosen : 0;
             return (
-              // Allowed narrower than its layer tabs, which scroll across rather than widen the page.
               <section key={side} className="card bg-base-100 border border-base-300 min-w-0">
                 <div className="card-body gap-3 p-4">
                   <h2 className="font-semibold text-sm">
                     {side}: {name}
                   </h2>
-                  {compiled && compiled.layers.length > 1 && (
-                    <div className="lb-layer-strip min-w-0">
-                      <LayerTabs
+                  {compiled && (
+                    <div className="min-w-0">
+                      <PreviewBoard
+                        id={`kb-${side}`}
+                        compiled={compiled}
+                        layer={layer}
+                        onLayer={setLayer}
+                        // What was pressed on the layer shown, as Analyze's board shows it.
+                        heat={report ? heatMap(report, 'usage', layer) : {}}
+                        highlight={highlightFor(report)}
+                      />
+                      <LayerNav
                         label={`Layers of ${side}`}
-                        layers={compiled.layers.map((l) => ({
-                          idx: l.idx,
-                          id: l.id,
-                          name: l.name,
-                          color: l.color,
-                        }))}
+                        layers={compiled.layers}
                         active={layer}
                         onSelect={setLayer}
+                        className="mt-1 justify-center"
                       />
                     </div>
-                  )}
-                  {compiled && (
-                    <Keyboard
-                      id={`kb-${side}`}
-                      compiled={compiled}
-                      layer={layer}
-                      interactive={false}
-                      showHold={false}
-                      combos={typingCombos(compiled, layer)}
-                      // What was pressed on the layer shown, as Analyze's board shows it.
-                      heat={report ? heatMap(report, 'usage', layer) : {}}
-                      highlight={highlightFor(report)}
-                    />
                   )}
                   {report ? (
                     <SummaryStrip results={report.results} />

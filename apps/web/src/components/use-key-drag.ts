@@ -6,15 +6,13 @@ import {
   useRef,
 } from 'react';
 
-/** Where a drag ended: another key, or a layer tab that takes the binding to that layer. */
-export type DropTarget = { kind: 'key'; keyId: string } | { kind: 'layer'; layerId: string };
-
 /** Plain drag exchanges the two keys; holding a modifier puts a copy down and keeps the original. */
 export type DragMode = 'swap' | 'copy';
 
 export interface KeyDrop {
   from: string;
-  to: DropTarget;
+  /** The key the drag ended on. */
+  to: string;
   mode: DragMode;
 }
 
@@ -51,18 +49,15 @@ export function clearDropTargets(): void {
 }
 
 /**
- * Put the drop highlight on a target, so it is clear where a release would land. A key is looked
+ * Put the drop highlight on a key, so it is clear where a release would land. The key is looked
  * for on the board being dragged on, when given, since a page can draw another board too.
  */
 export function paintDropTarget(
-  target: DropTarget,
+  keyId: string,
   mode: DragMode = 'swap',
   board?: Element | null,
 ): void {
-  const el =
-    target.kind === 'key'
-      ? (board ?? document).querySelector(`g[data-key="${target.keyId}"]`)
-      : document.querySelector(`[data-layer-drop="${target.layerId}"]`);
+  const el = (board ?? document).querySelector(`g[data-key="${keyId}"]`);
   el?.classList.add('lb-drop-target');
   if (mode === 'copy') el?.classList.add('lb-drop-copy');
 }
@@ -70,7 +65,7 @@ export function paintDropTarget(
 /** How far the pointer must travel before a press becomes a drag rather than a click. */
 const THRESHOLD = 4;
 /** A touch has to rest on a key first, so the board can still be scrolled past with a finger. */
-const TOUCH_HOLD_MS = 350;
+export const TOUCH_HOLD_MS = 350;
 
 function keyAt(target: EventTarget | null): string | undefined {
   if (!(target instanceof Element)) return undefined;
@@ -78,26 +73,21 @@ function keyAt(target: EventTarget | null): string | undefined {
 }
 
 /**
- * What lies under the pointer: a key of the board being dragged on, a layer tab, or nothing that
- * takes a drop. A key of another board on the page is nothing.
+ * The key of the board being dragged on that lies under the pointer, or nothing: a key of another
+ * board on the page does not take a drop.
  */
-export function targetUnder(x: number, y: number, board?: Element | null): DropTarget | undefined {
+export function targetUnder(x: number, y: number, board?: Element | null): string | undefined {
   const el = document.elementFromPoint(x, y);
   if (!(el instanceof Element)) return undefined;
   const keyEl = el.closest('g[data-key]') as HTMLElement | null;
-  if (keyEl && (!board || board.contains(keyEl))) {
-    const key = keyEl.dataset.key;
-    if (key !== undefined) return { kind: 'key', keyId: key };
-  }
-  const layer = (el.closest('[data-layer-drop]') as HTMLElement | null)?.dataset.layerDrop;
-  if (layer !== undefined) return { kind: 'layer', layerId: layer };
-  return undefined;
+  if (!keyEl || (board && !board.contains(keyEl))) return undefined;
+  return keyEl.dataset.key;
 }
 
 /**
- * Dragging a key puts its binding somewhere else: onto another key, which swaps the two or copies
- * over it, or onto a layer tab, which sends it to that layer. Pointer events cover mouse, pen and
- * touch alike, and a plain press still selects — only a pointer that travelled counts as a drag.
+ * Dragging a key onto another key swaps the two or, with a modifier, copies over it. Pointer events
+ * cover mouse, pen and touch alike, and a plain press still selects — only a pointer that travelled
+ * counts as a drag.
  */
 export function useKeyDrag(
   onDrop?: (drop: KeyDrop) => void,
@@ -196,7 +186,7 @@ export function useKeyDrag(
         if (travelled < THRESHOLD) return;
         dragging.current = true;
         const svg = e.currentTarget;
-        // Now it is a drag, the board keeps the pointer even when it leaves for a layer tab.
+        // Now it is a drag, the board keeps the pointer even when it leaves the board.
         svg.setPointerCapture?.(e.pointerId);
         svg.classList.add('lb-dragging');
         svg.querySelector(`g[data-key="${from.current}"]`)?.classList.add('lb-key-source');
@@ -212,7 +202,7 @@ export function useKeyDrag(
       paintGhost(e.clientX, e.clientY, mode);
       clearTargets();
       const over = targetUnder(e.clientX, e.clientY, e.currentTarget);
-      if (!over || (over.kind === 'key' && over.keyId === from.current)) return;
+      if (over === undefined || over === from.current) return;
       paintDropTarget(over, mode, e.currentTarget);
     },
     [clearTargets, paintGhost, reset],
@@ -234,8 +224,7 @@ export function useKeyDrag(
       if (!start || !dragged) return;
       // A drop must not also register as a click on whatever is underneath.
       suppressClick.current = true;
-      if (!to) return;
-      if (to.kind === 'key' && to.keyId === start) return;
+      if (to === undefined || to === start) return;
       onDrop?.({ from: start, to, mode: e.altKey ? 'copy' : 'swap' });
     },
     [onDrop, reset],
