@@ -38,7 +38,7 @@ describe('undo', () => {
     const copied = reducer(before, {
       type: 'dropKey',
       from: 'LHM',
-      to: { kind: 'key', keyId: 'LHI' },
+      to: 'LHI',
       mode: 'copy',
     });
     expect(symbolAt(copied, 'LHI')).toEqual(symbolAt(before, 'LHM'));

@@ -49,8 +49,9 @@ export function KeyInspector(props: KeyInspectorProps) {
           </div>
           <p className="text-xs opacity-70">
             Tap or click a key on the board to edit it. Drag a key onto another to swap the two —
-            hold Alt to copy instead — or onto a layer tab to send it there. Shift-click keys, or
-            rest a finger on them, to select several and send, copy or clear them together.
+            hold Alt to copy instead. To send a key to another layer, select it and use Send to
+            layer…. Shift-click keys, or rest a finger on them, to select several and send, copy or
+            clear them together.
           </p>
           <p className="text-xs opacity-70 lb-pointer-hint">
             On a focused key, typing sets it — <span className="font-mono">ç</span>,{' '}

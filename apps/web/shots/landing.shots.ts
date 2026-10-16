@@ -61,9 +61,9 @@ async function shootAround(page: Page, name: string, parts: Locator[], bottom?: 
   await page.screenshot({ path: file(name), clip, fullPage: true, animations: 'disabled' });
 }
 
-/** The layer tabs and the board under them, which together say which layer a press lands on. */
+/** The layer navigator and the board under it, which together say which layer a press lands on. */
 function board(page: Page, id: string): Locator[] {
-  return [page.getByRole('tablist', { name: 'Layers' }), page.locator(`#${id}`)];
+  return [page.getByRole('group', { name: 'Layers' }), page.locator(`#${id}`)];
 }
 
 test.beforeAll(() => {

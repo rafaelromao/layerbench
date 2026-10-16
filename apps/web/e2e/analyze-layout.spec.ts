@@ -96,13 +96,19 @@ test.describe('on a phone', () => {
     expect((board?.y ?? 0) + (board?.height ?? 0)).toBeLessThanOrEqual(0);
   });
 
-  test('the layer tabs stay on one line', async ({ page }) => {
+  test('the layer navigator fits an iPhone SE with no sideways scroll', async ({ page }) => {
     await openEdit(page);
-    const tabs = page.getByRole('tablist', { name: 'Layers' }).getByRole('tab');
-    const tops = await tabs.evaluateAll((els) =>
-      els.map((el) => Math.round(el.getBoundingClientRect().top)),
-    );
-    expect(new Set(tops).size).toBe(1);
+    const nav = page.getByRole('group', { name: 'Layers' });
+    await expect(nav.getByRole('button', { name: 'Next layer' })).toBeVisible();
+    const box = await nav.boundingBox();
+    const viewport = page.viewportSize();
+    expect(box && viewport).toBeTruthy();
+    if (!box || !viewport) return;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+    // Stepping to another layer must not push the page sideways either.
+    await nav.getByRole('button', { name: 'Next layer' }).click();
+    expect(await overflow(page)).toBeLessThanOrEqual(0);
   });
 });
 

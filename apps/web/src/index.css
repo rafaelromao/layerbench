@@ -169,8 +169,8 @@
 
   /*
    * One colour per layer, so a key that reaches a layer reads as belonging to it, and so does that
-   * layer's tab. Hues are spread for distinctness and kept off the theme's semantic colours; the
-   * lightness is set per theme so each holds its contrast on a key cap.
+   * layer's name in the navigator. Hues are spread for distinctness and kept off the theme's
+   * semantic colours; the lightness is set per theme so each holds its contrast on a key cap.
    */
   --lb-layer-1: oklch(0.76 0.13 250);
   --lb-layer-2: oklch(0.78 0.15 150);
@@ -448,15 +448,6 @@
   opacity: 0.35;
 }
 
-/* A layer tab takes a drop too, and is an ordinary button rather than a key. */
-button.lb-drop-target {
-  outline: 2px solid var(--color-success);
-  outline-offset: 2px;
-}
-button.lb-drop-target.lb-drop-copy {
-  outline-color: var(--color-info);
-}
-
 /* What the pointer carries during a drag. Positioned from the pointer, so it owes the SVG
    nothing: no viewBox scale to undo, and it stays out of the hit test that finds drop targets. */
 .lb-key-ghost {
@@ -519,19 +510,6 @@ button.lb-drop-target.lb-drop-copy {
   order: 7;
 }
 @media (max-width: 1023.98px) {
-  /* One row of layers, swiped sideways, rather than rows of them pushing the board down. */
-  .lb-layer-strip {
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scrollbar-width: none;
-  }
-  .lb-layer-strip::-webkit-scrollbar {
-    display: none;
-  }
-  .lb-layer-strip .tabs {
-    flex-wrap: nowrap;
-    width: max-content;
-  }
   /* The panels wrap instead: a tab scrolled out of sight is a panel nobody finds. */
   .lb-panel-tabs {
     flex-wrap: wrap;

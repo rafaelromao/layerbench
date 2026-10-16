@@ -300,7 +300,7 @@ export interface KeyboardProps {
    * Ctrl or ⌘ held, with Shift and Enter or Space, or a finger resting on the key and lifted.
    */
   onKeyClick?: (keyId: string, how?: { add: boolean }) => void;
-  /** Enables dragging a key onto another key, or onto a layer tab. */
+  /** Enables dragging a key onto another key. */
   draggable?: boolean;
   onDropKey?: (drop: KeyDrop) => void;
   /** Called once a drag begins, so a view can put an open editor away. */

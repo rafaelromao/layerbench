@@ -1,6 +1,6 @@
 import type { CompiledLayout, Mod } from '@layerbench/core';
 import { type KeyboardEvent, type ReactNode, type Ref, useEffect, useId, useState } from 'react';
-import { layerColourOf } from '../../../components/layer-colour.js';
+import { LayerDot } from '../../../components/LayerDot.js';
 
 /**
  * A choice of one among a few, drawn as joined buttons. Real radio inputs underneath, so the
@@ -52,7 +52,6 @@ export function LayerChips({
     <fieldset className="flex flex-wrap gap-1" aria-label={label}>
       {compiled.layers.map((l) => {
         const on = value.includes(l.id);
-        const colour = layerColourOf(l.idx, l.color);
         return (
           <button
             key={l.id}
@@ -61,13 +60,7 @@ export function LayerChips({
             className={`btn btn-xs ${on ? 'btn-primary' : 'btn-ghost border border-base-300'}`}
             onClick={() => onChange(l.id)}
           >
-            {colour && (
-              <span
-                aria-hidden="true"
-                className="inline-block size-2 rounded-full"
-                style={{ background: colour }}
-              />
-            )}
+            <LayerDot idx={l.idx} color={l.color} />
             {l.name}
           </button>
         );

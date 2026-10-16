@@ -640,20 +640,28 @@ describe('Choosing which special features a ranking counts', () => {
 describe('Layers on a card', () => {
   const layered = [...BUNDLED_LAYOUTS].sort((a, b) => b.layers.length - a.layers.length)[0];
 
-  it('lays every layer of a layout side by side, with its name', async () => {
+  it('shows one layer of a layout at a time, with its name and where it stands', async () => {
+    const user = userEvent.setup();
     renderRoute(LIBRARY, { storage: freshStorage() });
-    const strip = await screen.findByRole('region', { name: `${layered.name} layers` });
-    const figures = within(strip).getAllByRole('figure');
-    expect(figures).toHaveLength(layered.layers.length);
-    for (const [i, layer] of layered.layers.entries()) {
-      expect(within(figures[i]).getByText(layer.name ?? layer.id)).toBeTruthy();
-    }
-    const card = strip.closest('article') as HTMLElement;
-    expect(within(card).getByText(`1 / ${layered.layers.length}`)).toBeTruthy();
-    expect(within(card).getByRole('button', { name: 'Previous layer' })).toHaveProperty(
-      'disabled',
-      true,
+    const nav = await screen.findByRole('group', { name: `${layered.name} layers` });
+    const card = nav.closest('article') as HTMLElement;
+    const names = layered.layers.map((l) => l.name ?? l.id);
+    const total = layered.layers.length;
+    expect(within(nav).getByText(names[0])).toBeTruthy();
+    expect(within(nav).getByText(`1 / ${total}`)).toBeTruthy();
+    expect(within(nav).getByRole('button', { name: 'Previous layer' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
     );
+
+    const board = () => card.querySelector('svg')?.getAttribute('id') ?? '';
+    const first = board();
+    await user.click(within(nav).getByRole('button', { name: 'Next layer' }));
+    expect(within(nav).getByText(names[1])).toBeTruthy();
+    expect(within(nav).getByText(`2 / ${total}`)).toBeTruthy();
+    expect(board()).not.toBe(first);
+    // The only board on the card is the one shown.
+    expect(card.querySelectorAll('svg.lb-keyboard')).toHaveLength(1);
   });
 
   it('draws the layers of a custom layout too, once it is read', async () => {
@@ -661,8 +669,8 @@ describe('Layers on a card', () => {
     const copy = { ...layered, id: 'layered-copy', name: `${layered.name} copy` };
     await storage.put('layouts', copy.id, toCanonicalJson(copy), { message: 'seed' });
     renderRoute(LIBRARY, { storage });
-    const strip = await screen.findByRole('region', { name: `${layered.name} copy layers` });
-    expect(within(strip).getAllByRole('figure')).toHaveLength(layered.layers.length);
+    const nav = await screen.findByRole('group', { name: `${layered.name} copy layers` });
+    expect(within(nav).getByText(`1 / ${layered.layers.length}`)).toBeTruthy();
   });
 });
 
@@ -739,6 +747,19 @@ describe('Importing from keymap-drawer', () => {
     expect(stored.combos[0].keys).toEqual(['LTR', 'LTM']);
     // And every imported key can be selected in the editor like any other.
     expect(await screen.findByRole('button', { name: 'Key LTP: w' })).toBeInTheDocument();
+  }, 60_000);
+
+  it('previews the file with what a hold does, since that is half of a binding', async () => {
+    const user = userEvent.setup();
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    await openKeymapImport();
+    await user.click(await screen.findByLabelText('keymap-drawer YAML'));
+    await user.paste(KEYMAP);
+
+    await screen.findByRole('combobox', { name: 'Board to import onto' });
+    const board = document.getElementById('kb-kd-import') as HTMLElement;
+    // The sticky keys' `1×` is drawn under what they tap; a preview of only what is typed has none.
+    expect(board.textContent).toContain('1×');
   }, 60_000);
 
   it('says what is wrong with a file it cannot read', async () => {

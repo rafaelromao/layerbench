@@ -61,7 +61,7 @@ export function copyKey(layout: Layout, layerIdx: number, from: string, to: stri
 
 /**
  * Send a key's binding to the same position on another layer. Moving clears the source, which is
- * what makes dragging a key onto a layer tab feel like moving it there rather than duplicating it.
+ * what makes sending a key to a layer feel like moving it there rather than duplicating it.
  */
 export function sendKeyToLayer(
   layout: Layout,

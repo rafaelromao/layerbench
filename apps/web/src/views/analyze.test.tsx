@@ -1,6 +1,7 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
+import { layerNames, shownLayer } from '../test/layers.js';
 import { openSettings, renderRoute } from '../test/render.js';
 
 /**
@@ -11,9 +12,16 @@ describe('Analyze', () => {
   it('renders Magic Romak and completes the analysis', async () => {
     renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000');
 
-    // Layer tabs come from the compiled layout, so they appear before any analysis finishes.
-    expect(await screen.findByRole('tab', { name: 'Alpha 1' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Ç extension' })).toBeInTheDocument();
+    // The layers come from the compiled layout, so they are there before any analysis finishes.
+    expect(await screen.findByRole('group', { name: 'Layers' })).toHaveTextContent('Alpha 1');
+    expect(await layerNames(userEvent.setup())).toEqual([
+      'Alpha 1',
+      'Alpha 2',
+      'Ç extension',
+      'Numbers',
+      'Symbols',
+      'Dead keys',
+    ]);
 
     expect(await screen.findByText('Same finger bigrams')).toBeInTheDocument();
     expect(screen.getByText('Layer taps per 100 symbols')).toBeInTheDocument();
@@ -47,7 +55,7 @@ describe('Analyze', () => {
     // Stepping to the ç stops it there, on Alpha 2, with that key pressed.
     await user.click(within(presses).getByRole('button', { name: /LBM/ }));
     expect(screen.getByRole('button', { name: '▶ Play' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Alpha 2', selected: true })).toBeInTheDocument();
+    expect(shownLayer()).toBe('Alpha 2');
     const key = screen.getByRole('button', { name: /^Key LBM:/ });
     expect(key.querySelector('.lb-key-pressed')).not.toBeNull();
     // The board shows the press, not a path of arrows.
@@ -144,7 +152,7 @@ describe('Analyze', () => {
       '/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000',
     );
     await screen.findByText('Same finger bigrams');
-    expect(screen.getByRole('tab', { name: 'Alpha 1' })).toHaveAttribute('aria-selected', 'true');
+    expect(shownLayer()).toBe('Alpha 1');
 
     // The thumb that reaches Alpha 2 is pressed on Alpha 1, the letter after it on Alpha 2.
     const row = [...document.querySelectorAll<HTMLButtonElement>('.lb-items li button')].find((b) =>
@@ -153,7 +161,22 @@ describe('Analyze', () => {
     expect(row, 'a listed pair that goes up to Alpha 2').toBeDefined();
     await user.click(row as HTMLButtonElement);
     await waitFor(() => expect(currentSearch()).toContain('layer=1'));
-    expect(screen.getByRole('tab', { name: 'Alpha 2' })).toHaveAttribute('aria-selected', 'true');
+    expect(shownLayer()).toBe('Alpha 2');
+  });
+
+  it('turns the board to the next layer when it is swiped, and stops a word playing', async () => {
+    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000');
+    await screen.findByText('Same finger bigrams');
+    expect(shownLayer()).toBe('Alpha 1');
+
+    const board = document.querySelector('.lb-board') as HTMLElement;
+    const finger = (x: number) => ({ clientX: x, clientY: 10 });
+    fireEvent.touchStart(board, { touches: [finger(220)] });
+    fireEvent.touchEnd(board, { changedTouches: [finger(100)] });
+    await waitFor(() => expect(shownLayer()).toBe('Alpha 2'));
+    fireEvent.touchStart(board, { touches: [finger(100)] });
+    fireEvent.touchEnd(board, { changedTouches: [finger(220)] });
+    await waitFor(() => expect(shownLayer()).toBe('Alpha 1'));
   });
 
   it('shows what a layer key ending a pair was pressed for when the pair is clicked', async () => {
