@@ -376,6 +376,29 @@ describe('changing a combo', () => {
     expect(o.layout.typingPaths).toBe(twins.typingPaths);
   });
 
+  it('follows the combo into the dead-key paths composed with it', () => {
+    const o = landed(
+      {
+        ...withCombos,
+        typingPaths: {
+          á: [
+            { producer: 'deadkey:combo:lhm-lhi+direct:base/LHM' },
+            { producer: 'deadkey:combo:lhm-lhi#shifted+direct:base/LHM' },
+            { producer: 'deadkey:direct:base/LHR+combo:lhm-lhi' },
+            { producer: 'deadkey:combo:lhm-lhr+direct:base/LHM' },
+          ],
+        },
+      },
+      { kind: 'updateCombo', combo: 0, keys: ['LHR', 'LHI'] },
+    );
+    expect(o.layout.typingPaths?.á.map((e) => e.producer)).toEqual([
+      'deadkey:combo:lhr-lhi+direct:base/LHM',
+      'deadkey:combo:lhr-lhi#shifted+direct:base/LHM',
+      'deadkey:direct:base/LHR+combo:lhr-lhi',
+      'deadkey:combo:lhm-lhr+direct:base/LHM',
+    ]);
+  });
+
   it('follows an unnamed combo by the id the compiler gives it', () => {
     const unnamed: Layout = {
       ...withCombos,

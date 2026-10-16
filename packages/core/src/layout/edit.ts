@@ -319,11 +319,13 @@ const handlers: Handlers = {
       const was = comboId(current, edit.combo);
       const owned = !others.includes(was);
       if (typingPaths && owned && next.id !== was) {
-        const from = `combo:${was}`;
-        const rewrite = (producer: string) =>
-          producer === from || producer.startsWith(`${from}#`)
-            ? `combo:${next.id}${producer.slice(from.length)}`
-            : producer;
+        // The combo is named in a producer on its own, and inside a dead key's composed one
+        // (`deadkey:combo:<id>+direct:…`, or with the combo as the letter), after a colon or a plus.
+        const named = new RegExp(
+          `(?<=^|[:+])combo:${was.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=$|[#+])`,
+          'g',
+        );
+        const rewrite = (producer: string) => producer.replace(named, `combo:${next.id}`);
         renamedPaths = Object.fromEntries(
           Object.entries(typingPaths).map(([symbol, entries]) => [
             symbol,

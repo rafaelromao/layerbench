@@ -611,6 +611,8 @@ export function CombosPanel({ state, send }: PanelProps) {
                   </td>
                   <td>
                     <ComboOutput
+                      // Another combo come to this row, as when one above it is removed, is a new field.
+                      key={`${c.id}|${c.keys.join('+')}|${(c.layers ?? []).join(',')}`}
                       name={name}
                       text={out.text}
                       exact={out.exact}

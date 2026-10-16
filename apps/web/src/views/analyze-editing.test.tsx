@@ -1132,6 +1132,25 @@ describe('Edit', () => {
     await waitFor(() => expect(pills()).toEqual(['Combo LHR + LHM: DK']));
   });
 
+  it("does not carry what was typed in a removed combo's output to the one that takes its row", async () => {
+    const user = userEvent.setup();
+    await openEdit();
+    await user.click(screen.getByRole('tab', { name: 'Combos' }));
+    const combos = within(screen.getByRole('region', { name: 'Combos' }));
+    // A second combo with the same output as the first.
+    await user.type(screen.getByLabelText('Combo keys'), 'LHM+LHI');
+    await user.type(screen.getByLabelText('Combo output'), '&sl dead');
+    await user.click(screen.getByRole('button', { name: /^Add combo on/ }));
+    await combos.findByLabelText('Output of LHM+LHI');
+
+    const first = combos.getByLabelText('Output of LHR+LHM');
+    await user.clear(first);
+    await user.type(first, '&mo nowhere');
+    await user.click(combos.getByRole('button', { name: 'Remove LHR+LHM' }));
+
+    expect(await combos.findByLabelText('Output of LHM+LHI')).toHaveValue('&sl dead');
+  });
+
   it("stops picking a combo's keys again when told to", async () => {
     const user = userEvent.setup();
     await openEdit();
