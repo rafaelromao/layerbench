@@ -553,6 +553,41 @@ describe('changing a combo', () => {
     expect(pathOf(o.layout, 'b')).toEqual(['combo:old#hold']);
   });
 
+  it("never takes an id whose producers would share an id with another combo's", () => {
+    const clash: Layout = {
+      ...layout,
+      combos: [
+        {
+          id: 'old',
+          keys: ['LHM', 'LHI'],
+          binding: { kind: 'hold_tap', tap: kp('q'), hold: kp('z') },
+          layers: ['base'],
+          role: 'typing',
+        },
+        {
+          id: 'lhp-lhi#hold',
+          keys: ['LHM', 'LHR'],
+          binding: kp('b'),
+          layers: ['base'],
+          role: 'typing',
+        },
+      ],
+      typingPaths: { z: [{ producer: 'combo:old#hold' }] },
+    };
+    const o = landed(clash, { kind: 'updateCombo', combo: 0, keys: ['LHP', 'LHI'] });
+    expect(o.layout.combos?.[0].id).toBe('lhp-lhi-2');
+    expect(pathOf(o.layout, 'z')).toEqual(['combo:lhp-lhi-2#hold']);
+    // Adding one on those keys keeps clear of it the same way.
+    const added = landed(clash, {
+      kind: 'addCombo',
+      layer: 'upper',
+      keys: ['LHP', 'LHI'],
+      binding: kp('x'),
+      role: 'typing',
+    });
+    expect(added.layout.combos?.[2].id).toBe('lhp-lhi-2');
+  });
+
   it('follows an unnamed combo by the id the compiler gives it', () => {
     const unnamed: Layout = {
       ...withCombos,

@@ -199,6 +199,17 @@ function followCombo(before: Layout, after: Layout, place: number): Layout['typi
   return changed ? next : paths;
 }
 
+/**
+ * A free id for a combo on `keys`, named after them. A combo's producers are its id and its id
+ * with a `#…` suffix (`#hold`, `#shifted`, …), so an id is taken when another combo has it, or has
+ * it with a `#` after: that one's producer would share an id with one of this combo's.
+ */
+function freeComboId(keys: string[], others: string[]): string {
+  return unusedId(slugWords(keys.join('-')) || 'combo', {
+    has: (id) => others.some((o) => o === id || o.startsWith(`${id}#`)),
+  });
+}
+
 /** Whether two lists of keys name the same keys, in any order. */
 const sameKeySet = (a: string[], b: string[]) =>
   a.length === b.length && a.every((k) => b.includes(k));
@@ -317,8 +328,7 @@ const handlers: Handlers = {
 
   addCombo(layout, { layer, keys, binding, role }) {
     if (keys.length < 2) return { refused: 'a combo needs at least two keys and an output' };
-    const taken = new Set((layout.combos ?? []).map((c) => c.id));
-    const id = unusedId(slugWords(keys.join('-')) || 'combo', taken);
+    const id = freeComboId(keys, (layout.combos ?? []).map(comboId));
     const combo = { id, keys, binding, layers: [layer], role, timeoutMs: 50, slowRelease: false };
     return { layout: { ...layout, combos: [...(layout.combos ?? []), combo] } };
   },
@@ -384,7 +394,7 @@ const handlers: Handlers = {
     // The id names the keys, so it follows them when they are others.
     const others = combos.flatMap((c, i) => (i === edit.combo ? [] : [comboId(c, i)]));
     if (!sameKeySet(next.keys, current.keys)) {
-      next = { ...next, id: unusedId(slugWords(next.keys.join('-')) || 'combo', new Set(others)) };
+      next = { ...next, id: freeComboId(next.keys, others) };
     }
 
     if (sameValue(next, current)) return same(layout);
