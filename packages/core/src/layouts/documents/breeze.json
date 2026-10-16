@@ -96,14 +96,6 @@
           "kind": "kp",
           "symbol": ";"
         },
-        "RTP": {
-          "kind": "kp",
-          "symbol": "'"
-        },
-        "LTP": {
-          "kind": "kp",
-          "symbol": "y"
-        },
         "LHP": {
           "kind": "kp",
           "symbol": "c"
@@ -111,22 +103,6 @@
         "RHP": {
           "kind": "kp",
           "symbol": "r"
-        },
-        "RBP": {
-          "kind": "kp",
-          "symbol": "x"
-        },
-        "LBP": {
-          "kind": "kp",
-          "symbol": "w"
-        },
-        "RBR": {
-          "kind": "kp",
-          "symbol": "."
-        },
-        "RBM": {
-          "kind": "kp",
-          "symbol": ","
         },
         "RHM": {
           "kind": "kp",
@@ -162,6 +138,30 @@
         },
         "L1": {
           "kind": "key_repeat"
+        },
+        "RBM": {
+          "kind": "kp",
+          "symbol": "'"
+        },
+        "RTP": {
+          "kind": "kp",
+          "symbol": "x"
+        },
+        "RBR": {
+          "kind": "kp",
+          "symbol": "y"
+        },
+        "LTP": {
+          "kind": "kp",
+          "symbol": "w"
+        },
+        "LBP": {
+          "kind": "kp",
+          "symbol": ","
+        },
+        "RBP": {
+          "kind": "kp",
+          "symbol": "."
         }
       }
     },
