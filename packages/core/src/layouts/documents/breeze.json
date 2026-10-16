@@ -36,14 +36,6 @@
           "kind": "kp",
           "symbol": "z"
         },
-        "R0": {
-          "kind": "lt",
-          "layer": "sym",
-          "tap": {
-            "kind": "kp",
-            "symbol": "e"
-          }
-        },
         "L0": {
           "kind": "lt",
           "layer": "num",
@@ -104,10 +96,6 @@
           "kind": "kp",
           "symbol": "r"
         },
-        "RHM": {
-          "kind": "kp",
-          "symbol": "a"
-        },
         "RHR": {
           "kind": "kp",
           "symbol": "i"
@@ -162,6 +150,18 @@
         "RBP": {
           "kind": "kp",
           "symbol": "."
+        },
+        "R0": {
+          "kind": "lt",
+          "layer": "sym",
+          "tap": {
+            "kind": "kp",
+            "symbol": "a"
+          }
+        },
+        "RHM": {
+          "kind": "kp",
+          "symbol": "e"
         }
       }
     },
