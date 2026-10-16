@@ -24,6 +24,7 @@ export function LayoutBar({
   saving,
   onMeta,
   onSave,
+  copiesOnSave,
   layoutRef,
   onPick,
   custom,
@@ -44,6 +45,8 @@ export function LayoutBar({
     languages?: string[];
   }) => void;
   onSave: () => void;
+  /** Saving makes a copy, as this layout is not one of the user's custom layouts yet. */
+  copiesOnSave: boolean;
   /** The layout the link names, for the picker. */
   layoutRef: string;
   onPick: (layoutRef: string) => void;
@@ -81,7 +84,7 @@ export function LayoutBar({
         <button
           type="button"
           className={`btn btn-sm shrink-0 max-sm:px-2 ${dirty ? 'btn-primary' : ''}`}
-          title="Keep it in the Library"
+          title={copiesOnSave ? 'Save a copy in your custom layouts' : 'Keep it in the Library'}
           disabled={saving}
           onClick={onSave}
         >

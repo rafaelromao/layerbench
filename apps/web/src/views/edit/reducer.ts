@@ -83,6 +83,11 @@ export type EditAction =
   | { type: 'jsonChange'; text: string }
   | { type: 'setPanel'; panel: Panel }
   | { type: 'saved'; layout: Layout }
+  /**
+   * `layout` is `from` under the name its copy was saved as: the editor takes that name, now that
+   * the save has gone through, and the copy is what is saved.
+   */
+  | { type: 'savedAs'; from: Layout; layout: Layout }
   /** A change to the layout, and what to tell a screen reader once it has landed. */
   | { type: 'edit'; edit: Edit; say?: string };
 
@@ -298,6 +303,19 @@ function reduce(state: EditState, action: EditAction): EditState {
     // The layout itself is left as it is: saving changes nothing there is to undo.
     case 'saved':
       return { ...state, saved: action.layout, dirty: state.layout !== action.layout };
+
+    // The name is the one thing saving changes, and it is an edit as any other: one Undo gives the
+    // layout its old name back, as unsaved. An edit made while the save was on its way stays unsaved.
+    case 'savedAs': {
+      // A name typed while the copy was being saved is the user's newer word: it stays, unsaved.
+      if (state.layout.name !== action.from.name) {
+        return { ...state, saved: action.layout, dirty: true };
+      }
+      const renamed = make(state, { kind: 'setMeta', name: action.layout.name });
+      return state.layout === action.from
+        ? { ...renamed, saved: renamed.layout, dirty: false }
+        : { ...renamed, saved: action.layout, dirty: true };
+    }
 
     default:
       return state;

@@ -5,7 +5,7 @@ import {
   type Layout,
   toCanonicalJson,
 } from '@layerbench/core';
-import { cleanup, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AnalysisClient, AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
@@ -40,6 +40,9 @@ async function savePlain(
   await storage.put('layouts', id, toCanonicalJson({ ...plain, id, name: 'Plain', ...extra }));
 }
 
+/** A layout's card heading: how a layout is told to be listed. */
+const listed = (name: string) => screen.queryByRole('heading', { name, level: 3 });
+
 /** The ranking choices, sort and board filter are in a dialog of their own. */
 async function openRanking() {
   await userEvent.click(await screen.findByRole('button', { name: 'Rank and filter' }));
@@ -57,7 +60,7 @@ describe('Creating layouts', () => {
     const { currentSearch } = renderRoute(LIBRARY, { storage });
 
     await user.click(await screen.findByRole('button', { name: 'New layout' }));
-    const dialog = screen.getByRole('form', { name: 'New layout' });
+    const dialog = screen.getByRole('dialog', { name: 'New layout' });
     const name = within(dialog).getByLabelText('New layout name');
     await user.clear(name);
     await user.type(name, 'Bird nest');
@@ -73,34 +76,77 @@ describe('Creating layouts', () => {
     expect(doc.layers.map((l) => l.id)).toEqual(['base', 'num', 'sym', 'dead']);
   });
 
-  it('puts the new-layout dialog away on a tap around it, or Escape', async () => {
+  it('refuses a new layout with no name', async () => {
     const user = userEvent.setup();
     renderRoute(LIBRARY, { storage: freshStorage() });
 
     await user.click(await screen.findByRole('button', { name: 'New layout' }));
-    const form = screen.getByRole('form', { name: 'New layout' });
-    await user.click(form.parentElement as HTMLElement);
-    expect(screen.queryByRole('form', { name: 'New layout' })).toBeNull();
-
-    await user.click(screen.getByRole('button', { name: 'New layout' }));
-    await user.keyboard('{Escape}');
-    expect(screen.queryByRole('form', { name: 'New layout' })).toBeNull();
+    const dialog = screen.getByRole('dialog', { name: 'New layout' });
+    await user.clear(within(dialog).getByLabelText('New layout name'));
+    expect(within(dialog).getByRole('button', { name: 'Create and edit' })).toBeDisabled();
+    await user.type(within(dialog).getByLabelText('New layout name'), '   ');
+    expect(within(dialog).getByRole('button', { name: 'Create and edit' })).toBeDisabled();
   });
 
-  it('duplicates a bundled layout under a free id instead of overwriting', async () => {
+  it('puts the new-layout dialog away on Cancel, or when the browser closes it', async () => {
+    const user = userEvent.setup();
+    renderRoute(LIBRARY, { storage: freshStorage() });
+
+    await user.click(await screen.findByRole('button', { name: 'New layout' }));
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'New layout' })).getByRole('button', {
+        name: 'Cancel',
+      }),
+    );
+    expect(screen.queryByRole('dialog', { name: 'New layout' })).toBeNull();
+
+    // Escape and a tap on the dimmed page are the browser's to close it, which it announces.
+    await user.click(screen.getByRole('button', { name: 'New layout' }));
+    fireEvent(screen.getByRole('dialog', { name: 'New layout' }), new Event('close'));
+    expect(screen.queryByRole('dialog', { name: 'New layout' })).toBeNull();
+  });
+
+  it('gives a new layout a free id when a layout already has its name', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const qwerty = bundledLayout('qwerty') as Layout;
+    await storage.put('layouts', 'mine', toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine' }));
+    const { currentSearch } = renderRoute(LIBRARY, { storage });
+
+    await user.click(await screen.findByRole('button', { name: 'New layout' }));
+    const name = screen.getByLabelText('New layout name');
+    await user.clear(name);
+    await user.type(name, 'Mine');
+    await user.click(screen.getByRole('button', { name: 'Create and edit' }));
+
+    await waitFor(async () => expect(await customInLink(currentSearch())).toBe('mine-2'));
+    expect((await storage.get('layouts', 'mine'))?.doc.name).toBe('Mine');
+    expect(await screen.findByText('Saved Mine')).toBeInTheDocument();
+  });
+
+  it('makes no second layout when a create that failed after the browser wrote it is tried again', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
     renderRoute(LIBRARY, { storage });
+    const create = async () => {
+      await user.click(await screen.findByRole('button', { name: 'New layout' }));
+      await user.click(screen.getByRole('button', { name: 'Create and edit' }));
+    };
+    const put = storage.put.bind(storage);
+    storage.put = async (...args) => {
+      await put(...args);
+      throw new Error('offline');
+    };
+    await create();
+    expect(await screen.findByText('Save failed: offline')).toBeInTheDocument();
 
-    await user.click(await screen.findByRole('button', { name: 'Duplicate Qwerty' }));
-    await waitFor(async () =>
-      expect((await storage.get('layouts', 'qwerty-copy'))?.doc.name).toBe('Qwerty copy'),
-    );
-    // It says what it saved by name; the id is only for links.
-    expect(await screen.findByText('Saved Qwerty copy')).toBeInTheDocument();
+    storage.put = put;
+    await create();
+    expect(await screen.findByText('Saved My layout')).toBeInTheDocument();
+    expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['my-layout']);
   });
 
-  it('opens a copy in Analyze, to edit, on the corpus and rules the Library ranks by', async () => {
+  it('opens a layout in Analyze on the corpus and rules the Library ranks by', async () => {
     const user = userEvent.setup();
     const { currentPath, currentSearch } = renderRoute(LIBRARY, { storage: freshStorage() });
     await openRanking();
@@ -110,9 +156,12 @@ describe('Creating layouts', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: 'Rule set' }), 'cyanophage');
     await waitFor(() => expect(currentSearch()).toContain('rules=cyanophage'));
 
-    await user.click(screen.getByRole('button', { name: 'Duplicate Qwerty' }));
+    const card = (await screen.findByRole('heading', { name: 'Qwerty', level: 3 })).closest(
+      'article',
+    ) as HTMLElement;
+    await user.click(within(card).getByRole('link', { name: 'Analyze' }));
     await waitFor(() => expect(currentPath()).toBe('/analyze'));
-    await waitFor(async () => expect(await customInLink(currentSearch())).toBe('qwerty-copy'));
+    expect(currentSearch()).toContain('layout=qwerty');
     expect(currentSearch()).toContain('corpus=pt-br-general');
     expect(currentSearch()).toContain('rules=cyanophage');
     await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
@@ -120,6 +169,18 @@ describe('Creating layouts', () => {
     expect(within(settings).getByRole('combobox', { name: 'Corpus' })).toHaveValue('pt-br-general');
     expect(within(settings).getByRole('combobox', { name: 'Rule set' })).toHaveValue('cyanophage');
   }, 60_000);
+
+  it('has no Duplicate on a card, bundled or custom: Analyze and Save make a copy', async () => {
+    const storage = freshStorage();
+    const qwerty = bundledLayout('qwerty') as Layout;
+    await storage.put('layouts', 'mine', toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine' }));
+    renderRoute(LIBRARY, { storage });
+    await screen.findByRole('button', { name: 'Delete Mine' });
+    expect(screen.queryByRole('button', { name: /^Duplicate/ })).toBeNull();
+    // Delete is drawn as Analyze's neighbour was, a button and not a ghost one.
+    expect(screen.getByRole('button', { name: 'Delete Mine' })).toHaveClass('btn', 'btn-xs');
+    expect(screen.getByRole('button', { name: 'Delete Mine' })).not.toHaveClass('btn-ghost');
+  });
 
   it('deletes a custom layout, naming it', async () => {
     const user = userEvent.setup();
@@ -478,9 +539,14 @@ describe('Choosing which boards are listed', () => {
     expect(columnar34).toBeChecked();
 
     await user.click(columnar34);
-    expect(screen.queryByRole('button', { name: 'Duplicate Qwerty' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Duplicate Bird' })).toBeInTheDocument();
+    expect(listed('Qwerty')).toBeNull();
+    expect(listed('Bird')).toBeInTheDocument();
     expect(screen.getByText(/of [0-9]+ layouts, on the boards chosen/)).toBeInTheDocument();
+    // The line says so under Sort by, a line of its own, not beside the button that filters.
+    const sort = screen.getByRole('group', { name: 'Sort layouts by' });
+    const says = screen.getByText(/of [0-9]+ layouts, on the boards chosen/);
+    expect(sort.compareDocumentPosition(says) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(says.tagName).toBe('P');
     expect(JSON.parse(localStorage.getItem('layerbench:session') ?? '{}').state).toMatchObject({
       hiddenBoards: ['3x5+2'],
     });
@@ -488,7 +554,7 @@ describe('Choosing which boards are listed', () => {
     const all = within(boards).getByRole('checkbox', { name: 'All' }) as HTMLInputElement;
     expect(all.indeterminate).toBe(true);
     await user.click(all);
-    expect(screen.getByRole('button', { name: 'Duplicate Qwerty' })).toBeInTheDocument();
+    expect(listed('Qwerty')).toBeInTheDocument();
   });
 
   it('leaves the custom layouts out when asked, and remembers the choice', async () => {
@@ -497,7 +563,7 @@ describe('Choosing which boards are listed', () => {
     const qwerty = bundledLayout('qwerty') as Layout;
     await storage.put('layouts', 'mine', toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine' }));
     renderRoute(LIBRARY, { storage });
-    expect(await screen.findByRole('button', { name: 'Duplicate Mine' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Mine', level: 3 })).toBeInTheDocument();
 
     await openRanking();
     const layouts = screen.getByRole('group', { name: 'Layouts' });
@@ -505,15 +571,15 @@ describe('Choosing which boards are listed', () => {
     expect(custom).toBeChecked();
 
     await user.click(custom);
-    expect(screen.queryByRole('button', { name: 'Duplicate Mine' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Duplicate Qwerty' })).toBeInTheDocument();
+    expect(listed('Mine')).toBeNull();
+    expect(listed('Qwerty')).toBeInTheDocument();
     expect(screen.getByText(/of [0-9]+ layouts, without the custom ones\./)).toBeInTheDocument();
     expect(JSON.parse(localStorage.getItem('layerbench:session') ?? '{}').state).toMatchObject({
       hideCustom: true,
     });
 
     await user.click(custom);
-    expect(screen.getByRole('button', { name: 'Duplicate Mine' })).toBeInTheDocument();
+    expect(listed('Mine')).toBeInTheDocument();
   });
 });
 

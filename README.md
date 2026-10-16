@@ -134,8 +134,20 @@ pnpm install
 pnpm check        # format and lint
 pnpm typecheck
 pnpm test
+pnpm test:coverage  # the tests again, with the coverage gate below
 pnpm dev          # http://localhost:4011
 ```
+
+### Checks
+
+CI runs `pnpm check`, `pnpm typecheck`, `pnpm test:coverage` and `pnpm build`. `test:coverage` runs
+each package's tests under Vitest's v8 coverage and fails when a package covers less than 80% of its
+lines, statements, functions or branches. The gate is per package (`packages/core` and `apps/web`),
+set in each `vitest.config.ts`, and the thresholds are not lowered to make a change pass: add tests
+instead. `src/main.tsx`, the analysis worker's entry, `src/test`, `e2e`, `shots`, type declarations,
+test files and config files do not count. The table of each file's coverage is printed by
+`pnpm --filter @layerbench/core test:coverage` (or `@layerbench/web`), and `coverage/` is git
+ignored.
 
 To sign in on the dev server, set up the GitHub App first (see
 [Setting up sign-in](#setting-up-sign-in)). Then put `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`,

@@ -1,13 +1,14 @@
 import {
   type CompiledLayout,
   compileLayout,
-  freeId,
   idForName,
+  type JsonObject,
   type Layout,
   type StorageAdapter,
   toCanonicalJson,
 } from '@layerbench/core';
 import { customRef } from '../custom/ref.js';
+import { sameDocument, saveNewLayout } from '../custom/save-new.js';
 import { encodeInline } from '../url/inline.js';
 import { inlineRef } from '../url/params.js';
 import type { Drafts } from './drafts.js';
@@ -84,24 +85,29 @@ export interface SessionPorts {
 const LINK_DELAY_MS = 400;
 
 /**
- * Store a layout. Its id follows its name: one already stored keeps its id while that still matches
- * its name, and moves to its new name's once renamed; anything else takes a free id from its name.
- * Neither overwrites a custom layout whose name happens to slug the same. A renamed layout's old copy
- * goes only once the new one is safely stored.
+ * Store a layout. One not stored yet becomes a custom layout of its own, under a free id from its
+ * name. One already stored keeps its id while that still matches its name, and moves to its new
+ * name's once renamed; it never overwrites a custom layout whose name happens to slug the same. A
+ * renamed layout's old copy goes only once the new one is safely stored.
  */
 async function store(
   storage: StorageAdapter,
   layout: Layout,
   storedId: string | null,
+  /** Hears the id and document a layout not stored yet is saved as, before it is written. */
+  onNew: (id: string, doc: JsonObject) => void,
 ): Promise<{ id: string; leftBehind: boolean }> {
+  if (storedId === null) {
+    const { id } = await saveNewLayout(storage, layout, `Save layout ${layout.name}`, onNew);
+    return { id, leftBehind: false };
+  }
   const taken = new Set((await storage.list('layouts')).map((e) => e.id));
-  const id =
-    storedId !== null ? idForName(layout.name, storedId, taken) : freeId(layout.name, taken);
+  const id = idForName(layout.name, storedId, taken);
   await storage.put('layouts', id, toCanonicalJson({ ...layout, id }), {
     message: `Save layout ${layout.name}`,
   });
   let leftBehind = false;
-  if (storedId !== null && id !== storedId) {
+  if (id !== storedId) {
     try {
       await storage.delete('layouts', storedId, { message: `Rename layout to ${layout.name}` });
     } catch {
@@ -138,6 +144,12 @@ export function createLayoutSession(
   let pending: { timer: ReturnType<typeof setTimeout> | null; ref: Promise<string> } | null = null;
   let saves: Promise<unknown> = Promise.resolve();
   let saving = false;
+  /**
+   * What a first save wrote, until one has gone through: with a repository to write to as well, a
+   * save can fail after the browser has written the layout, and trying again must find that one
+   * rather than make a second. Only a document that is exactly what was written counts as it.
+   */
+  let attempted: { id: string; doc: JsonObject } | null = null;
 
   const pickedRef = (): string =>
     !(editor?.unsaved ?? opened?.startsUnsaved) && storedId !== null
@@ -208,6 +220,7 @@ export function createLayoutSession(
     }
     const startsUnsaved = origin !== undefined;
     storedId = startsUnsaved ? origin : result.storedId;
+    attempted = null;
     // A custom layout opened by its id gets the link that carries it whole, which opens anywhere.
     cleanRef = startsUnsaved ? ref : await carriedRef(ref, { layout: result.layout, storedId });
     if (state.opening !== opening || disposed) return;
@@ -272,7 +285,19 @@ export function createLayoutSession(
         saving = true;
         publish();
         try {
-          const { id, leftBehind } = await store(ports.storage(), layout, storedId);
+          let from = storedId;
+          if (from === null && attempted !== null) {
+            const there = await ports
+              .storage()
+              .get('layouts', attempted.id)
+              .catch(() => null);
+            if (there && sameDocument(there.doc, attempted.doc)) from = attempted.id;
+          }
+          // Only this opening's own attempt is kept: a save of a layout since left may land late.
+          const { id, leftBehind } = await store(ports.storage(), layout, from, (taken, doc) => {
+            if (state.opening === opening) attempted = { id: taken, doc };
+          });
+          if (state.opening === opening) attempted = null;
           // Its link from now on carries it whole, so it can still be sent. A moment ago that may
           // have been the link of a draft of it, which it no longer is.
           const ref = await snapshotRef(layout, id);

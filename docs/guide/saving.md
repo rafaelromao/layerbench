@@ -7,7 +7,8 @@ browser you use, sign in with GitHub, and it is kept in your GitHub account as w
 
 A layout of your own starts in **Library**, in one of these ways:
 
-- **Duplicate**, on any layout's card, saves a copy and opens it in **Analyze**.
+- **Analyze** it, on any layout's card, change it and press **Save**: Save asks what to call the copy,
+  and keeps it among your custom layouts. See [Saving a copy](#saving-a-copy) below.
 - **New layout** starts one on the board you choose, empty or from Qwerty to rearrange, and
   **Create and edit** saves it and opens it. **Add the default layers** gives it Numbers, Symbols
   and Dead keys, described under [Default layers](editing.md#default-layers).
@@ -21,6 +22,15 @@ ranked with them, and **Delete**, on its card, removes it. Edit it in **Analyze*
 **Save**, beside its name at the top, to keep the edits. Until you do, the name is marked
 *unsaved*, and your edits live only in the page's link and in this tab: opened in another tab or
 browser, the same link is a layout of its own, and saving it there makes a copy.
+
+### Saving a copy
+
+A layout that is not yours is never saved over: one that comes with the app, or that a link or
+**Open in analyzer** brought here and you have not saved. Its first **Save** opens a dialog that says
+Save makes a copy in your custom layouts and asks for the copy's name. The name offered is the
+layout's with *copy* after it, numbered (*copy 2*) if a layout already has it; an empty name is
+refused. **Cancel** saves nothing. Once saved, the layout in the editor is the copy, and later
+**Save**s keep your edits to it straight away.
 
 A custom layout is kept in this browser. To keep it anywhere else, sign in with GitHub, below; or
 copy its LayerBench JSON from the editor's **JSON** panel and keep the text, which **Import** reads

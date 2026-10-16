@@ -10,7 +10,9 @@ a phone) says what the key does, what it adds to the numbers, and lets you chang
 
 Every change is kept as you make it, so there is nothing to apply. **Undo** (↶) and **Redo** (↷),
 beside the layer's name, step back and forth through your changes. **Save**, beside the layout's name at
-the top, keeps it in **Library**, and until then the name is marked *unsaved*. A layout's link
+the top, keeps it in **Library**, and until then the name is marked *unsaved*. On a layout that is
+not yours yet, such as one that comes with the app, the first **Save** makes a copy in your custom
+layouts and asks what to call it; after that, **Save** keeps your edits to the copy. A layout's link
 follows its name: rename one already in **Library** and save it, and it moves to a link of its new
 name, so a link to it from before no longer opens it.
 
@@ -20,7 +22,7 @@ unsaved, and saving them saves the layout they are edits of rather than a copy b
 another tab or browser, the same link is a layout of its own: it is not marked *unsaved*, and saving
 it makes a copy. Once saved, the link still carries the layout whole, so it can be sent; opened
 where that layout is saved and unchanged, it is the custom layout again. A layout opened from
-**Open in analyzer**, or from someone's link, is not in **Library** until you save it. Picking another layout from **Layout** asks first when there is
+**Open in analyzer**, or from someone's link, is not in **Library** until you save it, and its first **Save** asks for a name. Picking another layout from **Layout** asks first when there is
 something unsaved.
 
 **Settings**, in the bar at the top, holds the layout's author and description, the languages it

@@ -16,6 +16,7 @@
     "format": "biome format --write .",
     "typecheck": "pnpm -r run typecheck",
     "test": "pnpm -r run test",
+    "test:coverage": "pnpm -r run test:coverage",
     "build": "pnpm -r --filter @layerbench/core run build && pnpm --filter @layerbench/web run build",
     "dev": "pnpm --filter @layerbench/web run dev",
     "corpora": "pnpm --filter @layerbench/corpora run build",
