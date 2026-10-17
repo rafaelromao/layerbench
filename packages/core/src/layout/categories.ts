@@ -211,7 +211,10 @@ function featuresOf(
   for (const c of choices(b)) featuresOf(layout, c, at, out, following);
 }
 
-/** The behaviours a binding names, through its choices and the behaviours those name. */
+/**
+ * The behaviours a binding names, through its choices, a macro's steps and the behaviours those
+ * name: what it types does not count, but a behaviour a macro uses is used.
+ */
 function namedIn(layout: Layout, b: Binding, out: Set<string>): Set<string> {
   const ref = refOf(b);
   if (ref !== undefined && !out.has(ref)) {
@@ -219,7 +222,8 @@ function namedIn(layout: Layout, b: Binding, out: Set<string>): Set<string> {
     const target = layout.behaviors?.[ref];
     if (target) namedIn(layout, target, out);
   }
-  for (const c of choices(b)) namedIn(layout, c, out);
+  const steps = b.kind === 'macro' ? [...(b.steps ?? []), ...(b.then ?? [])] : [];
+  for (const c of [...choices(b), ...steps]) namedIn(layout, c, out);
   return out;
 }
 
@@ -246,7 +250,10 @@ const onDefaultLayersOnly = (layers: string[] | undefined) =>
 export function specialFeatures(layout: Layout): SpecialFeature[] {
   const out: SpecialFeature[] = [];
   const used = new Set<string>();
-  const { owned } = expandFeatures(layout);
+  // One feature at a time: two on one key wrap it twice, and each is a use of its own.
+  const owned = (Object.keys(DECLARED) as WrappingFeature[]).map(
+    (f) => expandFeatures({ ...layout, features: { [f]: layout.features?.[f] } }).owned,
+  );
   for (const layer of layout.layers) {
     const own = !isDefaultLayer(layer.id);
     for (const [key, b] of Object.entries(layer.bindings)) {
@@ -254,8 +261,9 @@ export function specialFeatures(layout: Layout): SpecialFeature[] {
       namedIn(layout, b, used);
     }
     if (!own) continue;
-    for (const [key, f] of owned.get(layer.id) ?? [])
-      out.push({ ...DECLARED[f], layer: layer.id, key });
+    for (const byLayer of owned)
+      for (const [key, f] of byLayer.get(layer.id) ?? [])
+        out.push({ ...DECLARED[f], layer: layer.id, key });
   }
   (layout.combos ?? []).forEach((c, i) => {
     if (!onDefaultLayersOnly(c.layers))

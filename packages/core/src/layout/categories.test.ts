@@ -196,6 +196,23 @@ describe('a custom copy of Qwerty', () => {
     expect(layoutCategory(off)).toBe('standard');
   });
 
+  it('reports caps word and sentence case on the same key as two uses', () => {
+    const l: Layout = {
+      ...qwerty(),
+      features: { sentenceCase: { key: 'R0' }, capsWord: { key: 'R0' } },
+    };
+    expect(specialFeatures(l).map((f) => f.label)).toEqual(['Caps word', 'Sentence case']);
+  });
+
+  it('leaves a behaviour a macro on a default layer uses to the default layers', () => {
+    const l = qwerty();
+    l.behaviors = { pct: kp('%') };
+    const num = l.layers.find((x) => x.id === DEFAULT_LAYER_IDS.numbers);
+    if (!num) throw new Error('no Numbers');
+    num.bindings.RHI = { kind: 'macro', steps: [{ kind: 'ref', ref: 'pct' }] };
+    expect(specialFeatures(l)).toEqual([]);
+  });
+
   it('leaves a behaviour only the default layers use to them', () => {
     const l = qwerty();
     l.behaviors = { pct: kp('%') };
