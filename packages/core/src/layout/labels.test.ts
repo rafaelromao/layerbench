@@ -42,6 +42,16 @@ suite('legends', () => {
     expect(tapLabel(c, { kind: 'tap_dance', bindings: [] })).toBe(BADGE.tapDance);
     expect(legend(c, { kind: 'tap_dance', bindings: [] }).badge).toBeNull();
     expect(tapLabel(c, { kind: 'ref', ref: 'magicShift' })).toBe('magicShift');
+    // A key that types its own mark keeps the mark in the corner: only an empty one drops it.
+    const typesMark = (symbol: string): Binding => ({ kind: 'kp', symbol });
+    const marked: [Binding, string][] = [
+      [{ kind: 'adaptive', default: typesMark(BADGE.adaptive) }, BADGE.adaptive],
+      [{ kind: 'tap_dance', bindings: [typesMark(BADGE.tapDance)] }, BADGE.tapDance],
+      [{ kind: 'macro', symbols: BADGE.macro }, BADGE.macro],
+      [{ kind: 'unicode', symbol: BADGE.unicode }, BADGE.unicode],
+    ];
+    for (const [b, mark] of marked)
+      expect([legend(c, b).tap, legend(c, b).badge]).toEqual([mark, mark]);
     // Nothing still shows nothing.
     expect(tapLabel(c, { kind: 'none' })).toBe('');
   });

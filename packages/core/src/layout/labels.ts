@@ -419,15 +419,16 @@ export function legend(c: CompiledLayout, b: Binding): Legend {
   const hold = holdLabel(c, b);
   const layer = layerOf(b);
   const direct = partOf(b, { stopAt: SHIFT_MORPHS });
-  const tap = tapLabel(c, b);
-  const badge = badgeOf(b);
+  // A chooser with nothing to choose, an adaptive key with no default or an empty tap dance, is its
+  // own Plain part: its mark is drawn in the centre, and not again in the corner.
+  const plain = partOf(b).kind;
+  const empty = plain === 'adaptive' || plain === 'tap_dance';
   return {
-    tap,
+    tap: tapLabel(c, b),
     hold,
     kind: legendKind(b),
     shifted: shiftedOf(c, direct),
-    // An adaptive key with no default shows its mark in the centre, and not again in the corner.
-    badge: badge === tap ? null : badge,
+    badge: empty ? null : badgeOf(b),
     layer: layer?.layer ?? null,
     layerIn: layer?.layerIn ?? null,
     holdIsMode: holdIsModeOf(b),
