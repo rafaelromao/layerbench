@@ -201,6 +201,8 @@ function land(state: EditState, outcome: EditOutcome, say?: string): EditState {
 function comboAfter(open: number | null, edit: Edit, layout: Layout): number | null {
   const count = layout.combos?.length ?? 0;
   if (edit.kind === 'addCombo') return count - 1;
+  // Another document's combo at the same place is not the one that was open.
+  if (edit.kind === 'replaceLayout') return null;
   if (open === null) return null;
   if (edit.kind === 'removeCombo') {
     if (edit.combo === open) return null;

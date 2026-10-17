@@ -3,6 +3,7 @@ import {
   type CompiledLayout,
   describeReach,
   type GeometryKey,
+  keptWithoutTypingCombos,
   type Legend,
   legend,
   type ReachKey,
@@ -77,24 +78,27 @@ export function typingCombos(
 
 /**
  * The place in the layout of a combo the board draws from the analysis' compile, which renumbers
- * them when typing combos are left out of it: found by its id, keys and layers. Twins alike in all
- * three, which an older layout can hold, are told apart by their order. Null when it has none.
+ * them when typing combos are left out of it. Combos are only ever dropped, never moved, so the
+ * place is found among the combos kept, by id, keys and layers; twins alike in all three, which an
+ * older layout can hold, by their order. Null when it has none.
  */
 export function comboPlace(
   compiled: CompiledLayout,
   typed: CompiledLayout,
   index: number,
 ): number | null {
-  if (typed === compiled) return index;
   const c = typed.combos[index];
   if (!c) return null;
+  if (typed.combos.length === compiled.combos.length) return index;
   const alike = (x: CompiledLayout['combos'][number]) =>
     x.id === c.id &&
     x.layerMask === c.layerMask &&
     x.keys.length === c.keys.length &&
     x.keys.every((k, i) => k === c.keys[i]);
   const nth = typed.combos.slice(0, index).filter(alike).length;
-  const places = compiled.combos.flatMap((x, i) => (alike(x) ? [i] : []));
+  const places = compiled.combos.flatMap((x, i) =>
+    keptWithoutTypingCombos(x) && alike(x) ? [i] : [],
+  );
   return places[nth] ?? null;
 }
 

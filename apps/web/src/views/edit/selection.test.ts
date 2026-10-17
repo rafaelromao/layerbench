@@ -217,6 +217,15 @@ describe('the combo open in the combo editor', () => {
     expect(reducer(itself, { type: 'undo' }).combo).toBe(open - 1);
   });
 
+  it('closes when the whole layout is replaced', () => {
+    const opened = reducer(withNav(), { type: 'selectCombo', combo: 0 });
+    const replaced = reducer(opened, {
+      type: 'edit',
+      edit: { kind: 'replaceLayout', json: JSON.stringify(opened.layout) },
+    });
+    expect(replaced.combo).toBeNull();
+  });
+
   it('closes when a key is clicked, and closes the key when it opens', () => {
     const opened = reducer(pick(withNav(), 'LHI'), { type: 'selectCombo', combo: 0 });
     expect(opened).toMatchObject({ combo: 0, selected: null });

@@ -133,4 +133,27 @@ describe("a pill's combo in the layout", () => {
     expect(comboPlace(full, typed, at('twin', 'base'))).toBe(2);
     expect(comboPlace(full, typed, at('twin', second))).toBe(1);
   });
+
+  it('skips a twin the analysis left out for the one it kept', () => {
+    const qwerty = bundledLayout('qwerty') as Layout;
+    const twin = (binding: Layout['layers'][number]['bindings'][string]) => ({
+      id: 'twin',
+      keys: ['LHI', 'LHP'],
+      binding,
+      layers: ['base'],
+      role: 'typing' as const,
+    });
+    const layout: Layout = {
+      ...qwerty,
+      combos: [
+        twin({ kind: 'kp', symbol: 'q' }),
+        twin({ kind: 'sl', layer: qwerty.layers[1].id }),
+        ...(qwerty.combos ?? []),
+      ],
+    };
+    const full = compileLayout(layout);
+    const typed = compileLayout(withoutFeatures(layout, ['combos']));
+    expect(typed.combos[0].binding.kind).toBe('sl');
+    expect(comboPlace(full, typed, 0)).toBe(1);
+  });
 });

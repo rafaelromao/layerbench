@@ -23,6 +23,14 @@ function onlyReachesLayer(b: Binding): boolean {
   return b.kind === 'sl' || b.kind === 'mo' || b.kind === 'tog' || b.kind === 'to';
 }
 
+/**
+ * Whether a combo stays when typing combos are left out: one for commands, or one that only turns
+ * a layer on, which the analysis needs to reach that layer.
+ */
+export function keptWithoutTypingCombos(c: { role?: string; binding: Binding }): boolean {
+  return c.role !== 'typing' || onlyReachesLayer(c.binding);
+}
+
 /** The text a macro types, as far as its own keys say: `qu`, `ão`, or one accented letter. */
 function macroText(b: Extract<Binding, { kind: 'macro' }>): string {
   if (b.symbols !== undefined) return b.symbols;
@@ -94,7 +102,7 @@ export function withoutFeatures(layout: Layout, off: readonly FeatureKind[]): La
       bindings: Object.fromEntries(Object.entries(l.bindings).map(([k, b]) => [k, walk(b)])),
     })),
     combos: inlined.combos
-      ?.filter((c) => !(drop.has('combos') && c.role === 'typing' && !onlyReachesLayer(c.binding)))
+      ?.filter((c) => !drop.has('combos') || keptWithoutTypingCombos(c))
       .map((c) => ({ ...c, binding: walk(c.binding) })),
     ...(drop.has('repeat')
       ? { repeatPolicy: { ...inlined.repeatPolicy, doubledLetters: 'tapTwice' as const } }
