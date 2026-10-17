@@ -6,6 +6,11 @@ with.
 
 ## Language
 
+**Alpha layer**:
+A layer on which at least one key types a letter from a to z by itself, not as part of a macro. Most
+layouts have one; a second makes a layout Special.
+_Avoid_: letter layer, alphas
+
 **Analysis settings**:
 What a layout is analyzed on: the text, how it is read (case and which characters count), the sample
 taken from it, the features the layout is typed without, the rule set, and whether space is counted.
@@ -17,6 +22,17 @@ _Avoid_: request, request options, scoring options
 What a key does on one layer, or a combo does when its keys are pressed together: types a symbol,
 reaches a layer, holds a modifier, or is a bigger key made of parts.
 _Avoid_: action, mapping, keycode
+
+**Category**:
+Where the Library files a layout so that it is ranked against its peers: Standard, Thumb Alpha or
+Special. It follows from the layout's own keys, whoever made it, and nothing on its default layers
+counts toward it. Custom and community are where a layout came from, not categories.
+_Avoid_: family, type, group, class
+
+**Community layout**:
+A layout someone submitted and the maintainer accepted. The Library lists it beside the bundled
+layouts, marked as from the community, as it was submitted and in the category its keys give it.
+_Avoid_: contributed layout, user layout
 
 **Copy up**:
 Sending GitHub the custom documents this browser holds that GitHub lacks, or holds an older copy of.
@@ -35,6 +51,14 @@ A custom document that is a layout. Besides `custom:<id>`, a link can name it by
 carry it whole with its id inside, which opens as the custom layout wherever it is saved with the
 same contents.
 _Avoid_: saved layout, stored layout, my layout
+
+**Default layers**:
+The layers every bundled layout has besides its own, so that each can type every letter and symbol:
+Accents, Numbers and Symbols, and Extras for whatever those cannot hold. Accents holds the dead keys,
+and the letters and accented letters the supported languages need; Extras comes on while Numbers and
+Symbols are both held. Every bundled Standard and Thumb Alpha layout reaches them the same way; a
+Special layout reaches them however its own keys allow.
+_Avoid_: standard layers, common layers, shared layers
 
 **Draft**:
 A layout's unsaved edits, carried whole in its link after the `#`. The tab that made a draft knows
@@ -60,6 +84,11 @@ The layout open in Analyze, from the moment it is opened until another is: which
 if any, its draft, and the link that carries it. Its own changes to the link never open it again;
 any other link does, even one naming the same layout.
 _Avoid_: open layout, editor state
+
+**Main thumbs**:
+The two innermost thumb keys of each hand. On a bundled Standard or Thumb Alpha layout, holding them
+gives, from left to right, Shift, Numbers, Symbols and Shift.
+_Avoid_: thumb cluster, home thumbs
 
 **Mix**:
 A text made of two corpora, sentence by sentence, each in its share.
@@ -93,3 +122,33 @@ _Avoid_: simulation tables, registry, typing record
 The Library's order of layouts by their numbers, on the analysis settings in its link with the sample
 capped at 100,000 symbols.
 _Avoid_: leaderboard, scores list
+
+**Special feature**:
+Something a layout's keys do beyond typing, reaching a layer or holding a modifier: an adaptive key, a
+macro, an alt repeat, a mod morph, or a named behaviour of the layout's own.
+_Avoid_: magic, advanced key, extra feature
+
+**Special layout**:
+A layout with a special feature, more than one alpha layer, or a board of fewer than 34 keys. A
+bundled one keeps its author's design, with the default layers added, and may bend any rule the
+other categories follow.
+_Avoid_: exotic layout, advanced layout
+
+**Standard layout**:
+A layout with one alpha layer, no thumb alpha and no special feature, on a board of 34 keys or more.
+The bundled ones share their default layers and main thumbs, so they differ in little but their
+letters.
+_Avoid_: regular layout, classic layout, normal layout
+
+**Submit**:
+Proposing a custom layout as a community layout: it goes to the maintainer for review, and joins the
+Library once accepted.
+_Avoid_: publish, contribute, share
+
+**Thumb alpha**:
+A letter from a to z that a thumb key types on an alpha layer.
+_Avoid_: thumb letter
+
+**Thumb Alpha layout**:
+A layout like a Standard one, but with at least one thumb alpha.
+_Avoid_: thumb-letter layout

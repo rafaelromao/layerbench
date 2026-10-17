@@ -1,5 +1,5 @@
 import { FEATURE_KINDS, FEATURE_LABELS, type FeatureKind } from '@layerbench/core';
-import type { ReactNode, Ref } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 
 /** "adaptive keys, typing combos and multi-letter macros". */
 export function featureList(features: readonly FeatureKind[]): string {
@@ -9,15 +9,24 @@ export function featureList(features: readonly FeatureKind[]): string {
     : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 }
 
+/** The box that stands for all of a group's others: how many of them are ticked, and its action. */
+export interface AllSwitch {
+  shown: number;
+  total: number;
+  onChange: (on: boolean) => void;
+}
+
 /**
  * Checkboxes under a legend, in a grid: two to a line on a phone, three from 640px, so every box of
- * every group lines up with the ones above it.
+ * every group lines up with the ones above it. With `all`, an "All" box comes first: ticked when
+ * every other one is, and neither ticked nor clear when only some are.
  */
 export function SwitchGroup({
   legend,
   help,
   columns = 'grid-cols-2 sm:grid-cols-3',
   className = '',
+  all,
   children,
 }: {
   legend: string;
@@ -26,6 +35,7 @@ export function SwitchGroup({
   /** How many to a line at each width, for a group longer or shorter than the usual. */
   columns?: string;
   className?: string;
+  all?: AllSwitch;
   children: ReactNode;
 }) {
   return (
@@ -39,6 +49,15 @@ export function SwitchGroup({
         <span className="text-xs opacity-70">{legend}</span>
         {help}
       </legend>
+      {all && (
+        <Switch
+          label="All"
+          strong
+          checked={all.total > 0 && all.shown === all.total}
+          indeterminate={all.shown > 0 && all.shown < all.total}
+          onChange={all.onChange}
+        />
+      )}
       {children}
     </fieldset>
   );
@@ -51,7 +70,8 @@ export function Switch({
   title,
   checked,
   onChange,
-  inputRef,
+  indeterminate = false,
+  count,
   strong = false,
 }: {
   label: string;
@@ -60,11 +80,18 @@ export function Switch({
   title?: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
-  /** The box itself, for a state no attribute carries, such as "some but not all". */
-  inputRef?: Ref<HTMLInputElement>;
+  /** Neither ticked nor clear: some but not all of what it stands for. */
+  indeterminate?: boolean;
+  /** How many things it stands for, drawn after the label. */
+  count?: number;
   /** Drawn bolder, for the one that stands for all the others. */
   strong?: boolean;
 }) {
+  const box = useRef<HTMLInputElement>(null);
+  // "Some but not all" has no attribute of its own; it is a property set on the element.
+  useEffect(() => {
+    if (box.current) box.current.indeterminate = indeterminate;
+  }, [indeterminate]);
   return (
     // A label wraps rather than push past its column on a narrow phone.
     <label
@@ -72,14 +99,23 @@ export function Switch({
       title={title}
     >
       <input
-        ref={inputRef}
+        ref={box}
         type="checkbox"
         name={name}
         className="checkbox checkbox-xs"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
       />
-      <span className={`label-text text-xs ${strong ? 'font-medium' : ''}`}>{label}</span>
+      <span className={`label-text text-xs ${strong ? 'font-medium' : ''}`}>
+        {label}
+        {/* The space outside the count's own element, or the box's name loses it. */}
+        {count !== undefined && (
+          <>
+            {' '}
+            <span className="opacity-60">({count})</span>
+          </>
+        )}
+      </span>
     </label>
   );
 }
