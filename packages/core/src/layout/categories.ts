@@ -48,9 +48,6 @@ export interface ThumbAlpha {
   letter: string;
 }
 
-/** As deep as the compiler follows named behaviours. */
-const MAX_DEPTH = 16;
-
 const isDefaultLayer = (id: string) => DEFAULT_LAYER_ID_LIST.includes(id);
 
 /** The letter a `kp` types by itself, lower-cased, or null for anything else. */
@@ -90,17 +87,34 @@ function refOf(b: Binding): string | undefined {
   return 'ref' in b && typeof b.ref === 'string' && b.ref !== '' ? b.ref : undefined;
 }
 
+/**
+ * The behaviour a binding names, unless it is one of `following`, the ones already being followed
+ * on the way to it: a behaviour that names itself is followed once, however many times it does.
+ */
+function follow(
+  layout: Layout,
+  ref: string | undefined,
+  following: ReadonlySet<string>,
+): [Binding, ReadonlySet<string>] | null {
+  if (ref === undefined || following.has(ref)) return null;
+  const target = layout.behaviors?.[ref];
+  return target ? [target, new Set([...following, ref])] : null;
+}
+
 /** The letters a binding types by itself, through its choices and the behaviours it names. */
-function lettersOf(layout: Layout, b: Binding, out: Set<string>, depth = 0): Set<string> {
-  if (depth > MAX_DEPTH) return out;
+function lettersOf(
+  layout: Layout,
+  b: Binding,
+  out: Set<string>,
+  following: ReadonlySet<string> = new Set(),
+): Set<string> {
   const letter = letterOf(b);
   if (letter) out.add(letter);
-  const ref = refOf(b);
-  const target = ref === undefined ? undefined : layout.behaviors?.[ref];
-  if (target && b.kind === 'ref') lettersOf(layout, target, out, depth + 1);
-  else if (target && b.kind !== 'macro')
-    for (const c of choices(target)) lettersOf(layout, c, out, depth + 1);
-  for (const c of choices(b)) lettersOf(layout, c, out, depth + 1);
+  const named = follow(layout, refOf(b), following);
+  if (named && b.kind === 'ref') lettersOf(layout, named[0], out, named[1]);
+  else if (named && b.kind !== 'macro')
+    for (const c of choices(named[0])) lettersOf(layout, c, out, named[1]);
+  for (const c of choices(b)) lettersOf(layout, c, out, following);
   return out;
 }
 
@@ -158,17 +172,22 @@ interface Place {
 }
 
 /** The special features a binding is or holds, at the place it is bound. */
-function featuresOf(layout: Layout, b: Binding, at: Place, out: SpecialFeature[], depth = 0): void {
-  if (depth > MAX_DEPTH) return;
+function featuresOf(
+  layout: Layout,
+  b: Binding,
+  at: Place,
+  out: SpecialFeature[],
+  following: ReadonlySet<string> = new Set(),
+): void {
   const emit = (feature: SpecialFeatureKind, label: string) => out.push({ feature, ...at, label });
   const ref = refOf(b);
   if (ref !== undefined) {
     emit('custom_behaviour', `Behaviour ${ref}`);
-    const target = layout.behaviors?.[ref];
+    const named = follow(layout, ref, following);
     // A binding that builds on a behaviour is the behaviour with its own fields over it: the
     // feature it is, it is once.
-    if (target && b.kind === 'ref') featuresOf(layout, target, at, out, depth + 1);
-    else if (target) for (const c of choices(target)) featuresOf(layout, c, at, out, depth + 1);
+    if (named && b.kind === 'ref') featuresOf(layout, named[0], at, out, named[1]);
+    else if (named) for (const c of choices(named[0])) featuresOf(layout, c, at, out, named[1]);
   }
   switch (b.kind) {
     case 'adaptive':
@@ -184,19 +203,18 @@ function featuresOf(layout: Layout, b: Binding, at: Place, out: SpecialFeature[]
     default:
       break;
   }
-  for (const c of choices(b)) featuresOf(layout, c, at, out, depth + 1);
+  for (const c of choices(b)) featuresOf(layout, c, at, out, following);
 }
 
 /** The behaviours a binding names, through its choices and the behaviours those name. */
-function namedIn(layout: Layout, b: Binding, out: Set<string>, depth = 0): Set<string> {
-  if (depth > MAX_DEPTH) return out;
+function namedIn(layout: Layout, b: Binding, out: Set<string>): Set<string> {
   const ref = refOf(b);
   if (ref !== undefined && !out.has(ref)) {
     out.add(ref);
     const target = layout.behaviors?.[ref];
-    if (target) namedIn(layout, target, out, depth + 1);
+    if (target) namedIn(layout, target, out);
   }
-  for (const c of choices(b)) namedIn(layout, c, out, depth + 1);
+  for (const c of choices(b)) namedIn(layout, c, out);
   return out;
 }
 
@@ -207,20 +225,22 @@ const onDefaultLayersOnly = (layers: string[] | undefined) =>
 /**
  * Each use of a special feature: on the keys of the layout's own layers, on its combos, and among
  * its behaviours. A named behaviour of its own is one wherever it is used; one that nothing uses
- * still counts, once, with no place. Nothing on the default layers counts.
+ * still counts, once, with no place. Nothing on the default layers counts, and a behaviour only they
+ * use is theirs.
  */
 export function specialFeatures(layout: Layout): SpecialFeature[] {
   const out: SpecialFeature[] = [];
   const used = new Set<string>();
-  for (const layer of ownLayers(layout)) {
+  for (const layer of layout.layers) {
+    const own = !isDefaultLayer(layer.id);
     for (const [key, b] of Object.entries(layer.bindings)) {
-      featuresOf(layout, b, { layer: layer.id, key }, out);
+      if (own) featuresOf(layout, b, { layer: layer.id, key }, out);
       namedIn(layout, b, used);
     }
   }
   (layout.combos ?? []).forEach((c, i) => {
-    if (onDefaultLayersOnly(c.layers)) return;
-    featuresOf(layout, c.binding, { combo: c.id ?? `#${i + 1}` }, out);
+    if (!onDefaultLayersOnly(c.layers))
+      featuresOf(layout, c.binding, { combo: c.id ?? `#${i + 1}` }, out);
     namedIn(layout, c.binding, used);
   });
   for (const name of Object.keys(layout.behaviors ?? {})) {

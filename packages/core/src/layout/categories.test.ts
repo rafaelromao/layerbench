@@ -171,6 +171,26 @@ describe('a custom copy of Qwerty', () => {
     ]);
   });
 
+  it('follows a behaviour that names itself once, however many times it does', () => {
+    const self: Binding = { kind: 'ref', ref: 'loop' };
+    const l = withKey('LHP', self, {
+      ...qwerty(),
+      behaviors: { loop: { kind: 'tap_dance', bindings: [self, self, self, kp('a')] } },
+    });
+    expect(specialFeatures(l)).toHaveLength(4);
+    expect(alphaLayers(l)).toEqual(['base']);
+  });
+
+  it('leaves a behaviour only the default layers use to them', () => {
+    const l = qwerty();
+    l.behaviors = { pct: kp('%') };
+    const num = l.layers.find((x) => x.id === DEFAULT_LAYER_IDS.numbers);
+    if (!num) throw new Error('no Numbers');
+    num.bindings.RHI = { kind: 'ref', ref: 'pct' };
+    expect(specialFeatures(l)).toEqual([]);
+    expect(layoutCategory(l)).toBe('standard');
+  });
+
   it('leaves the default layers and the combos only they have out', () => {
     const l = qwerty();
     const num = l.layers.find((x) => x.id === DEFAULT_LAYER_IDS.numbers);
