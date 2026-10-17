@@ -7,7 +7,7 @@ browser you use, sign in with GitHub, and it is kept in your GitHub account as w
 
 A layout of your own starts in **Library**, in one of these ways:
 
-- **Analyze** it, on any layout's card, change it and press **Save**: Save asks what to call the copy,
+- Press **Open** on any layout's card, change it in **Analyze** and press **Save**: Save asks what to call the copy,
   and keeps it among your custom layouts. See [Saving a copy](#saving-a-copy) below.
 - **New layout** starts one on the board you choose, empty or from Qwerty to rearrange, and
   **Create and edit** saves it and opens it. **Add the default layers** gives it Numbers, Symbols

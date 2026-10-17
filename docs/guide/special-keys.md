@@ -6,6 +6,7 @@ and how to make it in the editor, in **Analyze**: select a key, then choose its 
 | On a key | Means |
 |---|---|
 | the large legend | what a tap does |
+| `✦`, `TD` or a behaviour's name as the large legend | a key with nothing of its own to type: an adaptive key with no default, an empty tap dance, a behaviour of the layout's own named by a key |
 | a small word along the bottom | what a hold does, or how a layer comes on: `hold`, `1×` for one key, `toggle`, `switch`, `auto` |
 | a small legend at the top | what it types with Shift, where that is not just the capital |
 | `✦` `⋯` `TD` `U+` in the corner | an adaptive key, a macro, a tap dance, a Unicode character |
