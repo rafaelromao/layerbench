@@ -290,7 +290,7 @@ export class Simulator {
     const m = this.machine;
     if (m.isLayerActive(target)) return true;
     const list = this.activators.get(target);
-    if (!list) return false;
+    if (!list) return this.activateWhen(target, events, depth);
     const top = m.highestActiveLayer();
     const ranked = [...list].sort((a, b) => {
       const aOk = a.from === undefined || a.from === top ? 0 : 1;
@@ -364,6 +364,31 @@ export class Simulator {
         }
         return true;
       }
+      m.state.restore(snap);
+      m.recomputeMask();
+      events.length = startLen;
+      this.plannerHolds.clear();
+      for (const p of holdsBefore) this.plannerHolds.add(p);
+    }
+    return false;
+  }
+
+  /**
+   * A layer no key brings on, only others on together, as Extras comes on while Numbers and Symbols
+   * are both held: each of a condition's layers is brought on in the order it names them, so the
+   * last is reached from the one before when it can be, as Symbols is from Numbers.
+   */
+  private activateWhen(target: number, events: KeyEvent[], depth: number): boolean {
+    const m = this.machine;
+    const layerIndex = this.compiled.layerIndex;
+    for (const cond of this.compiled.layout.conditionalLayers ?? []) {
+      if (layerIndex.get(cond.then) !== target) continue;
+      const snap = m.state.snapshot();
+      const startLen = events.length;
+      const holdsBefore = new Set(this.plannerHolds);
+      const ranked = cond.if.map((id) => layerIndex.get(id) ?? -1);
+      if (ranked.every((li) => this.activate(li, events, depth + 1)) && m.isLayerActive(target))
+        return true;
       m.state.restore(snap);
       m.recomputeMask();
       events.length = startLen;

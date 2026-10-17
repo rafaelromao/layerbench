@@ -1,19 +1,22 @@
 import type { Geometry, Hand } from '../geometry/types.js';
-import type { Binding, ComboDef, LayerDef, Layout } from '../layout/types.js';
+import type { Binding, ComboDef, ConditionalLayerDef, LayerDef, Layout } from '../layout/types.js';
 
 /**
- * The default layers: Numbers, Symbols and Dead keys, for any board.
+ * The default layers: Accents, Numbers and Symbols, and Extras where the board needs it, for any
+ * board.
  *
- * Numbers and Symbols are Magic Romak's, which use only the 24-key core. That core is on every
- * preset but the 18-key one, so every board gets the same grid and the same muscle memory; keys
- * beyond it stay transparent, free for whatever the layout wants there. Dead keys follows Symbols:
- * each accent sits in its look-alike's column (`´` with `'`, `¨` with `"`, `€` with `$`, `«` with
- * `<`), the left hand's top and home rows swapped, and with the base layer's letters it writes
- * Portuguese, English, Spanish, French and Italian.
+ * Numbers and Symbols are Magic Romak's on the 24-key core, which is on every preset but the 18-key
+ * one, so every board gets the same grid and the same muscle memory. The keys past the core — the
+ * pinky's top and bottom, the inner column — carry what the old Dead keys layer held besides the
+ * accents: currency and ordinals on Numbers, and on Symbols each mark beside its look-alike (`;` by
+ * `:`, `¿` by `?`, `«` and `»` around `<` and `>`). A board without one of those keys finds its
+ * symbol on Extras, which comes on while Numbers and Symbols are both held, on the key Dead keys
+ * gave it. Accents is one-shot: the dead keys in their look-alikes' columns, the letters no dead key
+ * makes, and the accented letters the five languages' texts use most, each a key of its own.
  *
  * What changes from board to board is decided by which keys it has, not by its name, so a custom
- * geometry gets a sensible result too: where `0` goes, which thumbs reach the layers, and, with no
- * bottom row, a fourth layer for the keys that row would carry.
+ * geometry gets a sensible result too: where `0` goes, which thumbs reach the layers, which symbols
+ * go to Extras, and, with no bottom row, a layout of its own for what that row would carry.
  *
  * Every symbol is its own `kp`, never the `shifted` half of a pair: producer enumeration moves any
  * output needing a modifier into `excludedByCase` in fold mode, which is the default, so a shifted
@@ -22,6 +25,7 @@ import type { Binding, ComboDef, LayerDef, Layout } from '../layout/types.js';
 
 const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
 const dead = (diacritic: string): Binding => ({ kind: 'dead_key', diacritic });
+const macro = (symbols: string): Binding => ({ kind: 'macro', symbols });
 const tapOrHold = (tap: Binding, layer: string): Binding => ({
   kind: 'hold_tap',
   tap,
@@ -77,36 +81,94 @@ export const SYMBOLS_CORE: Readonly<Record<string, string>> = {
 };
 
 /**
- * The accents, the letters no dead key makes, and the symbols the corpora hold that Symbols has no
- * room for. `ç` and `ñ`, which an accent and a letter would type too, have keys of their own: each
- * is common enough in its languages to be worth a press less. On the left hand the top and home
- * rows are the other way round from Symbols: the acute and the tilde, the accents Portuguese and
- * Spanish use most, are on the home row, and `^` `€` `¨` above it.
+ * What Numbers has past the core: currency and ordinals, for the left hand while the right types the
+ * digits beside them.
  */
-export const DEAD_KEYS_CORE: Readonly<Record<string, Binding>> = {
-  LTR: dead('^'),
-  LTM: kp('€'),
-  LTI: dead('¨'),
-  LHP: kp('ª'),
-  LHR: dead('~'),
-  LHM: kp('£'),
-  LHI: dead('´'),
-  LBR: kp('«'),
-  LBM: kp('»'),
-  LBI: dead('`'),
-  RTI: kp('°'),
-  RTM: kp('ñ'),
-  RTR: kp(';'),
-  RHI: kp('¿'),
-  RHM: kp('ç'),
-  RHR: kp('œ'),
-  RHP: kp('º'),
-  RBI: kp('¡'),
-  RBM: kp('æ'),
-  RBR: kp('§'),
+export const NUMBERS_OUTER: Readonly<Record<string, string>> = {
+  LTP: '€',
+  LTC: '£',
+  LHC: '§',
+  LBP: 'ª',
+  LBC: 'º',
+  RTP: '°',
 };
 
-/** With no bottom row, `1 2 3` take the left home row on the fingers they use on the right. */
+/** What Symbols has past the core, each mark beside its look-alike. */
+export const SYMBOLS_OUTER: Readonly<Record<string, string>> = {
+  LBP: '«',
+  LBC: '»',
+  RTP: ';',
+  RHC: '¿',
+  RBC: '¡',
+};
+
+/**
+ * Where Extras puts a symbol of Numbers' or Symbols' outer keys when the board has no such key: on
+ * the 24-key core, where the Dead keys layer had it.
+ */
+export const EXTRAS_CORE: Readonly<Record<string, string>> = {
+  LTM: '€',
+  LHP: 'ª',
+  LHM: '£',
+  LBR: '«',
+  LBM: '»',
+  RTI: '°',
+  RTR: ';',
+  RHI: '¿',
+  RHP: 'º',
+  RBI: '¡',
+  RBR: '§',
+};
+
+/**
+ * Accents. The dead keys follow Symbols: each accent in its look-alike's column (`´` with `'`, `¨`
+ * with `"`, `~` with `~`), the left hand's top and home rows swapped, so the acute and the tilde,
+ * the accents Portuguese and Spanish use most, are on the home row. `ñ` `ç` `œ` `æ` and `ß`, which
+ * no dead key makes or which are common enough to be worth a press less, have keys of their own.
+ *
+ * The rest are the accented letters the five languages' texts use most, each typed whole, a press
+ * less than its accent and its letter: the most frequent on the core (`é` alone is over a quarter of
+ * them), the umlauts beside `¨`, `â` and `ô` beside `^`, and German's `ä` `ö` `ü` among them. `û`,
+ * `ë`, `ï` and `ÿ` come from the dead keys only. `qu` is there too, for the languages that write it
+ * before most of their vowels.
+ */
+export const ACCENTS: Readonly<Record<string, Binding>> = {
+  LTP: macro('â'),
+  LTR: dead('^'),
+  LTM: macro('í'),
+  LTI: dead('¨'),
+  LTC: macro('ä'),
+  LHP: macro('ã'),
+  LHR: dead('~'),
+  LHM: macro('ó'),
+  LHI: dead('´'),
+  LHC: macro('ö'),
+  LBP: macro('ô'),
+  LBR: macro('õ'),
+  LBM: macro('ê'),
+  LBI: dead('`'),
+  LBC: macro('ü'),
+  RTC: macro('ì'),
+  RTI: macro('à'),
+  RTM: kp('ñ'),
+  RTR: kp('ß'),
+  RTP: macro('qu'),
+  RHC: macro('ò'),
+  RHI: macro('é'),
+  RHM: kp('ç'),
+  RHR: kp('œ'),
+  RHP: macro('á'),
+  RBC: macro('ù'),
+  RBI: macro('è'),
+  RBM: kp('æ'),
+  RBR: macro('ú'),
+  RBP: macro('î'),
+};
+
+/**
+ * With no bottom row, `1 2 3` take the left home row on the fingers they use on the right, and the
+ * brackets they displace go to Extras.
+ */
 const NUMBERS_NO_BOTTOM: Readonly<Record<string, string>> = {
   LTR: '&',
   LTM: '(',
@@ -124,8 +186,8 @@ const NUMBERS_NO_BOTTOM: Readonly<Record<string, string>> = {
   RHP: '.',
 };
 
-/** What the missing bottom rows of Numbers, Symbols and Dead keys carried, on a fourth layer. */
-const SYMBOLS2_NO_BOTTOM: Readonly<Record<string, string>> = {
+/** With no bottom row, Extras is what the bottom rows of Numbers and Symbols carried. */
+const EXTRAS_NO_BOTTOM: Readonly<Record<string, string>> = {
   LTR: '\\',
   LTM: '{',
   LTI: '}',
@@ -140,39 +202,80 @@ const SYMBOLS2_NO_BOTTOM: Readonly<Record<string, string>> = {
   RHM: '>',
   RHR: '«',
   RHP: '»',
-  L1: '¡',
-  R1: 'æ',
 };
 
+/**
+ * With no bottom row, Accents has room for nothing but what no other layer has: the dead keys, the
+ * letters of their own, and the symbols past Extras, the thumbs among them. Every accented letter is
+ * its accent and its letter.
+ */
+const ACCENTS_NO_BOTTOM: Readonly<Record<string, Binding>> = {
+  LTR: dead('^'),
+  LTM: kp('€'),
+  LTI: dead('¨'),
+  LHP: kp('ª'),
+  LHR: dead('~'),
+  LHM: kp('£'),
+  LHI: dead('´'),
+  RTI: kp('°'),
+  RTM: dead('`'),
+  RTR: kp('ß'),
+  RHI: kp('¿'),
+  RHM: kp('ç'),
+  RHR: kp('œ'),
+  RHP: kp('º'),
+  L0: kp('¡'),
+  L1: kp('§'),
+  R0: kp('æ'),
+  R1: kp('ñ'),
+};
+
+/** With no bottom row, Symbols' last mark goes on the thumb beside the one holding Numbers. */
+const SPARE_THUMB_SYMBOL = ';';
+
 export const DEFAULT_LAYER_IDS = {
+  accents: 'accents',
   numbers: 'num',
   symbols: 'sym',
-  symbols2: 'sym2',
-  deadKeys: 'dead',
+  extras: 'extras',
 } as const;
 
-/** The keys pressed together on the base layer for Dead keys: on every board, and on no thumb. */
-export const DEAD_KEYS_COMBO_KEYS = ['LHR', 'LHM'] as const;
+/**
+ * Every default layer's id. The default layers are the same on every layout, so nothing on them
+ * says what kind of layout it is: categories leave them out.
+ */
+export const DEFAULT_LAYER_ID_LIST: readonly string[] = Object.values(DEFAULT_LAYER_IDS);
+
+/** The keys pressed together on the base layer for Accents: on every board, and on no thumb. */
+export const ACCENTS_COMBO_KEYS = ['LHR', 'LHM'] as const;
 
 /**
- * Dead keys, one-shot, from the left ring and middle fingers' home keys pressed together on the
- * base layer. Every layout with the default layers reaches it the same way, so none is ranked
- * better or worse for where its own thumbs happen to be free.
+ * Accents, one-shot, from the left ring and middle fingers' home keys pressed together on the base
+ * layer. Every layout with the default layers reaches it the same way, so none is ranked better or
+ * worse for where its own thumbs happen to be free.
  */
-export function deadKeysCombo(baseLayer: string): ComboDef {
+export function accentsCombo(baseLayer: string): ComboDef {
   return {
-    id: 'dead-keys',
-    keys: [...DEAD_KEYS_COMBO_KEYS],
-    binding: { kind: 'sl', layer: DEFAULT_LAYER_IDS.deadKeys },
+    id: 'accents',
+    keys: [...ACCENTS_COMBO_KEYS],
+    binding: { kind: 'sl', layer: DEFAULT_LAYER_IDS.accents },
     layers: [baseLayer],
     role: 'typing',
   };
 }
 
+/** Extras comes on while Numbers and Symbols are both held. */
+export const EXTRAS_CONDITION: ConditionalLayerDef = {
+  if: [DEFAULT_LAYER_IDS.numbers, DEFAULT_LAYER_IDS.symbols],
+  then: DEFAULT_LAYER_IDS.extras,
+};
+
 export interface DefaultLayers {
-  /** Numbers, Symbols, Symbols 2 when the board has no bottom row, and Dead keys, in that order. */
+  /** Numbers, Symbols, Extras when the board needs it, and Accents, in that order. */
   layers: LayerDef[];
-  /** Base-layer bindings for the keys that reach them, space among them. */
+  /** `EXTRAS_CONDITION` when there is an Extras layer. */
+  conditionalLayers: ConditionalLayerDef[];
+  /** Base-layer bindings for the keys that reach Numbers and Symbols, space among them. */
   base: Record<string, Binding>;
   /** The key that types space. */
   spaceKey: string;
@@ -188,18 +291,26 @@ function keys(table: Readonly<Record<string, string>>): Record<string, Binding> 
   return Object.fromEntries(Object.entries(table).map(([id, s]) => [id, kp(s)]));
 }
 
+/** A thumb of `holding`'s hand other than it, for the mark Symbols has no key for on 18 keys. */
+function spareThumb(geometry: Geometry, holding: string): string | undefined {
+  const hand = geometry.keys.find((k) => k.id === holding)?.hand;
+  return geometry.keys
+    .filter((k) => k.thumb && k.hand === hand && k.id !== holding)
+    .sort((a, b) => a.col - b.col)[0]?.id;
+}
+
 /**
- * The default layers for a board, and the base-layer keys that reach Numbers and Symbols. Dead keys
- * is reached by `deadKeysCombo`, on the base layer, which the caller adds with that layer's id.
+ * The default layers for a board, and the base-layer keys that reach Numbers and Symbols. Accents
+ * is reached by `accentsCombo`, on the base layer, which the caller adds with that layer's id.
  *
  * On a split board the inner thumbs do it, as on Magic Romak: the left types space and holds
- * Numbers, the right holds Symbols. Holding the right thumb from Numbers reaches Symbols too. A
- * row-stagger board has one space bar for both thumbs: it holds Numbers, and from there the right
- * pinky's outer key arms Symbols.
+ * Numbers, the right holds Symbols. Holding the right thumb from Numbers reaches Symbols too, or
+ * Extras where the board has one. A row-stagger board has one space bar for both thumbs: it holds
+ * Numbers, and from there the right pinky's outer key arms Symbols.
  */
 export function defaultLayers(geometry: Geometry): DefaultLayers {
   const have = new Set(geometry.keys.map((k) => k.id));
-  const { numbers, symbols, symbols2, deadKeys } = DEFAULT_LAYER_IDS;
+  const { accents, numbers, symbols, extras } = DEFAULT_LAYER_IDS;
   const spaceBar = geometry.family === 'rowstagger';
   const noBottom = !have.has('LBI') && !have.has('RBI');
   const spaceKey = have.has('L0') ? 'L0' : (geometry.textThumbs[0] ?? geometry.keys[0].id);
@@ -209,9 +320,9 @@ export function defaultLayers(geometry: Geometry): DefaultLayers {
   if (spaceBar && have.has('R0')) base.R0 = tapOrHold(space, numbers);
   else if (have.has('R0')) base.R0 = { kind: 'mo', layer: symbols };
 
-  const num: Record<string, Binding> = keys(noBottom ? NUMBERS_NO_BOTTOM : NUMBERS_CORE);
-  const sym: Record<string, Binding> = keys(SYMBOLS_CORE);
-  const acc: Record<string, Binding> = { ...DEAD_KEYS_CORE };
+  const num = keys(noBottom ? NUMBERS_NO_BOTTOM : { ...NUMBERS_CORE, ...NUMBERS_OUTER });
+  const sym = keys(noBottom ? SYMBOLS_CORE : { ...SYMBOLS_CORE, ...SYMBOLS_OUTER });
+  const ext = keys(noBottom ? EXTRAS_NO_BOTTOM : extrasFor(have));
   if (spaceBar) {
     // The bar is held for Numbers: pressed again it would be the same key.
     for (const id of ['L0', 'R0']) {
@@ -219,54 +330,65 @@ export function defaultLayers(geometry: Geometry): DefaultLayers {
       sym[id] = { kind: 'none' };
     }
     num.RHO = { kind: 'sl', layer: symbols };
-    num.RTP = kp('0');
+    num.RTO = kp('0');
   } else {
     sym[spaceKey] = space;
     if (have.has('R1')) {
       num.R0 = tapOrHold(space, symbols);
       num.R1 = kp('0');
     } else if (have.has('R0')) num.R0 = tapOrHold(kp('0'), symbols);
-    else num.RTP = kp('0');
+    else num.RBC = kp('0');
   }
   if (noBottom) {
-    sym.R1 = { kind: 'sl', layer: symbols2 };
-    // The grave accent's bottom-row key is gone: it takes ñ's, and ñ and § go to the thumbs. `«`
-    // and `»` are on Symbols 2.
-    acc.RTM = dead('`');
-    acc.L1 = kp('§');
-    acc.R1 = kp('ñ');
+    const spare = spareThumb(geometry, spaceKey);
+    if (spare) sym[spare] = kp(SPARE_THUMB_SYMBOL);
   }
 
   const layers: LayerDef[] = [
     { id: numbers, name: 'Numbers', bindings: bind(have, num) },
     { id: symbols, name: 'Symbols', bindings: bind(have, sym) },
   ];
-  if (noBottom)
-    layers.push({
-      id: symbols2,
-      name: 'Symbols 2',
-      bindings: bind(have, keys(SYMBOLS2_NO_BOTTOM)),
-    });
-  layers.push({ id: deadKeys, name: 'Dead keys', bindings: bind(have, acc) });
-  return { layers, base, spaceKey };
+  const hasExtras = Object.keys(ext).length > 0;
+  if (hasExtras) layers.push({ id: extras, name: 'Extras', bindings: bind(have, ext) });
+  layers.push({
+    id: accents,
+    name: 'Accents',
+    bindings: bind(have, noBottom ? ACCENTS_NO_BOTTOM : ACCENTS),
+  });
+  return {
+    layers,
+    conditionalLayers: hasExtras ? [EXTRAS_CONDITION] : [],
+    base,
+    spaceKey,
+  };
+}
+
+/** Extras for a board with a bottom row: each outer symbol whose key it lacks. */
+function extrasFor(have: Set<string>): Record<string, string> {
+  const displaced = new Set(
+    [...Object.entries(NUMBERS_OUTER), ...Object.entries(SYMBOLS_OUTER)]
+      .filter(([id]) => !have.has(id))
+      .map(([, s]) => s),
+  );
+  return Object.fromEntries(Object.entries(EXTRAS_CORE).filter(([, s]) => displaced.has(s)));
 }
 
 /**
- * A layout given the default layers, keeping every key it has: Numbers, Symbols and Dead keys after
- * its own layers, and the keys that reach them, as on a new layout. The key that types space also
- * holds Numbers, or the left inner thumb does where no thumb types space. A thumb of the other hand
- * holds Symbols: the innermost with nothing on it, or else the innermost, still typing what it
+ * A layout given the default layers, keeping every key it has: Numbers, Symbols, Extras and Accents
+ * after its own layers, and the keys that reach them, as on a new layout. The key that types space
+ * also holds Numbers, or the left inner thumb does where no thumb types space. A thumb of the other
+ * hand holds Symbols: the innermost with nothing on it, or else the innermost, still typing what it
  * typed. On Numbers it taps space, the space thumb being held, and `0` goes on another thumb of its
- * hand. Dead keys is the same on every layout: `deadKeysCombo`, on the base layer.
+ * hand. Accents is the same on every layout: `accentsCombo`, on the base layer.
  *
- * A layout that already has a layer of the same id, or a board with one space bar for both thumbs,
- * is left as it is.
+ * A layout that already has a layer of one of those ids, or a board with one space bar for both
+ * thumbs, is left as it is.
  */
 export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
   const { numbers, symbols } = DEFAULT_LAYER_IDS;
   const taken = new Set(layout.layers.map((l) => l.id));
   if (geometry.family === 'rowstagger') return layout;
-  if (Object.values(DEFAULT_LAYER_IDS).some((id) => taken.has(id))) return layout;
+  if (DEFAULT_LAYER_ID_LIST.some((id) => taken.has(id))) return layout;
 
   const [first, ...rest] = layout.layers;
   const at = (id: string): Binding | undefined => first.bindings[id] ?? first.bindings['*'];
@@ -314,17 +436,25 @@ export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
   };
 
   // The defaults' thumbs on Numbers and Symbols assume space on L0 and the Symbols thumb on R0:
-  // those go, and the roles are given to the thumbs chosen here. Numbers' thumbs are all roles; on
-  // Symbols, what the defaults put on another thumb stays where it does not land on one of the two,
-  // and the one-shot layers keep theirs, nothing being held there.
+  // those go, and the roles are given to the thumbs chosen here. Numbers' thumbs are all roles, and
+  // so is Symbols' spare one on a board with no bottom row; on Symbols, what the defaults put on
+  // another thumb stays where it does not land on one of the two, and the one-shot Accents keeps
+  // its own, nothing being held there.
   const thumbIds = new Set(thumbs.map((k) => k.id));
   const have = (id: string) => geometry.keys.some((k) => k.id === id);
   const zero = ofHand(otherHand).find((id) => id !== symbolsKey);
   const roles = new Set(['L0', 'R0', numbersKey, symbolsKey]);
-  const layers = defaultLayers(geometry).layers.map((l): LayerDef => {
+  const defaults = defaultLayers(geometry);
+  const spareSymbol = defaults.layers.find((l) => l.id === symbols)?.bindings[
+    spareThumb(geometry, defaults.spaceKey) ?? ''
+  ];
+  const layers = defaults.layers.map((l): LayerDef => {
     const bindings = Object.fromEntries(
       Object.entries(l.bindings).filter(
-        ([id]) => !thumbIds.has(id) || (l.id !== numbers && (l.id !== symbols || !roles.has(id))),
+        ([id]) =>
+          !thumbIds.has(id) ||
+          (l.id !== numbers &&
+            (l.id !== symbols || (!roles.has(id) && l.bindings[id] !== spareSymbol))),
       ),
     );
     if (l.id === numbers) {
@@ -333,29 +463,45 @@ export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
       const spot = zero ?? ['RTP', 'RBC', 'RHC'].find((id) => have(id) && !bindings[id]);
       if (spot) bindings[spot] = kp('0');
     }
-    if (l.id === symbols && types(numbersKey, ' ')) bindings[numbersKey] = kp(' ');
+    if (l.id === symbols) {
+      if (types(numbersKey, ' ')) bindings[numbersKey] = kp(' ');
+      const spare = spareThumb(geometry, numbersKey);
+      if (spareSymbol && spare) bindings[spare] = spareSymbol;
+    }
     return { ...l, bindings };
   });
 
   return {
     ...layout,
     layers: [{ ...first, bindings: baseBindings }, ...rest, ...layers],
-    combos: [...(layout.combos ?? []), deadKeysCombo(first.id)],
+    combos: [...(layout.combos ?? []), accentsCombo(first.id)],
+    ...(defaults.conditionalLayers.length > 0 && {
+      conditionalLayers: [...(layout.conditionalLayers ?? []), ...defaults.conditionalLayers],
+    }),
   };
 }
 
-/** Every character the default layers type directly, for tests and documentation. */
+/** Every character the default layers type with a key of its own, for tests and documentation. */
 export function defaultLayerSymbols(): string[] {
   const out = new Set<string>([
     '0',
     ...Object.values(NUMBERS_CORE),
+    ...Object.values(NUMBERS_OUTER),
     ...Object.values(SYMBOLS_CORE),
+    ...Object.values(SYMBOLS_OUTER),
   ]);
-  for (const b of Object.values(DEAD_KEYS_CORE)) if (b.kind === 'kp' && b.symbol) out.add(b.symbol);
+  for (const b of Object.values(ACCENTS)) if (b.kind === 'kp' && b.symbol) out.add(b.symbol);
   return [...out];
 }
 
-/** The accents the Dead keys layer carries. */
+/** The accents Accents carries as dead keys. */
 export function defaultDeadKeys(): string[] {
-  return Object.values(DEAD_KEYS_CORE).flatMap((b) => (b.kind === 'dead_key' ? [b.diacritic] : []));
+  return Object.values(ACCENTS).flatMap((b) => (b.kind === 'dead_key' ? [b.diacritic] : []));
+}
+
+/** The accented letters, and `qu`, Accents types whole. */
+export function defaultAccentMacros(): string[] {
+  return Object.values(ACCENTS).flatMap((b) =>
+    b.kind === 'macro' && b.symbols ? [b.symbols] : [],
+  );
 }
