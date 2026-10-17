@@ -382,18 +382,29 @@ describe('changing a combo', () => {
     expect(numbered.layout.combos?.[0].id).toBe('lhm-lhr-2');
   });
 
-  it('leaves the typing paths of twins under one id as they are', () => {
+  it('follows a twin under one id by the symbol a path is for, and leaves one both make', () => {
     const twins: Layout = {
       ...withCombos,
       combos: [
         { id: 'twin', keys: ['LHM', 'LHI'], binding: kp('q'), layers: ['base'], role: 'typing' },
         { id: 'twin', keys: ['LHM', 'LHR'], binding: kp('z'), layers: ['base'], role: 'typing' },
       ],
-      typingPaths: { q: [{ producer: 'combo:twin' }] },
+      typingPaths: { q: [{ producer: 'combo:twin' }], z: [{ producer: 'combo:twin' }] },
     };
     const o = landed(twins, { kind: 'updateCombo', combo: 0, keys: ['LHR', 'LHI'] });
     expect(o.layout.combos?.[0].id).toBe('lhr-lhi');
-    expect(o.layout.typingPaths).toBe(twins.typingPaths);
+    expect(o.layout.typingPaths).toEqual({
+      q: [{ producer: 'combo:lhr-lhi' }],
+      z: [{ producer: 'combo:twin' }],
+    });
+    // Both make q: which one a path means cannot be told, so it stays as it was.
+    const alike: Layout = {
+      ...twins,
+      combos: twins.combos?.map((c) => ({ ...c, binding: kp('q') })),
+      typingPaths: { q: [{ producer: 'combo:twin' }] },
+    };
+    const same = landed(alike, { kind: 'updateCombo', combo: 0, keys: ['LHR', 'LHI'] });
+    expect(same.layout.typingPaths).toBe(alike.typingPaths);
   });
 
   it('follows a combo that is the dead key into the paths of the letters it accents', () => {
