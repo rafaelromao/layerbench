@@ -22,7 +22,8 @@ async function github(page: Page): Promise<void> {
 }
 
 /**
- * Someone signed in with a long name, saving to gists: the dialog at its fullest. GitHub and the sign-in server are stood in for, so nothing leaves.
+ * Someone signed in with a long name, saving to gists: the dialog at its fullest. GitHub and the
+ * sign-in server are stood in for, so nothing leaves.
  */
 async function signedIn(page: Page): Promise<void> {
   await page.route('**/api/auth/session', (route) =>

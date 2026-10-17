@@ -107,8 +107,7 @@ approval.
 2. Add its entry to `raw/sources.json`, under an id of lower-case words and hyphens: `file`, `name`,
    `language`, `description`, `source` with a link, and `license`, starting `CC0`, `CC BY 4.0`,
    `CC BY-SA 4.0` (with its version) or `Public domain`, since the text is published with the app.
-   A source not yet credited goes in the
-   credits at the foot of the landing page.
+   A source not yet credited goes in the credits at the foot of the landing page.
 3. `pnpm corpora <id>` builds it. Commit `apps/web/public/corpora/<id>/` and `index.json` with it.
 4. Open the pull request. `pnpm test` checks the entry, and that what the app serves matches it. The
    `corpora` workflow also builds every text again, which must change nothing, and writes a summary
@@ -230,12 +229,12 @@ once per deployment.
 | Enable Device Flow | off |
 | Setup URL | empty |
 | Webhook → Active | off |
-| Repository permissions → Contents | **Read and write**, for proposing layouts to `rafaelromao/layerbench`, the one repository the App is installed on |
+| Repository permissions → Contents | **Read and write**, kept for proposing layouts to `rafaelromao/layerbench` from the app, which is still to come; the App is installed there alone |
 | Account permissions → Gists | **Read and write**, where signed-in users' documents are kept |
 | Where can this GitHub App be installed? | **Any account**, so anyone can sign in and keep their documents in gists |
 
-Create it. On the page that opens, copy the **Client ID**. Click **Generate a new client secret** twice: one for the
-Worker and one for the dev server, so either can be revoked alone.
+Create it. On the page that opens, copy the **Client ID**. Click **Generate a new client secret**
+twice: one for the Worker and one for the dev server, so either can be revoked alone.
 
 **2. Make a session key** for the Worker, the key it seals sessions with, and another for the dev
 server:
@@ -279,7 +278,7 @@ only that used, so a deployment set up before can drop it:
 - Sign-in and gists keep the App's Client ID, its client secrets, the Worker's `SESSION_SECRET` and
   `ALLOWED_ORIGINS`, its callback URLs, its **Gists** permission, and **Any account**.
 - The App stays installed on `rafaelromao/layerbench`, with **Contents** read and write, for
-  proposing layouts to the Library from the app.
+  proposing layouts to the Library from the app, which is still to come.
 - The `layerbench-data` branch stays: it is given a new role.
 
 ### Landing page

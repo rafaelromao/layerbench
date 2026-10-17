@@ -39,7 +39,7 @@ function isIndexEntry(value: unknown): value is IndexEntry {
 }
 
 /** The rows of an index file that are what an index row should be; anything else is dropped. */
-export function readIndex(text: string): IndexEntry[] {
+function readIndex(text: string): IndexEntry[] {
   try {
     const parsed: unknown = JSON.parse(text);
     return Array.isArray(parsed) ? parsed.filter(isIndexEntry) : [];
