@@ -1,28 +1,31 @@
 import type { CorpusManifest } from '@layerbench/core';
-import { languageProfile } from '@layerbench/core';
 import { customId } from '../custom/ref.js';
 
-/** The group a picker lists the user's own custom texts in, after the languages. */
-export const CUSTOM_TEXTS = 'Custom texts';
+/** The group a picker lists the user's own custom texts in, after the texts that ship. */
+export const CUSTOM_TEXTS = 'Custom';
+
+const byName = (a: CorpusManifest, b: CorpusManifest) =>
+  a.name.localeCompare(b.name, 'en', { sensitivity: 'base' });
 
 /**
- * Corpora grouped by language, for a picker, and the user's custom texts on their own after them.
- *
- * Ten corpora in one flat list is a wall; grouped by language it reads at a glance. The order is
- * the order the languages first appear in the index, so it stays stable as corpora are added.
+ * Corpora in the order every picker lists them: English first, then the rest alphabetically by
+ * name, in one list; the user's custom texts on their own after them.
  */
-export function groupByLanguage(
-  corpora: CorpusManifest[],
-): { label: string; items: CorpusManifest[] }[] {
-  const groups = new Map<string, CorpusManifest[]>();
-  const custom = corpora.filter((c) => customId(c.id) !== null);
-  for (const c of corpora) {
-    if (customId(c.id) !== null) continue;
-    const label = languageProfile(c.language)?.name ?? c.language;
-    const list = groups.get(label);
-    if (list) list.push(c);
-    else groups.set(label, [c]);
-  }
-  if (custom.length > 0) groups.set(CUSTOM_TEXTS, custom);
-  return [...groups.entries()].map(([label, items]) => ({ label, items }));
+export function orderCorpora(corpora: CorpusManifest[]): {
+  texts: CorpusManifest[];
+  custom: CorpusManifest[];
+} {
+  const texts = corpora.filter((c) => customId(c.id) === null);
+  const english = texts.filter((c) => c.language === 'en').sort(byName);
+  const rest = texts.filter((c) => c.language !== 'en').sort(byName);
+  return {
+    texts: [...english, ...rest],
+    custom: corpora.filter((c) => customId(c.id) !== null).sort(byName),
+  };
+}
+
+/** The corpus a page opens on when none is asked for: English, the first in every picker. */
+export function firstCorpus(corpora: CorpusManifest[]): CorpusManifest | undefined {
+  const { texts, custom } = orderCorpora(corpora);
+  return texts[0] ?? custom[0];
 }
