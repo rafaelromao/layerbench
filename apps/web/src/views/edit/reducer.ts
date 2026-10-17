@@ -165,7 +165,8 @@ function land(state: EditState, outcome: EditOutcome, say?: string): EditState {
   }
   const { layout, compiled, at, edit } = outcome;
   const followed = compiled.layerIndex.get(at.layer ?? shownLayer(state));
-  const keys = at.keys ?? selectionOf(state);
+  // A combo added opens in the combo editor, which takes the place of any key that was open.
+  const keys = edit.kind === 'addCombo' ? [] : (at.keys ?? selectionOf(state));
   // Re-rendering the behaviours buffer on every edit would throw away whatever is half-typed in
   // it, so it is only refreshed when the behaviours themselves moved.
   const behaviorsMoved =
@@ -345,8 +346,8 @@ function reduce(state: EditState, action: EditAction): EditState {
         combo,
         // A combo opened is where the board's clicks go next, not to the key that was open.
         ...(combo === null ? {} : { selected: null, also: [], swapFrom: null }),
-        // Opening another combo ends a pick of the keys of the one before it.
-        ...(state.comboPickFor !== null && state.comboPickFor !== combo
+        // Opening a combo ends a pick of a new combo's keys, or of the keys of the one before it.
+        ...(state.comboPick !== null && state.comboPickFor !== combo
           ? { comboPick: null, comboPickFor: null }
           : {}),
         focusRequest: null,

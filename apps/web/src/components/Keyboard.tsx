@@ -75,6 +75,25 @@ export function typingCombos(
     });
 }
 
+/**
+ * The place in the layout of a combo the board draws from the analysis' compile, which renumbers
+ * them when typing combos are left out of it: found by its id and keys. Null when it has none.
+ */
+export function comboPlace(
+  compiled: CompiledLayout,
+  typed: CompiledLayout,
+  index: number,
+): number | null {
+  if (typed === compiled) return index;
+  const c = typed.combos[index];
+  if (!c) return null;
+  const place = compiled.combos.findIndex(
+    (x) =>
+      x.id === c.id && x.keys.length === c.keys.length && x.keys.every((k, i) => k === c.keys[i]),
+  );
+  return place < 0 ? null : place;
+}
+
 /** How far a key reaches from its centre, across and down, turned the way it is drawn. */
 export function reach(k: GeometryKey): { x: number; y: number } {
   const turn = (k.rotation * Math.PI) / 180;

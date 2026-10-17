@@ -25,6 +25,7 @@ import { FamilyFilter, METRIC_FAMILIES, useFamilyShown } from '../../components/
 import { featureList } from '../../components/FeatureSwitches.js';
 import { HelpLink } from '../../components/HelpLink.js';
 import {
+  comboPlace,
   Keyboard,
   type KeyboardHandle,
   KeyLegend,
@@ -452,6 +453,11 @@ export function Workbench({
   // Everything the board outlines: a key armed for a swap, the keys picked for a combo, the keys of
   // the combo open in the editor or one a panel points at, and an outlined pair or word.
   const openCombo = state.combo === null ? undefined : state.layout.combos?.[state.combo];
+  const placeOf = (typed: number) => comboPlace(state.compiled, typedCompiled, typed);
+  const openPill =
+    state.combo === null
+      ? null
+      : (boardCombos.find((c) => placeOf(c.index) === state.combo)?.index ?? null);
   const highlighted = useMemo(() => {
     if (playing) return frame?.held ?? [];
     const ids = [
@@ -765,12 +771,12 @@ export function Workbench({
                         highlight={highlighted}
                         pressed={frame?.keys ?? []}
                         combos={boardCombos}
-                        openCombo={state.combo}
+                        openCombo={openPill}
                         onComboClick={(combo) => {
                           // While keys are being picked for a combo, they are all the board is doing.
                           if (state.comboPick) return;
                           stopPlaying();
-                          send({ type: 'selectCombo', combo });
+                          send({ type: 'selectCombo', combo: placeOf(combo) });
                         }}
                         arcs={playing ? [] : arcs}
                         draggable
