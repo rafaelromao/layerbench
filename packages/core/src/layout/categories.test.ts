@@ -231,6 +231,24 @@ describe('a custom copy of Qwerty', () => {
     expect(layoutCategory(l)).toBe('thumb_alpha');
   });
 
+  it('reads an unlisted thumb as its layer default', () => {
+    const l = qwerty();
+    const [base, ...rest] = l.layers;
+    const bindings: Record<string, Binding> = { ...base.bindings, '*': kp('e') };
+    for (const id of ['L0', 'R0']) delete bindings[id];
+    const wild: Layout = { ...l, layers: [{ ...base, bindings }, ...rest] };
+    expect(thumbAlphas(wild).map((t) => t.key)).toEqual(expect.arrayContaining(['L0', 'R0']));
+    expect(layoutCategory(wild)).toBe('thumb_alpha');
+  });
+
+  it('is Standard with no alpha layer at all, as everything else is', () => {
+    const l = qwerty();
+    const [base, ...rest] = l.layers;
+    const empty: Layout = { ...l, layers: [{ ...base, bindings: {} }, ...rest] };
+    expect(alphaLayers(empty)).toEqual([]);
+    expect(layoutCategory(empty)).toBe('standard');
+  });
+
   it('is Special with a second alpha layer', () => {
     const l = qwerty();
     l.layers.splice(1, 0, { id: 'alpha2', bindings: { LHP: kp('ç'), LHR: kp('Z') } });
@@ -298,6 +316,28 @@ describe('the key count', () => {
       });
     expect(custom('rowstagger')).toBe(1);
     expect(custom('columnar')).toBe(2);
+    const split = physicalKeyCount({
+      ...qwerty(),
+      geometry: {
+        family: 'rowstagger',
+        custom: ['L0', 'R0'].map((id, i) => ({
+          id,
+          hand: id[0] as 'L' | 'R',
+          finger: id[0] === 'L' ? 'LT' : 'RT',
+          row: 3,
+          col: 0,
+          x: 4 + 5 * i,
+          y: 3,
+          w: 3,
+          h: 1,
+          rotation: 0,
+          home: false,
+          thumb: true,
+          inner: false,
+        })),
+      },
+    });
+    expect(split).toBe(2);
   });
 });
 

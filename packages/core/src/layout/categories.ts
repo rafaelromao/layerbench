@@ -141,7 +141,8 @@ export function thumbAlphas(layout: Layout): ThumbAlpha[] {
   for (const layer of layout.layers) {
     if (!alphas.has(layer.id)) continue;
     for (const key of thumbs) {
-      const b = layer.bindings[key];
+      // An unlisted key has the layer's default, as the compiler gives it.
+      const b = layer.bindings[key] ?? layer.bindings['*'];
       if (!b) continue;
       for (const letter of lettersOf(layout, b, new Set()))
         out.push({ layer: layer.id, key, letter });
@@ -152,12 +153,15 @@ export function thumbAlphas(layout: Layout): ThumbAlpha[] {
 
 /**
  * The board's physical keys, thumbs included. A row-stagger board's space bar is one key that
- * either thumb presses, drawn as two at one spot: it counts once.
+ * either thumb presses, drawn as two at one spot: it counts once. Two thumb keys of their own, as
+ * on a split space bar, count as two.
  */
 export function physicalKeyCount(layout: Layout): number {
   const g = buildGeometry(layout);
-  const ids = new Set(g.keys.map((k) => k.id));
-  return g.keys.length - (g.family === 'rowstagger' && ids.has('L0') && ids.has('R0') ? 1 : 0);
+  const l0 = g.keys.find((k) => k.id === 'L0');
+  const r0 = g.keys.find((k) => k.id === 'R0');
+  const oneBar = g.family === 'rowstagger' && l0 && r0 && l0.x === r0.x && l0.y === r0.y;
+  return g.keys.length - (oneBar ? 1 : 0);
 }
 
 const FEATURE_LABELS: Record<Exclude<SpecialFeatureKind, 'custom_behaviour' | 'macro'>, string> = {
