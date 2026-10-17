@@ -1000,15 +1000,13 @@
 /*
  * A group of switches (`SwitchGroup`), such as the features an analysis types with, laid out in a
  * grid by its markup. On a touch screen each is a row a finger can hit, with a box at full size
- * rather than the compact one. A checkbox drawn on its own (`lb-check`) grows the same way.
+ * rather than the compact one.
  */
 @media (pointer: coarse) {
-  .lb-rank-with label,
-  .lb-check {
+  .lb-rank-with label {
     min-height: 2.75rem;
   }
-  .lb-rank-with .checkbox,
-  .lb-check .checkbox {
+  .lb-rank-with .checkbox {
     --size: calc(var(--size-selector, 0.25rem) * 6);
   }
 }
