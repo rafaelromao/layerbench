@@ -31,5 +31,11 @@ describe('the order of a corpus picker', () => {
     expect(firstCorpus(CORPORA)?.id).toBe('en-general');
     expect(firstCorpus([CORPORA[1]])?.id).toBe('custom:zeta');
     expect(firstCorpus([])).toBeUndefined();
+    // A text built and not saved, or a blend, is not listed on the Corpus page, so it is never
+    // the one it opens on, however its name sorts.
+    const unsaved = text('custom-abc123', 'A draft', 'en');
+    const blend = text('mix-en-general-es-general-50', 'A blend', 'en');
+    expect(firstCorpus([unsaved, blend, ...CORPORA])?.id).toBe('en-general');
+    expect(firstCorpus([unsaved, blend])).toBeUndefined();
   });
 });

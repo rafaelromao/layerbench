@@ -24,8 +24,17 @@ export function orderCorpora(corpora: CorpusManifest[]): {
   };
 }
 
-/** The corpus a page opens on when none is asked for: English, the first in every picker. */
+/**
+ * A text built on the Corpus page and not saved yet, or a blend made in Analyze: offered where it is
+ * in use, but not a text of its own, so the Corpus page does not list it.
+ */
+export const isTransient = (c: CorpusManifest): boolean => /^(custom|mix)-/.test(c.id);
+
+/**
+ * The corpus the Corpus page opens on when none is asked for: English, the first text it lists.
+ * A transient text is never it, since the page does not list one.
+ */
 export function firstCorpus(corpora: CorpusManifest[]): CorpusManifest | undefined {
-  const { texts, custom } = orderCorpora(corpora);
+  const { texts, custom } = orderCorpora(corpora.filter((c) => !isTransient(c)));
   return texts[0] ?? custom[0];
 }

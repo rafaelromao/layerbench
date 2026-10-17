@@ -10,7 +10,7 @@ import { useCarried } from '../state/selection.js';
 import { toast } from '../state/toasts.js';
 import { useStorage } from '../storage/use-storage.js';
 import type { RawSearch } from '../url/params.js';
-import { CUSTOM_TEXTS, firstCorpus, orderCorpora } from './corpus-groups.js';
+import { CUSTOM_TEXTS, firstCorpus, isTransient, orderCorpora } from './corpus-groups.js';
 
 const MIN_CUSTOM_CHARS = 1_000;
 const MAX_SAVED_SAMPLE_BYTES = 900_000;
@@ -118,7 +118,7 @@ export function CorpusView() {
   // A text built here has its own card until it is saved, and a blend made in Analyze is not a text
   // of its own: the list is what comes with the app, and what was saved.
   const ordered = orderCorpora(corpora);
-  const bundled = ordered.texts.filter((c) => !/^(custom|mix)-/.test(c.id));
+  const bundled = ordered.texts.filter((c) => !isTransient(c));
   const customTexts = ordered.custom;
 
   useEffect(() => {
