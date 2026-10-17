@@ -181,6 +181,21 @@ describe('a custom copy of Qwerty', () => {
     expect(alphaLayers(l)).toEqual(['base']);
   });
 
+  it('is Special with caps word or sentence case declared, each once on the key it wraps', () => {
+    const caps: Layout = { ...qwerty(), keys: { space: 'L0', shift: { key: 'R0', kind: 'sk' } } };
+    caps.features = { capsWord: {} };
+    expect(specialFeatures(caps)).toEqual([
+      { feature: 'mod_morph', layer: 'base', key: 'R0', label: 'Caps word' },
+    ]);
+    expect(layoutCategory(caps)).toBe('special');
+    const sentence: Layout = { ...qwerty(), features: { sentenceCase: {} } };
+    expect(specialFeatures(sentence)).toEqual([
+      { feature: 'adaptive', layer: 'base', key: sentence.keys.space, label: 'Sentence case' },
+    ]);
+    const off: Layout = { ...qwerty(), features: { sentenceCase: { enabled: false } } };
+    expect(layoutCategory(off)).toBe('standard');
+  });
+
   it('leaves a behaviour only the default layers use to them', () => {
     const l = qwerty();
     l.behaviors = { pct: kp('%') };

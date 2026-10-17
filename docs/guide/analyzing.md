@@ -52,7 +52,8 @@ from the layout's own keys, whether it came with the app or is yours, and nothin
 - **Thumb Alpha**: the same, but a thumb key types a letter on an alpha layer.
 - **Special**: a layout with an adaptive key, a macro, an alt repeat, a mod morph or a named
   behaviour of its own, on a key, on a combo or among its behaviours; or with more than one alpha
-  layer; or on a board of fewer than 34 keys, thumbs included.
+  layer; or on a board of fewer than 34 keys, thumbs included. Caps word makes the shift key a mod
+  morph and sentence case makes the space key adaptive, so either makes a layout Special too.
 
 Untick a category under **Categories**, in **Rank and filter**, to leave its layouts out of the list
 and the ranking.

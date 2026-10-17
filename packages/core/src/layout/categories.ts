@@ -1,5 +1,6 @@
 import { DEFAULT_LAYER_ID_LIST } from '../layouts/templates.js';
 import { buildGeometry } from './compile.js';
+import { expandFeatures, type WrappingFeature } from './features.js';
 import type { Binding, Layout } from './types.js';
 
 /**
@@ -218,25 +219,39 @@ function namedIn(layout: Layout, b: Binding, out: Set<string>): Set<string> {
   return out;
 }
 
+/**
+ * What a declared feature makes of the key it wraps: caps word turns the shift key into a mod morph,
+ * sentence case the space key into an adaptive key. Each is one feature, named as itself.
+ */
+const DECLARED: Record<WrappingFeature, { feature: SpecialFeatureKind; label: string }> = {
+  capsWord: { feature: 'mod_morph', label: 'Caps word' },
+  sentenceCase: { feature: 'adaptive', label: 'Sentence case' },
+};
+
 /** Whether a combo fires only on the default layers. */
 const onDefaultLayersOnly = (layers: string[] | undefined) =>
   layers !== undefined && layers.length > 0 && layers.every(isDefaultLayer);
 
 /**
  * Each use of a special feature: on the keys of the layout's own layers, on its combos, and among
- * its behaviours. A named behaviour of its own is one wherever it is used; one that nothing uses
+ * its behaviours, and the keys its declared features wrap. A named behaviour of its own is one
+ * wherever it is used; one that nothing uses
  * still counts, once, with no place. Nothing on the default layers counts, and a behaviour only they
  * use is theirs.
  */
 export function specialFeatures(layout: Layout): SpecialFeature[] {
   const out: SpecialFeature[] = [];
   const used = new Set<string>();
+  const { owned } = expandFeatures(layout);
   for (const layer of layout.layers) {
     const own = !isDefaultLayer(layer.id);
     for (const [key, b] of Object.entries(layer.bindings)) {
       if (own) featuresOf(layout, b, { layer: layer.id, key }, out);
       namedIn(layout, b, used);
     }
+    if (!own) continue;
+    for (const [key, f] of owned.get(layer.id) ?? [])
+      out.push({ ...DECLARED[f], layer: layer.id, key });
   }
   (layout.combos ?? []).forEach((c, i) => {
     if (!onDefaultLayersOnly(c.layers))
