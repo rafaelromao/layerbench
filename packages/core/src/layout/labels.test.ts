@@ -37,7 +37,8 @@ suite('legends', () => {
       const l = legend(nordrassil, nordrassil.layers[0].bindings[nordrassil.keyIndex.get(arcane)!]);
       expect(l.tap).toBe(BADGE.adaptive);
     }
-    // An empty tap dance says it is one; a behaviour of the layout's own is shown by its name.
+    // An empty tap dance says it is one. A behaviour of the layout's own, named before compiling
+    // puts it in its place, is shown by that name.
     expect(tapLabel(c, { kind: 'tap_dance', bindings: [] })).toBe(BADGE.tapDance);
     expect(legend(c, { kind: 'tap_dance', bindings: [] }).badge).toBeNull();
     expect(tapLabel(c, { kind: 'ref', ref: 'magicShift' })).toBe('magicShift');

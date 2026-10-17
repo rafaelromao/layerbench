@@ -227,6 +227,8 @@ export function tapLabel(c: CompiledLayout, b: Binding): string {
     case 'tap_dance':
       return BADGE.tapDance;
     case 'ref':
+      // Compiling puts the behaviour itself in its place, so only a binding not compiled yet, as the
+      // editor's text line previews one, still names it.
       return p.ref;
     default:
       return '';
@@ -424,7 +426,7 @@ export function legend(c: CompiledLayout, b: Binding): Legend {
     hold,
     kind: legendKind(b),
     shifted: shiftedOf(c, direct),
-    // A mark the centre already shows, an adaptive key's with no default, is not said twice.
+    // An adaptive key with no default shows its mark in the centre, and not again in the corner.
     badge: badge === tap ? null : badge,
     layer: layer?.layer ?? null,
     layerIn: layer?.layerIn ?? null,

@@ -129,11 +129,12 @@ kept in any count.
 ### The text itself
 
 **Corpus** lists the texts that come with the app, each with where it came from, and opens on
-English. Every list of texts is in the same order: English first, then the rest by name. Your
-own text can be pasted or uploaded there and analyzed like any other, and **Save to library** keeps
-it: custom texts are listed in **Corpus** and offered in every view that analyzes, under **Custom**,
-after the ones that come with the app. A text published under an open licence can join the ones that come with the
-app, by pull request on GitHub; the [README](../../README.md#bundled-corpora) lists the steps. **Sample**, on **Analyze**
+English. Every list of texts is in the same order: English first, then the rest by name. Your own
+text can be pasted or uploaded there and analyzed like any other, and **Save to library** keeps it:
+custom texts are listed in **Corpus** and offered in every view that analyzes, under **Custom**,
+after the ones that come with the app. A text published under an open licence can join the ones
+that come with the app, by pull request on GitHub; the
+[README](../../README.md#bundled-corpora) lists the steps. **Sample**, on **Analyze**
 and **Compare**, sets how much of the text is typed, 100,000 symbols unless you choose more: more
 gives steadier numbers, less gives them sooner, which matters most while a layout is being edited,
 since every edit types it again. **Library** ranks on at most 100,000 symbols, since it types the
