@@ -50,6 +50,9 @@ export interface SimulateOptions {
 }
 
 /** A run of presses with no space in it enters the tables in pieces of at most this many. */
+/** How many layers a condition's search may try to bring on before it gives up. */
+const CONDITION_TRIES = 64;
+
 const WORD_LIMIT = 128;
 
 /** How many times a way of typing a symbol is tried, each time with other modifiers held. */
@@ -392,7 +395,8 @@ export class Simulator {
       for (const cond of this.compiled.layout.conditionalLayers ?? []) {
         if (layerIndex.get(cond.then) !== target) continue;
         const ifs = cond.if.map((id) => layerIndex.get(id) ?? -1);
-        if (this.activateEach(ifs, target, events, depth)) return true;
+        const budget = { left: CONDITION_TRIES };
+        if (this.activateEach(ifs, [], target, events, depth, budget)) return true;
       }
       return false;
     } finally {
@@ -400,23 +404,36 @@ export class Simulator {
     }
   }
 
-  /** Brings `layers` on in some order that leaves `target` on, or leaves the board as it was. */
+  /**
+   * Brings `layers` on in some order that leaves `target` on, or leaves the board as it was. An order
+   * is given up as soon as a layer brought on turns one before it off, and the whole search after
+   * `budget.left` layers tried, so a condition whose layers cannot all be on together costs a few
+   * tries, never every order of them.
+   */
   private activateEach(
     layers: number[],
+    on: number[],
     target: number,
     events: KeyEvent[],
     depth: number,
+    budget: { left: number },
   ): boolean {
     const m = this.machine;
     if (layers.length === 0) return m.isLayerActive(target);
-    for (let i = 0; i < layers.length; i++) {
+    for (let i = 0; i < layers.length && budget.left > 0; i++) {
+      budget.left--;
       const snap = m.state.snapshot();
       const startLen = events.length;
       const holdsBefore = new Set(this.plannerHolds);
       const rest = [...layers.slice(0, i), ...layers.slice(i + 1)];
+      const now = [...on, layers[i]];
       // At the same depth: each layer is reached as it would be on its own, the condition taking
       // none of the route's steps.
-      if (this.activate(layers[i], events, depth) && this.activateEach(rest, target, events, depth))
+      if (
+        this.activate(layers[i], events, depth) &&
+        now.every((li) => m.isLayerActive(li)) &&
+        this.activateEach(rest, now, target, events, depth, budget)
+      )
         return true;
       m.state.restore(snap);
       m.recomputeMask();

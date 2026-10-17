@@ -699,6 +699,22 @@ describe('a layer that comes on while others are on together', () => {
     expect(t.keys).toEqual(['LTP', 'LTR', 'LTM', 'RTP', 'RHI']);
   });
 
+  it('is given up quickly when its layers cannot all be on together', () => {
+    // Each of ten layers is switched to from the base layer, turning the one before it off.
+    const ids = [...'abcdefghij'];
+    const keys = ['LTP', 'LTR', 'LTM', 'LTI', 'LTC', 'RTC', 'RTI', 'RTM', 'RTR', 'RTP'];
+    const layout: Layout = {
+      ...toggles(Object.fromEntries(ids.map((id, i) => [keys[i], { kind: 'to', layer: id }])), [
+        ...ids.map((id) => ({ id, bindings: { '*': trans } })),
+        { id: 't', bindings: { '*': trans, RHI: { kind: 'kp', symbol: '€' } } },
+      ]),
+      conditionalLayers: [{ if: ids, then: 't' }],
+    };
+    const started = performance.now();
+    expect(trace(layout, '€').out).toBe('');
+    expect(performance.now() - started).toBeLessThan(2000);
+  });
+
   it('is never reached when it and another each come on only with the other', () => {
     const layout: Layout = {
       ...toggles({}, [
