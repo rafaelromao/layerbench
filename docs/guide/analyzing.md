@@ -35,13 +35,27 @@ numbers on each card, all scored on the same sample of the same text. **Rank and
 what the ranking is made with, and **Boards**, which lists only the layouts on the boards you tick, so you can keep to the keyboards you own; the layouts on the others are not scored at
 all. Your custom layouts, the ones you keep, are
 ranked in the same list as the ones that come with the app, marked *custom*; untick **Custom
-layouts**, in **Rank and filter**, to leave them out. When that or the boards leave some layouts
-out, a line under **Sort by** says how many are listed and why. Each layout takes its
+layouts**, in **Rank and filter**, to leave them out. When that, the categories or the boards leave
+some layouts out, a line under **Sort by** says how many are listed and why. Each layout takes its
 place as its score arrives. This browser remembers the scores, the sort and what you chose to list, so the next
 visit opens already ranked; the scores are checked again quietly, and a layout moves only if its
 numbers changed. **Compare** puts every number for two layouts side by side, with the difference and which
 of the two does better. Each layout's board has its own layer navigator, to look through every layer of
 both, warm by what is pressed on the layer shown.
+
+Each card also names the layout's category, so you can rank a layout against its peers. It follows
+from the layout's own keys, whether it came with the app or is yours, and nothing on its
+[default layers](editing.md#default-layers) counts:
+
+- **Standard**: one alpha layer, a layer where a key types a letter from a to z by itself, with no
+  letter on a thumb, on a board of 34 keys or more.
+- **Thumb Alpha**: the same, but a thumb key types a letter on an alpha layer.
+- **Special**: a layout with an adaptive key, a macro, an alt repeat, a mod morph or a named
+  behaviour of its own, on a key, on a combo or among its behaviours; or with more than one alpha
+  layer; or on a board of fewer than 34 keys, thumbs included.
+
+Untick a category under **Categories**, in **Rank and filter**, to leave its layouts out of the list
+and the ranking.
 
 Layouts are compared on the text, not on their presses. SFB and the other pair rules are a share of
 the letter pairs the text has, and Effort is per character typed, so a layout's layer taps, holds
