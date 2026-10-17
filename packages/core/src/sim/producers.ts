@@ -327,7 +327,9 @@ export function enumerateProducers(
     const tapped = staticOutputs(c.binding).map((o) => [false, o] as const);
     const held = holdOutputs(c.binding).map((o) => [true, o] as const);
     for (const [hold, o] of [...tapped, ...held]) {
-      if (o.mods?.length) continue;
+      // A combo's shifted symbol or modifier morph needs its modifiers held, as a key's does.
+      const mods = heldChoices({ choices: o.mods ?? [], forbid: o.forbid ?? [] });
+      if (mods === null) continue;
       const step: ProducerStep = {
         layer: null,
         pos: c.pos,
@@ -344,11 +346,15 @@ export function enumerateProducers(
         steps: [step],
         afterAny: o.afterAny,
         afterTags: o.afterTags,
-        mods: [],
+        mods,
         // A tap dance's later branches cost a chord more each, as they do on a key.
-        cost: 0.5 + o.taps,
+        cost: 0.5 + o.taps + (mods.length ? 1 : 0),
         dynamic: o.dynamic,
       };
+      if (fold && mods.length) {
+        excludedByCase.push(p);
+        continue;
+      }
       add(p);
     }
   }

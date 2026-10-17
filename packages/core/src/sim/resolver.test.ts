@@ -266,6 +266,29 @@ describe('combos that do more than type a character', () => {
     expect(t.keys).toEqual(['combo:dance', 'L0', 'combo:dance', 'combo:dance']);
   });
 
+  it('holds shift for a combo whose symbol is shifted, as it would for a key, in model case', () => {
+    const shifted: Layout = {
+      ...board,
+      keys: { space: 'L0', shift: { key: 'R1', kind: 'sk' } },
+      layers: [
+        {
+          ...board.layers[0],
+          bindings: { ...board.layers[0].bindings, R1: { kind: 'sk', mod: 'LSHIFT' } },
+        },
+        ...board.layers.slice(1),
+      ],
+      combos: [
+        ...(board.combos ?? []),
+        combo('hash', ['LTR', 'LTP'], { kind: 'kp', symbol: '3', shifted: '#' }),
+      ],
+    };
+    const t = trace(shifted, '3#', { caseMode: 'model' });
+    expect(t.out).toBe('3#');
+    expect(t.keys).toEqual(['combo:hash', 'R1', 'combo:hash']);
+    // Folded, a modifier is out of reach, for a combo as for a key.
+    expect(trace(shifted, '#').out).toBe('');
+  });
+
   it('types an adaptive key on a combo as it would on a key', () => {
     const t = trace(board, 'x ey');
     expect(t.out).toBe('x ey');
