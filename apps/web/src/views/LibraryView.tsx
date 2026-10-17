@@ -74,17 +74,6 @@ function boardLabel(id: string): string {
   return getGeometryPreset(id).name.replace(/^Split columnar /, '');
 }
 
-/** A layout's category, or none for a custom document not read yet. */
-function categoryOf(layout: Layout | undefined): LayoutCategory | undefined {
-  if (!layout) return undefined;
-  try {
-    return layoutCategory(layout);
-  } catch {
-    // A board it cannot build is shown as it is, in no category.
-    return undefined;
-  }
-}
-
 /** Characters named on a card before the list is cut short. */
 const MISSING_SHOWN = 5;
 
@@ -463,7 +452,10 @@ export function LibraryView() {
           .filter(Boolean)
           .join(' · '),
         board: entry.geometry ?? boardOf(customLayouts.get(entry.id)),
-        category: categoryOf(customLayouts.get(entry.id)),
+        // One not read yet, or that will not compile, is in no category.
+        category: customCompiled.has(entry.id)
+          ? layoutCategory(customLayouts.get(entry.id) as Layout)
+          : undefined,
       })),
     ],
     [bundled, custom.entries, customLayouts, customCompiled],

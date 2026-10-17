@@ -623,6 +623,30 @@ describe('Categories', () => {
     expect(badgeOf('Magic Romak')).toBe('Special');
   });
 
+  it('gives a custom layout that will not compile no category', async () => {
+    const storage = freshStorage();
+    const qwerty = bundledLayout('qwerty') as Layout;
+    const [base, ...rest] = qwerty.layers;
+    const broken: Layout = {
+      ...qwerty,
+      id: 'broken',
+      name: 'Broken',
+      layers: [
+        {
+          ...base,
+          bindings: { ...base.bindings, LHP: { kind: 'macro', symbols: 'qu' } },
+        },
+        ...rest,
+      ],
+      geometry: { preset: 'no-such-board' },
+    };
+    await storage.put('layouts', 'broken', toCanonicalJson(broken));
+    renderRoute(LIBRARY, { storage });
+    await screen.findByRole('heading', { name: 'Broken', level: 3 });
+    await waitFor(() => expect(badgeOf('Qwerty')).toBe('Standard'));
+    expect(badgeOf('Broken')).toBeUndefined();
+  });
+
   it('lists only the layouts in the categories chosen, and remembers the choice', async () => {
     const user = userEvent.setup();
     renderRoute(LIBRARY, { storage: freshStorage() });
