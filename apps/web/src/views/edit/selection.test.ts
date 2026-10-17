@@ -200,7 +200,10 @@ describe('the combo open in the combo editor', () => {
   it('opens a combo just added, in place of the key that was open', () => {
     const added = reducer(pick(withNav(), 'LHI'), addCombo);
     expect(added.combo).toBe((added.layout.combos?.length ?? 0) - 1);
-    expect(selectionOf(added)).toEqual([]);
+    expect(selectionOf(added)).toEqual([]); // Undone past its adding, it is gone and so is its editor; redone, it opens again.
+    const undone = reducer(added, { type: 'undo' });
+    expect(undone.combo).toBeNull();
+    expect(reducer(undone, { type: 'redo' }).combo).toBe(added.combo);
   });
 
   it('follows its place when a combo before it goes, and closes when it goes', () => {
