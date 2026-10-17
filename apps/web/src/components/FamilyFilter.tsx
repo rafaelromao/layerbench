@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react';
 import { useSession } from '../state/session.js';
 import { Switch, SwitchGroup } from './FeatureSwitches.js';
 
@@ -27,15 +26,7 @@ export function useFamilyShown(): (family: string) => boolean {
 export function FamilyFilter({ className = '' }: { className?: string }) {
   const hidden = useSession((s) => s.hiddenFamilies);
   const showFamilies = useSession((s) => s.showFamilies);
-  const all = useRef<HTMLInputElement>(null);
-
   const shownCount = ALL.filter((f) => !hidden.includes(f)).length;
-  const some = shownCount > 0 && shownCount < ALL.length;
-
-  // "Some but not all" has no attribute of its own; it is a property set on the element.
-  useEffect(() => {
-    if (all.current) all.current.indeterminate = some;
-  }, [some]);
 
   return (
     // "Show" on a line of its own and the boxes in columns under it: two to a line on the
@@ -44,14 +35,8 @@ export function FamilyFilter({ className = '' }: { className?: string }) {
       legend="Show"
       columns="grid-cols-2 min-[360px]:grid-cols-3 sm:grid-cols-4 lg:grid-cols-7"
       className={className}
+      all={{ shown: shownCount, total: ALL.length, onChange: (on) => showFamilies(ALL, on) }}
     >
-      <Switch
-        label="All"
-        strong
-        inputRef={all}
-        checked={shownCount === ALL.length}
-        onChange={(on) => showFamilies(ALL, on)}
-      />
       {METRIC_FAMILIES.map(([family, title]) => (
         <Switch
           key={family}

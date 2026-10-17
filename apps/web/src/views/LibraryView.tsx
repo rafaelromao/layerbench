@@ -1,13 +1,17 @@
 import {
   BUNDLED_LAYOUTS,
+  CATEGORY_NAMES,
   type CompiledLayout,
   compileLayout,
   forRanking,
   GEOMETRY_PRESET_IDS,
   getGeometryPreset,
+  LAYOUT_CATEGORIES,
   type Layout,
+  type LayoutCategory,
   languageCovered,
   languagesToJudge,
+  layoutCategory,
   layoutLanguageCoverage,
   layoutLanguages,
   typedLayout,
@@ -45,8 +49,14 @@ import {
 } from '../url/params.js';
 import { ImportDialog } from './library/ImportDialog.js';
 import { LayerPreview } from './library/LayerPreview.js';
-import { type BoardChoice, RankingDialog, SORTS } from './library/RankingDialog.js';
+import {
+  type BoardChoice,
+  type CategoryChoice,
+  RankFilters,
+  SORTS,
+} from './library/RankFilters.js';
 import { type NewLayoutSpec, newLayout } from './new-layout.js';
+import { SettingsDialog } from './SettingsDialog.js';
 import { textLanguage, textName } from './text-of.js';
 import { useAnalysisSettings } from './useAnalysisSettings.js';
 import { useCorpora } from './useCorpora.js';
@@ -62,6 +72,17 @@ function boardLabel(id: string): string {
   if (id === CUSTOM_BOARD || !GEOMETRY_PRESET_IDS.includes(id)) return 'Other boards';
   // Every columnar board is split; the prefix only lengthens a list of them.
   return getGeometryPreset(id).name.replace(/^Split columnar /, '');
+}
+
+/** A layout's category, or none for a custom document not read yet. */
+function categoryOf(layout: Layout | undefined): LayoutCategory | undefined {
+  if (!layout) return undefined;
+  try {
+    return layoutCategory(layout);
+  } catch {
+    // A board it cannot build is shown as it is, in no category.
+    return undefined;
+  }
 }
 
 /** Characters named on a card before the list is cut short. */
@@ -179,6 +200,8 @@ interface Listed {
   meta: string;
   /** The board's preset id, or `custom`: what the board filter goes by. */
   board: string;
+  /** Worked out from its keys; missing while a custom document is still being read. */
+  category: LayoutCategory | undefined;
 }
 
 function layerCount(n: number): string {
@@ -209,6 +232,11 @@ function LayoutCard({
               <h3 className="font-semibold text-sm">{item.name}</h3>
               {item.custom && (
                 <span className="badge badge-outline badge-primary badge-xs">custom</span>
+              )}
+              {item.category && (
+                <span className="lb-category badge badge-ghost badge-xs">
+                  {CATEGORY_NAMES[item.category]}
+                </span>
               )}
             </div>
             {item.meta && <p className="text-xs opacity-60">{item.meta}</p>}
@@ -416,6 +444,7 @@ export function LibraryView() {
           .filter(Boolean)
           .join(' · '),
         board: boardOf(layout),
+        category: layoutCategory(layout),
       })),
       ...custom.entries.map((entry) => ({
         key: `c:${entry.id}`,
@@ -434,6 +463,7 @@ export function LibraryView() {
           .filter(Boolean)
           .join(' · '),
         board: entry.geometry ?? boardOf(customLayouts.get(entry.id)),
+        category: categoryOf(customLayouts.get(entry.id)),
       })),
     ],
     [bundled, custom.entries, customLayouts, customCompiled],
@@ -457,14 +487,29 @@ export function LibraryView() {
       .sort(([a], [b]) => order.indexOf(a) - order.indexOf(b))
       .map(([id, count]) => ({ id, label: boardLabel(id), count }));
   }, [pool]);
+  // The categories, each with how many layouts it has, the same way.
+  const hiddenCategories = useSession((s) => s.hiddenCategories);
+  const categories: CategoryChoice[] = useMemo(
+    () =>
+      LAYOUT_CATEGORIES.map((id) => ({
+        id,
+        count: pool.filter((item) => item.category === id).length,
+      })),
+    [pool],
+  );
+  const categoryShown = useCallback(
+    (item: Listed) => item.category === undefined || !hiddenCategories.includes(item.category),
+    [hiddenCategories],
+  );
   const shownListed = useMemo(
-    () => pool.filter((item) => !hiddenBoards.includes(item.board)),
-    [pool, hiddenBoards],
+    () => pool.filter((item) => !hiddenBoards.includes(item.board) && categoryShown(item)),
+    [pool, hiddenBoards, categoryShown],
   );
   /** Why fewer layouts are listed than there are, for the line under the sort. */
   const leftOut = [
     pool.length < listed.length ? 'without the custom ones' : '',
-    shownListed.length < pool.length ? 'on the boards chosen' : '',
+    pool.some((item) => !categoryShown(item)) ? 'in the categories chosen' : '',
+    pool.some((item) => hiddenBoards.includes(item.board)) ? 'on the boards chosen' : '',
   ].filter(Boolean);
   const shownKeys = useMemo(() => new Set(shownListed.map((item) => item.key)), [shownListed]);
 
@@ -636,13 +681,16 @@ export function LibraryView() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <RankingDialog
-          params={params}
-          onChange={setParams}
-          corpora={corpora}
-          boards={boards}
-          customCount={custom.entries.length}
-        />
+        <SettingsDialog title="Rank and filter">
+          <RankFilters
+            params={params}
+            onChange={setParams}
+            corpora={corpora}
+            boards={boards}
+            categories={categories}
+            customCount={custom.entries.length}
+          />
+        </SettingsDialog>
         <fieldset className="join" aria-label="Sort layouts by">
           <legend className="text-xs opacity-70 float-left mr-2 self-center">Sort by</legend>
           {SORTS.map(([key, label]) => (

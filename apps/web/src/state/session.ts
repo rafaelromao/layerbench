@@ -24,6 +24,9 @@ interface SessionState {
   /** Whether the Library leaves out the custom layouts. */
   hideCustom: boolean;
   setHideCustom: (hide: boolean) => void;
+  /** Categories whose layouts the Library leaves out: `standard`, `thumb_alpha`, `special`. */
+  hiddenCategories: string[];
+  showCategories: (categories: readonly string[], shown: boolean) => void;
   /** The groups of Analyze and Compare folded away, by id; the same in every visit. */
   collapsedGroups: string[];
   toggleGroup: (group: string) => void;
@@ -53,6 +56,11 @@ export const useSession = create<SessionState>()(
       },
       hideCustom: false,
       setHideCustom: (hideCustom) => set({ hideCustom }),
+      hiddenCategories: [],
+      showCategories: (categories, shown) => {
+        const rest = get().hiddenCategories.filter((c) => !categories.includes(c));
+        set({ hiddenCategories: shown ? rest : [...rest, ...categories] });
+      },
       collapsedGroups: [],
       toggleGroup: (group) => {
         const current = get().collapsedGroups;
@@ -72,6 +80,7 @@ export const useSession = create<SessionState>()(
         librarySort: s.librarySort,
         hiddenBoards: s.hiddenBoards,
         hideCustom: s.hideCustom,
+        hiddenCategories: s.hiddenCategories,
         collapsedGroups: s.collapsedGroups,
       }),
     },
