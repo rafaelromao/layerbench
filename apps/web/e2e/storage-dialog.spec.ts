@@ -12,33 +12,17 @@ const SIGNED_IN = {
   token: 'not-a-token',
   expiresAt: Date.now() + 3600_000,
   clientId: 'Iv1.not-a-client',
-  appSlug: 'layerbench-app',
-  upstream: 'rafaelromao/layerbench',
 };
 
-/** GitHub's API, answering as it would for someone saving to gists, with a fork the app was not given. */
+/** GitHub's API, answering as it would for someone with no gists yet. */
 async function github(page: Page): Promise<void> {
-  await page.route('https://api.github.com/**', (route) => {
-    const url = route.request().url();
-    if (url.includes('/user/installations')) {
-      return route.fulfill({ contentType: 'application/json', body: '{"installations":[]}' });
-    }
-    if (url.includes('/repos/')) {
-      return route.fulfill({
-        contentType: 'application/json',
-        body: JSON.stringify({
-          fork: true,
-          source: { full_name: 'rafaelromao/layerbench' },
-        }),
-      });
-    }
-    return route.fulfill({ contentType: 'application/json', body: '[]' });
-  });
+  await page.route('https://api.github.com/**', (route) =>
+    route.fulfill({ contentType: 'application/json', body: '[]' }),
+  );
 }
 
 /**
- * Someone signed in with a long name, saving to gists, with a fork the app was not given: the
- * dialog at its fullest. GitHub and the sign-in server are stood in for, so nothing leaves.
+ * Someone signed in with a long name, saving to gists: the dialog at its fullest. GitHub and the sign-in server are stood in for, so nothing leaves.
  */
 async function signedIn(page: Page): Promise<void> {
   await page.route('**/api/auth/session', (route) =>
@@ -88,7 +72,10 @@ test('the storage dialog fits the screen when signed in', async ({ page }) => {
   await page.getByRole('button', { name: /^Storage: this browser and GitHub/ }).click();
 
   const dialog = page.getByRole('dialog', { name: 'Storage' });
-  await expect(dialog.getByRole('link', { name: 'Give LayerBench access to it' })).toBeVisible();
+  await expect(dialog.getByRole('link', { name: 'gists in your account' })).toBeVisible();
+  await expect(
+    dialog.getByRole('button', { name: "Copy this browser's documents up" }),
+  ).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Sign out' })).toBeVisible();
   expect(await overflow(page)).toBeLessThanOrEqual(0);
 

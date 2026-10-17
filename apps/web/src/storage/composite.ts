@@ -8,13 +8,13 @@ import {
   type StorageMeta,
 } from '@layerbench/core';
 
-/** What copying up did: the documents sent to the repository, and those it had as new already. */
+/** What copying up did: the documents sent to the gists, and those they had as new already. */
 export interface CopiedUp {
   copied: number;
   current: number;
 }
 
-/** Copying up stopped partway; what went up before it is in the repository. */
+/** Copying up stopped partway; what went up before it is in the gists. */
 export class CopyUpError extends Error {
   constructor(
     readonly copied: number,
@@ -25,7 +25,7 @@ export class CopyUpError extends Error {
   }
 }
 
-/** Whether this browser's copy was saved after the repository's, or the repository has none. */
+/** Whether this browser's copy was saved after the gists', or the gists have none. */
 function newer(here: IndexEntry, there: IndexEntry | undefined): boolean {
   // A date that cannot be read compares as neither, so its copy is left alone.
   return there === undefined || Date.parse(here.updatedAt) > Date.parse(there.updatedAt);
@@ -33,7 +33,7 @@ function newer(here: IndexEntry, there: IndexEntry | undefined): boolean {
 
 /**
  * Both stores at once. The browser copy is always written, so work is never lost to a network
- * problem, and the repository is the shared copy when one is configured.
+ * problem, and the gists are the shared copy when someone is signed in.
  */
 export class CompositeStorage implements StorageAdapter {
   readonly id = 'composite';
@@ -43,11 +43,11 @@ export class CompositeStorage implements StorageAdapter {
     private readonly remote: StorageAdapter | null,
   ) {}
 
-  /** The collections whose last listing had to do without the repository. */
+  /** The collections whose last listing had to do without the gists. */
   private readonly partial = new Set<Collection>();
 
   /**
-   * Whether the last listing of a collection was the whole of it: false when the repository could
+   * Whether the last listing of a collection was the whole of it: false when the gists could
    * not be listed, and the browser's copy alone was.
    */
   listedWhole(collection: Collection): boolean {
@@ -60,7 +60,7 @@ export class CompositeStorage implements StorageAdapter {
     try {
       const remote = await this.remote.list(collection);
       this.partial.delete(collection);
-      // The repository is the shared truth, so its entry wins where both hold the same id.
+      // The gists are the shared truth, so their entry wins where both hold the same id.
       const merged = new Map(local.map((e) => [e.id, e]));
       for (const e of remote) merged.set(e.id, e);
       return [...merged.values()].sort((a, b) => a.name.localeCompare(b.name));
@@ -85,7 +85,7 @@ export class CompositeStorage implements StorageAdapter {
       }
     }
     const local = await this.local.get(collection, id);
-    // Without a browser copy, a repository that could not be read does not say there is none.
+    // Without a browser copy, gists that could not be read do not say there is none.
     if (!local && unreachable) throw unreachable;
     return local;
   }
@@ -107,14 +107,14 @@ export class CompositeStorage implements StorageAdapter {
     if (this.remote) await this.remote.delete(collection, id, opts);
   }
 
-  /** Whether there is a repository to copy up to, rather than the browser store alone. */
+  /** Whether there are gists to copy up to, rather than the browser store alone. */
   get reachesRemote(): boolean {
     return this.remote !== null;
   }
 
   /**
-   * Copy up: send the repository each document this browser holds that it lacks, or holds an
-   * older copy of, by when each was saved. One saved the same moment, or later, in the repository
+   * Copy up: send the gists each document this browser holds that they lack, or holds an
+   * older copy of, by when each was saved. One saved the same moment, or later, in the gists
    * is left as it is, as is one whose date cannot be read, or one saved there while copying;
    * nothing is deleted, and nothing comes down. It stops at the first failure, keeping what went up before it, so trying again carries
    * on from there.
@@ -138,7 +138,7 @@ export class CompositeStorage implements StorageAdapter {
           const stored = await this.local.get(collection, entry.id);
           // Listed, but with nothing behind it to send.
           if (!stored) continue;
-          // Another browser may have saved it since the repository was listed: its version is
+          // Another browser may have saved it since the gists were listed: its version is
           // taken first, then the list is checked again, and the copy is written only over that
           // version, so a save that lands in between is never written over.
           const version = (await remote.get(collection, entry.id))?.meta.sha;

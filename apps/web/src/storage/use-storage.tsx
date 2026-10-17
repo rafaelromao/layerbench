@@ -12,28 +12,14 @@ import {
 import { gistIds, gitHubAccess, useGitHubSession } from '../auth/github-session.js';
 import { CompositeStorage, type CopiedUp } from './composite.js';
 import { GistAdapter } from './gist.js';
-import { GitHubAdapter } from './github.js';
 import { IndexedDbAdapter } from './indexeddb.js';
-import type { StorageTarget } from './target.js';
 
 const StorageContext = createContext<StorageAdapter | null>(null);
 /**
  * Whether storage is the one documents are kept in for good. While sign-in is still being asked
- * about, or a signed-in user's repository found, it is the browser's copy alone, which may lack what
- * is only on GitHub.
+ * about, it is the browser's copy alone, which may lack what is only on GitHub.
  */
 const SettledContext = createContext(true);
-
-/** The GitHub copy of a signed-in user's documents: their fork, or their gists. */
-function remoteStorage(login: string, target: StorageTarget): StorageAdapter {
-  return target.kind === 'repo'
-    ? new GitHubAdapter({
-        ...gitHubAccess,
-        repo: target.repo,
-        branch: target.branch,
-      })
-    : new GistAdapter(gitHubAccess, gistIds(login));
-}
 
 /** Makes custom documents available to the view tree. Tests pass their own adapter. */
 export function StorageProvider({
@@ -45,19 +31,15 @@ export function StorageProvider({
 }) {
   const status = useGitHubSession((s) => s.status);
   const login = useGitHubSession((s) => s.login);
-  const target = useGitHubSession((s) => s.target);
-  const targetStatus = useGitHubSession((s) => s.targetStatus);
-  const settled =
-    !!adapter ||
-    !(status === 'unknown' || (status === 'signed-in' && !target && targetStatus !== 'error'));
+  const settled = !!adapter || status !== 'unknown';
 
   const value = useMemo(() => {
     if (adapter) return adapter;
     const local = new IndexedDbAdapter();
-    // GitHub only joins in once someone is signed in and it is known where their documents go.
-    if (status !== 'signed-in' || !login || !target) return local;
-    return new CompositeStorage(local, remoteStorage(login, target));
-  }, [adapter, status, login, target]);
+    // GitHub only joins in once someone is signed in: their documents go to their secret gists.
+    if (status !== 'signed-in' || !login) return local;
+    return new CompositeStorage(local, new GistAdapter(gitHubAccess, gistIds(login)));
+  }, [adapter, status, login]);
 
   return (
     <StorageContext.Provider value={value}>
