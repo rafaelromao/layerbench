@@ -18,17 +18,11 @@
 export interface AuthEnv {
   GITHUB_CLIENT_ID?: string;
   GITHUB_CLIENT_SECRET?: string;
-  /** The app's URL name, for the link that installs it on a fork. */
-  GITHUB_APP_SLUG?: string;
   /** 32 random bytes in base64: the key sessions are sealed with. A new one signs everyone out. */
   SESSION_SECRET?: string;
-  /** `owner/name` of the repository whose forks documents are saved to. */
-  UPSTREAM_REPO?: string;
   /** Comma-separated origins of the pages that may sign in here, besides this host's own. */
   ALLOWED_ORIGINS?: string;
 }
-
-export const DEFAULT_UPSTREAM = 'rafaelromao/layerbench';
 
 /** What `session` and `token` answer. */
 export interface SessionAnswer {
@@ -36,8 +30,6 @@ export interface SessionAnswer {
   signedIn: boolean;
   /** Public: the page names the app with it when it sends the browser to GitHub. */
   clientId?: string;
-  appSlug?: string;
-  upstream?: string;
   login?: string;
   token?: string;
   /** Epoch milliseconds; null for a token that does not expire. */
@@ -86,8 +78,6 @@ interface Config {
   clientId: string;
   clientSecret: string;
   key: CryptoKey;
-  appSlug: string;
-  upstream: string;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -240,8 +230,6 @@ function baseAnswer(config: Config): SessionAnswer {
     available: true,
     signedIn: false,
     clientId: config.clientId,
-    appSlug: config.appSlug,
-    upstream: config.upstream,
   };
 }
 
@@ -360,8 +348,6 @@ async function configFrom(env: AuthEnv): Promise<Config | null> {
     clientId: env.GITHUB_CLIENT_ID,
     clientSecret: env.GITHUB_CLIENT_SECRET,
     key,
-    appSlug: env.GITHUB_APP_SLUG ?? '',
-    upstream: env.UPSTREAM_REPO || DEFAULT_UPSTREAM,
   };
 }
 

@@ -4,12 +4,12 @@ import {
   type Collection,
   type IndexEntry,
   indexSummary,
+  isDocumentId,
   type JsonObject,
   type StorageAdapter,
   StorageConflictError,
   type StorageMeta,
 } from '@layerbench/core';
-import { readIndex } from './github.js';
 import { API, type GitHubAccess, gitHubFetch } from './github-api.js';
 import { sha1Hex } from './indexeddb.js';
 
@@ -26,6 +26,27 @@ const DESCRIPTIONS: Record<Collection, string> = {
  */
 export const indexFile = (collection: Collection) => `${collection}.index.json`;
 export const documentFile = (collection: Collection, id: string) => `${collection}.${id}.json`;
+
+function isIndexEntry(value: unknown): value is IndexEntry {
+  if (!value || typeof value !== 'object') return false;
+  const o = value as Record<string, unknown>;
+  return (
+    typeof o.id === 'string' &&
+    isDocumentId(o.id) &&
+    typeof o.name === 'string' &&
+    typeof o.updatedAt === 'string'
+  );
+}
+
+/** The rows of an index file that are what an index row should be; anything else is dropped. */
+function readIndex(text: string): IndexEntry[] {
+  try {
+    const parsed: unknown = JSON.parse(text);
+    return Array.isArray(parsed) ? parsed.filter(isIndexEntry) : [];
+  } catch {
+    return [];
+  }
+}
 
 /** Listing every gist of someone with thousands of them would never end; this is plenty. */
 const MAX_LIST_PAGES = 30;

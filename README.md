@@ -58,14 +58,8 @@ anywhere else a layout of its own, saved as a copy. Links name a custom document
 `apps/web/src/storage` holds the adapters behind `useStorage()`:
 
 - `IndexedDbAdapter` always holds a copy, written first.
-- When someone is signed in, `CompositeStorage` adds a remote copy:
-  - `GitHubAdapter`, using the Contents API, on the `layerbench-data` branch of their fork, or of
-    this repository for its owner. A layout is kept in `packages/core/src/layouts/documents/` and a
-    text in `packages/corpora/raw/` (its sample as `<id>.txt`, beside an entry shaped like a row of
-    `sources.json`), where the bundled ones are on main, so a pull request can take them as they
-    are; rule sets and each collection's index are kept in `data/`.
-  - `GistAdapter`, with one secret gist per collection, otherwise.
-- `target.ts` decides between the two from the app's installations.
+- When someone is signed in, `CompositeStorage` adds a remote copy: `GistAdapter`, with one secret
+  gist per collection in their account.
 
 The sign-in state, the trip to GitHub, the in-memory access token and the sealed session the page
 keeps are in `apps/web/src/auth/github-session.ts`. The server half is
@@ -82,12 +76,9 @@ the approval, and the deploy that follows puts it in everyone's Library.
 
 1. In the app, give the layout its name, its author, and a description that links to where it comes
    from: the author's firmware, keymap or page. Save it, and copy its LayerBench JSON from the
-   editor's **JSON** panel. When Storage saves to your repository, it is already on your data
-   branch as `packages/core/src/layouts/documents/<id>.json`, where it goes on main; otherwise it is
-   in your "LayerBench: saved layouts" gist.
+   editor's **JSON** panel. Signed in, it is also in your "LayerBench: saved layouts" gist.
 2. On a branch made from main, add it as `packages/core/src/layouts/documents/<id>.json`, named by
-   its `"id"`: as copied, or taken from your data branch with
-   `git checkout layerbench-data -- packages/core/src/layouts/documents/<id>.json`.
+   its `"id"`, as copied.
 3. In `packages/core/src/layouts/documents.ts`, import the file and add it to `DOCUMENTS` under its
    id.
 4. Name it on the landing page, in the list under the layouts heading in `docs/site/index.html`,
@@ -113,14 +104,10 @@ approval.
    of text you would paste or upload in **Corpus**. Its language needs a profile in
    `packages/core/src/lang/profiles.ts`; [packages/corpora/README.md](packages/corpora/README.md#adding-a-language)
    says how to add one.
-   A custom text, saved in **Corpus**, while Storage saves to your repository is already on your data
-   branch as `packages/corpora/raw/<id>.txt`, with its entry beside it as `<id>.json`.
 2. Add its entry to `raw/sources.json`, under an id of lower-case words and hyphens: `file`, `name`,
    `language`, `description`, `source` with a link, and `license`, starting `CC0`, `CC BY 4.0`,
    `CC BY-SA 4.0` (with its version) or `Public domain`, since the text is published with the app.
-   A custom text's `<id>.json` is that
-   entry with its licence and source still to fill in. A source not yet credited goes in the
-   credits at the foot of the landing page.
+   A source not yet credited goes in the credits at the foot of the landing page.
 3. `pnpm corpora <id>` builds it. Commit `apps/web/public/corpora/<id>/` and `index.json` with it.
 4. Open the pull request. `pnpm test` checks the entry, and that what the app serves matches it. The
    `corpora` workflow also builds every text again, which must change nothing, and writes a summary
@@ -150,8 +137,8 @@ test files and config files do not count. The table of each file's coverage is p
 ignored.
 
 To sign in on the dev server, set up the GitHub App first (see
-[Setting up sign-in](#setting-up-sign-in)). Then put `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`,
-`GITHUB_APP_SLUG` and `SESSION_SECRET` in `apps/web/.env.local`, which git ignores, with a client
+[Setting up sign-in](#setting-up-sign-in)). Then put `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`
+and `SESSION_SECRET` in `apps/web/.env.local`, which git ignores, with a client
 secret and a session key of their own rather than the Worker's. The dev server answers sign-in
 itself, on its own origin. Without them the app says sign-in is not set up and saves in the browser
 only.
@@ -234,7 +221,7 @@ once per deployment.
 
 | Field | Value |
 |---|---|
-| GitHub App name | any free name; its URL form is the *slug* used below |
+| GitHub App name | any free name |
 | Homepage URL | the app's address, `https://layerbench.github.io/` |
 | Callback URL | the app's address, with its trailing slash; add `http://localhost:4011/` to sign in on the dev server |
 | Expire user authorization tokens | on (the default) |
@@ -242,13 +229,12 @@ once per deployment.
 | Enable Device Flow | off |
 | Setup URL | empty |
 | Webhook → Active | off |
-| Repository permissions → Contents | **Read and write** |
-| Account permissions → Gists | **Read and write** |
-| Where can this GitHub App be installed? | **Any account**, so other people can give it their forks |
+| Repository permissions → Contents | **Read and write**, kept for proposing layouts to `rafaelromao/layerbench` from the app, which is still to come; the App is installed there alone |
+| Account permissions → Gists | **Read and write**, where signed-in users' documents are kept |
+| Where can this GitHub App be installed? | **Any account**, so anyone can sign in and keep their documents in gists |
 
-Create it. On the page that opens, copy the **Client ID**, and note the slug from the app's public
-page, `https://github.com/apps/<slug>`. Click **Generate a new client secret** twice: one for the
-Worker and one for the dev server, so either can be revoked alone.
+Create it. On the page that opens, copy the **Client ID**. Click **Generate a new client secret**
+twice: one for the Worker and one for the dev server, so either can be revoked alone.
 
 **2. Make a session key** for the Worker, the key it seals sessions with, and another for the dev
 server:
@@ -257,7 +243,7 @@ server:
 openssl rand -base64 32
 ```
 
-**3. Deploy the Worker.** Put the Client ID and the slug in `worker/wrangler.jsonc`; they are public.
+**3. Deploy the Worker.** Put the Client ID in `worker/wrangler.jsonc`; it is public.
 Check that `ALLOWED_ORIGINS` there names the app's address. Then, with a Cloudflare account:
 
 ```bash
@@ -269,16 +255,10 @@ pnpm dlx wrangler@4 secret put SESSION_SECRET -c worker/wrangler.jsonc
 
 The deploy prints the Worker's address, `https://layerbench-auth.<your subdomain>.workers.dev`. Set
 it as the repository variable `AUTH_ORIGIN`, then push, or re-run CI, so the app is built with it.
-Documents are saved to forks of `rafaelromao/layerbench`; a Worker variable `UPSTREAM_REPO` names
-another `owner/name`.
 
-**4. Give the app your own repository.** Open `https://github.com/apps/<slug>/installations/new`,
-choose your account, **Only select repositories**, pick this repository (or your fork of it),
-and **Install**. Skip this and documents go to gists.
-
-**5. Check it.** In the deployed app, open **Storage**, **Sign in with GitHub**, then **Check
-again**. Storage should say it is saving to your repository on `layerbench-data`. Save a layout
-and the commit appears on that branch, not on main.
+**4. Check it.** In the deployed app, open **Storage** and **Sign in with GitHub**. Storage should
+say it is saving to secret gists in your account. Save a layout and a "LayerBench: saved layouts"
+gist appears there.
 
 **To sign everyone out**, give the Worker a new `SESSION_SECRET`: every session sealed with the old
 one fails at its next renewal or page load. Revoking the GitHub App's client secret stops renewals
@@ -287,6 +267,19 @@ stay valid until then.
 
 The Worker answers only the origins in `ALLOWED_ORIGINS`, and its own, and sets its own headers
 (`Cache-Control: no-store` among them).
+
+**GitHub-side clean-up.** Documents were once saved to forks as well as gists. Nothing reads what
+only that used, so a deployment set up before can drop it:
+
+- People who installed the App on their forks can uninstall it there: GitHub → **Settings** →
+  **Applications** → **Installed GitHub Apps**.
+- Remove `GITHUB_APP_SLUG` from `worker/wrangler.jsonc` and `apps/web/.env.local`, and
+  `UPSTREAM_REPO` wherever it was set (a Worker variable, `.env.local`); redeploy the Worker.
+- Sign-in and gists keep the App's Client ID, its client secrets, the Worker's `SESSION_SECRET` and
+  `ALLOWED_ORIGINS`, its callback URLs, its **Gists** permission, and **Any account**.
+- The App stays installed on `rafaelromao/layerbench`, with **Contents** read and write, for
+  proposing layouts to the Library from the app, which is still to come.
+- The `layerbench-data` branch stays: it is given a new role.
 
 ### Landing page
 

@@ -140,23 +140,23 @@ describe('the rule set a reference names', () => {
     const { result, rerender } = renderHook(() => useRuleSet('custom:strict'), { wrapper });
     await waitFor(() => expect(result.current.status).toBe('read'));
 
-    // A fork found since holds another set under the same id, and answers late.
-    const fork = new MemoryStorage('fork');
-    await fork.put('rulesets', 'strict', { ...getPreset('cyanophage'), name: 'Fork strict' });
-    const get = fork.get.bind(fork);
+    // Gists reached since hold another set under the same id, and answer late.
+    const gists = new MemoryStorage('gists');
+    await gists.put('rulesets', 'strict', { ...getPreset('cyanophage'), name: 'Gist strict' });
+    const get = gists.get.bind(gists);
     let answer = () => {};
     const held = new Promise<void>((resolve) => {
       answer = resolve;
     });
-    fork.get = async (c, id) => {
+    gists.get = async (c, id) => {
       await held;
       return get(c, id);
     };
-    adapter = fork;
+    adapter = gists;
     rerender();
     expect(result.current.status).toBe('reading');
 
     answer();
-    await waitFor(() => expect(result.current.name).toBe('Fork strict'));
+    await waitFor(() => expect(result.current.name).toBe('Gist strict'));
   });
 });
