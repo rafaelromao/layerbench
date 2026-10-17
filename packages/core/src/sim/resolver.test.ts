@@ -640,3 +640,34 @@ describe("a mod morph's modifiers", () => {
     expect(t.coverage.unproducible.get(';')).toBe(1);
   });
 });
+
+describe('a layer that comes on while others are on together', () => {
+  // Magic Romak's Extras: on while Numbers, held from space, and Symbols, held from there, are on.
+  const extras = ['L0', 'R0', 'LTM'];
+
+  it('is reached by holding those layers one after the other', () => {
+    expect(trace(magicRomak, '€').keys).toEqual(extras);
+  });
+
+  it('is reached whatever order its condition names them in', () => {
+    const reversed: Layout = {
+      ...magicRomak,
+      conditionalLayers: [{ if: ['sym', 'num'], then: 'extras' }],
+    };
+    const t = trace(reversed, '€');
+    expect(t.out).toBe('€');
+    expect(t.keys).toEqual(extras);
+  });
+
+  it('is reached by its condition when a key that would bring it on cannot', () => {
+    // The machine turns Extras off when this key holds it alone.
+    const layers = magicRomak.layers.map((l) =>
+      l.id === 'num'
+        ? { ...l, bindings: { ...l.bindings, L1: { kind: 'mo', layer: 'extras' } as Binding } }
+        : l,
+    );
+    const t = trace({ ...magicRomak, layers }, '€');
+    expect(t.out).toBe('€');
+    expect(t.keys).toEqual(extras);
+  });
+});
