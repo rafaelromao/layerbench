@@ -49,30 +49,13 @@ is stricter: once you have used it for seven days without opening LayerBench, it
 LayerBench keeps in it, the sign-in and any work saved only in this browser. In Safari, keep your
 work in GitHub.
 
-**Storage** says where your work is going. Unless you have given LayerBench a fork, it goes to
-secret gists in your account, one for layouts, one for rule sets and one for corpora. Secret gists
-are unlisted, not private: anyone with a gist's address can read it.
-
-## Saving to your fork instead
-
-If you have a fork of layerbench on GitHub, your work can be kept there instead of in gists.
-
-1. Sign in, as above.
-2. In **Storage**, follow **Give LayerBench access to it**.
-3. On GitHub, choose your account, then **Only select repositories**, pick your fork, and click
-   **Install**.
-4. Back here, open **Storage** and click **Check again**.
-
-**Storage** now names your fork. Each save commits the document, then the list of them, to a branch
-called `layerbench-data`, so your fork's main branch stays exactly as it was. A layout is kept on it
-where the layouts that come with LayerBench are on main, and a text where theirs are, which makes
-proposing one simpler (see below); rule sets and the lists are kept in its `data` folder. If your
-fork is public, so is everything saved to it.
+**Storage** says where your work is going: secret gists in your account, one for layouts, one for
+rule sets and one for corpora. Secret gists are unlisted, not private: anyone with a gist's address
+can read it.
 
 ## Moving what you saved before
 
-Switching from this browser alone to GitHub, or from gists to your fork, does not move what was saved
-before. Click **Copy this browser's documents up** in **Storage** to send what this browser holds to
+Signing in does not move what this browser saved before. Click **Copy this browser's documents up** in **Storage** to send what this browser holds to
 where **Storage** now saves: each layout, rule set and text GitHub has not got, or has an older copy
 of. One saved there since, from another browser, stays as it is, so a browser that has fallen behind
 never overwrites newer work. It says how many it copied and how many were already up to date; if it
@@ -113,8 +96,7 @@ joins everyone's Library once the pull request is merged.
 
 1. In **Analyze**, give the layout its name, and in **Settings** its author and a description that
    says where it comes from, with a link: the author's firmware, keymap or page. **Save** it.
-2. If you save to your fork, the layout is already on its `layerbench-data` branch, in the folder it
-   goes in on main. Otherwise copy its LayerBench JSON from the editor's **JSON** panel.
+2. Copy its LayerBench JSON from the editor's **JSON** panel.
 3. Open a pull request on [layerbench](https://github.com/rafaelromao/layerbench) that adds it as a
    file named by the layout's id, with the two lines of code and the line on the landing page that
    go with it. The [README](../../README.md#bundled-layouts) lists each step.
