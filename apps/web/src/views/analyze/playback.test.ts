@@ -108,4 +108,29 @@ describe("a pill's combo in the layout", () => {
     expect(comboPlace(full, full, 0)).toBe(0);
     expect(comboPlace(full, typed, 5)).toBeNull();
   });
+
+  it('tells twins apart by their layers, then by their order', () => {
+    const qwerty = bundledLayout('qwerty') as Layout;
+    const twin = (layer: string, symbol: string) => ({
+      id: 'twin',
+      keys: ['LHI', 'LHP'],
+      binding: { kind: 'kp' as const, symbol },
+      layers: [layer],
+      role: 'command' as const,
+    });
+    const typing = { ...twin('base', 'q'), id: 'q', keys: ['RHI', 'RHM'], role: 'typing' as const };
+    const second = qwerty.layers[1].id;
+    const layout: Layout = {
+      ...qwerty,
+      combos: [typing, twin(second, 'b'), twin('base', 'a'), ...(qwerty.combos ?? [])],
+    };
+    const full = compileLayout(layout);
+    const typed = compileLayout(withoutFeatures(layout, ['combos']));
+    const at = (id: string, layer: string) =>
+      typed.combos.findIndex(
+        (c) => c.id === id && c.layerMask === 1 << (typed.layerIndex.get(layer) as number),
+      );
+    expect(comboPlace(full, typed, at('twin', 'base'))).toBe(2);
+    expect(comboPlace(full, typed, at('twin', second))).toBe(1);
+  });
 });

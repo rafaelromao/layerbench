@@ -77,7 +77,8 @@ export function typingCombos(
 
 /**
  * The place in the layout of a combo the board draws from the analysis' compile, which renumbers
- * them when typing combos are left out of it: found by its id and keys. Null when it has none.
+ * them when typing combos are left out of it: found by its id, keys and layers. Twins alike in all
+ * three, which an older layout can hold, are told apart by their order. Null when it has none.
  */
 export function comboPlace(
   compiled: CompiledLayout,
@@ -87,11 +88,14 @@ export function comboPlace(
   if (typed === compiled) return index;
   const c = typed.combos[index];
   if (!c) return null;
-  const place = compiled.combos.findIndex(
-    (x) =>
-      x.id === c.id && x.keys.length === c.keys.length && x.keys.every((k, i) => k === c.keys[i]),
-  );
-  return place < 0 ? null : place;
+  const alike = (x: CompiledLayout['combos'][number]) =>
+    x.id === c.id &&
+    x.layerMask === c.layerMask &&
+    x.keys.length === c.keys.length &&
+    x.keys.every((k, i) => k === c.keys[i]);
+  const nth = typed.combos.slice(0, index).filter(alike).length;
+  const places = compiled.combos.flatMap((x, i) => (alike(x) ? [i] : []));
+  return places[nth] ?? null;
 }
 
 /** How far a key reaches from its centre, across and down, turned the way it is drawn. */

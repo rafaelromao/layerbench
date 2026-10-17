@@ -985,7 +985,8 @@ export function Workbench({
             }}
           >
             {state.combo !== null ? (
-              <ComboInspector state={state} send={send} combo={state.combo} />
+              // Remounts per combo, so a half-typed field never follows the editor to another one.
+              <ComboInspector key={state.combo} state={state} send={send} combo={state.combo} />
             ) : (
               <KeyInspector state={state} send={send} focusKey={focusKey} stats={keyStatsView} />
             )}
