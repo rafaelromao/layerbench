@@ -552,7 +552,9 @@ export class Simulator {
           ok = false;
           break;
         }
-        events.push(...m.perform({ type: 'chord', combo: step.combo, hold: step.held }));
+        events.push(
+          ...m.perform({ type: 'chord', combo: step.combo, hold: step.held, taps: step.taps }),
+        );
         continue;
       }
       let r = m.resolve(step.pos);

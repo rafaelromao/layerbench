@@ -233,6 +233,12 @@ describe('combos that do more than type a character', () => {
       combo('acute', ['RHI', 'RHM'], { kind: 'dead_key', diacritic: '´' }),
       combo('question', ['RTI', 'RTM'], { kind: 'hold_tap', tap: kp('?'), hold: kp('¿') }),
       combo('up', ['RBI', 'RBM'], { kind: 'sl', layer: 'up' }),
+      combo('dance', ['LTI', 'LTM'], { kind: 'tap_dance', bindings: [kp('1'), kp('2')] }),
+      combo('adaptive', ['LBI', 'LBM'], {
+        kind: 'adaptive',
+        default: kp('x'),
+        triggers: [{ afterAny: ['e'], binding: kp('y') }],
+      }),
     ],
   };
 
@@ -252,6 +258,18 @@ describe('combos that do more than type a character', () => {
     const t = trace(board, '§');
     expect(t.out).toBe('§');
     expect(t.keys).toEqual(['combo:up', 'RHP']);
+  });
+
+  it("types a tap dance's second branch on a combo by tapping it twice", () => {
+    const t = trace(board, '1 2');
+    expect(t.out).toBe('1 2');
+    expect(t.keys).toEqual(['combo:dance', 'L0', 'combo:dance', 'combo:dance']);
+  });
+
+  it('types an adaptive key on a combo as it would on a key', () => {
+    const t = trace(board, 'x ey');
+    expect(t.out).toBe('x ey');
+    expect(t.keys).toEqual(['combo:adaptive', 'L0', 'LHI', 'combo:adaptive']);
   });
 });
 
