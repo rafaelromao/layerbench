@@ -57,6 +57,8 @@ export interface EditState {
   focusRequest: FocusRequest | null;
   /** Keys picked on the board for a new combo, or null when not picking. */
   comboPick: string[] | null;
+  /** The combo, by place, whose keys are being picked again; null when the pick is for a new one. */
+  comboPickFor: number | null;
   /** Keys to outline, so a combo can point at the keys it is made of. */
   boardHighlight: string[];
 }
@@ -75,7 +77,8 @@ export type EditAction =
   | { type: 'deselect' }
   /** A key dragged onto another key: swapped with it, or copied over it. */
   | { type: 'dropKey'; from: string; to: string; mode: 'swap' | 'copy'; say?: string }
-  | { type: 'comboPickStart' }
+  /** With `combo`, the keys picked are the new keys of that combo rather than a new combo's. */
+  | { type: 'comboPickStart'; combo?: number }
   | { type: 'comboPickToggle'; keyId: string }
   | { type: 'comboPickCancel' }
   | { type: 'setBoardHighlight'; keys: string[] }
@@ -115,6 +118,7 @@ export function initialState(layout: Layout, compiled: CompiledLayout, layer = 0
     lastEdit: null,
     focusRequest: null,
     comboPick: null,
+    comboPickFor: null,
     boardHighlight: [],
   };
 }
@@ -171,6 +175,7 @@ function land(state: EditState, outcome: EditOutcome, say?: string): EditState {
     // An edit that lands ends a swap waiting for its partner and a combo being picked.
     swapFrom: null,
     comboPick: null,
+    comboPickFor: null,
     ...(behaviorsMoved ? { behaviorsJson: behaviorsText(layout) } : {}),
     ...(edit.kind === 'replaceBehaviors' ? { behaviorsError: null } : {}),
     ...(edit.kind === 'replaceLayout' ? { jsonError: null } : {}),
@@ -273,7 +278,14 @@ function reduce(state: EditState, action: EditAction): EditState {
       return make(state, dropped(state, action), action.say);
 
     case 'comboPickStart':
-      return { ...state, comboPick: [], focusRequest: null, selected: null, swapFrom: null };
+      return {
+        ...state,
+        comboPick: [],
+        comboPickFor: action.combo ?? null,
+        focusRequest: null,
+        selected: null,
+        swapFrom: null,
+      };
 
     case 'comboPickToggle': {
       const picked = state.comboPick ?? [];
@@ -286,7 +298,7 @@ function reduce(state: EditState, action: EditAction): EditState {
     }
 
     case 'comboPickCancel':
-      return { ...state, comboPick: null };
+      return { ...state, comboPick: null, comboPickFor: null };
 
     case 'setBoardHighlight':
       return { ...state, boardHighlight: action.keys };

@@ -202,7 +202,14 @@ The other panels hold what is not on a single key:
 - **Combos** are keys pressed together. **pick on board**, then tap the keys; the output takes
   the same syntax as **Or type**. One for typing is pressed by the analysis as a key would be: it
   types, accents the next letter, turns a layer on, or, held, does what its hold does. The board
-  draws it between its keys, its hold after a slash, as `? / ¿`.
+  draws it between its keys, its hold after a slash, as `? / ¿`. Every combo in the list can be
+  changed where it stands, and each change is one edit that Undo takes back: type another output
+  in its field (what the syntax cannot read is refused, and the combo keeps its output; a combo
+  whose output the syntax cannot write, such as a tap-hold, shows it and is left as it is),
+  **pick again** and tap its new keys, then **Use**, tick the layers it works on (one at least),
+  or click its role to switch between typing and command. A change is refused, with its reason,
+  when it would leave fewer than two keys, a key or layer the layout does not have, or the same
+  keys as another combo on one of its layers.
 - **Behaviors** are the named bindings keys refer to, such as `&altRepeat`.
 - **Typing paths** list the other ways a character can be typed. Left alone, a character is typed
   the cheapest way from where the typist is: the fewest presses, then the one that leaves no layer

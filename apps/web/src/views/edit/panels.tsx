@@ -6,14 +6,18 @@ import {
   type LayoutFeatures,
   reachKeys,
   slug,
-  tapLabel,
   toCanonicalJson,
 } from '@layerbench/core';
 import { type Dispatch, type ReactNode, useMemo, useState } from 'react';
 import { layerColourOf } from '../../components/layer-colour.js';
 import type { ProducerDTO } from '../../engine/protocol.js';
 import { toast } from '../../state/toasts.js';
-import { type BindingTextContext, parseBindingText } from './binding-text.js';
+import {
+  type BindingTextContext,
+  bindingText,
+  parseBindingText,
+  roundTrips,
+} from './binding-text.js';
 import { Segment, TextField } from './inspector/controls.js';
 import { type EditAction, type EditState, shownLayer } from './reducer.js';
 
@@ -438,6 +442,50 @@ export function GeometryPanel({ state, send }: PanelProps) {
   );
 }
 
+/**
+ * A combo's output as a field to type in. It keeps its place, and the keyboard focus with it, when
+ * an edit lands and the output is another; what is half-typed is only replaced then.
+ */
+function ComboOutput({
+  name,
+  text,
+  exact,
+  why,
+  onChange,
+  onCommit,
+}: {
+  name: string;
+  text: string;
+  exact: boolean;
+  why?: string;
+  onChange: () => void;
+  onCommit: (text: string) => void;
+}) {
+  const [draft, setDraft] = useState(text);
+  const [seen, setSeen] = useState(text);
+  if (seen !== text) {
+    setSeen(text);
+    setDraft(text);
+  }
+  return (
+    <input
+      aria-label={`Output of ${name}`}
+      title={why}
+      readOnly={!exact}
+      className="input input-xs input-bordered font-mono w-full min-w-24"
+      value={draft}
+      onChange={(e) => {
+        setDraft(e.target.value);
+        onChange();
+      }}
+      onBlur={() => onCommit(draft)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') onCommit(draft);
+      }}
+    />
+  );
+}
+
 /** Combos: chords that produce a symbol or a command. */
 export function CombosPanel({ state, send }: PanelProps) {
   const [keys, setKeys] = useState('');
@@ -446,14 +494,27 @@ export function CombosPanel({ state, send }: PanelProps) {
   const [error, setError] = useState<string | null>(null);
   const combos = state.layout.combos ?? [];
   const layerName = state.compiled.layers[state.layer].name;
-  const picking = state.comboPick !== null;
+  // The keys picked on the board belong to the add form, or to the one row being re-picked.
+  const picking = state.comboPick !== null && state.comboPickFor === null;
   // While picking, the keys come off the board; otherwise they are typed as ids.
-  const chosen = picking ? (state.comboPick ?? []) : [];
+  const chosen = state.comboPick ?? [];
 
   const context: BindingTextContext = {
     layers: state.compiled.layers.map((l) => ({ id: l.id, name: l.name })),
     behaviors: Object.keys(state.layout.behaviors ?? {}),
     hostLocale: state.compiled.hostLocale,
+  };
+
+  /** A row's output typed in: another output lands as one edit, one the syntax cannot read does not. */
+  const commitOutput = (combo: number, text: string, was: string) => {
+    if (text === was) return;
+    const parsed = parseBindingText(text, context);
+    if (!parsed.ok) {
+      setError(parsed.error);
+      return;
+    }
+    setError(null);
+    send({ type: 'edit', edit: { kind: 'updateCombo', combo, binding: parsed.binding } });
   };
 
   return (
@@ -475,49 +536,147 @@ export function CombosPanel({ state, send }: PanelProps) {
             </tr>
           </thead>
           <tbody>
-            {combos.map((c, i) => (
-              // By place: a custom layout can hold two combos under one id.
-              // biome-ignore lint/suspicious/noArrayIndexKey: the place is what a row edits
-              <tr key={i}>
-                <td className="font-mono">
-                  <button
-                    type="button"
-                    className="link link-hover"
-                    aria-label={`Show the keys of ${c.keys.join('+')}`}
-                    onClick={() =>
-                      send({
-                        type: 'setBoardHighlight',
-                        keys: state.boardHighlight.length > 0 ? [] : c.keys,
-                      })
-                    }
-                  >
-                    {c.keys.join('+')}
-                  </button>
-                </td>
-                <td className="font-mono">{tapLabel(state.compiled, c.binding)}</td>
-                <td className="text-xs opacity-70">{(c.layers ?? []).join(', ') || 'all'}</td>
-                <td>
-                  <button
-                    type="button"
-                    className={`badge badge-xs ${c.role === 'typing' ? 'badge-primary' : ''}`}
-                    onClick={() =>
-                      send({ type: 'edit', edit: { kind: 'toggleComboRole', combo: i } })
-                    }
-                  >
-                    {c.role}
-                  </button>
-                </td>
-                <td>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-xs"
-                    onClick={() => send({ type: 'edit', edit: { kind: 'removeCombo', combo: i } })}
-                  >
-                    ✕
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {combos.map((c, i) => {
+              const name = c.keys.join('+');
+              const repicking = state.comboPick !== null && state.comboPickFor === i;
+              const layerIds = c.layers ?? state.layout.layers.map((l) => l.id);
+              const written = bindingText(state.compiled, c.binding);
+              // Text that reads back as another binding would change it by being kept.
+              const exact = written.exact && roundTrips(written.text, c.binding, context);
+              const out = {
+                ...written,
+                exact,
+                why: written.why ?? (exact ? undefined : 'it has more than the text can say'),
+              };
+              return (
+                // By place: a custom layout can hold two combos under one id.
+                // biome-ignore lint/suspicious/noArrayIndexKey: the place is what a row edits
+                <tr key={i}>
+                  <td className="font-mono">
+                    {repicking ? (
+                      <div className="flex flex-wrap items-center gap-1">
+                        <output aria-label={`Keys picked for ${name}`} className="text-xs">
+                          {chosen.length > 0 ? chosen.join('+') : 'click the keys'}
+                        </output>
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-primary"
+                          aria-label={`Use the picked keys for ${name}`}
+                          onClick={() =>
+                            // The keys it already has are nothing to change: the pick just ends.
+                            chosen.length === c.keys.length &&
+                            chosen.every((k) => c.keys.includes(k))
+                              ? send({ type: 'comboPickCancel' })
+                              : send({
+                                  type: 'edit',
+                                  edit: { kind: 'updateCombo', combo: i, keys: chosen },
+                                })
+                          }
+                        >
+                          Use
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-ghost"
+                          onClick={() => send({ type: 'comboPickCancel' })}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap items-center gap-1">
+                        <button
+                          type="button"
+                          className="link link-hover"
+                          aria-label={`Show the keys of ${name}`}
+                          onClick={() =>
+                            send({
+                              type: 'setBoardHighlight',
+                              keys: state.boardHighlight.length > 0 ? [] : c.keys,
+                            })
+                          }
+                        >
+                          {name}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-ghost"
+                          aria-label={`Pick the keys of ${name} again on the board`}
+                          onClick={() => send({ type: 'comboPickStart', combo: i })}
+                        >
+                          pick again
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                  <td>
+                    <ComboOutput
+                      // Another combo come to this row, as when one above it is removed, is a new field.
+                      key={JSON.stringify([c.id, c.keys, c.layers])}
+                      name={name}
+                      text={out.text}
+                      exact={out.exact}
+                      why={out.why}
+                      onChange={() => setError(null)}
+                      onCommit={(text) => commitOutput(i, text, out.text)}
+                    />
+                  </td>
+                  <td>
+                    <div className="flex flex-wrap gap-x-2 gap-y-0.5">
+                      {state.layout.layers.map((l) => (
+                        <label key={l.id} className="flex items-center gap-1 text-xs">
+                          <input
+                            type="checkbox"
+                            className="checkbox checkbox-xs"
+                            aria-label={`${name} on ${l.name ?? l.id}`}
+                            checked={layerIds.includes(l.id)}
+                            onChange={(e) =>
+                              send({
+                                type: 'edit',
+                                edit: {
+                                  kind: 'updateCombo',
+                                  combo: i,
+                                  layers: e.target.checked
+                                    ? state.layout.layers
+                                        .map((x) => x.id)
+                                        .filter((id) => id === l.id || layerIds.includes(id))
+                                    : layerIds.filter((id) => id !== l.id),
+                                },
+                              })
+                            }
+                          />
+                          {l.name ?? l.id}
+                        </label>
+                      ))}
+                    </div>
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className={`badge badge-xs ${c.role === 'typing' ? 'badge-primary' : ''}`}
+                      aria-label={`Role of ${name}: ${c.role}. Switch it`}
+                      onClick={() =>
+                        send({ type: 'edit', edit: { kind: 'toggleComboRole', combo: i } })
+                      }
+                    >
+                      {c.role}
+                    </button>
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-xs"
+                      aria-label={`Remove ${name}`}
+                      onClick={() =>
+                        send({ type: 'edit', edit: { kind: 'removeCombo', combo: i } })
+                      }
+                    >
+                      ✕
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </section>

@@ -1,5 +1,6 @@
+import { enumerateProducers, type Producer } from '../sim/producers.js';
 import { slugWords, unusedId } from '../storage/ids.js';
-import { type CompiledLayout, compileLayout } from './compile.js';
+import { buildGeometry, type CompiledLayout, compileLayout } from './compile.js';
 import {
   copyKey,
   duplicateLayer,
@@ -39,6 +40,19 @@ export type Edit =
       role: 'typing' | 'command';
     }
   | { kind: 'removeCombo' | 'toggleComboRole'; combo: number }
+  /**
+   * What the fields given change in the combo at that place; the others stay. Any binding goes, as
+   * on a key. The id follows the keys when they change.
+   */
+  | {
+      kind: 'updateCombo';
+      combo: number;
+      keys?: string[];
+      layers?: string[];
+      binding?: Binding;
+      role?: 'typing' | 'command';
+      timeoutMs?: number;
+    }
   | { kind: 'setBehavior'; name: string; binding: Binding }
   /** Every behaviour, from the JSON an author wrote. */
   | { kind: 'replaceBehaviors'; json: string }
@@ -92,6 +106,139 @@ type Step = { layout: Layout; at?: Landing } | { refused: string };
 type Handlers = { [K in Edit['kind']]: (layout: Layout, edit: Edit & { kind: K }) => Step };
 
 const same = (layout: Layout): Step => ({ layout });
+
+/** Whether two plain JSON values hold the same, however their fields are ordered. */
+function sameValue(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== 'object' || typeof b !== 'object' || !a || !b) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  const x = a as Record<string, unknown>;
+  const y = b as Record<string, unknown>;
+  const names = Object.keys(x).filter((k) => x[k] !== undefined);
+  const others = Object.keys(y).filter((k) => y[k] !== undefined);
+  return names.length === others.length && names.every((k) => sameValue(x[k], y[k]));
+}
+
+type ComboOf = NonNullable<Layout['combos']>[number];
+
+/** The id the compiler knows a combo by: the one it has, or `combo` and its place. */
+const comboId = (c: ComboOf, place: number) => c.id ?? `combo${place}`;
+
+/**
+ * The typing paths of `after`, which is `before` with the combo at `place` changed: what its paths
+ * say about the combo follows it. Producer ids are not taken apart as text, since ids may hold the
+ * very characters that join them: the simulator's own producers say which of their steps the combo
+ * is, and so which part of the id is its. A combo is the source of a dead key's producer
+ * (`deadkey:combo:<id>…+<letter>`), the letter it accents (`deadkey:<source>+combo:<id>…`), or the
+ * producer itself (`combo:<id>…`). A path that names the combo goes to its new id, and is dropped
+ * when the combo no longer makes that symbol that way; the others stay as they were.
+ */
+function followCombo(before: Layout, after: Layout, place: number): Layout['typingPaths'] {
+  const paths = before.typingPaths;
+  if (!paths) return paths;
+  let was: CompiledLayout;
+  let now: CompiledLayout;
+  try {
+    was = compileLayout(before);
+    now = compileLayout(after);
+  } catch {
+    return paths;
+  }
+  // Ids are not unique across symbols: a combo's own id can be another's id with a suffix. So a
+  // path is read among the producers of its symbol, and left alone when even those disagree.
+  const listed = (c: CompiledLayout) => {
+    const index = enumerateProducers(c, 'model');
+    return [...index.bySymbol.values()].flat().concat(index.excludedByCase);
+  };
+  const oldProducers = listed(was);
+  const madeProducers = listed(now);
+  const lookup = (all: Producer[], id: string, symbol: string) =>
+    all.filter((p) => p.id === id && p.symbols === symbol);
+  const from = `combo:${was.combos[place]?.id}`;
+  const to = `combo:${now.combos[place]?.id}`;
+  const swap = (id: string) => (id.startsWith(from) ? `${to}${id.slice(from.length)}` : id);
+  /** The id the producer has once the combo is the one it now is. */
+  const renamed = (producer: string, p: Producer): string => {
+    if (p.kind === 'combo') return swap(producer);
+    const [first, ...rest] = p.steps;
+    const source =
+      first.combo !== undefined
+        ? `combo:${was.combos[first.combo]?.id}`
+        : `${was.layers[first.layer ?? 0]?.id}/${was.keys[first.pos]?.id}`;
+    const accent = producer.startsWith(`deadkey:${source}#shifted+`) ? '#shifted' : '';
+    const head = `deadkey:${source}${accent}+`;
+    if (p.kind !== 'deadkey' || !producer.startsWith(head)) return producer;
+    const letter = producer.slice(head.length);
+    const sourceNow = first.combo === place ? swap(source) : source;
+    const letterNow = rest.some((st) => st.combo === place) ? swap(letter) : letter;
+    return `deadkey:${sourceNow}${accent}+${letterNow}`;
+  };
+  let changed = false;
+  const next: NonNullable<Layout['typingPaths']> = {};
+  for (const [symbol, entries] of Object.entries(paths)) {
+    const kept: TypingPathEntry[] = [];
+    for (const e of entries) {
+      const named = lookup(oldProducers, e.producer, symbol);
+      const ours = named.filter((p) => p.steps.some((st) => st.combo === place));
+      if (ours.length === 0 || ours.length < named.length) {
+        kept.push(e);
+        continue;
+      }
+      const producer = renamed(e.producer, ours[0]);
+      if (lookup(madeProducers, producer, symbol).length === 0) {
+        changed = true;
+        continue;
+      }
+      if (producer !== e.producer) changed = true;
+      kept.push({ ...e, producer });
+    }
+    // A list that only named this combo goes with it, rather than staying as an empty ordering.
+    if (kept.length > 0 || entries.length === 0) next[symbol] = kept;
+    else changed = true;
+  }
+  return changed ? next : paths;
+}
+
+/**
+ * A free id for a combo on `keys`, named after them. A combo's producers are its id and its id
+ * with a `#…` suffix (`#hold`, `#shifted`, …), so an id is taken when another combo has it, or has
+ * it with a `#` after: that one's producer would share an id with one of this combo's.
+ */
+function freeComboId(keys: string[], others: string[]): string {
+  return unusedId(slugWords(keys.join('-')) || 'combo', {
+    has: (id) => others.some((o) => o === id || o.startsWith(`${id}#`)),
+  });
+}
+
+/**
+ * The producer ids that the combo at `place` takes part in and that another producer has too: its
+ * own (`combo:<id>…`) and the dead-key ones it is the accent or the letter of. A typing path naming
+ * one of them would name both. None when the layout does not compile, which the edit then refuses
+ * on its own.
+ */
+function sharedProducerIds(layout: Layout, place: number): string[] {
+  let compiled: CompiledLayout;
+  try {
+    compiled = compileLayout(layout);
+  } catch {
+    return [];
+  }
+  const index = enumerateProducers(compiled, 'model');
+  const byId = new Map<string, Producer[]>();
+  for (const p of [...index.bySymbol.values()].flat().concat(index.excludedByCase)) {
+    byId.set(p.id, [...(byId.get(p.id) ?? []), p]);
+  }
+  const involved = (p: Producer) => p.steps.some((st) => st.combo === place);
+  return [...byId].filter(([, ps]) => ps.length > 1 && ps.some(involved)).map(([id]) => id);
+}
+
+/** Whether two lists of keys name the same keys, in any order. */
+const sameKeySet = (a: string[], b: string[]) =>
+  a.length === b.length && a.every((k) => b.includes(k));
+
+/** Whether two combos can fire on the same layer; one with no layers fires on all of them. */
+const sharesLayer = (a: ComboOf, b: ComboOf) =>
+  !a.layers || !b.layers || a.layers.some((l) => b.layers?.includes(l));
 
 const indexOf = (layout: Layout, id: string) => layout.layers.findIndex((l) => l.id === id);
 
@@ -203,8 +350,7 @@ const handlers: Handlers = {
 
   addCombo(layout, { layer, keys, binding, role }) {
     if (keys.length < 2) return { refused: 'a combo needs at least two keys and an output' };
-    const taken = new Set((layout.combos ?? []).map((c) => c.id));
-    const id = unusedId(slugWords(keys.join('-')) || 'combo', taken);
+    const id = freeComboId(keys, (layout.combos ?? []).map(comboId));
     const combo = { id, keys, binding, layers: [layer], role, timeoutMs: 50, slowRelease: false };
     return { layout: { ...layout, combos: [...(layout.combos ?? []), combo] } };
   },
@@ -223,6 +369,75 @@ const handlers: Handlers = {
     return {
       layout: { ...layout, combos: combos.map((x, i) => (i === combo ? { ...c, role } : x)) },
     };
+  },
+
+  updateCombo(layout, edit) {
+    const combos = layout.combos ?? [];
+    const current = combos[edit.combo];
+    if (!current) return same(layout);
+    let next: ComboOf = { ...current };
+
+    if (edit.keys) {
+      const keys = [...new Set(edit.keys)];
+      if (keys.length < 2) return { refused: 'a combo needs at least two keys' };
+      const known = new Set(buildGeometry(layout).keys.map((k) => k.id));
+      const unknown = keys.find((k) => !known.has(k));
+      if (unknown !== undefined) return { refused: `the board has no key ${unknown}` };
+      // The same keys in another order are the same combo: nothing to change.
+      if (!sameKeySet(keys, current.keys)) next.keys = keys;
+    }
+
+    if (edit.layers) {
+      const layers = [...new Set(edit.layers)];
+      if (layers.length === 0) return { refused: 'a combo needs at least one layer' };
+      const unknown = layers.find((l) => indexOf(layout, l) < 0);
+      if (unknown !== undefined) return { refused: `the layout has no layer ${unknown}` };
+      next.layers = layers;
+    }
+
+    if (edit.keys || edit.layers) {
+      const clash = combos.find(
+        (c, i) => i !== edit.combo && sameKeySet(c.keys, next.keys) && sharesLayer(c, next),
+      );
+      if (clash) {
+        return {
+          refused: `another combo already uses ${next.keys.join('+')} on a layer of this one`,
+        };
+      }
+    }
+
+    if (edit.binding) next.binding = edit.binding;
+    if (edit.role) next.role = edit.role;
+    if (edit.timeoutMs !== undefined) {
+      if (!(edit.timeoutMs > 0)) return { refused: 'a combo timeout is a positive number of ms' };
+      next.timeoutMs = edit.timeoutMs;
+    }
+
+    // The id names the keys, so it follows them when they are others.
+    const others = combos.flatMap((c, i) => (i === edit.combo ? [] : [comboId(c, i)]));
+    if (!sameKeySet(next.keys, current.keys)) {
+      next = { ...next, id: freeComboId(next.keys, others) };
+    }
+
+    if (sameValue(next, current)) return same(layout);
+    const out: Layout = { ...layout, combos: combos.map((c, i) => (i === edit.combo ? next : c)) };
+    // A new output can bring a producer whose id another combo's already has (an imported `old`
+    // beside an `old#shifted`); a path naming it would then name both, so that is refused.
+    const shared = sharedProducerIds(out, edit.combo).filter(
+      (id) => !sharedProducerIds(layout, edit.combo).includes(id),
+    );
+    if (shared.length > 0) {
+      return {
+        refused: `${shared[0]} would name an output of another combo too. Give that combo another id first.`,
+      };
+    }
+    // Twins under one id (older saved layouts) are told apart by the symbol a path is for; one both
+    // make is left to whichever the resolver reads it as.
+    if (layout.typingPaths) {
+      const paths = followCombo(layout, out, edit.combo);
+      if (paths !== layout.typingPaths) out.typingPaths = paths;
+    }
+    return { layout: out };
   },
 
   setBehavior(layout, { name, binding }) {

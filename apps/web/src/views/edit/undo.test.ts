@@ -62,6 +62,15 @@ describe('undo', () => {
     expect(reducer(typed, { type: 'undo' }).selected).toBe('LHM');
   });
 
+  it('ends a combo pick, which names a combo by a place the list may no longer have', () => {
+    const removed = reducer(start(), { type: 'edit', edit: { kind: 'removeCombo', combo: 0 } });
+    const picking = reducer(removed, { type: 'comboPickStart', combo: 0 });
+    const undone = reducer(picking, { type: 'undo' });
+    expect(undone).toMatchObject({ comboPick: null, comboPickFor: null });
+    const redone = reducer(reducer(undone, { type: 'comboPickStart', combo: 0 }), { type: 'redo' });
+    expect(redone).toMatchObject({ comboPick: null, comboPickFor: null });
+  });
+
   it('drops the redo stack once a new edit lands', () => {
     const typed = reducer(start(), bind('LHM', { kind: 'kp', symbol: 'ç' }));
     const undone = reducer(typed, { type: 'undo' });

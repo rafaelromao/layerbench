@@ -50,6 +50,9 @@ function restore(
     selected: snap.selected,
     also: snap.also,
     swapFrom: null,
+    // A pick names a combo by its place, and the list may not be the one it was started on.
+    comboPick: null,
+    comboPickFor: null,
     focusRequest: null,
     error: null,
     lastEdit: null,

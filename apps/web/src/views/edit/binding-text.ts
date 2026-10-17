@@ -400,6 +400,25 @@ export function bindingText(compiled: CompiledLayout, b: Binding | undefined): B
   return { text: tapLabel(compiled, b) || b.kind, exact: false, why: whyNot(b) };
 }
 
+/** A value as JSON with its fields in a fixed order, so equal values read as equal strings. */
+function canonical(value: unknown): string {
+  return JSON.stringify(value, (_key, v) =>
+    v && typeof v === 'object' && !Array.isArray(v)
+      ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => (a < b ? -1 : 1)))
+      : v,
+  );
+}
+
+/**
+ * Whether reading `text` gives back `binding` as it is. Text the syntax writes for a binding can
+ * still read back as another, as a `kp` with a shifted output of its own does; typing over such a
+ * binding would change what it does without the author asking.
+ */
+export function roundTrips(text: string, binding: Binding, ctx: BindingTextContext): boolean {
+  const parsed = parseBindingText(text, ctx);
+  return parsed.ok && canonical(parsed.binding) === canonical(binding);
+}
+
 /** Completions for the text being typed: behaviour names, then that behaviour's own argument. */
 export function suggest(text: string, ctx: BindingTextContext): Suggestion[] {
   const raw = text.trimStart();

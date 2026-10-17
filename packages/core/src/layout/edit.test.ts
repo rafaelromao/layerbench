@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { bundledLayout } from '../layouts/index.js';
+import { enumerateProducers } from '../sim/producers.js';
+import { compileLayout } from './compile.js';
 import { applyEdit, type Edit, type EditOutcome } from './edit.js';
 import { keyBinding } from './ops.js';
 import type { Binding, Layout } from './types.js';
@@ -317,6 +319,441 @@ describe('combos', () => {
   });
 });
 
+describe('changing a combo', () => {
+  const withCombos: Layout = {
+    ...layout,
+    combos: [
+      { id: 'lhm-lhi', keys: ['LHM', 'LHI'], binding: kp('q'), layers: ['base'], role: 'typing' },
+      { id: 'lhm-lhr', keys: ['LHM', 'LHR'], binding: kp('z'), layers: ['upper'], role: 'command' },
+    ],
+    typingPaths: { q: [{ producer: 'combo:lhm-lhi' }] },
+  };
+
+  /** Every producer the simulator makes for the layout: the ids a typing path can name. */
+  const producerIds = (l: Layout) => [...enumerateProducers(compileLayout(l), 'model').byId.keys()];
+  const pathOf = (l: Layout, symbol: string) => l.typingPaths?.[symbol]?.map((e) => e.producer);
+  const geoKey = (id: string, x: number) => ({
+    id,
+    hand: 'L' as const,
+    finger: 'LI' as const,
+    row: 1 as const,
+    col: 4,
+    x,
+    y: 0,
+    w: 1,
+    h: 1,
+    rotation: 0,
+    home: false,
+    thumb: false,
+    inner: false,
+  });
+  const update = (change: Omit<Extract<Edit, { kind: 'updateCombo' }>, 'kind' | 'combo'>, at = 0) =>
+    applyEdit(withCombos, { kind: 'updateCombo', combo: at, ...change });
+
+  it('changes the output to any binding, keeping the id, the keys and the rest', () => {
+    const tapHold: Binding = { kind: 'hold_tap', tap: kp('a'), hold: kp('b') };
+    const o = landed(withCombos, { kind: 'updateCombo', combo: 0, binding: tapHold });
+    expect(o.layout.combos?.[0]).toEqual({ ...withCombos.combos?.[0], binding: tapHold });
+    expect(o.layout.combos?.[1]).toEqual(withCombos.combos?.[1]);
+  });
+
+  it('switches the role and sets the timeout', () => {
+    const o = landed(withCombos, { kind: 'updateCombo', combo: 1, role: 'typing', timeoutMs: 80 });
+    expect(o.layout.combos?.[1]).toMatchObject({ role: 'typing', timeoutMs: 80, id: 'lhm-lhr' });
+  });
+
+  it('changes the layers to those chosen, more than one', () => {
+    const o = landed(withCombos, {
+      kind: 'updateCombo',
+      combo: 0,
+      layers: ['base', 'upper', 'base'],
+    });
+    expect(o.layout.combos?.[0].layers).toEqual(['base', 'upper']);
+  });
+
+  it('gives a combo on other keys the id of those keys, kept free, and its typing path follows', () => {
+    expect(producerIds(withCombos)).toContain('combo:lhm-lhi');
+    const o = landed(withCombos, { kind: 'updateCombo', combo: 0, keys: ['LHR', 'LHI'] });
+    expect(o.layout.combos?.[0]).toMatchObject({ id: 'lhr-lhi', keys: ['LHR', 'LHI'] });
+    expect(pathOf(o.layout, 'q')).toEqual(['combo:lhr-lhi']);
+    expect(producerIds(o.layout)).toContain('combo:lhr-lhi');
+    // Another combo already has the id of the keys, though not their layer: the id is numbered.
+    const numbered = landed(withCombos, { kind: 'updateCombo', combo: 0, keys: ['LHM', 'LHR'] });
+    expect(numbered.layout.combos?.[0].id).toBe('lhm-lhr-2');
+  });
+
+  it('follows a twin under one id by the symbol a path is for, and leaves one both make', () => {
+    const twins: Layout = {
+      ...withCombos,
+      combos: [
+        { id: 'twin', keys: ['LHM', 'LHI'], binding: kp('q'), layers: ['base'], role: 'typing' },
+        { id: 'twin', keys: ['LHM', 'LHR'], binding: kp('z'), layers: ['base'], role: 'typing' },
+      ],
+      typingPaths: { q: [{ producer: 'combo:twin' }], z: [{ producer: 'combo:twin' }] },
+    };
+    const o = landed(twins, { kind: 'updateCombo', combo: 0, keys: ['LHR', 'LHI'] });
+    expect(o.layout.combos?.[0].id).toBe('lhr-lhi');
+    expect(o.layout.typingPaths).toEqual({
+      q: [{ producer: 'combo:lhr-lhi' }],
+      z: [{ producer: 'combo:twin' }],
+    });
+    // Both make q: which one a path means cannot be told, so it stays as it was.
+    const alike: Layout = {
+      ...twins,
+      combos: twins.combos?.map((c) => ({ ...c, binding: kp('q') })),
+      typingPaths: { q: [{ producer: 'combo:twin' }] },
+    };
+    const same = landed(alike, { kind: 'updateCombo', combo: 0, keys: ['LHR', 'LHI'] });
+    expect(same.layout.typingPaths).toBe(alike.typingPaths);
+  });
+
+  it('follows a combo that is the dead key into the paths of the letters it accents', () => {
+    const dead: Layout = {
+      ...layout,
+      combos: [
+        {
+          id: 'dk',
+          keys: ['LHR', 'LHI'],
+          binding: { kind: 'dead_key', diacritic: '^' },
+          layers: ['base'],
+          role: 'typing',
+        },
+      ],
+    };
+    const made = producerIds(dead).filter((id) => id.startsWith('deadkey:combo:dk'));
+    expect(made).toContain('deadkey:combo:dk+direct:base/LHM');
+    const o = landed(
+      { ...dead, typingPaths: { â: made.map((producer) => ({ producer })) } },
+      { kind: 'updateCombo', combo: 0, keys: ['LHR', 'LHP'] },
+    );
+    const now = pathOf(o.layout, 'â') ?? [];
+    expect(now).toContain('deadkey:combo:lhr-lhp+direct:base/LHM');
+    expect(now.every((id) => producerIds(o.layout).includes(id))).toBe(true);
+  });
+
+  it('follows a combo that is the letter after a dead key on a key', () => {
+    const dead: Layout = {
+      ...layout,
+      layers: [
+        { id: 'base', name: 'Base', bindings: { LTR: { kind: 'dead_key', diacritic: '^' } } },
+        layout.layers[1],
+      ],
+      combos: [
+        { id: 'ltr', keys: ['LHM', 'LHI'], binding: kp('a'), layers: ['base'], role: 'typing' },
+      ],
+    };
+    const made = producerIds(dead).filter((id) => id.includes('+combo:ltr'));
+    expect(made).toContain('deadkey:base/LTR+combo:ltr');
+    const o = landed(
+      { ...dead, typingPaths: { â: made.map((producer) => ({ producer })) } },
+      { kind: 'updateCombo', combo: 0, keys: ['LHR', 'LHI'] },
+    );
+    expect(pathOf(o.layout, 'â')).toContain('deadkey:base/LTR+combo:lhr-lhi');
+    expect(pathOf(o.layout, 'â')?.every((id) => producerIds(o.layout).includes(id))).toBe(true);
+  });
+
+  it('names a combo by its whole id before reading a # in it as a suffix', () => {
+    const hashed: Layout = {
+      ...layout,
+      combos: [
+        { id: 'old', keys: ['LHM', 'LHI'], binding: kp('a'), layers: ['base'], role: 'typing' },
+        {
+          id: 'old#custom',
+          keys: ['LHM', 'LHR'],
+          binding: kp('b'),
+          layers: ['base'],
+          role: 'typing',
+        },
+      ],
+      typingPaths: { a: [{ producer: 'combo:old' }], b: [{ producer: 'combo:old#custom' }] },
+    };
+    expect(producerIds(hashed)).toEqual(expect.arrayContaining(['combo:old', 'combo:old#custom']));
+    const o = landed(hashed, { kind: 'updateCombo', combo: 0, keys: ['LHP', 'LHI'] });
+    expect(pathOf(o.layout, 'a')).toEqual(['combo:lhp-lhi']);
+    expect(pathOf(o.layout, 'b')).toEqual(['combo:old#custom']);
+  });
+
+  it('tells which part of a path is the combo even when the ids hold what joins them', () => {
+    const custom: Layout = {
+      ...layout,
+      keys: { space: 'C' },
+      geometry: {
+        custom: [geoKey('A', 0), geoKey('A+combo:x', 1), geoKey('C', 2), geoKey('D', 3)],
+      },
+      layers: [
+        {
+          id: 'base',
+          name: 'Base',
+          bindings: { '*': { kind: 'trans' }, 'A+combo:x': { kind: 'dead_key', diacritic: '^' } },
+        },
+      ],
+      combos: [
+        { id: 'old', keys: ['A', 'C'], binding: kp('a'), layers: ['base'], role: 'typing' },
+        { id: 'x+combo:old', keys: ['C', 'D'], binding: kp('b'), layers: ['base'], role: 'typing' },
+      ],
+    };
+    const real = 'deadkey:base/A+combo:x+combo:old';
+    expect(producerIds(custom)).toContain(real);
+    const o = landed(
+      { ...custom, typingPaths: { â: [{ producer: real }] } },
+      { kind: 'updateCombo', combo: 0, keys: ['A', 'D'] },
+    );
+    expect(pathOf(o.layout, 'â')).toEqual(['deadkey:base/A+combo:x+combo:a-d']);
+    expect(producerIds(o.layout)).toContain('deadkey:base/A+combo:x+combo:a-d');
+  });
+
+  it('drops a typing path the combo no longer makes, and keeps the ones it still does', () => {
+    const paths: Layout = {
+      ...withCombos,
+      typingPaths: {
+        q: [{ producer: 'combo:lhm-lhi' }, { producer: 'direct:base/LHM' }],
+        z: [{ producer: 'combo:lhm-lhi' }],
+        // Not about the combo: left alone, even though nothing makes it.
+        w: [{ producer: 'combo:gone' }],
+      },
+    };
+    // Another symbol: the entry under q goes, and z, which is now what it makes, stays out of
+    // q's list but is not given an entry it never had.
+    const other = landed(paths, { kind: 'updateCombo', combo: 0, binding: kp('z') });
+    expect(pathOf(other.layout, 'q')).toEqual(['direct:base/LHM']);
+    expect(pathOf(other.layout, 'z')).toEqual(['combo:lhm-lhi']);
+    expect(pathOf(other.layout, 'w')).toEqual(['combo:gone']);
+    // A list that only named the combo goes with it.
+    const gone = landed(
+      { ...paths, typingPaths: { q: [{ producer: 'combo:lhm-lhi' }] } },
+      { kind: 'updateCombo', combo: 0, binding: kp('x') },
+    );
+    expect(gone.layout.typingPaths).toEqual({});
+    // The same symbol another way: the path stays.
+    const same = landed(paths, {
+      kind: 'updateCombo',
+      combo: 0,
+      binding: { kind: 'kp', symbol: 'q', tag: 'x' },
+    });
+    expect(pathOf(same.layout, 'q')).toEqual(['combo:lhm-lhi', 'direct:base/LHM']);
+    // Another case is another symbol: a path for q is not one for Q.
+    const upper = landed(paths, { kind: 'updateCombo', combo: 0, binding: kp('Q') });
+    expect(pathOf(upper.layout, 'q')).toEqual(['direct:base/LHM']);
+    // Taking the combo off the layer it types on takes its paths with it.
+    const moved = landed(paths, { kind: 'updateCombo', combo: 0, role: 'command' });
+    expect(pathOf(moved.layout, 'q')).toEqual(['direct:base/LHM']);
+  });
+
+  it("reads a path among its symbol's producers when one combo's id is another's id and a suffix", () => {
+    const clash: Layout = {
+      ...layout,
+      combos: [
+        {
+          id: 'old',
+          keys: ['LHM', 'LHI'],
+          binding: { kind: 'hold_tap', tap: kp('q'), hold: kp('z') },
+          layers: ['base'],
+          role: 'typing',
+        },
+        {
+          id: 'old#hold',
+          keys: ['LHM', 'LHR'],
+          binding: kp('b'),
+          layers: ['base'],
+          role: 'typing',
+        },
+      ],
+      typingPaths: { z: [{ producer: 'combo:old#hold' }], b: [{ producer: 'combo:old#hold' }] },
+    };
+    expect(producerIds(clash)).toContain('combo:old#hold');
+    const o = landed(clash, { kind: 'updateCombo', combo: 0, keys: ['LHP', 'LHI'] });
+    // z is what the first combo makes with a hold; b is the other's, and stays as it is.
+    expect(pathOf(o.layout, 'z')).toEqual(['combo:lhp-lhi#hold']);
+    expect(pathOf(o.layout, 'b')).toEqual(['combo:old#hold']);
+  });
+
+  it("never takes an id whose producers would share an id with another combo's", () => {
+    const clash: Layout = {
+      ...layout,
+      combos: [
+        {
+          id: 'old',
+          keys: ['LHM', 'LHI'],
+          binding: { kind: 'hold_tap', tap: kp('q'), hold: kp('z') },
+          layers: ['base'],
+          role: 'typing',
+        },
+        {
+          id: 'lhp-lhi#hold',
+          keys: ['LHM', 'LHR'],
+          binding: kp('b'),
+          layers: ['base'],
+          role: 'typing',
+        },
+      ],
+      typingPaths: { z: [{ producer: 'combo:old#hold' }] },
+    };
+    const o = landed(clash, { kind: 'updateCombo', combo: 0, keys: ['LHP', 'LHI'] });
+    expect(o.layout.combos?.[0].id).toBe('lhp-lhi-2');
+    expect(pathOf(o.layout, 'z')).toEqual(['combo:lhp-lhi-2#hold']);
+    // Adding one on those keys keeps clear of it the same way.
+    const added = landed(clash, {
+      kind: 'addCombo',
+      layer: 'upper',
+      keys: ['LHP', 'LHI'],
+      binding: kp('x'),
+      role: 'typing',
+    });
+    expect(added.layout.combos?.[2].id).toBe('lhp-lhi-2');
+  });
+
+  it("refuses an output that would give it a producer another combo's id already names", () => {
+    const imported: Layout = {
+      ...layout,
+      combos: [
+        { id: 'old', keys: ['LHM', 'LHI'], binding: kp('a'), layers: ['base'], role: 'typing' },
+        {
+          id: 'old#hold',
+          keys: ['LHM', 'LHR'],
+          binding: kp('b'),
+          layers: ['base'],
+          role: 'typing',
+        },
+      ],
+    };
+    const tapHold: Binding = { kind: 'hold_tap', tap: kp('q'), hold: kp('z') };
+    expect(applyEdit(imported, { kind: 'updateCombo', combo: 0, binding: tapHold })).toMatchObject({
+      status: 'refused',
+      message: expect.stringMatching(/^combo:old#hold would name an output of another combo too/),
+    });
+    // A clash the layout already had is not this edit's to refuse.
+    const already: Layout = {
+      ...imported,
+      combos: [{ ...imported.combos![0], binding: tapHold }, imported.combos![1]],
+    };
+    expect(applyEdit(already, { kind: 'updateCombo', combo: 0, role: 'command' }).status).toBe(
+      'landed',
+    );
+  });
+
+  it('refuses an output that would make two dead-key producers share an id', () => {
+    const dead: Binding = { kind: 'dead_key', diacritic: '´' };
+    const combo = (id: string, keys: string[], binding: Binding) => ({
+      id,
+      keys,
+      binding,
+      layers: ['base'],
+      role: 'typing' as const,
+    });
+    const imported: Layout = {
+      ...layout,
+      combos: [
+        combo('a', ['LHM', 'LHI'], kp('x')),
+        combo('b+combo:c', ['LHM', 'LHR'], kp('e')),
+        combo('a+combo:b', ['LHR', 'LHI'], dead),
+        combo('c', ['LHP', 'LHI'], kp('e')),
+      ],
+    };
+    // As the accent before `b+combo:c`, `a` would make the id `a+combo:b` makes before `c`.
+    expect(applyEdit(imported, { kind: 'updateCombo', combo: 0, binding: dead })).toMatchObject({
+      status: 'refused',
+      message: expect.stringMatching(/^deadkey:combo:a\+combo:b\+combo:c would name/),
+    });
+  });
+
+  it('follows an unnamed combo by the id the compiler gives it', () => {
+    const unnamed: Layout = {
+      ...withCombos,
+      combos: [
+        { keys: ['LHM', 'LHI'], binding: kp('q'), layers: ['base'], role: 'typing' },
+        { keys: ['LHM', 'LHR'], binding: kp('z'), layers: ['upper'], role: 'typing' },
+      ],
+      typingPaths: { q: [{ producer: 'combo:combo0' }], z: [{ producer: 'combo:combo1' }] },
+    };
+    const o = landed(unnamed, { kind: 'updateCombo', combo: 0, keys: ['LHR', 'LHI'] });
+    expect(o.layout.combos?.[0].id).toBe('lhr-lhi');
+    expect(o.layout.typingPaths).toEqual({
+      q: [{ producer: 'combo:lhr-lhi' }],
+      z: [{ producer: 'combo:combo1' }],
+    });
+  });
+
+  it('tells key sets apart by their keys, whatever characters the ids hold', () => {
+    const custom: Layout = {
+      ...layout,
+      keys: { space: 'C' },
+      geometry: { custom: [geoKey('A+B', 0), geoKey('A', 1), geoKey('B+C', 2), geoKey('C', 3)] },
+      layers: [{ id: 'base', name: 'Base', bindings: { '*': { kind: 'trans' } } }],
+      combos: [
+        { id: 'one', keys: ['A+B', 'C'], binding: kp('q'), layers: ['base'], role: 'typing' },
+        { id: 'two', keys: ['A', 'B+C'], binding: kp('z'), layers: ['base'], role: 'typing' },
+      ],
+    };
+    // 'A+B','C' and 'A','B+C' both read A+B+C when joined, but they are not the same keys.
+    landed(custom, { kind: 'updateCombo', combo: 1, layers: ['base'], role: 'command' });
+    expect(applyEdit(custom, { kind: 'updateCombo', combo: 1, keys: ['C', 'A+B'] })).toMatchObject({
+      status: 'refused',
+      message: expect.stringMatching(/already uses/),
+    });
+  });
+
+  it('leaves the combo as it is when its keys come in another order', () => {
+    expect(update({ keys: ['LHI', 'LHM'] }).status).toBe('unchanged');
+  });
+
+  it('is refused with a reason when the combo could not be drawn or would clash', () => {
+    expect(update({ keys: ['LHM'] })).toMatchObject({
+      status: 'refused',
+      message: 'a combo needs at least two keys',
+    });
+    expect(update({ keys: ['LHM', 'LHM'] })).toMatchObject({ status: 'refused' });
+    expect(update({ keys: ['LHM', 'NOPE'] })).toMatchObject({
+      status: 'refused',
+      message: 'the board has no key NOPE',
+    });
+    expect(update({ layers: [] })).toMatchObject({
+      status: 'refused',
+      message: 'a combo needs at least one layer',
+    });
+    expect(update({ layers: ['nowhere'] })).toMatchObject({
+      status: 'refused',
+      message: 'the layout has no layer nowhere',
+    });
+    expect(update({ timeoutMs: 0 })).toMatchObject({ status: 'refused' });
+    // The same keys as the second combo, once the first is on its layer too.
+    expect(update({ keys: ['LHR', 'LHM'], layers: ['upper'] })).toMatchObject({
+      status: 'refused',
+      message: expect.stringMatching(/already uses LHR\+LHM/),
+    });
+    // The same keys on another layer are another combo.
+    expect(update({ keys: ['LHR', 'LHM'] }).status).toBe('landed');
+  });
+
+  it('counts a combo with no layers as on every layer when looking for a clash', () => {
+    const everywhere: Layout = {
+      ...withCombos,
+      combos: [
+        { id: 'a', keys: ['LHM', 'LHI'], binding: kp('q'), role: 'typing' },
+        { id: 'b', keys: ['LHM', 'LHR'], binding: kp('z'), layers: ['upper'], role: 'typing' },
+      ],
+    };
+    const o = applyEdit(everywhere, { kind: 'updateCombo', combo: 1, keys: ['LHM', 'LHI'] });
+    expect(o.status).toBe('refused');
+  });
+
+  it('changes nothing when what it says is what the combo has', () => {
+    for (const change of [
+      {},
+      { keys: ['LHM', 'LHI'] },
+      { layers: ['base'] },
+      { binding: kp('q') },
+      { role: 'typing' as const },
+    ]) {
+      expect(update(change)).toEqual({
+        edit: { kind: 'updateCombo', combo: 0, ...change },
+        before: withCombos,
+        status: 'unchanged',
+      });
+    }
+    expect(update({ role: 'command' }, 7).status).toBe('unchanged');
+  });
+});
+
 describe('behaviours, typing paths, keys, details and features', () => {
   it('sets one behaviour by name, or replaces them all from JSON', () => {
     const one = landed(layout, { kind: 'setBehavior', name: 'hm', binding: kp('x') });
@@ -435,6 +872,7 @@ describe('every edit', () => {
     { kind: 'moveLayer', layer: 'upper', to: 2 },
     { kind: 'removeCombo', combo: 0 },
     { kind: 'toggleComboRole', combo: 0 },
+    { kind: 'updateCombo', combo: 0, role: 'typing' },
   ])('changes nothing when there is nothing to change: %o', (edit) => {
     const o: EditOutcome = applyEdit(layout, edit);
     expect(o).toEqual({ edit, before: layout, status: 'unchanged' });

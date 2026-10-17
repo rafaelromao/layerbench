@@ -44,9 +44,9 @@ _Avoid_: unsaved copy, working copy
 
 **Edit**:
 One change an author makes to a layout, taken whole: keys bound, swapped or sent to another layer; a
-layer added, removed or moved; a combo added; the behaviours replaced. It either lands, leaving a
-layout that can still be drawn, or is refused with its reason and leaves the layout as it was; one
-with nothing to change changes nothing. Undo takes back one edit that landed at a time.
+layer added, removed or moved; a combo added or changed; the behaviours replaced. It either lands,
+leaving a layout that can still be drawn, or is refused with its reason and leaves the layout as it
+was; one with nothing to change changes nothing. Undo takes back one edit that landed at a time.
 _Avoid_: action, operation, op, mutation
 
 **Kind of key**:

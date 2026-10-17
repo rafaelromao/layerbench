@@ -133,6 +133,20 @@ describe('where the board goes after an edit', () => {
     ).toBeNull();
   });
 
+  it('remembers which combo a pick is for, until the pick ends', () => {
+    const forNew = reducer(withNav(), { type: 'comboPickStart' });
+    expect(forNew.comboPickFor).toBeNull();
+    const forRow = reducer(withNav(), { type: 'comboPickStart', combo: 2 });
+    expect(forRow).toMatchObject({ comboPick: [], comboPickFor: 2 });
+    expect(reducer(forRow, { type: 'comboPickCancel' })).toMatchObject({
+      comboPick: null,
+      comboPickFor: null,
+    });
+    expect(
+      edit(forRow, { kind: 'renameLayer', layer: 'nav', name: 'Arrows' }).comboPickFor,
+    ).toBeNull();
+  });
+
   it('selects the key a copy lands on, and nothing once the whole layout is replaced', () => {
     const copied = reducer(pick(withNav(), 'LHM', 'LHI'), {
       type: 'dropKey',
