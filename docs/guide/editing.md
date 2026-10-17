@@ -183,8 +183,9 @@ the left hand while the right types the digits, and on Symbols each mark beside 
 | Home | `@` | `^` | `$` | `"` | · | | ¿ | `?` | `-` | `+` | `_` |
 | Bottom | « | `<` | `>` | `` ` `` | » | | ¡ | `!` | `/` | `*` | · |
 
-`0` is on the right outer thumb, or the inner one when there is no other, or the inner column's
-bottom key on a board with one thumb a side.
+`0` is on a thumb of the hand that holds Symbols: the other one, or that one's tap where it has no
+other. With no thumb there, it is the inner column's bottom key, beside `1`; on a row-stagger
+board, the key past `°`.
 
 **Accents** holds the dead keys, each in its look-alike's column on Symbols (`´` where `'` is) with
 the left hand's top and home rows swapped, so the acute and the tilde are on the home row; the

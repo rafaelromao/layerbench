@@ -459,8 +459,8 @@ export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
     );
     if (l.id === numbers) {
       bindings[symbolsKey] = { kind: 'hold_tap', tap: kp(' '), hold: holdSymbols };
-      // With no other thumb there, beside the keypad: the outer top key, or the inner column.
-      const spot = zero ?? ['RTP', 'RBC', 'RHC'].find((id) => have(id) && !bindings[id]);
+      // With no other thumb there, beside the keypad, in the inner column.
+      const spot = zero ?? ['RBC', 'RHC'].find((id) => have(id) && !bindings[id]);
       if (spot) bindings[spot] = kp('0');
     }
     if (l.id === symbols) {

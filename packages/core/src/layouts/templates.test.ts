@@ -213,7 +213,7 @@ describe('the default layers, board by board', () => {
     expect([at('LHR'), at('LHI')]).toEqual(['~', '´']);
   });
 
-  it("put each of Symbols' outer marks in the row of its look-alike, a key away", () => {
+  it("put each of Symbols' outer marks on the row of its look-alike", () => {
     const keyOf = (s: string) => Object.entries(SYMBOLS_CORE).find(([, x]) => x === s)?.[0];
     for (const [mark, like] of [
       [';', ':'],

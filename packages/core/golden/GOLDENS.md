@@ -299,11 +299,11 @@ documents and Magic Romak's inline link changed.
 
 ## Thirteenth re-baseline: every bundled layout has the default layers
 
-Every bundled layout but Magic Romak and Romak gains Numbers, Symbols and Dead keys, keeping all
-its keys: the space key also holds Numbers, and a thumb of the other hand holds Symbols. Dead keys
-was then a one-shot from that thumb, or from Numbers where no thumb was free; since the fourteenth
-re-baseline no thumb reaches it, only the LHR+LHM combo. Romak, which
-has its own Numbers and Symbols, gains Dead keys as Magic Romak has it, from Alpha 2's right thumb.
+Every bundled layout but Magic Romak and Romak gains Numbers, Symbols and Dead keys, keeping all its
+keys: the space key also holds Numbers, and a thumb of the other hand holds Symbols. Dead keys was
+then a one-shot from that thumb, or from Numbers where no thumb was free; since the fourteenth
+re-baseline no thumb reaches it, only the LHR+LHM combo. Romak, which has its own Numbers and
+Symbols, gains Dead keys as Magic Romak has it, from Alpha 2's right thumb.
 
 What moved, checked across the 38 reports; nothing else moved:
 

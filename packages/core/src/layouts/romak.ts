@@ -636,7 +636,7 @@ export const romak34: Layout = {
     { id: 'ccedil', name: 'Ç extension', bindings: CCEDIL_BINDINGS },
     ...ROMAK34_DEFAULTS.layers,
   ],
-  // Every outer key is on the board, so there is no Extras to bring on.
+  conditionalLayers: ROMAK34_DEFAULTS.conditionalLayers,
   // Alpha 1 has nothing on its left ring and middle fingers' home keys together: they one-shot
   // Accents, as on every layout with the default layers.
   combos: [SEMICOLON_COMBO, ...alpha2Combos(kp), accentsCombo('alpha1')],
