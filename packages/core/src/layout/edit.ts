@@ -211,9 +211,10 @@ function freeComboId(keys: string[], others: string[]): string {
 }
 
 /**
- * The producer ids of the combo at `place` that something else in the layout also makes: a typing
- * path naming one of them would name both. None when the layout does not compile, which the edit
- * then refuses on its own.
+ * The producer ids that the combo at `place` takes part in and that another producer has too: its
+ * own (`combo:<id>…`) and the dead-key ones it is the accent or the letter of. A typing path naming
+ * one of them would name both. None when the layout does not compile, which the edit then refuses
+ * on its own.
  */
 function sharedProducerIds(layout: Layout, place: number): string[] {
   let compiled: CompiledLayout;
@@ -223,10 +224,12 @@ function sharedProducerIds(layout: Layout, place: number): string[] {
     return [];
   }
   const index = enumerateProducers(compiled, 'model');
-  const all = [...index.bySymbol.values()].flat().concat(index.excludedByCase);
-  const ours = (p: Producer) => p.kind === 'combo' && p.steps[0]?.combo === place;
-  const mine = new Set(all.filter(ours).map((p) => p.id));
-  return [...new Set(all.filter((p) => !ours(p) && mine.has(p.id)).map((p) => p.id))];
+  const byId = new Map<string, Producer[]>();
+  for (const p of [...index.bySymbol.values()].flat().concat(index.excludedByCase)) {
+    byId.set(p.id, [...(byId.get(p.id) ?? []), p]);
+  }
+  const involved = (p: Producer) => p.steps.some((st) => st.combo === place);
+  return [...byId].filter(([, ps]) => ps.length > 1 && ps.some(involved)).map(([id]) => id);
 }
 
 /** Whether two lists of keys name the same keys, in any order. */

@@ -617,6 +617,31 @@ describe('changing a combo', () => {
     );
   });
 
+  it('refuses an output that would make two dead-key producers share an id', () => {
+    const dead: Binding = { kind: 'dead_key', diacritic: '´' };
+    const combo = (id: string, keys: string[], binding: Binding) => ({
+      id,
+      keys,
+      binding,
+      layers: ['base'],
+      role: 'typing' as const,
+    });
+    const imported: Layout = {
+      ...layout,
+      combos: [
+        combo('a', ['LHM', 'LHI'], kp('x')),
+        combo('b+combo:c', ['LHM', 'LHR'], kp('e')),
+        combo('a+combo:b', ['LHR', 'LHI'], dead),
+        combo('c', ['LHP', 'LHI'], kp('e')),
+      ],
+    };
+    // As the accent before `b+combo:c`, `a` would make the id `a+combo:b` makes before `c`.
+    expect(applyEdit(imported, { kind: 'updateCombo', combo: 0, binding: dead })).toMatchObject({
+      status: 'refused',
+      message: expect.stringMatching(/^deadkey:combo:a\+combo:b\+combo:c would name/),
+    });
+  });
+
   it('follows an unnamed combo by the id the compiler gives it', () => {
     const unnamed: Layout = {
       ...withCombos,
