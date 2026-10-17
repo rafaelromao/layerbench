@@ -299,10 +299,11 @@ documents and Magic Romak's inline link changed.
 
 ## Thirteenth re-baseline: every bundled layout has the default layers
 
-Every bundled layout but Magic Romak and Romak gains Numbers, Symbols and Dead keys, keeping all
-its keys: the space key also holds Numbers, and a thumb of the other hand holds Symbols and taps a
-one-shot to Dead keys, or Dead keys is tapped from Numbers where no thumb is free. Romak, which
-has its own Numbers and Symbols, gains Dead keys as Magic Romak has it, from Alpha 2's right thumb.
+Every bundled layout but Magic Romak and Romak gains Numbers, Symbols and Dead keys, keeping all its
+keys: the space key also holds Numbers, and a thumb of the other hand holds Symbols. Dead keys was
+then a one-shot from that thumb, or from Numbers where no thumb was free; since the fourteenth
+re-baseline no thumb reaches it, only the LHR+LHM combo. Romak, which has its own Numbers and
+Symbols, gains Dead keys as Magic Romak has it, from Alpha 2's right thumb.
 
 What moved, checked across the 38 reports; nothing else moved:
 
@@ -420,6 +421,34 @@ What moved, checked across the 38 reports; nothing else moved:
   `d→DK`, `s→DK`, `c→DK` and others, and `␣→DK` with space. Compared without `then`, every report
   is the same as before, byte for byte.
 - **Nothing in the Magic Romak and Romak 34 reports.**
+
+## Twentieth re-baseline: Accents, Numbers, Symbols and Extras replace Dead keys
+
+The default layers are Numbers, Symbols, Extras where the board needs it, and Accents (issue #17).
+Numbers and Symbols keep the 24-key core and add the pinky's top and bottom keys and the inner
+column: `€ £ § ª º °` on Numbers, `; ¿ ¡ « »` on Symbols. Extras, on while both are held, has those
+of them a board has no key for, where Dead keys had them; Magic Romak's 24 keys have none of them,
+so it gets all eleven. Accents replaces Dead keys on the same LHR+LHM one-shot combo: the five dead
+keys where they were, `ñ ç œ æ ß`, and nineteen accented letters and `qu` as macros, a key each. A
+board with no bottom row gets its own arrangement, and Symbols 2 goes. Magic Romak's and Romak's
+Numbers and Symbols are the defaults on the keymap's thumbs, and Magic Romak reaches Accents from
+Alpha 2's right outer thumb, where it reached Dead keys; Romak gains Accents on the combo, and
+declares Alpha 2's `ç` its typing path, so that `ç` still arms Ç extension. The planner brings a
+layer that only comes on with others, as Extras does, on by bringing those on in turn.
+
+What moved, checked across the 38 reports; nothing else moved:
+
+- **Magic Romak and Romak**: no value, press or trace. Their producer lists and per-layer results
+  gain the new layers.
+- **Qwerty in English**: the fixture's ten `qu` are Accents' macro, the combo and one key, two
+  presses as before but cheaper: Effort 1243.07 → 1241.90, and combo and macro usage 0 → 0.10.
+- **Qwerty on the Portuguese fixtures** types its accented letters with a key each where it had
+  an accent and the letter: 298 macro presses, and 242 fewer keystrokes (10,466 → 10,224 on
+  Portuguese). Effort 1041.2 → 1028.0 and SFB 8.42 → 8.70 on the Layouts Doc's rules, SFS
+  13.25 → 10.15, redirects 16.08 → 13.64; on the mix Effort 1141.8 → 1134.6, SFB 7.88 → 8.02.
+  The composite score goes 25.40 → 28.57 on Portuguese.
+- **The 35 layouts' documents** written in code, and Magic Romak's share blob. Romak 24, retired,
+  keeps its own Numbers and Symbols and does not move.
 
 ## Not compared
 
