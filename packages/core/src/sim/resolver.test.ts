@@ -670,4 +670,46 @@ describe('a layer that comes on while others are on together', () => {
     expect(t.out).toBe('€');
     expect(t.keys).toEqual(extras);
   });
+
+  const toggles = (bindings: Record<string, Binding>, more: Layout['layers'] = []): Layout => ({
+    format: 'layerbench/layout@1',
+    name: 'Toggles',
+    hostLocale: 'symbols',
+    geometry: { preset: '3x5+2' },
+    keys: { space: 'L0' },
+    layers: [{ id: 'base', bindings: { L0: { kind: 'kp', symbol: ' ' }, ...bindings } }, ...more],
+  });
+  const tog = (layer: string): Binding => ({ kind: 'tog', layer });
+  const trans: Binding = { kind: 'trans' };
+
+  it('is reached when one of its layers is two layers away, as that layer would be alone', () => {
+    // A is on only through Y, then X; B is one key away.
+    const layout: Layout = {
+      ...toggles({ LTP: tog('y'), RTP: tog('b') }, [
+        { id: 'y', bindings: { '*': trans, LTR: tog('x') } },
+        { id: 'x', bindings: { '*': trans, LTM: tog('a') } },
+        { id: 'a', bindings: { '*': trans } },
+        { id: 'b', bindings: { '*': trans } },
+        { id: 't', bindings: { '*': trans, RHI: { kind: 'kp', symbol: '€' } } },
+      ]),
+      conditionalLayers: [{ if: ['a', 'b'], then: 't' }],
+    };
+    const t = trace(layout, '€');
+    expect(t.out).toBe('€');
+    expect(t.keys).toEqual(['LTP', 'LTR', 'LTM', 'RTP', 'RHI']);
+  });
+
+  it('is never reached when it and another each come on only with the other', () => {
+    const layout: Layout = {
+      ...toggles({}, [
+        { id: 'p', bindings: { '*': trans, RHI: { kind: 'kp', symbol: '€' } } },
+        { id: 'q', bindings: { '*': trans } },
+      ]),
+      conditionalLayers: [
+        { if: ['q'], then: 'p' },
+        { if: ['p'], then: 'q' },
+      ],
+    };
+    expect(trace(layout, '€').out).toBe('');
+  });
 });

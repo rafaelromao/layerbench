@@ -116,6 +116,8 @@ export class Simulator {
   private readonly standIns = new Map<KeyEvent, KeyEvent[]>();
   private readonly userPaths = new Map<string, TypingPathEntry[]>();
   private readonly plannerHolds = new Set<number>();
+  /** Conditional layers being brought on by their conditions, outermost first. */
+  private readonly conditionsOpen = new Set<number>();
   /**
    * For the way being tried, each choice of more than one modifier in the order it comes up: the
    * modifier it starts from, and the one it took of how many. A way that fails is tried again with
@@ -382,13 +384,20 @@ export class Simulator {
    * others are tried, one layer at a time: an order is given up as soon as a layer in it fails.
    */
   private activateWhen(target: number, events: KeyEvent[], depth: number): boolean {
-    const layerIndex = this.compiled.layerIndex;
-    for (const cond of this.compiled.layout.conditionalLayers ?? []) {
-      if (layerIndex.get(cond.then) !== target) continue;
-      const ifs = cond.if.map((id) => layerIndex.get(id) ?? -1);
-      if (this.activateEach(ifs, target, events, depth)) return true;
+    // Two layers that each come on only with the other are never reached.
+    if (this.conditionsOpen.has(target)) return false;
+    this.conditionsOpen.add(target);
+    try {
+      const layerIndex = this.compiled.layerIndex;
+      for (const cond of this.compiled.layout.conditionalLayers ?? []) {
+        if (layerIndex.get(cond.then) !== target) continue;
+        const ifs = cond.if.map((id) => layerIndex.get(id) ?? -1);
+        if (this.activateEach(ifs, target, events, depth)) return true;
+      }
+      return false;
+    } finally {
+      this.conditionsOpen.delete(target);
     }
-    return false;
   }
 
   /** Brings `layers` on in some order that leaves `target` on, or leaves the board as it was. */
@@ -405,10 +414,9 @@ export class Simulator {
       const startLen = events.length;
       const holdsBefore = new Set(this.plannerHolds);
       const rest = [...layers.slice(0, i), ...layers.slice(i + 1)];
-      if (
-        this.activate(layers[i], events, depth + 1) &&
-        this.activateEach(rest, target, events, depth)
-      )
+      // At the same depth: each layer is reached as it would be on its own, the condition taking
+      // none of the route's steps.
+      if (this.activate(layers[i], events, depth) && this.activateEach(rest, target, events, depth))
         return true;
       m.state.restore(snap);
       m.recomputeMask();
