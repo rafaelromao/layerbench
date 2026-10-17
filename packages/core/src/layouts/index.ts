@@ -13,6 +13,7 @@ export { SMALL_DEFS } from './small.js';
 export {
   DEAD_KEYS_COMBO_KEYS,
   DEAD_KEYS_CORE,
+  DEFAULT_LAYER_ID_LIST,
   DEFAULT_LAYER_IDS,
   type DefaultLayers,
   deadKeysCombo,

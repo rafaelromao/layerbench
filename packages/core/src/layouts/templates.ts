@@ -151,6 +151,12 @@ export const DEFAULT_LAYER_IDS = {
   deadKeys: 'dead',
 } as const;
 
+/**
+ * Every default layer's id. The default layers are the same on every layout, so nothing on them
+ * says what kind of layout it is: categories leave them out.
+ */
+export const DEFAULT_LAYER_ID_LIST: readonly string[] = Object.values(DEFAULT_LAYER_IDS);
+
 /** The keys pressed together on the base layer for Dead keys: on every board, and on no thumb. */
 export const DEAD_KEYS_COMBO_KEYS = ['LHR', 'LHM'] as const;
 
