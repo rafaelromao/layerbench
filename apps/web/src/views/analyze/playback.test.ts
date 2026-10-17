@@ -63,6 +63,7 @@ describe('the combos a board shows', () => {
     expect(typingCombos(qwerty, 0)).toEqual([
       {
         id: 'dead-keys',
+        index: 0,
         keys: ['LHR', 'LHM'].map((id) => qwerty.keyIndex.get(id)),
         label: 'DK',
         active: false,

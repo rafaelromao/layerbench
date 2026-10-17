@@ -39,6 +39,8 @@ export interface KeyboardHandle {
 /** A combo on the board: a small legend between the keys pressed together to fire it. */
 export interface KeyboardCombo {
   id: string;
+  /** Its place in the layout's combos, which names it even where two share an id. */
+  index: number;
   /** Positions of the keys pressed together. */
   keys: number[];
   label: string;
@@ -65,6 +67,7 @@ export function typingCombos(
       const held = l.hold !== null && !l.holdIsMode ? ` / ${l.hold}` : '';
       return {
         id: c.id,
+        index: c.idx,
         keys: c.keys,
         label: `${l.tap || '·'}${held}`,
         active: c.id === active,
@@ -285,6 +288,10 @@ export interface KeyboardProps {
   pressed?: number[];
   /** Combos to draw between their keys; only the ones a view wants shown. */
   combos?: KeyboardCombo[];
+  /** The combo, by place, drawn as open in an editor. */
+  openCombo?: number | null;
+  /** A combo's pill picked, by the combo's place; without it the pills are only drawn. */
+  onComboClick?: (index: number) => void;
   /** Key id drawn as selected. */
   selected?: string | null;
   /** Other keys drawn as selected with it, when several are. */
@@ -334,6 +341,8 @@ export function Keyboard({
   highlight = [],
   pressed = [],
   combos = [],
+  openCombo = null,
+  onComboClick,
   selected = null,
   alsoSelected,
   arcs = [],
@@ -658,11 +667,26 @@ export function Keyboard({
             const y = points.reduce((sum, p) => sum + p.y, 0) / points.length;
             const width = Math.max(20, [...c.label].length * 7 + 12);
             const names = c.keys.map((p) => compiled.keys[p]?.id ?? '?').join(' + ');
+            const pick = onComboClick && interactive ? () => onComboClick(c.index) : undefined;
             return (
+              // biome-ignore lint/a11y/noStaticElementInteractions: an SVG group has no button element to be; it takes the role, the focus and the keys of one when it can be picked.
               <g
-                key={c.id}
-                className={`lb-combo${c.active ? ' lb-combo-active' : ''}`}
+                key={c.index}
+                className={`lb-combo${c.active ? ' lb-combo-active' : ''}${pick ? ' lb-combo-pickable' : ''}${c.index === openCombo ? ' lb-combo-open' : ''}`}
                 transform={`translate(${fmt(x)} ${fmt(y)})`}
+                role={pick ? 'button' : undefined}
+                tabIndex={pick ? 0 : undefined}
+                aria-label={pick ? `Edit combo ${names}: ${c.label}` : undefined}
+                onClick={pick}
+                onKeyDown={
+                  pick
+                    ? (e) => {
+                        if (e.key !== 'Enter' && e.key !== ' ') return;
+                        e.preventDefault();
+                        pick();
+                      }
+                    : undefined
+                }
               >
                 <title>{`Combo ${names}: ${c.label}`}</title>
                 <rect x={fmt(-width / 2)} y="-9" width={fmt(width)} height="18" rx="9" />

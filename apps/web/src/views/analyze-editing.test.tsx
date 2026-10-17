@@ -1128,6 +1128,94 @@ describe('Edit', () => {
     await waitFor(() => expect(pills()).toEqual(['Combo LHR + LHM: DK']));
   });
 
+  it('opens a combo from its pill or its row, and gives it any kind of key but Transparent', async () => {
+    const user = userEvent.setup();
+    await openEdit();
+    await user.click(screen.getByRole('button', { name: 'Edit combo LHR + LHM: DK' }));
+    const editor = within(await screen.findByRole('group', { name: 'Edit combo LHR+LHM' }));
+    const tiles = within(editor.getByRole('group', { name: 'Kind of key' }));
+    expect(tiles.getByRole('button', { name: 'Layer' })).toHaveAttribute('aria-pressed', 'true');
+    expect(tiles.queryByRole('button', { name: 'Transparent' })).toBeNull();
+    expect(editor.getByRole('combobox', { name: 'Role of combo LHR+LHM' })).toHaveValue('typing');
+
+    // Each kind picked is one edit, and one Undo takes it back with the combo still open.
+    await user.click(tiles.getByRole('button', { name: 'Tap-hold' }));
+    await waitFor(() =>
+      expect(tiles.getByRole('button', { name: 'Tap-hold' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      ),
+    );
+    await user.click(tiles.getByRole('button', { name: 'Macro' }));
+    await waitFor(() =>
+      expect(tiles.getByRole('button', { name: 'Macro' })).toHaveAttribute('aria-pressed', 'true'),
+    );
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    await waitFor(() =>
+      expect(tiles.getByRole('button', { name: 'Tap-hold' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      ),
+    );
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    await waitFor(() =>
+      expect(tiles.getByRole('button', { name: 'Layer' })).toHaveAttribute('aria-pressed', 'true'),
+    );
+
+    // Its role, from the editor.
+    await user.selectOptions(
+      editor.getByRole('combobox', { name: 'Role of combo LHR+LHM' }),
+      'command',
+    );
+    await waitFor(() => expect(pills()).toEqual([]));
+
+    // Closed, the key editor is back; its row in Combos opens it again.
+    await user.click(editor.getByRole('button', { name: 'Close the combo editor' }));
+    expect(screen.queryByRole('group', { name: 'Edit combo LHR+LHM' })).toBeNull();
+    await user.click(screen.getByRole('tab', { name: 'Combos' }));
+    const combos = within(screen.getByRole('region', { name: 'Combos' }));
+    await user.click(combos.getByRole('button', { name: 'Edit LHR+LHM' }));
+    expect(await screen.findByRole('group', { name: 'Edit combo LHR+LHM' })).toBeInTheDocument();
+    // A key clicked takes the inspector back.
+    await user.click(key('Key LHI: f'));
+    expect(screen.queryByRole('group', { name: 'Edit combo LHR+LHM' })).toBeNull();
+  });
+
+  it('opens a combo just added in the combo editor, to be built from the tiles', async () => {
+    const user = userEvent.setup();
+    await openEdit();
+    await user.click(screen.getByRole('tab', { name: 'Combos' }));
+    await user.type(screen.getByLabelText('Combo keys'), 'LHM+LHI');
+    await user.click(screen.getByRole('button', { name: /^Add combo on/ }));
+
+    const editor = within(await screen.findByRole('group', { name: 'Edit combo LHM+LHI' }));
+    const tiles = within(editor.getByRole('group', { name: 'Kind of key' }));
+    expect(tiles.getByRole('button', { name: 'Nothing' })).toHaveAttribute('aria-pressed', 'true');
+    const line = editor.getByLabelText('Binding for combo LHM+LHI');
+    await user.clear(line);
+    await user.type(line, 'x{Enter}');
+    await waitFor(() => expect(pills()).toContain('Combo LHM + LHI: x'));
+    await user.click(tiles.getByRole('button', { name: 'Adaptive' }));
+    await waitFor(() =>
+      expect(tiles.getByRole('button', { name: 'Adaptive' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      ),
+    );
+
+    // Its keys, picked again from the editor.
+    await user.click(editor.getByRole('button', { name: 'Pick again on the board' }));
+    await user.click(key('Key LHI: f'));
+    await user.click(key('Key LHP: a'));
+    await user.click(editor.getByRole('button', { name: 'Use these keys' }));
+    expect(await screen.findByRole('group', { name: 'Edit combo LHI+LHP' })).toBeInTheDocument();
+
+    // Undone past its adding, it is gone and so is its editor.
+    for (let i = 0; i < 4; i++) await user.click(screen.getByRole('button', { name: 'Undo' }));
+    await waitFor(() => expect(pills()).toEqual(['Combo LHR + LHM: DK']));
+    expect(screen.queryByRole('group', { name: /^Edit combo/ })).toBeNull();
+  });
+
   it("does not carry what was typed in a removed combo's output to the one that takes its row", async () => {
     const user = userEvent.setup();
     await openEdit();
