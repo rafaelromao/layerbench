@@ -47,9 +47,11 @@ Each card also names the layout's category, so you can rank a layout against its
 from the layout's own keys, whether it came with the app or is yours, and nothing on its
 [default layers](editing.md#default-layers) counts:
 
-- **Standard**: one alpha layer, a layer where a key types a letter from a to z by itself, with no
-  letter on a thumb, on a board of 34 keys or more.
-- **Thumb Alpha**: the same, but a thumb key types a letter on an alpha layer.
+- **Standard**: every layout that is neither of the two below. Most have one alpha layer, a layer
+  where a key types a letter from a to z by itself, and no letter on a thumb, on a board of 34 keys
+  or more.
+- **Thumb Alpha**: a layout that is not Special, but where a thumb key types a letter on an alpha
+  layer.
 - **Special**: a layout with an adaptive key, a macro, an alt repeat, a mod morph or a named
   behaviour of its own, on a key, on a combo or among its behaviours; or with more than one alpha
   layer; or on a board of fewer than 34 keys, thumbs included. Caps word makes the shift key a mod
