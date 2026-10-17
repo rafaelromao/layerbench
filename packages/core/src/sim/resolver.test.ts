@@ -699,7 +699,28 @@ describe('a layer that comes on while others are on together', () => {
     expect(t.keys).toEqual(['LTP', 'LTR', 'LTM', 'RTP', 'RHI']);
   });
 
-  it('is given up quickly when its layers cannot all be on together', () => {
+  it('is reached in the one order its layers can all be on in', () => {
+    // Each layer is toggled from the base layer and swallows the keys of the ones after it, so only
+    // d, c, b, a leaves all four on.
+    const ids = [...'abcd'];
+    const keys = ['LTP', 'LTR', 'LTM', 'LTI'];
+    const none: Binding = { kind: 'none' };
+    const layout: Layout = {
+      ...toggles(Object.fromEntries(ids.map((id, i) => [keys[i], tog(id)])), [
+        ...ids.map((id, i) => ({
+          id,
+          bindings: { '*': trans, ...Object.fromEntries(keys.slice(i + 1).map((k) => [k, none])) },
+        })),
+        { id: 't', bindings: { '*': trans, RHI: { kind: 'kp', symbol: '€' } } },
+      ]),
+      conditionalLayers: [{ if: ids, then: 't' }],
+    };
+    const t = trace(layout, '€');
+    expect(t.out).toBe('€');
+    expect(t.keys).toEqual(['LTI', 'LTM', 'LTR', 'LTP', 'RHI']);
+  });
+
+  it('is tried in its own order only when it names more layers than a document may', () => {
     // Each of ten layers is switched to from the base layer, turning the one before it off.
     const ids = [...'abcdefghij'];
     const keys = ['LTP', 'LTR', 'LTM', 'LTI', 'LTC', 'RTC', 'RTI', 'RTM', 'RTR', 'RTP'];

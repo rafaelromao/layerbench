@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { LAYER_COLORS, type Layout } from './types.js';
+import { LAYER_COLORS, type Layout, MAX_CONDITION_LAYERS } from './types.js';
 
 const ModSchema = z.enum(['LSHIFT', 'RSHIFT', 'LCTRL', 'RCTRL', 'LALT', 'RALT', 'LGUI', 'RGUI']);
 
@@ -238,7 +238,7 @@ export const LayoutSchema = z.object({
     .transform((list) => list.map((c, i) => ({ ...c, id: c.id ?? `combo${i}` })))
     .optional(),
   conditionalLayers: z
-    .array(z.object({ if: z.array(z.string()).min(1), then: z.string() }))
+    .array(z.object({ if: z.array(z.string()).min(1).max(MAX_CONDITION_LAYERS), then: z.string() }))
     .optional(),
   typingPaths: z
     .record(

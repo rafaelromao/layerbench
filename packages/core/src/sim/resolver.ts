@@ -4,6 +4,7 @@ import type { CompiledLayout } from '../layout/compile.js';
 import {
   type ActivatorDef,
   type BindingKind,
+  MAX_CONDITION_LAYERS,
   type Mod,
   type ModChoice,
   modsMet,
@@ -50,9 +51,6 @@ export interface SimulateOptions {
 }
 
 /** A run of presses with no space in it enters the tables in pieces of at most this many. */
-/** How many layers a condition's search may try to bring on before it gives up. */
-const CONDITION_TRIES = 64;
-
 const WORD_LIMIT = 128;
 
 /** How many times a way of typing a symbol is tried, each time with other modifiers held. */
@@ -395,8 +393,10 @@ export class Simulator {
       for (const cond of this.compiled.layout.conditionalLayers ?? []) {
         if (layerIndex.get(cond.then) !== target) continue;
         const ifs = cond.if.map((id) => layerIndex.get(id) ?? -1);
-        const budget = { left: CONDITION_TRIES };
-        if (this.activateEach(ifs, [], target, events, depth, budget)) return true;
+        // A document can name no more than `MAX_CONDITION_LAYERS`; one written in code that names
+        // more is tried in its own order only.
+        const any = ifs.length <= MAX_CONDITION_LAYERS;
+        if (this.activateEach(ifs, [], target, events, depth, any)) return true;
       }
       return false;
     } finally {
@@ -405,10 +405,9 @@ export class Simulator {
   }
 
   /**
-   * Brings `layers` on in some order that leaves `target` on, or leaves the board as it was. An order
-   * is given up as soon as a layer brought on turns one before it off, and the whole search after
-   * `budget.left` layers tried, so a condition whose layers cannot all be on together costs a few
-   * tries, never every order of them.
+   * Brings `layers` on in some order that leaves `target` on, or leaves the board as it was: any
+   * order, or with `any` false only the one given. An order is given up as soon as a layer brought on
+   * turns one before it off.
    */
   private activateEach(
     layers: number[],
@@ -416,12 +415,11 @@ export class Simulator {
     target: number,
     events: KeyEvent[],
     depth: number,
-    budget: { left: number },
+    any: boolean,
   ): boolean {
     const m = this.machine;
     if (layers.length === 0) return m.isLayerActive(target);
-    for (let i = 0; i < layers.length && budget.left > 0; i++) {
-      budget.left--;
+    for (let i = 0; i < (any ? layers.length : 1); i++) {
       const snap = m.state.snapshot();
       const startLen = events.length;
       const holdsBefore = new Set(this.plannerHolds);
@@ -432,7 +430,7 @@ export class Simulator {
       if (
         this.activate(layers[i], events, depth) &&
         now.every((li) => m.isLayerActive(li)) &&
-        this.activateEach(rest, now, target, events, depth, budget)
+        this.activateEach(rest, now, target, events, depth, any)
       )
         return true;
       m.state.restore(snap);
