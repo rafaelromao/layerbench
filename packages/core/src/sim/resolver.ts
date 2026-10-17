@@ -378,27 +378,43 @@ export class Simulator {
    * A layer no key brings on, only others on together, as Extras comes on while Numbers and Symbols
    * are both held: the condition's layers are brought on one after another, in the order it names
    * them first, so the last is reached from the one before when it can be, as Symbols is from
-   * Numbers. The condition is a set, not a sequence, so where that order cannot be pressed, every
-   * other order is tried.
+   * Numbers. The condition is a set, not a sequence, so where that order cannot be pressed, the
+   * others are tried, one layer at a time: an order is given up as soon as a layer in it fails.
    */
   private activateWhen(target: number, events: KeyEvent[], depth: number): boolean {
-    const m = this.machine;
     const layerIndex = this.compiled.layerIndex;
     for (const cond of this.compiled.layout.conditionalLayers ?? []) {
       if (layerIndex.get(cond.then) !== target) continue;
       const ifs = cond.if.map((id) => layerIndex.get(id) ?? -1);
-      for (const order of orders(ifs)) {
-        const snap = m.state.snapshot();
-        const startLen = events.length;
-        const holdsBefore = new Set(this.plannerHolds);
-        if (order.every((li) => this.activate(li, events, depth + 1)) && m.isLayerActive(target))
-          return true;
-        m.state.restore(snap);
-        m.recomputeMask();
-        events.length = startLen;
-        this.plannerHolds.clear();
-        for (const p of holdsBefore) this.plannerHolds.add(p);
-      }
+      if (this.activateEach(ifs, target, events, depth)) return true;
+    }
+    return false;
+  }
+
+  /** Brings `layers` on in some order that leaves `target` on, or leaves the board as it was. */
+  private activateEach(
+    layers: number[],
+    target: number,
+    events: KeyEvent[],
+    depth: number,
+  ): boolean {
+    const m = this.machine;
+    if (layers.length === 0) return m.isLayerActive(target);
+    for (let i = 0; i < layers.length; i++) {
+      const snap = m.state.snapshot();
+      const startLen = events.length;
+      const holdsBefore = new Set(this.plannerHolds);
+      const rest = [...layers.slice(0, i), ...layers.slice(i + 1)];
+      if (
+        this.activate(layers[i], events, depth + 1) &&
+        this.activateEach(rest, target, events, depth)
+      )
+        return true;
+      m.state.restore(snap);
+      m.recomputeMask();
+      events.length = startLen;
+      this.plannerHolds.clear();
+      for (const p of holdsBefore) this.plannerHolds.add(p);
     }
     return false;
   }
@@ -1102,15 +1118,4 @@ export function explain(
     coverage: r.coverage,
     presses: steps.filter((s) => s.kind !== 'hold_release').length,
   };
-}
-
-/** Every order of a few layers, the given one first. */
-function orders(layers: number[]): number[][] {
-  if (layers.length <= 1) return [layers];
-  const out: number[][] = [];
-  layers.forEach((first, i) => {
-    const rest = [...layers.slice(0, i), ...layers.slice(i + 1)];
-    for (const tail of orders(rest)) out.push([first, ...tail]);
-  });
-  return out;
 }
