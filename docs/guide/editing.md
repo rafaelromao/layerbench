@@ -150,7 +150,7 @@ The **Layers** panel lists them in order, and does everything else with them:
 On any layer but the base, the keys you hold or tap to get there carry a ring in the layer's
 colour, and `held` or `tapped` along the bottom: the thumb held for Symbols, the one-shot key
 tapped for Alpha 2, the `ç` macro that turns on Ç extension, an alt repeat branch that arms a
-layer, both keys of the combo tapped for Dead keys. They are found from the layout itself, so they change as you edit: give a key something else
+layer, both keys of the combo tapped for Accents. They are found from the layout itself, so they change as you edit: give a key something else
 to do and it stops being marked, even where the layout names it as a way in. Select one, or read
 the list under the board, to see where it is pressed and when.
 
@@ -161,29 +161,73 @@ them is pressed when nothing tells them apart. A key held for a layer is always 
 
 ### Default layers
 
-A new layout can start with three more layers, the same on every board: **Numbers**, **Symbols**
-and **Dead keys**. Numbers and Symbols are Magic Romak's. Dead keys holds the accents, each in its
-look-alike's column on Symbols (`´` where `'` is) with the left hand's top and home rows swapped,
-so the acute and the tilde are on the home row, the letters an accent cannot make, and the symbols
-the bundled texts use that have no room elsewhere. A letter common enough has a key of its own
-there as well, a press less than its accent and the letter. With the base layer's letters, that
-writes every language the app has a text for.
+A new layout can start with more layers, the same on every board: **Numbers**, **Symbols**,
+**Accents**, and **Extras** where the board needs it. Below, the left hand reads from the pinky to
+the inner column (P R M I C), the right from the inner column to the pinky, and `·` lets the layer
+below show through.
+
+**Numbers** and **Symbols** are Magic Romak's on the 24 keys most boards have. The pinky's top and
+bottom keys and the inner column add what has no room there: currency and ordinals on Numbers, for
+the left hand while the right types the digits, and on Symbols each mark beside its look-alike
+(`;` by `:`, `¿` by `?`, `¡` by `!`, `«` and `»` around `<` and `>`).
+
+| Numbers | P | R | M | I | C | | C | I | M | R | P |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Top | € | `\` | `{` | `}` | £ | | · | 7 | 8 | 9 | ° |
+| Home | `,` | `&` | `(` | `)` | § | | · | 4 | 5 | 6 | `.` |
+| Bottom | ª | `\|` | `[` | `]` | º | | · | 1 | 2 | 3 | · |
+
+| Symbols | P | R | M | I | C | | C | I | M | R | P |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Top | · | `~` | `#` | `'` | · | | · | `%` | `=` | `:` | `;` |
+| Home | `@` | `^` | `$` | `"` | · | | ¿ | `?` | `-` | `+` | `_` |
+| Bottom | « | `<` | `>` | `` ` `` | » | | ¡ | `!` | `/` | `*` | · |
+
+`0` is on the right outer thumb, or the inner one when there is no other, or the inner column's
+bottom key on a board with one thumb a side.
+
+**Accents** holds the dead keys, each in its look-alike's column on Symbols (`´` where `'` is) with
+the left hand's top and home rows swapped, so the acute and the tilde are on the home row; the
+letters no accent makes, `ñ` `ç` `œ` `æ` `ß`; and the accented letters the texts the app comes with
+use most, each a key of its own, a press less than its accent and the letter, German's `ä` `ö` `ü`
+among them. `qu` is there too. With the base layer's letters, that writes every language the app
+has a text for. In bold, the dead keys:
+
+| Accents | P | R | M | I | C | | C | I | M | R | P |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Top | â | **^** | í | **¨** | ä | | ì | à | ñ | ß | qu |
+| Home | ã | **~** | ó | **´** | ö | | ò | é | ç | œ | á |
+| Bottom | ô | õ | ê | **`** | ü | | ù | è | æ | ú | î |
+
+`û`, `ë`, `ï` and `ÿ` are their accent and the letter.
+
+**Extras** is there only on a board that lacks some of those outer keys, Magic Romak's 24 keys
+say: it holds the symbols that had nowhere else to go, on the keys of the 24 below. It comes on
+while Numbers and Symbols are both held.
+
+| Extras | P | R | M | I | | I | M | R | P |
+|---|---|---|---|---|---|---|---|---|---|
+| Top | | · | € | · | | ° | · | `;` | |
+| Home | ª | · | £ | · | | ¿ | · | · | º |
+| Bottom | | « | » | · | | ¡ | · | § | |
 
 The left inner thumb types space and, held, turns on Numbers. The right inner thumb, held, turns on
-Symbols. Dead keys comes on for one key from the base layer, by the left ring and middle fingers'
-home keys, LHR and LHM, pressed together: a combo, drawn between them, the same on every board. A
-board without those thumbs, or without a bottom row, gets the same layers arranged to fit it, and
-keys beyond the ones the layers use let the layer below show through. The board shows where
-everything went.
+Symbols; held from Numbers, it turns on Extras, or Symbols where there is no Extras. Accents comes
+on for one key from the base layer, by the left ring and middle fingers' home keys, LHR and LHM,
+pressed together: a combo, drawn between them, the same on every board. A board without those
+thumbs gets the same layers arranged to fit it, and keys beyond the ones the layers use let the
+layer below show through. A board with no bottom row keeps `1 2 3` on the left home row, puts on
+Extras what the bottom rows carried, and fills Accents with the dead keys, the letters of their own
+and the symbols left over, on its thumbs too; every accented letter there is its accent and the
+letter. The board shows where everything went.
 
 Every layout that comes with the app has them too, with all of its own keys where they were. The key
 that types space also holds Numbers, and a thumb of the other hand holds Symbols: the innermost one
-with nothing on it, or else the innermost, still typing what it typed. Dead keys is the same combo
-on every one of them, so none is ranked better or worse for where its thumbs happen to be free.
-Magic Romak and Romak have Numbers and Symbols of their own and, as in their author's keymap,
+with nothing on it, or else the innermost, still typing what it typed. Accents is the same combo on
+every one of them, so none is ranked better or worse for where its thumbs happen to be free.
+Magic Romak and Romak keep their own thumbs on Numbers and Symbols and, as in their author's keymap,
 combos on Alpha 2 for the accents it has no key for, with `?` and `!` typing `¿` and `¡` when held.
-Magic Romak also reaches Dead keys from Alpha 2; Romak has no Dead keys, and types `œ` by holding
-`é` on Alpha 2.
+Magic Romak reaches Accents from Alpha 2's right outer thumb.
 
 ### Which layer wins
 

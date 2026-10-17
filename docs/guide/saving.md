@@ -10,8 +10,8 @@ A layout of your own starts in **Library**, in one of these ways:
 - **Analyze** it, on any layout's card, change it and press **Save**: Save asks what to call the copy,
   and keeps it among your custom layouts. See [Saving a copy](#saving-a-copy) below.
 - **New layout** starts one on the board you choose, empty or from Qwerty to rearrange, and
-  **Create and edit** saves it and opens it. **Add the default layers** gives it Numbers, Symbols
-  and Dead keys, described under [Default layers](editing.md#default-layers).
+  **Create and edit** saves it and opens it. **Add the default layers** gives it Numbers, Symbols,
+  Accents and, where the board needs it, Extras, described under [Default layers](editing.md#default-layers).
 - **Import** opens a dialog. Under **Text or JSON**, it takes LayerBench JSON or a layout written
   as text: **Open in analyzer** to edit it before saving it, **Save to library** to keep it as it
   is. Under **keymap-drawer**, **Import and edit** saves a keymap-drawer file and opens it. See
