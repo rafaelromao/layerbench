@@ -220,9 +220,17 @@ export function tapLabel(c: CompiledLayout, b: Binding): string {
       return p.symbol;
     case 'raw':
       return p.label;
+    // A key that does something shows something. An adaptive key with no default has its
+    // alternatives listed under the board, where they have room; its mark stands in for them.
+    case 'adaptive':
+      return BADGE.adaptive;
+    case 'tap_dance':
+      return BADGE.tapDance;
+    case 'ref':
+      // Compiling puts the behaviour itself in its place, so only a binding not compiled yet, as the
+      // editor's text line previews one, still names it.
+      return p.ref;
     default:
-      // Nothing, or an adaptive key with no default: its alternatives are listed under the board,
-      // where they have room.
       return '';
   }
 }
@@ -411,12 +419,15 @@ export function legend(c: CompiledLayout, b: Binding): Legend {
   const hold = holdLabel(c, b);
   const layer = layerOf(b);
   const direct = partOf(b, { stopAt: SHIFT_MORPHS });
+  const tap = tapLabel(c, b);
+  const badge = badgeOf(b);
   return {
-    tap: tapLabel(c, b),
+    tap,
     hold,
     kind: legendKind(b),
     shifted: shiftedOf(c, direct),
-    badge: badgeOf(b),
+    // An adaptive key with no default shows its mark in the centre, and not again in the corner.
+    badge: badge === tap ? null : badge,
     layer: layer?.layer ?? null,
     layerIn: layer?.layerIn ?? null,
     holdIsMode: holdIsModeOf(b),

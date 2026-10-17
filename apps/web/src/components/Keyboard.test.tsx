@@ -212,6 +212,19 @@ describe('Keyboard', () => {
     expect(tapOf(num.container, 'L0')).toBe('▽');
   });
 
+  it('gives a key that does something but types nothing a legend, on a bare board too', () => {
+    const sturdy = compileLayout(bundledLayout('magic-sturdy')!);
+    for (const showHold of [true, false]) {
+      const { container, unmount } = render(<Keyboard compiled={sturdy} showHold={showHold} />);
+      const magic = container.querySelector('g[data-key="RTI"]') as SVGGElement;
+      expect(magic.querySelector('.lb-key-tap')?.textContent).toBe('✦');
+      // The centre says it; the corner does not say it again.
+      expect(magic.querySelector('.lb-key-badge')).toBeNull();
+      expect(screen.getByRole('button', { name: /^Key RTI: ✦/ })).toBeInTheDocument();
+      unmount();
+    }
+  });
+
   it('gives each instance its own arrow marker', () => {
     const { container } = render(
       <>

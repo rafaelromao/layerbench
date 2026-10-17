@@ -63,7 +63,7 @@ text it skipped nothing for Spanish.
 letter), the repeat key (doubled letters are tapped twice), typing combos, and macros that type two
 letters or more, such as `qu` or `ão`. A macro typing one letter, like Magic Romak's accents, is how
 the layout reaches that letter, and stays. What a feature typed is typed another way, or skipped if
-there is none. **Analyze** on a card opens the layout ranked the same way, and says so.
+there is none. **Open** on a card opens the layout in **Analyze**, ranked the same way, and says so.
 
 The same switches are in every view that analyzes, in its **Settings**. **Compare with**, in
 **Compare**, types and draws both layouts without the features left unticked, and **Analyze A** and
@@ -128,11 +128,13 @@ kept in any count.
 
 ### The text itself
 
-**Corpus** lists the texts that come with the app, by language, each with where it came from. Your
-own text can be pasted or uploaded there and analyzed like any other, and **Save to library** keeps
-it: custom texts are listed in **Corpus** and offered in every view that analyzes, after the ones that
-come with the app. A text published under an open licence can join the ones that come with the
-app, by pull request on GitHub; the [README](../../README.md#bundled-corpora) lists the steps. **Sample**, on **Analyze**
+**Corpus** lists the texts that come with the app, each with where it came from, and opens on
+English. Every list of texts is in the same order: English first, then the rest by name. Your own
+text can be pasted or uploaded there and analyzed like any other, and **Save to library** keeps it:
+custom texts are listed in **Corpus** and offered in every view that analyzes, under **Custom**,
+after the ones that come with the app. A text published under an open licence can join the ones
+that come with the app, by pull request on GitHub; the
+[README](../../README.md#bundled-corpora) lists the steps. **Sample**, on **Analyze**
 and **Compare**, sets how much of the text is typed, 100,000 symbols unless you choose more: more
 gives steadier numbers, less gives them sooner, which matters most while a layout is being edited,
 since every edit types it again. **Library** ranks on at most 100,000 symbols, since it types the

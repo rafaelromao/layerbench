@@ -82,7 +82,7 @@ describe('Library', () => {
 
     expect(await screen.findByText('My Romak')).toBeInTheDocument();
     const card = screen.getByText('My Romak').closest('article') as HTMLElement;
-    expect(within(card).getByRole('link', { name: 'Analyze' })).toHaveAttribute(
+    expect(within(card).getByRole('link', { name: 'Open My Romak' })).toHaveAttribute(
       'href',
       expect.stringContaining('custom%3Amy-romak'),
     );
@@ -263,6 +263,17 @@ describe('Corpus', () => {
     expect(await screen.findAllByText(/Leipzig/)).not.toHaveLength(0);
     expect(screen.getAllByText('English — news 2023 (Leipzig)')).not.toHaveLength(0);
     expect(screen.getAllByText('Español — noticias 2023 (Leipzig)')).not.toHaveLength(0);
+    // English first, then the rest by name, and the page opens on English.
+    const list = screen.getByRole('heading', { name: 'Corpora' }).parentElement
+      ?.nextElementSibling as HTMLElement;
+    const names = within(list)
+      .getAllByRole('button')
+      .map((b) => b.querySelector('span > span')?.textContent ?? '');
+    expect(names[0]).toMatch(/^English/);
+    expect(names.slice(1)).toEqual(
+      [...names.slice(1)].sort((x, y) => x.localeCompare(y, 'en', { sensitivity: 'base' })),
+    );
+    expect(within(list).getAllByRole('button')[0]).toHaveClass('menu-active');
     // Facts are counted over a sample of the selected corpus.
     expect(await screen.findByText('Letters', undefined, { timeout: 25_000 })).toBeInTheDocument();
     expect(screen.getByText('Trigrams')).toBeInTheDocument();
@@ -294,7 +305,7 @@ describe('Corpus', () => {
     expect(await screen.findByText('Saved corpus my-notes')).toBeInTheDocument();
     expect(await storage.get('corpora', 'my-notes')).not.toBeNull();
 
-    const heading = await screen.findByRole('heading', { name: 'Custom texts' });
+    const heading = await screen.findByRole('heading', { name: 'Custom' });
     const custom = heading.nextElementSibling as HTMLElement;
     await user.click(within(custom).getByRole('button', { name: /My notes/ }));
     await waitFor(() => expect(currentSearch()).toContain('id=custom%3Amy-notes'));
@@ -349,7 +360,16 @@ describe('Custom texts in the pickers', () => {
     await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
     const corpus = within(await openSettings()).getByRole('combobox', { name: 'Corpus' });
     const option = await within(corpus).findByRole('option', { name: 'My notes' });
-    expect(option.closest('optgroup')).toHaveAttribute('label', 'Custom texts');
+    expect(option.closest('optgroup')).toHaveAttribute('label', 'Custom');
+    // No groups by language: one list, English first, then the rest by name, then Custom.
+    expect([...corpus.querySelectorAll('optgroup')].map((g) => g.label)).toEqual(['Custom']);
+    const shipped = [...corpus.children]
+      .filter((o) => o.tagName === 'OPTION')
+      .map((o) => o.textContent ?? '');
+    expect(shipped[0]).toMatch(/^English/);
+    expect(shipped.slice(1)).toEqual(
+      [...shipped.slice(1)].sort((x, y) => x.localeCompare(y, 'en', { sensitivity: 'base' })),
+    );
 
     await user.selectOptions(corpus, 'custom:my-notes');
     await waitFor(() => expect(currentSearch()).toContain('corpus=custom%3Amy-notes'));
