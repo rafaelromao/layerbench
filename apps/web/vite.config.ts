@@ -143,9 +143,7 @@ function landingPage(): Plugin {
 const AUTH_ENV_KEYS = [
   'GITHUB_CLIENT_ID',
   'GITHUB_CLIENT_SECRET',
-  'GITHUB_APP_SLUG',
   'SESSION_SECRET',
-  'UPSTREAM_REPO',
   'ALLOWED_ORIGINS',
 ] as const;
 

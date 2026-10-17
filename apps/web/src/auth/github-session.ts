@@ -4,7 +4,6 @@ import type { SessionAnswer } from '../server/github-auth.js';
 import { toast } from '../state/toasts.js';
 import type { GistIds } from '../storage/gist.js';
 import type { GitHubAccess } from '../storage/github-api.js';
-import { findStorageTarget, type StorageTarget } from '../storage/target.js';
 
 /**
  * - `unknown`: not asked yet.
@@ -18,26 +17,15 @@ interface GitHubSessionState {
   login: string | null;
   /** The app's public id, which the trip to GitHub starts with. */
   clientId: string;
-  /** The app's URL name, for the link that installs it on a fork. */
-  appSlug: string;
-  /** `owner/name` of the repository whose forks hold documents. */
-  upstream: string;
-  /** Where documents go; null until known, and while it cannot be found out. */
-  target: StorageTarget | null;
-  targetStatus: 'idle' | 'checking' | 'error';
 }
 
 const INITIAL: GitHubSessionState = {
   status: 'unknown',
   login: null,
   clientId: '',
-  appSlug: '',
-  upstream: '',
-  target: null,
-  targetStatus: 'idle',
 };
 
-/** Who is signed in with GitHub and where their documents go. The token itself is kept apart. */
+/** Who is signed in with GitHub. The token itself is kept apart. */
 export const useGitHubSession = create<GitHubSessionState>(() => INITIAL);
 
 /** The access token, in memory only: never in the store, in storage, in a link or a message. */
@@ -64,6 +52,10 @@ const SIGN_IN = 'layerbench:sign-in';
 /** A trip to GitHub that takes longer than this is abandoned; signing in again starts a new one. */
 const SIGN_IN_MAX_AGE_MS = 10 * 60_000;
 const SIGN_IN_FAILED = 'Signing in with GitHub did not complete';
+/**
+ * Where a signed-in user's documents went when they could be saved to a fork. Gists hold them now;
+ * what was remembered is forgotten.
+ */
 const targetKey = (login: string) => `layerbench:storage-target:${login}`;
 const gistKey = (login: string) => `layerbench:gists:${login}`;
 
@@ -81,6 +73,14 @@ function writeJson(key: string, value: unknown): void {
     localStorage.setItem(key, JSON.stringify(value));
   } catch {
     // A browser with site data disabled finds things out again on the next visit.
+  }
+}
+
+function forget(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Without site data there is nothing kept to forget.
   }
 }
 
@@ -140,28 +140,15 @@ function apply(answer: SessionAnswer | null): void {
     useGitHubSession.setState({ ...INITIAL, status: 'unavailable' });
     return;
   }
-  const config = {
-    clientId: answer.clientId ?? '',
-    appSlug: answer.appSlug ?? '',
-    upstream: answer.upstream ?? '',
-  };
+  const config = { clientId: answer.clientId ?? '' };
   if (!answer.signedIn || !answer.token || !answer.login) {
     token = null;
     useGitHubSession.setState({ ...INITIAL, ...config, status: 'signed-out' });
     return;
   }
   token = { value: answer.token, expiresAt: answer.expiresAt ?? null };
-  const previous = useGitHubSession.getState();
-  useGitHubSession.setState({
-    ...config,
-    status: 'signed-in',
-    login: answer.login,
-    // The last place found for this login is used at once; detection confirms or corrects it.
-    target:
-      previous.login === answer.login && previous.target
-        ? previous.target
-        : readJson<StorageTarget>(targetKey(answer.login)),
-  });
+  forget(targetKey(answer.login));
+  useGitHubSession.setState({ ...config, status: 'signed-in', login: answer.login });
 }
 
 /**
@@ -254,27 +241,6 @@ export function gistIds(login: string): GistIds {
       writeJson(gistKey(login), ids);
     },
   };
-}
-
-/** Find out, again, where documents go: after signing in, or after giving the app a fork. */
-export async function detectTarget(): Promise<void> {
-  const { status, login, upstream } = useGitHubSession.getState();
-  if (status !== 'signed-in' || !login) return;
-  useGitHubSession.setState({ targetStatus: 'checking' });
-  try {
-    const target = await findStorageTarget(gitHubAccess, login, upstream);
-    if (useGitHubSession.getState().login !== login) return;
-    writeJson(targetKey(login), target);
-    const previous = useGitHubSession.getState().target;
-    // The same place found again keeps its object, so storage is not rebuilt for nothing.
-    const same = JSON.stringify(previous) === JSON.stringify(target);
-    useGitHubSession.setState({ target: same ? previous : target, targetStatus: 'idle' });
-  } catch {
-    // Documents stay where they were going rather than splitting between two places.
-    if (useGitHubSession.getState().login === login) {
-      useGitHubSession.setState({ targetStatus: 'error' });
-    }
-  }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -397,7 +363,7 @@ export function returnFromGitHub(): SignInReturn | null {
 }
 
 /**
- * Learn whether anyone is signed in, and where their documents go: called once, at start, with
+ * Learn whether anyone is signed in: called once, at start, with
  * what `returnFromGitHub` found. One request under the lock either way, so an answer about the
  * session from before signing in cannot land after the new one and undo it.
  */
@@ -407,9 +373,7 @@ export async function initGitHubSession(back: SignInReturn | null = null): Promi
   } catch {
     // The server or GitHub is unreachable: the browser keeps working on its own.
     useGitHubSession.setState({ status: 'signed-out' });
-    return;
   }
-  void detectTarget();
 }
 
 export async function signIn(): Promise<void> {
@@ -431,6 +395,6 @@ export async function signOut(): Promise<void> {
     // Revoked as a courtesy; signing out does not depend on the server answering.
     if (sent) await post('logout', { session: sent }).catch(() => {});
   });
-  const { clientId, appSlug, upstream } = useGitHubSession.getState();
-  useGitHubSession.setState({ ...INITIAL, clientId, appSlug, upstream, status: 'signed-out' });
+  const { clientId } = useGitHubSession.getState();
+  useGitHubSession.setState({ ...INITIAL, clientId, status: 'signed-out' });
 }
