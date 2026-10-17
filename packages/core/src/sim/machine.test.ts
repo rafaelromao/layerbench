@@ -187,11 +187,19 @@ describe('Machine — complex combos', () => {
         ],
         {
           combos: [
-            { id: 'dance', keys: ['RHP', 'RHR'], binding: { kind: 'tap_dance', bindings: [kp('1'), kp('2')] } },
+            {
+              id: 'dance',
+              keys: ['RHP', 'RHR'],
+              binding: { kind: 'tap_dance', bindings: [kp('1'), kp('2')] },
+            },
             {
               id: 'adaptive',
               keys: ['RHM', 'RHI'],
-              binding: { kind: 'adaptive', default: kp('x'), triggers: [{ afterAny: ['a'], binding: kp('y') }] },
+              binding: {
+                kind: 'adaptive',
+                default: kp('x'),
+                triggers: [{ afterAny: ['a'], binding: kp('y') }],
+              },
             },
             {
               id: 'tap-hold',
@@ -224,7 +232,9 @@ describe('Machine — complex combos', () => {
   it("types a tap-hold on a combo's tap when tapped and its hold when held", () => {
     const b = board();
     expect(b.m.perform({ type: 'chord', combo: idx(b, 'tap-hold') })[0].symbols).toBe('t');
-    expect(b.m.perform({ type: 'chord', combo: idx(b, 'tap-hold'), hold: true })[0].symbols).toBe('h');
+    expect(b.m.perform({ type: 'chord', combo: idx(b, 'tap-hold'), hold: true })[0].symbols).toBe(
+      'h',
+    );
   });
 });
 
