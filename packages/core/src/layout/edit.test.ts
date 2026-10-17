@@ -520,6 +520,9 @@ describe('changing a combo', () => {
       binding: { kind: 'kp', symbol: 'q', tag: 'x' },
     });
     expect(pathOf(same.layout, 'q')).toEqual(['combo:lhm-lhi', 'direct:base/LHM']);
+    // Another case is another symbol: a path for q is not one for Q.
+    const upper = landed(paths, { kind: 'updateCombo', combo: 0, binding: kp('Q') });
+    expect(pathOf(upper.layout, 'q')).toEqual(['direct:base/LHM']);
     // Taking the combo off the layer it types on takes its paths with it.
     const moved = landed(paths, { kind: 'updateCombo', combo: 0, role: 'command' });
     expect(pathOf(moved.layout, 'q')).toEqual(['direct:base/LHM']);

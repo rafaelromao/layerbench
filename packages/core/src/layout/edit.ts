@@ -153,7 +153,7 @@ function followCombo(before: Layout, after: Layout, place: number): Layout['typi
   const oldProducers = listed(was);
   const madeProducers = listed(now);
   const lookup = (all: Producer[], id: string, symbol: string) =>
-    all.filter((p) => p.id === id && p.symbols.toLowerCase() === symbol.toLowerCase());
+    all.filter((p) => p.id === id && p.symbols === symbol);
   const from = `combo:${was.combos[place]?.id}`;
   const to = `combo:${now.combos[place]?.id}`;
   const swap = (id: string) => (id.startsWith(from) ? `${to}${id.slice(from.length)}` : id);
