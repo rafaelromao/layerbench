@@ -39,6 +39,11 @@ describe('the layer navigator', () => {
     // The counter is announced as it changes, politely.
     expect(counter()).toHaveAttribute('aria-live', 'polite');
     expect(previous()).toHaveAttribute('aria-disabled', 'true');
+    // The counter sits under the name, in one column between the arrows.
+    const column = counter().parentElement as HTMLElement;
+    expect(column.firstElementChild).toHaveTextContent('Base');
+    expect(column.lastElementChild).toBe(counter());
+    expect([...nav().children]).toEqual([previous(), column, next()]);
 
     await user.click(next());
     expect(within(nav()).getByText('Nav')).toBeInTheDocument();

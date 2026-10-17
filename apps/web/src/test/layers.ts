@@ -7,11 +7,18 @@ export const layerNav = (label = 'Layers'): HTMLElement =>
 
 const COUNTER = /^\d+ \/ \d+$/;
 
+/** The column between the arrows: the name, with the counter under it. */
+export function layerStack(label = 'Layers'): HTMLElement {
+  const parts = [...layerNav(label).children].filter(
+    (el) => !el.matches('button[aria-label$=" layer"]'),
+  );
+  if (parts.length !== 1) throw new Error(`expected one name column, found ${parts.length}`);
+  return parts[0] as HTMLElement;
+}
+
 /** The element that carries the shown layer's name, in the layer's colour. */
 export function layerNameEl(label = 'Layers'): HTMLElement {
-  const parts = [...layerNav(label).children].filter(
-    (el) => !el.matches('button[aria-label$=" layer"]') && !COUNTER.test(el.textContent ?? ''),
-  );
+  const parts = [...layerStack(label).children].filter((el) => !COUNTER.test(el.textContent ?? ''));
   if (parts.length !== 1) throw new Error(`expected one layer name, found ${parts.length}`);
   return parts[0] as HTMLElement;
 }
