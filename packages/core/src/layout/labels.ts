@@ -420,9 +420,12 @@ export function legend(c: CompiledLayout, b: Binding): Legend {
   const layer = layerOf(b);
   const direct = partOf(b, { stopAt: SHIFT_MORPHS });
   // A chooser with nothing to choose, an adaptive key with no default or an empty tap dance, is its
-  // own Plain part: its mark is drawn in the centre, and not again in the corner.
-  const plain = partOf(b).kind;
-  const empty = plain === 'adaptive' || plain === 'tap_dance';
+  // own Plain part: its mark is drawn in the centre, and not again in the corner. Only the mark of
+  // that chooser itself goes; a marked chooser around it keeps its own.
+  const plain = partOf(b);
+  const empty =
+    (plain.kind === 'adaptive' || plain.kind === 'tap_dance') &&
+    partOf(b, { stopAt: MARKED }) === plain;
   return {
     tap: tapLabel(c, b),
     hold,

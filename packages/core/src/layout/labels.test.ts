@@ -52,6 +52,20 @@ suite('legends', () => {
     ];
     for (const [b, mark] of marked)
       expect([legend(c, b).tap, legend(c, b).badge]).toEqual([mark, mark]);
+    // An empty chooser inside a marked one leaves the outer mark in the corner.
+    const emptyDance: Binding = { kind: 'tap_dance', bindings: [] };
+    const emptyMagic: Binding = { kind: 'adaptive' };
+    const nested = legend(c, { kind: 'adaptive', default: emptyDance });
+    expect([nested.tap, nested.badge]).toEqual([BADGE.tapDance, BADGE.adaptive]);
+    const inverse = legend(c, { kind: 'tap_dance', bindings: [emptyMagic] });
+    expect([inverse.tap, inverse.badge]).toEqual([BADGE.adaptive, BADGE.tapDance]);
+    // A tap-hold around an empty one is not marked, so the mark still goes.
+    const held = legend(c, {
+      kind: 'hold_tap',
+      tap: emptyMagic,
+      hold: { kind: 'mod', mod: 'LSHIFT' },
+    });
+    expect([held.tap, held.badge]).toEqual([BADGE.adaptive, null]);
     // Nothing still shows nothing.
     expect(tapLabel(c, { kind: 'none' })).toBe('');
   });
