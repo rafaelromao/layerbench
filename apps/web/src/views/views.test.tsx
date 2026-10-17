@@ -82,7 +82,7 @@ describe('Library', () => {
 
     expect(await screen.findByText('My Romak')).toBeInTheDocument();
     const card = screen.getByText('My Romak').closest('article') as HTMLElement;
-    expect(within(card).getByRole('link', { name: 'Analyze' })).toHaveAttribute(
+    expect(within(card).getByRole('link', { name: 'Open My Romak' })).toHaveAttribute(
       'href',
       expect.stringContaining('custom%3Amy-romak'),
     );
