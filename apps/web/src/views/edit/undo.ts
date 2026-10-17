@@ -12,7 +12,7 @@ import { type EditAction, type EditState, initialState } from './reducer.js';
 export type UndoAction = EditAction | { type: 'undo' } | { type: 'redo' };
 
 /** The layout and where the user was in it. The compiled form is rebuilt, never stored. */
-type Snapshot = Pick<EditState, 'layout' | 'layer' | 'selected' | 'also'>;
+type Snapshot = Pick<EditState, 'layout' | 'layer' | 'selected' | 'also' | 'combo'>;
 
 export interface UndoState extends EditState {
   past: Snapshot[];
@@ -26,7 +26,13 @@ export function initialUndoState(layout: Layout, compiled: CompiledLayout, layer
 }
 
 function snapshot(state: EditState): Snapshot {
-  return { layout: state.layout, layer: state.layer, selected: state.selected, also: state.also };
+  return {
+    layout: state.layout,
+    layer: state.layer,
+    selected: state.selected,
+    also: state.also,
+    combo: state.combo,
+  };
 }
 
 function restore(
@@ -49,6 +55,9 @@ function restore(
     layer: Math.min(snap.layer, compiled.layers.length - 1),
     selected: snap.selected,
     also: snap.also,
+    // The combo open then, if the layout it comes back to still has it.
+    combo:
+      snap.combo !== null && snap.combo < (snap.layout.combos?.length ?? 0) ? snap.combo : null,
     swapFrom: null,
     // A pick names a combo by its place, and the list may not be the one it was started on.
     comboPick: null,

@@ -25,6 +25,7 @@ import { FamilyFilter, METRIC_FAMILIES, useFamilyShown } from '../../components/
 import { featureList } from '../../components/FeatureSwitches.js';
 import { HelpLink } from '../../components/HelpLink.js';
 import {
+  comboPlace,
   Keyboard,
   type KeyboardHandle,
   KeyLegend,
@@ -47,6 +48,7 @@ import type { OpenSession } from '../../layout-session/use-layout-session.js';
 import { toast } from '../../state/toasts.js';
 import { useCollection } from '../../storage/use-storage.js';
 import { HEAT_MODES, type HeatMode, type Params, toSearch } from '../../url/params.js';
+import { ComboInspector } from '../edit/inspector/ComboInspector.js';
 import { KeyInspector } from '../edit/inspector/KeyInspector.js';
 import {
   BehaviorsPanel,
@@ -449,12 +451,18 @@ export function Workbench({
   }, [typedCompiled, boardLayer, frame, showCombos]);
 
   // Everything the board outlines: a key armed for a swap, the keys picked for a combo, the keys of
-  // a combo a panel points at, and an outlined pair or word.
+  // the combo open in the editor or one a panel points at, and an outlined pair or word.
+  const openCombo = state.combo === null ? undefined : state.layout.combos?.[state.combo];
+  const placeOf = (typed: number) => comboPlace(state.compiled, typedCompiled, typed);
+  const openPill =
+    state.combo === null
+      ? null
+      : (boardCombos.find((c) => placeOf(c.index) === state.combo)?.index ?? null);
   const highlighted = useMemo(() => {
     if (playing) return frame?.held ?? [];
     const ids = [
       ...(state.swapFrom ? [state.swapFrom] : []),
-      ...(state.comboPick ?? []),
+      ...(state.comboPick ?? openCombo?.keys ?? []),
       ...state.boardHighlight,
     ];
     const edits = ids
@@ -466,6 +474,7 @@ export function Workbench({
     frame,
     state.swapFrom,
     state.comboPick,
+    openCombo,
     state.boardHighlight,
     state.compiled,
     outline,
@@ -762,6 +771,13 @@ export function Workbench({
                         highlight={highlighted}
                         pressed={frame?.keys ?? []}
                         combos={boardCombos}
+                        openCombo={openPill}
+                        onComboClick={(combo) => {
+                          // While keys are being picked for a combo, they are all the board is doing.
+                          if (state.comboPick) return;
+                          stopPlaying();
+                          send({ type: 'selectCombo', combo: placeOf(combo) });
+                        }}
                         arcs={playing ? [] : arcs}
                         draggable
                         onDragStart={() => stopPlaying()}
@@ -817,7 +833,7 @@ export function Workbench({
                       tap them on the board, then{' '}
                       {state.comboPickFor === null
                         ? 'add the combo in the Combos panel.'
-                        : 'apply them in the Combos panel.'}
+                        : 'use them in the combo editor.'}
                     </p>
                   )}
                 </div>
@@ -955,14 +971,24 @@ export function Workbench({
           <div
             className="lb-edit-inspector min-w-0"
             onKeyDown={(e) => {
-              if (e.key !== 'Escape' || e.defaultPrevented || state.selected === null) return;
+              if (e.key !== 'Escape' || e.defaultPrevented) return;
+              if (state.combo !== null) {
+                e.preventDefault();
+                send({ type: 'selectCombo', combo: null });
+                return;
+              }
+              if (state.selected === null) return;
               e.preventDefault();
               const keyId = state.selected;
               send({ type: 'deselect' });
               focusKey(keyId);
             }}
           >
-            <KeyInspector state={state} send={send} focusKey={focusKey} stats={keyStatsView} />
+            {state.combo !== null ? (
+              <ComboInspector state={state} send={send} combo={state.combo} />
+            ) : (
+              <KeyInspector state={state} send={send} focusKey={focusKey} stats={keyStatsView} />
+            )}
           </div>
 
           <section className="lb-edit-panels card bg-base-100 border border-base-300 min-w-0">

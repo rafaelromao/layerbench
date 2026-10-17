@@ -426,6 +426,19 @@
 .lb-combo-active text {
   fill: var(--color-primary-content);
 }
+/* A pill that opens its combo in the editor takes clicks, though the rest of the layer does not. */
+.lb-combo-pickable {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.lb-combo-pickable:focus-visible {
+  outline: none;
+}
+.lb-combo-pickable:focus-visible rect,
+.lb-combo-open rect {
+  stroke: var(--color-primary);
+  stroke-width: 3;
+}
 @media (prefers-reduced-motion: reduce) {
   .lb-combo rect {
     transition: none;
@@ -587,6 +600,11 @@
   font-size: 0.6rem;
   opacity: 0.6;
   font-family: ui-sans-serif, system-ui, sans-serif;
+}
+/* A combo's cap is drawn as its pill is on the board. */
+.lb-inspector-cap-combo {
+  border-radius: 999px;
+  border-color: color-mix(in oklab, var(--color-primary) 75%, transparent);
 }
 
 /* What kind of key it is, as tiles a finger can hit: 44px tall, five to a phone's row. */

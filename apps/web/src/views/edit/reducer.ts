@@ -55,6 +55,11 @@ export interface EditState {
   lastEdit: LastEdit | null;
   /** Where typing on the board should land next, if a key was typed on. */
   focusRequest: FocusRequest | null;
+  /**
+   * The combo, by place, open in the combo editor; null when none is. A combo and a key are never
+   * open together: selecting one closes the other.
+   */
+  combo: number | null;
   /** Keys picked on the board for a new combo, or null when not picking. */
   comboPick: string[] | null;
   /** The combo, by place, whose keys are being picked again; null when the pick is for a new one. */
@@ -81,6 +86,8 @@ export type EditAction =
   | { type: 'comboPickStart'; combo?: number }
   | { type: 'comboPickToggle'; keyId: string }
   | { type: 'comboPickCancel' }
+  /** Open a combo, by place, in the combo editor; null closes it. */
+  | { type: 'selectCombo'; combo: number | null }
   | { type: 'setBoardHighlight'; keys: string[] }
   | { type: 'behaviorsChange'; json: string }
   | { type: 'jsonChange'; text: string }
@@ -117,6 +124,7 @@ export function initialState(layout: Layout, compiled: CompiledLayout, layer = 0
     jsonError: null,
     lastEdit: null,
     focusRequest: null,
+    combo: null,
     comboPick: null,
     comboPickFor: null,
     boardHighlight: [],
@@ -157,11 +165,13 @@ function land(state: EditState, outcome: EditOutcome, say?: string): EditState {
   }
   const { layout, compiled, at, edit } = outcome;
   const followed = compiled.layerIndex.get(at.layer ?? shownLayer(state));
-  const keys = at.keys ?? selectionOf(state);
+  // A combo added opens in the combo editor, which takes the place of any key that was open.
+  const keys = edit.kind === 'addCombo' ? [] : (at.keys ?? selectionOf(state));
   // Re-rendering the behaviours buffer on every edit would throw away whatever is half-typed in
   // it, so it is only refreshed when the behaviours themselves moved.
   const behaviorsMoved =
     JSON.stringify(layout.behaviors ?? {}) !== JSON.stringify(state.layout.behaviors ?? {});
+  const combo = keys.length > 0 ? null : comboAfter(state.combo, edit, layout);
   return {
     ...state,
     layout,
@@ -169,6 +179,7 @@ function land(state: EditState, outcome: EditOutcome, say?: string): EditState {
     layer: Math.min(followed ?? Math.max(0, state.layer - 1), compiled.layers.length - 1),
     selected: keys[0] ?? null,
     also: keys.slice(1),
+    combo,
     dirty: true,
     error: null,
     focusRequest: null,
@@ -181,6 +192,21 @@ function land(state: EditState, outcome: EditOutcome, say?: string): EditState {
     ...(edit.kind === 'replaceLayout' ? { jsonError: null } : {}),
     lastEdit: say === undefined ? outcome : { ...outcome, say },
   };
+}
+
+/**
+ * The combo open in the editor once an edit has landed: a combo just added opens there, and the one
+ * open follows its place when one before it is removed, or closes when it is the one removed.
+ */
+function comboAfter(open: number | null, edit: Edit, layout: Layout): number | null {
+  const count = layout.combos?.length ?? 0;
+  if (edit.kind === 'addCombo') return count - 1;
+  if (open === null) return null;
+  if (edit.kind === 'removeCombo') {
+    if (edit.combo === open) return null;
+    if (edit.combo < open) return open - 1;
+  }
+  return open < count ? open : null;
 }
 
 function make(state: EditState, edit: Edit, say?: string): EditState {
@@ -219,7 +245,14 @@ function reduce(state: EditState, action: EditAction): EditState {
     case 'keyClick': {
       // A stale compile error belongs to the edit that failed, not to the next key clicked.
       if (!state.swapFrom) {
-        return { ...state, selected: action.keyId, also: [], focusRequest: null, error: null };
+        return {
+          ...state,
+          selected: action.keyId,
+          also: [],
+          combo: null,
+          focusRequest: null,
+          error: null,
+        };
       }
       if (state.swapFrom === action.keyId) return { ...state, swapFrom: null };
       // Arming a key and then tapping its partner is what a drag is, for anyone not holding a
@@ -246,6 +279,7 @@ function reduce(state: EditState, action: EditAction): EditState {
         ...state,
         selected: next[0] ?? null,
         also: next.slice(1),
+        combo: next.length > 0 ? null : state.combo,
         focusRequest: null,
         error: null,
       };
@@ -264,15 +298,16 @@ function reduce(state: EditState, action: EditAction): EditState {
         ...state,
         selected: action.keyId,
         also: [],
+        combo: null,
         swapFrom: null,
         error: null,
         focusRequest: { keyId: action.keyId, seed: action.seed },
       };
 
     case 'deselect':
-      return state.selected === null && state.swapFrom === null
+      return state.selected === null && state.swapFrom === null && state.combo === null
         ? state
-        : { ...state, selected: null, also: [], swapFrom: null, focusRequest: null };
+        : { ...state, selected: null, also: [], combo: null, swapFrom: null, focusRequest: null };
 
     case 'dropKey':
       return make(state, dropped(state, action), action.say);
@@ -282,8 +317,11 @@ function reduce(state: EditState, action: EditAction): EditState {
         ...state,
         comboPick: [],
         comboPickFor: action.combo ?? null,
+        // Keys picked again belong to the combo open in the editor; a new combo's to the add form.
+        combo: action.combo ?? null,
         focusRequest: null,
         selected: null,
+        also: [],
         swapFrom: null,
       };
 
@@ -299,6 +337,23 @@ function reduce(state: EditState, action: EditAction): EditState {
 
     case 'comboPickCancel':
       return { ...state, comboPick: null, comboPickFor: null };
+
+    case 'selectCombo': {
+      const known = action.combo !== null && action.combo < (state.layout.combos?.length ?? 0);
+      const combo = known ? action.combo : null;
+      return {
+        ...state,
+        combo,
+        // A combo opened is where the board's clicks go next, not to the key that was open.
+        ...(combo === null ? {} : { selected: null, also: [], swapFrom: null }),
+        // Opening a combo ends a pick of a new combo's keys, or of the keys of the one before it.
+        ...(state.comboPick !== null && state.comboPickFor !== combo
+          ? { comboPick: null, comboPickFor: null }
+          : {}),
+        focusRequest: null,
+        error: null,
+      };
+    }
 
     case 'setBoardHighlight':
       return { ...state, boardHighlight: action.keys };

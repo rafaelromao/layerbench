@@ -1,6 +1,13 @@
-import { bundledLayout, compileLayout, explain, type Layout, magicRomak } from '@layerbench/core';
+import {
+  bundledLayout,
+  compileLayout,
+  explain,
+  type Layout,
+  magicRomak,
+  withoutFeatures,
+} from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
-import { typingCombos } from '../../components/Keyboard.js';
+import { comboPlace, typingCombos } from '../../components/Keyboard.js';
 import { playFrames } from './playback.js';
 
 const compiled = compileLayout(magicRomak);
@@ -63,6 +70,7 @@ describe('the combos a board shows', () => {
     expect(typingCombos(qwerty, 0)).toEqual([
       {
         id: 'dead-keys',
+        index: 0,
         keys: ['LHR', 'LHM'].map((id) => qwerty.keyIndex.get(id)),
         label: 'DK',
         active: false,
@@ -73,5 +81,31 @@ describe('the combos a board shows', () => {
   it('marks the combo being played', () => {
     const combos = typingCombos(compiled, layer('alpha2'), 'agrave');
     expect(combos.filter((c) => c.active).map((c) => c.label)).toEqual(['à']);
+  });
+});
+
+describe("a pill's combo in the layout", () => {
+  it('is found by its id and keys when typing combos are left out of the analysis', () => {
+    // A combo that types before Qwerty's Dead keys combo, which only reaches a layer and stays.
+    const qwerty = bundledLayout('qwerty') as Layout;
+    const layout: Layout = {
+      ...qwerty,
+      combos: [
+        {
+          id: 'q',
+          keys: ['LHI', 'LHP'],
+          binding: { kind: 'kp', symbol: 'q' },
+          layers: ['base'],
+          role: 'typing',
+        },
+        ...(qwerty.combos ?? []),
+      ],
+    };
+    const full = compileLayout(layout);
+    const typed = compileLayout(withoutFeatures(layout, ['combos']));
+    expect(typed.combos.map((c) => c.id)).toEqual(['dead-keys']);
+    expect(comboPlace(full, typed, 0)).toBe(1);
+    expect(comboPlace(full, full, 0)).toBe(0);
+    expect(comboPlace(full, typed, 5)).toBeNull();
   });
 });

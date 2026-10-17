@@ -26,8 +26,11 @@ export type Action =
   | { type: 'tap'; pos: number; taps?: number }
   | { type: 'hold_press'; pos: number }
   | { type: 'hold_release'; pos: number }
-  /** `hold`: the keys are held together past the tapping term and let go, for a tap-hold's hold. */
-  | { type: 'chord'; combo: number; hold?: boolean };
+  /**
+   * `hold`: the keys are held together past the tapping term and let go, for a tap-hold's hold.
+   * `taps`: how many times the keys are pressed together, for a tap dance on a combo.
+   */
+  | { type: 'chord'; combo: number; hold?: boolean; taps?: number };
 
 export interface KeyEvent {
   kind: 'tap' | 'hold_press' | 'hold_release' | 'chord';
@@ -359,8 +362,14 @@ export class Machine {
         return [this.press(action.pos, 'hold', 1)];
       case 'hold_release':
         return [this.release(action.pos)];
-      case 'chord':
-        return [this.chord(action.combo, action.hold ?? false)];
+      case 'chord': {
+        const taps = action.hold ? 1 : (action.taps ?? 1);
+        const events: KeyEvent[] = [];
+        // As with a key: the chords before the last produce nothing, the last carries the count.
+        for (let i = 0; i < taps; i++)
+          events.push(this.chord(action.combo, action.hold ?? false, i === taps - 1 ? taps : 0));
+        return events;
+      }
     }
   }
 
@@ -443,14 +452,18 @@ export class Machine {
     return (c.layerMask & (1 << this.highestActiveLayer())) !== 0;
   }
 
-  private chord(comboIdx: number, hold: boolean): KeyEvent {
+  private chord(comboIdx: number, hold: boolean, taps = 1): KeyEvent {
     const c = this.compiled.combos[comboIdx];
     const armedBefore = this.state.oneShots.slice();
     const stickyBefore = this.state.stickyMods.slice();
     const heldBefore = this.state.heldLayerMask();
     const layer = this.highestActiveLayer();
-    const ctx = this.newContext(hold ? 'hold' : 'tap', c.pos, 1);
-    if (this.comboAvailable(comboIdx)) this.run(c.binding, ctx);
+    const ctx = this.newContext(hold ? 'hold' : 'tap', c.pos, taps);
+    if (taps === 0) {
+      // Intermediate chord of a tap dance: no behavior runs yet.
+      ctx.leaf = 'tap_dance';
+      ctx.outer = 'tap_dance';
+    } else if (this.comboAvailable(comboIdx)) this.run(c.binding, ctx);
     // A held chord is let go in the same action: nothing it held stays down.
     if (hold) this.state.held.delete(c.pos);
     const wasted = this.postStep(ctx, armedBefore, stickyBefore, layer);

@@ -184,3 +184,54 @@ describe('where the board goes after an edit', () => {
     });
   });
 });
+
+describe('the combo open in the combo editor', () => {
+  const addCombo: EditAction = {
+    type: 'edit',
+    edit: {
+      kind: 'addCombo',
+      layer: 'base',
+      keys: ['LHM', 'LHP'],
+      binding: { kind: 'none' },
+      role: 'typing',
+    },
+  };
+
+  it('opens a combo just added, in place of the key that was open', () => {
+    const added = reducer(pick(withNav(), 'LHI'), addCombo);
+    expect(added.combo).toBe((added.layout.combos?.length ?? 0) - 1);
+    expect(selectionOf(added)).toEqual([]); // Undone past its adding, it is gone and so is its editor; redone, it opens again.
+    const undone = reducer(added, { type: 'undo' });
+    expect(undone.combo).toBeNull();
+    expect(reducer(undone, { type: 'redo' }).combo).toBe(added.combo);
+  });
+
+  it('follows its place when a combo before it goes, and closes when it goes', () => {
+    const added = reducer(withNav(), addCombo);
+    const open = added.combo as number;
+    const first = reducer(added, { type: 'edit', edit: { kind: 'removeCombo', combo: 0 } });
+    expect(first.combo).toBe(open - 1);
+    const itself = reducer(first, { type: 'edit', edit: { kind: 'removeCombo', combo: open - 1 } });
+    expect(itself.combo).toBeNull();
+    // Back with Undo, and open again.
+    expect(reducer(itself, { type: 'undo' }).combo).toBe(open - 1);
+  });
+
+  it('closes when a key is clicked, and closes the key when it opens', () => {
+    const opened = reducer(pick(withNav(), 'LHI'), { type: 'selectCombo', combo: 0 });
+    expect(opened).toMatchObject({ combo: 0, selected: null });
+    expect(reducer(opened, { type: 'keyClick', keyId: 'LHM' }).combo).toBeNull();
+    expect(reducer(opened, { type: 'deselect' }).combo).toBeNull();
+    expect(reducer(withNav(), { type: 'selectCombo', combo: 99 }).combo).toBeNull();
+  });
+
+  it("ends a new combo's pick when a combo is opened, and keeps the pick of its own keys", () => {
+    const picking = reducer(withNav(), { type: 'comboPickStart' });
+    expect(reducer(picking, { type: 'selectCombo', combo: 0 }).comboPick).toBeNull();
+    const own = reducer(withNav(), { type: 'comboPickStart', combo: 0 });
+    expect(reducer(own, { type: 'selectCombo', combo: 0 })).toMatchObject({
+      comboPick: [],
+      comboPickFor: 0,
+    });
+  });
+});

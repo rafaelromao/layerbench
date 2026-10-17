@@ -6,17 +6,16 @@ import {
   legend,
   reachKeys,
 } from '@layerbench/core';
-import { type Dispatch, type ReactNode, useMemo, useState } from 'react';
+import { type Dispatch, type ReactNode, useMemo } from 'react';
 import { HelpLink } from '../../../components/HelpLink.js';
 import { HELP } from '../../../guide/help.js';
-import type { BindingTextContext } from '../binding-text.js';
 import type { EditAction, EditState } from '../reducer.js';
-import { BindingEditor, type EditorScope } from './bodies.js';
+import { BindingEditor } from './bodies.js';
 import { Note } from './controls.js';
 import { FeatureBody, featureTitle, withoutFeatureAt } from './features.js';
 import { kindInfo, kindOf } from './kinds.js';
-import { chipLabel, usedBindings } from './layout-bindings.js';
 import { SelectionInspector } from './SelectionInspector.js';
+import { FromThisLayout, useEditorScope } from './shared.js';
 import { BindingTextLine } from './TextLine.js';
 
 export interface KeyInspectorProps {
@@ -67,9 +66,6 @@ export function KeyInspector(props: KeyInspectorProps) {
   return <Inspector key={`${state.layer}:${id}`} {...props} keyId={id} />;
 }
 
-/** How many reusable bindings are shown before the rest are asked for. */
-const FIRST_CHIPS = 10;
-
 function Inspector({ state, send, focusKey, keyId, stats }: KeyInspectorProps & { keyId: string }) {
   const { compiled, layout, layer } = state;
   const activeLayer = compiled.layers[layer];
@@ -84,33 +80,8 @@ function Inspector({ state, send, focusKey, keyId, stats }: KeyInspectorProps & 
   // Sentence case and caps word wrap the tap of the key they belong to; such a key is edited as
   // its feature, since the next compile would wrap anything written on the key again.
   const owner = compiled.featureOwned.get(activeLayer.id)?.get(keyId);
-  const [allChips, setAllChips] = useState(false);
-
-  const behaviours = useMemo(() => Object.keys(compiled.expanded.behaviors ?? {}), [compiled]);
-  const text: BindingTextContext = useMemo(
-    () => ({
-      layers: compiled.layers.map((l) => ({ id: l.id, name: l.name })),
-      behaviors: behaviours,
-      hostLocale: compiled.hostLocale,
-    }),
-    [compiled, behaviours],
-  );
-  const scope: EditorScope = useMemo(
-    () => ({
-      compiled,
-      behaviours,
-      ownBehaviours: layout.behaviors ?? {},
-      setBehaviour: (name, binding) => {
-        // A behaviour given back as it was is no edit.
-        if (binding === layout.behaviors?.[name]) return;
-        send({ type: 'edit', edit: { kind: 'setBehavior', name, binding } });
-      },
-      text,
-    }),
-    [compiled, behaviours, layout.behaviors, send, text],
-  );
-
-  const used = useMemo(() => usedBindings(layout), [layout]);
+  const scope = useEditorScope(compiled, layout, send);
+  const text = scope.text;
   // How this key brings the layer on, said where a phone user can read it.
   const reach = useMemo(() => {
     const k = reachKeys(compiled, layer).find((x) => x.pos === pos);
@@ -140,7 +111,6 @@ function Inspector({ state, send, focusKey, keyId, stats }: KeyInspectorProps & 
       say: `${keyId} cleared`,
     });
   const otherLayers = compiled.layers.filter((l) => l.idx !== layer);
-  const chips = allChips ? used : used.slice(0, FIRST_CHIPS);
 
   return (
     <fieldset
@@ -200,44 +170,7 @@ function Inspector({ state, send, focusKey, keyId, stats }: KeyInspectorProps & 
           <>
             <BindingEditor scope={scope} value={current} onChange={commit} />
 
-            {used.length > 0 && (
-              <div className="space-y-1">
-                <p className="text-xs font-semibold">From this layout</p>
-                <ul
-                  className="flex flex-wrap gap-1 list-none p-0 m-0"
-                  aria-label="From this layout"
-                >
-                  {chips.map((u) => {
-                    const label = chipLabel(compiled, u.binding);
-                    return (
-                      <li key={`${label}\u0000${u.count}\u0000${JSON.stringify(u.binding)}`}>
-                        <button
-                          type="button"
-                          className="btn btn-xs btn-ghost border border-base-300 font-mono"
-                          aria-label={`Use ${label}`}
-                          title={`${legend(compiled, u.binding).detail} · on ${u.count} ${u.count === 1 ? 'key' : 'keys'}`}
-                          onClick={() => commit(u.binding)}
-                        >
-                          {label}
-                        </button>
-                      </li>
-                    );
-                  })}
-                  {used.length > FIRST_CHIPS && (
-                    <li>
-                      <button
-                        type="button"
-                        className="btn btn-xs btn-link"
-                        aria-expanded={allChips}
-                        onClick={() => setAllChips((a) => !a)}
-                      >
-                        {allChips ? 'Fewer' : `All ${used.length}`}
-                      </button>
-                    </li>
-                  )}
-                </ul>
-              </div>
-            )}
+            <FromThisLayout compiled={compiled} layout={layout} onPick={commit} />
 
             <BindingTextLine
               compiled={compiled}

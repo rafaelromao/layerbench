@@ -333,7 +333,7 @@ export function enumerateProducers(
         pos: c.pos,
         binding: c.binding,
         mode: 'chord',
-        taps: 1,
+        taps: o.taps,
         combo: c.idx,
         ...(hold ? { held: true } : {}),
       };
@@ -345,7 +345,8 @@ export function enumerateProducers(
         afterAny: o.afterAny,
         afterTags: o.afterTags,
         mods: [],
-        cost: 1.5,
+        // A tap dance's later branches cost a chord more each, as they do on a key.
+        cost: 0.5 + o.taps,
         dynamic: o.dynamic,
       };
       add(p);

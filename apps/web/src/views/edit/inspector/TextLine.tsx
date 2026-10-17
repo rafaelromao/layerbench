@@ -34,9 +34,13 @@ export function BindingTextLine({
   onCommit,
   onClear,
   onDone,
+  label = `Binding for ${keyId}`,
 }: {
   compiled: CompiledLayout;
+  /** The key the line is for, or any name unique on the page that no key has, as a combo's. */
   keyId: string;
+  /** The field's accessible name. */
+  label?: string;
   binding: Binding | undefined;
   ctx: BindingTextContext;
   focusRequest: FocusRequest | null;
@@ -168,7 +172,7 @@ export function BindingTextLine({
         <input
           id={`lb-text-${keyId}`}
           ref={input}
-          aria-label={`Binding for ${keyId}`}
+          aria-label={label}
           aria-invalid={error !== null}
           className={`input input-sm input-bordered font-mono flex-1 min-w-40 ${error ? 'input-error' : ''}`}
           value={text}
