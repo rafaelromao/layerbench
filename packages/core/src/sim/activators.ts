@@ -194,10 +194,18 @@ export function discoverActivators(
       const pos = c.keyIndex.get(m[2]);
       if (viaLayer === undefined || pos === undefined) return;
       const list = activators.get(target) ?? [];
-      // The key's own best way in: how it is pressed, and for a tap dance's later branch, how often.
-      const existing = list
+      // The key's own best way in that fits what the declaration says of the modifiers: how it is
+      // pressed and, for a tap dance's later branch, how often, both from that one route.
+      const declaredMods = d.requires?.mods;
+      const fits = (a: ActivatorCandidate) =>
+        declaredMods?.length
+          ? (a.requiredMods ?? []).length > 0 &&
+            (a.requiredMods ?? []).every((choice) => choice.some((m) => declaredMods.includes(m)))
+          : !a.requiredMods?.length;
+      const own = list
         .filter((a) => a.pos === pos && a.viaLayer === viaLayer)
-        .sort((a, b) => a.order - b.order)[0];
+        .sort((a, b) => a.order - b.order);
+      const existing = own.find(fits) ?? own[0];
       const mode = existing?.mode ?? 'tap';
       const cand: ActivatorCandidate = {
         pos,

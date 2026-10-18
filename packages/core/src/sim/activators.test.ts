@@ -37,6 +37,38 @@ function board(layers: Layout['layers'], extra: Partial<Layout> = {}): Layout {
 }
 
 describe('the keys that reach a layer', () => {
+  it('takes a declared way in from the one route that fits its modifiers, taps and all', () => {
+    const sl: Binding = { kind: 'sl', layer: 'up' };
+    const c = compileLayout(
+      board([
+        {
+          id: 'base',
+          bindings: {
+            // Shift and one tap reach up; two taps do too, with no modifier.
+            LHP: {
+              kind: 'tap_dance',
+              bindings: [
+                { kind: 'mod_morph', mods: ['LSHIFT'], default: kp('!'), morphed: sl },
+                sl,
+              ],
+            },
+          },
+        },
+        { id: 'up', bindings: { '*': { kind: 'trans' } } },
+      ]),
+    );
+    const declared = (requires?: { mods: Mod[] }) =>
+      (
+        discoverActivators(c, {
+          up: [{ via: 'key:base/LHP', ...(requires ? { requires } : {}) }],
+        }).get(layerOf(c, 'up')) ?? []
+      ).find((a) => a.user);
+    const shifted = declared({ mods: ['LSHIFT'] });
+    expect(shifted?.requiredMods).toEqual([['LSHIFT']]);
+    expect(shifted?.taps).toBeUndefined();
+    expect(declared()?.taps).toBe(2);
+  });
+
   it('reads a tap dance inside a branch by the same taps, as the machine does, and a held one once', () => {
     const sl = (layer: string): Binding => ({ kind: 'sl', layer });
     const td = (...bindings: Binding[]): Binding => ({ kind: 'tap_dance', bindings });
