@@ -1,0 +1,43 @@
+name: community index
+
+# Keeps `community/index.json` listing every community layout on this branch, so the app can read
+# them without the GitHub API. A pull request that adds `community/<id>.json` is merged here; this
+# runs on that push, from this branch's own copy of the file.
+#
+# Layout files come from pull requests, so nothing in them is trusted: only their names are read,
+# and only names the app accepts as ids are listed. The app checks every file it reads.
+on:
+  push:
+    branches: [layerbench-data]
+    paths: ['community/**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# One at a time, each on the branch as it is when it starts.
+concurrency:
+  group: community-index
+  cancel-in-progress: false
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: List the community layouts
+        run: |
+          find community -maxdepth 1 -type f -name '*.json' ! -name index.json -printf '%f\n' \
+            | sed 's/\.json$//' \
+            | grep -E '^[A-Za-z0-9_-]+$' \
+            | LC_ALL=C sort \
+            | jq -R . | jq -s '{layouts: .}' > community/index.json
+      # A push made with this workflow's token starts no workflow, so this does not run again.
+      - name: Commit the index if it changed
+        run: |
+          git add community/index.json
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Community: list the layouts'
+          git push origin HEAD:layerbench-data
