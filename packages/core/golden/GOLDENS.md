@@ -455,8 +455,9 @@ What moved, checked across the 38 reports; nothing else moved:
 Accents' keys move so that the most used cost least in Effort: the presses on each key, typing all
 the app's texts (German's included) on the default analysis settings, ranked against the Effort
 grid's cost of each position. The dead keys and the letters no dead key makes, `ñ` among them, stay
-on the 24-key core, so a board without the pinkies' top and bottom or the inner column keeps them;
-the ten least used letters go past it. `qu` trades places with `ê`. Same on the board with no bottom
+on the 24-key core's finger keys, so a board without the pinkies' top and bottom or the inner
+column keeps them; the least used letters go past it. `qu` trades places with `ê`, which keeps the
+core place `qu` would have had. Same on the board with no bottom
 row, from the dead keys down. Nothing joins or leaves the layer.
 
 What moved, checked across the 38 reports; nothing else moved:

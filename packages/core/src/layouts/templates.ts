@@ -129,10 +129,11 @@ export const EXTRAS_CORE: Readonly<Record<string, string>> = {
  * combo.
  *
  * Two things come before that order. The keys every board needs, the dead keys and the letters no
- * dead key makes (`ç` `œ` `æ` `ß`, and `ñ`, worth a press less), are on the 24-key core, so a board
- * without the pinkies' top and bottom keys or the inner column still writes every language; what is
- * past the core is letters a dead key also makes, the ten used least. And `qu`, which is no accent,
- * trades places with `ê`, leaving the home row to accented letters.
+ * dead key makes (`ç` `œ` `æ` `ß`, and `ñ`, worth a press less), are on the 24-key core's finger
+ * keys, so a board without the pinkies' top and bottom keys or the inner column still writes every
+ * language; what is past the core is the letters a dead key also makes that are used least. And
+ * `qu`, which is no accent, trades places with `ê`, leaving the home row to accented letters: `ê`
+ * keeps the core place `qu` would have had, though `ä`, past the core, is used more.
  *
  * Its letters are the accented letters the texts use most, each typed whole, a press less than its
  * accent and its letter, German's `ä` `ö` `ü` among them; the letters of their own; and `qu`, for the

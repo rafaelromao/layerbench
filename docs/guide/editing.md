@@ -192,10 +192,10 @@ accented letters the texts the app comes with use most, each a key of its own, a
 its accent and the letter, German's `ä` `ö` `ü` among them. `qu` is there too. With the base
 layer's letters, that writes every language the app has a text for. Each key is where it costs
 least for how often it is used: counted over all the texts together, the most used get the
-cheapest keys in Effort. The dead keys and the letters of their own stay on the 24 keys every board
-has; the ten letters used least, which a dead key also makes, are on the pinkies' top and bottom
-keys and the inner column. `qu` and `ê` trade places, so the home row is accented letters only. In
-bold, the dead keys:
+cheapest keys in Effort. The dead keys and the letters of their own stay on the finger keys every
+board has; the letters used least, which a dead key also makes, are on the pinkies' top and bottom
+keys and the inner column. `qu` and `ê` trade places, so the home row is accented letters only, and
+`ê` keeps the place on the core that `qu` would have had. In bold, the dead keys:
 
 | Accents | P | R | M | I | C | | C | I | M | R | P |
 |---|---|---|---|---|---|---|---|---|---|---|---|

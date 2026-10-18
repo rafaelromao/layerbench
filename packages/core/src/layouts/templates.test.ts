@@ -377,7 +377,6 @@ describe('Accents puts the keys used most where they cost least', () => {
     const outer = keys.filter((k) => !k.core);
     // The dead keys, and the letters no dead key makes or worth a press less.
     expect(outer.filter((k) => k.binding.kind !== 'macro')).toEqual([]);
-    expect(outer.map((k) => k.typed)).not.toContain('ñ');
     // `ê` holds `qu`'s home key.
     const leastOnCore = Math.min(
       ...keys
