@@ -169,6 +169,11 @@ export function refreshCommunity(): Promise<void> {
   return reading;
 }
 
+/** Read them afresh unless they have been since the page loaded: for a view that only lists them. */
+export function readCommunityOnce(): Promise<void> {
+  return readThisLoad ? Promise.resolve() : refreshCommunity();
+}
+
 /**
  * The community layout `id`, as the branch has it now: they are read afresh first, unless they have
  * been since the page loaded, so a link opens one accepted, changed or removed since the last visit
@@ -176,7 +181,7 @@ export function refreshCommunity(): Promise<void> {
  * or left a file unread, is tried again by the next link.
  */
 export async function communityLayout(id: string): Promise<Layout | undefined> {
-  if (!readThisLoad) await refreshCommunity();
+  await readCommunityOnce();
   return useCommunity.getState().layouts.find((l) => l.id === id);
 }
 

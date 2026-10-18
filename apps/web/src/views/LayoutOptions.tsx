@@ -1,5 +1,6 @@
 import { BUNDLED_LAYOUTS, type IndexEntry } from '@layerbench/core';
-import { useCommunity } from '../community/community.js';
+import { useEffect } from 'react';
+import { readCommunityOnce, useCommunity } from '../community/community.js';
 import { communityRef } from '../community/ref.js';
 import { customRef } from '../custom/ref.js';
 
@@ -29,6 +30,10 @@ export function LayoutOptions({
   currentName: string;
 }) {
   const community = useCommunity((s) => s.layouts);
+  // A picker offers them without the Library having been opened first.
+  useEffect(() => {
+    readCommunityOnce();
+  }, []);
   const listed =
     BUNDLED_LAYOUTS.some((l) => l.id === current) ||
     community.some((l) => communityRef(l.id as string) === current) ||

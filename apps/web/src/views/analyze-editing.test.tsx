@@ -221,6 +221,17 @@ describe('Edit', () => {
     expect(screen.queryByText('unsaved')).toBeNull();
   });
 
+  it('offers the community layouts in its picker, read from the branch', async () => {
+    setCommunitySource(branchWith(communityDoc('night-owl', 'Night owl')));
+    renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000', {
+      storage: freshStorage(),
+    });
+    const group = await screen.findByRole('group', { name: 'Community' });
+    expect(within(group).getByRole('option', { name: 'Night owl' })).toHaveValue(
+      'community:night-owl',
+    );
+  });
+
   it('opens a community layout by its link, and saves it as a copy', async () => {
     const user = userEvent.setup();
     setCommunitySource(branchWith(communityDoc('night-owl', 'Night owl')));
