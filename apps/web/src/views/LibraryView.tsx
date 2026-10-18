@@ -373,7 +373,7 @@ export function LibraryView() {
         try {
           return [{ id: layout.id as string, layout, compiled: compileLayout(layout) }];
         } catch {
-          // Checked as a bundled layout is, but one that will not compile is not listed.
+          // Each was compiled once when it was read; this only keeps the list safe if one is not.
           return [];
         }
       }),

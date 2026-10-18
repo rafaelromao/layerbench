@@ -39,12 +39,19 @@ describe('Reading the community layouts', () => {
 
   it('tells a layout that is not one as LayerBench saves it from one that would not come', async () => {
     const files: Record<string, unknown> = {
-      'index.json': { layouts: ['night-owl', 'gone', 'no-author', 'no-link', 'misnamed', 'odd'] },
+      'index.json': {
+        layouts: ['night-owl', 'gone', 'no-author', 'no-link', 'misnamed', 'odd', 'no-board'],
+      },
       'night-owl.json': toCanonicalJson(owl),
       'no-author.json': toCanonicalJson({ ...communityDoc('no-author', 'A'), author: '' }),
       'no-link.json': toCanonicalJson({ ...communityDoc('no-link', 'B'), description: 'Mine.' }),
       'misnamed.json': toCanonicalJson(communityDoc('other', 'C')),
       'odd.json': { name: 'Odd' },
+      // A layout as LayerBench saves it, on a board it does not know: it would open nowhere.
+      'no-board.json': toCanonicalJson({
+        ...communityDoc('no-board', 'D'),
+        geometry: { preset: 'no-such-board' },
+      }),
     };
     const read = await readCommunity(async (file) => {
       if (!(file in files)) throw new Error('404');
@@ -57,6 +64,7 @@ describe('Reading the community layouts', () => {
       ['no-link', 'invalid'],
       ['misnamed', 'invalid'],
       ['odd', 'invalid'],
+      ['no-board', 'invalid'],
     ]);
     // One that would not come keeps the copy read before; one that is not a layout does not.
     const before = [communityDoc('gone', 'Gone'), communityDoc('odd', 'Odd')];

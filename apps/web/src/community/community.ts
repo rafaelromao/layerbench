@@ -1,4 +1,10 @@
-import { documentLayout, isDocumentId, type Layout, toCanonicalJson } from '@layerbench/core';
+import {
+  compileLayout,
+  documentLayout,
+  isDocumentId,
+  type Layout,
+  toCanonicalJson,
+} from '@layerbench/core';
 import { create } from 'zustand';
 
 /**
@@ -36,10 +42,15 @@ export function indexIds(index: unknown): string[] {
   return [...new Set(ids)];
 }
 
-/** A community document, checked as a bundled one is: `documentLayout`, or null if it fails. */
+/**
+ * A community document, checked as a bundled one is, `documentLayout`, and compiled, so every view
+ * that lists it can open it; null if either fails.
+ */
 function checked(id: string, doc: unknown): Layout | null {
   try {
-    return documentLayout(id, doc);
+    const layout = documentLayout(id, doc);
+    compileLayout(layout);
+    return layout;
   } catch {
     return null;
   }

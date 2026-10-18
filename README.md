@@ -109,7 +109,7 @@ maintainer's acceptance. The app (`apps/web/src/community/community.ts`) reads t
 file from `raw.githubusercontent.com` each time the Library opens, with no sign-in: plain files, as
 unauthenticated calls to the GitHub API are limited to 60 an hour for each address. GitHub's file
 server caches a file for a few minutes, so a layout merged appears within about five. Each file is
-checked with `documentLayout` and skipped if it fails, and what was read is kept in the browser, so
+checked with `documentLayout` and compiled, and skipped if either fails, and what was read is kept in the browser, so
 the Library lists the last ones at once while it reads them again. They are ranked in the category
 their keys give them, flagged *community*, and named in links as `community:<id>`; saving one makes
 a copy.
