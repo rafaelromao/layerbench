@@ -100,7 +100,8 @@ live on the `layerbench-data` branch, kept apart from main:
   and a description that links to its source: what `documentLayout` in
   `packages/core/src/layouts/documents.ts` checks a bundled document for.
 - `community/index.json`: `{ "layouts": [<id>, …] }`, which
-  `.github/workflows/community-index.yml` on that branch writes on every push. It reads only the
+  `.github/workflows/community-index.yml` on that branch writes on every push that changes
+  `community/`. It reads only the
   files' names, never their contents, and lists only names that are document ids.
 
 A pull request into `layerbench-data` that adds one file proposes a layout; merging it is the
@@ -213,8 +214,8 @@ written by `vite.config.ts`, a check at the top of `main.tsx` stands in for `fra
 meta tag sets the referrer policy; `Cross-Origin-Opener-Policy` and `X-Content-Type-Options` have no
 stand-in. The policy's `connect-src` lets the page talk to its own origin, `api.github.com` and the
 sign-in Worker, so the token and the session in the page cannot be sent anywhere but there, and to
-`raw.githubusercontent.com`, which the community layouts are read from, a file at a time by its
-path.
+the branch's `community/` folder on `raw.githubusercontent.com`, which the community layouts are
+read from.
 
 ### Publishing the app
 

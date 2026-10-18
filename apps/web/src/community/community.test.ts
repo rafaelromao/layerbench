@@ -8,6 +8,7 @@ import {
   githubSource,
   indexIds,
   readCommunity,
+  readLayouts,
   refreshCommunity,
   setCommunitySource,
   useCommunity,
@@ -32,11 +33,11 @@ describe('The index of community layouts', () => {
 
 describe('Reading the community layouts', () => {
   it('reads every layout the index lists', async () => {
-    const layouts = await readCommunity(branchWith(owl, lark));
+    const layouts = readLayouts(await readCommunity(branchWith(owl, lark)), []);
     expect(layouts.map((l) => l.name)).toEqual(['Night owl', 'Lark']);
   });
 
-  it('leaves out a layout that will not read or is not one as LayerBench saves it', async () => {
+  it('tells a layout that is not one as LayerBench saves it from one that would not come', async () => {
     const files: Record<string, unknown> = {
       'index.json': { layouts: ['night-owl', 'gone', 'no-author', 'no-link', 'misnamed', 'odd'] },
       'night-owl.json': toCanonicalJson(owl),
@@ -45,15 +46,28 @@ describe('Reading the community layouts', () => {
       'misnamed.json': toCanonicalJson(communityDoc('other', 'C')),
       'odd.json': { name: 'Odd' },
     };
-    const layouts = await readCommunity(async (file) => {
+    const read = await readCommunity(async (file) => {
       if (!(file in files)) throw new Error('404');
       return files[file];
     });
-    expect(layouts.map((l) => l.id)).toEqual(['night-owl']);
+    expect(read.map((r) => [r.id, r.status])).toEqual([
+      ['night-owl', 'read'],
+      ['gone', 'unread'],
+      ['no-author', 'invalid'],
+      ['no-link', 'invalid'],
+      ['misnamed', 'invalid'],
+      ['odd', 'invalid'],
+    ]);
+    // One that would not come keeps the copy read before; one that is not a layout does not.
+    const before = [communityDoc('gone', 'Gone'), communityDoc('odd', 'Odd')];
+    expect(readLayouts(read, before).map((l) => l.id)).toEqual(['night-owl', 'gone']);
+  });
+
+  it('reads an index that lists nothing as no layouts', async () => {
+    await expect(readCommunity(branchWith())).resolves.toEqual([]);
   });
 
   it('fails when the index will not read', async () => {
-    await expect(readCommunity(branchWith())).resolves.toEqual([]);
     await expect(
       readCommunity(async () => {
         throw new Error('offline');
@@ -106,6 +120,30 @@ describe('The community layouts kept in this browser', () => {
     expect((await communityLayout('night-owl'))?.name).toBe('Night owl');
     expect(await communityLayout('lark')).toBeUndefined();
     expect(branch.reads).toEqual(['index.json', 'night-owl.json']);
+  });
+
+  it('reads again for the next link when a read failed', async () => {
+    let online = false;
+    const branch = branchWith(owl);
+    setCommunitySource(async (file) => {
+      if (!online) throw new Error('offline');
+      return branch(file);
+    });
+    expect(await communityLayout('night-owl')).toBeUndefined();
+    online = true;
+    expect((await communityLayout('night-owl'))?.name).toBe('Night owl');
+  });
+
+  it('keeps a layout whose file would not come this time', async () => {
+    setCommunitySource(branchWith(owl, lark));
+    await refreshCommunity();
+    const branch = branchWith(owl, lark);
+    setCommunitySource(async (file) => {
+      if (file === 'lark.json') throw new Error('429');
+      return branch(file);
+    });
+    await refreshCommunity();
+    expect(useCommunity.getState().layouts.map((l) => l.id)).toEqual(['night-owl', 'lark']);
   });
 
   it('drops a read a newer source has taken the place of', async () => {

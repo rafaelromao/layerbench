@@ -9,7 +9,7 @@ import { create } from 'zustand';
  * Library at its next load, with no deploy.
  *
  * They are read as plain files rather than through the GitHub API, whose unauthenticated calls are
- * limited to 60 an hour for each address. The policy's `connect-src` names this origin.
+ * limited to 60 an hour for each address. The policy's `connect-src` names this folder of it.
  */
 export const COMMUNITY_ORIGIN = 'https://raw.githubusercontent.com';
 const COMMUNITY_BASE = `${COMMUNITY_ORIGIN}/rafaelromao/layerbench/layerbench-data/community/`;
@@ -45,23 +45,44 @@ function checked(id: string, doc: unknown): Layout | null {
   }
 }
 
+/** A layout the index lists, as read: the layout, not one as LayerBench saves it, or not read. */
+export type CommunityRead =
+  | { id: string; status: 'read'; layout: Layout }
+  | { id: string; status: 'invalid' }
+  | { id: string; status: 'unread' };
+
 /**
- * Read every community layout the index lists. A layout that will not read, or is not a layout as
- * LayerBench saves it, with an author and a linked source, is left out; an index that will not read
- * fails the whole.
+ * Read every community layout the index lists. One that is not a layout as LayerBench saves it, with
+ * an author and a linked source, is invalid; one whose file would not come is unread, which says
+ * nothing about it. An index that will not read fails the whole.
  */
-export async function readCommunity(source: CommunitySource): Promise<Layout[]> {
+export async function readCommunity(source: CommunitySource): Promise<CommunityRead[]> {
   const ids = indexIds(await source('index.json'));
-  const read = await Promise.all(
-    ids.map(async (id) => {
+  return Promise.all(
+    ids.map(async (id): Promise<CommunityRead> => {
+      let doc: unknown;
       try {
-        return checked(id, await source(`${id}.json`));
+        doc = await source(`${id}.json`);
       } catch {
-        return null;
+        return { id, status: 'unread' };
       }
+      const layout = checked(id, doc);
+      return layout ? { id, status: 'read', layout } : { id, status: 'invalid' };
     }),
   );
-  return read.filter((layout) => layout !== null);
+}
+
+/**
+ * The layouts a read gives, in the index's order: a layout whose file would not come this time
+ * keeps the copy last read, if there is one, rather than leaving the Library for a network blip.
+ */
+export function readLayouts(read: CommunityRead[], before: Layout[]): Layout[] {
+  return read.flatMap((r) => {
+    if (r.status === 'read') return [r.layout];
+    if (r.status === 'invalid') return [];
+    const kept = before.find((l) => l.id === r.id);
+    return kept ? [kept] : [];
+  });
 }
 
 /** The community layouts last read, kept in this browser so the Library has them at once. */
@@ -116,9 +137,11 @@ export function refreshCommunity(): Promise<void> {
   const from = source;
   reading = readCommunity(from)
     .then(
-      (layouts) => {
+      (read) => {
         if (from !== source) return;
+        const layouts = readLayouts(read, useCommunity.getState().layouts);
         toCache(layouts);
+        readThisLoad = true;
         useCommunity.setState({ layouts, status: 'read', error: null });
       },
       (e: unknown) => {
@@ -130,9 +153,7 @@ export function refreshCommunity(): Promise<void> {
       },
     )
     .finally(() => {
-      if (from !== source) return;
-      readThisLoad = true;
-      reading = null;
+      if (from === source) reading = null;
     });
   return reading;
 }
@@ -140,7 +161,7 @@ export function refreshCommunity(): Promise<void> {
 /**
  * The community layout `id`, from those kept here, or once they are read afresh when it is not among
  * them and they have not been read since the page loaded: a link to one accepted since the last
- * visit opens too.
+ * visit opens too. A read that failed is tried again by the next link.
  */
 export async function communityLayout(id: string): Promise<Layout | undefined> {
   const find = () => useCommunity.getState().layouts.find((l) => l.id === id);
