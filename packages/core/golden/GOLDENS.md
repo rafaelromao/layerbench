@@ -476,7 +476,7 @@ What moved, checked across the 38 reports; nothing else moved:
   1.49 → 2.91, Effort 423.67 → 431.12 and SFB 1.50 → 1.84 on the Layouts Doc's rules. In English,
   where it has few accents, Effort 531.68 → 532.84 and SFB 0.96 → 1.10, its `/` gone from RBP. Its
   composite score moves in ten of the twelve, 37.11 → 32.50 on Portuguese with no space.
-- **The 27 documents** of Romak and the Standard and Thumb Alpha layouts. `romak-24.json` and
+- **The 26 documents** of Romak and the Standard and Thumb Alpha layouts. `romak-24.json` and
   `romak-34.json` are deleted, and `romak.json` is new.
 
 ## Not compared
