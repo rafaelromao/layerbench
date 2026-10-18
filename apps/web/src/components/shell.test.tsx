@@ -12,7 +12,7 @@ function freshStorage(): IndexedDbAdapter {
 }
 
 afterEach(() => {
-  useGitHubSession.setState({ status: 'unknown', login: null, target: null, targetStatus: 'idle' });
+  useGitHubSession.setState({ status: 'unknown', login: null });
 });
 
 describe('where the site opens', () => {
@@ -178,7 +178,7 @@ describe('the page frame', () => {
   });
 
   it('opens storage settings as a dialog that offers to sign in with GitHub', async () => {
-    useGitHubSession.setState({ status: 'signed-out', login: null, target: null });
+    useGitHubSession.setState({ status: 'signed-out', login: null });
     const user = userEvent.setup();
     renderRoute(LIBRARY, { storage: freshStorage() });
 
@@ -189,15 +189,8 @@ describe('the page frame', () => {
     expect(within(dialog).queryByLabelText('Access token')).toBeNull();
   });
 
-  it('says where a signed-in user’s documents go, and how to save them to a fork instead', async () => {
-    useGitHubSession.setState({
-      status: 'signed-in',
-      login: 'you',
-      appSlug: 'layerbench-app',
-      upstream: 'rafaelromao/layerbench',
-      target: { kind: 'gist', forkWithoutAccess: 'you/layerbench' },
-      targetStatus: 'idle',
-    });
+  it('says a signed-in user’s documents go to their gists, and offers nothing else', async () => {
+    useGitHubSession.setState({ status: 'signed-in', login: 'you' });
     const user = userEvent.setup();
     renderRoute(LIBRARY, { storage: freshStorage() });
 
@@ -210,58 +203,14 @@ describe('the page frame', () => {
       'href',
       'https://gist.github.com/you',
     );
-    expect(
-      within(dialog).getByRole('link', { name: 'Give LayerBench access to it' }),
-    ).toHaveAttribute('href', 'https://github.com/apps/layerbench-app/installations/new');
     expect(within(dialog).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
-  });
-
-  it('still offers to give the app a fork when GitHub could not be asked where to save', async () => {
-    useGitHubSession.setState({
-      status: 'signed-in',
-      login: 'you',
-      appSlug: 'layerbench-app',
-      upstream: 'rafaelromao/layerbench',
-      target: null,
-      targetStatus: 'error',
-    });
-    const user = userEvent.setup();
-    renderRoute(LIBRARY, { storage: freshStorage() });
-
-    await user.click(await screen.findByRole('button', { name: /^Storage/ }));
-    const dialog = await screen.findByRole('dialog', { name: 'Storage' });
-    expect(within(dialog).getByText(/could not be asked where to save/)).toBeInTheDocument();
-    expect(
-      within(dialog).getByRole('link', { name: 'Give LayerBench access to it' }),
-    ).toBeInTheDocument();
-  });
-
-  it('names the fork and its branch when documents go there', async () => {
-    useGitHubSession.setState({
-      status: 'signed-in',
-      login: 'you',
-      target: {
-        kind: 'repo',
-        repo: 'you/layerbench',
-        branch: 'layerbench-data',
-        upstream: false,
-      },
-      targetStatus: 'idle',
-    });
-    const user = userEvent.setup();
-    renderRoute(LIBRARY, { storage: freshStorage() });
-
-    await user.click(await screen.findByRole('button', { name: /^Storage/ }));
-    const dialog = await screen.findByRole('dialog', { name: 'Storage' });
-    expect(within(dialog).getByRole('link', { name: 'you/layerbench' })).toHaveAttribute(
-      'href',
-      'https://github.com/you/layerbench/tree/layerbench-data',
-    );
+    expect(within(dialog).queryByText(/fork/i)).toBeNull();
     expect(within(dialog).queryByRole('link', { name: /Give LayerBench access/ })).toBeNull();
+    expect(within(dialog).queryByRole('button', { name: 'Check again' })).toBeNull();
   });
 
   it('says so where sign-in is not set up', async () => {
-    useGitHubSession.setState({ status: 'unavailable', login: null, target: null });
+    useGitHubSession.setState({ status: 'unavailable', login: null });
     const user = userEvent.setup();
     renderRoute(LIBRARY, { storage: freshStorage() });
 

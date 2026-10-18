@@ -145,7 +145,7 @@ export function createLayoutSession(
   let saves: Promise<unknown> = Promise.resolve();
   let saving = false;
   /**
-   * What a first save wrote, until one has gone through: with a repository to write to as well, a
+   * What a first save wrote, until one has gone through: with gists to write to as well, a
    * save can fail after the browser has written the layout, and trying again must find that one
    * rather than make a second. Only a document that is exactly what was written counts as it.
    */
