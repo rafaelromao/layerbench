@@ -238,6 +238,36 @@ describe('Machine — complex combos', () => {
   });
 });
 
+describe('Machine — a tap dance under a one-shot layer', () => {
+  const kp = (symbol: string) => ({ kind: 'kp' as const, symbol });
+  const dance = { kind: 'tap_dance' as const, bindings: [kp('1'), kp('2')] };
+  const board = () =>
+    machineFor(
+      mini(
+        [
+          { id: 'base', bindings: { LTR: { kind: 'sl', layer: 'up' }, L0: kp(' ') } },
+          { id: 'up', bindings: { '*': { kind: 'trans' }, LHI: dance } },
+        ],
+        { combos: [{ id: 'dance', keys: ['RHP', 'RHR'], binding: dance, layers: ['up'] }] },
+      ),
+    );
+
+  it('keeps the layer on until the last tap of a key, which types its second branch', () => {
+    const b = board();
+    b.tap('LTR');
+    const evs = b.m.perform({ type: 'tap', pos: b.pos('LHI'), taps: 2 });
+    expect(evs.map((e) => e.symbols)).toEqual(['', '2']);
+    expect(b.m.isLayerActive(b.compiled.layerIndex.get('up')!)).toBe(false);
+  });
+
+  it('keeps the layer a combo fires on until its last chord', () => {
+    const b = board();
+    b.tap('LTR');
+    const combo = b.compiled.combos.findIndex((c) => c.id === 'dance');
+    expect(b.m.perform({ type: 'chord', combo, taps: 2 }).map((e) => e.symbols)).toEqual(['', '2']);
+  });
+});
+
 describe('Machine — combos, caps word, holds', () => {
   it('combo fires only when the highest active layer is in its layer list', () => {
     const { m, tap, compiled } = machineFor(romak24);

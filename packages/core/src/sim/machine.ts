@@ -409,7 +409,9 @@ export class Machine {
     } else {
       this.run(binding, ctx);
     }
-    const wasted = this.postStep(ctx, armedBefore, stickyBefore, layer);
+    // A tap dance is decided on its last tap: the taps before it leave one-shots and the rest as
+    // they were, for the binding the last tap runs.
+    const wasted = taps === 0 ? false : this.postStep(ctx, armedBefore, stickyBefore, layer);
     this.recomputeMask();
     return {
       kind: mode === 'hold' ? 'hold_press' : 'tap',
@@ -471,7 +473,8 @@ export class Machine {
     } else if (this.comboAvailable(comboIdx)) this.run(c.binding, ctx);
     // A held chord is let go in the same action: nothing it held stays down.
     if (hold) this.state.held.delete(c.pos);
-    const wasted = this.postStep(ctx, armedBefore, stickyBefore, layer);
+    // As on a key, the chords before a tap dance's last leave one-shots and the rest as they were.
+    const wasted = taps === 0 ? false : this.postStep(ctx, armedBefore, stickyBefore, layer);
     this.recomputeMask();
     return {
       kind: 'chord',
