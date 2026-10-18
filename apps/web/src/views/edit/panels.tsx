@@ -663,12 +663,13 @@ export function CombosPanel({ state, send }: PanelProps) {
                     <button
                       type="button"
                       className={`badge badge-xs ${c.role === 'typing' ? 'badge-primary' : ''}`}
-                      aria-label={`Role of ${name}: ${c.role}. Switch it`}
+                      // A combo that names no role is a command, as the compiler reads it.
+                      aria-label={`Role of ${name}: ${c.role ?? 'command'}. Switch it`}
                       onClick={() =>
                         send({ type: 'edit', edit: { kind: 'toggleComboRole', combo: i } })
                       }
                     >
-                      {c.role}
+                      {c.role ?? 'command'}
                     </button>
                   </td>
                   <td>

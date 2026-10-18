@@ -32,6 +32,8 @@ export function ComboInspector({
   const name = c.keys.join('+');
   const shown = legend(compiled, c.binding);
   const layerIds = c.layers ?? layout.layers.map((l) => l.id);
+  // A combo that names no role is a command, as the compiler reads it.
+  const role = c.role ?? 'command';
   const repicking = state.comboPick !== null && state.comboPickFor === combo;
   const picked = state.comboPick ?? [];
 
@@ -160,7 +162,7 @@ export function ComboInspector({
             <select
               aria-label={`Role of combo ${name}`}
               className="select select-xs select-bordered w-auto"
-              value={c.role}
+              value={role}
               onChange={(e) => update({ role: e.target.value as 'typing' | 'command' })}
             >
               <option value="typing">typing</option>
