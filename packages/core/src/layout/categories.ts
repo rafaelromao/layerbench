@@ -273,7 +273,7 @@ const DECLARED: Record<WrappingFeature, { feature: SpecialFeatureKind; label: st
  * an empty list, on none at all. A combo with no list fires on every layer.
  */
 const onDefaultLayersOnly = (layers: string[] | undefined) =>
-  layers !== undefined && layers.every(isDefaultLayer);
+  layers?.every(isDefaultLayer) === true;
 
 /**
  * Each use of a special feature: on the keys of the layout's own layers, on its combos, and among
