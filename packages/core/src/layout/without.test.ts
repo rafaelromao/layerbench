@@ -86,6 +86,46 @@ describe('Ranking a layout without some of its features', () => {
     expect(coverage?.missingRequired).toEqual([]);
   });
 
+  it('keeps a combo whose every part only turns a layer on, through a tap-hold, a morph or an adaptive key', () => {
+    const qwerty = bundledLayout('qwerty') as Layout;
+    const layer = qwerty.layers[1].id;
+    const sl = { kind: 'sl' as const, layer };
+    const combo = (
+      id: string,
+      keys: string[],
+      binding: Layout['layers'][number]['bindings'][string],
+    ) => ({
+      id,
+      keys,
+      binding,
+      layers: ['base'],
+      role: 'typing' as const,
+    });
+    const layout: Layout = {
+      ...qwerty,
+      combos: [
+        combo('held', ['RHI', 'RHM'], { kind: 'hold_tap', tap: sl, hold: { kind: 'mo', layer } }),
+        combo('morph', ['RTI', 'RTM'], {
+          kind: 'mod_morph',
+          mods: ['LSHIFT'],
+          default: sl,
+          morphed: sl,
+        }),
+        combo('adaptive', ['RBI', 'RBM'], { kind: 'adaptive', default: sl, triggers: [] }),
+        combo('types', ['LTI', 'LTM'], {
+          kind: 'hold_tap',
+          tap: sl,
+          hold: { kind: 'kp', symbol: 'x' },
+        }),
+      ],
+    };
+    expect(withoutFeatures(layout, ['combos']).combos?.map((c) => c.id)).toEqual([
+      'held',
+      'morph',
+      'adaptive',
+    ]);
+  });
+
   it('is still a document the engine reads back', () => {
     const all = withoutFeatures(magicRomak, ['adaptive', 'repeat', 'combos', 'macros']);
     const back = safeParseLayout(JSON.parse(JSON.stringify(toCanonicalJson(all))));
