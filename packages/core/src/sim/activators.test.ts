@@ -37,6 +37,37 @@ function board(layers: Layout['layers'], extra: Partial<Layout> = {}): Layout {
 }
 
 describe('the keys that reach a layer', () => {
+  it('reads a tap dance inside a branch by the same taps, as the machine does, and a held one once', () => {
+    const sl = (layer: string): Binding => ({ kind: 'sl', layer });
+    const td = (...bindings: Binding[]): Binding => ({ kind: 'tap_dance', bindings });
+    const c = compileLayout(
+      board([
+        {
+          id: 'base',
+          bindings: {
+            // Two taps type @: the inner dance's second branch is never reached.
+            LHP: td(td(kp('!'), sl('up')), kp('@')),
+            // Two taps run the inner dance's second branch, to other.
+            LHR: td(kp('!'), td(sl('up'), sl('other'))),
+            // Held, a tap dance is its first branch: a layer held.
+            LHM: td({ kind: 'mo', layer: 'up' }, sl('other')),
+          },
+        },
+        { id: 'up', bindings: { '*': { kind: 'trans' } } },
+        { id: 'other', bindings: { '*': { kind: 'trans' } } },
+      ]),
+    );
+    const says = (layer: string) =>
+      reachKeys(c, layerOf(c, layer)).map(
+        (k) => `${keyId(c, k.pos)}: ${describeReach(c, layerOf(c, layer), k)}`,
+      );
+    expect(says('up')).toEqual(['LHM: held from base to reach up']);
+    expect(says('other').sort()).toEqual([
+      'LHM: tapped twice from base to reach other',
+      'LHR: tapped twice from base to reach other',
+    ]);
+  });
+
   it('marks nothing on the base layer, which is always on', () => {
     expect(reachKeys(magic, 0)).toEqual([]);
   });

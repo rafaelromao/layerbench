@@ -3,6 +3,7 @@ import { FINGERS, type Finger } from '../geometry/types.js';
 import type { CompiledLayout } from '../layout/compile.js';
 import {
   type ActivatorDef,
+  type Binding,
   type BindingKind,
   MAX_CONDITION_LAYERS,
   type Mod,
@@ -339,10 +340,13 @@ export class Simulator {
         if (r.layer !== cand.viaLayer) ok = false;
         else {
           let peeled = peelBinding(m, r.binding, cand.mode);
-          // A tap dance is the branch its taps choose.
-          if (peeled.kind === 'tap_dance' && cand.mode === 'tap') {
-            const branch = peeled.bindings[(cand.taps ?? 1) - 1];
-            if (branch) peeled = peelBinding(m, branch, 'tap');
+          // A tap dance is the branch its taps choose, one inside it too; held, it is pressed once.
+          const taps = cand.mode === 'hold' ? 1 : (cand.taps ?? 1);
+          for (let depth = 0; peeled.kind === 'tap_dance' && depth < 8; depth++) {
+            const branch: Binding | undefined =
+              peeled.bindings[Math.min(taps, peeled.bindings.length) - 1];
+            if (!branch) break;
+            peeled = peelBinding(m, branch, cand.mode);
           }
           const kinds =
             cand.mode === 'hold'
