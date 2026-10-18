@@ -245,6 +245,21 @@ function transparent(layout: Layout, b: Binding, depth = 0): boolean {
 }
 const NOT_TRANSPARENT = 'a combo cannot be Transparent: it has no layer below it to show through';
 
+/**
+ * The behaviours given, unless they would make a combo that refers to one Transparent. A combo
+ * that already was, in an older layout, does not stop the edit.
+ */
+function withBehaviors(layout: Layout, behaviors: Record<string, Binding>): Step {
+  const next = { ...layout, behaviors };
+  const turned = (layout.combos ?? []).find(
+    (c) => transparent(next, c.binding) && !transparent(layout, c.binding),
+  );
+  if (turned) {
+    return { refused: `${NOT_TRANSPARENT} (combo ${turned.id ?? turned.keys.join('+')})` };
+  }
+  return { layout: next };
+}
+
 const sameKeySet = (a: string[], b: string[]) =>
   a.length === b.length && a.every((k) => b.includes(k));
 
@@ -457,7 +472,7 @@ const handlers: Handlers = {
   },
 
   setBehavior(layout, { name, binding }) {
-    return { layout: { ...layout, behaviors: { ...(layout.behaviors ?? {}), [name]: binding } } };
+    return withBehaviors(layout, { ...(layout.behaviors ?? {}), [name]: binding });
   },
 
   replaceBehaviors(layout, { json }) {
@@ -467,7 +482,7 @@ const handlers: Handlers = {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
       return { refused: 'behaviors must be an object' };
     }
-    return { layout: { ...layout, behaviors: value as Record<string, Binding> } };
+    return withBehaviors(layout, value as Record<string, Binding>);
   },
 
   setTypingPath(layout, { symbol, entries }) {

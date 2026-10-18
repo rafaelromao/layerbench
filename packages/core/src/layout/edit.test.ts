@@ -373,6 +373,34 @@ describe('changing a combo', () => {
     }
   });
 
+  it('refuses a behaviour edit that would make a combo referring to it Transparent', () => {
+    const named: Layout = {
+      ...withCombos,
+      behaviors: { inner: kp('q'), outer: { kind: 'ref', ref: 'inner' } },
+      combos: [
+        {
+          ...(withCombos.combos?.[0] as NonNullable<Layout['combos']>[number]),
+          binding: { kind: 'ref', ref: 'outer' },
+        },
+      ],
+    };
+    const set = applyEdit(named, {
+      kind: 'setBehavior',
+      name: 'inner',
+      binding: { kind: 'trans' },
+    });
+    expect(set).toMatchObject({ status: 'refused', message: /cannot be Transparent/ });
+    const replaced = applyEdit(named, {
+      kind: 'replaceBehaviors',
+      json: JSON.stringify({ inner: { kind: 'trans' }, outer: { kind: 'ref', ref: 'inner' } }),
+    });
+    expect(replaced).toMatchObject({ status: 'refused', message: /cannot be Transparent/ });
+    // A behaviour no combo refers to may be anything.
+    expect(
+      applyEdit(named, { kind: 'setBehavior', name: 'loose', binding: { kind: 'trans' } }).status,
+    ).toBe('landed');
+  });
+
   it('switches the role and sets the timeout', () => {
     const o = landed(withCombos, { kind: 'updateCombo', combo: 1, role: 'typing', timeoutMs: 80 });
     expect(o.layout.combos?.[1]).toMatchObject({ role: 'typing', timeoutMs: 80, id: 'lhm-lhr' });
