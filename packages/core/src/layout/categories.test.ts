@@ -153,6 +153,27 @@ describe('a custom copy of Qwerty', () => {
     expect(layoutCategory(unused)).toBe('special');
   });
 
+  it('reports an unused behaviour another unused one names once, through it', () => {
+    const l: Layout = {
+      ...qwerty(),
+      behaviors: {
+        inner: kp('x'),
+        outer: { kind: 'tap_dance', bindings: [{ kind: 'ref', ref: 'inner' }] },
+      },
+    };
+    expect(specialFeatures(l).map((f) => f.label)).toEqual(['Behaviour outer', 'Behaviour inner']);
+    const loop: Layout = {
+      ...qwerty(),
+      behaviors: { a: { kind: 'ref', ref: 'b' }, b: { kind: 'ref', ref: 'a' } },
+    };
+    // Each reference written is a use, the one `b` makes back to `a` too; the loop is walked once.
+    expect(specialFeatures(loop).map((f) => f.label)).toEqual([
+      'Behaviour a',
+      'Behaviour b',
+      'Behaviour a',
+    ]);
+  });
+
   it('follows a binding that builds on a named behaviour into it', () => {
     const l = withKey(
       'LHP',

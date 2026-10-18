@@ -270,8 +270,18 @@ export function specialFeatures(layout: Layout): SpecialFeature[] {
       featuresOf(layout, c.binding, { combo: c.id ?? `#${i + 1}` }, out);
     namedIn(layout, c.binding, used);
   });
-  for (const name of Object.keys(layout.behaviors ?? {})) {
-    if (!used.has(name)) featuresOf(layout, { kind: 'ref', ref: name }, {}, out);
+  // An unused behaviour that another unused one names is reported through it, not again on its own:
+  // the ones nothing names go first, then any left in a loop of their own.
+  const behaviors = layout.behaviors ?? {};
+  const unused = Object.keys(behaviors).filter((name) => !used.has(name));
+  const named = new Set<string>();
+  for (const name of unused) namedIn(layout, behaviors[name], named);
+  const roots = unused.filter((name) => !named.has(name));
+  for (const name of [...roots, ...unused.filter((name) => named.has(name))]) {
+    if (used.has(name)) continue;
+    const root: Binding = { kind: 'ref', ref: name };
+    featuresOf(layout, root, {}, out);
+    namedIn(layout, root, used);
   }
   return out;
 }
