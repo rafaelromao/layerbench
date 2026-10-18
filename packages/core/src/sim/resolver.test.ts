@@ -266,7 +266,7 @@ describe('combos that do more than type a character', () => {
     expect(t.keys).toEqual(['combo:dance', 'L0', 'combo:dance', 'combo:dance']);
   });
 
-  it('holds shift for a combo whose symbol is shifted, as it would for a key, in model case', () => {
+  it('holds shift for a combo whose symbol is shifted, or a capital, as it would for a key, in model case', () => {
     const shifted: Layout = {
       ...board,
       keys: { space: 'L0', shift: { key: 'R1', kind: 'sk' } },
@@ -280,8 +280,13 @@ describe('combos that do more than type a character', () => {
       combos: [
         ...(board.combos ?? []),
         combo('hash', ['LTR', 'LTP'], { kind: 'kp', symbol: '3', shifted: '#' }),
+        combo('w', ['LBR', 'LBP'], kp('w')),
       ],
     };
+    // A capital of a letter only a combo has: shift, then the combo, as on a key.
+    const capital = trace(shifted, 'W', { caseMode: 'model' });
+    expect(capital.out).toBe('W');
+    expect(capital.keys).toEqual(['R1', 'combo:w']);
     const t = trace(shifted, '3#', { caseMode: 'model' });
     expect(t.out).toBe('3#');
     expect(t.keys).toEqual(['combo:hash', 'R1', 'combo:hash']);

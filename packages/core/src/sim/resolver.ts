@@ -242,8 +242,9 @@ export class Simulator {
         const lowerProducers = this.index.bySymbol.get(lower) ?? [];
         out.push(...lowerProducers);
         out.push(...base);
+        // A capital is its letter with Shift held, on a key and on a combo alike.
         for (const p of lowerProducers) {
-          if (p.kind === 'combo' || p.kind === 'repeat') continue;
+          if (p.kind === 'repeat') continue;
           out.push({
             ...p,
             id: `${p.id}+shift`,
