@@ -78,7 +78,7 @@ describe('the default layers on every board', () => {
         expect(missing).toEqual([]);
       });
 
-      it('writes all five languages', () => {
+      it('writes all six languages', () => {
         for (const tag of Object.keys(LANGUAGE_PROFILES)) {
           const c = layoutLanguageCoverage(compiled, tag);
           expect([tag, c?.missingRequired, c?.missingOptional, c?.missingPunctuation]).toEqual([
@@ -194,7 +194,7 @@ describe('the default layers, board by board', () => {
     expect(t.keys).toEqual([ACCENTS_COMBO, 'RTM']);
   });
 
-  it('carry each dead key the five languages need', () => {
+  it('carry each dead key the six languages need', () => {
     expect(defaultDeadKeys().sort()).toEqual(['^', '`', '~', '¨', '´'].sort());
   });
 
@@ -281,7 +281,7 @@ describe('Romak types every accent through Accents, one-shot from its right oute
     expect(romak.behaviors).toBeUndefined();
   });
 
-  it('writes the five languages: ñ ü and œ on Accents, ¿ and ¡ on Symbols', () => {
+  it('writes the six languages: ñ ü and œ on Accents, ¿ and ¡ on Symbols', () => {
     const t = trace(romak, 'ñ ü ¿ ¡ œ');
     expect(t.out).toBe('ñ ü ¿ ¡ œ');
     expect(t.keys).toEqual([
@@ -344,7 +344,7 @@ describe('the default layers on every bundled layout', () => {
         expect(missing).toEqual([]);
       });
 
-      it('writes all five languages, every letter and mark', () => {
+      it('writes all six languages, every letter and mark', () => {
         for (const tag of Object.keys(LANGUAGE_PROFILES)) {
           const c = layoutLanguageCoverage(compiled, tag);
           expect([tag, c?.missingRequired, c?.missingOptional, c?.missingPunctuation]).toEqual([

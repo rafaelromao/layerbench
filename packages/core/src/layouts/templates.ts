@@ -12,7 +12,7 @@ import type { Binding, ComboDef, ConditionalLayerDef, LayerDef, Layout } from '.
  * `:`, `¿` by `?`, `«` and `»` around `<` and `>`). A board without one of those keys finds its
  * symbol on Extras, which comes on while Numbers and Symbols are both held, on the key Dead keys
  * gave it. Accents is one-shot: the dead keys in their look-alikes' columns, the letters no dead key
- * makes, and the accented letters the five languages' texts use most, each a key of its own.
+ * makes, and the accented letters the six languages' texts use most, each a key of its own.
  *
  * What changes from board to board is decided by which keys it has, not by its name, so a custom
  * geometry gets a sensible result too: where `0` goes, which thumbs reach the layers, which symbols
@@ -126,7 +126,7 @@ export const EXTRAS_CORE: Readonly<Record<string, string>> = {
  * the accents Portuguese and Spanish use most, are on the home row. `ñ` `ç` `œ` `æ` and `ß`, which
  * no dead key makes or which are common enough to be worth a press less, have keys of their own.
  *
- * The rest are the accented letters the five languages' texts use most, each typed whole, a press
+ * The rest are the accented letters the six languages' texts use most, each typed whole, a press
  * less than its accent and its letter: the most frequent on the core (`é` alone is over a quarter of
  * them), the umlauts beside `¨`, `â` and `ô` beside `^`, and German's `ä` `ö` `ü` among them. `û`,
  * `ë`, `ï` and `ÿ` come from the dead keys only. `qu` is there too, for the languages that write it

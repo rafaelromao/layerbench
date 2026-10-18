@@ -41,5 +41,14 @@
     "source": "https://wortschatz.uni-leipzig.de/en/download (ita_news_2023_30K)",
     "description": "30,000 Italian news sentences from the Leipzig Corpora Collection (2023).",
     "retrieved": "2026-10-08"
+  },
+  "de-general": {
+    "file": "de-general.txt",
+    "name": "Deutsch — Nachrichten 2023 (Leipzig)",
+    "language": "de",
+    "license": "CC BY 4.0 (Leipzig Corpora Collection)",
+    "source": "https://wortschatz.uni-leipzig.de/en/download (deu_news_2023_30K)",
+    "description": "30,000 German news sentences from the Leipzig Corpora Collection (2023).",
+    "retrieved": "2026-10-18"
   }
 }
