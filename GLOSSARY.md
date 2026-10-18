@@ -135,8 +135,8 @@ other categories follow.
 _Avoid_: exotic layout, advanced layout
 
 **Standard layout**:
-A layout with one alpha layer, no thumb alpha and no special feature, on a board of 34 keys or more.
-The bundled ones share their default layers and main thumbs, so they differ in little but their
+A layout that is neither Special nor Thumb Alpha: no special feature, no thumb alpha, at most one
+alpha layer, on a board of 34 keys or more. The bundled ones share their default layers and main thumbs, so they differ in little but their
 letters.
 _Avoid_: regular layout, classic layout, normal layout
 
