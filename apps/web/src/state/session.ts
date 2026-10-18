@@ -24,6 +24,9 @@ interface SessionState {
   /** Whether the Library leaves out the custom layouts. */
   hideCustom: boolean;
   setHideCustom: (hide: boolean) => void;
+  /** Whether the Library leaves out the community layouts. */
+  hideCommunity: boolean;
+  setHideCommunity: (hide: boolean) => void;
   /** Categories whose layouts the Library leaves out: `standard`, `thumb_alpha`, `special`. */
   hiddenCategories: string[];
   showCategories: (categories: readonly string[], shown: boolean) => void;
@@ -56,6 +59,8 @@ export const useSession = create<SessionState>()(
       },
       hideCustom: false,
       setHideCustom: (hideCustom) => set({ hideCustom }),
+      hideCommunity: false,
+      setHideCommunity: (hideCommunity) => set({ hideCommunity }),
       hiddenCategories: [],
       showCategories: (categories, shown) => {
         const rest = get().hiddenCategories.filter((c) => !categories.includes(c));
@@ -80,6 +85,7 @@ export const useSession = create<SessionState>()(
         librarySort: s.librarySort,
         hiddenBoards: s.hiddenBoards,
         hideCustom: s.hideCustom,
+        hideCommunity: s.hideCommunity,
         hiddenCategories: s.hiddenCategories,
         collapsedGroups: s.collapsedGroups,
       }),

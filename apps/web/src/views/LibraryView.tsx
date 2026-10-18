@@ -18,6 +18,8 @@ import {
 } from '@layerbench/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { refreshCommunity, useCommunity } from '../community/community.js';
+import { communityRef } from '../community/ref.js';
 import { featureList } from '../components/FeatureSwitches.js';
 import { formatValue } from '../components/format.js';
 import { HelpLink } from '../components/HelpLink.js';
@@ -171,15 +173,20 @@ function LanguageBadges({ compiled }: { compiled: CompiledLayout }) {
   );
 }
 
-/** A layout as the list shows it, whether it came with the app or is a custom layout. */
+/** A layout as the list shows it, whether it came with the app, from the community, or is custom. */
 interface Listed {
-  /** What its score is kept under: `b:<id>` for a bundled layout, `c:<id>` for a custom one. */
+  /**
+   * What its score is kept under: `b:<id>` for a bundled layout, `m:<id>` for a community one,
+   * `c:<id>` for a custom one.
+   */
   key: string;
   name: string;
   custom: boolean;
-  /** The bundled id, or the id it is kept under. */
+  /** Accepted into the Library from someone else, read from the `layerbench-data` branch. */
+  community: boolean;
+  /** The bundled or community id, or the id it is kept under. */
   id: string;
-  /** How a link names it: the bundled id, or `custom:<id>`. */
+  /** How a link names it: the bundled id, `community:<id>` or `custom:<id>`. */
   ref: string;
   /** Missing while a custom document is still being read, or if it will not parse. */
   layout: Layout | undefined;
@@ -197,7 +204,7 @@ function layerCount(n: number): string {
   return `${n} layer${n === 1 ? '' : 's'}`;
 }
 
-/** One card, the same for a bundled layout and a custom one; a custom one says so. */
+/** One card, the same for every layout; a custom or community one says so. */
 function LayoutCard({
   item,
   summary,
@@ -222,6 +229,9 @@ function LayoutCard({
               {item.custom && (
                 <span className="badge badge-outline badge-primary badge-xs">custom</span>
               )}
+              {item.community && (
+                <span className="badge badge-outline badge-secondary badge-xs">community</span>
+              )}
               {item.category && (
                 <span className="lb-category badge badge-ghost badge-xs">
                   {CATEGORY_NAMES[item.category]}
@@ -236,7 +246,13 @@ function LayoutCard({
         </header>
         {item.compiled && (
           <LayerPreview
-            id={item.custom ? `kb-custom-${item.id}` : `kb-${item.id}`}
+            id={
+              item.custom
+                ? `kb-custom-${item.id}`
+                : item.community
+                  ? `kb-community-${item.id}`
+                  : `kb-${item.id}`
+            }
             compiled={item.compiled}
             name={item.name}
           />
@@ -343,6 +359,26 @@ export function LibraryView() {
     [],
   );
 
+  // Community layouts: those kept in this browser at once, then read afresh each time the Library
+  // opens, so one accepted since appears without a deploy.
+  const communityLayouts = useCommunity((s) => s.layouts);
+  const communityStatus = useCommunity((s) => s.status);
+  useEffect(() => {
+    refreshCommunity();
+  }, []);
+  const community = useMemo(
+    () =>
+      communityLayouts.flatMap((layout) => {
+        try {
+          return [{ id: layout.id as string, layout, compiled: compileLayout(layout) }];
+        } catch {
+          // Checked as a bundled layout is, but one that will not compile is not listed.
+          return [];
+        }
+      }),
+    [communityLayouts],
+  );
+
   // Ranking is on the analysis settings in the link, so it agrees with what Analyze would show; the
   // sample is capped, as twenty-odd layouts are typed one after another, and the status line names
   // it, so nobody takes it for Analyze's.
@@ -413,20 +449,38 @@ export function LibraryView() {
   const ranked = useMemo(() => {
     const out = new Map<string, CompiledLayout>();
     for (const { id, compiled } of bundled) out.set(`b:${id}`, typedLayout(compiled, without));
+    for (const { id, compiled } of community) out.set(`m:${id}`, typedLayout(compiled, without));
     for (const [id, compiled] of customCompiled) out.set(`c:${id}`, typedLayout(compiled, without));
     return out;
-  }, [bundled, customCompiled, without]);
+  }, [bundled, community, customCompiled, without]);
 
-  // Bundled and custom layouts are one list, ranked together: a layout of one's own means something
-  // next to the ones it would replace.
+  // Bundled, community and custom layouts are one list, ranked together: a layout of one's own means
+  // something next to the ones it would replace. A community layout is in the category its keys
+  // give it, as one submitted is never standardized.
   const listed: Listed[] = useMemo(
     () => [
       ...bundled.map(({ id, layout, compiled }) => ({
         key: `b:${id}`,
         name: layout.name,
         custom: false,
+        community: false,
         id,
         ref: id,
+        layout,
+        compiled,
+        meta: [layout.author, compiled.geometry.id, layerCount(compiled.layers.length)]
+          .filter(Boolean)
+          .join(' · '),
+        board: boardOf(layout),
+        category: layoutCategory(layout),
+      })),
+      ...community.map(({ id, layout, compiled }) => ({
+        key: `m:${id}`,
+        name: layout.name,
+        custom: false,
+        community: true,
+        id,
+        ref: communityRef(id),
         layout,
         compiled,
         meta: [layout.author, compiled.geometry.id, layerCount(compiled.layers.length)]
@@ -439,6 +493,7 @@ export function LibraryView() {
         key: `c:${entry.id}`,
         name: entry.name,
         custom: true,
+        community: false,
         id: entry.id,
         ref: customRef(entry.id),
         layout: customLayouts.get(entry.id),
@@ -458,14 +513,17 @@ export function LibraryView() {
           : undefined,
       })),
     ],
-    [bundled, custom.entries, customLayouts, customCompiled],
+    [bundled, community, custom.entries, customLayouts, customCompiled],
   );
 
-  // Custom layouts can be left out of the list, and then they count on no board either.
+  // Custom and community layouts can be left out of the list, and then they count on no board
+  // either.
   const hideCustom = useSession((s) => s.hideCustom);
+  const hideCommunity = useSession((s) => s.hideCommunity);
   const pool = useMemo(
-    () => (hideCustom ? listed.filter((item) => !item.custom) : listed),
-    [listed, hideCustom],
+    () =>
+      listed.filter((item) => !(hideCustom && item.custom) && !(hideCommunity && item.community)),
+    [listed, hideCustom, hideCommunity],
   );
 
   // The boards the listed layouts are on, in the order the presets are offered, each with how
@@ -499,7 +557,8 @@ export function LibraryView() {
   );
   /** Why fewer layouts are listed than there are, for the line under the sort. */
   const leftOut = [
-    pool.length < listed.length ? 'without the custom ones' : '',
+    hideCustom && listed.some((item) => item.custom) ? 'without the custom ones' : '',
+    hideCommunity && listed.some((item) => item.community) ? 'without the community ones' : '',
     pool.some((item) => !categoryShown(item)) ? 'in the categories chosen' : '',
     pool.some((item) => hiddenBoards.includes(item.board)) ? 'on the boards chosen' : '',
   ].filter(Boolean);
@@ -509,13 +568,14 @@ export function LibraryView() {
     () =>
       [
         ...bundled.map(({ id, layout }) => ({ key: `b:${id}`, layout })),
+        ...community.map(({ id, layout }) => ({ key: `m:${id}`, layout })),
         // One that will not compile is still sent, so it fails and shows as unscored.
         ...custom.entries.map((e) => ({
           key: `c:${e.id}`,
           layout: customLayouts.get(e.id) ?? null,
         })),
       ].filter((entry) => shownKeys.has(entry.key)),
-    [bundled, custom.entries, customLayouts, shownKeys],
+    [bundled, community, custom.entries, customLayouts, shownKeys],
   );
   // The last ranking on the same settings is what the list opens with.
   const rankingContext = rankingKey(ranking);
@@ -681,6 +741,7 @@ export function LibraryView() {
             boards={boards}
             categories={categories}
             customCount={custom.entries.length}
+            communityCount={community.length}
           />
         </SettingsDialog>
         <fieldset className="join" aria-label="Sort layouts by">
@@ -736,6 +797,13 @@ export function LibraryView() {
           </h2>
           {!custom.available && (
             <span className="badge badge-warning badge-sm">storage unavailable</span>
+          )}
+          {communityStatus === 'failed' && (
+            <span className="badge badge-warning badge-sm">
+              {community.length > 0
+                ? 'community layouts as last read'
+                : 'community layouts unavailable'}
+            </span>
           )}
           {custom.entries.length === 0 && (
             <span className="text-xs opacity-70">
