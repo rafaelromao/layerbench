@@ -31,6 +31,39 @@ interface LayerTarget {
   taps?: number;
 }
 
+/** Past this many taps a tap dance is not followed: no layout taps a key more often. */
+const MOST_TAPS = 8;
+
+/**
+ * The most taps that can still choose something a tap less does not. Past its last branch a tap
+ * dance stays on that branch, but a tap dance inside it goes on choosing by the same taps.
+ */
+function tapsThatChoose(b: Binding, depth = 0): number {
+  if (depth > 8) return 1;
+  const most = (...xs: (Binding | undefined)[]) =>
+    Math.max(1, ...xs.filter((x) => x !== undefined).map((x) => tapsThatChoose(x, depth + 1)));
+  switch (b.kind) {
+    case 'tap_dance':
+      return Math.min(MOST_TAPS, Math.max(b.bindings.length, most(b.bindings.at(-1))));
+    case 'hold_tap':
+      return most(b.tap, b.hold);
+    case 'lt':
+      return most(b.tap);
+    case 'mod_morph':
+      return most(b.default, b.morphed);
+    case 'layer_morph':
+      return most(b.inactive, b.active);
+    case 'adaptive':
+      return most(b.default, ...(b.triggers ?? []).map((t) => t.binding));
+    default:
+      return 1;
+  }
+}
+
+/** The branch of a tap dance a press of `taps` taps runs, as the machine picks it. */
+const branchFor = (b: Extract<Binding, { kind: 'tap_dance' }>, taps: number) =>
+  b.bindings[Math.min(taps, b.bindings.length) - 1];
+
 /**
  * The rank of a way in: by the kind of key, then one needing modifiers after one that does not,
  * then a tap dance's later branch after a first tap, then the order it was found in. Each band is
@@ -103,10 +136,13 @@ function collectLayerTargets(
       // Inside a branch, the branch the press's taps choose, as the machine picks it. Tapped, each
       // branch is a way in, chosen by its number of taps; held, a key is pressed once.
       if (taps !== undefined) {
-        const x = b.bindings[Math.min(taps, b.bindings.length) - 1];
+        const x = branchFor(b, taps);
         if (x) next(x, path, holdArm, taps);
       } else if (mode === 'tap' && !holdArm) {
-        for (const [i, x] of b.bindings.entries()) next(x, path, holdArm, i + 1);
+        for (let t = 1; t <= tapsThatChoose(b); t++) {
+          const x = branchFor(b, t);
+          if (x) next(x, path, holdArm, t);
+        }
       } else if (b.bindings[0]) next(b.bindings[0], path, holdArm, 1);
       return;
     case 'adaptive':
@@ -372,19 +408,23 @@ function extraRoutes(
       // Tapped, the planner presses a later branch itself, as `collectLayerTargets` finds it; held,
       // or inside another tap dance, a later branch is a route it does not press.
       if (ctx.inDance) {
-        const x = b.bindings[Math.min(ctx.taps ?? 1, b.bindings.length) - 1];
+        const x = branchFor(b, ctx.taps ?? 1);
         if (x) next(x, mode);
         return;
       }
-      b.bindings.forEach((x, i) => {
+      {
         const planned = mode === 'tap' && !ctx.holdArm;
         // Held, on its own or in a tap-hold's hold, a tap dance is pressed once: its first branch.
-        if (i > 0 && mode === 'hold') return;
-        next(x, mode, {
-          inDance: true,
-          ...(i === 0 ? {} : planned ? { taps: i + 1 } : { extra: true, taps: i + 1 }),
-        });
-      });
+        const last = mode === 'hold' ? 1 : tapsThatChoose(b);
+        for (let t = 1; t <= last; t++) {
+          const x = branchFor(b, t);
+          if (!x) continue;
+          next(x, mode, {
+            inDance: true,
+            ...(t === 1 ? {} : planned ? { taps: t } : { extra: true, taps: t }),
+          });
+        }
+      }
       return;
     case 'adaptive':
       if (b.default) next(b.default, mode);

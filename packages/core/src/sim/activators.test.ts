@@ -83,6 +83,8 @@ describe('the keys that reach a layer', () => {
             LHR: td(kp('!'), td(sl('up'), sl('other'))),
             // Held, a tap dance is its first branch: a layer held.
             LHM: td({ kind: 'mo', layer: 'up' }, sl('other')),
+            // Three taps stay on the second branch, where the dance in it takes its third.
+            LBP: td(kp('!'), td(kp('?'), kp('@'), sl('other'))),
             // In a tap-hold's hold too: its second branch is never run.
             LHI: { kind: 'hold_tap', tap: kp('i'), hold: td(kp('x'), sl('other')) },
           },
@@ -97,6 +99,7 @@ describe('the keys that reach a layer', () => {
       );
     expect(says('up')).toEqual(['LHM: held from base to reach up']);
     expect(says('other').sort()).toEqual([
+      'LBP: tapped three times from base to reach other',
       'LHM: tapped twice from base to reach other',
       'LHR: tapped twice from base to reach other',
     ]);

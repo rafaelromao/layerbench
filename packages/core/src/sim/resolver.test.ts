@@ -323,6 +323,15 @@ describe('combos that do more than type a character', () => {
       bindings: [{ kind: 'tap_dance', bindings: [{ kind: 'sl', layer: 'up' }, kp('!')] }, kp('@')],
     };
     expect(trace(withLHP(inner), '§').keys).toEqual(['LHP', 'RHP']);
+    // Past its last branch the outer dance stays there, and the dance in it goes on choosing.
+    const longer: Binding = {
+      kind: 'tap_dance',
+      bindings: [
+        kp('!'),
+        { kind: 'tap_dance', bindings: [kp('?'), kp('@'), { kind: 'sl', layer: 'up' }] },
+      ],
+    };
+    expect(trace(withLHP(longer), '§').keys).toEqual(['LHP', 'LHP', 'LHP', 'RHP']);
     const held: Binding = { kind: 'tap_dance', bindings: [{ kind: 'mo', layer: 'up' }, kp('!')] };
     const t = trace(withLHP(held), '§');
     expect(t.out).toBe('§');
