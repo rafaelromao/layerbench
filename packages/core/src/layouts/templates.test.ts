@@ -85,7 +85,7 @@ describe('the default layers on every board', () => {
         expect(missing).toEqual([]);
       });
 
-      it('writes all five languages', () => {
+      it('writes all six languages', () => {
         for (const tag of Object.keys(LANGUAGE_PROFILES)) {
           const c = layoutLanguageCoverage(compiled, tag);
           expect([tag, c?.missingRequired, c?.missingOptional, c?.missingPunctuation]).toEqual([
@@ -201,7 +201,7 @@ describe('the default layers, board by board', () => {
     expect(t.keys).toEqual([ACCENTS_COMBO, 'LTM']);
   });
 
-  it('carry each dead key the five languages need', () => {
+  it('carry each dead key the six languages need', () => {
     expect(defaultDeadKeys().sort()).toEqual(['^', '`', '~', '¨', '´'].sort());
   });
 
@@ -233,7 +233,7 @@ const ACCENT_USES: Record<string, Record<string, Record<string, number>>> = {
   qwerty: {
     'en-general': { é: 8, qu: 103, ü: 1, ç: 1, ñ: 1 },
     'pt-br-general': {
-      ...{ é: 475, qu: 870, ó: 189, á: 500, ã: 849, í: 301, à: 77, ü: 5, è: 1, ç: 591 },
+      ...{ é: 475, qu: 870, ó: 189, á: 500, ã: 849, à: 77, í: 301, ü: 5, è: 1, ç: 591 },
       ...{ ê: 161, ö: 1, ú: 114, õ: 114, ô: 43 },
     },
     'es-general': {
@@ -241,18 +241,18 @@ const ACCENT_USES: Record<string, Record<string, Record<string, number>>> = {
       '¨': 1,
     },
     'fr-general': {
-      ...{ é: 2569, qu: 876, à: 434, ü: 2, è: 336, ç: 41, ê: 141, ö: 1, ù: 22, ô: 50 },
-      ...{ â: 32, î: 28, '¨': 19, '^': 16, œ: 9 },
+      ...{ é: 2575, qu: 876, à: 434, ü: 2, è: 337, ç: 41, ê: 142, ö: 1, ù: 22, ô: 50 },
+      ...{ î: 28, â: 27, '¨': 19, '^': 16, œ: 9 },
     },
-    'it-general': { é: 39, qu: 435, à: 236, è: 321, ç: 1, ö: 1, ù: 75, ì: 46, ò: 39, â: 1 },
+    'it-general': { é: 39, qu: 435, à: 237, è: 321, ç: 1, ö: 1, ù: 75, ì: 46, ò: 39 },
     'de-general': { é: 4, qu: 18, ó: 1, á: 1, ã: 2, ü: 663, ä: 511, ö: 274, ß: 129 },
   },
   'ben-vallack-piano': {
     'en-general': { '´': 8, '¨': 1, ç: 1, ñ: 1 },
     'pt-br-general': { '´': 1579, '`': 78, '¨': 6, '~': 963, ç: 591, '^': 204 },
     'es-general': { '´': 2055, '`': 2, '¨': 5, ç: 1, ñ: 173, '¿': 22, '¡': 1 },
-    'fr-general': { '´': 2569, '`': 792, '¨': 22, ç: 41, '^': 267, œ: 9 },
-    'it-general': { '´': 39, '`': 717, '¨': 1, ç: 1, '^': 1 },
+    'fr-general': { '´': 2575, '`': 793, '¨': 22, ç: 41, '^': 263, œ: 9 },
+    'it-general': { '´': 39, '`': 718, '¨': 1, ç: 1 },
     'de-general': { '´': 6, '¨': 1448, '~': 2, ß: 129 },
   },
 };
@@ -432,7 +432,7 @@ describe('Romak types the other accents by the combos on its Alpha 2, or by Acce
     expect(romak.behaviors).toBeUndefined();
   });
 
-  it('writes the five languages: ñ and ü on Accents, ¿ ¡ and œ held', () => {
+  it('writes the six languages: ñ and ü on Accents, ¿ ¡ and œ held', () => {
     const t = trace(romak, 'ñ ü ¿ ¡ œ');
     expect(t.out).toBe('ñ ü ¿ ¡ œ');
     expect(t.keys).toEqual([
@@ -498,7 +498,7 @@ describe('the default layers on every bundled layout', () => {
         expect(missing).toEqual([]);
       });
 
-      it('writes all five languages, every letter and mark', () => {
+      it('writes all six languages, every letter and mark', () => {
         for (const tag of Object.keys(LANGUAGE_PROFILES)) {
           const c = layoutLanguageCoverage(compiled, tag);
           expect([tag, c?.missingRequired, c?.missingOptional, c?.missingPunctuation]).toEqual([

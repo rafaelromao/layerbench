@@ -22,6 +22,13 @@ describe('normalize', () => {
     expect(normalizeText('Olá Mundo', { caseMode: 'model' })).toBe('Olá Mundo');
   });
 
+  it('reads German „ “ and ‚ ‘ as quotes: nothing dropped, nothing left unbalanced', () => {
+    const text = 'Er sagte „ja“ und ‚nein‘.';
+    const symbols = { caseMode: 'model', textClass: 'letters+digits+symbols' } as const;
+    expect(normalizeText(text, symbols)).toBe(`Er sagte "ja" und 'nein'.`);
+    expect(normalizeText(text, { caseMode: 'model' })).toBe("Er sagte ja und 'nein'.");
+  });
+
   it('keeps French « » as French marks, and folds them as quotes elsewhere', () => {
     const text = 'Il a dit « oui ».';
     const symbols = { caseMode: 'model', textClass: 'letters+digits+symbols' } as const;
@@ -118,7 +125,7 @@ describe('shipped corpora', () => {
     const ids = list.map((m) => m.id);
     expect(ids).toContain('en-general');
     expect(ids).toContain('pt-br-general');
-    expect(ids.every((id) => /^(en|pt-br|es|fr|it)-general$/.test(id))).toBe(true);
+    expect(ids.every((id) => /^(en|pt-br|es|fr|it|de)-general$/.test(id))).toBe(true);
     const ptGeneral = list.find((m) => m.id === 'pt-br-general')!;
     expect(ptGeneral.language).toBe('pt-BR');
     expect(ptGeneral.license).toContain('CC BY');

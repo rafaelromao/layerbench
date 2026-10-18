@@ -12,6 +12,7 @@ const CORPORA = [
   text('en-general', 'English — news', 'en'),
   text('custom:alpha', 'alpha notes', 'custom'),
   text('fr-general', 'Français — actualités', 'fr'),
+  text('de-general', 'Deutsch — Nachrichten', 'de'),
 ];
 
 describe('the order of a corpus picker', () => {
@@ -19,6 +20,7 @@ describe('the order of a corpus picker', () => {
     const { texts, custom } = orderCorpora(CORPORA);
     expect(texts.map((c) => c.id)).toEqual([
       'en-general',
+      'de-general',
       'es-general',
       'fr-general',
       'pt-br-general',

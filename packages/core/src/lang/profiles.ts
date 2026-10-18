@@ -47,6 +47,11 @@ export const LANGUAGE_PROFILES: Record<string, LanguageProfile> = {
     name: 'Italiano',
     required: letters('à è é ì í î ò ó ù'),
   },
+  de: {
+    tag: 'de',
+    name: 'Deutsch',
+    required: letters('ä ö ü ß'),
+  },
 };
 
 /**

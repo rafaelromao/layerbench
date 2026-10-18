@@ -201,7 +201,7 @@ keys and the inner column. `qu` and `ê` trade places, so the home row is accent
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Top | ö | **~** | ñ | **¨** | ò | | ì | ß | qu | **´** | ä |
 | Home | ü | à | á | ê | ô | | ù | é | ó | ã | í |
-| Bottom | õ | æ | œ | ç | î | | â | è | **^** | **`** | ú |
+| Bottom | õ | æ | œ | ç | â | | î | è | **^** | **`** | ú |
 
 `û`, `ë`, `ï` and `ÿ` are their accent and the letter.
 
