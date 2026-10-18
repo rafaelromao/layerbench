@@ -1,30 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { detectTarget, signIn, signOut, useGitHubSession } from '../auth/github-session.js';
+import { useCallback, useRef, useState } from 'react';
+import { signIn, signOut, useGitHubSession } from '../auth/github-session.js';
 import { HelpLink } from '../components/HelpLink.js';
 import { HELP } from '../guide/help.js';
 import { toast } from '../state/toasts.js';
 import { CopyUpError } from './composite.js';
-import type { StorageTarget } from './target.js';
 import { useCopyUp } from './use-storage.js';
 
-function Where({ target, login }: { target: StorageTarget; login: string }) {
-  if (target.kind === 'repo') {
-    return (
-      <p className="text-xs">
-        Saving to{' '}
-        <a
-          className="link font-mono"
-          href={`https://github.com/${target.repo}/tree/${target.branch}`}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {target.repo}
-        </a>
-        {target.upstream ? '' : ', your fork'}, on the branch{' '}
-        <span className="font-mono">{target.branch}</span>, so its main branch stays as it is.
-      </p>
-    );
-  }
+function Where({ login }: { login: string }) {
   return (
     <p className="text-xs">
       Saving to secret{' '}
@@ -46,22 +28,17 @@ const documents = (n: number) => `${n} document${n === 1 ? '' : 's'}`;
 
 /**
  * Where custom documents live. Layouts, rule sets and corpora are always kept in this browser;
- * signing in with GitHub keeps them in the user's account too, so they follow them between
- * machines: in their fork of layerbench when the app may write to one, in gists otherwise.
+ * signing in with GitHub keeps them in secret gists in the user's account too, so they follow
+ * them between machines.
  */
 export function StorageSettings() {
   const dialog = useRef<HTMLDialogElement>(null);
   const status = useGitHubSession((s) => s.status);
   const login = useGitHubSession((s) => s.login);
-  const target = useGitHubSession((s) => s.target);
-  const targetStatus = useGitHubSession((s) => s.targetStatus);
-  const appSlug = useGitHubSession((s) => s.appSlug);
-  const upstream = useGitHubSession((s) => s.upstream);
   const [copying, setCopying] = useState(false);
   const copyUp = useCopyUp();
 
   const signedIn = status === 'signed-in' && !!login;
-  const remote = signedIn && !!target;
 
   const copy = useCallback(async () => {
     if (!copyUp) return;
@@ -81,29 +58,17 @@ export function StorageSettings() {
     }
   }, [copyUp]);
 
-  // Access given to a fork in another tab shows here when this one is looked at again.
-  useEffect(() => {
-    if (!signedIn || target?.kind !== 'gist') return;
-    const again = () => {
-      if (dialog.current?.open) void detectTarget();
-    };
-    window.addEventListener('focus', again);
-    return () => window.removeEventListener('focus', again);
-  }, [signedIn, target]);
-
-  const upstreamName = upstream.split('/')[1] ?? 'layerbench';
-
   return (
     <>
       <button
         type="button"
         className="btn btn-ghost btn-xs"
         aria-label={
-          remote ? `Storage: this browser and GitHub (@${login})` : 'Storage: this browser only'
+          signedIn ? `Storage: this browser and GitHub (@${login})` : 'Storage: this browser only'
         }
         onClick={() => dialog.current?.showModal()}
       >
-        Storage{remote ? ' ✓' : ''}
+        Storage{signedIn ? ' ✓' : ''}
       </button>
 
       <dialog ref={dialog} className="modal" aria-labelledby="storage-settings-title">
@@ -120,7 +85,7 @@ export function StorageSettings() {
               ? ' Signing in with GitHub, which keeps them in your account as well, is not set up where this copy of the app runs.'
               : signedIn
                 ? ' They are kept in your GitHub account as well, so they follow you to other browsers.'
-                : ' Sign in with GitHub to keep them in your account as well, so they follow you to other browsers: in your fork of layerbench when you have one, in secret gists otherwise.'}
+                : ' Sign in with GitHub to keep them in secret gists in your account as well, so they follow you to other browsers.'}
           </p>
 
           {(status === 'signed-out' || status === 'unknown') && (
@@ -145,42 +110,7 @@ export function StorageSettings() {
                 </button>
               </div>
 
-              {/* Announced, so a change of destination is not only visible. */}
-              <div aria-live="polite" className="space-y-2">
-                {target && <Where target={target} login={login} />}
-                {targetStatus === 'checking' && (
-                  <p className="text-xs opacity-70">Looking for your fork…</p>
-                )}
-                {targetStatus === 'error' && (
-                  <p className="text-xs text-error">
-                    GitHub could not be asked where to save
-                    {target ? '; saving where it last said' : '; saving in this browser only'}.
-                  </p>
-                )}
-              </div>
-
-              {/* Also while the fork cannot be looked up: giving access is how that gets fixed. */}
-              {target?.kind !== 'repo' && appSlug && (
-                <p className="text-xs">
-                  {target?.forkWithoutAccess ? (
-                    <>
-                      Your fork <span className="font-mono">{target.forkWithoutAccess}</span> is not
-                      shared with the app yet.
-                    </>
-                  ) : (
-                    <>Have a fork of {upstreamName}?</>
-                  )}{' '}
-                  <a
-                    className="link"
-                    href={`https://github.com/apps/${encodeURIComponent(appSlug)}/installations/new`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Give LayerBench access to it
-                  </a>{' '}
-                  to save there instead.
-                </p>
-              )}
+              <Where login={login} />
 
               <div className="flex flex-wrap gap-2 max-sm:grid max-sm:grid-cols-1">
                 <button
@@ -190,14 +120,6 @@ export function StorageSettings() {
                   onClick={() => void copy()}
                 >
                   {copying ? 'Copying…' : "Copy this browser's documents up"}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-ghost"
-                  disabled={targetStatus === 'checking'}
-                  onClick={() => void detectTarget()}
-                >
-                  Check again
                 </button>
               </div>
             </>

@@ -406,7 +406,7 @@ describe('Edit', () => {
       [...document.querySelectorAll<HTMLInputElement>('input[aria-label^="Name of layer "]')].map(
         (input) => input.value,
       );
-    expect(order()).toEqual(['Base', 'Numbers', 'Symbols', 'Dead keys', 'Nav', 'Fun']);
+    expect(order()).toEqual(['Base', 'Numbers', 'Symbols', 'Accents', 'Nav', 'Fun']);
 
     // The base layer, which every key falls back to, stays first and cannot go.
     expect(screen.getByRole('button', { name: 'Remove Base' })).toBeDisabled();
@@ -414,10 +414,10 @@ describe('Edit', () => {
     expect(screen.getByRole('button', { name: 'Move Numbers up' })).toBeDisabled();
 
     await user.click(screen.getByRole('button', { name: 'Move Fun up' }));
-    expect(order()).toEqual(['Base', 'Numbers', 'Symbols', 'Dead keys', 'Fun', 'Nav']);
+    expect(order()).toEqual(['Base', 'Numbers', 'Symbols', 'Accents', 'Fun', 'Nav']);
 
     await user.click(screen.getByRole('button', { name: 'Duplicate Nav' }));
-    expect(order()).toEqual(['Base', 'Numbers', 'Symbols', 'Dead keys', 'Fun', 'Nav', 'Nav copy']);
+    expect(order()).toEqual(['Base', 'Numbers', 'Symbols', 'Accents', 'Fun', 'Nav', 'Nav copy']);
 
     // The board has turned to the copy; its name is renamed where it stands.
     expect(shownLayer()).toBe('Nav copy');
@@ -1061,7 +1061,7 @@ describe('Edit', () => {
     await user.click(screen.getByRole('tab', { name: 'Combos' }));
     await user.click(screen.getByRole('button', { name: 'pick on board' }));
 
-    // Not LHR and LHM, which Qwerty presses together for Dead keys.
+    // Not LHR and LHM, which Qwerty presses together for Accents.
     await user.click(key('Key LHM: d'));
     await user.click(key('Key LHI: f'));
     expect(screen.getByLabelText('Combo keys picked')).toHaveTextContent('LHM+LHI');
@@ -1084,7 +1084,7 @@ describe('Edit', () => {
     await openEdit();
     await user.click(screen.getByRole('tab', { name: 'Combos' }));
     const combos = within(screen.getByRole('region', { name: 'Combos' }));
-    expect(pills()).toEqual(['Combo LHR + LHM: DK']);
+    expect(pills()).toEqual(['Combo LHR + LHM: Acce']);
 
     // The output: typed in the syntax a key takes, kept when the field is left.
     const output = combos.getByLabelText('Output of LHR+LHM');
@@ -1125,7 +1125,7 @@ describe('Edit', () => {
     await user.click(screen.getByRole('button', { name: 'Undo' }));
     await waitFor(() => expect(pills()).toEqual(['Combo LHR + LHM: ão']));
     await user.click(screen.getByRole('button', { name: 'Undo' }));
-    await waitFor(() => expect(pills()).toEqual(['Combo LHR + LHM: DK']));
+    await waitFor(() => expect(pills()).toEqual(['Combo LHR + LHM: Acce']));
   });
 
   it("does not carry what was typed in a removed combo's output to the one that takes its row", async () => {
@@ -1135,7 +1135,7 @@ describe('Edit', () => {
     const combos = within(screen.getByRole('region', { name: 'Combos' }));
     // A second combo with the same output as the first.
     await user.type(screen.getByLabelText('Combo keys'), 'LHM+LHI');
-    await user.type(screen.getByLabelText('Combo output'), '&sl dead');
+    await user.type(screen.getByLabelText('Combo output'), '&sl accents');
     await user.click(screen.getByRole('button', { name: /^Add combo on/ }));
     await combos.findByLabelText('Output of LHM+LHI');
 
@@ -1144,7 +1144,7 @@ describe('Edit', () => {
     await user.type(first, '&mo nowhere');
     await user.click(combos.getByRole('button', { name: 'Remove LHR+LHM' }));
 
-    expect(await combos.findByLabelText('Output of LHM+LHI')).toHaveValue('&sl dead');
+    expect(await combos.findByLabelText('Output of LHM+LHI')).toHaveValue('&sl accents');
   });
 
   it("stops picking a combo's keys again when told to", async () => {
@@ -1427,7 +1427,7 @@ describe('Analyze, while editing', () => {
   }, 60_000);
 
   it('lists every character of the text the layout cannot type', async () => {
-    // Every bundled layout reaches the accents through Dead keys; Qwerty as written does not.
+    // Every bundled layout reaches the accents through Accents; Qwerty as written does not.
     const storage = freshStorage();
     const plain = CLASSIC_LAYOUTS.find((l) => l.id === 'qwerty') as Layout;
     await seed(storage, 'qwerty', 'plain', { name: 'Plain', layers: plain.layers });

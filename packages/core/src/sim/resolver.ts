@@ -4,6 +4,7 @@ import type { CompiledLayout } from '../layout/compile.js';
 import {
   type ActivatorDef,
   type BindingKind,
+  MAX_CONDITION_LAYERS,
   type Mod,
   type ModChoice,
   modsMet,
@@ -116,6 +117,8 @@ export class Simulator {
   private readonly standIns = new Map<KeyEvent, KeyEvent[]>();
   private readonly userPaths = new Map<string, TypingPathEntry[]>();
   private readonly plannerHolds = new Set<number>();
+  /** Conditional layers being brought on by their conditions, outermost first. */
+  private readonly conditionsOpen = new Set<number>();
   /**
    * For the way being tried, each choice of more than one modifier in the order it comes up: the
    * modifier it starts from, and the one it took of how many. A way that fails is tried again with
@@ -290,7 +293,7 @@ export class Simulator {
     const m = this.machine;
     if (m.isLayerActive(target)) return true;
     const list = this.activators.get(target);
-    if (!list) return false;
+    if (!list) return this.activateWhen(target, events, depth);
     const top = m.highestActiveLayer();
     const ranked = [...list].sort((a, b) => {
       const aOk = a.from === undefined || a.from === top ? 0 : 1;
@@ -364,6 +367,74 @@ export class Simulator {
         }
         return true;
       }
+      m.state.restore(snap);
+      m.recomputeMask();
+      events.length = startLen;
+      this.plannerHolds.clear();
+      for (const p of holdsBefore) this.plannerHolds.add(p);
+    }
+    // The machine turns a conditional layer off however else it came on: its condition may still.
+    return this.activateWhen(target, events, depth);
+  }
+
+  /**
+   * A layer no key brings on, only others on together, as Extras comes on while Numbers and Symbols
+   * are both held: the condition's layers are brought on one after another, in the order it names
+   * them first, so the last is reached from the one before when it can be, as Symbols is from
+   * Numbers. The condition is a set, not a sequence, so where that order cannot be pressed, the
+   * others are tried, one layer at a time: an order is given up as soon as a layer in it fails.
+   */
+  private activateWhen(target: number, events: KeyEvent[], depth: number): boolean {
+    // Two layers that each come on only with the other are never reached.
+    if (this.conditionsOpen.has(target)) return false;
+    this.conditionsOpen.add(target);
+    try {
+      const layerIndex = this.compiled.layerIndex;
+      for (const cond of this.compiled.layout.conditionalLayers ?? []) {
+        if (layerIndex.get(cond.then) !== target) continue;
+        const ifs = cond.if.map((id) => layerIndex.get(id) ?? -1);
+        // A document names no more than `MAX_CONDITION_LAYERS`, none of them conditional, so its
+        // conditions are tried in every order. A layout written in code is not checked: a condition
+        // there naming more, or met on the way to another's, is tried in its own order only, so the
+        // tries add up along a chain of them rather than multiply.
+        const any = ifs.length <= MAX_CONDITION_LAYERS && this.conditionsOpen.size === 1;
+        if (this.activateEach(ifs, [], target, events, depth, any)) return true;
+      }
+      return false;
+    } finally {
+      this.conditionsOpen.delete(target);
+    }
+  }
+
+  /**
+   * Brings `layers` on in some order that leaves `target` on, or leaves the board as it was: any
+   * order, or with `any` false only the one given. An order is given up as soon as a layer brought on
+   * turns one before it off.
+   */
+  private activateEach(
+    layers: number[],
+    on: number[],
+    target: number,
+    events: KeyEvent[],
+    depth: number,
+    any: boolean,
+  ): boolean {
+    const m = this.machine;
+    if (layers.length === 0) return m.isLayerActive(target);
+    for (let i = 0; i < (any ? layers.length : 1); i++) {
+      const snap = m.state.snapshot();
+      const startLen = events.length;
+      const holdsBefore = new Set(this.plannerHolds);
+      const rest = [...layers.slice(0, i), ...layers.slice(i + 1)];
+      const now = [...on, layers[i]];
+      // At the same depth: each layer is reached as it would be on its own, the condition taking
+      // none of the route's steps.
+      if (
+        this.activate(layers[i], events, depth) &&
+        now.every((li) => m.isLayerActive(li)) &&
+        this.activateEach(rest, now, target, events, depth, any)
+      )
+        return true;
       m.state.restore(snap);
       m.recomputeMask();
       events.length = startLen;

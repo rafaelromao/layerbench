@@ -29,7 +29,7 @@ function freshStorage(): IndexedDbAdapter {
 
 /**
  * Qwerty as written, its letters alone, saved under the name given: every bundled layout types the
- * accents through Dead keys, so the one that cannot is a custom one.
+ * accents through Accents, so the one that cannot is a custom one.
  */
 async function savePlain(
   storage: IndexedDbAdapter,
@@ -78,7 +78,8 @@ describe('Creating layouts', () => {
     expect(stored).not.toBeNull();
     const doc = stored?.doc as { name: string; layers: { id: string }[] };
     expect(doc.name).toBe('Bird nest');
-    expect(doc.layers.map((l) => l.id)).toEqual(['base', 'num', 'sym', 'dead']);
+    // The board has no pinky bottom or inner top key: Extras has their symbols.
+    expect(doc.layers.map((l) => l.id)).toEqual(['base', 'num', 'sym', 'extras', 'accents']);
   });
 
   it('refuses a new layout with no name', async () => {
@@ -442,7 +443,7 @@ describe('Ranking layouts', () => {
   }, 90_000);
 
   it('ranks the layouts that can write the language first', async () => {
-    // Every bundled layout writes Spanish through its Dead keys layer; Plain has no ñ.
+    // Every bundled layout writes Spanish through its Accents layer; Plain has no ñ.
     const storage = freshStorage();
     await savePlain(storage, 'plain');
     renderRoute('/library?corpus=es-general&sample=10000', { storage });
@@ -500,7 +501,7 @@ describe('Ranking layouts', () => {
     );
     expect(screen.getByText(/come last\.$/)).toBeInTheDocument();
     expect(cards().at(-1)).toBe(plain);
-    // Qwerty as bundled types every letter Portuguese needs, through Dead keys.
+    // Qwerty as bundled types every letter Portuguese needs, through Accents.
     const qwerty = cards().find((c) => c.querySelector('h3')?.textContent === 'Qwerty');
     expect(qwerty?.textContent).not.toMatch(/Cannot type/);
   }, 90_000);

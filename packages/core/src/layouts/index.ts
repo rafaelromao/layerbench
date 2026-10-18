@@ -11,24 +11,29 @@ export { DOCUMENT_LAYOUTS, documentLayout } from './documents.js';
 export { magicRomak, romak24, romak34 } from './romak.js';
 export { SMALL_DEFS } from './small.js';
 export {
-  DEAD_KEYS_COMBO_KEYS,
-  DEAD_KEYS_CORE,
+  ACCENTS,
+  ACCENTS_COMBO_KEYS,
+  accentsCombo,
   DEFAULT_LAYER_ID_LIST,
   DEFAULT_LAYER_IDS,
   type DefaultLayers,
-  deadKeysCombo,
+  defaultAccentMacros,
   defaultDeadKeys,
   defaultLayerSymbols,
   defaultLayers,
+  EXTRAS_CONDITION,
+  EXTRAS_CORE,
   NUMBERS_CORE,
+  NUMBERS_OUTER,
   SYMBOLS_CORE,
+  SYMBOLS_OUTER,
   withDefaultLayers,
 } from './templates.js';
 
 /** Layouts made for small boards: thumb letters, chords, adaptive and repeat keys. */
 export const SMALL_LAYOUTS: Layout[] = SMALL_DEFS.map(classicLayout);
 
-/** A layout with the default Numbers, Symbols and Dead keys layers, and the thumbs that reach them. */
+/** A layout with the default layers, and the thumbs and the combo that reach them. */
 function withDefaults(layout: Layout): Layout {
   const g = layout.geometry;
   return 'preset' in g ? withDefaultLayers(layout, getGeometryPreset(g.preset)) : layout;
@@ -36,8 +41,8 @@ function withDefaults(layout: Layout): Layout {
 
 /**
  * The layouts written here in code: the set the app started with, and Romak back among them. Each
- * has the default layers; Magic Romak and Romak have their own Numbers and Symbols. Magic Romak has
- * Dead keys too, reached from Alpha 2; Romak has combos on Alpha 2 for the accents instead.
+ * has the default layers. Magic Romak and Romak keep their own thumbs on Numbers and Symbols, and
+ * Magic Romak reaches Accents from Alpha 2, where it reached Dead keys.
  */
 const BUILT_IN_LAYOUTS: Layout[] = [
   magicRomak,

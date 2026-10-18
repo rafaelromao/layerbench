@@ -58,13 +58,13 @@ describe('the combos a board shows', () => {
     expect(typingCombos(compiled, layer('alpha1')).map((c) => c.label)).toEqual([';']);
   });
 
-  it('shows the combo every layout with the default layers presses for Dead keys', () => {
+  it('shows the combo every layout with the default layers presses for Accents', () => {
     const qwerty = compileLayout(bundledLayout('qwerty') as Layout);
     expect(typingCombos(qwerty, 0)).toEqual([
       {
-        id: 'dead-keys',
+        id: 'accents',
         keys: ['LHR', 'LHM'].map((id) => qwerty.keyIndex.get(id)),
-        label: 'DK',
+        label: 'Acce',
         active: false,
       },
     ]);

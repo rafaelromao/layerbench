@@ -161,6 +161,12 @@ export interface ComboDef {
   slowRelease?: boolean;
 }
 
+/**
+ * The most layers a conditional layer may wait for, none of them conditional itself. The analysis
+ * tries every order of them to bring them on together, which stays a few tries at four.
+ */
+export const MAX_CONDITION_LAYERS = 4;
+
 export interface ConditionalLayerDef {
   if: string[];
   then: string;

@@ -319,7 +319,7 @@ function NewLayoutDialog({ onCreate }: { onCreate: (spec: NewLayoutSpec) => void
               onChange={(e) => setRest({ ...rest, defaultLayers: e.target.checked })}
             />
             <span className="label-text text-xs">
-              Add the default layers: numbers, symbols, dead keys
+              Add the default layers: numbers, symbols, accents
             </span>
           </label>
         </NameDialog>
