@@ -149,13 +149,10 @@ export function LayoutBar({
                   corpora={corpora}
                   verb="Analyze"
                   afterCounts={
-                    <label className="form-control">
-                      <span className="label-text text-xs">Sample</span>
-                      <SampleSelect
-                        value={params.sample}
-                        onChange={(sample) => onParams({ sample })}
-                      />
-                    </label>
+                    <SampleSelect
+                      value={params.sample}
+                      onChange={(sample) => onParams({ sample })}
+                    />
                   }
                   afterSwitches={
                     showCombos && (

@@ -487,10 +487,11 @@
 
 /*
  * Analyze, where the layout is edited: the board, the inspector for the selected key, the typed
- * word, the summary, the legend, the panels and every number. On a narrow screen they stack in that
- * order, and while a key is being edited the board stays pinned under the header, so picking the
- * next key never means scrolling back up to it. From 1024px the board and what reads it take one
- * column, the inspector and the panels the other, and the numbers run under both.
+ * word, the selected key's numbers, the summary, the legend, the panels and every number. On a
+ * narrow screen they stack in that order, and while a key is being edited the board stays pinned
+ * under the header, so picking the next key never means scrolling back up to it. From 1024px the
+ * board and what reads it take one column, the key's numbers right above the summary, the inspector
+ * and the panels the other, and the numbers run under both.
  */
 .lb-edit-grid {
   display: flex;
@@ -510,17 +511,20 @@
 .lb-edit-explain {
   order: 3;
 }
-.lb-edit-summary {
+.lb-edit-keynumbers {
   order: 4;
 }
-.lb-edit-extras {
+.lb-edit-summary {
   order: 5;
 }
-.lb-edit-panels {
+.lb-edit-extras {
   order: 6;
 }
-.lb-edit-results {
+.lb-edit-panels {
   order: 7;
+}
+.lb-edit-results {
+  order: 8;
 }
 @media (max-width: 1023.98px) {
   /* The panels wrap instead: a tab scrolled out of sight is a panel nobody finds. */

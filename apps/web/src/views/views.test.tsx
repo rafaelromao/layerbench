@@ -47,6 +47,10 @@ describe('Library', () => {
     await user.click(within(dialog).getByRole('tab', { name: 'keymap-drawer' }));
     expect(within(dialog).getByLabelText('keymap-drawer YAML')).toBeVisible();
     expect(within(dialog).queryByLabelText('Layout to import')).not.toBeVisible();
+    // The arrow keys move between the tabs too.
+    await user.keyboard('{ArrowRight}');
+    expect(within(dialog).getByRole('tab', { name: 'Text or JSON', selected: true })).toHaveFocus();
+    expect(within(dialog).getByLabelText('Layout to import')).toBeVisible();
 
     await user.click(within(dialog).getByRole('button', { name: 'Close' }));
     expect(dialog).not.toHaveAttribute('open');
