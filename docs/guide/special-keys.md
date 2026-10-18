@@ -13,7 +13,7 @@ and how to make it in the editor, in **Analyze**: select a key, then choose its 
 | a colour | the layer the key reaches, matching the colour of that layer's name in the layer navigator; chosen under **Layers**, or set by the layer's place in the list |
 | a ring inside the key, `held` or `tapped` along the bottom | on a layer above the base: the key held or tapped to get to this layer |
 | `▽` in a dashed outline | transparent: the key of the layer below shows through |
-| a pill between keys | a combo that types: press those keys together |
+| a pill between keys | a combo that types: press those keys together. It is drawn as a key is, its hold after a slash; select it to edit it as any kind of key but transparent |
 | a number in the corner | more than fits on the key; the list under the board says it all |
 | a grey legend | a key kept from an import, drawn but not simulated |
 

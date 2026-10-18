@@ -245,8 +245,9 @@ export class Simulator {
         const lowerProducers = this.index.bySymbol.get(lower) ?? [];
         out.push(...lowerProducers);
         out.push(...base);
+        // A capital is its letter with Shift held, on a key and on a combo alike.
         for (const p of lowerProducers) {
-          if (p.kind === 'combo' || p.kind === 'repeat') continue;
+          if (p.kind === 'repeat') continue;
           out.push({
             ...p,
             id: `${p.id}+shift`,
@@ -324,7 +325,11 @@ export class Simulator {
         // A combo's keys pressed together, on a layer it fires on, typing nothing.
         if (!m.comboAvailable(cand.combo)) ok = false;
         else {
-          const evs = m.perform({ type: 'chord', combo: cand.combo });
+          const evs = m.perform({
+            type: 'chord',
+            combo: cand.combo,
+            hold: cand.mode === 'hold',
+          });
           if (evs.some((e) => e.symbols.length)) ok = false;
           else events.push(...evs);
         }
@@ -540,11 +545,14 @@ export class Simulator {
         (peeled.kind === 'sk' || peeled.kind === 'mod_morph' || peeled.kind === 'adaptive')
       ) {
         events.push(...m.perform({ type: 'tap', pos: sk.key }));
-      } else if (sk.kind === 'hold' && peeled.kind === 'mod') {
+        return true;
+      }
+      if (sk.kind === 'hold' && peeled.kind === 'mod') {
         events.push(...m.perform({ type: 'hold_press', pos: sk.key }));
         holdsOut.push(sk.key);
-      } else return false;
-      return true;
+        return true;
+      }
+      // The shift key is no shift on this layer: another key, or a combo, may give it.
     }
     // Search active layers for a sticky or held modifier key.
     for (let pos = 0; pos < this.compiled.keys.length; pos++) {
@@ -558,6 +566,16 @@ export class Simulator {
       if (holdPeeled.kind === 'mod' && holdPeeled.mod === mod) {
         events.push(...m.perform({ type: 'hold_press', pos }));
         holdsOut.push(pos);
+        return true;
+      }
+    }
+    // Then a typing combo that taps a sticky modifier. A held chord is let go in the same action,
+    // so a combo can give a modifier only as a one-shot.
+    for (const c of this.compiled.combos) {
+      if (c.role !== 'typing' || !m.comboAvailable(c.idx)) continue;
+      const peeled = peelBinding(m, c.binding, 'tap');
+      if (peeled.kind === 'sk' && peeled.mod === mod) {
+        events.push(...m.perform({ type: 'chord', combo: c.idx }));
         return true;
       }
     }
@@ -623,7 +641,9 @@ export class Simulator {
           ok = false;
           break;
         }
-        events.push(...m.perform({ type: 'chord', combo: step.combo, hold: step.held }));
+        events.push(
+          ...m.perform({ type: 'chord', combo: step.combo, hold: step.held, taps: step.taps }),
+        );
         continue;
       }
       let r = m.resolve(step.pos);
@@ -655,7 +675,8 @@ export class Simulator {
       for (const pos of holdsBefore) this.plannerHolds.add(pos);
       return null;
     }
-    for (const e of events) if (e.producerKind === undefined) e.producerKind = p.kind;
+    // A combo's presses count as what its binding typed through, as a key's do.
+    for (const e of events) if (e.producerKind === undefined) e.producerKind = p.via ?? p.kind;
     return events;
   }
 
@@ -683,11 +704,14 @@ export class Simulator {
       if (ev.leafKind === 'sl') st.one_shot_activations++;
       if (ev.wastedOneShot) st.wasted_one_shots++;
       if (ev.leafKind === 'macro') st.macro_presses++;
-      if (ev.keyKind === 'adaptive') {
+      // A chord counts as the kind of key its binding acted as, for adaptive keys and repeats. Layer
+      // taps stay the keys' own: that statistic counts a combo as a combo (see presses/layer-taps).
+      const acts = ev.actsAs ?? ev.keyKind;
+      if (acts === 'adaptive') {
         st.adaptive_presses++;
         if (ev.producerKind === 'adaptive') st.adaptive_trigger_hits++;
       }
-      if (ev.keyKind === 'repeat') st.repeat_presses++;
+      if (acts === 'repeat') st.repeat_presses++;
       if (ev.keyKind === 'space') st.space_presses++;
       const id = this.presses.press(ev, ev.keyKind === 'space' || isSpace ? 'with_space' : 'both');
       const pos = c.positions[ev.pos];

@@ -26,8 +26,11 @@ export type Action =
   | { type: 'tap'; pos: number; taps?: number }
   | { type: 'hold_press'; pos: number }
   | { type: 'hold_release'; pos: number }
-  /** `hold`: the keys are held together past the tapping term and let go, for a tap-hold's hold. */
-  | { type: 'chord'; combo: number; hold?: boolean };
+  /**
+   * `hold`: the keys are held together past the tapping term and let go, for a tap-hold's hold.
+   * `taps`: how many times the keys are pressed together, for a tap dance on a combo.
+   */
+  | { type: 'chord'; combo: number; hold?: boolean; taps?: number };
 
 export interface KeyEvent {
   kind: 'tap' | 'hold_press' | 'hold_release' | 'chord';
@@ -38,6 +41,11 @@ export interface KeyEvent {
   /** Text emitted by this event. */
   symbols: string;
   keyKind: KeyKind;
+  /**
+   * For a chord, the kind of key its binding acted as — an adaptive key, a repeat — so the
+   * statistics count what a combo does as they would on a key. A chord's `keyKind` stays `combo`.
+   */
+  actsAs?: KeyKind;
   label: string;
   leafKind: BindingKind;
   /**
@@ -359,8 +367,14 @@ export class Machine {
         return [this.press(action.pos, 'hold', 1)];
       case 'hold_release':
         return [this.release(action.pos)];
-      case 'chord':
-        return [this.chord(action.combo, action.hold ?? false)];
+      case 'chord': {
+        const taps = action.hold ? 1 : (action.taps ?? 1);
+        const events: KeyEvent[] = [];
+        // As with a key: the chords before the last produce nothing, the last carries the count.
+        for (let i = 0; i < taps; i++)
+          events.push(this.chord(action.combo, action.hold ?? false, i === taps - 1 ? taps : 0));
+        return events;
+      }
     }
   }
 
@@ -395,7 +409,9 @@ export class Machine {
     } else {
       this.run(binding, ctx);
     }
-    const wasted = this.postStep(ctx, armedBefore, stickyBefore, layer);
+    // A tap dance is decided on its last tap: the taps before it leave one-shots and the rest as
+    // they were, for the binding the last tap runs.
+    const wasted = taps === 0 ? false : this.postStep(ctx, armedBefore, stickyBefore, layer);
     this.recomputeMask();
     return {
       kind: mode === 'hold' ? 'hold_press' : 'tap',
@@ -443,17 +459,22 @@ export class Machine {
     return (c.layerMask & (1 << this.highestActiveLayer())) !== 0;
   }
 
-  private chord(comboIdx: number, hold: boolean): KeyEvent {
+  private chord(comboIdx: number, hold: boolean, taps = 1): KeyEvent {
     const c = this.compiled.combos[comboIdx];
     const armedBefore = this.state.oneShots.slice();
     const stickyBefore = this.state.stickyMods.slice();
     const heldBefore = this.state.heldLayerMask();
     const layer = this.highestActiveLayer();
-    const ctx = this.newContext(hold ? 'hold' : 'tap', c.pos, 1);
-    if (this.comboAvailable(comboIdx)) this.run(c.binding, ctx);
+    const ctx = this.newContext(hold ? 'hold' : 'tap', c.pos, taps);
+    if (taps === 0) {
+      // Intermediate chord of a tap dance: no behavior runs yet.
+      ctx.leaf = 'tap_dance';
+      ctx.outer = 'tap_dance';
+    } else if (this.comboAvailable(comboIdx)) this.run(c.binding, ctx);
     // A held chord is let go in the same action: nothing it held stays down.
     if (hold) this.state.held.delete(c.pos);
-    const wasted = this.postStep(ctx, armedBefore, stickyBefore, layer);
+    // As on a key, the chords before a tap dance's last leave one-shots and the rest as they were.
+    const wasted = taps === 0 ? false : this.postStep(ctx, armedBefore, stickyBefore, layer);
     this.recomputeMask();
     return {
       kind: 'chord',
@@ -461,6 +482,7 @@ export class Machine {
       layer,
       symbols: ctx.out.join(''),
       keyKind: 'combo',
+      actsAs: classify(ctx, hold ? 'hold' : 'tap'),
       // Named as a key with its binding would be: what it types, else the layer or accent it gives.
       label: labelFor(this.compiled, ctx, c.binding, layer) || c.id,
       leafKind: ctx.leaf,

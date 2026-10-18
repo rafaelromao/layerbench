@@ -65,10 +65,13 @@ export function BindingEditor({
   scope,
   value,
   onChange,
+  without = [],
 }: {
   scope: EditorScope;
   value: Binding | undefined;
   onChange: (b: Binding) => void;
+  /** Kinds not offered, as Transparent on a combo, which has no layer below to show through. */
+  without?: readonly KindOfKey[];
 }) {
   const fields = keyFields(value, scope.text);
   return (
@@ -76,6 +79,7 @@ export function BindingEditor({
       <KindTiles
         kind={fields.kind}
         canRefer={scope.behaviours.length > 0}
+        without={without}
         onPick={(k) => onChange(fields.set.kind(k))}
       />
       <KindBody scope={scope} fields={fields} onChange={onChange} name="" depth={0} />
@@ -86,12 +90,16 @@ export function BindingEditor({
 function KindTiles({
   kind,
   canRefer,
+  without,
   onPick,
 }: {
   kind: KindOfKey;
   canRefer: boolean;
+  without: readonly KindOfKey[];
   onPick: (k: KindOfKey) => void;
 }) {
+  const primary = PRIMARY_KINDS.filter((k) => !without.includes(k.kind));
+  const others = MORE_KINDS.filter((k) => !without.includes(k.kind));
   // Wider than a phone, every kind is a tile: the rest fit in the room a More tile would take to
   // reveal them. On a phone they open like a menu, and close like one: on a pick, or a tap
   // elsewhere.
@@ -121,18 +129,18 @@ function KindTiles({
   if (wide) {
     return (
       <fieldset className="lb-kind-tiles" aria-label="Kind of key">
-        {PRIMARY_KINDS.map(tile)}
-        {MORE_KINDS.map(tile)}
+        {primary.map(tile)}
+        {others.map(tile)}
       </fieldset>
     );
   }
   // With the list closed, a kind picked from it stands in the More tile, so it is still shown.
-  const chosen = MORE_KINDS.find((k) => k.kind === kind);
+  const chosen = others.find((k) => k.kind === kind);
   const shown = !more && chosen;
   return (
     <div className="space-y-1" ref={tiles}>
       <fieldset className="lb-kind-tiles" aria-label="Kind of key">
-        {PRIMARY_KINDS.map(tile)}
+        {primary.map(tile)}
         <button
           type="button"
           className={`lb-kind-tile ${shown ? 'lb-kind-tile-on' : ''}`}
@@ -149,7 +157,7 @@ function KindTiles({
       </fieldset>
       {more && (
         <fieldset className="lb-kind-tiles" aria-label="More kinds">
-          {MORE_KINDS.map(tile)}
+          {others.map(tile)}
         </fieldset>
       )}
     </div>

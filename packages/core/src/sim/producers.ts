@@ -40,6 +40,8 @@ export interface Producer {
   cost: number;
   /** True when the producer is a dynamic branch (adaptive/repeat) whose output depends on state. */
   dynamic: boolean;
+  /** A combo's: what its binding types through, an adaptive branch or a repeat, as a key's kind is. */
+  via?: ProducerKind;
 }
 
 interface StaticOutput {
@@ -327,13 +329,15 @@ export function enumerateProducers(
     const tapped = staticOutputs(c.binding).map((o) => [false, o] as const);
     const held = holdOutputs(c.binding).map((o) => [true, o] as const);
     for (const [hold, o] of [...tapped, ...held]) {
-      if (o.mods?.length) continue;
+      // A combo's shifted symbol or modifier morph needs its modifiers held, as a key's does.
+      const mods = heldChoices({ choices: o.mods ?? [], forbid: o.forbid ?? [] });
+      if (mods === null) continue;
       const step: ProducerStep = {
         layer: null,
         pos: c.pos,
         binding: c.binding,
         mode: 'chord',
-        taps: 1,
+        taps: o.taps,
         combo: c.idx,
         ...(hold ? { held: true } : {}),
       };
@@ -344,10 +348,16 @@ export function enumerateProducers(
         steps: [step],
         afterAny: o.afterAny,
         afterTags: o.afterTags,
-        mods: [],
-        cost: 1.5,
+        mods,
+        // A tap dance's later branches cost a chord more each, as they do on a key.
+        cost: 0.5 + o.taps + (mods.length ? 1 : 0),
         dynamic: o.dynamic,
+        ...(o.kind === 'direct' ? {} : { via: o.kind }),
       };
+      if (fold && mods.length) {
+        excludedByCase.push(p);
+        continue;
+      }
       add(p);
     }
   }

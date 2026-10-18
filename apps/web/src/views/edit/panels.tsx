@@ -600,6 +600,15 @@ export function CombosPanel({ state, send }: PanelProps) {
                         </button>
                         <button
                           type="button"
+                          className={`btn btn-xs ${state.combo === i ? 'btn-primary' : 'btn-ghost'}`}
+                          aria-label={`Edit ${name}`}
+                          aria-pressed={state.combo === i}
+                          onClick={() => send({ type: 'selectCombo', combo: i })}
+                        >
+                          edit
+                        </button>
+                        <button
+                          type="button"
                           className="btn btn-xs btn-ghost"
                           aria-label={`Pick the keys of ${name} again on the board`}
                           onClick={() => send({ type: 'comboPickStart', combo: i })}
@@ -654,12 +663,13 @@ export function CombosPanel({ state, send }: PanelProps) {
                     <button
                       type="button"
                       className={`badge badge-xs ${c.role === 'typing' ? 'badge-primary' : ''}`}
-                      aria-label={`Role of ${name}: ${c.role}. Switch it`}
+                      // A combo that names no role is a command, as the compiler reads it.
+                      aria-label={`Role of ${name}: ${c.role ?? 'command'}. Switch it`}
                       onClick={() =>
                         send({ type: 'edit', edit: { kind: 'toggleComboRole', combo: i } })
                       }
                     >
-                      {c.role}
+                      {c.role ?? 'command'}
                     </button>
                   </td>
                   <td>
@@ -691,7 +701,11 @@ export function CombosPanel({ state, send }: PanelProps) {
                 .split(/[\s,+]+/)
                 .filter(Boolean)
                 .map((k) => k.toUpperCase());
-          const parsed = parseBindingText(output, context);
+          // No output yet is a combo that does nothing, given its kind in the combo editor it opens in.
+          const parsed: ReturnType<typeof parseBindingText> =
+            output.trim() === ''
+              ? { ok: true, binding: { kind: 'none' } }
+              : parseBindingText(output, context);
           if (!parsed.ok) {
             setError(parsed.error);
             return;
@@ -734,7 +748,7 @@ export function CombosPanel({ state, send }: PanelProps) {
         </button>
         <input
           aria-label="Combo output"
-          placeholder="Output: q, &macro ão"
+          placeholder="Output: q, &macro ão, or none yet"
           className="input input-xs input-bordered font-mono w-full"
           value={output}
           onChange={(e) => {

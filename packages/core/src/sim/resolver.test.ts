@@ -233,6 +233,12 @@ describe('combos that do more than type a character', () => {
       combo('acute', ['RHI', 'RHM'], { kind: 'dead_key', diacritic: '´' }),
       combo('question', ['RTI', 'RTM'], { kind: 'hold_tap', tap: kp('?'), hold: kp('¿') }),
       combo('up', ['RBI', 'RBM'], { kind: 'sl', layer: 'up' }),
+      combo('dance', ['LTI', 'LTM'], { kind: 'tap_dance', bindings: [kp('1'), kp('2')] }),
+      combo('adaptive', ['LBI', 'LBM'], {
+        kind: 'adaptive',
+        default: kp('x'),
+        triggers: [{ afterAny: ['e'], binding: kp('y') }],
+      }),
     ],
   };
 
@@ -248,10 +254,109 @@ describe('combos that do more than type a character', () => {
     expect(t.keys).toEqual(['combo:question', 'L0', 'combo:question']);
   });
 
+  it('holds a combo whose hold turns a layer on, to type what is there', () => {
+    const held: Layout = {
+      ...board,
+      combos: (board.combos ?? []).map((c) =>
+        c.id === 'up'
+          ? { ...c, binding: { kind: 'hold_tap', tap: kp('!'), hold: { kind: 'sl', layer: 'up' } } }
+          : c,
+      ),
+    };
+    const t = trace(held, '§');
+    expect(t.out).toBe('§');
+    expect(t.keys).toEqual(['combo:up', 'RHP']);
+  });
+
   it('presses a combo that brings a layer on to type what is there', () => {
     const t = trace(board, '§');
     expect(t.out).toBe('§');
     expect(t.keys).toEqual(['combo:up', 'RHP']);
+  });
+
+  it("types a tap dance's second branch on a combo by tapping it twice", () => {
+    const t = trace(board, '1 2');
+    expect(t.out).toBe('1 2');
+    expect(t.keys).toEqual(['combo:dance', 'L0', 'combo:dance', 'combo:dance']);
+  });
+
+  it('holds shift for a combo whose symbol is shifted, or a capital, as it would for a key, in model case', () => {
+    const shifted: Layout = {
+      ...board,
+      keys: { space: 'L0', shift: { key: 'R1', kind: 'sk' } },
+      layers: [
+        {
+          ...board.layers[0],
+          bindings: { ...board.layers[0].bindings, R1: { kind: 'sk', mod: 'LSHIFT' } },
+        },
+        ...board.layers.slice(1),
+      ],
+      combos: [
+        ...(board.combos ?? []),
+        combo('hash', ['LTR', 'LTP'], { kind: 'kp', symbol: '3', shifted: '#' }),
+        combo('w', ['LBR', 'LBP'], kp('w')),
+      ],
+    };
+    // A capital of a letter only a combo has: shift, then the combo, as on a key.
+    const capital = trace(shifted, 'W', { caseMode: 'model' });
+    expect(capital.out).toBe('W');
+    expect(capital.keys).toEqual(['R1', 'combo:w']);
+    const t = trace(shifted, '3#', { caseMode: 'model' });
+    expect(t.out).toBe('3#');
+    expect(t.keys).toEqual(['combo:hash', 'R1', 'combo:hash']);
+    // Folded, a modifier is out of reach, for a combo as for a key.
+    expect(trace(shifted, '#').out).toBe('');
+  });
+
+  it('taps a combo that gives a sticky Shift when no key gives one, for a capital', () => {
+    const shiftCombo: Layout = {
+      ...board,
+      layers: [
+        { ...board.layers[0], bindings: { ...board.layers[0].bindings, LHM: kp('w') } },
+        ...board.layers.slice(1),
+      ],
+      combos: [
+        ...(board.combos ?? []),
+        combo('shift', ['LBR', 'LBP'], { kind: 'sk', mod: 'LSHIFT' }),
+      ],
+    };
+    const t = trace(shiftCombo, 'W', { caseMode: 'model' });
+    expect(t.out).toBe('W');
+    expect(t.keys).toEqual(['combo:shift', 'LHM']);
+  });
+
+  it('falls back to a combo for Shift when the shift key is no shift where it is pressed', () => {
+    const layout: Layout = {
+      ...board,
+      keys: { space: 'L0', shift: { key: 'R1', kind: 'sk' } },
+      layers: [
+        {
+          ...board.layers[0],
+          bindings: { ...board.layers[0].bindings, LHM: kp('w'), R1: kp('z') },
+        },
+        ...board.layers.slice(1),
+      ],
+      combos: [
+        ...(board.combos ?? []),
+        combo('shift', ['LBR', 'LBP'], { kind: 'sk', mod: 'LSHIFT' }),
+      ],
+    };
+    const t = trace(layout, 'W', { caseMode: 'model' });
+    expect(t.out).toBe('W');
+    expect(t.keys).toEqual(['combo:shift', 'LHM']);
+  });
+
+  it('counts an adaptive key on a combo among the adaptive presses, still as a chord', () => {
+    const st = simulate(compileLayout(board), 'x ey', opts).tables.stats;
+    expect(st.adaptive_presses).toBe(2);
+    expect(st.adaptive_trigger_hits).toBe(2);
+    expect(st.chords).toBe(2);
+  });
+
+  it('types an adaptive key on a combo as it would on a key', () => {
+    const t = trace(board, 'x ey');
+    expect(t.out).toBe('x ey');
+    expect(t.keys).toEqual(['combo:adaptive', 'L0', 'LHI', 'combo:adaptive']);
   });
 });
 

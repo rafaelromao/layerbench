@@ -18,9 +18,46 @@ export function isFeatureKind(value: string): value is FeatureKind {
 
 const NONE: Binding = { kind: 'none' };
 
-/** A binding that only turns a layer on, and types nothing. */
-function onlyReachesLayer(b: Binding): boolean {
-  return b.kind === 'sl' || b.kind === 'mo' || b.kind === 'tog' || b.kind === 'to';
+/**
+ * A binding that only turns a layer on, and types nothing: a layer key, or one wrapped in a
+ * tap-hold, a morph, an adaptive key or a tap dance whose every part only turns a layer on.
+ */
+function onlyReachesLayer(b: Binding, depth = 0): boolean {
+  if (depth > 8) return false;
+  const only = (x: Binding) => onlyReachesLayer(x, depth + 1);
+  switch (b.kind) {
+    case 'sl':
+    case 'mo':
+    case 'tog':
+    case 'to':
+      return true;
+    case 'lt':
+      return only(b.tap);
+    case 'hold_tap':
+      return only(b.tap) && only(b.hold);
+    case 'mod_morph':
+      return only(b.default) && only(b.morphed);
+    case 'layer_morph':
+      return only(b.inactive) && only(b.active);
+    case 'adaptive':
+      return (
+        b.default !== undefined &&
+        only(b.default) &&
+        (b.triggers ?? []).every((t) => only(t.binding))
+      );
+    case 'tap_dance':
+      return b.bindings.length > 0 && b.bindings.every(only);
+    default:
+      return false;
+  }
+}
+
+/**
+ * Whether a combo stays when typing combos are left out: one for commands, or one that only turns
+ * a layer on, which the analysis needs to reach that layer.
+ */
+export function keptWithoutTypingCombos(c: { role?: string; binding: Binding }): boolean {
+  return c.role !== 'typing' || onlyReachesLayer(c.binding);
 }
 
 /** The text a macro types, as far as its own keys say: `qu`, `ão`, or one accented letter. */
@@ -94,7 +131,7 @@ export function withoutFeatures(layout: Layout, off: readonly FeatureKind[]): La
       bindings: Object.fromEntries(Object.entries(l.bindings).map(([k, b]) => [k, walk(b)])),
     })),
     combos: inlined.combos
-      ?.filter((c) => !(drop.has('combos') && c.role === 'typing' && !onlyReachesLayer(c.binding)))
+      ?.filter((c) => !drop.has('combos') || keptWithoutTypingCombos(c))
       .map((c) => ({ ...c, binding: walk(c.binding) })),
     ...(drop.has('repeat')
       ? { repeatPolicy: { ...inlined.repeatPolicy, doubledLetters: 'tapTwice' as const } }

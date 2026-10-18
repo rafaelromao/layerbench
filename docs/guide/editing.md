@@ -245,16 +245,23 @@ The other panels hold what is not on a single key:
   be changed here, and says which keys are space and shift, the kind of shift, and how doubled
   letters are typed.
 - **Combos** are keys pressed together. **pick on board**, then tap the keys; the output takes
-  the same syntax as **Or type**. One for typing is pressed by the analysis as a key would be: it
-  types, accents the next letter, turns a layer on, or, held, does what its hold does. The board
-  draws it between its keys, its hold after a slash, as `? / ¿`. Every combo in the list can be
-  changed where it stands, and each change is one edit that Undo takes back: type another output
-  in its field (what the syntax cannot read is refused, and the combo keeps its output; a combo
-  whose output the syntax cannot write, such as a tap-hold, shows it and is left as it is),
-  **pick again** and tap its new keys, then **Use**, tick the layers it works on (one at least),
-  or click its role to switch between typing and command. A change is refused, with its reason,
-  when it would leave fewer than two keys, a key or layer the layout does not have, or the same
-  keys as another combo on one of its layers.
+  the same syntax as **Or type**, and can be left empty. A combo added opens in the **combo
+  editor**, in the key editor's place; so does a combo's pill on the board, or **edit** on its row.
+  A combo can be any kind of key but Transparent, from the same tiles a key has: a tap-hold, an
+  adaptive key, a macro, a tap dance, a morph, a layer and the rest. **From this layout** and **Or
+  type** work as they do for a key. Under them are its keys (**Pick again on the board**, tap the
+  new keys, then **Use these keys**), the layers it works on and its role. One for typing is
+  pressed by the analysis as a key would be: it types, adapts to the key before it, accents the
+  next letter, turns a layer on, or, held, does what its hold does; a tap dance on a combo types
+  its second part when its keys are pressed together twice. The board draws it between its keys,
+  its hold after a slash, as `? / ¿`. Every combo in the list can also be changed where it stands:
+  type another output in its field (what the syntax cannot read is refused, and the combo keeps
+  its output; a combo whose output the syntax cannot write, such as a tap-hold, shows it there and
+  is edited in the combo editor), **pick again** and tap its new keys, then **Use**, tick the
+  layers it works on (one at least), or click its role to switch between typing and command. Each
+  change is one edit that Undo takes back. A change is refused, with its reason, when it would
+  leave fewer than two keys, a key or layer the layout does not have, or the same keys as another
+  combo on one of its layers.
 - **Behaviors** are the named bindings keys refer to, such as `&altRepeat`.
 - **Typing paths** list the other ways a character can be typed. Left alone, a character is typed
   the cheapest way from where the typist is: the fewest presses, then the one that leaves no layer
