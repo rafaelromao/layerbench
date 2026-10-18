@@ -395,6 +395,28 @@ describe('the key count', () => {
       },
     });
     expect(split).toBe(2);
+    const stacked = physicalKeyCount({
+      ...qwerty(),
+      geometry: {
+        family: 'rowstagger',
+        custom: ['L0', 'R0'].map((id, i) => ({
+          id,
+          hand: id[0] as 'L' | 'R',
+          finger: id[0] === 'L' ? 'LT' : 'RT',
+          row: 3,
+          col: 0,
+          x: 6,
+          y: 3,
+          w: 2 + i,
+          h: 1,
+          rotation: 0,
+          home: false,
+          thumb: true,
+          inner: false,
+        })),
+      },
+    });
+    expect(stacked).toBe(2);
   });
 });
 

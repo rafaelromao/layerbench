@@ -158,14 +158,15 @@ export function thumbAlphas(layout: Layout): ThumbAlpha[] {
 
 /**
  * The board's physical keys, thumbs included. A row-stagger board's space bar is one key that
- * either thumb presses, drawn as two at one spot: it counts once. Two thumb keys of their own, as
- * on a split space bar, count as two.
+ * either thumb presses, drawn as two of the same shape at one spot: it counts once. Two thumb keys
+ * of their own, as on a split space bar, count as two.
  */
 export function physicalKeyCount(layout: Layout): number {
   const g = buildGeometry(layout);
   const l0 = g.keys.find((k) => k.id === 'L0');
   const r0 = g.keys.find((k) => k.id === 'R0');
-  const oneBar = g.family === 'rowstagger' && l0 && r0 && l0.x === r0.x && l0.y === r0.y;
+  const same = (['x', 'y', 'w', 'h', 'rotation'] as const).every((k) => l0?.[k] === r0?.[k]);
+  const oneBar = g.family === 'rowstagger' && l0 && r0 && same;
   return g.keys.length - (oneBar ? 1 : 0);
 }
 
