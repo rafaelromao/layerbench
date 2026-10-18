@@ -9,6 +9,7 @@ export * from './host/locale.js';
 export * from './import/keymap-drawer.js';
 export * from './import/yaml.js';
 export * from './lang/index.js';
+export * from './layout/categories.js';
 export * from './layout/compile.js';
 export * from './layout/edit.js';
 export * from './layout/features.js';
