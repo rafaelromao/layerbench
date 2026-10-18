@@ -187,18 +187,21 @@ the left hand while the right types the digits, and on Symbols each mark beside 
 other. With no thumb there, it is the inner column's bottom key, beside `1`; on a row-stagger
 board, the key past `°`.
 
-**Accents** holds the dead keys, each in its look-alike's column on Symbols (`´` where `'` is) with
-the left hand's top and home rows swapped, so the acute and the tilde are on the home row; the
-letters no accent makes, `ñ` `ç` `œ` `æ` `ß`; and the accented letters the texts the app comes with
-use most, each a key of its own, a press less than its accent and the letter, German's `ä` `ö` `ü`
-among them. `qu` is there too. With the base layer's letters, that writes every language the app
-has a text for. In bold, the dead keys:
+**Accents** holds the dead keys; the letters no accent makes, `ñ` `ç` `œ` `æ` `ß`; and the
+accented letters the texts the app comes with use most, each a key of its own, a press less than
+its accent and the letter, German's `ä` `ö` `ü` among them. `qu` is there too. With the base
+layer's letters, that writes every language the app has a text for. Each key is where it costs
+least for how often it is used: counted over all the texts together, the most used get the
+cheapest keys in Effort. The dead keys and the letters of their own stay on the 24 keys every board
+has; the ten letters used least, which a dead key also makes, are on the pinkies' top and bottom
+keys and the inner column. `qu` and `ê` trade places, so the home row is accented letters only. In
+bold, the dead keys:
 
 | Accents | P | R | M | I | C | | C | I | M | R | P |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Top | â | **^** | í | **¨** | ä | | ì | à | ñ | ß | qu |
-| Home | ã | **~** | ó | **´** | ö | | ò | é | ç | œ | á |
-| Bottom | ô | õ | ê | **`** | ü | | ù | è | æ | ú | î |
+| Top | ö | **~** | ñ | **¨** | ò | | ì | ß | qu | **´** | ä |
+| Home | ü | à | á | ê | ô | | ù | é | ó | ã | í |
+| Bottom | õ | æ | œ | ç | î | | â | è | **^** | **`** | ú |
 
 `û`, `ë`, `ï` and `ÿ` are their accent and the letter.
 
