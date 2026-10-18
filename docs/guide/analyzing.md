@@ -139,14 +139,14 @@ By default capitals count as lower case and the space key is left out of the cou
 Keyboard Layouts Doc does. **Shift** types capitals through the layout's shift key instead, and
 **Space** keeps the space key in. Both are among the feature switches, in **Settings**. **Counts**
 says what of the text is counted: letters only, the default, or numbers and symbols as well. The
-symbols are those a symbol layer carries and those the bundled texts use. Curly quotes, dashes and
-the ellipsis count as their plain forms, and a language's own punctuation, Spanish `¿ ¡` say, is
+symbols are those a symbol layer carries and those the bundled texts use. Curly quotes, German's
+`„ ‚` among them, dashes and the ellipsis count as their plain forms, and a language's own punctuation, Spanish `¿ ¡` say, is
 kept in any count.
 
 ### The text itself
 
-**Corpus** lists the texts that come with the app, each with where it came from, and opens on
-English. Every list of texts is in the same order: English first, then the rest by name. Your own
+**Corpus** lists the texts that come with the app, news in English, Brazilian Portuguese, Spanish,
+French, Italian and German, each with where it came from, and opens on English. Every list of texts is in the same order: English first, then the rest by name. Your own
 text can be pasted or uploaded there and analyzed like any other, and **Save to library** keeps it:
 custom texts are listed in **Corpus** and offered in every view that analyzes, under **Custom**,
 after the ones that come with the app. A text published under an open licence can join the ones

@@ -264,6 +264,7 @@ describe('Corpus', () => {
     expect(await screen.findAllByText(/Leipzig/)).not.toHaveLength(0);
     expect(screen.getAllByText('English — news 2023 (Leipzig)')).not.toHaveLength(0);
     expect(screen.getAllByText('Español — noticias 2023 (Leipzig)')).not.toHaveLength(0);
+    expect(screen.getAllByText('Deutsch — Nachrichten 2023 (Leipzig)')).not.toHaveLength(0);
     // English first, then the rest by name, and the page opens on English.
     const list = screen.getByRole('heading', { name: 'Corpora' }).parentElement
       ?.nextElementSibling as HTMLElement;
@@ -271,6 +272,7 @@ describe('Corpus', () => {
       .getAllByRole('button')
       .map((b) => b.querySelector('span > span')?.textContent ?? '');
     expect(names[0]).toMatch(/^English/);
+    expect(names[1]).toMatch(/^Deutsch/);
     expect(names.slice(1)).toEqual(
       [...names.slice(1)].sort((x, y) => x.localeCompare(y, 'en', { sensitivity: 'base' })),
     );
