@@ -149,7 +149,9 @@ describe('a custom copy of Qwerty', () => {
       ...qwerty(),
       combos: [{ id: 'qu', keys: ['LTP', 'LTR'], binding: { kind: 'macro', symbols: 'qu' } }],
     };
-    expect(specialFeatures(l)).toEqual([{ feature: 'macro', combo: 'qu', label: 'Macro “qu”' }]);
+    expect(specialFeatures(l)).toEqual([
+      { feature: 'macro', combo: 'qu', comboIndex: 0, label: 'Macro “qu”' },
+    ]);
     expect(layoutCategory(l)).toBe('special');
   });
 
@@ -162,12 +164,26 @@ describe('a custom copy of Qwerty', () => {
     expect(layoutCategory(l)).toBe('standard');
   });
 
+  it('tells two combos of one id apart by their place in the list', () => {
+    const l = withKey('LTP', { kind: 'kp', keycode: 'A', symbol: 'a' });
+    l.combos = [
+      { id: 'twin', keys: ['LTP', 'LTR'], binding: { kind: 'macro', symbols: 'x' } },
+      { id: 'twin', keys: ['LHP', 'LHR'], binding: { kind: 'macro', symbols: 'y' } },
+    ];
+    expect(specialFeatures(l).map((f) => [f.combo, f.comboIndex])).toEqual([
+      ['twin', 0],
+      ['twin', 1],
+    ]);
+  });
+
   it('names a combo with no id by its place', () => {
     const l: Layout = {
       ...qwerty(),
       combos: [{ keys: ['LTP', 'LTR'], binding: { kind: 'macro' } }],
     };
-    expect(specialFeatures(l)).toEqual([{ feature: 'macro', combo: '#1', label: 'Macro' }]);
+    expect(specialFeatures(l)).toEqual([
+      { feature: 'macro', combo: '#1', comboIndex: 0, label: 'Macro' },
+    ]);
   });
 
   it('is Special with a named behaviour of its own, used on a key or not used at all', () => {

@@ -24,6 +24,8 @@ export interface SpecialFeature {
   layer?: string;
   key?: string;
   combo?: string;
+  /** Where the combo stands in the layout's list: two combos may share an id. */
+  comboIndex?: number;
   label: string;
 }
 
@@ -196,6 +198,7 @@ interface Place {
   layer?: string;
   key?: string;
   combo?: string;
+  comboIndex?: number;
 }
 
 /** The special features a binding is or holds, at the place it is bound. */
@@ -306,7 +309,7 @@ export function specialFeatures(layout: Layout): SpecialFeature[] {
   }
   (layout.combos ?? []).forEach((c, i) => {
     if (!onDefaultLayersOnly(c.layers))
-      featuresOf(layout, c.binding, { combo: c.id ?? `#${i + 1}` }, out);
+      featuresOf(layout, c.binding, { combo: c.id ?? `#${i + 1}`, comboIndex: i }, out);
     namedIn(layout, c.binding, used);
   });
   // An unused behaviour that another unused one names is reported through it, not again on its own:
