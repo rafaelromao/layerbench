@@ -69,8 +69,12 @@ keeps are in `apps/web/src/auth/github-session.ts`. The server half is
 
 The layouts the app started with are written as data in `packages/core/src/layouts/` (`classic.ts`,
 `small.ts`, `romak.ts`), each copied from where its author published it, and given the default
-Numbers, Symbols and Accents layers, plus Extras on a board that needs it, Accents on the same combo
-for all of them (`withDefaultLayers` in `templates.ts`). A new one joins them as a
+Numbers, Symbols and Accents layers, plus Extras on a board that needs it. The Standard and Thumb
+Alpha ones share their main thumbs and base-layer symbols, so that they compare on their letters
+(`withStandardThumbs` in `standard.ts`): the four inner thumbs hold Shift, Numbers, Symbols and
+Shift and tap Repeat, space, a thumb letter or nothing, and Accents, and no symbol stays on the base
+layer but `'` `,` `.` `;`. The Special ones keep every key they had and reach Accents on one combo
+(`withDefaultLayers` in `templates.ts`). A new one joins them as a
 document: a custom layout, unchanged, added by pull request. Merging the pull request is
 the approval, and the deploy that follows puts it in everyone's Library.
 

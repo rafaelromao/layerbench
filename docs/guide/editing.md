@@ -150,7 +150,7 @@ The **Layers** panel lists them in order, and does everything else with them:
 On any layer but the base, the keys you hold or tap to get there carry a ring in the layer's
 colour, and `held` or `tapped` along the bottom: the thumb held for Symbols, the one-shot key
 tapped for Alpha 2, the `ç` macro that turns on Ç extension, an alt repeat branch that arms a
-layer, both keys of the combo tapped for Accents. They are found from the layout itself, so they change as you edit: give a key something else
+layer, the thumb or both keys of the combo tapped for Accents. They are found from the layout itself, so they change as you edit: give a key something else
 to do and it stops being marked, even where the layout names it as a way in. Select one, or read
 the list under the board, to see where it is pressed and when.
 
@@ -222,13 +222,22 @@ Extras what the bottom rows carried, and fills Accents with the dead keys, the l
 and the symbols left over, on its thumbs too; every accented letter there is its accent and the
 letter. The board shows where everything went.
 
-Every layout that comes with the app has them too, with all of its own keys where they were. The key
-that types space also holds Numbers, and a thumb of the other hand holds Symbols: the innermost one
-with nothing on it, or else the innermost, still typing what it typed. Accents is the same combo on
-every one of them, so none is ranked better or worse for where its thumbs happen to be free.
-Magic Romak and Romak keep their own thumbs on Numbers and Symbols and, as in their author's keymap,
-combos on Alpha 2 for the accents it has no key for, with `?` and `!` typing `¿` and `¡` when held.
-Magic Romak reaches Accents from Alpha 2's right outer thumb.
+Every layout that comes with the app has them too. The Standard and Thumb Alpha ones, Romak among
+them, also share their main thumbs, the two innermost of each hand, so that what tells them apart is
+their letters. Held, left to right, the main thumbs give Shift, Numbers, Symbols and Shift. Tapped,
+they type Repeat, which types the last key again, then space, then the layout's thumb letter or
+nothing, and the right outer one turns on Accents for one key. Where a layout's author put space or a
+letter on a thumb, it stays there, and the main thumbs left tap Accents, then Repeat, from the right:
+Hands Down Gold taps Repeat, `t`, space and Accents. A second thumb letter takes the left outer thumb,
+and Repeat a key of the base layer that a symbol left, as on Hands Down Neu. Their other thumb keys
+go, and their base layers keep no symbol but `'` `,` `.` `;`: the rest are on Symbols or Extras.
+
+The Special layouts keep every key they have. The key that types space also holds Numbers, and a
+thumb of the other hand holds Symbols: the innermost one with nothing on it, or else the innermost,
+still typing what it typed. Accents is the combo on LHR and LHM, as on a new layout. Magic Romak keeps
+its own thumbs on Numbers and Symbols and, as in its author's keymap, combos on Alpha 2 for the
+accents it has no key for, with `?` and `!` typing `¿` and `¡` when held. It reaches Accents from
+Alpha 2's right outer thumb.
 
 ### Which layer wins
 
