@@ -545,11 +545,14 @@ export class Simulator {
         (peeled.kind === 'sk' || peeled.kind === 'mod_morph' || peeled.kind === 'adaptive')
       ) {
         events.push(...m.perform({ type: 'tap', pos: sk.key }));
-      } else if (sk.kind === 'hold' && peeled.kind === 'mod') {
+        return true;
+      }
+      if (sk.kind === 'hold' && peeled.kind === 'mod') {
         events.push(...m.perform({ type: 'hold_press', pos: sk.key }));
         holdsOut.push(sk.key);
-      } else return false;
-      return true;
+        return true;
+      }
+      // The shift key is no shift on this layer: another key, or a combo, may give it.
     }
     // Search active layers for a sticky or held modifier key.
     for (let pos = 0; pos < this.compiled.keys.length; pos++) {

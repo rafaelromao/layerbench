@@ -325,6 +325,27 @@ describe('combos that do more than type a character', () => {
     expect(t.keys).toEqual(['combo:shift', 'LHM']);
   });
 
+  it('falls back to a combo for Shift when the shift key is no shift where it is pressed', () => {
+    const layout: Layout = {
+      ...board,
+      keys: { space: 'L0', shift: { key: 'R1', kind: 'sk' } },
+      layers: [
+        {
+          ...board.layers[0],
+          bindings: { ...board.layers[0].bindings, LHM: kp('w'), R1: kp('z') },
+        },
+        ...board.layers.slice(1),
+      ],
+      combos: [
+        ...(board.combos ?? []),
+        combo('shift', ['LBR', 'LBP'], { kind: 'sk', mod: 'LSHIFT' }),
+      ],
+    };
+    const t = trace(layout, 'W', { caseMode: 'model' });
+    expect(t.out).toBe('W');
+    expect(t.keys).toEqual(['combo:shift', 'LHM']);
+  });
+
   it('counts an adaptive key on a combo among the adaptive presses, still as a chord', () => {
     const st = simulate(compileLayout(board), 'x ey', opts).tables.stats;
     expect(st.adaptive_presses).toBe(2);
