@@ -211,6 +211,8 @@ function featuresOf(
       break;
     case 'macro':
       emit('macro', m.symbols ? `Macro “${m.symbols}”` : 'Macro');
+      // What it types is not a letter of the layer's, but what its steps use is used.
+      for (const c of [...(m.steps ?? []), ...(m.then ?? [])]) featuresOf(layout, c, at, out, next);
       return;
     default:
       break;

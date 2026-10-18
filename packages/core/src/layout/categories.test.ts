@@ -116,6 +116,24 @@ describe('a custom copy of Qwerty', () => {
       expect(specialFeatures(withKey('LHP', b)).map((f) => f.feature)).toEqual(['adaptive']);
   });
 
+  it("lists the features a macro's steps use, after the macro", () => {
+    const l = withKey(
+      'LHP',
+      {
+        kind: 'macro',
+        steps: [kp('q'), { kind: 'ref', ref: 'helper' }],
+        then: [{ kind: 'mod_morph', mods: ['LSHIFT'], default: kp('u'), morphed: kp('U') }],
+      },
+      { ...qwerty(), behaviors: { helper: kp('x') } },
+    );
+    expect(specialFeatures(l).map((f) => f.feature)).toEqual([
+      'macro',
+      'custom_behaviour',
+      'mod_morph',
+    ]);
+    expect(alphaLayers(l)).toEqual(['base']);
+  });
+
   it('is Special with a feature on a combo', () => {
     const l: Layout = {
       ...qwerty(),
