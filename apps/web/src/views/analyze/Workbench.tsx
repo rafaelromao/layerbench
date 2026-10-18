@@ -37,6 +37,7 @@ import { MetricCard, SummaryStrip } from '../../components/Metrics.js';
 import { NameDialog } from '../../components/NameDialog.js';
 import { PairBreakdown } from '../../components/PairBreakdown.js';
 import { presetOf } from '../../components/RuleSources.js';
+import { Tabs, tabId, tabPanelId } from '../../components/Tabs.js';
 import { freeCopyName } from '../../custom/save-new.js';
 import type { useAnalysisClient } from '../../engine/client-context.js';
 import { expandPositions, heatMap } from '../../engine/heat.js';
@@ -98,6 +99,7 @@ const PANELS: [Panel, string, HelpTopic][] = [
   ['paths', 'Typing paths', HELP.panels],
   ['json', 'JSON', HELP.exporting],
 ];
+const PANEL_TABS = PANELS.map(([id, label]) => ({ id, label }));
 
 function prefersReducedMotion(): boolean {
   return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
@@ -121,9 +123,10 @@ export interface WorkbenchProps {
 }
 
 /**
- * Analyze, with the layout open for editing: the board, the selected key's editor and numbers, the
- * panels, and every number of the analysis, which follows each edit. A swap shows an estimate at
- * once, re-scored from the tables already typed, until the layout as edited is typed afresh.
+ * Analyze, with the layout open for editing: the board, the selected key's editor, its numbers
+ * above the summary, the panels, and every number of the analysis, which follows each edit. A swap
+ * shows an estimate at once, re-scored from the tables already typed, until the layout as edited is
+ * typed afresh.
  */
 export function Workbench({
   session,
@@ -942,6 +945,24 @@ export function Workbench({
             </div>
           </section>
 
+          {/* The selected key's numbers, right above the layout's: what the key adds to them. */}
+          {keyStatsView && (
+            // Escape in the key's numbers closes its editor, as it does in the editor itself.
+            <section
+              className="lb-edit-keynumbers card bg-base-100 border border-base-300 min-w-0"
+              aria-label="Key numbers"
+              onKeyDown={(e) => {
+                if (e.key !== 'Escape' || e.defaultPrevented || state.selected === null) return;
+                e.preventDefault();
+                const keyId = state.selected;
+                send({ type: 'deselect' });
+                focusKey(keyId);
+              }}
+            >
+              <div className="card-body gap-2 p-3 sm:p-4 min-w-0">{keyStatsView}</div>
+            </section>
+          )}
+
           <SummaryCard
             shown={shown}
             provisional={provisional}
@@ -988,7 +1009,7 @@ export function Workbench({
               // Remounts per combo, so a half-typed field never follows the editor to another one.
               <ComboInspector key={state.combo} state={state} send={send} combo={state.combo} />
             ) : (
-              <KeyInspector state={state} send={send} focusKey={focusKey} stats={keyStatsView} />
+              <KeyInspector state={state} send={send} focusKey={focusKey} />
             )}
           </div>
 
@@ -997,36 +1018,43 @@ export function Workbench({
               <Collapsible id="analyze.editor" title="Editor">
                 <div className="flex flex-col gap-3 min-w-0">
                   <div className="flex items-center gap-2 min-w-0">
-                    <div
-                      role="tablist"
-                      aria-label="Editor panels"
-                      className="lb-panel-tabs tabs tabs-border tabs-sm min-w-0 flex-1"
-                    >
-                      {PANELS.map(([panel, label]) => (
-                        <button
-                          key={panel}
-                          type="button"
-                          role="tab"
-                          aria-selected={state.panel === panel}
-                          className={`tab ${state.panel === panel ? 'tab-active' : ''}`}
-                          onClick={() => send({ type: 'setPanel', panel })}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
+                    <Tabs
+                      label="Editor panels"
+                      prefix="editor"
+                      className="lb-panel-tabs min-w-0 flex-1"
+                      tabs={PANEL_TABS}
+                      value={state.panel}
+                      onChange={(panel) => send({ type: 'setPanel', panel })}
+                    />
                     <HelpLink help={PANELS.find(([p]) => p === state.panel)?.[2] ?? HELP.panels} />
                   </div>
 
-                  {state.panel === 'layers' && <LayersPanel state={state} send={send} />}
-                  {state.panel === 'features' && <FeaturesPanel state={state} send={send} />}
-                  {state.panel === 'geometry' && <GeometryPanel state={state} send={send} />}
-                  {state.panel === 'combos' && <CombosPanel state={state} send={send} />}
-                  {state.panel === 'behaviors' && <BehaviorsPanel state={state} send={send} />}
-                  {state.panel === 'paths' && (
-                    <PathsPanel state={state} send={send} producers={producers} />
-                  )}
-                  {state.panel === 'json' && <JsonPanel state={state} send={send} />}
+                  <div
+                    role="tabpanel"
+                    id={tabPanelId('editor', state.panel)}
+                    aria-labelledby={tabId('editor', state.panel)}
+                    className="min-w-0"
+                  >
+                    {state.panel === 'layers' && <LayersPanel state={state} send={send} />}
+                    {state.panel === 'features' && <FeaturesPanel state={state} send={send} />}
+                    {state.panel === 'geometry' && <GeometryPanel state={state} send={send} />}
+                    {state.panel === 'combos' && <CombosPanel state={state} send={send} />}
+                    {state.panel === 'behaviors' && (
+                      <BehaviorsPanel
+                        state={state}
+                        send={send}
+                        onShow={() => {
+                          // The feature is what the board shows now: no word, no outlined n-gram.
+                          setPlay(null);
+                          clearOutline();
+                        }}
+                      />
+                    )}
+                    {state.panel === 'paths' && (
+                      <PathsPanel state={state} send={send} producers={producers} />
+                    )}
+                    {state.panel === 'json' && <JsonPanel state={state} send={send} />}
+                  </div>
                 </div>
               </Collapsible>
             </div>

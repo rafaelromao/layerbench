@@ -130,30 +130,31 @@ export function sampleLabel(n: number): string {
   return `${n >= 1_000_000 ? `${n / 1_000_000}M` : `${n / 1000}k`} symbols`;
 }
 
-/** How much of the corpus a full analysis types. */
+/** How much of the corpus a full analysis types, under its label, the same in each view. */
 export function SampleSelect({
   value,
   onChange,
-  className = '',
 }: {
   value: number;
   onChange: (sample: number) => void;
-  className?: string;
 }) {
   return (
-    <select
-      name="sample"
-      aria-label="Sample size"
-      className={`select select-sm select-bordered ${className}`}
-      value={value}
-      onChange={(e) => onChange(Number(e.target.value))}
-    >
-      {SAMPLE_SIZES.map((n) => (
-        <option key={n} value={n}>
-          {sampleLabel(n)}
-        </option>
-      ))}
-    </select>
+    <label className="form-control">
+      <span className="label-text text-xs">Sample</span>
+      <select
+        name="sample"
+        aria-label="Sample size"
+        className="select select-sm select-bordered"
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+      >
+        {SAMPLE_SIZES.map((n) => (
+          <option key={n} value={n}>
+            {sampleLabel(n)}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 

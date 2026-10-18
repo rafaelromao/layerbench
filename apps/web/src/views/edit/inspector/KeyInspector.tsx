@@ -6,7 +6,7 @@ import {
   legend,
   reachKeys,
 } from '@layerbench/core';
-import { type Dispatch, type ReactNode, useMemo } from 'react';
+import { type Dispatch, useMemo } from 'react';
 import { HelpLink } from '../../../components/HelpLink.js';
 import { HELP } from '../../../guide/help.js';
 import type { EditAction, EditState } from '../reducer.js';
@@ -23,8 +23,6 @@ export interface KeyInspectorProps {
   send: Dispatch<EditAction>;
   /** Hand keyboard focus back to a key on the board. */
   focusKey: (keyId: string) => void;
-  /** What the key adds to the analysis, shown under its name, before the controls. */
-  stats?: ReactNode;
 }
 
 /**
@@ -66,7 +64,7 @@ export function KeyInspector(props: KeyInspectorProps) {
   return <Inspector key={`${state.layer}:${id}`} {...props} keyId={id} />;
 }
 
-function Inspector({ state, send, focusKey, keyId, stats }: KeyInspectorProps & { keyId: string }) {
+function Inspector({ state, send, focusKey, keyId }: KeyInspectorProps & { keyId: string }) {
   const { compiled, layout, layer } = state;
   const activeLayer = compiled.layers[layer];
   const pos = compiled.keyIndex.get(keyId) as number;
@@ -148,8 +146,6 @@ function Inspector({ state, send, focusKey, keyId, stats }: KeyInspectorProps & 
             ✕
           </button>
         </header>
-
-        {stats}
 
         {owner ? (
           <>

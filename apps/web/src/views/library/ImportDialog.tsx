@@ -9,6 +9,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { HelpLink } from '../../components/HelpLink.js';
 import { Keyboard } from '../../components/Keyboard.js';
+import { Tabs } from '../../components/Tabs.js';
 import { HELP } from '../../guide/help.js';
 import { KeymapDrawerImport } from './KeymapDrawerImport.js';
 
@@ -178,8 +179,8 @@ function TextImport({
 }
 
 const TABS = [
-  ['text', 'Text or JSON'],
-  ['keymap', 'keymap-drawer'],
+  { id: 'text', label: 'Text or JSON' },
+  { id: 'keymap', label: 'keymap-drawer' },
 ] as const;
 
 /**
@@ -202,7 +203,7 @@ export function ImportDialog({
   onImportKeymap: (layout: Layout) => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const [tab, setTab] = useState<(typeof TABS)[number][0]>('text');
+  const [tab, setTab] = useState<(typeof TABS)[number]['id']>('text');
 
   return (
     <>
@@ -219,22 +220,7 @@ export function ImportDialog({
             <HelpLink help={HELP.importing} />
           </div>
 
-          <div role="tablist" aria-label="Import from" className="tabs tabs-border tabs-sm">
-            {TABS.map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                id={`import-tab-${id}`}
-                aria-selected={tab === id}
-                aria-controls={`import-panel-${id}`}
-                className={`tab ${tab === id ? 'tab-active' : ''}`}
-                onClick={() => setTab(id)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <Tabs label="Import from" prefix="import" tabs={TABS} value={tab} onChange={setTab} />
 
           <div
             role="tabpanel"

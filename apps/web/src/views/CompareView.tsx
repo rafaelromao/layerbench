@@ -186,13 +186,10 @@ export function CompareView() {
                 corpora={corpora}
                 verb="Compare"
                 afterCounts={
-                  <label className="form-control">
-                    <span className="label-text text-xs">Sample</span>
-                    <SampleSelect
-                      value={params.sample}
-                      onChange={(sample) => setParams({ sample })}
-                    />
-                  </label>
+                  <SampleSelect
+                    value={params.sample}
+                    onChange={(sample) => setParams({ sample })}
+                  />
                 }
               />
             </div>

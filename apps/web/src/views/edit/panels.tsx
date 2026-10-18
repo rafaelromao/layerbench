@@ -5,7 +5,10 @@ import {
   type LayerColor,
   type LayoutFeatures,
   reachKeys,
+  type SpecialFeature,
+  type SpecialFeatureKind,
   slug,
+  specialFeatures,
   toCanonicalJson,
 } from '@layerbench/core';
 import { type Dispatch, type ReactNode, useMemo, useState } from 'react';
@@ -777,8 +780,115 @@ export function CombosPanel({ state, send }: PanelProps) {
   );
 }
 
-/** Behaviors: the named bindings that keys refer to. */
-export function BehaviorsPanel({ state, send }: PanelProps) {
+/** Behaviors: the layout's special features, then the named bindings that keys refer to. */
+export function BehaviorsPanel({
+  state,
+  send,
+  onShow,
+}: PanelProps & {
+  /** Before a feature is shown on the board: a word playing there would hide it. */
+  onShow?: () => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <SpecialFeatureList state={state} send={send} onShow={onShow} />
+      <BehaviorsJson state={state} send={send} />
+    </div>
+  );
+}
+
+/** Each kind of special feature, in the order the panel lists them, and what its group is called. */
+const FEATURE_GROUPS: [SpecialFeatureKind, string][] = [
+  ['adaptive', 'Adaptive keys'],
+  ['alt_repeat', 'Alt repeats'],
+  ['macro', 'Macros'],
+  ['mod_morph', 'Mod morphs'],
+  ['custom_behaviour', 'Custom behaviours'],
+];
+
+/**
+ * The layout's special features, one group each: every use names its layer and key, or its combo,
+ * and picking it shows it on the board — the key selected on its layer, or the combo's keys
+ * outlined. A behaviour nothing uses has no place to show, and is only named.
+ */
+function SpecialFeatureList({ state, send, onShow }: PanelProps & { onShow?: () => void }) {
+  const features = useMemo(() => specialFeatures(state.layout), [state.layout]);
+  const { compiled } = state;
+  const show = (f: SpecialFeature) => {
+    onShow?.();
+    // Whatever the board is doing gives way: a pick of a combo's keys would keep its clicks, and an
+    // armed swap or an open combo would add their keys to the outline.
+    send({ type: 'comboPickCancel' });
+    send({ type: 'cancelSwap' });
+    if (f.combo !== undefined) {
+      send({ type: 'selectCombo', combo: null });
+      const combo = f.comboIndex === undefined ? undefined : state.layout.combos?.[f.comboIndex];
+      send({ type: 'setBoardHighlight', keys: combo?.keys ?? [] });
+      return;
+    }
+    const layer = f.layer === undefined ? undefined : compiled.layerIndex.get(f.layer);
+    if (layer === undefined || f.key === undefined) return;
+    send({ type: 'setBoardHighlight', keys: [] });
+    send({ type: 'selectLayer', layer });
+    send({ type: 'keyClick', keyId: f.key });
+  };
+  const placeOf = (f: SpecialFeature) => {
+    if (f.combo !== undefined) return `Combo ${f.combo}`;
+    const layer = f.layer === undefined ? undefined : compiled.layerIndex.get(f.layer);
+    if (layer === undefined || f.key === undefined) return null;
+    return `${compiled.layers[layer]?.name ?? f.layer} · ${f.key}`;
+  };
+
+  if (features.length === 0) {
+    return <p className="text-xs opacity-70">This layout has no special features.</p>;
+  }
+  return (
+    <section className="space-y-3" aria-label="Special features">
+      {FEATURE_GROUPS.map(([kind, title]) => {
+        const group = features.filter((f) => f.feature === kind);
+        if (group.length === 0) return null;
+        return (
+          <div key={kind} className="space-y-1">
+            <h3 className="text-xs font-semibold">
+              {title} <span className="font-normal opacity-60">({group.length})</span>
+            </h3>
+            <ul className="flex flex-wrap gap-1" aria-label={title}>
+              {group.map((f, i) => {
+                const place = placeOf(f);
+                const current =
+                  place !== null &&
+                  f.combo === undefined &&
+                  state.selected === f.key &&
+                  compiled.layers[state.layer]?.id === f.layer;
+                return (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: one key can hold a feature twice
+                  <li key={`${f.layer}-${f.key}-${f.combo}-${f.label}-${i}`}>
+                    {place === null ? (
+                      <span className="badge badge-ghost badge-sm">{f.label}</span>
+                    ) : (
+                      <button
+                        type="button"
+                        className={`btn btn-xs gap-1 ${current ? 'btn-primary' : 'btn-ghost border-base-300'}`}
+                        aria-current={current ? 'true' : undefined}
+                        onClick={() => show(f)}
+                      >
+                        <span className="font-mono">{place}</span>
+                        <span className="opacity-70">{f.label}</span>
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
+/** The named behaviours as JSON, applied as a whole. */
+function BehaviorsJson({ state, send }: PanelProps) {
   return (
     <form
       className="space-y-2"
