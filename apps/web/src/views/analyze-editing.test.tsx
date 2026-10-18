@@ -1128,9 +1128,9 @@ describe('Edit', () => {
     await waitFor(() => expect(pills()).toEqual(['Combo LHR + LHM: Acce']));
   });
 
-  /** The combo editor, opened from the Dead keys combo's pill on the board. */
-  const openDeadKeys = async (user: ReturnType<typeof userEvent.setup>) => {
-    await user.click(screen.getByRole('button', { name: 'Edit combo LHR + LHM: DK' }));
+  /** The combo editor, opened from the Accents combo's pill on the board. */
+  const openAccents = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole('button', { name: 'Edit combo LHR + LHM: Acce' }));
     const editor = within(await screen.findByRole('group', { name: 'Edit combo LHR+LHM' }));
     return { editor, tiles: within(editor.getByRole('group', { name: 'Kind of key' })) };
   };
@@ -1142,7 +1142,7 @@ describe('Edit', () => {
   it('opens a combo from its pill, with any kind of key but Transparent and its role', async () => {
     const user = userEvent.setup();
     await openEdit();
-    const { editor, tiles } = await openDeadKeys(user);
+    const { editor, tiles } = await openAccents(user);
     expect(tiles.getByRole('button', { name: 'Layer' })).toHaveAttribute('aria-pressed', 'true');
     expect(tiles.queryByRole('button', { name: 'Transparent' })).toBeNull();
     await user.selectOptions(
@@ -1156,7 +1156,7 @@ describe('Edit', () => {
   it("changes a combo's kind from the tiles, one undo for each, with the combo still open", async () => {
     const user = userEvent.setup();
     await openEdit();
-    const { tiles } = await openDeadKeys(user);
+    const { tiles } = await openAccents(user);
     await user.click(tiles.getByRole('button', { name: 'Tap-hold' }));
     await pressed(tiles, 'Tap-hold');
     await user.click(tiles.getByRole('button', { name: 'Macro' }));
@@ -1199,7 +1199,7 @@ describe('Edit', () => {
   it("picks a combo's keys again from the combo editor", async () => {
     const user = userEvent.setup();
     await openEdit();
-    const { editor } = await openDeadKeys(user);
+    const { editor } = await openAccents(user);
     await user.click(editor.getByRole('button', { name: 'Pick again on the board' }));
     await user.click(key('Key LHI: f'));
     await user.click(key('Key LHP: a'));

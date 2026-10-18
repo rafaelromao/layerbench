@@ -86,7 +86,7 @@ describe('the combos a board shows', () => {
 
 describe("a pill's combo in the layout", () => {
   it('is found by its id and keys when typing combos are left out of the analysis', () => {
-    // A combo that types before Qwerty's Dead keys combo, which only reaches a layer and stays.
+    // A combo that types before Qwerty's Accents combo, which only reaches a layer and stays.
     const qwerty = bundledLayout('qwerty') as Layout;
     const layout: Layout = {
       ...qwerty,
@@ -103,7 +103,7 @@ describe("a pill's combo in the layout", () => {
     };
     const full = compileLayout(layout);
     const typed = compileLayout(withoutFeatures(layout, ['combos']));
-    expect(typed.combos.map((c) => c.id)).toEqual(['dead-keys']);
+    expect(typed.combos.map((c) => c.id)).toEqual(['accents']);
     expect(comboPlace(full, typed, 0)).toBe(1);
     expect(comboPlace(full, full, 0)).toBe(0);
     expect(comboPlace(full, typed, 5)).toBeNull();
