@@ -70,7 +70,8 @@ const branchFor = (b: Extract<Binding, { kind: 'tap_dance' }>, taps: number) =>
 const orderOf = (t: LayerTarget, order: number) =>
   (KIND_ORDER[t.kind] ?? 5) * 1e9 +
   (t.requiredMods?.length ? 5e8 : 0) +
-  ((t.taps ?? 1) - 1) * 1e6 +
+  // Held under the modifiers' band however many taps a tap dance has.
+  Math.min((t.taps ?? 1) - 1, 499) * 1e6 +
   order;
 
 function collectLayerTargets(
@@ -491,7 +492,14 @@ function directRoutes(
     for (const pos of keys) add(pos, { ...route, chord: keys.filter((k) => k !== pos) });
   }
   for (const a of candidates.filter((x) => x.user)) {
-    const own = byPos.get(a.pos)?.find((r) => r.via === a.viaLayer && r.mode === a.mode);
+    // The route the declaration is: the same press, taps and modifiers, else the same press.
+    const routes = byPos.get(a.pos)?.filter((r) => r.via === a.viaLayer && r.mode === a.mode) ?? [];
+    const own =
+      routes.find(
+        (r) =>
+          r.taps === a.taps &&
+          JSON.stringify(r.mods ?? []) === JSON.stringify(a.requiredMods ?? []),
+      ) ?? routes[0];
     if (own) {
       own.declared = true;
       if (a.from !== undefined) own.from = a.from;
@@ -507,6 +515,7 @@ function directRoutes(
       declared: true,
       ...(a.from !== undefined ? { from: a.from } : {}),
       ...(a.requiredMods?.length ? { mods: a.requiredMods } : {}),
+      ...(a.taps ? { taps: a.taps } : {}),
     });
   }
   c.layers.forEach((l, via) => {

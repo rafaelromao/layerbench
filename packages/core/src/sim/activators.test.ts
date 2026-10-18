@@ -67,6 +67,14 @@ describe('the keys that reach a layer', () => {
     expect(shifted?.requiredMods).toEqual([['LSHIFT']]);
     expect(shifted?.taps).toBeUndefined();
     expect(declared()?.taps).toBe(2);
+    // The board marks that same route as the declared one, not the key's other way in.
+    const marked = compileLayout({
+      ...board([...c.layout.layers]),
+      activators: { up: [{ via: 'key:base/LHP', requires: { mods: ['LSHIFT'] } }] },
+    });
+    const [key] = reachKeys(marked, layerOf(marked, 'up'));
+    expect(key.routes.find((r) => r.declared)).toMatchObject({ mods: [['LSHIFT']] });
+    expect(key.routes.find((r) => r.declared)?.taps).toBeUndefined();
   });
 
   it('reads a tap dance inside a branch by the same taps, as the machine does, and a held one once', () => {
