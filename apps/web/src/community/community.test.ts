@@ -1,0 +1,156 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { ID_PATTERN, toCanonicalJson } from '@layerbench/core';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { branchWith, communityDoc } from '../test/community.js';
+import {
+  communityLayout,
+  githubSource,
+  indexIds,
+  readCommunity,
+  refreshCommunity,
+  setCommunitySource,
+  useCommunity,
+} from './community.js';
+
+const owl = communityDoc('night-owl', 'Night owl');
+const lark = communityDoc('lark', 'Lark');
+
+describe('The index of community layouts', () => {
+  it('lists the ids it names, each once, and nothing that is not a document id', () => {
+    expect(indexIds({ layouts: ['lark', 'lark', '../x', 7, 'index', 'night-owl'] })).toEqual([
+      'lark',
+      'night-owl',
+    ]);
+  });
+
+  it('is no index without a list of layouts', () => {
+    expect(() => indexIds(null)).toThrow('lists no layouts');
+    expect(() => indexIds({ layouts: 'lark' })).toThrow('lists no layouts');
+  });
+});
+
+describe('Reading the community layouts', () => {
+  it('reads every layout the index lists', async () => {
+    const layouts = await readCommunity(branchWith(owl, lark));
+    expect(layouts.map((l) => l.name)).toEqual(['Night owl', 'Lark']);
+  });
+
+  it('leaves out a layout that will not read or is not one as LayerBench saves it', async () => {
+    const files: Record<string, unknown> = {
+      'index.json': { layouts: ['night-owl', 'gone', 'no-author', 'no-link', 'misnamed', 'odd'] },
+      'night-owl.json': toCanonicalJson(owl),
+      'no-author.json': toCanonicalJson({ ...communityDoc('no-author', 'A'), author: '' }),
+      'no-link.json': toCanonicalJson({ ...communityDoc('no-link', 'B'), description: 'Mine.' }),
+      'misnamed.json': toCanonicalJson(communityDoc('other', 'C')),
+      'odd.json': { name: 'Odd' },
+    };
+    const layouts = await readCommunity(async (file) => {
+      if (!(file in files)) throw new Error('404');
+      return files[file];
+    });
+    expect(layouts.map((l) => l.id)).toEqual(['night-owl']);
+  });
+
+  it('fails when the index will not read', async () => {
+    await expect(readCommunity(branchWith())).resolves.toEqual([]);
+    await expect(
+      readCommunity(async () => {
+        throw new Error('offline');
+      }),
+    ).rejects.toThrow('offline');
+  });
+});
+
+describe('The community layouts kept in this browser', () => {
+  it('keeps what it read, and has it at once on the next visit', async () => {
+    setCommunitySource(branchWith(owl));
+    await refreshCommunity();
+    expect(useCommunity.getState()).toMatchObject({ status: 'read', error: null });
+
+    // The next visit, offline: the layouts read last time are there, and stay.
+    setCommunitySource(async () => {
+      throw new Error('offline');
+    });
+    expect(useCommunity.getState().layouts.map((l) => l.id)).toEqual(['night-owl']);
+    await refreshCommunity();
+    expect(useCommunity.getState()).toMatchObject({ status: 'failed', error: 'offline' });
+    expect(useCommunity.getState().layouts.map((l) => l.id)).toEqual(['night-owl']);
+  });
+
+  it('checks what this browser kept as it checks the branch', () => {
+    localStorage.setItem(
+      'layerbench:community',
+      JSON.stringify([toCanonicalJson(lark), { id: 'odd' }, null]),
+    );
+    setCommunitySource(branchWith());
+    expect(useCommunity.getState().layouts.map((l) => l.id)).toEqual(['lark']);
+    localStorage.setItem('layerbench:community', '{');
+    setCommunitySource(branchWith());
+    expect(useCommunity.getState().layouts).toEqual([]);
+    localStorage.setItem('layerbench:community', '{}');
+    setCommunitySource(branchWith());
+    expect(useCommunity.getState().layouts).toEqual([]);
+  });
+
+  it('reads once for every read asked for while one runs', async () => {
+    const branch = branchWith(owl);
+    setCommunitySource(branch);
+    await Promise.all([refreshCommunity(), refreshCommunity()]);
+    expect(branch.reads).toEqual(['index.json', 'night-owl.json']);
+  });
+
+  it('finds a layout not kept here by reading the branch, once a page load', async () => {
+    const branch = branchWith(owl);
+    setCommunitySource(branch);
+    expect((await communityLayout('night-owl'))?.name).toBe('Night owl');
+    expect(await communityLayout('lark')).toBeUndefined();
+    expect(branch.reads).toEqual(['index.json', 'night-owl.json']);
+  });
+
+  it('drops a read a newer source has taken the place of', async () => {
+    let finish: (v: unknown) => void = () => {};
+    setCommunitySource(() => new Promise((resolve) => (finish = resolve)));
+    const stale = refreshCommunity();
+    setCommunitySource(branchWith(lark));
+    finish({ layouts: [] });
+    await stale;
+    expect(useCommunity.getState().status).toBe('cached');
+    await refreshCommunity();
+    expect(useCommunity.getState().layouts.map((l) => l.id)).toEqual(['lark']);
+  });
+});
+
+describe('The branch on GitHub', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('reads a file of the community folder of `layerbench-data`, asking afresh', async () => {
+    const fetch = vi.fn(async () => new Response('{"layouts":[]}'));
+    vi.stubGlobal('fetch', fetch);
+    expect(await githubSource('index.json')).toEqual({ layouts: [] });
+    expect(fetch).toHaveBeenCalledWith(
+      'https://raw.githubusercontent.com/rafaelromao/layerbench/layerbench-data/community/index.json',
+      { cache: 'no-cache', credentials: 'omit' },
+    );
+  });
+
+  it('fails on a file that is not there', async () => {
+    vi.stubGlobal('fetch', async () => new Response('', { status: 404, statusText: 'Not Found' }));
+    await expect(githubSource('gone.json')).rejects.toThrow('gone.json: 404 Not Found');
+  });
+});
+
+describe("The branch's starting tree", () => {
+  const file = (path: string) =>
+    readFileSync(resolve(process.cwd(), '../../data-branch', path), 'utf8');
+
+  it('starts with an index the app reads, listing nothing', () => {
+    expect(indexIds(JSON.parse(file('community/index.json')))).toEqual([]);
+  });
+
+  it('has its workflow list the names the app takes for ids, and only those', () => {
+    expect(file('.github/workflows/community-index.yml')).toContain(
+      `grep -E '${ID_PATTERN.source}'`,
+    );
+  });
+});
