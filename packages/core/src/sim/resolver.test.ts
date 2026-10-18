@@ -640,3 +640,153 @@ describe("a mod morph's modifiers", () => {
     expect(t.coverage.unproducible.get(';')).toBe(1);
   });
 });
+
+describe('a layer that comes on while others are on together', () => {
+  // Magic Romak's Extras: on while Numbers, held from space, and Symbols, held from there, are on.
+  const extras = ['L0', 'R0', 'LTM'];
+
+  it('is reached by holding those layers one after the other', () => {
+    expect(trace(magicRomak, '€').keys).toEqual(extras);
+  });
+
+  it('is reached whatever order its condition names them in', () => {
+    const reversed: Layout = {
+      ...magicRomak,
+      conditionalLayers: [{ if: ['sym', 'num'], then: 'extras' }],
+    };
+    const t = trace(reversed, '€');
+    expect(t.out).toBe('€');
+    expect(t.keys).toEqual(extras);
+  });
+
+  it('is reached by its condition when a key that would bring it on cannot', () => {
+    // The machine turns Extras off when this key holds it alone.
+    const layers = magicRomak.layers.map((l) =>
+      l.id === 'num'
+        ? { ...l, bindings: { ...l.bindings, L1: { kind: 'mo', layer: 'extras' } as Binding } }
+        : l,
+    );
+    const t = trace({ ...magicRomak, layers }, '€');
+    expect(t.out).toBe('€');
+    expect(t.keys).toEqual(extras);
+  });
+
+  const toggles = (bindings: Record<string, Binding>, more: Layout['layers'] = []): Layout => ({
+    format: 'layerbench/layout@1',
+    name: 'Toggles',
+    hostLocale: 'symbols',
+    geometry: { preset: '3x5+2' },
+    keys: { space: 'L0' },
+    layers: [{ id: 'base', bindings: { L0: { kind: 'kp', symbol: ' ' }, ...bindings } }, ...more],
+  });
+  const tog = (layer: string): Binding => ({ kind: 'tog', layer });
+  const trans: Binding = { kind: 'trans' };
+
+  it('is reached when one of its layers is two layers away, as that layer would be alone', () => {
+    // A is on only through Y, then X; B is one key away.
+    const layout: Layout = {
+      ...toggles({ LTP: tog('y'), RTP: tog('b') }, [
+        { id: 'y', bindings: { '*': trans, LTR: tog('x') } },
+        { id: 'x', bindings: { '*': trans, LTM: tog('a') } },
+        { id: 'a', bindings: { '*': trans } },
+        { id: 'b', bindings: { '*': trans } },
+        { id: 't', bindings: { '*': trans, RHI: { kind: 'kp', symbol: '€' } } },
+      ]),
+      conditionalLayers: [{ if: ['a', 'b'], then: 't' }],
+    };
+    const t = trace(layout, '€');
+    expect(t.out).toBe('€');
+    expect(t.keys).toEqual(['LTP', 'LTR', 'LTM', 'RTP', 'RHI']);
+  });
+
+  it('is reached in the one order its layers can all be on in', () => {
+    // Each layer is toggled from the base layer and swallows the keys of the ones after it, so only
+    // d, c, b, a leaves all four on.
+    const ids = [...'abcd'];
+    const keys = ['LTP', 'LTR', 'LTM', 'LTI'];
+    const none: Binding = { kind: 'none' };
+    const layout: Layout = {
+      ...toggles(Object.fromEntries(ids.map((id, i) => [keys[i], tog(id)])), [
+        ...ids.map((id, i) => ({
+          id,
+          bindings: { '*': trans, ...Object.fromEntries(keys.slice(i + 1).map((k) => [k, none])) },
+        })),
+        { id: 't', bindings: { '*': trans, RHI: { kind: 'kp', symbol: '€' } } },
+      ]),
+      conditionalLayers: [{ if: ids, then: 't' }],
+    };
+    const t = trace(layout, '€');
+    expect(t.out).toBe('€');
+    expect(t.keys).toEqual(['LTI', 'LTM', 'LTR', 'LTP', 'RHI']);
+  });
+
+  it('is tried in its own order only when it names more layers than a document may', () => {
+    // Each of ten layers is switched to from the base layer, turning the one before it off.
+    const ids = [...'abcdefghij'];
+    const keys = ['LTP', 'LTR', 'LTM', 'LTI', 'LTC', 'RTC', 'RTI', 'RTM', 'RTR', 'RTP'];
+    const layout: Layout = {
+      ...toggles(Object.fromEntries(ids.map((id, i) => [keys[i], { kind: 'to', layer: id }])), [
+        ...ids.map((id) => ({ id, bindings: { '*': trans } })),
+        { id: 't', bindings: { '*': trans, RHI: { kind: 'kp', symbol: '€' } } },
+      ]),
+      conditionalLayers: [{ if: ids, then: 't' }],
+    };
+    const started = performance.now();
+    expect(trace(layout, '€').out).toBe('');
+    expect(performance.now() - started).toBeLessThan(2000);
+  });
+
+  it('is reached through a chain of layers each waiting for the one before, in a layout in code', () => {
+    // c0 is toggled from the base layer; each of the next twelve comes on with the one before it
+    // and its own toggle.
+    const ids = Array.from({ length: 13 }, (_, i) => `c${i}`);
+    const keys = ['LTP', 'LTR', 'LTM', 'LTI', 'LTC', 'LHP', 'LHR', 'LHM', 'LHI', 'LHC', 'LBP'];
+    const extra = Array.from({ length: 12 }, (_, i) => `x${i}`);
+    const toggleKeys = [
+      ...keys,
+      'LBR',
+      'LBM',
+      'LBI',
+      'LBC',
+      'RTC',
+      'RTI',
+      'RTM',
+      'RTR',
+      'RTP',
+      'RHC',
+    ];
+    const layout: Layout = {
+      ...toggles(
+        {
+          [toggleKeys[0]]: tog('c0'),
+          ...Object.fromEntries(extra.map((id, i) => [toggleKeys[i + 1], tog(id)])),
+        },
+        [
+          ...extra.map((id) => ({ id, bindings: { '*': trans } })),
+          ...ids.map((id, i) => ({
+            id,
+            bindings: { '*': trans, ...(i === 12 ? { RHI: { kind: 'kp', symbol: '€' } } : {}) },
+          })),
+        ] as Layout['layers'],
+      ),
+      conditionalLayers: ids.slice(1).map((id, i) => ({ if: [ids[i], extra[i]], then: id })),
+    };
+    const started = performance.now();
+    expect(trace(layout, '€').out).toBe('€');
+    expect(performance.now() - started).toBeLessThan(2000);
+  });
+
+  it('is never reached when it and another each come on only with the other', () => {
+    const layout: Layout = {
+      ...toggles({}, [
+        { id: 'p', bindings: { '*': trans, RHI: { kind: 'kp', symbol: '€' } } },
+        { id: 'q', bindings: { '*': trans } },
+      ]),
+      conditionalLayers: [
+        { if: ['q'], then: 'p' },
+        { if: ['p'], then: 'q' },
+      ],
+    };
+    expect(trace(layout, '€').out).toBe('');
+  });
+});

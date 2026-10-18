@@ -19,7 +19,7 @@ const text = `${FIXTURE_EN} ${FIXTURE_PT}`;
 
 /**
  * A layout by id, a classic one as written: its letters on one layer, one press a character. The
- * bundled one has the default layers, and types the Portuguese accents through Dead keys.
+ * bundled one has the default layers, and types the Portuguese accents through Accents.
  */
 const layoutOf = (id: string) => CLASSIC_LAYOUTS.find((l) => l.id === id) ?? bundledLayout(id)!;
 

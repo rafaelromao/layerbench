@@ -75,9 +75,9 @@ describe('layout coverage', () => {
     expect(layoutLanguageCoverage(qwerty, 'pt-BR')?.missingRequired.length).toBeGreaterThan(0);
   });
 
-  it('writes Spanish, French and Italian through its Dead keys layer', () => {
+  it('writes Spanish, French and Italian through its Accents layer', () => {
     // Alpha 2 carries the Portuguese set; the accents the others add, a grave on any vowel, the
-    // tilde on `n`, the diaeresis, and `œ`, come from the Dead keys layer.
+    // tilde on `n`, the diaeresis, and `œ`, come from the Accents layer.
     for (const tag of ['en', 'es', 'fr', 'it']) {
       const c = layoutLanguageCoverage(magic, tag);
       expect([tag, c?.missingRequired, c?.missingPunctuation]).toEqual([tag, [], []]);
