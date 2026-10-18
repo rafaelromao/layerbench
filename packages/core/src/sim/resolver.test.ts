@@ -289,6 +289,13 @@ describe('combos that do more than type a character', () => {
     expect(trace(shifted, '#').out).toBe('');
   });
 
+  it('counts an adaptive key on a combo among the adaptive presses, still as a chord', () => {
+    const st = simulate(compileLayout(board), 'x ey', opts).tables.stats;
+    expect(st.adaptive_presses).toBe(2);
+    expect(st.adaptive_trigger_hits).toBe(2);
+    expect(st.chords).toBe(2);
+  });
+
   it('types an adaptive key on a combo as it would on a key', () => {
     const t = trace(board, 'x ey');
     expect(t.out).toBe('x ey');

@@ -40,6 +40,8 @@ export interface Producer {
   cost: number;
   /** True when the producer is a dynamic branch (adaptive/repeat) whose output depends on state. */
   dynamic: boolean;
+  /** A combo's: what its binding types through, an adaptive branch or a repeat, as a key's kind is. */
+  via?: ProducerKind;
 }
 
 interface StaticOutput {
@@ -350,6 +352,7 @@ export function enumerateProducers(
         // A tap dance's later branches cost a chord more each, as they do on a key.
         cost: 0.5 + o.taps + (mods.length ? 1 : 0),
         dynamic: o.dynamic,
+        ...(o.kind === 'direct' ? {} : { via: o.kind }),
       };
       if (fold && mods.length) {
         excludedByCase.push(p);

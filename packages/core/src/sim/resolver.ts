@@ -586,7 +586,8 @@ export class Simulator {
       for (const pos of holdsBefore) this.plannerHolds.add(pos);
       return null;
     }
-    for (const e of events) if (e.producerKind === undefined) e.producerKind = p.kind;
+    // A combo's presses count as what its binding typed through, as a key's do.
+    for (const e of events) if (e.producerKind === undefined) e.producerKind = p.via ?? p.kind;
     return events;
   }
 
@@ -614,11 +615,13 @@ export class Simulator {
       if (ev.leafKind === 'sl') st.one_shot_activations++;
       if (ev.wastedOneShot) st.wasted_one_shots++;
       if (ev.leafKind === 'macro') st.macro_presses++;
-      if (ev.keyKind === 'adaptive') {
+      // A chord counts as the kind of key its binding acted as.
+      const acts = ev.actsAs ?? ev.keyKind;
+      if (acts === 'adaptive') {
         st.adaptive_presses++;
         if (ev.producerKind === 'adaptive') st.adaptive_trigger_hits++;
       }
-      if (ev.keyKind === 'repeat') st.repeat_presses++;
+      if (acts === 'repeat') st.repeat_presses++;
       if (ev.keyKind === 'space') st.space_presses++;
       const id = this.presses.press(ev, ev.keyKind === 'space' || isSpace ? 'with_space' : 'both');
       const pos = c.positions[ev.pos];

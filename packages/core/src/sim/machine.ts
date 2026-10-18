@@ -41,6 +41,11 @@ export interface KeyEvent {
   /** Text emitted by this event. */
   symbols: string;
   keyKind: KeyKind;
+  /**
+   * For a chord, the kind of key its binding acted as — an adaptive key, a repeat — so the
+   * statistics count what a combo does as they would on a key. A chord's `keyKind` stays `combo`.
+   */
+  actsAs?: KeyKind;
   label: string;
   leafKind: BindingKind;
   /**
@@ -474,6 +479,7 @@ export class Machine {
       layer,
       symbols: ctx.out.join(''),
       keyKind: 'combo',
+      actsAs: classify(ctx, hold ? 'hold' : 'tap'),
       // Named as a key with its binding would be: what it types, else the layer or accent it gives.
       label: labelFor(this.compiled, ctx, c.binding, layer) || c.id,
       leafKind: ctx.leaf,
