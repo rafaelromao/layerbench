@@ -1438,7 +1438,14 @@ describe('Behaviors', () => {
       .filter((b) => !place(b).startsWith('Combo'));
     const away = keys.find((b) => !place(b).startsWith(`${shownLayer()} · `)) ?? keys[0];
     const [layerName, keyId] = place(away).split(' · ');
+    // An n-gram outlined from a card gives way to the feature.
+    const outlined = () => document.querySelectorAll('#kb-analyze .lb-key-highlight').length;
+    await user.click(
+      document.querySelector<HTMLButtonElement>('.lb-items li button') as HTMLElement,
+    );
+    await waitFor(() => expect(outlined()).toBeGreaterThan(0));
     await user.click(away);
+    expect(outlined()).toBe(0);
     expect(shownLayer()).toBe(layerName);
     expect(await inspector(keyId)).toBeInTheDocument();
     expect(away).toHaveAttribute('aria-current', 'true');

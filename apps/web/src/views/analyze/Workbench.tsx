@@ -1040,7 +1040,15 @@ export function Workbench({
                     {state.panel === 'geometry' && <GeometryPanel state={state} send={send} />}
                     {state.panel === 'combos' && <CombosPanel state={state} send={send} />}
                     {state.panel === 'behaviors' && (
-                      <BehaviorsPanel state={state} send={send} onShow={() => setPlay(null)} />
+                      <BehaviorsPanel
+                        state={state}
+                        send={send}
+                        onShow={() => {
+                          // The feature is what the board shows now: no word, no outlined n-gram.
+                          setPlay(null);
+                          clearOutline();
+                        }}
+                      />
                     )}
                     {state.panel === 'paths' && (
                       <PathsPanel state={state} send={send} producers={producers} />
