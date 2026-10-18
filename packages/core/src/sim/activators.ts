@@ -194,7 +194,10 @@ export function discoverActivators(
       const pos = c.keyIndex.get(m[2]);
       if (viaLayer === undefined || pos === undefined) return;
       const list = activators.get(target) ?? [];
-      const existing = list.find((a) => a.pos === pos && a.viaLayer === viaLayer);
+      // The key's own best way in: how it is pressed, and for a tap dance's later branch, how often.
+      const existing = list
+        .filter((a) => a.pos === pos && a.viaLayer === viaLayer)
+        .sort((a, b) => a.order - b.order)[0];
       const mode = existing?.mode ?? 'tap';
       const cand: ActivatorCandidate = {
         pos,
@@ -204,6 +207,7 @@ export function discoverActivators(
         user: true,
         order: -1000 + i,
         requiredMods: d.requires?.mods?.map((m) => [m]) ?? existing?.requiredMods,
+        ...(existing?.taps ? { taps: existing.taps } : {}),
       };
       if (d.from && d.from !== '*') cand.from = c.layerIndex.get(d.from);
       list.unshift(cand);

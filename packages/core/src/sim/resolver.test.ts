@@ -290,6 +290,25 @@ describe('combos that do more than type a character', () => {
     expect(chord.keys).toEqual(['combo:up', 'combo:up', 'RHP']);
   });
 
+  it("presses a declared way in by a tap dance's second tap, before a key found on its own", () => {
+    const dance: Binding = { kind: 'tap_dance', bindings: [kp('!'), { kind: 'sl', layer: 'up' }] };
+    const layout: Layout = {
+      ...board,
+      layers: [
+        {
+          ...board.layers[0],
+          bindings: { ...board.layers[0].bindings, LHP: dance, LHR: { kind: 'sl', layer: 'up' } },
+        },
+        ...board.layers.slice(1),
+      ],
+      combos: (board.combos ?? []).filter((c) => c.id !== 'up'),
+      activators: { up: [{ via: 'key:base/LHP' }] },
+    };
+    const t = trace(layout, '§');
+    expect(t.out).toBe('§');
+    expect(t.keys).toEqual(['LHP', 'LHP', 'RHP']);
+  });
+
   it('reaches a layer by a tap dance inside a tap dance, and by one held', () => {
     const withLHP = (binding: Binding): Layout => ({
       ...board,
