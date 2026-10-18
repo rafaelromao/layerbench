@@ -155,6 +155,8 @@ export function refreshCommunity(): Promise<void> {
       },
       (e: unknown) => {
         if (from !== source) return;
+        // What the last read found is no longer known to be whole: the next link reads again.
+        readThisLoad = false;
         useCommunity.setState({
           status: 'failed',
           error: e instanceof Error ? e.message : String(e),

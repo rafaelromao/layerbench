@@ -134,6 +134,21 @@ describe('The community layouts kept in this browser', () => {
     expect((await communityLayout('night-owl'))?.name).toBe('Night owl');
   });
 
+  it('reads again for the next link once a later read failed', async () => {
+    let online = true;
+    const branch = branchWith(owl);
+    setCommunitySource(async (file) => {
+      if (!online) throw new Error('offline');
+      return branch(file);
+    });
+    await refreshCommunity();
+    online = false;
+    await refreshCommunity();
+    online = true;
+    expect(await communityLayout('lark')).toBeUndefined();
+    expect(useCommunity.getState().status).toBe('read');
+  });
+
   it('reads again for the next link when its file would not come', async () => {
     let tries = 0;
     const branch = branchWith(owl);
