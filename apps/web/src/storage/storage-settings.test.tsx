@@ -8,7 +8,7 @@ import { CompositeStorage } from './composite.js';
 import { StorageSettings } from './StorageSettings.js';
 import { StorageProvider } from './use-storage.js';
 
-afterEach(() => useGitHubSession.setState({ status: 'unknown', login: null, target: null }));
+afterEach(() => useGitHubSession.setState({ status: 'unknown', login: null }));
 
 describe('Storage', () => {
   it("copies this browser's documents up through the storage the app saves to", async () => {
@@ -18,11 +18,7 @@ describe('Storage', () => {
     await local.put('layouts', 'mine', { name: 'Mine' });
     const storage = new CompositeStorage(local, remote);
     await storage.put('layouts', 'shared', { name: 'Shared' });
-    useGitHubSession.setState({
-      status: 'signed-in',
-      login: 'me',
-      target: { kind: 'repo', repo: 'me/layerbench', branch: 'layerbench-data', upstream: false },
-    });
+    useGitHubSession.setState({ status: 'signed-in', login: 'me' });
     render(
       <StorageProvider adapter={storage}>
         <StorageSettings />
@@ -42,11 +38,7 @@ describe('Storage', () => {
 
   it('cannot copy up where storage is this browser alone', async () => {
     const user = userEvent.setup();
-    useGitHubSession.setState({
-      status: 'signed-in',
-      login: 'me',
-      target: { kind: 'gist' },
-    });
+    useGitHubSession.setState({ status: 'signed-in', login: 'me' });
     render(
       <StorageProvider adapter={new MemoryStorage()}>
         <StorageSettings />

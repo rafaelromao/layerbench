@@ -56,7 +56,7 @@ export function freeCopyName(name: string, taken: Iterable<string>): string {
 }
 
 /**
- * A way to save new layouts that remembers its last failed save. With a repository as well as the
+ * A way to save new layouts that remembers its last failed save. With gists as well as the
  * browser, a save can fail after the browser has written the layout; saving the same layout again,
  * from a dialog still open or one opened afresh, then takes over that document rather than make a
  * second beside it. Only a document that is exactly what was written, and exactly what is being

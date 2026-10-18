@@ -82,6 +82,27 @@ describe('gists as storage', () => {
     expect(calls[0].headers.Authorization).toBe('Bearer secret-token');
   });
 
+  it('drops index rows that are not index rows, including ids that are not ids', async () => {
+    const rows = [
+      { id: 'mine', name: 'Mine', updatedAt: '2026-01-01T00:00:00Z' },
+      { id: '../../../user', name: 'Evil', updatedAt: '2026-01-01T00:00:00Z' },
+      { id: 'index', name: 'Index', updatedAt: '2026-01-01T00:00:00Z' },
+      { id: 'noname', updatedAt: '2026-01-01T00:00:00Z' },
+      'not a row',
+      null,
+    ];
+    responder = () =>
+      json(200, layoutsGist({ [indexFile('layouts')]: { content: JSON.stringify(rows) } }));
+    const adapter = new GistAdapter(access, memoryIds({ layouts: 'g1' }));
+    expect((await adapter.list('layouts')).map((e) => e.id)).toEqual(['mine']);
+  });
+
+  it('reads an index that is not JSON as an empty one', async () => {
+    responder = () => json(200, layoutsGist({ [indexFile('layouts')]: { content: '{' } }));
+    const adapter = new GistAdapter(access, memoryIds({ layouts: 'g1' }));
+    expect(await adapter.list('layouts')).toEqual([]);
+  });
+
   it('lists nothing, and creates nothing, before the first save', async () => {
     responder = () => json(200, []);
     const adapter = new GistAdapter(access, memoryIds());

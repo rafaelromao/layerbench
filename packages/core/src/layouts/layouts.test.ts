@@ -96,11 +96,11 @@ describe('small-board layouts', () => {
     })?.[0];
 
   it('puts each chord on the keys its source names', () => {
-    // The layout's own chords; the one to Dead keys every layout has goes with the default layers.
+    // The layout's own chords; the one to Accents every layout has goes with the default layers.
     const chords = (id: string) =>
       Object.fromEntries(
         (layout(id).combos ?? [])
-          .filter((c) => c.id !== 'dead-keys')
+          .filter((c) => c.id !== 'accents')
           .map((c) => [
             c.id,
             c.keys.map((k) => {

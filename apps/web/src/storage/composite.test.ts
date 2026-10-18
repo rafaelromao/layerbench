@@ -8,13 +8,13 @@ import { IndexedDbAdapter } from './indexeddb.js';
 let counter = 0;
 const localAdapter = () => new IndexedDbAdapter(`layerbench-composite-${++counter}`);
 
-/** A stand-in for the repository, so the tests are about the composition, not the network. */
+/** A stand-in for the gists, so the tests are about the composition, not the network. */
 function fakeRemote(overrides: Partial<StorageAdapter> = {}): StorageAdapter {
   return Object.assign(new MemoryStorage('github'), overrides);
 }
 
 describe('two stores at once', () => {
-  it('writes to both, and the repository answers reads', async () => {
+  it('writes to both, and the gists answer reads', async () => {
     const local = localAdapter();
     const remote = fakeRemote();
     const composite = new CompositeStorage(local, remote);
@@ -24,7 +24,7 @@ describe('two stores at once', () => {
     expect((await composite.get('layouts', 'mine'))?.meta.sha).toMatch(/^github-/);
   });
 
-  it('keeps working when the repository is unreachable', async () => {
+  it('keeps working when the gists are unreachable', async () => {
     const local = localAdapter();
     const remote = fakeRemote({
       async list() {
@@ -39,7 +39,7 @@ describe('two stores at once', () => {
     await local.put('layouts', 'mine', { name: 'Mine' });
     expect(await composite.list('layouts')).toHaveLength(1);
     expect((await composite.get('layouts', 'mine'))?.doc).toEqual({ name: 'Mine' });
-    // Without a browser copy, the repository not answering is not the document not existing.
+    // Without a browser copy, the gists not answering is not the document not existing.
     await expect(composite.get('layouts', 'only-there')).rejects.toThrow('offline');
   });
 
@@ -58,7 +58,7 @@ describe('two stores at once', () => {
     expect((await local.get('layouts', 'mine'))?.doc).toEqual({ name: 'Mine' });
   });
 
-  it('merges both listings, with the repository winning a shared id', async () => {
+  it('merges both listings, with the gists winning a shared id', async () => {
     const local = localAdapter();
     const remote = fakeRemote();
     await local.put('layouts', 'shared', { name: 'Local copy' });
@@ -70,7 +70,7 @@ describe('two stores at once', () => {
     expect(entries.find((e) => e.id === 'shared')?.name).toBe('Repository copy');
   });
 
-  it('behaves like the browser store alone when no repository is set', async () => {
+  it('behaves like the browser store alone when no gists are set', async () => {
     const composite = new CompositeStorage(localAdapter(), null);
     await composite.put('layouts', 'mine', { name: 'Mine' });
     expect((await composite.get('layouts', 'mine'))?.doc).toEqual({ name: 'Mine' });
@@ -90,13 +90,13 @@ describe('copying up', () => {
     vi.useRealTimers();
   }
 
-  it('sends what the repository lacks, or has older, and leaves the rest as it is', async () => {
+  it('sends what the gists lack, or have older, and leaves the rest as it is', async () => {
     const local = localAdapter();
     const remote = fakeRemote();
-    // Saved here after the repository's copy, so this one goes up.
+    // Saved here after the gists' copy, so this one goes up.
     await saveAt(remote, '2026-10-01T10:00:00Z', 'layouts', 'edited-here');
     await saveAt(local, '2026-10-02T10:00:00Z', 'layouts', 'edited-here');
-    // Saved in the repository since, from another browser: its copy stays.
+    // Saved in the gists since, from another browser: its copy stays.
     await saveAt(local, '2026-10-01T10:00:00Z', 'layouts', 'edited-there');
     await saveAt(remote, '2026-10-02T10:00:00Z', 'layouts', 'edited-there');
     // Only here, in each collection.
@@ -145,12 +145,12 @@ describe('copying up', () => {
     expect(await composite.copyUp()).toEqual({ copied: 1, current: 1 });
   });
 
-  it('leaves a copy saved in the repository while copying, from another browser', async () => {
+  it('leaves a copy saved in the gists while copying, from another browser', async () => {
     const local = localAdapter();
     const remote = fakeRemote();
     await saveAt(remote, '2026-10-01T10:00:00Z', 'layouts', 'busy');
     await saveAt(local, '2026-10-02T10:00:00Z', 'layouts', 'busy');
-    // The other browser's save lands after the repository is checked a second time.
+    // The other browser's save lands after the gists are checked a second time.
     const list = remote.list.bind(remote);
     let lists = 0;
     remote.list = async (collection) => {
@@ -165,7 +165,7 @@ describe('copying up', () => {
     expect((await remote.get('layouts', 'busy'))?.doc.name).toBe('theirs');
   });
 
-  it('leaves a document made in the repository while copying, by another browser', async () => {
+  it('leaves a document made in the gists while copying, by another browser', async () => {
     const local = localAdapter();
     const remote = fakeRemote();
     await local.put('layouts', 'new', { name: 'mine' });

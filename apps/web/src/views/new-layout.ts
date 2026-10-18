@@ -1,10 +1,5 @@
 import type { Layout } from '@layerbench/core';
-import {
-  deadKeysCombo,
-  defaultLayers,
-  getGeometryPreset,
-  importTextLayout,
-} from '@layerbench/core';
+import { accentsCombo, defaultLayers, getGeometryPreset, importTextLayout } from '@layerbench/core';
 
 /** Qwerty, as the starting point for a layout you intend to change rather than design. */
 const QWERTY_ROWS = 'q w e r t y u i o p\na s d f g h j k l ;\nz x c v b n m , . /';
@@ -14,7 +9,7 @@ export interface NewLayoutSpec {
   geometry: string;
   /** `empty` leaves every key unbound; `qwerty` fills the base layer so there is something to move. */
   start: 'empty' | 'qwerty';
-  /** Add the default Numbers, Symbols and Dead keys layers, and the keys that reach them. */
+  /** Add the default Accents, Numbers, Symbols and Extras layers, and the keys that reach them. */
   defaultLayers: boolean;
 }
 
@@ -47,7 +42,8 @@ export function newLayout(spec: NewLayoutSpec): Layout {
       ...rest,
       ...defaults.layers,
     ],
-    combos: [...(base.combos ?? []), deadKeysCombo(first.id)],
+    combos: [...(base.combos ?? []), accentsCombo(first.id)],
+    ...(defaults.conditionalLayers.length > 0 && { conditionalLayers: defaults.conditionalLayers }),
   };
 }
 

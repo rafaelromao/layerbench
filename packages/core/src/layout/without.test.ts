@@ -69,8 +69,8 @@ describe('Ranking a layout without some of its features', () => {
   it('types without combos what it can, and leaves out what only a combo types', () => {
     const after = kinds(['combos']);
     expect([...after.values()].flat()).not.toContain('combo');
-    // Magic Romak's à is a combo on Alpha 2; without it, the grave dead key and a still type it.
-    expect(after.get('à')).toEqual(['deadkey']);
+    // Magic Romak's à is a combo on Alpha 2; without it, Accents' key and its grave dead key do.
+    expect(after.get('à')).toEqual(['macro', 'deadkey']);
     const coverage = layoutLanguageCoverage(
       compileLayout(withoutFeatures(magicRomak, ['combos'])),
       'pt-BR',
@@ -78,10 +78,10 @@ describe('Ranking a layout without some of its features', () => {
     expect(coverage?.missingRequired).toEqual([]);
   });
 
-  it('keeps a combo that only turns a layer on: the way to Dead keys stays, and the accents with it', () => {
+  it('keeps a combo that only turns a layer on: the way to Accents stays, and the accents with it', () => {
     const qwerty = bundledLayout('qwerty') as Layout;
     const without = withoutFeatures(qwerty, ['combos']);
-    expect(without.combos?.map((c) => c.id)).toEqual(['dead-keys']);
+    expect(without.combos?.map((c) => c.id)).toEqual(['accents']);
     const coverage = layoutLanguageCoverage(compileLayout(without), 'pt-BR');
     expect(coverage?.missingRequired).toEqual([]);
   });

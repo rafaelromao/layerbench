@@ -116,14 +116,15 @@ describe('Compare', () => {
       'Ç extension',
       'Numbers',
       'Symbols',
-      'Dead keys',
+      'Extras',
+      'Accents',
     ]);
     // Graphite's own layer, then the default ones every bundled layout has.
     expect(await layerNames(user, 'Layers of B')).toEqual([
       'Base',
       'Numbers',
       'Symbols',
-      'Dead keys',
+      'Accents',
     ]);
 
     // Each side turns on its own, and the other keeps the layer it was on.
@@ -132,7 +133,7 @@ describe('Compare', () => {
     expect(boardA()).not.toContain('qu');
     await showLayer(user, 'Alpha 2', 'Layers of A');
     expect(shownLayer('Layers of A')).toBe('Alpha 2');
-    expect(shownLayer('Layers of B')).toBe('Dead keys');
+    expect(shownLayer('Layers of B')).toBe('Accents');
     expect(boardA()).toContain('qu');
   });
 
