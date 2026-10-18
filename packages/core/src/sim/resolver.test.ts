@@ -268,6 +268,48 @@ describe('combos that do more than type a character', () => {
     expect(t.keys).toEqual(['combo:up', 'RHP']);
   });
 
+  it("reaches a layer by a tap dance's second tap, on a key and on a combo", () => {
+    const dance: Binding = { kind: 'tap_dance', bindings: [kp('!'), { kind: 'sl', layer: 'up' }] };
+    const onKey: Layout = {
+      ...board,
+      layers: [
+        { ...board.layers[0], bindings: { ...board.layers[0].bindings, LHP: dance } },
+        ...board.layers.slice(1),
+      ],
+      combos: (board.combos ?? []).filter((c) => c.id !== 'up'),
+    };
+    const key = trace(onKey, '§');
+    expect(key.out).toBe('§');
+    expect(key.keys).toEqual(['LHP', 'LHP', 'RHP']);
+    const onCombo: Layout = {
+      ...board,
+      combos: (board.combos ?? []).map((c) => (c.id === 'up' ? { ...c, binding: dance } : c)),
+    };
+    const chord = trace(onCombo, '§');
+    expect(chord.out).toBe('§');
+    expect(chord.keys).toEqual(['combo:up', 'combo:up', 'RHP']);
+  });
+
+  it("reaches a layer by a tap dance's first tap", () => {
+    const first: Layout = {
+      ...board,
+      layers: [
+        {
+          ...board.layers[0],
+          bindings: {
+            ...board.layers[0].bindings,
+            LHP: { kind: 'tap_dance', bindings: [{ kind: 'sl', layer: 'up' }, kp('!')] },
+          },
+        },
+        ...board.layers.slice(1),
+      ],
+      combos: (board.combos ?? []).filter((c) => c.id !== 'up'),
+    };
+    const t = trace(first, '§');
+    expect(t.out).toBe('§');
+    expect(t.keys).toEqual(['LHP', 'RHP']);
+  });
+
   it('presses a combo that brings a layer on to type what is there', () => {
     const t = trace(board, '§');
     expect(t.out).toBe('§');

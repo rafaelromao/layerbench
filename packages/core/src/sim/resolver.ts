@@ -329,6 +329,7 @@ export class Simulator {
             type: 'chord',
             combo: cand.combo,
             hold: cand.mode === 'hold',
+            ...(cand.taps ? { taps: cand.taps } : {}),
           });
           if (evs.some((e) => e.symbols.length)) ok = false;
           else events.push(...evs);
@@ -337,14 +338,20 @@ export class Simulator {
         const r = m.resolve(cand.pos);
         if (r.layer !== cand.viaLayer) ok = false;
         else {
-          const peeled = peelBinding(m, r.binding, cand.mode);
+          let peeled = peelBinding(m, r.binding, cand.mode);
+          // A tap dance is the branch its taps choose.
+          if (peeled.kind === 'tap_dance' && cand.mode === 'tap') {
+            const branch = peeled.bindings[(cand.taps ?? 1) - 1];
+            if (branch) peeled = peelBinding(m, branch, 'tap');
+          }
           const kinds =
             cand.mode === 'hold'
               ? ['mo', 'lt', 'sl', 'tog', 'to']
               : ['sl', 'tog', 'to', 'adaptive', 'macro'];
           if (!kinds.includes(peeled.kind)) ok = false;
           else if (cand.mode === 'hold' && STAND_IN_KINDS.has(peeled.kind)) heldThenLetGo = true;
-          else if (this.peers.has(cand) && STAND_IN_KINDS.has(peeled.kind)) {
+          // Another key stands in for one tap, not for a tap dance's taps.
+          else if (!cand.taps && this.peers.has(cand) && STAND_IN_KINDS.has(peeled.kind)) {
             beforeTap = m.state.snapshot();
             tapKind = peeled.kind;
           }
@@ -354,7 +361,7 @@ export class Simulator {
         const action: Action =
           cand.mode === 'hold'
             ? { type: 'hold_press', pos: cand.pos }
-            : { type: 'tap', pos: cand.pos };
+            : { type: 'tap', pos: cand.pos, ...(cand.taps ? { taps: cand.taps } : {}) };
         const evs = m.perform(action);
         if (heldThenLetGo) evs.push(...m.perform({ type: 'hold_release', pos: cand.pos }));
         if (evs.some((e) => e.symbols.length)) ok = false;

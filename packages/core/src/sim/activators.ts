@@ -18,6 +18,8 @@ export interface ActivatorCandidate {
   from?: number;
   /** A combo rather than a key: its keys pressed together. `pos` is the combo's own position. */
   combo?: number;
+  /** How many times it is tapped, for a tap dance's later branch. Absent for once. */
+  taps?: number;
 }
 
 interface LayerTarget {
@@ -25,7 +27,16 @@ interface LayerTarget {
   target: number;
   kind: string;
   requiredMods?: ModChoice[];
+  /** A tap dance's branch past its first: the taps that choose it. */
+  taps?: number;
 }
+
+/** A tap dance's later branch ranks after any first tap of the same kind of key. */
+const orderOf = (t: LayerTarget, order: number) =>
+  (KIND_ORDER[t.kind] ?? 5) * 1000 +
+  (t.requiredMods?.length ? 500 : 0) +
+  ((t.taps ?? 1) - 1) * 100 +
+  order;
 
 function collectLayerTargets(
   compiled: CompiledLayout,
@@ -36,6 +47,8 @@ function collectLayerTargets(
   path: MorphPath = NO_PATH,
   /** Inside a tap-hold's hold, where a tap's behaviour runs when the key is held. */
   holdArm = false,
+  /** The taps of the tap dance branch this is in. */
+  taps = 1,
 ): void {
   if (depth > 8) return;
   const li = (id: string) => compiled.layerIndex.get(id);
@@ -44,10 +57,16 @@ function collectLayerTargets(
     // A part no modifiers held can choose is no way in.
     const requiredMods = heldChoices(path);
     if (requiredMods === null) return;
-    out.push({ mode, target, kind, ...(requiredMods.length ? { requiredMods } : {}) });
+    out.push({
+      mode,
+      target,
+      kind,
+      ...(requiredMods.length ? { requiredMods } : {}),
+      ...(taps > 1 ? { taps } : {}),
+    });
   };
-  const next = (x: Binding, p = path, arm = holdArm) =>
-    collectLayerTargets(compiled, x, mode, out, depth + 1, p, arm);
+  const next = (x: Binding, p = path, arm = holdArm, t = taps) =>
+    collectLayerTargets(compiled, x, mode, out, depth + 1, p, arm, t);
   switch (b.kind) {
     case 'sl':
     case 'tog':
@@ -74,7 +93,11 @@ function collectLayerTargets(
       next(b.active);
       return;
     case 'tap_dance':
-      if (b.bindings[0]) next(b.bindings[0]);
+      // Tapped, each branch is a way in, chosen by its number of taps; held, a key is pressed once.
+      // A tap dance inside a branch is pressed the taps of the branch it is in.
+      if (mode === 'tap' && !holdArm && taps === 1) {
+        for (const [i, x] of b.bindings.entries()) next(x, path, holdArm, i + 1);
+      } else if (b.bindings[0]) next(b.bindings[0]);
       return;
     case 'adaptive':
       if (b.default) next(b.default);
@@ -113,8 +136,9 @@ export function discoverActivators(
             mode,
             target: t.target,
             user: false,
-            order: (KIND_ORDER[t.kind] ?? 5) * 1000 + (t.requiredMods?.length ? 500 : 0) + order++,
+            order: orderOf(t, order++),
             requiredMods: t.requiredMods,
+            ...(t.taps ? { taps: t.taps } : {}),
           });
           activators.set(t.target, list);
         }
@@ -140,9 +164,10 @@ export function discoverActivators(
             mode,
             target: t.target,
             user: false,
-            order: (KIND_ORDER[t.kind] ?? 5) * 1000 + (t.requiredMods?.length ? 500 : 0) + order++,
+            order: orderOf(t, order++),
             requiredMods: t.requiredMods,
             combo: combo.idx,
+            ...(t.taps ? { taps: t.taps } : {}),
           });
           activators.set(t.target, list);
         }
@@ -193,8 +218,9 @@ export function standInPeers(
   for (const list of activators.values()) {
     const byLayer = new Map<number, ActivatorCandidate[]>();
     for (const cand of list) {
-      // A combo is not a key another key could stand in for.
-      if (cand.mode !== 'tap' || cand.requiredMods?.length || cand.combo !== undefined) continue;
+      // A combo is not a key another key could stand in for, nor is a tap dance's later branch.
+      if (cand.mode !== 'tap' || cand.requiredMods?.length || cand.combo !== undefined || cand.taps)
+        continue;
       const group = byLayer.get(cand.viaLayer) ?? [];
       group.push(cand);
       byLayer.set(cand.viaLayer, group);
@@ -319,8 +345,11 @@ function extraRoutes(
       next(b.active, mode);
       return;
     case 'tap_dance':
+      // Tapped, the planner presses a later branch itself, as `collectLayerTargets` finds it; held,
+      // or inside another tap dance, a later branch is a route it does not press.
       b.bindings.forEach((x, i) => {
-        next(x, mode, i === 0 ? {} : { extra: true, taps: i + 1 });
+        const planned = mode === 'tap' && !ctx.holdArm && !ctx.taps;
+        next(x, mode, i === 0 ? {} : planned ? { taps: i + 1 } : { extra: true, taps: i + 1 });
       });
       return;
     case 'adaptive':
@@ -379,6 +408,7 @@ function directRoutes(
       origin: 'key',
       via: a.viaLayer,
       ...(a.requiredMods?.length ? { mods: a.requiredMods } : {}),
+      ...(a.taps ? { taps: a.taps } : {}),
     };
     if (a.combo === undefined) {
       add(a.pos, route);
