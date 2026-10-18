@@ -170,16 +170,14 @@ export function refreshCommunity(): Promise<void> {
 }
 
 /**
- * The community layout `id`, from those kept here, or once they are read afresh when it is not among
- * them and they have not been read since the page loaded: a link to one accepted since the last
- * visit opens too. A read that failed, or left a file unread, is tried again by the next link.
+ * The community layout `id`, as the branch has it now: they are read afresh first, unless they have
+ * been since the page loaded, so a link opens one accepted, changed or removed since the last visit
+ * as it is. The copy kept here stands in only when the branch cannot be read. A read that failed,
+ * or left a file unread, is tried again by the next link.
  */
 export async function communityLayout(id: string): Promise<Layout | undefined> {
-  const find = () => useCommunity.getState().layouts.find((l) => l.id === id);
-  const found = find();
-  if (found || readThisLoad) return found;
-  await refreshCommunity();
-  return find();
+  if (!readThisLoad) await refreshCommunity();
+  return useCommunity.getState().layouts.find((l) => l.id === id);
 }
 
 /** Read from somewhere else, and start over from this browser's cache: for tests. */

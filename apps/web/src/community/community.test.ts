@@ -134,6 +134,20 @@ describe('The community layouts kept in this browser', () => {
     expect((await communityLayout('night-owl'))?.name).toBe('Night owl');
   });
 
+  it('opens a link as the branch has it now, and as kept here only when it cannot be read', async () => {
+    setCommunitySource(branchWith(owl));
+    await refreshCommunity();
+    // The next visit: the branch has changed it since.
+    const changed = communityDoc('night-owl', 'Night owl 2');
+    setCommunitySource(branchWith(changed));
+    expect((await communityLayout('night-owl'))?.name).toBe('Night owl 2');
+    // And the visit after, offline.
+    setCommunitySource(async () => {
+      throw new Error('offline');
+    });
+    expect((await communityLayout('night-owl'))?.name).toBe('Night owl 2');
+  });
+
   it('reads again for the next link once a later read failed', async () => {
     let online = true;
     const branch = branchWith(owl);
