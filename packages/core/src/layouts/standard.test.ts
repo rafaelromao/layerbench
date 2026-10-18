@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { getGeometryPreset } from '../geometry/presets.js';
+import { compileLayout } from '../layout/compile.js';
 import type { Binding, Layout } from '../layout/types.js';
+import { explain } from '../sim/resolver.js';
+import { bundledLayout } from './index.js';
 import { withStandardThumbs } from './standard.js';
 
 const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
@@ -41,6 +44,20 @@ describe('the standard thumbs', () => {
     ).layers[0].bindings;
     expect(base.L2).toEqual(kp('x'));
     expect(base.R2).toBeUndefined();
+  });
+
+  it('declare R1, held, the shift key, so Caps word has a key to go on', () => {
+    const qwerty = bundledLayout('qwerty') as Layout;
+    expect(qwerty.keys.shift).toEqual({ key: 'R1', kind: 'hold' });
+    // Compiling throws on a feature with no key to go on.
+    const compiled = compileLayout({ ...qwerty, features: { capsWord: {} } });
+    const steps = explain(compiled, 'Ab', { caseMode: 'model', crossWord: 'reset' }).steps;
+    expect(steps.map((s) => `${s.key}:${s.kind}`)).toEqual([
+      'R1:hold_press',
+      'LHP:tap',
+      'R1:hold_release',
+      'LBC:tap',
+    ]);
   });
 
   it('refuse a board without the four main thumbs', () => {

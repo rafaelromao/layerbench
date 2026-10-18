@@ -34,12 +34,15 @@ const REPEAT: Binding = { kind: 'key_repeat' };
 const ACCENTS: Binding = { kind: 'sl', layer: DEFAULT_LAYER_IDS.accents };
 const SPACE = kp(' ');
 
-/** What each main thumb holds. */
+/**
+ * What each main thumb holds. Both Shifts are the left one, which is the one a capital is typed
+ * with.
+ */
 const HOLDS: Record<(typeof MAIN_THUMBS)[number], Binding> = {
   L1: { kind: 'mod', mod: 'LSHIFT' },
   L0: { kind: 'mo', layer: DEFAULT_LAYER_IDS.numbers },
   R0: { kind: 'mo', layer: DEFAULT_LAYER_IDS.symbols },
-  R1: { kind: 'mod', mod: 'RSHIFT' },
+  R1: { kind: 'mod', mod: 'LSHIFT' },
 };
 
 const isLetter = (b: Binding | undefined) =>
@@ -133,7 +136,8 @@ export function withStandardThumbs(
 
   return {
     ...layout,
-    keys: { ...layout.keys, space },
+    // R1 is the shift key Caps word and Shift itself are reached by: held, it is Shift.
+    keys: { ...layout.keys, space, shift: { key: 'R1', kind: 'hold' } },
     layers: [{ ...first, bindings }, ...rest, ...layers],
     ...(defaults.conditionalLayers.length > 0 && {
       conditionalLayers: [...(layout.conditionalLayers ?? []), ...defaults.conditionalLayers],
