@@ -57,7 +57,7 @@ test.describe('on a phone', () => {
     expect(await smallTargets(page, '.lb-inspector')).toEqual([]);
     // The key's numbers, in their own section under the editor, are tapped as much.
     await expect(page.getByRole('region', { name: 'Key numbers' })).toBeVisible();
-    expect(await smallTargets(page, '.lb-edit-keynumbers .lb-key-stats')).toEqual([]);
+    expect(await smallTargets(page, '.lb-edit-keynumbers')).toEqual([]);
 
     // The kind tiles are what a finger reaches for first, so they get the full 44px.
     for (const tile of await inspector.locator('.lb-kind-tile').all()) {

@@ -736,6 +736,10 @@
   .lb-key-stats button {
     min-height: 2.25rem;
   }
+  /* A group's heading folds it away: a finger has to hit it as much as anything it holds. */
+  .lb-collapse-toggle {
+    min-height: 2.25rem;
+  }
   .lb-key-stats .btn-xs {
     font-size: 0.8rem;
   }

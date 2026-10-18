@@ -1456,6 +1456,18 @@ describe('Behaviors', () => {
     await waitFor(() =>
       expect(document.querySelectorAll('#kb-analyze .lb-key-highlight').length).toBeGreaterThan(1),
     );
+
+    // Picked while a combo's keys are being picked, a feature ends the pick.
+    await user.click(screen.getByRole('tab', { name: 'Combos' }));
+    await user.click(
+      screen.getAllByRole('button', { name: /^Pick the keys of .* again on the board$/ })[0],
+    );
+    expect(screen.getByText(/^Picking keys for a combo:/)).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'Behaviors' }));
+    await user.click(
+      within(screen.getByRole('region', { name: 'Special features' })).getAllByRole('button')[0],
+    );
+    expect(screen.queryByText(/^Picking keys for a combo:/)).toBeNull();
   }, 60_000);
 
   it('says so when a layout has no special features', async () => {

@@ -818,6 +818,8 @@ function SpecialFeatureList({ state, send, onShow }: PanelProps & { onShow?: () 
   const comboKeys = (id: string) => combos.find((c, i) => (c.id ?? `#${i + 1}`) === id)?.keys ?? [];
   const show = (f: SpecialFeature) => {
     onShow?.();
+    // A pick of a combo's keys would keep the board's clicks, and add its keys to the outline.
+    send({ type: 'comboPickCancel' });
     if (f.combo !== undefined) {
       send({ type: 'setBoardHighlight', keys: comboKeys(f.combo) });
       return;
