@@ -26,9 +26,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      # `index` in any case is the app's reserved id (`isDocumentId`), so no layout file may take it.
       - name: List the community layouts
         run: |
-          find community -maxdepth 1 -type f -name '*.json' ! -name index.json -printf '%f\n' \
+          find community -maxdepth 1 -type f -name '*.json' ! -iname index.json -printf '%f\n' \
             | sed 's/\.json$//' \
             | { grep -E '^[A-Za-z0-9_-]+$' || true; } \
             | LC_ALL=C sort \

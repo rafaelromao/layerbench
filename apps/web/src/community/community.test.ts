@@ -242,5 +242,8 @@ describe("The branch's starting tree", () => {
     expect(file('.github/workflows/community-index.yml')).toContain(
       `grep -E '${ID_PATTERN.source}'`,
     );
+    // And never the reserved `index`, whatever its case, as `isDocumentId` refuses it.
+    expect(file('.github/workflows/community-index.yml')).toContain('! -iname index.json');
+    expect(indexIds({ layouts: ['Index', 'INDEX'] })).toEqual([]);
   });
 });
