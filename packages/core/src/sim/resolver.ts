@@ -322,7 +322,11 @@ export class Simulator {
         // A combo's keys pressed together, on a layer it fires on, typing nothing.
         if (!m.comboAvailable(cand.combo)) ok = false;
         else {
-          const evs = m.perform({ type: 'chord', combo: cand.combo });
+          const evs = m.perform({
+            type: 'chord',
+            combo: cand.combo,
+            hold: cand.mode === 'hold',
+          });
           if (evs.some((e) => e.symbols.length)) ok = false;
           else events.push(...evs);
         }

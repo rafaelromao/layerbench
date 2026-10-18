@@ -254,6 +254,20 @@ describe('combos that do more than type a character', () => {
     expect(t.keys).toEqual(['combo:question', 'L0', 'combo:question']);
   });
 
+  it('holds a combo whose hold turns a layer on, to type what is there', () => {
+    const held: Layout = {
+      ...board,
+      combos: (board.combos ?? []).map((c) =>
+        c.id === 'up'
+          ? { ...c, binding: { kind: 'hold_tap', tap: kp('!'), hold: { kind: 'sl', layer: 'up' } } }
+          : c,
+      ),
+    };
+    const t = trace(held, '§');
+    expect(t.out).toBe('§');
+    expect(t.keys).toEqual(['combo:up', 'RHP']);
+  });
+
   it('presses a combo that brings a layer on to type what is there', () => {
     const t = trace(board, '§');
     expect(t.out).toBe('§');

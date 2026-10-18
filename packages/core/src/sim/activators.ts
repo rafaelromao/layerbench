@@ -123,24 +123,29 @@ export function discoverActivators(
   }
   for (const combo of c.combos) {
     if (combo.role !== 'typing') continue;
-    const targets: LayerTarget[] = [];
-    collectLayerTargets(c, combo.binding, 'tap', targets);
-    for (const t of targets) {
-      for (const layer of c.layers) {
-        const fires = combo.layerMask === null || (combo.layerMask & (1 << layer.idx)) !== 0;
-        if (!fires || layer.idx === t.target) continue;
-        const list = activators.get(t.target) ?? [];
-        list.push({
-          pos: combo.pos,
-          viaLayer: layer.idx,
-          mode: 'tap',
-          target: t.target,
-          user: false,
-          order: (KIND_ORDER[t.kind] ?? 5) * 1000 + (t.requiredMods?.length ? 500 : 0) + order++,
-          requiredMods: t.requiredMods,
-          combo: combo.idx,
-        });
-        activators.set(t.target, list);
+    for (const mode of ['tap', 'hold'] as const) {
+      const targets: LayerTarget[] = [];
+      collectLayerTargets(c, combo.binding, mode, targets);
+      for (const t of targets) {
+        // A held chord is let go in the same action: a layer it holds is off again at once, and
+        // only one it turns on and leaves on (a one-shot, a toggle, a switch) is a way in.
+        if (mode === 'hold' && (t.kind === 'mo' || t.kind === 'lt')) continue;
+        for (const layer of c.layers) {
+          const fires = combo.layerMask === null || (combo.layerMask & (1 << layer.idx)) !== 0;
+          if (!fires || layer.idx === t.target) continue;
+          const list = activators.get(t.target) ?? [];
+          list.push({
+            pos: combo.pos,
+            viaLayer: layer.idx,
+            mode,
+            target: t.target,
+            user: false,
+            order: (KIND_ORDER[t.kind] ?? 5) * 1000 + (t.requiredMods?.length ? 500 : 0) + order++,
+            requiredMods: t.requiredMods,
+            combo: combo.idx,
+          });
+          activators.set(t.target, list);
+        }
       }
     }
   }
