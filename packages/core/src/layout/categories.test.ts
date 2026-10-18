@@ -153,6 +153,15 @@ describe('a custom copy of Qwerty', () => {
     expect(layoutCategory(l)).toBe('special');
   });
 
+  it('leaves out a combo that fires on no layer', () => {
+    const l: Layout = {
+      ...qwerty(),
+      combos: [{ id: 'off', keys: ['LTP', 'LTR'], binding: { kind: 'macro' }, layers: [] }],
+    };
+    expect(specialFeatures(l)).toEqual([]);
+    expect(layoutCategory(l)).toBe('standard');
+  });
+
   it('names a combo with no id by its place', () => {
     const l: Layout = {
       ...qwerty(),
