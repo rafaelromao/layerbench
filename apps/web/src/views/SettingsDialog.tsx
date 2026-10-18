@@ -31,26 +31,33 @@ export function settingsSummary(
 /**
  * The choices behind a view's numbers, in a dialog of their own so the bar keeps to the layouts:
  * a button, and beside it a line that says what is chosen, so nothing is hidden by being tucked
- * away.
+ * away. Analyze and Compare call it Settings; the Library, which filters with it too, Rank and
+ * filter, and says what is left out on a line of its own.
  */
 export function SettingsDialog({
+  title = 'Settings',
+  buttonLabel = title,
   summary,
   compact = false,
   children,
 }: {
-  summary: string;
+  /** The dialog's heading. */
+  title?: string;
+  /** What the button that opens it says; the title when absent. */
+  buttonLabel?: string;
+  summary?: string;
   /** On a phone, a gear and no summary, for a bar that must keep to one line there. */
   compact?: boolean;
   children: ReactNode;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const title = useId();
+  const heading = useId();
   return (
     <div className="flex min-w-0 items-center gap-2">
       <button
         type="button"
-        aria-label="Settings"
-        title="Settings"
+        aria-label={buttonLabel}
+        title={buttonLabel}
         className={`btn btn-sm shrink-0 ${compact ? 'max-sm:btn-square' : ''}`}
         onClick={() => dialog.current?.showModal()}
       >
@@ -60,20 +67,24 @@ export function SettingsDialog({
               {/* Text presentation, so no phone draws it as a coloured emoji. */}
               {'\u2699\uFE0E'}
             </span>
-            <span className="max-sm:hidden">Settings</span>
+            <span className="max-sm:hidden">{buttonLabel}</span>
           </>
         ) : (
-          'Settings'
+          buttonLabel
         )}
       </button>
-      <span className={`text-xs opacity-70 min-w-0 line-clamp-2 ${compact ? 'max-sm:hidden' : ''}`}>
-        {summary}
-      </span>
+      {summary !== undefined && (
+        <span
+          className={`text-xs opacity-70 min-w-0 line-clamp-2 ${compact ? 'max-sm:hidden' : ''}`}
+        >
+          {summary}
+        </span>
+      )}
 
-      <dialog ref={dialog} className="modal" aria-labelledby={title}>
+      <dialog ref={dialog} className="modal" aria-labelledby={heading}>
         <div className="modal-box max-w-2xl space-y-4">
-          <h2 id={title} className="font-semibold text-base">
-            Settings
+          <h2 id={heading} className="font-semibold text-base">
+            {title}
           </h2>
           {children}
           <div className="modal-action">

@@ -50,7 +50,12 @@ async function openRanking() {
 
 // The sort and the filters are remembered in this browser; each test starts from the defaults.
 beforeEach(() =>
-  useSession.setState({ librarySort: 'effort', hiddenBoards: [], hideCustom: false }),
+  useSession.setState({
+    librarySort: 'effort',
+    hiddenBoards: [],
+    hideCustom: false,
+    hiddenCategories: [],
+  }),
 );
 
 describe('Creating layouts', () => {
@@ -601,6 +606,92 @@ describe('Choosing which boards are listed', () => {
 
     await user.click(custom);
     expect(listed('Mine')).toBeInTheDocument();
+  });
+});
+
+describe('Categories', () => {
+  /** The category badge on a layout's card. */
+  const badgeOf = (name: string) =>
+    listed(name)?.closest('article')?.querySelector('.lb-category')?.textContent;
+
+  it("shows each card's category beside its name, custom layouts too", async () => {
+    const storage = freshStorage();
+    const qwerty = bundledLayout('qwerty') as Layout;
+    const [base, ...rest] = qwerty.layers;
+    await storage.put('layouts', 'copy', toCanonicalJson({ ...qwerty, id: 'copy', name: 'Copy' }));
+    const adaptive: Layout = {
+      ...qwerty,
+      id: 'adaptive',
+      name: 'Adaptive',
+      layers: [
+        {
+          ...base,
+          bindings: {
+            ...base.bindings,
+            LHP: { kind: 'adaptive', default: { kind: 'kp', symbol: 'a' } },
+          },
+        },
+        ...rest,
+      ],
+    };
+    await storage.put('layouts', 'adaptive', toCanonicalJson(adaptive));
+    renderRoute(LIBRARY, { storage });
+    await screen.findByRole('heading', { name: 'Adaptive', level: 3 });
+    await waitFor(() => expect(badgeOf('Copy')).toBe('Standard'));
+    expect(badgeOf('Adaptive')).toBe('Special');
+    expect(badgeOf('Qwerty')).toBe('Standard');
+    expect(badgeOf('Hands Down Neu')).toBe('Thumb Alpha');
+    expect(badgeOf('Magic Romak')).toBe('Special');
+  });
+
+  it('gives a custom layout that will not compile no category', async () => {
+    const storage = freshStorage();
+    const qwerty = bundledLayout('qwerty') as Layout;
+    const [base, ...rest] = qwerty.layers;
+    const broken: Layout = {
+      ...qwerty,
+      id: 'broken',
+      name: 'Broken',
+      layers: [
+        {
+          ...base,
+          bindings: { ...base.bindings, LHP: { kind: 'macro', symbols: 'qu' } },
+        },
+        ...rest,
+      ],
+      geometry: { preset: 'no-such-board' },
+    };
+    await storage.put('layouts', 'broken', toCanonicalJson(broken));
+    renderRoute(LIBRARY, { storage });
+    await screen.findByRole('heading', { name: 'Broken', level: 3 });
+    await waitFor(() => expect(badgeOf('Qwerty')).toBe('Standard'));
+    expect(badgeOf('Broken')).toBeUndefined();
+  });
+
+  it('lists only the layouts in the categories chosen, and remembers the choice', async () => {
+    const user = userEvent.setup();
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    await openRanking();
+    const categories = screen.getByRole('group', { name: 'Categories' });
+    const box = (name: RegExp) => within(categories).getByRole('checkbox', { name });
+    const special = box(/^Special \(10\)$/);
+    expect(box(/^Standard \(13\)$/)).toBeChecked();
+    expect(box(/^Thumb Alpha \(12\)$/)).toBeChecked();
+
+    await user.click(special);
+    expect(listed('Magic Romak')).toBeNull();
+    expect(listed('Qwerty')).toBeInTheDocument();
+    const says = screen.getByText(/of [0-9]+ layouts, in the categories chosen\./);
+    expect(says.tagName).toBe('P');
+    expect(JSON.parse(localStorage.getItem('layerbench:session') ?? '{}').state).toMatchObject({
+      hiddenCategories: ['special'],
+    });
+
+    const all = box(/^All$/) as HTMLInputElement;
+    expect(all.indeterminate).toBe(true);
+    await user.click(all);
+    expect(all.indeterminate).toBe(false);
+    expect(listed('Magic Romak')).toBeInTheDocument();
   });
 });
 
