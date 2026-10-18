@@ -89,3 +89,29 @@ describe('adaptive branches in the canonical document', () => {
     expect(branchesOf(parsed.layout)).toEqual(triggers);
   });
 });
+
+describe('a conditional layer in the document', () => {
+  const waitingFor = (n: number) => {
+    const ids = Array.from({ length: n }, (_, i) => `l${i}`);
+    const l = withBranches([]);
+    return toCanonicalJson({
+      ...l,
+      layers: [
+        ...l.layers,
+        ...[...ids, 't'].map((id) => ({ id, bindings: { '*': { kind: 'trans' as const } } })),
+      ],
+      conditionalLayers: [{ if: ids, then: 't' }],
+    });
+  };
+
+  it('waits for at most four layers, which the analysis can bring on in any order', () => {
+    expect(safeParseLayout(waitingFor(4)).ok).toBe(true);
+    expect(safeParseLayout(waitingFor(5)).ok).toBe(false);
+  });
+
+  it('waits for no other conditional layer', () => {
+    const json = waitingFor(2);
+    json.conditionalLayers = [...(json.conditionalLayers as unknown[]), { if: ['l0'], then: 'l1' }];
+    expect(safeParseLayout(json).ok).toBe(false);
+  });
+});

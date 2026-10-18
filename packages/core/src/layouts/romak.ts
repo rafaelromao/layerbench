@@ -1,5 +1,12 @@
-import type { Binding, ComboDef, Layout } from '../layout/types.js';
-import { DEAD_KEYS_CORE, NUMBERS_CORE, SYMBOLS_CORE } from './templates.js';
+import { getGeometryPreset } from '../geometry/presets.js';
+import type { Binding, ComboDef, LayerDef, Layout } from '../layout/types.js';
+import {
+  accentsCombo,
+  DEFAULT_LAYER_IDS,
+  defaultLayers,
+  NUMBERS_CORE,
+  SYMBOLS_CORE,
+} from './templates.js';
 
 const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
 const VOWELS = ['a', 'e', 'i', 'o', 'u', 'á', 'à', 'ã', 'â', 'é', 'ê', 'í', 'ó', 'õ', 'ô', 'ú'];
@@ -134,17 +141,17 @@ const ALPHA2_OR_SYMBOLS: Binding = {
 /**
  * The Numbers and Symbols layers of the author's keymap, `numbers_layer` and `symbols_layer` in
  * `zmk/definitions/keymap.dtsi` of github.com/rafaelromao/keyboards. They use only the 24-key
- * core, so the three Romak layouts share them, and every board's default layers start from them
- * (`templates.ts`). Each key is what it types: the firmware's symbol tap-holds jump to the end of
- * the line or past the cursor first when held, which is editing rather than typing, and are left
- * out. Keys it leaves empty are empty here.
+ * core, and every board's default layers start from them (`templates.ts`). Each key is what it
+ * types: the firmware's symbol tap-holds jump to the end of the line or past the cursor first when
+ * held, which is editing rather than typing, and are left out. Keys it leaves empty are empty here.
+ *
+ * Romak 24 keeps them as they are, modelling the keymap literally. Magic Romak and Romak have the
+ * default layers in their place, on these thumbs.
  */
 const coreKeys = (table: Readonly<Record<string, string>>): Record<string, Binding> =>
   Object.fromEntries(Object.entries(table).map(([id, symbol]) => [id, kp(symbol)]));
 
-const NUMBERS_BINDINGS: Record<string, Binding> = {
-  '*': { kind: 'none' },
-  ...coreKeys(NUMBERS_CORE),
+const NUMBERS_THUMBS: Record<string, Binding> = {
   LHP: tapOrUnmodelled(',', 'FUN'),
   L1: { kind: 'trans' },
   L0: { kind: 'trans' },
@@ -152,9 +159,7 @@ const NUMBERS_BINDINGS: Record<string, Binding> = {
   R1: tapOrUnmodelled('0', 'MEDIA'),
 };
 
-const SYMBOLS_BINDINGS: Record<string, Binding> = {
-  '*': { kind: 'none' },
-  ...coreKeys(SYMBOLS_CORE),
+const SYMBOLS_THUMBS: Record<string, Binding> = {
   RHP: tapOrUnmodelled('_', 'MACROS'),
   L1: { kind: 'trans' },
   // The firmware's hold here reaches a copy of Numbers placed above Symbols, which only its layer
@@ -163,18 +168,41 @@ const SYMBOLS_BINDINGS: Record<string, Binding> = {
   R1: { kind: 'trans' },
 };
 
-const NUMBERS_LAYER = { id: 'num', name: 'Numbers', bindings: NUMBERS_BINDINGS };
-const SYMBOLS_LAYER = { id: 'sym', name: 'Symbols', bindings: SYMBOLS_BINDINGS };
+const NUMBERS_LAYER = {
+  id: 'num',
+  name: 'Numbers',
+  bindings: { '*': { kind: 'none' } as Binding, ...coreKeys(NUMBERS_CORE), ...NUMBERS_THUMBS },
+};
+const SYMBOLS_LAYER = {
+  id: 'sym',
+  name: 'Symbols',
+  bindings: { '*': { kind: 'none' } as Binding, ...coreKeys(SYMBOLS_CORE), ...SYMBOLS_THUMBS },
+};
+
+const THUMBS = new Set(['L0', 'L1', 'R0', 'R1']);
 
 /**
- * The default Dead keys layer, which Magic Romak reaches from Alpha 2: the accents Portuguese does
- * not put on Alpha 2, for Spanish, French and Italian, and the symbols Symbols has no room for.
+ * The default layers on a Romak board: the keymap's thumbs on Numbers and Symbols, and its empty
+ * keys there empty, the default grid on every other key. Accents, and Extras where the board needs
+ * it, are the defaults as they are.
  */
-const DEAD_KEYS_LAYER = {
-  id: 'dead',
-  name: 'Dead keys',
-  bindings: { '*': { kind: 'trans' } as Binding, ...DEAD_KEYS_CORE },
-};
+function romakDefaultLayers(preset: string): Pick<Layout, 'layers' | 'conditionalLayers'> {
+  const defaults = defaultLayers(getGeometryPreset(preset));
+  const own: Record<string, Record<string, Binding>> = {
+    [DEFAULT_LAYER_IDS.numbers]: NUMBERS_THUMBS,
+    [DEFAULT_LAYER_IDS.symbols]: SYMBOLS_THUMBS,
+  };
+  const layers = defaults.layers.map((l): LayerDef => {
+    const thumbs = own[l.id];
+    if (!thumbs) return l;
+    const keys = Object.entries(l.bindings).filter(([id]) => id !== '*' && !THUMBS.has(id));
+    return {
+      ...l,
+      bindings: { '*': { kind: 'none' }, ...Object.fromEntries(keys), ...thumbs },
+    };
+  });
+  return { layers, conditionalLayers: defaults.conditionalLayers };
+}
 
 // ---------------------------------------------------------------- Romak 24
 
@@ -477,6 +505,7 @@ export const magicRomak: Layout = (() => {
     'Romak 24 with adaptive keys (h/v), alt repeat, sentence case, caps word, and dead keys for Spanish, French and Italian.',
   );
   const alpha1 = base.layers[0];
+  const defaults = romakDefaultLayers('1333+2');
   return {
     ...base,
     behaviors: {},
@@ -484,7 +513,7 @@ export const magicRomak: Layout = (() => {
     layers: [
       // Holding space reaches the numbers and holding the Alpha 2 key the symbols; the
       // sentence-case feature wraps the space's tap, so both live on one key. Tapping the
-      // Alpha 2 key, then the right outer thumb, reaches the dead keys.
+      // Alpha 2 key, then the right outer thumb, reaches Accents.
       {
         ...alpha1,
         bindings: { ...alpha1.bindings, RBI: adaptiveKey('h', 'v'), L1: ALT_REPEAT },
@@ -496,14 +525,13 @@ export const magicRomak: Layout = (() => {
           ...alpha2Bindings(taggedAccent, ALPHA2_TAG),
           LBI: adaptiveKey('v', 'h'),
           // The second apostrophe makes way for the accents the other languages need.
-          R1: { kind: 'sl', layer: 'dead' },
+          R1: { kind: 'sl', layer: DEFAULT_LAYER_IDS.accents },
         },
       },
       { id: 'ccedil', name: '\u00c7 extension', bindings: CCEDIL_BINDINGS },
-      NUMBERS_LAYER,
-      SYMBOLS_LAYER,
-      DEAD_KEYS_LAYER,
+      ...defaults.layers,
     ],
+    conditionalLayers: defaults.conditionalLayers,
     features: {
       sentenceCase: {},
       // Matches what the pre-shifted layer allowed through before.
@@ -519,7 +547,7 @@ export const magicRomak: Layout = (() => {
         { from: 'alpha1', via: 'key:alpha1/R0' },
         { from: 'num', via: 'key:num/R0' },
       ],
-      dead: [{ from: 'alpha2', via: 'key:alpha2/R1' }],
+      accents: [{ from: 'alpha2', via: 'key:alpha2/R1' }],
     },
   };
 })();
@@ -585,6 +613,8 @@ const ROMAK34_ALPHA2: Record<string, Binding> = {
   R1: kp("'"),
 };
 
+const ROMAK34_DEFAULTS = romakDefaultLayers('3x5+2');
+
 export const romak34: Layout = {
   format: 'layerbench/layout@1',
   id: 'romak-34',
@@ -604,9 +634,14 @@ export const romak34: Layout = {
     { id: 'alpha1', name: 'Alpha 1', bindings: ROMAK34_ALPHA1 },
     { id: 'alpha2', name: 'Alpha 2', bindings: ROMAK34_ALPHA2 },
     { id: 'ccedil', name: 'Ç extension', bindings: CCEDIL_BINDINGS },
-    NUMBERS_LAYER,
-    SYMBOLS_LAYER,
+    ...ROMAK34_DEFAULTS.layers,
   ],
-  combos: [SEMICOLON_COMBO, ...alpha2Combos(kp)],
+  conditionalLayers: ROMAK34_DEFAULTS.conditionalLayers,
+  // Alpha 1 has nothing on its left ring and middle fingers' home keys together: they one-shot
+  // Accents, as on every layout with the default layers.
+  combos: [SEMICOLON_COMBO, ...alpha2Combos(kp), accentsCombo('alpha1')],
+  // Accents has a `ç` too, as many presses away, but only Alpha 2's arms Ç extension for the `ão`
+  // and `ões` that follow it, as the author types it.
+  typingPaths: { ç: [{ producer: 'macro:alpha2/LBM' }] },
   repeatPolicy: { doubledLetters: 'repeatKey' },
 };

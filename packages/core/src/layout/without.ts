@@ -82,7 +82,7 @@ function isSentenceCase(b: Extract<Binding, { kind: 'adaptive' }>): boolean {
  * - `repeat`: repeat keys, alt repeat's default included, type nothing, and doubled letters are
  *   tapped twice.
  * - `combos`: combos that type are gone; command combos were never typed with anyway. A combo that
- *   only turns a layer on, as the default layers' one for Dead keys does, types nothing itself: it
+ *   only turns a layer on, as the default layers' one for Accents does, types nothing itself: it
  *   is a way in, like a layer key, and stays.
  * - `macros`: macros that type two letters or more (`qu`, `ão`, `ões`) type nothing. A macro typing
  *   one letter is how the layout reaches that letter — an accent sent through the host, `ç` arming
