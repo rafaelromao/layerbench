@@ -1443,6 +1443,14 @@ describe('Behaviors', () => {
     expect(await inspector(keyId)).toBeInTheDocument();
     expect(away).toHaveAttribute('aria-current', 'true');
 
+    // Picked while a word plays, a feature stops it, so the board shows the feature.
+    await user.type(screen.getByLabelText('How is this typed?'), 'ação');
+    await screen.findByRole('list', { name: 'Presses' }, { timeout: 10_000 });
+    const other = keys.find((b) => !place(b).startsWith(`${layerName} · `)) ?? keys[0];
+    const [otherLayer] = place(other).split(' · ');
+    await user.click(other);
+    expect(shownLayer()).toBe(otherLayer);
+
     // A feature on a combo, the à macro, outlines its keys instead.
     await user.click(within(list).getByRole('button', { name: /^Combo agrave/ }));
     await waitFor(() =>
@@ -1480,9 +1488,11 @@ describe('Analyze, while editing', () => {
       await within(numbers).findByText('Pressed for:', undefined, { timeout: 10_000 }),
     ).toBeInTheDocument();
 
-    // Nothing selected, no numbers of a key.
+    // Escape in them closes the key, as in its editor, and with nothing selected they are gone.
+    await user.click(within(numbers).getByRole('button', { name: /^Every number/ }));
     await user.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('region', { name: 'Key numbers' })).toBeNull());
+    expect(screen.getByRole('button', { name: /^Key R0:/ })).toHaveFocus();
   }, 60_000);
 
   it("opens what a layer key was pressed for from a pair in a key's numbers", async () => {

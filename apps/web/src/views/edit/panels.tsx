@@ -781,10 +781,17 @@ export function CombosPanel({ state, send }: PanelProps) {
 }
 
 /** Behaviors: the layout's special features, then the named bindings that keys refer to. */
-export function BehaviorsPanel({ state, send }: PanelProps) {
+export function BehaviorsPanel({
+  state,
+  send,
+  onShow,
+}: PanelProps & {
+  /** Before a feature is shown on the board: a word playing there would hide it. */
+  onShow?: () => void;
+}) {
   return (
     <div className="space-y-4">
-      <SpecialFeatureList state={state} send={send} />
+      <SpecialFeatureList state={state} send={send} onShow={onShow} />
       <BehaviorsJson state={state} send={send} />
     </div>
   );
@@ -804,12 +811,13 @@ const FEATURE_GROUPS: [SpecialFeatureKind, string][] = [
  * and picking it shows it on the board — the key selected on its layer, or the combo's keys
  * outlined. A behaviour nothing uses has no place to show, and is only named.
  */
-function SpecialFeatureList({ state, send }: PanelProps) {
+function SpecialFeatureList({ state, send, onShow }: PanelProps & { onShow?: () => void }) {
   const features = useMemo(() => specialFeatures(state.layout), [state.layout]);
   const { compiled } = state;
   const combos = state.layout.combos ?? [];
   const comboKeys = (id: string) => combos.find((c, i) => (c.id ?? `#${i + 1}`) === id)?.keys ?? [];
   const show = (f: SpecialFeature) => {
+    onShow?.();
     if (f.combo !== undefined) {
       send({ type: 'setBoardHighlight', keys: comboKeys(f.combo) });
       return;

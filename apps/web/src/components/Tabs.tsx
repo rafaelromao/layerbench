@@ -6,14 +6,15 @@ export interface TabItem<T extends string> {
   label: ReactNode;
 }
 
-/** The id of a tab, and of the panel it shows, under a prefix that keeps them apart on the page. */
+/** The id of a tab, and of the panel it shows, under a prefix that keeps them apart on a page. */
 export const tabId = (prefix: string, id: string) => `${prefix}-tab-${id}`;
 export const tabPanelId = (prefix: string, id: string) => `${prefix}-panel-${id}`;
 
 /**
  * A row of tabs that is one stop for Tab: the selected tab takes focus, and the arrow keys move to
  * the one before or after it — round from the last to the first — and select it, Home and End to
- * the first and last. Each tab controls the panel under `tabPanelId(prefix, id)`.
+ * the first and last. The selected tab controls the panel under `tabPanelId(prefix, id)`: a view may
+ * draw only that one.
  */
 export function Tabs<T extends string>({
   label,
@@ -64,7 +65,7 @@ export function Tabs<T extends string>({
           role="tab"
           id={tabId(prefix, id)}
           aria-selected={value === id}
-          aria-controls={tabPanelId(prefix, id)}
+          aria-controls={value === id ? tabPanelId(prefix, id) : undefined}
           tabIndex={value === id ? 0 : -1}
           className={`tab ${value === id ? 'tab-active' : ''}`}
           onClick={() => onChange(id)}

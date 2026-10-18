@@ -123,9 +123,10 @@ export interface WorkbenchProps {
 }
 
 /**
- * Analyze, with the layout open for editing: the board, the selected key's editor, its numbers above
- * the summary, the panels, and every number of the analysis, which follows each edit. A swap shows an estimate at
- * once, re-scored from the tables already typed, until the layout as edited is typed afresh.
+ * Analyze, with the layout open for editing: the board, the selected key's editor, its numbers
+ * above the summary, the panels, and every number of the analysis, which follows each edit. A swap
+ * shows an estimate at once, re-scored from the tables already typed, until the layout as edited is
+ * typed afresh.
  */
 export function Workbench({
   session,
@@ -946,9 +947,17 @@ export function Workbench({
 
           {/* The selected key's numbers, right above the layout's: what the key adds to them. */}
           {keyStatsView && (
+            // Escape in the key's numbers closes its editor, as it does in the editor itself.
             <section
               className="lb-edit-keynumbers card bg-base-100 border border-base-300 min-w-0"
               aria-label="Key numbers"
+              onKeyDown={(e) => {
+                if (e.key !== 'Escape' || e.defaultPrevented || state.selected === null) return;
+                e.preventDefault();
+                const keyId = state.selected;
+                send({ type: 'deselect' });
+                focusKey(keyId);
+              }}
             >
               <div className="card-body gap-2 p-3 sm:p-4 min-w-0">{keyStatsView}</div>
             </section>
@@ -1030,7 +1039,9 @@ export function Workbench({
                     {state.panel === 'features' && <FeaturesPanel state={state} send={send} />}
                     {state.panel === 'geometry' && <GeometryPanel state={state} send={send} />}
                     {state.panel === 'combos' && <CombosPanel state={state} send={send} />}
-                    {state.panel === 'behaviors' && <BehaviorsPanel state={state} send={send} />}
+                    {state.panel === 'behaviors' && (
+                      <BehaviorsPanel state={state} send={send} onShow={() => setPlay(null)} />
+                    )}
                     {state.panel === 'paths' && (
                       <PathsPanel state={state} send={send} producers={producers} />
                     )}

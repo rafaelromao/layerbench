@@ -58,12 +58,14 @@ describe('a row of tabs', () => {
     expect(selected()).toHaveAccessibleName('Three');
   });
 
-  it('says which panel each tab shows', () => {
+  it('says which panel the selected tab shows', () => {
     render(<Row />);
-    expect(screen.getByRole('tab', { name: 'Two' })).toHaveAttribute(
+    expect(screen.getByRole('tab', { name: 'One' })).toHaveAttribute(
       'aria-controls',
-      'pages-panel-two',
+      'pages-panel-one',
     );
+    expect(screen.getByRole('tabpanel')).toHaveAttribute('id', 'pages-panel-one');
+    expect(screen.getByRole('tab', { name: 'Two' })).not.toHaveAttribute('aria-controls');
     expect(screen.getByRole('tab', { name: 'Two' })).toHaveAttribute('tabindex', '-1');
   });
 });

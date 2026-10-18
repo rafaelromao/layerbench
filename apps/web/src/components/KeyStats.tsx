@@ -28,7 +28,7 @@ function percentOf(share: number): string {
  * adds up over keys — each key's parts add up to the number, as the heat map draws them — the
  * n-grams of each it takes part in, and for a layer key what it was pressed for. The parts follow
  * whatever report is shown, an estimate included; the lists come from the worker a moment later.
- * A group of the page of its own, under a heading that names the layer.
+ * It is a group of its own on the page, headed with the layer's name.
  */
 export function KeyStats({
   compiled,
