@@ -1,9 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useToasts } from '../state/toasts.js';
-import { findStorageTarget } from '../storage/target.js';
 import {
   authorizeUrl,
-  detectTarget,
   getToken,
   gitHubAccess,
   initGitHubSession,
@@ -11,8 +9,6 @@ import {
   signOut,
   useGitHubSession,
 } from './github-session.js';
-
-vi.mock('../storage/target.js', () => ({ findStorageTarget: vi.fn() }));
 
 interface Call {
   url: string;
@@ -33,8 +29,6 @@ function reply(body: unknown, status = 200): Response {
 const CONFIG = {
   available: true,
   clientId: 'Iv1.client',
-  appSlug: 'layerbench-app',
-  upstream: 'rafaelromao/layerbench',
 };
 const SIGNED_IN = {
   ...CONFIG,
@@ -70,12 +64,7 @@ beforeEach(() => {
     status: 'unknown',
     login: null,
     clientId: '',
-    appSlug: '',
-    upstream: '',
-    target: null,
-    targetStatus: 'idle',
   });
-  vi.mocked(findStorageTarget).mockResolvedValue({ kind: 'gist' });
   vi.stubGlobal('fetch', async (input: string, init?: RequestInit) => {
     const body = typeof init?.body === 'string' ? JSON.parse(init.body) : null;
     const call = { url: String(input), method: init?.method ?? 'GET', body };
@@ -97,20 +86,25 @@ describe('the GitHub session in the page', () => {
     await expect(getToken()).rejects.toThrow('signed out');
   });
 
-  it('learns who is signed in, then where their documents go', async () => {
+  it('learns who is signed in', async () => {
     await initGitHubSession();
-    await vi.waitFor(() => expect(useGitHubSession.getState().target).toEqual({ kind: 'gist' }));
     expect(useGitHubSession.getState()).toMatchObject({
       status: 'signed-in',
       login: 'you',
       clientId: 'Iv1.client',
-      appSlug: 'layerbench-app',
     });
-    expect(findStorageTarget).toHaveBeenCalledWith(
-      expect.anything(),
-      'you',
-      'rafaelromao/layerbench',
+  });
+
+  it('forgets the fork it once saved to, and asks GitHub nothing about forks', async () => {
+    const remembered = 'layerbench:storage-target:you';
+    localStorage.setItem(
+      remembered,
+      JSON.stringify({ kind: 'repo', repo: 'you/layerbench', branch: 'layerbench-data' }),
     );
+    await initGitHubSession();
+    expect(useGitHubSession.getState().status).toBe('signed-in');
+    expect(localStorage.getItem(remembered)).toBeNull();
+    expect(calls.every((c) => c.url.startsWith('/api/auth/'))).toBe(true);
   });
 
   it('keeps the token in memory and asks for it again only near its expiry', async () => {
@@ -132,17 +126,6 @@ describe('the GitHub session in the page', () => {
     vi.stubGlobal('navigator', { ...navigator, locks: { request } });
     await initGitHubSession();
     expect(request).toHaveBeenCalledWith('layerbench:github-session', expect.any(Function));
-  });
-
-  it('keeps sending documents where they went when GitHub cannot be asked', async () => {
-    await initGitHubSession();
-    await vi.waitFor(() => expect(useGitHubSession.getState().target).toEqual({ kind: 'gist' }));
-    vi.mocked(findStorageTarget).mockRejectedValue(new Error('GitHub responded 502'));
-    await detectTarget();
-    expect(useGitHubSession.getState()).toMatchObject({
-      target: { kind: 'gist' },
-      targetStatus: 'error',
-    });
   });
 });
 

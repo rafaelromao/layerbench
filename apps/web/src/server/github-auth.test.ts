@@ -11,7 +11,6 @@ const VERIFIER = 'v'.repeat(43);
 const ENV: AuthEnv = {
   GITHUB_CLIENT_ID: 'Iv1.client',
   GITHUB_CLIENT_SECRET: 'client-secret',
-  GITHUB_APP_SLUG: 'layerbench-app',
   SESSION_SECRET: btoa(String.fromCharCode(...new Uint8Array(32).fill(7))),
   ALLOWED_ORIGINS: PAGE,
 };
@@ -264,8 +263,6 @@ describe('the session', () => {
       login: 'you',
       token: 'ghu_first',
       clientId: 'Iv1.client',
-      appSlug: 'layerbench-app',
-      upstream: 'rafaelromao/layerbench',
     });
     // Nothing changed, so there is no new session to keep.
     expect(body.session).toBeUndefined();
@@ -277,8 +274,6 @@ describe('the session', () => {
       available: true,
       signedIn: false,
       clientId: 'Iv1.client',
-      appSlug: 'layerbench-app',
-      upstream: 'rafaelromao/layerbench',
     });
     const forged = await post('session', { session: 'bm90LWEtc2Vzc2lvbg' });
     expect(await answerOf(forged)).toMatchObject({ signedIn: false });
