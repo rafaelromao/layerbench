@@ -332,6 +332,12 @@ describe('combos that do more than type a character', () => {
       ],
     };
     expect(trace(withLHP(longer), '§').keys).toEqual(['LHP', 'LHP', 'LHP', 'RHP']);
+    // However many branches it has.
+    const nine: Binding = {
+      kind: 'tap_dance',
+      bindings: [...Array.from('12345678', (d) => kp(d)), { kind: 'sl', layer: 'up' }],
+    };
+    expect(trace(withLHP(nine), '§').keys).toEqual([...Array(9).fill('LHP'), 'RHP']);
     const held: Binding = { kind: 'tap_dance', bindings: [{ kind: 'mo', layer: 'up' }, kp('!')] };
     const t = trace(withLHP(held), '§');
     expect(t.out).toBe('§');

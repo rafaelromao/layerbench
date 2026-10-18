@@ -31,12 +31,10 @@ interface LayerTarget {
   taps?: number;
 }
 
-/** Past this many taps a tap dance is not followed: no layout taps a key more often. */
-const MOST_TAPS = 8;
-
 /**
- * The most taps that can still choose something a tap less does not. Past its last branch a tap
- * dance stays on that branch, but a tap dance inside it goes on choosing by the same taps.
+ * The most taps that can still choose something a tap less does not, however many branches the
+ * dances have. Past its last branch a tap dance stays on that branch, but a tap dance inside it
+ * goes on choosing by the same taps.
  */
 function tapsThatChoose(b: Binding, depth = 0): number {
   if (depth > 8) return 1;
@@ -44,7 +42,7 @@ function tapsThatChoose(b: Binding, depth = 0): number {
     Math.max(1, ...xs.filter((x) => x !== undefined).map((x) => tapsThatChoose(x, depth + 1)));
   switch (b.kind) {
     case 'tap_dance':
-      return Math.min(MOST_TAPS, Math.max(b.bindings.length, most(b.bindings.at(-1))));
+      return Math.max(b.bindings.length, most(b.bindings.at(-1)));
     case 'hold_tap':
       return most(b.tap, b.hold);
     case 'lt':
