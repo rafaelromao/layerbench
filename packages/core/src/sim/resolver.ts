@@ -491,6 +491,16 @@ export class Simulator {
         return true;
       }
     }
+    // Then a typing combo that taps a sticky modifier. A held chord is let go in the same action,
+    // so a combo can give a modifier only as a one-shot.
+    for (const c of this.compiled.combos) {
+      if (c.role !== 'typing' || !m.comboAvailable(c.idx)) continue;
+      const peeled = peelBinding(m, c.binding, 'tap');
+      if (peeled.kind === 'sk' && peeled.mod === mod) {
+        events.push(...m.perform({ type: 'chord', combo: c.idx }));
+        return true;
+      }
+    }
     return false;
   }
 

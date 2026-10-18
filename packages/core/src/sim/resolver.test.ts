@@ -294,6 +294,23 @@ describe('combos that do more than type a character', () => {
     expect(trace(shifted, '#').out).toBe('');
   });
 
+  it('taps a combo that gives a sticky Shift when no key gives one, for a capital', () => {
+    const shiftCombo: Layout = {
+      ...board,
+      layers: [
+        { ...board.layers[0], bindings: { ...board.layers[0].bindings, LHM: kp('w') } },
+        ...board.layers.slice(1),
+      ],
+      combos: [
+        ...(board.combos ?? []),
+        combo('shift', ['LBR', 'LBP'], { kind: 'sk', mod: 'LSHIFT' }),
+      ],
+    };
+    const t = trace(shiftCombo, 'W', { caseMode: 'model' });
+    expect(t.out).toBe('W');
+    expect(t.keys).toEqual(['combo:shift', 'LHM']);
+  });
+
   it('counts an adaptive key on a combo among the adaptive presses, still as a chord', () => {
     const st = simulate(compileLayout(board), 'x ey', opts).tables.stats;
     expect(st.adaptive_presses).toBe(2);
