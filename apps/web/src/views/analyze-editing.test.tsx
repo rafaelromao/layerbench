@@ -1415,6 +1415,52 @@ describe('Edit', () => {
   });
 });
 
+describe('Behaviors', () => {
+  it("lists Magic Romak's special features, and picking one shows it on the board", async () => {
+    const user = userEvent.setup();
+    await openMagicRomak();
+    // Reached from the Combos tab with the arrow keys, as any panel is.
+    await user.click(screen.getByRole('tab', { name: 'Combos' }));
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByRole('tab', { name: 'Behaviors', selected: true })).toHaveFocus();
+    const list = screen.getByRole('region', { name: 'Special features' });
+    const group = (name: string) =>
+      within(within(list).getByRole('list', { name })).getAllByRole('listitem');
+    for (const name of ['Adaptive keys', 'Alt repeats', 'Macros'])
+      expect(group(name).length).toBeGreaterThan(0);
+    // The JSON stays under the list.
+    expect(screen.getByRole('textbox', { name: 'Behaviors' })).toBeInTheDocument();
+
+    // An adaptive key on a layer other than the one shown: its layer turns up, the key selected.
+    const place = (b: HTMLElement) => b.querySelector('.font-mono')?.textContent ?? '';
+    const keys = within(list)
+      .getAllByRole('button')
+      .filter((b) => !place(b).startsWith('Combo'));
+    const away = keys.find((b) => !place(b).startsWith(`${shownLayer()} · `)) ?? keys[0];
+    const [layerName, keyId] = place(away).split(' · ');
+    await user.click(away);
+    expect(shownLayer()).toBe(layerName);
+    expect(await inspector(keyId)).toBeInTheDocument();
+    expect(away).toHaveAttribute('aria-current', 'true');
+
+    // A feature on a combo, the à macro, outlines its keys instead.
+    await user.click(within(list).getByRole('button', { name: /^Combo agrave/ }));
+    await waitFor(() =>
+      expect(document.querySelectorAll('#kb-analyze .lb-key-highlight').length).toBeGreaterThan(1),
+    );
+  }, 60_000);
+
+  it('says so when a layout has no special features', async () => {
+    const user = userEvent.setup();
+    renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000', {
+      storage: freshStorage(),
+    });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+    await user.click(screen.getByRole('tab', { name: 'Behaviors' }));
+    expect(screen.getByText('This layout has no special features.')).toBeInTheDocument();
+  }, 60_000);
+});
+
 describe('Analyze, while editing', () => {
   it("shows a selected key's numbers on the layer shown, and what a layer key was pressed for", async () => {
     const user = userEvent.setup();
@@ -1423,13 +1469,20 @@ describe('Analyze, while editing', () => {
     });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
     await user.click(screen.getByRole('button', { name: /^Key R0:/ }));
-    const editor = await inspector('R0');
-    expect(within(editor).getByRole('heading', { name: /^Its numbers on / })).toBeInTheDocument();
-    const parts = within(editor).getByRole('list', { name: /^Parts of R0 on / });
+    // In a section of their own, right above the summary, and no longer in the key's editor.
+    const numbers = await screen.findByRole('region', { name: 'Key numbers' });
+    expect(within(numbers).getByRole('heading', { name: /^Its numbers on / })).toBeInTheDocument();
+    expect(numbers.nextElementSibling).toBe(screen.getByRole('region', { name: 'Summary' }));
+    expect(within(await inspector('R0')).queryByRole('list', { name: /^Parts of / })).toBeNull();
+    const parts = within(numbers).getByRole('list', { name: /^Parts of R0 on / });
     expect(within(parts).getByText('Effort')).toBeInTheDocument();
     expect(
-      await within(editor).findByText('Pressed for:', undefined, { timeout: 10_000 }),
+      await within(numbers).findByText('Pressed for:', undefined, { timeout: 10_000 }),
     ).toBeInTheDocument();
+
+    // Nothing selected, no numbers of a key.
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Key numbers' })).toBeNull());
   }, 60_000);
 
   it("opens what a layer key was pressed for from a pair in a key's numbers", async () => {
@@ -1448,7 +1501,7 @@ describe('Analyze, while editing', () => {
       .getAllByRole('button', { name: /^Key \w+: / })
       .find((b) => b.getAttribute('aria-label')?.endsWith(`: ${letter}`));
     await user.click(first as HTMLElement);
-    const editor = await screen.findByRole('group', { name: /^Edit / });
+    const editor = await screen.findByRole('region', { name: 'Key numbers' });
 
     // Open the key's parts until one lists that pair, which opens the same popup.
     const parts = await within(editor).findByRole('list', { name: /^Parts of / });
