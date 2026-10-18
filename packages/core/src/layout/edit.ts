@@ -233,6 +233,18 @@ function sharedProducerIds(layout: Layout, place: number): string[] {
 }
 
 /** Whether two lists of keys name the same keys, in any order. */
+/**
+ * A combo has no layer below it to show through, so Transparent, or a behaviour that is, is no
+ * binding for one, however it is given.
+ */
+function transparent(layout: Layout, b: Binding, depth = 0): boolean {
+  if (b.kind === 'trans') return true;
+  if (b.kind !== 'ref' || depth > 8) return false;
+  const named = layout.behaviors?.[b.ref];
+  return named !== undefined && transparent(layout, named, depth + 1);
+}
+const NOT_TRANSPARENT = 'a combo cannot be Transparent: it has no layer below it to show through';
+
 const sameKeySet = (a: string[], b: string[]) =>
   a.length === b.length && a.every((k) => b.includes(k));
 
@@ -350,6 +362,7 @@ const handlers: Handlers = {
 
   addCombo(layout, { layer, keys, binding, role }) {
     if (keys.length < 2) return { refused: 'a combo needs at least two keys and an output' };
+    if (transparent(layout, binding)) return { refused: NOT_TRANSPARENT };
     const id = freeComboId(keys, (layout.combos ?? []).map(comboId));
     const combo = { id, keys, binding, layers: [layer], role, timeoutMs: 50, slowRelease: false };
     return { layout: { ...layout, combos: [...(layout.combos ?? []), combo] } };
@@ -406,7 +419,10 @@ const handlers: Handlers = {
       }
     }
 
-    if (edit.binding) next.binding = edit.binding;
+    if (edit.binding) {
+      if (transparent(layout, edit.binding)) return { refused: NOT_TRANSPARENT };
+      next.binding = edit.binding;
+    }
     if (edit.role) next.role = edit.role;
     if (edit.timeoutMs !== undefined) {
       if (!(edit.timeoutMs > 0)) return { refused: 'a combo timeout is a positive number of ms' };

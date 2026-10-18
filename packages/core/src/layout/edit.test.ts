@@ -357,6 +357,22 @@ describe('changing a combo', () => {
     expect(o.layout.combos?.[1]).toEqual(withCombos.combos?.[1]);
   });
 
+  it('refuses Transparent, or a behaviour that is, on a combo added or changed', () => {
+    const named: Layout = { ...withCombos, behaviors: { see: { kind: 'trans' } } };
+    for (const binding of [{ kind: 'trans' }, { kind: 'ref', ref: 'see' }] as Binding[]) {
+      const changed = applyEdit(named, { kind: 'updateCombo', combo: 0, binding });
+      expect(changed).toMatchObject({ status: 'refused', message: /cannot be Transparent/ });
+      const added = applyEdit(named, {
+        kind: 'addCombo',
+        layer: 'base',
+        keys: ['LHP', 'LHR'],
+        binding,
+        role: 'typing',
+      });
+      expect(added).toMatchObject({ status: 'refused', message: /cannot be Transparent/ });
+    }
+  });
+
   it('switches the role and sets the timeout', () => {
     const o = landed(withCombos, { kind: 'updateCombo', combo: 1, role: 'typing', timeoutMs: 80 });
     expect(o.layout.combos?.[1]).toMatchObject({ role: 'typing', timeoutMs: 80, id: 'lhm-lhr' });
