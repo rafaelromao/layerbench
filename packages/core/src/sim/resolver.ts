@@ -615,7 +615,8 @@ export class Simulator {
       if (ev.leafKind === 'sl') st.one_shot_activations++;
       if (ev.wastedOneShot) st.wasted_one_shots++;
       if (ev.leafKind === 'macro') st.macro_presses++;
-      // A chord counts as the kind of key its binding acted as.
+      // A chord counts as the kind of key its binding acted as, for adaptive keys and repeats. Layer
+      // taps stay the keys' own: that statistic counts a combo as a combo (see presses/layer-taps).
       const acts = ev.actsAs ?? ev.keyKind;
       if (acts === 'adaptive') {
         st.adaptive_presses++;
