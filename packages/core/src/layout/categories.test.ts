@@ -333,6 +333,8 @@ describe('a custom copy of Qwerty', () => {
     );
     l.layers.splice(1, 0, { id: 'covered', bindings: { '*': kp('a'), ...every } });
     expect(alphaLayers(l)).toEqual(['base']);
+    l.layers[1].bindings['*'] = { kind: 'macro', symbols: 'qu' };
+    expect(specialFeatures(l)).toEqual([]);
   });
 
   it('is Standard with no alpha layer at all, as everything else is', () => {

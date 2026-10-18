@@ -286,9 +286,13 @@ export function specialFeatures(layout: Layout): SpecialFeature[] {
   const owned = (Object.keys(DECLARED) as WrappingFeature[]).map(
     (f) => expandFeatures({ ...layout, features: { [f]: layout.features?.[f] } }).owned,
   );
+  const keys = buildGeometry(layout).keys.map((k) => k.id);
   for (const layer of layout.layers) {
     const own = !isDefaultLayer(layer.id);
-    for (const [key, b] of Object.entries(layer.bindings)) {
+    // Each key of the board as it is compiled: a layer default no key is left to is not a use.
+    for (const key of keys) {
+      const b = bindingAt(layer, key);
+      if (!b) continue;
       if (own) featuresOf(layout, b, { layer: layer.id, key }, out);
       namedIn(layout, b, used);
     }
