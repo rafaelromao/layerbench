@@ -125,7 +125,7 @@ describe('shipped corpora', () => {
     const ids = list.map((m) => m.id);
     expect(ids).toContain('en-general');
     expect(ids).toContain('pt-br-general');
-    expect(ids.every((id) => /^(en|pt-br|es|fr|it)-general$/.test(id))).toBe(true);
+    expect(ids.every((id) => /^(en|pt-br|es|fr|it|de)-general$/.test(id))).toBe(true);
     const ptGeneral = list.find((m) => m.id === 'pt-br-general')!;
     expect(ptGeneral.language).toBe('pt-BR');
     expect(ptGeneral.license).toContain('CC BY');
