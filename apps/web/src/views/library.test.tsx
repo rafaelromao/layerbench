@@ -165,7 +165,7 @@ describe('Creating layouts', () => {
     const card = (await screen.findByRole('heading', { name: 'Qwerty', level: 3 })).closest(
       'article',
     ) as HTMLElement;
-    await user.click(within(card).getByRole('link', { name: 'Analyze' }));
+    await user.click(within(card).getByRole('link', { name: 'Open Qwerty' }));
     await waitFor(() => expect(currentPath()).toBe('/analyze'));
     expect(currentSearch()).toContain('layout=qwerty');
     expect(currentSearch()).toContain('corpus=pt-br-general');
@@ -186,6 +186,26 @@ describe('Creating layouts', () => {
     // Delete is drawn as Analyze's neighbour was, a button and not a ghost one.
     expect(screen.getByRole('button', { name: 'Delete Mine' })).toHaveClass('btn', 'btn-xs');
     expect(screen.getByRole('button', { name: 'Delete Mine' })).not.toHaveClass('btn-ghost');
+  });
+
+  it('puts Open last on every card, flush right, with Delete to its left on a custom one', async () => {
+    const storage = freshStorage();
+    const qwerty = bundledLayout('qwerty') as Layout;
+    await storage.put('layouts', 'mine', toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine' }));
+    renderRoute(LIBRARY, { storage });
+    const open = await screen.findByRole('link', { name: 'Open Mine' });
+    expect(open).toHaveTextContent(/^Open$/);
+    const actions = open.parentElement as HTMLElement;
+    expect([...actions.children]).toEqual([
+      screen.getByRole('button', { name: 'Delete Mine' }),
+      open,
+    ]);
+    expect(actions).toHaveClass('ml-auto');
+
+    // A bundled card has Open alone, in the same place.
+    const bundled = screen.getByRole('link', { name: 'Open Qwerty' });
+    expect([...(bundled.parentElement as HTMLElement).children]).toEqual([bundled]);
+    expect(bundled.parentElement).toHaveClass('ml-auto');
   });
 
   it('deletes a custom layout, naming it', async () => {
@@ -335,7 +355,7 @@ describe('Ranking layouts', () => {
     const card = cards()[0];
     expect(within(card).getByText('custom')).toBeInTheDocument();
     // Analyze is where it is edited too: there is no separate way in.
-    expect(within(card).getByRole('link', { name: 'Analyze' })).toHaveAttribute(
+    expect(within(card).getByRole('link', { name: /^Open / })).toHaveAttribute(
       'href',
       expect.stringContaining('custom%3Amy-graphite'),
     );
@@ -700,7 +720,7 @@ describe('Choosing what layouts are ranked on', () => {
     expect(currentSearch()).not.toContain('layout=');
 
     const card = document.querySelector('article') as HTMLElement;
-    const analyze = within(card).getByRole('link', { name: 'Analyze' }) as HTMLAnchorElement;
+    const analyze = within(card).getByRole('link', { name: /^Open / }) as HTMLAnchorElement;
     expect(analyze.href).toContain('corpus=pt-br-general');
     expect(analyze.href).toContain('rules=cyanophage');
   });
@@ -721,7 +741,7 @@ describe('Choosing which special features a ranking counts', () => {
     await waitFor(() => expect(currentSearch()).toContain('off=macros'));
     expect(macros).not.toBeChecked();
     const card = screen.getByText('Magic Romak', { selector: 'h3' }).closest('article');
-    const analyze = within(card as HTMLElement).getByRole('link', { name: 'Analyze' });
+    const analyze = within(card as HTMLElement).getByRole('link', { name: /^Open / });
     expect((analyze as HTMLAnchorElement).href).toContain('off=macros');
 
     await user.click(macros);

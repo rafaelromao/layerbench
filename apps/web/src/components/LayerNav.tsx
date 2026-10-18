@@ -134,66 +134,69 @@ export function LayerNav({
       }}
     >
       {many && arrow(-1, '‹', 'Previous layer')}
-      {renaming === layer.id ? (
-        <input
-          ref={field}
-          aria-label={`Rename ${layer.name}`}
-          className="input input-xs w-28"
-          defaultValue={layer.name}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              finish(e.currentTarget.value);
-            } else if (e.key === 'Escape') {
-              e.preventDefault();
-              e.stopPropagation();
-              finish(null);
-            }
-          }}
-          onBlur={(e) => finish(e.currentTarget.value)}
-        />
-      ) : onRename ? (
-        <button
-          ref={name}
-          type="button"
-          className={`${nameClass} cursor-text rounded px-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary`}
-          style={nameStyle}
-          title="Double-click or press F2 to rename"
-          // Enter and Space reach here with no pointer (detail 0): they are the keyboard's way in.
-          onClick={(e) => e.detail === 0 && setRenaming(layer.id)}
-          onDoubleClick={() => setRenaming(layer.id)}
-          onPointerDown={(e: PointerEvent<HTMLButtonElement>) => {
-            pointer.current = e.pointerType;
-            if (e.pointerType !== 'touch') return;
-            cancelPress();
-            press.current = setTimeout(() => setRenaming(layer.id), LONG_PRESS_MS);
-          }}
-          onPointerUp={cancelPress}
-          onPointerLeave={cancelPress}
-          onPointerCancel={cancelPress}
-          // A finger held on the name would otherwise also open the browser's menu for it.
-          onContextMenu={(e) => {
-            if (pointer.current === 'touch') e.preventDefault();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'F2') {
-              e.preventDefault();
-              setRenaming(layer.id);
-            }
-          }}
-        >
-          {layer.name}
-        </button>
-      ) : (
-        <span className={nameClass} style={nameStyle}>
-          {layer.name}
-        </span>
-      )}
-      {many && (
-        <span className="text-xs tabular-nums opacity-60" aria-live="polite">
-          {at + 1} / {layers.length}
-        </span>
-      )}
+      {/* The counter sits under the name, so a long name and the arrows keep one line. */}
+      <div className="flex min-w-0 flex-col items-center leading-tight">
+        {renaming === layer.id ? (
+          <input
+            ref={field}
+            aria-label={`Rename ${layer.name}`}
+            className="input input-xs w-28"
+            defaultValue={layer.name}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                finish(e.currentTarget.value);
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                finish(null);
+              }
+            }}
+            onBlur={(e) => finish(e.currentTarget.value)}
+          />
+        ) : onRename ? (
+          <button
+            ref={name}
+            type="button"
+            className={`${nameClass} cursor-text rounded px-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary`}
+            style={nameStyle}
+            title="Double-click or press F2 to rename"
+            // Enter and Space reach here with no pointer (detail 0): they are the keyboard's way in.
+            onClick={(e) => e.detail === 0 && setRenaming(layer.id)}
+            onDoubleClick={() => setRenaming(layer.id)}
+            onPointerDown={(e: PointerEvent<HTMLButtonElement>) => {
+              pointer.current = e.pointerType;
+              if (e.pointerType !== 'touch') return;
+              cancelPress();
+              press.current = setTimeout(() => setRenaming(layer.id), LONG_PRESS_MS);
+            }}
+            onPointerUp={cancelPress}
+            onPointerLeave={cancelPress}
+            onPointerCancel={cancelPress}
+            // A finger held on the name would otherwise also open the browser's menu for it.
+            onContextMenu={(e) => {
+              if (pointer.current === 'touch') e.preventDefault();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'F2') {
+                e.preventDefault();
+                setRenaming(layer.id);
+              }
+            }}
+          >
+            {layer.name}
+          </button>
+        ) : (
+          <span className={nameClass} style={nameStyle}>
+            {layer.name}
+          </span>
+        )}
+        {many && (
+          <span className="text-xs tabular-nums opacity-60" aria-live="polite">
+            {at + 1} / {layers.length}
+          </span>
+        )}
+      </div>
       {many && arrow(1, '›', 'Next layer')}
     </fieldset>
   );

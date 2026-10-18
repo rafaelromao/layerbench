@@ -209,7 +209,7 @@ function LayoutCard({
   summary: LayoutSummary | undefined;
   lacking: Lacking | undefined;
   nobodyCan: boolean;
-  /** Analyze, and Delete beside it on a custom layout. */
+  /** Open, last so it is always flush right, and Delete to its left on a custom layout. */
   actions: ReactNode;
 }) {
   return (
@@ -232,7 +232,7 @@ function LayoutCard({
             {item.compiled && <LanguageBadges compiled={item.compiled} />}
             <Ranking summary={summary} lacking={lacking} nobodyCan={nobodyCan} />
           </div>
-          <div className="grid shrink-0 grid-cols-2 gap-1">{actions}</div>
+          <div className="ml-auto flex shrink-0 gap-1">{actions}</div>
         </header>
         {item.compiled && (
           <LayerPreview
@@ -753,13 +753,6 @@ export function LibraryView() {
               nobodyCan={nobodyCan}
               actions={
                 <>
-                  <Link
-                    to="/analyze"
-                    search={analyzeSearch(item.ref)}
-                    className="btn btn-primary btn-xs"
-                  >
-                    Analyze
-                  </Link>
                   {item.custom && (
                     <button
                       type="button"
@@ -770,6 +763,14 @@ export function LibraryView() {
                       Delete
                     </button>
                   )}
+                  <Link
+                    to="/analyze"
+                    search={analyzeSearch(item.ref)}
+                    aria-label={`Open ${item.name}`}
+                    className="btn btn-primary btn-xs"
+                  >
+                    Open
+                  </Link>
                 </>
               }
             />

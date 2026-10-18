@@ -2,7 +2,7 @@ import { type CorpusManifest, slug } from '@layerbench/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { HelpLink } from '../components/HelpLink.js';
-import { customId, customRef } from '../custom/ref.js';
+import { customRef } from '../custom/ref.js';
 import { useAnalysisClient } from '../engine/client-context.js';
 import type { CorpusFactsDTO } from '../engine/protocol.js';
 import { HELP } from '../guide/help.js';
@@ -10,6 +10,7 @@ import { useCarried } from '../state/selection.js';
 import { toast } from '../state/toasts.js';
 import { useStorage } from '../storage/use-storage.js';
 import type { RawSearch } from '../url/params.js';
+import { CUSTOM_TEXTS, firstCorpus, isTransient, orderCorpora } from './corpus-groups.js';
 
 const MIN_CUSTOM_CHARS = 1_000;
 const MAX_SAVED_SAMPLE_BYTES = 900_000;
@@ -108,15 +109,17 @@ export function CorpusView() {
       .catch(() => setCorpora([]));
   }, [client]);
 
-  const selectedId = search.id ?? corpora[0]?.id ?? null;
+  // The page opens on English, the first text in every picker.
+  const selectedId = search.id ?? firstCorpus(corpora)?.id ?? null;
   const selected = useMemo(
     () => (details?.id === selectedId ? details : corpora.find((c) => c.id === selectedId)) ?? null,
     [corpora, details, selectedId],
   );
   // A text built here has its own card until it is saved, and a blend made in Analyze is not a text
   // of its own: the list is what comes with the app, and what was saved.
-  const bundled = corpora.filter((c) => customId(c.id) === null && !/^(custom|mix)-/.test(c.id));
-  const customTexts = corpora.filter((c) => customId(c.id) !== null);
+  const ordered = orderCorpora(corpora);
+  const bundled = ordered.texts.filter((c) => !isTransient(c));
+  const customTexts = ordered.custom;
 
   useEffect(() => {
     let cancelled = false;
@@ -203,7 +206,7 @@ export function CorpusView() {
         <CorpusList corpora={bundled} selectedId={selectedId} />
         {customTexts.length > 0 && (
           <>
-            <h2 className="text-xs uppercase tracking-wide opacity-60">Custom texts</h2>
+            <h2 className="text-xs uppercase tracking-wide opacity-60">{CUSTOM_TEXTS}</h2>
             <CorpusList corpora={customTexts} selectedId={selectedId} />
           </>
         )}
