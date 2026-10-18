@@ -1,4 +1,4 @@
-import { bundledLayout, type Layout, toCanonicalJson } from '@layerbench/core';
+import { bundledLayout, LANGUAGE_PROFILES, type Layout, toCanonicalJson } from '@layerbench/core';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
@@ -280,6 +280,16 @@ describe('Corpus', () => {
     // Facts are counted over a sample of the selected corpus.
     expect(await screen.findByText('Letters', undefined, { timeout: 25_000 })).toBeInTheDocument();
     expect(screen.getByText('Trigrams')).toBeInTheDocument();
+  });
+
+  it('offers every language it has a profile for to a custom text, German too', async () => {
+    renderRoute('/corpus', { storage: freshStorage() });
+    await screen.findByText('Custom corpus');
+    const options = within(screen.getByLabelText('Language'))
+      .getAllByRole('option')
+      .map((o) => (o as HTMLOptionElement).value);
+    expect(options).toEqual([...Object.keys(LANGUAGE_PROFILES), 'custom']);
+    expect(options).toContain('de');
   });
 
   it('refuses a custom corpus that is too short', async () => {
