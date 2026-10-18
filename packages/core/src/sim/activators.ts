@@ -366,7 +366,8 @@ function extraRoutes(
       }
       b.bindings.forEach((x, i) => {
         const planned = mode === 'tap' && !ctx.holdArm;
-        if (i > 0 && mode === 'hold' && !ctx.holdArm) return;
+        // Held, on its own or in a tap-hold's hold, a tap dance is pressed once: its first branch.
+        if (i > 0 && mode === 'hold') return;
         next(x, mode, {
           inDance: true,
           ...(i === 0 ? {} : planned ? { taps: i + 1 } : { extra: true, taps: i + 1 }),

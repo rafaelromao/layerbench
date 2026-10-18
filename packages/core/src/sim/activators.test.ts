@@ -51,6 +51,8 @@ describe('the keys that reach a layer', () => {
             LHR: td(kp('!'), td(sl('up'), sl('other'))),
             // Held, a tap dance is its first branch: a layer held.
             LHM: td({ kind: 'mo', layer: 'up' }, sl('other')),
+            // In a tap-hold's hold too: its second branch is never run.
+            LHI: { kind: 'hold_tap', tap: kp('i'), hold: td(kp('x'), sl('other')) },
           },
         },
         { id: 'up', bindings: { '*': { kind: 'trans' } } },
