@@ -239,6 +239,14 @@ export const LayoutSchema = z.object({
     .optional(),
   conditionalLayers: z
     .array(z.object({ if: z.array(z.string()).min(1).max(MAX_CONDITION_LAYERS), then: z.string() }))
+    // Each waits for layers that come on by keys, so the analysis can try every order of them.
+    .refine(
+      (list) => {
+        const conditional = new Set(list.map((c) => c.then));
+        return list.every((c) => !c.if.some((id) => conditional.has(id)));
+      },
+      { message: 'A conditional layer cannot wait for another conditional layer' },
+    )
     .optional(),
   typingPaths: z
     .record(

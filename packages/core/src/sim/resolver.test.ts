@@ -736,7 +736,7 @@ describe('a layer that comes on while others are on together', () => {
     expect(performance.now() - started).toBeLessThan(2000);
   });
 
-  it('is reached through a chain of layers each waiting for the one before', () => {
+  it('is reached through a chain of layers each waiting for the one before, in a layout in code', () => {
     // c0 is toggled from the base layer; each of the next twelve comes on with the one before it
     // and its own toggle.
     const ids = Array.from({ length: 13 }, (_, i) => `c${i}`);

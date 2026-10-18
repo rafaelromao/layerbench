@@ -393,10 +393,10 @@ export class Simulator {
       for (const cond of this.compiled.layout.conditionalLayers ?? []) {
         if (layerIndex.get(cond.then) !== target) continue;
         const ifs = cond.if.map((id) => layerIndex.get(id) ?? -1);
-        // A document can name no more than `MAX_CONDITION_LAYERS`; one written in code that names
-        // more is tried in its own order only. So is a condition met on the way to another's, so
-        // that only the outermost tries every order: each conditional layer is open once at most,
-        // and the tries add up along a chain of them rather than multiply.
+        // A document names no more than `MAX_CONDITION_LAYERS`, none of them conditional, so its
+        // conditions are tried in every order. A layout written in code is not checked: a condition
+        // there naming more, or met on the way to another's, is tried in its own order only, so the
+        // tries add up along a chain of them rather than multiply.
         const any = ifs.length <= MAX_CONDITION_LAYERS && this.conditionsOpen.size === 1;
         if (this.activateEach(ifs, [], target, events, depth, any)) return true;
       }
