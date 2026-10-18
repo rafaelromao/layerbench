@@ -10,7 +10,8 @@ on:
   push:
     branches: [layerbench-data]
     paths: ['community/**']
-  workflow_dispatch:
+# No manual run: GitHub offers one only for a workflow on the default branch, and this one lives
+# here. The push that sets the branch up adds `community/index.json`, so it runs then.
 
 permissions:
   contents: write
