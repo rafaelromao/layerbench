@@ -51,10 +51,9 @@ export interface ThumbAlpha {
 
 const isDefaultLayer = (id: string) => DEFAULT_LAYER_ID_LIST.includes(id);
 
-/** The letter a `kp` types by itself, lower-cased, or null for anything else. */
+/** The letter a key types by itself, a `kp` or a `unicode` one, lower-cased, or null for anything else. */
 function letterOf(b: Binding): string | null {
-  if (b.kind !== 'kp') return null;
-  const s = b.symbol ?? b.keycode;
+  const s = b.kind === 'kp' ? (b.symbol ?? b.keycode) : b.kind === 'unicode' ? b.symbol : undefined;
   return s !== undefined && /^[a-z]$/i.test(s) ? s.toLowerCase() : null;
 }
 

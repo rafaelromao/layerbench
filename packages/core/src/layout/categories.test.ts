@@ -319,16 +319,20 @@ describe('a custom copy of Qwerty', () => {
     expect(alphaLayers(l)).toEqual(['base']);
   });
 
-  it('counts a letter typed by keycode, or through a named behaviour', () => {
+  it('counts a letter typed by keycode, as unicode, or through a named behaviour', () => {
     const l = qwerty();
     l.behaviors = { ee: kp('e') };
     l.layers.splice(
       1,
       0,
       { id: 'codes', bindings: { LHP: { kind: 'kp', keycode: 'A' } } },
+      {
+        id: 'unicode',
+        bindings: { LHP: { kind: 'unicode', symbol: 'é' }, LHR: { kind: 'unicode', symbol: 'e' } },
+      },
       { id: 'named', bindings: { LHP: { kind: 'ref', ref: 'ee' } } },
     );
-    expect(alphaLayers(l)).toEqual(['base', 'codes', 'named']);
+    expect(alphaLayers(l)).toEqual(['base', 'codes', 'unicode', 'named']);
   });
 });
 
