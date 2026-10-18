@@ -240,7 +240,7 @@ describe("The branch's starting tree", () => {
 
   it('has its workflow list the names the app takes for ids, and only those', () => {
     expect(file('.github/workflows/community-index.yml')).toContain(
-      `grep -E '${ID_PATTERN.source}'`,
+      `[[ $id =~ ${ID_PATTERN.source} ]]`,
     );
     // And never the reserved `index`, whatever its case, as `isDocumentId` refuses it.
     expect(file('.github/workflows/community-index.yml')).toContain('! -iname index.json');

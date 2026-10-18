@@ -29,9 +29,14 @@ jobs:
       # `index` in any case is the app's reserved id (`isDocumentId`), so no layout file may take it.
       - name: List the community layouts
         run: |
-          find community -maxdepth 1 -type f -name '*.json' ! -iname index.json -printf '%f\n' \
-            | sed 's/\.json$//' \
-            | { grep -E '^[A-Za-z0-9_-]+$' || true; } \
+          # Names end with a NUL, which no name can hold, and each whole name is checked: one with a
+          # newline in it is never read as two.
+          find community -maxdepth 1 -type f -name '*.json' ! -iname index.json -print0 \
+            | while IFS= read -r -d '' path; do
+                id="${path##*/}"
+                id="${id%.json}"
+                if [[ $id =~ ^[A-Za-z0-9_-]+$ ]]; then printf '%s\n' "$id"; fi
+              done \
             | LC_ALL=C sort \
             | jq -R . | jq -s '{layouts: .}' > community/index.json
       # A push made with this workflow's token starts no workflow, so this does not run again. Should

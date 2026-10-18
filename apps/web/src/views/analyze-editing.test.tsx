@@ -222,7 +222,13 @@ describe('Edit', () => {
   });
 
   it('offers the community layouts in its picker, read from the branch', async () => {
-    setCommunitySource(branchWith(communityDoc('night-owl', 'Night owl')));
+    setCommunitySource(
+      branchWith(
+        communityDoc('night-owl', 'Night owl'),
+        communityDoc('lark', 'Lark'),
+        communityDoc('lark-2', 'Lark'),
+      ),
+    );
     renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000', {
       storage: freshStorage(),
     });
@@ -230,6 +236,11 @@ describe('Edit', () => {
     expect(within(group).getByRole('option', { name: 'Night owl' })).toHaveValue(
       'community:night-owl',
     );
+    // Two by the same name are told apart by their ids.
+    expect(within(group).getByRole('option', { name: 'Lark (lark-2)' })).toHaveValue(
+      'community:lark-2',
+    );
+    expect(within(group).getByRole('option', { name: 'Lark (lark)' })).toBeInTheDocument();
   });
 
   it('opens a community layout by its link, and saves it as a copy', async () => {

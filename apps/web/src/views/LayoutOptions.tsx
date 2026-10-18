@@ -53,7 +53,10 @@ export function LayoutOptions({
         <optgroup label="Community">
           {communitySorted.map((l) => (
             <option key={l.id} value={communityRef(l.id as string)}>
-              {l.name}
+              {/* Two community layouts can share a name too. */}
+              {community.filter((o) => o.name === l.name).length > 1
+                ? `${l.name} (${l.id})`
+                : l.name}
             </option>
           ))}
         </optgroup>
