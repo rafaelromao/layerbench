@@ -450,6 +450,28 @@ What moved, checked across the 38 reports; nothing else moved:
 - **The 35 layouts' documents** written in code, and Magic Romak's share blob. Romak 24, retired,
   keeps its own Numbers and Symbols and does not move.
 
+## Twenty-first re-baseline: Accents' keys placed by how often the texts use them
+
+Accents' keys move so that the most used cost least in Effort: the presses on each key, typing all
+the app's texts (German's included) on the default analysis settings, ranked against the Effort
+grid's cost of each position. The dead keys and the letters no dead key makes, `ñ` among them, stay
+on the 24-key core, so a board without the pinkies' top and bottom or the inner column keeps them;
+the ten least used letters go past it. `qu` trades places with `ê`. Same on the board with no bottom
+row, from the dead keys down. Nothing joins or leaves the layer.
+
+What moved, checked across the 38 reports; nothing else moved:
+
+- **Magic Romak**: no value, press or trace; its producer list follows Accents' new keys.
+- **Qwerty**: the same presses, on other keys. In English the fixture's `qu` is off the right
+  pinky's top key: Effort 1241.90 → 1240.73. On Portuguese Effort 1028.02 → 1018.13, with SFB
+  8.70 → 9.04 and SFS 10.15 → 11.52 on the Layouts Doc's rules: `á` and `à` are now on the left
+  middle and ring fingers' home keys, the two the Accents combo is pressed with. On the mix Effort
+  1134.63 → 1129.09, SFB 8.02 → 8.19.
+- **Romak**: Accents' macros now cost less than its Alpha 2 combos for some letters and for `qu`,
+  so 72 of its Portuguese accented letters (10 `qu` in English) come from Accents rather than a
+  layer tap: Effort 423.67 → 416.81 on Portuguese, 531.68 → 531.09 in English; SFB 1.50 → 1.56.
+- **The 35 layouts' documents** written in code, and Magic Romak's share blob.
+
 ## Not compared
 
 `globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not
