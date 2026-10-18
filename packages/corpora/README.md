@@ -39,6 +39,7 @@ form, and shipping an unverifiable unpacker would be worse than one documented i
   byte, so rebuilding is a no-op and the output is reviewable as a diff.
 - **Only Latin letters.** A sentence with a letter of another script is left out: mis-decoded text,
   or a name in Cyrillic or Greek that the language does not write.
+  A sentence with punctuation mis-decoded into Latin letters, `â€“` for `–`, is left out too.
 - **Contacts scrubbed.** E-mail addresses and phone numbers keep their shape, not their digits.
 - **Normalized**, keeping letters, digits **and** symbols. Each analysis narrows that to whatever the
   reader asked for: the default is still letters only, so one sample serves every setting, and

@@ -65,14 +65,20 @@ function placeOf(sentence: string): number {
 const NON_LATIN_LETTER = /[^\P{L}\p{Script=Latin}]/u;
 
 /**
- * The sentences of a raw text, one per line, without those holding letters of another script, in
- * the order of `placeOf`.
+ * UTF-8 punctuation and currency read as Windows-1252, as in `â€“` for `–`, `â€ž` for `„` or `â‚¦`
+ * for `₦`: mis-decoded text in Latin letters, which would count a stray `â` and a quote or two.
+ */
+const MOJIBAKE = /â[€‚]/u;
+
+/**
+ * The sentences of a raw text, one per line, without those holding letters of another script or
+ * mis-decoded punctuation, in the order of `placeOf`.
  */
 function sentences(raw: string): string[] {
   return raw
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .filter((line) => line.length > 0 && !NON_LATIN_LETTER.test(line))
+    .filter((line) => line.length > 0 && !NON_LATIN_LETTER.test(line) && !MOJIBAKE.test(line))
     .map((line) => ({ line, place: placeOf(line) }))
     .sort((a, b) => a.place - b.place || (a.line < b.line ? -1 : a.line > b.line ? 1 : 0))
     .map(({ line }) => line);

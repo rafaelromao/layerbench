@@ -75,10 +75,10 @@ describe('layout coverage', () => {
     expect(layoutLanguageCoverage(qwerty, 'pt-BR')?.missingRequired.length).toBeGreaterThan(0);
   });
 
-  it('writes Spanish, French and Italian through its Accents layer', () => {
+  it('writes Spanish, French, Italian and German through its Accents layer', () => {
     // Alpha 2 carries the Portuguese set; the accents the others add, a grave on any vowel, the
-    // tilde on `n`, the diaeresis, and `œ`, come from the Accents layer.
-    for (const tag of ['en', 'es', 'fr', 'it']) {
+    // tilde on `n`, the diaeresis, `œ` and `ß`, come from the Accents layer.
+    for (const tag of ['en', 'es', 'fr', 'it', 'de']) {
       const c = layoutLanguageCoverage(magic, tag);
       expect([tag, c?.missingRequired, c?.missingPunctuation]).toEqual([tag, [], []]);
     }

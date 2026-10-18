@@ -311,6 +311,7 @@ export function CorpusView() {
                     <option value="es">es</option>
                     <option value="fr">fr</option>
                     <option value="it">it</option>
+                    <option value="de">de</option>
                     <option value="custom">custom</option>
                   </select>
                 </label>

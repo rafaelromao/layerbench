@@ -50,7 +50,7 @@ export const SYMBOL_KEEP = [
   '^',
   '~',
   '`',
-  // What the news texts of the five languages hold beyond ASCII, and the default layers type.
+  // What the news texts of the six languages hold beyond ASCII, and the default layers type.
   '€',
   '£',
   '°',
@@ -76,10 +76,13 @@ export function keepSetFor(tc: TextClass): { keep: string[]; digits: boolean } {
 const QUOTE_MAP: Record<string, string> = {
   '\u2019': "'",
   '\u2018': "'",
+  // German opens with a low quote, „Text“ and ‚Text‘, and closes with the high one.
+  '\u201a': "'",
   '\u201b': "'",
   '\u2032': "'",
   '\u201c': '',
   '\u201d': '',
+  '\u201e': '',
   '\u00ab': '',
   '\u00bb': '',
   // A spacing acute is an apostrophe typed on the wrong key, as in `d´água`.
@@ -94,6 +97,7 @@ const QUOTE_MAP_SYMBOLS: Record<string, string> = {
   ...QUOTE_MAP,
   '\u201c': '"',
   '\u201d': '"',
+  '\u201e': '"',
   '\u00ab': '"',
   '\u00bb': '"',
 };

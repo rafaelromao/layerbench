@@ -82,9 +82,9 @@ describe('dead keys as producers', () => {
     expect(t.kinds).toEqual(['hold_press:R0', 'tap:LTR', 'hold_release:R0', 'tap:LHR']);
   });
 
-  it('composes each accent the five languages need', () => {
-    const t = trace(oneShot, 'é è ê ë ñ ã õ ô î ï ü ÿ ç');
-    expect(t.out).toBe('é è ê ë ñ ã õ ô î ï ü ÿ ç');
+  it('composes each accent the six languages need', () => {
+    const t = trace(oneShot, 'é è ê ë ñ ã õ ô î ï ä ö ü ÿ ç');
+    expect(t.out).toBe('é è ê ë ñ ã õ ô î ï ä ö ü ÿ ç');
     expect(t.coverage.unproducible.size).toBe(0);
   });
 
