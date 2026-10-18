@@ -37,6 +37,82 @@ function board(layers: Layout['layers'], extra: Partial<Layout> = {}): Layout {
 }
 
 describe('the keys that reach a layer', () => {
+  it('takes a declared way in from the one route that fits its modifiers, taps and all', () => {
+    const sl: Binding = { kind: 'sl', layer: 'up' };
+    const c = compileLayout(
+      board([
+        {
+          id: 'base',
+          bindings: {
+            // Shift and one tap reach up; two taps do too, with no modifier.
+            LHP: {
+              kind: 'tap_dance',
+              bindings: [
+                { kind: 'mod_morph', mods: ['LSHIFT'], default: kp('!'), morphed: sl },
+                sl,
+              ],
+            },
+          },
+        },
+        { id: 'up', bindings: { '*': { kind: 'trans' } } },
+      ]),
+    );
+    const declared = (requires?: { mods: Mod[] }) =>
+      (
+        discoverActivators(c, {
+          up: [{ via: 'key:base/LHP', ...(requires ? { requires } : {}) }],
+        }).get(layerOf(c, 'up')) ?? []
+      ).find((a) => a.user);
+    const shifted = declared({ mods: ['LSHIFT'] });
+    expect(shifted?.requiredMods).toEqual([['LSHIFT']]);
+    expect(shifted?.taps).toBeUndefined();
+    expect(declared()?.taps).toBe(2);
+    // The board marks that same route as the declared one, not the key's other way in.
+    const marked = compileLayout({
+      ...board([...c.layout.layers]),
+      activators: { up: [{ via: 'key:base/LHP', requires: { mods: ['LSHIFT'] } }] },
+    });
+    const [key] = reachKeys(marked, layerOf(marked, 'up'));
+    expect(key.routes.find((r) => r.declared)).toMatchObject({ mods: [['LSHIFT']] });
+    expect(key.routes.find((r) => r.declared)?.taps).toBeUndefined();
+  });
+
+  it('reads a tap dance inside a branch by the same taps, as the machine does, and a held one once', () => {
+    const sl = (layer: string): Binding => ({ kind: 'sl', layer });
+    const td = (...bindings: Binding[]): Binding => ({ kind: 'tap_dance', bindings });
+    const c = compileLayout(
+      board([
+        {
+          id: 'base',
+          bindings: {
+            // Two taps type @: the inner dance's second branch is never reached.
+            LHP: td(td(kp('!'), sl('up')), kp('@')),
+            // Two taps run the inner dance's second branch, to other.
+            LHR: td(kp('!'), td(sl('up'), sl('other'))),
+            // Held, a tap dance is its first branch: a layer held.
+            LHM: td({ kind: 'mo', layer: 'up' }, sl('other')),
+            // Three taps stay on the second branch, where the dance in it takes its third.
+            LBP: td(kp('!'), td(kp('?'), kp('@'), sl('other'))),
+            // In a tap-hold's hold too: its second branch is never run.
+            LHI: { kind: 'hold_tap', tap: kp('i'), hold: td(kp('x'), sl('other')) },
+          },
+        },
+        { id: 'up', bindings: { '*': { kind: 'trans' } } },
+        { id: 'other', bindings: { '*': { kind: 'trans' } } },
+      ]),
+    );
+    const says = (layer: string) =>
+      reachKeys(c, layerOf(c, layer)).map(
+        (k) => `${keyId(c, k.pos)}: ${describeReach(c, layerOf(c, layer), k)}`,
+      );
+    expect(says('up')).toEqual(['LHM: held from base to reach up']);
+    expect(says('other').sort()).toEqual([
+      'LBP: tapped three times from base to reach other',
+      'LHM: tapped twice from base to reach other',
+      'LHR: tapped twice from base to reach other',
+    ]);
+  });
+
   it('marks nothing on the base layer, which is always on', () => {
     expect(reachKeys(magic, 0)).toEqual([]);
   });

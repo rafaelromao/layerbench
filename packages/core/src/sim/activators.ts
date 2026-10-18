@@ -18,6 +18,8 @@ export interface ActivatorCandidate {
   from?: number;
   /** A combo rather than a key: its keys pressed together. `pos` is the combo's own position. */
   combo?: number;
+  /** How many times it is tapped, for a tap dance's later branch. Absent for once. */
+  taps?: number;
 }
 
 interface LayerTarget {
@@ -25,7 +27,52 @@ interface LayerTarget {
   target: number;
   kind: string;
   requiredMods?: ModChoice[];
+  /** A tap dance's branch past its first: the taps that choose it. */
+  taps?: number;
 }
+
+/**
+ * The most taps that can still choose something a tap less does not, however many branches the
+ * dances have. Past its last branch a tap dance stays on that branch, but a tap dance inside it
+ * goes on choosing by the same taps.
+ */
+function tapsThatChoose(b: Binding, depth = 0): number {
+  if (depth > 8) return 1;
+  const most = (...xs: (Binding | undefined)[]) =>
+    Math.max(1, ...xs.filter((x) => x !== undefined).map((x) => tapsThatChoose(x, depth + 1)));
+  switch (b.kind) {
+    case 'tap_dance':
+      return Math.max(b.bindings.length, most(b.bindings.at(-1)));
+    case 'hold_tap':
+      return most(b.tap, b.hold);
+    case 'lt':
+      return most(b.tap);
+    case 'mod_morph':
+      return most(b.default, b.morphed);
+    case 'layer_morph':
+      return most(b.inactive, b.active);
+    case 'adaptive':
+      return most(b.default, ...(b.triggers ?? []).map((t) => t.binding));
+    default:
+      return 1;
+  }
+}
+
+/** The branch of a tap dance a press of `taps` taps runs, as the machine picks it. */
+const branchFor = (b: Extract<Binding, { kind: 'tap_dance' }>, taps: number) =>
+  b.bindings[Math.min(taps, b.bindings.length) - 1];
+
+/**
+ * The rank of a way in: by the kind of key, then one needing modifiers after one that does not,
+ * then a tap dance's later branch after a first tap, then the order it was found in. Each band is
+ * wider than the ones after it can reach.
+ */
+const orderOf = (t: LayerTarget, order: number) =>
+  (KIND_ORDER[t.kind] ?? 5) * 1e9 +
+  (t.requiredMods?.length ? 5e8 : 0) +
+  // Held under the modifiers' band however many taps a tap dance has.
+  Math.min((t.taps ?? 1) - 1, 499) * 1e6 +
+  order;
 
 function collectLayerTargets(
   compiled: CompiledLayout,
@@ -36,6 +83,11 @@ function collectLayerTargets(
   path: MorphPath = NO_PATH,
   /** Inside a tap-hold's hold, where a tap's behaviour runs when the key is held. */
   holdArm = false,
+  /**
+   * The taps of the press, once a tap dance has chosen a branch by them; undefined outside one. A
+   * tap dance inside a branch chooses by the same taps, as the machine does.
+   */
+  taps?: number,
 ): void {
   if (depth > 8) return;
   const li = (id: string) => compiled.layerIndex.get(id);
@@ -44,10 +96,16 @@ function collectLayerTargets(
     // A part no modifiers held can choose is no way in.
     const requiredMods = heldChoices(path);
     if (requiredMods === null) return;
-    out.push({ mode, target, kind, ...(requiredMods.length ? { requiredMods } : {}) });
+    out.push({
+      mode,
+      target,
+      kind,
+      ...(requiredMods.length ? { requiredMods } : {}),
+      ...(taps !== undefined && taps > 1 ? { taps } : {}),
+    });
   };
-  const next = (x: Binding, p = path, arm = holdArm) =>
-    collectLayerTargets(compiled, x, mode, out, depth + 1, p, arm);
+  const next = (x: Binding, p = path, arm = holdArm, t = taps) =>
+    collectLayerTargets(compiled, x, mode, out, depth + 1, p, arm, t);
   switch (b.kind) {
     case 'sl':
     case 'tog':
@@ -74,7 +132,17 @@ function collectLayerTargets(
       next(b.active);
       return;
     case 'tap_dance':
-      if (b.bindings[0]) next(b.bindings[0]);
+      // Inside a branch, the branch the press's taps choose, as the machine picks it. Tapped, each
+      // branch is a way in, chosen by its number of taps; held, a key is pressed once.
+      if (taps !== undefined) {
+        const x = branchFor(b, taps);
+        if (x) next(x, path, holdArm, taps);
+      } else if (mode === 'tap' && !holdArm) {
+        for (let t = 1; t <= tapsThatChoose(b); t++) {
+          const x = branchFor(b, t);
+          if (x) next(x, path, holdArm, t);
+        }
+      } else if (b.bindings[0]) next(b.bindings[0], path, holdArm, 1);
       return;
     case 'adaptive':
       if (b.default) next(b.default);
@@ -113,8 +181,9 @@ export function discoverActivators(
             mode,
             target: t.target,
             user: false,
-            order: (KIND_ORDER[t.kind] ?? 5) * 1000 + (t.requiredMods?.length ? 500 : 0) + order++,
+            order: orderOf(t, order++),
             requiredMods: t.requiredMods,
+            ...(t.taps ? { taps: t.taps } : {}),
           });
           activators.set(t.target, list);
         }
@@ -140,9 +209,10 @@ export function discoverActivators(
             mode,
             target: t.target,
             user: false,
-            order: (KIND_ORDER[t.kind] ?? 5) * 1000 + (t.requiredMods?.length ? 500 : 0) + order++,
+            order: orderOf(t, order++),
             requiredMods: t.requiredMods,
             combo: combo.idx,
+            ...(t.taps ? { taps: t.taps } : {}),
           });
           activators.set(t.target, list);
         }
@@ -159,7 +229,18 @@ export function discoverActivators(
       const pos = c.keyIndex.get(m[2]);
       if (viaLayer === undefined || pos === undefined) return;
       const list = activators.get(target) ?? [];
-      const existing = list.find((a) => a.pos === pos && a.viaLayer === viaLayer);
+      // The key's own best way in that fits what the declaration says of the modifiers: how it is
+      // pressed and, for a tap dance's later branch, how often, both from that one route.
+      const declaredMods = d.requires?.mods;
+      const fits = (a: ActivatorCandidate) =>
+        declaredMods?.length
+          ? (a.requiredMods ?? []).length > 0 &&
+            (a.requiredMods ?? []).every((choice) => choice.some((m) => declaredMods.includes(m)))
+          : !a.requiredMods?.length;
+      const own = list
+        .filter((a) => a.pos === pos && a.viaLayer === viaLayer)
+        .sort((a, b) => a.order - b.order);
+      const existing = own.find(fits) ?? own[0];
       const mode = existing?.mode ?? 'tap';
       const cand: ActivatorCandidate = {
         pos,
@@ -169,6 +250,7 @@ export function discoverActivators(
         user: true,
         order: -1000 + i,
         requiredMods: d.requires?.mods?.map((m) => [m]) ?? existing?.requiredMods,
+        ...(existing?.taps ? { taps: existing.taps } : {}),
       };
       if (d.from && d.from !== '*') cand.from = c.layerIndex.get(d.from);
       list.unshift(cand);
@@ -193,8 +275,9 @@ export function standInPeers(
   for (const list of activators.values()) {
     const byLayer = new Map<number, ActivatorCandidate[]>();
     for (const cand of list) {
-      // A combo is not a key another key could stand in for.
-      if (cand.mode !== 'tap' || cand.requiredMods?.length || cand.combo !== undefined) continue;
+      // A combo is not a key another key could stand in for, nor is a tap dance's later branch.
+      if (cand.mode !== 'tap' || cand.requiredMods?.length || cand.combo !== undefined || cand.taps)
+        continue;
       const group = byLayer.get(cand.viaLayer) ?? [];
       group.push(cand);
       byLayer.set(cand.viaLayer, group);
@@ -254,6 +337,8 @@ interface Extra {
   path?: MorphPath;
   after?: ReachRoute['after'];
   taps?: number;
+  /** Inside a tap dance's branch, where a tap dance inside chooses by the same taps. */
+  inDance?: boolean;
   /** Inside a tap-hold's hold, where a tap's behaviour runs when the key is held. */
   holdArm?: boolean;
 }
@@ -319,9 +404,26 @@ function extraRoutes(
       next(b.active, mode);
       return;
     case 'tap_dance':
-      b.bindings.forEach((x, i) => {
-        next(x, mode, i === 0 ? {} : { extra: true, taps: i + 1 });
-      });
+      // Tapped, the planner presses a later branch itself, as `collectLayerTargets` finds it; held,
+      // or inside another tap dance, a later branch is a route it does not press.
+      if (ctx.inDance) {
+        const x = branchFor(b, ctx.taps ?? 1);
+        if (x) next(x, mode);
+        return;
+      }
+      {
+        const planned = mode === 'tap' && !ctx.holdArm;
+        // Held, on its own or in a tap-hold's hold, a tap dance is pressed once: its first branch.
+        const last = mode === 'hold' ? 1 : tapsThatChoose(b);
+        for (let t = 1; t <= last; t++) {
+          const x = branchFor(b, t);
+          if (!x) continue;
+          next(x, mode, {
+            inDance: true,
+            ...(t === 1 ? {} : planned ? { taps: t } : { extra: true, taps: t }),
+          });
+        }
+      }
       return;
     case 'adaptive':
       if (b.default) next(b.default, mode);
@@ -379,6 +481,7 @@ function directRoutes(
       origin: 'key',
       via: a.viaLayer,
       ...(a.requiredMods?.length ? { mods: a.requiredMods } : {}),
+      ...(a.taps ? { taps: a.taps } : {}),
     };
     if (a.combo === undefined) {
       add(a.pos, route);
@@ -389,7 +492,14 @@ function directRoutes(
     for (const pos of keys) add(pos, { ...route, chord: keys.filter((k) => k !== pos) });
   }
   for (const a of candidates.filter((x) => x.user)) {
-    const own = byPos.get(a.pos)?.find((r) => r.via === a.viaLayer && r.mode === a.mode);
+    // The route the declaration is: the same press, taps and modifiers, else the same press.
+    const routes = byPos.get(a.pos)?.filter((r) => r.via === a.viaLayer && r.mode === a.mode) ?? [];
+    const own =
+      routes.find(
+        (r) =>
+          r.taps === a.taps &&
+          JSON.stringify(r.mods ?? []) === JSON.stringify(a.requiredMods ?? []),
+      ) ?? routes[0];
     if (own) {
       own.declared = true;
       if (a.from !== undefined) own.from = a.from;
@@ -405,6 +515,7 @@ function directRoutes(
       declared: true,
       ...(a.from !== undefined ? { from: a.from } : {}),
       ...(a.requiredMods?.length ? { mods: a.requiredMods } : {}),
+      ...(a.taps ? { taps: a.taps } : {}),
     });
   }
   c.layers.forEach((l, via) => {

@@ -268,6 +268,102 @@ describe('combos that do more than type a character', () => {
     expect(t.keys).toEqual(['combo:up', 'RHP']);
   });
 
+  it("reaches a layer by a tap dance's second tap, on a key and on a combo", () => {
+    const dance: Binding = { kind: 'tap_dance', bindings: [kp('!'), { kind: 'sl', layer: 'up' }] };
+    const onKey: Layout = {
+      ...board,
+      layers: [
+        { ...board.layers[0], bindings: { ...board.layers[0].bindings, LHP: dance } },
+        ...board.layers.slice(1),
+      ],
+      combos: (board.combos ?? []).filter((c) => c.id !== 'up'),
+    };
+    const key = trace(onKey, '§');
+    expect(key.out).toBe('§');
+    expect(key.keys).toEqual(['LHP', 'LHP', 'RHP']);
+    const onCombo: Layout = {
+      ...board,
+      combos: (board.combos ?? []).map((c) => (c.id === 'up' ? { ...c, binding: dance } : c)),
+    };
+    const chord = trace(onCombo, '§');
+    expect(chord.out).toBe('§');
+    expect(chord.keys).toEqual(['combo:up', 'combo:up', 'RHP']);
+  });
+
+  it("presses a declared way in by a tap dance's second tap, before a key found on its own", () => {
+    const dance: Binding = { kind: 'tap_dance', bindings: [kp('!'), { kind: 'sl', layer: 'up' }] };
+    const layout: Layout = {
+      ...board,
+      layers: [
+        {
+          ...board.layers[0],
+          bindings: { ...board.layers[0].bindings, LHP: dance, LHR: { kind: 'sl', layer: 'up' } },
+        },
+        ...board.layers.slice(1),
+      ],
+      combos: (board.combos ?? []).filter((c) => c.id !== 'up'),
+      activators: { up: [{ via: 'key:base/LHP' }] },
+    };
+    const t = trace(layout, '§');
+    expect(t.out).toBe('§');
+    expect(t.keys).toEqual(['LHP', 'LHP', 'RHP']);
+  });
+
+  it('reaches a layer by a tap dance inside a tap dance, and by one held', () => {
+    const withLHP = (binding: Binding): Layout => ({
+      ...board,
+      layers: [
+        { ...board.layers[0], bindings: { ...board.layers[0].bindings, LHP: binding } },
+        ...board.layers.slice(1),
+      ],
+      combos: (board.combos ?? []).filter((c) => c.id !== 'up'),
+    });
+    const inner: Binding = {
+      kind: 'tap_dance',
+      bindings: [{ kind: 'tap_dance', bindings: [{ kind: 'sl', layer: 'up' }, kp('!')] }, kp('@')],
+    };
+    expect(trace(withLHP(inner), '§').keys).toEqual(['LHP', 'RHP']);
+    // Past its last branch the outer dance stays there, and the dance in it goes on choosing.
+    const longer: Binding = {
+      kind: 'tap_dance',
+      bindings: [
+        kp('!'),
+        { kind: 'tap_dance', bindings: [kp('?'), kp('@'), { kind: 'sl', layer: 'up' }] },
+      ],
+    };
+    expect(trace(withLHP(longer), '§').keys).toEqual(['LHP', 'LHP', 'LHP', 'RHP']);
+    // However many branches it has.
+    const nine: Binding = {
+      kind: 'tap_dance',
+      bindings: [...Array.from('12345678', (d) => kp(d)), { kind: 'sl', layer: 'up' }],
+    };
+    expect(trace(withLHP(nine), '§').keys).toEqual([...Array(9).fill('LHP'), 'RHP']);
+    const held: Binding = { kind: 'tap_dance', bindings: [{ kind: 'mo', layer: 'up' }, kp('!')] };
+    const t = trace(withLHP(held), '§');
+    expect(t.out).toBe('§');
+    expect(t.keys).toEqual(['LHP', 'RHP']);
+  });
+
+  it("reaches a layer by a tap dance's first tap", () => {
+    const first: Layout = {
+      ...board,
+      layers: [
+        {
+          ...board.layers[0],
+          bindings: {
+            ...board.layers[0].bindings,
+            LHP: { kind: 'tap_dance', bindings: [{ kind: 'sl', layer: 'up' }, kp('!')] },
+          },
+        },
+        ...board.layers.slice(1),
+      ],
+      combos: (board.combos ?? []).filter((c) => c.id !== 'up'),
+    };
+    const t = trace(first, '§');
+    expect(t.out).toBe('§');
+    expect(t.keys).toEqual(['LHP', 'RHP']);
+  });
+
   it('presses a combo that brings a layer on to type what is there', () => {
     const t = trace(board, '§');
     expect(t.out).toBe('§');
