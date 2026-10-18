@@ -6,10 +6,26 @@ import { customId, customRef } from '../custom/ref.js';
 import { HELP } from '../guide/help.js';
 import { useCollection } from '../storage/use-storage.js';
 import { type Params, SAMPLE_SIZES } from '../url/params.js';
-import { groupByLanguage } from './corpus-groups.js';
+import { CUSTOM_TEXTS, orderCorpora } from './corpus-groups.js';
+
+/** A corpus picker's options: English, then the rest by name, in one list; custom texts after. */
+function CorpusOptions({ corpora }: { corpora: CorpusManifest[] }) {
+  const { texts, custom } = orderCorpora(corpora);
+  const option = (c: CorpusManifest) => (
+    <option key={c.id} value={c.id}>
+      {c.name}
+    </option>
+  );
+  return (
+    <>
+      {texts.map(option)}
+      {custom.length > 0 && <optgroup label={CUSTOM_TEXTS}>{custom.map(option)}</optgroup>}
+    </>
+  );
+}
 
 /**
- * The text a layout is analyzed on, by language. A corpus the list does not have, such as one named
+ * The text a layout is analyzed on. A corpus the list does not have, such as one named
  * by a link before the list arrives, is still offered, so the select always shows what is in use.
  */
 export function CorpusSelect({
@@ -31,15 +47,7 @@ export function CorpusSelect({
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >
-      {groupByLanguage(corpora).map((g) => (
-        <optgroup key={g.label} label={g.label}>
-          {g.items.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </optgroup>
-      ))}
+      <CorpusOptions corpora={corpora} />
       {!corpora.some((c) => c.id === value) && <option value={value}>{value}</option>}
     </select>
   );
@@ -248,15 +256,7 @@ function MixWith({
           onChange={(e) => onParams({ corpus2: e.target.value === '' ? null : e.target.value })}
         >
           <option value="">—</option>
-          {groupByLanguage(corpora.filter((c) => c.id !== params.corpus)).map((g) => (
-            <optgroup key={g.label} label={g.label}>
-              {g.items.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </optgroup>
-          ))}
+          <CorpusOptions corpora={corpora.filter((c) => c.id !== params.corpus)} />
         </select>
       </label>
       {params.corpus2 && (

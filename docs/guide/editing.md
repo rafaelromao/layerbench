@@ -127,10 +127,10 @@ selected for the next.
 ## Layers
 
 The layer navigator above the board switches between layers: ‹ and › step through them, the
-counter says which of how many is shown, and the layer's name is written in its colour. Swipe the
-board sideways to do the same on a phone, or press `←` and `→` while the navigator has focus. The
-same navigator shows the layers of a card in **Library** and of each layout in **Compare**. A key's
-colour says which layer it reaches.
+layer's name is written in its colour, and the counter under it says which of how many is shown.
+Swipe the board sideways to do the same on a phone, or press `←` and `→` while the navigator has
+focus. The same navigator shows the layers of a card in **Library** and of each layout in
+**Compare**. A key's colour says which layer it reaches.
 
 The **Layers** panel lists them in order, and does everything else with them:
 

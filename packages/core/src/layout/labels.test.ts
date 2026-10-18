@@ -26,6 +26,50 @@ suite('legends', () => {
     }
   });
 
+  it('gives a key that does something but has nothing to type a legend all the same', () => {
+    // An adaptive key with no default shows its mark in the centre, and not again in the corner.
+    const sturdy = compileLayout(bundledLayout('magic-sturdy')!);
+    const magic = legend(sturdy, sturdy.layers[0].bindings[sturdy.keyIndex.get('RTI')!]);
+    expect([magic.tap, magic.badge]).toEqual([BADGE.adaptive, null]);
+    expect(legendText(magic)).toBe(BADGE.adaptive);
+    const nordrassil = compileLayout(bundledLayout('nordrassil')!);
+    for (const arcane of ['L0', 'R0']) {
+      const l = legend(nordrassil, nordrassil.layers[0].bindings[nordrassil.keyIndex.get(arcane)!]);
+      expect(l.tap).toBe(BADGE.adaptive);
+    }
+    // An empty tap dance says it is one. A behaviour of the layout's own, named before compiling
+    // puts it in its place, is shown by that name.
+    expect(tapLabel(c, { kind: 'tap_dance', bindings: [] })).toBe(BADGE.tapDance);
+    expect(legend(c, { kind: 'tap_dance', bindings: [] }).badge).toBeNull();
+    expect(tapLabel(c, { kind: 'ref', ref: 'magicShift' })).toBe('magicShift');
+    // A key that types its own mark keeps the mark in the corner: only an empty one drops it.
+    const typesMark = (symbol: string): Binding => ({ kind: 'kp', symbol });
+    const marked: [Binding, string][] = [
+      [{ kind: 'adaptive', default: typesMark(BADGE.adaptive) }, BADGE.adaptive],
+      [{ kind: 'tap_dance', bindings: [typesMark(BADGE.tapDance)] }, BADGE.tapDance],
+      [{ kind: 'macro', symbols: BADGE.macro }, BADGE.macro],
+      [{ kind: 'unicode', symbol: BADGE.unicode }, BADGE.unicode],
+    ];
+    for (const [b, mark] of marked)
+      expect([legend(c, b).tap, legend(c, b).badge]).toEqual([mark, mark]);
+    // An empty chooser inside a marked one leaves the outer mark in the corner.
+    const emptyDance: Binding = { kind: 'tap_dance', bindings: [] };
+    const emptyMagic: Binding = { kind: 'adaptive' };
+    const nested = legend(c, { kind: 'adaptive', default: emptyDance });
+    expect([nested.tap, nested.badge]).toEqual([BADGE.tapDance, BADGE.adaptive]);
+    const inverse = legend(c, { kind: 'tap_dance', bindings: [emptyMagic] });
+    expect([inverse.tap, inverse.badge]).toEqual([BADGE.adaptive, BADGE.tapDance]);
+    // A tap-hold around an empty one is not marked, so the mark still goes.
+    const held = legend(c, {
+      kind: 'hold_tap',
+      tap: emptyMagic,
+      hold: { kind: 'mod', mod: 'LSHIFT' },
+    });
+    expect([held.tap, held.badge]).toEqual([BADGE.adaptive, null]);
+    // Nothing still shows nothing.
+    expect(tapLabel(c, { kind: 'none' })).toBe('');
+  });
+
   it('draws a layer tap as its tap, with the layer as what a hold does', () => {
     const l = legend(c, { kind: 'lt', layer: 'num', tap: { kind: 'kp', symbol: 'a' } });
     expect([l.tap, l.hold, l.holdIsMode, l.layerIn]).toEqual(['a', 'Numb', false, 'hold']);
