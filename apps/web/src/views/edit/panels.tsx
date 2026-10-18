@@ -814,14 +814,16 @@ const FEATURE_GROUPS: [SpecialFeatureKind, string][] = [
 function SpecialFeatureList({ state, send, onShow }: PanelProps & { onShow?: () => void }) {
   const features = useMemo(() => specialFeatures(state.layout), [state.layout]);
   const { compiled } = state;
-  const combos = state.layout.combos ?? [];
-  const comboKeys = (id: string) => combos.find((c, i) => (c.id ?? `#${i + 1}`) === id)?.keys ?? [];
   const show = (f: SpecialFeature) => {
     onShow?.();
-    // A pick of a combo's keys would keep the board's clicks, and add its keys to the outline.
+    // Whatever the board is doing gives way: a pick of a combo's keys would keep its clicks, and an
+    // armed swap or an open combo would add their keys to the outline.
     send({ type: 'comboPickCancel' });
+    send({ type: 'cancelSwap' });
     if (f.combo !== undefined) {
-      send({ type: 'setBoardHighlight', keys: comboKeys(f.combo) });
+      send({ type: 'selectCombo', combo: null });
+      const combo = f.comboIndex === undefined ? undefined : state.layout.combos?.[f.comboIndex];
+      send({ type: 'setBoardHighlight', keys: combo?.keys ?? [] });
       return;
     }
     const layer = f.layer === undefined ? undefined : compiled.layerIndex.get(f.layer);

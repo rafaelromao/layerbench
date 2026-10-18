@@ -1451,11 +1451,17 @@ describe('Behaviors', () => {
     await user.click(other);
     expect(shownLayer()).toBe(otherLayer);
 
-    // A feature on a combo, the à macro, outlines its keys instead.
+    // A feature on a combo, the à macro, outlines its keys instead, and a swap armed gives way.
+    const selected = (
+      screen.getByRole('group', { name: /^Edit / }).getAttribute('aria-label') ?? ''
+    ).replace('Edit ', '');
+    await user.click(within(await inspector(selected)).getByRole('button', { name: 'Swap with…' }));
+    expect(screen.getByText(/is armed/)).toBeInTheDocument();
     await user.click(within(list).getByRole('button', { name: /^Combo agrave/ }));
     await waitFor(() =>
       expect(document.querySelectorAll('#kb-analyze .lb-key-highlight').length).toBeGreaterThan(1),
     );
+    expect(screen.queryByText(/is armed/)).toBeNull();
 
     // Picked while a combo's keys are being picked, a feature ends the pick.
     await user.click(screen.getByRole('tab', { name: 'Combos' }));
