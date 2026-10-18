@@ -34,6 +34,9 @@ export interface ClassicDef {
 
 const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
 
+/** The repeat key, `⟲`. */
+export const REPEAT: Binding = { kind: 'key_repeat' };
+
 /** A raw key: drawn with its legend, typing nothing the analysis counts. */
 export const raw = (label: string): Binding => ({ kind: 'raw', label });
 
@@ -118,11 +121,13 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     id: 'hands-down-neu',
     name: 'Hands Down Neu',
     author: 'Alan Reiser',
-    rows: "w f m p v / . q ; '\nr s n t b , a e i h\nx c l d g - u o y k",
+    rows: "w f m p v ⟲ . q ; '\nr s n t b , a e i h\nx c l d g - u o y k",
     // `z` and `j` live in an eleventh column on the board this was drawn for. A 34-key split has
     // no such column, so they go on the free thumbs — until now they were silently dropped, which
     // left the layout unable to type two letters and every metric flattered by their absence.
+    // With `z` on the thumb Repeat would have, Repeat takes the key `/` leaves.
     thumbs: 'space z j',
+    special: { '⟲': REPEAT },
     source: 'https://sites.google.com/alanreiser.com/handsdown',
   },
   {
@@ -178,9 +183,11 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     id: 'sunlight',
     name: 'Sunlight',
     author: 'Cyanophage',
-    rows: 'f w h g k , o u y p\ns n l t v . a e i c\nx b m d q = ; / - z',
+    rows: 'f w h g k , o u y p\ns n l t v . a e i c\nx b m d q ⟲ ; / - z',
     // `r` on a thumb by design; `j` on another because the original board has an extra column.
+    // With `j` on the thumb Repeat would have, Repeat takes the key `=` leaves.
     thumbs: 'space r j',
+    special: { '⟲': REPEAT },
     source: 'https://cyanophage.github.io/#sunlight',
   },
   {

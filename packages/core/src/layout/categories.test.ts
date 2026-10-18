@@ -29,7 +29,6 @@ function withKey(id: string, b: Binding, base: Layout = qwerty()): Layout {
 const EXPECTED: Record<LayoutCategory, string[]> = {
   special: [
     'magic-romak',
-    'romak-34',
     'magic-sturdy',
     'nordrassil',
     't-34',
@@ -54,6 +53,7 @@ const EXPECTED: Record<LayoutCategory, string[]> = {
     'enthium',
   ],
   standard: [
+    'romak',
     'qwerty',
     'dvorak',
     'colemak',

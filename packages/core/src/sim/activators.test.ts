@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { compileLayout } from '../layout/compile.js';
 import type { Binding, Layout, Mod } from '../layout/types.js';
 import { documentedLayouts } from '../layouts/index.js';
-import { magicRomak, romak24 } from '../layouts/romak.js';
+import { magicRomak } from '../layouts/romak.js';
 import {
   bindingReaches,
   describeReach,
@@ -235,9 +235,43 @@ describe('the keys that reach a layer', () => {
     expect(say(kp('a'))).toEqual(['L0: tapped from base to reach up']);
   });
 
-  it("marks Romak 24's accent macros for its alt-repeat layer, and not its alt-repeat key", () => {
-    const c = compileLayout(romak24);
-    const marked = reachKeys(c, layerOf(c, 'altrep2'));
+  it('marks the accent macros that arm an alt-repeat layer, and not the alt-repeat key', () => {
+    // As a keymap that arms a one-shot layer after every accent, for the repeat key to offer what
+    // follows it.
+    const accent = (symbol: string): Binding => ({
+      kind: 'macro',
+      symbols: symbol,
+      then: [{ kind: 'sl', layer: 'altrep' }],
+    });
+    const c = compileLayout(
+      board([
+        {
+          id: 'base',
+          bindings: {
+            L0: kp(' '),
+            R0: { kind: 'sl', layer: 'alpha2' },
+            L1: { kind: 'key_repeat' },
+          },
+        },
+        {
+          id: 'alpha2',
+          bindings: {
+            '*': { kind: 'trans' },
+            ...Object.fromEntries(
+              ['RTI', 'RHI', 'RBI', 'RTM', 'RHM', 'RBM'].map((id, i) => [id, accent('áãâéêó'[i])]),
+            ),
+          },
+        },
+        {
+          id: 'altrep',
+          bindings: {
+            '*': { kind: 'trans' },
+            L1: { kind: 'adaptive', default: { kind: 'key_repeat' }, triggers: [] },
+          },
+        },
+      ]),
+    );
+    const marked = reachKeys(c, layerOf(c, 'altrep'));
     expect(marked.every((k) => k.how === 'tapped')).toBe(true);
     expect(marked.every((k) => k.routes.every((r) => r.origin === 'macro'))).toBe(true);
     expect(marked.map((k) => keyId(c, k.pos))).not.toContain('L1');

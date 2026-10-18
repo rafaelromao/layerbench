@@ -1,10 +1,20 @@
-import { type Binding, bundledLayout, compileLayout, type Layout } from '@layerbench/core';
+import {
+  accentsCombo,
+  type Binding,
+  bundledLayout,
+  compileLayout,
+  type Layout,
+} from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
 import { type EditAction, editReducer, selectionOf } from './reducer.js';
 import { initialUndoState, type UndoState, undoable } from './undo.js';
 
 const reducer = undoable(editReducer);
-const qwerty = bundledLayout('qwerty') as Layout;
+/** Qwerty reaching Accents by a combo too, as a Special layout does, for a combo to open. */
+const qwerty: Layout = {
+  ...(bundledLayout('qwerty') as Layout),
+  combos: [accentsCombo('base')],
+};
 /** Where the Nav layer lands: after Qwerty's own and default layers. */
 const NAV = qwerty.layers.length;
 

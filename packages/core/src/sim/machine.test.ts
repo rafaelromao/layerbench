@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { compileLayout } from '../layout/compile.js';
 import type { Layout } from '../layout/types.js';
-import { magicRomak, romak24 } from '../layouts/romak.js';
+import { magicRomak } from '../layouts/romak.js';
 import { Machine } from './machine.js';
 
 function mini(layers: Layout['layers'], extra: Partial<Layout> = {}): Layout {
@@ -27,7 +27,7 @@ function machineFor(layout: Layout) {
 
 describe('Machine — one-shot layers', () => {
   it('sticky layer is consumed by exactly one press', () => {
-    const { m, tap, compiled } = machineFor(romak24);
+    const { m, tap, compiled } = machineFor(magicRomak);
     expect(tap('R0').leafKind).toBe('sl');
     expect(m.isLayerActive(compiled.layerIndex.get('alpha2')!)).toBe(true);
     const q = tap('LTR');
@@ -61,7 +61,7 @@ describe('Machine — one-shot layers', () => {
   });
 
   it('a one-shot consumed by a transparent key falling to base is wasted', () => {
-    const { tap } = machineFor(romak24);
+    const { tap } = machineFor(magicRomak);
     tap('R0');
     const ev = tap('L0'); // space: transparent on alpha2 → base
     expect(ev.symbols).toBe(' ');
@@ -69,7 +69,7 @@ describe('Machine — one-shot layers', () => {
   });
 
   it('macro arms a one-shot layer (ç → Ç extension) and the next press resolves there', () => {
-    const { tap, compiled } = machineFor(romak24);
+    const { tap, compiled } = machineFor(magicRomak);
     tap('R0');
     const c = tap('LBM');
     expect(c.symbols).toBe('ç');
@@ -80,7 +80,7 @@ describe('Machine — one-shot layers', () => {
   });
 
   it('lastSymbol is not changed by layer taps and repeat re-sends it', () => {
-    const { tap, m } = machineFor(romak24);
+    const { tap, m } = machineFor(magicRomak);
     tap('RHM'); // a
     expect(m.state.lastSymbol).toBe('a');
     tap('R0');
@@ -270,7 +270,7 @@ describe('Machine — a tap dance under a one-shot layer', () => {
 
 describe('Machine — combos, caps word, holds', () => {
   it('combo fires only when the highest active layer is in its layer list', () => {
-    const { m, tap, compiled } = machineFor(romak24);
+    const { m, tap, compiled } = machineFor(magicRomak);
     const q = compiled.combos.findIndex((c) => c.id === 'ns');
     expect(m.perform({ type: 'chord', combo: q })[0].symbols).toBe('q');
     tap('R0'); // alpha2 armed → highest layer is alpha2
@@ -326,7 +326,7 @@ describe('Machine — combos, caps word, holds', () => {
   });
 
   it('sticky shift capitalizes exactly one key', () => {
-    const { tap } = machineFor(romak24);
+    const { tap } = machineFor(magicRomak);
     tap('R1');
     expect(tap('RHM').symbols).toBe('A');
     expect(tap('RHM').symbols).toBe('a');

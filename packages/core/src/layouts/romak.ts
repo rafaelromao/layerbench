@@ -1,26 +1,10 @@
 import { getGeometryPreset } from '../geometry/presets.js';
 import type { Binding, ComboDef, LayerDef, Layout } from '../layout/types.js';
-import {
-  accentsCombo,
-  DEFAULT_LAYER_IDS,
-  defaultLayers,
-  NUMBERS_CORE,
-  SYMBOLS_CORE,
-} from './templates.js';
+import { withStandardThumbs } from './standard.js';
+import { DEFAULT_LAYER_IDS, defaultLayers } from './templates.js';
 
 const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
 const VOWELS = ['a', 'e', 'i', 'o', 'u', 'á', 'à', 'ã', 'â', 'é', 'ê', 'í', 'ó', 'õ', 'ô', 'ú'];
-
-/**
- * Accented letter as the firmware writes it: one physical press, then the ALTREP2 one-shot layer is
- * armed so the repeat key can offer the follow-ups. Kept for Romak 24, which models the keymap
- * literally.
- */
-const accent = (symbol: string): Binding => ({
-  kind: 'macro',
-  symbols: symbol,
-  then: [{ kind: 'sl', layer: 'altrep2' }],
-});
 
 /**
  * The same press, tagged instead of arming a layer. The tag is what an adaptive branch matches on,
@@ -39,62 +23,6 @@ function rowBindings(map: Record<string, string | Binding>): Record<string, Bind
   return out;
 }
 
-const behaviors: Record<string, Binding> = {
-  adaptiveHV: {
-    kind: 'adaptive',
-    default: kp('h'),
-    triggers: [{ afterAny: VOWELS, binding: kp('v') }],
-  },
-  adaptiveVH: {
-    kind: 'adaptive',
-    default: kp('v'),
-    triggers: [{ afterAny: VOWELS, binding: kp('h') }],
-  },
-  altRepeat: {
-    kind: 'adaptive',
-    default: { kind: 'key_repeat' },
-    triggers: [
-      { afterAny: ['a'], binding: kp('h') },
-      { afterAny: ['y'], binding: kp('d') },
-      { afterAny: ['h'], binding: { kind: 'macro', symbols: 'ões' } },
-      { afterAny: ['v', 'x', 'j'], binding: { kind: 'sl', layer: 'alpha2' } },
-      { afterAny: ["'"], binding: kp('v') },
-      { afterAny: ['I'], binding: kp("'") },
-    ],
-  },
-  a2AltRepeat: {
-    kind: 'adaptive',
-    default: { kind: 'adaptive', ref: 'altRepeat' },
-    triggers: [
-      { afterAny: ['á', 'à', 'ã', 'â', 'ó', 'õ', 'ô', 'é', 'ê'], binding: kp('x') },
-      { afterAny: ['í'], binding: kp('e') },
-      { afterAny: ['u', 'ú'], binding: accent('ê') },
-    ],
-  },
-  sentenceSpace: {
-    kind: 'adaptive',
-    default: kp(' '),
-    triggers: [
-      {
-        afterAny: ['.', '?', '!'],
-        binding: { kind: 'macro', steps: [kp(' '), { kind: 'sl', layer: 'sen_case' }] },
-      },
-    ],
-  },
-  shiftOrCaps: {
-    kind: 'mod_morph',
-    mods: ['LSHIFT', 'RSHIFT'],
-    default: { kind: 'sk', mod: 'LSHIFT' },
-    morphed: { kind: 'auto_layer', layer: 'case_a1' },
-  },
-  alpha2OrShifted: {
-    kind: 'mod_morph',
-    mods: ['LSHIFT', 'RSHIFT'],
-    default: { kind: 'sl', layer: 'alpha2' },
-    morphed: { kind: 'sl', layer: 'sft_a2' },
-  },
-};
-
 const CCEDIL_BINDINGS: Record<string, Binding> = {
   '*': { kind: 'trans' },
   LHI: { kind: 'macro', symbols: 'ão' },
@@ -102,11 +30,6 @@ const CCEDIL_BINDINGS: Record<string, Binding> = {
   RHI: kp('ã'),
   RBI: kp('õ'),
   L1: { kind: 'sl', layer: 'alpha2' },
-};
-
-const ALTREP2_BINDINGS: Record<string, Binding> = {
-  '*': { kind: 'trans' },
-  L1: { kind: 'ref', ref: 'a2AltRepeat' },
 };
 
 // ---------------------------------------------------------------- Numbers and Symbols
@@ -145,12 +68,8 @@ const ALPHA2_OR_SYMBOLS: Binding = {
  * types: the firmware's symbol tap-holds jump to the end of the line or past the cursor first when
  * held, which is editing rather than typing, and are left out. Keys it leaves empty are empty here.
  *
- * Romak 24 keeps them as they are, modelling the keymap literally. Magic Romak and Romak have the
- * default layers in their place, on these thumbs.
+ * Magic Romak has the default layers in their place, on these thumbs.
  */
-const coreKeys = (table: Readonly<Record<string, string>>): Record<string, Binding> =>
-  Object.fromEntries(Object.entries(table).map(([id, symbol]) => [id, kp(symbol)]));
-
 const NUMBERS_THUMBS: Record<string, Binding> = {
   LHP: tapOrUnmodelled(',', 'FUN'),
   L1: { kind: 'trans' },
@@ -166,17 +85,6 @@ const SYMBOLS_THUMBS: Record<string, Binding> = {
   // order needs. The digits are one hold away from Alpha 1 either way.
   L0: kp(' '),
   R1: { kind: 'trans' },
-};
-
-const NUMBERS_LAYER = {
-  id: 'num',
-  name: 'Numbers',
-  bindings: { '*': { kind: 'none' } as Binding, ...coreKeys(NUMBERS_CORE), ...NUMBERS_THUMBS },
-};
-const SYMBOLS_LAYER = {
-  id: 'sym',
-  name: 'Symbols',
-  bindings: { '*': { kind: 'none' } as Binding, ...coreKeys(SYMBOLS_CORE), ...SYMBOLS_THUMBS },
 };
 
 const THUMBS = new Set(['L0', 'L1', 'R0', 'R1']);
@@ -204,9 +112,9 @@ function romakDefaultLayers(preset: string): Pick<Layout, 'layers' | 'conditiona
   return { layers, conditionalLayers: defaults.conditionalLayers };
 }
 
-// ---------------------------------------------------------------- Romak 24
+// ---------------------------------------------------------------- Magic Romak
 
-const ROMAK24_ALPHA1 = rowBindings({
+const ALPHA1_24 = rowBindings({
   LHP: 'd',
   LTR: 'b',
   LHR: 'n',
@@ -229,18 +137,15 @@ const ROMAK24_ALPHA1 = rowBindings({
   RHP: 'i',
 });
 
-function alpha2Bindings(acc: (symbol: string) => Binding, quTag?: string): Record<string, Binding> {
+function alpha2Bindings(): Record<string, Binding> {
+  const acc = taggedAccent;
   return {
     '*': { kind: 'trans' },
     LHP: kp('y'),
     LTR: kp('q'),
     LHR: kp('z'),
     LBR: kp('j'),
-    LTM: {
-      kind: 'macro',
-      symbols: 'qu',
-      ...(quTag ? { tag: quTag } : { then: [{ kind: 'sl', layer: 'altrep2' }] }),
-    },
+    LTM: { kind: 'macro', symbols: 'qu', tag: ALPHA2_TAG },
     LHM: kp('x'),
     LBM: { kind: 'macro', symbols: '\u00e7', then: [{ kind: 'sl', layer: 'ccedil' }] },
     LTI: kp('k'),
@@ -259,12 +164,6 @@ function alpha2Bindings(acc: (symbol: string) => Binding, quTag?: string): Recor
     L1: kp("'"),
     R1: kp("'"),
   };
-}
-
-const ROMAK24_ALPHA2: Record<string, Binding> = alpha2Bindings(accent);
-
-function romak24Combos(acc: (symbol: string) => Binding): ComboDef[] {
-  return [...alpha1Combos(), ...romak24Alpha2Combos(acc)];
 }
 
 /** The shortcuts on Alpha 1 for letters Alpha 2 has; never pressed by the analysis. */
@@ -345,15 +244,6 @@ function alpha1Combos(): ComboDef[] {
   ];
 }
 
-/** The Alpha 2 combos Romak 24 models: `?`, `!`, and `\u00e0` between the `\u00e1` and `\u00e9` it sits beside. */
-function romak24Alpha2Combos(acc: (symbol: string) => Binding): ComboDef[] {
-  return [
-    alpha2Combo('question', ['RHI', 'RHM'], kp('?')),
-    alpha2Combo('exclamation', ['RBI', 'RBM'], kp('!')),
-    alpha2Combo('agrave', ['RHM', 'RHR'], acc('\u00e0')),
-  ];
-}
-
 function alpha2Combo(id: string, keys: string[], binding: Binding): ComboDef {
   return {
     id,
@@ -379,7 +269,7 @@ const tapOrHeld = (tap: string, held: string): Binding => ({
  * which the host composes with the next letter, so each is the accent it stands for \u2014 then `-` and
  * `:`, `?` and `!`, which type `\u00bf` and `\u00a1` when held, and `\u00e0`.
  */
-function alpha2Combos(acc: (symbol: string) => Binding): ComboDef[] {
+function alpha2Combos(): ComboDef[] {
   return [
     alpha2Combo('minus', ['RTI', 'RTM'], kp('-')),
     alpha2Combo('diaeresis', ['LTM', 'LTI'], dead('\u00a8')),
@@ -390,7 +280,7 @@ function alpha2Combos(acc: (symbol: string) => Binding): ComboDef[] {
     alpha2Combo('question', ['RHI', 'RHM'], tapOrHeld('?', '\u00bf')),
     alpha2Combo('exclamation', ['RBI', 'RBM'], tapOrHeld('!', '\u00a1')),
     alpha2Combo('colon', ['RBM', 'RBR'], kp(':')),
-    alpha2Combo('agrave', ['RHM', 'RHR'], acc('\u00e0')),
+    alpha2Combo('agrave', ['RHM', 'RHR'], taggedAccent('\u00e0')),
   ];
 }
 
@@ -407,53 +297,6 @@ const SEMICOLON_COMBO: ComboDef = {
   timeoutMs: 30,
   slowRelease: false,
 };
-
-const ROMAK24_COMBOS: ComboDef[] = romak24Combos(accent);
-
-function romak24Base(name: string, id: string, description: string): Layout {
-  return {
-    format: 'layerbench/layout@1',
-    id,
-    name,
-    author: 'Rafael Romão',
-    description,
-    languages: ['pt-BR', 'en'],
-    hostLocale: 'symbols',
-    geometry: { preset: '1333+2' },
-    keys: { space: 'L0', shift: { key: 'R1', kind: 'sk' } },
-    behaviorDefaults: {
-      sl: { quickRelease: true, ignoreModifiers: false, releaseAfterMs: 1000 },
-      sk: { quickRelease: true, ignoreModifiers: true, releaseAfterMs: 1500 },
-    },
-    behaviors,
-    layers: [
-      {
-        id: 'alpha1',
-        name: 'Alpha 1',
-        bindings: {
-          ...ROMAK24_ALPHA1,
-          L1: { kind: 'key_repeat' },
-          L0: SPACE_OR_NUMBERS,
-          R0: ALPHA2_OR_SYMBOLS,
-          R1: { kind: 'sk', mod: 'LSHIFT' },
-        },
-      },
-      { id: 'alpha2', name: 'Alpha 2', bindings: ROMAK24_ALPHA2 },
-      { id: 'ccedil', name: 'Ç extension', bindings: CCEDIL_BINDINGS },
-      { id: 'altrep2', name: 'Alt repeat 2', bindings: ALTREP2_BINDINGS },
-      NUMBERS_LAYER,
-      SYMBOLS_LAYER,
-    ],
-    combos: ROMAK24_COMBOS,
-    repeatPolicy: { doubledLetters: 'repeatKey' },
-  };
-}
-
-export const romak24: Layout = romak24Base(
-  'Romak 24',
-  'romak-24',
-  'Romak for 24 keys (1333+2): two alpha layers, Ç extension, one-shot shift, and numbers and symbols held from the thumbs.',
-);
 
 /** An adaptive key: types `fallback`, or `afterVowel` when a vowel came just before it. */
 const adaptiveKey = (fallback: string, afterVowel: string): Binding => ({
@@ -488,7 +331,7 @@ const ALT_REPEAT: Binding = {
 };
 
 /**
- * Magic Romak: Romak 24 plus the adaptive behaviours.
+ * Magic Romak: Romak on 24 keys, two alpha layers and the adaptive behaviours.
  *
  * The firmware needs four extra layers for these — pre-shifted copies of the alphas for sentence
  * case, caps word and shifted Alpha 2, and a one-shot layer armed by every accent macro so the
@@ -499,30 +342,46 @@ const ALT_REPEAT: Binding = {
  * the tag the accent macro leaves behind. What is left is the layers you can see.
  */
 export const magicRomak: Layout = (() => {
-  const base = romak24Base(
-    'Magic Romak',
-    'magic-romak',
-    'Romak 24 with adaptive keys (h/v), alt repeat, sentence case, caps word, and dead keys for Spanish, French and Italian.',
-  );
-  const alpha1 = base.layers[0];
   const defaults = romakDefaultLayers('1333+2');
   return {
-    ...base,
+    format: 'layerbench/layout@1',
+    id: 'magic-romak',
+    name: 'Magic Romak',
+    author: 'Rafael Romão',
+    description:
+      'Romak 24 with adaptive keys (h/v), alt repeat, sentence case, caps word, and dead keys for Spanish, French and Italian.',
+    languages: ['pt-BR', 'en'],
+    hostLocale: 'symbols',
+    geometry: { preset: '1333+2' },
+    keys: { space: 'L0', shift: { key: 'R1', kind: 'sk' } },
+    behaviorDefaults: {
+      sl: { quickRelease: true, ignoreModifiers: false, releaseAfterMs: 1000 },
+      sk: { quickRelease: true, ignoreModifiers: true, releaseAfterMs: 1500 },
+    },
+    repeatPolicy: { doubledLetters: 'repeatKey' },
     behaviors: {},
-    combos: [...alpha1Combos(), SEMICOLON_COMBO, ...alpha2Combos(taggedAccent)],
+    combos: [...alpha1Combos(), SEMICOLON_COMBO, ...alpha2Combos()],
     layers: [
       // Holding space reaches the numbers and holding the Alpha 2 key the symbols; the
       // sentence-case feature wraps the space's tap, so both live on one key. Tapping the
       // Alpha 2 key, then the right outer thumb, reaches Accents.
       {
-        ...alpha1,
-        bindings: { ...alpha1.bindings, RBI: adaptiveKey('h', 'v'), L1: ALT_REPEAT },
+        id: 'alpha1',
+        name: 'Alpha 1',
+        bindings: {
+          ...ALPHA1_24,
+          RBI: adaptiveKey('h', 'v'),
+          L1: ALT_REPEAT,
+          L0: SPACE_OR_NUMBERS,
+          R0: ALPHA2_OR_SYMBOLS,
+          R1: { kind: 'sk', mod: 'LSHIFT' },
+        },
       },
       {
         id: 'alpha2',
         name: 'Alpha 2',
         bindings: {
-          ...alpha2Bindings(taggedAccent, ALPHA2_TAG),
+          ...alpha2Bindings(),
           LBI: adaptiveKey('v', 'h'),
           // The second apostrophe makes way for the accents the other languages need.
           R1: { kind: 'sl', layer: DEFAULT_LAYER_IDS.accents },
@@ -552,9 +411,14 @@ export const magicRomak: Layout = (() => {
   };
 })();
 
-// ---------------------------------------------------------------- Romak, on 34 keys
+// ---------------------------------------------------------------- Romak
 
-const ROMAK34_ALPHA1 = rowBindings({
+/**
+ * Romak's Alpha 1 on 34 keys (3x5+2), as its keymap has it: Magic Romak's filled out to the outer
+ * and inner columns. Like every Standard layout's, its base layer keeps no symbol but `'` `,` `.`
+ * `;`, so the standard thumbs leave its `/` empty.
+ */
+const ROMAK_ALPHA1 = rowBindings({
   LTP: 'q',
   LTR: 'b',
   LTM: 'm',
@@ -585,63 +449,26 @@ const ROMAK34_ALPHA1 = rowBindings({
   RBM: ',',
   RBR: '.',
   RBP: '/',
-  L1: { kind: 'key_repeat' },
-  L0: SPACE_OR_NUMBERS,
-  R0: ALPHA2_OR_SYMBOLS,
-  R1: { kind: 'sk', mod: 'LSHIFT' },
 });
 
 /**
- * Each accent one press, with no Alt repeat 2 behind it: Romak has a plain repeat key. Held, `é`
- * types `œ`, which French cannot be written without and no combo composes.
+ * Romak: one alpha layer on 34 keys, with the default layers and the thumbs every bundled Standard
+ * layout shares.
  */
-const ROMAK34_ALPHA2: Record<string, Binding> = {
-  '*': { kind: 'trans' },
-  LTM: { kind: 'macro', symbols: 'qu' },
-  LBM: { kind: 'macro', symbols: 'ç', then: [{ kind: 'sl', layer: 'ccedil' }] },
-  RTI: kp('ô'),
-  RTM: kp('ó'),
-  RTR: kp('ú'),
-  RHI: kp('ã'),
-  RHM: kp('á'),
-  RHR: tapOrHeld('é', 'œ'),
-  RHP: kp('í'),
-  RBI: kp('õ'),
-  RBM: kp('â'),
-  RBR: kp('ê'),
-  L1: kp("'"),
-  R1: kp("'"),
-};
-
-const ROMAK34_DEFAULTS = romakDefaultLayers('3x5+2');
-
-export const romak34: Layout = {
-  format: 'layerbench/layout@1',
-  id: 'romak-34',
-  name: 'Romak',
-  author: 'Rafael Romão',
-  description:
-    'Romak for 34 keys (3x5+2): accented vowels on a one-shot second alpha layer, with combos there for the other accents, and numbers and symbols held from the thumbs.',
-  languages: ['pt-BR', 'en'],
-  hostLocale: 'symbols',
-  geometry: { preset: '3x5+2' },
-  keys: { space: 'L0', shift: { key: 'R1', kind: 'sk' } },
-  behaviorDefaults: {
-    sl: { quickRelease: true, ignoreModifiers: false, releaseAfterMs: 1000 },
-    sk: { quickRelease: true, ignoreModifiers: true, releaseAfterMs: 1500 },
+export const romak: Layout = withStandardThumbs(
+  {
+    format: 'layerbench/layout@1',
+    id: 'romak',
+    name: 'Romak',
+    author: 'Rafael Romão',
+    description:
+      'Romak on 34 keys (3x5+2): one alpha layer, with the default layers and the standard thumbs.',
+    languages: ['pt-BR', 'en'],
+    hostLocale: 'symbols',
+    geometry: { preset: '3x5+2' },
+    keys: { space: 'L0' },
+    layers: [{ id: 'alpha1', name: 'Alpha 1', bindings: ROMAK_ALPHA1 }],
   },
-  layers: [
-    { id: 'alpha1', name: 'Alpha 1', bindings: ROMAK34_ALPHA1 },
-    { id: 'alpha2', name: 'Alpha 2', bindings: ROMAK34_ALPHA2 },
-    { id: 'ccedil', name: 'Ç extension', bindings: CCEDIL_BINDINGS },
-    ...ROMAK34_DEFAULTS.layers,
-  ],
-  conditionalLayers: ROMAK34_DEFAULTS.conditionalLayers,
-  // Alpha 1 has nothing on its left ring and middle fingers' home keys together: they one-shot
-  // Accents, as on every layout with the default layers.
-  combos: [SEMICOLON_COMBO, ...alpha2Combos(kp), accentsCombo('alpha1')],
-  // Accents has a `ç` too, as many presses away, but only Alpha 2's arms Ç extension for the `ão`
-  // and `ões` that follow it, as the author types it.
-  typingPaths: { ç: [{ producer: 'macro:alpha2/LBM' }] },
-  repeatPolicy: { doubledLetters: 'repeatKey' },
-};
+  getGeometryPreset('3x5+2'),
+  'layerbench',
+);
