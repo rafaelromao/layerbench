@@ -89,17 +89,22 @@ function refOf(b: Binding): string | undefined {
 }
 
 /**
- * The behaviour a binding names, unless it is one of `following`, the ones already being followed
- * on the way to it: a behaviour that names itself is followed once, however many times it does.
+ * A binding as the compiler reads it: a reference is the behaviour it names, and a binding that
+ * builds on one is that behaviour with the binding's own fields over it. `following` holds the
+ * behaviours already being followed on the way to it, so one that names itself is followed once,
+ * however many times it does; a reference it cannot follow is null. With what to follow next.
  */
-function follow(
+function expand(
   layout: Layout,
-  ref: string | undefined,
+  b: Binding,
   following: ReadonlySet<string>,
 ): [Binding, ReadonlySet<string>] | null {
-  if (ref === undefined || following.has(ref)) return null;
-  const target = layout.behaviors?.[ref];
-  return target ? [target, new Set([...following, ref])] : null;
+  const ref = refOf(b);
+  const target = ref === undefined || following.has(ref) ? undefined : layout.behaviors?.[ref];
+  if (b.kind === 'ref') return target && ref ? [target, new Set([...following, ref])] : null;
+  if (!target || !ref || target.kind !== b.kind) return [b, following];
+  const { ref: _ref, ...own } = b as Binding & { ref?: string };
+  return [{ ...target, ...own } as Binding, new Set([...following, ref])];
 }
 
 /** The letters a binding types by itself, through its choices and the behaviours it names. */
@@ -109,13 +114,13 @@ function lettersOf(
   out: Set<string>,
   following: ReadonlySet<string> = new Set(),
 ): Set<string> {
-  const letter = letterOf(b);
+  const read = expand(layout, b, following);
+  if (!read) return out;
+  const [m, next] = read;
+  if (b.kind === 'ref') return lettersOf(layout, m, out, next);
+  const letter = letterOf(m);
   if (letter) out.add(letter);
-  const named = follow(layout, refOf(b), following);
-  if (named && b.kind === 'ref') lettersOf(layout, named[0], out, named[1]);
-  else if (named && b.kind !== 'macro')
-    for (const c of choices(named[0])) lettersOf(layout, c, out, named[1]);
-  for (const c of choices(b)) lettersOf(layout, c, out, following);
+  for (const c of choices(m)) lettersOf(layout, c, out, next);
   return out;
 }
 
@@ -186,44 +191,51 @@ function featuresOf(
 ): void {
   const emit = (feature: SpecialFeatureKind, label: string) => out.push({ feature, ...at, label });
   const ref = refOf(b);
-  if (ref !== undefined) {
-    emit('custom_behaviour', `Behaviour ${ref}`);
-    const named = follow(layout, ref, following);
-    // A binding that builds on a behaviour is the behaviour with its own fields over it: the
-    // feature it is, it is once.
-    if (named && b.kind === 'ref') featuresOf(layout, named[0], at, out, named[1]);
-    else if (named) for (const c of choices(named[0])) featuresOf(layout, c, at, out, named[1]);
+  if (ref !== undefined) emit('custom_behaviour', `Behaviour ${ref}`);
+  const read = expand(layout, b, following);
+  if (!read) return;
+  // A binding that builds on a behaviour is the behaviour with its own fields over it: the feature
+  // it is, it is once.
+  const [m, next] = read;
+  if (b.kind === 'ref') {
+    featuresOf(layout, m, at, out, next);
+    return;
   }
-  switch (b.kind) {
+  switch (m.kind) {
     case 'adaptive':
-      if (b.default?.kind === 'key_repeat') emit('alt_repeat', FEATURE_LABELS.alt_repeat);
+      if (m.default?.kind === 'key_repeat') emit('alt_repeat', FEATURE_LABELS.alt_repeat);
       else emit('adaptive', FEATURE_LABELS.adaptive);
       break;
     case 'mod_morph':
       emit('mod_morph', FEATURE_LABELS.mod_morph);
       break;
     case 'macro':
-      emit('macro', b.symbols ? `Macro “${b.symbols}”` : 'Macro');
+      emit('macro', m.symbols ? `Macro “${m.symbols}”` : 'Macro');
       return;
     default:
       break;
   }
-  for (const c of choices(b)) featuresOf(layout, c, at, out, following);
+  for (const c of choices(m)) featuresOf(layout, c, at, out, next);
 }
 
 /**
  * The behaviours a binding names, through its choices, a macro's steps and the behaviours those
  * name: what it types does not count, but a behaviour a macro uses is used.
  */
-function namedIn(layout: Layout, b: Binding, out: Set<string>): Set<string> {
+function namedIn(
+  layout: Layout,
+  b: Binding,
+  out: Set<string>,
+  following: ReadonlySet<string> = new Set(),
+): Set<string> {
   const ref = refOf(b);
-  if (ref !== undefined && !out.has(ref)) {
-    out.add(ref);
-    const target = layout.behaviors?.[ref];
-    if (target) namedIn(layout, target, out);
-  }
-  const steps = b.kind === 'macro' ? [...(b.steps ?? []), ...(b.then ?? [])] : [];
-  for (const c of [...choices(b), ...steps]) namedIn(layout, c, out);
+  if (ref !== undefined) out.add(ref);
+  const read = expand(layout, b, following);
+  if (!read) return out;
+  const [m, next] = read;
+  if (b.kind === 'ref') return namedIn(layout, m, out, next);
+  const steps = m.kind === 'macro' ? [...(m.steps ?? []), ...(m.then ?? [])] : [];
+  for (const c of [...choices(m), ...steps]) namedIn(layout, c, out, next);
   return out;
 }
 

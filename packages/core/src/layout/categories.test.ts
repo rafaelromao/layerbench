@@ -174,6 +174,25 @@ describe('a custom copy of Qwerty', () => {
     ]);
   });
 
+  it('reads a binding that builds on a behaviour with its own fields over it', () => {
+    const l = qwerty();
+    l.behaviors = {
+      base: { kind: 'macro', steps: [{ kind: 'ref', ref: 'helper' }] },
+      helper: kp('x'),
+    };
+    const num = l.layers.find((x) => x.id === DEFAULT_LAYER_IDS.numbers);
+    if (!num) throw new Error('no Numbers');
+    // Its own steps replace the ones `base` has, so nothing uses `helper`.
+    num.bindings.RHI = { kind: 'macro', ref: 'base', steps: [] };
+    expect(specialFeatures(l).map((f) => f.label)).toEqual(['Behaviour helper']);
+    const own = withKey(
+      'LHP',
+      { kind: 'adaptive', ref: 'aa', default: kp('b') },
+      { ...qwerty(), behaviors: { aa: { kind: 'adaptive', default: { kind: 'key_repeat' } } } },
+    );
+    expect(specialFeatures(own).map((f) => f.feature)).toEqual(['custom_behaviour', 'adaptive']);
+  });
+
   it('follows a binding that builds on a named behaviour into it', () => {
     const l = withKey(
       'LHP',
@@ -187,8 +206,8 @@ describe('a custom copy of Qwerty', () => {
     );
     expect(specialFeatures(l).map((f) => f.feature)).toEqual([
       'custom_behaviour',
-      'macro',
       'adaptive',
+      'macro',
     ]);
   });
 
