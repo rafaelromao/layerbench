@@ -394,8 +394,10 @@ export class Simulator {
         if (layerIndex.get(cond.then) !== target) continue;
         const ifs = cond.if.map((id) => layerIndex.get(id) ?? -1);
         // A document can name no more than `MAX_CONDITION_LAYERS`; one written in code that names
-        // more is tried in its own order only.
-        const any = ifs.length <= MAX_CONDITION_LAYERS;
+        // more is tried in its own order only. So is a condition met on the way to another's, so
+        // that only the outermost tries every order: each conditional layer is open once at most,
+        // and the tries add up along a chain of them rather than multiply.
+        const any = ifs.length <= MAX_CONDITION_LAYERS && this.conditionsOpen.size === 1;
         if (this.activateEach(ifs, [], target, events, depth, any)) return true;
       }
       return false;

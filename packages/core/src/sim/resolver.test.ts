@@ -736,6 +736,46 @@ describe('a layer that comes on while others are on together', () => {
     expect(performance.now() - started).toBeLessThan(2000);
   });
 
+  it('is reached through a chain of layers each waiting for the one before', () => {
+    // c0 is toggled from the base layer; each of the next twelve comes on with the one before it
+    // and its own toggle.
+    const ids = Array.from({ length: 13 }, (_, i) => `c${i}`);
+    const keys = ['LTP', 'LTR', 'LTM', 'LTI', 'LTC', 'LHP', 'LHR', 'LHM', 'LHI', 'LHC', 'LBP'];
+    const extra = Array.from({ length: 12 }, (_, i) => `x${i}`);
+    const toggleKeys = [
+      ...keys,
+      'LBR',
+      'LBM',
+      'LBI',
+      'LBC',
+      'RTC',
+      'RTI',
+      'RTM',
+      'RTR',
+      'RTP',
+      'RHC',
+    ];
+    const layout: Layout = {
+      ...toggles(
+        {
+          [toggleKeys[0]]: tog('c0'),
+          ...Object.fromEntries(extra.map((id, i) => [toggleKeys[i + 1], tog(id)])),
+        },
+        [
+          ...extra.map((id) => ({ id, bindings: { '*': trans } })),
+          ...ids.map((id, i) => ({
+            id,
+            bindings: { '*': trans, ...(i === 12 ? { RHI: { kind: 'kp', symbol: '€' } } : {}) },
+          })),
+        ] as Layout['layers'],
+      ),
+      conditionalLayers: ids.slice(1).map((id, i) => ({ if: [ids[i], extra[i]], then: id })),
+    };
+    const started = performance.now();
+    expect(trace(layout, '€').out).toBe('€');
+    expect(performance.now() - started).toBeLessThan(2000);
+  });
+
   it('is never reached when it and another each come on only with the other', () => {
     const layout: Layout = {
       ...toggles({}, [
