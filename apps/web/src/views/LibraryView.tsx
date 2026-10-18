@@ -363,6 +363,7 @@ export function LibraryView() {
   // opens, so one accepted since appears without a deploy.
   const communityLayouts = useCommunity((s) => s.layouts);
   const communityStatus = useCommunity((s) => s.status);
+  const communityError = useCommunity((s) => s.error);
   useEffect(() => {
     refreshCommunity();
   }, []);
@@ -803,6 +804,11 @@ export function LibraryView() {
               {community.length > 0
                 ? 'community layouts as last read'
                 : 'community layouts unavailable'}
+            </span>
+          )}
+          {communityStatus === 'partial' && (
+            <span className="badge badge-warning badge-sm" title={communityError ?? undefined}>
+              some community layouts not read
             </span>
           )}
           {custom.entries.length === 0 && (

@@ -112,8 +112,11 @@ function toCache(layouts: Layout[]): void {
 export interface CommunityState {
   /** The community layouts: those last read, until a fresh read replaces them. */
   layouts: Layout[];
-  /** `cached` until a read is asked for; `failed` keeps whatever was cached. */
-  status: 'cached' | 'reading' | 'read' | 'failed';
+  /**
+   * `cached` until a read is asked for; `failed` keeps whatever was cached; `partial` is a read in
+   * which some files did not come, each kept as last read, if it was.
+   */
+  status: 'cached' | 'reading' | 'read' | 'partial' | 'failed';
   error: string | null;
 }
 
@@ -141,9 +144,14 @@ export function refreshCommunity(): Promise<void> {
         if (from !== source) return;
         const layouts = readLayouts(read, useCommunity.getState().layouts);
         toCache(layouts);
+        const unread = read.filter((r) => r.status === 'unread').map((r) => r.id);
         // Whole only when every file came: a link to one that did not reads again.
-        readThisLoad = read.every((r) => r.status !== 'unread');
-        useCommunity.setState({ layouts, status: 'read', error: null });
+        readThisLoad = unread.length === 0;
+        useCommunity.setState(
+          unread.length === 0
+            ? { layouts, status: 'read', error: null }
+            : { layouts, status: 'partial', error: `could not read ${unread.join(', ')}` },
+        );
       },
       (e: unknown) => {
         if (from !== source) return;

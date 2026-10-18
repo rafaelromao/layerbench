@@ -154,6 +154,10 @@ describe('The community layouts kept in this browser', () => {
       return branch(file);
     });
     await refreshCommunity();
+    expect(useCommunity.getState()).toMatchObject({
+      status: 'partial',
+      error: 'could not read lark',
+    });
     expect(useCommunity.getState().layouts.map((l) => l.id)).toEqual(['night-owl', 'lark']);
   });
 

@@ -652,6 +652,20 @@ describe('Community layouts', () => {
     expect(await screen.findByText('community layouts as last read')).toBeInTheDocument();
   });
 
+  it('says when some could not be read', async () => {
+    const branch = branchWith(communityDoc('night-owl', 'Night owl'), communityDoc('lark', 'Lark'));
+    setCommunitySource(async (file) => {
+      if (file === 'lark.json') throw new Error('503');
+      return branch(file);
+    });
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    expect(await screen.findByText('some community layouts not read')).toHaveAttribute(
+      'title',
+      'could not read lark',
+    );
+    expect(listed('Night owl')).toBeInTheDocument();
+  });
+
   it('says when none could be read', async () => {
     setCommunitySource(async () => {
       throw new Error('offline');
