@@ -169,7 +169,8 @@ text. A link still opens exactly what it names, and a new visit starts from its 
 
 ## A key's numbers
 
-Select a key and, under its name, it shows what it adds to the analysis on the layer shown:
+Select a key and a section of its own opens right above the **Summary**, **Its numbers on** the
+layer shown: what the key adds to the analysis there:
 
 - its share of the presses, and how many were made to reach a layer;
 - its part of each number that adds up over keys, with that number and the share it makes of it.

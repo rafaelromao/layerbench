@@ -40,8 +40,8 @@ typed, marked *estimate after swap* until the layout is typed again; any other c
 again straight away, and the numbers say *updating…* meanwhile. A larger **Sample** gives steadier
 numbers, a smaller one quicker updates.
 
-The selected key shows [its own numbers](analyzing.md#a-keys-numbers) on the layer shown, under its
-name.
+The selected key's [own numbers](analyzing.md#a-keys-numbers) on the layer shown open in a section
+of their own, right above the summary; on a phone, under the word typed.
 
 ## Choosing what a key does
 
@@ -262,7 +262,11 @@ The other panels hold what is not on a single key:
   change is one edit that Undo takes back. A change is refused, with its reason, when it would
   leave fewer than two keys, a key or layer the layout does not have, or the same keys as another
   combo on one of its layers.
-- **Behaviors** are the named bindings keys refer to, such as `&altRepeat`.
+- **Behaviors** lists the layout's special features first, one group each: adaptive keys, alt
+  repeats, macros, mod morphs and its own named behaviours. Each names its layer and key, or its
+  combo; pick one to turn the board to that layer with the key selected, or to outline the combo's
+  keys. Under the list are the named bindings keys refer to, such as `&altRepeat`, as JSON:
+  **Apply behaviors** applies them.
 - **Typing paths** list the other ways a character can be typed. Left alone, a character is typed
   the cheapest way from where the typist is: the fewest presses, then the one that leaves no layer
   key held, then the one that makes the fewest same-finger pairs with the keys before it in the
@@ -297,7 +301,7 @@ one for each key.
 | `Enter` · `F2` | puts the whole binding in **Or type**, ready to replace |
 | `Space` | selects the key; with `Shift`, adds it to the keys selected, or takes it out |
 | `Delete` · `Backspace` | makes the key do nothing, or every key selected |
-| `←` · `→` | on the layer navigator, goes to the previous or the next layer |
+| `←` · `→` | on the layer navigator, goes to the previous or the next layer; on the panels' tabs, to the previous or the next panel |
 | `F2` | on the layer's name in the navigator, renames the layer |
 | `Alt`+`S` | starts a swap; then `Enter` or a click on the other key |
 | `Escape` | cancels a swap or a combo pick; then clears an outlined pair; then closes the editor |
