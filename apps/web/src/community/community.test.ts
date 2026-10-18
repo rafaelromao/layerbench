@@ -134,6 +134,17 @@ describe('The community layouts kept in this browser', () => {
     expect((await communityLayout('night-owl'))?.name).toBe('Night owl');
   });
 
+  it('reads again for the next link when its file would not come', async () => {
+    let tries = 0;
+    const branch = branchWith(owl);
+    setCommunitySource(async (file) => {
+      if (file === 'night-owl.json' && ++tries === 1) throw new Error('503');
+      return branch(file);
+    });
+    expect(await communityLayout('night-owl')).toBeUndefined();
+    expect((await communityLayout('night-owl'))?.name).toBe('Night owl');
+  });
+
   it('keeps a layout whose file would not come this time', async () => {
     setCommunitySource(branchWith(owl, lark));
     await refreshCommunity();

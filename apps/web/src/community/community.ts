@@ -141,7 +141,8 @@ export function refreshCommunity(): Promise<void> {
         if (from !== source) return;
         const layouts = readLayouts(read, useCommunity.getState().layouts);
         toCache(layouts);
-        readThisLoad = true;
+        // Whole only when every file came: a link to one that did not reads again.
+        readThisLoad = read.every((r) => r.status !== 'unread');
         useCommunity.setState({ layouts, status: 'read', error: null });
       },
       (e: unknown) => {
@@ -161,7 +162,7 @@ export function refreshCommunity(): Promise<void> {
 /**
  * The community layout `id`, from those kept here, or once they are read afresh when it is not among
  * them and they have not been read since the page loaded: a link to one accepted since the last
- * visit opens too. A read that failed is tried again by the next link.
+ * visit opens too. A read that failed, or left a file unread, is tried again by the next link.
  */
 export async function communityLayout(id: string): Promise<Layout | undefined> {
   const find = () => useCommunity.getState().layouts.find((l) => l.id === id);
