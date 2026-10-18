@@ -239,7 +239,8 @@ function sharedProducerIds(layout: Layout, place: number): string[] {
  */
 function transparent(layout: Layout, b: Binding, depth = 0): boolean {
   if (b.kind === 'trans') return true;
-  if (b.kind !== 'ref' || depth > 8) return false;
+  // As deep as the compiler follows references.
+  if (b.kind !== 'ref' || depth > 16) return false;
   const named = layout.behaviors?.[b.ref];
   return named !== undefined && transparent(layout, named, depth + 1);
 }

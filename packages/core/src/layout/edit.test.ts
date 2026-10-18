@@ -373,6 +373,18 @@ describe('changing a combo', () => {
     }
   });
 
+  it('follows references as deep as the compiler does to find Transparent', () => {
+    const behaviors: Record<string, Binding> = { b0: { kind: 'trans' } };
+    for (let i = 1; i <= 10; i++) behaviors[`b${i}`] = { kind: 'ref', ref: `b${i - 1}` };
+    const deep: Layout = { ...withCombos, behaviors };
+    const o = applyEdit(deep, {
+      kind: 'updateCombo',
+      combo: 0,
+      binding: { kind: 'ref', ref: 'b10' },
+    });
+    expect(o).toMatchObject({ status: 'refused', message: /cannot be Transparent/ });
+  });
+
   it('refuses a behaviour edit that would make a combo referring to it Transparent', () => {
     const named: Layout = {
       ...withCombos,
