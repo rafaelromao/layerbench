@@ -9,6 +9,7 @@ import {
   specialFeatures,
   thumbAlphas,
 } from './categories.js';
+import { buildGeometry } from './compile.js';
 import type { Binding, Layout } from './types.js';
 
 const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
@@ -132,6 +133,15 @@ describe('a custom copy of Qwerty', () => {
       'mod_morph',
     ]);
     expect(alphaLayers(l)).toEqual(['base']);
+  });
+
+  it('takes an adaptive key whose default names the repeat key for an alt repeat', () => {
+    const l = withKey(
+      'LHP',
+      { kind: 'adaptive', default: { kind: 'ref', ref: 'repeat' } },
+      { ...qwerty(), behaviors: { repeat: { kind: 'key_repeat' } } },
+    );
+    expect(specialFeatures(l).map((f) => f.feature)).toEqual(['alt_repeat', 'custom_behaviour']);
   });
 
   it('is Special with a feature on a combo', () => {
@@ -314,6 +324,15 @@ describe('a custom copy of Qwerty', () => {
     const wild: Layout = { ...l, layers: [{ ...base, bindings }, ...rest] };
     expect(thumbAlphas(wild).map((t) => t.key)).toEqual(expect.arrayContaining(['L0', 'R0']));
     expect(layoutCategory(wild)).toBe('thumb_alpha');
+  });
+
+  it('does not count a layer default no key of the board is left to', () => {
+    const l = qwerty();
+    const every = Object.fromEntries(
+      buildGeometry(l).keys.map((k) => [k.id, { kind: 'none' } as Binding]),
+    );
+    l.layers.splice(1, 0, { id: 'covered', bindings: { '*': kp('a'), ...every } });
+    expect(alphaLayers(l)).toEqual(['base']);
   });
 
   it('is Standard with no alpha layer at all, as everything else is', () => {

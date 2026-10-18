@@ -1,7 +1,7 @@
 import { DEFAULT_LAYER_ID_LIST } from '../layouts/templates.js';
 import { buildGeometry } from './compile.js';
 import { expandFeatures, type WrappingFeature } from './features.js';
-import type { Binding, Layout } from './types.js';
+import type { Binding, LayerDef, Layout } from './types.js';
 
 /**
  * What sets a layout apart from one that only places letters and layers: a key that changes with
@@ -106,6 +106,13 @@ function expand(
   return [{ ...target, ...own } as Binding, new Set([...following, ref])];
 }
 
+/** Whether a binding is the repeat key, itself or through the behaviours it names. */
+function repeats(layout: Layout, b: Binding, following: ReadonlySet<string>): boolean {
+  if (b.kind !== 'ref') return b.kind === 'key_repeat';
+  const read = expand(layout, b, following);
+  return read !== null && repeats(layout, read[0], read[1]);
+}
+
 /** The letters a binding types by itself, through its choices and the behaviours it names. */
 function lettersOf(
   layout: Layout,
@@ -130,9 +137,20 @@ function ownLayers(layout: Layout) {
 
 /** The layers where at least one key types a letter a–z by itself, by id, in the layout's order. */
 export function alphaLayers(layout: Layout): string[] {
+  const keys = buildGeometry(layout).keys.map((k) => k.id);
   return ownLayers(layout)
-    .filter((l) => Object.values(l.bindings).some((b) => lettersOf(layout, b, new Set()).size > 0))
+    .filter((l) =>
+      keys.some((key) => {
+        const b = bindingAt(l, key);
+        return b !== undefined && lettersOf(layout, b, new Set()).size > 0;
+      }),
+    )
     .map((l) => l.id);
+}
+
+/** What a key of the board does on a layer: its own binding, or the layer's default, as compiled. */
+function bindingAt(layer: LayerDef, key: string): Binding | undefined {
+  return layer.bindings[key] ?? layer.bindings['*'];
 }
 
 /** Every letter a thumb key types on an alpha layer. */
@@ -145,8 +163,7 @@ export function thumbAlphas(layout: Layout): ThumbAlpha[] {
   for (const layer of layout.layers) {
     if (!alphas.has(layer.id)) continue;
     for (const key of thumbs) {
-      // An unlisted key has the layer's default, as the compiler gives it.
-      const b = layer.bindings[key] ?? layer.bindings['*'];
+      const b = bindingAt(layer, key);
       if (!b) continue;
       for (const letter of lettersOf(layout, b, new Set()))
         out.push({ layer: layer.id, key, letter });
@@ -203,7 +220,8 @@ function featuresOf(
   }
   switch (m.kind) {
     case 'adaptive':
-      if (m.default?.kind === 'key_repeat') emit('alt_repeat', FEATURE_LABELS.alt_repeat);
+      if (m.default && repeats(layout, m.default, next))
+        emit('alt_repeat', FEATURE_LABELS.alt_repeat);
       else emit('adaptive', FEATURE_LABELS.adaptive);
       break;
     case 'mod_morph':
