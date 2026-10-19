@@ -14,6 +14,8 @@ import {
   layoutCategory,
   layoutLanguageCoverage,
   layoutLanguages,
+  NameTakenError,
+  nameTaken,
   typedLayout,
 } from '@layerbench/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
@@ -23,9 +25,9 @@ import { communityRef } from '../community/ref.js';
 import { featureList } from '../components/FeatureSwitches.js';
 import { formatValue } from '../components/format.js';
 import { HelpLink } from '../components/HelpLink.js';
-import { NameDialog } from '../components/NameDialog.js';
+import { NameDialog, type SavedLayout } from '../components/NameDialog.js';
 import { customRef } from '../custom/ref.js';
-import { retryingSaver } from '../custom/save-new.js';
+import { retryingSaver, type SaveOptions } from '../custom/save-new.js';
 import { rankingKey, recall, rememberBehind } from '../engine/ranking-memory.js';
 import {
   compareBy,
@@ -276,8 +278,17 @@ function LayoutCard({
   );
 }
 
-/** New layout: a name, a board, a starting point, and whether it gets number and symbol layers. */
-function NewLayoutDialog({ onCreate }: { onCreate: (spec: NewLayoutSpec) => void }) {
+/**
+ * New layout: a name, a board, a starting point, and whether it gets number and symbol layers. A
+ * name a saved layout has is offered to overwrite that one, or to be changed.
+ */
+function NewLayoutDialog({
+  taken,
+  onCreate,
+}: {
+  taken: (name: string) => SavedLayout | null;
+  onCreate: (spec: NewLayoutSpec, opts?: SaveOptions) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [rest, setRest] = useState<Omit<NewLayoutSpec, 'name'>>({
     geometry: '3x5+2',
@@ -296,9 +307,14 @@ function NewLayoutDialog({ onCreate }: { onCreate: (spec: NewLayoutSpec) => void
           nameLabel="New layout name"
           initialName="My layout"
           submitLabel="Create and edit"
+          taken={taken}
           onSubmit={(name) => {
             setOpen(false);
             onCreate({ ...rest, name });
+          }}
+          onOverwrite={(name, layout) => {
+            setOpen(false);
+            onCreate({ ...rest, name }, { overwrite: layout.id });
           }}
           onClose={() => setOpen(false)}
         >
@@ -669,21 +685,43 @@ export function LibraryView() {
     [navigate, analyzeSearch],
   );
 
-  /** Save as a custom layout of its own, and say so by the layout's name: the id is only for links. */
+  /** A save that found its name taken, waiting to hear whether to overwrite or what else to call it. */
+  const [clash, setClash] = useState<{
+    layout: Layout;
+    message: string;
+    taken: SavedLayout;
+    settle: (id: string | null) => void;
+  } | null>(null);
+
+  /**
+   * Save as a custom layout of its own, and say so by the layout's name: the id is only for links.
+   * Where another saved layout has the name, it asks first whether to overwrite that one or to call
+   * this one something else, and settles once answered: with the id saved under, or null if not.
+   */
   const saver = useRef(retryingSaver());
   const saveNew = useCallback(
-    async (layout: Layout, message: string): Promise<string | null> => {
+    async (layout: Layout, message: string, opts: SaveOptions = {}): Promise<string | null> => {
       try {
-        const { id } = await saver.current(storage, layout, message);
+        const { id } = await saver.current(storage, layout, message, opts);
         custom.refresh();
         toast.info(`Saved ${layout.name}`);
         return id;
       } catch (e) {
+        if (e instanceof NameTakenError) {
+          custom.refresh();
+          return new Promise((settle) => setClash({ layout, message, taken: e.taken, settle }));
+        }
         toast.error(`Save failed: ${e instanceof Error ? e.message : String(e)}`);
         return null;
       }
     },
     [storage, custom],
+  );
+
+  /** The saved layout that already goes by a name, if any. */
+  const takenBy = useCallback(
+    (name: string) => nameTaken(custom.entries, name, null),
+    [custom.entries],
   );
 
   const saveToLibrary = useCallback(
@@ -692,9 +730,9 @@ export function LibraryView() {
   );
 
   const createLayout = useCallback(
-    async (spec: NewLayoutSpec) => {
+    async (spec: NewLayoutSpec, opts?: SaveOptions) => {
       const layout = newLayout(spec);
-      const id = await saveNew(layout, `Create layout ${spec.name}`);
+      const id = await saveNew(layout, `Create layout ${spec.name}`, opts);
       if (id) navigate({ to: '/analyze', search: analyzeSearch(customRef(id)) });
     },
     [saveNew, navigate, analyzeSearch],
@@ -727,13 +765,37 @@ export function LibraryView() {
     <div className="space-y-6">
       <h1 className="sr-only">Library</h1>
       <div className="flex flex-wrap items-center gap-2">
-        <NewLayoutDialog onCreate={createLayout} />
+        <NewLayoutDialog taken={takenBy} onCreate={createLayout} />
         <ImportDialog
           canSave={custom.available}
           onOpen={openInAnalyzer}
           onSave={saveToLibrary}
           onImportKeymap={importKeymap}
         />
+        {clash && (
+          <NameDialog
+            title="Save under another name"
+            nameLabel="Name of the layout"
+            initialName={clash.layout.name}
+            submitLabel="Save"
+            // The one the save heard of is taken even before the custom layouts are read again.
+            taken={(name) => nameTaken([clash.taken, ...custom.entries], name, null)}
+            onSubmit={(name) => {
+              setClash(null);
+              void saveNew({ ...clash.layout, name }, clash.message).then(clash.settle);
+            }}
+            onOverwrite={(name, taken) => {
+              setClash(null);
+              void saveNew({ ...clash.layout, name }, clash.message, { overwrite: taken.id }).then(
+                clash.settle,
+              );
+            }}
+            onClose={() => {
+              setClash(null);
+              clash.settle(null);
+            }}
+          />
+        )}
         <p className="text-xs opacity-70">
           Start from an empty board or import yours. Or open any layout below in Analyze and change
           it.

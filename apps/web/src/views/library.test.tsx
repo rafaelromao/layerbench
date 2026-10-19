@@ -115,22 +115,54 @@ describe('Creating layouts', () => {
     expect(screen.queryByRole('dialog', { name: 'New layout' })).toBeNull();
   });
 
-  it('gives a new layout a free id when a layout already has its name', async () => {
+  it('makes no second layout of a name a saved one has: it offers to overwrite that one', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
     const qwerty = bundledLayout('qwerty') as Layout;
     await storage.put('layouts', 'mine', toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine' }));
     const { currentSearch } = renderRoute(LIBRARY, { storage });
+    await screen.findByRole('heading', { name: 'Mine', level: 3 });
 
     await user.click(await screen.findByRole('button', { name: 'New layout' }));
+    const dialog = screen.getByRole('dialog', { name: 'New layout' });
+    const name = within(dialog).getByLabelText('New layout name');
+    await user.clear(name);
+    await user.type(name, 'mine ');
+    expect(within(dialog).getByRole('status')).toHaveTextContent(
+      'A saved layout is already called Mine',
+    );
+    expect(within(dialog).getByRole('button', { name: 'Create and edit' })).toBeDisabled();
+    await user.click(within(dialog).getByRole('button', { name: 'Overwrite Mine' }));
+
+    await waitFor(async () => expect(await customInLink(currentSearch())).toBe('mine'));
+    expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['mine']);
+    expect((await storage.get('layouts', 'mine'))?.doc.name).toBe('mine');
+  });
+
+  it('asks for another name when a layout of the name was saved since the list was read', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const { currentSearch } = renderRoute(LIBRARY, { storage });
+    await user.click(await screen.findByRole('button', { name: 'New layout' }));
+    // Saved from another tab: this one has not listed it.
+    const qwerty = bundledLayout('qwerty') as Layout;
+    await storage.put('layouts', 'mine', toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine' }));
     const name = screen.getByLabelText('New layout name');
     await user.clear(name);
     await user.type(name, 'Mine');
     await user.click(screen.getByRole('button', { name: 'Create and edit' }));
 
+    const again = await screen.findByRole('dialog', { name: 'Save under another name' });
+    expect(within(again).getByRole('status')).toHaveTextContent(
+      'A saved layout is already called Mine',
+    );
+    const field = within(again).getByLabelText('Name of the layout');
+    await user.type(field, ' 2');
+    await user.click(within(again).getByRole('button', { name: 'Save' }));
+
     await waitFor(async () => expect(await customInLink(currentSearch())).toBe('mine-2'));
-    expect((await storage.get('layouts', 'mine'))?.doc.name).toBe('Mine');
-    expect(await screen.findByText('Saved Mine')).toBeInTheDocument();
+    expect(await screen.findByText('Saved Mine 2')).toBeInTheDocument();
+    expect((await storage.list('layouts')).map((e) => e.name)).toEqual(['Mine', 'Mine 2']);
   });
 
   it('makes no second layout when a create that failed after the browser wrote it is tried again', async () => {

@@ -3,15 +3,20 @@ import {
   type Collection,
   type IndexEntry,
   type JsonObject,
+  NameTakenError,
   type StorageAdapter,
   StorageConflictError,
   type StorageMeta,
 } from '@layerbench/core';
 
-/** What copying up did: the documents sent to the gists, and those they had as new already. */
+/**
+ * What copying up did: the documents sent to the gists, those they had as new already, and the
+ * layouts left here because the gists have another of the same name.
+ */
 export interface CopiedUp {
   copied: number;
   current: number;
+  taken: number;
 }
 
 /** Copying up stopped partway; what went up before it is in the gists. */
@@ -96,10 +101,23 @@ export class CompositeStorage implements StorageAdapter {
     doc: JsonObject,
     opts: { expectedSha?: string | null; message?: string } = {},
   ): Promise<StorageMeta> {
-    const localMeta = await this.local.put(collection, id, doc, { message: opts.message });
-    if (!this.remote) return localMeta;
-    // A conflict propagates: the work is safe locally, and the user decides what to do about it.
-    return this.remote.put(collection, id, doc, opts);
+    if (!this.remote) return this.local.put(collection, id, doc, { message: opts.message });
+    const before = await this.local.get(collection, id).catch(() => null);
+    await this.local.put(collection, id, doc, { message: opts.message });
+    try {
+      // A conflict propagates: the work is safe locally, and the user decides what to do about it.
+      return await this.remote.put(collection, id, doc, opts);
+    } catch (e) {
+      // The gists have another layout of this name, which the browser did not know of: what the
+      // browser wrote is taken back, so it keeps no second of the name once the user overwrites.
+      if (e instanceof NameTakenError) {
+        await (before
+          ? this.local.put(collection, id, before.doc)
+          : this.local.delete(collection, id)
+        ).catch(() => {});
+      }
+      throw e;
+    }
   }
 
   async delete(collection: Collection, id: string, opts: { message?: string } = {}): Promise<void> {
@@ -121,7 +139,7 @@ export class CompositeStorage implements StorageAdapter {
    */
   async copyUp(): Promise<CopiedUp> {
     const remote = this.remote;
-    const done: CopiedUp = { copied: 0, current: 0 };
+    const done: CopiedUp = { copied: 0, current: 0, taken: 0 };
     if (!remote) return done;
     try {
       for (const collection of COLLECTIONS) {
@@ -154,6 +172,11 @@ export class CompositeStorage implements StorageAdapter {
               message: `Copy ${collection} ${entry.name} from the browser`,
             });
           } catch (e) {
+            // The gists have another layout of its name: it stays here, for the user to rename.
+            if (e instanceof NameTakenError) {
+              done.taken++;
+              continue;
+            }
             if (!(e instanceof StorageConflictError)) throw e;
             done.current++;
             continue;

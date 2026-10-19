@@ -1,4 +1,4 @@
-import { type Collection, StorageConflictError } from '@layerbench/core';
+import { type Collection, NameTakenError, StorageConflictError } from '@layerbench/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { documentFile, GistAdapter, type GistIds, indexFile } from './gist.js';
 import { sha1Hex } from './indexeddb.js';
@@ -162,6 +162,69 @@ describe('gists as storage', () => {
     );
     const index = JSON.parse(files[indexFile('layouts')].content) as { name: string }[];
     expect(index.map((e) => e.name)).toEqual(['Another', 'Mine']);
+  });
+
+  it('refuses a second layout under a name one already has, before any edit', async () => {
+    responder = () => json(200, layoutsGist());
+    const adapter = new GistAdapter(access, memoryIds({ layouts: 'g1' }));
+    const refused = adapter.put('layouts', 'mine-2', { name: ' mine ' });
+    await expect(refused).rejects.toBeInstanceOf(NameTakenError);
+    await expect(refused).rejects.toMatchObject({ taken: { id: 'mine', name: 'Mine' } });
+    expect(calls.some((c) => c.method === 'PATCH')).toBe(false);
+  });
+
+  it('overwrites the layout that has the name, in place, with one row in the index', async () => {
+    responder = (call) =>
+      json(200, call.method === 'PATCH' ? { id: 'g1', files: {} } : layoutsGist());
+    const adapter = new GistAdapter(access, memoryIds({ layouts: 'g1' }));
+    await adapter.put('layouts', 'mine', { name: 'Mine', description: 'newer' });
+
+    const files = calls.find((c) => c.method === 'PATCH')?.body?.files as Record<
+      string,
+      { content: string }
+    >;
+    expect(JSON.parse(files[documentFile('layouts', 'mine')].content)).toEqual({
+      name: 'Mine',
+      description: 'newer',
+    });
+    const index = JSON.parse(files[indexFile('layouts')].content) as { id: string }[];
+    expect(index.map((e) => e.id)).toEqual(['mine']);
+  });
+
+  it('saves a layout renamed to a name nobody has, and refuses one renamed to a name taken', async () => {
+    const other = { id: 'other', name: 'Other', updatedAt: '2026-01-01T00:00:00Z' };
+    responder = (call) =>
+      json(
+        200,
+        call.method === 'PATCH'
+          ? { id: 'g1', files: {} }
+          : layoutsGist({ [indexFile('layouts')]: { content: JSON.stringify([...INDEX, other]) } }),
+      );
+    const adapter = new GistAdapter(access, memoryIds({ layouts: 'g1' }));
+    await expect(adapter.put('layouts', 'mine', { name: 'Other' })).rejects.toMatchObject({
+      taken: { id: 'other' },
+    });
+    await adapter.put('layouts', 'mine', { name: 'Yours' });
+    const files = calls.find((c) => c.method === 'PATCH')?.body?.files as Record<
+      string,
+      { content: string }
+    >;
+    const index = JSON.parse(files[indexFile('layouts')].content) as { name: string }[];
+    expect(index.map((e) => e.name)).toEqual(['Other', 'Yours']);
+  });
+
+  it('still saves a layout that shares its name with a duplicate made before', async () => {
+    const twice = [...INDEX, { id: 'mine-6', name: 'Mine', updatedAt: '2026-01-01T00:00:00Z' }];
+    responder = (call) =>
+      json(
+        200,
+        call.method === 'PATCH'
+          ? { id: 'g1', files: {} }
+          : layoutsGist({ [indexFile('layouts')]: { content: JSON.stringify(twice) } }),
+      );
+    const adapter = new GistAdapter(access, memoryIds({ layouts: 'g1' }));
+    await adapter.put('layouts', 'mine-6', { name: 'Mine' });
+    expect(calls.filter((c) => c.method === 'PATCH')).toHaveLength(1);
   });
 
   it('refuses to overwrite a document that changed since it was read', async () => {

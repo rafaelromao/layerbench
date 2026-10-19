@@ -4,6 +4,8 @@ import {
   type IndexEntry,
   indexSummary,
   type JsonObject,
+  NameTakenError,
+  nameTaken,
   type StorageAdapter,
   StorageConflictError,
   type StorageMeta,
@@ -19,7 +21,8 @@ interface Stored {
  * Storage held in memory, for tests: what the browser's store does, without a database. Documents
  * are kept as text, so each read is a copy, as from any real store, and each write gives the
  * document a new version, so a write that names an older one is a conflict. To make an operation
- * fail, replace it on the instance.
+ * fail, replace it on the instance. As every
+ * store does, it keeps no second layout of a name another has.
  */
 export class MemoryStorage implements StorageAdapter {
   private readonly docs = new Map<string, Stored>();
@@ -62,6 +65,14 @@ export class MemoryStorage implements StorageAdapter {
     // A missing document is not a conflict: the first write of an id always wins.
     if (opts.expectedSha !== undefined && existing && existing.sha !== opts.expectedSha) {
       throw new StorageConflictError();
+    }
+    if (collection === 'layouts') {
+      const taken = nameTaken(
+        await this.list(collection),
+        indexSummary(collection, id, doc).name,
+        id,
+      );
+      if (taken) throw new NameTakenError(taken);
     }
     const sha = `${this.id}-${++this.writes}`;
     this.docs.set(`${collection}/${id}`, {

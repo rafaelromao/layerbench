@@ -57,6 +57,41 @@ export class StorageConflictError extends Error {
   }
 }
 
+/**
+ * Thrown when a save would make a second saved layout going by a name another already has, as
+ * the `-N` copies once did. `taken` is that other one, to overwrite or to name this one apart from.
+ */
+export class NameTakenError extends Error {
+  constructor(readonly taken: { id: string; name: string }) {
+    super(`a saved layout is already called ${taken.name}`);
+    this.name = 'NameTakenError';
+  }
+}
+
+/** A name as a person reads it: capitals and the spacing in and around it do not make two names. */
+function readName(name: string): string {
+  return String(name).trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+/** Whether two names read as one. */
+export function sameName(a: string, b: string): boolean {
+  return readName(a) === readName(b);
+}
+
+/**
+ * The saved document, other than `id`, that already goes by `name`: saving `id` under it would make
+ * a second. None when `id` goes by that name already, so a layout that shares its name with a
+ * duplicate made before can still be saved; `id` is null for a document not saved yet.
+ */
+export function nameTaken<E extends { id: string; name: string }>(
+  entries: readonly E[],
+  name: string,
+  id: string | null,
+): E | null {
+  if (id !== null && entries.some((e) => e.id === id && sameName(e.name, name))) return null;
+  return entries.find((e) => e.id !== id && sameName(e.name, name)) ?? null;
+}
+
 function randomSuffix(): string {
   const bytes = new Uint8Array(4);
   crypto.getRandomValues(bytes);

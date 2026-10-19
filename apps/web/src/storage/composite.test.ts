@@ -1,5 +1,5 @@
 import type { Collection, StorageAdapter } from '@layerbench/core';
-import { StorageConflictError } from '@layerbench/core';
+import { NameTakenError, StorageConflictError } from '@layerbench/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryStorage } from '../test/memory-storage.js';
 import { CompositeStorage, CopyUpError } from './composite.js';
@@ -58,6 +58,27 @@ describe('two stores at once', () => {
     expect((await local.get('layouts', 'mine'))?.doc).toEqual({ name: 'Mine' });
   });
 
+  it('takes back what the browser wrote when the gists already have a layout of that name', async () => {
+    const local = localAdapter();
+    const remote = fakeRemote();
+    await remote.put('layouts', 'mine', { name: 'Mine' });
+    await local.put('layouts', 'kept', { name: 'Kept' });
+    const composite = new CompositeStorage(local, remote);
+
+    // Not in the browser before: it is gone again.
+    await expect(composite.put('layouts', 'mine-2', { name: 'Mine' })).rejects.toBeInstanceOf(
+      NameTakenError,
+    );
+    expect(await local.get('layouts', 'mine-2')).toBeNull();
+
+    // In the browser before, under another name: that one is back.
+    await expect(composite.put('layouts', 'kept', { name: 'Mine' })).rejects.toBeInstanceOf(
+      NameTakenError,
+    );
+    expect((await local.get('layouts', 'kept'))?.doc).toEqual({ name: 'Kept' });
+    expect((await local.list('layouts')).map((e) => e.name)).toEqual(['Kept']);
+  });
+
   it('merges both listings, with the gists winning a shared id', async () => {
     const local = localAdapter();
     const remote = fakeRemote();
@@ -75,7 +96,7 @@ describe('two stores at once', () => {
     await composite.put('layouts', 'mine', { name: 'Mine' });
     expect((await composite.get('layouts', 'mine'))?.doc).toEqual({ name: 'Mine' });
     expect(composite.reachesRemote).toBe(false);
-    expect(await composite.copyUp()).toEqual({ copied: 0, current: 0 });
+    expect(await composite.copyUp()).toEqual({ copied: 0, current: 0, taken: 0 });
   });
 });
 
@@ -105,7 +126,7 @@ describe('copying up', () => {
 
     const composite = new CompositeStorage(local, remote);
     expect(composite.reachesRemote).toBe(true);
-    expect(await composite.copyUp()).toEqual({ copied: 3, current: 1 });
+    expect(await composite.copyUp()).toEqual({ copied: 3, current: 1, taken: 0 });
 
     const name = async (c: Collection, id: string) => (await remote.get(c, id))?.doc.name;
     expect(await name('layouts', 'edited-here')).toBe(
@@ -121,7 +142,7 @@ describe('copying up', () => {
   it('counts a document saved in both at once, as every save is, as up to date', async () => {
     const composite = new CompositeStorage(localAdapter(), fakeRemote());
     await composite.put('layouts', 'mine', { name: 'Mine' });
-    expect(await composite.copyUp()).toEqual({ copied: 0, current: 1 });
+    expect(await composite.copyUp()).toEqual({ copied: 0, current: 1, taken: 0 });
   });
 
   it('stops at the first failure, keeping what went up, and carries on when tried again', async () => {
@@ -142,7 +163,22 @@ describe('copying up', () => {
     expect(stopped).toMatchObject({ copied: 1, message: 'offline' });
 
     fail = false;
-    expect(await composite.copyUp()).toEqual({ copied: 1, current: 1 });
+    expect(await composite.copyUp()).toEqual({ copied: 1, current: 1, taken: 0 });
+  });
+
+  it('leaves a layout whose name the gists have under another id, and carries on', async () => {
+    const local = localAdapter();
+    const remote = fakeRemote();
+    await remote.put('layouts', 'mine', { name: 'Mine' });
+    await local.put('layouts', 'mine-2', { name: 'Mine' });
+    await local.put('layouts', 'other', { name: 'Other' });
+
+    expect(await new CompositeStorage(local, remote).copyUp()).toEqual({
+      copied: 1,
+      current: 0,
+      taken: 1,
+    });
+    expect((await remote.list('layouts')).map((e) => e.id)).toEqual(['mine', 'other']);
   });
 
   it('leaves a copy saved in the gists while copying, from another browser', async () => {
@@ -161,7 +197,11 @@ describe('copying up', () => {
       return listed;
     };
 
-    expect(await new CompositeStorage(local, remote).copyUp()).toEqual({ copied: 0, current: 1 });
+    expect(await new CompositeStorage(local, remote).copyUp()).toEqual({
+      copied: 0,
+      current: 1,
+      taken: 0,
+    });
     expect((await remote.get('layouts', 'busy'))?.doc.name).toBe('theirs');
   });
 
@@ -179,7 +219,11 @@ describe('copying up', () => {
       return listed;
     };
 
-    expect(await new CompositeStorage(local, remote).copyUp()).toEqual({ copied: 0, current: 1 });
+    expect(await new CompositeStorage(local, remote).copyUp()).toEqual({
+      copied: 0,
+      current: 1,
+      taken: 0,
+    });
     expect((await remote.get('layouts', 'new'))?.doc.name).toBe('theirs');
   });
 });

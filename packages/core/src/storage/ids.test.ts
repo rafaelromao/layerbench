@@ -7,7 +7,10 @@ import {
   indexPath,
   indexSummary,
   isDocumentId,
+  NameTakenError,
+  nameTaken,
   StorageConflictError,
+  sameName,
   slug,
   unusedId,
 } from './ids.js';
@@ -115,6 +118,46 @@ describe('document paths and guards', () => {
     expect(e.name).toBe('StorageConflictError');
     expect(e.message).toContain('changed');
     expect(new StorageConflictError('mine').message).toBe('mine');
+  });
+});
+
+describe('names', () => {
+  const entries = [
+    { id: 'magic-breeze', name: 'Magic Breeze', updatedAt: '2026-01-01T00:00:00Z' },
+    { id: 'gust', name: 'Gust', updatedAt: '2026-01-01T00:00:00Z' },
+  ];
+
+  it('reads two names as one whatever their capitals and spacing', () => {
+    expect(sameName(' Magic  breeze ', 'magic Breeze')).toBe(true);
+    expect(sameName('Magic Breeze', 'Magic Breeze 2')).toBe(false);
+    expect(sameName('Magic-Breeze', 'Magic Breeze')).toBe(false);
+  });
+
+  it('finds the saved document that already goes by a name', () => {
+    expect(nameTaken(entries, 'magic breeze', null)?.id).toBe('magic-breeze');
+    expect(nameTaken(entries, 'Breeze', null)).toBeNull();
+  });
+
+  it('is not taken by the document being saved itself', () => {
+    expect(nameTaken(entries, 'Magic Breeze', 'magic-breeze')).toBeNull();
+    // Renamed to another's name, it would be a second.
+    expect(nameTaken(entries, 'Gust', 'magic-breeze')?.id).toBe('gust');
+  });
+
+  it('lets a document that already goes by a name be saved again beside a duplicate made before', () => {
+    const twice = [
+      ...entries,
+      { id: 'magic-breeze-6', name: 'Magic Breeze', updatedAt: '2026-01-01T00:00:00Z' },
+    ];
+    expect(nameTaken(twice, 'Magic Breeze', 'magic-breeze-6')).toBeNull();
+    expect(nameTaken(twice, 'Magic Breeze', null)).not.toBeNull();
+  });
+
+  it('is an error that names the document going by the name', () => {
+    const e = new NameTakenError({ id: 'gust', name: 'Gust' });
+    expect(e.name).toBe('NameTakenError');
+    expect(e.taken).toEqual({ id: 'gust', name: 'Gust' });
+    expect(e.message).toContain('Gust');
   });
 });
 

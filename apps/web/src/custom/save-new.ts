@@ -2,26 +2,42 @@ import {
   freeId,
   type JsonObject,
   type Layout,
+  NameTakenError,
+  nameTaken,
   type StorageAdapter,
+  sameName,
   toCanonicalJson,
 } from '@layerbench/core';
+
+/** How a save goes where another saved layout has the name: `overwrite` is that layout's id. */
+export interface SaveOptions {
+  overwrite?: string;
+}
 
 /**
  * Store a layout as a custom layout of its own, under a free id from its name: a card another layout
  * has the id of is never overwritten. The one way a layout becomes a new custom layout, whether it
  * comes from New layout, an import or Save in Analyze; the id is only for links, and the layout is
- * known by its name. `onAttempt` hears the id and the document before anything is written: a save
- * that falls over may still have been written here, and whoever tries again needs to know where, and
- * to tell that document from one that is someone else's.
+ * known by its name. So no second layout of a name is made: where one has it already, this throws
+ * `NameTakenError` naming that one, and nothing is written, unless `overwrite` is its id, when the
+ * layout is stored there in its place. `onAttempt` hears the id and the document before anything is
+ * written: a save that falls over may still have been written here, and whoever tries again needs
+ * to know where, and to tell that document from one that is someone else's.
  */
 export async function saveNewLayout(
   storage: StorageAdapter,
   layout: Layout,
   message: string,
   onAttempt: (id: string, doc: JsonObject) => void = () => {},
+  { overwrite }: SaveOptions = {},
 ): Promise<{ id: string }> {
-  const taken = new Set((await storage.list('layouts')).map((e) => e.id));
-  const id = freeId(layout.name, taken);
+  const entries = await storage.list('layouts');
+  let id = overwrite;
+  if (id === undefined) {
+    const taken = nameTaken(entries, layout.name, null);
+    if (taken) throw new NameTakenError(taken);
+    id = freeId(layout.name, new Set(entries.map((e) => e.id)));
+  }
   const doc = toCanonicalJson({ ...layout, id });
   onAttempt(id, doc);
   await storage.put('layouts', id, doc, { message });
@@ -48,10 +64,10 @@ export function sameDocument(a: JsonObject, b: JsonObject): boolean {
  * capitals and the spaces around a name do not make two of them.
  */
 export function freeCopyName(name: string, taken: Iterable<string>): string {
-  const used = new Set([...taken].map((n) => n.trim().toLowerCase()));
+  const used = [...taken];
   const base = `${name.trim()} copy`;
   let copy = base;
-  for (let n = 2; used.has(copy.toLowerCase()); n++) copy = `${base} ${n}`;
+  for (let n = 2; used.some((u) => sameName(u, copy)); n++) copy = `${base} ${n}`;
   return copy;
 }
 
@@ -66,10 +82,12 @@ export function retryingSaver(): (
   storage: StorageAdapter,
   layout: Layout,
   message: string,
+  opts?: SaveOptions,
 ) => Promise<{ id: string }> {
   let attempted: { id: string; doc: JsonObject } | null = null;
-  return async (storage, layout, message) => {
-    if (attempted) {
+  return async (storage, layout, message, opts = {}) => {
+    // Overwriting another layout is a save of its own, not a try again of the one that failed.
+    if (attempted && (opts.overwrite === undefined || opts.overwrite === attempted.id)) {
       const { id, doc } = attempted;
       const there = await storage.get('layouts', id).catch(() => null);
       if (
@@ -82,9 +100,15 @@ export function retryingSaver(): (
         return { id };
       }
     }
-    const saved = await saveNewLayout(storage, layout, message, (id, doc) => {
-      attempted = { id, doc };
-    });
+    const saved = await saveNewLayout(
+      storage,
+      layout,
+      message,
+      (id, doc) => {
+        attempted = { id, doc };
+      },
+      opts,
+    );
     attempted = null;
     return saved;
   };
