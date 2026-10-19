@@ -35,7 +35,9 @@ function authOriginFrom(value: string | undefined): string {
  *
  * `connect-src` is the one that matters: the GitHub access token and the session it is renewed
  * with are in this page, and this line is what stops any injected code from sending them anywhere
- * but the GitHub API and the sign-in server they came from.
+ * but the GitHub API and the sign-in server they came from. The one other origin is GitHub's own
+ * file server, `COMMUNITY_ORIGIN` in `src/community/community.ts`, which the community layouts are
+ * read from, and only its folder of them: GitHub's file server, for files of public repositories.
  */
 function contentSecurityPolicy(authOrigin: string): string {
   return [
@@ -47,7 +49,7 @@ function contentSecurityPolicy(authOrigin: string): string {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data:",
     "font-src 'self'",
-    `connect-src 'self' https://api.github.com${authOrigin ? ` ${authOrigin}` : ''}`,
+    `connect-src 'self' https://api.github.com https://raw.githubusercontent.com/rafaelromao/layerbench/layerbench-data/community/${authOrigin ? ` ${authOrigin}` : ''}`,
     "form-action 'none'",
   ].join('; ');
 }

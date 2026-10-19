@@ -2,9 +2,11 @@ import { bundledLayout, CLASSIC_LAYOUTS, type Layout, toCanonicalJson } from '@l
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { setCommunitySource } from '../community/community.js';
 import type { AnalysisClient, AnalyzeRequest } from '../engine/protocol.js';
 import { toast } from '../state/toasts.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
+import { branchWith, communityDoc } from '../test/community.js';
 import { layerNameEl, showLayer, shownLayer } from '../test/layers.js';
 import { customInLink, openSettings, renderRoute, testClient } from '../test/render.js';
 import { setPointerKind, setViewportWidth } from '../test/setup.js';
@@ -217,6 +219,47 @@ describe('Edit', () => {
     expect(within(bar()).getByLabelText('Name')).toHaveValue('Qwerty swapped');
     await linkOf(currentSearch, 'qwerty-swapped');
     expect(screen.queryByText('unsaved')).toBeNull();
+  });
+
+  it('offers the community layouts in its picker, read from the branch', async () => {
+    setCommunitySource(
+      branchWith(
+        communityDoc('night-owl', 'Night owl'),
+        communityDoc('lark', 'Lark'),
+        communityDoc('lark-2', 'Lark'),
+      ),
+    );
+    renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000', {
+      storage: freshStorage(),
+    });
+    const group = await screen.findByRole('group', { name: 'Community' });
+    expect(within(group).getByRole('option', { name: 'Night owl' })).toHaveValue(
+      'community:night-owl',
+    );
+    // Two by the same name are told apart by their ids.
+    expect(within(group).getByRole('option', { name: 'Lark (lark-2)' })).toHaveValue(
+      'community:lark-2',
+    );
+    expect(within(group).getByRole('option', { name: 'Lark (lark)' })).toBeInTheDocument();
+  });
+
+  it('opens a community layout by its link, and saves it as a copy', async () => {
+    const user = userEvent.setup();
+    setCommunitySource(branchWith(communityDoc('night-owl', 'Night owl')));
+    const storage = freshStorage();
+    const { currentSearch } = renderRoute(
+      '/analyze?layout=community:night-owl&corpus=en-general&sample=20000',
+      { storage },
+    );
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+    expect(within(bar()).getByLabelText('Name')).toHaveValue('Night owl');
+    // The link names it as it is: it opens for anyone sent it.
+    expect(new URLSearchParams(currentSearch()).get('layout')).toBe('community:night-owl');
+    expect(screen.getByRole('option', { name: 'Night owl', selected: true })).toBeInTheDocument();
+
+    await saveCopy(user);
+    expect(await screen.findByText('Saved Night owl copy')).toBeInTheDocument();
+    expect((await storage.get('layouts', 'night-owl-copy'))?.doc.name).toBe('Night owl copy');
   });
 
   it('saves the copy again without asking, and makes no second card', async () => {

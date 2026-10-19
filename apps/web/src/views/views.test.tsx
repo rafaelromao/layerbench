@@ -2,8 +2,10 @@ import { bundledLayout, LANGUAGE_PROFILES, type Layout, toCanonicalJson } from '
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
+import { setCommunitySource } from '../community/community.js';
 import type { AnalysisClient, AnalyzeRequest } from '../engine/protocol.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
+import { branchWith, communityDoc } from '../test/community.js';
 import { layerNames, showLayer, shownLayer } from '../test/layers.js';
 import { RecordingClient } from '../test/recording-client.js';
 import { LIBRARY, openSettings, rankingSays, renderRoute, testClient } from '../test/render.js';
@@ -106,6 +108,20 @@ describe('Compare', () => {
     const table = await screen.findByRole('table', undefined, { timeout: 25_000 });
     expect(within(table).getByText('Δ (B − A)')).toBeInTheDocument();
     expect(within(table).getByText('Same finger bigrams')).toBeInTheDocument();
+  });
+
+  it('compares a community layout its link names', async () => {
+    setCommunitySource(branchWith(communityDoc('night-owl', 'Night owl')));
+    renderRoute('/compare?layout=community:night-owl&b=graphite&corpus=en-general&sample=20000', {
+      storage: freshStorage(),
+    });
+    await waitFor(() =>
+      expect(screen.getByLabelText('Layout A')).toHaveValue('community:night-owl'),
+    );
+    expect(
+      within(screen.getByLabelText('Layout A')).getByRole('option', { name: 'Night owl' }),
+    ).toBeInTheDocument();
+    expect(await screen.findByRole('table', undefined, { timeout: 25_000 })).toBeInTheDocument();
   });
 
   it('shows every layer of each layout, one at a time', async () => {

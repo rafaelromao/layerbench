@@ -26,7 +26,8 @@ browser, the same link is a layout of its own, and saving it there makes a copy.
 
 ### Saving a copy
 
-A layout that is not yours is never saved over: one that comes with the app, or that a link or
+A layout that is not yours is never saved over: one that comes with the app, a community layout,
+or one that a link or
 **Open in analyzer** brought here and you have not saved. Its first **Save** opens a dialog that says
 Save makes a copy in your custom layouts and asks for the copy's name. The name offered is the
 layout's with *copy* after it, numbered (*copy 2*) if a layout already has it; an empty name is
@@ -89,6 +90,21 @@ if a link opens on a different layout than it should, check that nothing after t
 the way.
 
 ## Adding a layout to the Library
+
+A layout joins the Library in one of two ways: as a community layout, which needs no new version of
+the app, or bundled with the app, as the layouts it came with are.
+
+### As a community layout
+
+Community layouts are layouts other people made, accepted into the Library. Each is a file on the
+`layerbench-data` branch of [layerbench](https://github.com/rafaelromao/layerbench), apart from the
+app's code: `community/<id>.json`, the layout's LayerBench JSON, named by its id. A pull request
+into that branch that adds one file proposes a layout, and merging it accepts it: it is in every
+visitor's Library the next time it opens, marked *community*, with no new version of the app. A
+file that is not a layout as LayerBench saves it, with an author and a description that links to
+where it comes from, is left out.
+
+### Bundled with the app
 
 The layouts LayerBench came with were written into it from where their authors published them. A
 new one joins them as a custom layout in LayerBench, added unchanged by pull request on GitHub.

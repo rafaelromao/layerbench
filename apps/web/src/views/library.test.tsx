@@ -8,9 +8,11 @@ import {
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { setCommunitySource } from '../community/community.js';
 import type { AnalysisClient, AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { useSession } from '../state/session.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
+import { branchWith, communityDoc } from '../test/community.js';
 import {
   customInLink,
   LIBRARY,
@@ -54,6 +56,7 @@ beforeEach(() =>
     librarySort: 'effort',
     hiddenBoards: [],
     hideCustom: false,
+    hideCommunity: false,
     hiddenCategories: [],
   }),
 );
@@ -606,6 +609,92 @@ describe('Choosing which boards are listed', () => {
 
     await user.click(custom);
     expect(listed('Mine')).toBeInTheDocument();
+  });
+});
+
+describe('Community layouts', () => {
+  /** A card's badges: what kind of layout it is, and its category. */
+  const badgesOf = (name: string) =>
+    [...(listed(name)?.closest('article')?.querySelectorAll('.badge-xs') ?? [])].map(
+      (b) => b.textContent,
+    );
+
+  it('lists the layouts accepted on the branch, flagged and in their category, ranked with the rest', async () => {
+    setCommunitySource(branchWith(communityDoc('night-owl', 'Night owl')));
+    renderRoute(LIBRARY, { storage: freshStorage() });
+
+    expect(await screen.findByRole('heading', { name: 'Night owl', level: 3 })).toBeInTheDocument();
+    expect(badgesOf('Night owl')).toEqual(expect.arrayContaining(['community', 'Standard']));
+    expect(badgesOf('Night owl')).not.toContain('custom');
+    expect(badgesOf('Qwerty')).not.toContain('community');
+    expect(screen.getByRole('link', { name: 'Open Night owl' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('layout=community%3Anight-owl'),
+    );
+    // Not one's own: there is nothing to delete.
+    expect(screen.queryByRole('button', { name: 'Delete Night owl' })).toBeNull();
+    await rankingSays(/^Lower is better/);
+    const card = listed('Night owl')?.closest('article') as HTMLElement;
+    expect(within(card).queryByText('scoring…')).toBeNull();
+  });
+
+  it('shows those kept in this browser while the branch is read again', async () => {
+    setCommunitySource(branchWith(communityDoc('night-owl', 'Night owl')));
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    await screen.findByRole('heading', { name: 'Night owl', level: 3 });
+    cleanup();
+
+    setCommunitySource(async () => {
+      throw new Error('offline');
+    });
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    expect(await screen.findByRole('heading', { name: 'Night owl', level: 3 })).toBeInTheDocument();
+    expect(await screen.findByText('community layouts as last read')).toBeInTheDocument();
+  });
+
+  it('says when some could not be read', async () => {
+    const branch = branchWith(communityDoc('night-owl', 'Night owl'), communityDoc('lark', 'Lark'));
+    setCommunitySource(async (file) => {
+      if (file === 'lark.json') throw new Error('503');
+      return branch(file);
+    });
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    expect(await screen.findByText('some community layouts not read')).toHaveAttribute(
+      'title',
+      'could not read lark',
+    );
+    expect(listed('Night owl')).toBeInTheDocument();
+  });
+
+  it('says when none could be read', async () => {
+    setCommunitySource(async () => {
+      throw new Error('offline');
+    });
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    expect(await screen.findByText('community layouts unavailable')).toBeInTheDocument();
+  });
+
+  it('leaves them out when asked, and remembers the choice', async () => {
+    const user = userEvent.setup();
+    setCommunitySource(branchWith(communityDoc('night-owl', 'Night owl')));
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    await screen.findByRole('heading', { name: 'Night owl', level: 3 });
+
+    await openRanking();
+    const layouts = screen.getByRole('group', { name: 'Layouts' });
+    const community = within(layouts).getByRole('checkbox', { name: 'Community layouts (1)' });
+    expect(community).toBeChecked();
+
+    await user.click(community);
+    expect(listed('Night owl')).toBeNull();
+    expect(listed('Qwerty')).toBeInTheDocument();
+    expect(screen.getByText(/of [0-9]+ layouts, without the community ones\./)).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem('layerbench:session') ?? '{}').state).toMatchObject({
+      hideCommunity: true,
+    });
+
+    await user.click(community);
+    expect(listed('Night owl')).toBeInTheDocument();
   });
 });
 

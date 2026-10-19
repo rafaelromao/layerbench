@@ -47,6 +47,11 @@ describe('analysis parameters', () => {
     expect(parseLayoutRef('custom:index')).toEqual({ kind: 'bundled', value: 'custom:index' });
     expect(parseLayoutRef('inline:abc')).toEqual({ kind: 'inline', value: 'abc' });
     expect(parseLayoutRef('qwerty')).toEqual({ kind: 'bundled', value: 'qwerty' });
+    expect(parseLayoutRef('community:night-owl')).toEqual({
+      kind: 'community',
+      value: 'night-owl',
+    });
+    expect(parseLayoutRef('community:../x')).toEqual({ kind: 'bundled', value: 'community:../x' });
   });
 
   it('takes a view’s own default corpus, but never over the one a link names', () => {
