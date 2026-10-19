@@ -12,6 +12,7 @@ import {
 import {
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
   type Ref,
   useCallback,
   useId,
@@ -45,6 +46,8 @@ export interface KeyboardCombo {
   /** Positions of the keys pressed together. */
   keys: number[];
   label: string;
+  /** What it types is a dead key's accent, drawn as dead keys are. */
+  dead?: boolean;
   /** Drawn as being pressed, as a step of how a word is typed is. */
   active?: boolean;
 }
@@ -71,6 +74,7 @@ export function typingCombos(
         index: c.idx,
         keys: c.keys,
         label: `${l.tap || '·'}${held}`,
+        ...(l.dead ? { dead: true } : {}),
         active: c.id === active,
       };
     });
@@ -152,6 +156,8 @@ const GAP = 6;
 const MARGIN_X = 0.05;
 const MARGIN_Y = 0.12;
 const SPLIT_GAP = 0.3;
+/** How far a press may travel and still be a click, in screen pixels: the drag threshold. */
+const CLICK_SLOP = 4;
 /** Inner margin of a cap, in the same units. */
 const INSET = 5;
 /** Height kept for the band along the bottom of a cap, and for the shifted legend above. */
@@ -291,6 +297,7 @@ function modelKeys(compiled: CompiledLayout, layerIdx: number, opts: ModelOption
       colour: layerColour(compiled, l.layer),
       number: listed ? ++numbered : null,
       trans: l.kind === 'trans' || implicit,
+      dead: l.dead && tap !== '',
       heat: opts.heat?.[idx] ?? 0,
       highlighted: opts.highlighted?.has(idx) ?? false,
       pressed: opts.pressed?.has(idx) ?? false,
@@ -334,6 +341,11 @@ export interface KeyboardProps {
    * Ctrl or ⌘ held, with Shift and Enter or Space, or a finger resting on the key and lifted.
    */
   onKeyClick?: (keyId: string, how?: { add: boolean }) => void;
+  /**
+   * A click on the board between the keys, to put away whatever is picked. A press that travelled
+   * before it let go — a drag, a swipe, a pan — is not one.
+   */
+  onEmptyClick?: () => void;
   /** Enables dragging a key onto another key. */
   draggable?: boolean;
   onDropKey?: (drop: KeyDrop) => void;
@@ -378,6 +390,7 @@ export function Keyboard({
   className,
   id,
   onKeyClick,
+  onEmptyClick,
   draggable = false,
   onDropKey,
   onDragStart,
@@ -444,6 +457,20 @@ export function Keyboard({
     onLongPress: onKeyClick ? (keyId) => onKeyClick(keyId, { add: true }) : undefined,
   });
 
+  // Where the press under way began, to tell a click between the keys from the end of a gesture.
+  const pressedAt = useRef<{ x: number; y: number } | null>(null);
+  const onBoardClick = (e: ReactMouseEvent<SVGSVGElement>) => {
+    const start = pressedAt.current;
+    pressedAt.current = null;
+    // A drop, kept from the key under it, is kept from the board too.
+    if (draggable && drag.consumeClick()) return;
+    if (!(e.target instanceof Element) || e.target.closest('g[data-key], .lb-combo-pickable')) {
+      return;
+    }
+    if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > CLICK_SLOP) return;
+    onEmptyClick?.();
+  };
+
   const reached = useMemo(() => reachOf(compiled, layerIdx), [compiled, layerIdx]);
   // The ring and the band word take the colour of the layer they lead to: this one.
   const shownColour = layerColourAt(compiled, layerIdx);
@@ -495,6 +522,7 @@ export function Keyboard({
   const listedKeys = keys.filter((k) => k.number !== null);
 
   const board = (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: a click between the keys is the pointer's way to put a pick away; the keyboard's is Escape on a key, which the view handles
     <svg
       id={id}
       className={`lb-keyboard w-full h-auto select-none ${className ?? ''}`}
@@ -504,6 +532,14 @@ export function Keyboard({
       role={interactive ? 'group' : 'img'}
       aria-label="Keyboard layout"
       {...(draggable ? drag.handlers : {})}
+      onPointerDownCapture={
+        onEmptyClick && interactive
+          ? (e) => {
+              pressedAt.current = { x: e.clientX, y: e.clientY };
+            }
+          : undefined
+      }
+      onClick={onEmptyClick && interactive ? onBoardClick : undefined}
     >
       {arcs.length > 0 && (
         <defs>
@@ -649,7 +685,7 @@ export function Keyboard({
               x="0"
               y={fmt(tapY)}
               textAnchor="middle"
-              className={`lb-key-tap lb-kind-${k.legend.kind}`}
+              className={`lb-key-tap lb-kind-${k.legend.kind}${k.dead ? ' lb-key-dead' : ''}`}
               fontSize={k.tapFit.size}
               style={tapColour ? { fill: tapColour } : undefined}
             >
@@ -666,6 +702,17 @@ export function Keyboard({
                 </>
               )}
             </text>
+            {k.dead && (
+              // The place the accented letter will take, as a dotted circle marks it in print: a
+              // dotted line under the accent, which no font has to have.
+              <line
+                x1={fmt(-k.tapFit.size * 0.3)}
+                x2={fmt(k.tapFit.size * 0.3)}
+                y1={fmt(tapY + k.tapFit.size * 0.45)}
+                y2={fmt(tapY + k.tapFit.size * 0.45)}
+                className="lb-key-dead-base"
+              />
+            )}
             {k.holdFit && (
               <text
                 x="0"
@@ -699,7 +746,7 @@ export function Keyboard({
               // biome-ignore lint/a11y/noStaticElementInteractions: an SVG group has no button element to be; it takes the role, the focus and the keys of one when it can be picked.
               <g
                 key={c.index}
-                className={`lb-combo${c.active ? ' lb-combo-active' : ''}${pick ? ' lb-combo-pickable' : ''}${c.index === openCombo ? ' lb-combo-open' : ''}`}
+                className={`lb-combo${c.dead ? ' lb-combo-dead' : ''}${c.active ? ' lb-combo-active' : ''}${pick ? ' lb-combo-pickable' : ''}${c.index === openCombo ? ' lb-combo-open' : ''}`}
                 transform={`translate(${fmt(x)} ${fmt(y)})`}
                 role={pick ? 'button' : undefined}
                 tabIndex={pick ? 0 : undefined}
@@ -805,7 +852,8 @@ function LegendList({
 
 /**
  * The list of numbered keys for a board drawn with `legendList="separate"`, wherever the view
- * wants it. It numbers the keys the same way the board does, from the same inputs.
+ * wants it. It numbers the keys the same way the board does, from the same inputs, and says so
+ * when there are none.
  */
 export function KeyLegend({
   compiled,
@@ -824,7 +872,12 @@ export function KeyLegend({
   });
   const listed = keys.filter((k) => k.number !== null);
   const reach = reachLinesOf(keys);
-  return listed.length === 0 && reach.length === 0 ? null : (
+  // An empty list would leave the legend's panel blank, as if something had failed to load.
+  return listed.length === 0 && reach.length === 0 ? (
+    <p className="text-xs opacity-70">
+      Every key on this layer fits its label; nothing to explain.
+    </p>
+  ) : (
     <LegendList keys={listed} reach={reach} colour={layerColourAt(compiled, layerIdx)} />
   );
 }

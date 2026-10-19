@@ -191,6 +191,7 @@
   --lb-legend-adaptive: oklch(0.78 0.13 277);
   --lb-legend-repeat: oklch(0.78 0.11 242);
   --lb-legend-number: oklch(0.82 0.12 75);
+  --lb-legend-dead: oklch(0.78 0.12 340);
 
   /*
    * The arrows that trace a selected pair or word across the board: green, apart from the heat
@@ -205,6 +206,7 @@
   --lb-legend-adaptive: oklch(0.5 0.17 47);
   --lb-legend-repeat: oklch(0.48 0.17 260);
   --lb-legend-number: oklch(0.5 0.13 60);
+  --lb-legend-dead: oklch(0.5 0.17 340);
   --lb-layer-1: oklch(0.5 0.16 255);
   --lb-layer-2: oklch(0.5 0.14 150);
   --lb-layer-3: oklch(0.52 0.13 60);
@@ -357,6 +359,22 @@
 }
 
 /*
+ * A dead key: its spacing accent, which any font draws, in a colour of its own, over a dotted line
+ * where the letter it accents will go. A combining mark on a dotted circle says the same in print,
+ * but a phone's fallback font draws it as a box.
+ */
+.lb-key-tap.lb-key-dead {
+  fill: var(--lb-legend-dead);
+}
+.lb-key-dead-base {
+  stroke: var(--lb-legend-dead);
+  stroke-width: 1.5;
+  stroke-dasharray: 1.5 2.5;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+/*
  * A key at half heat or more, or being pressed, is filled close to the accent colour, where no
  * coloured legend keeps its contrast. Every legend on it takes the key's text colour instead, at
  * full strength: over 4:1 at full heat in the dark theme, and 6:1 in the light one.
@@ -366,6 +384,9 @@
 }
 .lb-key-hot :is(.lb-key-hold, .lb-key-shifted, .lb-kind-raw) {
   opacity: 1;
+}
+.lb-key-hot .lb-key-dead-base {
+  stroke: var(--lb-key-text);
 }
 .lb-key-thumb .lb-key-cap {
   stroke-width: 2;
@@ -419,6 +440,10 @@
 .lb-combo text {
   fill: var(--color-base-content);
   font-weight: 600;
+}
+/* A combo that arms an accent, drawn as a dead key on a key is. */
+.lb-combo-dead text {
+  fill: var(--lb-legend-dead);
 }
 .lb-combo-active rect {
   fill: var(--color-primary);

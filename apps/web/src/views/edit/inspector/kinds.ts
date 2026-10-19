@@ -61,7 +61,7 @@ export const MORE_KINDS: readonly KindInfo[] = [
   { kind: 'morph', label: 'Morph', glyph: 'a⇧b', hint: 'changes with a modifier or a layer' },
   { kind: 'capsword', label: 'Caps word', glyph: '⇪', hint: 'capitals until the word ends' },
   { kind: 'unicode', label: 'Unicode', glyph: 'U+', hint: 'a character the host has no key for' },
-  { kind: 'deadkey', label: 'Dead key', glyph: '◌́', hint: 'accents the next letter' },
+  { kind: 'deadkey', label: 'Dead key', glyph: '´', hint: 'accents the next letter' },
   {
     kind: 'behaviour',
     label: 'Behaviour',

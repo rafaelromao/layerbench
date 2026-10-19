@@ -1,8 +1,8 @@
 import { bundledLayout, compileLayout } from '@layerbench/core';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { drawnX, Keyboard, reach } from './Keyboard.js';
+import { drawnX, Keyboard, KeyLegend, reach } from './Keyboard.js';
 
 const qwerty = compileLayout(bundledLayout('qwerty')!);
 const romak = compileLayout(bundledLayout('magic-romak')!);
@@ -251,6 +251,109 @@ describe('Keyboard', () => {
     const { container } = render(<Keyboard compiled={qwerty} highlight={[pos]} />);
     const cap = container.querySelector('g[data-key="RHI"] .lb-key-cap');
     expect(cap?.classList.contains('lb-key-highlight')).toBe(true);
+  });
+});
+
+describe('the legend under the board', () => {
+  it('says there is nothing to explain when every key fits its label', () => {
+    render(<KeyLegend compiled={qwerty} />);
+    expect(screen.queryByRole('list', { name: 'Key legend' })).toBeNull();
+    expect(screen.getByText(/Every key on this layer fits its label/)).toBeInTheDocument();
+  });
+
+  it('lists the keys it numbers, and no hint, when there are some', () => {
+    render(<KeyLegend compiled={romak} />);
+    expect(screen.getByRole('list', { name: 'Key legend' })).toBeInTheDocument();
+    expect(screen.queryByText(/Every key on this layer fits its label/)).toBeNull();
+  });
+});
+
+describe('a dead key', () => {
+  const doc = bundledLayout('qwerty')!;
+  const accented = compileLayout({
+    ...doc,
+    layers: doc.layers.map((l, i) =>
+      i === 0
+        ? {
+            ...l,
+            bindings: { ...l.bindings, LHM: { kind: 'dead_key', diacritic: '´', shifted: '¨' } },
+          }
+        : l,
+    ),
+  });
+
+  it('draws its spacing accent, styled as dead, with a mark where the letter will go', () => {
+    const { container } = render(<Keyboard compiled={accented} />);
+    const key = container.querySelector('g[data-key="LHM"]') as Element;
+    const tap = key.querySelector('.lb-key-tap') as Element;
+    expect(tap.textContent).toBe('´');
+    expect(tap).toHaveClass('lb-key-dead');
+    expect(key.querySelector('.lb-key-shifted')?.textContent).toBe('¨');
+    expect(key.querySelector('.lb-key-dead-base')).not.toBeNull();
+    // A key that types its letter is not marked.
+    const lhi = container.querySelector('g[data-key="LHI"]') as Element;
+    expect(lhi.querySelector('.lb-key-dead, .lb-key-dead-base')).toBeNull();
+  });
+});
+
+describe('a click on the board between the keys', () => {
+  const at = { clientX: 10, clientY: 10 };
+
+  it('clears what is picked, and a click on a key does not', async () => {
+    const user = userEvent.setup();
+    const onEmptyClick = vi.fn();
+    const onKeyClick = vi.fn();
+    render(<Keyboard compiled={qwerty} onKeyClick={onKeyClick} onEmptyClick={onEmptyClick} />);
+    await user.click(screen.getByRole('button', { name: 'Key LHM: d' }));
+    expect(onKeyClick).toHaveBeenCalledTimes(1);
+    expect(onEmptyClick).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('group', { name: 'Keyboard layout' }));
+    expect(onEmptyClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('does nothing at the end of a drag or a swipe that ended between the keys', () => {
+    const onEmptyClick = vi.fn();
+    render(
+      <Keyboard compiled={qwerty} draggable onDropKey={vi.fn()} onEmptyClick={onEmptyClick} />,
+    );
+    const board = screen.getByRole('group', { name: 'Keyboard layout' });
+    const key = screen.getByRole('button', { name: 'Key LHM: d' });
+
+    // A key dragged and let go between the keys.
+    fireEvent.pointerDown(key, { ...at, pointerId: 1, pointerType: 'mouse' });
+    fireEvent.pointerMove(board, { clientX: 60, clientY: 10, pointerId: 1, pointerType: 'mouse' });
+    fireEvent.pointerUp(board, { clientX: 60, clientY: 10, pointerId: 1, pointerType: 'mouse' });
+    fireEvent.click(board, { clientX: 60, clientY: 10 });
+    expect(onEmptyClick).not.toHaveBeenCalled();
+
+    // A finger swiped across the board, from between the keys.
+    fireEvent.pointerDown(board, { ...at, pointerId: 2, pointerType: 'touch' });
+    fireEvent.pointerUp(board, { clientX: 120, clientY: 12, pointerId: 2, pointerType: 'touch' });
+    fireEvent.click(board, { clientX: 120, clientY: 12 });
+    expect(onEmptyClick).not.toHaveBeenCalled();
+
+    // A plain press and release there still clears.
+    fireEvent.pointerDown(board, { ...at, pointerId: 3, pointerType: 'mouse' });
+    fireEvent.pointerUp(board, { ...at, pointerId: 3, pointerType: 'mouse' });
+    fireEvent.click(board, at);
+    expect(onEmptyClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('is not a click between the keys on a combo’s pill', async () => {
+    const user = userEvent.setup();
+    const onEmptyClick = vi.fn();
+    const onComboClick = vi.fn();
+    render(
+      <Keyboard
+        compiled={qwerty}
+        combos={[{ id: 'c', index: 0, keys: [0, 1], label: 'x' }]}
+        onComboClick={onComboClick}
+        onEmptyClick={onEmptyClick}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: /^Edit combo/ }));
+    expect(onComboClick).toHaveBeenCalledWith(0);
+    expect(onEmptyClick).not.toHaveBeenCalled();
   });
 });
 

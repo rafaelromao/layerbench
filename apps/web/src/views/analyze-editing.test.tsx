@@ -1208,6 +1208,72 @@ describe('Edit', () => {
     expect(await screen.findByRole('button', { name: 'Key LHM: ç' })).toBeInTheDocument();
   });
 
+  it('puts away whatever is picked on a click between the keys, but not after a drag or a swipe', async () => {
+    const user = userEvent.setup();
+    await openEdit();
+    const board = screen.getByRole('group', { name: 'Keyboard layout' });
+    const editing = () => screen.queryByRole('group', { name: /^Edit / });
+    const outlined = () => document.querySelectorAll('#kb-analyze .lb-key-highlight').length;
+
+    // Keys picked together.
+    await user.click(key('Key LHM: d'));
+    await user.keyboard('{Shift>}');
+    await user.click(key('Key LHI: f'));
+    await user.keyboard('{/Shift}');
+    expect(await screen.findByRole('group', { name: 'Edit 2 keys' })).toBeInTheDocument();
+    await user.click(board);
+    await waitFor(() => expect(editing()).toBeNull());
+
+    // A swap armed.
+    await user.click(key('Key LHM: d'));
+    await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Swap with…' }));
+    expect(screen.getByText(/is armed/)).toBeInTheDocument();
+    await user.click(board);
+    expect(screen.queryByText(/is armed/)).toBeNull();
+    expect(editing()).toBeNull();
+
+    // A pair outlined from a card.
+    await user.click(
+      document.querySelector<HTMLButtonElement>('.lb-items li button') as HTMLElement,
+    );
+    await waitFor(() => expect(outlined()).toBeGreaterThan(0));
+    await user.click(board);
+    expect(outlined()).toBe(0);
+    expect(document.querySelectorAll('#kb-analyze .lb-arc path')).toHaveLength(0);
+
+    // A finger swiped across the board keeps the key picked.
+    await user.click(key('Key LHM: d'));
+    await inspector('LHM');
+    fireEvent.pointerDown(board, { clientX: 10, clientY: 10, pointerType: 'touch' });
+    fireEvent.click(board, { clientX: 140, clientY: 12 });
+    expect(await inspector('LHM')).toBeInTheDocument();
+    // So does a key dropped between the keys: the click the release sends is the drop's.
+    await dragKey('LTR', 'LTM');
+    expect(await screen.findByRole('button', { name: 'Key LTR: e' })).toBeInTheDocument();
+    await inspector('LTM');
+    fireEvent.click(board, { clientX: 20, clientY: 20 });
+    expect(await inspector('LTM')).toBeInTheDocument();
+  });
+
+  it('keeps the board first, with the layers under it and Heat, Undo and Redo under them', async () => {
+    await openEdit();
+    const region = screen.getByRole('region', { name: 'Board' });
+    const board = within(region).getByRole('group', { name: 'Keyboard layout' });
+    const layers = within(region).getByRole('group', { name: 'Layers' });
+    const heat = within(region).getByLabelText('Heat');
+    const undo = within(region).getByRole('button', { name: 'Undo' });
+    const redo = within(region).getByRole('button', { name: 'Redo' });
+    const after = (a: Element, b: Element) =>
+      (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+    // Nothing is drawn above the board.
+    for (const control of [layers, heat, undo, redo]) expect(after(board, control)).toBe(true);
+    // Heat and the undo buttons share a row under the layers: Heat first, then Undo and Redo.
+    expect(after(layers, heat)).toBe(true);
+    expect(after(heat, undo)).toBe(true);
+    expect(heat.closest('.lb-board-tools')).toBe(undo.closest('.lb-board-tools'));
+    expect(layers.closest('.lb-board-tools')).toBeNull();
+  });
+
   it('lets the next click through when a drop was followed by no click at all', async () => {
     const user = userEvent.setup();
     await openEdit();

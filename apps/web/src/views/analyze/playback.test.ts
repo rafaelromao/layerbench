@@ -51,16 +51,22 @@ describe('the combos a board shows', () => {
     // The keymap's: the accents as dead keys, and what `?` and `!` type when held.
     expect(typingCombos(compiled, layer('alpha2')).map((c) => c.label)).toEqual([
       '-',
-      '◌̈',
-      '◌́',
-      '◌̀',
-      '◌̂',
-      '◌̃',
+      '¨',
+      '´',
+      '`',
+      '^',
+      '~',
       '? / ¿',
       '! / ¡',
       ':',
       'à',
     ]);
+    // The accents are drawn as dead keys, not as the letters a combo types.
+    expect(
+      typingCombos(compiled, layer('alpha2'))
+        .filter((c) => c.dead)
+        .map((c) => c.label),
+    ).toEqual(['¨', '´', '`', '^', '~']);
     // Alpha 1's letter combos are marked as shortcuts, which the analysis never uses: only `;` types.
     expect(typingCombos(compiled, layer('alpha1')).map((c) => c.label)).toEqual([';']);
   });
