@@ -11,7 +11,7 @@ import {
   setKeyBinding,
   swapKeys,
 } from './ops.js';
-import { safeParseLayout } from './schema.js';
+import { isLayoutLink, safeParseLayout } from './schema.js';
 import type { Binding, LayerColor, Layout, LayoutFeatures, TypingPathEntry } from './types.js';
 
 /**
@@ -70,6 +70,8 @@ export type Edit =
       name?: string;
       author?: string;
       description?: string;
+      /** Where the layout comes from, an http(s) URL; an empty one takes the link away. */
+      link?: string;
       /** The languages the layout is for, by tag; an empty list says none. */
       languages?: string[];
     }
@@ -506,15 +508,20 @@ const handlers: Handlers = {
   },
 
   setMeta(layout, edit) {
-    return {
-      layout: {
-        ...layout,
-        name: edit.name ?? layout.name,
-        author: edit.author ?? layout.author,
-        description: edit.description ?? layout.description,
-        languages: edit.languages ?? layout.languages,
-      },
+    const next: Layout = {
+      ...layout,
+      name: edit.name ?? layout.name,
+      author: edit.author ?? layout.author,
+      description: edit.description ?? layout.description,
+      languages: edit.languages ?? layout.languages,
     };
+    if (edit.link !== undefined) {
+      const link = edit.link.trim();
+      if (link && !isLayoutLink(link)) return { refused: 'a link is one http:// or https:// URL' };
+      if (link) next.link = link;
+      else delete next.link;
+    }
+    return { layout: next };
   },
 
   setFeatures(layout, { features }) {

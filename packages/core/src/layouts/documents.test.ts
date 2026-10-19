@@ -8,7 +8,7 @@ import { BUNDLED_LAYOUTS } from './index.js';
 
 const DOCUMENTS = fileURLToPath(new URL('./documents/', import.meta.url));
 
-/** A layout as LayerBench saves it, with an author and a linked source: Night's checked-in document. */
+/** A layout as LayerBench saves it, with an author and a link: Night's checked-in document. */
 function saved(): Record<string, unknown> {
   return JSON.parse(readFileSync(goldenPath('layouts/night.json'), 'utf8'));
 }
@@ -46,18 +46,27 @@ describe('bundled layouts added as documents', () => {
     expect(() => documentLayout('night', { name, ...rest })).toThrow('as LayerBench saves it');
   });
 
-  it('turns away a layout that names no author, or no source', () => {
+  it('turns away a layout that names no author', () => {
     expect(() => documentLayout('night', { ...saved(), author: '' })).toThrow('no author');
-    expect(() => documentLayout('night', { ...saved(), description: 'Mine.' })).toThrow(
-      'gives no link',
+  });
+
+  it('takes a layout with no link, or a description with none', () => {
+    const { link, ...unlinked } = saved();
+    expect(link).toMatch(/^https:/);
+    expect(documentLayout('night', { ...unlinked, description: 'Mine.' }).link).toBeUndefined();
+  });
+
+  it('turns away a link that is no http(s) URL', () => {
+    expect(() => documentLayout('night', { ...saved(), link: 'night.example' })).toThrow(
+      'is not a layout',
     );
   });
 });
 
 describe('what a layout lacks to be a document', () => {
-  it('names each missing part', () => {
-    expect(documentMissing({ author: ' ', description: 'Mine.' })).toEqual(['author', 'link']);
-    expect(documentMissing({ author: 'Ana', description: 'From https://example.com' })).toEqual([]);
-    expect(documentMissing({})).toEqual(['author', 'link']);
+  it('wants an author, and no link', () => {
+    expect(documentMissing({ author: ' ' })).toEqual(['author']);
+    expect(documentMissing({ author: 'Ana' })).toEqual([]);
+    expect(documentMissing({})).toEqual(['author']);
   });
 });

@@ -3,7 +3,7 @@ import { structureHash } from '../analysis/hash.js';
 import { compileLayout } from './compile.js';
 import { toCanonicalJson } from './json.js';
 import { duplicateLayer } from './ops.js';
-import { safeParseLayout } from './schema.js';
+import { isLayoutLink, safeParseLayout } from './schema.js';
 import type { AdaptiveTrigger, Layout } from './types.js';
 
 function withBranches(triggers: AdaptiveTrigger[]): Layout {
@@ -113,5 +113,44 @@ describe('a conditional layer in the document', () => {
     const json = waitingFor(2);
     json.conditionalLayers = [...(json.conditionalLayers as unknown[]), { if: ['l0'], then: 'l1' }];
     expect(safeParseLayout(json).ok).toBe(false);
+  });
+});
+
+describe("a layout's link", () => {
+  const linked = (link: string): Layout => ({ ...withBranches([]), author: 'Ana', link });
+
+  it('is kept in the document, after the description', () => {
+    const doc = toCanonicalJson({ ...linked('https://example.com/mine'), description: 'Mine.' });
+    expect(Object.keys(doc).slice(0, 6)).toEqual([
+      'format',
+      'name',
+      'author',
+      'description',
+      'link',
+      'hostLocale',
+    ]);
+    const back = safeParseLayout(doc);
+    expect(back.ok && back.layout.link).toBe('https://example.com/mine');
+  });
+
+  it('is optional, and left out when there is none', () => {
+    expect('link' in toCanonicalJson(withBranches([]))).toBe(false);
+    expect(safeParseLayout(toCanonicalJson(withBranches([]))).ok).toBe(true);
+  });
+
+  it('is one http or https URL', () => {
+    for (const link of ['https://example.com', 'http://example.com/a?b#c']) {
+      expect(isLayoutLink(link), link).toBe(true);
+    }
+    for (const link of [
+      'example.com',
+      'ftp://example.com',
+      'https://',
+      'https://a b',
+      ' https://a',
+    ]) {
+      expect(isLayoutLink(link), link).toBe(false);
+    }
+    expect(safeParseLayout(linked('javascript:alert(1)')).ok).toBe(false);
   });
 });

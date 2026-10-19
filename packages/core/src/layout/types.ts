@@ -246,6 +246,8 @@ export interface Layout {
   name: string;
   author?: string;
   description?: string;
+  /** Where the layout comes from (the author's keymap, firmware or page): one http(s) URL. */
+  link?: string;
   languages?: string[];
   hostLocale?: HostLocale;
   geometry: GeometryRef;

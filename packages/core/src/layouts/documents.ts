@@ -14,7 +14,8 @@ const DOCUMENTS: Record<string, unknown> = {
 
 /**
  * The layout a document holds, checked: exactly what LayerBench saves, so what is reviewed is what
- * ships; named by its id; and saying who made it and, with a link, where it comes from.
+ * ships; named by its id; and saying who made it. Its link, to where it comes from, is optional; the
+ * schema holds one that is given to an http(s) URL.
  */
 export function documentLayout(file: string, doc: unknown): Layout {
   const parsed = safeParseLayout(doc);
@@ -30,20 +31,12 @@ export function documentLayout(file: string, doc: unknown): Layout {
   }
   const missing = documentMissing(layout);
   if (missing.includes('author')) throw new Error(`${file}.json names no author`);
-  if (missing.includes('link')) {
-    throw new Error(`${file}.json: its description gives no link to where the layout comes from`);
-  }
   return layout;
 }
 
-/** What a layout lacks to be a document: who made it, and a link to where it comes from. */
-export function documentMissing(
-  layout: Pick<Layout, 'author' | 'description'>,
-): ('author' | 'link')[] {
-  const missing: ('author' | 'link')[] = [];
-  if (!layout.author?.trim()) missing.push('author');
-  if (!/https?:\/\/\S/.test(layout.description ?? '')) missing.push('link');
-  return missing;
+/** What a layout lacks to be a document: who made it. */
+export function documentMissing(layout: Pick<Layout, 'author'>): 'author'[] {
+  return layout.author?.trim() ? [] : ['author'];
 }
 
 /** The ids of the layouts added as documents, without checking or building them. */

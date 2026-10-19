@@ -164,12 +164,23 @@ const FeaturesSchema = z.object({
     .optional(),
 });
 
+/** Whether `text` will do as a layout's link: one http or https URL, nothing around it. */
+export function isLayoutLink(text: string): boolean {
+  if (!/^https?:\/\/\S+$/.test(text)) return false;
+  try {
+    return Boolean(new URL(text).host);
+  } catch {
+    return false;
+  }
+}
+
 export const LayoutSchema = z.object({
   format: z.literal('layerbench/layout@1'),
   id: z.string().optional(),
   name: z.string(),
   author: z.string().optional(),
   description: z.string().optional(),
+  link: z.string().refine(isLayoutLink, 'a link is one http:// or https:// URL').optional(),
   languages: z.array(z.string()).optional(),
   hostLocale: z.enum(['symbols', 'us', 'us-intl', 'abnt2']).optional(),
   geometry: z.union([
