@@ -330,9 +330,9 @@ describe('Edit', () => {
     await user.tab();
     expect(within(settings).getByRole('alert')).toHaveTextContent('http:// or https://');
     expect(screen.queryByText('unsaved')).toBeNull();
-    await user.click(link);
-    await user.keyboard('{Escape}');
-    expect(link).toHaveValue('');
+    // Emptied again, it is no link, which is fine.
+    await user.clear(link);
+    await user.tab();
     expect(within(settings).queryByRole('alert')).toBeNull();
 
     await user.clear(link);

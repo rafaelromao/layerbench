@@ -33,8 +33,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # A document is exactly what LayerBench saves, named by its id, with an author and a linked
-      # source; every bundled layout has a name and an id of its own and types the alphabet and a
+      # A document is exactly what LayerBench saves, named by its id, with an author (its link is
+      # optional, an http(s) URL when given); every bundled layout has a name and an id of its own and types the alphabet and a
       # space; the layouts written in code still match their documents.
       - name: Check the layouts
         run: pnpm --filter @layerbench/core exec vitest run src/layouts src/golden/layouts.test.ts

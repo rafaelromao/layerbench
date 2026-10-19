@@ -139,7 +139,7 @@ describe("a layout's link", () => {
   });
 
   it('is one http or https URL', () => {
-    for (const link of ['https://example.com', 'http://example.com/a?b#c']) {
+    for (const link of ['https://example.com', 'http://example.com/a?b#c', 'HTTPS://Example.com']) {
       expect(isLayoutLink(link), link).toBe(true);
     }
     for (const link of [

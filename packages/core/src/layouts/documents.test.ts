@@ -64,7 +64,7 @@ describe('bundled layouts added as documents', () => {
 });
 
 describe('what a layout lacks to be a document', () => {
-  it('wants an author, and no link', () => {
+  it('wants an author; a link is not needed', () => {
     expect(documentMissing({ author: ' ' })).toEqual(['author']);
     expect(documentMissing({ author: 'Ana' })).toEqual([]);
     expect(documentMissing({})).toEqual(['author']);

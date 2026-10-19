@@ -203,8 +203,15 @@ export function LayoutBar({
  */
 function LinkField({ link, onChange }: { link: string; onChange: (link: string) => void }) {
   const [wrong, setWrong] = useState(false);
+  // A link set another way, by Undo or another layout, is not the one said wrong.
+  const [shown, setShown] = useState(link);
+  if (shown !== link) {
+    setShown(link);
+    setWrong(false);
+  }
   return (
-    <div className="form-control min-w-0 sm:max-w-md">
+    // Typing again takes the warning away until the link is left again.
+    <div className="form-control min-w-0 sm:max-w-md" onInput={() => setWrong(false)}>
       <span className="label-text text-xs" aria-hidden="true">
         Link <span className="opacity-60">(optional)</span>
       </span>

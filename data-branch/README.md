@@ -6,7 +6,7 @@ each time the Library opens, so a layout merged here is in every visitor's Libra
 load, with no deploy.
 
 - `community/<id>.json`: one layout, exactly as LayerBench saves it, named by its id, with an
-  author and a description that links to where it comes from. One that is not is left out.
+  author and, optionally, a `link` to where it comes from. One that is not is left out.
 - `community/index.json`: the list of them, kept by `.github/workflows/community-index.yml` on
   every push that changes `community/`. Do not edit it by hand.
 

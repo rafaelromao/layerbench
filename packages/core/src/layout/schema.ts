@@ -166,7 +166,7 @@ const FeaturesSchema = z.object({
 
 /** Whether `text` will do as a layout's link: one http or https URL, nothing around it. */
 export function isLayoutLink(text: string): boolean {
-  if (!/^https?:\/\/\S+$/.test(text)) return false;
+  if (!/^https?:\/\/\S+$/i.test(text)) return false;
   try {
     return Boolean(new URL(text).host);
   } catch {
