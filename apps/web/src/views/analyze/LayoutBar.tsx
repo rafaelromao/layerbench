@@ -153,7 +153,12 @@ export function LayoutBar({
                     onCommit={(description) => onMeta({ description })}
                   />
                 </div>
-                <LinkField link={layout.link ?? ''} onChange={(link) => onMeta({ link })} />
+                {/* Keyed by the layout, so a draft left wrong in one is not shown on the next. */}
+                <LinkField
+                  key={layoutRef}
+                  link={layout.link ?? ''}
+                  onChange={(link) => onMeta({ link })}
+                />
                 <LanguagesField
                   languages={layout.languages ?? []}
                   onChange={(languages) => onMeta({ languages })}

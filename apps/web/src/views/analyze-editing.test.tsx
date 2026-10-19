@@ -322,21 +322,36 @@ describe('Edit', () => {
     const user = userEvent.setup();
     const storage = freshStorage();
     await openEditOn(storage);
-    const settings = await openSettings();
-    const link = within(settings).getByLabelText('Link');
-    expect(link).toHaveValue('');
+    let settings = await openSettings();
+    const link = () => within(settings).getByLabelText('Link');
+    expect(link()).toHaveValue('');
 
-    await user.type(link, 'example.com/mine');
+    await user.type(link(), 'example.com/mine');
     await user.tab();
     expect(within(settings).getByRole('alert')).toHaveTextContent('http:// or https://');
     expect(screen.queryByText('unsaved')).toBeNull();
+    // A draft left wrong is not carried to the next layout, though it has no link either.
+    await user.click(within(settings).getByRole('button', { name: 'Done' }));
+    await user.selectOptions(within(bar()).getByRole('combobox', { name: 'Layout' }), 'colemak');
+    await waitFor(() => expect(within(bar()).getByLabelText('Name')).toHaveValue('Colemak'));
+    settings = await openSettings();
+    expect(link()).toHaveValue('');
+    expect(within(settings).queryByRole('alert')).toBeNull();
+    await user.click(within(settings).getByRole('button', { name: 'Done' }));
+    await user.selectOptions(within(bar()).getByRole('combobox', { name: 'Layout' }), 'qwerty');
+    await waitFor(() => expect(within(bar()).getByLabelText('Name')).toHaveValue('Qwerty'));
+    settings = await openSettings();
+    await user.type(link(), 'example.com/mine');
+    await user.tab();
+    expect(within(settings).getByRole('alert')).toBeInTheDocument();
+
     // Emptied again, it is no link, which is fine.
-    await user.clear(link);
+    await user.clear(link());
     await user.tab();
     expect(within(settings).queryByRole('alert')).toBeNull();
 
-    await user.clear(link);
-    await user.type(link, 'https://example.com/mine{Enter}');
+    await user.clear(link());
+    await user.type(link(), 'https://example.com/mine{Enter}');
     expect(within(settings).queryByRole('alert')).toBeNull();
     const open = within(settings).getByRole('link', { name: /^Open the link/ });
     expect(open).toHaveAttribute('href', 'https://example.com/mine');
