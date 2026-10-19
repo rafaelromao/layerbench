@@ -108,6 +108,9 @@ describe('Compare', () => {
     const table = await screen.findByRole('table', undefined, { timeout: 25_000 });
     expect(within(table).getByText('Δ (B − A)')).toBeInTheDocument();
     expect(within(table).getByText('Same finger bigrams')).toBeInTheDocument();
+    // Effort is banded like the Doc's metrics: each side's number carries its badge.
+    const effort = within(table).getByText('Effort', { selector: 'div' }).closest('tr');
+    expect(effort?.querySelectorAll('.lb-band')).toHaveLength(2);
   });
 
   it('compares a community layout its link names', async () => {
