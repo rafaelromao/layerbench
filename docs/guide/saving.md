@@ -101,17 +101,16 @@ Community layouts are layouts other people made, accepted into the Library. Each
 app's code: `community/<id>.json`, the layout's LayerBench JSON, named by its id. A pull request
 into that branch that adds one file proposes a layout, and merging it accepts it: it is in every
 visitor's Library the next time it opens, marked *community*, with no new version of the app. A
-file that is not a layout as LayerBench saves it, with an author and a description that links to
-where it comes from, is left out.
+file that is not a layout as LayerBench saves it, with an author, is left out. A link to where it
+comes from is welcome, not needed.
 
 **Submit** opens that pull request for you, from one of your custom layouts:
 
 1. Sign in with GitHub, in **Storage**. Submit asks you to if you have not: the pull request names
    you as who sent the layout.
-2. In **Analyze**, open the custom layout. In **Settings**, give it its author and a description
-   that says where it comes from, with a link: the author's firmware, keymap or page. **Save** it.
-3. Click **Submit**, beside **Save**. Submit checks the layout first: an author, a link, saved
-   changes, an id no bundled or community layout has (rename it if one does), and that it compiles.
+2. In **Analyze**, open the custom layout. In **Settings**, give it its author, and if you can a
+   **Link** to where it comes from: the author's firmware, keymap or page. **Save** it.
+3. Click **Submit**, beside **Save**. Submit checks the layout first: an author, saved changes, an id no bundled or community layout has (rename it if one does), and that it compiles.
    If anything is missing it says what, and sends nothing.
 4. Otherwise it asks before it opens the pull request, which is public. It then gives you the pull
    request's link, where the maintainer may ask for changes.
@@ -127,8 +126,8 @@ new one joins them as a custom layout in LayerBench, added unchanged by pull req
 Anyone can propose one, their own or someone else's that is published, and it
 joins everyone's Library once the pull request is merged.
 
-1. In **Analyze**, give the layout its name, and in **Settings** its author and a description that
-   says where it comes from, with a link: the author's firmware, keymap or page. **Save** it.
+1. In **Analyze**, give the layout its name, and in **Settings** its author and, if you can, a
+   **Link** to where it comes from: the author's firmware, keymap or page. **Save** it.
 2. Copy its LayerBench JSON from the editor's **JSON** panel.
 3. Open a pull request on [layerbench](https://github.com/rafaelromao/layerbench) that adds it as a
    file named by the layout's id, with the two lines of code and the line on the landing page that
