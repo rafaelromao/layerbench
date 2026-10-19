@@ -71,7 +71,8 @@ const ALPHA2_OR_SYMBOLS: Binding = {
  * types: the firmware's symbol tap-holds jump to the end of the line or past the cursor first when
  * held, which is editing rather than typing, and are left out. Keys it leaves empty are empty here.
  *
- * Magic Romak has the default layers in their place, on these thumbs.
+ * Magic Romak has the default layers in their place, on these thumbs, but for its Symbols and
+ * Extras, which keep the keymap's `:`, `?` and `!` (`magicRomakDefaultLayers`).
  */
 const NUMBERS_THUMBS: Record<string, Binding> = {
   LHP: tapOrUnmodelled(',', 'FUN'),

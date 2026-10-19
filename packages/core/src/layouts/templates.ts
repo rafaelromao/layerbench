@@ -1,20 +1,21 @@
 import type { Geometry, GeometryKey, Hand } from '../geometry/types.js';
 import type { Binding, ComboDef, ConditionalLayerDef, LayerDef, Layout } from '../layout/types.js';
-import { CYANOPHAGE_EFFORT_GRID } from '../rules/effort.js';
+import { cyanophageKeyEffort } from '../rules/effort.js';
 
 /**
  * The default layers: Accents, Numbers and Symbols, and Extras where the board needs it, for any
- * board.
+ * board. `AGENTS.md` lists the rules they follow.
  *
  * Numbers and Symbols are Magic Romak's on the 24-key core, which is on every preset but the 18-key
- * one, so every board gets the same grid and the same muscle memory. The keys past the core — the
- * pinky's top and bottom, the inner column — carry what the old Dead keys layer held besides the
- * accents: currency and ordinals on Numbers, and on Symbols each mark beside its look-alike (`;` by
- * `:`, `¿` by `?`, `«` and `»` around `<` and `>`). A board without one of those keys finds its
- * symbol on Extras, which comes on while Numbers and Symbols are both held, on the key Dead keys
- * gave it. Accents is one-shot, on the 30 main keys: the dead keys, the letters no dead key makes,
- * and the accented letters the texts use most, each a key of its own, in rows and columns that are
- * easy to remember. A board without one of those keys finds it on Extras too.
+ * one, so every board gets the same grid and the same muscle memory, but for a pair that goes to
+ * Extras whole. The keys past the core — the pinky's top and bottom, the inner column — carry what
+ * the old Dead keys layer held besides the accents: currency and ordinals on Numbers, and on Symbols
+ * each mark beside its look-alike (`;` by `:`, `¿` by `?`, `¡` by `!`), and `«` above `»`. The pairs
+ * (`SYMBOL_PAIRS`) stay on one layer, side by side: a board without a key for one half moves the
+ * pair to Extras, which comes on while Numbers and Symbols are both held, and fills its prime keys
+ * first (`primeKeys`). Accents is one-shot, on the 30 main keys: the dead keys, the letters no dead
+ * key makes, and the accented letters the texts use most, each a key of its own, in rows and columns
+ * that are easy to remember. A board without one of those keys finds it on Extras too.
  *
  * What changes from board to board is decided by which keys it has, not by its name, so a custom
  * geometry gets a sensible result too: where `0` goes, which thumbs reach the layers, which symbols
@@ -117,6 +118,7 @@ export const SYMBOLS_OUTER: Readonly<Record<string, string>> = {
  * in the texts first, as Extras takes them.
  */
 export const SYMBOL_PAIRS: readonly (readonly [string, string])[] = [
+  ['(', ')'],
   [':', ';'],
   ['«', '»'],
   ['¿', '?'],
@@ -124,7 +126,6 @@ export const SYMBOL_PAIRS: readonly (readonly [string, string])[] = [
   ['<', '>'],
   ['[', ']'],
   ['{', '}'],
-  ['(', ')'],
 ];
 
 /**
@@ -394,7 +395,7 @@ function accentsPastTheBoard(
   return out;
 }
 
-/** A thumb of `holding`'s hand other than it, for the mark Symbols has no key for on 18 keys. */
+/** A thumb of `holding`'s hand other than it, for `ı`, which Symbols has no key for on 18 keys. */
 function spareThumb(geometry: Geometry, holding: string): string | undefined {
   const hand = geometry.keys.find((k) => k.id === holding)?.hand;
   return geometry.keys
@@ -476,12 +477,6 @@ export function defaultLayers(
   };
 }
 
-/** cyanophage's Effort for a finger key, what the Effort rule charges for a press of it. */
-function fingerEffort(k: GeometryKey): number {
-  const col = Math.max(0, Math.min(5, k.col));
-  return CYANOPHAGE_EFFORT_GRID[Math.min(k.row, 2)][k.hand === 'L' ? col : 11 - col];
-}
-
 /** Home first among keys of equal Effort, then the top row, then the bottom one. */
 const ROW_RANK = [1, 0, 2];
 
@@ -494,7 +489,7 @@ export function primeKeys(geometry: Geometry): string[] {
     .filter((k) => !k.thumb)
     .sort(
       (a, b) =>
-        fingerEffort(a) - fingerEffort(b) ||
+        cyanophageKeyEffort(a) - cyanophageKeyEffort(b) ||
         ROW_RANK[a.row] - ROW_RANK[b.row] ||
         (a.hand === b.hand ? 0 : a.hand === 'R' ? -1 : 1) ||
         b.col - a.col,
@@ -506,8 +501,29 @@ interface Spread {
   numbers: Record<string, string>;
   symbols: Record<string, string>;
   extras: Record<string, string>;
-  /** What has no key on any of them. */
-  left: string[];
+  /** What has no key on any of them: pairs, and symbols on their own. */
+  left: string[][];
+}
+
+/** The two free neighbours in a row that cost least, left to right. */
+function cheapestNeighbours(
+  geometry: Geometry,
+  free: readonly string[],
+): [string, string] | undefined {
+  const byId = new Map(geometry.keys.map((k) => [k.id, k]));
+  let best: [string, string] | undefined;
+  let bestCost = Number.POSITIVE_INFINITY;
+  for (const [i, x] of free.entries()) {
+    const kx = byId.get(x) as GeometryKey;
+    for (const y of free.slice(i + 1)) {
+      const ky = byId.get(y) as GeometryKey;
+      if (kx.thumb || ky.thumb) continue;
+      if (kx.hand !== ky.hand || kx.row !== ky.row || Math.abs(kx.col - ky.col) !== 1) continue;
+      const cost = cyanophageKeyEffort(kx) + cyanophageKeyEffort(ky);
+      if (cost < bestCost) [best, bestCost] = [kx.x < ky.x ? [x, y] : [y, x], cost];
+    }
+  }
+  return best;
 }
 
 /**
@@ -560,23 +576,12 @@ function spreadSymbols(
   }
 
   const extras: Record<string, string> = {};
-  const left: string[] = [];
+  const left: string[][] = [];
   const free = () => prime.filter((id) => !extras[id]);
   for (const [a, b] of pairs) {
-    const open = free();
-    let best: [GeometryKey, GeometryKey] | undefined;
-    let bestCost = Number.POSITIVE_INFINITY;
-    for (const [i, x] of open.entries()) {
-      const kx = byId.get(x) as GeometryKey;
-      for (const y of open.slice(i + 1)) {
-        const ky = byId.get(y) as GeometryKey;
-        if (kx.hand !== ky.hand || kx.row !== ky.row || Math.abs(kx.col - ky.col) !== 1) continue;
-        const cost = fingerEffort(kx) + fingerEffort(ky);
-        if (cost < bestCost) [best, bestCost] = [kx.x < ky.x ? [kx, ky] : [ky, kx], cost];
-      }
-    }
-    if (best) [extras[best[0].id], extras[best[1].id]] = [a, b];
-    else left.push(a, b);
+    const spot = cheapestNeighbours(geometry, free());
+    if (spot) [extras[spot[0]], extras[spot[1]]] = [a, b];
+    else left.push([a, b]);
   }
   const thumbs = geometry.keys
     .filter((k) => k.thumb && !held.includes(k.id))
@@ -585,26 +590,31 @@ function spreadSymbols(
   for (const s of singles) {
     const spot = free()[0] ?? thumbs.find((id) => !extras[id]);
     if (spot) extras[spot] = s;
-    else left.push(s);
+    else left.push([s]);
   }
   return { numbers, symbols, extras, left };
 }
 
-/** Accents with what has no key on the other layers on its free keys, the prime ones first. */
+/**
+ * Accents with what has no key on the other layers on its free keys, the prime ones first, each
+ * pair on two neighbours in a row while there are any.
+ */
 function withLeftOver(
   geometry: Geometry,
   accents: Readonly<Record<string, Binding>>,
-  left: readonly string[],
+  left: readonly (readonly string[])[],
 ): Record<string, Binding> {
   const out = { ...accents };
   const thumbs = geometry.keys
     .filter((k) => k.thumb)
     .sort((a, b) => a.col - b.col)
     .map((k) => k.id);
-  const spots = [...primeKeys(geometry), ...thumbs].filter((id) => !out[id]);
-  for (const s of left) {
-    const spot = spots.shift();
-    if (spot) out[spot] = kp(s);
+  const free = () => [...primeKeys(geometry), ...thumbs].filter((id) => !out[id]);
+  for (const group of left) {
+    const spots = (group.length === 2 && cheapestNeighbours(geometry, free())) || free();
+    group.forEach((s, i) => {
+      if (spots[i]) out[spots[i]] = kp(s);
+    });
   }
   return out;
 }

@@ -175,10 +175,11 @@ the left hand while the right types the digits, and on Symbols each mark beside 
 above `¿`.
 
 Pairs stay together: the brackets `()` `[]` `{}` `<>` `«»` and the look-alikes `; :`, `? ¿` and
-`! ¡` are on one layer, side by side: neighbours in a row, or `«` and `»` in a column. A board
-with no key for one half moves the pair to Extras whole. The half that had a key leaves it, and on
-Symbols that key types the most used symbol left without one. Magic Romak's keymap keeps three pairs apart on the 24 keys, and so do these layers:
-`\` on Numbers and `/` on Symbols, `+` between `-` and `_`, and `+` below and beside `=`.
+`! ¡` are on one layer, side by side: neighbours in a row, or `«` and `»` in a column. A board with
+no key for one half moves the pair to Extras whole. The half that had a key leaves it, and on Symbols
+that key types the most used symbol left without one. Magic Romak's keymap keeps three pairs apart
+on the 24 keys, and so do these layers: `\` on Numbers and `/` on Symbols, `+` between `-` and `_`,
+and `+` below and beside `=`.
 
 | Numbers | P | R | M | I | C | | C | I | M | R | P |
 |---|---|---|---|---|---|---|---|---|---|---|---|

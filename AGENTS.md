@@ -13,7 +13,7 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
 - **The 24-key core is Magic Romak's keymap** (github.com/rafaelromao/keyboards, `numbers_layer` and
   `symbols_layer`). Numbers is a keypad on the right, with the brackets and the arithmetic beside
   them on the left; brackets on Numbers stay on the left hand. Every board gets the same core, so
-  the muscle memory carries over.
+  the muscle memory carries over, but for a pair half that leaves its key (see Pairs).
 - **Every symbol is its own `kp`**, on one key, never the `shifted` half of another: fold mode drops
   outputs that need a modifier.
 - **Main thumbs.** On Standard and Thumb Alpha layouts the two innermost thumbs of each hand hold,

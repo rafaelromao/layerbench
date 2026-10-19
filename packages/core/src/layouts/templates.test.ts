@@ -384,7 +384,7 @@ describe('Accents keys a board lacks are on Extras', () => {
   }
 });
 
-describe("Magic Romak's layers are the defaults on its board", () => {
+describe("Magic Romak's layers: the defaults' Numbers and Accents, its keymap's Symbols and its own Extras", () => {
   const layer = (id: string) => magicRomak.layers.find((l) => l.id === id)?.bindings ?? {};
   const typed = (b: Binding | undefined): string | undefined =>
     b?.kind === 'kp' ? b.symbol : b?.kind === 'hold_tap' ? typed(b.tap) : undefined;
@@ -718,9 +718,11 @@ describe('Extras starts on the prime keys', () => {
         if (ca === cb && b[1] === 'H') expect([a, b, a[1]]).toEqual([a, b, 'H']);
       }
     }
-    expect(primeKeys(getGeometryPreset('1333+2')).slice(0, 6).sort()).toEqual(
-      ['LHR', 'LHM', 'LHI', 'RHI', 'RHM', 'RHR'].sort(),
-    );
+    // Then the right hand first, inner column first; and among equal costs, top before bottom.
+    expect(primeKeys(getGeometryPreset('1333+2')).slice(0, 12)).toEqual([
+      ...['RHI', 'RHM', 'RHR', 'LHI', 'LHM', 'LHR'],
+      ...['RHP', 'LHP', 'RTM', 'LTM', 'RBI', 'LBI'],
+    ]);
   });
 
   for (const preset of GEOMETRY_PRESET_IDS) {
