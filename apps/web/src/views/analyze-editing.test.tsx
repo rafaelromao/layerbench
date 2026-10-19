@@ -1827,18 +1827,81 @@ describe('Analyze, while editing', () => {
   }, 60_000);
 
   it('lists every character of the text the layout cannot type', async () => {
-    // Every bundled layout reaches the accents through Accents; Qwerty as written does not.
-    const storage = freshStorage();
-    const plain = CLASSIC_LAYOUTS.find((l) => l.id === 'qwerty') as Layout;
-    await seed(storage, 'qwerty', 'plain', { name: 'Plain', layers: plain.layers });
-    renderRoute('/analyze?layout=custom%3Aplain&corpus=pt-br-general&sample=20000', { storage });
-    const list = await screen.findByRole(
-      'list',
-      { name: 'Characters the layout cannot type' },
-      { timeout: 25_000 },
+    await openPlain();
+    const list = tray();
+    expect(within(list).getByRole('button', { name: /^ã/ })).toBeInTheDocument();
+    expect(within(list).getByRole('button', { name: /^ç/ })).toBeInTheDocument();
+  }, 60_000);
+});
+
+/**
+ * Open Analyze on Qwerty as written, with no way to the accents, on Portuguese, and wait for the
+ * missing-keys tray.
+ */
+async function openPlain(): Promise<void> {
+  // Every bundled layout reaches the accents through Accents; Qwerty as written does not.
+  const storage = freshStorage();
+  const plain = CLASSIC_LAYOUTS.find((l) => l.id === 'qwerty') as Layout;
+  await seed(storage, 'qwerty', 'plain', { name: 'Plain', layers: plain.layers });
+  renderRoute('/analyze?layout=custom%3Aplain&corpus=pt-br-general&sample=20000', { storage });
+  await screen.findByRole('list', { name: 'Missing keys' }, { timeout: 25_000 });
+}
+
+const tray = () => screen.getByRole('list', { name: 'Missing keys' });
+/** The chip of the tray for `char`, or null when the tray does not have it. */
+const chip = (char: string) =>
+  within(tray()).queryByRole('button', { name: new RegExp(`^${char}(,|$)`) });
+
+/** Drag a chip of the tray onto a key of the board, the way a pointer does it. */
+function dragChip(from: HTMLElement, to: string): void {
+  const target = svgKey(to);
+  const elementFromPoint = vi.spyOn(document, 'elementFromPoint').mockImplementation(() => target);
+  const at = (type: string, x: number) =>
+    from.dispatchEvent(
+      new PointerEvent(type, { bubbles: true, clientX: x, clientY: x }) as Event & PointerEvent,
     );
-    expect(within(list).getByText(/^ã/)).toBeInTheDocument();
-    expect(within(list).getByText(/^ç/)).toBeInTheDocument();
+  at('pointerdown', 1);
+  at('pointermove', 20);
+  at('pointerup', 20);
+  elementFromPoint.mockRestore();
+}
+
+describe('the missing-keys tray', () => {
+  it('puts a character dragged onto a key, and the one it displaces in the tray', async () => {
+    const user = userEvent.setup();
+    await openPlain();
+    expect(chip('d')).toBeNull();
+
+    dragChip(chip('ç') as HTMLElement, 'LHM');
+    expect(await screen.findByRole('button', { name: 'Key LHM: ç' })).toBeInTheDocument();
+    // Nothing else types d now: it waits in the tray, and ç is not missing any more.
+    expect(chip('d')).toBeInTheDocument();
+    expect(chip('ç')).toBeNull();
+
+    // One edit: one Undo brings d back, and the tray as it was.
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(key('Key LHM: d')).toBeInTheDocument();
+    expect(chip('ç')).toBeInTheDocument();
+    expect(chip('d')).toBeNull();
+  }, 60_000);
+
+  it('puts a character tapped on the next key tapped', async () => {
+    const user = userEvent.setup();
+    await openPlain();
+    const cedilla = chip('ç') as HTMLElement;
+    await user.click(cedilla);
+    expect(cedilla).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(key('Key LHM: d'));
+    expect(await screen.findByRole('button', { name: 'Key LHM: ç' })).toBeInTheDocument();
+    expect(chip('d')).toHaveAttribute('aria-pressed', 'false');
+
+    // The character it displaced goes back the same way, on another key.
+    await user.click(chip('d') as HTMLElement);
+    await user.click(key('Key LHI: f'));
+    expect(await screen.findByRole('button', { name: 'Key LHI: d' })).toBeInTheDocument();
+    expect(chip('f')).toBeInTheDocument();
+    expect(chip('d')).toBeNull();
   }, 60_000);
 });
 
