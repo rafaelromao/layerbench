@@ -1,5 +1,11 @@
 import type { Layout } from '@layerbench/core';
-import { accentsCombo, defaultLayers, getGeometryPreset, importTextLayout } from '@layerbench/core';
+import {
+  accentsCombo,
+  defaultLayers,
+  getGeometryPreset,
+  importTextLayout,
+  vowelsOnLeft,
+} from '@layerbench/core';
 
 /** Qwerty, as the starting point for a layout you intend to change rather than design. */
 const QWERTY_ROWS = 'q w e r t y u i o p\na s d f g h j k l ;\nz x c v b n m , . /';
@@ -29,8 +35,8 @@ export function newLayout(spec: NewLayoutSpec): Layout {
 
   if (!spec.defaultLayers) return base;
   // The defaults choose the space key, on the thumb that also holds Numbers; any other space goes.
-  const defaults = defaultLayers(geometry);
   const [first, ...rest] = base.layers;
+  const defaults = defaultLayers(geometry, { mirrorAccents: vowelsOnLeft(first.bindings) });
   const letters = Object.entries(first.bindings).filter(
     ([, b]) => !(b.kind === 'kp' && b.symbol === ' '),
   );
@@ -42,7 +48,7 @@ export function newLayout(spec: NewLayoutSpec): Layout {
       ...rest,
       ...defaults.layers,
     ],
-    combos: [...(base.combos ?? []), accentsCombo(first.id)],
+    combos: [...(base.combos ?? []), accentsCombo(first.id, geometry)],
     ...(defaults.conditionalLayers.length > 0 && { conditionalLayers: defaults.conditionalLayers }),
   };
 }

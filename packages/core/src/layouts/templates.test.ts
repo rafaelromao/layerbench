@@ -1,18 +1,10 @@
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { analyze } from '../analysis/analyze.js';
-import { analysisRun, DEFAULT_SETTINGS, loadText } from '../analysis/settings.js';
-import { nodeCorpusLoader } from '../corpus/node-loader.js';
 import { GEOMETRY_PRESET_IDS, getGeometryPreset } from '../geometry/presets.js';
-import { corporaRoot } from '../golden/paths.js';
 import { layoutLanguageCoverage, producibleSymbols } from '../lang/coverage.js';
 import { LANGUAGE_PROFILES } from '../lang/profiles.js';
 import { layoutCategory } from '../layout/categories.js';
 import { compileLayout } from '../layout/compile.js';
 import type { Binding, Layout } from '../layout/types.js';
-import { defaultEffort } from '../rules/effort.js';
-import { getPreset } from '../rules/presets.js';
 import { reachKeys } from '../sim/activators.js';
 import { explain } from '../sim/resolver.js';
 import { CLASSIC_LAYOUTS } from './classic.js';
@@ -21,6 +13,7 @@ import { magicRomak } from './romak.js';
 import {
   ACCENTS,
   accentsCombo,
+  accentsComboKeys,
   DEFAULT_LAYER_ID_LIST,
   defaultAccentMacros,
   defaultDeadKeys,
@@ -28,10 +21,13 @@ import {
   defaultLayers,
   EXTRAS_CONDITION,
   EXTRAS_CORE,
+  mirrorKeyId,
   NUMBERS_CORE,
   NUMBERS_OUTER,
   SYMBOLS_CORE,
   SYMBOLS_OUTER,
+  vowelsOnLeft,
+  withDefaultLayers,
 } from './templates.js';
 
 /** The chord that one-shots Accents, as `explain` names its step. */
@@ -43,9 +39,9 @@ const ACCENTS_COMBO = 'combo:accents';
  */
 const BASE_LETTERS = [...'aeiouycn'];
 
-function boardWithDefaults(preset: string): Layout {
+function boardWithDefaults(preset: string, mirrorAccents = false): Layout {
   const geometry = getGeometryPreset(preset);
-  const defaults = defaultLayers(geometry);
+  const defaults = defaultLayers(geometry, { mirrorAccents });
   const free = geometry.keys.filter((k) => !k.thumb).map((k) => k.id);
   const letters: Record<string, Binding> = {};
   BASE_LETTERS.forEach((c, i) => {
@@ -58,7 +54,7 @@ function boardWithDefaults(preset: string): Layout {
     geometry: { preset },
     keys: { space: defaults.spaceKey },
     layers: [{ id: 'base', bindings: { ...letters, ...defaults.base } }, ...defaults.layers],
-    combos: [accentsCombo('base')],
+    combos: [accentsCombo('base', geometry)],
     conditionalLayers: defaults.conditionalLayers,
   };
 }
@@ -98,6 +94,12 @@ describe('the default layers on every board', () => {
         }
       });
 
+      it('writes all six languages with Accents mirrored too', () => {
+        const mirrored = compileLayout(boardWithDefaults(preset, true));
+        for (const tag of Object.keys(LANGUAGE_PROFILES))
+          expect([tag, layoutLanguageCoverage(mirrored, tag)?.missingRequired]).toEqual([tag, []]);
+      });
+
       it('types an accent, a digit and a symbol through the analysis', () => {
         const t = trace(layout, 'ñ 7 % è');
         expect(t.out).toBe('ñ 7 % è');
@@ -110,16 +112,16 @@ describe('the default layers on every board', () => {
 describe('the default layers, board by board', () => {
   it('reach Accents with three presses for an accent it has no key for: the combo, the accent, the letter', () => {
     const t = trace(boardWithDefaults('3x5+2'), 'û');
-    expect(t.keys).toEqual([ACCENTS_COMBO, 'RBM', 'LTC']);
+    expect(t.keys).toEqual([ACCENTS_COMBO, 'RBC', 'LTC']);
   });
 
   it('type the most frequent accented letters, ñ, ç and ß with a key each', () => {
     expect(trace(boardWithDefaults('3x5+2'), 'é ã ñ ç ß').keys).toEqual([
-      ...[ACCENTS_COMBO, 'RHI', 'L0'],
-      ...[ACCENTS_COMBO, 'RHR', 'L0'],
-      ...[ACCENTS_COMBO, 'LTM', 'L0'],
+      ...[ACCENTS_COMBO, 'RHM', 'L0'],
       ...[ACCENTS_COMBO, 'LBI', 'L0'],
-      ...[ACCENTS_COMBO, 'RTI'],
+      ...[ACCENTS_COMBO, 'LHI', 'L0'],
+      ...[ACCENTS_COMBO, 'LBM', 'L0'],
+      ...[ACCENTS_COMBO, 'LTR'],
     ]);
     // With no bottom row ñ is on the right pinky's home key, and an accented letter is two presses.
     expect(trace(boardWithDefaults('1222+2'), 'ñ é').keys).toEqual([
@@ -160,17 +162,26 @@ describe('the default layers, board by board', () => {
       expect(sym.bindings[id]).toEqual({ kind: 'kp', symbol: s });
   });
 
-  it('put on Extras what a board has no outer key for, where Dead keys had it', () => {
+  it('put on Extras what a board has no outer key for: symbols where Dead keys had them, accents beside their place', () => {
     const extras = (preset: string) =>
       defaultLayers(getGeometryPreset(preset)).layers.find((l) => l.id === 'extras')?.bindings;
     const kps = (table: Record<string, string>) =>
       Object.fromEntries(Object.entries(table).map(([id, s]) => [id, { kind: 'kp', symbol: s }]));
-    // No outer keys at all: every one of them.
-    expect(extras('1333+2')).toEqual({ '*': { kind: 'trans' }, ...kps(EXTRAS_CORE) });
-    // No pinky bottom and no inner top: the three symbols those keys had.
+    const macro = (symbols: string): Binding => ({ kind: 'macro', symbols });
+    const dead = (diacritic: string): Binding => ({ kind: 'dead_key', diacritic });
+    // No outer keys at all: every symbol, and the ten accents past the 24 keys, two on the thumbs.
+    expect(extras('1333+2')).toEqual({
+      '*': { kind: 'trans' },
+      ...kps(EXTRAS_CORE),
+      ...{ LTR: dead('`'), LTI: { kind: 'kp', symbol: 'æ' }, LHI: dead('´'), LBI: dead('¨') },
+      LHR: dead('~'),
+      ...{ RHM: macro('ù'), RHR: macro('ì'), RBM: macro('ú'), L1: dead('^'), R1: macro('î') },
+    });
+    // No pinky bottom and no inner top: the symbols and the accents those keys had.
     expect(extras('23332+2')).toEqual({
       '*': { kind: 'trans' },
-      ...kps({ LHP: 'ª', LHM: '£', LBR: '«' }),
+      ...kps({ LHP: 'ª', LHM: '£', LBR: '«', RTM: 'ı', LTI: 'æ' }),
+      ...{ LBM: dead('¨'), RTI: macro('ù'), RBR: macro('î') },
     });
     expect(defaultLayers(getGeometryPreset('1333+2')).conditionalLayers).toEqual([
       EXTRAS_CONDITION,
@@ -186,8 +197,10 @@ describe('the default layers, board by board', () => {
   it('give a board with no bottom row Extras for what that row held', () => {
     const d = defaultLayers(getGeometryPreset('1222+2'));
     expect(d.layers.map((l) => l.id)).toEqual(['num', 'sym', 'extras', 'accents']);
-    // Symbols' last mark on the left outer thumb, beside the one holding Numbers.
+    // Symbols' last mark on the left outer thumb, beside the one holding Numbers, and `ı` on the
+    // right one, beside the one holding Symbols.
     expect(d.layers[1].bindings.L1).toEqual({ kind: 'kp', symbol: ';' });
+    expect(d.layers[1].bindings.R1).toEqual({ kind: 'kp', symbol: 'ı' });
     const t = trace(boardWithDefaults('1222+2'), '[ * « 3 ; € §');
     expect(t.out).toBe('[ * « 3 ; € §');
   });
@@ -197,9 +210,11 @@ describe('the default layers, board by board', () => {
     expect(Object.keys(d.base).sort()).toEqual(['L0', 'R0']);
     expect(d.layers[0].bindings.RHO).toEqual({ kind: 'sl', layer: 'sym' });
     expect(d.layers[0].bindings.RTO).toEqual({ kind: 'kp', symbol: '0' });
+    // One space bar for both thumbs: Accents is the left ring and middle fingers' chord.
+    expect(accentsComboKeys(getGeometryPreset('ansi'))).toEqual(['LHR', 'LHM']);
     const t = trace(boardWithDefaults('ansi'), 'ñ');
     expect(t.out).toBe('ñ');
-    expect(t.keys).toEqual([ACCENTS_COMBO, 'LTM']);
+    expect(t.keys).toEqual([ACCENTS_COMBO, 'LHI']);
   });
 
   it('carry each dead key the six languages need', () => {
@@ -225,173 +240,138 @@ describe('the default layers, board by board', () => {
   });
 });
 
-/**
- * Presses on each key of Accents, typing each text the app comes with on the default analysis
- * settings, by what the key types: Qwerty for the board with a bottom row, Ben Vallack Piano for the
- * one without. A dead key's are the letters typed through it. Keys no text presses are left out.
- * Qwerty types a doubled letter's second with Repeat, as in French `éé` and German `ÜÜ`.
- */
-const ACCENT_USES: Record<string, Record<string, Record<string, number>>> = {
-  qwerty: {
-    'en-general': { é: 8, qu: 103, ü: 1, ç: 1, ñ: 1 },
-    'pt-br-general': {
-      ...{ é: 475, qu: 870, ó: 189, á: 500, ã: 849, à: 77, í: 301, ü: 5, è: 1, ç: 591 },
-      ...{ ê: 161, ö: 1, ú: 114, õ: 114, ô: 43 },
-    },
-    'es-general': {
-      ...{ é: 245, qu: 812, ó: 836, á: 404, í: 446, ü: 4, è: 2, ç: 1, ú: 124, ñ: 173 },
-      '¨': 1,
-    },
-    'fr-general': {
-      ...{ é: 2574, qu: 876, à: 434, ü: 2, è: 337, ç: 41, ê: 142, ö: 1, ù: 22, ô: 50 },
-      ...{ î: 28, â: 27, '¨': 19, '^': 16, œ: 9 },
-    },
-    'it-general': { é: 39, qu: 435, à: 237, è: 321, ç: 1, ö: 1, ù: 75, ì: 46, ò: 39 },
-    'de-general': { é: 4, qu: 18, ó: 1, á: 1, ã: 2, ü: 659, ä: 511, ö: 274, ß: 129 },
-  },
-  'ben-vallack-piano': {
-    'en-general': { '´': 8, '¨': 1, ç: 1, ñ: 1 },
-    'pt-br-general': { '´': 1579, '`': 78, '¨': 6, '~': 963, ç: 591, '^': 204 },
-    'es-general': { '´': 2055, '`': 2, '¨': 5, ç: 1, ñ: 173, '¿': 22, '¡': 1 },
-    'fr-general': { '´': 2575, '`': 793, '¨': 22, ç: 41, '^': 263, œ: 9 },
-    'it-general': { '´': 39, '`': 718, '¨': 1, ç: 1 },
-    'de-general': { '´': 6, '¨': 1448, '~': 2, ß: 129 },
-  },
-};
-
 /** What a key of Accents types, or the accent it is the dead key of. */
-function typedBy(b: Binding): string {
-  if (b.kind === 'dead_key') return b.diacritic ?? '';
-  if (b.kind === 'macro') return b.symbols ?? '';
-  return b.kind === 'kp' ? (b.symbol ?? '') : '';
+function typedBy(b: Binding | undefined): string {
+  if (b?.kind === 'dead_key') return b.diacritic ?? '';
+  if (b?.kind === 'macro') return b.symbols ?? '';
+  return b?.kind === 'kp' ? (b.symbol ?? '') : '';
 }
 
-const HOME_FIRST = 'HTB';
-/** Strongest first; a thumb by its column, inner first. */
-const FINGERS = 'IMRPC';
-
-/**
- * A position's place in the order Accents fills them: by cost, then the home row, the stronger
- * finger, a thumb after the fingers, the top row before the bottom, and the right hand first.
- */
-function placeOf(id: string, cost: number): number[] {
-  const thumb = /^[LR]\d$/.test(id);
-  const row = thumb ? 3 : HOME_FIRST.indexOf(id[1]);
-  return [
-    cost,
-    row === 0 ? 0 : 1,
-    thumb ? 1 : 0,
-    thumb ? Number(id[1]) : FINGERS.indexOf(id[2]),
-    row,
-    id[0] === 'R' ? 0 : 1,
-  ];
+/** A row of Accents as drawn: the left hand pinky to inner, or the right hand inner to pinky. */
+function accentsRow(row: string, hand: 'L' | 'R'): string[] {
+  const columns = hand === 'L' ? 'PRMIC' : 'CIMRP';
+  return [...columns].map((c) => typedBy(ACCENTS[`${hand}${row}${c}`]));
 }
 
-function before(a: number[], b: number[]): boolean {
-  const i = a.findIndex((x, k) => x !== b[k]);
-  return i >= 0 && a[i] < b[i];
-}
+describe('Accents, on the 30 main keys in groups to remember', () => {
+  it('fills all 30 keys, and nothing past them', () => {
+    expect(Object.keys(ACCENTS)).toHaveLength(30);
+    for (const id of Object.keys(ACCENTS)) expect(id).toMatch(/^[LR][THB][PRMIC]$/);
+  });
 
-/** Every key a board with a bottom row has, but for the pinkies' top and bottom and the inner column. */
-const CORE = new Set(
-  getGeometryPreset('1333+2')
-    .keys.filter((k) => !k.thumb)
-    .map((k) => k.id),
-);
+  it('types the accented vowels with the right hand: a row per accent, a column per vowel', () => {
+    // Inner column out: u a e o i. Grave on top, acute on home, circumflex below, `^` where `û` is.
+    expect(accentsRow('T', 'R')).toEqual([...'ùàèòì']);
+    expect(accentsRow('H', 'R')).toEqual([...'úáéóí']);
+    expect(accentsRow('B', 'R')).toEqual(['^', ...'âêôî']);
+  });
 
-function totalUses(byText: Record<string, Record<string, number>>): Record<string, number> {
-  const total: Record<string, number> = {};
-  for (const uses of Object.values(byText))
-    for (const [s, n] of Object.entries(uses)) total[s] = (total[s] ?? 0) + n;
-  return total;
-}
+  it("has German's letters, the tilde's and the ligatures in a row each on the left", () => {
+    expect(accentsRow('T', 'L')).toEqual(['`', 'ß', 'qu', 'œ', 'æ']);
+    expect(accentsRow('H', 'L')).toEqual([...'öäüñ', '´']);
+    expect(accentsRow('B', 'L')).toEqual(['¨', ...'õçã', '~']);
+  });
+});
 
-/** The keys of a layout's Accents: what each types, where it sits in the order, and on the core. */
-function accentKeys(layout: Layout, compiled: ReturnType<typeof compileLayout>) {
-  const effort = defaultEffort(compiled);
-  const bindings = layout.layers.find((l) => l.id === 'accents')?.bindings ?? {};
-  const outerBoard = Object.keys(bindings).some((k) => /^[LR][TB]P$|^[LR].C$/.test(k));
-  return Object.entries(bindings)
-    .filter(([k]) => k !== '*')
-    .map(([k, binding]) => ({
-      binding,
-      typed: typedBy(binding),
-      place: placeOf(k, effort[k]),
-      core: !outerBoard || CORE.has(k),
-    }));
-}
+describe('Accents mirrored for a layout that types its vowels with the left hand', () => {
+  const vowelsLeft = ['dvorak', 'engram', 'enthium', 'nordrassil', 'uno'];
 
-describe('Accents puts the keys used most where they cost least', () => {
-  const loader = nodeCorpusLoader(corporaRoot());
+  it('counts the vowels each hand types on the base layer, a thumb tap among them', () => {
+    const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
+    expect(vowelsOnLeft({ LHP: kp('a'), LTM: kp('e'), RTI: kp('i') })).toBe(true);
+    expect(vowelsOnLeft({ LHP: kp('a'), RTI: kp('i'), RTR: kp('o') })).toBe(false);
+    expect(
+      vowelsOnLeft({
+        LHP: kp('a'),
+        R0: { kind: 'hold_tap', tap: kp('e'), hold: { kind: 'mo', layer: 'sym' } },
+      }),
+    ).toBe(false);
+  });
 
-  for (const [id, byText] of Object.entries(ACCENT_USES)) {
-    const layout = bundledLayout(id) as Layout;
-    const compiled = compileLayout(layout);
-    const accents = compiled.layers.findIndex((l) => l.id === 'accents');
-
-    for (const [corpus, uses] of Object.entries(byText)) {
-      it.skipIf(!existsSync(join(corporaRoot(), corpus, 'sample.txt')))(
-        `${id} presses each key as often as recorded, typing ${corpus}`,
-        async () => {
-          const settings = { ...DEFAULT_SETTINGS, corpus, rules: getPreset('cyanophage') };
-          const text = await loadText(settings, (c) => loader.load(c));
-          const { stream, options } = analysisRun(settings, text);
-          const log = analyze(compiled, stream, options).simulation.presses;
-          const unigrams = log.ngrams('no_space', 'unigram');
-          const counted: Record<string, number> = {};
-          for (let i = 0; i < unigrams.size; i++) {
-            const press = log.presses[unigrams.ids[i]];
-            if (press.layer !== accents) continue;
-            counted[press.label] = (counted[press.label] ?? 0) + unigrams.counts[i];
-          }
-          expect(counted).toEqual(uses);
-        },
-        30_000,
-      );
-    }
-
-    it(`${id}: no key is used more than one on a better position`, () => {
-      const total = totalUses(byText);
-      const keys = accentKeys(layout, compiled);
-      // `qu` is no accent: it trades places with `ê`, leaving the home row to the accented letters.
-      const quAt = keys.find((k) => k.typed === 'qu');
-      const eAt = keys.find((k) => k.typed === 'ê');
-      if (quAt && eAt) [quAt.place, eAt.place] = [eAt.place, quAt.place];
-      // On a board with outer keys, the core and what is past it are filled each on its own.
-      const misplaced = keys.flatMap((a) =>
-        keys
-          .filter(
-            (b) =>
-              a.core === b.core &&
-              (total[a.typed] ?? 0) > (total[b.typed] ?? 0) &&
-              before(b.place, a.place),
-          )
-          .map((b) => `${a.typed} behind ${b.typed}`),
-      );
-      expect(misplaced).toEqual([]);
+  for (const layout of BUNDLED_LAYOUTS) {
+    const left = vowelsLeft.includes(layout.id ?? '');
+    it(`${layout.name}: ${left ? 'mirrored' : 'as drawn'}`, () => {
+      const preset = 'preset' in layout.geometry ? layout.geometry.preset : '';
+      const accents = layout.layers.find((l) => l.id === 'accents')?.bindings ?? {};
+      const defaults = defaultLayers(getGeometryPreset(preset), { mirrorAccents: left });
+      expect(vowelsOnLeft(layout.layers[0].bindings)).toBe(left);
+      expect(accents).toEqual(defaults.layers.find((l) => l.id === 'accents')?.bindings);
     });
   }
 
-  it('keeps what every board needs on the core, and past it the letters used least', () => {
-    const layout = bundledLayout('qwerty') as Layout;
-    const keys = accentKeys(layout, compileLayout(layout));
-    const total = totalUses(ACCENT_USES.qwerty);
-    const outer = keys.filter((k) => !k.core);
-    // The dead keys, and the letters no dead key makes or worth a press less.
-    expect(outer.filter((k) => k.binding.kind !== 'macro')).toEqual([]);
-    // `ê` holds `qu`'s home key.
-    const leastOnCore = Math.min(
-      ...keys
-        .filter((k) => k.core && k.binding.kind === 'macro' && k.typed !== 'ê')
-        .map((k) => total[k.typed] ?? 0),
+  it('mirrors key for key, and the keys it puts on Extras with it', () => {
+    const geometry = getGeometryPreset('23332+2');
+    const layer = (mirror: boolean, id: string) =>
+      defaultLayers(geometry, { mirrorAccents: mirror }).layers.find((l) => l.id === id)
+        ?.bindings ?? {};
+    for (const [id, b] of Object.entries(layer(false, 'accents')))
+      expect([id, layer(true, 'accents')[mirrorKeyId(id)]]).toEqual([id, b]);
+    const onExtras = (mirror: boolean) =>
+      Object.values(layer(mirror, 'extras'))
+        .map(typedBy)
+        .filter((s) => !Object.values(EXTRAS_CORE).includes(s) && s !== '')
+        .sort();
+    // The board lacks the same keys on both hands, so mirrored the same accents are past it.
+    expect(onExtras(true)).toEqual(onExtras(false));
+  });
+});
+
+describe('Accents keys a board lacks are on Extras', () => {
+  it('on a thumb free while Numbers and Symbols are held, whichever thumbs hold them', () => {
+    // A Special layout on the 24 keys with space, and so Numbers, on the left outer thumb.
+    const geometry = getGeometryPreset('1333+2');
+    const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
+    const free = geometry.keys.filter((k) => !k.thumb).map((k) => k.id);
+    const letters = Object.fromEntries(BASE_LETTERS.map((c, i) => [free[i], kp(c)]));
+    const layout = withDefaultLayers(
+      {
+        format: 'layerbench/layout@1',
+        name: 'Space on L1',
+        hostLocale: 'symbols',
+        geometry: { preset: '1333+2' },
+        keys: { space: 'L1' },
+        layers: [{ id: 'base', bindings: { ...letters, L1: kp(' ') } }],
+      },
+      geometry,
     );
-    for (const k of outer) expect([k.typed, total[k.typed] < leastOnCore]).toEqual([k.typed, true]);
+    const extras = layout.layers.find((l) => l.id === 'extras')?.bindings ?? {};
+    const base = layout.layers[0].bindings;
+    const held = ['L1', 'L0', 'R0', 'R1'].filter((id) => {
+      const b = base[id];
+      return b?.kind === 'mo' || (b?.kind === 'hold_tap' && b.hold.kind === 'mo');
+    });
+    expect(held).toContain('L1');
+    for (const id of held) expect([id, extras[id]]).toEqual([id, undefined]);
+    // `^` and `î`, which no finger key of Extras has room for, are still there, on the free thumbs.
+    const onThumbs = Object.entries(extras)
+      .filter(([id]) => /\d/.test(id))
+      .map(([, b]) => typedBy(b))
+      .sort();
+    expect(onThumbs).toEqual(['^', 'î'].sort());
+    const compiled = compileLayout(layout);
+    for (const tag of Object.keys(LANGUAGE_PROFILES))
+      expect([tag, layoutLanguageCoverage(compiled, tag)?.missingRequired]).toEqual([tag, []]);
+    expect(trace(layout, 'û î').out).toBe('û î');
   });
 
-  it('keeps qu and ê where the exception puts them', () => {
-    expect(ACCENTS.RTM).toEqual({ kind: 'macro', symbols: 'qu' });
-    expect(ACCENTS.LHI).toEqual({ kind: 'macro', symbols: 'ê' });
-  });
+  for (const preset of GEOMETRY_PRESET_IDS) {
+    const geometry = getGeometryPreset(preset);
+    if (geometry.family === 'rowstagger') continue;
+    it(`${preset}: every key of Accents is on Accents or on Extras`, () => {
+      const d = defaultLayers(geometry);
+      const layer = (id: string) => d.layers.find((l) => l.id === id)?.bindings ?? {};
+      const noBottom = !geometry.keys.some((k) => k.id === 'LBI');
+      if (noBottom) return;
+      const typed = new Set(
+        [...Object.values(layer('accents')), ...Object.values(layer('extras'))].map(typedBy),
+      );
+      expect(
+        Object.values(ACCENTS)
+          .map(typedBy)
+          .filter((s) => !typed.has(s)),
+      ).toEqual([]);
+    });
+  }
 });
 
 describe("Magic Romak's layers are the defaults on its board", () => {
@@ -435,11 +415,11 @@ describe('Romak types every accent through Accents, one-shot from its right oute
     const t = trace(romak, 'ñ ü ¿ ¡ œ');
     expect(t.out).toBe('ñ ü ¿ ¡ œ');
     expect(t.keys).toEqual([
-      ...['R1', 'LTM', 'L0'],
-      ...['R1', 'LHP', 'L0'],
+      ...['R1', 'LHI', 'L0'],
+      ...['R1', 'LHM', 'L0'],
       // Symbols held through the space between them, which it types too.
       ...['R0', 'RHC', 'L0', 'RBC', 'L0'],
-      ...['R1', 'LBM'],
+      ...['R1', 'LTI'],
     ]);
     const compiled = compileLayout(romak);
     for (const tag of Object.keys(LANGUAGE_PROFILES)) {
@@ -520,9 +500,16 @@ describe('the default layers on every bundled layout', () => {
         });
       }
       if (original && layoutCategory(original) === 'special') {
-        it('reaches Accents by LHR and LHM pressed together on its base layer, and nothing else', () => {
+        it('reaches Accents by two thumbs pressed together on its base layer, and nothing else', () => {
           const base = layout.layers[0].id;
-          expect(layout.combos).toContainEqual(accentsCombo(base));
+          const preset = 'preset' in layout.geometry ? layout.geometry.preset : '';
+          const geometry = getGeometryPreset(preset);
+          const [left, right] = accentsComboKeys(geometry);
+          expect(layout.combos).toContainEqual(accentsCombo(base, geometry));
+          // The outer main thumbs, or the inner ones on a board with one thumb a hand.
+          expect([left, right]).toEqual(
+            geometry.keys.some((k) => k.id === 'L1') ? ['L1', 'R1'] : ['L0', 'R0'],
+          );
           const accents = compiled.layerIndex.get('accents') as number;
           const reach = reachKeys(compiled, accents)
             .map((k) => ({
@@ -531,8 +518,8 @@ describe('the default layers on every bundled layout', () => {
             }))
             .sort((a, b) => a.key.localeCompare(b.key));
           expect(reach).toEqual([
-            { key: 'LHM', from: [base] },
-            { key: 'LHR', from: [base] },
+            { key: left, from: [base] },
+            { key: right, from: [base] },
           ]);
         });
 
@@ -588,7 +575,7 @@ describe('the default layers, layout by layout', () => {
     expect(num('finch').RBC).toEqual({ kind: 'kp', symbol: '0' });
     const t = trace(bundledLayout('finch') as Layout, 'ñ');
     expect(t.out).toBe('ñ');
-    expect(t.keys).toEqual([ACCENTS_COMBO, 'LTM']);
+    expect(t.keys).toEqual([ACCENTS_COMBO, 'LHI']);
   });
 
   it('hold Numbers on the left inner thumb when no thumb types space', () => {

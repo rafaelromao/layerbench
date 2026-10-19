@@ -2,6 +2,7 @@ import {
   accentsCombo,
   bundledLayout,
   CLASSIC_LAYOUTS,
+  getGeometryPreset,
   type Layout,
   toCanonicalJson,
 } from '@layerbench/core';
@@ -67,12 +68,14 @@ async function openEdit(): Promise<void> {
 }
 
 /**
- * Open Analyze on a copy of Qwerty that reaches Accents by LHR and LHM pressed together, as a
- * Special layout does, and wait for its first analysis.
+ * Open Analyze on a copy of Qwerty that reaches Accents by LHR and LHM pressed together, a combo on
+ * two finger keys for the combo editor to work on, and wait for its first analysis.
  */
 async function openComboEdit(): Promise<void> {
   const storage = freshStorage();
-  await seed(storage, 'qwerty', 'qwerty-combo', { combos: [accentsCombo('base')] });
+  await seed(storage, 'qwerty', 'qwerty-combo', {
+    combos: [{ ...accentsCombo('base', getGeometryPreset('3x5+2')), keys: ['LHR', 'LHM'] }],
+  });
   renderRoute('/analyze?layout=custom%3Aqwerty-combo&corpus=en-general&sample=20000', { storage });
   await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
 }
