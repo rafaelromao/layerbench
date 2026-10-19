@@ -110,13 +110,18 @@ function KindTiles({
   const wide = useMediaQuery(WIDE);
   const [more, setMore] = useState(false);
   // Whether to say, under the tiles, why Behaviour cannot be picked: a hover hint alone never shows
-  // on a phone or to the keyboard, so tapping or focusing the tile says it in text.
-  const [why, setWhy] = useState(false);
+  // on a phone or to the keyboard, so tapping or focusing the tile says it in text. A tap does not
+  // always focus (Safari), so closing the list or picking a kind puts the line away too.
+  const [showWhy, setShowWhy] = useState(false);
   const tiles = useRef<HTMLDivElement>(null);
-  useDismiss(tiles, () => setMore(false), { active: more && !wide, closeOnEscape: false });
+  const closeMore = () => {
+    setMore(false);
+    setShowWhy(false);
+  };
+  useDismiss(tiles, closeMore, { active: more && !wide, closeOnEscape: false });
   const tile = (k: KindInfo) => {
-    // Behaviour names one of the layout's own behaviours, so with none there is nothing to name. The
-    // tile stays hoverable and focusable rather than disabled, so it can say why.
+    // Behaviour names one of the layout's own behaviours, so with none there is nothing to name.
+    // The tile stays hoverable and focusable rather than disabled, so it can say why.
     const unavailable = k.kind === 'behaviour' && !canRefer;
     return (
       <button
@@ -126,15 +131,14 @@ function KindTiles({
         aria-disabled={unavailable || undefined}
         title={unavailable ? NO_BEHAVIOURS : k.hint}
         className={`lb-kind-tile ${kind === k.kind ? 'lb-kind-tile-on' : ''}`}
-        onFocus={unavailable ? () => setWhy(true) : undefined}
-        onBlur={unavailable ? () => setWhy(false) : undefined}
+        onFocus={unavailable ? () => setShowWhy(true) : undefined}
+        onBlur={unavailable ? () => setShowWhy(false) : undefined}
         onClick={() => {
           if (unavailable) {
-            setWhy(true);
+            setShowWhy(true);
             return;
           }
-          setWhy(false);
-          setMore(false);
+          closeMore();
           if (kind !== k.kind) onPick(k.kind);
         }}
       >
@@ -145,50 +149,57 @@ function KindTiles({
       </button>
     );
   };
-  const reason = why && (
-    <p role="status" className="text-xs opacity-70">
-      {NO_BEHAVIOURS}
+  // Mounted all along, so a screen reader announces the reason as it appears; empty, it takes no
+  // room. Once the layout has a behaviour to name, there is no reason left to give.
+  const reason = (
+    <p role="status" className="mt-1 text-xs opacity-70 empty:hidden">
+      {showWhy && !canRefer ? NO_BEHAVIOURS : null}
     </p>
   );
   if (wide) {
     return (
-      <div className="space-y-1">
+      <>
         <fieldset className="lb-kind-tiles" aria-label="Kind of key">
           {primary.map(tile)}
           {others.map(tile)}
         </fieldset>
         {reason}
-      </div>
+      </>
     );
   }
   // With the list closed, a kind picked from it stands in the More tile, so it is still shown.
   const chosen = others.find((k) => k.kind === kind);
   const shown = !more && chosen;
   return (
-    <div className="space-y-1" ref={tiles}>
-      <fieldset className="lb-kind-tiles" aria-label="Kind of key">
-        {primary.map(tile)}
-        <button
-          type="button"
-          className={`lb-kind-tile ${shown ? 'lb-kind-tile-on' : ''}`}
-          aria-expanded={more}
-          aria-label={shown ? `More kinds: ${chosen.label}` : undefined}
-          title={shown ? chosen.hint : undefined}
-          onClick={() => setMore((m) => !m)}
-        >
-          <span aria-hidden="true" className="lb-kind-glyph">
-            {shown ? chosen.glyph : more ? '−' : '+'}
-          </span>
-          <span className="lb-kind-label">{shown ? chosen.label : 'More'}</span>
-        </button>
-      </fieldset>
-      {more && (
-        <fieldset className="lb-kind-tiles" aria-label="More kinds">
-          {others.map(tile)}
+    <>
+      <div className="space-y-1" ref={tiles}>
+        <fieldset className="lb-kind-tiles" aria-label="Kind of key">
+          {primary.map(tile)}
+          <button
+            type="button"
+            className={`lb-kind-tile ${shown ? 'lb-kind-tile-on' : ''}`}
+            aria-expanded={more}
+            aria-label={shown ? `More kinds: ${chosen.label}` : undefined}
+            title={shown ? chosen.hint : undefined}
+            onClick={() => {
+              setMore((m) => !m);
+              setShowWhy(false);
+            }}
+          >
+            <span aria-hidden="true" className="lb-kind-glyph">
+              {shown ? chosen.glyph : more ? '−' : '+'}
+            </span>
+            <span className="lb-kind-label">{shown ? chosen.label : 'More'}</span>
+          </button>
         </fieldset>
-      )}
+        {more && (
+          <fieldset className="lb-kind-tiles" aria-label="More kinds">
+            {others.map(tile)}
+          </fieldset>
+        )}
+      </div>
       {reason}
-    </div>
+    </>
   );
 }
 

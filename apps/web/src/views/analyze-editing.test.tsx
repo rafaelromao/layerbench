@@ -5,7 +5,7 @@ import {
   type Layout,
   toCanonicalJson,
 } from '@layerbench/core';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { useGitHubSession } from '../auth/github-session.js';
@@ -860,9 +860,20 @@ describe('Edit', () => {
       'true',
     );
     // A hover hint never shows on a phone or to the keyboard, so the tile says it in text too.
-    expect(within(await inspector('LHM')).getByRole('status')).toHaveTextContent(
-      /no named behaviours yet/,
-    );
+    const reason = async () => within(await inspector('LHM')).getByRole('status');
+    expect(await reason()).toHaveTextContent(/no named behaviours yet/);
+
+    // Picking a kind puts the line away, even where a tap does not move focus (Safari).
+    fireEvent.click(within(kinds).getByRole('button', { name: 'Symbol' }));
+    expect(await reason()).toBeEmptyDOMElement();
+
+    // The keyboard reaches it too: focus says why, and leaving the tile puts it away. The click
+    // above left the tile focused, so it leaves first.
+    act(() => behaviour.blur());
+    act(() => behaviour.focus());
+    expect(await reason()).toHaveTextContent(/Behaviors panel/);
+    act(() => behaviour.blur());
+    expect(await reason()).toBeEmptyDOMElement();
   });
 
   it('says on a phone, in text, why Behaviour cannot be picked', async () => {
@@ -873,10 +884,16 @@ describe('Edit', () => {
     await user.click(key('Key LHM: d'));
     const editor = await inspector('LHM');
     await user.click(within(editor).getByRole('button', { name: 'More' }));
-    await user.click(within(editor).getByRole('button', { name: 'Behaviour' }));
+    // A tap that does not move focus, as on Safari.
+    fireEvent.click(within(editor).getByRole('button', { name: 'Behaviour' }));
     expect(within(editor).getByRole('status')).toHaveTextContent(/Behaviors panel/);
     // Nothing was picked, so the list of more kinds stays open.
     expect(within(editor).getByRole('group', { name: 'More kinds' })).toBeInTheDocument();
+
+    // A tap elsewhere puts the list away, and the line with it.
+    await user.click(within(editor).getByRole('textbox', { name: 'Binding for LHM' }));
+    expect(within(editor).queryByRole('group', { name: 'More kinds' })).toBeNull();
+    expect(within(editor).getByRole('status')).toBeEmptyDOMElement();
   });
 
   it('closes the list of more kinds on a phone on a choice or a tap elsewhere, and keeps the choice in sight', async () => {

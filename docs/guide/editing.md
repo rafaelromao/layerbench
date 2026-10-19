@@ -64,8 +64,8 @@ the key becomes a tap-hold.
 The tiles after them are the rest: alt repeat, tap dance, morph, caps word, Unicode, dead key,
 and the layout's own named behaviours. [Special keys](special-keys.md) explains each of them. On a
 phone they wait under **More**, which then shows the kind chosen from them. **Behaviour** is greyed
-out until the layout has a named behaviour of its own, added in the **Behaviors** panel; its hint
-says so.
+out until the layout has a named behaviour of its own, added in the **Behaviors** panel; hovering,
+tapping or focusing it says why.
 
 ### Parts of a bigger key
 
