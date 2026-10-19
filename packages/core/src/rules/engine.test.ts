@@ -156,6 +156,20 @@ describe('rules engine', () => {
     expect(classifyBand(null, BANDS.sfb).quality).toBe('neutral');
   });
 
+  it('bands Effort on all nine steps, min to max, lower being better', () => {
+    expect(classifyBand(357, BANDS.effort)).toMatchObject({ label: 'min', quality: 'good' });
+    expect(classifyBand(440, BANDS.effort).label).toBe('min');
+    expect(classifyBand(441, BANDS.effort).label).toBe('very_low');
+    expect(classifyBand(510, BANDS.effort)).toMatchObject({ label: 'mid', quality: 'ok' });
+    expect(classifyBand(580, BANDS.effort).label).toBe('very_high');
+    expect(classifyBand(1237, BANDS.effort)).toMatchObject({ label: 'max', quality: 'bad' });
+    // Every preset scores Effort with the catalog's rule, so every one carries its bands.
+    for (const preset of [layoutsDoc(), cyanophage(), keysolve()]) {
+      expect(preset.rules.find((r) => r.id === 'effort')?.bands).toEqual(BANDS.effort);
+    }
+    expect(qwerty.results.find((r) => r.id === 'effort')?.band.label).toBe('max');
+  });
+
   it('changes definitions and normalization per preset', () => {
     const cyan = run('qwerty', cyanophage());
     expect(cyan.value('sfb')).toBeLessThan(qwerty.value('sfb') as number);

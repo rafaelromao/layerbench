@@ -321,6 +321,29 @@ describe('Ranking layouts', () => {
     expect(cards()).toHaveLength(2);
   }, 90_000);
 
+  it('badges Effort and SFB on a card by their bands, as Analyze does', async () => {
+    const { client } = scoringOnly([1000, 400]);
+    // A sample of its own, so no score is known already.
+    renderRoute('/library?sample=10002', { client, storage: freshStorage() });
+
+    await rankingSays(/^Scoring layouts on a sample of [\d,]+ symbols… 2 of/, 60_000);
+    /** A metric's box on a card: its number, its band's badge, and the band's colour on its border. */
+    const box = (card: HTMLElement, metric: 'Effort' | 'SFB') =>
+      within(card).getByText(metric, { selector: 'dt' }).parentElement as HTMLElement;
+    const badge = (card: HTMLElement, metric: 'Effort' | 'SFB') =>
+      box(card, metric).querySelector('.lb-band');
+
+    const [best, worst] = cards();
+    expect(badge(best, 'Effort')?.textContent).toBe('min');
+    expect(badge(best, 'Effort')).toHaveClass('badge-success');
+    expect(box(best, 'Effort')).toHaveClass('border-success/60');
+    // An SFB of 4% is past the Doc's last bound, its worst band.
+    expect(badge(best, 'SFB')?.textContent).toBe('high');
+    expect(box(best, 'SFB')).toHaveClass('border-error/60');
+    expect(badge(worst, 'Effort')?.textContent).toBe('max');
+    expect(box(worst, 'Effort')).toHaveClass('border-error/60');
+  }, 90_000);
+
   /**
    * An engine that scores each layout by its name, at once. Which layout is scored when depends on
    * when a custom document has been read, so the score has to follow the layout, not the order.
