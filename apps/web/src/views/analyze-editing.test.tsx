@@ -312,7 +312,8 @@ describe('Edit', () => {
     expect(within(bar()).queryByRole('button', { name: 'Submit' })).toBeNull();
     await saveCopy(user);
     expect(await screen.findByText('Saved Qwerty copy')).toBeInTheDocument();
-    await user.click(within(bar()).getByRole('button', { name: 'Submit' }));
+    // The toast can come before the bar shows the copy, slowly enough under coverage to miss it.
+    await user.click(await within(bar()).findByRole('button', { name: 'Submit' }));
     const dialog = screen.getByRole('dialog', { name: 'Submit Qwerty copy' });
     expect(within(dialog).getByRole('button', { name: 'Sign in with GitHub' })).toBeVisible();
     useGitHubSession.setState({ status: 'unknown' });
