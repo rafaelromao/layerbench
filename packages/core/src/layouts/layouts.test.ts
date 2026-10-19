@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { producibleSymbols } from '../lang/coverage.js';
+import { layoutCategory } from '../layout/categories.js';
 import { compileLayout } from '../layout/compile.js';
+import type { Binding } from '../layout/types.js';
 import { explain } from '../sim/resolver.js';
-import { BUNDLED_LAYOUTS, documentedLayouts } from './index.js';
-import { magicRomak, romak24, romak34 } from './romak.js';
+import { BUNDLED_LAYOUTS, bundledLayout, documentedLayouts } from './index.js';
+import { magicRomak, romak } from './romak.js';
+import { BASE_SYMBOLS, MAIN_THUMBS } from './standard.js';
 
 const ALPHABET = [...'abcdefghijklmnopqrstuvwxyz'];
 
@@ -55,7 +58,7 @@ describe('bundled layouts', () => {
 describe('Romak numbers and symbols', () => {
   const KEYMAP_CHARACTERS = [...'0123456789\\{}&()|[].,~#@^$"\'<>`%=:?-+_!/*'];
   const OPTS = { caseMode: 'fold', crossWord: 'reset' } as const;
-  const romaks = [romak24, magicRomak, romak34].map((l) => [l.name, l] as const);
+  const romaks = [magicRomak, romak].map((l) => [l.name, l] as const);
 
   it.each(romaks)('%s types every character the two layers carry', (_name, layout) => {
     const producible = producibleSymbols(compileLayout(layout));
@@ -63,7 +66,7 @@ describe('Romak numbers and symbols', () => {
   });
 
   it.each(romaks)(
-    '%s reaches the digits by holding space, and the symbols by holding the Alpha 2 key',
+    '%s reaches the digits by holding space, and the symbols by holding the right inner thumb',
     (_name, layout) => {
       const compiled = compileLayout(layout);
       const keys = (text: string) =>
@@ -127,7 +130,7 @@ describe('small-board layouts', () => {
 
   it('puts the thumb letter on a thumb', () => {
     expect(keyOf('hands-down-gold', 't')).toBe('L0');
-    expect(keyOf('rsthd', 'e')).toBe('L1');
+    expect(keyOf('rsthd', 'e')).toBe('L0');
     expect(keyOf('t-34', 'e')).toBe('R0');
     expect(keyOf('enthium', 'r')).toBe('R0');
     expect(keyOf('nordrassil', 't')).toBe('R1');
@@ -159,5 +162,132 @@ describe('small-board layouts', () => {
     const steps = explain(compiled, 'v', OPTS).steps.map((s) => `${s.key}:${s.kind}`);
     expect(steps[0]).toBe('R1:tap');
     expect(steps.at(-1)).toBe('LTR:tap');
+  });
+});
+
+/**
+ * The bundled Standard and Thumb Alpha layouts share their main thumbs and their base-layer symbols,
+ * so that what tells them apart is their letters.
+ */
+describe('the standard thumbs', () => {
+  const standard = BUNDLED_LAYOUTS.filter((l) => layoutCategory(l) !== 'special');
+  const show = (b: Binding | undefined): string => {
+    if (!b) return 'nothing';
+    switch (b.kind) {
+      case 'kp':
+        return b.symbol === ' ' ? 'space' : (b.symbol ?? '');
+      case 'key_repeat':
+        return 'Repeat';
+      case 'sl':
+        return b.layer === 'accents' ? 'Accents' : `sl ${b.layer}`;
+      case 'mod':
+        return 'Shift';
+      case 'mo':
+        return { num: 'Numbers', sym: 'Symbols' }[b.layer] ?? b.layer;
+      default:
+        return b.kind;
+    }
+  };
+  /** Each main thumb as tap / hold, left to right. */
+  const thumbs = (id: string) => {
+    const base = bundledLayout(id)?.layers[0].bindings ?? {};
+    return MAIN_THUMBS.map((k) => {
+      const b = base[k];
+      return b?.kind === 'hold_tap' ? `${show(b.tap)} / ${show(b.hold)}` : `nothing / ${show(b)}`;
+    });
+  };
+
+  it('are on Romak and every Standard and Thumb Alpha layout but Romak 24, which is gone', () => {
+    expect(standard.length).toBe(26);
+    expect(layoutCategory(romak)).toBe('standard');
+    expect(romak).toMatchObject({ id: 'romak', name: 'Romak' });
+    expect(BUNDLED_LAYOUTS.map((l) => l.id)).not.toContain('romak-34');
+    expect(documentedLayouts().some((l) => l.id?.startsWith('romak-'))).toBe(false);
+  });
+
+  it.each(standard.map((l) => [l.id ?? l.name, l] as const))(
+    '%s holds Shift, Numbers, Symbols and Shift on its main thumbs, and taps Accents on R1',
+    (id) => {
+      expect(thumbs(id).map((t) => t.split(' / ')[1])).toEqual([
+        'Shift',
+        'Numbers',
+        'Symbols',
+        'Shift',
+      ]);
+      expect(thumbs(id)[3]).toBe('Accents / Shift');
+    },
+  );
+
+  it.each(standard.map((l) => [l.id ?? l.name, l] as const))(
+    '%s keeps only letters, the four marks and Repeat on its base layer, and no other thumb key',
+    (_id, layout) => {
+      const main = new Set<string>(MAIN_THUMBS);
+      const kept = Object.entries(layout.layers[0].bindings).filter(
+        ([key, b]) =>
+          !main.has(key) &&
+          b.kind !== 'none' &&
+          !(b.kind === 'kp' && /^[a-z]$/.test(b.symbol ?? '')) &&
+          !(b.kind === 'kp' && BASE_SYMBOLS.includes(b.symbol ?? '') && !/^[LR]\d$/.test(key)) &&
+          !(b.kind === 'key_repeat' && !/^[LR]\d$/.test(key)),
+      );
+      expect(kept).toEqual([]);
+      expect(layout.combos?.some((c) => c.id === 'accents') ?? false).toBe(false);
+    },
+  );
+
+  it('tap Repeat, space, the first thumb letter or nothing, and Accents where LayerBench placed them', () => {
+    expect(thumbs('qwerty')).toEqual([
+      'Repeat / Shift',
+      'space / Numbers',
+      'nothing / Symbols',
+      'Accents / Shift',
+    ]);
+    expect(thumbs('romak')).toEqual(thumbs('qwerty'));
+    expect(thumbs('night')[2]).toBe('r / Symbols');
+  });
+
+  it('give L1 to a second thumb letter, and Repeat a key the symbols left', () => {
+    expect(thumbs('hands-down-neu').slice(0, 3)).toEqual([
+      'j / Shift',
+      'space / Numbers',
+      'z / Symbols',
+    ]);
+    expect(bundledLayout('hands-down-neu')?.layers[0].bindings.RTC).toEqual({ kind: 'key_repeat' });
+    expect(thumbs('sunlight').slice(0, 3)).toEqual(['j / Shift', 'space / Numbers', 'r / Symbols']);
+    expect(bundledLayout('sunlight')?.layers[0].bindings.RBC).toEqual({ kind: 'key_repeat' });
+  });
+
+  it('keep the space and letters their authors placed, and give the rest Accents, then Repeat', () => {
+    const authored = (letter: string) => [
+      'Repeat / Shift',
+      `${letter} / Numbers`,
+      'space / Symbols',
+      'Accents / Shift',
+    ];
+    expect(thumbs('hands-down-gold')).toEqual(authored('t'));
+    expect(thumbs('hands-down-promethium')).toEqual(authored('r'));
+    expect(thumbs('hands-down-vibranium')).toEqual(authored('r'));
+    expect(thumbs('rsthd')).toEqual(authored('e'));
+    expect(thumbs('enthium')).toEqual([
+      'Repeat / Shift',
+      'space / Numbers',
+      'r / Symbols',
+      'Accents / Shift',
+    ]);
+    const enthium = bundledLayout('enthium')?.layers[0].bindings ?? {};
+    expect([enthium.L2, enthium.R2]).toEqual([undefined, undefined]);
+  });
+
+  it('type a doubled letter with Repeat, and an accent through the one-shot on R1', () => {
+    const OPTS = { caseMode: 'fold', crossWord: 'reset' } as const;
+    const compiled = compileLayout(bundledLayout('qwerty') as (typeof BUNDLED_LAYOUTS)[number]);
+    const keys = (text: string) =>
+      explain(compiled, text, OPTS)
+        .steps.filter((s) => s.kind !== 'hold_release')
+        .map((s) => s.key);
+    expect(keys('book')).toEqual(['LBC', 'RTR', 'L1', 'RHM']);
+    expect(keys('é')).toEqual(['R1', 'RHI']);
+    // `/` left the base layer for Symbols.
+    expect(keys('/')).toEqual(['R0', 'RBM']);
   });
 });

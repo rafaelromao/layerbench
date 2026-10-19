@@ -132,7 +132,7 @@ export const CONFIGS: Record<string, Config> = {
     layers: 2,
     description: 'space and repeat key on the left thumb, one-shot and a letter on the right',
   },
-  /** Breeze's and Romak 34's thumbs, with a letter where Romak has its one-shot: no second layer. */
+  /** Breeze's thumbs: repeat key and space on the left, a letter and a one-shot shift on the right. */
   c5: {
     id: 'c5',
     space: 'L0',

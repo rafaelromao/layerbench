@@ -8,6 +8,7 @@ import { GEOMETRY_PRESET_IDS, getGeometryPreset } from '../geometry/presets.js';
 import { corporaRoot } from '../golden/paths.js';
 import { layoutLanguageCoverage, producibleSymbols } from '../lang/coverage.js';
 import { LANGUAGE_PROFILES } from '../lang/profiles.js';
+import { layoutCategory } from '../layout/categories.js';
 import { compileLayout } from '../layout/compile.js';
 import type { Binding, Layout } from '../layout/types.js';
 import { defaultEffort } from '../rules/effort.js';
@@ -228,6 +229,7 @@ describe('the default layers, board by board', () => {
  * Presses on each key of Accents, typing each text the app comes with on the default analysis
  * settings, by what the key types: Qwerty for the board with a bottom row, Ben Vallack Piano for the
  * one without. A dead key's are the letters typed through it. Keys no text presses are left out.
+ * Qwerty types a doubled letter's second with Repeat, as in French `éé` and German `ÜÜ`.
  */
 const ACCENT_USES: Record<string, Record<string, Record<string, number>>> = {
   qwerty: {
@@ -241,11 +243,11 @@ const ACCENT_USES: Record<string, Record<string, Record<string, number>>> = {
       '¨': 1,
     },
     'fr-general': {
-      ...{ é: 2575, qu: 876, à: 434, ü: 2, è: 337, ç: 41, ê: 142, ö: 1, ù: 22, ô: 50 },
+      ...{ é: 2574, qu: 876, à: 434, ü: 2, è: 337, ç: 41, ê: 142, ö: 1, ù: 22, ô: 50 },
       ...{ î: 28, â: 27, '¨': 19, '^': 16, œ: 9 },
     },
     'it-general': { é: 39, qu: 435, à: 237, è: 321, ç: 1, ö: 1, ù: 75, ì: 46, ò: 39 },
-    'de-general': { é: 4, qu: 18, ó: 1, á: 1, ã: 2, ü: 663, ä: 511, ö: 274, ß: 129 },
+    'de-general': { é: 4, qu: 18, ó: 1, á: 1, ã: 2, ü: 659, ä: 511, ö: 274, ß: 129 },
   },
   'ben-vallack-piano': {
     'en-general': { '´': 8, '¨': 1, ç: 1, ñ: 1 },
@@ -420,27 +422,24 @@ describe("Magic Romak's layers are the defaults on its board", () => {
   });
 });
 
-describe('Romak types the other accents by the combos on its Alpha 2, or by Accents', () => {
-  const romak = bundledLayout('romak-34') as Layout;
+describe('Romak types every accent through Accents, one-shot from its right outer thumb', () => {
+  const romak = bundledLayout('romak') as Layout;
 
-  it('has no Alt repeat 2, and the default layers', () => {
-    expect(romak.layers.map((l) => l.id)).toEqual([
-      ...['alpha1', 'alpha2', 'ccedil'],
-      ...['num', 'sym', 'accents'],
-    ]);
-    expect(romak.combos).toContainEqual(accentsCombo('alpha1'));
+  it('has one alpha layer and the default layers, and no combos', () => {
+    expect(romak.layers.map((l) => l.id)).toEqual(['alpha1', 'num', 'sym', 'accents']);
+    expect(romak.combos).toBeUndefined();
     expect(romak.behaviors).toBeUndefined();
   });
 
-  it('writes the six languages: ñ and ü on Accents, ¿ ¡ and œ held', () => {
+  it('writes the six languages: ñ ü and œ on Accents, ¿ and ¡ on Symbols', () => {
     const t = trace(romak, 'ñ ü ¿ ¡ œ');
     expect(t.out).toBe('ñ ü ¿ ¡ œ');
     expect(t.keys).toEqual([
-      ...[ACCENTS_COMBO, 'LTM', 'L0'],
-      ...[ACCENTS_COMBO, 'LHP', 'L0'],
-      ...['R0', 'combo:question', 'L0'],
-      ...['R0', 'combo:exclamation', 'L0'],
-      ...['R0', 'RHR'],
+      ...['R1', 'LTM', 'L0'],
+      ...['R1', 'LHP', 'L0'],
+      // Symbols held through the space between them, which it types too.
+      ...['R0', 'RHC', 'L0', 'RBC', 'L0'],
+      ...['R1', 'LBM'],
     ]);
     const compiled = compileLayout(romak);
     for (const tag of Object.keys(LANGUAGE_PROFILES)) {
@@ -449,24 +448,21 @@ describe('Romak types the other accents by the combos on its Alpha 2, or by Acce
   });
 });
 
-describe("Romak and Magic Romak type `;` as the keymap's combo", () => {
-  for (const id of ['romak-34', 'magic-romak']) {
-    it(`${id}: RBM and RBR together, on Alpha 1 and on Numbers`, () => {
-      const layout = bundledLayout(id) as Layout;
-      expect(layout.combos?.find((c) => c.id === 'semicolon')).toMatchObject({
-        keys: ['RBM', 'RBR'],
-        binding: { kind: 'kp', symbol: ';' },
-        layers: ['alpha1', 'num'],
-        role: 'typing',
-      });
-      // Numbers held for the digits, the combo between them.
-      const t = trace(layout, '7;8');
-      expect(t.out).toBe('7;8');
-      expect(t.keys).toEqual(['L0', 'RTI', 'combo:semicolon', 'RTM']);
+describe("Magic Romak types `;` as the keymap's combo", () => {
+  it('RBM and RBR together, on Alpha 1 and on Numbers', () => {
+    expect(magicRomak.combos?.find((c) => c.id === 'semicolon')).toMatchObject({
+      keys: ['RBM', 'RBR'],
+      binding: { kind: 'kp', symbol: ';' },
+      layers: ['alpha1', 'num'],
+      role: 'typing',
     });
-  }
+    // Numbers held for the digits, the combo between them.
+    const t = trace(magicRomak, '7;8');
+    expect(t.out).toBe('7;8');
+    expect(t.keys).toEqual(['L0', 'RTI', 'combo:semicolon', 'RTM']);
+  });
 
-  it('magic-romak: the combo, where it had to go through Dead keys', () => {
+  it('the combo, where it had to go through Dead keys', () => {
     expect(trace(magicRomak, ';').keys).toEqual(['combo:semicolon']);
   });
 });
@@ -511,7 +507,19 @@ describe('the default layers on every bundled layout', () => {
       });
 
       const original = layout.id ? before.get(layout.id) : undefined;
-      if (original) {
+      if (original && layoutCategory(original) !== 'special') {
+        it('reaches Accents by its right outer thumb on its base layer, and nothing else', () => {
+          const base = layout.layers[0].id;
+          expect(layout.combos?.some((c) => c.id === 'accents') ?? false).toBe(false);
+          const accents = compiled.layerIndex.get('accents') as number;
+          const reach = reachKeys(compiled, accents).map((k) => ({
+            key: compiled.keys[k.pos].id,
+            from: k.routes.map((r) => compiled.layers[r.via].id),
+          }));
+          expect(reach).toEqual([{ key: 'R1', from: [base] }]);
+        });
+      }
+      if (original && layoutCategory(original) === 'special') {
         it('reaches Accents by LHR and LHM pressed together on its base layer, and nothing else', () => {
           const base = layout.layers[0].id;
           expect(layout.combos).toContainEqual(accentsCombo(base));
@@ -556,15 +564,22 @@ describe('the default layers, layout by layout', () => {
   const holdSymbols: Binding = { kind: 'mo', layer: 'sym' };
 
   it('hold Numbers on the space key and Symbols on the inner thumb of the other hand', () => {
-    expect(base('qwerty').L1).toEqual(holds('num', space));
+    expect(base('qwerty').L0).toEqual(holds('num', space));
     expect(base('qwerty').R0).toEqual(holdSymbols);
     expect(num('qwerty').R0).toEqual(holds('sym', space));
     expect(num('qwerty').R1).toEqual({ kind: 'kp', symbol: '0' });
   });
 
   it('take the innermost free thumb for Symbols, past one with a letter', () => {
-    expect(base('hands-down-neu').R0).toEqual({ kind: 'kp', symbol: 'j' });
-    expect(base('hands-down-neu').R1).toEqual(holdSymbols);
+    expect(base('nordrassil').R1).toEqual({ kind: 'kp', symbol: 't' });
+    expect(base('nordrassil').R2).toEqual(holdSymbols);
+  });
+
+  it('type on Symbols what the Numbers thumb taps, where it does not tap space', () => {
+    const sym = bundledLayout('hands-down-gold')?.layers.find((l) => l.id === 'sym')?.bindings;
+    expect(sym?.L0).toBeUndefined();
+    const t = trace(bundledLayout('hands-down-gold') as Layout, 'at% t');
+    expect(t.out).toBe('at% t');
   });
 
   it('hold Symbols on a thumb that types where every thumb does, and keep 0 by the keypad', () => {

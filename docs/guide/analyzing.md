@@ -18,8 +18,9 @@ These are the two numbers every layout is shown and sorted by.
 **Effort** is [cyanophage's](https://cyanophage.github.io/playground.html) measure. Each key
 position has a cost, from 0 under the index, middle and ring fingers on the home row to 8 in the
 inner bottom corners. Effort is the average cost of a keystroke, multiplied by 577 as cyanophage's
-playground does, so a layout scores the same here as there on the same text, as long as it leaves
-its thumbs to the space bar. A thumb press costs 1 here, where cyanophage charges nothing: a
+playground does, so a layout scores the same here as there on the same text, as long as its thumbs
+type nothing but space. The layouts that come with the app tap Repeat and Accents on their thumbs
+too, so theirs differs a little. A thumb press costs 1 here, where cyanophage charges nothing: a
 one-shot tap, a thumb held for a layer and a letter on a thumb are presses too. A space counts as
 a keystroke that costs nothing.
 
@@ -75,7 +76,7 @@ so a tap between two letters does not pass for a good trigram.
 A layout that has no key for letters the text's language needs skips them, and skipping is free.
 Each card says what share of the text it skips, and on a Portuguese text, say, the layouts that
 cannot type `ã` or `ç` are ranked after the ones that can. Every layout that comes with the app types
-them, through its [Accents](editing.md#default-layers) layer or, on Magic Romak and Romak, its
+them, through its [Accents](editing.md#default-layers) layer or, on Magic Romak, its
 own accents; a layout of your own without them is the one ranked after. A layout is also held to the languages
 it is for, chosen in **Settings** in **Analyze**: one for Spanish that has no `ñ` says so on its
 card, whatever the text. It is only flagged for that, not ranked after the others: on an English

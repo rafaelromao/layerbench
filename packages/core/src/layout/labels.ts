@@ -390,8 +390,8 @@ export function describe(c: CompiledLayout, b: Binding): string {
       return parts.length > 0 ? `${parts.join(', then ')}${then}` : 'an empty macro';
     }
     case 'adaptive': {
-      // An adaptive key can fall back to another — a document's behaviour can, as Romak 24's
-      // `a2AltRepeat` does — and saying "adaptive" twice explains nothing. The branches are read
+      // An adaptive key can fall back to another — a document's behaviour can — and saying
+      // "adaptive" twice explains nothing. The branches are read
       // outermost first, which is the order they are tried in, down to the innermost default.
       const branches: string[] = [];
       let at: Binding | undefined = b;

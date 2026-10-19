@@ -763,8 +763,8 @@ describe('Categories', () => {
     await openRanking();
     const categories = screen.getByRole('group', { name: 'Categories' });
     const box = (name: RegExp) => within(categories).getByRole('checkbox', { name });
-    const special = box(/^Special \(10\)$/);
-    expect(box(/^Standard \(13\)$/)).toBeChecked();
+    const special = box(/^Special \(9\)$/);
+    expect(box(/^Standard \(14\)$/)).toBeChecked();
     expect(box(/^Thumb Alpha \(12\)$/)).toBeChecked();
 
     await user.click(special);

@@ -109,7 +109,7 @@ describe('corpora', () => {
 
 describe('document ids', () => {
   it('normalizes names into slugs', () => {
-    expect(slug('Romak 24')).toBe('romak-24');
+    expect(slug('Hands Down 24')).toBe('hands-down-24');
     expect(slug('Magic Romak!')).toBe('magic-romak');
     expect(slug('Português ção')).toBe('portugues-cao');
     expect(slug('!!!').startsWith('item-')).toBe(true);

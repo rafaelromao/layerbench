@@ -1,4 +1,10 @@
-import { bundledLayout, CLASSIC_LAYOUTS, type Layout, toCanonicalJson } from '@layerbench/core';
+import {
+  accentsCombo,
+  bundledLayout,
+  CLASSIC_LAYOUTS,
+  type Layout,
+  toCanonicalJson,
+} from '@layerbench/core';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -57,6 +63,17 @@ async function openEditOn(storage: IndexedDbAdapter): Promise<void> {
 /** Open Analyze on Qwerty and wait for its first analysis. */
 async function openEdit(): Promise<void> {
   await openEditOn(freshStorage());
+}
+
+/**
+ * Open Analyze on a copy of Qwerty that reaches Accents by LHR and LHM pressed together, as a
+ * Special layout does, and wait for its first analysis.
+ */
+async function openComboEdit(): Promise<void> {
+  const storage = freshStorage();
+  await seed(storage, 'qwerty', 'qwerty-combo', { combos: [accentsCombo('base')] });
+  renderRoute('/analyze?layout=custom%3Aqwerty-combo&corpus=en-general&sample=20000', { storage });
+  await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
 }
 
 const key = (name: string) => screen.getByRole('button', { name });
@@ -1104,7 +1121,6 @@ describe('Edit', () => {
     await user.click(screen.getByRole('tab', { name: 'Combos' }));
     await user.click(screen.getByRole('button', { name: 'pick on board' }));
 
-    // Not LHR and LHM, which Qwerty presses together for Accents.
     await user.click(key('Key LHM: d'));
     await user.click(key('Key LHI: f'));
     expect(screen.getByLabelText('Combo keys picked')).toHaveTextContent('LHM+LHI');
@@ -1124,7 +1140,7 @@ describe('Edit', () => {
 
   it("changes a combo's output, keys and layers from its row, one undo for each", async () => {
     const user = userEvent.setup();
-    await openEdit();
+    await openComboEdit();
     await user.click(screen.getByRole('tab', { name: 'Combos' }));
     const combos = within(screen.getByRole('region', { name: 'Combos' }));
     expect(pills()).toEqual(['Combo LHR + LHM: Acce']);
@@ -1184,7 +1200,7 @@ describe('Edit', () => {
 
   it('opens a combo from its pill, with any kind of key but Transparent and its role', async () => {
     const user = userEvent.setup();
-    await openEdit();
+    await openComboEdit();
     const { editor, tiles } = await openAccents(user);
     expect(tiles.getByRole('button', { name: 'Layer' })).toHaveAttribute('aria-pressed', 'true');
     expect(tiles.queryByRole('button', { name: 'Transparent' })).toBeNull();
@@ -1198,7 +1214,7 @@ describe('Edit', () => {
 
   it("changes a combo's kind from the tiles, one undo for each, with the combo still open", async () => {
     const user = userEvent.setup();
-    await openEdit();
+    await openComboEdit();
     const { tiles } = await openAccents(user);
     await user.click(tiles.getByRole('button', { name: 'Tap-hold' }));
     await pressed(tiles, 'Tap-hold');
@@ -1212,7 +1228,7 @@ describe('Edit', () => {
 
   it('opens a combo from its row, and gives the inspector back to a key clicked', async () => {
     const user = userEvent.setup();
-    await openEdit();
+    await openComboEdit();
     await user.click(screen.getByRole('tab', { name: 'Combos' }));
     const combos = within(screen.getByRole('region', { name: 'Combos' }));
     await user.click(combos.getByRole('button', { name: 'Edit LHR+LHM' }));
@@ -1241,7 +1257,7 @@ describe('Edit', () => {
 
   it("picks a combo's keys again from the combo editor", async () => {
     const user = userEvent.setup();
-    await openEdit();
+    await openComboEdit();
     const { editor } = await openAccents(user);
     await user.click(editor.getByRole('button', { name: 'Pick again on the board' }));
     await user.click(key('Key LHI: f'));
@@ -1252,7 +1268,7 @@ describe('Edit', () => {
 
   it("does not carry what was typed in a removed combo's output to the one that takes its row", async () => {
     const user = userEvent.setup();
-    await openEdit();
+    await openComboEdit();
     await user.click(screen.getByRole('tab', { name: 'Combos' }));
     const combos = within(screen.getByRole('region', { name: 'Combos' }));
     // A second combo with the same output as the first.
@@ -1271,7 +1287,7 @@ describe('Edit', () => {
 
   it("stops picking a combo's keys again when told to", async () => {
     const user = userEvent.setup();
-    await openEdit();
+    await openComboEdit();
     await user.click(screen.getByRole('tab', { name: 'Combos' }));
     const combos = within(screen.getByRole('region', { name: 'Combos' }));
     await user.click(

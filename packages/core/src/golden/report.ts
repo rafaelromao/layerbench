@@ -30,7 +30,7 @@ export interface GoldenCase {
 export type GoldenCorpus = 'fixture_en' | 'fixture_pt' | 'fixture_enpt';
 
 /** Layouts covered by the matrix. Resolved from `golden/layouts/`, not from the bundled registry. */
-export const GOLDEN_LAYOUTS = ['magic-romak', 'romak-34', 'qwerty'] as const;
+export const GOLDEN_LAYOUTS = ['magic-romak', 'romak', 'qwerty'] as const;
 
 const GOLDEN_CORPORA: GoldenCorpus[] = ['fixture_en', 'fixture_pt', 'fixture_enpt'];
 const GOLDEN_PRESETS = ['layouts_doc', 'cyanophage'] as const;
