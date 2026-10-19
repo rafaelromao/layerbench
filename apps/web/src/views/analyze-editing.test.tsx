@@ -858,6 +858,24 @@ describe('Edit', () => {
       'aria-pressed',
       'true',
     );
+    // A hover hint never shows on a phone or to the keyboard, so the tile says it in text too.
+    expect(within(await inspector('LHM')).getByRole('status')).toHaveTextContent(
+      /no named behaviours yet/,
+    );
+  });
+
+  it('says on a phone, in text, why Behaviour cannot be picked', async () => {
+    setViewportWidth(375);
+    const user = userEvent.setup();
+    await openEdit();
+
+    await user.click(key('Key LHM: d'));
+    const editor = await inspector('LHM');
+    await user.click(within(editor).getByRole('button', { name: 'More' }));
+    await user.click(within(editor).getByRole('button', { name: 'Behaviour' }));
+    expect(within(editor).getByRole('status')).toHaveTextContent(/Behaviors panel/);
+    // Nothing was picked, so the list of more kinds stays open.
+    expect(within(editor).getByRole('group', { name: 'More kinds' })).toBeInTheDocument();
   });
 
   it('closes the list of more kinds on a phone on a choice or a tap elsewhere, and keeps the choice in sight', async () => {

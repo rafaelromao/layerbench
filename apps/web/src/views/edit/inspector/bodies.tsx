@@ -89,7 +89,7 @@ export function BindingEditor({
 
 /** Why the Behaviour tile cannot be picked: the layout has no behaviour of its own to name. */
 const NO_BEHAVIOURS =
-  'the layout has no named behaviours yet: add one in the Behaviors panel, under Editor, to use it here';
+  'The layout has no named behaviours yet: add one in the Behaviors panel, under Editor, to use it here.';
 
 function KindTiles({
   kind,
@@ -109,11 +109,14 @@ function KindTiles({
   // elsewhere.
   const wide = useMediaQuery(WIDE);
   const [more, setMore] = useState(false);
+  // Whether to say, under the tiles, why Behaviour cannot be picked: a hover hint alone never shows
+  // on a phone or to the keyboard, so tapping or focusing the tile says it in text.
+  const [why, setWhy] = useState(false);
   const tiles = useRef<HTMLDivElement>(null);
   useDismiss(tiles, () => setMore(false), { active: more && !wide, closeOnEscape: false });
   const tile = (k: KindInfo) => {
     // Behaviour names one of the layout's own behaviours, so with none there is nothing to name. The
-    // tile stays hoverable and focusable rather than disabled, so its hint can say why.
+    // tile stays hoverable and focusable rather than disabled, so it can say why.
     const unavailable = k.kind === 'behaviour' && !canRefer;
     return (
       <button
@@ -123,8 +126,14 @@ function KindTiles({
         aria-disabled={unavailable || undefined}
         title={unavailable ? NO_BEHAVIOURS : k.hint}
         className={`lb-kind-tile ${kind === k.kind ? 'lb-kind-tile-on' : ''}`}
+        onFocus={unavailable ? () => setWhy(true) : undefined}
+        onBlur={unavailable ? () => setWhy(false) : undefined}
         onClick={() => {
-          if (unavailable) return;
+          if (unavailable) {
+            setWhy(true);
+            return;
+          }
+          setWhy(false);
           setMore(false);
           if (kind !== k.kind) onPick(k.kind);
         }}
@@ -136,12 +145,20 @@ function KindTiles({
       </button>
     );
   };
+  const reason = why && (
+    <p role="status" className="text-xs opacity-70">
+      {NO_BEHAVIOURS}
+    </p>
+  );
   if (wide) {
     return (
-      <fieldset className="lb-kind-tiles" aria-label="Kind of key">
-        {primary.map(tile)}
-        {others.map(tile)}
-      </fieldset>
+      <div className="space-y-1">
+        <fieldset className="lb-kind-tiles" aria-label="Kind of key">
+          {primary.map(tile)}
+          {others.map(tile)}
+        </fieldset>
+        {reason}
+      </div>
     );
   }
   // With the list closed, a kind picked from it stands in the More tile, so it is still shown.
@@ -170,6 +187,7 @@ function KindTiles({
           {others.map(tile)}
         </fieldset>
       )}
+      {reason}
     </div>
   );
 }
