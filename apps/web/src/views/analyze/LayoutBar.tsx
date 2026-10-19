@@ -153,12 +153,8 @@ export function LayoutBar({
                     onCommit={(description) => onMeta({ description })}
                   />
                 </div>
-                {/* Keyed by the layout, so a draft left wrong in one is not shown on the next. */}
-                <LinkField
-                  key={layoutRef}
-                  link={layout.link ?? ''}
-                  onChange={(link) => onMeta({ link })}
-                />
+                {/* A layout opened anew is a Workbench, and so a Link field, of its own. */}
+                <LinkField link={layout.link ?? ''} onChange={(link) => onMeta({ link })} />
                 <LanguagesField
                   languages={layout.languages ?? []}
                   onChange={(languages) => onMeta({ languages })}
@@ -235,7 +231,7 @@ function LinkField({ link, onChange }: { link: string; onChange: (link: string) 
             const given = text.trim();
             const ok = !given || isLayoutLink(given);
             setWrong(!ok);
-            if (ok) onChange(given);
+            if (ok && given !== link) onChange(given);
           }}
         />
         {link && !wrong && (

@@ -11,7 +11,7 @@ import {
   setKeyBinding,
   swapKeys,
 } from './ops.js';
-import { isLayoutLink, safeParseLayout } from './schema.js';
+import { isLayoutLink, NOT_A_LINK, safeParseLayout } from './schema.js';
 import type { Binding, LayerColor, Layout, LayoutFeatures, TypingPathEntry } from './types.js';
 
 /**
@@ -508,6 +508,17 @@ const handlers: Handlers = {
   },
 
   setMeta(layout, edit) {
+    const link = edit.link === undefined ? undefined : edit.link.trim();
+    if (link && !isLayoutLink(link)) return { refused: NOT_A_LINK };
+    const same =
+      (edit.name === undefined || edit.name === layout.name) &&
+      (edit.author === undefined || edit.author === layout.author) &&
+      (edit.description === undefined || edit.description === layout.description) &&
+      (link === undefined || (link || undefined) === layout.link) &&
+      (edit.languages === undefined ||
+        JSON.stringify(edit.languages) === JSON.stringify(layout.languages));
+    // Nothing to change changes nothing: no unsaved layout, no step to undo.
+    if (same) return { layout };
     const next: Layout = {
       ...layout,
       name: edit.name ?? layout.name,
@@ -515,12 +526,8 @@ const handlers: Handlers = {
       description: edit.description ?? layout.description,
       languages: edit.languages ?? layout.languages,
     };
-    if (edit.link !== undefined) {
-      const link = edit.link.trim();
-      if (link && !isLayoutLink(link)) return { refused: 'a link is one http:// or https:// URL' };
-      if (link) next.link = link;
-      else delete next.link;
-    }
+    if (link) next.link = link;
+    else if (link === '') delete next.link;
     return { layout: next };
   },
 

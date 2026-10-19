@@ -866,6 +866,17 @@ describe('behaviours, typing paths, keys, details and features', () => {
     expect(wrong).toMatchObject({ status: 'refused', before: linked });
   });
 
+  it('changes nothing when the details given are the ones the layout has', () => {
+    const linked = landed(layout, { kind: 'setMeta', link: 'https://example.com/mine' }).layout;
+    for (const meta of [
+      { link: ' https://example.com/mine ' },
+      { name: 'Test', languages: linked.languages },
+    ]) {
+      expect(applyEdit(linked, { kind: 'setMeta', ...meta }).status).toBe('unchanged');
+    }
+    expect(applyEdit(layout, { kind: 'setMeta', link: '  ' }).status).toBe('unchanged');
+  });
+
   it('takes the features away when none is left in them', () => {
     const on = landed(layout, { kind: 'setFeatures', features: { sentenceCase: {} } }).layout;
     expect(on.features).toEqual({ sentenceCase: {} });

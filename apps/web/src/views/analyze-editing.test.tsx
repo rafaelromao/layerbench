@@ -366,6 +366,44 @@ describe('Edit', () => {
     );
   }, 60_000);
 
+  it('keeps a link being typed while the page catches up, and drops a wrong one on Escape or Undo', async () => {
+    const user = userEvent.setup();
+    await openEditOn(freshStorage());
+    const settings = await openSettings();
+    const link = () => within(settings).getByLabelText('Link');
+    const later = () => new Promise((done) => setTimeout(done, 800));
+
+    // Another edit lands, and the page's address is written again a moment later.
+    await user.type(within(settings).getByLabelText('Author'), 'Ana');
+    await user.tab();
+    await user.click(link());
+    await user.type(link(), 'https://exa');
+    await later();
+    expect(link()).toHaveValue('https://exa');
+    expect(link()).toHaveFocus();
+    await user.type(link(), 'mple.com{Enter}');
+    await later();
+    expect(link()).toHaveValue('https://example.com');
+    expect(link()).toHaveFocus();
+
+    await user.clear(link());
+    await user.type(link(), 'example.com');
+    await user.tab();
+    expect(within(settings).getByRole('alert')).toBeInTheDocument();
+    await user.click(link());
+    await user.keyboard('{Escape}');
+    expect(link()).toHaveValue('https://example.com');
+    expect(within(settings).queryByRole('alert')).toBeNull();
+
+    await user.clear(link());
+    await user.type(link(), 'example.com');
+    await user.tab();
+    expect(within(settings).getByRole('alert')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(link()).toHaveValue('');
+    expect(within(settings).queryByRole('alert')).toBeNull();
+  }, 60_000);
+
   it('keeps the layout as it was when the copy cannot be saved, and offers the name given again', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();

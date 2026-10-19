@@ -259,10 +259,14 @@ describe('submitting a layout', () => {
 
   it('refuses a layout without an author, or with a link that is no http(s) URL, without asking GitHub', async () => {
     const session = await signIn();
-    for (const doc of [layout({ author: '' }), layout({ link: 'example.com/mine' })]) {
+    const cases: [Record<string, unknown>, RegExp][] = [
+      [layout({ author: '' }), /no author/],
+      [layout({ link: 'example.com/mine' }), /not a layout.*http/],
+    ];
+    for (const [doc, reason] of cases) {
       const { res, answer } = await submitAs(session, doc);
       expect(res.status).toBe(422);
-      expect(answer.reason).toMatch(/no author|not a layout/);
+      expect(answer.reason).toMatch(reason);
       expect(calls).toEqual([]);
     }
   });

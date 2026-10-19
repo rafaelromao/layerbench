@@ -110,8 +110,9 @@ comes from is welcome, not needed.
    you as who sent the layout.
 2. In **Analyze**, open the custom layout. In **Settings**, give it its author, and if you can a
    **Link** to where it comes from: the author's firmware, keymap or page. **Save** it.
-3. Click **Submit**, beside **Save**. Submit checks the layout first: an author, saved changes, an id no bundled or community layout has (rename it if one does), and that it compiles.
-   If anything is missing it says what, and sends nothing.
+3. Click **Submit**, beside **Save**. Submit checks the layout first: an author, saved changes, an
+   id no bundled or community layout has (rename it if one does), and that it compiles. If anything
+   is missing it says what, and sends nothing.
 4. Otherwise it asks before it opens the pull request, which is public. It then gives you the pull
    request's link, where the maintainer may ask for changes.
 

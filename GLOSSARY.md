@@ -79,6 +79,12 @@ in how they act, as Layer stands for momentary, one-shot, toggle, to-layer and a
 kind a rule matches (`key_kind`), which is what a press counts as in the analysis.
 _Avoid_: binding kind, key type
 
+**Layout's link**:
+Where a layout comes from: its author's keymap, firmware or page, as one http or https URL, set in
+Settings as **Link**. Optional everywhere, a bundled, community or submitted layout included. It is
+not the link that carries a layout in the app, which names it or holds it after the `#`.
+_Avoid_: source, source link (in the format)
+
 **Layout session**:
 The layout open in Analyze, from the moment it is opened until another is: which custom layout it is,
 if any, its draft, and the link that carries it. Its own changes to the link never open it again;
