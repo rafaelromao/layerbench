@@ -95,6 +95,41 @@ the approval, and the deploy that follows puts it in everyone's Library.
    with its source, a link that opens it in the app as it would be bundled, and its Effort and SFB
    on the texts of its languages, placed among the bundled layouts as the Library ranks them.
 
+## Community layouts
+
+Community layouts are layouts other people made, accepted into the Library without a deploy. They
+live on the `layerbench-data` branch, kept apart from main:
+
+- `community/<id>.json`: one layout, exactly as LayerBench saves it, named by its id, with an author
+  and a description that links to its source: what `documentLayout` in
+  `packages/core/src/layouts/documents.ts` checks a bundled document for.
+- `community/index.json`: `{ "layouts": [<id>, …] }`, which
+  `.github/workflows/community-index.yml` on that branch writes on every push that changes
+  `community/`. It reads only the
+  files' names, never their contents, and lists only names that are document ids.
+
+A pull request into `layerbench-data` that adds one file proposes a layout; merging it is the
+maintainer's acceptance. The app (`apps/web/src/community/community.ts`) reads the index and each
+file from `raw.githubusercontent.com` each time the Library opens, with no sign-in: plain files, as
+unauthenticated calls to the GitHub API are limited to 60 an hour for each address. GitHub's file
+server caches a file for a few minutes, so a layout merged appears within about five. Each file is
+checked with `documentLayout` and compiled, and skipped if either fails, and what was read is kept in the browser, so
+the Library lists the last ones at once while it reads them again. They are ranked in the category
+their keys give them, flagged *community*, and named in links as `community:<id>`; saving one makes
+a copy.
+
+`data-branch/` on main is the branch's starting tree: the workflow, an empty index and a README.
+To give the branch that tree, as a new commit on top of what it holds, so nothing in its history is
+lost and the push is not forced:
+
+```bash
+git fetch origin layerbench-data
+git push origin "$(git commit-tree "$(git rev-parse HEAD:data-branch)" -p origin/layerbench-data -m 'Community: start the community layouts')":refs/heads/layerbench-data
+```
+
+Run it from a checkout of main with this change merged. A change to `data-branch/` later is put on
+the branch by a pull request into it.
+
 ## Bundled corpora
 
 The texts that come with the app are built from `packages/corpora/raw/`: each raw text with its
@@ -182,8 +217,9 @@ GitHub Pages sends no headers a site can choose. The content security policy tra
 written by `vite.config.ts`, a check at the top of `main.tsx` stands in for `frame-ancestors`, and a
 meta tag sets the referrer policy; `Cross-Origin-Opener-Policy` and `X-Content-Type-Options` have no
 stand-in. The policy's `connect-src` lets the page talk to its own origin, `api.github.com` and the
-sign-in Worker, and to nothing else, so the token and the session in the page cannot be sent
-anywhere but there.
+sign-in Worker, so the token and the session in the page cannot be sent anywhere but there, and to
+the branch's `community/` folder on `raw.githubusercontent.com`, which the community layouts are
+read from.
 
 ### Publishing the app
 
@@ -283,7 +319,7 @@ only that used, so a deployment set up before can drop it:
   `ALLOWED_ORIGINS`, its callback URLs, its **Gists** permission, and **Any account**.
 - The App stays installed on `rafaelromao/layerbench`, with **Contents** read and write, for
   proposing layouts to the Library from the app, which is still to come.
-- The `layerbench-data` branch stays: it is given a new role.
+- The `layerbench-data` branch stays: it holds the community layouts (below).
 
 ### Landing page
 

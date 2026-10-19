@@ -7,6 +7,7 @@ import {
   type TextClass,
 } from '@layerbench/core';
 import { PRESET_IDS } from '@layerbench/core/rules';
+import { communityId } from '../community/ref.js';
 import { customId } from '../custom/ref.js';
 
 /**
@@ -22,7 +23,7 @@ export type HeatMode = 'usage' | 'sfb' | 'effort' | 'travel' | 'layer_taps';
 export const HEAT_MODES: readonly HeatMode[] = ['usage', 'sfb', 'effort', 'travel', 'layer_taps'];
 
 export interface Params {
-  /** Bundled id, `custom:<id>` or `inline:<blob>`. */
+  /** Bundled id, `custom:<id>`, `community:<id>` or `inline:<blob>`. */
   layoutRef: string;
   corpus: string;
   corpus2: string | null;
@@ -203,11 +204,11 @@ export function toQueryString(p: Params, overrides: Partial<Params> = {}): strin
   return sp.toString();
 }
 
-export type LayoutRefKind = 'bundled' | 'custom' | 'inline';
+export type LayoutRefKind = 'bundled' | 'custom' | 'community' | 'inline';
 
 export interface LayoutRef {
   kind: LayoutRefKind;
-  /** Bundled or custom id; for an inline layout, the compressed blob. */
+  /** Bundled, custom or community id; for an inline layout, the compressed blob. */
   value: string;
 }
 
@@ -216,6 +217,8 @@ export function parseLayoutRef(ref: string): LayoutRef {
   // A custom id is a word; anything else in a link is left to be "not found".
   const id = customId(ref);
   if (id !== null) return { kind: 'custom', value: id };
+  const community = communityId(ref);
+  if (community !== null) return { kind: 'community', value: community };
   return { kind: 'bundled', value: ref };
 }
 

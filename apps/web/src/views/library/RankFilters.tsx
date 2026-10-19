@@ -24,17 +24,28 @@ export interface CategoryChoice {
   count: number;
 }
 
-/** Whether the custom layouts are listed among the bundled ones, with how many there are. */
-function CustomFilter({ count }: { count: number }) {
+/**
+ * Whether the custom layouts and the community ones are listed among the bundled ones, with how many
+ * there are of each.
+ */
+function SourceFilter({ custom, community }: { custom: number; community: number }) {
   const hideCustom = useSession((s) => s.hideCustom);
   const setHideCustom = useSession((s) => s.setHideCustom);
+  const hideCommunity = useSession((s) => s.hideCommunity);
+  const setHideCommunity = useSession((s) => s.setHideCommunity);
   return (
     <SwitchGroup legend="Layouts">
       <Switch
         label="Custom layouts"
-        count={count}
+        count={custom}
         checked={!hideCustom}
         onChange={(on) => setHideCustom(!on)}
+      />
+      <Switch
+        label="Community layouts"
+        count={community}
+        checked={!hideCommunity}
+        onChange={(on) => setHideCommunity(!on)}
       />
     </SwitchGroup>
   );
@@ -98,7 +109,7 @@ function BoardFilter({ boards }: { boards: BoardChoice[] }) {
 
 /**
  * What the Library ranks and lists by, drawn in its Rank and filter dialog: the text, rules and
- * switches the layouts are scored with, whether custom layouts are listed, and which categories
+ * switches the layouts are scored with, whether custom and community layouts are listed, and which categories
  * and boards are. The order stays on the page, beside it.
  */
 export function RankFilters({
@@ -108,6 +119,7 @@ export function RankFilters({
   boards,
   categories,
   customCount,
+  communityCount,
 }: {
   params: Params;
   onChange: (patch: Partial<Params>) => void;
@@ -116,13 +128,15 @@ export function RankFilters({
   categories: CategoryChoice[];
   /** How many custom layouts there are, listed or not. */
   customCount: number;
+  /** How many community layouts there are, listed or not. */
+  communityCount: number;
 }) {
   return (
     <>
       <div className="lb-toolbar flex flex-row flex-wrap items-end gap-3">
         <SettingsFields params={params} onChange={onChange} corpora={corpora} verb="Rank" />
       </div>
-      <CustomFilter count={customCount} />
+      <SourceFilter custom={customCount} community={communityCount} />
       <CategoryFilter categories={categories} />
       <BoardFilter boards={boards} />
     </>

@@ -1,4 +1,7 @@
 import { BUNDLED_LAYOUTS, type IndexEntry } from '@layerbench/core';
+import { useEffect } from 'react';
+import { readCommunityOnce, useCommunity } from '../community/community.js';
+import { communityRef } from '../community/ref.js';
 import { customRef } from '../custom/ref.js';
 
 const byName = (a: { name: string; id?: string }, b: { name: string; id?: string }) =>
@@ -11,8 +14,8 @@ const BUNDLED_BY_NAME = [...BUNDLED_LAYOUTS].sort((a, b) =>
 );
 
 /**
- * The options of a layout picker: the bundled layouts, then the custom ones, each
- * group by name, and the layout the link names when it is neither (one carried inline, or not
+ * The options of a layout picker: the bundled layouts, the community ones, then the custom ones,
+ * each group by name, and the layout the link names when it is neither (one carried inline, or not
  * stored any more).
  */
 export function LayoutOptions({
@@ -26,9 +29,16 @@ export function LayoutOptions({
   /** What to call it when no option is it. */
   currentName: string;
 }) {
+  const community = useCommunity((s) => s.layouts);
+  // A picker offers them without the Library having been opened first.
+  useEffect(() => {
+    readCommunityOnce();
+  }, []);
   const listed =
     BUNDLED_LAYOUTS.some((l) => l.id === current) ||
+    community.some((l) => communityRef(l.id as string) === current) ||
     custom.some((e) => customRef(e.id) === current);
+  const communitySorted = [...community].sort(byName);
   const customSorted = [...custom].sort(byName);
   return (
     <>
@@ -39,6 +49,18 @@ export function LayoutOptions({
           </option>
         ))}
       </optgroup>
+      {communitySorted.length > 0 && (
+        <optgroup label="Community">
+          {communitySorted.map((l) => (
+            <option key={l.id} value={communityRef(l.id as string)}>
+              {/* Two community layouts can share a name too. */}
+              {community.filter((o) => o.name === l.name).length > 1
+                ? `${l.name} (${l.id})`
+                : l.name}
+            </option>
+          ))}
+        </optgroup>
+      )}
       {customSorted.length > 0 && (
         <optgroup label="Custom">
           {customSorted.map((e) => (

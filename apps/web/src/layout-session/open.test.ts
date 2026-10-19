@@ -1,5 +1,7 @@
 import { bundledLayout, type Layout, toCanonicalJson } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
+import { setCommunitySource } from '../community/community.js';
+import { branchWith, communityDoc } from '../test/community.js';
 import { MemoryStorage } from '../test/memory-storage.js';
 import { encodeInline } from '../url/inline.js';
 import { inlineRef } from '../url/params.js';
@@ -69,6 +71,20 @@ describe('Opening a reference', () => {
     expect(await openLayout('custom:broken', storage)).toMatchObject({
       ok: false,
       error: expect.stringMatching(/^layout broken cannot be read: /),
+    });
+  });
+});
+
+describe('Opening a community layout', () => {
+  it('opens it as a layout of its own, which saving copies, and carries it as it is', async () => {
+    setCommunitySource(branchWith(communityDoc('night-owl', 'Night owl')));
+    const storage = await storageWith();
+    const o = await opened('community:night-owl', storage);
+    expect(o).toMatchObject({ layout: { name: 'Night owl' }, storedId: null });
+    expect(await carriedRef('community:night-owl', o)).toBe('community:night-owl');
+    expect(await openLayout('community:lark', storage)).toEqual({
+      ok: false,
+      error: 'community layout lark not found',
     });
   });
 });

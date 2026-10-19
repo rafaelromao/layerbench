@@ -5,6 +5,7 @@ import {
   type StorageAdapter,
   toCanonicalJson,
 } from '@layerbench/core';
+import { communityLayout } from '../community/community.js';
 import { customError, readCustom } from '../custom/read.js';
 import { decodeInline, encodeInline } from '../url/inline.js';
 import { inlineRef, parseLayoutRef } from '../url/params.js';
@@ -18,7 +19,7 @@ const same = (a: Layout, b: Layout) =>
   JSON.stringify(toCanonicalJson(a)) === JSON.stringify(toCanonicalJson(b));
 
 /**
- * Open a reference: a bundled layout's id, `custom:<id>`, an id alone, which names a custom layout when
+ * Open a reference: a bundled layout's id, `custom:<id>`, `community:<id>`, an id alone, which names a custom layout when
  * no bundled one has it (how short links work), or `inline:` and the layout itself. Each says which
  * custom layout it is: a custom one is itself, and a layout carried whole is the one saved here under
  * the id it carries when that has the same contents — its owner's link, opened in another tab,
@@ -38,6 +39,14 @@ export async function openLayout(ref: string, storage: StorageAdapter): Promise<
     const stored = await readCustom(storage, 'layouts', id);
     const saved = stored.status === 'read' && same(stored.doc, layout);
     return { ok: true, layout, storedId: saved ? id : null };
+  }
+
+  if (parsed.kind === 'community') {
+    // Not one's own, as a bundled layout is not: saving it makes a copy.
+    const layout = await communityLayout(parsed.value);
+    return layout
+      ? { ok: true, layout, storedId: null }
+      : { ok: false, error: `community layout ${parsed.value} not found` };
   }
 
   if (parsed.kind === 'bundled') {

@@ -36,7 +36,12 @@ numbers on each card, all scored on the same sample of the same text. **Rank and
 what the ranking is made with, and **Boards**, which lists only the layouts on the boards you tick, so you can keep to the keyboards you own; the layouts on the others are not scored at
 all. Your custom layouts, the ones you keep, are
 ranked in the same list as the ones that come with the app, marked *custom*; untick **Custom
-layouts**, in **Rank and filter**, to leave them out. When that, the categories or the boards leave
+layouts**, in **Rank and filter**, to leave them out. Community layouts, ones other people made and
+the Library accepted, are ranked there too, marked *community*, each in the category its keys give
+it; untick **Community layouts** to leave them out. They are read from GitHub each time the Library
+opens, with no sign-in, and kept in this browser, so the ones read last are listed at once, and
+still there offline. A link names one as `community:` and its id, and opens it in **Analyze** or
+**Compare** for anyone. When those, the categories or the boards leave
 some layouts out, a line under **Sort by** says how many are listed and why. Each layout takes its
 place as its score arrives. This browser remembers the scores, the sort and what you chose to list, so the next
 visit opens already ranked; the scores are checked again quietly, and a layout moves only if its

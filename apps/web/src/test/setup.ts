@@ -3,12 +3,20 @@ import '@testing-library/jest-dom/vitest';
 import 'fake-indexeddb/auto';
 import { cleanup, configure, getConfig } from '@testing-library/react';
 import { afterEach } from 'vitest';
+import { setCommunitySource } from '../community/community.js';
 import { useToasts } from '../state/toasts.js';
 
 // Vitest runs without global test functions, so the automatic unmount does not register itself.
 afterEach(cleanup);
-// What one test leaves in this browser's storage (scores, preferences) must not reach the next.
-afterEach(() => localStorage.clear());
+// What one test leaves in this browser's storage (scores, preferences, community layouts) must not
+// reach the next. Community layouts are read from GitHub, which no test reaches: each test starts
+// with none, unless it gives a source of its own.
+const NO_COMMUNITY = async () => ({ layouts: [] });
+setCommunitySource(NO_COMMUNITY);
+afterEach(() => {
+  localStorage.clear();
+  setCommunitySource(NO_COMMUNITY);
+});
 // Nor its messages: a toast stays six seconds, long enough for the next test to find it instead of
 // its own, and to see it vanish.
 afterEach(() => useToasts.setState({ toasts: [] }));
