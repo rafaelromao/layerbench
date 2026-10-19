@@ -1,7 +1,10 @@
 import { CYANOPHAGE_EFFORT_SCALE, THUMB_EFFORT } from './effort.js';
 import type { Bands, Direction, Family, Predicate, Rule } from './types.js';
 
-/** Band bounds from the Layouts Doc ch. 13.4 (upper bounds of the Min…Max categories), and Effort's. */
+/**
+ * Band bounds from the Layouts Doc ch. 13.4 (upper bounds of the Min…Max categories), and
+ * LayerBench's own for Effort.
+ */
 export const BANDS: Record<string, Bands> = {
   alt: {
     direction: 'higher_is_better',
@@ -24,9 +27,9 @@ export const BANDS: Record<string, Bands> = {
     labels: ['even', 'leans', 'heavy', 'very_heavy'],
   },
   /**
-   * LayerBench's own, on the Doc's nine steps: evenly spaced over the standardized bundled layouts'
-   * Effort on the default analysis settings, from Enthium's 435 to Colemak's 630 (Dvorak and Qwerty
-   * are far beyond).
+   * LayerBench's own, on the Doc's nine steps, from the Effort of the bundled Standard and Thumb
+   * Alpha layouts on the default analysis settings: 20 apart, from 440, just above Enthium's 435,
+   * to 580, so that Colemak's 630, Dvorak and Qwerty are max.
    */
   effort: { direction: 'lower_is_better', bounds: [440, 460, 480, 500, 520, 540, 560, 580] },
 };

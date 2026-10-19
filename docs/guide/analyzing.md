@@ -32,7 +32,8 @@ different keys. It is the first measure of the
 ### Sorting and comparing
 
 **Library**, where the site opens, sorts every layout by Effort, by SFB or by name, and shows both
-numbers on each card with their badges, all scored on the same sample of the same text. **Rank and filter** holds
+numbers on each card with their badges, all scored on the same sample of the same text.
+**Rank and filter** holds
 what the ranking is made with, and **Boards**, which lists only the layouts on the boards you tick, so you can keep to the keyboards you own; the layouts on the others are not scored at
 all. Your custom layouts, the ones you keep, are
 ranked in the same list as the ones that come with the app, marked *custom*; untick **Custom
@@ -222,12 +223,11 @@ number.
 ### What the badges mean
 
 The Keyboard Layouts Doc sorts layouts into bands for the metrics it covers, from *min* to *max*,
-and LayerBench adds its own for Effort, layer taps, wasted one-shots and extra keys. Effort's run
-evenly over the layouts that come with the app, from the easiest Standard and Thumb Alpha ones to
-the hardest. A badge names the band
-a number falls in, and its colour says whether that is good for that metric. For most metrics lower
-is better; for alternation, rolls and the in:out roll ratio, higher is. The
-[glossary](../METRICS.md#bands) lists every band.
+and LayerBench adds its own for Effort, layer taps, wasted one-shots and extra keys. Effort's are
+20 apart, from just above the easiest Standard and Thumb Alpha layouts that come with the app;
+Colemak, and anything harder, is *max*. A badge names the band a number falls in, and its colour
+says whether that is good for that metric. For most metrics lower is better; for alternation, rolls
+and the in:out roll ratio, higher is. The [glossary](../METRICS.md#bands) lists every band.
 
 ## Rules and their sources
 

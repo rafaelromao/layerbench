@@ -539,9 +539,9 @@ What moved, checked across the 38 reports; nothing else moved:
 ## Twenty-fourth re-baseline: Effort banded from min to max
 
 Effort gets bands on the Doc's nine steps, lower being better: upper bounds 440 · 460 · 480 · 500 ·
-520 · 540 · 560 · 580, evenly spaced over the standardized bundled layouts' Effort on the default
-analysis settings, from Enthium's 435 to Colemak's 630, with Dvorak and Qwerty far beyond, as
-agreed with the maintainer.
+520 · 540 · 560 · 580, as agreed with the maintainer. They come from the Effort of the bundled
+Standard and Thumb Alpha layouts on the default analysis settings: 20 apart, from 440, just above
+Enthium's 435, to 580, so that Colemak's 630, Dvorak and Qwerty are *max*.
 
 What moved, checked across the 38 reports; nothing else moved:
 

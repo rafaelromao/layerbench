@@ -124,9 +124,12 @@ function HeadlineStat({
     <div
       className={`flex items-center gap-1 rounded-box border px-1.5 py-0.5 ${qualityBorder(band)}`}
     >
-      <dt className="opacity-60 font-sans">{name}</dt>
-      <dd className="m-0">{formatValue(value, unit)}</dd>
-      <BandBadge band={band} />
+      <dt className="opacity-60">{name}</dt>
+      {/* The band is part of the value, so it is read with it. */}
+      <dd className="m-0 flex items-center gap-1">
+        <span className="font-mono tabular-nums">{formatValue(value, unit)}</span>
+        <BandBadge band={band} />
+      </dd>
     </div>
   );
 }
@@ -156,7 +159,7 @@ function Ranking({
     (summary.missing.length > MISSING_SHOWN ? ' …' : '');
   return (
     <>
-      <dl className="flex flex-wrap gap-2 my-1 text-xs font-mono tabular-nums">
+      <dl className="flex flex-wrap gap-2 my-1 text-xs">
         <HeadlineStat name="Effort" value={summary.effort} unit="effort" bands={bands.effort} />
         <HeadlineStat name="SFB" value={summary.sfb} unit="percent" bands={bands.sfb} />
       </dl>

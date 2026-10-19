@@ -39,7 +39,7 @@ The Doc groups layouts into categories per metric (ch. 13.4). LayerBench stores 
 | Hand balance | lower is better | 2 · 5 · 8 points of \|left − right\| → even · leans · heavy · very heavy |
 | Effort | lower is better | 440 · 460 · 480 · 500 · 520 · 540 · 560 · 580 (effort) |
 
-Effort's bands are LayerBench's own, on the Doc's nine steps: evenly spaced over the Effort of the bundled Standard and Thumb Alpha layouts on the default analysis settings (English news, 100,000 letters, the Layouts Doc rules), from Enthium's 435 to Colemak's 630, with Dvorak and Qwerty far beyond.
+Effort's bands are LayerBench's own, on the Doc's nine steps, from the Effort of the bundled Standard and Thumb Alpha layouts on the default analysis settings (English news, 100,000 letters, the Layouts Doc rules): 20 apart, from 440, just above Enthium's 435, to 580, so that Colemak's 630, Dvorak and Qwerty are *max*. A custom rule set saved before Effort had bands keeps its own, none, until they are given in **Rules**.
 
 Bounds are editable per rule in the Rules view ("Bands (upper bounds)").
 

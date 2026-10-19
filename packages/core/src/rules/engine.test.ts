@@ -162,6 +162,7 @@ describe('rules engine', () => {
     expect(classifyBand(441, BANDS.effort).label).toBe('very_low');
     expect(classifyBand(510, BANDS.effort)).toMatchObject({ label: 'mid', quality: 'ok' });
     expect(classifyBand(580, BANDS.effort).label).toBe('very_high');
+    expect(classifyBand(581, BANDS.effort).label).toBe('max');
     expect(classifyBand(1237, BANDS.effort)).toMatchObject({ label: 'max', quality: 'bad' });
     // Every preset scores Effort with the catalog's rule, so every one carries its bands.
     for (const preset of [layoutsDoc(), cyanophage(), keysolve()]) {
