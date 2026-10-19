@@ -5,7 +5,7 @@ import { compileLayout } from '../layout/compile.js';
 import { importTextLayout } from '../layout/text.js';
 import type { Binding, Layout, Mod } from '../layout/types.js';
 import { CLASSIC_LAYOUTS } from '../layouts/classic.js';
-import { magicRomak, romak24, romak34 } from '../layouts/romak.js';
+import { magicRomak, romak } from '../layouts/romak.js';
 import { explain, simulate } from './resolver.js';
 
 const opts = { caseMode: 'fold' as const, crossWord: 'reset' as const };
@@ -22,14 +22,14 @@ function trace(layout: Layout, text: string, extra: Partial<Parameters<typeof ex
 
 describe('Romak acceptance traces', () => {
   it('ação with the ão macro enabled: a · ² · ç · ão (4 presses)', () => {
-    const t = trace(romak24, 'ação');
+    const t = trace(magicRomak, 'ação');
     expect(t.out).toBe('ação');
     expect(t.keys).toEqual(['RHM', 'R0', 'LBM', 'LHI']);
     expect(t.presses).toBe(4);
   });
 
   it('ação with the ão macro disabled: a · ² · ç · ã · o (5 presses)', () => {
-    const t = trace(romak24, 'ação', {
+    const t = trace(magicRomak, 'ação', {
       typingPaths: { ão: [{ producer: 'macro:ccedil/LHI', enabled: false }] },
     });
     expect(t.out).toBe('ação');
@@ -37,7 +37,7 @@ describe('Romak acceptance traces', () => {
   });
 
   it('açúcar needs a second alpha-2 activation (from the Ç extension thumb)', () => {
-    const t = trace(romak24, 'açúcar');
+    const t = trace(magicRomak, 'açúcar');
     expect(t.out).toBe('açúcar');
     const activations = t.steps.filter((s) => s.keyKind === 'layer_tap');
     expect(activations.length).toBe(2);
@@ -75,31 +75,31 @@ describe('Romak acceptance traces', () => {
   });
 
   it('greedy tokenization: qu is one press', () => {
-    const t = trace(romak24, 'quando');
+    const t = trace(magicRomak, 'quando');
     expect(t.out).toBe('quando');
     expect(t.keys).toEqual(['R0', 'LTM', 'RHM', 'LHR', 'LHP', 'RTM']);
   });
 
   it('Romak types accents and plain letters', () => {
-    const t = trace(romak34, 'não é');
+    const t = trace(romak, 'não é');
     expect(t.out).toBe('não é');
   });
 });
 
 describe('simulate — tables and coverage', () => {
   it('unproducible symbols are reported and act as boundaries', () => {
-    const compiled = compileLayout(romak24);
+    const compiled = compileLayout(magicRomak);
     const r = simulate(compiled, normalizeText('ab#cd ok', opts), opts);
     // `#` is dropped by normalization; use a producible stream and check counts
     expect(r.coverage.unproducible.size).toBe(0);
     expect(r.tables.stats.words).toBe(2);
-    const r2 = simulate(compiled, 'aßb', opts);
-    expect(r2.coverage.unproducible.get('ß')).toBe(1);
+    const r2 = simulate(compiled, 'aψb', opts);
+    expect(r2.coverage.unproducible.get('ψ')).toBe(1);
     expect(r2.tables.presses.ngrams('no_space', 'bigram').total).toBe(0);
   });
 
   it('no-space universe resets at word boundaries in reset mode; with-space includes space keys', () => {
-    const compiled = compileLayout(romak24);
+    const compiled = compileLayout(magicRomak);
     const stream = normalizeText('ab cd', opts);
     const r = simulate(compiled, stream, opts);
     expect(r.tables.presses.ngrams('no_space', 'unigram').total).toBe(4);
@@ -111,7 +111,7 @@ describe('simulate — tables and coverage', () => {
   });
 
   it('layer taps appear in the key stream and layer stats', () => {
-    const compiled = compileLayout(romak24);
+    const compiled = compileLayout(magicRomak);
     const r = simulate(compiled, normalizeText('quero', opts), opts);
     expect(r.tables.stats.layer_taps).toBe(1);
     expect(r.tables.stats.keystrokes).toBe(5); // ² qu e r o
@@ -120,7 +120,7 @@ describe('simulate — tables and coverage', () => {
 
   it('every bundled layout simulates the fixture corpus without crashing', () => {
     const stream = normalizeText(FIXTURE_MIXED, opts);
-    for (const layout of [magicRomak, romak24, romak34, ...CLASSIC_LAYOUTS]) {
+    for (const layout of [magicRomak, romak, ...CLASSIC_LAYOUTS]) {
       const compiled = compileLayout(layout);
       const r = simulate(compiled, stream, opts);
       expect(r.tables.stats.keystrokes).toBeGreaterThan(1000);

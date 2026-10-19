@@ -1,5 +1,5 @@
 import type { AdaptiveTrigger, Binding } from '../layout/types.js';
-import { type ClassicDef, raw } from './classic.js';
+import { type ClassicDef, REPEAT, raw } from './classic.js';
 
 /*
  * Layouts made for small boards: a letter on a thumb, letters on chords, adaptive and repeat keys,
@@ -21,9 +21,6 @@ const COMMON = {
   esc: raw('Esc'),
   '∅': null,
 } satisfies Record<string, Binding | null>;
-
-/** The repeat key, `⟲`. */
-const REPEAT: Binding = { kind: 'key_repeat' };
 
 /**
  * Pascal Getreuer's adaptive key, his "magic key", for Magic Sturdy (`getreuer.c`,
@@ -127,7 +124,9 @@ export const SMALL_DEFS: ClassicDef[] = [
     name: 'RSTHD',
     author: 'xsznix',
     rows: 'j c y f k z l , u q\nr s t h d m n a i o\n/ v g p b x w . ; -',
-    thumbs: 'e bspc ret space',
+    // The author's thumbs are e, Backspace, Enter and space: e and space move to the inner thumbs,
+    // where the other layouts have their space and thumb letter.
+    thumbs: 'bspc e space ret',
     special: COMMON,
     description:
       "RSTHD: e on the left thumb, from its author's ErgoDox firmware; the outer columns' = and ' do not fit thirty-four keys.",

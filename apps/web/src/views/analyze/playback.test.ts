@@ -65,13 +65,13 @@ describe('the combos a board shows', () => {
     expect(typingCombos(compiled, layer('alpha1')).map((c) => c.label)).toEqual([';']);
   });
 
-  it('shows the combo every layout with the default layers presses for Accents', () => {
-    const qwerty = compileLayout(bundledLayout('qwerty') as Layout);
-    expect(typingCombos(qwerty, 0)).toEqual([
+  it('shows the combo a Special layout with the default layers presses for Accents', () => {
+    const sturdy = compileLayout(bundledLayout('magic-sturdy') as Layout);
+    expect(typingCombos(sturdy, 0)).toEqual([
       {
         id: 'accents',
         index: 0,
-        keys: ['LHR', 'LHM'].map((id) => qwerty.keyIndex.get(id)),
+        keys: ['LHR', 'LHM'].map((id) => sturdy.keyIndex.get(id)),
         label: 'Acce',
         active: false,
       },
@@ -86,10 +86,10 @@ describe('the combos a board shows', () => {
 
 describe("a pill's combo in the layout", () => {
   it('is found by its id and keys when typing combos are left out of the analysis', () => {
-    // A combo that types before Qwerty's Accents combo, which only reaches a layer and stays.
-    const qwerty = bundledLayout('qwerty') as Layout;
+    // A combo that types before Magic Sturdy's Accents combo, which only reaches a layer and stays.
+    const sturdy = bundledLayout('magic-sturdy') as Layout;
     const layout: Layout = {
-      ...qwerty,
+      ...sturdy,
       combos: [
         {
           id: 'q',
@@ -98,7 +98,7 @@ describe("a pill's combo in the layout", () => {
           layers: ['base'],
           role: 'typing',
         },
-        ...(qwerty.combos ?? []),
+        ...(sturdy.combos ?? []),
       ],
     };
     const full = compileLayout(layout);

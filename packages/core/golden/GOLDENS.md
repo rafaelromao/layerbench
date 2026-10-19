@@ -24,7 +24,7 @@ both the dump and the suite use it, so the two cannot drift apart.
 
 | Axis | Values |
 |---|---|
-| layout | `magic-romak`, `romak-34`, `qwerty` |
+| layout | `magic-romak`, `romak`, `qwerty` |
 | corpus | `fixture_en`, `fixture_pt`, `fixture_enpt` |
 | preset | `layouts_doc`, `cyanophage` |
 | case mode | `fold` everywhere, plus two `model` runs for `magic-romak` |
@@ -32,8 +32,7 @@ both the dump and the suite use it, so the two cannot drift apart.
 
 Layouts are resolved from `layouts/<id>.json`, **not** from the bundled registry, so a layout can
 leave the shipped catalogue and stay regression-tested here. `layouts/` also holds the canonical
-document of every layout written in code, bundled or retired (Romak 24), which
-`src/golden/layouts.test.ts` asserts — those are the storage, share-link and hashing formats, so
+document of every layout written in code, which `src/golden/layouts.test.ts` asserts — those are the storage, share-link and hashing formats, so
 drift there breaks interoperability. A layout added as a document (`src/layouts/documents/`) is its
 own checked-in document.
 
@@ -472,6 +471,36 @@ What moved, checked across the 38 reports; nothing else moved:
   so 72 of its Portuguese accented letters (10 `qu` in English) come from Accents rather than a
   layer tap: Effort 423.67 → 416.81 on Portuguese, 531.68 → 531.09 in English; SFB 1.50 → 1.56.
 - **The 35 layouts' documents** written in code, and Magic Romak's share blob.
+
+## Twenty-second re-baseline: the standard thumbs, and Romak becomes Standard
+
+The bundled Standard and Thumb Alpha layouts share their main thumbs and base-layer symbols (issue
+#19). The main thumbs hold Shift, Numbers, Symbols and Shift, left to right; where LayerBench placed
+the thumbs they tap Repeat, space, the first thumb letter or nothing, and Accents one-shot, and where
+the author did, space and letters stay and the other main thumbs tap Accents, then Repeat, right to
+left. Every other thumb key goes, the LHR+LHM combo to Accents goes, and the base layer keeps only
+its letters and `'` `,` `.` `;`. Romak is renamed from `romak-34` and becomes Standard: Alpha 1,
+the default layers and the standard thumbs, without Alpha 2, Ç extension, their combos, the `;`
+combo and its `/`. Romak 24 is deleted, document and all; the engine tests that used it use Magic
+Romak, or a small layout of their own for the alt-repeat layer an accent arms. Its report files are
+renamed `romak__…`.
+
+What moved, checked across the 38 reports; nothing else moved:
+
+- **Magic Romak**: nothing, its share blob included.
+- **Qwerty** taps Repeat on L1 for a doubled letter (279 presses in English, where Repeat had none),
+  reaches Accents by the one-shot on R1 instead of the combo, and holds R0 for `/`. On the Layouts
+  Doc's rules in English, Effort 1240.73 → 1234.06, SFB 7.31 → 7.04, repeats 4.26 → 0.15 and thumb
+  bigrams 0 → 3.89; in Portuguese, Effort 1018.13 → 1042.86, SFB 9.04 → 7.66 and thumb bigrams
+  0 → 5.27. The composite score goes 28.57 → 25.32 on Portuguese with no space.
+- **Romak** types every accented letter through Accents, as Qwerty does, where Alpha 2 had some of
+  them: in Portuguese 58 more keystrokes (10,166 → 10,224), no wasted one-shot (11.04 → 0), macro
+  usage 1.82 → 2.91, Effort 416.81 → 421.23 and SFB 1.56 → 1.76 on the Layouts Doc's rules. In
+  English Effort 531.09 → 531.68, its `/` gone from RBP. The composite score goes 36.28 → 32.50 on
+  Portuguese with no space.
+- **The 26 documents** of Romak and the Standard and Thumb Alpha layouts, each declaring R1, held,
+  its shift key, so that Caps word has a key to go on; both Shifts are the left one.
+  `romak-24.json` and `romak-34.json` are deleted, and `romak.json` is new.
 
 ## Not compared
 
