@@ -449,7 +449,30 @@ What moved, checked across the 38 reports; nothing else moved:
 - **The 35 layouts' documents** written in code, and Magic Romak's share blob. Romak 24, retired,
   keeps its own Numbers and Symbols and does not move.
 
-## Twenty-first re-baseline: the standard thumbs, and Romak becomes Standard
+## Twenty-first re-baseline: Accents' keys placed by how often the texts use them
+
+Accents' keys move so that the most used cost least in Effort: the presses on each key, typing all
+the app's texts (German's included) on the default analysis settings, ranked against the Effort
+grid's cost of each position. The dead keys and the letters no dead key makes, `ñ` among them, stay
+on the 24-key core's finger keys, so a board without the pinkies' top and bottom or the inner
+column keeps them; the least used letters go past it. `qu` trades places with `ê`, which keeps the
+core place `qu` would have had. Same on the board with no bottom
+row, from the dead keys down. Nothing joins or leaves the layer.
+
+What moved, checked across the 38 reports; nothing else moved:
+
+- **Magic Romak**: no value, press or trace; its producer list follows Accents' new keys.
+- **Qwerty**: the same presses, on other keys. In English the fixture's `qu` is off the right
+  pinky's top key: Effort 1241.90 → 1240.73. On Portuguese Effort 1028.02 → 1018.13, with SFB
+  8.70 → 9.04 and SFS 10.15 → 11.52 on the Layouts Doc's rules: `á` and `à` are now on the left
+  middle and ring fingers' home keys, the two the Accents combo is pressed with. On the mix Effort
+  1134.63 → 1129.09, SFB 8.02 → 8.19.
+- **Romak**: Accents' macros now cost less than its Alpha 2 combos for some letters and for `qu`,
+  so 72 of its Portuguese accented letters (10 `qu` in English) come from Accents rather than a
+  layer tap: Effort 423.67 → 416.81 on Portuguese, 531.68 → 531.09 in English; SFB 1.50 → 1.56.
+- **The 35 layouts' documents** written in code, and Magic Romak's share blob.
+
+## Twenty-second re-baseline: the standard thumbs, and Romak becomes Standard
 
 The bundled Standard and Thumb Alpha layouts share their main thumbs and base-layer symbols (issue
 #19). The main thumbs hold Shift, Numbers, Symbols and Shift, left to right; where LayerBench placed
@@ -466,19 +489,18 @@ What moved, checked across the 38 reports; nothing else moved:
 
 - **Magic Romak**: nothing, its share blob included.
 - **Qwerty** taps Repeat on L1 for a doubled letter (279 presses in English, where Repeat had none),
-  reaches Accents by the one-shot on R1 instead of the combo (10 layer taps for the 10 combos in
-  English, 364 in Portuguese), and holds R0 for `/`. On the Layouts Doc's rules in English, Effort
-  1241.90 → 1235.23, SFB 7.31 → 7.04, repeats 4.11 → 0, and thumb bigrams 0 → 3.89; in Portuguese,
-  Effort 1028.02 → 1052.75, SFB 8.70 → 7.28 and thumb bigrams 0 → 5.96. The composite score moves
-  in ten of the twelve, 28.57 → 25.32 on Portuguese with no space.
-- **Romak** types its accented letters through Accents, as Qwerty does, where Alpha 2 had most of
-  them: in Portuguese 58 more keystrokes (10,166 → 10,224), no wasted one-shot (37 → 0), macro usage
-  1.49 → 2.91, Effort 423.67 → 431.12 and SFB 1.50 → 1.84 on the Layouts Doc's rules. In English,
-  where it has few accents, Effort 531.68 → 532.84 and SFB 0.96 → 1.10, its `/` gone from RBP. Its
-  composite score moves in ten of the twelve, 37.11 → 32.50 on Portuguese with no space.
+  reaches Accents by the one-shot on R1 instead of the combo, and holds R0 for `/`. On the Layouts
+  Doc's rules in English, Effort 1240.73 → 1234.06, SFB 7.31 → 7.04, repeats 4.26 → 0.15 and thumb
+  bigrams 0 → 3.89; in Portuguese, Effort 1018.13 → 1042.86, SFB 9.04 → 7.66 and thumb bigrams
+  0 → 5.27. The composite score goes 28.57 → 25.32 on Portuguese with no space.
+- **Romak** types every accented letter through Accents, as Qwerty does, where Alpha 2 had some of
+  them: in Portuguese 58 more keystrokes (10,166 → 10,224), no wasted one-shot (11.04 → 0), macro
+  usage 1.82 → 2.91, Effort 416.81 → 421.23 and SFB 1.56 → 1.76 on the Layouts Doc's rules. In
+  English Effort 531.09 → 531.68, its `/` gone from RBP. The composite score goes 36.28 → 32.50 on
+  Portuguese with no space.
 - **The 26 documents** of Romak and the Standard and Thumb Alpha layouts, each declaring R1, held,
-  its shift key, so that Caps word has a key to go on; both Shifts are the left one. `romak-24.json` and
-  `romak-34.json` are deleted, and `romak.json` is new.
+  its shift key, so that Caps word has a key to go on; both Shifts are the left one.
+  `romak-24.json` and `romak-34.json` are deleted, and `romak.json` is new.
 
 ## Not compared
 

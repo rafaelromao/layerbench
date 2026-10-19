@@ -1,10 +1,18 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { analyze } from '../analysis/analyze.js';
+import { analysisRun, DEFAULT_SETTINGS, loadText } from '../analysis/settings.js';
+import { nodeCorpusLoader } from '../corpus/node-loader.js';
 import { GEOMETRY_PRESET_IDS, getGeometryPreset } from '../geometry/presets.js';
+import { corporaRoot } from '../golden/paths.js';
 import { layoutLanguageCoverage, producibleSymbols } from '../lang/coverage.js';
 import { LANGUAGE_PROFILES } from '../lang/profiles.js';
 import { layoutCategory } from '../layout/categories.js';
 import { compileLayout } from '../layout/compile.js';
 import type { Binding, Layout } from '../layout/types.js';
+import { defaultEffort } from '../rules/effort.js';
+import { getPreset } from '../rules/presets.js';
 import { reachKeys } from '../sim/activators.js';
 import { explain } from '../sim/resolver.js';
 import { CLASSIC_LAYOUTS } from './classic.js';
@@ -102,21 +110,21 @@ describe('the default layers on every board', () => {
 describe('the default layers, board by board', () => {
   it('reach Accents with three presses for an accent it has no key for: the combo, the accent, the letter', () => {
     const t = trace(boardWithDefaults('3x5+2'), 'û');
-    expect(t.keys).toEqual([ACCENTS_COMBO, 'LTR', 'LTC']);
+    expect(t.keys).toEqual([ACCENTS_COMBO, 'RBM', 'LTC']);
   });
 
   it('type the most frequent accented letters, ñ, ç and ß with a key each', () => {
     expect(trace(boardWithDefaults('3x5+2'), 'é ã ñ ç ß').keys).toEqual([
       ...[ACCENTS_COMBO, 'RHI', 'L0'],
-      ...[ACCENTS_COMBO, 'LHP', 'L0'],
-      ...[ACCENTS_COMBO, 'RTM', 'L0'],
-      ...[ACCENTS_COMBO, 'RHM', 'L0'],
-      ...[ACCENTS_COMBO, 'RTR'],
+      ...[ACCENTS_COMBO, 'RHR', 'L0'],
+      ...[ACCENTS_COMBO, 'LTM', 'L0'],
+      ...[ACCENTS_COMBO, 'LBI', 'L0'],
+      ...[ACCENTS_COMBO, 'RTI'],
     ]);
-    // With no bottom row ñ goes to the right outer thumb, and an accented letter is two presses.
+    // With no bottom row ñ is on the right pinky's home key, and an accented letter is two presses.
     expect(trace(boardWithDefaults('1222+2'), 'ñ é').keys).toEqual([
-      ...[ACCENTS_COMBO, 'R1', 'L0'],
-      ...[ACCENTS_COMBO, 'LHI', 'LTM'],
+      ...[ACCENTS_COMBO, 'RHP', 'L0'],
+      ...[ACCENTS_COMBO, 'RHI', 'LTM'],
     ]);
   });
 
@@ -191,27 +199,11 @@ describe('the default layers, board by board', () => {
     expect(d.layers[0].bindings.RTO).toEqual({ kind: 'kp', symbol: '0' });
     const t = trace(boardWithDefaults('ansi'), 'ñ');
     expect(t.out).toBe('ñ');
-    expect(t.keys).toEqual([ACCENTS_COMBO, 'RTM']);
+    expect(t.keys).toEqual([ACCENTS_COMBO, 'LTM']);
   });
 
   it('carry each dead key the six languages need', () => {
     expect(defaultDeadKeys().sort()).toEqual(['^', '`', '~', '¨', '´'].sort());
-  });
-
-  it("follow Symbols: each accent in its look-alike's column, the left hand's top and home rows swapped", () => {
-    const at = (id: string) => {
-      const b = ACCENTS[id];
-      return b.kind === 'dead_key' ? b.diacritic : '';
-    };
-    // The key of Symbols that sits where a key of Accents does, one row over on the left hand.
-    const swapped = (id: string) =>
-      /^L[TH][RMI]$/.test(id) ? `L${id[1] === 'T' ? 'H' : 'T'}${id[2]}` : id;
-    const pairs = Object.keys(ACCENTS)
-      .filter((id) => at(id))
-      .map((id) => `${SYMBOLS_CORE[swapped(id)]}${at(id)}`);
-    expect(pairs.sort()).toEqual(["'´", '"¨', '~~', '^^', '``'].sort());
-    // The acute and the tilde on the home row.
-    expect([at('LHR'), at('LHI')]).toEqual(['~', '´']);
   });
 
   it("put each of Symbols' outer marks on the row of its look-alike", () => {
@@ -228,19 +220,177 @@ describe('the default layers, board by board', () => {
     }
   });
 
-  it('swap the top and home rows on a board with no bottom row too', () => {
-    const accents = defaultLayers(getGeometryPreset('1222+2')).layers.find(
-      (l) => l.id === 'accents',
-    );
-    const typed = (id: string) => {
-      const b = accents?.bindings[id];
-      return b?.kind === 'dead_key' ? b.diacritic : b?.kind === 'kp' ? b.symbol : undefined;
-    };
-    expect(['LHR', 'LHM', 'LHI', 'LTR', 'LTM', 'LTI'].map(typed)).toEqual([
-      ...['~', '£', '´'],
-      ...['^', '€', '¨'],
-    ]);
+  it('type the accents on a board with no bottom row too', () => {
     expect(trace(boardWithDefaults('1222+2'), 'ã é ê ü').out).toBe('ã é ê ü');
+  });
+});
+
+/**
+ * Presses on each key of Accents, typing each text the app comes with on the default analysis
+ * settings, by what the key types: Qwerty for the board with a bottom row, Ben Vallack Piano for the
+ * one without. A dead key's are the letters typed through it. Keys no text presses are left out.
+ * Qwerty types a doubled letter's second with Repeat, as in French `éé` and German `ÜÜ`.
+ */
+const ACCENT_USES: Record<string, Record<string, Record<string, number>>> = {
+  qwerty: {
+    'en-general': { é: 8, qu: 103, ü: 1, ç: 1, ñ: 1 },
+    'pt-br-general': {
+      ...{ é: 475, qu: 870, ó: 189, á: 500, ã: 849, à: 77, í: 301, ü: 5, è: 1, ç: 591 },
+      ...{ ê: 161, ö: 1, ú: 114, õ: 114, ô: 43 },
+    },
+    'es-general': {
+      ...{ é: 245, qu: 812, ó: 836, á: 404, í: 446, ü: 4, è: 2, ç: 1, ú: 124, ñ: 173 },
+      '¨': 1,
+    },
+    'fr-general': {
+      ...{ é: 2574, qu: 876, à: 434, ü: 2, è: 337, ç: 41, ê: 142, ö: 1, ù: 22, ô: 50 },
+      ...{ î: 28, â: 27, '¨': 19, '^': 16, œ: 9 },
+    },
+    'it-general': { é: 39, qu: 435, à: 237, è: 321, ç: 1, ö: 1, ù: 75, ì: 46, ò: 39 },
+    'de-general': { é: 4, qu: 18, ó: 1, á: 1, ã: 2, ü: 659, ä: 511, ö: 274, ß: 129 },
+  },
+  'ben-vallack-piano': {
+    'en-general': { '´': 8, '¨': 1, ç: 1, ñ: 1 },
+    'pt-br-general': { '´': 1579, '`': 78, '¨': 6, '~': 963, ç: 591, '^': 204 },
+    'es-general': { '´': 2055, '`': 2, '¨': 5, ç: 1, ñ: 173, '¿': 22, '¡': 1 },
+    'fr-general': { '´': 2575, '`': 793, '¨': 22, ç: 41, '^': 263, œ: 9 },
+    'it-general': { '´': 39, '`': 718, '¨': 1, ç: 1 },
+    'de-general': { '´': 6, '¨': 1448, '~': 2, ß: 129 },
+  },
+};
+
+/** What a key of Accents types, or the accent it is the dead key of. */
+function typedBy(b: Binding): string {
+  if (b.kind === 'dead_key') return b.diacritic ?? '';
+  if (b.kind === 'macro') return b.symbols ?? '';
+  return b.kind === 'kp' ? (b.symbol ?? '') : '';
+}
+
+const HOME_FIRST = 'HTB';
+/** Strongest first; a thumb by its column, inner first. */
+const FINGERS = 'IMRPC';
+
+/**
+ * A position's place in the order Accents fills them: by cost, then the home row, the stronger
+ * finger, a thumb after the fingers, the top row before the bottom, and the right hand first.
+ */
+function placeOf(id: string, cost: number): number[] {
+  const thumb = /^[LR]\d$/.test(id);
+  const row = thumb ? 3 : HOME_FIRST.indexOf(id[1]);
+  return [
+    cost,
+    row === 0 ? 0 : 1,
+    thumb ? 1 : 0,
+    thumb ? Number(id[1]) : FINGERS.indexOf(id[2]),
+    row,
+    id[0] === 'R' ? 0 : 1,
+  ];
+}
+
+function before(a: number[], b: number[]): boolean {
+  const i = a.findIndex((x, k) => x !== b[k]);
+  return i >= 0 && a[i] < b[i];
+}
+
+/** Every key a board with a bottom row has, but for the pinkies' top and bottom and the inner column. */
+const CORE = new Set(
+  getGeometryPreset('1333+2')
+    .keys.filter((k) => !k.thumb)
+    .map((k) => k.id),
+);
+
+function totalUses(byText: Record<string, Record<string, number>>): Record<string, number> {
+  const total: Record<string, number> = {};
+  for (const uses of Object.values(byText))
+    for (const [s, n] of Object.entries(uses)) total[s] = (total[s] ?? 0) + n;
+  return total;
+}
+
+/** The keys of a layout's Accents: what each types, where it sits in the order, and on the core. */
+function accentKeys(layout: Layout, compiled: ReturnType<typeof compileLayout>) {
+  const effort = defaultEffort(compiled);
+  const bindings = layout.layers.find((l) => l.id === 'accents')?.bindings ?? {};
+  const outerBoard = Object.keys(bindings).some((k) => /^[LR][TB]P$|^[LR].C$/.test(k));
+  return Object.entries(bindings)
+    .filter(([k]) => k !== '*')
+    .map(([k, binding]) => ({
+      binding,
+      typed: typedBy(binding),
+      place: placeOf(k, effort[k]),
+      core: !outerBoard || CORE.has(k),
+    }));
+}
+
+describe('Accents puts the keys used most where they cost least', () => {
+  const loader = nodeCorpusLoader(corporaRoot());
+
+  for (const [id, byText] of Object.entries(ACCENT_USES)) {
+    const layout = bundledLayout(id) as Layout;
+    const compiled = compileLayout(layout);
+    const accents = compiled.layers.findIndex((l) => l.id === 'accents');
+
+    for (const [corpus, uses] of Object.entries(byText)) {
+      it.skipIf(!existsSync(join(corporaRoot(), corpus, 'sample.txt')))(
+        `${id} presses each key as often as recorded, typing ${corpus}`,
+        async () => {
+          const settings = { ...DEFAULT_SETTINGS, corpus, rules: getPreset('cyanophage') };
+          const text = await loadText(settings, (c) => loader.load(c));
+          const { stream, options } = analysisRun(settings, text);
+          const log = analyze(compiled, stream, options).simulation.presses;
+          const unigrams = log.ngrams('no_space', 'unigram');
+          const counted: Record<string, number> = {};
+          for (let i = 0; i < unigrams.size; i++) {
+            const press = log.presses[unigrams.ids[i]];
+            if (press.layer !== accents) continue;
+            counted[press.label] = (counted[press.label] ?? 0) + unigrams.counts[i];
+          }
+          expect(counted).toEqual(uses);
+        },
+        30_000,
+      );
+    }
+
+    it(`${id}: no key is used more than one on a better position`, () => {
+      const total = totalUses(byText);
+      const keys = accentKeys(layout, compiled);
+      // `qu` is no accent: it trades places with `ê`, leaving the home row to the accented letters.
+      const quAt = keys.find((k) => k.typed === 'qu');
+      const eAt = keys.find((k) => k.typed === 'ê');
+      if (quAt && eAt) [quAt.place, eAt.place] = [eAt.place, quAt.place];
+      // On a board with outer keys, the core and what is past it are filled each on its own.
+      const misplaced = keys.flatMap((a) =>
+        keys
+          .filter(
+            (b) =>
+              a.core === b.core &&
+              (total[a.typed] ?? 0) > (total[b.typed] ?? 0) &&
+              before(b.place, a.place),
+          )
+          .map((b) => `${a.typed} behind ${b.typed}`),
+      );
+      expect(misplaced).toEqual([]);
+    });
+  }
+
+  it('keeps what every board needs on the core, and past it the letters used least', () => {
+    const layout = bundledLayout('qwerty') as Layout;
+    const keys = accentKeys(layout, compileLayout(layout));
+    const total = totalUses(ACCENT_USES.qwerty);
+    const outer = keys.filter((k) => !k.core);
+    // The dead keys, and the letters no dead key makes or worth a press less.
+    expect(outer.filter((k) => k.binding.kind !== 'macro')).toEqual([]);
+    // `ê` holds `qu`'s home key.
+    const leastOnCore = Math.min(
+      ...keys
+        .filter((k) => k.core && k.binding.kind === 'macro' && k.typed !== 'ê')
+        .map((k) => total[k.typed] ?? 0),
+    );
+    for (const k of outer) expect([k.typed, total[k.typed] < leastOnCore]).toEqual([k.typed, true]);
+  });
+
+  it('keeps qu and ê where the exception puts them', () => {
+    expect(ACCENTS.RTM).toEqual({ kind: 'macro', symbols: 'qu' });
+    expect(ACCENTS.LHI).toEqual({ kind: 'macro', symbols: 'ê' });
   });
 });
 
@@ -285,11 +435,11 @@ describe('Romak types every accent through Accents, one-shot from its right oute
     const t = trace(romak, 'ñ ü ¿ ¡ œ');
     expect(t.out).toBe('ñ ü ¿ ¡ œ');
     expect(t.keys).toEqual([
-      ...['R1', 'RTM', 'L0'],
-      ...['R1', 'LBC', 'L0'],
+      ...['R1', 'LTM', 'L0'],
+      ...['R1', 'LHP', 'L0'],
       // Symbols held through the space between them, which it types too.
       ...['R0', 'RHC', 'L0', 'RBC', 'L0'],
-      ...['R1', 'RHR'],
+      ...['R1', 'LBM'],
     ]);
     const compiled = compileLayout(romak);
     for (const tag of Object.keys(LANGUAGE_PROFILES)) {
@@ -438,7 +588,7 @@ describe('the default layers, layout by layout', () => {
     expect(num('finch').RBC).toEqual({ kind: 'kp', symbol: '0' });
     const t = trace(bundledLayout('finch') as Layout, 'ñ');
     expect(t.out).toBe('ñ');
-    expect(t.keys).toEqual([ACCENTS_COMBO, 'RTM']);
+    expect(t.keys).toEqual([ACCENTS_COMBO, 'LTM']);
   });
 
   it('hold Numbers on the left inner thumb when no thumb types space', () => {

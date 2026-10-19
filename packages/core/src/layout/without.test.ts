@@ -47,7 +47,8 @@ describe('Ranking a layout without some of its features', () => {
 
   it('drops the macros that type two letters, but not the ones that type one', () => {
     const before = kinds([]);
-    expect(before.get('qu')).toEqual(['macro']);
+    // Magic Romak's own, and Accents' on the 24 keys.
+    expect(before.get('qu')).toEqual(['macro', 'macro']);
     expect(before.get('ão')).toBeDefined();
 
     const after = kinds(['macros']);

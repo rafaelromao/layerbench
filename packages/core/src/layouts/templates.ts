@@ -11,8 +11,9 @@ import type { Binding, ComboDef, ConditionalLayerDef, LayerDef, Layout } from '.
  * accents: currency and ordinals on Numbers, and on Symbols each mark beside its look-alike (`;` by
  * `:`, `¿` by `?`, `«` and `»` around `<` and `>`). A board without one of those keys finds its
  * symbol on Extras, which comes on while Numbers and Symbols are both held, on the key Dead keys
- * gave it. Accents is one-shot: the dead keys in their look-alikes' columns, the letters no dead key
- * makes, and the accented letters the six languages' texts use most, each a key of its own.
+ * gave it. Accents is one-shot: the dead keys, the letters no dead key makes, and the accented
+ * letters the texts use most, each a key of its own: the most used where they cost least, and what
+ * every board needs on the core.
  *
  * What changes from board to board is decided by which keys it has, not by its name, so a custom
  * geometry gets a sensible result too: where `0` goes, which thumbs reach the layers, which symbols
@@ -121,48 +122,55 @@ export const EXTRAS_CORE: Readonly<Record<string, string>> = {
 };
 
 /**
- * Accents. The dead keys follow Symbols: each accent in its look-alike's column (`´` with `'`, `¨`
- * with `"`, `~` with `~`), the left hand's top and home rows swapped, so the acute and the tilde,
- * the accents Portuguese and Spanish use most, are on the home row. `ñ` `ç` `œ` `æ` and `ß`, which
- * no dead key makes or which are common enough to be worth a press less, have keys of their own.
+ * Accents. Each key goes where it costs least, the keys used most first: the presses on each, typing
+ * the texts the app comes with (all of them, summed) on the default analysis settings, set against
+ * the Effort rule's cost of each position. Of the keys that cost the same, the home row comes first,
+ * then the stronger finger, then the top row; then the right hand, the left having just pressed the
+ * combo.
  *
- * The rest are the accented letters the six languages' texts use most, each typed whole, a press
- * less than its accent and its letter: the most frequent on the core (`é` alone is over a quarter of
- * them), the umlauts beside `¨`, `â` and `ô` beside `^`, and German's `ä` `ö` `ü` among them. `û`,
- * `ë`, `ï` and `ÿ` come from the dead keys only. `qu` is there too, for the languages that write it
- * before most of their vowels.
+ * Two things come before that order. The keys every board needs, the dead keys and the letters no
+ * dead key makes (`ç` `œ` `æ` `ß`, and `ñ`, worth a press less), are on the 24-key core's finger
+ * keys, so a board without the pinkies' top and bottom keys or the inner column still writes every
+ * language; what is past the core is the letters a dead key also makes that are used least. And
+ * `qu`, which is no accent, trades places with `ê`, leaving the home row to accented letters: `ê`
+ * keeps the core place `qu` would have had, though `ä`, past the core, is used more.
+ *
+ * Its letters are the accented letters the texts use most, each typed whole, a press less than its
+ * accent and its letter, German's `ä` `ö` `ü` among them; the letters of their own; and `qu`, for the
+ * languages that write it before most of their vowels. The dead keys write the rest, `û`, `ë`, `ï`
+ * and `ÿ` among them: a dead key is used as often as the letters it makes.
  */
 export const ACCENTS: Readonly<Record<string, Binding>> = {
-  LTP: macro('â'),
-  LTR: dead('^'),
-  LTM: macro('í'),
+  LTP: macro('ö'),
+  LTR: dead('~'),
+  LTM: kp('ñ'),
   LTI: dead('¨'),
-  LTC: macro('ä'),
-  LHP: macro('ã'),
-  LHR: dead('~'),
-  LHM: macro('ó'),
-  LHI: dead('´'),
-  LHC: macro('ö'),
-  LBP: macro('ô'),
-  LBR: macro('õ'),
-  LBM: macro('ê'),
-  LBI: dead('`'),
-  LBC: macro('ü'),
+  LTC: macro('ò'),
+  LHP: macro('ü'),
+  LHR: macro('à'),
+  LHM: macro('á'),
+  LHI: macro('ê'),
+  LHC: macro('ô'),
+  LBP: macro('õ'),
+  LBR: kp('æ'),
+  LBM: kp('œ'),
+  LBI: kp('ç'),
+  LBC: macro('â'),
   RTC: macro('ì'),
-  RTI: macro('à'),
-  RTM: kp('ñ'),
-  RTR: kp('ß'),
-  RTP: macro('qu'),
-  RHC: macro('ò'),
+  RTI: kp('ß'),
+  RTM: macro('qu'),
+  RTR: dead('´'),
+  RTP: macro('ä'),
+  RHC: macro('ù'),
   RHI: macro('é'),
-  RHM: kp('ç'),
-  RHR: kp('œ'),
-  RHP: macro('á'),
-  RBC: macro('ù'),
+  RHM: macro('ó'),
+  RHR: macro('ã'),
+  RHP: macro('í'),
+  RBC: macro('î'),
   RBI: macro('è'),
-  RBM: kp('æ'),
-  RBR: macro('ú'),
-  RBP: macro('î'),
+  RBM: dead('^'),
+  RBR: dead('`'),
+  RBP: macro('ú'),
 };
 
 /**
@@ -207,27 +215,28 @@ const EXTRAS_NO_BOTTOM: Readonly<Record<string, string>> = {
 /**
  * With no bottom row, Accents has room for nothing but what no other layer has: the dead keys, the
  * letters of their own, and the symbols past Extras, the thumbs among them. Every accented letter is
- * its accent and its letter.
+ * its accent and its letter, so the dead keys are the most used, and each key goes where it costs
+ * least, as on `ACCENTS`; the symbols the texts never type come last.
  */
 const ACCENTS_NO_BOTTOM: Readonly<Record<string, Binding>> = {
-  LTR: dead('^'),
-  LTM: kp('€'),
-  LTI: dead('¨'),
-  LHP: kp('ª'),
-  LHR: dead('~'),
-  LHM: kp('£'),
-  LHI: dead('´'),
-  RTI: kp('°'),
-  RTM: dead('`'),
-  RTR: kp('ß'),
-  RHI: kp('¿'),
-  RHM: kp('ç'),
-  RHR: kp('œ'),
-  RHP: kp('º'),
-  L0: kp('¡'),
-  L1: kp('§'),
-  R0: kp('æ'),
-  R1: kp('ñ'),
+  LTR: kp('§'),
+  LTM: kp('œ'),
+  LTI: kp('°'),
+  LHP: kp('ß'),
+  LHR: dead('^'),
+  LHM: dead('~'),
+  LHI: dead('`'),
+  RTI: kp('£'),
+  RTM: kp('¿'),
+  RTR: kp('º'),
+  RHI: dead('´'),
+  RHM: dead('¨'),
+  RHR: kp('ç'),
+  RHP: kp('ñ'),
+  L0: kp('æ'),
+  L1: kp('ª'),
+  R0: kp('¡'),
+  R1: kp('€'),
 };
 
 /** With no bottom row, Symbols' last mark goes on the thumb beside the one holding Numbers. */
