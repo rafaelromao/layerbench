@@ -363,13 +363,15 @@
  * where the letter it accents will go. A combining mark on a dotted circle says the same in print,
  * but a phone's fallback font draws it as a box.
  */
-.lb-key-tap.lb-key-dead {
+.lb-key-tap.lb-key-dead,
+.lb-key-shifted.lb-key-dead {
   fill: var(--lb-legend-dead);
 }
 .lb-key-dead-base {
   stroke: var(--lb-legend-dead);
   stroke-width: 1.5;
-  stroke-dasharray: 1.5 2.5;
+  /* Dashes of no length, which round caps draw as dots. */
+  stroke-dasharray: 0 3;
   stroke-linecap: round;
   pointer-events: none;
 }

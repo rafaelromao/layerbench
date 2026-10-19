@@ -1245,9 +1245,11 @@ describe('Edit', () => {
     await user.click(key('Key LHM: d'));
     await inspector('LHM');
     fireEvent.pointerDown(board, { clientX: 10, clientY: 10, pointerType: 'touch' });
+    fireEvent.pointerUp(board, { clientX: 140, clientY: 12, pointerType: 'touch' });
     fireEvent.click(board, { clientX: 140, clientY: 12 });
     expect(await inspector('LHM')).toBeInTheDocument();
-    // So does a key dropped between the keys: the click the release sends is the drop's.
+    // So does a drop: the board holds the pointer while a key is dragged, so the click its release
+    // sends lands on the board, and must not put away the key the drop picked.
     await dragKey('LTR', 'LTM');
     expect(await screen.findByRole('button', { name: 'Key LTR: e' })).toBeInTheDocument();
     await inspector('LTM');
@@ -1437,6 +1439,36 @@ describe('Edit', () => {
     waitFor(() =>
       expect(tiles.getByRole('button', { name: kind })).toHaveAttribute('aria-pressed', 'true'),
     );
+
+  it('closes a combo and the keys a panel outlined on a click between the keys, but not a pick', async () => {
+    const user = userEvent.setup();
+    await openComboEdit();
+    const board = screen.getByRole('group', { name: 'Keyboard layout' });
+    const outlined = () => document.querySelectorAll('#kb-analyze .lb-key-highlight').length;
+
+    // A combo open in the editor.
+    await openAccents(user);
+    await user.click(board);
+    await waitFor(() =>
+      expect(screen.queryByRole('group', { name: 'Edit combo LHR+LHM' })).toBeNull(),
+    );
+
+    // A combo's keys shown from its row.
+    await user.click(screen.getByRole('tab', { name: 'Combos' }));
+    const combos = within(screen.getByRole('region', { name: 'Combos' }));
+    await user.click(combos.getByRole('button', { name: 'Show the keys of LHR+LHM' }));
+    await waitFor(() => expect(outlined()).toBe(2));
+    await user.click(board);
+    await waitFor(() => expect(outlined()).toBe(0));
+
+    // Keys being picked for a combo are all the board is doing: a click between them keeps the pick.
+    await user.click(
+      combos.getByRole('button', { name: 'Pick the keys of LHR+LHM again on the board' }),
+    );
+    await user.click(key('Key LHM: d'));
+    await user.click(board);
+    expect(combos.getByLabelText('Keys picked for LHR+LHM')).toHaveTextContent('LHM');
+  });
 
   it('opens a combo from its pill, with any kind of key but Transparent and its role', async () => {
     const user = userEvent.setup();

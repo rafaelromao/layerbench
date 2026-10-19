@@ -768,6 +768,10 @@ export function Workbench({
                           // Picking keys for a combo is all the board is doing until it ends.
                           if (state.comboPick) return;
                           send({ type: 'deselect' });
+                          // The keys a combo or a feature outlined from a panel go too, as on Escape.
+                          if (state.boardHighlight.length > 0) {
+                            send({ type: 'setBoardHighlight', keys: [] });
+                          }
                           clearOutline();
                         }}
                       />
@@ -784,8 +788,8 @@ export function Workbench({
                     }
                   />
 
-                  <div className="lb-board-tools flex items-center justify-between gap-2 min-w-0">
-                    <div className="flex items-center gap-2">
+                  <div className="lb-board-tools flex flex-wrap items-center justify-between gap-2 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
                       <label className="label-text text-xs" htmlFor="heat">
                         Heat
                       </label>
@@ -810,7 +814,8 @@ export function Workbench({
                         />
                       )}
                     </div>
-                    <div className="join shrink-0">
+                    {/* On the right, on a row of its own too when a narrow screen wraps it. */}
+                    <div className="join shrink-0 ml-auto">
                       <button
                         type="button"
                         className="btn btn-sm btn-ghost join-item"

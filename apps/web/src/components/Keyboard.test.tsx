@@ -288,7 +288,10 @@ describe('a dead key', () => {
     const tap = key.querySelector('.lb-key-tap') as Element;
     expect(tap.textContent).toBe('´');
     expect(tap).toHaveClass('lb-key-dead');
-    expect(key.querySelector('.lb-key-shifted')?.textContent).toBe('¨');
+    const shifted = key.querySelector('.lb-key-shifted') as Element;
+    expect(shifted.textContent).toBe('¨');
+    // What shift arms is an accent too, and drawn as one.
+    expect(shifted).toHaveClass('lb-key-dead');
     expect(key.querySelector('.lb-key-dead-base')).not.toBeNull();
     // A key that types its letter is not marked.
     const lhi = container.querySelector('g[data-key="LHI"]') as Element;
@@ -332,11 +335,44 @@ describe('a click on the board between the keys', () => {
     fireEvent.click(board, { clientX: 120, clientY: 12 });
     expect(onEmptyClick).not.toHaveBeenCalled();
 
-    // A plain press and release there still clears.
+    // A finger's tap lands a few pixels from where it went down, and still clears.
+    fireEvent.pointerDown(board, { ...at, pointerId: 4, pointerType: 'touch' });
+    fireEvent.pointerUp(board, { clientX: 18, clientY: 14, pointerId: 4, pointerType: 'touch' });
+    fireEvent.click(board, { clientX: 18, clientY: 14 });
+    expect(onEmptyClick).toHaveBeenCalledTimes(1);
+
+    // A plain press and release there clears too.
     fireEvent.pointerDown(board, { ...at, pointerId: 3, pointerType: 'mouse' });
     fireEvent.pointerUp(board, { ...at, pointerId: 3, pointerType: 'mouse' });
     fireEvent.click(board, at);
-    expect(onEmptyClick).toHaveBeenCalledTimes(1);
+    expect(onEmptyClick).toHaveBeenCalledTimes(2);
+  });
+
+  it('does nothing on the click that ends a drag brought back to where it began', () => {
+    const onEmptyClick = vi.fn();
+    const onKeyClick = vi.fn();
+    render(
+      <Keyboard
+        compiled={qwerty}
+        draggable
+        onDropKey={vi.fn()}
+        onKeyClick={onKeyClick}
+        onEmptyClick={onEmptyClick}
+      />,
+    );
+    const board = screen.getByRole('group', { name: 'Keyboard layout' });
+    const key = screen.getByRole('button', { name: 'Key LHM: d' });
+    const mouse = { pointerId: 1, pointerType: 'mouse' };
+    fireEvent.pointerDown(key, { ...at, ...mouse });
+    fireEvent.pointerMove(board, { clientX: 60, clientY: 10, ...mouse });
+    fireEvent.pointerMove(board, { clientX: 11, clientY: 10, ...mouse });
+    fireEvent.pointerUp(board, { clientX: 11, clientY: 10, ...mouse });
+    // Under the pointer the board kept, the click lands on the board, where the press began.
+    fireEvent.click(board, { clientX: 11, clientY: 10 });
+    expect(onEmptyClick).not.toHaveBeenCalled();
+    // And only that click is the drop's: the next one on a key picks it.
+    fireEvent.click(key);
+    expect(onKeyClick).toHaveBeenCalledTimes(1);
   });
 
   it('is not a click between the keys on a combo’s pill', async () => {

@@ -24,7 +24,7 @@ import {
 import { type Fit, fitLabel, legendNumber } from './fit-label.js';
 import { type Direction, nearestKey } from './key-nav.js';
 import { layerColourOf } from './layer-colour.js';
-import { type KeyDrop, useKeyDrag } from './use-key-drag.js';
+import { type KeyDrop, THRESHOLD, useKeyDrag } from './use-key-drag.js';
 
 const ARROWS: Record<string, Direction> = {
   ArrowUp: 'up',
@@ -156,8 +156,12 @@ const GAP = 6;
 const MARGIN_X = 0.05;
 const MARGIN_Y = 0.12;
 const SPLIT_GAP = 0.3;
-/** How far a press may travel and still be a click, in screen pixels: the drag threshold. */
-const CLICK_SLOP = 4;
+/**
+ * How far a finger or a pen may travel and still tap, in screen pixels: a tap lands a few pixels from
+ * where it went down, while a swipe that turns the layer travels far further (`useLayerSwipe`). A
+ * mouse that travels as far as a drag starts (`THRESHOLD`) is not clicking.
+ */
+const TAP_SLOP = 16;
 /** Inner margin of a cap, in the same units. */
 const INSET = 5;
 /** Height kept for the band along the bottom of a cap, and for the shifted legend above. */
@@ -458,7 +462,7 @@ export function Keyboard({
   });
 
   // Where the press under way began, to tell a click between the keys from the end of a gesture.
-  const pressedAt = useRef<{ x: number; y: number } | null>(null);
+  const pressedAt = useRef<{ x: number; y: number; slop: number } | null>(null);
   const onBoardClick = (e: ReactMouseEvent<SVGSVGElement>) => {
     const start = pressedAt.current;
     pressedAt.current = null;
@@ -467,7 +471,7 @@ export function Keyboard({
     if (!(e.target instanceof Element) || e.target.closest('g[data-key], .lb-combo-pickable')) {
       return;
     }
-    if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > CLICK_SLOP) return;
+    if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > start.slop) return;
     onEmptyClick?.();
   };
 
@@ -535,7 +539,11 @@ export function Keyboard({
       onPointerDownCapture={
         onEmptyClick && interactive
           ? (e) => {
-              pressedAt.current = { x: e.clientX, y: e.clientY };
+              pressedAt.current = {
+                x: e.clientX,
+                y: e.clientY,
+                slop: e.pointerType === 'mouse' ? THRESHOLD : TAP_SLOP,
+              };
             }
           : undefined
       }
@@ -653,7 +661,7 @@ export function Keyboard({
                 x="0"
                 y={fmt(-k.h / 2 + INSET + 3)}
                 textAnchor="middle"
-                className="lb-key-shifted"
+                className={`lb-key-shifted${k.dead ? ' lb-key-dead' : ''}`}
                 fontSize={k.shiftedFit.size}
               >
                 {k.shiftedFit.lines[0]}
@@ -741,6 +749,8 @@ export function Keyboard({
             const y = points.reduce((sum, p) => sum + p.y, 0) / points.length;
             const width = Math.max(20, [...c.label].length * 7 + 12);
             const names = c.keys.map((p) => compiled.keys[p]?.id ?? '?').join(' + ');
+            // Its colour marks a dead key to the eye; the words say it to everyone.
+            const what = `${c.label}${c.dead ? ', dead key' : ''}`;
             const pick = onComboClick && interactive ? () => onComboClick(c.index) : undefined;
             return (
               // biome-ignore lint/a11y/noStaticElementInteractions: an SVG group has no button element to be; it takes the role, the focus and the keys of one when it can be picked.
@@ -750,7 +760,7 @@ export function Keyboard({
                 transform={`translate(${fmt(x)} ${fmt(y)})`}
                 role={pick ? 'button' : undefined}
                 tabIndex={pick ? 0 : undefined}
-                aria-label={pick ? `Edit combo ${names}: ${c.label}` : undefined}
+                aria-label={pick ? `Edit combo ${names}: ${what}` : undefined}
                 onClick={pick}
                 onKeyDown={
                   pick
@@ -762,7 +772,7 @@ export function Keyboard({
                     : undefined
                 }
               >
-                <title>{`Combo ${names}: ${c.label}`}</title>
+                <title>{`Combo ${names}: ${what}`}</title>
                 <rect x={fmt(-width / 2)} y="-9" width={fmt(width)} height="18" rx="9" />
                 <text y="4" textAnchor="middle" fontSize="11">
                   {c.label}
