@@ -27,6 +27,7 @@ import {
   SYMBOLS_CORE,
   SYMBOLS_OUTER,
   vowelsOnLeft,
+  withDefaultLayers,
 } from './templates.js';
 
 /** The chord that one-shots Accents, as `explain` names its step. */
@@ -38,9 +39,9 @@ const ACCENTS_COMBO = 'combo:accents';
  */
 const BASE_LETTERS = [...'aeiouycn'];
 
-function boardWithDefaults(preset: string): Layout {
+function boardWithDefaults(preset: string, mirrorAccents = false): Layout {
   const geometry = getGeometryPreset(preset);
-  const defaults = defaultLayers(geometry);
+  const defaults = defaultLayers(geometry, { mirrorAccents });
   const free = geometry.keys.filter((k) => !k.thumb).map((k) => k.id);
   const letters: Record<string, Binding> = {};
   BASE_LETTERS.forEach((c, i) => {
@@ -91,6 +92,12 @@ describe('the default layers on every board', () => {
             [],
           ]);
         }
+      });
+
+      it('writes all six languages with Accents mirrored too', () => {
+        const mirrored = compileLayout(boardWithDefaults(preset, true));
+        for (const tag of Object.keys(LANGUAGE_PROFILES))
+          expect([tag, layoutLanguageCoverage(mirrored, tag)?.missingRequired]).toEqual([tag, []]);
       });
 
       it('types an accent, a digit and a symbol through the analysis', () => {
@@ -310,6 +317,43 @@ describe('Accents mirrored for a layout that types its vowels with the left hand
 });
 
 describe('Accents keys a board lacks are on Extras', () => {
+  it('on a thumb free while Numbers and Symbols are held, whichever thumbs hold them', () => {
+    // A Special layout on the 24 keys with space, and so Numbers, on the left outer thumb.
+    const geometry = getGeometryPreset('1333+2');
+    const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
+    const free = geometry.keys.filter((k) => !k.thumb).map((k) => k.id);
+    const letters = Object.fromEntries(BASE_LETTERS.map((c, i) => [free[i], kp(c)]));
+    const layout = withDefaultLayers(
+      {
+        format: 'layerbench/layout@1',
+        name: 'Space on L1',
+        hostLocale: 'symbols',
+        geometry: { preset: '1333+2' },
+        keys: { space: 'L1' },
+        layers: [{ id: 'base', bindings: { ...letters, L1: kp(' ') } }],
+      },
+      geometry,
+    );
+    const extras = layout.layers.find((l) => l.id === 'extras')?.bindings ?? {};
+    const base = layout.layers[0].bindings;
+    const held = ['L1', 'L0', 'R0', 'R1'].filter((id) => {
+      const b = base[id];
+      return b?.kind === 'mo' || (b?.kind === 'hold_tap' && b.hold.kind === 'mo');
+    });
+    expect(held).toContain('L1');
+    for (const id of held) expect([id, extras[id]]).toEqual([id, undefined]);
+    // `^` and `î`, which no finger key of Extras has room for, are still there, on the free thumbs.
+    const onThumbs = Object.entries(extras)
+      .filter(([id]) => /\d/.test(id))
+      .map(([, b]) => typedBy(b))
+      .sort();
+    expect(onThumbs).toEqual(['^', 'î'].sort());
+    const compiled = compileLayout(layout);
+    for (const tag of Object.keys(LANGUAGE_PROFILES))
+      expect([tag, layoutLanguageCoverage(compiled, tag)?.missingRequired]).toEqual([tag, []]);
+    expect(trace(layout, 'û î').out).toBe('û î');
+  });
+
   for (const preset of GEOMETRY_PRESET_IDS) {
     const geometry = getGeometryPreset(preset);
     if (geometry.family === 'rowstagger') continue;

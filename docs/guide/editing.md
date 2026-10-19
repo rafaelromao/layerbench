@@ -209,7 +209,8 @@ left: what follows an accented vowel is most often a consonant, under the other 
 
 **Extras** is there only on a board that lacks some of those outer keys, Magic Romak's 24 keys
 say: it holds the symbols that had nowhere else to go, on the keys of the 24 below, and the keys of
-Accents the board has no key for, each on the free key nearest its place on Accents. It comes on
+Accents the board has no key for, each on the free key nearest its place on Accents, or on a free
+thumb once the fingers' keys are full. It comes on
 while Numbers and Symbols are both held. The symbols:
 
 | Extras | P | R | M | I | | I | M | R | P |
@@ -222,10 +223,10 @@ The left inner thumb types space and, held, turns on Numbers. The right inner th
 Symbols; held from Numbers, it turns on Extras, or Symbols where there is no Extras. Accents comes
 on for one key from the base layer, by the two outer thumbs, L1 and R1, pressed together: a combo,
 drawn between them. A board with one thumb a hand presses its two thumbs, and a row-stagger board,
-with one space bar for both, the left ring and middle fingers' home keys, LHR and LHM. A thumb never
-presses a finger's key, so the combo is never a same-finger pair with the accent after it. A board
-without those thumbs gets the same layers arranged to fit it, and keys beyond the ones the layers use
-let the layer below show through. A board with no bottom row keeps `1 2 3` on the left home row,
+with one space bar for both, the left ring and middle fingers' home keys, LHR and LHM. Thumbs press
+none of Accents' 30 main keys, so the thumb combo is never a same-finger pair with the accent after
+it. A board without those thumbs gets the same layers arranged to fit it, and keys beyond the ones
+the layers use let the layer below show through. A board with no bottom row keeps `1 2 3` on the left home row,
 puts on Extras what the bottom rows carried, `ı` on Symbols' right outer thumb, and fills Accents
 with the dead keys, the letters of their own and the symbols left over, on its thumbs too; every
 accented letter there is its accent and the letter. The board shows where everything went.

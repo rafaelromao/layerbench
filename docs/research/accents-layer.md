@@ -569,7 +569,8 @@ U\* was chosen, mirrored on the layouts that type their vowels with the left han
   more vowels with the right hand.
 - **The combo** is `accentsComboKeys(geometry)`: L1+R1, or L0+R0 on a board with one thumb a hand.
   A row-stagger board keeps LHR+LHM, having one space bar for both thumbs.
-- **On the 18-key board,** Accents stays as it was, since its dead keys no longer share fingers
-  with the combo. `ı` goes on Symbols' right outer thumb.
+- **On the 18-key board,** Accents' keys stay where they were, since its dead keys no longer share
+  fingers with the combo. Like every Accents layer, it's mirrored when the vowels are on the left,
+  which Ben Vallack Piano's aren't. `ı` goes on Symbols' right outer thumb.
 - **On the bundled fixtures,** Effort on Portuguese rises 13.1 on Qwerty and Romak, where `ã` and
   `ç` leave cheaper keys, while Qwerty's SFB there falls 0.7. English doesn't move.

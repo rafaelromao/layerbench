@@ -268,9 +268,10 @@ export const DEFAULT_LAYER_ID_LIST: readonly string[] = Object.values(DEFAULT_LA
 
 /**
  * The keys pressed together on the base layer for Accents: the two outer main thumbs, or the two
- * inner ones on a board with one thumb a hand. Two thumbs never press a key of the fingers, so the
- * chord is never a same-finger pair with the accent after it. A board with one space bar for both
- * thumbs has no two to chord: it takes the left ring and middle fingers' home keys.
+ * inner ones on a board with one thumb a hand. Thumbs press none of Accents' 30 main keys, so the
+ * chord is never a same-finger pair with the accent after it there. A board with one space bar for
+ * both thumbs has no two to chord: it takes the left ring and middle fingers' home keys, the one
+ * board where `ä` and `ü`, on those keys, follow the chord with the same finger.
  */
 export function accentsComboKeys(geometry: Geometry): string[] {
   if (geometry.family === 'rowstagger') return ['LHR', 'LHM'];
@@ -279,9 +280,10 @@ export function accentsComboKeys(geometry: Geometry): string[] {
 }
 
 /**
- * Accents, one-shot, from `accentsComboKeys` pressed together on the base layer. Every layout with
- * the default layers whose thumbs are all taken reaches it the same way, so none is ranked better or
- * worse for where its own thumbs happen to be free.
+ * Accents, one-shot, from `accentsComboKeys` pressed together on the base layer. The Special
+ * layouts, whose thumbs all type something of their own, and new layouts reach it this way, the
+ * same keys on every layout of a board, so none is ranked better or worse for where its own thumbs
+ * happen to be free; the Standard and Thumb Alpha ones tap their right outer thumb instead.
  */
 export function accentsCombo(baseLayer: string, geometry: Geometry): ComboDef {
   return {
@@ -567,6 +569,17 @@ export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
       // With no other thumb there, beside the keypad, in the inner column.
       const spot = zero ?? ['RBC', 'RHC'].find((id) => have(id) && !bindings[id]);
       if (spot) bindings[spot] = kp('0');
+    }
+    if (l.id === DEFAULT_LAYER_IDS.extras) {
+      // Extras is on while both are held: what the defaults put on either goes to a thumb free.
+      const held = [numbersKey, symbolsKey];
+      for (const id of held) {
+        const b = bindings[id];
+        if (!b) continue;
+        delete bindings[id];
+        const spot = thumbs.find((k) => !held.includes(k.id) && !bindings[k.id]);
+        if (spot) bindings[spot.id] = b;
+      }
     }
     if (l.id === symbols) {
       if (types(numbersKey, ' ')) bindings[numbersKey] = kp(' ');
