@@ -40,11 +40,22 @@ describe('Reading the community layouts', () => {
   it('tells a layout that is not one as LayerBench saves it from one that would not come', async () => {
     const files: Record<string, unknown> = {
       'index.json': {
-        layouts: ['night-owl', 'gone', 'no-author', 'no-link', 'misnamed', 'odd', 'no-board'],
+        layouts: [
+          'night-owl',
+          'gone',
+          'no-author',
+          'no-link',
+          'bad-link',
+          'misnamed',
+          'odd',
+          'no-board',
+        ],
       },
       'night-owl.json': toCanonicalJson(owl),
       'no-author.json': toCanonicalJson({ ...communityDoc('no-author', 'A'), author: '' }),
-      'no-link.json': toCanonicalJson({ ...communityDoc('no-link', 'B'), description: 'Mine.' }),
+      // A link is optional; one given is an http(s) URL.
+      'no-link.json': toCanonicalJson({ ...communityDoc('no-link', 'B'), link: undefined }),
+      'bad-link.json': { ...toCanonicalJson(communityDoc('bad-link', 'E')), link: 'example.com' },
       'misnamed.json': toCanonicalJson(communityDoc('other', 'C')),
       'odd.json': { name: 'Odd' },
       // A layout as LayerBench saves it, on a board it does not know: it would open nowhere.
@@ -61,14 +72,15 @@ describe('Reading the community layouts', () => {
       ['night-owl', 'read'],
       ['gone', 'unread'],
       ['no-author', 'invalid'],
-      ['no-link', 'invalid'],
+      ['no-link', 'read'],
+      ['bad-link', 'invalid'],
       ['misnamed', 'invalid'],
       ['odd', 'invalid'],
       ['no-board', 'invalid'],
     ]);
     // One that would not come keeps the copy read before; one that is not a layout does not.
     const before = [communityDoc('gone', 'Gone'), communityDoc('odd', 'Odd')];
-    expect(readLayouts(read, before).map((l) => l.id)).toEqual(['night-owl', 'gone']);
+    expect(readLayouts(read, before).map((l) => l.id)).toEqual(['night-owl', 'gone', 'no-link']);
   });
 
   it('reads an index that lists nothing as no layouts', async () => {

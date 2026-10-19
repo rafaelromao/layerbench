@@ -9,10 +9,10 @@ import { MAX_LAYOUT_BYTES } from '../server/submit.js';
 
 /**
  * What a custom layout needs before Submit sends it, each said as what to do: the checks the
- * Library makes of a community layout (who made it, a link to where it comes from, that it is what
- * LayerBench saves and compiles), an id no bundled or community layout has, and its changes saved,
- * so what is proposed is the layout kept. Empty when it can be sent; the server checks again, as
- * `documentLayout`.
+ * Library makes of a community layout (who made it, that it is what LayerBench saves and compiles;
+ * a link to where it comes from is welcome but not needed), an id no bundled or community layout
+ * has, and its changes saved, so what is proposed is the layout kept. Empty when it can be sent;
+ * the server checks again, as `documentLayout`.
  */
 export function submissionProblems(
   layout: Layout,
@@ -26,11 +26,6 @@ export function submissionProblems(
   if (dirty) problems.push('Save your changes first.');
   const missing = documentMissing(layout);
   if (missing.includes('author')) problems.push('Give it an author, in Settings → This layout.');
-  if (missing.includes('link')) {
-    problems.push(
-      'Give its description a link (https://…) to where the layout comes from, in Settings → This layout.',
-    );
-  }
   const id = layout.id ?? '';
   if (!isDocumentId(id)) {
     problems.push('Save it, which gives it an id of its own.');
