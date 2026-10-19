@@ -74,6 +74,7 @@ import { useTypedLayout } from '../useLayout.js';
 import { itemLayer } from './item-layer.js';
 import { LayoutBar } from './LayoutBar.js';
 import { playFrames } from './playback.js';
+import { SubmitDialog } from './SubmitDialog.js';
 
 /** Built once: a reducer rebuilt on every render would reset the editor's history. */
 const undoableEditReducer = undoable(editReducer);
@@ -318,6 +319,13 @@ export function Workbench({
     if (session.storedId === null) setNaming(true);
     else void store();
   }, [session.storedId, store]);
+
+  // Submit proposes the custom layout under the id it is stored by, which names its file.
+  const [submitting, setSubmitting] = useState(false);
+  const submitted = useMemo(
+    () => (session.storedId === null ? null : { ...state.layout, id: session.storedId }),
+    [state.layout, session.storedId],
+  );
 
   const pick = (ref: string) => {
     if (state.dirty && !window.confirm(`Leave ${state.layout.name}? Its unsaved changes are lost.`))
@@ -641,6 +649,7 @@ export function Workbench({
         saving={session.saving}
         onMeta={(meta) => send({ type: 'edit', edit: { kind: 'setMeta', ...meta } })}
         onSave={save}
+        onSubmit={submitted ? () => setSubmitting(true) : undefined}
         copiesOnSave={session.storedId === null}
         // A custom layout is picked as itself, whatever its link carries.
         layoutRef={session.pickedRef}
@@ -653,6 +662,10 @@ export function Workbench({
         onCompare={compare}
         showCombos={hasTypingCombos ? { on: showCombos, onChange: setShowCombos } : undefined}
       />
+
+      {submitting && submitted && (
+        <SubmitDialog layout={submitted} dirty={state.dirty} onClose={() => setSubmitting(false)} />
+      )}
 
       {naming && (
         <NameDialog

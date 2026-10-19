@@ -9,7 +9,7 @@ import { type ThumbPlacement, withStandardThumbs } from './standard.js';
 import { withDefaultLayers } from './templates.js';
 
 export { CLASSIC_DEFS, CLASSIC_LAYOUTS, classicLayout } from './classic.js';
-export { DOCUMENT_LAYOUTS, documentLayout } from './documents.js';
+export { DOCUMENT_LAYOUTS, documentLayout, documentMissing } from './documents.js';
 export { magicRomak, romak } from './romak.js';
 export { SMALL_DEFS } from './small.js';
 export {

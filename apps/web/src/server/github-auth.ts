@@ -12,8 +12,21 @@
  * ones that browsers block, so none are used: every endpoint is a POST with a JSON body, answered
  * only to the origins it is told to serve.
  *
+ * One endpoint does more: `submit`, which opens a pull request proposing a signed-in user's layout
+ * as a community layout (`submit.ts`), as the GitHub App, with a key only this side has. That
+ * writes to GitHub; this side still keeps nothing.
+ *
  * Built on Web APIs only (`fetch`, `crypto.subtle`), which both runtimes provide.
  */
+
+import { installationToken } from './github-app.js';
+import {
+  checkSubmission,
+  MAX_LAYOUT_BYTES,
+  SUBMIT_REPO,
+  type SubmitAnswer,
+  submit,
+} from './submit.js';
 
 export interface AuthEnv {
   GITHUB_CLIENT_ID?: string;
@@ -22,6 +35,10 @@ export interface AuthEnv {
   SESSION_SECRET?: string;
   /** Comma-separated origins of the pages that may sign in here, besides this host's own. */
   ALLOWED_ORIGINS?: string;
+  /** The GitHub App's numeric id, which Submit acts as. Unset, Submit reports itself not set up. */
+  GITHUB_APP_ID?: string;
+  /** The GitHub App's private key, the PEM file GitHub downloads. */
+  GITHUB_APP_PRIVATE_KEY?: string;
 }
 
 /** What `session` and `token` answer. */
@@ -70,6 +87,8 @@ const SESSION_FALLBACK_MAX_AGE_MS = 180 * 24 * 3600_000;
  */
 const MAX_BODY_BYTES = 8 * 1024;
 const MAX_SESSION_LENGTH = 2048;
+/** Submit's request carries a whole layout beside the session. */
+const MAX_SUBMIT_BODY_BYTES = MAX_LAYOUT_BYTES + MAX_SESSION_LENGTH + 1024;
 /** RFC 7636's alphabet and lengths. */
 const VERIFIER = /^[A-Za-z0-9._~-]{43,128}$/;
 const CODE = /^[\w-]{1,128}$/;
@@ -340,6 +359,46 @@ async function logout(
   return respond(204, null, cors);
 }
 
+/**
+ * A signed-in user's layout, proposed as a community layout. The session must be good, and its
+ * token still honoured by GitHub as the login it names, so a session signed out of elsewhere cannot
+ * submit; the page renews the token first. The layout is checked before the App's key is used.
+ */
+async function submitRoute(
+  body: Record<string, unknown>,
+  config: Config,
+  env: AuthEnv,
+  cors: Extra,
+): Promise<Response> {
+  const answer = (status: number, value: SubmitAnswer) => json(value, status, cors);
+  const current = await sessionOf(body, config);
+  if (!current) return answer(401, { error: 'signed out' });
+  const checked = checkSubmission(body.layout);
+  if (!checked.ok) return answer(422, { error: 'not accepted', reason: checked.reason });
+  if (!env.GITHUB_APP_ID || !env.GITHUB_APP_PRIVATE_KEY) {
+    return answer(503, { error: 'Submit is not set up' });
+  }
+  try {
+    if ((await loginOf(current.access)) !== current.login) {
+      return answer(401, { error: 'signed out' });
+    }
+    const token = await installationToken(
+      { appId: env.GITHUB_APP_ID, privateKey: env.GITHUB_APP_PRIVATE_KEY },
+      SUBMIT_REPO,
+    );
+    if (!token) return answer(503, { error: 'Submit is not set up' });
+    const result = await submit(
+      body.layout as Record<string, unknown>,
+      checked,
+      current.login,
+      token,
+    );
+    return answer(result.status, result.answer);
+  } catch {
+    return answer(502, { error: 'GitHub could not be reached' });
+  }
+}
+
 async function configFrom(env: AuthEnv): Promise<Config | null> {
   if (!env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET || !env.SESSION_SECRET) return null;
   const key = await importKey(env.SESSION_SECRET);
@@ -376,10 +435,10 @@ function allowedOrigin(request: Request, env: AuthEnv): string | null {
 }
 
 /** The JSON object a request carries, or null for anything else. */
-async function bodyOf(request: Request): Promise<Record<string, unknown> | null> {
-  if (Number(request.headers.get('Content-Length') ?? 0) > MAX_BODY_BYTES) return null;
+async function bodyOf(request: Request, max: number): Promise<Record<string, unknown> | null> {
+  if (Number(request.headers.get('Content-Length') ?? 0) > max) return null;
   const text = await request.text();
-  if (text.length > MAX_BODY_BYTES) return null;
+  if (text.length > max) return null;
   try {
     const value: unknown = JSON.parse(text);
     return value && typeof value === 'object' && !Array.isArray(value)
@@ -408,18 +467,23 @@ export async function handleAuth(request: Request, env: AuthEnv): Promise<Respon
       'Access-Control-Max-Age': '7200',
     });
   }
-  if (request.method !== 'POST' || !['session', 'token', 'logout'].includes(route)) {
+  if (request.method !== 'POST' || !['session', 'token', 'logout', 'submit'].includes(route)) {
     return json({ error: 'not found' }, 404, cors);
   }
   // A JSON body is what makes the browser ask first, so other sites cannot post blind.
   if (!request.headers.get('Content-Type')?.startsWith('application/json')) {
     return json({ error: 'expected JSON' }, 415, cors);
   }
-  const body = await bodyOf(request);
+  const body = await bodyOf(request, route === 'submit' ? MAX_SUBMIT_BODY_BYTES : MAX_BODY_BYTES);
   if (!body) return json({ error: 'bad request' }, 400, cors);
 
   const config = await configFrom(env);
   if (route === 'logout') return config ? logout(body, config, cors) : respond(204, null, cors);
+  if (route === 'submit') {
+    return config
+      ? submitRoute(body, config, env, cors)
+      : json({ error: 'Submit is not set up' } satisfies SubmitAnswer, 503, cors);
+  }
   if (!config)
     return json({ available: false, signedIn: false } satisfies SessionAnswer, 200, cors);
   return route === 'token' ? token(body, origin, config, cors) : session(body, config, cors);

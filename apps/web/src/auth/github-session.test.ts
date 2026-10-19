@@ -7,6 +7,7 @@ import {
   initGitHubSession,
   returnFromGitHub,
   signOut,
+  submitLayout,
   useGitHubSession,
 } from './github-session.js';
 
@@ -391,5 +392,93 @@ describe('the trip to GitHub', () => {
     }
     expect(sessionStorage.getItem(SIGN_IN)).not.toBeNull();
     expect(useToasts.getState().toasts).toEqual([]);
+  });
+});
+
+describe('submitting a layout', () => {
+  const PULL = 'https://github.com/rafaelromao/layerbench/pull/7';
+
+  async function signedIn(): Promise<void> {
+    localStorage.setItem(SESSION, 'sealed');
+    await initGitHubSession();
+  }
+
+  it('sends the layout with the session, and hands back the pull request', async () => {
+    await signedIn();
+    answer = (call) =>
+      call.url.endsWith('/submit') ? reply({ url: PULL }, 201) : reply(SIGNED_IN);
+    expect(await submitLayout({ id: 'mine' })).toEqual({ kind: 'sent', url: PULL, reused: false });
+    const sent = calls.find((c) => c.url === '/api/auth/submit');
+    expect(sent?.body).toEqual({ session: 'sealed', layout: { id: 'mine' } });
+  });
+
+  it('says when it updated the pull request already open', async () => {
+    await signedIn();
+    answer = () => reply({ url: PULL, reused: true });
+    expect(await submitLayout({})).toEqual({ kind: 'sent', url: PULL, reused: true });
+  });
+
+  it('says why the server refused it', async () => {
+    await signedIn();
+    answer = (call) =>
+      call.url.endsWith('/submit')
+        ? reply({ error: 'taken', reason: 'a community layout already has the id "mine"' }, 409)
+        : reply(SIGNED_IN);
+    expect(await submitLayout({})).toEqual({
+      kind: 'refused',
+      reason: 'a community layout already has the id "mine"',
+    });
+  });
+
+  it('asks to sign in when nobody is, or the server says the session is over', async () => {
+    answer = () => reply(SIGNED_OUT);
+    await initGitHubSession();
+    expect(await submitLayout({})).toEqual({ kind: 'signed-out' });
+
+    await signedIn();
+    answer = (call) =>
+      call.url.endsWith('/submit') ? reply({ error: 'signed out' }, 401) : reply(SIGNED_IN);
+    expect(await submitLayout({})).toEqual({ kind: 'signed-out' });
+  });
+
+  it('says what failed when it could not be sent, or GitHub would not take it', async () => {
+    await signedIn();
+    answer = (call) =>
+      call.url.endsWith('/submit')
+        ? reply({ error: 'GitHub refused the submission' }, 502)
+        : reply(SIGNED_IN);
+    expect(await submitLayout({})).toEqual({
+      kind: 'failed',
+      error: 'GitHub refused the submission',
+    });
+
+    answer = (call) =>
+      call.url.endsWith('/submit') ? new Response('nope', { status: 500 }) : reply(SIGNED_IN);
+    expect(await submitLayout({})).toEqual({
+      kind: 'failed',
+      error: 'the sign-in server answered 500',
+    });
+
+    // A link anywhere but GitHub is not shown as the pull request.
+    answer = (call) =>
+      call.url.endsWith('/submit')
+        ? reply({ url: 'https://elsewhere.example/x' })
+        : reply(SIGNED_IN);
+    expect((await submitLayout({})).kind).toBe('failed');
+
+    vi.stubGlobal('fetch', async (input: string) => {
+      if (String(input).endsWith('/submit')) throw new TypeError('offline');
+      return reply(SIGNED_IN);
+    });
+    expect(await submitLayout({})).toEqual({
+      kind: 'failed',
+      error: 'the sign-in server could not be reached',
+    });
+  });
+
+  it('asks to sign in when this browser keeps no session', async () => {
+    await signedIn();
+    localStorage.removeItem(SESSION);
+    expect(await submitLayout({})).toEqual({ kind: 'signed-out' });
   });
 });
