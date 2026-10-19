@@ -104,6 +104,22 @@ visitor's Library the next time it opens, marked *community*, with no new versio
 file that is not a layout as LayerBench saves it, with an author and a description that links to
 where it comes from, is left out.
 
+**Submit** opens that pull request for you, from one of your custom layouts:
+
+1. Sign in with GitHub, in **Storage**. Submit asks you to if you have not: the pull request names
+   you as who sent the layout.
+2. In **Analyze**, open the custom layout. In **Settings**, give it its author and a description
+   that says where it comes from, with a link: the author's firmware, keymap or page. **Save** it.
+3. Click **Submit**, beside **Save**. Submit checks the layout first: an author, a link, saved
+   changes, an id no bundled or community layout has (rename it if one does), and that it compiles.
+   If anything is missing it says what, and sends nothing.
+4. Otherwise it asks before it opens the pull request, which is public. It then gives you the pull
+   request's link, where the maintainer may ask for changes.
+
+Submitting the same layout again while its pull request is open updates that pull request with the
+layout as it is now, rather than opening another. Once the pull request is merged, the layout is a
+community layout. Your own copy stays one of your custom layouts.
+
 ### Bundled with the app
 
 The layouts LayerBench came with were written into it from where their authors published them. A

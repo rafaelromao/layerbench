@@ -2,6 +2,7 @@ import { bundledLayout, CLASSIC_LAYOUTS, type Layout, toCanonicalJson } from '@l
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { useGitHubSession } from '../auth/github-session.js';
 import { setCommunitySource } from '../community/community.js';
 import type { AnalysisClient, AnalyzeRequest } from '../engine/protocol.js';
 import { toast } from '../state/toasts.js';
@@ -286,6 +287,19 @@ describe('Edit', () => {
     );
     expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['qwerty-copy']);
   }, 60_000);
+
+  it('offers Submit for a custom layout only', async () => {
+    const user = userEvent.setup();
+    useGitHubSession.setState({ status: 'signed-out', login: null });
+    await openEdit();
+    expect(within(bar()).queryByRole('button', { name: 'Submit' })).toBeNull();
+    await saveCopy(user);
+    expect(await screen.findByText('Saved Qwerty copy')).toBeInTheDocument();
+    await user.click(within(bar()).getByRole('button', { name: 'Submit' }));
+    const dialog = screen.getByRole('dialog', { name: 'Submit Qwerty copy' });
+    expect(within(dialog).getByRole('button', { name: 'Sign in with GitHub' })).toBeVisible();
+    useGitHubSession.setState({ status: 'unknown' });
+  });
 
   it('keeps the layout as it was when the copy cannot be saved, and offers the name given again', async () => {
     const user = userEvent.setup();

@@ -28,11 +28,22 @@ export function documentLayout(file: string, doc: unknown): Layout {
       `${file}.json is not as LayerBench saves it; copy it from the editor's JSON panel`,
     );
   }
-  if (!layout.author?.trim()) throw new Error(`${file}.json names no author`);
-  if (!/https?:\/\/\S/.test(layout.description ?? '')) {
+  const missing = documentMissing(layout);
+  if (missing.includes('author')) throw new Error(`${file}.json names no author`);
+  if (missing.includes('link')) {
     throw new Error(`${file}.json: its description gives no link to where the layout comes from`);
   }
   return layout;
+}
+
+/** What a layout lacks to be a document: who made it, and a link to where it comes from. */
+export function documentMissing(
+  layout: Pick<Layout, 'author' | 'description'>,
+): ('author' | 'link')[] {
+  const missing: ('author' | 'link')[] = [];
+  if (!layout.author?.trim()) missing.push('author');
+  if (!/https?:\/\/\S/.test(layout.description ?? '')) missing.push('link');
+  return missing;
 }
 
 export const DOCUMENT_LAYOUTS: Layout[] = Object.entries(DOCUMENTS).map(([file, doc]) =>

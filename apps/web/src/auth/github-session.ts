@@ -1,6 +1,7 @@
 import type { Collection } from '@layerbench/core';
 import { create } from 'zustand';
 import type { SessionAnswer } from '../server/github-auth.js';
+import type { SubmitAnswer } from '../server/submit.js';
 import { toast } from '../state/toasts.js';
 import type { GistIds } from '../storage/gist.js';
 import type { GitHubAccess } from '../storage/github-api.js';
@@ -117,7 +118,7 @@ function isAnswer(value: unknown): value is SessionAnswer {
   );
 }
 
-function post(route: 'session' | 'token' | 'logout', body: object): Promise<Response> {
+function post(route: 'session' | 'token' | 'logout' | 'submit', body: object): Promise<Response> {
   return fetch(`${AUTH}/api/auth/${route}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -385,6 +386,41 @@ export async function signIn(): Promise<void> {
   const url = clientId ? await authorizeUrl(clientId) : null;
   if (url) location.assign(url);
   else toast.error('Signing in with GitHub could not start; try again in a moment');
+}
+
+/** How a submission went: the pull request, why it was refused, or why it was not sent. */
+export type SubmitOutcome =
+  | { kind: 'sent'; url: string; reused: boolean }
+  | { kind: 'refused'; reason: string }
+  | { kind: 'signed-out' }
+  | { kind: 'failed'; error: string };
+
+/**
+ * Propose a layout, as LayerBench saves it, as a community layout: the sign-in server opens a pull
+ * request into the community branch that adds it, naming who is signed in. The token is renewed
+ * first if it needs to be, so the session sent is one GitHub still honours.
+ */
+export async function submitLayout(doc: object): Promise<SubmitOutcome> {
+  try {
+    await getToken();
+  } catch {
+    return { kind: 'signed-out' };
+  }
+  const session = storedSession();
+  if (!session) return { kind: 'signed-out' };
+  let res: Response;
+  try {
+    res = await post('submit', { session, layout: doc });
+  } catch {
+    return { kind: 'failed', error: 'the sign-in server could not be reached' };
+  }
+  const answer = (await res.json().catch(() => null)) as SubmitAnswer | null;
+  if (res.ok && typeof answer?.url === 'string' && answer.url.startsWith('https://github.com/')) {
+    return { kind: 'sent', url: answer.url, reused: answer.reused === true };
+  }
+  if (res.status === 401) return { kind: 'signed-out' };
+  if (typeof answer?.reason === 'string') return { kind: 'refused', reason: answer.reason };
+  return { kind: 'failed', error: answer?.error ?? `the sign-in server answered ${res.status}` };
 }
 
 export async function signOut(): Promise<void> {

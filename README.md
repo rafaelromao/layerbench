@@ -72,7 +72,8 @@ The layouts the app started with are written as data in `packages/core/src/layou
 Numbers, Symbols and Accents layers, plus Extras on a board that needs it, Accents on the same combo
 for all of them (`withDefaultLayers` in `templates.ts`). A new one joins them as a
 document: a custom layout, unchanged, added by pull request. Merging the pull request is
-the approval, and the deploy that follows puts it in everyone's Library.
+the approval, and the deploy that follows puts it in everyone's Library. A layout can also join
+with no deploy, as a community layout, by **Submit** in the app ([below](#community-layouts)).
 
 1. In the app, give the layout its name, its author, and a description that links to where it comes
    from: the author's firmware, keymap or page. Save it, and copy its LayerBench JSON from the
@@ -105,7 +106,13 @@ live on the `layerbench-data` branch, kept apart from main:
   files' names, never their contents, and lists only names that are document ids.
 
 A pull request into `layerbench-data` that adds one file proposes a layout; merging it is the
-maintainer's acceptance. The app (`apps/web/src/community/community.ts`) reads the index and each
+maintainer's acceptance. **Submit**, beside Save in Analyze, opens one for a signed-in user's custom
+layout (`apps/web/src/server/submit.ts`, through the sign-in Worker): the page checks the layout as
+the Library would, has an id no bundled or community layout has, and is saved; the Worker checks it
+again, and, as the GitHub App, creates the branch `submit/<login>/<id>` from `layerbench-data`,
+commits `community/<id>.json` to it and opens the pull request, naming the submitter. While that
+pull request is open, submitting the layout again commits the new version to it. A layout is at
+most 64 KB, and an id the branch already holds is refused. The app (`apps/web/src/community/community.ts`) reads the index and each
 file from `raw.githubusercontent.com` each time the Library opens, with no sign-in: plain files, as
 unauthenticated calls to the GitHub API are limited to 60 an hour for each address. GitHub's file
 server caches a file for a few minutes, so a layout merged appears within about five. Each file is
@@ -174,7 +181,8 @@ ignored.
 To sign in on the dev server, set up the GitHub App first (see
 [Setting up sign-in](#setting-up-sign-in)). Then put `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`
 and `SESSION_SECRET` in `apps/web/.env.local`, which git ignores, with a client
-secret and a session key of their own rather than the Worker's. The dev server answers sign-in
+secret and a session key of their own rather than the Worker's. `GITHUB_APP_ID` and
+`GITHUB_APP_PRIVATE_KEY` there turn on Submit, which opens real pull requests on GitHub. The dev server answers sign-in
 itself, on its own origin. Without them the app says sign-in is not set up and saves in the browser
 only.
 
@@ -248,9 +256,10 @@ included.
 
 Sign-in needs a GitHub App of your own and the Worker in `worker/`, whose logic is
 `apps/web/src/server/github-auth.ts`. It swaps GitHub's sign-in code for tokens, which needs the
-app's client secret, and renews them. It stores nothing: the page keeps the session, sealed with a
-key only the Worker has. Without the Worker the app still works, saving in the browser only. Do this
-once per deployment.
+app's client secret, and renews them. It also opens Submit's pull requests, as the GitHub App. It
+stores nothing: the page keeps the session, sealed with a key only the Worker has, and a submission
+goes straight to GitHub. Without the Worker the app still works, saving in the browser only, and
+without Submit. Do this once per deployment.
 
 **1. Create the GitHub App.** On GitHub, go to the owner's **Settings** → **Developer settings** →
 **GitHub Apps** → **New GitHub App**, and fill in:
@@ -265,12 +274,20 @@ once per deployment.
 | Enable Device Flow | off |
 | Setup URL | empty |
 | Webhook → Active | off |
-| Repository permissions → Contents | **Read and write**, kept for proposing layouts to `rafaelromao/layerbench` from the app, which is still to come; the App is installed there alone |
+| Repository permissions → Contents | **Read and write**, for Submit's branch and commit on `rafaelromao/layerbench`; the App is installed there alone |
+| Repository permissions → Pull requests | **Read and write**, for Submit's pull request into `layerbench-data` |
 | Account permissions → Gists | **Read and write**, where signed-in users' documents are kept |
 | Where can this GitHub App be installed? | **Any account**, so anyone can sign in and keep their documents in gists |
 
-Create it. On the page that opens, copy the **Client ID**. Click **Generate a new client secret**
-twice: one for the Worker and one for the dev server, so either can be revoked alone.
+Create it. On the page that opens, copy the **Client ID**, and the **App ID** above it. Click
+**Generate a new client secret** twice: one for the Worker and one for the dev server, so either can
+be revoked alone. Further down, under **Private keys**, click **Generate a private key**: a `.pem`
+file downloads, which Submit signs in as the App with.
+
+Then **Install App** → `rafaelromao` → **Only select repositories** → `layerbench`, so Submit can
+open pull requests there. An App already installed whose permissions change asks the owner to
+accept them: GitHub → **Settings** → **Applications** → **Installed GitHub Apps** → the App →
+**Review request**.
 
 **2. Make a session key** for the Worker, the key it seals sessions with, and another for the dev
 server:
@@ -287,14 +304,20 @@ pnpm dlx wrangler@4 login
 pnpm dlx wrangler@4 deploy -c worker/wrangler.jsonc
 pnpm dlx wrangler@4 secret put GITHUB_CLIENT_SECRET -c worker/wrangler.jsonc
 pnpm dlx wrangler@4 secret put SESSION_SECRET -c worker/wrangler.jsonc
+pnpm dlx wrangler@4 secret put GITHUB_APP_ID -c worker/wrangler.jsonc
+pnpm dlx wrangler@4 secret put GITHUB_APP_PRIVATE_KEY -c worker/wrangler.jsonc < path/to/the-app.private-key.pem
 ```
+
+`GITHUB_APP_ID` is the App ID, and `GITHUB_APP_PRIVATE_KEY` the private key file, as downloaded.
+Without them sign-in works, and Submit says it is not set up.
 
 The deploy prints the Worker's address, `https://layerbench-auth.<your subdomain>.workers.dev`. Set
 it as the repository variable `AUTH_ORIGIN`, then push, or re-run CI, so the app is built with it.
 
 **4. Check it.** In the deployed app, open **Storage** and **Sign in with GitHub**. Storage should
 say it is saving to secret gists in your account. Save a layout and a "LayerBench: saved layouts"
-gist appears there.
+gist appears there. Then open a custom layout with an author and a linked description in Analyze
+and **Submit** it: a pull request into `layerbench-data` opens. Close it if it was only a check.
 
 **To sign everyone out**, give the Worker a new `SESSION_SECRET`: every session sealed with the old
 one fails at its next renewal or page load. Revoking the GitHub App's client secret stops renewals
@@ -313,8 +336,8 @@ only that used, so a deployment set up before can drop it:
   `UPSTREAM_REPO` wherever it was set (a Worker variable, `.env.local`); redeploy the Worker.
 - Sign-in and gists keep the App's Client ID, its client secrets, the Worker's `SESSION_SECRET` and
   `ALLOWED_ORIGINS`, its callback URLs, its **Gists** permission, and **Any account**.
-- The App stays installed on `rafaelromao/layerbench`, with **Contents** read and write, for
-  proposing layouts to the Library from the app, which is still to come.
+- The App stays installed on `rafaelromao/layerbench`, with **Contents** and **Pull requests**
+  read and write, for Submit.
 - The `layerbench-data` branch stays: it holds the community layouts (below).
 
 ### Landing page

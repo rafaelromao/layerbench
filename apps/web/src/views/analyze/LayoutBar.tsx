@@ -14,7 +14,7 @@ import type { AnalysisSettingsState } from '../useAnalysisSettings.js';
 
 /**
  * The layout in hand and what it is measured on. In sight: its name, whether it is saved and the
- * way to save it, which layout this is, what the numbers are made with, and the way to compare it.
+ * way to save it, the way to submit a custom layout to the Library, which layout this is, what the numbers are made with, and the way to compare it.
  * In the Settings dialog: its author and description, the text and rules the numbers come from,
  * the switches, and whether the board draws the combos that type.
  */
@@ -24,6 +24,7 @@ export function LayoutBar({
   saving,
   onMeta,
   onSave,
+  onSubmit,
   copiesOnSave,
   layoutRef,
   onPick,
@@ -45,6 +46,8 @@ export function LayoutBar({
     languages?: string[];
   }) => void;
   onSave: () => void;
+  /** Propose it as a community layout; absent for a layout that is not a custom one. */
+  onSubmit?: () => void;
   /** Saving makes a copy, as this layout is not one of the user's custom layouts yet. */
   copiesOnSave: boolean;
   /** The layout the link names, for the picker. */
@@ -90,6 +93,16 @@ export function LayoutBar({
         >
           Save
         </button>
+        {onSubmit && (
+          <button
+            type="button"
+            className="btn btn-sm btn-outline shrink-0 max-sm:px-2"
+            title="Propose it for the Library's community layouts, by a pull request"
+            onClick={onSubmit}
+          >
+            Submit
+          </button>
+        )}
       </div>
       {/* On a phone one line, so the board and the editor under it start within the first screen:
           the picker shows the layout's name without a caption, and Settings is a gear. */}

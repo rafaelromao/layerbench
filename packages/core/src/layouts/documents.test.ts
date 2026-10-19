@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { goldenPath } from '../golden/paths.js';
-import { DOCUMENT_LAYOUTS, documentLayout } from './documents.js';
+import { DOCUMENT_LAYOUTS, documentLayout, documentMissing } from './documents.js';
 import { BUNDLED_LAYOUTS } from './index.js';
 
 const DOCUMENTS = fileURLToPath(new URL('./documents/', import.meta.url));
@@ -46,5 +46,13 @@ describe('bundled layouts added as documents', () => {
     expect(() => documentLayout('night', { ...saved(), description: 'Mine.' })).toThrow(
       'gives no link',
     );
+  });
+});
+
+describe('what a layout lacks to be a document', () => {
+  it('names each missing part', () => {
+    expect(documentMissing({ author: ' ', description: 'Mine.' })).toEqual(['author', 'link']);
+    expect(documentMissing({ author: 'Ana', description: 'From https://example.com' })).toEqual([]);
+    expect(documentMissing({})).toEqual(['author', 'link']);
   });
 });
