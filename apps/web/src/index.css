@@ -636,7 +636,7 @@
   line-height: 1.1;
   cursor: pointer;
 }
-.lb-kind-tile:hover {
+.lb-kind-tile:not([aria-disabled="true"]):hover {
   border-color: var(--color-primary);
 }
 .lb-kind-tile:focus-visible {
@@ -648,7 +648,7 @@
   border-color: var(--color-primary);
   color: var(--color-primary-content);
 }
-.lb-kind-tile:disabled {
+.lb-kind-tile[aria-disabled="true"] {
   opacity: 0.4;
   cursor: not-allowed;
 }

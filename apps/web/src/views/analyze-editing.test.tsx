@@ -2,10 +2,11 @@ import {
   accentsCombo,
   bundledLayout,
   CLASSIC_LAYOUTS,
+  getGeometryPreset,
   type Layout,
   toCanonicalJson,
 } from '@layerbench/core';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { useGitHubSession } from '../auth/github-session.js';
@@ -67,12 +68,14 @@ async function openEdit(): Promise<void> {
 }
 
 /**
- * Open Analyze on a copy of Qwerty that reaches Accents by LHR and LHM pressed together, as a
- * Special layout does, and wait for its first analysis.
+ * Open Analyze on a copy of Qwerty that reaches Accents by LHR and LHM pressed together, a combo on
+ * two finger keys for the combo editor to work on, and wait for its first analysis.
  */
 async function openComboEdit(): Promise<void> {
   const storage = freshStorage();
-  await seed(storage, 'qwerty', 'qwerty-combo', { combos: [accentsCombo('base')] });
+  await seed(storage, 'qwerty', 'qwerty-combo', {
+    combos: [{ ...accentsCombo('base', getGeometryPreset('3x5+2')), keys: ['LHR', 'LHM'] }],
+  });
   renderRoute('/analyze?layout=custom%3Aqwerty-combo&corpus=en-general&sample=20000', { storage });
   await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
 }
@@ -312,7 +315,8 @@ describe('Edit', () => {
     expect(within(bar()).queryByRole('button', { name: 'Submit' })).toBeNull();
     await saveCopy(user);
     expect(await screen.findByText('Saved Qwerty copy')).toBeInTheDocument();
-    await user.click(within(bar()).getByRole('button', { name: 'Submit' }));
+    // The toast can come before the bar shows the copy, slowly enough under coverage to miss it.
+    await user.click(await within(bar()).findByRole('button', { name: 'Submit' }));
     const dialog = screen.getByRole('dialog', { name: 'Submit Qwerty copy' });
     expect(within(dialog).getByRole('button', { name: 'Sign in with GitHub' })).toBeVisible();
     useGitHubSession.setState({ status: 'unknown' });
@@ -933,6 +937,68 @@ describe('Edit', () => {
       expect(within(kinds).getByRole('button', { name })).toBeInTheDocument();
     }
     expect(within(kinds).queryByRole('button', { name: 'More' })).toBeNull();
+  });
+
+  it('says why Behaviour cannot be picked while the layout has no named behaviours', async () => {
+    const user = userEvent.setup();
+    await openEdit();
+
+    await user.click(key('Key LHM: d'));
+    const kinds = within(await inspector('LHM')).getByRole('group', { name: 'Kind of key' });
+    const behaviour = within(kinds).getByRole('button', { name: 'Behaviour' });
+    // Not disabled, which would keep its hint from showing on hover: unavailable, and saying why.
+    expect(behaviour).toBeEnabled();
+    expect(behaviour).toHaveAttribute('aria-disabled', 'true');
+    expect(behaviour).toHaveAttribute('title', expect.stringMatching(/no named behaviours yet/));
+
+    await user.click(behaviour);
+    expect(within(kinds).getByRole('button', { name: 'Symbol' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    // A hover hint never shows on a phone or to the keyboard, so the tile says it in text too.
+    const reason = async () => within(await inspector('LHM')).getByRole('status');
+    expect(await reason()).toHaveTextContent(/no named behaviours yet/);
+
+    // Picking a kind puts the line away, even where a tap does not move focus (Safari).
+    fireEvent.click(within(kinds).getByRole('button', { name: 'Symbol' }));
+    expect(await reason()).toBeEmptyDOMElement();
+
+    // The keyboard reaches it too: focus says why, and leaving the tile puts it away. The click
+    // above left the tile focused, so it leaves first.
+    act(() => behaviour.blur());
+    act(() => behaviour.focus());
+    expect(await reason()).toHaveTextContent(/Behaviors panel/);
+    act(() => behaviour.blur());
+    expect(await reason()).toBeEmptyDOMElement();
+  });
+
+  it('says on a phone, in text, why Behaviour cannot be picked', async () => {
+    setViewportWidth(375);
+    const user = userEvent.setup();
+    await openEdit();
+
+    await user.click(key('Key LHM: d'));
+    const editor = await inspector('LHM');
+    await user.click(within(editor).getByRole('button', { name: 'More' }));
+    // A tap that does not move focus, as on Safari.
+    fireEvent.click(within(editor).getByRole('button', { name: 'Behaviour' }));
+    expect(within(editor).getByRole('status')).toHaveTextContent(/Behaviors panel/);
+    // Nothing was picked, so the list of more kinds stays open.
+    expect(within(editor).getByRole('group', { name: 'More kinds' })).toBeInTheDocument();
+
+    // A tap elsewhere puts the list away, and the line with it.
+    await user.click(within(editor).getByRole('textbox', { name: 'Binding for LHM' }));
+    expect(within(editor).queryByRole('group', { name: 'More kinds' })).toBeNull();
+    expect(within(editor).getByRole('status')).toBeEmptyDOMElement();
+
+    // So does closing the list with More itself.
+    await user.click(within(editor).getByRole('button', { name: 'More' }));
+    fireEvent.click(within(editor).getByRole('button', { name: 'Behaviour' }));
+    expect(within(editor).getByRole('status')).toHaveTextContent(/Behaviors panel/);
+    fireEvent.click(within(editor).getByRole('button', { name: 'More', expanded: true }));
+    expect(within(editor).queryByRole('group', { name: 'More kinds' })).toBeNull();
+    expect(within(editor).getByRole('status')).toBeEmptyDOMElement();
   });
 
   it('closes the list of more kinds on a phone on a choice or a tap elsewhere, and keeps the choice in sight', async () => {

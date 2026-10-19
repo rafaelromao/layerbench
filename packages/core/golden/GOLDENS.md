@@ -502,6 +502,40 @@ What moved, checked across the 38 reports; nothing else moved:
   its shift key, so that Caps word has a key to go on; both Shifts are the left one.
   `romak-24.json` and `romak-34.json` are deleted, and `romak.json` is new.
 
+## Twenty-third re-baseline: Accents in rows and columns, reached by two thumbs
+
+Accents is rearranged on the 30 main keys so that it is easy to remember
+(`docs/research/accents-layer.md`). On the right hand, a row per accent (grave, acute,
+circumflex) and a column per vowel. On the left, German's letters, the tilde's with `ç`, and the
+ligatures with `qu` and `ß`, a row each, with the dead keys at the rows' ends. The same keys stay
+on the layer. Four other changes come with it:
+
+- A layout whose base layer types more vowels with the left hand gets Accents mirrored (Dvorak,
+  Engram, Enthium, Nordrassil, Uno).
+- The Special layouts reach Accents by the outer main thumbs pressed together, L1+R1, or L0+R0 on
+  a board with one thumb a hand, instead of LHR+LHM. A row-stagger board keeps LHR+LHM.
+- Extras carries the Accents keys a board lacks.
+- `ı`, typed by no layout until now, is on Symbols' right inner top key, on Extras where a board
+  lacks that key, and on Symbols' right outer thumb with no bottom row.
+
+What moved, checked across the 38 reports; nothing else moved:
+
+- **Magic Romak**: no value, press or trace. Its document and share blob gain Accents' new keys,
+  and on Extras the ten Accents keys its 24 keys lack and `ı`, on RTM, its board having no RTC. Its
+  producer lists follow them: `qu` from `macro:accents/RTM` to `macro:accents/LTM`, and some dead-key
+  routes now through Extras.
+- **Qwerty**, which is not mirrored (its `a` and `e` on the left, `i` `o` `u` on the right): the same
+  presses on other keys. In English, `qu` moves from RTM to LTM, the same cost: Effort 1234.06, SFB
+  4.84 and 7.04 unchanged; SFS 6.19 → 6.25 on cyanophage's rules. On Portuguese, Effort
+  1042.86 → 1055.95, while SFB falls 5.50 → 4.79 on cyanophage's rules and 7.66 → 6.68 on the
+  Layouts Doc's, and SFS 5.87 → 4.91. `ã` and `ç` are on the left index and middle's bottom keys,
+  where `ã` and `ç` were on the right ring's home key and the left index's bottom key. On the mix,
+  Effort 1138.16 → 1144.73 and SFB 5.17 → 4.82.
+- **Romak**: in English as Qwerty. On Portuguese, Effort 421.23 → 434.32 and SFB 1.26 → 1.35 on
+  cyanophage's rules; on the mix, Effort 476.29 → 482.85.
+- **The 35 layouts' documents** written in code: Accents' new keys, mirrored on the five layouts
+  above, the Special layouts' combo on thumbs, Extras' new keys, and Symbols' `ı`.
+
 ## Not compared
 
 `globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not

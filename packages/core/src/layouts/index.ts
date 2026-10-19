@@ -20,8 +20,8 @@ export {
 } from './standard.js';
 export {
   ACCENTS,
-  ACCENTS_COMBO_KEYS,
   accentsCombo,
+  accentsComboKeys,
   DEFAULT_LAYER_ID_LIST,
   DEFAULT_LAYER_IDS,
   type DefaultLayers,
@@ -31,10 +31,12 @@ export {
   defaultLayers,
   EXTRAS_CONDITION,
   EXTRAS_CORE,
+  mirrorKeyId,
   NUMBERS_CORE,
   NUMBERS_OUTER,
   SYMBOLS_CORE,
   SYMBOLS_OUTER,
+  vowelsOnLeft,
   withDefaultLayers,
 } from './templates.js';
 

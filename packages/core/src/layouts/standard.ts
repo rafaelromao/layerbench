@@ -1,6 +1,11 @@
 import type { Geometry } from '../geometry/types.js';
 import type { Binding, Layout } from '../layout/types.js';
-import { DEFAULT_LAYER_ID_LIST, DEFAULT_LAYER_IDS, defaultLayers } from './templates.js';
+import {
+  DEFAULT_LAYER_ID_LIST,
+  DEFAULT_LAYER_IDS,
+  defaultLayers,
+  vowelsOnLeft,
+} from './templates.js';
 
 /**
  * The thumbs and base layer every bundled Standard and Thumb Alpha layout shares, so they compare
@@ -126,8 +131,9 @@ export function withStandardThumbs(
   const space = MAIN_THUMBS.find((id) => isSpace(taps[id]));
   if (!space) throw new Error(`${layout.name}: no main thumb types space`);
   // The default layers put space on Symbols' L0, the space thumb being held: where L0 types
-  // something else, it types that there too.
-  const defaults = defaultLayers(geometry);
+  // something else, it types that there too. Accents is mirrored for a layout whose vowels are on
+  // the left.
+  const defaults = defaultLayers(geometry, { mirrorAccents: vowelsOnLeft(first.bindings) });
   const layers = defaults.layers.map((l) => {
     if (l.id !== DEFAULT_LAYER_IDS.symbols || space === defaults.spaceKey) return l;
     const { [defaults.spaceKey]: _space, ...kept } = l.bindings;

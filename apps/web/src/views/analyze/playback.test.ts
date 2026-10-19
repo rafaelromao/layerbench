@@ -71,7 +71,8 @@ describe('the combos a board shows', () => {
       {
         id: 'accents',
         index: 0,
-        keys: ['LHR', 'LHM'].map((id) => sturdy.keyIndex.get(id)),
+        // The outer thumbs pressed together.
+        keys: ['L1', 'R1'].map((id) => sturdy.keyIndex.get(id)),
         label: 'Acce',
         active: false,
       },
