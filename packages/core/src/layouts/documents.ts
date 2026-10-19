@@ -46,6 +46,9 @@ export function documentMissing(
   return missing;
 }
 
+/** The ids of the layouts added as documents, without checking or building them. */
+export const DOCUMENT_IDS: readonly string[] = Object.keys(DOCUMENTS);
+
 export const DOCUMENT_LAYOUTS: Layout[] = Object.entries(DOCUMENTS).map(([file, doc]) =>
   documentLayout(file, doc),
 );

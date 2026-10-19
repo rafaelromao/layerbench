@@ -1,6 +1,7 @@
 // By path rather than by package: Vite bundles the dev server's config with what it imports by
 // path, but leaves a package to Node, which cannot follow core's `.js` imports to its `.ts` files.
 import { compileLayout } from '../../../../packages/core/src/layout/compile.js';
+import { BUNDLED_IDS } from '../../../../packages/core/src/layouts/bundled-ids.js';
 import { documentLayout } from '../../../../packages/core/src/layouts/documents.js';
 import { isDocumentId } from '../../../../packages/core/src/storage/ids.js';
 
@@ -53,6 +54,9 @@ export function checkSubmission(
   const id = (doc as { id?: unknown }).id;
   if (typeof id !== 'string' || !isDocumentId(id)) {
     return { ok: false, reason: 'the layout has no usable id' };
+  }
+  if (BUNDLED_IDS.includes(id)) {
+    return { ok: false, reason: `a bundled layout already has the id "${id}"` };
   }
   try {
     const layout = documentLayout(id, doc);

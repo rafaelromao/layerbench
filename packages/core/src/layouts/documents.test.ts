@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { goldenPath } from '../golden/paths.js';
+import { BUNDLED_IDS } from './bundled-ids.js';
 import { DOCUMENT_LAYOUTS, documentLayout, documentMissing } from './documents.js';
 import { BUNDLED_LAYOUTS } from './index.js';
 
@@ -20,6 +21,10 @@ describe('bundled layouts added as documents', () => {
           .map((f) => f.slice(0, -'.json'.length))
       : [];
     expect(DOCUMENT_LAYOUTS.map((l) => l.id).sort()).toEqual(files.sort());
+  });
+
+  it('lists the id of every bundled layout apart, for the sign-in server', () => {
+    expect([...BUNDLED_IDS].sort()).toEqual(BUNDLED_LAYOUTS.map((l) => l.id).sort());
   });
 
   it('gives every bundled layout an id of its own', () => {

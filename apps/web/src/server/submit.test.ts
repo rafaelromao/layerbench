@@ -249,6 +249,14 @@ describe('submitting a layout', () => {
     expect(calls.some((c) => c.method !== 'GET' && c.url.startsWith(REPO))).toBe(false);
   });
 
+  it("refuses a bundled layout's id, without asking GitHub", async () => {
+    const session = await signIn();
+    const { res, answer } = await submitAs(session, layout({ id: 'qwerty' }));
+    expect(res.status).toBe(422);
+    expect(answer.reason).toBe('a bundled layout already has the id "qwerty"');
+    expect(calls).toEqual([]);
+  });
+
   it('refuses a layout without an author or a link, without asking GitHub', async () => {
     const session = await signIn();
     for (const doc of [layout({ author: '' }), layout({ description: 'Mine.' })]) {
