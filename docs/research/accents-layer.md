@@ -275,6 +275,42 @@ Notes on the summary:
 | C | 0.001 / 0.019 (romak, canary) |
 | D | 0.001 / 0.019 (romak, magic-sturdy) |
 
+## U: rows by accent, columns by vowel (proposed in review)
+
+```
+æ  œ  qu ß  `  |  ù  à  è  ò  ì
+ñ  ö  ü  ä  ´  |  ú  á  é  ó  í
+¨  õ  ç  ã  ~  |  ^  â  ê  ô  î
+```
+
+**Rule:** on the right, each row is an accent (grave, acute, circumflex) and each column a vowel (u,
+a, e, o, i), with that row's dead key at its inner end. On the left, the German letters are on home,
+the tilde letters on the bottom, and the ligatures with `qu` and `ß` on top.
+
+| | weighted cost | Accents SFB, one orientation (mean / max) | by SFB (mean / max) | ΔEffort mix | ΔSFB mix (mean, worst) | ΔEffort English |
+|---|---|---|---|---|---|---|
+| B | 13125 | 0.087 / 0.263 | 0.075 / 0.205 | +1.05 | −0.21, ±0 | −0.44 |
+| U | 11993 | 0.288 / 1.679 | 0.236 / 1.200 | +0.06 | −0.07, +0.71 | −0.02 |
+| U2 | 17854 | 0.110 / 0.348 | 0.095 / 0.348 | +4.53 | −0.19, ±0 | −0.44 |
+
+- **It breaks the core rule.** `` ` ´ ~ ^ `` sit on the inner column and `¨ æ` on the pinky's top
+  and bottom. On the boards that lack those keys, the language coverage loses letters: Bird and
+  Caksoylar can't write French `ë ï ù ÿ` or Italian `ù`, and Finch also loses Italian `ì`. It also
+  has no key for `ı`.
+- **The combo layouts lose most.** `qu`, `ö`, `ü`, `õ` and `ç` sit on the left ring and middle
+  columns, the combo's fingers. Nordrassil's Accents SFB is 1.68%, and its SFB rises 0.71 against
+  main. Mirroring doesn't help, because the right hand's vowels then land on the same fingers.
+- **U2 keeps U's right hand and respects the core.** `^` takes `â`'s place and `` ` `` takes `ò`'s
+  (each dead key then types the letter it replaced), and `ò` moves to the inner bottom key. The left
+  core can then hold only the keys that make letters plus `qu`, so the German and tilde letters go
+  to the outer keys. That costs 52% more than main.
+
+  ```
+  ü  œ  æ  ß  ö  |  ù  à  è  `  ì
+  ñ  ¨  ´  qu ã  |  ú  á  é  ó  í
+  ä  ı  ~  ç  õ  |  ò  ^  ê  ô  î
+  ```
+
 ## The board with no bottom row
 
 Ben Vallack Piano's 1222+2 board has 14 finger keys and 4 thumbs, and no room for macros. Its Accents
