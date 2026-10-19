@@ -37,6 +37,9 @@ The Doc groups layouts into categories per metric (ch. 13.4). LayerBench stores 
 | Pinky off home | lower is better | 1.8 · 2.7 · 3.5 · 4.3 · 5.2 · 5.9 · 6.8 |
 | LSB | lower is better | 0.5 · 1.0 · 1.5 · 2.0 · 2.5 · 3.0 · 4.0 |
 | Hand balance | lower is better | 2 · 5 · 8 points of \|left − right\| → even · leans · heavy · very heavy |
+| Effort | lower is better | 440 · 460 · 480 · 500 · 520 · 540 · 560 · 580 (effort) |
+
+Effort's bands are LayerBench's own, on the Doc's nine steps, from the Effort of the bundled Standard and Thumb Alpha layouts on the default analysis settings (English news, 100,000 letters, the Layouts Doc rules): 20 apart, from 440, just above Enthium's 435, to 580, so that Colemak's 630, Dvorak and Qwerty are *max*. A custom rule set saved before Effort had bands keeps its own, none, until they are given in **Rules**.
 
 Bounds are editable per rule in the Rules view ("Bands (upper bounds)").
 
@@ -105,7 +108,7 @@ Three consecutive presses; hand patterns are written with letters (`aba` = hand 
 
 | Id | Name | Definition |
 |---|---|---|
-| `effort` | Effort | cyanophage's Effort: `577 × Σ effort ÷ keystrokes`, with each key's effort read from cyanophage's grid by position — top row `5 3 2 1 2 7 │ 7 2 1 2 3 5`, home `5 1 0 0 0 5 │ 5 0 0 0 1 5`, bottom `7 3 2 2 1 8 │ 8 1 2 2 3 7`, from the left outer pinky column to the right one. A thumb press costs 1, a LayerBench departure: cyanophage leaves thumbs free, which made a layout's one-shot taps, held layers and thumb letters cost nothing. The keystrokes are the text's characters, space included, as cyanophage counts them: a layer key is charged its place, 1 on a thumb, but is not a keystroke, so it cannot lower the average. Spaces cost nothing, whichever key types them. The grid is the rule's `params.effort`, changed in the rule set's JSON. Lower is better; with SFB, one of the two numbers layouts are sorted by. Each key is credited with its cost times its presses, so the free home keys add nothing. The simulator still chooses how to type on cyanophage's own grid, so what is typed does not depend on what a thumb costs. |
+| `effort` | Effort | cyanophage's Effort: `577 × Σ effort ÷ keystrokes`, with each key's effort read from cyanophage's grid by position — top row `5 3 2 1 2 7 │ 7 2 1 2 3 5`, home `5 1 0 0 0 5 │ 5 0 0 0 1 5`, bottom `7 3 2 2 1 8 │ 8 1 2 2 3 7`, from the left outer pinky column to the right one. A thumb press costs 1, a LayerBench departure: cyanophage leaves thumbs free, which made a layout's one-shot taps, held layers and thumb letters cost nothing. The keystrokes are the text's characters, space included, as cyanophage counts them: a layer key is charged its place, 1 on a thumb, but is not a keystroke, so it cannot lower the average. Spaces cost nothing, whichever key types them. The grid is the rule's `params.effort`, changed in the rule set's JSON. Lower is better; with SFB, one of the two numbers layouts are sorted by. Bands 440 · 460 · 480 · 500 · 520 · 540 · 560 · 580, from *min* to *max* (see [Bands](#bands)). Each key is credited with its cost times its presses, so the free home keys add nothing. The simulator still chooses how to type on cyanophage's own grid, so what is typed does not depend on what a thumb costs. |
 | `hard_words` | Hard words | Words ranked by effort per character, including the extra layer and shift presses they need. Minimum length 4, minimum count 2. |
 
 ## Layers (LayerBench-specific)
