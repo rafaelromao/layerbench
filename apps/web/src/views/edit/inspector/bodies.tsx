@@ -87,6 +87,10 @@ export function BindingEditor({
   );
 }
 
+/** Why the Behaviour tile cannot be picked: the layout has no behaviour of its own to name. */
+const NO_BEHAVIOURS =
+  'the layout has no named behaviours yet: add one in the Behaviors panel, under Editor, to use it here';
+
 function KindTiles({
   kind,
   canRefer,
@@ -107,25 +111,31 @@ function KindTiles({
   const [more, setMore] = useState(false);
   const tiles = useRef<HTMLDivElement>(null);
   useDismiss(tiles, () => setMore(false), { active: more && !wide, closeOnEscape: false });
-  const tile = (k: KindInfo) => (
-    <button
-      key={k.kind}
-      type="button"
-      aria-pressed={kind === k.kind}
-      title={k.hint}
-      disabled={k.kind === 'behaviour' && !canRefer}
-      className={`lb-kind-tile ${kind === k.kind ? 'lb-kind-tile-on' : ''}`}
-      onClick={() => {
-        setMore(false);
-        if (kind !== k.kind) onPick(k.kind);
-      }}
-    >
-      <span aria-hidden="true" className="lb-kind-glyph">
-        {k.glyph}
-      </span>
-      <span className="lb-kind-label">{k.label}</span>
-    </button>
-  );
+  const tile = (k: KindInfo) => {
+    // Behaviour names one of the layout's own behaviours, so with none there is nothing to name. The
+    // tile stays hoverable and focusable rather than disabled, so its hint can say why.
+    const unavailable = k.kind === 'behaviour' && !canRefer;
+    return (
+      <button
+        key={k.kind}
+        type="button"
+        aria-pressed={kind === k.kind}
+        aria-disabled={unavailable || undefined}
+        title={unavailable ? NO_BEHAVIOURS : k.hint}
+        className={`lb-kind-tile ${kind === k.kind ? 'lb-kind-tile-on' : ''}`}
+        onClick={() => {
+          if (unavailable) return;
+          setMore(false);
+          if (kind !== k.kind) onPick(k.kind);
+        }}
+      >
+        <span aria-hidden="true" className="lb-kind-glyph">
+          {k.glyph}
+        </span>
+        <span className="lb-kind-label">{k.label}</span>
+      </button>
+    );
+  };
   if (wide) {
     return (
       <fieldset className="lb-kind-tiles" aria-label="Kind of key">

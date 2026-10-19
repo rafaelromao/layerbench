@@ -841,6 +841,25 @@ describe('Edit', () => {
     expect(within(kinds).queryByRole('button', { name: 'More' })).toBeNull();
   });
 
+  it('says why Behaviour cannot be picked while the layout has no named behaviours', async () => {
+    const user = userEvent.setup();
+    await openEdit();
+
+    await user.click(key('Key LHM: d'));
+    const kinds = within(await inspector('LHM')).getByRole('group', { name: 'Kind of key' });
+    const behaviour = within(kinds).getByRole('button', { name: 'Behaviour' });
+    // Not disabled, which would keep its hint from showing on hover: unavailable, and saying why.
+    expect(behaviour).toBeEnabled();
+    expect(behaviour).toHaveAttribute('aria-disabled', 'true');
+    expect(behaviour).toHaveAttribute('title', expect.stringMatching(/no named behaviours yet/));
+
+    await user.click(behaviour);
+    expect(within(kinds).getByRole('button', { name: 'Symbol' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
   it('closes the list of more kinds on a phone on a choice or a tap elsewhere, and keeps the choice in sight', async () => {
     setViewportWidth(375);
     const user = userEvent.setup();

@@ -648,9 +648,13 @@
   border-color: var(--color-primary);
   color: var(--color-primary-content);
 }
-.lb-kind-tile:disabled {
+.lb-kind-tile:disabled,
+.lb-kind-tile[aria-disabled="true"] {
   opacity: 0.4;
   cursor: not-allowed;
+}
+.lb-kind-tile[aria-disabled="true"]:hover {
+  border-color: var(--color-base-300);
 }
 .lb-kind-glyph {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
