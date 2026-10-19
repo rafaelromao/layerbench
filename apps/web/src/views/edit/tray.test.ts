@@ -65,16 +65,19 @@ describe('a character from the missing-keys tray', () => {
     expect(trayOf(placed)).toEqual(['d']);
   });
 
-  it('is put down again by a second tap, Escape, or arming a swap', () => {
+  it('is put down again by a second tap, Escape, arming a swap, or typing on a key', () => {
     const armed = reducer(start(), { type: 'armChar', char: 'ç' });
     expect(reducer(armed, { type: 'armChar', char: 'ç' }).placing).toBeNull();
     expect(reducer(armed, { type: 'armChar', char: 'ã' }).placing).toBe('ã');
     expect(reducer(armed, { type: 'cancelSwap' }).placing).toBeNull();
 
-    const swapping = reducer(reducer(armed, { type: 'keyClick', keyId: 'LHM' }), {
-      type: 'startSwap',
-    });
+    // A key selected first, then a character armed: Alt+S swaps the key, the character goes down.
+    const selected = reducer(start(), { type: 'keyClick', keyId: 'LHM' });
+    const both = reducer(selected, { type: 'armChar', char: 'ç' });
+    const swapping = reducer(both, { type: 'startSwap' });
     expect(swapping.placing).toBeNull();
+    expect(swapping.swapFrom).toBe('LHM');
+    expect(reducer(both, { type: 'typeOnKey', keyId: 'LHI', seed: 'x' }).placing).toBeNull();
     // A character armed takes the place of a swap armed: one tap, one meaning.
     const rearmed = reducer(swapping, { type: 'armChar', char: 'ç' });
     expect(rearmed.swapFrom).toBeNull();

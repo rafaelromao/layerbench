@@ -363,7 +363,9 @@ function reduce(state: EditState, action: EditAction): EditState {
         selected: action.keyId,
         also: [],
         combo: null,
+        // Typing on a key is the next thing done to it, not where a character armed goes.
         swapFrom: null,
+        placing: null,
         error: null,
         focusRequest: { keyId: action.keyId, seed: action.seed },
       };

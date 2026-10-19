@@ -41,7 +41,8 @@ export function MissingKeysTray({
         className="flex flex-wrap gap-1"
         aria-label="Missing keys"
         onKeyDown={(e) => {
-          // The note under the board says Escape puts a character down, wherever focus is.
+          // The note under the board says Escape puts a character down: from the chips as from
+          // the board.
           if (e.key !== 'Escape' || placing === null) return;
           e.preventDefault();
           onDisarm();
