@@ -233,6 +233,7 @@ export function toCanonicalJson(layout: Layout): LayoutJson {
     name: layout.name,
     author: layout.author,
     description: layout.description,
+    link: layout.link,
     languages: layout.languages,
     hostLocale: layout.hostLocale ?? 'symbols',
     geometry: geometryToJson(layout.geometry),

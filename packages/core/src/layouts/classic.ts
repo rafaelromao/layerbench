@@ -28,8 +28,13 @@ export interface ClassicDef {
   geometry?: string;
   languages?: string[];
   description?: string;
-  /** Where the letter arrangement came from. Shown on the card and in the document. */
-  source?: string;
+  /** Where the letter arrangement came from, one http(s) URL: the layout's link. */
+  link?: string;
+  /**
+   * What the link alone does not say, such as the file there or a second source: a sentence, added
+   * to the description.
+   */
+  note?: string;
 }
 
 const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
@@ -128,7 +133,7 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     // With `z` on the thumb Repeat would have, Repeat takes the key `/` leaves.
     thumbs: 'space z j',
     special: { '⟲': REPEAT },
-    source: 'https://sites.google.com/alanreiser.com/handsdown',
+    link: 'https://sites.google.com/alanreiser.com/handsdown',
   },
   {
     id: 'night',
@@ -138,7 +143,7 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     // Twenty-five letters on the alphas and `r` on a thumb, which is what the layout is about.
     thumbs: 'space r',
     description: 'Night: r on a thumb, leaving the home row to the other twenty-five letters.',
-    source: 'https://luminespire.github.io/night/home.html',
+    link: 'https://luminespire.github.io/night/home.html',
   },
   {
     id: 'dusk',
@@ -147,21 +152,21 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     rows: "x f d p q j ' o u .\nn s t c y m h a e i\nb v k g w z l - / ,",
     thumbs: 'space r',
     description: 'Dusk, a Night alternative with the same thumb r.',
-    source: 'https://luminespire.github.io/night/alternatives.html',
+    link: 'https://luminespire.github.io/night/alternatives.html',
   },
   {
     id: 'recurva',
     name: 'Recurva',
     author: 'GalileoBlues',
     rows: "f r d p v q j u o y\ns n t c b . h e a i\nz x k g w m l ; ' ,",
-    source: 'https://github.com/GalileoBlues/Recurva',
+    link: 'https://github.com/GalileoBlues/Recurva',
   },
   {
     id: 'focal',
     name: 'Focal',
     author: 'Keyhabit',
     rows: "v l h g k q f o u j\ns r n t b y c a e i\nz x m d p ' w . ; ,",
-    source: 'https://github.com/Keyhabit/Focal-keyboard-layout',
+    link: 'https://github.com/Keyhabit/Focal-keyboard-layout',
   },
   {
     id: 'nerps',
@@ -170,14 +175,14 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     rows: "x l d p v z k o u ;\nn r t s g y h e i a\nj m c w b f ' , . -",
     // `q` sits in an eleventh column on the original board; here it goes on a thumb.
     thumbs: 'space q',
-    source: 'https://www.reddit.com/r/KeyboardLayouts/comments/tpwyjc/',
+    link: 'https://www.reddit.com/r/KeyboardLayouts/comments/tpwyjc/',
   },
   {
     id: 'engram',
     name: 'Engram',
     author: 'Arno Klein',
     rows: "b y o u ' l d w v z\nc i e a , h t s n q\ng x j k / ; r m f p",
-    source: 'https://engram.dev/',
+    link: 'https://engram.dev/',
   },
   {
     id: 'sunlight',
@@ -188,7 +193,7 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     // With `j` on the thumb Repeat would have, Repeat takes the key `=` leaves.
     thumbs: 'space r j',
     special: { '⟲': REPEAT },
-    source: 'https://cyanophage.github.io/#sunlight',
+    link: 'https://cyanophage.github.io/#sunlight',
   },
   {
     id: 'snth',
@@ -196,7 +201,7 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     author: 'Wren',
     rows: "x p d m q = y o u ,\ns n t h v g c a e i\nf b k l j z w ' / .",
     thumbs: 'space r',
-    source: 'https://www.reddit.com/r/KeyboardLayouts/comments/18jefux/snth/',
+    link: 'https://www.reddit.com/r/KeyboardLayouts/comments/18jefux/snth/',
   },
   {
     id: 'aptmak',
@@ -206,7 +211,7 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     // Twenty-five letters plus `e` on a thumb: a sub-30 alpha block.
     thumbs: 'space e',
     description: 'Aptmak: e on a thumb, so the alphas fit in twenty-five keys.',
-    source: 'https://github.com/Apsu/aptmak',
+    link: 'https://github.com/Apsu/aptmak',
   },
   {
     id: 'bird',
@@ -219,7 +224,7 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     // way, and on a thumb they are at least reachable and visible.
     thumbs: 'space q v z',
     description: 'Bird on its native twenty-six-key board, in the Hands Down family.',
-    source: 'https://github.com/jcmkk3/bird-layout',
+    link: 'https://github.com/jcmkk3/bird-layout',
   },
   {
     id: 'bird-30',
@@ -227,7 +232,7 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     author: 'jcmkk3',
     rows: "x c l f v z y o u '\nr s n t p k h e i a\nq w m g b j d , . /",
     description: 'Bird filled out to a thirty-key alpha block.',
-    source: 'https://github.com/jcmkk3/bird-layout',
+    link: 'https://github.com/jcmkk3/bird-layout',
   },
 ];
 
@@ -283,8 +288,13 @@ export function classicLayout(def: ClassicDef): Layout {
   }
   layout.id = def.id;
   layout.author = def.author;
-  const where = def.source ? ` Letters from ${def.source}.` : '';
-  layout.description = `${def.description ?? `${def.name} on a split columnar board (space on the left thumb).`}${where}`;
+  layout.description = [
+    def.description ?? `${def.name} on a split columnar board (space on the left thumb).`,
+    def.note,
+  ]
+    .filter(Boolean)
+    .join(' ');
+  if (def.link) layout.link = def.link;
   layout.languages = def.languages ?? ['en'];
   return layout;
 }

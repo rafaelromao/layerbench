@@ -322,6 +322,100 @@ describe('Edit', () => {
     useGitHubSession.setState({ status: 'unknown' });
   });
 
+  it('takes an optional link in Settings, says so when it is no http(s) address, and saves it', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    await openEditOn(storage);
+    let settings = await openSettings();
+    const link = () => within(settings).getByLabelText('Link');
+    expect(link()).toHaveValue('');
+
+    await user.type(link(), 'example.com/mine');
+    await user.tab();
+    expect(within(settings).getByRole('alert')).toHaveTextContent('http:// or https://');
+    expect(screen.queryByText('unsaved')).toBeNull();
+    // A draft left wrong is not carried to the next layout, though it has no link either.
+    await user.click(within(settings).getByRole('button', { name: 'Done' }));
+    await user.selectOptions(within(bar()).getByRole('combobox', { name: 'Layout' }), 'colemak');
+    await waitFor(() => expect(within(bar()).getByLabelText('Name')).toHaveValue('Colemak'));
+    settings = await openSettings();
+    expect(link()).toHaveValue('');
+    expect(within(settings).queryByRole('alert')).toBeNull();
+    await user.click(within(settings).getByRole('button', { name: 'Done' }));
+    await user.selectOptions(within(bar()).getByRole('combobox', { name: 'Layout' }), 'qwerty');
+    await waitFor(() => expect(within(bar()).getByLabelText('Name')).toHaveValue('Qwerty'));
+    settings = await openSettings();
+    await user.type(link(), 'example.com/mine');
+    await user.tab();
+    expect(within(settings).getByRole('alert')).toBeInTheDocument();
+
+    // Emptied again, it is no link, which is fine.
+    await user.clear(link());
+    await user.tab();
+    expect(within(settings).queryByRole('alert')).toBeNull();
+
+    await user.clear(link());
+    await user.type(link(), 'https://example.com/mine{Enter}');
+    expect(within(settings).queryByRole('alert')).toBeNull();
+    const open = within(settings).getByRole('link', { name: /^Open the link/ });
+    expect(open).toHaveAttribute('href', 'https://example.com/mine');
+    expect(open).toHaveAttribute('target', '_blank');
+    expect(open).toHaveAttribute('rel', 'noopener noreferrer');
+
+    await user.click(within(settings).getByRole('button', { name: 'Done' }));
+    await saveCopy(user);
+    expect(await screen.findByText('Saved Qwerty copy')).toBeInTheDocument();
+    expect((await storage.get('layouts', 'qwerty-copy'))?.doc.link).toBe(
+      'https://example.com/mine',
+    );
+  }, 60_000);
+
+  it('keeps a link being typed while the page catches up, and drops a wrong one on Escape or Undo', async () => {
+    const user = userEvent.setup();
+    await openEditOn(freshStorage());
+    const settings = await openSettings();
+    const link = () => within(settings).getByLabelText('Link');
+    const later = () => new Promise((done) => setTimeout(done, 800));
+
+    // Another edit lands, and the page's address is written again a moment later.
+    await user.type(within(settings).getByLabelText('Author'), 'Ana');
+    await user.tab();
+    await user.click(link());
+    await user.type(link(), 'https://exa');
+    await later();
+    expect(link()).toHaveValue('https://exa');
+    expect(link()).toHaveFocus();
+    await user.type(link(), 'mple.com{Enter}');
+    await later();
+    expect(link()).toHaveValue('https://example.com');
+    expect(link()).toHaveFocus();
+    // Spaces around the same link are tidied away, and are no edit: one Undo takes the link back.
+    await user.type(link(), '  {Enter}');
+    expect(link()).toHaveValue('https://example.com');
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(link()).toHaveValue('');
+    await user.click(screen.getByRole('button', { name: 'Redo' }));
+    expect(link()).toHaveValue('https://example.com');
+
+    await user.clear(link());
+    await user.type(link(), 'example.com');
+    await user.tab();
+    expect(within(settings).getByRole('alert')).toBeInTheDocument();
+    expect(link()).toHaveAttribute('aria-invalid', 'true');
+    await user.click(link());
+    await user.keyboard('{Escape}');
+    expect(link()).toHaveValue('https://example.com');
+    expect(within(settings).queryByRole('alert')).toBeNull();
+
+    await user.clear(link());
+    await user.type(link(), 'example.com');
+    await user.tab();
+    expect(within(settings).getByRole('alert')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(link()).toHaveValue('');
+    expect(within(settings).queryByRole('alert')).toBeNull();
+  }, 60_000);
+
   it('keeps the layout as it was when the copy cannot be saved, and offers the name given again', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();

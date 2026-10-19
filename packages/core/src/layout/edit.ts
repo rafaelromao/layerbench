@@ -11,7 +11,7 @@ import {
   setKeyBinding,
   swapKeys,
 } from './ops.js';
-import { safeParseLayout } from './schema.js';
+import { isLayoutLink, NOT_A_LINK, safeParseLayout } from './schema.js';
 import type { Binding, LayerColor, Layout, LayoutFeatures, TypingPathEntry } from './types.js';
 
 /**
@@ -70,6 +70,8 @@ export type Edit =
       name?: string;
       author?: string;
       description?: string;
+      /** Where the layout comes from, an http(s) URL; an empty one takes the link away. */
+      link?: string;
       /** The languages the layout is for, by tag; an empty list says none. */
       languages?: string[];
     }
@@ -506,15 +508,26 @@ const handlers: Handlers = {
   },
 
   setMeta(layout, edit) {
-    return {
-      layout: {
-        ...layout,
-        name: edit.name ?? layout.name,
-        author: edit.author ?? layout.author,
-        description: edit.description ?? layout.description,
-        languages: edit.languages ?? layout.languages,
-      },
+    const link = edit.link === undefined ? undefined : edit.link.trim();
+    if (link && !isLayoutLink(link)) return { refused: NOT_A_LINK };
+    const unchanged =
+      (edit.name === undefined || edit.name === layout.name) &&
+      (edit.author === undefined || edit.author === layout.author) &&
+      (edit.description === undefined || edit.description === layout.description) &&
+      (link === undefined || (link || undefined) === layout.link) &&
+      (edit.languages === undefined || sameValue(edit.languages, layout.languages));
+    // Nothing to change changes nothing: no unsaved layout, no step to undo.
+    if (unchanged) return same(layout);
+    const next: Layout = {
+      ...layout,
+      name: edit.name ?? layout.name,
+      author: edit.author ?? layout.author,
+      description: edit.description ?? layout.description,
+      languages: edit.languages ?? layout.languages,
     };
+    if (link) next.link = link;
+    else if (link === '') delete next.link;
+    return { layout: next };
   },
 
   setFeatures(layout, { features }) {

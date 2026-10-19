@@ -4,14 +4,14 @@ import { submissionProblems } from './submit.js';
 
 const QWERTY = BUNDLED_LAYOUTS.find((l) => l.id === 'qwerty') as Layout;
 
-/** A custom layout ready to submit: an id of its own, an author, and a linked source. */
+/** A custom layout ready to submit: an id of its own and an author; no link, which is optional. */
 function mine(changes: Partial<Layout> = {}): Layout {
   return {
     ...QWERTY,
     id: 'mine',
     name: 'Mine',
     author: 'Ana',
-    description: 'From https://example.com/mine',
+    description: 'Mine.',
     ...changes,
   };
 }
@@ -19,19 +19,16 @@ function mine(changes: Partial<Layout> = {}): Layout {
 const NONE = { dirty: false, bundledIds: ['qwerty'], communityIds: ['theirs'] };
 
 describe('what Submit checks before sending', () => {
-  it('finds nothing missing in a complete, saved custom layout', () => {
+  it('finds nothing missing in a complete, saved custom layout, with a link or without one', () => {
     expect(submissionProblems(mine(), NONE)).toEqual([]);
+    expect(submissionProblems(mine({ link: 'https://example.com/mine' }), NONE)).toEqual([]);
   });
 
-  it('says what is missing: an author, a link, saved changes', () => {
-    const problems = submissionProblems(mine({ author: '', description: 'Mine.' }), {
-      ...NONE,
-      dirty: true,
-    });
-    expect(problems).toHaveLength(3);
+  it('says what is missing: an author, saved changes', () => {
+    const problems = submissionProblems(mine({ author: '' }), { ...NONE, dirty: true });
+    expect(problems).toHaveLength(2);
     expect(problems[0]).toContain('Save your changes');
     expect(problems[1]).toContain('author');
-    expect(problems[2]).toContain('link');
   });
 
   it('wants an id no bundled or community layout has', () => {
@@ -53,10 +50,7 @@ describe('what Submit checks before sending', () => {
   });
 
   it('wants a layout no larger than the server takes', () => {
-    const [problem] = submissionProblems(
-      mine({ description: `https://example.com ${'x'.repeat(70_000)}` }),
-      NONE,
-    );
+    const [problem] = submissionProblems(mine({ description: 'x'.repeat(70_000) }), NONE);
     expect(problem).toContain('Make it smaller');
   });
 });

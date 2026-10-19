@@ -64,8 +64,8 @@ export type CommunityRead =
 
 /**
  * Read every community layout the index lists. One that is not a layout as LayerBench saves it, with
- * an author and a linked source, is invalid; one whose file would not come is unread, which says
- * nothing about it. An index that will not read fails the whole.
+ * an author, is invalid; one whose file would not come is unread, which says nothing about it. An
+ * index that will not read fails the whole.
  */
 export async function readCommunity(source: CommunitySource): Promise<CommunityRead[]> {
   const ids = indexIds(await source('index.json'));

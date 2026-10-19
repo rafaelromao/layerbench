@@ -1,9 +1,11 @@
 import {
   type CorpusManifest,
   type IndexEntry,
+  isLayoutLink,
   LANGUAGE_PROFILES,
   type Layout,
 } from '@layerbench/core';
+import { useState } from 'react';
 import { Switch, SwitchGroup } from '../../components/FeatureSwitches.js';
 import type { Params } from '../../url/params.js';
 import { SampleSelect, SettingsFields } from '../AnalysisSelects.js';
@@ -16,8 +18,8 @@ import type { AnalysisSettingsState } from '../useAnalysisSettings.js';
  * The layout in hand and what it is measured on. In sight: its name, whether it is saved and the
  * way to save it, the way to submit a custom layout to the Library, which layout this is, what the
  * numbers are made with, and the way to compare it.
- * In the Settings dialog: its author and description, the text and rules the numbers come from,
- * the switches, and whether the board draws the combos that type.
+ * In the Settings dialog: its author, description and link, the text and rules the numbers come
+ * from, the switches, and whether the board draws the combos that type.
  */
 export function LayoutBar({
   layout,
@@ -44,6 +46,7 @@ export function LayoutBar({
     name?: string;
     author?: string;
     description?: string;
+    link?: string;
     languages?: string[];
   }) => void;
   onSave: () => void;
@@ -150,6 +153,8 @@ export function LayoutBar({
                     onCommit={(description) => onMeta({ description })}
                   />
                 </div>
+                {/* A layout opened anew is a Workbench, and so a Link field, of its own. */}
+                <LinkField link={layout.link ?? ''} onChange={(link) => onMeta({ link })} />
                 <LanguagesField
                   languages={layout.languages ?? []}
                   onChange={(languages) => onMeta({ languages })}
@@ -190,6 +195,64 @@ export function LayoutBar({
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * Where the layout comes from: the author's keymap, firmware or page. Optional; one given is an
+ * http(s) URL, and anything else stays in the field, said wrong, and is not kept.
+ */
+function LinkField({ link, onChange }: { link: string; onChange: (link: string) => void }) {
+  const [wrong, setWrong] = useState(false);
+  // A link set another way, by Undo, is not the one said wrong.
+  const [shown, setShown] = useState(link);
+  if (shown !== link) {
+    setShown(link);
+    setWrong(false);
+  }
+  return (
+    // Typing again takes the warning away until the link is left again.
+    <div className="form-control min-w-0 sm:max-w-md" onInput={() => setWrong(false)}>
+      <span className="label-text text-xs" aria-hidden="true">
+        Link <span className="opacity-60">(optional)</span>
+      </span>
+      <div className="flex items-center gap-2">
+        <TextField
+          label="Link"
+          value={link}
+          mono={false}
+          placeholder="https://…"
+          className={`w-full ${wrong ? 'input-error' : ''}`}
+          tidy={(text) => text.trim()}
+          invalid={wrong}
+          // Escape puts the link back as it was, which is no longer wrong.
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setWrong(false);
+          }}
+          onCommit={(given) => {
+            const ok = !given || isLayoutLink(given);
+            setWrong(!ok);
+            if (ok) onChange(given);
+          }}
+        />
+        {link && !wrong && (
+          <a
+            className="link text-xs shrink-0"
+            href={link}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Open the link (opens in a new tab)"
+          >
+            Open
+          </a>
+        )}
+      </div>
+      {wrong && (
+        <p role="alert" className="text-xs text-error">
+          A link is one address starting with http:// or https://.
+        </p>
+      )}
+    </div>
   );
 }
 

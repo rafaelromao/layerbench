@@ -79,9 +79,10 @@ document: a custom layout, unchanged, added by pull request. Merging the pull re
 the approval, and the deploy that follows puts it in everyone's Library. A layout can also join
 with no deploy, as a community layout, by **Submit** in the app ([below](#community-layouts)).
 
-1. In the app, give the layout its name, its author, and a description that links to where it comes
-   from: the author's firmware, keymap or page. Save it, and copy its LayerBench JSON from the
-   editor's **JSON** panel. Signed in, it is also in your "LayerBench: saved layouts" gist.
+1. In the app, give the layout its name, its author, and in Settings, if it has one, its link to
+   where it comes from: the author's firmware, keymap or page. Save it, and copy its LayerBench
+   JSON from the editor's **JSON** panel. Signed in, it is also in your "LayerBench: saved
+   layouts" gist.
 2. On a branch made from main, add it as `packages/core/src/layouts/documents/<id>.json`, named by
    its `"id"`, as copied.
 3. In `packages/core/src/layouts/documents.ts`, import the file and add it to `DOCUMENTS` under its
@@ -89,11 +90,11 @@ with no deploy, as a community layout, by **Submit** in the app ([below](#commun
 4. Name it on the landing page, in the list under the layouts heading in `docs/site/index.html`,
    and update the count in that heading.
 5. `pnpm test` checks that it is exactly what LayerBench saves, is named by its id, names an author
-   and links its source, has a name and an id no other layout has, types the whole alphabet and a
-   space, and is on the landing page.
+   (a link is optional, and an http(s) URL when given), has a name and an id no other layout has,
+   types the whole alphabet and a space, and is on the landing page.
 6. Open the pull request. The `layouts` workflow runs those checks in a few minutes, sooner than the
    whole of CI, and writes a summary on its run's page for the review: each new or changed layout
-   with its source, a link that opens it in the app as it would be bundled, and its Effort and SFB
+   with its link, a link that opens it in the app as it would be bundled, and its Effort and SFB
    on the texts of its languages, placed among the bundled layouts as the Library ranks them.
 
 ## Community layouts
@@ -102,7 +103,7 @@ Community layouts are layouts other people made, accepted into the Library witho
 live on the `layerbench-data` branch, kept apart from main:
 
 - `community/<id>.json`: one layout, exactly as LayerBench saves it, named by its id, with an author
-  and a description that links to its source: what `documentLayout` in
+  and, optionally, a `link` to where it comes from: what `documentLayout` in
   `packages/core/src/layouts/documents.ts` checks a bundled document for.
 - `community/index.json`: `{ "layouts": [<id>, …] }`, which
   `.github/workflows/community-index.yml` on that branch writes on every push that changes
@@ -323,8 +324,8 @@ it as the repository variable `AUTH_ORIGIN`, then push, or re-run CI, so the app
 
 **4. Check it.** In the deployed app, open **Storage** and **Sign in with GitHub**. Storage should
 say it is saving to secret gists in your account. Save a layout and a "LayerBench: saved layouts"
-gist appears there. Then open a custom layout with an author and a linked description in Analyze
-and **Submit** it: a pull request into `layerbench-data` opens. Close it if it was only a check.
+gist appears there. Then open a custom layout with an author in Analyze and **Submit** it: a pull
+request into `layerbench-data` opens. Close it if it was only a check.
 
 **To sign everyone out**, give the Worker a new `SESSION_SECRET`: every session sealed with the old
 one fails at its next renewal or page load. Revoking the GitHub App's client secret stops renewals

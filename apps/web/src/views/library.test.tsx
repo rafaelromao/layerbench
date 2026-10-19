@@ -636,6 +636,11 @@ describe('Community layouts', () => {
     await rankingSays(/^Lower is better/);
     const card = listed('Night owl')?.closest('article') as HTMLElement;
     expect(within(card).queryByText('scoring…')).toBeNull();
+    // Its link, to where it comes from, opens in a tab of its own.
+    const link = within(card).getByRole('link', { name: 'https://example.com/night-owl' });
+    expect(link).toHaveAttribute('href', 'https://example.com/night-owl');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
   it('shows those kept in this browser while the branch is read again', async () => {

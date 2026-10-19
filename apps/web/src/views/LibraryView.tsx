@@ -264,6 +264,13 @@ function LayoutCard({
             {item.layout.description}
           </p>
         )}
+        {item.layout?.link && (
+          <p className="text-xs opacity-70 [overflow-wrap:anywhere]">
+            <a className="link" href={item.layout.link} target="_blank" rel="noopener noreferrer">
+              {item.layout.link}
+            </a>
+          </p>
+        )}
       </div>
     </article>
   );

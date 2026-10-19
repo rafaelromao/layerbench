@@ -855,6 +855,28 @@ describe('behaviours, typing paths, keys, details and features', () => {
     expect(o.layout).toMatchObject({ name: 'Test', author: 'Me', languages: [] });
   });
 
+  it('sets the link, takes an empty one away, and refuses one that is no http(s) URL', () => {
+    const linked = landed(layout, { kind: 'setMeta', link: ' https://example.com/mine ' }).layout;
+    expect(linked.link).toBe('https://example.com/mine');
+    expect(landed(linked, { kind: 'setMeta', author: 'Me' }).layout.link).toBe(
+      'https://example.com/mine',
+    );
+    expect('link' in landed(linked, { kind: 'setMeta', link: '' }).layout).toBe(false);
+    const wrong = applyEdit(linked, { kind: 'setMeta', link: 'example.com' });
+    expect(wrong).toMatchObject({ status: 'refused', before: linked });
+  });
+
+  it('changes nothing when the details given are the ones the layout has', () => {
+    const linked = landed(layout, { kind: 'setMeta', link: 'https://example.com/mine' }).layout;
+    for (const meta of [
+      { link: ' https://example.com/mine ' },
+      { name: 'Test', languages: linked.languages },
+    ]) {
+      expect(applyEdit(linked, { kind: 'setMeta', ...meta }).status).toBe('unchanged');
+    }
+    expect(applyEdit(layout, { kind: 'setMeta', link: '  ' }).status).toBe('unchanged');
+  });
+
   it('takes the features away when none is left in them', () => {
     const on = landed(layout, { kind: 'setFeatures', features: { sentenceCase: {} } }).layout;
     expect(on.features).toEqual({ sentenceCase: {} });

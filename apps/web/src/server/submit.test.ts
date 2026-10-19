@@ -24,7 +24,7 @@ const ENV: AuthEnv = {
   GITHUB_APP_PRIVATE_KEY: keys.privateKey,
 };
 
-/** A custom layout ready to submit: as LayerBench saves it, with an author and a linked source. */
+/** A custom layout ready to submit: as LayerBench saves it, with an author and no link. */
 function layout(changes: Record<string, unknown> = {}): Record<string, unknown> {
   const base = BUNDLED_LAYOUTS.find((l) => l.id === 'qwerty') ?? BUNDLED_LAYOUTS[0];
   return toCanonicalJson({
@@ -32,7 +32,7 @@ function layout(changes: Record<string, unknown> = {}): Record<string, unknown> 
     id: 'my-layout',
     name: 'My `layout` @someone',
     author: 'Ana',
-    description: 'From https://example.com/mine',
+    description: 'Mine.',
     ...changes,
   }) as unknown as Record<string, unknown>;
 }
@@ -257,12 +257,16 @@ describe('submitting a layout', () => {
     expect(calls).toEqual([]);
   });
 
-  it('refuses a layout without an author or a link, without asking GitHub', async () => {
+  it('refuses a layout without an author, or with a link that is no http(s) URL, without asking GitHub', async () => {
     const session = await signIn();
-    for (const doc of [layout({ author: '' }), layout({ description: 'Mine.' })]) {
+    const cases: [Record<string, unknown>, RegExp][] = [
+      [layout({ author: '' }), /no author/],
+      [layout({ link: 'example.com/mine' }), /not a layout.*http/],
+    ];
+    for (const [doc, reason] of cases) {
       const { res, answer } = await submitAs(session, doc);
       expect(res.status).toBe(422);
-      expect(answer.reason).toMatch(/no author|no link/);
+      expect(answer.reason).toMatch(reason);
       expect(calls).toEqual([]);
     }
   });

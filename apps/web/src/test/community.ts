@@ -3,7 +3,7 @@ import type { CommunitySource } from '../community/community.js';
 
 /**
  * A community layout as one is submitted: a layout as LayerBench saves it, named by its id, with an
- * author and a description that links to where it comes from. Qwerty underneath.
+ * author and a link to where it comes from. Qwerty underneath.
  */
 export function communityDoc(id: string, name: string, extra: Partial<Layout> = {}): Layout {
   return {
@@ -11,7 +11,8 @@ export function communityDoc(id: string, name: string, extra: Partial<Layout> = 
     id,
     name,
     author: 'Someone else',
-    description: `${name}, from https://example.com/${id}`,
+    description: `${name}, made elsewhere.`,
+    link: `https://example.com/${id}`,
     ...extra,
   };
 }
