@@ -512,16 +512,18 @@ on the layer. Four other changes come with it:
 
 - A layout whose base layer types more vowels with the left hand gets Accents mirrored (Dvorak,
   Engram, Enthium, Nordrassil, Uno).
-- The Special layouts reach Accents by the outer thumbs pressed together, L1+R1, or L0+R0 on a
-  board with one thumb a hand, instead of LHR+LHM. A row-stagger board keeps LHR+LHM.
+- The Special layouts reach Accents by the outer main thumbs pressed together, L1+R1, or L0+R0 on
+  a board with one thumb a hand, instead of LHR+LHM. A row-stagger board keeps LHR+LHM.
 - Extras carries the Accents keys a board lacks.
 - `ı`, typed by no layout until now, is on Symbols' right inner top key, on Extras where a board
   lacks that key, and on Symbols' right outer thumb with no bottom row.
 
 What moved, checked across the 38 reports; nothing else moved:
 
-- **Magic Romak**: no value, press or trace. Its document and share blob gain Extras' new keys and
-  Symbols' `ı`.
+- **Magic Romak**: no value, press or trace. Its document and share blob gain Accents' new keys,
+  and on Extras the ten Accents keys its 24 keys lack and `ı`, on RTM, its board having no RTC. Its
+  producer lists follow them: `qu` from `macro:accents/RTM` to `macro:accents/LTM`, and some dead-key
+  routes now through Extras.
 - **Qwerty**, which is not mirrored (its `a` and `e` on the left, `i` `o` `u` on the right): the same
   presses on other keys. In English, `qu` moves from RTM to LTM, the same cost: Effort 1234.06, SFB
   4.84 and 7.04 unchanged; SFS 6.19 → 6.25 on cyanophage's rules. On Portuguese, Effort

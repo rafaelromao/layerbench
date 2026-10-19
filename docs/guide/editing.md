@@ -221,7 +221,7 @@ while Numbers and Symbols are both held. The symbols:
 
 The left inner thumb types space and, held, turns on Numbers. The right inner thumb, held, turns on
 Symbols; held from Numbers, it turns on Extras, or Symbols where there is no Extras. Accents comes
-on for one key from the base layer, by the two outer thumbs, L1 and R1, pressed together: a combo,
+on for one key from the base layer, by the outer main thumbs, L1 and R1, pressed together: a combo,
 drawn between them. A board with one thumb a hand presses its two thumbs, and a row-stagger board,
 with one space bar for both, the left ring and middle fingers' home keys, LHR and LHM. Thumbs press
 none of Accents' 30 main keys, so the thumb combo is never a same-finger pair with the accent after

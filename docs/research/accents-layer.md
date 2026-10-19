@@ -384,7 +384,7 @@ After review, the rules changed:
   held). It lands on the free key nearest its Accents position, on the same hand first, and then on
   a thumb not holding Numbers or Symbols. Bird, Caksoylar and Finch already have Extras.
 - **No LHR+LHM combo.** The special layouts' thumbs all type something, so Accents takes a thumb
-  combo instead: the two outer thumbs, L1+R1, where the board has them, and the inner pair on Finch.
+  combo instead: the outer main thumbs, L1+R1, where the board has them, and the inner pair on Finch.
   The outer pair keeps clear of holding both inner thumbs for Extras. Two thumbs pressed together
   never form a same-finger pair with a finger key.
 - **`ı` on Symbols,** on the right inner top key above `¿` and `¡`. A board without that key gets it
