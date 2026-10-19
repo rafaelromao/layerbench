@@ -770,7 +770,7 @@ describe('Categories', () => {
     const box = (name: RegExp) => within(categories).getByRole('checkbox', { name });
     const special = box(/^Special \(9\)$/);
     expect(box(/^Standard \(14\)$/)).toBeChecked();
-    expect(box(/^Thumb Alpha \(12\)$/)).toBeChecked();
+    expect(box(/^Thumb Alpha \(13\)$/)).toBeChecked();
 
     await user.click(special);
     expect(listed('Magic Romak')).toBeNull();
