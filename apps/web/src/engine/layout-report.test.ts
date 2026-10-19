@@ -98,6 +98,7 @@ describe.skipIf(!FILE)('layout report (LAYOUT_REPORT_FILE)', () => {
         `- ${board(layout)}; ${layout.layers.length} layer${layout.layers.length === 1 ? '' : 's'}` +
           `${layout.combos?.length ? `, ${layout.combos.length} combos` : ''}; ` +
           `languages: ${layout.languages?.join(', ') || 'none given'}`,
+        ...(layout.link ? [`- From ${layout.link}`] : []),
         `- [Open it in LayerBench](${link}), as it would be bundled`,
         '',
         '| Text | Effort | SFB | Skips |',

@@ -318,6 +318,39 @@ describe('Edit', () => {
     useGitHubSession.setState({ status: 'unknown' });
   });
 
+  it('takes an optional link in Settings, says so when it is no http(s) address, and saves it', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    await openEditOn(storage);
+    const settings = await openSettings();
+    const link = within(settings).getByLabelText('Link');
+    expect(link).toHaveValue('');
+
+    await user.type(link, 'example.com/mine');
+    await user.tab();
+    expect(within(settings).getByRole('alert')).toHaveTextContent('http:// or https://');
+    expect(screen.queryByText('unsaved')).toBeNull();
+    await user.click(link);
+    await user.keyboard('{Escape}');
+    expect(link).toHaveValue('');
+    expect(within(settings).queryByRole('alert')).toBeNull();
+
+    await user.clear(link);
+    await user.type(link, 'https://example.com/mine{Enter}');
+    expect(within(settings).queryByRole('alert')).toBeNull();
+    const open = within(settings).getByRole('link', { name: /^Open the link/ });
+    expect(open).toHaveAttribute('href', 'https://example.com/mine');
+    expect(open).toHaveAttribute('target', '_blank');
+    expect(open).toHaveAttribute('rel', 'noopener noreferrer');
+
+    await user.click(within(settings).getByRole('button', { name: 'Done' }));
+    await saveCopy(user);
+    expect(await screen.findByText('Saved Qwerty copy')).toBeInTheDocument();
+    expect((await storage.get('layouts', 'qwerty-copy'))?.doc.link).toBe(
+      'https://example.com/mine',
+    );
+  }, 60_000);
+
   it('keeps the layout as it was when the copy cannot be saved, and offers the name given again', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();

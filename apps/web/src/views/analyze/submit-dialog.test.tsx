@@ -11,7 +11,8 @@ const MINE: Layout = {
   id: 'mine',
   name: 'Mine',
   author: 'Ana',
-  description: 'From https://example.com/mine',
+  // No link: Submit does not need one.
+  description: 'Mine.',
 };
 const PULL = 'https://github.com/rafaelromao/layerbench/pull/7';
 
