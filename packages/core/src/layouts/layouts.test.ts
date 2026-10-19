@@ -286,7 +286,7 @@ describe('the standard thumbs', () => {
         .steps.filter((s) => s.kind !== 'hold_release')
         .map((s) => s.key);
     expect(keys('book')).toEqual(['LBC', 'RTR', 'L1', 'RHM']);
-    expect(keys('é')).toEqual(['R1', 'RHI']);
+    expect(keys('é')).toEqual(['R1', 'RHM']);
     // `/` left the base layer for Symbols.
     expect(keys('/')).toEqual(['R0', 'RBM']);
   });

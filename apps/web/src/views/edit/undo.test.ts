@@ -3,6 +3,7 @@ import {
   type Binding,
   bundledLayout,
   compileLayout,
+  getGeometryPreset,
   type Layout,
 } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
@@ -12,7 +13,7 @@ import { initialUndoState, type UndoState, undoable } from './undo.js';
 /** Qwerty reaching Accents by a combo too, as a Special layout does, for an edit to combos. */
 const layout: Layout = {
   ...(bundledLayout('qwerty') as Layout),
-  combos: [accentsCombo('base')],
+  combos: [accentsCombo('base', getGeometryPreset('3x5+2'))],
 };
 const reducer = undoable(editReducer);
 const start = (): UndoState => initialUndoState(layout, compileLayout(layout));

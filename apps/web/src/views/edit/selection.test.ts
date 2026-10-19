@@ -3,6 +3,7 @@ import {
   type Binding,
   bundledLayout,
   compileLayout,
+  getGeometryPreset,
   type Layout,
 } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
@@ -13,7 +14,7 @@ const reducer = undoable(editReducer);
 /** Qwerty reaching Accents by a combo too, as a Special layout does, for a combo to open. */
 const qwerty: Layout = {
   ...(bundledLayout('qwerty') as Layout),
-  combos: [accentsCombo('base')],
+  combos: [accentsCombo('base', getGeometryPreset('3x5+2'))],
 };
 /** Where the Nav layer lands: after Qwerty's own and default layers. */
 const NAV = qwerty.layers.length;
