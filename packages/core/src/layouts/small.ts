@@ -268,8 +268,9 @@ export const SMALL_DEFS: ClassicDef[] = [
     },
     special: { hm: UNO_HM, on: UNO_ON },
     description:
-      'Uno: a, i, r and l on the thumbs, space under the right middle finger, and two adaptive keys (h or m, o or n). Made for a 5×15 ortholinear grid; its letters fit thirty-four keys. Thumb letters as in its QMK keymap, https://github.com/gkbd/qmk_firmware/tree/one/keyboards/idobo/keymaps/gkbd_uno.',
+      'Uno: a, i, r and l on the thumbs, space under the right middle finger, and two adaptive keys (h or m, o or n). Made for a 5×15 ortholinear grid; its letters fit thirty-four keys. Thumb letters as in its QMK keymap.',
     link: 'https://lykt.xyz/uno/',
+    note: 'That keymap is at https://github.com/gkbd/qmk_firmware/tree/one/keyboards/idobo/keymaps/gkbd_uno.',
   },
   {
     id: 'ben-vallack-piano',

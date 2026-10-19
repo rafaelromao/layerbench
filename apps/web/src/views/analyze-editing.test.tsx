@@ -385,11 +385,19 @@ describe('Edit', () => {
     await later();
     expect(link()).toHaveValue('https://example.com');
     expect(link()).toHaveFocus();
+    // Spaces around the same link are tidied away, and are no edit: one Undo takes the link back.
+    await user.type(link(), '  {Enter}');
+    expect(link()).toHaveValue('https://example.com');
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(link()).toHaveValue('');
+    await user.click(screen.getByRole('button', { name: 'Redo' }));
+    expect(link()).toHaveValue('https://example.com');
 
     await user.clear(link());
     await user.type(link(), 'example.com');
     await user.tab();
     expect(within(settings).getByRole('alert')).toBeInTheDocument();
+    expect(link()).toHaveAttribute('aria-invalid', 'true');
     await user.click(link());
     await user.keyboard('{Escape}');
     expect(link()).toHaveValue('https://example.com');

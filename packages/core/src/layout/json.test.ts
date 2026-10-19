@@ -148,6 +148,9 @@ describe("a layout's link", () => {
       'https://',
       'https://a b',
       ' https://a',
+      // These two look like URLs but are none: `new URL` will not read them.
+      'https://[x',
+      'https://a:99999',
     ]) {
       expect(isLayoutLink(link), link).toBe(false);
     }

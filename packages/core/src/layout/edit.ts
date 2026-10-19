@@ -510,15 +510,14 @@ const handlers: Handlers = {
   setMeta(layout, edit) {
     const link = edit.link === undefined ? undefined : edit.link.trim();
     if (link && !isLayoutLink(link)) return { refused: NOT_A_LINK };
-    const same =
+    const unchanged =
       (edit.name === undefined || edit.name === layout.name) &&
       (edit.author === undefined || edit.author === layout.author) &&
       (edit.description === undefined || edit.description === layout.description) &&
       (link === undefined || (link || undefined) === layout.link) &&
-      (edit.languages === undefined ||
-        JSON.stringify(edit.languages) === JSON.stringify(layout.languages));
+      (edit.languages === undefined || sameValue(edit.languages, layout.languages));
     // Nothing to change changes nothing: no unsaved layout, no step to undo.
-    if (same) return { layout };
+    if (unchanged) return same(layout);
     const next: Layout = {
       ...layout,
       name: edit.name ?? layout.name,

@@ -27,10 +27,9 @@ something unsaved.
 
 **Settings**, in the bar at the top, holds the layout's author and description, its **Link** to
 where it comes from (optional; an address starting `http://` or `https://`, which the Library shows
-on its card), the languages it is for, and the choices
-the numbers are worked out with: **Corpus**, **Mix with**, **Rules**, **Counts**, the **Sample**,
-the feature switches, **Space** and **Shift**, the same as in every view that analyzes, and whether
-the board draws its combos. The line beside it says what is chosen. A feature switched off changes
+on its card), the languages it is for, and the choices the numbers are worked out with:
+**Corpus**, **Mix with**, **Rules**, **Counts**, the **Sample**, the feature switches, **Space**
+and **Shift**, the same as in every view that analyzes, and whether the board draws its combos. The line beside it says what is chosen. A feature switched off changes
 the numbers only: the keys are edited as written.
 
 ## Numbers while you edit

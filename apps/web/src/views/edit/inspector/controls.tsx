@@ -135,6 +135,8 @@ export function TextField({
   onKeyDown,
   className = '',
   mono = true,
+  tidy,
+  invalid,
 }: {
   label: string;
   value: string;
@@ -145,13 +147,23 @@ export function TextField({
   className?: string;
   /** Bindings are code and read best in a fixed width; names are words. */
   mono?: boolean;
+  /** What the text is taken as, shown so in the field once left: trimmed, say. */
+  tidy?: (text: string) => string;
+  /** Said wrong to a screen reader, as the field's own warning says it in sight. */
+  invalid?: boolean;
 }) {
   const [text, setText] = useState(value);
   useEffect(() => setText(value), [value]);
+  const commit = () => {
+    const taken = tidy ? tidy(text) : text;
+    if (taken !== text) setText(taken);
+    if (taken !== value) onCommit(taken);
+  };
   return (
     <input
       ref={inputRef}
       aria-label={label}
+      aria-invalid={invalid || undefined}
       className={`input input-sm input-bordered ${mono ? 'font-mono' : ''} ${className}`}
       value={text}
       placeholder={placeholder}
@@ -159,15 +171,13 @@ export function TextField({
       autoComplete="off"
       autoCapitalize="off"
       onChange={(e) => setText(e.target.value)}
-      onBlur={() => {
-        if (text !== value) onCommit(text);
-      }}
+      onBlur={commit}
       onKeyDown={(e) => {
         onKeyDown?.(e);
         if (e.defaultPrevented) return;
         if (e.key === 'Enter') {
           e.preventDefault();
-          if (text !== value) onCommit(text);
+          commit();
         } else if (e.key === 'Escape') {
           // The field's own Escape; the editor around it should not also close.
           if (text !== value) e.stopPropagation();

@@ -108,7 +108,7 @@ comes from is welcome, not needed.
 
 1. Sign in with GitHub, in **Storage**. Submit asks you to if you have not: the pull request names
    you as who sent the layout.
-2. In **Analyze**, open the custom layout. In **Settings**, give it its author, and if you can a
+2. In **Analyze**, open the custom layout. In **Settings**, give it its author and, if you can, a
    **Link** to where it comes from: the author's firmware, keymap or page. **Save** it.
 3. Click **Submit**, beside **Save**. Submit checks the layout first: an author, saved changes, an
    id no bundled or community layout has (rename it if one does), and that it compiles. If anything

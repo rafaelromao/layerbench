@@ -50,10 +50,10 @@ describe('bundled layouts added as documents', () => {
     expect(() => documentLayout('night', { ...saved(), author: '' })).toThrow('no author');
   });
 
-  it('takes a layout with no link, or a description with none', () => {
+  it('takes a layout with no link', () => {
     const { link, ...unlinked } = saved();
     expect(link).toMatch(/^https:/);
-    expect(documentLayout('night', { ...unlinked, description: 'Mine.' }).link).toBeUndefined();
+    expect(documentLayout('night', unlinked).link).toBeUndefined();
   });
 
   it('turns away a link that is no http(s) URL', () => {

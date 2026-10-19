@@ -18,8 +18,8 @@ import type { AnalysisSettingsState } from '../useAnalysisSettings.js';
  * The layout in hand and what it is measured on. In sight: its name, whether it is saved and the
  * way to save it, the way to submit a custom layout to the Library, which layout this is, what the
  * numbers are made with, and the way to compare it.
- * In the Settings dialog: its author, description and link, the text and rules the numbers come from,
- * the switches, and whether the board draws the combos that type.
+ * In the Settings dialog: its author, description and link, the text and rules the numbers come
+ * from, the switches, and whether the board draws the combos that type.
  */
 export function LayoutBar({
   layout,
@@ -204,7 +204,7 @@ export function LayoutBar({
  */
 function LinkField({ link, onChange }: { link: string; onChange: (link: string) => void }) {
   const [wrong, setWrong] = useState(false);
-  // A link set another way, by Undo or another layout, is not the one said wrong.
+  // A link set another way, by Undo, is not the one said wrong.
   const [shown, setShown] = useState(link);
   if (shown !== link) {
     setShown(link);
@@ -223,15 +223,16 @@ function LinkField({ link, onChange }: { link: string; onChange: (link: string) 
           mono={false}
           placeholder="https://…"
           className={`w-full ${wrong ? 'input-error' : ''}`}
+          tidy={(text) => text.trim()}
+          invalid={wrong}
           // Escape puts the link back as it was, which is no longer wrong.
           onKeyDown={(e) => {
             if (e.key === 'Escape') setWrong(false);
           }}
-          onCommit={(text) => {
-            const given = text.trim();
+          onCommit={(given) => {
             const ok = !given || isLayoutLink(given);
             setWrong(!ok);
-            if (ok && given !== link) onChange(given);
+            if (ok) onChange(given);
           }}
         />
         {link && !wrong && (

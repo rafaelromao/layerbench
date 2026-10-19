@@ -14,8 +14,8 @@ const DOCUMENTS: Record<string, unknown> = {
 
 /**
  * The layout a document holds, checked: exactly what LayerBench saves, so what is reviewed is what
- * ships; named by its id; and saying who made it. Its link, to where it comes from, is optional; the
- * schema holds one that is given to an http(s) URL.
+ * ships; named by its id; and saying who made it. Its link, to where it comes from, is optional;
+ * the schema holds one that is given to an http(s) URL.
  */
 export function documentLayout(file: string, doc: unknown): Layout {
   const parsed = safeParseLayout(doc);
