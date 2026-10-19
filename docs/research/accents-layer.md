@@ -372,3 +372,187 @@ memorize.
   that make letters, and no accented letter loses a home key to it.
 - **Mirroring or not**, and if so, by rule or by each layout's measured SFBs.
 - **On the 18-key board**, follow the full grid or arrange by use.
+
+## Second round: 30 keys, a thumb combo, Extras, and `ı` on Symbols
+
+After review, the rules changed:
+
+- **The 30 main keys, not the 24-key core.** The dead keys may leave the core. Accents' 30 keys
+  hold the 30 most-used keys, `â` among them.
+- **Extras for the keys a board lacks.** On Bird, Caksoylar, Finch and Magic Romak, each Accents
+  key whose position the board doesn't have goes on Extras (on while Numbers and Symbols are both
+  held). It lands on the free key nearest its Accents position, on the same hand first, and then on
+  a thumb not holding Numbers or Symbols. Bird, Caksoylar and Finch already have Extras.
+- **No LHR+LHM combo.** The special layouts' thumbs all type something, so Accents takes a thumb
+  combo instead: the two outer thumbs, L1+R1, where the board has them, and the inner pair on Finch.
+  The outer pair keeps clear of holding both inner thumbs for Extras. Two thumbs pressed together
+  never form a same-finger pair with a finger key.
+- **`ı` on Symbols,** on the right inner top key above `¿` and `¡`. A board without that key gets it
+  on Extras.
+
+Every number below is the engine's, with all four changes applied. `main+thumbs` is main's grid with
+only the thumb combo and `ı`, so the access change can be told apart from the grid change.
+
+**The thumb combo costs Effort.** The Effort rule charges every thumb press, so a two-thumb chord
+costs 2 per accent. LHR+LHM on home keys cost 0, and a Standard layout's one-shot costs 1. On the
+special layouts that's +19 to +24 Effort on the six-language mix, whatever the grid. In exchange their
+SFB drops 0.3–0.8, on all but Uno (+0.11). The ΔEffort column below includes that rise, and the
+special layouts are the top of every range.
+
+### Candidates
+
+**U — your grid.** On the right, a row per accent (grave, acute, circumflex, with `^` where `û` would
+be) and a column per vowel (u a e o i). On the left, the German letters on home, the tilde letters
+with `ç` on the bottom, and the ligatures with `qu` and `ß` on top. `` ` ``, `´` and `~` sit at the
+inner end of the rows next to their letters.
+
+```
+æ  œ  qu ß  `  |  ù  à  è  ò  ì
+ñ  ö  ü  ä  ´  |  ú  á  é  ó  í
+¨  õ  ç  ã  ~  |  ^  â  ê  ô  î
+```
+
+**U\* — U's rule, the search's order within the rows.** The right hand is unchanged. On the left, the
+top row reads `` ` ß qu œ æ `` and the home row `ö ä ü ñ ´`.
+
+```
+`  ß  qu œ  æ  |  ù  à  è  ò  ì
+ö  ä  ü  ñ  ´  |  ú  á  é  ó  í
+¨  õ  ç  ã  ~  |  ^  â  ê  ô  î
+```
+
+**A — frequency first.** No grouping.
+
+```
+ì  â  à  ß  ´  |  æ  ù  ü  ñ  î
+ê  ó  ã  qu œ  |  ^  á  é  í  ä
+ò  õ  ö  è  ~  |  `  ç  ú  ô  ¨
+```
+
+**C — SFB-fair first.** No grouping.
+
+```
+^  õ  ç  ¨  æ  |  ´  ù  ü  ö  ô
+ä  qu á  ã  œ  |  â  í  ó  é  è
+î  ì  ò  ñ  `  |  ~  à  ú  ê  ß
+```
+
+Weighted cost (Σ uses × position cost): main 11,755; U 11,993; U\* 12,096; A 6,351; C 6,646. Main's
+number is high because the first round's core rule held the five dead keys and `ç ñ ß œ æ` on the
+core.
+
+### Results
+
+| | Accents SFB, one orientation (mean / max) | by SFB (mean / max, mirrored) | by vowel hand (mean / max, mirrored) | ΔEffort mix vs main (mean, range) | ΔSFB mix vs main (mean, range) | ΔEffort English | letters lost |
+|---|---|---|---|---|---|---|---|
+| main | 0.392 / 0.935 | — | — | ±0.00 (±0.0 … ±0.0) | ±0.00 (±0.0 … ±0.0) | ±0.00 | none |
+| main+thumbs | 0.305 / 0.685 | — | — | +5.01 (+0.0 … +23.9) | −0.12 (−0.8 … +0.1) | +0.20 | none |
+| U | 0.106 / 0.581 | 0.052 / 0.109, 6 | 0.055 / 0.218, 6 | +5.07 (−0.0 … +24.0) | −0.29 (−1.0 … +0.0) | +0.18 | none |
+| U* | 0.098 / 0.580 | 0.044 / 0.078, 5 | 0.047 / 0.175, 6 | +5.17 (+0.0 … +24.3) | −0.29 (−1.0 … +0.0) | +0.17 | none |
+| A | 0.080 / 0.303 | 0.057 / 0.091, 5 | 0.061 / 0.178, 6 | +1.03 (−4.4 … +20.0) | −0.28 (−1.0 … +0.1) | −0.25 | none |
+| C | 0.041 / 0.238 | 0.025 / 0.078, 5 | 0.026 / 0.078, 6 | +1.21 (−4.2 … +20.0) | −0.31 (−1.0 … +0.0) | −0.26 | none |
+
+Notes on the summary:
+
+- **By SFB** means each layout takes whichever orientation has fewer Accents SFBs.
+- **By vowel hand** mirrors a layout when its base layer types under half of its vowel frequency with
+  the right hand, which takes in Qwerty (45%).
+- **Letters lost** is the language-coverage check on every layout for pt-BR, es, fr, it and de. With
+  Extras, none is lost.
+
+For U\* and C, choosing by SFB mirrors exactly the five layouts that type all their vowels with the
+left hand: Dvorak, Engram, Enthium, Nordrassil and Uno. So the fixed rule "mirror when the base layer
+types no vowel with the right hand" gives the engine's choice, at mean 0.044 / max 0.078 for U\*.
+
+#### Accents SFBs per layout (mix, by-SFB orientation)
+
+| layout | vowels right | main | main+thumbs | U | U* | A | C |
+|---|---|---|---|---|---|---|---|
+| magic-romak | 1.00 | 0.000 | 0.000 | 0.000 ↔ | 0.001 | 0.000 ↔ | 0.000 |
+| romak | 1.00 | 0.167 | 0.167 | 0.058 | 0.054 | 0.051 | 0.027 |
+| qwerty | 0.45 | 0.279 | 0.279 | 0.109 | 0.075 | 0.091 | 0.036 |
+| dvorak | 0.00 | 0.137 | 0.137 | 0.058 ↔ | 0.048 ↔ | 0.069 ↔ | 0.029 ↔ |
+| colemak | 0.79 | 0.512 | 0.512 | 0.074 | 0.063 | 0.055 | 0.023 |
+| colemak-dh | 0.79 | 0.520 | 0.520 | 0.070 | 0.059 | 0.057 | 0.023 |
+| graphite | 1.00 | 0.160 | 0.161 | 0.036 | 0.027 | 0.065 | 0.022 |
+| gallium | 1.00 | 0.182 | 0.182 | 0.032 | 0.022 | 0.058 | 0.021 |
+| canary | 1.00 | 0.503 | 0.503 | 0.042 | 0.031 | 0.043 | 0.026 |
+| sturdy | 1.00 | 0.161 | 0.161 | 0.059 | 0.051 | 0.044 | 0.020 |
+| aptv3 | 1.00 | 0.663 | 0.663 | 0.066 | 0.061 | 0.060 | 0.022 |
+| hands-down-neu | 1.00 | 0.495 | 0.495 | 0.043 | 0.035 | 0.076 | 0.021 |
+| night | 1.00 | 0.195 | 0.195 | 0.035 | 0.030 | 0.040 | 0.025 |
+| dusk | 1.00 | 0.194 | 0.194 | 0.039 | 0.036 | 0.027 | 0.019 |
+| recurva | 1.00 | 0.685 | 0.685 | 0.055 | 0.052 | 0.063 | 0.025 |
+| focal | 1.00 | 0.121 | 0.121 | 0.052 | 0.043 | 0.060 | 0.016 |
+| nerps | 1.00 | 0.453 | 0.453 | 0.049 | 0.043 | 0.066 | 0.026 |
+| engram | 0.00 | 0.190 | 0.190 | 0.074 ↔ | 0.039 ↔ | 0.079 ↔ | 0.017 ↔ |
+| sunlight | 1.00 | 0.482 | 0.482 | 0.047 | 0.043 | 0.072 | 0.025 |
+| snth | 1.00 | 0.165 | 0.165 | 0.030 | 0.026 | 0.036 | 0.019 |
+| aptmak | 1.00 | 0.178 | 0.178 | 0.065 | 0.063 | 0.039 | 0.025 |
+| bird | 1.00 | 0.893 | 0.487 | 0.046 | 0.037 | 0.047 | 0.028 |
+| bird-30 | 1.00 | 0.481 | 0.481 | 0.047 | 0.038 | 0.051 | 0.029 |
+| hands-down-gold | 1.00 | 0.488 | 0.488 | 0.042 | 0.033 | 0.069 | 0.021 |
+| hands-down-promethium | 1.00 | 0.488 | 0.488 | 0.035 | 0.031 | 0.069 | 0.024 |
+| hands-down-vibranium | 1.00 | 0.515 | 0.515 | 0.037 | 0.027 | 0.079 | 0.022 |
+| rsthd | 0.67 | 0.180 | 0.180 | 0.067 | 0.059 | 0.044 | 0.021 |
+| t-34 | 1.00 | 0.472 | 0.091 | 0.053 | 0.045 | 0.029 | 0.016 |
+| magic-sturdy | 1.00 | 0.599 | 0.217 | 0.063 | 0.055 | 0.070 | 0.026 |
+| enthium | 0.00 | 0.132 | 0.132 | 0.036 ↔ | 0.032 ↔ | 0.036 ↔ | 0.025 ↔ |
+| nordrassil | 0.00 | 0.640 | 0.257 | 0.060 ↔ | 0.053 ↔ | 0.083 ↔ | 0.033 ↔ |
+| finch | 1.00 | 0.494 | 0.089 | 0.052 | 0.045 | 0.058 | 0.038 |
+| caksoylar | 0.79 | 0.935 | 0.529 | 0.074 | 0.063 | 0.058 | 0.028 |
+| uno | 0.00 | 0.517 | 0.135 | 0.041 ↔ | 0.038 ↔ | 0.085 | 0.028 ↔ |
+| ben-vallack-piano | 0.82 | 0.450 | 0.151 | 0.078 | 0.078 | 0.078 | 0.078 |
+
+#### Headline change per layout against main (mix, by-SFB orientation)
+
+| layout | main+thumbs ΔEffort / ΔSFB | U ΔEffort / ΔSFB | U* ΔEffort / ΔSFB | A ΔEffort / ΔSFB | C ΔEffort / ΔSFB | main Effort / SFB |
+|---|---|---|---|---|---|---|
+| magic-romak | +0.0 / +0.00 | −0.0 / +0.00 | +0.0 / +0.00 | −0.0 / +0.00 | −0.0 / −0.02 | 364.6 / 1.34 |
+| romak | +0.0 / ±0.00 | +0.1 / −0.07 | +0.2 / −0.08 | −4.4 / −0.08 | −4.1 / −0.09 | 440.1 / 1.53 |
+| qwerty | +0.0 / ±0.00 | +0.1 / −0.11 | +0.2 / −0.14 | −4.4 / −0.13 | −4.1 / −0.16 | 1091.3 / 5.61 |
+| dvorak | +0.0 / ±0.00 | +0.1 / −0.05 | +0.2 / −0.06 | −4.4 / −0.05 | −4.1 / −0.07 | 750.7 / 1.77 |
+| colemak | +0.0 / ±0.00 | +0.1 / −0.29 | +0.2 / −0.30 | −4.4 / −0.31 | −4.1 / −0.33 | 579.2 / 1.64 |
+| colemak-dh | +0.0 / ±0.00 | +0.1 / −0.30 | +0.2 / −0.31 | −4.4 / −0.31 | −4.1 / −0.33 | 527.6 / 1.64 |
+| graphite | +0.0 / +0.00 | +0.1 / −0.08 | +0.2 / −0.09 | −4.4 / −0.07 | −4.1 / −0.09 | 489.7 / 1.12 |
+| gallium | +0.0 / ±0.00 | +0.1 / −0.10 | +0.2 / −0.11 | −4.4 / −0.08 | −4.1 / −0.11 | 539.0 / 1.08 |
+| canary | +0.0 / ±0.00 | +0.1 / −0.31 | +0.2 / −0.32 | −4.4 / −0.31 | −4.1 / −0.32 | 511.1 / 1.11 |
+| sturdy | +0.0 / ±0.00 | +0.1 / −0.07 | +0.2 / −0.07 | −4.4 / −0.08 | −4.1 / −0.10 | 518.4 / 1.02 |
+| aptv3 | +0.0 / +0.00 | +0.1 / −0.40 | +0.2 / −0.40 | −4.4 / −0.40 | −4.1 / −0.43 | 506.0 / 1.57 |
+| hands-down-neu | +0.0 / +0.00 | +0.2 / −0.30 | +0.2 / −0.31 | −4.1 / −0.28 | −4.2 / −0.32 | 503.2 / 1.40 |
+| night | +0.0 / ±0.00 | +0.1 / −0.11 | +0.2 / −0.11 | −4.4 / −0.11 | −4.1 / −0.12 | 533.0 / 1.02 |
+| dusk | +0.0 / +0.00 | +0.1 / −0.11 | +0.2 / −0.11 | −4.4 / −0.11 | −4.1 / −0.12 | 484.7 / 1.09 |
+| recurva | +0.0 / ±0.00 | +0.1 / −0.42 | +0.2 / −0.42 | −4.4 / −0.42 | −4.1 / −0.44 | 604.1 / 1.33 |
+| focal | +0.0 / ±0.00 | +0.1 / −0.05 | +0.2 / −0.05 | −4.4 / −0.04 | −4.1 / −0.07 | 510.5 / 1.00 |
+| nerps | +0.0 / ±0.00 | +0.1 / −0.27 | +0.2 / −0.27 | −4.4 / −0.26 | −4.1 / −0.29 | 559.5 / 1.40 |
+| engram | +0.0 / +0.00 | +0.2 / −0.08 | +0.3 / −0.10 | −4.3 / −0.08 | −4.1 / −0.12 | 572.5 / 2.94 |
+| sunlight | +0.0 / ±0.00 | +0.1 / −0.29 | +0.2 / −0.29 | −4.4 / −0.28 | −4.2 / −0.31 | 464.9 / 1.56 |
+| snth | +0.0 / ±0.00 | +0.1 / −0.09 | +0.2 / −0.09 | −4.4 / −0.09 | −4.1 / −0.10 | 464.8 / 1.07 |
+| aptmak | +0.0 / −0.00 | +0.1 / −0.08 | +0.2 / −0.08 | −4.4 / −0.09 | −4.1 / −0.10 | 466.0 / 1.21 |
+| bird | +23.9 / −0.65 | +23.9 / −0.96 | +24.2 / −0.96 | +19.8 / −0.96 | +19.8 / −0.97 | 456.1 / 2.04 |
+| bird-30 | +0.0 / ±0.00 | +0.1 / −0.29 | +0.2 / −0.30 | −4.4 / −0.29 | −4.1 / −0.30 | 517.3 / 1.34 |
+| hands-down-gold | +0.0 / +0.00 | +0.1 / −0.30 | +0.2 / −0.31 | −4.4 / −0.28 | −4.1 / −0.31 | 459.2 / 1.17 |
+| hands-down-promethium | +0.0 / +0.00 | +0.1 / −0.30 | +0.2 / −0.31 | −4.4 / −0.28 | −4.1 / −0.31 | 447.8 / 1.29 |
+| hands-down-vibranium | +0.0 / +0.00 | +0.1 / −0.32 | +0.2 / −0.33 | −4.4 / −0.29 | −4.1 / −0.33 | 458.5 / 1.24 |
+| rsthd | +0.0 / ±0.00 | +0.1 / −0.08 | +0.2 / −0.08 | −4.4 / −0.09 | −4.1 / −0.11 | 604.3 / 1.27 |
+| t-34 | +18.9 / −0.56 | +19.0 / −0.58 | +19.1 / −0.59 | +17.0 / −0.60 | +17.3 / −0.61 | 560.1 / 1.39 |
+| magic-sturdy | +23.9 / −0.76 | +20.8 / −0.86 | +20.9 / −0.86 | +16.3 / −0.85 | +16.5 / −0.88 | 533.2 / 1.63 |
+| enthium | +0.0 / ±0.00 | +0.1 / −0.06 | +0.2 / −0.07 | −4.4 / −0.07 | −4.1 / −0.07 | 427.9 / 1.19 |
+| nordrassil | +23.9 / −0.31 | +24.0 / −0.44 | +24.1 / −0.45 | +19.5 / −0.43 | +19.8 / −0.46 | 451.0 / 1.70 |
+| finch | +18.9 / −0.62 | +19.3 / −0.64 | +19.7 / −0.65 | +18.2 / −0.64 | +17.7 / −0.66 | 507.6 / 1.48 |
+| caksoylar | +23.9 / −0.66 | +24.0 / −0.97 | +24.3 / −0.97 | +20.0 / −0.98 | +20.0 / −1.00 | 533.4 / 2.24 |
+| uno | +22.9 / +0.11 | +22.9 / +0.04 | +23.0 / +0.04 | +18.4 / +0.07 | +18.7 / +0.04 | 569.3 / 2.15 |
+| ben-vallack-piano | +18.9 / −0.59 | +20.0 / −0.65 | +20.0 / −0.65 | +20.0 / −0.65 | +20.0 / −0.65 | 402.9 / 1.97 |
+
+### Second-round recommendation
+
+**U\***, or U as you drew it, with **the Accents layer mirrored on layouts that type their vowels
+with the left hand**.
+
+- With the combo off the fingers, your grid is as fair as the searched ones: mean 0.044% / max 0.078%,
+  against main's 0.392% / 0.935%. It has the strongest mnemonic of any candidate.
+- Against `main+thumbs`, its Effort is level (mean +0.16, range −3.0 … +1.0).
+- A and C each cost about 4 Effort less per layout on the mix, at a similar or lower SFB (C: 0.025 /
+  0.078). The price is that their grids have nothing to memorize.
+- Without mirroring, U\*'s worst layouts are the left-vowel ones (0.58%). Mirroring is worth it here,
+  unlike in the first round, so it needs the layout-format choice described under Mirroring.
