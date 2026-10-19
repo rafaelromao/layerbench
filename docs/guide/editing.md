@@ -126,6 +126,14 @@ layer at the same places, **Make transparent** lets the layer below show through
 **Clear** makes them do nothing, as `Delete` does on any one of them. Each is one change, so one **Undo** takes it back, and the keys stay
 selected for the next.
 
+### Missing keys
+
+Under the board, the **Missing keys** tray holds the characters the layout cannot type: those of
+the text, most frequent first, then the letters the layout's language needs. Drag one onto a key,
+or tap it and then tap the key, and the key types that character instead. Whatever the key typed
+before joins the tray, unless another key still types it. Each placement is one change, so one
+**Undo** brings the old key back, and the tray with it. `Escape` puts down a character tapped.
+
 ## Layers
 
 The layer navigator above the board switches between layers: ‹ and › step through them, the
@@ -300,7 +308,8 @@ Everything works by tapping. Selecting a key opens the editor right under the bo
 board scrolls away with the page as you work through the editor, leaving it the screen; scroll
 back up for the next key. Tiles and chips are sized for a finger.
 
-To drag a key, rest your finger on it for a moment first.
+To drag a key, rest your finger on it for a moment first. A [missing key](#missing-keys) is
+dragged straight away, or tapped and then the key tapped.
 **Swap with…**, **Copy to…** and **Send to layer…** do the same without dragging. Resting a finger
 on a key and lifting it without moving adds it to the keys selected, to [move or clear several at
 once](#several-keys-at-once). The on-screen keyboard stays down until you tap a text field, such
@@ -324,5 +333,6 @@ one for each key.
 | `←` · `→` | on the layer navigator, goes to the previous or the next layer; on the panels' tabs, to the previous or the next panel |
 | `F2` | on the layer's name in the navigator, renames the layer |
 | `Alt`+`S` | starts a swap; then `Enter` or a click on the other key |
-| `Escape` | cancels a swap or a combo pick; then clears an outlined pair; then closes the editor |
+| `Enter` · `Space` | with a [missing key](#missing-keys) tapped, puts it on the key |
+| `Escape` | cancels a swap, a missing key tapped or a combo pick; then clears an outlined pair; then closes the editor |
 | `Ctrl`/`Cmd`+`Z` | undoes; with `Shift` as well, redoes |

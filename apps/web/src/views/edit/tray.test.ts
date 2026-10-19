@@ -80,6 +80,30 @@ describe('a character from the missing-keys tray', () => {
     expect(rearmed.swapFrom).toBeNull();
   });
 
+  it('is announced when tapped onto a key, a space by its name', () => {
+    const armed = reducer(start(), { type: 'armChar', char: ' ' });
+    const placed = reducer(armed, { type: 'keyClick', keyId: 'LHM' });
+    expect(placed.lastEdit?.say).toBe('space on LHM');
+  });
+
+  it('is put down by an undo, whose layout may type it again', () => {
+    const placed = reducer(start(), place('LHM', 'ç'));
+    const armed = reducer(placed, { type: 'armChar', char: 'd' });
+    const undone = reducer(armed, { type: 'undo' });
+    expect(undone.placing).toBeNull();
+    // The next key tapped is selected, not given a d.
+    const tapped = reducer(undone, { type: 'keyClick', keyId: 'LHI' });
+    expect(at(tapped, 'LHI')).toEqual(at(start(), 'LHI'));
+    expect(tapped.selected).toBe('LHI');
+  });
+
+  it('ends a combo pick, and a combo pick puts it down', () => {
+    const picking = reducer(start(), { type: 'comboPickStart' });
+    const armed = reducer(picking, { type: 'armChar', char: 'ç' });
+    expect(armed.comboPick).toBeNull();
+    expect(reducer(armed, { type: 'comboPickStart' }).placing).toBeNull();
+  });
+
   it('follows the layer on screen', () => {
     const added = reducer(start(), { type: 'edit', edit: { kind: 'addLayer', name: 'Num' } });
     const onNum = reducer(added, { type: 'selectLayer', layer: 1 });
@@ -108,6 +132,16 @@ describe('the missing-keys tray', () => {
       { char: 'õ' },
       { char: 'd' },
     ]);
+  });
+
+  it('keeps what a report of the layout as it is found missing, whatever its producers say', () => {
+    // A character on a layer no key reaches has producers, but cannot be typed.
+    const args = { unproducible: [['a', 3]] as [string, number][], required: [], strays: [] };
+    expect(missingKeys({ ...args, producible, reportCurrent: true })).toEqual([
+      { char: 'a', count: 3 },
+    ]);
+    // A report of the layout before an edit is checked against the layout now.
+    expect(missingKeys({ ...args, producible, reportCurrent: false })).toEqual([]);
   });
 
   it('leaves out whatever the layout types now', () => {

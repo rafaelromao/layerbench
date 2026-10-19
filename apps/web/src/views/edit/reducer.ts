@@ -5,7 +5,7 @@ import {
   type EditOutcome,
   type Layout,
 } from '@layerbench/core';
-import { displaced } from './tray.js';
+import { displaced, spoken } from './tray.js';
 
 export type Panel = 'layers' | 'features' | 'geometry' | 'combos' | 'behaviors' | 'paths' | 'json';
 
@@ -284,7 +284,14 @@ function reduce(state: EditState, action: EditAction): EditState {
 
     case 'keyClick': {
       // A character tapped in the tray goes on the next key tapped.
-      if (state.placing !== null) return placed(state, action.keyId, state.placing);
+      if (state.placing !== null) {
+        return placed(
+          state,
+          action.keyId,
+          state.placing,
+          `${spoken(state.placing)} on ${action.keyId}`,
+        );
+      }
       // A stale compile error belongs to the edit that failed, not to the next key clicked.
       if (!state.swapFrom) {
         return {
@@ -336,12 +343,14 @@ function reduce(state: EditState, action: EditAction): EditState {
     case 'cancelSwap':
       return { ...state, swapFrom: null, placing: null };
 
-    // One thing waits for a key at a time: a character armed puts down a swap armed.
+    // One thing waits for keys at a time: a character armed puts down a swap armed or a combo pick.
     case 'armChar':
       return {
         ...state,
         placing: action.char === state.placing ? null : action.char,
         swapFrom: null,
+        comboPick: null,
+        comboPickFor: null,
         focusRequest: null,
       };
 

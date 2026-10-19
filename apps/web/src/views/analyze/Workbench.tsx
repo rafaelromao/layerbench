@@ -68,14 +68,14 @@ import {
   selectionOf,
   shownLayer,
 } from '../edit/reducer.js';
-import { missingKeys } from '../edit/tray.js';
+import { charLabel, missingKeys, spoken } from '../edit/tray.js';
 import { initialUndoState, undoable } from '../edit/undo.js';
 import { textLanguage, textName } from '../text-of.js';
 import type { AnalysisSettingsState } from '../useAnalysisSettings.js';
 import { useTypedLayout } from '../useLayout.js';
 import { itemLayer } from './item-layer.js';
 import { LayoutBar } from './LayoutBar.js';
-import { charLabel, MissingKeysTray } from './MissingKeysTray.js';
+import { MissingKeysTray } from './MissingKeysTray.js';
 import { playFrames } from './playback.js';
 import { SubmitDialog } from './SubmitDialog.js';
 
@@ -107,10 +107,6 @@ const PANEL_TABS = PANELS.map(([id, label]) => ({ id, label }));
 
 function prefersReducedMotion(): boolean {
   return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-}
-
-function symbolLabel(s: string): string {
-  return s === ' ' ? '␣' : s;
 }
 
 export interface WorkbenchProps {
@@ -586,6 +582,8 @@ export function Workbench({
       if (e.code === 'KeyS') {
         e.preventDefault();
         stopPlaying();
+        // The key picked is the one to swap, not where an armed character goes.
+        if (state.placing !== null) send({ type: 'armChar', char: null });
         send({ type: 'keyClick', keyId });
         send({ type: 'startSwap' });
       }
@@ -641,8 +639,9 @@ export function Workbench({
         required: languageGap?.missingRequired ?? [],
         strays: state.strays,
         producible,
+        reportCurrent: current || provisional,
       }),
-    [shown, languageGap, state.strays, producible],
+    [shown, current, provisional, languageGap, state.strays, producible],
   );
   /** What share of the text, typed or not, a character the layout cannot type is. */
   const share = (n: number) => {
@@ -867,13 +866,14 @@ export function Workbench({
                       stopPlaying();
                       send({ type: 'armChar', char });
                     }}
+                    onDisarm={() => send({ type: 'armChar', char: null })}
                     onDrop={({ char, to }) => {
                       stopPlaying();
                       send({
                         type: 'placeChar',
                         keyId: to,
                         char,
-                        say: `${charLabel(char)} on ${to}`,
+                        say: `${spoken(char)} on ${to}`,
                       });
                     }}
                     board={() => document.getElementById('kb-analyze')}
@@ -1012,7 +1012,7 @@ export function Workbench({
                                 onClick={() => setPlay({ frame: at, playing: false })}
                               >
                                 <span className="opacity-60">{stepKey(s.key)}</span>
-                                <span>{symbolLabel(s.symbols) || s.label}</span>
+                                <span>{charLabel(s.symbols) || s.label}</span>
                                 <span className="opacity-50">{s.layer}</span>
                               </button>
                             </li>
@@ -1066,7 +1066,7 @@ export function Workbench({
             {state.swapFrom
               ? `${state.swapFrom} armed for a swap`
               : state.placing !== null
-                ? `${charLabel(state.placing)} armed: tap a key to put it on`
+                ? `${spoken(state.placing)} armed: tap a key to put it on`
                 : message}
           </p>
         </div>
@@ -1289,7 +1289,7 @@ function SummaryCard({
                     {shown.coverage.softDropped.map(([sym, n], i) => (
                       <span key={sym} className="font-mono">
                         {i > 0 && ' '}
-                        {symbolLabel(sym)} ×{n.toLocaleString('en-US')}
+                        {charLabel(sym)} ×{n.toLocaleString('en-US')}
                       </span>
                     ))}
                   </p>

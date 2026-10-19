@@ -1858,7 +1858,12 @@ function dragChip(from: HTMLElement, to: string): void {
   const elementFromPoint = vi.spyOn(document, 'elementFromPoint').mockImplementation(() => target);
   const at = (type: string, x: number) =>
     from.dispatchEvent(
-      new PointerEvent(type, { bubbles: true, clientX: x, clientY: x }) as Event & PointerEvent,
+      new PointerEvent(type, {
+        bubbles: true,
+        clientX: x,
+        clientY: x,
+        isPrimary: true,
+      }) as Event & PointerEvent,
     );
   at('pointerdown', 1);
   at('pointermove', 20);
@@ -1902,6 +1907,32 @@ describe('the missing-keys tray', () => {
     expect(await screen.findByRole('button', { name: 'Key LHI: d' })).toBeInTheDocument();
     expect(chip('f')).toBeInTheDocument();
     expect(chip('d')).toBeNull();
+  }, 60_000);
+
+  it('puts a character armed on a key picked from the keyboard, and Escape puts it down', async () => {
+    const user = userEvent.setup();
+    await openPlain();
+    const cedilla = chip('ç') as HTMLElement;
+    await user.click(cedilla);
+    await user.keyboard('{Escape}');
+    expect(cedilla).toHaveAttribute('aria-pressed', 'false');
+
+    await user.click(cedilla);
+    key('Key LHM: d').focus();
+    await user.keyboard('{Enter}');
+    expect(await screen.findByRole('button', { name: 'Key LHM: ç' })).toBeInTheDocument();
+  }, 60_000);
+
+  it('arms a swap with Alt+S without putting the character armed on the key', async () => {
+    const user = userEvent.setup();
+    await openPlain();
+    const cedilla = chip('ç') as HTMLElement;
+    await user.click(cedilla);
+    key('Key LHM: d').focus();
+    await user.keyboard('{Alt>}s{/Alt}');
+    expect(key('Key LHM: d')).toBeInTheDocument();
+    expect(cedilla).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByText(/is armed — tap the key to swap it with/)).toBeInTheDocument();
   }, 60_000);
 });
 

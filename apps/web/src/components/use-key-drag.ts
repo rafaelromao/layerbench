@@ -301,6 +301,8 @@ export function useCharDrag(
   const handlers = useCallback(
     (char: string) => ({
       onPointerDown: (e: ReactPointerEvent<HTMLElement>) => {
+        // One character at a time, carried by the main button or the first finger.
+        if (!e.isPrimary || e.button !== 0 || press.current) return;
         suppressClick.current = false;
         press.current = { char, x: e.clientX, y: e.clientY };
         dragging.current = false;

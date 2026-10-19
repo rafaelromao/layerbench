@@ -1,15 +1,5 @@
 import { useCharDrag } from '../../components/use-key-drag.js';
-import type { TrayChar } from '../edit/tray.js';
-
-/** How a character reads on a chip: a space is drawn, not left blank. */
-export function charLabel(c: string): string {
-  return c === ' ' ? '␣' : c;
-}
-
-/** How a character is read out: a space by its name. */
-function spoken(c: string): string {
-  return c === ' ' ? 'space' : c;
-}
+import { charLabel, spoken, type TrayChar } from '../edit/tray.js';
 
 /**
  * The characters the layout cannot type, to put on keys: dragged onto one, or tapped and then a key
@@ -21,6 +11,7 @@ export function MissingKeysTray({
   why,
   share,
   onArm,
+  onDisarm,
   onDrop,
   board,
 }: {
@@ -32,6 +23,8 @@ export function MissingKeysTray({
   /** What share of the text a character's count is. */
   share: (count: number) => string;
   onArm: (char: string) => void;
+  /** Put the character tapped down again. */
+  onDisarm: () => void;
   onDrop: (drop: { char: string; to: string }) => void;
   /** The board a character is dropped on. */
   board: () => Element | null;
@@ -44,7 +37,16 @@ export function MissingKeysTray({
         <span className="font-semibold">Missing keys</span>{' '}
         <span className="opacity-70">— drag one onto a key, or tap it and then the key.</span>
       </p>
-      <ul className="flex flex-wrap gap-1" aria-label="Missing keys">
+      <ul
+        className="flex flex-wrap gap-1"
+        aria-label="Missing keys"
+        onKeyDown={(e) => {
+          // The note under the board says Escape puts a character down, wherever focus is.
+          if (e.key !== 'Escape' || placing === null) return;
+          e.preventDefault();
+          onDisarm();
+        }}
+      >
         {chars.map(({ char, count }) => (
           <li key={char}>
             <button
@@ -56,7 +58,7 @@ export function MissingKeysTray({
               aria-label={
                 count === undefined
                   ? spoken(char)
-                  : `${spoken(char)}, ${count.toLocaleString('en-US')} times in the text`
+                  : `${spoken(char)}, ${count.toLocaleString('en-US')} times in the text, ${share(count)}`
               }
               title={
                 count === undefined

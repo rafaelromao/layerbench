@@ -728,6 +728,11 @@
     max-height: none;
   }
 
+  /* The tray is how a finger puts a missing character on a key: its chips are hit as easily. */
+  .lb-tray-chip {
+    min-height: 2.25rem;
+  }
+
   /* Anything in the inspector meant to be tapped gets a target a finger can actually hit. */
   .lb-inspector .btn-xs,
   .lb-inspector .select-xs,
