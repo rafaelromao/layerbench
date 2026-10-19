@@ -1,0 +1,51 @@
+name: community index
+
+# Keeps `community/index.json` listing every community layout on this branch, so the app can read
+# them without the GitHub API. A pull request that adds `community/<id>.json` is merged here; this
+# runs on that push, from this branch's own copy of the file.
+#
+# Layout files come from pull requests, so nothing in them is trusted: only their names are read,
+# and only names the app accepts as ids are listed. The app checks every file it reads.
+on:
+  push:
+    branches: [layerbench-data]
+    paths: ['community/**']
+# No manual run: GitHub offers one only for a workflow on the default branch, and this one lives
+# here. The push that sets the branch up adds `community/index.json`, so it runs then.
+
+permissions:
+  contents: write
+
+# One at a time, each on the branch as it is when it starts.
+concurrency:
+  group: community-index
+  cancel-in-progress: false
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      # `index` in any case is the app's reserved id (`isDocumentId`), so no layout file may take it.
+      - name: List the community layouts
+        run: |
+          # Names end with a NUL, which no name can hold, and each whole name is checked: one with a
+          # newline in it is never read as two.
+          find community -maxdepth 1 -type f -name '*.json' ! -iname index.json -print0 \
+            | while IFS= read -r -d '' path; do
+                id="${path##*/}"
+                id="${id%.json}"
+                if [[ $id =~ ^[A-Za-z0-9_-]+$ ]]; then printf '%s\n' "$id"; fi
+              done \
+            | LC_ALL=C sort \
+            | jq -R . | jq -s '{layouts: .}' > community/index.json
+      # A push made with this workflow's token starts no workflow, so this does not run again. Should
+      # two merges land at once, the second run writes the index of both.
+      - name: Commit the index if it changed
+        run: |
+          git add community/index.json
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Community: list the layouts'
+          git push origin HEAD:layerbench-data
