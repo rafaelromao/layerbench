@@ -2,8 +2,11 @@ import {
   COLLECTIONS,
   type Collection,
   type IndexEntry,
+  indexSummary,
   type JsonObject,
   NameTakenError,
+  nameTaken,
+  type PutOptions,
   type StorageAdapter,
   StorageConflictError,
   type StorageMeta,
@@ -99,25 +102,22 @@ export class CompositeStorage implements StorageAdapter {
     collection: Collection,
     id: string,
     doc: JsonObject,
-    opts: { expectedSha?: string | null; message?: string } = {},
+    opts: PutOptions = {},
   ): Promise<StorageMeta> {
-    if (!this.remote) return this.local.put(collection, id, doc, { message: opts.message });
-    const before = await this.local.get(collection, id).catch(() => null);
-    await this.local.put(collection, id, doc, { message: opts.message });
-    try {
-      // A conflict propagates: the work is safe locally, and the user decides what to do about it.
-      return await this.remote.put(collection, id, doc, opts);
-    } catch (e) {
-      // The gists have another layout of this name, which the browser did not know of: what the
-      // browser wrote is taken back, so it keeps no second of the name once the user overwrites.
-      if (e instanceof NameTakenError) {
-        await (before
-          ? this.local.put(collection, id, before.doc)
-          : this.local.delete(collection, id)
-        ).catch(() => {});
-      }
-      throw e;
+    const here = { message: opts.message, replacing: opts.replacing };
+    if (!this.remote) return this.local.put(collection, id, doc, here);
+    // The gists may have a layout of this name the browser does not know of. They are asked
+    // first, so the browser takes no copy of one they would refuse; unreachable, they refuse
+    // nothing yet, and the browser's copy is the work kept.
+    if (collection === 'layouts') {
+      const there = await this.remote.list(collection).catch(() => null);
+      const name = indexSummary(collection, id, doc).name;
+      const taken = there && nameTaken(there, name, id, opts.replacing);
+      if (taken) throw new NameTakenError(taken);
     }
+    await this.local.put(collection, id, doc, here);
+    // A conflict propagates: the work is safe locally, and the user decides what to do about it.
+    return this.remote.put(collection, id, doc, opts);
   }
 
   async delete(collection: Collection, id: string, opts: { message?: string } = {}): Promise<void> {

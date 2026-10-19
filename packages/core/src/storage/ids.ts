@@ -42,11 +42,19 @@ export interface StorageAdapter {
     doc: JsonObject,
     /**
      * `expectedSha`: write only over that version, or, when null, only where there is no document
-     * yet; a document missing where a version was expected is written all the same.
+     * yet; a document missing where a version was expected is written all the same. `replacing`:
+     * custom layouts whose names do not count against this one's, as the caller deletes them once
+     * it is written, such as the old copy of a layout renamed.
      */
-    opts?: { expectedSha?: string | null; message?: string },
+    opts?: PutOptions,
   ): Promise<StorageMeta>;
   delete(collection: Collection, id: string, opts?: { message?: string }): Promise<void>;
+}
+
+export interface PutOptions {
+  expectedSha?: string | null;
+  message?: string;
+  replacing?: readonly string[];
 }
 
 /** Thrown when a write loses a race with another writer. */
@@ -58,12 +66,12 @@ export class StorageConflictError extends Error {
 }
 
 /**
- * Thrown when a save would make a second saved layout going by a name another already has, as
- * the `-N` copies once did. `taken` is that other one, to overwrite or to name this one apart from.
+ * Thrown when a save would make a second custom layout going by a name another already has, as the
+ * `-N` copies once did. `taken` is that other one, to overwrite or to name this one apart from.
  */
 export class NameTakenError extends Error {
   constructor(readonly taken: { id: string; name: string }) {
-    super(`a saved layout is already called ${taken.name}`);
+    super(`a custom layout is already called ${taken.name}`);
     this.name = 'NameTakenError';
   }
 }
@@ -79,17 +87,29 @@ export function sameName(a: string, b: string): boolean {
 }
 
 /**
- * The saved document, other than `id`, that already goes by `name`: saving `id` under it would make
- * a second. None when `id` goes by that name already, so a layout that shares its name with a
- * duplicate made before can still be saved; `id` is null for a document not saved yet.
+ * The custom document, other than `id`, that already goes by `name`: saving `id` under it would
+ * make a second. None when `id` goes by that name already, so a layout that shares its name with a
+ * duplicate made before can still be saved; `id` is null for a document not saved yet. Those
+ * `replacing` do not count, as they are about to be deleted.
  */
 export function nameTaken<E extends { id: string; name: string }>(
   entries: readonly E[],
   name: string,
   id: string | null,
+  replacing: readonly string[] = [],
 ): E | null {
-  if (id !== null && entries.some((e) => e.id === id && sameName(e.name, name))) return null;
-  return entries.find((e) => e.id !== id && sameName(e.name, name)) ?? null;
+  const others = entries.filter((e) => !replacing.includes(e.id));
+  if (id !== null && others.some((e) => e.id === id && sameName(e.name, name))) return null;
+  return others.find((e) => e.id !== id && sameName(e.name, name)) ?? null;
+}
+
+/** `base`, numbered (`<base> 2`, `<base> 3`, …) while one of `taken` already goes by it. */
+export function freeName(base: string, taken: Iterable<string>): string {
+  const used = [...taken];
+  const trimmed = base.trim();
+  let name = trimmed;
+  for (let n = 2; used.some((u) => sameName(u, name)); n++) name = `${trimmed} ${n}`;
+  return name;
 }
 
 function randomSuffix(): string {

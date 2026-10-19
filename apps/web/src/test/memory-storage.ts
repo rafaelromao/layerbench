@@ -6,6 +6,7 @@ import {
   type JsonObject,
   NameTakenError,
   nameTaken,
+  type PutOptions,
   type StorageAdapter,
   StorageConflictError,
   type StorageMeta,
@@ -21,8 +22,8 @@ interface Stored {
  * Storage held in memory, for tests: what the browser's store does, without a database. Documents
  * are kept as text, so each read is a copy, as from any real store, and each write gives the
  * document a new version, so a write that names an older one is a conflict. To make an operation
- * fail, replace it on the instance. As every
- * store does, it keeps no second layout of a name another has.
+ * fail, replace it on the instance. As every store does, it keeps no second custom layout of a name
+ * another has.
  */
 export class MemoryStorage implements StorageAdapter {
   private readonly docs = new Map<string, Stored>();
@@ -58,7 +59,7 @@ export class MemoryStorage implements StorageAdapter {
     collection: Collection,
     id: string,
     doc: JsonObject,
-    opts: { expectedSha?: string | null; message?: string } = {},
+    opts: PutOptions = {},
   ): Promise<StorageMeta> {
     assertDocumentId(id);
     const existing = this.docs.get(`${collection}/${id}`);
@@ -71,6 +72,7 @@ export class MemoryStorage implements StorageAdapter {
         await this.list(collection),
         indexSummary(collection, id, doc).name,
         id,
+        opts.replacing,
       );
       if (taken) throw new NameTakenError(taken);
     }

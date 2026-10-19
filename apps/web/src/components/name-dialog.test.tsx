@@ -79,7 +79,7 @@ describe('NameDialog', () => {
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 
-  describe('with a name another saved layout has', () => {
+  describe('with a name another custom layout has', () => {
     const saved = [{ id: 'magic-breeze', name: 'Magic Breeze' }];
     function openTaken(initialName = 'Magic Breeze') {
       const onSubmit = vi.fn();
@@ -105,7 +105,7 @@ describe('NameDialog', () => {
       const user = userEvent.setup();
       const { onSubmit, onOverwrite } = openTaken();
       expect(screen.getByRole('status')).toHaveTextContent(
-        'A saved layout is already called Magic Breeze',
+        'A custom layout is already called Magic Breeze',
       );
       expect(screen.getByRole('button', { name: 'Save copy' })).toBeDisabled();
       fireEvent.submit(
@@ -116,6 +116,24 @@ describe('NameDialog', () => {
       await user.click(screen.getByRole('button', { name: 'Overwrite Magic Breeze' }));
       expect(onOverwrite).toHaveBeenCalledWith('Magic Breeze', saved[0]);
       expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    it('only asks for another name when there is no overwriting', () => {
+      render(
+        <NameDialog
+          title="Save under another name"
+          nameLabel="Name of the layout"
+          initialName="Magic Breeze"
+          submitLabel="Save"
+          taken={() => saved[0]}
+          onSubmit={() => {}}
+          onClose={() => {}}
+        />,
+      );
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'A custom layout is already called Magic Breeze. Type another name.',
+      );
+      expect(screen.queryByRole('button', { name: /Overwrite/ })).not.toBeInTheDocument();
     });
 
     it('saves once another name is picked', async () => {

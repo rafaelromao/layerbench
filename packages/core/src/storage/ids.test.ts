@@ -3,6 +3,7 @@ import {
   assertDocumentId,
   documentPath,
   freeId,
+  freeName,
   idForName,
   indexPath,
   indexSummary,
@@ -133,7 +134,7 @@ describe('names', () => {
     expect(sameName('Magic-Breeze', 'Magic Breeze')).toBe(false);
   });
 
-  it('finds the saved document that already goes by a name', () => {
+  it('finds the custom document that already goes by a name', () => {
     expect(nameTaken(entries, 'magic breeze', null)?.id).toBe('magic-breeze');
     expect(nameTaken(entries, 'Breeze', null)).toBeNull();
   });
@@ -151,6 +152,17 @@ describe('names', () => {
     ];
     expect(nameTaken(twice, 'Magic Breeze', 'magic-breeze-6')).toBeNull();
     expect(nameTaken(twice, 'Magic Breeze', null)).not.toBeNull();
+  });
+
+  it('does not count a document about to be replaced, as a rename deletes its old copy', () => {
+    expect(nameTaken(entries, 'Gust', null, ['gust'])).toBeNull();
+    expect(nameTaken(entries, 'Gust', 'magic-breeze', ['magic-breeze'])?.id).toBe('gust');
+  });
+
+  it('offers a name, numbered while one already goes by it', () => {
+    expect(freeName(' My layout ', [])).toBe('My layout');
+    expect(freeName('My layout', ['my layout'])).toBe('My layout 2');
+    expect(freeName('My layout', ['My layout', 'My  Layout 2'])).toBe('My layout 3');
   });
 
   it('is an error that names the document going by the name', () => {

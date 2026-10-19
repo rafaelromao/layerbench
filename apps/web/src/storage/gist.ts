@@ -8,6 +8,7 @@ import {
   type JsonObject,
   NameTakenError,
   nameTaken,
+  type PutOptions,
   type StorageAdapter,
   StorageConflictError,
   type StorageMeta,
@@ -203,7 +204,7 @@ export class GistAdapter implements StorageAdapter {
     collection: Collection,
     id: string,
     doc: JsonObject,
-    opts: { expectedSha?: string | null; message?: string } = {},
+    opts: PutOptions = {},
   ): Promise<StorageMeta> {
     assertDocumentId(id);
     const path = documentFile(collection, id);
@@ -221,8 +222,8 @@ export class GistAdapter implements StorageAdapter {
     const index = gist ? GistAdapter.content(gist, indexFile(collection)) : null;
     const rows = index ? readIndex(index) : [];
     const entry = indexSummary(collection, id, doc);
-    // Never a second saved layout of a name, whoever asks: the caller overwrites the one there.
-    const taken = collection === 'layouts' ? nameTaken(rows, entry.name, id) : null;
+    // Never a second custom layout of a name, whoever asks: the caller overwrites the one there.
+    const taken = collection === 'layouts' ? nameTaken(rows, entry.name, id, opts.replacing) : null;
     if (taken) throw new NameTakenError(taken);
     const next = rows.filter((e) => e.id !== id);
     next.push(entry);

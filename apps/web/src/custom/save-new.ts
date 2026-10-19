@@ -1,5 +1,6 @@
 import {
   freeId,
+  freeName,
   type JsonObject,
   type Layout,
   NameTakenError,
@@ -9,7 +10,7 @@ import {
   toCanonicalJson,
 } from '@layerbench/core';
 
-/** How a save goes where another saved layout has the name: `overwrite` is that layout's id. */
+/** How a save goes where another custom layout has the name: `overwrite` is that layout's id. */
 export interface SaveOptions {
   overwrite?: string;
 }
@@ -32,7 +33,9 @@ export async function saveNewLayout(
   { overwrite }: SaveOptions = {},
 ): Promise<{ id: string }> {
   const entries = await storage.list('layouts');
-  let id = overwrite;
+  // One renamed since it was offered to overwrite is not overwritten: the name is asked about anew.
+  const target = entries.find((e) => e.id === overwrite);
+  let id = target && !sameName(target.name, layout.name) ? undefined : overwrite;
   if (id === undefined) {
     const taken = nameTaken(entries, layout.name, null);
     if (taken) throw new NameTakenError(taken);
@@ -64,11 +67,7 @@ export function sameDocument(a: JsonObject, b: JsonObject): boolean {
  * capitals and the spaces around a name do not make two of them.
  */
 export function freeCopyName(name: string, taken: Iterable<string>): string {
-  const used = [...taken];
-  const base = `${name.trim()} copy`;
-  let copy = base;
-  for (let n = 2; used.some((u) => sameName(u, copy)); n++) copy = `${base} ${n}`;
-  return copy;
+  return freeName(`${name.trim()} copy`, taken);
 }
 
 /**

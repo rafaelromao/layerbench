@@ -7,6 +7,7 @@ import {
   layoutLanguageCoverage,
   nameTaken,
   type RuleItem,
+  sameName,
   toCanonicalJson,
 } from '@layerbench/core';
 import type { useNavigate } from '@tanstack/react-router';
@@ -35,7 +36,7 @@ import {
 import { type KeyItemSelection, KeyStats } from '../../components/KeyStats.js';
 import { LayerNav, useLayerSwipe } from '../../components/LayerNav.js';
 import { MetricCard, SummaryStrip } from '../../components/Metrics.js';
-import { NameDialog, type SavedLayout } from '../../components/NameDialog.js';
+import { NameDialog, type TakenLayout } from '../../components/NameDialog.js';
 import { PairBreakdown } from '../../components/PairBreakdown.js';
 import { presetOf } from '../../components/RuleSources.js';
 import { Tabs, tabId, tabPanelId } from '../../components/Tabs.js';
@@ -276,18 +277,22 @@ export function Workbench({
   }, [state.dirty]);
 
   /**
-   * Save the layout, under `name` when one was asked for: a copy's, or another than one taken. Where
-   * another saved layout has the name, Save asks again, to overwrite that one or to rename this.
+   * Save the layout, under `name` when one was asked for: a copy's, or another than one taken.
+   * Where another custom layout has the name, Save asks again, to overwrite that one or to rename
+   * this.
    */
   const store = useCallback(
     async (name?: string, opts: SaveOptions = {}) => {
       const from = state.layout;
-      const layout = name === undefined ? from : { ...from, name };
+      // The same name again is the layout as it is, so once saved it is clean.
+      const layout = name === undefined || name === from.name ? from : { ...from, name };
       const saved = await session.save(layout, opts);
       if (!saved.ok) {
         if (saved.reason === 'name-taken') {
           setCopyNamed(layout.name);
-          setNaming({ taken: saved.taken });
+          // An overwrite refused is of a name kept twice, in the gists and in this browser: only
+          // another name gets past it.
+          setNaming({ taken: saved.taken, overwrite: opts.overwrite === undefined });
           void customLayouts.refresh();
           return;
         }
@@ -315,8 +320,10 @@ export function Workbench({
 
   // A layout that is not stored here, bundled or carried in a link, is not the user's to overwrite:
   // its first save makes a copy, and asks what to call it. Later saves are of the copy, and ask
-  // nothing, unless the layout was renamed to another saved layout's name.
-  const [naming, setNaming] = useState<{ taken: SavedLayout | null } | null>(null);
+  // nothing, unless the layout was renamed to another custom layout's name.
+  const [naming, setNaming] = useState<{ taken: TakenLayout | null; overwrite: boolean } | null>(
+    null,
+  );
   /** The name given for a copy whose save failed, offered again on the next try. */
   const [copyNamed, setCopyNamed] = useState<string | null>(null);
   const copyName = useMemo(
@@ -330,7 +337,7 @@ export function Workbench({
   /** Whether Save makes a copy: of a layout not stored here, bundled or carried in a link. */
   const copying = session.storedId === null;
   const save = useCallback(() => {
-    if (session.storedId === null) setNaming({ taken: null });
+    if (session.storedId === null) setNaming({ taken: null, overwrite: true });
     else void store();
   }, [session.storedId, store]);
 
@@ -692,24 +699,27 @@ export function Workbench({
           nameLabel={copying ? 'Name of the copy' : 'Name of the layout'}
           initialName={copyNamed ?? copyName}
           submitLabel={copying ? 'Save copy' : 'Save'}
-          // The one Save heard of is taken even before the custom layouts are read again.
+          // The one Save heard of is taken even before the custom layouts are read again, and even
+          // when this layout goes by its name too: only this browser has this one, the gists that.
           taken={(name) =>
-            nameTaken(
-              naming.taken ? [naming.taken, ...customLayouts.entries] : customLayouts.entries,
-              name,
-              session.storedId,
-            )
+            naming.taken && sameName(naming.taken.name, name)
+              ? naming.taken
+              : nameTaken(customLayouts.entries, name, session.storedId)
           }
           onSubmit={(name) => {
             setNaming(null);
             setCopyNamed(name);
             void store(name);
           }}
-          onOverwrite={(name, taken) => {
-            setNaming(null);
-            setCopyNamed(name);
-            void store(name, { overwrite: taken.id });
-          }}
+          onOverwrite={
+            naming.overwrite
+              ? (name, taken) => {
+                  setNaming(null);
+                  setCopyNamed(name);
+                  void store(name, { overwrite: taken.id });
+                }
+              : undefined
+          }
           onClose={() => {
             setNaming(null);
             setCopyNamed(null);

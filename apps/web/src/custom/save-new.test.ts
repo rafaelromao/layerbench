@@ -57,6 +57,21 @@ describe('saveNewLayout', () => {
     });
   });
 
+  it('does not overwrite a layout renamed since it was offered: it asks about the name anew', async () => {
+    const storage = new MemoryStorage();
+    await saveNewLayout(storage, { ...qwerty, name: 'Gust' }, 'First');
+    await storage.put('layouts', 'gust', {
+      ...(await storage.get('layouts', 'gust'))?.doc,
+      name: 'Gale',
+    });
+    expect(
+      await saveNewLayout(storage, { ...qwerty, name: 'Gust' }, 'Overwrite', undefined, {
+        overwrite: 'gust',
+      }),
+    ).toEqual({ id: 'gust-2' });
+    expect((await storage.get('layouts', 'gust'))?.doc.name).toBe('Gale');
+  });
+
   it('saves under another name picked instead, beside the one that had it', async () => {
     const storage = new MemoryStorage();
     await saveNewLayout(storage, { ...qwerty, name: 'Magic Breeze' }, 'First');

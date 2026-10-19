@@ -7,6 +7,7 @@ import {
   NameTakenError,
   nameTaken,
   type StorageAdapter,
+  sameName,
   toCanonicalJson,
 } from '@layerbench/core';
 import { customRef } from '../custom/ref.js';
@@ -54,7 +55,7 @@ export type SessionState =
 export type SaveResult =
   | { ok: true; id: string; leftBehind: boolean }
   | { ok: false; reason: 'conflict' | 'failed'; error: string }
-  /** Another saved layout has the name: save again overwriting it, or under another name. */
+  /** Another custom layout has the name: save again overwriting it, or under another name. */
   | { ok: false; reason: 'name-taken'; taken: { id: string; name: string }; error: string };
 
 export interface LayoutSession {
@@ -69,7 +70,7 @@ export interface LayoutSession {
   /**
    * Store the layout, under the id its name gives, in place of the one this is, if any. Saves run one
    * after another. Once it resolves, the editor marks the layout saved, and reports it so. Where
-   * another saved layout has the name, nothing is saved and it says which, unless `overwrite` is
+   * another custom layout has the name, nothing is saved and it says which, unless `overwrite` is
    * that one's id: the layout is then stored there, in place of it.
    */
   save(layout: Layout, opts?: SaveOptions): Promise<SaveResult>;
@@ -95,7 +96,7 @@ const LINK_DELAY_MS = 400;
  * name. One already stored keeps its id while that still matches its name, and moves to its new
  * name's once renamed; it never overwrites a custom layout whose name happens to slug the same. A
  * renamed layout's old copy goes only once the new one is safely stored. Neither makes a second
- * layout of a name another saved one has: that throws `NameTakenError`, unless `overwrite` is the
+ * layout of a name another custom one has: that throws `NameTakenError`, unless `overwrite` is the
  * other's id, when the layout is stored there instead.
  */
 async function store(
@@ -111,7 +112,9 @@ async function store(
     return { id, leftBehind: false };
   }
   const entries = await storage.list('layouts');
-  let id = opts.overwrite;
+  // One renamed since it was offered to overwrite is not overwritten: the name is asked about anew.
+  const target = entries.find((e) => e.id === opts.overwrite);
+  let id = target && !sameName(target.name, layout.name) ? undefined : opts.overwrite;
   if (id === undefined) {
     const taken = nameTaken(entries, layout.name, storedId);
     if (taken) throw new NameTakenError(taken);
@@ -119,6 +122,9 @@ async function store(
   }
   await storage.put('layouts', id, toCanonicalJson({ ...layout, id }), {
     message: `Save layout ${layout.name}`,
+    // Its old copy, deleted below, may go by the name too: one only the browser has, beside the
+    // gists' layout of the name.
+    replacing: id === storedId ? [] : [storedId],
   });
   let leftBehind = false;
   if (id !== storedId) {
@@ -300,9 +306,9 @@ export function createLayoutSession(
         publish();
         try {
           let from = storedId;
-          // Overwriting another layout is a save of its own, not a try again of the one that failed.
-          const retry = opts.overwrite === undefined || opts.overwrite === attempted?.id;
-          if (from === null && attempted !== null && retry) {
+          // A failed first save's copy is this layout's, even when another is overwritten now: it
+          // is then the old copy of a rename, and goes.
+          if (from === null && attempted !== null) {
             const there = await ports
               .storage()
               .get('layouts', attempted.id)

@@ -5,6 +5,7 @@ import {
   toCanonicalJson,
 } from '@layerbench/core';
 import { describe, expect, it, vi } from 'vitest';
+import { CompositeStorage } from '../storage/composite.js';
 import { MemoryLink } from '../test/memory-link.js';
 import { MemoryStorage } from '../test/memory-storage.js';
 import { decodeInline } from '../url/inline.js';
@@ -516,6 +517,55 @@ describe('Saving', () => {
     expect((await storage.get('layouts', 'magic-breeze'))?.doc.name).toBe('magic breeze');
     expect(JSON.stringify((await storage.get('layouts', 'magic-breeze'))?.doc)).toContain('ç');
     expect(s.getState()).toMatchObject({ storedId: 'magic-breeze' });
+  });
+
+  it('removes what a failed first save wrote when the next one overwrites another layout', async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'colemak', 'gust', { name: 'Gust' });
+    const put = storage.put.bind(storage);
+    storage.put = async (...args) => {
+      await put(...args);
+      throw new Error('offline');
+    };
+    const { s } = session('qwerty', { storage });
+    const state = await opened(s);
+    expect(await s.save({ ...state.layout, name: 'Foo' })).toMatchObject({ ok: false });
+    storage.put = put;
+
+    expect(await s.save({ ...state.layout, name: 'Gust' }, { overwrite: 'gust' })).toEqual({
+      ok: true,
+      id: 'gust',
+      leftBehind: false,
+    });
+    expect(await ids(storage)).toEqual(['gust']);
+  });
+
+  it("overwrites the gists' layout of its name with one only the browser has, which then goes", async () => {
+    const local = new MemoryStorage('local');
+    const remote = new MemoryStorage('github');
+    await seed(remote, 'colemak', 'mine', { name: 'Mine' });
+    await seed(local, 'qwerty', 'mine-2', { name: 'Mine' });
+    const storage = new CompositeStorage(local, remote);
+    const link = new MemoryLink('custom:mine-2');
+    const s = createLayoutSession(
+      { storage: () => storage, drafts: webDrafts(mapStore()), link },
+      { linkDelayMs: 5 },
+    );
+    const state = await opened(s);
+    expect(state.storedId).toBe('mine-2');
+    const edited = withCedilla(state.layout);
+    expect(await s.save(edited)).toMatchObject({
+      ok: false,
+      reason: 'name-taken',
+      taken: { id: 'mine' },
+    });
+    expect(await s.save(edited, { overwrite: 'mine' })).toEqual({
+      ok: true,
+      id: 'mine',
+      leftBehind: false,
+    });
+    expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['mine']);
+    expect(JSON.stringify((await remote.get('layouts', 'mine'))?.doc)).toContain('ç');
   });
 
   it('saves again a layout that already shares its name with a duplicate made before', async () => {

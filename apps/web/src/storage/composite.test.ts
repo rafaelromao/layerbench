@@ -58,25 +58,42 @@ describe('two stores at once', () => {
     expect((await local.get('layouts', 'mine'))?.doc).toEqual({ name: 'Mine' });
   });
 
-  it('takes back what the browser wrote when the gists already have a layout of that name', async () => {
+  it('writes nothing in the browser when the gists already have a layout of that name', async () => {
     const local = localAdapter();
     const remote = fakeRemote();
     await remote.put('layouts', 'mine', { name: 'Mine' });
     await local.put('layouts', 'kept', { name: 'Kept' });
     const composite = new CompositeStorage(local, remote);
 
-    // Not in the browser before: it is gone again.
-    await expect(composite.put('layouts', 'mine-2', { name: 'Mine' })).rejects.toBeInstanceOf(
-      NameTakenError,
-    );
-    expect(await local.get('layouts', 'mine-2')).toBeNull();
-
-    // In the browser before, under another name: that one is back.
+    const refused = composite.put('layouts', 'mine-2', { name: 'Mine' });
+    await expect(refused).rejects.toBeInstanceOf(NameTakenError);
+    await expect(refused).rejects.toMatchObject({ taken: { id: 'mine' } });
     await expect(composite.put('layouts', 'kept', { name: 'Mine' })).rejects.toBeInstanceOf(
       NameTakenError,
     );
-    expect((await local.get('layouts', 'kept'))?.doc).toEqual({ name: 'Kept' });
-    expect((await local.list('layouts')).map((e) => e.name)).toEqual(['Kept']);
+    expect(await local.list('layouts')).toMatchObject([{ id: 'kept', name: 'Kept' }]);
+  });
+
+  it("overwrites the gists' layout of a name with the browser's one of it, which then goes", async () => {
+    // Left so by copying up, or saved while the gists could not be listed.
+    const local = localAdapter();
+    const remote = fakeRemote();
+    await remote.put('layouts', 'mine', { name: 'Mine' });
+    await local.put('layouts', 'mine-2', { name: 'Mine', description: 'here' });
+    const composite = new CompositeStorage(local, remote);
+
+    await expect(
+      composite.put('layouts', 'mine-2', { name: 'Mine', description: 'here' }),
+    ).rejects.toMatchObject({ taken: { id: 'mine' } });
+    await composite.put(
+      'layouts',
+      'mine',
+      { name: 'Mine', description: 'here' },
+      { replacing: ['mine-2'] },
+    );
+    await composite.delete('layouts', 'mine-2');
+    expect((await composite.list('layouts')).map((e) => e.id)).toEqual(['mine']);
+    expect((await remote.get('layouts', 'mine'))?.doc.description).toBe('here');
   });
 
   it('merges both listings, with the gists winning a shared id', async () => {

@@ -115,7 +115,7 @@ describe('Creating layouts', () => {
     expect(screen.queryByRole('dialog', { name: 'New layout' })).toBeNull();
   });
 
-  it('makes no second layout of a name a saved one has: it offers to overwrite that one', async () => {
+  it('makes no second layout of a name a custom one has: it offers to overwrite that one', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
     const qwerty = bundledLayout('qwerty') as Layout;
@@ -129,7 +129,7 @@ describe('Creating layouts', () => {
     await user.clear(name);
     await user.type(name, 'mine ');
     expect(within(dialog).getByRole('status')).toHaveTextContent(
-      'A saved layout is already called Mine',
+      'A custom layout is already called Mine',
     );
     expect(within(dialog).getByRole('button', { name: 'Create and edit' })).toBeDisabled();
     await user.click(within(dialog).getByRole('button', { name: 'Overwrite Mine' }));
@@ -137,6 +137,20 @@ describe('Creating layouts', () => {
     await waitFor(async () => expect(await customInLink(currentSearch())).toBe('mine'));
     expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['mine']);
     expect((await storage.get('layouts', 'mine'))?.doc.name).toBe('mine');
+  });
+
+  it('offers a new layout a name no custom layout has', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const qwerty = bundledLayout('qwerty') as Layout;
+    await storage.put('layouts', 'my-layout', toCanonicalJson({ ...qwerty, name: 'My layout' }));
+    renderRoute(LIBRARY, { storage });
+    await screen.findByRole('heading', { name: 'My layout', level: 3 });
+
+    await user.click(await screen.findByRole('button', { name: 'New layout' }));
+    const dialog = screen.getByRole('dialog', { name: 'New layout' });
+    expect(within(dialog).getByLabelText('New layout name')).toHaveValue('My layout 2');
+    expect(within(dialog).getByRole('button', { name: 'Create and edit' })).toBeEnabled();
   });
 
   it('asks for another name when a layout of the name was saved since the list was read', async () => {
@@ -154,7 +168,7 @@ describe('Creating layouts', () => {
 
     const again = await screen.findByRole('dialog', { name: 'Save under another name' });
     expect(within(again).getByRole('status')).toHaveTextContent(
-      'A saved layout is already called Mine',
+      'A custom layout is already called Mine',
     );
     const field = within(again).getByLabelText('Name of the layout');
     await user.type(field, ' 2');

@@ -436,7 +436,7 @@ describe('Edit', () => {
     expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['mine']);
   }, 60_000);
 
-  it('offers to overwrite a saved layout the copy is named as, and makes no second', async () => {
+  it('offers to overwrite a custom layout the copy is named as, and makes no second', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
     const qwerty = bundledLayout('qwerty') as Layout;
@@ -453,7 +453,7 @@ describe('Edit', () => {
     await user.clear(field);
     await user.type(field, 'Mine');
     expect(within(dialog).getByRole('status')).toHaveTextContent(
-      'A saved layout is already called Mine',
+      'A custom layout is already called Mine',
     );
     expect(within(dialog).getByRole('button', { name: 'Save copy' })).toBeDisabled();
     await user.click(within(dialog).getByRole('button', { name: 'Overwrite Mine' }));
@@ -480,7 +480,7 @@ describe('Edit', () => {
 
     const dialog = await screen.findByRole('dialog', { name: 'Save under another name' });
     expect(within(dialog).getByRole('status')).toHaveTextContent(
-      'A saved layout is already called Gust',
+      'A custom layout is already called Gust',
     );
     expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['gust', 'mine']);
     const field = within(dialog).getByLabelText('Name of the layout');
@@ -491,6 +491,27 @@ describe('Edit', () => {
     expect(await screen.findByText('Saved Gale')).toBeInTheDocument();
     expect(within(bar()).getByLabelText('Name')).toHaveValue('Gale');
     expect((await storage.list('layouts')).map((e) => e.name)).toEqual(['Gale', 'Gust']);
+  }, 60_000);
+
+  it('overwrites another layout a renamed one is now called, and leaves it saved', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const qwerty = bundledLayout('qwerty') as Layout;
+    await storage.put('layouts', 'mine', toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine' }));
+    await storage.put('layouts', 'gust', toCanonicalJson({ ...qwerty, id: 'gust', name: 'Gust' }));
+    renderRoute('/analyze?layout=custom%3Amine&corpus=en-general&sample=20000', { storage });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+
+    const name = within(bar()).getByLabelText('Name');
+    await user.clear(name);
+    await user.type(name, 'Gust');
+    await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Save under another name' });
+    await user.click(within(dialog).getByRole('button', { name: 'Overwrite Gust' }));
+
+    expect(await screen.findByText('Saved Gust')).toBeInTheDocument();
+    expect(screen.queryByText('unsaved')).toBeNull();
+    expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['gust']);
   }, 60_000);
 
   it('offers a free name for the copy, and refuses none or leaves the layout alone on Cancel', async () => {

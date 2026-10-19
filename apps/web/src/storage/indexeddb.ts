@@ -8,6 +8,7 @@ import {
   type JsonObject,
   NameTakenError,
   nameTaken,
+  type PutOptions,
   type StorageAdapter,
   StorageConflictError,
   type StorageMeta,
@@ -96,7 +97,7 @@ export class IndexedDbAdapter implements StorageAdapter {
     collection: Collection,
     id: string,
     doc: JsonObject,
-    opts: { expectedSha?: string | null; message?: string } = {},
+    opts: PutOptions = {},
   ): Promise<StorageMeta> {
     assertDocumentId(id);
     const db = await this.conn();
@@ -120,8 +121,9 @@ export class IndexedDbAdapter implements StorageAdapter {
         ...indexSummary(collection, d.id, JSON.parse(d.json)),
         updatedAt: d.updatedAt,
       }));
-    // Never a second saved layout of a name, whoever asks: the caller overwrites the one there.
-    const taken = collection === 'layouts' ? nameTaken(current, entry.name, id) : null;
+    // Never a second custom layout of a name, whoever asks: the caller overwrites the one there.
+    const taken =
+      collection === 'layouts' ? nameTaken(current, entry.name, id, opts.replacing) : null;
     if (taken) {
       await tx.done.catch(() => {});
       throw new NameTakenError(taken);
