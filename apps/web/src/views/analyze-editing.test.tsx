@@ -894,6 +894,14 @@ describe('Edit', () => {
     await user.click(within(editor).getByRole('textbox', { name: 'Binding for LHM' }));
     expect(within(editor).queryByRole('group', { name: 'More kinds' })).toBeNull();
     expect(within(editor).getByRole('status')).toBeEmptyDOMElement();
+
+    // So does closing the list with More itself.
+    await user.click(within(editor).getByRole('button', { name: 'More' }));
+    fireEvent.click(within(editor).getByRole('button', { name: 'Behaviour' }));
+    expect(within(editor).getByRole('status')).toHaveTextContent(/Behaviors panel/);
+    fireEvent.click(within(editor).getByRole('button', { name: 'More', expanded: true }));
+    expect(within(editor).queryByRole('group', { name: 'More kinds' })).toBeNull();
+    expect(within(editor).getByRole('status')).toBeEmptyDOMElement();
   });
 
   it('closes the list of more kinds on a phone on a choice or a tap elsewhere, and keeps the choice in sight', async () => {
