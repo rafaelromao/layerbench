@@ -556,3 +556,20 @@ with the left hand**.
   0.078). The price is that their grids have nothing to memorize.
 - Without mirroring, U\*'s worst layouts are the left-vowel ones (0.58%). Mirroring is worth it here,
   unlike in the first round, so it needs the layout-format choice described under Mirroring.
+
+## Implemented: U\*
+
+U\* was chosen, mirrored on the layouts that type their vowels with the left hand.
+
+- **Mirroring is derived, not stored.** `vowelsOnLeft` counts the base layer's `a e i o u` per
+  hand, and `defaultLayers(geometry, { mirrorAccents })` mirrors Accents, and the Accents keys it
+  puts on Extras with it. Bundled layouts, layout documents and new layouts all get it when the
+  default layers are added, so the layout format needs no new field. The five mirrored layouts are
+  Dvorak, Engram, Enthium, Nordrassil and Uno. Qwerty is not mirrored: by letter count it types
+  more vowels with the right hand.
+- **The combo** is `accentsComboKeys(geometry)`: L1+R1, or L0+R0 on a board with one thumb a hand.
+  A row-stagger board keeps LHR+LHM, having one space bar for both thumbs.
+- **On the 18-key board,** Accents stays as it was, since its dead keys no longer share fingers
+  with the combo. `ı` goes on Symbols' right outer thumb.
+- **On the bundled fixtures,** Effort on Portuguese rises 13.1 on Qwerty and Romak, where `ã` and
+  `ç` leave cheaper keys, while Qwerty's SFB there falls 0.7. English doesn't move.
