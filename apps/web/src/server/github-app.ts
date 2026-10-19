@@ -100,21 +100,32 @@ export async function appJwt(
   return `${unsigned}.${base64url(new Uint8Array(signature))}`;
 }
 
-async function asApp(jwt: string, method: string, path: string): Promise<Response> {
+async function asApp(jwt: string, method: string, path: string, body?: unknown): Promise<Response> {
   return fetch(`${API}${path}`, {
     method,
     headers: {
       Authorization: `Bearer ${jwt}`,
       Accept: 'application/vnd.github+json',
       'User-Agent': USER_AGENT,
+      ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
     },
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
 }
 
+/** Answers that say the App is not set up for this: its key refused, or not installed there. */
+const NOT_SET_UP = [401, 403, 404];
+
+function refused(res: Response): null {
+  if (NOT_SET_UP.includes(res.status)) return null;
+  throw new Error(`GitHub answered ${res.status}`);
+}
+
 /**
- * A token for the App's installation on `repo` (`owner/name`), good for an hour, with the
- * permissions the installation has. Null when the App is not installed there or its key is refused;
- * throws when GitHub cannot be reached.
+ * A token for the App's installation on `repo` (`owner/name`), good for an hour, for that
+ * repository alone and only what Submit needs: its contents and pull requests. Null when the App is
+ * not installed there or its key is refused, which is how it is not set up; throws when GitHub
+ * cannot be reached or fails, so that is not mistaken for it.
  */
 export async function installationToken(
   credentials: AppCredentials,
@@ -123,11 +134,14 @@ export async function installationToken(
   const jwt = await appJwt(credentials);
   if (!jwt) return null;
   const installation = await asApp(jwt, 'GET', `/repos/${repo}/installation`);
-  if (!installation.ok) return null;
+  if (!installation.ok) return refused(installation);
   const { id } = (await installation.json()) as { id?: unknown };
   if (typeof id !== 'number') return null;
-  const res = await asApp(jwt, 'POST', `/app/installations/${id}/access_tokens`);
-  if (!res.ok) return null;
+  const res = await asApp(jwt, 'POST', `/app/installations/${id}/access_tokens`, {
+    repositories: [repo.slice(repo.indexOf('/') + 1)],
+    permissions: { contents: 'write', pull_requests: 'write' },
+  });
+  if (!res.ok) return refused(res);
   const { token } = (await res.json()) as { token?: unknown };
   return typeof token === 'string' ? token : null;
 }

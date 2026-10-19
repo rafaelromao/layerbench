@@ -14,7 +14,8 @@ import type { AnalysisSettingsState } from '../useAnalysisSettings.js';
 
 /**
  * The layout in hand and what it is measured on. In sight: its name, whether it is saved and the
- * way to save it, the way to submit a custom layout to the Library, which layout this is, what the numbers are made with, and the way to compare it.
+ * way to save it, the way to submit a custom layout to the Library, which layout this is, what the
+ * numbers are made with, and the way to compare it.
  * In the Settings dialog: its author and description, the text and rules the numbers come from,
  * the switches, and whether the board draws the combos that type.
  */

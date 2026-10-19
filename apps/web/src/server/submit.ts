@@ -1,5 +1,6 @@
-// By path rather than by package: the dev server's config loads this module through Node, which
-// would take a package's TypeScript sources as they are, and Node cannot run them.
+// By path rather than by package: Vite bundles the dev server's config with what it imports by
+// path, but leaves a package to Node, which cannot follow core's `.js` imports to its `.ts` files.
+import { compileLayout } from '../../../../packages/core/src/layout/compile.js';
 import { documentLayout } from '../../../../packages/core/src/layouts/documents.js';
 import { isDocumentId } from '../../../../packages/core/src/storage/ids.js';
 
@@ -55,6 +56,7 @@ export function checkSubmission(
   }
   try {
     const layout = documentLayout(id, doc);
+    compileLayout(layout);
     return { ok: true, id, name: layout.name, author: layout.author ?? '' };
   } catch (e) {
     return { ok: false, reason: e instanceof Error ? e.message : String(e) };

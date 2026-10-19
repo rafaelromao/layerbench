@@ -116,7 +116,9 @@ the Library would, has an id no bundled or community layout has, and is saved; t
 again, and, as the GitHub App, creates the branch `submit/<login>/<id>` from `layerbench-data`,
 commits `community/<id>.json` to it and opens the pull request, naming the submitter. While that
 pull request is open, submitting the layout again commits the new version to it. A layout is at
-most 64 KB, and an id the branch already holds is refused. The app (`apps/web/src/community/community.ts`) reads the index and each
+most 64 KB, and an id the branch already holds is refused.
+
+The app (`apps/web/src/community/community.ts`) reads the index and each
 file from `raw.githubusercontent.com` each time the Library opens, with no sign-in: plain files, as
 unauthenticated calls to the GitHub API are limited to 60 an hour for each address. GitHub's file
 server caches a file for a few minutes, so a layout merged appears within about five. Each file is
@@ -186,7 +188,8 @@ To sign in on the dev server, set up the GitHub App first (see
 [Setting up sign-in](#setting-up-sign-in)). Then put `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`
 and `SESSION_SECRET` in `apps/web/.env.local`, which git ignores, with a client
 secret and a session key of their own rather than the Worker's. `GITHUB_APP_ID` and
-`GITHUB_APP_PRIVATE_KEY` there turn on Submit, which opens real pull requests on GitHub. The dev server answers sign-in
+`GITHUB_APP_PRIVATE_KEY` there turn on Submit, which opens real pull requests on GitHub. The dev
+server answers sign-in
 itself, on its own origin. Without them the app says sign-in is not set up and saves in the browser
 only.
 

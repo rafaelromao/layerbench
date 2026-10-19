@@ -52,6 +52,8 @@ interface World {
   onBranch: boolean;
   branchExists: boolean;
   installed: boolean;
+  /** What GitHub answers the request for an installation token, when not a token. */
+  tokenStatus?: number;
   /** A step GitHub refuses, by method and path end. */
   refuse?: string;
 }
@@ -76,6 +78,7 @@ function github(call: Call): Response {
     return world.installed ? json(200, { id: 99 }) : json(404, {});
   }
   if (path.endsWith('/app/installations/99/access_tokens') && method === 'POST') {
+    if (world.tokenStatus) return json(world.tokenStatus, {});
     return json(201, { token: 'ghs_installation' });
   }
   if (!call.headers.get('Authorization')?.endsWith('ghs_installation')) return json(401, {});
@@ -265,6 +268,7 @@ describe('submitting a layout', () => {
       { ...layout(), id: '../escape' },
       { name, ...rest },
       { ...layout(), name: 'x'.repeat(MAX_LAYOUT_BYTES) },
+      layout({ geometry: { preset: 'no-such-board' } }),
     ];
     for (const doc of cases) {
       const { res } = await submitAs(session, doc);
@@ -299,6 +303,20 @@ describe('submitting a layout', () => {
     ).toBe(503);
     world.installed = false;
     expect((await submitAs(session)).res.status).toBe(503);
+  });
+
+  it('asks for a token for this repository alone, and tells a GitHub failure from no set-up', async () => {
+    const session = await signIn();
+    await submitAs(session);
+    const asked = calls.find((c) => c.url.endsWith('/access_tokens'));
+    expect(asked?.body).toEqual({
+      repositories: ['layerbench'],
+      permissions: { contents: 'write', pull_requests: 'write' },
+    });
+    world.tokenStatus = 403;
+    expect((await submitAs(session)).res.status).toBe(503);
+    world.tokenStatus = 500;
+    expect((await submitAs(session)).answer).toEqual({ error: 'GitHub could not be reached' });
   });
 
   it('says GitHub refused, never what it answered, when a step fails', async () => {
