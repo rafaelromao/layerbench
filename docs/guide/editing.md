@@ -171,7 +171,14 @@ below show through.
 **Numbers** and **Symbols** are Magic Romak's on the 24 keys most boards have. The pinky's top and
 bottom keys and the inner column add what has no room there: currency and ordinals on Numbers, for
 the left hand while the right types the digits, and on Symbols each mark beside its look-alike
-(`;` by `:`, `¿` by `?`, `¡` by `!`, `«` and `»` around `<` and `>`), with Turkish `ı` above `¿`.
+(`;` by `:`, `¿` by `?`, `¡` by `!`), `«` above `»` in the left inner column, and Turkish `ı`
+above `¿`.
+
+Pairs stay together: the brackets `()` `[]` `{}` `<>` `«»` and the look-alikes `; :`, `? ¿` and
+`! ¡` are on one layer, side by side: neighbours in a row, or `«` and `»` in a column. A board
+with no key for one half moves the pair to Extras whole. The half that had a key leaves it, and on
+Symbols that key types the most used symbol left without one. Magic Romak's keymap keeps three pairs apart on the 24 keys, and so do these layers:
+`\` on Numbers and `/` on Symbols, `+` between `-` and `_`, and `+` below and beside `=`.
 
 | Numbers | P | R | M | I | C | | C | I | M | R | P |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -181,9 +188,9 @@ the left hand while the right types the digits, and on Symbols each mark beside 
 
 | Symbols | P | R | M | I | C | | C | I | M | R | P |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Top | · | `~` | `#` | `'` | · | | ı | `%` | `=` | `:` | `;` |
-| Home | `@` | `^` | `$` | `"` | · | | ¿ | `?` | `-` | `+` | `_` |
-| Bottom | « | `<` | `>` | `` ` `` | » | | ¡ | `!` | `/` | `*` | · |
+| Top | · | `~` | `#` | `'` | « | | ı | `%` | `=` | `:` | `;` |
+| Home | `@` | `^` | `$` | `"` | » | | ¿ | `?` | `-` | `+` | `_` |
+| Bottom | · | `<` | `>` | `` ` `` | · | | ¡ | `!` | `/` | `*` | · |
 
 `0` is on a thumb of the hand that holds Symbols: the other one, or that one's tap where it has no
 other. With no thumb there, it is the inner column's bottom key, beside `1`; on a row-stagger
@@ -210,16 +217,22 @@ vowels with the left hand than with the right, Dvorak say, has Accents mirrored,
 left: what follows an accented vowel is most often a consonant, under the other hand.
 
 **Extras** is there only on a board that lacks some of those outer keys, Magic Romak's 24 keys
-say: it holds the symbols that had nowhere else to go, on the keys of the 24 below, and the keys of
-Accents the board has no key for, each on the free key nearest its place on Accents, or on a free
-thumb once the fingers' keys are full. It comes on
-while Numbers and Symbols are both held. The symbols:
+say. It comes on while Numbers and Symbols are both held. It takes what has no key elsewhere, the
+pairs first and then the symbols on their own, most used in the texts first, and starts on the
+prime keys: the least effort, the home row first among keys that cost the same. Each pair takes the
+two neighbours in a row that cost least. The keys of Accents the board has no key for follow, each
+on the free key nearest its place on Accents, or on a free thumb once the fingers' keys are full.
+On a new layout on Magic Romak's 24 keys, the symbols:
 
 | Extras | P | R | M | I | | I | M | R | P |
 |---|---|---|---|---|---|---|---|---|---|
-| Top | | · | € | · | | ° | ı | `;` | |
-| Home | ª | · | £ | · | | ¿ | · | · | º |
-| Bottom | | « | » | · | | ¡ | · | § | |
+| Top | | · | ª | · | | · | £ | · | |
+| Home | ¡ | `!` | « | » | | `:` | `;` | ¿ | `?` |
+| Bottom | | · | · | § | | ı | · | · | |
+
+`?`, `!` and `:` went with `¿`, `¡` and `;`, which those keys have no room for, and on Symbols
+their keys type `€` where `?` was, `°` where `!` was and `º` where `:` was. Magic Romak itself
+keeps Symbols as its keymap has it, and its own Extras, with `;`, `¿` and `¡` on their own.
 
 The left inner thumb types space and, held, turns on Numbers. The right inner thumb, held, turns on
 Symbols; held from Numbers, it turns on Extras, or Symbols where there is no Extras. Accents comes
@@ -229,9 +242,10 @@ with one space bar for both, the left ring and middle fingers' home keys, LHR an
 none of Accents' 30 main keys, so the thumb combo is never a same-finger pair with the accent after
 it. A board without those thumbs gets the same layers arranged to fit it, and keys beyond the ones
 the layers use let the layer below show through. A board with no bottom row keeps `1 2 3` on the left home row,
-puts on Extras what the bottom rows carried, `ı` on Symbols' right outer thumb, and fills Accents
-with the dead keys, the letters of their own and the symbols left over, on its thumbs too; every
-accented letter there is its accent and the letter. The board shows where everything went.
+puts `;` beside `:` where `=` was and `ı` on Symbols' right outer thumb, puts on Extras what the
+bottom rows carried, and fills Accents with the dead keys, the letters of their own and the symbols
+Extras has no room for, on its thumbs too; every accented letter there is its accent and the
+letter. The board shows where everything went.
 
 Every layout that comes with the app has them too. The Standard and Thumb Alpha ones, Romak among
 them, also share their main thumbs, the two innermost of each hand, so that what tells them apart is

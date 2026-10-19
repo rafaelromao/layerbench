@@ -14,16 +14,19 @@ import {
   ACCENTS,
   accentsCombo,
   accentsComboKeys,
+  CORE_SPLIT_PAIRS,
   DEFAULT_LAYER_ID_LIST,
   defaultAccentMacros,
   defaultDeadKeys,
   defaultLayerSymbols,
   defaultLayers,
   EXTRAS_CONDITION,
-  EXTRAS_CORE,
+  EXTRAS_ORDER,
   mirrorKeyId,
   NUMBERS_CORE,
   NUMBERS_OUTER,
+  primeKeys,
+  SYMBOL_PAIRS,
   SYMBOLS_CORE,
   SYMBOLS_OUTER,
   vowelsOnLeft,
@@ -162,47 +165,55 @@ describe('the default layers, board by board', () => {
       expect(sym.bindings[id]).toEqual({ kind: 'kp', symbol: s });
   });
 
-  it('put on Extras what a board has no outer key for: symbols where Dead keys had them, accents beside their place', () => {
+  it('put on Extras what a board has no key for: pairs whole and the rest on the prime keys, accents beside their place', () => {
     const extras = (preset: string) =>
       defaultLayers(getGeometryPreset(preset)).layers.find((l) => l.id === 'extras')?.bindings;
     const kps = (table: Record<string, string>) =>
       Object.fromEntries(Object.entries(table).map(([id, s]) => [id, { kind: 'kp', symbol: s }]));
     const macro = (symbols: string): Binding => ({ kind: 'macro', symbols });
     const dead = (diacritic: string): Binding => ({ kind: 'dead_key', diacritic });
-    // No outer keys at all: every symbol, and the ten accents past the 24 keys, two on the thumbs.
+    // No outer keys at all: the four pairs on the home rows, `: ;` on the cheapest two, the symbols
+    // on their own on the next cheapest, and the ten accents past the 24 keys, two on the thumbs.
     expect(extras('1333+2')).toEqual({
       '*': { kind: 'trans' },
-      ...kps(EXTRAS_CORE),
-      ...{ LTR: dead('`'), LTI: { kind: 'kp', symbol: 'æ' }, LHI: dead('´'), LBI: dead('¨') },
-      LHR: dead('~'),
-      ...{ RHM: macro('ù'), RHR: macro('ì'), RBM: macro('ú'), L1: dead('^'), R1: macro('î') },
+      ...kps({ RHI: ':', RHM: ';', LHM: '«', LHI: '»', RHR: '¿', RHP: '?', LHP: '¡', LHR: '!' }),
+      ...kps({ RTM: '£', LTM: 'ª', RBI: 'ı', LBI: '§', LTI: 'æ' }),
+      ...{ LTR: dead('`'), LBM: dead('´'), LBR: dead('¨'), RBM: dead('~') },
+      ...{ RTI: macro('ù'), RTR: macro('ì'), RBR: macro('ú'), L1: dead('^'), R1: macro('î') },
     });
-    // No pinky bottom and no inner top: the symbols and the accents those keys had.
+    // No pinky bottom and no inner top: `«` and `»`, and the symbols and the accents those keys had.
     expect(extras('23332+2')).toEqual({
       '*': { kind: 'trans' },
-      ...kps({ LHP: 'ª', LHM: '£', LBR: '«', RTM: 'ı', LTI: 'æ' }),
-      ...{ LBM: dead('¨'), RTI: macro('ù'), RBR: macro('î') },
+      ...kps({ RHI: '«', RHM: '»', RHR: 'ª', LHI: 'ı', LTI: 'æ' }),
+      ...{ LBR: dead('¨'), RTI: macro('ù'), RBR: macro('î') },
     });
     expect(defaultLayers(getGeometryPreset('1333+2')).conditionalLayers).toEqual([
       EXTRAS_CONDITION,
     ]);
   });
 
+  it('give a key a pair left on Symbols to the most used symbol with no key of its own', () => {
+    const sym = defaultLayers(getGeometryPreset('1333+2')).layers[1].bindings;
+    // `?`, `!` and `:` went to Extras with `¿`, `¡` and `;`.
+    expect([sym.RHI, sym.RBI, sym.RTR]).toEqual([...'€°º'].map((s) => ({ kind: 'kp', symbol: s })));
+  });
+
   it('bring Extras on by holding Numbers, then Symbols from there', () => {
-    const t = trace(boardWithDefaults('1333+2'), '€ 7');
-    expect(t.out).toBe('€ 7');
-    expect(t.keys).toEqual(['L0', 'R0', 'LTM', 'L0', 'L0', 'RTI']);
+    const t = trace(boardWithDefaults('1333+2'), '£ 7');
+    expect(t.out).toBe('£ 7');
+    expect(t.keys).toEqual(['L0', 'R0', 'RTM', 'L0', 'L0', 'RTI']);
   });
 
   it('give a board with no bottom row Extras for what that row held', () => {
     const d = defaultLayers(getGeometryPreset('1222+2'));
     expect(d.layers.map((l) => l.id)).toEqual(['num', 'sym', 'extras', 'accents']);
-    // Symbols' last mark on the left outer thumb, beside the one holding Numbers, and `ı` on the
-    // right one, beside the one holding Symbols.
-    expect(d.layers[1].bindings.L1).toEqual({ kind: 'kp', symbol: ';' });
+    // `;` beside `:` where `=` was, and `ı` on the right outer thumb, beside the one holding Symbols.
+    expect(d.layers[1].bindings.RTM).toEqual({ kind: 'kp', symbol: ';' });
+    expect(d.layers[1].bindings.L1).toBeUndefined();
     expect(d.layers[1].bindings.R1).toEqual({ kind: 'kp', symbol: 'ı' });
-    const t = trace(boardWithDefaults('1222+2'), '[ * « 3 ; € §');
-    expect(t.out).toBe('[ * « 3 ; € §');
+    // What has no room on Extras is on Accents.
+    const t = trace(boardWithDefaults('1222+2'), '[ * « 3 ; € § ¿ = |');
+    expect(t.out).toBe('[ * « 3 ; € § ¿ = |');
   });
 
   it('hold Numbers on the space bar of a row-stagger board, and arm Symbols from there', () => {
@@ -221,18 +232,17 @@ describe('the default layers, board by board', () => {
     expect(defaultDeadKeys().sort()).toEqual(['^', '`', '~', '¨', '´'].sort());
   });
 
-  it("put each of Symbols' outer marks on the row of its look-alike", () => {
+  it("put each of Symbols' outer marks beside its look-alike, and « beside »", () => {
     const keyOf = (s: string) => Object.entries(SYMBOLS_CORE).find(([, x]) => x === s)?.[0];
+    const outer = (s: string) => Object.entries(SYMBOLS_OUTER).find(([, x]) => x === s)?.[0];
+    const g = getGeometryPreset('3x5+2');
     for (const [mark, like] of [
       [';', ':'],
       ['¿', '?'],
       ['¡', '!'],
-      ['«', '<'],
-      ['»', '>'],
-    ]) {
-      const id = Object.entries(SYMBOLS_OUTER).find(([, x]) => x === mark)?.[0] ?? '';
-      expect([mark, id.slice(0, 2)]).toEqual([mark, keyOf(like)?.slice(0, 2)]);
-    }
+    ])
+      expect([mark, sideBySide(g, outer(mark) ?? '', keyOf(like) ?? '')]).toEqual([mark, true]);
+    expect(sideBySide(g, outer('«') ?? '', outer('»') ?? '')).toBe(true);
   });
 
   it('type the accents on a board with no bottom row too', () => {
@@ -309,7 +319,7 @@ describe('Accents mirrored for a layout that types its vowels with the left hand
     const onExtras = (mirror: boolean) =>
       Object.values(layer(mirror, 'extras'))
         .map(typedBy)
-        .filter((s) => !Object.values(EXTRAS_CORE).includes(s) && s !== '')
+        .filter((s) => !EXTRAS_ORDER.flat().includes(s) && s !== '')
         .sort();
     // The board lacks the same keys on both hands, so mirrored the same accents are past it.
     expect(onExtras(true)).toEqual(onExtras(false));
@@ -384,10 +394,14 @@ describe("Magic Romak's layers are the defaults on its board", () => {
     for (const [id, s] of Object.entries(SYMBOLS_CORE)) expect(typed(layer('sym')[id])).toBe(s);
   });
 
-  it('Accents and Extras are the default layers, Accents reached from Alpha 2', () => {
+  it('Accents is the default layer, reached from Alpha 2, and Extras its own', () => {
     const defaults = defaultLayers(getGeometryPreset('1333+2')).layers;
-    for (const id of ['accents', 'extras'])
-      expect(layer(id)).toEqual(defaults.find((l) => l.id === id)?.bindings);
+    expect(layer('accents')).toEqual(defaults.find((l) => l.id === 'accents')?.bindings);
+    // Its keymap keeps `:`, `?` and `!` on Symbols, so its Extras keeps `;`, `¿` and `¡` on their
+    // own, as it had them before pairs went to Extras whole.
+    expect(layer('extras')).not.toEqual(defaults.find((l) => l.id === 'extras')?.bindings);
+    const extras = Object.values(layer('extras')).map(typed);
+    for (const s of [...';¿¡«»€£']) expect([s, extras.includes(s)]).toEqual([s, true]);
     expect(magicRomak.conditionalLayers).toEqual([EXTRAS_CONDITION]);
     expect(layer('alpha2').R1).toEqual({ kind: 'sl', layer: 'accents' });
     expect(magicRomak.combos?.some((c) => c.id === 'accents')).toBe(false);
@@ -582,4 +596,153 @@ describe('the default layers, layout by layout', () => {
     expect(base('uno').L0).toEqual(holds('num', { kind: 'kp', symbol: 'a' }));
     expect(base('uno').R0).toEqual(holds('sym', { kind: 'kp', symbol: 'r' }));
   });
+});
+
+/** What a key types on a default layer: its symbol, or its tap's. */
+function typedOn(b: Binding | undefined): string | undefined {
+  if (b?.kind === 'hold_tap') return typedOn(b.tap);
+  return b?.kind === 'kp' ? b.symbol : undefined;
+}
+
+/** Where each symbol of the default layers is typed: layer and key, every key that types it. */
+function symbolKeys(layers: readonly { id: string; bindings: Record<string, Binding> }[]) {
+  const out = new Map<string, { layer: string; key: string }[]>();
+  for (const l of layers) {
+    if (!DEFAULT_LAYER_ID_LIST.includes(l.id)) continue;
+    for (const [key, b] of Object.entries(l.bindings)) {
+      const s = typedOn(b);
+      if (s === undefined || s === ' ') continue;
+      out.set(s, [...(out.get(s) ?? []), { layer: l.id, key }]);
+    }
+  }
+  return out;
+}
+
+/** Whether two finger keys of one hand are neighbours, in a row or in a column. */
+function sideBySide(geometry: ReturnType<typeof getGeometryPreset>, a: string, b: string) {
+  const ka = geometry.keys.find((k) => k.id === a);
+  const kb = geometry.keys.find((k) => k.id === b);
+  if (!ka || !kb || ka.thumb || kb.thumb || ka.hand !== kb.hand) return false;
+  return Math.abs(ka.col - kb.col) + Math.abs(ka.row - kb.row) === 1;
+}
+
+/** Each pair's halves: on one layer, side by side, else what is wrong. */
+function pairsApart(
+  geometry: ReturnType<typeof getGeometryPreset>,
+  layers: readonly { id: string; bindings: Record<string, Binding> }[],
+) {
+  const at = symbolKeys(layers);
+  const apart: string[] = [];
+  for (const [a, b] of SYMBOL_PAIRS) {
+    const together = (at.get(a) ?? []).some((x) =>
+      (at.get(b) ?? []).some((y) => x.layer === y.layer && sideBySide(geometry, x.key, y.key)),
+    );
+    if (!together) apart.push(`${a}${b}`);
+  }
+  return apart;
+}
+
+/** cyanophage's Effort for a finger key, as the Effort rule charges it. */
+function effortOf(geometry: ReturnType<typeof getGeometryPreset>, id: string): number {
+  const grid = [
+    [5, 3, 2, 1, 2, 7],
+    [5, 1, 0, 0, 0, 5],
+    [7, 3, 2, 2, 1, 8],
+  ];
+  const k = geometry.keys.find((x) => x.id === id);
+  return k && !k.thumb ? grid[k.row][k.col] : Number.POSITIVE_INFINITY;
+}
+
+describe('symbol pairs share a layer, side by side', () => {
+  it('are the brackets and the look-alikes, past the three the keymap keeps apart', () => {
+    expect(SYMBOL_PAIRS.map((p) => p.join('')).sort()).toEqual(
+      ['()', '[]', '{}', '<>', '«»', ':;', '¿?', '¡!'].sort(),
+    );
+    // Magic Romak's keymap has `\` on Numbers and `/` on Symbols, and `+` between `-` and `_`.
+    expect(CORE_SPLIT_PAIRS.map((p) => p.join(''))).toEqual(['/\\', '-_', '+=']);
+    const keyOf = (s: string) =>
+      [...Object.entries(NUMBERS_CORE), ...Object.entries(SYMBOLS_CORE)].find(
+        ([, x]) => x === s,
+      )?.[0];
+    const g = getGeometryPreset('1333+2');
+    for (const [a, b] of CORE_SPLIT_PAIRS)
+      expect([a, b, sideBySide(g, keyOf(a) ?? '', keyOf(b) ?? '')]).toEqual([a, b, false]);
+  });
+
+  for (const preset of GEOMETRY_PRESET_IDS) {
+    it(`${preset}: every pair together, and every symbol on one key`, () => {
+      const geometry = getGeometryPreset(preset);
+      const { layers } = defaultLayers(geometry);
+      expect(pairsApart(geometry, layers)).toEqual([]);
+      const twice = [...symbolKeys(layers)].filter(([, at]) => at.length > 1).map(([s]) => s);
+      expect(twice).toEqual([]);
+      for (const l of layers)
+        expect([l.id, Object.keys(l.bindings).filter((id) => id !== '*').length <= 34]).toEqual([
+          l.id,
+          true,
+        ]);
+    });
+  }
+
+  // Magic Romak keeps its own Symbols and Extras, as its keymap has them.
+  for (const layout of BUNDLED_LAYOUTS.filter((l) => l.id !== 'magic-romak')) {
+    it(`${layout.name}: every pair together`, () => {
+      const preset = 'preset' in layout.geometry ? layout.geometry.preset : '';
+      expect(pairsApart(getGeometryPreset(preset), layout.layers)).toEqual([]);
+    });
+  }
+
+  it('move to Extras whole when one half has no key: ¿ and ¡ take ? and ! with them', () => {
+    const d = defaultLayers(getGeometryPreset('1333+2'));
+    const sym = d.layers.find((l) => l.id === 'sym')?.bindings ?? {};
+    const extras = d.layers.find((l) => l.id === 'extras')?.bindings ?? {};
+    const on = (layer: Record<string, Binding>) =>
+      Object.values(layer).map(typedOn).filter(Boolean);
+    for (const s of [...'¿?¡!:;«»']) {
+      expect([s, on(extras).includes(s)]).toEqual([s, true]);
+      expect([s, on(sym).includes(s)]).toEqual([s, false]);
+    }
+  });
+});
+
+describe('Extras starts on the prime keys', () => {
+  it('ranks the keys by Effort, the home row first among keys that cost the same', () => {
+    for (const preset of GEOMETRY_PRESET_IDS) {
+      const geometry = getGeometryPreset(preset);
+      const ranked = primeKeys(geometry);
+      expect(ranked.length).toBe(geometry.keys.filter((k) => !k.thumb).length);
+      for (let i = 1; i < ranked.length; i++) {
+        const [a, b] = [ranked[i - 1], ranked[i]];
+        const [ca, cb] = [effortOf(geometry, a), effortOf(geometry, b)];
+        expect([a, b, ca <= cb]).toEqual([a, b, true]);
+        if (ca === cb && b[1] === 'H') expect([a, b, a[1]]).toEqual([a, b, 'H']);
+      }
+    }
+    expect(primeKeys(getGeometryPreset('1333+2')).slice(0, 6).sort()).toEqual(
+      ['LHR', 'LHM', 'LHI', 'RHI', 'RHM', 'RHR'].sort(),
+    );
+  });
+
+  for (const preset of GEOMETRY_PRESET_IDS) {
+    const geometry = getGeometryPreset(preset);
+    const extras = defaultLayers(geometry).layers.find((l) => l.id === 'extras')?.bindings;
+    if (!extras) continue;
+    it(`${preset}: the most used symbols on the cheapest keys, the accents after them`, () => {
+      const ordered = EXTRAS_ORDER.flat();
+      const symbols = Object.entries(extras).filter(([, b]) => ordered.includes(typedOn(b) ?? ''));
+      const first = ordered.find((s) => symbols.some(([, b]) => typedOn(b) === s));
+      const firstKey = symbols.find(([, b]) => typedOn(b) === first)?.[0] ?? '';
+      // The most used of them on the home row, on a key that costs nothing.
+      expect([first, firstKey[1], effortOf(geometry, firstKey)]).toEqual([first, 'H', 0]);
+      // No finger key left to the accents, or empty, costs less than one with a symbol.
+      const symbolCost = Math.max(
+        ...symbols.filter(([id]) => !/\d/.test(id)).map(([id]) => effortOf(geometry, id)),
+      );
+      const symbolIds = new Set(symbols.map(([id]) => id));
+      const cheaper = primeKeys(geometry).filter(
+        (id) => !symbolIds.has(id) && effortOf(geometry, id) < symbolCost,
+      );
+      expect(cheaper).toEqual([]);
+    });
+  }
 });
