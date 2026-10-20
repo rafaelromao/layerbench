@@ -1,6 +1,7 @@
 import { deadKeyCompositions } from '../host/locale.js';
 import type { CompiledLayout } from '../layout/compile.js';
 import type { Binding, Mod, ModChoice } from '../layout/types.js';
+import { blockedThumbs } from './activators.js';
 import type { ProducerKind } from './machine.js';
 import { heldChoices, throughMorph } from './mod-needs.js';
 
@@ -259,6 +260,14 @@ function graphemeLength(s: string): number {
 }
 
 /**
+ * Each layer's thumb keys that a thumb holding the layer on leaves out of reach (`blockedThumbs`):
+ * nothing on them is typed, so what only they carry is unproducible.
+ */
+function blockedByLayer(compiled: CompiledLayout): ReadonlySet<number>[] {
+  return compiled.layers.map((l) => new Set(blockedThumbs(compiled, l.idx)));
+}
+
+/**
  * Enumerate every way to produce each symbol string on the layout.
  */
 export function enumerateProducers(
@@ -275,11 +284,12 @@ export function enumerateProducers(
     bySymbol.set(p.symbols, list);
   };
   const fold = caseMode === 'fold';
+  const blocked = blockedByLayer(compiled);
 
   for (const layer of compiled.layers) {
     for (let pos = 0; pos < compiled.keys.length; pos++) {
       const b = layer.bindings[pos];
-      if (b.kind === 'trans' || b.kind === 'none') continue;
+      if (b.kind === 'trans' || b.kind === 'none' || blocked[layer.idx].has(pos)) continue;
       const keyId = compiled.keys[pos].id;
       const tapped = staticOutputs(b).map((o) => ['tap', o] as const);
       const held = holdOutputs(b).map((o) => ['hold', o] as const);
@@ -361,7 +371,7 @@ export function enumerateProducers(
       add(p);
     }
   }
-  for (const p of deadKeyProducers(compiled, bySymbol, fold)) {
+  for (const p of deadKeyProducers(compiled, bySymbol, fold, blocked)) {
     // A shifted accent needs a modifier, like a shifted symbol: out of reach when case is folded.
     if (fold && p.deadMods?.length) excludedByCase.push(p);
     else add(p);
@@ -407,6 +417,7 @@ function deadKeyProducers(
   compiled: CompiledLayout,
   bySymbol: Map<string, Producer[]>,
   fold: boolean,
+  blocked: readonly ReadonlySet<number>[],
 ): Producer[] {
   const sources: {
     id: string;
@@ -417,7 +428,7 @@ function deadKeyProducers(
   for (const layer of compiled.layers) {
     for (let pos = 0; pos < compiled.keys.length; pos++) {
       const b = layer.bindings[pos];
-      const dk = tappedDeadKey(b);
+      const dk = blocked[layer.idx].has(pos) ? null : tappedDeadKey(b);
       if (!dk) continue;
       sources.push({
         id: `${layer.id}/${compiled.keys[pos].id}`,
