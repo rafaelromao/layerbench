@@ -198,7 +198,7 @@ describe('the standard thumbs', () => {
   };
 
   it('are on Romak and every Standard and Thumb Alpha layout but Romak 24, which is gone', () => {
-    expect(standard.length).toBe(26);
+    expect(standard.length).toBe(27);
     expect(layoutCategory(romak)).toBe('standard');
     expect(romak).toMatchObject({ id: 'romak', name: 'Romak' });
     expect(BUNDLED_LAYOUTS.map((l) => l.id)).not.toContain('romak-34');
@@ -268,6 +268,7 @@ describe('the standard thumbs', () => {
     expect(thumbs('hands-down-promethium')).toEqual(authored('r'));
     expect(thumbs('hands-down-vibranium')).toEqual(authored('r'));
     expect(thumbs('rsthd')).toEqual(authored('e'));
+    expect(thumbs('nordwind')).toEqual(authored('s'));
     expect(thumbs('enthium')).toEqual([
       'Repeat / Shift',
       'space / Numbers',
