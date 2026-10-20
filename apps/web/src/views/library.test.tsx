@@ -11,8 +11,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { setCommunitySource } from '../community/community.js';
 import type { AnalysisClient, AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { useSession } from '../state/session.js';
+import { CompositeStorage } from '../storage/composite.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { branchWith, communityDoc } from '../test/community.js';
+import { MemoryStorage } from '../test/memory-storage.js';
 import {
   customInLink,
   LIBRARY,
@@ -137,6 +139,39 @@ describe('Creating layouts', () => {
     await waitFor(async () => expect(await customInLink(currentSearch())).toBe('mine'));
     expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['mine']);
     expect((await storage.get('layouts', 'mine'))?.doc.name).toBe('mine');
+  });
+
+  it('asks only for another name when GitHub and this browser each have a layout of it', async () => {
+    const user = userEvent.setup();
+    const qwerty = bundledLayout('qwerty') as Layout;
+    const local = freshStorage();
+    const remote = new MemoryStorage('github');
+    await remote.put('layouts', 'mine', toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine' }));
+    await local.put(
+      'layouts',
+      'mine-2',
+      toCanonicalJson({ ...qwerty, id: 'mine-2', name: 'Mine' }),
+    );
+    const storage = new CompositeStorage(local, remote);
+    const { currentSearch } = renderRoute(LIBRARY, { storage });
+    await waitFor(() =>
+      expect(screen.getAllByRole('heading', { name: 'Mine', level: 3 })).toHaveLength(2),
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'New layout' }));
+    const name = screen.getByLabelText('New layout name');
+    await user.clear(name);
+    await user.type(name, 'Mine');
+    await user.click(screen.getByRole('button', { name: 'Overwrite Mine' }));
+
+    const again = await screen.findByRole('dialog', { name: 'Save under another name' });
+    expect(within(again).getByRole('status')).toHaveTextContent('It could not be overwritten');
+    expect(within(again).queryByRole('button', { name: /Overwrite/ })).toBeNull();
+    const field = within(again).getByLabelText('Name of the layout');
+    await user.clear(field);
+    await user.type(field, 'Mine 3');
+    await user.click(within(again).getByRole('button', { name: 'Save' }));
+    await waitFor(async () => expect(await customInLink(currentSearch())).toBe('mine-3'));
   });
 
   it('offers a new layout a name no custom layout has', async () => {

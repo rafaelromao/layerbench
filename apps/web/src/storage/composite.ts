@@ -108,7 +108,9 @@ export class CompositeStorage implements StorageAdapter {
     if (!this.remote) return this.local.put(collection, id, doc, here);
     // The gists may have a layout of this name the browser does not know of. They are asked
     // first, so the browser takes no copy of one they would refuse; unreachable, they refuse
-    // nothing yet, and the browser's copy is the work kept.
+    // nothing yet, and the browser's copy is the work kept. Each store judges its own names: a
+    // duplicate made before that the gists have twice and the browser once is refused by the
+    // browser, and Overwrite then makes one of the two.
     if (collection === 'layouts') {
       const there = await this.remote.list(collection).catch(() => null);
       const name = indexSummary(collection, id, doc).name;

@@ -131,8 +131,12 @@ describe('NameDialog', () => {
         />,
       );
       expect(screen.getByRole('status')).toHaveTextContent(
-        'A custom layout is already called Magic Breeze. Type another name.',
+        'A custom layout is already called Magic Breeze. It could not be overwritten',
       );
+      expect(screen.getByLabelText('Name of the layout')).toHaveAccessibleDescription(
+        /already called Magic Breeze/,
+      );
+      expect(screen.getByLabelText('Name of the layout')).toBeInvalid();
       expect(screen.queryByRole('button', { name: /Overwrite/ })).not.toBeInTheDocument();
     });
 

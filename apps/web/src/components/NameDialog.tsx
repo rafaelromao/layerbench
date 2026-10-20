@@ -46,6 +46,7 @@ export function NameDialog({
   const dialog = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const titleId = useId();
+  const clashId = useId();
   const [name, setName] = useState(initialName);
 
   useEffect(() => {
@@ -82,16 +83,22 @@ export function NameDialog({
           <input
             ref={input}
             aria-label={nameLabel}
+            // Opened on a name already taken, the field says why it is asked, which a status
+            // filled before it opens may not be read out.
+            aria-describedby={clashId}
+            aria-invalid={clash !== null}
             className="input input-sm input-bordered"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
         </label>
         {/* Read out as it changes: whoever types hears the name is taken, and when it is not. */}
-        <p role="status" className="text-xs text-warning empty:hidden">
+        <p id={clashId} role="status" className="text-xs text-warning empty:hidden">
           {clash &&
             `A custom layout is already called ${clash.name}. ${
-              onOverwrite ? 'Overwrite it, or type another name.' : 'Type another name.'
+              onOverwrite
+                ? 'Overwrite it, or type another name.'
+                : 'It could not be overwritten, as GitHub and this browser each have a layout of the name: type another name.'
             }`}
         </p>
         {children}
