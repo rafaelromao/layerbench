@@ -1,3 +1,4 @@
+import type { GeometryKey } from '../geometry/types.js';
 import type { CompiledLayout } from '../layout/compile.js';
 
 /**
@@ -32,15 +33,17 @@ export const THUMB_EFFORT = 1;
  */
 export function cyanophageEffort(compiled: CompiledLayout): Record<string, number> {
   const out: Record<string, number> = {};
-  for (const k of compiled.keys) {
-    if (k.thumb || k.row > 2) {
-      out[k.id] = 0;
-      continue;
-    }
-    const col = Math.max(0, Math.min(5, k.col));
-    out[k.id] = CYANOPHAGE_EFFORT_GRID[k.row][k.hand === 'L' ? col : 11 - col];
-  }
+  for (const k of compiled.keys) out[k.id] = cyanophageKeyEffort(k);
   return out;
+}
+
+/** One key's effort on cyanophage's grid: a thumb, or a key past the bottom row, costs nothing. */
+export function cyanophageKeyEffort(
+  k: Pick<GeometryKey, 'thumb' | 'row' | 'col' | 'hand'>,
+): number {
+  if (k.thumb || k.row > 2) return 0;
+  const col = Math.max(0, Math.min(5, k.col));
+  return CYANOPHAGE_EFFORT_GRID[k.row][k.hand === 'L' ? col : 11 - col];
 }
 
 /** Default per-key effort, what the Effort rule charges: cyanophage's grid, thumbs at `THUMB_EFFORT`. */

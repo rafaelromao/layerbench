@@ -1,7 +1,7 @@
 import { getGeometryPreset } from '../geometry/presets.js';
 import type { Binding, ComboDef, LayerDef, Layout } from '../layout/types.js';
 import { withStandardThumbs } from './standard.js';
-import { DEFAULT_LAYER_IDS, defaultLayers } from './templates.js';
+import { DEFAULT_LAYER_IDS, defaultLayers, SYMBOLS_CORE } from './templates.js';
 
 /** Where Romak and Magic Romak are published. */
 const ROMAK_LINK = 'https://rafaelromao.github.io/romak';
@@ -71,7 +71,8 @@ const ALPHA2_OR_SYMBOLS: Binding = {
  * types: the firmware's symbol tap-holds jump to the end of the line or past the cursor first when
  * held, which is editing rather than typing, and are left out. Keys it leaves empty are empty here.
  *
- * Magic Romak has the default layers in their place, on these thumbs.
+ * Magic Romak has the default layers in their place, on these thumbs, but for its Symbols and
+ * Extras, which keep the keymap's `:`, `?` and `!` (`magicRomakDefaultLayers`).
  */
 const NUMBERS_THUMBS: Record<string, Binding> = {
   LHP: tapOrUnmodelled(',', 'FUN'),
@@ -111,6 +112,57 @@ function romakDefaultLayers(preset: string): Pick<Layout, 'layers' | 'conditiona
       ...l,
       bindings: { '*': { kind: 'none' }, ...Object.fromEntries(keys), ...thumbs },
     };
+  });
+  return { layers, conditionalLayers: defaults.conditionalLayers };
+}
+
+const dead = (diacritic: string): Binding => ({ kind: 'dead_key', diacritic });
+const macro = (symbols: string): Binding => ({ kind: 'macro', symbols });
+
+/**
+ * Magic Romak's Extras, kept as it was before the default layers moved a pair whole to Extras: its
+ * keymap keeps `:`, `?` and `!` on Symbols, so `;`, `¿` and `¡` are here on their own, each symbol
+ * where the old Dead keys layer had it, and the accents its 24 keys lack beside their place.
+ */
+const MAGIC_ROMAK_EXTRAS: Record<string, Binding> = {
+  '*': { kind: 'trans' },
+  ...rowBindings({
+    LTM: '€',
+    LHP: 'ª',
+    LHM: '£',
+    LBR: '«',
+    LBM: '»',
+    RTI: '°',
+    RTM: 'ı',
+    RTR: ';',
+    RHI: '¿',
+    RHP: 'º',
+    RBI: '¡',
+    RBR: '§',
+  }),
+  LTR: dead('`'),
+  LTI: kp('æ'),
+  LHI: dead('´'),
+  LBI: dead('¨'),
+  LHR: dead('~'),
+  RHM: macro('ù'),
+  RHR: macro('ì'),
+  RBM: macro('ú'),
+  L1: dead('^'),
+  R1: macro('î'),
+};
+
+/** Magic Romak's default layers: Symbols the keymap's whole, and its own Extras. */
+function magicRomakDefaultLayers(): Pick<Layout, 'layers' | 'conditionalLayers'> {
+  const defaults = romakDefaultLayers('1333+2');
+  const layers = defaults.layers.map((l): LayerDef => {
+    if (l.id === DEFAULT_LAYER_IDS.symbols)
+      return {
+        ...l,
+        bindings: { '*': { kind: 'none' }, ...rowBindings(SYMBOLS_CORE), ...SYMBOLS_THUMBS },
+      };
+    if (l.id === DEFAULT_LAYER_IDS.extras) return { ...l, bindings: MAGIC_ROMAK_EXTRAS };
+    return l;
   });
   return { layers, conditionalLayers: defaults.conditionalLayers };
 }
@@ -259,7 +311,6 @@ function alpha2Combo(id: string, keys: string[], binding: Binding): ComboDef {
   };
 }
 
-const dead = (diacritic: string): Binding => ({ kind: 'dead_key', diacritic });
 const tapOrHeld = (tap: string, held: string): Binding => ({
   kind: 'hold_tap',
   tap: kp(tap),
@@ -345,7 +396,7 @@ const ALT_REPEAT: Binding = {
  * the tag the accent macro leaves behind. What is left is the layers you can see.
  */
 export const magicRomak: Layout = (() => {
-  const defaults = romakDefaultLayers('1333+2');
+  const defaults = magicRomakDefaultLayers();
   return {
     format: 'layerbench/layout@1',
     id: 'magic-romak',
