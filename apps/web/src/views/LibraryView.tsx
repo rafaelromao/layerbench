@@ -1,7 +1,9 @@
 import {
+  type Bands,
   BUNDLED_LAYOUTS,
   CATEGORY_NAMES,
   type CompiledLayout,
+  classifyBand,
   compileLayout,
   forRanking,
   freeName,
@@ -17,6 +19,7 @@ import {
   layoutLanguages,
   NameTakenError,
   nameTaken,
+  type RuleSet,
   typedLayout,
 } from '@layerbench/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
@@ -24,8 +27,9 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 import { refreshCommunity, useCommunity } from '../community/community.js';
 import { communityRef } from '../community/ref.js';
 import { featureList } from '../components/FeatureSwitches.js';
-import { formatValue } from '../components/format.js';
+import { formatValue, qualityBorder } from '../components/format.js';
 import { HelpLink } from '../components/HelpLink.js';
+import { BandBadge } from '../components/Metrics.js';
 import { NameDialog, type TakenLayout } from '../components/NameDialog.js';
 import { customRef } from '../custom/ref.js';
 import { retryingSaver, type SaveOptions } from '../custom/save-new.js';
@@ -83,10 +87,6 @@ function boardLabel(id: string): string {
 const MISSING_SHOWN = 5;
 
 /**
- * The two numbers every card shows, whether or not the list is sorted by them, and what the layout
- * left out of the text to get them.
- */
-/**
  * A language the layout cannot write: the text's, which ranks it behind the layouts that can, or one
  * it says it is for, which is only flagged.
  */
@@ -96,12 +96,59 @@ interface Lacking {
   behind: boolean;
 }
 
+/** The bands of the two numbers a card shows, as the rule set ranked on gives them. */
+interface HeadlineBands {
+  effort: Bands | null;
+  sfb: Bands | null;
+}
+
+function headlineBands(ruleSet: RuleSet | undefined): HeadlineBands {
+  const bandsOf = (id: string) => ruleSet?.rules.find((r) => r.id === id)?.bands ?? null;
+  return { effort: bandsOf('effort'), sfb: bandsOf('sfb') };
+}
+
+/**
+ * One of a card's two numbers, with its band's badge and colour on its border, as Analyze's summary
+ * shows it. A rule set that gives the metric no bands leaves it plain.
+ */
+function HeadlineStat({
+  name,
+  value,
+  unit,
+  bands,
+}: {
+  name: string;
+  value: number | null;
+  unit: 'effort' | 'percent';
+  bands: Bands | null;
+}) {
+  const band = classifyBand(value, bands);
+  return (
+    <div
+      className={`flex items-center gap-1 rounded-box border px-1.5 py-0.5 ${qualityBorder(band)}`}
+    >
+      <dt className="opacity-60">{name}</dt>
+      {/* The band is part of the value, so it is read with it. */}
+      <dd className="m-0 flex items-center gap-1">
+        <span className="font-mono tabular-nums">{formatValue(value, unit)}</span>
+        <BandBadge band={band} />
+      </dd>
+    </div>
+  );
+}
+
+/**
+ * The two numbers every card shows, whether or not the list is sorted by them, and what the layout
+ * left out of the text to get them.
+ */
 function Ranking({
   summary,
+  bands,
   lacking,
   nobodyCan = false,
 }: {
   summary: LayoutSummary | undefined;
+  bands: HeadlineBands;
   /** Letters a language the layout is held to needs that it cannot type. */
   lacking?: Lacking;
   /** Every layout listed lacks some, so none is ranked behind another for it. */
@@ -115,15 +162,9 @@ function Ranking({
     (summary.missing.length > MISSING_SHOWN ? ' …' : '');
   return (
     <>
-      <dl className="flex flex-wrap gap-x-3 text-xs font-mono tabular-nums m-0">
-        <div className="flex gap-1">
-          <dt className="opacity-60 font-sans">Effort</dt>
-          <dd className="m-0">{formatValue(summary.effort, 'effort')}</dd>
-        </div>
-        <div className="flex gap-1">
-          <dt className="opacity-60 font-sans">SFB</dt>
-          <dd className="m-0">{formatValue(summary.sfb, 'percent')}</dd>
-        </div>
+      <dl className="flex flex-wrap gap-2 my-1 text-xs">
+        <HeadlineStat name="Effort" value={summary.effort} unit="effort" bands={bands.effort} />
+        <HeadlineStat name="SFB" value={summary.sfb} unit="percent" bands={bands.sfb} />
       </dl>
       {lacking?.behind ? (
         <p className="lb-skips text-xs text-warning" title={`Letters ${lacking.language} needs`}>
@@ -211,12 +252,14 @@ function layerCount(n: number): string {
 function LayoutCard({
   item,
   summary,
+  bands,
   lacking,
   nobodyCan,
   actions,
 }: {
   item: Listed;
   summary: LayoutSummary | undefined;
+  bands: HeadlineBands;
   lacking: Lacking | undefined;
   nobodyCan: boolean;
   /** Open, last so it is always flush right, and Delete to its left on a custom layout. */
@@ -243,7 +286,7 @@ function LayoutCard({
             </div>
             {item.meta && <p className="text-xs opacity-60">{item.meta}</p>}
             {item.compiled && <LanguageBadges compiled={item.compiled} />}
-            <Ranking summary={summary} lacking={lacking} nobodyCan={nobodyCan} />
+            <Ranking summary={summary} bands={bands} lacking={lacking} nobodyCan={nobodyCan} />
           </div>
           <div className="ml-auto flex shrink-0 gap-1">{actions}</div>
         </header>
@@ -613,6 +656,7 @@ export function LibraryView() {
     settings.settings,
     rankingContext,
   );
+  const bands = useMemo(() => headlineBands(settings.settings?.rules), [settings.settings]);
 
   // A layout that cannot type letters the corpus's language needs skips them, and skipping is free:
   // it would rank above one that pays to type them. Those go behind, whatever their numbers. A
@@ -914,6 +958,7 @@ export function LibraryView() {
               key={item.key}
               item={item}
               summary={summaries.get(item.key)}
+              bands={bands}
               lacking={lacking.get(item.key)}
               nobodyCan={nobodyCan}
               actions={

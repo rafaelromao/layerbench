@@ -1,15 +1,17 @@
 # Editing a layout
 
 A layout is edited where it is analyzed, in **Analyze**: the board shows one layer at a time, with
-the layer navigator above it. Tap or click a key to select it. The editor beside the board (under it, on
-a phone) says what the key does, what it adds to the numbers, and lets you change it.
+the layer navigator under it. Tap or click a key to select it. The editor beside the board (under it, on
+a phone) says what the key does, what it adds to the numbers, and lets you change it. Tap or click the
+board between the keys to put the selection away, cancel a swap or clear an outline; a drag or a
+swipe does not.
 
 1. **Select a key** on the board.
 2. **Choose what it does** from the tiles: *Symbol*, *Layer*, *Modifier*, *Tap-hold* and so on.
 3. **Fill in the rest**, such as the symbol it types, the layer it reaches or what a hold does.
 
 Every change is kept as you make it, so there is nothing to apply. **Undo** (↶) and **Redo** (↷),
-beside the layer's name, step back and forth through your changes. **Save**, beside the layout's name at
+under the board beside **Heat**, step back and forth through your changes. **Save**, beside the layout's name at
 the top, keeps it in **Library**, and until then the name is marked *unsaved*. On a layout that is
 not yours yet, such as one that comes with the app, the first **Save** makes a copy in your custom
 layouts and asks what to call it; after that, **Save** keeps your edits to the copy. A layout's link
@@ -128,7 +130,7 @@ selected for the next.
 
 ## Layers
 
-The layer navigator above the board switches between layers: ‹ and › step through them, the
+The layer navigator under the board switches between layers: ‹ and › step through them, the
 layer's name is written in its colour, and the counter under it says which of how many is shown.
 Swipe the board sideways to do the same on a phone, or press `←` and `→` while the navigator has
 focus. The same navigator shows the layers of a card in **Library** and of each layout in

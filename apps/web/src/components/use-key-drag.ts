@@ -63,7 +63,7 @@ export function paintDropTarget(
 }
 
 /** How far the pointer must travel before a press becomes a drag rather than a click. */
-const THRESHOLD = 4;
+export const THRESHOLD = 4;
 /** A touch has to rest on a key first, so the board can still be scrolled past with a finger. */
 export const TOUCH_HOLD_MS = 350;
 
