@@ -38,6 +38,9 @@ export interface LanguageEntry {
  * the half is of every bundled layout.
  */
 export function performsWell(entries: readonly LanguageEntry[]): Set<string> {
+  // No Effort is beaten by nothing, and would pass for the best.
+  const unscored = entries.find((e) => !Number.isFinite(e.effort));
+  if (unscored) throw new Error(`${unscored.id} has no Effort`);
   const out = new Set<string>();
   for (const e of entries) {
     if (!e.covers) continue;

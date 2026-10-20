@@ -78,8 +78,8 @@ layer but `'` `,` `.` `;`. The Special ones keep every key they had and reach Ac
 layout is for a language when it types every letter the language needs and its Effort on that
 language's news text is in the better half of all the bundled layouts', on the rules the Library
 ranks on (`lang/performance.ts`). `pnpm languages` measures them and writes them, to
-`layouts/languages.json` and into each document, and a test fails when they drift. A new one joins them as a
-document: a custom layout, unchanged, added by pull request. Merging the pull request is
+`layouts/languages.json` and into each document, and a test fails when they drift. A new one joins
+them as a document: a custom layout, unchanged, added by pull request. Merging the pull request is
 the approval, and the deploy that follows puts it in everyone's Library. A layout can also join
 with no deploy, as a community layout, by **Submit** in the app ([below](#community-layouts)).
 

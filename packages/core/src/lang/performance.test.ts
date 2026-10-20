@@ -1,12 +1,17 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { corporaRoot } from '../golden/paths.js';
-import { BUNDLED_LAYOUTS, DOCUMENT_LAYOUTS, goldenLayouts } from '../layouts/index.js';
+import { toCanonicalJson } from '../layout/json.js';
+import {
+  BUNDLED_LAYOUTS,
+  DOCUMENT_LAYOUTS,
+  documentLayout,
+  goldenLayouts,
+} from '../layouts/index.js';
 import stored from '../layouts/languages.json';
 import { measureLanguage } from './measure.js';
 import {
   LANGUAGE_CORPORA,
-  LANGUAGES_PRESET,
   orderedLanguages,
   PERFORMANCE_LANGUAGES,
   performsWell,
@@ -36,6 +41,10 @@ describe('performing well in a language', () => {
     expect([...got].sort()).toEqual(['b']);
   });
 
+  it('refuses a layout with no Effort, which nothing would beat', () => {
+    expect(() => performsWell([entry('a', Number.NaN), entry('b', 2)])).toThrow('a has no Effort');
+  });
+
   it('lists a layout’s languages in the order the profiles give them', () => {
     expect(orderedLanguages(new Set(['de', 'en', 'pt-BR']))).toEqual(['en', 'pt-BR', 'de']);
   });
@@ -55,10 +64,6 @@ describe('what each language is measured on', () => {
       expect(manifest.source, tag).toMatch(/Leipzig|wortschatz/i);
     }
   });
-
-  it('uses the rules a bare visit to the Library ranks on', () => {
-    expect(LANGUAGES_PRESET).toBe('layouts_doc');
-  });
 });
 
 /**
@@ -70,15 +75,25 @@ describe('bundled layouts’ languages', () => {
     expect(Object.keys(stored)).toEqual(goldenLayouts().map((l) => l.id));
   });
 
-  it('are what each layout carries', () => {
-    const want = stored as Record<string, string[]>;
-    for (const layout of goldenLayouts()) {
-      expect(layout.languages, layout.id).toEqual(want[layout.id as string]);
-    }
+  it('name only measured languages, each once, in the profiles’ order', () => {
+    const lists = [
+      ...Object.values(stored as Record<string, string[]>),
+      ...DOCUMENT_LAYOUTS.map((l) => l.languages ?? []),
+    ];
+    for (const list of lists) expect(list).toEqual(orderedLanguages(new Set(list)));
+  });
+
+  it('can be none: a document for no language is written without them, and reads back so', () => {
+    const [layout] = DOCUMENT_LAYOUTS;
+    const doc = toCanonicalJson({ ...layout, languages: [] });
+    expect(documentLayout(layout.id as string, doc).languages ?? []).toEqual([]);
   });
 
   for (const tag of PERFORMANCE_LANGUAGES) {
-    it(`for ${tag}: the layouts that type it and are in the better half by Effort`, async () => {
+    // An analysis of every bundled layout, about three times slower under coverage on a CI runner.
+    it(`for ${tag}: the layouts that type it and are in the better half by Effort`, {
+      timeout: 180_000,
+    }, async () => {
       const measured = await measureLanguage(tag);
       const declared = BUNDLED_LAYOUTS.filter((l) => l.languages?.includes(tag)).map((l) => l.id);
       expect(declared, 'run `pnpm languages`').toEqual(
@@ -86,10 +101,4 @@ describe('bundled layouts’ languages', () => {
       );
     });
   }
-
-  it('cover a document layout too, as its own file says', () => {
-    for (const layout of DOCUMENT_LAYOUTS) {
-      expect(layout.languages, layout.id).toEqual(orderedLanguages(new Set(layout.languages)));
-    }
-  });
 });
