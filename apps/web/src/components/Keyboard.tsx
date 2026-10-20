@@ -24,7 +24,7 @@ import {
 import { type Fit, fitLabel, legendNumber } from './fit-label.js';
 import { type Direction, nearestKey } from './key-nav.js';
 import { layerColourOf } from './layer-colour.js';
-import { type KeyDrop, THRESHOLD, useKeyDrag } from './use-key-drag.js';
+import { type KeyDrop, TAP_SLOP, THRESHOLD, useKeyDrag } from './use-key-drag.js';
 
 const ARROWS: Record<string, Direction> = {
   ArrowUp: 'up',
@@ -156,12 +156,6 @@ const GAP = 6;
 const MARGIN_X = 0.05;
 const MARGIN_Y = 0.12;
 const SPLIT_GAP = 0.3;
-/**
- * How far a finger or a pen may travel and still tap, in screen pixels: a tap lands a few pixels from
- * where it went down, while a swipe that turns the layer travels far further (`useLayerSwipe`). A
- * mouse that travels as far as a drag starts (`THRESHOLD`) is not clicking.
- */
-const TAP_SLOP = 16;
 /** Inner margin of a cap, in the same units. */
 const INSET = 5;
 /** Height kept for the band along the bottom of a cap, and for the shifted legend above. */

@@ -64,6 +64,12 @@ export function paintDropTarget(
 
 /** How far the pointer must travel before a press becomes a drag rather than a click. */
 export const THRESHOLD = 4;
+/**
+ * How far a finger or a pen may travel and still tap, in screen pixels: a tap lands a few pixels from
+ * where it went down, while a swipe that turns the layer travels far further (`useLayerSwipe`). A
+ * mouse that travels as far as a drag starts (`THRESHOLD`) is not clicking.
+ */
+export const TAP_SLOP = 16;
 /** A touch has to rest on a key first, so the board can still be scrolled past with a finger. */
 export const TOUCH_HOLD_MS = 350;
 
@@ -280,7 +286,8 @@ export function useCharDrag(
   onDrop: (drop: { char: string; to: string }) => void,
   legendOf: (char: string) => string = (c) => c,
 ): CharDrag {
-  const press = useRef<{ char: string; x: number; y: number } | null>(null);
+  /** Where the press went down, and how far it may travel and still be a tap. */
+  const press = useRef<{ char: string; x: number; y: number; slop: number } | null>(null);
   const dragging = useRef(false);
   const ghost = useRef<HTMLDivElement | null>(null);
   const suppressClick = useRef(false);
@@ -304,7 +311,9 @@ export function useCharDrag(
         // One character at a time, carried by the main button or the first finger.
         if (!e.isPrimary || e.button !== 0 || press.current) return;
         suppressClick.current = false;
-        press.current = { char, x: e.clientX, y: e.clientY };
+        // A finger's tap wanders further than a mouse's click; only past that is it a drag.
+        const slop = e.pointerType === 'mouse' ? THRESHOLD : TAP_SLOP;
+        press.current = { char, x: e.clientX, y: e.clientY, slop };
         dragging.current = false;
         // Captured, the pointer stays with the chip all the way to the key it is let go over.
         e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -313,7 +322,7 @@ export function useCharDrag(
         const start = press.current;
         if (!start || start.char !== char) return;
         if (!dragging.current) {
-          if (Math.hypot(e.clientX - start.x, e.clientY - start.y) < THRESHOLD) return;
+          if (Math.hypot(e.clientX - start.x, e.clientY - start.y) < start.slop) return;
           dragging.current = true;
           const el = document.createElement('div');
           el.className = 'lb-key-ghost';

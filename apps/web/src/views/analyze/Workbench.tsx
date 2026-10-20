@@ -796,6 +796,8 @@ export function Workbench({
                           // Picking keys for a combo is all the board is doing until it ends.
                           if (state.comboPick) return;
                           send({ type: 'deselect' });
+                          // A character tapped in the tray goes down as an armed swap does.
+                          if (state.placing !== null) send({ type: 'armChar', char: null });
                           // The keys a combo or a feature outlined from a panel go too, as on Escape.
                           if (state.boardHighlight.length > 0) {
                             send({ type: 'setBoardHighlight', keys: [] });

@@ -2021,6 +2021,36 @@ describe('the missing-keys tray', () => {
     expect(await screen.findByRole('button', { name: 'Key LHM: ç' })).toBeInTheDocument();
   }, 60_000);
 
+  it('puts a character tapped down on a click between the keys', async () => {
+    const user = userEvent.setup();
+    await openPlain();
+    const cedilla = chip('ç') as HTMLElement;
+    await user.click(cedilla);
+    await user.click(screen.getByRole('group', { name: 'Keyboard layout' }));
+    expect(cedilla).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByText(/is armed/)).toBeNull();
+  }, 60_000);
+
+  it('takes a finger tap that wanders a little on a chip as a tap', async () => {
+    await openPlain();
+    const cedilla = chip('ç') as HTMLElement;
+    const at = (type: string, x: number) =>
+      cedilla.dispatchEvent(
+        new PointerEvent(type, {
+          bubbles: true,
+          clientX: x,
+          clientY: x,
+          isPrimary: true,
+          pointerType: 'touch',
+        }) as Event & PointerEvent,
+      );
+    at('pointerdown', 10);
+    at('pointermove', 16);
+    at('pointerup', 16);
+    fireEvent.click(cedilla);
+    expect(cedilla).toHaveAttribute('aria-pressed', 'true');
+  }, 60_000);
+
   it('arms a swap with Alt+S without putting the character armed on the key', async () => {
     const user = userEvent.setup();
     await openPlain();

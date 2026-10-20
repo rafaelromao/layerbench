@@ -3,8 +3,8 @@
 A layout is edited where it is analyzed, in **Analyze**: the board shows one layer at a time, with
 the layer navigator under it. Tap or click a key to select it. The editor beside the board (under it, on
 a phone) says what the key does, what it adds to the numbers, and lets you change it. Tap or click the
-board between the keys to put the selection away, cancel a swap or clear an outline; a drag or a
-swipe does not.
+board between the keys to put the selection away, cancel a swap or a [missing key](#missing-keys)
+tapped, or clear an outline; a drag or a swipe does not.
 
 1. **Select a key** on the board.
 2. **Choose what it does** from the tiles: *Symbol*, *Layer*, *Modifier*, *Tap-hold* and so on.
