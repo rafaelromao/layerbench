@@ -75,11 +75,11 @@ describe('Analyze', () => {
       [...document.querySelectorAll('#kb-analyze .lb-combo title')].map((t) => t.textContent);
     expect(names()).toEqual([
       'Combo RTI + RTM: -',
-      'Combo LTM + LTI: ◌̈',
-      'Combo LHM + LHI: ◌́',
-      'Combo LBM + LBR: ◌̀',
-      'Combo LHR + LHM: ◌̂',
-      'Combo LBI + LBM: ◌̃',
+      'Combo LTM + LTI: ¨, dead key',
+      'Combo LHM + LHI: ´, dead key',
+      'Combo LBM + LBR: `, dead key',
+      'Combo LHR + LHM: ^, dead key',
+      'Combo LBI + LBM: ~, dead key',
       'Combo RHI + RHM: ? / ¿',
       'Combo RBI + RBM: ! / ¡',
       'Combo RBM + RBR: :',
@@ -218,6 +218,9 @@ describe('Analyze', () => {
 
     const strip = screen.getByRole('list', { name: 'Summary metrics' });
     expect(strip).toBeInTheDocument();
+    // Effort leads the strip with its band, Qwerty's being the worst.
+    const effort = within(strip).getByText('Effort').closest('li');
+    expect(effort?.querySelector('.lb-band')).toHaveTextContent('max');
     // Qwerty never leaves its base layer.
     expect(screen.getByText('Layer taps per 100 symbols')).toBeInTheDocument();
   });

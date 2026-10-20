@@ -143,14 +143,30 @@ suite('legends', () => {
     expect(legend(c, { kind: 'kp', symbol: ',', shifted: ';' }).shifted).toBe(';');
   });
 
-  it('draws a dead key on a dotted circle', () => {
-    expect(tapLabel(c, { kind: 'dead_key', diacritic: '´' })).toBe('◌́');
+  it('draws a dead key as its spacing accent, which every font has, and marks it dead', () => {
+    for (const accent of ['´', '`', '^', '~', '¨', '˘', '¸', '˚']) {
+      const l = legend(c, { kind: 'dead_key', diacritic: accent });
+      expect(l.tap).toBe(accent);
+      expect(l.dead).toBe(true);
+      // No combining mark, which a phone's fallback font draws as a box.
+      expect(l.tap).not.toMatch(/[\u0300-\u036f\u25cc]/);
+    }
+    expect(legend(c, { kind: 'kp', symbol: '´' }).dead).toBe(false);
   });
 
   it('draws a dead key’s shifted accent at the top, as a shifted symbol is', () => {
     const l = legend(c, { kind: 'dead_key', diacritic: '´', shifted: '¨' });
-    expect([l.tap, l.shifted]).toEqual(['◌́', '◌̈']);
+    expect([l.tap, l.shifted]).toEqual(['´', '¨']);
     expect(l.detail).toBe('dead key ´, ¨ with shift: accents the next letter');
+  });
+
+  it('marks a dead key under a hold as dead, as its centre is', () => {
+    const l = legend(c, {
+      kind: 'hold_tap',
+      hold: { kind: 'mod', mod: 'LSHIFT' },
+      tap: { kind: 'dead_key', diacritic: '~' },
+    });
+    expect([l.tap, l.dead]).toEqual(['~', true]);
   });
 
   it('keeps an imported key’s own legend, and says it is not simulated', () => {
