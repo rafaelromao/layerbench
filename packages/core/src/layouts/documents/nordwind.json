@@ -403,14 +403,6 @@
           "kind": "kp",
           "symbol": "*"
         },
-        "LBP": {
-          "kind": "kp",
-          "symbol": "«"
-        },
-        "LBC": {
-          "kind": "kp",
-          "symbol": "»"
-        },
         "RTP": {
           "kind": "kp",
           "symbol": ";"
@@ -426,6 +418,14 @@
         "RBC": {
           "kind": "kp",
           "symbol": "¡"
+        },
+        "LTC": {
+          "kind": "kp",
+          "symbol": "«"
+        },
+        "LHC": {
+          "kind": "kp",
+          "symbol": "»"
         }
       }
     },
