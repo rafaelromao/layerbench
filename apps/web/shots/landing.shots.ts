@@ -95,7 +95,8 @@ test.describe('at a desk', () => {
   test('analyze: the board, its layers and the summary', async ({ page }) => {
     await page.goto(ANALYZE);
     await expect(page.getByText('Same finger bigrams').first()).toBeVisible({ timeout: 120_000 });
-    await shootAround(page, 'analyze-board', board(page, 'kb-analyze'));
+    // The Heat row sits right under the navigator: a narrower margin keeps its picker out of the shot.
+    await shootAround(page, 'analyze-board', board(page, 'kb-analyze'), 8);
     await page.getByLabel('Summary metrics').screenshot({
       path: file('analyze-summary'),
       animations: 'disabled',
