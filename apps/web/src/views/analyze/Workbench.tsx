@@ -712,66 +712,9 @@ export function Workbench({
           >
             <div className="card-body gap-2 p-3 sm:p-4 min-w-0">
               <Collapsible id="analyze.board" title="Board">
+                {/* The board first, with nothing above it; the layers centred under it, as on a
+                    Library card; then Heat and Undo and Redo, in a row of their own. */}
                 <div className="flex flex-col gap-2 min-w-0">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <LayerNav
-                      className="min-w-0 flex-1"
-                      layers={state.compiled.layers}
-                      active={boardLayer}
-                      onSelect={selectLayer}
-                      onRename={(layer, name) =>
-                        send({ type: 'edit', edit: { kind: 'renameLayer', layer, name } })
-                      }
-                    />
-                    <div className="join shrink-0">
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-ghost join-item"
-                        aria-label="Undo"
-                        title="Undo (Ctrl+Z)"
-                        disabled={state.past.length === 0}
-                        onClick={() => undo(false)}
-                      >
-                        ↶
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-ghost join-item"
-                        aria-label="Redo"
-                        title="Redo (Ctrl+Shift+Z)"
-                        disabled={state.future.length === 0}
-                        onClick={() => undo(true)}
-                      >
-                        ↷
-                      </button>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center justify-end gap-2">
-                    <label className="label-text text-xs" htmlFor="heat">
-                      Heat
-                    </label>
-                    <select
-                      id="heat"
-                      name="heat"
-                      className="select select-xs select-bordered w-auto"
-                      value={params.heat}
-                      onChange={(e) => setParams({ heat: e.target.value as HeatMode })}
-                    >
-                      {HEAT_MODES.map((m) => (
-                        <option key={m} value={m}>
-                          {HEAT_LABELS[m]}
-                        </option>
-                      ))}
-                    </select>
-                    {loading && (
-                      <span
-                        className="loading loading-spinner loading-xs"
-                        role="status"
-                        aria-label="Analyzing"
-                      />
-                    )}
-                  </div>
-
                   <div className="lb-board relative" {...swipe}>
                     {/* The board pans inside its own box on a narrow screen. */}
                     <div className="lb-board-scroll">
@@ -821,7 +764,78 @@ export function Workbench({
                           })
                         }
                         onKeyShortcut={onKeyShortcut}
+                        onEmptyClick={() => {
+                          // Picking keys for a combo is all the board is doing until it ends.
+                          if (state.comboPick) return;
+                          send({ type: 'deselect' });
+                          // The keys a combo or a feature outlined from a panel go too, as on Escape.
+                          if (state.boardHighlight.length > 0) {
+                            send({ type: 'setBoardHighlight', keys: [] });
+                          }
+                          clearOutline();
+                        }}
                       />
+                    </div>
+                  </div>
+
+                  <LayerNav
+                    className="min-w-0 justify-center"
+                    layers={state.compiled.layers}
+                    active={boardLayer}
+                    onSelect={selectLayer}
+                    onRename={(layer, name) =>
+                      send({ type: 'edit', edit: { kind: 'renameLayer', layer, name } })
+                    }
+                  />
+
+                  <div className="lb-board-tools flex flex-wrap items-center justify-between gap-2 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <label className="label-text text-xs" htmlFor="heat">
+                        Heat
+                      </label>
+                      <select
+                        id="heat"
+                        name="heat"
+                        className="select select-xs select-bordered w-auto"
+                        value={params.heat}
+                        onChange={(e) => setParams({ heat: e.target.value as HeatMode })}
+                      >
+                        {HEAT_MODES.map((m) => (
+                          <option key={m} value={m}>
+                            {HEAT_LABELS[m]}
+                          </option>
+                        ))}
+                      </select>
+                      {loading && (
+                        <span
+                          className="loading loading-spinner loading-xs"
+                          role="status"
+                          aria-label="Analyzing"
+                        />
+                      )}
+                    </div>
+                    {/* On the right, on a row of its own too when a narrow screen wraps it. */}
+                    <div className="join shrink-0 ml-auto">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-ghost join-item"
+                        aria-label="Undo"
+                        title="Undo (Ctrl+Z)"
+                        disabled={state.past.length === 0}
+                        onClick={() => undo(false)}
+                      >
+                        ↶
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-ghost join-item"
+                        aria-label="Redo"
+                        title="Redo (Ctrl+Shift+Z)"
+                        disabled={state.future.length === 0}
+                        onClick={() => undo(true)}
+                      >
+                        ↷
+                      </button>
                     </div>
                   </div>
 

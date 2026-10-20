@@ -11,6 +11,7 @@ and how to make it in the editor, in **Analyze**: select a key, then choose its 
 | a small legend at the top | what it types with Shift, where that is not just the capital |
 | `✦` `⋯` `TD` `U+` in the corner | an adaptive key, a macro, a tap dance, a Unicode character |
 | a colour | the layer the key reaches, matching the colour of that layer's name in the layer navigator; chosen under **Layers**, or set by the layer's place in the list |
+| an accent in a colour of its own, over a dotted line | a dead key: it types nothing itself and accents the next letter; a combo's pill in that colour arms an accent |
 | a ring inside the key, `held` or `tapped` along the bottom | on a layer above the base: the key held or tapped to get to this layer |
 | `▽` in a dashed outline | transparent: the key of the layer below shows through |
 | a pill between keys | a combo that types: press those keys together. It is drawn as a key is, its hold after a slash; select it to edit it as any kind of key but transparent |
@@ -121,7 +122,8 @@ These are among the editor's other tiles, under **More** on a phone:
 - **Tap dance** `TD` does one thing on one tap, another on two, and so on.
 - **Morph** does something else while a modifier is held, or while a layer is on.
 - **Unicode** `U+` types a character the operating system has no key for.
-- **Dead key** puts an accent on the next letter, as `´` then `e` gives `é`. The analysis types
+- **Dead key** puts an accent on the next letter, as `´` then `e` gives `é`. On the board it shows
+  its accent in a colour of its own, over a dotted line where the letter will go. The analysis types
   through them: an accented letter no key types is typed as its accent, then the letter, and a
   layer held for the accent is let go before the letter. Each accent goes on the letters it is
   written on. A letter some key types in one press is typed there.

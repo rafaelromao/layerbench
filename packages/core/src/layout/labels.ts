@@ -52,6 +52,8 @@ export interface Legend {
   layerIn: 'tap' | 'hold' | null;
   /** True when `hold` names how a layer comes on ("1×", "toggle"), not something held. */
   holdIsMode: boolean;
+  /** The centre is a dead key's accent, which waits for the next letter rather than typing. */
+  dead: boolean;
   detail: string;
 }
 
@@ -116,23 +118,6 @@ export const BADGE = {
   unicode: 'U+',
 } as const;
 
-/** Spacing diacritics as the combining marks a dotted circle can carry, so `´` draws as `◌́`. */
-const COMBINING: Record<string, string> = {
-  '´': '́',
-  '`': '̀',
-  '^': '̂',
-  '~': '̃',
-  '¨': '̈',
-  '˘': '̆',
-  '¸': '̧',
-  '˚': '̊',
-};
-
-/** How a dead key's accent is drawn: on a dotted circle where it can be, as itself otherwise. */
-function accentGlyph(diacritic: string): string {
-  return COMBINING[diacritic] ? `◌${COMBINING[diacritic]}` : diacritic;
-}
-
 /** Layer names are abbreviated to fit a key: initials for multi-word names, else the first four. */
 export function short(name: string): string {
   if ([...name].length <= 4) return name;
@@ -162,7 +147,7 @@ function shiftedOf(c: CompiledLayout, b: Binding): string | null {
     return b.shifted === b.symbol.toUpperCase() ? null : b.shifted;
   }
   if (b.kind === 'unicode' && b.shiftedSymbol !== undefined) return b.shiftedSymbol;
-  if (b.kind === 'dead_key' && b.shifted !== undefined) return accentGlyph(b.shifted);
+  if (b.kind === 'dead_key' && b.shifted !== undefined) return b.shifted;
   if (b.kind === 'mod_morph' && modsMet(b.mods, SHIFTS)) {
     const morphed = tapLabel(c, b.morphed);
     return morphed === '' ? null : morphed;
@@ -214,8 +199,10 @@ export function tapLabel(c: CompiledLayout, b: Binding): string {
       return '⟳';
     case 'macro':
       return p.symbols ?? (p.steps ? p.steps.map((s) => tapLabel(c, s)).join('') : '⋯');
+    // The spacing accent, which every font has; a combining mark on a dotted circle draws as a box in
+    // a phone's fallback font. That the key is dead is the board's styling to show (`Legend.dead`).
     case 'dead_key':
-      return accentGlyph(p.diacritic);
+      return p.diacritic;
     case 'unicode':
       return p.symbol;
     case 'raw':
@@ -435,6 +422,7 @@ export function legend(c: CompiledLayout, b: Binding): Legend {
     layer: layer?.layer ?? null,
     layerIn: layer?.layerIn ?? null,
     holdIsMode: holdIsModeOf(b),
+    dead: plain.kind === 'dead_key',
     detail: describe(c, b),
   };
 }
