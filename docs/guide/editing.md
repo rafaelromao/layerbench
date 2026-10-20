@@ -253,8 +253,8 @@ drawn between them. A board with one thumb a hand presses its two thumbs, and a 
 with one space bar for both, the left ring and middle fingers' home keys, LHR and LHM. On a board
 with all of Accents' 30 main keys, thumbs press none of them, so the thumb combo is never a
 same-finger pair with the accent after it; on Magic Romak's 24 keys, `^` and `î` are on Accents'
-right thumbs, R1 among them. A board without those thumbs gets the same layers arranged to fit it, and keys beyond the ones
-the layers use let the layer below show through. A board with no bottom row keeps `1 2 3` on the left home row,
+right thumbs, R1 among them. A board without those thumbs gets the same layers arranged to fit it,
+and keys beyond the ones the layers use let the layer below show through. A board with no bottom row keeps `1 2 3` on the left home row,
 puts `;` beside `:` where `=` was, and `=` and `ı` on Symbols' left thumbs, the space key and the
 one beside it, which the right thumb holding Symbols leaves free: no finger key is left for them, so
 space is typed with Symbols released there. It puts on Extras what the bottom rows carried, and fills

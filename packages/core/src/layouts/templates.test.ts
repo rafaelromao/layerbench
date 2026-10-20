@@ -223,7 +223,7 @@ describe('the default layers, board by board', () => {
     expect(t.out).toBe('[ * « 3 ; € § ¿ = | ı º £');
     expect(t.coverage.unproducible.size).toBe(0);
     // A Special layout there, Ben Vallack Piano, its space and so Numbers on L1: `=` where space
-    // would be on Symbols, `ı` on the left thumb beside it, the right ones holding Symbols.
+    // would be on Symbols, `ı` on the left thumb beside it, the right ones blocked, one holding Symbols.
     const piano = bundledLayout('ben-vallack-piano') as Layout;
     const sym = piano.layers.find((l) => l.id === 'sym')?.bindings ?? {};
     expect([sym.L1, sym.L0, sym.R1]).toEqual([

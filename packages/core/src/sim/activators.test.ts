@@ -444,6 +444,38 @@ describe('the thumb keys a held thumb blocks', () => {
     }
   });
 
+  it('are the hand of a thumb that holds a layer-tap down, as of one that holds `mo`', () => {
+    const c = compileLayout(
+      board([
+        { id: 'base', bindings: { L0: { kind: 'lt', layer: 'nav', tap: kp(' ') } } },
+        { id: 'nav', bindings: { '*': { kind: 'trans' }, L1: kp('x') } },
+      ]),
+    );
+    expect(blocked(c, 'nav').sort()).toEqual(['L0', 'L1']);
+  });
+
+  it('are none on a layer an auto layer, a macro or a morph that toggles on one part reaches', () => {
+    const holds: Binding[] = [
+      { kind: 'auto_layer', layer: 'nav' },
+      { kind: 'macro', steps: [{ kind: 'sl', layer: 'nav' }] },
+      {
+        kind: 'mod_morph',
+        mods: ['LSHIFT'],
+        default: { kind: 'mo', layer: 'nav' },
+        morphed: { kind: 'tog', layer: 'nav' },
+      },
+    ];
+    for (const hold of holds) {
+      const c = compileLayout(
+        board([
+          { id: 'base', bindings: { L0: { kind: 'hold_tap', tap: kp(' '), hold } } },
+          { id: 'nav', bindings: { '*': { kind: 'trans' }, L1: kp('x') } },
+        ]),
+      );
+      expect([hold.kind, blocked(c, 'nav')]).toEqual([hold.kind, []]);
+    }
+  });
+
   it('are only the hands every set of layers that brings a layer on holds', () => {
     const c = compileLayout(
       board(

@@ -23,8 +23,8 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
   `accentsCombo`.
 - **A held thumb blocks its hand.** On a layer every way onto which holds a thumb key of one hand
   down (`mo`, `lt`), that hand's thumb keys get no binding: the thumb is busy holding. Numbers and
-  Symbols each block the hand holding them, and Extras, both held, every thumb. The held keys themselves show as `held`.
-  `blockedThumbs` finds them; the analysis types nothing on them, and `templates.test.ts` fails for
+  Symbols each block the hand holding them, and Extras, both held, every thumb. The held keys
+  themselves show as `held`. `blockedThumbs` finds them; the analysis types nothing on them, and `templates.test.ts` fails for
   a bundled layout or a board's defaults with a binding there. What finds no finger key goes on
   Accents' thumbs, Accents being one-shot.
 - **The base layer keeps only `'` `,` `.` `;`** besides its letters and Repeat (`BASE_SYMBOLS`).

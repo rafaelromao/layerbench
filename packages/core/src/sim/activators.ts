@@ -588,25 +588,49 @@ export function reachKeys(
     });
 }
 
-/** Whether a key's hold keeps `target` on only while it is held down, as `mo` and `lt` do. */
-function holdsDown(c: CompiledLayout, b: Binding, target: number, depth = 0): boolean {
-  if (depth > 8) return false;
+/**
+ * How a held key brings `target` on: `held` while it stays down, as `mo` and `lt` do, `let go` when
+ * it arms, toggles or switches to it and comes up again, or `none`. A morph whose parts differ is
+ * `let go` if any part is, the thumb being free for that part.
+ */
+function holdOf(
+  c: CompiledLayout,
+  b: Binding,
+  target: number,
+  depth = 0,
+): 'held' | 'let go' | 'none' {
+  if (depth > 8) return 'none';
+  const reaches = (layer: string) => c.layerIndex.get(layer) === target;
+  const either = (...parts: Binding[]) => {
+    const hows = parts.map((x) => holdOf(c, x, target, depth + 1));
+    return hows.includes('let go') ? 'let go' : hows.includes('held') ? 'held' : 'none';
+  };
   switch (b.kind) {
     case 'mo':
     case 'lt':
-      return c.layerIndex.get(b.layer) === target;
+      return reaches(b.layer) ? 'held' : 'none';
+    case 'sl':
+    case 'tog':
+    case 'to':
+    case 'auto_layer':
+      return reaches(b.layer) ? 'let go' : 'none';
     case 'hold_tap':
-      return holdsDown(c, b.hold, target, depth + 1);
+      return holdOf(c, b.hold, target, depth + 1);
     case 'mod_morph':
-      return (
-        holdsDown(c, b.default, target, depth + 1) || holdsDown(c, b.morphed, target, depth + 1)
-      );
+      return either(b.default, b.morphed);
     case 'layer_morph':
-      return (
-        holdsDown(c, b.inactive, target, depth + 1) || holdsDown(c, b.active, target, depth + 1)
-      );
+      return either(b.inactive, b.active);
+    case 'tap_dance': {
+      // Held, a tap dance is pressed once: its first branch.
+      const first = branchFor(b, 1);
+      return first ? holdOf(c, first, target, depth + 1) : 'none';
+    }
+    case 'adaptive':
+      return b.default ? holdOf(c, b.default, target, depth + 1) : 'none';
+    case 'macro':
+      return 'let go';
     default:
-      return false;
+      return 'none';
   }
 }
 
@@ -640,7 +664,7 @@ export function blockedThumbs(c: CompiledLayout, layer: number): number[] {
               !route.chord?.length &&
               c.keys[pos]?.thumb &&
               c.keys[pos].hand === hand &&
-              holdsDown(c, c.layers[route.via].bindings[pos], through),
+              holdOf(c, c.layers[route.via].bindings[pos], through) === 'held',
           )
         )
           hands.add(hand);
