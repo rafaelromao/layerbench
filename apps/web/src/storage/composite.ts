@@ -2,16 +2,24 @@ import {
   COLLECTIONS,
   type Collection,
   type IndexEntry,
+  indexSummary,
   type JsonObject,
+  NameTakenError,
+  nameTaken,
+  type PutOptions,
   type StorageAdapter,
   StorageConflictError,
   type StorageMeta,
 } from '@layerbench/core';
 
-/** What copying up did: the documents sent to the gists, and those they had as new already. */
+/**
+ * What copying up did: the documents sent to the gists, those they had as new already, and the
+ * layouts left here because the gists have another of the same name.
+ */
 export interface CopiedUp {
   copied: number;
   current: number;
+  taken: number;
 }
 
 /** Copying up stopped partway; what went up before it is in the gists. */
@@ -94,10 +102,22 @@ export class CompositeStorage implements StorageAdapter {
     collection: Collection,
     id: string,
     doc: JsonObject,
-    opts: { expectedSha?: string | null; message?: string } = {},
+    opts: PutOptions = {},
   ): Promise<StorageMeta> {
-    const localMeta = await this.local.put(collection, id, doc, { message: opts.message });
-    if (!this.remote) return localMeta;
+    const here = { message: opts.message, replacing: opts.replacing };
+    if (!this.remote) return this.local.put(collection, id, doc, here);
+    // The gists may have a layout of this name the browser does not know of. They are asked
+    // first, so the browser takes no copy of one they would refuse; unreachable, they refuse
+    // nothing yet, and the browser's copy is the work kept. Each store judges its own names: a
+    // duplicate made before that the gists have twice and the browser once is refused by the
+    // browser, and Overwrite then makes one of the two.
+    if (collection === 'layouts') {
+      const there = await this.remote.list(collection).catch(() => null);
+      const name = indexSummary(collection, id, doc).name;
+      const taken = there && nameTaken(there, name, id, opts.replacing);
+      if (taken) throw new NameTakenError(taken);
+    }
+    await this.local.put(collection, id, doc, here);
     // A conflict propagates: the work is safe locally, and the user decides what to do about it.
     return this.remote.put(collection, id, doc, opts);
   }
@@ -121,7 +141,7 @@ export class CompositeStorage implements StorageAdapter {
    */
   async copyUp(): Promise<CopiedUp> {
     const remote = this.remote;
-    const done: CopiedUp = { copied: 0, current: 0 };
+    const done: CopiedUp = { copied: 0, current: 0, taken: 0 };
     if (!remote) return done;
     try {
       for (const collection of COLLECTIONS) {
@@ -154,6 +174,11 @@ export class CompositeStorage implements StorageAdapter {
               message: `Copy ${collection} ${entry.name} from the browser`,
             });
           } catch (e) {
+            // The gists have another layout of its name: it stays here, for the user to rename.
+            if (e instanceof NameTakenError) {
+              done.taken++;
+              continue;
+            }
             if (!(e instanceof StorageConflictError)) throw e;
             done.current++;
             continue;

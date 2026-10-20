@@ -5,6 +5,7 @@ import {
   toCanonicalJson,
 } from '@layerbench/core';
 import { describe, expect, it, vi } from 'vitest';
+import { CompositeStorage } from '../storage/composite.js';
 import { MemoryLink } from '../test/memory-link.js';
 import { MemoryStorage } from '../test/memory-storage.js';
 import { decodeInline } from '../url/inline.js';
@@ -240,14 +241,20 @@ describe('A custom layout sent by its link', () => {
     expect(JSON.stringify((await mine.get('layouts', 'mine'))?.doc)).toContain('ç');
   });
 
-  it('never saves over a different layout saved under the same id', async () => {
+  it('never saves over a different layout saved under the same name unless told to', async () => {
     const link = await ownersLink();
     const theirs = new MemoryStorage();
     await seed(theirs, 'colemak', 'mine', { name: 'Mine' });
     const { s } = session(link, { storage: theirs });
     const state = await opened(s);
     expect(state.storedId).toBeNull();
-    expect(await s.save(state.layout)).toMatchObject({ ok: true, id: 'mine-2' });
+    expect(await s.save(state.layout)).toMatchObject({
+      ok: false,
+      reason: 'name-taken',
+      taken: { id: 'mine', name: 'Mine' },
+    });
+    expect(s.getState()).toMatchObject({ storedId: null });
+    expect(await ids(theirs)).toEqual(['mine']);
     expect(JSON.stringify((await theirs.get('layouts', 'mine'))?.doc)).toBe(
       JSON.stringify(
         toCanonicalJson({ ...(bundledLayout('colemak') as Layout), id: 'mine', name: 'Mine' }),
@@ -257,9 +264,9 @@ describe('A custom layout sent by its link', () => {
 });
 
 describe('Saving', () => {
-  it('stores a layout under the id its name gives, beside a custom one of the same name, and puts it in the link', async () => {
+  it('stores a layout under the id its name gives, beside a custom one whose name slugs the same, and puts it in the link', async () => {
     const storage = new MemoryStorage();
-    await seed(storage, 'qwerty', 'qwerty', { description: 'mine' });
+    await seed(storage, 'qwerty', 'qwerty', { name: 'QWERTY!', description: 'mine' });
     const { s, link } = session('qwerty', { storage });
     const state = await opened(s);
     s.edited(state.layout, false);
@@ -267,6 +274,30 @@ describe('Saving', () => {
     expect((await storage.get('layouts', 'qwerty'))?.doc.description).toBe('mine');
     expect((await carried(link.current()))?.id).toBe('qwerty-2');
     expect(s.getState()).toMatchObject({ storedId: 'qwerty-2', pickedRef: 'custom:qwerty-2' });
+  });
+
+  it('makes no second layout of a name a custom one has: it overwrites that one when told to', async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'qwerty', 'qwerty', { description: 'mine' });
+    const { s, link } = session('qwerty', { storage });
+    const state = await opened(s);
+    s.edited(state.layout, false);
+    expect(await s.save(state.layout)).toMatchObject({
+      ok: false,
+      reason: 'name-taken',
+      taken: { id: 'qwerty', name: 'Qwerty' },
+    });
+    expect((await storage.get('layouts', 'qwerty'))?.doc.description).toBe('mine');
+
+    expect(await s.save(state.layout, { overwrite: 'qwerty' })).toEqual({
+      ok: true,
+      id: 'qwerty',
+      leftBehind: false,
+    });
+    expect(await ids(storage)).toEqual(['qwerty']);
+    expect((await storage.get('layouts', 'qwerty'))?.doc.description).not.toBe('mine');
+    expect((await carried(link.current()))?.id).toBe('qwerty');
+    expect(s.getState()).toMatchObject({ storedId: 'qwerty' });
   });
 
   it('has no custom layout behind a bundled one until it is saved: the first save is the copy', async () => {
@@ -344,6 +375,7 @@ describe('Saving', () => {
 
     storage.put = put;
     await seed(storage, 'colemak', 'mine', { name: 'Theirs' });
+    // Theirs only slugs as this one's id would: its name is not this one's.
     expect(await s.save(copy)).toEqual({ ok: true, id: 'mine-2', leftBehind: false });
     expect((await storage.get('layouts', 'mine'))?.doc.name).toBe('Theirs');
     expect(await ids(storage)).toEqual(['mine', 'mine-2']);
@@ -455,9 +487,99 @@ describe('Saving', () => {
     });
     expect(await ids(storage)).toEqual(['my-layout']);
 
-    await seed(storage, 'colemak', 'theirs', { name: 'Theirs' });
+    await seed(storage, 'colemak', 'theirs', { name: 'Theirs!' });
     expect(await s.save({ ...state.layout, name: 'Theirs' })).toMatchObject({ id: 'theirs-2' });
     expect(await ids(storage)).toEqual(['theirs', 'theirs-2']);
+  });
+
+  it("asks before renaming a layout to another's name, and overwrites that one when told to", async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'qwerty', 'mine', { name: 'Mine' });
+    await seed(storage, 'colemak', 'magic-breeze', { name: 'Magic Breeze' });
+    const { s } = session('custom:mine', { storage });
+    const state = await opened(s);
+    const renamed = { ...withCedilla(state.layout), name: 'magic breeze' };
+    expect(await s.save(renamed)).toMatchObject({
+      ok: false,
+      reason: 'name-taken',
+      taken: { id: 'magic-breeze', name: 'Magic Breeze' },
+    });
+    expect(await ids(storage)).toEqual(['magic-breeze', 'mine']);
+    expect(s.getState()).toMatchObject({ storedId: 'mine' });
+
+    expect(await s.save(renamed, { overwrite: 'magic-breeze' })).toEqual({
+      ok: true,
+      id: 'magic-breeze',
+      leftBehind: false,
+    });
+    // The renamed layout is the one under that name now, and its old copy is gone.
+    expect(await ids(storage)).toEqual(['magic-breeze']);
+    expect((await storage.get('layouts', 'magic-breeze'))?.doc.name).toBe('magic breeze');
+    expect(JSON.stringify((await storage.get('layouts', 'magic-breeze'))?.doc)).toContain('ç');
+    expect(s.getState()).toMatchObject({ storedId: 'magic-breeze' });
+  });
+
+  it('removes what a failed first save wrote when the next one overwrites another layout', async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'colemak', 'gust', { name: 'Gust' });
+    const put = storage.put.bind(storage);
+    storage.put = async (...args) => {
+      await put(...args);
+      throw new Error('offline');
+    };
+    const { s } = session('qwerty', { storage });
+    const state = await opened(s);
+    expect(await s.save({ ...state.layout, name: 'Foo' })).toMatchObject({ ok: false });
+    storage.put = put;
+
+    expect(await s.save({ ...state.layout, name: 'Gust' }, { overwrite: 'gust' })).toEqual({
+      ok: true,
+      id: 'gust',
+      leftBehind: false,
+    });
+    expect(await ids(storage)).toEqual(['gust']);
+  });
+
+  it("overwrites the gists' layout of its name with one only the browser has, which then goes", async () => {
+    const local = new MemoryStorage('local');
+    const remote = new MemoryStorage('github');
+    await seed(remote, 'colemak', 'mine', { name: 'Mine' });
+    await seed(local, 'qwerty', 'mine-2', { name: 'Mine' });
+    const storage = new CompositeStorage(local, remote);
+    const link = new MemoryLink('custom:mine-2');
+    const s = createLayoutSession(
+      { storage: () => storage, drafts: webDrafts(mapStore()), link },
+      { linkDelayMs: 5 },
+    );
+    const state = await opened(s);
+    expect(state.storedId).toBe('mine-2');
+    const edited = withCedilla(state.layout);
+    expect(await s.save(edited)).toMatchObject({
+      ok: false,
+      reason: 'name-taken',
+      taken: { id: 'mine' },
+    });
+    expect(await s.save(edited, { overwrite: 'mine' })).toEqual({
+      ok: true,
+      id: 'mine',
+      leftBehind: false,
+    });
+    expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['mine']);
+    expect(JSON.stringify((await remote.get('layouts', 'mine'))?.doc)).toContain('ç');
+  });
+
+  it('saves again a layout that already shares its name with a duplicate made before', async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'qwerty', 'magic-breeze', { name: 'Magic Breeze' });
+    // Made before stores refused a second of a name: the store is not asked what it holds.
+    const list = storage.list.bind(storage);
+    storage.list = async () => [];
+    await seed(storage, 'qwerty', 'magic-breeze-6', { name: 'Magic Breeze' });
+    storage.list = list;
+    const { s } = session('custom:magic-breeze-6', { storage });
+    const state = await opened(s);
+    const edited = withCedilla(state.layout);
+    expect(await s.save(edited)).toMatchObject({ ok: true, id: 'magic-breeze-6' });
   });
 
   it('says when the old copy of a renamed layout could not be removed', async () => {

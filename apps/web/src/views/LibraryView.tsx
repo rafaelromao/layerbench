@@ -6,6 +6,7 @@ import {
   classifyBand,
   compileLayout,
   forRanking,
+  freeName,
   GEOMETRY_PRESET_IDS,
   getGeometryPreset,
   LAYOUT_CATEGORIES,
@@ -16,6 +17,8 @@ import {
   layoutCategory,
   layoutLanguageCoverage,
   layoutLanguages,
+  NameTakenError,
+  nameTaken,
   type RuleSet,
   typedLayout,
 } from '@layerbench/core';
@@ -27,9 +30,9 @@ import { featureList } from '../components/FeatureSwitches.js';
 import { formatValue, qualityBorder } from '../components/format.js';
 import { HelpLink } from '../components/HelpLink.js';
 import { BandBadge } from '../components/Metrics.js';
-import { NameDialog } from '../components/NameDialog.js';
+import { NameDialog, type TakenLayout } from '../components/NameDialog.js';
 import { customRef } from '../custom/ref.js';
-import { retryingSaver } from '../custom/save-new.js';
+import { retryingSaver, type SaveOptions } from '../custom/save-new.js';
 import { rankingKey, recall, rememberBehind } from '../engine/ranking-memory.js';
 import {
   compareBy,
@@ -319,8 +322,20 @@ function LayoutCard({
   );
 }
 
-/** New layout: a name, a board, a starting point, and whether it gets number and symbol layers. */
-function NewLayoutDialog({ onCreate }: { onCreate: (spec: NewLayoutSpec) => void }) {
+/**
+ * New layout: a name, a board, a starting point, and whether it gets number and symbol layers. A
+ * name a custom layout has is offered to overwrite that one, or to be changed.
+ */
+function NewLayoutDialog({
+  initialName,
+  taken,
+  onCreate,
+}: {
+  /** A name no custom layout has yet. */
+  initialName: string;
+  taken: (name: string) => TakenLayout | null;
+  onCreate: (spec: NewLayoutSpec, opts?: SaveOptions) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [rest, setRest] = useState<Omit<NewLayoutSpec, 'name'>>({
     geometry: '3x5+2',
@@ -337,11 +352,16 @@ function NewLayoutDialog({ onCreate }: { onCreate: (spec: NewLayoutSpec) => void
         <NameDialog
           title="New layout"
           nameLabel="New layout name"
-          initialName="My layout"
+          initialName={initialName}
           submitLabel="Create and edit"
+          taken={taken}
           onSubmit={(name) => {
             setOpen(false);
             onCreate({ ...rest, name });
+          }}
+          onOverwrite={(name, layout) => {
+            setOpen(false);
+            onCreate({ ...rest, name }, { overwrite: layout.id });
           }}
           onClose={() => setOpen(false)}
         >
@@ -713,21 +733,51 @@ export function LibraryView() {
     [navigate, analyzeSearch],
   );
 
-  /** Save as a custom layout of its own, and say so by the layout's name: the id is only for links. */
+  /**
+   * A save that found its name taken, waiting to hear whether to overwrite or what else to call it.
+   * An overwrite refused is of a name kept twice, in the gists and in this browser: only another
+   * name gets past it, so it is not offered again.
+   */
+  const [clash, setClash] = useState<{
+    layout: Layout;
+    message: string;
+    taken: TakenLayout;
+    overwrite: boolean;
+    settle: (id: string | null) => void;
+  } | null>(null);
+
+  /**
+   * Save as a custom layout of its own, and say so by the layout's name: the id is only for links.
+   * Where another custom layout has the name, it asks first whether to overwrite that one or to
+   * call this one something else, and settles once answered: with the id saved under, or null.
+   */
   const saver = useRef(retryingSaver());
   const saveNew = useCallback(
-    async (layout: Layout, message: string): Promise<string | null> => {
+    async (layout: Layout, message: string, opts: SaveOptions = {}): Promise<string | null> => {
       try {
-        const { id } = await saver.current(storage, layout, message);
+        const { id } = await saver.current(storage, layout, message, opts);
         custom.refresh();
         toast.info(`Saved ${layout.name}`);
         return id;
       } catch (e) {
+        if (e instanceof NameTakenError) {
+          custom.refresh();
+          const overwrite = opts.overwrite === undefined;
+          return new Promise((settle) =>
+            setClash({ layout, message, taken: e.taken, overwrite, settle }),
+          );
+        }
         toast.error(`Save failed: ${e instanceof Error ? e.message : String(e)}`);
         return null;
       }
     },
     [storage, custom],
+  );
+
+  /** The custom layout that already goes by a name, if any. */
+  const takenBy = useCallback(
+    (name: string) => nameTaken(custom.entries, name, null),
+    [custom.entries],
   );
 
   const saveToLibrary = useCallback(
@@ -736,9 +786,9 @@ export function LibraryView() {
   );
 
   const createLayout = useCallback(
-    async (spec: NewLayoutSpec) => {
+    async (spec: NewLayoutSpec, opts?: SaveOptions) => {
       const layout = newLayout(spec);
-      const id = await saveNew(layout, `Create layout ${spec.name}`);
+      const id = await saveNew(layout, `Create layout ${spec.name}`, opts);
       if (id) navigate({ to: '/analyze', search: analyzeSearch(customRef(id)) });
     },
     [saveNew, navigate, analyzeSearch],
@@ -771,13 +821,47 @@ export function LibraryView() {
     <div className="space-y-6">
       <h1 className="sr-only">Library</h1>
       <div className="flex flex-wrap items-center gap-2">
-        <NewLayoutDialog onCreate={createLayout} />
+        <NewLayoutDialog
+          initialName={freeName(
+            'My layout',
+            custom.entries.map((e) => e.name),
+          )}
+          taken={takenBy}
+          onCreate={createLayout}
+        />
         <ImportDialog
           canSave={custom.available}
           onOpen={openInAnalyzer}
           onSave={saveToLibrary}
           onImportKeymap={importKeymap}
         />
+        {clash && (
+          <NameDialog
+            title="Save under another name"
+            nameLabel="Name of the layout"
+            initialName={clash.layout.name}
+            submitLabel="Save"
+            // The one the save heard of is taken even before the custom layouts are read again.
+            taken={(name) => nameTaken([clash.taken, ...custom.entries], name, null)}
+            onSubmit={(name) => {
+              setClash(null);
+              void saveNew({ ...clash.layout, name }, clash.message).then(clash.settle);
+            }}
+            onOverwrite={
+              clash.overwrite
+                ? (name, taken) => {
+                    setClash(null);
+                    const layout = { ...clash.layout, name };
+                    void saveNew(layout, clash.message, { overwrite: taken.id }).then(clash.settle);
+                  }
+                : undefined
+            }
+            onClose={() => {
+              setClash(null);
+              clash.settle(null);
+            }}
+          />
+        )}
         <p className="text-xs opacity-70">
           Start from an empty board or import yours. Or open any layout below in Analyze and change
           it.
