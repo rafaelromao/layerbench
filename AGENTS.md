@@ -10,6 +10,13 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
 - **The layers.** Every layout gets Numbers, Symbols and Accents. Extras exists only on a board that
   needs it: one that lacks keys for what Numbers and Symbols carry, or for Accents' 30 keys. Extras
   comes on while Numbers and Symbols are both held. Each layer spans at most 34 keys.
+- **Magic Romak is the one exception: no Extras, no Accents.** It models the author's keymap
+  (github.com/rafaelromao/keyboards), which has neither, so it has only Numbers and Symbols, and
+  nothing reaches the other two. The keymap's combos type what they carried: Alpha 2's dead keys,
+  `à`, `¿` and `¡`, and `€`, `°` and `º`/`ª` on Symbols and Numbers (`KEYMAP_SYMBOL_COMBOS` in
+  `romak.ts`). It cannot type `£ § « » ı ß œ æ`; `templates.test.ts` pins that list
+  (`MAGIC_ROMAK_UNTYPED`) and what French and German lose. Do not give it the default Extras or
+  Accents back, and do not extend the exception to another layout.
 - **The 24-key core is Magic Romak's keymap** (github.com/rafaelromao/keyboards, `numbers_layer` and
   `symbols_layer`). Numbers is a keypad on the right, with the brackets and the arithmetic beside
   them on the left; brackets on Numbers stay on the left hand. Every board gets the same core, so
@@ -34,8 +41,8 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
   stay together on Numbers or Symbols goes to Extras whole. The half that had a key leaves it, and
   that key on Symbols takes the most used symbol that has no key. The keymap's own core splits
   `/ \`, `- _` and `+ =` (`CORE_SPLIT_PAIRS`). That is deliberate: the core matches the keymap, and
-  those three are exempt. Magic Romak itself keeps its keymap's Symbols whole and its own Extras
-  (`MAGIC_ROMAK_EXTRAS` in `romak.ts`); every other layout takes the defaults.
+  those three are exempt. Magic Romak itself keeps its keymap's Symbols whole and has no Extras;
+  every other layout takes the defaults.
 - **Extras starts on the prime keys.** It takes what has no key in `EXTRAS_ORDER` (the pairs, then
   the single symbols, most used in the texts first). Each goes on the prime keys still free
   (`primeKeys`): the lowest Effort cost, the home row first among keys of equal cost. The keys of

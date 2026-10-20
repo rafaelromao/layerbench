@@ -5,6 +5,7 @@ import { compileLayout } from '../layout/compile.js';
 import { importTextLayout } from '../layout/text.js';
 import type { Binding, Layout, Mod } from '../layout/types.js';
 import { CLASSIC_LAYOUTS } from '../layouts/classic.js';
+import { bundledLayout } from '../layouts/index.js';
 import { magicRomak, romak } from '../layouts/romak.js';
 import { explain, simulate } from './resolver.js';
 
@@ -843,16 +844,17 @@ describe("a mod morph's modifiers", () => {
 });
 
 describe('a layer that comes on while others are on together', () => {
-  // Magic Romak's Extras: on while Numbers, held from space, and Symbols, held from there, are on.
-  const extras = ['L0', 'R0', 'LTM'];
+  // Ben Vallack's Piano's Extras: on while Numbers, held from L1, and Symbols, held from R0, are on.
+  const piano = bundledLayout('ben-vallack-piano') as Layout;
+  const extras = ['L1', 'R0', 'RTR'];
 
   it('is reached by holding those layers one after the other', () => {
-    expect(trace(magicRomak, '€').keys).toEqual(extras);
+    expect(trace(piano, '€').keys).toEqual(extras);
   });
 
   it('is reached whatever order its condition names them in', () => {
     const reversed: Layout = {
-      ...magicRomak,
+      ...piano,
       conditionalLayers: [{ if: ['sym', 'num'], then: 'extras' }],
     };
     const t = trace(reversed, '€');
@@ -862,12 +864,12 @@ describe('a layer that comes on while others are on together', () => {
 
   it('is reached by its condition when a key that would bring it on cannot', () => {
     // The machine turns Extras off when this key holds it alone.
-    const layers = magicRomak.layers.map((l) =>
+    const layers = piano.layers.map((l) =>
       l.id === 'num'
-        ? { ...l, bindings: { ...l.bindings, L1: { kind: 'mo', layer: 'extras' } as Binding } }
+        ? { ...l, bindings: { ...l.bindings, L0: { kind: 'mo', layer: 'extras' } as Binding } }
         : l,
     );
-    const t = trace({ ...magicRomak, layers }, '€');
+    const t = trace({ ...piano, layers }, '€');
     expect(t.out).toBe('€');
     expect(t.keys).toEqual(extras);
   });

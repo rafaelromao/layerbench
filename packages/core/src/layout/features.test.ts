@@ -92,10 +92,10 @@ describe('feature expansion', () => {
 describe('Magic Romak after the features rewrite', () => {
   const compiled = compileLayout(magicRomak);
 
-  it('has three alpha layers plus the default layers the board really has', () => {
+  it('has three alpha layers plus Numbers and Symbols, as its keymap has', () => {
     expect(compiled.layers.map((l) => l.id)).toEqual([
       ...['alpha1', 'alpha2', 'ccedil'],
-      ...['num', 'sym', 'extras', 'accents'],
+      ...['num', 'sym'],
     ]);
   });
 

@@ -235,7 +235,7 @@ On a new layout on Magic Romak's 24 keys, the symbols:
 
 `?`, `!` and `:` went with `¿`, `¡` and `;`, which those keys have no room for, and on Symbols
 their keys type `€` where `?` was, `°` where `!` was and `º` where `:` was. Magic Romak itself
-keeps Symbols as its keymap has it, and its own Extras, with `;`, `¿` and `¡` on their own.
+keeps Symbols as its keymap has it, and has no Extras (see below).
 
 The left inner thumb types space and, held, turns on Numbers. The right inner thumb, held, turns on
 Symbols; held from Numbers, it turns on Extras, or Symbols where there is no Extras. Accents comes
@@ -250,7 +250,8 @@ bottom rows carried, and fills Accents with the dead keys, the letters of their 
 Extras has no room for, on its thumbs too; every accented letter there is its accent and the
 letter. The board shows where everything went.
 
-Every layout that comes with the app has them too. The Standard and Thumb Alpha ones, Romak among
+Every layout that comes with the app has them too, but Magic Romak, which has only Numbers and
+Symbols. The Standard and Thumb Alpha ones, Romak among
 them, also share their main thumbs, the two innermost of each hand, so that what tells them apart is
 their letters. Held, left to right, the main thumbs give Shift, Numbers, Symbols and Shift. Tapped,
 they type Repeat, which types the last key again, then space, then the layout's thumb letter or
@@ -262,10 +263,14 @@ go, and their base layers keep no symbol but `'` `,` `.` `;`: the rest are on Sy
 
 The Special layouts keep every key they have. The key that types space also holds Numbers, and a
 thumb of the other hand holds Symbols: the innermost one with nothing on it, or else the innermost,
-still typing what it typed. Accents is the combo on two thumbs, as on a new layout. Magic Romak keeps
-its own thumbs on Numbers and Symbols and, as in its author's keymap, combos on Alpha 2 for the
-accents it has no key for, with `?` and `!` typing `¿` and `¡` when held. It reaches Accents from
-Alpha 2's right outer thumb.
+still typing what it typed. Accents is the combo on two thumbs, as on a new layout.
+
+Magic Romak is its author's keymap, and has no Extras and no Accents, as the keymap has none. It
+keeps its own thumbs on Numbers and Symbols, and the keymap's combos type what those two layers
+carried: on Alpha 2, the dead keys `´` `` ` `` `^` `~` `¨` and `à`, with `?` and `!` typing `¿` and
+`¡` when held; on Symbols, `€` (RTR, RTM and RTI together); on Numbers, `°` (RBR, RBM and RBI) and
+`º`, or `ª` when held (RHR, RHM and RHI). It cannot type `£` `§` `«` `»` `ı` `ß` `œ` `æ`, which the
+keymap has no way to, so French lacks `œ`, `æ` and its quotes and German its `ß`.
 
 ### Which layer wins
 

@@ -47,8 +47,8 @@ describe('Ranking a layout without some of its features', () => {
 
   it('drops the macros that type two letters, but not the ones that type one', () => {
     const before = kinds([]);
-    // Magic Romak's own, and Accents' on the 24 keys.
-    expect(before.get('qu')).toEqual(['macro', 'macro']);
+    // Magic Romak's own, on Alpha 2.
+    expect(before.get('qu')).toEqual(['macro']);
     expect(before.get('ão')).toBeDefined();
 
     const after = kinds(['macros']);
@@ -70,13 +70,13 @@ describe('Ranking a layout without some of its features', () => {
   it('types without combos what it can, and leaves out what only a combo types', () => {
     const after = kinds(['combos']);
     expect([...after.values()].flat()).not.toContain('combo');
-    // Magic Romak's à is a combo on Alpha 2; without it, Accents' key and its grave dead key do.
-    expect(after.get('à')).toEqual(['macro', 'deadkey']);
+    // Magic Romak's à is a combo on Alpha 2, and its grave dead key another: it has no other way.
+    expect(after.has('à')).toBe(false);
     const coverage = layoutLanguageCoverage(
       compileLayout(withoutFeatures(magicRomak, ['combos'])),
       'pt-BR',
     );
-    expect(coverage?.missingRequired).toEqual([]);
+    expect(coverage?.missingRequired).toEqual(['à']);
   });
 
   it('keeps a combo that only turns a layer on: the way to Accents stays, and the accents with it', () => {

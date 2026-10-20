@@ -361,16 +361,13 @@ describe('writing a file', () => {
         (l) => `${l.name}: ${l.keys.filter((k) => k.type === 'held').length}`,
       );
     // Numbers is held from L0, transparent there; Symbols' R0 does nothing there, and stays so.
-    // Extras shows both, Numbers' L0 and Symbols' R0 held together. Accents shows through Alpha 2's
-    // R1, the key that reaches it, as Alpha 2 shows R0.
+    // Alpha 2 shows R0, the key that reaches it.
     expect(held(magicRomak)).toEqual([
       'Alpha 1: 0',
       'Alpha 2: 1',
       'Ç extension: 1',
       'Numbers: 1',
       'Symbols: 0',
-      'Extras: 2',
-      'Accents: 1',
     ]);
     const nav: Layout = {
       format: 'layerbench/layout@1',

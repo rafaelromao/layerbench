@@ -75,13 +75,17 @@ describe('layout coverage', () => {
     expect(layoutLanguageCoverage(qwerty, 'pt-BR')?.missingRequired.length).toBeGreaterThan(0);
   });
 
-  it('writes Spanish, French, Italian and German through its Accents layer', () => {
+  it("writes Spanish and Italian through Alpha 2's dead keys, and French and German but a letter", () => {
     // Alpha 2 carries the Portuguese set; the accents the others add, a grave on any vowel, the
-    // tilde on `n`, the diaeresis, `œ` and `ß`, come from the Accents layer.
-    for (const tag of ['en', 'es', 'fr', 'it', 'de']) {
+    // tilde on `n` and the diaeresis, come from its combos' dead keys. Its keymap has no `œ`, `ß`
+    // or French quotes.
+    const missing = (tag: string) => {
       const c = layoutLanguageCoverage(magic, tag);
-      expect([tag, c?.missingRequired, c?.missingPunctuation]).toEqual([tag, [], []]);
-    }
+      return [tag, c?.missingRequired, c?.missingPunctuation];
+    };
+    for (const tag of ['en', 'es', 'it']) expect(missing(tag)).toEqual([tag, [], []]);
+    expect(missing('fr')).toEqual(['fr', ['œ'], ['«', '»']]);
+    expect(missing('de')).toEqual(['de', ['ß'], []]);
   });
 
   it('names the characters a language still needs on a layout without them', () => {

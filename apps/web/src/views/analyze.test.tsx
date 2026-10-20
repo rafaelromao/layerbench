@@ -20,8 +20,6 @@ describe('Analyze', () => {
       'Ç extension',
       'Numbers',
       'Symbols',
-      'Extras',
-      'Accents',
     ]);
 
     expect(await screen.findByText('Same finger bigrams')).toBeInTheDocument();

@@ -82,17 +82,17 @@ describe('the default layers on every board', () => {
         const missing = [...'0123456789', ...defaultLayerSymbols(), ...'ßäöü'].filter(
           (c) => !producible.has(c),
         );
-        expect(missing).toEqual([]);
+        const untyped = layout.id === 'magic-romak' ? MAGIC_ROMAK_UNTYPED : [];
+        expect([...new Set(missing)].sort()).toEqual([...untyped].sort());
       });
 
       it('writes all six languages', () => {
         for (const tag of Object.keys(LANGUAGE_PROFILES)) {
           const c = layoutLanguageCoverage(compiled, tag);
+          const missing = (layout.id === 'magic-romak' && MAGIC_ROMAK_MISSING[tag]) || [[], [], []];
           expect([tag, c?.missingRequired, c?.missingOptional, c?.missingPunctuation]).toEqual([
             tag,
-            [],
-            [],
-            [],
+            ...missing,
           ]);
         }
       });
@@ -298,7 +298,8 @@ describe('Accents mirrored for a layout that types its vowels with the left hand
     ).toBe(false);
   });
 
-  for (const layout of BUNDLED_LAYOUTS) {
+  // Magic Romak has no Accents.
+  for (const layout of BUNDLED_LAYOUTS.filter((l) => l.id !== 'magic-romak')) {
     const left = vowelsLeft.includes(layout.id ?? '');
     it(`${layout.name}: ${left ? 'mirrored' : 'as drawn'}`, () => {
       const preset = 'preset' in layout.geometry ? layout.geometry.preset : '';
@@ -384,7 +385,7 @@ describe('Accents keys a board lacks are on Extras', () => {
   }
 });
 
-describe("Magic Romak's layers: the defaults' Numbers and Accents, its keymap's Symbols and its own Extras", () => {
+describe("Magic Romak's layers: the defaults' Numbers, its keymap's Symbols, and no Extras or Accents", () => {
   const layer = (id: string) => magicRomak.layers.find((l) => l.id === id)?.bindings ?? {};
   const typed = (b: Binding | undefined): string | undefined =>
     b?.kind === 'kp' ? b.symbol : b?.kind === 'hold_tap' ? typed(b.tap) : undefined;
@@ -394,24 +395,45 @@ describe("Magic Romak's layers: the defaults' Numbers and Accents, its keymap's 
     for (const [id, s] of Object.entries(SYMBOLS_CORE)) expect(typed(layer('sym')[id])).toBe(s);
   });
 
-  it('Accents is the default layer, reached from Alpha 2, and Extras its own', () => {
-    const defaults = defaultLayers(getGeometryPreset('1333+2')).layers;
-    expect(layer('accents')).toEqual(defaults.find((l) => l.id === 'accents')?.bindings);
-    // Its keymap keeps `:`, `?` and `!` on Symbols, so its Extras keeps `;`, `¿` and `¡` on their
-    // own, as it had them before pairs went to Extras whole.
-    expect(layer('extras')).not.toEqual(defaults.find((l) => l.id === 'extras')?.bindings);
-    const extras = Object.values(layer('extras')).map(typed);
-    for (const s of [...';¿¡«»€£']) expect([s, extras.includes(s)]).toEqual([s, true]);
-    expect(magicRomak.conditionalLayers).toEqual([EXTRAS_CONDITION]);
-    expect(layer('alpha2').R1).toEqual({ kind: 'sl', layer: 'accents' });
-    expect(magicRomak.combos?.some((c) => c.id === 'accents')).toBe(false);
-    // An accent is still a combo on Alpha 2; £ is on Extras, Numbers and Symbols held.
-    const t = trace(magicRomak, 'ñ è £');
-    expect(t.out).toBe('ñ è £');
+  it('has neither Extras nor Accents, nor anything that reached them', () => {
+    expect(magicRomak.layers.map((l) => l.id)).toEqual([
+      'alpha1',
+      'alpha2',
+      'ccedil',
+      'num',
+      'sym',
+    ]);
+    expect(magicRomak.conditionalLayers ?? []).toEqual([]);
+    expect(Object.keys(magicRomak.activators ?? {})).not.toContain('accents');
+    // Alpha 2's right outer thumb is the keymap's apostrophe again.
+    expect(layer('alpha2').R1).toEqual({ kind: 'kp', symbol: "'" });
+    const named = JSON.stringify([magicRomak.layers, magicRomak.combos]);
+    expect(named).not.toMatch(/"(extras|accents)"/);
+  });
+
+  it("types €, ° and º or ª by its keymap's combos", () => {
+    const combos = magicRomak.combos ?? [];
+    expect(combos.filter((c) => ['euro', 'degree', 'ordinal'].includes(c.id ?? ''))).toEqual([
+      expect.objectContaining({ id: 'euro', keys: ['RTR', 'RTM', 'RTI'], layers: ['sym'] }),
+      expect.objectContaining({ id: 'degree', keys: ['RBR', 'RBM', 'RBI'], layers: ['num'] }),
+      expect.objectContaining({ id: 'ordinal', keys: ['RHR', 'RHM', 'RHI'], layers: ['num'] }),
+    ]);
+    const t = trace(magicRomak, '€ ° º ª');
+    expect(t.out).toBe('€ ° º ª');
+    expect(t.keys).toEqual([
+      ...['R0', 'combo:euro', 'L0'],
+      // Numbers held from space through the rest, which taps it for the spaces between them.
+      ...['L0', 'combo:degree', 'L0', 'combo:ordinal', 'L0', 'combo:ordinal'],
+    ]);
+  });
+
+  it('still types every accent by the combos on Alpha 2', () => {
+    const t = trace(magicRomak, 'ñ è ü');
+    expect(t.out).toBe('ñ è ü');
     expect(t.keys).toEqual([
       ...['R0', 'combo:tilde', 'LHR', 'L0'],
       ...['R0', 'combo:grave', 'RHR', 'L0'],
-      ...['L0', 'R0', 'LHM'],
+      ...['R0', 'combo:diaeresis', 'RTR'],
     ]);
   });
 });
@@ -461,6 +483,16 @@ describe("Magic Romak types `;` as the keymap's combo", () => {
   });
 });
 
+/**
+ * What Magic Romak cannot type: it has no Extras or Accents, and its keymap has no other way to these.
+ * French loses `œ`, `æ` and its quotes, German its `ß`.
+ */
+const MAGIC_ROMAK_UNTYPED = [...'£§«»ıßœæ'];
+const MAGIC_ROMAK_MISSING: Record<string, string[][]> = {
+  fr: [['œ'], ['æ'], ['«', '»']],
+  de: [['ß'], [], []],
+};
+
 describe('the default layers on every bundled layout', () => {
   const before = new Map([...CLASSIC_LAYOUTS, ...SMALL_LAYOUTS].map((l) => [l.id, l]));
 
@@ -477,25 +509,29 @@ describe('the default layers on every bundled layout', () => {
         const extras = defaultLayers(getGeometryPreset(preset)).layers.some(
           (l) => l.id === 'extras',
         );
-        expect(ids).toEqual(['num', 'sym', ...(extras ? ['extras'] : []), 'accents']);
+        expect(ids).toEqual(
+          layout.id === 'magic-romak'
+            ? ['num', 'sym']
+            : ['num', 'sym', ...(extras ? ['extras'] : []), 'accents'],
+        );
         expect(layout.layers.some((l) => ['dead', 'sym2'].includes(l.id))).toBe(false);
       });
 
-      it("types every digit and symbol of the default layers, and German's letters", () => {
+      it("types every digit and symbol of the default layers, and German's letters, but what Magic Romak cannot", () => {
         const missing = [...'0123456789', ...defaultLayerSymbols(), ...'ßäöü'].filter(
           (c) => !producible.has(c),
         );
-        expect(missing).toEqual([]);
+        const untyped = layout.id === 'magic-romak' ? MAGIC_ROMAK_UNTYPED : [];
+        expect([...new Set(missing)].sort()).toEqual([...untyped].sort());
       });
 
-      it('writes all six languages, every letter and mark', () => {
+      it('writes all six languages, every letter and mark, but what Magic Romak cannot', () => {
         for (const tag of Object.keys(LANGUAGE_PROFILES)) {
           const c = layoutLanguageCoverage(compiled, tag);
+          const missing = (layout.id === 'magic-romak' && MAGIC_ROMAK_MISSING[tag]) || [[], [], []];
           expect([tag, c?.missingRequired, c?.missingOptional, c?.missingPunctuation]).toEqual([
             tag,
-            [],
-            [],
-            [],
+            ...missing,
           ]);
         }
       });
