@@ -31,20 +31,20 @@ or one that a link or
 **Open in analyzer** brought here and you have not saved. Its first **Save** opens a dialog that says
 Save makes a copy in your custom layouts and asks for the copy's name. The name offered is the
 layout's with *copy* after it, numbered (*copy 2*) if a layout already has it; an empty name is
-refused. **Cancel** saves nothing.
-
-### A name another layout has
-
-Two custom layouts never share a name: capitals and spacing do not make two names. When the name
-you save under is already another custom layout's, whether in a copy's dialog, **New layout**, an
-import, or the **Name** field of a layout you renamed, the dialog says so and offers
-**Overwrite** that layout, or to type another name. Overwrite puts this layout in its place; nothing
-is saved until you choose. Once saved, the layout in the editor is the copy, and later
+refused. **Cancel** saves nothing. Once saved, the layout in the editor is the copy, and later
 **Save**s keep your edits to it straight away.
 
 A custom layout is kept in this browser. To keep it anywhere else, sign in with GitHub, below; or
 copy its LayerBench JSON from the editor's **JSON** panel and keep the text, which **Import** reads
 back.
+
+### A name another layout has
+
+Two custom layouts never share a name: capitals and spacing do not make two names. When the name
+you save under is already another custom layout's, whether in a copy's dialog, **New layout**, an
+import, or the **Name** field of a layout you renamed, the dialog says so and offers to
+**Overwrite** that layout, or to type another name. Overwrite puts this layout in its place; nothing
+is saved until you choose.
 
 ## Signing in with GitHub
 
@@ -71,10 +71,9 @@ rule set and text GitHub has not got, or has an older copy of. One saved there s
 browser, stays as it is, so a browser that has fallen behind never overwrites newer work. A layout
 whose name GitHub has for another layout stays in this browser: open it and save it to overwrite
 GitHub's, or rename it. It says how many it copied, how many were already up to date and how many
-it left; if it
-stops partway, what went up stays, and copying again carries on from there. Copy while no other
-browser is saving to the same account: a save landing at the very moment one is copied may be
-written over.
+it left; if it stops partway, what went up stays, and copying again carries on from there. Copy
+while no other browser is saving to the same account: a save landing at the very moment one is
+copied may be written over.
 
 ## Signing out
 
@@ -92,8 +91,9 @@ soon as it opens. Opened by
 someone who has not got it, it is a layout of their own: they can analyze it, edit it and save a
 copy. Opened where it is saved and unchanged, in this browser or your GitHub account, it is your
 custom layout, and saving changes that one. A link never saves over a different layout someone has
-under the same name unless they choose to: saving asks to overwrite it or for another name. A custom text and a custom rule set do not travel the
-same way: the link only names them, so they open only where they are saved. Anywhere else nothing
+under the same name unless they choose to: saving asks to overwrite it or for another name. A
+custom text and a custom rule set do not travel the same way: the link only names them, so they
+open only where they are saved. Anywhere else nothing
 opens in their place: the page says the text or rule set is not saved there, and shows no numbers.
 
 A link with a whole layout in it is long: the layout is after the `#`. Copy the whole address, and

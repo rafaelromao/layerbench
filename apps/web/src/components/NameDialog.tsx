@@ -93,12 +93,12 @@ export function NameDialog({
           />
         </label>
         {/* Read out as it changes: whoever types hears the name is taken, and when it is not. */}
-        <p id={clashId} role="status" className="text-xs text-warning empty:hidden">
+        <p id={clashId} role="status" className="text-xs text-warning empty:sr-only">
           {clash &&
             `A custom layout is already called ${clash.name}. ${
               onOverwrite
                 ? 'Overwrite it, or type another name.'
-                : 'It could not be overwritten, as GitHub and this browser each have a layout of the name: type another name.'
+                : 'It could not be overwritten: type another name.'
             }`}
         </p>
         {children}
