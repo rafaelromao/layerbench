@@ -562,7 +562,8 @@ What moved, checked across the 38 reports; nothing else moved:
   lists lose Accents' and Extras' routes, the accents now coming from Alpha 2 and its dead-key
   combos alone, and `€`, `°`, `º` and `ª` come from the new combos; `'` gains Alpha 2's right
   outer thumb. Its per-layer results lose Extras and Accents.
-- **Magic Romak's document and share blob.**
+- **Magic Romak's document and share blob**, its languages, measured by `pnpm languages`, losing
+  French and German, which it no longer types whole.
 
 ## Not compared
 
