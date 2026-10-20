@@ -5,12 +5,14 @@ import { documentedLayouts } from '../layouts/index.js';
 import { magicRomak } from '../layouts/romak.js';
 import {
   bindingReaches,
+  blockedThumbs,
   describeReach,
   discoverActivators,
   type ReachKey,
   reachKeys,
   standInPeers,
 } from './activators.js';
+import { explain } from './resolver.js';
 
 const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
 
@@ -385,6 +387,138 @@ describe('the keys that reach a layer', () => {
     expect(says.LHR).toBe('tapped from base with Shift to reach up');
     expect(says.LHM).toBe('tapped from base with left Shift or left Alt to reach up');
     expect(says.LHI).toBe('tapped from base with Shift and Control to reach up');
+  });
+});
+
+describe('the thumb keys a held thumb blocks', () => {
+  const blocked = (c: typeof magic, layer: string) =>
+    blockedThumbs(c, layerOf(c, layer)).map((p) => keyId(c, p));
+
+  it("are the holding hand's on a layer one thumb holds, and every thumb on one both hold", () => {
+    expect(blocked(magic, 'alpha1')).toEqual([]);
+    expect(blocked(magic, 'num').sort()).toEqual(['L0', 'L1']);
+    expect(blocked(magic, 'sym').sort()).toEqual(['R0', 'R1']);
+    // Magic Romak has no Extras; Ben Vallack's Piano holds its Numbers and Symbols, so Extras, by
+    // a thumb of each hand.
+    const piano = compileLayout(documentedLayouts().find((l) => l.id === 'ben-vallack-piano')!);
+    expect(blocked(piano, 'extras').sort()).toEqual(['L0', 'L1', 'R0', 'R1']);
+  });
+
+  it('are none on a layer a thumb taps, or one a finger holds', () => {
+    expect(blocked(magic, 'alpha2')).toEqual([]);
+    // Romak taps its right outer thumb for Accents.
+    const romak = compileLayout(documentedLayouts().find((l) => l.id === 'romak')!);
+    expect(blocked(romak, 'accents')).toEqual([]);
+    const c = compileLayout(
+      board([
+        { id: 'base', bindings: { LHM: { kind: 'mo', layer: 'nav' } } },
+        { id: 'nav', bindings: { '*': { kind: 'trans' }, L1: kp('x') } },
+      ]),
+    );
+    expect(blocked(c, 'nav')).toEqual([]);
+  });
+
+  it('are none where another way onto the layer leaves the thumb free', () => {
+    const c = compileLayout(
+      board([
+        {
+          id: 'base',
+          bindings: { L0: { kind: 'mo', layer: 'nav' }, LHM: { kind: 'sl', layer: 'nav' } },
+        },
+        { id: 'nav', bindings: { '*': { kind: 'trans' } } },
+      ]),
+    );
+    expect(blocked(c, 'nav')).toEqual([]);
+  });
+
+  it('are none on a layer a thumb arms, toggles or switches to on its hold, and then lets go', () => {
+    for (const hold of [
+      { kind: 'sl', layer: 'nav' },
+      { kind: 'tog', layer: 'nav' },
+      { kind: 'to', layer: 'nav' },
+    ] as const) {
+      const c = compileLayout(
+        board([
+          { id: 'base', bindings: { L0: { kind: 'hold_tap', tap: kp(' '), hold } } },
+          { id: 'nav', bindings: { '*': { kind: 'trans' }, L1: kp('x') } },
+        ]),
+      );
+      expect([hold.kind, blocked(c, 'nav')]).toEqual([hold.kind, []]);
+      const r = explain(c, 'x', { caseMode: 'fold', crossWord: 'reset' });
+      expect([hold.kind, r.coverage.unproducible.size]).toEqual([hold.kind, 0]);
+    }
+  });
+
+  it('are the hand of a thumb that holds a layer-tap down, as of one that holds `mo`', () => {
+    const c = compileLayout(
+      board([
+        { id: 'base', bindings: { L0: { kind: 'lt', layer: 'nav', tap: kp(' ') } } },
+        { id: 'nav', bindings: { '*': { kind: 'trans' }, L1: kp('x') } },
+      ]),
+    );
+    expect(blocked(c, 'nav').sort()).toEqual(['L0', 'L1']);
+  });
+
+  it('are none on a layer an auto layer, a macro or a morph that toggles on one part reaches', () => {
+    const holds: Binding[] = [
+      { kind: 'auto_layer', layer: 'nav' },
+      { kind: 'macro', steps: [{ kind: 'sl', layer: 'nav' }] },
+      {
+        kind: 'mod_morph',
+        mods: ['LSHIFT'],
+        default: { kind: 'mo', layer: 'nav' },
+        morphed: { kind: 'tog', layer: 'nav' },
+      },
+    ];
+    for (const hold of holds) {
+      const c = compileLayout(
+        board([
+          { id: 'base', bindings: { L0: { kind: 'hold_tap', tap: kp(' '), hold } } },
+          { id: 'nav', bindings: { '*': { kind: 'trans' }, L1: kp('x') } },
+        ]),
+      );
+      expect([hold.kind, blocked(c, 'nav')]).toEqual([hold.kind, []]);
+    }
+  });
+
+  it('are only the hands every set of layers that brings a layer on holds', () => {
+    const c = compileLayout(
+      board(
+        [
+          {
+            id: 'base',
+            bindings: {
+              L0: { kind: 'mo', layer: 'num' },
+              R0: { kind: 'mo', layer: 'sym' },
+              LHP: { kind: 'mo', layer: 'fn' },
+            },
+          },
+          { id: 'num', bindings: { '*': { kind: 'trans' } } },
+          { id: 'sym', bindings: { '*': { kind: 'trans' } } },
+          { id: 'fn', bindings: { '*': { kind: 'trans' } } },
+          { id: 'ex', bindings: { '*': { kind: 'trans' }, R1: kp('x') } },
+        ],
+        {
+          conditionalLayers: [
+            { if: ['num', 'sym'], then: 'ex' },
+            { if: ['num', 'fn'], then: 'ex' },
+          ],
+        },
+      ),
+    );
+    // Numbers and the finger holding Fn leave the right thumb free.
+    expect(blocked(c, 'ex').sort()).toEqual(['L0', 'L1']);
+  });
+
+  it('type nothing in the analysis: what only they carry is unproducible', () => {
+    const c = compileLayout(
+      board([
+        { id: 'base', bindings: { L0: { kind: 'mo', layer: 'nav' }, R0: kp(' ') } },
+        { id: 'nav', bindings: { '*': { kind: 'trans' }, L1: kp('x'), R1: kp('y') } },
+      ]),
+    );
+    const r = explain(c, 'x y', { caseMode: 'fold', crossWord: 'reset' });
+    expect([...r.coverage.unproducible.keys()]).toEqual(['x']);
   });
 });
 
