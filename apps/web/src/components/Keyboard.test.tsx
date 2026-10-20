@@ -2,7 +2,7 @@ import { bundledLayout, compileLayout } from '@layerbench/core';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { drawnX, Keyboard, KeyLegend, reach } from './Keyboard.js';
+import { comboPillAt, drawnX, Keyboard, KeyLegend, reach } from './Keyboard.js';
 
 const qwerty = compileLayout(bundledLayout('qwerty')!);
 const romak = compileLayout(bundledLayout('magic-romak')!);
@@ -390,6 +390,32 @@ describe('a click on the board between the keys', () => {
     await user.click(screen.getByRole('button', { name: /^Edit combo/ }));
     expect(onComboClick).toHaveBeenCalledWith(0);
     expect(onEmptyClick).not.toHaveBeenCalled();
+  });
+});
+
+describe("a combo's pill", () => {
+  const key = (cx: number) => ({ cx, cy: 50, w: 54, h: 54 });
+  const row = [key(30), key(90), key(150)];
+
+  it('sits halfway between two keys, on the gap', () => {
+    expect(
+      comboPillAt(
+        [row[0], row[1]].map(({ cx, cy }) => ({ x: cx, y: cy })),
+        row,
+      ),
+    ).toEqual({
+      x: 60,
+      y: 50,
+    });
+  });
+
+  it('moves to the gap below the middle key of three in a row, off its legend', () => {
+    expect(
+      comboPillAt(
+        row.map(({ cx, cy }) => ({ x: cx, y: cy })),
+        row,
+      ),
+    ).toEqual({ x: 90, y: 80 });
   });
 });
 

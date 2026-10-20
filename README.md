@@ -69,7 +69,8 @@ keeps are in `apps/web/src/auth/github-session.ts`. The server half is
 
 The layouts the app started with are written as data in `packages/core/src/layouts/` (`classic.ts`,
 `small.ts`, `romak.ts`), each copied from where its author published it, and given the default
-Numbers, Symbols and Accents layers, plus Extras on a board that needs it. The Standard and Thumb
+Numbers, Symbols and Accents layers, plus Extras on a board that needs it, but for Magic Romak, which
+has only Numbers and Symbols, as its author's keymap has. The Standard and Thumb
 Alpha ones share their main thumbs and base-layer symbols, so that they compare on their letters
 (`withStandardThumbs` in `standard.ts`): the four inner thumbs hold Shift, Numbers, Symbols and
 Shift and tap Repeat, space, a thumb letter or nothing, and Accents, and no symbol stays on the base

@@ -139,8 +139,6 @@ describe('Compare', () => {
       'Ç extension',
       'Numbers',
       'Symbols',
-      'Extras',
-      'Accents',
     ]);
     // Graphite's own layer, then the default ones every bundled layout has.
     expect(await layerNames(user, 'Layers of B')).toEqual([

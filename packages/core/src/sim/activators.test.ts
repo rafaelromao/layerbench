@@ -398,12 +398,17 @@ describe('the thumb keys a held thumb blocks', () => {
     expect(blocked(magic, 'alpha1')).toEqual([]);
     expect(blocked(magic, 'num').sort()).toEqual(['L0', 'L1']);
     expect(blocked(magic, 'sym').sort()).toEqual(['R0', 'R1']);
-    expect(blocked(magic, 'extras').sort()).toEqual(['L0', 'L1', 'R0', 'R1']);
+    // Magic Romak has no Extras; Ben Vallack's Piano holds its Numbers and Symbols, so Extras, by
+    // a thumb of each hand.
+    const piano = compileLayout(documentedLayouts().find((l) => l.id === 'ben-vallack-piano')!);
+    expect(blocked(piano, 'extras').sort()).toEqual(['L0', 'L1', 'R0', 'R1']);
   });
 
   it('are none on a layer a thumb taps, or one a finger holds', () => {
     expect(blocked(magic, 'alpha2')).toEqual([]);
-    expect(blocked(magic, 'accents')).toEqual([]);
+    // Romak taps its right outer thumb for Accents.
+    const romak = compileLayout(documentedLayouts().find((l) => l.id === 'romak')!);
+    expect(blocked(romak, 'accents')).toEqual([]);
     const c = compileLayout(
       board([
         { id: 'base', bindings: { LHM: { kind: 'mo', layer: 'nav' } } },

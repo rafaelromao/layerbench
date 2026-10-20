@@ -71,8 +71,8 @@ const ALPHA2_OR_SYMBOLS: Binding = {
  * types: the firmware's symbol tap-holds jump to the end of the line or past the cursor first when
  * held, which is editing rather than typing, and are left out. Keys it leaves empty are empty here.
  *
- * Magic Romak has the default layers in their place, on these thumbs, but for its Symbols and
- * Extras, which keep the keymap's `:`, `?` and `!` (`magicRomakDefaultLayers`).
+ * Magic Romak has the default Numbers and the keymap's Symbols in their place, on these thumbs
+ * (`magicRomakLayers`).
  */
 const NUMBERS_THUMBS: Record<string, Binding> = {
   LHP: tapOrUnmodelled(',', 'FUN'),
@@ -94,77 +94,31 @@ const SYMBOLS_THUMBS: Record<string, Binding> = {
 const THUMBS = new Set(['L0', 'L1', 'R0', 'R1']);
 
 /**
- * The default layers on a Romak board: the keymap's thumbs on Numbers and Symbols, and its empty
- * keys there empty, the default grid on every other key. Accents, and Extras where the board needs
- * it, are the defaults as they are.
+ * Magic Romak's Numbers and Symbols. Numbers is the default layer with the keymap's thumbs, and its
+ * empty keys there empty; Symbols is the keymap's whole. It has no Extras and no Accents, the keymap
+ * having neither: its combos type the accents and the few symbols they carried
+ * (`alpha2Combos`, `KEYMAP_SYMBOL_COMBOS`), and what they don't, it doesn't type.
  */
-function romakDefaultLayers(preset: string): Pick<Layout, 'layers' | 'conditionalLayers'> {
-  const defaults = defaultLayers(getGeometryPreset(preset));
-  const own: Record<string, Record<string, Binding>> = {
-    [DEFAULT_LAYER_IDS.numbers]: NUMBERS_THUMBS,
-    [DEFAULT_LAYER_IDS.symbols]: SYMBOLS_THUMBS,
-  };
-  const layers = defaults.layers.map((l): LayerDef => {
-    const thumbs = own[l.id];
-    if (!thumbs) return l;
-    const keys = Object.entries(l.bindings).filter(([id]) => id !== '*' && !THUMBS.has(id));
-    return {
-      ...l,
-      bindings: { '*': { kind: 'none' }, ...Object.fromEntries(keys), ...thumbs },
-    };
-  });
-  return { layers, conditionalLayers: defaults.conditionalLayers };
+function magicRomakLayers(): LayerDef[] {
+  const numbers = defaultLayers(getGeometryPreset('1333+2')).layers.find(
+    (l) => l.id === DEFAULT_LAYER_IDS.numbers,
+  );
+  if (!numbers) throw new Error('The default layers have no Numbers');
+  const keys = Object.entries(numbers.bindings).filter(([id]) => id !== '*' && !THUMBS.has(id));
+  return [
+    {
+      ...numbers,
+      bindings: { '*': { kind: 'none' }, ...Object.fromEntries(keys), ...NUMBERS_THUMBS },
+    },
+    {
+      id: DEFAULT_LAYER_IDS.symbols,
+      name: 'Symbols',
+      bindings: { '*': { kind: 'none' }, ...rowBindings(SYMBOLS_CORE), ...SYMBOLS_THUMBS },
+    },
+  ];
 }
 
 const dead = (diacritic: string): Binding => ({ kind: 'dead_key', diacritic });
-const macro = (symbols: string): Binding => ({ kind: 'macro', symbols });
-
-/**
- * Magic Romak's Extras, kept as it was before the default layers moved a pair whole to Extras: its
- * keymap keeps `:`, `?` and `!` on Symbols, so `;`, `¿` and `¡` are here on their own, each symbol
- * where the old Dead keys layer had it, and the accents its 24 keys lack beside their place. Its
- * thumbs are holding: `^` and `î`, with no finger key left here, are on Accents' right thumbs.
- */
-const MAGIC_ROMAK_EXTRAS: Record<string, Binding> = {
-  '*': { kind: 'trans' },
-  ...rowBindings({
-    LTM: '€',
-    LHP: 'ª',
-    LHM: '£',
-    LBR: '«',
-    LBM: '»',
-    RTI: '°',
-    RTM: 'ı',
-    RTR: ';',
-    RHI: '¿',
-    RHP: 'º',
-    RBI: '¡',
-    RBR: '§',
-  }),
-  LTR: dead('`'),
-  LTI: kp('æ'),
-  LHI: dead('´'),
-  LBI: dead('¨'),
-  LHR: dead('~'),
-  RHM: macro('ù'),
-  RHR: macro('ì'),
-  RBM: macro('ú'),
-};
-
-/** Magic Romak's default layers: Symbols the keymap's whole, and its own Extras. */
-function magicRomakDefaultLayers(): Pick<Layout, 'layers' | 'conditionalLayers'> {
-  const defaults = romakDefaultLayers('1333+2');
-  const layers = defaults.layers.map((l): LayerDef => {
-    if (l.id === DEFAULT_LAYER_IDS.symbols)
-      return {
-        ...l,
-        bindings: { '*': { kind: 'none' }, ...rowBindings(SYMBOLS_CORE), ...SYMBOLS_THUMBS },
-      };
-    if (l.id === DEFAULT_LAYER_IDS.extras) return { ...l, bindings: MAGIC_ROMAK_EXTRAS };
-    return l;
-  });
-  return { layers, conditionalLayers: defaults.conditionalLayers };
-}
 
 // ---------------------------------------------------------------- Magic Romak
 
@@ -298,17 +252,20 @@ function alpha1Combos(): ComboDef[] {
   ];
 }
 
-function alpha2Combo(id: string, keys: string[], binding: Binding): ComboDef {
+function typingCombo(id: string, keys: string[], binding: Binding, layers: string[]): ComboDef {
   return {
     id,
     keys,
     binding,
-    layers: ['alpha2'],
+    layers,
     role: 'typing',
     timeoutMs: 30,
     slowRelease: false,
   };
 }
+
+const alpha2Combo = (id: string, keys: string[], binding: Binding): ComboDef =>
+  typingCombo(id, keys, binding, ['alpha2']);
 
 const tapOrHeld = (tap: string, held: string): Binding => ({
   kind: 'hold_tap',
@@ -350,6 +307,17 @@ const SEMICOLON_COMBO: ComboDef = {
   timeoutMs: 30,
   slowRelease: false,
 };
+
+/**
+ * The keymap's combos for the symbols the default layers would have put on Extras: `cb_eu` on
+ * Symbols, and `cb_deg` and `cb_ord_o` on Numbers. Held, `cb_eu` types "EUR", a word rather than a
+ * symbol, and is left out; `cb_ord_o` types `ª`.
+ */
+const KEYMAP_SYMBOL_COMBOS: ComboDef[] = [
+  typingCombo('euro', ['RTR', 'RTM', 'RTI'], kp('€'), ['sym']),
+  typingCombo('degree', ['RBR', 'RBM', 'RBI'], kp('°'), ['num']),
+  typingCombo('ordinal', ['RHR', 'RHM', 'RHI'], tapOrHeld('º', 'ª'), ['num']),
+];
 
 /** An adaptive key: types `fallback`, or `afterVowel` when a vowel came just before it. */
 const adaptiveKey = (fallback: string, afterVowel: string): Binding => ({
@@ -394,75 +362,64 @@ const ALT_REPEAT: Binding = {
  * and the alt repeat are adaptive keys on their own keys, and the alt-repeat follow-ups match on
  * the tag the accent macro leaves behind. What is left is the layers you can see.
  */
-export const magicRomak: Layout = (() => {
-  const defaults = magicRomakDefaultLayers();
-  return {
-    format: 'layerbench/layout@1',
-    id: 'magic-romak',
-    name: 'Magic Romak',
-    author: 'Rafael Romão',
-    description:
-      'Romak 24 with adaptive keys (h/v), alt repeat, sentence case, caps word, and dead keys for Spanish, French and Italian.',
-    link: ROMAK_LINK,
-    hostLocale: 'symbols',
-    geometry: { preset: '1333+2' },
-    keys: { space: 'L0', shift: { key: 'R1', kind: 'sk' } },
-    behaviorDefaults: {
-      sl: { quickRelease: true, ignoreModifiers: false, releaseAfterMs: 1000 },
-      sk: { quickRelease: true, ignoreModifiers: true, releaseAfterMs: 1500 },
+export const magicRomak: Layout = {
+  format: 'layerbench/layout@1',
+  id: 'magic-romak',
+  name: 'Magic Romak',
+  author: 'Rafael Romão',
+  description:
+    'Romak 24 with adaptive keys (h/v), alt repeat, sentence case, caps word, and dead keys for Spanish, French and Italian.',
+  link: ROMAK_LINK,
+  hostLocale: 'symbols',
+  geometry: { preset: '1333+2' },
+  keys: { space: 'L0', shift: { key: 'R1', kind: 'sk' } },
+  behaviorDefaults: {
+    sl: { quickRelease: true, ignoreModifiers: false, releaseAfterMs: 1000 },
+    sk: { quickRelease: true, ignoreModifiers: true, releaseAfterMs: 1500 },
+  },
+  repeatPolicy: { doubledLetters: 'repeatKey' },
+  behaviors: {},
+  combos: [...alpha1Combos(), SEMICOLON_COMBO, ...alpha2Combos(), ...KEYMAP_SYMBOL_COMBOS],
+  layers: [
+    // Holding space reaches the numbers and holding the Alpha 2 key the symbols; the
+    // sentence-case feature wraps the space's tap, so both live on one key.
+    {
+      id: 'alpha1',
+      name: 'Alpha 1',
+      bindings: {
+        ...ALPHA1_24,
+        RBI: adaptiveKey('h', 'v'),
+        L1: ALT_REPEAT,
+        L0: SPACE_OR_NUMBERS,
+        R0: ALPHA2_OR_SYMBOLS,
+        R1: { kind: 'sk', mod: 'LSHIFT' },
+      },
     },
-    repeatPolicy: { doubledLetters: 'repeatKey' },
-    behaviors: {},
-    combos: [...alpha1Combos(), SEMICOLON_COMBO, ...alpha2Combos()],
-    layers: [
-      // Holding space reaches the numbers and holding the Alpha 2 key the symbols; the
-      // sentence-case feature wraps the space's tap, so both live on one key. Tapping the
-      // Alpha 2 key, then the right outer thumb, reaches Accents.
-      {
-        id: 'alpha1',
-        name: 'Alpha 1',
-        bindings: {
-          ...ALPHA1_24,
-          RBI: adaptiveKey('h', 'v'),
-          L1: ALT_REPEAT,
-          L0: SPACE_OR_NUMBERS,
-          R0: ALPHA2_OR_SYMBOLS,
-          R1: { kind: 'sk', mod: 'LSHIFT' },
-        },
-      },
-      {
-        id: 'alpha2',
-        name: 'Alpha 2',
-        bindings: {
-          ...alpha2Bindings(),
-          LBI: adaptiveKey('v', 'h'),
-          // The second apostrophe makes way for the accents the other languages need.
-          R1: { kind: 'sl', layer: DEFAULT_LAYER_IDS.accents },
-        },
-      },
-      { id: 'ccedil', name: '\u00c7 extension', bindings: CCEDIL_BINDINGS },
-      ...defaults.layers,
+    {
+      id: 'alpha2',
+      name: 'Alpha 2',
+      bindings: { ...alpha2Bindings(), LBI: adaptiveKey('v', 'h') },
+    },
+    { id: 'ccedil', name: '\u00c7 extension', bindings: CCEDIL_BINDINGS },
+    ...magicRomakLayers(),
+  ],
+  features: {
+    sentenceCase: {},
+    // Matches what the pre-shifted layer allowed through before.
+    capsWord: { continueList: ['_', 'Backspace'] },
+  },
+  activators: {
+    alpha2: [
+      { from: 'alpha1', via: 'key:alpha1/R0' },
+      { from: 'ccedil', via: 'key:ccedil/L1' },
     ],
-    conditionalLayers: defaults.conditionalLayers,
-    features: {
-      sentenceCase: {},
-      // Matches what the pre-shifted layer allowed through before.
-      capsWord: { continueList: ['_', 'Backspace'] },
-    },
-    activators: {
-      alpha2: [
-        { from: 'alpha1', via: 'key:alpha1/R0' },
-        { from: 'ccedil', via: 'key:ccedil/L1' },
-      ],
-      num: [{ from: 'alpha1', via: 'key:alpha1/L0' }],
-      sym: [
-        { from: 'alpha1', via: 'key:alpha1/R0' },
-        { from: 'num', via: 'key:num/R0' },
-      ],
-      accents: [{ from: 'alpha2', via: 'key:alpha2/R1' }],
-    },
-  };
-})();
+    num: [{ from: 'alpha1', via: 'key:alpha1/L0' }],
+    sym: [
+      { from: 'alpha1', via: 'key:alpha1/R0' },
+      { from: 'num', via: 'key:num/R0' },
+    ],
+  },
+};
 
 // ---------------------------------------------------------------- Romak
 

@@ -35,7 +35,7 @@ function freshStorage(): IndexedDbAdapter {
 
 /**
  * Qwerty as written, its letters alone, saved under the name given: every bundled layout types the
- * accents through Accents, so the one that cannot is a custom one.
+ * accents, through Accents or, on Magic Romak, its dead keys, so the one that cannot is a custom one.
  */
 async function savePlain(
   storage: IndexedDbAdapter,
@@ -599,7 +599,7 @@ describe('Ranking layouts', () => {
   }, 90_000);
 
   it('ranks the layouts that can write the language first', async () => {
-    // Every bundled layout writes Spanish through its Accents layer; Plain has no ñ.
+    // Every bundled layout writes Spanish, through Accents or Magic Romak's dead keys; Plain has no ñ.
     const storage = freshStorage();
     await savePlain(storage, 'plain');
     renderRoute('/library?corpus=es-general&sample=10000', { storage });

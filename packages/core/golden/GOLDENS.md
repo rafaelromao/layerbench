@@ -549,6 +549,22 @@ What moved, checked across the 38 reports; nothing else moved:
   Magic Romak's is *min* on every text (348 to 384). Qwerty's is *max* (1056 to 1234). Romak's is
   *mid high* in English (532), *mid low* on the mix (483) and *min* on Portuguese (434).
 
+## Twenty-fifth re-baseline: Magic Romak without Extras and Accents
+
+Magic Romak follows its author's keymap, which has neither layer: it loses Extras and Accents, the
+Extras condition and Alpha 2's way to Accents, whose right outer thumb types `'` again. It gains
+the keymap's combos for `€` on Symbols and for `°` and `º`, or `ª` held, on Numbers. It no longer
+types `£ § « » ı ß œ æ`.
+
+What moved, checked across the 38 reports; nothing else moved:
+
+- **Magic Romak**: no value, press or trace, the texts typing none of what it lost. Its producer
+  lists lose Accents' and Extras' routes, the accents now coming from Alpha 2 and its dead-key
+  combos alone, and `€`, `°`, `º` and `ª` come from the new combos; `'` gains Alpha 2's right
+  outer thumb. Its per-layer results lose Extras and Accents.
+- **Magic Romak's document and share blob**, its languages, measured by `pnpm languages`, losing
+  French and German, which it no longer types whole.
+
 ## Not compared
 
 `globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not
