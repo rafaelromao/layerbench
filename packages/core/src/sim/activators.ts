@@ -588,6 +588,93 @@ export function reachKeys(
     });
 }
 
+/**
+ * How a held key brings `target` on: `held` while it stays down, as `mo` and `lt` do, `let go` when
+ * it arms, toggles or switches to it and comes up again, or `none`. A morph whose parts differ is
+ * `let go` if any part is, the thumb being free for that part.
+ */
+function holdOf(
+  c: CompiledLayout,
+  b: Binding,
+  target: number,
+  depth = 0,
+): 'held' | 'let go' | 'none' {
+  if (depth > 8) return 'none';
+  const reaches = (layer: string) => c.layerIndex.get(layer) === target;
+  const either = (...parts: Binding[]) => {
+    const hows = parts.map((x) => holdOf(c, x, target, depth + 1));
+    return hows.includes('let go') ? 'let go' : hows.includes('held') ? 'held' : 'none';
+  };
+  switch (b.kind) {
+    case 'mo':
+    case 'lt':
+      return reaches(b.layer) ? 'held' : 'none';
+    case 'sl':
+    case 'tog':
+    case 'to':
+    case 'auto_layer':
+      return reaches(b.layer) ? 'let go' : 'none';
+    case 'hold_tap':
+      return holdOf(c, b.hold, target, depth + 1);
+    case 'mod_morph':
+      return either(b.default, b.morphed);
+    case 'layer_morph':
+      return either(b.inactive, b.active);
+    case 'tap_dance': {
+      // Held, a tap dance is pressed once: its first branch.
+      const first = branchFor(b, 1);
+      return first ? holdOf(c, first, target, depth + 1) : 'none';
+    }
+    case 'adaptive':
+      return b.default ? holdOf(c, b.default, target, depth + 1) : 'none';
+    case 'macro':
+      return 'let go';
+    default:
+      return 'none';
+  }
+}
+
+/**
+ * The thumb keys out of reach while a layer is on: every thumb key of a hand whose thumb is holding
+ * a key down to keep the layer on, the held key among them. A hand is holding when every way onto
+ * the layer holds one of its thumb keys down, as `mo` and `lt` do; a key that arms, toggles or
+ * switches to the layer is let go. A layer that comes on with others together holds each of
+ * theirs, so with Numbers held by one thumb and Symbols by the other, Extras has no thumb free;
+ * where several sets of layers bring it on, a hand is holding only if it is in each set.
+ */
+export function blockedThumbs(c: CompiledLayout, layer: number): number[] {
+  // Each set of layers that brings the layer on, and the ways onto each layer of the set.
+  const sets = new Map<string, Map<number, { pos: number; route: ReachRoute }[]>>();
+  for (const k of reachKeys(c, layer))
+    for (const route of k.routes) {
+      const through = route.through?.layer ?? layer;
+      const set = route.through ? [through, ...route.through.with].sort().join() : '';
+      const ways = sets.get(set) ?? new Map();
+      ways.set(through, [...(ways.get(through) ?? []), { pos: k.pos, route }]);
+      sets.set(set, ways);
+    }
+  const holdingIn = (ways: Map<number, { pos: number; route: ReachRoute }[]>) => {
+    const hands = new Set<string>();
+    for (const [through, routes] of ways)
+      for (const hand of ['L', 'R'])
+        if (
+          routes.every(
+            ({ pos, route }) =>
+              route.mode === 'hold' &&
+              !route.chord?.length &&
+              c.keys[pos]?.thumb &&
+              c.keys[pos].hand === hand &&
+              holdOf(c, c.layers[route.via].bindings[pos], through) === 'held',
+          )
+        )
+          hands.add(hand);
+    return hands;
+  };
+  const each = [...sets.values()].map(holdingIn);
+  const holding = new Set(['L', 'R'].filter((h) => each.length > 0 && each.every((x) => x.has(h))));
+  return c.keys.flatMap((k, pos) => (k.thumb && holding.has(k.hand) ? [pos] : []));
+}
+
 /** The text a key's macro types, found on its Plain part: what a reader knows it by. */
 function macroText(b: Binding | undefined): string {
   const p = b && partOf(b);

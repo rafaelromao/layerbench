@@ -122,7 +122,8 @@ const macro = (symbols: string): Binding => ({ kind: 'macro', symbols });
 /**
  * Magic Romak's Extras, kept as it was before the default layers moved a pair whole to Extras: its
  * keymap keeps `:`, `?` and `!` on Symbols, so `;`, `¿` and `¡` are here on their own, each symbol
- * where the old Dead keys layer had it, and the accents its 24 keys lack beside their place.
+ * where the old Dead keys layer had it, and the accents its 24 keys lack beside their place. Its
+ * thumbs are holding: `^` and `î`, with no finger key left here, are on Accents' right thumbs.
  */
 const MAGIC_ROMAK_EXTRAS: Record<string, Binding> = {
   '*': { kind: 'trans' },
@@ -148,8 +149,6 @@ const MAGIC_ROMAK_EXTRAS: Record<string, Binding> = {
   RHM: macro('ù'),
   RHR: macro('ì'),
   RBM: macro('ú'),
-  L1: dead('^'),
-  R1: macro('î'),
 };
 
 /** Magic Romak's default layers: Symbols the keymap's whole, and its own Extras. */
