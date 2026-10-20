@@ -135,7 +135,9 @@ export function withStandardThumbs(
   // the left.
   const defaults = defaultLayers(geometry, { mirrorAccents: vowelsOnLeft(first.bindings) });
   const layers = defaults.layers.map((l) => {
-    if (l.id !== DEFAULT_LAYER_IDS.symbols || space === defaults.spaceKey) return l;
+    const onSpace = l.bindings[defaults.spaceKey];
+    if (l.id !== DEFAULT_LAYER_IDS.symbols || space === defaults.spaceKey || !isSpace(onSpace))
+      return l;
     const { [defaults.spaceKey]: _space, ...kept } = l.bindings;
     return { ...l, bindings: kept };
   });

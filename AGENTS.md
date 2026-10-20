@@ -21,6 +21,12 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
   letter or nothing, and the right outer one one-shots Accents. Special layouts keep their keys: the
   space key holds Numbers, a thumb of the other hand holds Symbols, and Accents is the combo
   `accentsCombo`.
+- **A held thumb blocks its hand.** On a layer every way onto which holds a thumb key of one hand,
+  that hand's thumb keys get no binding: the thumb is busy holding. Numbers blocks the left thumbs,
+  Symbols the right, and Extras, both held, every thumb. The held keys themselves show as `held`.
+  `blockedThumbs` finds them; the analysis types nothing on them, and `templates.test.ts` fails for
+  a bundled layout or a board's defaults with a binding there. What finds no finger key goes on
+  Accents' thumbs, Accents being one-shot.
 - **The base layer keeps only `'` `,` `.` `;`** besides its letters and Repeat (`BASE_SYMBOLS`).
   Every other symbol is on Symbols or Extras.
 - **Accents ranking.** Accents has the dead keys, the letters no accent makes, and the accented
@@ -40,4 +46,6 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
   the single symbols, most used in the texts first). Each goes on the prime keys still free
   (`primeKeys`): the lowest Effort cost, the home row first among keys of equal cost. The keys of
   Accents a board lacks follow, each beside its place on Accents. What still has no key goes on
-  Accents' free keys.
+  Accents' free keys. Extras never takes a thumb key (see A held thumb blocks its hand). On a board
+  with no bottom row, every finger key is taken: `=` and `ı` go on Symbols' thumbs of the hand
+  holding Numbers, `=` where space would be.

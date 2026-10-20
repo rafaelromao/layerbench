@@ -5,7 +5,7 @@ import { LANGUAGE_PROFILES } from '../lang/profiles.js';
 import { layoutCategory } from '../layout/categories.js';
 import { compileLayout } from '../layout/compile.js';
 import type { Binding, Layout } from '../layout/types.js';
-import { reachKeys } from '../sim/activators.js';
+import { blockedThumbs, reachKeys } from '../sim/activators.js';
 import { explain } from '../sim/resolver.js';
 import { CLASSIC_LAYOUTS } from './classic.js';
 import { BUNDLED_LAYOUTS, bundledLayout, SMALL_LAYOUTS } from './index.js';
@@ -173,14 +173,19 @@ describe('the default layers, board by board', () => {
     const macro = (symbols: string): Binding => ({ kind: 'macro', symbols });
     const dead = (diacritic: string): Binding => ({ kind: 'dead_key', diacritic });
     // No outer keys at all: the four pairs on the home rows, `: ;` on the cheapest two, the symbols
-    // on their own on the next cheapest, and the ten accents past the 24 keys, two on the thumbs.
+    // on their own on the next cheapest, and eight of the ten accents past the 24 keys. Extras' thumbs
+    // are both holding: `^` and `î`, with no finger key left, are on Accents' right thumbs.
     expect(extras('1333+2')).toEqual({
       '*': { kind: 'trans' },
       ...kps({ RHI: ':', RHM: ';', LHM: '«', LHI: '»', RHR: '¿', RHP: '?', LHP: '¡', LHR: '!' }),
       ...kps({ RTM: '£', LTM: 'ª', RBI: 'ı', LBI: '§', LTI: 'æ' }),
       ...{ LTR: dead('`'), LBM: dead('´'), LBR: dead('¨'), RBM: dead('~') },
-      ...{ RTI: macro('ù'), RTR: macro('ì'), RBR: macro('ú'), L1: dead('^'), R1: macro('î') },
+      ...{ RTI: macro('ù'), RTR: macro('ì'), RBR: macro('ú') },
     });
+    const accents = defaultLayers(getGeometryPreset('1333+2')).layers.find(
+      (l) => l.id === 'accents',
+    )?.bindings;
+    expect([accents?.R0, accents?.R1]).toEqual([dead('^'), macro('î')]);
     // No pinky bottom and no inner top: `«` and `»`, and the symbols and the accents those keys had.
     expect(extras('23332+2')).toEqual({
       '*': { kind: 'trans' },
@@ -207,13 +212,16 @@ describe('the default layers, board by board', () => {
   it('give a board with no bottom row Extras for what that row held', () => {
     const d = defaultLayers(getGeometryPreset('1222+2'));
     expect(d.layers.map((l) => l.id)).toEqual(['num', 'sym', 'extras', 'accents']);
-    // `;` beside `:` where `=` was, and `ı` on the right outer thumb, beside the one holding Symbols.
+    // `;` beside `:` where `=` was. The left thumbs are free on Symbols, the right one holding it:
+    // `=` on the space key and `ı` beside it, every finger key of the four layers being taken.
     expect(d.layers[1].bindings.RTM).toEqual({ kind: 'kp', symbol: ';' });
-    expect(d.layers[1].bindings.L1).toBeUndefined();
-    expect(d.layers[1].bindings.R1).toEqual({ kind: 'kp', symbol: 'ı' });
+    expect(d.layers[1].bindings.L0).toEqual({ kind: 'kp', symbol: '=' });
+    expect(d.layers[1].bindings.L1).toEqual({ kind: 'kp', symbol: 'ı' });
+    expect(d.layers[1].bindings.R1).toBeUndefined();
     // What has no room on Extras is on Accents.
-    const t = trace(boardWithDefaults('1222+2'), '[ * « 3 ; € § ¿ = |');
-    expect(t.out).toBe('[ * « 3 ; € § ¿ = |');
+    const t = trace(boardWithDefaults('1222+2'), '[ * « 3 ; € § ¿ = | ı º £');
+    expect(t.out).toBe('[ * « 3 ; € § ¿ = | ı º £');
+    expect(t.coverage.unproducible.size).toBe(0);
   });
 
   it('hold Numbers on the space bar of a row-stagger board, and arm Symbols from there', () => {
@@ -326,8 +334,31 @@ describe('Accents mirrored for a layout that types its vowels with the left hand
   });
 });
 
+/** The thumb keys of each layer that have a binding though a held thumb blocks them. */
+function onBlockedThumbs(layout: Layout): string[] {
+  const c = compileLayout(layout);
+  return c.layers.flatMap((l) =>
+    blockedThumbs(c, l.idx)
+      .filter((pos) => !['trans', 'none'].includes(l.bindings[pos].kind))
+      .map((pos) => `${l.id}/${c.keys[pos].id}`),
+  );
+}
+
+describe('a thumb holding a layer leaves its hand no thumb key to type there', () => {
+  for (const preset of GEOMETRY_PRESET_IDS)
+    it(`${preset}: the default layers, Accents mirrored or not`, () => {
+      expect(onBlockedThumbs(boardWithDefaults(preset))).toEqual([]);
+      expect(onBlockedThumbs(boardWithDefaults(preset, true))).toEqual([]);
+    });
+
+  for (const layout of BUNDLED_LAYOUTS)
+    it(`${layout.id}: every layer`, () => {
+      expect(onBlockedThumbs(layout)).toEqual([]);
+    });
+});
+
 describe('Accents keys a board lacks are on Extras', () => {
-  it('on a thumb free while Numbers and Symbols are held, whichever thumbs hold them', () => {
+  it("on Extras' finger keys, and past them on Accents' thumbs, whichever thumbs hold Numbers and Symbols", () => {
     // A Special layout on the 24 keys with space, and so Numbers, on the left outer thumb.
     const geometry = getGeometryPreset('1333+2');
     const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
@@ -351,9 +382,11 @@ describe('Accents keys a board lacks are on Extras', () => {
       return b?.kind === 'mo' || (b?.kind === 'hold_tap' && b.hold.kind === 'mo');
     });
     expect(held).toContain('L1');
-    for (const id of held) expect([id, extras[id]]).toEqual([id, undefined]);
-    // `^` and `î`, which no finger key of Extras has room for, are still there, on the free thumbs.
-    const onThumbs = Object.entries(extras)
+    // Both thumbs hold: Extras has none to give. `^` and `î`, which no finger key of Extras has room
+    // for, are on Accents' thumbs, one-shot.
+    expect(Object.keys(extras).filter((id) => /\d/.test(id))).toEqual([]);
+    const accents = layout.layers.find((l) => l.id === 'accents')?.bindings ?? {};
+    const onThumbs = Object.entries(accents)
       .filter(([id]) => /\d/.test(id))
       .map(([, b]) => typedBy(b))
       .sort();

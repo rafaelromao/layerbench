@@ -158,6 +158,12 @@ layer, the thumb or both keys of the combo tapped for Accents. They are found fr
 to do and it stops being marked, even where the layout names it as a way in. Select one, or read
 the list under the board, to see where it is pressed and when.
 
+A thumb holding a layer on can press nothing else, so on that layer the other thumb keys of its hand
+are out of reach: where every way onto a layer holds a thumb of one hand, that hand's thumb keys type
+nothing there. On Numbers, held by the left thumb, the left thumb keys type nothing; on Extras,
+Numbers and Symbols both held, no thumb key does. The analysis counts what only those keys carry as
+a symbol the layout cannot type, and the default layers put nothing on them.
+
 Several keys can reach a layer the same way, say three one-shots for Alpha 2. Each word is then
 typed with the one that suits it: the one that makes the fewest same-finger pairs with the keys
 around it, two in a row first and then one apart, and then the one with less effort. The first of
@@ -224,8 +230,10 @@ say. It comes on while Numbers and Symbols are both held. It takes what has no k
 pairs first and then the symbols on their own, most used in the texts first, and starts on the
 prime keys: the least effort, the home row first among keys that cost the same. Each pair takes the
 two neighbours in a row that cost least. The keys of Accents the board has no key for follow, each
-on the free key nearest its place on Accents, or on a free thumb once the fingers' keys are full.
-On a new layout on Magic Romak's 24 keys, the symbols:
+on the free key nearest its place on Accents. Extras has no thumb keys to give, both thumbs holding:
+what has no room on its fingers' keys goes on a free thumb of Accents, which comes on for one key
+and so leaves the thumbs free, the thumbs of its own hand first. On Magic Romak's 24 keys that is
+`^` and `î`, on Accents' right inner and outer thumbs. On a new layout there, the symbols:
 
 | Extras | P | R | M | I | | I | M | R | P |
 |---|---|---|---|---|---|---|---|---|---|
@@ -245,10 +253,12 @@ with one space bar for both, the left ring and middle fingers' home keys, LHR an
 none of Accents' 30 main keys, so the thumb combo is never a same-finger pair with the accent after
 it. A board without those thumbs gets the same layers arranged to fit it, and keys beyond the ones
 the layers use let the layer below show through. A board with no bottom row keeps `1 2 3` on the left home row,
-puts `;` beside `:` where `=` was and `ı` on Symbols' right outer thumb, puts on Extras what the
-bottom rows carried, and fills Accents with the dead keys, the letters of their own and the symbols
-Extras has no room for, on its thumbs too; every accented letter there is its accent and the
-letter. The board shows where everything went.
+puts `;` beside `:` where `=` was, and `=` and `ı` on Symbols' left thumbs, the space key and the
+one beside it, which the right thumb holding Symbols leaves free: no finger key is left for them, so
+space is typed with Symbols released there. It puts on Extras what the bottom rows carried, and fills
+Accents with the dead keys, the letters of their own and the symbols Extras has no room for, on its
+thumbs too; every accented letter there is its accent and the letter. The board shows where
+everything went.
 
 Every layout that comes with the app has them too. The Standard and Thumb Alpha ones, Romak among
 them, also share their main thumbs, the two innermost of each hand, so that what tells them apart is

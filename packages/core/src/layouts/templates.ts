@@ -259,8 +259,13 @@ const ACCENTS_NO_BOTTOM: Readonly<Record<string, Binding>> = {
   L0: kp('æ'),
 };
 
-/** With no bottom row, `ı` goes on the thumb beside the one holding Symbols. */
+/**
+ * With no bottom row, the thumbs of the hand holding Numbers carry two symbols on Symbols, that hand
+ * being free there: `ı` beside the space key and `=` on it, where space would be. There is no other
+ * key for them: Extras' thumbs are both holding and every finger key of the four layers is taken.
+ */
 const SPARE_THUMB_LETTER = 'ı';
+const SPACE_THUMB_SYMBOL = '=';
 
 export const DEFAULT_LAYER_IDS = {
   accents: 'accents',
@@ -363,39 +368,47 @@ const ROWS = 'THB';
 const COLUMNS = 'OPRMIC';
 
 /**
- * The keys of Accents a board does not have, for Extras: each on the free key nearest its place on
- * Accents, the same hand first and then the same row, and past the fingers on a thumb that holds no
- * layer for it.
+ * The keys of Accents a board does not have, for Extras: each on the free finger key nearest its
+ * place on Accents, the same hand first and then the same row. Extras has no thumb to give: it is on
+ * while both thumbs hold. What has no room there goes on a free thumb of Accents, which is one-shot
+ * and leaves the thumbs free, its own hand's first.
  */
 function accentsPastTheBoard(
   geometry: Geometry,
   accents: Readonly<Record<string, Binding>>,
   extras: Record<string, Binding>,
-  held: readonly string[],
-): Record<string, Binding> {
+): { accents: Record<string, Binding>; extras: Record<string, Binding> } {
   const have = new Set(geometry.keys.map((k) => k.id));
   const fingers = geometry.keys.filter((k) => !k.thumb).map((k) => k.id);
-  const thumbs = geometry.keys
-    .filter((k) => k.thumb && !held.includes(k.id))
-    .sort((a, b) => a.col - b.col)
-    .map((k) => k.id);
+  const thumbs = geometry.keys.filter((k) => k.thumb).sort((a, b) => a.col - b.col);
   const distance = (from: string, to: string) =>
     (from[0] === to[0] ? 0 : 100) +
     3 * Math.abs(ROWS.indexOf(from[1]) - ROWS.indexOf(to[1])) +
     Math.abs(COLUMNS.indexOf(from[2]) - COLUMNS.indexOf(to[2]));
-  const out = { ...extras };
+  const ext = { ...extras };
+  const acc = { ...accents };
   for (const [id, binding] of Object.entries(accents)) {
     if (have.has(id)) continue;
-    const free = (k: string) => !out[k];
-    const spot =
-      fingers.filter(free).sort((a, b) => distance(id, a) - distance(id, b))[0] ??
-      thumbs.find(free);
-    if (spot) out[spot] = binding;
+    delete acc[id];
+    const spot = fingers
+      .filter((k) => !ext[k])
+      .sort((a, b) => distance(id, a) - distance(id, b))[0];
+    if (spot) {
+      ext[spot] = binding;
+      continue;
+    }
+    const thumb = [...thumbs]
+      .sort((a, b) => Number(a.hand !== id[0]) - Number(b.hand !== id[0]))
+      .find((k) => !acc[k.id]);
+    if (thumb) acc[thumb.id] = binding;
   }
-  return out;
+  return { accents: acc, extras: ext };
 }
 
-/** A thumb of `holding`'s hand other than it, for `ı`, which Symbols has no key for on 18 keys. */
+/**
+ * A thumb of `holding`'s hand other than it, for `ı`, which Symbols has no key for on 18 keys: the
+ * hand holding Numbers, its thumb free on Symbols.
+ */
 function spareThumb(geometry: Geometry, holding: string): string | undefined {
   const hand = geometry.keys.find((k) => k.id === holding)?.hand;
   return geometry.keys
@@ -429,21 +442,22 @@ export function defaultLayers(
   if (spaceBar && have.has('R0')) base.R0 = tapOrHold(space, numbers);
   else if (have.has('R0')) base.R0 = { kind: 'mo', layer: symbols };
 
-  // With no bottom row, `ı` goes on the thumb beside the one holding Symbols.
-  const beside = noBottom && have.has('R0') ? spareThumb(geometry, 'R0') : undefined;
-  const held = [spaceKey, 'R0'];
+  // With no bottom row, `ı` goes on the thumb beside the one holding Numbers, free on Symbols.
+  const beside = noBottom && have.has('R0') ? spareThumb(geometry, spaceKey) : undefined;
   const spread = spreadSymbols(
     geometry,
     noBottom ? NUMBERS_NO_BOTTOM : { ...NUMBERS_CORE, ...NUMBERS_OUTER },
     noBottom ? SYMBOLS_NO_BOTTOM : { ...SYMBOLS_CORE, ...SYMBOLS_OUTER },
-    beside ? [SPARE_THUMB_LETTER] : [],
-    held,
+    beside ? [SPARE_THUMB_LETTER, SPACE_THUMB_SYMBOL] : [],
   );
   const num = keys(spread.numbers);
   const sym = keys(spread.symbols);
   const accentKeys = withLeftOver(geometry, noBottom ? ACCENTS_NO_BOTTOM : ACCENTS, spread.left);
-  const acc = options.mirrorAccents ? mirrored(accentKeys) : accentKeys;
-  const ext = accentsPastTheBoard(geometry, acc, keys(spread.extras), held);
+  const { accents: acc, extras: ext } = accentsPastTheBoard(
+    geometry,
+    options.mirrorAccents ? mirrored(accentKeys) : accentKeys,
+    keys(spread.extras),
+  );
   if (spaceBar) {
     // The bar is held for Numbers: pressed again it would be the same key.
     for (const id of ['L0', 'R0']) {
@@ -453,7 +467,7 @@ export function defaultLayers(
     num.RHO = { kind: 'sl', layer: symbols };
     num.RTO = kp('0');
   } else {
-    sym[spaceKey] = space;
+    sym[spaceKey] = beside ? kp(SPACE_THUMB_SYMBOL) : space;
     if (have.has('R1')) {
       num.R0 = tapOrHold(space, symbols);
       num.R1 = kp('0');
@@ -531,14 +545,13 @@ function cheapestNeighbours(
  * of which has no key goes whole: the other half leaves its key, and a key so left on Symbols takes
  * the most used symbol that has none. Extras then takes what is still without a key, in
  * `EXTRAS_ORDER`: each pair on the two neighbours in a row that cost least, each symbol on its own
- * on the prime key still free, and on a thumb not `held` once the fingers' keys are full.
+ * on the prime key still free. Its thumbs are both holding, so it has none to give.
  */
 function spreadSymbols(
   geometry: Geometry,
   numbersTable: Readonly<Record<string, string>>,
   symbolsTable: Readonly<Record<string, string>>,
   elsewhere: readonly string[],
-  held: readonly string[],
 ): Spread {
   const byId = new Map(geometry.keys.map((k) => [k.id, k]));
   const onBoard = (table: Readonly<Record<string, string>>) =>
@@ -583,12 +596,8 @@ function spreadSymbols(
     if (spot) [extras[spot[0]], extras[spot[1]]] = [a, b];
     else left.push([a, b]);
   }
-  const thumbs = geometry.keys
-    .filter((k) => k.thumb && !held.includes(k.id))
-    .sort((a, b) => a.col - b.col)
-    .map((k) => k.id);
   for (const s of singles) {
-    const spot = free()[0] ?? thumbs.find((id) => !extras[id]);
+    const spot = free()[0];
     if (spot) extras[spot] = s;
     else left.push([s]);
   }
@@ -685,7 +694,7 @@ export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
 
   // The defaults' thumbs on Numbers and Symbols assume space on L0 and the Symbols thumb on R0:
   // those go, and the roles are given to the thumbs chosen here. Numbers' thumbs are all roles, and
-  // so is Symbols' spare one on a board with no bottom row, `ı` beside Symbols' thumb; on Symbols,
+  // so is Symbols' spare one on a board with no bottom row, `ı` beside Numbers' thumb; on Symbols,
   // what the defaults put on another thumb stays where it does not land on one of the two, and the
   // one-shot Accents keeps its own, nothing being held there.
   const thumbIds = new Set(thumbs.map((k) => k.id));
@@ -694,7 +703,7 @@ export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
   const roles = new Set(['L0', 'R0', numbersKey, symbolsKey]);
   const defaults = defaultLayers(geometry, { mirrorAccents: vowelsOnLeft(first.bindings) });
   const defaultSymbols = defaults.layers.find((l) => l.id === symbols)?.bindings ?? {};
-  const spareLetter = defaultSymbols[spareThumb(geometry, 'R0') ?? ''];
+  const spareLetter = defaultSymbols[spareThumb(geometry, defaults.spaceKey) ?? ''];
   const layers = defaults.layers.map((l): LayerDef => {
     const bindings = Object.fromEntries(
       Object.entries(l.bindings).filter(
@@ -710,20 +719,12 @@ export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
       const spot = zero ?? ['RBC', 'RHC'].find((id) => have(id) && !bindings[id]);
       if (spot) bindings[spot] = kp('0');
     }
-    if (l.id === DEFAULT_LAYER_IDS.extras) {
-      // Extras is on while both are held: what the defaults put on either goes to a thumb free.
-      const held = [numbersKey, symbolsKey];
-      for (const id of held) {
-        const b = bindings[id];
-        if (!b) continue;
-        delete bindings[id];
-        const spot = thumbs.find((k) => !held.includes(k.id) && !bindings[k.id]);
-        if (spot) bindings[spot.id] = b;
-      }
-    }
     if (l.id === symbols) {
-      if (types(numbersKey, ' ')) bindings[numbersKey] = kp(' ');
-      const beside = spareThumb(geometry, symbolsKey);
+      const onSpace = defaultSymbols[defaults.spaceKey];
+      if (onSpace && !(onSpace.kind === 'kp' && onSpace.symbol === ' '))
+        bindings[numbersKey] = onSpace;
+      else if (types(numbersKey, ' ')) bindings[numbersKey] = kp(' ');
+      const beside = spareThumb(geometry, numbersKey);
       if (spareLetter && beside) bindings[beside] = spareLetter;
     }
     return { ...l, bindings };

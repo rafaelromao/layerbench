@@ -588,6 +588,35 @@ export function reachKeys(
     });
 }
 
+/**
+ * The thumb keys out of reach while a layer is on: every thumb key of a hand whose thumb is holding
+ * a key down to keep the layer on, the held key among them. A hand is holding when every way onto
+ * the layer holds one of its thumb keys; a layer that comes on with others together holds each of
+ * theirs, so with Numbers held by one thumb and Symbols by the other, Extras has no thumb free.
+ */
+export function blockedThumbs(c: CompiledLayout, layer: number): number[] {
+  const ways = new Map<number, { pos: number; route: ReachRoute }[]>();
+  for (const k of reachKeys(c, layer))
+    for (const route of k.routes) {
+      const through = route.through?.layer ?? -1;
+      ways.set(through, [...(ways.get(through) ?? []), { pos: k.pos, route }]);
+    }
+  const holding = new Set<string>();
+  for (const routes of ways.values())
+    for (const hand of ['L', 'R'])
+      if (
+        routes.every(
+          ({ pos, route }) =>
+            route.mode === 'hold' &&
+            !route.chord?.length &&
+            c.keys[pos]?.thumb &&
+            c.keys[pos].hand === hand,
+        )
+      )
+        holding.add(hand);
+  return c.keys.flatMap((k, pos) => (k.thumb && holding.has(k.hand) ? [pos] : []));
+}
+
 /** The text a key's macro types, found on its Plain part: what a reader knows it by. */
 function macroText(b: Binding | undefined): string {
   const p = b && partOf(b);
