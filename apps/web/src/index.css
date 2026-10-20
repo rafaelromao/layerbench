@@ -512,6 +512,13 @@
   border-color: var(--color-info);
 }
 
+/* A chip of the missing-keys tray is dragged straight away, by a finger too: the tray is small
+   enough that the page is scrolled from anywhere else. */
+.lb-tray-chip {
+  touch-action: none;
+  cursor: grab;
+}
+
 /*
  * Analyze, where the layout is edited: the board, the inspector for the selected key, the typed
  * word, the selected key's numbers, the summary, the legend, the panels and every number. On a
@@ -746,6 +753,11 @@
   .lb-board .lb-keyboard {
     min-width: calc(var(--lb-board-units, 14) * 1.93rem);
     max-height: none;
+  }
+
+  /* The tray is how a finger puts a missing character on a key: its chips are hit as easily. */
+  .lb-tray-chip {
+    min-height: 2.25rem;
   }
 
   /* Anything in the inspector meant to be tapped gets a target a finger can actually hit. */

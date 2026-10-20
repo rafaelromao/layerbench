@@ -59,6 +59,8 @@ function restore(
     combo:
       snap.combo !== null && snap.combo < (snap.layout.combos?.length ?? 0) ? snap.combo : null,
     swapFrom: null,
+    // A character armed may be typed again in the layout come back to, and gone from the tray.
+    placing: null,
     // A pick names a combo by its place, and the list may not be the one it was started on.
     comboPick: null,
     comboPickFor: null,

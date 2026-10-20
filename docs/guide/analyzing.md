@@ -119,8 +119,9 @@ Type a word into **How is this typed?** and the board plays it: each press light
 the layer it lands on, and a thumb held for a layer stays marked while it is held. The ring on a
 layer's reach keys, the keys held or tapped to get to it, stays all along. The presses are
 listed under the field; tap one to stop on it, and **Play** to start again. Characters the layout
-cannot type at all are listed in red above the numbers. Each one breaks the word it is in, so a
-long list means the numbers understate the cost.
+cannot type at all wait in the [missing-keys tray](editing.md#missing-keys) under the board, with
+how often the text has them. Each one breaks the word it is in, so the more of the text's
+characters wait there, the more the numbers understate the cost.
 
 ### Heat
 

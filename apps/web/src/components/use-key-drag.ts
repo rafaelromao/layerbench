@@ -64,6 +64,12 @@ export function paintDropTarget(
 
 /** How far the pointer must travel before a press becomes a drag rather than a click. */
 export const THRESHOLD = 4;
+/**
+ * How far a finger or a pen may travel and still tap, in screen pixels: a tap lands a few pixels from
+ * where it went down, while a swipe that turns the layer travels far further (`useLayerSwipe`). A
+ * mouse that travels as far as a drag starts (`THRESHOLD`) is not clicking.
+ */
+export const TAP_SLOP = 16;
 /** A touch has to rest on a key first, so the board can still be scrolled past with a finger. */
 export const TOUCH_HOLD_MS = 350;
 
@@ -256,4 +262,106 @@ export function useKeyDrag(
     handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onContextMenu },
     consumeClick,
   };
+}
+
+export interface CharDrag {
+  /** Spread onto the element a character is dragged from. */
+  handlers: (char: string) => {
+    onPointerDown: (e: ReactPointerEvent<HTMLElement>) => void;
+    onPointerMove: (e: ReactPointerEvent<HTMLElement>) => void;
+    onPointerUp: (e: ReactPointerEvent<HTMLElement>) => void;
+    onPointerCancel: (e: ReactPointerEvent<HTMLElement>) => void;
+  };
+  /** True when the click that follows a drag should be ignored. */
+  consumeClick: () => boolean;
+}
+
+/**
+ * Dragging a character from outside the board onto one of its keys, as the missing-keys tray does:
+ * the same ghost and the same drop highlight as a key dragged, on the board `board` finds. The
+ * element dragged from keeps the pointer, so a finger can carry it as well as a mouse.
+ */
+export function useCharDrag(
+  board: () => Element | null,
+  onDrop: (drop: { char: string; to: string }) => void,
+  legendOf: (char: string) => string = (c) => c,
+): CharDrag {
+  /** Where the press went down, and how far it may travel and still be a tap. */
+  const press = useRef<{ char: string; x: number; y: number; slop: number } | null>(null);
+  const dragging = useRef(false);
+  const ghost = useRef<HTMLDivElement | null>(null);
+  const suppressClick = useRef(false);
+  const latest = useRef({ board, onDrop, legendOf });
+  latest.current = { board, onDrop, legendOf };
+
+  const reset = useCallback(() => {
+    press.current = null;
+    dragging.current = false;
+    ghost.current?.remove();
+    ghost.current = null;
+    clearDropTargets();
+  }, []);
+
+  // A drag interrupted by an unmount must not leave its ghost behind.
+  useEffect(() => () => reset(), [reset]);
+
+  const handlers = useCallback(
+    (char: string) => ({
+      onPointerDown: (e: ReactPointerEvent<HTMLElement>) => {
+        // One character at a time, carried by the main button or the first finger.
+        if (!e.isPrimary || e.button !== 0 || press.current) return;
+        suppressClick.current = false;
+        // A finger's tap wanders further than a mouse's click; only past that is it a drag.
+        const slop = e.pointerType === 'mouse' ? THRESHOLD : TAP_SLOP;
+        press.current = { char, x: e.clientX, y: e.clientY, slop };
+        dragging.current = false;
+        // Captured, the pointer stays with the chip all the way to the key it is let go over.
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+      },
+      onPointerMove: (e: ReactPointerEvent<HTMLElement>) => {
+        const start = press.current;
+        if (!start || start.char !== char) return;
+        if (!dragging.current) {
+          if (Math.hypot(e.clientX - start.x, e.clientY - start.y) < start.slop) return;
+          dragging.current = true;
+          const el = document.createElement('div');
+          el.className = 'lb-key-ghost';
+          el.textContent = latest.current.legendOf(char);
+          el.setAttribute('aria-hidden', 'true');
+          document.body.appendChild(el);
+          ghost.current = el;
+        }
+        if (ghost.current) {
+          ghost.current.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+        }
+        clearDropTargets();
+        const on = latest.current.board();
+        const over = targetUnder(e.clientX, e.clientY, on);
+        if (over !== undefined) paintDropTarget(over, 'swap', on);
+      },
+      onPointerUp: (e: ReactPointerEvent<HTMLElement>) => {
+        const start = press.current;
+        const dragged = dragging.current;
+        const to = dragged ? targetUnder(e.clientX, e.clientY, latest.current.board()) : undefined;
+        reset();
+        if (!start || !dragged) return;
+        // A drop must not also count as a tap on the chip.
+        suppressClick.current = true;
+        if (to !== undefined) latest.current.onDrop({ char: start.char, to });
+      },
+      onPointerCancel: (_e: ReactPointerEvent<HTMLElement>) => {
+        if (dragging.current) suppressClick.current = true;
+        reset();
+      },
+    }),
+    [reset],
+  );
+
+  const consumeClick = useCallback(() => {
+    if (!suppressClick.current) return false;
+    suppressClick.current = false;
+    return true;
+  }, []);
+
+  return { handlers, consumeClick };
 }
