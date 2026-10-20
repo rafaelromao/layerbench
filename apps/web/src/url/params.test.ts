@@ -1,3 +1,4 @@
+import { LANGUAGES_PRESET } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_PARAMS,
@@ -12,6 +13,10 @@ import {
 describe('analysis parameters', () => {
   it('falls back to defaults for an empty query', () => {
     expect(parseParams({})).toEqual(DEFAULT_PARAMS);
+  });
+
+  it("ranks on the rules a bundled layout's languages are measured on", () => {
+    expect(DEFAULT_PARAMS.preset).toBe(LANGUAGES_PRESET);
   });
 
   it('accepts the short layout alias', () => {

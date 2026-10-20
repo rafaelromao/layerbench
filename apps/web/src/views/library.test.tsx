@@ -661,6 +661,21 @@ describe('Ranking layouts', () => {
     const qwerty = cards().find((c) => c.querySelector('h3')?.textContent === 'Qwerty');
     expect(qwerty?.textContent).not.toMatch(/Cannot type/);
   }, 90_000);
+  it('shows on a bundled card the languages it performs well in, and none on one for none', async () => {
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    const chips = async (name: string) => {
+      const card = await waitFor(() => {
+        const found = cards().find((c) => c.querySelector('h3')?.textContent === name);
+        expect(found).toBeTruthy();
+        return found as HTMLElement;
+      });
+      return [...card.querySelectorAll('[title^="Types everything"]')].map((b) => b.textContent);
+    };
+    expect(await chips('Magic Romak')).toEqual(bundledLayout('magic-romak')?.languages);
+    expect(await chips('Canary')).toEqual(bundledLayout('canary')?.languages);
+    expect(bundledLayout('qwerty')?.languages).toEqual([]);
+    expect(await chips('Qwerty')).toEqual([]);
+  }, 90_000);
   it('flags a layout that cannot write a language it is for, without ranking it last', async () => {
     const storage = freshStorage();
     await savePlain(storage, 'mine', { name: 'Mine', languages: ['en', 'es'] });

@@ -81,7 +81,9 @@ them, through its [Accents](editing.md#default-layers) layer or, on Magic Romak,
 own accents; a layout of your own without them is the one ranked after. A layout is also held to the languages
 it is for, chosen in **Settings** in **Analyze**: one for Spanish that has no `ñ` says so on its
 card, whatever the text. It is only flagged for that, not ranked after the others: on an English
-text it skipped nothing for Spanish.
+text it skipped nothing for Spanish. A layout that comes with the app is for the languages it
+performs well in: it types every letter they need, and its Effort on their news texts is in the
+better half of the bundled layouts'. Some, such as Qwerty, are for none.
 
 **Rank with** switches special features off for the ranking: adaptive keys (they type their default
 letter), the repeat key (doubled letters are tapped twice), typing combos, and macros that type two
@@ -119,8 +121,9 @@ Type a word into **How is this typed?** and the board plays it: each press light
 the layer it lands on, and a thumb held for a layer stays marked while it is held. The ring on a
 layer's reach keys, the keys held or tapped to get to it, stays all along. The presses are
 listed under the field; tap one to stop on it, and **Play** to start again. Characters the layout
-cannot type at all are listed in red above the numbers. Each one breaks the word it is in, so a
-long list means the numbers understate the cost.
+cannot type at all wait in the [missing-keys tray](editing.md#missing-keys) under the board, with
+how often the text has them. Each one breaks the word it is in, so the more of the text's
+characters wait there, the more the numbers understate the cost.
 
 ### Heat
 

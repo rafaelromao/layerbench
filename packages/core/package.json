@@ -33,7 +33,8 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "goldens": "GOLDENS=1 vitest run src/golden/dump.test.ts",
-    "generate": "GENERATE=1 vitest run src/generate/run.test.ts"
+    "generate": "GENERATE=1 vitest run src/generate/run.test.ts",
+    "languages": "LANGUAGES=1 vitest run src/lang/write.test.ts"
   },
   "dependencies": {
     "zod": "^4.5.4"

@@ -26,7 +26,6 @@ export interface ClassicDef {
   layers?: { id: string; name: string; byKey: Record<string, string> }[];
   /** Board this layout was designed for; the 34-key split columnar board when omitted. */
   geometry?: string;
-  languages?: string[];
   description?: string;
   /** Where the letter arrangement came from, one http(s) URL: the layout's link. */
   link?: string;
@@ -295,7 +294,6 @@ export function classicLayout(def: ClassicDef): Layout {
     .filter(Boolean)
     .join(' ');
   if (def.link) layout.link = def.link;
-  layout.languages = def.languages ?? ['en'];
   return layout;
 }
 

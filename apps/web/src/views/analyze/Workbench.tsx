@@ -6,6 +6,7 @@ import {
   languagesToJudge,
   layoutLanguageCoverage,
   nameTaken,
+  producibleSymbols,
   type RuleItem,
   sameName,
   toCanonicalJson,
@@ -69,12 +70,14 @@ import {
   selectionOf,
   shownLayer,
 } from '../edit/reducer.js';
+import { charLabel, missingKeys, spoken } from '../edit/tray.js';
 import { initialUndoState, undoable } from '../edit/undo.js';
 import { textLanguage, textName } from '../text-of.js';
 import type { AnalysisSettingsState } from '../useAnalysisSettings.js';
 import { useTypedLayout } from '../useLayout.js';
 import { itemLayer } from './item-layer.js';
 import { LayoutBar } from './LayoutBar.js';
+import { MissingKeysTray } from './MissingKeysTray.js';
 import { playFrames } from './playback.js';
 import { SubmitDialog } from './SubmitDialog.js';
 
@@ -106,10 +109,6 @@ const PANEL_TABS = PANELS.map(([id, label]) => ({ id, label }));
 
 function prefersReducedMotion(): boolean {
   return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-}
-
-function symbolLabel(s: string): string {
-  return s === ' ' ? '␣' : s;
 }
 
 export interface WorkbenchProps {
@@ -582,7 +581,12 @@ export function Workbench({
     if (e.key === 'Escape') {
       e.preventDefault();
       // One thing at a time: a swap or pick in progress, then an outline, then the editor.
-      if (state.swapFrom !== null || state.comboPick !== null || state.boardHighlight.length > 0) {
+      if (
+        state.swapFrom !== null ||
+        state.placing !== null ||
+        state.comboPick !== null ||
+        state.boardHighlight.length > 0
+      ) {
         send({ type: 'cancelSwap' });
         send({ type: 'comboPickCancel' });
         send({ type: 'setBoardHighlight', keys: [] });
@@ -592,13 +596,15 @@ export function Workbench({
     }
     // While keys are being picked for a combo, they are all the board is doing.
     if (state.comboPick) return;
-    // With a swap armed, Enter and Space pick its partner like a click does.
-    if (state.swapFrom && (e.key === 'Enter' || e.key === ' ')) return;
+    // With a swap or a character armed, Enter and Space pick its key like a click does.
+    if ((state.swapFrom || state.placing !== null) && (e.key === 'Enter' || e.key === ' ')) return;
     // Every printable key types on the key, so arming a swap takes a modifier.
     if (e.altKey) {
       if (e.code === 'KeyS') {
         e.preventDefault();
         stopPlaying();
+        // The key picked is the one to swap, not where an armed character goes.
+        if (state.placing !== null) send({ type: 'armChar', char: null });
         send({ type: 'keyClick', keyId });
         send({ type: 'startSwap' });
       }
@@ -643,6 +649,28 @@ export function Workbench({
     return null;
   }, [typedCompiled, corpusLanguage, layoutLanguages]);
   const corpusName = textName(settings.linked, corpora);
+
+  // What the layout cannot type, as it is now: the text's characters the last report found, the
+  // letters the language needs, and what edits from the tray left without a key.
+  const producible = useMemo(() => producibleSymbols(typedCompiled), [typedCompiled]);
+  const tray = useMemo(
+    () =>
+      missingKeys({
+        unproducible: shown?.coverage.unproducible ?? [],
+        required: languageGap?.missingRequired ?? [],
+        strays: state.strays,
+        producible,
+        reportCurrent: current || provisional,
+      }),
+    [shown, current, provisional, languageGap, state.strays, producible],
+  );
+  /** What share of the text, typed or not, a character the layout cannot type is. */
+  const share = (n: number) => {
+    const missed = shown?.coverage.unproducible.reduce((s, [, c]) => s + c, 0) ?? 0;
+    const all = (shown?.stats.symbols ?? 0) + missed;
+    const p = all > 0 ? (n / all) * 100 : 0;
+    return p > 0 && p < 0.01 ? '<0.01%' : `${p.toFixed(2)}%`;
+  };
   /** A chord's step names its virtual key; the reader knows it by the keys pressed together. */
   const stepKey = (key: string) => {
     const combo = typedCompiled.combos.find((c) => typedCompiled.positions[c.pos]?.id === key);
@@ -809,6 +837,8 @@ export function Workbench({
                           // Picking keys for a combo is all the board is doing until it ends.
                           if (state.comboPick) return;
                           send({ type: 'deselect' });
+                          // A character tapped in the tray goes down as an armed swap does.
+                          if (state.placing !== null) send({ type: 'armChar', char: null });
                           // The keys a combo or a feature outlined from a panel go too, as on Escape.
                           if (state.boardHighlight.length > 0) {
                             send({ type: 'setBoardHighlight', keys: [] });
@@ -879,6 +909,46 @@ export function Workbench({
                       </button>
                     </div>
                   </div>
+
+                  <MissingKeysTray
+                    chars={tray}
+                    placing={state.placing}
+                    why={(c) =>
+                      languageGap?.missingRequired.includes(c)
+                        ? `${languageGap.name} needs it`
+                        : 'No key types it now'
+                    }
+                    share={share}
+                    onArm={(char) => {
+                      stopPlaying();
+                      send({ type: 'armChar', char });
+                    }}
+                    onDisarm={() => send({ type: 'armChar', char: null })}
+                    onDrop={({ char, to }) => {
+                      stopPlaying();
+                      send({
+                        type: 'placeChar',
+                        keyId: to,
+                        char,
+                        say: `${spoken(char)} on ${to}`,
+                      });
+                    }}
+                    board={() => document.getElementById('kb-analyze')}
+                  />
+
+                  {state.placing !== null && (
+                    <p className="text-xs">
+                      <span className="font-mono">{charLabel(state.placing)}</span> is armed — tap
+                      the key to put it on, or press Escape.{' '}
+                      <button
+                        type="button"
+                        className="btn btn-xs btn-ghost"
+                        onClick={() => send({ type: 'armChar', char: null })}
+                      >
+                        Cancel
+                      </button>
+                    </p>
+                  )}
 
                   {state.swapFrom && (
                     <p className="text-xs">
@@ -999,7 +1069,7 @@ export function Workbench({
                                 onClick={() => setPlay({ frame: at, playing: false })}
                               >
                                 <span className="opacity-60">{stepKey(s.key)}</span>
-                                <span>{symbolLabel(s.symbols) || s.label}</span>
+                                <span>{charLabel(s.symbols) || s.label}</span>
                                 <span className="opacity-50">{s.layer}</span>
                               </button>
                             </li>
@@ -1050,7 +1120,11 @@ export function Workbench({
           </section>
 
           <p aria-live="polite" className="sr-only">
-            {state.swapFrom ? `${state.swapFrom} armed for a swap` : message}
+            {state.swapFrom
+              ? `${state.swapFrom} armed for a swap`
+              : state.placing !== null
+                ? `${spoken(state.placing)} armed: tap a key to put it on`
+                : message}
           </p>
         </div>
 
@@ -1153,8 +1227,8 @@ export function Workbench({
 }
 
 /**
- * The numbers up front, what they are of, and what the layout cannot type: every character of the
- * text with no way to type it, most frequent first, each breaking the word it is in.
+ * The numbers up front, what they are of, and how much of the text the layout cannot type: the
+ * characters themselves wait in the missing-keys tray under the board.
  */
 function SummaryCard({
   shown,
@@ -1178,12 +1252,6 @@ function SummaryCard({
   /** Whether there will be no numbers to wait for: the analysis cannot be made. */
   failed: boolean;
 }) {
-  const symbols = shown?.stats.symbols ?? 0;
-  const share = (n: number) => {
-    const all = symbols + (shown?.coverage.unproducible.reduce((s, [, c]) => s + c, 0) ?? 0);
-    const p = all > 0 ? (n / all) * 100 : 0;
-    return p > 0 && p < 0.01 ? '<0.01%' : `${p.toFixed(2)}%`;
-  };
   return (
     <section
       className="lb-edit-summary card bg-base-100 border border-base-300 min-w-0"
@@ -1267,25 +1335,9 @@ function SummaryCard({
                       {shown.coverage.unproducible.length === 1 ? '' : 's'} of the text
                     </h3>
                     <p className="opacity-70">
-                      Each one ends the word it is in, so the numbers leave those words out.
+                      Each one ends the word it is in, so the numbers leave those words out. They
+                      wait in the missing-keys tray under the board, to be put on keys.
                     </p>
-                    <ul
-                      className="flex flex-wrap gap-1"
-                      aria-label="Characters the layout cannot type"
-                    >
-                      {shown.coverage.unproducible.map(([sym, n]) => (
-                        <li
-                          key={sym}
-                          className="badge badge-error badge-sm font-mono gap-1"
-                          title={`${n.toLocaleString('en-US')} times`}
-                        >
-                          {symbolLabel(sym)}
-                          <span className="opacity-80">
-                            ×{n.toLocaleString('en-US')} · {share(n)}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
                   </>
                 )}
                 {shown.coverage.softDropped.length > 0 && (
@@ -1294,7 +1346,7 @@ function SummaryCard({
                     {shown.coverage.softDropped.map(([sym, n], i) => (
                       <span key={sym} className="font-mono">
                         {i > 0 && ' '}
-                        {symbolLabel(sym)} ×{n.toLocaleString('en-US')}
+                        {charLabel(sym)} ×{n.toLocaleString('en-US')}
                       </span>
                     ))}
                   </p>

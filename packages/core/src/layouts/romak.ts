@@ -370,7 +370,6 @@ export const magicRomak: Layout = {
   description:
     'Romak 24 with adaptive keys (h/v), alt repeat, sentence case, caps word, and dead keys for Spanish, French and Italian.',
   link: ROMAK_LINK,
-  languages: ['pt-BR', 'en'],
   hostLocale: 'symbols',
   geometry: { preset: '1333+2' },
   keys: { space: 'L0', shift: { key: 'R1', kind: 'sk' } },
@@ -475,7 +474,6 @@ export const romak: Layout = withStandardThumbs(
     description:
       'Romak on 34 keys (3x5+2): one alpha layer, with the default layers and the standard thumbs.',
     link: ROMAK_LINK,
-    languages: ['pt-BR', 'en'],
     hostLocale: 'symbols',
     geometry: { preset: '3x5+2' },
     keys: { space: 'L0' },

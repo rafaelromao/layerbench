@@ -5,6 +5,7 @@ import {
   type EditOutcome,
   type Layout,
 } from '@layerbench/core';
+import { displaced, spoken } from './tray.js';
 
 export type Panel = 'layers' | 'features' | 'geometry' | 'combos' | 'behaviors' | 'paths' | 'json';
 
@@ -33,6 +34,13 @@ export interface EditState {
   swapFrom: string | null;
   /** What the armed key does when its partner is picked. */
   swapMode: 'swap' | 'copy';
+  /** A character tapped in the missing-keys tray, waiting for its key; null when none is. */
+  placing: string | null;
+  /**
+   * The characters put on keys from the tray, and those they displaced: the tray shows them again
+   * whenever nothing types them, after an undo too, before the text is typed again.
+   */
+  strays: string[];
   /** The layout differs from `saved`, so closing the tab would lose it. */
   dirty: boolean;
   /**
@@ -82,6 +90,10 @@ export type EditAction =
   | { type: 'deselect' }
   /** A key dragged onto another key: swapped with it, or copied over it. */
   | { type: 'dropKey'; from: string; to: string; mode: 'swap' | 'copy'; say?: string }
+  /** Arm a character of the missing-keys tray for the next key tapped; again, or null, disarms. */
+  | { type: 'armChar'; char: string | null }
+  /** A character of the missing-keys tray put on a key, dropped or tapped there: a plain press. */
+  | { type: 'placeChar'; keyId: string; char: string; say?: string }
   /** With `combo`, the keys picked are the new keys of that combo rather than a new combo's. */
   | { type: 'comboPickStart'; combo?: number }
   | { type: 'comboPickToggle'; keyId: string }
@@ -114,6 +126,8 @@ export function initialState(layout: Layout, compiled: CompiledLayout, layer = 0
     also: [],
     swapFrom: null,
     swapMode: 'swap',
+    placing: null,
+    strays: [],
     dirty: false,
     saved: layout,
     panel: 'layers',
@@ -183,8 +197,9 @@ function land(state: EditState, outcome: EditOutcome, say?: string): EditState {
     dirty: true,
     error: null,
     focusRequest: null,
-    // An edit that lands ends a swap waiting for its partner and a combo being picked.
+    // An edit that lands ends a swap or a character waiting for their key and a combo being picked.
     swapFrom: null,
+    placing: null,
     comboPick: null,
     comboPickFor: null,
     ...(behaviorsMoved ? { behaviorsJson: behaviorsText(layout) } : {}),
@@ -223,6 +238,29 @@ function dropped(
   return { kind: mode, layer: shownLayer(state), from, to };
 }
 
+/**
+ * A character of the tray on a key, in place of whatever the key did there: one edit, which keeps
+ * the character and whatever it displaced for the tray.
+ */
+function placed(state: EditState, keyId: string, char: string, say?: string): EditState {
+  const next = make(
+    state,
+    {
+      kind: 'bind',
+      layer: shownLayer(state),
+      keys: [keyId],
+      binding: { kind: 'kp', symbol: char },
+    },
+    say,
+  );
+  if (next.layout === state.layout) return next;
+  const strays = [...state.strays];
+  for (const c of [char, ...displaced(state.compiled, next.compiled)]) {
+    if (!strays.includes(c)) strays.push(c);
+  }
+  return { ...next, strays };
+}
+
 export function editReducer(state: EditState, action: EditAction): EditState {
   const next = reduce(state, action);
   // No key in the inspector, no keys beside it.
@@ -245,6 +283,15 @@ function reduce(state: EditState, action: EditAction): EditState {
       };
 
     case 'keyClick': {
+      // A character tapped in the tray goes on the next key tapped.
+      if (state.placing !== null) {
+        return placed(
+          state,
+          action.keyId,
+          state.placing,
+          `${spoken(state.placing)} on ${action.keyId}`,
+        );
+      }
       // A stale compile error belongs to the edit that failed, not to the next key clicked.
       if (!state.swapFrom) {
         return {
@@ -271,8 +318,9 @@ function reduce(state: EditState, action: EditAction): EditState {
     }
 
     case 'toggleSelect': {
-      // With a swap waiting for its partner, the key picked is that partner, as a click is.
-      if (state.swapFrom) return reduce(state, { type: 'keyClick', keyId: action.keyId });
+      // With a swap or a character waiting for a key, the key picked is that key, as a click is.
+      if (state.swapFrom || state.placing !== null)
+        return reduce(state, { type: 'keyClick', keyId: action.keyId });
       const keys = selectionOf(state);
       const next = keys.includes(action.keyId)
         ? keys.filter((k) => k !== action.keyId)
@@ -289,11 +337,25 @@ function reduce(state: EditState, action: EditAction): EditState {
 
     case 'startSwap':
       return state.selected
-        ? { ...state, swapFrom: state.selected, swapMode: action.mode ?? 'swap' }
+        ? { ...state, swapFrom: state.selected, swapMode: action.mode ?? 'swap', placing: null }
         : state;
 
     case 'cancelSwap':
-      return { ...state, swapFrom: null };
+      return { ...state, swapFrom: null, placing: null };
+
+    // One thing waits for keys at a time: a character armed puts down a swap armed or a combo pick.
+    case 'armChar':
+      return {
+        ...state,
+        placing: action.char === state.placing ? null : action.char,
+        swapFrom: null,
+        comboPick: null,
+        comboPickFor: null,
+        focusRequest: null,
+      };
+
+    case 'placeChar':
+      return placed(state, action.keyId, action.char, action.say);
 
     case 'typeOnKey':
       return {
@@ -301,7 +363,9 @@ function reduce(state: EditState, action: EditAction): EditState {
         selected: action.keyId,
         also: [],
         combo: null,
+        // Typing on a key is the next thing done to it, not where a character armed goes.
         swapFrom: null,
+        placing: null,
         error: null,
         focusRequest: { keyId: action.keyId, seed: action.seed },
       };
@@ -319,6 +383,7 @@ function reduce(state: EditState, action: EditAction): EditState {
         ...state,
         comboPick: [],
         comboPickFor: action.combo ?? null,
+        placing: null,
         // Keys picked again belong to the combo open in the editor; a new combo's to the add form.
         combo: action.combo ?? null,
         focusRequest: null,
