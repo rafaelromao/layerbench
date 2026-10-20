@@ -233,8 +233,8 @@ prime keys: the least effort, the home row first among keys that cost the same. 
 two neighbours in a row that cost least. The keys of Accents the board has no key for follow, each
 on the free key nearest its place on Accents. Extras has no thumb keys to give, both thumbs holding:
 what has no room on its fingers' keys goes on a free thumb of Accents, which comes on for one key
-and so leaves the thumbs free, the thumbs of its own hand first. On Magic Romak's 24 keys that is
-`^` and `î`, on Accents' right inner and outer thumbs. On a new layout there, the symbols:
+and so leaves the thumbs free, the thumbs of its own hand first. On a new layout on Magic Romak's
+24 keys that is `^` and `î`, on Accents' right inner and outer thumbs. On a new layout there, the symbols:
 
 | Extras | P | R | M | I | | I | M | R | P |
 |---|---|---|---|---|---|---|---|---|---|
@@ -252,8 +252,8 @@ on for one key from the base layer, by the outer main thumbs, L1 and R1, pressed
 drawn between them. A board with one thumb a hand presses its two thumbs, and a row-stagger board,
 with one space bar for both, the left ring and middle fingers' home keys, LHR and LHM. On a board
 with all of Accents' 30 main keys, thumbs press none of them, so the thumb combo is never a
-same-finger pair with the accent after it; on Magic Romak's 24 keys, `^` and `î` are on Accents'
-right thumbs, R1 among them. A board without those thumbs gets the same layers arranged to fit it,
+same-finger pair with the accent after it; on a new layout on Magic Romak's 24 keys, `^` and `î`
+are on Accents' right thumbs, R1 among them. A board without those thumbs gets the same layers arranged to fit it,
 and keys beyond the ones the layers use let the layer below show through. A board with no bottom row keeps `1 2 3` on the left home row,
 puts `;` beside `:` where `=` was, and `=` and `ı` on Symbols' left thumbs, the space key and the
 one beside it, which the right thumb holding Symbols leaves free: no finger key is left for them, so
