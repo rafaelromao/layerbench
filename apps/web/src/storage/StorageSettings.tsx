@@ -44,9 +44,13 @@ export function StorageSettings() {
     if (!copyUp) return;
     setCopying(true);
     try {
-      const { copied, current } = await copyUp();
+      const { copied, current, taken } = await copyUp();
       toast.info(
-        `Copied ${documents(copied)} to GitHub${current > 0 ? `; ${current} ${current === 1 ? 'was' : 'were'} already up to date` : ''}`,
+        `Copied ${documents(copied)} to GitHub${current > 0 ? `; ${current} ${current === 1 ? 'was' : 'were'} already up to date` : ''}${
+          taken > 0
+            ? `; ${taken} ${taken === 1 ? 'layout stays' : 'layouts stay'} in this browser, as GitHub has another of the same name`
+            : ''
+        }`,
       );
     } catch (e) {
       const copied = e instanceof CopyUpError ? e.copied : 0;

@@ -1,4 +1,10 @@
-import { bundledLayout, StorageConflictError, slug, toCanonicalJson } from '@layerbench/core';
+import {
+  bundledLayout,
+  NameTakenError,
+  StorageConflictError,
+  slug,
+  toCanonicalJson,
+} from '@layerbench/core';
 import { openDB } from 'idb';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { IndexedDbAdapter } from './indexeddb.js';
@@ -70,6 +76,41 @@ describe('custom documents', () => {
     const entries = await adapter.list('layouts');
     expect(entries.map((e) => e.id)).toEqual(['a', 'z']);
     expect(entries.map((e) => e.name)).toEqual(['Alpha', 'Zeta again']);
+  });
+
+  it('refuses a second layout under a name one already has, and writes nothing', async () => {
+    await adapter.put('layouts', 'mine', { name: 'Mine' });
+    const refused = adapter.put('layouts', 'mine-2', { name: 'MINE ' });
+    await expect(refused).rejects.toBeInstanceOf(NameTakenError);
+    await expect(refused).rejects.toMatchObject({ taken: { id: 'mine', name: 'Mine' } });
+    expect(await adapter.get('layouts', 'mine-2')).toBeNull();
+    expect((await adapter.list('layouts')).map((e) => e.id)).toEqual(['mine']);
+  });
+
+  it('overwrites the layout that has the name in place, and renames to a name nobody has', async () => {
+    await adapter.put('layouts', 'mine', { name: 'Mine' });
+    await adapter.put('layouts', 'other', { name: 'Other' });
+    await adapter.put('layouts', 'mine', { name: 'Mine', description: 'newer' });
+    expect((await adapter.get('layouts', 'mine'))?.doc.description).toBe('newer');
+
+    await expect(adapter.put('layouts', 'mine', { name: 'Other' })).rejects.toMatchObject({
+      taken: { id: 'other' },
+    });
+    await adapter.put('layouts', 'mine', { name: 'Yours' });
+    expect((await adapter.list('layouts')).map((e) => e.name)).toEqual(['Other', 'Yours']);
+  });
+
+  it('refuses a name already taken even when the index was lost', async () => {
+    await adapter.put('layouts', 'mine', { name: 'Mine' });
+    const db = await openDB(`layerbench-test-${counter}`);
+    await db.delete('indexes', 'layouts');
+    db.close();
+
+    await expect(adapter.put('layouts', 'mine-2', { name: 'Mine' })).rejects.toBeInstanceOf(
+      NameTakenError,
+    );
+    await adapter.put('layouts', 'other', { name: 'Other' });
+    expect((await adapter.list('layouts')).map((e) => e.id)).toEqual(['mine', 'other']);
   });
 
   it('summarizes each collection with its own fields', async () => {
