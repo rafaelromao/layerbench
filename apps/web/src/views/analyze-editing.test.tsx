@@ -2003,7 +2003,8 @@ describe('Analyze, while editing', () => {
   }, 60_000);
 
   it('lists every character of the text the layout cannot type', async () => {
-    // Every bundled layout reaches the accents through Accents; Qwerty as written does not.
+    // Every bundled layout reaches the accents, through Accents or Magic Romak's dead keys; Qwerty as
+    // written does not.
     const storage = freshStorage();
     const plain = CLASSIC_LAYOUTS.find((l) => l.id === 'qwerty') as Layout;
     await seed(storage, 'qwerty', 'plain', { name: 'Plain', layers: plain.layers });

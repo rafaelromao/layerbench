@@ -53,7 +53,8 @@ same contents.
 _Avoid_: saved layout, stored layout, my layout
 
 **Default layers**:
-The layers every bundled layout has besides its own, so that each can type every letter and symbol:
+The layers every bundled layout but Magic Romak has besides its own, so that each can type every
+letter and symbol (Magic Romak keeps its keymap's Numbers and Symbols and nothing more):
 Accents, Numbers and Symbols, and Extras for whatever those cannot hold. Accents holds the dead keys,
 and the letters and accented letters the supported languages need; Extras comes on while Numbers and
 Symbols are both held. Every bundled Standard and Thumb Alpha layout reaches them the same way; a
@@ -136,8 +137,8 @@ _Avoid_: magic, advanced key, extra feature
 
 **Special layout**:
 A layout with a special feature, more than one alpha layer, or a board of fewer than 34 keys. A
-bundled one keeps its author's design, with the default layers added, and may bend any rule the
-other categories follow.
+bundled one keeps its author's design, with the default layers added, or for Magic Romak its
+keymap's Numbers and Symbols alone, and may bend any rule the other categories follow.
 _Avoid_: exotic layout, advanced layout
 
 **Standard layout**:
