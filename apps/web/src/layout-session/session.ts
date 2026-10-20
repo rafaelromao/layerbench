@@ -4,11 +4,14 @@ import {
   idForName,
   type JsonObject,
   type Layout,
+  NameTakenError,
+  nameTaken,
   type StorageAdapter,
+  sameName,
   toCanonicalJson,
 } from '@layerbench/core';
 import { customRef } from '../custom/ref.js';
-import { sameDocument, saveNewLayout } from '../custom/save-new.js';
+import { type SaveOptions, sameDocument, saveNewLayout } from '../custom/save-new.js';
 import { encodeInline } from '../url/inline.js';
 import { inlineRef } from '../url/params.js';
 import type { Drafts } from './drafts.js';
@@ -51,7 +54,9 @@ export type SessionState =
 
 export type SaveResult =
   | { ok: true; id: string; leftBehind: boolean }
-  | { ok: false; reason: 'conflict' | 'failed'; error: string };
+  | { ok: false; reason: 'conflict' | 'failed'; error: string }
+  /** Another custom layout has the name: save again overwriting it, or under another name. */
+  | { ok: false; reason: 'name-taken'; taken: { id: string; name: string }; error: string };
 
 export interface LayoutSession {
   getState(): SessionState;
@@ -64,9 +69,11 @@ export interface LayoutSession {
   edited(layout: Layout, unsaved: boolean): void;
   /**
    * Store the layout, under the id its name gives, in place of the one this is, if any. Saves run one
-   * after another. Once it resolves, the editor marks the layout saved, and reports it so.
+   * after another. Once it resolves, the editor marks the layout saved, and reports it so. Where
+   * another custom layout has the name, nothing is saved and it says which, unless `overwrite` is
+   * that one's id: the layout is then stored there, in place of it.
    */
-  save(layout: Layout): Promise<SaveResult>;
+  save(layout: Layout, opts?: SaveOptions): Promise<SaveResult>;
   /** Open another layout, or the same one afresh: a layout picked. */
   open(ref: string): Promise<void>;
   /** The link as it is about to be: a draft still waiting to be written is written now. */
@@ -88,7 +95,9 @@ const LINK_DELAY_MS = 400;
  * Store a layout. One not stored yet becomes a custom layout of its own, under a free id from its
  * name. One already stored keeps its id while that still matches its name, and moves to its new
  * name's once renamed; it never overwrites a custom layout whose name happens to slug the same. A
- * renamed layout's old copy goes only once the new one is safely stored.
+ * renamed layout's old copy goes only once the new one is safely stored. Neither makes a second
+ * layout of a name another custom one has: that throws `NameTakenError`, unless `overwrite` is the
+ * other's id, when the layout is stored there instead.
  */
 async function store(
   storage: StorageAdapter,
@@ -96,15 +105,26 @@ async function store(
   storedId: string | null,
   /** Hears the id and document a layout not stored yet is saved as, before it is written. */
   onNew: (id: string, doc: JsonObject) => void,
+  opts: SaveOptions,
 ): Promise<{ id: string; leftBehind: boolean }> {
   if (storedId === null) {
-    const { id } = await saveNewLayout(storage, layout, `Save layout ${layout.name}`, onNew);
+    const { id } = await saveNewLayout(storage, layout, `Save layout ${layout.name}`, onNew, opts);
     return { id, leftBehind: false };
   }
-  const taken = new Set((await storage.list('layouts')).map((e) => e.id));
-  const id = idForName(layout.name, storedId, taken);
+  const entries = await storage.list('layouts');
+  // One renamed since it was offered to overwrite is not overwritten: the name is asked about anew.
+  const target = entries.find((e) => e.id === opts.overwrite);
+  let id = target && !sameName(target.name, layout.name) ? undefined : opts.overwrite;
+  if (id === undefined) {
+    const taken = nameTaken(entries, layout.name, storedId);
+    if (taken) throw new NameTakenError(taken);
+    id = idForName(layout.name, storedId, new Set(entries.map((e) => e.id)));
+  }
   await storage.put('layouts', id, toCanonicalJson({ ...layout, id }), {
     message: `Save layout ${layout.name}`,
+    // Its old copy, deleted below, may go by the name too: one only the browser has, beside the
+    // gists' layout of the name.
+    replacing: id === storedId ? [] : [storedId],
   });
   let leftBehind = false;
   if (id !== storedId) {
@@ -278,7 +298,7 @@ export function createLayoutSession(
       publish();
     },
 
-    save(layout) {
+    save(layout, opts = {}) {
       const run = async (): Promise<SaveResult> => {
         if (state.status !== 'open') return { ok: false, reason: 'failed', error: 'nothing open' };
         const opening = state.opening;
@@ -286,6 +306,8 @@ export function createLayoutSession(
         publish();
         try {
           let from = storedId;
+          // A failed first save's copy is this layout's, even when another is overwritten now: it
+          // is then the old copy of a rename, and goes.
           if (from === null && attempted !== null) {
             const there = await ports
               .storage()
@@ -294,9 +316,15 @@ export function createLayoutSession(
             if (there && sameDocument(there.doc, attempted.doc)) from = attempted.id;
           }
           // Only this opening's own attempt is kept: a save of a layout since left may land late.
-          const { id, leftBehind } = await store(ports.storage(), layout, from, (taken, doc) => {
-            if (state.opening === opening) attempted = { id: taken, doc };
-          });
+          const { id, leftBehind } = await store(
+            ports.storage(),
+            layout,
+            from,
+            (taken, doc) => {
+              if (state.opening === opening) attempted = { id: taken, doc };
+            },
+            opts,
+          );
           if (state.opening === opening) attempted = null;
           // Its link from now on carries it whole, so it can still be sent. A moment ago that may
           // have been the link of a draft of it, which it no longer is.
@@ -311,6 +339,9 @@ export function createLayoutSession(
           }
           return { ok: true, id, leftBehind };
         } catch (e) {
+          if (e instanceof NameTakenError) {
+            return { ok: false, reason: 'name-taken', taken: e.taken, error: e.message };
+          }
           const conflict = e instanceof Error && e.name === 'StorageConflictError';
           return {
             ok: false,
