@@ -74,8 +74,12 @@ Alpha ones share their main thumbs and base-layer symbols, so that they compare 
 (`withStandardThumbs` in `standard.ts`): the four inner thumbs hold Shift, Numbers, Symbols and
 Shift and tap Repeat, space, a thumb letter or nothing, and Accents, and no symbol stays on the base
 layer but `'` `,` `.` `;`. The Special ones keep every key they had and reach Accents on one combo
-(`withDefaultLayers` in `templates.ts`). A new one joins them as a
-document: a custom layout, unchanged, added by pull request. Merging the pull request is
+(`withDefaultLayers` in `templates.ts`). The languages each is for are measured, not chosen: a
+layout is for a language when it types every letter the language needs and its Effort on that
+language's news text is in the better half of all the bundled layouts', on the rules the Library
+ranks on (`lang/performance.ts`). `pnpm languages` measures them and writes them, to
+`layouts/languages.json` and into each document, and a test fails when they drift. A new one joins
+them as a document: a custom layout, unchanged, added by pull request. Merging the pull request is
 the approval, and the deploy that follows puts it in everyone's Library. A layout can also join
 with no deploy, as a community layout, by **Submit** in the app ([below](#community-layouts)).
 
@@ -89,10 +93,13 @@ with no deploy, as a community layout, by **Submit** in the app ([below](#commun
    id.
 4. Name it on the landing page, in the list under the layouts heading in `docs/site/index.html`,
    and update the count in that heading.
-5. `pnpm test` checks that it is exactly what LayerBench saves, is named by its id, names an author
+5. Run `pnpm languages`, then `pnpm goldens`: a new layout takes the languages it performs well in,
+   and may move other layouts out of the better half of one.
+6. `pnpm test` checks that it is exactly what LayerBench saves, is named by its id, names an author
    (a link is optional, and an http(s) URL when given), has a name and an id no other layout has,
-   types the whole alphabet and a space, and is on the landing page.
-6. Open the pull request. The `layouts` workflow runs those checks in a few minutes, sooner than the
+   types the whole alphabet and a space, carries the languages it performs well in, and is on the
+   landing page.
+7. Open the pull request. The `layouts` workflow runs those checks in a few minutes, sooner than the
    whole of CI, and writes a summary on its run's page for the review: each new or changed layout
    with its link, a link that opens it in the app as it would be bundled, and its Effort and SFB
    on the texts of its languages, placed among the bundled layouts as the Library ranks them.
