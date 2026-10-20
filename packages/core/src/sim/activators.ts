@@ -588,32 +588,66 @@ export function reachKeys(
     });
 }
 
+/** Whether a key's hold keeps `target` on only while it is held down, as `mo` and `lt` do. */
+function holdsDown(c: CompiledLayout, b: Binding, target: number, depth = 0): boolean {
+  if (depth > 8) return false;
+  switch (b.kind) {
+    case 'mo':
+    case 'lt':
+      return c.layerIndex.get(b.layer) === target;
+    case 'hold_tap':
+      return holdsDown(c, b.hold, target, depth + 1);
+    case 'mod_morph':
+      return (
+        holdsDown(c, b.default, target, depth + 1) || holdsDown(c, b.morphed, target, depth + 1)
+      );
+    case 'layer_morph':
+      return (
+        holdsDown(c, b.inactive, target, depth + 1) || holdsDown(c, b.active, target, depth + 1)
+      );
+    default:
+      return false;
+  }
+}
+
 /**
  * The thumb keys out of reach while a layer is on: every thumb key of a hand whose thumb is holding
  * a key down to keep the layer on, the held key among them. A hand is holding when every way onto
- * the layer holds one of its thumb keys; a layer that comes on with others together holds each of
- * theirs, so with Numbers held by one thumb and Symbols by the other, Extras has no thumb free.
+ * the layer holds one of its thumb keys down, as `mo` and `lt` do; a key that arms, toggles or
+ * switches to the layer is let go. A layer that comes on with others together holds each of
+ * theirs, so with Numbers held by one thumb and Symbols by the other, Extras has no thumb free;
+ * where several sets of layers bring it on, a hand is holding only if it is in each set.
  */
 export function blockedThumbs(c: CompiledLayout, layer: number): number[] {
-  const ways = new Map<number, { pos: number; route: ReachRoute }[]>();
+  // Each set of layers that brings the layer on, and the ways onto each layer of the set.
+  const sets = new Map<string, Map<number, { pos: number; route: ReachRoute }[]>>();
   for (const k of reachKeys(c, layer))
     for (const route of k.routes) {
-      const through = route.through?.layer ?? -1;
+      const through = route.through?.layer ?? layer;
+      const set = route.through ? [through, ...route.through.with].sort().join() : '';
+      const ways = sets.get(set) ?? new Map();
       ways.set(through, [...(ways.get(through) ?? []), { pos: k.pos, route }]);
+      sets.set(set, ways);
     }
-  const holding = new Set<string>();
-  for (const routes of ways.values())
-    for (const hand of ['L', 'R'])
-      if (
-        routes.every(
-          ({ pos, route }) =>
-            route.mode === 'hold' &&
-            !route.chord?.length &&
-            c.keys[pos]?.thumb &&
-            c.keys[pos].hand === hand,
+  const holdingIn = (ways: Map<number, { pos: number; route: ReachRoute }[]>) => {
+    const hands = new Set<string>();
+    for (const [through, routes] of ways)
+      for (const hand of ['L', 'R'])
+        if (
+          routes.every(
+            ({ pos, route }) =>
+              route.mode === 'hold' &&
+              !route.chord?.length &&
+              c.keys[pos]?.thumb &&
+              c.keys[pos].hand === hand &&
+              holdsDown(c, c.layers[route.via].bindings[pos], through),
+          )
         )
-      )
-        holding.add(hand);
+          hands.add(hand);
+    return hands;
+  };
+  const each = [...sets.values()].map(holdingIn);
+  const holding = new Set(['L', 'R'].filter((h) => each.length > 0 && each.every((x) => x.has(h))));
   return c.keys.flatMap((k, pos) => (k.thumb && holding.has(k.hand) ? [pos] : []));
 }
 

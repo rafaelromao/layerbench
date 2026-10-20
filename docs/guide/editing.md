@@ -159,9 +159,10 @@ to do and it stops being marked, even where the layout names it as a way in. Sel
 the list under the board, to see where it is pressed and when.
 
 A thumb holding a layer on can press nothing else, so on that layer the other thumb keys of its hand
-are out of reach: where every way onto a layer holds a thumb of one hand, that hand's thumb keys type
-nothing there. On Numbers, held by the left thumb, the left thumb keys type nothing; on Extras,
-Numbers and Symbols both held, no thumb key does. The analysis counts what only those keys carry as
+are out of reach: where every way onto a layer holds a thumb of one hand down, that hand's thumb keys
+type nothing there. A key that only arms, toggles or switches to the layer is let go, and blocks
+nothing. On Numbers the thumb keys of the hand holding it type nothing; on Extras, Numbers and
+Symbols both held, no thumb key does. The analysis counts what only those keys carry as
 a symbol the layout cannot type, and the default layers put nothing on them.
 
 Several keys can reach a layer the same way, say three one-shots for Alpha 2. Each word is then
@@ -249,9 +250,10 @@ The left inner thumb types space and, held, turns on Numbers. The right inner th
 Symbols; held from Numbers, it turns on Extras, or Symbols where there is no Extras. Accents comes
 on for one key from the base layer, by the outer main thumbs, L1 and R1, pressed together: a combo,
 drawn between them. A board with one thumb a hand presses its two thumbs, and a row-stagger board,
-with one space bar for both, the left ring and middle fingers' home keys, LHR and LHM. Thumbs press
-none of Accents' 30 main keys, so the thumb combo is never a same-finger pair with the accent after
-it. A board without those thumbs gets the same layers arranged to fit it, and keys beyond the ones
+with one space bar for both, the left ring and middle fingers' home keys, LHR and LHM. On a board
+with all of Accents' 30 main keys, thumbs press none of them, so the thumb combo is never a
+same-finger pair with the accent after it; on Magic Romak's 24 keys, `^` and `î` are on Accents'
+right thumbs, R1 among them. A board without those thumbs gets the same layers arranged to fit it, and keys beyond the ones
 the layers use let the layer below show through. A board with no bottom row keeps `1 2 3` on the left home row,
 puts `;` beside `:` where `=` was, and `=` and `ı` on Symbols' left thumbs, the space key and the
 one beside it, which the right thumb holding Symbols leaves free: no finger key is left for them, so

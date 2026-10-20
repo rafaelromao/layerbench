@@ -222,6 +222,15 @@ describe('the default layers, board by board', () => {
     const t = trace(boardWithDefaults('1222+2'), '[ * « 3 ; € § ¿ = | ı º £');
     expect(t.out).toBe('[ * « 3 ; € § ¿ = | ı º £');
     expect(t.coverage.unproducible.size).toBe(0);
+    // A Special layout there, Ben Vallack Piano, its space and so Numbers on L1: `=` where space
+    // would be on Symbols, `ı` on the left thumb beside it, the right ones holding Symbols.
+    const piano = bundledLayout('ben-vallack-piano') as Layout;
+    const sym = piano.layers.find((l) => l.id === 'sym')?.bindings ?? {};
+    expect([sym.L1, sym.L0, sym.R1]).toEqual([
+      { kind: 'kp', symbol: '=' },
+      { kind: 'kp', symbol: 'ı' },
+      undefined,
+    ]);
   });
 
   it('hold Numbers on the space bar of a row-stagger board, and arm Symbols from there', () => {
@@ -357,7 +366,7 @@ describe('a thumb holding a layer leaves its hand no thumb key to type there', (
     });
 });
 
-describe('Accents keys a board lacks are on Extras', () => {
+describe("Accents keys a board lacks are on Extras, or past its finger keys on Accents' thumbs", () => {
   it("on Extras' finger keys, and past them on Accents' thumbs, whichever thumbs hold Numbers and Symbols", () => {
     // A Special layout on the 24 keys with space, and so Numbers, on the left outer thumb.
     const geometry = getGeometryPreset('1333+2');

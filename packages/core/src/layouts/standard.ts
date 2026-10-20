@@ -131,7 +131,7 @@ export function withStandardThumbs(
   const space = MAIN_THUMBS.find((id) => isSpace(taps[id]));
   if (!space) throw new Error(`${layout.name}: no main thumb types space`);
   // The default layers put space on Symbols' L0, the space thumb being held: where L0 types
-  // something else, it types that there too. Accents is mirrored for a layout whose vowels are on
+  // something else, it types that there too. With no bottom row they put `=` there, which stays. Accents is mirrored for a layout whose vowels are on
   // the left.
   const defaults = defaultLayers(geometry, { mirrorAccents: vowelsOnLeft(first.bindings) });
   const layers = defaults.layers.map((l) => {

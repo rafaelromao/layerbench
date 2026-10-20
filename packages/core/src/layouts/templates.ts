@@ -420,7 +420,8 @@ function spareThumb(geometry: Geometry, holding: string): string | undefined {
  * The default layers for a board, and the base-layer keys that reach Numbers and Symbols. Accents
  * is reached by `accentsCombo`, on the base layer, which the caller adds with that layer's id, or by
  * a thumb of the caller's; `mirrorAccents` mirrors it, for a layout that types its vowels with the
- * left hand. The Accents keys the board lacks go on Extras, mirrored with it.
+ * left hand. The Accents keys the board lacks go on Extras, mirrored with it, or past its finger keys
+ * on Accents' thumbs.
  *
  * On a split board the inner thumbs do it, as on Magic Romak: the left types space and holds
  * Numbers, the right holds Symbols. Holding the right thumb from Numbers reaches Symbols too, or

@@ -426,6 +426,53 @@ describe('the thumb keys a held thumb blocks', () => {
     expect(blocked(c, 'nav')).toEqual([]);
   });
 
+  it('are none on a layer a thumb arms, toggles or switches to on its hold, and then lets go', () => {
+    for (const hold of [
+      { kind: 'sl', layer: 'nav' },
+      { kind: 'tog', layer: 'nav' },
+      { kind: 'to', layer: 'nav' },
+    ] as const) {
+      const c = compileLayout(
+        board([
+          { id: 'base', bindings: { L0: { kind: 'hold_tap', tap: kp(' '), hold } } },
+          { id: 'nav', bindings: { '*': { kind: 'trans' }, L1: kp('x') } },
+        ]),
+      );
+      expect([hold.kind, blocked(c, 'nav')]).toEqual([hold.kind, []]);
+      const r = explain(c, 'x', { caseMode: 'fold', crossWord: 'reset' });
+      expect([hold.kind, r.coverage.unproducible.size]).toEqual([hold.kind, 0]);
+    }
+  });
+
+  it('are only the hands every set of layers that brings a layer on holds', () => {
+    const c = compileLayout(
+      board(
+        [
+          {
+            id: 'base',
+            bindings: {
+              L0: { kind: 'mo', layer: 'num' },
+              R0: { kind: 'mo', layer: 'sym' },
+              LHP: { kind: 'mo', layer: 'fn' },
+            },
+          },
+          { id: 'num', bindings: { '*': { kind: 'trans' } } },
+          { id: 'sym', bindings: { '*': { kind: 'trans' } } },
+          { id: 'fn', bindings: { '*': { kind: 'trans' } } },
+          { id: 'ex', bindings: { '*': { kind: 'trans' }, R1: kp('x') } },
+        ],
+        {
+          conditionalLayers: [
+            { if: ['num', 'sym'], then: 'ex' },
+            { if: ['num', 'fn'], then: 'ex' },
+          ],
+        },
+      ),
+    );
+    // Numbers and the finger holding Fn leave the right thumb free.
+    expect(blocked(c, 'ex').sort()).toEqual(['L0', 'L1']);
+  });
+
   it('type nothing in the analysis: what only they carry is unproducible', () => {
     const c = compileLayout(
       board([
