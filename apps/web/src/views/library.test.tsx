@@ -13,8 +13,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { setCommunitySource } from '../community/community.js';
 import type { AnalysisClient, AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { useSession } from '../state/session.js';
+import { CompositeStorage } from '../storage/composite.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { branchWith, communityDoc } from '../test/community.js';
+import { MemoryStorage } from '../test/memory-storage.js';
 import {
   customInLink,
   LIBRARY,
@@ -117,22 +119,101 @@ describe('Creating layouts', () => {
     expect(screen.queryByRole('dialog', { name: 'New layout' })).toBeNull();
   });
 
-  it('gives a new layout a free id when a layout already has its name', async () => {
+  it('makes no second layout of a name a custom one has: it offers to overwrite that one', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
     const qwerty = bundledLayout('qwerty') as Layout;
     await storage.put('layouts', 'mine', toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine' }));
     const { currentSearch } = renderRoute(LIBRARY, { storage });
+    await screen.findByRole('heading', { name: 'Mine', level: 3 });
+
+    await user.click(await screen.findByRole('button', { name: 'New layout' }));
+    const dialog = screen.getByRole('dialog', { name: 'New layout' });
+    const name = within(dialog).getByLabelText('New layout name');
+    await user.clear(name);
+    await user.type(name, 'mine ');
+    expect(within(dialog).getByRole('status')).toHaveTextContent(
+      'A custom layout is already called Mine',
+    );
+    expect(within(dialog).getByRole('button', { name: 'Create and edit' })).toBeDisabled();
+    await user.click(within(dialog).getByRole('button', { name: 'Overwrite Mine' }));
+
+    await waitFor(async () => expect(await customInLink(currentSearch())).toBe('mine'));
+    expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['mine']);
+    expect((await storage.get('layouts', 'mine'))?.doc.name).toBe('mine');
+  });
+
+  it('asks only for another name when GitHub and this browser each have a layout of it', async () => {
+    const user = userEvent.setup();
+    const qwerty = bundledLayout('qwerty') as Layout;
+    const local = freshStorage();
+    const remote = new MemoryStorage('github');
+    await remote.put('layouts', 'mine', toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine' }));
+    await local.put(
+      'layouts',
+      'mine-2',
+      toCanonicalJson({ ...qwerty, id: 'mine-2', name: 'Mine' }),
+    );
+    const storage = new CompositeStorage(local, remote);
+    const { currentSearch } = renderRoute(LIBRARY, { storage });
+    await waitFor(() =>
+      expect(screen.getAllByRole('heading', { name: 'Mine', level: 3 })).toHaveLength(2),
+    );
 
     await user.click(await screen.findByRole('button', { name: 'New layout' }));
     const name = screen.getByLabelText('New layout name');
     await user.clear(name);
     await user.type(name, 'Mine');
+    await user.click(screen.getByRole('button', { name: 'Overwrite Mine' }));
+
+    const again = await screen.findByRole('dialog', { name: 'Save under another name' });
+    expect(within(again).getByRole('status')).toHaveTextContent('It could not be overwritten');
+    expect(within(again).queryByRole('button', { name: /Overwrite/ })).toBeNull();
+    const field = within(again).getByLabelText('Name of the layout');
+    await user.clear(field);
+    await user.type(field, 'Mine 3');
+    await user.click(within(again).getByRole('button', { name: 'Save' }));
+    await waitFor(async () => expect(await customInLink(currentSearch())).toBe('mine-3'));
+  });
+
+  it('offers a new layout a name no custom layout has', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const qwerty = bundledLayout('qwerty') as Layout;
+    await storage.put('layouts', 'my-layout', toCanonicalJson({ ...qwerty, name: 'My layout' }));
+    renderRoute(LIBRARY, { storage });
+    await screen.findByRole('heading', { name: 'My layout', level: 3 });
+
+    await user.click(await screen.findByRole('button', { name: 'New layout' }));
+    const dialog = screen.getByRole('dialog', { name: 'New layout' });
+    expect(within(dialog).getByLabelText('New layout name')).toHaveValue('My layout 2');
+    expect(within(dialog).getByRole('button', { name: 'Create and edit' })).toBeEnabled();
+  });
+
+  it('asks for another name when a layout of the name was saved since the list was read', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const { currentSearch } = renderRoute(LIBRARY, { storage });
+    await user.click(await screen.findByRole('button', { name: 'New layout' }));
+    // Saved from another tab: this one has not listed it.
+    const qwerty = bundledLayout('qwerty') as Layout;
+    await storage.put('layouts', 'mine', toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine' }));
+    const name = screen.getByLabelText('New layout name');
+    await user.clear(name);
+    await user.type(name, 'Mine');
     await user.click(screen.getByRole('button', { name: 'Create and edit' }));
 
+    const again = await screen.findByRole('dialog', { name: 'Save under another name' });
+    expect(within(again).getByRole('status')).toHaveTextContent(
+      'A custom layout is already called Mine',
+    );
+    const field = within(again).getByLabelText('Name of the layout');
+    await user.type(field, ' 2');
+    await user.click(within(again).getByRole('button', { name: 'Save' }));
+
     await waitFor(async () => expect(await customInLink(currentSearch())).toBe('mine-2'));
-    expect((await storage.get('layouts', 'mine'))?.doc.name).toBe('Mine');
-    expect(await screen.findByText('Saved Mine')).toBeInTheDocument();
+    expect(await screen.findByText('Saved Mine 2')).toBeInTheDocument();
+    expect((await storage.list('layouts')).map((e) => e.name)).toEqual(['Mine', 'Mine 2']);
   });
 
   it('makes no second layout when a create that failed after the browser wrote it is tried again', async () => {
