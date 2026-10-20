@@ -3,6 +3,7 @@ import { layoutCategory } from '../layout/categories.js';
 import type { Layout } from '../layout/types.js';
 import { CLASSIC_LAYOUTS, classicLayout } from './classic.js';
 import { DOCUMENT_LAYOUTS } from './documents.js';
+import LANGUAGES from './languages.json';
 import { magicRomak, romak } from './romak.js';
 import { SMALL_DEFS } from './small.js';
 import { type ThumbPlacement, withStandardThumbs } from './standard.js';
@@ -74,7 +75,16 @@ const BUILT_IN_LAYOUTS: Layout[] = [
   romak,
   ...CLASSIC_LAYOUTS.map(withDefaults('layerbench')),
   ...SMALL_LAYOUTS.map(withDefaults('author')),
-];
+].map(withLanguages);
+
+/**
+ * A layout written in code, with the languages it performs well in: measured, not chosen, by
+ * `pnpm languages` (`lang/performance.ts`), which writes them to `languages.json`. A layout added
+ * as a document carries its own, written the same way.
+ */
+function withLanguages(layout: Layout): Layout {
+  return { ...layout, languages: (LANGUAGES as Record<string, string[]>)[layout.id ?? ''] ?? [] };
+}
 
 /** The layouts the app offers: those written here, then those added since as documents. */
 export const BUNDLED_LAYOUTS: Layout[] = [...BUILT_IN_LAYOUTS, ...DOCUMENT_LAYOUTS];

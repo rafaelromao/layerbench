@@ -35,9 +35,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # A document is exactly what LayerBench saves, named by its id, with an author (its link is
       # optional, an http(s) URL when given); every bundled layout has a name and an id of its own
-      # and types the alphabet and a space; the layouts written in code still match their documents.
+      # and types the alphabet and a space; the layouts written in code still match their documents;
+      # every one carries the languages it performs well in, as `pnpm languages` measures them.
       - name: Check the layouts
-        run: pnpm --filter @layerbench/core exec vitest run src/layouts src/golden/layouts.test.ts
+        run: pnpm --filter @layerbench/core exec vitest run src/layouts src/golden/layouts.test.ts src/lang/performance.test.ts
       - name: Check the landing page names every one
         run: pnpm --filter @layerbench/web exec vitest run src/guide/landing.test.ts
       - name: Summarize them for the review
