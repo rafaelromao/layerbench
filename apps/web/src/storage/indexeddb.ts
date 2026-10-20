@@ -6,6 +6,9 @@ import {
   type IndexEntry,
   indexSummary,
   type JsonObject,
+  NameTakenError,
+  nameTaken,
+  type PutOptions,
   type StorageAdapter,
   StorageConflictError,
   type StorageMeta,
@@ -94,7 +97,7 @@ export class IndexedDbAdapter implements StorageAdapter {
     collection: Collection,
     id: string,
     doc: JsonObject,
-    opts: { expectedSha?: string | null; message?: string } = {},
+    opts: PutOptions = {},
   ): Promise<StorageMeta> {
     assertDocumentId(id);
     const db = await this.conn();
@@ -110,10 +113,23 @@ export class IndexedDbAdapter implements StorageAdapter {
       await tx.done.catch(() => {});
       throw new StorageConflictError();
     }
+    const indexStore = tx.objectStore(INDEX_STORE);
+    const current =
+      ((await indexStore.get(collection)) as IndexEntry[] | undefined) ??
+      // No index yet: what is there is rebuilt into it, so no document drops out of the list.
+      ((await tx.objectStore(collection).getAll()) as StoredDoc[]).map((d) => ({
+        ...indexSummary(collection, d.id, JSON.parse(d.json)),
+        updatedAt: d.updatedAt,
+      }));
+    // Never a second custom layout of a name, whoever asks: the caller overwrites the one there.
+    const taken =
+      collection === 'layouts' ? nameTaken(current, entry.name, id, opts.replacing) : null;
+    if (taken) {
+      await tx.done.catch(() => {});
+      throw new NameTakenError(taken);
+    }
     await tx.objectStore(collection).put({ id, json, sha, updatedAt } satisfies StoredDoc);
 
-    const indexStore = tx.objectStore(INDEX_STORE);
-    const current = ((await indexStore.get(collection)) as IndexEntry[] | undefined) ?? [];
     const next = [...current.filter((e) => e.id !== id), entry].sort((a, b) =>
       a.name.localeCompare(b.name),
     );
