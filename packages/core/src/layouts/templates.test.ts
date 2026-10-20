@@ -82,17 +82,17 @@ describe('the default layers on every board', () => {
         const missing = [...'0123456789', ...defaultLayerSymbols(), ...'ßäöü'].filter(
           (c) => !producible.has(c),
         );
-        const untyped = layout.id === 'magic-romak' ? MAGIC_ROMAK_UNTYPED : [];
-        expect([...new Set(missing)].sort()).toEqual([...untyped].sort());
+        expect(missing).toEqual([]);
       });
 
       it('writes all six languages', () => {
         for (const tag of Object.keys(LANGUAGE_PROFILES)) {
           const c = layoutLanguageCoverage(compiled, tag);
-          const missing = (layout.id === 'magic-romak' && MAGIC_ROMAK_MISSING[tag]) || [[], [], []];
           expect([tag, c?.missingRequired, c?.missingOptional, c?.missingPunctuation]).toEqual([
             tag,
-            ...missing,
+            [],
+            [],
+            [],
           ]);
         }
       });
@@ -422,12 +422,13 @@ describe("Magic Romak's layers: the defaults' Numbers, its keymap's Symbols, and
     expect(t.out).toBe('€ ° º ª');
     expect(t.keys).toEqual([
       ...['R0', 'combo:euro', 'L0'],
-      // Numbers held from space through the rest, which taps it for the spaces between them.
+      // Numbers held from space through the rest, which taps it for the spaces between them, as the
+      // engine models a held space key.
       ...['L0', 'combo:degree', 'L0', 'combo:ordinal', 'L0', 'combo:ordinal'],
     ]);
   });
 
-  it('still types every accent by the combos on Alpha 2', () => {
+  it('still types the accents by the dead keys on the combos of Alpha 2', () => {
     const t = trace(magicRomak, 'ñ è ü');
     expect(t.out).toBe('ñ è ü');
     expect(t.keys).toEqual([
@@ -501,7 +502,7 @@ describe('the default layers on every bundled layout', () => {
       const compiled = compileLayout(layout);
       const producible = producibleSymbols(compiled);
 
-      it('has Accents, Numbers and Symbols, and Extras only where the board needs it', () => {
+      it('has Accents, Numbers and Symbols, and Extras only where the board needs it, but Magic Romak', () => {
         const ids = layout.layers
           .map((l) => l.id)
           .filter((id) => DEFAULT_LAYER_ID_LIST.includes(id));
@@ -720,7 +721,7 @@ describe('symbol pairs share a layer, side by side', () => {
     });
   }
 
-  // Magic Romak keeps its own Symbols and Extras, as its keymap has them.
+  // Magic Romak keeps its keymap's Symbols, which splits `; :`, `? ¿` and `! ¡`, and has no `« »`.
   for (const layout of BUNDLED_LAYOUTS.filter((l) => l.id !== 'magic-romak')) {
     it(`${layout.name}: every pair together`, () => {
       const preset = 'preset' in layout.geometry ? layout.geometry.preset : '';

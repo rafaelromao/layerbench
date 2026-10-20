@@ -102,7 +102,8 @@ const THUMBS = new Set(['L0', 'L1', 'R0', 'R1']);
 function magicRomakLayers(): LayerDef[] {
   const numbers = defaultLayers(getGeometryPreset('1333+2')).layers.find(
     (l) => l.id === DEFAULT_LAYER_IDS.numbers,
-  ) as LayerDef;
+  );
+  if (!numbers) throw new Error('The default layers have no Numbers');
   const keys = Object.entries(numbers.bindings).filter(([id]) => id !== '*' && !THUMBS.has(id));
   return [
     {

@@ -106,6 +106,20 @@ export function comboPlace(
   return places[nth] ?? null;
 }
 
+/**
+ * Where a combo's pill goes: halfway between its keys, unless that is on a key, as it is for three
+ * keys in a row; then on the gap below that key, so that the pill does not hide its legend.
+ */
+export function comboPillAt(
+  points: readonly { x: number; y: number }[],
+  keys: readonly { cx: number; cy: number; w: number; h: number }[],
+): { x: number; y: number } {
+  const x = points.reduce((sum, p) => sum + p.x, 0) / points.length;
+  const y = points.reduce((sum, p) => sum + p.y, 0) / points.length;
+  const under = keys.find((k) => Math.abs(x - k.cx) < k.w / 2 && Math.abs(y - k.cy) < k.h / 2);
+  return under ? { x, y: under.cy + (under.h + GAP) / 2 } : { x, y };
+}
+
 /** How far a key reaches from its centre, across and down, turned the way it is drawn. */
 export function reach(k: GeometryKey): { x: number; y: number } {
   const turn = (k.rotation * Math.PI) / 180;
@@ -745,8 +759,7 @@ export function Keyboard({
           {combos.map((c) => {
             const points = c.keys.map(centerOf).filter((p) => p !== null);
             if (points.length === 0) return null;
-            const x = points.reduce((sum, p) => sum + p.x, 0) / points.length;
-            const y = points.reduce((sum, p) => sum + p.y, 0) / points.length;
+            const { x, y } = comboPillAt(points, keys);
             const width = Math.max(20, [...c.label].length * 7 + 12);
             const names = c.keys.map((p) => compiled.keys[p]?.id ?? '?').join(' + ');
             // Its colour marks a dead key to the eye; the words say it to everyone.

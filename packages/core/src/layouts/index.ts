@@ -64,10 +64,9 @@ function withDefaults(placed: ThumbPlacement) {
 
 /**
  * The layouts written here in code: the set the app started with, and Romak back among them. Each
- * has the default layers. LayerBench placed the thumbs of the classic layouts, their authors having
- * left them to a space bar; the small-board layouts' authors placed their own. Magic Romak keeps
- * its own thumbs on Numbers and Symbols, and reaches Accents from Alpha 2, where it reached Dead
- * keys.
+ * has the default layers but Magic Romak, which has only its keymap's Numbers and Symbols, on its
+ * own thumbs. LayerBench placed the thumbs of the classic layouts, their authors having left them to
+ * a space bar; the small-board layouts' authors placed their own.
  */
 const BUILT_IN_LAYOUTS: Layout[] = [
   magicRomak,

@@ -251,9 +251,8 @@ Extras has no room for, on its thumbs too; every accented letter there is its ac
 letter. The board shows where everything went.
 
 Every layout that comes with the app has them too, but Magic Romak, which has only Numbers and
-Symbols. The Standard and Thumb Alpha ones, Romak among
-them, also share their main thumbs, the two innermost of each hand, so that what tells them apart is
-their letters. Held, left to right, the main thumbs give Shift, Numbers, Symbols and Shift. Tapped,
+Symbols. The Standard and Thumb Alpha ones, Romak among them, also share their main thumbs, the two
+innermost of each hand, so that what tells them apart is their letters. Held, left to right, the main thumbs give Shift, Numbers, Symbols and Shift. Tapped,
 they type Repeat, which types the last key again, then space, then the layout's thumb letter or
 nothing, and the right outer one turns on Accents for one key. Where a layout's author put space or a
 letter on a thumb, it stays there, and the main thumbs left tap Accents, then Repeat, from the right:
@@ -267,9 +266,10 @@ still typing what it typed. Accents is the combo on two thumbs, as on a new layo
 
 Magic Romak is its author's keymap, and has no Extras and no Accents, as the keymap has none. It
 keeps its own thumbs on Numbers and Symbols, and the keymap's combos type what those two layers
-carried: on Alpha 2, the dead keys `´` `` ` `` `^` `~` `¨` and `à`, with `?` and `!` typing `¿` and
-`¡` when held; on Symbols, `€` (RTR, RTM and RTI together); on Numbers, `°` (RBR, RBM and RBI) and
-`º`, or `ª` when held (RHR, RHM and RHI). It cannot type `£` `§` `«` `»` `ı` `ß` `œ` `æ`, which the
+carried: on Alpha 2, the dead keys `´` `` ` `` `^` `~` `¨` and `à`; on Symbols, `€` (RTR, RTM and
+RTI together); on Numbers, `°` (RBR, RBM and RBI) and `º`, or `ª` when held (RHR, RHM and RHI).
+`¿` and `¡` come from holding Alpha 2's `?` and `!` combos, a hold this model gives them. It cannot
+type `£` `§` `«` `»` `ı` `ß` `œ` `æ`, which the
 keymap has no way to, so French lacks `œ`, `æ` and its quotes and German its `ß`.
 
 ### Which layer wins

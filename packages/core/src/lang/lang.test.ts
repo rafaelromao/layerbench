@@ -75,7 +75,7 @@ describe('layout coverage', () => {
     expect(layoutLanguageCoverage(qwerty, 'pt-BR')?.missingRequired.length).toBeGreaterThan(0);
   });
 
-  it("writes Spanish and Italian through Alpha 2's dead keys, and French and German but a letter", () => {
+  it("writes Spanish and Italian through Alpha 2's dead keys, and not French's œ and quotes nor German's ß", () => {
     // Alpha 2 carries the Portuguese set; the accents the others add, a grave on any vowel, the
     // tilde on `n` and the diaeresis, come from its combos' dead keys. Its keymap has no `œ`, `ß`
     // or French quotes.
