@@ -2,7 +2,9 @@ import {
   BUNDLED_LAYOUTS,
   bundledLayout,
   CLASSIC_LAYOUTS,
+  getPreset,
   type Layout,
+  type Rule,
   toCanonicalJson,
 } from '@layerbench/core';
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
@@ -321,6 +323,56 @@ describe('Ranking layouts', () => {
     expect(cards()).toHaveLength(2);
   }, 90_000);
 
+  it('badges Effort and SFB on a card by their bands, as Analyze does', async () => {
+    const { client } = scoringOnly([1000, 400]);
+    // A sample of its own, so no score is known already.
+    renderRoute('/library?sample=10002', { client, storage: freshStorage() });
+
+    await rankingSays(/^Scoring layouts on a sample of [\d,]+ symbols… 2 of/, 60_000);
+    /** A metric's box on a card: its number, its band's badge, and its colour on the border. */
+    const box = (card: HTMLElement, metric: 'Effort' | 'SFB') =>
+      within(card).getByText(metric, { selector: 'dt' }).parentElement as HTMLElement;
+    const badge = (card: HTMLElement, metric: 'Effort' | 'SFB') =>
+      box(card, metric).querySelector('.lb-band');
+
+    const [best, worst] = cards();
+    expect(badge(best, 'Effort')?.textContent).toBe('min');
+    expect(badge(best, 'Effort')).toHaveClass('badge-success');
+    expect(box(best, 'Effort')).toHaveClass('border-success/60');
+    // An SFB of 4% is past the Doc's last bound, its worst band.
+    expect(badge(best, 'SFB')?.textContent).toBe('high');
+    expect(box(best, 'SFB')).toHaveClass('border-error/60');
+    expect(badge(worst, 'Effort')?.textContent).toBe('max');
+    expect(box(worst, 'Effort')).toHaveClass('border-error/60');
+  }, 90_000);
+
+  it('badges a card by the rule set ranked on; a metric without bands is plain', async () => {
+    const { client } = scoringOnly([1000]);
+    const storage = freshStorage();
+    // Effort split once, at 2000, and SFB with no bands at all.
+    const rules = getPreset('layouts_doc').rules.map((r): Rule => {
+      if (r.id === 'effort')
+        return { ...r, bands: { direction: 'lower_is_better', bounds: [2000] } };
+      if (r.id === 'sfb') return { ...r, bands: null };
+      return r;
+    });
+    await storage.put('rulesets', 'lenient', {
+      ...getPreset('layouts_doc'),
+      name: 'Lenient',
+      rules,
+    });
+    renderRoute('/library?sample=10003&rules=custom:lenient', { client, storage });
+
+    await rankingSays(/^Scoring layouts on a sample of [\d,]+ symbols… 1 of/, 60_000);
+    const [card] = cards();
+    const box = (metric: 'Effort' | 'SFB') =>
+      within(card).getByText(metric, { selector: 'dt' }).parentElement as HTMLElement;
+    // On the catalog's bands an Effort of 1000 would be max.
+    expect(box('Effort').querySelector('.lb-band')?.textContent).toBe('min');
+    expect(box('SFB').querySelector('.lb-band')).toBeNull();
+    expect(box('SFB')).toHaveClass('border-base-300');
+  }, 90_000);
+
   /**
    * An engine that scores each layout by its name, at once. Which layout is scored when depends on
    * when a custom document has been read, so the score has to follow the layout, not the order.
@@ -363,7 +415,7 @@ describe('Ranking layouts', () => {
       expect.stringContaining('custom%3Amy-graphite'),
     );
     expect(within(card).queryByRole('link', { name: 'Edit' })).toBeNull();
-    // The bundled layouts carry no badge.
+    // The bundled layouts carry no custom badge.
     expect(within(cards()[1]).queryByText('custom')).toBeNull();
 
     // By name, it takes its place among the bundled layouts rather than after them.
@@ -770,7 +822,7 @@ describe('Categories', () => {
     const box = (name: RegExp) => within(categories).getByRole('checkbox', { name });
     const special = box(/^Special \(9\)$/);
     expect(box(/^Standard \(14\)$/)).toBeChecked();
-    expect(box(/^Thumb Alpha \(12\)$/)).toBeChecked();
+    expect(box(/^Thumb Alpha \(13\)$/)).toBeChecked();
 
     await user.click(special);
     expect(listed('Magic Romak')).toBeNull();

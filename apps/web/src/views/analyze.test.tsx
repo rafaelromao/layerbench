@@ -218,6 +218,9 @@ describe('Analyze', () => {
 
     const strip = screen.getByRole('list', { name: 'Summary metrics' });
     expect(strip).toBeInTheDocument();
+    // Effort leads the strip with its band, Qwerty's being the worst.
+    const effort = within(strip).getByText('Effort').closest('li');
+    expect(effort?.querySelector('.lb-band')).toHaveTextContent('max');
     // Qwerty never leaves its base layer.
     expect(screen.getByText('Layer taps per 100 symbols')).toBeInTheDocument();
   });

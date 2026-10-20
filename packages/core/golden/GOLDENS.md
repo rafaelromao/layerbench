@@ -536,6 +536,19 @@ What moved, checked across the 38 reports; nothing else moved:
 - **The 35 layouts' documents** written in code: Accents' new keys, mirrored on the five layouts
   above, the Special layouts' combo on thumbs, Extras' new keys, and Symbols' `ı`.
 
+## Twenty-fourth re-baseline: Effort banded from min to max
+
+Effort gets bands on the Doc's nine steps, lower being better: upper bounds 440 · 460 · 480 · 500 ·
+520 · 540 · 560 · 580, as agreed with the maintainer. They come from the Effort of the bundled
+Standard and Thumb Alpha layouts on the default analysis settings: 20 apart, from 440, just above
+Enthium's 435, to 580, so that Colemak's 630, Dvorak and Qwerty are *max*.
+
+What moved, checked across the 38 reports; nothing else moved:
+
+- **The `effort` result's `band`, and nothing else of it or of any other result**: it had none.
+  Magic Romak's is *min* on every text (348 to 384). Qwerty's is *max* (1056 to 1234). Romak's is
+  *mid high* in English (532), *mid low* on the mix (483) and *min* on Portuguese (434).
+
 ## Not compared
 
 `globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not

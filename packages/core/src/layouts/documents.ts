@@ -1,6 +1,7 @@
 import { toCanonicalJson } from '../layout/json.js';
 import { safeParseLayout } from '../layout/schema.js';
 import type { Layout } from '../layout/types.js';
+import nordwind from './documents/nordwind.json';
 
 /**
  * Bundled layouts added as documents: each file in `documents/` is a layout exactly as LayerBench
@@ -9,7 +10,7 @@ import type { Layout } from '../layout/types.js';
  * the landing page.
  */
 const DOCUMENTS: Record<string, unknown> = {
-  // 'my-layout': myLayout, with `import myLayout from './documents/my-layout.json';` above.
+  nordwind,
 };
 
 /**
