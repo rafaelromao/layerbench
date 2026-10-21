@@ -15,7 +15,7 @@ import { type SaveOptions, sameDocument, saveNewLayout } from '../custom/save-ne
 import { encodeInline } from '../url/inline.js';
 import { inlineRef } from '../url/params.js';
 import type { Drafts } from './drafts.js';
-import { carriedRef, openLayout, snapshotRef } from './open.js';
+import { carriedRef, type LayoutSource, openLayout, snapshotRef } from './open.js';
 
 /**
  * The link, as the layout session reaches it: the router in the app, an array in tests. The session
@@ -47,6 +47,8 @@ export type SessionState =
       startsUnsaved: boolean;
       /** The custom layout this is, or will be saved as; null for one never saved. */
       storedId: string | null;
+      /** The bundled or community layout this is, or a draft of, while it is not saved here. */
+      source: LayoutSource | null;
       /** What a layout picker shows: the custom layout while nothing is unsaved, else the link. */
       pickedRef: string;
       saving: boolean;
@@ -158,6 +160,7 @@ export function createLayoutSession(
   /** What the link holds when nothing is unsaved. */
   let cleanRef = '';
   let storedId: string | null = null;
+  let source: LayoutSource | null = null;
   let opened: { layout: Layout; startsUnsaved: boolean } | null = null;
   let editor: { layout: Layout; unsaved: boolean } | null = null;
   /** A draft waiting to be written, and the promise of its reference once it is. */
@@ -178,9 +181,10 @@ export function createLayoutSession(
 
   const publish = () => {
     if (state.status === 'open') {
-      const next = { ...state, storedId, pickedRef: pickedRef(), saving };
+      const next = { ...state, storedId, source, pickedRef: pickedRef(), saving };
       if (
         next.storedId !== state.storedId ||
+        next.source !== state.source ||
         next.pickedRef !== state.pickedRef ||
         next.saving !== state.saving
       ) {
@@ -207,7 +211,7 @@ export function createLayoutSession(
   const writeDraft = async (layout: Layout, opening: number): Promise<string> => {
     const ref = inlineRef(await encodeInline(layout));
     if (state.opening === opening && !disposed) {
-      drafts.remember(ref, storedId);
+      drafts.remember(ref, storedId, source);
       write(ref);
     }
     return ref;
@@ -240,6 +244,7 @@ export function createLayoutSession(
     }
     const startsUnsaved = origin !== undefined;
     storedId = startsUnsaved ? origin : result.storedId;
+    source = startsUnsaved ? drafts.sourceOf(ref) : result.source;
     attempted = null;
     // A custom layout opened by its id gets the link that carries it whole, which opens anywhere.
     cleanRef = startsUnsaved ? ref : await carriedRef(ref, { layout: result.layout, storedId });
@@ -253,6 +258,7 @@ export function createLayoutSession(
       compiled,
       startsUnsaved,
       storedId,
+      source,
       pickedRef: '',
       saving,
     };
@@ -333,6 +339,8 @@ export function createLayoutSession(
             drafts.forget(ref);
             cleanRef = ref;
             storedId = id;
+            // Saved here, it is a custom layout of its own, whatever it was made from.
+            source = null;
             // Saved with nothing unsaved, it is in the link at once; otherwise once the editor says
             // the layout saved is the one it has.
             if (editor && !editor.unsaved) write(cleanRef);

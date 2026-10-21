@@ -23,16 +23,17 @@ const opened = async (ref: string, storage: MemoryStorage) => {
 };
 
 describe('Opening a reference', () => {
-  it('opens a bundled layout as a layout of its own', async () => {
+  it('opens a bundled layout as a layout of its own, saying it is the bundled one', async () => {
     const o = await opened('qwerty', await storageWith());
     expect(o.layout.name).toBe('Qwerty');
     expect(o.storedId).toBeNull();
+    expect(o.source).toEqual({ kind: 'bundled', id: 'qwerty' });
   });
 
   it('opens a custom layout, by `custom:` or by its id alone, as that custom layout', async () => {
     const storage = await storageWith(mine);
-    expect(await opened('custom:mine', storage)).toMatchObject({ storedId: 'mine' });
-    expect(await opened('mine', storage)).toMatchObject({ storedId: 'mine' });
+    expect(await opened('custom:mine', storage)).toMatchObject({ storedId: 'mine', source: null });
+    expect(await opened('mine', storage)).toMatchObject({ storedId: 'mine', source: null });
   });
 
   it('opens a layout carried whole as the custom one only where that is saved with the same contents', async () => {
@@ -80,7 +81,11 @@ describe('Opening a community layout', () => {
     setCommunitySource(branchWith(communityDoc('night-owl', 'Night owl')));
     const storage = await storageWith();
     const o = await opened('community:night-owl', storage);
-    expect(o).toMatchObject({ layout: { name: 'Night owl' }, storedId: null });
+    expect(o).toMatchObject({
+      layout: { name: 'Night owl' },
+      storedId: null,
+      source: { kind: 'community', id: 'night-owl' },
+    });
     expect(await carriedRef('community:night-owl', o)).toBe('community:night-owl');
     expect(await openLayout('community:lark', storage)).toEqual({
       ok: false,
