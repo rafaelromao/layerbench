@@ -15,7 +15,7 @@ metrics (SFB, SFS, scissors, LSB, alternation, rolls, redirects, usage, effort) 
 **physical key stream**. Every rule is data: toggle it, re-parameterize it, remove it, or compose a
 new one.
 
-Every layout is shown and sorted by two numbers: **Effort**, cyanophage's measure of how hard the
+Every layout is shown and ranked by two numbers: **Effort**, cyanophage's measure of how hard the
 keys are to reach, with thumb presses charged too, and **SFB**, how often one finger presses two
 keys in a row.
 
@@ -38,7 +38,7 @@ in with GitHub to keep your work in your own account.
 
 | Route | View |
 |---|---|
-| `/library` | Bundled and custom layouts, sorted by Effort, SFB or name; imports |
+| `/library` | Bundled and custom layouts, sorted by Effort, SFB, name or home row; imports |
 | `/analyze` | Analysis and editing of one layout |
 | `/compare` | Two layouts side by side |
 | `/rules` | Rule sets: enable, re-parameterize, compose, save |

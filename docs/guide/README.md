@@ -24,7 +24,7 @@ Every layout gets the same two headline numbers, wherever it is shown:
   thumb press, a layer tap included.
 - **SFB**, same finger bigrams: how often one finger presses two different keys in a row.
 
-**Library** sorts layouts by either. The other numbers, and how each is worked out, are in
+**Library** sorts layouts by either, or by name or home row. The other numbers, and how each is worked out, are in
 [Analyzing a layout](analyzing.md).
 
 ## Editing keys and layers
