@@ -235,7 +235,8 @@ vowels with the left hand than with the right, Dvorak say, has Accents mirrored,
 left: what follows an accented vowel is most often a consonant, under the other hand.
 
 **Extras** is there only on a board that lacks some of those outer keys, Magic Romak's 24 keys
-say. It comes on while Numbers and Symbols are both held. It takes what has no key elsewhere, the
+say. It comes on while Numbers and Symbols are both held: both inner thumbs, in either order. It
+takes what has no key elsewhere, the
 pairs first and then the symbols on their own, most used in the texts first, and starts on the
 prime keys: the least effort, the home row first among keys that cost the same. Each pair takes the
 two neighbours in a row that cost least. The keys of Accents the board has no key for follow, each
@@ -255,7 +256,9 @@ their keys type `€` where `?` was, `°` where `!` was and `º` where `:` was. 
 keeps Symbols as its keymap has it, and has no Extras (see below).
 
 The left inner thumb types space and, held, turns on Numbers. The right inner thumb, held, turns on
-Symbols; held from Numbers, it turns on Extras, or Symbols where there is no Extras. Accents comes
+Symbols; held from Numbers, it turns on Extras, or Symbols where there is no Extras. Where there is
+Extras, the left inner thumb held from Symbols turns it on too, so holding both inner thumbs turns
+Extras on whichever goes down first. Accents comes
 on for one key from the base layer, by the outer main thumbs, L1 and R1, pressed together: a combo,
 drawn between them. A board with one thumb a hand presses its two thumbs, and a row-stagger board,
 with one space bar for both, the left ring and middle fingers' home keys, LHR and LHM. On a board
@@ -263,8 +266,9 @@ with all of Accents' 30 main keys, thumbs press none of them, so the thumb combo
 same-finger pair with the accent after it; on a new layout on Magic Romak's 24 keys, `^` and `î`
 are on Accents' right thumbs, R1 among them. A board without those thumbs gets the same layers arranged to fit it,
 and keys beyond the ones the layers use let the layer below show through. A board with no bottom row keeps `1 2 3` on the left home row,
-puts `;` beside `:` where `=` was, and `=` and `ı` on Symbols' left thumbs, the space key and the
-one beside it, which the right thumb holding Symbols leaves free: no finger key is left for them, so
+puts `;` beside `:` where `=` was, and `=` and `ı` on Symbols' left thumbs, the space key, which
+still holds Numbers there, and the one beside it, which the right thumb holding Symbols leaves free:
+no finger key is left for them, so
 space is typed with Symbols released there. It puts on Extras what the bottom rows carried, and fills
 Accents with the dead keys, the letters of their own and the symbols Extras has no room for, on its
 thumbs too; every accented letter there is its accent and the letter. The board shows where
@@ -281,9 +285,12 @@ Hands Down Gold taps Repeat, `t`, space and Accents. A second thumb letter takes
 and Repeat a key of the base layer that a symbol left, as on Hands Down Neu. Their other thumb keys
 go, and their base layers keep no symbol but `'` `,` `.` `;`: the rest are on Symbols or Extras.
 
-The Special layouts keep every key they have. The key that types space also holds Numbers, and a
-thumb of the other hand holds Symbols: the innermost one with nothing on it, or else the innermost,
-still typing what it typed. Accents is the combo on two thumbs, as on a new layout.
+The Special layouts keep every key they have. Like every other layout, they hold Numbers on the left
+inner thumb and Symbols on the right inner one, each still typing what it typed, so Extras is both
+inner thumbs on every layout that has it: Bird and Nordrassil type space on their left outer thumb,
+and their left inner thumb holds Numbers. An inner thumb that is a tap-hold already cannot hold
+another layer; the key that types space then holds Numbers, and the innermost thumb of the other
+hand with nothing on it Symbols. Accents is the combo on two thumbs, as on a new layout.
 
 Magic Romak is its author's keymap, and has no Extras and no Accents, as the keymap has none. It
 keeps its own thumbs on Numbers and Symbols, and the keymap's combos type what those two layers

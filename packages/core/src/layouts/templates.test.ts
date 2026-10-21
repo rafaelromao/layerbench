@@ -209,25 +209,40 @@ describe('the default layers, board by board', () => {
     expect(t.keys).toEqual(['L0', 'R0', 'RTM', 'L0', 'L0', 'RTI']);
   });
 
+  it('bring Extras on by holding Symbols, then Numbers from there, too', () => {
+    // The condition names Symbols first, so that is the order pressed: L0 holds Numbers on Symbols.
+    const layout = boardWithDefaults('1333+2');
+    const symbolsFirst = { ...layout, conditionalLayers: [{ if: ['sym', 'num'], then: 'extras' }] };
+    const t = trace(symbolsFirst, '£');
+    expect(t.out).toBe('£');
+    expect(t.keys).toEqual(['R0', 'L0', 'RTM']);
+  });
+
   it('give a board with no bottom row Extras for what that row held', () => {
     const d = defaultLayers(getGeometryPreset('1222+2'));
     expect(d.layers.map((l) => l.id)).toEqual(['num', 'sym', 'extras', 'accents']);
     // `;` beside `:` where `=` was. The left thumbs are free on Symbols, the right one holding it:
-    // `=` on the space key and `ı` beside it, every finger key of the four layers being taken.
+    // `=` on the space key, which holds Numbers there too, and `ı` beside it, every finger key of the
+    // four layers being taken.
     expect(d.layers[1].bindings.RTM).toEqual({ kind: 'kp', symbol: ';' });
-    expect(d.layers[1].bindings.L0).toEqual({ kind: 'kp', symbol: '=' });
+    expect(d.layers[1].bindings.L0).toEqual({
+      kind: 'hold_tap',
+      tap: { kind: 'kp', symbol: '=' },
+      hold: { kind: 'mo', layer: 'num' },
+    });
     expect(d.layers[1].bindings.L1).toEqual({ kind: 'kp', symbol: 'ı' });
     expect(d.layers[1].bindings.R1).toBeUndefined();
     // What has no room on Extras is on Accents.
     const t = trace(boardWithDefaults('1222+2'), '[ * « 3 ; € § ¿ = | ı º £');
     expect(t.out).toBe('[ * « 3 ; € § ¿ = | ı º £');
     expect(t.coverage.unproducible.size).toBe(0);
-    // A Special layout there, Ben Vallack Piano, its space and so Numbers on L1: `=` where space
-    // would be on Symbols, `ı` on the left thumb beside it, the right ones blocked, one holding Symbols.
+    // A Special layout there, Ben Vallack Piano, its space on L1 and Numbers on the inner L0, as on
+    // the defaults: `=` on Symbols' L0, holding Numbers, `ı` on L1 beside it, the right ones blocked,
+    // one holding Symbols.
     const piano = bundledLayout('ben-vallack-piano') as Layout;
     const sym = piano.layers.find((l) => l.id === 'sym')?.bindings ?? {};
-    expect([sym.L1, sym.L0, sym.R1]).toEqual([
-      { kind: 'kp', symbol: '=' },
+    expect([sym.L0, sym.L1, sym.R1]).toEqual([
+      d.layers[1].bindings.L0,
       { kind: 'kp', symbol: 'ı' },
       undefined,
     ]);
@@ -369,11 +384,17 @@ describe('a thumb holding a layer leaves its hand no thumb key to type there', (
 
 describe("Accents keys a board lacks are on Extras, or past its finger keys on Accents' thumbs", () => {
   it("on Extras' finger keys, and past them on Accents' thumbs, whichever thumbs hold Numbers and Symbols", () => {
-    // A Special layout on the 24 keys with space, and so Numbers, on the left outer thumb.
+    // A Special layout on the 24 keys with space on the left outer thumb and a tap-hold of its own
+    // on the inner one, which cannot hold Numbers too: the space key does.
     const geometry = getGeometryPreset('1333+2');
     const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
     const free = geometry.keys.filter((k) => !k.thumb).map((k) => k.id);
     const letters = Object.fromEntries(BASE_LETTERS.map((c, i) => [free[i], kp(c)]));
+    const ctrlOrRepeat: Binding = {
+      kind: 'hold_tap',
+      tap: { kind: 'key_repeat' },
+      hold: { kind: 'mod', mod: 'LCTRL' },
+    };
     const layout = withDefaultLayers(
       {
         format: 'layerbench/layout@1',
@@ -381,7 +402,7 @@ describe("Accents keys a board lacks are on Extras, or past its finger keys on A
         hostLocale: 'symbols',
         geometry: { preset: '1333+2' },
         keys: { space: 'L1' },
-        layers: [{ id: 'base', bindings: { ...letters, L1: kp(' ') } }],
+        layers: [{ id: 'base', bindings: { ...letters, L1: kp(' '), L0: ctrlOrRepeat } }],
       },
       geometry,
     );
@@ -391,7 +412,8 @@ describe("Accents keys a board lacks are on Extras, or past its finger keys on A
       const b = base[id];
       return b?.kind === 'mo' || (b?.kind === 'hold_tap' && b.hold.kind === 'mo');
     });
-    expect(held).toContain('L1');
+    expect(held).toEqual(['L1', 'R0']);
+    expect(base.L0).toEqual(ctrlOrRepeat);
     // Both thumbs hold: Extras has none to give. `^` and `î`, which no finger key of Extras has room
     // for, are on Accents' thumbs, one-shot.
     expect(Object.keys(extras).filter((id) => /\d/.test(id))).toEqual([]);
@@ -643,16 +665,61 @@ describe('the default layers, layout by layout', () => {
   const space: Binding = { kind: 'kp', symbol: ' ' };
   const holdSymbols: Binding = { kind: 'mo', layer: 'sym' };
 
-  it('hold Numbers on the space key and Symbols on the inner thumb of the other hand', () => {
+  const heldBy = (b: Binding | undefined) =>
+    b?.kind === 'mo'
+      ? b.layer
+      : b?.kind === 'hold_tap' && b.hold.kind === 'mo'
+        ? b.hold.layer
+        : undefined;
+
+  it('hold Numbers on the inner left thumb and Symbols on the inner right one, on every layout', () => {
+    for (const layout of BUNDLED_LAYOUTS) {
+      const b = layout.layers[0].bindings;
+      expect([layout.id, heldBy(b.L0), heldBy(b.R0)]).toEqual([layout.id, 'num', 'sym']);
+    }
+  });
+
+  it('bring Extras on by holding both inner thumbs, whichever goes down first', () => {
+    const withExtras = BUNDLED_LAYOUTS.filter((l) => l.layers.some((x) => x.id === 'extras'));
+    expect(withExtras.length).toBeGreaterThan(0);
+    for (const layout of withExtras) {
+      const layer = (id: string) => layout.layers.find((l) => l.id === id)?.bindings ?? {};
+      // On Symbols, L0 holds Numbers: its own binding, or the base layer's where it has none.
+      const onSymbols = layer('sym').L0 ?? layer('sym')['*'];
+      const L0 =
+        !onSymbols || onSymbols.kind === 'trans' ? layer(layout.layers[0].id).L0 : onSymbols;
+      expect([layout.id, heldBy(L0), heldBy(layer('num').R0)]).toEqual([layout.id, 'num', 'sym']);
+      expect(layout.conditionalLayers).toContainEqual(EXTRAS_CONDITION);
+    }
+  });
+
+  it('hold Numbers on the space key where it is the inner left thumb, as on Qwerty', () => {
     expect(base('qwerty').L0).toEqual(holds('num', space));
     expect(base('qwerty').R0).toEqual(holdSymbols);
     expect(num('qwerty').R0).toEqual(holds('sym', space));
     expect(num('qwerty').R1).toEqual({ kind: 'kp', symbol: '0' });
   });
 
-  it('take the innermost free thumb for Symbols, past one with a letter', () => {
-    expect(base('nordrassil').R1).toEqual({ kind: 'kp', symbol: 't' });
-    expect(base('nordrassil').R2).toEqual(holdSymbols);
+  it('hold Numbers on the inner left thumb where space is on the outer one, still typing what it typed', () => {
+    expect(base('bird').L0).toEqual(holds('num', { kind: 'kp', symbol: 'q' }));
+    expect(base('bird').L1).toEqual(space);
+    expect(base('ben-vallack-piano').L0).toEqual(holds('num', { kind: 'key_repeat' }));
+    expect(base('ben-vallack-piano').L1).toEqual(space);
+    const t = trace(bundledLayout('bird') as Layout, 'q 7 q');
+    expect(t.out).toBe('q 7 q');
+  });
+
+  it('hold Symbols on the inner right thumb past a free outer one, still a magic key when tapped', () => {
+    const nordrassil = base('nordrassil');
+    expect([nordrassil.L0?.kind, heldBy(nordrassil.L0)]).toEqual(['hold_tap', 'num']);
+    expect(nordrassil.L0?.kind === 'hold_tap' && nordrassil.L0.tap.kind).toBe('adaptive');
+    expect([nordrassil.R0?.kind, heldBy(nordrassil.R0)]).toEqual(['hold_tap', 'sym']);
+    expect(nordrassil.R0?.kind === 'hold_tap' && nordrassil.R0.tap.kind).toBe('adaptive');
+    expect(nordrassil.L1).toEqual(space);
+    expect(nordrassil.R1).toEqual({ kind: 'kp', symbol: 't' });
+    expect(heldBy(nordrassil.R2)).toBeUndefined();
+    expect(num('nordrassil').R0).toEqual(holds('sym', space));
+    expect(num('nordrassil').R1).toEqual({ kind: 'kp', symbol: '0' });
   });
 
   it('type on Symbols what the Numbers thumb taps, where it does not tap space', () => {

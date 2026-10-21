@@ -57,8 +57,9 @@ The layers every bundled layout but Magic Romak has besides its own, so that eac
 letter and symbol (Magic Romak keeps its keymap's Numbers and Symbols and nothing more):
 Accents, Numbers and Symbols, and Extras for whatever those cannot hold. Accents holds the dead keys,
 and the letters and accented letters the supported languages need; Extras comes on while Numbers and
-Symbols are both held. Every bundled Standard and Thumb Alpha layout reaches them the same way; a
-Special layout reaches them however its own keys allow.
+Symbols are both held. Every bundled layout holds Numbers on its left inner thumb and Symbols on its
+right inner one, so Extras is both inner thumbs, in either order. A Standard or Thumb Alpha layout
+taps its right outer thumb for Accents; a Special one presses a combo.
 _Avoid_: standard layers, common layers, shared layers
 
 **Draft**:
