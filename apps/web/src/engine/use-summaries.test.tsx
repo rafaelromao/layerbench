@@ -223,7 +223,7 @@ describe('the order of the list', () => {
     summaries = new Map<string, LayoutSummary>(),
   ) => [...ALL].sort(compareBy(key, summaries, behind)).map((l) => l.name);
 
-  it('by home row: its letters in alphabetical order, ties by name, a row with none last', () => {
+  it('puts layouts in the order of their home-row letters, ties by name, one with none last', () => {
     expect(order('home_row')).toEqual([
       'Dvorak',
       'Qwerty',

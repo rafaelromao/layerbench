@@ -322,6 +322,12 @@ describe('Ranking layouts', () => {
   const cards = () =>
     [...document.querySelectorAll('article')].filter((a) => a.querySelector('dt')) as HTMLElement[];
 
+  /** The listed layouts' names, in the order of their cards, scored or not. */
+  const cardNames = () =>
+    screen
+      .getAllByRole('article')
+      .map((card) => within(card).getByRole('heading', { level: 3 }).textContent ?? '');
+
   it('shows Effort and SFB on every layout, and sorts by either', async () => {
     const user = userEvent.setup();
     // A small sample keeps twenty-odd analyses quick; the ordering is what is under test.
@@ -522,9 +528,11 @@ describe('Ranking layouts', () => {
 
     await user.click(within(sort).getByRole('radio', { name: 'Home row' }));
     const rowOf = new Map(BUNDLED_LAYOUTS.map((l) => [l.name, homeRowLetters(compileLayout(l))]));
-    const names = [...document.querySelectorAll('article h3')].map((h) => h.textContent ?? '');
+    const names = cardNames();
     expect(names.length).toBeGreaterThan(10);
     const row = (name: string) => rowOf.get(name) ?? '';
+    // Every one has letters there, so plain alphabetical order is the whole rule here.
+    expect(names.filter((name) => row(name) === '')).toEqual([]);
     expect(names).toEqual(
       [...names].sort((a, b) => row(a).localeCompare(row(b)) || a.localeCompare(b)),
     );
@@ -563,7 +571,7 @@ describe('Ranking layouts', () => {
 
     // Plain has Qwerty's home row: it sits next to it, the name breaking the tie, not last.
     await user.click(screen.getByRole('radio', { name: 'Home row' }));
-    const names = [...document.querySelectorAll('article h3')].map((h) => h.textContent);
+    const names = cardNames();
     expect(names.indexOf('Plain')).toBe(names.indexOf('Qwerty') - 1);
     expect(await rankingSays(/^Lower is better for both/)).not.toHaveTextContent(/come last/);
   }, 90_000);
@@ -752,13 +760,14 @@ describe('Ranking layouts', () => {
 
 describe('Rank and filter', () => {
   it('is a gear that keeps its name, and opens a dialog of that name', async () => {
+    const user = userEvent.setup();
     renderRoute(LIBRARY, { storage: freshStorage() });
     const button = await screen.findByRole('button', { name: 'Rank and filter' });
-    expect(button).toHaveTextContent('⚙︎');
+    expect(button).toHaveTextContent('\u2699\uFE0E');
     expect(button).not.toHaveTextContent('Rank and filter');
     expect(button).toHaveAttribute('title', 'Rank and filter');
 
-    await userEvent.click(button);
+    await user.click(button);
     expect(screen.getByRole('dialog', { name: 'Rank and filter' })).toBeInTheDocument();
   });
 

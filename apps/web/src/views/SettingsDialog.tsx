@@ -33,7 +33,7 @@ function Gear({ className = '' }: { className?: string }) {
   return (
     <span className={`text-xl leading-none ${className}`} aria-hidden="true">
       {/* Text presentation, so no phone draws it as a coloured emoji. */}
-      {'⚙︎'}
+      {'\u2699\uFE0E'}
     </span>
   );
 }
@@ -65,13 +65,14 @@ export function SettingsDialog({
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const heading = useId();
+  const square = icon ? 'btn-square' : compact ? 'max-sm:btn-square' : '';
   return (
     <div className="flex min-w-0 items-center gap-2">
       <button
         type="button"
         aria-label={buttonLabel}
         title={buttonLabel}
-        className={`btn btn-sm shrink-0 ${icon ? 'btn-square' : compact ? 'max-sm:btn-square' : ''}`}
+        className={`btn btn-sm shrink-0 ${square}`}
         onClick={() => dialog.current?.showModal()}
       >
         {icon ? (
