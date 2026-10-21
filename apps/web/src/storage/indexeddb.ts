@@ -15,7 +15,8 @@ import {
 } from '@layerbench/core';
 import { type IDBPDatabase, openDB } from 'idb';
 
-const DB_VERSION = 1;
+/** 2: the proposals collection's store. */
+const DB_VERSION = 2;
 const INDEX_STORE = 'indexes';
 
 interface StoredDoc {

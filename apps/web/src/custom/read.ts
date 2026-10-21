@@ -7,6 +7,7 @@ import {
   safeParseLayout,
   safeParseRuleSet,
 } from '@layerbench/core';
+import { readProposal } from '../proposals/proposals.js';
 
 /** What a custom document of each collection is read as. A text is handed to the engine as it is. */
 export type CustomDoc<C extends Collection> = C extends 'layouts'
@@ -38,6 +39,8 @@ function parse(
     }
     case 'corpora':
       return { ok: true, doc };
+    case 'proposals':
+      return readProposal(doc) ? { ok: true, doc } : { ok: false, error: 'not a proposed change' };
   }
 }
 
@@ -68,6 +71,7 @@ const NOUN: Record<Collection, string> = {
   layouts: 'layout',
   rulesets: 'rule set',
   corpora: 'text',
+  proposals: 'proposed change',
 };
 
 /** What to tell someone a custom document did not open: the same words for every collection. */

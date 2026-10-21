@@ -148,6 +148,24 @@ describe('gists as storage', () => {
     expect(ids.get('layouts')).toBe('new');
   });
 
+  it('keeps the changes proposed to the Library in a gist of their own', async () => {
+    const ids = memoryIds();
+    responder = (call) =>
+      call.method === 'POST' ? json(201, { id: 'proposed', files: {} }) : json(200, []);
+    const adapter = new GistAdapter(access, ids);
+    const proposal = {
+      name: 'Colemak',
+      target: { kind: 'bundled', id: 'colemak' },
+      url: 'https://github.com/rafaelromao/layerbench/pull/100',
+    };
+    await adapter.put('proposals', 'colemak', proposal);
+    const create = calls.find((c) => c.method === 'POST');
+    expect(create?.body?.description).toBe('LayerBench: proposed changes');
+    const files = create?.body?.files as Record<string, { content: string }>;
+    expect(JSON.parse(files[documentFile('proposals', 'colemak')].content)).toEqual(proposal);
+    expect(ids.get('proposals')).toBe('proposed');
+  });
+
   it('writes a document and its index together in one edit', async () => {
     responder = (call) =>
       json(200, call.method === 'PATCH' ? { id: 'g1', files: {} } : layoutsGist());

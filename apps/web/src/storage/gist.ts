@@ -20,6 +20,7 @@ const DESCRIPTIONS: Record<Collection, string> = {
   layouts: 'LayerBench: saved layouts',
   rulesets: 'LayerBench: saved rule sets',
   corpora: 'LayerBench: saved corpora',
+  proposals: 'LayerBench: proposed changes',
 };
 
 /**

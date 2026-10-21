@@ -3,8 +3,12 @@
  * adapter (browser database, GitHub data repository, gists).
  */
 
-/** The kinds of document a user saves: layouts, rule sets and texts. */
-export const COLLECTIONS = ['layouts', 'rulesets', 'corpora'] as const;
+/**
+ * The kinds of document a user saves: layouts, rule sets and texts, and the changes they proposed
+ * to the Library, each kept under the id of the custom layout that holds it until its pull request
+ * is merged or closed.
+ */
+export const COLLECTIONS = ['layouts', 'rulesets', 'corpora', 'proposals'] as const;
 
 export type Collection = (typeof COLLECTIONS)[number];
 
@@ -214,19 +218,21 @@ export function indexSummary(collection: Collection, id: string, doc: JsonObject
     updatedAt: new Date().toISOString(),
   };
   const extra: Record<string, unknown> =
-    collection === 'layouts'
-      ? {
-          author: doc.author,
-          languages: doc.languages,
-          geometry: (doc.geometry as { preset?: string } | undefined)?.preset,
-          layers: Array.isArray(doc.layers) ? doc.layers.length : undefined,
-        }
-      : collection === 'rulesets'
+    collection === 'proposals'
+      ? {}
+      : collection === 'layouts'
         ? {
-            description: doc.description,
-            rules: Array.isArray(doc.rules) ? doc.rules.length : undefined,
+            author: doc.author,
+            languages: doc.languages,
+            geometry: (doc.geometry as { preset?: string } | undefined)?.preset,
+            layers: Array.isArray(doc.layers) ? doc.layers.length : undefined,
           }
-        : { language: doc.language, license: doc.license, words: doc.words };
+        : collection === 'rulesets'
+          ? {
+              description: doc.description,
+              rules: Array.isArray(doc.rules) ? doc.rules.length : undefined,
+            }
+          : { language: doc.language, license: doc.license, words: doc.words };
 
   const out = base as unknown as Record<string, unknown>;
   for (const [k, v] of Object.entries(extra)) {

@@ -17,6 +17,25 @@ beforeEach(() => {
   adapter = new IndexedDbAdapter(`layerbench-test-${++counter}`);
 });
 
+describe('a browser that saved before proposals', () => {
+  it('keeps what it had, and gains a place for the changes it proposes', async () => {
+    const name = `layerbench-old-${++counter}`;
+    const old = await openDB(name, 1, {
+      upgrade(db) {
+        for (const c of ['layouts', 'rulesets', 'corpora'])
+          db.createObjectStore(c, { keyPath: 'id' });
+        db.createObjectStore('indexes');
+      },
+    });
+    await old.put('layouts', { id: 'mine', json: '{"name":"Mine"}', sha: 'x', updatedAt: '' });
+    old.close();
+    const upgraded = new IndexedDbAdapter(name);
+    expect((await upgraded.get('layouts', 'mine'))?.doc).toEqual({ name: 'Mine' });
+    await upgraded.put('proposals', 'mine', { name: 'Mine' });
+    expect((await upgraded.list('proposals')).map((e) => e.id)).toEqual(['mine']);
+  });
+});
+
 describe('custom documents', () => {
   it('stores, lists, reloads and deletes a layout', async () => {
     const layout = bundledLayout('colemak-dh')!;
