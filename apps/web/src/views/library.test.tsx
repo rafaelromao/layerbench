@@ -2,7 +2,9 @@ import {
   BUNDLED_LAYOUTS,
   bundledLayout,
   CLASSIC_LAYOUTS,
+  compileLayout,
   getPreset,
+  homeRowLetters,
   type Layout,
   type Rule,
   toCanonicalJson,
@@ -506,6 +508,33 @@ describe('Ranking layouts', () => {
     expect(byName.indexOf('My Graphite')).toBeGreaterThan(0);
     expect(byName.indexOf('My Graphite')).toBeLessThan(byName.length - 1);
   }, 90_000);
+
+  it('sorts by the letters on each layout’s home row, and remembers the choice', async () => {
+    const user = userEvent.setup();
+    // The order needs no score: nothing is scored while the test looks.
+    renderRoute(LIBRARY, { client: scoringOnly([]).client, storage: freshStorage() });
+    const sort = await screen.findByRole('group', { name: 'Sort layouts by' });
+    expect(
+      within(sort)
+        .getAllByRole('radio')
+        .map((r) => r.getAttribute('aria-label')),
+    ).toEqual(['Effort', 'SFB', 'Name', 'Home row']);
+
+    await user.click(within(sort).getByRole('radio', { name: 'Home row' }));
+    const rowOf = new Map(BUNDLED_LAYOUTS.map((l) => [l.name, homeRowLetters(compileLayout(l))]));
+    const names = [...document.querySelectorAll('article h3')].map((h) => h.textContent ?? '');
+    expect(names.length).toBeGreaterThan(10);
+    const row = (name: string) => rowOf.get(name) ?? '';
+    expect(names).toEqual(
+      [...names].sort((a, b) => row(a).localeCompare(row(b)) || a.localeCompare(b)),
+    );
+    // Bird and Bird 30 share their home row, so the name puts them in order.
+    expect(row('Bird')).toBe(row('Bird 30'));
+    expect(names.indexOf('Bird 30')).toBe(names.indexOf('Bird') + 1);
+    expect(JSON.parse(localStorage.getItem('layerbench:session') ?? '{}').state).toMatchObject({
+      librarySort: 'home_row',
+    });
+  });
 
   it('ranks a layout that cannot write the text’s language after one that can', async () => {
     // Plain has the best effort by far, but no key for ã or ç: it would skip them for free.

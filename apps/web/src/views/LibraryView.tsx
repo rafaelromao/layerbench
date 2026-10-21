@@ -9,6 +9,7 @@ import {
   freeName,
   GEOMETRY_PRESET_IDS,
   getGeometryPreset,
+  homeRowLetters,
   LAYOUT_CATEGORIES,
   type Layout,
   type LayoutCategory,
@@ -38,6 +39,7 @@ import {
   compareBy,
   type LayoutSummary,
   type SummaryEntry,
+  sortsByMetric,
   useSummaries,
 } from '../engine/use-summaries.js';
 import { HELP } from '../guide/help.js';
@@ -242,6 +244,8 @@ interface Listed {
   board: string;
   /** Worked out from its keys; missing while a custom document is still being read. */
   category: LayoutCategory | undefined;
+  /** The letters on its base layer's home row, what Home row sorts by; missing as `compiled` is. */
+  homeRow: string | undefined;
 }
 
 function layerCount(n: number): string {
@@ -544,6 +548,7 @@ export function LibraryView() {
           .join(' · '),
         board: boardOf(layout),
         category: layoutCategory(layout),
+        homeRow: homeRowLetters(compiled),
       })),
       ...community.map(({ id, layout, compiled }) => ({
         key: `m:${id}`,
@@ -559,6 +564,7 @@ export function LibraryView() {
           .join(' · '),
         board: boardOf(layout),
         category: layoutCategory(layout),
+        homeRow: homeRowLetters(compiled),
       })),
       ...custom.entries.map((entry) => ({
         key: `c:${entry.id}`,
@@ -581,6 +587,9 @@ export function LibraryView() {
         // One not read yet, or that will not compile, is in no category.
         category: customCompiled.has(entry.id)
           ? layoutCategory(customLayouts.get(entry.id) as Layout)
+          : undefined,
+        homeRow: customCompiled.has(entry.id)
+          ? homeRowLetters(customCompiled.get(entry.id) as CompiledLayout)
           : undefined,
       })),
     ],
@@ -919,7 +928,7 @@ export function LibraryView() {
                     }.${
                       nobodyCan
                         ? ` None of these layouts types ${lackingWhat}.`
-                        : behind.size > 0 && sortBy !== 'name'
+                        : behind.size > 0 && sortsByMetric(sortBy)
                           ? ` Layouts that cannot type ${lackingWhat} come last.`
                           : ''
                     }`}
