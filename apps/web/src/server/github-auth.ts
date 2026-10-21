@@ -45,10 +45,13 @@ export interface AuthEnv {
   SESSION_SECRET?: string;
   /** Comma-separated origins of the pages that may sign in here, besides this host's own. */
   ALLOWED_ORIGINS?: string;
-  /** The GitHub App's numeric id, which Submit acts as. Unset, Submit reports itself not set up. */
-  GITHUB_APP_ID?: string;
+  /**
+   * The GitHub App's numeric id, which the pull requests are opened as. Unset, Submit and the
+   * Library's changes report themselves not set up.
+   */
+  LAYERBENCH_APP_ID?: string;
   /** The GitHub App's private key, the PEM file GitHub downloads. */
-  GITHUB_APP_PRIVATE_KEY?: string;
+  LAYERBENCH_APP_PRIVATE_KEY?: string;
 }
 
 /** What `session` and `token` answer. */
@@ -413,7 +416,7 @@ async function submitRoute(
   if (!current) return answer(401, { error: 'signed out' });
   const checked = checkSubmission(body.layout);
   if (!checked.ok) return answer(422, { error: 'not accepted', reason: checked.reason });
-  if (!env.GITHUB_APP_ID || !env.GITHUB_APP_PRIVATE_KEY) {
+  if (!env.LAYERBENCH_APP_ID || !env.LAYERBENCH_APP_PRIVATE_KEY) {
     return answer(503, { error: 'Submit is not set up' });
   }
   try {
@@ -421,7 +424,7 @@ async function submitRoute(
       return answer(401, { error: 'signed out' });
     }
     const token = await installationToken(
-      { appId: env.GITHUB_APP_ID, privateKey: env.GITHUB_APP_PRIVATE_KEY },
+      { appId: env.LAYERBENCH_APP_ID, privateKey: env.LAYERBENCH_APP_PRIVATE_KEY },
       SUBMIT_REPO,
     );
     if (!token) return answer(503, { error: 'Submit is not set up' });
@@ -465,7 +468,7 @@ async function libraryRoute(
   if (!target) return answer(400, { error: 'bad request' });
   const checked = action === 'delete' ? null : checkLayout(body.layout, target.id);
   if (checked && !checked.ok) return answer(422, { error: 'not accepted', reason: checked.reason });
-  if (!env.GITHUB_APP_ID || !env.GITHUB_APP_PRIVATE_KEY) {
+  if (!env.LAYERBENCH_APP_ID || !env.LAYERBENCH_APP_PRIVATE_KEY) {
     return answer(503, { error: 'Library changes are not set up' });
   }
   try {
@@ -476,7 +479,7 @@ async function libraryRoute(
       return answer(403, { error: 'not a maintainer' });
     }
     const token = await installationToken(
-      { appId: env.GITHUB_APP_ID, privateKey: env.GITHUB_APP_PRIVATE_KEY },
+      { appId: env.LAYERBENCH_APP_ID, privateKey: env.LAYERBENCH_APP_PRIVATE_KEY },
       LIBRARY_REPO,
     );
     if (!token) return answer(503, { error: 'Library changes are not set up' });

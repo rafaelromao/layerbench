@@ -20,8 +20,8 @@ const ENV: AuthEnv = {
   GITHUB_CLIENT_SECRET: 'client-secret',
   SESSION_SECRET: btoa(String.fromCharCode(...new Uint8Array(32).fill(7))),
   ALLOWED_ORIGINS: PAGE,
-  GITHUB_APP_ID: '12345',
-  GITHUB_APP_PRIVATE_KEY: keys.privateKey,
+  LAYERBENCH_APP_ID: '12345',
+  LAYERBENCH_APP_PRIVATE_KEY: keys.privateKey,
 };
 
 /** A custom layout ready to submit: as LayerBench saves it, with an author and no link. */
@@ -305,12 +305,12 @@ describe('submitting a layout', () => {
 
   it('says Submit is not set up without the App, or where it is not installed', async () => {
     const session = await signIn();
-    const { GITHUB_APP_PRIVATE_KEY: _, ...noKey } = ENV;
+    const { LAYERBENCH_APP_PRIVATE_KEY: _, ...noKey } = ENV;
     expect((await submitAs(session, layout(), noKey)).res.status).toBe(503);
     const { SESSION_SECRET: __, ...noSignIn } = ENV;
     expect((await submitAs(session, layout(), noSignIn)).res.status).toBe(503);
     expect(
-      (await submitAs(session, layout(), { ...ENV, GITHUB_APP_PRIVATE_KEY: 'not a key' })).res
+      (await submitAs(session, layout(), { ...ENV, LAYERBENCH_APP_PRIVATE_KEY: 'not a key' })).res
         .status,
     ).toBe(503);
     world.installed = false;

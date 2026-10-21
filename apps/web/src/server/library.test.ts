@@ -26,8 +26,8 @@ const ENV: AuthEnv = {
   GITHUB_CLIENT_SECRET: 'client-secret',
   SESSION_SECRET: btoa(String.fromCharCode(...new Uint8Array(32).fill(7))),
   ALLOWED_ORIGINS: PAGE,
-  GITHUB_APP_ID: '12345',
-  GITHUB_APP_PRIVATE_KEY: keys.privateKey,
+  LAYERBENCH_APP_ID: '12345',
+  LAYERBENCH_APP_PRIVATE_KEY: keys.privateKey,
 };
 
 /** A layout as LayerBench saves it, under an id, with an author. */

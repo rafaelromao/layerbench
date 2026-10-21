@@ -1,9 +1,11 @@
 // The sign-in Worker (`auth.ts`). Deploy from the repository root with
 // `pnpm dlx wrangler@4 deploy -c worker/wrangler.jsonc`; README → Deploy → Setting up sign-in.
 //
-// The values below are public. GITHUB_CLIENT_SECRET and SESSION_SECRET, and Submit's GITHUB_APP_ID
-// and GITHUB_APP_PRIVATE_KEY, are Worker secrets, set with `wrangler secret put`, and never named
-// here: a name that is both a variable and a secret is refused.
+// The values below are public. GITHUB_CLIENT_SECRET and SESSION_SECRET, and the GitHub App's
+// LAYERBENCH_APP_ID and LAYERBENCH_APP_PRIVATE_KEY, are Worker secrets, set with
+// `wrangler secret put`, and never named here: a name that is both a variable and a secret is
+// refused. The App's two go by the names the repository's workflows give them, which GitHub
+// does not let begin with GITHUB_.
 {
   "name": "layerbench-auth",
   "main": "auth.ts",

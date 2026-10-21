@@ -211,13 +211,11 @@ test files and config files do not count. The table of each file's coverage is p
 ignored.
 
 To sign in on the dev server, set up the GitHub App first (see
-[Setting up sign-in](#setting-up-sign-in)). Then put `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`
-and `SESSION_SECRET` in `apps/web/.env.local`, which git ignores, with a client
-secret and a session key of their own rather than the Worker's. `GITHUB_APP_ID` and
-`GITHUB_APP_PRIVATE_KEY` there turn on Submit, which opens real pull requests on GitHub. The dev
-server answers sign-in
-itself, on its own origin. Without them the app says sign-in is not set up and saves in the browser
-only.
+[Setting up sign-in](#setting-up-sign-in)). Then put `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` and
+`SESSION_SECRET` in `apps/web/.env.local`, which git ignores, with a client secret and a session key
+of their own rather than the Worker's. `LAYERBENCH_APP_ID` and `LAYERBENCH_APP_PRIVATE_KEY` there
+turn on Submit, which opens real pull requests on GitHub. The dev server answers sign-in itself, on
+its own origin. Without them the app says sign-in is not set up and saves in the browser only.
 
 `pnpm bench` runs the performance suite, which is skipped by default. `pnpm corpora` rebuilds the
 corpus samples from `packages/corpora/raw`.
@@ -337,12 +335,18 @@ pnpm dlx wrangler@4 login
 pnpm dlx wrangler@4 deploy -c worker/wrangler.jsonc
 pnpm dlx wrangler@4 secret put GITHUB_CLIENT_SECRET -c worker/wrangler.jsonc
 pnpm dlx wrangler@4 secret put SESSION_SECRET -c worker/wrangler.jsonc
-pnpm dlx wrangler@4 secret put GITHUB_APP_ID -c worker/wrangler.jsonc
-pnpm dlx wrangler@4 secret put GITHUB_APP_PRIVATE_KEY -c worker/wrangler.jsonc < path/to/the-app.private-key.pem
+pnpm dlx wrangler@4 secret put LAYERBENCH_APP_ID -c worker/wrangler.jsonc
+pnpm dlx wrangler@4 secret put LAYERBENCH_APP_PRIVATE_KEY -c worker/wrangler.jsonc < path/to/the-app.private-key.pem
 ```
 
-`GITHUB_APP_ID` is the App ID, and `GITHUB_APP_PRIVATE_KEY` the private key file, as downloaded.
-Without them sign-in works, and Submit says it is not set up.
+`LAYERBENCH_APP_ID` is the App ID, and `LAYERBENCH_APP_PRIVATE_KEY` the private key file, as
+downloaded. Without them sign-in works, and Submit says it is not set up. The repository's workflows
+act as the App too, with the same two, as the variable and the secret of the same names:
+
+```bash
+gh variable set LAYERBENCH_APP_ID --body "<App ID>"
+gh secret set LAYERBENCH_APP_PRIVATE_KEY < path/to/the-app.private-key.pem
+```
 
 The deploy prints the Worker's address, `https://layerbench-auth.<your subdomain>.workers.dev`. Set
 it as the repository variable `AUTH_ORIGIN`, then push, or re-run CI, so the app is built with it.
