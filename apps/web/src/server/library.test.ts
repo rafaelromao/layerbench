@@ -316,7 +316,7 @@ describe('how many changes one person proposes at once', () => {
         fork: 'someone/layerbench',
       });
     }
-    const forks = repo.pulls.length;
+    const before = repo.pulls.length;
     const propose = (id: string) =>
       ask('propose', { target: { kind: 'bundled', id }, layout: doc(id, `${id} changed`) });
     for (const id of ids.slice(0, OPEN_PROPOSALS)) expect((await propose(id)).status).toBe(201);
@@ -327,7 +327,7 @@ describe('how many changes one person proposes at once', () => {
     ]);
     expect(wrote()).toBe(false);
     expect((await propose(ids[0])).status).toBe(200);
-    expect(repo.pulls).toHaveLength(forks + OPEN_PROPOSALS);
+    expect(repo.pulls).toHaveLength(before + OPEN_PROPOSALS);
   });
 });
 
