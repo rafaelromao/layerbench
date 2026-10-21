@@ -4,6 +4,17 @@ import { compileLayout } from '../../../../packages/core/src/layout/compile.js';
 import { BUNDLED_IDS } from '../../../../packages/core/src/layouts/bundled-ids.js';
 import { documentLayout } from '../../../../packages/core/src/layouts/documents.js';
 import { isDocumentId } from '../../../../packages/core/src/storage/ids.js';
+import {
+  client,
+  codeSpan,
+  commitFiles,
+  createPull,
+  exists,
+  GitHubRefused,
+  LIBRARY_REPO,
+  openPull,
+  startBranch,
+} from './pull-request.js';
 
 /**
  * Submit: a signed-in user's custom layout, proposed as a community layout by a pull request into
@@ -17,13 +28,10 @@ import { isDocumentId } from '../../../../packages/core/src/storage/ids.js';
  */
 
 /** The repository the App is installed on, and the branch community layouts live on. */
-export const SUBMIT_REPO = 'rafaelromao/layerbench';
+export const SUBMIT_REPO = LIBRARY_REPO;
 export const SUBMIT_BASE = 'layerbench-data';
 /** A layout as LayerBench saves it; the largest bundled one is about 10 KB. */
 export const MAX_LAYOUT_BYTES = 64 * 1024;
-
-const API = 'https://api.github.com';
-const USER_AGENT = 'LayerBench';
 
 /** What `submit` answers. */
 export interface SubmitAnswer {
@@ -67,53 +75,6 @@ export function checkSubmission(
   }
 }
 
-/** Text from the layout, safe inside a code span: one line, no backticks, not too long. */
-function codeSpan(text: string): string {
-  const plain = text
-    .replace(/[`\s]+/g, ' ')
-    .trim()
-    .slice(0, 80);
-  return `\`${plain || '?'}\``;
-}
-
-function base64Utf8(text: string): string {
-  let binary = '';
-  for (const b of new TextEncoder().encode(text)) binary += String.fromCharCode(b);
-  return btoa(binary);
-}
-
-interface Answer {
-  status: number;
-  data: Record<string, unknown> | Record<string, unknown>[] | null;
-}
-
-function client(token: string) {
-  return async (method: string, path: string, body?: unknown): Promise<Answer> => {
-    const res = await fetch(`${API}/repos/${SUBMIT_REPO}${path}`, {
-      method,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/vnd.github+json',
-        'User-Agent': USER_AGENT,
-        ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-      },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
-    const data = (await res.json().catch(() => null)) as Answer['data'];
-    return { status: res.status, data };
-  };
-}
-
-/** Raised when GitHub answers a step with something unexpected; the page is told only that. */
-class GitHubRefused extends Error {}
-
-function expect(answer: Answer, ...ok: number[]): Record<string, unknown> {
-  if (!ok.includes(answer.status) || !answer.data || Array.isArray(answer.data)) {
-    throw new GitHubRefused(`GitHub answered ${answer.status}`);
-  }
-  return answer.data;
-}
-
 /**
  * Open (or update) the submission of a layout `checkSubmission` passed, as `login`, with the App's
  * installation token. One pull request per submitter and layout: while one is open, submitting the
@@ -129,73 +90,38 @@ export async function submit(
   const { id } = checked;
   const path = `community/${id}.json`;
   const branch = `submit/${login}/${id}`;
-  const content = base64Utf8(`${JSON.stringify(doc, null, 2)}\n`);
-  const message = `Community: add ${id}\n\nSubmitted by @${login} with LayerBench.`;
+  const text = `${JSON.stringify(doc, null, 2)}\n`;
+  const by = `Submitted by @${login} with LayerBench.`;
 
   try {
-    const open = await gh(
-      'GET',
-      `/pulls?state=open&base=${SUBMIT_BASE}&head=${encodeURIComponent(`${SUBMIT_REPO.split('/')[0]}:${branch}`)}`,
-    );
-    if (open.status !== 200 || !Array.isArray(open.data)) {
-      throw new GitHubRefused(`GitHub answered ${open.status}`);
-    }
-    const existing = open.data[0];
-    if (existing && typeof existing.html_url === 'string') {
-      const current = await gh('GET', `/contents/${path}?ref=${encodeURIComponent(branch)}`);
-      const sha =
-        current.status === 200 && current.data && !Array.isArray(current.data)
-          ? current.data.sha
-          : undefined;
-      expect(
-        await gh('PUT', `/contents/${path}`, {
-          message: `Community: update ${id}\n\nSubmitted by @${login} with LayerBench.`,
-          content,
-          branch,
-          ...(typeof sha === 'string' ? { sha } : {}),
-        }),
-        200,
-        201,
-      );
-      return { status: 200, answer: { url: existing.html_url, reused: true } };
+    const existing = await openPull(gh, SUBMIT_BASE, branch);
+    if (existing) {
+      await commitFiles(gh, branch, [[path, text]], `Community: update ${id}\n\n${by}`);
+      return { status: 200, answer: { url: existing, reused: true } };
     }
 
     // A layout of this id accepted already is not replaced by a new one.
-    const taken = await gh('GET', `/contents/${path}?ref=${SUBMIT_BASE}`);
-    if (taken.status === 200) {
+    if (await exists(gh, path, SUBMIT_BASE)) {
       return {
         status: 409,
         answer: { error: 'taken', reason: `a community layout already has the id "${id}"` },
       };
     }
-    if (taken.status !== 404) throw new GitHubRefused(`GitHub answered ${taken.status}`);
 
-    const base = expect(await gh('GET', `/git/ref/heads/${SUBMIT_BASE}`), 200);
-    const sha = (base.object as { sha?: unknown } | undefined)?.sha;
-    if (typeof sha !== 'string') throw new GitHubRefused('no base commit');
-    const created = await gh('POST', '/git/refs', { ref: `refs/heads/${branch}`, sha });
-    if (created.status === 422) {
-      // Left from a submission whose pull request was closed: started over from the branch as it is.
-      expect(await gh('PATCH', `/git/refs/heads/${branch}`, { sha, force: true }), 200);
-    } else expect(created, 201);
-
-    expect(await gh('PUT', `/contents/${path}`, { message, content, branch }), 201);
-
-    const pull = expect(
-      await gh('POST', '/pulls', {
-        title: `Community: add ${id}`,
-        head: branch,
-        base: SUBMIT_BASE,
-        body: [
-          `Adds \`${path}\`: ${codeSpan(checked.name)} by ${codeSpan(checked.author)}, submitted by @${login} with LayerBench.`,
-          '',
-          'Merging it accepts the layout into the Library; the index workflow then lists it.',
-        ].join('\n'),
-      }),
-      201,
-    );
-    if (typeof pull.html_url !== 'string') throw new GitHubRefused('no pull request');
-    return { status: 201, answer: { url: pull.html_url } };
+    // Left from a submission whose pull request was closed, the branch starts over.
+    await startBranch(gh, SUBMIT_BASE, branch);
+    await commitFiles(gh, branch, [[path, text]], `Community: add ${id}\n\n${by}`);
+    const url = await createPull(gh, {
+      base: SUBMIT_BASE,
+      branch,
+      title: `Community: add ${id}`,
+      body: [
+        `Adds \`${path}\`: ${codeSpan(checked.name)} by ${codeSpan(checked.author)}, submitted by @${login} with LayerBench.`,
+        '',
+        'Merging it accepts the layout into the Library; the index workflow then lists it.',
+      ].join('\n'),
+    });
+    return { status: 201, answer: { url } };
   } catch (e) {
     if (e instanceof GitHubRefused) {
       return { status: 502, answer: { error: 'GitHub refused the submission' } };

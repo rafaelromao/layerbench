@@ -20,6 +20,7 @@
  */
 
 import { installationToken } from './github-app.js';
+import { LIBRARY_REPO } from './pull-request.js';
 import {
   checkSubmission,
   MAX_LAYOUT_BYTES,
@@ -53,6 +54,8 @@ export interface SessionAnswer {
   expiresAt?: number | null;
   /** A new sealed session, for the page to keep in place of the one it sent. */
   session?: string;
+  /** Whether the user may change the Library: GitHub lets them push to its repository. */
+  maintainer?: boolean;
 }
 
 interface Session {
@@ -231,14 +234,36 @@ async function sessionOf(body: Record<string, unknown>, config: Config): Promise
   return session;
 }
 
-function signedIn(base: SessionAnswer, session: Session): SessionAnswer {
+async function signedIn(base: SessionAnswer, session: Session): Promise<SessionAnswer> {
   return {
     ...base,
     signedIn: true,
     login: session.login,
     token: session.access,
     expiresAt: session.accessExpiresAt,
+    maintainer: await maintainerOf(session.access),
   };
+}
+
+/**
+ * Whether GitHub says the user may push to the Library's repository, asked with their own token:
+ * a maintainer, who may change the Library from the app. Anything but a yes is a no.
+ */
+export async function maintainerOf(access: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${API}/repos/${LIBRARY_REPO}`, {
+      headers: {
+        Authorization: `Bearer ${access}`,
+        Accept: 'application/vnd.github+json',
+        'User-Agent': USER_AGENT,
+      },
+    });
+    if (!res.ok) return false;
+    const { permissions: p } = (await res.json()) as { permissions?: Record<string, unknown> };
+    return p?.push === true || p?.maintain === true || p?.admin === true;
+  } catch {
+    return false;
+  }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -285,7 +310,7 @@ async function token(
     if (!login) return json(base, 200, cors);
     const started = sessionFrom(grant, login);
     return json(
-      { ...signedIn(base, started), session: await seal(config.key, started) },
+      { ...(await signedIn(base, started)), session: await seal(config.key, started) },
       200,
       cors,
     );
@@ -314,7 +339,7 @@ async function session(
   const fresh =
     body.renew !== true &&
     (current.accessExpiresAt === null || current.accessExpiresAt - now > RENEW_MARGIN_MS);
-  if (fresh) return json(signedIn(base, current), 200, cors);
+  if (fresh) return json(await signedIn(base, current), 200, cors);
   if (!current.refresh || (current.refreshExpiresAt !== null && current.refreshExpiresAt < now)) {
     return json(base, 200, cors);
   }
@@ -334,7 +359,11 @@ async function session(
   if (!grant) return json(base, 200, cors);
 
   const renewed = sessionFrom(grant, current.login);
-  return json({ ...signedIn(base, renewed), session: await seal(config.key, renewed) }, 200, cors);
+  return json(
+    { ...(await signedIn(base, renewed)), session: await seal(config.key, renewed) },
+    200,
+    cors,
+  );
 }
 
 async function logout(

@@ -97,7 +97,9 @@ suite('legends', () => {
     expect(adaptiveLegend.tap).toBe('h');
     expect(adaptiveLegend.badge).toBe(BADGE.adaptive);
     // Its keymap holds Gui on it, so the tap comes first.
-    expect(adaptiveLegend.detail).toMatch(/^tap: adaptive: types h; after a e i.*; hold: holds left Command$/);
+    expect(adaptiveLegend.detail).toMatch(
+      /^tap: adaptive: types h; after a e i.*; hold: holds left Command$/,
+    );
   });
 
   it('describes alt repeat once, its tagged branches included', () => {

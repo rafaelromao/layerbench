@@ -389,3 +389,45 @@ describe('signing out', () => {
     expect(revoke?.headers.get('Authorization')).toBe(`Basic ${btoa('Iv1.client:client-secret')}`);
   });
 });
+
+describe('who maintains the Library', () => {
+  /** GitHub, saying what the signed-in user may do in the repository. */
+  const may =
+    (permissions: Record<string, boolean> | null, status = 200) =>
+    (call: Call) =>
+      call.url === 'https://api.github.com/repos/rafaelromao/layerbench'
+        ? json(status, permissions ? { full_name: 'rafaelromao/layerbench', permissions } : {})
+        : github(call);
+  const pull = { admin: false, maintain: false, push: false, triage: false, pull: true };
+
+  it('is whoever GitHub says may push to the repository, asked with their own token', async () => {
+    responder = may({ ...pull, push: true });
+    const res = await post('token', {
+      code: 'the-code',
+      verifier: VERIFIER,
+      redirectUri: `${PAGE}/`,
+    });
+    const first = await answerOf(res);
+    expect(first).toMatchObject({ signedIn: true, maintainer: true });
+    const asked = calls.find((c) => c.url.endsWith('/repos/rafaelromao/layerbench'));
+    expect(asked?.headers.get('Authorization')).toBe('Bearer ghu_first');
+    const again = await post('session', { session: first.session });
+    expect(await answerOf(again)).toMatchObject({ signedIn: true, maintainer: true });
+  });
+
+  it('is someone who maintains or administers it, too', async () => {
+    for (const role of ['maintain', 'admin']) {
+      responder = may({ ...pull, [role]: true });
+      const res = await post('session', { session: await signIn() });
+      expect(await answerOf(res)).toMatchObject({ maintainer: true });
+    }
+  });
+
+  it('is not someone who may only read it, nor anyone when GitHub will not say', async () => {
+    for (const answer of [may(pull), may(null), may(null, 404), may(null, 500)]) {
+      responder = answer;
+      const res = await post('session', { session: await signIn() });
+      expect(await answerOf(res)).toMatchObject({ signedIn: true, maintainer: false });
+    }
+  });
+});
