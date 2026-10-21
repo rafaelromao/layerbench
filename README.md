@@ -89,10 +89,10 @@ Library. A layout can also join with no deploy, as a community layout, by **Subm
 
 1. In the app, give the layout its name, its author, and in Settings, if it has one, its link to
    where it comes from: the author's firmware, keymap or page. Make each home row finger key of its
-   base layer a Tap-hold holding the left Gui, Ctrl, Alt and Shift from the left pinky in, and
-   Shift, Alt, Ctrl and Gui from the right index out, as every bundled layout but Magic Romak has.
-   Save it, and copy its LayerBench JSON from the editor's **JSON** panel. Signed in, it is also in
-   your "LayerBench: saved layouts" gist.
+   base layer a Tap-hold holding Gui, Ctrl, Alt and Shift from the left pinky in, and Shift, Alt,
+   Ctrl and Gui from the right index out, the left modifiers on both hands, as every bundled layout
+   but Magic Romak has. Save it, and copy its LayerBench JSON from the editor's **JSON** panel.
+   Signed in, it is also in your "LayerBench: saved layouts" gist.
 2. On a branch made from main, add it as `packages/core/src/layouts/documents/<id>.json`, named by
    its `"id"`, as copied.
 3. In `packages/core/src/layouts/documents.ts`, import the file and add it to `DOCUMENTS` under its
