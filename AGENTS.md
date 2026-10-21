@@ -31,6 +31,17 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
   hold Numbers and Symbols on the inner thumbs too, as Romak does, each still typing what it typed;
   only an inner thumb that is a tap-hold already falls back (`withDefaultLayers`). Accents is the
   combo `accentsCombo`. A row-stagger board's one space bar holds Numbers: it has no inner thumbs.
+  Ben Vallack Piano taps a one-shot Shift where its keymap has Repeat, and it is its `keys.shift`.
+- **Home row mods.** Every bundled layout but Magic Romak holds Gui, Ctrl, Alt and Shift on its
+  base layer's home row from the left pinky in, mirrored on the right (`HOME_ROW_MODS`,
+  `withHomeRowMods`). Both hands hold the left modifiers, as the two Shift thumbs do: the analysis
+  types a capital with the left Shift, and the right Alt is AltGr. Every key there that types gets
+  one, letter or not (Uno's space, T-34's Repeat); one with nothing on it or a tap-hold already
+  does not, and no other layer does. They go on after the default layers, whose standard thumbs
+  keep only plain keys; Nordwind, a document, carries them in its JSON. Magic Romak has none: its
+  keymap holds Gui on the bottom row. In the Shift case mode a layout with no Shift key of its own
+  holds the other hand's home row Shift for a capital, never one on a key the capital presses
+  (`holdMod` in `resolver.ts`).
 - **A held thumb blocks its hand.** On a layer every way onto which holds a thumb key of one hand
   down (`mo`, `lt`), that hand's thumb keys get no binding: the thumb is busy holding. Numbers and
   Symbols each block the hand holding them, and Extras, both held, every thumb. The held keys
@@ -38,7 +49,7 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
   a bundled layout or a board's defaults with a binding there. What finds no finger key goes on
   Accents' thumbs, Accents being one-shot.
 - **The base layer keeps only `'` `,` `.` `;`** besides its letters and Repeat (`BASE_SYMBOLS`).
-  Every other symbol is on Symbols or Extras.
+  Every other symbol is on Symbols or Extras. A home row mod types what its tap types.
 - **Accents ranking.** Accents has the dead keys, the letters no accent makes, and the accented
   letters the texts use most, each a key of its own. The most used go on the cheapest keys, in
   groups that are easy to remember. A layout that types its vowels with the left hand gets Accents

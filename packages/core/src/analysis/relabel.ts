@@ -6,7 +6,9 @@ import type { Report } from './analyze.js';
 /**
  * Whether swapping two keys is a relabel rather than a change of behavior: both hold plain output
  * bindings on that layer, neither is the space or shift key, and no typing path names either key.
- * Only then can the existing n-gram tables be reused.
+ * Only then can the existing n-gram tables be reused. A home row mod is plain output with a
+ * modifier held, which types nothing; one holding Shift is a shift key, as the analysis may hold
+ * it for a capital.
  */
 export function relabelEligible(
   c: CompiledLayout,
@@ -18,8 +20,17 @@ export function relabelEligible(
   const layer = c.layers[layerIdx];
   if (!layer) return false;
 
-  const plain = (pos: number): boolean =>
-    layer.explicit[pos] === true && layer.bindings[pos]?.kind === 'kp';
+  const plain = (pos: number): boolean => {
+    const b = layer.bindings[pos];
+    if (layer.explicit[pos] !== true || !b) return false;
+    if (b.kind !== 'hold_tap') return b.kind === 'kp';
+    return (
+      b.tap.kind === 'kp' &&
+      b.hold.kind === 'mod' &&
+      b.hold.mod !== 'LSHIFT' &&
+      b.hold.mod !== 'RSHIFT'
+    );
+  };
   if (!plain(posA) || !plain(posB)) return false;
 
   const shiftPos = c.shiftKey?.key;

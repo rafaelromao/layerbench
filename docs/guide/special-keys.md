@@ -28,8 +28,10 @@ A key can do one thing when tapped and another while held, or act once, on the n
 
 A **Tap-hold** key has two parts. The **Tap** is what a quick press does, usually a letter; the
 **Hold** is a layer or a modifier while the key is held down. A letter on the home row with a
-modifier underneath is a home-row modifier. The Tap can also be an adaptive key or an alt repeat,
-so a thumb can adapt when tapped and reach a layer when held.
+modifier underneath is a home-row modifier: every layout that comes with the app but Magic Romak
+holds Gui, Ctrl, Alt and Shift on its home row from the left pinky in, mirrored on the right. The
+Tap can also be an adaptive key or an alt repeat, so a thumb can adapt when tapped and reach a layer
+when held.
 
 **Timing**, under the hold, sets the tapping term, how long a press must last to count as a hold,
 and the flavor, ZMK's rule for telling a tap from a hold when another key comes in between. Its

@@ -293,7 +293,7 @@ export const SMALL_DEFS: ClassicDef[] = [
       RHR: 'a',
       RHP: 'c',
       L1: 'space',
-      L0: '⟲',
+      L0: '⇧',
       R0: 'caps2',
       R1: 'alpha2',
     },
@@ -320,12 +320,12 @@ export const SMALL_DEFS: ClassicDef[] = [
       },
     ],
     special: {
-      '⟲': REPEAT,
+      '⇧': { kind: 'sk', mod: 'LSHIFT' },
       alpha2: { kind: 'sl', layer: 'alpha2' },
       caps2: raw('⇧A2'),
     },
     description:
-      'Eighteen keys: fourteen letters on the base layer, the rest one tap away on a second letter layer, and a repeat key.',
+      'Eighteen keys: fourteen letters on the base layer, the rest one tap away on a second letter layer, and a one-shot Shift where its keymap has a repeat key.',
     link: 'https://github.com/benvallack/zmk-config-piano',
     note: 'Letters from piano.keymap.',
   },
