@@ -20,7 +20,16 @@
  */
 
 import { installationToken } from './github-app.js';
-import { LIBRARY_REPO } from './pull-request.js';
+import {
+  checkLayout,
+  type LibraryAnswer,
+  promote,
+  propose,
+  remove,
+  type Target,
+  targetOf,
+} from './library.js';
+import { client, LIBRARY_REPO } from './pull-request.js';
 import {
   checkSubmission,
   MAX_LAYOUT_BYTES,
@@ -428,6 +437,62 @@ async function submitRoute(
   }
 }
 
+/**
+ * A change to the Library: one anyone signed in proposes to a bundled or community layout
+ * (`propose`), or a maintainer's delete or promote (`maintain`). As for Submit, the session must be
+ * good and its token still the login it names, and what is sent is checked before the App's key is
+ * used; a maintainer's is refused, writing nothing, unless GitHub lets the user push.
+ */
+async function libraryRoute(
+  route: 'propose' | 'maintain',
+  body: Record<string, unknown>,
+  config: Config,
+  env: AuthEnv,
+  cors: Extra,
+): Promise<Response> {
+  const answer = (status: number, value: LibraryAnswer) => json(value, status, cors);
+  const current = await sessionOf(body, config);
+  if (!current) return answer(401, { error: 'signed out' });
+  const action = route === 'propose' ? 'change' : body.action;
+  if (action !== 'change' && action !== 'delete' && action !== 'promote') {
+    return answer(400, { error: 'bad request' });
+  }
+  const kinds: Target['kind'][] =
+    action === 'promote' ? ['custom', 'community'] : ['bundled', 'community'];
+  const target = targetOf(body.target, kinds);
+  if (!target) return answer(400, { error: 'bad request' });
+  const checked = action === 'delete' ? null : checkLayout(body.layout, target.id);
+  if (checked && !checked.ok) return answer(422, { error: 'not accepted', reason: checked.reason });
+  if (!env.GITHUB_APP_ID || !env.GITHUB_APP_PRIVATE_KEY) {
+    return answer(503, { error: 'Library changes are not set up' });
+  }
+  try {
+    if ((await loginOf(current.access)) !== current.login) {
+      return answer(401, { error: 'signed out' });
+    }
+    if (route === 'maintain' && !(await maintainerOf(current.access))) {
+      return answer(403, { error: 'not a maintainer' });
+    }
+    const token = await installationToken(
+      { appId: env.GITHUB_APP_ID, privateKey: env.GITHUB_APP_PRIVATE_KEY },
+      LIBRARY_REPO,
+    );
+    if (!token) return answer(503, { error: 'Library changes are not set up' });
+    const gh = client(token);
+    const result =
+      action === 'delete'
+        ? await remove(gh, target, current.login)
+        : checked?.ok && action === 'change'
+          ? await propose(gh, target, body.layout, checked, current.login)
+          : checked?.ok
+            ? await promote(gh, target, body.layout, checked, current.login)
+            : { status: 400, answer: { error: 'bad request' } };
+    return answer(result.status, result.answer);
+  } catch {
+    return answer(502, { error: 'GitHub could not be reached' });
+  }
+}
+
 async function configFrom(env: AuthEnv): Promise<Config | null> {
   if (!env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET || !env.SESSION_SECRET) return null;
   const key = await importKey(env.SESSION_SECRET);
@@ -496,14 +561,16 @@ export async function handleAuth(request: Request, env: AuthEnv): Promise<Respon
       'Access-Control-Max-Age': '7200',
     });
   }
-  if (request.method !== 'POST' || !['session', 'token', 'logout', 'submit'].includes(route)) {
+  const routes = ['session', 'token', 'logout', 'submit', 'propose', 'maintain'];
+  if (request.method !== 'POST' || !routes.includes(route)) {
     return json({ error: 'not found' }, 404, cors);
   }
   // A JSON body is what makes the browser ask first, so other sites cannot post blind.
   if (!request.headers.get('Content-Type')?.startsWith('application/json')) {
     return json({ error: 'expected JSON' }, 415, cors);
   }
-  const body = await bodyOf(request, route === 'submit' ? MAX_SUBMIT_BODY_BYTES : MAX_BODY_BYTES);
+  const carriesLayout = route === 'submit' || route === 'propose' || route === 'maintain';
+  const body = await bodyOf(request, carriesLayout ? MAX_SUBMIT_BODY_BYTES : MAX_BODY_BYTES);
   if (!body) return json({ error: 'bad request' }, 400, cors);
 
   const config = await configFrom(env);
@@ -512,6 +579,11 @@ export async function handleAuth(request: Request, env: AuthEnv): Promise<Respon
     return config
       ? submitRoute(body, config, env, cors)
       : json({ error: 'Submit is not set up' } satisfies SubmitAnswer, 503, cors);
+  }
+  if (route === 'propose' || route === 'maintain') {
+    return config
+      ? libraryRoute(route, body, config, env, cors)
+      : json({ error: 'Library changes are not set up' } satisfies LibraryAnswer, 503, cors);
   }
   if (!config)
     return json({ available: false, signedIn: false } satisfies SessionAnswer, 200, cors);

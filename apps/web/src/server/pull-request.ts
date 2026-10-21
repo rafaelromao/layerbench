@@ -132,6 +132,32 @@ export async function commitFiles(
   }
 }
 
+/**
+ * The changes, on a pull request from `branch` into `base`: committed to the one open, or to the
+ * branch started over from `base`, with a new pull request. Its address, and whether it was open.
+ */
+export async function openOrUpdate(
+  gh: GitHub,
+  pull: {
+    base: string;
+    branch: string;
+    changes: readonly FileChange[];
+    message: string;
+    title: string;
+    body: string;
+  },
+): Promise<{ url: string; reused: boolean }> {
+  const { base, branch, changes, message } = pull;
+  const open = await openPull(gh, base, branch);
+  if (open) {
+    await commitFiles(gh, branch, changes, message);
+    return { url: open, reused: true };
+  }
+  await startBranch(gh, base, branch);
+  await commitFiles(gh, branch, changes, message);
+  return { url: await createPull(gh, pull), reused: false };
+}
+
 /** The pull request from `branch` into `base`: its address. */
 export async function createPull(
   gh: GitHub,

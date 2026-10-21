@@ -14,21 +14,9 @@ import {
   removeBuiltInId,
   unregisterDocument,
 } from './edits.js';
+import type { LibraryRequest } from './request.js';
 
-/**
- * A change to the Library, as the sign-in server commits it to `.library/request.json` on a branch
- * of its own, for CI to apply there: change a bundled layout to the one given, delete one, or
- * promote a layout to it. A layout is as LayerBench saves it; `by` is who asked.
- */
-export interface LibraryRequest {
-  action: 'change' | 'delete' | 'promote';
-  id: string;
-  layout?: unknown;
-  by?: string;
-}
-
-/** Where the request file is, from the repository's root. */
-export const LIBRARY_REQUEST = '.library/request.json';
+export { LIBRARY_REQUEST, type LibraryRequest } from './request.js';
 
 /** The files a request reads and writes, from the repository's root. */
 export const LIBRARY_FILES = {
