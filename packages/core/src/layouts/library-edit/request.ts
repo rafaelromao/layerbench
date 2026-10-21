@@ -26,6 +26,11 @@ export function keptInLibrary(id: string): string | null {
     : null;
 }
 
+/** Why a Library request cannot be applied; nothing is written. */
+export class LibraryRequestRefused extends Error {
+  override name = 'LibraryRequestRefused';
+}
+
 /** Where the request file is, from the repository's root. */
 export const LIBRARY_REQUEST = '.library/request.json';
 

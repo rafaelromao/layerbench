@@ -13,13 +13,15 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { toCanonicalJson } from '../../layout/json.js';
 import type { Layout } from '../../layout/types.js';
-import { BUNDLED_LAYOUTS, bundledLayout } from '../index.js';
+import { BUNDLED_LAYOUTS, bundledLayout, CLASSIC_DEFS } from '../index.js';
 import { applyRequest } from './apply.js';
-import { LibraryRequestRefused } from './edits.js';
 import { LIBRARY_FILES, LIBRARY_REQUEST } from './plan.js';
+import { keptInLibrary, LibraryRequestRefused } from './request.js';
 
 const REPO = fileURLToPath(new URL('../../../../../', import.meta.url));
 const bundled = BUNDLED_LAYOUTS.map((l) => ({ id: l.id as string, name: l.name }));
+/** A layout written in code that may go, whatever a request has changed on this branch. */
+const CLASSIC = CLASSIC_DEFS.map((d) => d.id).find((id) => keptInLibrary(id) === null) as string;
 
 let root = '';
 
@@ -34,7 +36,7 @@ function copy(): string {
   const documents = dirname(LIBRARY_FILES.document('x'));
   cpSync(join(REPO, documents), join(root, documents), { recursive: true });
   mkdirSync(join(root, dirname(LIBRARY_FILES.golden('x'))), { recursive: true });
-  cpSync(join(REPO, LIBRARY_FILES.golden('dvorak')), join(root, LIBRARY_FILES.golden('dvorak')));
+  cpSync(join(REPO, LIBRARY_FILES.golden(CLASSIC)), join(root, LIBRARY_FILES.golden(CLASSIC)));
   return root;
 }
 
@@ -56,14 +58,16 @@ describe('applying the request a branch carries', () => {
 
   it('writes and deletes what the request asks, then deletes the request', () => {
     copy();
-    const layout = toCanonicalJson({ ...(bundledLayout('dvorak') as Layout), author: 'Ana' });
-    ask({ action: 'change', id: 'dvorak', layout, by: 'ana' });
-    expect(applyRequest(root, bundled)).toMatchObject({ action: 'change', id: 'dvorak' });
-    expect(JSON.parse(readFileSync(join(root, LIBRARY_FILES.document('dvorak')), 'utf8'))).toEqual(
+    const layout = toCanonicalJson({ ...(bundledLayout(CLASSIC) as Layout), author: 'Ana' });
+    ask({ action: 'change', id: CLASSIC, layout, by: 'ana' });
+    expect(applyRequest(root, bundled)).toMatchObject({ action: 'change', id: CLASSIC });
+    expect(JSON.parse(readFileSync(join(root, LIBRARY_FILES.document(CLASSIC)), 'utf8'))).toEqual(
       JSON.parse(JSON.stringify(layout)),
     );
-    expect(readFileSync(join(root, LIBRARY_FILES.classic), 'utf8')).not.toContain("id: 'dvorak'");
-    expect(existsSync(join(root, LIBRARY_FILES.golden('dvorak')))).toBe(false);
+    expect(readFileSync(join(root, LIBRARY_FILES.classic), 'utf8')).not.toContain(
+      `id: '${CLASSIC}'`,
+    );
+    expect(existsSync(join(root, LIBRARY_FILES.golden(CLASSIC)))).toBe(false);
     expect(existsSync(join(root, dirname(LIBRARY_REQUEST)))).toBe(false);
   });
 

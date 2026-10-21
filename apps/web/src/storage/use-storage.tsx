@@ -10,6 +10,7 @@ import {
   useSyncExternalStore,
 } from 'react';
 import { gistIds, gitHubAccess, useGitHubSession } from '../auth/github-session.js';
+import { toast } from '../state/toasts.js';
 import { CompositeStorage, type CopiedUp } from './composite.js';
 import { GistAdapter } from './gist.js';
 import { IndexedDbAdapter } from './indexeddb.js';
@@ -35,7 +36,11 @@ export function StorageProvider({
 
   const value = useMemo(() => {
     if (adapter) return adapter;
-    const local = new IndexedDbAdapter();
+    const local = new IndexedDbAdapter(undefined, () =>
+      toast.error(
+        'Close LayerBench in your other tabs: they keep this one from opening your layouts',
+      ),
+    );
     // GitHub only joins in once someone is signed in: their documents go to their secret gists.
     if (status !== 'signed-in' || !login) return local;
     return new CompositeStorage(local, new GistAdapter(gitHubAccess, gistIds(login)));

@@ -1,8 +1,14 @@
 import { generateKeyPairSync } from 'node:crypto';
-import { BUNDLED_LAYOUTS, type Layout, toCanonicalJson } from '@layerbench/core';
+import {
+  BUNDLED_IDS,
+  BUNDLED_LAYOUTS,
+  keptInLibrary,
+  type Layout,
+  toCanonicalJson,
+} from '@layerbench/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type AuthEnv, handleAuth } from './github-auth.js';
-import type { LibraryAnswer } from './library.js';
+import { type LibraryAnswer, OPEN_PROPOSALS } from './library.js';
 
 const PAGE = 'https://app.example';
 const AUTH = 'https://auth.example';
@@ -82,6 +88,12 @@ function github(call: Call): Response {
   if (path === '/pulls' && method === 'GET') {
     const head = url.searchParams.get('head')?.replace(/^rafaelromao:/, '');
     const base = url.searchParams.get('base');
+    // Every one open, as GitHub lists them, when none is asked for by its branch.
+    if (head === undefined)
+      return json(
+        200,
+        repo.pulls.map((p) => ({ ...p, head: { ref: p.head } })),
+      );
     return json(
       200,
       repo.pulls.filter((p) => p.head === head && p.base === base),
@@ -268,6 +280,24 @@ describe('proposing a change to a bundled layout', () => {
   });
 });
 
+describe('how many changes one person proposes at once', () => {
+  it('refuses one more than five open, and takes a new version of one of them', async () => {
+    // Bundled layouts a request could never take away, nor those a delete takes on its branch.
+    const ids = BUNDLED_IDS.filter((id) => keptInLibrary(id) === null).slice(0, OPEN_PROPOSALS + 1);
+    const propose = (id: string) =>
+      ask('propose', { target: { kind: 'bundled', id }, layout: doc(id, `${id} changed`) });
+    for (const id of ids.slice(0, OPEN_PROPOSALS)) expect((await propose(id)).status).toBe(201);
+    const over = await propose(ids[OPEN_PROPOSALS]);
+    expect([over.status, over.answer.reason]).toEqual([
+      429,
+      'you have 5 changes proposed and open already; wait for one to be merged or closed',
+    ]);
+    expect(wrote()).toBe(false);
+    expect((await propose(ids[0])).status).toBe(200);
+    expect(repo.pulls).toHaveLength(OPEN_PROPOSALS);
+  });
+});
+
 describe('proposing a change to a community layout', () => {
   it('opens a pull request into layerbench-data that replaces its file', async () => {
     const layout = doc('breeze', 'Breeze');
@@ -329,6 +359,21 @@ describe("a maintainer's change to the Library", () => {
       ['main', 'Library: delete colemak'],
       ['layerbench-data', 'Community: delete breeze'],
     ]);
+  });
+
+  it('answers a delete asked again with its open pull request, committing nothing', async () => {
+    repo.push = true;
+    await ask('maintain', { action: 'delete', target: { kind: 'bundled', id: 'colemak' } });
+    // CI applied the request and took it away; the same again it would refuse.
+    repo.branches.get('library/you/delete/colemak')?.delete('.library/request.json');
+    const again = await ask('maintain', {
+      action: 'delete',
+      target: { kind: 'bundled', id: 'colemak' },
+    });
+    expect([again.status, again.answer.reused]).toEqual([200, true]);
+    expect(fileOn('library/you/delete/colemak', '.library/request.json')).toBeUndefined();
+    expect(wrote()).toBe(false);
+    expect(repo.pulls).toHaveLength(1);
   });
 
   it('promotes a custom or a community layout by a request pull request', async () => {

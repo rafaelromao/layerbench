@@ -43,8 +43,14 @@ const BUILT_IN_IDS = [
   'ben-vallack-piano',
 ];
 
-/** The id of every bundled layout: those written in code, and those added as documents. */
-export const BUNDLED_IDS: readonly string[] = [...BUILT_IN_IDS, ...DOCUMENT_IDS];
-
 /** The layout a visit that names none opens: the one the app was made for. */
 export const DEFAULT_LAYOUT_ID = 'magic-romak';
+
+/**
+ * The id of every bundled layout: those written in code, and those added as documents, the layout a
+ * visit opens first wherever it is written, as once a change has made it a document.
+ */
+export const BUNDLED_IDS: readonly string[] = [
+  DEFAULT_LAYOUT_ID,
+  ...[...BUILT_IN_IDS, ...DOCUMENT_IDS].filter((id) => id !== DEFAULT_LAYOUT_ID),
+];

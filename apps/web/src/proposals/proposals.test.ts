@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import {
   followProposal,
+  forgetProposal,
   type Proposal,
   proposalOf,
   pullApi,
@@ -13,11 +14,11 @@ import {
 let n = 0;
 const freshStorage = () => new IndexedDbAdapter(`proposals-${++n}`);
 
-const COLEMAK: Proposal = {
+const COLEMAK = {
   name: 'Colemak',
   target: { kind: 'bundled', id: 'colemak' },
   url: 'https://github.com/rafaelromao/layerbench/pull/100',
-};
+} satisfies Proposal;
 
 describe('a proposed change, as the browser keeps it', () => {
   it('reads back what was recorded, under the custom layout that holds it', async () => {
@@ -31,6 +32,8 @@ describe('a proposed change, as the browser keeps it', () => {
     expect(readProposal({ ...COLEMAK, url: 'https://example.com/pull/1' })).toBeNull();
     expect(readProposal({ ...COLEMAK, target: { kind: 'custom', id: 'colemak' } })).toBeNull();
     expect(readProposal({ name: 'Colemak' })).toBeNull();
+    // One saved but not sent yet has no pull request.
+    expect(readProposal({ ...COLEMAK, url: null })).toEqual({ ...COLEMAK, url: null });
   });
 
   it("finds its pull request's address in GitHub's API", () => {
@@ -66,6 +69,22 @@ describe('settling the proposals whose pull requests are done', () => {
     expect(await storage.list('proposals')).toEqual([]);
   });
 
+  it('forgets one whose copy was deleted, and leaves one not sent yet', async () => {
+    const storage = await withTwo();
+    await storage.delete('layouts', 'colemak');
+    await recordProposal(storage, 'breeze', { ...COLEMAK, name: 'Breeze', url: null });
+    const read: string[] = [];
+    const outcome = await settleProposals(storage, async (url) => {
+      read.push(url);
+      return 'merged';
+    });
+    expect(outcome).toEqual({ accepted: [], declined: [] });
+    expect(read).toEqual([]);
+    expect((await storage.list('proposals')).map((e) => e.id)).toEqual(['breeze']);
+    expect(await forgetProposal(storage, 'breeze')).toBe(true);
+    expect(await forgetProposal(storage, 'breeze')).toBe(false);
+  });
+
   it('leaves one whose pull request is open, or cannot be read, as it is', async () => {
     const storage = await withTwo();
     const outcome = await settleProposals(storage, async (url) =>
@@ -85,7 +104,7 @@ describe('saving the copy of a proposal again', () => {
     const sent: Proposal[] = [];
     const send = async (proposal: Proposal) => {
       sent.push(proposal);
-      return { kind: 'sent' as const, url: proposal.url, reused: true };
+      return { kind: 'sent' as const, url: proposal.url ?? COLEMAK.url, reused: true };
     };
     return { storage, sent, send };
   }
@@ -119,6 +138,21 @@ describe('saving the copy of a proposal again', () => {
       // The copy was just saved: it stays, an ordinary custom layout.
       expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['colemak']);
     }
+  });
+
+  it('sends one not sent yet, reading no pull request, and keeps the one it opens', async () => {
+    const { storage, sent } = await withColemak();
+    await recordProposal(storage, 'colemak', { ...COLEMAK, url: null });
+    const opened = async (proposal: Proposal) => {
+      sent.push(proposal);
+      return { kind: 'sent' as const, url: NEW, reused: false };
+    };
+    const state = async () => {
+      throw new Error('no pull request to read');
+    };
+    await followProposal(storage, 'colemak', 'colemak', opened, state);
+    expect(sent).toHaveLength(1);
+    expect(await proposalOf(storage, 'colemak')).toEqual({ ...COLEMAK, url: NEW });
   });
 
   it('is nothing for a custom layout that is not a proposal', async () => {

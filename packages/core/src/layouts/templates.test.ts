@@ -8,7 +8,13 @@ import type { Binding, Layout } from '../layout/types.js';
 import { blockedThumbs, reachKeys } from '../sim/activators.js';
 import { explain } from '../sim/resolver.js';
 import { CLASSIC_DEFS, CLASSIC_LAYOUTS } from './classic.js';
-import { BUNDLED_LAYOUTS, bundledLayout, SMALL_DEFS, SMALL_LAYOUTS } from './index.js';
+import {
+  BUNDLED_LAYOUTS,
+  bundledLayout,
+  DOCUMENT_LAYOUTS,
+  SMALL_DEFS,
+  SMALL_LAYOUTS,
+} from './index.js';
 import {
   ACCENTS,
   accentsCombo,
@@ -857,10 +863,14 @@ describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, unless a l
     expect(Object.values(HOME_ROW_MODS)).toEqual(MODS);
   });
 
-  // A definition may give its own, as its author's keymap has them.
-  const own = new Set(
-    [...CLASSIC_DEFS, ...SMALL_DEFS].filter((d) => d.homeRowMods !== undefined).map((d) => d.id),
-  );
+  // A definition may give its own, as its author's keymap has them; a document carries its own in
+  // its JSON, the standard ones or others, as Magic Romak's would once a change made it one.
+  const standard = (l: Layout) =>
+    KEYS.every((k, i) => heldMod(l.layers[0].bindings[k]) === MODS[i]);
+  const own = new Set([
+    ...[...CLASSIC_DEFS, ...SMALL_DEFS].filter((d) => d.homeRowMods !== undefined).map((d) => d.id),
+    ...DOCUMENT_LAYOUTS.filter((l) => !standard(l)).map((l) => l.id),
+  ]);
 
   it.each(BUNDLED_LAYOUTS.filter((l) => !own.has(l.id ?? '')).map((l) => [l.id, l] as const))(
     '%s holds them on its base layer, each on a key that types, and no other layer holds one',

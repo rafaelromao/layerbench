@@ -8,7 +8,8 @@ browser you use, sign in with GitHub, and it is kept in your GitHub account as w
 A layout of your own starts in **Library**, in one of these ways:
 
 - Press **Open** on any layout's card, change it in **Analyze** and press **Save**: Save asks what
-  to call the copy, and keeps it among your custom layouts. See [Saving a copy](#saving-a-copy)
+  to call the copy, or, on one that comes with the app or a community layout, whether to propose
+  your change instead, and keeps it among your custom layouts. See [Saving a copy](#saving-a-copy)
   below.
 - **New layout** starts one on the board you choose, empty or from Qwerty to rearrange, and
   **Create and edit** saves it and opens it. **Add the default layers** gives it Numbers, Symbols,
@@ -51,7 +52,8 @@ is now; the dialog gives its link. In **Library**, your copy is marked *proposed
 pull request. If one of your custom layouts has the name already, such as the copy of a change you
 proposed before, the dialog asks what to call this copy, or offers to overwrite that one; the pull
 request still proposes the layout under its own name. A layout that comes with the app cannot be
-proposed under another one's name.
+proposed under another one's name, nor one that names no author. You can have five changes
+proposed and open at once.
 
 Edit your copy and **Save** it again while the pull request is open, and the pull request gets that
 version, under the name it proposed: renaming your copy renames only the copy. Once it is merged,
@@ -82,7 +84,7 @@ LayerBench keeps in it, the sign-in and any work saved only in this browser. In 
 work in GitHub.
 
 **Storage** says where your work is going: secret gists in your account, one for layouts, one for
-rule sets and one for corpora. Secret gists are unlisted, not private: anyone with a gist's address
+rule sets, one for corpora and one for the changes you proposed. Secret gists are unlisted, not private: anyone with a gist's address
 can read it.
 
 ## Moving what you saved before

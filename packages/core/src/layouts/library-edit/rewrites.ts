@@ -1,4 +1,6 @@
 import { languagesFileText } from '../../lang/performance.js';
+import { codeOf } from './code.js';
+import { LibraryRequestRefused } from './request.js';
 
 /**
  * The changes a Library request makes to the repository's own files, each from a file's text to its
@@ -6,11 +8,6 @@ import { languagesFileText } from '../../lang/performance.js';
  * request from, never in the app. Each finds what it changes exactly once or refuses, so a file it
  * does not recognise is left for a person rather than half edited.
  */
-
-/** Why a Library request cannot be applied; nothing is written. */
-export class LibraryRequestRefused extends Error {
-  override name = 'LibraryRequestRefused';
-}
 
 /** The index of the only line equal to `line` between `start` and `end`, or a refusal. */
 function onlyLine(lines: string[], line: string, start: number, end: number, what: string): number {
@@ -153,6 +150,10 @@ function importName(id: string): string {
 const importLine = (name: string, id: string) => `import ${name} from './documents/${id}.json';`;
 const entryLine = (name: string, id: string) => (name === id ? `  ${id},` : `  '${id}': ${name},`);
 const DOCUMENTS_OPEN = 'const DOCUMENTS: Record<string, unknown> = {';
+/** The object with no document left in it, as Biome writes it. */
+const DOCUMENTS_EMPTY = `${DOCUMENTS_OPEN}};`;
+const opened = (text: string) =>
+  text.split('\n').flatMap((l) => (l === DOCUMENTS_EMPTY ? [DOCUMENTS_OPEN, '};'] : [l]));
 
 /** `documents.ts` with one more document: its import among the others', its entry last. */
 export function registerDocument(text: string, id: string): string {
@@ -160,10 +161,11 @@ export function registerDocument(text: string, id: string): string {
     throw new LibraryRequestRefused(`${id} is registered already`);
   }
   const name = importName(id);
-  if (RESERVED.has(name) || new RegExp(`\\b${name}\\b`).test(text)) {
+  // Taken by the code, not by a string that holds it, as `'magic-romak'` holds `romak`.
+  if (RESERVED.has(name) || new RegExp(`(?<![\\w$])${name}(?![\\w$])`).test(codeOf(text))) {
     throw new LibraryRequestRefused(`${id} would be imported as ${name}, a name already taken`);
   }
-  const lines = text.split('\n');
+  const lines = opened(text);
   const imports = lines.flatMap((l, i) => (l.startsWith('import ') ? [i] : []));
   const path = (line: string) => /from '([^']+)'/.exec(line)?.[1] ?? '';
   const documents = imports.filter((i) => path(lines[i]).startsWith('./documents/'));
@@ -179,9 +181,12 @@ export function registerDocument(text: string, id: string): string {
 /** `documents.ts` without one document's import and entry. */
 export function unregisterDocument(text: string, id: string): string {
   const name = importName(id);
-  const lines = text.split('\n');
+  const lines = opened(text);
   lines.splice(onlyLine(lines, importLine(name, id), 0, lines.length, `the import of ${id}`), 1);
   const [start, end] = block(lines, DOCUMENTS_OPEN, '};', 'DOCUMENTS');
   lines.splice(onlyLine(lines, entryLine(name, id), start, end, `the entry of ${id}`), 1);
+  // The last one gone, the object is written empty, as Biome would.
+  const at = lines.indexOf(DOCUMENTS_OPEN);
+  if (lines[at + 1] === '};') lines.splice(at, 2, DOCUMENTS_EMPTY);
   return lines.join('\n');
 }

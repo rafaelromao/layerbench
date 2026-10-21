@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { GOLDEN_LAYOUTS } from '../../golden/set.js';
 import { toCanonicalJson } from '../../layout/json.js';
 import { DEFAULT_LAYOUT_ID } from '../bundled-ids.js';
-import { BUNDLED_LAYOUTS, bundledLayout } from '../index.js';
-import { LibraryRequestRefused } from './edits.js';
+import { DOCUMENT_IDS } from '../documents.js';
+import { BUNDLED_LAYOUTS, bundledLayout, CLASSIC_DEFS, SMALL_DEFS } from '../index.js';
 import { LIBRARY_FILES, type LibraryRequest, planRequest } from './plan.js';
-import { keptInLibrary } from './request.js';
+import { keptInLibrary, LibraryRequestRefused } from './request.js';
 
 const root = new URL('../../../../../', import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, root), 'utf8');
@@ -17,14 +17,30 @@ function tree(): Record<string, string> {
   for (const path of Object.values(LIBRARY_FILES)) {
     if (typeof path === 'string') files[path] = read(path);
   }
-  files[LIBRARY_FILES.document('nordwind')] = read(LIBRARY_FILES.document('nordwind'));
+  for (const id of DOCUMENT_IDS)
+    files[LIBRARY_FILES.document(id)] = read(LIBRARY_FILES.document(id));
   return files;
 }
 
 const bundled = BUNDLED_LAYOUTS.map((l) => ({ id: l.id as string, name: l.name }));
+const nameOf = (id: string) => bundled.find((l) => l.id === id)?.name ?? id;
+
+/**
+ * Layouts by where they are, a deletable one of each kind, so the cases hold on a branch where a
+ * request has changed the Library: one written in `classic.ts`, one in `small.ts`, and a document.
+ */
+const deletable = (ids: readonly string[]) => ids.find((id) => keptInLibrary(id) === null);
+const CLASSIC = deletable(CLASSIC_DEFS.map((d) => d.id)) as string;
+const SMALL = deletable(SMALL_DEFS.map((d) => d.id)) as string;
+const DOCUMENT = deletable(DOCUMENT_IDS);
+/** One the golden reports read, still written in code. */
+const GOLDEN_IN_CODE = GOLDEN_LAYOUTS.find((id) => CLASSIC_DEFS.some((d) => d.id === id));
+
+/** An id no layout has: what is promoted. */
+const NEW = 'new-layout';
 
 /** A layout as LayerBench saves it, under an id and a name. */
-function saved(id: string, name: string, from = 'colemak'): Record<string, unknown> {
+function saved(id: string, name: string, from = CLASSIC): Record<string, unknown> {
   const layout = { ...(bundledLayout(from) as object), id, name, author: 'Ana' };
   return JSON.parse(JSON.stringify(toCanonicalJson(layout as never)));
 }
@@ -33,103 +49,109 @@ const plan = (request: LibraryRequest, files = tree()) => planRequest(request, f
 
 describe('promoting a layout to the Library', () => {
   it('adds its document, registers it, and names it on the landing page', () => {
-    const doc = saved('breeze', 'Breeze');
-    const { write, remove } = plan({ action: 'promote', id: 'breeze', layout: doc });
+    const doc = saved(NEW, 'New layout');
+    const { write, remove } = plan({ action: 'promote', id: NEW, layout: doc });
     expect(remove).toEqual([]);
-    expect(JSON.parse(write[LIBRARY_FILES.document('breeze')])).toEqual(doc);
-    expect(write[LIBRARY_FILES.document('breeze')].endsWith('}\n')).toBe(true);
+    expect(JSON.parse(write[LIBRARY_FILES.document(NEW)])).toEqual(doc);
+    expect(write[LIBRARY_FILES.document(NEW)].endsWith('}\n')).toBe(true);
     expect(write[LIBRARY_FILES.documents]).toContain(
-      "import breeze from './documents/breeze.json';",
+      "import newLayout from './documents/new-layout.json';",
     );
-    expect(write[LIBRARY_FILES.landing]).toContain('layout=breeze&amp;');
+    expect(write[LIBRARY_FILES.landing]).toContain(`layout=${NEW}&amp;`);
   });
 });
 
 describe('changing a bundled layout', () => {
-  it('overwrites a document, and renames it on the landing page', () => {
-    const doc = saved('nordwind', 'Nordwind 2');
-    const { write, remove } = plan({ action: 'change', id: 'nordwind', layout: doc });
+  it.runIf(DOCUMENT)('overwrites a document, and renames it on the landing page', () => {
+    const id = DOCUMENT as string;
+    const doc = saved(id, `${nameOf(id)} 2`, id);
+    const { write, remove } = plan({ action: 'change', id, layout: doc });
     expect(remove).toEqual([]);
-    expect(JSON.parse(write[LIBRARY_FILES.document('nordwind')])).toEqual(doc);
-    expect(write[LIBRARY_FILES.landing]).toContain('>Nordwind 2 <span>');
+    expect(JSON.parse(write[LIBRARY_FILES.document(id)])).toEqual(doc);
+    expect(write[LIBRARY_FILES.landing]).toContain(`>${nameOf(id)} 2 <span>`);
     expect(write[LIBRARY_FILES.documents]).toBeUndefined();
   });
 
   it('turns a layout written in code into a document, its code, id, golden and languages gone', () => {
-    const doc = saved('dvorak', 'Dvorak');
-    const { write, remove } = plan({ action: 'change', id: 'dvorak', layout: doc });
-    expect(write[LIBRARY_FILES.classic]).not.toContain("id: 'dvorak'");
-    expect(write[LIBRARY_FILES.builtInIds]).not.toContain("'dvorak'");
-    expect(JSON.parse(write[LIBRARY_FILES.languages])).not.toHaveProperty('dvorak');
-    expect(write[LIBRARY_FILES.documents]).toContain(
-      "import dvorak from './documents/dvorak.json';",
-    );
-    expect(JSON.parse(write[LIBRARY_FILES.document('dvorak')])).toEqual(doc);
-    expect(remove).toEqual([LIBRARY_FILES.golden('dvorak')]);
+    const doc = saved(CLASSIC, nameOf(CLASSIC));
+    const { write, remove } = plan({ action: 'change', id: CLASSIC, layout: doc });
+    expect(write[LIBRARY_FILES.classic]).not.toContain(`id: '${CLASSIC}'`);
+    expect(write[LIBRARY_FILES.builtInIds]).not.toContain(`'${CLASSIC}'`);
+    expect(JSON.parse(write[LIBRARY_FILES.languages])).not.toHaveProperty(CLASSIC);
+    expect(write[LIBRARY_FILES.documents]).toContain(`from './documents/${CLASSIC}.json';`);
+    expect(JSON.parse(write[LIBRARY_FILES.document(CLASSIC)])).toEqual(doc);
+    expect(remove).toEqual([LIBRARY_FILES.golden(CLASSIC)]);
     expect(write[LIBRARY_FILES.landing]).toBeUndefined();
   });
 
-  it('keeps the golden of a layout the golden reports read, for the dump to rewrite', () => {
-    const { remove } = plan({ action: 'change', id: 'romak', layout: saved('romak', 'Romak') });
-    expect(remove).toEqual([]);
-  });
+  it.runIf(GOLDEN_IN_CODE)(
+    'keeps the golden of a layout the golden reports read, for the dump to rewrite',
+    () => {
+      const id = GOLDEN_IN_CODE as string;
+      const { remove } = plan({ action: 'change', id, layout: saved(id, nameOf(id), id) });
+      expect(remove).toEqual([]);
+    },
+  );
 
   it('applies again on a branch where an earlier change made it a document', () => {
-    const first = plan({ action: 'change', id: 'dvorak', layout: saved('dvorak', 'Dvorak') });
+    const first = plan({ action: 'change', id: CLASSIC, layout: saved(CLASSIC, nameOf(CLASSIC)) });
     const files = { ...tree(), ...first.write };
     for (const path of first.remove) delete files[path];
     const again = plan(
-      { action: 'change', id: 'dvorak', layout: saved('dvorak', 'Dvorak II') },
+      { action: 'change', id: CLASSIC, layout: saved(CLASSIC, `${nameOf(CLASSIC)} II`) },
       files,
     );
-    expect(JSON.parse(again.write[LIBRARY_FILES.document('dvorak')]).name).toBe('Dvorak II');
-    expect(again.write[LIBRARY_FILES.landing]).toContain('>Dvorak II <span>');
+    expect(JSON.parse(again.write[LIBRARY_FILES.document(CLASSIC)]).name).toBe(
+      `${nameOf(CLASSIC)} II`,
+    );
+    expect(again.write[LIBRARY_FILES.landing]).toContain(`>${nameOf(CLASSIC)} II <span>`);
     expect(again.remove).toEqual([]);
   });
 });
 
 describe('deleting a bundled layout', () => {
   it('takes a layout written in code out of its file, the ids, the goldens, languages and landing page', () => {
-    const { write, remove } = plan({ action: 'delete', id: 'hands-down-gold' });
-    expect(write[LIBRARY_FILES.small]).not.toContain("id: 'hands-down-gold'");
-    expect(write[LIBRARY_FILES.builtInIds]).not.toContain("'hands-down-gold'");
-    expect(JSON.parse(write[LIBRARY_FILES.languages])).not.toHaveProperty('hands-down-gold');
-    expect(write[LIBRARY_FILES.landing]).not.toContain('layout=hands-down-gold&amp;');
-    expect(remove).toEqual([LIBRARY_FILES.golden('hands-down-gold')]);
+    const { write, remove } = plan({ action: 'delete', id: SMALL });
+    expect(write[LIBRARY_FILES.small]).not.toContain(`id: '${SMALL}'`);
+    expect(write[LIBRARY_FILES.builtInIds]).not.toContain(`'${SMALL}'`);
+    expect(JSON.parse(write[LIBRARY_FILES.languages])).not.toHaveProperty(SMALL);
+    expect(write[LIBRARY_FILES.landing]).not.toContain(`layout=${SMALL}&amp;`);
+    expect(remove).toEqual([LIBRARY_FILES.golden(SMALL)]);
   });
 
-  it('takes a document out, and its import and entry', () => {
-    const { write, remove } = plan({ action: 'delete', id: 'nordwind' });
-    expect(remove).toEqual([LIBRARY_FILES.document('nordwind')]);
-    expect(write[LIBRARY_FILES.documents]).not.toContain('nordwind');
-    expect(write[LIBRARY_FILES.landing]).not.toContain('layout=nordwind&amp;');
+  it.runIf(DOCUMENT)('takes a document out, and its import and entry', () => {
+    const id = DOCUMENT as string;
+    const { write, remove } = plan({ action: 'delete', id });
+    expect(remove).toEqual([LIBRARY_FILES.document(id)]);
+    expect(write[LIBRARY_FILES.documents]).not.toContain(`/${id}.json`);
+    expect(write[LIBRARY_FILES.landing]).not.toContain(`layout=${id}&amp;`);
   });
 });
 
 describe('a request it refuses, writing nothing', () => {
-  const colemak = saved('colemak', 'Colemak');
+  const bundledOne = saved(CLASSIC, nameOf(CLASSIC));
   it.each<[string, LibraryRequest]>([
     ['an id no layout could have', { action: 'delete', id: '../classic' }],
-    ['deleting a layout that is not bundled', { action: 'delete', id: 'breeze' }],
+    ['deleting a layout that is not bundled', { action: 'delete', id: NEW }],
     [
       'changing a layout that is not bundled',
-      { action: 'change', id: 'breeze', layout: saved('breeze', 'Breeze') },
+      { action: 'change', id: NEW, layout: saved(NEW, 'New layout') },
     ],
-    ['promoting a layout already bundled', { action: 'promote', id: 'colemak', layout: colemak }],
+    ['promoting a layout already bundled', { action: 'promote', id: CLASSIC, layout: bundledOne }],
     [
       'a name another bundled layout has',
-      { action: 'promote', id: 'breeze', layout: saved('breeze', 'Colemak') },
+      { action: 'promote', id: NEW, layout: saved(NEW, nameOf(CLASSIC)) },
     ],
     ['deleting the layout a visit opens', { action: 'delete', id: 'magic-romak' }],
     ['deleting a layout the golden reports read', { action: 'delete', id: 'qwerty' }],
     [
       'a layout under another id',
-      { action: 'promote', id: 'breeze', layout: saved('gust', 'Gust') },
+      { action: 'promote', id: NEW, layout: saved('other-layout', 'Other layout') },
     ],
-    ['no layout to add', { action: 'promote', id: 'breeze' }],
+    ['no layout to add', { action: 'promote', id: NEW }],
     [
       'a layout not as LayerBench saves it',
-      { action: 'promote', id: 'breeze', layout: { name: 'Breeze', ...saved('breeze', 'Breeze') } },
+      { action: 'promote', id: NEW, layout: { name: 'New layout', ...saved(NEW, 'New layout') } },
     ],
   ])('%s', (_what, request) => {
     expect(() => plan(request)).toThrow(LibraryRequestRefused);
@@ -140,8 +162,8 @@ describe('the bundled layouts the Library keeps', () => {
   it('keeps the layout a visit opens and those the golden reports measure, and no other', () => {
     expect(keptInLibrary(DEFAULT_LAYOUT_ID)).toBe('it is the layout a visit opens');
     for (const id of GOLDEN_LAYOUTS) expect(keptInLibrary(id)).not.toBeNull();
-    const deletable = bundled.filter((l) => keptInLibrary(l.id) === null);
-    expect(deletable.length).toBe(bundled.length - GOLDEN_LAYOUTS.length);
+    const free = bundled.filter((l) => keptInLibrary(l.id) === null);
+    expect(free.length).toBe(bundled.length - GOLDEN_LAYOUTS.length);
   });
 
   it('says why when it is asked to delete one', () => {

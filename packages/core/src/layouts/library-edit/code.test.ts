@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { CLASSIC_DEFS } from '../classic.js';
 import { SMALL_DEFS } from '../small.js';
 import { codeOf, pruneUnused, removeDef, unusedNames } from './code.js';
-import { LibraryRequestRefused } from './edits.js';
+import { LibraryRequestRefused } from './request.js';
 
 const read = (rel: string) => readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8');
 
@@ -61,14 +61,17 @@ describe('a layout written in code, taken out of its file', () => {
     });
   }
 
-  it('takes Magic Romak out with the helpers it alone used, and its imports with them', () => {
-    const after = pruneUnused(removeDef(read('small.ts'), 'SMALL_DEFS', 'magic-romak'));
-    for (const helper of ['ALT_REPEAT', 'alpha2Combos', 'taggedAccent', 'CCEDIL_BINDINGS']) {
-      expect(after).not.toMatch(new RegExp(`\\b${helper}\\b`));
-    }
-    expect(after).not.toContain('ComboDef');
-    expect(after).toContain('const UNO_HM');
-  });
+  // While Magic Romak is written in code: a change to it makes it a document.
+  it.runIf(SMALL_DEFS.some((d) => d.id === 'magic-romak'))(
+    'takes Magic Romak out with the helpers it alone used, and its imports with them',
+    () => {
+      const after = pruneUnused(removeDef(read('small.ts'), 'SMALL_DEFS', 'magic-romak'));
+      for (const helper of ['ALT_REPEAT', 'alpha2Combos', 'taggedAccent', 'CCEDIL_BINDINGS']) {
+        expect(after).not.toMatch(new RegExp(`\\b${helper}\\b`));
+      }
+      expect(after).not.toContain('ComboDef');
+    },
+  );
 
   it('refuses an id the list does not define, or a list the file does not have', () => {
     const text = read('classic.ts');

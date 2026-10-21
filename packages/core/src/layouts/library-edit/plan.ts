@@ -3,17 +3,16 @@ import { compileLayout } from '../../layout/compile.js';
 import { isDocumentId } from '../../storage/ids.js';
 import { documentLayout } from '../documents.js';
 import { pruneUnused, removeDef } from './code.js';
+import { keptInLibrary, type LibraryRequest, LibraryRequestRefused } from './request.js';
 import {
   dropLanguages,
-  LibraryRequestRefused,
   landingAdd,
   landingRemove,
   landingRename,
   registerDocument,
   removeBuiltInId,
   unregisterDocument,
-} from './edits.js';
-import { keptInLibrary, type LibraryRequest } from './request.js';
+} from './rewrites.js';
 
 export { LIBRARY_REQUEST, type LibraryRequest } from './request.js';
 
@@ -83,7 +82,7 @@ export function planRequest(
   };
   const write: Record<string, string> = {};
   const remove: string[] = [];
-  const edit = (path: string, change: (t: string) => string) => {
+  const rewrite = (path: string, change: (t: string) => string) => {
     write[path] = change(write[path] ?? text(path));
   };
   const writeDocument = () => {
@@ -101,27 +100,27 @@ export function planRequest(
     if (holding.length !== 1)
       throw new LibraryRequestRefused(`${id} is defined in ${holding.length} files`);
     const [[path, list]] = holding;
-    edit(path, (t) => pruneUnused(removeDef(t, list, id)));
-    edit(LIBRARY_FILES.builtInIds, (t) => removeBuiltInId(t, id));
-    edit(LIBRARY_FILES.languages, (t) => dropLanguages(t, id));
+    rewrite(path, (t) => pruneUnused(removeDef(t, list, id)));
+    rewrite(LIBRARY_FILES.builtInIds, (t) => removeBuiltInId(t, id));
+    rewrite(LIBRARY_FILES.languages, (t) => dropLanguages(t, id));
     if (!(GOLDEN_LAYOUTS as readonly string[]).includes(id)) remove.push(LIBRARY_FILES.golden(id));
   }
   if (action === 'delete') {
     if (isDocument) {
       remove.push(LIBRARY_FILES.document(id));
-      edit(LIBRARY_FILES.documents, (t) => unregisterDocument(t, id));
+      rewrite(LIBRARY_FILES.documents, (t) => unregisterDocument(t, id));
     }
-    edit(LIBRARY_FILES.landing, (t) => landingRemove(t, id));
+    rewrite(LIBRARY_FILES.landing, (t) => landingRemove(t, id));
   } else if (layout) {
     writeDocument();
-    if (!isDocument) edit(LIBRARY_FILES.documents, (t) => registerDocument(t, id));
-    edit(LIBRARY_FILES.landing, (t) =>
+    if (!isDocument) rewrite(LIBRARY_FILES.documents, (t) => registerDocument(t, id));
+    rewrite(LIBRARY_FILES.landing, (t) =>
       action === 'promote'
         ? landingAdd(t, { id, name: layout.name, author: layout.author })
         : landingRename(t, { id, name: layout.name }),
     );
   }
-  // A file the edit left as it was is not written.
+  // A file the request left as it was is not written.
   for (const [path, t] of Object.entries(write)) if (files[path] === t) delete write[path];
   return { write, remove };
 }

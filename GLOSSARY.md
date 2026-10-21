@@ -65,8 +65,9 @@ _Avoid_: standard layers, common layers, shared layers
 
 **Draft**:
 A layout's unsaved edits, carried whole in its link after the `#`. The tab that made a draft knows
-which custom layout its edits were made on, so saving it saves that layout; anywhere else it is a
-layout of its own.
+which custom layout its edits were made on, so saving it saves that layout, or which bundled or
+community layout, so saving it offers to propose the change; anywhere else it is a layout of its
+own.
 _Avoid_: unsaved copy, working copy
 
 **Edit**:
@@ -79,8 +80,9 @@ _Avoid_: action, operation, op, mutation
 **Home row mods**:
 Modifiers held on the home row's finger keys, each key still typing what it typed when tapped. Every
 bundled layout has Gui, Ctrl, Alt and Shift from the left pinky in, mirrored on the right, on its
-base layer, but Magic Romak, which holds its author's keymap's: Ctrl, Alt and Shift from the ring
-finger in, a layer on each pinky, and Gui, with or without Shift, on the bottom row.
+base layer, but Magic Romak, which holds its author's keymap's, its home block mods, as the keymap
+calls them: Ctrl, Alt and Shift from the ring finger in, a layer on each pinky, and Gui, with or
+without Shift, on the bottom row.
 _Avoid_: HRM, home-row modifiers
 
 **Kind of key**:
@@ -91,7 +93,7 @@ _Avoid_: binding kind, key type
 
 **Layout session**:
 The layout open in Analyze, from the moment it is opened until another is: which custom layout it is,
-if any, its draft, and the link that carries it. Its own changes to the link never open it again;
+if any, or which bundled or community layout it came from, its draft, and the link that carries it. Its own changes to the link never open it again;
 any other link does, even one naming the same layout.
 _Avoid_: open layout, editor state
 

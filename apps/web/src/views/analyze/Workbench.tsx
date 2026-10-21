@@ -2,6 +2,7 @@ import {
   type AnalysisSettings,
   BUNDLED_LAYOUTS,
   type CorpusManifest,
+  documentMissing,
   type Layout,
   languagesToJudge,
   layoutLanguageCoverage,
@@ -51,7 +52,7 @@ import { useKeyStats } from '../../engine/use-key-stats.js';
 import { HELP, type HelpTopic } from '../../guide/help.js';
 import type { LayoutSource } from '../../layout-session/open.js';
 import type { OpenSession } from '../../layout-session/use-layout-session.js';
-import { followProposal, recordProposal } from '../../proposals/proposals.js';
+import { followProposal, forgetProposal, recordProposal } from '../../proposals/proposals.js';
 import { toast } from '../../state/toasts.js';
 import { useCollection, useStorage } from '../../storage/use-storage.js';
 import { HEAT_MODES, type HeatMode, type Params, toSearch } from '../../url/params.js';
@@ -320,13 +321,20 @@ export function Workbench({
         );
       } else toast.info(`Saved ${layout.name}`);
       // A change proposed from this layout follows it: its pull request, while open, gets this
-      // version, under the name proposed.
-      const followed = await followProposal(storage, storedAs ?? saved.id, saved.id, (proposal) =>
-        proposeChange(
-          proposal.target,
-          toCanonicalJson({ ...layout, id: proposal.target.id, name: proposal.name }),
-        ),
-      ).catch(() => null);
+      // version, under the name proposed. A layout only now made a custom one is no proposal's
+      // copy: a proposal under its id was left by a copy deleted, and goes.
+      const followed =
+        storedAs === null
+          ? await forgetProposal(storage, saved.id).then(
+              () => null,
+              () => null,
+            )
+          : await followProposal(storage, storedAs, saved.id, (proposal) =>
+              proposeChange(
+                proposal.target,
+                toCanonicalJson({ ...layout, id: proposal.target.id, name: proposal.name }),
+              ),
+            ).catch(() => null);
       if (followed?.kind === 'sent') {
         const to = followed.proposal.name;
         if (followed.outcome.kind === 'sent')
@@ -362,6 +370,10 @@ export function Workbench({
           reason: `another layout that comes with the app is called ${layout.name}`,
         };
       }
+      // What the Library has is signed: the sign-in server refuses a layout that names no author.
+      if (documentMissing(layout).includes('author')) {
+        return { kind: 'refused', reason: 'it names no author; give it one in Settings first' };
+      }
       // The copy goes by the layout's name, or by another where a custom layout has that one; the
       // pull request proposes the layout's.
       const named = copy && copy.name !== layout.name ? { ...layout, name: copy.name } : layout;
@@ -369,7 +381,7 @@ export function Workbench({
       if (!saved.ok) {
         return saved.reason === 'name-taken'
           ? { kind: 'name-taken', taken: saved.taken }
-          : { kind: 'failed', error: saved.error };
+          : { kind: 'unsaved', error: saved.error };
       }
       send(
         named === layout
@@ -377,13 +389,12 @@ export function Workbench({
           : { type: 'savedAs', from: layout, layout: named },
       );
       void customLayouts.refresh();
+      // Kept before it is sent, so a send that fails is tried again by the copy's next save.
+      const proposal = { name: layout.name, target: source, url: null };
+      await recordProposal(storage, saved.id, proposal);
       const sent = await proposeChange(source, toCanonicalJson({ ...layout, id: source.id }));
       if (sent.kind === 'sent') {
-        await recordProposal(storage, saved.id, {
-          name: layout.name,
-          target: source,
-          url: sent.url,
-        });
+        await recordProposal(storage, saved.id, { ...proposal, url: sent.url });
         void customLayouts.refresh();
       }
       return sent;

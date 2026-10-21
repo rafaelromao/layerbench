@@ -17,6 +17,7 @@ import {
   type GitHub,
   GitHubRefused,
   openOrUpdate,
+  openPull,
 } from './pull-request.js';
 import { MAX_LAYOUT_BYTES, SUBMIT_BASE, type SubmitAnswer, type SubmitResult } from './submit.js';
 
@@ -76,7 +77,43 @@ const refused = (status: number, error: string, reason: string): SubmitResult =>
 const notBundled = (id: string) =>
   refused(422, 'not accepted', `no bundled layout has the id "${id}"`);
 
-/** A pull request into main that carries a request for CI to apply. */
+/**
+ * How many changes one person may have proposed and open at once. Each pull request's pushes run
+ * the `library-edit` workflow and CI, so one account cannot keep the repository's runners busy.
+ */
+export const OPEN_PROPOSALS = 5;
+
+/** The branches `login` has open pull requests from, of those LayerBench opens. */
+async function openBranchesOf(gh: GitHub, login: string): Promise<string[]> {
+  const open = await gh('GET', '/pulls?state=open&per_page=100');
+  if (open.status !== 200 || !Array.isArray(open.data)) {
+    throw new GitHubRefused(`GitHub answered ${open.status}`);
+  }
+  const ours = (ref: unknown): ref is string =>
+    typeof ref === 'string' &&
+    (ref.startsWith(`library/${login}/`) || ref.startsWith(`data/${login}/`));
+  return open.data.flatMap((pull) => {
+    const ref = (pull as { head?: { ref?: unknown } }).head?.ref;
+    return ours(ref) ? [ref] : [];
+  });
+}
+
+/** A refusal when `login` has as many proposals open as one may and `branch` is not one of them. */
+async function overLimit(gh: GitHub, login: string, branch: string): Promise<SubmitResult | null> {
+  const open = await openBranchesOf(gh, login);
+  if (open.includes(branch) || open.length < OPEN_PROPOSALS) return null;
+  return refused(
+    429,
+    'too many open',
+    `you have ${open.length} changes proposed and open already; wait for one to be merged or closed`,
+  );
+}
+
+/**
+ * A pull request into main that carries a request for CI to apply. A delete or promote asked again
+ * while its pull request is open is answered with it, unchanged: CI has applied the request there,
+ * and the same one again it would refuse.
+ */
 async function requestPull(
   gh: GitHub,
   request: LibraryRequest,
@@ -85,6 +122,10 @@ async function requestPull(
   what: string,
 ): Promise<SubmitResult> {
   const branch = `library/${login}/${request.action}/${request.id}`;
+  if (request.action !== 'change') {
+    const open = await openPull(gh, MAIN, branch);
+    if (open) return { status: 200, answer: { url: open, reused: true } };
+  }
   const changes: FileChange[] = [[LIBRARY_REQUEST, requestText(request)]];
   const { url, reused } = await openOrUpdate(gh, {
     base: MAIN,
@@ -152,6 +193,8 @@ export function propose(
   return talking(async () => {
     if (target.kind === 'bundled') {
       if (!BUNDLED_IDS.includes(id)) return notBundled(id);
+      const limited = await overLimit(gh, login, `library/${login}/change/${id}`);
+      if (limited) return limited;
       return requestPull(
         gh,
         { action: 'change', id, layout: doc, by: login },
@@ -163,6 +206,8 @@ export function propose(
     if (!(await exists(gh, communityFile(id), SUBMIT_BASE))) {
       return refused(404, 'not found', `no community layout has the id "${id}"`);
     }
+    const limited = await overLimit(gh, login, `data/${login}/change/${id}`);
+    if (limited) return limited;
     return dataPull(
       gh,
       [communityFile(id), text(doc)],

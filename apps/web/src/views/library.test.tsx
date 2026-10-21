@@ -1343,6 +1343,20 @@ describe('changes proposed from this browser', () => {
     expect(badge.closest('article')).toBe(listed('Plain')?.closest('article'));
   });
 
+  it('go with their copy when it is deleted', async () => {
+    const user = userEvent.setup();
+    const storage = await withProposal('open');
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await screen.findByRole('link', { name: 'proposed' });
+    await user.click(
+      within(listed('Plain')?.closest('article') as HTMLElement).getByRole('button', {
+        name: 'Delete Plain',
+      }),
+    );
+    await waitFor(async () => expect(await storage.list('proposals')).toEqual([]));
+    expect(await storage.list('layouts')).toEqual([]);
+  });
+
   it('go with their copy once merged, and leave it an ordinary custom layout once closed', async () => {
     const merged = await withProposal('merged');
     expect(await screen.findByText(/Your change to Plain was accepted/)).toBeInTheDocument();

@@ -10,8 +10,14 @@ export interface CopyName {
   overwrite?: string;
 }
 
-/** How proposing went: as a submission does, or a custom layout has the copy's name already. */
-export type ProposeOutcome = SubmitOutcome | { kind: 'name-taken'; taken: TakenLayout };
+/**
+ * How proposing went: as a submission does; or a custom layout has the copy's name already; or the
+ * copy could not be saved, so nothing was.
+ */
+export type ProposeOutcome =
+  | SubmitOutcome
+  | { kind: 'name-taken'; taken: TakenLayout }
+  | { kind: 'unsaved'; error: string };
 
 type Step = { kind: 'choose' } | { kind: 'sending' } | ProposeOutcome;
 
@@ -177,7 +183,7 @@ function Body({ step, login }: { step: Step; login: string | null }) {
           <a className="link" href={step.url} target="_blank" rel="noopener noreferrer">
             {step.url}
           </a>
-          . Your copy stays in your layouts until it is merged or closed.
+          . Your copy stays in your layouts; once it is merged, the Library has it instead.
         </p>
       );
     case 'signed-out':
@@ -191,6 +197,12 @@ function Body({ step, login }: { step: Step; login: string | null }) {
       return (
         <p className="text-sm" role="alert">
           Nothing was proposed: {step.reason}.
+        </p>
+      );
+    case 'unsaved':
+      return (
+        <p className="text-sm" role="alert">
+          Nothing was saved or proposed: {step.error}.
         </p>
       );
     case 'failed':

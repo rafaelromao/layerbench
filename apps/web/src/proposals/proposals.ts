@@ -15,8 +15,8 @@ export interface Proposal {
   name: string;
   /** The layout the change is to. */
   target: { kind: 'bundled' | 'community'; id: string };
-  /** The pull request, on github.com. */
-  url: string;
+  /** The pull request, on github.com; null until one is open, the copy saved but not yet sent. */
+  url: string | null;
 }
 
 const PULL = /^https:\/\/github\.com\/rafaelromao\/layerbench\/pull\/(\d+)$/;
@@ -25,7 +25,8 @@ const PULL = /^https:\/\/github\.com\/rafaelromao\/layerbench\/pull\/(\d+)$/;
 export function readProposal(doc: unknown): Proposal | null {
   if (!doc || typeof doc !== 'object') return null;
   const { name, target, url } = doc as Record<string, unknown>;
-  if (typeof name !== 'string' || typeof url !== 'string' || !PULL.test(url)) return null;
+  if (typeof name !== 'string') return null;
+  if (url !== null && (typeof url !== 'string' || !PULL.test(url))) return null;
   if (!target || typeof target !== 'object') return null;
   const { kind, id } = target as Record<string, unknown>;
   if ((kind !== 'bundled' && kind !== 'community') || typeof id !== 'string') return null;
@@ -48,6 +49,16 @@ export async function recordProposal(
   await storage.put('proposals', id, proposal as unknown as JsonObject, {
     expectedSha: current?.meta.sha ?? null,
   });
+}
+
+/**
+ * The proposal kept beside the custom layout `id` forgotten, if there is one: the copy is deleted,
+ * or the layout saved there is no copy of it. Whether there was one.
+ */
+export async function forgetProposal(storage: StorageAdapter, id: string): Promise<boolean> {
+  if (!(await storage.get('proposals', id))) return false;
+  await storage.delete('proposals', id);
+  return true;
 }
 
 /** The proposal kept beside the custom layout `id`, if it is one. */
@@ -88,7 +99,12 @@ export async function settleProposals(
   const declined: string[] = [];
   for (const entry of await storage.list('proposals')) {
     const proposal = await proposalOf(storage, entry.id);
-    if (!proposal) continue;
+    if (!proposal?.url) continue;
+    // Its copy deleted, there is nothing left to settle.
+    if (!(await storage.get('layouts', entry.id))) {
+      await storage.delete('proposals', entry.id);
+      continue;
+    }
     const now = await state(proposal.url);
     if (now === 'merged') {
       await storage.delete('layouts', entry.id);
@@ -110,10 +126,10 @@ export type Followed =
 
 /**
  * After the custom layout `from` is saved again, as `to` (another id once renamed): the proposal
- * kept beside it, if any, follows. Its pull request still open, or unread, the copy is sent again
- * and the proposal moves to `to`, with the pull request GitHub answers with, which is a new one
- * when the old was closed meanwhile. Merged or closed, the proposal is settled instead, and the copy
- * is an ordinary custom layout, kept as just saved.
+ * kept beside it, if any, follows. Not sent yet, or its pull request still open or unread, the
+ * copy is sent again and the proposal moves to `to`, with the pull request GitHub answers with,
+ * which is a new one when the old was closed meanwhile. Merged or closed, the proposal is settled
+ * instead, and the copy is an ordinary custom layout, kept as just saved.
  */
 export async function followProposal(
   storage: StorageAdapter,
@@ -124,7 +140,8 @@ export async function followProposal(
 ): Promise<Followed> {
   const proposal = await proposalOf(storage, from);
   if (!proposal) return { kind: 'none' };
-  const now = await state(proposal.url);
+  // One not sent yet, or whose send failed, is sent now.
+  const now = proposal.url ? await state(proposal.url) : 'unknown';
   if (now === 'merged' || now === 'closed') {
     await storage.delete('proposals', from);
     return { kind: 'done', proposal, state: now };

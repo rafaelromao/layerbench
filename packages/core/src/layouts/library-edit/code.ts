@@ -1,10 +1,10 @@
-import { LibraryRequestRefused } from './edits.js';
+import { LibraryRequestRefused } from './request.js';
 
 /**
- * Text edits on the files the layouts written in code live in, `classic.ts` and `small.ts`, as
- * Biome formats them: a definition is an object in its list, opening on a line `  {` and closing on
- * one `  },`, with its `id` on a line of its own; and every top-level statement starts a line. A
- * definition that is not written so is refused, not guessed at.
+ * Changes to the text of the files the layouts written in code live in, `classic.ts` and
+ * `small.ts`, as Biome formats them: a definition is an object in its list, opening on a line `  {`
+ * and closing on one `  },`, with its `id` on a line of its own; and every top-level statement
+ * starts a line. A definition that is not written so is refused, not guessed at.
  */
 
 /**

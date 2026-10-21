@@ -52,7 +52,7 @@ import {
 } from '../engine/use-summaries.js';
 import { HELP } from '../guide/help.js';
 import { openLayout } from '../layout-session/open.js';
-import { proposalOf, settleProposals } from '../proposals/proposals.js';
+import { forgetProposal, proposalOf, settleProposals } from '../proposals/proposals.js';
 import { useRememberSelection } from '../state/selection.js';
 import { useSession } from '../state/session.js';
 import { toast } from '../state/toasts.js';
@@ -922,11 +922,13 @@ export function LibraryView() {
         await storage.delete('layouts', id);
         toast.info(`Deleted ${name}`);
         custom.refresh();
+        // A change proposed from it goes with it: no layout saved there later inherits it.
+        if (await forgetProposal(storage, id).catch(() => false)) proposals.refresh();
       } catch (e) {
         toast.error(`Delete failed: ${e instanceof Error ? e.message : String(e)}`);
       }
     },
-    [storage, custom],
+    [storage, custom, proposals],
   );
 
   return (

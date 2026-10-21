@@ -73,7 +73,7 @@ and Accents layers, plus Extras on a board that needs it, but for Magic Romak, w
 Numbers and Symbols, as its author's keymap has. The Standard and Thumb Alpha ones share their main
 thumbs and base-layer symbols, so that they compare on their letters (`withStandardThumbs` in
 `standard.ts`): the four inner thumbs hold Shift, Numbers, Symbols and Shift and tap Repeat, space,
-a thumb letter or nothing, and Accents, and no symbol stays on the base layer but `'` `,` `.` `;`.
+a thumb alpha or nothing, and Accents, and no symbol stays on the base layer but `'` `,` `.` `;`.
 The Special ones keep every key they had and reach Accents on one combo (`withDefaultLayers` in
 `templates.ts`). They hold home row mods, Gui, Ctrl, Alt and Shift from the left pinky in and
 mirrored on the right, each key still typing what it did (`withHomeRowMods` in `templates.ts`), but
@@ -86,15 +86,6 @@ them as a document: a custom layout, unchanged but for its home row mods, added 
 Merging the pull request is the approval, and the deploy that follows puts it in everyone's Library.
 A layout can also join with no deploy, as a community layout, by **Submit** in the app
 ([below](#community-layouts)).
-
-A change to a bundled layout can be proposed from the app too: **Save** on one offers **Propose
-change**, and the sign-in Worker opens, as the GitHub App, a pull request into main from
-`library/<login>/change/<id>` that carries the layout in `.library/request.json`. The
-`library-edit` workflow applies it on that branch (`pnpm library-edit`; a layout written in code
-becomes a document, `packages/core/src/layouts/library-edit/`), runs `pnpm languages` and
-`pnpm goldens`, and pushes the result as the App, so CI checks what would be merged. The workflow
-needs the repository variable `LAYERBENCH_APP_ID` and the secret `LAYERBENCH_APP_PRIVATE_KEY`, the
-App's id and private key.
 
 1. In the app, give the layout its name, its author, and in Settings, if it has one, its link to
    where it comes from: the author's firmware, keymap or page. Make each home row finger key of its
@@ -118,6 +109,16 @@ App's id and private key.
    whole of CI, and writes a summary on its run's page for the review: each new or changed layout
    with its link, a link that opens it in the app as it would be bundled, and its Effort and SFB
    on the texts of its languages, placed among the bundled layouts as the Library ranks them.
+
+A change to a bundled layout can be proposed from the app too: **Save** on one offers **Propose
+change**, and the sign-in Worker opens, as the GitHub App, a pull request into main from
+`library/<login>/change/<id>` that carries the layout in `.library/request.json`. The
+`library-edit` workflow applies it on that branch (`pnpm library-edit`; a layout written in code
+becomes a document, `packages/core/src/layouts/library-edit/`), runs `pnpm languages` and
+`pnpm goldens`, and pushes the result as the App, so CI checks what would be merged; CI fails while
+a request is still on a branch. What is pushed to the branch after that is left as it is. The
+workflow needs the repository variable `LAYERBENCH_APP_ID` and the secret
+`LAYERBENCH_APP_PRIVATE_KEY`, the App's id and private key.
 
 ## Community layouts
 

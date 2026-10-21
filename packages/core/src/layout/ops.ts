@@ -268,14 +268,16 @@ export function changeLayerId(layout: Layout, from: string, to: string): Layout 
         list.map((a) => ({
           ...a,
           ...(a.from !== undefined && { from: layer(a.from) }),
-          via: a.via.replace(new RegExp(`^key:${from}/`), `key:${to}/`),
+          via: a.via.startsWith(`key:${from}/`)
+            ? `key:${to}/${a.via.slice(`key:${from}/`.length)}`
+            : a.via,
         })),
       ]),
     );
   }
   if (layout.typingPaths) {
     next.typingPaths = mapValues(layout.typingPaths, (entries) =>
-      entries.map((e) => ({ ...e, producer: e.producer.replace(`:${from}/`, `:${to}/`) })),
+      entries.map((e) => ({ ...e, producer: e.producer.replaceAll(`:${from}/`, `:${to}/`) })),
     );
   }
   const f = layout.features;

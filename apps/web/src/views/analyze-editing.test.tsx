@@ -128,9 +128,10 @@ const PULL = 'https://github.com/rafaelromao/layerbench/pull/100';
 
 /**
  * The sign-in server and GitHub, stood in for: each change proposed is kept and answered with
- * `PULL`, whose state on GitHub is `pull.state`. Signed in as `you`.
+ * `PULL`, but for the first `failures`, which GitHub could not be reached for; its state on GitHub
+ * is `pull.state`. Signed in as `you`.
  */
-async function proposing(): Promise<{
+async function proposing(failures = 0): Promise<{
   sent: Record<string, unknown>[];
   pull: { state: 'open' | 'closed' };
 }> {
@@ -147,6 +148,7 @@ async function proposing(): Promise<{
     const url = String(input);
     if (url.endsWith('/api/auth/propose')) {
       sent.push(JSON.parse(String(init?.body)));
+      if (sent.length <= failures) return reply({ error: 'GitHub could not be reached' }, 502);
       return reply({ url: PULL }, 201);
     }
     if (url.includes('/api/auth/')) {
@@ -418,6 +420,47 @@ describe('Edit', () => {
       expect(sent).toHaveLength(2);
       expect(sent[1]).toMatchObject({ target: { kind: 'bundled', id: 'colemak' } });
       expect(JSON.stringify(sent[1].layout)).toContain('ç');
+    } finally {
+      vi.unstubAllGlobals();
+      useGitHubSession.setState({ status: 'unknown', login: null, maintainer: false });
+    }
+  }, 60_000);
+
+  it('proposes on the next save what could not be sent, and never a layout naming no author', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const { sent } = await proposing(1);
+    try {
+      renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000', { storage });
+      await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+      await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+      const unsigned = await screen.findByRole('dialog', { name: 'Save Qwerty' });
+      await user.click(within(unsigned).getByRole('button', { name: 'Propose change' }));
+      expect(await within(unsigned).findByRole('alert')).toHaveTextContent(
+        'Nothing was proposed: it names no author; give it one in Settings first.',
+      );
+      expect(sent).toEqual([]);
+      expect(await storage.list('layouts')).toEqual([]);
+      await user.click(within(unsigned).getByRole('button', { name: 'Close' }));
+
+      await user.selectOptions(within(bar()).getByRole('combobox', { name: 'Layout' }), 'colemak');
+      await waitFor(() => expect(within(bar()).getByLabelText('Name')).toHaveValue('Colemak'));
+      await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+      const choice = await screen.findByRole('dialog', { name: 'Save Colemak' });
+      await user.click(within(choice).getByRole('button', { name: 'Propose change' }));
+      expect(await within(choice).findByRole('alert')).toHaveTextContent(
+        'It could not be proposed: GitHub could not be reached.',
+      );
+      expect(await proposalOf(storage, 'colemak')).toMatchObject({ url: null });
+      await user.click(within(choice).getByRole('button', { name: 'Close' }));
+
+      // The copy's next save sends it, as the dialog said.
+      await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+      expect(
+        await screen.findByText('Your proposed change to Colemak has this version'),
+      ).toBeInTheDocument();
+      expect(sent).toHaveLength(2);
+      expect(await proposalOf(storage, 'colemak')).toMatchObject({ url: PULL });
     } finally {
       vi.unstubAllGlobals();
       useGitHubSession.setState({ status: 'unknown', login: null, maintainer: false });

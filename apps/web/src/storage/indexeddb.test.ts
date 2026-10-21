@@ -159,3 +159,24 @@ describe('custom documents', () => {
     ]);
   });
 });
+
+describe('the database, with the app open in other tabs', () => {
+  it('lets the database go when another tab asks for a newer version', async () => {
+    const name = `layerbench-tabs-${++counter}`;
+    await new IndexedDbAdapter(name).list('layouts');
+    // Opening it newer would wait for ever were it not let go.
+    const newer = await openDB(name, 99);
+    expect(newer.version).toBe(99);
+    newer.close();
+  });
+
+  it('says so while a tab of an older version keeps it, and opens once that tab lets it go', async () => {
+    const name = `layerbench-tabs-${++counter}`;
+    const older = await openDB(name, 1);
+    const blocked = vi.fn();
+    const listing = new IndexedDbAdapter(name, blocked).list('layouts');
+    await vi.waitFor(() => expect(blocked).toHaveBeenCalled());
+    older.close();
+    expect(await listing).toEqual([]);
+  });
+});
