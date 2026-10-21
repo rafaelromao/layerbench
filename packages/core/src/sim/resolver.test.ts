@@ -578,6 +578,37 @@ describe('a capital with home row mods and no Shift key of its own', () => {
     expect(t.keys[0]).toBe('RHI');
   });
 
+  it('holds a Shift thumb first, but none on the hand whose thumb types the letter', () => {
+    const thumbs = withHomeRowMods({
+      ...layout,
+      keys: { space: 'R0' },
+      layers: [
+        {
+          ...layout.layers[0],
+          bindings: {
+            ...layout.layers[0].bindings,
+            L0: kp('r'),
+            L1: {
+              kind: 'hold_tap',
+              tap: { kind: 'key_repeat' },
+              hold: { kind: 'mod', mod: 'LSHIFT' },
+            },
+            R0: kp(' '),
+          },
+        },
+      ],
+    });
+    const held = (t: ReturnType<typeof trace>) =>
+      t.steps.filter((s) => s.kind === 'hold_press').map((s) => s.key);
+    const t = trace(thumbs, 'T', model);
+    expect(t).toMatchObject({ out: 'T', keys: ['L1', 'LHI'] });
+    expect(held(t)).toEqual(['L1']);
+    // The left thumb types the letter, so it holds nothing.
+    const r = trace(thumbs, 'R', model);
+    expect(r).toMatchObject({ out: 'R', keys: ['RHI', 'L0'] });
+    expect(held(r)).toEqual(['RHI']);
+  });
+
   it("holds no Shift on a chord's own keys when they are on both hands", () => {
     const across: Layout = {
       ...layout,
@@ -673,6 +704,49 @@ describe('a capital on the layer its Shift key taps for', () => {
     expect(trace(thumbs, 'E', model)).toMatchObject({ out: 'E', keys: ['R1', 'RHM'] });
   });
 
+  it('holds the other Shift thumb when the thumb with the Shift key types the letter', () => {
+    const thumbLetter = board();
+    const t = trace(
+      {
+        ...thumbLetter,
+        layers: [
+          {
+            ...thumbLetter.layers[0],
+            bindings: { ...thumbLetter.layers[0].bindings, R0: kp('r') },
+          },
+          ...thumbLetter.layers.slice(1),
+        ],
+      },
+      'R',
+      model,
+    );
+    expect(t).toMatchObject({ out: 'R', keys: ['L1', 'R0'] });
+    expect(held(t)).toEqual(['L1']);
+  });
+
+  it('holds no Shift on another thumb of the hand that taps for the layer', () => {
+    // R1 only taps Accents, and R2 beside it is the Shift key: the right thumb cannot do both.
+    const threeThumbs: Layout = {
+      ...board(),
+      geometry: { preset: '3x5+3' },
+      keys: { space: 'L0', shift: { key: 'R2', kind: 'hold' } },
+      layers: [
+        {
+          id: 'base',
+          bindings: {
+            ...board().layers[0].bindings,
+            R1: { kind: 'sl', layer: 'accents' },
+            R2: { kind: 'hold_tap', tap: { kind: 'key_repeat' }, hold: shift },
+          },
+        },
+        ...board().layers.slice(1),
+      ],
+    };
+    const t = trace(threeThumbs, 'É', model);
+    expect(t).toMatchObject({ out: 'É', keys: ['L1', 'R1', 'RHM'] });
+    expect(held(t)).toEqual(['L1']);
+  });
+
   it("holds the other hand's home row Shift when no other thumb holds Shift", () => {
     const t = trace(withHomeRowMods(board(kp('x'))), 'É', model);
     expect(t.out).toBe('É');
@@ -694,6 +768,11 @@ describe('a capital on the layer its Shift key taps for', () => {
         const at = compiled.positions.find((p) => p.id === id);
         return at ? at.members.map((i) => compiled.positions[i].id) : [id];
       };
+      const key = (id: string) => compiled.keys[compiled.keyIndex.get(id) as number];
+      // A thumb holding a key down presses no other key.
+      const blocked = (down: Set<string>, id: string) =>
+        down.has(id) ||
+        (key(id).thumb && [...down].some((d) => key(d).thumb && key(d).hand === key(id).hand));
       for (const c of 'abcdefghijklmnopqrstuvwxyzàáâãäçèéêëìíîïñòóôõöùúûüýÿæœ') {
         const typed = explain(compiled, c, opts)
           .steps.map((s) => s.symbols)
@@ -708,7 +787,7 @@ describe('a capital on the layer its Shift key taps for', () => {
             for (const k of members(s.key)) down.delete(k);
             continue;
           }
-          for (const k of members(s.key)) if (down.has(k)) clashes.push(k);
+          for (const k of members(s.key)) if (blocked(down, k)) clashes.push(k);
           if (s.kind === 'hold_press') for (const k of members(s.key)) down.add(k);
         }
         expect([capital, steps.map((s) => s.symbols).join(''), clashes]).toEqual([

@@ -130,9 +130,10 @@ export class Simulator {
   private readonly modStarts: number[] = [];
   private readonly modPicks: { took: number; of: number }[] = [];
   /**
-   * For the way being tried, the keys it held a modifier on and then pressed while still down, as
-   * the Shift key held for a capital is then tapped for the layer the capital is on: no modifier is
-   * held on them when the way is tried again (`tryProducer`).
+   * For the way being tried, the keys it pressed while a modifier was held on them or on a thumb of
+   * their hand, as the Shift key held for a capital is then tapped for the layer the capital is on:
+   * no modifier is held on them, or on a thumb of their hand, when the way is tried again
+   * (`tryProducer`).
    */
   private readonly modAvoid = new Set<number>();
   private readonly fold: boolean;
@@ -505,9 +506,9 @@ export class Simulator {
   /**
    * Hold one modifier of each choice not already held: the shift key, or a key that holds one,
    * never one of the keys `pressed` for the symbol itself or one the way pressed while it was held
-   * (`modAvoid`), a thumb first, then a finger on the other hand from the keys it is held for
-   * (`heldFor`). A choice of more than one starts from the modifier this try of the way gives it
-   * (`modStarts`).
+   * (`modAvoid`), nor a thumb of a hand whose thumb presses one of them; a thumb first, then a
+   * finger on the other hand from the keys it is held for (`heldFor`). A choice of more than one
+   * starts from the modifier this try of the way gives it (`modStarts`).
    */
   private ensureMods(
     choices: readonly ModChoice[],
@@ -565,7 +566,8 @@ export class Simulator {
   /**
    * Press a key that holds `mod`, none of the keys `pressed` for the symbol or avoided for the way,
    * a thumb first, then a finger on the other hand from the keys it is held for: false when there
-   * is none, and then nothing was pressed.
+   * is none, and then nothing was pressed. A thumb holding it cannot press another key, so no thumb
+   * holds it whose hand has a thumb key among those.
    */
   private holdMod(
     mod: Mod,
@@ -575,10 +577,14 @@ export class Simulator {
     heldFor: ReadonlySet<number>,
   ): boolean {
     const m = this.machine;
+    const { keys, positions } = this.compiled;
     const free = (pos: number) => !pressed.has(pos) && !this.modAvoid.has(pos);
+    const busy = new Set<string>();
+    for (const pos of [...pressed, ...this.modAvoid]) if (keys[pos].thumb) busy.add(keys[pos].hand);
+    const holdable = (pos: number) => free(pos) && !(keys[pos].thumb && busy.has(keys[pos].hand));
     const isShift = mod === 'LSHIFT' || mod === 'RSHIFT';
     const sk = this.compiled.shiftKey;
-    if (isShift && sk && free(sk.key)) {
+    if (isShift && sk && (sk.kind === 'hold' ? holdable(sk.key) : free(sk.key))) {
       const r = m.resolve(sk.key);
       const peeled = peelBinding(m, r.binding, sk.kind === 'hold' ? 'hold' : 'tap');
       if (
@@ -595,14 +601,13 @@ export class Simulator {
       }
       // The shift key is no shift on this layer: another key, or a combo, may give it.
     }
-    // Search active layers for a sticky or held modifier key: a thumb first, as the shift key is
-    // one, then a finger on the other hand from the keys it is held for, as a home row mod is held
-    // by the hand that is not typing.
-    const typing = new Set([...heldFor].map((pos) => this.compiled.positions[pos].hand));
-    const pass = (pos: number) =>
-      this.compiled.keys[pos].thumb ? 0 : typing.has(this.compiled.positions[pos].hand) ? 2 : 1;
+    // Search active layers for a sticky or held modifier key, any modifier: a thumb first, as a
+    // layout's shift key is one, then a finger on the other hand from the keys it is held for, as a
+    // home row mod is held by the hand that is not typing.
+    const typing = new Set([...heldFor].map((pos) => positions[pos].hand));
+    const pass = (pos: number) => (keys[pos].thumb ? 0 : typing.has(positions[pos].hand) ? 2 : 1);
     for (let at = 0; at < 3; at++) {
-      for (let pos = 0; pos < this.compiled.keys.length; pos++) {
+      for (let pos = 0; pos < keys.length; pos++) {
         if (!free(pos) || pass(pos) !== at) continue;
         const r = m.resolve(pos);
         const tapPeeled = peelBinding(m, r.binding, 'tap');
@@ -611,7 +616,7 @@ export class Simulator {
           return true;
         }
         const holdPeeled = peelBinding(m, r.binding, 'hold');
-        if (holdPeeled.kind === 'mod' && holdPeeled.mod === mod) {
+        if (holdable(pos) && holdPeeled.kind === 'mod' && holdPeeled.mod === mod) {
           events.push(...m.perform({ type: 'hold_press', pos }));
           holdsOut.push(pos);
           return true;
@@ -654,8 +659,8 @@ export class Simulator {
    * after the one it was held for, and spoil it, as a sticky Shift held for a layer key shifts the
    * letter on that layer: then the way is tried again with the choice's next modifier. A modifier
    * held on a key the way then presses, as the Shift key that also taps for the capital's layer, is
-   * held on another key when it is tried again, with the same modifiers. Each is tried a bounded
-   * number of times; a way with neither is tried once.
+   * held elsewhere when it is tried again, with the same modifiers. The two retries together are
+   * bounded; a way that needs neither is tried once.
    */
   private tryProducer(p: Producer, token: string): KeyEvent[] | null {
     this.modStarts.length = 0;
@@ -679,17 +684,26 @@ export class Simulator {
     return out;
   }
 
-  /** The keys these presses held a modifier on and then pressed again before letting them go. */
+  /**
+   * The keys these presses pressed while a modifier was held on them, or on another thumb key of
+   * their hand: a thumb holding a modifier presses nothing else.
+   */
   private heldAndPressed(events: readonly KeyEvent[]): number[] {
+    const { keys, positions } = this.compiled;
     const down = new Set<number>();
     const out: number[] = [];
     for (const e of events) {
-      const members = this.compiled.positions[e.pos].members;
+      const members = positions[e.pos].members;
       if (e.kind === 'hold_release') {
         for (const k of members) down.delete(k);
         continue;
       }
-      for (const k of members) if (down.has(k)) out.push(k);
+      for (const k of members) {
+        const thumb = keys[k].thumb;
+        const hand = keys[k].hand;
+        if (down.has(k) || (thumb && [...down].some((d) => keys[d].thumb && keys[d].hand === hand)))
+          out.push(k);
+      }
       if (e.kind === 'hold_press' && e.leafKind === 'mod') for (const k of members) down.add(k);
     }
     return out;
@@ -759,8 +773,8 @@ export class Simulator {
       const emitted = events.map((e) => e.symbols).join('');
       ok = this.fold ? emitted.toLowerCase() === token : emitted === token;
     }
-    // A key held for a modifier is not pressed again before it comes up: a way that pressed one is
-    // tried again with the modifier held elsewhere.
+    // No key is pressed while a modifier is held on it, or on a thumb of its hand: a way that pressed
+    // one is tried again with the modifier held elsewhere.
     if (ok) {
       const clashes = this.heldAndPressed(events);
       for (const pos of clashes) this.modAvoid.add(pos);
