@@ -2,7 +2,9 @@ import {
   BUNDLED_LAYOUTS,
   bundledLayout,
   CLASSIC_LAYOUTS,
+  compileLayout,
   getPreset,
+  homeRowLetters,
   type Layout,
   type Rule,
   toCanonicalJson,
@@ -320,6 +322,12 @@ describe('Ranking layouts', () => {
   const cards = () =>
     [...document.querySelectorAll('article')].filter((a) => a.querySelector('dt')) as HTMLElement[];
 
+  /** The listed layouts' names, in the order of their cards, scored or not. */
+  const cardNames = () =>
+    screen
+      .getAllByRole('article')
+      .map((card) => within(card).getByRole('heading', { level: 3 }).textContent ?? '');
+
   it('shows Effort and SFB on every layout, and sorts by either', async () => {
     const user = userEvent.setup();
     // A small sample keeps twenty-odd analyses quick; the ordering is what is under test.
@@ -507,6 +515,35 @@ describe('Ranking layouts', () => {
     expect(byName.indexOf('My Graphite')).toBeLessThan(byName.length - 1);
   }, 90_000);
 
+  it('sorts by the letters on each layout’s home row, and remembers the choice', async () => {
+    const user = userEvent.setup();
+    // The order needs no score: nothing is scored while the test looks.
+    renderRoute(LIBRARY, { client: scoringOnly([]).client, storage: freshStorage() });
+    const sort = await screen.findByRole('group', { name: 'Sort layouts by' });
+    expect(
+      within(sort)
+        .getAllByRole('radio')
+        .map((r) => r.getAttribute('aria-label')),
+    ).toEqual(['Effort', 'SFB', 'Name', 'Home row']);
+
+    await user.click(within(sort).getByRole('radio', { name: 'Home row' }));
+    const rowOf = new Map(BUNDLED_LAYOUTS.map((l) => [l.name, homeRowLetters(compileLayout(l))]));
+    const names = cardNames();
+    expect(names.length).toBeGreaterThan(10);
+    const row = (name: string) => rowOf.get(name) ?? '';
+    // Every one has letters there, so plain alphabetical order is the whole rule here.
+    expect(names.filter((name) => row(name) === '')).toEqual([]);
+    expect(names).toEqual(
+      [...names].sort((a, b) => row(a).localeCompare(row(b)) || a.localeCompare(b)),
+    );
+    // Bird and Bird 30 share their home row, so the name puts them in order.
+    expect(row('Bird')).toBe(row('Bird 30'));
+    expect(names.indexOf('Bird 30')).toBe(names.indexOf('Bird') + 1);
+    expect(JSON.parse(localStorage.getItem('layerbench:session') ?? '{}').state).toMatchObject({
+      librarySort: 'home_row',
+    });
+  });
+
   it('ranks a layout that cannot write the text’s language after one that can', async () => {
     // Plain has the best effort by far, but no key for ã or ç: it would skip them for free.
     const storage = freshStorage();
@@ -522,6 +559,21 @@ describe('Ranking layouts', () => {
       { timeout: 60_000 },
     );
     expect(cards().at(-1)).toBe(plain());
+  }, 90_000);
+
+  it('sorts by home row with no regard for the language, as by name', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    await savePlain(storage, 'plain');
+    const client = scoringByName((name) => (name === 'Plain' ? 100 : 500));
+    renderRoute('/library?corpus=pt-br-general&sample=10002', { client, storage });
+    await rankingSays(/come last\.$/, 60_000);
+
+    // Plain has Qwerty's home row: it sits next to it, the name breaking the tie, not last.
+    await user.click(screen.getByRole('radio', { name: 'Home row' }));
+    const names = cardNames();
+    expect(names.indexOf('Plain')).toBe(names.indexOf('Qwerty') - 1);
+    expect(await rankingSays(/^Lower is better for both/)).not.toHaveTextContent(/come last/);
   }, 90_000);
 
   /** The same documents, of which none can be read: what a page sees while they are on the way. */
@@ -704,6 +756,25 @@ describe('Ranking layouts', () => {
     });
     expect(valueOn(mine, 'Effort')).toBe(valueOn(plain, 'Effort'));
   }, 90_000);
+});
+
+describe('Rank and filter', () => {
+  it('is a gear that keeps its name, and opens a dialog of that name', async () => {
+    const user = userEvent.setup();
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    const button = await screen.findByRole('button', { name: 'Rank and filter' });
+    expect(button).toHaveTextContent('\u2699\uFE0E');
+    expect(button).not.toHaveTextContent('Rank and filter');
+    expect(button).toHaveAttribute('title', 'Rank and filter');
+
+    await user.click(button);
+    expect(screen.getByRole('dialog', { name: 'Rank and filter' })).toBeInTheDocument();
+  });
+
+  it('leaves Analyze’s Settings in words', async () => {
+    renderRoute('/analyze?layout=qwerty', { storage: freshStorage() });
+    expect(await screen.findByRole('button', { name: 'Settings' })).toHaveTextContent('Settings');
+  });
 });
 
 describe('Choosing which boards are listed', () => {

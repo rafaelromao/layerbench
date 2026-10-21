@@ -13,7 +13,7 @@ badge that places them among other layouts: green is good, red is poor.
 
 ## Effort and SFB
 
-These are the two numbers every layout is shown and sorted by.
+These are the two numbers every layout is shown and ranked by.
 
 **Effort** is [cyanophage's](https://cyanophage.github.io/playground.html) measure. Each key
 position has a cost, from 0 under the index, middle and ring fingers on the home row to 8 in the
@@ -31,9 +31,11 @@ different keys. It is the first measure of the
 
 ### Sorting and comparing
 
-**Library**, where the site opens, sorts every layout by Effort, by SFB or by name, and shows both
-numbers on each card with their badges, all scored on the same sample of the same text.
-**Rank and filter** holds
+**Library**, where the site opens, sorts every layout by Effort, by SFB, by name or by home row,
+and shows both numbers on each card with their badges, all scored on the same sample of the same
+text. By home row, layouts go in the alphabetical order of the letters their base layer types on the
+home row, left to right: Qwerty as `asdfghjkl`, a home-row mod as the letter it taps, and a key that
+types no letter left out. **Rank and filter**, the gear (⚙︎) beside **Sort by**, holds
 what the ranking is made with, and **Boards**, which lists only the layouts on the boards you tick, so you can keep to the keyboards you own; the layouts on the others are not scored at
 all. Your custom layouts, the ones you keep, are
 ranked in the same list as the ones that come with the app, marked *custom*; untick **Custom
@@ -155,7 +157,7 @@ punctuation, Spanish `¿ ¡` say, is kept in any count.
 
 ### The text itself
 
-**Corpus** lists the texts that come with the app, news in English, Brazilian Portuguese, Spanish,
+**Corpus** lists the texts that come with the app, news in English, Portuguese, Spanish,
 French, Italian and German, each with where it came from, and opens on English. Every list of
 texts is in the same order: English first, then the rest by name. Your own text can be pasted or
 uploaded there and analyzed like any other, and **Save to library** keeps it:

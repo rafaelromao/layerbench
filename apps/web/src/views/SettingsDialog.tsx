@@ -28,17 +28,28 @@ export function settingsSummary(
   return parts.join(' · ');
 }
 
+/** The gear a settings button shows in place of its words. */
+function Gear({ className = '' }: { className?: string }) {
+  return (
+    <span className={`text-xl leading-none ${className}`} aria-hidden="true">
+      {/* Text presentation, so no phone draws it as a coloured emoji. */}
+      {'\u2699\uFE0E'}
+    </span>
+  );
+}
+
 /**
  * The choices behind a view's numbers, in a dialog of their own so the bar keeps to the layouts:
  * a button, and beside it a line that says what is chosen, so nothing is hidden by being tucked
  * away. Analyze and Compare call it Settings; the Library, which filters with it too, Rank and
- * filter, and says what is left out on a line of its own.
+ * filter, shows it as a gear, and says what is left out on a line of its own.
  */
 export function SettingsDialog({
   title = 'Settings',
   buttonLabel = title,
   summary,
   compact = false,
+  icon = false,
   children,
 }: {
   /** The dialog's heading. */
@@ -48,25 +59,27 @@ export function SettingsDialog({
   summary?: string;
   /** On a phone, a gear and no summary, for a bar that must keep to one line there. */
   compact?: boolean;
+  /** A gear at every width, its words left to its name and tooltip. */
+  icon?: boolean;
   children: ReactNode;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const heading = useId();
+  const square = icon ? 'btn-square' : compact ? 'max-sm:btn-square' : '';
   return (
     <div className="flex min-w-0 items-center gap-2">
       <button
         type="button"
         aria-label={buttonLabel}
         title={buttonLabel}
-        className={`btn btn-sm shrink-0 ${compact ? 'max-sm:btn-square' : ''}`}
+        className={`btn btn-sm shrink-0 ${square}`}
         onClick={() => dialog.current?.showModal()}
       >
-        {compact ? (
+        {icon ? (
+          <Gear />
+        ) : compact ? (
           <>
-            <span className="sm:hidden text-xl leading-none" aria-hidden="true">
-              {/* Text presentation, so no phone draws it as a coloured emoji. */}
-              {'\u2699\uFE0E'}
-            </span>
+            <Gear className="sm:hidden" />
             <span className="max-sm:hidden">{buttonLabel}</span>
           </>
         ) : (

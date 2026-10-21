@@ -216,20 +216,35 @@ export function useSummaries(
   return { summaries: shown.summaries, pending };
 }
 
-export type SortKey = 'effort' | 'sfb' | 'name';
+export type SortKey = 'effort' | 'sfb' | 'name' | 'home_row';
+
+/** Whether a sort goes by a number, as Effort and SFB do, rather than by letters. */
+export function sortsByMetric(key: SortKey): key is 'effort' | 'sfb' {
+  return key === 'effort' || key === 'sfb';
+}
+
+/** A layout as it is sorted: its score's key, its name, and the letters on its home row. */
+export interface Sortable {
+  key: string;
+  name: string;
+  /** Missing while the layout is still being read. */
+  homeRow?: string;
+}
 
 /**
  * Lower is better for both metrics; a layout without a number, or not scored yet, goes last. Layouts
  * in `behind` — those missing letters the text's language cannot be written without — rank after
  * every other, each group in its own order: a layout skipping `ç` is spared what it costs to type.
+ * By home row, the letters there go in alphabetical order, as names do, and `behind` is not held
+ * back; a layout with no letter there, or not read yet, goes last. Ties go by name.
  */
 export function compareBy(
   key: SortKey,
   summaries: Map<string, LayoutSummary>,
   behind: ReadonlySet<string> = new Set(),
-): (a: { key: string; name: string }, b: { key: string; name: string }) => number {
+): (a: Sortable, b: Sortable) => number {
   return (a, b) => {
-    if (key !== 'name') {
+    if (sortsByMetric(key)) {
       const group = Number(behind.has(a.key)) - Number(behind.has(b.key));
       if (group !== 0) return group;
       const va = summaries.get(a.key)?.[key] ?? null;
@@ -238,6 +253,15 @@ export function compareBy(
         if (va === null) return 1;
         if (vb === null) return -1;
         return va - vb;
+      }
+    } else if (key === 'home_row') {
+      const ra = a.homeRow || null;
+      const rb = b.homeRow || null;
+      if (ra !== rb) {
+        if (ra === null) return 1;
+        if (rb === null) return -1;
+        const order = ra.localeCompare(rb);
+        if (order !== 0) return order;
       }
     }
     return a.name.localeCompare(b.name);
