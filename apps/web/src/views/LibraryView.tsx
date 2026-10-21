@@ -878,7 +878,7 @@ export function LibraryView() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <SettingsDialog title="Rank and filter">
+        <SettingsDialog title="Rank and filter" icon>
           <RankFilters
             params={params}
             onChange={setParams}

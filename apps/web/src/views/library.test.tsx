@@ -750,6 +750,24 @@ describe('Ranking layouts', () => {
   }, 90_000);
 });
 
+describe('Rank and filter', () => {
+  it('is a gear that keeps its name, and opens a dialog of that name', async () => {
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    const button = await screen.findByRole('button', { name: 'Rank and filter' });
+    expect(button).toHaveTextContent('⚙︎');
+    expect(button).not.toHaveTextContent('Rank and filter');
+    expect(button).toHaveAttribute('title', 'Rank and filter');
+
+    await userEvent.click(button);
+    expect(screen.getByRole('dialog', { name: 'Rank and filter' })).toBeInTheDocument();
+  });
+
+  it('leaves Analyze’s Settings in words', async () => {
+    renderRoute('/analyze?layout=qwerty', { storage: freshStorage() });
+    expect(await screen.findByRole('button', { name: 'Settings' })).toHaveTextContent('Settings');
+  });
+});
+
 describe('Choosing which boards are listed', () => {
   it('lists only the layouts on the boards chosen, and remembers the choice', async () => {
     const user = userEvent.setup();
