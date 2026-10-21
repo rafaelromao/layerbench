@@ -156,6 +156,27 @@ describe('saving the copy of a proposal again', () => {
     expect(await proposalOf(storage, 'colemak')).toEqual({ ...COLEMAK, url: NEW });
   });
 
+  it('is done with one never sent once the server refuses it, and keeps one sent', async () => {
+    const { storage } = await withColemak();
+    const refuse = async () => ({
+      kind: 'refused' as const,
+      reason: 'the layout does not compile',
+    });
+    // Sent before, its pull request open: a refused update leaves it as it was.
+    expect(
+      await followProposal(storage, 'colemak', 'colemak', refuse, async () => 'open'),
+    ).toMatchObject({ kind: 'sent' });
+    expect(await proposalOf(storage, 'colemak')).toEqual(COLEMAK);
+    // Never sent: refused, it would be refused again, and the copy is one's own.
+    await recordProposal(storage, 'colemak', { ...COLEMAK, url: null });
+    expect(await followProposal(storage, 'colemak', 'colemak', refuse)).toEqual({
+      kind: 'refused',
+      proposal: { ...COLEMAK, url: null },
+      reason: 'the layout does not compile',
+    });
+    expect(await proposalOf(storage, 'colemak')).toBeNull();
+  });
+
   it('is nothing for a custom layout that is not a proposal', async () => {
     const { storage, send } = await withColemak();
     expect(await followProposal(storage, 'breeze', 'breeze', send)).toEqual({ kind: 'none' });

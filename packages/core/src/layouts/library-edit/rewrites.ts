@@ -128,7 +128,7 @@ export function landingRename(html: string, entry: LandingEntry): string {
   const name = escapeHtml(entry.name);
   lines[at] = lines[at].replace(
     /(">)[^<]*( <span>|<\/a>)/,
-    (_, open, close) => `${open}${name}${close}`,
+    (_, open: string, close: string) => `${open}${name}${close}`,
   );
   return lines.join('\n');
 }

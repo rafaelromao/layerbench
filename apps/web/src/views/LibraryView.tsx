@@ -779,6 +779,9 @@ export function LibraryView() {
     settle: (id: string | null) => void;
   } | null>(null);
 
+  // The changes proposed from custom layouts here, each kept beside its copy.
+  const proposals = useCollection('proposals');
+
   /**
    * Save as a custom layout of its own, and say so by the layout's name: the id is only for links.
    * Where another custom layout has the name, it asks first whether to overwrite that one or to
@@ -790,7 +793,7 @@ export function LibraryView() {
       try {
         const { id } = await saver.current(storage, layout, message, opts);
         // A layout made or put in place here is no proposal's copy.
-        await forgetProposal(storage, id).catch(() => false);
+        if (await forgetProposal(storage, id).catch(() => false)) proposals.refresh();
         custom.refresh();
         toast.info(`Saved ${layout.name}`);
         return id;
@@ -806,7 +809,7 @@ export function LibraryView() {
         return null;
       }
     },
-    [storage, custom],
+    [storage, custom, proposals],
   );
 
   /** The custom layout that already goes by a name, if any. */
@@ -840,7 +843,6 @@ export function LibraryView() {
 
   // A change proposed from a custom layout stays with it until its pull request is done: merged,
   // the copy goes, the Library having it; closed, the copy stays a custom layout of its own.
-  const proposals = useCollection('proposals');
   const [proposalUrls, setProposalUrls] = useState<ReadonlyMap<string, string>>(new Map());
   useEffect(() => {
     let live = true;

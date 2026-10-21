@@ -123,6 +123,7 @@ export async function settleProposals(
 export type Followed =
   | { kind: 'none' }
   | { kind: 'done'; proposal: Proposal; state: 'merged' | 'closed' }
+  | { kind: 'refused'; proposal: Proposal; reason: string }
   | { kind: 'sent'; proposal: Proposal; outcome: SubmitOutcome };
 
 /**
@@ -130,7 +131,8 @@ export type Followed =
  * kept beside it, if any, follows. Not sent yet, or its pull request still open or unread, the
  * copy is sent again and the proposal moves to `to`, with the pull request GitHub answers with,
  * which is a new one when the old was closed meanwhile. Merged or closed, the proposal is settled
- * instead, and the copy is an ordinary custom layout, kept as just saved.
+ * instead, and the copy is an ordinary custom layout, kept as just saved; so it is when the copy,
+ * never sent, is refused.
  */
 export async function followProposal(
   storage: StorageAdapter,
@@ -148,6 +150,11 @@ export async function followProposal(
     return { kind: 'done', proposal, state: now };
   }
   const outcome = await send(proposal);
+  // Refused before any pull request was open, it would be refused again: the copy is one's own.
+  if (outcome.kind === 'refused' && proposal.url === null) {
+    await storage.delete('proposals', from);
+    return { kind: 'refused', proposal, reason: outcome.reason };
+  }
   const url = outcome.kind === 'sent' ? outcome.url : proposal.url;
   const followed = { ...proposal, url };
   if (from !== to || url !== proposal.url) {

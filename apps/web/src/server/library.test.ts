@@ -295,6 +295,16 @@ describe('how many changes one person proposes at once', () => {
   it('refuses one more than five open, and takes a new version of one of them', async () => {
     // Bundled layouts a request could never take away, nor those a delete takes on its branch.
     const ids = BUNDLED_IDS.filter((id) => keptInLibrary(id) === null).slice(0, OPEN_PROPOSALS + 1);
+    // More open than one page lists, and a maintainer's delete, which is no proposal.
+    const pull = (head: string) => ({
+      head,
+      base: 'main',
+      html_url: 'https://github.com/rafaelromao/layerbench/pull/1',
+      title: 'Another',
+      body: '',
+    });
+    for (let i = 0; i < 120; i++) repo.pulls.push(pull(`library/someone/change/layout-${i}`));
+    repo.pulls.push(pull(`library/you/delete/${ids[0]}`));
     // A fork's branches named as if they were someone's count for nobody.
     for (const id of ids) {
       repo.pulls.push({

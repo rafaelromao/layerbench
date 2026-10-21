@@ -320,19 +320,14 @@ export function Workbench({
           `Saved ${layout.name}; its copy under the old name could not be removed and is still in the Library`,
         );
       } else toast.info(`Saved ${layout.name}`);
+      // Saved where no copy of a proposal was, as a new custom layout or over another one, what is
+      // there now is no proposal's copy: a proposal kept under that id goes.
+      if (saved.id !== storedAs) await forgetProposal(storage, saved.id).catch(() => false);
       // A change proposed from this layout follows it: its pull request, while open, gets this
-      // version, under the name proposed. A layout only now made a custom one is no proposal's
-      // copy: a proposal under its id was left by a copy deleted, and goes.
-      // Saved over another custom layout, that one's proposal goes with what it held.
-      if (storedAs !== null && saved.id !== storedAs) {
-        await forgetProposal(storage, saved.id).catch(() => false);
-      }
+      // version, under the name proposed.
       const followed =
         storedAs === null
-          ? await forgetProposal(storage, saved.id).then(
-              () => null,
-              () => null,
-            )
+          ? null
           : await followProposal(storage, storedAs, saved.id, (proposal) =>
               proposeChange(
                 proposal.target,
@@ -344,6 +339,10 @@ export function Workbench({
         if (followed.outcome.kind === 'sent')
           toast.info(`Your proposed change to ${to} has this version`);
         else toast.error(`Your proposed change to ${to} was not updated`);
+      } else if (followed?.kind === 'refused') {
+        toast.error(
+          `Your change to ${followed.proposal.name} was not proposed: ${followed.reason}; this copy stays in your layouts`,
+        );
       } else if (followed?.kind === 'done') {
         const to = followed.proposal.name;
         toast.info(
