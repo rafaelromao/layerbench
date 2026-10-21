@@ -30,7 +30,8 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
   letter or nothing, and the right outer one one-shots Accents. Special layouts keep their keys, and
   hold Numbers and Symbols on the inner thumbs too, as Romak does, each still typing what it typed;
   only an inner thumb that is a tap-hold already falls back (`withDefaultLayers`). Accents is the
-  combo `accentsCombo`. A row-stagger board's one space bar holds Numbers: it has no inner thumbs.
+  combo `accentsCombo`. On a row-stagger board, whatever the layout, the one space bar (L0 and R0
+  together) holds Numbers.
 - **A held thumb blocks its hand.** On a layer every way onto which holds a thumb key of one hand
   down (`mo`, `lt`), that hand's thumb keys get no binding: the thumb is busy holding. Numbers and
   Symbols each block the hand holding them, and Extras, both held, every thumb. The held keys

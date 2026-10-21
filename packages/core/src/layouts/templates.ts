@@ -693,17 +693,16 @@ export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
       : (candidates.find(free) ?? candidates[0]);
   if (!symbolsKey) return layout;
 
+  // A key that types nothing just holds the layer; one that types something keeps typing it.
+  const holding = (tap: Binding | undefined, layer: string): Binding =>
+    !tap || tap.kind === 'none' || tap.kind === 'trans'
+      ? { kind: 'mo', layer }
+      : { kind: 'hold_tap', tap, hold: { kind: 'mo', layer } };
   const holdSymbols: Binding = { kind: 'mo', layer: symbols };
   const baseBindings: Record<string, Binding> = {
     ...first.bindings,
-    [numbersKey]: {
-      kind: 'hold_tap',
-      tap: at(numbersKey) ?? { kind: 'none' },
-      hold: { kind: 'mo', layer: numbers },
-    },
-    [symbolsKey]: free(symbolsKey)
-      ? holdSymbols
-      : { kind: 'hold_tap', tap: at(symbolsKey) as Binding, hold: holdSymbols },
+    [numbersKey]: holding(at(numbersKey), numbers),
+    [symbolsKey]: holding(at(symbolsKey), symbols),
   };
 
   // The defaults' thumbs on Numbers and Symbols assume space on L0 and the Symbols thumb on R0:
@@ -735,8 +734,10 @@ export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
       if (spot) bindings[spot] = kp('0');
     }
     if (l.id === symbols) {
-      // What the defaults tap where space would be, on the Numbers thumb, held for Numbers where
-      // there is Extras. With nothing to tap there, the key is the base layer's, which holds it.
+      // The Numbers thumb types what the defaults put where space would be, or space where it
+      // types space, or else what it types on the base layer. Where there is Extras it holds
+      // Numbers here too, so the inner thumbs bring Extras on in either order; where there is not
+      // and it has nothing else to type, it is left to the base layer's key.
       const onSpace = tapOf(defaultSymbols[defaults.spaceKey]);
       const tap =
         onSpace && !(onSpace.kind === 'kp' && onSpace.symbol === ' ')
@@ -744,7 +745,8 @@ export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
           : types(numbersKey, ' ')
             ? kp(' ')
             : undefined;
-      if (tap) bindings[numbersKey] = hasExtras ? tapOrHold(tap, numbers) : tap;
+      if (hasExtras) bindings[numbersKey] = holding(tap ?? at(numbersKey), numbers);
+      else if (tap) bindings[numbersKey] = tap;
       const beside = spareThumb(geometry, numbersKey);
       if (spareLetter && beside) bindings[beside] = spareLetter;
     }

@@ -234,16 +234,16 @@ the rows. In bold, the dead keys:
 vowels with the left hand than with the right, Dvorak say, has Accents mirrored, the vowels on the
 left: what follows an accented vowel is most often a consonant, under the other hand.
 
-**Extras** is there only on a board that lacks some of those outer keys, Magic Romak's 24 keys
-say. It comes on while Numbers and Symbols are both held: both inner thumbs, in either order. It
-takes what has no key elsewhere, the
-pairs first and then the symbols on their own, most used in the texts first, and starts on the
-prime keys: the least effort, the home row first among keys that cost the same. Each pair takes the
-two neighbours in a row that cost least. The keys of Accents the board has no key for follow, each
-on the free key nearest its place on Accents. Extras has no thumb keys to give, both thumbs holding:
-what has no room on its fingers' keys goes on a free thumb of Accents, which comes on for one key
-and so leaves the thumbs free, the thumbs of its own hand first. On a new layout on Magic Romak's
-24 keys that is `^` and `î`, on Accents' right inner and outer thumbs. On a new layout there, the symbols:
+**Extras** is there only on a board that lacks some of those outer keys, Magic Romak's 24 keys say.
+It comes on while Numbers and Symbols are both held: both inner thumbs, in either order. It takes
+what has no key elsewhere, the pairs first and then the symbols on their own, most used in the texts
+first, and starts on the prime keys: the least effort, the home row first among keys that cost the
+same. Each pair takes the two neighbours in a row that cost least. The keys of Accents the board has
+no key for follow, each on the free key nearest its place on Accents. Extras has no thumb keys to
+give, both thumbs holding: what has no room on its fingers' keys goes on a free thumb of Accents,
+which comes on for one key and so leaves the thumbs free, the thumbs of its own hand first. On a new
+layout on Magic Romak's 24 keys that is `^` and `î`, on Accents' right inner and outer thumbs. On a
+new layout there, the symbols:
 
 | Extras | P | R | M | I | | I | M | R | P |
 |---|---|---|---|---|---|---|---|---|---|
@@ -258,21 +258,20 @@ keeps Symbols as its keymap has it, and has no Extras (see below).
 The left inner thumb types space and, held, turns on Numbers. The right inner thumb, held, turns on
 Symbols; held from Numbers, it turns on Extras, or Symbols where there is no Extras. Where there is
 Extras, the left inner thumb held from Symbols turns it on too, so holding both inner thumbs turns
-Extras on whichever goes down first. Accents comes
-on for one key from the base layer, by the outer main thumbs, L1 and R1, pressed together: a combo,
-drawn between them. A board with one thumb a hand presses its two thumbs, and a row-stagger board,
-with one space bar for both, the left ring and middle fingers' home keys, LHR and LHM. On a board
-with all of Accents' 30 main keys, thumbs press none of them, so the thumb combo is never a
-same-finger pair with the accent after it; on a new layout on Magic Romak's 24 keys, `^` and `î`
-are on Accents' right thumbs, R1 among them. A board without those thumbs gets the same layers arranged to fit it,
-and keys beyond the ones the layers use let the layer below show through. A board with no bottom row keeps `1 2 3` on the left home row,
+Extras on whichever goes down first. Accents comes on for one key from the base layer, by the outer
+main thumbs, L1 and R1, pressed together: a combo, drawn between them. A board with one thumb a hand
+presses its two thumbs, and a row-stagger board, with one space bar for both, the left ring and
+middle fingers' home keys, LHR and LHM. On a board with all of Accents' 30 main keys, thumbs press
+none of them, so the thumb combo is never a same-finger pair with the accent after it; on a new
+layout on Magic Romak's 24 keys, `^` and `î` are on Accents' right thumbs, R1 among them. A board
+without those thumbs gets the same layers arranged to fit it, and keys beyond the ones the layers
+use let the layer below show through. A board with no bottom row keeps `1 2 3` on the left home row,
 puts `;` beside `:` where `=` was, and `=` and `ı` on Symbols' left thumbs, the space key, which
 still holds Numbers there, and the one beside it, which the right thumb holding Symbols leaves free:
-no finger key is left for them, so
-space is typed with Symbols released there. It puts on Extras what the bottom rows carried, and fills
-Accents with the dead keys, the letters of their own and the symbols Extras has no room for, on its
-thumbs too; every accented letter there is its accent and the letter. The board shows where
-everything went.
+no finger key is left for them, so space is typed with Symbols released there. It puts on Extras
+what the bottom rows carried, and fills Accents with the dead keys, the letters of their own and the
+symbols Extras has no room for, on its thumbs too; every accented letter there is its accent and the
+letter. The board shows where everything went.
 
 Every layout that comes with the app has them too, but Magic Romak, which has only Numbers and
 Symbols. The Standard and Thumb Alpha ones, Romak among them, also share their main thumbs, the two
@@ -287,8 +286,8 @@ go, and their base layers keep no symbol but `'` `,` `.` `;`: the rest are on Sy
 
 The Special layouts keep every key they have. Like every other layout, they hold Numbers on the left
 inner thumb and Symbols on the right inner one, each still typing what it typed, so Extras is both
-inner thumbs on every layout that has it: Bird and Nordrassil type space on their left outer thumb,
-and their left inner thumb holds Numbers. An inner thumb that is a tap-hold already cannot hold
+inner thumbs on every layout that has it. Bird, Nordrassil and Ben Vallack Piano type space on L1,
+beside the inner thumb, which holds Numbers. An inner thumb that is a tap-hold already cannot hold
 another layer; the key that types space then holds Numbers, and the innermost thumb of the other
 hand with nothing on it Symbols. Accents is the combo on two thumbs, as on a new layout.
 

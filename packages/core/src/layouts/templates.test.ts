@@ -218,6 +218,31 @@ describe('the default layers, board by board', () => {
     expect(t.keys).toEqual(['R0', 'L0', 'RTM']);
   });
 
+  for (const preset of GEOMETRY_PRESET_IDS) {
+    const layout = boardWithDefaults(preset);
+    const extras = layout.layers.find((l) => l.id === 'extras')?.bindings;
+    if (!extras || getGeometryPreset(preset).family === 'rowstagger') continue;
+    it(`${preset}: bring Extras on by holding both inner thumbs, in either order`, () => {
+      // A symbol only Extras has, typed with each layer held first.
+      const [key, binding] = Object.entries(extras).find(([, b]) => b.kind === 'kp') ?? [];
+      const symbol = binding?.kind === 'kp' ? (binding.symbol ?? '') : '';
+      for (const [order, first] of [
+        [['num', 'sym'], 'L0'],
+        [['sym', 'num'], 'R0'],
+      ] as const) {
+        const t = trace(
+          { ...layout, conditionalLayers: [{ if: [...order], then: 'extras' }] },
+          symbol,
+        );
+        expect([order, t.out, t.keys]).toEqual([
+          order,
+          symbol,
+          [first, first === 'L0' ? 'R0' : 'L0', key],
+        ]);
+      }
+    });
+  }
+
   it('give a board with no bottom row Extras for what that row held', () => {
     const d = defaultLayers(getGeometryPreset('1222+2'));
     expect(d.layers.map((l) => l.id)).toEqual(['num', 'sym', 'extras', 'accents']);
@@ -684,11 +709,11 @@ describe('the default layers, layout by layout', () => {
     expect(withExtras.length).toBeGreaterThan(0);
     for (const layout of withExtras) {
       const layer = (id: string) => layout.layers.find((l) => l.id === id)?.bindings ?? {};
-      // On Symbols, L0 holds Numbers: its own binding, or the base layer's where it has none.
-      const onSymbols = layer('sym').L0 ?? layer('sym')['*'];
-      const L0 =
-        !onSymbols || onSymbols.kind === 'trans' ? layer(layout.layers[0].id).L0 : onSymbols;
-      expect([layout.id, heldBy(L0), heldBy(layer('num').R0)]).toEqual([layout.id, 'num', 'sym']);
+      expect([layout.id, heldBy(layer('sym').L0), heldBy(layer('num').R0)]).toEqual([
+        layout.id,
+        'num',
+        'sym',
+      ]);
       expect(layout.conditionalLayers).toContainEqual(EXTRAS_CONDITION);
     }
   });
@@ -736,6 +761,41 @@ describe('the default layers, layout by layout', () => {
     const t = trace(bundledLayout('finch') as Layout, 'ñ');
     expect(t.out).toBe('ñ');
     expect(t.keys).toEqual([ACCENTS_COMBO, 'LHI']);
+  });
+
+  it('hold Symbols on the innermost free thumb where the inner one is a tap-hold already', () => {
+    const geometry = getGeometryPreset('3x5+3');
+    const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
+    const free = geometry.keys.filter((k) => !k.thumb).map((k) => k.id);
+    const letters = Object.fromEntries(BASE_LETTERS.map((c, i) => [free[i], kp(c)]));
+    const ctrlOrRepeat: Binding = {
+      kind: 'hold_tap',
+      tap: { kind: 'key_repeat' },
+      hold: { kind: 'mod', mod: 'RCTRL' },
+    };
+    const layout = withDefaultLayers(
+      {
+        format: 'layerbench/layout@1',
+        name: 'Tap-hold on R0',
+        hostLocale: 'symbols',
+        geometry: { preset: '3x5+3' },
+        keys: { space: 'L0' },
+        layers: [
+          { id: 'base', bindings: { ...letters, L0: space, R0: ctrlOrRepeat, R1: kp('t') } },
+        ],
+      },
+      geometry,
+    );
+    const b = layout.layers[0].bindings;
+    const numbers = layout.layers.find((l) => l.id === 'num')?.bindings ?? {};
+    // Past R0, a tap-hold, and R1, which types `t`, to R2, which types nothing.
+    expect([b.L0, b.R0, b.R1, b.R2]).toEqual([
+      holds('num', space),
+      ctrlOrRepeat,
+      kp('t'),
+      holdSymbols,
+    ]);
+    expect([numbers.R2, numbers.R0]).toEqual([holds('sym', space), kp('0')]);
   });
 
   it('hold Numbers on the left inner thumb when no thumb types space', () => {
