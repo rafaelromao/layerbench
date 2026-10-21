@@ -97,3 +97,48 @@ jobs:
             -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
             commit -q -m "Deploy rafaelromao/layerbench@${GITHUB_SHA}"
           git push origin HEAD:main
+
+  # A community layout promoted into the Library is moved: once the deploy that bundles it is out,
+  # its file goes from the layerbench-data branch, so the Library lists it once. The GitHub App
+  # pushes it (repository variable LAYERBENCH_APP_ID, secret LAYERBENCH_APP_PRIVATE_KEY), so the
+  # branch's index workflow runs on the push; the job token still writes nothing.
+  community-cleanup:
+    needs: deploy
+    if: github.event_name == 'push' && github.repository == 'rafaelromao/layerbench'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: app
+        with:
+          app-id: ${{ vars.LAYERBENCH_APP_ID }}
+          private-key: ${{ secrets.LAYERBENCH_APP_PRIVATE_KEY }}
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v5
+        with:
+          ref: layerbench-data
+          path: data
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm community-cleanup
+        env:
+          COMMUNITY_CLEANUP: ${{ github.workspace }}/data
+      - env:
+          TOKEN: ${{ steps.app.outputs.token }}
+        run: |
+          cd data
+          git add -A community
+          if git diff --cached --quiet; then
+            echo "No community layout was moved into the Library."
+            exit 0
+          fi
+          git -c user.name='github-actions[bot]' \
+            -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -q -m "Community: the layouts rafaelromao/layerbench@${GITHUB_SHA} bundles leave"
+          git push "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:layerbench-data

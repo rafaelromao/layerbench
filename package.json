@@ -23,7 +23,9 @@
     "bench": "BENCH=1 pnpm --filter @layerbench/core run test",
     "goldens": "pnpm --filter @layerbench/core run goldens",
     "generate": "pnpm --filter @layerbench/core run generate",
-    "languages": "pnpm --filter @layerbench/core run languages"
+    "languages": "pnpm --filter @layerbench/core run languages",
+    "library-edit": "pnpm --filter @layerbench/core run library-edit",
+    "community-cleanup": "pnpm --filter @layerbench/core run community-cleanup"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",

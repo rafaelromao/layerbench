@@ -1,0 +1,76 @@
+name: library-edit
+
+# A change to the Library — a bundled layout changed, deleted, or a layout promoted to it — comes as
+# a pull request from a `library/**` branch, which the sign-in server opens as the GitHub App with
+# `.library/request.json` on it. This applies the request, measures the languages and goldens again,
+# checks the result and pushes it as the App, so CI and the layouts workflow run on what the pull
+# request would merge. A branch with no request is left as it is: the App's own push, and any fix
+# pushed by hand after it, change nothing. A request it refuses fails here, writing nothing.
+on:
+  push:
+    branches: ['library/**']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: library-edit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apply:
+    if: github.repository == 'rafaelromao/layerbench'
+    runs-on: ubuntu-latest
+    # `pnpm languages` measures every bundled layout on every language's text: minutes.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - id: request
+        run: |
+          if [ -f .library/request.json ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            # Only what an action and an id can be: the request is the branch's own, not a script's.
+            what=$(jq -r '"\(.action) \(.id)"' .library/request.json | tr -cd '[:alnum:] _-')
+            echo "what=${what}" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+      # No version here: the action reads `packageManager` from package.json.
+      - if: steps.request.outputs.found == 'true'
+        uses: pnpm/action-setup@v4
+      - if: steps.request.outputs.found == 'true'
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - if: steps.request.outputs.found == 'true'
+        run: pnpm install --frozen-lockfile
+      - if: steps.request.outputs.found == 'true'
+        run: pnpm library-edit
+      # Languages first: the golden documents carry them.
+      - if: steps.request.outputs.found == 'true'
+        run: pnpm languages
+      - if: steps.request.outputs.found == 'true'
+        run: pnpm goldens
+      - if: steps.request.outputs.found == 'true'
+        run: pnpm check:fix
+      - if: steps.request.outputs.found == 'true'
+        run: pnpm typecheck && pnpm check
+      - if: steps.request.outputs.found == 'true'
+        uses: actions/create-github-app-token@v2
+        id: app
+        with:
+          app-id: ${{ vars.LAYERBENCH_APP_ID }}
+          private-key: ${{ secrets.LAYERBENCH_APP_PRIVATE_KEY }}
+      - if: steps.request.outputs.found == 'true'
+        env:
+          TOKEN: ${{ steps.app.outputs.token }}
+          WHAT: ${{ steps.request.outputs.what }}
+        run: |
+          git add -A
+          git -c user.name='github-actions[bot]' \
+            -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -q -m "Library: ${WHAT}, applied"
+          git push "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_REF_NAME}"
