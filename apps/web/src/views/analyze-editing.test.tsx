@@ -729,13 +729,17 @@ describe('Edit', () => {
     const quick = keys.getByLabelText('Release as the next key goes down');
     expect(quick).not.toBeChecked();
     await user.click(quick);
-    expect(within(screen.getByRole('group', { name: 'One-shot keys' })).getByLabelText(
-      'Release as the next key goes down',
-    )).toBeChecked();
+    expect(
+      within(screen.getByRole('group', { name: 'One-shot keys' })).getByLabelText(
+        'Release as the next key goes down',
+      ),
+    ).toBeChecked();
     const after = screen.getByLabelText('One-shot keys: release after, in milliseconds');
     await user.clear(after);
     await user.type(after, '1500');
-    expect(screen.getByLabelText('One-shot keys: release after, in milliseconds')).toHaveValue(1500);
+    expect(screen.getByLabelText('One-shot keys: release after, in milliseconds')).toHaveValue(
+      1500,
+    );
   }, 120_000);
 
   it("shows Magic Romak's special features and lets one be turned off", async () => {
