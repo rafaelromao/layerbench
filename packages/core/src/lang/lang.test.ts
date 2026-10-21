@@ -11,16 +11,17 @@ const plainQwerty = () => compileLayout(CLASSIC_LAYOUTS.find((l) => l.id === 'qw
 
 describe('language profiles', () => {
   it('matches an exact tag, then falls back to the base language', () => {
-    expect(languageProfile('pt-BR')?.name).toBe('Português (BR)');
-    expect(languageProfile('pt-PT')?.tag).toBe('pt-BR');
+    expect(languageProfile('pt')?.name).toBe('Português');
+    expect(languageProfile('pt-BR')?.tag).toBe('pt');
+    expect(languageProfile('pt-PT')?.tag).toBe('pt');
     expect(languageProfile('es')?.required).toContain('ñ');
     expect(languageProfile('klingon')).toBeUndefined();
     expect(languageProfile(undefined)).toBeUndefined();
   });
 
   it("holds a layout to the text's languages, then to its own, each once", () => {
-    expect(languagesToJudge('en', ['pt-BR', 'en'])).toEqual(['en', 'pt-BR']);
-    expect(languagesToJudge('pt-BR+en', ['es'])).toEqual(['pt-BR', 'en', 'es']);
+    expect(languagesToJudge('en', ['pt', 'en'])).toEqual(['en', 'pt']);
+    expect(languagesToJudge('pt+en', ['es'])).toEqual(['pt', 'en', 'es']);
     expect(languagesToJudge(undefined, ['fr'])).toEqual(['fr']);
     expect(languagesToJudge('pt', ['pt-BR'])).toEqual(['pt']);
   });
@@ -71,8 +72,8 @@ describe('layout coverage', () => {
   });
 
   it('reports Portuguese as fully covered by Magic Romak and not by Qwerty without accents', () => {
-    expect(layoutLanguageCoverage(magic, 'pt-BR')?.missingRequired).toEqual([]);
-    expect(layoutLanguageCoverage(qwerty, 'pt-BR')?.missingRequired.length).toBeGreaterThan(0);
+    expect(layoutLanguageCoverage(magic, 'pt')?.missingRequired).toEqual([]);
+    expect(layoutLanguageCoverage(qwerty, 'pt')?.missingRequired.length).toBeGreaterThan(0);
   });
 
   it("writes Spanish and Italian through Alpha 2's dead keys, and not French's œ and quotes nor German's ß", () => {

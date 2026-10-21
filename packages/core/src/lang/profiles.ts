@@ -23,9 +23,9 @@ function letters(s: string): string[] {
 
 export const LANGUAGE_PROFILES: Record<string, LanguageProfile> = {
   en: { tag: 'en', name: 'English', required: [] },
-  'pt-BR': {
-    tag: 'pt-BR',
-    name: 'Português (BR)',
+  pt: {
+    tag: 'pt',
+    name: 'Português',
     required: letters('á à ã â ç é ê í ó õ ô ú'),
     optional: letters('ü'),
   },

@@ -46,7 +46,7 @@ describe('performing well in a language', () => {
   });
 
   it('lists a layout’s languages in the order the profiles give them', () => {
-    expect(orderedLanguages(new Set(['de', 'en', 'pt-BR']))).toEqual(['en', 'pt-BR', 'de']);
+    expect(orderedLanguages(new Set(['de', 'en', 'pt']))).toEqual(['en', 'pt', 'de']);
   });
 });
 

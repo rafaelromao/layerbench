@@ -158,7 +158,7 @@ punctuation, Spanish `¿ ¡` say, is kept in any count.
 
 ### The text itself
 
-**Corpus** lists the texts that come with the app, news in English, Brazilian Portuguese, Spanish,
+**Corpus** lists the texts that come with the app, news in English, Portuguese, Spanish,
 French, Italian and German, each with where it came from, and opens on English. Every list of
 texts is in the same order: English first, then the rest by name. Your own text can be pasted or
 uploaded there and analyzed like any other, and **Save to library** keeps it:

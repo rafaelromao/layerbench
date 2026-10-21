@@ -307,7 +307,7 @@ export function CorpusView() {
                     onChange={(e) => setCustomLanguage(e.target.value)}
                   >
                     <option value="en">en</option>
-                    <option value="pt-BR">pt-BR</option>
+                    <option value="pt">pt</option>
                     <option value="es">es</option>
                     <option value="fr">fr</option>
                     <option value="it">it</option>
