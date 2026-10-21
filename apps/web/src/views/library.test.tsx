@@ -553,6 +553,21 @@ describe('Ranking layouts', () => {
     expect(cards().at(-1)).toBe(plain());
   }, 90_000);
 
+  it('sorts by home row with no regard for the language, as by name', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    await savePlain(storage, 'plain');
+    const client = scoringByName((name) => (name === 'Plain' ? 100 : 500));
+    renderRoute('/library?corpus=pt-br-general&sample=10002', { client, storage });
+    await rankingSays(/come last\.$/, 60_000);
+
+    // Plain has Qwerty's home row: it sits next to it, the name breaking the tie, not last.
+    await user.click(screen.getByRole('radio', { name: 'Home row' }));
+    const names = [...document.querySelectorAll('article h3')].map((h) => h.textContent);
+    expect(names.indexOf('Plain')).toBe(names.indexOf('Qwerty') - 1);
+    expect(await rankingSays(/^Lower is better for both/)).not.toHaveTextContent(/come last/);
+  }, 90_000);
+
   /** The same documents, of which none can be read: what a page sees while they are on the way. */
   function stillReading(storage: IndexedDbAdapter): IndexedDbAdapter {
     return new Proxy(storage, {
