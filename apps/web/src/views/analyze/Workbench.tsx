@@ -323,6 +323,10 @@ export function Workbench({
       // A change proposed from this layout follows it: its pull request, while open, gets this
       // version, under the name proposed. A layout only now made a custom one is no proposal's
       // copy: a proposal under its id was left by a copy deleted, and goes.
+      // Saved over another custom layout, that one's proposal goes with what it held.
+      if (storedAs !== null && saved.id !== storedAs) {
+        await forgetProposal(storage, saved.id).catch(() => false);
+      }
       const followed =
         storedAs === null
           ? await forgetProposal(storage, saved.id).then(
@@ -393,6 +397,11 @@ export function Workbench({
       const proposal = { name: layout.name, target: source, url: null };
       await recordProposal(storage, saved.id, proposal);
       const sent = await proposeChange(source, toCanonicalJson({ ...layout, id: source.id }));
+      if (sent.kind === 'refused') {
+        // What the sign-in server refuses it would refuse again: the copy is a layout of one's own.
+        await forgetProposal(storage, saved.id).catch(() => false);
+        return { kind: 'refused', reason: `${sent.reason}. Your copy is saved among your layouts` };
+      }
       if (sent.kind === 'sent') {
         await recordProposal(storage, saved.id, { ...proposal, url: sent.url });
         void customLayouts.refresh();

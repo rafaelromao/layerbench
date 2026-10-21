@@ -6,6 +6,7 @@ import type { Layout } from '../layout/types.js';
 import {
   BUNDLED_LAYOUTS,
   bundledLayout,
+  DEFAULT_LAYOUT_ID,
   DOCUMENT_LAYOUTS,
   documentLayout,
   goldenLayouts,
@@ -87,7 +88,7 @@ describe('bundled layouts’ languages', () => {
 
   it('can be none: a document for no language is written without them, and reads back so', () => {
     // Any layout that names its author, as a document must: the Library always keeps this one.
-    const layout = bundledLayout('magic-romak') as Layout;
+    const layout = bundledLayout(DEFAULT_LAYOUT_ID) as Layout;
     const doc = toCanonicalJson({ ...layout, languages: [] });
     expect(documentLayout(layout.id as string, doc).languages ?? []).toEqual([]);
   });

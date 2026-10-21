@@ -99,12 +99,13 @@ export async function settleProposals(
   const declined: string[] = [];
   for (const entry of await storage.list('proposals')) {
     const proposal = await proposalOf(storage, entry.id);
-    if (!proposal?.url) continue;
-    // Its copy deleted, there is nothing left to settle.
+    if (!proposal) continue;
+    // Its copy deleted, there is nothing left to settle, sent or not.
     if (!(await storage.get('layouts', entry.id))) {
       await storage.delete('proposals', entry.id);
       continue;
     }
+    if (!proposal.url) continue;
     const now = await state(proposal.url);
     if (now === 'merged') {
       await storage.delete('layouts', entry.id);

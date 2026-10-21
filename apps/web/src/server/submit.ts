@@ -39,6 +39,8 @@ export interface SubmitAnswer {
   url?: string;
   /** The submitter's open pull request for this layout was updated rather than a new one opened. */
   reused?: boolean;
+  /** An open pull request asks for this already, and was left as it is. */
+  unchanged?: boolean;
   error?: string;
   /** Why the layout was refused, for the page to show. */
   reason?: string;

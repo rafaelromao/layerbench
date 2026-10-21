@@ -124,7 +124,12 @@ export function landingRename(html: string, entry: LandingEntry): string {
   const lines = html.split('\n');
   const [start, end] = landingList(lines);
   const at = landingLine(lines, entry.id, start, end);
-  lines[at] = lines[at].replace(/(">)[^<]*( <span>|<\/a>)/, `$1${escapeHtml(entry.name)}$2`);
+  // A replacer, so a `$` in the name is the name's, not a pattern.
+  const name = escapeHtml(entry.name);
+  lines[at] = lines[at].replace(
+    /(">)[^<]*( <span>|<\/a>)/,
+    (_, open, close) => `${open}${name}${close}`,
+  );
   return lines.join('\n');
 }
 

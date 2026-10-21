@@ -1260,7 +1260,10 @@ describe("the Library's maintainers", () => {
       const url = String(input);
       if (url.endsWith('/api/auth/maintain')) {
         sent.push(JSON.parse(String(init?.body)));
-        return reply({ url: PULL }, 201);
+        // Asked again, the pull request open for it is left as it is.
+        return sent.length === 1
+          ? reply({ url: PULL }, 201)
+          : reply({ url: PULL, reused: true, unchanged: true });
       }
       if (url.includes('/api/auth/')) {
         return reply({
@@ -1288,6 +1291,14 @@ describe("the Library's maintainers", () => {
       target: { kind: 'custom', id: 'plain' },
       layout: { id: 'plain', name: 'Plain', author: 'Ana' },
     });
+
+    await user.click(within(dialog).getByRole('button', { name: 'Close' }));
+    await user.click(await within(card('Plain')).findByRole('button', { name: 'Promote Plain' }));
+    const again = screen.getByRole('dialog', { name: 'Promote Plain' });
+    await user.click(within(again).getByRole('button', { name: 'Open the pull request' }));
+    expect(await within(again).findByRole('status')).toHaveTextContent(
+      `A pull request asks for this already, and nothing was sent: ${PULL}. Change it there, or close it to ask again.`,
+    );
   });
 
   it('are told why a layout CI would refuse cannot be deleted or promoted, and nothing is sent', async () => {

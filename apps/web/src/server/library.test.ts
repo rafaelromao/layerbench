@@ -48,7 +48,15 @@ const decode = (content: unknown) =>
  */
 interface Repo {
   branches: Map<string, Map<string, string>>;
-  pulls: { head: string; base: string; html_url: string; title: string; body: string }[];
+  pulls: {
+    head: string;
+    base: string;
+    html_url: string;
+    title: string;
+    body: string;
+    /** The repository a fork's pull request comes from. */
+    fork?: string;
+  }[];
   /** The user's permissions, as `GET /repos/{repo}` gives them to their token. */
   push: boolean;
 }
@@ -88,12 +96,15 @@ function github(call: Call): Response {
   if (path === '/pulls' && method === 'GET') {
     const head = url.searchParams.get('head')?.replace(/^rafaelromao:/, '');
     const base = url.searchParams.get('base');
-    // Every one open, as GitHub lists them, when none is asked for by its branch.
-    if (head === undefined)
-      return json(
-        200,
-        repo.pulls.map((p) => ({ ...p, head: { ref: p.head } })),
-      );
+    // Every one open, as GitHub lists them, when none is asked for by its branch: a page of them.
+    if (head === undefined) {
+      const page = Number(url.searchParams.get('page') ?? 1);
+      const listed = repo.pulls.map((p) => ({
+        ...p,
+        head: { ref: p.head, repo: { full_name: p.fork ?? 'rafaelromao/layerbench' } },
+      }));
+      return json(200, listed.slice((page - 1) * 100, page * 100));
+    }
     return json(
       200,
       repo.pulls.filter((p) => p.head === head && p.base === base),
@@ -284,6 +295,18 @@ describe('how many changes one person proposes at once', () => {
   it('refuses one more than five open, and takes a new version of one of them', async () => {
     // Bundled layouts a request could never take away, nor those a delete takes on its branch.
     const ids = BUNDLED_IDS.filter((id) => keptInLibrary(id) === null).slice(0, OPEN_PROPOSALS + 1);
+    // A fork's branches named as if they were someone's count for nobody.
+    for (const id of ids) {
+      repo.pulls.push({
+        head: `library/you/change/${id}-fork`,
+        base: 'main',
+        html_url: 'https://github.com/rafaelromao/layerbench/pull/1',
+        title: 'Not ours',
+        body: '',
+        fork: 'someone/layerbench',
+      });
+    }
+    const forks = repo.pulls.length;
     const propose = (id: string) =>
       ask('propose', { target: { kind: 'bundled', id }, layout: doc(id, `${id} changed`) });
     for (const id of ids.slice(0, OPEN_PROPOSALS)) expect((await propose(id)).status).toBe(201);
@@ -294,7 +317,7 @@ describe('how many changes one person proposes at once', () => {
     ]);
     expect(wrote()).toBe(false);
     expect((await propose(ids[0])).status).toBe(200);
-    expect(repo.pulls).toHaveLength(OPEN_PROPOSALS);
+    expect(repo.pulls).toHaveLength(forks + OPEN_PROPOSALS);
   });
 });
 
@@ -370,7 +393,7 @@ describe("a maintainer's change to the Library", () => {
       action: 'delete',
       target: { kind: 'bundled', id: 'colemak' },
     });
-    expect([again.status, again.answer.reused]).toEqual([200, true]);
+    expect([again.status, again.answer.reused, again.answer.unchanged]).toEqual([200, true, true]);
     expect(fileOn('library/you/delete/colemak', '.library/request.json')).toBeUndefined();
     expect(wrote()).toBe(false);
     expect(repo.pulls).toHaveLength(1);

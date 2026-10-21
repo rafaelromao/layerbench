@@ -84,8 +84,8 @@ LayerBench keeps in it, the sign-in and any work saved only in this browser. In 
 work in GitHub.
 
 **Storage** says where your work is going: secret gists in your account, one for layouts, one for
-rule sets, one for corpora and one for the changes you proposed. Secret gists are unlisted, not private: anyone with a gist's address
-can read it.
+rule sets, one for corpora and one for the changes you proposed. Secret gists are unlisted, not
+private: anyone with a gist's address can read it.
 
 ## Moving what you saved before
 

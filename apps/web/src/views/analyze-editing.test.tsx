@@ -128,10 +128,13 @@ const PULL = 'https://github.com/rafaelromao/layerbench/pull/100';
 
 /**
  * The sign-in server and GitHub, stood in for: each change proposed is kept and answered with
- * `PULL`, but for the first `failures`, which GitHub could not be reached for; its state on GitHub
- * is `pull.state`. Signed in as `you`.
+ * `PULL`, but for the first `failures`, which GitHub could not be reached for, or with `refusal`,
+ * which the server refuses each for; its state on GitHub is `pull.state`. Signed in as `you`.
  */
-async function proposing(failures = 0): Promise<{
+async function proposing(
+  failures = 0,
+  refusal?: string,
+): Promise<{
   sent: Record<string, unknown>[];
   pull: { state: 'open' | 'closed' };
 }> {
@@ -149,6 +152,7 @@ async function proposing(failures = 0): Promise<{
     if (url.endsWith('/api/auth/propose')) {
       sent.push(JSON.parse(String(init?.body)));
       if (sent.length <= failures) return reply({ error: 'GitHub could not be reached' }, 502);
+      if (refusal) return reply({ error: 'not accepted', reason: refusal }, 422);
       return reply({ url: PULL }, 201);
     }
     if (url.includes('/api/auth/')) {
@@ -461,6 +465,29 @@ describe('Edit', () => {
       ).toBeInTheDocument();
       expect(sent).toHaveLength(2);
       expect(await proposalOf(storage, 'colemak')).toMatchObject({ url: PULL });
+    } finally {
+      vi.unstubAllGlobals();
+      useGitHubSession.setState({ status: 'unknown', login: null, maintainer: false });
+    }
+  }, 60_000);
+
+  it('leaves the copy a layout of its own when the server refuses the change, and says so', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const { sent } = await proposing(0, 'the layout does not compile');
+    try {
+      renderRoute('/analyze?layout=colemak&corpus=en-general&sample=20000', { storage });
+      await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+      await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+      const choice = await screen.findByRole('dialog', { name: 'Save Colemak' });
+      await user.click(within(choice).getByRole('button', { name: 'Propose change' }));
+      expect(await within(choice).findByRole('alert')).toHaveTextContent(
+        'Nothing was proposed: the layout does not compile. Your copy is saved among your layouts.',
+      );
+      expect(sent).toHaveLength(1);
+      expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['colemak']);
+      // Refused, it would be refused again: its next save sends nothing.
+      expect(await storage.list('proposals')).toEqual([]);
     } finally {
       vi.unstubAllGlobals();
       useGitHubSession.setState({ status: 'unknown', login: null, maintainer: false });

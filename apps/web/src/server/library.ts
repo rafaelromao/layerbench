@@ -16,6 +16,7 @@ import {
   type FileChange,
   type GitHub,
   GitHubRefused,
+  LIBRARY_REPO,
   openOrUpdate,
   openPull,
 } from './pull-request.js';
@@ -83,19 +84,26 @@ const notBundled = (id: string) =>
  */
 export const OPEN_PROPOSALS = 5;
 
-/** The branches `login` has open pull requests from, of those LayerBench opens. */
+/**
+ * The branches of the changes `login` has proposed with open pull requests: branches of this
+ * repository only, which LayerBench opens as the App, so a fork's cannot count against anyone.
+ */
 async function openBranchesOf(gh: GitHub, login: string): Promise<string[]> {
-  const open = await gh('GET', '/pulls?state=open&per_page=100');
-  if (open.status !== 200 || !Array.isArray(open.data)) {
-    throw new GitHubRefused(`GitHub answered ${open.status}`);
-  }
   const ours = (ref: unknown): ref is string =>
     typeof ref === 'string' &&
-    (ref.startsWith(`library/${login}/`) || ref.startsWith(`data/${login}/`));
-  return open.data.flatMap((pull) => {
-    const ref = (pull as { head?: { ref?: unknown } }).head?.ref;
-    return ours(ref) ? [ref] : [];
-  });
+    (ref.startsWith(`library/${login}/change/`) || ref.startsWith(`data/${login}/change/`));
+  const branches: string[] = [];
+  for (let page = 1; ; page++) {
+    const open = await gh('GET', `/pulls?state=open&per_page=100&page=${page}`);
+    if (open.status !== 200 || !Array.isArray(open.data)) {
+      throw new GitHubRefused(`GitHub answered ${open.status}`);
+    }
+    for (const pull of open.data) {
+      const head = (pull as { head?: { ref?: unknown; repo?: { full_name?: unknown } } }).head;
+      if (head?.repo?.full_name === LIBRARY_REPO && ours(head.ref)) branches.push(head.ref);
+    }
+    if (open.data.length < 100) return branches;
+  }
 }
 
 /** A refusal when `login` has as many proposals open as one may and `branch` is not one of them. */
@@ -124,7 +132,7 @@ async function requestPull(
   const branch = `library/${login}/${request.action}/${request.id}`;
   if (request.action !== 'change') {
     const open = await openPull(gh, MAIN, branch);
-    if (open) return { status: 200, answer: { url: open, reused: true } };
+    if (open) return { status: 200, answer: { url: open, reused: true, unchanged: true } };
   }
   const changes: FileChange[] = [[LIBRARY_REQUEST, requestText(request)]];
   const { url, reused } = await openOrUpdate(gh, {

@@ -76,13 +76,15 @@ export function ChangeDialog({
         )}
         {step.kind === 'sent' && (
           <p className="text-sm" role="status">
-            {step.reused
-              ? 'The pull request open for it has this now: '
-              : 'The pull request is open: '}
+            {step.unchanged
+              ? 'A pull request asks for this already, and nothing was sent: '
+              : step.reused
+                ? 'The pull request open for it has this now: '
+                : 'The pull request is open: '}
             <a className="link" href={step.url} target="_blank" rel="noopener noreferrer">
               {step.url}
             </a>
-            .
+            {step.unchanged ? '. Change it there, or close it to ask again.' : '.'}
           </p>
         )}
         {step.kind === 'refused' && (

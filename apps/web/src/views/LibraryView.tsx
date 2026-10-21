@@ -789,6 +789,8 @@ export function LibraryView() {
     async (layout: Layout, message: string, opts: SaveOptions = {}): Promise<string | null> => {
       try {
         const { id } = await saver.current(storage, layout, message, opts);
+        // A layout made or put in place here is no proposal's copy.
+        await forgetProposal(storage, id).catch(() => false);
         custom.refresh();
         toast.info(`Saved ${layout.name}`);
         return id;

@@ -69,9 +69,10 @@ describe('settling the proposals whose pull requests are done', () => {
     expect(await storage.list('proposals')).toEqual([]);
   });
 
-  it('forgets one whose copy was deleted, and leaves one not sent yet', async () => {
+  it('forgets one whose copy was deleted, sent or not, and leaves one not sent yet', async () => {
     const storage = await withTwo();
     await storage.delete('layouts', 'colemak');
+    await recordProposal(storage, 'gone', { ...COLEMAK, url: null });
     await recordProposal(storage, 'breeze', { ...COLEMAK, name: 'Breeze', url: null });
     const read: string[] = [];
     const outcome = await settleProposals(storage, async (url) => {

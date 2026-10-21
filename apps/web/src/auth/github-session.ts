@@ -400,7 +400,7 @@ export async function signIn(): Promise<void> {
 
 /** How a submission went: the pull request, why it was refused, or why it was not sent. */
 export type SubmitOutcome =
-  | { kind: 'sent'; url: string; reused: boolean }
+  | { kind: 'sent'; url: string; reused: boolean; unchanged?: boolean }
   | { kind: 'refused'; reason: string }
   | { kind: 'signed-out' }
   | { kind: 'failed'; error: string };
@@ -422,7 +422,8 @@ async function sendForPull(route: Route, body: Record<string, unknown>): Promise
   }
   const answer = (await res.json().catch(() => null)) as SubmitAnswer | null;
   if (res.ok && typeof answer?.url === 'string' && answer.url.startsWith('https://github.com/')) {
-    return { kind: 'sent', url: answer.url, reused: answer.reused === true };
+    const sent = { kind: 'sent' as const, url: answer.url, reused: answer.reused === true };
+    return answer.unchanged === true ? { ...sent, unchanged: true } : sent;
   }
   if (res.status === 401) return { kind: 'signed-out' };
   if (typeof answer?.reason === 'string') return { kind: 'refused', reason: answer.reason };

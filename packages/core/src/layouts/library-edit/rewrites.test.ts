@@ -54,6 +54,10 @@ describe('the landing page', () => {
     expect(after).toContain(
       '<li><a href="/analyze?layout=romak&amp;corpus=pt-br-general">Romak 2 <span>Rafael Romão</span></a></li>',
     );
+    // A `$` in a name is the name's: no replacement pattern is read in it.
+    expect(landingRename(landing, { id: 'qwerty', name: 'Q $& $1 $$' })).toContain(
+      '<li><a href="/analyze?layout=qwerty&amp;corpus=en-general">Q $&amp; $1 $$</a></li>',
+    );
     expect(landingRename(landing, { id: 'qwerty', name: 'QWERTY' })).toContain(
       '<li><a href="/analyze?layout=qwerty&amp;corpus=en-general">QWERTY</a></li>',
     );
@@ -108,7 +112,7 @@ describe('the languages file', () => {
   });
 });
 
-/** `documents.ts` as it is written, with one document, so the cases hold whatever the Library has. */
+/** `documents.ts` as written, with one document, so the cases hold whatever the Library has. */
 const DOCUMENTS_TS = [
   "import { toCanonicalJson } from '../layout/json.js';",
   "import nordwind from './documents/nordwind.json';",

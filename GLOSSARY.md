@@ -92,9 +92,10 @@ kind a rule matches (`key_kind`), which is what a press counts as in the analysi
 _Avoid_: binding kind, key type
 
 **Layout session**:
-The layout open in Analyze, from the moment it is opened until another is: which custom layout it is,
-if any, or which bundled or community layout it came from, its draft, and the link that carries it. Its own changes to the link never open it again;
-any other link does, even one naming the same layout.
+The layout open in Analyze, from the moment it is opened until another is: which custom layout it
+is, if any, or which bundled or community layout it came from, its draft, and the link that carries
+it. Its own changes to the link never open it again; any other link does, even one naming the same
+layout.
 _Avoid_: open layout, editor state
 
 **Layout's link**:

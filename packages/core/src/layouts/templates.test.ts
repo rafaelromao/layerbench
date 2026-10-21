@@ -868,12 +868,18 @@ describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, unless a l
   });
 
   // A definition may give its own, as its author's keymap has them; a document carries its own in
-  // its JSON, the standard ones or others, as Magic Romak's would once a change made it one.
+  // its JSON, as Magic Romak's would once a change made it one: every home key still holds one, a
+  // modifier or a layer imported, so none goes without.
   const standard = (l: Layout) =>
     KEYS.every((k, i) => heldMod(l.layers[0].bindings[k]) === MODS[i]);
+  const holdsEach = (l: Layout) =>
+    KEYS.every((k) => {
+      const b = l.layers[0].bindings[k];
+      return b?.kind === 'hold_tap' && (b.hold.kind === 'mod' || b.hold.kind === 'raw');
+    });
   const own = new Set([
     ...[...CLASSIC_DEFS, ...SMALL_DEFS].filter((d) => d.homeRowMods !== undefined).map((d) => d.id),
-    ...DOCUMENT_LAYOUTS.filter((l) => !standard(l)).map((l) => l.id),
+    ...DOCUMENT_LAYOUTS.filter((l) => !standard(l) && holdsEach(l)).map((l) => l.id),
   ]);
 
   it.each(BUNDLED_LAYOUTS.filter((l) => !own.has(l.id ?? '')).map((l) => [l.id, l] as const))(
