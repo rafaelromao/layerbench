@@ -18,12 +18,15 @@ interface GitHubSessionState {
   login: string | null;
   /** The app's public id, which the trip to GitHub starts with. */
   clientId: string;
+  /** Whether the server says the user may change the Library: GitHub lets them push to it. */
+  maintainer: boolean;
 }
 
 const INITIAL: GitHubSessionState = {
   status: 'unknown',
   login: null,
   clientId: '',
+  maintainer: false,
 };
 
 /** Who is signed in with GitHub. The token itself is kept apart. */
@@ -118,7 +121,9 @@ function isAnswer(value: unknown): value is SessionAnswer {
   );
 }
 
-function post(route: 'session' | 'token' | 'logout' | 'submit', body: object): Promise<Response> {
+type Route = 'session' | 'token' | 'logout' | 'submit' | 'propose' | 'maintain';
+
+function post(route: Route, body: object): Promise<Response> {
   return fetch(`${AUTH}/api/auth/${route}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -149,7 +154,12 @@ function apply(answer: SessionAnswer | null): void {
   }
   token = { value: answer.token, expiresAt: answer.expiresAt ?? null };
   forget(targetKey(answer.login));
-  useGitHubSession.setState({ ...config, status: 'signed-in', login: answer.login });
+  useGitHubSession.setState({
+    ...config,
+    status: 'signed-in',
+    login: answer.login,
+    maintainer: answer.maintainer === true,
+  });
 }
 
 /**
@@ -395,12 +405,8 @@ export type SubmitOutcome =
   | { kind: 'signed-out' }
   | { kind: 'failed'; error: string };
 
-/**
- * Propose a layout, as LayerBench saves it, as a community layout: the sign-in server opens a pull
- * request into the community branch that adds it, naming who is signed in. The token is renewed
- * first if it needs to be, so the session sent is one GitHub still honours.
- */
-export async function submitLayout(doc: object): Promise<SubmitOutcome> {
+/** A request to the sign-in server that opens a pull request: how it went. */
+async function sendForPull(route: Route, body: Record<string, unknown>): Promise<SubmitOutcome> {
   try {
     await getToken();
   } catch {
@@ -410,7 +416,7 @@ export async function submitLayout(doc: object): Promise<SubmitOutcome> {
   if (!session) return { kind: 'signed-out' };
   let res: Response;
   try {
-    res = await post('submit', { session, layout: doc });
+    res = await post(route, { session, ...body });
   } catch {
     return { kind: 'failed', error: 'the sign-in server could not be reached' };
   }
@@ -421,6 +427,41 @@ export async function submitLayout(doc: object): Promise<SubmitOutcome> {
   if (res.status === 401) return { kind: 'signed-out' };
   if (typeof answer?.reason === 'string') return { kind: 'refused', reason: answer.reason };
   return { kind: 'failed', error: answer?.error ?? `the sign-in server answered ${res.status}` };
+}
+
+/**
+ * Propose a layout, as LayerBench saves it, as a community layout: the sign-in server opens a pull
+ * request into the community branch that adds it, naming who is signed in. The token is renewed
+ * first if it needs to be, so the session sent is one GitHub still honours.
+ */
+export function submitLayout(doc: object): Promise<SubmitOutcome> {
+  return sendForPull('submit', { layout: doc });
+}
+
+/** A layout of the Library's, of the community's, or of one's own, by its id. */
+export interface LibraryTarget {
+  kind: 'bundled' | 'community' | 'custom';
+  id: string;
+}
+
+/**
+ * Propose a change to a bundled or community layout: the layout it should be, as LayerBench saves
+ * it, under that layout's id. The sign-in server opens the pull request, naming who is signed in.
+ */
+export function proposeChange(target: LibraryTarget, doc: object): Promise<SubmitOutcome> {
+  return sendForPull('propose', { target, layout: doc });
+}
+
+/**
+ * A maintainer's change to the Library: delete a bundled or community layout, or promote a custom
+ * or community one into it, as LayerBench saves it. Refused unless GitHub lets the user push.
+ */
+export function maintainLibrary(
+  action: 'delete' | 'promote',
+  target: LibraryTarget,
+  doc?: object,
+): Promise<SubmitOutcome> {
+  return sendForPull('maintain', { action, target, ...(doc && { layout: doc }) });
 }
 
 export async function signOut(): Promise<void> {

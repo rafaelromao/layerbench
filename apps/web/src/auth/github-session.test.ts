@@ -5,6 +5,8 @@ import {
   getToken,
   gitHubAccess,
   initGitHubSession,
+  maintainLibrary,
+  proposeChange,
   returnFromGitHub,
   signOut,
   submitLayout,
@@ -65,6 +67,7 @@ beforeEach(() => {
     status: 'unknown',
     login: null,
     clientId: '',
+    maintainer: false,
   });
   vi.stubGlobal('fetch', async (input: string, init?: RequestInit) => {
     const body = typeof init?.body === 'string' ? JSON.parse(init.body) : null;
@@ -93,7 +96,14 @@ describe('the GitHub session in the page', () => {
       status: 'signed-in',
       login: 'you',
       clientId: 'Iv1.client',
+      maintainer: false,
     });
+  });
+
+  it('learns whether they maintain the Library, as the server says', async () => {
+    answer = () => reply({ ...SIGNED_IN, maintainer: true });
+    await initGitHubSession();
+    expect(useGitHubSession.getState().maintainer).toBe(true);
   });
 
   it('forgets the fork it once saved to, and asks GitHub nothing about forks', async () => {
@@ -392,6 +402,56 @@ describe('the trip to GitHub', () => {
     }
     expect(sessionStorage.getItem(SIGN_IN)).not.toBeNull();
     expect(useToasts.getState().toasts).toEqual([]);
+  });
+});
+
+describe('changing the Library', () => {
+  const PULL = 'https://github.com/rafaelromao/layerbench/pull/8';
+
+  async function signedIn(): Promise<void> {
+    localStorage.setItem(SESSION, 'sealed');
+    await initGitHubSession();
+  }
+
+  it('proposes a change to a layout, and hands back the pull request', async () => {
+    await signedIn();
+    answer = (call) =>
+      call.url.endsWith('/propose') ? reply({ url: PULL }, 201) : reply(SIGNED_IN);
+    const target = { kind: 'bundled', id: 'colemak' } as const;
+    expect(await proposeChange(target, { id: 'colemak' })).toEqual({
+      kind: 'sent',
+      url: PULL,
+      reused: false,
+    });
+    expect(calls.find((c) => c.url === '/api/auth/propose')?.body).toEqual({
+      session: 'sealed',
+      target,
+      layout: { id: 'colemak' },
+    });
+  });
+
+  it("sends a maintainer's delete or promote, and says why one was refused", async () => {
+    await signedIn();
+    answer = (call) =>
+      call.url.endsWith('/maintain') ? reply({ error: 'not a maintainer' }, 403) : reply(SIGNED_IN);
+    expect(await maintainLibrary('delete', { kind: 'community', id: 'breeze' })).toEqual({
+      kind: 'failed',
+      error: 'not a maintainer',
+    });
+    expect(calls.find((c) => c.url === '/api/auth/maintain')?.body).toEqual({
+      session: 'sealed',
+      action: 'delete',
+      target: { kind: 'community', id: 'breeze' },
+    });
+    answer = (call) =>
+      call.url.endsWith('/maintain') ? reply({ url: PULL }, 201) : reply(SIGNED_IN);
+    expect(
+      await maintainLibrary('promote', { kind: 'custom', id: 'gust' }, { id: 'gust' }),
+    ).toEqual({
+      kind: 'sent',
+      url: PULL,
+      reused: false,
+    });
   });
 });
 
