@@ -246,7 +246,33 @@ export function LayersPanel({ state, send }: PanelProps) {
                 }
               />
               <div className="lb-layer-meta">
-                <span className="truncate font-mono text-[10px] opacity-60">{layer.id}</span>
+                <TextField
+                  label={`Id of layer ${nameOf(i)}`}
+                  value={layer.id}
+                  className="input-xs w-20 text-[10px]"
+                  onCommit={(id) =>
+                    send({ type: 'edit', edit: { kind: 'setLayerId', layer: layer.id, id } })
+                  }
+                />
+                <select
+                  aria-label={`What ${nameOf(i)}'s unlisted keys do`}
+                  title="What the keys this layer lists nothing for do"
+                  className="select select-xs w-auto"
+                  value={layer.bindings['*']?.kind ?? (i === 0 ? 'none' : 'trans')}
+                  onChange={(e) =>
+                    send({
+                      type: 'edit',
+                      edit: {
+                        kind: 'setLayerFallback',
+                        layer: layer.id,
+                        fallback: e.target.value === 'none' ? 'none' : 'trans',
+                      },
+                    })
+                  }
+                >
+                  <option value="trans">others show through</option>
+                  <option value="none">others do nothing</option>
+                </select>
                 <LayerColourPicker
                   layerId={layer.id}
                   index={i}
@@ -342,6 +368,70 @@ export function LayersPanel({ state, send }: PanelProps) {
         </button>
       </form>
     </div>
+  );
+}
+
+/**
+ * How the layout's one-shot layers or keys release: as soon as the next key goes down, whether a
+ * modifier held meanwhile is let through, and after how long unused. A one-shot key of its own may
+ * still say otherwise; the values shown are what the analysis uses.
+ */
+function OneShotDefaults({
+  which,
+  title,
+  state: { layout, compiled },
+  send,
+}: PanelProps & { which: 'sl' | 'sk'; title: string }) {
+  const shown = compiled.behaviorDefaults[which];
+  const set = (field: 'quickRelease' | 'ignoreModifiers' | 'releaseAfterMs', value: unknown) =>
+    send({
+      type: 'edit',
+      edit: {
+        kind: 'setBehaviorDefaults',
+        defaults: {
+          ...layout.behaviorDefaults,
+          [which]: { ...layout.behaviorDefaults?.[which], [field]: value },
+        },
+      },
+    });
+  return (
+    <fieldset className="space-y-1" aria-label={title}>
+      <legend className="label-text text-xs">{title}</legend>
+      <label className="flex items-center gap-2 text-xs">
+        <input
+          type="checkbox"
+          className="checkbox checkbox-xs"
+          checked={shown.quickRelease}
+          onChange={(e) => set('quickRelease', e.target.checked)}
+        />
+        Release as the next key goes down
+      </label>
+      <label className="flex items-center gap-2 text-xs">
+        <input
+          type="checkbox"
+          className="checkbox checkbox-xs"
+          checked={shown.ignoreModifiers}
+          onChange={(e) => set('ignoreModifiers', e.target.checked)}
+        />
+        Stay on while a modifier is pressed
+      </label>
+      <label className="flex items-center gap-2 text-xs">
+        Release after
+        <input
+          type="number"
+          min={0}
+          step={50}
+          aria-label={`${title}: release after, in milliseconds`}
+          className="input input-xs input-bordered w-20"
+          value={shown.releaseAfterMs}
+          onChange={(e) => {
+            const ms = Number(e.target.value);
+            if (Number.isFinite(ms) && ms >= 0) set('releaseAfterMs', ms);
+          }}
+        />
+        ms
+      </label>
+    </fieldset>
   );
 }
 
@@ -441,6 +531,9 @@ export function GeometryPanel({ state, send }: PanelProps) {
           <option value="tapTwice">tap twice</option>
         </select>
       </label>
+
+      <OneShotDefaults which="sl" title="One-shot layers" state={state} send={send} />
+      <OneShotDefaults which="sk" title="One-shot keys" state={state} send={send} />
     </div>
   );
 }

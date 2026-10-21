@@ -190,3 +190,103 @@ export function removeLayer(layout: Layout, layerId: string): Layout {
   }
   return next;
 }
+
+/** A binding with every layer it names `from` naming `to` instead, through all of its parts. */
+export function relayered(b: Binding, from: string, to: string): Binding {
+  const layer = (id: string) => (id === from ? to : id);
+  const r = (x: Binding) => relayered(x, from, to);
+  switch (b.kind) {
+    case 'mo':
+    case 'sl':
+    case 'tog':
+    case 'to':
+    case 'auto_layer':
+      return b.layer === from ? { ...b, layer: to } : b;
+    case 'lt':
+      return { ...b, layer: layer(b.layer), tap: r(b.tap) };
+    case 'hold_tap':
+      return { ...b, tap: r(b.tap), hold: r(b.hold) };
+    case 'mod_morph':
+      return { ...b, default: r(b.default), morphed: r(b.morphed) };
+    case 'layer_morph':
+      return { ...b, layers: b.layers.map(layer), active: r(b.active), inactive: r(b.inactive) };
+    case 'tap_dance':
+      return { ...b, bindings: b.bindings.map(r) };
+    case 'macro':
+      return {
+        ...b,
+        ...(b.steps && { steps: b.steps.map(r) }),
+        ...(b.then && { then: b.then.map(r) }),
+      };
+    case 'adaptive':
+      return {
+        ...b,
+        ...(b.default && { default: r(b.default) }),
+        ...(b.triggers && { triggers: b.triggers.map((t) => ({ ...t, binding: r(t.binding) })) }),
+      };
+    default:
+      return b;
+  }
+}
+
+/**
+ * The layout with one layer's id changed, and everything that names it following: its keys' and
+ * combos' bindings and layers, the named behaviours, the conditions of conditional layers, the
+ * declared ways in, the layers features are on, and the typing paths that name its keys.
+ */
+export function changeLayerId(layout: Layout, from: string, to: string): Layout {
+  const layer = (id: string) => (id === from ? to : id);
+  const r = (b: Binding) => relayered(b, from, to);
+  const mapValues = <T, U>(o: Record<string, T>, f: (v: T) => U): Record<string, U> =>
+    Object.fromEntries(Object.entries(o).map(([k, v]) => [k, f(v)]));
+  const next: Layout = {
+    ...layout,
+    layers: layout.layers.map((l) => ({
+      ...l,
+      id: layer(l.id),
+      bindings: mapValues(l.bindings, r),
+    })),
+  };
+  if (layout.combos) {
+    next.combos = layout.combos.map((c) => ({
+      ...c,
+      binding: r(c.binding),
+      ...(c.layers && { layers: c.layers.map(layer) }),
+    }));
+  }
+  if (layout.behaviors) next.behaviors = mapValues(layout.behaviors, r);
+  if (layout.conditionalLayers) {
+    next.conditionalLayers = layout.conditionalLayers.map((c) => ({
+      if: c.if.map(layer),
+      then: layer(c.then),
+    }));
+  }
+  if (layout.activators) {
+    next.activators = Object.fromEntries(
+      Object.entries(layout.activators).map(([target, list]) => [
+        layer(target),
+        list.map((a) => ({
+          ...a,
+          ...(a.from !== undefined && { from: layer(a.from) }),
+          via: a.via.replace(new RegExp(`^key:${from}/`), `key:${to}/`),
+        })),
+      ]),
+    );
+  }
+  if (layout.typingPaths) {
+    next.typingPaths = mapValues(layout.typingPaths, (entries) =>
+      entries.map((e) => ({ ...e, producer: e.producer.replace(`:${from}/`, `:${to}/`) })),
+    );
+  }
+  const f = layout.features;
+  if (f) {
+    next.features = {
+      ...f,
+      ...(f.sentenceCase?.on && {
+        sentenceCase: { ...f.sentenceCase, on: f.sentenceCase.on.map(layer) },
+      }),
+      ...(f.capsWord?.on && { capsWord: { ...f.capsWord, on: f.capsWord.on.map(layer) } }),
+    };
+  }
+  return next;
+}

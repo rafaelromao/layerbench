@@ -971,16 +971,30 @@ function BehaviourBody({
   );
 }
 
-function ImportedBody({ fields: { view } }: BodyProps<'imported'>) {
+function ImportedBody({ fields: { view, set }, onChange, name }: BodyProps<'imported'>) {
   return (
-    <div className="space-y-1 text-xs">
-      <p>
-        <span className="font-mono">{view.label}</span>
-        {view.source && <span className="opacity-60"> — {view.source}</span>}
-      </p>
+    <div className="space-y-2">
+      <Row label="Label">
+        <TextField
+          label={named(name, 'What it is drawn with')}
+          value={view.label}
+          mono={false}
+          className="input-xs w-full"
+          onCommit={(text) => onChange(set.label(text))}
+        />
+      </Row>
+      <Row label="Source">
+        <TextField
+          label={named(name, 'What it was in its keymap')}
+          value={view.source}
+          placeholder="&mo FUN"
+          className="input-xs w-full"
+          onCommit={(text) => onChange(set.source(text))}
+        />
+      </Row>
       <Note>
-        Kept from the imported layout. LayerBench draws it and moves it with the rest, but it types
-        nothing in the analysis. Pick a kind above to replace it.
+        A key LayerBench draws and moves with the rest but does not simulate, such as a layer it has
+        no model of: it types nothing in the analysis.
       </Note>
     </div>
   );

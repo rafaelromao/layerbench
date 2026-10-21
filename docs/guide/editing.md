@@ -148,6 +148,12 @@ The **Layers** panel lists them in order, and does everything else with them:
 
 - **Rename** a layer in its name field, or double-click its name in the navigator (press and hold
   it on a phone, or `F2` on the keyboard).
+- **Id**, under the name, is what links and the keys that reach the layer call it, as a keymap's
+  layer has a name of its own (`alpha1`, `num`). Changing it changes every key, combo and setting
+  that names the layer, so nothing is left pointing at the old one; an id another layer has is
+  refused.
+- **Unlisted keys** says what the keys the layer has nothing on do: **others show through**, the
+  layer below's key, or **others do nothing**, as a keymap's layer that lists only what it types.
 - **Reorder** with the arrows, or by dragging its row. The base layer stays first.
 - **Duplicate** (⧉) copies a layer, with all its keys, right after it.
 - **Colour**, under the layer's name, picks the colour its name and the keys that reach it are
@@ -322,14 +328,17 @@ The other panels hold what is not on a single key:
 - **Features** turns on sentence case and caps word.
 - **Geometry** shows the board, which is chosen when a layout is imported or created and cannot
   be changed here, and says which keys are space and shift, the kind of shift, and how doubled
-  letters are typed.
+  letters are typed. Under **One-shot layers** and **One-shot keys** it says how the layout's
+  one-shots end: as the next key goes down or not, whether they stay on while a modifier is
+  pressed, and after how many milliseconds unused.
 - **Combos** are keys pressed together. **pick on board**, then tap the keys; the output takes
   the same syntax as **Or type**, and can be left empty. A combo added opens in the **combo
   editor**, in the key editor's place; so does a combo's pill on the board, or **edit** on its row.
   A combo can be any kind of key but Transparent, from the same tiles a key has: a tap-hold, an
   adaptive key, a macro, a tap dance, a morph, a layer and the rest. **From this layout** and **Or
   type** work as they do for a key. Under them are its keys (**Pick again on the board**, tap the
-  new keys, then **Use these keys**), the layers it works on and its role. One for typing is
+  new keys, then **Use these keys**), the layers it works on, its role, and its timeout, how long its keys have to go down
+together. One for typing is
   pressed by the analysis as a key would be: it types, adapts to the key before it, accents the
   next letter, turns a layer on, or, held, does what its hold does; a tap dance on a combo types
   its second part when its keys are pressed together twice. The board draws it between its keys,

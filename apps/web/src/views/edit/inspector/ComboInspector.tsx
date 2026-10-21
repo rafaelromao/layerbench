@@ -169,6 +169,24 @@ export function ComboInspector({
               <option value="command">command</option>
             </select>
           </label>
+
+          <label className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold w-16 shrink-0">Timeout</span>
+            <input
+              type="number"
+              min={1}
+              step={5}
+              aria-label={`Timeout of combo ${name}, in milliseconds`}
+              className="input input-xs input-bordered w-20"
+              value={c.timeoutMs ?? ''}
+              placeholder="50"
+              onChange={(e) => {
+                const ms = Number(e.target.value);
+                if (Number.isFinite(ms) && ms > 0) update({ timeoutMs: ms });
+              }}
+            />
+            <span className="opacity-60">ms for its keys to go down together</span>
+          </label>
         </div>
 
         <div className="lb-key-actions border-t border-base-300 pt-2">

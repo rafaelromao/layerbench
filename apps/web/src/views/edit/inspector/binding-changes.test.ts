@@ -164,6 +164,24 @@ describe('what each kind of key shows, and what its controls change', () => {
     expect(modifier.set.acts('sk')).toBe(sticky);
   });
 
+  it('makes an imported key: drawn by its label, kept by its source, typing nothing', () => {
+    expect(MORE_KINDS.map((k) => k.kind)).toContain('imported');
+    const made = to({ kind: 'kp', symbol: 'a' }, 'imported');
+    expect(made).toEqual({ kind: 'raw', label: 'a' });
+    const imported = fieldsOf('imported', made);
+    const labelled = imported.set.label('FUN');
+    expect(labelled).toEqual({ kind: 'raw', label: 'FUN' });
+    expect(fieldsOf('imported', labelled).set.source('&mo FUN')).toEqual({
+      kind: 'raw',
+      label: 'FUN',
+      source: '&mo FUN',
+    });
+    // An empty source is no source; an empty label keeps the one it had.
+    const sourced: Binding = { kind: 'raw', label: 'FUN', source: '&mo FUN' };
+    expect(fieldsOf('imported', sourced).set.source(' ')).toEqual({ kind: 'raw', label: 'FUN' });
+    expect(fieldsOf('imported', sourced).set.label(' ')).toBe(sourced);
+  });
+
   it('holds other modifiers with a held one, as ZMK holds Shift with Gui for LS(LGUI)', () => {
     const gui = fieldsOf('modifier', { kind: 'mod', mod: 'LGUI' });
     expect(gui.view.also).toEqual([]);

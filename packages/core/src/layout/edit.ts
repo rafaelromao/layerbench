@@ -1,7 +1,8 @@
 import { enumerateProducers, type Producer } from '../sim/producers.js';
-import { slugWords, unusedId } from '../storage/ids.js';
+import { ID_PATTERN, slugWords, unusedId } from '../storage/ids.js';
 import { buildGeometry, type CompiledLayout, compileLayout } from './compile.js';
 import {
+  changeLayerId,
   copyKey,
   duplicateLayer,
   layerReachedFrom,
@@ -12,7 +13,14 @@ import {
   swapKeys,
 } from './ops.js';
 import { isLayoutLink, NOT_A_LINK, safeParseLayout } from './schema.js';
-import type { Binding, LayerColor, Layout, LayoutFeatures, TypingPathEntry } from './types.js';
+import type {
+  BehaviorDefaults,
+  Binding,
+  LayerColor,
+  Layout,
+  LayoutFeatures,
+  TypingPathEntry,
+} from './types.js';
 
 /**
  * One change an author makes to a layout, taken whole. Layers are named by id and keys by key id,
@@ -28,6 +36,12 @@ export type Edit =
   | { kind: 'addLayer'; name: string }
   | { kind: 'removeLayer' | 'duplicateLayer'; layer: string }
   | { kind: 'renameLayer'; layer: string; name: string }
+  /** The layer's id, which links and everything that reaches the layer name it by. */
+  | { kind: 'setLayerId'; layer: string; id: string }
+  /** What the keys a layer lists nothing for do: show the layer below through, or nothing. */
+  | { kind: 'setLayerFallback'; layer: string; fallback: 'trans' | 'none' }
+  /** How long one-shot layers and keys wait, and what releases them; empty takes it away. */
+  | { kind: 'setBehaviorDefaults'; defaults: BehaviorDefaults }
   /** No colour is Automatic: the one the layer's place in the list gives it. */
   | { kind: 'colorLayer'; layer: string; color: LayerColor | undefined }
   /** The layer to another place in the list; the base layer stays first. */
@@ -362,6 +376,37 @@ const handlers: Handlers = {
     const current = layout.layers[indexOf(layout, layer)];
     if (!current || trimmed === '' || trimmed === current.name) return same(layout);
     return { layout: withLayer(layout, layer, (l) => ({ ...l, name: trimmed })) };
+  },
+
+  setLayerId(layout, { layer, id }) {
+    const trimmed = id.trim();
+    if (indexOf(layout, layer) < 0 || trimmed === layer) return same(layout);
+    if (!ID_PATTERN.test(trimmed)) {
+      return { refused: 'a layer id is letters, digits, - and _, with no spaces' };
+    }
+    if (indexOf(layout, trimmed) >= 0) return { refused: `another layer is ${trimmed} already` };
+    return { layout: changeLayerId(layout, layer, trimmed), at: { layer: trimmed } };
+  },
+
+  setLayerFallback(layout, { layer, fallback }) {
+    const current = layout.layers[indexOf(layout, layer)];
+    if (!current || current.bindings['*']?.kind === fallback) return same(layout);
+    return {
+      layout: withLayer(layout, layer, (l) => ({
+        ...l,
+        bindings: { ...l.bindings, '*': { kind: fallback } },
+      })),
+    };
+  },
+
+  setBehaviorDefaults(layout, { defaults }) {
+    const kept = Object.fromEntries(
+      Object.entries(defaults).filter(
+        ([, v]) => v && Object.values(v).some((x) => x !== undefined),
+      ),
+    ) as BehaviorDefaults;
+    const { behaviorDefaults: _was, ...rest } = layout;
+    return { layout: Object.keys(kept).length ? { ...rest, behaviorDefaults: kept } : rest };
   },
 
   colorLayer(layout, { layer, color }) {

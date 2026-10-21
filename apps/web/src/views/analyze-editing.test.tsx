@@ -702,6 +702,42 @@ describe('Edit', () => {
     expect(screen.queryByText('Removed Numbers — Undo brings it back')).toBeNull();
   }, 120_000);
 
+  it("gives a layer the id and the unlisted keys a keymap's has, and sets one-shot timing", async () => {
+    const user = userEvent.setup();
+    await openEdit();
+
+    // An id of its own, as Magic Romak's Alpha 1 is: the layer keeps its name.
+    const id = screen.getByLabelText('Id of layer Base');
+    await user.clear(id);
+    await user.type(id, 'alpha1{Enter}');
+    expect(await screen.findByLabelText('Name of layer alpha1')).toHaveValue('Base');
+    // A taken id is refused, and says so.
+    const again = screen.getByLabelText('Id of layer Base');
+    await user.clear(again);
+    await user.type(again, 'num{Enter}');
+    expect(await screen.findByRole('alert')).toHaveTextContent('another layer is num already');
+
+    // Numbers' unlisted keys show through until they are made to do nothing.
+    const fallback = screen.getByLabelText("What Numbers's unlisted keys do");
+    expect(fallback).toHaveValue('trans');
+    await user.selectOptions(fallback, 'none');
+    expect(screen.getByLabelText("What Numbers's unlisted keys do")).toHaveValue('none');
+
+    // One-shot keys release as the next key goes down, or wait, and for how long.
+    await user.click(screen.getByRole('tab', { name: 'Geometry' }));
+    const keys = within(screen.getByRole('group', { name: 'One-shot keys' }));
+    const quick = keys.getByLabelText('Release as the next key goes down');
+    expect(quick).not.toBeChecked();
+    await user.click(quick);
+    expect(within(screen.getByRole('group', { name: 'One-shot keys' })).getByLabelText(
+      'Release as the next key goes down',
+    )).toBeChecked();
+    const after = screen.getByLabelText('One-shot keys: release after, in milliseconds');
+    await user.clear(after);
+    await user.type(after, '1500');
+    expect(screen.getByLabelText('One-shot keys: release after, in milliseconds')).toHaveValue(1500);
+  }, 120_000);
+
   it("shows Magic Romak's special features and lets one be turned off", async () => {
     const user = userEvent.setup();
     renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000', {
@@ -873,17 +909,19 @@ describe('Edit', () => {
     const user = userEvent.setup();
     await openMagicRomak();
 
-    await user.click(await screen.findByRole('button', { name: /^Key RBI:/ }));
-    const editor = await inspector('RBI');
+    // Alpha 2's v or h, an adaptive key of its own: the one on Alpha 1 is a tap-hold's tap.
+    await showLayer(user, 'Alpha 2');
+    await user.click(await screen.findByRole('button', { name: /^Key LBI:/ }));
+    const editor = await inspector('LBI');
     // The same tile, the same controls and the same text line as for any adaptive key.
     expect(within(editor).getByRole('button', { name: 'Adaptive' })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
     expect(within(editor).queryByLabelText('Adaptive key name')).toBeNull();
-    expect(within(editor).getByRole('textbox', { name: 'Binding for RBI' })).toBeInTheDocument();
+    expect(within(editor).getByRole('textbox', { name: 'Binding for LBI' })).toBeInTheDocument();
     const then = within(editor).getByLabelText('Branch 1 symbol');
-    expect(then).toHaveValue('v');
+    expect(then).toHaveValue('h');
     await user.clear(then);
     await user.type(then, 'w{Enter}');
 
@@ -891,15 +929,16 @@ describe('Edit', () => {
     await waitFor(() => expect(legendList.textContent).toContain('→ types w'));
 
     // A kind change keeps what carries over: the adaptive key's default letter.
-    await user.click(within(await inspector('RBI')).getByRole('button', { name: 'Symbol' }));
-    expect(await screen.findByRole('button', { name: 'Key RBI: h' })).toBeInTheDocument();
+    await user.click(within(await inspector('LBI')).getByRole('button', { name: 'Symbol' }));
+    expect(await screen.findByRole('button', { name: 'Key LBI: v' })).toBeInTheDocument();
   });
 
   it("puts a copy of one of the layout's adaptive keys on another key", async () => {
     const user = userEvent.setup();
     await openMagicRomak();
 
-    await user.click(await screen.findByRole('button', { name: 'Key LHM: s' }));
+    // Its home block mod holds Alt there.
+    await user.click(await screen.findByRole('button', { name: 'Key LHM: s, hold ⌥' }));
     const editor = await inspector('LHM');
     // Adaptive keys come first among the keys the layout already has, in sight without "All".
     await user.click(within(editor).getByRole('button', { name: 'Use h ✦' }));
@@ -1943,7 +1982,11 @@ describe('Analyze, while editing', () => {
     expect(letter).not.toBe('');
     const first = screen
       .getAllByRole('button', { name: /^Key \w+: / })
-      .find((b) => b.getAttribute('aria-label')?.endsWith(`: ${letter}`));
+      // The letter alone, or the letter and what a home block mod holds there.
+      .find((b) => {
+        const label = b.getAttribute('aria-label') ?? '';
+        return label.endsWith(`: ${letter}`) || label.includes(`: ${letter}, hold `);
+      });
     await user.click(first as HTMLElement);
     const editor = await screen.findByRole('region', { name: 'Key numbers' });
 
