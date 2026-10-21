@@ -1,9 +1,9 @@
 import { DOCUMENT_IDS } from './documents.js';
 
 /**
- * The ids of the layouts written in code, which `BUNDLED_LAYOUTS` builds. Listed apart, so the
- * sign-in server can refuse a submitted layout that takes one without building every layout; a test
- * keeps the list equal to what is built.
+ * The ids of the layouts written in code, which `BUNDLED_LAYOUTS` builds, in the order the Library
+ * lists them. Listed apart, so the sign-in server can refuse a submitted layout that takes one
+ * without building every layout; a test keeps the list equal to what is built.
  */
 const BUILT_IN_IDS = [
   'magic-romak',
@@ -45,3 +45,6 @@ const BUILT_IN_IDS = [
 
 /** The id of every bundled layout: those written in code, and those added as documents. */
 export const BUNDLED_IDS: readonly string[] = [...BUILT_IN_IDS, ...DOCUMENT_IDS];
+
+/** The layout a visit that names none opens: the one the app was made for. */
+export const DEFAULT_LAYOUT_ID = 'magic-romak';

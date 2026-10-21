@@ -34,6 +34,13 @@ export interface ClassicDef {
   geometry?: string;
   /** The base layer's id and name, for a layout with more than one alpha layer; `base`, Base. */
   base?: { id: string; name: string };
+  /** The key that types space, when `byKey` gives it a binding rather than the `space` token. */
+  space?: string;
+  /**
+   * `false` for a layout that goes without the home row mods every other one gets: one whose
+   * author's keymap has home row mods of its own, which the model does not carry.
+   */
+  homeRowMods?: false;
   /** The shift key, when the layout has one of its own. */
   shift?: Layout['keys']['shift'];
   /** Typing behaviours declared rather than built of layers: sentence case, caps word. */
@@ -97,6 +104,7 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     id: 'romak',
     name: 'Romak',
     author: 'Rafael Romão',
+    base: { id: 'alpha1', name: 'Alpha 1' },
     // Alpha 1 of the author's keymap (github.com/rafaelromao/keyboards) on thirty-four keys: Magic
     // Romak's, filled out to the outer and inner columns.
     rows: 'q b m g k x l o u ;\nd n s t w z r a e i\ny f c p v j h , . /',
@@ -281,7 +289,7 @@ export function classicLayout(def: ClassicDef): Layout {
       if (!ids.has(id)) throw new Error(`${def.name}: ${preset} has no key ${id}`);
     }
     const bindings = bindingsOf(def.byKey, special);
-    const space = Object.entries(def.byKey).find(([, t]) => t === 'space')?.[0];
+    const space = def.space ?? Object.entries(def.byKey).find(([, k]) => k === 'space')?.[0];
     if (!space) throw new Error(`${def.name}: no key is space`);
     layout = {
       format: 'layerbench/layout@1',

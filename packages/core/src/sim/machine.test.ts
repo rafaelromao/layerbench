@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { compileLayout } from '../layout/compile.js';
 import type { Layout } from '../layout/types.js';
-import { magicRomak } from '../layouts/romak.js';
+import { bundledLayout } from '../layouts/index.js';
 import { Machine } from './machine.js';
+
+const magicRomak = bundledLayout('magic-romak')!;
 
 function mini(layers: Layout['layers'], extra: Partial<Layout> = {}): Layout {
   return {

@@ -9,7 +9,6 @@ import { blockedThumbs, reachKeys } from '../sim/activators.js';
 import { explain } from '../sim/resolver.js';
 import { CLASSIC_LAYOUTS } from './classic.js';
 import { BUNDLED_LAYOUTS, bundledLayout, SMALL_LAYOUTS } from './index.js';
-import { magicRomak } from './romak.js';
 import {
   ACCENTS,
   accentsCombo,
@@ -32,6 +31,8 @@ import {
   vowelsOnLeft,
   withDefaultLayers,
 } from './templates.js';
+
+const magicRomak = bundledLayout('magic-romak')!;
 
 /** The chord that one-shots Accents, as `explain` names its step. */
 const ACCENTS_COMBO = 'combo:accents';
@@ -507,7 +508,7 @@ describe('Romak types every accent through Accents, one-shot from its right oute
   const romak = bundledLayout('romak') as Layout;
 
   it('has one alpha layer and the default layers, and no combos', () => {
-    expect(romak.layers.map((l) => l.id)).toEqual(['base', 'num', 'sym', 'accents']);
+    expect(romak.layers.map((l) => l.id)).toEqual(['alpha1', 'num', 'sym', 'accents']);
     expect(romak.combos).toBeUndefined();
     expect(romak.behaviors).toBeUndefined();
   });
@@ -614,7 +615,9 @@ describe('the default layers on every bundled layout', () => {
           expect(reach).toEqual([{ key: 'R1', from: [base] }]);
         });
       }
-      if (original && layoutCategory(original) === 'special') {
+      // A layout that brings its own Numbers and Symbols keeps them, and gets no default layers.
+      const takesDefaults = !original?.layers.some((l) => DEFAULT_LAYER_ID_LIST.includes(l.id));
+      if (original && takesDefaults && layoutCategory(original) === 'special') {
         it('reaches Accents by two thumbs pressed together on its base layer, and nothing else', () => {
           const base = layout.layers[0].id;
           const preset = 'preset' in layout.geometry ? layout.geometry.preset : '';

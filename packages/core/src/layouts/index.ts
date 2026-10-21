@@ -1,17 +1,17 @@
 import { getGeometryPreset } from '../geometry/presets.js';
 import { layoutCategory } from '../layout/categories.js';
 import type { Layout } from '../layout/types.js';
+import { BUNDLED_IDS } from './bundled-ids.js';
 import { CLASSIC_LAYOUTS, classicLayout } from './classic.js';
 import { DOCUMENT_LAYOUTS } from './documents.js';
 import LANGUAGES from './languages.json';
-import { magicRomak } from './romak.js';
 import { SMALL_DEFS } from './small.js';
 import { type ThumbPlacement, withStandardThumbs } from './standard.js';
 import { withDefaultLayers } from './templates.js';
 
+export { BUNDLED_IDS, DEFAULT_LAYOUT_ID } from './bundled-ids.js';
 export { CLASSIC_DEFS, CLASSIC_LAYOUTS, classicLayout } from './classic.js';
 export { DOCUMENT_LAYOUTS, documentLayout, documentMissing } from './documents.js';
-export { magicRomak } from './romak.js';
 export { SMALL_DEFS } from './small.js';
 export {
   BASE_SYMBOLS,
@@ -65,15 +65,17 @@ function withDefaults(placed: ThumbPlacement) {
 
 /**
  * The layouts written here in code: the set the app started with, and Romak back among them. Each
- * has the default layers but Magic Romak, which has only its keymap's Numbers and Symbols, on its
- * own thumbs. LayerBench placed the thumbs of the classic layouts, their authors having left them to
- * a space bar; the small-board layouts' authors placed their own.
+ * has the default layers but Magic Romak, which brings its keymap's own Numbers and Symbols, as any
+ * layout may. LayerBench placed the thumbs of the classic layouts, their authors having left them
+ * to a space bar; the small-board layouts' authors placed their own. They are listed in the order
+ * of `BUNDLED_IDS`.
  */
 const BUILT_IN_LAYOUTS: Layout[] = [
-  magicRomak,
   ...CLASSIC_LAYOUTS.map(withDefaults('layerbench')),
   ...SMALL_LAYOUTS.map(withDefaults('author')),
-].map(withLanguages);
+]
+  .sort((a, b) => BUNDLED_IDS.indexOf(a.id ?? '') - BUNDLED_IDS.indexOf(b.id ?? ''))
+  .map(withLanguages);
 
 /**
  * A layout written in code, with the languages it performs well in: measured, not chosen, by

@@ -5,7 +5,6 @@ import { toCanonicalJson } from '../layout/json.js';
 import { safeParseLayout } from '../layout/schema.js';
 import type { Binding, Layout } from '../layout/types.js';
 import { bundledLayout } from '../layouts/index.js';
-import { magicRomak } from '../layouts/romak.js';
 import { reachKeys } from '../sim/activators.js';
 import {
   boardFromKeys,
@@ -24,6 +23,8 @@ import {
   readLegend,
 } from './keymap-drawer.js';
 import { HUMMINGBIRD } from './yaml.test.js';
+
+const magicRomak = bundledLayout('magic-romak')!;
 
 const key = (spec: Partial<KdKey>): KdKey => ({
   tap: '',

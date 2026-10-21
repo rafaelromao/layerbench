@@ -6,8 +6,9 @@ import { importTextLayout } from '../layout/text.js';
 import type { Binding, Layout, Mod } from '../layout/types.js';
 import { CLASSIC_LAYOUTS } from '../layouts/classic.js';
 import { bundledLayout } from '../layouts/index.js';
-import { magicRomak } from '../layouts/romak.js';
 import { explain, simulate } from './resolver.js';
+
+const magicRomak = bundledLayout('magic-romak')!;
 
 const romak = bundledLayout('romak')!;
 

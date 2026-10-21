@@ -3,7 +3,7 @@
 ## Default layers
 
 Read this before changing how symbols, digits or accents are spread over the default layers
-(`packages/core/src/layouts/templates.ts`, `standard.ts`, `romak.ts`). The full tables, as the user
+(`packages/core/src/layouts/templates.ts`, `standard.ts`, `small.ts`). The full tables, as the user
 sees them, are in [docs/guide/editing.md](docs/guide/editing.md#default-layers). Update the tables
 there whenever a rule here moves a key, and keep `templates.test.ts` asserting each rule.
 
@@ -14,11 +14,14 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
 - **Magic Romak is the one exception: no Extras, no Accents.** It models the author's keymap
   (github.com/rafaelromao/keyboards), which has neither, so it has only Numbers and Symbols, and
   nothing reaches the other two. The keymap's combos type what they carried: Alpha 2's dead keys
-  and `à`, and `€`, `°` and `º`/`ª` on Symbols and Numbers (`KEYMAP_SYMBOL_COMBOS` in `romak.ts`).
+  and `à`, and `€`, `°` and `º`/`ª` on Symbols and Numbers (`KEYMAP_SYMBOL_COMBOS` in `small.ts`).
   `¿` and `¡` come from holding Alpha 2's `?` and `!` combos, a hold the model gives them. It
   cannot type `£ § « » ı ß œ æ`; `templates.test.ts` pins that list (`MAGIC_ROMAK_UNTYPED`) and
   what French and German lose. Do not give it the default Extras or
-  Accents back, and do not extend the exception to another layout.
+  Accents back, and do not extend the exception to another layout. It is written like the other
+  small-board layouts, in `SMALL_DEFS`: it brings its own Numbers and Symbols, which
+  `withDefaultLayers` leaves alone on any layout that has them, and no code singles it out. What it
+  needs is a `ClassicDef` field any layout may use.
 - **The 24-key core is Magic Romak's keymap** (github.com/rafaelromao/keyboards, `numbers_layer` and
   `symbols_layer`). Numbers is a keypad on the right, with the brackets and the arithmetic beside
   them on the left; brackets on Numbers stay on the left hand. Every board gets the same core, so
