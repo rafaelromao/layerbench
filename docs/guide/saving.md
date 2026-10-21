@@ -8,7 +8,8 @@ browser you use, sign in with GitHub, and it is kept in your GitHub account as w
 A layout of your own starts in **Library**, in one of these ways:
 
 - Press **Open** on any layout's card, change it in **Analyze** and press **Save**: Save asks what
-  to call the copy, and keeps it among your custom layouts. See [Saving a copy](#saving-a-copy)
+  to call the copy, or, on one that comes with the app or a community layout, whether to propose
+  your change instead, and keeps it among your custom layouts. See [Saving a copy](#saving-a-copy)
   below.
 - **New layout** starts one on the board you choose, empty or from Qwerty to rearrange, and
   **Create and edit** saves it and opens it. **Add the default layers** gives it Numbers, Symbols,
@@ -28,7 +29,9 @@ browser, the same link is a layout of its own, and saving it there makes a copy.
 
 A layout that is not yours is never saved over: one that comes with the app, a community layout,
 or one that a link or
-**Open in analyzer** brought here and you have not saved. Its first **Save** opens a dialog that says
+**Open in analyzer** brought here and you have not saved. On one that comes with the app or a
+community layout, **Save** first asks whether to [propose your change](#proposing-a-change) to it
+or to **Save a copy**. Save a copy, and the first **Save** of any other, opens a dialog that says
 Save makes a copy in your custom layouts and asks for the copy's name. The name offered is the
 layout's with *copy* after it, numbered (*copy 2*) if a layout already has it; an empty name is
 refused. **Cancel** saves nothing. Once saved, the layout in the editor is the copy, and later
@@ -37,6 +40,27 @@ refused. **Cancel** saves nothing. Once saved, the layout in the editor is the c
 A custom layout is kept in this browser. To keep it anywhere else, sign in with GitHub, below; or
 copy its LayerBench JSON from the editor's **JSON** panel and keep the text, which **Import** reads
 back.
+
+### Proposing a change
+
+**Propose change**, which **Save** offers on a layout that comes with the app or a community
+layout, proposes your edits to that layout itself, for everyone. Sign in with GitHub first: the
+dialog asks you to if you have not, as the pull request names you, and **Save a copy** still works
+meanwhile. Proposing saves the layout here, under its name, like any custom layout, and opens a
+public pull request on [layerbench](https://github.com/rafaelromao/layerbench) with the layout as it
+is now; the dialog gives its link. In **Library**, your copy is marked *proposed*, linked to the
+pull request. If one of your custom layouts has the name already, such as the copy of a change you
+proposed before, the dialog asks what to call this copy, or offers to overwrite that one; the pull
+request still proposes the layout under its own name. A layout that comes with the app cannot be
+proposed under another one's name, nor one that names no author. You can have five changes
+proposed and open at once.
+
+Edit your copy and **Save** it again while the pull request is open, and the pull request gets that
+version, under the name it proposed: renaming your copy renames only the copy. Once it is merged,
+the change is in the Library, for a layout that comes with the app with the next version of the
+app, and your copy goes. If it is closed instead, your copy stays one of your custom layouts.
+**Library** checks each time it opens, and says which happened; so does **Save** on your copy, which
+then keeps it as you saved it and sends nothing.
 
 ### A name another layout has
 
@@ -60,8 +84,8 @@ LayerBench keeps in it, the sign-in and any work saved only in this browser. In 
 work in GitHub.
 
 **Storage** says where your work is going: secret gists in your account, one for layouts, one for
-rule sets and one for corpora. Secret gists are unlisted, not private: anyone with a gist's address
-can read it.
+rule sets, one for corpora and one for the changes you proposed. Secret gists are unlisted, not
+private: anyone with a gist's address can read it.
 
 ## Moving what you saved before
 

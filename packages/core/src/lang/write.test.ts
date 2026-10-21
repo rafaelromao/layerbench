@@ -4,6 +4,7 @@ import { describe, it } from 'vitest';
 import { toCanonicalJson } from '../layout/json.js';
 import { DOCUMENT_LAYOUTS, goldenLayouts } from '../layouts/index.js';
 import { measureLanguages } from './measure.js';
+import { languagesFileText } from './performance.js';
 
 const WRITE = process.env.LANGUAGES === '1';
 
@@ -26,12 +27,10 @@ describe.skipIf(!WRITE)('languages writer (LANGUAGES=1)', () => {
     timeout: 300_000,
   }, async () => {
     const measured = await measureLanguages();
-    // One layout a line, as the formatter keeps it.
-    const lines = goldenLayouts().map(
-      (l) =>
-        `  ${JSON.stringify(l.id)}: ${JSON.stringify(measured[l.id as string]).replaceAll(',', ', ')}`,
+    writeFileSync(
+      layoutsFile('languages.json'),
+      languagesFileText(goldenLayouts().map((l) => [l.id as string, measured[l.id as string]])),
     );
-    writeFileSync(layoutsFile('languages.json'), `{\n${lines.join(',\n')}\n}\n`);
     for (const layout of DOCUMENT_LAYOUTS) {
       const doc = toCanonicalJson({ ...layout, languages: measured[layout.id as string] });
       writeFileSync(

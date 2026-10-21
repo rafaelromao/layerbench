@@ -3,12 +3,13 @@ import {
   compileLayout,
   explain,
   type Layout,
-  magicRomak,
   withoutFeatures,
 } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
 import { comboPlace, typingCombos } from '../../components/Keyboard.js';
 import { playFrames } from './playback.js';
+
+const magicRomak = bundledLayout('magic-romak') as Layout;
 
 const compiled = compileLayout(magicRomak);
 const OPTS = { caseMode: 'fold', crossWord: 'reset' } as const;

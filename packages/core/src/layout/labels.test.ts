@@ -70,6 +70,16 @@ suite('legends', () => {
     expect(tapLabel(c, { kind: 'none' })).toBe('');
   });
 
+  it('draws a hold of several modifiers with each of them, and says each', () => {
+    const b: Binding = {
+      kind: 'hold_tap',
+      tap: { kind: 'kp', symbol: 'f' },
+      hold: { kind: 'mod', mod: 'LGUI', also: ['LSHIFT'] },
+    };
+    expect(legendText(legend(c, b))).toBe('f / ⇧⌘');
+    expect(describe(c, b)).toBe('tap: types f; hold: holds left Command and left Shift');
+  });
+
   it('draws a layer tap as its tap, with the layer as what a hold does', () => {
     const l = legend(c, { kind: 'lt', layer: 'num', tap: { kind: 'kp', symbol: 'a' } });
     expect([l.tap, l.hold, l.holdIsMode, l.layerIn]).toEqual(['a', 'Numb', false, 'hold']);
@@ -86,7 +96,10 @@ suite('legends', () => {
     const adaptiveLegend = legend(c, at('RBI'));
     expect(adaptiveLegend.tap).toBe('h');
     expect(adaptiveLegend.badge).toBe(BADGE.adaptive);
-    expect(adaptiveLegend.detail).toMatch(/^adaptive: types h; after a e i/);
+    // Its keymap holds Gui on it, so the tap comes first.
+    expect(adaptiveLegend.detail).toMatch(
+      /^tap: adaptive: types h; after a e i.*; hold: holds left Command$/,
+    );
   });
 
   it('describes alt repeat once, its tagged branches included', () => {

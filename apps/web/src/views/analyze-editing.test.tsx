@@ -9,9 +9,10 @@ import {
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { useGitHubSession } from '../auth/github-session.js';
+import { initGitHubSession, useGitHubSession } from '../auth/github-session.js';
 import { setCommunitySource } from '../community/community.js';
 import type { AnalysisClient, AnalyzeRequest } from '../engine/protocol.js';
+import { proposalOf } from '../proposals/proposals.js';
 import { toast } from '../state/toasts.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { branchWith, communityDoc } from '../test/community.js';
@@ -101,9 +102,19 @@ const bar = () => screen.getByRole('region', { name: 'Layout' });
 /** The dialog Save opens for a layout that is not yours, asking what to call the copy. */
 const copyDialog = () => screen.getByRole('dialog', { name: 'Save a copy' });
 
+/**
+ * Save on a bundled or community layout asks first whether to propose the change or save a copy:
+ * this answers Save a copy.
+ */
+async function toCopy(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+  const choice = await screen.findByRole('dialog', { name: /^Save / });
+  await user.click(within(choice).getByRole('button', { name: 'Save a copy' }));
+}
+
 /** Save a layout that is not yours: answer the dialog, with `name` if one is to be given. */
 async function saveCopy(user: ReturnType<typeof userEvent.setup>, name?: string): Promise<void> {
   await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+  await toCopy(user);
   const dialog = copyDialog();
   if (name !== undefined) {
     const field = within(dialog).getByLabelText('Name of the copy');
@@ -111,6 +122,56 @@ async function saveCopy(user: ReturnType<typeof userEvent.setup>, name?: string)
     await user.type(field, name);
   }
   await user.click(within(dialog).getByRole('button', { name: 'Save copy' }));
+}
+
+const PULL = 'https://github.com/rafaelromao/layerbench/pull/100';
+
+/**
+ * The sign-in server and GitHub, stood in for: each change proposed is kept and answered with
+ * `PULL`, but for the first `failures`, which GitHub could not be reached for, or with `refusal`,
+ * which the server refuses each for; its state on GitHub is `pull.state`. Signed in as `you`.
+ */
+async function proposing(
+  failures = 0,
+  refusal?: string,
+): Promise<{
+  sent: Record<string, unknown>[];
+  pull: { state: 'open' | 'closed' };
+}> {
+  const sent: Record<string, unknown>[] = [];
+  const pull = { state: 'open' as 'open' | 'closed' };
+  const real = globalThis.fetch;
+  localStorage.setItem('layerbench:github-session', 'sealed');
+  const reply = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url.endsWith('/api/auth/propose')) {
+      sent.push(JSON.parse(String(init?.body)));
+      if (sent.length <= failures) return reply({ error: 'GitHub could not be reached' }, 502);
+      if (refusal) return reply({ error: 'not accepted', reason: refusal }, 422);
+      return reply({ url: PULL }, 201);
+    }
+    if (url.includes('/api/auth/')) {
+      return reply({
+        available: true,
+        clientId: 'Iv1.client',
+        signedIn: true,
+        login: 'you',
+        token: 'ghu_one',
+        expiresAt: Date.now() + 3600_000,
+      });
+    }
+    if (url === 'https://api.github.com/repos/rafaelromao/layerbench/pulls/100') {
+      return reply({ state: pull.state, merged: false });
+    }
+    return real(input, init);
+  });
+  await initGitHubSession();
+  return { sent, pull };
 }
 
 /** The engine, keeping every analysis it is asked for. */
@@ -220,6 +281,8 @@ describe('Edit', () => {
     );
 
     await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+
+    await toCopy(user);
     const dialog = copyDialog();
     // It says it makes a copy, and offers a name no layout has.
     expect(
@@ -319,6 +382,181 @@ describe('Edit', () => {
     await user.click(await within(bar()).findByRole('button', { name: 'Submit' }));
     const dialog = screen.getByRole('dialog', { name: 'Submit Qwerty copy' });
     expect(within(dialog).getByRole('button', { name: 'Sign in with GitHub' })).toBeVisible();
+    useGitHubSession.setState({ status: 'unknown' });
+  });
+
+  it('proposes a change to a bundled layout: saved here, its pull request opened and kept with it', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const { sent } = await proposing();
+    try {
+      renderRoute('/analyze?layout=colemak&corpus=en-general&sample=20000', { storage });
+      await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+
+      await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+      const choice = await screen.findByRole('dialog', { name: 'Save Colemak' });
+      await user.click(within(choice).getByRole('button', { name: 'Propose change' }));
+      expect(await within(choice).findByRole('link', { name: PULL })).toHaveAttribute('href', PULL);
+
+      // The change goes under the bundled layout's id; the copy is kept here, with its proposal.
+      expect(sent).toHaveLength(1);
+      expect(sent[0]).toMatchObject({
+        session: 'sealed',
+        target: { kind: 'bundled', id: 'colemak' },
+        layout: { id: 'colemak', name: 'Colemak' },
+      });
+      expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['colemak']);
+      expect(await proposalOf(storage, 'colemak')).toEqual({
+        name: 'Colemak',
+        target: { kind: 'bundled', id: 'colemak' },
+        url: PULL,
+      });
+
+      // Saved again, the copy's pull request gets the new version, under the bundled id still.
+      await user.click(within(choice).getByRole('button', { name: 'Close' }));
+      key('Key LHM: s, hold ⌥').focus();
+      await user.keyboard('ç{Enter}');
+      await screen.findByRole('button', { name: 'Key LHM: ç' });
+      await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+      expect(
+        await screen.findByText('Your proposed change to Colemak has this version'),
+      ).toBeInTheDocument();
+      expect(sent).toHaveLength(2);
+      expect(sent[1]).toMatchObject({ target: { kind: 'bundled', id: 'colemak' } });
+      expect(JSON.stringify(sent[1].layout)).toContain('ç');
+    } finally {
+      vi.unstubAllGlobals();
+      useGitHubSession.setState({ status: 'unknown', login: null, maintainer: false });
+    }
+  }, 60_000);
+
+  it('proposes on the next save what could not be sent, and never a layout naming no author', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const { sent } = await proposing(1);
+    try {
+      renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000', { storage });
+      await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+      await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+      const unsigned = await screen.findByRole('dialog', { name: 'Save Qwerty' });
+      await user.click(within(unsigned).getByRole('button', { name: 'Propose change' }));
+      expect(await within(unsigned).findByRole('alert')).toHaveTextContent(
+        'Nothing was proposed: it names no author; give it one in Settings first.',
+      );
+      expect(sent).toEqual([]);
+      expect(await storage.list('layouts')).toEqual([]);
+      await user.click(within(unsigned).getByRole('button', { name: 'Close' }));
+
+      await user.selectOptions(within(bar()).getByRole('combobox', { name: 'Layout' }), 'colemak');
+      await waitFor(() => expect(within(bar()).getByLabelText('Name')).toHaveValue('Colemak'));
+      await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+      const choice = await screen.findByRole('dialog', { name: 'Save Colemak' });
+      await user.click(within(choice).getByRole('button', { name: 'Propose change' }));
+      expect(await within(choice).findByRole('alert')).toHaveTextContent(
+        'It could not be proposed: GitHub could not be reached.',
+      );
+      expect(await proposalOf(storage, 'colemak')).toMatchObject({ url: null });
+      await user.click(within(choice).getByRole('button', { name: 'Close' }));
+
+      // The copy's next save sends it, as the dialog said.
+      await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+      expect(
+        await screen.findByText('Your proposed change to Colemak has this version'),
+      ).toBeInTheDocument();
+      expect(sent).toHaveLength(2);
+      expect(await proposalOf(storage, 'colemak')).toMatchObject({ url: PULL });
+    } finally {
+      vi.unstubAllGlobals();
+      useGitHubSession.setState({ status: 'unknown', login: null, maintainer: false });
+    }
+  }, 60_000);
+
+  it('leaves the copy a layout of its own when the server refuses the change, and says so', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const { sent } = await proposing(0, 'the layout does not compile');
+    try {
+      renderRoute('/analyze?layout=colemak&corpus=en-general&sample=20000', { storage });
+      await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+      await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+      const choice = await screen.findByRole('dialog', { name: 'Save Colemak' });
+      await user.click(within(choice).getByRole('button', { name: 'Propose change' }));
+      expect(await within(choice).findByRole('alert')).toHaveTextContent(
+        'Nothing was proposed: the layout does not compile. Your copy is saved among your layouts.',
+      );
+      expect(sent).toHaveLength(1);
+      expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['colemak']);
+      // Refused, it would be refused again: its next save sends nothing.
+      expect(await storage.list('proposals')).toEqual([]);
+    } finally {
+      vi.unstubAllGlobals();
+      useGitHubSession.setState({ status: 'unknown', login: null, maintainer: false });
+    }
+  }, 60_000);
+
+  it('names the copy anew where a custom layout has the name, and lets a declined one be', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    // A copy of an earlier proposal, declined, still goes by the bundled layout's name.
+    const colemak = bundledLayout('colemak') as Layout;
+    await storage.put('layouts', 'colemak', toCanonicalJson({ ...colemak, id: 'colemak' }));
+    const { sent, pull } = await proposing();
+    try {
+      renderRoute('/analyze?layout=colemak&corpus=en-general&sample=20000', { storage });
+      await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+
+      await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+      const choice = await screen.findByRole('dialog', { name: 'Save Colemak' });
+      await user.click(within(choice).getByRole('button', { name: 'Propose change' }));
+      const naming = await screen.findByRole('dialog', { name: 'Name your copy' });
+      expect(sent).toEqual([]);
+      const field = within(naming).getByLabelText('Name of the copy');
+      await user.clear(field);
+      await user.type(field, 'Colemak, proposed');
+      await user.click(within(naming).getByRole('button', { name: 'Propose change' }));
+      expect(await within(choice).findByRole('link', { name: PULL })).toBeInTheDocument();
+
+      // The pull request proposes Colemak as it is called; the copy goes by its own name.
+      expect(sent[0]).toMatchObject({ layout: { id: 'colemak', name: 'Colemak' } });
+      const copy = (await storage.list('layouts')).find((e) => e.name === 'Colemak, proposed');
+      expect(await proposalOf(storage, copy?.id ?? '')).toMatchObject({
+        name: 'Colemak',
+        url: PULL,
+      });
+      await user.click(within(choice).getByRole('button', { name: 'Close' }));
+      expect(within(bar()).getByLabelText('Name')).toHaveValue('Colemak, proposed');
+
+      // Declined before the Library was opened again: saving the copy sends nothing, and it is
+      // an ordinary custom layout from then on.
+      pull.state = 'closed';
+      key('Key LHM: s, hold ⌥').focus();
+      await user.keyboard('ç{Enter}');
+      await screen.findByRole('button', { name: 'Key LHM: ç' });
+      await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+      expect(
+        await screen.findByText(
+          'Your change to Colemak was declined; this copy stays in your layouts',
+        ),
+      ).toBeInTheDocument();
+      expect(sent).toHaveLength(1);
+      expect(await storage.list('proposals')).toEqual([]);
+    } finally {
+      vi.unstubAllGlobals();
+      useGitHubSession.setState({ status: 'unknown', login: null, maintainer: false });
+    }
+  }, 60_000);
+
+  it('asks to sign in to propose a change, and still saves a copy', async () => {
+    const user = userEvent.setup();
+    useGitHubSession.setState({ status: 'signed-out', login: null });
+    await openEdit();
+    await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+    const choice = await screen.findByRole('dialog', { name: 'Save Qwerty' });
+    expect(within(choice).getByRole('button', { name: 'Sign in with GitHub' })).toBeVisible();
+    expect(within(choice).getByRole('button', { name: 'Propose change' })).toBeDisabled();
+    await user.click(within(choice).getByRole('button', { name: 'Save a copy' }));
+    await user.click(within(copyDialog()).getByRole('button', { name: 'Save copy' }));
+    expect(await screen.findByText('Saved Qwerty copy')).toBeInTheDocument();
     useGitHubSession.setState({ status: 'unknown' });
   });
 
@@ -429,6 +667,8 @@ describe('Edit', () => {
     expect(await storage.list('layouts')).toEqual([]);
 
     await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+
+    await toCopy(user);
     expect(within(copyDialog()).getByLabelText('Name of the copy')).toHaveValue('Mine');
     await user.click(within(copyDialog()).getByRole('button', { name: 'Save copy' }));
     expect(await screen.findByText('Saved Mine')).toBeInTheDocument();
@@ -448,6 +688,8 @@ describe('Edit', () => {
     await openEditOn(storage);
 
     await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+
+    await toCopy(user);
     const dialog = copyDialog();
     const field = within(dialog).getByLabelText('Name of the copy');
     await user.clear(field);
@@ -526,6 +768,8 @@ describe('Edit', () => {
     await openEditOn(storage);
 
     await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+
+    await toCopy(user);
     const dialog = copyDialog();
     // One of the user's has "Qwerty copy" already, so the offer is numbered.
     expect(within(dialog).getByLabelText('Name of the copy')).toHaveValue('Qwerty copy 2');
@@ -651,7 +895,7 @@ describe('Edit', () => {
     await user.click(screen.getByRole('button', { name: '+ layer' }));
     await user.type(screen.getByLabelText('New layer name'), 'Fun');
     await user.click(screen.getByRole('button', { name: '+ layer' }));
-    // Read straight from the panel: a label query over the whole page costs seconds on a slow runner.
+    // Read straight from the panel: a label query over the whole page is slow on a slow runner.
     const order = () =>
       [...document.querySelectorAll<HTMLInputElement>('input[aria-label^="Name of layer "]')].map(
         (input) => input.value,
@@ -700,6 +944,46 @@ describe('Edit', () => {
     expect(screen.getAllByText(/^Numbers is still reached from/)).toHaveLength(1);
     expect(screen.getByLabelText('Name of layer num')).toBeInTheDocument();
     expect(screen.queryByText('Removed Numbers — Undo brings it back')).toBeNull();
+  }, 120_000);
+
+  it("gives a layer the id and the unlisted keys a keymap's has, and sets one-shot timing", async () => {
+    const user = userEvent.setup();
+    await openEdit();
+
+    // An id of its own, as Magic Romak's Alpha 1 is: the layer keeps its name.
+    const id = screen.getByLabelText('Id of layer Base');
+    await user.clear(id);
+    await user.type(id, 'alpha1{Enter}');
+    expect(await screen.findByLabelText('Name of layer alpha1')).toHaveValue('Base');
+    // A taken id is refused, and says so.
+    const again = screen.getByLabelText('Id of layer Base');
+    await user.clear(again);
+    await user.type(again, 'num{Enter}');
+    expect(await screen.findByRole('alert')).toHaveTextContent('another layer is num already');
+
+    // Numbers' unlisted keys show through until they are made to do nothing.
+    const fallback = screen.getByLabelText("What Numbers's unlisted keys do");
+    expect(fallback).toHaveValue('trans');
+    await user.selectOptions(fallback, 'none');
+    expect(screen.getByLabelText("What Numbers's unlisted keys do")).toHaveValue('none');
+
+    // One-shot keys release as the next key goes down, or wait, and for how long.
+    await user.click(screen.getByRole('tab', { name: 'Geometry' }));
+    const keys = within(screen.getByRole('group', { name: 'One-shot keys' }));
+    const quick = keys.getByLabelText('Release as the next key goes down');
+    expect(quick).not.toBeChecked();
+    await user.click(quick);
+    expect(
+      within(screen.getByRole('group', { name: 'One-shot keys' })).getByLabelText(
+        'Release as the next key goes down',
+      ),
+    ).toBeChecked();
+    const after = screen.getByLabelText('One-shot keys: release after, in milliseconds');
+    await user.clear(after);
+    await user.type(after, '1500');
+    expect(screen.getByLabelText('One-shot keys: release after, in milliseconds')).toHaveValue(
+      1500,
+    );
   }, 120_000);
 
   it("shows Magic Romak's special features and lets one be turned off", async () => {
@@ -873,17 +1157,19 @@ describe('Edit', () => {
     const user = userEvent.setup();
     await openMagicRomak();
 
-    await user.click(await screen.findByRole('button', { name: /^Key RBI:/ }));
-    const editor = await inspector('RBI');
+    // Alpha 2's v or h, an adaptive key of its own: the one on Alpha 1 is a tap-hold's tap.
+    await showLayer(user, 'Alpha 2');
+    await user.click(await screen.findByRole('button', { name: /^Key LBI:/ }));
+    const editor = await inspector('LBI');
     // The same tile, the same controls and the same text line as for any adaptive key.
     expect(within(editor).getByRole('button', { name: 'Adaptive' })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
     expect(within(editor).queryByLabelText('Adaptive key name')).toBeNull();
-    expect(within(editor).getByRole('textbox', { name: 'Binding for RBI' })).toBeInTheDocument();
+    expect(within(editor).getByRole('textbox', { name: 'Binding for LBI' })).toBeInTheDocument();
     const then = within(editor).getByLabelText('Branch 1 symbol');
-    expect(then).toHaveValue('v');
+    expect(then).toHaveValue('h');
     await user.clear(then);
     await user.type(then, 'w{Enter}');
 
@@ -891,15 +1177,16 @@ describe('Edit', () => {
     await waitFor(() => expect(legendList.textContent).toContain('→ types w'));
 
     // A kind change keeps what carries over: the adaptive key's default letter.
-    await user.click(within(await inspector('RBI')).getByRole('button', { name: 'Symbol' }));
-    expect(await screen.findByRole('button', { name: 'Key RBI: h' })).toBeInTheDocument();
+    await user.click(within(await inspector('LBI')).getByRole('button', { name: 'Symbol' }));
+    expect(await screen.findByRole('button', { name: 'Key LBI: v' })).toBeInTheDocument();
   });
 
   it("puts a copy of one of the layout's adaptive keys on another key", async () => {
     const user = userEvent.setup();
     await openMagicRomak();
 
-    await user.click(await screen.findByRole('button', { name: 'Key LHM: s' }));
+    // Its home block mod holds Alt there.
+    await user.click(await screen.findByRole('button', { name: 'Key LHM: s, hold ⌥' }));
     const editor = await inspector('LHM');
     // Adaptive keys come first among the keys the layout already has, in sight without "All".
     await user.click(within(editor).getByRole('button', { name: 'Use h ✦' }));
@@ -1943,7 +2230,11 @@ describe('Analyze, while editing', () => {
     expect(letter).not.toBe('');
     const first = screen
       .getAllByRole('button', { name: /^Key \w+: / })
-      .find((b) => b.getAttribute('aria-label')?.endsWith(`: ${letter}`));
+      // The letter alone, or the letter and what a home block mod holds there.
+      .find((b) => {
+        const label = b.getAttribute('aria-label') ?? '';
+        return label.endsWith(`: ${letter}`) || label.includes(`: ${letter}, hold `);
+      });
     await user.click(first as HTMLElement);
     const editor = await screen.findByRole('region', { name: 'Key numbers' });
 

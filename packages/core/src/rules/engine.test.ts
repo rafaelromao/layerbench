@@ -335,7 +335,7 @@ describe('rules engine', () => {
   it("hashes a layout's structure stably, and another layout apart", () => {
     const layout = bundledLayout('qwerty')!;
     expect(structureHash(bundledLayout('qwerty')!)).toBe(structureHash(layout));
-    expect(structureHash(bundledLayout('dvorak')!)).not.toBe(structureHash(layout));
+    expect(structureHash(bundledLayout('romak')!)).not.toBe(structureHash(layout));
   });
 });
 

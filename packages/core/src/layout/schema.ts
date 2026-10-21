@@ -51,7 +51,11 @@ export const BindingSchema: z.ZodType<unknown> = z.lazy(() =>
       ignoreModifiers: z.boolean().optional(),
       releaseAfterMs: z.number().optional(),
     }),
-    z.object({ kind: z.literal('mod'), mod: ModSchema.catch('LSHIFT').default('LSHIFT') }),
+    z.object({
+      kind: z.literal('mod'),
+      mod: ModSchema.catch('LSHIFT').default('LSHIFT'),
+      also: z.array(ModSchema).optional(),
+    }),
     z.object({
       kind: z.literal('caps_word'),
       // Defaults live in the machine, not here: the document keeps exactly what it declared.

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { compileLayout } from '../layout/compile.js';
 import type { Layout } from '../layout/types.js';
-import { magicRomak } from '../layouts/romak.js';
+import { bundledLayout } from '../layouts/index.js';
 import { Machine } from './machine.js';
+
+const magicRomak = bundledLayout('magic-romak')!;
 
 function mini(layers: Layout['layers'], extra: Partial<Layout> = {}): Layout {
   return {
@@ -606,5 +608,32 @@ describe('Machine — the layer a press reaches', () => {
     const macro = board().tap('LBP');
     expect(macro.symbols).toBe('q');
     expect(macro.reaches).toBeNull();
+  });
+});
+
+describe('Machine — a hold of several modifiers', () => {
+  const layout = mini([
+    {
+      id: 'base',
+      bindings: {
+        LBR: {
+          kind: 'hold_tap',
+          tap: { kind: 'kp', symbol: 'f' },
+          hold: { kind: 'mod', mod: 'LGUI', also: ['LSHIFT'] },
+        },
+        LHP: { kind: 'kp', symbol: 'a' },
+        L0: { kind: 'kp', symbol: ' ' },
+      },
+    },
+  ]);
+
+  it('holds every one of them while the key is down, and none once it is let go', () => {
+    const { m, hold, tap, release } = machineFor(layout);
+    hold('LBR');
+    expect([...m.activeMods()].sort()).toEqual(['LGUI', 'LSHIFT']);
+    expect(tap('LHP').symbols).toBe('A');
+    release('LBR');
+    expect([...m.activeMods()]).toEqual([]);
+    expect(tap('LHP').symbols).toBe('a');
   });
 });

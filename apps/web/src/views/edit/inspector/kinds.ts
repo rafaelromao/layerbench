@@ -49,6 +49,13 @@ export const PRIMARY_KINDS: readonly KindInfo[] = [
   { kind: 'nothing', label: 'Nothing', glyph: '∅', hint: 'does nothing' },
 ];
 
+const IMPORTED: KindInfo = {
+  kind: 'imported',
+  label: 'Imported',
+  glyph: '?',
+  hint: 'a key LayerBench draws and keeps but does not simulate: media, a layer it has no model of',
+};
+
 /** Behind "More": kinds a layout needs now and then. */
 export const MORE_KINDS: readonly KindInfo[] = [
   {
@@ -68,16 +75,10 @@ export const MORE_KINDS: readonly KindInfo[] = [
     glyph: '&',
     hint: "one of the layout's named behaviours",
   },
+  IMPORTED,
 ];
 
-const IMPORTED: KindInfo = {
-  kind: 'imported',
-  label: 'Imported',
-  glyph: '?',
-  hint: 'a key LayerBench keeps but does not simulate',
-};
-
-export const ALL_KINDS: readonly KindInfo[] = [...PRIMARY_KINDS, ...MORE_KINDS, IMPORTED];
+export const ALL_KINDS: readonly KindInfo[] = [...PRIMARY_KINDS, ...MORE_KINDS];
 
 /**
  * What one part of a bigger key can be — the tap of a tap-hold, an adaptive key's branch. Parts
@@ -99,6 +100,12 @@ export const PART_KINDS: readonly KindOfKey[] = [
  * adaptive key on a tap and a layer or a modifier on a hold.
  */
 export const TAP_KINDS: readonly KindOfKey[] = [...PART_KINDS, 'adaptive', 'altrepeat'];
+
+/**
+ * What the hold of a tap-hold can be: anything its tap can, or a key imported from a keymap, as
+ * Magic Romak's pinkies hold a layer this model does not carry.
+ */
+export const HOLD_KINDS: readonly KindOfKey[] = [...TAP_KINDS, 'imported'];
 
 export function kindInfo(kind: KindOfKey): KindInfo {
   return ALL_KINDS.find((k) => k.kind === kind) ?? IMPORTED;

@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeText } from '../corpus/normalize.js';
-import { magicRomak } from '../layouts/romak.js';
+import { bundledLayout } from '../layouts/index.js';
 import { explain, simulate } from '../sim/resolver.js';
 import { compileLayout } from './compile.js';
 import { expandFeatures } from './features.js';
 import type { Layout, LayoutFeatures } from './types.js';
+
+const magicRomak = bundledLayout('magic-romak')!;
 
 const OPTS = { caseMode: 'fold', crossWord: 'reset' } as const;
 
@@ -122,9 +124,9 @@ describe('Magic Romak after the features rewrite', () => {
 
   it('keeps the authored document separate from the expanded one', () => {
     expect(compiled.layout.features?.sentenceCase).toBeDefined();
-    expect(compiled.layout.behaviors).toEqual({});
+    expect(compiled.layout.behaviors ?? {}).toEqual({});
     // Only the space and shift keys are wrapped; the adaptive keys and the alt repeat are bindings.
-    expect(compiled.expanded.behaviors).toEqual({});
+    expect(compiled.expanded.behaviors ?? {}).toEqual({});
     expect(compiled.featureOwned.get('alpha1')).toEqual(
       new Map([
         ['L0', 'sentenceCase'],

@@ -20,6 +20,21 @@ describe('the drafts a tab made', () => {
     expect(drafts.originOf('inline:ccc')).toBeUndefined();
   });
 
+  it('knows the bundled or community layout a draft was made from, and nothing of a custom one', () => {
+    const store = mapStore();
+    webDrafts(store).remember('inline:aaa', null, { kind: 'bundled', id: 'qwerty' });
+    webDrafts(store).remember('inline:bbb', 'mine');
+    const drafts = webDrafts(store);
+    expect(drafts.sourceOf('inline:aaa')).toEqual({ kind: 'bundled', id: 'qwerty' });
+    expect(drafts.originOf('inline:aaa')).toBeNull();
+    expect(drafts.sourceOf('inline:bbb')).toBeNull();
+    expect(drafts.sourceOf('inline:ccc')).toBeNull();
+    // Kept as a tab kept them before it knew where a draft came from.
+    store.setItem('layerbench:origins', JSON.stringify({ 'inline:old': 'mine' }));
+    expect(webDrafts(store).originOf('inline:old')).toBe('mine');
+    expect(webDrafts(store).sourceOf('inline:old')).toBeNull();
+  });
+
   it('keeps them for the tab, across a reload', () => {
     const store = mapStore();
     webDrafts(store).remember('inline:aaa', 'mine');

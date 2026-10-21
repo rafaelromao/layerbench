@@ -5,7 +5,6 @@ import { toCanonicalJson } from '../layout/json.js';
 import { safeParseLayout } from '../layout/schema.js';
 import type { Binding, Layout } from '../layout/types.js';
 import { bundledLayout } from '../layouts/index.js';
-import { magicRomak } from '../layouts/romak.js';
 import { reachKeys } from '../sim/activators.js';
 import {
   boardFromKeys,
@@ -24,6 +23,8 @@ import {
   readLegend,
 } from './keymap-drawer.js';
 import { HUMMINGBIRD } from './yaml.test.js';
+
+const magicRomak = bundledLayout('magic-romak')!;
 
 const key = (spec: Partial<KdKey>): KdKey => ({
   tap: '',
@@ -419,6 +420,36 @@ describe('writing a file', () => {
       if (b.kind === 'kp')
         expect(back.layers[0].bindings[id], id).toMatchObject({ symbol: b.symbol });
     }
+  });
+
+  it('writes a hold of several modifiers as ZMK does, and reads it back', () => {
+    const layout: Layout = {
+      format: 'layerbench/layout@1',
+      name: 'Held',
+      geometry: { preset: '3x5+2' },
+      keys: { space: 'L0' },
+      layers: [
+        {
+          id: 'base',
+          name: 'Base',
+          bindings: {
+            LHP: { kind: 'kp', symbol: 'a' },
+            LBR: {
+              kind: 'hold_tap',
+              tap: { kind: 'kp', symbol: 'x' },
+              hold: { kind: 'mod', mod: 'LGUI', also: ['LSHIFT'] },
+            },
+            L0: { kind: 'kp', symbol: ' ' },
+          },
+        },
+      ],
+    };
+    expect(write(layout)).toContain('h: LS(LGUI)');
+    expect(roundTrip(layout).layers[0].bindings.LBR).toEqual({
+      kind: 'hold_tap',
+      tap: { kind: 'kp', symbol: 'x' },
+      hold: { kind: 'mod', mod: 'LGUI', also: ['LSHIFT'] },
+    });
   });
 
   it('reads back layer keys, one-shots, tap-holds and modifiers as they were', () => {

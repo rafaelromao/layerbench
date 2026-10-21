@@ -43,7 +43,8 @@ _Avoid_: sync, push, upload
 A layout, rule set or text the user keeps, saved in this browser and, once they sign in, on GitHub
 too, under an id that follows its name. A link names it by `custom:<id>`; where it is not saved it
 does not open, and nothing opens in its place. Links once named it `saved:<id>`, and those no longer
-open.
+open. What is kept beside a custom layout for a proposed change is stored the same way, but is not a
+custom document of its own: nothing opens it.
 _Avoid_: saved document, stored document, saved item
 
 **Custom layout**:
@@ -64,8 +65,9 @@ _Avoid_: standard layers, common layers, shared layers
 
 **Draft**:
 A layout's unsaved edits, carried whole in its link after the `#`. The tab that made a draft knows
-which custom layout its edits were made on, so saving it saves that layout; anywhere else it is a
-layout of its own.
+which custom layout its edits were made on, so saving it saves that layout, or which bundled or
+community layout, so saving it offers to propose the change; anywhere else it is a layout of its
+own.
 _Avoid_: unsaved copy, working copy
 
 **Edit**:
@@ -77,8 +79,10 @@ _Avoid_: action, operation, op, mutation
 
 **Home row mods**:
 Modifiers held on the home row's finger keys, each key still typing what it typed when tapped. Every
-bundled layout but Magic Romak has Gui, Ctrl, Alt and Shift from the left pinky in, mirrored on the
-right, on its base layer.
+bundled layout has Gui, Ctrl, Alt and Shift from the left pinky in, mirrored on the right, on its
+base layer, but Magic Romak, which holds its author's keymap's, its home block mods, as the keymap
+calls them: Ctrl, Alt and Shift from the ring finger in, a layer on each pinky, and Gui, with or
+without Shift, on the bottom row.
 _Avoid_: HRM, home-row modifiers
 
 **Kind of key**:
@@ -88,9 +92,10 @@ kind a rule matches (`key_kind`), which is what a press counts as in the analysi
 _Avoid_: binding kind, key type
 
 **Layout session**:
-The layout open in Analyze, from the moment it is opened until another is: which custom layout it is,
-if any, its draft, and the link that carries it. Its own changes to the link never open it again;
-any other link does, even one naming the same layout.
+The layout open in Analyze, from the moment it is opened until another is: which custom layout it
+is, if any, or which bundled or community layout it came from, its draft, and the link that carries
+it. Its own changes to the link never open it again; any other link does, even one naming the same
+layout.
 _Avoid_: open layout, editor state
 
 **Layout's link**:
@@ -131,6 +136,13 @@ _Avoid_: logical key, event, keystroke record
 Everything typing a text on a layout pressed: each press, how often it came, and which presses came
 together within a word. Every number about the layout is read from it.
 _Avoid_: simulation tables, registry, typing record
+
+**Proposed change**:
+Changes to a bundled or community layout, proposed for everyone by a pull request that names who
+sent them. They are saved meanwhile as a custom layout marked proposed, with the pull request kept
+beside it, under its id: merged, the Library has the change and the copy goes; closed, the copy
+stays a custom layout of its own.
+_Avoid_: suggestion, update request, patch
 
 **Ranking**:
 The Library's order of layouts by their numbers, on the analysis settings in its link with the sample

@@ -1,16 +1,27 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { goldenPath } from '../golden/paths.js';
+import { toCanonicalJson } from '../layout/json.js';
 import { BUNDLED_IDS } from './bundled-ids.js';
+import { classicLayout } from './classic.js';
 import { DOCUMENT_LAYOUTS, documentLayout, documentMissing } from './documents.js';
 import { BUNDLED_LAYOUTS } from './index.js';
 
 const DOCUMENTS = fileURLToPath(new URL('./documents/', import.meta.url));
 
-/** A layout as LayerBench saves it, with an author and a link: Night's checked-in document. */
+/**
+ * A layout as LayerBench saves it, with an author and a link. Built here rather than read from a
+ * bundled layout's document, which a maintainer may take out of the Library.
+ */
 function saved(): Record<string, unknown> {
-  return JSON.parse(readFileSync(goldenPath('layouts/night.json'), 'utf8'));
+  const night = classicLayout({
+    id: 'night',
+    name: 'Night',
+    author: 'Someone',
+    rows: "b f l k q p g o u .\nn s h t m y c a e i\nx v j d z ' w / ; ,",
+    link: 'https://example.com/night',
+  });
+  return JSON.parse(JSON.stringify(toCanonicalJson(night)));
 }
 
 describe('bundled layouts added as documents', () => {

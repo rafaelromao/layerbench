@@ -3,7 +3,6 @@ import { normalizeText } from '../corpus/normalize.js';
 import { FIXTURE_EN, FIXTURE_PT } from '../fixtures/index.js';
 import { layoutLanguageCoverage } from '../lang/coverage.js';
 import { bundledLayout } from '../layouts/index.js';
-import { magicRomak } from '../layouts/romak.js';
 import { SHAPES } from '../presses/press-log.js';
 import { enumerateProducers } from '../sim/producers.js';
 import { simulate } from '../sim/resolver.js';
@@ -12,6 +11,8 @@ import { toCanonicalJson } from './json.js';
 import { safeParseLayout } from './schema.js';
 import type { Layout } from './types.js';
 import { type FeatureKind, withoutFeatures } from './without.js';
+
+const magicRomak = bundledLayout('magic-romak')!;
 
 const OPTS = { caseMode: 'fold', crossWord: 'reset' } as const;
 const text = normalizeText(`${FIXTURE_EN} ${FIXTURE_PT}`, OPTS);

@@ -1,17 +1,18 @@
 import { getGeometryPreset } from '../geometry/presets.js';
 import { layoutCategory } from '../layout/categories.js';
 import type { Layout } from '../layout/types.js';
-import { CLASSIC_LAYOUTS, classicLayout } from './classic.js';
+import { BUNDLED_IDS } from './bundled-ids.js';
+import { CLASSIC_DEFS, type ClassicDef, classicLayout } from './classic.js';
 import { DOCUMENT_LAYOUTS } from './documents.js';
 import LANGUAGES from './languages.json';
-import { magicRomak, romak } from './romak.js';
 import { SMALL_DEFS } from './small.js';
 import { type ThumbPlacement, withStandardThumbs } from './standard.js';
 import { withDefaultLayers, withHomeRowMods } from './templates.js';
 
+export { BUNDLED_IDS, DEFAULT_LAYOUT_ID } from './bundled-ids.js';
 export { CLASSIC_DEFS, CLASSIC_LAYOUTS, classicLayout } from './classic.js';
 export { DOCUMENT_LAYOUTS, documentLayout, documentMissing } from './documents.js';
-export { magicRomak, romak } from './romak.js';
+export { keptInLibrary } from './library-edit/request.js';
 export { SMALL_DEFS } from './small.js';
 export {
   BASE_SYMBOLS,
@@ -67,19 +68,34 @@ function withDefaults(placed: ThumbPlacement) {
 }
 
 /**
+ * A layout written in code, built from its definition: its default layers, then the home row mods,
+ * its own if its definition gives them.
+ */
+function built(placed: ThumbPlacement) {
+  return (def: ClassicDef): Layout => {
+    const layout = withDefaults(placed)(classicLayout(def));
+    return def.homeRowMods === false ? layout : withHomeRowMods(layout, def.homeRowMods);
+  };
+}
+
+/** Layouts in the order of `BUNDLED_IDS`, the order the Library lists them in. */
+function byBundledOrder(a: Layout, b: Layout): number {
+  return BUNDLED_IDS.indexOf(a.id ?? '') - BUNDLED_IDS.indexOf(b.id ?? '');
+}
+
+/**
  * The layouts written here in code: the set the app started with, and Romak back among them. Each
- * has the default layers and home row mods but Magic Romak, which has only its keymap's Numbers and
- * Symbols, on its own thumbs. LayerBench placed the thumbs of the classic layouts, their authors
- * having left them to a space bar; the small-board layouts' authors placed their own.
+ * has the default layers and home row mods but Magic Romak, which brings its keymap's own Numbers
+ * and Symbols and its home block mods, as any layout may. LayerBench placed the thumbs of the
+ * classic layouts, their authors having left them to a space bar; the small-board layouts' authors
+ * placed their own. They are listed in the order of `BUNDLED_IDS`, as the languages file is.
  */
 const BUILT_IN_LAYOUTS: Layout[] = [
-  magicRomak,
-  ...[
-    romak,
-    ...CLASSIC_LAYOUTS.map(withDefaults('layerbench')),
-    ...SMALL_LAYOUTS.map(withDefaults('author')),
-  ].map(withHomeRowMods),
-].map(withLanguages);
+  ...CLASSIC_DEFS.map(built('layerbench')),
+  ...SMALL_DEFS.map(built('author')),
+]
+  .sort(byBundledOrder)
+  .map(withLanguages);
 
 /**
  * A layout written in code, with the languages it performs well in: measured, not chosen, by
@@ -90,8 +106,13 @@ function withLanguages(layout: Layout): Layout {
   return { ...layout, languages: (LANGUAGES as Record<string, string[]>)[layout.id ?? ''] ?? [] };
 }
 
-/** The layouts the app offers: those written here, then those added since as documents. */
-export const BUNDLED_LAYOUTS: Layout[] = [...BUILT_IN_LAYOUTS, ...DOCUMENT_LAYOUTS];
+/**
+ * The layouts the app offers, those written here and those added as documents, in the order of
+ * `BUNDLED_IDS`: the layout a visit opens first, wherever it is written.
+ */
+export const BUNDLED_LAYOUTS: Layout[] = [...BUILT_IN_LAYOUTS, ...DOCUMENT_LAYOUTS].sort(
+  byBundledOrder,
+);
 
 export function bundledLayout(id: string): Layout | undefined {
   return BUNDLED_LAYOUTS.find((l) => l.id === id);

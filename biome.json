@@ -16,7 +16,8 @@
       "!packages/corpora/raw",
       "!apps/web/public",
       "!tmp",
-      "!generated"
+      "!generated",
+      "!.library"
     ]
   },
   "formatter": {

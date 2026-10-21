@@ -611,6 +611,20 @@ What moved; the 38 reports and Magic Romak's document did not:
   move.
 - **Nordwind**, a document of its own, carries the same eight tap-holds in its JSON.
 
+## Twenty-eighth re-baseline: Magic Romak's home block mods, and its code moved
+
+Romak and Magic Romak are written like the other layouts, in `CLASSIC_DEFS` and `SMALL_DEFS`, and
+`romak.ts` is gone. Romak's document is what it was, its keys in another order. Magic Romak holds
+its author's keymap's home block mods: Shortcuts on each pinky (an imported key), Ctrl, Alt and
+Shift from the ring finger in, Shift with Gui on LBR and LBM, and Gui on LBI and the magic key.
+
+What moved, checked across the 38 reports; nothing else moved:
+
+- **Magic Romak's document and share blob**: the twelve keys hold what the keymap holds there,
+  each still typing what it typed.
+- **No report**: the fixture texts are typed the same, holds being no part of what they press, and
+  every layout's languages, measured by `pnpm languages`, are as they were.
+
 ## Not compared
 
 `globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not

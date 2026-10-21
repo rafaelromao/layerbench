@@ -21,6 +21,16 @@
 
 import { installationToken } from './github-app.js';
 import {
+  checkLayout,
+  type LibraryAnswer,
+  promote,
+  propose,
+  remove,
+  type Target,
+  targetOf,
+} from './library.js';
+import { client, LIBRARY_REPO } from './pull-request.js';
+import {
   checkSubmission,
   MAX_LAYOUT_BYTES,
   SUBMIT_REPO,
@@ -35,10 +45,13 @@ export interface AuthEnv {
   SESSION_SECRET?: string;
   /** Comma-separated origins of the pages that may sign in here, besides this host's own. */
   ALLOWED_ORIGINS?: string;
-  /** The GitHub App's numeric id, which Submit acts as. Unset, Submit reports itself not set up. */
-  GITHUB_APP_ID?: string;
+  /**
+   * The GitHub App's numeric id, which the pull requests are opened as. Unset, Submit and the
+   * Library's changes report themselves not set up.
+   */
+  LAYERBENCH_APP_ID?: string;
   /** The GitHub App's private key, the PEM file GitHub downloads. */
-  GITHUB_APP_PRIVATE_KEY?: string;
+  LAYERBENCH_APP_PRIVATE_KEY?: string;
 }
 
 /** What `session` and `token` answer. */
@@ -53,6 +66,8 @@ export interface SessionAnswer {
   expiresAt?: number | null;
   /** A new sealed session, for the page to keep in place of the one it sent. */
   session?: string;
+  /** Whether the user may change the Library: GitHub lets them push to its repository. */
+  maintainer?: boolean;
 }
 
 interface Session {
@@ -231,14 +246,36 @@ async function sessionOf(body: Record<string, unknown>, config: Config): Promise
   return session;
 }
 
-function signedIn(base: SessionAnswer, session: Session): SessionAnswer {
+async function signedIn(base: SessionAnswer, session: Session): Promise<SessionAnswer> {
   return {
     ...base,
     signedIn: true,
     login: session.login,
     token: session.access,
     expiresAt: session.accessExpiresAt,
+    maintainer: await maintainerOf(session.access),
   };
+}
+
+/**
+ * Whether GitHub says the user may push to the Library's repository, asked with their own token:
+ * a maintainer, who may change the Library from the app. Anything but a yes is a no.
+ */
+export async function maintainerOf(access: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${API}/repos/${LIBRARY_REPO}`, {
+      headers: {
+        Authorization: `Bearer ${access}`,
+        Accept: 'application/vnd.github+json',
+        'User-Agent': USER_AGENT,
+      },
+    });
+    if (!res.ok) return false;
+    const { permissions: p } = (await res.json()) as { permissions?: Record<string, unknown> };
+    return p?.push === true || p?.maintain === true || p?.admin === true;
+  } catch {
+    return false;
+  }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -285,7 +322,7 @@ async function token(
     if (!login) return json(base, 200, cors);
     const started = sessionFrom(grant, login);
     return json(
-      { ...signedIn(base, started), session: await seal(config.key, started) },
+      { ...(await signedIn(base, started)), session: await seal(config.key, started) },
       200,
       cors,
     );
@@ -314,7 +351,7 @@ async function session(
   const fresh =
     body.renew !== true &&
     (current.accessExpiresAt === null || current.accessExpiresAt - now > RENEW_MARGIN_MS);
-  if (fresh) return json(signedIn(base, current), 200, cors);
+  if (fresh) return json(await signedIn(base, current), 200, cors);
   if (!current.refresh || (current.refreshExpiresAt !== null && current.refreshExpiresAt < now)) {
     return json(base, 200, cors);
   }
@@ -334,7 +371,11 @@ async function session(
   if (!grant) return json(base, 200, cors);
 
   const renewed = sessionFrom(grant, current.login);
-  return json({ ...signedIn(base, renewed), session: await seal(config.key, renewed) }, 200, cors);
+  return json(
+    { ...(await signedIn(base, renewed)), session: await seal(config.key, renewed) },
+    200,
+    cors,
+  );
 }
 
 async function logout(
@@ -375,7 +416,7 @@ async function submitRoute(
   if (!current) return answer(401, { error: 'signed out' });
   const checked = checkSubmission(body.layout);
   if (!checked.ok) return answer(422, { error: 'not accepted', reason: checked.reason });
-  if (!env.GITHUB_APP_ID || !env.GITHUB_APP_PRIVATE_KEY) {
+  if (!env.LAYERBENCH_APP_ID || !env.LAYERBENCH_APP_PRIVATE_KEY) {
     return answer(503, { error: 'Submit is not set up' });
   }
   try {
@@ -383,7 +424,7 @@ async function submitRoute(
       return answer(401, { error: 'signed out' });
     }
     const token = await installationToken(
-      { appId: env.GITHUB_APP_ID, privateKey: env.GITHUB_APP_PRIVATE_KEY },
+      { appId: env.LAYERBENCH_APP_ID, privateKey: env.LAYERBENCH_APP_PRIVATE_KEY },
       SUBMIT_REPO,
     );
     if (!token) return answer(503, { error: 'Submit is not set up' });
@@ -393,6 +434,64 @@ async function submitRoute(
       current.login,
       token,
     );
+    return answer(result.status, result.answer);
+  } catch {
+    return answer(502, { error: 'GitHub could not be reached' });
+  }
+}
+
+/**
+ * A change to the Library: one anyone signed in proposes to a bundled or community layout
+ * (`propose`), or a maintainer's delete or promote (`maintain`). As for Submit, the session must be
+ * good and its token still the login it names, and what is sent is checked before the App's key is
+ * used; a maintainer's is refused, writing nothing, unless GitHub lets the user push.
+ */
+async function libraryRoute(
+  route: 'propose' | 'maintain',
+  body: Record<string, unknown>,
+  config: Config,
+  env: AuthEnv,
+  cors: Extra,
+): Promise<Response> {
+  const answer = (status: number, value: LibraryAnswer) => json(value, status, cors);
+  const current = await sessionOf(body, config);
+  if (!current) return answer(401, { error: 'signed out' });
+  // Anyone proposes a change; a maintainer deletes or promotes, and nothing else.
+  const action = route === 'propose' ? 'change' : body.action;
+  if (action !== 'change' && action !== 'delete' && action !== 'promote') {
+    return answer(400, { error: 'bad request' });
+  }
+  if (route === 'maintain' && action === 'change') return answer(400, { error: 'bad request' });
+  const kinds: Target['kind'][] =
+    action === 'promote' ? ['custom', 'community'] : ['bundled', 'community'];
+  const target = targetOf(body.target, kinds);
+  if (!target) return answer(400, { error: 'bad request' });
+  const checked = action === 'delete' ? null : checkLayout(body.layout, target.id);
+  if (checked && !checked.ok) return answer(422, { error: 'not accepted', reason: checked.reason });
+  if (!env.LAYERBENCH_APP_ID || !env.LAYERBENCH_APP_PRIVATE_KEY) {
+    return answer(503, { error: 'Library changes are not set up' });
+  }
+  try {
+    if ((await loginOf(current.access)) !== current.login) {
+      return answer(401, { error: 'signed out' });
+    }
+    if (route === 'maintain' && !(await maintainerOf(current.access))) {
+      return answer(403, { error: 'not a maintainer' });
+    }
+    const token = await installationToken(
+      { appId: env.LAYERBENCH_APP_ID, privateKey: env.LAYERBENCH_APP_PRIVATE_KEY },
+      LIBRARY_REPO,
+    );
+    if (!token) return answer(503, { error: 'Library changes are not set up' });
+    const gh = client(token);
+    const result =
+      action === 'delete'
+        ? await remove(gh, target, current.login)
+        : checked?.ok && action === 'change'
+          ? await propose(gh, target, body.layout, checked, current.login)
+          : checked?.ok
+            ? await promote(gh, target, body.layout, checked, current.login)
+            : { status: 400, answer: { error: 'bad request' } };
     return answer(result.status, result.answer);
   } catch {
     return answer(502, { error: 'GitHub could not be reached' });
@@ -467,14 +566,16 @@ export async function handleAuth(request: Request, env: AuthEnv): Promise<Respon
       'Access-Control-Max-Age': '7200',
     });
   }
-  if (request.method !== 'POST' || !['session', 'token', 'logout', 'submit'].includes(route)) {
+  const routes = ['session', 'token', 'logout', 'submit', 'propose', 'maintain'];
+  if (request.method !== 'POST' || !routes.includes(route)) {
     return json({ error: 'not found' }, 404, cors);
   }
   // A JSON body is what makes the browser ask first, so other sites cannot post blind.
   if (!request.headers.get('Content-Type')?.startsWith('application/json')) {
     return json({ error: 'expected JSON' }, 415, cors);
   }
-  const body = await bodyOf(request, route === 'submit' ? MAX_SUBMIT_BODY_BYTES : MAX_BODY_BYTES);
+  const carriesLayout = route === 'submit' || route === 'propose' || route === 'maintain';
+  const body = await bodyOf(request, carriesLayout ? MAX_SUBMIT_BODY_BYTES : MAX_BODY_BYTES);
   if (!body) return json({ error: 'bad request' }, 400, cors);
 
   const config = await configFrom(env);
@@ -483,6 +584,11 @@ export async function handleAuth(request: Request, env: AuthEnv): Promise<Respon
     return config
       ? submitRoute(body, config, env, cors)
       : json({ error: 'Submit is not set up' } satisfies SubmitAnswer, 503, cors);
+  }
+  if (route === 'propose' || route === 'maintain') {
+    return config
+      ? libraryRoute(route, body, config, env, cors)
+      : json({ error: 'Library changes are not set up' } satisfies LibraryAnswer, 503, cors);
   }
   if (!config)
     return json({ available: false, signedIn: false } satisfies SessionAnswer, 200, cors);

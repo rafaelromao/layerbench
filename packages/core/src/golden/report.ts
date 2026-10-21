@@ -13,6 +13,7 @@ import type { Coverage } from '../sim/resolver.js';
 import { explain, simulate } from '../sim/resolver.js';
 import type { SimulationStats } from '../tables/tables.js';
 import { goldenPath } from './paths.js';
+import { GOLDEN_LAYOUTS } from './set.js';
 
 /**
  * One cell of the golden matrix. The report file name is derived from it, and every parameter the
@@ -28,9 +29,6 @@ export interface GoldenCase {
 }
 
 export type GoldenCorpus = 'fixture_en' | 'fixture_pt' | 'fixture_enpt';
-
-/** Layouts covered by the matrix. Resolved from `golden/layouts/`, not from the bundled registry. */
-export const GOLDEN_LAYOUTS = ['magic-romak', 'romak', 'qwerty'] as const;
 
 const GOLDEN_CORPORA: GoldenCorpus[] = ['fixture_en', 'fixture_pt', 'fixture_enpt'];
 const GOLDEN_PRESETS = ['layouts_doc', 'cyanophage'] as const;

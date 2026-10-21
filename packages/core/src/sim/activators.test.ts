@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { compileLayout } from '../layout/compile.js';
 import type { Binding, Layout, Mod } from '../layout/types.js';
-import { documentedLayouts } from '../layouts/index.js';
-import { magicRomak } from '../layouts/romak.js';
+import { bundledLayout, documentedLayouts } from '../layouts/index.js';
 import {
   bindingReaches,
   blockedThumbs,
@@ -13,6 +12,8 @@ import {
   standInPeers,
 } from './activators.js';
 import { explain } from './resolver.js';
+
+const magicRomak = bundledLayout('magic-romak')!;
 
 const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
 

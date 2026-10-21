@@ -193,6 +193,28 @@ describe('Drafts', () => {
     expect(JSON.stringify((await storage.get('layouts', 'qwerty-copy'))?.doc)).toContain('ç');
   });
 
+  it('remembers the bundled layout a draft was made from, across a reload, until it is saved', async () => {
+    const storage = new MemoryStorage();
+    const drafts = webDrafts(mapStore());
+    const first = session('qwerty', { storage, drafts });
+    const state = await opened(first.s);
+    expect(state.source).toEqual({ kind: 'bundled', id: 'qwerty' });
+    first.s.edited(withCedilla(state.layout), true);
+    const draft = await first.s.link();
+    first.s.dispose();
+
+    const again = session(draft, { storage, drafts });
+    const reopened = await opened(again.s);
+    expect(reopened).toMatchObject({
+      startsUnsaved: true,
+      source: { kind: 'bundled', id: 'qwerty' },
+    });
+    const copy = { ...reopened.layout, name: 'Qwerty copy' };
+    expect(await again.s.save(copy)).toMatchObject({ ok: true, id: 'qwerty-copy' });
+    // Saved, it is a custom layout of its own.
+    expect(again.s.getState()).toMatchObject({ storedId: 'qwerty-copy', source: null });
+  });
+
   it('opens a draft another tab made as a layout of its own', async () => {
     const storage = new MemoryStorage();
     await seed(storage, 'qwerty', 'qwerty-copy', { name: 'Qwerty copy' });

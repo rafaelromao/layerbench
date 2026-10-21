@@ -6,8 +6,11 @@ import { importTextLayout } from '../layout/text.js';
 import type { Binding, Layout, Mod } from '../layout/types.js';
 import { CLASSIC_LAYOUTS } from '../layouts/classic.js';
 import { BUNDLED_LAYOUTS, bundledLayout, withHomeRowMods } from '../layouts/index.js';
-import { magicRomak, romak } from '../layouts/romak.js';
 import { explain, simulate } from './resolver.js';
+
+const magicRomak = bundledLayout('magic-romak')!;
+
+const romak = bundledLayout('romak')!;
 
 const opts = { caseMode: 'fold' as const, crossWord: 'reset' as const };
 

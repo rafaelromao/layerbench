@@ -80,6 +80,11 @@ export const MOD_NAME: Record<Mod, string> = {
   RGUI: 'right Command',
 };
 
+/** A held modifier's glyphs: those held with it, then its own. */
+function modGlyphs(b: { mod: Mod; also?: Mod[] }): string {
+  return [...(b.also ?? []), b.mod].map((m) => MOD_GLYPH[m]).join('');
+}
+
 /** A modifier family as a sentence names it, either side alike. */
 export const FAMILY_NAME: Record<ModFamily, string> = {
   shift: 'Shift',
@@ -191,8 +196,9 @@ export function tapLabel(c: CompiledLayout, b: Binding): string {
     case 'auto_layer':
       return short(layerName(c, p.layer));
     case 'sk':
-    case 'mod':
       return MOD_GLYPH[p.mod];
+    case 'mod':
+      return modGlyphs(p);
     case 'caps_word':
       return '⇪';
     case 'key_repeat':
@@ -224,7 +230,7 @@ export function tapLabel(c: CompiledLayout, b: Binding): string {
 
 function holdOf(c: CompiledLayout, b: Binding): string {
   if (b.kind === 'mo') return short(layerName(c, b.layer));
-  if (b.kind === 'mod') return MOD_GLYPH[b.mod];
+  if (b.kind === 'mod') return modGlyphs(b);
   return tapLabel(c, b);
 }
 
@@ -341,7 +347,7 @@ export function describe(c: CompiledLayout, b: Binding): string {
     case 'sk':
       return `${MOD_NAME[b.mod]} for the next key (one-shot)`;
     case 'mod':
-      return `holds ${MOD_NAME[b.mod]}`;
+      return `holds ${[b.mod, ...(b.also ?? [])].map((m) => MOD_NAME[m]).join(' and ')}`;
     case 'caps_word':
       return 'caps word: capitals until the word ends';
     case 'key_repeat':

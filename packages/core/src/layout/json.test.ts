@@ -90,6 +90,40 @@ describe('adaptive branches in the canonical document', () => {
   });
 });
 
+describe('a hold of several modifiers in the document', () => {
+  const held = (hold: Layout['layers'][number]['bindings'][string]): Layout => ({
+    format: 'layerbench/layout@1',
+    name: 'Held',
+    geometry: { preset: '3x5+2' },
+    keys: { space: 'L0' },
+    layers: [
+      {
+        id: 'base',
+        bindings: { LBR: { kind: 'hold_tap', tap: { kind: 'kp', symbol: 'f' }, hold } },
+      },
+    ],
+  });
+  const holdOf = (l: Layout) => {
+    const b = l.layers[0].bindings.LBR;
+    return b.kind === 'hold_tap' ? b.hold : undefined;
+  };
+
+  it('keeps the modifiers held with the first, and reads them back', () => {
+    const doc = toCanonicalJson(held({ kind: 'mod', mod: 'LGUI', also: ['LSHIFT'] }));
+    const parsed = safeParseLayout(doc);
+    expect(parsed.ok && holdOf(parsed.layout)).toEqual({
+      kind: 'mod',
+      mod: 'LGUI',
+      also: ['LSHIFT'],
+    });
+  });
+
+  it('writes a plain modifier as it was, with nothing held with it', () => {
+    const doc = toCanonicalJson(held({ kind: 'mod', mod: 'LGUI' }));
+    expect(JSON.stringify(doc)).toContain('"hold":{"kind":"mod","mod":"LGUI"}');
+  });
+});
+
 describe('a conditional layer in the document', () => {
   const waitingFor = (n: number) => {
     const ids = Array.from({ length: n }, (_, i) => `l${i}`);

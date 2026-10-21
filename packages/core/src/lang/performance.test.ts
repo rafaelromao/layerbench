@@ -2,8 +2,11 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { corporaRoot } from '../golden/paths.js';
 import { toCanonicalJson } from '../layout/json.js';
+import type { Layout } from '../layout/types.js';
 import {
   BUNDLED_LAYOUTS,
+  bundledLayout,
+  DEFAULT_LAYOUT_ID,
   DOCUMENT_LAYOUTS,
   documentLayout,
   goldenLayouts,
@@ -84,7 +87,8 @@ describe('bundled layouts’ languages', () => {
   });
 
   it('can be none: a document for no language is written without them, and reads back so', () => {
-    const [layout] = DOCUMENT_LAYOUTS;
+    // Any layout that names its author, as a document must: the Library always keeps this one.
+    const layout = bundledLayout(DEFAULT_LAYOUT_ID) as Layout;
     const doc = toCanonicalJson({ ...layout, languages: [] });
     expect(documentLayout(layout.id as string, doc).languages ?? []).toEqual([]);
   });

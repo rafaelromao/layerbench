@@ -15,7 +15,8 @@ import {
 } from '@layerbench/core';
 import { type IDBPDatabase, openDB } from 'idb';
 
-const DB_VERSION = 1;
+/** 2: the proposals collection's store. */
+const DB_VERSION = 2;
 const INDEX_STORE = 'indexes';
 
 interface StoredDoc {
@@ -31,7 +32,7 @@ export async function sha1Hex(text: string): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-function open(name: string): Promise<IDBPDatabase> {
+function open(name: string, onBlocked: () => void, onBlocking: () => void): Promise<IDBPDatabase> {
   return openDB(name, DB_VERSION, {
     upgrade(db) {
       for (const c of COLLECTIONS) {
@@ -39,6 +40,10 @@ function open(name: string): Promise<IDBPDatabase> {
       }
       if (!db.objectStoreNames.contains(INDEX_STORE)) db.createObjectStore(INDEX_STORE);
     },
+    // Another tab has it open at an older version: it opens once that tab lets it go.
+    blocked: () => onBlocked(),
+    // Another tab asks for a newer version: this one lets it go, so that tab can open it.
+    blocking: () => onBlocking(),
   });
 }
 
@@ -50,12 +55,25 @@ export class IndexedDbAdapter implements StorageAdapter {
   readonly id = 'local';
   private db: Promise<IDBPDatabase> | null = null;
 
-  /** The database name is injectable so tests can isolate themselves from each other. */
-  constructor(private readonly dbName = 'layerbench') {}
+  /**
+   * The database name is injectable so tests can isolate themselves from each other. `onBlocked` is
+   * told when another tab, of an older version of the app, keeps the database from opening.
+   */
+  constructor(
+    private readonly dbName = 'layerbench',
+    private readonly onBlocked: () => void = () => {},
+  ) {}
 
   private conn(): Promise<IDBPDatabase> {
-    this.db ??= open(this.dbName);
+    this.db ??= open(this.dbName, this.onBlocked, () => this.release());
     return this.db;
+  }
+
+  /** Lets the database go, for another tab to open it at a newer version. */
+  private release(): void {
+    const db = this.db;
+    this.db = null;
+    void db?.then((d) => d.close());
   }
 
   /** Release the connection, so the database can be deleted. */

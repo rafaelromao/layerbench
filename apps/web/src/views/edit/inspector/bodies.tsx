@@ -20,6 +20,7 @@ import {
 } from './binding-changes.js';
 import { LayerChips, ModChips, Note, Row, Segment, TextField } from './controls.js';
 import {
+  HOLD_KINDS,
   type KindInfo,
   type KindOfKey,
   kindInfo,
@@ -427,6 +428,16 @@ function ModifierBody({ fields: { view, set }, onChange, name }: BodyProps<'modi
         />
         <Note>{view.acts === 'sk' ? 'Applies to the next key only.' : 'Applies while held.'}</Note>
       </Row>
+      {view.acts === 'mod' && (
+        <Row label="Held with">
+          <ModChips
+            label={named(name, 'Modifiers held with it')}
+            value={view.also}
+            onChange={(mod) => onChange(set.also(mod))}
+          />
+          <Note>Held together, as ZMK's LS(LGUI) holds Shift with Gui.</Note>
+        </Row>
+      )}
     </div>
   );
 }
@@ -454,14 +465,14 @@ function TapHoldBody({
         onChange={(tap) => onChange(set.tap(tap))}
       />
       {/* The hold can be anything the tap can: a layer, a modifier, a symbol, a macro, an
-          adaptive key — anything but another tap-hold. */}
+          adaptive key — anything but another tap-hold — or an imported key. */}
       <PartEditor
         scope={scope}
         label="Hold"
         name={named(name, 'Hold')}
         value={view.hold}
         depth={depth}
-        kinds={TAP_KINDS}
+        kinds={HOLD_KINDS}
         onChange={(hold) => onChange(set.hold(hold))}
       />
       <details className="text-xs" open={view.flavor !== '' || view.term !== ''}>
@@ -961,16 +972,30 @@ function BehaviourBody({
   );
 }
 
-function ImportedBody({ fields: { view } }: BodyProps<'imported'>) {
+function ImportedBody({ fields: { view, set }, onChange, name }: BodyProps<'imported'>) {
   return (
-    <div className="space-y-1 text-xs">
-      <p>
-        <span className="font-mono">{view.label}</span>
-        {view.source && <span className="opacity-60"> — {view.source}</span>}
-      </p>
+    <div className="space-y-2">
+      <Row label="Label">
+        <TextField
+          label={named(name, 'What it is drawn with')}
+          value={view.label}
+          mono={false}
+          className="input-xs w-full"
+          onCommit={(text) => onChange(set.label(text))}
+        />
+      </Row>
+      <Row label="Source">
+        <TextField
+          label={named(name, 'What it was in its keymap')}
+          value={view.source}
+          placeholder="&mo FUN"
+          className="input-xs w-full"
+          onCommit={(text) => onChange(set.source(text))}
+        />
+      </Row>
       <Note>
-        Kept from the imported layout. LayerBench draws it and moves it with the rest, but it types
-        nothing in the analysis. Pick a kind above to replace it.
+        A key LayerBench draws and moves with the rest but does not simulate, such as a layer it has
+        no model of: it types nothing in the analysis.
       </Note>
     </div>
   );

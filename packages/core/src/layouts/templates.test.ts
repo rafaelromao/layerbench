@@ -7,9 +7,14 @@ import { compileLayout } from '../layout/compile.js';
 import type { Binding, Layout } from '../layout/types.js';
 import { blockedThumbs, reachKeys } from '../sim/activators.js';
 import { explain } from '../sim/resolver.js';
-import { CLASSIC_LAYOUTS } from './classic.js';
-import { BUNDLED_LAYOUTS, bundledLayout, SMALL_LAYOUTS } from './index.js';
-import { magicRomak } from './romak.js';
+import { CLASSIC_DEFS, CLASSIC_LAYOUTS } from './classic.js';
+import {
+  BUNDLED_LAYOUTS,
+  bundledLayout,
+  DOCUMENT_LAYOUTS,
+  SMALL_DEFS,
+  SMALL_LAYOUTS,
+} from './index.js';
 import {
   ACCENTS,
   accentsCombo,
@@ -34,6 +39,8 @@ import {
   withDefaultLayers,
   withHomeRowMods,
 } from './templates.js';
+
+const magicRomak = bundledLayout('magic-romak')!;
 
 /** The chord that one-shots Accents, as `explain` names its step. */
 const ACCENTS_COMBO = 'combo:accents';
@@ -366,9 +373,13 @@ describe('Accents mirrored for a layout that types its vowels with the left hand
     ).toBe(false);
   });
 
-  // Magic Romak has no Accents.
+  // Magic Romak has no Accents. A document the list does not name, as one a Library request adds,
+  // carries its own Accents in its JSON: it is held to the rule alone.
+  const documents = new Set(DOCUMENT_LAYOUTS.map((l) => l.id));
   for (const layout of BUNDLED_LAYOUTS.filter((l) => l.id !== 'magic-romak')) {
-    const left = vowelsLeft.includes(layout.id ?? '');
+    const id = layout.id ?? '';
+    const left =
+      vowelsLeft.includes(id) || (documents.has(id) && vowelsOnLeft(layout.layers[0].bindings));
     it(`${layout.name}: ${left ? 'mirrored' : 'as drawn'}`, () => {
       const preset = 'preset' in layout.geometry ? layout.geometry.preset : '';
       const accents = layout.layers.find((l) => l.id === 'accents')?.bindings ?? {};
@@ -650,7 +661,9 @@ describe('the default layers on every bundled layout', () => {
           expect(reach).toEqual([{ key: 'R1', from: [base] }]);
         });
       }
-      if (original && layoutCategory(original) === 'special') {
+      // A layout that brings its own Numbers and Symbols keeps them, and gets no default layers.
+      const takesDefaults = !original?.layers.some((l) => DEFAULT_LAYER_ID_LIST.includes(l.id));
+      if (original && takesDefaults && layoutCategory(original) === 'special') {
         it('reaches Accents by two thumbs pressed together on its base layer, and nothing else', () => {
           const base = layout.layers[0].id;
           const preset = 'preset' in layout.geometry ? layout.geometry.preset : '';
@@ -842,7 +855,7 @@ describe('the default layers, layout by layout', () => {
   });
 });
 
-describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, on every layout but Magic Romak', () => {
+describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, unless a layout gives its own', () => {
   const KEYS = ['LHP', 'LHR', 'LHM', 'LHI', 'RHI', 'RHM', 'RHR', 'RHP'];
   const MODS = ['LGUI', 'LCTRL', 'LALT', 'LSHIFT', 'LSHIFT', 'LALT', 'LCTRL', 'LGUI'];
   const heldMod = (b: Binding | undefined) =>
@@ -854,7 +867,22 @@ describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, on every l
     expect(Object.values(HOME_ROW_MODS)).toEqual(MODS);
   });
 
-  it.each(BUNDLED_LAYOUTS.filter((l) => l.id !== 'magic-romak').map((l) => [l.id, l] as const))(
+  // A definition may give its own, as its author's keymap has them; a document carries its own in
+  // its JSON, as Magic Romak's would once a change made it one: every home key still holds one, a
+  // modifier or a layer imported, so none goes without.
+  const standard = (l: Layout) =>
+    KEYS.every((k, i) => heldMod(l.layers[0].bindings[k]) === MODS[i]);
+  const holdsEach = (l: Layout) =>
+    KEYS.every((k) => {
+      const b = l.layers[0].bindings[k];
+      return b?.kind === 'hold_tap' && (b.hold.kind === 'mod' || b.hold.kind === 'raw');
+    });
+  const own = new Set([
+    ...[...CLASSIC_DEFS, ...SMALL_DEFS].filter((d) => d.homeRowMods !== undefined).map((d) => d.id),
+    ...DOCUMENT_LAYOUTS.filter((l) => !standard(l) && holdsEach(l)).map((l) => l.id),
+  ]);
+
+  it.each(BUNDLED_LAYOUTS.filter((l) => !own.has(l.id ?? '')).map((l) => [l.id, l] as const))(
     '%s holds them on its base layer, each on a key that types, and no other layer holds one',
     (_id, layout) => {
       const base = layout.layers[0].bindings;
@@ -872,10 +900,37 @@ describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, on every l
     },
   );
 
-  it('leave Magic Romak as it was', () => {
-    expect(bundledLayout('magic-romak')).toMatchObject({ layers: magicRomak.layers });
+  it("give way to a layout's own: Magic Romak holds its keymap's home block mods", () => {
     const base = magicRomak.layers[0].bindings;
-    expect(KEYS.map((k) => heldMod(base[k]))).toEqual(KEYS.map(() => undefined));
+    const hold = (k: string) => (base[k]?.kind === 'hold_tap' ? base[k].hold : undefined);
+    const shorts: Binding = { kind: 'raw', label: 'SHORTS', source: '&mo SHORTS' };
+    const gui: Binding = { kind: 'mod', mod: 'LGUI' };
+    expect(
+      Object.fromEntries(
+        ['LHP', 'LHR', 'LHM', 'LHI', 'LBR', 'LBM', 'LBI', 'RHI', 'RHM', 'RHR', 'RHP', 'RBI'].map(
+          (k) => [k, hold(k)],
+        ),
+      ),
+    ).toEqual({
+      LHP: shorts,
+      LHR: { kind: 'mod', mod: 'LCTRL' },
+      LHM: { kind: 'mod', mod: 'LALT' },
+      LHI: { kind: 'mod', mod: 'LSHIFT' },
+      LBR: { ...gui, also: ['LSHIFT'] },
+      LBM: { ...gui, also: ['LSHIFT'] },
+      LBI: gui,
+      RHI: { kind: 'mod', mod: 'LSHIFT' },
+      RHM: { kind: 'mod', mod: 'LALT' },
+      RHR: { kind: 'mod', mod: 'LCTRL' },
+      RHP: shorts,
+      RBI: gui,
+    });
+    // Each still types what it typed; the magic key is still the magic key.
+    expect(base.RBI?.kind === 'hold_tap' && base.RBI.tap.kind).toBe('adaptive');
+    expect(base.LHP?.kind === 'hold_tap' && base.LHP.tap).toEqual(kp('d'));
+    // The keymap's , and . hold to move the cursor, which is editing, and are left as they were.
+    expect(base.RBM).toEqual(kp(','));
+    expect(base.RBR).toEqual(kp('.'));
   });
 
   it('go on any key that types: a letter, a mark, space, Repeat or an adaptive key', () => {

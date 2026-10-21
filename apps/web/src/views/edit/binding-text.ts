@@ -331,7 +331,8 @@ function exactText(compiled: CompiledLayout, b: Binding): string | null {
         ? null
         : `&sk ${b.mod}`;
     case 'mod':
-      return `&kp ${b.mod}`;
+      // `&kp LS(LGUI)` would read back as a key code, not a hold of both: no line for it.
+      return b.also?.length ? null : `&kp ${b.mod}`;
     case 'macro': {
       if (b.ref !== undefined || b.steps !== undefined || !b.symbols) return null;
       const then = b.then;

@@ -68,23 +68,23 @@ keeps are in `apps/web/src/auth/github-session.ts`. The server half is
 ## Bundled layouts
 
 The layouts the app started with are written as data in `packages/core/src/layouts/` (`classic.ts`,
-`small.ts`, `romak.ts`), each copied from where its author published it, and given the default
-Numbers, Symbols and Accents layers, plus Extras on a board that needs it, but for Magic Romak, which
-has only Numbers and Symbols, as its author's keymap has. The Standard and Thumb
-Alpha ones share their main thumbs and base-layer symbols, so that they compare on their letters
-(`withStandardThumbs` in `standard.ts`): the four inner thumbs hold Shift, Numbers, Symbols and
-Shift and tap Repeat, space, a thumb letter or nothing, and Accents, and no symbol stays on the base
-layer but `'` `,` `.` `;`. The Special ones keep every key they had and reach Accents on one combo
-(`withDefaultLayers` in `templates.ts`). All but Magic Romak hold home row mods, Gui, Ctrl, Alt and
-Shift from the left pinky in and mirrored on the right, each key still typing what it did
-(`withHomeRowMods` in `templates.ts`). The languages each is for are measured, not chosen: a
-layout is for a language when it types every letter the language needs and its Effort on that
+`small.ts`), each copied from where its author published it, and given the default Numbers, Symbols
+and Accents layers, plus Extras on a board that needs it, but for Magic Romak, which has only
+Numbers and Symbols, as its author's keymap has. The Standard and Thumb Alpha ones share their main
+thumbs and base-layer symbols, so that they compare on their letters (`withStandardThumbs` in
+`standard.ts`): the four inner thumbs hold Shift, Numbers, Symbols and Shift and tap Repeat, space,
+a thumb alpha or nothing, and Accents, and no symbol stays on the base layer but `'` `,` `.` `;`.
+The Special ones keep every key they had and reach Accents on one combo (`withDefaultLayers` in
+`templates.ts`). They hold home row mods, Gui, Ctrl, Alt and Shift from the left pinky in and
+mirrored on the right, each key still typing what it did (`withHomeRowMods` in `templates.ts`), but
+Magic Romak, which holds its author's keymap's. The languages each is for are measured, not chosen:
+a layout is for a language when it types every letter the language needs and its Effort on that
 language's news text is in the better half of all the bundled layouts', on the rules the Library
 ranks on (`lang/performance.ts`). `pnpm languages` measures them and writes them, to
 `layouts/languages.json` and into each document, and a test fails when they drift. A new one joins
 them as a document: a custom layout, unchanged but for its home row mods, added by pull request.
-Merging the pull request is the approval, and the deploy that follows puts it in everyone's
-Library. A layout can also join with no deploy, as a community layout, by **Submit** in the app
+Merging the pull request is the approval, and the deploy that follows puts it in everyone's Library.
+A layout can also join with no deploy, as a community layout, by **Submit** in the app
 ([below](#community-layouts)).
 
 1. In the app, give the layout its name, its author, and in Settings, if it has one, its link to
@@ -110,6 +110,16 @@ Library. A layout can also join with no deploy, as a community layout, by **Subm
    with its link, a link that opens it in the app as it would be bundled, and its Effort and SFB
    on the texts of its languages, placed among the bundled layouts as the Library ranks them.
 
+A change to a bundled layout can be proposed from the app too: **Save** on one offers **Propose
+change**, and the sign-in Worker opens, as the GitHub App, a pull request into main from
+`library/<login>/change/<id>` that carries the layout in `.library/request.json`. The
+`library-edit` workflow applies it on that branch (`pnpm library-edit`; a layout written in code
+becomes a document, `packages/core/src/layouts/library-edit/`), runs `pnpm languages` and
+`pnpm goldens`, and pushes the result as the App, so CI checks what would be merged; CI fails while
+a request is still on a branch. What is pushed to the branch after that is left as it is. The
+workflow needs the repository variable `LAYERBENCH_APP_ID` and the secret
+`LAYERBENCH_APP_PRIVATE_KEY`, the App's id and private key.
+
 ## Community layouts
 
 Community layouts are layouts other people made, accepted into the Library without a deploy. They
@@ -130,7 +140,9 @@ the Library would, has an id no bundled or community layout has, and is saved; t
 again, and, as the GitHub App, creates the branch `submit/<login>/<id>` from `layerbench-data`,
 commits `community/<id>.json` to it and opens the pull request, naming the submitter. While that
 pull request is open, submitting the layout again commits the new version to it. A layout is at
-most 64 KB, and an id the branch already holds is refused.
+most 64 KB, and an id the branch already holds is refused. **Propose change**, which Save offers
+on a community layout, opens a pull request into the branch from `data/<login>/change/<id>` that
+replaces its file (`apps/web/src/server/library.ts`).
 
 The app (`apps/web/src/community/community.ts`) reads the index and each
 file from `raw.githubusercontent.com` each time the Library opens, with no sign-in: plain files, as
@@ -199,13 +211,11 @@ test files and config files do not count. The table of each file's coverage is p
 ignored.
 
 To sign in on the dev server, set up the GitHub App first (see
-[Setting up sign-in](#setting-up-sign-in)). Then put `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`
-and `SESSION_SECRET` in `apps/web/.env.local`, which git ignores, with a client
-secret and a session key of their own rather than the Worker's. `GITHUB_APP_ID` and
-`GITHUB_APP_PRIVATE_KEY` there turn on Submit, which opens real pull requests on GitHub. The dev
-server answers sign-in
-itself, on its own origin. Without them the app says sign-in is not set up and saves in the browser
-only.
+[Setting up sign-in](#setting-up-sign-in)). Then put `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` and
+`SESSION_SECRET` in `apps/web/.env.local`, which git ignores, with a client secret and a session key
+of their own rather than the Worker's. `LAYERBENCH_APP_ID` and `LAYERBENCH_APP_PRIVATE_KEY` there
+turn on Submit, which opens real pull requests on GitHub. The dev server answers sign-in itself, on
+its own origin. Without them the app says sign-in is not set up and saves in the browser only.
 
 `pnpm bench` runs the performance suite, which is skipped by default. `pnpm corpora` rebuilds the
 corpus samples from `packages/corpora/raw`.
@@ -325,12 +335,18 @@ pnpm dlx wrangler@4 login
 pnpm dlx wrangler@4 deploy -c worker/wrangler.jsonc
 pnpm dlx wrangler@4 secret put GITHUB_CLIENT_SECRET -c worker/wrangler.jsonc
 pnpm dlx wrangler@4 secret put SESSION_SECRET -c worker/wrangler.jsonc
-pnpm dlx wrangler@4 secret put GITHUB_APP_ID -c worker/wrangler.jsonc
-pnpm dlx wrangler@4 secret put GITHUB_APP_PRIVATE_KEY -c worker/wrangler.jsonc < path/to/the-app.private-key.pem
+pnpm dlx wrangler@4 secret put LAYERBENCH_APP_ID -c worker/wrangler.jsonc
+pnpm dlx wrangler@4 secret put LAYERBENCH_APP_PRIVATE_KEY -c worker/wrangler.jsonc < path/to/the-app.private-key.pem
 ```
 
-`GITHUB_APP_ID` is the App ID, and `GITHUB_APP_PRIVATE_KEY` the private key file, as downloaded.
-Without them sign-in works, and Submit says it is not set up.
+`LAYERBENCH_APP_ID` is the App ID, and `LAYERBENCH_APP_PRIVATE_KEY` the private key file, as
+downloaded. Without them sign-in works, and Submit says it is not set up. The repository's workflows
+act as the App too, with the same two, as the variable and the secret of the same names:
+
+```bash
+gh variable set LAYERBENCH_APP_ID --body "<App ID>"
+gh secret set LAYERBENCH_APP_PRIVATE_KEY < path/to/the-app.private-key.pem
+```
 
 The deploy prints the Worker's address, `https://layerbench-auth.<your subdomain>.workers.dev`. Set
 it as the repository variable `AUTH_ORIGIN`, then push, or re-run CI, so the app is built with it.

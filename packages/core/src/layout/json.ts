@@ -62,7 +62,7 @@ export function bindingToJson(b: Binding): Record<string, unknown> {
       };
       break;
     case 'mod':
-      extra = { mod: b.mod };
+      extra = { mod: b.mod, also: b.also?.length ? b.also : undefined };
       break;
     case 'caps_word':
       extra = { continueList: b.continueList, mods: b.mods ?? [] };

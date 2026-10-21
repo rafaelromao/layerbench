@@ -37,6 +37,8 @@ export function usedBindings(layout: Layout): UsedBinding[] {
     const hit = seen.get(key);
     if (hit) hit.count++;
     else seen.set(key, { binding: b, count: 1 });
+    // An adaptive key under a hold, a home row mod's, is one of the layout's adaptive keys too.
+    if ((b.kind === 'hold_tap' || b.kind === 'lt') && isAdaptiveKey(b.tap)) add(b.tap);
   };
   for (const layer of layout.layers) {
     for (const [keyId, b] of Object.entries(layer.bindings)) if (keyId !== '*') add(b);

@@ -3,7 +3,7 @@
 ## Default layers
 
 Read this before changing how symbols, digits or accents are spread over the default layers
-(`packages/core/src/layouts/templates.ts`, `standard.ts`, `romak.ts`). The full tables, as the user
+(`packages/core/src/layouts/templates.ts`, `standard.ts`, `small.ts`). The full tables, as the user
 sees them, are in [docs/guide/editing.md](docs/guide/editing.md#default-layers). Update the tables
 there whenever a rule here moves a key, and keep `templates.test.ts` asserting each rule.
 
@@ -14,11 +14,14 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
 - **Magic Romak is the one exception: no Extras, no Accents.** It models the author's keymap
   (github.com/rafaelromao/keyboards), which has neither, so it has only Numbers and Symbols, and
   nothing reaches the other two. The keymap's combos type what they carried: Alpha 2's dead keys
-  and `à`, and `€`, `°` and `º`/`ª` on Symbols and Numbers (`KEYMAP_SYMBOL_COMBOS` in `romak.ts`).
+  and `à`, and `€`, `°` and `º`/`ª` on Symbols and Numbers (`KEYMAP_SYMBOL_COMBOS` in `small.ts`).
   `¿` and `¡` come from holding Alpha 2's `?` and `!` combos, a hold the model gives them. It
   cannot type `£ § « » ı ß œ æ`; `templates.test.ts` pins that list (`MAGIC_ROMAK_UNTYPED`) and
   what French and German lose. Do not give it the default Extras or
-  Accents back, and do not extend the exception to another layout.
+  Accents back, and do not extend the exception to another layout. It is written like the other
+  small-board layouts, in `SMALL_DEFS`: it brings its own Numbers and Symbols, which
+  `withDefaultLayers` leaves alone on any layout that has them, and no code singles it out. What it
+  needs is a `ClassicDef` field any layout may use.
 - **The 24-key core is Magic Romak's keymap** (github.com/rafaelromao/keyboards, `numbers_layer` and
   `symbols_layer`). Numbers is a keypad on the right, with the brackets and the arithmetic beside
   them on the left; brackets on Numbers stay on the left hand. Every board gets the same core, so
@@ -33,20 +36,23 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
   combo `accentsCombo`. On a row-stagger board, a new layout's one space bar (L0 and R0 together)
   holds Numbers. Ben Vallack Piano taps a one-shot Shift where its keymap has Repeat, and it is its
   `keys.shift`.
-- **Home row mods.** Every bundled layout but Magic Romak holds Gui, Ctrl, Alt and Shift on its
-  base layer's home row from the left pinky in, mirrored on the right (`HOME_ROW_MODS`,
-  `withHomeRowMods`). Both hands hold the left modifiers, as the two Shift thumbs do: the analysis
-  types a capital with the left Shift, and the right Alt is AltGr. Every key there that types gets
-  one, letter or not (Uno's space, T-34's Repeat); one with nothing on it, or holding something
-  already, does not, and no other layer does. They go on after the default layers, whose standard
-  thumbs keep only plain keys; Nordwind, a document, carries them in its JSON. Magic Romak has none
-  and is left as it is: its author's keymap has home row mods of its own (Ctrl, Alt and Shift from
-  the ring finger in, a layer on each pinky, Gui on the bottom row), which its model does not
-  carry. In the Shift case mode a capital holds Shift on no key it presses, the one that reaches
+- **Home row mods.** Every bundled layout holds Gui, Ctrl, Alt and Shift on its base layer's home
+  row from the left pinky in, mirrored on the right (`HOME_ROW_MODS`, `withHomeRowMods`), unless its
+  definition gives its own (`ClassicDef.homeRowMods`). Both hands hold the left modifiers, as the
+  two Shift thumbs do: the analysis types a capital with the left Shift, and the right Alt is AltGr.
+  Every key there that types gets one, letter or not (Uno's space, T-34's Repeat); one with nothing
+  on it, or holding something already, does not, and no other layer does. They go on after the
+  default layers, whose standard thumbs keep only plain keys; Nordwind, a document, carries them in
+  its JSON. Magic Romak gives its own, its author's keymap's home block mods (`MAGIC_ROMAK_MODS` in
+  `small.ts`): Ctrl, Alt and Shift from the ring finger in, its Shortcuts layer held on each pinky
+  (an imported key: the model does not carry that layer), Shift with Gui on F and C, and Gui on P
+  and the magic key. The keymap's `,` and `.` hold to move the cursor, which is editing, and are
+  left out. In the Shift case mode a capital holds Shift on no key it presses, the one that reaches
   its layer included, nor on a thumb of a hand whose thumb presses one, and on a thumb before a
   finger: on the standard thumbs R1, and L1 for one on Accents, which R1 taps, or on a right thumb.
   A layout with no Shift key of its own holds a Shift thumb if it has one it can, else the other
-  hand's home row Shift where it can (`holdMod` in `resolver.ts`).
+  hand's home row Shift where it can, never a key that holds other modifiers with it (`holdMod` in
+  `resolver.ts`).
 - **A held thumb blocks its hand.** On a layer every way onto which holds a thumb key of one hand
   down (`mo`, `lt`), that hand's thumb keys get no binding: the thumb is busy holding. Numbers and
   Symbols each block the hand holding them, and Extras, both held, every thumb. The held keys

@@ -28,10 +28,12 @@ A key can do one thing when tapped and another while held, or act once, on the n
 
 A **Tap-hold** key has two parts. The **Tap** is what a quick press does, usually a letter; the
 **Hold** is a layer or a modifier while the key is held down. A letter on the home row with a
-modifier underneath is a home row mod: every layout that comes with the app but Magic Romak
-holds Gui, Ctrl, Alt and Shift on its home row from the left pinky in, mirrored on the right. The
-Tap can also be an adaptive key or an alt repeat, so a thumb can adapt when tapped and reach a layer
-when held.
+modifier underneath is a home row mod: every layout that comes with the app holds Gui, Ctrl, Alt and
+Shift on its home row from the left pinky in, mirrored on the right, but Magic Romak, which holds
+its keymap's. A hold may give several modifiers together, under **Held with**: Shift and Gui at
+once, say, as ZMK's `LS(LGUI)`. A hold may also be an imported key, for what LayerBench does not
+model, as Magic Romak's pinkies hold a layer of shortcuts. The Tap can also be an adaptive key or an
+alt repeat, so a thumb can adapt when tapped and reach a layer when held.
 
 **Timing**, under the hold, sets the tapping term, how long a press must last to count as a hold,
 and the flavor, ZMK's rule for telling a tap from a hold when another key comes in between. Its
@@ -45,8 +47,8 @@ have to be held. On the board it reads `1×`. Choose **Layer** or **Modifier**, 
 A one-shot ends with the next key: a one-shot layer with the next key pressed, a one-shot modifier
 with the next key that types something. Each key is pressed and let go before the next, so whether
 ZMK would end it as that key goes down or as it comes up (`quickRelease`, among the layout's
-behaviour defaults, kept in its JSON) makes no difference to the numbers. A modifier pressed in
-between leaves it armed when those defaults say to ignore modifiers, as ZMK does. ZMK's
+behaviour defaults, set in the **Geometry** panel) makes no difference to the numbers. A modifier
+pressed in between leaves it armed when those defaults say to ignore modifiers, as ZMK does. ZMK's
 [sticky layer](https://zmk.dev/docs/keymaps/behaviors/sticky-layer) and
 [sticky key](https://zmk.dev/docs/keymaps/behaviors/sticky-key) pages describe the options.
 
@@ -138,6 +140,8 @@ These are among the editor's other tiles, under **More** on a phone:
 
 A key brought in from a keymap-drawer file keeps its legend when LayerBench has no model of what
 it does: Escape, an arrow, a Bluetooth or media key. It is drawn in grey, types nothing in the
-analysis, and moves, swaps and copies like any other key. Choosing another tile replaces it. A
+analysis, and moves, swaps and copies like any other key. Choosing another tile replaces it.
+**Imported**, under **More**, makes one by hand: its **Label** is what it is drawn with, and its
+**Source** what it was in the keymap, such as `&mo FUN` for a layer LayerBench has no model of. A
 layer reached by holding such a key still works: the hold is kept, and only the tap is imported.
 See [Importing and exporting](importing.md).

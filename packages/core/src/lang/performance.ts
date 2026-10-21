@@ -54,3 +54,16 @@ export function performsWell(entries: readonly LanguageEntry[]): Set<string> {
 export function orderedLanguages(tags: ReadonlySet<string>): string[] {
   return PERFORMANCE_LANGUAGES.filter((t) => tags.has(t));
 }
+
+/**
+ * `layouts/languages.json` as `pnpm languages` writes it: one layout a line, in the order given, as
+ * the formatter keeps it.
+ */
+export function languagesFileText(
+  entries: readonly (readonly [string, readonly string[]])[],
+): string {
+  const lines = entries.map(
+    ([id, tags]) => `  ${JSON.stringify(id)}: ${JSON.stringify(tags).replaceAll(',', ', ')}`,
+  );
+  return `{\n${lines.join(',\n')}\n}\n`;
+}

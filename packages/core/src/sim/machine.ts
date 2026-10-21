@@ -75,6 +75,8 @@ interface StickyMod {
 interface HeldEntry {
   layer?: number;
   mod?: Mod;
+  /** The modifiers held with `mod`. */
+  also?: Mod[];
 }
 
 export interface Snapshot {
@@ -122,7 +124,10 @@ export class MachineState {
       persistentMask: this.persistentMask,
       locks: this.locks,
       oneShots: this.oneShots.map((o) => ({ ...o })),
-      held: [...this.held.entries()].map(([k, v]) => [k, { ...v }]),
+      held: [...this.held.entries()].map(([k, v]) => [
+        k,
+        { ...v, ...(v.also && { also: [...v.also] }) },
+      ]),
       stickyMods: this.stickyMods.map((s) => ({ ...s })),
       capsWord: this.capsWord
         ? { continueList: [...this.capsWord.continueList], mods: [...this.capsWord.mods] }
@@ -195,6 +200,7 @@ export class MachineState {
     for (const [pos, entry] of s.held) {
       const h = this.held.get(pos);
       if (!h || h.layer !== entry.layer || h.mod !== entry.mod) return false;
+      if (!sameList(h.also ?? [], entry.also ?? [])) return false;
     }
     const caps = this.capsWord;
     if ((caps === null) !== (s.capsWord === null)) return false;
@@ -219,7 +225,7 @@ export class MachineState {
 
   heldMods(): Mod[] {
     const out: Mod[] = [];
-    for (const h of this.held.values()) if (h.mod) out.push(h.mod);
+    for (const h of this.held.values()) if (h.mod) out.push(h.mod, ...(h.also ?? []));
     return out;
   }
 }
@@ -725,7 +731,12 @@ export class Machine {
         case 'mod':
           ctx.leaf = 'mod';
           ctx.modifierPress = true;
-          if (ctx.mode === 'hold') this.state.held.set(ctx.pos, { mod: b.mod });
+          if (ctx.mode === 'hold') {
+            this.state.held.set(
+              ctx.pos,
+              b.also?.length ? { mod: b.mod, also: b.also } : { mod: b.mod },
+            );
+          }
           return;
         case 'caps_word':
           ctx.leaf = 'caps_word';

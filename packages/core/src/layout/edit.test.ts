@@ -204,6 +204,96 @@ describe('layers', () => {
   });
 });
 
+describe("a layer's id", () => {
+  const linked: Layout = {
+    ...layout,
+    layers: [
+      {
+        id: 'base',
+        bindings: {
+          LHM: kp('a'),
+          L0: { kind: 'hold_tap', tap: kp(' '), hold: { kind: 'mo', layer: 'upper' } },
+          R0: { kind: 'macro', symbols: 'ç', then: [{ kind: 'sl', layer: 'upper' }] },
+        },
+      },
+      { id: 'upper', name: 'Upper', bindings: { '*': { kind: 'trans' }, LHM: kp('1') } },
+    ],
+    combos: [
+      {
+        id: 'up',
+        keys: ['LHM', 'LHI'],
+        binding: { kind: 'sl', layer: 'upper' },
+        layers: ['upper'],
+      },
+    ],
+    conditionalLayers: [{ if: ['base', 'upper'], then: 'upper' }],
+    activators: { upper: [{ from: 'base', via: 'key:base/L0' }] },
+    features: { sentenceCase: { on: ['base'] } },
+    typingPaths: { '1': [{ producer: 'direct:upper/LHM' }] },
+  };
+
+  it('changes, and every key, combo, condition, way in, feature and typing path that names it follows', () => {
+    const next = landed(linked, { kind: 'setLayerId', layer: 'base', id: 'alpha1' }).layout;
+    expect(next.layers.map((l) => l.id)).toEqual(['alpha1', 'upper']);
+    expect(next.conditionalLayers).toEqual([{ if: ['alpha1', 'upper'], then: 'upper' }]);
+    expect(next.activators).toEqual({ upper: [{ from: 'alpha1', via: 'key:alpha1/L0' }] });
+    expect(next.features).toEqual({ sentenceCase: { on: ['alpha1'] } });
+    const up = landed(next, { kind: 'setLayerId', layer: 'upper', id: 'alpha2' }).layout;
+    expect(up.layers[0].bindings.L0).toEqual({
+      kind: 'hold_tap',
+      tap: kp(' '),
+      hold: { kind: 'mo', layer: 'alpha2' },
+    });
+    expect(up.layers[0].bindings.R0).toEqual({
+      kind: 'macro',
+      symbols: 'ç',
+      then: [{ kind: 'sl', layer: 'alpha2' }],
+    });
+    expect(up.combos?.[0]).toMatchObject({
+      binding: { kind: 'sl', layer: 'alpha2' },
+      layers: ['alpha2'],
+    });
+    expect(up.typingPaths).toEqual({ '1': [{ producer: 'direct:alpha2/LHM' }] });
+    expect(() => compileLayout(up)).not.toThrow();
+  });
+
+  it('refuses an id another layer has, or one no layer could have', () => {
+    for (const id of ['upper', 'a b', '']) {
+      expect(applyEdit(linked, { kind: 'setLayerId', layer: 'base', id }).status).toBe('refused');
+    }
+    expect(applyEdit(linked, { kind: 'setLayerId', layer: 'base', id: 'base' }).status).toBe(
+      'unchanged',
+    );
+  });
+});
+
+describe("what a layer's unlisted keys do", () => {
+  it('is to show through or do nothing, and only that layer', () => {
+    const none = landed(layout, { kind: 'setLayerFallback', layer: 'upper', fallback: 'none' });
+    expect(none.layout.layers[1].bindings['*']).toEqual({ kind: 'none' });
+    expect(none.layout.layers[1].bindings.LHM).toEqual(kp('1'));
+    const back = landed(none.layout, {
+      kind: 'setLayerFallback',
+      layer: 'upper',
+      fallback: 'trans',
+    });
+    expect(back.layout.layers[1].bindings['*']).toEqual({ kind: 'trans' });
+    expect(
+      applyEdit(layout, { kind: 'setLayerFallback', layer: 'upper', fallback: 'trans' }).status,
+    ).toBe('unchanged');
+  });
+});
+
+describe('the release defaults of one-shot layers and keys', () => {
+  it('are set for the whole layout, and taken away when empty', () => {
+    const sk = { quickRelease: true, ignoreModifiers: true, releaseAfterMs: 1500 };
+    const set = landed(layout, { kind: 'setBehaviorDefaults', defaults: { sk } }).layout;
+    expect(set.behaviorDefaults).toEqual({ sk });
+    const cleared = landed(set, { kind: 'setBehaviorDefaults', defaults: {} }).layout;
+    expect('behaviorDefaults' in cleared).toBe(false);
+  });
+});
+
 describe('removing a layer', () => {
   const reached: Layout = {
     ...layout,

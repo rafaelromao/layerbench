@@ -17,6 +17,25 @@ beforeEach(() => {
   adapter = new IndexedDbAdapter(`layerbench-test-${++counter}`);
 });
 
+describe('a browser that saved before proposals', () => {
+  it('keeps what it had, and gains a place for the changes it proposes', async () => {
+    const name = `layerbench-old-${++counter}`;
+    const old = await openDB(name, 1, {
+      upgrade(db) {
+        for (const c of ['layouts', 'rulesets', 'corpora'])
+          db.createObjectStore(c, { keyPath: 'id' });
+        db.createObjectStore('indexes');
+      },
+    });
+    await old.put('layouts', { id: 'mine', json: '{"name":"Mine"}', sha: 'x', updatedAt: '' });
+    old.close();
+    const upgraded = new IndexedDbAdapter(name);
+    expect((await upgraded.get('layouts', 'mine'))?.doc).toEqual({ name: 'Mine' });
+    await upgraded.put('proposals', 'mine', { name: 'Mine' });
+    expect((await upgraded.list('proposals')).map((e) => e.id)).toEqual(['mine']);
+  });
+});
+
 describe('custom documents', () => {
   it('stores, lists, reloads and deletes a layout', async () => {
     const layout = bundledLayout('colemak-dh')!;
@@ -62,9 +81,9 @@ describe('custom documents', () => {
   });
 
   it('treats a first write of an id as uncontested', async () => {
-    const doc = toCanonicalJson(bundledLayout('dvorak')!);
+    const doc = toCanonicalJson(bundledLayout('romak')!);
     await expect(
-      adapter.put('layouts', 'dvorak', doc, { expectedSha: 'anything' }),
+      adapter.put('layouts', 'romak', doc, { expectedSha: 'anything' }),
     ).resolves.toBeDefined();
   });
 
@@ -138,5 +157,26 @@ describe('custom documents', () => {
     expect(await adapter.list('layouts')).toMatchObject([
       { id: 'mine', updatedAt: '2026-10-01T10:00:00.000Z' },
     ]);
+  });
+});
+
+describe('the database, with the app open in other tabs', () => {
+  it('lets the database go when another tab asks for a newer version', async () => {
+    const name = `layerbench-tabs-${++counter}`;
+    await new IndexedDbAdapter(name).list('layouts');
+    // Opening it newer would wait for ever were it not let go.
+    const newer = await openDB(name, 99);
+    expect(newer.version).toBe(99);
+    newer.close();
+  });
+
+  it('says so while a tab of an older version keeps it, and opens once that tab lets it go', async () => {
+    const name = `layerbench-tabs-${++counter}`;
+    const older = await openDB(name, 1);
+    const blocked = vi.fn();
+    const listing = new IndexedDbAdapter(name, blocked).list('layouts');
+    await vi.waitFor(() => expect(blocked).toHaveBeenCalled());
+    older.close();
+    expect(await listing).toEqual([]);
   });
 });

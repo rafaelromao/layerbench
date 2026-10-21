@@ -10,9 +10,18 @@ import { customError, readCustom } from '../custom/read.js';
 import { decodeInline, encodeInline } from '../url/inline.js';
 import { inlineRef, parseLayoutRef } from '../url/params.js';
 
-/** A layout a reference opened, and the custom layout it is, if any; or why it would not open. */
+/** A layout of the Library's or of the community's, by its id: what a change can be proposed to. */
+export interface LayoutSource {
+  kind: 'bundled' | 'community';
+  id: string;
+}
+
+/**
+ * A layout a reference opened, the custom layout it is, if any, and the bundled or community layout
+ * it is, if it is one; or why it would not open.
+ */
 export type Opened =
-  | { ok: true; layout: Layout; storedId: string | null }
+  | { ok: true; layout: Layout; storedId: string | null; source: LayoutSource | null }
   | { ok: false; error: string };
 
 const same = (a: Layout, b: Layout) =>
@@ -35,23 +44,30 @@ export async function openLayout(ref: string, storage: StorageAdapter): Promise<
     if (!decoded.ok) return { ok: false, error: decoded.error };
     const { layout } = decoded;
     const id = layout.id;
-    if (!id || !isDocumentId(id)) return { ok: true, layout, storedId: null };
+    if (!id || !isDocumentId(id)) return { ok: true, layout, storedId: null, source: null };
     const stored = await readCustom(storage, 'layouts', id);
     const saved = stored.status === 'read' && same(stored.doc, layout);
-    return { ok: true, layout, storedId: saved ? id : null };
+    return { ok: true, layout, storedId: saved ? id : null, source: null };
   }
 
   if (parsed.kind === 'community') {
     // Not one's own, as a bundled layout is not: saving it makes a copy.
     const layout = await communityLayout(parsed.value);
     return layout
-      ? { ok: true, layout, storedId: null }
+      ? { ok: true, layout, storedId: null, source: { kind: 'community', id: parsed.value } }
       : { ok: false, error: `community layout ${parsed.value} not found` };
   }
 
   if (parsed.kind === 'bundled') {
     const bundled = bundledLayout(parsed.value);
-    if (bundled) return { ok: true, layout: bundled, storedId: null };
+    if (bundled) {
+      return {
+        ok: true,
+        layout: bundled,
+        storedId: null,
+        source: { kind: 'bundled', id: parsed.value },
+      };
+    }
     if (!isDocumentId(parsed.value))
       return { ok: false, error: `layout ${parsed.value} not found` };
   }
@@ -59,7 +75,7 @@ export async function openLayout(ref: string, storage: StorageAdapter): Promise<
   const id = parsed.value;
   const read = await readCustom(storage, 'layouts', id);
   return read.status === 'read'
-    ? { ok: true, layout: read.doc, storedId: id }
+    ? { ok: true, layout: read.doc, storedId: id, source: null }
     : { ok: false, error: customError('layouts', id, read) };
 }
 

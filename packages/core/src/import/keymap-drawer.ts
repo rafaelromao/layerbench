@@ -716,6 +716,44 @@ const MOD_LEGEND: Record<Mod, string> = {
   RGUI: 'RGUI',
 };
 
+/** ZMK's modifier functions, each holding its modifier with what it wraps: `LS(LGUI)`. */
+const MOD_FUNCTION: Record<Mod, string> = {
+  LSHIFT: 'LS',
+  RSHIFT: 'RS',
+  LCTRL: 'LC',
+  RCTRL: 'RC',
+  LALT: 'LA',
+  RALT: 'RA',
+  LGUI: 'LG',
+  RGUI: 'RG',
+};
+const FUNCTION_MOD = Object.fromEntries(
+  Object.entries(MOD_FUNCTION).map(([mod, fn]) => [fn, mod as Mod]),
+) as Record<string, Mod>;
+
+/** A held modifier's legend, as ZMK writes it: its own name, wrapped in those held with it. */
+function heldModsLegend(b: { mod: Mod; also?: Mod[] }): string {
+  return (b.also ?? []).reduceRight(
+    (inner, m) => `${MOD_FUNCTION[m]}(${inner})`,
+    MOD_LEGEND[b.mod],
+  );
+}
+
+/** The modifiers a hold's legend holds: `LGUI`, or `LS(LGUI)` for Gui held with Shift. */
+function heldModsOf(legend: string): { mod: Mod; also?: Mod[] } | undefined {
+  const also: Mod[] = [];
+  let inner = legend.trim();
+  for (let m = /^([LR][SCAG])\((.+)\)$/.exec(inner); m; m = /^([LR][SCAG])\((.+)\)$/.exec(inner)) {
+    const wrapping = FUNCTION_MOD[m[1]];
+    if (!wrapping) return undefined;
+    also.push(wrapping);
+    inner = m[2];
+  }
+  const mod = modOf(inner);
+  if (!mod) return undefined;
+  return also.length ? { mod, also } : { mod };
+}
+
 /** QMK's short names, for the ZMK ones the host tables know. */
 const QMK_NAMES: Record<string, string> = {
   SCLN: 'SEMI',
@@ -886,7 +924,7 @@ export function readLegend(k: KdKey, ctx: LegendContext): LegendReading {
   }
   if (hold !== '') {
     const holdLayer = layerOf(hold);
-    const holdMod = modOf(hold);
+    const holdMod = heldModsOf(hold);
     if (!holdLayer && !holdMod) return raw();
     // A tap that types no text — Escape, Backspace — still leaves the hold, and a layer reached
     // by holding that key must stay reachable.
@@ -894,7 +932,7 @@ export function readLegend(k: KdKey, ctx: LegendContext): LegendReading {
     const tapped: Binding = read ?? { kind: 'raw', label: tap, source: `t: ${tap}` };
     const binding: Binding = holdLayer
       ? { kind: 'lt', layer: holdLayer, tap: tapped }
-      : { kind: 'hold_tap', tap: tapped, hold: { kind: 'mod', mod: holdMod as Mod } };
+      : { kind: 'hold_tap', tap: tapped, hold: { kind: 'mod', ...(holdMod as { mod: Mod }) } };
     return { kind: 'binding', binding, exact: read !== null || isNamedKey(tap) };
   }
   const tapped = tapBinding(k);
@@ -1172,7 +1210,7 @@ function legendOf(
     case 'hold_tap': {
       const hold =
         b.hold.kind === 'mod'
-          ? MOD_LEGEND[b.hold.mod]
+          ? heldModsLegend(b.hold)
           : b.hold.kind === 'mo'
             ? layerName(b.hold.layer)
             : (legendOf(b.hold, layerName, false).tap ?? '');
