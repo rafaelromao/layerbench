@@ -844,20 +844,33 @@ describe("a mod morph's modifiers", () => {
 });
 
 describe('a layer that comes on while others are on together', () => {
-  // Ben Vallack's Piano's Extras: on while Numbers, held from L1, and Symbols, held from R0, are on.
+  // Ben Vallack's Piano's Extras: on while Numbers, held from L0, and Symbols, held from R0, are on.
   const piano = bundledLayout('ben-vallack-piano') as Layout;
-  const extras = ['L1', 'R0', 'RTR'];
+  const extras = ['L0', 'R0', 'RTR'];
+  const reversed = (layout: Layout): Layout => ({
+    ...layout,
+    conditionalLayers: [{ if: ['sym', 'num'], then: 'extras' }],
+  });
 
   it('is reached by holding those layers one after the other', () => {
     expect(trace(piano, '€').keys).toEqual(extras);
   });
 
+  it('is reached by holding them in the order its condition names them, where that can be pressed', () => {
+    // Symbols' L0 holds Numbers too, so the two inner thumbs bring Extras on in either order.
+    const t = trace(reversed(piano), '€');
+    expect(t.out).toBe('€');
+    expect(t.keys).toEqual(['R0', 'L0', 'RTR']);
+  });
+
   it('is reached whatever order its condition names them in', () => {
-    const reversed: Layout = {
-      ...piano,
-      conditionalLayers: [{ if: ['sym', 'num'], then: 'extras' }],
-    };
-    const t = trace(reversed, '€');
+    // With L0 only typing `=` on Symbols, Numbers cannot be held from there.
+    const layers = piano.layers.map((l) =>
+      l.id === 'sym'
+        ? { ...l, bindings: { ...l.bindings, L0: { kind: 'kp', symbol: '=' } as Binding } }
+        : l,
+    );
+    const t = trace(reversed({ ...piano, layers }), '€');
     expect(t.out).toBe('€');
     expect(t.keys).toEqual(extras);
   });
@@ -866,7 +879,7 @@ describe('a layer that comes on while others are on together', () => {
     // The machine turns Extras off when this key holds it alone.
     const layers = piano.layers.map((l) =>
       l.id === 'num'
-        ? { ...l, bindings: { ...l.bindings, L0: { kind: 'mo', layer: 'extras' } as Binding } }
+        ? { ...l, bindings: { ...l.bindings, L1: { kind: 'mo', layer: 'extras' } as Binding } }
         : l,
     );
     const t = trace({ ...piano, layers }, '€');

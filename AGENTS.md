@@ -9,7 +9,8 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
 
 - **The layers.** Every layout gets Numbers, Symbols and Accents. Extras exists only on a board that
   needs it: one that lacks keys for what Numbers and Symbols carry, or for Accents' 30 keys. Extras
-  comes on while Numbers and Symbols are both held. Each layer spans at most 34 keys.
+  comes on while Numbers and Symbols are both held: both inner thumbs, in either order, Symbols'
+  left inner thumb holding Numbers there too. Each layer spans at most 34 keys.
 - **Magic Romak is the one exception: no Extras, no Accents.** It models the author's keymap
   (github.com/rafaelromao/keyboards), which has neither, so it has only Numbers and Symbols, and
   nothing reaches the other two. The keymap's combos type what they carried: Alpha 2's dead keys
@@ -26,9 +27,10 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
   outputs that need a modifier.
 - **Main thumbs.** On Standard and Thumb Alpha layouts the two innermost thumbs of each hand hold,
   left to right, Shift, Numbers, Symbols and Shift. Tapped, they type Repeat, space, the thumb
-  letter or nothing, and the right outer one one-shots Accents. Special layouts keep their keys: the
-  space key holds Numbers, a thumb of the other hand holds Symbols, and Accents is the combo
-  `accentsCombo`.
+  letter or nothing, and the right outer one one-shots Accents. Special layouts keep their keys, and
+  hold Numbers and Symbols on the inner thumbs too, as Romak does, each still typing what it typed;
+  only an inner thumb that is a tap-hold already falls back (`withDefaultLayers`). Accents is the
+  combo `accentsCombo`. A row-stagger board's one space bar holds Numbers: it has no inner thumbs.
 - **A held thumb blocks its hand.** On a layer every way onto which holds a thumb key of one hand
   down (`mo`, `lt`), that hand's thumb keys get no binding: the thumb is busy holding. Numbers and
   Symbols each block the hand holding them, and Extras, both held, every thumb. The held keys
