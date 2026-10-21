@@ -601,7 +601,8 @@ export class Simulator {
           return true;
         }
         const holdPeeled = peelBinding(m, r.binding, 'hold');
-        if (holdPeeled.kind === 'mod' && holdPeeled.mod === mod) {
+        // A key that holds others with it would hold them for the capital too.
+        if (holdPeeled.kind === 'mod' && holdPeeled.mod === mod && !holdPeeled.also?.length) {
           events.push(...m.perform({ type: 'hold_press', pos }));
           holdsOut.push(pos);
           return true;

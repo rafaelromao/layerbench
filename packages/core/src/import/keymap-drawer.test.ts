@@ -422,6 +422,36 @@ describe('writing a file', () => {
     }
   });
 
+  it('writes a hold of several modifiers as ZMK does, and reads it back', () => {
+    const layout: Layout = {
+      format: 'layerbench/layout@1',
+      name: 'Held',
+      geometry: { preset: '3x5+2' },
+      keys: { space: 'L0' },
+      layers: [
+        {
+          id: 'base',
+          name: 'Base',
+          bindings: {
+            LHP: { kind: 'kp', symbol: 'a' },
+            LBR: {
+              kind: 'hold_tap',
+              tap: { kind: 'kp', symbol: 'x' },
+              hold: { kind: 'mod', mod: 'LGUI', also: ['LSHIFT'] },
+            },
+            L0: { kind: 'kp', symbol: ' ' },
+          },
+        },
+      ],
+    };
+    expect(write(layout)).toContain('h: LS(LGUI)');
+    expect(roundTrip(layout).layers[0].bindings.LBR).toEqual({
+      kind: 'hold_tap',
+      tap: { kind: 'kp', symbol: 'x' },
+      hold: { kind: 'mod', mod: 'LGUI', also: ['LSHIFT'] },
+    });
+  });
+
   it('reads back layer keys, one-shots, tap-holds and modifiers as they were', () => {
     const bindings: Record<string, Binding> = {
       LHP: {

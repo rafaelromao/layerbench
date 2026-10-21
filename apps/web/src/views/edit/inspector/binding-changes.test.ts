@@ -164,6 +164,20 @@ describe('what each kind of key shows, and what its controls change', () => {
     expect(modifier.set.acts('sk')).toBe(sticky);
   });
 
+  it('holds other modifiers with a held one, as ZMK holds Shift with Gui for LS(LGUI)', () => {
+    const gui = fieldsOf('modifier', { kind: 'mod', mod: 'LGUI' });
+    expect(gui.view.also).toEqual([]);
+    const shifted = gui.set.also('LSHIFT');
+    expect(shifted).toEqual({ kind: 'mod', mod: 'LGUI', also: ['LSHIFT'] });
+    const both = fieldsOf('modifier', shifted);
+    expect(both.view.also).toEqual(['LSHIFT']);
+    // Pressed again, it is held no more; the modifier itself is never held with itself.
+    expect(both.set.also('LSHIFT')).toEqual({ kind: 'mod', mod: 'LGUI' });
+    expect(both.set.also('LGUI')).toBe(shifted);
+    // A one-shot modifier is one modifier.
+    expect(both.set.acts('sk')).toEqual({ kind: 'sk', mod: 'LGUI' });
+  });
+
   it("lists caps word's symbols that do not end the word, or none at all", () => {
     const caps = fieldsOf('capsword', { kind: 'caps_word' });
     expect(caps.set.continues('- _')).toEqual({ kind: 'caps_word', continueList: ['-', '_'] });

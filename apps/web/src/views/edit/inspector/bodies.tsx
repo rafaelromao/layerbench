@@ -427,6 +427,16 @@ function ModifierBody({ fields: { view, set }, onChange, name }: BodyProps<'modi
         />
         <Note>{view.acts === 'sk' ? 'Applies to the next key only.' : 'Applies while held.'}</Note>
       </Row>
+      {view.acts === 'mod' && (
+        <Row label="Held with">
+          <ModChips
+            label={named(name, 'Modifiers held with it')}
+            value={view.also}
+            onChange={(mod) => onChange(set.also(mod))}
+          />
+          <Note>Held together, as ZMK's LS(LGUI) holds Shift with Gui.</Note>
+        </Row>
+      )}
     </div>
   );
 }

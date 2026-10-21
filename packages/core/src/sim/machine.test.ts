@@ -610,3 +610,30 @@ describe('Machine — the layer a press reaches', () => {
     expect(macro.reaches).toBeNull();
   });
 });
+
+describe('Machine — a hold of several modifiers', () => {
+  const layout = mini([
+    {
+      id: 'base',
+      bindings: {
+        LBR: {
+          kind: 'hold_tap',
+          tap: { kind: 'kp', symbol: 'f' },
+          hold: { kind: 'mod', mod: 'LGUI', also: ['LSHIFT'] },
+        },
+        LHP: { kind: 'kp', symbol: 'a' },
+        L0: { kind: 'kp', symbol: ' ' },
+      },
+    },
+  ]);
+
+  it('holds every one of them while the key is down, and none once it is let go', () => {
+    const { m, hold, tap, release } = machineFor(layout);
+    hold('LBR');
+    expect([...m.activeMods()].sort()).toEqual(['LGUI', 'LSHIFT']);
+    expect(tap('LHP').symbols).toBe('A');
+    release('LBR');
+    expect([...m.activeMods()]).toEqual([]);
+    expect(tap('LHP').symbols).toBe('a');
+  });
+});

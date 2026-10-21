@@ -27,8 +27,7 @@ export function relabelEligible(
     return (
       b.tap.kind === 'kp' &&
       b.hold.kind === 'mod' &&
-      b.hold.mod !== 'LSHIFT' &&
-      b.hold.mod !== 'RSHIFT'
+      [b.hold.mod, ...(b.hold.also ?? [])].every((m) => m !== 'LSHIFT' && m !== 'RSHIFT')
     );
   };
   if (!plain(posA) || !plain(posB)) return false;

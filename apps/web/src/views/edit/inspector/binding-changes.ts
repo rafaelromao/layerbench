@@ -99,8 +99,9 @@ interface Shapes {
   };
   modifier: {
     binding: Of<ModMode>;
-    view: { mod: Mod; acts: ModMode };
-    set: { mod: Change<Mod>; acts: Change<ModMode> };
+    /** `also`: the modifiers a held one holds with it, as ZMK's `LS(LGUI)` holds Shift with Gui. */
+    view: { mod: Mod; acts: ModMode; also: Mod[] };
+    set: { mod: Change<Mod>; acts: Change<ModMode>; also: Change<Mod> };
   };
   taphold: {
     binding: Of<'lt' | 'hold_tap'>;
@@ -327,13 +328,23 @@ const readers: { [K in KindOfKey]: Reader<K> } = {
       mode: change(b, (mode: LayerMode) => (mode === b.kind ? b : { kind: mode, layer: b.layer })),
     },
   }),
-  modifier: (b) => ({
-    view: { mod: b.mod, acts: b.kind },
-    set: {
-      mod: change(b, (mod: Mod) => ({ ...b, mod })),
-      acts: change(b, (acts: ModMode) => (acts === b.kind ? b : { kind: acts, mod: b.mod })),
-    },
-  }),
+  modifier: (b) => {
+    const also = b.kind === 'mod' ? (b.also ?? []) : [];
+    return {
+      view: { mod: b.mod, acts: b.kind, also },
+      set: {
+        mod: change(b, (mod: Mod) => ({ ...b, mod })),
+        acts: change(b, (acts: ModMode) => (acts === b.kind ? b : { kind: acts, mod: b.mod })),
+        also: change(b, (mod: Mod) => {
+          if (b.kind !== 'mod' || mod === b.mod) return b;
+          const next = also.includes(mod) ? also.filter((m) => m !== mod) : [...also, mod];
+          return next.length
+            ? { kind: 'mod', mod: b.mod, also: next }
+            : { kind: 'mod', mod: b.mod };
+        }),
+      },
+    };
+  },
   taphold(b) {
     const hold: Binding = b.kind === 'lt' ? { kind: 'mo', layer: b.layer } : b.hold;
     const flavor = b.kind === 'hold_tap' ? b.flavor : undefined;
