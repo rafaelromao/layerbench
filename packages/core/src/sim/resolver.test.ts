@@ -530,6 +530,26 @@ describe('a capital with home row mods and no Shift key of its own', () => {
     expect(trace(layout, 'N', model)).toMatchObject({ out: 'N', keys: ['LHI', 'RHI'] });
   });
 
+  it('holds no Shift on the key that typed the accent of an accented capital', () => {
+    const accented = withHomeRowMods({
+      ...layout,
+      layers: [
+        {
+          ...layout.layers[0],
+          bindings: {
+            ...layout.layers[0].bindings,
+            LHM: kp('e'),
+            RHM: kp('d'),
+            RHI: { kind: 'dead_key', diacritic: '´' },
+          },
+        },
+      ],
+    });
+    // The accent on the right index, the letter on the left middle: Shift is the left index's, as
+    // the right one types the accent.
+    expect(trace(accented, 'É', model)).toMatchObject({ out: 'É', keys: ['RHI', 'LHI', 'LHM'] });
+  });
+
   it("holds no Shift on a chord's own keys", () => {
     const t = trace(layout, 'Z', model);
     expect(t.out).toBe('Z');
@@ -549,9 +569,14 @@ describe('a capital with home row mods and no Shift key of its own', () => {
         const capital = c.toUpperCase();
         const { steps } = explain(compiled, capital, { ...opts, ...model });
         const held = steps.filter((s) => s.kind === 'hold_press').map((s) => s.key);
+        // A chord's keys, each of them.
+        const keys = (id: string) => {
+          const at = compiled.positions.find((p) => p.id === id);
+          return at ? at.members.map((i) => compiled.positions[i].id) : [id];
+        };
         const pressed = steps
           .filter((s) => s.kind !== 'hold_press' && s.kind !== 'hold_release')
-          .map((s) => s.key);
+          .flatMap((s) => keys(s.key));
         // One of the two index fingers' Shift, and never on a key the capital itself presses.
         expect([capital, steps.map((s) => s.symbols).join('')]).toEqual([capital, capital]);
         expect([capital, held.filter((k) => k === 'LHI' || k === 'RHI').length]).toEqual([

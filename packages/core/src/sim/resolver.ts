@@ -498,14 +498,16 @@ export class Simulator {
 
   /**
    * Hold one modifier of each choice not already held: the shift key, or a key that holds one,
-   * never one of the keys `pressed` for the symbol itself. A choice of more than one starts from
-   * the modifier this try of the way gives it (`modStarts`).
+   * never one of the keys `pressed` for the symbol itself, and on the other hand from the keys it
+   * is held for (`heldFor`) first. A choice of more than one starts from the modifier this try of
+   * the way gives it (`modStarts`).
    */
   private ensureMods(
     choices: readonly ModChoice[],
     events: KeyEvent[],
     holdsOut: number[],
     pressed: ReadonlySet<number> = NO_KEYS,
+    heldFor: ReadonlySet<number> = pressed,
   ): boolean {
     const m = this.machine;
     for (const choice of choices) {
@@ -519,7 +521,10 @@ export class Simulator {
         const snap = m.state.snapshot();
         const eventsAt = events.length;
         const holdsAt = holdsOut.length;
-        if (this.holdMod(choice[i], events, holdsOut, pressed) && modsMet(choice, m.activeMods())) {
+        if (
+          this.holdMod(choice[i], events, holdsOut, pressed, heldFor) &&
+          modsMet(choice, m.activeMods())
+        ) {
           took = i;
           break;
         }
@@ -551,14 +556,15 @@ export class Simulator {
   }
 
   /**
-   * Press a key that holds `mod`, none of the keys `pressed` for the symbol: false when there is
-   * none, and then nothing was pressed.
+   * Press a key that holds `mod`, none of the keys `pressed` for the symbol, on the other hand from
+   * the keys it is held for first: false when there is none, and then nothing was pressed.
    */
   private holdMod(
     mod: Mod,
     events: KeyEvent[],
     holdsOut: number[],
     pressed: ReadonlySet<number>,
+    heldFor: ReadonlySet<number>,
   ): boolean {
     const m = this.machine;
     const isShift = mod === 'LSHIFT' || mod === 'RSHIFT';
@@ -580,9 +586,9 @@ export class Simulator {
       }
       // The shift key is no shift on this layer: another key, or a combo, may give it.
     }
-    // Search active layers for a sticky or held modifier key: on the other hand from the symbol's
-    // keys first, as a home row mod is held by the hand that is not typing.
-    const typing = new Set([...pressed].map((pos) => this.compiled.positions[pos].hand));
+    // Search active layers for a sticky or held modifier key: on the other hand from the keys it is
+    // held for first, as a home row mod is held by the hand that is not typing.
+    const typing = new Set([...heldFor].map((pos) => this.compiled.positions[pos].hand));
     for (const typingHand of [false, true]) {
       for (let pos = 0; pos < this.compiled.keys.length; pos++) {
         // The other hand's keys in the first pass, the typing hand's in the second.
@@ -676,11 +682,18 @@ export class Simulator {
         for (const pos of deadHolds.splice(0))
           events.push(...m.perform({ type: 'hold_release', pos }));
       }
-      // Never a modifier on a key its own part of the way presses: the accent's, or the letter's.
+      // Never a modifier on a key the way presses, and the other hand from the keys it is held for
+      // first: the accent's for the accent's modifier, the letter's for the letter's.
       if (ok && i === 0 && p.deadMods?.length)
-        ok = this.ensureMods(p.deadMods, events, deadHolds, this.keysOf(p, 0, modsAt));
+        ok = this.ensureMods(
+          p.deadMods,
+          events,
+          deadHolds,
+          this.keysOf(p, 0),
+          this.keysOf(p, 0, modsAt),
+        );
       if (ok && i === modsAt && p.mods?.length)
-        ok = this.ensureMods(p.mods, events, modHolds, this.keysOf(p, modsAt));
+        ok = this.ensureMods(p.mods, events, modHolds, this.keysOf(p, 0), this.keysOf(p, modsAt));
       if (!ok) break;
       if (step.mode === 'chord') {
         if (step.combo === undefined || !this.ensureComboAvailable(step.combo, events)) {
