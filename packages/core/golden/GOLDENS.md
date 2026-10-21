@@ -570,16 +570,18 @@ What moved, checked across the 38 reports; nothing else moved:
 Every layout holds Numbers on its left inner thumb and Symbols on its right inner one, as Romak
 does, and where there is Extras, Symbols' left inner thumb holds Numbers too, so holding both inner
 thumbs brings Extras on in either order. Bird, Nordrassil and Ben Vallack Piano held Numbers on
-their space key, the left outer thumb, and Nordrassil Symbols on its free right outer thumb.
+their space key, L1, beside the inner thumb, and Nordrassil Symbols on its free right outer thumb.
 
-What moved; the 38 reports, Magic Romak's and Qwerty's, did not:
+Checked across the 38 reports, none of which moved. What moved is in the documents:
 
 - **Bird, Nordrassil and Ben Vallack Piano's documents**: L0 holds Numbers, still typing `q`, the
-  magic key and Repeat, and L1 types space alone. Nordrassil's R0, its other magic key, holds
-  Symbols and R2 types nothing; `0` goes on R1. Ben Vallack Piano's Symbols has `=` on L0 and `ı`
-  on L1, the other way round.
-- **Bird, Finch, Caksoylar and Ben Vallack Piano's documents**: Symbols' L0 holds Numbers, still
-  typing space, or `=` on Ben Vallack Piano.
+  magic key and Repeat, and L1 types space alone. Bird's and Nordrassil's Symbols lose their own
+  space on L1, where the base layer's shows through. Nordrassil's R0, its other magic key, holds
+  Symbols and R2 types nothing; `0` goes on R1. Ben Vallack Piano's Symbols has `=` on L0 and `ı` on
+  L1, the other way round.
+- **Bird, Finch, Caksoylar and Ben Vallack Piano's documents**: Symbols' L0 holds Numbers, and
+  taps space on Finch and Caksoylar, `=` on Ben Vallack Piano, moved there from L1, and `q` on
+  Bird, as on its base layer.
 - Their languages, measured by `pnpm languages`, did not move.
 
 ## Twenty-seventh re-baseline: Portuguese is `pt`
