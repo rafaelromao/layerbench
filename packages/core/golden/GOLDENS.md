@@ -582,6 +582,17 @@ What moved; the 38 reports, Magic Romak's and Qwerty's, did not:
   typing space, or `=` on Ben Vallack Piano.
 - Their languages, measured by `pnpm languages`, did not move.
 
+## Twenty-seventh re-baseline: Portuguese is `pt`
+
+Portuguese's tag is `pt`, not `pt-BR`, and its name Português. Its text is still the Brazilian
+news, `pt-br-general`.
+
+What moved, checked across the 38 reports; nothing else moved:
+
+- **No report**: none names a language.
+- **The documents of the 18 layouts that are for Portuguese, and Magic Romak's share blob**: `pt-BR`
+  becomes `pt` in their languages, and nothing else.
+
 ## Not compared
 
 `globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not

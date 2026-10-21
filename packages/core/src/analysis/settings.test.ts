@@ -58,7 +58,7 @@ describe('The plan: what the engine is told', () => {
     const s = settings({ corpus2: 'pt-br-general', share: 70 });
     const mixed = mixCorpora([
       [corpus('en-general', 'en', 'one. two.'), 70],
-      [corpus('pt-br-general', 'pt-BR', 'três. quatro.'), 30],
+      [corpus('pt-br-general', 'pt', 'três. quatro.'), 30],
     ]);
     expect(analysisPlan(s).text).toBe(mixed.id);
   });

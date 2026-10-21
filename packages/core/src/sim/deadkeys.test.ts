@@ -121,7 +121,7 @@ describe('dead keys as producers', () => {
   it('counts composed letters as producible, so a language is covered', () => {
     const compiled = compileLayout(oneShot);
     expect(producibleSymbols(compiled).has('ñ')).toBe(true);
-    for (const tag of ['pt-BR', 'es', 'it'])
+    for (const tag of ['pt', 'es', 'it'])
       expect(layoutLanguageCoverage(compiled, tag)?.missingRequired).toEqual([]);
   });
 
