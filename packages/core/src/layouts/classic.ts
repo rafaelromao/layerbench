@@ -1,6 +1,6 @@
 import { getGeometryPreset } from '../geometry/presets.js';
 import { importTextLayout } from '../layout/text.js';
-import type { Binding, ComboDef, Layout } from '../layout/types.js';
+import type { Binding, ComboDef, Layout, Mod } from '../layout/types.js';
 
 /** A key as a definition writes it: a token, or the binding itself. */
 export type KeyDef = string | Binding;
@@ -37,10 +37,10 @@ export interface ClassicDef {
   /** The key that types space, when `byKey` gives it a binding rather than the `space` token. */
   space?: string;
   /**
-   * `false` for a layout that goes without the home row mods every other one gets: one whose
-   * author's keymap has home row mods of its own, which the model does not carry.
+   * Home row mods of its own, as its author's keymap holds them: by key, a modifier or any other
+   * hold, in place of the ones every other layout gets (`HOME_ROW_MODS`); or `false` for none.
    */
-  homeRowMods?: false;
+  homeRowMods?: false | Readonly<Record<string, Mod | Binding>>;
   /** The shift key, when the layout has one of its own. */
   shift?: Layout['keys']['shift'];
   /** Typing behaviours declared rather than built of layers: sentence case, caps word. */

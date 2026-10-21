@@ -68,19 +68,19 @@ function withDefaults(placed: ThumbPlacement) {
 
 /**
  * A layout written in code, built from its definition: its default layers, then the home row mods,
- * which a definition may go without.
+ * its own if its definition gives them.
  */
 function built(placed: ThumbPlacement) {
   return (def: ClassicDef): Layout => {
     const layout = withDefaults(placed)(classicLayout(def));
-    return def.homeRowMods === false ? layout : withHomeRowMods(layout);
+    return def.homeRowMods === false ? layout : withHomeRowMods(layout, def.homeRowMods);
   };
 }
 
 /**
  * The layouts written here in code: the set the app started with, and Romak back among them. Each
  * has the default layers and home row mods but Magic Romak, which brings its keymap's own Numbers
- * and Symbols and goes without home row mods, as any layout may. LayerBench placed the thumbs of the
+ * and Symbols and its home block mods, as any layout may. LayerBench placed the thumbs of the
  * classic layouts, their authors having left them to a space bar; the small-board layouts' authors
  * placed their own. They are listed in the order of `BUNDLED_IDS`.
  */

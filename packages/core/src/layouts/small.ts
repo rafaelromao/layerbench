@@ -1,5 +1,5 @@
 import { getGeometryPreset } from '../geometry/presets.js';
-import type { AdaptiveTrigger, Binding, ComboDef, LayerDef } from '../layout/types.js';
+import type { AdaptiveTrigger, Binding, ComboDef, LayerDef, Mod } from '../layout/types.js';
 import { type ClassicDef, REPEAT, raw } from './classic.js';
 import { DEFAULT_LAYER_IDS, defaultLayers, SYMBOLS_CORE } from './templates.js';
 
@@ -390,6 +390,28 @@ const KEYMAP_SYMBOL_COMBOS: ComboDef[] = [
   typingCombo('ordinal', ['RHR', 'RHM', 'RHI'], tapOrHeld('º', 'ª'), ['num']),
 ];
 
+/**
+ * The home block mods of the author's keymap, on the keys Magic Romak has: a layer of shortcuts,
+ * which this model does not carry, held on each pinky; Ctrl, Alt and Shift from the ring finger in;
+ * Shift and Gui together on the ring and middle fingers' bottom keys, and Gui on the index fingers',
+ * the magic key's among them (`ht_magic`). The `,` and `.` keys hold to move the cursor first,
+ * which is editing rather than typing, and are left out.
+ */
+const MAGIC_ROMAK_MODS: Record<string, Mod | Binding> = {
+  LHP: unmodelled('SHORTS'),
+  LHR: 'LCTRL',
+  LHM: 'LALT',
+  LHI: 'LSHIFT',
+  LBR: { kind: 'mod', mod: 'LGUI', also: ['LSHIFT'] },
+  LBM: { kind: 'mod', mod: 'LGUI', also: ['LSHIFT'] },
+  LBI: 'LGUI',
+  RHI: 'LSHIFT',
+  RHM: 'LALT',
+  RHR: 'LCTRL',
+  RHP: unmodelled('SHORTS'),
+  RBI: 'LGUI',
+};
+
 /** An adaptive key: types `fallback`, or `afterVowel` when a vowel came just before it. */
 const adaptiveKey = (fallback: string, afterVowel: string): Binding => ({
   kind: 'adaptive',
@@ -481,7 +503,7 @@ export const SMALL_DEFS: ClassicDef[] = [
         { from: 'num', via: 'key:num/R0' },
       ],
     },
-    homeRowMods: false,
+    homeRowMods: MAGIC_ROMAK_MODS,
     description:
       'Romak 24 with adaptive keys (h/v), alt repeat, sentence case, caps word, and dead keys for Spanish, French and Italian.',
     link: 'https://rafaelromao.github.io/romak',

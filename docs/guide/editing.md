@@ -292,9 +292,11 @@ another layer; the key that types space then holds Numbers, and the innermost th
 hand with nothing on it Symbols. Accents is the combo on two thumbs, as on a new layout. Ben Vallack
 Piano taps a one-shot Shift where its keymap has Repeat, the left inner thumb that holds Numbers.
 
-Every layout that comes with the app but Magic Romak has home row mods too: held, the home row's
-finger keys give Gui, Ctrl, Alt and Shift from the left pinky in, and Shift, Alt, Ctrl and Gui from
-the right index out. Both hands hold the left modifiers, as both Shift thumbs do. Tapped, each key
+Every layout that comes with the app has home row mods too: held, the home row's finger keys give
+Gui, Ctrl, Alt and Shift from the left pinky in, and Shift, Alt, Ctrl and Gui from the right index
+out. Magic Romak holds its author's keymap's instead: Ctrl, Alt and Shift from the ring finger in, a
+layer of shortcuts on each pinky, and on the bottom row Shift with Gui under the ring and middle
+fingers and Gui under the index fingers. Both hands hold the left modifiers, as both Shift thumbs do. Tapped, each key
 types what it typed, a letter or anything else: Uno's space holds Alt. They are on the base layer
 only. In the Shift case mode, a layout with no Shift key of its own types a capital holding the home
 row Shift of the other hand.

@@ -7,8 +7,8 @@ import { compileLayout } from '../layout/compile.js';
 import type { Binding, Layout } from '../layout/types.js';
 import { blockedThumbs, reachKeys } from '../sim/activators.js';
 import { explain } from '../sim/resolver.js';
-import { CLASSIC_LAYOUTS } from './classic.js';
-import { BUNDLED_LAYOUTS, bundledLayout, SMALL_LAYOUTS } from './index.js';
+import { CLASSIC_DEFS, CLASSIC_LAYOUTS } from './classic.js';
+import { BUNDLED_LAYOUTS, bundledLayout, SMALL_DEFS, SMALL_LAYOUTS } from './index.js';
 import {
   ACCENTS,
   accentsCombo,
@@ -845,7 +845,7 @@ describe('the default layers, layout by layout', () => {
   });
 });
 
-describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, on every layout but Magic Romak', () => {
+describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, unless a layout gives its own', () => {
   const KEYS = ['LHP', 'LHR', 'LHM', 'LHI', 'RHI', 'RHM', 'RHR', 'RHP'];
   const MODS = ['LGUI', 'LCTRL', 'LALT', 'LSHIFT', 'LSHIFT', 'LALT', 'LCTRL', 'LGUI'];
   const heldMod = (b: Binding | undefined) =>
@@ -857,7 +857,12 @@ describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, on every l
     expect(Object.values(HOME_ROW_MODS)).toEqual(MODS);
   });
 
-  it.each(BUNDLED_LAYOUTS.filter((l) => l.id !== 'magic-romak').map((l) => [l.id, l] as const))(
+  // A definition may give its own, as its author's keymap has them.
+  const own = new Set(
+    [...CLASSIC_DEFS, ...SMALL_DEFS].filter((d) => d.homeRowMods !== undefined).map((d) => d.id),
+  );
+
+  it.each(BUNDLED_LAYOUTS.filter((l) => !own.has(l.id ?? '')).map((l) => [l.id, l] as const))(
     '%s holds them on its base layer, each on a key that types, and no other layer holds one',
     (_id, layout) => {
       const base = layout.layers[0].bindings;
@@ -875,10 +880,37 @@ describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, on every l
     },
   );
 
-  it('leave Magic Romak as it was', () => {
-    expect(bundledLayout('magic-romak')).toMatchObject({ layers: magicRomak.layers });
+  it("give way to a layout's own: Magic Romak holds its keymap's home block mods", () => {
     const base = magicRomak.layers[0].bindings;
-    expect(KEYS.map((k) => heldMod(base[k]))).toEqual(KEYS.map(() => undefined));
+    const hold = (k: string) => (base[k]?.kind === 'hold_tap' ? base[k].hold : undefined);
+    const shorts: Binding = { kind: 'raw', label: 'SHORTS', source: '&mo SHORTS' };
+    const gui: Binding = { kind: 'mod', mod: 'LGUI' };
+    expect(
+      Object.fromEntries(
+        ['LHP', 'LHR', 'LHM', 'LHI', 'LBR', 'LBM', 'LBI', 'RHI', 'RHM', 'RHR', 'RHP', 'RBI'].map(
+          (k) => [k, hold(k)],
+        ),
+      ),
+    ).toEqual({
+      LHP: shorts,
+      LHR: { kind: 'mod', mod: 'LCTRL' },
+      LHM: { kind: 'mod', mod: 'LALT' },
+      LHI: { kind: 'mod', mod: 'LSHIFT' },
+      LBR: { ...gui, also: ['LSHIFT'] },
+      LBM: { ...gui, also: ['LSHIFT'] },
+      LBI: gui,
+      RHI: { kind: 'mod', mod: 'LSHIFT' },
+      RHM: { kind: 'mod', mod: 'LALT' },
+      RHR: { kind: 'mod', mod: 'LCTRL' },
+      RHP: shorts,
+      RBI: gui,
+    });
+    // Each still types what it typed; the magic key is still the magic key.
+    expect(base.RBI?.kind === 'hold_tap' && base.RBI.tap.kind).toBe('adaptive');
+    expect(base.LHP?.kind === 'hold_tap' && base.LHP.tap).toEqual(kp('d'));
+    // The keymap's , and . hold to move the cursor, which is editing, and are left as they were.
+    expect(base.RBM).toEqual(kp(','));
+    expect(base.RBR).toEqual(kp('.'));
   });
 
   it('go on any key that types: a letter, a mark, space, Repeat or an adaptive key', () => {

@@ -75,9 +75,9 @@ Alpha ones share their main thumbs and base-layer symbols, so that they compare 
 (`withStandardThumbs` in `standard.ts`): the four inner thumbs hold Shift, Numbers, Symbols and
 Shift and tap Repeat, space, a thumb letter or nothing, and Accents, and no symbol stays on the base
 layer but `'` `,` `.` `;`. The Special ones keep every key they had and reach Accents on one combo
-(`withDefaultLayers` in `templates.ts`). All but Magic Romak hold home row mods, Gui, Ctrl, Alt and
-Shift from the left pinky in and mirrored on the right, each key still typing what it did
-(`withHomeRowMods` in `templates.ts`). The languages each is for are measured, not chosen: a
+(`withDefaultLayers` in `templates.ts`). They hold home row mods, Gui, Ctrl, Alt and Shift from the
+left pinky in and mirrored on the right, each key still typing what it did (`withHomeRowMods` in
+`templates.ts`), but Magic Romak, which holds its author's keymap's. The languages each is for are measured, not chosen: a
 layout is for a language when it types every letter the language needs and its Effort on that
 language's news text is in the better half of all the bundled layouts', on the rules the Library
 ranks on (`lang/performance.ts`). `pnpm languages` measures them and writes them, to
