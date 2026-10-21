@@ -5,7 +5,7 @@ import { compileLayout } from '../layout/compile.js';
 import { importTextLayout } from '../layout/text.js';
 import type { Binding, Layout, Mod } from '../layout/types.js';
 import { CLASSIC_LAYOUTS } from '../layouts/classic.js';
-import { bundledLayout } from '../layouts/index.js';
+import { BUNDLED_LAYOUTS, bundledLayout, withHomeRowMods } from '../layouts/index.js';
 import { magicRomak, romak } from '../layouts/romak.js';
 import { explain, simulate } from './resolver.js';
 
@@ -494,6 +494,74 @@ describe('the kind of key a press is, in the statistics', () => {
       ['v', 'adaptive'],
     ]);
   });
+});
+
+describe('a capital with home row mods and no Shift key of its own', () => {
+  const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
+  const layout = withHomeRowMods({
+    format: 'layerbench/layout@1',
+    name: 'Home row mods',
+    hostLocale: 'symbols',
+    geometry: { preset: '3x5+2' },
+    keys: { space: 'L0' },
+    layers: [
+      {
+        id: 'base',
+        bindings: {
+          L0: kp(' '),
+          LHP: kp('a'),
+          LHR: kp('s'),
+          LHM: kp('d'),
+          LHI: kp('t'),
+          RHI: kp('n'),
+          RHM: kp('e'),
+          RHR: kp('i'),
+          RHP: kp('o'),
+        },
+      },
+    ],
+    combos: [{ id: 'z', keys: ['LHR', 'LHI'], binding: kp('z'), role: 'typing' }],
+  });
+  const model = { caseMode: 'model' as const };
+
+  it("holds the other hand's Shift, never the one on its own key", () => {
+    expect(trace(layout, 'T', model)).toMatchObject({ out: 'T', keys: ['RHI', 'LHI'] });
+    expect(trace(layout, 'S', model)).toMatchObject({ out: 'S', keys: ['RHI', 'LHR'] });
+    expect(trace(layout, 'N', model)).toMatchObject({ out: 'N', keys: ['LHI', 'RHI'] });
+  });
+
+  it("holds no Shift on a chord's own keys", () => {
+    const t = trace(layout, 'Z', model);
+    expect(t.out).toBe('Z');
+    expect(t.keys[0]).toBe('RHI');
+  });
+
+  it.each(BUNDLED_LAYOUTS.filter((l) => !l.keys.shift).map((l) => [l.id, l] as const))(
+    'types on %s the capital of every letter it types alone, with a home row Shift',
+    (_id, layout) => {
+      const compiled = compileLayout(layout);
+      const typed = (text: string, extra = {}) =>
+        explain(compiled, text, { ...opts, ...extra })
+          .steps.map((s) => s.symbols)
+          .join('');
+      for (const c of 'abcdefghijklmnopqrstuvwxyz') {
+        if (typed(c) !== c) continue;
+        const capital = c.toUpperCase();
+        const { steps } = explain(compiled, capital, { ...opts, ...model });
+        const held = steps.filter((s) => s.kind === 'hold_press').map((s) => s.key);
+        const pressed = steps
+          .filter((s) => s.kind !== 'hold_press' && s.kind !== 'hold_release')
+          .map((s) => s.key);
+        // One of the two index fingers' Shift, and never on a key the capital itself presses.
+        expect([capital, steps.map((s) => s.symbols).join('')]).toEqual([capital, capital]);
+        expect([capital, held.filter((k) => k === 'LHI' || k === 'RHI').length]).toEqual([
+          capital,
+          1,
+        ]);
+        expect([capital, held.filter((k) => pressed.includes(k))]).toEqual([capital, []]);
+      }
+    },
+  );
 });
 
 describe('the key tapped for a layer, chosen word by word', () => {

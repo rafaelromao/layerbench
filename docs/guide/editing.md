@@ -289,7 +289,15 @@ inner thumb and Symbols on the right inner one, each still typing what it typed,
 inner thumbs on every layout that has it. Bird, Nordrassil and Ben Vallack Piano type space on L1,
 beside the inner thumb, which holds Numbers. An inner thumb that is a tap-hold already cannot hold
 another layer; the key that types space then holds Numbers, and the innermost thumb of the other
-hand with nothing on it Symbols. Accents is the combo on two thumbs, as on a new layout.
+hand with nothing on it Symbols. Accents is the combo on two thumbs, as on a new layout. Ben Vallack
+Piano taps a one-shot Shift where its keymap has Repeat, the left inner thumb that holds Numbers.
+
+Every layout that comes with the app but Magic Romak has home row mods too: held, the home row's
+finger keys give Gui, Ctrl, Alt and Shift from the left pinky in, and Shift, Alt, Ctrl and Gui from
+the right index out. Both hands hold the left modifiers, as both Shift thumbs do. Tapped, each key
+types what it typed, a letter or anything else: Uno's space holds Alt. They are on the base layer
+only. In the Shift case mode, a layout with no Shift key of its own types a capital holding the home
+row Shift of the other hand.
 
 Magic Romak is its author's keymap, and has no Extras and no Accents, as the keymap has none. It
 keeps its own thumbs on Numbers and Symbols, and the keymap's combos type what those two layers

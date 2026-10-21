@@ -595,6 +595,22 @@ What moved, checked across the 38 reports; nothing else moved:
 - **The documents of the 18 layouts that are for Portuguese, and Magic Romak's share blob**: `pt-BR`
   becomes `pt` in their languages, and nothing else.
 
+## Twenty-eighth re-baseline: home row mods, and Ben Vallack Piano's one-shot Shift
+
+Every bundled layout but Magic Romak holds Gui, Ctrl, Alt and Shift on its base layer's home row
+from the left pinky in, mirrored on the right, the left modifiers on both hands. Ben Vallack Piano
+taps a one-shot Shift where its keymap has Repeat, its L0, and that is its Shift key.
+
+What moved; the 38 reports and Magic Romak's document did not:
+
+- **Every other layout's document**: LHP, LHR, LHM, LHI, RHI, RHM, RHR and RHP are tap-holds of
+  what they typed and their modifier. A tapped one types what the key typed and is scored as it was,
+  so no fold-mode number moves, and the only model-mode reports are Magic Romak's.
+- **Ben Vallack Piano's document**: L0 taps `sk LSHIFT`, still holding Numbers, `keys.shift` is
+  L0, one-shot, and its description says so. Its languages, measured by `pnpm languages`, did not
+  move.
+- **Nordwind**, a document of its own, carries the same eight tap-holds in its JSON.
+
 ## Not compared
 
 `globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not

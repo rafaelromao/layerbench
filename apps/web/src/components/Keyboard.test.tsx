@@ -12,7 +12,7 @@ describe('Keyboard', () => {
     const { container } = render(<Keyboard compiled={qwerty} />);
     const keys = container.querySelectorAll('g[data-key]');
     expect(keys.length).toBe(qwerty.keys.length);
-    expect(screen.getByRole('button', { name: 'Key LHM: d' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Key LHM: d, hold ⌥' })).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Keyboard layout' })).toBeInTheDocument();
   });
 
@@ -27,7 +27,7 @@ describe('Keyboard', () => {
     const onKeyClick = vi.fn();
     render(<Keyboard compiled={qwerty} onKeyClick={onKeyClick} />);
 
-    const key = screen.getByRole('button', { name: 'Key LHM: d' });
+    const key = screen.getByRole('button', { name: 'Key LHM: d, hold ⌥' });
     key.focus();
     await user.keyboard('{Enter}');
     expect(onKeyClick).toHaveBeenCalledWith('LHM', { add: false });
@@ -39,7 +39,7 @@ describe('Keyboard', () => {
     await user.keyboard('{Shift>}{Enter}{/Shift}');
     expect(onKeyClick).toHaveBeenLastCalledWith('LHM', { add: true });
     await user.keyboard('{Shift>}');
-    await user.click(screen.getByRole('button', { name: 'Key LHI: f' }));
+    await user.click(screen.getByRole('button', { name: 'Key LHI: f, hold ⇧' }));
     expect(onKeyClick).toHaveBeenLastCalledWith('LHI', { add: true });
   });
 
@@ -307,7 +307,7 @@ describe('a click on the board between the keys', () => {
     const onEmptyClick = vi.fn();
     const onKeyClick = vi.fn();
     render(<Keyboard compiled={qwerty} onKeyClick={onKeyClick} onEmptyClick={onEmptyClick} />);
-    await user.click(screen.getByRole('button', { name: 'Key LHM: d' }));
+    await user.click(screen.getByRole('button', { name: 'Key LHM: d, hold ⌥' }));
     expect(onKeyClick).toHaveBeenCalledTimes(1);
     expect(onEmptyClick).not.toHaveBeenCalled();
     await user.click(screen.getByRole('group', { name: 'Keyboard layout' }));
@@ -320,7 +320,7 @@ describe('a click on the board between the keys', () => {
       <Keyboard compiled={qwerty} draggable onDropKey={vi.fn()} onEmptyClick={onEmptyClick} />,
     );
     const board = screen.getByRole('group', { name: 'Keyboard layout' });
-    const key = screen.getByRole('button', { name: 'Key LHM: d' });
+    const key = screen.getByRole('button', { name: 'Key LHM: d, hold ⌥' });
 
     // A key dragged and let go between the keys.
     fireEvent.pointerDown(key, { ...at, pointerId: 1, pointerType: 'mouse' });
@@ -361,7 +361,7 @@ describe('a click on the board between the keys', () => {
       />,
     );
     const board = screen.getByRole('group', { name: 'Keyboard layout' });
-    const key = screen.getByRole('button', { name: 'Key LHM: d' });
+    const key = screen.getByRole('button', { name: 'Key LHM: d, hold ⌥' });
     const mouse = { pointerId: 1, pointerType: 'mouse' };
     fireEvent.pointerDown(key, { ...at, ...mouse });
     fireEvent.pointerMove(board, { clientX: 60, clientY: 10, ...mouse });
