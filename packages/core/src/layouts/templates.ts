@@ -794,8 +794,8 @@ export const HOME_ROW_MODS: Readonly<Record<string, Mod>> = {
 /**
  * Home row mods on the base layer: each key of `holds` that types something holds what `holds`
  * gives it, a modifier or any other hold, still typing what it typed: `HOME_ROW_MODS` unless a
- * layout gives its own, as its author's keymap has them. A key with nothing on it, or one that holds
- * something already, is left as it is.
+ * layout gives its own, as its author's keymap has them. A key with nothing on it, or one that
+ * holds something already, is left as it is.
  */
 export function withHomeRowMods(
   layout: Layout,

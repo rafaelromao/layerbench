@@ -12,7 +12,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import type { BindingTextContext } from '../binding-text.js';
 import { type FieldsOf, freshRow, keyFields, macroRows } from './binding-changes.js';
-import { type KindOfKey, kindOf, MORE_KINDS, PRIMARY_KINDS } from './kinds.js';
+import { HOLD_KINDS, type KindOfKey, kindOf, MORE_KINDS, PRIMARY_KINDS } from './kinds.js';
 
 /** The context the key inspector builds for a layout. */
 function contextOf(compiled: CompiledLayout): BindingTextContext {
@@ -223,6 +223,27 @@ describe('what each kind of key shows, and what its controls change', () => {
 describe('the parts of a bigger key, and lists of them', () => {
   const a: Binding = { kind: 'kp', symbol: 'a' };
   const v: Binding = { kind: 'kp', symbol: 'v' };
+
+  it("holds Shift with Gui, or an imported key, on a tap-hold's hold, as Magic Romak does", () => {
+    const held = fieldsOf('taphold', {
+      kind: 'hold_tap',
+      tap: a,
+      hold: { kind: 'mod', mod: 'LGUI' },
+    });
+    const gui = fieldsOf('modifier', held.view.hold);
+    expect(held.set.hold(gui.set.also('LSHIFT'))).toEqual({
+      kind: 'hold_tap',
+      tap: a,
+      hold: { kind: 'mod', mod: 'LGUI', also: ['LSHIFT'] },
+    });
+    expect(HOLD_KINDS).toContain('imported');
+    const imported = fieldsOf('imported', to(held.view.hold, 'imported'));
+    expect(held.set.hold(imported.set.label('SHORTS'))).toEqual({
+      kind: 'hold_tap',
+      tap: a,
+      hold: { kind: 'raw', label: 'SHORTS' },
+    });
+  });
 
   it('keeps a layer tap while its hold is a plain layer key, and makes it a hold-tap for timing', () => {
     const layerTap: Binding = { kind: 'lt', layer: 'alpha2', tap: a };

@@ -7,8 +7,8 @@ import type { Layout } from './types.js';
 
 /**
  * Magic Romak is written in code, but nothing in it is out of an author's reach: every part of it
- * can be made in the editor, on a new layout, by the same edits a person makes there. Rebuilt so, it
- * is the same layout, and it is analyzed the same.
+ * can be made in the editor, on a new layout, by the same edits a person makes there. Rebuilt so,
+ * it is the same layout, and it is analyzed the same.
  */
 const magicRomak = bundledLayout('magic-romak') as Layout;
 

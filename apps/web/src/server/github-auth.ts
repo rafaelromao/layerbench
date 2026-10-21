@@ -453,10 +453,12 @@ async function libraryRoute(
   const answer = (status: number, value: LibraryAnswer) => json(value, status, cors);
   const current = await sessionOf(body, config);
   if (!current) return answer(401, { error: 'signed out' });
+  // Anyone proposes a change; a maintainer deletes or promotes, and nothing else.
   const action = route === 'propose' ? 'change' : body.action;
   if (action !== 'change' && action !== 'delete' && action !== 'promote') {
     return answer(400, { error: 'bad request' });
   }
+  if (route === 'maintain' && action === 'change') return answer(400, { error: 'bad request' });
   const kinds: Target['kind'][] =
     action === 'promote' ? ['custom', 'community'] : ['bundled', 'community'];
   const target = targetOf(body.target, kinds);

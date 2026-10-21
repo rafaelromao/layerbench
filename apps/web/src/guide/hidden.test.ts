@@ -2,13 +2,16 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-/** From the working directory, as the landing page's test reads it: a jsdom module has an http URL. */
+/**
+ * From the working directory, as the landing page's test reads it: a jsdom module has an http
+ * URL.
+ */
 const root = (rel: string) => resolve(process.cwd(), '../..', rel);
 const guide = readdirSync(root('docs/guide')).filter((f) => f.endsWith('.md'));
 
 /**
- * What only the Library's maintainers can do in the app, deleting a layout from it and promoting one
- * into it, is shown to nobody else, and the pages people read say nothing of it: the guide, the
+ * What only the Library's maintainers can do in the app, deleting a layout from it and promoting
+ * one into it, is shown to nobody else, and the pages people read say nothing of it: the guide, the
  * README, the landing page, the glossary and the agents' notes.
  */
 const READ = [

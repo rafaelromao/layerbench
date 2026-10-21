@@ -1,6 +1,6 @@
 import type { Layout } from '../layout/types.js';
 import { DOCUMENT_LAYOUTS, goldenLayouts } from '../layouts/index.js';
-import { GOLDEN_LAYOUTS } from './report.js';
+import { GOLDEN_LAYOUTS } from './set.js';
 
 /**
  * The layouts whose documents `golden/layouts/` holds: those written in code, and any of the golden

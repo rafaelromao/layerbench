@@ -43,7 +43,8 @@ _Avoid_: sync, push, upload
 A layout, rule set or text the user keeps, saved in this browser and, once they sign in, on GitHub
 too, under an id that follows its name. A link names it by `custom:<id>`; where it is not saved it
 does not open, and nothing opens in its place. Links once named it `saved:<id>`, and those no longer
-open.
+open. What is kept beside a custom layout for a proposed change is stored the same way, but is not a
+custom document of its own: nothing opens it.
 _Avoid_: saved document, stored document, saved item
 
 **Custom layout**:
@@ -133,6 +134,13 @@ Everything typing a text on a layout pressed: each press, how often it came, and
 together within a word. Every number about the layout is read from it.
 _Avoid_: simulation tables, registry, typing record
 
+**Proposed change**:
+Changes to a bundled or community layout, proposed for everyone by a pull request that names who
+sent them. They are saved meanwhile as a custom layout marked proposed, with the pull request kept
+beside it, under its id: merged, the Library has the change and the copy goes; closed, the copy
+stays a custom layout of its own.
+_Avoid_: suggestion, update request, patch
+
 **Ranking**:
 The Library's order of layouts by their numbers, on the analysis settings in its link with the sample
 capped at 100,000 symbols.
@@ -159,12 +167,6 @@ _Avoid_: regular layout, classic layout, normal layout
 Proposing a custom layout as a community layout: it goes to the maintainer for review, and joins the
 Library once accepted.
 _Avoid_: publish, contribute, share
-
-**Proposed change**:
-An edit to a bundled or community layout, suggested for everyone by a pull request that names who
-sent it. It is saved meanwhile as a custom layout marked proposed: merged, the Library has the
-change and the copy goes; closed, the copy stays a custom layout of its own.
-_Avoid_: suggestion, update request, patch
 
 **Thumb alpha**:
 A letter from a to z that a thumb key types on an alpha layer.

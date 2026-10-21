@@ -101,6 +101,12 @@ export const PART_KINDS: readonly KindOfKey[] = [
  */
 export const TAP_KINDS: readonly KindOfKey[] = [...PART_KINDS, 'adaptive', 'altrepeat'];
 
+/**
+ * What the hold of a tap-hold can be: anything its tap can, or a key imported from a keymap, as
+ * Magic Romak's pinkies hold a layer this model does not carry.
+ */
+export const HOLD_KINDS: readonly KindOfKey[] = [...TAP_KINDS, 'imported'];
+
 export function kindInfo(kind: KindOfKey): KindInfo {
   return ALL_KINDS.find((k) => k.kind === kind) ?? IMPORTED;
 }

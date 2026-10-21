@@ -1,13 +1,13 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { LIBRARY_FILES, LIBRARY_REQUEST, type LibraryRequest, planEdit } from './plan.js';
+import { LIBRARY_FILES, LIBRARY_REQUEST, type LibraryRequest, planRequest } from './plan.js';
 
 /**
- * Applies the Library request a branch carries to the repository at `root`, and deletes the request:
- * Node only, for `pnpm library-edit` in CI. A branch with no request is left as it is, so CI's own
- * push of the result, and any fix pushed by hand after it, change nothing. What the request asks is
- * worked out whole first (`planEdit`), so a refusal writes nothing and leaves the request for a
- * person to read.
+ * Applies the Library request a branch carries to the repository at `root`, and deletes the
+ * request: Node only, for `pnpm library-edit` in CI. A branch with no request is left as it is, so
+ * CI's own push of the result, and any fix pushed by hand after it, change nothing. What the
+ * request asks is worked out whole first (`planRequest`), so a refusal writes nothing and leaves
+ * the request for a person to read.
  *
  * Returns what was asked, or null when there was no request.
  */
@@ -30,7 +30,7 @@ export function applyRequest(
     files[path] = readFileSync(join(root, path), 'utf8');
   }
 
-  const { write, remove } = planEdit(request, files, bundled);
+  const { write, remove } = planRequest(request, files, bundled);
   for (const [path, text] of Object.entries(write)) {
     mkdirSync(dirname(join(root, path)), { recursive: true });
     writeFileSync(join(root, path), text);

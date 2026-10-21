@@ -124,6 +124,50 @@ async function saveCopy(user: ReturnType<typeof userEvent.setup>, name?: string)
   await user.click(within(dialog).getByRole('button', { name: 'Save copy' }));
 }
 
+const PULL = 'https://github.com/rafaelromao/layerbench/pull/100';
+
+/**
+ * The sign-in server and GitHub, stood in for: each change proposed is kept and answered with
+ * `PULL`, whose state on GitHub is `pull.state`. Signed in as `you`.
+ */
+async function proposing(): Promise<{
+  sent: Record<string, unknown>[];
+  pull: { state: 'open' | 'closed' };
+}> {
+  const sent: Record<string, unknown>[] = [];
+  const pull = { state: 'open' as 'open' | 'closed' };
+  const real = globalThis.fetch;
+  localStorage.setItem('layerbench:github-session', 'sealed');
+  const reply = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url.endsWith('/api/auth/propose')) {
+      sent.push(JSON.parse(String(init?.body)));
+      return reply({ url: PULL }, 201);
+    }
+    if (url.includes('/api/auth/')) {
+      return reply({
+        available: true,
+        clientId: 'Iv1.client',
+        signedIn: true,
+        login: 'you',
+        token: 'ghu_one',
+        expiresAt: Date.now() + 3600_000,
+      });
+    }
+    if (url === 'https://api.github.com/repos/rafaelromao/layerbench/pulls/100') {
+      return reply({ state: pull.state, merged: false });
+    }
+    return real(input, init);
+  });
+  await initGitHubSession();
+  return { sent, pull };
+}
+
 /** The engine, keeping every analysis it is asked for. */
 function recording(): { client: AnalysisClient; requests: AnalyzeRequest[] } {
   const real = testClient();
@@ -338,35 +382,8 @@ describe('Edit', () => {
   it('proposes a change to a bundled layout: saved here, its pull request opened and kept with it', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
-    const PULL = 'https://github.com/rafaelromao/layerbench/pull/100';
-    const sent: Record<string, unknown>[] = [];
-    const real = globalThis.fetch;
-    localStorage.setItem('layerbench:github-session', 'sealed');
-    const reply = (body: unknown, status = 200) =>
-      new Response(JSON.stringify(body), {
-        status,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(input);
-      if (url.endsWith('/api/auth/propose')) {
-        sent.push(JSON.parse(String(init?.body)));
-        return reply({ url: PULL }, 201);
-      }
-      if (url.includes('/api/auth/')) {
-        return reply({
-          available: true,
-          clientId: 'Iv1.client',
-          signedIn: true,
-          login: 'you',
-          token: 'ghu_one',
-          expiresAt: Date.now() + 3600_000,
-        });
-      }
-      return real(input, init);
-    });
+    const { sent } = await proposing();
     try {
-      await initGitHubSession();
       renderRoute('/analyze?layout=colemak&corpus=en-general&sample=20000', { storage });
       await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
 
@@ -401,6 +418,58 @@ describe('Edit', () => {
       expect(sent).toHaveLength(2);
       expect(sent[1]).toMatchObject({ target: { kind: 'bundled', id: 'colemak' } });
       expect(JSON.stringify(sent[1].layout)).toContain('ç');
+    } finally {
+      vi.unstubAllGlobals();
+      useGitHubSession.setState({ status: 'unknown', login: null, maintainer: false });
+    }
+  }, 60_000);
+
+  it('names the copy anew where a custom layout has the name, and lets a declined one be', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    // A copy of an earlier proposal, declined, still goes by the bundled layout's name.
+    const colemak = bundledLayout('colemak') as Layout;
+    await storage.put('layouts', 'colemak', toCanonicalJson({ ...colemak, id: 'colemak' }));
+    const { sent, pull } = await proposing();
+    try {
+      renderRoute('/analyze?layout=colemak&corpus=en-general&sample=20000', { storage });
+      await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+
+      await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+      const choice = await screen.findByRole('dialog', { name: 'Save Colemak' });
+      await user.click(within(choice).getByRole('button', { name: 'Propose change' }));
+      const naming = await screen.findByRole('dialog', { name: 'Name your copy' });
+      expect(sent).toEqual([]);
+      const field = within(naming).getByLabelText('Name of the copy');
+      await user.clear(field);
+      await user.type(field, 'Colemak, proposed');
+      await user.click(within(naming).getByRole('button', { name: 'Propose change' }));
+      expect(await within(choice).findByRole('link', { name: PULL })).toBeInTheDocument();
+
+      // The pull request proposes Colemak as it is called; the copy goes by its own name.
+      expect(sent[0]).toMatchObject({ layout: { id: 'colemak', name: 'Colemak' } });
+      const copy = (await storage.list('layouts')).find((e) => e.name === 'Colemak, proposed');
+      expect(await proposalOf(storage, copy?.id ?? '')).toMatchObject({
+        name: 'Colemak',
+        url: PULL,
+      });
+      await user.click(within(choice).getByRole('button', { name: 'Close' }));
+      expect(within(bar()).getByLabelText('Name')).toHaveValue('Colemak, proposed');
+
+      // Declined before the Library was opened again: saving the copy sends nothing, and it is
+      // an ordinary custom layout from then on.
+      pull.state = 'closed';
+      key('Key LHM: s, hold ⌥').focus();
+      await user.keyboard('ç{Enter}');
+      await screen.findByRole('button', { name: 'Key LHM: ç' });
+      await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+      expect(
+        await screen.findByText(
+          'Your change to Colemak was declined; this copy stays in your layouts',
+        ),
+      ).toBeInTheDocument();
+      expect(sent).toHaveLength(1);
+      expect(await storage.list('proposals')).toEqual([]);
     } finally {
       vi.unstubAllGlobals();
       useGitHubSession.setState({ status: 'unknown', login: null, maintainer: false });
@@ -756,7 +825,7 @@ describe('Edit', () => {
     await user.click(screen.getByRole('button', { name: '+ layer' }));
     await user.type(screen.getByLabelText('New layer name'), 'Fun');
     await user.click(screen.getByRole('button', { name: '+ layer' }));
-    // Read straight from the panel: a label query over the whole page costs seconds on a slow runner.
+    // Read straight from the panel: a label query over the whole page is slow on a slow runner.
     const order = () =>
       [...document.querySelectorAll<HTMLInputElement>('input[aria-label^="Name of layer "]')].map(
         (input) => input.value,

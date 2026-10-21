@@ -4,6 +4,7 @@ import { compileLayout } from '../../../../packages/core/src/layout/compile.js';
 import { BUNDLED_IDS } from '../../../../packages/core/src/layouts/bundled-ids.js';
 import { documentLayout } from '../../../../packages/core/src/layouts/documents.js';
 import {
+  keptInLibrary,
   LIBRARY_REQUEST,
   type LibraryRequest,
   requestText,
@@ -173,12 +174,17 @@ export function propose(
   });
 }
 
-/** A maintainer's delete of a bundled or community layout. */
+/**
+ * A maintainer's delete of a bundled or community layout. A bundled layout CI would keep is refused
+ * here, so no pull request is opened that could never be merged.
+ */
 export function remove(gh: GitHub, target: Target, login: string): Promise<SubmitResult> {
   const { id } = target;
   return talking(async () => {
     if (target.kind === 'bundled') {
       if (!BUNDLED_IDS.includes(id)) return notBundled(id);
+      const kept = keptInLibrary(id);
+      if (kept) return refused(422, 'not accepted', `${id} stays in the Library: ${kept}`);
       return requestPull(
         gh,
         { action: 'delete', id, by: login },

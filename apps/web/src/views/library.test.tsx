@@ -1281,6 +1281,31 @@ describe("the Library's maintainers", () => {
       layout: { id: 'plain', name: 'Plain', author: 'Ana' },
     });
   });
+
+  it('are told why a layout CI would refuse cannot be deleted or promoted, and nothing is sent', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    await savePlain(storage, 'my-colemak', { name: 'Colemak' });
+    useGitHubSession.setState({ status: 'signed-in', login: 'you', maintainer: true });
+    renderRoute(LIBRARY, { storage });
+    await screen.findByRole('heading', { name: 'Qwerty', level: 3 });
+    await user.click(
+      await within(card('Qwerty')).findByRole('button', { name: 'Delete Qwerty from the Library' }),
+    );
+    const kept = screen.getByRole('dialog', { name: 'Delete Qwerty' });
+    expect(within(kept).getByRole('alert')).toHaveTextContent(
+      'It cannot be done: the golden reports measure it.',
+    );
+    expect(within(kept).queryByRole('button', { name: 'Open the pull request' })).toBeNull();
+    await user.click(within(kept).getByRole('button', { name: 'Close' }));
+
+    await user.click(await screen.findByRole('button', { name: 'Promote Colemak' }));
+    const named = screen.getByRole('dialog', { name: 'Promote Colemak' });
+    expect(within(named).getByRole('alert')).toHaveTextContent(
+      'a layout that comes with the app is called Colemak; rename this one first',
+    );
+    expect(within(named).queryByRole('button', { name: 'Open the pull request' })).toBeNull();
+  });
 });
 
 describe('changes proposed from this browser', () => {

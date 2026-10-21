@@ -15,7 +15,8 @@ export interface ClassicDef {
   thumbs?: string;
   /**
    * Tokens by key id, for a board whose rows the text cannot describe (one with no bottom row,
-   * say). Used instead of `rows` and `thumbs`. A key may hold its binding itself instead of a token.
+   * say). Used instead of `rows` and `thumbs`. A key may hold its binding itself instead of a
+   * token.
    */
   byKey?: Record<string, KeyDef>;
   /**

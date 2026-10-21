@@ -1,3 +1,6 @@
+import { GOLDEN_LAYOUTS } from '../../golden/set.js';
+import { DEFAULT_LAYOUT_ID } from '../bundled-ids.js';
+
 /**
  * A change to the Library, as the sign-in server commits it to `.library/request.json` on a branch
  * of its own, for CI to apply there (`plan.ts`, `.github/workflows/library-edit.yml`): change a
@@ -10,6 +13,17 @@ export interface LibraryRequest {
   id: string;
   layout?: unknown;
   by?: string;
+}
+
+/**
+ * Why the bundled layout `id` stays in the Library, or null when it may be deleted: the layout a
+ * visit opens, and those the golden reports measure, are kept.
+ */
+export function keptInLibrary(id: string): string | null {
+  if (id === DEFAULT_LAYOUT_ID) return 'it is the layout a visit opens';
+  return (GOLDEN_LAYOUTS as readonly string[]).includes(id)
+    ? 'the golden reports measure it'
+    : null;
 }
 
 /** Where the request file is, from the repository's root. */

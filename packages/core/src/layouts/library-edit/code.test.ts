@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { CLASSIC_DEFS } from '../classic.js';
 import { SMALL_DEFS } from '../small.js';
 import { codeOf, pruneUnused, removeDef, unusedNames } from './code.js';
-import { LibraryEditRefused } from './edits.js';
+import { LibraryRequestRefused } from './edits.js';
 
 const read = (rel: string) => readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8');
 
@@ -72,7 +72,7 @@ describe('a layout written in code, taken out of its file', () => {
 
   it('refuses an id the list does not define, or a list the file does not have', () => {
     const text = read('classic.ts');
-    expect(() => removeDef(text, 'CLASSIC_DEFS', 'nordwind')).toThrow(LibraryEditRefused);
-    expect(() => removeDef(text, 'SMALL_DEFS', 'qwerty')).toThrow(LibraryEditRefused);
+    expect(() => removeDef(text, 'CLASSIC_DEFS', 'nordwind')).toThrow(LibraryRequestRefused);
+    expect(() => removeDef(text, 'SMALL_DEFS', 'qwerty')).toThrow(LibraryRequestRefused);
   });
 });

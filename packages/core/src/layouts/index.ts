@@ -12,6 +12,7 @@ import { withDefaultLayers, withHomeRowMods } from './templates.js';
 export { BUNDLED_IDS, DEFAULT_LAYOUT_ID } from './bundled-ids.js';
 export { CLASSIC_DEFS, CLASSIC_LAYOUTS, classicLayout } from './classic.js';
 export { DOCUMENT_LAYOUTS, documentLayout, documentMissing } from './documents.js';
+export { keptInLibrary } from './library-edit/request.js';
 export { SMALL_DEFS } from './small.js';
 export {
   BASE_SYMBOLS,

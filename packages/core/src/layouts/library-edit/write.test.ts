@@ -7,8 +7,8 @@ const WRITE = process.env.LIBRARY_EDIT === '1';
 
 /**
  * Not a test: the writer of a Library request, for CI on a `library/**` branch (see
- * `.github/workflows/library-edit.yml`). Like `pnpm goldens`, it runs through vitest because that is
- * the repository's TypeScript runner.
+ * `.github/workflows/library-edit.yml`). Like `pnpm goldens`, it runs through vitest because that
+ * is the repository's TypeScript runner.
  *
  *   pnpm library-edit
  *

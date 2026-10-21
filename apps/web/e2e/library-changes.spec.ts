@@ -8,8 +8,8 @@ function overflow(page: Page): Promise<number> {
 const PULL = 'https://github.com/rafaelromao/layerbench/pull/100';
 
 /**
- * Someone signed in, a maintainer or not. GitHub and the sign-in server are stood in for, so nothing
- * leaves: a proposal and a maintainer's change answer with a pull request.
+ * Someone signed in, a maintainer or not. GitHub and the sign-in server are stood in for, so
+ * nothing leaves: a proposal and a maintainer's change answer with a pull request.
  */
 async function signedIn(page: Page, maintainer: boolean): Promise<void> {
   const answer = {
@@ -49,15 +49,15 @@ async function signedIn(page: Page, maintainer: boolean): Promise<void> {
 test("a maintainer's Delete and Promote are on the cards, and nobody else's", async ({ page }) => {
   await signedIn(page, false);
   await page.goto('/library');
-  await expect(page.getByRole('heading', { name: 'Qwerty', level: 3 })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Delete Qwerty from the Library' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Dvorak', level: 3 })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Delete Dvorak from the Library' })).toHaveCount(0);
 
   await signedIn(page, true);
   await page.reload();
-  const remove = page.getByRole('button', { name: 'Delete Qwerty from the Library' });
+  const remove = page.getByRole('button', { name: 'Delete Dvorak from the Library' });
   await expect(remove).toBeVisible();
   await remove.click();
-  const dialog = page.getByRole('dialog', { name: 'Delete Qwerty' });
+  const dialog = page.getByRole('dialog', { name: 'Delete Dvorak' });
   await dialog.getByRole('button', { name: 'Open the pull request' }).click();
   await expect(dialog.getByRole('link', { name: PULL })).toBeVisible();
   expect(await overflow(page)).toBeLessThanOrEqual(0);

@@ -10,6 +10,7 @@ import {
   GEOMETRY_PRESET_IDS,
   getGeometryPreset,
   homeRowLetters,
+  keptInLibrary,
   LAYOUT_CATEGORIES,
   type Layout,
   type LayoutCategory,
@@ -878,6 +879,7 @@ export function LibraryView() {
   const [change, setChange] = useState<{
     title: string;
     question: string;
+    refusal: string | null;
     run: () => Promise<SubmitOutcome>;
   } | null>(null);
   const targetOf = (item: Listed): LibraryTarget => ({
@@ -890,6 +892,7 @@ export function LibraryView() {
       question: `This opens a pull request that takes ${item.name} out of the Library${
         item.community ? "'s community layouts" : ''
       }. It goes once the pull request is merged.`,
+      refusal: item.community ? null : keptInLibrary(item.id),
       run: () => maintainLibrary('delete', targetOf(item)),
     });
   const promote = (item: Listed) =>
@@ -898,6 +901,10 @@ export function LibraryView() {
       question: `This opens a pull request that adds ${item.name} to the layouts that come with the app${
         item.community ? ', moved from the community layouts' : ''
       }. It joins them once the pull request is merged.`,
+      // The Library never lists two layouts under one name.
+      refusal: BUNDLED_LAYOUTS.some((l) => l.name === item.name)
+        ? `a layout that comes with the app is called ${item.name}; rename this one first`
+        : null,
       run: async () =>
         item.layout
           ? maintainLibrary(
@@ -1117,6 +1124,7 @@ export function LibraryView() {
         <ChangeDialog
           title={change.title}
           question={change.question}
+          refusal={change.refusal}
           confirm="Open the pull request"
           run={change.run}
           onClose={() => setChange(null)}

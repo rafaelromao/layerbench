@@ -1,9 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { GOLDEN_LAYOUTS } from '../../golden/set.js';
 import { toCanonicalJson } from '../../layout/json.js';
+import { DEFAULT_LAYOUT_ID } from '../bundled-ids.js';
 import { BUNDLED_LAYOUTS, bundledLayout } from '../index.js';
-import { LibraryEditRefused } from './edits.js';
-import { LIBRARY_FILES, type LibraryRequest, planEdit } from './plan.js';
+import { LibraryRequestRefused } from './edits.js';
+import { LIBRARY_FILES, type LibraryRequest, planRequest } from './plan.js';
+import { keptInLibrary } from './request.js';
 
 const root = new URL('../../../../../', import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, root), 'utf8');
@@ -26,7 +29,7 @@ function saved(id: string, name: string, from = 'colemak'): Record<string, unkno
   return JSON.parse(JSON.stringify(toCanonicalJson(layout as never)));
 }
 
-const plan = (request: LibraryRequest, files = tree()) => planEdit(request, files, bundled);
+const plan = (request: LibraryRequest, files = tree()) => planRequest(request, files, bundled);
 
 describe('promoting a layout to the Library', () => {
   it('adds its document, registers it, and names it on the landing page', () => {
@@ -129,6 +132,21 @@ describe('a request it refuses, writing nothing', () => {
       { action: 'promote', id: 'breeze', layout: { name: 'Breeze', ...saved('breeze', 'Breeze') } },
     ],
   ])('%s', (_what, request) => {
-    expect(() => plan(request)).toThrow(LibraryEditRefused);
+    expect(() => plan(request)).toThrow(LibraryRequestRefused);
+  });
+});
+
+describe('the bundled layouts the Library keeps', () => {
+  it('keeps the layout a visit opens and those the golden reports measure, and no other', () => {
+    expect(keptInLibrary(DEFAULT_LAYOUT_ID)).toBe('it is the layout a visit opens');
+    for (const id of GOLDEN_LAYOUTS) expect(keptInLibrary(id)).not.toBeNull();
+    const deletable = bundled.filter((l) => keptInLibrary(l.id) === null);
+    expect(deletable.length).toBe(bundled.length - GOLDEN_LAYOUTS.length);
+  });
+
+  it('says why when it is asked to delete one', () => {
+    expect(() => plan({ action: 'delete', id: 'qwerty' })).toThrow(
+      'qwerty stays in the Library: the golden reports measure it',
+    );
   });
 });

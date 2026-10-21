@@ -88,7 +88,7 @@ export type Binding =
       ignoreModifiers?: boolean;
       releaseAfterMs?: number;
     }
-  /** A modifier held, and `also` the others held with it, as ZMK's `LS(LGUI)` holds Shift with Gui. */
+  /** A modifier held, and `also` those held with it, as ZMK's `LS(LGUI)` holds Shift with Gui. */
   | { kind: 'mod'; mod: Mod; also?: Mod[] }
   | { kind: 'caps_word'; continueList?: string[]; mods?: Mod[] }
   | { kind: 'auto_layer'; layer: string; continueList?: string[] }

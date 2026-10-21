@@ -375,4 +375,24 @@ describe("a maintainer's change to the Library", () => {
     expect(taken.status).toBe(409);
     expect(repo.pulls).toEqual([]);
   });
+
+  it('refuses to delete a layout CI keeps, and anything else on the route but delete and promote', async () => {
+    repo.push = true;
+    const kept = await ask('maintain', {
+      action: 'delete',
+      target: { kind: 'bundled', id: 'qwerty' },
+    });
+    expect([kept.status, kept.answer.reason]).toEqual([
+      422,
+      'qwerty stays in the Library: the golden reports measure it',
+    ]);
+    const change = await ask('maintain', {
+      action: 'change',
+      target: { kind: 'bundled', id: 'colemak' },
+      layout: doc('colemak', 'Colemak'),
+    });
+    expect(change.status).toBe(400);
+    expect(wrote()).toBe(false);
+    expect(repo.pulls).toEqual([]);
+  });
 });

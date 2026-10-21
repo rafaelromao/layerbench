@@ -1,9 +1,9 @@
-import { LibraryEditRefused } from './edits.js';
+import { LibraryRequestRefused } from './edits.js';
 
 /**
- * Text edits on the files the layouts written in code live in, `classic.ts` and `small.ts`, as Biome
- * formats them: a definition is an object in its list, opening on a line `  {` and closing on one
- * `  },`, with its `id` on a line of its own; and every top-level statement starts a line. A
+ * Text edits on the files the layouts written in code live in, `classic.ts` and `small.ts`, as
+ * Biome formats them: a definition is an object in its list, opening on a line `  {` and closing on
+ * one `  },`, with its `id` on a line of its own; and every top-level statement starts a line. A
  * definition that is not written so is refused, not guessed at.
  */
 
@@ -212,23 +212,23 @@ export function removeDef(text: string, list: string, id: string): string {
   const lines = text.split('\n');
   const open = lines.indexOf(`export const ${list}: ClassicDef[] = [`);
   const close = lines.indexOf('];', open + 1);
-  if (open < 0 || close < 0) throw new LibraryEditRefused(`no ${list} to take ${id} out of`);
+  if (open < 0 || close < 0) throw new LibraryRequestRefused(`no ${list} to take ${id} out of`);
   const idLine = `    id: '${id}',`;
   const at = lines.slice(open + 1, close).flatMap((l, k) => (l === idLine ? [open + 1 + k] : []));
   if (at.length !== 1) {
-    throw new LibraryEditRefused(`${list} defines ${id} ${at.length} times, not once`);
+    throw new LibraryRequestRefused(`${list} defines ${id} ${at.length} times, not once`);
   }
   let start = at[0] - 1;
   while (start > open && lines[start] !== '  {') start--;
   let end = at[0] + 1;
   while (end < close && lines[end] !== '  },') end++;
   if (lines[start] !== '  {' || lines[end] !== '  },') {
-    throw new LibraryEditRefused(`${id} is not written as an object of its own in ${list}`);
+    throw new LibraryRequestRefused(`${id} is not written as an object of its own in ${list}`);
   }
   const body = codeOf(lines.slice(start, end + 1).join('\n'));
   const balance = (a: string, b: string) => body.split(a).length - body.split(b).length;
   if (balance('{', '}') !== 0 || balance('[', ']') !== 0 || balance('(', ')') !== 0) {
-    throw new LibraryEditRefused(`${id}'s definition does not close where it should`);
+    throw new LibraryRequestRefused(`${id}'s definition does not close where it should`);
   }
   // The comment right above it is its own.
   while (start - 1 > open && /^ {2}(\/\/|\/\*\*|\*|\s\*)/.test(lines[start - 1])) start--;

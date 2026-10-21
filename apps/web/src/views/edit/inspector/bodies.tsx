@@ -20,6 +20,7 @@ import {
 } from './binding-changes.js';
 import { LayerChips, ModChips, Note, Row, Segment, TextField } from './controls.js';
 import {
+  HOLD_KINDS,
   type KindInfo,
   type KindOfKey,
   kindInfo,
@@ -464,14 +465,14 @@ function TapHoldBody({
         onChange={(tap) => onChange(set.tap(tap))}
       />
       {/* The hold can be anything the tap can: a layer, a modifier, a symbol, a macro, an
-          adaptive key — anything but another tap-hold. */}
+          adaptive key — anything but another tap-hold — or an imported key. */}
       <PartEditor
         scope={scope}
         label="Hold"
         name={named(name, 'Hold')}
         value={view.hold}
         depth={depth}
-        kinds={TAP_KINDS}
+        kinds={HOLD_KINDS}
         onChange={(hold) => onChange(set.hold(hold))}
       />
       <details className="text-xs" open={view.flavor !== '' || view.term !== ''}>

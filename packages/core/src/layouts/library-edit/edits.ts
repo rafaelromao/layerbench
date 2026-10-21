@@ -1,15 +1,15 @@
 import { languagesFileText } from '../../lang/performance.js';
 
 /**
- * The edits a Library request makes to the repository's own files, each from a file's text to its
+ * The changes a Library request makes to the repository's own files, each from a file's text to its
  * new text. They are run by `pnpm library-edit` in CI, on a branch the sign-in server opened a pull
  * request from, never in the app. Each finds what it changes exactly once or refuses, so a file it
  * does not recognise is left for a person rather than half edited.
  */
 
 /** Why a Library request cannot be applied; nothing is written. */
-export class LibraryEditRefused extends Error {
-  override name = 'LibraryEditRefused';
+export class LibraryRequestRefused extends Error {
+  override name = 'LibraryRequestRefused';
 }
 
 /** The index of the only line equal to `line` between `start` and `end`, or a refusal. */
@@ -17,7 +17,7 @@ function onlyLine(lines: string[], line: string, start: number, end: number, wha
   const found: number[] = [];
   for (let i = start; i < end; i++) if (lines[i] === line) found.push(i);
   if (found.length !== 1) {
-    throw new LibraryEditRefused(`${what}: found ${found.length} times, not once`);
+    throw new LibraryRequestRefused(`${what}: found ${found.length} times, not once`);
   }
   return found[0];
 }
@@ -26,7 +26,7 @@ function onlyLine(lines: string[], line: string, start: number, end: number, wha
 function block(lines: string[], open: string, close: string, what: string): [number, number] {
   const start = onlyLine(lines, open, 0, lines.length, what);
   const end = lines.indexOf(close, start + 1);
-  if (end < 0) throw new LibraryEditRefused(`${what}: no end`);
+  if (end < 0) throw new LibraryRequestRefused(`${what}: no end`);
   return [start, end];
 }
 
@@ -42,7 +42,7 @@ export function removeBuiltInId(text: string, id: string): string {
 export function dropLanguages(text: string, id: string): string {
   const languages = JSON.parse(text) as Record<string, string[]>;
   if (!Object.hasOwn(languages, id)) {
-    throw new LibraryEditRefused(`languages.json has no line for ${id}`);
+    throw new LibraryRequestRefused(`languages.json has no line for ${id}`);
   }
   return languagesFileText(Object.entries(languages).filter(([key]) => key !== id));
 }
@@ -72,7 +72,7 @@ function landingList(lines: string[]): [number, number] {
     'the list of layouts',
   );
   const end = lines.findIndex((l, i) => i > start && l.trim() === '</ul>');
-  if (end < 0) throw new LibraryEditRefused('the list of layouts: no end');
+  if (end < 0) throw new LibraryRequestRefused('the list of layouts: no end');
   return [start, end];
 }
 
@@ -82,7 +82,7 @@ function landingLine(lines: string[], id: string, start: number, end: number): n
   const found: number[] = [];
   for (let i = start + 1; i < end; i++) if (lines[i].trim().startsWith(opens)) found.push(i);
   if (found.length !== 1) {
-    throw new LibraryEditRefused(`the landing page lists ${id} ${found.length} times, not once`);
+    throw new LibraryRequestRefused(`the landing page lists ${id} ${found.length} times, not once`);
   }
   return found[0];
 }
@@ -92,7 +92,7 @@ function recount(lines: string[]): string {
   const [start, end] = landingList(lines);
   const count = lines.slice(start + 1, end).filter((l) => l.trim().startsWith('<li>')).length;
   const heading = lines.findIndex((l) => l.includes('<h3 class="layouts-title">'));
-  if (heading < 0) throw new LibraryEditRefused('the landing page has no layouts heading');
+  if (heading < 0) throw new LibraryRequestRefused('the landing page has no layouts heading');
   lines[heading] = lines[heading].replace(/(<h3 class="layouts-title">)\d+/, `$1${count}`);
   return lines.join('\n');
 }
@@ -102,7 +102,7 @@ export function landingAdd(html: string, entry: LandingEntry): string {
   const lines = html.split('\n');
   const [start, end] = landingList(lines);
   if (lines.slice(start, end).some((l) => l.includes(`layout=${entry.id}&amp;`))) {
-    throw new LibraryEditRefused(`the landing page lists ${entry.id} already`);
+    throw new LibraryRequestRefused(`the landing page lists ${entry.id} already`);
   }
   const indent = /^\s*/.exec(lines[end - 1])?.[0] ?? '';
   const author = entry.author ? ` <span>${escapeHtml(entry.author)}</span>` : '';
@@ -157,18 +157,18 @@ const DOCUMENTS_OPEN = 'const DOCUMENTS: Record<string, unknown> = {';
 /** `documents.ts` with one more document: its import among the others', its entry last. */
 export function registerDocument(text: string, id: string): string {
   if (text.includes(`'./documents/${id}.json'`)) {
-    throw new LibraryEditRefused(`${id} is registered already`);
+    throw new LibraryRequestRefused(`${id} is registered already`);
   }
   const name = importName(id);
   if (RESERVED.has(name) || new RegExp(`\\b${name}\\b`).test(text)) {
-    throw new LibraryEditRefused(`${id} would be imported as ${name}, a name already taken`);
+    throw new LibraryRequestRefused(`${id} would be imported as ${name}, a name already taken`);
   }
   const lines = text.split('\n');
   const imports = lines.flatMap((l, i) => (l.startsWith('import ') ? [i] : []));
   const path = (line: string) => /from '([^']+)'/.exec(line)?.[1] ?? '';
   const documents = imports.filter((i) => path(lines[i]).startsWith('./documents/'));
   const last = documents.at(-1) ?? imports.at(-1);
-  if (last === undefined) throw new LibraryEditRefused('documents.ts imports nothing');
+  if (last === undefined) throw new LibraryRequestRefused('documents.ts imports nothing');
   const after = documents.find((i) => path(lines[i]) > `./documents/${id}.json`);
   lines.splice(after ?? last + 1, 0, importLine(name, id));
   const [, end] = block(lines, DOCUMENTS_OPEN, '};', 'DOCUMENTS');

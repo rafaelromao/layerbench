@@ -15,7 +15,7 @@ import { toCanonicalJson } from '../../layout/json.js';
 import type { Layout } from '../../layout/types.js';
 import { BUNDLED_LAYOUTS, bundledLayout } from '../index.js';
 import { applyRequest } from './apply.js';
-import { LibraryEditRefused } from './edits.js';
+import { LibraryRequestRefused } from './edits.js';
 import { LIBRARY_FILES, LIBRARY_REQUEST } from './plan.js';
 
 const REPO = fileURLToPath(new URL('../../../../../', import.meta.url));
@@ -71,7 +71,7 @@ describe('applying the request a branch carries', () => {
     copy();
     ask({ action: 'delete', id: 'magic-romak' });
     const before = readFileSync(join(root, LIBRARY_FILES.small), 'utf8');
-    expect(() => applyRequest(root, bundled)).toThrow(LibraryEditRefused);
+    expect(() => applyRequest(root, bundled)).toThrow(LibraryRequestRefused);
     expect(readFileSync(join(root, LIBRARY_FILES.small), 'utf8')).toBe(before);
     expect(existsSync(join(root, LIBRARY_REQUEST))).toBe(true);
   });

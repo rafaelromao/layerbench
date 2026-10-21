@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import {
+  followProposal,
   type Proposal,
+  proposalOf,
   pullApi,
   readProposal,
   recordProposal,
@@ -71,5 +73,56 @@ describe('settling the proposals whose pull requests are done', () => {
     );
     expect(outcome).toEqual({ accepted: [], declined: [] });
     expect(await storage.list('proposals')).toHaveLength(2);
+  });
+});
+
+describe('saving the copy of a proposal again', () => {
+  const NEW = 'https://github.com/rafaelromao/layerbench/pull/102';
+
+  async function withColemak() {
+    const storage = freshStorage();
+    await recordProposal(storage, 'colemak', COLEMAK);
+    const sent: Proposal[] = [];
+    const send = async (proposal: Proposal) => {
+      sent.push(proposal);
+      return { kind: 'sent' as const, url: proposal.url, reused: true };
+    };
+    return { storage, sent, send };
+  }
+
+  it('sends it again while its pull request is open, or cannot be read', async () => {
+    for (const now of ['open', 'unknown'] as const) {
+      const { storage, sent, send } = await withColemak();
+      const followed = await followProposal(storage, 'colemak', 'colemak', send, async () => now);
+      expect(followed).toMatchObject({ kind: 'sent', proposal: COLEMAK });
+      expect(sent).toEqual([COLEMAK]);
+      expect(await proposalOf(storage, 'colemak')).toEqual(COLEMAK);
+    }
+  });
+
+  it('keeps the pull request GitHub answers with, and moves to where the copy went', async () => {
+    const { storage } = await withColemak();
+    const renewed = async () => ({ kind: 'sent' as const, url: NEW, reused: false });
+    await followProposal(storage, 'colemak', 'my-colemak', renewed, async () => 'open');
+    expect(await proposalOf(storage, 'colemak')).toBeNull();
+    expect(await proposalOf(storage, 'my-colemak')).toEqual({ ...COLEMAK, url: NEW });
+  });
+
+  it('is settled instead, sending nothing, once its pull request is merged or closed', async () => {
+    for (const now of ['merged', 'closed'] as const) {
+      const { storage, sent, send } = await withColemak();
+      await storage.put('layouts', 'colemak', { format: 'layerbench/layout@1', name: 'Colemak' });
+      const followed = await followProposal(storage, 'colemak', 'colemak', send, async () => now);
+      expect(followed).toEqual({ kind: 'done', proposal: COLEMAK, state: now });
+      expect(sent).toEqual([]);
+      expect(await storage.list('proposals')).toEqual([]);
+      // The copy was just saved: it stays, an ordinary custom layout.
+      expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['colemak']);
+    }
+  });
+
+  it('is nothing for a custom layout that is not a proposal', async () => {
+    const { storage, send } = await withColemak();
+    expect(await followProposal(storage, 'breeze', 'breeze', send)).toEqual({ kind: 'none' });
   });
 });

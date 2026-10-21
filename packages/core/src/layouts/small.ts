@@ -168,8 +168,8 @@ const THUMBS = new Set(['L0', 'L1', 'R0', 'R1']);
 
 /**
  * Magic Romak's Numbers and Symbols. Numbers is the default layer with the keymap's thumbs, and its
- * empty keys there empty; Symbols is the keymap's whole. It has no Extras and no Accents, the keymap
- * having neither: its combos type the accents and the few symbols they carried
+ * empty keys there empty; Symbols is the keymap's whole. It has no Extras and no Accents, the
+ * keymap having neither: its combos type the accents and the few symbols they carried
  * (`alpha2Combos`, `KEYMAP_SYMBOL_COMBOS`), and what they don't, it doesn't type.
  */
 function magicRomakLayers(): LayerDef[] {
@@ -347,8 +347,8 @@ const tapOrHeld = (tap: string, held: string): Binding => ({
 /**
  * Alpha 2's combos in the keymap (`zmk/features/combos.dtsi`): the accents Alpha 2 has no key for,
  * as dead keys \u2014 the keymap types an apostrophe, a double quote, a grave, a caret and a tilde,
- * which the host composes with the next letter, so each is the accent it stands for \u2014 then `-` and
- * `:`, `?` and `!`, which type `\u00bf` and `\u00a1` when held, and `\u00e0`.
+ * which the host composes with the next letter, so each is the accent it stands for \u2014 then `-`
+ * and `:`, `?` and `!`, which type `\u00bf` and `\u00a1` when held, and `\u00e0`.
  */
 function alpha2Combos(): ComboDef[] {
   return [
@@ -393,9 +393,9 @@ const KEYMAP_SYMBOL_COMBOS: ComboDef[] = [
 /**
  * The home block mods of the author's keymap, on the keys Magic Romak has: a layer of shortcuts,
  * which this model does not carry, held on each pinky; Ctrl, Alt and Shift from the ring finger in;
- * Shift and Gui together on the ring and middle fingers' bottom keys, and Gui on the index fingers',
- * the magic key's among them (`ht_magic`). The `,` and `.` keys hold to move the cursor first,
- * which is editing rather than typing, and are left out.
+ * Shift and Gui together on the left ring and middle fingers' bottom keys, and Gui on the index
+ * fingers', the magic key's among them (`ht_magic`). The `,` and `.` keys hold to move the cursor
+ * first, which is editing rather than typing, and are left out.
  */
 const MAGIC_ROMAK_MODS: Record<string, Mod | Binding> = {
   LHP: unmodelled('SHORTS'),
@@ -450,13 +450,13 @@ export const SMALL_DEFS: ClassicDef[] = [
    *
    * The firmware needs four extra layers for these — pre-shifted copies of the alphas for sentence
    * case, caps word and shifted Alpha 2, and a one-shot layer armed by every accent macro so the
-   * repeat key can offer follow-ups. None of them is a layer a typist reaches. Sentence case and caps
-   * word are declared as features, which wrap the space and shift keys: sentence case arms a one-shot
-   * shift, caps word is the `caps_word` behaviour, and shift is simply shift state. The `h`/`v` keys
-   * and the alt repeat are adaptive keys on their own keys, and the alt-repeat follow-ups match on
-   * the tag the accent macro leaves behind. What is left is the layers you can see. It brings its
-   * keymap's own Numbers and Symbols, which the default layers leave as they are, and goes without
-   * the home row mods: its keymap has home row mods of its own, which this model does not carry.
+   * repeat key can offer follow-ups. None of them is a layer a typist reaches. Sentence case and
+   * caps word are declared as features, which wrap the space and shift keys: sentence case arms a
+   * one-shot shift, caps word is the `caps_word` behaviour, and shift is simply shift state. The
+   * `h`/`v` keys and the alt repeat are adaptive keys on their own keys, and the alt-repeat
+   * follow-ups match on the tag the accent macro leaves behind. What is left is the layers you can
+   * see. It brings its keymap's own Numbers and Symbols, which the default layers leave as they
+   * are, and its keymap's home block mods (`MAGIC_ROMAK_MODS`) in place of the default ones.
    */
   {
     id: 'magic-romak',

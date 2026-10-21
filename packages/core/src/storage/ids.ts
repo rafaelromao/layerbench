@@ -4,9 +4,9 @@
  */
 
 /**
- * The kinds of document a user saves: layouts, rule sets and texts, and the changes they proposed
- * to the Library, each kept under the id of the custom layout that holds it until its pull request
- * is merged or closed.
+ * The kinds of document a user saves: layouts, rule sets and texts, their custom documents; and
+ * the changes they proposed to the Library, each kept beside the custom layout that holds it, under
+ * its id, until its pull request is merged or closed.
  */
 export const COLLECTIONS = ['layouts', 'rulesets', 'corpora', 'proposals'] as const;
 

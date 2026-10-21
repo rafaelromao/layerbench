@@ -1,4 +1,5 @@
 import type { JsonObject, StorageAdapter } from '@layerbench/core';
+import type { SubmitOutcome } from '../auth/github-session.js';
 
 /**
  * A change someone proposed to a bundled or community layout. Its layout is saved like any custom
@@ -7,7 +8,10 @@ import type { JsonObject, StorageAdapter } from '@layerbench/core';
  * when the copy stays an ordinary custom layout.
  */
 export interface Proposal {
-  /** The layout's name, as the index lists it. */
+  /**
+   * The name proposed for the layout. Its copy may go by another, when a custom layout had this one
+   * already; the pull request keeps this.
+   */
   name: string;
   /** The layout the change is to. */
   target: { kind: 'bundled' | 'community'; id: string };
@@ -73,8 +77,8 @@ export async function readPullState(url: string): Promise<PullState> {
 
 /**
  * Each proposal whose pull request is done, settled: merged, the copy and the proposal go; closed,
- * only the proposal goes, and the copy is an ordinary custom layout. One whose pull request is open,
- * or could not be read, is left for another time. The names of those accepted and declined.
+ * only the proposal goes, and the copy is an ordinary custom layout. One whose pull request is
+ * open, or could not be read, is left for another time. The names of those accepted and declined.
  */
 export async function settleProposals(
   storage: StorageAdapter,
@@ -96,4 +100,41 @@ export async function settleProposals(
     }
   }
   return { accepted, declined };
+}
+
+/** What saving a proposal's copy again did with it. */
+export type Followed =
+  | { kind: 'none' }
+  | { kind: 'done'; proposal: Proposal; state: 'merged' | 'closed' }
+  | { kind: 'sent'; proposal: Proposal; outcome: SubmitOutcome };
+
+/**
+ * After the custom layout `from` is saved again, as `to` (another id once renamed): the proposal
+ * kept beside it, if any, follows. Its pull request still open, or unread, the copy is sent again
+ * and the proposal moves to `to`, with the pull request GitHub answers with, which is a new one
+ * when the old was closed meanwhile. Merged or closed, the proposal is settled instead, and the copy
+ * is an ordinary custom layout, kept as just saved.
+ */
+export async function followProposal(
+  storage: StorageAdapter,
+  from: string,
+  to: string,
+  send: (proposal: Proposal) => Promise<SubmitOutcome>,
+  state: (url: string) => Promise<PullState> = readPullState,
+): Promise<Followed> {
+  const proposal = await proposalOf(storage, from);
+  if (!proposal) return { kind: 'none' };
+  const now = await state(proposal.url);
+  if (now === 'merged' || now === 'closed') {
+    await storage.delete('proposals', from);
+    return { kind: 'done', proposal, state: now };
+  }
+  const outcome = await send(proposal);
+  const url = outcome.kind === 'sent' ? outcome.url : proposal.url;
+  const followed = { ...proposal, url };
+  if (from !== to || url !== proposal.url) {
+    await recordProposal(storage, to, followed);
+    if (from !== to) await storage.delete('proposals', from);
+  }
+  return { kind: 'sent', proposal: followed, outcome };
 }

@@ -43,17 +43,22 @@ back.
 ### Proposing a change
 
 **Propose change**, which **Save** offers on a layout that comes with the app or a community
-layout, suggests your edits to that layout itself, for everyone. Sign in with GitHub first: the
+layout, proposes your edits to that layout itself, for everyone. Sign in with GitHub first: the
 dialog asks you to if you have not, as the pull request names you, and **Save a copy** still works
 meanwhile. Proposing saves the layout here, under its name, like any custom layout, and opens a
 public pull request on [layerbench](https://github.com/rafaelromao/layerbench) with the layout as it
 is now; the dialog gives its link. In **Library**, your copy is marked *proposed*, linked to the
-pull request.
+pull request. If one of your custom layouts has the name already, such as the copy of a change you
+proposed before, the dialog asks what to call this copy, or offers to overwrite that one; the pull
+request still proposes the layout under its own name. A layout that comes with the app cannot be
+proposed under another one's name.
 
 Edit your copy and **Save** it again while the pull request is open, and the pull request gets that
-version. Once it is merged, the change is in the Library, for a layout that comes with the app with
-the next version of the app, and your copy goes. If it is closed instead, your copy stays one of
-your custom layouts. **Library** checks each time it opens, and says which happened.
+version, under the name it proposed: renaming your copy renames only the copy. Once it is merged,
+the change is in the Library, for a layout that comes with the app with the next version of the
+app, and your copy goes. If it is closed instead, your copy stays one of your custom layouts.
+**Library** checks each time it opens, and says which happened; so does **Save** on your copy, which
+then keeps it as you saved it and sends nothing.
 
 ### A name another layout has
 

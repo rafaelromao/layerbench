@@ -5,11 +5,13 @@ type Step = { kind: 'confirm' } | { kind: 'sending' } | SubmitOutcome;
 
 /**
  * A change to the Library that opens a pull request: asked about first, then sent, then its pull
- * request's link, or why there is none. Mount it while it is open, as `NameDialog` is.
+ * request's link, or why there is none. One CI would refuse is not offered: the dialog says why.
+ * Mount it while it is open, as `NameDialog` is.
  */
 export function ChangeDialog({
   title,
   question,
+  refusal = null,
   confirm,
   run,
   onDone,
@@ -18,6 +20,8 @@ export function ChangeDialog({
   title: string;
   /** What will happen, asked before anything is sent. */
   question: string;
+  /** Why the change cannot be made, if it cannot: then nothing is asked or sent. */
+  refusal?: string | null;
   /** The button that sends it. */
   confirm: string;
   run: () => Promise<SubmitOutcome>;
@@ -57,7 +61,14 @@ export function ChangeDialog({
         <h2 id={titleId} className="font-semibold text-base">
           {title}
         </h2>
-        {step.kind === 'confirm' && <p className="text-sm">{question}</p>}
+        {step.kind === 'confirm' &&
+          (refusal ? (
+            <p className="text-sm" role="alert">
+              It cannot be done: {refusal}.
+            </p>
+          ) : (
+            <p className="text-sm">{question}</p>
+          ))}
         {step.kind === 'sending' && (
           <p className="text-sm" role="status">
             Opening the pull request…
@@ -96,9 +107,9 @@ export function ChangeDialog({
             disabled={step.kind === 'sending'}
             onClick={() => dialog.current?.close()}
           >
-            {step.kind === 'confirm' ? 'Cancel' : 'Close'}
+            {step.kind === 'confirm' && !refusal ? 'Cancel' : 'Close'}
           </button>
-          {step.kind === 'confirm' && (
+          {step.kind === 'confirm' && !refusal && (
             <button type="button" className="btn btn-warning btn-sm" onClick={() => void send()}>
               {confirm}
             </button>

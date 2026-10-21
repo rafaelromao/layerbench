@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   dropLanguages,
-  LibraryEditRefused,
+  LibraryRequestRefused,
   landingAdd,
   landingRemove,
   landingRename,
@@ -60,10 +60,12 @@ describe('the landing page', () => {
   });
 
   it('refuses a layout it lists already, or one it does not', () => {
-    expect(() => landingAdd(landing, { id: 'qwerty', name: 'Qwerty' })).toThrow(LibraryEditRefused);
-    expect(() => landingRemove(landing, 'magic-breeze')).toThrow(LibraryEditRefused);
+    expect(() => landingAdd(landing, { id: 'qwerty', name: 'Qwerty' })).toThrow(
+      LibraryRequestRefused,
+    );
+    expect(() => landingRemove(landing, 'magic-breeze')).toThrow(LibraryRequestRefused);
     expect(() => landingRename(landing, { id: 'magic-breeze', name: 'X' })).toThrow(
-      LibraryEditRefused,
+      LibraryRequestRefused,
     );
   });
 });
@@ -79,8 +81,8 @@ describe('the ids of the layouts written in code', () => {
   });
 
   it('refuse an id they do not list', () => {
-    expect(() => removeBuiltInId(text, 'nordwind')).toThrow(LibraryEditRefused);
-    expect(() => removeBuiltInId(text, 'qwert')).toThrow(LibraryEditRefused);
+    expect(() => removeBuiltInId(text, 'nordwind')).toThrow(LibraryRequestRefused);
+    expect(() => removeBuiltInId(text, 'qwert')).toThrow(LibraryRequestRefused);
   });
 });
 
@@ -98,7 +100,7 @@ describe('the languages file', () => {
   });
 
   it('refuses a layout it has no line for', () => {
-    expect(() => dropLanguages(text, 'nordwind')).toThrow(LibraryEditRefused);
+    expect(() => dropLanguages(text, 'nordwind')).toThrow(LibraryRequestRefused);
   });
 });
 
@@ -129,7 +131,7 @@ describe('the documents module', () => {
   });
 
   it('refuses one already there, and one that is not', () => {
-    expect(() => registerDocument(text, 'nordwind')).toThrow(LibraryEditRefused);
-    expect(() => unregisterDocument(text, 'magic-breeze')).toThrow(LibraryEditRefused);
+    expect(() => registerDocument(text, 'nordwind')).toThrow(LibraryRequestRefused);
+    expect(() => unregisterDocument(text, 'magic-breeze')).toThrow(LibraryRequestRefused);
   });
 });
