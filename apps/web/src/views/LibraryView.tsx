@@ -21,10 +21,17 @@ import {
   NameTakenError,
   nameTaken,
   type RuleSet,
+  toCanonicalJson,
   typedLayout,
 } from '@layerbench/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type LibraryTarget,
+  maintainLibrary,
+  type SubmitOutcome,
+  useGitHubSession,
+} from '../auth/github-session.js';
 import { refreshCommunity, useCommunity } from '../community/community.js';
 import { communityRef } from '../community/ref.js';
 import { featureList } from '../components/FeatureSwitches.js';
@@ -44,6 +51,7 @@ import {
 } from '../engine/use-summaries.js';
 import { HELP } from '../guide/help.js';
 import { openLayout } from '../layout-session/open.js';
+import { proposalOf, settleProposals } from '../proposals/proposals.js';
 import { useRememberSelection } from '../state/selection.js';
 import { useSession } from '../state/session.js';
 import { toast } from '../state/toasts.js';
@@ -58,6 +66,7 @@ import {
   settingsOf,
   toSearch,
 } from '../url/params.js';
+import { ChangeDialog } from './library/ChangeDialog.js';
 import { ImportDialog } from './library/ImportDialog.js';
 import { LayerPreview } from './library/LayerPreview.js';
 import {
@@ -260,6 +269,7 @@ function LayoutCard({
   lacking,
   nobodyCan,
   actions,
+  proposal,
 }: {
   item: Listed;
   summary: LayoutSummary | undefined;
@@ -268,6 +278,8 @@ function LayoutCard({
   nobodyCan: boolean;
   /** Open, last so it is always flush right, and Delete to its left on a custom layout. */
   actions: ReactNode;
+  /** The pull request of the change a custom layout holds, while it is open. */
+  proposal?: string;
 }) {
   return (
     <article className="card bg-base-100 border border-base-300">
@@ -281,6 +293,17 @@ function LayoutCard({
               )}
               {item.community && (
                 <span className="badge badge-outline badge-secondary badge-xs">community</span>
+              )}
+              {proposal && (
+                <a
+                  className="badge badge-outline badge-accent badge-xs"
+                  href={proposal}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="A change proposed to the Library: its pull request"
+                >
+                  proposed
+                </a>
               )}
               {item.category && (
                 <span className="lb-category badge badge-ghost badge-xs">
@@ -812,6 +835,79 @@ export function LibraryView() {
     [saveNew, navigate, analyzeSearch],
   );
 
+  // A change proposed from a custom layout stays with it until its pull request is done: merged,
+  // the copy goes, the Library having it; closed, the copy stays a custom layout of its own.
+  const proposals = useCollection('proposals');
+  const [proposalUrls, setProposalUrls] = useState<ReadonlyMap<string, string>>(new Map());
+  useEffect(() => {
+    let live = true;
+    void Promise.all(
+      proposals.entries.map(async (e) => [e.id, (await proposalOf(storage, e.id))?.url] as const),
+    ).then((pairs) => {
+      if (live) setProposalUrls(new Map(pairs.flatMap(([id, url]) => (url ? [[id, url]] : []))));
+    });
+    return () => {
+      live = false;
+    };
+  }, [proposals.entries, storage]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once each time the storage changes
+  useEffect(() => {
+    let live = true;
+    void settleProposals(storage)
+      .then(({ accepted, declined }) => {
+        if (!live) return;
+        for (const name of accepted) {
+          toast.info(`Your change to ${name} was accepted; your copy of it is gone`);
+        }
+        for (const name of declined) {
+          toast.info(`Your change to ${name} was declined; your copy stays in your layouts`);
+        }
+        if (accepted.length + declined.length > 0) {
+          custom.refresh();
+          proposals.refresh();
+        }
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [storage]);
+
+  // A maintainer's change to the Library: asked about, then a pull request.
+  const maintainer = useGitHubSession((s) => s.status === 'signed-in' && s.maintainer);
+  const [change, setChange] = useState<{
+    title: string;
+    question: string;
+    run: () => Promise<SubmitOutcome>;
+  } | null>(null);
+  const targetOf = (item: Listed): LibraryTarget => ({
+    kind: item.custom ? 'custom' : item.community ? 'community' : 'bundled',
+    id: item.id,
+  });
+  const deleteFromLibrary = (item: Listed) =>
+    setChange({
+      title: `Delete ${item.name}`,
+      question: `This opens a pull request that takes ${item.name} out of the Library${
+        item.community ? "'s community layouts" : ''
+      }. It goes once the pull request is merged.`,
+      run: () => maintainLibrary('delete', targetOf(item)),
+    });
+  const promote = (item: Listed) =>
+    setChange({
+      title: `Promote ${item.name}`,
+      question: `This opens a pull request that adds ${item.name} to the layouts that come with the app${
+        item.community ? ', moved from the community layouts' : ''
+      }. It joins them once the pull request is merged.`,
+      run: async () =>
+        item.layout
+          ? maintainLibrary(
+              'promote',
+              targetOf(item),
+              toCanonicalJson({ ...item.layout, id: item.id }),
+            )
+          : { kind: 'failed', error: 'the layout could not be read' },
+    });
+
   const remove = useCallback(
     async (id: string, name: string) => {
       if (!window.confirm(`Delete ${name}?`)) return;
@@ -970,8 +1066,29 @@ export function LibraryView() {
               bands={bands}
               lacking={lacking.get(item.key)}
               nobodyCan={nobodyCan}
+              proposal={item.custom ? proposalUrls.get(item.id) : undefined}
               actions={
                 <>
+                  {maintainer && (item.custom || item.community) && (
+                    <button
+                      type="button"
+                      aria-label={`Promote ${item.name}`}
+                      className="btn btn-xs"
+                      onClick={() => promote(item)}
+                    >
+                      Promote
+                    </button>
+                  )}
+                  {maintainer && !item.custom && (
+                    <button
+                      type="button"
+                      aria-label={`Delete ${item.name} from the Library`}
+                      className="btn btn-xs"
+                      onClick={() => deleteFromLibrary(item)}
+                    >
+                      Delete
+                    </button>
+                  )}
                   {item.custom && (
                     <button
                       type="button"
@@ -996,6 +1113,15 @@ export function LibraryView() {
           ))}
         </div>
       </section>
+      {change && (
+        <ChangeDialog
+          title={change.title}
+          question={change.question}
+          confirm="Open the pull request"
+          run={change.run}
+          onClose={() => setChange(null)}
+        />
+      )}
     </div>
   );
 }

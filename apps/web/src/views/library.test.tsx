@@ -9,11 +9,13 @@ import {
   type Rule,
   toCanonicalJson,
 } from '@layerbench/core';
-import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { initGitHubSession, useGitHubSession } from '../auth/github-session.js';
 import { setCommunitySource } from '../community/community.js';
 import type { AnalysisClient, AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
+import { recordProposal } from '../proposals/proposals.js';
 import { useSession } from '../state/session.js';
 import { CompositeStorage } from '../storage/composite.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
@@ -1194,5 +1196,137 @@ describe('Importing from keymap-drawer', () => {
     await user.click(await screen.findByLabelText('keymap-drawer YAML'));
     await user.paste('layers: [a, b');
     expect(await screen.findByText(/line 1: unclosed \[/)).toBeInTheDocument();
+  });
+});
+
+describe("the Library's maintainers", () => {
+  const PULL = 'https://github.com/rafaelromao/layerbench/pull/200';
+  const card = (name: string) => listed(name)?.closest('article') as HTMLElement;
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    useGitHubSession.setState({ status: 'unknown', login: null, maintainer: false });
+  });
+
+  it('see Delete on bundled and community layouts and Promote on custom and community ones; nobody else does', async () => {
+    setCommunitySource(branchWith(communityDoc('night-owl', 'Night owl')));
+    const storage = freshStorage();
+    await savePlain(storage, 'plain');
+    useGitHubSession.setState({ status: 'signed-in', login: 'you', maintainer: false });
+    renderRoute(LIBRARY, { storage });
+    await screen.findByRole('heading', { name: 'Night owl', level: 3 });
+    await screen.findByRole('heading', { name: 'Plain', level: 3 });
+    expect(screen.queryByRole('button', { name: /^Promote / })).toBeNull();
+    expect(screen.queryByRole('button', { name: /from the Library$/ })).toBeNull();
+
+    act(() => useGitHubSession.setState({ maintainer: true }));
+    expect(
+      within(card('Qwerty')).getByRole('button', { name: 'Delete Qwerty from the Library' }),
+    ).toBeInTheDocument();
+    expect(within(card('Qwerty')).queryByRole('button', { name: 'Promote Qwerty' })).toBeNull();
+    expect(
+      within(card('Night owl')).getByRole('button', { name: 'Delete Night owl from the Library' }),
+    ).toBeInTheDocument();
+    expect(
+      within(card('Night owl')).getByRole('button', { name: 'Promote Night owl' }),
+    ).toBeInTheDocument();
+    expect(
+      within(card('Plain')).getByRole('button', { name: 'Promote Plain' }),
+    ).toBeInTheDocument();
+    expect(within(card('Plain')).getByRole('button', { name: 'Delete Plain' })).toBeInTheDocument();
+  });
+
+  it('promote a custom layout by a pull request, asked about first', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    await savePlain(storage, 'plain', { author: 'Ana' });
+    const sent: Record<string, unknown>[] = [];
+    localStorage.setItem('layerbench:github-session', 'sealed');
+    const reply = (body: unknown, status = 200) =>
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    const real = globalThis.fetch;
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/api/auth/maintain')) {
+        sent.push(JSON.parse(String(init?.body)));
+        return reply({ url: PULL }, 201);
+      }
+      if (url.includes('/api/auth/')) {
+        return reply({
+          available: true,
+          clientId: 'Iv1.client',
+          signedIn: true,
+          login: 'you',
+          maintainer: true,
+          token: 'ghu_one',
+          expiresAt: Date.now() + 3600_000,
+        });
+      }
+      return real(input, init);
+    });
+    await initGitHubSession();
+    renderRoute(LIBRARY, { storage });
+    await screen.findByRole('heading', { name: 'Plain', level: 3 });
+    await user.click(await within(card('Plain')).findByRole('button', { name: 'Promote Plain' }));
+    const dialog = screen.getByRole('dialog', { name: 'Promote Plain' });
+    expect(sent).toEqual([]);
+    await user.click(within(dialog).getByRole('button', { name: 'Open the pull request' }));
+    expect(await within(dialog).findByRole('link', { name: PULL })).toHaveAttribute('href', PULL);
+    expect(sent[0]).toMatchObject({
+      action: 'promote',
+      target: { kind: 'custom', id: 'plain' },
+      layout: { id: 'plain', name: 'Plain', author: 'Ana' },
+    });
+  });
+});
+
+describe('changes proposed from this browser', () => {
+  const PULL = 'https://github.com/rafaelromao/layerbench/pull/100';
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  async function withProposal(state: 'open' | 'merged' | 'closed') {
+    const storage = freshStorage();
+    await savePlain(storage, 'plain');
+    await recordProposal(storage, 'plain', {
+      name: 'Plain',
+      target: { kind: 'bundled', id: 'qwerty' },
+      url: PULL,
+    });
+    const real = globalThis.fetch;
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input) === 'https://api.github.com/repos/rafaelromao/layerbench/pulls/100'
+        ? new Response(
+            JSON.stringify({
+              state: state === 'open' ? 'open' : 'closed',
+              merged: state === 'merged',
+            }),
+          )
+        : real(input, init),
+    );
+    renderRoute(LIBRARY, { storage });
+    return storage;
+  }
+
+  it('are marked on their copy, linked to the pull request, while it is open', async () => {
+    await withProposal('open');
+    const badge = await screen.findByRole('link', { name: 'proposed' });
+    expect(badge).toHaveAttribute('href', PULL);
+    expect(badge.closest('article')).toBe(listed('Plain')?.closest('article'));
+  });
+
+  it('go with their copy once merged, and leave it an ordinary custom layout once closed', async () => {
+    const merged = await withProposal('merged');
+    expect(await screen.findByText(/Your change to Plain was accepted/)).toBeInTheDocument();
+    await waitFor(async () => expect(await merged.list('layouts')).toEqual([]));
+    cleanup();
+
+    const closed = await withProposal('closed');
+    expect(await screen.findByText(/Your change to Plain was declined/)).toBeInTheDocument();
+    expect((await closed.list('layouts')).map((e) => e.id)).toEqual(['plain']);
+    await waitFor(() => expect(screen.queryByRole('link', { name: 'proposed' })).toBeNull());
   });
 });
