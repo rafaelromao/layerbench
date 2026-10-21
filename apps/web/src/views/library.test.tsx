@@ -6,6 +6,7 @@ import {
   getPreset,
   homeRowLetters,
   type Layout,
+  layoutCategory,
   type Rule,
   toCanonicalJson,
 } from '@layerbench/core';
@@ -675,11 +676,13 @@ describe('Ranking layouts', () => {
     const storage = freshStorage();
     const board = { preset: '3x5+3' } as const;
     await savePlain(storage, 'plain', { geometry: board });
-    const dvorak = CLASSIC_LAYOUTS.find((l) => l.id === 'dvorak') as Layout;
+    // Another layout written in code, as written, without the layers the Library gives it: any one,
+    // whichever a Library request has left in code.
+    const other = CLASSIC_LAYOUTS.find((l) => l.id !== 'qwerty') as Layout;
     await storage.put(
       'layouts',
-      'plain-dvorak',
-      toCanonicalJson({ ...dvorak, id: 'plain-dvorak', name: 'Plain Dvorak', geometry: board }),
+      'plain-other',
+      toCanonicalJson({ ...other, id: 'plain-other', name: 'Plain other', geometry: board }),
     );
     const bundledBoards = [
       ...new Set(BUNDLED_LAYOUTS.map((l) => ('preset' in l.geometry ? l.geometry.preset : ''))),
@@ -989,9 +992,14 @@ describe('Categories', () => {
     await openRanking();
     const categories = screen.getByRole('group', { name: 'Categories' });
     const box = (name: RegExp) => within(categories).getByRole('checkbox', { name });
-    const special = box(/^Special \(9\)$/);
-    expect(box(/^Standard \(14\)$/)).toBeChecked();
-    expect(box(/^Thumb Alpha \(13\)$/)).toBeChecked();
+    // As many as the Library has of each, whatever a Library request has changed.
+    const count = (c: string) => BUNDLED_LAYOUTS.filter((l) => layoutCategory(l) === c).length;
+    const special = box(new RegExp(`^Special \\(${count('special')}\\)$`));
+    expect(box(new RegExp(`^Standard \\(${count('standard')}\\)$`))).toBeChecked();
+    expect(box(new RegExp(`^Thumb Alpha \\(${count('thumb_alpha')}\\)$`))).toBeChecked();
+    expect(count('special') + count('standard') + count('thumb_alpha')).toBe(
+      BUNDLED_LAYOUTS.length,
+    );
 
     await user.click(special);
     expect(listed('Magic Romak')).toBeNull();

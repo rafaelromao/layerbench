@@ -78,18 +78,23 @@ function built(placed: ThumbPlacement) {
   };
 }
 
+/** Layouts in the order of `BUNDLED_IDS`, the order the Library lists them in. */
+function byBundledOrder(a: Layout, b: Layout): number {
+  return BUNDLED_IDS.indexOf(a.id ?? '') - BUNDLED_IDS.indexOf(b.id ?? '');
+}
+
 /**
  * The layouts written here in code: the set the app started with, and Romak back among them. Each
  * has the default layers and home row mods but Magic Romak, which brings its keymap's own Numbers
  * and Symbols and its home block mods, as any layout may. LayerBench placed the thumbs of the
  * classic layouts, their authors having left them to a space bar; the small-board layouts' authors
- * placed their own. They are listed in the order of `BUNDLED_IDS`.
+ * placed their own. They are listed in the order of `BUNDLED_IDS`, as the languages file is.
  */
 const BUILT_IN_LAYOUTS: Layout[] = [
   ...CLASSIC_DEFS.map(built('layerbench')),
   ...SMALL_DEFS.map(built('author')),
 ]
-  .sort((a, b) => BUNDLED_IDS.indexOf(a.id ?? '') - BUNDLED_IDS.indexOf(b.id ?? ''))
+  .sort(byBundledOrder)
   .map(withLanguages);
 
 /**
@@ -101,8 +106,13 @@ function withLanguages(layout: Layout): Layout {
   return { ...layout, languages: (LANGUAGES as Record<string, string[]>)[layout.id ?? ''] ?? [] };
 }
 
-/** The layouts the app offers: those written here, then those added since as documents. */
-export const BUNDLED_LAYOUTS: Layout[] = [...BUILT_IN_LAYOUTS, ...DOCUMENT_LAYOUTS];
+/**
+ * The layouts the app offers, those written here and those added as documents, in the order of
+ * `BUNDLED_IDS`: the layout a visit opens first, wherever it is written.
+ */
+export const BUNDLED_LAYOUTS: Layout[] = [...BUILT_IN_LAYOUTS, ...DOCUMENT_LAYOUTS].sort(
+  byBundledOrder,
+);
 
 export function bundledLayout(id: string): Layout | undefined {
   return BUNDLED_LAYOUTS.find((l) => l.id === id);

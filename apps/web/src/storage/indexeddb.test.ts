@@ -81,9 +81,9 @@ describe('custom documents', () => {
   });
 
   it('treats a first write of an id as uncontested', async () => {
-    const doc = toCanonicalJson(bundledLayout('dvorak')!);
+    const doc = toCanonicalJson(bundledLayout('romak')!);
     await expect(
-      adapter.put('layouts', 'dvorak', doc, { expectedSha: 'anything' }),
+      adapter.put('layouts', 'romak', doc, { expectedSha: 'anything' }),
     ).resolves.toBeDefined();
   });
 

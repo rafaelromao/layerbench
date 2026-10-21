@@ -6,6 +6,8 @@ name: library-edit
 # checks the result and pushes it as the App, so CI and the layouts workflow run on what the pull
 # request would merge. A branch with no request is left as it is: the App's own push, and any fix
 # pushed by hand after it, change nothing. A request it refuses fails here, writing nothing.
+# Deleting a layout leaves the tests that pin something of it by its id failing in CI, until they
+# are taken out on the branch: they describe a layout the Library no longer has.
 on:
   push:
     branches: ['library/**']

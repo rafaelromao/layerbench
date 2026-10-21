@@ -373,9 +373,13 @@ describe('Accents mirrored for a layout that types its vowels with the left hand
     ).toBe(false);
   });
 
-  // Magic Romak has no Accents.
+  // Magic Romak has no Accents. A document the list does not name, as one a Library request adds,
+  // carries its own Accents in its JSON: it is held to the rule alone.
+  const documents = new Set(DOCUMENT_LAYOUTS.map((l) => l.id));
   for (const layout of BUNDLED_LAYOUTS.filter((l) => l.id !== 'magic-romak')) {
-    const left = vowelsLeft.includes(layout.id ?? '');
+    const id = layout.id ?? '';
+    const left =
+      vowelsLeft.includes(id) || (documents.has(id) && vowelsOnLeft(layout.layers[0].bindings));
     it(`${layout.name}: ${left ? 'mirrored' : 'as drawn'}`, () => {
       const preset = 'preset' in layout.geometry ? layout.geometry.preset : '';
       const accents = layout.layers.find((l) => l.id === 'accents')?.bindings ?? {};
