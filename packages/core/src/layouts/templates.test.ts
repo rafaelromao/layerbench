@@ -218,10 +218,19 @@ describe('the default layers, board by board', () => {
     expect(t.keys).toEqual(['R0', 'L0', 'RTM']);
   });
 
-  for (const preset of GEOMETRY_PRESET_IDS) {
+  const withExtras = GEOMETRY_PRESET_IDS.filter(
+    (preset) =>
+      getGeometryPreset(preset).family !== 'rowstagger' &&
+      boardWithDefaults(preset).layers.some((l) => l.id === 'extras'),
+  );
+
+  it('have boards with Extras to bring on by both inner thumbs', () => {
+    expect(withExtras.length).toBeGreaterThan(0);
+  });
+
+  for (const preset of withExtras) {
     const layout = boardWithDefaults(preset);
-    const extras = layout.layers.find((l) => l.id === 'extras')?.bindings;
-    if (!extras || getGeometryPreset(preset).family === 'rowstagger') continue;
+    const extras = layout.layers.find((l) => l.id === 'extras')?.bindings ?? {};
     it(`${preset}: bring Extras on by holding both inner thumbs, in either order`, () => {
       // A symbol only Extras has, typed with each layer held first.
       const [key, binding] = Object.entries(extras).find(([, b]) => b.kind === 'kp') ?? [];
@@ -796,6 +805,33 @@ describe('the default layers, layout by layout', () => {
       holdSymbols,
     ]);
     expect([numbers.R2, numbers.R0]).toEqual([holds('sym', space), kp('0')]);
+  });
+
+  it('hold Numbers on a free inner left thumb, on the base layer and on Symbols, with nothing to tap', () => {
+    // On the 24 keys, which have Extras, with space on the outer left thumb and nothing on the inner.
+    const geometry = getGeometryPreset('1333+2');
+    const free = geometry.keys.filter((k) => !k.thumb).map((k) => k.id);
+    const letters = Object.fromEntries(
+      BASE_LETTERS.map((c, i) => [free[i], { kind: 'kp', symbol: c } as Binding]),
+    );
+    const layout = withDefaultLayers(
+      {
+        format: 'layerbench/layout@1',
+        name: 'Free L0',
+        hostLocale: 'symbols',
+        geometry: { preset: '1333+2' },
+        keys: { space: 'L1' },
+        layers: [{ id: 'base', bindings: { ...letters, L1: space } }],
+      },
+      geometry,
+    );
+    const holdNumbers: Binding = { kind: 'mo', layer: 'num' };
+    const sym = layout.layers.find((l) => l.id === 'sym')?.bindings ?? {};
+    expect([layout.layers[0].bindings.L0, layout.layers[0].bindings.L1, sym.L0]).toEqual([
+      holdNumbers,
+      space,
+      holdNumbers,
+    ]);
   });
 
   it('hold Numbers on the left inner thumb when no thumb types space', () => {

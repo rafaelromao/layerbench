@@ -579,8 +579,8 @@ Checked across the 38 reports, none of which moved. What moved is in the documen
   space on L1, where the base layer's shows through. Nordrassil's R0, its other magic key, holds
   Symbols and R2 types nothing; `0` goes on R1. Ben Vallack Piano's Symbols has `=` on L0 and `ı` on
   L1, the other way round.
-- **Bird, Finch, Caksoylar and Ben Vallack Piano's documents**: Symbols' L0 holds Numbers, still
-  typing what it typed there: space on Finch and Caksoylar, `=` on Ben Vallack Piano, and `q` on
+- **Bird, Finch, Caksoylar and Ben Vallack Piano's documents**: Symbols' L0 holds Numbers, and
+  taps space on Finch and Caksoylar, `=` on Ben Vallack Piano, moved there from L1, and `q` on
   Bird, as on its base layer.
 - Their languages, measured by `pnpm languages`, did not move.
 
