@@ -21,6 +21,7 @@ import {
   defaultLayers,
   EXTRAS_CONDITION,
   EXTRAS_ORDER,
+  HOME_ROW_MODS,
   mirrorKeyId,
   NUMBERS_CORE,
   NUMBERS_OUTER,
@@ -30,6 +31,7 @@ import {
   SYMBOLS_OUTER,
   vowelsOnLeft,
   withDefaultLayers,
+  withHomeRowMods,
 } from './templates.js';
 
 const magicRomak = bundledLayout('magic-romak')!;
@@ -218,6 +220,40 @@ describe('the default layers, board by board', () => {
     expect(t.out).toBe('£');
     expect(t.keys).toEqual(['R0', 'L0', 'RTM']);
   });
+
+  const withExtras = GEOMETRY_PRESET_IDS.filter(
+    (preset) =>
+      getGeometryPreset(preset).family !== 'rowstagger' &&
+      boardWithDefaults(preset).layers.some((l) => l.id === 'extras'),
+  );
+
+  it('have boards with Extras to bring on by both inner thumbs', () => {
+    expect(withExtras.length).toBeGreaterThan(0);
+  });
+
+  for (const preset of withExtras) {
+    const layout = boardWithDefaults(preset);
+    const extras = layout.layers.find((l) => l.id === 'extras')?.bindings ?? {};
+    it(`${preset}: bring Extras on by holding both inner thumbs, in either order`, () => {
+      // A symbol only Extras has, typed with each layer held first.
+      const [key, binding] = Object.entries(extras).find(([, b]) => b.kind === 'kp') ?? [];
+      const symbol = binding?.kind === 'kp' ? (binding.symbol ?? '') : '';
+      for (const [order, first] of [
+        [['num', 'sym'], 'L0'],
+        [['sym', 'num'], 'R0'],
+      ] as const) {
+        const t = trace(
+          { ...layout, conditionalLayers: [{ if: [...order], then: 'extras' }] },
+          symbol,
+        );
+        expect([order, t.out, t.keys]).toEqual([
+          order,
+          symbol,
+          [first, first === 'L0' ? 'R0' : 'L0', key],
+        ]);
+      }
+    });
+  }
 
   it('give a board with no bottom row Extras for what that row held', () => {
     const d = defaultLayers(getGeometryPreset('1222+2'));
@@ -687,11 +723,11 @@ describe('the default layers, layout by layout', () => {
     expect(withExtras.length).toBeGreaterThan(0);
     for (const layout of withExtras) {
       const layer = (id: string) => layout.layers.find((l) => l.id === id)?.bindings ?? {};
-      // On Symbols, L0 holds Numbers: its own binding, or the base layer's where it has none.
-      const onSymbols = layer('sym').L0 ?? layer('sym')['*'];
-      const L0 =
-        !onSymbols || onSymbols.kind === 'trans' ? layer(layout.layers[0].id).L0 : onSymbols;
-      expect([layout.id, heldBy(L0), heldBy(layer('num').R0)]).toEqual([layout.id, 'num', 'sym']);
+      expect([layout.id, heldBy(layer('sym').L0), heldBy(layer('num').R0)]).toEqual([
+        layout.id,
+        'num',
+        'sym',
+      ]);
       expect(layout.conditionalLayers).toContainEqual(EXTRAS_CONDITION);
     }
   });
@@ -706,7 +742,7 @@ describe('the default layers, layout by layout', () => {
   it('hold Numbers on the inner left thumb where space is on the outer one, still typing what it typed', () => {
     expect(base('bird').L0).toEqual(holds('num', { kind: 'kp', symbol: 'q' }));
     expect(base('bird').L1).toEqual(space);
-    expect(base('ben-vallack-piano').L0).toEqual(holds('num', { kind: 'key_repeat' }));
+    expect(base('ben-vallack-piano').L0).toEqual(holds('num', { kind: 'sk', mod: 'LSHIFT' }));
     expect(base('ben-vallack-piano').L1).toEqual(space);
     const t = trace(bundledLayout('bird') as Layout, 'q 7 q');
     expect(t.out).toBe('q 7 q');
@@ -741,9 +777,167 @@ describe('the default layers, layout by layout', () => {
     expect(t.keys).toEqual([ACCENTS_COMBO, 'LHI']);
   });
 
+  it('hold Symbols on the innermost free thumb where the inner one is a tap-hold already', () => {
+    const geometry = getGeometryPreset('3x5+3');
+    const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
+    const free = geometry.keys.filter((k) => !k.thumb).map((k) => k.id);
+    const letters = Object.fromEntries(BASE_LETTERS.map((c, i) => [free[i], kp(c)]));
+    const ctrlOrRepeat: Binding = {
+      kind: 'hold_tap',
+      tap: { kind: 'key_repeat' },
+      hold: { kind: 'mod', mod: 'RCTRL' },
+    };
+    const layout = withDefaultLayers(
+      {
+        format: 'layerbench/layout@1',
+        name: 'Tap-hold on R0',
+        hostLocale: 'symbols',
+        geometry: { preset: '3x5+3' },
+        keys: { space: 'L0' },
+        layers: [
+          { id: 'base', bindings: { ...letters, L0: space, R0: ctrlOrRepeat, R1: kp('t') } },
+        ],
+      },
+      geometry,
+    );
+    const b = layout.layers[0].bindings;
+    const numbers = layout.layers.find((l) => l.id === 'num')?.bindings ?? {};
+    // Past R0, a tap-hold, and R1, which types `t`, to R2, which types nothing.
+    expect([b.L0, b.R0, b.R1, b.R2]).toEqual([
+      holds('num', space),
+      ctrlOrRepeat,
+      kp('t'),
+      holdSymbols,
+    ]);
+    expect([numbers.R2, numbers.R0]).toEqual([holds('sym', space), kp('0')]);
+  });
+
+  it('hold Numbers on a free inner left thumb, on the base layer and on Symbols, with nothing to tap', () => {
+    // On the 24 keys, which have Extras, with space on the outer left thumb and nothing on the inner.
+    const geometry = getGeometryPreset('1333+2');
+    const free = geometry.keys.filter((k) => !k.thumb).map((k) => k.id);
+    const letters = Object.fromEntries(
+      BASE_LETTERS.map((c, i) => [free[i], { kind: 'kp', symbol: c } as Binding]),
+    );
+    const layout = withDefaultLayers(
+      {
+        format: 'layerbench/layout@1',
+        name: 'Free L0',
+        hostLocale: 'symbols',
+        geometry: { preset: '1333+2' },
+        keys: { space: 'L1' },
+        layers: [{ id: 'base', bindings: { ...letters, L1: space } }],
+      },
+      geometry,
+    );
+    const holdNumbers: Binding = { kind: 'mo', layer: 'num' };
+    const sym = layout.layers.find((l) => l.id === 'sym')?.bindings ?? {};
+    expect([layout.layers[0].bindings.L0, layout.layers[0].bindings.L1, sym.L0]).toEqual([
+      holdNumbers,
+      space,
+      holdNumbers,
+    ]);
+  });
+
   it('hold Numbers on the left inner thumb when no thumb types space', () => {
     expect(base('uno').L0).toEqual(holds('num', { kind: 'kp', symbol: 'a' }));
     expect(base('uno').R0).toEqual(holds('sym', { kind: 'kp', symbol: 'r' }));
+  });
+});
+
+describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, on every layout but Magic Romak', () => {
+  const KEYS = ['LHP', 'LHR', 'LHM', 'LHI', 'RHI', 'RHM', 'RHR', 'RHP'];
+  const MODS = ['LGUI', 'LCTRL', 'LALT', 'LSHIFT', 'LSHIFT', 'LALT', 'LCTRL', 'LGUI'];
+  const heldMod = (b: Binding | undefined) =>
+    b?.kind === 'hold_tap' && b.hold.kind === 'mod' ? b.hold.mod : undefined;
+  const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
+
+  it('mirror the left hand on the right, both holding the left modifiers', () => {
+    expect(Object.keys(HOME_ROW_MODS)).toEqual(KEYS);
+    expect(Object.values(HOME_ROW_MODS)).toEqual(MODS);
+  });
+
+  it.each(BUNDLED_LAYOUTS.filter((l) => l.id !== 'magic-romak').map((l) => [l.id, l] as const))(
+    '%s holds them on its base layer, each on a key that types, and no other layer holds one',
+    (_id, layout) => {
+      const base = layout.layers[0].bindings;
+      expect(KEYS.map((k) => heldMod(base[k]))).toEqual(MODS);
+      for (const k of KEYS) {
+        const tap = base[k]?.kind === 'hold_tap' ? base[k].tap : undefined;
+        expect([k, tap?.kind]).not.toEqual([k, 'hold_tap']);
+        expect([k, tap?.kind]).not.toEqual([k, 'none']);
+      }
+      // No other layer holds a modifier on a key.
+      for (const l of layout.layers.slice(1)) {
+        for (const b of Object.values(l.bindings))
+          expect(b.kind === 'hold_tap' && b.hold.kind).not.toBe('mod');
+      }
+    },
+  );
+
+  it('leave Magic Romak as it was', () => {
+    expect(bundledLayout('magic-romak')).toMatchObject({ layers: magicRomak.layers });
+    const base = magicRomak.layers[0].bindings;
+    expect(KEYS.map((k) => heldMod(base[k]))).toEqual(KEYS.map(() => undefined));
+  });
+
+  it('go on any key that types: a letter, a mark, space, Repeat or an adaptive key', () => {
+    const at = (id: string, key: string) => bundledLayout(id)?.layers[0].bindings[key];
+    const mod = (tap: Binding, m: string): Binding => ({
+      kind: 'hold_tap',
+      tap,
+      hold: { kind: 'mod', mod: m as 'LGUI' },
+    });
+    expect(at('qwerty', 'LHP')).toEqual(mod(kp('a'), 'LGUI'));
+    expect(at('qwerty', 'RHP')).toEqual(mod(kp(';'), 'LGUI'));
+    expect(at('uno', 'RHM')).toEqual(mod(kp(' '), 'LALT'));
+    expect(at('t-34', 'RHP')).toEqual(mod({ kind: 'key_repeat' }, 'LGUI'));
+    expect(at('uno', 'LHR')?.kind === 'hold_tap' && at('uno', 'LHR')).toMatchObject({
+      tap: { kind: 'adaptive' },
+      hold: { kind: 'mod', mod: 'LCTRL' },
+    });
+  });
+
+  it('pass over a key with nothing on it or holding something already, and every other layer', () => {
+    const layout: Layout = {
+      format: 'layerbench/layout@1',
+      name: 'Bare',
+      geometry: { preset: '3x5+2' },
+      keys: { space: 'L0' },
+      layers: [
+        {
+          id: 'base',
+          bindings: {
+            LHP: kp('a'),
+            LHR: { kind: 'none' },
+            LHM: { kind: 'mo', layer: 'up' },
+            LHI: { kind: 'lt', layer: 'up', tap: kp('t') },
+            RHI: { kind: 'hold_tap', tap: kp('n'), hold: { kind: 'mo', layer: 'up' } },
+            RHM: { kind: 'mod', mod: 'LCTRL' },
+          },
+        },
+        { id: 'up', bindings: { LHP: kp('1') } },
+      ],
+    };
+    const done = withHomeRowMods(layout);
+    expect(done.layers[0].bindings).toEqual({
+      ...layout.layers[0].bindings,
+      LHP: { kind: 'hold_tap', tap: kp('a'), hold: { kind: 'mod', mod: 'LGUI' } },
+    });
+    expect(done.layers[1]).toBe(layout.layers[1]);
+  });
+
+  it('leave Ben Vallack Piano a one-shot Shift where its keymap has Repeat, the Shift for capitals', () => {
+    const piano = bundledLayout('ben-vallack-piano') as Layout;
+    expect(piano.keys.shift).toEqual({ key: 'L0', kind: 'sk' });
+    const r = explain(compileLayout(piano), 'Tin', { caseMode: 'model', crossWord: 'reset' });
+    expect(r.steps.map((s) => s.symbols).join('')).toBe('Tin');
+    expect(r.steps.filter((s) => s.kind !== 'hold_release').map((s) => s.key)).toEqual([
+      'L0',
+      'LHI',
+      'LHP',
+      'RHI',
+    ]);
   });
 });
 

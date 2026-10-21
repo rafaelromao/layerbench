@@ -63,7 +63,7 @@ describe('Ranking a layout without some of its features', () => {
     }
     const coverage = layoutLanguageCoverage(
       compileLayout(withoutFeatures(magicRomak, ['macros'])),
-      'pt-BR',
+      'pt',
     );
     expect(coverage?.missingRequired).toEqual([]);
   });
@@ -75,7 +75,7 @@ describe('Ranking a layout without some of its features', () => {
     expect(after.has('à')).toBe(false);
     const coverage = layoutLanguageCoverage(
       compileLayout(withoutFeatures(magicRomak, ['combos'])),
-      'pt-BR',
+      'pt',
     );
     expect(coverage?.missingRequired).toEqual(['à']);
   });
@@ -85,7 +85,7 @@ describe('Ranking a layout without some of its features', () => {
     const sturdy = bundledLayout('magic-sturdy') as Layout;
     const without = withoutFeatures(sturdy, ['combos']);
     expect(without.combos?.map((c) => c.id)).toEqual(['accents']);
-    const coverage = layoutLanguageCoverage(compileLayout(without), 'pt-BR');
+    const coverage = layoutLanguageCoverage(compileLayout(without), 'pt');
     expect(coverage?.missingRequired).toEqual([]);
   });
 

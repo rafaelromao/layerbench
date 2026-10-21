@@ -34,7 +34,7 @@ different keys. It is the first measure of the
 **Library**, where the site opens, sorts every layout by Effort, by SFB, by name or by home row,
 and shows both numbers on each card with their badges, all scored on the same sample of the same
 text. By home row, layouts go in the alphabetical order of the letters their base layer types on the
-home row, left to right: Qwerty as `asdfghjkl`, a home-row mod as the letter it taps, and a key that
+home row, left to right: Qwerty as `asdfghjkl`, a home row mod as the letter it taps, and a key that
 types no letter left out. **Rank and filter**, the gear (⚙︎) beside **Sort by**, holds
 what the ranking is made with, and **Boards**, which lists only the layouts on the boards you tick, so you can keep to the keyboards you own; the layouts on the others are not scored at
 all. Your custom layouts, the ones you keep, are
@@ -148,8 +148,9 @@ are not drawn.
 ### Case and space
 
 By default capitals count as lower case and the space key is left out of the counts, as the
-Keyboard Layouts Doc does. **Shift** types capitals through the layout's shift key instead, and
-**Space** keeps the space key in. Both are among the feature switches, in **Settings**. **Counts**
+Keyboard Layouts Doc does. **Shift** types capitals through the layout's shift key instead, or,
+where it has none, a key that holds Shift, a home row mod of the other hand first; and **Space**
+keeps the space key in. Both are among the feature switches, in **Settings**. **Counts**
 says what of the text is counted: letters only, the default, or numbers and symbols as well. The
 symbols are those a symbol layer carries and those the bundled texts use. Curly quotes, German's
 `„ ‚` among them, dashes and the ellipsis count as their plain forms, and a language's own
@@ -157,7 +158,7 @@ punctuation, Spanish `¿ ¡` say, is kept in any count.
 
 ### The text itself
 
-**Corpus** lists the texts that come with the app, news in English, Brazilian Portuguese, Spanish,
+**Corpus** lists the texts that come with the app, news in English, Portuguese, Spanish,
 French, Italian and German, each with where it came from, and opens on English. Every list of
 texts is in the same order: English first, then the rest by name. Your own text can be pasted or
 uploaded there and analyzed like any other, and **Save to library** keeps it:

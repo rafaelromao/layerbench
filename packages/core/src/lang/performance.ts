@@ -13,7 +13,7 @@ export const PERFORMANCE_LANGUAGES: readonly string[] = Object.keys(LANGUAGE_PRO
 /** The text each language is measured on: its Leipzig news corpus, as the app serves it. */
 export const LANGUAGE_CORPORA: Readonly<Record<string, string>> = {
   en: 'en-general',
-  'pt-BR': 'pt-br-general',
+  pt: 'pt-br-general',
   es: 'es-general',
   fr: 'fr-general',
   it: 'it-general',

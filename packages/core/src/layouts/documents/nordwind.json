@@ -65,20 +65,48 @@
           "symbol": ","
         },
         "LHP": {
-          "kind": "kp",
-          "symbol": "n"
+          "kind": "hold_tap",
+          "tap": {
+            "kind": "kp",
+            "symbol": "n"
+          },
+          "hold": {
+            "kind": "mod",
+            "mod": "LGUI"
+          }
         },
         "LHR": {
-          "kind": "kp",
-          "symbol": "r"
+          "kind": "hold_tap",
+          "tap": {
+            "kind": "kp",
+            "symbol": "r"
+          },
+          "hold": {
+            "kind": "mod",
+            "mod": "LCTRL"
+          }
         },
         "LHM": {
-          "kind": "kp",
-          "symbol": "t"
+          "kind": "hold_tap",
+          "tap": {
+            "kind": "kp",
+            "symbol": "t"
+          },
+          "hold": {
+            "kind": "mod",
+            "mod": "LALT"
+          }
         },
         "LHI": {
-          "kind": "kp",
-          "symbol": "h"
+          "kind": "hold_tap",
+          "tap": {
+            "kind": "kp",
+            "symbol": "h"
+          },
+          "hold": {
+            "kind": "mod",
+            "mod": "LSHIFT"
+          }
         },
         "LHC": {
           "kind": "kp",
@@ -89,20 +117,48 @@
           "symbol": "y"
         },
         "RHI": {
-          "kind": "kp",
-          "symbol": "c"
+          "kind": "hold_tap",
+          "tap": {
+            "kind": "kp",
+            "symbol": "c"
+          },
+          "hold": {
+            "kind": "mod",
+            "mod": "LSHIFT"
+          }
         },
         "RHM": {
-          "kind": "kp",
-          "symbol": "e"
+          "kind": "hold_tap",
+          "tap": {
+            "kind": "kp",
+            "symbol": "e"
+          },
+          "hold": {
+            "kind": "mod",
+            "mod": "LALT"
+          }
         },
         "RHR": {
-          "kind": "kp",
-          "symbol": "i"
+          "kind": "hold_tap",
+          "tap": {
+            "kind": "kp",
+            "symbol": "i"
+          },
+          "hold": {
+            "kind": "mod",
+            "mod": "LCTRL"
+          }
         },
         "RHP": {
-          "kind": "kp",
-          "symbol": "a"
+          "kind": "hold_tap",
+          "tap": {
+            "kind": "kp",
+            "symbol": "a"
+          },
+          "hold": {
+            "kind": "mod",
+            "mod": "LGUI"
+          }
         },
         "LBP": {
           "kind": "kp",

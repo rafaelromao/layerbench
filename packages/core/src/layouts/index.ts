@@ -2,12 +2,12 @@ import { getGeometryPreset } from '../geometry/presets.js';
 import { layoutCategory } from '../layout/categories.js';
 import type { Layout } from '../layout/types.js';
 import { BUNDLED_IDS } from './bundled-ids.js';
-import { CLASSIC_LAYOUTS, classicLayout } from './classic.js';
+import { CLASSIC_DEFS, type ClassicDef, classicLayout } from './classic.js';
 import { DOCUMENT_LAYOUTS } from './documents.js';
 import LANGUAGES from './languages.json';
 import { SMALL_DEFS } from './small.js';
 import { type ThumbPlacement, withStandardThumbs } from './standard.js';
-import { withDefaultLayers } from './templates.js';
+import { withDefaultLayers, withHomeRowMods } from './templates.js';
 
 export { BUNDLED_IDS, DEFAULT_LAYOUT_ID } from './bundled-ids.js';
 export { CLASSIC_DEFS, CLASSIC_LAYOUTS, classicLayout } from './classic.js';
@@ -33,6 +33,7 @@ export {
   defaultLayers,
   EXTRAS_CONDITION,
   EXTRAS_ORDER,
+  HOME_ROW_MODS,
   mirrorKeyId,
   NUMBERS_CORE,
   NUMBERS_OUTER,
@@ -40,8 +41,10 @@ export {
   SYMBOL_PAIRS,
   SYMBOLS_CORE,
   SYMBOLS_OUTER,
+  tapOf,
   vowelsOnLeft,
   withDefaultLayers,
+  withHomeRowMods,
 } from './templates.js';
 
 /** Layouts made for small boards: thumb letters, chords, adaptive and repeat keys. */
@@ -64,15 +67,26 @@ function withDefaults(placed: ThumbPlacement) {
 }
 
 /**
+ * A layout written in code, built from its definition: its default layers, then the home row mods,
+ * which a definition may go without.
+ */
+function built(placed: ThumbPlacement) {
+  return (def: ClassicDef): Layout => {
+    const layout = withDefaults(placed)(classicLayout(def));
+    return def.homeRowMods === false ? layout : withHomeRowMods(layout);
+  };
+}
+
+/**
  * The layouts written here in code: the set the app started with, and Romak back among them. Each
- * has the default layers but Magic Romak, which brings its keymap's own Numbers and Symbols, as any
- * layout may. LayerBench placed the thumbs of the classic layouts, their authors having left them
- * to a space bar; the small-board layouts' authors placed their own. They are listed in the order
- * of `BUNDLED_IDS`.
+ * has the default layers and home row mods but Magic Romak, which brings its keymap's own Numbers
+ * and Symbols and goes without home row mods, as any layout may. LayerBench placed the thumbs of the
+ * classic layouts, their authors having left them to a space bar; the small-board layouts' authors
+ * placed their own. They are listed in the order of `BUNDLED_IDS`.
  */
 const BUILT_IN_LAYOUTS: Layout[] = [
-  ...CLASSIC_LAYOUTS.map(withDefaults('layerbench')),
-  ...SMALL_LAYOUTS.map(withDefaults('author')),
+  ...CLASSIC_DEFS.map(built('layerbench')),
+  ...SMALL_DEFS.map(built('author')),
 ]
   .sort((a, b) => BUNDLED_IDS.indexOf(a.id ?? '') - BUNDLED_IDS.indexOf(b.id ?? ''))
   .map(withLanguages);

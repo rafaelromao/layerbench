@@ -92,7 +92,8 @@ describe('the languages file', () => {
     expect(JSON.parse(after)).not.toHaveProperty('qwerty');
     const lines = after.split('\n');
     expect(lines).toHaveLength(text.split('\n').length - 1);
-    expect(lines).toContain('  "romak": ["en", "pt-BR", "es", "fr", "it", "de"],');
+    const romak = (JSON.parse(text) as Record<string, string[]>).romak;
+    expect(lines).toContain(`  "romak": ${JSON.stringify(romak).replaceAll(',', ', ')},`);
     expect(after.endsWith('}\n')).toBe(true);
   });
 

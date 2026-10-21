@@ -1,5 +1,12 @@
 import type { Geometry, GeometryKey, Hand } from '../geometry/types.js';
-import type { Binding, ComboDef, ConditionalLayerDef, LayerDef, Layout } from '../layout/types.js';
+import type {
+  Binding,
+  ComboDef,
+  ConditionalLayerDef,
+  LayerDef,
+  Layout,
+  Mod,
+} from '../layout/types.js';
 import { cyanophageKeyEffort } from '../rules/effort.js';
 
 /**
@@ -693,17 +700,16 @@ export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
       : (candidates.find(free) ?? candidates[0]);
   if (!symbolsKey) return layout;
 
+  // A key that types nothing just holds the layer; one that types something keeps typing it.
+  const holding = (tap: Binding | undefined, layer: string): Binding =>
+    !tap || tap.kind === 'none' || tap.kind === 'trans'
+      ? { kind: 'mo', layer }
+      : { kind: 'hold_tap', tap, hold: { kind: 'mo', layer } };
   const holdSymbols: Binding = { kind: 'mo', layer: symbols };
   const baseBindings: Record<string, Binding> = {
     ...first.bindings,
-    [numbersKey]: {
-      kind: 'hold_tap',
-      tap: at(numbersKey) ?? { kind: 'none' },
-      hold: { kind: 'mo', layer: numbers },
-    },
-    [symbolsKey]: free(symbolsKey)
-      ? holdSymbols
-      : { kind: 'hold_tap', tap: at(symbolsKey) as Binding, hold: holdSymbols },
+    [numbersKey]: holding(at(numbersKey), numbers),
+    [symbolsKey]: holding(at(symbolsKey), symbols),
   };
 
   // The defaults' thumbs on Numbers and Symbols assume space on L0 and the Symbols thumb on R0:
@@ -735,8 +741,10 @@ export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
       if (spot) bindings[spot] = kp('0');
     }
     if (l.id === symbols) {
-      // What the defaults tap where space would be, on the Numbers thumb, held for Numbers where
-      // there is Extras. With nothing to tap there, the key is the base layer's, which holds it.
+      // The Numbers thumb types what the defaults put where space would be, or space where it
+      // types space, or else what it types on the base layer. Where there is Extras it holds
+      // Numbers here too, so the inner thumbs bring Extras on in either order; where there is not
+      // and it has nothing else to type, it is left to the base layer's key.
       const onSpace = tapOf(defaultSymbols[defaults.spaceKey]);
       const tap =
         onSpace && !(onSpace.kind === 'kp' && onSpace.symbol === ' ')
@@ -744,7 +752,8 @@ export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
           : types(numbersKey, ' ')
             ? kp(' ')
             : undefined;
-      if (tap) bindings[numbersKey] = hasExtras ? tapOrHold(tap, numbers) : tap;
+      if (hasExtras) bindings[numbersKey] = holding(tap ?? at(numbersKey), numbers);
+      else if (tap) bindings[numbersKey] = tap;
       const beside = spareThumb(geometry, numbersKey);
       if (spareLetter && beside) bindings[beside] = spareLetter;
     }
@@ -764,6 +773,40 @@ export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
 /** What a key types when tapped: its own binding, or a tap-hold's tap. */
 export function tapOf(b: Binding | undefined): Binding | undefined {
   return b?.kind === 'hold_tap' ? b.tap : b;
+}
+
+/**
+ * The home row's modifiers, held on its finger keys: Gui, Ctrl, Alt and Shift from the left pinky
+ * in, mirrored on the right. Both hands hold the left ones, as the main thumbs' two Shifts do: the
+ * analysis types a capital with the left Shift, and the right Alt is AltGr.
+ */
+export const HOME_ROW_MODS: Readonly<Record<string, Mod>> = {
+  LHP: 'LGUI',
+  LHR: 'LCTRL',
+  LHM: 'LALT',
+  LHI: 'LSHIFT',
+  RHI: 'LSHIFT',
+  RHM: 'LALT',
+  RHR: 'LCTRL',
+  RHP: 'LGUI',
+};
+
+/**
+ * Home row mods on the base layer: each key of `HOME_ROW_MODS` that types something holds its
+ * modifier, still typing what it typed. A key with nothing on it, or one that holds something
+ * already, is left as it is. Every bundled layout has them but Magic Romak, left as it is: its
+ * author's keymap has home row mods of its own, Ctrl, Alt and Shift from the ring finger in, a
+ * layer on each pinky and Gui on the bottom row, which its model does not carry.
+ */
+export function withHomeRowMods(layout: Layout): Layout {
+  const [first, ...rest] = layout.layers;
+  const bindings = { ...first.bindings };
+  for (const [id, mod] of Object.entries(HOME_ROW_MODS)) {
+    const b = bindings[id];
+    if (!b || ['none', 'trans', 'hold_tap', 'lt', 'mo', 'mod'].includes(b.kind)) continue;
+    bindings[id] = { kind: 'hold_tap', tap: b, hold: { kind: 'mod', mod } };
+  }
+  return { ...layout, layers: [{ ...first, bindings }, ...rest] };
 }
 
 /** Every character the default layers type with a key of its own, for tests and documentation. */

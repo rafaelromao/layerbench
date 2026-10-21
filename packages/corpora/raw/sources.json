@@ -9,8 +9,8 @@
   },
   "pt-br-general": {
     "file": "pt-br-general.txt",
-    "name": "Português (BR) — notícias 2011 (Leipzig)",
-    "language": "pt-BR",
+    "name": "Português — notícias 2011 (Leipzig)",
+    "language": "pt",
     "license": "CC BY 4.0 (Leipzig Corpora Collection)",
     "source": "https://wortschatz.uni-leipzig.de/en/download (por-br_newscrawl_2011_30K)",
     "description": "30,000 Brazilian Portuguese news sentences from the Leipzig Corpora Collection (por-br_newscrawl_2011_30K)."

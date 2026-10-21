@@ -4,7 +4,13 @@ import { layoutCategory } from '../layout/categories.js';
 import { compileLayout } from '../layout/compile.js';
 import type { Binding } from '../layout/types.js';
 import { explain } from '../sim/resolver.js';
-import { BUNDLED_LAYOUTS, bundledLayout, documentedLayouts } from './index.js';
+import {
+  BUNDLED_LAYOUTS,
+  bundledLayout,
+  documentedLayouts,
+  HOME_ROW_MODS,
+  tapOf,
+} from './index.js';
 import { BASE_SYMBOLS, MAIN_THUMBS } from './standard.js';
 
 const magicRomak = bundledLayout('magic-romak')!;
@@ -110,8 +116,8 @@ describe('small-board layouts', () => {
           .map((c) => [
             c.id,
             c.keys.map((k) => {
-              const b = layout(id).layers[0].bindings[k];
-              return b.kind === 'kp' ? b.symbol : k;
+              const b = tapOf(layout(id).layers[0].bindings[k]);
+              return b?.kind === 'kp' ? b.symbol : k;
             }),
           ]),
       );
@@ -225,7 +231,11 @@ describe('the standard thumbs', () => {
     '%s keeps only letters, the four marks and Repeat on its base layer, and no other thumb key',
     (_id, layout) => {
       const main = new Set<string>(MAIN_THUMBS);
-      const kept = Object.entries(layout.layers[0].bindings).filter(
+      // A home row mod types what its tap types.
+      const taps = Object.entries(layout.layers[0].bindings).map(
+        ([key, b]) => [key, key in HOME_ROW_MODS ? (tapOf(b) as Binding) : b] as const,
+      );
+      const kept = taps.filter(
         ([key, b]) =>
           !main.has(key) &&
           b.kind !== 'none' &&

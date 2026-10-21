@@ -570,17 +570,46 @@ What moved, checked across the 38 reports; nothing else moved:
 Every layout holds Numbers on its left inner thumb and Symbols on its right inner one, as Romak
 does, and where there is Extras, Symbols' left inner thumb holds Numbers too, so holding both inner
 thumbs brings Extras on in either order. Bird, Nordrassil and Ben Vallack Piano held Numbers on
-their space key, the left outer thumb, and Nordrassil Symbols on its free right outer thumb.
+their space key, L1, beside the inner thumb, and Nordrassil Symbols on its free right outer thumb.
 
-What moved; the 38 reports, Magic Romak's and Qwerty's, did not:
+Checked across the 38 reports, none of which moved. What moved is in the documents:
 
 - **Bird, Nordrassil and Ben Vallack Piano's documents**: L0 holds Numbers, still typing `q`, the
-  magic key and Repeat, and L1 types space alone. Nordrassil's R0, its other magic key, holds
-  Symbols and R2 types nothing; `0` goes on R1. Ben Vallack Piano's Symbols has `=` on L0 and `ı`
-  on L1, the other way round.
-- **Bird, Finch, Caksoylar and Ben Vallack Piano's documents**: Symbols' L0 holds Numbers, still
-  typing space, or `=` on Ben Vallack Piano.
+  magic key and Repeat, and L1 types space alone. Bird's and Nordrassil's Symbols lose their own
+  space on L1, where the base layer's shows through. Nordrassil's R0, its other magic key, holds
+  Symbols and R2 types nothing; `0` goes on R1. Ben Vallack Piano's Symbols has `=` on L0 and `ı` on
+  L1, the other way round.
+- **Bird, Finch, Caksoylar and Ben Vallack Piano's documents**: Symbols' L0 holds Numbers, and
+  taps space on Finch and Caksoylar, `=` on Ben Vallack Piano, moved there from L1, and `q` on
+  Bird, as on its base layer.
 - Their languages, measured by `pnpm languages`, did not move.
+
+## Twenty-seventh re-baseline: Portuguese is `pt`
+
+Portuguese's tag is `pt`, not `pt-BR`, and its name Português. Its text is still the Brazilian
+news, `pt-br-general`.
+
+What moved, checked across the 38 reports; nothing else moved:
+
+- **No report**: none names a language.
+- **The documents of the 18 layouts that are for Portuguese, and Magic Romak's share blob**: `pt-BR`
+  becomes `pt` in their languages, and nothing else.
+
+## Twenty-eighth re-baseline: home row mods, and Ben Vallack Piano's one-shot Shift
+
+Every bundled layout but Magic Romak holds Gui, Ctrl, Alt and Shift on its base layer's home row
+from the left pinky in, mirrored on the right, the left modifiers on both hands. Ben Vallack Piano
+taps a one-shot Shift where its keymap has Repeat, its L0, and that is its Shift key.
+
+What moved; the 38 reports and Magic Romak's document did not:
+
+- **Every other layout's document**: LHP, LHR, LHM, LHI, RHI, RHM, RHR and RHP are tap-holds of
+  what they typed and their modifier. A tapped one types what the key typed and is scored as it was,
+  so no fold-mode number moves, and the only model-mode reports are Magic Romak's.
+- **Ben Vallack Piano's document**: L0 taps `sk LSHIFT`, still holding Numbers, `keys.shift` is
+  L0, one-shot, and its description says so. Its languages, measured by `pnpm languages`, did not
+  move.
+- **Nordwind**, a document of its own, carries the same eight tap-holds in its JSON.
 
 ## Not compared
 

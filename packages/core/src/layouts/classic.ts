@@ -332,6 +332,11 @@ export function classicLayout(def: ClassicDef): Layout {
       };
     });
   }
+  // A one-shot Shift on the base layer is the Shift the analysis types capitals with.
+  const shift = Object.entries(layout.layers[0].bindings).find(
+    ([, b]) => b.kind === 'sk' && b.mod === 'LSHIFT',
+  )?.[0];
+  if (shift) layout.keys = { ...layout.keys, shift: { key: shift, kind: 'sk' } };
   layout.id = def.id;
   layout.author = def.author;
   layout.description = [
