@@ -305,8 +305,11 @@ out. Magic Romak holds its author's keymap's instead: Ctrl, Alt and Shift from t
 layer of shortcuts on each pinky, and on the bottom row Shift with Gui under the left ring and
 middle fingers and Gui under the index fingers. Both hands hold the left modifiers, as both Shift
 thumbs do. Tapped, each key types what it typed, a letter or anything else: Uno's space holds Alt.
-They are on the base layer only. In the Shift case mode, a layout with no Shift key of its own types
-a capital holding the home row Shift of the other hand.
+They are on the base layer only. In the Shift case mode, a Standard or Thumb Alpha layout types a
+capital holding the right Shift thumb, but one on Accents or on a right thumb holding the left, as a
+thumb holding Shift presses nothing else. A layout with no Shift key of its own types a capital
+holding a Shift thumb if it has one that is free, and otherwise the home row Shift of the other
+hand, where the capital does not press that key.
 
 Magic Romak is its author's keymap, and has no Extras and no Accents, as the keymap has none. It
 keeps its own thumbs on Numbers and Symbols, and the keymap's combos type what those two layers
