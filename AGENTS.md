@@ -36,12 +36,13 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
   base layer's home row from the left pinky in, mirrored on the right (`HOME_ROW_MODS`,
   `withHomeRowMods`). Both hands hold the left modifiers, as the two Shift thumbs do: the analysis
   types a capital with the left Shift, and the right Alt is AltGr. Every key there that types gets
-  one, letter or not (Uno's space, T-34's Repeat); one with nothing on it or a tap-hold already
-  does not, and no other layer does. They go on after the default layers, whose standard thumbs
-  keep only plain keys; Nordwind, a document, carries them in its JSON. Magic Romak has none: its
-  keymap holds Gui on the bottom row. In the Shift case mode a layout with no Shift key of its own
-  holds the other hand's home row Shift for a capital, never one on a key the capital presses
-  (`holdMod` in `resolver.ts`).
+  one, letter or not (Uno's space, T-34's Repeat); one with nothing on it, or holding something
+  already, does not, and no other layer does. They go on after the default layers, whose standard
+  thumbs keep only plain keys; Nordwind, a document, carries them in its JSON. Magic Romak has none
+  and is left as it is: its author's keymap has home row mods of its own (Ctrl, Alt and Shift from
+  the ring finger in, a layer on each pinky, Gui on the bottom row), which its model does not
+  carry. In the Shift case mode a layout with no Shift key of its own holds the other hand's home
+  row Shift for a capital, never one on a key the capital presses (`holdMod` in `resolver.ts`).
 - **A held thumb blocks its hand.** On a layer every way onto which holds a thumb key of one hand
   down (`mo`, `lt`), that hand's thumb keys get no binding: the thumb is busy holding. Numbers and
   Symbols each block the hand holding them, and Extras, both held, every thumb. The held keys

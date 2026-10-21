@@ -547,7 +547,18 @@ describe('a capital with home row mods and no Shift key of its own', () => {
       for (const c of 'abcdefghijklmnopqrstuvwxyz') {
         if (typed(c) !== c) continue;
         const capital = c.toUpperCase();
-        expect([capital, typed(capital, model)]).toEqual([capital, capital]);
+        const { steps } = explain(compiled, capital, { ...opts, ...model });
+        const held = steps.filter((s) => s.kind === 'hold_press').map((s) => s.key);
+        const pressed = steps
+          .filter((s) => s.kind !== 'hold_press' && s.kind !== 'hold_release')
+          .map((s) => s.key);
+        // One of the two index fingers' Shift, and never on a key the capital itself presses.
+        expect([capital, steps.map((s) => s.symbols).join('')]).toEqual([capital, capital]);
+        expect([capital, held.filter((k) => k === 'LHI' || k === 'RHI').length]).toEqual([
+          capital,
+          1,
+        ]);
+        expect([capital, held.filter((k) => pressed.includes(k))]).toEqual([capital, []]);
       }
     },
   );

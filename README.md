@@ -82,14 +82,17 @@ layout is for a language when it types every letter the language needs and its E
 language's news text is in the better half of all the bundled layouts', on the rules the Library
 ranks on (`lang/performance.ts`). `pnpm languages` measures them and writes them, to
 `layouts/languages.json` and into each document, and a test fails when they drift. A new one joins
-them as a document: a custom layout, unchanged, added by pull request. Merging the pull request is
-the approval, and the deploy that follows puts it in everyone's Library. A layout can also join
-with no deploy, as a community layout, by **Submit** in the app ([below](#community-layouts)).
+them as a document: a custom layout, unchanged but for its home row mods, added by pull request.
+Merging the pull request is the approval, and the deploy that follows puts it in everyone's
+Library. A layout can also join with no deploy, as a community layout, by **Submit** in the app
+([below](#community-layouts)).
 
 1. In the app, give the layout its name, its author, and in Settings, if it has one, its link to
-   where it comes from: the author's firmware, keymap or page. Save it, and copy its LayerBench
-   JSON from the editor's **JSON** panel. Signed in, it is also in your "LayerBench: saved
-   layouts" gist.
+   where it comes from: the author's firmware, keymap or page. Make each home row finger key of its
+   base layer a Tap-hold holding the left Gui, Ctrl, Alt and Shift from the left pinky in, and
+   Shift, Alt, Ctrl and Gui from the right index out, as every bundled layout but Magic Romak has.
+   Save it, and copy its LayerBench JSON from the editor's **JSON** panel. Signed in, it is also in
+   your "LayerBench: saved layouts" gist.
 2. On a branch made from main, add it as `packages/core/src/layouts/documents/<id>.json`, named by
    its `"id"`, as copied.
 3. In `packages/core/src/layouts/documents.ts`, import the file and add it to `DOCUMENTS` under its
@@ -100,8 +103,8 @@ with no deploy, as a community layout, by **Submit** in the app ([below](#commun
    and may move other layouts out of the better half of one.
 6. `pnpm test` checks that it is exactly what LayerBench saves, is named by its id, names an author
    (a link is optional, and an http(s) URL when given), has a name and an id no other layout has,
-   types the whole alphabet and a space, carries the languages it performs well in, and is on the
-   landing page.
+   types the whole alphabet and a space, holds the home row mods, carries the languages it performs
+   well in, and is on the landing page.
 7. Open the pull request. The `layouts` workflow runs those checks in a few minutes, sooner than the
    whole of CI, and writes a summary on its run's page for the review: each new or changed layout
    with its link, a link that opens it in the app as it would be bundled, and its Effort and SFB

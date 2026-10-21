@@ -321,7 +321,10 @@ export class Simulator {
       let tapped: KeyEvent | null = null;
       // A one-shot, toggle or switch on a tap-hold's hold: held past its term, then let go.
       let heldThenLetGo = false;
-      if (cand.requiredMods?.length) ok = this.ensureMods(cand.requiredMods, events, modHolds);
+      if (cand.requiredMods?.length) {
+        const keys = cand.combo === undefined ? [cand.pos] : this.compiled.combos[cand.combo].keys;
+        ok = this.ensureMods(cand.requiredMods, events, modHolds, new Set(keys));
+      }
       if (ok && !m.isLayerActive(cand.viaLayer))
         ok = this.activate(cand.viaLayer, events, depth + 1);
       if (ok && cand.combo !== undefined) {
@@ -579,10 +582,12 @@ export class Simulator {
     }
     // Search active layers for a sticky or held modifier key: on the other hand from the symbol's
     // keys first, as a home row mod is held by the hand that is not typing.
-    const hands = new Set([...pressed].map((pos) => this.compiled.positions[pos]?.hand));
-    for (const ownHand of [false, true]) {
+    const typing = new Set([...pressed].map((pos) => this.compiled.positions[pos].hand));
+    for (const typingHand of [false, true]) {
       for (let pos = 0; pos < this.compiled.keys.length; pos++) {
-        if (pressed.has(pos) || hands.has(this.compiled.positions[pos].hand) !== ownHand) continue;
+        // The other hand's keys in the first pass, the typing hand's in the second.
+        const onTypingHand = typing.has(this.compiled.positions[pos].hand);
+        if (pressed.has(pos) || onTypingHand !== typingHand) continue;
         const r = m.resolve(pos);
         const tapPeeled = peelBinding(m, r.binding, 'tap');
         if (tapPeeled.kind === 'sk' && tapPeeled.mod === mod) {
@@ -643,10 +648,10 @@ export class Simulator {
     }
   }
 
-  /** The keys a way of typing presses: each step's, and a chord's own keys. */
-  private keysOf(p: Producer): ReadonlySet<number> {
+  /** The keys a way of typing presses from step `from` to `to`: each step's, a chord's own. */
+  private keysOf(p: Producer, from: number, to = p.steps.length): ReadonlySet<number> {
     const out = new Set<number>();
-    for (const step of p.steps) {
+    for (const step of p.steps.slice(from, to)) {
       if (step.combo === undefined) out.add(step.pos);
       else for (const pos of this.compiled.combos[step.combo].keys) out.add(pos);
     }
@@ -659,7 +664,6 @@ export class Simulator {
     const holdsBefore = [...this.plannerHolds];
     const events: KeyEvent[] = [];
     const modHolds: number[] = [];
-    const pressed = p.mods.length || p.deadMods?.length ? this.keysOf(p) : NO_KEYS;
     let ok = true;
     // A dead key's modifier belongs to the letter it accents: shift, then the letter.
     const modsAt = p.kind === 'deadkey' ? p.steps.length - 1 : 0;
@@ -672,10 +676,11 @@ export class Simulator {
         for (const pos of deadHolds.splice(0))
           events.push(...m.perform({ type: 'hold_release', pos }));
       }
+      // Never a modifier on a key its own part of the way presses: the accent's, or the letter's.
       if (ok && i === 0 && p.deadMods?.length)
-        ok = this.ensureMods(p.deadMods, events, deadHolds, pressed);
+        ok = this.ensureMods(p.deadMods, events, deadHolds, this.keysOf(p, 0, modsAt));
       if (ok && i === modsAt && p.mods?.length)
-        ok = this.ensureMods(p.mods, events, modHolds, pressed);
+        ok = this.ensureMods(p.mods, events, modHolds, this.keysOf(p, modsAt));
       if (!ok) break;
       if (step.mode === 'chord') {
         if (step.combo === undefined || !this.ensureComboAvailable(step.combo, events)) {

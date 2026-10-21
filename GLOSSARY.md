@@ -79,7 +79,7 @@ _Avoid_: action, operation, op, mutation
 Modifiers held on the home row's finger keys, each key still typing what it typed when tapped. Every
 bundled layout but Magic Romak has Gui, Ctrl, Alt and Shift from the left pinky in, mirrored on the
 right, on its base layer.
-_Avoid_: HRM, home-row modifiers (in code)
+_Avoid_: HRM, home-row modifiers
 
 **Kind of key**:
 A sort of binding as the editor offers it. One kind can stand for several bindings that differ only

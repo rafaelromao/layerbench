@@ -791,15 +791,17 @@ export const HOME_ROW_MODS: Readonly<Record<string, Mod>> = {
 
 /**
  * Home row mods on the base layer: each key of `HOME_ROW_MODS` that types something holds its
- * modifier, still typing what it typed. A key with nothing on it, or a tap-hold already, is left as
- * it is. Every bundled layout has them but Magic Romak, whose keymap holds Gui on the bottom row.
+ * modifier, still typing what it typed. A key with nothing on it, or one that holds something
+ * already, is left as it is. Every bundled layout has them but Magic Romak, left as it is: its
+ * author's keymap has home row mods of its own, Ctrl, Alt and Shift from the ring finger in, a
+ * layer on each pinky and Gui on the bottom row, which its model does not carry.
  */
 export function withHomeRowMods(layout: Layout): Layout {
   const [first, ...rest] = layout.layers;
   const bindings = { ...first.bindings };
   for (const [id, mod] of Object.entries(HOME_ROW_MODS)) {
     const b = bindings[id];
-    if (!b || ['none', 'trans', 'hold_tap', 'lt'].includes(b.kind)) continue;
+    if (!b || ['none', 'trans', 'hold_tap', 'lt', 'mo', 'mod'].includes(b.kind)) continue;
     bindings[id] = { kind: 'hold_tap', tap: b, hold: { kind: 'mod', mod } };
   }
   return { ...layout, layers: [{ ...first, bindings }, ...rest] };

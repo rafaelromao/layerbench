@@ -34,7 +34,7 @@ different keys. It is the first measure of the
 **Library**, where the site opens, sorts every layout by Effort, by SFB, by name or by home row,
 and shows both numbers on each card with their badges, all scored on the same sample of the same
 text. By home row, layouts go in the alphabetical order of the letters their base layer types on the
-home row, left to right: Qwerty as `asdfghjkl`, a home-row mod as the letter it taps, and a key that
+home row, left to right: Qwerty as `asdfghjkl`, a home row mod as the letter it taps, and a key that
 types no letter left out. **Rank and filter**, the gear (⚙︎) beside **Sort by**, holds
 what the ranking is made with, and **Boards**, which lists only the layouts on the boards you tick, so you can keep to the keyboards you own; the layouts on the others are not scored at
 all. Your custom layouts, the ones you keep, are

@@ -759,7 +759,7 @@ describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, on every l
   });
 
   it.each(BUNDLED_LAYOUTS.filter((l) => l.id !== 'magic-romak').map((l) => [l.id, l] as const))(
-    '%s holds them on its base layer, each key still typing what it typed',
+    '%s holds them on its base layer, each on a key that types, and no other layer holds one',
     (_id, layout) => {
       const base = layout.layers[0].bindings;
       expect(KEYS.map((k) => heldMod(base[k]))).toEqual(MODS);
@@ -768,7 +768,7 @@ describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, on every l
         expect([k, tap?.kind]).not.toEqual([k, 'hold_tap']);
         expect([k, tap?.kind]).not.toEqual([k, 'none']);
       }
-      // Nowhere but the base layer's home row.
+      // No other layer holds a modifier on a key.
       for (const l of layout.layers.slice(1)) {
         for (const b of Object.values(l.bindings))
           expect(b.kind === 'hold_tap' && b.hold.kind).not.toBe('mod');
@@ -799,7 +799,7 @@ describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, on every l
     });
   });
 
-  it('pass over a key with nothing on it or a tap-hold already, and every other layer', () => {
+  it('pass over a key with nothing on it or holding something already, and every other layer', () => {
     const layout: Layout = {
       format: 'layerbench/layout@1',
       name: 'Bare',
@@ -811,8 +811,10 @@ describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, on every l
           bindings: {
             LHP: kp('a'),
             LHR: { kind: 'none' },
+            LHM: { kind: 'mo', layer: 'up' },
             LHI: { kind: 'lt', layer: 'up', tap: kp('t') },
             RHI: { kind: 'hold_tap', tap: kp('n'), hold: { kind: 'mo', layer: 'up' } },
+            RHM: { kind: 'mod', mod: 'LCTRL' },
           },
         },
         { id: 'up', bindings: { LHP: kp('1') } },

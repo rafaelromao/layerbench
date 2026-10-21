@@ -52,8 +52,9 @@ export function relabelEligible(
  * running the rules again over the same press log. Exact for every n-gram metric as long as the layout
  * would be typed the same way after the swap; but the simulator weighs same-finger pairs when it
  * chooses how to type a character and which key taps a layer, so a swap can change those choices.
- * Travel, run and word statistics stay as simulated. The report is marked provisional either way,
- * and the full analysis replaces it.
+ * So can a swap across the hands where capitals are typed: a layout with no Shift key of its own
+ * holds the Shift of the hand a capital's letter is not on. Travel, run and word statistics stay
+ * as simulated. The report is marked provisional either way, and the full analysis replaces it.
  */
 export function relabelSwap(
   report: Report,
