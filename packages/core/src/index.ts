@@ -13,6 +13,7 @@ export * from './layout/categories.js';
 export * from './layout/compile.js';
 export * from './layout/edit.js';
 export * from './layout/features.js';
+export * from './layout/home-row.js';
 export * from './layout/json.js';
 export * from './layout/labels.js';
 export { keyBinding } from './layout/ops.js';

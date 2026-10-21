@@ -9,7 +9,13 @@ import { renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AnalysisClient, ReportDTO } from './protocol.js';
-import type { LayoutSummary, SummaryEntry } from './use-summaries.js';
+import {
+  compareBy,
+  type LayoutSummary,
+  type Sortable,
+  type SortKey,
+  type SummaryEntry,
+} from './use-summaries.js';
 
 const OPTS: AnalysisSettings = {
   ...DEFAULT_SETTINGS,
@@ -195,5 +201,44 @@ describe('scores checked again', () => {
     const again = await freshHook(client().client, [QWERTY, COLEMAK]);
     expect(again.result.current.summaries.get('qwerty')?.effort).toBe(30);
     expect(again.result.current.pending).toBe(1);
+  });
+});
+
+describe('the order of the list', () => {
+  const layout = (key: string, name: string, homeRow?: string): Sortable => ({
+    key,
+    name,
+    homeRow,
+  });
+  const DVORAK = layout('b:dvorak', 'Dvorak', 'aoeuidhtns');
+  const QWERTY_ROW = layout('b:qwerty', 'Qwerty', 'asdfghjkl');
+  const BIRD = layout('b:bird', 'Bird', 'rsntpkheia');
+  const BIRD_30 = layout('b:bird-30', 'Bird 30', 'rsntpkheia');
+  const EMPTY = layout('c:empty', 'An empty board', '');
+  const READING = layout('c:reading', 'Being read');
+  const ALL = [READING, BIRD_30, QWERTY_ROW, EMPTY, BIRD, DVORAK];
+  const order = (
+    key: SortKey,
+    behind: ReadonlySet<string> = new Set(),
+    summaries = new Map<string, LayoutSummary>(),
+  ) => [...ALL].sort(compareBy(key, summaries, behind)).map((l) => l.name);
+
+  it('puts layouts in the order of their home-row letters, ties by name, one with none last', () => {
+    expect(order('home_row')).toEqual([
+      'Dvorak',
+      'Qwerty',
+      'Bird',
+      'Bird 30',
+      'An empty board',
+      'Being read',
+    ]);
+  });
+
+  it('holds back a layout that cannot write the language by its numbers only, not its letters', () => {
+    const behind = new Set([DVORAK.key]);
+    expect(order('home_row', behind)[0]).toBe('Dvorak');
+    expect(order('name', behind)[0]).toBe('An empty board');
+    const summaries = new Map(ALL.map((l) => [l.key, summary(10, 1)]));
+    expect(order('effort', behind, summaries).at(-1)).toBe('Dvorak');
   });
 });

@@ -9,6 +9,7 @@ export const SORTS: [SortKey, string][] = [
   ['effort', 'Effort'],
   ['sfb', 'SFB'],
   ['name', 'Name'],
+  ['home_row', 'Home row'],
 ];
 
 export interface BoardChoice {
