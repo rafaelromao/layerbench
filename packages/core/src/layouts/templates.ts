@@ -309,7 +309,9 @@ export function accentsCombo(baseLayer: string, geometry: Geometry): ComboDef {
   };
 }
 
-/** Extras comes on while Numbers and Symbols are both held. */
+/**
+ * Extras comes on while Numbers and Symbols are both held: the two inner thumbs, in either order.
+ */
 export const EXTRAS_CONDITION: ConditionalLayerDef = {
   if: [DEFAULT_LAYER_IDS.numbers, DEFAULT_LAYER_IDS.symbols],
   then: DEFAULT_LAYER_IDS.extras,
@@ -425,8 +427,9 @@ function spareThumb(geometry: Geometry, holding: string): string | undefined {
  *
  * On a split board the inner thumbs do it, as on Magic Romak: the left types space and holds
  * Numbers, the right holds Symbols. Holding the right thumb from Numbers reaches Symbols too, or
- * Extras where the board has one. A row-stagger board has one space bar for both thumbs: it holds
- * Numbers, and from there the right pinky's outer key arms Symbols.
+ * Extras where the board has one; there the left thumb holds Numbers on Symbols as well, so holding
+ * both inner thumbs brings Extras on whichever goes down first. A row-stagger board has one space
+ * bar for both thumbs: it holds Numbers, and from there the right pinky's outer key arms Symbols.
  */
 export function defaultLayers(
   geometry: Geometry,
@@ -459,6 +462,7 @@ export function defaultLayers(
     options.mirrorAccents ? mirrored(accentKeys) : accentKeys,
     keys(spread.extras),
   );
+  const hasExtras = Object.keys(ext).length > 0;
   if (spaceBar) {
     // The bar is held for Numbers: pressed again it would be the same key.
     for (const id of ['L0', 'R0']) {
@@ -468,7 +472,8 @@ export function defaultLayers(
     num.RHO = { kind: 'sl', layer: symbols };
     num.RTO = kp('0');
   } else {
-    sym[spaceKey] = beside ? kp(SPACE_THUMB_SYMBOL) : space;
+    const onSymbols = beside ? kp(SPACE_THUMB_SYMBOL) : space;
+    sym[spaceKey] = hasExtras ? tapOrHold(onSymbols, numbers) : onSymbols;
     if (have.has('R1')) {
       num.R0 = tapOrHold(space, symbols);
       num.R1 = kp('0');
@@ -481,7 +486,6 @@ export function defaultLayers(
     { id: numbers, name: 'Numbers', bindings: bind(have, num) },
     { id: symbols, name: 'Symbols', bindings: bind(have, sym) },
   ];
-  const hasExtras = Object.keys(ext).length > 0;
   if (hasExtras) layers.push({ id: extras, name: 'Extras', bindings: bind(have, ext) });
   layers.push({ id: accents, name: 'Accents', bindings: bind(have, acc) });
   return {
@@ -631,13 +635,17 @@ function withLeftOver(
 
 /**
  * A layout given the default layers, keeping every key it has: Numbers, Symbols, Extras and Accents
- * after its own layers, and the keys that reach them, as on a new layout. The key that types space
- * also holds Numbers, or the left inner thumb does where no thumb types space. A thumb of the other
- * hand holds Symbols: the innermost with nothing on it, or else the innermost, still typing what it
- * typed. On Numbers it taps space, the space thumb being held, and `0` goes on another thumb of its
- * hand. Accents is reached the same way on every layout, by `accentsCombo` on the base layer, and is
- * the same layer on every layout but mirrored on one that types its vowels with the left hand
- * (`vowelsOnLeft`).
+ * after its own layers, and the keys that reach them, as on a new layout. The inner thumbs hold
+ * them, as on Romak: the left one Numbers and the right one Symbols, each still typing what it
+ * typed. On Numbers the Symbols thumb taps space, and `0` goes on another thumb of its hand. Where
+ * there is Extras, the Numbers thumb holds Numbers on Symbols too, so holding both inner thumbs
+ * brings Extras on whichever goes down first. Accents is reached the same way on every layout, by
+ * `accentsCombo` on the base layer, and is the same layer on every layout but mirrored on one that
+ * types its vowels with the left hand (`vowelsOnLeft`).
+ *
+ * An inner thumb that is a tap-hold already cannot hold another layer. Numbers then goes on the key
+ * that types space, or else the first left thumb that can hold it; Symbols on the innermost thumb
+ * of the other hand with nothing on it, or else the innermost that can hold it.
  *
  * A layout that already has a layer of one of those ids, or a board with one space bar for both
  * thumbs, is left as it is.
@@ -672,12 +680,17 @@ export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
     handOf(declared) && types(declared, ' ')
       ? declared
       : thumbs.find((k) => types(k.id, ' ') && holdable(k.id))?.id;
-  const numbersKey = spaceThumb ?? ofHand('L').find(holdable);
+  const innerLeft = ofHand('L')[0];
+  const numbersKey =
+    innerLeft && holdable(innerLeft) ? innerLeft : (spaceThumb ?? ofHand('L').find(holdable));
   const hand = numbersKey ? handOf(numbersKey) : undefined;
   if (!numbersKey || !hand || !holdable(numbersKey)) return layout;
   const otherHand: Hand = hand === 'L' ? 'R' : 'L';
   const candidates = ofHand(otherHand).filter(holdable);
-  const symbolsKey = candidates.find(free) ?? candidates[0];
+  const symbolsKey =
+    candidates[0] === ofHand(otherHand)[0]
+      ? candidates[0]
+      : (candidates.find(free) ?? candidates[0]);
   if (!symbolsKey) return layout;
 
   const holdSymbols: Binding = { kind: 'mo', layer: symbols };
@@ -704,6 +717,7 @@ export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
   const roles = new Set(['L0', 'R0', numbersKey, symbolsKey]);
   const defaults = defaultLayers(geometry, { mirrorAccents: vowelsOnLeft(first.bindings) });
   const defaultSymbols = defaults.layers.find((l) => l.id === symbols)?.bindings ?? {};
+  const hasExtras = defaults.conditionalLayers.length > 0;
   const spareLetter = defaultSymbols[spareThumb(geometry, defaults.spaceKey) ?? ''];
   const layers = defaults.layers.map((l): LayerDef => {
     const bindings = Object.fromEntries(
@@ -721,10 +735,16 @@ export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
       if (spot) bindings[spot] = kp('0');
     }
     if (l.id === symbols) {
-      const onSpace = defaultSymbols[defaults.spaceKey];
-      if (onSpace && !(onSpace.kind === 'kp' && onSpace.symbol === ' '))
-        bindings[numbersKey] = onSpace;
-      else if (types(numbersKey, ' ')) bindings[numbersKey] = kp(' ');
+      // What the defaults tap where space would be, on the Numbers thumb, held for Numbers where
+      // there is Extras. With nothing to tap there, the key is the base layer's, which holds it.
+      const onSpace = tapOf(defaultSymbols[defaults.spaceKey]);
+      const tap =
+        onSpace && !(onSpace.kind === 'kp' && onSpace.symbol === ' ')
+          ? onSpace
+          : types(numbersKey, ' ')
+            ? kp(' ')
+            : undefined;
+      if (tap) bindings[numbersKey] = hasExtras ? tapOrHold(tap, numbers) : tap;
       const beside = spareThumb(geometry, numbersKey);
       if (spareLetter && beside) bindings[beside] = spareLetter;
     }
@@ -735,10 +755,15 @@ export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
     ...layout,
     layers: [{ ...first, bindings: baseBindings }, ...rest, ...layers],
     combos: [...(layout.combos ?? []), accentsCombo(first.id, geometry)],
-    ...(defaults.conditionalLayers.length > 0 && {
+    ...(hasExtras && {
       conditionalLayers: [...(layout.conditionalLayers ?? []), ...defaults.conditionalLayers],
     }),
   };
+}
+
+/** What a key types when tapped: its own binding, or a tap-hold's tap. */
+export function tapOf(b: Binding | undefined): Binding | undefined {
+  return b?.kind === 'hold_tap' ? b.tap : b;
 }
 
 /** Every character the default layers type with a key of its own, for tests and documentation. */

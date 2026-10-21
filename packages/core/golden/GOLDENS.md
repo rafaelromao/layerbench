@@ -565,6 +565,23 @@ What moved, checked across the 38 reports; nothing else moved:
 - **Magic Romak's document and share blob**, its languages, measured by `pnpm languages`, losing
   French and German, which it no longer types whole.
 
+## Twenty-sixth re-baseline: Numbers and Symbols on the inner thumbs, Extras on both
+
+Every layout holds Numbers on its left inner thumb and Symbols on its right inner one, as Romak
+does, and where there is Extras, Symbols' left inner thumb holds Numbers too, so holding both inner
+thumbs brings Extras on in either order. Bird, Nordrassil and Ben Vallack Piano held Numbers on
+their space key, the left outer thumb, and Nordrassil Symbols on its free right outer thumb.
+
+What moved; the 38 reports, Magic Romak's and Qwerty's, did not:
+
+- **Bird, Nordrassil and Ben Vallack Piano's documents**: L0 holds Numbers, still typing `q`, the
+  magic key and Repeat, and L1 types space alone. Nordrassil's R0, its other magic key, holds
+  Symbols and R2 types nothing; `0` goes on R1. Ben Vallack Piano's Symbols has `=` on L0 and `ı`
+  on L1, the other way round.
+- **Bird, Finch, Caksoylar and Ben Vallack Piano's documents**: Symbols' L0 holds Numbers, still
+  typing space, or `=` on Ben Vallack Piano.
+- Their languages, measured by `pnpm languages`, did not move.
+
 ## Not compared
 
 `globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not

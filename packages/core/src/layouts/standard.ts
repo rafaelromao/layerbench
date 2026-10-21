@@ -4,6 +4,7 @@ import {
   DEFAULT_LAYER_ID_LIST,
   DEFAULT_LAYER_IDS,
   defaultLayers,
+  tapOf,
   vowelsOnLeft,
 } from './templates.js';
 
@@ -13,7 +14,8 @@ import {
  * and Accents on a thumb tap.
  *
  * The main thumbs are the two innermost of each hand. Left to right they hold Shift, Numbers,
- * Symbols and Shift, and tap whatever the layout's own thumbs left them:
+ * Symbols and Shift, the inner two together Extras where the board has it, and tap whatever the
+ * layout's own thumbs left them:
  * - where LayerBench placed the thumbs, the author having left them to a space bar, L1 taps Repeat,
  *   L0 space, R0 the first thumb letter or nothing, and R1 one-shots Accents; a second thumb letter
  *   takes L1, and Repeat goes on a base-layer key the layout gives it;
@@ -130,12 +132,13 @@ export function withStandardThumbs(
 
   const space = MAIN_THUMBS.find((id) => isSpace(taps[id]));
   if (!space) throw new Error(`${layout.name}: no main thumb types space`);
-  // The default layers put space on Symbols' L0, the space thumb being held: where L0 types
-  // something else, it types that there too. With no bottom row they put `=` there, which stays.
-  // Accents is mirrored for a layout whose vowels are on the left.
+  // The default layers put space on Symbols' L0, held for Numbers where there is Extras: where L0
+  // types something else, it types that there too, and holds Numbers as on the base layer. With no
+  // bottom row they put `=` there, which stays. Accents is mirrored for a layout whose vowels are
+  // on the left.
   const defaults = defaultLayers(geometry, { mirrorAccents: vowelsOnLeft(first.bindings) });
   const layers = defaults.layers.map((l) => {
-    const onSpace = l.bindings[defaults.spaceKey];
+    const onSpace = tapOf(l.bindings[defaults.spaceKey]);
     if (l.id !== DEFAULT_LAYER_IDS.symbols || space === defaults.spaceKey || !isSpace(onSpace))
       return l;
     const { [defaults.spaceKey]: _space, ...kept } = l.bindings;
