@@ -1,5 +1,6 @@
 import {
   type AnalysisSettings,
+  DEFAULT_LAYOUT_ID,
   DEFAULT_SETTINGS,
   FEATURE_KINDS,
   type FeatureKind,
@@ -42,7 +43,7 @@ export interface Params {
 }
 
 export const DEFAULT_PARAMS: Params = {
-  layoutRef: 'magic-romak',
+  layoutRef: DEFAULT_LAYOUT_ID,
   corpus: 'pt-br-general',
   corpus2: DEFAULT_SETTINGS.corpus2,
   mix: DEFAULT_SETTINGS.share,
