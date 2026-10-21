@@ -92,7 +92,7 @@ describe('corpora', () => {
 
   it('interleaves sentences when mixing corpora', () => {
     const en = customCorpus(FIXTURE_EN, { name: 'EN', language: 'en' });
-    const pt = customCorpus(FIXTURE_PT, { name: 'PT', language: 'pt-BR' });
+    const pt = customCorpus(FIXTURE_PT, { name: 'PT', language: 'pt' });
     const mixed = mixCorpora(
       [
         [en, 1],
@@ -102,7 +102,7 @@ describe('corpora', () => {
     );
     expect(mixed.sample.length).toBeGreaterThan(5_000);
     expect(mixed.sample).toContain('ã');
-    expect(mixed.language).toBe('en+pt-BR');
+    expect(mixed.language).toBe('en+pt');
     expect(mixed.id.startsWith('mix-')).toBe(true);
   });
 });
@@ -127,7 +127,7 @@ describe('shipped corpora', () => {
     expect(ids).toContain('pt-br-general');
     expect(ids.every((id) => /^(en|pt-br|es|fr|it|de)-general$/.test(id))).toBe(true);
     const ptGeneral = list.find((m) => m.id === 'pt-br-general')!;
-    expect(ptGeneral.language).toBe('pt-BR');
+    expect(ptGeneral.language).toBe('pt');
     expect(ptGeneral.license).toContain('CC BY');
     expect(ptGeneral.words).toBeGreaterThan(100_000);
   });

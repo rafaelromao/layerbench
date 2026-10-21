@@ -130,7 +130,7 @@ export function mixId(weighted: [string, number][]): string {
   return `mix-${weighted.map(([id, w]) => `${id}:${w}`).join('+')}`;
 }
 
-/** The language of a mix: each of its corpora's, once, joined by `+` (`en+pt-BR`). */
+/** The language of a mix: each of its corpora's, once, joined by `+` (`en+pt`). */
 export function mixLanguage(languages: readonly string[]): string {
   return [...new Set(languages)].join('+');
 }

@@ -6,7 +6,7 @@ const text = (id: string, name: string, language: string) =>
   ({ id, name, language }) as CorpusManifest;
 
 const CORPORA = [
-  text('pt-br-general', 'Português — notícias', 'pt-BR'),
+  text('pt-br-general', 'Português — notícias', 'pt'),
   text('custom:zeta', 'Zeta notes', 'custom'),
   text('es-general', 'Español — noticias', 'es'),
   text('en-general', 'English — news', 'en'),
