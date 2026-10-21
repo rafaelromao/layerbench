@@ -38,9 +38,10 @@ describe('relabel after a swap', () => {
   const stream = normalizeText(FIXTURE_EN, OPTS);
   const ruleSet = layoutsDoc();
 
-  it('matches a full re-analysis for every n-gram metric', () => {
+  it('matches a full re-analysis for every n-gram metric, a home row mod among the keys', () => {
     const from = 'LTM';
-    const to = 'RHI';
+    // Qwerty's `k`, holding Alt.
+    const to = 'RHM';
     const posA = compiled.keyIndex.get(from)!;
     const posB = compiled.keyIndex.get(to)!;
     expect(relabelEligible(compiled, 0, posA, posB)).toBe(true);
@@ -72,7 +73,7 @@ describe('relabel after a swap', () => {
     }
   });
 
-  it('is refused for keys that are not plain symbols and for the space key', () => {
+  it('is refused for keys that are not plain symbols, for the space key and for Shift', () => {
     const magic = compileLayout(bundledLayout('magic-romak')!);
     const thumb = magic.keyIndex.get('R0')!;
     const letter = magic.keyIndex.get('RHM')!;
@@ -84,6 +85,10 @@ describe('relabel after a swap', () => {
     expect(
       relabelEligible(compiled, 0, compiled.keyIndex.get('LHM')!, compiled.keyIndex.get('RHM')!),
     ).toBe(true);
+    // A home row mod holding Shift is a shift key: the analysis may hold it for a capital.
+    expect(
+      relabelEligible(compiled, 0, compiled.keyIndex.get('LTM')!, compiled.keyIndex.get('RHI')!),
+    ).toBe(false);
   });
 
   it('exchanges two bindings on one layer only', () => {

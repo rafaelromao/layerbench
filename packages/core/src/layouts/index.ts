@@ -7,7 +7,7 @@ import LANGUAGES from './languages.json';
 import { magicRomak, romak } from './romak.js';
 import { SMALL_DEFS } from './small.js';
 import { type ThumbPlacement, withStandardThumbs } from './standard.js';
-import { withDefaultLayers } from './templates.js';
+import { withDefaultLayers, withHomeRowMods } from './templates.js';
 
 export { CLASSIC_DEFS, CLASSIC_LAYOUTS, classicLayout } from './classic.js';
 export { DOCUMENT_LAYOUTS, documentLayout, documentMissing } from './documents.js';
@@ -33,6 +33,7 @@ export {
   defaultLayers,
   EXTRAS_CONDITION,
   EXTRAS_ORDER,
+  HOME_ROW_MODS,
   mirrorKeyId,
   NUMBERS_CORE,
   NUMBERS_OUTER,
@@ -40,8 +41,10 @@ export {
   SYMBOL_PAIRS,
   SYMBOLS_CORE,
   SYMBOLS_OUTER,
+  tapOf,
   vowelsOnLeft,
   withDefaultLayers,
+  withHomeRowMods,
 } from './templates.js';
 
 /** Layouts made for small boards: thumb letters, chords, adaptive and repeat keys. */
@@ -65,15 +68,17 @@ function withDefaults(placed: ThumbPlacement) {
 
 /**
  * The layouts written here in code: the set the app started with, and Romak back among them. Each
- * has the default layers but Magic Romak, which has only its keymap's Numbers and Symbols, on its
- * own thumbs. LayerBench placed the thumbs of the classic layouts, their authors having left them to
- * a space bar; the small-board layouts' authors placed their own.
+ * has the default layers and home row mods but Magic Romak, which has only its keymap's Numbers and
+ * Symbols, on its own thumbs. LayerBench placed the thumbs of the classic layouts, their authors
+ * having left them to a space bar; the small-board layouts' authors placed their own.
  */
 const BUILT_IN_LAYOUTS: Layout[] = [
   magicRomak,
-  romak,
-  ...CLASSIC_LAYOUTS.map(withDefaults('layerbench')),
-  ...SMALL_LAYOUTS.map(withDefaults('author')),
+  ...[
+    romak,
+    ...CLASSIC_LAYOUTS.map(withDefaults('layerbench')),
+    ...SMALL_LAYOUTS.map(withDefaults('author')),
+  ].map(withHomeRowMods),
 ].map(withLanguages);
 
 /**

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { normalizeText } from '../corpus/normalize.js';
 import type { CompiledLayout } from '../layout/compile.js';
 import { compileLayout } from '../layout/compile.js';
-import { bundledLayout } from '../layouts/index.js';
+import { bundledLayout, tapOf } from '../layouts/index.js';
 import { simulate } from '../sim/resolver.js';
 import { catalogRule } from './catalog.js';
 import { CYANOPHAGE_EFFORT_GRID, cyanophageEffort, defaultEffort, THUMB_EFFORT } from './effort.js';
@@ -23,10 +23,13 @@ function thumbs(layout: CompiledLayout): string[] {
   return layout.keys.filter((k) => k.thumb).map((k) => k.id);
 }
 
-/** The key a symbol sits on in Qwerty's base layer. */
+/** The key a symbol sits on in Qwerty's base layer, a home row mod's tap among them. */
 function keyFor(symbol: string): string {
   const base = qwerty.layout.layers[0].bindings;
-  const id = Object.entries(base).find(([, b]) => b.kind === 'kp' && b.symbol === symbol)?.[0];
+  const id = Object.entries(base).find(([, b]) => {
+    const tap = tapOf(b);
+    return tap?.kind === 'kp' && tap.symbol === symbol;
+  })?.[0];
   if (!id) throw new Error(`no key types ${symbol}`);
   return id;
 }

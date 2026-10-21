@@ -22,6 +22,7 @@ import {
   defaultLayers,
   EXTRAS_CONDITION,
   EXTRAS_ORDER,
+  HOME_ROW_MODS,
   mirrorKeyId,
   NUMBERS_CORE,
   NUMBERS_OUTER,
@@ -31,6 +32,7 @@ import {
   SYMBOLS_OUTER,
   vowelsOnLeft,
   withDefaultLayers,
+  withHomeRowMods,
 } from './templates.js';
 
 /** The chord that one-shots Accents, as `explain` names its step. */
@@ -703,7 +705,7 @@ describe('the default layers, layout by layout', () => {
   it('hold Numbers on the inner left thumb where space is on the outer one, still typing what it typed', () => {
     expect(base('bird').L0).toEqual(holds('num', { kind: 'kp', symbol: 'q' }));
     expect(base('bird').L1).toEqual(space);
-    expect(base('ben-vallack-piano').L0).toEqual(holds('num', { kind: 'key_repeat' }));
+    expect(base('ben-vallack-piano').L0).toEqual(holds('num', { kind: 'sk', mod: 'LSHIFT' }));
     expect(base('ben-vallack-piano').L1).toEqual(space);
     const t = trace(bundledLayout('bird') as Layout, 'q 7 q');
     expect(t.out).toBe('q 7 q');
@@ -741,6 +743,102 @@ describe('the default layers, layout by layout', () => {
   it('hold Numbers on the left inner thumb when no thumb types space', () => {
     expect(base('uno').L0).toEqual(holds('num', { kind: 'kp', symbol: 'a' }));
     expect(base('uno').R0).toEqual(holds('sym', { kind: 'kp', symbol: 'r' }));
+  });
+});
+
+describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, on every layout but Magic Romak', () => {
+  const KEYS = ['LHP', 'LHR', 'LHM', 'LHI', 'RHI', 'RHM', 'RHR', 'RHP'];
+  const MODS = ['LGUI', 'LCTRL', 'LALT', 'LSHIFT', 'LSHIFT', 'LALT', 'LCTRL', 'LGUI'];
+  const heldMod = (b: Binding | undefined) =>
+    b?.kind === 'hold_tap' && b.hold.kind === 'mod' ? b.hold.mod : undefined;
+  const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
+
+  it('mirror the left hand on the right, both holding the left modifiers', () => {
+    expect(Object.keys(HOME_ROW_MODS)).toEqual(KEYS);
+    expect(Object.values(HOME_ROW_MODS)).toEqual(MODS);
+  });
+
+  it.each(BUNDLED_LAYOUTS.filter((l) => l.id !== 'magic-romak').map((l) => [l.id, l] as const))(
+    '%s holds them on its base layer, each on a key that types, and no other layer holds one',
+    (_id, layout) => {
+      const base = layout.layers[0].bindings;
+      expect(KEYS.map((k) => heldMod(base[k]))).toEqual(MODS);
+      for (const k of KEYS) {
+        const tap = base[k]?.kind === 'hold_tap' ? base[k].tap : undefined;
+        expect([k, tap?.kind]).not.toEqual([k, 'hold_tap']);
+        expect([k, tap?.kind]).not.toEqual([k, 'none']);
+      }
+      // No other layer holds a modifier on a key.
+      for (const l of layout.layers.slice(1)) {
+        for (const b of Object.values(l.bindings))
+          expect(b.kind === 'hold_tap' && b.hold.kind).not.toBe('mod');
+      }
+    },
+  );
+
+  it('leave Magic Romak as it was', () => {
+    expect(bundledLayout('magic-romak')).toMatchObject({ layers: magicRomak.layers });
+    const base = magicRomak.layers[0].bindings;
+    expect(KEYS.map((k) => heldMod(base[k]))).toEqual(KEYS.map(() => undefined));
+  });
+
+  it('go on any key that types: a letter, a mark, space, Repeat or an adaptive key', () => {
+    const at = (id: string, key: string) => bundledLayout(id)?.layers[0].bindings[key];
+    const mod = (tap: Binding, m: string): Binding => ({
+      kind: 'hold_tap',
+      tap,
+      hold: { kind: 'mod', mod: m as 'LGUI' },
+    });
+    expect(at('qwerty', 'LHP')).toEqual(mod(kp('a'), 'LGUI'));
+    expect(at('qwerty', 'RHP')).toEqual(mod(kp(';'), 'LGUI'));
+    expect(at('uno', 'RHM')).toEqual(mod(kp(' '), 'LALT'));
+    expect(at('t-34', 'RHP')).toEqual(mod({ kind: 'key_repeat' }, 'LGUI'));
+    expect(at('uno', 'LHR')?.kind === 'hold_tap' && at('uno', 'LHR')).toMatchObject({
+      tap: { kind: 'adaptive' },
+      hold: { kind: 'mod', mod: 'LCTRL' },
+    });
+  });
+
+  it('pass over a key with nothing on it or holding something already, and every other layer', () => {
+    const layout: Layout = {
+      format: 'layerbench/layout@1',
+      name: 'Bare',
+      geometry: { preset: '3x5+2' },
+      keys: { space: 'L0' },
+      layers: [
+        {
+          id: 'base',
+          bindings: {
+            LHP: kp('a'),
+            LHR: { kind: 'none' },
+            LHM: { kind: 'mo', layer: 'up' },
+            LHI: { kind: 'lt', layer: 'up', tap: kp('t') },
+            RHI: { kind: 'hold_tap', tap: kp('n'), hold: { kind: 'mo', layer: 'up' } },
+            RHM: { kind: 'mod', mod: 'LCTRL' },
+          },
+        },
+        { id: 'up', bindings: { LHP: kp('1') } },
+      ],
+    };
+    const done = withHomeRowMods(layout);
+    expect(done.layers[0].bindings).toEqual({
+      ...layout.layers[0].bindings,
+      LHP: { kind: 'hold_tap', tap: kp('a'), hold: { kind: 'mod', mod: 'LGUI' } },
+    });
+    expect(done.layers[1]).toBe(layout.layers[1]);
+  });
+
+  it('leave Ben Vallack Piano a one-shot Shift where its keymap has Repeat, the Shift for capitals', () => {
+    const piano = bundledLayout('ben-vallack-piano') as Layout;
+    expect(piano.keys.shift).toEqual({ key: 'L0', kind: 'sk' });
+    const r = explain(compileLayout(piano), 'Tin', { caseMode: 'model', crossWord: 'reset' });
+    expect(r.steps.map((s) => s.symbols).join('')).toBe('Tin');
+    expect(r.steps.filter((s) => s.kind !== 'hold_release').map((s) => s.key)).toEqual([
+      'L0',
+      'LHI',
+      'LHP',
+      'RHI',
+    ]);
   });
 });
 
