@@ -160,6 +160,12 @@ Proposing a custom layout as a community layout: it goes to the maintainer for r
 Library once accepted.
 _Avoid_: publish, contribute, share
 
+**Proposed change**:
+An edit to a bundled or community layout, suggested for everyone by a pull request that names who
+sent it. It is saved meanwhile as a custom layout marked proposed: merged, the Library has the
+change and the copy goes; closed, the copy stays a custom layout of its own.
+_Avoid_: suggestion, update request, patch
+
 **Thumb alpha**:
 A letter from a to z that a thumb key types on an alpha layer.
 _Avoid_: thumb letter

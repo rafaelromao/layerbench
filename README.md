@@ -87,6 +87,15 @@ Merging the pull request is the approval, and the deploy that follows puts it in
 Library. A layout can also join with no deploy, as a community layout, by **Submit** in the app
 ([below](#community-layouts)).
 
+A change to a bundled layout can be proposed from the app too: **Save** on one offers **Propose
+change**, and the sign-in Worker opens, as the GitHub App, a pull request into main from
+`library/<login>/change/<id>` that carries the layout in `.library/request.json`. The
+`library-edit` workflow applies it on that branch (`pnpm library-edit`; a layout written in code
+becomes a document, `packages/core/src/layouts/library-edit/`), runs `pnpm languages` and
+`pnpm goldens`, and pushes the result as the App, so CI checks what would be merged. The workflow
+needs the repository variable `LAYERBENCH_APP_ID` and the secret `LAYERBENCH_APP_PRIVATE_KEY`, the
+App's id and private key.
+
 1. In the app, give the layout its name, its author, and in Settings, if it has one, its link to
    where it comes from: the author's firmware, keymap or page. Make each home row finger key of its
    base layer a Tap-hold holding Gui, Ctrl, Alt and Shift from the left pinky in, and Shift, Alt,
@@ -130,7 +139,9 @@ the Library would, has an id no bundled or community layout has, and is saved; t
 again, and, as the GitHub App, creates the branch `submit/<login>/<id>` from `layerbench-data`,
 commits `community/<id>.json` to it and opens the pull request, naming the submitter. While that
 pull request is open, submitting the layout again commits the new version to it. A layout is at
-most 64 KB, and an id the branch already holds is refused.
+most 64 KB, and an id the branch already holds is refused. **Propose change**, which Save offers
+on a community layout, opens a pull request into the branch from `data/<login>/change/<id>` that
+replaces its file (`apps/web/src/server/library.ts`).
 
 The app (`apps/web/src/community/community.ts`) reads the index and each
 file from `raw.githubusercontent.com` each time the Library opens, with no sign-in: plain files, as

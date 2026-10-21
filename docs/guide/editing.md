@@ -14,7 +14,9 @@ Every change is kept as you make it, so there is nothing to apply. **Undo** (↶
 under the board beside **Heat**, step back and forth through your changes. **Save**, beside the layout's name at
 the top, keeps it in **Library**, and until then the name is marked *unsaved*. On a layout that is
 not yours yet, such as one that comes with the app, the first **Save** makes a copy in your custom
-layouts and asks what to call it; after that, **Save** keeps your edits to the copy. A layout's link
+layouts and asks what to call it, or, on one that comes with the app or a community layout,
+[proposes your change](saving.md#proposing-a-change) to it; after that, **Save** keeps your edits
+to the copy. A layout's link
 follows its name: rename one already in **Library** and save it, and it moves to a link of its new
 name, so a link to it from before no longer opens it.
 

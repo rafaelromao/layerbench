@@ -28,7 +28,9 @@ browser, the same link is a layout of its own, and saving it there makes a copy.
 
 A layout that is not yours is never saved over: one that comes with the app, a community layout,
 or one that a link or
-**Open in analyzer** brought here and you have not saved. Its first **Save** opens a dialog that says
+**Open in analyzer** brought here and you have not saved. On one that comes with the app or a
+community layout, **Save** first asks whether to [propose your change](#proposing-a-change) to it
+or to **Save a copy**. Save a copy, and the first **Save** of any other, opens a dialog that says
 Save makes a copy in your custom layouts and asks for the copy's name. The name offered is the
 layout's with *copy* after it, numbered (*copy 2*) if a layout already has it; an empty name is
 refused. **Cancel** saves nothing. Once saved, the layout in the editor is the copy, and later
@@ -37,6 +39,21 @@ refused. **Cancel** saves nothing. Once saved, the layout in the editor is the c
 A custom layout is kept in this browser. To keep it anywhere else, sign in with GitHub, below; or
 copy its LayerBench JSON from the editor's **JSON** panel and keep the text, which **Import** reads
 back.
+
+### Proposing a change
+
+**Propose change**, which **Save** offers on a layout that comes with the app or a community
+layout, suggests your edits to that layout itself, for everyone. Sign in with GitHub first: the
+dialog asks you to if you have not, as the pull request names you, and **Save a copy** still works
+meanwhile. Proposing saves the layout here, under its name, like any custom layout, and opens a
+public pull request on [layerbench](https://github.com/rafaelromao/layerbench) with the layout as it
+is now; the dialog gives its link. In **Library**, your copy is marked *proposed*, linked to the
+pull request.
+
+Edit your copy and **Save** it again while the pull request is open, and the pull request gets that
+version. Once it is merged, the change is in the Library, for a layout that comes with the app with
+the next version of the app, and your copy goes. If it is closed instead, your copy stays one of
+your custom layouts. **Library** checks each time it opens, and says which happened.
 
 ### A name another layout has
 
