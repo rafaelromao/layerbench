@@ -2,6 +2,9 @@ import { getGeometryPreset } from '../geometry/presets.js';
 import { importTextLayout } from '../layout/text.js';
 import type { Binding, ComboDef, Layout } from '../layout/types.js';
 
+/** A key as a definition writes it: a token, or the binding itself. */
+export type KeyDef = string | Binding;
+
 export interface ClassicDef {
   id: string;
   name: string;
@@ -12,20 +15,35 @@ export interface ClassicDef {
   thumbs?: string;
   /**
    * Tokens by key id, for a board whose rows the text cannot describe (one with no bottom row,
-   * say). Used instead of `rows` and `thumbs`.
+   * say). Used instead of `rows` and `thumbs`. A key may hold its binding itself instead of a token.
    */
-  byKey?: Record<string, string>;
+  byKey?: Record<string, KeyDef>;
   /**
    * Keys that are not one symbol, by the token written for them: a repeat or adaptive key, a layer
    * key, a key that types nothing the analysis counts (`null` leaves the position empty).
    */
   special?: Record<string, Binding | null>;
-  /** Symbols on chords: the tokens of the keys pressed together, and what the chord types. */
-  combos?: { keys: string; types: string }[];
+  /**
+   * Symbols on chords: the tokens of the keys pressed together on the base layer, and what the
+   * chord types; or a combo written whole, kept as it is.
+   */
+  combos?: ({ keys: string; types: string } | ComboDef)[];
   /** Further letter layers, reached from the base layer by a `special` key. */
-  layers?: { id: string; name: string; byKey: Record<string, string> }[];
+  layers?: { id: string; name: string; byKey: Record<string, KeyDef> }[];
   /** Board this layout was designed for; the 34-key split columnar board when omitted. */
   geometry?: string;
+  /** The base layer's id and name, for a layout with more than one alpha layer; `base`, Base. */
+  base?: { id: string; name: string };
+  /** The shift key, when the layout has one of its own. */
+  shift?: Layout['keys']['shift'];
+  /** Typing behaviours declared rather than built of layers: sentence case, caps word. */
+  features?: Layout['features'];
+  /** How long one-shot layers and keys wait, and what releases them. */
+  behaviorDefaults?: Layout['behaviorDefaults'];
+  /** Whether a doubled letter is typed with the repeat key. */
+  repeatPolicy?: Layout['repeatPolicy'];
+  /** The ways into layers the analysis is told rather than left to find. */
+  activators?: Layout['activators'];
   description?: string;
   /** Where the letter arrangement came from, one http(s) URL: the layout's link. */
   link?: string;
@@ -44,14 +62,21 @@ export const REPEAT: Binding = { kind: 'key_repeat' };
 /** A raw key: drawn with its legend, typing nothing the analysis counts. */
 export const raw = (label: string): Binding => ({ kind: 'raw', label });
 
-/** Bindings from tokens by key id, with the special ones swapped in. */
+/** Bindings from keys by id: a binding as it is, a token with the special ones swapped in. */
 function bindingsOf(
-  byKey: Record<string, string>,
+  byKey: Record<string, KeyDef>,
   special: Record<string, Binding | null>,
 ): Record<string, Binding> {
   const out: Record<string, Binding> = {};
-  for (const [id, token] of Object.entries(byKey)) {
-    const s = token in special ? special[token] : token === 'space' ? kp(' ') : kp(token);
+  for (const [id, key] of Object.entries(byKey)) {
+    const s =
+      typeof key !== 'string'
+        ? key
+        : key in special
+          ? special[key]
+          : key === 'space'
+            ? kp(' ')
+            : kp(key);
     if (s) out[id] = s;
   }
   return out;
@@ -68,6 +93,17 @@ function keyFor(bindings: Record<string, Binding>, token: string, layout: string
 
 /** Classic single-layer layouts (30-key core), from the Layouts Doc / cyanophage listings. */
 export const CLASSIC_DEFS: ClassicDef[] = [
+  {
+    id: 'romak',
+    name: 'Romak',
+    author: 'Rafael Romão',
+    // Alpha 1 of the author's keymap (github.com/rafaelromao/keyboards) on thirty-four keys: Magic
+    // Romak's, filled out to the outer and inner columns.
+    rows: 'q b m g k x l o u ;\nd n s t w z r a e i\ny f c p v j h , . /',
+    description:
+      'Romak on 34 keys (3x5+2): one alpha layer, with the default layers and the standard thumbs.',
+    link: 'https://rafaelromao.github.io/romak',
+  },
   {
     id: 'qwerty',
     name: 'Qwerty',
@@ -266,6 +302,7 @@ export function classicLayout(def: ClassicDef): Layout {
       else delete base[id];
     }
   }
+  if (def.base) Object.assign(layout.layers[0], def.base);
   for (const extra of def.layers ?? []) {
     layout.layers.push({
       id: extra.id,
@@ -274,16 +311,18 @@ export function classicLayout(def: ClassicDef): Layout {
     });
   }
   if (def.combos) {
-    const base = layout.layers[0].bindings;
-    layout.combos = def.combos.map(
-      ({ keys, types }): ComboDef => ({
+    const [{ id: baseId, bindings: base }] = layout.layers;
+    layout.combos = def.combos.map((combo): ComboDef => {
+      if (!('types' in combo)) return combo;
+      const { keys, types } = combo;
+      return {
         id: types,
         keys: keys.split(' ').map((t) => keyFor(base, t, def.name)),
         binding: types.length === 1 ? kp(types) : { kind: 'macro', symbols: types },
-        layers: ['base'],
+        layers: [baseId],
         role: 'typing',
-      }),
-    );
+      };
+    });
   }
   layout.id = def.id;
   layout.author = def.author;
@@ -294,6 +333,11 @@ export function classicLayout(def: ClassicDef): Layout {
     .filter(Boolean)
     .join(' ');
   if (def.link) layout.link = def.link;
+  if (def.shift) layout.keys = { ...layout.keys, shift: def.shift };
+  if (def.features) layout.features = def.features;
+  if (def.behaviorDefaults) layout.behaviorDefaults = def.behaviorDefaults;
+  if (def.repeatPolicy) layout.repeatPolicy = def.repeatPolicy;
+  if (def.activators) layout.activators = def.activators;
   return layout;
 }
 

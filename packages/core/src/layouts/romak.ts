@@ -1,6 +1,5 @@
 import { getGeometryPreset } from '../geometry/presets.js';
 import type { Binding, ComboDef, LayerDef, Layout } from '../layout/types.js';
-import { withStandardThumbs } from './standard.js';
 import { DEFAULT_LAYER_IDS, defaultLayers, SYMBOLS_CORE } from './templates.js';
 
 /** Where Romak and Magic Romak are published. */
@@ -420,65 +419,3 @@ export const magicRomak: Layout = {
     ],
   },
 };
-
-// ---------------------------------------------------------------- Romak
-
-/**
- * Romak's Alpha 1 on 34 keys (3x5+2), as its keymap has it: Magic Romak's filled out to the outer
- * and inner columns. Like every Standard layout's, its base layer keeps no symbol but `'` `,` `.`
- * `;`, so the standard thumbs leave its `/` empty.
- */
-const ROMAK_ALPHA1 = rowBindings({
-  LTP: 'q',
-  LTR: 'b',
-  LTM: 'm',
-  LTI: 'g',
-  LTC: 'k',
-  LHP: 'd',
-  LHR: 'n',
-  LHM: 's',
-  LHI: 't',
-  LHC: 'w',
-  LBP: 'y',
-  LBR: 'f',
-  LBM: 'c',
-  LBI: 'p',
-  LBC: 'v',
-  RTC: 'x',
-  RTI: 'l',
-  RTM: 'o',
-  RTR: 'u',
-  RTP: ';',
-  RHC: 'z',
-  RHI: 'r',
-  RHM: 'a',
-  RHR: 'e',
-  RHP: 'i',
-  RBC: 'j',
-  RBI: 'h',
-  RBM: ',',
-  RBR: '.',
-  RBP: '/',
-});
-
-/**
- * Romak: one alpha layer on 34 keys, with the default layers and the thumbs every bundled Standard
- * layout shares.
- */
-export const romak: Layout = withStandardThumbs(
-  {
-    format: 'layerbench/layout@1',
-    id: 'romak',
-    name: 'Romak',
-    author: 'Rafael Romão',
-    description:
-      'Romak on 34 keys (3x5+2): one alpha layer, with the default layers and the standard thumbs.',
-    link: ROMAK_LINK,
-    hostLocale: 'symbols',
-    geometry: { preset: '3x5+2' },
-    keys: { space: 'L0' },
-    layers: [{ id: 'alpha1', name: 'Alpha 1', bindings: ROMAK_ALPHA1 }],
-  },
-  getGeometryPreset('3x5+2'),
-  'layerbench',
-);

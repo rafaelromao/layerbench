@@ -507,7 +507,7 @@ describe('Romak types every accent through Accents, one-shot from its right oute
   const romak = bundledLayout('romak') as Layout;
 
   it('has one alpha layer and the default layers, and no combos', () => {
-    expect(romak.layers.map((l) => l.id)).toEqual(['alpha1', 'num', 'sym', 'accents']);
+    expect(romak.layers.map((l) => l.id)).toEqual(['base', 'num', 'sym', 'accents']);
     expect(romak.combos).toBeUndefined();
     expect(romak.behaviors).toBeUndefined();
   });

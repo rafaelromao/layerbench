@@ -4,14 +4,14 @@ import type { Layout } from '../layout/types.js';
 import { CLASSIC_LAYOUTS, classicLayout } from './classic.js';
 import { DOCUMENT_LAYOUTS } from './documents.js';
 import LANGUAGES from './languages.json';
-import { magicRomak, romak } from './romak.js';
+import { magicRomak } from './romak.js';
 import { SMALL_DEFS } from './small.js';
 import { type ThumbPlacement, withStandardThumbs } from './standard.js';
 import { withDefaultLayers } from './templates.js';
 
 export { CLASSIC_DEFS, CLASSIC_LAYOUTS, classicLayout } from './classic.js';
 export { DOCUMENT_LAYOUTS, documentLayout, documentMissing } from './documents.js';
-export { magicRomak, romak } from './romak.js';
+export { magicRomak } from './romak.js';
 export { SMALL_DEFS } from './small.js';
 export {
   BASE_SYMBOLS,
@@ -71,7 +71,6 @@ function withDefaults(placed: ThumbPlacement) {
  */
 const BUILT_IN_LAYOUTS: Layout[] = [
   magicRomak,
-  romak,
   ...CLASSIC_LAYOUTS.map(withDefaults('layerbench')),
   ...SMALL_LAYOUTS.map(withDefaults('author')),
 ].map(withLanguages);
