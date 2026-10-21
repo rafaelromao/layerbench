@@ -9,9 +9,10 @@ import {
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { useGitHubSession } from '../auth/github-session.js';
+import { initGitHubSession, useGitHubSession } from '../auth/github-session.js';
 import { setCommunitySource } from '../community/community.js';
 import type { AnalysisClient, AnalyzeRequest } from '../engine/protocol.js';
+import { proposalOf } from '../proposals/proposals.js';
 import { toast } from '../state/toasts.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { branchWith, communityDoc } from '../test/community.js';
@@ -101,9 +102,19 @@ const bar = () => screen.getByRole('region', { name: 'Layout' });
 /** The dialog Save opens for a layout that is not yours, asking what to call the copy. */
 const copyDialog = () => screen.getByRole('dialog', { name: 'Save a copy' });
 
+/**
+ * Save on a bundled or community layout asks first whether to propose the change or save a copy:
+ * this answers Save a copy.
+ */
+async function toCopy(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+  const choice = await screen.findByRole('dialog', { name: /^Save / });
+  await user.click(within(choice).getByRole('button', { name: 'Save a copy' }));
+}
+
 /** Save a layout that is not yours: answer the dialog, with `name` if one is to be given. */
 async function saveCopy(user: ReturnType<typeof userEvent.setup>, name?: string): Promise<void> {
   await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+  await toCopy(user);
   const dialog = copyDialog();
   if (name !== undefined) {
     const field = within(dialog).getByLabelText('Name of the copy');
@@ -220,6 +231,8 @@ describe('Edit', () => {
     );
 
     await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+
+    await toCopy(user);
     const dialog = copyDialog();
     // It says it makes a copy, and offers a name no layout has.
     expect(
@@ -319,6 +332,92 @@ describe('Edit', () => {
     await user.click(await within(bar()).findByRole('button', { name: 'Submit' }));
     const dialog = screen.getByRole('dialog', { name: 'Submit Qwerty copy' });
     expect(within(dialog).getByRole('button', { name: 'Sign in with GitHub' })).toBeVisible();
+    useGitHubSession.setState({ status: 'unknown' });
+  });
+
+  it('proposes a change to a bundled layout: saved here, its pull request opened and kept with it', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const PULL = 'https://github.com/rafaelromao/layerbench/pull/100';
+    const sent: Record<string, unknown>[] = [];
+    const real = globalThis.fetch;
+    localStorage.setItem('layerbench:github-session', 'sealed');
+    const reply = (body: unknown, status = 200) =>
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith('/api/auth/propose')) {
+        sent.push(JSON.parse(String(init?.body)));
+        return reply({ url: PULL }, 201);
+      }
+      if (url.includes('/api/auth/')) {
+        return reply({
+          available: true,
+          clientId: 'Iv1.client',
+          signedIn: true,
+          login: 'you',
+          token: 'ghu_one',
+          expiresAt: Date.now() + 3600_000,
+        });
+      }
+      return real(input, init);
+    });
+    try {
+      await initGitHubSession();
+      renderRoute('/analyze?layout=colemak&corpus=en-general&sample=20000', { storage });
+      await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+
+      await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+      const choice = await screen.findByRole('dialog', { name: 'Save Colemak' });
+      await user.click(within(choice).getByRole('button', { name: 'Propose change' }));
+      expect(await within(choice).findByRole('link', { name: PULL })).toHaveAttribute('href', PULL);
+
+      // The change goes under the bundled layout's id; the copy is kept here, with its proposal.
+      expect(sent).toHaveLength(1);
+      expect(sent[0]).toMatchObject({
+        session: 'sealed',
+        target: { kind: 'bundled', id: 'colemak' },
+        layout: { id: 'colemak', name: 'Colemak' },
+      });
+      expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['colemak']);
+      expect(await proposalOf(storage, 'colemak')).toEqual({
+        name: 'Colemak',
+        target: { kind: 'bundled', id: 'colemak' },
+        url: PULL,
+      });
+
+      // Saved again, the copy's pull request gets the new version, under the bundled id still.
+      await user.click(within(choice).getByRole('button', { name: 'Close' }));
+      key('Key LHM: s, hold ⌥').focus();
+      await user.keyboard('ç{Enter}');
+      await screen.findByRole('button', { name: 'Key LHM: ç' });
+      await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+      expect(
+        await screen.findByText('Your proposed change to Colemak has this version'),
+      ).toBeInTheDocument();
+      expect(sent).toHaveLength(2);
+      expect(sent[1]).toMatchObject({ target: { kind: 'bundled', id: 'colemak' } });
+      expect(JSON.stringify(sent[1].layout)).toContain('ç');
+    } finally {
+      vi.unstubAllGlobals();
+      useGitHubSession.setState({ status: 'unknown', login: null, maintainer: false });
+    }
+  }, 60_000);
+
+  it('asks to sign in to propose a change, and still saves a copy', async () => {
+    const user = userEvent.setup();
+    useGitHubSession.setState({ status: 'signed-out', login: null });
+    await openEdit();
+    await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+    const choice = await screen.findByRole('dialog', { name: 'Save Qwerty' });
+    expect(within(choice).getByRole('button', { name: 'Sign in with GitHub' })).toBeVisible();
+    expect(within(choice).getByRole('button', { name: 'Propose change' })).toBeDisabled();
+    await user.click(within(choice).getByRole('button', { name: 'Save a copy' }));
+    await user.click(within(copyDialog()).getByRole('button', { name: 'Save copy' }));
+    expect(await screen.findByText('Saved Qwerty copy')).toBeInTheDocument();
     useGitHubSession.setState({ status: 'unknown' });
   });
 
@@ -429,6 +528,8 @@ describe('Edit', () => {
     expect(await storage.list('layouts')).toEqual([]);
 
     await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+
+    await toCopy(user);
     expect(within(copyDialog()).getByLabelText('Name of the copy')).toHaveValue('Mine');
     await user.click(within(copyDialog()).getByRole('button', { name: 'Save copy' }));
     expect(await screen.findByText('Saved Mine')).toBeInTheDocument();
@@ -448,6 +549,8 @@ describe('Edit', () => {
     await openEditOn(storage);
 
     await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+
+    await toCopy(user);
     const dialog = copyDialog();
     const field = within(dialog).getByLabelText('Name of the copy');
     await user.clear(field);
@@ -526,6 +629,8 @@ describe('Edit', () => {
     await openEditOn(storage);
 
     await user.click(within(bar()).getByRole('button', { name: 'Save' }));
+
+    await toCopy(user);
     const dialog = copyDialog();
     // One of the user's has "Qwerty copy" already, so the offer is numbered.
     expect(within(dialog).getByLabelText('Name of the copy')).toHaveValue('Qwerty copy 2');

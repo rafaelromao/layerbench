@@ -22,6 +22,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { proposeChange, type SubmitOutcome } from '../../auth/github-session.js';
 import { Collapsible } from '../../components/Collapsible.js';
 import { ErrorAlert } from '../../components/ErrorAlert.js';
 import { FamilyFilter, METRIC_FAMILIES, useFamilyShown } from '../../components/FamilyFilter.js';
@@ -48,9 +49,11 @@ import type { AnalyzeRequest, ExplainDTO, ProducerDTO, ReportDTO } from '../../e
 import { useAnalysis } from '../../engine/use-analysis.js';
 import { useKeyStats } from '../../engine/use-key-stats.js';
 import { HELP, type HelpTopic } from '../../guide/help.js';
+import type { LayoutSource } from '../../layout-session/open.js';
 import type { OpenSession } from '../../layout-session/use-layout-session.js';
+import { proposalOf, recordProposal } from '../../proposals/proposals.js';
 import { toast } from '../../state/toasts.js';
-import { useCollection } from '../../storage/use-storage.js';
+import { useCollection, useStorage } from '../../storage/use-storage.js';
 import { HEAT_MODES, type HeatMode, type Params, toSearch } from '../../url/params.js';
 import { ComboInspector } from '../edit/inspector/ComboInspector.js';
 import { KeyInspector } from '../edit/inspector/KeyInspector.js';
@@ -78,6 +81,7 @@ import { useTypedLayout } from '../useLayout.js';
 import { itemLayer } from './item-layer.js';
 import { LayoutBar } from './LayoutBar.js';
 import { MissingKeysTray } from './MissingKeysTray.js';
+import { ProposeDialog } from './ProposeDialog.js';
 import { playFrames } from './playback.js';
 import { SubmitDialog } from './SubmitDialog.js';
 
@@ -167,6 +171,7 @@ export function Workbench({
 
   /** The custom layouts, for the picker; read again after each save. */
   const customLayouts = useCollection('layouts');
+  const storage = useStorage();
 
   // ------------------------------------------------------------------ what is analyzed
 
@@ -313,9 +318,46 @@ export function Workbench({
           `Saved ${layout.name}; its copy under the old name could not be removed and is still in the Library`,
         );
       } else toast.info(`Saved ${layout.name}`);
+      // A change proposed from this layout follows it: its pull request gets this version.
+      const proposal = await proposalOf(storage, saved.id).catch(() => null);
+      if (proposal) {
+        const sent = await proposeChange(
+          proposal.target,
+          toCanonicalJson({ ...layout, id: proposal.target.id }),
+        );
+        if (sent.kind === 'sent')
+          toast.info(`Your proposed change to ${layout.name} has this version`);
+        else toast.error(`Your proposed change to ${layout.name} was not updated`);
+      }
     },
-    [state.layout, session.save, customLayouts.refresh],
+    [state.layout, session.save, customLayouts.refresh, storage],
   );
+
+  // Save on a bundled or community layout asks first: propose the change, or save a copy. The
+  // layout it was is kept for the dialog, as saving makes it a custom layout of its own.
+  const [choosing, setChoosing] = useState<LayoutSource | null>(null);
+  const propose = useCallback(async (): Promise<SubmitOutcome> => {
+    const source = choosing;
+    const layout = state.layout;
+    if (!source) return { kind: 'failed', error: 'this layout is not one of the Library' };
+    const saved = await session.save(layout, {});
+    if (!saved.ok) {
+      return saved.reason === 'name-taken'
+        ? {
+            kind: 'refused',
+            reason: `a custom layout is already called ${layout.name}; rename this one, or save a copy`,
+          }
+        : { kind: 'failed', error: saved.error };
+    }
+    send({ type: 'saved', layout });
+    void customLayouts.refresh();
+    const sent = await proposeChange(source, toCanonicalJson({ ...layout, id: source.id }));
+    if (sent.kind === 'sent') {
+      await recordProposal(storage, saved.id, { name: layout.name, target: source, url: sent.url });
+      void customLayouts.refresh();
+    }
+    return sent;
+  }, [choosing, session.save, state.layout, storage, customLayouts.refresh]);
 
   // A layout that is not stored here, bundled or carried in a link, is not the user's to overwrite:
   // its first save makes a copy, and asks what to call it. Later saves are of the copy, and ask
@@ -336,9 +378,10 @@ export function Workbench({
   /** Whether Save makes a copy: of a layout not stored here, bundled or carried in a link. */
   const copying = session.storedId === null;
   const save = useCallback(() => {
-    if (session.storedId === null) setNaming({ taken: null, overwrite: true });
-    else void store();
-  }, [session.storedId, store]);
+    if (session.storedId !== null) void store();
+    else if (session.source) setChoosing(session.source);
+    else setNaming({ taken: null, overwrite: true });
+  }, [session.storedId, session.source, store]);
 
   // Submit proposes the custom layout under the id it is stored by, which names its file.
   const [submitting, setSubmitting] = useState(false);
@@ -714,6 +757,16 @@ export function Workbench({
 
       {submitting && submitted && (
         <SubmitDialog layout={submitted} dirty={state.dirty} onClose={() => setSubmitting(false)} />
+      )}
+
+      {choosing && (
+        <ProposeDialog
+          layout={state.layout}
+          source={choosing}
+          propose={propose}
+          onCopy={() => setNaming({ taken: null, overwrite: true })}
+          onClose={() => setChoosing(null)}
+        />
       )}
 
       {naming && (
