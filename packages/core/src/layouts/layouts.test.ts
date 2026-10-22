@@ -6,9 +6,13 @@ import type { Binding } from '../layout/types.js';
 import { explain } from '../sim/resolver.js';
 import {
   BUNDLED_LAYOUTS,
+  bringsOwnLayers,
   bundledLayout,
+  CLASSIC_DEFS,
+  classicLayout,
   documentedLayouts,
   HOME_ROW_MODS,
+  SMALL_DEFS,
   tapOf,
 } from './index.js';
 import { BASE_SYMBOLS, MAIN_THUMBS } from './standard.js';
@@ -18,6 +22,13 @@ const magicRomak = bundledLayout('magic-romak')!;
 const romak = bundledLayout('romak')!;
 
 const ALPHABET = [...'abcdefghijklmnopqrstuvwxyz'];
+
+/** The layouts written in code whose definitions bring their authors' layers. */
+const AUTHORED = new Set(
+  [...CLASSIC_DEFS, ...SMALL_DEFS]
+    .filter((d) => bringsOwnLayers(classicLayout(d)))
+    .map((d) => d.id),
+);
 
 /**
  * A layout is data, and a mistyped letter is invisible: it does not fail to compile, it just makes
@@ -108,11 +119,15 @@ describe('small-board layouts', () => {
     })?.[0];
 
   it('puts each chord on the keys its source names', () => {
-    // The layout's own chords; the one to Accents every layout has goes with the default layers.
+    // The layout's own chords for letters; the one to Accents goes with the default layers, and
+    // those of its author's for symbols with its author's layers.
+    const letters = (b: Binding) =>
+      (b.kind === 'kp' && /^[a-z]$/.test(b.symbol ?? '')) ||
+      (b.kind === 'macro' && /^[a-z]+$/.test(b.symbols ?? ''));
     const chords = (id: string) =>
       Object.fromEntries(
         (layout(id).combos ?? [])
-          .filter((c) => c.id !== 'accents')
+          .filter((c) => letters(c.binding))
           .map((c) => [
             c.id,
             c.keys.map((k) => {
@@ -179,7 +194,9 @@ describe('small-board layouts', () => {
  * so that what tells them apart is their letters.
  */
 describe('the standard thumbs', () => {
-  const standard = BUNDLED_LAYOUTS.filter((l) => layoutCategory(l) !== 'special');
+  const standard = BUNDLED_LAYOUTS.filter(
+    (l) => layoutCategory(l) !== 'special' && !AUTHORED.has(l.id ?? ''),
+  );
   const show = (b: Binding | undefined): string => {
     if (!b) return 'nothing';
     switch (b.kind) {
@@ -277,16 +294,26 @@ describe('the standard thumbs', () => {
       'space / Symbols',
       'Accents / Shift',
     ];
-    expect(thumbs('hands-down-gold')).toEqual(authored('t'));
-    expect(thumbs('hands-down-promethium')).toEqual(authored('r'));
-    expect(thumbs('hands-down-vibranium')).toEqual(authored('r'));
     expect(thumbs('rsthd')).toEqual(authored('e'));
     expect(thumbs('nordwind')).toEqual(authored('s'));
+  });
+
+  it("are not on a layout that keeps its author's layers, which keeps its author's thumbs", () => {
+    expect(AUTHORED.has('enthium') && AUTHORED.has('hands-down-gold')).toBe(true);
+    expect(standard.some((l) => AUTHORED.has(l.id ?? ''))).toBe(false);
+    // Backspace held for Numbers, the thumb letter, space held for Symbols, Enter.
+    expect(thumbs('hands-down-gold')).toEqual([
+      'raw / Numbers',
+      'nothing / t',
+      'space / Symbols',
+      'nothing / raw',
+    ]);
+    // Tab held for Numbers, space, the thumb letter held for Symbols, Backspace.
     expect(thumbs('enthium')).toEqual([
-      'Repeat / Shift',
-      'space / Numbers',
+      'raw / Numbers',
+      'nothing / space',
       'r / Symbols',
-      'Accents / Shift',
+      'nothing / raw',
     ]);
     const enthium = bundledLayout('enthium')?.layers[0].bindings ?? {};
     expect([enthium.L2, enthium.R2]).toEqual([undefined, undefined]);

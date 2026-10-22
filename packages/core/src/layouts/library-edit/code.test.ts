@@ -69,7 +69,7 @@ describe('a layout written in code, taken out of its file', () => {
       for (const helper of ['ALT_REPEAT', 'alpha2Combos', 'taggedAccent', 'CCEDIL_BINDINGS']) {
         expect(after).not.toMatch(new RegExp(`\\b${helper}\\b`));
       }
-      expect(after).not.toContain('ComboDef');
+      expect(after).not.toContain('LayerDef');
     },
   );
 

@@ -282,10 +282,30 @@ export const DEFAULT_LAYER_IDS = {
 } as const;
 
 /**
- * Every default layer's id. The default layers are the same on every layout, so nothing on them
- * says what kind of layout it is: categories leave them out.
+ * Every default layer's id. The default layers are the same on every layout that has them, so
+ * nothing on them says what kind of layout it is: categories leave them out there
+ * (`hasDefaultLayers`), and count an author's own Numbers and Symbols.
  */
 export const DEFAULT_LAYER_ID_LIST: readonly string[] = Object.values(DEFAULT_LAYER_IDS);
+
+/**
+ * Whether a layout, as its definition builds it and before the default layers are added, brings
+ * layers of its own in place of them: its author's Numbers or Symbols, by the ids the default layers
+ * have. Such a layout gets none of the default layers, nor any key to reach them; what its author's
+ * layers do not type, it does not type. Once built, every layout has layers of those ids: whose
+ * they are, `hasDefaultLayers` tells.
+ */
+export function bringsOwnLayers(layout: Pick<Layout, 'layers'>): boolean {
+  return layout.layers.some((l) => DEFAULT_LAYER_ID_LIST.includes(l.id));
+}
+
+/**
+ * Whether a layout has the default layers: Accents, which every layout that takes them has, and one
+ * that brings its own does not. Its layers of the default ids are then the default ones.
+ */
+export function hasDefaultLayers(layout: Pick<Layout, 'layers'>): boolean {
+  return layout.layers.some((l) => l.id === DEFAULT_LAYER_IDS.accents);
+}
 
 /**
  * The keys pressed together on the base layer for Accents: the two outer main thumbs, or the two
@@ -654,14 +674,13 @@ function withLeftOver(
  * that types space, or else the first left thumb that can hold it; Symbols on the innermost thumb
  * of the other hand with nothing on it, or else the innermost that can hold it.
  *
- * A layout that already has a layer of one of those ids, or a board with one space bar for both
+ * A layout that brings layers of its own (`bringsOwnLayers`), or a board with one space bar for both
  * thumbs, is left as it is.
  */
 export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
   const { numbers, symbols } = DEFAULT_LAYER_IDS;
-  const taken = new Set(layout.layers.map((l) => l.id));
   if (geometry.family === 'rowstagger') return layout;
-  if (DEFAULT_LAYER_ID_LIST.some((id) => taken.has(id))) return layout;
+  if (bringsOwnLayers(layout)) return layout;
 
   const [first, ...rest] = layout.layers;
   const at = (id: string): Binding | undefined => first.bindings[id] ?? first.bindings['*'];

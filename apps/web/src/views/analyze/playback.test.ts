@@ -73,13 +73,13 @@ describe('the combos a board shows', () => {
   });
 
   it('shows the combo a Special layout with the default layers presses for Accents', () => {
-    const sturdy = compileLayout(bundledLayout('magic-sturdy') as Layout);
-    expect(typingCombos(sturdy, 0)).toEqual([
+    const nordrassil = compileLayout(bundledLayout('nordrassil') as Layout);
+    expect(typingCombos(nordrassil, 0)).toEqual([
       {
         id: 'accents',
         index: 0,
         // The outer thumbs pressed together.
-        keys: ['L1', 'R1'].map((id) => sturdy.keyIndex.get(id)),
+        keys: ['L1', 'R1'].map((id) => nordrassil.keyIndex.get(id)),
         label: 'Acce',
         active: false,
       },
@@ -94,10 +94,10 @@ describe('the combos a board shows', () => {
 
 describe("a pill's combo in the layout", () => {
   it('is found by its id and keys when typing combos are left out of the analysis', () => {
-    // A combo that types before Magic Sturdy's Accents combo, which only reaches a layer and stays.
-    const sturdy = bundledLayout('magic-sturdy') as Layout;
+    // A combo that types before Nordrassil's Accents combo, which only reaches a layer and stays.
+    const nordrassil = bundledLayout('nordrassil') as Layout;
     const layout: Layout = {
-      ...sturdy,
+      ...nordrassil,
       combos: [
         {
           id: 'q',
@@ -106,7 +106,7 @@ describe("a pill's combo in the layout", () => {
           layers: ['base'],
           role: 'typing',
         },
-        ...(sturdy.combos ?? []),
+        ...(nordrassil.combos ?? []),
       ],
     };
     const full = compileLayout(layout);
