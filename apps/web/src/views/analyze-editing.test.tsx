@@ -980,6 +980,50 @@ describe('Edit', () => {
     );
   }, 120_000);
 
+  it('brings a layer on by itself while others are on, from the Layers panel', async () => {
+    const user = userEvent.setup();
+    await openEdit();
+    const section = () => within(screen.getByRole('region', { name: 'Conditional layers' }));
+    const add = () => section().getByRole('button', { name: '+ condition' });
+    await user.click(add());
+    // Every layer is reached already, so the latest comes on: Accents, while Numbers is on.
+    const brings = () => section().getByRole('combobox', { name: 'Layer condition 1 brings on' });
+    expect(brings()).toHaveValue('accents');
+    const waits = (name: string) =>
+      within(section().getByRole('group', { name: `Layers ${name} waits for` }));
+    // Neither the base layer, always on, nor Accents itself is one to wait for.
+    expect(
+      waits('Accents')
+        .getAllByRole('button')
+        .map((b) => [b.textContent, b.getAttribute('aria-pressed')]),
+    ).toEqual([
+      ['Numbers', 'true'],
+      ['Symbols', 'false'],
+    ]);
+    // What reached Accents no longer does: the condition alone brings it on.
+    expect(section().getByText(/Accents comes on only by this condition/)).toBeInTheDocument();
+    await user.click(waits('Accents').getByRole('button', { name: /Symbols/ }));
+    const symbols = waits('Accents').getByRole('button', { name: /Symbols/ });
+    expect(symbols).toHaveAttribute('aria-pressed', 'true');
+    expect(symbols).toHaveFocus();
+    // Every layer now comes on by the condition or is waited for: none is left to add.
+    expect(add()).toBeDisabled();
+    expect(section().getByText(/Every layer besides the base one/)).toBeInTheDocument();
+    // A layer waits for others, never for itself.
+    await user.selectOptions(brings(), 'sym');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Symbols cannot wait for itself');
+    await user.click(waits('Accents').getByRole('button', { name: /Symbols/ }));
+    await user.selectOptions(brings(), 'sym');
+    expect(brings()).toHaveValue('sym');
+    expect(brings()).toHaveFocus();
+    // Accents is later in the list, so its keys cover Symbols while both are on.
+    await user.click(waits('Symbols').getByRole('button', { name: /Accents/ }));
+    expect(section().getByText(/Symbols is above Accents in the list/)).toBeInTheDocument();
+    await user.click(section().getByRole('button', { name: 'Remove the condition for Symbols' }));
+    expect(section().queryByRole('combobox', { name: 'Layer condition 1 brings on' })).toBeNull();
+    expect(add()).toBeEnabled();
+  }, 60_000);
+
   it("shows Magic Romak's special features and lets one be turned off", async () => {
     const user = userEvent.setup();
     renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000', {
@@ -1060,10 +1104,10 @@ describe('Edit', () => {
     await user.type(input, '&mo base');
 
     // The preview is drawn from the same legend the cap will draw.
-    expect(screen.getByRole('group', { name: 'Edit LHC' }).textContent).toContain('Base (hold)');
+    expect(screen.getByRole('group', { name: 'Edit LHC' }).textContent).toContain('· / Base');
 
     await user.keyboard('{Enter}');
-    expect(await screen.findByRole('button', { name: 'Key LHC: Base (hold)' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Key LHC: hold Base' })).toBeInTheDocument();
   });
 
   it('says what is wrong instead of applying it', async () => {
@@ -1668,7 +1712,9 @@ describe('Edit', () => {
 
     await user.click(key('Key LHM: d, hold ⌥'));
     await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Layer' }));
-    expect(await screen.findByRole('button', { name: 'Key LHM: Numb (hold)' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Key LHM: hold Numb' })).toBeInTheDocument();
+    // Said by its hold, since it taps nothing.
+    expect(screen.getByText('LHM set to hold Numb')).toBeInTheDocument();
 
     await user.click(within(await inspector('LHM')).getByRole('radio', { name: 'One-shot' }));
     expect(await screen.findByRole('button', { name: 'Key LHM: Numb (1×)' })).toBeInTheDocument();
@@ -2003,7 +2049,7 @@ describe('Edit', () => {
     expect(screen.queryByText('unsaved')).toBeNull();
 
     await user.click(within(editor).getByRole('radio', { name: 'Momentary' }));
-    expect(await screen.findByRole('button', { name: 'Key L1: A2 (hold)' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Key L1: hold A2' })).toBeInTheDocument();
   });
 
   it('reaches the symbols from the Alpha 2 thumb, as the author’s keymap does', async () => {
@@ -2097,7 +2143,7 @@ describe('Edit', () => {
     // Ç extension's L1 re-arms Alpha 2 for one key; made a hold, it is held to get there too.
     await user.click(await screen.findByRole('button', { name: /^Key L1:/ }));
     await user.click(within(await inspector('L1')).getByRole('radio', { name: 'Momentary' }));
-    await screen.findByRole('button', { name: 'Key L1: A2 (hold)' });
+    await screen.findByRole('button', { name: 'Key L1: hold A2' });
     await showLayer(user, 'Alpha 2');
     expect(
       await screen.findByRole('button', { name: /^Key L1: .*, held or tapped to reach Alpha 2$/ }),

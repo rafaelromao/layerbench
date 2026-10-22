@@ -205,8 +205,15 @@ function applyDefaults(b: Binding, defaults: ResolvedBehaviorDefaults): Binding 
   return walk(b);
 }
 
-/** Collect every layer id referenced by a binding (for validation). */
-export function referencedLayers(b: Binding, out: Set<string> = new Set()): Set<string> {
+/**
+ * Collect every layer id referenced by a binding (for validation). The layers a layer morph only
+ * tests are among them, unless `tested` is false: the morph reads them, it does not bring them on.
+ */
+export function referencedLayers(
+  b: Binding,
+  out: Set<string> = new Set(),
+  tested = true,
+): Set<string> {
   switch (b.kind) {
     case 'mo':
     case 'sl':
@@ -217,31 +224,31 @@ export function referencedLayers(b: Binding, out: Set<string> = new Set()): Set<
       break;
     case 'lt':
       out.add(b.layer);
-      referencedLayers(b.tap, out);
+      referencedLayers(b.tap, out, tested);
       break;
     case 'hold_tap':
-      referencedLayers(b.tap, out);
-      referencedLayers(b.hold, out);
+      referencedLayers(b.tap, out, tested);
+      referencedLayers(b.hold, out, tested);
       break;
     case 'mod_morph':
-      referencedLayers(b.default, out);
-      referencedLayers(b.morphed, out);
+      referencedLayers(b.default, out, tested);
+      referencedLayers(b.morphed, out, tested);
       break;
     case 'layer_morph':
-      for (const l of b.layers) out.add(l);
-      referencedLayers(b.active, out);
-      referencedLayers(b.inactive, out);
+      if (tested) for (const l of b.layers) out.add(l);
+      referencedLayers(b.active, out, tested);
+      referencedLayers(b.inactive, out, tested);
       break;
     case 'tap_dance':
-      for (const x of b.bindings) referencedLayers(x, out);
+      for (const x of b.bindings) referencedLayers(x, out, tested);
       break;
     case 'macro':
-      for (const x of b.steps ?? []) referencedLayers(x, out);
-      for (const x of b.then ?? []) referencedLayers(x, out);
+      for (const x of b.steps ?? []) referencedLayers(x, out, tested);
+      for (const x of b.then ?? []) referencedLayers(x, out, tested);
       break;
     case 'adaptive':
-      if (b.default) referencedLayers(b.default, out);
-      for (const t of b.triggers ?? []) referencedLayers(t.binding, out);
+      if (b.default) referencedLayers(b.default, out, tested);
+      for (const t of b.triggers ?? []) referencedLayers(t.binding, out, tested);
       break;
     default:
       break;

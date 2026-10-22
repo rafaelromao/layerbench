@@ -41,30 +41,35 @@ export function LayerChips({
   compiled,
   label,
   value,
+  omit = [],
   onChange,
 }: {
   compiled: CompiledLayout;
   label: string;
   value: readonly string[];
+  /** Layers not offered. */
+  omit?: readonly string[];
   onChange: (layerId: string) => void;
 }) {
   return (
     <fieldset className="flex flex-wrap gap-1" aria-label={label}>
-      {compiled.layers.map((l) => {
-        const on = value.includes(l.id);
-        return (
-          <button
-            key={l.id}
-            type="button"
-            aria-pressed={on}
-            className={`btn btn-xs ${on ? 'btn-primary' : 'btn-ghost border border-base-300'}`}
-            onClick={() => onChange(l.id)}
-          >
-            <LayerDot idx={l.idx} color={l.color} />
-            {l.name}
-          </button>
-        );
-      })}
+      {compiled.layers
+        .filter((l) => !omit.includes(l.id))
+        .map((l) => {
+          const on = value.includes(l.id);
+          return (
+            <button
+              key={l.id}
+              type="button"
+              aria-pressed={on}
+              className={`btn btn-xs ${on ? 'btn-primary' : 'btn-ghost border border-base-300'}`}
+              onClick={() => onChange(l.id)}
+            >
+              <LayerDot idx={l.idx} color={l.color} />
+              {l.name}
+            </button>
+          );
+        })}
     </fieldset>
   );
 }
