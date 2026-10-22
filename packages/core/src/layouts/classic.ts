@@ -226,7 +226,7 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     name: 'Engram',
     author: 'Arno Klein',
     rows: "b y o u ' l d w v z\nc i e a , h t s n q\ng x j k / ; r m f p",
-    link: 'https://engram.dev/',
+    link: 'https://github.com/binarybottle/engram-2021',
   },
   {
     id: 'sunlight',
