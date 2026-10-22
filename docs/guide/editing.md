@@ -153,8 +153,6 @@ The **Layers** panel lists them in order, and does everything else with them:
   layer has a name of its own (`alpha1`, `num`). Changing it changes every key, combo and setting
   that names the layer, so nothing is left pointing at the old one; an id another layer has is
   refused.
-- **Unlisted keys** says what the keys the layer has nothing on do: **others show through**, the
-  layer below's key, or **others do nothing**, as a keymap's layer that lists only what it types.
 - **Reorder** with the arrows, or by dragging its row. The base layer stays first.
 - **Duplicate** (⧉) copies a layer, with all its keys, right after it.
 - **Colour**, under the layer's name, picks the colour its name and the keys that reach it are
@@ -300,25 +298,25 @@ and Repeat a key of the base layer that a symbol left, as on Hands Down Neu. The
 go, and their base layers keep no symbol but `'` `,` `.` `;`: the rest are on Symbols or Extras.
 
 The Special layouts with the default layers keep every key they have. Like every other layout with
-them, they hold Numbers on the left inner thumb and Symbols on the right inner one, each still typing what it typed, so Extras is both
-inner thumbs on every layout that has it. Bird and Nordrassil type space on L1, beside the inner
-thumb, which holds Numbers. An inner thumb that is a tap-hold already cannot hold another layer; the
-key that types space then holds Numbers, and the innermost thumb of the other hand with nothing on
-it Symbols. Accents is the combo on two thumbs, as on a new layout.
+them, they hold Numbers on the left inner thumb and Symbols on the right inner one, each still
+typing what it typed, so Extras is both inner thumbs on every layout that has it. Bird and
+Nordrassil type space on L1, beside the inner thumb, which holds Numbers. An inner thumb that is a
+tap-hold already cannot hold another layer; the key that types space then holds Numbers, and the
+innermost thumb of the other hand with nothing on it Symbols. Accents is the combo on two thumbs,
+as on a new layout.
 
 Every layout that comes with the app has home row mods too: held, the home row's finger keys give
 Gui, Ctrl, Alt and Shift from the left pinky in, and Shift, Alt, Ctrl and Gui from the right index
-out. Magic Romak holds its author's keymap's instead: Ctrl, Alt and Shift from the ring finger in, a
-layer of shortcuts on each pinky, and on the bottom row Shift with Gui under the left ring and
-middle fingers and Gui under the index fingers. So do the layouts whose authors' keymaps hold their
-layers on the home row: Magic Sturdy, the three Hands Down with their own layers, and Ben Vallack
-Piano, its modifiers on the top row. Both hands hold the left modifiers, as both Shift
-thumbs do. Tapped, each key types what it typed, a letter or anything else: Uno's space holds Alt.
-They are on the base layer only. In the Shift case mode, a Standard or Thumb Alpha layout types a
-capital holding the right Shift thumb, but one on Accents or on a right thumb holding the left, as a
-thumb holding Shift presses nothing else. A layout with no Shift key of its own types a capital
-holding a Shift thumb if it has one that is free, and otherwise the home row Shift of the other
-hand, where the capital does not press that key.
+out. Magic Romak holds its author's keymap's instead: Ctrl, Alt and Shift from the ring finger in,
+and on the bottom row Shift with Gui under the left ring and middle fingers and Gui under the index
+fingers. So do the layouts whose authors' keymaps hold their layers on the home row: Magic Sturdy,
+the three Hands Down with their own layers, and Ben Vallack Piano, its modifiers on the top row.
+Both hands hold the left modifiers, as both Shift thumbs do. Tapped, each key types what it typed, a
+letter or anything else: Uno's space holds Alt. They are on the base layer only. In the Shift case
+mode, a Standard or Thumb Alpha layout types a capital holding the right Shift thumb, but one on
+Accents or on a right thumb holding the left, as a thumb holding Shift presses nothing else. A
+layout with no Shift key of its own types a capital holding a Shift thumb if it has one that is
+free, and otherwise the home row Shift of the other hand, where the capital does not press that key.
 
 #### Layouts with their authors' layers
 

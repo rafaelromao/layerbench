@@ -969,18 +969,18 @@ describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, unless a l
   });
 
   // A definition may give its own, as its author's keymap has them; a document carries its own in
-  // its JSON, as Magic Romak's would once a change made it one: every home key still holds one, a
-  // modifier or a layer imported, so none goes without.
+  // its JSON, as Magic Romak's would once a change made it one: it holds a modifier on a key off the
+  // home row, as Magic Romak's bottom row holds Gui. Any other is held to the standard ones, so one
+  // that loses a home row mod fails.
   const standard = (l: Layout) =>
     KEYS.every((k, i) => heldMod(l.layers[0].bindings[k]) === MODS[i]);
-  const holdsEach = (l: Layout) =>
-    KEYS.every((k) => {
-      const b = l.layers[0].bindings[k];
-      return b?.kind === 'hold_tap' && (b.hold.kind === 'mod' || b.hold.kind === 'raw');
-    });
+  const holdsOffHome = (l: Layout) =>
+    Object.entries(l.layers[0].bindings).some(
+      ([k, b]) => !KEYS.includes(k) && heldMod(b) !== undefined,
+    );
   const own = new Set([
     ...[...CLASSIC_DEFS, ...SMALL_DEFS].filter((d) => d.homeRowMods !== undefined).map((d) => d.id),
-    ...DOCUMENT_LAYOUTS.filter((l) => !standard(l) && holdsEach(l)).map((l) => l.id),
+    ...DOCUMENT_LAYOUTS.filter((l) => !standard(l) && holdsOffHome(l)).map((l) => l.id),
   ]);
 
   it.each(BUNDLED_LAYOUTS.filter((l) => !own.has(l.id ?? '')).map((l) => [l.id, l] as const))(
@@ -1004,7 +1004,6 @@ describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, unless a l
   it("give way to a layout's own: Magic Romak holds its keymap's home block mods", () => {
     const base = magicRomak.layers[0].bindings;
     const hold = (k: string) => (base[k]?.kind === 'hold_tap' ? base[k].hold : undefined);
-    const shorts: Binding = { kind: 'raw', label: 'SHORTS', source: '&mo SHORTS' };
     const gui: Binding = { kind: 'mod', mod: 'LGUI' };
     expect(
       Object.fromEntries(
@@ -1013,7 +1012,8 @@ describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, unless a l
         ),
       ),
     ).toEqual({
-      LHP: shorts,
+      // The pinkies hold a layer of shortcuts, which types nothing: left out.
+      LHP: undefined,
       LHR: { kind: 'mod', mod: 'LCTRL' },
       LHM: { kind: 'mod', mod: 'LALT' },
       LHI: { kind: 'mod', mod: 'LSHIFT' },
@@ -1023,12 +1023,12 @@ describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, unless a l
       RHI: { kind: 'mod', mod: 'LSHIFT' },
       RHM: { kind: 'mod', mod: 'LALT' },
       RHR: { kind: 'mod', mod: 'LCTRL' },
-      RHP: shorts,
+      RHP: undefined,
       RBI: gui,
     });
     // Each still types what it typed; the magic key is still the magic key.
     expect(base.RBI?.kind === 'hold_tap' && base.RBI.tap.kind).toBe('adaptive');
-    expect(base.LHP?.kind === 'hold_tap' && base.LHP.tap).toEqual(kp('d'));
+    expect(base.LHP).toEqual(kp('d'));
     // The keymap's , and . hold to move the cursor, which is editing, and are left as they were.
     expect(base.RBM).toEqual(kp(','));
     expect(base.RBR).toEqual(kp('.'));
@@ -1244,4 +1244,61 @@ describe('Extras starts on the prime keys', () => {
       expect(cheaper).toEqual([]);
     });
   }
+});
+
+/**
+ * A binding and every binding inside it, however deep: what it holds, taps, chooses among, or
+ * steps through. Its parts, in the glossary's sense, and itself.
+ */
+function* bindingsIn(b: Binding | undefined): Generator<Binding> {
+  if (!b) return;
+  yield b;
+  switch (b.kind) {
+    case 'hold_tap':
+      yield* bindingsIn(b.tap);
+      yield* bindingsIn(b.hold);
+      break;
+    case 'lt':
+      yield* bindingsIn(b.tap);
+      break;
+    case 'mod_morph':
+      yield* bindingsIn(b.default);
+      yield* bindingsIn(b.morphed);
+      break;
+    case 'layer_morph':
+      yield* bindingsIn(b.active);
+      yield* bindingsIn(b.inactive);
+      break;
+    case 'tap_dance':
+      for (const x of b.bindings) yield* bindingsIn(x);
+      break;
+    case 'macro':
+      for (const x of [...(b.steps ?? []), ...(b.then ?? [])]) yield* bindingsIn(x);
+      break;
+    case 'adaptive':
+      yield* bindingsIn(b.default);
+      for (const t of b.triggers ?? []) yield* bindingsIn(t.binding);
+      break;
+  }
+}
+
+describe('layers that type nothing', () => {
+  // A layer of functions, media or macros types nothing in a text: no layout reaches one, and no
+  // key holds an imported key.
+  it.each(BUNDLED_LAYOUTS.map((l) => [l.id, l] as const))(
+    '%s reaches none, and no key of it holds an imported key',
+    (_id, layout) => {
+      const bindings = [
+        ...layout.layers.flatMap((l) => Object.values(l.bindings)),
+        ...(layout.combos ?? []).map((c) => c.binding),
+        ...Object.values(layout.behaviors ?? {}),
+      ];
+      for (const b of bindings) {
+        for (const p of bindingsIn(b)) {
+          if (p.kind === 'hold_tap') expect(p.hold.kind).not.toBe('raw');
+          if (p.kind === 'raw') expect(p.source ?? '').not.toMatch(/^&(mo|lt|sl|to|tog)\b/);
+        }
+      }
+    },
+  );
 });
