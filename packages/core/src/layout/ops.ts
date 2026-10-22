@@ -116,11 +116,11 @@ export function duplicateLayer(
 }
 
 /**
- * Everything that still takes a typist to a layer: keys, combos and behaviours whose binding
- * reaches it — an adaptive key's branch included, since it is part of its key's binding. A layer
- * cannot go while any of these would be left pointing at nothing, and which of them should change
- * instead is the author's call, not something to guess. A layer morph that only tests the layer is
- * among them, unless `tested` is false, for what brings the layer on.
+ * Everything that still takes a typist to a layer: keys and combos whose binding reaches it — an
+ * adaptive key's branch included, since it is part of its key's binding. A layer cannot go while
+ * any of these would be left pointing at nothing, and which of them should change instead is the
+ * author's call, not something to guess. A layer morph that only tests the layer is among them,
+ * unless `tested` is false, for what brings the layer on.
  */
 export function layerReachedFrom(
   layout: Layout,
@@ -138,9 +138,6 @@ export function layerReachedFrom(
   }
   for (const c of layout.combos ?? []) {
     if (reaches(c.binding)) out.push(`combo ${c.keys.join('+')}`);
-  }
-  for (const [name, b] of Object.entries(layout.behaviors ?? {})) {
-    if (reaches(b)) out.push(`behaviour ${name}`);
   }
   return out;
 }
@@ -237,8 +234,8 @@ export function relayered(b: Binding, from: string, to: string): Binding {
 
 /**
  * The layout with one layer's id changed, and everything that names it following: its keys' and
- * combos' bindings and layers, the named behaviours, the conditions of conditional layers, the
- * declared ways in, the layers features are on, and the typing paths that name its keys.
+ * combos' bindings and layers, the conditions of conditional layers, the declared ways in, the
+ * layers features are on, and the typing paths that name its keys.
  */
 export function changeLayerId(layout: Layout, from: string, to: string): Layout {
   const layer = (id: string) => (id === from ? to : id);
@@ -260,7 +257,6 @@ export function changeLayerId(layout: Layout, from: string, to: string): Layout 
       ...(c.layers && { layers: c.layers.map(layer) }),
     }));
   }
-  if (layout.behaviors) next.behaviors = mapValues(layout.behaviors, r);
   if (layout.conditionalLayers) {
     next.conditionalLayers = layout.conditionalLayers.map((c) => ({
       if: c.if.map(layer),

@@ -3,8 +3,8 @@ import { structureHash } from '../analysis/hash.js';
 import { compileLayout } from './compile.js';
 import { toCanonicalJson } from './json.js';
 import { duplicateLayer } from './ops.js';
-import { isLayoutLink, safeParseLayout } from './schema.js';
-import type { AdaptiveTrigger, Layout } from './types.js';
+import { isLayoutLink, parseLayout, safeParseLayout } from './schema.js';
+import type { AdaptiveTrigger, Binding, Layout } from './types.js';
 
 function withBranches(triggers: AdaptiveTrigger[]): Layout {
   return {
@@ -195,5 +195,192 @@ describe("a layout's link", () => {
       expect(isLayoutLink(link), link).toBe(false);
     }
     expect(safeParseLayout(linked('javascript:alert(1)')).ok).toBe(false);
+  });
+});
+
+describe('a document saved while layouts named bindings of their own', () => {
+  const kp = (symbol: string) => ({ kind: 'kp', symbol });
+  const hv = {
+    kind: 'adaptive',
+    default: kp('h'),
+    triggers: [{ afterAny: ['a'], binding: kp('v') }],
+  };
+  const altRepeat = {
+    kind: 'adaptive',
+    default: { kind: 'key_repeat' },
+    triggers: [{ afterAny: ['e'], binding: { kind: 'ref', ref: 'hv' } }],
+  };
+  const saved = (bindings: Record<string, unknown>, behaviors: Record<string, unknown>) => ({
+    format: 'layerbench/layout@1',
+    name: 'Saved',
+    geometry: { preset: '3x5+2' },
+    keys: { space: 'L0' },
+    layers: [{ id: 'base', bindings }],
+    behaviors,
+    combos: [{ id: 'hv', keys: ['RHI', 'RHM'], binding: { kind: 'ref', ref: 'hv' } }],
+  });
+  const old = saved(
+    {
+      LHI: { kind: 'ref', ref: 'hv' },
+      LHM: {
+        kind: 'hold_tap',
+        tap: { kind: 'ref', ref: 'rep' },
+        hold: { kind: 'mod', mod: 'LCTRL' },
+      },
+      LHR: { kind: 'adaptive', ref: 'hv', default: kp('x') },
+      LHP: { kind: 'macro', ref: 'qu', tag: 'mine' },
+    },
+    { hv, rep: altRepeat, qu: { kind: 'macro', symbols: 'qu', tag: 'qu' } },
+  );
+
+  it('opens with each name written out where it was used, and no names left', () => {
+    const layout = parseLayout(old);
+    expect(layout.layers[0].bindings).toEqual({
+      LHI: hv,
+      LHM: {
+        kind: 'hold_tap',
+        tap: { ...altRepeat, triggers: [{ afterAny: ['e'], binding: hv }] },
+        hold: { kind: 'mod', mod: 'LCTRL' },
+      },
+      // A key that built on a name is what it named, with its own fields over it.
+      LHR: { ...hv, default: kp('x') },
+      LHP: { kind: 'macro', symbols: 'qu', tag: 'mine' },
+    });
+    expect(layout.combos?.[0].binding).toEqual(hv);
+    expect('behaviors' in layout).toBe(false);
+    expect('behaviors' in toCanonicalJson(layout)).toBe(false);
+    expect(() => compileLayout(layout)).not.toThrow();
+    expect(safeParseLayout(old)).toEqual({ ok: true, layout });
+  });
+
+  it("reads a key that builds on a name as the compiler did, the key's own fields outside it", () => {
+    const parsed = safeParseLayout(
+      saved(
+        {
+          // Its own steps name what it builds on, and are read as any other use of the name.
+          LHI: { kind: 'macro', ref: 'x', steps: [{ kind: 'ref', ref: 'x' }] },
+          // What `b` builds on in turn was never read: `b` is an empty macro with this key's tag.
+          LHM: { kind: 'macro', ref: 'b', tag: 'k' },
+        },
+        {
+          x: { kind: 'macro', symbols: 'x' },
+          b: { kind: 'macro', ref: 'c' },
+          c: { kind: 'macro', symbols: 'c' },
+          hv,
+        },
+      ),
+    );
+    expect(parsed.ok && parsed.layout.layers[0].bindings).toEqual({
+      LHI: { kind: 'macro', symbols: 'x', steps: [{ kind: 'macro', symbols: 'x' }] },
+      LHM: { kind: 'macro', tag: 'k' },
+    });
+  });
+
+  it('puts a feature on the tap of a named tap-hold on its key, as on any other key', () => {
+    const spaceHold = { kind: 'hold_tap', tap: kp(' '), hold: { kind: 'mod', mod: 'LCTRL' } };
+    const layout = parseLayout({
+      ...saved({ L0: { kind: 'ref', ref: 'spaceHold' } }, { spaceHold }),
+      features: { sentenceCase: {} },
+    });
+    expect(layout.layers[0].bindings.L0).toEqual(spaceHold);
+    const space = compileLayout(layout).expanded.layers[0].bindings.L0;
+    expect(space).toMatchObject({ kind: 'hold_tap', tap: { kind: 'adaptive' } });
+  });
+
+  it('keeps a document that names nothing whole, however deep its bindings nest', () => {
+    let deep: unknown = kp('a');
+    for (let i = 0; i < 20; i++) deep = { kind: 'hold_tap', tap: deep, hold: kp('b') };
+    const { behaviors: _none, combos: _named, ...nameless } = saved({ LHI: deep }, {});
+    const layout = parseLayout(nameless);
+    expect(layout.layers[0].bindings.LHI).toEqual(deep);
+  });
+
+  it('reads a name used several times round a loop no deeper than the compiler did', () => {
+    const again = { kind: 'ref', ref: 'again' };
+    const layout = parseLayout(
+      saved({ LHI: again }, { again: { kind: 'tap_dance', bindings: [again, again, again] } }),
+    );
+    const dances = (b: Binding): number => (b.kind === 'tap_dance' ? 1 + dances(b.bindings[0]) : 0);
+    expect(dances(layout.layers[0].bindings.LHI)).toBe(8);
+  });
+
+  it('writes out only so much, however a loop of names repeats or however heavy a name is', () => {
+    const again = { kind: 'ref', ref: 'again' };
+    const keys = [
+      'LTP',
+      'LTR',
+      'LTM',
+      'LTI',
+      'LHP',
+      'LHR',
+      'LHM',
+      'LHI',
+      'RTI',
+      'RTM',
+      'RTR',
+      'RTP',
+    ];
+    const everywhere = {
+      ...saved(Object.fromEntries(keys.map((k) => [k, again])), {
+        again: { kind: 'tap_dance', bindings: [again, again, again, again, again] },
+      }),
+      combos: keys.slice(1).map((k) => ({ keys: [keys[0], k], binding: again })),
+    };
+    // A macro that builds on itself, twice in its steps.
+    const self = { kind: 'macro', ref: 'self' };
+    const selfBuilt = saved({ LHI: self }, { self: { kind: 'macro', steps: [self, self] } });
+    // A loop whose every turn holds a long list, many fields the schema does not read, a long text.
+    const heavy = { kind: 'ref', ref: 'heavy' };
+    const unread = Object.fromEntries(Array.from({ length: 5_000 }, (_, i) => [`x${i}`, i]));
+    const heavyLoop = saved(
+      { LHI: heavy },
+      {
+        heavy: {
+          kind: 'adaptive',
+          default: { kind: 'macro', symbols: 'é'.repeat(50_000) },
+          triggers: [
+            { afterAny: Array(100_000).fill('a'), binding: heavy },
+            { afterAny: ['b'], binding: heavy, ...unread },
+          ],
+        },
+      },
+    );
+    // One light enough to be written out a few turns before the budget is spent.
+    const text = 'è'.repeat(5_000);
+    const lighter = saved(
+      { LHI: heavy },
+      {
+        heavy: {
+          kind: 'adaptive',
+          default: { kind: 'macro', symbols: text },
+          triggers: [{ afterAny: Array(1_000).fill('a'), binding: heavy }],
+        },
+      },
+    );
+    for (const doc of [everywhere, selfBuilt, heavyLoop, lighter]) {
+      expect(JSON.stringify(toCanonicalJson(parseLayout(doc))).length).toBeLessThan(500_000);
+    }
+    expect(JSON.stringify(toCanonicalJson(parseLayout(lighter)))).toContain(text);
+  });
+
+  it('keeps a key whose name led nowhere as Nothing, and one built on it as its own fields', () => {
+    const parsed = safeParseLayout(
+      saved(
+        {
+          LHI: { kind: 'ref', ref: 'gone' },
+          LHM: { kind: 'ref', ref: 'loop' },
+          LHR: { kind: 'macro', ref: 'hv', symbols: 'x' },
+          // A name every object has, and no document: it typed nothing, and is Nothing now.
+          LHP: { kind: 'ref', ref: 'constructor' },
+        },
+        { hv, loop: { kind: 'ref', ref: 'around' }, around: { kind: 'ref', ref: 'loop' } },
+      ),
+    );
+    expect(parsed.ok && parsed.layout.layers[0].bindings).toEqual({
+      LHI: { kind: 'none' },
+      LHM: { kind: 'none' },
+      LHR: { kind: 'macro', symbols: 'x' },
+      LHP: { kind: 'none' },
+    });
   });
 });

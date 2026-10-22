@@ -219,10 +219,6 @@ export function tapLabel(c: CompiledLayout, b: Binding): string {
       return BADGE.adaptive;
     case 'tap_dance':
       return BADGE.tapDance;
-    case 'ref':
-      // Compiling puts the behaviour itself in its place, so only a binding not compiled yet, as the
-      // editor's text line previews one, still names it.
-      return p.ref;
     default:
       return '';
   }
@@ -383,9 +379,9 @@ export function describe(c: CompiledLayout, b: Binding): string {
       return parts.length > 0 ? `${parts.join(', then ')}${then}` : 'an empty macro';
     }
     case 'adaptive': {
-      // An adaptive key can fall back to another — a document's behaviour can — and saying
-      // "adaptive" twice explains nothing. The branches are read
-      // outermost first, which is the order they are tried in, down to the innermost default.
+      // An adaptive key can fall back to another, as sentence case over an adaptive key does, and
+      // saying "adaptive" twice explains nothing. The branches are read outermost first, which is
+      // the order they are tried in, down to the innermost default.
       const branches: string[] = [];
       let at: Binding | undefined = b;
       while (at?.kind === 'adaptive') {
@@ -401,8 +397,6 @@ export function describe(c: CompiledLayout, b: Binding): string {
       return `types ${b.symbol}${b.shiftedSymbol ? `, ${b.shiftedSymbol} with shift` : ''}`;
     case 'raw':
       return `${b.label}: imported, not simulated`;
-    case 'ref':
-      return `behaviour ${b.ref}`;
     default:
       return '';
   }

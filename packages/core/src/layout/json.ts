@@ -94,7 +94,6 @@ export function bindingToJson(b: Binding): Record<string, unknown> {
         steps: b.steps?.map(bindingToJson),
         symbols: b.symbols,
         then: b.then?.map(bindingToJson),
-        ref: b.ref,
         tag: b.tag,
       };
       break;
@@ -104,7 +103,6 @@ export function bindingToJson(b: Binding): Record<string, unknown> {
         triggers: b.triggers?.map(triggerToJson),
         strictModifiers: b.strictModifiers,
         deadKeys: b.deadKeys,
-        ref: b.ref,
       };
       break;
     case 'hold_tap':
@@ -120,9 +118,6 @@ export function bindingToJson(b: Binding): Record<string, unknown> {
       break;
     case 'unicode':
       extra = { symbol: b.symbol, shiftedSymbol: b.shiftedSymbol };
-      break;
-    case 'ref':
-      extra = { ref: b.ref };
       break;
     case 'raw':
       extra = { label: b.label, source: b.source };
@@ -218,10 +213,6 @@ export function toCanonicalJson(layout: Layout): LayoutJson {
   for (const [layer, defs] of Object.entries(layout.activators ?? {})) {
     activators[layer] = defs.map(activatorToJson);
   }
-  const behaviors: Record<string, unknown> = {};
-  for (const [name, b] of Object.entries(layout.behaviors ?? {})) {
-    behaviors[name] = bindingToJson(b);
-  }
   const behaviorDefaults: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(layout.behaviorDefaults ?? {})) {
     if (v) behaviorDefaults[k] = compact(v as Record<string, unknown>);
@@ -247,7 +238,6 @@ export function toCanonicalJson(layout: Layout): LayoutJson {
     behaviorDefaults,
     layers: layout.layers.map(layerToJson),
     features: featuresToJson(layout.features ?? {}),
-    behaviors,
     combos: (layout.combos ?? []).map(comboToJson),
     conditionalLayers: (layout.conditionalLayers ?? []).map((c) => ({ if: c.if, then: c.then })),
     typingPaths,

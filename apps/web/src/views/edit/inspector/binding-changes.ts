@@ -36,20 +36,19 @@ export type MorphBy = 'mod_morph' | 'layer_morph';
 export type MacroForm = 'text' | 'steps';
 
 /** The rows an author can add to a macro's steps, in the order they are offered. */
-export const ROW_KINDS = ['text', 'sl', 'sk', 'ref'] as const;
+export const ROW_KINDS = ['text', 'sl', 'sk'] as const;
 export type RowKind = (typeof ROW_KINDS)[number];
 
 /**
- * One row of a macro's steps: text to type, a layer or a modifier to arm for the next key, a
- * behaviour to run. A step no row can hold whole is a fixed row, kept as it is and only moved or
- * removed, so a macro read into rows and written back does what it did. Rows are reordered and
- * can be alike, so each carries an identity of its own.
+ * One row of a macro's steps: text to type, or a layer or a modifier to arm for the next key. A
+ * step no row can hold whole is a fixed row, kept as it is and only moved or removed, so a macro
+ * read into rows and written back does what it did. Rows are reordered and can be alike, so each
+ * carries an identity of its own.
  */
 export type MacroRow = { id: string } & (
   | { kind: 'text'; text: string }
   | { kind: 'sl'; layer: string }
   | { kind: 'sk'; mod: Mod }
-  | { kind: 'ref'; ref: string }
   | { kind: 'fixed'; step: Binding }
 );
 type Nothing = Record<never, never>;
@@ -171,11 +170,6 @@ interface Shapes {
     binding: Of<'dead_key'>;
     view: { accent: string; shifted: string };
     set: { accent: Change<string>; shifted: Change<string> };
-  };
-  behaviour: {
-    binding: Of<'ref'> | Of<'adaptive'> | Of<'macro'>;
-    view: { runs: string };
-    set: { runs: Change<string> };
   };
   transparent: { binding: Of<'trans'>; view: Nothing; set: Nothing };
   nothing: { binding: Of<'none'> | undefined; view: Nothing; set: Nothing };
@@ -473,10 +467,6 @@ const readers: { [K in KindOfKey]: Reader<K> } = {
       shifted: change(b, (v: string) => withOptional(b, 'shifted', v)),
     },
   }),
-  behaviour: (b) => ({
-    view: { runs: b.ref ?? '' },
-    set: { runs: change(b, (ref: string) => ({ kind: 'ref', ref })) },
-  }),
   transparent: () => NONE,
   nothing: () => NONE,
   imported: (b) => ({ view: { label: b.label, source: b.source ?? '' }, set: {} }),
@@ -660,8 +650,6 @@ function stepsOf(row: MacroRow): Binding[] {
       return [{ kind: 'sl', layer: row.layer }];
     case 'sk':
       return [{ kind: 'sk', mod: row.mod }];
-    case 'ref':
-      return [{ kind: 'macro', ref: row.ref }];
     case 'fixed':
       return [row.step];
   }
@@ -675,9 +663,7 @@ function rowOf(step: Binding): MacroRow {
       ? { id, kind: 'sl', layer: step.layer }
       : step.kind === 'sk'
         ? { id, kind: 'sk', mod: step.mod }
-        : step.kind === 'macro' && step.ref
-          ? { id, kind: 'ref', ref: step.ref }
-          : { id, kind: 'fixed', step };
+        : { id, kind: 'fixed', step };
   const back = stepsOf(row);
   return back.length === 1 && written(back[0]) === written(step)
     ? row
@@ -700,7 +686,7 @@ export function macroRows(macro: Of<'macro'>): MacroRow[] {
   return rows;
 }
 
-/** A new row of a kind, that already does something: a layer or behaviour row never names none. */
+/** A new row of a kind, that already does something: a layer row never names none. */
 export function freshRow(kind: RowKind, ctx: BindingTextContext, id = rowId()): MacroRow {
   switch (kind) {
     case 'text':
@@ -709,8 +695,6 @@ export function freshRow(kind: RowKind, ctx: BindingTextContext, id = rowId()): 
       return { id, kind, layer: likeliestLayer(ctx) };
     case 'sk':
       return { id, kind, mod: 'LSHIFT' };
-    case 'ref':
-      return { id, kind, ref: ctx.behaviors[0] ?? '' };
   }
 }
 
@@ -795,7 +779,7 @@ function modOf(b: Binding | undefined): Mod | undefined {
 function adaptiveOf(b: Binding | undefined): Of<'adaptive'> | undefined {
   switch (b?.kind) {
     case 'adaptive':
-      return b.ref ? undefined : b;
+      return b;
     case 'lt':
     case 'hold_tap':
       return adaptiveOf(b.tap);
@@ -864,8 +848,6 @@ function convert(ctx: BindingTextContext, current: Binding | undefined, to: Kind
       return { kind: 'unicode', symbol: symbol.kind === 'kp' ? (symbol.symbol ?? '') : '' };
     case 'deadkey':
       return { kind: 'dead_key', diacritic: '´' };
-    case 'behaviour':
-      return ctx.behaviors.length > 0 ? { kind: 'ref', ref: ctx.behaviors[0] } : { kind: 'none' };
     case 'transparent':
       return { kind: 'trans' };
     case 'imported':

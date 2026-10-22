@@ -135,7 +135,6 @@ These are among the editor's other tiles, under **More** on a phone:
   **Shifted** gives the key a second accent for when shift is on, as US-International has `¨`
   over `´`; it is drawn at the top of the key. Like a shifted symbol, it is typed only when
   **Shift** is on, since with capitals folded no shift is pressed.
-- **Behaviour** uses one of the layout's own named bindings, from the **Behaviors** panel.
 
 ## Imported keys
 

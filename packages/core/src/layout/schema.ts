@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { JsonObject } from '../storage/ids.js';
 import { LAYER_COLORS, type Layout, MAX_CONDITION_LAYERS } from './types.js';
 
 const ModSchema = z.enum(['LSHIFT', 'RSHIFT', 'LCTRL', 'RCTRL', 'LALT', 'RALT', 'LGUI', 'RGUI']);
@@ -88,7 +89,6 @@ export const BindingSchema: z.ZodType<unknown> = z.lazy(() =>
       steps: z.array(BindingSchema).optional(),
       symbols: z.string().optional(),
       then: z.array(BindingSchema).optional(),
-      ref: z.string().optional(),
       tag: z.string().optional(),
     }),
     z.object({
@@ -97,7 +97,6 @@ export const BindingSchema: z.ZodType<unknown> = z.lazy(() =>
       triggers: z.array(TriggerSchema).optional(),
       strictModifiers: z.boolean().optional(),
       deadKeys: z.array(z.string()).optional(),
-      ref: z.string().optional(),
     }),
     z.object({
       kind: z.literal('hold_tap'),
@@ -116,7 +115,6 @@ export const BindingSchema: z.ZodType<unknown> = z.lazy(() =>
       symbol: z.string().default(''),
       shiftedSymbol: z.string().optional(),
     }),
-    z.object({ kind: z.literal('ref'), ref: z.string() }),
     z.object({ kind: z.literal('raw'), label: z.string(), source: z.string().optional() }),
   ]),
 );
@@ -239,7 +237,6 @@ export const LayoutSchema = z.object({
     )
     .min(1),
   features: FeaturesSchema.optional(),
-  behaviors: z.record(z.string(), BindingSchema).optional(),
   combos: z
     .array(
       z.object({
@@ -299,15 +296,154 @@ export const LayoutSchema = z.object({
     .optional(),
 });
 
+const isObject = (v: unknown): v is JsonObject =>
+  typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/** The fields of a binding that hold one binding, and those that hold a list of them. */
+const ONE_BINDING = ['tap', 'hold', 'default', 'morphed', 'active', 'inactive'];
+const BINDING_LISTS = ['bindings', 'steps', 'then'];
+
+/**
+ * How deep the compiler read a key, counting every name it followed and every binding inside
+ * another, before it gave up. Only what lies below a name is cut there: a document that names
+ * nothing is read whole, however deep it nests.
+ */
+const MAX_NAMED_DEPTH = 16;
+
+/**
+ * How much a document's names may write out below them, all its keys and combos together, weighed
+ * as `weightOf` weighs a binding. A keymap's names weigh a few thousand; only names read round a
+ * loop, or made to be heavy, come near it.
+ */
+const MAX_NAMED_WEIGHT = 200_000;
+
+/**
+ * About what copying a value costs: one, the length of a text, or for a binding held in it what
+ * the least it can be written as weighs, Nothing (`kind`, `none`).
+ */
+const valueWeight = (v: unknown) => (typeof v === 'string' ? 1 + v.length : isObject(v) ? 10 : 1);
+
+/** About what copying a field's value costs: a value, or a list and the values in it. */
+const fieldWeight = (v: unknown) =>
+  Array.isArray(v) ? v.reduce((n: number, x) => n + valueWeight(x), 1) : valueWeight(v);
+
+/**
+ * About what writing a binding out once copies: its fields and the text and list items in them, and
+ * a branch's own fields. A binding it holds counts as Nothing, and is weighed again when it is
+ * written out; anything deeper is nothing the schema reads.
+ */
+function weightOf(b: JsonObject): number {
+  let n = 0;
+  for (const [k, v] of Object.entries(b)) {
+    n += valueWeight(k) + fieldWeight(v);
+    if (k !== 'triggers' || !Array.isArray(v)) continue;
+    for (const t of v) {
+      if (isObject(t))
+        for (const [tk, tv] of Object.entries(t)) n += valueWeight(tk) + fieldWeight(tv);
+    }
+  }
+  return n;
+}
+
+/**
+ * A document saved while layouts could name bindings of their own (`behaviors`), with each name
+ * written out where it was used, as the compiler read it, and the names dropped. A `ref` key is the
+ * binding it names. A macro or adaptive key that names one is that binding with its own fields over
+ * it; a name the named binding itself builds on was left unread, and still is. One thing reads
+ * otherwise: the compiler put sentence case or caps word around a named tap-hold, layer-tap or
+ * morph on their key whole, and now they go on its tap, as on any other key. What the compiler
+ * could not read made the layout fail to compile: a name the document does not have, a macro or
+ * adaptive key built on a binding of another kind, or names read more than 16 bindings deep, as
+ * round a loop. Such a key that is only a name becomes Nothing, one built on a name keeps its own
+ * fields, and what a name holds deeper than 16 bindings is Nothing. So is a binding below a name
+ * that would take what is written out past `MAX_NAMED_WEIGHT`: the compiler read one key at a time,
+ * but a document is read whole, and a name used round a loop, or made heavy, must not hang it. A
+ * document that names nothing reads as it is.
+ */
+function withNamedBindingsInline(input: unknown): unknown {
+  if (!isObject(input)) return input;
+  const { behaviors, ...document } = input;
+  const named = isObject(behaviors) ? behaviors : {};
+  const lookUp = (name: unknown) =>
+    typeof name === 'string' && Object.hasOwn(named, name) ? named[name] : undefined;
+  let left = MAX_NAMED_WEIGHT;
+  const weights = new WeakMap<JsonObject, number>();
+  const weigh = (b: JsonObject) => {
+    const known = weights.get(b);
+    if (known !== undefined) return known;
+    const w = weightOf(b);
+    weights.set(b, w);
+    return w;
+  };
+  /** `depth`: as the compiler counted it on the way to `b`; `belowName`: a name was followed. */
+  const inline = (b: unknown, depth: number, belowName: boolean): unknown => {
+    if (!isObject(b)) return b;
+    if (belowName && depth > MAX_NAMED_DEPTH) return { kind: 'none' };
+    if (b.kind === 'ref') {
+      const target = lookUp(b.ref);
+      return target === undefined ? { kind: 'none' } : inline(target, depth + 1, true);
+    }
+    const building = (b.kind === 'macro' || b.kind === 'adaptive') && 'ref' in b;
+    // An empty name named nothing.
+    const target = building && b.ref ? lookUp(b.ref) : undefined;
+    const builds = isObject(target) && target.kind === b.kind;
+    const inside = belowName || builds;
+    // Below a name, what a binding copies is weighed before any of it is, so neither a loop nor a
+    // heavy name writes out more than the most.
+    if (inside) {
+      const weight = weigh(b) + (builds ? weigh(target) : 0);
+      if (weight > left) return { kind: 'none' };
+      left -= weight;
+    }
+    let own = b;
+    if (building) {
+      const { ref: _ref, ...rest } = b;
+      const { ref: _unread, ...built } = builds ? { ...target, ...rest } : rest;
+      own = built;
+    }
+    const out: JsonObject = { ...own };
+    for (const k of ONE_BINDING) if (isObject(own[k])) out[k] = inline(own[k], depth + 1, inside);
+    for (const k of BINDING_LISTS) {
+      const list = own[k];
+      if (Array.isArray(list)) out[k] = list.map((x) => inline(x, depth + 1, inside));
+    }
+    if (Array.isArray(own.triggers)) {
+      out.triggers = own.triggers.map((t) =>
+        isObject(t) ? { ...t, binding: inline(t.binding, depth + 1, inside) } : t,
+      );
+    }
+    return out;
+  };
+  const { layers, combos } = document;
+  return {
+    ...document,
+    ...(Array.isArray(layers) && {
+      layers: layers.map((l) =>
+        isObject(l) && isObject(l.bindings)
+          ? {
+              ...l,
+              bindings: Object.fromEntries(
+                Object.entries(l.bindings).map(([k, b]) => [k, inline(b, 0, false)]),
+              ),
+            }
+          : l,
+      ),
+    }),
+    ...(Array.isArray(combos) && {
+      combos: combos.map((c) => (isObject(c) ? { ...c, binding: inline(c.binding, 0, false) } : c)),
+    }),
+  };
+}
+
 /** Read a layout document. */
 export function parseLayout(input: unknown): Layout {
-  return LayoutSchema.parse(input) as Layout;
+  return LayoutSchema.parse(withNamedBindingsInline(input)) as Layout;
 }
 
 export function safeParseLayout(
   input: unknown,
 ): { ok: true; layout: Layout } | { ok: false; error: string } {
-  const r = LayoutSchema.safeParse(input);
+  const r = LayoutSchema.safeParse(withNamedBindingsInline(input));
   if (r.success) return { ok: true, layout: r.data as Layout };
   return { ok: false, error: z.prettifyError(r.error) };
 }

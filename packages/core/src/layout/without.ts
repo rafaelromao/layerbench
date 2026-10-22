@@ -1,4 +1,4 @@
-import { inlineBehaviors } from './compile.js';
+import { inlineFeatures } from './features.js';
 import type { Binding, Layout } from './types.js';
 
 /** The special features a layout can be ranked without. */
@@ -123,7 +123,7 @@ export function withoutFeatures(layout: Layout, off: readonly FeatureKind[]): La
     }
   };
 
-  const inlined = inlineBehaviors(layout);
+  const inlined = inlineFeatures(layout);
   return {
     ...inlined,
     layers: inlined.layers.map((l) => ({

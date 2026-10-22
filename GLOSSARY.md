@@ -74,9 +74,9 @@ _Avoid_: unsaved copy, working copy
 
 **Edit**:
 One change an author makes to a layout, taken whole: keys bound, swapped or sent to another layer; a
-layer added, removed or moved; a combo added or changed; the behaviours replaced. It either lands,
-leaving a layout that can still be drawn, or is refused with its reason and leaves the layout as it
-was; one with nothing to change changes nothing. Undo takes back one edit that landed at a time.
+layer added, removed or moved; a combo added or changed. It either lands, leaving a layout that can
+still be drawn, or is refused with its reason and leaves the layout as it was; one with nothing to
+change changes nothing. Undo takes back one edit that landed at a time.
 _Avoid_: action, operation, op, mutation
 
 **Home row mods**:
@@ -156,7 +156,7 @@ _Avoid_: leaderboard, scores list
 
 **Special feature**:
 Something a layout's keys do beyond typing, reaching a layer or holding a modifier: an adaptive key, a
-macro, an alt repeat, a mod morph, or a named behaviour of the layout's own.
+macro, an alt repeat or a mod morph.
 _Avoid_: magic, advanced key, extra feature
 
 **Special layout**:

@@ -137,3 +137,11 @@ export function expandFeatures(layout: Layout): ExpandedLayout {
     errors: w.errors,
   };
 }
+
+/**
+ * The same keymap with its features written out as the bindings they wrap, and none left declared,
+ * so a change to its bindings sees each key as it types.
+ */
+export function inlineFeatures(authored: Layout): Layout {
+  return { ...expandFeatures(authored).layout, features: undefined };
+}

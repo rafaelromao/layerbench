@@ -15,7 +15,7 @@ function trace(layout: Layout, word: string): string[] {
 }
 
 /** A two-key layout, so a feature's effect on one binding is easy to read. */
-function mini(features?: LayoutFeatures, extra: Partial<Layout> = {}): Layout {
+function mini(features?: LayoutFeatures): Layout {
   return {
     format: 'layerbench/layout@1',
     name: 'Mini',
@@ -36,7 +36,6 @@ function mini(features?: LayoutFeatures, extra: Partial<Layout> = {}): Layout {
       },
     ],
     ...(features ? { features } : {}),
-    ...extra,
   };
 }
 
@@ -83,12 +82,6 @@ describe('feature expansion', () => {
     const e = expandFeatures(mini({ sentenceCase: { on: ['nope'] } }));
     expect(e.errors).toEqual(['Feature sentenceCase: unknown layer nope']);
   });
-
-  it('leaves the document behaviours as they are', () => {
-    const behaviors = { adaptiveHV: { kind: 'kp', symbol: 'z' } } as const;
-    const e = expandFeatures(mini({ sentenceCase: {} }, { behaviors }));
-    expect(e.layout.behaviors).toBe(behaviors);
-  });
 });
 
 describe('Magic Romak after the features rewrite', () => {
@@ -124,9 +117,7 @@ describe('Magic Romak after the features rewrite', () => {
 
   it('keeps the authored document separate from the expanded one', () => {
     expect(compiled.layout.features?.sentenceCase).toBeDefined();
-    expect(compiled.layout.behaviors ?? {}).toEqual({});
     // Only the space and shift keys are wrapped; the adaptive keys and the alt repeat are bindings.
-    expect(compiled.expanded.behaviors ?? {}).toEqual({});
     expect(compiled.featureOwned.get('alpha1')).toEqual(
       new Map([
         ['L0', 'sentenceCase'],

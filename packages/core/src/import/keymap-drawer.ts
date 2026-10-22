@@ -1244,8 +1244,6 @@ function legendOf(
       return legendOf(b.inactive, layerName, upper);
     case 'tap_dance':
       return { ...legendOf(b.bindings[0], layerName, false), tr: BADGE.tapDance };
-    case 'ref':
-      return { tap: b.ref };
   }
 }
 

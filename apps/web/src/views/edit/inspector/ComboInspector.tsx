@@ -26,7 +26,7 @@ export function ComboInspector({
   combo: number;
 }) {
   const { compiled, layout } = state;
-  const scope = useEditorScope(compiled, layout, send);
+  const scope = useEditorScope(compiled);
   const c = layout.combos?.[combo];
   if (!c) return null;
   const name = c.keys.join('+');

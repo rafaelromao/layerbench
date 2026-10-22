@@ -587,7 +587,6 @@ describe('Romak types every accent through Accents, one-shot from its right oute
   it('has one alpha layer and the default layers, and no combos', () => {
     expect(romak.layers.map((l) => l.id)).toEqual(['alpha1', 'num', 'sym', 'accents']);
     expect(romak.combos).toBeUndefined();
-    expect(romak.behaviors).toBeUndefined();
   });
 
   it('writes the six languages: ñ ü and œ on Accents, ¿ and ¡ on Symbols', () => {
@@ -1292,7 +1291,6 @@ describe('layers that type nothing', () => {
       const bindings = [
         ...layout.layers.flatMap((l) => Object.values(l.bindings)),
         ...(layout.combos ?? []).map((c) => c.binding),
-        ...Object.values(layout.behaviors ?? {}),
       ];
       for (const b of bindings) {
         for (const p of bindingsIn(b)) {

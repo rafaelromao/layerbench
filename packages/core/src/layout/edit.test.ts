@@ -430,60 +430,18 @@ describe('changing a combo', () => {
     expect(o.layout.combos?.[1]).toEqual(withCombos.combos?.[1]);
   });
 
-  it('refuses Transparent, or a behaviour that is, on a combo added or changed', () => {
-    const named: Layout = { ...withCombos, behaviors: { see: { kind: 'trans' } } };
-    for (const binding of [{ kind: 'trans' }, { kind: 'ref', ref: 'see' }] as Binding[]) {
-      const changed = applyEdit(named, { kind: 'updateCombo', combo: 0, binding });
-      expect(changed).toMatchObject({ status: 'refused', message: /cannot be Transparent/ });
-      const added = applyEdit(named, {
-        kind: 'addCombo',
-        layer: 'base',
-        keys: ['LHP', 'LHR'],
-        binding,
-        role: 'typing',
-      });
-      expect(added).toMatchObject({ status: 'refused', message: /cannot be Transparent/ });
-    }
-  });
-
-  it('follows references as deep as the compiler does to find Transparent', () => {
-    const behaviors: Record<string, Binding> = { b0: { kind: 'trans' } };
-    for (let i = 1; i <= 10; i++) behaviors[`b${i}`] = { kind: 'ref', ref: `b${i - 1}` };
-    const deep: Layout = { ...withCombos, behaviors };
-    const o = applyEdit(deep, {
-      kind: 'updateCombo',
-      combo: 0,
-      binding: { kind: 'ref', ref: 'b10' },
+  it('refuses Transparent on a combo added or changed', () => {
+    const binding: Binding = { kind: 'trans' };
+    const changed = applyEdit(withCombos, { kind: 'updateCombo', combo: 0, binding });
+    expect(changed).toMatchObject({ status: 'refused', message: /cannot be Transparent/ });
+    const added = applyEdit(withCombos, {
+      kind: 'addCombo',
+      layer: 'base',
+      keys: ['LHP', 'LHR'],
+      binding,
+      role: 'typing',
     });
-    expect(o).toMatchObject({ status: 'refused', message: /cannot be Transparent/ });
-  });
-
-  it('refuses a behaviour edit that would make a combo referring to it Transparent', () => {
-    const named: Layout = {
-      ...withCombos,
-      behaviors: { inner: kp('q'), outer: { kind: 'ref', ref: 'inner' } },
-      combos: [
-        {
-          ...(withCombos.combos?.[0] as NonNullable<Layout['combos']>[number]),
-          binding: { kind: 'ref', ref: 'outer' },
-        },
-      ],
-    };
-    const set = applyEdit(named, {
-      kind: 'setBehavior',
-      name: 'inner',
-      binding: { kind: 'trans' },
-    });
-    expect(set).toMatchObject({ status: 'refused', message: /cannot be Transparent/ });
-    const replaced = applyEdit(named, {
-      kind: 'replaceBehaviors',
-      json: JSON.stringify({ inner: { kind: 'trans' }, outer: { kind: 'ref', ref: 'inner' } }),
-    });
-    expect(replaced).toMatchObject({ status: 'refused', message: /cannot be Transparent/ });
-    // A behaviour no combo refers to may be anything.
-    expect(
-      applyEdit(named, { kind: 'setBehavior', name: 'loose', binding: { kind: 'trans' } }).status,
-    ).toBe('landed');
+    expect(added).toMatchObject({ status: 'refused', message: /cannot be Transparent/ });
   });
 
   it('switches the role and sets the timeout', () => {
@@ -883,26 +841,7 @@ describe('changing a combo', () => {
   });
 });
 
-describe('behaviours, typing paths, keys, details and features', () => {
-  it('sets one behaviour by name, or replaces them all from JSON', () => {
-    const one = landed(layout, { kind: 'setBehavior', name: 'hm', binding: kp('x') });
-    expect(one.layout.behaviors).toEqual({ hm: kp('x') });
-    const all = landed(one.layout, {
-      kind: 'replaceBehaviors',
-      json: '{"rep": {"kind": "key_repeat"}}',
-    });
-    expect(all.layout.behaviors).toEqual({ rep: { kind: 'key_repeat' } });
-  });
-
-  it('refuses behaviours that are not JSON, or not an object', () => {
-    const json = (text: string) => applyEdit(layout, { kind: 'replaceBehaviors', json: text });
-    expect(json('{')).toMatchObject({
-      status: 'refused',
-      message: expect.stringMatching(/^invalid JSON: /),
-    });
-    expect(json('[]')).toMatchObject({ status: 'refused', message: 'behaviors must be an object' });
-  });
-
+describe('typing paths, keys, details and features', () => {
   it("sets one symbol's typing path", () => {
     const entries = [{ producer: 'direct:base/LHM', enabled: false }];
     const o = landed(layout, { kind: 'setTypingPath', symbol: 'a', entries });

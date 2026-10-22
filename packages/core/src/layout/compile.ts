@@ -80,85 +80,6 @@ export class LayoutCompileError extends Error {
   }
 }
 
-const CHILD_KEYS = ['tap', 'hold', 'default', 'morphed', 'active', 'inactive'] as const;
-
-function resolveRefs(
-  b: Binding,
-  behaviors: Record<string, Binding>,
-  depth: number,
-  errors: string[],
-): Binding {
-  if (depth > 16) {
-    errors.push('Behavior reference chain too deep (cycle?)');
-    return { kind: 'none' };
-  }
-  let cur: Binding = b;
-  if (cur.kind === 'ref') {
-    const target = behaviors[cur.ref];
-    if (!target) {
-      errors.push(`Unknown behavior reference: ${cur.ref}`);
-      return { kind: 'none' };
-    }
-    return resolveRefs(target, behaviors, depth + 1, errors);
-  }
-  if ('ref' in cur && cur.ref) {
-    const target = behaviors[cur.ref];
-    if (!target) {
-      errors.push(`Unknown behavior reference: ${cur.ref}`);
-      return { kind: 'none' };
-    }
-    if (target.kind !== cur.kind) {
-      errors.push(`Behavior ${cur.ref} is ${target.kind} but referenced as ${cur.kind}`);
-      return { kind: 'none' };
-    }
-    const { ref: _ref, ...rest } = cur as Binding & { ref?: string };
-    const merged = { ...(target as object), ...(rest as object) } as Binding;
-    cur = merged;
-  }
-  const out: Record<string, unknown> = { ...(cur as object) };
-  for (const k of CHILD_KEYS) {
-    const child = (cur as Record<string, unknown>)[k];
-    if (child && typeof child === 'object')
-      out[k] = resolveRefs(child as Binding, behaviors, depth + 1, errors);
-  }
-  if (cur.kind === 'tap_dance')
-    out.bindings = cur.bindings.map((x) => resolveRefs(x, behaviors, depth + 1, errors));
-  if (cur.kind === 'macro') {
-    if (cur.steps) out.steps = cur.steps.map((x) => resolveRefs(x, behaviors, depth + 1, errors));
-    if (cur.then) out.then = cur.then.map((x) => resolveRefs(x, behaviors, depth + 1, errors));
-  }
-  if (cur.kind === 'adaptive' && cur.triggers) {
-    out.triggers = cur.triggers.map((t) => ({
-      afterAny: t.afterAny,
-      afterTags: t.afterTags,
-      binding: resolveRefs(t.binding, behaviors, depth + 1, errors),
-    }));
-  }
-  return out as Binding;
-}
-
-/**
- * The same keymap with its features expanded and every behaviour reference replaced by what it
- * names, so nothing is left to look up. A change to the bindings needs this first: a named behaviour
- * changed in place would no longer be the kind that refers to it.
- */
-export function inlineBehaviors(authored: Layout): Layout {
-  const { layout } = expandFeatures(authored);
-  const behaviors = layout.behaviors ?? {};
-  const errors: string[] = [];
-  const inline = (b: Binding) => resolveRefs(b, behaviors, 0, errors);
-  return {
-    ...layout,
-    features: undefined,
-    behaviors: {},
-    layers: layout.layers.map((l) => ({
-      ...l,
-      bindings: Object.fromEntries(Object.entries(l.bindings).map(([k, b]) => [k, inline(b)])),
-    })),
-    combos: layout.combos?.map((c) => ({ ...c, binding: inline(c.binding) })),
-  };
-}
-
 function applyDefaults(b: Binding, defaults: ResolvedBehaviorDefaults): Binding {
   const walk = (x: Binding): Binding => {
     switch (x.kind) {
@@ -322,10 +243,8 @@ export function compileLayout(authored: Layout): CompiledLayout {
   });
   if (layout.layers.length > 32) errors.push('At most 32 layers are supported');
 
-  const behaviors = layout.behaviors ?? {};
   const defaults = resolveDefaults(layout.behaviorDefaults);
-  const prep = (b: Binding): Binding =>
-    applyDefaults(resolveRefs(b, behaviors, 0, errors), defaults);
+  const prep = (b: Binding): Binding => applyDefaults(b, defaults);
 
   const layers: CompiledLayer[] = layout.layers.map((l, idx) => {
     const fallback: Binding = l.bindings['*']

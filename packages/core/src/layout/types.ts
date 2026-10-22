@@ -107,7 +107,6 @@ export type Binding =
       steps?: Binding[];
       symbols?: string;
       then?: Binding[];
-      ref?: string;
       /** Recorded as the last press's tag, for adaptive branches that key off it. */
       tag?: string;
     }
@@ -117,13 +116,11 @@ export type Binding =
       triggers?: AdaptiveTrigger[];
       strictModifiers?: boolean;
       deadKeys?: string[];
-      ref?: string;
     }
   | { kind: 'hold_tap'; tap: Binding; hold: Binding; flavor?: string; tappingTermMs?: number }
   /** An accent for the next letter; `shifted` is the one armed when shift is on, as `´` and `¨`. */
   | { kind: 'dead_key'; diacritic: string; shifted?: string }
   | { kind: 'unicode'; symbol: string; shiftedSymbol?: string }
-  | { kind: 'ref'; ref: string }
   /**
    * A key LayerBench does not simulate — media, Bluetooth, a firmware behaviour it has no model
    * of — kept so an imported layout loses nothing. It is drawn with its original legend and can be
@@ -260,7 +257,6 @@ export interface Layout {
   behaviorDefaults?: BehaviorDefaults;
   layers: LayerDef[];
   features?: LayoutFeatures;
-  behaviors?: Record<string, Binding>;
   combos?: ComboDef[];
   conditionalLayers?: ConditionalLayerDef[];
   typingPaths?: Record<string, TypingPathEntry[]>;

@@ -20,7 +20,6 @@ export type KindOfKey =
   | 'capsword'
   | 'unicode'
   | 'deadkey'
-  | 'behaviour'
   | 'transparent'
   | 'nothing'
   | 'imported';
@@ -62,12 +61,6 @@ export const MORE_KINDS: readonly KindInfo[] = [
   { kind: 'capsword', label: 'Caps word', glyph: '⇪', hint: 'capitals until the word ends' },
   { kind: 'unicode', label: 'Unicode', glyph: 'U+', hint: 'a character the host has no key for' },
   { kind: 'deadkey', label: 'Dead key', glyph: '´', hint: 'accents the next letter' },
-  {
-    kind: 'behaviour',
-    label: 'Behaviour',
-    glyph: '&',
-    hint: "one of the layout's named behaviours",
-  },
 ];
 
 const IMPORTED: KindInfo = {
@@ -129,11 +122,9 @@ export function kindOf(b: Binding | undefined): KindOfKey {
     case 'key_repeat':
       return 'repeat';
     case 'adaptive':
-      // An adaptive key that names a behaviour is that behaviour, whatever it overrides.
-      if (b.ref) return 'behaviour';
       return b.default?.kind === 'key_repeat' ? 'altrepeat' : 'adaptive';
     case 'macro':
-      return b.ref ? 'behaviour' : 'macro';
+      return 'macro';
     case 'tap_dance':
       return 'tapdance';
     case 'mod_morph':
@@ -145,8 +136,6 @@ export function kindOf(b: Binding | undefined): KindOfKey {
       return 'unicode';
     case 'dead_key':
       return 'deadkey';
-    case 'ref':
-      return 'behaviour';
     case 'raw':
       return 'imported';
   }

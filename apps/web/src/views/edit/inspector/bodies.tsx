@@ -5,7 +5,7 @@ import {
   legendText,
   type ModFamily,
 } from '@layerbench/core';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useDismiss } from '../../../components/use-dismiss.js';
 import { useMediaQuery, WIDE } from '../../../components/use-media-query.js';
 import type { BindingTextContext } from '../binding-text.js';
@@ -33,11 +33,6 @@ import { MacroStepsEditor } from './macro-steps.js';
 /** What every editor needs to know about the layout around the binding it edits. */
 export interface EditorScope {
   compiled: CompiledLayout;
-  /** Names a key can refer to: the document's behaviours. */
-  behaviours: string[];
-  /** The document's own behaviours, which are edited where a key refers to them. */
-  ownBehaviours: Record<string, Binding>;
-  setBehaviour: (name: string, b: Binding) => void;
   text: BindingTextContext;
 }
 
@@ -78,7 +73,6 @@ export function BindingEditor({
     <div className="space-y-3">
       <KindTiles
         kind={fields.kind}
-        canRefer={scope.behaviours.length > 0}
         without={without}
         onPick={(k) => onChange(fields.set.kind(k))}
       />
@@ -87,18 +81,12 @@ export function BindingEditor({
   );
 }
 
-/** Why the Behaviour tile cannot be picked: the layout has no behaviour of its own to name. */
-const NO_BEHAVIOURS =
-  'The layout has no named behaviours yet: add one in the Behaviors panel, under Editor, to use it here.';
-
 function KindTiles({
   kind,
-  canRefer,
   without,
   onPick,
 }: {
   kind: KindOfKey;
-  canRefer: boolean;
   without: readonly KindOfKey[];
   onPick: (k: KindOfKey) => void;
 }) {
@@ -109,67 +97,33 @@ function KindTiles({
   // elsewhere.
   const wide = useMediaQuery(WIDE);
   const [more, setMore] = useState(false);
-  // Whether to say, under the tiles, why Behaviour cannot be picked: a hover hint alone never shows
-  // on a phone or to the keyboard, so tapping or focusing the tile says it in text. A tap does not
-  // always focus (Safari), so closing the list or picking a kind puts the line away too.
-  const [showWhy, setShowWhy] = useState(false);
-  // Once there is a behaviour to name, there is nothing left to explain, even after an undo.
-  useEffect(() => {
-    if (canRefer) setShowWhy(false);
-  }, [canRefer]);
   const tiles = useRef<HTMLDivElement>(null);
-  const closeMore = () => {
-    setMore(false);
-    setShowWhy(false);
-  };
+  const closeMore = () => setMore(false);
   useDismiss(tiles, closeMore, { active: more && !wide, closeOnEscape: false });
-  const tile = (k: KindInfo) => {
-    // Behaviour names one of the layout's own behaviours, so with none there is nothing to name.
-    // The tile stays hoverable and focusable rather than disabled, so it can say why.
-    const unavailable = k.kind === 'behaviour' && !canRefer;
-    return (
-      <button
-        key={k.kind}
-        type="button"
-        aria-pressed={kind === k.kind}
-        aria-disabled={unavailable || undefined}
-        title={unavailable ? NO_BEHAVIOURS : k.hint}
-        className={`lb-kind-tile ${kind === k.kind ? 'lb-kind-tile-on' : ''}`}
-        onFocus={unavailable ? () => setShowWhy(true) : undefined}
-        onBlur={unavailable ? () => setShowWhy(false) : undefined}
-        onClick={() => {
-          if (unavailable) {
-            setShowWhy(true);
-            return;
-          }
-          closeMore();
-          if (kind !== k.kind) onPick(k.kind);
-        }}
-      >
-        <span aria-hidden="true" className="lb-kind-glyph">
-          {k.glyph}
-        </span>
-        <span className="lb-kind-label">{k.label}</span>
-      </button>
-    );
-  };
-  // Mounted all along and never hidden, so a screen reader announces the reason as it appears;
-  // empty, it is no taller than nothing and drops its margin. Once the layout has a behaviour to
-  // name, there is no reason left to give.
-  const reason = (
-    <p role="status" className="mt-1 text-xs opacity-70 empty:m-0">
-      {showWhy && !canRefer ? NO_BEHAVIOURS : null}
-    </p>
+  const tile = (k: KindInfo) => (
+    <button
+      key={k.kind}
+      type="button"
+      aria-pressed={kind === k.kind}
+      title={k.hint}
+      className={`lb-kind-tile ${kind === k.kind ? 'lb-kind-tile-on' : ''}`}
+      onClick={() => {
+        closeMore();
+        if (kind !== k.kind) onPick(k.kind);
+      }}
+    >
+      <span aria-hidden="true" className="lb-kind-glyph">
+        {k.glyph}
+      </span>
+      <span className="lb-kind-label">{k.label}</span>
+    </button>
   );
   if (wide) {
     return (
-      <>
-        <fieldset className="lb-kind-tiles" aria-label="Kind of key">
-          {primary.map(tile)}
-          {others.map(tile)}
-        </fieldset>
-        {reason}
-      </>
+      <fieldset className="lb-kind-tiles" aria-label="Kind of key">
+        {primary.map(tile)}
+        {others.map(tile)}
+      </fieldset>
     );
   }
   // With the list closed, a kind picked from it stands in the More tile, so it is still shown.
@@ -185,10 +139,7 @@ function KindTiles({
           aria-expanded={more}
           aria-label={shown ? `More kinds: ${chosen.label}` : undefined}
           title={shown ? chosen.hint : undefined}
-          onClick={() => {
-            setMore((m) => !m);
-            setShowWhy(false);
-          }}
+          onClick={() => setMore((m) => !m)}
         >
           <span aria-hidden="true" className="lb-kind-glyph">
             {shown ? chosen.glyph : more ? '−' : '+'}
@@ -201,7 +152,6 @@ function KindTiles({
           {others.map(tile)}
         </fieldset>
       )}
-      {reason}
     </div>
   );
 }
@@ -311,8 +261,6 @@ function KindBody({
       return <UnicodeBody {...common} fields={fields} />;
     case 'deadkey':
       return <DeadKeyBody {...common} fields={fields} />;
-    case 'behaviour':
-      return <BehaviourBody {...common} fields={fields} />;
     case 'imported':
       return <ImportedBody {...common} fields={fields} />;
     case 'transparent':
@@ -915,58 +863,6 @@ function DeadKeyBody({ fields: { view, set }, onChange, name }: BodyProps<'deadk
         Types nothing itself; the next letter comes out accented, with the shifted accent when shift
         is on.
       </Note>
-    </div>
-  );
-}
-
-/**
- * A key that runs one of the layout's named behaviours — and, where the behaviour is the
- * document's own, the behaviour itself, since that is what a reader who picked the key wants to see.
- */
-function BehaviourBody({
-  scope,
-  fields: { view, set },
-  onChange,
-  name,
-  depth,
-}: BodyProps<'behaviour'>) {
-  const ref = view.runs;
-  const own = scope.ownBehaviours[ref];
-  return (
-    <div className="space-y-2">
-      <Row label="Runs">
-        <select
-          aria-label={named(name, 'Behaviour')}
-          className="select select-xs select-bordered w-auto"
-          value={ref}
-          onChange={(e) => onChange(set.runs(e.target.value))}
-        >
-          {!scope.behaviours.includes(ref) && <option value={ref}>{ref || '—'}</option>}
-          {scope.behaviours.map((b) => (
-            <option key={b} value={b}>
-              {b}
-            </option>
-          ))}
-        </select>
-      </Row>
-      {own ? (
-        <details className="text-xs" open={depth === 0}>
-          <summary className="cursor-pointer opacity-70">
-            Edit <span className="font-mono">{ref}</span> — every key that runs it changes
-          </summary>
-          <div className="pt-2 lb-part">
-            <KindBody
-              scope={scope}
-              fields={keyFields(own, scope.text)}
-              onChange={(b) => scope.setBehaviour(ref, b)}
-              name={named(name, ref)}
-              depth={depth + 1}
-            />
-          </div>
-        </details>
-      ) : (
-        ref && <Note>The layout has no behaviour of that name; choose one above.</Note>
-      )}
     </div>
   );
 }
