@@ -4,7 +4,7 @@ import { compileLayout } from './compile.js';
 import { toCanonicalJson } from './json.js';
 import { duplicateLayer } from './ops.js';
 import { isLayoutLink, parseLayout, safeParseLayout } from './schema.js';
-import type { AdaptiveTrigger, Layout } from './types.js';
+import type { AdaptiveTrigger, Binding, Layout } from './types.js';
 
 function withBranches(triggers: AdaptiveTrigger[]): Layout {
   return {
@@ -289,13 +289,23 @@ describe('a document saved while layouts named bindings of their own', () => {
     expect(layout.layers[0].bindings.LHI).toEqual(deep);
   });
 
-  it('keeps a key whose name led nowhere, which never compiled, as Nothing or its own fields', () => {
+  it('reads a name used several times round a loop no deeper than the compiler did', () => {
+    const again = { kind: 'ref', ref: 'again' };
+    const layout = parseLayout(
+      saved({ LHI: again }, { again: { kind: 'tap_dance', bindings: [again, again, again] } }),
+    );
+    const dances = (b: Binding): number => (b.kind === 'tap_dance' ? 1 + dances(b.bindings[0]) : 0);
+    expect(dances(layout.layers[0].bindings.LHI)).toBe(8);
+  });
+
+  it('keeps a key whose name led nowhere as Nothing, and one built on it as its own fields', () => {
     const parsed = safeParseLayout(
       saved(
         {
           LHI: { kind: 'ref', ref: 'gone' },
           LHM: { kind: 'ref', ref: 'loop' },
           LHR: { kind: 'macro', ref: 'hv', symbols: 'x' },
+          // A name every object has, and no document: it typed nothing, and is Nothing now.
           LHP: { kind: 'ref', ref: 'constructor' },
         },
         { hv, loop: { kind: 'ref', ref: 'around' }, around: { kind: 'ref', ref: 'loop' } },
