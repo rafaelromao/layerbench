@@ -7,30 +7,41 @@ Read this before changing how symbols, digits or accents are spread over the def
 sees them, are in [docs/guide/editing.md](docs/guide/editing.md#default-layers). Update the tables
 there whenever a rule here moves a key, and keep `templates.test.ts` asserting each rule.
 
-- **The layers.** Every layout gets Numbers, Symbols and Accents. Extras exists only on a board that
+- **The layers.** Every layout whose author defines no layers past its letters gets Numbers, Symbols
+  and Accents. Extras exists only on a board that
   needs it: one that lacks keys for what Numbers and Symbols carry, or for Accents' 30 keys. Extras
   comes on while Numbers and Symbols are both held: both inner thumbs, in either order, Symbols'
   left inner thumb holding Numbers there too. Each layer spans at most 34 keys.
-- **Magic Romak is the one exception: no Extras, no Accents.** It models the author's keymap
-  (github.com/rafaelromao/keyboards), which has neither, so it has only Numbers and Symbols, and
-  nothing reaches the other two. The keymap's combos type what they carried: Alpha 2's dead keys
-  and `à`, and `€`, `°` and `º`/`ª` on Symbols and Numbers (`KEYMAP_SYMBOL_COMBOS` in `small.ts`).
-  `¿` and `¡` come from holding Alpha 2's `?` and `!` combos, a hold the model gives them. It
-  cannot type `£ § « » ı ß œ æ`; `templates.test.ts` pins that list (`MAGIC_ROMAK_UNTYPED`) and
-  what French and German lose. Do not give it the default Extras or
-  Accents back, and do not extend the exception to another layout. It is written like the other
-  small-board layouts, in `SMALL_DEFS`: it brings its own Numbers and Symbols, which
-  `withDefaultLayers` leaves alone on any layout that has them, and no code singles it out. What it
-  needs is a `ClassicDef` field any layout may use.
+- **A layout whose author defines layers keeps them.** Where a layout's source (its `link`, its
+  author's keymap or firmware) defines layers past the letters, the layout brings those in place of
+  the default ones: Magic Romak, Magic Sturdy, Enthium, Hands Down Gold, Promethium and Vibranium,
+  T-34, Finch, Cem Aksoylar's Colemak-DH and Ben Vallack Piano. It gets no default layer, no Accents
+  combo and no standard thumbs, and its base layer keeps its symbols. Its definition writes the
+  author's layers in `layers`, Numbers and Symbols by the ids `num` and `sym` (`bringsOwnLayers`,
+  which `withDefaults` and `withDefaultLayers` check), the keys that hold them in `holds`, and the
+  author's combos for symbols, digits and accents in `combos`; `drawn` in `small.ts` lays a layer
+  out as the author draws it. Copy only what the keymap types, on the keys the board has: what the
+  author's layers lack, the layout cannot type, left for an edit in the app, and `templates.test.ts`
+  pins it (`UNTYPED`). Keys that type nothing the analysis counts, holds onto layers that type
+  nothing, a toggle to a layer a hold reaches too, modifiers held on a layer's keys and dead keys
+  the analysis cannot compose stay out. Every other layout takes the default layers: its source
+  defines only letters, or, as RSTHD's ErgoDox keymap, reaches its layers only from keys the board
+  lacks. The guide lists them all ([docs/guide/editing.md](docs/guide/editing.md#layouts-with-their-authors-layers)).
+  No code singles a layout out: each uses `ClassicDef` fields any layout may use.
+  - Magic Romak models its author's keymap (github.com/rafaelromao/keyboards), which has neither
+    Extras nor Accents. The keymap's combos type what those carried: Alpha 2's dead keys and `à`,
+    and `€`, `°` and `º`/`ª` on Symbols and Numbers (`KEYMAP_SYMBOL_COMBOS` in `small.ts`). `¿` and
+    `¡` come from holding Alpha 2's `?` and `!` combos, a hold the model gives them.
 - **The 24-key core is Magic Romak's keymap** (github.com/rafaelromao/keyboards, `numbers_layer` and
   `symbols_layer`). Numbers is a keypad on the right, with the brackets and the arithmetic beside
   them on the left; brackets on Numbers stay on the left hand. Every board gets the same core, so
   the muscle memory carries over, but for a pair half that leaves its key (see Pairs).
 - **Every symbol is its own `kp`**, on one key, never the `shifted` half of another: fold mode drops
   outputs that need a modifier.
-- **Main thumbs.** On Standard and Thumb Alpha layouts the two innermost thumbs of each hand hold,
-  left to right, Shift, Numbers, Symbols and Shift. Tapped, they type Repeat, space, the thumb
-  letter or nothing, and the right outer one one-shots Accents. Special layouts keep their keys, and
+- **Main thumbs.** On Standard and Thumb Alpha layouts that take the default layers, the two
+  innermost thumbs of each hand hold, left to right, Shift, Numbers, Symbols and Shift. Tapped, they
+  type Repeat, space, the thumb letter or nothing, and the right outer one one-shots Accents. Special
+  layouts that take them keep their keys, and
   hold Numbers and Symbols on the inner thumbs too, as Romak does, each still typing what it typed;
   only an inner thumb that is a tap-hold already falls back (`withDefaultLayers`). Accents is the
   combo `accentsCombo`. On a row-stagger board, a new layout's one space bar (L0 and R0 together)
@@ -47,7 +58,9 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
   `small.ts`): Ctrl, Alt and Shift from the ring finger in, its Shortcuts layer held on each pinky
   (an imported key: the model does not carry that layer), Shift with Gui on F and C, and Gui on P
   and the magic key. The keymap's `,` and `.` hold to move the cursor, which is editing, and are
-  left out. In the Shift case mode a capital holds Shift on no key it presses, the one that reaches
+  left out. Magic Sturdy, the three Hands Down with their authors' layers and Ben Vallack Piano give
+  their authors' too (`STURDY_MODS`, `HD_MODS`, `PIANO_MODS`), as their keymaps hold their layers on
+  the home row. In the Shift case mode a capital holds Shift on no key it presses, the one that reaches
   its layer included, nor on a thumb of a hand whose thumb presses one, and on a thumb before a
   finger: on the standard thumbs R1, and L1 for one on Accents, which R1 taps, or on a right thumb.
   A layout with no Shift key of its own holds a Shift thumb if it has one it can, else the other
@@ -57,10 +70,11 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
   down (`mo`, `lt`), that hand's thumb keys get no binding: the thumb is busy holding. Numbers and
   Symbols each block the hand holding them, and Extras, both held, every thumb. The held keys
   themselves show as `held`. `blockedThumbs` finds them; the analysis types nothing on them, and `templates.test.ts` fails for
-  a bundled layout or a board's defaults with a binding there. What finds no finger key goes on
-  Accents' thumbs, Accents being one-shot.
-- **The base layer keeps only `'` `,` `.` `;`** besides its letters and Repeat (`BASE_SYMBOLS`).
-  Every other symbol is on Symbols or Extras. A home row mod types what its tap types.
+  a bundled layout or a board's defaults with a binding there. An author's layer leaves those keys
+  empty too. What finds no finger key goes on Accents' thumbs, Accents being one-shot.
+- **The base layer keeps only `'` `,` `.` `;`** besides its letters and Repeat (`BASE_SYMBOLS`), on
+  a Standard or Thumb Alpha layout that takes the default layers. Every other symbol is on Symbols
+  or Extras. A home row mod types what its tap types.
 - **Accents ranking.** Accents has the dead keys, the letters no accent makes, and the accented
   letters the texts use most, each a key of its own. The most used go on the cheapest keys, in
   groups that are easy to remember. A layout that types its vowels with the left hand gets Accents
@@ -72,8 +86,8 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
   stay together on Numbers or Symbols goes to Extras whole. The half that had a key leaves it, and
   that key on Symbols takes the most used symbol that has no key. The keymap's own core splits
   `/ \`, `- _` and `+ =` (`CORE_SPLIT_PAIRS`). That is deliberate: the core matches the keymap, and
-  those three are exempt. Magic Romak itself keeps its keymap's Symbols whole and has no Extras;
-  every other layout takes the defaults.
+  those three are exempt. A layout that keeps its author's layers keeps its author's pairs as they
+  are, together or apart.
 - **Extras starts on the prime keys.** It takes what has no key in `EXTRAS_ORDER` (the pairs, then
   the single symbols, most used in the texts first). Each goes on the prime keys still free
   (`primeKeys`): the lowest Effort cost, the home row first among keys of equal cost. The keys of

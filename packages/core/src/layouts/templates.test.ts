@@ -7,7 +7,7 @@ import { compileLayout } from '../layout/compile.js';
 import type { Binding, Layout } from '../layout/types.js';
 import { blockedThumbs, reachKeys } from '../sim/activators.js';
 import { explain } from '../sim/resolver.js';
-import { CLASSIC_DEFS, CLASSIC_LAYOUTS } from './classic.js';
+import { CLASSIC_DEFS, CLASSIC_LAYOUTS, classicLayout } from './classic.js';
 import {
   BUNDLED_LAYOUTS,
   bundledLayout,
@@ -19,6 +19,7 @@ import {
   ACCENTS,
   accentsCombo,
   accentsComboKeys,
+  bringsOwnLayers,
   CORE_SPLIT_PAIRS,
   DEFAULT_LAYER_ID_LIST,
   defaultAccentMacros,
@@ -41,6 +42,19 @@ import {
 } from './templates.js';
 
 const magicRomak = bundledLayout('magic-romak')!;
+
+/** Each layout written in code as its definition builds it, before the default layers. */
+const BEFORE = new Map([...CLASSIC_LAYOUTS, ...SMALL_LAYOUTS].map((l) => [l.id, l]));
+
+/**
+ * Whether a bundled layout keeps its author's layers in place of the default ones: one written in
+ * code whose definition brings them (`bringsOwnLayers`), or a document with no Accents, the one
+ * default layer every other layout has.
+ */
+function keepsAuthorsLayers(layout: Layout): boolean {
+  const before = layout.id ? BEFORE.get(layout.id) : undefined;
+  return before ? bringsOwnLayers(before) : !layout.layers.some((l) => l.id === 'accents');
+}
 
 /** The chord that one-shots Accents, as `explain` names its step. */
 const ACCENTS_COMBO = 'combo:accents';
@@ -69,6 +83,48 @@ function boardWithDefaults(preset: string, mirrorAccents = false): Layout {
     combos: [accentsCombo('base', geometry)],
     conditionalLayers: defaults.conditionalLayers,
   };
+}
+
+/**
+ * A layout written in code without its author's layers, the holds that reach them and the combos
+ * that type on them: its letters on its board, with the default layers a new layout gets.
+ */
+function withoutAuthorsLayers(id: string): Layout {
+  const def = [...CLASSIC_DEFS, ...SMALL_DEFS].find((d) => d.id === id);
+  if (!def) throw new Error(`No layout ${id}`);
+  const letters = classicLayout({
+    ...def,
+    layers: undefined,
+    holds: undefined,
+    combos: def.combos?.filter((c) => 'types' in c),
+  });
+  const preset = 'preset' in letters.geometry ? letters.geometry.preset : '';
+  return withDefaultLayers(letters, getGeometryPreset(preset));
+}
+
+/**
+ * Eighteen keys, a letter on each finger key and space on the outer left thumb, with the default
+ * layers: Numbers held on the inner left thumb and Symbols on the inner right one, as on any layout.
+ */
+function eighteenKeys(): Layout {
+  const ids = ['LTR', 'LTM', 'LTI', 'RTI', 'RTM', 'RTR', 'LHP', 'LHR', 'LHM', 'LHI'];
+  const letters = Object.fromEntries(
+    [...ids, 'RHI', 'RHM', 'RHR', 'RHP'].map((id, i) => [
+      id,
+      { kind: 'kp', symbol: 'lgdhuoisrtneac'[i] } as Binding,
+    ]),
+  );
+  return withDefaultLayers(
+    {
+      format: 'layerbench/layout@1',
+      name: 'Eighteen keys',
+      hostLocale: 'symbols',
+      geometry: { preset: '1222+2' },
+      keys: { space: 'L1' },
+      layers: [{ id: 'base', bindings: { ...letters, L1: { kind: 'kp', symbol: ' ' } } }],
+    },
+    getGeometryPreset('1222+2'),
+  );
 }
 
 function trace(layout: Layout, text: string) {
@@ -279,11 +335,9 @@ describe('the default layers, board by board', () => {
     const t = trace(boardWithDefaults('1222+2'), '[ * « 3 ; € § ¿ = | ı º £');
     expect(t.out).toBe('[ * « 3 ; € § ¿ = | ı º £');
     expect(t.coverage.unproducible.size).toBe(0);
-    // A Special layout there, Ben Vallack Piano, its space on L1 and Numbers on the inner L0, as on
-    // the defaults: `=` on Symbols' L0, holding Numbers, `ı` on L1 beside it, the right ones blocked,
-    // one holding Symbols.
-    const piano = bundledLayout('ben-vallack-piano') as Layout;
-    const sym = piano.layers.find((l) => l.id === 'sym')?.bindings ?? {};
+    // A layout there, its space on L1 and Numbers on the inner L0, as on the defaults: `=` on
+    // Symbols' L0, holding Numbers, `ı` on L1 beside it, the right ones blocked, one holding Symbols.
+    const sym = eighteenKeys().layers.find((l) => l.id === 'sym')?.bindings ?? {};
     expect([sym.L0, sym.L1, sym.R1]).toEqual([
       d.layers[1].bindings.L0,
       { kind: 'kp', symbol: 'ı' },
@@ -359,7 +413,7 @@ describe('Accents, on the 30 main keys in groups to remember', () => {
 });
 
 describe('Accents mirrored for a layout that types its vowels with the left hand', () => {
-  const vowelsLeft = ['dvorak', 'engram', 'enthium', 'nordrassil', 'uno'];
+  const vowelsLeft = ['dvorak', 'engram', 'nordrassil', 'uno'];
 
   it('counts the vowels each hand types on the base layer, a thumb tap among them', () => {
     const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
@@ -373,10 +427,10 @@ describe('Accents mirrored for a layout that types its vowels with the left hand
     ).toBe(false);
   });
 
-  // Magic Romak has no Accents. A document the list does not name, as one a Library request adds,
-  // carries its own Accents in its JSON: it is held to the rule alone.
+  // A layout that keeps its author's layers has no Accents. A document the list does not name, as
+  // one a Library request adds, carries its own Accents in its JSON: it is held to the rule alone.
   const documents = new Set(DOCUMENT_LAYOUTS.map((l) => l.id));
-  for (const layout of BUNDLED_LAYOUTS.filter((l) => l.id !== 'magic-romak')) {
+  for (const layout of BUNDLED_LAYOUTS.filter((l) => !keepsAuthorsLayers(l))) {
     const id = layout.id ?? '';
     const left =
       vowelsLeft.includes(id) || (documents.has(id) && vowelsOnLeft(layout.layers[0].bindings));
@@ -596,24 +650,59 @@ describe("Magic Romak types `;` as the keymap's combo", () => {
 });
 
 /**
- * What Magic Romak cannot type: it has no Extras or Accents, and its keymap has no other way to these.
- * French loses `œ`, `æ` and its quotes, German its `ß`.
+ * What each layout that keeps its author's layers cannot type of the digits, the default layers'
+ * symbols and German's letters: nothing is added to its author's layers and combos, and these are
+ * what they leave out, for a later edit to add. Magic Romak's keymap has no way to `£ § « » ı ß œ æ`,
+ * so French lacks `œ`, `æ` and its quotes, and German its `ß`.
  */
-const MAGIC_ROMAK_UNTYPED = [...'£§«»ıßœæ'];
-const MAGIC_ROMAK_MISSING: Record<string, string[][]> = {
-  fr: [['œ'], ['æ'], ['«', '»']],
-  de: [['ß'], [], []],
+const UNTYPED: Record<string, string> = {
+  'magic-romak': '£§«»ıßœæ',
+  'hands-down-gold': '\\ªº«»ı¿¡ß',
+  'hands-down-promethium': '\\ªº«»ı¿¡ß',
+  'hands-down-vibranium': '\\ªº«»ı¿¡ß',
+  't-34': '€£§ªº°«»ı¿¡ßœæ',
+  'magic-sturdy': '\\€£§ªº°?«»ı¿¡ßœæñçäöü',
+  enthium: '&()€£§ªº°«»ı¿¡ßœæñçäöü',
+  finch: '€£§ªº°~^"?«»ı¿¡ßœæñçäöü',
+  caksoylar: '{}|€£§ªº°~"<>:?«»ı¡ßœæñçäöü',
+  'ben-vallack-piano': '€§ªº°_«»ı¿¡ßœæñçäöü',
 };
 
-describe('the default layers on every bundled layout', () => {
-  const before = new Map([...CLASSIC_LAYOUTS, ...SMALL_LAYOUTS].map((l) => [l.id, l]));
-
+describe("the default layers on every bundled layout but those that keep their authors' own", () => {
   for (const layout of BUNDLED_LAYOUTS) {
     describe(layout.name, () => {
       const compiled = compileLayout(layout);
       const producible = producibleSymbols(compiled);
+      const original = layout.id ? BEFORE.get(layout.id) : undefined;
+      const missing = () =>
+        [...new Set([...'0123456789', ...defaultLayerSymbols(), ...'ßäöü'])]
+          .filter((c) => !producible.has(c))
+          .sort();
 
-      it('has Accents, Numbers and Symbols, and Extras only where the board needs it, but Magic Romak', () => {
+      if (keepsAuthorsLayers(layout)) {
+        it("keeps its author's layers, and has no default layer nor anything that reached one", () => {
+          expect(layout.layers.some((l) => ['accents', 'extras'].includes(l.id))).toBe(false);
+          expect(layout.conditionalLayers ?? []).toEqual([]);
+          expect(layout.combos?.some((c) => c.id === 'accents') ?? false).toBe(false);
+          expect(JSON.stringify([layout.layers, layout.combos])).not.toMatch(/"(extras|accents)"/);
+        });
+
+        if (original)
+          it('is its definition as it builds it, with its home row mods and nothing more', () => {
+            const mods = [...CLASSIC_DEFS, ...SMALL_DEFS].find(
+              (d) => d.id === layout.id,
+            )?.homeRowMods;
+            const built = mods === false ? original : withHomeRowMods(original, mods);
+            expect(layout).toEqual({ ...built, languages: layout.languages });
+          });
+
+        it("types every digit, and of the default layers' symbols all its author's layers carry", () => {
+          expect(missing()).toEqual([...(UNTYPED[layout.id ?? ''] ?? '')].sort());
+        });
+        return;
+      }
+
+      it('has Accents, Numbers and Symbols, and Extras only where the board needs it', () => {
         const ids = layout.layers
           .map((l) => l.id)
           .filter((id) => DEFAULT_LAYER_ID_LIST.includes(id));
@@ -621,34 +710,26 @@ describe('the default layers on every bundled layout', () => {
         const extras = defaultLayers(getGeometryPreset(preset)).layers.some(
           (l) => l.id === 'extras',
         );
-        expect(ids).toEqual(
-          layout.id === 'magic-romak'
-            ? ['num', 'sym']
-            : ['num', 'sym', ...(extras ? ['extras'] : []), 'accents'],
-        );
+        expect(ids).toEqual(['num', 'sym', ...(extras ? ['extras'] : []), 'accents']);
         expect(layout.layers.some((l) => ['dead', 'sym2'].includes(l.id))).toBe(false);
       });
 
-      it("types every digit and symbol of the default layers, and German's letters, but what Magic Romak cannot", () => {
-        const missing = [...'0123456789', ...defaultLayerSymbols(), ...'ßäöü'].filter(
-          (c) => !producible.has(c),
-        );
-        const untyped = layout.id === 'magic-romak' ? MAGIC_ROMAK_UNTYPED : [];
-        expect([...new Set(missing)].sort()).toEqual([...untyped].sort());
+      it("types every digit and symbol of the default layers, and German's letters", () => {
+        expect(missing()).toEqual([]);
       });
 
-      it('writes all six languages, every letter and mark, but what Magic Romak cannot', () => {
+      it('writes all six languages, every letter and mark', () => {
         for (const tag of Object.keys(LANGUAGE_PROFILES)) {
           const c = layoutLanguageCoverage(compiled, tag);
-          const missing = (layout.id === 'magic-romak' && MAGIC_ROMAK_MISSING[tag]) || [[], [], []];
           expect([tag, c?.missingRequired, c?.missingOptional, c?.missingPunctuation]).toEqual([
             tag,
-            ...missing,
+            [],
+            [],
+            [],
           ]);
         }
       });
 
-      const original = layout.id ? before.get(layout.id) : undefined;
       if (original && layoutCategory(original) !== 'special') {
         it('reaches Accents by its right outer thumb on its base layer, and nothing else', () => {
           const base = layout.layers[0].id;
@@ -661,9 +742,7 @@ describe('the default layers on every bundled layout', () => {
           expect(reach).toEqual([{ key: 'R1', from: [base] }]);
         });
       }
-      // A layout that brings its own Numbers and Symbols keeps them, and gets no default layers.
-      const takesDefaults = !original?.layers.some((l) => DEFAULT_LAYER_ID_LIST.includes(l.id));
-      if (original && takesDefaults && layoutCategory(original) === 'special') {
+      if (original && layoutCategory(original) === 'special') {
         it('reaches Accents by two thumbs pressed together on its base layer, and nothing else', () => {
           const base = layout.layers[0].id;
           const preset = 'preset' in layout.geometry ? layout.geometry.preset : '';
@@ -722,7 +801,7 @@ describe('the default layers, layout by layout', () => {
         : undefined;
 
   it('hold Numbers on the inner left thumb and Symbols on the inner right one, on every layout', () => {
-    for (const layout of BUNDLED_LAYOUTS) {
+    for (const layout of BUNDLED_LAYOUTS.filter((l) => !keepsAuthorsLayers(l))) {
       const b = layout.layers[0].bindings;
       expect([layout.id, heldBy(b.L0), heldBy(b.R0)]).toEqual([layout.id, 'num', 'sym']);
     }
@@ -752,8 +831,6 @@ describe('the default layers, layout by layout', () => {
   it('hold Numbers on the inner left thumb where space is on the outer one, still typing what it typed', () => {
     expect(base('bird').L0).toEqual(holds('num', { kind: 'kp', symbol: 'q' }));
     expect(base('bird').L1).toEqual(space);
-    expect(base('ben-vallack-piano').L0).toEqual(holds('num', { kind: 'sk', mod: 'LSHIFT' }));
-    expect(base('ben-vallack-piano').L1).toEqual(space);
     const t = trace(bundledLayout('bird') as Layout, 'q 7 q');
     expect(t.out).toBe('q 7 q');
   });
@@ -772,17 +849,21 @@ describe('the default layers, layout by layout', () => {
   });
 
   it('type on Symbols what the Numbers thumb taps, where it does not tap space', () => {
-    const sym = bundledLayout('hands-down-gold')?.layers.find((l) => l.id === 'sym')?.bindings;
+    // RSTHD taps `e` on the inner left thumb, which holds Numbers.
+    const sym = bundledLayout('rsthd')?.layers.find((l) => l.id === 'sym')?.bindings;
     expect(sym?.L0).toBeUndefined();
-    const t = trace(bundledLayout('hands-down-gold') as Layout, 'at% t');
-    expect(t.out).toBe('at% t');
+    const t = trace(bundledLayout('rsthd') as Layout, 'et% t');
+    expect(t.out).toBe('et% t');
   });
 
   it('hold Symbols on a thumb that types where every thumb does, and keep 0 by the keypad', () => {
-    expect(base('finch').R0).toEqual(holds('sym', { kind: 'kp', symbol: 'e' }));
-    expect(num('finch').R0).toEqual(holds('sym', space));
-    expect(num('finch').RBC).toEqual({ kind: 'kp', symbol: '0' });
-    const t = trace(bundledLayout('finch') as Layout, 'ñ');
+    // Finch's letters on its twenty-six keys, one thumb a hand, without its author's layers.
+    const finch = withoutAuthorsLayers('finch');
+    const layer = (id: string) => finch.layers.find((l) => l.id === id)?.bindings ?? {};
+    expect(layer('base').R0).toEqual(holds('sym', { kind: 'kp', symbol: 'e' }));
+    expect(layer('num').R0).toEqual(holds('sym', space));
+    expect(layer('num').RBC).toEqual({ kind: 'kp', symbol: '0' });
+    const t = trace(finch, 'ñ');
     expect(t.out).toBe('ñ');
     expect(t.keys).toEqual([ACCENTS_COMBO, 'LHI']);
   });
@@ -1079,8 +1160,9 @@ describe('symbol pairs share a layer, side by side', () => {
     });
   }
 
-  // Magic Romak keeps its keymap's Symbols, which splits `; :`, `? ¿` and `! ¡`, and has no `« »`.
-  for (const layout of BUNDLED_LAYOUTS.filter((l) => l.id !== 'magic-romak')) {
+  // A layout that keeps its author's layers keeps them as they are: Magic Romak's Symbols splits
+  // `; :`, `? ¿` and `! ¡`, and has no `« »`.
+  for (const layout of BUNDLED_LAYOUTS.filter((l) => !keepsAuthorsLayers(l))) {
     it(`${layout.name}: every pair together`, () => {
       const preset = 'preset' in layout.geometry ? layout.geometry.preset : '';
       expect(pairsApart(getGeometryPreset(preset), layout.layers)).toEqual([]);

@@ -288,6 +288,15 @@ export const DEFAULT_LAYER_IDS = {
 export const DEFAULT_LAYER_ID_LIST: readonly string[] = Object.values(DEFAULT_LAYER_IDS);
 
 /**
+ * Whether a layout brings layers of its own in place of the default ones: its author's Numbers or
+ * Symbols, by the ids the default layers have. Such a layout gets none of the default layers, nor
+ * any key to reach them; what its author's layers do not type, it does not type.
+ */
+export function bringsOwnLayers(layout: Pick<Layout, 'layers'>): boolean {
+  return layout.layers.some((l) => DEFAULT_LAYER_ID_LIST.includes(l.id));
+}
+
+/**
  * The keys pressed together on the base layer for Accents: the two outer main thumbs, or the two
  * inner ones on a board with one thumb a hand. Thumbs press none of Accents' 30 main keys, so the
  * chord is never a same-finger pair with the accent after it there. A board with one space bar for
@@ -654,14 +663,13 @@ function withLeftOver(
  * that types space, or else the first left thumb that can hold it; Symbols on the innermost thumb
  * of the other hand with nothing on it, or else the innermost that can hold it.
  *
- * A layout that already has a layer of one of those ids, or a board with one space bar for both
+ * A layout that brings layers of its own (`bringsOwnLayers`), or a board with one space bar for both
  * thumbs, is left as it is.
  */
 export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
   const { numbers, symbols } = DEFAULT_LAYER_IDS;
-  const taken = new Set(layout.layers.map((l) => l.id));
   if (geometry.family === 'rowstagger') return layout;
-  if (DEFAULT_LAYER_ID_LIST.some((id) => taken.has(id))) return layout;
+  if (bringsOwnLayers(layout)) return layout;
 
   const [first, ...rest] = layout.layers;
   const at = (id: string): Binding | undefined => first.bindings[id] ?? first.bindings['*'];

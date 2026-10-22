@@ -1,11 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeText } from '../corpus/normalize.js';
 import { FIXTURE_MIXED } from '../fixtures/index.js';
+import { getGeometryPreset } from '../geometry/presets.js';
 import { compileLayout } from '../layout/compile.js';
 import { importTextLayout } from '../layout/text.js';
 import type { Binding, Layout, Mod } from '../layout/types.js';
 import { CLASSIC_LAYOUTS } from '../layouts/classic.js';
-import { BUNDLED_LAYOUTS, bundledLayout, withHomeRowMods } from '../layouts/index.js';
+import {
+  BUNDLED_LAYOUTS,
+  bundledLayout,
+  withDefaultLayers,
+  withHomeRowMods,
+} from '../layouts/index.js';
 import { explain, simulate } from './resolver.js';
 
 const magicRomak = bundledLayout('magic-romak')!;
@@ -13,6 +19,31 @@ const magicRomak = bundledLayout('magic-romak')!;
 const romak = bundledLayout('romak')!;
 
 const opts = { caseMode: 'fold' as const, crossWord: 'reset' as const };
+
+/**
+ * Eighteen keys, a letter on each finger key and space on the outer left thumb, with the default
+ * layers: Numbers held on the inner left thumb and Symbols on the inner right one, Extras both.
+ */
+function eighteenKeys(): Layout {
+  const ids = ['LTR', 'LTM', 'LTI', 'RTI', 'RTM', 'RTR', 'LHP', 'LHR', 'LHM', 'LHI'];
+  const letters = Object.fromEntries(
+    [...ids, 'RHI', 'RHM', 'RHR', 'RHP'].map((id, i) => [
+      id,
+      { kind: 'kp', symbol: 'lgdhuoisrtneac'[i] } as Binding,
+    ]),
+  );
+  return withDefaultLayers(
+    {
+      format: 'layerbench/layout@1',
+      name: 'Eighteen keys',
+      hostLocale: 'symbols',
+      geometry: { preset: '1222+2' },
+      keys: { space: 'L1' },
+      layers: [{ id: 'base', bindings: { ...letters, L1: { kind: 'kp', symbol: ' ' } } }],
+    },
+    getGeometryPreset('1222+2'),
+  );
+}
 
 function trace(layout: Layout, text: string, extra: Partial<Parameters<typeof explain>[2]> = {}) {
   const compiled = compileLayout(layout);
@@ -644,12 +675,14 @@ describe('a capital with home row mods and no Shift key of its own', () => {
         const pressed = steps
           .filter((s) => s.kind !== 'hold_press' && s.kind !== 'hold_release')
           .flatMap((s) => keys(s.key));
-        // One of the two index fingers' Shift, and never on a key the capital itself presses.
+        // One of its home row Shifts, and never on a key the capital itself presses: the index
+        // fingers' on most layouts, its author's where it holds its author's.
+        const shifts = (k: string) => {
+          const b = layout.layers[0].bindings[k];
+          return b?.kind === 'hold_tap' && b.hold.kind === 'mod' && b.hold.mod === 'LSHIFT';
+        };
         expect([capital, steps.map((s) => s.symbols).join('')]).toEqual([capital, capital]);
-        expect([capital, held.filter((k) => k === 'LHI' || k === 'RHI').length]).toEqual([
-          capital,
-          1,
-        ]);
+        expect([capital, held.filter(shifts).length]).toEqual([capital, 1]);
         expect([capital, held.filter((k) => pressed.includes(k))]).toEqual([capital, []]);
       }
     },
@@ -1151,8 +1184,8 @@ describe("a mod morph's modifiers", () => {
 });
 
 describe('a layer that comes on while others are on together', () => {
-  // Ben Vallack's Piano's Extras: on while Numbers, held from L0, and Symbols, held from R0, are on.
-  const piano = bundledLayout('ben-vallack-piano') as Layout;
+  // Extras on eighteen keys: on while Numbers, held from L0, and Symbols, held from R0, are on.
+  const piano = eighteenKeys();
   const extras = ['L0', 'R0', 'RTR'];
   const reversed = (layout: Layout): Layout => ({
     ...layout,

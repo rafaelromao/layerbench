@@ -625,6 +625,31 @@ What moved, checked across the 38 reports; nothing else moved:
 - **No report**: the fixture texts are typed the same, holds being no part of what they press, and
   every layout's languages, measured by `pnpm languages`, are as they were.
 
+## Thirtieth re-baseline: authors' layers in place of the default ones
+
+A layout whose author's keymap defines layers past the letters keeps them, in place of the default
+layers, as Magic Romak already did: Magic Sturdy, Enthium, Hands Down Gold, Promethium and
+Vibranium, T-34, Finch, Cem Aksoylar's Colemak-DH and Ben Vallack Piano. Each brings its author's
+layers on the keys its board has, the keys and combos that reach them, and its author's combos for
+symbols and accents. None has Accents, Extras or the standard thumbs, and nothing is added: what its
+author's layers do not type, it does not type.
+
+What moved, checked across the 38 reports; nothing else moved:
+
+- **No report**: they are Qwerty's, Romak's and Magic Romak's, which keep what they had.
+- **The nine layouts' documents**: their default layers, and the keys and the Accents combo that
+  reached them, give way to their authors' layers, holds and combos; Enthium's standard thumbs give
+  way to its author's, Tab held for Numbers and `r` for Symbols, and its base layer keeps its marks.
+  Magic Sturdy, Hands Down and Ben Vallack Piano, whose keymaps hold layers on the home row, hold
+  their authors' home row mods there; Ben Vallack Piano's R0 arms its author's shifted Alpha 2,
+  where its comma is. Hands Down's three are Special now, their author's `œ` combo typing `œu`.
+- **Their languages**, measured by `pnpm languages`: Enthium and Ben Vallack Piano are for English
+  alone, and Finch no longer for Italian, their authors' layers having no accents; Hands Down Gold
+  and Vibranium lose German, which needs `ß`, and Hands Down Promethium German and, by Effort,
+  Portuguese.
+- **Bird's and Colemak-DH's documents**: their languages only, as the better half by Effort moved
+  with the others: Bird is no longer for Spanish, Colemak-DH no longer for French.
+
 ## Not compared
 
 `globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not

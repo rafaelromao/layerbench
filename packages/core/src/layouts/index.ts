@@ -7,7 +7,7 @@ import { DOCUMENT_LAYOUTS } from './documents.js';
 import LANGUAGES from './languages.json';
 import { SMALL_DEFS } from './small.js';
 import { type ThumbPlacement, withStandardThumbs } from './standard.js';
-import { withDefaultLayers, withHomeRowMods } from './templates.js';
+import { bringsOwnLayers, withDefaultLayers, withHomeRowMods } from './templates.js';
 
 export { BUNDLED_IDS, DEFAULT_LAYOUT_ID } from './bundled-ids.js';
 export { CLASSIC_DEFS, CLASSIC_LAYOUTS, classicLayout } from './classic.js';
@@ -24,6 +24,7 @@ export {
   ACCENTS,
   accentsCombo,
   accentsComboKeys,
+  bringsOwnLayers,
   CORE_SPLIT_PAIRS,
   DEFAULT_LAYER_ID_LIST,
   DEFAULT_LAYER_IDS,
@@ -54,12 +55,14 @@ export const SMALL_LAYOUTS: Layout[] = SMALL_DEFS.map(classicLayout);
 /**
  * A layout with the default layers. A Standard or Thumb Alpha one takes the standard thumbs and
  * base-layer symbols too, `placed` saying whose its thumb keys are; a Special one keeps every key
- * it has, with the thumbs and the combo that reach the default layers.
+ * it has, with the thumbs and the combo that reach the default layers. A layout whose author
+ * defines layers of its own keeps them, its thumbs and its base layer as they are, whatever its
+ * category.
  */
 function withDefaults(placed: ThumbPlacement) {
   return (layout: Layout): Layout => {
     const g = layout.geometry;
-    if (!('preset' in g)) return layout;
+    if (!('preset' in g) || bringsOwnLayers(layout)) return layout;
     const geometry = getGeometryPreset(g.preset);
     return layoutCategory(layout) === 'special'
       ? withDefaultLayers(layout, geometry)
@@ -85,10 +88,11 @@ function byBundledOrder(a: Layout, b: Layout): number {
 
 /**
  * The layouts written here in code: the set the app started with, and Romak back among them. Each
- * has the default layers and home row mods but Magic Romak, which brings its keymap's own Numbers
- * and Symbols and its home block mods, as any layout may. LayerBench placed the thumbs of the
- * classic layouts, their authors having left them to a space bar; the small-board layouts' authors
- * placed their own. They are listed in the order of `BUNDLED_IDS`, as the languages file is.
+ * has the default layers and home row mods, but a layout whose author defines layers of its own
+ * keeps those instead of the default ones, and its author's home row mods where its keymap holds
+ * its layers on the home row, as any layout may. LayerBench placed the thumbs of the classic
+ * layouts, their authors having left them to a space bar; the small-board layouts' authors placed
+ * their own. They are listed in the order of `BUNDLED_IDS`, as the languages file is.
  */
 const BUILT_IN_LAYOUTS: Layout[] = [
   ...CLASSIC_DEFS.map(built('layerbench')),

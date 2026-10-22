@@ -444,6 +444,410 @@ const ALT_REPEAT: Binding = {
   ],
 };
 
+// ---------------------------------------------------------------- Authors' layers
+
+/*
+ * The layouts below whose authors define layers past the letters bring those layers, in place of
+ * the default ones, on the keys the board has. Each is copied from the author's keymap: what it
+ * types, and the keys and combos that reach it. What the author put on keys the board lacks is left
+ * out, as on the base layer, and so are the keys that type nothing the analysis counts (navigation,
+ * functions, a modifier held on a layer's key), the holds that reach a layer that types nothing, and
+ * a toggle to a layer a hold reaches too. Nothing is added: what the author's layers do not type,
+ * the layout does not type.
+ */
+
+/**
+ * A layer as its author's keymap draws it, on the keys the board has: a line of tokens for each row
+ * of the board that has keys, read left to right across both hands, then one for its thumbs, left
+ * outer to inner and right inner to outer. `▽` lets the layer below show through and `∅` types
+ * nothing; `space` types space, a token of `keys` is that key, and any other token is the one
+ * character it types.
+ */
+function drawn(
+  preset: string,
+  lines: readonly string[],
+  keys: Readonly<Record<string, Binding>> = {},
+): Record<string, Binding> {
+  const geometry = getGeometryPreset(preset);
+  const rows = [...geometry.textRows.filter((r) => r.length > 0), geometry.textThumbs];
+  if (lines.length !== rows.length)
+    throw new Error(`${preset}: ${rows.length} lines, not ${lines.length}`);
+  const out: Record<string, Binding> = { '*': { kind: 'none' } };
+  lines.forEach((line, i) => {
+    const tokens = line.trim().split(/\s+/);
+    if (tokens.length !== rows[i].length)
+      throw new Error(`${preset}: line ${i + 1} has ${tokens.length} keys, not ${rows[i].length}`);
+    tokens.forEach((t, j) => {
+      if (t === '∅') return;
+      if (t !== '▽' && t !== 'space' && !(t in keys) && [...t].length !== 1)
+        throw new Error(`${preset}: no key ${t}`);
+      out[rows[i][j]] =
+        t === '▽' ? { kind: 'trans' } : t === 'space' ? kp(' ') : (keys[t] ?? kp(t));
+    });
+  });
+  return out;
+}
+
+/** A combo for typing: its keys by id, what it types, and the layers it types on (all if none). */
+const chord = (id: string, keys: string, binding: Binding, layers?: string[]): ComboDef => ({
+  id,
+  keys: keys.split(' '),
+  binding,
+  ...(layers && { layers }),
+  role: 'typing',
+});
+
+/** Tapped, one binding; held, another. */
+const tapHold = (tap: Binding, hold: Binding): Binding => ({ kind: 'hold_tap', tap, hold });
+
+// ---------------------------------------------------------------- Magic Sturdy
+
+/**
+ * Pascal Getreuer's Symbols and Numbers for Magic Sturdy (`getreuer.c`), on the thirty-four keys:
+ * Symbols held on `t` and `a`, Numbers on `n`. His board's outer columns and top row are past these
+ * keys. `→` is his arrow key; his user name, a macro on Symbols' right outer thumb, is left out.
+ */
+const STURDY_SYMBOLS = drawn('3x5+2', [
+  '` < > - | ^ { } $ →',
+  '! * / = & # ( ) ; "',
+  "~ + [ ] % @ : , . '",
+  '▽ ▽ ▽ ∅',
+]);
+const STURDY_NUMBERS = drawn('3x5+2', [
+  '/ 9 8 7 * ∅ ∅ [ ] ∅',
+  '- 3 2 1 + ∅ ∅ e ∅ ∅',
+  'x 6 5 4 % ∅ ∅ , . ∅',
+  '▽ ▽ 0 ∅',
+]);
+
+/**
+ * His home row mods, and Ctrl and Gui on the bottom row: the left modifiers on both hands, as on
+ * every layout. `d` holds his navigation layer and `.` his window layer, which type nothing.
+ */
+const STURDY_MODS: Record<string, Mod> = {
+  LHP: 'LALT',
+  LHM: 'LSHIFT',
+  LBP: 'LGUI',
+  LBI: 'LCTRL',
+  RHM: 'LSHIFT',
+  RHP: 'LALT',
+  RBI: 'LCTRL',
+  RBP: 'LGUI',
+};
+
+// ---------------------------------------------------------------- Enthium
+
+/**
+ * The Symbol and Number layers of Suraj Kurapati's Glorious Engrammer keymap, where Enthium's README
+ * sends a columnar board (`keymap.json` of github.com/sunaku/glove80-keymaps), on the forty-two
+ * keys. His Glove80's thumb keys nearest the thumb are the inner ones here: `r` holds Symbol, Tab
+ * Number. Its number row and the row under the letters, where Symbol has `(` `)` and `&`, are past
+ * these keys, and so are its World and Emoji layers.
+ */
+const ENTHIUM_SYMBOLS = drawn(
+  '3x6+3',
+  [
+    '! [ { } ] ? . ∅ ∅ ∅ ∅ ∅',
+    '# ^ = _ $ * , ∅ ∅ space ∅ ```',
+    '~ < | - > / ; " \' ` \\ ▽',
+    '@ : % ∅ ∅ ∅',
+  ],
+  { '```': macro('```') },
+);
+const ENTHIUM_NUMBERS = drawn('3x6+3', [
+  '∅ ∅ space ∅ ∅ 0 G 7 8 9 : %',
+  '∅ ∅ ∅ ∅ ∅ x k 4 5 6 - +',
+  'e ∅ ∅ ∅ ∅ f j 1 2 3 / *',
+  '∅ ∅ ∅ 0 . >',
+]);
+
+// ---------------------------------------------------------------- Hands Down
+
+/**
+ * The layers Alan Reiser's keymap gives every Hands Down variation (`moutis_layers.h`): Symbols,
+ * held on the space thumb; Numbers, beside the function keys, held on the Backspace thumb and on a
+ * letter key (`,`, or `f` on Promethium); and a numpad, beside the navigation keys, held on the left
+ * inner column's home key. On Symbols, `_` is on the space thumb that holds it, and `¡` and `¿` on
+ * the thumbs of that hand, out of reach.
+ */
+const HD_SYMBOLS = drawn('3x5+2', [
+  'z q ¶ † ‡ ¢ $ € £ ¥',
+  '§ { ( [ • / = * + -',
+  '° } ) ] · ^ | & < >',
+  '∅ ∅ ∅ ∅',
+]);
+const HD_NUMBERS = drawn('3x5+2', [
+  '∅ ∅ ∅ ∅ ∅ / 7 8 9 -',
+  '∅ ∅ ∅ ∅ ∅ * 1 2 3 +',
+  '∅ ∅ ∅ ∅ ∅ , 4 5 6 =',
+  '; ∅ 0 .',
+]);
+const HD_NUMPAD = drawn('3x5+2', [
+  '∅ ∅ ∅ ∅ ∅ / 7 8 9 -',
+  '∅ ∅ ∅ ∅ ∅ * 4 5 6 +',
+  '∅ ∅ space ∅ ∅ , 1 2 3 =',
+  '∅ ∅ 0 .',
+]);
+const HD_LAYERS: NonNullable<ClassicDef['layers']> = [
+  { id: 'sym', name: 'Symbols', byKey: HD_SYMBOLS },
+  { id: 'num', name: 'Numbers', byKey: HD_NUMBERS },
+  { id: 'numpad', name: 'Numpad', byKey: HD_NUMPAD },
+];
+
+/** Ctrl, Alt, Gui and Shift from each pinky in, the left modifiers on both hands. */
+const HD_MODS: Record<string, Mod> = {
+  LHP: 'LCTRL',
+  LHR: 'LALT',
+  LHM: 'LGUI',
+  LHI: 'LSHIFT',
+  RHI: 'LSHIFT',
+  RHM: 'LGUI',
+  RHR: 'LALT',
+  RHP: 'LCTRL',
+};
+
+/**
+ * His combos that type symbols and accents, where every variation has them (`moutis_combo_def.c`):
+ * on the base layer the marks that have no key, some held for a second one, and the dead keys, held
+ * for the letter each most often makes; on the numpad, pairs of digits held for a symbol. Tapped,
+ * those type their two digits, as pressing them one after the other does. The macron, ring and
+ * cedilla dead keys are left out, as the analysis has no such accents; so are the combos that type
+ * letters, words and commands.
+ */
+const HD_COMBOS: ComboDef[] = [
+  chord('ndash', 'RBC RBI', tapHold(kp('–'), kp('—')), ['base']),
+  chord('tilde', 'RBC RBM', kp('~'), ['base']),
+  chord('underscore', 'RBI RBR', kp('_'), ['base']),
+  chord('equal', 'RBM RBR', tapHold(kp('='), kp('%')), ['base']),
+  chord('semicolon', 'RHC RHI', kp(';'), ['base']),
+  chord('colon', 'RTI RTR', tapHold(kp(':'), kp('…')), ['base']),
+  chord('exclamation', 'RTI RTM', kp('!'), ['base']),
+  chord('question', 'RTM RTR', kp('?'), ['base']),
+  chord('dollar', 'RTM RTP', kp('$'), ['base']),
+  chord('backtick', 'RTR RTP', kp('`'), ['base']),
+  chord('section', 'RTC RTM', kp('§'), ['base']),
+  chord('at', 'RTC RTI', tapHold(kp('@'), kp('№')), ['base']),
+  chord('diaeresis', 'RBI RBM', tapHold(dead('¨'), kp('ü')), ['base']),
+  chord('dead-tilde', 'LTP LTC', tapHold(dead('~'), kp('ñ')), ['base']),
+  chord('acute', 'RHI RHM', tapHold(dead('´'), kp('é')), ['base']),
+  chord('grave', 'RHM RHR', tapHold(dead('`'), kp('è')), ['base']),
+  chord('circumflex', 'RHI RHR', tapHold(dead('^'), kp('ê')), ['base']),
+  chord('oe', 'RHM RBM', tapHold(macro('œu'), kp('œ')), ['base']),
+  chord('ae', 'RHI RBI', kp('æ'), ['base']),
+  ...(
+    [
+      ['RHI RHM', '('],
+      ['RHM RHR', ')'],
+      ['RHI RHR', ':'],
+      ['RHR RHP', '%'],
+      ['RHM RHP', '°'],
+      ['RHI RHP', '±'],
+      ['RTC RTI', '¥'],
+      ['RTI RTM', '$'],
+      ['RTI RTR', '¢'],
+      ['RTM RTR', '€'],
+      ['RTR RTP', '£'],
+      ['RTI RTP', '÷'],
+      ['RBI RBM', '–'],
+      ['RBI RBR', '~'],
+      ['RBM RBR', '…'],
+      ['RBI RBP', '≠'],
+    ] as const
+  ).map(([keys, symbol]) =>
+    chord(`numpad-${symbol}`, keys, tapHold({ kind: 'none' }, kp(symbol)), ['numpad']),
+  ),
+];
+
+// ---------------------------------------------------------------- T-34
+
+/**
+ * Jonas Hietala's num word: a layer that stays on while the next keys type digits and the marks
+ * around them, as `auto_layer` does (it also goes on through letters, which his does not).
+ */
+const NUM_WORD: Binding = {
+  kind: 'auto_layer',
+  layer: 'num',
+  continueList: [...'0123456789', '%', ',', '.', '/', '-', '*', '+', ':', '=', '_'],
+};
+
+/**
+ * His layers (`keymap.c`): Numbers, on while a num word lasts; Symbols, held from two combos; the
+ * one-shot Specials, with his dead keys, quotes and arrows; and Swedish, toggled. `~` `^` `` ` `` on
+ * Symbols type themselves, and Numbers' `G` is the capital.
+ */
+const T34_NUMBERS = drawn(
+  '3x5+2',
+  ['j + * ! p x ▽ @u ⟲ ▽', '6 4 0 2 k ▽ 3 1 5 7', ', ▽ G 8 ▽ / 9 ( ) _', '▽ space cancel ▽'],
+  { '@u': macro('@u'), '⟲': REPEAT, cancel: NUM_WORD },
+);
+const T34_SYMBOLS = drawn(
+  '3x5+2',
+  ['~ + * ! ∅ ∅ # @ ^ .', '| { } - \\ ` ? [ ] ⟲', ', < > % ∅ / & ( ) _', '▽ ▽ ∅ ▽'],
+  { '⟲': REPEAT },
+);
+const T34_SPECIALS = drawn(
+  '3x5+2',
+  ['d~ ‘ ▽ ’ ▽ ▽ ▽ ▽ d^ d¨', '▽ “ ▽ ” d´ d` ← ↓ ↑ →', '▽ ▽ ▽ ▽ ▽ ▽ ▽ ▽ ▽ ▽', '∅ ▽ ▽ ∅'],
+  {
+    'd~': dead('~'),
+    'd^': dead('^'),
+    'd¨': dead('¨'),
+    'd´': dead('´'),
+    'd`': dead('`'),
+  },
+);
+const T34_SWEDISH = drawn('3x5+2', [
+  '▽ ▽ ▽ ▽ ▽ ▽ ▽ ▽ ▽ ▽',
+  '▽ ▽ ▽ ▽ ▽ ▽ ▽ ▽ ▽ ▽',
+  '▽ ▽ ▽ ▽ ▽ ▽ ▽ å ä ö',
+  '▽ ▽ ▽ ▽',
+]);
+
+/**
+ * His combos that type (`combos.def`), which fire on every layer: marks and strings on the letters,
+ * the digits and symbols with a thumb, the Swedish letters, the num word, the two that hold Symbols
+ * and the one that toggles Swedish.
+ */
+const T34_COMBOS: ComboDef[] = [
+  chord('equal', 'RTI RTM', kp('=')),
+  chord('double-quote', 'LHR LHI', kp('"')),
+  chord('quote', 'RHI RHR', kp("'")),
+  chord('semicolon', 'LHM LBI', kp(';')),
+  chord('dollar', 'RBM RBR', kp('$')),
+  chord('interpolation', 'RTC RTI', macro('#{}')),
+  chord('left-arrow', 'LTM LHM', macro('<-')),
+  chord('less-equal', 'LTI LHI', macro('<=')),
+  chord('fat-arrow', 'RTI RHI', macro('=>')),
+  chord('right-arrow', 'RTM RHM', macro('->')),
+  chord('pipe-to', 'RTR RHR', macro('|>')),
+  chord('greater-equal', 'LHI LBI', macro('>=')),
+  chord('https', 'L0 RBC', macro('https://')),
+  chord('colon', 'RHI RHM', tapHold(kp(':'), { kind: 'mo', layer: 'sym' })),
+  chord('escape', 'LHM LHI', tapHold(raw('Esc'), { kind: 'mo', layer: 'sym' })),
+  chord('num-word', 'L0 R0', NUM_WORD),
+  chord('swedish', 'RBI RBM RBR', { kind: 'tog', layer: 'swe' }),
+  chord('e-acute', 'R0 LHC', kp('é')),
+  ...(
+    [
+      ['R0 LHP', '6'],
+      ['R0 LHR', '4'],
+      ['R0 LHM', '0'],
+      ['R0 LHI', '2'],
+      ['R0 LBI', '8'],
+      ['L0 RBI', '9'],
+      ['L0 RHI', '3'],
+      ['L0 RHM', '1'],
+      ['L0 RHR', '5'],
+      ['L0 RHP', '7'],
+      ['L0 LTP', '~'],
+      ['L0 LTR', '+'],
+      ['L0 LTM', '*'],
+      ['L0 LTI', '!'],
+      ['R0 RTI', '#'],
+      ['R0 RTM', '@'],
+      ['R0 RTR', '^'],
+      ['L0 LHP', '|'],
+      ['L0 LHR', '{'],
+      ['L0 LHM', '}'],
+      ['L0 LHI', '-'],
+      ['L0 LHC', '\\'],
+      ['R0 RHC', '`'],
+      ['R0 RHI', '?'],
+      ['R0 RHM', '['],
+      ['R0 RHR', ']'],
+      ['L0 LBR', '<'],
+      ['L0 LBM', '>'],
+      ['L0 LBI', '%'],
+      ['R0 RBI', '&'],
+      ['R0 RBM', '('],
+      ['R0 RBR', ')'],
+      ['R0 RBP', '_'],
+      ['L0 RBM', 'å'],
+      ['L0 RBR', 'ä'],
+      ['L0 RBP', 'ö'],
+    ] as const
+  ).map(([keys, symbol]) => chord(`thumb-${symbol}`, keys, kp(symbol))),
+];
+
+// ---------------------------------------------------------------- Finch
+
+/**
+ * The symbols and numbers layer of grassfedreeve's ʻākohekohe keymap, held on the `e` thumb, and its
+ * combos for the brackets, which type on it and on the base layer: `<` and `>` held for arrows.
+ * The keymap's inner columns are a key higher than this board's.
+ */
+const FINCH_SYMBOLS = drawn('13332+1', [
+  '! @ # 1 2 3',
+  '; * _ - $ = 4 5 6 :',
+  '+ % & | 0 7 8 9',
+  '∅ ▽',
+]);
+const FINCH_COMBOS: ComboDef[] = [
+  chord('left-brace', 'LTR LHR', kp('{'), ['base', 'sym']),
+  chord('left-bracket', 'LTM LHM', kp('['), ['base', 'sym']),
+  chord('left-paren', 'LTI LHI', kp('('), ['base', 'sym']),
+  chord('less', 'LHC LBC', tapHold(kp('<'), kp('←')), ['base', 'sym']),
+  chord('right-brace', 'RTR RHR', kp('}'), ['base', 'sym']),
+  chord('right-bracket', 'RTM RHM', kp(']'), ['base', 'sym']),
+  chord('right-paren', 'RTI RHI', kp(')'), ['base', 'sym']),
+  chord('greater', 'RHC RBC', tapHold(kp('>'), kp('→')), ['base', 'sym']),
+  chord('slash', 'RBR RBM', kp('/'), ['base', 'sym']),
+  chord('backslash', 'RBM RBI', kp('\\'), ['base', 'sym']),
+  chord('backtick', 'RTM RTI', kp('`'), ['base', 'sym']),
+];
+
+// ---------------------------------------------------------------- Cem Aksoylar's Colemak-DH
+
+/**
+ * The symbol layer of his keymap (`includes/3x5.dtsi`), held on the right inner thumb, digits
+ * among its symbols, and his combos for the marks it leaves out, which type on it and on the base
+ * layer. The keymap's inner columns are a key higher than this board's.
+ */
+const CAKSOYLAR_SYMBOLS = drawn(
+  '23332+2',
+  ['! @ # $ 7 8 9 ∅', '+ = _ - % , 4 5 6 .', '¿ * & ^ 0 1 2 3', 'bspc ▽ ∅ ∅'],
+  { bspc: raw('⌫') },
+);
+const CAKSOYLAR_COMBOS: ComboDef[] = [
+  chord('quote', 'RTI RTM', kp("'"), ['base', 'sym']),
+  chord('backtick', 'RTM RTR', kp('`'), ['base', 'sym']),
+  chord('backslash', 'RBI RBM', kp('\\'), ['base', 'sym']),
+  chord('slash', 'RBM RBR', kp('/'), ['base', 'sym']),
+  chord('semicolon', 'RBI RBM RBR', kp(';'), ['base', 'sym']),
+  chord('left-paren', 'LHR LHI', kp('('), ['base', 'sym']),
+  chord('right-paren', 'RHI RHR', kp(')'), ['base', 'sym']),
+  chord('left-bracket', 'LHR LHM', kp('['), ['base', 'sym']),
+  chord('right-bracket', 'RHM RHR', kp(']'), ['base', 'sym']),
+  chord('exclamation', 'LTM LTI', kp('!'), ['sym']),
+];
+
+// ---------------------------------------------------------------- Ben Vallack Piano
+
+/**
+ * His symbol and number layers (`piano.keymap`), held on the home row: the two symbol layers on the
+ * ring and middle fingers, numbers on the pinkies. Its keys type what they do on a US Mac, `£` and
+ * the curly quotes among them; `!` is held for `?`. Alpha 2's capitals have a one-shot layer of
+ * their own, a comma where Alpha 2 has its full stop.
+ */
+const PIANO_SYMBOLS = drawn('1222+2', ['£ # $ < > ^', '` ~ - \\ [ ] | /', '▽ ▽ ▽ ▽']);
+const PIANO_SYMBOLS_2 = drawn('1222+2', ['@ ’ ” ( ) ;', '* % ! " { } & :', '▽ ▽ ▽ ∅'], {
+  '’': tapHold(kp('’'), kp('‘')),
+  '”': tapHold(kp('”'), kp('“')),
+  '!': tapHold(kp('!'), kp('?')),
+});
+const PIANO_NUMBERS = drawn('1222+2', ['. 0 1 2 3 4', '- + 5 6 7 8 9 =', '∅ ▽ ▽ ▽']);
+const PIANO_ALPHA2_SHIFTED = drawn('1222+2', ['V W M F ▽ Z', 'Q J P K B , X Y', '▽ ▽ ▽ ∅']);
+
+/** Ctrl, Alt and Gui on the top row from each ring finger in, the left modifiers on both hands. */
+const PIANO_MODS: Record<string, Mod> = {
+  LTR: 'LCTRL',
+  LTM: 'LALT',
+  LTI: 'LGUI',
+  RTI: 'LGUI',
+  RTM: 'LALT',
+  RTR: 'LCTRL',
+};
+
 export const SMALL_DEFS: ClassicDef[] = [
   /**
    * Magic Romak: Romak on 24 keys, two alpha layers and the adaptive behaviours.
@@ -515,13 +919,14 @@ export const SMALL_DEFS: ClassicDef[] = [
     rows: 'j g m p v # . / " \'\nr s n d b , a e i h\nx f l c w - u o y k',
     thumbs: 'bspc t space ret',
     special: COMMON,
-    combos: [
-      { keys: 'g p', types: 'q' },
-      { keys: 's d', types: 'z' },
-    ],
-    description: 'Hands Down Gold: t on a thumb, q and z on chords.',
+    combos: [{ keys: 'g p', types: 'q' }, { keys: 's d', types: 'z' }, ...HD_COMBOS],
+    layers: HD_LAYERS,
+    holds: { L1: 'num', R0: 'sym', LHC: 'numpad', RHC: 'num' },
+    homeRowMods: HD_MODS,
+    description:
+      "Hands Down Gold: t on a thumb, q and z on chords, and its author's Symbols, Numbers and numpad.",
     link: HANDS_DOWN,
-    note: 'Letters from layouts/hd/au-config.h.',
+    note: 'Letters from layouts/hd/au-config.h, layers from moutis_layers.h and combos from moutis_combo_def.c.',
   },
   {
     id: 'hands-down-promethium',
@@ -530,13 +935,14 @@ export const SMALL_DEFS: ClassicDef[] = [
     rows: 'v w g m j # . / " \'\ns n t h k , a e i c\nf p d l x - u o y b',
     thumbs: 'bspc r space ret',
     special: COMMON,
-    combos: [
-      { keys: 'w m', types: 'q' },
-      { keys: 'n h', types: 'z' },
-    ],
-    description: 'Hands Down Promethium: r on a thumb, q and z on chords.',
+    combos: [{ keys: 'w m', types: 'q' }, { keys: 'n h', types: 'z' }, ...HD_COMBOS],
+    layers: HD_LAYERS,
+    holds: { L1: 'num', R0: 'sym', LHC: 'numpad', LBP: 'num' },
+    homeRowMods: HD_MODS,
+    description:
+      "Hands Down Promethium: r on a thumb, q and z on chords, and its author's Symbols, Numbers and numpad.",
     link: HANDS_DOWN,
-    note: 'Letters from layouts/hd/pm-config.h.',
+    note: 'Letters from layouts/hd/pm-config.h, layers from moutis_layers.h and combos from moutis_combo_def.c.',
   },
   {
     id: 'hands-down-vibranium',
@@ -545,13 +951,14 @@ export const SMALL_DEFS: ClassicDef[] = [
     rows: 'x w m g j # . / " \'\ns c n t k , a e i h\nb p l d v - u o y f',
     thumbs: 'bspc r space ret',
     special: COMMON,
-    combos: [
-      { keys: 'w g', types: 'q' },
-      { keys: 'c t', types: 'z' },
-    ],
-    description: 'Hands Down Vibranium: r on a thumb, q and z on chords.',
+    combos: [{ keys: 'w g', types: 'q' }, { keys: 'c t', types: 'z' }, ...HD_COMBOS],
+    layers: HD_LAYERS,
+    holds: { L1: 'num', R0: 'sym', LHC: 'numpad', RHC: 'num' },
+    homeRowMods: HD_MODS,
+    description:
+      "Hands Down Vibranium: r on a thumb, q and z on chords, and its author's Symbols, Numbers and numpad.",
     link: HANDS_DOWN,
-    note: 'Letters from layouts/hd/vb-config.h.',
+    note: 'Letters from layouts/hd/vb-config.h, layers from moutis_layers.h and combos from moutis_combo_def.c.',
   },
   {
     id: 'rsthd',
@@ -572,15 +979,28 @@ export const SMALL_DEFS: ClassicDef[] = [
     author: 'Jonas Hietala',
     rows: 'j c y f p x w o u .\nr s t h k m n a i ⟲\n, v g d b / l ( ) _',
     thumbs: 'shrt space e spec',
-    special: { ...COMMON, '⟲': REPEAT, shrt: raw('Shrt'), spec: raw('Spec') },
+    special: {
+      ...COMMON,
+      '⟲': REPEAT,
+      shrt: raw('Shrt'),
+      spec: { kind: 'sl', layer: 'spec' },
+    },
     combos: [
       { keys: 'j c', types: 'q' },
       { keys: 'c y', types: 'qu' },
       { keys: 'y f', types: 'z' },
+      ...T34_COMBOS,
     ],
-    description: 'T-34: e on the right thumb, a repeat key on the home row, q, qu and z on chords.',
+    layers: [
+      { id: 'swe', name: 'Swedish', byKey: T34_SWEDISH },
+      { id: 'num', name: 'Numbers', byKey: T34_NUMBERS },
+      { id: 'sym', name: 'Symbols', byKey: T34_SYMBOLS },
+      { id: 'spec', name: 'Specials', byKey: T34_SPECIALS },
+    ],
+    description:
+      "T-34: e on the right thumb, a repeat key on the home row, q, qu and z on chords, and its author's digits and symbols on thumb combos and layers.",
     link: 'https://github.com/treeman/qmk_firmware/tree/master/keyboards/ferris/keymaps/treeman',
-    note: 'Letters from keymap.c and combos.def.',
+    note: 'Letters and layers from keymap.c, combos from combos.def.',
   },
   {
     id: 'magic-sturdy',
@@ -589,10 +1009,16 @@ export const SMALL_DEFS: ClassicDef[] = [
     rows: "v m l c p b ★ u o q\ns t r d y f n e a i\nx k j g w z h , . '",
     thumbs: 'unds space ⟲ esc',
     special: { ...COMMON, '★': STURDY_ADAPTIVE, '⟲': REPEAT, unds: kp('_') },
+    layers: [
+      { id: 'sym', name: 'Symbols', byKey: STURDY_SYMBOLS },
+      { id: 'num', name: 'Numbers', byKey: STURDY_NUMBERS },
+    ],
+    holds: { LHR: 'sym', RHR: 'sym', RHI: 'num' },
+    homeRowMods: STURDY_MODS,
     description:
-      'Magic Sturdy: an adaptive key in the letter block and a repeat key on a thumb. Its rules are the ones that type letters.',
+      "Magic Sturdy: an adaptive key in the letter block and a repeat key on a thumb, and its keymap's Symbols and Numbers. Its rules are the ones that type letters.",
     link: 'https://github.com/getreuer/qmk-keymap',
-    note: 'Letters from getreuer.c.',
+    note: 'Letters and layers from getreuer.c.',
   },
   {
     id: 'enthium',
@@ -600,12 +1026,17 @@ export const SMALL_DEFS: ClassicDef[] = [
     author: 'Suraj N. Kurapati (sunaku)',
     geometry: '3x6+3',
     rows: "∅ q y o u = x l d p z ∅\nb c i a e - k h t n s w\n∅ ' , . ; / j m g f v ∅",
-    thumbs: '∅ ∅ space r ∅ ∅',
-    special: COMMON,
+    thumbs: '∅ tab space r bspc ∅',
+    special: { ...COMMON, tab: raw('⇥') },
+    layers: [
+      { id: 'num', name: 'Numbers', byKey: ENTHIUM_NUMBERS },
+      { id: 'sym', name: 'Symbols', byKey: ENTHIUM_SYMBOLS },
+    ],
+    holds: { L1: 'num', R0: 'sym' },
     description:
-      'Enthium v14: r on the right thumb, b and w on the outer pinky keys, so a forty-two-key board.',
+      "Enthium v14: r on the right thumb, b and w on the outer pinky keys, so a forty-two-key board, and its author's Symbols and Numbers.",
     link: 'https://github.com/sunaku/enthium',
-    note: 'Letters from layout.json.',
+    note: "Letters from layout.json, layers from the author's keymap the README points to, https://github.com/sunaku/glove80-keymaps.",
   },
   {
     id: 'nordrassil',
@@ -632,11 +1063,14 @@ export const SMALL_DEFS: ClassicDef[] = [
       { keys: 'l y', types: 'v' },
       { keys: 'x g', types: 'z' },
       { keys: 'd g', types: 'j' },
+      ...FINCH_COMBOS,
     ],
+    layers: [{ id: 'sym', name: 'Symbols and numbers', byKey: FINCH_SYMBOLS }],
+    holds: { R0: 'sym' },
     description:
-      'Finch on its native twenty-six-key board: e on a thumb; v, z, j and qu on chords. Its adaptive swaps are not modelled.',
+      "Finch on its native twenty-six-key board: e on a thumb; v, z, j and qu on chords; its keymap's symbols and numbers layer. Its adaptive swaps are not modelled.",
     link: 'https://github.com/grassfedreeve/finch',
-    note: 'Combos from https://github.com/grassfedreeve/zmk-config-akohekohe.',
+    note: 'Combos and layers from https://github.com/grassfedreeve/zmk-config-akohekohe.',
   },
   {
     id: 'caksoylar',
@@ -645,17 +1079,19 @@ export const SMALL_DEFS: ClassicDef[] = [
     geometry: '23332+2',
     rows: "q w f p l u y '\na r s t b k n e i o\nx c d g m h , .",
     thumbs: 'esc space sym ret',
-    special: { ...COMMON, sym: raw('Sym') },
+    special: { ...COMMON, sym: { kind: 'mo', layer: 'sym' } },
     combos: [
       { keys: 'w f', types: 'q' },
       { keys: 'f p', types: 'j' },
       { keys: 'c d', types: 'v' },
       { keys: 'x c', types: 'z' },
+      ...CAKSOYLAR_COMBOS,
     ],
+    layers: [{ id: 'sym', name: 'Symbols', byKey: CAKSOYLAR_SYMBOLS }],
     description:
-      "The Colemak-DH variant one of ZMK's maintainers types on his thirty-key Rommana: j, v and z on chords.",
+      "The Colemak-DH variant one of ZMK's maintainers types on his thirty-key Rommana: j, v and z on chords, and his keymap's Symbols.",
     link: 'https://github.com/caksoylar/zmk-config',
-    note: 'Letters from keymap-drawer/rommana.yaml.',
+    note: 'Letters from keymap-drawer/rommana.yaml, layers from config/includes/3x5.dtsi and combos from config/includes/combos.dtsi.',
   },
   {
     id: 'uno',
@@ -749,15 +1185,21 @@ export const SMALL_DEFS: ClassicDef[] = [
           RHP: 'y',
         },
       },
+      { id: 'sym', name: 'Symbols 1', byKey: PIANO_SYMBOLS },
+      { id: 'symbols2', name: 'Symbols 2', byKey: PIANO_SYMBOLS_2 },
+      { id: 'num', name: 'Numbers', byKey: PIANO_NUMBERS },
+      { id: 'alpha2cap', name: 'Alpha 2 shifted', byKey: PIANO_ALPHA2_SHIFTED },
     ],
     special: {
       '⇧': { kind: 'sk', mod: 'LSHIFT' },
       alpha2: { kind: 'sl', layer: 'alpha2' },
-      caps2: raw('⇧A2'),
+      caps2: { kind: 'sl', layer: 'alpha2cap' },
     },
+    holds: { LHP: 'num', LHR: 'symbols2', LHM: 'sym', RHM: 'sym', RHR: 'symbols2', RHP: 'num' },
+    homeRowMods: PIANO_MODS,
     description:
-      'Eighteen keys: fourteen letters on the base layer, the rest one tap away on a second letter layer, and a one-shot Shift where its keymap has a repeat key.',
+      "Eighteen keys: fourteen letters on the base layer, the rest one tap away on a second letter layer, a one-shot Shift where its keymap has a repeat key, and its keymap's symbol and number layers held on the home row.",
     link: 'https://github.com/benvallack/zmk-config-piano',
-    note: 'Letters from piano.keymap.',
+    note: 'Letters and layers from piano.keymap.',
   },
 ];

@@ -54,12 +54,13 @@ same contents.
 _Avoid_: saved layout, stored layout, my layout
 
 **Default layers**:
-The layers every bundled layout but Magic Romak has besides its own, so that each can type every
-letter and symbol (Magic Romak keeps its keymap's Numbers and Symbols and nothing more):
-Accents, Numbers and Symbols, and Extras for whatever those cannot hold. Accents holds the dead keys,
+The layers a layout whose authors define none past its letters has besides its own, so that it can
+type every letter and symbol (a layout whose author's keymap defines layers keeps those, and nothing
+more, as Magic Romak keeps its keymap's Numbers and Symbols): Accents, Numbers and Symbols, and
+Extras for whatever those cannot hold. Accents holds the dead keys,
 and the letters and accented letters the supported languages need; Extras comes on while Numbers and
-Symbols are both held. Every bundled layout holds Numbers on its left inner thumb and Symbols on its
-right inner one, so Extras is both inner thumbs, in either order. A Standard or Thumb Alpha layout
+Symbols are both held. Every bundled layout that has them holds Numbers on its left inner thumb and
+Symbols on its right inner one, so Extras is both inner thumbs, in either order. A Standard or Thumb Alpha layout
 taps its right outer thumb for Accents; a Special one presses a combo.
 _Avoid_: standard layers, common layers, shared layers
 
@@ -82,7 +83,8 @@ Modifiers held on the home row's finger keys, each key still typing what it type
 bundled layout has Gui, Ctrl, Alt and Shift from the left pinky in, mirrored on the right, on its
 base layer, but Magic Romak, which holds its author's keymap's, its home block mods, as the keymap
 calls them: Ctrl, Alt and Shift from the ring finger in, a layer on each pinky, and Gui, with or
-without Shift, on the bottom row.
+without Shift, on the bottom row. A layout whose author's keymap holds its layers on the home row
+holds its author's modifiers too.
 _Avoid_: HRM, home-row modifiers
 
 **Kind of key**:

@@ -30,6 +30,10 @@ const EXPECTED: Record<LayoutCategory, string[]> = {
   special: [
     'magic-romak',
     'magic-sturdy',
+    // Their author's combos, which they keep, type `œu` (a macro).
+    'hands-down-gold',
+    'hands-down-promethium',
+    'hands-down-vibranium',
     'nordrassil',
     't-34',
     'finch',
@@ -40,9 +44,6 @@ const EXPECTED: Record<LayoutCategory, string[]> = {
   ],
   thumb_alpha: [
     'hands-down-neu',
-    'hands-down-gold',
-    'hands-down-promethium',
-    'hands-down-vibranium',
     'night',
     'dusk',
     'snth',

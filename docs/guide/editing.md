@@ -192,6 +192,14 @@ A new layout can start with more layers, the same on every board: **Numbers**, *
 the inner column (P R M I C), the right from the inner column to the pinky, and `·` lets the layer
 below show through.
 
+They are for a layout whose authors define no layers past its letters. A layout whose author's
+keymap defines its own, numbers and symbols say, keeps those instead, as its author has them: on the
+keys its board has, with the keys and combos that reach them and the combos its author types
+symbols and accents with. It has none of the default layers, nor a key to reach them, and nothing is
+added to what its author's layers type: a character they leave out, it cannot type, until you add it
+in the editor. [The layouts that come with the app and keep their authors' layers](#layouts-with-their-authors-layers)
+are listed below.
+
 **Numbers** and **Symbols** are Magic Romak's on the 24 keys most boards have. The pinky's top and
 bottom keys and the inner column add what has no room there: currency and ordinals on Numbers, for
 the left hand while the right types the digits, and on Symbols each mark beside its look-alike
@@ -280,36 +288,73 @@ what the bottom rows carried, and fills Accents with the dead keys, the letters 
 symbols Extras has no room for, on its thumbs too; every accented letter there is its accent and the
 letter. The board shows where everything went.
 
-Every layout that comes with the app has them too, but Magic Romak, which has only Numbers and
-Symbols. The Standard and Thumb Alpha ones, Romak among them, also share their main thumbs, the two
+Every layout that comes with the app whose authors define no layers has them too. The Standard and
+Thumb Alpha ones among them, Romak among them, also share their main thumbs, the two
 innermost of each hand, so that what tells them apart is their letters. Held, left to right, the
 main thumbs give Shift, Numbers, Symbols and Shift. Tapped, they type Repeat, which types the last
 key again, then space, then the layout's thumb letter or
 nothing, and the right outer one turns on Accents for one key. Where a layout's author put space or a
 letter on a thumb, it stays there, and the main thumbs left tap Accents, then Repeat, from the right:
-Hands Down Gold taps Repeat, `t`, space and Accents. A second thumb letter takes the left outer thumb,
+RSTHD taps Repeat, `e`, space and Accents. A second thumb letter takes the left outer thumb,
 and Repeat a key of the base layer that a symbol left, as on Hands Down Neu. Their other thumb keys
 go, and their base layers keep no symbol but `'` `,` `.` `;`: the rest are on Symbols or Extras.
 
 The Special layouts keep every key they have. Like every other layout, they hold Numbers on the left
 inner thumb and Symbols on the right inner one, each still typing what it typed, so Extras is both
-inner thumbs on every layout that has it. Bird, Nordrassil and Ben Vallack Piano type space on L1,
-beside the inner thumb, which holds Numbers. An inner thumb that is a tap-hold already cannot hold
-another layer; the key that types space then holds Numbers, and the innermost thumb of the other
-hand with nothing on it Symbols. Accents is the combo on two thumbs, as on a new layout. Ben Vallack
-Piano taps a one-shot Shift where its keymap has Repeat, the left inner thumb that holds Numbers.
+inner thumbs on every layout that has it. Bird and Nordrassil type space on L1, beside the inner
+thumb, which holds Numbers. An inner thumb that is a tap-hold already cannot hold another layer; the
+key that types space then holds Numbers, and the innermost thumb of the other hand with nothing on
+it Symbols. Accents is the combo on two thumbs, as on a new layout.
 
 Every layout that comes with the app has home row mods too: held, the home row's finger keys give
 Gui, Ctrl, Alt and Shift from the left pinky in, and Shift, Alt, Ctrl and Gui from the right index
 out. Magic Romak holds its author's keymap's instead: Ctrl, Alt and Shift from the ring finger in, a
 layer of shortcuts on each pinky, and on the bottom row Shift with Gui under the left ring and
-middle fingers and Gui under the index fingers. Both hands hold the left modifiers, as both Shift
+middle fingers and Gui under the index fingers. So do the layouts whose authors' keymaps hold their
+layers on the home row: Magic Sturdy, the three Hands Down with their own layers, and Ben Vallack
+Piano, its modifiers on the top row. Both hands hold the left modifiers, as both Shift
 thumbs do. Tapped, each key types what it typed, a letter or anything else: Uno's space holds Alt.
 They are on the base layer only. In the Shift case mode, a Standard or Thumb Alpha layout types a
 capital holding the right Shift thumb, but one on Accents or on a right thumb holding the left, as a
 thumb holding Shift presses nothing else. A layout with no Shift key of its own types a capital
 holding a Shift thumb if it has one that is free, and otherwise the home row Shift of the other
 hand, where the capital does not press that key.
+
+#### Layouts with their authors' layers
+
+These layouts that come with the app keep their authors' layers, in place of the default ones. Each
+is drawn on the board LayerBench has it on: what its author put on keys that board lacks, a number
+row or an outer column, is left out, as on its base layer. So are the keys that type nothing the
+analysis counts, the holds that reach a layer that types nothing (navigation, functions, media), a
+toggle to a layer a hold reaches too, a modifier held on a layer's key, and the dead keys for accents the
+analysis has no letters for (Hands Down's macron, ring and cedilla). A key on a thumb that a held
+thumb blocks types nothing there. The last column is what each cannot type of the digits, the
+default layers' symbols and German's letters; the accented letters only some dead key makes go with
+`ñ` `ç` `ä` `ö` `ü`.
+
+| Layout | Its author's layers | Reached by | Cannot type |
+|---|---|---|---|
+| Magic Romak | Numbers, Symbols | space held, the Alpha 2 thumb held | £ § « » ı ß œ æ |
+| Magic Sturdy | Symbols, Numbers | `t` or `a` held, `n` held | `\` € £ § ª º ° `?` « » ı ¿ ¡ ß œ æ ñ ç ä ö ü |
+| Enthium | Numbers, Symbols | Tab (L1) held, `r` held | `&` `(` `)` € £ § ª º ° « » ı ¿ ¡ ß œ æ ñ ç ä ö ü |
+| Hands Down Gold, Promethium, Vibranium | Symbols, Numbers, Numpad | space held; Backspace or `,` (`f` on Promethium) held; `b` (`k`) held | `\` ª º « » ı ¿ ¡ ß |
+| T-34 | Swedish, Numbers, Symbols, Specials | `l ( )` toggles it; both inner thumbs, a num word; `t h` or `n a` held; R1, one-shot | € £ § ª º ° « » ı ¿ ¡ ß œ æ |
+| Finch | Symbols and numbers | `e` held | € £ § ª º ° `~` `^` `"` `?` « » ı ¿ ¡ ß œ æ ñ ç ä ö ü |
+| Cem Aksoylar's Colemak-DH | Symbols | the right inner thumb held | `{` `}` `\|` € £ § ª º ° `~` `"` `<` `>` `:` `?` « » ı ¡ ß œ æ ñ ç ä ö ü |
+| Ben Vallack Piano | Symbols 1 and 2, Numbers, Alpha 2 shifted | middle fingers held, ring fingers held, pinkies held; R0, one-shot | € § ª º ° `_` « » ı ¿ ¡ ß œ æ ñ ç ä ö ü |
+
+Their authors' combos type more. Hands Down's type the marks with no key and the dead keys `´`
+`` ` `` `^` `¨` `~` on the base layer, each held for a second mark or for the letter the accent
+most often makes (`é` `è` `ê` `ü` `ñ`), and on the numpad pairs of digits held for a symbol. T-34's
+type the digits and most symbols with a thumb and a letter, and `å` `ä` `ö`; its Specials has the
+dead keys. Finch's and Cem Aksoylar's type the brackets and the slashes. Ben Vallack Piano's shifted
+Alpha 2 has Alpha 2's capitals and a comma where Alpha 2 has its full stop.
+
+The other layouts take the default layers. Their sources define only their letters, but for RSTHD,
+whose author's ErgoDox keymap puts its digits on a number row and reaches its layers from thumb
+keys thirty-four keys lack, Hands Down Neu, whose author's firmware carries the Hands Down layers
+for a later Neu with other letters and thumbs, and Nordrassil, whose author publishes the rest of
+the keymap only outside its repository.
 
 Magic Romak is its author's keymap, and has no Extras and no Accents, as the keymap has none. It
 keeps its own thumbs on Numbers and Symbols, and the keymap's combos type what those two layers
