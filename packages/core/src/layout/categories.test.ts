@@ -30,7 +30,7 @@ const EXPECTED: Record<LayoutCategory, string[]> = {
   special: [
     'magic-romak',
     'magic-sturdy',
-    // Their author's combos, which they keep, type `œu` (a macro).
+    // Their author's Symbols has `z` `q` (a second alpha layer); a combo types `œu` (a macro).
     'hands-down-gold',
     'hands-down-promethium',
     'hands-down-vibranium',

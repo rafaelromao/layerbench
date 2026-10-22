@@ -30,6 +30,7 @@ import {
   EXTRAS_CONDITION,
   EXTRAS_ORDER,
   HOME_ROW_MODS,
+  hasDefaultLayers,
   mirrorKeyId,
   NUMBERS_CORE,
   NUMBERS_OUTER,
@@ -54,7 +55,7 @@ const BEFORE = new Map([...CLASSIC_LAYOUTS, ...SMALL_LAYOUTS].map((l) => [l.id, 
  */
 function keepsAuthorsLayers(layout: Layout): boolean {
   const before = layout.id ? BEFORE.get(layout.id) : undefined;
-  return before ? bringsOwnLayers(before) : !layout.layers.some((l) => l.id === 'accents');
+  return before ? bringsOwnLayers(before) : !hasDefaultLayers(layout);
 }
 
 /** The chord that one-shots Accents, as `explain` names its step. */

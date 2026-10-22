@@ -54,7 +54,8 @@ both, warm by what is pressed on the layer shown.
 
 Each card also names the layout's category, so you can rank a layout against its peers. It follows
 from the layout's own keys, whether it came with the app or is yours, and nothing on its
-[default layers](editing.md#default-layers) counts:
+[default layers](editing.md#default-layers) counts; the layers its author defines in their place,
+Numbers and Symbols among them, do:
 
 - **Standard**: every layout that is neither of the two below. Most have one alpha layer, a layer
   where a key types a letter from a to z by itself, and no letter on a thumb, on a board of 34 keys

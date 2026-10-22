@@ -75,8 +75,8 @@ and Symbols. The Standard and Thumb Alpha ones with the default layers share the
 thumbs and base-layer symbols, so that they compare on their letters (`withStandardThumbs` in
 `standard.ts`): the four inner thumbs hold Shift, Numbers, Symbols and Shift and tap Repeat, space,
 a thumb alpha or nothing, and Accents, and no symbol stays on the base layer but `'` `,` `.` `;`.
-The Special ones with the default layers keep every key they had and reach Accents on one combo (`withDefaultLayers` in
-`templates.ts`). They hold home row mods, Gui, Ctrl, Alt and Shift from the left pinky in and
+The Special ones with the default layers keep every key they had and reach Accents on one combo
+(`withDefaultLayers` in `templates.ts`). They hold home row mods, Gui, Ctrl, Alt and Shift from the left pinky in and
 mirrored on the right, each key still typing what it did (`withHomeRowMods` in `templates.ts`), but
 Magic Romak and those whose keymaps hold their layers on the home row, which hold their authors'. The languages each is for are measured, not chosen:
 a layout is for a language when it types every letter the language needs and its Effort on that

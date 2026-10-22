@@ -26,7 +26,8 @@ _Avoid_: action, mapping, keycode
 **Category**:
 Where the Library files a layout so that it is ranked against its peers: Standard, Thumb Alpha or
 Special. It follows from the layout's own keys, whoever made it, and nothing on its default layers
-counts toward it; the layers its author defines, Numbers and Symbols among them, do. Custom and community are where a layout came from, not categories.
+counts toward it; the layers its author defines, Numbers and Symbols among them, do. Custom and
+community are where a layout came from, not categories.
 _Avoid_: family, type, group, class
 
 **Community layout**:
@@ -60,7 +61,8 @@ more, as Magic Romak keeps its keymap's Numbers and Symbols): Accents, Numbers a
 Extras for whatever those cannot hold. Accents holds the dead keys,
 and the letters and accented letters the supported languages need; Extras comes on while Numbers and
 Symbols are both held. Every bundled layout that has them holds Numbers on its left inner thumb and
-Symbols on its right inner one, so Extras is both inner thumbs, in either order. A Standard or Thumb Alpha layout
+Symbols on its right inner one, so Extras is both inner thumbs, in either order. A Standard or Thumb
+Alpha layout
 taps its right outer thumb for Accents; a Special one presses a combo.
 _Avoid_: standard layers, common layers, shared layers
 

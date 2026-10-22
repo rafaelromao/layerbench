@@ -662,8 +662,9 @@ What moved, checked across the 38 reports; nothing else moved:
   - Hands Down holds Ctrl, Alt, Gui and Shift from each pinky in.
   - Ben Vallack Piano holds Ctrl, Alt and Gui on the top row from each ring finger in, its home row
     holding its layers; its R0 arms its author's shifted Alpha 2, where its comma is.
-- **Categories**: Hands Down's three are Special, their author's `œ` combo typing `œu`, and Enthium,
-  its author's Symbols typing three backticks at once; both are macros.
+- **Categories**: Hands Down's three are Special, their author's Symbols having `z` and `q`, a
+  second alpha layer, and their `œ` combo typing `œu`, a macro; so is Enthium, its author's Numbers
+  having letters and its Symbols typing three backticks at once, a macro.
 - **Their languages**, measured by `pnpm languages`:
   - Enthium and Ben Vallack Piano are for English alone, and Finch no longer for Italian, their
     authors' layers having no accents.

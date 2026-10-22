@@ -327,10 +327,11 @@ analysis counts, the holds that reach a layer that types nothing (navigation, fu
 toggle to a layer a hold reaches too, a modifier held on a layer's key, and a dead key the analysis
 composes nothing with (Hands Down's macron, ring and cedilla, whose combos type their letter only
 when held). A key on a thumb that a held thumb blocks types nothing there. Their authors' layers
-count toward their category, as any layer of their own does: Enthium's Symbols types three
-backticks at once, a macro, which makes it Special. The last column is what each cannot type of the digits, the
-default layers' symbols and German's letters; the accented letters only some dead key makes go with
-`ñ` `ç` `ä` `ö` `ü`.
+count toward their category, as any layer of their own does: Hands Down's Symbols has `z` and `q`,
+a second alpha layer, and Enthium's Numbers has letters too and its Symbols types three backticks
+at once, a macro, so both are Special. The last column is what each cannot type of the digits, the
+default layers' symbols and German's letters; the accented letters only some dead key makes go
+with `ñ` `ç` `ä` `ö` `ü`.
 
 | Layout | Its author's layers | Reached by | Cannot type |
 |---|---|---|---|
