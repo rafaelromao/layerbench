@@ -299,18 +299,23 @@ const isObject = (v: unknown): v is JsonObject =>
 const ONE_BINDING = ['tap', 'hold', 'default', 'morphed', 'active', 'inactive'];
 const BINDING_LISTS = ['bindings', 'steps', 'then'];
 
-/** How deep the compiler followed names, and the bindings inside them, before it gave up. */
-const MAX_NAMED_DEPTH = 16;
+/**
+ * How many names deep a key is followed. The compiler counted the bindings inside them too and gave
+ * up sooner, so whatever it read is read here whole.
+ */
+const MAX_NAMES_FOLLOWED = 16;
 
 /**
  * A document saved while layouts could name bindings of their own (`behaviors`), with each name
- * written out where it was used, exactly as the compiler read it, and the names dropped. A `ref`
- * key is the binding it names. A macro or adaptive key that names one is that binding with its own
- * fields over it; a name the named binding itself builds on was left unread, and still is. What the
- * compiler could not read made the layout fail to compile: a name the document does not have, a
- * macro or adaptive key built on a binding of another kind, or names followed more than 16 deep, as
- * a loop is. Such a key that is only a name becomes Nothing, and one built on a name keeps its own
- * fields. A document that names nothing reads as it is.
+ * written out where it was used, as the compiler read it, and the names dropped. A `ref` key is the
+ * binding it names. A macro or adaptive key that names one is that binding with its own fields over
+ * it; a name the named binding itself builds on was left unread, and still is. One thing reads
+ * otherwise: the compiler put sentence case or caps word around a named tap-hold, layer-tap or
+ * morph on their key whole, and now they go on its tap, as on any other key. What the compiler
+ * could not read made the layout fail to compile: a name the document does not have, a macro or
+ * adaptive key built on a binding of another kind, or names followed round a loop. Such a key that
+ * is only a name becomes Nothing, and one built on a name keeps its own fields. A document that
+ * names nothing reads as it is.
  */
 function withNamedBindingsInline(input: unknown): unknown {
   if (!isObject(input)) return input;
@@ -318,31 +323,34 @@ function withNamedBindingsInline(input: unknown): unknown {
   const named = isObject(behaviors) ? behaviors : {};
   const lookUp = (name: unknown) =>
     typeof name === 'string' && Object.hasOwn(named, name) ? named[name] : undefined;
-  const inline = (b: unknown, depth: number): unknown => {
+  /** `followed`: how many names were followed on the way to `b`. */
+  const inline = (b: unknown, followed: number): unknown => {
     if (!isObject(b)) return b;
-    if (depth > MAX_NAMED_DEPTH) return { kind: 'none' };
+    if (followed > MAX_NAMES_FOLLOWED) return { kind: 'none' };
     if (b.kind === 'ref') {
       const target = lookUp(b.ref);
-      return target === undefined ? { kind: 'none' } : inline(target, depth + 1);
+      return target === undefined ? { kind: 'none' } : inline(target, followed + 1);
     }
     let own = b;
+    let inside = followed;
     if ((b.kind === 'macro' || b.kind === 'adaptive') && 'ref' in b) {
       const { ref, ...rest } = b;
       // An empty name named nothing.
       const target = ref ? lookUp(ref) : undefined;
-      const { ref: _unread, ...built } =
-        isObject(target) && target.kind === b.kind ? { ...target, ...rest } : rest;
+      const builds = isObject(target) && target.kind === b.kind;
+      const { ref: _unread, ...built } = builds ? { ...target, ...rest } : rest;
       own = built;
+      if (builds) inside += 1;
     }
     const out: JsonObject = { ...own };
-    for (const k of ONE_BINDING) if (isObject(own[k])) out[k] = inline(own[k], depth + 1);
+    for (const k of ONE_BINDING) if (isObject(own[k])) out[k] = inline(own[k], inside);
     for (const k of BINDING_LISTS) {
       const list = own[k];
-      if (Array.isArray(list)) out[k] = list.map((x) => inline(x, depth + 1));
+      if (Array.isArray(list)) out[k] = list.map((x) => inline(x, inside));
     }
     if (Array.isArray(own.triggers)) {
       out.triggers = own.triggers.map((t) =>
-        isObject(t) ? { ...t, binding: inline(t.binding, depth + 1) } : t,
+        isObject(t) ? { ...t, binding: inline(t.binding, inside) } : t,
       );
     }
     return out;

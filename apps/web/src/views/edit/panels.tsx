@@ -899,10 +899,11 @@ function SpecialFeatureList({ state, send, onShow }: PanelProps & { onShow?: () 
     send({ type: 'selectLayer', layer });
     send({ type: 'keyClick', keyId: f.key });
   };
-  const placeOf = (f: SpecialFeature) =>
-    f.combo !== undefined
-      ? `Combo ${f.combo}`
-      : `${compiled.layers.find((l) => l.id === f.layer)?.name ?? f.layer} · ${f.key}`;
+  const placeOf = (f: SpecialFeature) => {
+    if (f.combo !== undefined) return `Combo ${f.combo}`;
+    const layer = f.layer === undefined ? undefined : compiled.layerIndex.get(f.layer);
+    return `${layer === undefined ? f.layer : compiled.layers[layer].name} · ${f.key}`;
+  };
 
   if (features.length === 0) {
     return <p className="text-xs opacity-70">This layout has no special features.</p>;

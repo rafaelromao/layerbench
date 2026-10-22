@@ -270,6 +270,25 @@ describe('a document saved while layouts named bindings of their own', () => {
     });
   });
 
+  it('puts a feature on the tap of a named tap-hold on its key, as on any other key', () => {
+    const spaceHold = { kind: 'hold_tap', tap: kp(' '), hold: { kind: 'mod', mod: 'LCTRL' } };
+    const layout = parseLayout({
+      ...saved({ L0: { kind: 'ref', ref: 'spaceHold' } }, { spaceHold }),
+      features: { sentenceCase: {} },
+    });
+    expect(layout.layers[0].bindings.L0).toEqual(spaceHold);
+    const space = compileLayout(layout).expanded.layers[0].bindings.L0;
+    expect(space).toMatchObject({ kind: 'hold_tap', tap: { kind: 'adaptive' } });
+  });
+
+  it('keeps a document that names nothing whole, however deep its bindings nest', () => {
+    let deep: unknown = kp('a');
+    for (let i = 0; i < 20; i++) deep = { kind: 'hold_tap', tap: deep, hold: kp('b') };
+    const { behaviors: _none, combos: _named, ...nameless } = saved({ LHI: deep }, {});
+    const layout = parseLayout(nameless);
+    expect(layout.layers[0].bindings.LHI).toEqual(deep);
+  });
+
   it('keeps a key whose name led nowhere, which never compiled, as Nothing or its own fields', () => {
     const parsed = safeParseLayout(
       saved(
