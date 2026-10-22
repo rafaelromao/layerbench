@@ -361,6 +361,11 @@ describe('a custom copy of Qwerty', () => {
     expect(specialFeatures(bundledLayout('enthium') as Layout).map((f) => f.label)).toEqual([
       'Macro “```”',
     ]);
+    // Their authors' layers give each a second alpha layer too: Hands Down's Symbols has `z` and
+    // `q`, Enthium's Numbers letters.
+    for (const id of ['hands-down-gold', 'hands-down-promethium', 'hands-down-vibranium'])
+      expect([id, alphaLayers(bundledLayout(id) as Layout)]).toEqual([id, ['base', 'sym']]);
+    expect(alphaLayers(bundledLayout('enthium') as Layout)).toEqual(['base', 'num']);
   });
 
   it('is Thumb Alpha once a thumb types a letter, through a tap-hold too', () => {

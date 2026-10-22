@@ -22,16 +22,16 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
   author's combos for symbols, digits and accents in `combos`; `drawn` in `small.ts` lays a layer
   out as the author draws it. Copy only what the keymap types, on the keys the board has: what the
   author's layers lack, the layout cannot type, left for an edit in the app, and `templates.test.ts`
-  pins it (`UNTYPED`, and by language `LACKS`). Keys that type nothing the analysis counts, holds onto layers that type
-  nothing, a toggle to a layer a hold reaches too, modifiers held on a layer's keys and dead keys
-  the analysis cannot compose stay out. Their layers count toward their category, as any layer of
-  their own (`hasDefaultLayers` in `templates.ts`): Hands Down's three are Special by the `z` and `q`
-  on their Symbols, a second alpha layer, and their `œu` combo, a macro, and Enthium by the letters
-  on its Numbers and its Symbols' macro. Every
-  other layout takes the default layers: its source defines only letters, or its author's layers
-  have no place on its board (RSTHD's are reached only from ErgoDox thumb keys), go with another
-  version of its letters (Hands Down Neu), or are published outside its source (Nordrassil). The
-  guide lists them all ([docs/guide/editing.md](docs/guide/editing.md#layouts-with-their-authors-layers)).
+  pins it (`UNTYPED`, and by language `LACKS`). Keys that type nothing the analysis counts, holds
+  onto layers that type nothing, a toggle to a layer a hold reaches too, modifiers held on a layer's
+  keys and dead keys the analysis cannot compose stay out. Their layers count toward their category,
+  as any layer of their own (`hasDefaultLayers` in `templates.ts`): Hands Down's three are Special
+  by the `z` and `q` on their Symbols, a second alpha layer, and their `œu` combo, a macro, and
+  Enthium by the letters on its Numbers and its Symbols' macro. Every other layout takes the default
+  layers: its source defines only letters, or its author's layers have no place on its board
+  (RSTHD's are reached only from ErgoDox thumb keys), go with another version of its letters (Hands
+  Down Neu), or are published outside its source (Nordrassil). The guide lists them all
+  ([docs/guide/editing.md](docs/guide/editing.md#layouts-with-their-authors-layers)).
   No code singles a layout out: each uses `ClassicDef` fields any layout may use.
   - Magic Romak models its author's keymap (github.com/rafaelromao/keyboards), which has neither
     Extras nor Accents. The keymap's combos type what those carried: Alpha 2's dead keys and `à`,

@@ -58,12 +58,11 @@ _Avoid_: saved layout, stored layout, my layout
 The layers a layout whose authors define none past its letters has besides its own, so that it can
 type every letter and symbol (a layout whose author's keymap defines layers keeps those, and nothing
 more, as Magic Romak keeps its keymap's Numbers and Symbols): Accents, Numbers and Symbols, and
-Extras for whatever those cannot hold. Accents holds the dead keys,
-and the letters and accented letters the supported languages need; Extras comes on while Numbers and
-Symbols are both held. Every bundled layout that has them holds Numbers on its left inner thumb and
-Symbols on its right inner one, so Extras is both inner thumbs, in either order. A Standard or Thumb
-Alpha layout
-taps its right outer thumb for Accents; a Special one presses a combo.
+Extras for whatever those cannot hold. Accents holds the dead keys, and the letters and accented
+letters the supported languages need; Extras comes on while Numbers and Symbols are both held. Every
+bundled layout that has them holds Numbers on its left inner thumb and Symbols on its right inner
+one, so Extras is both inner thumbs, in either order. A Standard or Thumb Alpha layout taps its
+right outer thumb for Accents; a Special one presses a combo.
 _Avoid_: standard layers, common layers, shared layers
 
 **Draft**:

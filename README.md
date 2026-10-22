@@ -76,17 +76,17 @@ thumbs and base-layer symbols, so that they compare on their letters (`withStand
 `standard.ts`): the four inner thumbs hold Shift, Numbers, Symbols and Shift and tap Repeat, space,
 a thumb alpha or nothing, and Accents, and no symbol stays on the base layer but `'` `,` `.` `;`.
 The Special ones with the default layers keep every key they had and reach Accents on one combo
-(`withDefaultLayers` in `templates.ts`). They hold home row mods, Gui, Ctrl, Alt and Shift from the left pinky in and
-mirrored on the right, each key still typing what it did (`withHomeRowMods` in `templates.ts`), but
-Magic Romak and those whose keymaps hold their layers on the home row, which hold their authors'. The languages each is for are measured, not chosen:
-a layout is for a language when it types every letter the language needs and its Effort on that
-language's news text is in the better half of all the bundled layouts', on the rules the Library
-ranks on (`lang/performance.ts`). `pnpm languages` measures them and writes them, to
-`layouts/languages.json` and into each document, and a test fails when they drift. A new one joins
-them as a document: a custom layout, unchanged but for its home row mods, added by pull request.
-Merging the pull request is the approval, and the deploy that follows puts it in everyone's Library.
-A layout can also join with no deploy, as a community layout, by **Submit** in the app
-([below](#community-layouts)).
+(`withDefaultLayers` in `templates.ts`). They hold home row mods, Gui, Ctrl, Alt and Shift from the
+left pinky in and mirrored on the right, each key still typing what it did (`withHomeRowMods` in
+`templates.ts`), but Magic Romak and those whose keymaps hold their layers on the home row, which
+hold their authors'. The languages each is for are measured, not chosen: a layout is for a language
+when it types every letter the language needs and its Effort on that language's news text is in the
+better half of all the bundled layouts', on the rules the Library ranks on (`lang/performance.ts`).
+`pnpm languages` measures them and writes them, to `layouts/languages.json` and into each document,
+and a test fails when they drift. A new one joins them as a document: a custom layout, unchanged but
+for its home row mods, added by pull request. Merging the pull request is the approval, and the
+deploy that follows puts it in everyone's Library. A layout can also join with no deploy, as a
+community layout, by **Submit** in the app ([below](#community-layouts)).
 
 1. In the app, give the layout its name, its author, and in Settings, if it has one, its link to
    where it comes from: the author's firmware, keymap or page. Make each home row finger key of its
