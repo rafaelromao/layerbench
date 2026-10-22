@@ -345,9 +345,22 @@ describe('a document saved while layouts named bindings of their own', () => {
         },
       },
     );
-    for (const doc of [everywhere, selfBuilt, heavyLoop]) {
-      expect(JSON.stringify(toCanonicalJson(parseLayout(doc))).length).toBeLessThan(1_000_000);
+    // One light enough to be written out a few turns before the budget is spent.
+    const text = 'è'.repeat(5_000);
+    const lighter = saved(
+      { LHI: heavy },
+      {
+        heavy: {
+          kind: 'adaptive',
+          default: { kind: 'macro', symbols: text },
+          triggers: [{ afterAny: Array(1_000).fill('a'), binding: heavy }],
+        },
+      },
+    );
+    for (const doc of [everywhere, selfBuilt, heavyLoop, lighter]) {
+      expect(JSON.stringify(toCanonicalJson(parseLayout(doc))).length).toBeLessThan(500_000);
     }
+    expect(JSON.stringify(toCanonicalJson(parseLayout(lighter)))).toContain(text);
   });
 
   it('keeps a key whose name led nowhere as Nothing, and one built on it as its own fields', () => {

@@ -312,31 +312,34 @@ const MAX_NAMED_DEPTH = 16;
 
 /**
  * How much a document's names may write out below them, all its keys and combos together, weighed
- * as `weightOf` weighs a binding. A keymap's names weigh a few tens of thousands at most; only names
- * read round a loop, or made to be heavy, come near it.
+ * as `weightOf` weighs a binding. A keymap's names weigh a few thousand; only names read round a
+ * loop, or made to be heavy, come near it.
  */
 const MAX_NAMED_WEIGHT = 200_000;
 
-/** About what copying a value costs: one, and the length of a text. */
-const textWeight = (v: unknown) => (typeof v === 'string' ? 1 + v.length : 1);
+/**
+ * About what copying a value costs: one, the length of a text, or for a binding held in it what
+ * the least it can be written as weighs, Nothing (`kind`, `none`).
+ */
+const valueWeight = (v: unknown) => (typeof v === 'string' ? 1 + v.length : isObject(v) ? 10 : 1);
 
-/** About what copying a field's value costs: a text, or a list and the texts in it. */
+/** About what copying a field's value costs: a value, or a list and the values in it. */
 const fieldWeight = (v: unknown) =>
-  Array.isArray(v) ? v.reduce((n: number, x) => n + textWeight(x), 1) : textWeight(v);
+  Array.isArray(v) ? v.reduce((n: number, x) => n + valueWeight(x), 1) : valueWeight(v);
 
 /**
  * About what writing a binding out once copies: its fields and the text and list items in them, and
- * a branch's own fields. A binding it holds counts one, and is weighed when it is written out;
- * anything deeper is nothing the schema reads.
+ * a branch's own fields. A binding it holds counts as Nothing, and is weighed again when it is
+ * written out; anything deeper is nothing the schema reads.
  */
 function weightOf(b: JsonObject): number {
   let n = 0;
   for (const [k, v] of Object.entries(b)) {
-    n += textWeight(k) + fieldWeight(v);
+    n += valueWeight(k) + fieldWeight(v);
     if (k !== 'triggers' || !Array.isArray(v)) continue;
     for (const t of v) {
       if (isObject(t))
-        for (const [tk, tv] of Object.entries(t)) n += textWeight(tk) + fieldWeight(tv);
+        for (const [tk, tv] of Object.entries(t)) n += valueWeight(tk) + fieldWeight(tv);
     }
   }
   return n;
