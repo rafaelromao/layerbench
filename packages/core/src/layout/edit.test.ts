@@ -1114,9 +1114,18 @@ describe('conditional layers', () => {
     expect(refusal(one, { kind: 'removeConditionalLayer', condition: 3 })).toBe('unchanged');
   });
 
-  it('offers the first condition the layout takes, and none once no layer is free', () => {
+  it('offers a condition the layout takes, and none once no layer is free', () => {
     expect(freeCondition(layout)).toBeNull();
-    expect(freeCondition(four)).toEqual({ if: ['upper'], then: 'side' });
+    // The latest layer comes on, above the one it waits for.
+    expect(freeCondition(four)).toEqual({ if: ['upper'], then: 'both' });
+    // A layer a key reaches would come on no other way: one nothing reaches goes first.
+    const reached = landed(four, {
+      kind: 'bind',
+      layer: 'base',
+      keys: ['L0'],
+      binding: { kind: 'mo', layer: 'both' },
+    }).layout;
+    expect(freeCondition(reached)).toEqual({ if: ['upper'], then: 'side' });
     // Extras waits for Numbers and Symbols, so neither comes on by a condition: Accents does.
     const off: Binding = { kind: 'trans' };
     const defaults: Layout = {

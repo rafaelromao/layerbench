@@ -986,40 +986,42 @@ describe('Edit', () => {
     const section = () => within(screen.getByRole('region', { name: 'Conditional layers' }));
     const add = () => section().getByRole('button', { name: '+ condition' });
     await user.click(add());
-    // The first condition the layout takes: Symbols, while Numbers is on.
+    // Every layer is reached already, so the latest comes on: Accents, while Numbers is on.
     const brings = () => section().getByRole('combobox', { name: 'Layer condition 1 brings on' });
-    expect(brings()).toHaveValue('sym');
+    expect(brings()).toHaveValue('accents');
     const waits = (name: string) =>
       within(section().getByRole('group', { name: `Layers ${name} waits for` }));
-    expect(waits('Symbols').getByRole('button', { name: /Numbers/ })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
-    // Neither the base layer, always on, nor Symbols itself is one to wait for.
+    // Neither the base layer, always on, nor Accents itself is one to wait for.
     expect(
-      waits('Symbols')
+      waits('Accents')
         .getAllByRole('button')
-        .map((b) => b.textContent),
-    ).toEqual(['Numbers', 'Accents']);
-    // Accents is later in the list, so its keys cover Symbols while both are on.
-    await user.click(waits('Symbols').getByRole('button', { name: /Accents/ }));
-    const accents = waits('Symbols').getByRole('button', { name: /Accents/ });
-    expect(accents).toHaveAttribute('aria-pressed', 'true');
-    expect(accents).toHaveFocus();
-    expect(section().getByText(/Symbols is above Accents in the list/)).toBeInTheDocument();
+        .map((b) => [b.textContent, b.getAttribute('aria-pressed')]),
+    ).toEqual([
+      ['Numbers', 'true'],
+      ['Symbols', 'false'],
+    ]);
+    // What reached Accents no longer does: the condition alone brings it on.
+    expect(section().getByText(/Accents comes on only by this condition/)).toBeInTheDocument();
+    await user.click(waits('Accents').getByRole('button', { name: /Symbols/ }));
+    const symbols = waits('Accents').getByRole('button', { name: /Symbols/ });
+    expect(symbols).toHaveAttribute('aria-pressed', 'true');
+    expect(symbols).toHaveFocus();
     // Every layer now comes on by the condition or is waited for: none is left to add.
     expect(add()).toBeDisabled();
     expect(section().getByText(/Every layer besides the base one/)).toBeInTheDocument();
     // A layer waits for others, never for itself.
-    await user.selectOptions(brings(), 'accents');
-    expect(await screen.findByRole('alert')).toHaveTextContent('Accents cannot wait for itself');
-    await user.click(waits('Symbols').getByRole('button', { name: /Accents/ }));
-    await user.selectOptions(brings(), 'accents');
-    expect(brings()).toHaveValue('accents');
+    await user.selectOptions(brings(), 'sym');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Symbols cannot wait for itself');
+    await user.click(waits('Accents').getByRole('button', { name: /Symbols/ }));
+    await user.selectOptions(brings(), 'sym');
+    expect(brings()).toHaveValue('sym');
     expect(brings()).toHaveFocus();
-    expect(add()).toBeEnabled();
-    await user.click(section().getByRole('button', { name: 'Remove the condition for Accents' }));
+    // Accents is later in the list, so its keys cover Symbols while both are on.
+    await user.click(waits('Symbols').getByRole('button', { name: /Accents/ }));
+    expect(section().getByText(/Symbols is above Accents in the list/)).toBeInTheDocument();
+    await user.click(section().getByRole('button', { name: 'Remove the condition for Symbols' }));
     expect(section().queryByRole('combobox', { name: 'Layer condition 1 brings on' })).toBeNull();
+    expect(add()).toBeEnabled();
   }, 60_000);
 
   it("shows Magic Romak's special features and lets one be turned off", async () => {
@@ -1711,6 +1713,8 @@ describe('Edit', () => {
     await user.click(key('Key LHM: d, hold ⌥'));
     await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Layer' }));
     expect(await screen.findByRole('button', { name: 'Key LHM: hold Numb' })).toBeInTheDocument();
+    // Said by its hold, since it taps nothing.
+    expect(screen.getByText('LHM set to hold Numb')).toBeInTheDocument();
 
     await user.click(within(await inspector('LHM')).getByRole('radio', { name: 'One-shot' }));
     expect(await screen.findByRole('button', { name: 'Key LHM: Numb (1×)' })).toBeInTheDocument();

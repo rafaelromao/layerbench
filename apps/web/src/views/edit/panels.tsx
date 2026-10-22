@@ -6,6 +6,7 @@ import {
   LAYER_COLORS,
   type LayerColor,
   type LayoutFeatures,
+  layerReachedFrom,
   reachKeys,
   type SpecialFeature,
   type SpecialFeatureKind,
@@ -13,7 +14,7 @@ import {
   specialFeatures,
   toCanonicalJson,
 } from '@layerbench/core';
-import { type Dispatch, type ReactNode, useMemo, useState } from 'react';
+import { type Dispatch, type ReactNode, useId, useMemo, useState } from 'react';
 import { layerColourOf } from '../../components/layer-colour.js';
 import type { ProducerDTO } from '../../engine/protocol.js';
 import { toast } from '../../state/toasts.js';
@@ -372,6 +373,7 @@ function ConditionalLayers({ state, send }: PanelProps) {
   const toggle = (list: readonly string[], id: string) =>
     list.includes(id) ? list.filter((l) => l !== id) : [...list, id];
   const free = freeCondition(state.layout);
+  const noneFree = useId();
   return (
     <section className="space-y-2 pt-2" aria-label="Conditional layers">
       <h3 className="text-xs font-semibold">Conditional layers</h3>
@@ -385,6 +387,8 @@ function ConditionalLayers({ state, send }: PanelProps) {
             // A layer later in the list is drawn over an earlier one, so one brought on before a
             // layer it waits for shows only where that layer's keys let it through.
             const over = c.if.filter((id) => placeOf(id) > placeOf(c.then));
+            // A layer a condition brings on comes on no other way: what reaches it stops doing so.
+            const reaching = layerReachedFrom(state.layout, c.then);
             return (
               // biome-ignore lint/suspicious/noArrayIndexKey: the place is what a row edits, and a key of its layers would change with each edit, the row losing focus
               <li key={i} className="space-y-1">
@@ -431,6 +435,12 @@ function ConditionalLayers({ state, send }: PanelProps) {
                     keys cover it: move it below them.
                   </p>
                 )}
+                {reaching.length > 0 && (
+                  <p className="text-xs text-warning">
+                    {nameOf(c.then)} comes on only by this condition, so these no longer bring it
+                    on: {reaching.join(', ')}.
+                  </p>
+                )}
               </li>
             );
           })}
@@ -440,13 +450,13 @@ function ConditionalLayers({ state, send }: PanelProps) {
         type="button"
         className="btn btn-xs"
         disabled={!free}
-        aria-describedby={free ? undefined : 'no-free-condition'}
+        aria-describedby={free ? undefined : noneFree}
         onClick={() => free && edit({ kind: 'addConditionalLayer', ...free })}
       >
         + condition
       </button>
       {!free && (
-        <p id="no-free-condition" className="text-xs opacity-70">
+        <p id={noneFree} className="text-xs opacity-70">
           {others.length < 2
             ? 'A condition needs two layers besides the base one.'
             : 'Every layer besides the base one comes on by a condition or is waited for by one.'}

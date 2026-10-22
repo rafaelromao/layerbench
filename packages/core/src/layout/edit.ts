@@ -180,14 +180,19 @@ function conditionRefused(layout: Layout, c: ConditionalLayerDef, at: number): s
 }
 
 /**
- * The first condition the layout takes as it is, one layer bringing on another, in the order of the
- * list; or null when none is left: too few layers, or every one besides the base comes on by a
- * condition or is waited for by one.
+ * A condition the layout takes as it is, one layer bringing on another; or null when none is left:
+ * too few layers, or every one besides the base comes on by a condition or is waited for by one. A
+ * layer that comes on by a condition comes on no other way, so one nothing reaches goes first; and
+ * the layer brought on is the latest in the list it can be, so the layers it waits for are below it
+ * and do not cover it.
  */
 export function freeCondition(layout: Layout): ConditionalLayerDef | null {
   const others = layout.layers.slice(1).map((l) => l.id);
-  for (const waited of others) {
-    for (const then of others) {
+  const latest = [...others].reverse();
+  const reached = (id: string) => layerReachedFrom(layout, id).length > 0;
+  const brought = [...latest.filter((id) => !reached(id)), ...latest.filter(reached)];
+  for (const then of brought) {
+    for (const waited of others) {
       if (then === waited) continue;
       const c = { if: [waited], then };
       if (!conditionRefused(layout, c, -1)) return c;
