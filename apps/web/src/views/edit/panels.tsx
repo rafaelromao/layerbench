@@ -165,7 +165,7 @@ function LayerColourPicker({
 }) {
   const shown = layerColourOf(index, value);
   return (
-    <span className="flex items-center gap-1 shrink-0">
+    <span className="flex min-w-0 items-center gap-1">
       <span
         aria-hidden="true"
         className="lb-layer-swatch"
@@ -173,7 +173,7 @@ function LayerColourPicker({
       />
       <select
         aria-label={`Colour of layer ${layerId}`}
-        className="select select-xs select-ghost w-auto"
+        className="select select-xs select-ghost w-auto min-w-0"
         value={value ?? ''}
         onChange={(e) => onChange((e.target.value || undefined) as LayerColor | undefined)}
       >

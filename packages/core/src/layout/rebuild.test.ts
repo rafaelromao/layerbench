@@ -124,6 +124,10 @@ describe('Magic Romak, rebuilt in the editor', () => {
 
   it('is the same layout, but for its id, the ids of its combos and the ways in it declares', () => {
     expect(chosen(rebuilt)).toEqual(chosen(magicRomak));
+    // Nothing bound off the board, where the comparison key by key would not look.
+    for (const l of rebuilt.layers) {
+      for (const key of Object.keys(l.bindings)) expect([...KEY_IDS, '*']).toContain(key);
+    }
   });
 
   it.each(goldenMatrix().filter((c) => c.layout === 'magic-romak'))(

@@ -858,7 +858,6 @@
   grid-column: span 2;
   justify-self: center;
 }
-/* Under a layer's name: its id, and the colour it is drawn in. */
 /* The layer's id and colour, under its name: on a phone the colour goes under the id, clear of the
    row's buttons, rather than past them. */
 .lb-layer-meta {

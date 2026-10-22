@@ -625,14 +625,6 @@ What moved, checked across the 38 reports; nothing else moved:
 - **No report**: the fixture texts are typed the same, holds being no part of what they press, and
   every layout's languages, measured by `pnpm languages`, are as they were.
 
-## Not compared
-
-`globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not
-numbers, meta other than `cross_word` and `stream_length`, and the descriptive fields of each
-result (label, family, note, enabled, score weight, normalized); of the score, only whether it is
-enabled and its value. Everything else is asserted: rule values to a millionth of themselves,
-counts and lists exactly.
-
 ## Twenty-ninth re-baseline: Magic Romak reaches only the layers that type
 
 Magic Romak holds no key for a layer of its author's keymap that types nothing. The Shortcuts layer
@@ -645,3 +637,11 @@ What moved, checked across the 38 reports; nothing else moved:
   it typed.
 - **No report**: the fixture texts are typed the same, as those holds typed nothing, and every
   layout's languages, measured by `pnpm languages`, are as they were.
+
+## Not compared
+
+`globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not
+numbers, meta other than `cross_word` and `stream_length`, and the descriptive fields of each
+result (label, family, note, enabled, score weight, normalized); of the score, only whether it is
+enabled and its value. Everything else is asserted: rule values to a millionth of themselves,
+counts and lists exactly.

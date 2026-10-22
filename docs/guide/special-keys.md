@@ -139,8 +139,6 @@ These are among the editor's other tiles, under **More** on a phone:
 
 A key brought in from a keymap-drawer file keeps its legend when LayerBench has no model of what
 it does: Escape, an arrow, a Bluetooth or media key. It is drawn in grey, types nothing in the
-analysis, and moves, swaps and copies like any other key. Choosing another tile replaces it.
-**Imported**, under **More**, makes one by hand: its **Label** is what it is drawn with, and its
-**Source** what it was in the keymap, such as `&mo FUN` for a layer LayerBench has no model of. A
+analysis, and moves, swaps and copies like any other key. Choosing another tile replaces it. A
 layer reached by holding such a key still works: the hold is kept, and only the tap is imported.
 See [Importing and exporting](importing.md).

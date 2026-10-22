@@ -134,7 +134,6 @@ const ALPHA2_OR_SYMBOLS: Binding = {
  * (`magicRomakLayers`).
  */
 const NUMBERS_THUMBS: Record<string, Binding> = {
-  LHP: kp(','),
   L1: { kind: 'trans' },
   L0: { kind: 'trans' },
   R0: { kind: 'hold_tap', tap: kp(' '), hold: { kind: 'mo', layer: 'sym' } },
@@ -142,7 +141,6 @@ const NUMBERS_THUMBS: Record<string, Binding> = {
 };
 
 const SYMBOLS_THUMBS: Record<string, Binding> = {
-  RHP: kp('_'),
   L1: { kind: 'trans' },
   // The firmware's hold here reaches a copy of Numbers placed above Symbols, which only its layer
   // order needs. The digits are one hold away from Alpha 1 either way.
