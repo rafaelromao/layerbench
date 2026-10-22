@@ -632,23 +632,33 @@ layers, as Magic Romak already did: Magic Sturdy, Enthium, Hands Down Gold, Prom
 Vibranium, T-34, Finch, Cem Aksoylar's Colemak-DH and Ben Vallack Piano. Each brings its author's
 layers on the keys its board has, the keys and combos that reach them, and its author's combos for
 symbols and accents. None has Accents, Extras or the standard thumbs, and nothing is added: what its
-author's layers do not type, it does not type.
+author's layers do not type, it does not type. An author's Numbers and Symbols count toward its
+category, as its own layers.
 
 What moved, checked across the 38 reports; nothing else moved:
 
 - **No report**: they are Qwerty's, Romak's and Magic Romak's, which keep what they had.
 - **The nine layouts' documents**: their default layers, and the keys and the Accents combo that
-  reached them, give way to their authors' layers, holds and combos; Enthium's standard thumbs give
-  way to its author's, Tab held for Numbers and `r` for Symbols, and its base layer keeps its marks.
-  Magic Sturdy, Hands Down and Ben Vallack Piano, whose keymaps hold layers on the home row, hold
-  their authors' home row mods there; Ben Vallack Piano's R0 arms its author's shifted Alpha 2,
-  where its comma is. Hands Down's three are Special now, their author's `œ` combo typing `œu`.
-- **Their languages**, measured by `pnpm languages`: Enthium and Ben Vallack Piano are for English
-  alone, and Finch no longer for Italian, their authors' layers having no accents; Hands Down Gold
-  and Vibranium lose German, which needs `ß`, and Hands Down Promethium German and, by Effort,
-  Portuguese.
-- **Bird's and Colemak-DH's documents**: their languages only, as the better half by Effort moved
-  with the others: Bird is no longer for Spanish, Colemak-DH no longer for French.
+  reached them, give way to their authors' layers, holds and combos.
+  - Enthium and the three Hands Down lose the standard thumbs for their authors': Enthium holds
+    Numbers on Tab (L1) and Symbols on `r`, Hands Down Numbers on Backspace (L1) and Symbols on
+    space, its R1 Enter, and its L0 its thumb letter alone.
+  - Their base layers keep their marks again: Enthium's `=` `-` `/`, Hands Down's `#` `/` `"` `-`.
+  - Magic Sturdy holds its author's modifiers on the home and bottom rows, Shift on `r` and `e`, its
+    `d` holding nothing now.
+  - Hands Down holds Ctrl, Alt, Gui and Shift from each pinky in.
+  - Ben Vallack Piano holds Ctrl, Alt and Gui on the top row from each ring finger in, its home row
+    holding its layers; its R0 arms its author's shifted Alpha 2, where its comma is.
+- **Categories**: Hands Down's three are Special, their author's `œ` combo typing `œu`, and Enthium,
+  its author's Symbols typing three backticks at once; both are macros.
+- **Their languages**, measured by `pnpm languages`:
+  - Enthium and Ben Vallack Piano are for English alone, and Finch no longer for Italian, their
+    authors' layers having no accents.
+  - Hands Down Gold loses German, which needs `ß`; Promethium and Vibranium lose German and, by
+    Effort, Portuguese.
+- **Bird's, Colemak-DH's and Nordwind's documents**: their languages only, as the better half by
+  Effort moved with the others. Bird is no longer for Spanish, Colemak-DH no longer for French, and
+  Nordwind, a document, is for Portuguese too.
 
 ## Not compared
 

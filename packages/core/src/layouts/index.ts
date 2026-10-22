@@ -36,6 +36,7 @@ export {
   EXTRAS_CONDITION,
   EXTRAS_ORDER,
   HOME_ROW_MODS,
+  hasDefaultLayers,
   mirrorKeyId,
   NUMBERS_CORE,
   NUMBERS_OUTER,

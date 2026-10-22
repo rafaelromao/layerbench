@@ -6,6 +6,7 @@
   "description": "Nordwind: s on the left thumb, as cmini has it; cmini does not place space, so it is on the right thumb.",
   "link": "https://github.com/Apsu/cmini/blob/8f8f7e8587166e7be0ea725b5466a69cd59334b2/layouts/nordwind.json",
   "languages": [
+    "pt",
     "de"
   ],
   "hostLocale": "symbols",

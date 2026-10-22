@@ -1,4 +1,4 @@
-import { DEFAULT_LAYER_ID_LIST } from '../layouts/templates.js';
+import { DEFAULT_LAYER_ID_LIST, hasDefaultLayers } from '../layouts/templates.js';
 import { buildGeometry } from './compile.js';
 import { expandFeatures, type WrappingFeature } from './features.js';
 import type { Binding, LayerDef, Layout } from './types.js';
@@ -51,7 +51,15 @@ export interface ThumbAlpha {
   letter: string;
 }
 
-const isDefaultLayer = (id: string) => DEFAULT_LAYER_ID_LIST.includes(id);
+/**
+ * Whether a layer of a layout is one of the default layers, which never count toward a category: a
+ * layer of their ids on a layout that has them. A layout that keeps its author's layers has none, its
+ * Numbers and Symbols being its author's own.
+ */
+const isDefaultLayer = (layout: Pick<Layout, 'layers'>) => {
+  const defaults = hasDefaultLayers(layout);
+  return (id: string) => defaults && DEFAULT_LAYER_ID_LIST.includes(id);
+};
 
 /** The letter a key types by itself, a `kp` or a `unicode` one, lower-cased, or null for anything else. */
 function letterOf(b: Binding): string | null {
@@ -132,9 +140,10 @@ function lettersOf(
   return out;
 }
 
-/** The layers that are the layout's own: the default layers never count toward a category. */
+/** The layers that are the layout's own: the default layers, where it has them, never count. */
 function ownLayers(layout: Layout) {
-  return layout.layers.filter((l) => !isDefaultLayer(l.id));
+  const isDefault = isDefaultLayer(layout);
+  return layout.layers.filter((l) => !isDefault(l.id));
 }
 
 /** The layers where at least one key types a letter a–z by itself, by id, in the layout's order. */
@@ -275,8 +284,8 @@ const DECLARED: Record<WrappingFeature, { feature: SpecialFeatureKind; label: st
  * Whether a combo can fire on none of the layout's own layers: only on the default layers, or, with
  * an empty list, on none at all. A combo with no list fires on every layer.
  */
-const onDefaultLayersOnly = (layers: string[] | undefined) =>
-  layers?.every(isDefaultLayer) === true;
+const onDefaultLayersOnly = (isDefault: (id: string) => boolean, layers: string[] | undefined) =>
+  layers?.every(isDefault) === true;
 
 /**
  * Each use of a special feature: on the keys of the layout's own layers, on its combos, and among
@@ -293,8 +302,9 @@ export function specialFeatures(layout: Layout): SpecialFeature[] {
     (f) => expandFeatures({ ...layout, features: { [f]: layout.features?.[f] } }).owned,
   );
   const keys = buildGeometry(layout).keys.map((k) => k.id);
+  const isDefault = isDefaultLayer(layout);
   for (const layer of layout.layers) {
-    const own = !isDefaultLayer(layer.id);
+    const own = !isDefault(layer.id);
     // Each key of the board as it is compiled: a layer default no key is left to is not a use.
     for (const key of keys) {
       const b = bindingAt(layer, key);
@@ -308,7 +318,7 @@ export function specialFeatures(layout: Layout): SpecialFeature[] {
         out.push({ ...DECLARED[f], layer: layer.id, key });
   }
   (layout.combos ?? []).forEach((c, i) => {
-    if (!onDefaultLayersOnly(c.layers))
+    if (!onDefaultLayersOnly(isDefault, c.layers))
       featuresOf(layout, c.binding, { combo: c.id ?? `#${i + 1}`, comboIndex: i }, out);
     namedIn(layout, c.binding, used);
   });

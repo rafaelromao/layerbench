@@ -26,7 +26,7 @@ _Avoid_: action, mapping, keycode
 **Category**:
 Where the Library files a layout so that it is ranked against its peers: Standard, Thumb Alpha or
 Special. It follows from the layout's own keys, whoever made it, and nothing on its default layers
-counts toward it. Custom and community are where a layout came from, not categories.
+counts toward it; the layers its author defines, Numbers and Symbols among them, do. Custom and community are where a layout came from, not categories.
 _Avoid_: family, type, group, class
 
 **Community layout**:
@@ -81,10 +81,10 @@ _Avoid_: action, operation, op, mutation
 **Home row mods**:
 Modifiers held on the home row's finger keys, each key still typing what it typed when tapped. Every
 bundled layout has Gui, Ctrl, Alt and Shift from the left pinky in, mirrored on the right, on its
-base layer, but Magic Romak, which holds its author's keymap's, its home block mods, as the keymap
-calls them: Ctrl, Alt and Shift from the ring finger in, a layer on each pinky, and Gui, with or
-without Shift, on the bottom row. A layout whose author's keymap holds its layers on the home row
-holds its author's modifiers too.
+base layer, but those whose authors' keymaps hold their own: Magic Romak its home block mods, as the
+keymap calls them (Ctrl, Alt and Shift from the ring finger in, a layer on each pinky, and Gui, with
+or without Shift, on the bottom row), and a layout whose author's keymap holds its layers on the
+home row its author's modifiers.
 _Avoid_: HRM, home-row modifiers
 
 **Kind of key**:
@@ -158,8 +158,8 @@ _Avoid_: magic, advanced key, extra feature
 
 **Special layout**:
 A layout with a special feature, more than one alpha layer, or a board of fewer than 34 keys. A
-bundled one keeps its author's design, with the default layers added, or for Magic Romak its
-keymap's Numbers and Symbols alone, and may bend any rule the other categories follow.
+bundled one keeps its author's design, with the default layers added, or with its author's own
+layers where its author defines them, and may bend any rule the other categories follow.
 _Avoid_: exotic layout, advanced layout
 
 **Standard layout**:

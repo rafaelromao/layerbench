@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { eighteenKeys } from '../fixtures/boards.js';
 import { GEOMETRY_PRESET_IDS, getGeometryPreset } from '../geometry/presets.js';
 import { layoutLanguageCoverage, producibleSymbols } from '../lang/coverage.js';
 import { LANGUAGE_PROFILES } from '../lang/profiles.js';
@@ -100,31 +101,6 @@ function withoutAuthorsLayers(id: string): Layout {
   });
   const preset = 'preset' in letters.geometry ? letters.geometry.preset : '';
   return withDefaultLayers(letters, getGeometryPreset(preset));
-}
-
-/**
- * Eighteen keys, a letter on each finger key and space on the outer left thumb, with the default
- * layers: Numbers held on the inner left thumb and Symbols on the inner right one, as on any layout.
- */
-function eighteenKeys(): Layout {
-  const ids = ['LTR', 'LTM', 'LTI', 'RTI', 'RTM', 'RTR', 'LHP', 'LHR', 'LHM', 'LHI'];
-  const letters = Object.fromEntries(
-    [...ids, 'RHI', 'RHM', 'RHR', 'RHP'].map((id, i) => [
-      id,
-      { kind: 'kp', symbol: 'lgdhuoisrtneac'[i] } as Binding,
-    ]),
-  );
-  return withDefaultLayers(
-    {
-      format: 'layerbench/layout@1',
-      name: 'Eighteen keys',
-      hostLocale: 'symbols',
-      geometry: { preset: '1222+2' },
-      keys: { space: 'L1' },
-      layers: [{ id: 'base', bindings: { ...letters, L1: { kind: 'kp', symbol: ' ' } } }],
-    },
-    getGeometryPreset('1222+2'),
-  );
 }
 
 function trace(layout: Layout, text: string) {
@@ -661,11 +637,45 @@ const UNTYPED: Record<string, string> = {
   'hands-down-promethium': '\\ªº«»ı¿¡ß',
   'hands-down-vibranium': '\\ªº«»ı¿¡ß',
   't-34': '€£§ªº°«»ı¿¡ßœæ',
-  'magic-sturdy': '\\€£§ªº°?«»ı¿¡ßœæñçäöü',
+  'magic-sturdy': '€£§ªº°?«»ı¿¡ßœæñçäöü',
   enthium: '&()€£§ªº°«»ı¿¡ßœæñçäöü',
   finch: '€£§ªº°~^"?«»ı¿¡ßœæñçäöü',
   caksoylar: '{}|€£§ªº°~"<>:?«»ı¡ßœæñçäöü',
   'ben-vallack-piano': '€§ªº°_«»ı¿¡ßœæñçäöü',
+};
+
+/** A language's letters and marks, all of them: what a layout with no accent of its own lacks. */
+function everyLetter(tag: string): string[][] {
+  const p = LANGUAGE_PROFILES[tag];
+  return [p.required, p.optional ?? [], p.punctuation ?? []];
+}
+
+/** Every language but English, lacked whole: by a layout whose author's layers have no accents. */
+const ACCENTLESS = Object.fromEntries(
+  Object.keys(LANGUAGE_PROFILES)
+    .filter((tag) => tag !== 'en')
+    .map((tag) => [tag, everyLetter(tag)]),
+);
+
+/**
+ * What each layout that keeps its author's layers lacks of each language, where it lacks anything:
+ * its required letters, its optional ones and its punctuation. Magic Romak's French lacks `œ`, `æ`
+ * and its quotes, its German `ß`.
+ */
+const LACKS: Record<string, Record<string, string[][]>> = {
+  'magic-romak': { fr: [['œ'], ['æ'], ['«', '»']], de: [['ß'], [], []] },
+  ...Object.fromEntries(
+    ['hands-down-gold', 'hands-down-promethium', 'hands-down-vibranium'].map((id) => [
+      id,
+      { es: [[], [], ['¿', '¡']], fr: [[], [], ['«', '»']], de: [['ß'], [], []] },
+    ]),
+  ),
+  't-34': { es: [[], [], ['¿', '¡']], fr: [['œ'], ['æ'], ['«', '»']], de: [['ß'], [], []] },
+  'magic-sturdy': ACCENTLESS,
+  enthium: ACCENTLESS,
+  finch: ACCENTLESS,
+  caksoylar: { ...ACCENTLESS, es: [everyLetter('es')[0], [], ['¡']] },
+  'ben-vallack-piano': ACCENTLESS,
 };
 
 describe("the default layers on every bundled layout but those that keep their authors' own", () => {
@@ -698,6 +708,16 @@ describe("the default layers on every bundled layout but those that keep their a
 
         it("types every digit, and of the default layers' symbols all its author's layers carry", () => {
           expect(missing()).toEqual([...(UNTYPED[layout.id ?? ''] ?? '')].sort());
+        });
+
+        it("writes each language but what its author's layers lack", () => {
+          for (const tag of Object.keys(LANGUAGE_PROFILES)) {
+            const c = layoutLanguageCoverage(compiled, tag);
+            expect([tag, c?.missingRequired, c?.missingOptional, c?.missingPunctuation]).toEqual([
+              tag,
+              ...(LACKS[layout.id ?? '']?.[tag] ?? [[], [], []]),
+            ]);
+          }
         });
         return;
       }

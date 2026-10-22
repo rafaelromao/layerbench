@@ -288,8 +288,8 @@ what the bottom rows carried, and fills Accents with the dead keys, the letters 
 symbols Extras has no room for, on its thumbs too; every accented letter there is its accent and the
 letter. The board shows where everything went.
 
-Every layout that comes with the app whose authors define no layers has them too. The Standard and
-Thumb Alpha ones among them, Romak among them, also share their main thumbs, the two
+Every layout that comes with the app whose authors define no layers has them too. Of those, the
+Standard and Thumb Alpha ones, Romak included, also share their main thumbs, the two
 innermost of each hand, so that what tells them apart is their letters. Held, left to right, the
 main thumbs give Shift, Numbers, Symbols and Shift. Tapped, they type Repeat, which types the last
 key again, then space, then the layout's thumb letter or
@@ -299,8 +299,8 @@ RSTHD taps Repeat, `e`, space and Accents. A second thumb letter takes the left 
 and Repeat a key of the base layer that a symbol left, as on Hands Down Neu. Their other thumb keys
 go, and their base layers keep no symbol but `'` `,` `.` `;`: the rest are on Symbols or Extras.
 
-The Special layouts keep every key they have. Like every other layout, they hold Numbers on the left
-inner thumb and Symbols on the right inner one, each still typing what it typed, so Extras is both
+The Special layouts with the default layers keep every key they have. Like every other layout with
+them, they hold Numbers on the left inner thumb and Symbols on the right inner one, each still typing what it typed, so Extras is both
 inner thumbs on every layout that has it. Bird and Nordrassil type space on L1, beside the inner
 thumb, which holds Numbers. An inner thumb that is a tap-hold already cannot hold another layer; the
 key that types space then holds Numbers, and the innermost thumb of the other hand with nothing on
@@ -326,16 +326,18 @@ These layouts that come with the app keep their authors' layers, in place of the
 is drawn on the board LayerBench has it on: what its author put on keys that board lacks, a number
 row or an outer column, is left out, as on its base layer. So are the keys that type nothing the
 analysis counts, the holds that reach a layer that types nothing (navigation, functions, media), a
-toggle to a layer a hold reaches too, a modifier held on a layer's key, and the dead keys for accents the
-analysis has no letters for (Hands Down's macron, ring and cedilla). A key on a thumb that a held
-thumb blocks types nothing there. The last column is what each cannot type of the digits, the
+toggle to a layer a hold reaches too, a modifier held on a layer's key, and a dead key the analysis
+composes nothing with (Hands Down's macron, ring and cedilla, whose combos type their letter only
+when held). A key on a thumb that a held thumb blocks types nothing there. Their authors' layers
+count toward their category, as any layer of their own does: Enthium's Symbols types three
+backticks at once, a macro, which makes it Special. The last column is what each cannot type of the digits, the
 default layers' symbols and German's letters; the accented letters only some dead key makes go with
 `ñ` `ç` `ä` `ö` `ü`.
 
 | Layout | Its author's layers | Reached by | Cannot type |
 |---|---|---|---|
 | Magic Romak | Numbers, Symbols | space held, the Alpha 2 thumb held | £ § « » ı ß œ æ |
-| Magic Sturdy | Symbols, Numbers | `t` or `a` held, `n` held | `\` € £ § ª º ° `?` « » ı ¿ ¡ ß œ æ ñ ç ä ö ü |
+| Magic Sturdy | Symbols, Numbers | `t` or `a` held, `n` held | € £ § ª º ° `?` « » ı ¿ ¡ ß œ æ ñ ç ä ö ü |
 | Enthium | Numbers, Symbols | Tab (L1) held, `r` held | `&` `(` `)` € £ § ª º ° « » ı ¿ ¡ ß œ æ ñ ç ä ö ü |
 | Hands Down Gold, Promethium, Vibranium | Symbols, Numbers, Numpad | space held; Backspace or `,` (`f` on Promethium) held; `b` (`k`) held | `\` ª º « » ı ¿ ¡ ß |
 | T-34 | Swedish, Numbers, Symbols, Specials | `l ( )` toggles it; both inner thumbs, a num word; `t h` or `n a` held; R1, one-shot | € £ § ª º ° « » ı ¿ ¡ ß œ æ |
@@ -343,12 +345,14 @@ default layers' symbols and German's letters; the accented letters only some dea
 | Cem Aksoylar's Colemak-DH | Symbols | the right inner thumb held | `{` `}` `\|` € £ § ª º ° `~` `"` `<` `>` `:` `?` « » ı ¡ ß œ æ ñ ç ä ö ü |
 | Ben Vallack Piano | Symbols 1 and 2, Numbers, Alpha 2 shifted | middle fingers held, ring fingers held, pinkies held; R0, one-shot | € § ª º ° `_` « » ı ¿ ¡ ß œ æ ñ ç ä ö ü |
 
-Their authors' combos type more. Hands Down's type the marks with no key and the dead keys `´`
-`` ` `` `^` `¨` `~` on the base layer, each held for a second mark or for the letter the accent
-most often makes (`é` `è` `ê` `ü` `ñ`), and on the numpad pairs of digits held for a symbol. T-34's
-type the digits and most symbols with a thumb and a letter, and `å` `ä` `ö`; its Specials has the
-dead keys. Finch's and Cem Aksoylar's type the brackets and the slashes. Ben Vallack Piano's shifted
-Alpha 2 has Alpha 2's capitals and a comma where Alpha 2 has its full stop.
+Their authors' combos type more. Magic Sturdy's type `\` and `;`. Hands Down's type the marks with
+no key and the dead keys `´` `` ` `` `^` `¨` `~` on the base layer, each held for a second mark or
+for the letter the accent most often makes (`é` `è` `ê` `ü` `ñ`, and `ç` `å` `ō`), and on the numpad
+pairs of digits held for a symbol. T-34's type the digits and most symbols with a thumb and a
+letter, and `å` `ä` `ö`; its Specials has the dead keys. Finch's type `{` `[` `(` `)` `]` `}`, `/`
+`\` and `` ` ``, and `<` and `>`, held for arrows. Cem Aksoylar's type `(` `)` `[` `]`, `'` `` ` ``,
+`/` `\` and `;`, and `!` on Symbols. Ben Vallack Piano's shifted Alpha 2 has Alpha 2's capitals and
+a comma where Alpha 2 has its full stop.
 
 The other layouts take the default layers. Their sources define only their letters, but for RSTHD,
 whose author's ErgoDox keymap puts its digits on a number row and reaches its layers from thumb

@@ -34,6 +34,8 @@ const EXPECTED: Record<LayoutCategory, string[]> = {
     'hands-down-gold',
     'hands-down-promethium',
     'hands-down-vibranium',
+    // Its author's Symbols types three backticks (a macro), and its Numbers letters.
+    'enthium',
     'nordrassil',
     't-34',
     'finch',
@@ -51,7 +53,6 @@ const EXPECTED: Record<LayoutCategory, string[]> = {
     'sunlight',
     'aptmak',
     'rsthd',
-    'enthium',
     'nordwind',
   ],
   standard: [
@@ -343,6 +344,23 @@ describe('a custom copy of Qwerty', () => {
     expect(specialFeatures(l)).toEqual([]);
     expect(alphaLayers(withKey('RHI', kp('a'), l))).toEqual(['base']);
     expect(layoutCategory(l)).toBe('standard');
+  });
+
+  it("counts a layout's own Numbers and Symbols where it keeps its author's in place of the defaults", () => {
+    // Qwerty without Accents has no default layers: its Numbers and Symbols are its own.
+    const l = qwerty();
+    const num = l.layers.find((x) => x.id === DEFAULT_LAYER_IDS.numbers);
+    if (!num) throw new Error('no Numbers');
+    num.bindings.RHI = { kind: 'macro', symbols: 'xyz' };
+    expect(layoutCategory(l)).toBe('standard');
+    const own = { ...l, layers: l.layers.filter((x) => x.id !== DEFAULT_LAYER_IDS.accents) };
+    expect(specialFeatures(own)).toEqual([
+      { feature: 'macro', layer: 'num', key: 'RHI', label: 'Macro “xyz”' },
+    ]);
+    expect(layoutCategory(own)).toBe('special');
+    expect(specialFeatures(bundledLayout('enthium') as Layout).map((f) => f.label)).toEqual([
+      'Macro “```”',
+    ]);
   });
 
   it('is Thumb Alpha once a thumb types a letter, through a tap-hold too', () => {

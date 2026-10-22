@@ -451,9 +451,9 @@ const ALT_REPEAT: Binding = {
  * the default ones, on the keys the board has. Each is copied from the author's keymap: what it
  * types, and the keys and combos that reach it. What the author put on keys the board lacks is left
  * out, as on the base layer, and so are the keys that type nothing the analysis counts (navigation,
- * functions, a modifier held on a layer's key), the holds that reach a layer that types nothing, and
- * a toggle to a layer a hold reaches too. Nothing is added: what the author's layers do not type,
- * the layout does not type.
+ * functions, a modifier held on a layer's key), the holds that reach a layer that types nothing, a
+ * toggle to a layer a hold reaches too, and a dead key the analysis composes nothing with. Nothing
+ * is added: what the author's layers do not type, the layout does not type.
  */
 
 /**
@@ -535,6 +535,12 @@ const STURDY_MODS: Record<string, Mod> = {
   RBP: 'LGUI',
 };
 
+/** His combos that type: `j k` a backslash, `, .` a semicolon, on the base layer. */
+const STURDY_COMBOS: ComboDef[] = [
+  chord('backslash', 'LBR LBM', kp('\\'), ['base']),
+  chord('semicolon', 'RBM RBR', kp(';'), ['base']),
+];
+
 // ---------------------------------------------------------------- Enthium
 
 /**
@@ -611,8 +617,8 @@ const HD_MODS: Record<string, Mod> = {
  * on the base layer the marks that have no key, some held for a second one, and the dead keys, held
  * for the letter each most often makes; on the numpad, pairs of digits held for a symbol. Tapped,
  * those type their two digits, as pressing them one after the other does. The macron, ring and
- * cedilla dead keys are left out, as the analysis has no such accents; so are the combos that type
- * letters, words and commands.
+ * cedilla dead keys type nothing when tapped, as the analysis composes no letter with them, and
+ * their letter when held. The combos that type letters, words and commands are left out.
  */
 const HD_COMBOS: ComboDef[] = [
   chord('ndash', 'RBC RBI', tapHold(kp('–'), kp('—')), ['base']),
@@ -632,6 +638,10 @@ const HD_COMBOS: ComboDef[] = [
   chord('acute', 'RHI RHM', tapHold(dead('´'), kp('é')), ['base']),
   chord('grave', 'RHM RHR', tapHold(dead('`'), kp('è')), ['base']),
   chord('circumflex', 'RHI RHR', tapHold(dead('^'), kp('ê')), ['base']),
+  // The cedilla, ring and macron dead keys compose nothing here; held, they type their letter.
+  chord('cedilla', 'LHP LHM', tapHold({ kind: 'none' }, kp('ç')), ['base']),
+  chord('ring', 'RHI RHP', tapHold({ kind: 'none' }, kp('å')), ['base']),
+  chord('macron', 'RHM RHP', tapHold({ kind: 'none' }, kp('ō')), ['base']),
   chord('oe', 'RHM RBM', tapHold(macro('œu'), kp('œ')), ['base']),
   chord('ae', 'RHI RBI', kp('æ'), ['base']),
   ...(
@@ -1014,6 +1024,7 @@ export const SMALL_DEFS: ClassicDef[] = [
       { id: 'num', name: 'Numbers', byKey: STURDY_NUMBERS },
     ],
     holds: { LHR: 'sym', RHR: 'sym', RHI: 'num' },
+    combos: STURDY_COMBOS,
     homeRowMods: STURDY_MODS,
     description:
       "Magic Sturdy: an adaptive key in the letter block and a repeat key on a thumb, and its keymap's Symbols and Numbers. Its rules are the ones that type letters.",

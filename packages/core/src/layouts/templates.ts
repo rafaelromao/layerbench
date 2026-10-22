@@ -282,18 +282,29 @@ export const DEFAULT_LAYER_IDS = {
 } as const;
 
 /**
- * Every default layer's id. The default layers are the same on every layout, so nothing on them
- * says what kind of layout it is: categories leave them out.
+ * Every default layer's id. The default layers are the same on every layout that has them, so
+ * nothing on them says what kind of layout it is: categories leave them out there
+ * (`hasDefaultLayers`), and count an author's own Numbers and Symbols.
  */
 export const DEFAULT_LAYER_ID_LIST: readonly string[] = Object.values(DEFAULT_LAYER_IDS);
 
 /**
- * Whether a layout brings layers of its own in place of the default ones: its author's Numbers or
- * Symbols, by the ids the default layers have. Such a layout gets none of the default layers, nor
- * any key to reach them; what its author's layers do not type, it does not type.
+ * Whether a layout, as its definition builds it and before the default layers are added, brings
+ * layers of its own in place of them: its author's Numbers or Symbols, by the ids the default layers
+ * have. Such a layout gets none of the default layers, nor any key to reach them; what its author's
+ * layers do not type, it does not type. Once built, every layout has layers of those ids: whose
+ * they are, `hasDefaultLayers` tells.
  */
 export function bringsOwnLayers(layout: Pick<Layout, 'layers'>): boolean {
   return layout.layers.some((l) => DEFAULT_LAYER_ID_LIST.includes(l.id));
+}
+
+/**
+ * Whether a layout has the default layers: Accents, which every layout that takes them has, and one
+ * that brings its own does not. Its layers of the default ids are then the default ones.
+ */
+export function hasDefaultLayers(layout: Pick<Layout, 'layers'>): boolean {
+  return layout.layers.some((l) => l.id === DEFAULT_LAYER_IDS.accents);
 }
 
 /**

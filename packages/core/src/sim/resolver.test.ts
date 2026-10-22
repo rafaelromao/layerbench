@@ -1,17 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeText } from '../corpus/normalize.js';
+import { eighteenKeys } from '../fixtures/boards.js';
 import { FIXTURE_MIXED } from '../fixtures/index.js';
-import { getGeometryPreset } from '../geometry/presets.js';
 import { compileLayout } from '../layout/compile.js';
 import { importTextLayout } from '../layout/text.js';
 import type { Binding, Layout, Mod } from '../layout/types.js';
 import { CLASSIC_LAYOUTS } from '../layouts/classic.js';
-import {
-  BUNDLED_LAYOUTS,
-  bundledLayout,
-  withDefaultLayers,
-  withHomeRowMods,
-} from '../layouts/index.js';
+import { BUNDLED_LAYOUTS, bundledLayout, withHomeRowMods } from '../layouts/index.js';
 import { explain, simulate } from './resolver.js';
 
 const magicRomak = bundledLayout('magic-romak')!;
@@ -19,31 +14,6 @@ const magicRomak = bundledLayout('magic-romak')!;
 const romak = bundledLayout('romak')!;
 
 const opts = { caseMode: 'fold' as const, crossWord: 'reset' as const };
-
-/**
- * Eighteen keys, a letter on each finger key and space on the outer left thumb, with the default
- * layers: Numbers held on the inner left thumb and Symbols on the inner right one, Extras both.
- */
-function eighteenKeys(): Layout {
-  const ids = ['LTR', 'LTM', 'LTI', 'RTI', 'RTM', 'RTR', 'LHP', 'LHR', 'LHM', 'LHI'];
-  const letters = Object.fromEntries(
-    [...ids, 'RHI', 'RHM', 'RHR', 'RHP'].map((id, i) => [
-      id,
-      { kind: 'kp', symbol: 'lgdhuoisrtneac'[i] } as Binding,
-    ]),
-  );
-  return withDefaultLayers(
-    {
-      format: 'layerbench/layout@1',
-      name: 'Eighteen keys',
-      hostLocale: 'symbols',
-      geometry: { preset: '1222+2' },
-      keys: { space: 'L1' },
-      layers: [{ id: 'base', bindings: { ...letters, L1: { kind: 'kp', symbol: ' ' } } }],
-    },
-    getGeometryPreset('1222+2'),
-  );
-}
 
 function trace(layout: Layout, text: string, extra: Partial<Parameters<typeof explain>[2]> = {}) {
   const compiled = compileLayout(layout);
@@ -1185,7 +1155,7 @@ describe("a mod morph's modifiers", () => {
 
 describe('a layer that comes on while others are on together', () => {
   // Extras on eighteen keys: on while Numbers, held from L0, and Symbols, held from R0, are on.
-  const piano = eighteenKeys();
+  const eighteen = eighteenKeys();
   const extras = ['L0', 'R0', 'RTR'];
   const reversed = (layout: Layout): Layout => ({
     ...layout,
@@ -1193,36 +1163,36 @@ describe('a layer that comes on while others are on together', () => {
   });
 
   it('is reached by holding those layers one after the other', () => {
-    expect(trace(piano, '€').keys).toEqual(extras);
+    expect(trace(eighteen, '€').keys).toEqual(extras);
   });
 
   it('is reached by holding them in the order its condition names them, where that can be pressed', () => {
     // Symbols' L0 holds Numbers too, so the two inner thumbs bring Extras on in either order.
-    const t = trace(reversed(piano), '€');
+    const t = trace(reversed(eighteen), '€');
     expect(t.out).toBe('€');
     expect(t.keys).toEqual(['R0', 'L0', 'RTR']);
   });
 
   it('is reached whatever order its condition names them in', () => {
     // With L0 only typing `=` on Symbols, Numbers cannot be held from there.
-    const layers = piano.layers.map((l) =>
+    const layers = eighteen.layers.map((l) =>
       l.id === 'sym'
         ? { ...l, bindings: { ...l.bindings, L0: { kind: 'kp', symbol: '=' } as Binding } }
         : l,
     );
-    const t = trace(reversed({ ...piano, layers }), '€');
+    const t = trace(reversed({ ...eighteen, layers }), '€');
     expect(t.out).toBe('€');
     expect(t.keys).toEqual(extras);
   });
 
   it('is reached by its condition when a key that would bring it on cannot', () => {
     // The machine turns Extras off when this key holds it alone.
-    const layers = piano.layers.map((l) =>
+    const layers = eighteen.layers.map((l) =>
       l.id === 'num'
         ? { ...l, bindings: { ...l.bindings, L1: { kind: 'mo', layer: 'extras' } as Binding } }
         : l,
     );
-    const t = trace({ ...piano, layers }, '€');
+    const t = trace({ ...eighteen, layers }, '€');
     expect(t.out).toBe('€');
     expect(t.keys).toEqual(extras);
   });

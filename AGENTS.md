@@ -24,9 +24,12 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
   author's layers lack, the layout cannot type, left for an edit in the app, and `templates.test.ts`
   pins it (`UNTYPED`). Keys that type nothing the analysis counts, holds onto layers that type
   nothing, a toggle to a layer a hold reaches too, modifiers held on a layer's keys and dead keys
-  the analysis cannot compose stay out. Every other layout takes the default layers: its source
-  defines only letters, or, as RSTHD's ErgoDox keymap, reaches its layers only from keys the board
-  lacks. The guide lists them all ([docs/guide/editing.md](docs/guide/editing.md#layouts-with-their-authors-layers)).
+  the analysis cannot compose stay out. Their layers count toward their category, as any layer of
+  their own (`hasDefaultLayers` in `categories.ts`): Enthium is Special by its Symbols' macro. Every
+  other layout takes the default layers: its source defines only letters, or its author's layers
+  have no place on its board (RSTHD's are reached only from ErgoDox thumb keys), go with another
+  version of its letters (Hands Down Neu), or are published outside its source (Nordrassil). The
+  guide lists them all ([docs/guide/editing.md](docs/guide/editing.md#layouts-with-their-authors-layers)).
   No code singles a layout out: each uses `ClassicDef` fields any layout may use.
   - Magic Romak models its author's keymap (github.com/rafaelromao/keyboards), which has neither
     Extras nor Accents. The keymap's combos type what those carried: Alpha 2's dead keys and `à`,
