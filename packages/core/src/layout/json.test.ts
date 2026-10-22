@@ -3,7 +3,7 @@ import { structureHash } from '../analysis/hash.js';
 import { compileLayout } from './compile.js';
 import { toCanonicalJson } from './json.js';
 import { duplicateLayer } from './ops.js';
-import { isLayoutLink, parseLayout, safeParseLayout } from './schema.js';
+import { isLayoutLink, layoutJsonSchema, parseLayout, safeParseLayout } from './schema.js';
 import type { AdaptiveTrigger, Binding, Layout } from './types.js';
 
 function withBranches(triggers: AdaptiveTrigger[]): Layout {
@@ -198,6 +198,46 @@ describe("a layout's link", () => {
   });
 });
 
+describe('a binding in the document', () => {
+  it('is read by its kind, so many that have none are refused at once, the first of them told', () => {
+    const unread = {
+      ...toCanonicalJson(withBranches([])),
+      layers: [
+        {
+          id: 'base',
+          bindings: { LHM: { kind: 'tap_dance', bindings: Array(60_000).fill({ kind: 'bogus' }) } },
+        },
+      ],
+    };
+    const started = performance.now();
+    const parsed = safeParseLayout(unread);
+    expect(performance.now() - started).toBeLessThan(2000);
+    expect(parsed.ok).toBe(false);
+    if (parsed.ok) return;
+    expect(parsed.error).toContain('→ at layers[0].bindings.LHM.bindings[0].kind');
+    expect(parsed.error).toContain('→ at layers[0].bindings.LHM.bindings[19].kind');
+    expect(parsed.error).not.toContain('bindings[20]');
+    expect(parsed.error).toMatch(/\n… and 59980 more$/);
+    expect(parsed.error.length).toBeLessThan(10_000);
+  });
+
+  it('is one of its kinds in the JSON Schema', () => {
+    type Kinds = { oneOf: { properties: { kind: { const: string } } }[] };
+    const schema = layoutJsonSchema() as {
+      $defs: Record<string, Kinds>;
+      properties: {
+        layers: { items: { properties: { bindings: { additionalProperties: { $ref: string } } } } };
+      };
+    };
+    const { $ref } = schema.properties.layers.items.properties.bindings.additionalProperties;
+    const { oneOf } = schema.$defs[$ref.replace('#/$defs/', '')];
+    const kinds = oneOf.map((o) => o.properties.kind.const);
+    expect(kinds).toContain('kp');
+    expect(kinds).toContain('raw');
+    expect(new Set(kinds).size).toBe(kinds.length);
+  });
+});
+
 describe('a document saved while layouts named bindings of their own', () => {
   const kp = (symbol: string) => ({ kind: 'kp', symbol });
   const hv = {
@@ -345,22 +385,47 @@ describe('a document saved while layouts named bindings of their own', () => {
         },
       },
     );
-    // One light enough to be written out a few turns before the budget is spent.
-    const text = 'è'.repeat(5_000);
-    const lighter = saved(
-      { LHI: heavy },
-      {
-        heavy: {
-          kind: 'adaptive',
-          default: { kind: 'macro', symbols: text },
-          triggers: [{ afterAny: Array(1_000).fill('a'), binding: heavy }],
+    const looping = (text: string) =>
+      saved(
+        { LHI: heavy },
+        {
+          heavy: {
+            kind: 'adaptive',
+            default: { kind: 'macro', symbols: text },
+            triggers: [{ afterAny: Array(1_000).fill('a'), binding: heavy }],
+          },
         },
-      },
-    );
-    for (const doc of [everywhere, selfBuilt, heavyLoop, lighter]) {
+      );
+    // One light enough to be written out a few turns before the budget is spent, and heavy enough
+    // that the budget, not the depth, stops it.
+    const text = 'è'.repeat(40_000);
+    const lighter = looping(text);
+    // One whose text the document writes six times as long, each character escaped.
+    const escaped = looping('\u0001'.repeat(40_000));
+    for (const doc of [everywhere, selfBuilt, heavyLoop, lighter, escaped]) {
       expect(JSON.stringify(toCanonicalJson(parseLayout(doc))).length).toBeLessThan(500_000);
     }
-    expect(JSON.stringify(toCanonicalJson(parseLayout(lighter)))).toContain(text);
+    // Written out four turns, where the depth would have let it go eight.
+    expect(JSON.stringify(toCanonicalJson(parseLayout(lighter))).split(text)).toHaveLength(5);
+  });
+
+  it('tells what is wrong in a name used round a loop only so many times', () => {
+    const again = { kind: 'ref', ref: 'again' };
+    const parsed = safeParseLayout(
+      saved({ LHI: again }, { again: { kind: 'tap_dance', bindings: [again, again, kp('')] } }),
+    );
+    expect(parsed.ok).toBe(true);
+    const wrong = safeParseLayout(
+      saved(
+        { LHI: again },
+        { again: { kind: 'tap_dance', bindings: [again, again, { kind: 'bogus' }] } },
+      ),
+    );
+    expect(wrong.ok).toBe(false);
+    if (wrong.ok) return;
+    expect(wrong.error).toMatch(/→ at layers\[0\]\.bindings\.LHI(\.bindings\[\d\])+\.kind/);
+    expect(wrong.error).toMatch(/\n… and \d+ more$/);
+    expect(wrong.error.length).toBeLessThan(10_000);
   });
 
   it('keeps a key whose name led nowhere as Nothing, and one built on it as its own fields', () => {

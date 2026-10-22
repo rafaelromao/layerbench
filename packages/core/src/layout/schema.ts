@@ -19,8 +19,10 @@ const TriggerSchema: z.ZodType<unknown> = z.lazy(() =>
     }),
 );
 
+// Read by its kind: a plain union would try every kind on a binding that has none of them, and keep
+// what each said, which a document of many such bindings could make cost gigabytes.
 export const BindingSchema: z.ZodType<unknown> = z.lazy(() =>
-  z.union([
+  z.discriminatedUnion('kind', [
     z.object({
       kind: z.literal('kp'),
       symbol: z.string().optional(),
@@ -318,10 +320,12 @@ const MAX_NAMED_DEPTH = 16;
 const MAX_NAMED_WEIGHT = 200_000;
 
 /**
- * About what copying a value costs: one, the length of a text, or for a binding held in it what
- * the least it can be written as weighs, Nothing (`kind`, `none`).
+ * About what copying a value costs: one, the length of a text as a document writes it, escapes and
+ * all, or for a binding held in it what the least it can be written as weighs, Nothing (`kind`,
+ * `none`).
  */
-const valueWeight = (v: unknown) => (typeof v === 'string' ? 1 + v.length : isObject(v) ? 10 : 1);
+const valueWeight = (v: unknown) =>
+  typeof v === 'string' ? JSON.stringify(v).length - 1 : isObject(v) ? 10 : 1;
 
 /** About what copying a field's value costs: a value, or a list and the values in it. */
 const fieldWeight = (v: unknown) =>
@@ -440,12 +444,21 @@ export function parseLayout(input: unknown): Layout {
   return LayoutSchema.parse(withNamedBindingsInline(input)) as Layout;
 }
 
+/**
+ * How many of what is wrong with a document its error tells, and then how many more there are. A
+ * document can be wrong in many places, or in one a name copied to many.
+ */
+const MAX_ISSUES = 20;
+
 export function safeParseLayout(
   input: unknown,
 ): { ok: true; layout: Layout } | { ok: false; error: string } {
   const r = LayoutSchema.safeParse(withNamedBindingsInline(input));
   if (r.success) return { ok: true, layout: r.data as Layout };
-  return { ok: false, error: z.prettifyError(r.error) };
+  const { issues } = r.error;
+  const told = z.prettifyError({ issues: issues.slice(0, MAX_ISSUES) });
+  const more = issues.length - MAX_ISSUES;
+  return { ok: false, error: more > 0 ? `${told}\n… and ${more} more` : told };
 }
 
 export function layoutJsonSchema(): unknown {
