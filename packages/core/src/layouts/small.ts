@@ -110,21 +110,6 @@ const CCEDIL_BINDINGS: Record<string, Binding> = {
 
 // ---------------------------------------------------------------- Numbers and Symbols
 
-/**
- * A hold reaching one of the keymap's layers this model does not carry — functions, media, macros.
- * Kept as an imported key, so the board still says where the layer is; it types nothing.
- */
-const unmodelled = (layer: string): Binding => ({
-  kind: 'raw',
-  label: layer,
-  source: `&mo ${layer}`,
-});
-const tapOrUnmodelled = (symbol: string, layer: string): Binding => ({
-  kind: 'hold_tap',
-  tap: kp(symbol),
-  hold: unmodelled(layer),
-});
-
 /** The thumbs that reach the two layers from Alpha 1, as `ltn_num_spc` and `msl_sym_a2` do. */
 const SPACE_OR_NUMBERS: Binding = {
   kind: 'hold_tap',
@@ -142,21 +127,20 @@ const ALPHA2_OR_SYMBOLS: Binding = {
  * `zmk/definitions/keymap.dtsi` of github.com/rafaelromao/keyboards. They use only the 24-key
  * core, and every board's default layers start from them (`templates.ts`). Each key is what it
  * types: the firmware's symbol tap-holds jump to the end of the line or past the cursor first when
- * held, which is editing rather than typing, and are left out. Keys it leaves empty are empty here.
+ * held, which is editing rather than typing, and are left out, as are the holds that reach its
+ * layers that type nothing (functions, media, macros). Keys it leaves empty are empty here.
  *
  * Magic Romak has the default Numbers and the keymap's Symbols in their place, on these thumbs
  * (`magicRomakLayers`).
  */
 const NUMBERS_THUMBS: Record<string, Binding> = {
-  LHP: tapOrUnmodelled(',', 'FUN'),
   L1: { kind: 'trans' },
   L0: { kind: 'trans' },
   R0: { kind: 'hold_tap', tap: kp(' '), hold: { kind: 'mo', layer: 'sym' } },
-  R1: tapOrUnmodelled('0', 'MEDIA'),
+  R1: kp('0'),
 };
 
 const SYMBOLS_THUMBS: Record<string, Binding> = {
-  RHP: tapOrUnmodelled('_', 'MACROS'),
   L1: { kind: 'trans' },
   // The firmware's hold here reaches a copy of Numbers placed above Symbols, which only its layer
   // order needs. The digits are one hold away from Alpha 1 either way.
@@ -391,14 +375,13 @@ const KEYMAP_SYMBOL_COMBOS: ComboDef[] = [
 ];
 
 /**
- * The home block mods of the author's keymap, on the keys Magic Romak has: a layer of shortcuts,
- * which this model does not carry, held on each pinky; Ctrl, Alt and Shift from the ring finger in;
- * Shift and Gui together on the left ring and middle fingers' bottom keys, and Gui on the index
- * fingers', the magic key's among them (`ht_magic`). The `,` and `.` keys hold to move the cursor
- * first, which is editing rather than typing, and are left out.
+ * The home block mods of the author's keymap, on the keys Magic Romak has: Ctrl, Alt and Shift
+ * from the ring finger in; Shift and Gui together on the left ring and middle fingers' bottom keys,
+ * and Gui on the index fingers', the magic key's among them (`ht_magic`). The pinkies hold a layer
+ * of shortcuts, which types nothing, and the `,` and `.` keys hold to move the cursor, which is
+ * editing: both are left out.
  */
 const MAGIC_ROMAK_MODS: Record<string, Mod | Binding> = {
-  LHP: unmodelled('SHORTS'),
   LHR: 'LCTRL',
   LHM: 'LALT',
   LHI: 'LSHIFT',
@@ -408,7 +391,6 @@ const MAGIC_ROMAK_MODS: Record<string, Mod | Binding> = {
   RHI: 'LSHIFT',
   RHM: 'LALT',
   RHR: 'LCTRL',
-  RHP: unmodelled('SHORTS'),
   RBI: 'LGUI',
 };
 

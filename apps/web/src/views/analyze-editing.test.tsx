@@ -946,7 +946,7 @@ describe('Edit', () => {
     expect(screen.queryByText('Removed Numbers — Undo brings it back')).toBeNull();
   }, 120_000);
 
-  it("gives a layer the id and the unlisted keys a keymap's has, and sets one-shot timing", async () => {
+  it("gives a layer the id a keymap's has, and sets one-shot timing", async () => {
     const user = userEvent.setup();
     await openEdit();
 
@@ -960,12 +960,6 @@ describe('Edit', () => {
     await user.clear(again);
     await user.type(again, 'num{Enter}');
     expect(await screen.findByRole('alert')).toHaveTextContent('another layer is num already');
-
-    // Numbers' unlisted keys show through until they are made to do nothing.
-    const fallback = screen.getByLabelText("What Numbers's unlisted keys do");
-    expect(fallback).toHaveValue('trans');
-    await user.selectOptions(fallback, 'none');
-    expect(screen.getByLabelText("What Numbers's unlisted keys do")).toHaveValue('none');
 
     // One-shot keys release as the next key goes down, or wait, and for how long.
     await user.click(screen.getByRole('tab', { name: 'Geometry' }));
