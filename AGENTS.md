@@ -8,10 +8,10 @@ sees them, are in [docs/guide/editing.md](docs/guide/editing.md#default-layers).
 there whenever a rule here moves a key, and keep `templates.test.ts` asserting each rule.
 
 - **The layers.** Every layout whose author defines no layers past its letters gets Numbers, Symbols
-  and Accents. Extras exists only on a board that
-  needs it: one that lacks keys for what Numbers and Symbols carry, or for Accents' 30 keys. Extras
-  comes on while Numbers and Symbols are both held: both inner thumbs, in either order, Symbols'
-  left inner thumb holding Numbers there too. Each layer spans at most 34 keys.
+  and Accents. Extras exists only on a board that needs it: one that lacks keys for what Numbers and
+  Symbols carry, or for Accents' 30 keys. Extras comes on while Numbers and Symbols are both held:
+  both inner thumbs, in either order, Symbols' left inner thumb holding Numbers there too. Each
+  layer spans at most 34 keys.
 - **A layout whose author defines layers keeps them.** Where a layout's source (its `link`, its
   author's keymap or firmware) defines layers past the letters, the layout brings those in place of
   the default ones: Magic Romak, Magic Sturdy, Enthium, Hands Down Gold, Promethium and Vibranium,
@@ -45,13 +45,12 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
   outputs that need a modifier.
 - **Main thumbs.** On Standard and Thumb Alpha layouts that take the default layers, the two
   innermost thumbs of each hand hold, left to right, Shift, Numbers, Symbols and Shift. Tapped, they
-  type Repeat, space, the thumb letter or nothing, and the right outer one one-shots Accents. Special
-  layouts that take them keep their keys, and
-  hold Numbers and Symbols on the inner thumbs too, as Romak does, each still typing what it typed;
-  only an inner thumb that is a tap-hold already falls back (`withDefaultLayers`). Accents is the
-  combo `accentsCombo`. On a row-stagger board, a new layout's one space bar (L0 and R0 together)
-  holds Numbers. Ben Vallack Piano taps a one-shot Shift where its keymap has Repeat, and it is its
-  `keys.shift`.
+  type Repeat, space, the thumb letter or nothing, and the right outer one one-shots Accents.
+  Special layouts that take them keep their keys, and hold Numbers and Symbols on the inner thumbs
+  too, as Romak does, each still typing what it typed; only an inner thumb that is a tap-hold
+  already falls back (`withDefaultLayers`). Accents is the combo `accentsCombo`. On a row-stagger
+  board, a new layout's one space bar (L0 and R0 together) holds Numbers. Ben Vallack Piano taps a
+  one-shot Shift where its keymap has Repeat, and it is its `keys.shift`.
 - **Home row mods.** Every bundled layout holds Gui, Ctrl, Alt and Shift on its base layer's home
   row from the left pinky in, mirrored on the right (`HOME_ROW_MODS`, `withHomeRowMods`), unless its
   definition gives its own (`ClassicDef.homeRowMods`). Both hands hold the left modifiers, as the
