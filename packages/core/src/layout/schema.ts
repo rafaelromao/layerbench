@@ -307,6 +307,22 @@ const BINDING_LISTS = ['bindings', 'steps', 'then'];
 const MAX_NAMED_DEPTH = 16;
 
 /**
+ * How many bindings a document's names are written out into, all its keys and combos together. A
+ * keymap needs a few hundred; only names read round a loop come near it.
+ */
+const MAX_NAMED_BINDINGS = 10_000;
+
+/** How many bindings `b` holds directly: one for each place a binding goes in it. */
+function partsOf(b: JsonObject): number {
+  let n = ONE_BINDING.filter((k) => isObject(b[k])).length;
+  for (const k of [...BINDING_LISTS, 'triggers']) {
+    const list = b[k];
+    if (Array.isArray(list)) n += list.length;
+  }
+  return n;
+}
+
+/**
  * A document saved while layouts could name bindings of their own (`behaviors`), with each name
  * written out where it was used, as the compiler read it, and the names dropped. A `ref` key is the
  * binding it names. A macro or adaptive key that names one is that binding with its own fields over
@@ -315,8 +331,10 @@ const MAX_NAMED_DEPTH = 16;
  * morph on their key whole, and now they go on its tap, as on any other key. What the compiler
  * could not read made the layout fail to compile: a name the document does not have, a macro or
  * adaptive key built on a binding of another kind, or names read more than 16 bindings deep, as
- * round a loop. Such a key that is only a name becomes Nothing, and one built on a name keeps its
- * own fields. A document that names nothing reads as it is.
+ * round a loop. Such a key that is only a name becomes Nothing, one built on a name keeps its own
+ * fields, and what a name holds deeper than 16 bindings is Nothing. So is a binding whose parts
+ * would take the bindings written out below names past 10,000: the compiler read one key at a time,
+ * but a document is read whole. A document that names nothing reads as it is.
  */
 function withNamedBindingsInline(input: unknown): unknown {
   if (!isObject(input)) return input;
@@ -324,6 +342,7 @@ function withNamedBindingsInline(input: unknown): unknown {
   const named = isObject(behaviors) ? behaviors : {};
   const lookUp = (name: unknown) =>
     typeof name === 'string' && Object.hasOwn(named, name) ? named[name] : undefined;
+  let left = MAX_NAMED_BINDINGS;
   /** `depth`: as the compiler counted it on the way to `b`; `belowName`: a name was followed. */
   const inline = (b: unknown, depth: number, belowName: boolean): unknown => {
     if (!isObject(b)) return b;
@@ -342,6 +361,13 @@ function withNamedBindingsInline(input: unknown): unknown {
       const { ref: _unread, ...built } = builds ? { ...target, ...rest } : rest;
       own = built;
       if (builds) inside = true;
+    }
+    // Below a name, a binding's parts are counted before any is written, so however many each turn
+    // of a loop holds, no more than the most are written out.
+    if (inside) {
+      const parts = partsOf(own);
+      if (parts > left) return { kind: 'none' };
+      left -= parts;
     }
     const out: JsonObject = { ...own };
     for (const k of ONE_BINDING) if (isObject(own[k])) out[k] = inline(own[k], depth + 1, inside);

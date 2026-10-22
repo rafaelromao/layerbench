@@ -298,6 +298,43 @@ describe('a document saved while layouts named bindings of their own', () => {
     expect(dances(layout.layers[0].bindings.LHI)).toBe(8);
   });
 
+  it('writes out no more than a few thousand bindings, however a loop of names repeats', () => {
+    const bindingsIn = (value: unknown): number =>
+      Array.isArray(value)
+        ? value.reduce((n: number, v) => n + bindingsIn(v), 0)
+        : value && typeof value === 'object'
+          ? ('kind' in value ? 1 : 0) + bindingsIn(Object.values(value))
+          : 0;
+    const again = { kind: 'ref', ref: 'again' };
+    const keys = [
+      'LTP',
+      'LTR',
+      'LTM',
+      'LTI',
+      'LHP',
+      'LHR',
+      'LHM',
+      'LHI',
+      'RTI',
+      'RTM',
+      'RTR',
+      'RTP',
+    ];
+    const everywhere = {
+      ...saved(Object.fromEntries(keys.map((k) => [k, again])), {
+        again: { kind: 'tap_dance', bindings: [again, again, again, again, again] },
+      }),
+      combos: keys.slice(1).map((k) => ({ keys: [keys[0], k], binding: again })),
+    };
+    // A macro that builds on itself, twice in its steps.
+    const self = { kind: 'macro', ref: 'self' };
+    const selfBuilt = saved({ LHI: self }, { self: { kind: 'macro', steps: [self, self] } });
+    for (const doc of [everywhere, selfBuilt]) {
+      const layout = parseLayout(doc);
+      expect(bindingsIn(toCanonicalJson(layout))).toBeLessThan(11_000);
+    }
+  });
+
   it('keeps a key whose name led nowhere as Nothing, and one built on it as its own fields', () => {
     const parsed = safeParseLayout(
       saved(
