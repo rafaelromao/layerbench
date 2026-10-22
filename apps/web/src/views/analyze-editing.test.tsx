@@ -1066,10 +1066,10 @@ describe('Edit', () => {
     await user.type(input, '&mo base');
 
     // The preview is drawn from the same legend the cap will draw.
-    expect(screen.getByRole('group', { name: 'Edit LHC' }).textContent).toContain('Base (hold)');
+    expect(screen.getByRole('group', { name: 'Edit LHC' }).textContent).toContain('· / Base');
 
     await user.keyboard('{Enter}');
-    expect(await screen.findByRole('button', { name: 'Key LHC: Base (hold)' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Key LHC: hold Base' })).toBeInTheDocument();
   });
 
   it('says what is wrong instead of applying it', async () => {
@@ -1674,7 +1674,7 @@ describe('Edit', () => {
 
     await user.click(key('Key LHM: d, hold ⌥'));
     await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Layer' }));
-    expect(await screen.findByRole('button', { name: 'Key LHM: Numb (hold)' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Key LHM: hold Numb' })).toBeInTheDocument();
 
     await user.click(within(await inspector('LHM')).getByRole('radio', { name: 'One-shot' }));
     expect(await screen.findByRole('button', { name: 'Key LHM: Numb (1×)' })).toBeInTheDocument();
@@ -2009,7 +2009,7 @@ describe('Edit', () => {
     expect(screen.queryByText('unsaved')).toBeNull();
 
     await user.click(within(editor).getByRole('radio', { name: 'Momentary' }));
-    expect(await screen.findByRole('button', { name: 'Key L1: A2 (hold)' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Key L1: hold A2' })).toBeInTheDocument();
   });
 
   it('reaches the symbols from the Alpha 2 thumb, as the author’s keymap does', async () => {
@@ -2103,7 +2103,7 @@ describe('Edit', () => {
     // Ç extension's L1 re-arms Alpha 2 for one key; made a hold, it is held to get there too.
     await user.click(await screen.findByRole('button', { name: /^Key L1:/ }));
     await user.click(within(await inspector('L1')).getByRole('radio', { name: 'Momentary' }));
-    await screen.findByRole('button', { name: 'Key L1: A2 (hold)' });
+    await screen.findByRole('button', { name: 'Key L1: hold A2' });
     await showLayer(user, 'Alpha 2');
     expect(
       await screen.findByRole('button', { name: /^Key L1: .*, held or tapped to reach Alpha 2$/ }),

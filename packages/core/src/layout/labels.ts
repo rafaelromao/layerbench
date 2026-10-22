@@ -409,6 +409,12 @@ export function describe(c: CompiledLayout, b: Binding): string {
 }
 
 export function legend(c: CompiledLayout, b: Binding): Legend {
+  // A key that only holds, a layer while it is held or a modifier, is drawn as a tap-hold that
+  // taps nothing: an empty centre, and what it holds along the bottom.
+  if (b.kind === 'mo' || b.kind === 'mod') {
+    const held = legend(c, { kind: 'hold_tap', tap: { kind: 'none' }, hold: b });
+    return { ...held, kind: legendKind(b), detail: describe(c, b) };
+  }
   const hold = holdLabel(c, b);
   const layer = layerOf(b);
   const direct = partOf(b, { stopAt: SHIFT_MORPHS });
@@ -435,6 +441,13 @@ export function legend(c: CompiledLayout, b: Binding): Legend {
 
 /** A legend as one line, for tables and announcements where the key itself is not drawn. */
 export function legendText(l: Legend): string {
-  const hold = l.hold === null ? '' : l.holdIsMode ? ` (${l.hold})` : ` / ${l.hold}`;
+  const hold =
+    l.hold === null
+      ? ''
+      : l.holdIsMode
+        ? ` (${l.hold})`
+        : l.tap
+          ? ` / ${l.hold}`
+          : `hold ${l.hold}`;
   return `${l.tap}${hold}${l.badge ? ` ${l.badge}` : ''}`;
 }
