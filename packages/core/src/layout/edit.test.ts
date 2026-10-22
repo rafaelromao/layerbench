@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { bundledLayout } from '../layouts/index.js';
 import { enumerateProducers } from '../sim/producers.js';
 import { compileLayout } from './compile.js';
-import { applyEdit, type Edit, type EditOutcome } from './edit.js';
+import { applyEdit, type Edit, type EditOutcome, freeCondition } from './edit.js';
 import { keyBinding } from './ops.js';
 import type { Binding, Layout } from './types.js';
 
@@ -1077,10 +1077,62 @@ describe('conditional layers', () => {
     expect(refusal(four, add([], 'both'))).toMatch(/one layer at least/);
     expect(refusal(four, add(['both'], 'both'))).toMatch(/cannot wait for itself/);
     expect(refusal(four, add(['base', 'upper'], 'both'))).toMatch(/waiting for nothing/);
+    expect(refusal(four, add(['upper', 'side', 'a', 'b', 'c'], 'both'))).toMatch(
+      /4 layers at most/,
+    );
     const one = landed(four, add(['upper'], 'both')).layout;
-    expect(refusal(one, add(['both'], 'side'))).toMatch(/comes on by a condition itself/);
-    expect(refusal(one, add(['side'], 'upper'))).toMatch(/a condition waits for upper/);
-    expect(refusal(one, add(['upper'], 'both'))).toMatch(/there already/);
+    expect(refusal(one, add(['both'], 'side'))).toMatch(/Both comes on by a condition itself/);
+    expect(refusal(one, add(['side'], 'upper'))).toMatch(/a condition waits for Upper/);
+    // One condition per layer: ZMK brings it on while any holds, the analysis would take one.
+    expect(refusal(one, add(['upper'], 'both'))).toMatch(/Both comes on by a condition already/);
+    expect(refusal(one, add(['side'], 'both'))).toMatch(/Both comes on by a condition already/);
     expect(refusal(four, add(['upper', 'nowhere'], 'both'))).toMatch(/unknown layer nowhere/);
+  });
+
+  it('waits for each layer once, however often it is named', () => {
+    const added = landed(four, {
+      kind: 'addConditionalLayer',
+      if: ['upper', 'side', 'upper'],
+      then: 'both',
+    });
+    expect(added.layout.conditionalLayers).toEqual([{ if: ['upper', 'side'], then: 'both' }]);
+  });
+
+  it('refuses through a change what it refuses when added, and leaves a condition not there', () => {
+    const one = landed(four, { kind: 'addConditionalLayer', if: ['upper'], then: 'both' }).layout;
+    const update = (change: { if?: string[]; then?: string }): Edit => ({
+      kind: 'updateConditionalLayer',
+      condition: 0,
+      ...change,
+    });
+    expect(refusal(one, update({ then: 'base' }))).toMatch(/base layer is always on/);
+    expect(refusal(one, update({ if: ['both'] }))).toMatch(/Both cannot wait for itself/);
+    expect(refusal(one, update({ if: [] }))).toMatch(/one layer at least/);
+    expect(refusal(one, { kind: 'updateConditionalLayer', condition: 3, if: ['side'] })).toBe(
+      'unchanged',
+    );
+    expect(refusal(one, { kind: 'removeConditionalLayer', condition: 3 })).toBe('unchanged');
+  });
+
+  it('offers the first condition the layout takes, and none once no layer is free', () => {
+    expect(freeCondition(layout)).toBeNull();
+    expect(freeCondition(four)).toEqual({ if: ['upper'], then: 'side' });
+    // Extras waits for Numbers and Symbols, so neither comes on by a condition: Accents does.
+    const off: Binding = { kind: 'trans' };
+    const defaults: Layout = {
+      ...layout,
+      layers: [
+        layout.layers[0],
+        ...['num', 'sym', 'accents', 'extras'].map((id) => ({ id, bindings: { '*': off } })),
+      ],
+      conditionalLayers: [{ if: ['num', 'sym'], then: 'extras' }],
+    };
+    expect(freeCondition(defaults)).toEqual({ if: ['num'], then: 'accents' });
+    const second = landed(defaults, {
+      kind: 'addConditionalLayer',
+      if: ['num'],
+      then: 'accents',
+    }).layout;
+    expect(freeCondition(second)).toBeNull();
   });
 });

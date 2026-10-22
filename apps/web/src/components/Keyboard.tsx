@@ -460,7 +460,8 @@ export function Keyboard({
       const idx = compiled.keyIndex.get(keyId);
       if (idx === undefined) return keyId;
       const active = compiled.layers[Math.min(layer, compiled.layers.length - 1)];
-      return legend(compiled, active.bindings[idx]).tap || keyId;
+      const l = legend(compiled, active.bindings[idx]);
+      return l.tap || l.hold || keyId;
     },
     [compiled, layer],
   );

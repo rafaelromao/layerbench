@@ -123,7 +123,9 @@ _Avoid_: arm, sub-binding
 **Plain part**:
 The part a key amounts to when nothing chooses another: a tap-hold's tap, a layer-tap's tap, a
 morph's plain binding, a tap dance's first tap, an adaptive key's default. What the board draws on a
-key, and what the editor keeps when a key changes kind, are read from it.
+key, and what the editor keeps when a key changes kind, are read from it. A key that only holds, a
+layer (`&mo`) or a modifier, is its own plain part, but the board draws it as a hold, under a tap
+that types nothing.
 _Avoid_: resting part, default, base binding
 
 **Press**:

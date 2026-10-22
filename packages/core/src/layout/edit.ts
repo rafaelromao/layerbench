@@ -133,35 +133,6 @@ type Handlers = { [K in Edit['kind']]: (layout: Layout, edit: Edit & { kind: K }
 const same = (layout: Layout): Step => ({ layout });
 
 /** Whether two plain JSON values hold the same, however their fields are ordered. */
-/**
- * Why a condition cannot be, among the layout's others but the one at `at`; or null. The base layer
- * is always on, so it neither waits nor is waited for; a layer waits for others, not itself; and a
- * layer that comes on by a condition is never one another waits for.
- */
-function conditionRefused(layout: Layout, c: ConditionalLayerDef, at: number): string | null {
-  const base = layout.layers[0]?.id;
-  const others = (layout.conditionalLayers ?? []).filter((_, i) => i !== at);
-  if (c.then === base) return 'the base layer is always on: it waits for no other';
-  if (c.if.length === 0) return 'a conditional layer waits for one layer at least';
-  if (c.if.length > MAX_CONDITION_LAYERS) {
-    return `a conditional layer waits for ${MAX_CONDITION_LAYERS} layers at most`;
-  }
-  if (c.if.includes(c.then)) return `${c.then} cannot wait for itself`;
-  if (base !== undefined && c.if.includes(base)) {
-    return 'the base layer is always on: waiting for it is waiting for nothing';
-  }
-  const conditional = new Set(others.map((o) => o.then));
-  const waits = c.if.find((l) => conditional.has(l));
-  if (waits) return `${waits} comes on by a condition itself: no other layer waits for it`;
-  if (others.some((o) => o.if.includes(c.then))) {
-    return `a condition waits for ${c.then}, so it cannot come on by one itself`;
-  }
-  const sameIf = (o: ConditionalLayerDef) =>
-    o.if.length === c.if.length && o.if.every((l) => c.if.includes(l));
-  if (others.some((o) => o.then === c.then && sameIf(o))) return 'that condition is there already';
-  return null;
-}
-
 function sameValue(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (typeof a !== 'object' || typeof b !== 'object' || !a || !b) return false;
@@ -171,6 +142,58 @@ function sameValue(a: unknown, b: unknown): boolean {
   const names = Object.keys(x).filter((k) => x[k] !== undefined);
   const others = Object.keys(y).filter((k) => y[k] !== undefined);
   return names.length === others.length && names.every((k) => sameValue(x[k], y[k]));
+}
+
+/** A layer as its author named it, or by its id. */
+const layerName = (layout: Layout, id: string) =>
+  layout.layers.find((l) => l.id === id)?.name ?? id;
+
+/**
+ * Why a condition cannot be, among the layout's others but the one at `at`; or null. The base layer
+ * is always on, so it neither waits nor is waited for; a layer waits for others, not itself; a
+ * layer that comes on by a condition is never one another waits for; and a layer comes on by one
+ * condition at most, so there is one answer to what brings it on.
+ */
+function conditionRefused(layout: Layout, c: ConditionalLayerDef, at: number): string | null {
+  const base = layout.layers[0]?.id;
+  const others = (layout.conditionalLayers ?? []).filter((_, i) => i !== at);
+  const name = (id: string) => layerName(layout, id);
+  if (c.then === base) return 'the base layer is always on: it waits for no other';
+  if (c.if.length === 0) return 'a conditional layer waits for one layer at least';
+  if (c.if.length > MAX_CONDITION_LAYERS) {
+    return `a conditional layer waits for ${MAX_CONDITION_LAYERS} layers at most`;
+  }
+  if (c.if.includes(c.then)) return `${name(c.then)} cannot wait for itself`;
+  if (base !== undefined && c.if.includes(base)) {
+    return 'the base layer is always on: waiting for it is waiting for nothing';
+  }
+  const conditional = new Set(others.map((o) => o.then));
+  const waits = c.if.find((l) => conditional.has(l));
+  if (waits) return `${name(waits)} comes on by a condition itself: no other layer waits for it`;
+  if (others.some((o) => o.if.includes(c.then))) {
+    return `a condition waits for ${name(c.then)}, so it cannot come on by one itself`;
+  }
+  if (conditional.has(c.then)) {
+    return `${name(c.then)} comes on by a condition already: change that one`;
+  }
+  return null;
+}
+
+/**
+ * The first condition the layout takes as it is, one layer bringing on another, in the order of the
+ * list; or null when none is left: too few layers, or every one besides the base comes on by a
+ * condition or is waited for by one.
+ */
+export function freeCondition(layout: Layout): ConditionalLayerDef | null {
+  const others = layout.layers.slice(1).map((l) => l.id);
+  for (const waited of others) {
+    for (const then of others) {
+      if (then === waited) continue;
+      const c = { if: [waited], then };
+      if (!conditionRefused(layout, c, -1)) return c;
+    }
+  }
+  return null;
 }
 
 type ComboOf = NonNullable<Layout['combos']>[number];

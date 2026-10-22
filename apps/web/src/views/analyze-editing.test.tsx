@@ -984,24 +984,41 @@ describe('Edit', () => {
     const user = userEvent.setup();
     await openEdit();
     const section = () => within(screen.getByRole('region', { name: 'Conditional layers' }));
-    await user.click(section().getByRole('button', { name: '+ condition' }));
-    // The first two layers above the base: Symbols, while Numbers is on.
+    const add = () => section().getByRole('button', { name: '+ condition' });
+    await user.click(add());
+    // The first condition the layout takes: Symbols, while Numbers is on.
     const brings = () => section().getByRole('combobox', { name: 'Layer condition 1 brings on' });
     expect(brings()).toHaveValue('sym');
-    const waits = () => within(section().getByRole('group', { name: 'Layers Symbols waits for' }));
-    expect(waits().getByRole('button', { name: /Numbers/ })).toHaveAttribute(
+    const waits = (name: string) =>
+      within(section().getByRole('group', { name: `Layers ${name} waits for` }));
+    expect(waits('Symbols').getByRole('button', { name: /Numbers/ })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
-    await user.click(waits().getByRole('button', { name: /Accents/ }));
-    expect(waits().getByRole('button', { name: /Accents/ })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    // Neither the base layer, always on, nor Symbols itself is one to wait for.
+    expect(
+      waits('Symbols')
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual(['Numbers', 'Accents']);
+    // Accents is later in the list, so its keys cover Symbols while both are on.
+    await user.click(waits('Symbols').getByRole('button', { name: /Accents/ }));
+    const accents = waits('Symbols').getByRole('button', { name: /Accents/ });
+    expect(accents).toHaveAttribute('aria-pressed', 'true');
+    expect(accents).toHaveFocus();
+    expect(section().getByText(/Symbols is above Accents in the list/)).toBeInTheDocument();
+    // Every layer now comes on by the condition or is waited for: none is left to add.
+    expect(add()).toBeDisabled();
+    expect(section().getByText(/Every layer besides the base one/)).toBeInTheDocument();
     // A layer waits for others, never for itself.
     await user.selectOptions(brings(), 'accents');
-    expect(await screen.findByRole('alert')).toHaveTextContent('accents cannot wait for itself');
-    await user.click(section().getByRole('button', { name: 'Remove the condition for Symbols' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Accents cannot wait for itself');
+    await user.click(waits('Symbols').getByRole('button', { name: /Accents/ }));
+    await user.selectOptions(brings(), 'accents');
+    expect(brings()).toHaveValue('accents');
+    expect(brings()).toHaveFocus();
+    expect(add()).toBeEnabled();
+    await user.click(section().getByRole('button', { name: 'Remove the condition for Accents' }));
     expect(section().queryByRole('combobox', { name: 'Layer condition 1 brings on' })).toBeNull();
   }, 60_000);
 
