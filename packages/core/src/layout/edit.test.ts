@@ -1134,6 +1134,8 @@ describe('conditional layers', () => {
       binding: { kind: 'layer_morph', layers: ['both'], active: kp('x'), inactive: kp('y') },
     }).layout;
     expect(freeCondition(tested)).toEqual({ if: ['upper'], then: 'both' });
+    // The layer still cannot go while the morph tests it.
+    expect(refusal(tested, { kind: 'removeLayer', layer: 'both' })).toMatch(/still reached from/);
     // Extras waits for Numbers and Symbols, so neither comes on by a condition: Accents does.
     const off: Binding = { kind: 'trans' };
     const defaults: Layout = {
