@@ -625,7 +625,20 @@ What moved, checked across the 38 reports; nothing else moved:
 - **No report**: the fixture texts are typed the same, holds being no part of what they press, and
   every layout's languages, measured by `pnpm languages`, are as they were.
 
-## Twenty-ninth re-baseline: Engram's link
+## Twenty-ninth re-baseline: Magic Romak reaches only the layers that type
+
+Magic Romak holds no key for a layer of its author's keymap that types nothing. The Shortcuts layer
+on each pinky goes, of the home block mods; so do the holds for functions on Numbers' `,`, media on
+its `0` and macros on Symbols' `_`, which are plain taps now. The editor makes no imported key.
+
+What moved, checked across the 38 reports; nothing else moved:
+
+- **Magic Romak's document and share blob**: those five keys hold nothing, each still typing what
+  it typed.
+- **No report**: the fixture texts are typed the same, as those holds typed nothing, and every
+  layout's languages, measured by `pnpm languages`, are as they were.
+
+## Thirtieth re-baseline: Engram's link
 
 Engram's link went to a domain that no longer serves Engram. It is now the author's repository for
 the layout bundled here, Engram v2.0 of 2021: `https://github.com/binarybottle/engram-2021`.
