@@ -311,17 +311,33 @@ const BINDING_LISTS = ['bindings', 'steps', 'then'];
 const MAX_NAMED_DEPTH = 16;
 
 /**
- * How many bindings a document's names are written out into, all its keys and combos together. A
- * keymap needs a few hundred; only names read round a loop come near it.
+ * How much a document's names may write out below them, all its keys and combos together, weighed
+ * as `weightOf` weighs a binding. A keymap's names weigh a few tens of thousands at most; only names
+ * read round a loop, or made to be heavy, come near it.
  */
-const MAX_NAMED_BINDINGS = 10_000;
+const MAX_NAMED_WEIGHT = 200_000;
 
-/** How many bindings `b` holds directly: one for each place a binding goes in it. */
-function partsOf(b: JsonObject): number {
-  let n = ONE_BINDING.filter((k) => isObject(b[k])).length;
-  for (const k of [...BINDING_LISTS, 'triggers']) {
-    const list = b[k];
-    if (Array.isArray(list)) n += list.length;
+/** About what copying a value costs: one, and the length of a text. */
+const textWeight = (v: unknown) => (typeof v === 'string' ? 1 + v.length : 1);
+
+/** About what copying a field's value costs: a text, or a list and the texts in it. */
+const fieldWeight = (v: unknown) =>
+  Array.isArray(v) ? v.reduce((n: number, x) => n + textWeight(x), 1) : textWeight(v);
+
+/**
+ * About what writing a binding out once copies: its fields and the text and list items in them, and
+ * a branch's own fields. A binding it holds counts one, and is weighed when it is written out;
+ * anything deeper is nothing the schema reads.
+ */
+function weightOf(b: JsonObject): number {
+  let n = 0;
+  for (const [k, v] of Object.entries(b)) {
+    n += textWeight(k) + fieldWeight(v);
+    if (k !== 'triggers' || !Array.isArray(v)) continue;
+    for (const t of v) {
+      if (isObject(t))
+        for (const [tk, tv] of Object.entries(t)) n += textWeight(tk) + fieldWeight(tv);
+    }
   }
   return n;
 }
@@ -336,9 +352,10 @@ function partsOf(b: JsonObject): number {
  * could not read made the layout fail to compile: a name the document does not have, a macro or
  * adaptive key built on a binding of another kind, or names read more than 16 bindings deep, as
  * round a loop. Such a key that is only a name becomes Nothing, one built on a name keeps its own
- * fields, and what a name holds deeper than 16 bindings is Nothing. So is a binding whose parts
- * would take the bindings written out below names past 10,000: the compiler read one key at a time,
- * but a document is read whole. A document that names nothing reads as it is.
+ * fields, and what a name holds deeper than 16 bindings is Nothing. So is a binding below a name
+ * that would take what is written out past `MAX_NAMED_WEIGHT`: the compiler read one key at a time,
+ * but a document is read whole, and a name used round a loop, or made heavy, must not hang it. A
+ * document that names nothing reads as it is.
  */
 function withNamedBindingsInline(input: unknown): unknown {
   if (!isObject(input)) return input;
@@ -346,7 +363,15 @@ function withNamedBindingsInline(input: unknown): unknown {
   const named = isObject(behaviors) ? behaviors : {};
   const lookUp = (name: unknown) =>
     typeof name === 'string' && Object.hasOwn(named, name) ? named[name] : undefined;
-  let left = MAX_NAMED_BINDINGS;
+  let left = MAX_NAMED_WEIGHT;
+  const weights = new WeakMap<JsonObject, number>();
+  const weigh = (b: JsonObject) => {
+    const known = weights.get(b);
+    if (known !== undefined) return known;
+    const w = weightOf(b);
+    weights.set(b, w);
+    return w;
+  };
   /** `depth`: as the compiler counted it on the way to `b`; `belowName`: a name was followed. */
   const inline = (b: unknown, depth: number, belowName: boolean): unknown => {
     if (!isObject(b)) return b;
@@ -355,23 +380,23 @@ function withNamedBindingsInline(input: unknown): unknown {
       const target = lookUp(b.ref);
       return target === undefined ? { kind: 'none' } : inline(target, depth + 1, true);
     }
+    const building = (b.kind === 'macro' || b.kind === 'adaptive') && 'ref' in b;
+    // An empty name named nothing.
+    const target = building && b.ref ? lookUp(b.ref) : undefined;
+    const builds = isObject(target) && target.kind === b.kind;
+    const inside = belowName || builds;
+    // Below a name, what a binding copies is weighed before any of it is, so neither a loop nor a
+    // heavy name writes out more than the most.
+    if (inside) {
+      const weight = weigh(b) + (builds ? weigh(target) : 0);
+      if (weight > left) return { kind: 'none' };
+      left -= weight;
+    }
     let own = b;
-    let inside = belowName;
-    if ((b.kind === 'macro' || b.kind === 'adaptive') && 'ref' in b) {
-      const { ref, ...rest } = b;
-      // An empty name named nothing.
-      const target = ref ? lookUp(ref) : undefined;
-      const builds = isObject(target) && target.kind === b.kind;
+    if (building) {
+      const { ref: _ref, ...rest } = b;
       const { ref: _unread, ...built } = builds ? { ...target, ...rest } : rest;
       own = built;
-      if (builds) inside = true;
-    }
-    // Below a name, a binding's parts are counted before any is written, so however many each turn
-    // of a loop holds, no more than the most are written out.
-    if (inside) {
-      const parts = partsOf(own);
-      if (parts > left) return { kind: 'none' };
-      left -= parts;
     }
     const out: JsonObject = { ...own };
     for (const k of ONE_BINDING) if (isObject(own[k])) out[k] = inline(own[k], depth + 1, inside);

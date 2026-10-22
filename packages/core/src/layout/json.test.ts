@@ -304,13 +304,7 @@ describe('a document saved while layouts named bindings of their own', () => {
     expect(dances(layout.layers[0].bindings.LHI)).toBe(8);
   });
 
-  it('writes out no more than a few thousand bindings, however a loop of names repeats', () => {
-    const bindingsIn = (value: unknown): number =>
-      Array.isArray(value)
-        ? value.reduce((n: number, v) => n + bindingsIn(v), 0)
-        : value && typeof value === 'object'
-          ? ('kind' in value ? 1 : 0) + bindingsIn(Object.values(value))
-          : 0;
+  it('writes out only so much, however a loop of names repeats or however heavy a name is', () => {
     const again = { kind: 'ref', ref: 'again' };
     const keys = [
       'LTP',
@@ -335,9 +329,24 @@ describe('a document saved while layouts named bindings of their own', () => {
     // A macro that builds on itself, twice in its steps.
     const self = { kind: 'macro', ref: 'self' };
     const selfBuilt = saved({ LHI: self }, { self: { kind: 'macro', steps: [self, self] } });
-    for (const doc of [everywhere, selfBuilt]) {
-      const layout = parseLayout(doc);
-      expect(bindingsIn(toCanonicalJson(layout))).toBeLessThan(11_000);
+    // A loop whose every turn holds a long list, many fields the schema does not read, a long text.
+    const heavy = { kind: 'ref', ref: 'heavy' };
+    const unread = Object.fromEntries(Array.from({ length: 5_000 }, (_, i) => [`x${i}`, i]));
+    const heavyLoop = saved(
+      { LHI: heavy },
+      {
+        heavy: {
+          kind: 'adaptive',
+          default: { kind: 'macro', symbols: 'é'.repeat(50_000) },
+          triggers: [
+            { afterAny: Array(100_000).fill('a'), binding: heavy },
+            { afterAny: ['b'], binding: heavy, ...unread },
+          ],
+        },
+      },
+    );
+    for (const doc of [everywhere, selfBuilt, heavyLoop]) {
+      expect(JSON.stringify(toCanonicalJson(parseLayout(doc))).length).toBeLessThan(1_000_000);
     }
   });
 
