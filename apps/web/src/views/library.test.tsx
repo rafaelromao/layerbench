@@ -554,14 +554,19 @@ describe('Ranking layouts', () => {
     const client = scoringByName((name) => (name === 'Plain' ? 100 : 500));
     renderRoute('/library?corpus=pt-br-general&sample=10002', { client, storage });
 
-    // Scored, and checked for the letters Portuguese needs: behind every layout that has them.
+    // Scored, and checked for the letters Portuguese needs: behind every layout that has them, and
+    // ahead of those that lack them too, by its effort.
     const plain = () => cards().find((c) => c.querySelector('h3')?.textContent === 'Plain');
     await waitFor(
       () =>
         expect(plain()?.textContent).toMatch(/Cannot type .*ç.*ranked after the layouts that can/),
       { timeout: 60_000 },
     );
-    expect(cards().at(-1)).toBe(plain());
+    const after = (c: Element) => /ranked after the layouts that can/.test(c.textContent ?? '');
+    const at = cards().indexOf(plain() as HTMLElement);
+    expect(at).toBeGreaterThan(0);
+    expect(cards().slice(0, at).some(after)).toBe(false);
+    expect(cards().slice(at).every(after)).toBe(true);
   }, 90_000);
 
   it('sorts by home row with no regard for the language, as by name', async () => {
@@ -627,6 +632,8 @@ describe('Ranking layouts', () => {
     await waitFor(() => expect(plain()?.textContent).toMatch(/ranked after the layouts that can/), {
       timeout: 60_000,
     });
+    const at = cards().indexOf(plain() as HTMLElement);
+    expect(at).toBeGreaterThan(0);
     cleanup();
 
     // The next visit, with texts that are never listed: which language this one is in is unknown.
@@ -640,7 +647,7 @@ describe('Ranking layouts', () => {
     renderRoute('/library?corpus=pt-br-general&sample=10006', { client: unlisted, storage });
     await waitFor(() => expect(plain()).toBeTruthy());
     // Its numbers are the best, and it is still where the last visit found it.
-    expect(cards().at(-1)).toBe(plain());
+    expect(cards().indexOf(plain() as HTMLElement)).toBe(at);
   }, 90_000);
 
   it('scores each layout typed without the features left out of the ranking', async () => {

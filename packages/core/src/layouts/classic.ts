@@ -29,8 +29,17 @@ export interface ClassicDef {
    * chord types; or a combo written whole, kept as it is.
    */
   combos?: ({ keys: string; types: string } | ComboDef)[];
-  /** Further letter layers, reached from the base layer by a `special` key. */
+  /**
+   * Further layers: letter layers, reached from the base layer by a `special` key, and the layers
+   * its author's keymap defines past the letters, which take the place of the default ones: its
+   * Numbers and Symbols by the ids the default layers have (`num`, `sym`), the others by their own.
+   */
   layers?: { id: string; name: string; byKey: Record<string, KeyDef> }[];
+  /**
+   * The base layer's keys its author's keymap holds for a layer, by key: the layer held, the key
+   * still typing what it typed when tapped.
+   */
+  holds?: Record<string, string>;
   /** Board this layout was designed for; the 34-key split columnar board when omitted. */
   geometry?: string;
   /** The base layer's id and name, for a layout with more than one alpha layer; `base`, Base. */
@@ -226,7 +235,7 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     name: 'Engram',
     author: 'Arno Klein',
     rows: "b y o u ' l d w v z\nc i e a , h t s n q\ng x j k / ; r m f p",
-    link: 'https://engram.dev/',
+    link: 'https://github.com/binarybottle/engram-2021',
   },
   {
     id: 'sunlight',
@@ -332,6 +341,13 @@ export function classicLayout(def: ClassicDef): Layout {
         role: 'typing',
       };
     });
+  }
+  const keys = new Set(getGeometryPreset(preset).keys.map((k) => k.id));
+  const base = layout.layers[0].bindings;
+  for (const [id, layer] of Object.entries(def.holds ?? {})) {
+    if (!keys.has(id)) throw new Error(`${def.name}: ${preset} has no key ${id}`);
+    const tap = base[id];
+    base[id] = tap ? { kind: 'hold_tap', tap, hold: { kind: 'mo', layer } } : { kind: 'mo', layer };
   }
   // A one-shot Shift on the base layer is the Shift the analysis types capitals with.
   const shift = Object.entries(layout.layers[0].bindings).find(

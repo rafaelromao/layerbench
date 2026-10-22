@@ -148,6 +148,12 @@ describe('a conditional layer in the document', () => {
     json.conditionalLayers = [...(json.conditionalLayers as unknown[]), { if: ['l0'], then: 'l1' }];
     expect(safeParseLayout(json).ok).toBe(false);
   });
+
+  it('brings a layer on by one condition at most', () => {
+    const json = waitingFor(2);
+    json.conditionalLayers = [...(json.conditionalLayers as unknown[]), { if: ['l0'], then: 't' }];
+    expect(safeParseLayout(json).ok).toBe(false);
+  });
 });
 
 describe("a layout's link", () => {

@@ -238,6 +238,8 @@ function needsDetail(b: Binding | undefined): boolean {
 
 /** The name a screen reader reads, kept to the legend itself; the full meaning is the description. */
 function spokenLegend(l: Legend, tap: string): string {
+  // A key that taps nothing and only holds is named by its hold alone.
+  if (!tap && l.hold !== null && !l.holdIsMode && l.kind !== 'trans') return `hold ${l.hold}`;
   const hold = l.hold === null ? '' : l.holdIsMode ? ` (${l.hold})` : `, hold ${l.hold}`;
   return `${l.kind === 'trans' ? 'transparent' : tap || 'empty'}${hold}`;
 }
@@ -458,7 +460,8 @@ export function Keyboard({
       const idx = compiled.keyIndex.get(keyId);
       if (idx === undefined) return keyId;
       const active = compiled.layers[Math.min(layer, compiled.layers.length - 1)];
-      return legend(compiled, active.bindings[idx]).tap || keyId;
+      const l = legend(compiled, active.bindings[idx]);
+      return l.tap || l.hold || keyId;
     },
     [compiled, layer],
   );

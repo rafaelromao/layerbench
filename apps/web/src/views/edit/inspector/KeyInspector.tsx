@@ -4,6 +4,7 @@ import {
   keyBinding,
   type LayoutFeatures,
   legend,
+  legendText,
   reachKeys,
 } from '@layerbench/core';
 import { type Dispatch, useMemo } from 'react';
@@ -95,7 +96,7 @@ function Inspector({ state, send, focusKey, keyId }: KeyInspectorProps & { keyId
     send({
       type: 'edit',
       edit: { kind: 'bind', layer: activeLayer.id, keys: [keyId], binding },
-      say: `${keyId} set to ${legend(compiled, binding).tap || 'nothing'}`,
+      say: `${keyId} set to ${legendText(legend(compiled, binding)) || 'nothing'}`,
     });
   };
   const setFeatures = (features: LayoutFeatures, say?: string) =>

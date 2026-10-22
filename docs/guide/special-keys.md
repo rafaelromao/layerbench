@@ -7,7 +7,8 @@ and how to make it in the editor, in **Analyze**: select a key, then choose its 
 |---|---|
 | the large legend | what a tap does |
 | `✦` or `TD` as the large legend | a key with nothing of its own to type: an adaptive key with no default, an empty tap dance |
-| a small word along the bottom | what a hold does, or how a layer comes on: `hold`, `1×` for one key, `toggle`, `switch`, `auto` |
+| a small word along the bottom | what a hold does, or how a layer comes on: `1×` for one key, `toggle`, `switch`, `auto`, and `hold` under a layer that a tap dance, a morph or an adaptive key holds |
+| nothing in the centre, a small word along the bottom | a key that only holds, a layer while it is held (`&mo`) or a modifier: drawn as a tap-hold that taps nothing |
 | a small legend at the top | what it types with Shift, where that is not just the capital |
 | `✦` `⋯` `TD` `U+` in the corner | an adaptive key, a macro, a tap dance, a Unicode character |
 | a colour | the layer the key reaches, matching the colour of that layer's name in the layer navigator; chosen under **Layers**, or set by the layer's place in the list |
@@ -29,10 +30,11 @@ A key can do one thing when tapped and another while held, or act once, on the n
 A **Tap-hold** key has two parts. The **Tap** is what a quick press does, usually a letter; the
 **Hold** is a layer or a modifier while the key is held down. A letter on the home row with a
 modifier underneath is a home row mod: every layout that comes with the app holds Gui, Ctrl, Alt and
-Shift on its home row from the left pinky in, mirrored on the right, but Magic Romak, which holds
-its keymap's. A hold may give several modifiers together, under **Held with**: Shift and Gui at
-once, say, as ZMK's `LS(LGUI)`. The Tap can also be an adaptive key or an alt repeat, so a thumb can
-adapt when tapped and reach a layer when held.
+Shift on its home row from the left pinky in, mirrored on the right, but Magic Romak and the layouts
+whose keymaps hold their layers on the home row, which hold their authors'. A hold may give several
+modifiers together, under **Held with**: Shift and Gui at once, say, as ZMK's `LS(LGUI)`. The Tap
+can also be an adaptive key or an alt repeat, so a thumb can adapt when tapped and reach a layer
+when held.
 
 **Timing**, under the hold, sets the tapping term, how long a press must last to count as a hold,
 and the flavor, ZMK's rule for telling a tap from a hold when another key comes in between. Its

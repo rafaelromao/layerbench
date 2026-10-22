@@ -8,9 +8,19 @@ const c = compileLayout(bundledLayout('magic-romak')!);
 const at = (keyId: string, layer = 0) => c.layers[layer].bindings[c.keyIndex.get(keyId)!];
 
 suite('legends', () => {
+  it('draws a key that only holds as a tap-hold that taps nothing: its hold along the bottom', () => {
+    const layer = legend(c, { kind: 'mo', layer: 'num' });
+    expect([layer.tap, layer.hold, layer.holdIsMode]).toEqual(['', 'Numb', false]);
+    expect([layer.kind, layer.layer, layer.layerIn]).toEqual(['layer', 'num', 'hold']);
+    expect(legendText(layer)).toBe('hold Numb');
+    const shift = legend(c, { kind: 'mod', mod: 'LSHIFT' });
+    expect([shift.tap, shift.hold, shift.kind]).toEqual(['', '⇧', 'mod']);
+    // Said as what it does, as before.
+    expect(layer.detail).toBe(describe(c, { kind: 'mo', layer: 'num' }));
+  });
+
   it('puts a layer key’s layer in the centre and how it comes on beneath', () => {
     const cases: [Binding, string][] = [
-      [{ kind: 'mo', layer: 'num' }, LAYER_MODE.mo],
       [{ kind: 'sl', layer: 'num' }, LAYER_MODE.sl],
       [{ kind: 'tog', layer: 'num' }, LAYER_MODE.tog],
       [{ kind: 'to', layer: 'num' }, LAYER_MODE.to],

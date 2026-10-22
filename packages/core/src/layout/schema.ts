@@ -262,6 +262,10 @@ export const LayoutSchema = z.object({
       },
       { message: 'A conditional layer cannot wait for another conditional layer' },
     )
+    // One condition per layer, so what brings it on has one answer.
+    .refine((list) => new Set(list.map((c) => c.then)).size === list.length, {
+      message: 'A layer comes on by one condition at most',
+    })
     .optional(),
   typingPaths: z
     .record(

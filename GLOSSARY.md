@@ -26,7 +26,8 @@ _Avoid_: action, mapping, keycode
 **Category**:
 Where the Library files a layout so that it is ranked against its peers: Standard, Thumb Alpha or
 Special. It follows from the layout's own keys, whoever made it, and nothing on its default layers
-counts toward it. Custom and community are where a layout came from, not categories.
+counts toward it; the layers its author defines, Numbers and Symbols among them, do. Custom and
+community are where a layout came from, not categories.
 _Avoid_: family, type, group, class
 
 **Community layout**:
@@ -54,13 +55,14 @@ same contents.
 _Avoid_: saved layout, stored layout, my layout
 
 **Default layers**:
-The layers every bundled layout but Magic Romak has besides its own, so that each can type every
-letter and symbol (Magic Romak keeps its keymap's Numbers and Symbols and nothing more):
-Accents, Numbers and Symbols, and Extras for whatever those cannot hold. Accents holds the dead keys,
-and the letters and accented letters the supported languages need; Extras comes on while Numbers and
-Symbols are both held. Every bundled layout holds Numbers on its left inner thumb and Symbols on its
-right inner one, so Extras is both inner thumbs, in either order. A Standard or Thumb Alpha layout
-taps its right outer thumb for Accents; a Special one presses a combo.
+The layers a layout whose authors define none past its letters has besides its own, so that it can
+type every letter and symbol (a layout whose author's keymap defines layers keeps those, and nothing
+more, as Magic Romak keeps its keymap's Numbers and Symbols): Accents, Numbers and Symbols, and
+Extras for whatever those cannot hold. Accents holds the dead keys, and the letters and accented
+letters the supported languages need; Extras comes on while Numbers and Symbols are both held. Every
+bundled layout that has them holds Numbers on its left inner thumb and Symbols on its right inner
+one, so Extras is both inner thumbs, in either order. A Standard or Thumb Alpha layout taps its
+right outer thumb for Accents; a Special one presses a combo.
 _Avoid_: standard layers, common layers, shared layers
 
 **Draft**:
@@ -80,9 +82,10 @@ _Avoid_: action, operation, op, mutation
 **Home row mods**:
 Modifiers held on the home row's finger keys, each key still typing what it typed when tapped. Every
 bundled layout has Gui, Ctrl, Alt and Shift from the left pinky in, mirrored on the right, on its
-base layer, but Magic Romak, which holds its author's keymap's, its home block mods, as the keymap
-calls them: Ctrl, Alt and Shift from the ring finger in, and Gui, with or without Shift, on the
-bottom row.
+base layer, but those whose authors' keymaps hold their own: Magic Romak its home block mods, as the
+keymap calls them (Ctrl, Alt and Shift from the ring finger in, and Gui, with or without Shift, on
+the bottom row), and a layout whose author's keymap holds its layers on the home row its author's
+modifiers.
 _Avoid_: HRM, home-row modifiers
 
 **Kind of key**:
@@ -123,7 +126,9 @@ _Avoid_: arm, sub-binding
 **Plain part**:
 The part a key amounts to when nothing chooses another: a tap-hold's tap, a layer-tap's tap, a
 morph's plain binding, a tap dance's first tap, an adaptive key's default. What the board draws on a
-key, and what the editor keeps when a key changes kind, are read from it.
+key, and what the editor keeps when a key changes kind, are read from it. A key that only holds, a
+layer (`&mo`) or a modifier, is its own plain part, but the board draws it as a hold, under a tap
+that types nothing.
 _Avoid_: resting part, default, base binding
 
 **Press**:
@@ -156,8 +161,8 @@ _Avoid_: magic, advanced key, extra feature
 
 **Special layout**:
 A layout with a special feature, more than one alpha layer, or a board of fewer than 34 keys. A
-bundled one keeps its author's design, with the default layers added, or for Magic Romak its
-keymap's Numbers and Symbols alone, and may bend any rule the other categories follow.
+bundled one keeps its author's design, with the default layers added, or with its author's own
+layers where its author defines them, and may bend any rule the other categories follow.
 _Avoid_: exotic layout, advanced layout
 
 **Standard layout**:

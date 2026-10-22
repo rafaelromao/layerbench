@@ -1,9 +1,12 @@
 import {
+  type Edit,
   exportKeymapDrawer,
+  freeCondition,
   GEOMETRY_PRESET_IDS,
   LAYER_COLORS,
   type LayerColor,
   type LayoutFeatures,
+  layerReachedFrom,
   reachKeys,
   type SpecialFeature,
   type SpecialFeatureKind,
@@ -11,7 +14,7 @@ import {
   specialFeatures,
   toCanonicalJson,
 } from '@layerbench/core';
-import { type Dispatch, type ReactNode, useMemo, useState } from 'react';
+import { type Dispatch, type ReactNode, useId, useMemo, useState } from 'react';
 import { layerColourOf } from '../../components/layer-colour.js';
 import type { ProducerDTO } from '../../engine/protocol.js';
 import { toast } from '../../state/toasts.js';
@@ -21,7 +24,7 @@ import {
   parseBindingText,
   roundTrips,
 } from './binding-text.js';
-import { Segment, TextField } from './inspector/controls.js';
+import { LayerChips, Segment, TextField } from './inspector/controls.js';
 import { type EditAction, type EditState, shownLayer } from './reducer.js';
 
 type Send = Dispatch<EditAction>;
@@ -348,7 +351,118 @@ export function LayersPanel({ state, send }: PanelProps) {
           + layer
         </button>
       </form>
+
+      <ConditionalLayers state={state} send={send} />
     </div>
+  );
+}
+
+/**
+ * Layers that come on by themselves while others are on, as ZMK's conditional layers: Extras while
+ * Numbers and Symbols are both held. Each condition lists the layers it waits for, and the one it
+ * brings on.
+ */
+function ConditionalLayers({ state, send }: PanelProps) {
+  const layers = state.layout.layers;
+  const conditions = state.layout.conditionalLayers ?? [];
+  const base = layers[0]?.id ?? '';
+  const others = layers.slice(1);
+  const nameOf = (id: string) => layers.find((l) => l.id === id)?.name ?? id;
+  const placeOf = (id: string) => layers.findIndex((l) => l.id === id);
+  const edit = (e: Edit) => send({ type: 'edit', edit: e });
+  const toggle = (list: readonly string[], id: string) =>
+    list.includes(id) ? list.filter((l) => l !== id) : [...list, id];
+  const free = freeCondition(state.layout);
+  const noneFree = useId();
+  return (
+    <section className="space-y-2 pt-2" aria-label="Conditional layers">
+      <h3 className="text-xs font-semibold">Conditional layers</h3>
+      <p className="text-xs opacity-70">
+        A layer that comes on by itself while every layer it waits for is on, as ZMK's conditional
+        layers: Extras while Numbers and Symbols are both held.
+      </p>
+      {conditions.length > 0 && (
+        <ol className="space-y-2">
+          {conditions.map((c, i) => {
+            // A layer later in the list is drawn over an earlier one, so one brought on before a
+            // layer it waits for shows only where that layer's keys let it through.
+            const over = c.if.filter((id) => placeOf(id) > placeOf(c.then));
+            // A layer a condition brings on comes on no other way: what reaches it stops doing so.
+            const reaching = layerReachedFrom(state.layout, c.then, { tested: false });
+            return (
+              // biome-ignore lint/suspicious/noArrayIndexKey: the place is what a row edits, and a key of its layers would change with each edit, the row losing focus
+              <li key={i} className="space-y-1">
+                <div className="flex flex-wrap items-center gap-1 text-xs">
+                  <span>while</span>
+                  <LayerChips
+                    compiled={state.compiled}
+                    label={`Layers ${nameOf(c.then)} waits for`}
+                    value={c.if}
+                    omit={[base, c.then]}
+                    onChange={(id) =>
+                      edit({ kind: 'updateConditionalLayer', condition: i, if: toggle(c.if, id) })
+                    }
+                  />
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <span>bring on</span>
+                  <select
+                    aria-label={`Layer condition ${i + 1} brings on`}
+                    className="select select-xs w-auto min-w-0"
+                    value={c.then}
+                    onChange={(e) =>
+                      edit({ kind: 'updateConditionalLayer', condition: i, then: e.target.value })
+                    }
+                  >
+                    {others.map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.name ?? l.id}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-xs btn-square ml-auto"
+                    aria-label={`Remove the condition for ${nameOf(c.then)}`}
+                    onClick={() => edit({ kind: 'removeConditionalLayer', condition: i })}
+                  >
+                    ✕
+                  </button>
+                </div>
+                {over.length > 0 && (
+                  <p className="text-xs text-warning">
+                    {nameOf(c.then)} is above {over.map(nameOf).join(' and ')} in the list, so their
+                    keys cover it: move it below them.
+                  </p>
+                )}
+                {reaching.length > 0 && (
+                  <p className="text-xs text-warning">
+                    {nameOf(c.then)} comes on only by this condition, so these no longer bring it
+                    on: {reaching.join(', ')}.
+                  </p>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      )}
+      <button
+        type="button"
+        className="btn btn-xs"
+        disabled={!free}
+        aria-describedby={free ? undefined : noneFree}
+        onClick={() => free && edit({ kind: 'addConditionalLayer', ...free })}
+      >
+        + condition
+      </button>
+      {!free && (
+        <p id={noneFree} className="text-xs opacity-70">
+          {others.length < 2
+            ? 'A condition needs two layers besides the base one.'
+            : 'Every layer besides the base one comes on by a condition or is waited for by one.'}
+        </p>
+      )}
+    </section>
   );
 }
 

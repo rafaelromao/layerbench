@@ -225,6 +225,35 @@ describe('Keyboard', () => {
     }
   });
 
+  it('draws a key that only holds as a tap-hold with nothing to tap, and names it by its hold', () => {
+    const base = bundledLayout('qwerty')!;
+    const [first, ...rest] = base.layers;
+    const held = compileLayout({
+      ...base,
+      layers: [
+        {
+          ...first,
+          bindings: {
+            ...first.bindings,
+            LHM: { kind: 'mo', layer: 'num' },
+            LHI: { kind: 'mod', mod: 'LSHIFT' },
+          },
+        },
+        ...rest,
+      ],
+    });
+    const { container } = render(<Keyboard compiled={held} />);
+    for (const [key, hold] of [
+      ['LHM', 'Numb'],
+      ['LHI', '⇧'],
+    ]) {
+      const g = container.querySelector(`g[data-key="${key}"]`) as SVGGElement;
+      expect(g.querySelector('.lb-key-tap')?.textContent ?? '').toBe('');
+      expect(g.querySelector('.lb-key-hold')?.textContent).toBe(hold);
+      expect(screen.getByRole('button', { name: `Key ${key}: hold ${hold}` })).toBeInTheDocument();
+    }
+  });
+
   it('gives each instance its own arrow marker', () => {
     const { container } = render(
       <>

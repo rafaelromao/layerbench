@@ -30,6 +30,12 @@ const EXPECTED: Record<LayoutCategory, string[]> = {
   special: [
     'magic-romak',
     'magic-sturdy',
+    // Their author's Symbols has `z` `q` (a second alpha layer); a combo types `œu` (a macro).
+    'hands-down-gold',
+    'hands-down-promethium',
+    'hands-down-vibranium',
+    // Its author's Symbols types three backticks (a macro), and its Numbers letters.
+    'enthium',
     'nordrassil',
     't-34',
     'finch',
@@ -40,9 +46,6 @@ const EXPECTED: Record<LayoutCategory, string[]> = {
   ],
   thumb_alpha: [
     'hands-down-neu',
-    'hands-down-gold',
-    'hands-down-promethium',
-    'hands-down-vibranium',
     'night',
     'dusk',
     'snth',
@@ -50,7 +53,6 @@ const EXPECTED: Record<LayoutCategory, string[]> = {
     'sunlight',
     'aptmak',
     'rsthd',
-    'enthium',
     'nordwind',
   ],
   standard: [
@@ -218,6 +220,28 @@ describe('a custom copy of Qwerty', () => {
     expect(specialFeatures(l)).toEqual([]);
     expect(alphaLayers(withKey('RHI', kp('a'), l))).toEqual(['base']);
     expect(layoutCategory(l)).toBe('standard');
+  });
+
+  it("counts a layout's own Numbers and Symbols where it keeps its author's in place of the defaults", () => {
+    // Qwerty without Accents has no default layers: its Numbers and Symbols are its own.
+    const l = qwerty();
+    const num = l.layers.find((x) => x.id === DEFAULT_LAYER_IDS.numbers);
+    if (!num) throw new Error('no Numbers');
+    num.bindings.RHI = { kind: 'macro', symbols: 'xyz' };
+    expect(layoutCategory(l)).toBe('standard');
+    const own = { ...l, layers: l.layers.filter((x) => x.id !== DEFAULT_LAYER_IDS.accents) };
+    expect(specialFeatures(own)).toEqual([
+      { feature: 'macro', layer: 'num', key: 'RHI', label: 'Macro “xyz”' },
+    ]);
+    expect(layoutCategory(own)).toBe('special');
+    expect(specialFeatures(bundledLayout('enthium') as Layout).map((f) => f.label)).toEqual([
+      'Macro “```”',
+    ]);
+    // Their authors' layers give each a second alpha layer too: Hands Down's Symbols has `z` and
+    // `q`, Enthium's Numbers letters.
+    for (const id of ['hands-down-gold', 'hands-down-promethium', 'hands-down-vibranium'])
+      expect([id, alphaLayers(bundledLayout(id) as Layout)]).toEqual([id, ['base', 'sym']]);
+    expect(alphaLayers(bundledLayout('enthium') as Layout)).toEqual(['base', 'num']);
   });
 
   it('is Thumb Alpha once a thumb types a letter, through a tap-hold too', () => {

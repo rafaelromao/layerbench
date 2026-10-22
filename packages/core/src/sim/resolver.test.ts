@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeText } from '../corpus/normalize.js';
+import { eighteenKeys } from '../fixtures/boards.js';
 import { FIXTURE_MIXED } from '../fixtures/index.js';
 import { compileLayout } from '../layout/compile.js';
 import { importTextLayout } from '../layout/text.js';
@@ -644,12 +645,14 @@ describe('a capital with home row mods and no Shift key of its own', () => {
         const pressed = steps
           .filter((s) => s.kind !== 'hold_press' && s.kind !== 'hold_release')
           .flatMap((s) => keys(s.key));
-        // One of the two index fingers' Shift, and never on a key the capital itself presses.
+        // One of its home row Shifts, and never on a key the capital itself presses: the index
+        // fingers' on most layouts, its author's where it holds its author's.
+        const shifts = (k: string) => {
+          const b = layout.layers[0].bindings[k];
+          return b?.kind === 'hold_tap' && b.hold.kind === 'mod' && b.hold.mod === 'LSHIFT';
+        };
         expect([capital, steps.map((s) => s.symbols).join('')]).toEqual([capital, capital]);
-        expect([capital, held.filter((k) => k === 'LHI' || k === 'RHI').length]).toEqual([
-          capital,
-          1,
-        ]);
+        expect([capital, held.filter(shifts).length]).toEqual([capital, 1]);
         expect([capital, held.filter((k) => pressed.includes(k))]).toEqual([capital, []]);
       }
     },
@@ -1151,8 +1154,8 @@ describe("a mod morph's modifiers", () => {
 });
 
 describe('a layer that comes on while others are on together', () => {
-  // Ben Vallack's Piano's Extras: on while Numbers, held from L0, and Symbols, held from R0, are on.
-  const piano = bundledLayout('ben-vallack-piano') as Layout;
+  // Extras on eighteen keys: on while Numbers, held from L0, and Symbols, held from R0, are on.
+  const eighteen = eighteenKeys();
   const extras = ['L0', 'R0', 'RTR'];
   const reversed = (layout: Layout): Layout => ({
     ...layout,
@@ -1160,36 +1163,36 @@ describe('a layer that comes on while others are on together', () => {
   });
 
   it('is reached by holding those layers one after the other', () => {
-    expect(trace(piano, '€').keys).toEqual(extras);
+    expect(trace(eighteen, '€').keys).toEqual(extras);
   });
 
   it('is reached by holding them in the order its condition names them, where that can be pressed', () => {
     // Symbols' L0 holds Numbers too, so the two inner thumbs bring Extras on in either order.
-    const t = trace(reversed(piano), '€');
+    const t = trace(reversed(eighteen), '€');
     expect(t.out).toBe('€');
     expect(t.keys).toEqual(['R0', 'L0', 'RTR']);
   });
 
   it('is reached whatever order its condition names them in', () => {
     // With L0 only typing `=` on Symbols, Numbers cannot be held from there.
-    const layers = piano.layers.map((l) =>
+    const layers = eighteen.layers.map((l) =>
       l.id === 'sym'
         ? { ...l, bindings: { ...l.bindings, L0: { kind: 'kp', symbol: '=' } as Binding } }
         : l,
     );
-    const t = trace(reversed({ ...piano, layers }), '€');
+    const t = trace(reversed({ ...eighteen, layers }), '€');
     expect(t.out).toBe('€');
     expect(t.keys).toEqual(extras);
   });
 
   it('is reached by its condition when a key that would bring it on cannot', () => {
     // The machine turns Extras off when this key holds it alone.
-    const layers = piano.layers.map((l) =>
+    const layers = eighteen.layers.map((l) =>
       l.id === 'num'
         ? { ...l, bindings: { ...l.bindings, L1: { kind: 'mo', layer: 'extras' } as Binding } }
         : l,
     );
-    const t = trace({ ...piano, layers }, '€');
+    const t = trace({ ...eighteen, layers }, '€');
     expect(t.out).toBe('€');
     expect(t.keys).toEqual(extras);
   });
