@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { JsonObject } from '../storage/ids.js';
 import { LAYER_COLORS, type Layout, MAX_CONDITION_LAYERS } from './types.js';
 
 const ModSchema = z.enum(['LSHIFT', 'RSHIFT', 'LCTRL', 'RCTRL', 'LALT', 'RALT', 'LGUI', 'RGUI']);
@@ -291,57 +292,61 @@ export const LayoutSchema = z.object({
     .optional(),
 });
 
-type Json = Record<string, unknown>;
-
-const isObject = (v: unknown): v is Json =>
+const isObject = (v: unknown): v is JsonObject =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
 
 /** The fields of a binding that hold one binding, and those that hold a list of them. */
 const ONE_BINDING = ['tap', 'hold', 'default', 'morphed', 'active', 'inactive'];
 const BINDING_LISTS = ['bindings', 'steps', 'then'];
 
+/** How deep the compiler followed names, and the bindings inside them, before it gave up. */
+const MAX_NAMED_DEPTH = 16;
+
 /**
  * A document saved while layouts could name bindings of their own (`behaviors`), with each name
- * written out where it was used, as the compiler read it, and the names dropped. A `ref` key is the
- * binding it names; a macro or adaptive key that names one is that binding with its own fields over
- * it. A name the document does not have, or one reached again while it is being written out, was a
- * compile error: a key that is only that name becomes Nothing, and one that builds on it keeps its
- * own fields. A document that names nothing reads as it is.
+ * written out where it was used, exactly as the compiler read it, and the names dropped. A `ref`
+ * key is the binding it names. A macro or adaptive key that names one is that binding with its own
+ * fields over it; a name the named binding itself builds on was left unread, and still is. What the
+ * compiler could not read made the layout fail to compile: a name the document does not have, a
+ * macro or adaptive key built on a binding of another kind, or names followed more than 16 deep, as
+ * a loop is. Such a key that is only a name becomes Nothing, and one built on a name keeps its own
+ * fields. A document that names nothing reads as it is.
  */
 function withNamedBindingsInline(input: unknown): unknown {
   if (!isObject(input)) return input;
   const { behaviors, ...document } = input;
   const named = isObject(behaviors) ? behaviors : {};
-  type Following = ReadonlySet<string>;
-  const inline = (b: unknown, following: Following): unknown => {
+  const lookUp = (name: unknown) =>
+    typeof name === 'string' && Object.hasOwn(named, name) ? named[name] : undefined;
+  const inline = (b: unknown, depth: number): unknown => {
     if (!isObject(b)) return b;
-    const builds = (b.kind === 'macro' || b.kind === 'adaptive') && 'ref' in b;
-    if (b.kind !== 'ref' && !builds) return within(b, following);
-    const { ref, ...own } = b;
-    const name = typeof ref === 'string' ? ref : '';
-    const target = Object.hasOwn(named, name) && !following.has(name) ? named[name] : undefined;
-    const next = new Set([...following, name]);
-    if (b.kind === 'ref') return target === undefined ? { kind: 'none' } : inline(target, next);
-    return isObject(target) && target.kind === b.kind
-      ? inline({ ...target, ...own }, next)
-      : within(own, following);
-  };
-  /** The binding with the bindings it holds written out. */
-  const within = (b: Json, following: Following): Json => {
-    const out: Json = { ...b };
-    for (const k of ONE_BINDING) if (k in b) out[k] = inline(b[k], following);
-    for (const k of BINDING_LISTS) {
-      const list = b[k];
-      if (Array.isArray(list)) out[k] = list.map((x) => inline(x, following));
+    if (depth > MAX_NAMED_DEPTH) return { kind: 'none' };
+    if (b.kind === 'ref') {
+      const target = lookUp(b.ref);
+      return target === undefined ? { kind: 'none' } : inline(target, depth + 1);
     }
-    if (Array.isArray(b.triggers)) {
-      out.triggers = b.triggers.map((t) =>
-        isObject(t) ? { ...t, binding: inline(t.binding, following) } : t,
+    let own = b;
+    if ((b.kind === 'macro' || b.kind === 'adaptive') && 'ref' in b) {
+      const { ref, ...rest } = b;
+      // An empty name named nothing.
+      const target = ref ? lookUp(ref) : undefined;
+      const { ref: _unread, ...built } =
+        isObject(target) && target.kind === b.kind ? { ...target, ...rest } : rest;
+      own = built;
+    }
+    const out: JsonObject = { ...own };
+    for (const k of ONE_BINDING) if (isObject(own[k])) out[k] = inline(own[k], depth + 1);
+    for (const k of BINDING_LISTS) {
+      const list = own[k];
+      if (Array.isArray(list)) out[k] = list.map((x) => inline(x, depth + 1));
+    }
+    if (Array.isArray(own.triggers)) {
+      out.triggers = own.triggers.map((t) =>
+        isObject(t) ? { ...t, binding: inline(t.binding, depth + 1) } : t,
       );
     }
     return out;
   };
-  const none: Following = new Set();
   const { layers, combos } = document;
   return {
     ...document,
@@ -351,14 +356,14 @@ function withNamedBindingsInline(input: unknown): unknown {
           ? {
               ...l,
               bindings: Object.fromEntries(
-                Object.entries(l.bindings).map(([k, b]) => [k, inline(b, none)]),
+                Object.entries(l.bindings).map(([k, b]) => [k, inline(b, 0)]),
               ),
             }
           : l,
       ),
     }),
     ...(Array.isArray(combos) && {
-      combos: combos.map((c) => (isObject(c) ? { ...c, binding: inline(c.binding, none) } : c)),
+      combos: combos.map((c) => (isObject(c) ? { ...c, binding: inline(c.binding, 0) } : c)),
     }),
   };
 }

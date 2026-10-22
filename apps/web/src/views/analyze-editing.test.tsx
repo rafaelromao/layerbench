@@ -1298,7 +1298,7 @@ describe('Edit', () => {
     expect(within(kinds).queryByRole('button', { name: 'More' })).toBeNull();
   });
 
-  it('closes the list of more kinds on a phone on a choice or a tap elsewhere, and keeps the choice in sight', async () => {
+  it('closes the list of more kinds on a phone on a choice, a tap elsewhere or More again, and keeps the choice in sight', async () => {
     setViewportWidth(375);
     const user = userEvent.setup();
     await openEdit();
@@ -1309,6 +1309,10 @@ describe('Edit', () => {
     expect(within(editor).getByRole('group', { name: 'More kinds' })).toBeInTheDocument();
     // A tap anywhere else puts the list away, like any menu.
     await user.click(within(editor).getByRole('textbox', { name: 'Binding for LHM' }));
+    expect(within(editor).queryByRole('group', { name: 'More kinds' })).toBeNull();
+    // So does More itself.
+    await user.click(within(editor).getByRole('button', { name: 'More' }));
+    await user.click(within(editor).getByRole('button', { name: 'More', expanded: true }));
     expect(within(editor).queryByRole('group', { name: 'More kinds' })).toBeNull();
 
     await user.click(within(editor).getByRole('button', { name: 'More' }));

@@ -899,12 +899,10 @@ function SpecialFeatureList({ state, send, onShow }: PanelProps & { onShow?: () 
     send({ type: 'selectLayer', layer });
     send({ type: 'keyClick', keyId: f.key });
   };
-  const placeOf = (f: SpecialFeature) => {
-    if (f.combo !== undefined) return `Combo ${f.combo}`;
-    const layer = f.layer === undefined ? undefined : compiled.layerIndex.get(f.layer);
-    if (layer === undefined || f.key === undefined) return null;
-    return `${compiled.layers[layer]?.name ?? f.layer} · ${f.key}`;
-  };
+  const placeOf = (f: SpecialFeature) =>
+    f.combo !== undefined
+      ? `Combo ${f.combo}`
+      : `${compiled.layers.find((l) => l.id === f.layer)?.name ?? f.layer} · ${f.key}`;
 
   if (features.length === 0) {
     return <p className="text-xs opacity-70">This layout has no special features.</p>;
@@ -921,28 +919,22 @@ function SpecialFeatureList({ state, send, onShow }: PanelProps & { onShow?: () 
             </h3>
             <ul className="flex flex-wrap gap-1" aria-label={title}>
               {group.map((f, i) => {
-                const place = placeOf(f);
                 const current =
-                  place !== null &&
                   f.combo === undefined &&
                   state.selected === f.key &&
                   compiled.layers[state.layer]?.id === f.layer;
                 return (
                   // biome-ignore lint/suspicious/noArrayIndexKey: one key can hold a feature twice
                   <li key={`${f.layer}-${f.key}-${f.combo}-${f.label}-${i}`}>
-                    {place === null ? (
-                      <span className="badge badge-ghost badge-sm">{f.label}</span>
-                    ) : (
-                      <button
-                        type="button"
-                        className={`btn btn-xs gap-1 ${current ? 'btn-primary' : 'btn-ghost border-base-300'}`}
-                        aria-current={current ? 'true' : undefined}
-                        onClick={() => show(f)}
-                      >
-                        <span className="font-mono">{place}</span>
-                        <span className="opacity-70">{f.label}</span>
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      className={`btn btn-xs gap-1 ${current ? 'btn-primary' : 'btn-ghost border-base-300'}`}
+                      aria-current={current ? 'true' : undefined}
+                      onClick={() => show(f)}
+                    >
+                      <span className="font-mono">{placeOf(f)}</span>
+                      <span className="opacity-70">{f.label}</span>
+                    </button>
                   </li>
                 );
               })}

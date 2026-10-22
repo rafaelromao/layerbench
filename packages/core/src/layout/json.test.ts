@@ -247,6 +247,29 @@ describe('a document saved while layouts named bindings of their own', () => {
     expect(safeParseLayout(old)).toEqual({ ok: true, layout });
   });
 
+  it("reads a key that builds on a name as the compiler did, the key's own fields outside it", () => {
+    const parsed = safeParseLayout(
+      saved(
+        {
+          // Its own steps name what it builds on, and are read as any other use of the name.
+          LHI: { kind: 'macro', ref: 'x', steps: [{ kind: 'ref', ref: 'x' }] },
+          // What `b` builds on in turn was never read: `b` is an empty macro with this key's tag.
+          LHM: { kind: 'macro', ref: 'b', tag: 'k' },
+        },
+        {
+          x: { kind: 'macro', symbols: 'x' },
+          b: { kind: 'macro', ref: 'c' },
+          c: { kind: 'macro', symbols: 'c' },
+          hv,
+        },
+      ),
+    );
+    expect(parsed.ok && parsed.layout.layers[0].bindings).toEqual({
+      LHI: { kind: 'macro', symbols: 'x', steps: [{ kind: 'macro', symbols: 'x' }] },
+      LHM: { kind: 'macro', tag: 'k' },
+    });
+  });
+
   it('keeps a key whose name led nowhere, which never compiled, as Nothing or its own fields', () => {
     const parsed = safeParseLayout(
       saved(
@@ -254,14 +277,16 @@ describe('a document saved while layouts named bindings of their own', () => {
           LHI: { kind: 'ref', ref: 'gone' },
           LHM: { kind: 'ref', ref: 'loop' },
           LHR: { kind: 'macro', ref: 'hv', symbols: 'x' },
+          LHP: { kind: 'ref', ref: 'constructor' },
         },
-        { hv, loop: { kind: 'tap_dance', bindings: [{ kind: 'ref', ref: 'loop' }, kp('a')] } },
+        { hv, loop: { kind: 'ref', ref: 'around' }, around: { kind: 'ref', ref: 'loop' } },
       ),
     );
     expect(parsed.ok && parsed.layout.layers[0].bindings).toEqual({
       LHI: { kind: 'none' },
-      LHM: { kind: 'tap_dance', bindings: [{ kind: 'none' }, kp('a')] },
+      LHM: { kind: 'none' },
       LHR: { kind: 'macro', symbols: 'x' },
+      LHP: { kind: 'none' },
     });
   });
 });
