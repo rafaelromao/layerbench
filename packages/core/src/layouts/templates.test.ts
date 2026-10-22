@@ -868,14 +868,18 @@ describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, unless a l
   });
 
   // A definition may give its own, as its author's keymap has them; a document carries its own in
-  // its JSON, as Magic Romak's would once a change made it one: some of its home keys hold other
-  // modifiers than the standard ones. One that holds none is held to the standard ones.
+  // its JSON, as Magic Romak's would once a change made it one: it holds a modifier on a key off the
+  // home row, as Magic Romak's bottom row holds Gui. Any other is held to the standard ones, so one
+  // that loses a home row mod fails.
   const standard = (l: Layout) =>
     KEYS.every((k, i) => heldMod(l.layers[0].bindings[k]) === MODS[i]);
-  const holdsMods = (l: Layout) => KEYS.some((k) => heldMod(l.layers[0].bindings[k]) !== undefined);
+  const holdsOffHome = (l: Layout) =>
+    Object.entries(l.layers[0].bindings).some(
+      ([k, b]) => !KEYS.includes(k) && heldMod(b) !== undefined,
+    );
   const own = new Set([
     ...[...CLASSIC_DEFS, ...SMALL_DEFS].filter((d) => d.homeRowMods !== undefined).map((d) => d.id),
-    ...DOCUMENT_LAYOUTS.filter((l) => !standard(l) && holdsMods(l)).map((l) => l.id),
+    ...DOCUMENT_LAYOUTS.filter((l) => !standard(l) && holdsOffHome(l)).map((l) => l.id),
   ]);
 
   it.each(BUNDLED_LAYOUTS.filter((l) => !own.has(l.id ?? '')).map((l) => [l.id, l] as const))(
@@ -1140,35 +1144,38 @@ describe('Extras starts on the prime keys', () => {
   }
 });
 
-/** Every part of a binding: itself, and what it holds, taps or chooses among, however deep. */
-function* partsOf(b: Binding | undefined): Generator<Binding> {
+/**
+ * A binding and every binding inside it, however deep: what it holds, taps, chooses among, or
+ * steps through. Its parts, in the glossary's sense, and itself.
+ */
+function* bindingsIn(b: Binding | undefined): Generator<Binding> {
   if (!b) return;
   yield b;
   switch (b.kind) {
     case 'hold_tap':
-      yield* partsOf(b.tap);
-      yield* partsOf(b.hold);
+      yield* bindingsIn(b.tap);
+      yield* bindingsIn(b.hold);
       break;
     case 'lt':
-      yield* partsOf(b.tap);
+      yield* bindingsIn(b.tap);
       break;
     case 'mod_morph':
-      yield* partsOf(b.default);
-      yield* partsOf(b.morphed);
+      yield* bindingsIn(b.default);
+      yield* bindingsIn(b.morphed);
       break;
     case 'layer_morph':
-      yield* partsOf(b.active);
-      yield* partsOf(b.inactive);
+      yield* bindingsIn(b.active);
+      yield* bindingsIn(b.inactive);
       break;
     case 'tap_dance':
-      for (const x of b.bindings) yield* partsOf(x);
+      for (const x of b.bindings) yield* bindingsIn(x);
       break;
     case 'macro':
-      for (const x of [...(b.steps ?? []), ...(b.then ?? [])]) yield* partsOf(x);
+      for (const x of [...(b.steps ?? []), ...(b.then ?? [])]) yield* bindingsIn(x);
       break;
     case 'adaptive':
-      yield* partsOf(b.default);
-      for (const t of b.triggers ?? []) yield* partsOf(t.binding);
+      yield* bindingsIn(b.default);
+      for (const t of b.triggers ?? []) yield* bindingsIn(t.binding);
       break;
   }
 }
@@ -1185,7 +1192,7 @@ describe('layers that type nothing', () => {
         ...Object.values(layout.behaviors ?? {}),
       ];
       for (const b of bindings) {
-        for (const p of partsOf(b)) {
+        for (const p of bindingsIn(b)) {
           if (p.kind === 'hold_tap') expect(p.hold.kind).not.toBe('raw');
           if (p.kind === 'raw') expect(p.source ?? '').not.toMatch(/^&(mo|lt|sl|to|tog)\b/);
         }

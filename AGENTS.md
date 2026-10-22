@@ -46,13 +46,16 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
   its JSON. Magic Romak gives its own, its author's keymap's home block mods (`MAGIC_ROMAK_MODS` in
   `small.ts`): Ctrl, Alt and Shift from the ring finger in, Shift with Gui on F and C, and Gui on P
   and the magic key. The keymap's pinkies hold its Shortcuts layer, and `,` and `.` hold to move the
-  cursor: a layer that types nothing, and editing, both left out. No layout reaches a layer that
-  types nothing (functions, media, macros), and the editor makes no imported key. In the Shift case
-  mode a capital holds Shift on no key it presses, the one that reaches its layer included, nor on a
-  thumb of a hand whose thumb presses one, and on a thumb before a finger: on the standard thumbs
-  R1, and L1 for one on Accents, which R1 taps, or on a right thumb. A layout with no Shift key of
-  its own holds a Shift thumb if it has one it can, else the other hand's home row Shift where it
-  can, never a key that holds other modifiers with it (`holdMod` in `resolver.ts`).
+  cursor: a layer that types nothing, and editing, both left out. In the Shift case mode a capital
+  holds Shift on no key it presses, the one that reaches its layer included, nor on a thumb of a
+  hand whose thumb presses one, and on a thumb before a finger: on the standard thumbs R1, and L1
+  for one on Accents, which R1 taps, or on a right thumb. A layout with no Shift key of its own
+  holds a Shift thumb if it has one it can, else the other hand's home row Shift where it can, never
+  a key that holds other modifiers with it (`holdMod` in `resolver.ts`).
+- **No layer that types nothing.** No bundled layout reaches a layer of functions, media or
+  macros, by a hold or a key: an author's keymap's own such holds are left out, as Magic Romak's
+  are, and the editor makes no imported key. `templates.test.ts` checks every bundled layout
+  (`layers that type nothing`).
 - **A held thumb blocks its hand.** On a layer every way onto which holds a thumb key of one hand
   down (`mo`, `lt`), that hand's thumb keys get no binding: the thumb is busy holding. Numbers and
   Symbols each block the hand holding them, and Extras, both held, every thumb. The held keys

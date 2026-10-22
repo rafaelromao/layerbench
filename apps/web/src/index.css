@@ -874,6 +874,8 @@
   border-radius: 9999px;
   border: 1px solid var(--lb-key-stroke);
   background: transparent;
+  /* Round at any width: the select beside it is what gives way. */
+  flex-shrink: 0;
 }
 
 /* A layer to import: its switch, name and arrows on one line, what was read of it under the name. */
