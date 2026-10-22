@@ -903,7 +903,6 @@ describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, unless a l
   it("give way to a layout's own: Magic Romak holds its keymap's home block mods", () => {
     const base = magicRomak.layers[0].bindings;
     const hold = (k: string) => (base[k]?.kind === 'hold_tap' ? base[k].hold : undefined);
-    const shorts: Binding = { kind: 'raw', label: 'SHORTS', source: '&mo SHORTS' };
     const gui: Binding = { kind: 'mod', mod: 'LGUI' };
     expect(
       Object.fromEntries(
@@ -912,7 +911,8 @@ describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, unless a l
         ),
       ),
     ).toEqual({
-      LHP: shorts,
+      // The pinkies hold a layer of shortcuts, which types nothing: left out.
+      LHP: undefined,
       LHR: { kind: 'mod', mod: 'LCTRL' },
       LHM: { kind: 'mod', mod: 'LALT' },
       LHI: { kind: 'mod', mod: 'LSHIFT' },
@@ -922,12 +922,12 @@ describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, unless a l
       RHI: { kind: 'mod', mod: 'LSHIFT' },
       RHM: { kind: 'mod', mod: 'LALT' },
       RHR: { kind: 'mod', mod: 'LCTRL' },
-      RHP: shorts,
+      RHP: undefined,
       RBI: gui,
     });
     // Each still types what it typed; the magic key is still the magic key.
     expect(base.RBI?.kind === 'hold_tap' && base.RBI.tap.kind).toBe('adaptive');
-    expect(base.LHP?.kind === 'hold_tap' && base.LHP.tap).toEqual(kp('d'));
+    expect(base.LHP).toEqual(kp('d'));
     // The keymap's , and . hold to move the cursor, which is editing, and are left as they were.
     expect(base.RBM).toEqual(kp(','));
     expect(base.RBR).toEqual(kp('.'));

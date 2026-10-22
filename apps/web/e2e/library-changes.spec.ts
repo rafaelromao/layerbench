@@ -12,6 +12,8 @@ const PULL = 'https://github.com/rafaelromao/layerbench/pull/100';
  * nothing leaves: a proposal and a maintainer's change answer with a pull request.
  */
 async function signedIn(page: Page, maintainer: boolean): Promise<void> {
+  // The sealed session the tab keeps once signed in, which every request to the server carries.
+  await page.addInitScript(() => localStorage.setItem('layerbench:github-session', 'sealed'));
   const answer = {
     available: true,
     signedIn: true,

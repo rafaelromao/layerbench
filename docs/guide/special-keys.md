@@ -31,9 +31,8 @@ A **Tap-hold** key has two parts. The **Tap** is what a quick press does, usuall
 modifier underneath is a home row mod: every layout that comes with the app holds Gui, Ctrl, Alt and
 Shift on its home row from the left pinky in, mirrored on the right, but Magic Romak, which holds
 its keymap's. A hold may give several modifiers together, under **Held with**: Shift and Gui at
-once, say, as ZMK's `LS(LGUI)`. A hold may also be an imported key, for what LayerBench does not
-model, as Magic Romak's pinkies hold a layer of shortcuts. The Tap can also be an adaptive key or an
-alt repeat, so a thumb can adapt when tapped and reach a layer when held.
+once, say, as ZMK's `LS(LGUI)`. The Tap can also be an adaptive key or an alt repeat, so a thumb can
+adapt when tapped and reach a layer when held.
 
 **Timing**, under the hold, sets the tapping term, how long a press must last to count as a hold,
 and the flavor, ZMK's rule for telling a tap from a hold when another key comes in between. Its

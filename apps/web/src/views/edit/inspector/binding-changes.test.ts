@@ -12,7 +12,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import type { BindingTextContext } from '../binding-text.js';
 import { type FieldsOf, freshRow, keyFields, macroRows } from './binding-changes.js';
-import { HOLD_KINDS, type KindOfKey, kindOf, MORE_KINDS, PRIMARY_KINDS } from './kinds.js';
+import { type KindOfKey, kindOf, MORE_KINDS, PRIMARY_KINDS } from './kinds.js';
 
 /** The context the key inspector builds for a layout. */
 function contextOf(compiled: CompiledLayout): BindingTextContext {
@@ -164,22 +164,8 @@ describe('what each kind of key shows, and what its controls change', () => {
     expect(modifier.set.acts('sk')).toBe(sticky);
   });
 
-  it('makes an imported key: drawn by its label, kept by its source, typing nothing', () => {
-    expect(MORE_KINDS.map((k) => k.kind)).toContain('imported');
-    const made = to({ kind: 'kp', symbol: 'a' }, 'imported');
-    expect(made).toEqual({ kind: 'raw', label: 'a' });
-    const imported = fieldsOf('imported', made);
-    const labelled = imported.set.label('FUN');
-    expect(labelled).toEqual({ kind: 'raw', label: 'FUN' });
-    expect(fieldsOf('imported', labelled).set.source('&mo FUN')).toEqual({
-      kind: 'raw',
-      label: 'FUN',
-      source: '&mo FUN',
-    });
-    // An empty source is no source; an empty label keeps the one it had.
-    const sourced: Binding = { kind: 'raw', label: 'FUN', source: '&mo FUN' };
-    expect(fieldsOf('imported', sourced).set.source(' ')).toEqual({ kind: 'raw', label: 'FUN' });
-    expect(fieldsOf('imported', sourced).set.label(' ')).toBe(sourced);
+  it('offers no imported key to make: only an imported keymap brings one', () => {
+    expect(MORE_KINDS.map((k) => k.kind)).not.toContain('imported');
   });
 
   it('holds other modifiers with a held one, as ZMK holds Shift with Gui for LS(LGUI)', () => {
@@ -224,7 +210,7 @@ describe('the parts of a bigger key, and lists of them', () => {
   const a: Binding = { kind: 'kp', symbol: 'a' };
   const v: Binding = { kind: 'kp', symbol: 'v' };
 
-  it("holds Shift with Gui, or an imported key, on a tap-hold's hold, as Magic Romak does", () => {
+  it("holds Shift with Gui on a tap-hold's hold, as Magic Romak does", () => {
     const held = fieldsOf('taphold', {
       kind: 'hold_tap',
       tap: a,
@@ -235,13 +221,6 @@ describe('the parts of a bigger key, and lists of them', () => {
       kind: 'hold_tap',
       tap: a,
       hold: { kind: 'mod', mod: 'LGUI', also: ['LSHIFT'] },
-    });
-    expect(HOLD_KINDS).toContain('imported');
-    const imported = fieldsOf('imported', to(held.view.hold, 'imported'));
-    expect(held.set.hold(imported.set.label('SHORTS'))).toEqual({
-      kind: 'hold_tap',
-      tap: a,
-      hold: { kind: 'raw', label: 'SHORTS' },
     });
   });
 

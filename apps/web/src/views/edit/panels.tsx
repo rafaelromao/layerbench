@@ -254,25 +254,6 @@ export function LayersPanel({ state, send }: PanelProps) {
                     send({ type: 'edit', edit: { kind: 'setLayerId', layer: layer.id, id } })
                   }
                 />
-                <select
-                  aria-label={`What ${nameOf(i)}'s unlisted keys do`}
-                  title="What the keys this layer lists nothing for do"
-                  className="select select-xs w-auto"
-                  value={layer.bindings['*']?.kind ?? (i === 0 ? 'none' : 'trans')}
-                  onChange={(e) =>
-                    send({
-                      type: 'edit',
-                      edit: {
-                        kind: 'setLayerFallback',
-                        layer: layer.id,
-                        fallback: e.target.value === 'none' ? 'none' : 'trans',
-                      },
-                    })
-                  }
-                >
-                  <option value="trans">others show through</option>
-                  <option value="none">others do nothing</option>
-                </select>
                 <LayerColourPicker
                   layerId={layer.id}
                   index={i}

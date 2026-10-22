@@ -859,11 +859,14 @@
   justify-self: center;
 }
 /* Under a layer's name: its id, and the colour it is drawn in. */
+/* The layer's id and colour, under its name: on a phone the colour goes under the id, clear of the
+   row's buttons, rather than past them. */
 .lb-layer-meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.125rem 0.5rem;
   min-width: 0;
 }
 .lb-layer-swatch {
