@@ -38,8 +38,6 @@ export type Edit =
   | { kind: 'renameLayer'; layer: string; name: string }
   /** The layer's id, which links and everything that reaches the layer name it by. */
   | { kind: 'setLayerId'; layer: string; id: string }
-  /** What the keys a layer lists nothing for do: show the layer below through, or nothing. */
-  | { kind: 'setLayerFallback'; layer: string; fallback: 'trans' | 'none' }
   /** How long one-shot layers and keys wait, and what releases them; empty takes it away. */
   | { kind: 'setBehaviorDefaults'; defaults: BehaviorDefaults }
   /** No colour is Automatic: the one the layer's place in the list gives it. */
@@ -358,17 +356,6 @@ const handlers: Handlers = {
     }
     if (indexOf(layout, trimmed) >= 0) return { refused: `another layer is ${trimmed} already` };
     return { layout: changeLayerId(layout, layer, trimmed), at: { layer: trimmed } };
-  },
-
-  setLayerFallback(layout, { layer, fallback }) {
-    const current = layout.layers[indexOf(layout, layer)];
-    if (!current || current.bindings['*']?.kind === fallback) return same(layout);
-    return {
-      layout: withLayer(layout, layer, (l) => ({
-        ...l,
-        bindings: { ...l.bindings, '*': { kind: fallback } },
-      })),
-    };
   },
 
   setBehaviorDefaults(layout, { defaults }) {

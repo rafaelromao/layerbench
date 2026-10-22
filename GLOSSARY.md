@@ -81,8 +81,8 @@ _Avoid_: action, operation, op, mutation
 Modifiers held on the home row's finger keys, each key still typing what it typed when tapped. Every
 bundled layout has Gui, Ctrl, Alt and Shift from the left pinky in, mirrored on the right, on its
 base layer, but Magic Romak, which holds its author's keymap's, its home block mods, as the keymap
-calls them: Ctrl, Alt and Shift from the ring finger in, a layer on each pinky, and Gui, with or
-without Shift, on the bottom row.
+calls them: Ctrl, Alt and Shift from the ring finger in, and Gui, with or without Shift, on the
+bottom row.
 _Avoid_: HRM, home-row modifiers
 
 **Kind of key**:

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { getGeometryPreset } from '../geometry/presets.js';
 import { buildGoldenReport, goldenMatrix } from '../golden/report.js';
 import { bundledLayout } from '../layouts/index.js';
 import { applyEdit, type Edit } from './edit.js';
@@ -8,7 +9,7 @@ import type { Layout } from './types.js';
 /**
  * Magic Romak is written in code, but nothing in it is out of an author's reach: every part of it
  * can be made in the editor, on a new layout, by the same edits a person makes there. Rebuilt so,
- * it is the same layout, and it is analyzed the same.
+ * it is the same layout, key for key, and it is analyzed the same.
  */
 const magicRomak = bundledLayout('magic-romak') as Layout;
 
@@ -21,6 +22,17 @@ const blank: Layout = {
   keys: { space: 'L0' },
   layers: [{ id: 'base', name: 'Base', bindings: {} }],
 };
+
+const KEY_IDS = getGeometryPreset('1333+2').keys.map((k) => k.id);
+
+/**
+ * Each key of a layer, as a keymap writes it: one the layer lists nothing for shows the layer below
+ * through, or on the base layer does nothing, unless the layer says otherwise for all of them.
+ */
+function everyKey(bindings: Layout['layers'][number]['bindings'], base: boolean) {
+  const unlisted = bindings['*'] ?? { kind: base ? 'none' : 'trans' };
+  return Object.fromEntries(KEY_IDS.map((id) => [id, bindings[id] ?? unlisted]));
+}
 
 /** The edits, in the order a person would make them, that turn the new layout into Magic Romak. */
 function edits(target: Layout): Edit[] {
@@ -37,13 +49,14 @@ function edits(target: Layout): Edit[] {
     const id = made.layers[i + 1].id;
     if (id !== l.id) out.push({ kind: 'setLayerId', layer: id, id: l.id });
   });
-  for (const l of target.layers) {
-    const fallback = l.bindings['*'];
-    if (fallback?.kind === 'none' || fallback?.kind === 'trans') {
-      out.push({ kind: 'setLayerFallback', layer: l.id, fallback: fallback.kind });
-    }
-    for (const [key, binding] of Object.entries(l.bindings)) {
-      if (key !== '*') out.push({ kind: 'bind', layer: l.id, keys: [key], binding });
+  // Every key as the keymap has it: those Magic Romak's layers list nothing for are made Nothing
+  // one by one, as ZMK writes `&none`.
+  for (const [i, l] of target.layers.entries()) {
+    const fresh = i === 0 ? 'none' : 'trans';
+    for (const [key, binding] of Object.entries(everyKey(l.bindings, i === 0))) {
+      if (l.bindings[key] || binding.kind !== fresh) {
+        out.push({ kind: 'bind', layer: l.id, keys: [key], binding });
+      }
     }
   }
   for (const [i, c] of (target.combos ?? []).entries()) {
@@ -98,6 +111,11 @@ function chosen(layout: Layout) {
   for (const c of doc.combos ?? []) delete c.id;
   delete doc.id;
   delete doc.activators;
+  // A layer that does nothing where it lists nothing is one whose keys each do nothing.
+  doc.layers = doc.layers.map((l: Layout['layers'][number], i: number) => ({
+    ...l,
+    bindings: everyKey(l.bindings, i === 0),
+  }));
   return doc;
 }
 
@@ -106,6 +124,10 @@ describe('Magic Romak, rebuilt in the editor', () => {
 
   it('is the same layout, but for its id, the ids of its combos and the ways in it declares', () => {
     expect(chosen(rebuilt)).toEqual(chosen(magicRomak));
+    // Nothing bound off the board, where the comparison key by key would not look.
+    for (const l of [...magicRomak.layers, ...rebuilt.layers]) {
+      for (const key of Object.keys(l.bindings)) expect([...KEY_IDS, '*']).toContain(key);
+    }
   });
 
   it.each(goldenMatrix().filter((c) => c.layout === 'magic-romak'))(

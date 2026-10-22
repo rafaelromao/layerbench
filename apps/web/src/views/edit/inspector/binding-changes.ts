@@ -173,12 +173,7 @@ interface Shapes {
   };
   transparent: { binding: Of<'trans'>; view: Nothing; set: Nothing };
   nothing: { binding: Of<'none'> | undefined; view: Nothing; set: Nothing };
-  imported: {
-    binding: Of<'raw'>;
-    /** What it is drawn with, and what it was in the keymap it came from (`&mo FUN`). */
-    view: { label: string; source: string };
-    set: { label: Change<string>; source: Change<string> };
-  };
+  imported: { binding: Of<'raw'>; view: { label: string; source: string }; set: Nothing };
 }
 
 /**
@@ -474,16 +469,7 @@ const readers: { [K in KindOfKey]: Reader<K> } = {
   }),
   transparent: () => NONE,
   nothing: () => NONE,
-  imported: (b) => ({
-    view: { label: b.label, source: b.source ?? '' },
-    set: {
-      label: change(b, (text: string) => (text.trim() ? { ...b, label: text.trim() } : b)),
-      source: change(b, (text: string) => {
-        const { source: _was, ...rest } = b;
-        return text.trim() ? { ...rest, source: text.trim() } : rest;
-      }),
-    },
-  }),
+  imported: (b) => ({ view: { label: b.label, source: b.source ?? '' }, set: {} }),
 };
 
 // ---------------------------------------------------------------------------- tap-holds
@@ -864,12 +850,8 @@ function convert(ctx: BindingTextContext, current: Binding | undefined, to: Kind
       return { kind: 'dead_key', diacritic: '´' };
     case 'transparent':
       return { kind: 'trans' };
-    case 'imported': {
-      if (current?.kind === 'raw') return current;
-      // Drawn as what it typed, if anything, until it is given a label of its own.
-      const typed = symbol.kind === 'kp' ? symbol.symbol : '';
-      return { kind: 'raw', label: typed || '?' };
-    }
+    case 'imported':
+      return current ?? { kind: 'none' };
     default:
       return { kind: 'none' };
   }

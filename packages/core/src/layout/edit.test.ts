@@ -267,23 +267,6 @@ describe("a layer's id", () => {
   });
 });
 
-describe("what a layer's unlisted keys do", () => {
-  it('is to show through or do nothing, and only that layer', () => {
-    const none = landed(layout, { kind: 'setLayerFallback', layer: 'upper', fallback: 'none' });
-    expect(none.layout.layers[1].bindings['*']).toEqual({ kind: 'none' });
-    expect(none.layout.layers[1].bindings.LHM).toEqual(kp('1'));
-    const back = landed(none.layout, {
-      kind: 'setLayerFallback',
-      layer: 'upper',
-      fallback: 'trans',
-    });
-    expect(back.layout.layers[1].bindings['*']).toEqual({ kind: 'trans' });
-    expect(
-      applyEdit(layout, { kind: 'setLayerFallback', layer: 'upper', fallback: 'trans' }).status,
-    ).toBe('unchanged');
-  });
-});
-
 describe('the release defaults of one-shot layers and keys', () => {
   it('are set for the whole layout, and taken away when empty', () => {
     const sk = { quickRelease: true, ignoreModifiers: true, releaseAfterMs: 1500 };

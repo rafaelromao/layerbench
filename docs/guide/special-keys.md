@@ -31,9 +31,8 @@ A **Tap-hold** key has two parts. The **Tap** is what a quick press does, usuall
 modifier underneath is a home row mod: every layout that comes with the app holds Gui, Ctrl, Alt and
 Shift on its home row from the left pinky in, mirrored on the right, but Magic Romak, which holds
 its keymap's. A hold may give several modifiers together, under **Held with**: Shift and Gui at
-once, say, as ZMK's `LS(LGUI)`. A hold may also be an imported key, for what LayerBench does not
-model, as Magic Romak's pinkies hold a layer of shortcuts. The Tap can also be an adaptive key or an
-alt repeat, so a thumb can adapt when tapped and reach a layer when held.
+once, say, as ZMK's `LS(LGUI)`. The Tap can also be an adaptive key or an alt repeat, so a thumb can
+adapt when tapped and reach a layer when held.
 
 **Timing**, under the hold, sets the tapping term, how long a press must last to count as a hold,
 and the flavor, ZMK's rule for telling a tap from a hold when another key comes in between. Its
@@ -139,8 +138,6 @@ These are among the editor's other tiles, under **More** on a phone:
 
 A key brought in from a keymap-drawer file keeps its legend when LayerBench has no model of what
 it does: Escape, an arrow, a Bluetooth or media key. It is drawn in grey, types nothing in the
-analysis, and moves, swaps and copies like any other key. Choosing another tile replaces it.
-**Imported**, under **More**, makes one by hand: its **Label** is what it is drawn with, and its
-**Source** what it was in the keymap, such as `&mo FUN` for a layer LayerBench has no model of. A
+analysis, and moves, swaps and copies like any other key. Choosing another tile replaces it. A
 layer reached by holding such a key still works: the hold is kept, and only the tap is imported.
 See [Importing and exporting](importing.md).
