@@ -163,6 +163,11 @@ The **Layers** panel lists them in order, and does everything else with them:
 - **Remove** (✕) deletes a layer. It refuses while a key, combo or behaviour still reaches the layer,
   and names each one, so nothing is left pointing at a layer that is gone.
 - **+ layer** adds one at the end, whose keys all let the layer below show through.
+- **Conditional layers**, under the list, are layers that come on by themselves while every layer
+  they wait for is on, as ZMK's conditional layers: Extras while Numbers and Symbols are both held.
+  **+ condition** adds one; pick the layers it waits for, up to four, and the layer it brings on.
+  The base layer is always on, so it neither waits nor is waited for, a layer never waits for
+  itself, and a layer that comes on by a condition is not one another waits for.
 
 ### The keys that reach a layer
 

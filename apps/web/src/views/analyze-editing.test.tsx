@@ -986,6 +986,31 @@ describe('Edit', () => {
     );
   }, 120_000);
 
+  it('brings a layer on by itself while others are on, from the Layers panel', async () => {
+    const user = userEvent.setup();
+    await openEdit();
+    const section = () => within(screen.getByRole('region', { name: 'Conditional layers' }));
+    await user.click(section().getByRole('button', { name: '+ condition' }));
+    // The first two layers above the base: Symbols, while Numbers is on.
+    const brings = () => section().getByRole('combobox', { name: 'Layer condition 1 brings on' });
+    expect(brings()).toHaveValue('sym');
+    const waits = () => within(section().getByRole('group', { name: 'Layers Symbols waits for' }));
+    expect(waits().getByRole('button', { name: /Numbers/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await user.click(waits().getByRole('button', { name: /Accents/ }));
+    expect(waits().getByRole('button', { name: /Accents/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    // A layer waits for others, never for itself.
+    await user.selectOptions(brings(), 'accents');
+    expect(await screen.findByRole('alert')).toHaveTextContent('accents cannot wait for itself');
+    await user.click(section().getByRole('button', { name: 'Remove the condition for Symbols' }));
+    expect(section().queryByRole('combobox', { name: 'Layer condition 1 brings on' })).toBeNull();
+  }, 60_000);
+
   it("shows Magic Romak's special features and lets one be turned off", async () => {
     const user = userEvent.setup();
     renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000', {

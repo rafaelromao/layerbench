@@ -7,7 +7,8 @@ and how to make it in the editor, in **Analyze**: select a key, then choose its 
 |---|---|
 | the large legend | what a tap does |
 | `✦` or `TD` as the large legend | a key with nothing of its own to type: an adaptive key with no default, an empty tap dance |
-| a small word along the bottom | what a hold does, or how a layer comes on: `hold`, `1×` for one key, `toggle`, `switch`, `auto` |
+| a small word along the bottom | what a hold does, or how a layer comes on: `1×` for one key, `toggle`, `switch`, `auto` |
+| nothing in the centre, a small word along the bottom | a key that only holds, a layer while it is held (`&mo`) or a modifier: drawn as a tap-hold that taps nothing |
 | a small legend at the top | what it types with Shift, where that is not just the capital |
 | `✦` `⋯` `TD` `U+` in the corner | an adaptive key, a macro, a tap dance, a Unicode character |
 | a colour | the layer the key reaches, matching the colour of that layer's name in the layer navigator; chosen under **Layers**, or set by the layer's place in the list |

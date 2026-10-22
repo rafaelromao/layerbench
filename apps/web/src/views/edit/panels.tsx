@@ -1,4 +1,5 @@
 import {
+  type Edit,
   exportKeymapDrawer,
   GEOMETRY_PRESET_IDS,
   LAYER_COLORS,
@@ -21,7 +22,7 @@ import {
   parseBindingText,
   roundTrips,
 } from './binding-text.js';
-import { Segment, TextField } from './inspector/controls.js';
+import { LayerChips, Segment, TextField } from './inspector/controls.js';
 import { type EditAction, type EditState, shownLayer } from './reducer.js';
 
 type Send = Dispatch<EditAction>;
@@ -367,7 +368,87 @@ export function LayersPanel({ state, send }: PanelProps) {
           + layer
         </button>
       </form>
+
+      <ConditionalLayers state={state} send={send} />
     </div>
+  );
+}
+
+/**
+ * Layers that come on by themselves while others are on, as ZMK's conditional layers: Extras while
+ * Numbers and Symbols are both held. Each condition lists the layers it waits for, and the one it
+ * brings on.
+ */
+function ConditionalLayers({ state, send }: PanelProps) {
+  const layers = state.layout.layers;
+  const conditions = state.layout.conditionalLayers ?? [];
+  const base = layers[0]?.id ?? '';
+  const others = layers.slice(1);
+  const nameOf = (id: string) => layers.find((l) => l.id === id)?.name ?? id;
+  const edit = (e: Edit) => send({ type: 'edit', edit: e });
+  const toggle = (list: readonly string[], id: string) =>
+    list.includes(id) ? list.filter((l) => l !== id) : [...list, id];
+  return (
+    <section className="space-y-2 pt-2" aria-label="Conditional layers">
+      <h3 className="text-xs font-semibold">Conditional layers</h3>
+      <p className="text-xs opacity-70">
+        A layer that comes on by itself while every layer it waits for is on, as ZMK's conditional
+        layers: Extras while Numbers and Symbols are both held.
+      </p>
+      {conditions.length > 0 && (
+        <ol className="space-y-2">
+          {conditions.map((c, i) => (
+            <li key={`${c.then}:${c.if.join('+')}`} className="space-y-1">
+              <LayerChips
+                compiled={state.compiled}
+                label={`Layers ${nameOf(c.then)} waits for`}
+                value={c.if}
+                omit={[base, c.then]}
+                onChange={(id) =>
+                  edit({ kind: 'updateConditionalLayer', condition: i, if: toggle(c.if, id) })
+                }
+              />
+              <div className="flex items-center gap-2 text-xs">
+                <span>bring on</span>
+                <select
+                  aria-label={`Layer condition ${i + 1} brings on`}
+                  className="select select-xs w-auto min-w-0"
+                  value={c.then}
+                  onChange={(e) =>
+                    edit({ kind: 'updateConditionalLayer', condition: i, then: e.target.value })
+                  }
+                >
+                  {others.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name ?? l.id}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs btn-square ml-auto"
+                  aria-label={`Remove the condition for ${nameOf(c.then)}`}
+                  onClick={() => edit({ kind: 'removeConditionalLayer', condition: i })}
+                >
+                  ✕
+                </button>
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+      <button
+        type="button"
+        className="btn btn-xs"
+        disabled={others.length < 2}
+        title={others.length < 2 ? 'Two layers besides the base one are needed' : undefined}
+        onClick={() =>
+          edit({ kind: 'addConditionalLayer', if: [others[0].id], then: others[1].id })
+        }
+      >
+        + condition
+      </button>
+    </section>
   );
 }
 

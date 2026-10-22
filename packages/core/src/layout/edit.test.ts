@@ -1046,3 +1046,58 @@ describe('every edit', () => {
     expect(o).toEqual({ edit, before: layout, status: 'unchanged' });
   });
 });
+
+describe('conditional layers', () => {
+  // Three layers above the base, as Numbers, Symbols and Extras.
+  const four: Layout = {
+    ...layout,
+    layers: [
+      ...layout.layers,
+      { id: 'side', name: 'Side', bindings: { '*': { kind: 'trans' } } },
+      { id: 'both', name: 'Both', bindings: { '*': { kind: 'trans' } } },
+    ],
+  };
+  const refusal = (l: Layout, edit: Edit) => {
+    const o = applyEdit(l, edit);
+    return o.status === 'refused' ? o.message : o.status;
+  };
+
+  it('brings a layer on while others are, changes what it waits for, and goes', () => {
+    const added = landed(four, {
+      kind: 'addConditionalLayer',
+      if: ['upper', 'side'],
+      then: 'both',
+    });
+    expect(added.layout.conditionalLayers).toEqual([{ if: ['upper', 'side'], then: 'both' }]);
+    expect(added.at).toEqual({ layer: 'both' });
+    const changed = landed(added.layout, {
+      kind: 'updateConditionalLayer',
+      condition: 0,
+      if: ['side'],
+    });
+    expect(changed.layout.conditionalLayers).toEqual([{ if: ['side'], then: 'both' }]);
+    expect(
+      applyEdit(changed.layout, { kind: 'updateConditionalLayer', condition: 0, if: ['side'] })
+        .status,
+    ).toBe('unchanged');
+    const gone = landed(changed.layout, { kind: 'removeConditionalLayer', condition: 0 });
+    expect(gone.layout.conditionalLayers).toBeUndefined();
+  });
+
+  it('refuses one that waits for nothing, for itself, for the base layer or another conditional one', () => {
+    const add = (when: string[], then: string): Edit => ({
+      kind: 'addConditionalLayer',
+      if: when,
+      then,
+    });
+    expect(refusal(four, add(['upper'], 'base'))).toMatch(/base layer is always on/);
+    expect(refusal(four, add([], 'both'))).toMatch(/one layer at least/);
+    expect(refusal(four, add(['both'], 'both'))).toMatch(/cannot wait for itself/);
+    expect(refusal(four, add(['base', 'upper'], 'both'))).toMatch(/waiting for nothing/);
+    const one = landed(four, add(['upper'], 'both')).layout;
+    expect(refusal(one, add(['both'], 'side'))).toMatch(/comes on by a condition itself/);
+    expect(refusal(one, add(['side'], 'upper'))).toMatch(/a condition waits for upper/);
+    expect(refusal(one, add(['upper'], 'both'))).toMatch(/there already/);
+    expect(refusal(four, add(['upper', 'nowhere'], 'both'))).toMatch(/unknown layer nowhere/);
+  });
+});

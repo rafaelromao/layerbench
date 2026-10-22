@@ -13,13 +13,15 @@ import {
   swapKeys,
 } from './ops.js';
 import { isLayoutLink, NOT_A_LINK, safeParseLayout } from './schema.js';
-import type {
-  BehaviorDefaults,
-  Binding,
-  LayerColor,
-  Layout,
-  LayoutFeatures,
-  TypingPathEntry,
+import {
+  type BehaviorDefaults,
+  type Binding,
+  type ConditionalLayerDef,
+  type LayerColor,
+  type Layout,
+  type LayoutFeatures,
+  MAX_CONDITION_LAYERS,
+  type TypingPathEntry,
 } from './types.js';
 
 /**
@@ -54,6 +56,15 @@ export type Edit =
       role: 'typing' | 'command';
     }
   | { kind: 'removeCombo' | 'toggleComboRole'; combo: number }
+  /**
+   * A layer that comes on by itself while every layer it waits for is on, as ZMK's conditional
+   * layers: Extras while Numbers and Symbols are both held. Conditions are named by their place in
+   * the list, as combos are.
+   */
+  | { kind: 'addConditionalLayer'; if: string[]; then: string }
+  /** What the fields given change in the condition at that place; the others stay. */
+  | { kind: 'updateConditionalLayer'; condition: number; if?: string[]; then?: string }
+  | { kind: 'removeConditionalLayer'; condition: number }
   /**
    * What the fields given change in the combo at that place; the others stay. Any binding goes, as
    * on a key. The id follows the keys when they change.
@@ -124,6 +135,35 @@ type Handlers = { [K in Edit['kind']]: (layout: Layout, edit: Edit & { kind: K }
 const same = (layout: Layout): Step => ({ layout });
 
 /** Whether two plain JSON values hold the same, however their fields are ordered. */
+/**
+ * Why a condition cannot be, among the layout's others but the one at `at`; or null. The base layer
+ * is always on, so it neither waits nor is waited for; a layer waits for others, not itself; and a
+ * layer that comes on by a condition is never one another waits for.
+ */
+function conditionRefused(layout: Layout, c: ConditionalLayerDef, at: number): string | null {
+  const base = layout.layers[0]?.id;
+  const others = (layout.conditionalLayers ?? []).filter((_, i) => i !== at);
+  if (c.then === base) return 'the base layer is always on: it waits for no other';
+  if (c.if.length === 0) return 'a conditional layer waits for one layer at least';
+  if (c.if.length > MAX_CONDITION_LAYERS) {
+    return `a conditional layer waits for ${MAX_CONDITION_LAYERS} layers at most`;
+  }
+  if (c.if.includes(c.then)) return `${c.then} cannot wait for itself`;
+  if (base !== undefined && c.if.includes(base)) {
+    return 'the base layer is always on: waiting for it is waiting for nothing';
+  }
+  const conditional = new Set(others.map((o) => o.then));
+  const waits = c.if.find((l) => conditional.has(l));
+  if (waits) return `${waits} comes on by a condition itself: no other layer waits for it`;
+  if (others.some((o) => o.if.includes(c.then))) {
+    return `a condition waits for ${c.then}, so it cannot come on by one itself`;
+  }
+  const sameIf = (o: ConditionalLayerDef) =>
+    o.if.length === c.if.length && o.if.every((l) => c.if.includes(l));
+  if (others.some((o) => o.then === c.then && sameIf(o))) return 'that condition is there already';
+  return null;
+}
+
 function sameValue(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (typeof a !== 'object' || typeof b !== 'object' || !a || !b) return false;
@@ -429,6 +469,43 @@ const handlers: Handlers = {
     const id = freeComboId(keys, (layout.combos ?? []).map(comboId));
     const combo = { id, keys, binding, layers: [layer], role, timeoutMs: 50, slowRelease: false };
     return { layout: { ...layout, combos: [...(layout.combos ?? []), combo] } };
+  },
+
+  addConditionalLayer(layout, edit) {
+    const next = { if: [...new Set(edit.if)], then: edit.then };
+    const refused = conditionRefused(layout, next, -1);
+    if (refused) return { refused };
+    return {
+      layout: { ...layout, conditionalLayers: [...(layout.conditionalLayers ?? []), next] },
+      at: { layer: next.then },
+    };
+  },
+
+  updateConditionalLayer(layout, edit) {
+    const conditions = layout.conditionalLayers ?? [];
+    const current = conditions[edit.condition];
+    if (!current) return same(layout);
+    const next = {
+      if: edit.if ? [...new Set(edit.if)] : current.if,
+      then: edit.then ?? current.then,
+    };
+    if (sameValue(next, current)) return same(layout);
+    const refused = conditionRefused(layout, next, edit.condition);
+    if (refused) return { refused };
+    return {
+      layout: {
+        ...layout,
+        conditionalLayers: conditions.map((c, i) => (i === edit.condition ? next : c)),
+      },
+    };
+  },
+
+  removeConditionalLayer(layout, { condition }) {
+    const conditions = layout.conditionalLayers ?? [];
+    if (!conditions[condition]) return same(layout);
+    const rest = conditions.filter((_, i) => i !== condition);
+    const { conditionalLayers: _gone, ...without } = layout;
+    return { layout: rest.length > 0 ? { ...layout, conditionalLayers: rest } : without };
   },
 
   removeCombo(layout, { combo }) {
