@@ -388,7 +388,7 @@ function ConditionalLayers({ state, send }: PanelProps) {
             // layer it waits for shows only where that layer's keys let it through.
             const over = c.if.filter((id) => placeOf(id) > placeOf(c.then));
             // A layer a condition brings on comes on no other way: what reaches it stops doing so.
-            const reaching = layerReachedFrom(state.layout, c.then);
+            const reaching = layerReachedFrom(state.layout, c.then, { tested: false });
             return (
               // biome-ignore lint/suspicious/noArrayIndexKey: the place is what a row edits, and a key of its layers would change with each edit, the row losing focus
               <li key={i} className="space-y-1">

@@ -1126,6 +1126,14 @@ describe('conditional layers', () => {
       binding: { kind: 'mo', layer: 'both' },
     }).layout;
     expect(freeCondition(reached)).toEqual({ if: ['upper'], then: 'side' });
+    // A morph that only tests a layer does not bring it on.
+    const tested = landed(four, {
+      kind: 'bind',
+      layer: 'base',
+      keys: ['L0'],
+      binding: { kind: 'layer_morph', layers: ['both'], active: kp('x'), inactive: kp('y') },
+    }).layout;
+    expect(freeCondition(tested)).toEqual({ if: ['upper'], then: 'both' });
     // Extras waits for Numbers and Symbols, so neither comes on by a condition: Accents does.
     const off: Binding = { kind: 'trans' };
     const defaults: Layout = {

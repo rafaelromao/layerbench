@@ -189,7 +189,7 @@ function conditionRefused(layout: Layout, c: ConditionalLayerDef, at: number): s
 export function freeCondition(layout: Layout): ConditionalLayerDef | null {
   const others = layout.layers.slice(1).map((l) => l.id);
   const latest = [...others].reverse();
-  const reached = (id: string) => layerReachedFrom(layout, id).length > 0;
+  const reached = (id: string) => layerReachedFrom(layout, id, { tested: false }).length > 0;
   const brought = [...latest.filter((id) => !reached(id)), ...latest.filter(reached)];
   for (const then of brought) {
     for (const waited of others) {

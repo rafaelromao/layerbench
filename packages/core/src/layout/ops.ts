@@ -119,10 +119,16 @@ export function duplicateLayer(
  * Everything that still takes a typist to a layer: keys, combos and behaviours whose binding
  * reaches it — an adaptive key's branch included, since it is part of its key's binding. A layer
  * cannot go while any of these would be left pointing at nothing, and which of them should change
- * instead is the author's call, not something to guess.
+ * instead is the author's call, not something to guess. A layer morph that only tests the layer is
+ * among them, unless `tested` is false, for what brings the layer on.
  */
-export function layerReachedFrom(layout: Layout, layerId: string): string[] {
-  const reaches = (b: Binding | undefined) => b !== undefined && referencedLayers(b).has(layerId);
+export function layerReachedFrom(
+  layout: Layout,
+  layerId: string,
+  { tested = true }: { tested?: boolean } = {},
+): string[] {
+  const reaches = (b: Binding | undefined) =>
+    b !== undefined && referencedLayers(b, new Set(), tested).has(layerId);
   const out: string[] = [];
   for (const l of layout.layers) {
     if (l.id === layerId) continue;
