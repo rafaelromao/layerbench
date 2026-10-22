@@ -175,15 +175,6 @@ describe('where the board goes after an edit', () => {
     expect(selectionOf(replaced)).toEqual([]);
   });
 
-  // Rewriting the text on every edit would throw away whatever is half-typed in it.
-  it('rewrites the behaviours text only when the behaviours change', () => {
-    const typing = reducer(withNav(), { type: 'behaviorsChange', json: '{ "half": ' });
-    const renamed = edit(typing, { kind: 'renameLayer', layer: 'nav', name: 'Arrows' });
-    expect(renamed.behaviorsJson).toBe('{ "half": ');
-    const set = edit(typing, { kind: 'setBehavior', name: 'rep', binding: { kind: 'key_repeat' } });
-    expect(JSON.parse(set.behaviorsJson)).toMatchObject({ rep: { kind: 'key_repeat' } });
-  });
-
   it('swaps an armed key with the key clicked next, and selects where it went', () => {
     const armed = reducer(pick(withNav(), 'LHM'), { type: 'startSwap' });
     const swapped = reducer(armed, { type: 'keyClick', keyId: 'LHI' });

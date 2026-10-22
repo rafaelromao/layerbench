@@ -67,9 +67,6 @@ export type Edit =
       role?: 'typing' | 'command';
       timeoutMs?: number;
     }
-  | { kind: 'setBehavior'; name: string; binding: Binding }
-  /** Every behaviour, from the JSON an author wrote. */
-  | { kind: 'replaceBehaviors'; json: string }
   /** One symbol's whole list of producers, in order. */
   | { kind: 'setTypingPath'; symbol: string; entries: TypingPathEntry[] }
   | {
@@ -248,35 +245,10 @@ function sharedProducerIds(layout: Layout, place: number): string[] {
   return [...byId].filter(([, ps]) => ps.length > 1 && ps.some(involved)).map(([id]) => id);
 }
 
-/** Whether two lists of keys name the same keys, in any order. */
-/**
- * A combo has no layer below it to show through, so Transparent, or a behaviour that is, is no
- * binding for one, however it is given.
- */
-function transparent(layout: Layout, b: Binding, depth = 0): boolean {
-  if (b.kind === 'trans') return true;
-  // As deep as the compiler follows references.
-  if (b.kind !== 'ref' || depth > 16) return false;
-  const named = layout.behaviors?.[b.ref];
-  return named !== undefined && transparent(layout, named, depth + 1);
-}
+/** A combo has no layer below it to show through, so Transparent is no binding for one. */
 const NOT_TRANSPARENT = 'a combo cannot be Transparent: it has no layer below it to show through';
 
-/**
- * The behaviours given, unless they would make a combo that refers to one Transparent. A combo
- * that already was, in an older layout, does not stop the edit.
- */
-function withBehaviors(layout: Layout, behaviors: Record<string, Binding>): Step {
-  const next = { ...layout, behaviors };
-  const turned = (layout.combos ?? []).find(
-    (c) => transparent(next, c.binding) && !transparent(layout, c.binding),
-  );
-  if (turned) {
-    return { refused: `${NOT_TRANSPARENT} (combo ${turned.id ?? turned.keys.join('+')})` };
-  }
-  return { layout: next };
-}
-
+/** Whether two lists of keys name the same keys, in any order. */
 const sameKeySet = (a: string[], b: string[]) =>
   a.length === b.length && a.every((k) => b.includes(k));
 
@@ -425,7 +397,7 @@ const handlers: Handlers = {
 
   addCombo(layout, { layer, keys, binding, role }) {
     if (keys.length < 2) return { refused: 'a combo needs at least two keys and an output' };
-    if (transparent(layout, binding)) return { refused: NOT_TRANSPARENT };
+    if (binding.kind === 'trans') return { refused: NOT_TRANSPARENT };
     const id = freeComboId(keys, (layout.combos ?? []).map(comboId));
     const combo = { id, keys, binding, layers: [layer], role, timeoutMs: 50, slowRelease: false };
     return { layout: { ...layout, combos: [...(layout.combos ?? []), combo] } };
@@ -483,7 +455,7 @@ const handlers: Handlers = {
     }
 
     if (edit.binding) {
-      if (transparent(layout, edit.binding)) return { refused: NOT_TRANSPARENT };
+      if (edit.binding.kind === 'trans') return { refused: NOT_TRANSPARENT };
       next.binding = edit.binding;
     }
     if (edit.role) next.role = edit.role;
@@ -517,20 +489,6 @@ const handlers: Handlers = {
       if (paths !== layout.typingPaths) out.typingPaths = paths;
     }
     return { layout: out };
-  },
-
-  setBehavior(layout, { name, binding }) {
-    return withBehaviors(layout, { ...(layout.behaviors ?? {}), [name]: binding });
-  },
-
-  replaceBehaviors(layout, { json }) {
-    const parsed = parseJson(json);
-    if (!parsed.ok) return parsed;
-    const value = parsed.value;
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      return { refused: 'behaviors must be an object' };
-    }
-    return withBehaviors(layout, value as Record<string, Binding>);
   },
 
   setTypingPath(layout, { symbol, entries }) {

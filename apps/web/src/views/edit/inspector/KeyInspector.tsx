@@ -78,7 +78,7 @@ function Inspector({ state, send, focusKey, keyId }: KeyInspectorProps & { keyId
   // Sentence case and caps word wrap the tap of the key they belong to; such a key is edited as
   // its feature, since the next compile would wrap anything written on the key again.
   const owner = compiled.featureOwned.get(activeLayer.id)?.get(keyId);
-  const scope = useEditorScope(compiled, layout, send);
+  const scope = useEditorScope(compiled);
   const text = scope.text;
   // How this key brings the layer on, said where a phone user can read it.
   const reach = useMemo(() => {

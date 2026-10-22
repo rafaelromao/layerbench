@@ -6,7 +6,8 @@ import { bundledLayout } from '../layouts/index.js';
 import { SHAPES } from '../presses/press-log.js';
 import { enumerateProducers } from '../sim/producers.js';
 import { simulate } from '../sim/resolver.js';
-import { compileLayout, inlineBehaviors } from './compile.js';
+import { compileLayout } from './compile.js';
+import { inlineFeatures } from './features.js';
 import { toCanonicalJson } from './json.js';
 import { safeParseLayout } from './schema.js';
 import type { Layout } from './types.js';
@@ -28,9 +29,9 @@ describe('Ranking a layout without some of its features', () => {
     expect(withoutFeatures(magicRomak, [])).toBe(magicRomak);
   });
 
-  it('types exactly as before once its behaviours are inlined', () => {
+  it('types exactly as before once its features are inlined', () => {
     const before = simulate(compileLayout(magicRomak), text, OPTS).tables;
-    const after = simulate(compileLayout(inlineBehaviors(magicRomak)), text, OPTS).tables;
+    const after = simulate(compileLayout(inlineFeatures(magicRomak)), text, OPTS).tables;
     expect(after.stats).toEqual(before.stats);
     const totals = (t: typeof before) => SHAPES.map((s) => t.presses.ngrams('no_space', s).total);
     expect(totals(after)).toEqual(totals(before));

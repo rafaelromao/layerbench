@@ -16,7 +16,7 @@ export interface UsedBinding {
 
 /** An adaptive key or alt repeat, on its own or as the tap of a tap-hold. */
 function isAdaptiveKey(b: Binding): boolean {
-  if (b.kind === 'adaptive') return !b.ref;
+  if (b.kind === 'adaptive') return true;
   if (b.kind === 'lt' || b.kind === 'hold_tap') return isAdaptiveKey(b.tap);
   return false;
 }
@@ -44,15 +44,11 @@ export function usedBindings(layout: Layout): UsedBinding[] {
     for (const [keyId, b] of Object.entries(layer.bindings)) if (keyId !== '*') add(b);
   }
   for (const combo of layout.combos ?? []) add(combo.binding);
-  for (const name of Object.keys(layout.behaviors ?? {})) add({ kind: 'ref', ref: name });
   const rank = (u: UsedBinding) => (isAdaptiveKey(u.binding) ? 0 : 1);
   return [...seen.values()].sort((a, b) => rank(a) - rank(b) || b.count - a.count);
 }
 
-/** A binding as a chip shows it: its legend, or its name when it has none to draw. */
+/** A binding as a chip shows it: its legend, or its kind when it has none to draw. */
 export function chipLabel(compiled: CompiledLayout, b: Binding): string {
-  const target = b.kind === 'ref' ? compiled.expanded.behaviors?.[b.ref] : b;
-  const text = target ? legendText(legend(compiled, target)) : '';
-  if (b.kind === 'ref') return text ? `${text} (${b.ref})` : `&${b.ref}`;
-  return text || b.kind;
+  return legendText(legend(compiled, b)) || b.kind;
 }

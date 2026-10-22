@@ -18,14 +18,12 @@ import { HOLD_KINDS, type KindOfKey, kindOf, MORE_KINDS, PRIMARY_KINDS } from '.
 function contextOf(compiled: CompiledLayout): BindingTextContext {
   return {
     layers: compiled.layers.map((l) => ({ id: l.id, name: l.name })),
-    behaviors: Object.keys(compiled.expanded.behaviors ?? {}),
     hostLocale: compiled.hostLocale,
   };
 }
 
 const romak = compileLayout(bundledLayout('magic-romak') as never);
-// Magic Romak's adaptive keys sit on its keys rather than in named behaviours, so none are offered.
-const ctx: BindingTextContext = { ...contextOf(romak), behaviors: [] };
+const ctx = contextOf(romak);
 const to = (b: Binding | undefined, kind: KindOfKey) => keyFields(b, ctx).set.kind(kind);
 
 /** The fields of a binding that is that kind of key. */
@@ -105,10 +103,9 @@ describe('changing what a key is', () => {
     for (const layout of BUNDLED_LAYOUTS) {
       const compiled = compileLayout(layout);
       const context = contextOf(compiled);
-      const kinds = offered.filter((k) => k !== 'behaviour' || context.behaviors.length > 0);
       const made = new Map<string, { layer: string; key: string; binding: Binding }>();
       for (const { layer, key, binding } of keysOf(layout)) {
-        for (const kind of kinds) {
+        for (const kind of offered) {
           const next = keyFields(binding, context).set.kind(kind);
           expect(kindOf(next), `${layout.id} ${layer}/${key} as ${kind}`).toBe(kind);
           made.set(stableStringify(bindingToJson(next)), { layer, key, binding: next });
@@ -211,10 +208,7 @@ describe('what each kind of key shows, and what its controls change', () => {
     expect(acute.set.shifted('')).toEqual({ kind: 'dead_key', diacritic: '´' });
   });
 
-  it('runs another of the layout behaviours, and shows what an import kept', () => {
-    const named = fieldsOf('behaviour', { kind: 'adaptive', ref: 'adaptiveHV' });
-    expect(named.view.runs).toBe('adaptiveHV');
-    expect(named.set.runs('altRepeat')).toEqual({ kind: 'ref', ref: 'altRepeat' });
+  it('shows what an import kept', () => {
     const kept = fieldsOf('imported', { kind: 'raw', label: 'BT1', source: '&bt BT_SEL 1' });
     expect(kept.view).toEqual({ label: 'BT1', source: '&bt BT_SEL 1' });
   });
@@ -555,9 +549,7 @@ describe('a macro, written as text or as steps', () => {
   });
 
   it('starts a new row doing something, and becomes text again with no rows left', () => {
-    const withBehaviours = { ...ctx, behaviors: ['altRepeat'] };
     expect(freshRow('sl', ctx)).toMatchObject({ kind: 'sl', layer: 'alpha2' });
-    expect(freshRow('ref', withBehaviours)).toMatchObject({ kind: 'ref', ref: 'altRepeat' });
     expect(freshRow('text', ctx, 'kept')).toEqual({ id: 'kept', kind: 'text', text: '' });
     const stepped: Binding = { kind: 'macro', steps: [kp('a')], tag: 'x' };
     expect(fieldsOf('macro', stepped).set.rows([])).toEqual({
@@ -568,14 +560,14 @@ describe('a macro, written as text or as steps', () => {
   });
 });
 
-/** Every macro a layout holds, on its keys, its combos and its behaviours, however deep. */
+/** Every macro a layout holds, on its keys and its combos, however deep. */
 function macrosIn(layout: Layout): Binding[] {
   const found: Binding[] = [];
   const walk = (value: unknown): void => {
     if (Array.isArray(value)) value.forEach(walk);
     else if (value && typeof value === 'object') {
       const b = value as Binding;
-      if (b.kind === 'macro' && !b.ref) found.push(b);
+      if (b.kind === 'macro') found.push(b);
       Object.values(value).forEach(walk);
     }
   };
@@ -584,8 +576,8 @@ function macrosIn(layout: Layout): Binding[] {
 }
 
 /**
- * Every binding a layout holds, on its keys, its combos and its behaviours, once each, with a key to
- * put it on: its own, or the first key of the base layer for a combo's or a behaviour's.
+ * Every binding a layout holds, on its keys and its combos, once each, with a key to put it on: its
+ * own, or the first key of the base layer for a combo's.
  */
 function keysOf(layout: Layout): { layer: string; key: string; binding: Binding }[] {
   const base = layout.layers[0];
@@ -597,11 +589,6 @@ function keysOf(layout: Layout): { layer: string; key: string; binding: Binding 
         .map(([key, binding]) => ({ layer: layer.id, key, binding })),
     ),
     ...(layout.combos ?? []).map((c) => ({ layer: base.id, key: first, binding: c.binding })),
-    ...Object.values(layout.behaviors ?? {}).map((binding) => ({
-      layer: base.id,
-      key: first,
-      binding,
-    })),
   ];
   const seen = new Set<string>();
   return all.filter(({ binding }) => {

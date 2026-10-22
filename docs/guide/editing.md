@@ -64,11 +64,9 @@ the key becomes a tap-hold.
 | Transparent `▽` | lets the layer below show through |
 | Nothing `∅` | does nothing |
 
-The tiles after them are the rest: alt repeat, tap dance, morph, caps word, Unicode, dead key,
-and the layout's own named behaviours. [Special keys](special-keys.md) explains each of them. On a
-phone they wait under **More**, which then shows the kind chosen from them. **Behaviour** is greyed
-out until the layout has a named behaviour of its own, added in the **Behaviors** panel; hovering,
-tapping or focusing it says why.
+The tiles after them are the rest: alt repeat, tap dance, morph, caps word, Unicode and dead key.
+[Special keys](special-keys.md) explains each of them. On a phone they wait under **More**, which
+then shows the kind chosen from them.
 
 ### Parts of a bigger key
 
@@ -99,7 +97,6 @@ applies it; `Escape` leaves the key as it was. Starting with `&` lists the behav
 | `&sk LSHIFT` · `&kp LSHIFT` | a one-shot modifier, and a held one |
 | `&macro ão` · `&macro ão then alpha2` | a macro, optionally turning on a layer after it |
 | `&trans` · `&none` · `&key_repeat` · `&caps_word` | the rest |
-| `&altRepeat` | one of the layout's own named behaviours |
 
 A layer can be named by its id, by its name, or by its number as ZMK counts them. A trailing
 `tag:name` gives the key a tag that adaptive keys can match on. Under the default `symbols` host
@@ -160,8 +157,8 @@ The **Layers** panel lists them in order, and does everything else with them:
 - **Colour**, under the layer's name, picks the colour its name and the keys that reach it are
   drawn in. **Automatic** follows the layer's place in the list; each of the others keeps a shade
   for the light theme and one for the dark, so legends stay readable in both.
-- **Remove** (✕) deletes a layer. It refuses while a key, combo or behaviour still reaches the layer,
-  and names each one, so nothing is left pointing at a layer that is gone.
+- **Remove** (✕) deletes a layer. It refuses while a key or combo still reaches the layer, and names
+  each one, so nothing is left pointing at a layer that is gone.
 - **+ layer** adds one at the end, whose keys all let the layer below show through.
 
 ### The keys that reach a layer
@@ -353,11 +350,9 @@ The other panels hold what is not on a single key:
   and command. Each change is one edit that Undo takes back. A change is refused, with its reason,
   when it would leave fewer than two keys, a key or layer the layout does not have, or the same keys
   as another combo on one of its layers.
-- **Behaviors** lists the layout's special features first, one group each: adaptive keys, alt
-  repeats, macros, mod morphs and its own named behaviours. Each names its layer and key, or its
-  combo; pick one to turn the board to that layer with the key selected, or to outline the combo's
-  keys. Under the list are the named bindings keys refer to, such as `&altRepeat`, as JSON:
-  **Apply behaviors** applies them.
+- **Behaviors** lists the layout's special features, one group each: adaptive keys, alt repeats,
+  macros and mod morphs. Each names its layer and key, or its combo; pick one to turn the board to
+  that layer with the key selected, or to outline the combo's keys.
 - **Typing paths** list the other ways a character can be typed. Left alone, a character is typed
   the cheapest way from where the typist is: the fewest presses, then the one that leaves no layer
   key held, then the one that makes the fewest same-finger pairs with the keys before it in the

@@ -22,14 +22,13 @@ const ROW_LABEL: Record<RowKind, string> = {
   text: 'type text',
   sl: 'arm layer',
   sk: 'arm modifier',
-  ref: 'run behaviour',
 };
 
 /**
- * The steps of a macro, in order: text to type, a layer or a modifier to arm for the next key, a
- * behaviour to run. Steps are what let one key type text *and* arm something — the shape an accent
- * key that hands over to a follow-up needs. A step no row can edit is shown as it is, and can still
- * be moved or removed.
+ * The steps of a macro, in order: text to type, or a layer or a modifier to arm for the next key.
+ * Steps are what let one key type text *and* arm something — the shape an accent key that hands
+ * over to a follow-up needs. A step no row can edit is shown as it is, and can still be moved or
+ * removed.
  */
 export function MacroStepsEditor({
   compiled,
@@ -66,7 +65,6 @@ export function MacroStepsEditor({
     [next[i], next[target]] = [next[target], next[i]];
     commit(next);
   };
-  const kinds = ROW_KINDS.filter((k) => k !== 'ref' || ctx.behaviors.length > 0);
 
   return (
     <div className="space-y-1">
@@ -88,7 +86,7 @@ export function MacroStepsEditor({
                 value={row.kind}
                 onChange={(e) => replace(i, freshRow(e.target.value as RowKind, ctx, row.id))}
               >
-                {kinds.map((k) => (
+                {ROW_KINDS.map((k) => (
                   <option key={k} value={k}>
                     {ROW_LABEL[k]}
                   </option>
@@ -127,20 +125,6 @@ export function MacroStepsEditor({
                 {MODS.map((m) => (
                   <option key={m} value={m}>
                     {m}
-                  </option>
-                ))}
-              </select>
-            )}
-            {row.kind === 'ref' && (
-              <select
-                aria-label={`Step ${i + 1} behaviour`}
-                className="select select-xs select-bordered flex-1 min-w-20"
-                value={row.ref}
-                onChange={(e) => replace(i, { ...row, ref: e.target.value })}
-              >
-                {ctx.behaviors.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
                   </option>
                 ))}
               </select>

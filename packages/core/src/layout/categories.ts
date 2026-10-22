@@ -5,20 +5,12 @@ import type { Binding, LayerDef, Layout } from './types.js';
 
 /**
  * What sets a layout apart from one that only places letters and layers: a key that changes with
- * what was typed before it, one that types several symbols, one that changes with the modifiers
- * held, or a behaviour the layout names for itself.
+ * what was typed before it, one that types several symbols, or one that changes with the modifiers
+ * held.
  */
-export type SpecialFeatureKind =
-  | 'adaptive'
-  | 'alt_repeat'
-  | 'macro'
-  | 'mod_morph'
-  | 'custom_behaviour';
+export type SpecialFeatureKind = 'adaptive' | 'alt_repeat' | 'macro' | 'mod_morph';
 
-/**
- * One use of a special feature: on a key of a layer, on a combo, or, for a named behaviour no key
- * or combo uses, among the layout's behaviours, where it has neither.
- */
+/** One use of a special feature: on a key of a layer, or on a combo. */
 export interface SpecialFeature {
   feature: SpecialFeatureKind;
   layer?: string;
@@ -83,52 +75,11 @@ function choices(b: Binding): Binding[] {
   }
 }
 
-/** The named behaviour a binding stands for or builds on, if any. */
-function refOf(b: Binding): string | undefined {
-  if (b.kind === 'ref') return b.ref;
-  return 'ref' in b && typeof b.ref === 'string' && b.ref !== '' ? b.ref : undefined;
-}
-
-/**
- * A binding as the compiler reads it: a reference is the behaviour it names, and a binding that
- * builds on one is that behaviour with the binding's own fields over it. `following` holds the
- * behaviours already being followed on the way to it, so one that names itself is followed once,
- * however many times it does; a reference it cannot follow is null. With what to follow next.
- */
-function expand(
-  layout: Layout,
-  b: Binding,
-  following: ReadonlySet<string>,
-): [Binding, ReadonlySet<string>] | null {
-  const ref = refOf(b);
-  const target = ref === undefined || following.has(ref) ? undefined : layout.behaviors?.[ref];
-  if (b.kind === 'ref') return target && ref ? [target, new Set([...following, ref])] : null;
-  if (!target || !ref || target.kind !== b.kind) return [b, following];
-  const { ref: _ref, ...own } = b as Binding & { ref?: string };
-  return [{ ...target, ...own } as Binding, new Set([...following, ref])];
-}
-
-/** Whether a binding is the repeat key, itself or through the behaviours it names. */
-function repeats(layout: Layout, b: Binding, following: ReadonlySet<string>): boolean {
-  if (b.kind !== 'ref') return b.kind === 'key_repeat';
-  const read = expand(layout, b, following);
-  return read !== null && repeats(layout, read[0], read[1]);
-}
-
-/** The letters a binding types by itself, through its choices and the behaviours it names. */
-function lettersOf(
-  layout: Layout,
-  b: Binding,
-  out: Set<string>,
-  following: ReadonlySet<string> = new Set(),
-): Set<string> {
-  const read = expand(layout, b, following);
-  if (!read) return out;
-  const [m, next] = read;
-  if (b.kind === 'ref') return lettersOf(layout, m, out, next);
-  const letter = letterOf(m);
+/** The letters a binding types by itself, through its choices. */
+function lettersOf(b: Binding, out: Set<string>): Set<string> {
+  const letter = letterOf(b);
   if (letter) out.add(letter);
-  for (const c of choices(m)) lettersOf(layout, c, out, next);
+  for (const c of choices(b)) lettersOf(c, out);
   return out;
 }
 
@@ -144,7 +95,7 @@ export function alphaLayers(layout: Layout): string[] {
     .filter((l) =>
       keys.some((key) => {
         const b = bindingAt(l, key);
-        return b !== undefined && lettersOf(layout, b, new Set()).size > 0;
+        return b !== undefined && lettersOf(b, new Set()).size > 0;
       }),
     )
     .map((l) => l.id);
@@ -167,8 +118,7 @@ export function thumbAlphas(layout: Layout): ThumbAlpha[] {
     for (const key of thumbs) {
       const b = bindingAt(layer, key);
       if (!b) continue;
-      for (const letter of lettersOf(layout, b, new Set()))
-        out.push({ layer: layer.id, key, letter });
+      for (const letter of lettersOf(b, new Set())) out.push({ layer: layer.id, key, letter });
     }
   }
   return out;
@@ -188,7 +138,7 @@ export function physicalKeyCount(layout: Layout): number {
   return g.keys.length - (oneBar ? 1 : 0);
 }
 
-const FEATURE_LABELS: Record<Exclude<SpecialFeatureKind, 'custom_behaviour' | 'macro'>, string> = {
+const FEATURE_LABELS: Record<Exclude<SpecialFeatureKind, 'macro'>, string> = {
   adaptive: 'Adaptive key',
   alt_repeat: 'Alt repeat',
   mod_morph: 'Mod morph',
@@ -202,64 +152,25 @@ interface Place {
 }
 
 /** The special features a binding is or holds, at the place it is bound. */
-function featuresOf(
-  layout: Layout,
-  b: Binding,
-  at: Place,
-  out: SpecialFeature[],
-  following: ReadonlySet<string> = new Set(),
-): void {
+function featuresOf(b: Binding, at: Place, out: SpecialFeature[]): void {
   const emit = (feature: SpecialFeatureKind, label: string) => out.push({ feature, ...at, label });
-  const ref = refOf(b);
-  if (ref !== undefined) emit('custom_behaviour', `Behaviour ${ref}`);
-  const read = expand(layout, b, following);
-  if (!read) return;
-  // A binding that builds on a behaviour is the behaviour with its own fields over it: the feature
-  // it is, it is once.
-  const [m, next] = read;
-  if (b.kind === 'ref') {
-    featuresOf(layout, m, at, out, next);
-    return;
-  }
-  switch (m.kind) {
+  switch (b.kind) {
     case 'adaptive':
-      if (m.default && repeats(layout, m.default, next))
-        emit('alt_repeat', FEATURE_LABELS.alt_repeat);
+      if (b.default?.kind === 'key_repeat') emit('alt_repeat', FEATURE_LABELS.alt_repeat);
       else emit('adaptive', FEATURE_LABELS.adaptive);
       break;
     case 'mod_morph':
       emit('mod_morph', FEATURE_LABELS.mod_morph);
       break;
     case 'macro':
-      emit('macro', m.symbols ? `Macro “${m.symbols}”` : 'Macro');
+      emit('macro', b.symbols ? `Macro “${b.symbols}”` : 'Macro');
       // What it types is not a letter of the layer's, but what its steps use is used.
-      for (const c of [...(m.steps ?? []), ...(m.then ?? [])]) featuresOf(layout, c, at, out, next);
+      for (const c of [...(b.steps ?? []), ...(b.then ?? [])]) featuresOf(c, at, out);
       return;
     default:
       break;
   }
-  for (const c of choices(m)) featuresOf(layout, c, at, out, next);
-}
-
-/**
- * The behaviours a binding names, through its choices, a macro's steps and the behaviours those
- * name: what it types does not count, but a behaviour a macro uses is used.
- */
-function namedIn(
-  layout: Layout,
-  b: Binding,
-  out: Set<string>,
-  following: ReadonlySet<string> = new Set(),
-): Set<string> {
-  const ref = refOf(b);
-  if (ref !== undefined) out.add(ref);
-  const read = expand(layout, b, following);
-  if (!read) return out;
-  const [m, next] = read;
-  if (b.kind === 'ref') return namedIn(layout, m, out, next);
-  const steps = m.kind === 'macro' ? [...(m.steps ?? []), ...(m.then ?? [])] : [];
-  for (const c of [...choices(m), ...steps]) namedIn(layout, c, out, next);
-  return out;
+  for (const c of choices(b)) featuresOf(c, at, out);
 }
 
 /**
@@ -279,52 +190,30 @@ const onDefaultLayersOnly = (layers: string[] | undefined) =>
   layers?.every(isDefaultLayer) === true;
 
 /**
- * Each use of a special feature: on the keys of the layout's own layers, on its combos, and among
- * its behaviours, and the keys its declared features wrap. A named behaviour of its own is one
- * wherever it is used; one that nothing uses
- * still counts, once, with no place. Nothing on the default layers counts, and a behaviour only they
- * use is theirs.
+ * Each use of a special feature: on the keys of the layout's own layers, on its combos, and the keys
+ * its declared features wrap. Nothing on the default layers counts.
  */
 export function specialFeatures(layout: Layout): SpecialFeature[] {
   const out: SpecialFeature[] = [];
-  const used = new Set<string>();
   // One feature at a time: two on one key wrap it twice, and each is a use of its own.
   const owned = (Object.keys(DECLARED) as WrappingFeature[]).map(
     (f) => expandFeatures({ ...layout, features: { [f]: layout.features?.[f] } }).owned,
   );
   const keys = buildGeometry(layout).keys.map((k) => k.id);
-  for (const layer of layout.layers) {
-    const own = !isDefaultLayer(layer.id);
+  for (const layer of ownLayers(layout)) {
     // Each key of the board as it is compiled: a layer default no key is left to is not a use.
     for (const key of keys) {
       const b = bindingAt(layer, key);
-      if (!b) continue;
-      if (own) featuresOf(layout, b, { layer: layer.id, key }, out);
-      namedIn(layout, b, used);
+      if (b) featuresOf(b, { layer: layer.id, key }, out);
     }
-    if (!own) continue;
     for (const byLayer of owned)
       for (const [key, f] of byLayer.get(layer.id) ?? [])
         out.push({ ...DECLARED[f], layer: layer.id, key });
   }
   (layout.combos ?? []).forEach((c, i) => {
     if (!onDefaultLayersOnly(c.layers))
-      featuresOf(layout, c.binding, { combo: c.id ?? `#${i + 1}`, comboIndex: i }, out);
-    namedIn(layout, c.binding, used);
+      featuresOf(c.binding, { combo: c.id ?? `#${i + 1}`, comboIndex: i }, out);
   });
-  // An unused behaviour that another unused one names is reported through it, not again on its own:
-  // the ones nothing names go first, then any left in a loop of their own.
-  const behaviors = layout.behaviors ?? {};
-  const unused = Object.keys(behaviors).filter((name) => !used.has(name));
-  const named = new Set<string>();
-  for (const name of unused) namedIn(layout, behaviors[name], named);
-  const roots = unused.filter((name) => !named.has(name));
-  for (const name of [...roots, ...unused.filter((name) => named.has(name))]) {
-    if (used.has(name)) continue;
-    const root: Binding = { kind: 'ref', ref: name };
-    featuresOf(layout, root, {}, out);
-    namedIn(layout, root, used);
-  }
   return out;
 }
 

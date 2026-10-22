@@ -597,7 +597,6 @@ export function CombosPanel({ state, send }: PanelProps) {
 
   const context: BindingTextContext = {
     layers: state.compiled.layers.map((l) => ({ id: l.id, name: l.name })),
-    behaviors: Object.keys(state.layout.behaviors ?? {}),
     hostLocale: state.compiled.hostLocale,
   };
 
@@ -873,7 +872,7 @@ export function CombosPanel({ state, send }: PanelProps) {
   );
 }
 
-/** Behaviors: the layout's special features, then the named bindings that keys refer to. */
+/** Behaviors: the layout's special features. */
 export function BehaviorsPanel({
   state,
   send,
@@ -882,12 +881,7 @@ export function BehaviorsPanel({
   /** Before a feature is shown on the board: a word playing there would hide it. */
   onShow?: () => void;
 }) {
-  return (
-    <div className="space-y-4">
-      <SpecialFeatureList state={state} send={send} onShow={onShow} />
-      <BehaviorsJson state={state} send={send} />
-    </div>
-  );
+  return <SpecialFeatureList state={state} send={send} onShow={onShow} />;
 }
 
 /** Each kind of special feature, in the order the panel lists them, and what its group is called. */
@@ -896,13 +890,12 @@ const FEATURE_GROUPS: [SpecialFeatureKind, string][] = [
   ['alt_repeat', 'Alt repeats'],
   ['macro', 'Macros'],
   ['mod_morph', 'Mod morphs'],
-  ['custom_behaviour', 'Custom behaviours'],
 ];
 
 /**
  * The layout's special features, one group each: every use names its layer and key, or its combo,
  * and picking it shows it on the board — the key selected on its layer, or the combo's keys
- * outlined. A behaviour nothing uses has no place to show, and is only named.
+ * outlined.
  */
 function SpecialFeatureList({ state, send, onShow }: PanelProps & { onShow?: () => void }) {
   const features = useMemo(() => specialFeatures(state.layout), [state.layout]);
@@ -977,34 +970,6 @@ function SpecialFeatureList({ state, send, onShow }: PanelProps & { onShow?: () 
         );
       })}
     </section>
-  );
-}
-
-/** The named behaviours as JSON, applied as a whole. */
-function BehaviorsJson({ state, send }: PanelProps) {
-  return (
-    <form
-      className="space-y-2"
-      onSubmit={(e) => {
-        e.preventDefault();
-        send({ type: 'edit', edit: { kind: 'replaceBehaviors', json: state.behaviorsJson } });
-      }}
-    >
-      <p className="text-xs opacity-70">
-        Named bindings such as adaptive keys and mod-morphs. Keys reach them with a reference.
-      </p>
-      <textarea
-        aria-label="Behaviors"
-        rows={14}
-        className="textarea textarea-bordered w-full font-mono text-xs"
-        value={state.behaviorsJson}
-        onChange={(e) => send({ type: 'behaviorsChange', json: e.target.value })}
-      />
-      {state.behaviorsError && <p className="text-error text-xs">{state.behaviorsError}</p>}
-      <button type="submit" className="btn btn-sm">
-        Apply behaviors
-      </button>
-    </form>
   );
 }
 

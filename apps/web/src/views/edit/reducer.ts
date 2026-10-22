@@ -51,8 +51,6 @@ export interface EditState {
   saved: Layout | null;
   panel: Panel;
   error: string | null;
-  behaviorsJson: string;
-  behaviorsError: string | null;
   jsonText: string;
   jsonError: string | null;
   /**
@@ -101,7 +99,6 @@ export type EditAction =
   /** Open a combo, by place, in the combo editor; null closes it. */
   | { type: 'selectCombo'; combo: number | null }
   | { type: 'setBoardHighlight'; keys: string[] }
-  | { type: 'behaviorsChange'; json: string }
   | { type: 'jsonChange'; text: string }
   | { type: 'setPanel'; panel: Panel }
   | { type: 'saved'; layout: Layout }
@@ -112,10 +109,6 @@ export type EditAction =
   | { type: 'savedAs'; from: Layout; layout: Layout }
   /** A change to the layout, and what to tell a screen reader once it has landed. */
   | { type: 'edit'; edit: Edit; say?: string };
-
-function behaviorsText(layout: Layout): string {
-  return JSON.stringify(layout.behaviors ?? {}, null, 2);
-}
 
 export function initialState(layout: Layout, compiled: CompiledLayout, layer = 0): EditState {
   return {
@@ -132,8 +125,6 @@ export function initialState(layout: Layout, compiled: CompiledLayout, layer = 0
     saved: layout,
     panel: 'layers',
     error: null,
-    behaviorsJson: behaviorsText(layout),
-    behaviorsError: null,
     jsonText: '',
     jsonError: null,
     lastEdit: null,
@@ -156,8 +147,7 @@ export function selectionOf(state: Pick<EditState, 'selected' | 'also'>): string
 }
 
 /** Where a refused edit says why: beside the text it came from, or above the board. */
-export function refusalShownIn(edit: Edit): 'error' | 'behaviorsError' | 'jsonError' {
-  if (edit.kind === 'replaceBehaviors') return 'behaviorsError';
+export function refusalShownIn(edit: Edit): 'error' | 'jsonError' {
   if (edit.kind === 'replaceLayout') return 'jsonError';
   return 'error';
 }
@@ -181,10 +171,6 @@ function land(state: EditState, outcome: EditOutcome, say?: string): EditState {
   const followed = compiled.layerIndex.get(at.layer ?? shownLayer(state));
   // A combo added opens in the combo editor, which takes the place of any key that was open.
   const keys = edit.kind === 'addCombo' ? [] : (at.keys ?? selectionOf(state));
-  // Re-rendering the behaviours buffer on every edit would throw away whatever is half-typed in
-  // it, so it is only refreshed when the behaviours themselves moved.
-  const behaviorsMoved =
-    JSON.stringify(layout.behaviors ?? {}) !== JSON.stringify(state.layout.behaviors ?? {});
   const combo = keys.length > 0 ? null : comboAfter(state.combo, edit, layout);
   return {
     ...state,
@@ -202,8 +188,6 @@ function land(state: EditState, outcome: EditOutcome, say?: string): EditState {
     placing: null,
     comboPick: null,
     comboPickFor: null,
-    ...(behaviorsMoved ? { behaviorsJson: behaviorsText(layout) } : {}),
-    ...(edit.kind === 'replaceBehaviors' ? { behaviorsError: null } : {}),
     ...(edit.kind === 'replaceLayout' ? { jsonError: null } : {}),
     lastEdit: say === undefined ? outcome : { ...outcome, say },
   };
@@ -424,9 +408,6 @@ function reduce(state: EditState, action: EditAction): EditState {
 
     case 'setBoardHighlight':
       return { ...state, boardHighlight: action.keys };
-
-    case 'behaviorsChange':
-      return { ...state, behaviorsJson: action.json };
 
     case 'jsonChange':
       return { ...state, jsonText: action.text };

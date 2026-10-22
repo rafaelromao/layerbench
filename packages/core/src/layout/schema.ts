@@ -88,7 +88,6 @@ export const BindingSchema: z.ZodType<unknown> = z.lazy(() =>
       steps: z.array(BindingSchema).optional(),
       symbols: z.string().optional(),
       then: z.array(BindingSchema).optional(),
-      ref: z.string().optional(),
       tag: z.string().optional(),
     }),
     z.object({
@@ -97,7 +96,6 @@ export const BindingSchema: z.ZodType<unknown> = z.lazy(() =>
       triggers: z.array(TriggerSchema).optional(),
       strictModifiers: z.boolean().optional(),
       deadKeys: z.array(z.string()).optional(),
-      ref: z.string().optional(),
     }),
     z.object({
       kind: z.literal('hold_tap'),
@@ -116,7 +114,6 @@ export const BindingSchema: z.ZodType<unknown> = z.lazy(() =>
       symbol: z.string().default(''),
       shiftedSymbol: z.string().optional(),
     }),
-    z.object({ kind: z.literal('ref'), ref: z.string() }),
     z.object({ kind: z.literal('raw'), label: z.string(), source: z.string().optional() }),
   ]),
 );
@@ -239,7 +236,6 @@ export const LayoutSchema = z.object({
     )
     .min(1),
   features: FeaturesSchema.optional(),
-  behaviors: z.record(z.string(), BindingSchema).optional(),
   combos: z
     .array(
       z.object({
@@ -295,15 +291,87 @@ export const LayoutSchema = z.object({
     .optional(),
 });
 
+type Json = Record<string, unknown>;
+
+const isObject = (v: unknown): v is Json =>
+  typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/** The fields of a binding that hold one binding, and those that hold a list of them. */
+const ONE_BINDING = ['tap', 'hold', 'default', 'morphed', 'active', 'inactive'];
+const BINDING_LISTS = ['bindings', 'steps', 'then'];
+
+/**
+ * A document saved while layouts could name bindings of their own (`behaviors`), with each name
+ * written out where it was used, as the compiler read it, and the names dropped. A `ref` key is the
+ * binding it names; a macro or adaptive key that names one is that binding with its own fields over
+ * it. A name the document does not have, or one reached again while it is being written out, was a
+ * compile error: a key that is only that name becomes Nothing, and one that builds on it keeps its
+ * own fields. A document that names nothing reads as it is.
+ */
+function withNamedBindingsInline(input: unknown): unknown {
+  if (!isObject(input)) return input;
+  const { behaviors, ...document } = input;
+  const named = isObject(behaviors) ? behaviors : {};
+  type Following = ReadonlySet<string>;
+  const inline = (b: unknown, following: Following): unknown => {
+    if (!isObject(b)) return b;
+    const builds = (b.kind === 'macro' || b.kind === 'adaptive') && 'ref' in b;
+    if (b.kind !== 'ref' && !builds) return within(b, following);
+    const { ref, ...own } = b;
+    const name = typeof ref === 'string' ? ref : '';
+    const target = Object.hasOwn(named, name) && !following.has(name) ? named[name] : undefined;
+    const next = new Set([...following, name]);
+    if (b.kind === 'ref') return target === undefined ? { kind: 'none' } : inline(target, next);
+    return isObject(target) && target.kind === b.kind
+      ? inline({ ...target, ...own }, next)
+      : within(own, following);
+  };
+  /** The binding with the bindings it holds written out. */
+  const within = (b: Json, following: Following): Json => {
+    const out: Json = { ...b };
+    for (const k of ONE_BINDING) if (k in b) out[k] = inline(b[k], following);
+    for (const k of BINDING_LISTS) {
+      const list = b[k];
+      if (Array.isArray(list)) out[k] = list.map((x) => inline(x, following));
+    }
+    if (Array.isArray(b.triggers)) {
+      out.triggers = b.triggers.map((t) =>
+        isObject(t) ? { ...t, binding: inline(t.binding, following) } : t,
+      );
+    }
+    return out;
+  };
+  const none: Following = new Set();
+  const { layers, combos } = document;
+  return {
+    ...document,
+    ...(Array.isArray(layers) && {
+      layers: layers.map((l) =>
+        isObject(l) && isObject(l.bindings)
+          ? {
+              ...l,
+              bindings: Object.fromEntries(
+                Object.entries(l.bindings).map(([k, b]) => [k, inline(b, none)]),
+              ),
+            }
+          : l,
+      ),
+    }),
+    ...(Array.isArray(combos) && {
+      combos: combos.map((c) => (isObject(c) ? { ...c, binding: inline(c.binding, none) } : c)),
+    }),
+  };
+}
+
 /** Read a layout document. */
 export function parseLayout(input: unknown): Layout {
-  return LayoutSchema.parse(input) as Layout;
+  return LayoutSchema.parse(withNamedBindingsInline(input)) as Layout;
 }
 
 export function safeParseLayout(
   input: unknown,
 ): { ok: true; layout: Layout } | { ok: false; error: string } {
-  const r = LayoutSchema.safeParse(input);
+  const r = LayoutSchema.safeParse(withNamedBindingsInline(input));
   if (r.success) return { ok: true, layout: r.data as Layout };
   return { ok: false, error: z.prettifyError(r.error) };
 }

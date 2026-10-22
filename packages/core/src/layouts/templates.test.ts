@@ -556,7 +556,6 @@ describe('Romak types every accent through Accents, one-shot from its right oute
   it('has one alpha layer and the default layers, and no combos', () => {
     expect(romak.layers.map((l) => l.id)).toEqual(['alpha1', 'num', 'sym', 'accents']);
     expect(romak.combos).toBeUndefined();
-    expect(romak.behaviors).toBeUndefined();
   });
 
   it('writes the six languages: ñ ü and œ on Accents, ¿ and ¡ on Symbols', () => {

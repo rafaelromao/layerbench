@@ -835,9 +835,6 @@ export class Machine {
           this.emit(ctx, shifted && b.shiftedSymbol ? b.shiftedSymbol : b.symbol, null);
           return;
         }
-        case 'ref':
-          ctx.leaf = 'none';
-          return;
       }
     } finally {
       ctx.depth--;

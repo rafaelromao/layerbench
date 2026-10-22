@@ -17,7 +17,6 @@ import {
  */
 export interface BindingTextContext {
   layers: { id: string; name: string }[];
-  behaviors: string[];
   hostLocale: HostLocale;
 }
 
@@ -72,7 +71,7 @@ const MOD_ALIASES: Record<string, Mod> = {
 };
 
 /** Behaviour names the syntax knows, and the spelling each one is written back as. */
-const BEHAVIORS: Record<string, string> = {
+const BEHAVIORS = {
   kp: 'kp',
   trans: 'trans',
   none: 'none',
@@ -94,10 +93,15 @@ const BEHAVIORS: Record<string, string> = {
   dead: 'dead_key',
   unicode: 'unicode',
   uni: 'unicode',
-  ref: 'ref',
-};
+} as const;
 
-const LAYER_BEHAVIORS = ['mo', 'sl', 'to', 'tog', 'auto_layer'];
+type BehaviorName = (typeof BEHAVIORS)[keyof typeof BEHAVIORS];
+
+/** The behaviour a name written after `&` is, in any case, if the syntax knows it. */
+const behaviorNamed = (written: string): BehaviorName | undefined =>
+  (BEHAVIORS as Record<string, BehaviorName>)[written.toLowerCase()];
+
+const LAYER_BEHAVIORS: BehaviorName[] = ['mo', 'sl', 'to', 'tog', 'auto_layer'];
 
 function err(error: string): ParseResult {
   return { ok: false, error };
@@ -181,18 +185,11 @@ export function parseBindingText(text: string, ctx: BindingTextContext): ParseRe
   const m = /^&([A-Za-z_][A-Za-z0-9_]*)\s*([\s\S]*)$/.exec(raw);
   if (!m) return err(`\`${raw}\` is not a binding — a behaviour is \`&\` and a name`);
   const written = m[1];
-  const name = BEHAVIORS[written.toLowerCase()];
+  const name = behaviorNamed(written);
   const { rest, tag } = takeTag(m[2].trim());
 
   if (name === undefined) {
-    const behavior =
-      ctx.behaviors.find((b) => b === written) ??
-      ctx.behaviors.find((b) => b.toLowerCase() === written.toLowerCase());
-    if (behavior) return ok({ kind: 'ref', ref: behavior });
-    const known = ctx.behaviors.length > 0 ? ` or a behaviour: ${ctx.behaviors.join(', ')}` : '';
-    return err(
-      `\`&${written}\` is not a behaviour — try \`&kp\`, \`&mo\`, \`&lt\`, \`&trans\`${known}`,
-    );
+    return err(`\`&${written}\` is not a behaviour — try \`&kp\`, \`&mo\`, \`&lt\`, \`&trans\``);
   }
 
   switch (name) {
@@ -258,14 +255,6 @@ export function parseBindingText(text: string, ctx: BindingTextContext): ParseRe
       const [symbol = '', shifted = ''] = rest.split(/\s+/);
       if (symbol === '') return err('`&uni` needs a symbol, for example `&uni →`');
       return ok({ kind: 'unicode', symbol, ...(shifted ? { shiftedSymbol: shifted } : {}) });
-    }
-    default: {
-      if (rest === '') return err('`&ref` needs a behaviour name');
-      const behavior =
-        ctx.behaviors.find((b) => b === rest) ??
-        ctx.behaviors.find((b) => b.toLowerCase() === rest.toLowerCase());
-      if (!behavior) return err(`no behaviour called \`${rest}\``);
-      return ok({ kind: 'ref', ref: behavior });
     }
   }
 }
@@ -334,7 +323,7 @@ function exactText(compiled: CompiledLayout, b: Binding): string | null {
       // `&kp LS(LGUI)` would read back as a key code, not a hold of both: no line for it.
       return b.also?.length ? null : `&kp ${b.mod}`;
     case 'macro': {
-      if (b.ref !== undefined || b.steps !== undefined || !b.symbols) return null;
+      if (b.steps !== undefined || !b.symbols) return null;
       const then = b.then;
       if (then === undefined) return withTag(`&macro ${b.symbols}`, b.tag);
       if (then.length !== 1 || then[0].kind !== 'sl') return null;
@@ -344,8 +333,6 @@ function exactText(compiled: CompiledLayout, b: Binding): string | null {
       return b.shifted ? `&dead ${b.diacritic} ${b.shifted}` : `&dead ${b.diacritic}`;
     case 'unicode':
       return b.shiftedSymbol ? `&uni ${b.symbol} ${b.shiftedSymbol}` : `&uni ${b.symbol}`;
-    case 'ref':
-      return `&${b.ref}`;
     default:
       // adaptive, mod_morph, layer_morph, tap_dance and hold_tap are authored elsewhere.
       return null;
@@ -366,9 +353,7 @@ function whyNot(b: Binding): string {
     case 'tap_dance':
       return 'a tap dance';
     case 'macro':
-      return b.ref !== undefined
-        ? 'a macro that refers to a behaviour'
-        : 'a macro built from steps';
+      return 'a macro built from steps';
     case 'caps_word':
       return 'a caps word carrying its own continue list';
     case 'sl':
@@ -430,18 +415,14 @@ export function suggest(text: string, ctx: BindingTextContext): Suggestion[] {
   const behavior = /^&([A-Za-z_][A-Za-z0-9_]*)?$/.exec(raw);
   if (raw === '' || behavior) {
     const prefix = (behavior?.[1] ?? '').toLowerCase();
-    const builtins = [...new Set(Object.values(BEHAVIORS))]
+    return [...new Set(Object.values(BEHAVIORS))]
       .filter((name) => name.startsWith(prefix))
       .map((name) => ({ insert: `&${name}`, label: `&${name}`, hint: 'behaviour' }));
-    const named = ctx.behaviors
-      .filter((name) => name.toLowerCase().startsWith(prefix))
-      .map((name) => ({ insert: `&${name}`, label: `&${name}`, hint: 'this layout' }));
-    return [...builtins, ...named];
   }
 
   const withLayer = /^&([A-Za-z_][A-Za-z0-9_]*)\s+([^\s]*)$/.exec(raw);
   if (withLayer) {
-    const name = BEHAVIORS[withLayer[1].toLowerCase()];
+    const name = behaviorNamed(withLayer[1]);
     const prefix = withLayer[2].toLowerCase();
     if (name !== undefined && (LAYER_BEHAVIORS.includes(name) || name === 'lt')) {
       // An argument already written in full needs no menu; offering it again is a dead end.

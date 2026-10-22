@@ -10,11 +10,8 @@ import {
 
 const compiled = compileLayout(bundledLayout('magic-romak') as never);
 
-// Magic Romak's adaptive keys are bindings on their keys, not named behaviours, so the behaviour
-// list is given here: what the parser needs is the set of names, whichever layout supplies them.
 const ctx: BindingTextContext = {
   layers: compiled.layers.map((l) => ({ id: l.id, name: l.name })),
-  behaviors: ['adaptiveHV', 'adaptiveVH', 'altRepeat'],
   hostLocale: compiled.hostLocale,
 };
 
@@ -108,9 +105,10 @@ describe('binding text', () => {
     });
   });
 
-  it('reads a bare name as a reference to one of the layout behaviours', () => {
-    expect(build('&adaptiveHV')).toEqual({ kind: 'ref', ref: 'adaptiveHV' });
-    expect(build('&ref altRepeat')).toEqual({ kind: 'ref', ref: 'altRepeat' });
+  it('reads no name but the ones it knows', () => {
+    for (const text of ['&adaptiveHV', '&ref altRepeat']) {
+      expect(parseBindingText(text, ctx)).toMatchObject({ ok: false, error: /is not a behaviour/ });
+    }
   });
 
   it('explains what is wrong instead of building something else', () => {
@@ -146,7 +144,6 @@ describe('binding text', () => {
       '&macro ão',
       '&macro ão then alpha2',
       '&kp ç tag:cedilla',
-      '&adaptiveHV',
     ];
     for (const text of roundTrips) {
       expect(bindingText(compiled, build(text))).toEqual({ text, exact: true });
@@ -194,7 +191,7 @@ describe('binding text', () => {
   it('completes behaviour names, then that behaviour argument', () => {
     expect(suggest('&m', ctx).map((s) => s.insert)).toContain('&mo');
     expect(suggest('&m', ctx).map((s) => s.insert)).toContain('&macro');
-    expect(suggest('&ada', ctx).map((s) => s.insert)).toContain('&adaptiveHV');
+    expect(suggest('&ada', ctx)).toEqual([]);
     expect(suggest('&mo ', ctx).map((s) => s.label)).toContain('alpha2');
     expect(suggest('&mo alph', ctx).map((s) => s.insert)).toContain('&mo alpha2');
     expect(suggest('&sk L', ctx).map((s) => s.label)).toContain('LSHIFT');

@@ -67,7 +67,6 @@ function restore(
     focusRequest: null,
     error: null,
     lastEdit: null,
-    behaviorsJson: JSON.stringify(snap.layout.behaviors ?? {}, null, 2),
     // Undoing back to what was saved is nothing to lose; undoing past it is.
     dirty: snap.layout !== state.saved,
     past,

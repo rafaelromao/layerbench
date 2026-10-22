@@ -1,42 +1,21 @@
 import { type Binding, type CompiledLayout, type Layout, legend } from '@layerbench/core';
-import { type Dispatch, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { BindingTextContext } from '../binding-text.js';
-import type { EditAction } from '../reducer.js';
 import type { EditorScope } from './bodies.js';
 import { chipLabel, usedBindings } from './layout-bindings.js';
 
 /**
- * What the key editor and the combo editor both edit a binding against: the layout's behaviours,
- * edited where a binding refers to them, and the names the text line reads.
+ * What the key editor and the combo editor both edit a binding against: the compiled layout, and
+ * the layers and host locale the text line reads.
  */
-export function useEditorScope(
-  compiled: CompiledLayout,
-  layout: Layout,
-  send: Dispatch<EditAction>,
-): EditorScope {
-  const behaviours = useMemo(() => Object.keys(compiled.expanded.behaviors ?? {}), [compiled]);
-  const text: BindingTextContext = useMemo(
-    () => ({
+export function useEditorScope(compiled: CompiledLayout): EditorScope {
+  return useMemo(() => {
+    const text: BindingTextContext = {
       layers: compiled.layers.map((l) => ({ id: l.id, name: l.name })),
-      behaviors: behaviours,
       hostLocale: compiled.hostLocale,
-    }),
-    [compiled, behaviours],
-  );
-  return useMemo(
-    () => ({
-      compiled,
-      behaviours,
-      ownBehaviours: layout.behaviors ?? {},
-      setBehaviour: (name, binding) => {
-        // A behaviour given back as it was is no edit.
-        if (binding === layout.behaviors?.[name]) return;
-        send({ type: 'edit', edit: { kind: 'setBehavior', name, binding } });
-      },
-      text,
-    }),
-    [compiled, behaviours, layout.behaviors, send, text],
-  );
+    };
+    return { compiled, text };
+  }, [compiled]);
 }
 
 /** How many reusable bindings are shown before the rest are asked for. */

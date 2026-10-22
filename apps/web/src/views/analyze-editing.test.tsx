@@ -6,7 +6,7 @@ import {
   type Layout,
   toCanonicalJson,
 } from '@layerbench/core';
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { initGitHubSession, useGitHubSession } from '../auth/github-session.js';
@@ -1304,68 +1304,6 @@ describe('Edit', () => {
     expect(within(kinds).queryByRole('button', { name: 'More' })).toBeNull();
   });
 
-  it('says why Behaviour cannot be picked while the layout has no named behaviours', async () => {
-    const user = userEvent.setup();
-    await openEdit();
-
-    await user.click(key('Key LHC: g'));
-    const kinds = within(await inspector('LHC')).getByRole('group', { name: 'Kind of key' });
-    const behaviour = within(kinds).getByRole('button', { name: 'Behaviour' });
-    // Not disabled, which would keep its hint from showing on hover: unavailable, and saying why.
-    expect(behaviour).toBeEnabled();
-    expect(behaviour).toHaveAttribute('aria-disabled', 'true');
-    expect(behaviour).toHaveAttribute('title', expect.stringMatching(/no named behaviours yet/));
-
-    await user.click(behaviour);
-    expect(within(kinds).getByRole('button', { name: 'Symbol' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
-    // A hover hint never shows on a phone or to the keyboard, so the tile says it in text too.
-    const reason = async () => within(await inspector('LHC')).getByRole('status');
-    expect(await reason()).toHaveTextContent(/no named behaviours yet/);
-
-    // Picking a kind puts the line away, even where a tap does not move focus (Safari).
-    fireEvent.click(within(kinds).getByRole('button', { name: 'Symbol' }));
-    expect(await reason()).toBeEmptyDOMElement();
-
-    // The keyboard reaches it too: focus says why, and leaving the tile puts it away. The click
-    // above left the tile focused, so it leaves first.
-    act(() => behaviour.blur());
-    act(() => behaviour.focus());
-    expect(await reason()).toHaveTextContent(/Behaviors panel/);
-    act(() => behaviour.blur());
-    expect(await reason()).toBeEmptyDOMElement();
-  });
-
-  it('says on a phone, in text, why Behaviour cannot be picked', async () => {
-    setViewportWidth(375);
-    const user = userEvent.setup();
-    await openEdit();
-
-    await user.click(key('Key LHM: d, hold ⌥'));
-    const editor = await inspector('LHM');
-    await user.click(within(editor).getByRole('button', { name: 'More' }));
-    // A tap that does not move focus, as on Safari.
-    fireEvent.click(within(editor).getByRole('button', { name: 'Behaviour' }));
-    expect(within(editor).getByRole('status')).toHaveTextContent(/Behaviors panel/);
-    // Nothing was picked, so the list of more kinds stays open.
-    expect(within(editor).getByRole('group', { name: 'More kinds' })).toBeInTheDocument();
-
-    // A tap elsewhere puts the list away, and the line with it.
-    await user.click(within(editor).getByRole('textbox', { name: 'Binding for LHM' }));
-    expect(within(editor).queryByRole('group', { name: 'More kinds' })).toBeNull();
-    expect(within(editor).getByRole('status')).toBeEmptyDOMElement();
-
-    // So does closing the list with More itself.
-    await user.click(within(editor).getByRole('button', { name: 'More' }));
-    fireEvent.click(within(editor).getByRole('button', { name: 'Behaviour' }));
-    expect(within(editor).getByRole('status')).toHaveTextContent(/Behaviors panel/);
-    fireEvent.click(within(editor).getByRole('button', { name: 'More', expanded: true }));
-    expect(within(editor).queryByRole('group', { name: 'More kinds' })).toBeNull();
-    expect(within(editor).getByRole('status')).toBeEmptyDOMElement();
-  });
-
   it('closes the list of more kinds on a phone on a choice or a tap elsewhere, and keeps the choice in sight', async () => {
     setViewportWidth(375);
     const user = userEvent.setup();
@@ -2124,8 +2062,6 @@ describe('Behaviors', () => {
       within(within(list).getByRole('list', { name })).getAllByRole('listitem');
     for (const name of ['Adaptive keys', 'Alt repeats', 'Macros'])
       expect(group(name).length).toBeGreaterThan(0);
-    // The JSON stays under the list.
-    expect(screen.getByRole('textbox', { name: 'Behaviors' })).toBeInTheDocument();
 
     // An adaptive key on a layer other than the one shown: its layer turns up, the key selected.
     const place = (b: HTMLElement) => b.querySelector('.font-mono')?.textContent ?? '';

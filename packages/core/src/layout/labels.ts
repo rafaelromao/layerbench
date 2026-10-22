@@ -219,10 +219,6 @@ export function tapLabel(c: CompiledLayout, b: Binding): string {
       return BADGE.adaptive;
     case 'tap_dance':
       return BADGE.tapDance;
-    case 'ref':
-      // Compiling puts the behaviour itself in its place, so only a binding not compiled yet, as the
-      // editor's text line previews one, still names it.
-      return p.ref;
     default:
       return '';
   }
@@ -401,8 +397,6 @@ export function describe(c: CompiledLayout, b: Binding): string {
       return `types ${b.symbol}${b.shiftedSymbol ? `, ${b.shiftedSymbol} with shift` : ''}`;
     case 'raw':
       return `${b.label}: imported, not simulated`;
-    case 'ref':
-      return `behaviour ${b.ref}`;
     default:
       return '';
   }
