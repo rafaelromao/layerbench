@@ -627,9 +627,8 @@ What moved, checked across the 38 reports; nothing else moved:
 
 ## Twenty-ninth re-baseline: Engram's link
 
-Engram's link was `https://engram.dev/`, a domain that no longer serves Engram. It is now the
-author's repository for the layout bundled here, Engram v2.0 of 2021:
-`https://github.com/binarybottle/engram-2021`.
+Engram's link went to a domain that no longer serves Engram. It is now the author's repository for
+the layout bundled here, Engram v2.0 of 2021: `https://github.com/binarybottle/engram-2021`.
 
 What moved, checked across the 38 reports; nothing else moved:
 
