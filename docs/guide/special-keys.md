@@ -125,7 +125,7 @@ moved or removed.
 caps word on the shift key, so that shift pressed while shift is already on starts it, and turn on
 **sentence case**, which makes the space key a sentence space.
 
-A **Sentence space**, among the tiles under **More**, types a space. Pressed right after `.`, `?` or
+A **Sentence space**, among the editor's other tiles, types a space. Pressed right after `.`, `?` or
 `!`, it leaves a capital for the next key pressed. A letter a–z comes out a capital. Any other key,
 a digit, a symbol, a dead key, a modifier or another space, takes it and types as it is, so the
 letter after it is lowercase. A layer key presses no keycode, and leaves the capital for the key
@@ -138,8 +138,10 @@ Alpha 2, so an accent that starts a sentence is a capital too. The capital alone
 as an accent is no letter a–z.
 
 Caps word is ZMK's own `&caps_word`; on the shift key it is a mod-morph. A sentence space and a
-morph after a sentence need the module [rafaelromao/zmk-sentence-case](https://github.com/rafaelromao/zmk-sentence-case): they are its `&sentence_space` and its sentence-morph.
-Which punctuation ends a sentence, and that the capital is Left Shift, are the module's.
+morph after a sentence need the module
+[rafaelromao/zmk-sentence-case](https://github.com/rafaelromao/zmk-sentence-case): they are its
+`&sentence_space` and its sentence-morph. Which punctuation ends a sentence, and that the capital is
+Left Shift, are the module's.
 
 ## Tap dance, morphs, Unicode and dead keys
 

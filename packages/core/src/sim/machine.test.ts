@@ -203,6 +203,32 @@ describe('Machine — sentence case, as zmk-sentence-case', () => {
   });
 });
 
+describe('Machine — a macro that types nothing', () => {
+  it('is pressed as the layer key it turns a layer on with, wherever in the macro that is', () => {
+    const layout = mini([
+      {
+        id: 'base',
+        bindings: {
+          LHP: {
+            kind: 'macro',
+            steps: [
+              { kind: 'sl', layer: 'other' },
+              { kind: 'sk', mod: 'LSHIFT' },
+            ],
+          },
+          LHR: { kind: 'macro', symbols: 'a', then: [{ kind: 'sl', layer: 'other' }] },
+        },
+      },
+      { id: 'other', bindings: {} },
+    ]);
+    const { tap } = machineFor(layout);
+    const armed = tap('LHP');
+    expect([armed.leafKind, armed.keyKind]).toEqual(['sl', 'layer_tap']);
+    // One that types is a macro, whatever it turns on after.
+    expect(tap('LHR').leafKind).toBe('macro');
+  });
+});
+
 describe('Machine — a Unicode key', () => {
   const kp = (symbol: string) => ({ kind: 'kp' as const, symbol });
   const layout = mini([

@@ -64,9 +64,8 @@ export function bindingModule(kind: BindingKind): ZmkModuleId | null {
 
 /**
  * The module each feature needs, or null where stock ZMK has it. Caps word on the shift key is a
- * mod-morph that turns on caps word. zmk-sentence-case ends a sentence at `.`, `?` and `!`, and
- * shifts with Left Shift; other punctuation, or another modifier, takes an adaptive key on the space
- * key, which is what the feature compiles to.
+ * mod-morph that turns on caps word. Sentence case makes the space key zmk-sentence-case's
+ * `&sentence_space`.
  */
 const FEATURE_MODULES: Record<WrappingFeature, ZmkModuleId | null> = {
   sentenceCase: 'sentenceCase',

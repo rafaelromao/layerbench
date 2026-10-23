@@ -23,7 +23,7 @@ describe('the ZMK module a kind needs', () => {
     );
   });
 
-  it('is on no other tile: a layer key or a morph needs one only as an auto layer or on a layer', () => {
+  it('is on no other tile: a layer key or a morph needs one only as some of its kinds', () => {
     expect(ALL_KINDS.filter((k) => k.module).map((k) => k.kind)).toEqual([
       'adaptive',
       'altrepeat',

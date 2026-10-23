@@ -700,8 +700,8 @@ the layer key it ends with.
 
 What moved, checked across the 38 reports; nothing else moved:
 
-- **Magic Romak's document and share blob**: its space key's tap is a sentence space, and its
-  Alpha 2 key's tap a sentence morph.
+- **Magic Romak's document and share blob**: its Alpha 2 key's tap is a sentence morph. Its space
+  key, under the feature as it was, compiles to a sentence space.
 - **Magic Romak's reports**: macro presses, and Macro usage with them, fall: a space after a
   sentence's end ran the old adaptive key's macro, and is a sentence space now (146 to 10 on the
   English fixture). Its space is typed by the space key itself, not by an adaptive key's default and

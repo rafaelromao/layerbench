@@ -189,8 +189,9 @@ function featuresOf(b: Binding, at: Place, out: SpecialFeature[]): void {
 }
 
 /**
- * What a declared feature makes of the key it wraps: caps word turns the shift key into a mod morph,
- * sentence case the space key into an adaptive key. Each is one feature, named as itself.
+ * What a declared feature makes of the key it goes on: caps word turns the shift key into a mod
+ * morph, sentence case the space key into a sentence space, which changes with the key before it as
+ * an adaptive key does. Each is one feature, named as itself.
  */
 const DECLARED: Record<WrappingFeature, { feature: SpecialFeatureKind; label: string }> = {
   capsWord: { feature: 'mod_morph', label: 'Caps word' },

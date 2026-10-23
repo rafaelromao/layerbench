@@ -308,6 +308,28 @@ describe('the keys that reach a layer', () => {
     );
   });
 
+  it("marks a sentence morph's pending part, a layer key, as a way in after a sentence ends", () => {
+    const c = compileLayout(
+      board([
+        {
+          id: 'base',
+          name: 'Base',
+          bindings: {
+            LHP: { kind: 'sentence_morph', default: kp('x'), pending: { kind: 'sl', layer: 'up' } },
+          },
+        },
+        { id: 'up', name: 'Up', bindings: {} },
+      ]),
+    );
+    const marked = reachKeys(c, 1);
+    expect(marked.map((k) => `${keyId(c, k.pos)} ${k.how}`)).toEqual(['LHP tapped']);
+    expect(describeReach(c, 1, marked[0])).toBe(
+      'tapped from Base after a sentence ends to reach Up',
+    );
+    // The planner does not count on it: only after a sentence's end is it a way in.
+    expect(discoverActivators(c, {}).get(1) ?? []).toEqual([]);
+  });
+
   it('reaches a layer that two others turn on through both thumbs, and not directly', () => {
     const c = compileLayout(
       board(

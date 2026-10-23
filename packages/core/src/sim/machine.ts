@@ -274,7 +274,12 @@ interface ExecContext {
 }
 
 const ALPHA_RE = /^\p{L}$/u;
-/** What zmk-sentence-case ends a sentence at, and the letters its capital shifts: a–z only. */
+/**
+ * What zmk-sentence-case ends a sentence at, and the letters its capital shifts: a–z only. The
+ * module reads the keycode and its modifiers, a dot with none and `?` or `!` with Left Shift alone;
+ * the symbol typed is the same on the `symbols` host, while on a keycode host it lets `?` typed with
+ * Right Shift end a sentence too.
+ */
 const SENTENCE_ENDS: ReadonlySet<string> = new Set(['.', '?', '!']);
 const SENTENCE_LETTER_RE = /^[a-z]$/;
 /** What keeps caps word on besides its continue list, as ZMK has it: letters, digits, underscore. */
@@ -861,13 +866,20 @@ export class Machine {
           if (b.then) steps.push(...b.then);
           const savedMode = ctx.mode;
           ctx.mode = 'tap';
+          // The last step that turned a layer on, and what it was.
+          let layerLeaf: BindingKind | null = null;
           for (const step of steps) {
+            const reached = ctx.reaches;
+            ctx.reaches = null;
             this.run(step, ctx);
+            if (ctx.reaches !== null) layerLeaf = ctx.leaf;
+            else ctx.reaches = reached;
             this.recomputeMask();
           }
           ctx.mode = savedMode;
-          // One that types nothing and turns a layer on is pressed as the layer key it ends with.
-          if (ctx.out.length > 0 || ctx.reaches === null) ctx.leaf = 'macro';
+          // One that types nothing and turns a layer on is pressed as the layer key it turns it on
+          // with.
+          ctx.leaf = ctx.out.length === 0 && layerLeaf !== null ? layerLeaf : 'macro';
           return;
         }
         case 'dead_key':

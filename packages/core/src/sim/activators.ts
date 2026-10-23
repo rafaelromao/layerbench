@@ -416,7 +416,8 @@ function extraRoutes(
       return;
     case 'sentence_morph':
       next(b.default, mode);
-      next(b.pending, mode, { afterSentence: true });
+      // A route the planner does not press, as `collectLayerTargets` leaves it out.
+      next(b.pending, mode, { extra: true, afterSentence: true });
       return;
     case 'tap_dance':
       // Tapped, the planner presses a later branch itself, as `collectLayerTargets` finds it; held,

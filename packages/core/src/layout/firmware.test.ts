@@ -35,6 +35,11 @@ describe('the ZMK module a binding needs', () => {
     expect(bindingModule('layer_morph')).toBe('layerMorph');
     expect(bindingModule('unicode')).toBe('unicode');
   });
+
+  it("names zmk-sentence-case for a sentence space and a sentence morph, the module's own", () => {
+    expect(bindingModule('sentence_space')).toBe('sentenceCase');
+    expect(bindingModule('sentence_morph')).toBe('sentenceCase');
+  });
 });
 
 describe('the ZMK module a feature needs', () => {

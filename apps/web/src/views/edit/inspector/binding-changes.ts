@@ -30,7 +30,7 @@ export type Change<V> = (value: V) => Binding;
 export type LayerMode = 'mo' | 'sl' | 'tog' | 'to' | 'auto_layer';
 /** How a modifier key acts: held, or one-shot. */
 export type ModMode = 'mod' | 'sk';
-/** What changes a morph: a modifier held, or a layer on. */
+/** What changes a morph: a modifier held, a layer on, or a capital a sentence space left. */
 export type MorphBy = 'mod_morph' | 'layer_morph' | 'sentence_morph';
 /** How a macro is written: the letters it types, or its steps one by one. */
 export type MacroForm = 'text' | 'steps';

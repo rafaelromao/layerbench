@@ -100,7 +100,7 @@ export function FeaturesPanel({ state, send }: PanelProps) {
 
       <FeatureRow
         title="Sentence case"
-        hint="After . ? or ! and a space, the next letter is a capital."
+        hint="After . ? or ! and a space, the next key, if a letter a–z, is a capital."
         module={featureModule('sentenceCase')}
         on={enabled(f.sentenceCase)}
         onToggle={(on) => set({ ...f, sentenceCase: on ? {} : undefined })}

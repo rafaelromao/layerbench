@@ -360,7 +360,7 @@ export function describe(c: CompiledLayout, b: Binding): string {
     case 'sentence_morph':
       return `${describe(c, b.default)}; while a sentence's capital is pending: ${describe(c, b.pending)}`;
     case 'sentence_space':
-      return 'types a space; after . ? or ! the next letter is a capital (sentence case)';
+      return 'types a space; after . ? or ! it leaves a capital for the next key: a letter a–z comes out one (sentence case)';
     case 'tap_dance':
       return b.bindings.map((t, i) => `${i + 1}× ${describe(c, t)}`).join('; ');
     case 'macro': {
@@ -386,7 +386,7 @@ export function describe(c: CompiledLayout, b: Binding): string {
       return parts.length > 0 ? `${parts.join(', then ')}${then}` : 'an empty macro';
     }
     case 'adaptive': {
-      // An adaptive key can fall back to another, as sentence case over an adaptive key does, and
+      // An adaptive key can fall back to another, as an alt repeat's default can be one, and
       // saying "adaptive" twice explains nothing. The branches are read outermost first, which is
       // the order they are tried in, down to the innermost default.
       const branches: string[] = [];

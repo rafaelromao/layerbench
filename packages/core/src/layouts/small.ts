@@ -861,7 +861,7 @@ export const SMALL_DEFS: ClassicDef[] = [
    * shifted Alpha 2, and a one-shot layer armed by every accent macro so the repeat key can offer
    * follow-ups — and had one for sentence case, before it was the module zmk-sentence-case. None of
    * them is a layer a typist reaches. Sentence case and caps word are declared as features, which
-   * wrap the space and shift keys: sentence case arms a one-shot shift, caps word is the
+   * go on the space and shift keys: sentence case makes the space a sentence space, caps word is the
    * `caps_word` behaviour, and shift is simply shift state. The `h`/`v` keys and the alt repeat are
    * adaptive keys on their own keys, and the alt-repeat follow-ups match on the tag the accent
    * macro leaves behind. What is left is the layers you can see. It brings its keymap's own Numbers
@@ -875,7 +875,7 @@ export const SMALL_DEFS: ClassicDef[] = [
     geometry: '1333+2',
     base: { id: 'alpha1', name: 'Alpha 1' },
     // Holding space reaches the numbers and holding the Alpha 2 key the symbols; the sentence-case
-    // feature wraps the space's tap, so both live on one key.
+    // feature makes the space's tap a sentence space, so both live on one key.
     byKey: {
       ...ALPHA1_24,
       RBI: adaptiveKey('h', 'v'),

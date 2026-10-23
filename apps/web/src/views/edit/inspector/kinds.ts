@@ -36,7 +36,8 @@ export interface KindInfo {
   hint: string;
   /**
    * The ZMK module every key of this kind needs. Absent where stock ZMK has the kind, or has it
-   * but for one way of it: a layer that comes on until the word ends, a morph on a layer.
+   * but for some ways of it: a layer that comes on until the word ends, a morph on a layer or after
+   * a sentence.
    */
   module?: ZmkModuleId;
 }
@@ -70,7 +71,12 @@ export const MORE_KINDS: readonly KindInfo[] = [
     module: bindingModule('adaptive') ?? undefined,
   },
   { kind: 'tapdance', label: 'Tap dance', glyph: 'TD', hint: 'different things on 1, 2, 3 taps' },
-  { kind: 'morph', label: 'Morph', glyph: 'a⇧b', hint: 'changes with a modifier or a layer' },
+  {
+    kind: 'morph',
+    label: 'Morph',
+    glyph: 'a⇧b',
+    hint: 'changes with a modifier, a layer or a sentence end',
+  },
   { kind: 'capsword', label: 'Caps word', glyph: '⇪', hint: 'capitals until the word ends' },
   {
     kind: 'sentencespace',

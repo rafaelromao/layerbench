@@ -201,8 +201,9 @@ export type GeometryRef =
   | { custom: GeometryKey[]; family?: 'columnar' | 'rowstagger'; name?: string };
 
 /**
- * The space key as a `sentence_space`: after `.`, `?` or `!` and a space, the next letter is a
- * capital. Which punctuation ends a sentence, and that a capital is Left Shift, are the module's.
+ * The space key as a `sentence_space`: after `.`, `?` or `!` and a space, the next key, if a letter
+ * a–z, is a capital. Which punctuation ends a sentence, and that a capital is Left Shift, are the
+ * module's.
  */
 export interface SentenceCaseFeature {
   enabled?: boolean;
