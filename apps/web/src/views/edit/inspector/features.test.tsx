@@ -97,11 +97,19 @@ describe('sentence case in ZMK', () => {
     ]);
   });
 
-  it('says so in Features, whether the feature is on or off', async () => {
-    const l = layout();
-    render(<FeaturesPanel state={initialState(l, compileLayout(l))} send={vi.fn()} />);
-    expect(links()).toEqual(['https://github.com/rafaelromao/zmk-sentence-case']);
+  it('says so in Features while it is off, and what the module does not do once it is on', () => {
+    const panel = (l: Layout) => (
+      <FeaturesPanel state={initialState(l, compileLayout(l))} send={vi.fn()} />
+    );
+    const { rerender } = render(panel(layout()));
     expect(screen.getByLabelText('Sentence case')).not.toBeChecked();
+    expect(links()).toEqual(['https://github.com/rafaelromao/zmk-sentence-case']);
+    rerender(panel(layout({ sentenceCase: {} })));
+    expect(screen.getByLabelText('Sentence case')).toBeChecked();
+    expect(links()).toEqual([
+      'https://github.com/rafaelromao/zmk-sentence-case',
+      'https://github.com/urob/zmk-adaptive-key',
+    ]);
   });
 
   it('names no module for caps word, which stock ZMK has', () => {

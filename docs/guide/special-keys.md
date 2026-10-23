@@ -164,12 +164,12 @@ See [Importing and exporting](importing.md).
 ## In ZMK
 
 Each kind of key the editor makes, and each feature, is one ZMK can run, with its own behaviours
-or with a module.
-Each module's page says how to add it to a keymap.
+or with a module. Each module's page says how to add it to a keymap.
 
 | Key or feature | In ZMK |
 |---|---|
 | Symbol, modifier | `&kp` and `&sk`; a shifted symbol the host's Shift does not give is a [mod-morph](https://zmk.dev/docs/keymaps/behaviors/mod-morph) |
+| Transparent, nothing | `&trans`, `&none` |
 | Layer: momentary, one-shot, toggle, to layer | `&mo`, `&sl`, `&tog`, `&to` ([layers](https://zmk.dev/docs/keymaps/behaviors/layers)) |
 | Layer: auto | the module [urob/zmk-auto-layer](https://github.com/urob/zmk-auto-layer) |
 | Tap-hold, home row mods | [hold-tap](https://zmk.dev/docs/keymaps/behaviors/hold-tap) |
@@ -179,7 +179,7 @@ Each module's page says how to add it to a keymap.
 | Tap dance | [tap-dance](https://zmk.dev/docs/keymaps/behaviors/tap-dance) |
 | Morph with a modifier | [mod-morph](https://zmk.dev/docs/keymaps/behaviors/mod-morph) |
 | Morph on a layer | the module [rafaelromao/zmk-layer-morph](https://github.com/rafaelromao/zmk-layer-morph) |
-| Caps word | [`&caps_word`](https://zmk.dev/docs/keymaps/behaviors/caps-word) |
+| Caps word | [`&caps_word`](https://zmk.dev/docs/keymaps/behaviors/caps-word); on the shift key, in a mod-morph |
 | Sentence case | the module [rafaelromao/zmk-sentence-case](https://github.com/rafaelromao/zmk-sentence-case); for other punctuation or another modifier, an adaptive key |
 | Unicode | the module [urob/zmk-unicode](https://github.com/urob/zmk-unicode) |
 | Dead key | the host's dead key, sent with `&kp` |

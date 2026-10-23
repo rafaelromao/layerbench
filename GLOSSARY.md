@@ -187,5 +187,5 @@ _Avoid_: thumb-letter layout
 **ZMK module**:
 Firmware outside stock ZMK that a keymap adds for a behaviour stock ZMK lacks. An adaptive key, an
 alt repeat, an auto layer, a morph on a layer, a Unicode key and sentence case each need one; every
-other kind of key and feature is stock ZMK. The editor and the guide name and link the module.
+other kind the editor makes is stock ZMK. The editor and the guide name and link the module.
 _Avoid_: plugin, extension, add-on

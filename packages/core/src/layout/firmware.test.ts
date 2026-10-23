@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bindingModule, featureModule, ZMK_MODULES } from './firmware.js';
+import { bindingModule, featureModule, moduleUrl, ZMK_MODULES } from './firmware.js';
 import type { BindingKind } from './types.js';
 
 /** The kinds stock ZMK has a behaviour for. */
@@ -46,11 +46,11 @@ describe('the ZMK module a feature needs', () => {
 
 describe('the ZMK modules', () => {
   it('link each to its repository on GitHub', () => {
-    for (const m of Object.values(ZMK_MODULES)) expect(m.url).toBe(`https://github.com/${m.repo}`);
+    expect(moduleUrl('sentenceCase')).toBe('https://github.com/rafaelromao/zmk-sentence-case');
   });
 
-  it('are the ones a keymap builds with today', () => {
-    expect(Object.values(ZMK_MODULES).map((m) => m.repo)).toEqual([
+  it('are the five the kinds of key and the features need', () => {
+    expect(Object.values(ZMK_MODULES)).toEqual([
       'urob/zmk-adaptive-key',
       'urob/zmk-auto-layer',
       'rafaelromao/zmk-layer-morph',

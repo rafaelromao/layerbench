@@ -17,14 +17,15 @@ export function featureTitle(feature: WrappingFeature): string {
 }
 
 /**
- * What sentence case's module does not do, and what does it instead: an adaptive key on the space
- * key, which is what the feature compiles to.
+ * What sentence case's module does not do, and what does instead: an adaptive key on the space key,
+ * which is what the feature compiles to.
  */
 export function SentenceCaseLimits() {
   return (
     <Note>
-      That module ends a sentence at . ? ! only, with Left Shift. Other punctuation or another
-      modifier needs an adaptive key, from <ModuleLink module="adaptiveKey" />.
+      That module ends a sentence at <span className="font-mono">. ? !</span> only, with Left Shift.
+      Other punctuation or another modifier needs an adaptive key, from{' '}
+      <ModuleLink module="adaptiveKey" />.
     </Note>
   );
 }

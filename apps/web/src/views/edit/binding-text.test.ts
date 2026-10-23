@@ -200,8 +200,8 @@ describe('binding text', () => {
 
   it('names the ZMK module a behaviour comes from', () => {
     const hint = (insert: string) => suggest('&', ctx).find((s) => s.insert === insert)?.hint;
-    expect(hint('&auto_layer')).toBe('urob/zmk-auto-layer');
-    expect(hint('&unicode')).toBe('urob/zmk-unicode');
+    expect(hint('&auto_layer')).toBe('behaviour of urob/zmk-auto-layer');
+    expect(hint('&unicode')).toBe('behaviour of urob/zmk-unicode');
     expect(hint('&mo')).toBe('behaviour');
     expect(hint('&dead_key')).toBe('behaviour');
   });

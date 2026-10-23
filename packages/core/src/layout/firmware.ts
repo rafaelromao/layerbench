@@ -2,40 +2,25 @@ import type { WrappingFeature } from './features.js';
 import type { BindingKind } from './types.js';
 
 /**
- * A ZMK module: firmware outside stock ZMK, which a keymap adds to its `west.yml` for a behaviour
- * stock ZMK lacks. Magic Romak's author's keymap (github.com/rafaelromao/keyboards) builds with each
- * of these but zmk-unicode.
+ * ZMK modules: firmware outside stock ZMK, which a keymap adds to its build (its `west.yml`, or
+ * `ZMK_EXTRA_MODULES`) for a behaviour stock ZMK lacks. Each by its repository on GitHub. Magic
+ * Romak's author's keymap (github.com/rafaelromao/keyboards) builds with each of these but
+ * zmk-unicode.
  */
-export interface ZmkModule {
-  /** The module's repository, as GitHub names it. */
-  repo: string;
-  url: string;
-}
-
 export const ZMK_MODULES = {
-  adaptiveKey: {
-    repo: 'urob/zmk-adaptive-key',
-    url: 'https://github.com/urob/zmk-adaptive-key',
-  },
-  autoLayer: {
-    repo: 'urob/zmk-auto-layer',
-    url: 'https://github.com/urob/zmk-auto-layer',
-  },
-  layerMorph: {
-    repo: 'rafaelromao/zmk-layer-morph',
-    url: 'https://github.com/rafaelromao/zmk-layer-morph',
-  },
-  sentenceCase: {
-    repo: 'rafaelromao/zmk-sentence-case',
-    url: 'https://github.com/rafaelromao/zmk-sentence-case',
-  },
-  unicode: {
-    repo: 'urob/zmk-unicode',
-    url: 'https://github.com/urob/zmk-unicode',
-  },
-} as const satisfies Record<string, ZmkModule>;
+  adaptiveKey: 'urob/zmk-adaptive-key',
+  autoLayer: 'urob/zmk-auto-layer',
+  layerMorph: 'rafaelromao/zmk-layer-morph',
+  sentenceCase: 'rafaelromao/zmk-sentence-case',
+  unicode: 'urob/zmk-unicode',
+} as const;
 
 export type ZmkModuleId = keyof typeof ZMK_MODULES;
+
+/** Where a module's code and its instructions are. */
+export function moduleUrl(module: ZmkModuleId): string {
+  return `https://github.com/${ZMK_MODULES[module]}`;
+}
 
 /**
  * The module each kind of binding needs, or null where stock ZMK has it. Every kind is listed, so

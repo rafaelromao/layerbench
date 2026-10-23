@@ -844,9 +844,10 @@ export const SMALL_DEFS: ClassicDef[] = [
   /**
    * Magic Romak: Romak on 24 keys, two alpha layers and the adaptive behaviours.
    *
-   * The firmware needs four extra layers for these — pre-shifted copies of the alphas for sentence
-   * case, caps word and shifted Alpha 2, and a one-shot layer armed by every accent macro so the
-   * repeat key can offer follow-ups. None of them is a layer a typist reaches. Sentence case and
+   * The firmware needs extra layers for these — pre-shifted copies of the alphas for caps word and
+   * shifted Alpha 2, and a one-shot layer armed by every accent macro so the repeat key can offer
+   * follow-ups — and had one for sentence case, before it was the module zmk-sentence-case. None of
+   * them is a layer a typist reaches. Sentence case and
    * caps word are declared as features, which wrap the space and shift keys: sentence case arms a
    * one-shot shift, caps word is the `caps_word` behaviour, and shift is simply shift state. The
    * `h`/`v` keys and the alt repeat are adaptive keys on their own keys, and the alt-repeat

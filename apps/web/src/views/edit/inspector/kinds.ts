@@ -1,4 +1,4 @@
-import { type Binding, ZMK_MODULES, type ZmkModuleId } from '@layerbench/core';
+import { type Binding, bindingModule, ZMK_MODULES, type ZmkModuleId } from '@layerbench/core';
 
 /**
  * The kinds of key the inspector offers, as a reader thinks of keys rather than as the model stores
@@ -52,7 +52,7 @@ export const PRIMARY_KINDS: readonly KindInfo[] = [
     label: 'Adaptive',
     glyph: '✦',
     hint: 'adapts to the key before it',
-    module: 'adaptiveKey',
+    module: bindingModule('adaptive') ?? undefined,
   },
   { kind: 'macro', label: 'Macro', glyph: '⋯', hint: 'types several things in one press' },
   { kind: 'transparent', label: 'Transparent', glyph: '▽', hint: 'the layer below shows through' },
@@ -66,7 +66,7 @@ export const MORE_KINDS: readonly KindInfo[] = [
     label: 'Alt repeat',
     glyph: '⟳✦',
     hint: 'repeats, or types something else after chosen keys',
-    module: 'adaptiveKey',
+    module: bindingModule('adaptive') ?? undefined,
   },
   { kind: 'tapdance', label: 'Tap dance', glyph: 'TD', hint: 'different things on 1, 2, 3 taps' },
   { kind: 'morph', label: 'Morph', glyph: 'a⇧b', hint: 'changes with a modifier or a layer' },
@@ -76,7 +76,7 @@ export const MORE_KINDS: readonly KindInfo[] = [
     label: 'Unicode',
     glyph: 'U+',
     hint: 'a character the host has no key for',
-    module: 'unicode',
+    module: bindingModule('unicode') ?? undefined,
   },
   { kind: 'deadkey', label: 'Dead key', glyph: '´', hint: 'accents the next letter' },
 ];
@@ -117,7 +117,7 @@ export function kindInfo(kind: KindOfKey): KindInfo {
 
 /** What a tile says when pointed at: its hint, and the module the kind needs. */
 export function tileHint(k: KindInfo): string {
-  return k.module ? `${k.hint}, with the ZMK module ${ZMK_MODULES[k.module].repo}` : k.hint;
+  return k.module ? `${k.hint}, with the ZMK module ${ZMK_MODULES[k.module]}` : k.hint;
 }
 
 /** The kind of key a binding is. */

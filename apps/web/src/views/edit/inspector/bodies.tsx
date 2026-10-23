@@ -599,6 +599,7 @@ function AdaptiveBody({
           <Note>What it types when no branch matches the key before it.</Note>
         </>
       )}
+      <ModuleNote module={bindingModule('adaptive')} />
       <TriggersEditor
         scope={scope}
         name={name}
@@ -616,7 +617,6 @@ function AdaptiveBody({
         />
         Only when the key before had no modifier held
       </label>
-      <ModuleNote module={bindingModule('adaptive')} />
     </div>
   );
 }

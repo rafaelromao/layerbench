@@ -1,4 +1,10 @@
-import { type CompiledLayout, type Mod, ZMK_MODULES, type ZmkModuleId } from '@layerbench/core';
+import {
+  type CompiledLayout,
+  type Mod,
+  moduleUrl,
+  ZMK_MODULES,
+  type ZmkModuleId,
+} from '@layerbench/core';
 import { type KeyboardEvent, type ReactNode, type Ref, useEffect, useId, useState } from 'react';
 import { LayerDot } from '../../../components/LayerDot.js';
 
@@ -255,10 +261,9 @@ export function Note({ children }: { children: ReactNode }) {
 
 /** A ZMK module, by its repository, linked. */
 export function ModuleLink({ module }: { module: ZmkModuleId }) {
-  const { repo, url } = ZMK_MODULES[module];
   return (
-    <a className="link" href={url} target="_blank" rel="noopener noreferrer">
-      {repo}
+    <a className="link" href={moduleUrl(module)} target="_blank" rel="noopener noreferrer">
+      {ZMK_MODULES[module]}
     </a>
   );
 }

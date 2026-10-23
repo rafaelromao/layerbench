@@ -1031,7 +1031,7 @@ describe('Edit', () => {
     });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
 
-    // The four behaviours firmware needs extra layers for are no longer layers.
+    // The behaviours the keymap builds with extra layers, as sentence case once was, are not layers.
     await user.click(screen.getByRole('tab', { name: 'Layers' }));
     expect(screen.getByLabelText('Name of layer alpha1')).toBeInTheDocument();
     expect(screen.queryByLabelText('Name of layer sen_case')).toBeNull();

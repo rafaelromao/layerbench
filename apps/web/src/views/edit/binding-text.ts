@@ -426,7 +426,7 @@ export function suggest(text: string, ctx: BindingTextContext): Suggestion[] {
         return {
           insert: `&${name}`,
           label: `&${name}`,
-          hint: module ? ZMK_MODULES[module].repo : 'behaviour',
+          hint: module ? `behaviour of ${ZMK_MODULES[module]}` : 'behaviour',
         };
       });
   }

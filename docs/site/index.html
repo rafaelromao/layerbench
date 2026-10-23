@@ -284,13 +284,15 @@
             </li>
             <li>
               <p class="keys"><span class="key">&amp;key_repeat</span></p>
-              <p>The repeat key, and alternate repeat, which types something else after some keys.</p>
+              <p>The repeat key.</p>
             </li>
             <li>
               <p class="keys"><span class="key">adaptive keys</span></p>
               <p>
                 Adaptive keys, whose output depends on the key before: as many as the keymap has,
-                chained if it chains them.
+                chained if it chains them. Alternate repeat, which types something else after some
+                keys, is one. Both need urob's
+                <a href="https://github.com/urob/zmk-adaptive-key">zmk-adaptive-key</a> module.
               </p>
             </li>
             <li>
@@ -309,7 +311,10 @@
                 <span class="key">mod-morph</span> <span class="key">tap-dance</span>
                 <span class="key">dead keys</span> <span class="key">Unicode</span>
               </p>
-              <p>Modeled too.</p>
+              <p>
+                Modeled too. Unicode needs urob's
+                <a href="https://github.com/urob/zmk-unicode">zmk-unicode</a> module.
+              </p>
             </li>
           </ul>
           <p class="note">
@@ -1040,9 +1045,13 @@
           charged; the Keysolve preset
           follows <a href="https://galileoblues.github.io/keysolve-web/">Keysolve</a>. Keymaps come and go as
           <a href="https://github.com/caksoylar/keymap-drawer">keymap-drawer</a> YAML, and the
-          simulator follows <a href="https://zmk.dev/">ZMK</a> and urob's
-          <a href="https://github.com/urob/zmk-adaptive-key">adaptive key</a> and
-          <a href="https://github.com/urob/zmk-auto-layer">auto layer</a>. The news texts come from the
+          simulator follows <a href="https://zmk.dev/">ZMK</a> and the ZMK modules it models: urob's
+          <a href="https://github.com/urob/zmk-adaptive-key">adaptive key</a>,
+          <a href="https://github.com/urob/zmk-auto-layer">auto layer</a> and
+          <a href="https://github.com/urob/zmk-unicode">Unicode</a>, and the author's
+          <a href="https://github.com/rafaelromao/zmk-layer-morph">layer morph</a> and
+          <a href="https://github.com/rafaelromao/zmk-sentence-case">sentence case</a>. The news
+          texts come from the
           <a href="https://wortschatz.uni-leipzig.de/en/download">Leipzig Corpora Collection</a> (CC
           BY 4.0).
         </p>
