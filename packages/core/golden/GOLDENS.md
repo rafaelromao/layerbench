@@ -696,7 +696,7 @@ the module's now.
 Magic Romak's Alpha 2 key is the keymap's `sentence_alpha2`, a sentence morph: while a capital is
 pending, it arms Shift with Alpha 2, as the keymap arms its shifted Alpha 2, so an accent that
 starts a sentence is a capital too. A macro that types nothing and turns a layer on is pressed as
-the layer key it ends with.
+the layer key it turns it on with.
 
 What moved, checked across the 38 reports; nothing else moved:
 

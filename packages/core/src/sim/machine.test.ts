@@ -221,11 +221,10 @@ describe('Machine — a macro that types nothing', () => {
       },
       { id: 'other', bindings: {} },
     ]);
-    const { tap } = machineFor(layout);
-    const armed = tap('LHP');
+    const armed = machineFor(layout).tap('LHP');
     expect([armed.leafKind, armed.keyKind]).toEqual(['sl', 'layer_tap']);
     // One that types is a macro, whatever it turns on after.
-    expect(tap('LHR').leafKind).toBe('macro');
+    expect(machineFor(layout).tap('LHR').leafKind).toBe('macro');
   });
 });
 

@@ -355,8 +355,9 @@ interface Extra {
 
 /**
  * The routes the machine runs but the planner has no need to press for: a macro that arms the
- * layer, an adaptive key's branch, a later tap of a tap dance, an auto layer. Only those are
- * emitted, so together with the planner's own activators nothing is counted twice.
+ * layer, an adaptive key's branch, a later tap of a tap dance, an auto layer, a sentence morph's
+ * part for after a sentence's end. Only those are emitted, so together with the planner's own
+ * activators nothing is counted twice.
  */
 function extraRoutes(
   c: CompiledLayout,
