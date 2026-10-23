@@ -261,7 +261,7 @@ describe('a document with bindings that are wrong', () => {
 });
 
 describe('a document that holds very many values', () => {
-  /** How many values `v` holds, itself included, as the reader counts them. */
+  /** How many values `v` holds, itself included, as the reader counts a document from JSON. */
   const values = (v: unknown): number =>
     typeof v === 'object' && v !== null
       ? Object.values(v).reduce((n: number, x) => n + values(x), 1)
@@ -284,7 +284,7 @@ describe('a document that holds very many values', () => {
   });
 
   it('counts no field that holds nothing, as JSON writes none', () => {
-    // Each combo gets a binding of nothing as its names are written out: 30,000 values, not 60,000.
+    // Writing names out gives each combo a `binding` that holds nothing: 30,000 values, not 60,000.
     const parsed = safeParseLayout({ ...base, combos: Array(30_000).fill({}) });
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;

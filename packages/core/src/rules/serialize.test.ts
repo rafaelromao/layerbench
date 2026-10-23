@@ -17,12 +17,15 @@ describe('rule-set serialization', () => {
   });
 
   it('tells the 20 shallowest faults of a set wrong in many places, and how many more there are', () => {
-    const parsed = safeParseRuleSet({ rules: Array.from({ length: 30 }, () => ({})) });
+    // A flag, wrong nearer the top than any rule, and read after them all.
+    const rules = Array.from({ length: 30 }, () => ({}));
+    const parsed = safeParseRuleSet({ rules, score_enabled: 'yes' });
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
+    expect(parsed.error).toContain('→ at score_enabled');
     expect(parsed.error).toContain('→ at rules[0].id');
     expect(parsed.error.match(/✖/g)).toHaveLength(20);
-    expect(parsed.error).toMatch(/\n… and 10 more$/);
+    expect(parsed.error).toMatch(/\n… and 11 more$/);
   });
 
   it('rejects a predicate outside the vocabulary rather than matching everything', () => {
