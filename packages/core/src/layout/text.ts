@@ -64,7 +64,7 @@ export function parseTextLayout(text: string): {
 export function importTextLayout(
   text: string,
   presetId = '3x5+2',
-  name = 'Imported layout',
+  name = 'My layout',
 ): TextImportResult {
   const geometry = getGeometryPreset(presetId);
   const { rows, thumbs, extras } = parseTextLayout(text);

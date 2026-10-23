@@ -226,7 +226,6 @@ function needsDetail(b: Binding | undefined): boolean {
     case 'tap_dance':
     case 'mod_morph':
     case 'layer_morph':
-    case 'raw':
       return true;
     case 'hold_tap':
     case 'lt':
@@ -372,7 +371,7 @@ export interface KeyboardProps {
   onKeyShortcut?: (e: ReactKeyboardEvent<SVGGElement>, keyId: string) => void;
   /**
    * Number the keys whose legend is cut short or cannot say everything, and list what each does
-   * under the board. For the views where a reader works with the keys, not for previews.
+   * under the board, as every board a reader looks at a layout on does.
    * `'separate'` numbers the keys but leaves the list to a `KeyLegend` the view places itself.
    */
   legendList?: boolean | 'separate';

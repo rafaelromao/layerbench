@@ -72,7 +72,7 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
   const [doc, setDoc] = useState<KdDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [choices, setChoices] = useState<LayerChoice[]>([]);
-  const [name, setName] = useState('Imported keymap');
+  const [name, setName] = useState('My layout');
   const [preset, setPreset] = useState('');
   const [info, setInfo] = useState<{ keys: PhysicalKey[]; name: string } | null>(null);
   const [infoError, setInfoError] = useState<string | null>(null);
@@ -264,7 +264,8 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
             <h3 className="text-xs font-semibold">Layers</h3>
             <p className="text-[11px] opacity-60">
               Untick a layer to leave it out; the first one ticked becomes the base layer. A key
-              that reaches a layer left out is kept as an imported key.
+              that reaches a layer left out becomes transparent, unless it keeps a tap or hold the
+              analysis simulates.
             </p>
             <ol className="space-y-1 list-none p-0 m-0" aria-label="Layers to import">
               {choices.map((c, i) => {
@@ -325,8 +326,8 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
                         {r && (
                           <>
                             {r.read} of {r.keys} keys read
-                            {r.kept.length > 0 &&
-                              ` · kept as imported: ${r.kept.slice(0, 8).join(', ')}${r.kept.length > 8 ? ` and ${r.kept.length - 8} more` : ''}`}
+                            {r.unread.length > 0 &&
+                              ` · not read: ${r.unread.slice(0, 8).join(', ')}${r.unread.length > 8 ? ` and ${r.unread.length - 8} more` : ''}`}
                           </>
                         )}
                       </p>
@@ -344,8 +345,6 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
                 compiled={result.compiled}
                 layer={Math.min(shown, result.compiled.layers.length - 1)}
                 onLayer={setShown}
-                // What a hold does is half of a binding, and the import is where to check it.
-                showHold
               />
               <LayerNav
                 layers={result.compiled.layers}
@@ -354,8 +353,8 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
                 className="justify-center"
               />
               <p className="text-xs opacity-70">
-                {result.report.combos.imported} combo
-                {result.report.combos.imported === 1 ? '' : 's'} imported
+                {result.report.combos.taken} combo
+                {result.report.combos.taken === 1 ? '' : 's'} read
                 {result.report.combos.skipped.length > 0 &&
                   `; left out: ${result.report.combos.skipped.join('; ')}`}
                 .
@@ -373,7 +372,7 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
 
           <div className="flex flex-wrap items-center gap-2">
             <TextField
-              label="Name of the imported layout"
+              label="Name of the new layout"
               value={name}
               mono={false}
               className="w-56 max-sm:w-full"

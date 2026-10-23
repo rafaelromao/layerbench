@@ -1106,6 +1106,34 @@ describe('Layers on a card', () => {
     expect(card.querySelectorAll('svg.lb-keyboard')).toHaveLength(1);
   });
 
+  it('draws each key of a card as Analyze does, what a hold does along its bottom, numbered and listed', async () => {
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    const card = async (name: string) =>
+      (await screen.findByRole('heading', { name, level: 3 })).closest('article') as HTMLElement;
+    const qwerty = (await card('Qwerty')).querySelector('svg.lb-keyboard') as SVGElement;
+    // L0 types space and holds Numbers; R0 holds Symbols and taps nothing.
+    const holds = [...qwerty.querySelectorAll('.lb-key-hold')].map((t) => t.textContent);
+    expect(holds).toEqual(expect.arrayContaining(['Numb', 'Symb']));
+    // An adaptive key's branches do not fit it: it is numbered, and listed under the board.
+    const magic = await card('Magic Romak');
+    expect(magic.querySelectorAll('svg.lb-keyboard .lb-key-number').length).toBeGreaterThan(0);
+    const list = within(magic).getByRole('list', { name: 'Key legend' });
+    expect(within(list).getAllByRole('listitem').length).toBeGreaterThan(0);
+  });
+
+  it("draws a card's combos as the layout is ranked, as Analyze draws them", async () => {
+    const combos = async (route: string) => {
+      const view = renderRoute(route, { storage: freshStorage() });
+      const heading = await screen.findByRole('heading', { name: 'Magic Romak', level: 3 });
+      const n = heading.closest('article')?.querySelectorAll('.lb-combo').length ?? 0;
+      view.unmount();
+      return n;
+    };
+    expect(await combos(LIBRARY)).toBeGreaterThan(0);
+    // Ranked without typing combos, the card draws none, as Analyze does.
+    expect(await combos(`${LIBRARY}&off=combos`)).toBe(0);
+  });
+
   it('draws the layers of a custom layout too, once it is read', async () => {
     const storage = freshStorage();
     const copy = { ...layered, id: 'layered-copy', name: `${layered.name} copy` };
@@ -1168,10 +1196,10 @@ describe('Importing from keymap-drawer', () => {
     const name = layers.getByLabelText('Name for Def');
     await user.clear(name);
     await user.type(name, 'Base{Enter}');
-    // A key that reaches a layer left out is kept as it was drawn, not dropped.
-    expect(await layers.findByText(/kept as imported: .*Num/)).toBeInTheDocument();
+    // A key that reaches a layer left out is transparent, the layer named nowhere.
+    expect(await screen.findByText(/^One key reached a layer left out/)).toBeInTheDocument();
 
-    const layoutName = screen.getByLabelText('Name of the imported layout');
+    const layoutName = screen.getByLabelText('Name of the new layout');
     await user.clear(layoutName);
     await user.type(layoutName, 'Humming{Enter}');
     await user.click(screen.getByRole('button', { name: 'Import and edit' }));
@@ -1186,8 +1214,9 @@ describe('Importing from keymap-drawer', () => {
     expect(stored.layers.map((l) => l.name)).toEqual(['Base', 'Nav']);
     expect(stored.layers[0].bindings.LTP).toEqual({ kind: 'kp', symbol: 'w' });
     expect(stored.layers[0].bindings.L1).toEqual({ kind: 'sl', layer: 'nav' });
+    expect(stored.layers[0].bindings.R1).toEqual({ kind: 'trans' });
     expect(stored.combos[0].keys).toEqual(['LTR', 'LTM']);
-    // And every imported key can be selected in the editor like any other.
+    // And every key can be selected in the editor like any other.
     expect(await screen.findByRole('button', { name: 'Key LTP: w' })).toBeInTheDocument();
   }, 60_000);
 

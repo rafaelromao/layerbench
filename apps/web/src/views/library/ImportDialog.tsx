@@ -61,7 +61,7 @@ function TextImport({
 }) {
   const [text, setText] = useState('');
   const [preset, setPreset] = useState('3x5+2');
-  const [name, setName] = useState('Imported layout');
+  const [name, setName] = useState('My layout');
   const [preview, setPreview] = useState<Preview | null>(null);
   const [error, setError] = useState<string | null>(null);
 

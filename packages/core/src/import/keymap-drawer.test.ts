@@ -211,11 +211,11 @@ describe('legends', () => {
     expect(read({ tap: 'REPEAT' })).toEqual({ kind: 'key_repeat' });
   });
 
-  it('reads keys that type no text as imported keys, and keeps the hold on one', () => {
+  it('reads keys that type no text as transparent, and keeps the hold on one, tapping nothing', () => {
     for (const tap of ['LC(Z)', 'PG UP', 'F1', 'ESC', 'KC_BSPC', '⌫']) {
       expect(readLegend(key({ tap }), ctx)).toEqual({
         kind: 'binding',
-        binding: { kind: 'raw', label: tap, source: `t: ${tap}` },
+        binding: { kind: 'trans' },
         exact: true,
       });
     }
@@ -223,29 +223,77 @@ describe('legends', () => {
     expect(read({ tap: 'BSPC', hold: 'Nav' })).toEqual({
       kind: 'lt',
       layer: 'nav',
-      tap: { kind: 'raw', label: 'BSPC', source: 't: BSPC' },
+      tap: { kind: 'none' },
     });
-    expect(read({ tap: 'ESC', hold: 'LCTRL' })).toMatchObject({
+    expect(read({ tap: 'ESC', hold: 'LCTRL' })).toEqual({
       kind: 'hold_tap',
-      tap: { kind: 'raw', label: 'ESC' },
+      tap: { kind: 'none' },
       hold: { kind: 'mod', mod: 'LCTRL' },
     });
   });
 
-  it('keeps what it cannot read, and a key reaching a layer not imported, as imported keys', () => {
+  it('makes what it cannot read transparent, and reports it', () => {
     const unread = (spec: Partial<KdKey>) => readLegend(key(spec), ctx);
-    expect(unread({ tap: 'BT_CLR' })).toMatchObject({
-      binding: { kind: 'raw', label: 'BT_CLR' },
+    expect(unread({ tap: 'BT_CLR' })).toEqual({
+      kind: 'binding',
+      binding: { kind: 'trans' },
       exact: false,
     });
-    expect(unread({ tap: 'Num', hold: 'sticky' })).toMatchObject({
-      binding: { kind: 'raw', label: 'Num' },
+    // A hold it cannot read under a layer left out is reported too, the key transparent.
+    expect(unread({ tap: 'Num', hold: 'BT_CLR' })).toEqual({
+      kind: 'binding',
+      binding: { kind: 'trans' },
       exact: false,
     });
     // A hold it knows over a tap it does not: the hold is kept, and the key is still reported.
-    expect(unread({ tap: 'BT 0', hold: 'Nav' })).toMatchObject({
-      binding: { kind: 'lt', layer: 'nav', tap: { kind: 'raw', label: 'BT 0' } },
+    expect(unread({ tap: 'BT 0', hold: 'Nav' })).toEqual({
+      kind: 'binding',
+      binding: { kind: 'lt', layer: 'nav', tap: { kind: 'none' } },
       exact: false,
+    });
+    // A hold it does not know goes, a tap it reads staying.
+    expect(unread({ tap: 'A', hold: 'BT_CLR' })).toEqual({
+      kind: 'binding',
+      binding: { kind: 'kp', symbol: 'a' },
+      exact: false,
+    });
+  });
+
+  it('names a layer left out nowhere, keeping what else the key does', () => {
+    const trans = { kind: 'binding', binding: { kind: 'trans' }, exact: true };
+    const reading = (spec: Partial<KdKey>) => readLegend(key(spec), ctx);
+    expect(reading({ tap: 'Num' })).toEqual(trans);
+    expect(reading({ tap: 'Num', hold: 'sticky' })).toEqual(trans);
+    expect(reading({ tap: 'Num', hold: 'toggle' })).toEqual(trans);
+    expect(reading({ tap: 'ESC', hold: 'Num' })).toEqual(trans);
+    expect(reading({ tap: '', hold: 'Num' })).toEqual(trans);
+    expect(read({ tap: 'SPACE', hold: 'Num' })).toEqual({ kind: 'kp', symbol: ' ' });
+    expect(read({ tap: 'A', hold: 'Num' })).toEqual({ kind: 'kp', symbol: 'a' });
+    expect(read({ tap: 'LSHFT', hold: 'Num' })).toEqual({ kind: 'mod', mod: 'LSHIFT' });
+    expect(read({ tap: 'ão', hold: 'Num' })).toEqual({ kind: 'macro', symbols: 'ão' });
+    expect(read({ tap: 'Nav', hold: 'Num' })).toEqual({ kind: 'mo', layer: 'nav' });
+    // A hold of its own over a tap reaching a layer left out stays, tapping nothing.
+    expect(read({ tap: 'Num', hold: 'Nav' })).toEqual({
+      kind: 'lt',
+      layer: 'nav',
+      tap: { kind: 'none' },
+    });
+    expect(read({ tap: 'Num', hold: 'LCTRL' })).toEqual({
+      kind: 'hold_tap',
+      tap: { kind: 'none' },
+      hold: { kind: 'mod', mod: 'LCTRL' },
+    });
+    // A layer with no name, left out, is not what an empty legend names.
+    const unnamed = {
+      layers: new Map<string, string | null>([
+        ['', null],
+        ['num', null],
+      ]),
+    };
+    expect(readLegend(key({ tap: 'A', hold: 'Num' }), unnamed)).toEqual({
+      kind: 'binding',
+      binding: { kind: 'kp', symbol: 'a' },
+      exact: true,
     });
   });
 });
@@ -282,14 +330,16 @@ describe('importing', () => {
     expect(layout.keys).toEqual({ space: 'L0', shift: { key: 'R0', kind: 'sk' } });
 
     expect(nav.LHP).toEqual({ kind: 'sk', mod: 'LGUI' });
-    expect(nav.LTP).toMatchObject({ kind: 'raw', label: 'F1' });
-    // The key held to reach a layer falls through on it.
+    // A key the analysis does not simulate (F1) is left unset, as on a layer added in the
+    // editor: it falls through. So does the key held to reach the layer.
+    expect(nav.LTP).toBeUndefined();
     expect(nav.L1).toBeUndefined();
+    expect(nav['*']).toEqual({ kind: 'trans' });
     expect(sym.LTP).toEqual({ kind: 'kp', symbol: '!' });
 
-    expect(report.layers[0]).toEqual({ name: 'Base', keys: 30, read: 30, kept: [] });
+    expect(report.layers[0]).toEqual({ name: 'Base', keys: 30, read: 30, unread: [] });
     // Function keys, arrows and shortcuts type no text, but they are read, not left unread.
-    expect(report.layers[1]).toEqual({ name: 'Nav', keys: 30, read: 30, kept: [] });
+    expect(report.layers[1]).toEqual({ name: 'Nav', keys: 30, read: 30, unread: [] });
   });
 
   // An id is never made up at random, so importing the same file twice gives the same layout.
@@ -307,18 +357,83 @@ describe('importing', () => {
     expect(() => compileLayout(layout)).not.toThrow();
   });
 
-  it('takes the combos on the layers imported, and says which it left', () => {
+  it('takes the combos on the layers chosen, as the editor adds one, and says which it left', () => {
     const { layout, report } = importKeymapDrawer(doc, {
       name: 'Hummingbird',
       layers: [{ source: 'Def', name: 'Def' }],
       board,
     });
     const v = layout.combos?.find((c) => c.binding.kind === 'kp' && c.binding.symbol === 'v');
-    expect(v).toMatchObject({ keys: ['LTR', 'LTM'], layers: ['def'], role: 'typing' });
-    const esc = layout.combos?.find((c) => c.binding.kind === 'raw');
-    expect(esc).toMatchObject({ role: 'command' });
-    expect(esc?.layers).toBeUndefined();
-    expect(report.combos.imported).toBe(layout.combos?.length);
+    expect(v).toEqual({
+      id: 'ltr-ltm',
+      keys: ['LTR', 'LTM'],
+      binding: { kind: 'kp', symbol: 'v' },
+      layers: ['def'],
+      role: 'typing',
+      timeoutMs: 50,
+      slowRelease: false,
+    });
+    // Escape is not simulated, and a combo cannot be transparent.
+    expect(layout.combos?.some((c) => c.binding.kind === 'trans')).toBe(false);
+    expect(report.combos.skipped).toContain('ESC: does nothing the analysis simulates');
+    expect(report.combos.taken).toBe(layout.combos?.length);
+  });
+
+  it('makes the keys reaching a layer left out transparent, skips such combos, and says so', () => {
+    const toNav = { positions: [0, 1], triggers: null, key: key({ tap: 'Nav' }), layers: [] };
+    const onNav = { positions: [0, 1], triggers: null, key: key({ tap: 'Sym' }), layers: ['Nav'] };
+    const { layout, report } = importKeymapDrawer(
+      { ...doc, combos: [...doc.combos, toNav, onNav] },
+      { name: 'Hummingbird', layers: [{ source: 'Def', name: 'Def' }], board },
+    );
+    const base = layout.layers[0].bindings;
+    // The one-shot Nav and Symbols thumbs, their layers left out.
+    expect([base.L1, base.R1]).toEqual([{ kind: 'trans' }, { kind: 'trans' }]);
+    expect(report.combos.skipped).toContain(
+      'A combo reaching a layer left out: does nothing the analysis simulates',
+    );
+    expect(report.combos.skipped).toContain(
+      'A combo reaching a layer left out: only on layers left out',
+    );
+    expect(report.notes).toContain(
+      '2 keys reached a layer left out: the reach is dropped, and a key left with nothing to do is transparent.',
+    );
+    // Nor is the name of a layer left out kept anywhere in the layout or the report.
+    expect(JSON.stringify(layout)).not.toMatch(/"(Nav|Sym)"/);
+    expect(report.combos.skipped.join()).not.toMatch(/Nav|Sym/);
+  });
+
+  it('lists the part of a key it could not read, never a layer left out', () => {
+    const [def, ...others] = doc.layers;
+    const keys = [
+      key({ tap: 'Nav', hold: 'tri' }),
+      key({ tap: 'A', hold: 'BT_CLR' }),
+      key({ tap: 'BT 0' }),
+      ...def.keys.slice(3),
+    ];
+    const { report } = importKeymapDrawer(
+      { ...doc, layers: [{ ...def, keys }, ...others] },
+      { name: 'Hummingbird', layers: [{ source: 'Def', name: 'Def' }], board },
+    );
+    expect(report.layers[0].unread).toEqual(['tri', 'BT_CLR', 'BT 0']);
+  });
+
+  it('leaves unset what a key made in the editor would leave unset, and describes nothing', () => {
+    const { layout } = importKeymapDrawer(doc, {
+      name: 'Hummingbird',
+      layers: [
+        { source: 'Def', name: 'Base' },
+        { source: 'Nav', name: 'Nav' },
+      ],
+      board,
+    });
+    // A base layer made in the editor lists no key that does nothing; an upper one no key that
+    // falls through.
+    expect(Object.values(layout.layers[0].bindings).some((b) => b.kind === 'none')).toBe(false);
+    expect(
+      Object.entries(layout.layers[1].bindings).some(([id, b]) => id !== '*' && b.kind === 'trans'),
+    ).toBe(false);
+    expect(layout.description).toBeUndefined();
   });
 });
 
@@ -389,7 +504,7 @@ describe('writing a file', () => {
         {
           id: 'nav',
           name: 'Nav',
-          bindings: { '*': { kind: 'trans' }, LHR: { kind: 'raw', label: 'PG UP' } },
+          bindings: { '*': { kind: 'trans' }, LHR: { kind: 'kp', symbol: '-' } },
         },
       ],
     };
@@ -398,7 +513,7 @@ describe('writing a file', () => {
     const back = roundTrip(nav);
     expect(back.layers[1].bindings.L1).toBeUndefined();
     expect(back.layers[1].bindings.R0).toBeUndefined();
-    expect(back.layers[1].bindings.LHR).toMatchObject({ kind: 'raw', label: 'PG UP' });
+    expect(back.layers[1].bindings.LHR).toEqual({ kind: 'kp', symbol: '-' });
   });
 
   function roundTrip(layout: Layout): Layout {
@@ -483,7 +598,6 @@ describe('writing a file', () => {
           bindings: {
             '*': { kind: 'trans' },
             LHM: { kind: 'kp', symbol: '€' },
-            LHR: { kind: 'raw', label: 'PG UP' },
           },
         },
       ],
@@ -493,7 +607,6 @@ describe('writing a file', () => {
       expect(back.layers[0].bindings[id], id).toEqual(b);
     }
     expect(back.layers[1].bindings.LHM).toEqual({ kind: 'kp', symbol: '€' });
-    expect(back.layers[1].bindings.LHR).toMatchObject({ kind: 'raw', label: 'PG UP' });
     // Transparent keys stay transparent rather than becoming keys that do nothing.
     expect(back.layers[1].bindings.LHI).toBeUndefined();
   });
@@ -554,9 +667,9 @@ describe('writing a file', () => {
     // The mark tells a macro from a key's name, so its text comes back as a macro.
     expect(back.LTP).toEqual({ kind: 'macro', symbols: 'qu' });
     // An adaptive key's branches have no field in the file: it comes back as what it types by default,
-    // and one with no default as a key to replace, not as a key that types ✦.
+    // and one with no default as a transparent key, not as a key that types ✦.
     expect(back.LTR).toEqual({ kind: 'kp', symbol: 'h' });
-    expect(back.LTI).toMatchObject({ kind: 'raw', label: '✦' });
+    expect(back.LTI).toEqual({ kind: 'trans' });
   });
 });
 

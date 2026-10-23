@@ -23,9 +23,9 @@ function isAdaptiveKey(b: Binding): boolean {
 
 /**
  * Every distinct binding the layout already uses, its adaptive keys and alt repeats first and then
- * the most used — so any key of an imported layout can be put on another key, including ones
- * LayerBench keeps but does not simulate. An adaptive key is what an author most often wants again
- * elsewhere, and among a layout's hundred bindings it would otherwise wait behind "All".
+ * the most used — so any key of the layout can be put on another key. An adaptive key is what an
+ * author most often wants again elsewhere, and among a layout's hundred bindings it would
+ * otherwise wait behind "All".
  *
  * Transparent and empty keys are left out: the inspector offers both directly.
  */

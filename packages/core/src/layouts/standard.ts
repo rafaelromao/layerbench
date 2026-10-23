@@ -21,6 +21,8 @@ import {
  *   takes L1, and Repeat goes on a base-layer key the layout gives it;
  * - where the author placed them, space and letters stay, and the main thumbs left take Accents,
  *   then Repeat, right to left.
+ * A main thumb with nothing to tap is still a tap-hold, tapping nothing: the board draws what it
+ * holds along its bottom, as on the others, and nothing above it.
  *
  * Every other thumb key goes, unless it types a letter. The base layer keeps its letters, `'` `,`
  * `.` `;` and Repeat; every other key there types nothing, its symbol being on Symbols or Extras.
@@ -127,7 +129,8 @@ export function withStandardThumbs(
   }
   for (const id of MAIN_THUMBS) {
     const tap = taps[id];
-    bindings[id] = tap ? { kind: 'hold_tap', tap, hold: HOLDS[id] } : HOLDS[id];
+    // With nothing to tap, still a tap-hold: the board draws its hold along the bottom.
+    bindings[id] = { kind: 'hold_tap', tap: tap ?? { kind: 'none' }, hold: HOLDS[id] };
   }
 
   const space = MAIN_THUMBS.find((id) => isSpace(taps[id]));

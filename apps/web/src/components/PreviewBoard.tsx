@@ -4,7 +4,13 @@ import { useLayerSwipe } from './LayerNav.js';
 
 export interface PreviewBoardProps {
   id: string;
+  /** The layout as written, whose keys are drawn. */
   compiled: CompiledLayout;
+  /**
+   * The layout as the analysis types it, features left out, whose combos are drawn, as Analyze
+   * draws them; the layout as written when absent.
+   */
+  typed?: CompiledLayout | null;
   /** The layer drawn. */
   layer: number;
   /** A swipe on the board turns to this layer. */
@@ -13,23 +19,23 @@ export interface PreviewBoardProps {
   heat?: Record<number, number>;
   /** Positions to outline. */
   highlight?: number[];
-  /** Draw what a hold does under what a tap does; the default is a preview of what is typed. */
-  showHold?: boolean;
   className?: string;
 }
 
 /**
- * A layer drawn to be looked at, not edited: no hold legends, and the combos that type, as Analyze
- * draws them, so a letter only a combo types is seen too. A swipe on it turns to the next layer.
+ * A layer drawn to be looked at, not edited, every key as Analyze draws it: its tap, what a hold
+ * does, its shifted legend and its mark, and the combos that type, so a letter only a combo types
+ * is seen too. A key whose legend cannot say everything is numbered, as there, and listed under
+ * the board. A swipe on it turns to the next layer.
  */
 export function PreviewBoard({
   id,
   compiled,
+  typed,
   layer,
   onLayer,
   heat,
   highlight,
-  showHold = false,
   className,
 }: PreviewBoardProps) {
   const swipe = useLayerSwipe(compiled.layers, layer, onLayer);
@@ -40,8 +46,8 @@ export function PreviewBoard({
         compiled={compiled}
         layer={layer}
         interactive={false}
-        showHold={showHold}
-        combos={typingCombos(compiled, layer)}
+        legendList
+        combos={typingCombos(typed ?? compiled, layer)}
         heat={heat}
         highlight={highlight}
         className={className}

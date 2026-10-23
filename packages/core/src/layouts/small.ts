@@ -1,6 +1,6 @@
 import { getGeometryPreset } from '../geometry/presets.js';
 import type { AdaptiveTrigger, Binding, ComboDef, LayerDef, Mod } from '../layout/types.js';
-import { type ClassicDef, REPEAT, raw } from './classic.js';
+import { type ClassicDef, NOTHING, REPEAT, TRANSPARENT } from './classic.js';
 import { DEFAULT_LAYER_IDS, defaultLayers, SYMBOLS_CORE } from './templates.js';
 
 /*
@@ -16,11 +16,11 @@ const after = (symbols: string, binding: Binding): AdaptiveTrigger => ({
   binding,
 });
 
-/** Keys every one of these layouts has that type nothing the analysis counts. */
+/** Keys these layouts' firmware has that do what the analysis does not simulate: transparent. */
 const COMMON = {
-  bspc: raw('⌫'),
-  ret: raw('⏎'),
-  esc: raw('Esc'),
+  bspc: TRANSPARENT,
+  ret: TRANSPARENT,
+  esc: TRANSPARENT,
   '∅': null,
 } satisfies Record<string, Binding | null>;
 
@@ -715,7 +715,8 @@ const T34_COMBOS: ComboDef[] = [
   chord('greater-equal', 'LHI LBI', macro('>=')),
   chord('https', 'L0 RBC', macro('https://')),
   chord('colon', 'RHI RHM', tapHold(kp(':'), { kind: 'mo', layer: 'sym' })),
-  chord('escape', 'LHM LHI', tapHold(raw('Esc'), { kind: 'mo', layer: 'sym' })),
+  // Escape tapped, which the analysis does not simulate; Symbols held.
+  chord('escape', 'LHM LHI', tapHold(NOTHING, { kind: 'mo', layer: 'sym' })),
   chord('num-word', 'L0 R0', NUM_WORD),
   chord('swedish', 'RBI RBM RBR', { kind: 'tog', layer: 'swe' }),
   chord('e-acute', 'R0 LHC', kp('é')),
@@ -798,7 +799,7 @@ const FINCH_COMBOS: ComboDef[] = [
 const CAKSOYLAR_SYMBOLS = drawn(
   '23332+2',
   ['! @ # $ 7 8 9 ∅', '+ = _ - % , 4 5 6 .', '¿ * & ^ 0 1 2 3', 'bspc ▽ ∅ ∅'],
-  { bspc: raw('⌫') },
+  { bspc: TRANSPARENT },
 );
 const CAKSOYLAR_COMBOS: ComboDef[] = [
   chord('quote', 'RTI RTM', kp("'"), ['base', 'sym']),
@@ -974,7 +975,8 @@ export const SMALL_DEFS: ClassicDef[] = [
     special: {
       ...COMMON,
       '⟲': REPEAT,
-      shrt: raw('Shrt'),
+      // A one-shot Shortcuts layer, which LayerBench does not have.
+      shrt: TRANSPARENT,
       spec: { kind: 'sl', layer: 'spec' },
     },
     combos: [
@@ -1020,7 +1022,7 @@ export const SMALL_DEFS: ClassicDef[] = [
     geometry: '3x6+3',
     rows: "∅ q y o u = x l d p z ∅\nb c i a e - k h t n s w\n∅ ' , . ; / j m g f v ∅",
     thumbs: '∅ tab space r bspc ∅',
-    special: { ...COMMON, tab: raw('⇥') },
+    special: { ...COMMON, tab: TRANSPARENT },
     layers: [
       { id: 'num', name: 'Numbers', byKey: ENTHIUM_NUMBERS },
       { id: 'sym', name: 'Symbols', byKey: ENTHIUM_SYMBOLS },
@@ -1072,7 +1074,7 @@ export const SMALL_DEFS: ClassicDef[] = [
     geometry: '23332+2',
     rows: "q w f p l u y '\na r s t b k n e i o\nx c d g m h , .",
     thumbs: 'esc space sym ret',
-    special: { ...COMMON, sym: { kind: 'mo', layer: 'sym' } },
+    special: { ...COMMON, sym: tapHold(NOTHING, { kind: 'mo', layer: 'sym' }) },
     combos: [
       { keys: 'w f', types: 'q' },
       { keys: 'f p', types: 'j' },

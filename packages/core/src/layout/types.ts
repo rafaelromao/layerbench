@@ -120,13 +120,7 @@ export type Binding =
   | { kind: 'hold_tap'; tap: Binding; hold: Binding; flavor?: string; tappingTermMs?: number }
   /** An accent for the next letter; `shifted` is the one armed when shift is on, as `´` and `¨`. */
   | { kind: 'dead_key'; diacritic: string; shifted?: string }
-  | { kind: 'unicode'; symbol: string; shiftedSymbol?: string }
-  /**
-   * A key LayerBench does not simulate — media, Bluetooth, a firmware behaviour it has no model
-   * of — kept so an imported layout loses nothing. It is drawn with its original legend and can be
-   * placed like any other key, but it types nothing.
-   */
-  | { kind: 'raw'; label: string; source?: string };
+  | { kind: 'unicode'; symbol: string; shiftedSymbol?: string };
 
 export type BindingKind = Binding['kind'];
 

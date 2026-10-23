@@ -6,9 +6,10 @@ import {
 } from '../geometry/presets.js';
 import type { GeometryFamily, GeometryKey, Hand, Row } from '../geometry/types.js';
 import { parseKeycode, translateKeycode } from '../host/locale.js';
+import { comboId, freeComboId } from '../layout/edit.js';
 import { BADGE } from '../layout/labels.js';
 import type { Binding, ComboDef, GeometryRef, LayerDef, Layout, Mod } from '../layout/types.js';
-import { slug, slugWords, unusedId } from '../storage/ids.js';
+import { slugWords, unusedId } from '../storage/ids.js';
 import { parseYaml } from './yaml.js';
 
 /**
@@ -18,9 +19,8 @@ import { parseYaml } from './yaml.js';
  *
  * A legend is what a key shows, not what it does, so reading one is interpretation: `A` is the
  * letter, `LSHFT` with `sticky` underneath is a one-shot shift, a layer's name is a key that
- * reaches it. Whatever cannot be read as something the simulator models — Bluetooth, media, a
- * firmware behaviour it has no model of — is kept as an imported key with its legend, so nothing
- * on the board is lost and every key can still be selected and replaced.
+ * reaches it. The layout read is what making it in the editor gives: whatever the simulator does not
+ * model (Bluetooth, media, a firmware behaviour it has no model of) is a key left unset.
  */
 
 export class KeymapDrawerError extends Error {
@@ -782,13 +782,17 @@ const REPEAT_NAMES = new Set([
   '↻',
 ]);
 const TRANS_LEGENDS = new Set(['▽', '▼', 'TRANS', '_______', 'KC_TRNS']);
+const TRANSPARENT: Binding = { kind: 'trans' };
+const NOTHING: Binding = { kind: 'none' };
 const STICKY_WORDS = new Set(['sticky', 'one-shot', 'oneshot', 'one shot', 'os', '1×']);
+/** The other words under a layer's name that say how it comes on: a toggle, a switch, auto. */
+const LAYER_WORDS = new Set(['toggle', 'to', 'switch', 'auto']);
 
 /**
  * Keys every keyboard has that type no text — editing, navigation, function and lock keys — in
  * the spellings of ZMK's and QMK's keycode lists (https://zmk.dev/docs/keymaps/list-of-keycodes,
  * https://docs.qmk.fm/keycodes_basic), with or without `KC_`, and the glyphs drawings use for them.
- * The simulator does not model them, so they stay imported keys, but they are read, not guessed.
+ * The simulator does not model them, so they are left unset, but they are read, not guessed.
  */
 const NAMED_KEY =
   /^(?:KC_)?(?:ESC|ESCAPE|TAB|ENTER|ENT|RET|RETURN|BSPC|BKSP|BACKSPACE|DEL|DELETE|INS|INSERT|HOME|END|PG ?UP|PG_UP|PGUP|PAGE_UP|PG ?DN|PG_DN|PGDN|PAGE_DOWN|LEFT|RIGHT|UP|DOWN|[LRUD]ARW|(?:LEFT|RIGHT|UP|DOWN)_ARROW|CAPS|CAPSLOCK|CAPS_LOCK|CLCK|PSCRN|PSCR|PRINTSCREEN|PRINT_SCREEN|SLCK|SCRL|SCROLLLOCK|SCROLL_LOCK|PAUSE|PAUSE_BREAK|NLCK|NUMLOCK|NUM_LOCK|APP|K_APP|MENU|K_MENU|F(?:[1-9]|1[0-9]|2[0-4]))$/;
@@ -850,23 +854,13 @@ function symbolOf(legend: string): { symbol: string; shifted?: string } | null {
 }
 
 export interface LegendContext {
-  /** Layer names as the file writes them, lower-cased, to the id each got — null if not imported. */
+  /** Layer names as the file writes them, lower-cased, to the id each got — null if left out. */
   layers: Map<string, string | null>;
 }
 
 export type LegendReading =
   /** Nothing of its own: an upper layer falls through here. */
   { kind: 'transparent' } | { kind: 'binding'; binding: Binding; exact: boolean };
-
-function legendText(k: KdKey): string {
-  const parts = [
-    k.tap && `t: ${k.tap}`,
-    k.hold && `h: ${k.hold}`,
-    k.shifted && `s: ${k.shifted}`,
-    k.type && `type: ${k.type}`,
-  ].filter(Boolean);
-  return parts.join(' · ');
-}
 
 /** A tap legend as a binding a tap-hold can carry: a key press, a modifier, caps word, repeat. */
 function tapBinding(k: KdKey): Binding | null {
@@ -888,8 +882,11 @@ function tapBinding(k: KdKey): Binding | null {
 }
 
 /**
- * What a key's legends mean, as far as they say. `exact` is false when the reading is a guess the
- * legends leave open, or when the key is kept as an imported key because nothing better fits.
+ * What a key's legends mean, as far as they say, as the key would be made in the editor. A key the
+ * analysis does not simulate (Escape, an arrow, a shortcut, a legend it cannot read) is
+ * transparent, and under a hold a tap of nothing, as a key left unset is. A layer left out is
+ * named nowhere: what reaches it goes, and the key keeps the rest of what it does. `exact` is
+ * false when the reading is a guess the legends leave open, or a legend it could not read.
  */
 export function readLegend(k: KdKey, ctx: LegendContext): LegendReading {
   const tap = k.tap.trim();
@@ -897,24 +894,36 @@ export function readLegend(k: KdKey, ctx: LegendContext): LegendReading {
   if (k.type === 'trans' || k.type === 'held' || TRANS_LEGENDS.has(tap.toUpperCase())) {
     return { kind: 'transparent' };
   }
-  const raw = (): LegendReading => ({
-    kind: 'binding',
-    binding: { kind: 'raw', label: tap || hold || '?', source: legendText(k) },
-    exact: false,
-  });
-  if (tap === '' && hold === '') return { kind: 'binding', binding: { kind: 'none' }, exact: true };
+  if (tap === '' && hold === '') return { kind: 'binding', binding: NOTHING, exact: true };
 
-  const layerOf = (name: string) => ctx.layers.get(name.toLowerCase());
+  // An empty legend names no layer, even where a file has a layer with no name.
+  const layerOf = (name: string) => (name === '' ? undefined : ctx.layers.get(name.toLowerCase()));
   const tapLayer = layerOf(tap);
   const holdWord = hold.toLowerCase();
   const exact = (binding: Binding): LegendReading => ({ kind: 'binding', binding, exact: true });
+  const unread: LegendReading = { kind: 'binding', binding: TRANSPARENT, exact: false };
+  // The key without its hold: what is left when the hold goes.
+  const tapAlone = (): Extract<LegendReading, { kind: 'binding' }> | null => {
+    const alone = readLegend({ ...k, hold: '' }, ctx);
+    return alone.kind === 'binding' && alone.binding.kind !== 'none' ? alone : null;
+  };
 
-  if (tapLayer === null || layerOf(hold) === null) return raw();
+  if (tapLayer === null) {
+    const holdLayer = layerOf(hold);
+    const holdMods = heldModsOf(hold);
+    if (holdLayer) return exact({ kind: 'lt', layer: holdLayer, tap: NOTHING });
+    if (holdMods)
+      return exact({ kind: 'hold_tap', tap: NOTHING, hold: { kind: 'mod', ...holdMods } });
+    // How the layer comes on goes with it; any other hold it cannot read is reported.
+    const howOn = hold === '' || STICKY_WORDS.has(holdWord) || LAYER_WORDS.has(holdWord);
+    return howOn || holdLayer === null ? exact(TRANSPARENT) : unread;
+  }
+  if (layerOf(hold) === null) return tapAlone() ?? exact(TRANSPARENT);
   if (STICKY_WORDS.has(holdWord)) {
     if (tapLayer) return exact({ kind: 'sl', layer: tapLayer });
     const mod = modOf(tap);
     if (mod) return exact({ kind: 'sk', mod });
-    return raw();
+    return unread;
   }
   if (tapLayer) {
     if (hold === '') return exact({ kind: 'mo', layer: tapLayer });
@@ -925,11 +934,14 @@ export function readLegend(k: KdKey, ctx: LegendContext): LegendReading {
   if (hold !== '') {
     const holdLayer = layerOf(hold);
     const holdMod = heldModsOf(hold);
-    if (!holdLayer && !holdMod) return raw();
-    // A tap that types no text — Escape, Backspace — still leaves the hold, and a layer reached
-    // by holding that key must stay reachable.
+    // A hold it cannot read goes, and the key is reported; a tap it reads stays.
+    if (!holdLayer && !holdMod) {
+      const alone = tapAlone();
+      return alone ? { ...alone, exact: false } : unread;
+    }
+    // A tap the analysis does not simulate (Escape, Backspace) taps nothing, and the hold stays.
     const read = tapBinding(k);
-    const tapped: Binding = read ?? { kind: 'raw', label: tap, source: `t: ${tap}` };
+    const tapped: Binding = read ?? NOTHING;
     const binding: Binding = holdLayer
       ? { kind: 'lt', layer: holdLayer, tap: tapped }
       : { kind: 'hold_tap', tap: tapped, hold: { kind: 'mod', ...(holdMod as { mod: Mod }) } };
@@ -937,11 +949,9 @@ export function readLegend(k: KdKey, ctx: LegendContext): LegendReading {
   }
   const tapped = tapBinding(k);
   if (tapped) return exact(tapped);
-  if (isNamedKey(tap)) {
-    return exact({ kind: 'raw', label: tap, source: legendText(k) });
-  }
+  if (isNamedKey(tap)) return exact(TRANSPARENT);
   // Letters beyond ASCII, several of them, read as text a macro types: `ão`, `ões`. A word in
-  // capitals, or in plain ASCII, is far likelier to be a key's name, and is kept as it is.
+  // capitals, or in plain ASCII, is far likelier to be a key's name.
   if (
     [...tap].length > 1 &&
     /^\p{L}+$/u.test(tap) &&
@@ -950,12 +960,12 @@ export function readLegend(k: KdKey, ctx: LegendContext): LegendReading {
   ) {
     return exact({ kind: 'macro', symbols: tap });
   }
-  return raw();
+  return unread;
 }
 
 // ------------------------------------------------------------------ the import
 
-export interface ImportedLayer {
+export interface ChosenLayer {
   /** The layer's name in the file. */
   source: string;
   name: string;
@@ -964,26 +974,27 @@ export interface ImportedLayer {
 export interface KeymapDrawerImport {
   name: string;
   /** The layers to take, in the order to take them; the first becomes the base layer. */
-  layers: ImportedLayer[];
+  layers: ChosenLayer[];
   board: ResolvedBoard;
 }
 
 export interface LayerReport {
   name: string;
   keys: number;
-  /** Keys whose legends read as something the simulator models. */
+  /** Keys whose legends it reads, whether or not the analysis simulates what they do. */
   read: number;
   /**
-   * Legends it could not read, kept as imported keys as they were drawn. Keys it reads but does
-   * not simulate — Escape, an arrow, a shortcut — are imported keys too, but are not listed.
+   * Legends it could not read in full: what it could not read goes, and a key with nothing left
+   * is transparent. Keys it reads but the analysis does not simulate (Escape, an arrow, a
+   * shortcut) are transparent too, but are not listed.
    */
-  kept: string[];
+  unread: string[];
 }
 
 export interface ImportReport {
   board: string;
   layers: LayerReport[];
-  combos: { imported: number; skipped: string[] };
+  combos: { taken: number; skipped: string[] };
   notes: string[];
 }
 
@@ -1027,6 +1038,17 @@ export function importKeymapDrawer(
   const positions = opts.board.ids.length;
   const layers: LayerDef[] = [];
   const reports: LayerReport[] = [];
+  const leftOut = (legend: string) =>
+    legend.trim() !== '' && ctx.layers.get(legend.trim().toLowerCase()) === null;
+  // The part of a key it could not read: its tap, or its hold where the tap was read or reaches a
+  // layer left out, which is named nowhere.
+  const unreadPart = (k: KdKey): string => {
+    const alone = readLegend({ ...k, hold: '' }, ctx);
+    const tapRead = leftOut(k.tap) || alone.kind === 'transparent' || alone.exact;
+    const part = (tapRead ? k.hold : k.tap).trim();
+    return part && !leftOut(part) ? part : '?';
+  };
+  let reachingLeftOut = 0;
   opts.layers.forEach((choice, li) => {
     const source = doc.layers.find((l) => l.name === choice.source);
     if (!source) throw new KeymapDrawerError(`there is no layer ${choice.source} in the file`);
@@ -1035,26 +1057,36 @@ export function importKeymapDrawer(
         `${choice.source} has ${source.keys.length} keys where the board has ${positions} positions; the keys were taken in order.`,
       );
     }
-    const bindings: Record<string, Binding> = li === 0 ? {} : { '*': { kind: 'trans' } };
-    const report: LayerReport = { name: choice.name, keys: 0, read: 0, kept: [] };
+    // As a layer added in the editor: every key the layer does not set falls through.
+    const bindings: Record<string, Binding> = li === 0 ? {} : { '*': TRANSPARENT };
+    const report: LayerReport = { name: choice.name, keys: 0, read: 0, unread: [] };
     source.keys.forEach((k, i) => {
       const id = opts.board.ids[i];
       if (!id) return;
       report.keys++;
       const reading = readLegend(k, ctx);
       if (reading.kind === 'transparent') {
+        // Left unset, as on a layer made in the editor: nothing on the base layer, the layer below
+        // on another.
         report.read++;
-        // On the base layer there is nothing below to show through.
-        if (li === 0) bindings[id] = { kind: 'none' };
         return;
       }
-      bindings[id] = reading.binding;
+      if (leftOut(k.tap) || leftOut(k.hold)) reachingLeftOut++;
+      const b = reading.binding;
+      // What a key left unset already is, it is not set to.
+      const unset = li === 0 ? b.kind === 'none' : b.kind === 'trans';
+      if (!unset) bindings[id] = b;
       if (reading.exact) report.read++;
-      else report.kept.push(k.tap.trim() || k.hold.trim() || '?');
+      else report.unread.push(unreadPart(k));
     });
     layers.push({ id: ids[li], name: choice.name, bindings });
     reports.push(report);
   });
+  if (reachingLeftOut > 0) {
+    notes.push(
+      `${reachingLeftOut === 1 ? 'One key' : `${reachingLeftOut} keys`} reached a layer left out: the reach is dropped, and a key left with nothing to do is transparent.`,
+    );
+  }
 
   // The keys the analysis needs to know about: the one that types a space, and shift.
   const base = layers[0].bindings;
@@ -1085,9 +1117,12 @@ export function importKeymapDrawer(
 
   const combos: ComboDef[] = [];
   const skipped: string[] = [];
-  const comboIds = new Set<string>();
   for (const c of doc.combos) {
-    const label = c.key.tap || c.key.hold || '?';
+    // Named by its legend, unless that names a layer left out, which is named nowhere.
+    const label =
+      leftOut(c.key.tap) || leftOut(c.key.hold)
+        ? 'A combo reaching a layer left out'
+        : c.key.tap || c.key.hold || '?';
     const at = c.positions ?? triggerPositions(doc, c);
     if (!at) {
       skipped.push(`${label}: its trigger keys are on no layer`);
@@ -1101,30 +1136,32 @@ export function importKeymapDrawer(
     const on = c.layers.map((n) => ctx.layers.get(n.toLowerCase()) ?? null);
     const layersOn = on.filter((id): id is string => id !== null);
     if (c.layers.length > 0 && layersOn.length === 0) {
-      skipped.push(`${label}: only on layers not imported`);
+      skipped.push(`${label}: only on layers left out`);
       continue;
     }
+    // A combo cannot be transparent, in the editor or here.
     const reading = readLegend(c.key, ctx);
-    if (reading.kind === 'transparent') {
-      skipped.push(`${label}: transparent`);
+    if (reading.kind === 'transparent' || reading.binding.kind === 'trans') {
+      skipped.push(`${label}: does nothing the analysis simulates`);
       continue;
     }
     const b = reading.binding;
-    const id = unusedId(slug(keys.join('-')), comboIds);
-    comboIds.add(id);
+    // As the editor adds a combo: on the layers it works on (every one, where the file names
+    // none), with the editor's timing.
     combos.push({
-      id,
+      id: freeComboId(keys as string[], combos.map(comboId)),
       keys: keys as string[],
       binding: b,
-      ...(layersOn.length > 0 ? { layers: layersOn } : {}),
+      layers: layersOn.length > 0 ? layersOn : [...ids],
       role: b.kind === 'kp' || b.kind === 'macro' ? 'typing' : 'command',
+      timeoutMs: 50,
+      slowRelease: false,
     });
   }
 
   const layout: Layout = {
     format: 'layerbench/layout@1',
     name: opts.name,
-    description: `Imported from keymap-drawer onto ${opts.board.description}.`,
     hostLocale: 'symbols',
     geometry: opts.board.geometry,
     keys: {
@@ -1141,7 +1178,7 @@ export function importKeymapDrawer(
     report: {
       board: opts.board.description,
       layers: reports,
-      combos: { imported: combos.length, skipped },
+      combos: { taken: combos.length, skipped },
       notes,
     },
   };
@@ -1224,8 +1261,6 @@ function legendOf(
       return { tap: 'CAPS_WORD' };
     case 'key_repeat':
       return { tap: 'REPEAT' };
-    case 'raw':
-      return { tap: b.label };
     case 'macro':
       // The corner mark is what tells a macro typing `qu` from a key named QU on the way back in.
       return b.symbols ? { tap: b.symbols, tr: BADGE.macro } : { tap: BADGE.macro };
@@ -1295,7 +1330,7 @@ export function drawerOrder(keys: GeometryKey[]): GeometryKey[] {
 /**
  * A keymap-drawer file for a layout: each layer's keys as they are drawn, row by row, and its
  * combos. It is a drawing: what a legend cannot say — an adaptive key's branches, a macro's steps —
- * is drawn and not written, so reading the file back gives those keys as imported ones.
+ * is drawn and not written, so reading the file back leaves those keys unset.
  */
 export function exportKeymapDrawer(
   layout: Layout,

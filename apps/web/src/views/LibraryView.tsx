@@ -265,6 +265,7 @@ function layerCount(n: number): string {
 /** One card, the same for every layout; a custom or community one says so. */
 function LayoutCard({
   item,
+  typed,
   summary,
   bands,
   lacking,
@@ -273,6 +274,8 @@ function LayoutCard({
   proposal,
 }: {
   item: Listed;
+  /** The layout as it is ranked, features left out, whose combos the board draws. */
+  typed: CompiledLayout | undefined;
   summary: LayoutSummary | undefined;
   bands: HeadlineBands;
   lacking: Lacking | undefined;
@@ -328,6 +331,7 @@ function LayoutCard({
                   : `kb-${item.id}`
             }
             compiled={item.compiled}
+            typed={typed}
             name={item.name}
           />
         )}
@@ -543,7 +547,7 @@ export function LibraryView() {
   }, [customLayouts]);
 
   // Each layout as it is ranked: typed without the features left out, as the engine types it. The
-  // cards still draw the layout itself; only what it can type is judged on this.
+  // cards draw the layout's keys as written and its combos as typed, as Analyze does.
   const { without } = params;
   const ranked = useMemo(() => {
     const out = new Map<string, CompiledLayout>();
@@ -832,7 +836,7 @@ export function LibraryView() {
     [saveNew, navigate, analyzeSearch],
   );
 
-  /** An imported keymap goes straight to Analyze, saved, so nothing about it is lost. */
+  /** A keymap read from a file goes straight to Analyze, saved, so nothing about it is lost. */
   const importKeymap = useCallback(
     async (layout: Layout) => {
       const id = await saveNew(layout, `Import keymap-drawer layout ${layout.name}`);
@@ -1075,6 +1079,7 @@ export function LibraryView() {
             <LayoutCard
               key={item.key}
               item={item}
+              typed={ranked.get(item.key)}
               summary={summaries.get(item.key)}
               bands={bands}
               lacking={lacking.get(item.key)}

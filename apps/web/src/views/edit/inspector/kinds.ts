@@ -21,8 +21,7 @@ export type KindOfKey =
   | 'unicode'
   | 'deadkey'
   | 'transparent'
-  | 'nothing'
-  | 'imported';
+  | 'nothing';
 
 export interface KindInfo {
   kind: KindOfKey;
@@ -63,14 +62,7 @@ export const MORE_KINDS: readonly KindInfo[] = [
   { kind: 'deadkey', label: 'Dead key', glyph: '´', hint: 'accents the next letter' },
 ];
 
-const IMPORTED: KindInfo = {
-  kind: 'imported',
-  label: 'Imported',
-  glyph: '?',
-  hint: 'a key LayerBench keeps but does not simulate',
-};
-
-export const ALL_KINDS: readonly KindInfo[] = [...PRIMARY_KINDS, ...MORE_KINDS, IMPORTED];
+export const ALL_KINDS: readonly KindInfo[] = [...PRIMARY_KINDS, ...MORE_KINDS];
 
 /**
  * What one part of a bigger key can be — the tap of a tap-hold, an adaptive key's branch. Parts
@@ -94,7 +86,10 @@ export const PART_KINDS: readonly KindOfKey[] = [
 export const TAP_KINDS: readonly KindOfKey[] = [...PART_KINDS, 'adaptive', 'altrepeat'];
 
 export function kindInfo(kind: KindOfKey): KindInfo {
-  return ALL_KINDS.find((k) => k.kind === kind) ?? IMPORTED;
+  const info = ALL_KINDS.find((k) => k.kind === kind);
+  // Every kind of key has its tile; one added without is a mistake to see, not to hide.
+  if (!info) throw new Error(`no tile for the kind of key ${kind}`);
+  return info;
 }
 
 /** The kind of key a binding is. */
@@ -136,7 +131,5 @@ export function kindOf(b: Binding | undefined): KindOfKey {
       return 'unicode';
     case 'dead_key':
       return 'deadkey';
-    case 'raw':
-      return 'imported';
   }
 }

@@ -113,6 +113,28 @@ describe('Compare', () => {
     expect(effort?.querySelectorAll('.lb-band')).toHaveLength(2);
   });
 
+  it("draws each side's keys as Analyze does: as written, holds along the bottom, numbered and listed", async () => {
+    renderRoute('/compare?layout=qwerty&b=magic-romak&off=repeat&corpus=en-general&sample=20000', {
+      storage: freshStorage(),
+    });
+    const board = (side: string) =>
+      waitFor(() => {
+        const el = document.getElementById(`kb-${side}`);
+        expect(el).toBeTruthy();
+        return el as HTMLElement;
+      });
+    const boardA = await board('A');
+    // Typed without repeat, its Repeat key is still drawn as it is written.
+    await waitFor(() => expect(boardA.textContent).toContain('⟳'));
+    const holds = [...boardA.querySelectorAll('.lb-key-hold')].map((t) => t.textContent);
+    expect(holds).toEqual(expect.arrayContaining(['Numb', 'Symb']));
+    // Magic Romak's adaptive keys do not fit their caps: numbered, and listed under its board.
+    const boardB = await board('B');
+    expect(boardB.querySelectorAll('.lb-key-number').length).toBeGreaterThan(0);
+    const list = boardB.parentElement?.querySelector('[aria-label="Key legend"]');
+    expect(list?.querySelectorAll('li').length).toBeGreaterThan(0);
+  });
+
   it('compares a community layout its link names', async () => {
     setCommunitySource(branchWith(communityDoc('night-owl', 'Night owl')));
     renderRoute('/compare?layout=community:night-owl&b=graphite&corpus=en-general&sample=20000', {

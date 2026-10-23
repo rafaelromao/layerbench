@@ -50,7 +50,9 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
   too, as Romak does, each still typing what it typed; only an inner thumb that is a tap-hold
   already falls back (`withDefaultLayers`). Accents is the combo `accentsCombo`. On a row-stagger
   board, a new layout's one space bar (L0 and R0 together) holds Numbers. Ben Vallack Piano taps a
-  one-shot Shift where its keymap has Repeat, and it is its `keys.shift`.
+  one-shot Shift where its keymap has Repeat, and it is its `keys.shift`. A thumb that holds and
+  taps nothing is still a `hold_tap`, its tap `none`, so the board draws its hold along the bottom,
+  as on every tap-hold; `templates.test.ts` (`thumbs that only hold`) checks every bundled layout.
 - **Home row mods.** Every bundled layout holds Gui, Ctrl, Alt and Shift on its base layer's home
   row from the left pinky in, mirrored on the right (`HOME_ROW_MODS`, `withHomeRowMods`), unless its
   definition gives its own (`ClassicDef.homeRowMods`). Both hands hold the left modifiers, as the
@@ -71,8 +73,15 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
   can, never a key that holds other modifiers with it (`holdMod` in `resolver.ts`).
 - **No layer that types nothing.** No bundled layout reaches a layer of functions, media or
   macros, by a hold or a key: an author's keymap's own such holds are left out, as Magic Romak's
-  are, and the editor makes no imported key. `templates.test.ts` checks every bundled layout
+  are. `templates.test.ts` checks that every layer of every bundled layout types something
   (`layers that type nothing`).
+- **A layout is only what the editor can make.** A key that does what the analysis does not
+  simulate (Escape, Enter, Backspace, Tab, a layer LayerBench lacks, as T-34's Shortcuts) is
+  `trans`, as a key left unset is, and under a hold a tap of `none`. This holds for the bundled
+  layouts (`TRANSPARENT` and `NOTHING` in `classic.ts`) and for what the keymap-drawer import makes
+  (`readLegend`). The import writes what making it in the editor would: no description, unset keys
+  left unset, combos with the editor's layers and timing (`freeComboId`). Nothing in the app, the
+  guide or the code calls a key or layer imported; the Import button is the one word for it.
 - **A held thumb blocks its hand.** On a layer every way onto which holds a thumb key of one hand
   down (`mo`, `lt`), that hand's thumb keys get no binding: the thumb is busy holding. Numbers and
   Symbols each block the hand holding them, and Extras, both held, every thumb. The held keys

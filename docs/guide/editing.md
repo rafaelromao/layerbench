@@ -81,7 +81,7 @@ type what it does.
 
 **From this layout** offers the keys the layout already uses, its adaptive keys and alt repeats
 first and then its symbols, layer keys and modifiers, to put on the selected key in one tap. **All**
-shows every one of them, including the keys an import brought in.
+shows every one of them.
 
 ### Typing a binding
 
@@ -300,8 +300,10 @@ key again, then space, then the layout's thumb letter or
 nothing, and the right outer one turns on Accents for one key. Where a layout's author put space or a
 letter on a thumb, it stays there, and the main thumbs left tap Accents, then Repeat, from the right:
 RSTHD taps Repeat, `e`, space and Accents. A second thumb letter takes the left outer thumb,
-and Repeat a key of the base layer that a symbol left, as on Hands Down Neu. Their other thumb keys
-go, and their base layers keep no symbol but `'` `,` `.` `;`: the rest are on Symbols or Extras.
+and Repeat a key of the base layer that a symbol left, as on Hands Down Neu. A main thumb with
+nothing to tap shows only what it holds, along its bottom, as Qwerty's Symbols thumb does. Their
+other thumb keys go, and their base layers keep no symbol but `'` `,` `.` `;`: the rest are on
+Symbols or Extras.
 
 The Special layouts with the default layers keep every key they have. Like every other layout with
 them, they hold Numbers on the left inner thumb and Symbols on the right inner one, each still
@@ -310,6 +312,10 @@ Nordrassil type space on L1, beside the inner thumb, which holds Numbers. An inn
 tap-hold already cannot hold another layer; the key that types space then holds Numbers, and the
 innermost thumb of the other hand with nothing on it Symbols. Accents is the combo on two thumbs,
 as on a new layout.
+
+Where an author's keymap has a key that does what the analysis does not simulate, such as Escape,
+Enter, Backspace, Tab or T-34's key for a Shortcuts layer LayerBench does not have, the key is
+transparent, as one left unset is; under a hold it taps nothing, and shows only what it holds.
 
 Every layout that comes with the app has home row mods too: held, the home row's finger keys give
 Gui, Ctrl, Alt and Shift from the left pinky in, and Shift, Alt, Ctrl and Gui from the right index
@@ -343,8 +349,8 @@ with `ñ` `ç` `ä` `ö` `ü`.
 |---|---|---|---|
 | Magic Romak | Numbers, Symbols | space held, the Alpha 2 thumb held | £ § « » ı ß œ æ |
 | Magic Sturdy | Symbols, Numbers | `t` or `a` held, `n` held | € £ § ª º ° `?` « » ı ¿ ¡ ß œ æ ñ ç ä ö ü |
-| Enthium | Numbers, Symbols | Tab (L1) held, `r` held | `&` `(` `)` € £ § ª º ° « » ı ¿ ¡ ß œ æ ñ ç ä ö ü |
-| Hands Down Gold, Promethium, Vibranium | Symbols, Numbers, Numpad | space held; Backspace or `,` (`f` on Promethium) held; `b` (`k`) held | `\` ª º « » ı ¿ ¡ ß |
+| Enthium | Numbers, Symbols | L1 (Tab in its keymap) held, `r` held | `&` `(` `)` € £ § ª º ° « » ı ¿ ¡ ß œ æ ñ ç ä ö ü |
+| Hands Down Gold, Promethium, Vibranium | Symbols, Numbers, Numpad | space held; L1 (Backspace in its keymap) or `,` (`f` on Promethium) held; `b` (`k`) held | `\` ª º « » ı ¿ ¡ ß |
 | T-34 | Swedish, Numbers, Symbols, Specials | `l ( )` toggles it; both inner thumbs, a num word; `t h` or `n a` held; R1, one-shot | € £ § ª º ° « » ı ¿ ¡ ß œ æ |
 | Finch | Symbols and numbers | `e` held | € £ § ª º ° `~` `^` `"` `?` « » ı ¿ ¡ ß œ æ ñ ç ä ö ü |
 | Cem Aksoylar's Colemak-DH | Symbols | the right inner thumb held | `{` `}` `\|` € £ § ª º ° `~` `"` `<` `>` `:` `?` « » ı ¡ ß œ æ ñ ç ä ö ü |
@@ -384,11 +390,11 @@ layer in the end, which is why it stays first.
 The other panels hold what is not on a single key:
 
 - **Features** turns on sentence case and caps word.
-- **Geometry** shows the board, which is chosen when a layout is imported or created and cannot
-  be changed here, and says which keys are space and shift, the kind of shift, and how doubled
-  letters are typed. Under **One-shot layers** and **One-shot keys** it says how the layout's
-  one-shots end: as the next key goes down or not, whether they stay on while a modifier is
-  pressed, and after how many milliseconds unused.
+- **Geometry** shows the board, which is chosen when a layout is created or read with **Import**,
+  and cannot be changed here, and says which keys are space and shift, the kind of shift, and how
+  doubled letters are typed. Under **One-shot layers** and **One-shot keys** it says how the
+  layout's one-shots end: as the next key goes down or not, whether they stay on while a modifier
+  is pressed, and after how many milliseconds unused.
 - **Combos** are keys pressed together. **pick on board**, then tap the keys; the output takes the
   same syntax as **Or type**, and can be left empty. A combo added opens in the **combo editor**, in
   the key editor's place; so does a combo's pill on the board, or **edit** on its row. A combo can

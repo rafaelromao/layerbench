@@ -173,7 +173,6 @@ interface Shapes {
   };
   transparent: { binding: Of<'trans'>; view: Nothing; set: Nothing };
   nothing: { binding: Of<'none'> | undefined; view: Nothing; set: Nothing };
-  imported: { binding: Of<'raw'>; view: { label: string; source: string }; set: Nothing };
 }
 
 /**
@@ -469,7 +468,6 @@ const readers: { [K in KindOfKey]: Reader<K> } = {
   }),
   transparent: () => NONE,
   nothing: () => NONE,
-  imported: (b) => ({ view: { label: b.label, source: b.source ?? '' }, set: {} }),
 };
 
 // ---------------------------------------------------------------------------- tap-holds
@@ -850,8 +848,6 @@ function convert(ctx: BindingTextContext, current: Binding | undefined, to: Kind
       return { kind: 'dead_key', diacritic: '´' };
     case 'transparent':
       return { kind: 'trans' };
-    case 'imported':
-      return current ?? { kind: 'none' };
     default:
       return { kind: 'none' };
   }

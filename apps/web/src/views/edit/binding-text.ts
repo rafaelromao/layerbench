@@ -367,8 +367,6 @@ function whyNot(b: Binding): string {
       return 'a layer tap whose tap is more than a plain key press';
     case 'kp':
       return 'a key press whose symbol contains a space';
-    case 'raw':
-      return `an imported key (${b.source ?? b.label}) that LayerBench keeps but does not simulate`;
     default:
       return 'a binding this syntax has no spelling for';
   }

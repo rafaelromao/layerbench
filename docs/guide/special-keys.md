@@ -17,7 +17,6 @@ and how to make it in the editor, in **Analyze**: select a key, then choose its 
 | `▽` in a dashed outline | transparent: the key of the layer below shows through |
 | a pill between keys | a combo that types: press those keys together. It is drawn as a key is, its hold after a slash; select it to edit it as any kind of key but transparent |
 | a number in the corner | more than fits on the key; the list under the board says it all |
-| a grey legend | a key kept from an import, drawn but not simulated |
 
 `⇧` `⌃` `⌥` `⌘` are Shift, Control, Alt and Command, `⟳` is repeat and `⇪` is caps word.
 
@@ -110,8 +109,7 @@ A **Macro** `⋯` types several things with one press. As **Text** it types the 
 as `qu` or `ão`, and can turn a layer on for the next key after them. As **Steps** it is a list of
 key presses, layer changes and modifiers, in order. Switching between the two never changes what
 the macro does: steps after its letters still run after them as text, and come back as steps. A
-step the list has no row for, such as one an import brought in, is shown as it is, and can still be
-moved or removed.
+step the list has no row for is shown as it is, and can still be moved or removed.
 
 ## Caps word and sentence case
 
@@ -135,11 +133,3 @@ These are among the editor's other tiles, under **More** on a phone:
   **Shifted** gives the key a second accent for when shift is on, as US-International has `¨`
   over `´`; it is drawn at the top of the key. Like a shifted symbol, it is typed only when
   **Shift** is on, since with capitals folded no shift is pressed.
-
-## Imported keys
-
-A key brought in from a keymap-drawer file keeps its legend when LayerBench has no model of what
-it does: Escape, an arrow, a Bluetooth or media key. It is drawn in grey, types nothing in the
-analysis, and moves, swaps and copies like any other key. Choosing another tile replaces it. A
-layer reached by holding such a key still works: the hold is kept, and only the tap is imported.
-See [Importing and exporting](importing.md).

@@ -190,10 +190,14 @@ suite('legends', () => {
     expect([l.tap, l.dead]).toEqual(['~', true]);
   });
 
-  it('keeps an imported key’s own legend, and says it is not simulated', () => {
-    const l = legend(c, { kind: 'raw', label: 'BT1', source: '&bt BT_SEL 1' });
-    expect([l.tap, l.kind]).toEqual(['BT1', 'raw']);
-    expect(l.detail).toContain('not simulated');
+  it('draws a key that only holds with nothing above and its hold along the bottom', () => {
+    const l = legend(c, {
+      kind: 'hold_tap',
+      tap: { kind: 'none' },
+      hold: { kind: 'mo', layer: 'num' },
+    });
+    expect([l.tap, l.hold, l.holdIsMode, l.layerIn]).toEqual(['', 'Numb', false, 'hold']);
+    expect(legendText(l)).toBe('hold Numb');
   });
 });
 

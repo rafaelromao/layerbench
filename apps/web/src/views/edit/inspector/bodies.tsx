@@ -261,8 +261,6 @@ function KindBody({
       return <UnicodeBody {...common} fields={fields} />;
     case 'deadkey':
       return <DeadKeyBody {...common} fields={fields} />;
-    case 'imported':
-      return <ImportedBody {...common} fields={fields} />;
     case 'transparent':
       return <Note>Transparent: the key does what it does on the layer below.</Note>;
   }
@@ -862,21 +860,6 @@ function DeadKeyBody({ fields: { view, set }, onChange, name }: BodyProps<'deadk
       <Note>
         Types nothing itself; the next letter comes out accented, with the shifted accent when shift
         is on.
-      </Note>
-    </div>
-  );
-}
-
-function ImportedBody({ fields: { view } }: BodyProps<'imported'>) {
-  return (
-    <div className="space-y-1 text-xs">
-      <p>
-        <span className="font-mono">{view.label}</span>
-        {view.source && <span className="opacity-60"> — {view.source}</span>}
-      </p>
-      <Note>
-        Kept from the imported layout. LayerBench draws it and moves it with the rest, but it types
-        nothing in the analysis. Pick a kind above to replace it.
       </Note>
     </div>
   );
