@@ -20,6 +20,10 @@ const TriggerSchema: z.ZodType<unknown> = z.lazy(() =>
     }),
 );
 
+/** Why a layer morph that says when it comes on was refused, when that is not `any`. */
+export const LAYER_MORPH_MATCH =
+  'a layer morph changes while any of its layers is on, as zmk-layer-morph does: match can only be "any"';
+
 /**
  * `schema`, telling only the first thing wrong with what it reads, however much more is. zod copies
  * each fault again at every binding around it, so a deep document of many faults would otherwise
@@ -101,7 +105,10 @@ export const BindingSchema: z.ZodType<unknown> = z.lazy(() =>
       z.object({
         kind: z.literal('layer_morph'),
         layers: z.array(z.string()).default([]),
-        match: z.enum(['any', 'all']).default('any'),
+        // Written as `any` on every layer morph before a morph came on only with any of its
+        // layers: that is what each does, and the document is written without it. Nothing else
+        // can be read, as zmk-layer-morph has no other.
+        match: z.literal('any', { error: LAYER_MORPH_MATCH }).optional(),
         active: BindingSchema,
         inactive: BindingSchema,
       }),

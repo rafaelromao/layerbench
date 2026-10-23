@@ -81,7 +81,6 @@ export function bindingToJson(b: Binding): Record<string, unknown> {
     case 'layer_morph':
       extra = {
         layers: b.layers,
-        match: b.match ?? 'any',
         active: bindingToJson(b.active),
         inactive: bindingToJson(b.inactive),
       };

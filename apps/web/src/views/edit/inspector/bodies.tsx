@@ -772,6 +772,7 @@ function MorphBody({ scope, fields: { view, set }, onChange, name, depth }: Body
             value={view.layers}
             onChange={(layer) => onChange(set.toggleLayer(layer))}
           />
+          <Note>Changes while any of these is on.</Note>
         </Row>
       )}
       <PartEditor

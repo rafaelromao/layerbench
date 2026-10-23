@@ -137,8 +137,8 @@ These are among the editor's other tiles, under **More** on a phone:
 
 - **Tap dance** `TD` does one thing on one tap, another on two, and so on.
 - **Morph** does something else while a modifier is held, or while a layer is on. With a modifier
-  it is ZMK's mod-morph; on a layer it needs the module
-  [rafaelromao/zmk-layer-morph](https://github.com/rafaelromao/zmk-layer-morph).
+  it is ZMK's mod-morph. On a layer it changes while any of the layers chosen is on, and needs the
+  module [rafaelromao/zmk-layer-morph](https://github.com/rafaelromao/zmk-layer-morph).
 - **Unicode** `U+` types a character the operating system has no key for. It needs the module
   [urob/zmk-unicode](https://github.com/urob/zmk-unicode), and the operating system set up for
   Unicode input.

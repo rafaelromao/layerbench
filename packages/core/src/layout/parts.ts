@@ -62,9 +62,7 @@ function chosen(b: Binding, how: Choosing): Binding | null {
     }
     case 'layer_morph': {
       const on = how.layerOn;
-      const active =
-        on !== undefined &&
-        (b.match === 'all' ? b.layers.every((l) => on(l)) : b.layers.some((l) => on(l)));
+      const active = on !== undefined && b.layers.some((l) => on(l));
       return active ? b.active : b.inactive;
     }
     case 'tap_dance':

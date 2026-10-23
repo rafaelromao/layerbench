@@ -5,6 +5,7 @@ import { toCanonicalJson } from './json.js';
 import { duplicateLayer } from './ops.js';
 import {
   isLayoutLink,
+  LAYER_MORPH_MATCH,
   LayoutSchema,
   layoutJsonSchema,
   parseLayout,
@@ -130,6 +131,57 @@ describe('a hold of several modifiers in the document', () => {
   it('writes a plain modifier as it was, with nothing held with it', () => {
     const doc = toCanonicalJson(held({ kind: 'mod', mod: 'LGUI' }));
     expect(JSON.stringify(doc)).toContain('"hold":{"kind":"mod","mod":"LGUI"}');
+  });
+});
+
+describe('a layer morph in the document', () => {
+  type Doc = ReturnType<typeof toCanonicalJson>;
+  const morphOf = (doc: Doc) =>
+    (doc.layers as { bindings: Record<string, Record<string, unknown>> }[])[0].bindings.LHI;
+  /** A morph on the base layer, which says when it comes on as `match` when one is given. */
+  const morphing = (match?: string) => {
+    const doc = toCanonicalJson({
+      format: 'layerbench/layout@1',
+      name: 'Morph',
+      geometry: { preset: '3x5+2' },
+      keys: { space: 'L0' },
+      layers: [
+        {
+          id: 'base',
+          bindings: {
+            LHI: {
+              kind: 'layer_morph',
+              layers: ['base'],
+              active: { kind: 'kp', symbol: 'b' },
+              inactive: { kind: 'kp', symbol: 'a' },
+            },
+          },
+        },
+      ],
+    });
+    if (match !== undefined) morphOf(doc).match = match;
+    return doc;
+  };
+
+  it('is written with no word on when it comes on: while any of its layers is', () => {
+    expect(morphOf(morphing())).not.toHaveProperty('match');
+  });
+
+  it('reads `any`, as it was written on every morph, and is written without it again', () => {
+    const parsed = safeParseLayout(morphing('any'));
+    expect(parsed.ok, parsed.ok ? '' : parsed.error).toBe(true);
+    if (parsed.ok) {
+      expect(toCanonicalJson(parsed.layout)).toEqual(morphing());
+    }
+  });
+
+  it('is refused when it comes on only with all of its layers, which zmk-layer-morph cannot do', () => {
+    const parsed = safeParseLayout(morphing('all'));
+    expect(parsed.ok).toBe(false);
+    if (!parsed.ok) {
+      expect(parsed.error).toContain(LAYER_MORPH_MATCH);
+      expect(parsed.error).toContain('→ at layers[0].bindings.LHI.match');
+    }
   });
 });
 

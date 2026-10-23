@@ -78,3 +78,16 @@ describe('a key stock ZMK has', () => {
     expect(links(value)).toEqual([]);
   });
 });
+
+describe('a morph on a layer', () => {
+  it('says it changes while any of its layers is on, as zmk-layer-morph does', () => {
+    const morph: Binding = {
+      kind: 'layer_morph',
+      layers: ['num'],
+      active: kp('b'),
+      inactive: kp('a'),
+    };
+    render(<BindingEditor scope={scope} value={morph} onChange={vi.fn()} />);
+    expect(screen.getByText('Changes while any of these is on.')).toBeInTheDocument();
+  });
+});

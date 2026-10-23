@@ -94,13 +94,8 @@ export type Binding =
   | { kind: 'auto_layer'; layer: string; continueList?: string[] }
   | { kind: 'key_repeat' }
   | { kind: 'mod_morph'; mods: Mod[]; default: Binding; morphed: Binding; keepMods?: Mod[] }
-  | {
-      kind: 'layer_morph';
-      layers: string[];
-      match?: 'any' | 'all';
-      active: Binding;
-      inactive: Binding;
-    }
+  /** `active` while any of `layers` is on, as zmk-layer-morph's morph is; `inactive` otherwise. */
+  | { kind: 'layer_morph'; layers: string[]; active: Binding; inactive: Binding }
   | { kind: 'tap_dance'; bindings: Binding[] }
   | {
       kind: 'macro';

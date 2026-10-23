@@ -793,12 +793,7 @@ export class Machine {
           return;
         }
         case 'layer_morph': {
-          const bits = b.layers.map((l) => 1 << this.layerIdx(l));
-          const match = b.match ?? 'any';
-          const on =
-            match === 'all'
-              ? bits.every((x) => (this.mask & x) !== 0)
-              : bits.some((x) => (this.mask & x) !== 0);
+          const on = b.layers.some((l) => (this.mask & (1 << this.layerIdx(l))) !== 0);
           this.run(on ? b.active : b.inactive, ctx);
           return;
         }
