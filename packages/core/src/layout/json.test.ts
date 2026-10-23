@@ -5,6 +5,7 @@ import { toCanonicalJson } from './json.js';
 import { duplicateLayer } from './ops.js';
 import {
   isLayoutLink,
+  LAYER_MORPH_MATCH,
   LayoutSchema,
   layoutJsonSchema,
   parseLayout,
@@ -130,6 +131,90 @@ describe('a hold of several modifiers in the document', () => {
   it('writes a plain modifier as it was, with nothing held with it', () => {
     const doc = toCanonicalJson(held({ kind: 'mod', mod: 'LGUI' }));
     expect(JSON.stringify(doc)).toContain('"hold":{"kind":"mod","mod":"LGUI"}');
+  });
+});
+
+describe('a layer morph in the document', () => {
+  type Doc = ReturnType<typeof toCanonicalJson>;
+  const morphOf = (doc: Doc) =>
+    (doc.layers as { bindings: Record<string, Record<string, unknown>> }[])[0].bindings.LHI;
+  /** A morph on the base layer, which says when it comes on as `match` when one is given. */
+  const morphing = (match?: string) => {
+    const doc = toCanonicalJson({
+      format: 'layerbench/layout@1',
+      name: 'Morph',
+      geometry: { preset: '3x5+2' },
+      keys: { space: 'L0' },
+      layers: [
+        {
+          id: 'base',
+          bindings: {
+            LHI: {
+              kind: 'layer_morph',
+              layers: ['base'],
+              active: { kind: 'kp', symbol: 'b' },
+              inactive: { kind: 'kp', symbol: 'a' },
+            },
+          },
+        },
+      ],
+    });
+    if (match !== undefined) morphOf(doc).match = match;
+    return doc;
+  };
+
+  it('is written with no match: it changes while any of its layers is on', () => {
+    expect(morphOf(morphing())).not.toHaveProperty('match');
+  });
+
+  it('reads `any`, as it was written on every morph, and is written without it again', () => {
+    const parsed = safeParseLayout(morphing('any'));
+    expect(parsed.ok, parsed.ok ? '' : parsed.error).toBe(true);
+    if (parsed.ok) {
+      expect(toCanonicalJson(parsed.layout)).toEqual(morphing());
+    }
+  });
+
+  it('is refused when it comes on only with all of its layers, which zmk-layer-morph cannot do', () => {
+    const parsed = safeParseLayout(morphing('all'));
+    expect(parsed.ok).toBe(false);
+    if (!parsed.ok) {
+      expect(parsed.error).toContain(LAYER_MORPH_MATCH);
+      expect(parsed.error).toContain('→ at layers[0].bindings.LHI.match');
+    }
+  });
+});
+
+describe('sentence case in the document', () => {
+  const doc = (features: unknown, L0: unknown = { kind: 'kp', symbol: ' ' }) => ({
+    ...toCanonicalJson(withBranches([])),
+    layers: [{ id: 'base', bindings: { L0 } }],
+    features,
+  });
+
+  it("reads a document that set its punctuation or modifier, and leaves them out: they are the module's", () => {
+    const parsed = safeParseLayout(doc({ sentenceCase: { after: ['.', ';'], mod: 'LCTRL' } }));
+    expect(parsed.ok, parsed.ok ? '' : parsed.error).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.layout.features).toEqual({ sentenceCase: {} });
+      expect(toCanonicalJson(parsed.layout).features).toEqual({ sentenceCase: { enabled: true } });
+    }
+  });
+
+  it('reads and writes a sentence space and a sentence morph as they are', () => {
+    const morph = {
+      kind: 'sentence_morph',
+      default: { kind: 'sl', layer: 'base' },
+      pending: { kind: 'kp', symbol: 'x' },
+    };
+    const written = doc(undefined, {
+      kind: 'hold_tap',
+      tap: { kind: 'sentence_space' },
+      hold: morph,
+    });
+    const parsed = safeParseLayout(written);
+    expect(parsed.ok, parsed.ok ? '' : parsed.error).toBe(true);
+    if (parsed.ok) expect(toCanonicalJson(parsed.layout).layers).toEqual(written.layers);
   });
 });
 
@@ -417,7 +502,7 @@ describe('a document saved while layouts named bindings of their own', () => {
     });
     expect(layout.layers[0].bindings.L0).toEqual(spaceHold);
     const space = compileLayout(layout).expanded.layers[0].bindings.L0;
-    expect(space).toMatchObject({ kind: 'hold_tap', tap: { kind: 'adaptive' } });
+    expect(space).toMatchObject({ kind: 'hold_tap', tap: { kind: 'sentence_space' } });
   });
 
   it('keeps a document that names nothing whole, however deep its bindings nest', () => {

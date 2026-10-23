@@ -1,5 +1,6 @@
 import {
   type Binding,
+  bindingModule,
   type CompiledLayout,
   legend,
   legendText,
@@ -18,7 +19,8 @@ import {
   type LayerMode,
   type ListChanges,
 } from './binding-changes.js';
-import { LayerChips, ModChips, Note, Row, Segment, TextField } from './controls.js';
+import { LayerChips, ModChips, ModuleNote, Note, Row, Segment, TextField } from './controls.js';
+import { SentenceSpaceNote } from './features.js';
 import {
   type KindInfo,
   type KindOfKey,
@@ -27,6 +29,7 @@ import {
   PART_KINDS,
   PRIMARY_KINDS,
   TAP_KINDS,
+  tileHint,
 } from './kinds.js';
 import { MacroStepsEditor } from './macro-steps.js';
 
@@ -105,7 +108,7 @@ function KindTiles({
       key={k.kind}
       type="button"
       aria-pressed={kind === k.kind}
-      title={k.hint}
+      title={tileHint(k)}
       className={`lb-kind-tile ${kind === k.kind ? 'lb-kind-tile-on' : ''}`}
       onClick={() => {
         closeMore();
@@ -138,7 +141,7 @@ function KindTiles({
           className={`lb-kind-tile ${shown ? 'lb-kind-tile-on' : ''}`}
           aria-expanded={more}
           aria-label={shown ? `More kinds: ${chosen.label}` : undefined}
-          title={shown ? chosen.hint : undefined}
+          title={shown ? tileHint(chosen) : undefined}
           onClick={() => setMore((m) => !m)}
         >
           <span aria-hidden="true" className="lb-kind-glyph">
@@ -257,6 +260,13 @@ function KindBody({
       return <MorphBody {...common} fields={fields} />;
     case 'capsword':
       return <CapsWordBody {...common} fields={fields} />;
+    case 'sentencespace':
+      return (
+        <div className="space-y-2">
+          <SentenceSpaceNote />
+          <ModuleNote module={bindingModule('sentence_space')} />
+        </div>
+      );
     case 'unicode':
       return <UnicodeBody {...common} fields={fields} />;
     case 'deadkey':
@@ -346,6 +356,7 @@ function LayerBody({ scope, fields: { view, set }, onChange, name }: BodyProps<'
           onChange={(mode) => onChange(set.mode(mode))}
         />
         <Note>{LAYER_HINT[view.mode]}</Note>
+        <ModuleNote module={bindingModule(view.mode)} />
       </Row>
     </div>
   );
@@ -596,6 +607,7 @@ function AdaptiveBody({
           <Note>What it types when no branch matches the key before it.</Note>
         </>
       )}
+      <ModuleNote module={bindingModule('adaptive')} />
       <TriggersEditor
         scope={scope}
         name={name}
@@ -745,12 +757,19 @@ function MorphBody({ scope, fields: { view, set }, onChange, name, depth }: Body
           options={[
             ['mod_morph', 'With a modifier'],
             ['layer_morph', 'On a layer'],
+            ['sentence_morph', 'After a sentence'],
           ]}
           value={view.by}
           onChange={(by) => onChange(set.by(by))}
         />
+        <ModuleNote module={bindingModule(view.by)} />
       </Row>
-      {view.by === 'mod_morph' ? (
+      {view.by === 'sentence_morph' ? (
+        <Note>
+          Changes after a sentence space has left a capital, until a key other than a layer key is
+          pressed.
+        </Note>
+      ) : view.by === 'mod_morph' ? (
         <Row label="With">
           <Segment
             label={named(name, 'Modifier that changes it')}
@@ -767,6 +786,7 @@ function MorphBody({ scope, fields: { view, set }, onChange, name, depth }: Body
             value={view.layers}
             onChange={(layer) => onChange(set.toggleLayer(layer))}
           />
+          <Note>Changes while any of these is on.</Note>
         </Row>
       )}
       <PartEditor
@@ -828,6 +848,7 @@ function UnicodeBody({ fields: { view, set }, onChange, name }: BodyProps<'unico
         />
       </Row>
       <Note>For a character the host keyboard has no key for; the firmware enters it by code.</Note>
+      <ModuleNote module={bindingModule('unicode')} />
     </div>
   );
 }

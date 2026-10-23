@@ -65,13 +65,10 @@ describe('the part a press chooses', () => {
     expect(partOf(key, { mods: new Set(['LCTRL']) })).toBe(a);
   });
 
-  it("is a layer morph's changed binding when any, or all, of its layers are on", () => {
-    const any: Binding = { kind: 'layer_morph', layers: ['x', 'y'], inactive: a, active: b };
-    const all: Binding = { ...any, match: 'all' } as Binding;
-    const xOn = { layerOn: (l: string) => l === 'x' };
-    expect(partOf(any, xOn)).toBe(b);
-    expect(partOf(all, xOn)).toBe(a);
-    expect(partOf(all, { layerOn: () => true })).toBe(b);
+  it("is a layer morph's changed binding when any of its layers is on", () => {
+    const key: Binding = { kind: 'layer_morph', layers: ['x', 'y'], inactive: a, active: b };
+    expect(partOf(key, { layerOn: (l: string) => l === 'x' })).toBe(b);
+    expect(partOf(key, { layerOn: () => false })).toBe(a);
   });
 });
 

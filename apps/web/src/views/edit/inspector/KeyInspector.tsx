@@ -151,14 +151,14 @@ function Inspector({ state, send, focusKey, keyId }: KeyInspectorProps & { keyId
         {owner ? (
           <>
             <div className="rounded-box bg-base-200 p-2 text-xs">
-              This key's tap is wrapped by <strong>{featureTitle(owner)}</strong> (
+              This key's tap belongs to <strong>{featureTitle(owner)}</strong> (
               <span className="font-mono">{owner}</span>), which the layout turns on in Features.
             </div>
             <FeatureBody layout={layout} feature={owner} setFeatures={setFeatures} />
             <details className="text-xs">
               <summary className="cursor-pointer opacity-70">The key under the feature</summary>
               <div className="pt-2 space-y-2">
-                <Note>The feature wraps what this key taps; the rest of it is set here.</Note>
+                <Note>The feature sets what this key taps; the rest of it is set here.</Note>
                 <BindingEditor scope={scope} value={current} onChange={commit} />
               </div>
             </details>

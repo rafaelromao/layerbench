@@ -1,6 +1,7 @@
 import {
   type Edit,
   exportKeymapDrawer,
+  featureModule,
   freeCondition,
   GEOMETRY_PRESET_IDS,
   LAYER_COLORS,
@@ -13,6 +14,7 @@ import {
   slug,
   specialFeatures,
   toCanonicalJson,
+  type ZmkModuleId,
 } from '@layerbench/core';
 import { type Dispatch, type ReactNode, useId, useMemo, useState } from 'react';
 import { layerColourOf } from '../../components/layer-colour.js';
@@ -24,7 +26,7 @@ import {
   parseBindingText,
   roundTrips,
 } from './binding-text.js';
-import { LayerChips, Segment, TextField } from './inspector/controls.js';
+import { LayerChips, ModuleNote, Segment, TextField } from './inspector/controls.js';
 import { type EditAction, type EditState, shownLayer } from './reducer.js';
 
 type Send = Dispatch<EditAction>;
@@ -37,12 +39,15 @@ interface PanelProps {
 function FeatureRow({
   title,
   hint,
+  module,
   on,
   onToggle,
   children,
 }: {
   title: string;
   hint: string;
+  /** The ZMK module the feature needs, said whether it is on or off. */
+  module?: ZmkModuleId | null;
   on: boolean;
   onToggle: (next: boolean) => void;
   children?: ReactNode;
@@ -62,13 +67,18 @@ function FeatureRow({
           <span className="block text-[11px] opacity-70">{hint}</span>
         </span>
       </label>
+      {module ? (
+        <div className="mt-1 pl-8">
+          <ModuleNote module={module} />
+        </div>
+      ) : null}
       {on && children ? <div className="mt-2 pl-8">{children}</div> : null}
     </div>
   );
 }
 
 /**
- * Features: the typing behaviours a keymap would otherwise need extra layers for.
+ * Features: the typing behaviours that go on a key by its role, the space key or the shift key.
  *
  * Each wraps the key it belongs to — the space key, the shift key — in ordinary bindings, so the
  * layer list stays the set of layers a typist actually reaches. Adaptive keys and alt repeats are
@@ -83,35 +93,18 @@ export function FeaturesPanel({ state, send }: PanelProps) {
   return (
     <div className="space-y-3">
       <p className="text-[11px] opacity-70">
-        Firmware needs a pre-shifted copy of a layer to do these. Declared here they are what they
-        are, and the layer list stays honest. Adaptive keys and alt repeats are made on the key,
-        with its Adaptive or Alt repeat tile.
+        Each goes on the key it belongs to, the space key or the shift key, with no layer of its
+        own. Adaptive keys and alt repeats are made on the key, with its Adaptive or Alt repeat
+        tile.
       </p>
 
       <FeatureRow
         title="Sentence case"
-        hint="Capitalise the first letter after sentence-ending punctuation."
+        hint="After . ? or ! and a space, the next key, if a letter a–z, is a capital."
+        module={featureModule('sentenceCase')}
         on={enabled(f.sentenceCase)}
         onToggle={(on) => set({ ...f, sentenceCase: on ? {} : undefined })}
-      >
-        <label className="form-control">
-          <span className="label-text text-xs">Ends a sentence</span>
-          <input
-            aria-label="Sentence-ending punctuation"
-            className="input input-xs input-bordered w-40 font-mono"
-            value={(f.sentenceCase?.after ?? ['.', '?', '!']).join(' ')}
-            onChange={(e) =>
-              set({
-                ...f,
-                sentenceCase: {
-                  ...f.sentenceCase,
-                  after: e.target.value.split(/\s+/).filter(Boolean),
-                },
-              })
-            }
-          />
-        </label>
-      </FeatureRow>
+      />
 
       <FeatureRow
         title="Caps word"

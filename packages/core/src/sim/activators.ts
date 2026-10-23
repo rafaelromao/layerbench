@@ -51,6 +51,8 @@ function tapsThatChoose(b: Binding, depth = 0): number {
       return most(b.default, b.morphed);
     case 'layer_morph':
       return most(b.inactive, b.active);
+    case 'sentence_morph':
+      return most(b.default, b.pending);
     case 'adaptive':
       return most(b.default, ...(b.triggers ?? []).map((t) => t.binding));
     default:
@@ -130,6 +132,11 @@ function collectLayerTargets(
     case 'layer_morph':
       next(b.inactive);
       next(b.active);
+      return;
+    // The part it has but while a sentence's capital is pending, which no press of the planner's
+    // can count on.
+    case 'sentence_morph':
+      next(b.default);
       return;
     case 'tap_dance':
       // Inside a branch, the branch the press's taps choose, as the machine picks it. Tapped, each
@@ -314,6 +321,8 @@ export interface ReachRoute {
   mods?: ModChoice[];
   /** An adaptive key's branch: only after these. */
   after?: { afterAny?: string[]; afterTags?: string[] };
+  /** A sentence morph's part for while a sentence's capital is pending: only then. */
+  afterSentence?: true;
   /** The tap of a tap dance that does it, from the second on. */
   taps?: number;
   /** For a layer that comes on with others: the one this press brings on, and the rest it needs. */
@@ -336,6 +345,7 @@ interface Extra {
   /** What the key's mod morphs need of the modifiers on the way to this part. */
   path?: MorphPath;
   after?: ReachRoute['after'];
+  afterSentence?: true;
   taps?: number;
   /** Inside a tap dance's branch, where a tap dance inside chooses by the same taps. */
   inDance?: boolean;
@@ -345,8 +355,9 @@ interface Extra {
 
 /**
  * The routes the machine runs but the planner has no need to press for: a macro that arms the
- * layer, an adaptive key's branch, a later tap of a tap dance, an auto layer. Only those are
- * emitted, so together with the planner's own activators nothing is counted twice.
+ * layer, an adaptive key's branch, a later tap of a tap dance, an auto layer, a sentence morph's
+ * part for after a sentence's end. Only those are emitted, so together with the planner's own
+ * activators nothing is counted twice.
  */
 function extraRoutes(
   c: CompiledLayout,
@@ -370,6 +381,7 @@ function extraRoutes(
       via,
       ...(mods.length ? { mods } : {}),
       ...(ctx.after ? { after: ctx.after } : {}),
+      ...(ctx.afterSentence ? { afterSentence: true } : {}),
       ...(ctx.taps ? { taps: ctx.taps } : {}),
     });
   };
@@ -402,6 +414,11 @@ function extraRoutes(
     case 'layer_morph':
       next(b.inactive, mode);
       next(b.active, mode);
+      return;
+    case 'sentence_morph':
+      next(b.default, mode);
+      // A route the planner does not press, as `collectLayerTargets` leaves it out.
+      next(b.pending, mode, { extra: true, afterSentence: true });
       return;
     case 'tap_dance':
       // Tapped, the planner presses a later branch itself, as `collectLayerTargets` finds it; held,
@@ -620,6 +637,8 @@ function holdOf(
       return either(b.default, b.morphed);
     case 'layer_morph':
       return either(b.inactive, b.active);
+    case 'sentence_morph':
+      return either(b.default, b.pending);
     case 'tap_dance': {
       // Held, a tap dance is pressed once: its first branch.
       const first = branchFor(b, 1);
@@ -718,6 +737,7 @@ export function describeReach(c: CompiledLayout, layer: number, key: ReachKey): 
           ? `tapped ${TIMES[r.taps] ?? `${r.taps} times`}`
           : 'tapped';
     const qualifiers: string[] = [];
+    if (r.afterSentence) qualifiers.push('after a sentence ends');
     if (r.after?.afterAny?.length) qualifiers.push(`after ${orList(r.after.afterAny)}`);
     if (r.after?.afterTags?.length)
       qualifiers.push(`after a key tagged ${orList(r.after.afterTags)}`);
