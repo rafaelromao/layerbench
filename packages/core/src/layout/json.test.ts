@@ -163,7 +163,7 @@ describe('a layer morph in the document', () => {
     return doc;
   };
 
-  it('is written with no word on when it comes on: while any of its layers is', () => {
+  it('is written with no match: it changes while any of its layers is on', () => {
     expect(morphOf(morphing())).not.toHaveProperty('match');
   });
 

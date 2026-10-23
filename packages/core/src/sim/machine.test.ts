@@ -123,6 +123,34 @@ describe('Machine — adaptive keys', () => {
   });
 });
 
+describe('Machine — layer morph', () => {
+  it('types its changed binding while any of its layers is on, as zmk-layer-morph does', () => {
+    const layout = mini([
+      {
+        id: 'base',
+        bindings: {
+          LHP: {
+            kind: 'layer_morph',
+            layers: ['x', 'y'],
+            active: { kind: 'kp', symbol: 'b' },
+            inactive: { kind: 'kp', symbol: 'a' },
+          },
+          LHI: { kind: 'mo', layer: 'x' },
+          LHM: { kind: 'mo', layer: 'y' },
+        },
+      },
+      { id: 'x', bindings: {} },
+      { id: 'y', bindings: {} },
+    ]);
+    const { tap, hold, release } = machineFor(layout);
+    expect(tap('LHP').symbols).toBe('a');
+    hold('LHM'); // y only
+    expect(tap('LHP').symbols).toBe('b');
+    release('LHM');
+    expect(tap('LHP').symbols).toBe('a');
+  });
+});
+
 describe('Machine — toggles, to-layer, locking, conditional layers', () => {
   const layout = mini(
     [

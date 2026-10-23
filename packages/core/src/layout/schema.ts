@@ -105,9 +105,8 @@ export const BindingSchema: z.ZodType<unknown> = z.lazy(() =>
       z.object({
         kind: z.literal('layer_morph'),
         layers: z.array(z.string()).default([]),
-        // Written as `any` on every layer morph before a morph came on only with any of its
-        // layers: that is what each does, and the document is written without it. Nothing else
-        // can be read, as zmk-layer-morph has no other.
+        // The writer once put `any` on every layer morph. It is what every morph does, so it is
+        // still read, and written no more. zmk-layer-morph has no other, so nothing else is read.
         match: z.literal('any', { error: LAYER_MORPH_MATCH }).optional(),
         active: BindingSchema,
         inactive: BindingSchema,

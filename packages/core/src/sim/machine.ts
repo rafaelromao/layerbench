@@ -793,7 +793,7 @@ export class Machine {
           return;
         }
         case 'layer_morph': {
-          const on = b.layers.some((l) => (this.mask & (1 << this.layerIdx(l))) !== 0);
+          const on = b.layers.some((l) => this.isLayerActive(this.layerIdx(l)));
           this.run(on ? b.active : b.inactive, ctx);
           return;
         }
