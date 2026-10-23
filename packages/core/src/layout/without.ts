@@ -39,6 +39,8 @@ function onlyReachesLayer(b: Binding, depth = 0): boolean {
       return only(b.default) && only(b.morphed);
     case 'layer_morph':
       return only(b.inactive) && only(b.active);
+    case 'sentence_morph':
+      return only(b.default) && only(b.pending);
     case 'adaptive':
       return (
         b.default !== undefined &&
@@ -68,17 +70,13 @@ function macroText(b: Extract<Binding, { kind: 'macro' }>): string {
     .join('');
 }
 
-/** Sentence case types a space, and only shifts what follows: it is not an adaptive key. */
-function isSentenceCase(b: Extract<Binding, { kind: 'adaptive' }>): boolean {
-  return b.default?.kind === 'kp' && b.default.symbol === ' ';
-}
-
 /**
  * The layout as it would be typed without some of its special features: the typist never presses
  * them, and types the text another way, or leaves out what has no other way.
  *
  * - `adaptive`: adaptive keys keep their default and lose every branch, so Magic Romak's is a plain
- *   `h` and alt repeat a plain repeat. Sentence case, which shifts but types only a space, stays.
+ *   `h` and alt repeat a plain repeat. Sentence case is a sentence space, not an adaptive key, and
+ *   stays.
  * - `repeat`: repeat keys, alt repeat's default included, type nothing, and doubled letters are
  *   tapped twice.
  * - `combos`: combos that type are gone; command combos were never typed with anyway. A combo that
@@ -97,7 +95,7 @@ export function withoutFeatures(layout: Layout, off: readonly FeatureKind[]): La
   const walk = (b: Binding): Binding => {
     switch (b.kind) {
       case 'adaptive':
-        if (drop.has('adaptive') && !isSentenceCase(b)) return walk(b.default ?? NONE);
+        if (drop.has('adaptive')) return walk(b.default ?? NONE);
         return {
           ...b,
           default: b.default ? walk(b.default) : undefined,
@@ -116,6 +114,8 @@ export function withoutFeatures(layout: Layout, off: readonly FeatureKind[]): La
         return { ...b, default: walk(b.default), morphed: walk(b.morphed) };
       case 'layer_morph':
         return { ...b, active: walk(b.active), inactive: walk(b.inactive) };
+      case 'sentence_morph':
+        return { ...b, default: walk(b.default), pending: walk(b.pending) };
       case 'tap_dance':
         return { ...b, bindings: b.bindings.map(walk) };
       default:

@@ -181,6 +181,14 @@ export function staticOutputs(b: Binding, depth = 0): StaticOutput[] {
         out.push({ ...o, suffix: `#lm${o.suffix}`, dynamic: true });
       return out;
     }
+    case 'sentence_morph': {
+      const out = staticOutputs(b.default, depth + 1);
+      for (const o of staticOutputs(b.pending, depth + 1))
+        out.push({ ...o, suffix: `#sm${o.suffix}`, dynamic: true });
+      return out;
+    }
+    case 'sentence_space':
+      return [{ symbols: ' ', taps: 1, kind: 'direct', suffix: '', dynamic: false }];
     case 'tap_dance': {
       const out: StaticOutput[] = [];
       b.bindings.forEach((x, i) => {
@@ -217,6 +225,12 @@ export function holdOutputs(b: Binding, depth = 0): StaticOutput[] {
         out.push({ ...o, suffix: `#lm${o.suffix}`, dynamic: true });
       return out;
     }
+    case 'sentence_morph': {
+      const out = holdOutputs(b.default, depth + 1);
+      for (const o of holdOutputs(b.pending, depth + 1))
+        out.push({ ...o, suffix: `#sm${o.suffix}`, dynamic: true });
+      return out;
+    }
     default:
       return [];
   }
@@ -235,6 +249,7 @@ function inMorph(
 function emitsText(b: Binding): boolean {
   return (
     b.kind === 'kp' ||
+    b.kind === 'sentence_space' ||
     b.kind === 'unicode' ||
     b.kind === 'key_repeat' ||
     b.kind === 'adaptive' ||

@@ -123,25 +123,38 @@ moved or removed.
 
 **Caps word** `⇪` types capitals until the word ends. **Features** can also put
 caps word on the shift key, so that shift pressed while shift is already on starts it, and turn on
-**sentence case**: after the punctuation that ends a sentence, the space key types a space and
-shifts the next letter.
+**sentence case**, which makes the space key a sentence space.
 
-Caps word is ZMK's own `&caps_word`; on the shift key it is a mod-morph. Sentence case needs the
-module [rafaelromao/zmk-sentence-case](https://github.com/rafaelromao/zmk-sentence-case), which ends a
-sentence at `.`, `?` and `!`, with Left Shift. Other punctuation, or another modifier, needs an
-adaptive key on the space key, from [urob/zmk-adaptive-key](https://github.com/urob/zmk-adaptive-key).
+A **Sentence space**, among the tiles under **More**, types a space. Pressed right after `.`, `?` or
+`!`, it leaves a capital for the next key pressed. A letter a–z comes out a capital. Any other key,
+a digit, a symbol, a dead key, a modifier or another space, takes it and types as it is, so the
+letter after it is lowercase. A layer key presses no keycode, and leaves the capital for the key
+after it. A lowercase letter right after `. ` cannot be typed: the module lets the capital go after
+a second, and the analysis has no clock.
+
+A **Morph** can also change **After a sentence**, while a sentence space has left a capital. Magic
+Romak's Alpha 2 key is one, as in its author's keymap: after a sentence's end it arms Shift with
+Alpha 2, so an accent that starts a sentence is a capital too. The capital alone would not give one,
+as an accent is no letter a–z.
+
+Caps word is ZMK's own `&caps_word`; on the shift key it is a mod-morph. A sentence space and a
+morph after a sentence need the module [rafaelromao/zmk-sentence-case](https://github.com/rafaelromao/zmk-sentence-case): they are its `&sentence_space` and its sentence-morph.
+Which punctuation ends a sentence, and that the capital is Left Shift, are the module's.
 
 ## Tap dance, morphs, Unicode and dead keys
 
 These are among the editor's other tiles, under **More** on a phone:
 
 - **Tap dance** `TD` does one thing on one tap, another on two, and so on.
-- **Morph** does something else while a modifier is held, or while a layer is on. With a modifier
-  it is ZMK's mod-morph. On a layer it changes while any of the layers chosen is on, and needs the
-  module [rafaelromao/zmk-layer-morph](https://github.com/rafaelromao/zmk-layer-morph).
+- **Morph** does something else while a modifier is held, while a layer is on, or after a
+  sentence's end. With a modifier it is ZMK's mod-morph. On a layer it changes while any of the
+  layers chosen is on, and needs the module
+  [rafaelromao/zmk-layer-morph](https://github.com/rafaelromao/zmk-layer-morph). After a sentence,
+  see [Caps word and sentence case](#caps-word-and-sentence-case).
 - **Unicode** `U+` types a character the operating system has no key for. It needs the module
   [urob/zmk-unicode](https://github.com/urob/zmk-unicode), and the operating system set up for
-  Unicode input.
+  Unicode input. The module types the character as keys of its own, so it leaves nothing to follow:
+  a repeat right after it types nothing, and no adaptive key's branch follows it.
 - **Dead key** puts an accent on the next letter, as `´` then `e` gives `é`. On the board it shows
   its accent in a colour of its own, over a dotted line where the letter will go. The analysis types
   through them: an accented letter no key types is typed as its accent, then the letter, and a
@@ -180,7 +193,7 @@ or with a module. Each module's page says how to add it to a keymap.
 | Morph with a modifier | [mod-morph](https://zmk.dev/docs/keymaps/behaviors/mod-morph) |
 | Morph on a layer | the module [rafaelromao/zmk-layer-morph](https://github.com/rafaelromao/zmk-layer-morph) |
 | Caps word | [`&caps_word`](https://zmk.dev/docs/keymaps/behaviors/caps-word); on the shift key, in a mod-morph |
-| Sentence case | the module [rafaelromao/zmk-sentence-case](https://github.com/rafaelromao/zmk-sentence-case); for other punctuation or another modifier, an adaptive key |
+| Sentence case, sentence space, morph after a sentence | the module [rafaelromao/zmk-sentence-case](https://github.com/rafaelromao/zmk-sentence-case) |
 | Unicode | the module [urob/zmk-unicode](https://github.com/urob/zmk-unicode) |
 | Dead key | the host's dead key, sent with `&kp` |
 | Combo | [combos](https://zmk.dev/docs/keymaps/combos) |

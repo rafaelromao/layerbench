@@ -185,6 +185,39 @@ describe('a layer morph in the document', () => {
   });
 });
 
+describe('sentence case in the document', () => {
+  const doc = (features: unknown, L0: unknown = { kind: 'kp', symbol: ' ' }) => ({
+    ...toCanonicalJson(withBranches([])),
+    layers: [{ id: 'base', bindings: { L0 } }],
+    features,
+  });
+
+  it("reads a document that set its punctuation or modifier, and leaves them out: they are the module's", () => {
+    const parsed = safeParseLayout(doc({ sentenceCase: { after: ['.', ';'], mod: 'LCTRL' } }));
+    expect(parsed.ok, parsed.ok ? '' : parsed.error).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.layout.features).toEqual({ sentenceCase: {} });
+      expect(toCanonicalJson(parsed.layout).features).toEqual({ sentenceCase: { enabled: true } });
+    }
+  });
+
+  it('reads and writes a sentence space and a sentence morph as they are', () => {
+    const morph = {
+      kind: 'sentence_morph',
+      default: { kind: 'sl', layer: 'base' },
+      pending: { kind: 'kp', symbol: 'x' },
+    };
+    const written = doc(undefined, {
+      kind: 'hold_tap',
+      tap: { kind: 'sentence_space' },
+      hold: morph,
+    });
+    const parsed = safeParseLayout(written);
+    expect(parsed.ok, parsed.ok ? '' : parsed.error).toBe(true);
+    if (parsed.ok) expect(toCanonicalJson(parsed.layout).layers).toEqual(written.layers);
+  });
+});
+
 describe('a conditional layer in the document', () => {
   const waitingFor = (n: number) => {
     const ids = Array.from({ length: n }, (_, i) => `l${i}`);
@@ -469,7 +502,7 @@ describe('a document saved while layouts named bindings of their own', () => {
     });
     expect(layout.layers[0].bindings.L0).toEqual(spaceHold);
     const space = compileLayout(layout).expanded.layers[0].bindings.L0;
-    expect(space).toMatchObject({ kind: 'hold_tap', tap: { kind: 'adaptive' } });
+    expect(space).toMatchObject({ kind: 'hold_tap', tap: { kind: 'sentence_space' } });
   });
 
   it('keeps a document that names nothing whole, however deep its bindings nest', () => {

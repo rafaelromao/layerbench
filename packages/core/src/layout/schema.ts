@@ -111,6 +111,12 @@ export const BindingSchema: z.ZodType<unknown> = z.lazy(() =>
         active: BindingSchema,
         inactive: BindingSchema,
       }),
+      z.object({
+        kind: z.literal('sentence_morph'),
+        default: BindingSchema,
+        pending: BindingSchema,
+      }),
+      z.object({ kind: z.literal('sentence_space') }),
       z.object({ kind: z.literal('tap_dance'), bindings: z.array(BindingSchema) }),
       z.object({
         kind: z.literal('macro'),
@@ -174,13 +180,14 @@ const GeometryKeySchema = z
 
 /** Declarative special features; the compiler wraps the keys they belong to. */
 const FeaturesSchema = z.object({
+  // A document from before sentence case was zmk-sentence-case's may name the punctuation that
+  // ends a sentence (`after`) and the modifier it arms (`mod`): the module has its own, so they are
+  // read and left out, as any field the schema does not name is.
   sentenceCase: z
     .object({
       enabled: z.boolean().optional(),
-      after: z.array(z.string()).optional(),
       key: z.string().optional(),
       on: z.array(z.string()).optional(),
-      mod: ModSchema.optional(),
     })
     .optional(),
   capsWord: z

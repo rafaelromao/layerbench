@@ -27,7 +27,6 @@ import {
   roundTrips,
 } from './binding-text.js';
 import { LayerChips, ModuleNote, Segment, TextField } from './inspector/controls.js';
-import { SentenceCaseLimits } from './inspector/features.js';
 import { type EditAction, type EditState, shownLayer } from './reducer.js';
 
 type Send = Dispatch<EditAction>;
@@ -101,30 +100,11 @@ export function FeaturesPanel({ state, send }: PanelProps) {
 
       <FeatureRow
         title="Sentence case"
-        hint="Capitalise the first letter after sentence-ending punctuation."
+        hint="After . ? or ! and a space, the next letter is a capital."
         module={featureModule('sentenceCase')}
         on={enabled(f.sentenceCase)}
         onToggle={(on) => set({ ...f, sentenceCase: on ? {} : undefined })}
-      >
-        <label className="form-control">
-          <span className="label-text text-xs">Ends a sentence</span>
-          <input
-            aria-label="Sentence-ending punctuation"
-            className="input input-xs input-bordered w-40 font-mono"
-            value={(f.sentenceCase?.after ?? ['.', '?', '!']).join(' ')}
-            onChange={(e) =>
-              set({
-                ...f,
-                sentenceCase: {
-                  ...f.sentenceCase,
-                  after: e.target.value.split(/\s+/).filter(Boolean),
-                },
-              })
-            }
-          />
-        </label>
-        <SentenceCaseLimits />
-      </FeatureRow>
+      />
 
       <FeatureRow
         title="Caps word"

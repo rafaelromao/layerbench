@@ -105,6 +105,8 @@ function applyDefaults(b: Binding, defaults: ResolvedBehaviorDefaults): Binding 
         return { ...x, default: walk(x.default), morphed: walk(x.morphed) };
       case 'layer_morph':
         return { ...x, active: walk(x.active), inactive: walk(x.inactive) };
+      case 'sentence_morph':
+        return { ...x, default: walk(x.default), pending: walk(x.pending) };
       case 'tap_dance':
         return { ...x, bindings: x.bindings.map(walk) };
       case 'macro':
@@ -159,6 +161,10 @@ export function referencedLayers(
       if (tested) for (const l of b.layers) out.add(l);
       referencedLayers(b.active, out, tested);
       referencedLayers(b.inactive, out, tested);
+      break;
+    case 'sentence_morph':
+      referencedLayers(b.default, out, tested);
+      referencedLayers(b.pending, out, tested);
       break;
     case 'tap_dance':
       for (const x of b.bindings) referencedLayers(x, out, tested);

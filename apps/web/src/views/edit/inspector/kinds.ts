@@ -18,6 +18,7 @@ export type KindOfKey =
   | 'tapdance'
   | 'morph'
   | 'capsword'
+  | 'sentencespace'
   | 'unicode'
   | 'deadkey'
   | 'transparent'
@@ -72,6 +73,13 @@ export const MORE_KINDS: readonly KindInfo[] = [
   { kind: 'morph', label: 'Morph', glyph: 'a⇧b', hint: 'changes with a modifier or a layer' },
   { kind: 'capsword', label: 'Caps word', glyph: '⇪', hint: 'capitals until the word ends' },
   {
+    kind: 'sentencespace',
+    label: 'Sentence space',
+    glyph: '.␣A',
+    hint: 'a space, and a capital after . ? or !',
+    module: bindingModule('sentence_space') ?? undefined,
+  },
+  {
     kind: 'unicode',
     label: 'Unicode',
     glyph: 'U+',
@@ -101,6 +109,7 @@ export const PART_KINDS: readonly KindOfKey[] = [
   'modifier',
   'repeat',
   'capsword',
+  'sentencespace',
   'transparent',
   'nothing',
 ];
@@ -152,7 +161,10 @@ export function kindOf(b: Binding | undefined): KindOfKey {
       return 'tapdance';
     case 'mod_morph':
     case 'layer_morph':
+    case 'sentence_morph':
       return 'morph';
+    case 'sentence_space':
+      return 'sentencespace';
     case 'caps_word':
       return 'capsword';
     case 'unicode':

@@ -85,6 +85,9 @@ export function bindingToJson(b: Binding): Record<string, unknown> {
         inactive: bindingToJson(b.inactive),
       };
       break;
+    case 'sentence_morph':
+      extra = { default: bindingToJson(b.default), pending: bindingToJson(b.pending) };
+      break;
     case 'tap_dance':
       extra = { bindings: b.bindings.map(bindingToJson) };
       break;
@@ -151,9 +154,7 @@ function featuresToJson(f: LayoutFeatures): Record<string, unknown> {
   const s = f.sentenceCase;
   const c = f.capsWord;
   return compact({
-    sentenceCase:
-      s &&
-      compact({ enabled: s.enabled ?? true, after: s.after, key: s.key, on: s.on, mod: s.mod }),
+    sentenceCase: s && compact({ enabled: s.enabled ?? true, key: s.key, on: s.on }),
     capsWord:
       c &&
       compact({

@@ -5,7 +5,7 @@ import {
   type WrappingFeature,
 } from '@layerbench/core';
 import { words } from './binding-changes.js';
-import { ModChips, ModuleLink, ModuleNote, Note, Row, TextField } from './controls.js';
+import { ModuleNote, Note, Row, TextField } from './controls.js';
 
 export function featureTitle(feature: WrappingFeature): string {
   switch (feature) {
@@ -17,15 +17,14 @@ export function featureTitle(feature: WrappingFeature): string {
 }
 
 /**
- * What sentence case's module does not do, and what does instead: an adaptive key on the space key,
- * which is what the feature compiles to.
+ * What a sentence space does, as zmk-sentence-case's `&sentence_space`: the space key sentence case
+ * makes, and any key made one.
  */
-export function SentenceCaseLimits() {
+export function SentenceSpaceNote() {
   return (
     <Note>
-      That module ends a sentence at <span className="font-mono">. ? !</span> only, with Left Shift.
-      Other punctuation or another modifier needs an adaptive key, from{' '}
-      <ModuleLink module="adaptiveKey" />.
+      Types a space. After <span className="font-mono">. ? !</span> it leaves a capital for the next
+      key pressed, a layer key aside: a letter a–z comes out a capital, any other key as it is.
     </Note>
   );
 }
@@ -62,37 +61,15 @@ export function FeatureBody({
 }) {
   const f = layout.features ?? {};
   switch (feature) {
-    case 'sentenceCase': {
-      const s = f.sentenceCase ?? {};
+    // The module ends a sentence at its own punctuation, and capitalises with Left Shift: there is
+    // nothing to choose.
+    case 'sentenceCase':
       return (
         <div className="space-y-2">
-          <Note>Types a space; after the end of a sentence it also shifts the next letter.</Note>
-          <Row label="After">
-            <TextField
-              label="Sentence-ending punctuation"
-              value={(s.after ?? ['.', '?', '!']).join(' ')}
-              className="w-32"
-              onCommit={(text) => {
-                const after = words(text);
-                const next = { ...s };
-                if (after.length > 0) next.after = after;
-                else delete next.after;
-                setFeatures({ ...f, sentenceCase: next });
-              }}
-            />
-          </Row>
-          <Row label="Shifts">
-            <ModChips
-              label="Modifier armed after a sentence"
-              value={[s.mod ?? 'LSHIFT']}
-              onChange={(mod) => setFeatures({ ...f, sentenceCase: { ...s, mod } })}
-            />
-          </Row>
+          <SentenceSpaceNote />
           <ModuleNote module={featureModule('sentenceCase')} />
-          <SentenceCaseLimits />
         </div>
       );
-    }
 
     case 'capsWord': {
       const c = f.capsWord ?? {};

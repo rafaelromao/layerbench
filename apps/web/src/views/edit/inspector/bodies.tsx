@@ -20,6 +20,7 @@ import {
   type ListChanges,
 } from './binding-changes.js';
 import { LayerChips, ModChips, ModuleNote, Note, Row, Segment, TextField } from './controls.js';
+import { SentenceSpaceNote } from './features.js';
 import {
   type KindInfo,
   type KindOfKey,
@@ -259,6 +260,13 @@ function KindBody({
       return <MorphBody {...common} fields={fields} />;
     case 'capsword':
       return <CapsWordBody {...common} fields={fields} />;
+    case 'sentencespace':
+      return (
+        <div className="space-y-2">
+          <SentenceSpaceNote />
+          <ModuleNote module={bindingModule('sentence_space')} />
+        </div>
+      );
     case 'unicode':
       return <UnicodeBody {...common} fields={fields} />;
     case 'deadkey':
@@ -749,13 +757,19 @@ function MorphBody({ scope, fields: { view, set }, onChange, name, depth }: Body
           options={[
             ['mod_morph', 'With a modifier'],
             ['layer_morph', 'On a layer'],
+            ['sentence_morph', 'After a sentence'],
           ]}
           value={view.by}
           onChange={(by) => onChange(set.by(by))}
         />
         <ModuleNote module={bindingModule(view.by)} />
       </Row>
-      {view.by === 'mod_morph' ? (
+      {view.by === 'sentence_morph' ? (
+        <Note>
+          Changes after a sentence space has left a capital, until a key other than a layer key is
+          pressed.
+        </Note>
+      ) : view.by === 'mod_morph' ? (
         <Row label="With">
           <Segment
             label={named(name, 'Modifier that changes it')}

@@ -64,8 +64,9 @@ Numbers and Symbols among them, do:
   layer.
 - **Special**: a layout with an adaptive key, a macro, an alt repeat or a mod morph, on a key or on
   a combo; or with more than one alpha layer; or on a board of fewer than 34 keys, thumbs included.
-  Caps word makes the shift key a mod morph and sentence case makes the space key adaptive, so
-  either makes a layout Special too.
+  Caps word makes the shift key a mod morph, and sentence case makes the space key a sentence
+  space, which changes with the key before it as an adaptive key does, so either makes a layout
+  Special too.
 
 Untick a category under **Categories**, in **Rank and filter**, to leave its layouts out of the list
 and the ranking.

@@ -48,14 +48,13 @@ describe('feature expansion', () => {
     expect(e.owned.size).toBe(0);
   });
 
-  it('wraps the space key for sentence case and leaves a plain space alone', () => {
+  it('makes the space key a sentence space and leaves a plain space alone', () => {
     const { layout, owned } = expandFeatures(mini({ sentenceCase: {} }));
-    const space = layout.layers[0].bindings.L0;
-    expect(space.kind).toBe('adaptive');
+    expect(layout.layers[0].bindings.L0).toEqual({ kind: 'sentence_space' });
     expect(owned.get('base')?.get('L0')).toBe('sentenceCase');
 
     const c = compileLayout(mini({ sentenceCase: {} }));
-    // A sentence-ending space arms a one-shot shift, so the capital after it costs no extra
+    // A sentence-ending space leaves a capital pending, so the capital after it costs no extra
     // press — the whole point of not modelling this as a pre-shifted layer.
     const e = explain(c, '. B', { caseMode: 'model', crossWord: 'reset' });
     expect(e.steps.map((s) => s.key)).toEqual(['RBI', 'L0', 'RHI']);
@@ -100,7 +99,7 @@ describe('Magic Romak after the features rewrite', () => {
     if (space.kind !== 'hold_tap') return;
     expect(space.hold).toEqual({ kind: 'mo', layer: 'num' });
     // The feature wrapped the tap rather than replacing the whole binding.
-    expect(space.tap.kind).toBe('adaptive');
+    expect(space.tap).toEqual({ kind: 'sentence_space' });
 
     // `explain` takes the text as given, so the digits reach the simulator directly: hold the
     // space key, tap the two digits on the keypad, release. The release is not a press.
@@ -158,10 +157,9 @@ describe('Magic Romak after the features rewrite', () => {
   });
 
   /**
-   * The shift a sentence start arms cannot be cancelled — the firmware's `&sk LSHIFT` behaves the
-   * same way — so a *lowercase* letter after `. ` is genuinely unproducible. The pre-shifted layer
-   * this replaced looked better only because `upperCopy` skipped the adaptive key, letting
-   * `h` and `v` through unshifted. This pins the honest behaviour.
+   * The capital a sentence's end leaves pending goes to the next letter, as zmk-sentence-case's
+   * does, and only its timeout, which the analysis has no clock for, lets one go by, so a
+   * *lowercase* letter after `. ` is genuinely unproducible. This pins the honest behaviour.
    */
   it('cannot type a lowercase letter straight after a sentence-ending space', () => {
     const capital = explain(compiled, '. H', { caseMode: 'model', crossWord: 'reset' });
@@ -170,6 +168,14 @@ describe('Magic Romak after the features rewrite', () => {
 
     const lower = explain(compiled, '. h', { caseMode: 'model', crossWord: 'reset' });
     expect([...lower.coverage.unproducible.keys()]).toEqual(['h']);
+  });
+
+  it("starts a sentence with an accented capital through its Alpha 2 key's sentence morph", () => {
+    // `sentence_alpha2`: after a sentence's end the Alpha 2 key arms Shift with Alpha 2, so `É`
+    // costs no more than `é`, and no shift press.
+    const e = explain(compiled, 'a. É', { caseMode: 'model', crossWord: 'reset' });
+    expect(e.steps.map((s) => s.key)).toEqual(['RHM', 'RBR', 'L0', 'R0', 'RHR']);
+    expect(e.steps.map((s) => s.symbols).join('')).toBe('a. É');
   });
 
   it('types accented capitals from shift state, with no pre-shifted layer', () => {

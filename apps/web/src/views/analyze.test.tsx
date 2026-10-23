@@ -35,9 +35,10 @@ describe('Analyze', () => {
     await user.type(screen.getByLabelText('How is this typed?'), 'ação');
 
     expect(await screen.findByText('4 presses')).toBeInTheDocument();
-    // The trace names the keys pressed, in order.
+    // The trace names the keys pressed, in order; R0 is in the legend under the board too.
+    const presses = await screen.findByRole('list', { name: 'Presses' });
     for (const key of ['RHM', 'R0', 'LBM', 'LHI']) {
-      expect(screen.getByText(key)).toBeInTheDocument();
+      expect(within(presses).getByText(key)).toBeInTheDocument();
     }
   });
 

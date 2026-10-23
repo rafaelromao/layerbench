@@ -116,9 +116,22 @@ const SPACE_OR_NUMBERS: Binding = {
   tap: kp(' '),
   hold: { kind: 'mo', layer: 'num' },
 };
+/**
+ * Tapped, the keymap's `sentence_alpha2`: Alpha 2 for the next key, and while a sentence's capital
+ * is pending, the shifted Alpha 2 it reaches with `lt_sft_a2`, here Shift with Alpha 2 for the next
+ * key, so an accent that starts a sentence is a capital too.
+ */
 const ALPHA2_OR_SYMBOLS: Binding = {
   kind: 'hold_tap',
-  tap: { kind: 'sl', layer: 'alpha2' },
+  tap: {
+    kind: 'sentence_morph',
+    default: { kind: 'sl', layer: 'alpha2' },
+    pending: {
+      kind: 'macro',
+      steps: [{ kind: 'sk', mod: 'LSHIFT' }],
+      then: [{ kind: 'sl', layer: 'alpha2' }],
+    },
+  },
   hold: { kind: 'mo', layer: 'sym' },
 };
 

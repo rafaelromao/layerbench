@@ -31,7 +31,7 @@ export type LayerMode = 'mo' | 'sl' | 'tog' | 'to' | 'auto_layer';
 /** How a modifier key acts: held, or one-shot. */
 export type ModMode = 'mod' | 'sk';
 /** What changes a morph: a modifier held, or a layer on. */
-export type MorphBy = 'mod_morph' | 'layer_morph';
+export type MorphBy = 'mod_morph' | 'layer_morph' | 'sentence_morph';
 /** How a macro is written: the letters it types, or its steps one by one. */
 export type MacroForm = 'text' | 'steps';
 
@@ -137,8 +137,11 @@ interface Shapes {
     set: { taps: ListChanges<Change<Binding>> };
   };
   morph: {
-    binding: Of<'mod_morph' | 'layer_morph'>;
-    /** A modifier morph has a family and no layers; a layer morph, layers and no family. */
+    binding: Of<MorphBy>;
+    /**
+     * A modifier morph has a family and no layers; a layer morph, layers and no family; a sentence
+     * morph, neither: it changes while a sentence's capital is pending.
+     */
     view: {
       by: MorphBy;
       family: ModFamily | null;
@@ -161,6 +164,7 @@ interface Shapes {
     view: { continues: string };
     set: { continues: Change<string> };
   };
+  sentencespace: { binding: Of<'sentence_space'>; view: Nothing; set: Nothing };
   unicode: {
     binding: Of<'unicode'>;
     view: { symbol: string; shifted: string };
@@ -360,6 +364,7 @@ const readers: { [K in KindOfKey]: Reader<K> } = {
     };
   },
   repeat: () => NONE,
+  sentencespace: () => NONE,
   adaptive: (b) => adaptive(b),
   altrepeat: (b) => adaptive(b),
   macro(b) {
@@ -407,8 +412,9 @@ const readers: { [K in KindOfKey]: Reader<K> } = {
     return { view: { taps }, set: { taps: list(b, taps, put, emptySymbol, tap, 1) } };
   },
   morph(b, ctx) {
-    const plain = b.kind === 'mod_morph' ? b.default : b.inactive;
-    const becomes = b.kind === 'mod_morph' ? b.morphed : b.active;
+    const plain = b.kind === 'layer_morph' ? b.inactive : b.default;
+    const becomes =
+      b.kind === 'mod_morph' ? b.morphed : b.kind === 'layer_morph' ? b.active : b.pending;
     const view = {
       by: b.kind,
       family: b.kind === 'mod_morph' ? familyOf(b.mods) : null,
@@ -432,10 +438,14 @@ const readers: { [K in KindOfKey]: Reader<K> } = {
           return layers.length > 0 ? { ...b, layers } : b;
         }),
         plain: inPart(b, plain, (next) =>
-          b.kind === 'mod_morph' ? { ...b, default: next } : { ...b, inactive: next },
+          b.kind === 'layer_morph' ? { ...b, inactive: next } : { ...b, default: next },
         ),
         becomes: inPart(b, becomes, (next) =>
-          b.kind === 'mod_morph' ? { ...b, morphed: next } : { ...b, active: next },
+          b.kind === 'mod_morph'
+            ? { ...b, morphed: next }
+            : b.kind === 'layer_morph'
+              ? { ...b, active: next }
+              : { ...b, pending: next },
         ),
       },
     };
@@ -565,16 +575,21 @@ function adaptive(b: Of<'adaptive'>): Pick<AdaptiveShape, 'view' | 'set'> {
 
 /** A morph changed another way keeps what it types, and starts on shift or the likeliest layer. */
 function morphBy(
-  b: Of<'mod_morph' | 'layer_morph'>,
+  b: Of<MorphBy>,
   by: MorphBy,
   plain: Binding,
   becomes: Binding,
   ctx: BindingTextContext,
 ): Binding {
   if (by === b.kind) return b;
-  return by === 'mod_morph'
-    ? { kind: by, mods: [...FAMILY_MODS.shift], default: plain, morphed: becomes }
-    : { kind: by, layers: [likeliestLayer(ctx)], inactive: plain, active: becomes };
+  switch (by) {
+    case 'mod_morph':
+      return { kind: by, mods: [...FAMILY_MODS.shift], default: plain, morphed: becomes };
+    case 'layer_morph':
+      return { kind: by, layers: [likeliestLayer(ctx)], inactive: plain, active: becomes };
+    case 'sentence_morph':
+      return { kind: by, default: plain, pending: becomes };
+  }
 }
 
 // ---------------------------------------------------------------------------- macros
@@ -844,6 +859,8 @@ function convert(ctx: BindingTextContext, current: Binding | undefined, to: Kind
       return { kind: 'mod_morph', mods: ['LSHIFT', 'RSHIFT'], default: tap, morphed: EMPTY_SYMBOL };
     case 'capsword':
       return { kind: 'caps_word' };
+    case 'sentencespace':
+      return { kind: 'sentence_space' };
     case 'unicode':
       return { kind: 'unicode', symbol: symbol.kind === 'kp' ? (symbol.symbol ?? '') : '' };
     case 'deadkey':

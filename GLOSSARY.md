@@ -156,7 +156,8 @@ _Avoid_: leaderboard, scores list
 
 **Special feature**:
 Something a layout's keys do beyond typing, reaching a layer or holding a modifier: an adaptive key, a
-macro, an alt repeat or a mod morph.
+macro, an alt repeat or a mod morph. A sentence space, which changes with the key before it, counts
+as an adaptive key.
 _Avoid_: magic, advanced key, extra feature
 
 **Special layout**:
@@ -186,6 +187,7 @@ _Avoid_: thumb-letter layout
 
 **ZMK module**:
 Firmware outside stock ZMK that a keymap adds for a behaviour stock ZMK lacks. An adaptive key, an
-alt repeat, an auto layer, a morph on a layer, a Unicode key and sentence case each need one; every
-other kind the editor makes is stock ZMK. The editor and the guide name and link the module.
+alt repeat, an auto layer, a morph on a layer or after a sentence, a sentence space, a Unicode key
+and sentence case each need one; every other kind the editor makes is stock ZMK. The editor and the
+guide name and link the module.
 _Avoid_: plugin, extension, add-on

@@ -42,6 +42,12 @@ describe('a key ZMK needs a module for', () => {
       'rafaelromao/zmk-layer-morph',
     ],
     ['a Unicode key', { kind: 'unicode', symbol: '→' }, 'urob/zmk-unicode'],
+    ['a sentence space', { kind: 'sentence_space' }, 'rafaelromao/zmk-sentence-case'],
+    [
+      'a morph after a sentence',
+      { kind: 'sentence_morph', default: kp('a'), pending: kp('b') },
+      'rafaelromao/zmk-sentence-case',
+    ],
     [
       'a tap-hold whose tap is an adaptive key',
       {

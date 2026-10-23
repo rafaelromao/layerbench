@@ -18,12 +18,16 @@ describe('the ZMK module a kind needs', () => {
     expect(kindInfo(kindOf({ kind: 'unicode', symbol: '→' })).module).toBe(
       bindingModule('unicode'),
     );
+    expect(kindInfo(kindOf({ kind: 'sentence_space' })).module).toBe(
+      bindingModule('sentence_space'),
+    );
   });
 
   it('is on no other tile: a layer key or a morph needs one only as an auto layer or on a layer', () => {
     expect(ALL_KINDS.filter((k) => k.module).map((k) => k.kind)).toEqual([
       'adaptive',
       'altrepeat',
+      'sentencespace',
       'unicode',
     ]);
   });

@@ -32,9 +32,9 @@ describe('taking a feature off a layer', () => {
   });
 
   it('turns it off, keeping its settings, once no layer is left', () => {
-    const l = layout({ sentenceCase: { after: ['.'], on: ['nav'] } });
+    const l = layout({ sentenceCase: { key: 'L0', on: ['nav'] } });
     expect(withoutFeatureAt(l, 'sentenceCase', 'nav').sentenceCase).toEqual({
-      after: ['.'],
+      key: 'L0',
       on: ['nav'],
       enabled: false,
     });
@@ -52,52 +52,18 @@ describe('taking a feature off a layer', () => {
 });
 
 describe('the sentence case editor', () => {
-  it('shows the default punctuation and reports a new list', async () => {
-    const setFeatures = vi.fn();
-    render(<FeatureBody layout={layout()} feature="sentenceCase" setFeatures={setFeatures} />);
-    const field = screen.getByLabelText('Sentence-ending punctuation');
-    expect(field).toHaveValue('. ? !');
-    await userEvent.clear(field);
-    await userEvent.type(field, '. ;{Enter}');
-    expect(setFeatures).toHaveBeenLastCalledWith({ sentenceCase: { after: ['.', ';'] } });
-  });
-
-  it('drops the list when the field is emptied, so the defaults apply again', async () => {
-    const setFeatures = vi.fn();
-    render(
-      <FeatureBody
-        layout={layout({ sentenceCase: { after: ['.'] } })}
-        feature="sentenceCase"
-        setFeatures={setFeatures}
-      />,
-    );
-    const field = screen.getByLabelText('Sentence-ending punctuation');
-    await userEvent.clear(field);
-    await userEvent.type(field, '{Enter}');
-    expect(setFeatures).toHaveBeenLastCalledWith({ sentenceCase: {} });
-  });
-
-  it('picks the modifier it arms', async () => {
-    const setFeatures = vi.fn();
-    render(<FeatureBody layout={layout()} feature="sentenceCase" setFeatures={setFeatures} />);
-    expect(screen.getByRole('button', { name: 'Shift' })).toHaveAttribute('aria-pressed', 'true');
-    await userEvent.click(screen.getByRole('button', { name: 'Control' }));
-    expect(setFeatures).toHaveBeenCalledWith({ sentenceCase: { mod: 'LCTRL' } });
-  });
-});
-
-describe('sentence case in ZMK', () => {
-  const links = () => screen.getAllByRole('link').map((a) => a.getAttribute('href'));
-
-  it('links its module, and the adaptive key for what the module does not do', () => {
+  it('says what the sentence space does, and links its module, with nothing to choose', () => {
     render(<FeatureBody layout={layout()} feature="sentenceCase" setFeatures={vi.fn()} />);
-    expect(links()).toEqual([
+    expect(screen.getByText(/leaves a capital for the next key pressed/)).toBeInTheDocument();
+    expect(screen.getAllByRole('link').map((a) => a.getAttribute('href'))).toEqual([
       'https://github.com/rafaelromao/zmk-sentence-case',
-      'https://github.com/urob/zmk-adaptive-key',
     ]);
+    expect(screen.queryByRole('textbox')).toBeNull();
+    expect(screen.queryByRole('button')).toBeNull();
   });
 
-  it('says so in Features while it is off, and what the module does not do once it is on', () => {
+  it('says so in Features, whether the feature is on or off', () => {
+    const links = () => screen.getAllByRole('link').map((a) => a.getAttribute('href'));
     const panel = (l: Layout) => (
       <FeaturesPanel state={initialState(l, compileLayout(l))} send={vi.fn()} />
     );
@@ -106,10 +72,8 @@ describe('sentence case in ZMK', () => {
     expect(links()).toEqual(['https://github.com/rafaelromao/zmk-sentence-case']);
     rerender(panel(layout({ sentenceCase: {} })));
     expect(screen.getByLabelText('Sentence case')).toBeChecked();
-    expect(links()).toEqual([
-      'https://github.com/rafaelromao/zmk-sentence-case',
-      'https://github.com/urob/zmk-adaptive-key',
-    ]);
+    expect(links()).toEqual(['https://github.com/rafaelromao/zmk-sentence-case']);
+    expect(screen.queryByLabelText('Sentence-ending punctuation')).toBeNull();
   });
 
   it('names no module for caps word, which stock ZMK has', () => {

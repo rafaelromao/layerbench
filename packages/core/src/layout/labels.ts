@@ -187,6 +187,8 @@ export function tapLabel(c: CompiledLayout, b: Binding): string {
   switch (p.kind) {
     case 'kp':
       return symbolText(p.symbol, p.keycode);
+    case 'sentence_space':
+      return symbolText(' ', undefined);
     case 'trans':
       return '▽';
     case 'sl':
@@ -241,6 +243,7 @@ export function legendKind(b: Binding): LegendKind {
   const p = partOf(b, { stopAt: COLOURED });
   switch (p.kind) {
     case 'kp':
+    case 'sentence_space':
     case 'unicode':
     case 'macro':
     case 'dead_key':
@@ -354,6 +357,10 @@ export function describe(c: CompiledLayout, b: Binding): string {
       return `${describe(c, b.default)}; with ${modChoiceText(b.mods)}: ${describe(c, b.morphed)}`;
     case 'layer_morph':
       return `${describe(c, b.inactive)}; on ${b.layers.map((l) => layerName(c, l)).join(' or ')}: ${describe(c, b.active)}`;
+    case 'sentence_morph':
+      return `${describe(c, b.default)}; while a sentence's capital is pending: ${describe(c, b.pending)}`;
+    case 'sentence_space':
+      return 'types a space; after . ? or ! the next letter is a capital (sentence case)';
     case 'tap_dance':
       return b.bindings.map((t, i) => `${i + 1}× ${describe(c, t)}`).join('; ');
     case 'macro': {

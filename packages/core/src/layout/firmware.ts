@@ -44,6 +44,8 @@ const BINDING_MODULES: Record<BindingKind, ZmkModuleId | null> = {
   key_repeat: null,
   mod_morph: null,
   layer_morph: 'layerMorph',
+  sentence_morph: 'sentenceCase',
+  sentence_space: 'sentenceCase',
   tap_dance: null,
   macro: null,
   adaptive: 'adaptiveKey',

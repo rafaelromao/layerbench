@@ -74,6 +74,8 @@ function choices(b: Binding): Binding[] {
       return [b.default, b.morphed];
     case 'layer_morph':
       return [b.active, b.inactive];
+    case 'sentence_morph':
+      return [b.default, b.pending];
     case 'tap_dance':
       return b.bindings;
     case 'adaptive':
@@ -170,6 +172,10 @@ function featuresOf(b: Binding, at: Place, out: SpecialFeature[]): void {
       break;
     case 'mod_morph':
       emit('mod_morph', FEATURE_LABELS.mod_morph);
+      break;
+    // A space that changes what follows with what came before it, as sentence case is.
+    case 'sentence_space':
+      emit('adaptive', DECLARED.sentenceCase.label);
       break;
     case 'macro':
       emit('macro', b.symbols ? `Macro “${b.symbols}”` : 'Macro');

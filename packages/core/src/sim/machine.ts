@@ -91,6 +91,8 @@ export interface Snapshot {
   lastKeycode: string | null;
   lastTag: string | null;
   pendingDeadKey: string | null;
+  sentencePending: boolean;
+  endsSentence: boolean;
 }
 
 function sameList<T>(a: readonly T[], b: readonly T[]): boolean {
@@ -118,6 +120,10 @@ export class MachineState {
    */
   lastTag: string | null = null;
   pendingDeadKey: string | null = null;
+  /** A sentence space after a sentence's end left a capital for the next keycode pressed. */
+  sentencePending = false;
+  /** The last keycode pressed typed `.`, `?` or `!`, so a sentence space now leaves a capital. */
+  endsSentence = false;
 
   snapshot(): Snapshot {
     return {
@@ -139,6 +145,8 @@ export class MachineState {
       lastKeycode: this.lastKeycode,
       lastTag: this.lastTag,
       pendingDeadKey: this.pendingDeadKey,
+      sentencePending: this.sentencePending,
+      endsSentence: this.endsSentence,
     };
   }
 
@@ -158,6 +166,8 @@ export class MachineState {
     this.lastKeycode = s.lastKeycode;
     this.lastTag = s.lastTag;
     this.pendingDeadKey = s.pendingDeadKey;
+    this.sentencePending = s.sentencePending;
+    this.endsSentence = s.endsSentence;
   }
 
   /**
@@ -172,6 +182,8 @@ export class MachineState {
       this.lastKeycode !== s.lastKeycode ||
       this.lastTag !== s.lastTag ||
       this.pendingDeadKey !== s.pendingDeadKey ||
+      this.sentencePending !== s.sentencePending ||
+      this.endsSentence !== s.endsSentence ||
       this.oneShots.length !== s.oneShots.length ||
       this.stickyMods.length !== s.stickyMods.length ||
       this.held.size !== s.held.length
@@ -235,6 +247,7 @@ const PART_CHOOSERS: ReadonlySet<BindingKind> = new Set([
   'hold_tap',
   'mod_morph',
   'layer_morph',
+  'sentence_morph',
   'tap_dance',
 ]);
 
@@ -261,6 +274,9 @@ interface ExecContext {
 }
 
 const ALPHA_RE = /^\p{L}$/u;
+/** What zmk-sentence-case ends a sentence at, and the letters its capital shifts: a–z only. */
+const SENTENCE_ENDS: ReadonlySet<string> = new Set(['.', '?', '!']);
+const SENTENCE_LETTER_RE = /^[a-z]$/;
 /** What keeps caps word on besides its continue list, as ZMK has it: letters, digits, underscore. */
 const CAPS_WORD_RE = /^[\p{L}0-9_]$/u;
 
@@ -301,6 +317,9 @@ export class Machine {
         return machine.activeMods();
       },
       layerOn: (l) => (machine.mask & (1 << (compiled.layerIndex.get(l) ?? 0))) !== 0,
+      get sentencePending() {
+        return machine.state.sentencePending;
+      },
       stopAt: AS_THEY_ARE,
     });
     this.pressed = { tap: pressed('tap'), hold: pressed('hold') };
@@ -568,8 +587,25 @@ export class Machine {
     return false;
   }
 
-  private emit(ctx: ExecContext, symbol: string, keycode: string | null): void {
+  /**
+   * A keycode is pressed, as zmk-sentence-case's listener sees each one: it takes a capital still
+   * pending, which shifts it only when it is a letter a–z, and it is the end of a sentence or not.
+   * What it types, `symbol`, comes back as typed.
+   */
+  private keycodePressed(symbol: string): string {
     const s = this.state;
+    let typed = symbol;
+    if (s.sentencePending) {
+      s.sentencePending = false;
+      if (SENTENCE_LETTER_RE.test(symbol)) typed = symbol.toUpperCase();
+    }
+    s.endsSentence = SENTENCE_ENDS.has(typed);
+    return typed;
+  }
+
+  private emit(ctx: ExecContext, pressed: string, keycode: string | null): void {
+    const s = this.state;
+    const symbol = this.keycodePressed(pressed);
     let text = symbol;
     if (s.pendingDeadKey !== null && text.length) {
       text = composeDeadKey(s.pendingDeadKey, text);
@@ -646,6 +682,7 @@ export class Machine {
             if (r === null) {
               this.emit(ctx, '', b.keycode);
             } else if (r.deadKey) {
+              this.keycodePressed('');
               this.state.pendingDeadKey = r.deadKey;
               ctx.emittedKeycode = true;
               this.state.lastKeycode = b.keycode;
@@ -722,6 +759,7 @@ export class Machine {
         case 'sk':
           ctx.leaf = 'sk';
           ctx.modifierPress = true;
+          this.keycodePressed('');
           this.state.stickyMods.push({
             mod: b.mod,
             quickRelease: b.quickRelease ?? false,
@@ -731,6 +769,7 @@ export class Machine {
         case 'mod':
           ctx.leaf = 'mod';
           ctx.modifierPress = true;
+          this.keycodePressed('');
           if (ctx.mode === 'hold') {
             this.state.held.set(
               ctx.pos,
@@ -797,6 +836,18 @@ export class Machine {
           this.run(on ? b.active : b.inactive, ctx);
           return;
         }
+        case 'sentence_morph':
+          this.run(this.state.sentencePending ? b.pending : b.default, ctx);
+          return;
+        case 'sentence_space': {
+          ctx.leaf = 'sentence_space';
+          // As `&sentence_space` does: whether the keycode before ended a sentence is read first,
+          // then the space is pressed, taking a capital still pending, and then one is left.
+          const ends = this.state.endsSentence;
+          this.emit(ctx, ' ', this.compiled.hostLocale === 'symbols' ? null : 'SPACE');
+          this.state.sentencePending = ends;
+          return;
+        }
         case 'tap_dance': {
           const n = Math.max(1, Math.min(ctx.taps || 1, b.bindings.length));
           this.run(b.bindings[n - 1], ctx);
@@ -815,11 +866,13 @@ export class Machine {
             this.recomputeMask();
           }
           ctx.mode = savedMode;
-          ctx.leaf = 'macro';
+          // One that types nothing and turns a layer on is pressed as the layer key it ends with.
+          if (ctx.out.length > 0 || ctx.reaches === null) ctx.leaf = 'macro';
           return;
         }
         case 'dead_key':
           ctx.leaf = 'dead_key';
+          this.keycodePressed('');
           this.state.pendingDeadKey =
             b.shifted !== undefined && this.effectiveShift(ctx, false) ? b.shifted : b.diacritic;
           ctx.emittedKeycode = true;
@@ -827,7 +880,16 @@ export class Machine {
         case 'unicode': {
           ctx.leaf = 'unicode';
           const shifted = this.effectiveShift(ctx, isAlphaSymbol(b.symbol));
+          // zmk-unicode types the character as a run of keys of its own: the first takes a capital
+          // still pending, the character keeps its case, and the run leaves nothing a repeat or an
+          // adaptive key can follow.
+          this.keycodePressed('');
           this.emit(ctx, shifted && b.shiftedSymbol ? b.shiftedSymbol : b.symbol, null);
+          const s = this.state;
+          s.lastSymbol = null;
+          s.lastKeycode = null;
+          s.lastTag = null;
+          s.endsSentence = false;
           return;
         }
       }

@@ -1,6 +1,5 @@
 import type { Binding, LayerDef, Layout, LayoutFeatures, Mod } from './types.js';
 
-const DEFAULT_SENTENCE_END = ['.', '?', '!'];
 const DEFAULT_TRIGGER_MODS: Mod[] = ['LSHIFT', 'RSHIFT'];
 
 /** A feature that wraps the tap of the key it belongs to. */
@@ -64,26 +63,17 @@ function place(
   w.owned.set(layerId, byKey);
 }
 
+/**
+ * The space key's tap is `&sentence_space`, as zmk-sentence-case has a keymap bind it in place of
+ * `&kp SPACE`: it types the space the key typed, and a capital follows a sentence's end.
+ */
 function expandSentenceCase(w: Writer, features: LayoutFeatures, layout: Layout): void {
   const f = features.sentenceCase;
   if (!f || f.enabled === false) return;
   const key = f.key ?? layout.keys.space;
   const layers = f.on ?? [w.layers[0]?.id].filter((x): x is string => x !== undefined);
-  const mod = f.mod ?? 'LSHIFT';
   for (const layerId of layers) {
-    place(w, layerId, key, 'sentenceCase', (tap) => {
-      const space: Binding = tap ?? { kind: 'kp', symbol: ' ' };
-      return {
-        kind: 'adaptive',
-        default: space,
-        triggers: [
-          {
-            afterAny: f.after ?? DEFAULT_SENTENCE_END,
-            binding: { kind: 'macro', steps: [space, { kind: 'sk', mod }] },
-          },
-        ],
-      };
-    });
+    place(w, layerId, key, 'sentenceCase', () => ({ kind: 'sentence_space' }));
   }
 }
 

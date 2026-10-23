@@ -16,7 +16,8 @@ import {
  * `&kp A`, `&lt num a`, `&sl sym`, `&mo num`, `&trans` are spelled as ZMK spells them; the kinds
  * stock ZMK has no behaviour of that name for follow the same `&name args` shape: `&auto_layer`
  * and `&uni` stand for behaviours of ZMK modules, `&dead` for the host's dead key, which ZMK sends
- * with `&kp`. A bare token with no `&` is shorthand for `&kp`, so typing `ç` still just works.
+ * with `&kp`. `&sentence_space` is zmk-sentence-case's own. A bare token with no `&` is shorthand
+ * for `&kp`, so typing `ç` still just works.
  */
 export interface BindingTextContext {
   layers: { id: string; name: string }[];
@@ -89,6 +90,7 @@ const BEHAVIORS = {
   caps: 'caps_word',
   key_repeat: 'key_repeat',
   repeat: 'key_repeat',
+  sentence_space: 'sentence_space',
   auto_layer: 'auto_layer',
   autolayer: 'auto_layer',
   macro: 'macro',
@@ -206,6 +208,7 @@ export function parseBindingText(text: string, ctx: BindingTextContext): ParseRe
     case 'none':
     case 'key_repeat':
     case 'caps_word':
+    case 'sentence_space':
       return ok({ kind: name });
     case 'mo':
     case 'sl':
@@ -289,6 +292,7 @@ function exactText(compiled: CompiledLayout, b: Binding): string | null {
     case 'trans':
     case 'none':
     case 'key_repeat':
+    case 'sentence_space':
       return `&${b.kind}`;
     case 'caps_word':
       return b.continueList !== undefined || (b.mods !== undefined && b.mods.length > 0)
@@ -337,7 +341,7 @@ function exactText(compiled: CompiledLayout, b: Binding): string | null {
     case 'unicode':
       return b.shiftedSymbol ? `&uni ${b.symbol} ${b.shiftedSymbol}` : `&uni ${b.symbol}`;
     default:
-      // adaptive, mod_morph, layer_morph, tap_dance and hold_tap are authored elsewhere.
+      // adaptive, the morphs, tap_dance and hold_tap are authored elsewhere.
       return null;
   }
 }
@@ -353,6 +357,8 @@ function whyNot(b: Binding): string {
       return 'a mod-morph';
     case 'layer_morph':
       return 'a layer-morph';
+    case 'sentence_morph':
+      return 'a sentence-morph';
     case 'tap_dance':
       return 'a tap dance';
     case 'macro':

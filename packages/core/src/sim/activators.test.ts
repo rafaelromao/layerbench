@@ -136,7 +136,10 @@ describe('the keys that reach a layer', () => {
     };
     expect(say('sym', 'R0')).toBe('held from Alpha 1 or Numbers to reach Symbols');
     expect(say('num', 'L0')).toBe('held from Alpha 1 to reach Numbers');
-    expect(say('alpha2', 'R0')).toBe('tapped from Alpha 1 to reach Alpha 2');
+    // After a sentence's end, its macro arms Shift with Alpha 2, as the keymap's sentence-morph.
+    expect(say('alpha2', 'R0')).toBe(
+      'tapped from Alpha 1, or from Alpha 1 after a sentence ends, by its macro, to reach Alpha 2',
+    );
     expect(say('alpha2', 'L1')).toBe(
       'tapped from Ç extension, or from Alpha 1 after v, x or j, to reach Alpha 2',
     );

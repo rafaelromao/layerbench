@@ -64,7 +64,8 @@ the key becomes a tap-hold.
 | Transparent `▽` | lets the layer below show through |
 | Nothing `∅` | does nothing |
 
-The tiles after them are the rest: alt repeat, tap dance, morph, caps word, Unicode and dead key.
+The tiles after them are the rest: alt repeat, tap dance, morph, caps word, sentence space, Unicode
+and dead key.
 [Special keys](special-keys.md) explains each of them. On a phone they wait under **More**, which
 then shows the kind chosen from them.
 
@@ -99,7 +100,7 @@ applies it; `Escape` leaves the key as it was. Starting with `&` lists the behav
 | `&lt num a` · `&mo sym` · `&sl ccedil` · `&to base` · `&tog num` | layer taps and switches |
 | `&sk LSHIFT` · `&kp LSHIFT` | a one-shot modifier, and a held one |
 | `&macro ão` · `&macro ão then alpha2` | a macro, optionally turning on a layer after it |
-| `&trans` · `&none` · `&key_repeat` · `&caps_word` | the rest |
+| `&trans` · `&none` · `&key_repeat` · `&caps_word` · `&sentence_space` | the rest |
 
 A layer can be named by its id, by its name, or by its number as ZMK counts them. A trailing
 `tag:name` gives the key a tag that adaptive keys can match on. Under the default `symbols` host
