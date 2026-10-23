@@ -391,7 +391,7 @@ The other panels hold what is not on a single key:
   pressed, and after how many milliseconds unused.
 - **Combos** are keys pressed together. **pick on board**, then tap the keys; the output takes the
   same syntax as **Or type**, and can be left empty. A combo added opens in the **combo editor**, in
-  the key editor's place; so does a combo's pill on the board, or **edit** on its row. A combo can
+  the key editor's place; so does a combo's box on the board, or **edit** on its row. A combo can
   be any kind of key but Transparent, from the same tiles a key has: a tap-hold, an adaptive key, a
   macro, a tap dance, a morph, a layer and the rest. **From this layout** and **Or type** work as
   they do for a key. Under them are its keys (**Pick again on the board**, tap the new keys, then

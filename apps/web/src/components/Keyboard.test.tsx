@@ -1,8 +1,14 @@
-import { bundledLayout, compileLayout } from '@layerbench/core';
+import {
+  BUNDLED_LAYOUTS,
+  bundledLayout,
+  type CompiledLayout,
+  compileLayout,
+} from '@layerbench/core';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { comboPillAt, drawnX, Keyboard, KeyLegend, reach } from './Keyboard.js';
+import { coversLegend, type PlacedKey, placeCombos } from './combo-layout.js';
+import { drawnX, Keyboard, KeyLegend, reach, typingCombos } from './Keyboard.js';
 
 const qwerty = compileLayout(bundledLayout('qwerty')!);
 const romak = compileLayout(bundledLayout('magic-romak')!);
@@ -404,7 +410,7 @@ describe('a click on the board between the keys', () => {
     expect(onKeyClick).toHaveBeenCalledTimes(1);
   });
 
-  it('is not a click between the keys on a combo’s pill', async () => {
+  it('is not a click between the keys on a combo’s box', async () => {
     const user = userEvent.setup();
     const onEmptyClick = vi.fn();
     const onComboClick = vi.fn();
@@ -422,29 +428,200 @@ describe('a click on the board between the keys', () => {
   });
 });
 
-describe("a combo's pill", () => {
-  const key = (cx: number) => ({ cx, cy: 50, w: 54, h: 54 });
-  const row = [key(30), key(90), key(150)];
+describe("a combo's box", () => {
+  /** A row of keys a key apart, as the board draws them: caps of 58 on a pitch of 64. */
+  const key = (cx: number, cy = 100): PlacedKey => ({ cx, cy, w: 58, h: 58, rx: 29, ry: 29 });
+  const row = [32, 96, 160, 224, 288].map((x) => key(x));
+  const board = [...row, ...row.map((k) => key(k.cx, 164))];
+  const place = (keys: number[], w = 27, h = 20) =>
+    placeCombos(board, [{ keys, w, h }], { width: 320, gap: 6 })[0];
 
-  it('sits halfway between two keys, on the gap', () => {
-    expect(
-      comboPillAt(
-        [row[0], row[1]].map(({ cx, cy }) => ({ x: cx, y: cy })),
-        row,
-      ),
-    ).toEqual({
-      x: 60,
-      y: 50,
-    });
+  it('sits on the gap between two neighbours, with no lines', () => {
+    expect(place([0, 1])).toMatchObject({ x: 64, y: 100, align: 'mid', dendrons: [] });
+    // One above the other too.
+    expect(place([1, 6])).toMatchObject({ x: 96, y: 132, align: 'mid', outside: false });
   });
 
-  it('moves to the gap below the middle key of three in a row, off its legend', () => {
-    expect(
-      comboPillAt(
-        row.map(({ cx, cy }) => ({ x: cx, y: cy })),
-        row,
-      ),
-    ).toEqual({ x: 90, y: 80 });
+  it('sits on the gap above three keys in a row, with a line into each', () => {
+    const c = place([5, 6, 7]);
+    expect(c).toMatchObject({ x: 96, align: 'top', outside: false });
+    // Between the rows, on the gap above the middle key.
+    expect(c?.y).toBeCloseTo(132, 6);
+    expect(c?.dendrons).toHaveLength(3);
+  });
+
+  it('goes outside the board, with lines, for keys with another between them', () => {
+    // The top row's keys are nearer the top.
+    const above = place([0, 2]);
+    expect(above).toMatchObject({ align: 'top', outside: true });
+    expect(above?.y).toBeLessThan(100 - 29);
+    expect(above?.dendrons).toHaveLength(2);
+    const below = place([5, 7]);
+    expect(below).toMatchObject({ align: 'bottom', outside: true });
+    expect(below?.y).toBeGreaterThan(164 + 29);
+  });
+
+  it('goes outside for three keys that are not in a row', () => {
+    expect(place([0, 1, 6])).toMatchObject({ outside: true });
+  });
+
+  it('sits between keys far apart where nothing else is, with lines out to them', () => {
+    // The two inner thumbs of a split board, a gap between them where no key is.
+    const thumbs = [key(100), key(300)];
+    const [c] = placeCombos(thumbs, [{ keys: [0, 1], w: 27, h: 20 }], { width: 400, gap: 6 });
+    expect(c).toMatchObject({ x: 200, y: 100, align: 'mid', outside: false });
+    expect(c?.dendrons).toHaveLength(2);
+  });
+
+  it('takes a row further out when the one nearer is full, and stays inside the drawing', () => {
+    const many = Array.from({ length: 12 }, () => ({ keys: [5, 7], w: 27, h: 20 }));
+    const placed = placeCombos(board, many, { width: 320, gap: 6 });
+    const ys = new Set(placed.map((c) => c?.y));
+    expect(ys.size).toBeGreaterThan(1);
+    for (const c of placed) {
+      expect(c?.x).toBeGreaterThanOrEqual((c?.w ?? 0) / 2);
+      expect(c?.x).toBeLessThanOrEqual(320 - (c?.w ?? 0) / 2);
+    }
+  });
+});
+
+/** Each drawn key's centre and cap, and each combo's box, from a board as rendered. */
+function drawn(compiled: CompiledLayout, layer: number) {
+  const { container, unmount } = render(
+    <Keyboard
+      compiled={compiled}
+      layer={layer}
+      combos={typingCombos(compiled, layer)}
+      onComboClick={() => {}}
+    />,
+  );
+  const at = (g: Element) => {
+    const m = /translate\(([-\d.]+) ([-\d.]+)\)/.exec(g.getAttribute('transform') ?? '');
+    return { x: Number(m?.[1]), y: Number(m?.[2]) };
+  };
+  const keys = new Map(
+    [...container.querySelectorAll('g[data-key]')].map((g) => {
+      const rect = g.querySelector('rect');
+      const w = Number(rect?.getAttribute('width'));
+      const h = Number(rect?.getAttribute('height'));
+      const { x, y } = at(g);
+      return [g.getAttribute('data-key'), { cx: x, cy: y, w, h, rx: w / 2, ry: h / 2 }];
+    }),
+  );
+  const boxes = [...container.querySelectorAll('g.lb-combo')].map((g) => {
+    const rect = g.querySelector('rect');
+    return {
+      ...at(g),
+      w: Number(rect?.getAttribute('width')),
+      h: Number(rect?.getAttribute('height')),
+      name: g.getAttribute('aria-label') ?? '',
+      outside: g.hasAttribute('data-outside'),
+    };
+  });
+  const viewBox = (container.querySelector('svg')?.getAttribute('viewBox') ?? '').split(' ');
+  return { container, unmount, keys, boxes, width: Number(viewBox[2]) };
+}
+
+/** What crowds a board: a box on another, on a key's legend, or off the drawing. */
+function crowded({ boxes, keys, width }: ReturnType<typeof drawn>): string[] {
+  const faults: string[] = [];
+  boxes.forEach((a, i) => {
+    for (const b of boxes.slice(i + 1)) {
+      if (Math.abs(a.x - b.x) < (a.w + b.w) / 2 && Math.abs(a.y - b.y) < (a.h + b.h) / 2) {
+        faults.push(`${a.name} on ${b.name}`);
+      }
+    }
+    for (const [id, k] of keys) if (coversLegend(a, k)) faults.push(`${a.name} on key ${id}`);
+    if (a.x - a.w / 2 < 0 || a.x + a.w / 2 > width) faults.push(`${a.name} off the drawing`);
+  });
+  return faults;
+}
+
+/** Where a dendron ends: its start and every step after it, added up. */
+function end(d: string): { x: number; y: number } {
+  const [, ...rest] = d.split(/(?=[hval])/);
+  const [x0, y0] = d.slice(1).trim().split(/\s+/).map(Number);
+  let x = x0;
+  let y = y0;
+  for (const step of rest) {
+    const n = step.slice(1).trim().split(/\s+/).map(Number);
+    if (step[0] === 'h') x += n[0];
+    if (step[0] === 'v') y += n[0];
+    if (step[0] === 'l') [x, y] = [x + n[0], y + n[1]];
+    if (step[0] === 'a') [x, y] = [x + n[5], y + n[6]];
+  }
+  return { x, y };
+}
+
+describe("T-34's combos, as Keymap Drawer draws them", () => {
+  const t34 = compileLayout(bundledLayout('t-34')!);
+  const combos = typingCombos(t34, 0);
+
+  it('draws a box for every combo, named as before', () => {
+    const { boxes } = drawn(t34, 0);
+    expect(boxes).toHaveLength(combos.length);
+    expect(boxes.map((b) => b.name)).toContain('Edit combo LHM + LHI: Esc / Symb');
+    expect(boxes.map((b) => b.name)).toContain('Edit combo L0 + LHP: |');
+    expect(screen.getByRole('button', { name: 'Edit combo LTP + LTR: q' })).toBeInTheDocument();
+  });
+
+  it('keeps neighbours on their gap, and puts a thumb and a finger key outside', () => {
+    const { boxes, keys } = drawn(t34, 0);
+    const box = (name: string) => boxes.find((b) => b.name === `Edit combo ${name}`);
+    const q = box('LTP + LTR: q');
+    expect(q?.outside).toBe(false);
+    expect(q?.x).toBeCloseTo(((keys.get('LTP')?.cx ?? 0) + (keys.get('LTR')?.cx ?? 0)) / 2, 6);
+    // A thumb with a key of the top or home row: far apart, with keys between them.
+    const thumbs = boxes.filter((b) => /Edit combo [LR]0 \+ [LR][TH]/.test(b.name));
+    expect(thumbs).toHaveLength(25);
+    for (const b of thumbs) expect(b.outside, b.name).toBe(true);
+    // With one of the bottom row, a box sits between them where no key is, as `%` does.
+    expect(box('L0 + LBI: %')).toMatchObject({ outside: false });
+  });
+
+  it('lets no box overlap another, cover a legend, or leave the drawing', () => {
+    const board = drawn(t34, 0);
+    expect(board.boxes).toHaveLength(57);
+    expect(crowded(board)).toEqual([]);
+  });
+
+  it('ends a line in each key of a combo drawn beside its keys', () => {
+    const { container, keys } = drawn(t34, 0);
+    const beside = [...container.querySelectorAll('g.lb-combo')].filter(
+      (g) => g.getAttribute('data-align') !== 'mid',
+    );
+    // T-34's 36 combos of a thumb with a finger key are most of them.
+    expect(beside.length).toBeGreaterThan(30);
+    for (const g of beside) {
+      const index = g.getAttribute('data-combo');
+      const combo = combos.find((c) => String(c.index) === index);
+      const ends = [...container.querySelectorAll(`path[data-combo="${index}"]`)].map((p) =>
+        end(p.getAttribute('d') ?? ''),
+      );
+      for (const id of combo?.keys.map((p) => t34.keys[p].id) ?? []) {
+        const k = keys.get(id);
+        const reached = ends.some(
+          (e) => k && Math.abs(e.x - k.cx) <= k.w / 2 && Math.abs(e.y - k.cy) <= k.h / 2,
+        );
+        expect(reached, `${g.getAttribute('aria-label')}: ${id}`).toBe(true);
+      }
+    }
+  });
+});
+
+describe('every bundled layout with combos', () => {
+  it('draws them with no box on another, on a legend, or off the drawing, on every layer', () => {
+    const faults = BUNDLED_LAYOUTS.flatMap((layout) => {
+      const compiled = compileLayout(layout);
+      return compiled.layers.flatMap((_, layer) => {
+        if (typingCombos(compiled, layer).length === 0) return [];
+        const board = drawn(compiled, layer);
+        const found = crowded(board).map((f) => `${layout.id} ${layer}: ${f}`);
+        board.unmount();
+        return found;
+      });
+    });
+    expect(faults).toEqual([]);
   });
 });
 

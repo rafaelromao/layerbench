@@ -141,10 +141,21 @@ show through is warm on that layer, where the key that types is drawn.
 
 ### Combos
 
-Combos marked for typing are drawn as small pills between the keys pressed together, on the layers
-where they work, and a pill lights up with its keys when a word uses it. **Combos**, under *On the
-board* in **Settings**, hides them. Combos marked as commands are shortcuts the analysis never presses, so they
-are not drawn.
+Combos marked for typing are drawn on the layers where they work, as
+[Keymap Drawer](https://github.com/caksoylar/keymap-drawer) draws them. Each is a small box with what
+it types, and what it does held under that:
+
+- Two keys side by side, or one above the other: the box sits on the gap between them.
+- Three or more keys in a row: the box sits on the gap above the row, with a short line into each
+  key.
+- Keys further apart: the box sits between them if nothing is there, as between the two halves of
+  a split board. Otherwise it goes above or below the board, whichever its keys are nearer, with
+  thin lines out to each key. A line that would cross another key's legend runs along the edge of
+  the keys instead.
+
+A box lights up with its keys when a word uses it. Pointing at a box, or focusing it, lights its
+lines too. **Combos**, under *On the board* in **Settings**, hides them. Combos marked as commands
+are shortcuts the analysis never presses, so they are not drawn.
 
 ### Case and space
 

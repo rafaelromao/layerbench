@@ -21,7 +21,8 @@ import {
   useRef,
   useState,
 } from 'react';
-import { type Fit, fitLabel, legendNumber } from './fit-label.js';
+import { placeCombos } from './combo-layout.js';
+import { type Fit, fitLabel, legendNumber, textWidth } from './fit-label.js';
 import { type Direction, nearestKey } from './key-nav.js';
 import { layerColourOf } from './layer-colour.js';
 import { type KeyDrop, TAP_SLOP, THRESHOLD, useKeyDrag } from './use-key-drag.js';
@@ -38,14 +39,21 @@ export interface KeyboardHandle {
   focusKey: (keyId: string) => void;
 }
 
-/** A combo on the board: a small legend between the keys pressed together to fire it. */
+/**
+ * A combo on the board: a small box with what it types, on the gap between the keys pressed
+ * together to fire it, or beside the board with lines out to them.
+ */
 export interface KeyboardCombo {
   id: string;
   /** Its place in the layout's combos, which names it even where two share an id. */
   index: number;
   /** Positions of the keys pressed together. */
   keys: number[];
+  /** What it does, in words: what it types, and what it does held, as `? / ¿`. */
   label: string;
+  /** Drawn in the box: what it types, and, smaller under it, what it does held. */
+  tap?: string;
+  hold?: string;
   /** What it types is a dead key's accent, drawn as dead keys are. */
   dead?: boolean;
   /** Drawn as being pressed, as a step of how a word is typed is. */
@@ -68,12 +76,14 @@ export function typingCombos(
     .map((c) => {
       // What it types, and what it types when its keys are held together, as `? / ¿`.
       const l = legend(compiled, c.binding);
-      const held = l.hold !== null && !l.holdIsMode ? ` / ${l.hold}` : '';
+      const hold = l.hold !== null && !l.holdIsMode ? l.hold : null;
       return {
         id: c.id,
         index: c.idx,
         keys: c.keys,
-        label: `${l.tap || '·'}${held}`,
+        label: `${l.tap || '·'}${hold === null ? '' : ` / ${hold}`}`,
+        tap: l.tap || '·',
+        ...(hold === null ? {} : { hold }),
         ...(l.dead ? { dead: true } : {}),
         active: c.id === active,
       };
@@ -107,17 +117,23 @@ export function comboPlace(
 }
 
 /**
- * Where a combo's pill goes: halfway between its keys, unless that is on a key, as it is for three
- * keys in a row; then on the gap below that key, so that the pill does not hide its legend.
+ * A combo's box and its legends: wider for a longer legend, taller for a hold under it. A legend
+ * too long for a cap's width is drawn smaller, then cut short; the combo's name still says it all.
  */
-export function comboPillAt(
-  points: readonly { x: number; y: number }[],
-  keys: readonly { cx: number; cy: number; w: number; h: number }[],
-): { x: number; y: number } {
-  const x = points.reduce((sum, p) => sum + p.x, 0) / points.length;
-  const y = points.reduce((sum, p) => sum + p.y, 0) / points.length;
-  const under = keys.find((k) => Math.abs(x - k.cx) < k.w / 2 && Math.abs(y - k.cy) < k.h / 2);
-  return under ? { x, y: under.cy + (under.h + GAP) / 2 } : { x, y };
+function comboBox(c: Pick<KeyboardCombo, 'label' | 'tap' | 'hold'>) {
+  // One line each: a box has no room for a second.
+  const tap = fitLabel(c.tap ?? c.label, COMBO_TEXT, 0, COMBO_SIZES);
+  const hold = c.hold ? fitLabel(c.hold, COMBO_TEXT, 0, [COMBO_HOLD_SIZE]) : null;
+  const text = Math.max(
+    textWidth(tap.lines[0], tap.size),
+    hold ? textWidth(hold.lines[0], hold.size) : 0,
+  );
+  return {
+    tap,
+    hold,
+    w: Math.max(COMBO_W, Math.ceil(text) + 2 * COMBO_PAD),
+    h: hold ? COMBO_H_HELD : COMBO_H,
+  };
 }
 
 /** How far a key reaches from its centre, across and down, turned the way it is drawn. */
@@ -177,6 +193,32 @@ const BAND = 12;
 const TOP = 9;
 const TAP_SIZES = [22, 19, 16, 14, 12, 10] as const;
 const SMALL_SIZES = [10, 9, 8, 7] as const;
+/**
+ * A combo's box: as wide as Keymap Drawer's `combo_w`, half a cap less 2, and only as tall as its
+ * legend needs, so that a box on the gap between two rows covers little of either; taller with a
+ * hold under it. Its legend at 11 and its hold at 8, as Keymap Drawer draws them, inside a padding
+ * of `COMBO_PAD`, and no wider than a cap.
+ */
+const COMBO_W = 27;
+const COMBO_H = 20;
+const COMBO_H_HELD = 28;
+const COMBO_PAD = 4;
+const COMBO_TEXT = UNIT - GAP - 2 * COMBO_PAD;
+const COMBO_SIZES = [11, 10, 9, 8] as const;
+const COMBO_HOLD_SIZE = 8;
+/** The rounding of a combo's box, and the room kept between the drawing's edge and a box. */
+const COMBO_RX = 5;
+const COMBO_CLEAR = 3;
+
+/**
+ * A combo's classes, for its box or its lines: dead, being played, open in the editor, or lit,
+ * as one being played, open, pointed at or focused is.
+ */
+function comboClass(c: KeyboardCombo, base: string, open: number | null, lit: boolean): string {
+  return `${base}${c.dead ? ' lb-combo-dead' : ''}${c.active ? ' lb-combo-active' : ''}${
+    c.index === open ? ' lb-combo-open' : ''
+  }${lit ? ' lb-combo-lit' : ''}`;
+}
 
 /** A layer's colour: the one it chose, or its place's; none for a base layer that chose none. */
 export function layerColourAt(compiled: CompiledLayout, idx: number): string | undefined {
@@ -334,11 +376,11 @@ export interface KeyboardProps {
   highlight?: number[];
   /** Positions drawn as being pressed right now, such as a step of how a word is typed. */
   pressed?: number[];
-  /** Combos to draw between their keys; only the ones a view wants shown. */
+  /** Combos to draw on or beside their keys; only the ones a view wants shown. */
   combos?: KeyboardCombo[];
   /** The combo, by place, drawn as open in an editor. */
   openCombo?: number | null;
-  /** A combo's pill picked, by the combo's place; without it the pills are only drawn. */
+  /** A combo's box picked, by the combo's place; without it the boxes are only drawn. */
   onComboClick?: (index: number) => void;
   /** Key id drawn as selected. */
   selected?: string | null;
@@ -415,6 +457,7 @@ export function Keyboard({
   const nodes = useRef<Record<string, SVGGElement | null>>({});
   // Which key holds the single tab stop. It follows focus, so tabbing back returns where you were.
   const [focused, setFocused] = useState<string | null>(null);
+  const [pointed, setPointed] = useState<number | null>(null);
   const generatedId = useId();
 
   useImperativeHandle(
@@ -504,6 +547,26 @@ export function Keyboard({
     reach: reached,
   });
 
+  const boxes = combos.map(comboBox);
+  const placed = placeCombos(
+    keys.map((k) => {
+      const r = reach(k.key);
+      return {
+        cx: k.cx,
+        cy: k.cy,
+        w: k.w,
+        h: k.h,
+        rx: r.x * UNIT - GAP / 2,
+        ry: r.y * UNIT - GAP / 2,
+      };
+    }),
+    combos.map((c, i) => ({ keys: c.keys, w: boxes[i].w, h: boxes[i].h })),
+    { width: view.width, gap: GAP },
+  );
+  // The drawing grows to take in the boxes outside the board, a hair clear of them.
+  const top = Math.min(0, ...placed.map((p) => (p ? p.y - p.h / 2 - COMBO_CLEAR : 0)));
+  const bottom = Math.max(view.height, ...placed.map((p) => (p ? p.y + p.h / 2 + COMBO_CLEAR : 0)));
+
   // Every key being a tab stop makes a 34-key board 34 stops; one stop plus arrows is what a grid
   // of controls is expected to do.
   const tabStop = focused ?? selected ?? compiled.keys[0]?.id ?? null;
@@ -536,12 +599,33 @@ export function Keyboard({
 
   const listedKeys = keys.filter((k) => k.number !== null);
 
+  // The combo the pointer is on, or focus: its lines light up, as an open or a played one's do.
+  const lit = (c: KeyboardCombo) =>
+    c.active === true || c.index === openCombo || c.index === pointed;
+  const dendrons = (lighted: boolean) => (
+    <g className="lb-combo-dendrons">
+      {combos.map((c, i) =>
+        lit(c) === lighted
+          ? placed[i]?.dendrons.map((d, j) => (
+              <path
+                // biome-ignore lint/suspicious/noArrayIndexKey: a combo's lines, one per key, in its keys' order
+                key={`${c.index}-${j}`}
+                d={d}
+                data-combo={c.index}
+                className={comboClass(c, 'lb-combo-dendron', openCombo, lighted)}
+              />
+            ))
+          : null,
+      )}
+    </g>
+  );
+
   const board = (
     // biome-ignore lint/a11y/useKeyWithClickEvents: a click between the keys is the pointer's way to put a pick away; the keyboard's is Escape on a key, which the view handles
     <svg
       id={id}
       className={`lb-keyboard w-full h-auto select-none ${className ?? ''}`}
-      viewBox={`0 0 ${fmt(view.width)} ${fmt(view.height)}`}
+      viewBox={`0 ${fmt(top)} ${fmt(view.width)} ${fmt(bottom - top)}`}
       // How many keys wide the drawing is, for a view that must keep them a finger's size.
       style={{ '--lb-board-units': view.units.toFixed(2) } as CSSProperties}
       role={interactive ? 'group' : 'img'}
@@ -753,11 +837,12 @@ export function Keyboard({
       {/* Above the keys, but never in the way of a tap or a drag on them. */}
       {combos.length > 0 && (
         <g className="lb-combos">
-          {combos.map((c) => {
-            const points = c.keys.map(centerOf).filter((p) => p !== null);
-            if (points.length === 0) return null;
-            const { x, y } = comboPillAt(points, keys);
-            const width = Math.max(20, [...c.label].length * 7 + 12);
+          {/* Under every box, so that no line runs across a legend in one; a lit combo's over them. */}
+          {dendrons(false)}
+          {combos.map((c, i) => {
+            const at = placed[i];
+            if (!at) return null;
+            const box = boxes[i];
             const names = c.keys.map((p) => compiled.keys[p]?.id ?? '?').join(' + ');
             // Its colour marks a dead key to the eye; the words say it to everyone.
             const what = `${c.label}${c.dead ? ', dead key' : ''}`;
@@ -766,12 +851,19 @@ export function Keyboard({
               // biome-ignore lint/a11y/noStaticElementInteractions: an SVG group has no button element to be; it takes the role, the focus and the keys of one when it can be picked.
               <g
                 key={c.index}
-                className={`lb-combo${c.dead ? ' lb-combo-dead' : ''}${c.active ? ' lb-combo-active' : ''}${pick ? ' lb-combo-pickable' : ''}${c.index === openCombo ? ' lb-combo-open' : ''}`}
-                transform={`translate(${fmt(x)} ${fmt(y)})`}
+                className={`${comboClass(c, 'lb-combo', openCombo, lit(c))}${pick ? ' lb-combo-pickable' : ''}`}
+                transform={`translate(${fmt(at.x)} ${fmt(at.y)})`}
+                data-combo={c.index}
+                data-align={at.align}
+                data-outside={at.outside || undefined}
                 role={pick ? 'button' : undefined}
                 tabIndex={pick ? 0 : undefined}
                 aria-label={pick ? `Edit combo ${names}: ${what}` : undefined}
                 onClick={pick}
+                onPointerEnter={pick ? () => setPointed(c.index) : undefined}
+                onPointerLeave={pick ? () => setPointed(null) : undefined}
+                onFocus={pick ? () => setPointed(c.index) : undefined}
+                onBlur={pick ? () => setPointed(null) : undefined}
                 onKeyDown={
                   pick
                     ? (e) => {
@@ -783,13 +875,34 @@ export function Keyboard({
                 }
               >
                 <title>{`Combo ${names}: ${what}`}</title>
-                <rect x={fmt(-width / 2)} y="-9" width={fmt(width)} height="18" rx="9" />
-                <text y="4" textAnchor="middle" fontSize="11">
-                  {c.label}
+                <rect
+                  x={fmt(-at.w / 2)}
+                  y={fmt(-at.h / 2)}
+                  width={fmt(at.w)}
+                  height={fmt(at.h)}
+                  rx={COMBO_RX}
+                />
+                <text
+                  y={fmt(box.hold ? -at.h / 2 + 12 : 4)}
+                  textAnchor="middle"
+                  fontSize={box.tap.size}
+                >
+                  {box.tap.lines[0]}
                 </text>
+                {box.hold && (
+                  <text
+                    y={fmt(at.h / 2 - 4)}
+                    textAnchor="middle"
+                    className="lb-combo-hold"
+                    fontSize={box.hold.size}
+                  >
+                    {box.hold.lines[0]}
+                  </text>
+                )}
               </g>
             );
           })}
+          {dendrons(true)}
         </g>
       )}
 

@@ -579,7 +579,7 @@ export function Workbench({
   // the combo open in the editor or one a panel points at, and an outlined pair or word.
   const openCombo = state.combo === null ? undefined : state.layout.combos?.[state.combo];
   const placeOf = (typed: number) => comboPlace(state.compiled, typedCompiled, typed);
-  const openPill =
+  const openBox =
     state.combo === null
       ? null
       : (boardCombos.find((c) => placeOf(c.index) === state.combo)?.index ?? null);
@@ -905,7 +905,7 @@ export function Workbench({
                         highlight={highlighted}
                         pressed={frame?.keys ?? []}
                         combos={boardCombos}
-                        openCombo={openPill}
+                        openCombo={openBox}
                         onComboClick={(combo) => {
                           // While keys are being picked for a combo, they are all the board is doing.
                           if (state.comboPick) return;

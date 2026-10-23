@@ -12,10 +12,10 @@ and how to make it in the editor, in **Analyze**: select a key, then choose its 
 | a small legend at the top | what it types with Shift, where that is not just the capital |
 | `✦` `⋯` `TD` `U+` in the corner | an adaptive key, a macro, a tap dance, a Unicode character |
 | a colour | the layer the key reaches, matching the colour of that layer's name in the layer navigator; chosen under **Layers**, or set by the layer's place in the list |
-| an accent in a colour of its own, over a dotted line | a dead key: it types nothing itself and accents the next letter; a combo's pill in that colour arms an accent |
+| an accent in a colour of its own, over a dotted line | a dead key: it types nothing itself and accents the next letter; a combo's box in that colour arms an accent |
 | a ring inside the key, `held` or `tapped` along the bottom | on a layer above the base: the key held or tapped to get to this layer |
 | `▽` in a dashed outline | transparent: the key of the layer below shows through |
-| a pill between keys | a combo that types: press those keys together. It is drawn as a key is, its hold after a slash; select it to edit it as any kind of key but transparent |
+| a small box on the gap between keys, or beside the board with thin lines out to its keys | a combo that types: press those keys together. It shows what it types, and what it does held under that; select it to edit it as any kind of key but transparent |
 | a number in the corner | more than fits on the key; the list under the board says it all |
 | a grey legend | a key kept from an import, drawn but not simulated |
 

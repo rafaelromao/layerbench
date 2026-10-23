@@ -428,10 +428,22 @@
   stroke-width: 3;
 }
 
-/* Combos: a pill between the keys pressed together, lit while one is played. */
+/*
+ * Combos, as Keymap Drawer draws them: a box on the gap between the keys pressed together, or
+ * beside the board with thin lines out to them; lit while one is played.
+ */
 .lb-combos,
 .lb-arc {
   pointer-events: none;
+}
+.lb-combo-dendron {
+  fill: none;
+  stroke: color-mix(in oklab, var(--color-base-content) 45%, transparent);
+  stroke-width: 1;
+}
+.lb-combo-dendron.lb-combo-lit {
+  stroke: var(--color-primary);
+  stroke-width: 2;
 }
 .lb-combo rect {
   fill: var(--color-base-100);
@@ -453,13 +465,16 @@
 .lb-combo-active text {
   fill: var(--color-primary-content);
 }
-/* A pill that opens its combo in the editor takes clicks, though the rest of the layer does not. */
+/* A box that opens its combo in the editor takes clicks, though the rest of the layer does not. */
 .lb-combo-pickable {
   pointer-events: auto;
   cursor: pointer;
 }
 .lb-combo-pickable:focus-visible {
   outline: none;
+}
+.lb-combo-lit rect {
+  stroke: var(--color-primary);
 }
 .lb-combo-pickable:focus-visible rect,
 .lb-combo-open rect {
@@ -639,9 +654,9 @@
   opacity: 0.6;
   font-family: ui-sans-serif, system-ui, sans-serif;
 }
-/* A combo's cap is drawn as its pill is on the board. */
+/* A combo's cap is drawn as its box is on the board. */
 .lb-inspector-cap-combo {
-  border-radius: 999px;
+  background: var(--color-base-100);
   border-color: color-mix(in oklab, var(--color-primary) 75%, transparent);
 }
 
