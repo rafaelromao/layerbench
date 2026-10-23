@@ -68,6 +68,9 @@ The tiles after them are the rest: alt repeat, tap dance, morph, caps word, Unic
 [Special keys](special-keys.md) explains each of them. On a phone they wait under **More**, which
 then shows the kind chosen from them.
 
+A kind that needs a ZMK module says so under its controls, and links the module;
+[In ZMK](special-keys.md#in-zmk) lists what ZMK runs each kind with.
+
 ### Parts of a bigger key
 
 A tap-hold has a tap and a hold, an adaptive key has a branch for each key it follows, and a tap
@@ -383,7 +386,8 @@ layer in the end, which is why it stays first.
 
 The other panels hold what is not on a single key:
 
-- **Features** turns on sentence case and caps word.
+- **Features** turns on sentence case and caps word. Sentence case needs a ZMK module, which it
+  links.
 - **Geometry** shows the board, which is chosen when a layout is imported or created and cannot
   be changed here, and says which keys are space and shift, the kind of shift, and how doubled
   letters are typed. Under **One-shot layers** and **One-shot keys** it says how the layout's

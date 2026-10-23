@@ -1,7 +1,9 @@
-import type { Layout, LayoutFeatures } from '@layerbench/core';
+import { compileLayout, type Layout, type LayoutFeatures } from '@layerbench/core';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { FeaturesPanel } from '../panels.js';
+import { initialState } from '../reducer.js';
 import { FeatureBody, featureTitle, withoutFeatureAt } from './features.js';
 
 const layout = (features?: LayoutFeatures): Layout => ({
@@ -81,6 +83,30 @@ describe('the sentence case editor', () => {
     expect(screen.getByRole('button', { name: 'Shift' })).toHaveAttribute('aria-pressed', 'true');
     await userEvent.click(screen.getByRole('button', { name: 'Control' }));
     expect(setFeatures).toHaveBeenCalledWith({ sentenceCase: { mod: 'LCTRL' } });
+  });
+});
+
+describe('sentence case in ZMK', () => {
+  const links = () => screen.getAllByRole('link').map((a) => a.getAttribute('href'));
+
+  it('links its module, and the adaptive key for what the module does not do', () => {
+    render(<FeatureBody layout={layout()} feature="sentenceCase" setFeatures={vi.fn()} />);
+    expect(links()).toEqual([
+      'https://github.com/rafaelromao/zmk-sentence-case',
+      'https://github.com/urob/zmk-adaptive-key',
+    ]);
+  });
+
+  it('says so in Features, whether the feature is on or off', async () => {
+    const l = layout();
+    render(<FeaturesPanel state={initialState(l, compileLayout(l))} send={vi.fn()} />);
+    expect(links()).toEqual(['https://github.com/rafaelromao/zmk-sentence-case']);
+    expect(screen.getByLabelText('Sentence case')).not.toBeChecked();
+  });
+
+  it('names no module for caps word, which stock ZMK has', () => {
+    render(<FeatureBody layout={layout()} feature="capsWord" setFeatures={vi.fn()} />);
+    expect(screen.queryAllByRole('link')).toEqual([]);
   });
 });
 

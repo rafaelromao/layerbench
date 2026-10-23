@@ -1,19 +1,22 @@
 import {
   type Binding,
+  bindingModule,
   type CompiledLayout,
   type HostLocale,
   MODS,
   type Mod,
   tapLabel,
   translateKeycode,
+  ZMK_MODULES,
 } from '@layerbench/core';
 
 /**
  * A ZMK-flavoured text form for a binding, so a key can be edited by typing on it.
  *
  * `&kp A`, `&lt num a`, `&sl sym`, `&mo num`, `&trans` are spelled as ZMK spells them; the kinds
- * this model has and ZMK does not (`&auto_layer`, `&dead`, `&uni`) follow the same `&name args`
- * shape. A bare token with no `&` is shorthand for `&kp`, so typing `ç` still just works.
+ * stock ZMK has no behaviour of that name for follow the same `&name args` shape: `&auto_layer`
+ * and `&uni` stand for behaviours of ZMK modules, `&dead` for the host's dead key, which ZMK sends
+ * with `&kp`. A bare token with no `&` is shorthand for `&kp`, so typing `ç` still just works.
  */
 export interface BindingTextContext {
   layers: { id: string; name: string }[];
@@ -417,7 +420,15 @@ export function suggest(text: string, ctx: BindingTextContext): Suggestion[] {
     const prefix = (behavior?.[1] ?? '').toLowerCase();
     return [...new Set(Object.values(BEHAVIORS))]
       .filter((name) => name.startsWith(prefix))
-      .map((name) => ({ insert: `&${name}`, label: `&${name}`, hint: 'behaviour' }));
+      .map((name) => {
+        // A behaviour of a ZMK module says which, as a key of that kind does in the editor.
+        const module = bindingModule(name);
+        return {
+          insert: `&${name}`,
+          label: `&${name}`,
+          hint: module ? ZMK_MODULES[module].repo : 'behaviour',
+        };
+      });
   }
 
   const withLayer = /^&([A-Za-z_][A-Za-z0-9_]*)\s+([^\s]*)$/.exec(raw);

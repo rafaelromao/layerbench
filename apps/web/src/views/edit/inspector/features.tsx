@@ -1,6 +1,11 @@
-import type { Layout, LayoutFeatures, WrappingFeature } from '@layerbench/core';
+import {
+  featureModule,
+  type Layout,
+  type LayoutFeatures,
+  type WrappingFeature,
+} from '@layerbench/core';
 import { words } from './binding-changes.js';
-import { ModChips, Note, Row, TextField } from './controls.js';
+import { ModChips, ModuleLink, ModuleNote, Note, Row, TextField } from './controls.js';
 
 export function featureTitle(feature: WrappingFeature): string {
   switch (feature) {
@@ -9,6 +14,19 @@ export function featureTitle(feature: WrappingFeature): string {
     case 'capsWord':
       return 'Caps word';
   }
+}
+
+/**
+ * What sentence case's module does not do, and what does it instead: an adaptive key on the space
+ * key, which is what the feature compiles to.
+ */
+export function SentenceCaseLimits() {
+  return (
+    <Note>
+      That module ends a sentence at . ? ! only, with Left Shift. Other punctuation or another
+      modifier needs an adaptive key, from <ModuleLink module="adaptiveKey" />.
+    </Note>
+  );
 }
 
 /**
@@ -69,6 +87,8 @@ export function FeatureBody({
               onChange={(mod) => setFeatures({ ...f, sentenceCase: { ...s, mod } })}
             />
           </Row>
+          <ModuleNote module={featureModule('sentenceCase')} />
+          <SentenceCaseLimits />
         </div>
       );
     }

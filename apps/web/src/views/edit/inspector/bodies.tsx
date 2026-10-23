@@ -1,5 +1,6 @@
 import {
   type Binding,
+  bindingModule,
   type CompiledLayout,
   legend,
   legendText,
@@ -18,7 +19,7 @@ import {
   type LayerMode,
   type ListChanges,
 } from './binding-changes.js';
-import { LayerChips, ModChips, Note, Row, Segment, TextField } from './controls.js';
+import { LayerChips, ModChips, ModuleNote, Note, Row, Segment, TextField } from './controls.js';
 import {
   type KindInfo,
   type KindOfKey,
@@ -27,6 +28,7 @@ import {
   PART_KINDS,
   PRIMARY_KINDS,
   TAP_KINDS,
+  tileHint,
 } from './kinds.js';
 import { MacroStepsEditor } from './macro-steps.js';
 
@@ -105,7 +107,7 @@ function KindTiles({
       key={k.kind}
       type="button"
       aria-pressed={kind === k.kind}
-      title={k.hint}
+      title={tileHint(k)}
       className={`lb-kind-tile ${kind === k.kind ? 'lb-kind-tile-on' : ''}`}
       onClick={() => {
         closeMore();
@@ -138,7 +140,7 @@ function KindTiles({
           className={`lb-kind-tile ${shown ? 'lb-kind-tile-on' : ''}`}
           aria-expanded={more}
           aria-label={shown ? `More kinds: ${chosen.label}` : undefined}
-          title={shown ? chosen.hint : undefined}
+          title={shown ? tileHint(chosen) : undefined}
           onClick={() => setMore((m) => !m)}
         >
           <span aria-hidden="true" className="lb-kind-glyph">
@@ -346,6 +348,7 @@ function LayerBody({ scope, fields: { view, set }, onChange, name }: BodyProps<'
           onChange={(mode) => onChange(set.mode(mode))}
         />
         <Note>{LAYER_HINT[view.mode]}</Note>
+        <ModuleNote module={bindingModule(view.mode)} />
       </Row>
     </div>
   );
@@ -613,6 +616,7 @@ function AdaptiveBody({
         />
         Only when the key before had no modifier held
       </label>
+      <ModuleNote module={bindingModule('adaptive')} />
     </div>
   );
 }
@@ -749,6 +753,7 @@ function MorphBody({ scope, fields: { view, set }, onChange, name, depth }: Body
           value={view.by}
           onChange={(by) => onChange(set.by(by))}
         />
+        <ModuleNote module={bindingModule(view.by)} />
       </Row>
       {view.by === 'mod_morph' ? (
         <Row label="With">
@@ -828,6 +833,7 @@ function UnicodeBody({ fields: { view, set }, onChange, name }: BodyProps<'unico
         />
       </Row>
       <Note>For a character the host keyboard has no key for; the firmware enters it by code.</Note>
+      <ModuleNote module={bindingModule('unicode')} />
     </div>
   );
 }

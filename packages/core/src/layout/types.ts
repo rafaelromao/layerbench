@@ -222,12 +222,11 @@ export interface CapsWordFeature {
 }
 
 /**
- * Typing behaviours that firmware implements with layers, declared here as what they are.
+ * Typing behaviours that go on a key by its role — the space key, the shift key — declared once.
  *
- * A keymap needs a pre-shifted copy of a layer only because of what firmware can express. The
- * simulator has no such limit, so these are declared once and the compiler wraps the key they
- * belong to — the space key, the shift key — in ordinary bindings. That keeps the layer list the set
- * of layers a typist actually reaches.
+ * The compiler wraps the key they belong to in ordinary bindings, so the layer list stays the set of
+ * layers a typist actually reaches, with no pre-shifted copy of a layer, as a keymap once needed for
+ * sentence case. `featureModule` says what each needs in ZMK.
  *
  * Adaptive keys and alt repeats are not features: they are `adaptive` bindings on their keys, made
  * and edited like any other. A branch's `afterTags` replaces the one-shot layer an accent macro arms
