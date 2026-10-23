@@ -94,13 +94,19 @@ export type Binding =
   | { kind: 'auto_layer'; layer: string; continueList?: string[] }
   | { kind: 'key_repeat' }
   | { kind: 'mod_morph'; mods: Mod[]; default: Binding; morphed: Binding; keepMods?: Mod[] }
-  | {
-      kind: 'layer_morph';
-      layers: string[];
-      match?: 'any' | 'all';
-      active: Binding;
-      inactive: Binding;
-    }
+  /** `active` while any of `layers` is on, as zmk-layer-morph's morph is; `inactive` otherwise. */
+  | { kind: 'layer_morph'; layers: string[]; active: Binding; inactive: Binding }
+  /**
+   * `pending` while a sentence's capital is pending (see `sentence_space`), `default` otherwise, as
+   * zmk-sentence-case's sentence-morph. The press keeps the part it chose until it comes up.
+   */
+  | { kind: 'sentence_morph'; default: Binding; pending: Binding }
+  /**
+   * A space, as zmk-sentence-case's `&sentence_space`. Pressed right after `.`, `?` or `!`, it
+   * leaves a capital pending, which the next key press that sends a keycode takes: a letter a–z
+   * comes out a capital, anything else as it is. A layer key sends none, and leaves it pending.
+   */
+  | { kind: 'sentence_space' }
   | { kind: 'tap_dance'; bindings: Binding[] }
   | {
       kind: 'macro';
@@ -188,17 +194,17 @@ export type GeometryRef =
   | { preset: string; columnOffsets?: Record<string, number> }
   | { custom: GeometryKey[]; family?: 'columnar' | 'rowstagger'; name?: string };
 
-/** Shift the first letter after sentence-ending punctuation. */
+/**
+ * The space key as a `sentence_space`: after `.`, `?` or `!` and a space, the next key, if a letter
+ * a–z, is a capital. Which punctuation ends a sentence, and that a capital is Left Shift, are the
+ * module's.
+ */
 export interface SentenceCaseFeature {
   enabled?: boolean;
-  /** Punctuation that ends a sentence (default `.`, `?`, `!`). */
-  after?: string[];
   /** Key that types the space; `keys.space` when omitted. */
   key?: string;
   /** Layers whose space key gets the behaviour; the base layer when omitted. */
   on?: string[];
-  /** Modifier armed for the next press (default `LSHIFT`). */
-  mod?: Mod;
 }
 
 /** Hold shift for the rest of the word. */
@@ -216,12 +222,11 @@ export interface CapsWordFeature {
 }
 
 /**
- * Typing behaviours that firmware implements with layers, declared here as what they are.
+ * Typing behaviours that go on a key by its role — the space key, the shift key — declared once.
  *
- * A keymap needs a pre-shifted copy of a layer only because of what firmware can express. The
- * simulator has no such limit, so these are declared once and the compiler wraps the key they
- * belong to — the space key, the shift key — in ordinary bindings. That keeps the layer list the set
- * of layers a typist actually reaches.
+ * The compiler wraps the key they belong to in ordinary bindings, so the layer list stays the set of
+ * layers a typist actually reaches, with no pre-shifted copy of a layer, as a keymap once needed for
+ * sentence case. `featureModule` says what each needs in ZMK.
  *
  * Adaptive keys and alt repeats are not features: they are `adaptive` bindings on their keys, made
  * and edited like any other. A branch's `afterTags` replaces the one-shot layer an accent macro arms

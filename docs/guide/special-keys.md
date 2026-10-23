@@ -3,6 +3,9 @@
 A key can do more than type a letter. This page shows how each kind of key is drawn on the board,
 and how to make it in the editor, in **Analyze**: select a key, then choose its tile.
 
+Every kind of key the editor makes is one ZMK can run. Most are ZMK's own behaviours; a few need a
+ZMK module, which the editor names and links, as [In ZMK](#in-zmk) lists.
+
 | On a key | Means |
 |---|---|
 | the large legend | what a tap does |
@@ -62,18 +65,19 @@ A **Layer** key turns another layer on in one of five ways:
 | One-shot | for the next key only | `&sl`, `OSL` |
 | Toggle | until the key is pressed again | `&tog`, `TG` |
 | To layer | from now on, with every other layer off but the base | `&to`, `TO` |
-| Auto | until the word ends | urob's auto layer |
+| Auto | until the word ends | the module [urob/zmk-auto-layer](https://github.com/urob/zmk-auto-layer) |
 
 ## Repeat and alt repeat
 
 A **Repeat** key `⟳` presses the key before it again, so a doubled letter is typed with two
-fingers instead of one.
+fingers instead of one. It is ZMK's `&key_repeat`.
 
 An **Alt repeat** key repeats as well, but after chosen keys it types something else: after `a`,
 say, it could type `o`. Each **branch** names the keys it follows and what it types after them. On
 the board it reads `⟳` with a `✦`. A repeat key becomes one with **Make it an alt repeat**, and a
 layout can have as many as it needs. An alt repeat is an adaptive key whose default is the repeat,
-so everything below about adaptive keys holds for it too.
+so everything below about adaptive keys holds for it too. In ZMK it needs the module
+[urob/zmk-adaptive-key](https://github.com/urob/zmk-adaptive-key), as an adaptive key does.
 
 ## Adaptive keys
 
@@ -84,10 +88,12 @@ keys, type this instead". **Add branch** adds one.
 A branch can also match on a **tag**: a name a key or macro gives itself, so a branch can tell a
 `u` typed by a `qu` macro from a plain `u`. **Only after a tagged key**, in a branch, names the
 tag. The key or macro carries it under **Tag** (for a symbol, under **Shifted symbol, tag**), or
-as `tag:name` at the end of what you type in **Or type**.
+as `tag:name` at the end of what you type in **Or type**. In ZMK a tag is a one-shot layer that
+the key arms, with another adaptive key on it.
 
 The idea, and the way LayerBench models it, follows
-[urob's zmk-adaptive-key](https://github.com/urob/zmk-adaptive-key).
+[urob/zmk-adaptive-key](https://github.com/urob/zmk-adaptive-key). In ZMK an adaptive key needs
+that module.
 
 ### Which branch wins
 
@@ -115,16 +121,40 @@ step the list has no row for is shown as it is, and can still be moved or remove
 
 **Caps word** `⇪` types capitals until the word ends. **Features** can also put
 caps word on the shift key, so that shift pressed while shift is already on starts it, and turn on
-**sentence case**: after the punctuation that ends a sentence, the space key types a space and
-shifts the next letter.
+**sentence case**, which makes the space key a sentence space.
+
+A **Sentence space**, among the editor's other tiles, types a space. Pressed right after `.`, `?` or
+`!`, it leaves a capital for the next key pressed. A letter a–z comes out a capital. Any other key,
+a digit, a symbol, a dead key, a modifier or another space, takes it and types as it is, so the
+letter after it is lowercase. A layer key presses no keycode, and leaves the capital for the key
+after it. A lowercase letter right after `. ` cannot be typed: the module lets the capital go after
+a second, and the analysis has no clock.
+
+A **Morph** can also change **After a sentence**, while a sentence space has left a capital. Magic
+Romak's Alpha 2 key is one, as in its author's keymap: after a sentence's end it arms Shift with
+Alpha 2, so an accent that starts a sentence is a capital too. The capital alone would not give one,
+as an accent is no letter a–z.
+
+Caps word is ZMK's own `&caps_word`; on the shift key it is a mod-morph. A sentence space and a
+morph after a sentence need the module
+[rafaelromao/zmk-sentence-case](https://github.com/rafaelromao/zmk-sentence-case): they are its
+`&sentence_space` and its sentence-morph. Which punctuation ends a sentence, and that the capital is
+Left Shift, are the module's.
 
 ## Tap dance, morphs, Unicode and dead keys
 
 These are among the editor's other tiles, under **More** on a phone:
 
 - **Tap dance** `TD` does one thing on one tap, another on two, and so on.
-- **Morph** does something else while a modifier is held, or while a layer is on.
-- **Unicode** `U+` types a character the operating system has no key for.
+- **Morph** does something else while a modifier is held, while a layer is on, or after a
+  sentence's end. With a modifier it is ZMK's mod-morph. On a layer it changes while any of the
+  layers chosen is on, and needs the module
+  [rafaelromao/zmk-layer-morph](https://github.com/rafaelromao/zmk-layer-morph). After a sentence,
+  see [Caps word and sentence case](#caps-word-and-sentence-case).
+- **Unicode** `U+` types a character the operating system has no key for. It needs the module
+  [urob/zmk-unicode](https://github.com/urob/zmk-unicode), and the operating system set up for
+  Unicode input. The module types the character as keys of its own, so it leaves nothing to follow:
+  a repeat right after it types nothing, and no adaptive key's branch follows it.
 - **Dead key** puts an accent on the next letter, as `´` then `e` gives `é`. On the board it shows
   its accent in a colour of its own, over a dotted line where the letter will go. The analysis types
   through them: an accented letter no key types is typed as its accent, then the letter, and a
@@ -133,3 +163,33 @@ These are among the editor's other tiles, under **More** on a phone:
   **Shifted** gives the key a second accent for when shift is on, as US-International has `¨`
   over `´`; it is drawn at the top of the key. Like a shifted symbol, it is typed only when
   **Shift** is on, since with capitals folded no shift is pressed.
+  In ZMK a dead key is the host's own, sent with `&kp`, so the host's keyboard layout must have
+  it, as US-International and ABNT2 do.
+
+## In ZMK
+
+Each kind of key the editor makes, and each feature, is one ZMK can run, with its own behaviours
+or with a module. Each module's page says how to add it to a keymap.
+
+| Key or feature | In ZMK |
+|---|---|
+| Symbol, modifier | `&kp` and `&sk`; a shifted symbol the host's Shift does not give is a [mod-morph](https://zmk.dev/docs/keymaps/behaviors/mod-morph) |
+| Transparent, nothing | `&trans`, `&none` |
+| Layer: momentary, one-shot, toggle, to layer | `&mo`, `&sl`, `&tog`, `&to` ([layers](https://zmk.dev/docs/keymaps/behaviors/layers)) |
+| Layer: auto | the module [urob/zmk-auto-layer](https://github.com/urob/zmk-auto-layer) |
+| Tap-hold, home row mods | [hold-tap](https://zmk.dev/docs/keymaps/behaviors/hold-tap) |
+| Repeat | [`&key_repeat`](https://zmk.dev/docs/keymaps/behaviors/key-repeat) |
+| Adaptive key, alt repeat | the module [urob/zmk-adaptive-key](https://github.com/urob/zmk-adaptive-key) |
+| Macro | [macros](https://zmk.dev/docs/keymaps/behaviors/macros) |
+| Tap dance | [tap-dance](https://zmk.dev/docs/keymaps/behaviors/tap-dance) |
+| Morph with a modifier | [mod-morph](https://zmk.dev/docs/keymaps/behaviors/mod-morph) |
+| Morph on a layer | the module [rafaelromao/zmk-layer-morph](https://github.com/rafaelromao/zmk-layer-morph) |
+| Caps word | [`&caps_word`](https://zmk.dev/docs/keymaps/behaviors/caps-word); on the shift key, in a mod-morph |
+| Sentence case, sentence space, morph after a sentence | the module [rafaelromao/zmk-sentence-case](https://github.com/rafaelromao/zmk-sentence-case) |
+| Unicode | the module [urob/zmk-unicode](https://github.com/urob/zmk-unicode) |
+| Dead key | the host's dead key, sent with `&kp` |
+| Combo | [combos](https://zmk.dev/docs/keymaps/combos) |
+| Conditional layer | [conditional layers](https://zmk.dev/docs/keymaps/conditional-layers) |
+
+Magic Romak's author's keymap, [rafaelromao/keyboards](https://github.com/rafaelromao/keyboards),
+builds with each of these modules but zmk-unicode.

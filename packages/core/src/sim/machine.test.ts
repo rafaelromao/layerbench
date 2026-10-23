@@ -123,6 +123,185 @@ describe('Machine — adaptive keys', () => {
   });
 });
 
+describe('Machine — sentence case, as zmk-sentence-case', () => {
+  const kp = (symbol: string) => ({ kind: 'kp' as const, symbol });
+  const layout = mini([
+    {
+      id: 'base',
+      bindings: {
+        LHP: kp('a'),
+        LHR: kp('b'),
+        LHM: kp('.'),
+        LHI: kp('?'),
+        LHC: kp('!'),
+        LTP: kp('1'),
+        LTR: kp(','),
+        LTM: { kind: 'dead_key', diacritic: '´' },
+        LTI: {
+          kind: 'sentence_morph',
+          default: kp('1'),
+          pending: kp('2'),
+        },
+        LBP: { kind: 'sk', mod: 'LSHIFT' },
+        LBR: { kind: 'key_repeat' },
+        LBM: { kind: 'mo', layer: 'other' },
+        L0: { kind: 'sentence_space' },
+        L1: kp(' '),
+      },
+    },
+    { id: 'other', bindings: { LHP: kp('a') } },
+  ]);
+  /** What tapping these keys types, from a fresh machine. */
+  const typed = (...keys: string[]) => {
+    const { tap } = machineFor(layout);
+    return keys.map((k) => tap(k).symbols).join('');
+  };
+
+  // The module's README, row by row, with `L0` its `&sentence_space`.
+  it.each([
+    [['LHP', 'LHM', 'L0', 'LHR', 'LHP'], 'a. Ba'],
+    [['LHP', 'LHI', 'L0', 'LHR'], 'a? B'],
+    [['LHP', 'LHC', 'L0', 'LHR'], 'a! B'],
+    [['LHP', 'L0', 'LHR'], 'a b'],
+    [['LHP', 'LHM', 'LHR'], 'a.b'],
+    [['LHM', 'L0', 'LTP', 'LHP'], '. 1a'],
+    [['LHM', 'L0', 'L0', 'LHP'], '.  a'],
+    [['LHM', 'L0', 'LTR', 'LHP'], '. ,a'],
+  ])('types %j as %j', (keys, text) => {
+    expect(typed(...keys)).toBe(text);
+  });
+
+  it('leaves no capital after a plain space, or a sentence space not after a sentence end', () => {
+    expect(typed('LHM', 'L1', 'LHP')).toBe('. a');
+    expect(typed('LHP', 'L0', 'L0', 'LHP')).toBe('a  a');
+  });
+
+  it('keeps the capital past a layer key, which presses no keycode', () => {
+    const { tap, hold, release } = machineFor(layout);
+    tap('LHM');
+    tap('L0');
+    hold('LBM');
+    expect(tap('LHP').symbols).toBe('A');
+    release('LBM');
+  });
+
+  it('gives the capital to a dead key, which accents the letter after it lowercase', () => {
+    expect(typed('LHM', 'L0', 'LTM', 'LHP')).toBe('. á');
+  });
+
+  it('gives the capital to a one-shot Shift, which shifts the letter itself', () => {
+    expect(typed('LHM', 'L0', 'LBP', 'LHP', 'LHP')).toBe('. Aa');
+  });
+
+  it('repeats the capital it gave', () => {
+    expect(typed('LHM', 'L0', 'LHR', 'LBR')).toBe('. BB');
+  });
+
+  it("chooses a sentence morph's pending part only while a capital is pending", () => {
+    expect(typed('LTI')).toBe('1');
+    expect(typed('LHM', 'L0', 'LTI', 'LTI')).toBe('. 21');
+  });
+});
+
+describe('Machine — a macro that types nothing', () => {
+  it('is pressed as the layer key it turns a layer on with, wherever in the macro that is', () => {
+    const layout = mini([
+      {
+        id: 'base',
+        bindings: {
+          LHP: {
+            kind: 'macro',
+            steps: [
+              { kind: 'sl', layer: 'other' },
+              { kind: 'sk', mod: 'LSHIFT' },
+            ],
+          },
+          LHR: { kind: 'macro', symbols: 'a', then: [{ kind: 'sl', layer: 'other' }] },
+        },
+      },
+      { id: 'other', bindings: {} },
+    ]);
+    const armed = machineFor(layout).tap('LHP');
+    expect([armed.leafKind, armed.keyKind]).toEqual(['sl', 'layer_tap']);
+    // One that types is a macro, whatever it turns on after.
+    expect(machineFor(layout).tap('LHR').leafKind).toBe('macro');
+  });
+});
+
+describe('Machine — a Unicode key', () => {
+  const kp = (symbol: string) => ({ kind: 'kp' as const, symbol });
+  const layout = mini([
+    {
+      id: 'base',
+      bindings: {
+        LHP: kp('a'),
+        LHM: kp('.'),
+        LBI: { kind: 'unicode', symbol: 'é', shiftedSymbol: 'É' },
+        LBR: { kind: 'key_repeat' },
+        LBC: {
+          kind: 'adaptive',
+          default: kp('x'),
+          triggers: [{ afterAny: ['é'], binding: kp('y') }],
+        },
+        LBM: {
+          kind: 'adaptive',
+          default: kp('x'),
+          triggers: [{ afterTags: ['t'], binding: kp('y') }],
+        },
+        LTP: { kind: 'macro', symbols: 'a', tag: 't' },
+        L0: { kind: 'sentence_space' },
+      },
+    },
+  ]);
+  const typed = (...keys: string[]) => {
+    const { tap } = machineFor(layout);
+    return keys.map((k) => tap(k).symbols).join('');
+  };
+
+  it('leaves nothing for a repeat to type, as zmk-unicode types a run of keys of its own', () => {
+    expect(typed('LBI', 'LBR')).toBe('é');
+    expect(typed('LHP', 'LBI', 'LBR')).toBe('aé');
+  });
+
+  it('leaves nothing for an adaptive key to follow, by symbol or by tag', () => {
+    expect(typed('LBI', 'LBC')).toBe('éx');
+    expect(typed('LTP', 'LBI', 'LBM')).toBe('aéx');
+    expect(typed('LTP', 'LBM')).toBe('ay');
+  });
+
+  it('takes a pending capital and keeps its own case', () => {
+    expect(typed('LHM', 'L0', 'LBI', 'LHP')).toBe('. éa');
+  });
+});
+
+describe('Machine — layer morph', () => {
+  it('types its changed binding while any of its layers is on, as zmk-layer-morph does', () => {
+    const layout = mini([
+      {
+        id: 'base',
+        bindings: {
+          LHP: {
+            kind: 'layer_morph',
+            layers: ['x', 'y'],
+            active: { kind: 'kp', symbol: 'b' },
+            inactive: { kind: 'kp', symbol: 'a' },
+          },
+          LHI: { kind: 'mo', layer: 'x' },
+          LHM: { kind: 'mo', layer: 'y' },
+        },
+      },
+      { id: 'x', bindings: {} },
+      { id: 'y', bindings: {} },
+    ]);
+    const { tap, hold, release } = machineFor(layout);
+    expect(tap('LHP').symbols).toBe('a');
+    hold('LHM'); // y only
+    expect(tap('LHP').symbols).toBe('b');
+    release('LHM');
+    expect(tap('LHP').symbols).toBe('a');
+  });
+});
+
 describe('Machine — toggles, to-layer, locking, conditional layers', () => {
   const layout = mini(
     [

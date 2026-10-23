@@ -40,10 +40,11 @@ const adaptiveKey: Binding = {
 };
 
 describe('changing what a key is', () => {
-  it("keeps the layer or modifier of a morph's plain part, past either kind of morph", () => {
+  it("keeps the layer or modifier of a morph's plain part, past every kind of morph", () => {
     const morphs = (plain: Binding): Binding[] => [
       { kind: 'mod_morph', mods: ['LSHIFT', 'RSHIFT'], default: plain, morphed: { kind: 'none' } },
       { kind: 'layer_morph', layers: ['num'], inactive: plain, active: { kind: 'none' } },
+      { kind: 'sentence_morph', default: plain, pending: { kind: 'none' } },
     ];
     for (const key of morphs({ kind: 'sl', layer: 'sym' })) {
       expect(to(key, 'layer')).toEqual({ kind: 'mo', layer: 'sym' });
@@ -374,6 +375,13 @@ describe('the parts of a bigger key, and lists of them', () => {
     expect(layered.set.toggleLayer('ccedil')).toEqual({ ...onLayer, layers: ['alpha2', 'ccedil'] });
     expect(layered.set.becomes(a)).toEqual({ ...onLayer, active: a });
     expect(layered.set.family('alt')).toBe(onLayer);
+    const afterSentence = layered.set.by('sentence_morph');
+    expect(afterSentence).toEqual({ kind: 'sentence_morph', default: comma, pending: semicolon });
+    const pending = fieldsOf('morph', afterSentence);
+    expect(pending.view).toMatchObject({ by: 'sentence_morph', family: null, layers: [] });
+    expect(pending.set.becomes(a)).toEqual({ ...afterSentence, pending: a });
+    expect(pending.set.plain(a)).toEqual({ ...afterSentence, default: a });
+    expect(pending.set.toggleLayer('alpha2')).toBe(afterSentence);
   });
 });
 

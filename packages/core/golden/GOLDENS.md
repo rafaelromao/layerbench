@@ -683,7 +683,31 @@ What moved, checked across the 38 reports; nothing else moved:
   Effort moved with the others. Bird is no longer for Spanish, Colemak-DH no longer for French, and
   Nordwind, a document, is for Portuguese too.
 
-## Thirty-second re-baseline: only keys the editor can make
+## Thirty-second re-baseline: sentence case is zmk-sentence-case
+
+Sentence case models rafaelromao/zmk-sentence-case, which Magic Romak's author's keymap builds with.
+The space key is a sentence space: after `.`, `?` or `!` it leaves a capital pending, and the next
+key press that sends a keycode takes it. A letter a–z comes out a capital; a digit, a symbol, a dead
+key or a modifier goes through as it is, and the letter after it is lowercase. A layer key sends
+none, and leaves the capital pending. It was an adaptive key that typed a space and a one-shot
+Shift, which shifted whatever came next. Which punctuation ends a sentence, and the modifier, are
+the module's now.
+
+Magic Romak's Alpha 2 key is the keymap's `sentence_alpha2`, a sentence morph: while a capital is
+pending, it arms Shift with Alpha 2, as the keymap arms its shifted Alpha 2, so an accent that
+starts a sentence is a capital too. A macro that types nothing and turns a layer on is pressed as
+the layer key it turns it on with.
+
+What moved, checked across the 38 reports; nothing else moved:
+
+- **Magic Romak's document and share blob**: its Alpha 2 key's tap is a sentence morph. Its space
+  key, under the feature as it was, compiles to a sentence space.
+- **Magic Romak's reports**: macro presses, and Macro usage with them, fall: a space after a
+  sentence's end ran the old adaptive key's macro, and is a sentence space now (146 to 10 on the
+  English fixture). Its space is typed by the space key itself, not by an adaptive key's default and
+  branch. Keystrokes, layer taps, one-shots, Effort and every other number are as they were.
+
+## Thirty-third re-baseline: only keys the editor can make
 
 A key is only what the editor can make: the kind of key LayerBench kept but did not simulate is
 gone. Where an author's keymap has a key that does what the analysis does not simulate (Escape,

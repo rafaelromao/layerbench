@@ -1,19 +1,23 @@
 import {
   type Binding,
+  bindingModule,
   type CompiledLayout,
   type HostLocale,
   MODS,
   type Mod,
   tapLabel,
   translateKeycode,
+  ZMK_MODULES,
 } from '@layerbench/core';
 
 /**
  * A ZMK-flavoured text form for a binding, so a key can be edited by typing on it.
  *
  * `&kp A`, `&lt num a`, `&sl sym`, `&mo num`, `&trans` are spelled as ZMK spells them; the kinds
- * this model has and ZMK does not (`&auto_layer`, `&dead`, `&uni`) follow the same `&name args`
- * shape. A bare token with no `&` is shorthand for `&kp`, so typing `ç` still just works.
+ * stock ZMK has no behaviour of that name for follow the same `&name args` shape: `&auto_layer`
+ * and `&uni` stand for behaviours of ZMK modules, `&dead` for the host's dead key, which ZMK sends
+ * with `&kp`. `&sentence_space` is zmk-sentence-case's own. A bare token with no `&` is shorthand
+ * for `&kp`, so typing `ç` still just works.
  */
 export interface BindingTextContext {
   layers: { id: string; name: string }[];
@@ -86,6 +90,7 @@ const BEHAVIORS = {
   caps: 'caps_word',
   key_repeat: 'key_repeat',
   repeat: 'key_repeat',
+  sentence_space: 'sentence_space',
   auto_layer: 'auto_layer',
   autolayer: 'auto_layer',
   macro: 'macro',
@@ -203,6 +208,7 @@ export function parseBindingText(text: string, ctx: BindingTextContext): ParseRe
     case 'none':
     case 'key_repeat':
     case 'caps_word':
+    case 'sentence_space':
       return ok({ kind: name });
     case 'mo':
     case 'sl':
@@ -286,6 +292,7 @@ function exactText(compiled: CompiledLayout, b: Binding): string | null {
     case 'trans':
     case 'none':
     case 'key_repeat':
+    case 'sentence_space':
       return `&${b.kind}`;
     case 'caps_word':
       return b.continueList !== undefined || (b.mods !== undefined && b.mods.length > 0)
@@ -334,7 +341,7 @@ function exactText(compiled: CompiledLayout, b: Binding): string | null {
     case 'unicode':
       return b.shiftedSymbol ? `&uni ${b.symbol} ${b.shiftedSymbol}` : `&uni ${b.symbol}`;
     default:
-      // adaptive, mod_morph, layer_morph, tap_dance and hold_tap are authored elsewhere.
+      // adaptive, the morphs, tap_dance and hold_tap are authored elsewhere.
       return null;
   }
 }
@@ -350,6 +357,8 @@ function whyNot(b: Binding): string {
       return 'a mod-morph';
     case 'layer_morph':
       return 'a layer-morph';
+    case 'sentence_morph':
+      return 'a sentence-morph';
     case 'tap_dance':
       return 'a tap dance';
     case 'macro':
@@ -415,7 +424,15 @@ export function suggest(text: string, ctx: BindingTextContext): Suggestion[] {
     const prefix = (behavior?.[1] ?? '').toLowerCase();
     return [...new Set(Object.values(BEHAVIORS))]
       .filter((name) => name.startsWith(prefix))
-      .map((name) => ({ insert: `&${name}`, label: `&${name}`, hint: 'behaviour' }));
+      .map((name) => {
+        // A behaviour of a ZMK module says which, as a key of that kind does in the editor.
+        const module = bindingModule(name);
+        return {
+          insert: `&${name}`,
+          label: `&${name}`,
+          hint: module ? `behaviour of ${ZMK_MODULES[module]}` : 'behaviour',
+        };
+      });
   }
 
   const withLayer = /^&([A-Za-z_][A-Za-z0-9_]*)\s+([^\s]*)$/.exec(raw);

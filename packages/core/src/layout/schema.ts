@@ -20,6 +20,10 @@ const TriggerSchema: z.ZodType<unknown> = z.lazy(() =>
     }),
 );
 
+/** Why a layer morph that says when it comes on was refused, when that is not `any`. */
+export const LAYER_MORPH_MATCH =
+  'a layer morph changes while any of its layers is on, as zmk-layer-morph does: match can only be "any"';
+
 /**
  * `schema`, telling only the first thing wrong with what it reads, however much more is. zod copies
  * each fault again at every binding around it, so a deep document of many faults would otherwise
@@ -101,10 +105,18 @@ export const BindingSchema: z.ZodType<unknown> = z.lazy(() =>
       z.object({
         kind: z.literal('layer_morph'),
         layers: z.array(z.string()).default([]),
-        match: z.enum(['any', 'all']).default('any'),
+        // The writer once put `any` on every layer morph. It is what every morph does, so it is
+        // still read, and written no more. zmk-layer-morph has no other, so nothing else is read.
+        match: z.literal('any', { error: LAYER_MORPH_MATCH }).optional(),
         active: BindingSchema,
         inactive: BindingSchema,
       }),
+      z.object({
+        kind: z.literal('sentence_morph'),
+        default: BindingSchema,
+        pending: BindingSchema,
+      }),
+      z.object({ kind: z.literal('sentence_space') }),
       z.object({ kind: z.literal('tap_dance'), bindings: z.array(BindingSchema) }),
       z.object({
         kind: z.literal('macro'),
@@ -167,13 +179,14 @@ const GeometryKeySchema = z
 
 /** Declarative special features; the compiler wraps the keys they belong to. */
 const FeaturesSchema = z.object({
+  // A document from before sentence case was zmk-sentence-case's may name the punctuation that
+  // ends a sentence (`after`) and the modifier it arms (`mod`): the module has its own, so they are
+  // read and left out, as any field the schema does not name is.
   sentenceCase: z
     .object({
       enabled: z.boolean().optional(),
-      after: z.array(z.string()).optional(),
       key: z.string().optional(),
       on: z.array(z.string()).optional(),
-      mod: ModSchema.optional(),
     })
     .optional(),
   capsWord: z

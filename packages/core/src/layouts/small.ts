@@ -116,9 +116,22 @@ const SPACE_OR_NUMBERS: Binding = {
   tap: kp(' '),
   hold: { kind: 'mo', layer: 'num' },
 };
+/**
+ * Tapped, the keymap's `sentence_alpha2`: Alpha 2 for the next key, and while a sentence's capital
+ * is pending, the shifted Alpha 2 it reaches with `lt_sft_a2`, here Shift with Alpha 2 for the next
+ * key, so an accent that starts a sentence is a capital too.
+ */
 const ALPHA2_OR_SYMBOLS: Binding = {
   kind: 'hold_tap',
-  tap: { kind: 'sl', layer: 'alpha2' },
+  tap: {
+    kind: 'sentence_morph',
+    default: { kind: 'sl', layer: 'alpha2' },
+    pending: {
+      kind: 'macro',
+      steps: [{ kind: 'sk', mod: 'LSHIFT' }],
+      then: [{ kind: 'sl', layer: 'alpha2' }],
+    },
+  },
   hold: { kind: 'mo', layer: 'sym' },
 };
 
@@ -845,15 +858,16 @@ export const SMALL_DEFS: ClassicDef[] = [
   /**
    * Magic Romak: Romak on 24 keys, two alpha layers and the adaptive behaviours.
    *
-   * The firmware needs four extra layers for these — pre-shifted copies of the alphas for sentence
-   * case, caps word and shifted Alpha 2, and a one-shot layer armed by every accent macro so the
-   * repeat key can offer follow-ups. None of them is a layer a typist reaches. Sentence case and
-   * caps word are declared as features, which wrap the space and shift keys: sentence case arms a
-   * one-shot shift, caps word is the `caps_word` behaviour, and shift is simply shift state. The
-   * `h`/`v` keys and the alt repeat are adaptive keys on their own keys, and the alt-repeat
-   * follow-ups match on the tag the accent macro leaves behind. What is left is the layers you can
-   * see. It brings its keymap's own Numbers and Symbols, which the default layers leave as they
-   * are, and its keymap's home block mods (`MAGIC_ROMAK_MODS`) in place of the default ones.
+   * The firmware needs extra layers for these — pre-shifted copies of the alphas for caps word and
+   * shifted Alpha 2, and a one-shot layer armed by every accent macro so the repeat key can offer
+   * follow-ups — and had one for sentence case, before it was the module zmk-sentence-case. None of
+   * them is a layer a typist reaches. Sentence case and caps word are declared as features, which
+   * go on the space and shift keys: sentence case makes the space a sentence space, caps word is the
+   * `caps_word` behaviour, and shift is simply shift state. The `h`/`v` keys and the alt repeat are
+   * adaptive keys on their own keys, and the alt-repeat follow-ups match on the tag the accent
+   * macro leaves behind. What is left is the layers you can see. It brings its keymap's own Numbers
+   * and Symbols, which the default layers leave as they are, and its keymap's home block mods
+   * (`MAGIC_ROMAK_MODS`) in place of the default ones.
    */
   {
     id: 'magic-romak',
@@ -862,7 +876,7 @@ export const SMALL_DEFS: ClassicDef[] = [
     geometry: '1333+2',
     base: { id: 'alpha1', name: 'Alpha 1' },
     // Holding space reaches the numbers and holding the Alpha 2 key the symbols; the sentence-case
-    // feature wraps the space's tap, so both live on one key.
+    // feature makes the space's tap a sentence space, so both live on one key.
     byKey: {
       ...ALPHA1_24,
       RBI: adaptiveKey('h', 'v'),

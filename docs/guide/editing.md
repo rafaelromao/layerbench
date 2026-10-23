@@ -64,9 +64,13 @@ the key becomes a tap-hold.
 | Transparent `▽` | lets the layer below show through |
 | Nothing `∅` | does nothing |
 
-The tiles after them are the rest: alt repeat, tap dance, morph, caps word, Unicode and dead key.
+The tiles after them are the rest: alt repeat, tap dance, morph, caps word, sentence space, Unicode
+and dead key.
 [Special keys](special-keys.md) explains each of them. On a phone they wait under **More**, which
 then shows the kind chosen from them.
+
+A kind that needs a ZMK module says so under its controls, and links the module;
+[In ZMK](special-keys.md#in-zmk) lists what ZMK runs each kind with.
 
 ### Parts of a bigger key
 
@@ -96,7 +100,7 @@ applies it; `Escape` leaves the key as it was. Starting with `&` lists the behav
 | `&lt num a` · `&mo sym` · `&sl ccedil` · `&to base` · `&tog num` | layer taps and switches |
 | `&sk LSHIFT` · `&kp LSHIFT` | a one-shot modifier, and a held one |
 | `&macro ão` · `&macro ão then alpha2` | a macro, optionally turning on a layer after it |
-| `&trans` · `&none` · `&key_repeat` · `&caps_word` | the rest |
+| `&trans` · `&none` · `&key_repeat` · `&caps_word` · `&sentence_space` | the rest |
 
 A layer can be named by its id, by its name, or by its number as ZMK counts them. A trailing
 `tag:name` gives the key a tag that adaptive keys can match on. Under the default `symbols` host
@@ -389,7 +393,8 @@ layer in the end, which is why it stays first.
 
 The other panels hold what is not on a single key:
 
-- **Features** turns on sentence case and caps word.
+- **Features** turns on sentence case and caps word. Sentence case needs a ZMK module, which it
+  links.
 - **Geometry** shows the board, which is chosen when a layout is created or read with **Import**,
   and cannot be changed here, and says which keys are space and shift, the kind of shift, and how
   doubled letters are typed. Under **One-shot layers** and **One-shot keys** it says how the

@@ -1277,6 +1277,11 @@ function legendOf(
       return legendOf(b.default, layerName, upper);
     case 'layer_morph':
       return legendOf(b.inactive, layerName, upper);
+    case 'sentence_morph':
+      return legendOf(b.default, layerName, upper);
+    // The space it types: what it does after a sentence's end has no field.
+    case 'sentence_space':
+      return { tap: 'SPACE' };
     case 'tap_dance':
       return { ...legendOf(b.bindings[0], layerName, false), tr: BADGE.tapDance };
   }

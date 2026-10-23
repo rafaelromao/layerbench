@@ -1,7 +1,14 @@
 import { type Binding, type Mod, modsMet } from './types.js';
 
 /** The bindings that choose one of their parts rather than act themselves. */
-export type Chooser = 'hold_tap' | 'lt' | 'mod_morph' | 'layer_morph' | 'tap_dance' | 'adaptive';
+export type Chooser =
+  | 'hold_tap'
+  | 'lt'
+  | 'mod_morph'
+  | 'layer_morph'
+  | 'sentence_morph'
+  | 'tap_dance'
+  | 'adaptive';
 
 /** How a key is pressed, and what is on while it is: what its choosers go by. */
 export interface Choosing {
@@ -11,6 +18,8 @@ export interface Choosing {
   mods?: ReadonlySet<Mod>;
   /** Whether a layer is on, for layer morphs. None when absent. */
   layerOn?: (layer: string) => boolean;
+  /** Whether a sentence's capital is pending, for sentence morphs. Not when absent. */
+  sentencePending?: boolean;
   /** Choosers to stop at rather than go past: the ones the caller has to see. */
   stopAt?: ReadonlySet<Chooser>;
 }
@@ -62,11 +71,11 @@ function chosen(b: Binding, how: Choosing): Binding | null {
     }
     case 'layer_morph': {
       const on = how.layerOn;
-      const active =
-        on !== undefined &&
-        (b.match === 'all' ? b.layers.every((l) => on(l)) : b.layers.some((l) => on(l)));
+      const active = on !== undefined && b.layers.some((l) => on(l));
       return active ? b.active : b.inactive;
     }
+    case 'sentence_morph':
+      return how.sentencePending ? b.pending : b.default;
     case 'tap_dance':
       return b.bindings[0] ?? null;
     case 'adaptive':

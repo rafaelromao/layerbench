@@ -213,6 +213,8 @@ export function relayered(b: Binding, from: string, to: string): Binding {
       return { ...b, default: r(b.default), morphed: r(b.morphed) };
     case 'layer_morph':
       return { ...b, layers: b.layers.map(layer), active: r(b.active), inactive: r(b.inactive) };
+    case 'sentence_morph':
+      return { ...b, default: r(b.default), pending: r(b.pending) };
     case 'tap_dance':
       return { ...b, bindings: b.bindings.map(r) };
     case 'macro':

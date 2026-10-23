@@ -29,6 +29,7 @@ describe('binding text', () => {
     expect(build('&none')).toEqual({ kind: 'none' });
     expect(build('&key_repeat')).toEqual({ kind: 'key_repeat' });
     expect(build('&caps_word')).toEqual({ kind: 'caps_word' });
+    expect(build('&sentence_space')).toEqual({ kind: 'sentence_space' });
     expect(build('&mo alpha2')).toEqual({ kind: 'mo', layer: 'alpha2' });
     expect(build('&sl ccedil')).toEqual({ kind: 'sl', layer: 'ccedil' });
     expect(build('&to alpha1')).toEqual({ kind: 'to', layer: 'alpha1' });
@@ -130,6 +131,7 @@ describe('binding text', () => {
       '&none',
       '&key_repeat',
       '&caps_word',
+      '&sentence_space',
       '&mo alpha2',
       '&sl ccedil',
       '&to alpha1',
@@ -196,6 +198,15 @@ describe('binding text', () => {
     expect(suggest('&mo alph', ctx).map((s) => s.insert)).toContain('&mo alpha2');
     expect(suggest('&sk L', ctx).map((s) => s.label)).toContain('LSHIFT');
     expect(suggest('&kp a b c', ctx)).toEqual([]);
+  });
+
+  it('names the ZMK module a behaviour comes from', () => {
+    const hint = (insert: string) => suggest('&', ctx).find((s) => s.insert === insert)?.hint;
+    expect(hint('&auto_layer')).toBe('behaviour of urob/zmk-auto-layer');
+    expect(hint('&unicode')).toBe('behaviour of urob/zmk-unicode');
+    expect(hint('&mo')).toBe('behaviour');
+    expect(hint('&dead_key')).toBe('behaviour');
+    expect(hint('&sentence_space')).toBe('behaviour of rafaelromao/zmk-sentence-case');
   });
 });
 
