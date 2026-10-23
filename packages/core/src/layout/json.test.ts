@@ -199,26 +199,55 @@ describe("a layout's link", () => {
 });
 
 describe('a binding in the document', () => {
-  it('is read by its kind, so many that have none are refused at once, the first of them told', () => {
-    const unread = {
-      ...toCanonicalJson(withBranches([])),
-      layers: [
-        {
-          id: 'base',
-          bindings: { LHM: { kind: 'tap_dance', bindings: Array(60_000).fill({ kind: 'bogus' }) } },
-        },
-      ],
-    };
+  const withBindings = (bindings: Record<string, unknown>, rest: Record<string, unknown> = {}) => ({
+    ...toCanonicalJson(withBranches([])),
+    layers: [{ id: 'base', bindings }],
+    ...rest,
+  });
+  /** What `safeParseLayout` says is wrong with a document it refuses at once. */
+  const refused = (doc: unknown) => {
     const started = performance.now();
-    const parsed = safeParseLayout(unread);
+    const parsed = safeParseLayout(doc);
     expect(performance.now() - started).toBeLessThan(2000);
     expect(parsed.ok).toBe(false);
-    if (parsed.ok) return;
-    expect(parsed.error).toContain('→ at layers[0].bindings.LHM.bindings[0].kind');
-    expect(parsed.error).toContain('→ at layers[0].bindings.LHM.bindings[19].kind');
-    expect(parsed.error).not.toContain('bindings[20]');
-    expect(parsed.error).toMatch(/\n… and 59980 more$/);
-    expect(parsed.error.length).toBeLessThan(10_000);
+    return parsed.ok ? '' : parsed.error;
+  };
+  const faultsTold = (error: string) => error.match(/✖/g)?.length;
+
+  it('refuses many of no `kind` it knows at once, and tells the shallowest 20 faults', () => {
+    const keys = Array.from({ length: 30_000 }, (_, i) => [`k${i}`, { kind: 'bogus' }]);
+    // A combo of one key, wrong nearer the top than any binding, and read after them all.
+    const combos = [{ keys: ['LHM'], binding: { kind: 'none' } }];
+    const error = refused(withBindings(Object.fromEntries(keys), { combos }));
+    expect(error).toContain('→ at combos[0].keys');
+    expect(error).toContain('→ at layers[0].bindings.k0.kind');
+    expect(error).toContain('→ at layers[0].bindings.k18.kind');
+    expect(error).not.toContain('k19.kind');
+    expect(error).toMatch(/\n… and 29981 more$/);
+    expect(faultsTold(error)).toBe(20);
+  });
+
+  it('tells only the first fault of a binding, however many the bindings inside it have', () => {
+    const dance = { kind: 'tap_dance', bindings: Array(60_000).fill({ kind: 'bogus' }) };
+    const error = refused(withBindings({ LHM: dance }));
+    expect(error).toContain('→ at layers[0].bindings.LHM.bindings[0].kind');
+    expect(faultsTold(error)).toBe(1);
+    // Each holding the next and 600 that are no binding: a fault would otherwise be copied again at
+    // every binding around it.
+    let nested: unknown = { kind: 'kp', symbol: 'a' };
+    for (let i = 0; i < 100; i++) {
+      nested = {
+        kind: 'tap_dance',
+        bindings: [nested, ...Array.from({ length: 600 }, () => ({}))],
+      };
+    }
+    expect(faultsTold(refused(withBindings({ LHM: nested })))).toBe(1);
+  });
+
+  it('refuses a document nested deeper than the engine can follow, and does not throw', () => {
+    let deep: unknown = { kind: 'kp', symbol: 'a' };
+    for (let i = 0; i < 10_000; i++) deep = { kind: 'lt', layer: 'base', tap: deep };
+    expect(refused(withBindings({ LHM: deep }))).toMatch(/^The document nests too deep/);
   });
 
   it('is one of its kinds in the JSON Schema', () => {
@@ -409,7 +438,7 @@ describe('a document saved while layouts named bindings of their own', () => {
     expect(JSON.stringify(toCanonicalJson(parseLayout(lighter))).split(text)).toHaveLength(5);
   });
 
-  it('tells what is wrong in a name used round a loop only so many times', () => {
+  it('tells what is wrong in a name used round a loop once, not once for every copy', () => {
     const again = { kind: 'ref', ref: 'again' };
     const parsed = safeParseLayout(
       saved({ LHI: again }, { again: { kind: 'tap_dance', bindings: [again, again, kp('')] } }),
@@ -423,9 +452,9 @@ describe('a document saved while layouts named bindings of their own', () => {
     );
     expect(wrong.ok).toBe(false);
     if (wrong.ok) return;
-    expect(wrong.error).toMatch(/→ at layers\[0\]\.bindings\.LHI(\.bindings\[\d\])+\.kind/);
-    expect(wrong.error).toMatch(/\n… and \d+ more$/);
-    expect(wrong.error.length).toBeLessThan(10_000);
+    expect(wrong.error).toMatch(
+      /^✖ .+\n {2}→ at layers\[0\]\.bindings\.LHI(\.bindings\[\d\])+\.kind$/,
+    );
   });
 
   it('keeps a key whose name led nowhere as Nothing, and one built on it as its own fields', () => {

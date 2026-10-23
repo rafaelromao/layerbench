@@ -19,106 +19,124 @@ const TriggerSchema: z.ZodType<unknown> = z.lazy(() =>
     }),
 );
 
-// Read by its kind: a plain union would try every kind on a binding that has none of them, and keep
-// what each said, which a document of many such bindings could make cost gigabytes.
+/**
+ * `schema`, telling only the first thing wrong with what it reads, however much more is. zod copies
+ * each fault again at every binding around it, so a deep document of many faults would otherwise
+ * cost gigabytes. It runs on what already failed too, the only time there is anything to drop.
+ */
+const firstFaultOnly = <T extends z.ZodType>(schema: T) =>
+  schema.superRefine(
+    (_, ctx) => {
+      ctx.issues.splice(1);
+    },
+    { when: () => true },
+  );
+
+/**
+ * A binding, read by its `kind`: a plain union would try every kind on a binding that has none of
+ * them and keep what each said, which a document of many such bindings could make cost gigabytes.
+ * A binding that is wrong tells only its first fault, however many the bindings inside it have.
+ */
 export const BindingSchema: z.ZodType<unknown> = z.lazy(() =>
-  z.discriminatedUnion('kind', [
-    z.object({
-      kind: z.literal('kp'),
-      symbol: z.string().optional(),
-      keycode: z.string().optional(),
-      shifted: z.string().optional(),
-      tag: z.string().optional(),
-    }),
-    z.object({ kind: z.literal('trans') }),
-    z.object({ kind: z.literal('none') }),
-    z.object({ kind: z.literal('mo'), layer: z.string() }),
-    z.object({ kind: z.literal('lt'), layer: z.string(), tap: BindingSchema }),
-    z.object({
-      kind: z.literal('sl'),
-      layer: z.string(),
-      quickRelease: z.boolean().optional(),
-      ignoreModifiers: z.boolean().optional(),
-      releaseAfterMs: z.number().optional(),
-    }),
-    z.object({
-      kind: z.literal('tog'),
-      layer: z.string(),
-      mode: z.enum(['flip', 'on', 'off']).default('flip'),
-    }),
-    z.object({ kind: z.literal('to'), layer: z.string() }),
-    z.object({
-      kind: z.literal('sk'),
-      mod: ModSchema.catch('LSHIFT').default('LSHIFT'),
-      quickRelease: z.boolean().optional(),
-      ignoreModifiers: z.boolean().optional(),
-      releaseAfterMs: z.number().optional(),
-    }),
-    z.object({
-      kind: z.literal('mod'),
-      mod: ModSchema.catch('LSHIFT').default('LSHIFT'),
-      also: z.array(ModSchema).optional(),
-    }),
-    z.object({
-      kind: z.literal('caps_word'),
-      // Defaults live in the machine, not here: the document keeps exactly what it declared.
-      continueList: z.array(z.string()).optional(),
-      mods: z.array(ModSchema).optional(),
-    }),
-    z.object({
-      kind: z.literal('auto_layer'),
-      layer: z.string(),
-      continueList: z.array(z.string()).optional(),
-    }),
-    z.object({ kind: z.literal('key_repeat') }),
-    z.object({
-      kind: z.literal('mod_morph'),
-      mods: z.array(ModSchema).default(['LSHIFT']),
-      default: BindingSchema,
-      morphed: BindingSchema,
-      keepMods: z.array(ModSchema).optional(),
-    }),
-    z.object({
-      kind: z.literal('layer_morph'),
-      layers: z.array(z.string()).default([]),
-      match: z.enum(['any', 'all']).default('any'),
-      active: BindingSchema,
-      inactive: BindingSchema,
-    }),
-    z.object({ kind: z.literal('tap_dance'), bindings: z.array(BindingSchema) }),
-    z.object({
-      kind: z.literal('macro'),
-      steps: z.array(BindingSchema).optional(),
-      symbols: z.string().optional(),
-      then: z.array(BindingSchema).optional(),
-      tag: z.string().optional(),
-    }),
-    z.object({
-      kind: z.literal('adaptive'),
-      default: BindingSchema.optional(),
-      triggers: z.array(TriggerSchema).optional(),
-      strictModifiers: z.boolean().optional(),
-      deadKeys: z.array(z.string()).optional(),
-    }),
-    z.object({
-      kind: z.literal('hold_tap'),
-      tap: BindingSchema,
-      hold: BindingSchema,
-      flavor: z.string().optional(),
-      tappingTermMs: z.number().optional(),
-    }),
-    z.object({
-      kind: z.literal('dead_key'),
-      diacritic: z.string().default('\u00b4'),
-      shifted: z.string().optional(),
-    }),
-    z.object({
-      kind: z.literal('unicode'),
-      symbol: z.string().default(''),
-      shiftedSymbol: z.string().optional(),
-    }),
-    z.object({ kind: z.literal('raw'), label: z.string(), source: z.string().optional() }),
-  ]),
+  firstFaultOnly(
+    z.discriminatedUnion('kind', [
+      z.object({
+        kind: z.literal('kp'),
+        symbol: z.string().optional(),
+        keycode: z.string().optional(),
+        shifted: z.string().optional(),
+        tag: z.string().optional(),
+      }),
+      z.object({ kind: z.literal('trans') }),
+      z.object({ kind: z.literal('none') }),
+      z.object({ kind: z.literal('mo'), layer: z.string() }),
+      z.object({ kind: z.literal('lt'), layer: z.string(), tap: BindingSchema }),
+      z.object({
+        kind: z.literal('sl'),
+        layer: z.string(),
+        quickRelease: z.boolean().optional(),
+        ignoreModifiers: z.boolean().optional(),
+        releaseAfterMs: z.number().optional(),
+      }),
+      z.object({
+        kind: z.literal('tog'),
+        layer: z.string(),
+        mode: z.enum(['flip', 'on', 'off']).default('flip'),
+      }),
+      z.object({ kind: z.literal('to'), layer: z.string() }),
+      z.object({
+        kind: z.literal('sk'),
+        mod: ModSchema.catch('LSHIFT').default('LSHIFT'),
+        quickRelease: z.boolean().optional(),
+        ignoreModifiers: z.boolean().optional(),
+        releaseAfterMs: z.number().optional(),
+      }),
+      z.object({
+        kind: z.literal('mod'),
+        mod: ModSchema.catch('LSHIFT').default('LSHIFT'),
+        also: z.array(ModSchema).optional(),
+      }),
+      z.object({
+        kind: z.literal('caps_word'),
+        // Defaults live in the machine, not here: the document keeps exactly what it declared.
+        continueList: z.array(z.string()).optional(),
+        mods: z.array(ModSchema).optional(),
+      }),
+      z.object({
+        kind: z.literal('auto_layer'),
+        layer: z.string(),
+        continueList: z.array(z.string()).optional(),
+      }),
+      z.object({ kind: z.literal('key_repeat') }),
+      z.object({
+        kind: z.literal('mod_morph'),
+        mods: z.array(ModSchema).default(['LSHIFT']),
+        default: BindingSchema,
+        morphed: BindingSchema,
+        keepMods: z.array(ModSchema).optional(),
+      }),
+      z.object({
+        kind: z.literal('layer_morph'),
+        layers: z.array(z.string()).default([]),
+        match: z.enum(['any', 'all']).default('any'),
+        active: BindingSchema,
+        inactive: BindingSchema,
+      }),
+      z.object({ kind: z.literal('tap_dance'), bindings: z.array(BindingSchema) }),
+      z.object({
+        kind: z.literal('macro'),
+        steps: z.array(BindingSchema).optional(),
+        symbols: z.string().optional(),
+        then: z.array(BindingSchema).optional(),
+        tag: z.string().optional(),
+      }),
+      z.object({
+        kind: z.literal('adaptive'),
+        default: BindingSchema.optional(),
+        triggers: z.array(TriggerSchema).optional(),
+        strictModifiers: z.boolean().optional(),
+        deadKeys: z.array(z.string()).optional(),
+      }),
+      z.object({
+        kind: z.literal('hold_tap'),
+        tap: BindingSchema,
+        hold: BindingSchema,
+        flavor: z.string().optional(),
+        tappingTermMs: z.number().optional(),
+      }),
+      z.object({
+        kind: z.literal('dead_key'),
+        diacritic: z.string().default('\u00b4'),
+        shifted: z.string().optional(),
+      }),
+      z.object({
+        kind: z.literal('unicode'),
+        symbol: z.string().default(''),
+        shiftedSymbol: z.string().optional(),
+      }),
+      z.object({ kind: z.literal('raw'), label: z.string(), source: z.string().optional() }),
+    ]),
+  ),
 );
 
 const GeometryKeySchema = z
@@ -308,7 +326,7 @@ const BINDING_LISTS = ['bindings', 'steps', 'then'];
 /**
  * How deep the compiler read a key, counting every name it followed and every binding inside
  * another, before it gave up. Only what lies below a name is cut there: a document that names
- * nothing is read whole, however deep it nests.
+ * nothing is read whole, however deep it nests, as far as the engine has stack for (`TOO_DEEP`).
  */
 const MAX_NAMED_DEPTH = 16;
 
@@ -445,18 +463,35 @@ export function parseLayout(input: unknown): Layout {
 }
 
 /**
- * How many of what is wrong with a document its error tells, and then how many more there are. A
- * document can be wrong in many places, or in one a name copied to many.
+ * How many of what is wrong with a document its error tells, the shallowest first, and then how
+ * many more there are. A document can be wrong in many places, or in one a name copied to many.
  */
 const MAX_ISSUES = 20;
 
+/** Why a document was refused that the engine ran out of stack reading. */
+const TOO_DEEP = 'The document nests too deep, or is wrong in too many places, to be read';
+
+/** Read a layout document, or say why it cannot be read. */
 export function safeParseLayout(
   input: unknown,
 ): { ok: true; layout: Layout } | { ok: false; error: string } {
-  const r = LayoutSchema.safeParse(withNamedBindingsInline(input));
+  let r: ReturnType<typeof LayoutSchema.safeParse>;
+  try {
+    r = LayoutSchema.safeParse(withNamedBindingsInline(input));
+  } catch (e) {
+    // zod reads a binding inside another by calling itself, and gathers what is wrong by spreading
+    // it into a call, so a document nested deep enough, or wrong in enough places, runs out of
+    // stack: a RangeError, or in Firefox an InternalError.
+    if (e instanceof RangeError || (e instanceof Error && e.name === 'InternalError')) {
+      return { ok: false, error: TOO_DEEP };
+    }
+    throw e;
+  }
   if (r.success) return { ok: true, layout: r.data as Layout };
   const { issues } = r.error;
-  const told = z.prettifyError({ issues: issues.slice(0, MAX_ISSUES) });
+  // In the order `prettifyError` lists them, so a shallow fault found late is not the one left out.
+  const shallowest = [...issues].sort((a, b) => a.path.length - b.path.length);
+  const told = z.prettifyError({ issues: shallowest.slice(0, MAX_ISSUES) });
   const more = issues.length - MAX_ISSUES;
   return { ok: false, error: more > 0 ? `${told}\n… and ${more} more` : told };
 }
