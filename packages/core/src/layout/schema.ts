@@ -464,12 +464,12 @@ function withNamedBindingsInline(input: unknown): unknown {
  * How many values a document may hold: itself, and each object, list, text, number, flag and null
  * in it as JSON writes it, so a field that holds nothing is none; as it is given, and with its
  * names written out. The largest bundled layout holds about 1,100, and a keymap of 32 layers of
- * hold-taps on 60 keys about 15,000. It bounds what is read, not what is written: a layout is
- * written with the defaults its document left out, up to about 1.75 times as many values, so one
- * read near the most can be written past it. zod makes an issue for each value it finds wrong or
- * missing, and builds them all before any can be left out, so a document wrong in a million places,
- * as a link of a few kilobytes can be, would take a gigabyte to refuse. One of 50,000 values, all
- * wrong, takes a few hundred megabytes at most.
+ * hold-taps on 60 keys about 15,000. It bounds what is read, not the document a layout is written
+ * as (`toCanonicalJson`), which adds the defaults its document left out: up to about 1.75 times as
+ * many values, so a layout read near the most can be written past it. zod makes an issue for each
+ * value it finds wrong or missing, and builds them all before any can be left out, so a document
+ * wrong in a million places, as a link of a few kilobytes can be, would take a gigabyte to refuse.
+ * One of 50,000 values, all wrong, takes a few hundred megabytes at most.
  */
 const MAX_VALUES = 50_000;
 
