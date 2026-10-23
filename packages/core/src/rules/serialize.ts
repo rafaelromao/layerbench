@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { tellIssues } from '../layout/issues.js';
 import { layoutsDoc } from './presets.js';
 import type { RuleSet } from './types.js';
 
@@ -187,7 +188,7 @@ export function safeParseRuleSet(
 ): { ok: true; ruleSet: RuleSet } | { ok: false; error: string } {
   const r = RuleSetSchema.safeParse(value);
   if (r.success) return { ok: true, ruleSet: r.data as unknown as RuleSet };
-  return { ok: false, error: z.prettifyError(r.error) };
+  return { ok: false, error: tellIssues(r.error.issues) };
 }
 
 /** Parse rule-set JSON text, filling anything the document omits from the Layouts Doc set. */

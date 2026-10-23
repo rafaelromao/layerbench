@@ -1,9 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { structureHash } from '../analysis/hash.js';
 import { compileLayout } from './compile.js';
 import { toCanonicalJson } from './json.js';
 import { duplicateLayer } from './ops.js';
-import { isLayoutLink, layoutJsonSchema, parseLayout, safeParseLayout } from './schema.js';
+import {
+  isLayoutLink,
+  LayoutSchema,
+  layoutJsonSchema,
+  parseLayout,
+  safeParseLayout,
+} from './schema.js';
 import type { AdaptiveTrigger, Binding, Layout } from './types.js';
 
 function withBranches(triggers: AdaptiveTrigger[]): Layout {
@@ -27,6 +33,9 @@ const branchesOf = (l: Layout) => {
   const b = l.layers[0].bindings.LHM;
   return b.kind === 'adaptive' ? b.triggers : undefined;
 };
+
+/** Why a document is refused that holds more values than any layout needs. */
+const TOO_MANY = 'The document holds more than 50,000 values, too many to be read';
 
 describe("a layer's colour", () => {
   const coloured = (color?: 'red' | 'teal'): Layout => {
@@ -215,7 +224,7 @@ describe('a document with bindings that are wrong', () => {
   const faultsTold = (error: string) => error.match(/✖/g)?.length;
 
   it('is refused at once, telling its 20 shallowest faults, however many have no `kind` it knows', () => {
-    const keys = Array.from({ length: 30_000 }, (_, i) => [`k${i}`, { kind: 'bogus' }]);
+    const keys = Array.from({ length: 20_000 }, (_, i) => [`k${i}`, { kind: 'bogus' }]);
     // A combo of one key, wrong nearer the top than any binding, and read after them all.
     const combos = [{ keys: ['LHM'], binding: { kind: 'none' } }];
     const error = refused(withBindings(Object.fromEntries(keys), { combos }));
@@ -223,22 +232,22 @@ describe('a document with bindings that are wrong', () => {
     expect(error).toContain('→ at layers[0].bindings.k0.kind');
     expect(error).toContain('→ at layers[0].bindings.k18.kind');
     expect(error).not.toContain('k19.kind');
-    expect(error).toMatch(/\n… and 29981 more$/);
+    expect(error).toMatch(/\n… and 19981 more$/);
     expect(faultsTold(error)).toBe(20);
   });
 
   it('tells one fault for each binding, however many its parts have', () => {
-    const dance = { kind: 'tap_dance', bindings: Array(60_000).fill({ kind: 'bogus' }) };
+    const dance = { kind: 'tap_dance', bindings: Array(20_000).fill({ kind: 'bogus' }) };
     const error = refused(withBindings({ LHM: dance }));
     expect(error).toContain('→ at layers[0].bindings.LHM.bindings[0].kind');
     expect(faultsTold(error)).toBe(1);
-    // Each holding the next and 600 that are no binding: a fault would otherwise be copied again at
+    // Each holding the next and 400 that are no binding: a fault would otherwise be copied again at
     // every binding around it.
     let nested: unknown = { kind: 'kp', symbol: 'a' };
     for (let i = 0; i < 100; i++) {
       nested = {
         kind: 'tap_dance',
-        bindings: [nested, ...Array.from({ length: 600 }, () => ({}))],
+        bindings: [nested, ...Array.from({ length: 400 }, () => ({}))],
       };
     }
     expect(faultsTold(refused(withBindings({ LHM: nested })))).toBe(1);
@@ -248,6 +257,59 @@ describe('a document with bindings that are wrong', () => {
     let deep: unknown = { kind: 'kp', symbol: 'a' };
     for (let i = 0; i < 10_000; i++) deep = { kind: 'lt', layer: 'base', tap: deep };
     expect(refused(withBindings({ LHM: deep }))).toMatch(/^The document nests too deep/);
+  });
+});
+
+describe('a document that holds very many values', () => {
+  /** How many values `v` holds, itself included, as the reader counts a document from JSON. */
+  const values = (v: unknown): number =>
+    typeof v === 'object' && v !== null
+      ? Object.values(v).reduce((n: number, x) => n + values(x), 1)
+      : 1;
+  const base = { ...toCanonicalJson(withBranches([])), languages: [] };
+  /** A document of `n` values, all but those of `base` in the languages it is written for. */
+  const holding = (n: number, language: unknown = 'en') => ({
+    ...base,
+    languages: Array(n - values(base)).fill(language),
+  });
+
+  it('is read up to 50,000 values, and refused past them before any is read', () => {
+    expect(values(holding(50_000))).toBe(50_000);
+    expect(safeParseLayout(holding(50_000)).ok).toBe(true);
+    const read = vi.spyOn(LayoutSchema, 'safeParse');
+    expect(safeParseLayout(holding(50_001))).toEqual({ ok: false, error: TOO_MANY });
+    expect(read).not.toHaveBeenCalled();
+    read.mockRestore();
+    expect(() => parseLayout(holding(50_001))).toThrow(TOO_MANY);
+  });
+
+  it('counts no field that holds nothing, as JSON writes none', () => {
+    // Writing names out gives each combo a `binding` that holds nothing: 30,000 values, not 60,000.
+    const parsed = safeParseLayout({ ...base, combos: Array(30_000).fill({}) });
+    expect(parsed.ok).toBe(false);
+    if (parsed.ok) return;
+    expect(parsed.error).toContain('→ at combos[0].binding');
+  });
+
+  it('is refused at once when it is wrong in a million places', () => {
+    const doc = { ...base, languages: Array(1_000_000).fill(1) };
+    const started = performance.now();
+    expect(safeParseLayout(doc)).toEqual({ ok: false, error: TOO_MANY });
+    expect(performance.now() - started).toBeLessThan(200);
+  });
+
+  it('is refused quickly when every one of its 50,000 values is wrong, telling the shallowest 20', () => {
+    const doc = holding(50_000, 1);
+    const started = performance.now();
+    const parsed = safeParseLayout(doc);
+    expect(performance.now() - started).toBeLessThan(2000);
+    expect(parsed.ok).toBe(false);
+    if (parsed.ok) return;
+    expect(parsed.error).toMatch(
+      /^✖ Invalid input: expected string, received number\n {2}→ at languages\[0\]/,
+    );
+    expect(parsed.error.match(/✖/g)).toHaveLength(20);
+    expect(parsed.error).toMatch(new RegExp(`\\n… and ${doc.languages.length - 20} more$`));
   });
 });
 
@@ -410,7 +472,7 @@ describe('a document saved while layouts named bindings of their own', () => {
           kind: 'adaptive',
           default: { kind: 'macro', symbols: 'é'.repeat(50_000) },
           triggers: [
-            { afterAny: Array(100_000).fill('a'), binding: heavy },
+            { afterAny: Array(30_000).fill('a'), binding: heavy },
             { afterAny: ['b'], binding: heavy, ...unread },
           ],
         },
@@ -438,6 +500,16 @@ describe('a document saved while layouts named bindings of their own', () => {
     }
     // Written out four turns, where the depth would have let it go eight.
     expect(JSON.stringify(toCanonicalJson(parseLayout(lighter))).split(text)).toHaveLength(5);
+  });
+
+  it('is refused when its names write out more than 50,000 values', () => {
+    const long = { kind: 'ref', ref: 'long' };
+    const behaviors = { long: { kind: 'caps_word', continueList: Array(15_000).fill('a') } };
+    // About 15,000 values as it is saved, and 15,000 more at each key that names it.
+    expect(safeParseLayout(saved({ LHI: long, LHM: long, LHR: long }, behaviors)).ok).toBe(true);
+    expect(
+      safeParseLayout(saved({ LHI: long, LHM: long, LHR: long, LHP: long }, behaviors)),
+    ).toEqual({ ok: false, error: TOO_MANY });
   });
 
   it('tells what is wrong in a name used round a loop once, not once for every copy', () => {

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { JsonObject } from '../storage/ids.js';
+import { tellIssues } from './issues.js';
 import { LAYER_COLORS, type Layout, MAX_CONDITION_LAYERS } from './types.js';
 
 const ModSchema = z.enum(['LSHIFT', 'RSHIFT', 'LCTRL', 'RCTRL', 'LALT', 'RALT', 'LGUI', 'RGUI']);
@@ -459,16 +460,66 @@ function withNamedBindingsInline(input: unknown): unknown {
   };
 }
 
-/** Read a layout document. */
-export function parseLayout(input: unknown): Layout {
-  return LayoutSchema.parse(withNamedBindingsInline(input)) as Layout;
+/**
+ * How many values a document may hold: itself, and each object, list, text, number, flag and null
+ * in it as JSON writes it, so a field that holds nothing is none; as it is given, and with its
+ * names written out. The largest bundled layout holds about 1,100, and a keymap of 32 layers of
+ * hold-taps on 60 keys about 15,000. It bounds what is read, not the document a layout is written
+ * as (`toCanonicalJson`), which adds the defaults its document left out: up to about 1.75 times as
+ * many values, so a layout read near the most can be written past it. zod makes an issue for each
+ * value it finds wrong or missing, and builds them all before any can be left out, so a document
+ * wrong in a million places, as a link of a few kilobytes can be, would take a gigabyte to refuse.
+ * One of 50,000 values, all wrong, takes a few hundred megabytes at most.
+ */
+const MAX_VALUES = 50_000;
+
+/** Why a document was refused that holds more than `MAX_VALUES` values. */
+const TOO_MANY = `The document holds more than ${MAX_VALUES.toLocaleString('en-US')} values, too many to be read`;
+
+/**
+ * Whether `doc` holds more than `most` values, counted as `MAX_VALUES` counts them, and only as far
+ * as the most: neither a long list nor a deep one costs more than that to count.
+ */
+function holdsMoreThan(doc: unknown, most: number): boolean {
+  let left = most - 1;
+  const open = [doc];
+  while (open.length > 0) {
+    const v = open.pop();
+    if (typeof v !== 'object' || v === null) continue;
+    if (Array.isArray(v)) {
+      for (const x of v) {
+        if (--left < 0) return true;
+        open.push(x);
+      }
+    } else {
+      for (const k in v) {
+        const x = (v as JsonObject)[k];
+        if (x === undefined) continue;
+        if (--left < 0) return true;
+        open.push(x);
+      }
+    }
+  }
+  return false;
 }
 
 /**
- * How many of what is wrong with a document its error tells, the shallowest first, and then how
- * many more there are. A document can be wrong in many places, or in one a name copied to many.
+ * `input` as the schema reads it, its names written out, or `undefined` when either holds more than
+ * `MAX_VALUES` values. It is counted before its names are written out too, so a document too big to
+ * read costs no more to refuse than counting to the most.
  */
-const MAX_ISSUES = 20;
+function toRead(input: unknown): { doc: unknown } | undefined {
+  if (holdsMoreThan(input, MAX_VALUES)) return undefined;
+  const doc = withNamedBindingsInline(input);
+  return holdsMoreThan(doc, MAX_VALUES) ? undefined : { doc };
+}
+
+/** Read a layout document. */
+export function parseLayout(input: unknown): Layout {
+  const read = toRead(input);
+  if (!read) throw new Error(TOO_MANY);
+  return LayoutSchema.parse(read.doc) as Layout;
+}
 
 /** Why a document was refused that JavaScript ran out of stack reading. */
 const TOO_DEEP = 'The document nests too deep, or is wrong in too many places, to be read';
@@ -479,7 +530,9 @@ export function safeParseLayout(
 ): { ok: true; layout: Layout } | { ok: false; error: string } {
   let r: ReturnType<typeof LayoutSchema.safeParse>;
   try {
-    r = LayoutSchema.safeParse(withNamedBindingsInline(input));
+    const read = toRead(input);
+    if (!read) return { ok: false, error: TOO_MANY };
+    r = LayoutSchema.safeParse(read.doc);
   } catch (e) {
     // Writing names out, and zod, read a binding inside another by calling themselves, and zod
     // gathers what is wrong by spreading it into a call, so a document nested deep enough, or wrong
@@ -491,13 +544,9 @@ export function safeParseLayout(
     }
     throw e;
   }
-  if (r.success) return { ok: true, layout: r.data as Layout };
-  const { issues } = r.error;
-  // In the order `prettifyError` lists them, so a shallow fault found late is not the one left out.
-  const shallowest = [...issues].sort((a, b) => a.path.length - b.path.length);
-  const told = z.prettifyError({ issues: shallowest.slice(0, MAX_ISSUES) });
-  const more = issues.length - MAX_ISSUES;
-  return { ok: false, error: more > 0 ? `${told}\n… and ${more} more` : told };
+  return r.success
+    ? { ok: true, layout: r.data as Layout }
+    : { ok: false, error: tellIssues(r.error.issues) };
 }
 
 export function layoutJsonSchema(): unknown {
