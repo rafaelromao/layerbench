@@ -1031,7 +1031,8 @@ describe('Edit', () => {
     });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
 
-    // The behaviours the keymap builds with extra layers, as sentence case once was, are not layers.
+    // The behaviours the keymap builds with extra layers, as it once did sentence case, are not
+    // layers here.
     await user.click(screen.getByRole('tab', { name: 'Layers' }));
     expect(screen.getByLabelText('Name of layer alpha1')).toBeInTheDocument();
     expect(screen.queryByLabelText('Name of layer sen_case')).toBeNull();
