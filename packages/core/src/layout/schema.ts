@@ -23,8 +23,8 @@ const TriggerSchema: z.ZodType<unknown> = z.lazy(() =>
  * `schema`, telling only the first thing wrong with what it reads, however much more is. zod copies
  * each fault again at every binding around it, so a deep document of many faults would otherwise
  * cost gigabytes. It runs on what already failed too, the only time there is anything to drop, but
- * not past a transform, a pipe or a refine with `abort` in `schema`, which zod stops at: no kind of
- * binding has one.
+ * not past a transform, a pipe or a refine with `abort` in `schema`, which zod stops at: no
+ * binding's `kind` has one.
  */
 const firstFaultOnly = <T extends z.ZodType>(schema: T) =>
   schema.superRefine(
@@ -484,7 +484,8 @@ export function safeParseLayout(
     // Writing names out, and zod, read a binding inside another by calling themselves, and zod
     // gathers what is wrong by spreading it into a call, so a document nested deep enough, or wrong
     // in enough places, runs out of stack: a RangeError, or in Firefox an InternalError.
-    // zod then keeps what it had begun to read (`open` in its memoizer) while the page lives.
+    // If zod is what ran out, it keeps what it had begun to read (`open` in its memoizer) while the
+    // page lives.
     if (e instanceof RangeError || (e instanceof Error && e.name === 'InternalError')) {
       return { ok: false, error: TOO_DEEP };
     }
