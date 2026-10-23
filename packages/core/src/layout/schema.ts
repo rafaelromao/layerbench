@@ -22,7 +22,9 @@ const TriggerSchema: z.ZodType<unknown> = z.lazy(() =>
 /**
  * `schema`, telling only the first thing wrong with what it reads, however much more is. zod copies
  * each fault again at every binding around it, so a deep document of many faults would otherwise
- * cost gigabytes. It runs on what already failed too, the only time there is anything to drop.
+ * cost gigabytes. It runs on what already failed too, the only time there is anything to drop, but
+ * not past a transform, a pipe or a refine with `abort` in `schema`, which zod stops at: no kind of
+ * binding has one.
  */
 const firstFaultOnly = <T extends z.ZodType>(schema: T) =>
   schema.superRefine(
@@ -35,7 +37,7 @@ const firstFaultOnly = <T extends z.ZodType>(schema: T) =>
 /**
  * A binding, read by its `kind`: a plain union would try every kind on a binding that has none of
  * them and keep what each said, which a document of many such bindings could make cost gigabytes.
- * A binding that is wrong tells only its first fault, however many the bindings inside it have.
+ * A binding that is wrong tells only its first fault, however many its parts have.
  */
 export const BindingSchema: z.ZodType<unknown> = z.lazy(() =>
   firstFaultOnly(
@@ -326,7 +328,7 @@ const BINDING_LISTS = ['bindings', 'steps', 'then'];
 /**
  * How deep the compiler read a key, counting every name it followed and every binding inside
  * another, before it gave up. Only what lies below a name is cut there: a document that names
- * nothing is read whole, however deep it nests, as far as the engine has stack for (`TOO_DEEP`).
+ * nothing is read whole, however deep it nests, as far as JavaScript has stack for (`TOO_DEEP`).
  */
 const MAX_NAMED_DEPTH = 16;
 
@@ -468,7 +470,7 @@ export function parseLayout(input: unknown): Layout {
  */
 const MAX_ISSUES = 20;
 
-/** Why a document was refused that the engine ran out of stack reading. */
+/** Why a document was refused that JavaScript ran out of stack reading. */
 const TOO_DEEP = 'The document nests too deep, or is wrong in too many places, to be read';
 
 /** Read a layout document, or say why it cannot be read. */
@@ -479,9 +481,10 @@ export function safeParseLayout(
   try {
     r = LayoutSchema.safeParse(withNamedBindingsInline(input));
   } catch (e) {
-    // zod reads a binding inside another by calling itself, and gathers what is wrong by spreading
-    // it into a call, so a document nested deep enough, or wrong in enough places, runs out of
-    // stack: a RangeError, or in Firefox an InternalError.
+    // Writing names out, and zod, read a binding inside another by calling themselves, and zod
+    // gathers what is wrong by spreading it into a call, so a document nested deep enough, or wrong
+    // in enough places, runs out of stack: a RangeError, or in Firefox an InternalError.
+    // zod then keeps what it had begun to read (`open` in its memoizer) while the page lives.
     if (e instanceof RangeError || (e instanceof Error && e.name === 'InternalError')) {
       return { ok: false, error: TOO_DEEP };
     }

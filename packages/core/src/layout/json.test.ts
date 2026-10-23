@@ -198,7 +198,7 @@ describe("a layout's link", () => {
   });
 });
 
-describe('a binding in the document', () => {
+describe('a document with bindings that are wrong', () => {
   const withBindings = (bindings: Record<string, unknown>, rest: Record<string, unknown> = {}) => ({
     ...toCanonicalJson(withBranches([])),
     layers: [{ id: 'base', bindings }],
@@ -214,7 +214,7 @@ describe('a binding in the document', () => {
   };
   const faultsTold = (error: string) => error.match(/✖/g)?.length;
 
-  it('refuses many of no `kind` it knows at once, and tells the shallowest 20 faults', () => {
+  it('is refused at once, telling its 20 shallowest faults, however many have no `kind` it knows', () => {
     const keys = Array.from({ length: 30_000 }, (_, i) => [`k${i}`, { kind: 'bogus' }]);
     // A combo of one key, wrong nearer the top than any binding, and read after them all.
     const combos = [{ keys: ['LHM'], binding: { kind: 'none' } }];
@@ -227,7 +227,7 @@ describe('a binding in the document', () => {
     expect(faultsTold(error)).toBe(20);
   });
 
-  it('tells only the first fault of a binding, however many the bindings inside it have', () => {
+  it('tells one fault for each binding, however many its parts have', () => {
     const dance = { kind: 'tap_dance', bindings: Array(60_000).fill({ kind: 'bogus' }) };
     const error = refused(withBindings({ LHM: dance }));
     expect(error).toContain('→ at layers[0].bindings.LHM.bindings[0].kind');
@@ -244,12 +244,14 @@ describe('a binding in the document', () => {
     expect(faultsTold(refused(withBindings({ LHM: nested })))).toBe(1);
   });
 
-  it('refuses a document nested deeper than the engine can follow, and does not throw', () => {
+  it('is refused, not thrown, when it nests deeper than JavaScript can follow', () => {
     let deep: unknown = { kind: 'kp', symbol: 'a' };
     for (let i = 0; i < 10_000; i++) deep = { kind: 'lt', layer: 'base', tap: deep };
     expect(refused(withBindings({ LHM: deep }))).toMatch(/^The document nests too deep/);
   });
+});
 
+describe('a binding in the document', () => {
   it('is one of its kinds in the JSON Schema', () => {
     type Kinds = { oneOf: { properties: { kind: { const: string } } }[] };
     const schema = layoutJsonSchema() as {
