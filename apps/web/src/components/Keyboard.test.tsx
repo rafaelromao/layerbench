@@ -181,7 +181,9 @@ describe('Keyboard', () => {
       expect(list.textContent).toContain(
         'tapped from Ç extension, or from Alpha 1 after v, x or j, to reach Alpha 2',
       );
-      expect(list.textContent).toContain('tapped from Alpha 1 to reach Alpha 2');
+      expect(list.textContent).toContain(
+        'tapped from Alpha 1, or from Alpha 1 after a sentence ends, by its macro, to reach Alpha 2',
+      );
     });
   });
 

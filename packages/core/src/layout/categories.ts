@@ -74,6 +74,8 @@ function choices(b: Binding): Binding[] {
       return [b.default, b.morphed];
     case 'layer_morph':
       return [b.active, b.inactive];
+    case 'sentence_morph':
+      return [b.default, b.pending];
     case 'tap_dance':
       return b.bindings;
     case 'adaptive':
@@ -171,6 +173,10 @@ function featuresOf(b: Binding, at: Place, out: SpecialFeature[]): void {
     case 'mod_morph':
       emit('mod_morph', FEATURE_LABELS.mod_morph);
       break;
+    // A space that changes what follows with what came before it, as sentence case is.
+    case 'sentence_space':
+      emit('adaptive', DECLARED.sentenceCase.label);
+      break;
     case 'macro':
       emit('macro', b.symbols ? `Macro “${b.symbols}”` : 'Macro');
       // What it types is not a letter of the layer's, but what its steps use is used.
@@ -183,8 +189,9 @@ function featuresOf(b: Binding, at: Place, out: SpecialFeature[]): void {
 }
 
 /**
- * What a declared feature makes of the key it wraps: caps word turns the shift key into a mod morph,
- * sentence case the space key into an adaptive key. Each is one feature, named as itself.
+ * What a declared feature makes of the key it goes on: caps word turns the shift key into a mod
+ * morph, sentence case the space key into a sentence space, which changes with the key before it as
+ * an adaptive key does. Each is one feature, named as itself.
  */
 const DECLARED: Record<WrappingFeature, { feature: SpecialFeatureKind; label: string }> = {
   capsWord: { feature: 'mod_morph', label: 'Caps word' },

@@ -342,6 +342,8 @@ function needsDetail(b: Binding | undefined): boolean {
     case 'tap_dance':
     case 'mod_morph':
     case 'layer_morph':
+    case 'sentence_morph':
+    case 'sentence_space':
     case 'raw':
       return true;
     case 'hold_tap':

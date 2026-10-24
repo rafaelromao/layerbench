@@ -1031,7 +1031,8 @@ describe('Edit', () => {
     });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
 
-    // The four behaviours firmware needs extra layers for are no longer layers.
+    // The behaviours the keymap builds with extra layers, as it once did sentence case, are not
+    // layers here.
     await user.click(screen.getByRole('tab', { name: 'Layers' }));
     expect(screen.getByLabelText('Name of layer alpha1')).toBeInTheDocument();
     expect(screen.queryByLabelText('Name of layer sen_case')).toBeNull();
@@ -1169,7 +1170,7 @@ describe('Edit', () => {
     const user = userEvent.setup();
     await openMagicRomak();
 
-    // The space key's tap is wrapped by the sentence-case feature, so anything typed on the key
+    // The space key's tap belongs to the sentence-case feature, so anything typed on the key
     // itself would be rewritten the next time the layout compiles.
     const space = await screen.findByRole('button', { name: /^Key L0:/ });
     space.focus();
@@ -1180,15 +1181,14 @@ describe('Edit', () => {
     expect(within(editor).queryByRole('textbox', { name: 'Binding for L0' })).toBeNull();
     expect(screen.queryByText('unsaved')).toBeNull();
 
-    // What the feature does is edited here instead.
-    const after = within(editor).getByLabelText('Sentence-ending punctuation');
-    expect(after).toHaveValue('. ? !');
-    await user.clear(after);
-    await user.type(after, '. ? ! ;{Enter}');
-    expect(await screen.findByText('unsaved')).toBeInTheDocument();
-    expect(within(await inspector('L0')).getByLabelText('Sentence-ending punctuation')).toHaveValue(
-      '. ? ! ;',
-    );
+    // What the feature does is said here instead: the module's own, with nothing to choose.
+    expect(
+      within(editor).getByText(/leaves a capital for the next key pressed/),
+    ).toBeInTheDocument();
+    expect(
+      within(editor).getByRole('link', { name: 'rafaelromao/zmk-sentence-case' }),
+    ).toBeInTheDocument();
+    expect(within(editor).queryByLabelText('Sentence-ending punctuation')).toBeNull();
   });
 
   it("edits a layout's own adaptive key as one made in the editor, and turns it into a symbol", async () => {

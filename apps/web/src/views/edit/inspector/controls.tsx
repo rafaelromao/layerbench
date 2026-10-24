@@ -1,4 +1,10 @@
-import type { CompiledLayout, Mod } from '@layerbench/core';
+import {
+  type CompiledLayout,
+  type Mod,
+  moduleUrl,
+  ZMK_MODULES,
+  type ZmkModuleId,
+} from '@layerbench/core';
 import { type KeyboardEvent, type ReactNode, type Ref, useEffect, useId, useState } from 'react';
 import { LayerDot } from '../../../components/LayerDot.js';
 
@@ -251,4 +257,23 @@ export function Row({ label, children }: { label: string; children: ReactNode })
 
 export function Note({ children }: { children: ReactNode }) {
   return <p className="text-[11px] opacity-60">{children}</p>;
+}
+
+/** A ZMK module, by its repository, linked. */
+export function ModuleLink({ module }: { module: ZmkModuleId }) {
+  return (
+    <a className="link" href={moduleUrl(module)} target="_blank" rel="noopener noreferrer">
+      {ZMK_MODULES[module]}
+    </a>
+  );
+}
+
+/** The ZMK module a key needs, or nothing where stock ZMK has it. */
+export function ModuleNote({ module }: { module: ZmkModuleId | null }) {
+  if (module === null) return null;
+  return (
+    <Note>
+      Needs the ZMK module <ModuleLink module={module} />.
+    </Note>
+  );
 }
