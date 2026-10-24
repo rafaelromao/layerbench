@@ -573,10 +573,12 @@ export function Workbench({
   const hasTypingCombos = typedCompiled.combos.some((c) => c.role === 'typing');
   const boardCombos = useMemo(() => {
     const all = typingCombos(typedCompiled, boardLayer, frame?.combo ?? null);
-    // Hidden, a combo still shows while it is the press being played.
+    // Hidden, a combo on the board still shows while it is the press being played.
     return showCombos ? all : all.filter((c) => c.active);
   }, [typedCompiled, boardLayer, frame, showCombos]);
-  // The combos on keys apart, which the board leaves to the button beside it; none while hidden.
+  // The combos the board leaves to the button beside it, none while hidden. The board places the
+  // same list on the same keys (`typedCompiled` keeps `state.compiled`'s), so the two agree on
+  // which combos it draws and which it leaves out.
   const apart = useMemo(
     () => (showCombos ? combosApart(typedCompiled, boardCombos) : []),
     [typedCompiled, boardCombos, showCombos],
@@ -994,6 +996,8 @@ export function Workbench({
                         compiled={typedCompiled}
                         layer={boardLayer}
                         combos={apart}
+                        // The board would turn under the dialog as a word plays.
+                        onOpen={stopPlaying}
                         onComboClick={(combo) => {
                           if (state.comboPick) return;
                           stopPlaying();

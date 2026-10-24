@@ -15,6 +15,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type Ref,
   useCallback,
+  useEffect,
   useId,
   useImperativeHandle,
   useMemo,
@@ -41,7 +42,8 @@ export interface KeyboardHandle {
 
 /**
  * A combo on the board: a small box with what it types, on the gap between the two keys pressed
- * together to fire it. One on more keys, or keys apart, is drawn apart (`combosApart`).
+ * together to fire it. One on more keys, keys apart, or with no room on its gap, is drawn apart
+ * (`combosApart`).
  */
 export interface KeyboardCombo {
   id: string;
@@ -462,7 +464,8 @@ export interface KeyboardProps {
   pressed?: number[];
   /**
    * Combos to draw on the gaps between their keys; only the ones a view wants shown. Those on more
-   * than two keys, or keys apart, are left out (`combosApart`), for the view to list beside it.
+   * than two keys, keys apart, or with no room on their gap, are left out (`combosApart`), for the
+   * view to list beside it.
    */
   combos?: KeyboardCombo[];
   /** The combo, by place, drawn as open in an editor. */
@@ -596,6 +599,16 @@ export function Keyboard({
   const shownColour = layerColourAt(compiled, layerIdx);
   const shownName = compiled.layers[layerIdx]?.name ?? '';
 
+  // Where the combos go depends only on where the keys are drawn and which combos there are.
+  const placed = useMemo(() => comboPlacement(compiled, combos), [compiled, combos]);
+  // A box that goes, as the board turns to another layer while a word plays, takes its pointer and
+  // its focus with it: it hears no leave, and would come back lit.
+  useEffect(() => {
+    const drawn = (index: number) => combos.some((c, i) => c.index === index && placed[i] !== null);
+    if (pointed !== null && !drawn(pointed)) setPointed(null);
+    if (focusedCombo !== null && !drawn(focusedCombo)) setFocusedCombo(null);
+  }, [combos, placed, pointed, focusedCombo]);
+
   // A combo pointed at or focused outlines its keys, as zmk-layer-hud rings a combo's keys.
   const shown = combos.filter((c) => c.index === pointed || c.index === focusedCombo);
   const outlined =
@@ -613,9 +626,6 @@ export function Keyboard({
     xs,
     reach: reached,
   });
-
-  // Where the combos go depends only on where the keys are drawn and which combos there are.
-  const placed = useMemo(() => comboPlacement(compiled, combos), [compiled, combos]);
 
   // Every key being a tab stop makes a 34-key board 34 stops; one stop plus arrows is what a grid
   // of controls is expected to do.

@@ -446,6 +446,10 @@
   fill: var(--color-base-content);
   font-weight: 600;
 }
+/* What it does held, smaller and lighter under what it types, as on a key's band. */
+.lb-combo .lb-combo-hold {
+  font-weight: 500;
+}
 /* A combo that arms an accent, drawn as a dead key on a key is. */
 .lb-combo-dead text {
   fill: var(--lb-legend-dead);
@@ -490,6 +494,9 @@
   padding: 0;
   list-style: none;
 }
+.lb-combos-apart > li {
+  min-width: 0;
+}
 .lb-combo-apart {
   display: flex;
   flex-direction: column;
@@ -512,10 +519,16 @@ button.lb-combo-apart:focus-visible {
   border-color: var(--color-primary);
   outline: none;
 }
+/* A long legend, such as a macro's, wraps where it must rather than run out of its card. */
 .lb-combo-apart-legend {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   align-items: baseline;
   gap: 0.35rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-weight: 600;
 }
@@ -524,6 +537,7 @@ button.lb-combo-apart:focus-visible {
 }
 .lb-combo-apart-tap {
   font-size: 1.125rem;
+  min-width: 0;
 }
 .lb-combo-apart-hold,
 .lb-combo-apart-layers {

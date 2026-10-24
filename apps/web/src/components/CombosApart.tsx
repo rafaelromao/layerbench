@@ -12,36 +12,48 @@ export interface CombosApartProps {
   combos: readonly KeyboardCombo[];
   /** A combo picked, by its place, to open it in the editor; without it they are only drawn. */
   onComboClick?: (index: number) => void;
+  /** The dialog opened, for a view to stop what would change the board under it. */
+  onOpen?: () => void;
 }
 
 /**
- * The combos the board does not draw, on three or more keys or on keys apart: a small button
- * beside the board on a layer that has any, which opens them. Each is drawn once, on a small board
- * of its own with its keys filled, as Keymap Drawer draws a combo apart (`draw_separate`), with
- * the layers it works on.
+ * The combos the board does not draw, on three or more keys, on keys apart, or with no room on
+ * their gap: a small button beside the board on a layer that has any, which opens them. Each is
+ * drawn once, on a small board of its own with its keys filled, as Keymap Drawer draws a combo
+ * apart (`draw_separate`), with the layers it works on. The button lights while one of them is
+ * the press being played, as a box on the board does.
  */
-export function CombosApart({ compiled, layer, combos, onComboClick }: CombosApartProps) {
-  const [open, setOpen] = useState(false);
-  if (combos.length === 0) return null;
+export function CombosApart({ compiled, layer, combos, onComboClick, onOpen }: CombosApartProps) {
+  // What the dialog shows is what the board showed when it opened, whatever the board does since.
+  const [opened, setOpened] = useState<{ layer: number; combos: readonly KeyboardCombo[] } | null>(
+    null,
+  );
   const name = compiled.layers[layer]?.name ?? '';
+  const playing = combos.find((c) => c.active);
+  const count = `${combos.length} more ${combos.length === 1 ? 'combo' : 'combos'}`;
   return (
     <>
-      <button
-        type="button"
-        className="btn btn-xs btn-outline"
-        aria-haspopup="dialog"
-        aria-label={`${combos.length} more ${combos.length === 1 ? 'combo' : 'combos'} on ${name}`}
-        onClick={() => setOpen(true)}
-      >
-        {combos.length} more {combos.length === 1 ? 'combo' : 'combos'}
-      </button>
-      {open && (
+      {combos.length > 0 && (
+        <button
+          type="button"
+          className={`btn btn-xs ${playing ? 'btn-primary' : 'btn-outline'}`}
+          aria-haspopup="dialog"
+          aria-label={`${count} on ${name}${playing ? `, one being played: ${playing.label}` : ''}`}
+          onClick={() => {
+            onOpen?.();
+            setOpened({ layer, combos });
+          }}
+        >
+          {count}
+        </button>
+      )}
+      {opened && (
         <CombosApartDialog
           compiled={compiled}
-          layer={layer}
-          combos={combos}
+          layer={opened.layer}
+          combos={opened.combos}
           onComboClick={onComboClick}
-          onClose={() => setOpen(false)}
+          onClose={() => setOpened(null)}
         />
       )}
     </>
@@ -54,7 +66,7 @@ function CombosApartDialog({
   combos,
   onComboClick,
   onClose,
-}: CombosApartProps & { onClose: () => void }) {
+}: Omit<CombosApartProps, 'onOpen'> & { onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const close = useRef<HTMLButtonElement>(null);
   const titleId = useId();
@@ -73,8 +85,9 @@ function CombosApartDialog({
             Combos on {name}
           </h2>
           <p className="text-sm opacity-70">
-            These combos press three or more keys, or keys apart, so the board does not draw them.
-            Each one is drawn here once, with its keys filled, and the layers it works on under it.
+            These combos press three or more keys, or keys apart, or have no room on the gap between
+            their keys, so the board does not draw them. Each one is drawn here once, with its keys
+            filled, and the layers it works on under it.
           </p>
         </header>
         <ul className="lb-combos-apart" aria-label={`Combos on ${name}`}>

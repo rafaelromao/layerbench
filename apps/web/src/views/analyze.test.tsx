@@ -93,6 +93,23 @@ describe('Analyze', () => {
     expect(names()).toEqual(['Combo RHM + RHR: à']);
   });
 
+  it('lists the combos the board does not draw beside it, and opens one in the editor', async () => {
+    const user = userEvent.setup();
+    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000&layer=3');
+    await screen.findByText('Same finger bigrams');
+    // Magic Romak's Numbers has combos on three keys, which the board leaves to the button.
+    await user.click(await screen.findByRole('button', { name: /^\d+ more combos? on Numbers$/ }));
+    const dialog = screen.getByRole('dialog', { name: 'Combos on Numbers' });
+    await user.click(within(dialog).getByRole('button', { name: /^Edit combo .+: °$/ }));
+    expect(screen.queryByRole('dialog', { name: 'Combos on Numbers' })).toBeNull();
+    expect(await screen.findByRole('group', { name: /^Edit combo / })).toBeInTheDocument();
+
+    // Hidden, from Settings, the combos go, and the button with them.
+    const board = within(await openSettings()).getByRole('group', { name: 'On the board' });
+    await user.click(within(board).getByRole('checkbox', { name: 'Combos' }));
+    expect(screen.queryByRole('button', { name: /more combos? on/ })).toBeNull();
+  });
+
   it('keeps the link canonical as parameters change', async () => {
     const user = userEvent.setup();
     const { currentSearch } = renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000');

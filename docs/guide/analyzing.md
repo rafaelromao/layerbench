@@ -147,14 +147,15 @@ Combos marked for typing are drawn on the layers where they work, as
 side, one above the other, or diagonal, is a small box on the gap between them. It shows what it
 types, and what it does held under that.
 
-Combos on three or more keys, or on keys apart, are not drawn on the board. A button beside
-**Heat**, such as **40 more combos**, opens them for the layer shown. Each is drawn once, on a small
-board of its own with its keys filled, as Keymap Drawer draws a combo apart. Under it are the layers
-it works on. Pick one to open it in the combo editor.
+Combos on three or more keys, or on keys apart, are not drawn on the board; nor is one whose box
+has no room on its gap. A button beside **Heat**, such as **40 more combos**, opens them for the
+layer shown. Each is drawn once, on a small board of its own with its keys filled, as Keymap Drawer
+draws a combo apart. Under it are the layers it works on. Pick one to open it in the combo editor.
 
-A box lights up with its keys when a word uses it. Pointing at a box, or focusing it, outlines its
-keys. **Combos**, under *On the board* in **Settings**, hides them, and the button. Combos marked as
-commands are shortcuts the analysis never presses, so they are not drawn.
+A box lights up with its keys when a word uses it; for a combo off the board, the button lights up.
+Pointing at a box, or focusing it, outlines its keys. **Combos**, under *On the board* in
+**Settings**, hides them, and the button; a combo being played still lights its box, if it has one.
+Combos marked as commands are shortcuts the analysis never presses, so they are not drawn.
 
 ### Case and space
 

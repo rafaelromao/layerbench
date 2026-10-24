@@ -570,6 +570,38 @@ describe("T-34's combos, as Keymap Drawer draws them", () => {
     }
   });
 
+  it("outlines a box's keys while it is pointed at or focused, and not once it has gone", () => {
+    const outlined = (container: HTMLElement) =>
+      [...container.querySelectorAll('g[data-key]')]
+        .filter((g) => g.querySelector('.lb-key-highlight'))
+        .map((g) => g.getAttribute('data-key'));
+    const board = (layer: number) => (
+      <Keyboard
+        compiled={t34}
+        layer={layer}
+        combos={typingCombos(t34, layer)}
+        onComboClick={() => {}}
+      />
+    );
+    const { container, rerender } = render(board(0));
+    const q = screen.getByRole('button', { name: 'Edit combo LTP + LTR: q' });
+    fireEvent.pointerEnter(q);
+    expect(outlined(container)).toEqual(['LTP', 'LTR']);
+    fireEvent.pointerLeave(q);
+    expect(outlined(container)).toEqual([]);
+    fireEvent.focus(screen.getByRole('button', { name: 'Edit combo LHM + LHI: Esc / Symb' }));
+    expect(outlined(container)).toEqual(['LHM', 'LHI']);
+    // `q` types on Base only: pointed at, then gone with its layer, it hears no leave, and comes
+    // back unlit.
+    fireEvent.pointerEnter(screen.getByRole('button', { name: 'Edit combo LTP + LTR: q' }));
+    rerender(board(3));
+    rerender(board(0));
+    expect(outlined(container)).not.toContain('LTP');
+    expect(
+      screen.getByRole('button', { name: 'Edit combo LTP + LTR: q' }).getAttribute('class'),
+    ).not.toContain('lb-combo-lit');
+  });
+
   it('lets no box overlap another or a legend', () => {
     expect(crowded(drawn(t34, 0))).toEqual([]);
   });
@@ -612,6 +644,35 @@ describe('the combos on keys apart', () => {
     await user.click(pipe);
     const picked = apart.find((c) => c.label === '|');
     expect(onComboClick).toHaveBeenCalledWith(picked?.index);
+  });
+
+  it('keep the dialog as the board was when it opened, while the board turns on', async () => {
+    const user = userEvent.setup();
+    const onOpen = vi.fn();
+    const { rerender } = render(
+      <CombosApart compiled={t34} layer={0} combos={apart} onOpen={onOpen} />,
+    );
+    await user.click(screen.getByRole('button', { name: /more combos/ }));
+    // The view stops what would turn the board: a word being played.
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    // The board turns to a layer with none apart, as a word playing would: the button goes, the
+    // dialog stays as it was, and is not opened again when the board comes back.
+    rerender(<CombosApart compiled={t34} layer={3} combos={[]} onOpen={onOpen} />);
+    expect(screen.queryByRole('button', { name: /more combos/ })).toBeNull();
+    const dialog = screen.getByRole('dialog', { name: 'Combos on Base' });
+    expect(within(dialog).getAllByRole('listitem')).toHaveLength(apart.length);
+    await user.click(within(dialog).getByRole('button', { name: 'Close' }));
+    rerender(<CombosApart compiled={t34} layer={0} combos={apart} onOpen={onOpen} />);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('light the button while one of them is the press being played', () => {
+    const played = apart.map((c) => (c.label === 'é' ? { ...c, active: true } : c));
+    render(<CombosApart compiled={t34} layer={0} combos={played} />);
+    const button = screen.getByRole('button', {
+      name: `${apart.length} more combos on Base, one being played: é`,
+    });
+    expect(button).toHaveClass('btn-primary');
   });
 
   it('are only drawn where nothing picks them, and are no button when there are none', async () => {
