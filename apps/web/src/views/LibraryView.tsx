@@ -552,12 +552,24 @@ export function LibraryView() {
 
   // Each layout as it is ranked: typed without the features left out, as the engine types it. The
   // cards draw the layout's keys as written and its combos as typed, as Analyze does.
+  // A layout typed once stays the same object while it and the features left out do: the community
+  // list arriving, or a custom layout saved, then neither types the others again nor closes the
+  // combos dialog on their cards.
   const { without } = params;
+  const typedOnce = useRef(new WeakMap<CompiledLayout, { off: string; typed: CompiledLayout }>());
   const ranked = useMemo(() => {
+    const off = without.join(',');
+    const typed = (compiled: CompiledLayout) => {
+      const hit = typedOnce.current.get(compiled);
+      if (hit?.off === off) return hit.typed;
+      const fresh = typedLayout(compiled, without);
+      typedOnce.current.set(compiled, { off, typed: fresh });
+      return fresh;
+    };
     const out = new Map<string, CompiledLayout>();
-    for (const { id, compiled } of bundled) out.set(`b:${id}`, typedLayout(compiled, without));
-    for (const { id, compiled } of community) out.set(`m:${id}`, typedLayout(compiled, without));
-    for (const [id, compiled] of customCompiled) out.set(`c:${id}`, typedLayout(compiled, without));
+    for (const { id, compiled } of bundled) out.set(`b:${id}`, typed(compiled));
+    for (const { id, compiled } of community) out.set(`m:${id}`, typed(compiled));
+    for (const [id, compiled] of customCompiled) out.set(`c:${id}`, typed(compiled));
     return out;
   }, [bundled, community, customCompiled, without]);
 
