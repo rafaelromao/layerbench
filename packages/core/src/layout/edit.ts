@@ -201,7 +201,7 @@ export function freeCondition(layout: Layout): ConditionalLayerDef | null {
 type ComboOf = NonNullable<Layout['combos']>[number];
 
 /** The id the compiler knows a combo by: the one it has, or `combo` and its place. */
-const comboId = (c: ComboOf, place: number) => c.id ?? `combo${place}`;
+export const comboId = (c: ComboOf, place: number) => c.id ?? `combo${place}`;
 
 /**
  * The typing paths of `after`, which is `before` with the combo at `place` changed: what its paths
@@ -283,7 +283,7 @@ function followCombo(before: Layout, after: Layout, place: number): Layout['typi
  * with a `#…` suffix (`#hold`, `#shifted`, …), so an id is taken when another combo has it, or has
  * it with a `#` after: that one's producer would share an id with one of this combo's.
  */
-function freeComboId(keys: string[], others: string[]): string {
+export function freeComboId(keys: string[], others: string[]): string {
   return unusedId(slugWords(keys.join('-')) || 'combo', {
     has: (id) => others.some((o) => o === id || o.startsWith(`${id}#`)),
   });
@@ -564,8 +564,8 @@ const handlers: Handlers = {
 
     if (sameValue(next, current)) return same(layout);
     const out: Layout = { ...layout, combos: combos.map((c, i) => (i === edit.combo ? next : c)) };
-    // A new output can bring a producer whose id another combo's already has (an imported `old`
-    // beside an `old#shifted`); a path naming it would then name both, so that is refused.
+    // A new output can bring a producer whose id another combo's already has (an `old` written in
+    // the JSON beside an `old#shifted`); a path naming it would then name both, so that is refused.
     const shared = sharedProducerIds(out, edit.combo).filter(
       (id) => !sharedProducerIds(layout, edit.combo).includes(id),
     );

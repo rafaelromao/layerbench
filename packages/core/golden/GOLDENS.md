@@ -707,6 +707,26 @@ What moved, checked across the 38 reports; nothing else moved:
   English fixture). Its space is typed by the space key itself, not by an adaptive key's default and
   branch. Keystrokes, layer taps, one-shots, Effort and every other number are as they were.
 
+## Thirty-third re-baseline: only keys the editor can make
+
+A key is only what the editor can make: the kind of key LayerBench kept but did not simulate is
+gone. Where an author's keymap has a key that does what the analysis does not simulate (Escape,
+Enter, Backspace, Tab, T-34's Shortcuts), the key is transparent, as one left unset is, and under a
+hold it taps nothing. A thumb that holds and taps nothing is a tap-hold whose tap is nothing, so
+the board draws its hold along the bottom.
+
+What moved, checked across the 38 reports; nothing else moved:
+
+- **The documents of 21 layouts**:
+  - R0 holds Symbols as a tap-hold tapping nothing, where it was a bare hold: the 14 Standard
+    layouts with no thumb letter, Romak among them, and Cem Aksoylar's.
+  - Transparent, where they kept their keymaps' legends: Cem Aksoylar's L1, R1 and Symbols' L1,
+    Magic Sturdy's R1, the three Hands Down's R1, Enthium's R1 and T-34's L1.
+  - Tapping nothing under their holds for Numbers: the three Hands Down's L1 and Enthium's L1.
+  - T-34's `escape` combo holds Symbols and taps nothing.
+- **No report**: what those keys did, they still do in the analysis, and every layout's
+  languages, measured by `pnpm languages`, are as they were.
+
 ## Not compared
 
 `globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not

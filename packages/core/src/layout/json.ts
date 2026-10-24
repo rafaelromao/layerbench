@@ -121,9 +121,6 @@ export function bindingToJson(b: Binding): Record<string, unknown> {
     case 'unicode':
       extra = { symbol: b.symbol, shiftedSymbol: b.shiftedSymbol };
       break;
-    case 'raw':
-      extra = { label: b.label, source: b.source };
-      break;
     default:
       extra = {};
   }

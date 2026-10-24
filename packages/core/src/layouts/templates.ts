@@ -471,7 +471,7 @@ export function defaultLayers(
 
   const base: Record<string, Binding> = { [spaceKey]: tapOrHold(space, numbers) };
   if (spaceBar && have.has('R0')) base.R0 = tapOrHold(space, numbers);
-  else if (have.has('R0')) base.R0 = { kind: 'mo', layer: symbols };
+  else if (have.has('R0')) base.R0 = tapOrHold({ kind: 'none' }, symbols);
 
   // With no bottom row, `ı` goes on the thumb beside the one holding Numbers, free on Symbols.
   const beside = noBottom && have.has('R0') ? spareThumb(geometry, spaceKey) : undefined;
@@ -719,11 +719,10 @@ export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
       : (candidates.find(free) ?? candidates[0]);
   if (!symbolsKey) return layout;
 
-  // A key that types nothing just holds the layer; one that types something keeps typing it.
+  // A key that types something keeps typing it; one that types nothing taps nothing, and the
+  // board draws only its hold, along the bottom.
   const holding = (tap: Binding | undefined, layer: string): Binding =>
-    !tap || tap.kind === 'none' || tap.kind === 'trans'
-      ? { kind: 'mo', layer }
-      : { kind: 'hold_tap', tap, hold: { kind: 'mo', layer } };
+    tapOrHold(!tap || tap.kind === 'none' || tap.kind === 'trans' ? { kind: 'none' } : tap, layer);
   const holdSymbols: Binding = { kind: 'mo', layer: symbols };
   const baseBindings: Record<string, Binding> = {
     ...first.bindings,

@@ -411,7 +411,9 @@ describe('a binding in the document', () => {
     const { oneOf } = schema.$defs[$ref.replace('#/$defs/', '')];
     const kinds = oneOf.map((o) => o.properties.kind.const);
     expect(kinds).toContain('kp');
-    expect(kinds).toContain('raw');
+    expect(kinds).toContain('trans');
+    // A key is only what the editor can make.
+    expect(kinds).not.toContain('raw');
     expect(new Set(kinds).size).toBe(kinds.length);
   });
 });

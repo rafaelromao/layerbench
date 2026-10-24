@@ -2,7 +2,7 @@ import { resolve } from 'node:path';
 import type { StorageAdapter } from '@layerbench/core';
 import { nodeCorpusLoader } from '@layerbench/core/node';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
-import { type RenderResult, render, screen, within } from '@testing-library/react';
+import { type RenderResult, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { customId } from '../custom/ref.js';
 import { AnalysisCore } from '../engine/analysis-core.js';
@@ -10,8 +10,26 @@ import { AnalysisClientProvider, CustomCorporaProvider } from '../engine/client-
 import { DirectClient } from '../engine/direct-client.js';
 import type { AnalysisClient } from '../engine/protocol.js';
 import { createAppRouter } from '../router.js';
+import { useToasts } from '../state/toasts.js';
 import { StorageProvider } from '../storage/use-storage.js';
 import { decodeInline } from '../url/inline.js';
+
+/**
+ * Every toast shown since the last route was rendered, kept after it goes. A toast lasts six
+ * seconds; a query over the whole Library, redrawn as each score comes in, can take longer to see
+ * it on a slow machine.
+ */
+const toastsShown: string[] = [];
+useToasts.subscribe((s, prev) => {
+  for (const t of s.toasts) if (!prev.toasts.some((p) => p.id === t.id)) toastsShown.push(t.text);
+});
+
+/** Wait for a toast reading `text` to have been shown, watching the toasts and not the page. */
+export async function toastShown(text: RegExp): Promise<void> {
+  await waitFor(() => {
+    if (!toastsShown.some((t) => text.test(t))) throw new Error(`no toast reads ${text}`);
+  });
+}
 
 /**
  * The corpora the built site serves, read straight from disk in tests. Resolved from the working
@@ -74,6 +92,7 @@ export function renderRoute(
   currentPath: () => string;
 } {
   const client = opts.client ?? testClient();
+  toastsShown.length = 0;
   const router = createAppRouter({
     history: createMemoryHistory({ initialEntries: [path] }),
     basepath: '/',

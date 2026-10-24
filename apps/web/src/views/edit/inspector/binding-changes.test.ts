@@ -12,7 +12,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import type { BindingTextContext } from '../binding-text.js';
 import { type FieldsOf, freshRow, keyFields, macroRows } from './binding-changes.js';
-import { type KindOfKey, kindOf, MORE_KINDS, PRIMARY_KINDS, TAP_KINDS } from './kinds.js';
+import { type KindOfKey, kindOf, MORE_KINDS, PRIMARY_KINDS } from './kinds.js';
 
 /** The context the key inspector builds for a layout. */
 function contextOf(compiled: CompiledLayout): BindingTextContext {
@@ -162,14 +162,6 @@ describe('what each kind of key shows, and what its controls change', () => {
     expect(modifier.set.acts('sk')).toBe(sticky);
   });
 
-  it('offers no imported key to make: only an imported keymap brings one', () => {
-    for (const kinds of [MORE_KINDS.map((k) => k.kind), PRIMARY_KINDS.map((k) => k.kind)]) {
-      expect(kinds).not.toContain('imported');
-    }
-    expect(TAP_KINDS).not.toContain('imported');
-    expect(to({ kind: 'kp', symbol: 'a' }, 'imported')).toEqual({ kind: 'kp', symbol: 'a' });
-  });
-
   it('holds other modifiers with a held one, as ZMK holds Shift with Gui for LS(LGUI)', () => {
     const gui = fieldsOf('modifier', { kind: 'mod', mod: 'LGUI' });
     expect(gui.view.also).toEqual([]);
@@ -197,11 +189,6 @@ describe('what each kind of key shows, and what its controls change', () => {
     expect(acute.set.accent('¨')).toEqual({ kind: 'dead_key', diacritic: '¨' });
     expect(acute.set.accent('`')).toEqual({ kind: 'dead_key', diacritic: '`', shifted: '¨' });
     expect(acute.set.shifted('')).toEqual({ kind: 'dead_key', diacritic: '´' });
-  });
-
-  it('shows what an import kept', () => {
-    const kept = fieldsOf('imported', { kind: 'raw', label: 'BT1', source: '&bt BT_SEL 1' });
-    expect(kept.view).toEqual({ label: 'BT1', source: '&bt BT_SEL 1' });
   });
 });
 

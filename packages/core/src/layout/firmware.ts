@@ -53,8 +53,6 @@ const BINDING_MODULES: Record<BindingKind, ZmkModuleId | null> = {
   // The host's dead key, sent with `&kp` on a host layout that has it, as US-International.
   dead_key: null,
   unicode: 'unicode',
-  // Kept from an import as its keymap had it: LayerBench neither makes nor types it.
-  raw: null,
 };
 
 /** The ZMK module a binding of this kind needs, or null when stock ZMK has it. */

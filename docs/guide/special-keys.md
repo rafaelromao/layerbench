@@ -20,7 +20,6 @@ ZMK module, which the editor names and links, as [In ZMK](#in-zmk) lists.
 | `▽` in a dashed outline | transparent: the key of the layer below shows through |
 | a small box on the gap between keys | a combo that types: press those keys together. It shows what it types, and what it does held under that; select it to edit it as any kind of key but transparent. Combos on three or more keys, on keys apart, or with no room on their gap, are under the button beside **Heat** |
 | a number in the corner | more than fits on the key; the list under the board says it all |
-| a grey legend | a key kept from an import, drawn but not simulated |
 
 `⇧` `⌃` `⌥` `⌘` are Shift, Control, Alt and Command, `⟳` is repeat and `⇪` is caps word.
 
@@ -116,8 +115,7 @@ A **Macro** `⋯` types several things with one press. As **Text** it types the 
 as `qu` or `ão`, and can turn a layer on for the next key after them. As **Steps** it is a list of
 key presses, layer changes and modifiers, in order. Switching between the two never changes what
 the macro does: steps after its letters still run after them as text, and come back as steps. A
-step the list has no row for, such as one an import brought in, is shown as it is, and can still be
-moved or removed.
+step the list has no row for is shown as it is, and can still be moved or removed.
 
 ## Caps word and sentence case
 
@@ -167,14 +165,6 @@ These are among the editor's other tiles, under **More** on a phone:
   **Shift** is on, since with capitals folded no shift is pressed.
   In ZMK a dead key is the host's own, sent with `&kp`, so the host's keyboard layout must have
   it, as US-International and ABNT2 do.
-
-## Imported keys
-
-A key brought in from a keymap-drawer file keeps its legend when LayerBench has no model of what
-it does: Escape, an arrow, a Bluetooth or media key. It is drawn in grey, types nothing in the
-analysis, and moves, swaps and copies like any other key. Choosing another tile replaces it. A
-layer reached by holding such a key still works: the hold is kept, and only the tap is imported.
-See [Importing and exporting](importing.md).
 
 ## In ZMK
 

@@ -113,6 +113,34 @@ describe('Compare', () => {
     expect(effort?.querySelectorAll('.lb-band')).toHaveLength(2);
   });
 
+  it("draws each side's keys as Analyze does: as written, holds along the bottom, numbered and listed", async () => {
+    renderRoute('/compare?layout=qwerty&b=magic-romak&off=repeat&corpus=en-general&sample=20000', {
+      storage: freshStorage(),
+    });
+    const board = (side: string) =>
+      waitFor(() => {
+        const el = document.getElementById(`kb-${side}`);
+        expect(el).toBeTruthy();
+        return el as HTMLElement;
+      });
+    const boardA = await board('A');
+    // Typed without repeat, its Repeat key is still drawn as it is written.
+    await waitFor(() => expect(boardA.textContent).toContain('⟳'));
+    const holds = [...boardA.querySelectorAll('.lb-key-hold')].map((t) => t.textContent);
+    expect(holds).toEqual(expect.arrayContaining(['Numb', 'Symb']));
+    // Magic Romak's adaptive keys do not fit their caps: numbered, and listed under its board.
+    const boardB = await board('B');
+    expect(boardB.querySelectorAll('.lb-key-number').length).toBeGreaterThan(0);
+    const side = boardB.closest('section') as HTMLElement;
+    const list = within(side).getByRole('list', { name: 'Key legend' });
+    expect(within(list).getAllByRole('listitem').length).toBeGreaterThan(0);
+    // The navigator stays right under the board, the list after it, as on Analyze.
+    const nav = within(side).getByRole('group', { name: 'Layers of B' });
+    const follows = (a: Node, b: Node) =>
+      !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect([follows(boardB, nav), follows(nav, list)]).toEqual([true, true]);
+  });
+
   it('compares a community layout its link names', async () => {
     setCommunitySource(branchWith(communityDoc('night-owl', 'Night owl')));
     renderRoute('/compare?layout=community:night-owl&b=graphite&corpus=en-general&sample=20000', {

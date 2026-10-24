@@ -21,7 +21,6 @@ const STOCK: BindingKind[] = [
   'macro',
   'hold_tap',
   'dead_key',
-  'raw',
 ];
 
 describe('the ZMK module a binding needs', () => {
