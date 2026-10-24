@@ -998,6 +998,9 @@ export function Workbench({
                         combos={apart}
                         // The board would turn under the dialog as a word plays.
                         onOpen={stopPlaying}
+                        onLostFocus={() =>
+                          focusKey(state.selected ?? state.compiled.keys[0]?.id ?? '')
+                        }
                         onComboClick={(combo) => {
                           if (state.comboPick) return;
                           stopPlaying();

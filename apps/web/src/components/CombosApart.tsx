@@ -17,6 +17,11 @@ export interface CombosApartProps {
   onComboClick?: (index: number) => void;
   /** The dialog opened, for a view to stop what would change the board under it. */
   onOpen?: () => void;
+  /**
+   * Where focus goes once the dialog has closed and the button is gone, as when an Undo takes the
+   * last of these combos away: somewhere in the view, so that a second Undo still reaches it.
+   */
+  onLostFocus?: () => void;
 }
 
 /**
@@ -26,7 +31,14 @@ export interface CombosApartProps {
  * apart (`draw_separate`), with the layers it works on. The button lights while one of them is
  * the press being played, as a box on the board does.
  */
-export function CombosApart({ compiled, layer, combos, onComboClick, onOpen }: CombosApartProps) {
+export function CombosApart({
+  compiled,
+  layer,
+  combos,
+  onComboClick,
+  onOpen,
+  onLostFocus,
+}: CombosApartProps) {
   // What the dialog shows is what the board showed when it opened, whatever the board does since;
   // the layout changing (an edit, an Undo, a feature switched off) closes it, since what it shows
   // may be gone or renumbered.
@@ -65,8 +77,12 @@ export function CombosApart({ compiled, layer, combos, onComboClick, onOpen }: C
           onComboClick={onComboClick}
           onClose={() => {
             setOpened(null);
-            // Back where it was opened from, however it closed, while the button is still there.
-            button.current?.focus();
+            // Back where it was opened from, however it closed, unless something it opened has
+            // taken focus; to the view, when the button is gone.
+            const at = document.activeElement;
+            if (at && at !== document.body && !at.closest('dialog')) return;
+            if (button.current) button.current.focus();
+            else onLostFocus?.();
           }}
         />
       )}
@@ -81,7 +97,7 @@ function CombosApartDialog({
   combos,
   onComboClick,
   onClose,
-}: Omit<CombosApartProps, 'onOpen'> & {
+}: Omit<CombosApartProps, 'onOpen' | 'onLostFocus'> & {
   /** The layout as it is now: once it is not the one the dialog opened on, the dialog closes. */
   live: CompiledLayout;
   onClose: () => void;

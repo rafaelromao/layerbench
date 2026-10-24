@@ -685,6 +685,20 @@ describe('the combos on keys apart', () => {
     expect(screen.getByRole('button', { name: /more combos/ })).toHaveFocus();
   });
 
+  it('give focus to the view when the change that closed the dialog took the button too', async () => {
+    const user = userEvent.setup();
+    const onLostFocus = vi.fn();
+    const { rerender } = render(
+      <CombosApart compiled={t34} layer={0} combos={apart} onLostFocus={onLostFocus} />,
+    );
+    await user.click(screen.getByRole('button', { name: /more combos/ }));
+    // An Undo that takes the last of them away: no button to go back to.
+    const edited = compileLayout(bundledLayout('t-34')!);
+    rerender(<CombosApart compiled={edited} layer={0} combos={[]} onLostFocus={onLostFocus} />);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(onLostFocus).toHaveBeenCalledTimes(1);
+  });
+
   it('light the button while one of them is the press being played', () => {
     const played = apart.map((c) => (c.label === 'é' ? { ...c, active: true } : c));
     render(<CombosApart compiled={t34} layer={0} combos={played} />);
