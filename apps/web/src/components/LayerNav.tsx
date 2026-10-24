@@ -115,7 +115,9 @@ export function LayerNav({
   };
 
   const nameStyle = colour ? { color: colour } : undefined;
-  const nameClass = 'min-w-0 max-w-[10rem] truncate text-sm font-medium';
+  // Never wider than its column, so that a long name squeezed by what is beside the navigator
+  // shortens rather than covering the arrows.
+  const nameClass = 'min-w-0 max-w-[min(10rem,100%)] truncate text-sm font-medium';
 
   return (
     <fieldset

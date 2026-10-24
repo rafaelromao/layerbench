@@ -1128,10 +1128,12 @@ describe('Layers on a card', () => {
     // On the navigator's line, so the card is no taller for it.
     const nav = within(card).getByRole('group', { name: 'T-34 layers' });
     const button = within(card).getByRole('button', { name: '40 more combos on Base' });
-    expect(button.parentElement).toBe(nav.parentElement);
+    expect(nav.parentElement?.contains(button)).toBe(true);
 
     await user.click(button);
     const dialog = screen.getByRole('dialog', { name: 'Combos on Base' });
+    // Out of the card, so that the card moving as the list re-sorts leaves it in the top layer.
+    expect(card.contains(dialog)).toBe(false);
     expect(within(dialog).getAllByRole('listitem')).toHaveLength(40);
     // A card edits nothing: each combo is drawn, not a button to pick.
     expect(within(dialog).getByRole('figure', { name: 'Combo L0 + LHP: |' })).toBeInTheDocument();
@@ -1153,6 +1155,11 @@ describe('Layers on a card', () => {
     // Bird's Numbers has none apart, nor has any layer of Graphite.
     await showLayer(user, 'Numbers', 'Bird layers');
     expect(bird.queryByRole('button', { name: /more combos? on/ })).toBeNull();
+    // The button's room stays, so the arrows do not move as the layers turn.
+    const nav = bird.getByRole('group', { name: 'Bird layers' });
+    expect(nav.parentElement?.querySelector('[aria-hidden="true"].invisible')).toHaveTextContent(
+      '1 more combo',
+    );
     expect(
       within(cardOf('Graphite')).queryByRole('button', { name: /more combos? on/ }),
     ).toBeNull();

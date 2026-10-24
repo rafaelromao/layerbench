@@ -1,6 +1,6 @@
 import type { CompiledLayout } from '@layerbench/core';
 import { useMemo } from 'react';
-import { CombosApart } from './CombosApart.js';
+import { CombosApart, moreCombos } from './CombosApart.js';
 import { combosApart, Keyboard, typingCombos } from './Keyboard.js';
 import { LayerNav, useLayerSwipe } from './LayerNav.js';
 
@@ -65,18 +65,30 @@ export interface PreviewNavProps {
 
 /**
  * The navigator under a preview board, with the combos the board does not draw beside it, behind a
- * button on a layer that has any. They share a line: the layer's name gives way before the button,
- * so a card is no taller for it. A preview edits nothing, so the dialog only draws them.
+ * button on a layer that has any. They share a line, and the button keeps its room on every layer
+ * of a layout that has it anywhere, so the arrows stay where they were as the layers turn. A
+ * preview edits nothing, so the dialog only draws them.
  */
 export function PreviewNav({ compiled, layer, onSelect, label, className = '' }: PreviewNavProps) {
   const apart = useMemo(
-    () => combosApart(compiled, typingCombos(compiled, layer)),
-    [compiled, layer],
+    () => compiled.layers.map((_, i) => combosApart(compiled, typingCombos(compiled, i))),
+    [compiled],
   );
+  const most = Math.max(0, ...apart.map((c) => c.length));
   return (
     <div className={`flex min-w-0 items-center justify-center gap-2 ${className}`}>
       <LayerNav label={label} layers={compiled.layers} active={layer} onSelect={onSelect} />
-      <CombosApart compiled={compiled} layer={layer} combos={apart} />
+      {most > 0 && (
+        <span className="grid shrink-0 place-items-center">
+          {/* As wide as the button's longest words, on a layer with it or without. */}
+          <span aria-hidden="true" className="btn btn-xs btn-outline invisible [grid-area:1/1]">
+            {moreCombos(most)}
+          </span>
+          <span className="[grid-area:1/1]">
+            <CombosApart compiled={compiled} layer={layer} combos={apart[layer] ?? []} />
+          </span>
+        </span>
+      )}
     </div>
   );
 }
