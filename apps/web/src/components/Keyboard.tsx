@@ -21,7 +21,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { placeCombos } from './combo-layout.js';
+import { fmt, placeCombos } from './combo-layout.js';
 import { type Fit, fitLabel, legendNumber, textWidth } from './fit-label.js';
 import { type Direction, nearestKey } from './key-nav.js';
 import { layerColourOf } from './layer-colour.js';
@@ -41,7 +41,7 @@ export interface KeyboardHandle {
 
 /**
  * A combo on the board: a small box with what it types, on the gap between the keys pressed
- * together to fire it, or beside the board with lines out to them.
+ * together to fire it. One on keys apart is drawn apart instead (`combosApart`, `CombosApart`).
  */
 export interface KeyboardCombo {
   id: string;
@@ -206,9 +206,8 @@ const COMBO_PAD = 4;
 const COMBO_TEXT = UNIT - GAP - 2 * COMBO_PAD;
 const COMBO_SIZES = [11, 10, 9, 8] as const;
 const COMBO_HOLD_SIZE = 8;
-/** The rounding of a combo's box, and the room kept between the drawing's edge and a box. */
+/** The rounding of a combo's box. */
 const COMBO_RX = 5;
-const COMBO_CLEAR = 3;
 
 /**
  * A combo's classes, for its box or its lines: dead, being played, open in the editor, or lit,
@@ -218,6 +217,81 @@ function comboClass(c: KeyboardCombo, base: string, open: number | null, lit: bo
   return `${base}${c.dead ? ' lb-combo-dead' : ''}${c.active ? ' lb-combo-active' : ''}${
     c.index === open ? ' lb-combo-open' : ''
   }${lit ? ' lb-combo-lit' : ''}`;
+}
+
+/**
+ * Where a layout's keys are drawn: each one's place across (`drawnX`), and the drawing, as wide as
+ * its keys reach, turned thumbs included, and a hair more, with its top-left in key units.
+ */
+export function boardGeometry(compiled: CompiledLayout) {
+  const xs = drawnX(compiled.keys);
+  let minX = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  compiled.keys.forEach((k, i) => {
+    const r = reach(k);
+    minX = Math.min(minX, xs[i] - r.x);
+    maxX = Math.max(maxX, xs[i] + r.x);
+    minY = Math.min(minY, k.y - r.y);
+    maxY = Math.max(maxY, k.y + r.y);
+  });
+  if (!Number.isFinite(minX)) {
+    return { xs, view: { ox: 0, oy: 0, width: UNIT, height: UNIT, units: 1 } };
+  }
+  const units = maxX - minX + 2 * MARGIN_X;
+  const view = {
+    ox: minX - MARGIN_X,
+    oy: minY - MARGIN_Y,
+    width: units * UNIT,
+    height: (maxY - minY + 2 * MARGIN_Y) * UNIT,
+    units,
+  };
+  return { xs, view };
+}
+
+/**
+ * Each key's cap as the board draws it, in the drawing's own units: its centre, its size and its
+ * turn, and how far it reaches across and down; with the drawing's size.
+ */
+export function keyCaps(compiled: CompiledLayout) {
+  const { xs, view } = boardGeometry(compiled);
+  const caps = compiled.keys.map((k, i) => {
+    const r = reach(k);
+    return {
+      cx: (xs[i] - view.ox) * UNIT,
+      cy: (k.y - view.oy) * UNIT,
+      w: k.w * UNIT - GAP,
+      h: k.h * UNIT - GAP,
+      rotation: k.rotation,
+      rx: r.x * UNIT - GAP / 2,
+      ry: r.y * UNIT - GAP / 2,
+    };
+  });
+  return { caps, width: view.width, height: view.height };
+}
+
+/** Each combo's box and legends, and where on the board it goes; null for one drawn apart. */
+function comboPlacement(compiled: CompiledLayout, combos: readonly KeyboardCombo[]) {
+  const boxes = combos.map(comboBox);
+  const placed = placeCombos(
+    keyCaps(compiled).caps,
+    combos.map((c, i) => ({ keys: c.keys, w: boxes[i].w, h: boxes[i].h })),
+    { gap: GAP },
+  );
+  return { boxes, placed };
+}
+
+/**
+ * The combos a board does not draw among its keys: those on keys apart, or with no room on their
+ * gap. A view lists them apart (`CombosApart`), each on a small board of its own.
+ */
+export function combosApart(
+  compiled: CompiledLayout,
+  combos: readonly KeyboardCombo[],
+): KeyboardCombo[] {
+  const { placed } = comboPlacement(compiled, combos);
+  return combos.filter((_, i) => placed[i] === null);
 }
 
 /** A layer's colour: the one it chose, or its place's; none for a base layer that chose none. */
@@ -376,7 +450,10 @@ export interface KeyboardProps {
   highlight?: number[];
   /** Positions drawn as being pressed right now, such as a step of how a word is typed. */
   pressed?: number[];
-  /** Combos to draw on or beside their keys; only the ones a view wants shown. */
+  /**
+   * Combos to draw on the gaps between their keys; only the ones a view wants shown. Those on keys
+   * apart are left out (`combosApart`), for the view to list beside the board.
+   */
   combos?: KeyboardCombo[];
   /** The combo, by place, drawn as open in an editor. */
   openCombo?: number | null;
@@ -421,10 +498,6 @@ export interface KeyboardProps {
   ref?: Ref<KeyboardHandle>;
 }
 
-function fmt(n: number): string {
-  return n.toFixed(2);
-}
-
 /**
  * The keyboard as an SVG. Geometry comes from the compiled layout, so a 24-key split and a 60%
  * board draw through the same code; only the key coordinates differ.
@@ -457,7 +530,9 @@ export function Keyboard({
   const nodes = useRef<Record<string, SVGGElement | null>>({});
   // Which key holds the single tab stop. It follows focus, so tabbing back returns where you were.
   const [focused, setFocused] = useState<string | null>(null);
+  // The combo the pointer is on, and the one focus is on: either outlines its keys.
   const [pointed, setPointed] = useState<number | null>(null);
+  const [focusedCombo, setFocusedCombo] = useState<number | null>(null);
   const generatedId = useId();
 
   useImperativeHandle(
@@ -473,30 +548,7 @@ export function Keyboard({
   const highlighted = useMemo(() => new Set(highlight), [highlight]);
   const pressing = useMemo(() => new Set(pressed), [pressed]);
 
-  const xs = useMemo(() => drawnX(compiled.keys), [compiled]);
-  // The drawing is as wide as its keys reach, turned thumbs included, and a hair more.
-  const view = useMemo(() => {
-    let minX = Number.POSITIVE_INFINITY;
-    let maxX = Number.NEGATIVE_INFINITY;
-    let minY = Number.POSITIVE_INFINITY;
-    let maxY = Number.NEGATIVE_INFINITY;
-    compiled.keys.forEach((k, i) => {
-      const r = reach(k);
-      minX = Math.min(minX, xs[i] - r.x);
-      maxX = Math.max(maxX, xs[i] + r.x);
-      minY = Math.min(minY, k.y - r.y);
-      maxY = Math.max(maxY, k.y + r.y);
-    });
-    if (!Number.isFinite(minX)) return { ox: 0, oy: 0, width: UNIT, height: UNIT, units: 1 };
-    const units = maxX - minX + 2 * MARGIN_X;
-    return {
-      ox: minX - MARGIN_X,
-      oy: minY - MARGIN_Y,
-      width: units * UNIT,
-      height: (maxY - minY + 2 * MARGIN_Y) * UNIT,
-      units,
-    };
-  }, [compiled, xs]);
+  const { xs, view } = useMemo(() => boardGeometry(compiled), [compiled]);
 
   const legendOf = useCallback(
     (keyId: string) => {
@@ -534,11 +586,16 @@ export function Keyboard({
   const shownColour = layerColourAt(compiled, layerIdx);
   const shownName = compiled.layers[layerIdx]?.name ?? '';
 
+  // A combo pointed at or focused outlines its keys, as zmk-layer-hud rings a combo's keys.
+  const shown = combos.filter((c) => c.index === pointed || c.index === focusedCombo);
+  const outlined =
+    shown.length === 0 ? highlighted : new Set([...highlighted, ...shown.flatMap((c) => c.keys)]);
+
   const keys = modelKeys(compiled, layerIdx, {
     showHold,
     numbered: legendList !== false,
     heat,
-    highlighted,
+    highlighted: outlined,
     pressed: pressing,
     selected,
     alsoSelected,
@@ -547,25 +604,8 @@ export function Keyboard({
     reach: reached,
   });
 
-  const boxes = combos.map(comboBox);
-  const placed = placeCombos(
-    keys.map((k) => {
-      const r = reach(k.key);
-      return {
-        cx: k.cx,
-        cy: k.cy,
-        w: k.w,
-        h: k.h,
-        rx: r.x * UNIT - GAP / 2,
-        ry: r.y * UNIT - GAP / 2,
-      };
-    }),
-    combos.map((c, i) => ({ keys: c.keys, w: boxes[i].w, h: boxes[i].h })),
-    { width: view.width, gap: GAP },
-  );
-  // The drawing grows to take in the boxes outside the board, a hair clear of them.
-  const top = Math.min(0, ...placed.map((p) => (p ? p.y - p.h / 2 - COMBO_CLEAR : 0)));
-  const bottom = Math.max(view.height, ...placed.map((p) => (p ? p.y + p.h / 2 + COMBO_CLEAR : 0)));
+  // Where the combos go depends only on where the keys are drawn and which combos there are.
+  const { boxes, placed } = useMemo(() => comboPlacement(compiled, combos), [compiled, combos]);
 
   // Every key being a tab stop makes a 34-key board 34 stops; one stop plus arrows is what a grid
   // of controls is expected to do.
@@ -599,19 +639,19 @@ export function Keyboard({
 
   const listedKeys = keys.filter((k) => k.number !== null);
 
-  // The combo the pointer is on, or focus: its lines light up, as an open or a played one's do.
+  // A combo pointed at, focused, open or played lights its lines, a row's down into its keys.
   const lit = (c: KeyboardCombo) =>
-    c.active === true || c.index === openCombo || c.index === pointed;
+    c.active === true || c.index === openCombo || c.index === pointed || c.index === focusedCombo;
   const dendrons = (lighted: boolean) => (
     <g className="lb-combo-dendrons">
       {combos.map((c, i) =>
         lit(c) === lighted
-          ? placed[i]?.dendrons.map((d, j) => (
+          ? placed[i]?.lines.map((line) => (
               <path
-                // biome-ignore lint/suspicious/noArrayIndexKey: a combo's lines, one per key, in its keys' order
-                key={`${c.index}-${j}`}
-                d={d}
+                key={`${c.index}-${line.key}`}
+                d={line.path}
                 data-combo={c.index}
+                data-to={compiled.keys[line.key]?.id}
                 className={comboClass(c, 'lb-combo-dendron', openCombo, lighted)}
               />
             ))
@@ -625,7 +665,7 @@ export function Keyboard({
     <svg
       id={id}
       className={`lb-keyboard w-full h-auto select-none ${className ?? ''}`}
-      viewBox={`0 ${fmt(top)} ${fmt(view.width)} ${fmt(bottom - top)}`}
+      viewBox={`0 0 ${fmt(view.width)} ${fmt(view.height)}`}
       // How many keys wide the drawing is, for a view that must keep them a finger's size.
       style={{ '--lb-board-units': view.units.toFixed(2) } as CSSProperties}
       role={interactive ? 'group' : 'img'}
@@ -837,7 +877,7 @@ export function Keyboard({
       {/* Above the keys, but never in the way of a tap or a drag on them. */}
       {combos.length > 0 && (
         <g className="lb-combos">
-          {/* Under every box, so that no line runs across a legend in one; a lit combo's over them. */}
+          {/* Under every box, so that no line runs across the legend in one; a lit combo's over. */}
           {dendrons(false)}
           {combos.map((c, i) => {
             const at = placed[i];
@@ -855,15 +895,14 @@ export function Keyboard({
                 transform={`translate(${fmt(at.x)} ${fmt(at.y)})`}
                 data-combo={c.index}
                 data-align={at.align}
-                data-outside={at.outside || undefined}
                 role={pick ? 'button' : undefined}
                 tabIndex={pick ? 0 : undefined}
                 aria-label={pick ? `Edit combo ${names}: ${what}` : undefined}
                 onClick={pick}
                 onPointerEnter={pick ? () => setPointed(c.index) : undefined}
                 onPointerLeave={pick ? () => setPointed(null) : undefined}
-                onFocus={pick ? () => setPointed(c.index) : undefined}
-                onBlur={pick ? () => setPointed(null) : undefined}
+                onFocus={pick ? () => setFocusedCombo(c.index) : undefined}
+                onBlur={pick ? () => setFocusedCombo(null) : undefined}
                 onKeyDown={
                   pick
                     ? (e) => {

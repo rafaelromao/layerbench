@@ -145,17 +145,18 @@ Combos marked for typing are drawn on the layers where they work, as
 [Keymap Drawer](https://github.com/caksoylar/keymap-drawer) draws them. Each is a small box with what
 it types, and what it does held under that:
 
-- Two keys side by side, or one above the other: the box sits on the gap between them.
+- Two keys side by side, one above the other, or diagonal: the box sits on the gap between them.
 - Three or more keys in a row: the box sits on the gap above the row, with a short line into each
   key.
-- Keys further apart: the box sits between them if nothing is there, as between the two halves of
-  a split board. Otherwise it goes above or below the board, whichever its keys are nearer, with
-  thin lines out to each key. A line that would cross another key's legend runs along the edge of
-  the keys instead.
 
-A box lights up with its keys when a word uses it. Pointing at a box, or focusing it, lights its
-lines too. **Combos**, under *On the board* in **Settings**, hides them. Combos marked as commands
-are shortcuts the analysis never presses, so they are not drawn.
+Combos on keys apart are not drawn on the board. A button beside **Heat**, such as **39 more
+combos**, opens them for the layer shown. Each is drawn once, on a small board of its own with its
+keys filled, as Keymap Drawer draws a combo apart. Under it are the layers it works on. Pick one to
+open it in the combo editor.
+
+A box lights up with its keys when a word uses it. Pointing at a box, or focusing it, outlines its
+keys. **Combos**, under *On the board* in **Settings**, hides them, and the button. Combos marked as
+commands are shortcuts the analysis never presses, so they are not drawn.
 
 ### Case and space
 

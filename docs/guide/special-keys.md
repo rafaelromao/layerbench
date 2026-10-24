@@ -15,7 +15,7 @@ and how to make it in the editor, in **Analyze**: select a key, then choose its 
 | an accent in a colour of its own, over a dotted line | a dead key: it types nothing itself and accents the next letter; a combo's box in that colour arms an accent |
 | a ring inside the key, `held` or `tapped` along the bottom | on a layer above the base: the key held or tapped to get to this layer |
 | `▽` in a dashed outline | transparent: the key of the layer below shows through |
-| a small box on the gap between keys, or beside the board with thin lines out to its keys | a combo that types: press those keys together. It shows what it types, and what it does held under that; select it to edit it as any kind of key but transparent |
+| a small box on the gap between keys | a combo that types: press those keys together. It shows what it types, and what it does held under that; select it to edit it as any kind of key but transparent. Combos on keys apart are under the button beside **Heat** |
 | a number in the corner | more than fits on the key; the list under the board says it all |
 | a grey legend | a key kept from an import, drawn but not simulated |
 

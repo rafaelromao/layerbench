@@ -429,17 +429,19 @@
 }
 
 /*
- * Combos, as Keymap Drawer draws them: a box on the gap between the keys pressed together, or
- * beside the board with thin lines out to them; lit while one is played.
+ * Combos, as Keymap Drawer draws them: a box on the gap between the keys pressed together, or on
+ * the gap above a row of three with a short line into each; lit while one is played.
  */
 .lb-combos,
 .lb-arc {
   pointer-events: none;
 }
+/* A line stays a pixel wide, however small the board is drawn. */
 .lb-combo-dendron {
   fill: none;
-  stroke: color-mix(in oklab, var(--color-base-content) 45%, transparent);
+  stroke: color-mix(in oklab, var(--color-base-content) 50%, transparent);
   stroke-width: 1;
+  vector-effect: non-scaling-stroke;
 }
 .lb-combo-dendron.lb-combo-lit {
   stroke: var(--color-primary);
@@ -485,6 +487,72 @@
   .lb-combo rect {
     transition: none;
   }
+}
+
+/*
+ * Combos on keys apart, which the board does not draw: each once, on a small board of its own
+ * with its keys filled, as Keymap Drawer draws a combo apart; two to a phone's row.
+ */
+.lb-combos-apart {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lb-combo-apart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0.5rem;
+  border: 1px solid var(--color-base-300);
+  border-radius: 0.5rem;
+  background: var(--color-base-100);
+  text-align: center;
+}
+button.lb-combo-apart {
+  cursor: pointer;
+}
+button.lb-combo-apart:hover,
+button.lb-combo-apart:focus-visible {
+  border-color: var(--color-primary);
+  outline: none;
+}
+.lb-combo-apart-legend {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 600;
+}
+.lb-combo-apart-legend.lb-combo-dead {
+  color: var(--lb-legend-dead);
+}
+.lb-combo-apart-tap {
+  font-size: 1.125rem;
+}
+.lb-combo-apart-hold,
+.lb-combo-apart-layers {
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+.lb-combo-apart-board {
+  width: 100%;
+  height: auto;
+}
+.lb-combo-apart-key {
+  fill: var(--lb-key-bg);
+  stroke: var(--lb-key-stroke);
+  stroke-width: 3;
+}
+.lb-combo-apart-key-on {
+  fill: var(--color-primary);
+  stroke: var(--color-primary);
 }
 
 .lb-dragging .lb-key {

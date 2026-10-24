@@ -25,12 +25,14 @@ import {
 } from 'react';
 import { proposeChange } from '../../auth/github-session.js';
 import { Collapsible } from '../../components/Collapsible.js';
+import { CombosApart } from '../../components/CombosApart.js';
 import { ErrorAlert } from '../../components/ErrorAlert.js';
 import { FamilyFilter, METRIC_FAMILIES, useFamilyShown } from '../../components/FamilyFilter.js';
 import { featureList } from '../../components/FeatureSwitches.js';
 import { HelpLink } from '../../components/HelpLink.js';
 import {
   comboPlace,
+  combosApart,
   Keyboard,
   type KeyboardHandle,
   KeyLegend,
@@ -574,6 +576,11 @@ export function Workbench({
     // Hidden, a combo still shows while it is the press being played.
     return showCombos ? all : all.filter((c) => c.active);
   }, [typedCompiled, boardLayer, frame, showCombos]);
+  // The combos on keys apart, which the board leaves to the button beside it; none while hidden.
+  const apart = useMemo(
+    () => (showCombos ? combosApart(typedCompiled, boardCombos) : []),
+    [typedCompiled, boardCombos, showCombos],
+  );
 
   // Everything the board outlines: a key armed for a swap, the keys picked for a combo, the keys of
   // the combo open in the editor or one a panel points at, and an outlined pair or word.
@@ -983,6 +990,16 @@ export function Workbench({
                           </option>
                         ))}
                       </select>
+                      <CombosApart
+                        compiled={typedCompiled}
+                        layer={boardLayer}
+                        combos={apart}
+                        onComboClick={(combo) => {
+                          if (state.comboPick) return;
+                          stopPlaying();
+                          send({ type: 'selectCombo', combo: placeOf(combo) });
+                        }}
+                      />
                       {loading && (
                         <span
                           className="loading loading-spinner loading-xs"

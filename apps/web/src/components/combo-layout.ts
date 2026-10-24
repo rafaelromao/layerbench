@@ -1,17 +1,13 @@
 /**
- * Where the board draws each combo, as Keymap Drawer (github.com/caksoylar/keymap-drawer) does:
- * a small box on the gap between neighbouring keys, and the rest above or below the board, with
- * thin lines, its dendrons, out to each key.
- *
- * Keymap Drawer leaves the placing to its user, combo by combo (`align`, `offset`); the board has
- * no one to ask, so it places them by these rules:
+ * Where the board draws each combo, as Keymap Drawer (github.com/caksoylar/keymap-drawer) does
+ * for keys side by side: a small box on the gap between them.
  * - Two neighbouring keys: on the middle of the gap between them (`align: mid`), no lines.
- * - Three or more keys side by side in a row: on the gap above the row (`align: top`), with a
- *   line down into each key.
- * - Any other combo: on the middle of its keys if that is clear of every key, as between the two
- *   halves of a split board, with straight lines out to them; otherwise outside the board, above
- *   or below it, whichever side its keys are nearer, with lines that run across, then down or up
- *   into each key. Boxes outside sit in rows, each as near its keys as the others leave room for.
+ * - Three or more keys side by side in a row: on the gap above the row (`align: top`), slid along
+ *   it to clear another box (`slide`), with a short line down into each key.
+ *
+ * Any other combo, on keys apart, is not drawn on the board: it is drawn apart, on a board of its
+ * own (Keymap Drawer's `draw_separate`), where lines across the board cannot be mistaken for one
+ * another. So is one whose box would cover another box or a key's legend.
  *
  * Everything is in the board drawing's own units, the ones its keys are drawn in.
  */
@@ -35,11 +31,14 @@ export interface ComboToPlace {
   h: number;
 }
 
-/**
- * `mid` is between its keys, `top` and `bottom` above or below them, as Keymap Drawer's `align`
- * names them.
- */
-export type ComboAlign = 'mid' | 'top' | 'bottom';
+/** `mid` is between its keys, `top` on the gap above them, as Keymap Drawer's `align` names them. */
+export type ComboAlign = 'mid' | 'top';
+
+/** A line from a combo's box into one of its keys: the key's position, and SVG path data. */
+export interface ComboLine {
+  key: number;
+  path: string;
+}
 
 export interface PlacedCombo {
   /** The centre of its box, and the box's size. */
@@ -48,19 +47,24 @@ export interface PlacedCombo {
   w: number;
   h: number;
   align: ComboAlign;
-  /** Drawn outside the board, in a row above or below it. */
-  outside: boolean;
-  /** The lines out to its keys, as SVG path data. */
-  dendrons: string[];
+  lines: ComboLine[];
 }
 
 export interface PlacementOptions {
-  /** The width of the drawing: no box goes past either side of it. */
-  width: number;
   /** The gap between neighbouring caps. */
   gap: number;
-  /** The radius of a dendron's bend (Keymap Drawer's `arc_radius`). */
+  /** The radius of a line's bend (Keymap Drawer's `arc_radius`). */
   arcRadius?: number;
+}
+
+interface Point {
+  x: number;
+  y: number;
+}
+
+interface Box extends Point {
+  w: number;
+  h: number;
 }
 
 /**
@@ -69,48 +73,67 @@ export interface PlacementOptions {
  * inner keys of a split board's halves, drawn a third of a key apart.
  */
 const NEAR = 26;
-/** Room between the board and the first row outside it. */
-const ROW_GAP = 10;
-/** Room between two boxes, along a row and from one row to the next. */
-const SPACING = 4;
-/**
- * How far a box outside may slide along its row, to make room, before it takes a new row: as far
- * as its rightmost key, where its lines are no longer than from its middle, or this far past its
- * middle, whichever is further.
- */
-const MAX_SLIDE = 48;
-/** How far inside a cap's edge a dendron runs past the keys on its way. */
-const EDGE = 5;
 /** The step a box on a row's gap slides along it to clear another box (Keymap Drawer's `slide`). */
 const SLIDE_STEP = 4;
 /**
  * A key's legend sits in the middle of its cap: a box may cover the cap's edge, but not this far
- * in from it.
+ * in from it, and a line may not cross it.
  */
 const LEGEND_INSET = 13;
 
-interface Box {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
+/** Numbers in SVG, to two places. */
+export function fmt(n: number): string {
+  return n.toFixed(2);
 }
 
 function overlaps(a: Box, b: Box, pad = 0): boolean {
   return Math.abs(a.x - b.x) < (a.w + b.w) / 2 + pad && Math.abs(a.y - b.y) < (a.h + b.h) / 2 + pad;
 }
 
+function legendRadius(k: PlacedKey): number {
+  return Math.max(0, Math.min(k.w, k.h) / 2 - LEGEND_INSET);
+}
+
 /** Whether a box covers the middle of a key's cap, where its legends are. */
 export function coversLegend(box: Box, k: PlacedKey): boolean {
-  const r = Math.max(0, Math.min(k.w, k.h) / 2 - LEGEND_INSET);
+  const r = legendRadius(k);
   const dx = Math.max(0, Math.abs(box.x - k.cx) - box.w / 2);
   const dy = Math.max(0, Math.abs(box.y - k.cy) - box.h / 2);
   return dx * dx + dy * dy < r * r;
 }
 
-/** Whether a box touches a key's cap at all. */
-function touchesKey(box: Box, k: PlacedKey): boolean {
-  return overlaps(box, { x: k.cx, y: k.cy, w: 2 * k.rx, h: 2 * k.ry }, 1);
+/** Whether a line from `a` to `b` runs over the middle of a key's cap, where its legends are. */
+function lineCrossesLegend(a: Point, b: Point, k: PlacedKey): boolean {
+  const r = legendRadius(k);
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const length = dx * dx + dy * dy;
+  const t =
+    length === 0 ? 0 : Math.max(0, Math.min(1, ((k.cx - a.x) * dx + (k.cy - a.y) * dy) / length));
+  return Math.hypot(a.x + t * dx - k.cx, a.y + t * dy - k.cy) < r;
+}
+
+/** Whether a line from `a` to `b` runs under a box: the part of it inside the box, clipped. */
+function lineUnderBox(a: Point, b: Point, box: Box): boolean {
+  let t0 = 0;
+  let t1 = 1;
+  const d = { x: b.x - a.x, y: b.y - a.y };
+  const sides: [number, number][] = [
+    [-d.x, a.x - (box.x - box.w / 2)],
+    [d.x, box.x + box.w / 2 - a.x],
+    [-d.y, a.y - (box.y - box.h / 2)],
+    [d.y, box.y + box.h / 2 - a.y],
+  ];
+  for (const [p, q] of sides) {
+    if (p === 0) {
+      if (q <= 0) return false;
+    } else if (p < 0) {
+      t0 = Math.max(t0, q / p);
+    } else {
+      t1 = Math.min(t1, q / p);
+    }
+  }
+  return t0 < t1;
 }
 
 /** Two keys whose caps' edges are close, across and down. */
@@ -132,221 +155,103 @@ function inRow(ks: readonly PlacedKey[]): boolean {
   );
 }
 
-function fmt(n: number): string {
-  return n.toFixed(2);
-}
-
-/**
- * A dendron from a box beside its keys to one of them, as Keymap Drawer draws it: across first,
- * then a bend, then up or down to the key, stopping `shorten` short of its centre. Too little
- * across for a bend, it runs straight.
- */
-function arcDendron(
-  from: { x: number; y: number },
-  to: { x: number; y: number },
-  shorten: number,
-  radius: number,
-): string {
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  if (Math.abs(dx) < radius) return lineDendron(from, to, shorten);
-  const ax = Math.sign(dx) * radius;
-  const ay = Math.sign(dy) * radius;
-  // Keymap Drawer's sweep: clockwise when across and down turn the same way.
-  const sweep = dx > 0 === dy > 0 ? 1 : 0;
-  return (
-    `M ${fmt(from.x)} ${fmt(from.y)} h ${fmt(dx - ax)} ` +
-    `a ${fmt(radius)} ${fmt(radius)} 0 0 ${sweep} ${fmt(ax)} ${fmt(ay)} ` +
-    `v ${fmt(dy - ay - Math.sign(dy) * shorten)}`
+/** A line through `points`, its bends rounded to `radius`, or less where a leg is short. */
+function pathThrough(points: readonly Point[], radius: number): string {
+  const ps = points.filter(
+    (p, i) => i === 0 || Math.hypot(p.x - points[i - 1].x, p.y - points[i - 1].y) > 0.01,
   );
-}
-
-/** A straight dendron, stopping `shorten` short of the key's centre. */
-function lineDendron(
-  from: { x: number; y: number },
-  to: { x: number; y: number },
-  shorten: number,
-): string {
-  let dx = to.x - from.x;
-  let dy = to.y - from.y;
-  const length = Math.hypot(dx, dy);
-  if (shorten > 0 && shorten < length) {
-    dx *= 1 - shorten / length;
-    dy *= 1 - shorten / length;
-  }
-  return `M ${fmt(from.x)} ${fmt(from.y)} l ${fmt(dx)} ${fmt(dy)}`;
-}
-
-/** Whether a line straight up or down at `x`, from `y0` to `y1`, runs over another key's legend. */
-function crossesLegend(
-  x: number,
-  y0: number,
-  y1: number,
-  own: PlacedKey,
-  keys: readonly PlacedKey[],
-): boolean {
-  const line = { x, y: (y0 + y1) / 2, w: 0, h: Math.abs(y1 - y0) };
-  return keys.some((k) => k !== own && coversLegend(line, k));
-}
-
-/**
- * Keymap Drawer's dendrons from a box above or below its keys: across, then up or down into each
- * key, stopping short of its centre. Where that would run over the legend of a key on the way,
- * the line runs along the edge of the caps, on the box's side, and stops level with the middle of
- * its own key, beside the legend.
- */
-function sideDendrons(
-  box: Box,
-  ks: readonly PlacedKey[],
-  keys: readonly PlacedKey[],
-  radius: number,
-): string[] {
-  return ks.map((k) => {
-    // A key right by the box is met near its edge; the others a third of the way in.
-    const close =
-      Math.abs(k.cx - box.x) < box.w / 2 && Math.abs(k.cy - box.y) <= k.h / 3 + box.h / 2;
-    const shorten = close ? k.h / 5 : k.h / 3;
-    const straight = () => arcDendron(box, { x: k.cx, y: k.cy }, shorten, radius);
-    const end = k.cy + Math.sign(box.y - k.cy) * shorten;
-    if (!crossesLegend(k.cx, box.y, end, k, keys)) return straight();
-    for (const side of box.x < k.cx ? [-1, 1] : [1, -1]) {
-      const x = k.cx + side * (k.w / 2 - EDGE);
-      if (!crossesLegend(x, box.y, k.cy, k, keys)) {
-        return arcDendron(box, { x, y: k.cy }, 0, radius);
-      }
+  let d = `M ${fmt(ps[0].x)} ${fmt(ps[0].y)}`;
+  for (let i = 1; i < ps.length; i++) {
+    const [a, p, b] = [ps[i - 1], ps[i], ps[i + 1]];
+    if (!b) {
+      d += ` L ${fmt(p.x)} ${fmt(p.y)}`;
+      break;
     }
-    return straight();
-  });
-}
-
-/** Keymap Drawer's dendrons from a box between its keys, to those a key's width or more away. */
-function midDendrons(box: Box, ks: readonly PlacedKey[]): string[] {
-  return ks
-    .filter((k) => Math.hypot(k.cx - box.x, k.cy - box.y) >= k.w - 1)
-    .map((k) => lineDendron(box, { x: k.cx, y: k.cy }, k.w / 3));
+    const inLeg = Math.hypot(p.x - a.x, p.y - a.y);
+    const outLeg = Math.hypot(b.x - p.x, b.y - p.y);
+    const r = Math.min(radius, inLeg / 2, outLeg / 2);
+    const from = { x: p.x - ((p.x - a.x) * r) / inLeg, y: p.y - ((p.y - a.y) * r) / inLeg };
+    const to = { x: p.x + ((b.x - p.x) * r) / outLeg, y: p.y + ((b.y - p.y) * r) / outLeg };
+    d += ` L ${fmt(from.x)} ${fmt(from.y)} Q ${fmt(p.x)} ${fmt(p.y)} ${fmt(to.x)} ${fmt(to.y)}`;
+  }
+  return d;
 }
 
 /**
- * Where each combo goes, by its place in `combos`; null for one with none of its keys on the
- * board. Boxes outside the board lie above the keys' top edge or below their bottom edge.
+ * Where each combo the board draws goes, by its place in `combos`; null for one it does not draw,
+ * on keys apart, or with no room on its gap, or none of its keys on the board.
  */
 export function placeCombos(
   keys: readonly PlacedKey[],
   combos: readonly ComboToPlace[],
-  { width, gap, arcRadius = 6 }: PlacementOptions,
+  { gap, arcRadius = 6 }: PlacementOptions,
 ): (PlacedCombo | null)[] {
   const out: (PlacedCombo | null)[] = combos.map(() => null);
   const placed: Box[] = [];
   const top = Math.min(...keys.map((k) => k.cy - k.ry));
-  const bottom = Math.max(...keys.map((k) => k.cy + k.ry));
-  // The middle of the board, by where its keys are: a combo above it goes over the board.
-  const middle = keys.reduce((sum, k) => sum + k.cy, 0) / Math.max(1, keys.length);
-  const keysOf = (c: ComboToPlace) => c.keys.flatMap((p) => (keys[p] ? [keys[p]] : []));
-  const centre = (ks: readonly PlacedKey[]) => ({
-    x: ks.reduce((sum, k) => sum + k.cx, 0) / ks.length,
-    y: ks.reduce((sum, k) => sum + k.cy, 0) / ks.length,
+  const positionsOf = (c: ComboToPlace) => c.keys.filter((p) => keys[p] !== undefined);
+  const centre = (ps: readonly number[]) => ({
+    x: ps.reduce((sum, p) => sum + keys[p].cx, 0) / ps.length,
+    y: ps.reduce((sum, p) => sum + keys[p].cy, 0) / ps.length,
   });
   // A box may cover the edges of caps, but not the legends in their middle, nor another box.
   const clear = (box: Box) =>
     !placed.some((b) => overlaps(box, b, 1)) && !keys.some((k) => coversLegend(box, k));
 
-  const outside: {
-    i: number;
-    ks: PlacedKey[];
-    /** Over the middle of its keys, and as far along as it may slide. */
-    at: number;
-    upTo: number;
-    side: 'top' | 'bottom';
-  }[] = [];
+  /**
+   * Keymap Drawer's line from a box on the gap above a row into one of its keys: across the gap,
+   * a bend, and down, stopping a third of the way short of the key's centre, or a fifth for a key
+   * right under the box; none if it would cross a legend or a box.
+   */
+  const lineDown = (box: Box, p: number): ComboLine | null => {
+    const k = keys[p];
+    const close =
+      Math.abs(k.cx - box.x) < box.w / 2 && Math.abs(k.cy - box.y) <= k.h / 3 + box.h / 2;
+    const corners = [
+      { x: box.x, y: box.y },
+      { x: k.cx, y: box.y },
+      { x: k.cx, y: k.cy - (close ? k.h / 5 : k.h / 3) },
+    ];
+    const crosses = corners.slice(1).some((b, j) => {
+      const a = corners[j];
+      return (
+        keys.some((other) => other !== k && lineCrossesLegend(a, b, other)) ||
+        placed.some((other) => lineUnderBox(a, b, other))
+      );
+    });
+    return crosses ? null : { key: p, path: pathThrough(corners, arcRadius) };
+  };
 
-  // Neighbours first, on their gap: they are most of a layout's combos, and have nowhere else
-  // as near to go.
+  // Neighbours first, on their gap: they are most of a layout's combos.
   combos.forEach((c, i) => {
-    const ks = keysOf(c);
-    if (ks.length !== 2 || !neighbours(ks[0], ks[1])) return;
-    const box = { ...centre(ks), w: c.w, h: c.h };
+    const ps = positionsOf(c);
+    if (ps.length !== 2 || !neighbours(keys[ps[0]], keys[ps[1]])) return;
+    const box = { ...centre(ps), w: c.w, h: c.h };
     if (!clear(box)) return;
     placed.push(box);
-    out[i] = { ...box, align: 'mid', outside: false, dendrons: [] };
+    out[i] = { ...box, align: 'mid', lines: [] };
   });
 
+  // Then rows: on the gap above the row, unless the row is the board's top one; slid along it,
+  // as far as its end keys, to clear another box; with lines that cross no legend and no box.
   combos.forEach((c, i) => {
-    if (out[i]) return;
-    const ks = keysOf(c);
-    if (ks.length === 0) return;
-    const mid = centre(ks);
-    if (inRow(ks)) {
-      // On the gap above the row, unless the row is the board's top one; slid along it, as far
-      // as its end keys, to clear another box.
-      const edge = Math.min(...ks.map((k) => k.cy - k.ry));
-      const reach = Math.max(...ks.map((k) => Math.abs(k.cx - mid.x)));
-      for (let slide = 0; edge - top > gap && slide <= reach; slide += SLIDE_STEP) {
-        const box = [-1, 1]
-          .map((side) => ({ x: mid.x + side * slide, y: edge - gap / 2, w: c.w, h: c.h }))
-          .find(clear);
-        if (!box) continue;
+    const ps = positionsOf(c);
+    if (out[i] || !inRow(ps.map((p) => keys[p]))) return;
+    const mid = centre(ps);
+    const edge = Math.min(...ps.map((p) => keys[p].cy - keys[p].ry));
+    const reach = Math.max(...ps.map((p) => Math.abs(keys[p].cx - mid.x)));
+    for (let slide = 0; edge - top > gap && slide <= reach; slide += SLIDE_STEP) {
+      for (const side of [-1, 1]) {
+        const box = { x: mid.x + side * slide, y: edge - gap / 2, w: c.w, h: c.h };
+        if (!clear(box)) continue;
+        const lines = ps.map((p) => lineDown(box, p));
+        if (lines.some((l) => l === null)) continue;
         placed.push(box);
-        out[i] = {
-          ...box,
-          align: 'top',
-          outside: false,
-          dendrons: sideDendrons(box, ks, keys, arcRadius),
-        };
-        return;
-      }
-    } else if (ks.length >= 2) {
-      // Between keys far apart, where nothing else is.
-      const box = { ...mid, w: c.w, h: c.h };
-      if (clear(box) && !keys.some((k) => touchesKey(box, k))) {
-        placed.push(box);
-        out[i] = { ...box, align: 'mid', outside: false, dendrons: midDendrons(box, ks) };
+        out[i] = { ...box, align: 'top', lines: lines as ComboLine[] };
         return;
       }
     }
-    outside.push({
-      i,
-      ks,
-      at: mid.x,
-      upTo: Math.max(mid.x + MAX_SLIDE, ...ks.map((k) => k.cx)),
-      side: mid.y < middle ? 'top' : 'bottom',
-    });
   });
-
-  // Rows outside: each box as near over its keys as the boxes before it in the row leave room
-  // for, and a new row, further out, when that is too far.
-  for (const side of ['top', 'bottom'] as const) {
-    const these = outside.filter((o) => o.side === side).sort((a, b) => a.at - b.at || a.i - b.i);
-    if (these.length === 0) continue;
-    const pitch = Math.max(...these.map((o) => combos[o.i].h)) + SPACING;
-    const rows: number[] = [];
-    for (const o of these) {
-      const { w, h } = combos[o.i];
-      const lo = w / 2;
-      const hi = width - w / 2;
-      const wanted = Math.min(hi, Math.max(lo, o.at));
-      let row = 0;
-      let x = wanted;
-      for (; ; row++) {
-        const after = rows[row] === undefined ? lo : rows[row] + SPACING + w / 2;
-        x = Math.max(wanted, after);
-        if (x <= Math.min(hi, o.upTo)) break;
-        // A box wider than the drawing still gets a row of its own.
-        if (rows[row] === undefined) {
-          x = wanted;
-          break;
-        }
-      }
-      rows[row] = x + w / 2;
-      const offset = ROW_GAP + pitch * row + pitch / 2;
-      const box = { x, y: side === 'top' ? top - offset : bottom + offset, w, h };
-      out[o.i] = {
-        ...box,
-        align: side,
-        outside: true,
-        dendrons: sideDendrons(box, o.ks, keys, arcRadius),
-      };
-    }
-  }
 
   return out;
 }
