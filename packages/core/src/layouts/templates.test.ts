@@ -180,7 +180,11 @@ describe('the default layers, board by board', () => {
   });
 
   it('hold only Symbols on the right inner thumb: nothing there taps Accents', () => {
-    expect(defaultLayers(getGeometryPreset('3x5+2')).base.R0).toEqual({ kind: 'mo', layer: 'sym' });
+    expect(defaultLayers(getGeometryPreset('3x5+2')).base.R0).toEqual({
+      kind: 'hold_tap',
+      tap: { kind: 'none' },
+      hold: { kind: 'mo', layer: 'sym' },
+    });
   });
 
   it('put 0 on the right outer thumb, or on the inner one when there is none', () => {
@@ -811,7 +815,8 @@ describe('the default layers, layout by layout', () => {
     hold: { kind: 'mo', layer },
   });
   const space: Binding = { kind: 'kp', symbol: ' ' };
-  const holdSymbols: Binding = { kind: 'mo', layer: 'sym' };
+  // A thumb that only holds Symbols still is a tap-hold, tapping nothing.
+  const holdSymbols = holds('sym', { kind: 'none' });
 
   const heldBy = (b: Binding | undefined) =>
     b?.kind === 'mo'
@@ -941,7 +946,11 @@ describe('the default layers, layout by layout', () => {
       },
       geometry,
     );
-    const holdNumbers: Binding = { kind: 'mo', layer: 'num' };
+    const holdNumbers: Binding = {
+      kind: 'hold_tap',
+      tap: { kind: 'none' },
+      hold: { kind: 'mo', layer: 'num' },
+    };
     const sym = layout.layers.find((l) => l.id === 'sym')?.bindings ?? {};
     expect([layout.layers[0].bindings.L0, layout.layers[0].bindings.L1, sym.L0]).toEqual([
       holdNumbers,
@@ -1246,58 +1255,82 @@ describe('Extras starts on the prime keys', () => {
   }
 });
 
-/**
- * A binding and every binding inside it, however deep: what it holds, taps, chooses among, or
- * steps through. Its parts, in the glossary's sense, and itself.
- */
-function* bindingsIn(b: Binding | undefined): Generator<Binding> {
-  if (!b) return;
-  yield b;
-  switch (b.kind) {
-    case 'hold_tap':
-      yield* bindingsIn(b.tap);
-      yield* bindingsIn(b.hold);
-      break;
-    case 'lt':
-      yield* bindingsIn(b.tap);
-      break;
-    case 'mod_morph':
-      yield* bindingsIn(b.default);
-      yield* bindingsIn(b.morphed);
-      break;
-    case 'layer_morph':
-      yield* bindingsIn(b.active);
-      yield* bindingsIn(b.inactive);
-      break;
-    case 'tap_dance':
-      for (const x of b.bindings) yield* bindingsIn(x);
-      break;
-    case 'macro':
-      for (const x of [...(b.steps ?? []), ...(b.then ?? [])]) yield* bindingsIn(x);
-      break;
-    case 'adaptive':
-      yield* bindingsIn(b.default);
-      for (const t of b.triggers ?? []) yield* bindingsIn(t.binding);
-      break;
-  }
-}
-
 describe('layers that type nothing', () => {
-  // A layer of functions, media or macros types nothing in a text: no layout reaches one, and no
-  // key holds an imported key.
+  // No bundled layout has a layer of functions, media or macros: a key or a combo on each of its
+  // layers types something.
+  const types = (b: Binding | undefined): boolean => {
+    switch (b?.kind) {
+      case 'kp':
+        return !!b.symbol;
+      case 'macro':
+      case 'dead_key':
+      case 'unicode':
+      case 'key_repeat':
+      case 'adaptive':
+        return true;
+      case 'hold_tap':
+      case 'lt':
+        return types(b.tap);
+      case 'mod_morph':
+        return types(b.default) || types(b.morphed);
+      case 'layer_morph':
+        return types(b.active) || types(b.inactive);
+      case 'tap_dance':
+        return b.bindings.some(types);
+      default:
+        return false;
+    }
+  };
+  it.each(BUNDLED_LAYOUTS.map((l) => [l.id, l] as const))('%s has none', (_id, layout) => {
+    for (const l of layout.layers) {
+      const onCombos = (layout.combos ?? []).some(
+        (c) => (!c.layers || c.layers.includes(l.id)) && types(c.binding),
+      );
+      expect(Object.values(l.bindings).some(types) || onCombos, l.id).toBe(true);
+    }
+  });
+});
+
+describe('thumbs that only hold', () => {
+  // Drawn as every other tap-hold is: what the thumb holds along its bottom, nothing above it.
   it.each(BUNDLED_LAYOUTS.map((l) => [l.id, l] as const))(
-    '%s reaches none, and no key of it holds an imported key',
+    '%s holds with a tap-hold that taps nothing, never with a bare hold',
     (_id, layout) => {
-      const bindings = [
-        ...layout.layers.flatMap((l) => Object.values(l.bindings)),
-        ...(layout.combos ?? []).map((c) => c.binding),
-      ];
-      for (const b of bindings) {
-        for (const p of bindingsIn(b)) {
-          if (p.kind === 'hold_tap') expect(p.hold.kind).not.toBe('raw');
-          if (p.kind === 'raw') expect(p.source ?? '').not.toMatch(/^&(mo|lt|sl|to|tog)\b/);
+      const geometry = getGeometryPreset((layout.geometry as { preset: string }).preset);
+      const thumbs = geometry.keys.filter((k) => k.thumb).map((k) => k.id);
+      for (const l of layout.layers)
+        for (const id of thumbs) {
+          const b = l.bindings[id];
+          expect(['mo', 'mod'], `${l.id} ${id}`).not.toContain(b?.kind);
+          // Nor is a tap-hold's tap transparent: it taps nothing.
+          if (b?.kind === 'hold_tap' || b?.kind === 'lt')
+            expect(b.tap.kind, `${l.id} ${id}`).not.toBe('trans');
         }
-      }
+      expect(defaultLayers(geometry).base.R0 ?? { kind: 'hold_tap' }).toMatchObject({
+        kind: 'hold_tap',
+      });
     },
   );
+});
+
+describe('keys the analysis does not simulate', () => {
+  const base = (id: string) => bundledLayout(id)?.layers[0].bindings ?? {};
+  const trans: Binding = { kind: 'trans' };
+  const nothing: Binding = { kind: 'none' };
+
+  it("are transparent, as a key left unset is: T-34's Shortcuts, Escape, Enter, Tab", () => {
+    expect(base('t-34').L1).toEqual(trans);
+    expect(base('magic-sturdy').R1).toEqual(trans);
+    expect([base('caksoylar').L1, base('caksoylar').R1]).toEqual([trans, trans]);
+    expect(base('enthium').R1).toEqual(trans);
+  });
+
+  it('tap nothing under a hold: Backspace and Tab held for Numbers', () => {
+    for (const id of ['hands-down-gold', 'enthium'])
+      expect(base(id).L1).toEqual({
+        kind: 'hold_tap',
+        tap: nothing,
+        hold: { kind: 'mo', layer: 'num' },
+      });
+  });
 });

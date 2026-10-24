@@ -7,7 +7,7 @@ import { FamilyFilter, useFamilyShown } from '../components/FamilyFilter.js';
 import { featureList } from '../components/FeatureSwitches.js';
 import { formatValue } from '../components/format.js';
 import { BandBadge, SummaryStrip } from '../components/Metrics.js';
-import { PreviewBoard, PreviewNav } from '../components/PreviewBoard.js';
+import { PreviewBoard } from '../components/PreviewBoard.js';
 import { customRef } from '../custom/ref.js';
 import { useAnalysisClient } from '../engine/client-context.js';
 import { expandPositions, heatMap } from '../engine/heat.js';
@@ -77,8 +77,9 @@ export function CompareView() {
   const b = useLayout(refB);
   useCarriedInLink('layout', params.layoutRef, a);
   useCarriedInLink('b', refB, b);
-  // Both sides are typed without the same features, as the Library ranks them, and drawn that way
-  // so each board's heat lands on the keys it was measured on.
+  // Both sides are typed without the same features, as the Library ranks them. Each board draws
+  // the keys as written and the combos as typed, as Analyze's does; the heat lands on the keys it
+  // was measured on either way.
   const typedA = useTypedLayout(a.compiled, params.without);
   const typedB = useTypedLayout(b.compiled, params.without);
   const settings = useAnalysisSettings(settingsOf(params));
@@ -233,10 +234,10 @@ export function CompareView() {
         <div className="grid gap-4 md:grid-cols-2">
           {(
             [
-              ['A', nameA, typedA, analysisA.report, layerA, setLayerA],
-              ['B', nameB, typedB, analysisB.report, layerB, setLayerB],
+              ['A', nameA, a.compiled, typedA, analysisA.report, layerA, setLayerA],
+              ['B', nameB, b.compiled, typedB, analysisB.report, layerB, setLayerB],
             ] as const
-          ).map(([side, name, compiled, report, chosen, setLayer]) => {
+          ).map(([side, name, compiled, typed, report, chosen, setLayer]) => {
             // A layer past the end, for a moment after the layout changes, is its base.
             const layer = compiled && chosen < compiled.layers.length ? chosen : 0;
             return (
@@ -249,19 +250,15 @@ export function CompareView() {
                     <div className="min-w-0">
                       <PreviewBoard
                         id={`kb-${side}`}
+                        // The keys as written and the combos as typed, as Analyze draws them.
                         compiled={compiled}
+                        typed={typed}
                         layer={layer}
                         onLayer={setLayer}
                         // What was pressed on the layer shown, as Analyze's board shows it.
                         heat={report ? heatMap(report, 'usage', layer) : {}}
                         highlight={highlightFor(report)}
-                      />
-                      <PreviewNav
                         label={`Layers of ${side}`}
-                        compiled={compiled}
-                        layer={layer}
-                        onSelect={setLayer}
-                        className="mt-1"
                       />
                     </div>
                   )}

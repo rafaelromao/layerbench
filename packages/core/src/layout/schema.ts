@@ -149,7 +149,6 @@ export const BindingSchema: z.ZodType<unknown> = z.lazy(() =>
         symbol: z.string().default(''),
         shiftedSymbol: z.string().optional(),
       }),
-      z.object({ kind: z.literal('raw'), label: z.string(), source: z.string().optional() }),
     ]),
   ),
 );

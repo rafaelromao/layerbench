@@ -289,11 +289,6 @@
   opacity: 0.5;
 }
 
-.lb-kind-raw {
-  fill: var(--lb-key-text);
-  opacity: 0.55;
-}
-
 .lb-legend-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
@@ -384,7 +379,7 @@
 .lb-key-hot :is(.lb-key-tap, .lb-key-hold, .lb-key-shifted, .lb-key-badge, .lb-key-number) {
   fill: var(--lb-key-text);
 }
-.lb-key-hot :is(.lb-key-hold, .lb-key-shifted, .lb-kind-raw) {
+.lb-key-hot :is(.lb-key-hold, .lb-key-shifted) {
   opacity: 1;
 }
 .lb-key-hot .lb-key-dead-base {

@@ -20,15 +20,7 @@ const MARKED: ReadonlySet<Chooser> = new Set(['adaptive', 'tap_dance']);
 /** What a key types shifted is read off a mod morph before its plain part. */
 const SHIFT_MORPHS: ReadonlySet<Chooser> = new Set(['mod_morph']);
 
-export type LegendKind =
-  | 'alpha'
-  | 'layer'
-  | 'mod'
-  | 'repeat'
-  | 'adaptive'
-  | 'trans'
-  | 'none'
-  | 'raw';
+export type LegendKind = 'alpha' | 'layer' | 'mod' | 'repeat' | 'adaptive' | 'trans' | 'none';
 
 /**
  * How a key is drawn, in the places keymap-drawer uses so that one reads like the other.
@@ -213,8 +205,6 @@ export function tapLabel(c: CompiledLayout, b: Binding): string {
       return p.diacritic;
     case 'unicode':
       return p.symbol;
-    case 'raw':
-      return p.label;
     // A key that does something shows something. An adaptive key with no default has its
     // alternatives listed under the board, where they have room; its mark stands in for them.
     case 'adaptive':
@@ -265,8 +255,6 @@ export function legendKind(b: Binding): LegendKind {
       return 'adaptive';
     case 'trans':
       return 'trans';
-    case 'raw':
-      return 'raw';
     default:
       return 'none';
   }
@@ -402,8 +390,6 @@ export function describe(c: CompiledLayout, b: Binding): string {
       return `dead key ${b.diacritic}${b.shifted ? `, ${b.shifted} with shift` : ''}: accents the next letter`;
     case 'unicode':
       return `types ${b.symbol}${b.shiftedSymbol ? `, ${b.shiftedSymbol} with shift` : ''}`;
-    case 'raw':
-      return `${b.label}: imported, not simulated`;
     default:
       return '';
   }

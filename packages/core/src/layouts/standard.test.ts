@@ -38,7 +38,7 @@ describe('the standard thumbs', () => {
   it('leave a thumb past the main four only when it types a letter', () => {
     const six = getGeometryPreset('3x6+3');
     const base = withStandardThumbs(
-      layout({ L2: kp('x'), L0: kp(' '), R2: { kind: 'raw', label: '⌫' } }, '3x6+3'),
+      layout({ L2: kp('x'), L0: kp(' '), R2: { kind: 'trans' } }, '3x6+3'),
       six,
       'author',
     ).layers[0].bindings;

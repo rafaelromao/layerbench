@@ -51,25 +51,28 @@ A legend is what a key shows, not what it does, so the import reads it the way a
 | a layer's name over `sticky` · `toggle` · `to` · `auto` | a one-shot, toggle, switch or auto layer key |
 | `LSHFT` · `LCTRL` · `⇧` · `⌘` | a modifier; over `sticky`, a one-shot modifier |
 | `A` over `LCTRL` | a tap-hold: tap for `a`, hold for Control |
-| `ESC` over a layer's name | tap for Escape, hold for that layer |
+| `ESC` over a layer's name | a hold for that layer, tapping nothing |
 | `REPEAT` · `CAPS_WORD` | a repeat key, caps word |
 | `▽` · `{type: trans}` · `{type: held}` | transparent |
 | an empty legend | a key that does nothing |
 | `ão` | a macro that types it |
-| `ESC` · `PG UP` · `F1` · `LC(Z)` · `←` | an imported key: understood, but not simulated |
+| `ESC` · `PG UP` · `F1` · `LC(Z)` · `←` | transparent: understood, but not simulated |
+| a key that reaches a layer you left out | transparent, unless it does something else the analysis simulates, a tap such as `␣` or `A`, or a hold of a layer you kept, which stays |
+
+The layout you get is the one you would make in the editor by hand. A key the analysis does not
+simulate, such as Escape or an arrow, is transparent, as a key left unset is, and under a hold it
+taps nothing: the layer held on it still works. A layer you left out is named nowhere.
 
 Combos come along too, found by their key positions or by the legends of their keys, on the layers
-you import.
+you keep, with the timing the editor gives a combo. One left with nothing to do is skipped, as the
+editor makes no transparent combo.
 
 ### What the report says
 
-Each layer shows how many of its keys were read. Legends it could not read are listed after **kept
-as imported**. They stay on the board as imported keys, with their legend, and can be replaced in
-the editor like any other key. A key that reaches a layer you left out is kept the same way.
-
-Imported keys type nothing in the analysis. That is right for Escape or an arrow, which type no
-text anyway. A layer held on such a key still works, because the hold is kept and only the tap is
-imported.
+Each layer shows how many of its keys were read. Legends it could not read in full are listed after
+**not read**: what it could not read is left out, and a key with nothing left is transparent. Each
+can be set in the editor like any other key. A note says how many keys reached a layer you left
+out, and which combos were skipped and why.
 
 ## Exporting
 

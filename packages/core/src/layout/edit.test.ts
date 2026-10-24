@@ -690,7 +690,7 @@ describe('changing a combo', () => {
   });
 
   it("refuses an output that would give it a producer another combo's id already names", () => {
-    const imported: Layout = {
+    const written: Layout = {
       ...layout,
       combos: [
         { id: 'old', keys: ['LHM', 'LHI'], binding: kp('a'), layers: ['base'], role: 'typing' },
@@ -704,14 +704,14 @@ describe('changing a combo', () => {
       ],
     };
     const tapHold: Binding = { kind: 'hold_tap', tap: kp('q'), hold: kp('z') };
-    expect(applyEdit(imported, { kind: 'updateCombo', combo: 0, binding: tapHold })).toMatchObject({
+    expect(applyEdit(written, { kind: 'updateCombo', combo: 0, binding: tapHold })).toMatchObject({
       status: 'refused',
       message: expect.stringMatching(/^combo:old#hold would name an output of another combo too/),
     });
     // A clash the layout already had is not this edit's to refuse.
     const already: Layout = {
-      ...imported,
-      combos: [{ ...imported.combos![0], binding: tapHold }, imported.combos![1]],
+      ...written,
+      combos: [{ ...written.combos![0], binding: tapHold }, written.combos![1]],
     };
     expect(applyEdit(already, { kind: 'updateCombo', combo: 0, role: 'command' }).status).toBe(
       'landed',
@@ -727,7 +727,7 @@ describe('changing a combo', () => {
       layers: ['base'],
       role: 'typing' as const,
     });
-    const imported: Layout = {
+    const written: Layout = {
       ...layout,
       combos: [
         combo('a', ['LHM', 'LHI'], kp('x')),
@@ -737,7 +737,7 @@ describe('changing a combo', () => {
       ],
     };
     // As the accent before `b+combo:c`, `a` would make the id `a+combo:b` makes before `c`.
-    expect(applyEdit(imported, { kind: 'updateCombo', combo: 0, binding: dead })).toMatchObject({
+    expect(applyEdit(written, { kind: 'updateCombo', combo: 0, binding: dead })).toMatchObject({
       status: 'refused',
       message: expect.stringMatching(/^deadkey:combo:a\+combo:b\+combo:c would name/),
     });

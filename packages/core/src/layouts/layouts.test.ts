@@ -200,6 +200,10 @@ describe('the standard thumbs', () => {
   const show = (b: Binding | undefined): string => {
     if (!b) return 'nothing';
     switch (b.kind) {
+      case 'none':
+        return 'nothing';
+      case 'trans':
+        return 'transparent';
       case 'kp':
         return b.symbol === ' ' ? 'space' : (b.symbol ?? '');
       case 'key_repeat':
@@ -214,12 +218,12 @@ describe('the standard thumbs', () => {
         return b.kind;
     }
   };
-  /** Each main thumb as tap / hold, left to right. */
+  /** Each main thumb, left to right: a tap-hold as tap / hold, any other key as itself. */
   const thumbs = (id: string) => {
     const base = bundledLayout(id)?.layers[0].bindings ?? {};
     return MAIN_THUMBS.map((k) => {
       const b = base[k];
-      return b?.kind === 'hold_tap' ? `${show(b.tap)} / ${show(b.hold)}` : `nothing / ${show(b)}`;
+      return b?.kind === 'hold_tap' ? `${show(b.tap)} / ${show(b.hold)}` : show(b);
     });
   };
 
@@ -301,20 +305,16 @@ describe('the standard thumbs', () => {
   it("are not on a layout that keeps its author's layers, which keeps its author's thumbs", () => {
     expect(AUTHORED.has('enthium') && AUTHORED.has('hands-down-gold')).toBe(true);
     expect(standard.some((l) => AUTHORED.has(l.id ?? ''))).toBe(false);
-    // Backspace held for Numbers, the thumb letter, space held for Symbols, Enter.
+    // Backspace held for Numbers, the thumb letter, space held for Symbols, Enter: what the
+    // analysis does not simulate taps nothing under a hold, and is transparent on its own.
     expect(thumbs('hands-down-gold')).toEqual([
-      'raw / Numbers',
-      'nothing / t',
+      'nothing / Numbers',
+      't',
       'space / Symbols',
-      'nothing / raw',
+      'transparent',
     ]);
     // Tab held for Numbers, space, the thumb letter held for Symbols, Backspace.
-    expect(thumbs('enthium')).toEqual([
-      'raw / Numbers',
-      'nothing / space',
-      'r / Symbols',
-      'nothing / raw',
-    ]);
+    expect(thumbs('enthium')).toEqual(['nothing / Numbers', 'space', 'r / Symbols', 'transparent']);
     const enthium = bundledLayout('enthium')?.layers[0].bindings ?? {};
     expect([enthium.L2, enthium.R2]).toEqual([undefined, undefined]);
   });

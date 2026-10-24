@@ -76,8 +76,14 @@ const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
 /** The repeat key, `⟲`. */
 export const REPEAT: Binding = { kind: 'key_repeat' };
 
-/** A raw key: drawn with its legend, typing nothing the analysis counts. */
-export const raw = (label: string): Binding => ({ kind: 'raw', label });
+/**
+ * A key whose author's firmware does what the analysis does not simulate (Escape, Enter,
+ * Backspace, a layer LayerBench does not have): transparent, as a key left unset is.
+ */
+export const TRANSPARENT: Binding = { kind: 'trans' };
+
+/** The tap of a key that only holds: drawn with what it holds along its bottom, nothing above. */
+export const NOTHING: Binding = { kind: 'none' };
 
 /** Bindings from keys by id: a binding as it is, a token with the special ones swapped in. */
 function bindingsOf(
@@ -346,8 +352,10 @@ export function classicLayout(def: ClassicDef): Layout {
   const base = layout.layers[0].bindings;
   for (const [id, layer] of Object.entries(def.holds ?? {})) {
     if (!keys.has(id)) throw new Error(`${def.name}: ${preset} has no key ${id}`);
+    // A key with nothing of its own to tap still is a tap-hold, tapping nothing.
     const tap = base[id];
-    base[id] = tap ? { kind: 'hold_tap', tap, hold: { kind: 'mo', layer } } : { kind: 'mo', layer };
+    const tapped = !tap || tap.kind === 'trans' || tap.kind === 'none' ? NOTHING : tap;
+    base[id] = { kind: 'hold_tap', tap: tapped, hold: { kind: 'mo', layer } };
   }
   // A one-shot Shift on the base layer is the Shift the analysis types capitals with.
   const shift = Object.entries(layout.layers[0].bindings).find(
