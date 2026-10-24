@@ -1,6 +1,5 @@
 import type { CompiledLayout } from '@layerbench/core';
 import { memo, useState } from 'react';
-import { LayerNav } from '../../components/LayerNav.js';
 import { PreviewBoard } from '../../components/PreviewBoard.js';
 
 export interface LayerPreviewProps {
@@ -28,22 +27,14 @@ export const LayerPreview = memo(function LayerPreview({
   // A layer past the end, for a moment after the layout changes, is its base.
   const layer = chosen < compiled.layers.length ? chosen : 0;
   return (
-    <div className="min-w-0">
-      <PreviewBoard
-        id={`${id}-l${layer}`}
-        compiled={compiled}
-        typed={typed}
-        layer={layer}
-        onLayer={setChosen}
-        className="opacity-90"
-      />
-      <LayerNav
-        label={`${name} layers`}
-        layers={compiled.layers}
-        active={layer}
-        onSelect={setChosen}
-        className="mt-1 justify-center"
-      />
-    </div>
+    <PreviewBoard
+      id={`${id}-l${layer}`}
+      compiled={compiled}
+      typed={typed}
+      layer={layer}
+      onLayer={setChosen}
+      label={`${name} layers`}
+      className="opacity-90"
+    />
   );
 });

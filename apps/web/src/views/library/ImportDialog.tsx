@@ -159,12 +159,10 @@ function TextImport({
 
       {preview && (
         <div className="grid gap-3 md:grid-cols-2">
-          <Keyboard
-            id="kb-import"
-            compiled={preview.compiled}
-            interactive={false}
-            showHold={false}
-          />
+          {/* Every key as Analyze draws it, its list under the board. */}
+          <div className="min-w-0">
+            <Keyboard id="kb-import" compiled={preview.compiled} interactive={false} legendList />
+          </div>
           {preview.warnings.length > 0 && (
             <ul className="text-warning text-xs space-y-1">
               {preview.warnings.map((w) => (

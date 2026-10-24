@@ -1119,6 +1119,12 @@ describe('Layers on a card', () => {
     expect(magic.querySelectorAll('svg.lb-keyboard .lb-key-number').length).toBeGreaterThan(0);
     const list = within(magic).getByRole('list', { name: 'Key legend' });
     expect(within(list).getAllByRole('listitem').length).toBeGreaterThan(0);
+    // The navigator stays right under the board, the list after it, as on Analyze.
+    const board = magic.querySelector('svg.lb-keyboard') as SVGElement;
+    const nav = within(magic).getByRole('group', { name: 'Magic Romak layers' });
+    const follows = (a: Node, b: Node) =>
+      !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect([follows(board, nav), follows(nav, list)]).toEqual([true, true]);
   });
 
   it("draws a card's combos as the layout is ranked, as Analyze draws them", async () => {

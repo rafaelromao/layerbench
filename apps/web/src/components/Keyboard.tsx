@@ -880,10 +880,13 @@ export function KeyLegend({
   compiled,
   layer = 0,
   showHold = true,
+  quiet = false,
 }: {
   compiled: CompiledLayout;
   layer?: number;
   showHold?: boolean;
+  /** Draw nothing, rather than say so, when every key on the layer fits its label. */
+  quiet?: boolean;
 }) {
   const layerIdx = Math.min(layer, compiled.layers.length - 1);
   const keys = modelKeys(compiled, layerIdx, {
@@ -893,6 +896,7 @@ export function KeyLegend({
   });
   const listed = keys.filter((k) => k.number !== null);
   const reach = reachLinesOf(keys);
+  if (quiet && listed.length === 0 && reach.length === 0) return null;
   // An empty list would leave the legend's panel blank, as if something had failed to load.
   return listed.length === 0 && reach.length === 0 ? (
     <p className="text-xs opacity-70">

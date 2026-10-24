@@ -96,8 +96,9 @@ the layout reaches that letter, and stays. What a feature typed is typed another
 there is none. **Open** on a card opens the layout in **Analyze**, ranked the same way, and says so.
 
 The same switches are in every view that analyzes, in its **Settings**. **Compare with**, in
-**Compare**, types and draws both layouts without the features left unticked, and **Analyze A** and
-**Analyze B** open either one typed the same way. **Analyze with**, in **Analyze**, does it for the
+**Compare**, types both layouts without the features left unticked and draws their combos that way;
+their keys are drawn as written, as in **Analyze**. **Analyze A** and **Analyze B** open either one
+typed the same way. **Analyze with**, in **Analyze**, does it for the
 one layout, which is still edited as written: only its numbers leave the features out.
 
 ### Changing the costs

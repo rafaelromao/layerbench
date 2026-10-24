@@ -131,8 +131,14 @@ describe('Compare', () => {
     // Magic Romak's adaptive keys do not fit their caps: numbered, and listed under its board.
     const boardB = await board('B');
     expect(boardB.querySelectorAll('.lb-key-number').length).toBeGreaterThan(0);
-    const list = boardB.parentElement?.querySelector('[aria-label="Key legend"]');
-    expect(list?.querySelectorAll('li').length).toBeGreaterThan(0);
+    const side = boardB.closest('section') as HTMLElement;
+    const list = within(side).getByRole('list', { name: 'Key legend' });
+    expect(within(list).getAllByRole('listitem').length).toBeGreaterThan(0);
+    // The navigator stays right under the board, the list after it, as on Analyze.
+    const nav = within(side).getByRole('group', { name: 'Layers of B' });
+    const follows = (a: Node, b: Node) =>
+      !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect([follows(boardB, nav), follows(nav, list)]).toEqual([true, true]);
   });
 
   it('compares a community layout its link names', async () => {

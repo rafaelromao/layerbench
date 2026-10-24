@@ -409,13 +409,15 @@ describe('importing', () => {
       key({ tap: 'Nav', hold: 'tri' }),
       key({ tap: 'A', hold: 'BT_CLR' }),
       key({ tap: 'BT 0' }),
-      ...def.keys.slice(3),
+      // A one-shot of a letter cannot be made: the letter is what was not read, not `sticky`.
+      key({ tap: 'A', hold: 'sticky' }),
+      ...def.keys.slice(4),
     ];
     const { report } = importKeymapDrawer(
       { ...doc, layers: [{ ...def, keys }, ...others] },
       { name: 'Hummingbird', layers: [{ source: 'Def', name: 'Def' }], board },
     );
-    expect(report.layers[0].unread).toEqual(['tri', 'BT_CLR', 'BT 0']);
+    expect(report.layers[0].unread).toEqual(['tri', 'BT_CLR', 'BT 0', 'A']);
   });
 
   it('leaves unset what a key made in the editor would leave unset, and describes nothing', () => {

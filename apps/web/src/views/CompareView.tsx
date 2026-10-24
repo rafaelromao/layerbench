@@ -6,7 +6,6 @@ import { ErrorAlert } from '../components/ErrorAlert.js';
 import { FamilyFilter, useFamilyShown } from '../components/FamilyFilter.js';
 import { featureList } from '../components/FeatureSwitches.js';
 import { formatValue } from '../components/format.js';
-import { LayerNav } from '../components/LayerNav.js';
 import { BandBadge, SummaryStrip } from '../components/Metrics.js';
 import { PreviewBoard } from '../components/PreviewBoard.js';
 import { customRef } from '../custom/ref.js';
@@ -259,13 +258,7 @@ export function CompareView() {
                         // What was pressed on the layer shown, as Analyze's board shows it.
                         heat={report ? heatMap(report, 'usage', layer) : {}}
                         highlight={highlightFor(report)}
-                      />
-                      <LayerNav
                         label={`Layers of ${side}`}
-                        layers={compiled.layers}
-                        active={layer}
-                        onSelect={setLayer}
-                        className="mt-1 justify-center"
                       />
                     </div>
                   )}

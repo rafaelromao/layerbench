@@ -18,7 +18,6 @@ import {
   readKeymapDrawer,
 } from '@layerbench/core';
 import { useEffect, useId, useMemo, useState } from 'react';
-import { LayerNav } from '../../components/LayerNav.js';
 import { PreviewBoard } from '../../components/PreviewBoard.js';
 import { TextField } from '../edit/inspector/controls.js';
 
@@ -345,12 +344,6 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
                 compiled={result.compiled}
                 layer={Math.min(shown, result.compiled.layers.length - 1)}
                 onLayer={setShown}
-              />
-              <LayerNav
-                layers={result.compiled.layers}
-                active={Math.min(shown, result.compiled.layers.length - 1)}
-                onSelect={setShown}
-                className="justify-center"
               />
               <p className="text-xs opacity-70">
                 {result.report.combos.taken} combo
