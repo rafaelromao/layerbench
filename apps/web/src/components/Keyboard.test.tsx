@@ -292,6 +292,11 @@ describe('the legend under the board', () => {
     expect(screen.getByText(/Every key on this layer fits its label/)).toBeInTheDocument();
   });
 
+  it('says nothing at all, quiet, when every key fits its label, as under a preview', () => {
+    const { container } = render(<KeyLegend compiled={qwerty} quiet />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
   it('lists the keys it numbers, and no hint, when there are some', () => {
     render(<KeyLegend compiled={romak} />);
     expect(screen.getByRole('list', { name: 'Key legend' })).toBeInTheDocument();

@@ -8,7 +8,7 @@ import {
 } from '@layerbench/core';
 import { useEffect, useRef, useState } from 'react';
 import { HelpLink } from '../../components/HelpLink.js';
-import { Keyboard } from '../../components/Keyboard.js';
+import { PreviewBoard } from '../../components/PreviewBoard.js';
 import { Tabs } from '../../components/Tabs.js';
 import { HELP } from '../../guide/help.js';
 import { KeymapDrawerImport } from './KeymapDrawerImport.js';
@@ -64,6 +64,8 @@ function TextImport({
   const [name, setName] = useState('My layout');
   const [preview, setPreview] = useState<Preview | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** The layer of the preview shown; past the end, for a moment after the text changes, the last. */
+  const [shown, setShown] = useState(0);
 
   // The preview follows the text as it is typed, so a malformed import is obvious immediately.
   useEffect(() => {
@@ -159,10 +161,13 @@ function TextImport({
 
       {preview && (
         <div className="grid gap-3 md:grid-cols-2">
-          {/* Every key as Analyze draws it, its list under the board. */}
-          <div className="min-w-0">
-            <Keyboard id="kb-import" compiled={preview.compiled} interactive={false} legendList />
-          </div>
+          {/* Every key and combo as Analyze draws them, each layer in turn, its list under it. */}
+          <PreviewBoard
+            id="kb-import"
+            compiled={preview.compiled}
+            layer={Math.min(shown, preview.compiled.layers.length - 1)}
+            onLayer={setShown}
+          />
           {preview.warnings.length > 0 && (
             <ul className="text-warning text-xs space-y-1">
               {preview.warnings.map((w) => (

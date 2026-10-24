@@ -1043,11 +1043,11 @@ export function importKeymapDrawer(
   // The part of a key it could not read: its tap, or its hold where the tap was read or reaches a
   // layer left out, which is named nowhere.
   const unreadPart = (k: KdKey): string => {
-    // A word that says how a layer comes on is no part of its own: the tap was not read with it.
-    const word = k.hold.trim().toLowerCase();
-    const howOn = STICKY_WORDS.has(word) || LAYER_WORDS.has(word);
+    // A one-shot of what is no layer or modifier cannot be made, and drops the tap: the tap is
+    // what was not read, not `sticky`. Any other word that goes leaves the tap typing.
+    const sticky = STICKY_WORDS.has(k.hold.trim().toLowerCase());
     const alone = readLegend({ ...k, hold: '' }, ctx);
-    const tapRead = !howOn && (leftOut(k.tap) || alone.kind === 'transparent' || alone.exact);
+    const tapRead = !sticky && (leftOut(k.tap) || alone.kind === 'transparent' || alone.exact);
     const part = (tapRead ? k.hold : k.tap).trim();
     return part && !leftOut(part) ? part : '?';
   };
