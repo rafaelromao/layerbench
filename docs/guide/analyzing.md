@@ -160,6 +160,7 @@ In **Analyze**, a box lights up with its keys when a word uses it; for a combo o
 button lights up. Pointing at a box, or focusing it, outlines its keys. **Combos**, under *On the
 board* in **Settings**, hides them, and the button; a combo being played still lights its box, if
 it has one.
+
 Combos marked as commands are shortcuts the analysis never presses, so they are not drawn.
 
 ### Case and space
