@@ -5,6 +5,48 @@ function overflow(page: Page): Promise<number> {
   return page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 }
 
+/**
+ * The Library on a Portuguese text, scored. The layouts whose authors' layers have no accents skip
+ * its accented letters, and say so below their numbers.
+ */
+async function openSkipping(page: Page): Promise<void> {
+  await page.goto('/library?corpus=pt-br-general&sample=1000');
+  await expect(page.getByText(/^Lower is better for both/)).toBeVisible({ timeout: 120_000 });
+}
+
+/**
+ * Every card that says what it skips has its note on a line below its two numbers, the note's text
+ * inside it, and on a screen with room for both, the numbers on one row. Each card is measured in
+ * one pass, so a card added late cannot move the others between measurements.
+ */
+async function expectSkipsBelow(page: Page, { oneRow }: { oneRow: boolean }): Promise<void> {
+  const cards = await page.locator('article').evaluateAll((articles) =>
+    articles.flatMap((card) => {
+      const note = card.querySelector('.lb-skips');
+      if (!note) return [];
+      const chips = [...card.querySelectorAll('dl > div')].map((c) => c.getBoundingClientRect());
+      const top = note.getBoundingClientRect().top;
+      return [
+        {
+          name: card.querySelector('h3')?.textContent ?? '',
+          chips: chips.length,
+          oneRow: chips.every((c) => Math.abs(c.top - (chips[0]?.top ?? 0)) < 1),
+          below: chips.every((c) => top >= c.bottom),
+          inside: note.scrollWidth <= note.clientWidth,
+        },
+      ];
+    }),
+  );
+  expect(cards.length, 'cards that skip something').toBeGreaterThan(0);
+  for (const card of cards) {
+    expect(card.chips, `${card.name}: Effort and SFB`).toBe(2);
+    if (oneRow) expect(card.oneRow, `${card.name}: the numbers share a row`).toBe(true);
+    expect(card.below, `${card.name}: the note is below the numbers`).toBe(true);
+    expect(card.inside, `${card.name}: the note wraps inside its card`).toBe(true);
+  }
+  expect(await overflow(page)).toBeLessThanOrEqual(0);
+}
+
 test.describe('on a phone', () => {
   test.skip(({ isMobile }) => !isMobile, 'phone layout only');
 
@@ -24,33 +66,28 @@ test.describe('on a phone', () => {
 
   test("a card's two numbers share a row, and what it skips is on a line below them", async ({
     page,
+    viewport,
   }) => {
-    // An iPhone's 375px, where the actions beside the numbers left them room for one a row. On a
-    // Portuguese text, the layouts that keep their authors' layers skip its accented letters.
-    await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto('/library?corpus=pt-br-general&sample=10000');
-    const skipping = page.locator('article').filter({ has: page.locator('.lb-skips') });
-    await expect(skipping.first()).toBeVisible({ timeout: 45_000 });
-    await expect(page.getByText('scoring…')).toHaveCount(0, { timeout: 45_000 });
-    const cards = await skipping.all();
-    for (const card of cards) {
-      const name = await card.locator('h3').textContent();
-      const chips = await Promise.all(
-        (await card.locator('dl > div').all()).map((chip) => chip.boundingBox()),
-      );
-      const note = await card.locator('.lb-skips').boundingBox();
-      const box = await card.boundingBox();
-      expect(chips, `${name}: Effort and SFB`).toHaveLength(2);
-      const [effort, sfb] = chips;
-      if (!effort || !sfb || !note || !box) throw new Error(`${name}: not laid out`);
-      expect(Math.abs(effort.y - sfb.y), `${name}: the numbers share a row`).toBeLessThan(1);
-      expect(note.y, `${name}: the note is below the numbers`).toBeGreaterThanOrEqual(
-        Math.max(effort.y + effort.height, sfb.y + sfb.height),
-      );
-      expect(note.x + note.width, `${name}: the note wraps inside its card`).toBeLessThanOrEqual(
-        box.x + box.width,
-      );
+    test.slow();
+    await openSkipping(page);
+    // 360px, the narrowest common Android phone, where beside the actions the numbers had room for
+    // only one a row; then the project's own phone. Narrower than 360px, the two numbers, up to
+    // 307px, wrap rather than scroll: an iPhone SE's card has 270px.
+    for (const width of new Set([360, viewport?.width ?? 360])) {
+      await page.setViewportSize({ width, height: viewport?.height ?? 800 });
+      await expectSkipsBelow(page, { oneRow: width >= 360 });
     }
-    expect(await overflow(page)).toBeLessThanOrEqual(0);
+  });
+});
+
+test.describe('at a desk', () => {
+  test.skip(({ isMobile }) => isMobile, 'desktop layout only');
+
+  test("a card's two numbers share a row, and what it skips is on a line below them", async ({
+    page,
+  }) => {
+    test.slow();
+    await openSkipping(page);
+    await expectSkipsBelow(page, { oneRow: true });
   });
 });
