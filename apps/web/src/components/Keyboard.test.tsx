@@ -436,46 +436,42 @@ describe("a combo's box", () => {
   const key = (cx: number, cy = 100): PlacedKey => ({ cx, cy, w: 58, h: 58, rx: 29, ry: 29 });
   const row = [32, 96, 160, 224, 288].map((x) => key(x));
   const board = [...row, ...row.map((k) => key(k.cx, 164))];
-  const place = (keys: number[], w = 27, h = 20) =>
-    placeCombos(board, [{ keys, w, h }], { gap: 6 })[0];
+  const place = (keys: number[], w = 27, h = 20) => placeCombos(board, [{ keys, w, h }])[0];
 
-  it('sits on the gap between two neighbours, with no lines', () => {
-    expect(place([0, 1])).toMatchObject({ x: 64, y: 100, align: 'mid', lines: [] });
+  it('sits on the gap between two neighbours', () => {
+    expect(place([0, 1])).toEqual({ x: 64, y: 100, w: 27, h: 20 });
     // One above the other, and diagonal, too.
-    expect(place([1, 6])).toMatchObject({ x: 96, y: 132, align: 'mid' });
-    expect(place([1, 7])).toMatchObject({ x: 128, y: 132, align: 'mid' });
+    expect(place([1, 6])).toMatchObject({ x: 96, y: 132 });
+    expect(place([1, 7])).toMatchObject({ x: 128, y: 132 });
   });
 
-  it('sits on the gap above three keys in a row, with a line into each', () => {
-    const c = place([5, 6, 7]);
-    expect(c).toMatchObject({ x: 96, align: 'top' });
-    // Between the rows, on the gap above the middle key.
-    expect(c?.y).toBeCloseTo(132, 6);
-    expect(c?.lines.map((l) => l.key)).toEqual([5, 6, 7]);
-  });
-
-  it('is not drawn on the board for keys apart', () => {
-    // A key between them, keys in no one row, and the board's top row with no gap above it.
+  it('is not drawn on the board for keys apart, or three or more', () => {
+    // A key between them, three in a row, and three in no one row.
     expect(place([0, 2])).toBeNull();
+    expect(place([5, 6, 7])).toBeNull();
     expect(place([0, 1, 6])).toBeNull();
-    expect(place([0, 1, 2])).toBeNull();
+  });
+
+  it('narrows, its legend smaller, to fit its gap clear of the legends either side', () => {
+    // Wider than the gap leaves room for, but narrow enough at its smallest size.
+    const c = placeCombos(board, [{ keys: [0, 1], w: 36, minW: 28, h: 20 }])[0];
+    expect(c).toMatchObject({ x: 64 });
+    expect(c?.w).toBeLessThanOrEqual(32);
+    // Too wide even at its narrowest, it is drawn apart.
+    expect(placeCombos(board, [{ keys: [0, 1], w: 40, minW: 36, h: 20 }])[0]).toBeNull();
   });
 
   it('is not drawn where it would cover another box', () => {
-    const [first, second] = placeCombos(
-      board,
-      [
-        { keys: [0, 1], w: 27, h: 20 },
-        { keys: [0, 1], w: 27, h: 20 },
-      ],
-      { gap: 6 },
-    );
+    const [first, second] = placeCombos(board, [
+      { keys: [0, 1], w: 27, h: 20 },
+      { keys: [0, 1], w: 27, h: 20 },
+    ]);
     expect(first).not.toBeNull();
     expect(second).toBeNull();
   });
 });
 
-/** Each drawn key's centre and cap, and each combo's box and lines, from a board as rendered. */
+/** Each drawn key's centre and cap, and each combo's box, from a board as rendered. */
 function drawn(compiled: CompiledLayout, layer: number) {
   const { container, unmount } = render(
     <Keyboard
@@ -508,13 +504,8 @@ function drawn(compiled: CompiledLayout, layer: number) {
       combo: g.getAttribute('data-combo'),
     };
   });
-  const lines = [...container.querySelectorAll('path.lb-combo-dendron')].map((p) => ({
-    combo: p.getAttribute('data-combo'),
-    to: p.getAttribute('data-to'),
-    corners: corners(p.getAttribute('d') ?? ''),
-  }));
   const viewBox = (container.querySelector('svg')?.getAttribute('viewBox') ?? '').split(' ');
-  return { container, unmount, keys, boxes, lines, width: Number(viewBox[2]) };
+  return { container, unmount, keys, boxes, width: Number(viewBox[2]) };
 }
 
 /**
@@ -532,25 +523,8 @@ function onLegend(box: Rect, k: Point): boolean {
   return Math.hypot(dx, dy) < LEGEND;
 }
 
-/** Whether any point along a line from `a` to `b` passes `test`, found by walking along it. */
-function passes(a: Point, b: Point, test: (p: Point) => boolean): boolean {
-  const steps = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y)));
-  for (let i = 0; i <= steps; i++) {
-    if (test({ x: a.x + ((b.x - a.x) * i) / steps, y: a.y + ((b.y - a.y) * i) / steps })) {
-      return true;
-    }
-  }
-  return false;
-}
-
-const inRect = (p: Point, box: Rect) =>
-  Math.abs(p.x - box.x) < box.w / 2 && Math.abs(p.y - box.y) < box.h / 2;
-
-/**
- * What crowds a board: a box on another, on a key's legend, or off the drawing; a line across the
- * legend of a key it does not end in, under a box not its own, or not ending in its key.
- */
-function crowded({ boxes, keys, lines, width }: ReturnType<typeof drawn>): string[] {
+/** What crowds a board: a box on another, on a key's legend, or off the drawing. */
+function crowded({ boxes, keys, width }: ReturnType<typeof drawn>): string[] {
   const faults: string[] = [];
   boxes.forEach((a, i) => {
     for (const b of boxes.slice(i + 1)) {
@@ -563,51 +537,17 @@ function crowded({ boxes, keys, lines, width }: ReturnType<typeof drawn>): strin
     }
     if (a.x - a.w / 2 < 0 || a.x + a.w / 2 > width) faults.push(`${a.name} off the drawing`);
   });
-  const name = (combo: string | null) => boxes.find((b) => b.combo === combo)?.name;
-  for (const line of lines) {
-    line.corners.slice(1).forEach((b, i) => {
-      const a = line.corners[i];
-      for (const [id, k] of keys) {
-        if (id === line.to) continue;
-        if (passes(a, b, (p) => Math.hypot(p.x - k.cx, p.y - k.cy) < LEGEND)) {
-          faults.push(`${name(line.combo)}: a line across key ${id}`);
-        }
-      }
-      for (const box of boxes.filter((x) => x.combo !== line.combo)) {
-        if (passes(a, b, (p) => inRect(p, box))) {
-          faults.push(`${name(line.combo)}: a line under ${box.name}`);
-        }
-      }
-    });
-    const to = keys.get(line.to);
-    const last = line.corners[line.corners.length - 1];
-    if (!to || !inRect(last, { x: to.cx, y: to.cy, w: to.w, h: to.h })) {
-      faults.push(`${name(line.combo)}: a line not ending in ${line.to}`);
-    }
-  }
   return faults;
-}
-
-/**
- * The corners of a line, its bends squared: where it starts, the point of each `L`, the corner a
- * rounded bend (`Q`) cuts, and where it ends.
- */
-function corners(d: string): Point[] {
-  return (d.match(/[MLQ][^MLQ]*/g) ?? []).map((step) => {
-    const [x, y] = step.slice(1).trim().split(/\s+/).map(Number);
-    return { x, y };
-  });
 }
 
 describe("T-34's combos, as Keymap Drawer draws them", () => {
   const t34 = compileLayout(bundledLayout('t-34')!);
   const combos = typingCombos(t34, 0);
 
-  it('draws those on neighbouring keys and in rows on the board, named as before', () => {
+  it('draws those on two neighbouring keys on the board, named as before', () => {
     const { boxes, keys } = drawn(t34, 0);
     const names = boxes.map((b) => b.name);
     expect(names).toContain('Edit combo LHM + LHI: Esc / Symb');
-    expect(names).toContain('Edit combo RBI + RBM + RBR: Swed');
     // A thumb just under its bottom-row key is its neighbour.
     expect(names).toContain('Edit combo L0 + LBI: %');
     const q = boxes.find((b) => b.name === 'Edit combo LTP + LTR: q');
@@ -620,7 +560,7 @@ describe("T-34's combos, as Keymap Drawer draws them", () => {
     const { boxes } = drawn(t34, 0);
     expect(apart.length + boxes.length).toBe(combos.length);
     expect(apart.map((c) => c.label)).toEqual(
-      expect.arrayContaining(['|', '~', 'https://', 'Numb', '"']),
+      expect.arrayContaining(['|', '~', 'https://', 'Numb', '"', 'Swed']),
     );
     // Not one of them is drawn among the keys.
     const drawnNames = new Set(boxes.map((b) => b.name));
@@ -630,7 +570,7 @@ describe("T-34's combos, as Keymap Drawer draws them", () => {
     }
   });
 
-  it('lets no box overlap another or a legend, and runs no line across one', () => {
+  it('lets no box overlap another or a legend', () => {
     expect(crowded(drawn(t34, 0))).toEqual([]);
   });
 });
@@ -659,9 +599,7 @@ describe('the combos on keys apart', () => {
     const user = userEvent.setup();
     const onComboClick = vi.fn();
     render(<CombosApart compiled={t34} layer={0} combos={apart} onComboClick={onComboClick} />);
-    await user.click(
-      screen.getByRole('button', { name: `${apart.length} more combos on Base, on keys apart` }),
-    );
+    await user.click(screen.getByRole('button', { name: `${apart.length} more combos on Base` }));
     const dialog = screen.getByRole('dialog', { name: 'Combos on Base' });
     const list = within(dialog).getByRole('list', { name: 'Combos on Base' });
     expect(within(list).getAllByRole('listitem')).toHaveLength(apart.length);

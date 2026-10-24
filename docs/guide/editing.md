@@ -405,7 +405,7 @@ The other panels hold what is not on a single key:
   by the analysis as a key would be: it types, adapts to the key before it, accents the next letter,
   turns a layer on, or, held, does what its hold does; a tap dance on a combo types its second part
   when its keys are pressed together twice. The board draws it on the gap between its keys, its hold
-  small under what it types; one on keys apart is among the combos beside **Heat**. Every combo in
+  small under what it types; one on more keys, or keys apart, is among the combos beside **Heat**. Every combo in
   the list can also be changed where it stands: type another output in its field (what the syntax
   cannot read is refused, and the combo keeps its output; a combo whose output the syntax cannot
   write, such as a tap-hold, shows it there and is edited in the combo editor), **pick again** and

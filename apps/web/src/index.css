@@ -429,23 +429,12 @@
 }
 
 /*
- * Combos, as Keymap Drawer draws them: a box on the gap between the keys pressed together, or on
- * the gap above a row of three with a short line into each; lit while one is played.
+ * Combos on two neighbouring keys, as Keymap Drawer draws them: a box on the gap between the keys
+ * pressed together; lit while one is played.
  */
 .lb-combos,
 .lb-arc {
   pointer-events: none;
-}
-/* A line stays a pixel wide, however small the board is drawn. */
-.lb-combo-dendron {
-  fill: none;
-  stroke: color-mix(in oklab, var(--color-base-content) 50%, transparent);
-  stroke-width: 1;
-  vector-effect: non-scaling-stroke;
-}
-.lb-combo-dendron.lb-combo-lit {
-  stroke: var(--color-primary);
-  stroke-width: 2;
 }
 .lb-combo rect {
   fill: var(--color-base-100);

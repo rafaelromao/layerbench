@@ -40,8 +40,8 @@ export interface KeyboardHandle {
 }
 
 /**
- * A combo on the board: a small box with what it types, on the gap between the keys pressed
- * together to fire it. One on keys apart is drawn apart instead (`combosApart`, `CombosApart`).
+ * A combo on the board: a small box with what it types, on the gap between the two keys pressed
+ * together to fire it. One on more keys, or keys apart, is drawn apart (`combosApart`).
  */
 export interface KeyboardCombo {
   id: string;
@@ -117,22 +117,36 @@ export function comboPlace(
 }
 
 /**
- * A combo's box and its legends: wider for a longer legend, taller for a hold under it. A legend
- * too long for a cap's width is drawn smaller, then cut short; the combo's name still says it all.
+ * A combo's legends in a box `width` wide: what it types, and what it does held, each on one line,
+ * smaller where it is long, then cut short; the combo's name still says it all.
+ */
+function comboLegends(c: Pick<KeyboardCombo, 'label' | 'tap' | 'hold'>, width: number) {
+  const room = Math.min(COMBO_TEXT, width - 2 * COMBO_PAD);
+  return {
+    tap: fitLabel(c.tap ?? c.label, room, 0, COMBO_SIZES),
+    hold: c.hold ? fitLabel(c.hold, room, 0, [COMBO_HOLD_SIZE]) : null,
+  };
+}
+
+/**
+ * A combo's box: wider for a longer legend, taller for a hold under it; and how narrow it may be
+ * drawn to fit its gap, its legend at the smallest size.
  */
 function comboBox(c: Pick<KeyboardCombo, 'label' | 'tap' | 'hold'>) {
-  // One line each: a box has no room for a second.
-  const tap = fitLabel(c.tap ?? c.label, COMBO_TEXT, 0, COMBO_SIZES);
-  const hold = c.hold ? fitLabel(c.hold, COMBO_TEXT, 0, [COMBO_HOLD_SIZE]) : null;
-  const text = Math.max(
-    textWidth(tap.lines[0], tap.size),
-    hold ? textWidth(hold.lines[0], hold.size) : 0,
-  );
+  const at = (sizes: readonly number[]) => {
+    const tap = fitLabel(c.tap ?? c.label, COMBO_TEXT, 0, sizes);
+    const hold = c.hold ? fitLabel(c.hold, COMBO_TEXT, 0, [COMBO_HOLD_SIZE]) : null;
+    const text = Math.max(
+      textWidth(tap.lines[0], tap.size),
+      hold ? textWidth(hold.lines[0], hold.size) : 0,
+    );
+    return Math.max(COMBO_W, Math.ceil(text) + 2 * COMBO_PAD);
+  };
+  const w = at(COMBO_SIZES);
   return {
-    tap,
-    hold,
-    w: Math.max(COMBO_W, Math.ceil(text) + 2 * COMBO_PAD),
-    h: hold ? COMBO_H_HELD : COMBO_H,
+    w,
+    minW: Math.min(w, at([COMBO_SIZES[COMBO_SIZES.length - 1]])),
+    h: c.hold ? COMBO_H_HELD : COMBO_H,
   };
 }
 
@@ -209,10 +223,7 @@ const COMBO_HOLD_SIZE = 8;
 /** The rounding of a combo's box. */
 const COMBO_RX = 5;
 
-/**
- * A combo's classes, for its box or its lines: dead, being played, open in the editor, or lit,
- * as one being played, open, pointed at or focused is.
- */
+/** A combo's classes: dead, being played, open in the editor, or pointed at or focused. */
 function comboClass(c: KeyboardCombo, base: string, open: number | null, lit: boolean): string {
   return `${base}${c.dead ? ' lb-combo-dead' : ''}${c.active ? ' lb-combo-active' : ''}${
     c.index === open ? ' lb-combo-open' : ''
@@ -271,26 +282,23 @@ export function keyCaps(compiled: CompiledLayout) {
   return { caps, width: view.width, height: view.height };
 }
 
-/** Each combo's box and legends, and where on the board it goes; null for one drawn apart. */
+/** Where on the board each combo's box goes; null for one drawn apart. */
 function comboPlacement(compiled: CompiledLayout, combos: readonly KeyboardCombo[]) {
-  const boxes = combos.map(comboBox);
-  const placed = placeCombos(
+  return placeCombos(
     keyCaps(compiled).caps,
-    combos.map((c, i) => ({ keys: c.keys, w: boxes[i].w, h: boxes[i].h })),
-    { gap: GAP },
+    combos.map((c) => ({ keys: c.keys, ...comboBox(c) })),
   );
-  return { boxes, placed };
 }
 
 /**
- * The combos a board does not draw among its keys: those on keys apart, or with no room on their
- * gap. A view lists them apart (`CombosApart`), each on a small board of its own.
+ * The combos a board does not draw among its keys: those on three or more keys, on keys apart, or
+ * with no room on their gap. A view lists them apart (`CombosApart`), each on a board of its own.
  */
 export function combosApart(
   compiled: CompiledLayout,
   combos: readonly KeyboardCombo[],
 ): KeyboardCombo[] {
-  const { placed } = comboPlacement(compiled, combos);
+  const placed = comboPlacement(compiled, combos);
   return combos.filter((_, i) => placed[i] === null);
 }
 
@@ -453,8 +461,8 @@ export interface KeyboardProps {
   /** Positions drawn as being pressed right now, such as a step of how a word is typed. */
   pressed?: number[];
   /**
-   * Combos to draw on the gaps between their keys; only the ones a view wants shown. Those on keys
-   * apart are left out (`combosApart`), for the view to list beside the board.
+   * Combos to draw on the gaps between their keys; only the ones a view wants shown. Those on more
+   * than two keys, or keys apart, are left out (`combosApart`), for the view to list beside it.
    */
   combos?: KeyboardCombo[];
   /** The combo, by place, drawn as open in an editor. */
@@ -607,7 +615,7 @@ export function Keyboard({
   });
 
   // Where the combos go depends only on where the keys are drawn and which combos there are.
-  const { boxes, placed } = useMemo(() => comboPlacement(compiled, combos), [compiled, combos]);
+  const placed = useMemo(() => comboPlacement(compiled, combos), [compiled, combos]);
 
   // Every key being a tab stop makes a 34-key board 34 stops; one stop plus arrows is what a grid
   // of controls is expected to do.
@@ -641,26 +649,8 @@ export function Keyboard({
 
   const listedKeys = keys.filter((k) => k.number !== null);
 
-  // A combo pointed at, focused, open or played lights its lines, a row's down into its keys.
-  const lit = (c: KeyboardCombo) =>
-    c.active === true || c.index === openCombo || c.index === pointed || c.index === focusedCombo;
-  const dendrons = (lighted: boolean) => (
-    <g className="lb-combo-dendrons">
-      {combos.map((c, i) =>
-        lit(c) === lighted
-          ? placed[i]?.lines.map((line) => (
-              <path
-                key={`${c.index}-${line.key}`}
-                d={line.path}
-                data-combo={c.index}
-                data-to={compiled.keys[line.key]?.id}
-                className={comboClass(c, 'lb-combo-dendron', openCombo, lighted)}
-              />
-            ))
-          : null,
-      )}
-    </g>
-  );
+  // A combo pointed at or focused is lit, its box outlined as its keys are.
+  const lit = (c: KeyboardCombo) => c.index === pointed || c.index === focusedCombo;
 
   const board = (
     // biome-ignore lint/a11y/useKeyWithClickEvents: a click between the keys is the pointer's way to put a pick away; the keyboard's is Escape on a key, which the view handles
@@ -879,12 +869,10 @@ export function Keyboard({
       {/* Above the keys, but never in the way of a tap or a drag on them. */}
       {combos.length > 0 && (
         <g className="lb-combos">
-          {/* Under every box, so that no line runs across the legend in one; a lit combo's over. */}
-          {dendrons(false)}
           {combos.map((c, i) => {
             const at = placed[i];
             if (!at) return null;
-            const box = boxes[i];
+            const box = comboLegends(c, at.w);
             const names = c.keys.map((p) => compiled.keys[p]?.id ?? '?').join(' + ');
             // Its colour marks a dead key to the eye; the words say it to everyone.
             const what = `${c.label}${c.dead ? ', dead key' : ''}`;
@@ -896,7 +884,6 @@ export function Keyboard({
                 className={`${comboClass(c, 'lb-combo', openCombo, lit(c))}${pick ? ' lb-combo-pickable' : ''}`}
                 transform={`translate(${fmt(at.x)} ${fmt(at.y)})`}
                 data-combo={c.index}
-                data-align={at.align}
                 role={pick ? 'button' : undefined}
                 tabIndex={pick ? 0 : undefined}
                 aria-label={pick ? `Edit combo ${names}: ${what}` : undefined}
@@ -943,7 +930,6 @@ export function Keyboard({
               </g>
             );
           })}
-          {dendrons(true)}
         </g>
       )}
 

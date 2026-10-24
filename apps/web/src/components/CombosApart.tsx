@@ -15,9 +15,10 @@ export interface CombosApartProps {
 }
 
 /**
- * The combos on keys apart, which the board does not draw: a small button beside the board on a
- * layer that has any, which opens them. Each is drawn once, on a small board of its own with its
- * keys filled, as Keymap Drawer draws a combo apart (`draw_separate`), with the layers it works on.
+ * The combos the board does not draw, on three or more keys or on keys apart: a small button
+ * beside the board on a layer that has any, which opens them. Each is drawn once, on a small board
+ * of its own with its keys filled, as Keymap Drawer draws a combo apart (`draw_separate`), with
+ * the layers it works on.
  */
 export function CombosApart({ compiled, layer, combos, onComboClick }: CombosApartProps) {
   const [open, setOpen] = useState(false);
@@ -29,7 +30,7 @@ export function CombosApart({ compiled, layer, combos, onComboClick }: CombosApa
         type="button"
         className="btn btn-xs btn-outline"
         aria-haspopup="dialog"
-        aria-label={`${combos.length} more ${combos.length === 1 ? 'combo' : 'combos'} on ${name}, on keys apart`}
+        aria-label={`${combos.length} more ${combos.length === 1 ? 'combo' : 'combos'} on ${name}`}
         onClick={() => setOpen(true)}
       >
         {combos.length} more {combos.length === 1 ? 'combo' : 'combos'}
@@ -72,8 +73,8 @@ function CombosApartDialog({
             Combos on {name}
           </h2>
           <p className="text-sm opacity-70">
-            These combos press keys apart, so the board does not draw them. Each one is drawn here
-            once, with its keys filled, and the layers it works on under it.
+            These combos press three or more keys, or keys apart, so the board does not draw them.
+            Each one is drawn here once, with its keys filled, and the layers it works on under it.
           </p>
         </header>
         <ul className="lb-combos-apart" aria-label={`Combos on ${name}`}>
