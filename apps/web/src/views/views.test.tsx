@@ -186,6 +186,20 @@ describe('Compare', () => {
     expect(boardA()).toContain('qu');
   });
 
+  it('reaches the combos a board does not draw, on the side that has them', async () => {
+    const user = userEvent.setup();
+    renderRoute('/compare?layout=t-34&b=graphite&sample=20000', { storage: freshStorage() });
+    await screen.findByRole('group', { name: 'Layers of A' });
+    const [a, b] = ['A', 'B'].map(
+      (side) => screen.getByRole('group', { name: `Layers of ${side}` }).closest('section')!,
+    );
+    const button = await within(a).findByRole('button', { name: '40 more combos on Base' });
+    expect(within(b).queryByRole('button', { name: /more combos? on/ })).toBeNull();
+    await user.click(button);
+    const dialog = screen.getByRole('dialog', { name: 'Combos on Base' });
+    expect(within(dialog).getAllByRole('figure')).toHaveLength(40);
+  });
+
   it('offers the custom layouts on both sides, as Analyze does', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();

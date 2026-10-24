@@ -1,5 +1,6 @@
 import type { CompiledLayout } from '@layerbench/core';
 import { useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { fmt } from './combo-layout.js';
 import { type KeyboardCombo, keyCaps } from './Keyboard.js';
 
@@ -22,6 +23,11 @@ export interface CombosApartProps {
    * last of these combos away: somewhere in the view, so that a second Undo still reaches it.
    */
   onLostFocus?: () => void;
+}
+
+/** What the button says for so many combos. */
+export function moreCombos(count: number): string {
+  return `${count} more ${count === 1 ? 'combo' : 'combos'}`;
 }
 
 /**
@@ -50,7 +56,7 @@ export function CombosApart({
   const button = useRef<HTMLButtonElement>(null);
   const name = compiled.layers[layer]?.name ?? '';
   const playing = combos.find((c) => c.active);
-  const count = `${combos.length} more ${combos.length === 1 ? 'combo' : 'combos'}`;
+  const count = moreCombos(combos.length);
   return (
     <>
       {combos.length > 0 && (
@@ -68,24 +74,28 @@ export function CombosApart({
           {count}
         </button>
       )}
-      {opened && (
-        <CombosApartDialog
-          compiled={opened.compiled}
-          live={compiled}
-          layer={opened.layer}
-          combos={opened.combos}
-          onComboClick={onComboClick}
-          onClose={() => {
-            setOpened(null);
-            // Back where it was opened from, however it closed, unless something it opened has
-            // taken focus; to the view, when the button is gone.
-            const at = document.activeElement;
-            if (at && at !== document.body && !at.closest('dialog')) return;
-            if (button.current) button.current.focus();
-            else onLostFocus?.();
-          }}
-        />
-      )}
+      {opened &&
+        // On the page itself, not in the view: a Library card moved as the list re-sorts would
+        // take the dialog out of the top layer, and Escape would no longer close it.
+        createPortal(
+          <CombosApartDialog
+            compiled={opened.compiled}
+            live={compiled}
+            layer={opened.layer}
+            combos={opened.combos}
+            onComboClick={onComboClick}
+            onClose={() => {
+              setOpened(null);
+              // Back where it was opened from, however it closed, unless something it opened has
+              // taken focus; to the view, when the button is gone.
+              const at = document.activeElement;
+              if (at && at !== document.body && !at.closest('dialog')) return;
+              if (button.current) button.current.focus();
+              else onLostFocus?.();
+            }}
+          />,
+          document.body,
+        )}
     </>
   );
 }

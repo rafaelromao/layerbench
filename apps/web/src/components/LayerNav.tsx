@@ -115,7 +115,9 @@ export function LayerNav({
   };
 
   const nameStyle = colour ? { color: colour } : undefined;
-  const nameClass = 'min-w-0 max-w-[10rem] truncate text-sm font-medium';
+  // The column holds the cap and the name fills it, so that a long name squeezed by what is beside
+  // the navigator shortens rather than covering the arrows.
+  const nameClass = 'min-w-0 max-w-full truncate text-sm font-medium';
 
   return (
     <fieldset
@@ -135,7 +137,7 @@ export function LayerNav({
     >
       {many && arrow(-1, '‹', 'Previous layer')}
       {/* The counter sits under the name, so a long name and the arrows keep one line. */}
-      <div className="flex min-w-0 flex-col items-center leading-tight">
+      <div className="flex min-w-0 max-w-[10rem] flex-col items-center leading-tight">
         {renaming === layer.id ? (
           <input
             ref={field}
