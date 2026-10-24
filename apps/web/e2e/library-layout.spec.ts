@@ -10,29 +10,29 @@ function overflow(page: Page): Promise<number> {
  * its accented letters, and say so below their numbers.
  */
 async function openSkipping(page: Page): Promise<void> {
-  await page.goto('/library?corpus=pt-br-general&sample=1000');
+  await page.goto('/library?corpus=pt-br-general&sample=10000');
   await expect(page.getByText(/^Lower is better for both/)).toBeVisible({ timeout: 120_000 });
 }
 
 /**
- * Every card that says what it skips has its note on a line below its two numbers, the note's text
- * inside it, and on a screen with room for both, the numbers on one row. Each card is measured in
- * one pass, so a card added late cannot move the others between measurements.
+ * Every card that says what it skips or lacks has each note on a line below its two numbers, the
+ * note's text inside it, and on a screen with room for both, the numbers on one row. Each card is
+ * measured in one pass, so a card added late cannot move the others between measurements.
  */
 async function expectSkipsBelow(page: Page, { oneRow }: { oneRow: boolean }): Promise<void> {
   const cards = await page.locator('article').evaluateAll((articles) =>
     articles.flatMap((card) => {
-      const note = card.querySelector('.lb-skips');
-      if (!note) return [];
+      const notes = [...card.querySelectorAll('.lb-skips, .lb-lacks')];
+      if (notes.length === 0) return [];
       const chips = [...card.querySelectorAll('dl > div')].map((c) => c.getBoundingClientRect());
-      const top = note.getBoundingClientRect().top;
+      const bottom = Math.max(...chips.map((c) => c.bottom));
       return [
         {
           name: card.querySelector('h3')?.textContent ?? '',
           chips: chips.length,
           oneRow: chips.every((c) => Math.abs(c.top - (chips[0]?.top ?? 0)) < 1),
-          below: chips.every((c) => top >= c.bottom),
-          inside: note.scrollWidth <= note.clientWidth,
+          below: notes.every((n) => n.getBoundingClientRect().top >= bottom),
+          inside: notes.every((n) => n.scrollWidth <= n.clientWidth),
         },
       ];
     }),
@@ -70,9 +70,8 @@ test.describe('on a phone', () => {
   }) => {
     test.slow();
     await openSkipping(page);
-    // 360px, the narrowest common Android phone, where beside the actions the numbers had room for
-    // only one a row; then the project's own phone. Narrower than 360px, the two numbers, up to
-    // 307px, wrap rather than scroll: an iPhone SE's card has 270px.
+    // 360px, the narrowest common Android phone, then the project's own phone. Below 360px the two
+    // numbers may wrap onto two rows, but must still not scroll.
     for (const width of new Set([360, viewport?.width ?? 360])) {
       await page.setViewportSize({ width, height: viewport?.height ?? 800 });
       await expectSkipsBelow(page, { oneRow: width >= 360 });

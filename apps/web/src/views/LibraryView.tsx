@@ -318,7 +318,7 @@ function LayoutCard({
           <div className="ml-auto flex shrink-0 gap-1">{actions}</div>
           {/* The card's whole width, below the actions: beside them, a phone has no room for both
               numbers on one row. */}
-          <div className="basis-full">
+          <div className="basis-full min-w-0">
             <Ranking summary={summary} bands={bands} lacking={lacking} nobodyCan={nobodyCan} />
           </div>
         </header>
