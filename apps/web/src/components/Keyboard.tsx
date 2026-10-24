@@ -15,13 +15,15 @@ import {
   type MouseEvent as ReactMouseEvent,
   type Ref,
   useCallback,
+  useEffect,
   useId,
   useImperativeHandle,
   useMemo,
   useRef,
   useState,
 } from 'react';
-import { type Fit, fitLabel, legendNumber } from './fit-label.js';
+import { fmt, placeCombos } from './combo-layout.js';
+import { type Fit, fitLabel, legendNumber, textWidth } from './fit-label.js';
 import { type Direction, nearestKey } from './key-nav.js';
 import { layerColourOf } from './layer-colour.js';
 import { type KeyDrop, TAP_SLOP, THRESHOLD, useKeyDrag } from './use-key-drag.js';
@@ -38,14 +40,22 @@ export interface KeyboardHandle {
   focusKey: (keyId: string) => void;
 }
 
-/** A combo on the board: a small legend between the keys pressed together to fire it. */
+/**
+ * A combo on the board: a small box with what it types, on the gap between the two keys pressed
+ * together to fire it. One on more keys, keys apart, or with no room on its gap, is drawn apart
+ * (`combosApart`).
+ */
 export interface KeyboardCombo {
   id: string;
   /** Its place in the layout's combos, which names it even where two share an id. */
   index: number;
   /** Positions of the keys pressed together. */
   keys: number[];
+  /** What it does, in words: what it types, and what it does held, as `? / ¿`. */
   label: string;
+  /** Drawn in the box: what it types, and, smaller under it, what it does held. */
+  tap?: string;
+  hold?: string;
   /** What it types is a dead key's accent, drawn as dead keys are. */
   dead?: boolean;
   /** Drawn as being pressed, as a step of how a word is typed is. */
@@ -68,12 +78,14 @@ export function typingCombos(
     .map((c) => {
       // What it types, and what it types when its keys are held together, as `? / ¿`.
       const l = legend(compiled, c.binding);
-      const held = l.hold !== null && !l.holdIsMode ? ` / ${l.hold}` : '';
+      const hold = l.hold !== null && !l.holdIsMode ? l.hold : null;
       return {
         id: c.id,
         index: c.idx,
         keys: c.keys,
-        label: `${l.tap || '·'}${held}`,
+        label: `${l.tap || '·'}${hold === null ? '' : ` / ${hold}`}`,
+        tap: l.tap || '·',
+        ...(hold === null ? {} : { hold }),
         ...(l.dead ? { dead: true } : {}),
         active: c.id === active,
       };
@@ -107,17 +119,37 @@ export function comboPlace(
 }
 
 /**
- * Where a combo's pill goes: halfway between its keys, unless that is on a key, as it is for three
- * keys in a row; then on the gap below that key, so that the pill does not hide its legend.
+ * A combo's legends in a box `width` wide: what it types, and what it does held, each on one line,
+ * smaller where it is long, then cut short; the combo's name still says it all.
  */
-export function comboPillAt(
-  points: readonly { x: number; y: number }[],
-  keys: readonly { cx: number; cy: number; w: number; h: number }[],
-): { x: number; y: number } {
-  const x = points.reduce((sum, p) => sum + p.x, 0) / points.length;
-  const y = points.reduce((sum, p) => sum + p.y, 0) / points.length;
-  const under = keys.find((k) => Math.abs(x - k.cx) < k.w / 2 && Math.abs(y - k.cy) < k.h / 2);
-  return under ? { x, y: under.cy + (under.h + GAP) / 2 } : { x, y };
+function comboLegends(c: Pick<KeyboardCombo, 'label' | 'tap' | 'hold'>, width: number) {
+  const room = Math.min(COMBO_TEXT, width - 2 * COMBO_PAD);
+  return {
+    tap: fitLabel(c.tap ?? c.label, room, 0, COMBO_SIZES),
+    hold: c.hold ? fitLabel(c.hold, room, 0, [COMBO_HOLD_SIZE]) : null,
+  };
+}
+
+/**
+ * A combo's box: wider for a longer legend, taller for a hold under it; and how narrow it may be
+ * drawn to fit its gap, its legend at the smallest size.
+ */
+function comboBox(c: Pick<KeyboardCombo, 'label' | 'tap' | 'hold'>) {
+  const at = (sizes: readonly number[]) => {
+    const tap = fitLabel(c.tap ?? c.label, COMBO_TEXT, 0, sizes);
+    const hold = c.hold ? fitLabel(c.hold, COMBO_TEXT, 0, [COMBO_HOLD_SIZE]) : null;
+    const text = Math.max(
+      textWidth(tap.lines[0], tap.size),
+      hold ? textWidth(hold.lines[0], hold.size) : 0,
+    );
+    return Math.max(COMBO_W, Math.ceil(text) + 2 * COMBO_PAD);
+  };
+  const w = at(COMBO_SIZES);
+  return {
+    w,
+    minW: Math.min(w, at([COMBO_SIZES[COMBO_SIZES.length - 1]])),
+    h: c.hold ? COMBO_H_HELD : COMBO_H,
+  };
 }
 
 /** How far a key reaches from its centre, across and down, turned the way it is drawn. */
@@ -177,6 +209,100 @@ const BAND = 12;
 const TOP = 9;
 const TAP_SIZES = [22, 19, 16, 14, 12, 10] as const;
 const SMALL_SIZES = [10, 9, 8, 7] as const;
+/**
+ * A combo's box: as wide as Keymap Drawer's `combo_w`, half a cap less 2, and only as tall as its
+ * legend needs, so that a box on the gap between two rows covers little of either; taller with a
+ * hold under it. Its legend at 11 and its hold at 8, as Keymap Drawer draws them, inside a padding
+ * of `COMBO_PAD`, and no wider than a cap.
+ */
+const COMBO_W = 27;
+const COMBO_H = 20;
+const COMBO_H_HELD = 28;
+const COMBO_PAD = 4;
+const COMBO_TEXT = UNIT - GAP - 2 * COMBO_PAD;
+const COMBO_SIZES = [11, 10, 9, 8] as const;
+const COMBO_HOLD_SIZE = 8;
+/** The rounding of a combo's box. */
+const COMBO_RX = 5;
+
+/** A combo's classes: dead, being played, open in the editor, or pointed at or focused. */
+function comboClass(c: KeyboardCombo, base: string, open: number | null, lit: boolean): string {
+  return `${base}${c.dead ? ' lb-combo-dead' : ''}${c.active ? ' lb-combo-active' : ''}${
+    c.index === open ? ' lb-combo-open' : ''
+  }${lit ? ' lb-combo-lit' : ''}`;
+}
+
+/**
+ * Where a layout's keys are drawn: each one's place across (`drawnX`), and the drawing, as wide as
+ * its keys reach, turned thumbs included, and a hair more, with its top-left in key units.
+ */
+export function boardGeometry(compiled: CompiledLayout) {
+  const xs = drawnX(compiled.keys);
+  let minX = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  compiled.keys.forEach((k, i) => {
+    const r = reach(k);
+    minX = Math.min(minX, xs[i] - r.x);
+    maxX = Math.max(maxX, xs[i] + r.x);
+    minY = Math.min(minY, k.y - r.y);
+    maxY = Math.max(maxY, k.y + r.y);
+  });
+  if (!Number.isFinite(minX)) {
+    return { xs, view: { ox: 0, oy: 0, width: UNIT, height: UNIT, units: 1 } };
+  }
+  const units = maxX - minX + 2 * MARGIN_X;
+  const view = {
+    ox: minX - MARGIN_X,
+    oy: minY - MARGIN_Y,
+    width: units * UNIT,
+    height: (maxY - minY + 2 * MARGIN_Y) * UNIT,
+    units,
+  };
+  return { xs, view };
+}
+
+/**
+ * Each key's cap as the board draws it, in the drawing's own units: its centre, its size and its
+ * turn, and how far it reaches across and down; with the drawing's size.
+ */
+export function keyCaps(compiled: CompiledLayout) {
+  const { xs, view } = boardGeometry(compiled);
+  const caps = compiled.keys.map((k, i) => {
+    const r = reach(k);
+    return {
+      cx: (xs[i] - view.ox) * UNIT,
+      cy: (k.y - view.oy) * UNIT,
+      w: k.w * UNIT - GAP,
+      h: k.h * UNIT - GAP,
+      rotation: k.rotation,
+      rx: r.x * UNIT - GAP / 2,
+      ry: r.y * UNIT - GAP / 2,
+    };
+  });
+  return { caps, width: view.width, height: view.height };
+}
+
+/** Where on the board each combo's box goes; null for one drawn apart. */
+function comboPlacement(compiled: CompiledLayout, combos: readonly KeyboardCombo[]) {
+  return placeCombos(
+    keyCaps(compiled).caps,
+    combos.map((c) => ({ keys: c.keys, ...comboBox(c) })),
+  );
+}
+
+/**
+ * The combos a board does not draw among its keys: those on three or more keys, on keys apart, or
+ * with no room on their gap. A view lists them apart (`CombosApart`), each on a board of its own.
+ */
+export function combosApart(
+  compiled: CompiledLayout,
+  combos: readonly KeyboardCombo[],
+): KeyboardCombo[] {
+  const placed = comboPlacement(compiled, combos);
+  return combos.filter((_, i) => placed[i] === null);
+}
 
 /** A layer's colour: the one it chose, or its place's; none for a base layer that chose none. */
 export function layerColourAt(compiled: CompiledLayout, idx: number): string | undefined {
@@ -336,11 +462,15 @@ export interface KeyboardProps {
   highlight?: number[];
   /** Positions drawn as being pressed right now, such as a step of how a word is typed. */
   pressed?: number[];
-  /** Combos to draw between their keys; only the ones a view wants shown. */
+  /**
+   * Combos to draw on the gaps between their keys; only the ones a view wants shown. Those on more
+   * than two keys, keys apart, or with no room on their gap, are left out (`combosApart`), for the
+   * view to list beside it.
+   */
   combos?: KeyboardCombo[];
   /** The combo, by place, drawn as open in an editor. */
   openCombo?: number | null;
-  /** A combo's pill picked, by the combo's place; without it the pills are only drawn. */
+  /** A combo's box picked, by the combo's place; without it the boxes are only drawn. */
   onComboClick?: (index: number) => void;
   /** Key id drawn as selected. */
   selected?: string | null;
@@ -381,10 +511,6 @@ export interface KeyboardProps {
   ref?: Ref<KeyboardHandle>;
 }
 
-function fmt(n: number): string {
-  return n.toFixed(2);
-}
-
 /**
  * The keyboard as an SVG. Geometry comes from the compiled layout, so a 24-key split and a 60%
  * board draw through the same code; only the key coordinates differ.
@@ -417,6 +543,9 @@ export function Keyboard({
   const nodes = useRef<Record<string, SVGGElement | null>>({});
   // Which key holds the single tab stop. It follows focus, so tabbing back returns where you were.
   const [focused, setFocused] = useState<string | null>(null);
+  // The combo the pointer is on, and the one focus is on: either outlines its keys.
+  const [pointed, setPointed] = useState<number | null>(null);
+  const [focusedCombo, setFocusedCombo] = useState<number | null>(null);
   const generatedId = useId();
 
   useImperativeHandle(
@@ -432,30 +561,7 @@ export function Keyboard({
   const highlighted = useMemo(() => new Set(highlight), [highlight]);
   const pressing = useMemo(() => new Set(pressed), [pressed]);
 
-  const xs = useMemo(() => drawnX(compiled.keys), [compiled]);
-  // The drawing is as wide as its keys reach, turned thumbs included, and a hair more.
-  const view = useMemo(() => {
-    let minX = Number.POSITIVE_INFINITY;
-    let maxX = Number.NEGATIVE_INFINITY;
-    let minY = Number.POSITIVE_INFINITY;
-    let maxY = Number.NEGATIVE_INFINITY;
-    compiled.keys.forEach((k, i) => {
-      const r = reach(k);
-      minX = Math.min(minX, xs[i] - r.x);
-      maxX = Math.max(maxX, xs[i] + r.x);
-      minY = Math.min(minY, k.y - r.y);
-      maxY = Math.max(maxY, k.y + r.y);
-    });
-    if (!Number.isFinite(minX)) return { ox: 0, oy: 0, width: UNIT, height: UNIT, units: 1 };
-    const units = maxX - minX + 2 * MARGIN_X;
-    return {
-      ox: minX - MARGIN_X,
-      oy: minY - MARGIN_Y,
-      width: units * UNIT,
-      height: (maxY - minY + 2 * MARGIN_Y) * UNIT,
-      units,
-    };
-  }, [compiled, xs]);
+  const { xs, view } = useMemo(() => boardGeometry(compiled), [compiled]);
 
   const legendOf = useCallback(
     (keyId: string) => {
@@ -493,11 +599,26 @@ export function Keyboard({
   const shownColour = layerColourAt(compiled, layerIdx);
   const shownName = compiled.layers[layerIdx]?.name ?? '';
 
+  // Where the combos go depends only on where the keys are drawn and which combos there are.
+  const placed = useMemo(() => comboPlacement(compiled, combos), [compiled, combos]);
+  // A box that goes, as the board turns to another layer while a word plays, takes its pointer and
+  // its focus with it: it hears no leave, and would come back lit.
+  useEffect(() => {
+    const drawn = (index: number) => combos.some((c, i) => c.index === index && placed[i] !== null);
+    if (pointed !== null && !drawn(pointed)) setPointed(null);
+    if (focusedCombo !== null && !drawn(focusedCombo)) setFocusedCombo(null);
+  }, [combos, placed, pointed, focusedCombo]);
+
+  // A combo pointed at or focused outlines its keys, as zmk-layer-hud rings a combo's keys.
+  const shown = combos.filter((c) => c.index === pointed || c.index === focusedCombo);
+  const outlined =
+    shown.length === 0 ? highlighted : new Set([...highlighted, ...shown.flatMap((c) => c.keys)]);
+
   const keys = modelKeys(compiled, layerIdx, {
     showHold,
     numbered: legendList !== false,
     heat,
-    highlighted,
+    highlighted: outlined,
     pressed: pressing,
     selected,
     alsoSelected,
@@ -537,6 +658,9 @@ export function Keyboard({
   };
 
   const listedKeys = keys.filter((k) => k.number !== null);
+
+  // A combo pointed at or focused is lit, its box outlined as its keys are.
+  const lit = (c: KeyboardCombo) => c.index === pointed || c.index === focusedCombo;
 
   const board = (
     // biome-ignore lint/a11y/useKeyWithClickEvents: a click between the keys is the pointer's way to put a pick away; the keyboard's is Escape on a key, which the view handles
@@ -755,11 +879,10 @@ export function Keyboard({
       {/* Above the keys, but never in the way of a tap or a drag on them. */}
       {combos.length > 0 && (
         <g className="lb-combos">
-          {combos.map((c) => {
-            const points = c.keys.map(centerOf).filter((p) => p !== null);
-            if (points.length === 0) return null;
-            const { x, y } = comboPillAt(points, keys);
-            const width = Math.max(20, [...c.label].length * 7 + 12);
+          {combos.map((c, i) => {
+            const at = placed[i];
+            if (!at) return null;
+            const box = comboLegends(c, at.w);
             const names = c.keys.map((p) => compiled.keys[p]?.id ?? '?').join(' + ');
             // Its colour marks a dead key to the eye; the words say it to everyone.
             const what = `${c.label}${c.dead ? ', dead key' : ''}`;
@@ -768,12 +891,17 @@ export function Keyboard({
               // biome-ignore lint/a11y/noStaticElementInteractions: an SVG group has no button element to be; it takes the role, the focus and the keys of one when it can be picked.
               <g
                 key={c.index}
-                className={`lb-combo${c.dead ? ' lb-combo-dead' : ''}${c.active ? ' lb-combo-active' : ''}${pick ? ' lb-combo-pickable' : ''}${c.index === openCombo ? ' lb-combo-open' : ''}`}
-                transform={`translate(${fmt(x)} ${fmt(y)})`}
+                className={`${comboClass(c, 'lb-combo', openCombo, lit(c))}${pick ? ' lb-combo-pickable' : ''}`}
+                transform={`translate(${fmt(at.x)} ${fmt(at.y)})`}
+                data-combo={c.index}
                 role={pick ? 'button' : undefined}
                 tabIndex={pick ? 0 : undefined}
                 aria-label={pick ? `Edit combo ${names}: ${what}` : undefined}
                 onClick={pick}
+                onPointerEnter={pick ? () => setPointed(c.index) : undefined}
+                onPointerLeave={pick ? () => setPointed(null) : undefined}
+                onFocus={pick ? () => setFocusedCombo(c.index) : undefined}
+                onBlur={pick ? () => setFocusedCombo(null) : undefined}
                 onKeyDown={
                   pick
                     ? (e) => {
@@ -785,10 +913,30 @@ export function Keyboard({
                 }
               >
                 <title>{`Combo ${names}: ${what}`}</title>
-                <rect x={fmt(-width / 2)} y="-9" width={fmt(width)} height="18" rx="9" />
-                <text y="4" textAnchor="middle" fontSize="11">
-                  {c.label}
+                <rect
+                  x={fmt(-at.w / 2)}
+                  y={fmt(-at.h / 2)}
+                  width={fmt(at.w)}
+                  height={fmt(at.h)}
+                  rx={COMBO_RX}
+                />
+                <text
+                  y={fmt(box.hold ? -at.h / 2 + 12 : 4)}
+                  textAnchor="middle"
+                  fontSize={box.tap.size}
+                >
+                  {box.tap.lines[0]}
                 </text>
+                {box.hold && (
+                  <text
+                    y={fmt(at.h / 2 - 4)}
+                    textAnchor="middle"
+                    className="lb-combo-hold"
+                    fontSize={box.hold.size}
+                  >
+                    {box.hold.lines[0]}
+                  </text>
+                )}
               </g>
             );
           })}

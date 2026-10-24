@@ -428,7 +428,10 @@
   stroke-width: 3;
 }
 
-/* Combos: a pill between the keys pressed together, lit while one is played. */
+/*
+ * Combos on two neighbouring keys, as Keymap Drawer draws them: a box on the gap between the keys
+ * pressed together; lit while one is played.
+ */
 .lb-combos,
 .lb-arc {
   pointer-events: none;
@@ -443,6 +446,10 @@
   fill: var(--color-base-content);
   font-weight: 600;
 }
+/* What it does held, smaller and lighter under what it types, as on a key's band. */
+.lb-combo .lb-combo-hold {
+  font-weight: 500;
+}
 /* A combo that arms an accent, drawn as a dead key on a key is. */
 .lb-combo-dead text {
   fill: var(--lb-legend-dead);
@@ -453,13 +460,16 @@
 .lb-combo-active text {
   fill: var(--color-primary-content);
 }
-/* A pill that opens its combo in the editor takes clicks, though the rest of the layer does not. */
+/* A box that opens its combo in the editor takes clicks, though the rest of the layer does not. */
 .lb-combo-pickable {
   pointer-events: auto;
   cursor: pointer;
 }
 .lb-combo-pickable:focus-visible {
   outline: none;
+}
+.lb-combo-lit rect {
+  stroke: var(--color-primary);
 }
 .lb-combo-pickable:focus-visible rect,
 .lb-combo-open rect {
@@ -470,6 +480,82 @@
   .lb-combo rect {
     transition: none;
   }
+}
+
+/*
+ * Combos on keys apart, which the board does not draw: each once, on a small board of its own
+ * with its keys filled, as Keymap Drawer draws a combo apart; two to a phone's row.
+ */
+.lb-combos-apart {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lb-combos-apart > li {
+  min-width: 0;
+}
+.lb-combo-apart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0.5rem;
+  border: 1px solid var(--color-base-300);
+  border-radius: 0.5rem;
+  background: var(--color-base-100);
+  text-align: center;
+}
+button.lb-combo-apart {
+  cursor: pointer;
+}
+button.lb-combo-apart:hover,
+button.lb-combo-apart:focus-visible {
+  border-color: var(--color-primary);
+  outline: none;
+}
+/* A long legend, such as a macro's, wraps where it must rather than run out of its card. */
+.lb-combo-apart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0.35rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 600;
+}
+.lb-combo-apart-legend.lb-combo-dead {
+  color: var(--lb-legend-dead);
+}
+.lb-combo-apart-tap {
+  font-size: 1.125rem;
+  min-width: 0;
+}
+.lb-combo-apart-hold,
+.lb-combo-apart-layers {
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+.lb-combo-apart-board {
+  width: 100%;
+  height: auto;
+}
+.lb-combo-apart-key {
+  fill: var(--lb-key-bg);
+  stroke: var(--lb-key-stroke);
+  stroke-width: 3;
+}
+.lb-combo-apart-key-on {
+  fill: var(--color-primary);
+  stroke: var(--color-primary);
 }
 
 .lb-dragging .lb-key {
@@ -639,9 +725,9 @@
   opacity: 0.6;
   font-family: ui-sans-serif, system-ui, sans-serif;
 }
-/* A combo's cap is drawn as its pill is on the board. */
+/* A combo's cap is drawn as its box is on the board. */
 .lb-inspector-cap-combo {
-  border-radius: 999px;
+  background: var(--color-base-100);
   border-color: color-mix(in oklab, var(--color-primary) 75%, transparent);
 }
 

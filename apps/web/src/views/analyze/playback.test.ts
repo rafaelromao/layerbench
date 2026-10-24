@@ -81,6 +81,7 @@ describe('the combos a board shows', () => {
         // The outer thumbs pressed together.
         keys: ['L1', 'R1'].map((id) => nordrassil.keyIndex.get(id)),
         label: 'Acce',
+        tap: 'Acce',
         active: false,
       },
     ]);
@@ -92,7 +93,7 @@ describe('the combos a board shows', () => {
   });
 });
 
-describe("a pill's combo in the layout", () => {
+describe("a box's combo in the layout", () => {
   it('is found by its id and keys when typing combos are left out of the analysis', () => {
     // A combo that types before Nordrassil's Accents combo, which only reaches a layer and stays.
     const nordrassil = bundledLayout('nordrassil') as Layout;

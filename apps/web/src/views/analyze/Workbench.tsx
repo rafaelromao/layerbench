@@ -25,12 +25,14 @@ import {
 } from 'react';
 import { proposeChange } from '../../auth/github-session.js';
 import { Collapsible } from '../../components/Collapsible.js';
+import { CombosApart } from '../../components/CombosApart.js';
 import { ErrorAlert } from '../../components/ErrorAlert.js';
 import { FamilyFilter, METRIC_FAMILIES, useFamilyShown } from '../../components/FamilyFilter.js';
 import { featureList } from '../../components/FeatureSwitches.js';
 import { HelpLink } from '../../components/HelpLink.js';
 import {
   comboPlace,
+  combosApart,
   Keyboard,
   type KeyboardHandle,
   KeyLegend,
@@ -571,15 +573,22 @@ export function Workbench({
   const hasTypingCombos = typedCompiled.combos.some((c) => c.role === 'typing');
   const boardCombos = useMemo(() => {
     const all = typingCombos(typedCompiled, boardLayer, frame?.combo ?? null);
-    // Hidden, a combo still shows while it is the press being played.
+    // Hidden, a combo on the board still shows while it is the press being played.
     return showCombos ? all : all.filter((c) => c.active);
   }, [typedCompiled, boardLayer, frame, showCombos]);
+  // The combos the board leaves to the button beside it, none while hidden. The board places the
+  // same list on the same keys (`typedCompiled` keeps `state.compiled`'s), so the two agree on
+  // which combos it draws and which it leaves out.
+  const apart = useMemo(
+    () => (showCombos ? combosApart(typedCompiled, boardCombos) : []),
+    [typedCompiled, boardCombos, showCombos],
+  );
 
   // Everything the board outlines: a key armed for a swap, the keys picked for a combo, the keys of
   // the combo open in the editor or one a panel points at, and an outlined pair or word.
   const openCombo = state.combo === null ? undefined : state.layout.combos?.[state.combo];
   const placeOf = (typed: number) => comboPlace(state.compiled, typedCompiled, typed);
-  const openPill =
+  const openBox =
     state.combo === null
       ? null
       : (boardCombos.find((c) => placeOf(c.index) === state.combo)?.index ?? null);
@@ -905,7 +914,7 @@ export function Workbench({
                         highlight={highlighted}
                         pressed={frame?.keys ?? []}
                         combos={boardCombos}
-                        openCombo={openPill}
+                        openCombo={openBox}
                         onComboClick={(combo) => {
                           // While keys are being picked for a combo, they are all the board is doing.
                           if (state.comboPick) return;
@@ -983,6 +992,21 @@ export function Workbench({
                           </option>
                         ))}
                       </select>
+                      <CombosApart
+                        compiled={typedCompiled}
+                        layer={boardLayer}
+                        combos={apart}
+                        // The board would turn under the dialog as a word plays.
+                        onOpen={stopPlaying}
+                        onLostFocus={() =>
+                          focusKey(state.selected ?? state.compiled.keys[0]?.id ?? '')
+                        }
+                        onComboClick={(combo) => {
+                          if (state.comboPick) return;
+                          stopPlaying();
+                          send({ type: 'selectCombo', combo: placeOf(combo) });
+                        }}
+                      />
                       {loading && (
                         <span
                           className="loading loading-spinner loading-xs"

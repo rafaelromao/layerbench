@@ -1,8 +1,15 @@
-import { bundledLayout, compileLayout } from '@layerbench/core';
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  BUNDLED_LAYOUTS,
+  bundledLayout,
+  type CompiledLayout,
+  compileLayout,
+} from '@layerbench/core';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { comboPillAt, drawnX, Keyboard, KeyLegend, reach } from './Keyboard.js';
+import { CombosApart, worksOn } from './CombosApart.js';
+import { type PlacedKey, placeCombos } from './combo-layout.js';
+import { combosApart, drawnX, Keyboard, KeyLegend, reach, typingCombos } from './Keyboard.js';
 
 const qwerty = compileLayout(bundledLayout('qwerty')!);
 const romak = compileLayout(bundledLayout('magic-romak')!);
@@ -406,7 +413,7 @@ describe('a click on the board between the keys', () => {
     expect(onKeyClick).toHaveBeenCalledTimes(1);
   });
 
-  it('is not a click between the keys on a combo’s pill', async () => {
+  it('is not a click between the keys on a combo’s box', async () => {
     const user = userEvent.setup();
     const onEmptyClick = vi.fn();
     const onComboClick = vi.fn();
@@ -424,29 +431,299 @@ describe('a click on the board between the keys', () => {
   });
 });
 
-describe("a combo's pill", () => {
-  const key = (cx: number) => ({ cx, cy: 50, w: 54, h: 54 });
-  const row = [key(30), key(90), key(150)];
+describe("a combo's box", () => {
+  /** Two rows of keys a key apart, as the board draws them: caps of 58 on a pitch of 64. */
+  const key = (cx: number, cy = 100): PlacedKey => ({ cx, cy, w: 58, h: 58, rx: 29, ry: 29 });
+  const row = [32, 96, 160, 224, 288].map((x) => key(x));
+  const board = [...row, ...row.map((k) => key(k.cx, 164))];
+  const place = (keys: number[], w = 27, h = 20) => placeCombos(board, [{ keys, w, h }])[0];
 
-  it('sits halfway between two keys, on the gap', () => {
-    expect(
-      comboPillAt(
-        [row[0], row[1]].map(({ cx, cy }) => ({ x: cx, y: cy })),
-        row,
-      ),
-    ).toEqual({
-      x: 60,
-      y: 50,
-    });
+  it('sits on the gap between two neighbours', () => {
+    expect(place([0, 1])).toEqual({ x: 64, y: 100, w: 27, h: 20 });
+    // One above the other, and diagonal, too.
+    expect(place([1, 6])).toMatchObject({ x: 96, y: 132 });
+    expect(place([1, 7])).toMatchObject({ x: 128, y: 132 });
   });
 
-  it('moves to the gap below the middle key of three in a row, off its legend', () => {
+  it('is not drawn on the board for keys apart, or three or more', () => {
+    // A key between them, three in a row, and three in no one row.
+    expect(place([0, 2])).toBeNull();
+    expect(place([5, 6, 7])).toBeNull();
+    expect(place([0, 1, 6])).toBeNull();
+  });
+
+  it('narrows, its legend smaller, to fit its gap clear of the legends either side', () => {
+    // Wider than the gap leaves room for, but narrow enough at its smallest size.
+    const c = placeCombos(board, [{ keys: [0, 1], w: 36, minW: 28, h: 20 }])[0];
+    expect(c).toMatchObject({ x: 64 });
+    expect(c?.w).toBeLessThanOrEqual(32);
+    // Too wide even at its narrowest, it is drawn apart.
+    expect(placeCombos(board, [{ keys: [0, 1], w: 40, minW: 36, h: 20 }])[0]).toBeNull();
+  });
+
+  it('is not drawn where it would cover another box', () => {
+    const [first, second] = placeCombos(board, [
+      { keys: [0, 1], w: 27, h: 20 },
+      { keys: [0, 1], w: 27, h: 20 },
+    ]);
+    expect(first).not.toBeNull();
+    expect(second).toBeNull();
+  });
+});
+
+/** Each drawn key's centre and cap, and each combo's box, from a board as rendered. */
+function drawn(compiled: CompiledLayout, layer: number) {
+  const { container, unmount } = render(
+    <Keyboard
+      compiled={compiled}
+      layer={layer}
+      combos={typingCombos(compiled, layer)}
+      onComboClick={() => {}}
+    />,
+  );
+  const at = (g: Element) => {
+    const m = /translate\(([-\d.]+) ([-\d.]+)\)/.exec(g.getAttribute('transform') ?? '');
+    return { x: Number(m?.[1]), y: Number(m?.[2]) };
+  };
+  const keys = new Map(
+    [...container.querySelectorAll('g[data-key]')].map((g) => {
+      const rect = g.querySelector('rect');
+      const w = Number(rect?.getAttribute('width'));
+      const h = Number(rect?.getAttribute('height'));
+      const { x, y } = at(g);
+      return [g.getAttribute('data-key'), { cx: x, cy: y, w, h }];
+    }),
+  );
+  const boxes = [...container.querySelectorAll('g.lb-combo')].map((g) => {
+    const rect = g.querySelector('rect');
+    return {
+      ...at(g),
+      w: Number(rect?.getAttribute('width')),
+      h: Number(rect?.getAttribute('height')),
+      name: g.getAttribute('aria-label') ?? '',
+      combo: g.getAttribute('data-combo'),
+    };
+  });
+  const viewBox = (container.querySelector('svg')?.getAttribute('viewBox') ?? '').split(' ');
+  return { container, unmount, keys, boxes, width: Number(viewBox[2]) };
+}
+
+/**
+ * How far from a key's centre its legend reaches: a tap legend at its largest, 22, is about 13
+ * across and 16 down, and the band and the shifted legend sit further out, along the edges.
+ */
+const LEGEND = 15;
+
+type Point = { x: number; y: number };
+type Rect = Point & { w: number; h: number };
+
+function onLegend(box: Rect, k: Point): boolean {
+  const dx = Math.max(0, Math.abs(box.x - k.x) - box.w / 2);
+  const dy = Math.max(0, Math.abs(box.y - k.y) - box.h / 2);
+  return Math.hypot(dx, dy) < LEGEND;
+}
+
+/** What crowds a board: a box on another, on a key's legend, or off the drawing. */
+function crowded({ boxes, keys, width }: ReturnType<typeof drawn>): string[] {
+  const faults: string[] = [];
+  boxes.forEach((a, i) => {
+    for (const b of boxes.slice(i + 1)) {
+      if (Math.abs(a.x - b.x) < (a.w + b.w) / 2 && Math.abs(a.y - b.y) < (a.h + b.h) / 2) {
+        faults.push(`${a.name} on ${b.name}`);
+      }
+    }
+    for (const [id, k] of keys) {
+      if (onLegend(a, { x: k.cx, y: k.cy })) faults.push(`${a.name} on key ${id}`);
+    }
+    if (a.x - a.w / 2 < 0 || a.x + a.w / 2 > width) faults.push(`${a.name} off the drawing`);
+  });
+  return faults;
+}
+
+describe("T-34's combos, as Keymap Drawer draws them", () => {
+  const t34 = compileLayout(bundledLayout('t-34')!);
+  const combos = typingCombos(t34, 0);
+
+  it('draws those on two neighbouring keys on the board, named as before', () => {
+    const { boxes, keys } = drawn(t34, 0);
+    const names = boxes.map((b) => b.name);
+    expect(names).toContain('Edit combo LHM + LHI: Esc / Symb');
+    // A thumb just under its bottom-row key is its neighbour.
+    expect(names).toContain('Edit combo L0 + LBI: %');
+    const q = boxes.find((b) => b.name === 'Edit combo LTP + LTR: q');
+    expect(q?.x).toBeCloseTo(((keys.get('LTP')?.cx ?? 0) + (keys.get('LTR')?.cx ?? 0)) / 2, 6);
+    expect(screen.getByRole('button', { name: 'Edit combo LTP + LTR: q' })).toBeInTheDocument();
+  });
+
+  it('leaves the combos on keys apart off the board, for the list beside it', () => {
+    const apart = combosApart(t34, combos);
+    const { boxes } = drawn(t34, 0);
+    expect(apart.length + boxes.length).toBe(combos.length);
+    expect(apart.map((c) => c.label)).toEqual(
+      expect.arrayContaining(['|', '~', 'https://', 'Numb', '"', 'Swed']),
+    );
+    // Not one of them is drawn among the keys.
+    const drawnNames = new Set(boxes.map((b) => b.name));
+    for (const c of apart) {
+      const names = c.keys.map((p) => t34.keys[p].id).join(' + ');
+      expect(drawnNames.has(`Edit combo ${names}: ${c.label}`)).toBe(false);
+    }
+  });
+
+  it("outlines a box's keys while it is pointed at or focused, and not once it has gone", () => {
+    const outlined = (container: HTMLElement) =>
+      [...container.querySelectorAll('g[data-key]')]
+        .filter((g) => g.querySelector('.lb-key-highlight'))
+        .map((g) => g.getAttribute('data-key'));
+    const board = (layer: number) => (
+      <Keyboard
+        compiled={t34}
+        layer={layer}
+        combos={typingCombos(t34, layer)}
+        onComboClick={() => {}}
+      />
+    );
+    const { container, rerender } = render(board(0));
+    const q = screen.getByRole('button', { name: 'Edit combo LTP + LTR: q' });
+    fireEvent.pointerEnter(q);
+    expect(outlined(container)).toEqual(['LTP', 'LTR']);
+    fireEvent.pointerLeave(q);
+    expect(outlined(container)).toEqual([]);
+    fireEvent.focus(screen.getByRole('button', { name: 'Edit combo LHM + LHI: Esc / Symb' }));
+    expect(outlined(container)).toEqual(['LHM', 'LHI']);
+    // `q` types on Base only: pointed at, then gone with its layer, it hears no leave, and comes
+    // back unlit.
+    fireEvent.pointerEnter(screen.getByRole('button', { name: 'Edit combo LTP + LTR: q' }));
+    rerender(board(3));
+    rerender(board(0));
+    expect(outlined(container)).not.toContain('LTP');
     expect(
-      comboPillAt(
-        row.map(({ cx, cy }) => ({ x: cx, y: cy })),
-        row,
-      ),
-    ).toEqual({ x: 90, y: 80 });
+      screen.getByRole('button', { name: 'Edit combo LTP + LTR: q' }).getAttribute('class'),
+    ).not.toContain('lb-combo-lit');
+  });
+
+  it('lets no box overlap another or a legend', () => {
+    expect(crowded(drawn(t34, 0))).toEqual([]);
+  });
+});
+
+describe('every bundled layout with combos', () => {
+  it('draws them with nothing crowding the board, on every layer', () => {
+    const faults = BUNDLED_LAYOUTS.flatMap((layout) => {
+      const compiled = compileLayout(layout);
+      return compiled.layers.flatMap((_, layer) => {
+        if (typingCombos(compiled, layer).length === 0) return [];
+        const board = drawn(compiled, layer);
+        const found = crowded(board).map((f) => `${layout.id} ${layer}: ${f}`);
+        board.unmount();
+        return found;
+      });
+    });
+    expect(faults).toEqual([]);
+  });
+});
+
+describe('the combos on keys apart', () => {
+  const t34 = compileLayout(bundledLayout('t-34')!);
+  const apart = combosApart(t34, typingCombos(t34, 0));
+
+  it('are a button beside the board, which opens them each on a board of its own', async () => {
+    const user = userEvent.setup();
+    const onComboClick = vi.fn();
+    render(<CombosApart compiled={t34} layer={0} combos={apart} onComboClick={onComboClick} />);
+    await user.click(screen.getByRole('button', { name: `${apart.length} more combos on Base` }));
+    const dialog = screen.getByRole('dialog', { name: 'Combos on Base' });
+    const list = within(dialog).getByRole('list', { name: 'Combos on Base' });
+    expect(within(list).getAllByRole('listitem')).toHaveLength(apart.length);
+    // Each with its keys filled on a small board, and the layers it works on.
+    const pipe = within(dialog).getByRole('button', { name: 'Edit combo L0 + LHP: |' });
+    expect(within(pipe).getByRole('img', { name: 'Keys L0 + LHP' })).toBeInTheDocument();
+    expect(pipe.querySelectorAll('.lb-combo-apart-key-on')).toHaveLength(2);
+    expect(pipe).toHaveAccessibleDescription('Every layer');
+    // Picked, it opens in the editor.
+    await user.click(pipe);
+    const picked = apart.find((c) => c.label === '|');
+    expect(onComboClick).toHaveBeenCalledWith(picked?.index);
+  });
+
+  it('keep the dialog as the board was when it opened, while the board turns on', async () => {
+    const user = userEvent.setup();
+    const onOpen = vi.fn();
+    const { rerender } = render(
+      <CombosApart compiled={t34} layer={0} combos={apart} onOpen={onOpen} />,
+    );
+    await user.click(screen.getByRole('button', { name: /more combos/ }));
+    // The view stops what would turn the board: a word being played.
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    // The board turns to a layer with none apart, as a word playing would: the button goes, the
+    // dialog stays as it was, and is not opened again when the board comes back.
+    rerender(<CombosApart compiled={t34} layer={3} combos={[]} onOpen={onOpen} />);
+    expect(screen.queryByRole('button', { name: /more combos/ })).toBeNull();
+    const dialog = screen.getByRole('dialog', { name: 'Combos on Base' });
+    expect(within(dialog).getAllByRole('listitem')).toHaveLength(apart.length);
+    await user.click(within(dialog).getByRole('button', { name: 'Close' }));
+    rerender(<CombosApart compiled={t34} layer={0} combos={apart} onOpen={onOpen} />);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('close the dialog when the layout changes under it, as an Undo does', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<CombosApart compiled={t34} layer={0} combos={apart} />);
+    await user.click(screen.getByRole('button', { name: /more combos/ }));
+    expect(screen.getByRole('dialog', { name: 'Combos on Base' })).toBeInTheDocument();
+    // What it lists may be gone, or renumbered: a pick would open another combo.
+    const edited = compileLayout(bundledLayout('t-34')!);
+    rerender(
+      <CombosApart
+        compiled={edited}
+        layer={0}
+        combos={combosApart(edited, typingCombos(edited, 0))}
+      />,
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+    // Focus goes back to the button, so that a second Undo still reaches the view.
+    expect(screen.getByRole('button', { name: /more combos/ })).toHaveFocus();
+  });
+
+  it('give focus to the view when the change that closed the dialog took the button too', async () => {
+    const user = userEvent.setup();
+    const onLostFocus = vi.fn();
+    const { rerender } = render(
+      <CombosApart compiled={t34} layer={0} combos={apart} onLostFocus={onLostFocus} />,
+    );
+    await user.click(screen.getByRole('button', { name: /more combos/ }));
+    // An Undo that takes the last of them away: no button to go back to.
+    const edited = compileLayout(bundledLayout('t-34')!);
+    rerender(<CombosApart compiled={edited} layer={0} combos={[]} onLostFocus={onLostFocus} />);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(onLostFocus).toHaveBeenCalledTimes(1);
+  });
+
+  it('light the button while one of them is the press being played', () => {
+    const played = apart.map((c) => (c.label === 'é' ? { ...c, active: true } : c));
+    render(<CombosApart compiled={t34} layer={0} combos={played} />);
+    const button = screen.getByRole('button', {
+      name: `${apart.length} more combos on Base, one being played: é`,
+    });
+    expect(button).toHaveClass('btn-primary');
+  });
+
+  it('are only drawn where nothing picks them, and are no button when there are none', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<CombosApart compiled={t34} layer={0} combos={apart} />);
+    await user.click(screen.getByRole('button', { name: /more combos/ }));
+    expect(screen.queryByRole('button', { name: /^Edit combo/ })).toBeNull();
+    expect(screen.getByRole('figure', { name: 'Combo L0 + LHP: |' })).toBeInTheDocument();
+    rerender(<CombosApart compiled={t34} layer={0} combos={[]} />);
+    expect(screen.queryByRole('button', { name: /more combos/ })).toBeNull();
+  });
+
+  it('say which layers each works on, by name when not every one', () => {
+    // T-34's letter combos type only on its base layer.
+    const q = typingCombos(t34, 0).find((c) => c.label === 'q');
+    expect(worksOn(t34, q?.index ?? -1)).toBe('Base');
+    const pipe = apart.find((c) => c.label === '|');
+    expect(worksOn(t34, pipe?.index ?? -1)).toBe('Every layer');
   });
 });
 
