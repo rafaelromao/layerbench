@@ -552,7 +552,7 @@ describe("T-34's combos, as Keymap Drawer draws them", () => {
   it('draws those on two neighbouring keys on the board, named as before', () => {
     const { boxes, keys } = drawn(t34, 0);
     const names = boxes.map((b) => b.name);
-    expect(names).toContain('Edit combo LHM + LHI: Esc / Symb');
+    expect(names).toContain('Edit combo LHM + LHI: · / Symb');
     // A thumb just under its bottom-row key is its neighbour.
     expect(names).toContain('Edit combo L0 + LBI: %');
     const q = boxes.find((b) => b.name === 'Edit combo LTP + LTR: q');
@@ -594,7 +594,7 @@ describe("T-34's combos, as Keymap Drawer draws them", () => {
     expect(outlined(container)).toEqual(['LTP', 'LTR']);
     fireEvent.pointerLeave(q);
     expect(outlined(container)).toEqual([]);
-    fireEvent.focus(screen.getByRole('button', { name: 'Edit combo LHM + LHI: Esc / Symb' }));
+    fireEvent.focus(screen.getByRole('button', { name: 'Edit combo LHM + LHI: · / Symb' }));
     expect(outlined(container)).toEqual(['LHM', 'LHI']);
     // `q` types on Base only: pointed at, then gone with its layer, it hears no leave, and comes
     // back unlit.
