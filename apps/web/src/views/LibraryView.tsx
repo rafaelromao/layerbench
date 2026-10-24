@@ -285,7 +285,7 @@ function LayoutCard({
   return (
     <article className="card bg-base-100 border border-base-300">
       <div className="card-body gap-2 p-4">
-        <header className="flex flex-wrap items-start justify-between gap-2">
+        <header className="flex flex-wrap items-start justify-between gap-x-2">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-x-2">
               <h3 className="font-semibold text-sm">{item.name}</h3>
@@ -314,9 +314,13 @@ function LayoutCard({
             </div>
             {item.meta && <p className="text-xs opacity-60">{item.meta}</p>}
             {item.compiled && <LanguageBadges compiled={item.compiled} />}
-            <Ranking summary={summary} bands={bands} lacking={lacking} nobodyCan={nobodyCan} />
           </div>
           <div className="ml-auto flex shrink-0 gap-1">{actions}</div>
+          {/* The card's whole width, below the actions: beside them, a phone has no room for both
+              numbers on one row. */}
+          <div className="basis-full">
+            <Ranking summary={summary} bands={bands} lacking={lacking} nobodyCan={nobodyCan} />
+          </div>
         </header>
         {item.compiled && (
           <LayerPreview
