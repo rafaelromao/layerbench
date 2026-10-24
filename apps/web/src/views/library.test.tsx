@@ -29,6 +29,7 @@ import {
   rankingSays,
   renderRoute,
   testClient,
+  toastShown,
 } from '../test/render.js';
 
 let counter = 0;
@@ -217,7 +218,7 @@ describe('Creating layouts', () => {
     await user.click(within(again).getByRole('button', { name: 'Save' }));
 
     await waitFor(async () => expect(await customInLink(currentSearch())).toBe('mine-2'));
-    expect(await screen.findByText('Saved Mine 2')).toBeInTheDocument();
+    await toastShown(/^Saved Mine 2$/);
     expect((await storage.list('layouts')).map((e) => e.name)).toEqual(['Mine', 'Mine 2']);
   });
 
@@ -235,11 +236,11 @@ describe('Creating layouts', () => {
       throw new Error('offline');
     };
     await create();
-    expect(await screen.findByText('Save failed: offline')).toBeInTheDocument();
+    await toastShown(/^Save failed: offline$/);
 
     storage.put = put;
     await create();
-    expect(await screen.findByText('Saved My layout')).toBeInTheDocument();
+    await toastShown(/^Saved My layout$/);
     expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['my-layout']);
   });
 
@@ -309,7 +310,7 @@ describe('Creating layouts', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Delete Mine' }));
     expect(confirm).toHaveBeenCalledWith('Delete Mine?');
-    expect(await screen.findByText('Deleted Mine')).toBeInTheDocument();
+    await toastShown(/^Deleted Mine$/);
     expect(await storage.get('layouts', 'mine')).toBeNull();
     confirm.mockRestore();
   });
@@ -1420,12 +1421,12 @@ describe('changes proposed from this browser', () => {
 
   it('go with their copy once merged, and leave it an ordinary custom layout once closed', async () => {
     const merged = await withProposal('merged');
-    expect(await screen.findByText(/Your change to Plain was accepted/)).toBeInTheDocument();
+    await toastShown(/Your change to Plain was accepted/);
     await waitFor(async () => expect(await merged.list('layouts')).toEqual([]));
     cleanup();
 
     const closed = await withProposal('closed');
-    expect(await screen.findByText(/Your change to Plain was declined/)).toBeInTheDocument();
+    await toastShown(/Your change to Plain was declined/);
     expect((await closed.list('layouts')).map((e) => e.id)).toEqual(['plain']);
     await waitFor(() => expect(screen.queryByRole('link', { name: 'proposed' })).toBeNull());
   });
