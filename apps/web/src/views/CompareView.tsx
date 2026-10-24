@@ -6,9 +6,8 @@ import { ErrorAlert } from '../components/ErrorAlert.js';
 import { FamilyFilter, useFamilyShown } from '../components/FamilyFilter.js';
 import { featureList } from '../components/FeatureSwitches.js';
 import { formatValue } from '../components/format.js';
-import { LayerNav } from '../components/LayerNav.js';
 import { BandBadge, SummaryStrip } from '../components/Metrics.js';
-import { PreviewBoard } from '../components/PreviewBoard.js';
+import { PreviewBoard, PreviewNav } from '../components/PreviewBoard.js';
 import { customRef } from '../custom/ref.js';
 import { useAnalysisClient } from '../engine/client-context.js';
 import { expandPositions, heatMap } from '../engine/heat.js';
@@ -257,12 +256,12 @@ export function CompareView() {
                         heat={report ? heatMap(report, 'usage', layer) : {}}
                         highlight={highlightFor(report)}
                       />
-                      <LayerNav
+                      <PreviewNav
                         label={`Layers of ${side}`}
-                        layers={compiled.layers}
-                        active={layer}
+                        compiled={compiled}
+                        layer={layer}
                         onSelect={setLayer}
-                        className="mt-1 justify-center"
+                        className="mt-1"
                       />
                     </div>
                   )}

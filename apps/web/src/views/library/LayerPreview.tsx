@@ -1,7 +1,6 @@
 import type { CompiledLayout } from '@layerbench/core';
 import { memo, useState } from 'react';
-import { LayerNav } from '../../components/LayerNav.js';
-import { PreviewBoard } from '../../components/PreviewBoard.js';
+import { PreviewBoard, PreviewNav } from '../../components/PreviewBoard.js';
 
 export interface LayerPreviewProps {
   id: string;
@@ -29,12 +28,12 @@ export const LayerPreview = memo(function LayerPreview({ id, compiled, name }: L
         onLayer={setChosen}
         className="opacity-90"
       />
-      <LayerNav
+      <PreviewNav
         label={`${name} layers`}
-        layers={compiled.layers}
-        active={layer}
+        compiled={compiled}
+        layer={layer}
         onSelect={setChosen}
-        className="mt-1 justify-center"
+        className="mt-1"
       />
     </div>
   );

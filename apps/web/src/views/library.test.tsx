@@ -21,6 +21,7 @@ import { useSession } from '../state/session.js';
 import { CompositeStorage } from '../storage/composite.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { branchWith, communityDoc } from '../test/community.js';
+import { showLayer } from '../test/layers.js';
 import { MemoryStorage } from '../test/memory-storage.js';
 import {
   customInLink,
@@ -1114,6 +1115,48 @@ describe('Layers on a card', () => {
     const nav = await screen.findByRole('group', { name: `${layered.name} copy layers` });
     expect(within(nav).getByText(`1 / ${layered.layers.length}`)).toBeTruthy();
   });
+
+  /** A layout's card, by its name. */
+  const cardOf = (name: string) => (listed(name) as HTMLElement).closest('article') as HTMLElement;
+
+  it('reaches the combos the board does not draw, beside the layers, without opening the card', async () => {
+    const user = userEvent.setup();
+    const { currentSearch } = renderRoute(LIBRARY, { storage: freshStorage() });
+    await screen.findByRole('group', { name: 'T-34 layers' });
+    const before = currentSearch();
+    const card = cardOf('T-34');
+    // On the navigator's line, so the card is no taller for it.
+    const nav = within(card).getByRole('group', { name: 'T-34 layers' });
+    const button = within(card).getByRole('button', { name: '40 more combos on Base' });
+    expect(button.parentElement).toBe(nav.parentElement);
+
+    await user.click(button);
+    const dialog = screen.getByRole('dialog', { name: 'Combos on Base' });
+    expect(within(dialog).getAllByRole('listitem')).toHaveLength(40);
+    // A card edits nothing: each combo is drawn, not a button to pick.
+    expect(within(dialog).getByRole('figure', { name: 'Combo L0 + LHP: |' })).toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: /^Edit combo/ })).toBeNull();
+    expect(currentSearch()).toBe(before);
+    await user.click(within(dialog).getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('dialog', { name: 'Combos on Base' })).toBeNull();
+    expect(button).toHaveFocus();
+  });
+
+  it('counts them on each layer, and shows no button where there are none', async () => {
+    const user = userEvent.setup();
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    await screen.findByRole('group', { name: 'Bird layers' });
+    const bird = within(cardOf('Bird'));
+    expect(bird.getByRole('button', { name: '1 more combo on Base' })).toHaveTextContent(
+      /^1 more combo$/,
+    );
+    // Bird's Numbers has none apart, nor has any layer of Graphite.
+    await showLayer(user, 'Numbers', 'Bird layers');
+    expect(bird.queryByRole('button', { name: /more combos? on/ })).toBeNull();
+    expect(
+      within(cardOf('Graphite')).queryByRole('button', { name: /more combos? on/ }),
+    ).toBeNull();
+  });
 });
 
 /** A keymap-drawer file that only names its keyboard, the way `keymap parse` writes one. */
@@ -1202,6 +1245,22 @@ describe('Importing from keymap-drawer', () => {
     const board = document.getElementById('kb-kd-import') as HTMLElement;
     // The sticky keys' `1×` is drawn under what they tap; a preview of only what is typed has none.
     expect(board.textContent).toContain('1×');
+  }, 60_000);
+
+  it('reaches a combo the preview does not draw, as a card does', async () => {
+    const user = userEvent.setup();
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    await openKeymapImport();
+    await user.click(await screen.findByLabelText('keymap-drawer YAML'));
+    // Three keys: no gap to draw it on.
+    await user.paste(`${KEYMAP}  - {p: [0, 1, 2], k: Z, l: [Def]}\n`);
+    await screen.findByRole('combobox', { name: 'Board to import onto' });
+    await user.click(await screen.findByRole('button', { name: '1 more combo on Def' }));
+    const dialog = screen.getByRole('dialog', { name: 'Combos on Def' });
+    expect(within(dialog).getByRole('figure', { name: /: z$/ })).toBeInTheDocument();
+    // Closing it leaves the import open under it.
+    await user.click(within(dialog).getByRole('button', { name: 'Close' }));
+    expect(screen.getByLabelText('keymap-drawer YAML')).toBeVisible();
   }, 60_000);
 
   it('says what is wrong with a file it cannot read', async () => {

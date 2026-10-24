@@ -6,7 +6,8 @@ or QMK keymap, and LayerBench reads it.
 
 1. In **Library**, click **Import**, then **keymap-drawer**, and paste the file or **Choose a .yaml
    file**.
-2. Check the board it goes onto, and look over the preview.
+2. Check the board it goes onto, and look over the preview. A combo it cannot draw on the board is
+   behind a button beside the layers, such as **1 more combo**.
 3. Untick the layers you do not want, and rename or reorder the rest. The first one ticked becomes
    the base layer.
 4. Name the layout and press **Import and edit**.

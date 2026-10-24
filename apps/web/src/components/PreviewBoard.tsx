@@ -1,6 +1,8 @@
 import type { CompiledLayout } from '@layerbench/core';
-import { Keyboard, typingCombos } from './Keyboard.js';
-import { useLayerSwipe } from './LayerNav.js';
+import { useMemo } from 'react';
+import { CombosApart } from './CombosApart.js';
+import { combosApart, Keyboard, typingCombos } from './Keyboard.js';
+import { LayerNav, useLayerSwipe } from './LayerNav.js';
 
 export interface PreviewBoardProps {
   id: string;
@@ -46,6 +48,35 @@ export function PreviewBoard({
         highlight={highlight}
         className={className}
       />
+    </div>
+  );
+}
+
+export interface PreviewNavProps {
+  /** The layout the board beside it draws, kept the same object while it is the same (memoized). */
+  compiled: CompiledLayout;
+  /** The layer the board shows. */
+  layer: number;
+  onSelect: (idx: number) => void;
+  /** What the navigator is called, for a page that shows the layers of more than one layout. */
+  label?: string;
+  className?: string;
+}
+
+/**
+ * The navigator under a preview board, with the combos the board does not draw beside it, behind a
+ * button on a layer that has any. They share a line: the layer's name gives way before the button,
+ * so a card is no taller for it. A preview edits nothing, so the dialog only draws them.
+ */
+export function PreviewNav({ compiled, layer, onSelect, label, className = '' }: PreviewNavProps) {
+  const apart = useMemo(
+    () => combosApart(compiled, typingCombos(compiled, layer)),
+    [compiled, layer],
+  );
+  return (
+    <div className={`flex min-w-0 items-center justify-center gap-2 ${className}`}>
+      <LayerNav label={label} layers={compiled.layers} active={layer} onSelect={onSelect} />
+      <CombosApart compiled={compiled} layer={layer} combos={apart} />
     </div>
   );
 }

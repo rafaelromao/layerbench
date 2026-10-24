@@ -18,8 +18,7 @@ import {
   readKeymapDrawer,
 } from '@layerbench/core';
 import { useEffect, useId, useMemo, useState } from 'react';
-import { LayerNav } from '../../components/LayerNav.js';
-import { PreviewBoard } from '../../components/PreviewBoard.js';
+import { PreviewBoard, PreviewNav } from '../../components/PreviewBoard.js';
 import { TextField } from '../edit/inspector/controls.js';
 
 interface LayerChoice {
@@ -347,11 +346,10 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
                 // What a hold does is half of a binding, and the import is where to check it.
                 showHold
               />
-              <LayerNav
-                layers={result.compiled.layers}
-                active={Math.min(shown, result.compiled.layers.length - 1)}
+              <PreviewNav
+                compiled={result.compiled}
+                layer={Math.min(shown, result.compiled.layers.length - 1)}
                 onSelect={setShown}
-                className="justify-center"
               />
               <p className="text-xs opacity-70">
                 {result.report.combos.imported} combo
