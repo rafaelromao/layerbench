@@ -1343,9 +1343,8 @@ describe('changes proposed from this browser', () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
-  async function withProposal(state: 'open' | 'merged' | 'closed') {
-    const storage = freshStorage();
-    // Plain alone is listed. The Library draws and scores every layout it lists on the test's
+  async function withProposal(state: 'open' | 'merged' | 'closed', storage = freshStorage()) {
+    // No bundled layout is listed. The Library draws and scores every layout it lists on the test's
     // thread, and settling a proposal goes through IndexedDB a turn of that thread at a time: with
     // every bundled layout listed too, under coverage on a busy runner, the toast came too late.
     await savePlain(storage, 'plain', { geometry: OWN_BOARD });
@@ -1371,10 +1370,14 @@ describe('changes proposed from this browser', () => {
   }
 
   it('are marked on their copy, linked to the pull request, while it is open', async () => {
-    await withProposal('open');
+    // Beside a custom layout no change was proposed from.
+    const storage = freshStorage();
+    await savePlain(storage, 'mine', { name: 'Mine', geometry: OWN_BOARD });
+    await withProposal('open', storage);
     const badge = await screen.findByRole('link', { name: 'proposed' });
     expect(badge).toHaveAttribute('href', PULL);
     expect(badge.closest('article')).toBe(listed('Plain')?.closest('article'));
+    expect(listed('Mine')).not.toBeNull();
   });
 
   it('go with their copy when it is deleted', async () => {
@@ -1400,6 +1403,10 @@ describe('changes proposed from this browser', () => {
     const closed = await withProposal('closed');
     expect(await screen.findByText(/Your change to Plain was declined/)).toBeInTheDocument();
     expect((await closed.list('layouts')).map((e) => e.id)).toEqual(['plain']);
-    await waitFor(() => expect(screen.queryByRole('link', { name: 'proposed' })).toBeNull());
+    // Still listed, without the badge: a custom layout of its own.
+    await waitFor(() => {
+      expect(listed('Plain')).not.toBeNull();
+      expect(screen.queryByRole('link', { name: 'proposed' })).toBeNull();
+    });
   });
 });
