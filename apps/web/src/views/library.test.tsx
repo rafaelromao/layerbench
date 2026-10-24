@@ -53,6 +53,14 @@ async function savePlain(
   await storage.put('layouts', id, toCanonicalJson({ ...plain, id, name: 'Plain', ...extra }));
 }
 
+/** The boards the bundled layouts are on. */
+const BUNDLED_BOARDS = [
+  ...new Set(BUNDLED_LAYOUTS.map((l) => ('preset' in l.geometry ? l.geometry.preset : ''))),
+];
+
+/** A board no bundled layout is on: with `BUNDLED_BOARDS` hidden, its layouts are listed alone. */
+const OWN_BOARD = { preset: '3x5+3' } as const;
+
 /** A layout's card heading: how a layout is told to be listed. */
 const listed = (name: string) => screen.queryByRole('heading', { name, level: 3 });
 
@@ -683,20 +691,16 @@ describe('Ranking layouts', () => {
   it('ranks by the numbers alone when no layout listed can write the language', async () => {
     // Two layouts without an ñ, on a board no bundled layout is on, and only that board listed.
     const storage = freshStorage();
-    const board = { preset: '3x5+3' } as const;
-    await savePlain(storage, 'plain', { geometry: board });
+    await savePlain(storage, 'plain', { geometry: OWN_BOARD });
     // Another layout written in code, as written, without the layers the Library gives it: any one,
     // whichever a Library request has left in code.
     const other = CLASSIC_LAYOUTS.find((l) => l.id !== 'qwerty') as Layout;
     await storage.put(
       'layouts',
       'plain-other',
-      toCanonicalJson({ ...other, id: 'plain-other', name: 'Plain other', geometry: board }),
+      toCanonicalJson({ ...other, id: 'plain-other', name: 'Plain other', geometry: OWN_BOARD }),
     );
-    const bundledBoards = [
-      ...new Set(BUNDLED_LAYOUTS.map((l) => ('preset' in l.geometry ? l.geometry.preset : ''))),
-    ];
-    useSession.setState({ hiddenBoards: bundledBoards });
+    useSession.setState({ hiddenBoards: BUNDLED_BOARDS });
     renderRoute('/library?corpus=es-general&sample=10000', { storage });
     expect(
       await rankingSays(/None of these layouts types every letter Español needs\.$/, 60_000),
@@ -1441,9 +1445,12 @@ describe('changes proposed from this browser', () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
-  async function withProposal(state: 'open' | 'merged' | 'closed') {
-    const storage = freshStorage();
-    await savePlain(storage, 'plain');
+  async function withProposal(state: 'open' | 'merged' | 'closed', storage = freshStorage()) {
+    // No bundled layout is listed. The Library draws and scores every layout it lists on the test's
+    // thread, and settling a proposal goes through IndexedDB a turn of that thread at a time: with
+    // every bundled layout listed too, under coverage on a busy runner, the toast came too late.
+    await savePlain(storage, 'plain', { geometry: OWN_BOARD });
+    useSession.setState({ hiddenBoards: BUNDLED_BOARDS });
     await recordProposal(storage, 'plain', {
       name: 'Plain',
       target: { kind: 'bundled', id: 'qwerty' },
@@ -1465,10 +1472,14 @@ describe('changes proposed from this browser', () => {
   }
 
   it('are marked on their copy, linked to the pull request, while it is open', async () => {
-    await withProposal('open');
+    // Beside a custom layout no change was proposed from.
+    const storage = freshStorage();
+    await savePlain(storage, 'mine', { name: 'Mine', geometry: OWN_BOARD });
+    await withProposal('open', storage);
     const badge = await screen.findByRole('link', { name: 'proposed' });
     expect(badge).toHaveAttribute('href', PULL);
     expect(badge.closest('article')).toBe(listed('Plain')?.closest('article'));
+    expect(listed('Mine')).not.toBeNull();
   });
 
   it('go with their copy when it is deleted', async () => {
@@ -1494,6 +1505,10 @@ describe('changes proposed from this browser', () => {
     const closed = await withProposal('closed');
     await toastShown(/Your change to Plain was declined/);
     expect((await closed.list('layouts')).map((e) => e.id)).toEqual(['plain']);
-    await waitFor(() => expect(screen.queryByRole('link', { name: 'proposed' })).toBeNull());
+    // Still listed, without the badge: a custom layout of its own.
+    await waitFor(() => {
+      expect(listed('Plain')).not.toBeNull();
+      expect(screen.queryByRole('link', { name: 'proposed' })).toBeNull();
+    });
   });
 });
