@@ -681,6 +681,8 @@ describe('the combos on keys apart', () => {
       />,
     );
     expect(screen.queryByRole('dialog')).toBeNull();
+    // Focus goes back to the button, so that a second Undo still reaches the view.
+    expect(screen.getByRole('button', { name: /more combos/ })).toHaveFocus();
   });
 
   it('light the button while one of them is the press being played', () => {
