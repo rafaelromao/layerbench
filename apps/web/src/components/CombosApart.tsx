@@ -24,10 +24,16 @@ export interface CombosApartProps {
  * the press being played, as a box on the board does.
  */
 export function CombosApart({ compiled, layer, combos, onComboClick, onOpen }: CombosApartProps) {
-  // What the dialog shows is what the board showed when it opened, whatever the board does since.
-  const [opened, setOpened] = useState<{ layer: number; combos: readonly KeyboardCombo[] } | null>(
-    null,
-  );
+  // What the dialog shows is what the board showed when it opened, whatever the board does since;
+  // an edit to the layout, as an Undo is, closes it, since what it shows may be gone.
+  const [opened, setOpened] = useState<{
+    compiled: CompiledLayout;
+    layer: number;
+    combos: readonly KeyboardCombo[];
+  } | null>(null);
+  useEffect(() => {
+    if (opened && opened.compiled !== compiled) setOpened(null);
+  }, [opened, compiled]);
   const name = compiled.layers[layer]?.name ?? '';
   const playing = combos.find((c) => c.active);
   const count = `${combos.length} more ${combos.length === 1 ? 'combo' : 'combos'}`;
@@ -41,7 +47,7 @@ export function CombosApart({ compiled, layer, combos, onComboClick, onOpen }: C
           aria-label={`${count} on ${name}${playing ? `, one being played: ${playing.label}` : ''}`}
           onClick={() => {
             onOpen?.();
-            setOpened({ layer, combos });
+            setOpened({ compiled, layer, combos });
           }}
         >
           {count}
@@ -49,7 +55,7 @@ export function CombosApart({ compiled, layer, combos, onComboClick, onOpen }: C
       )}
       {opened && (
         <CombosApartDialog
-          compiled={compiled}
+          compiled={opened.compiled}
           layer={opened.layer}
           combos={opened.combos}
           onComboClick={onComboClick}

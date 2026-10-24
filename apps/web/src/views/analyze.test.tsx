@@ -100,9 +100,14 @@ describe('Analyze', () => {
     // Magic Romak's Numbers has combos on three keys, which the board leaves to the button.
     await user.click(await screen.findByRole('button', { name: /^\d+ more combos? on Numbers$/ }));
     const dialog = screen.getByRole('dialog', { name: 'Combos on Numbers' });
-    await user.click(within(dialog).getByRole('button', { name: /^Edit combo .+: °$/ }));
+    const degree = within(dialog).getByRole('button', { name: /^Edit combo .+: °$/ });
+    // The editor names a combo by its keys, as `LHM+LHI`; the dialog, as `LHM + LHI`.
+    const keys = /^Edit combo (.+): °$/.exec(degree.getAttribute('aria-label') ?? '')?.[1] ?? '';
+    await user.click(degree);
     expect(screen.queryByRole('dialog', { name: 'Combos on Numbers' })).toBeNull();
-    expect(await screen.findByRole('group', { name: /^Edit combo / })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('group', { name: `Edit combo ${keys.split(' + ').join('+')}` }),
+    ).toBeInTheDocument();
 
     // Hidden, from Settings, the combos go, and the button with them.
     const board = within(await openSettings()).getByRole('group', { name: 'On the board' });

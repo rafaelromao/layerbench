@@ -666,6 +666,23 @@ describe('the combos on keys apart', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
+  it('close the dialog when the layout changes under it, as an Undo does', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<CombosApart compiled={t34} layer={0} combos={apart} />);
+    await user.click(screen.getByRole('button', { name: /more combos/ }));
+    expect(screen.getByRole('dialog', { name: 'Combos on Base' })).toBeInTheDocument();
+    // What it lists may be gone, or renumbered: a pick would open another combo.
+    const edited = compileLayout(bundledLayout('t-34')!);
+    rerender(
+      <CombosApart
+        compiled={edited}
+        layer={0}
+        combos={combosApart(edited, typingCombos(edited, 0))}
+      />,
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
   it('light the button while one of them is the press being played', () => {
     const played = apart.map((c) => (c.label === 'é' ? { ...c, active: true } : c));
     render(<CombosApart compiled={t34} layer={0} combos={played} />);

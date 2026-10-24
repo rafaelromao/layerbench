@@ -405,14 +405,15 @@ The other panels hold what is not on a single key:
   the analysis as a key would be: it types, adapts to the key before it, accents the next letter,
   turns a layer on, or, held, does what its hold does; a tap dance on a combo types its second part
   when its keys are pressed together twice. The board draws it on the gap between its keys, its hold
-  small under what it types; one on three or more keys, or keys apart, is under the button beside
-  **Heat**. Every combo in the list can also be changed where it stands: type another output in its
-  field (what the syntax cannot read is refused, and the combo keeps its output; a combo whose
-  output the syntax cannot write, such as a tap-hold, shows it there and is edited in the combo
-  editor), **pick again** and tap its new keys, then **Use**, tick the layers it works on (one at
-  least), or click its role to switch between typing and command. Each change is one edit that Undo
-  takes back. A change is refused, with its reason, when it would leave fewer than two keys, a key
-  or layer the layout does not have, or the same keys as another combo on one of its layers.
+  small under what it types; one on three or more keys, on keys apart, or with no room on its gap,
+  is under the button beside **Heat**. Every combo in the list can also be changed where it stands:
+  type another output in its field (what the syntax cannot read is refused, and the combo keeps its
+  output; a combo whose output the syntax cannot write, such as a tap-hold, shows it there and is
+  edited in the combo editor), **pick again** and tap its new keys, then **Use**, tick the layers it
+  works on (one at least), or click its role to switch between typing and command. Each change is
+  one edit that Undo takes back. A change is refused, with its reason, when it would leave fewer
+  than two keys, a key or layer the layout does not have, or the same keys as another combo on one
+  of its layers.
 - **Behaviors** lists the layout's special features, one group each: adaptive keys, alt repeats,
   macros and mod morphs. Each names its layer and key, or its combo; pick one to turn the board to
   that layer with the key selected, or to outline the combo's keys.
