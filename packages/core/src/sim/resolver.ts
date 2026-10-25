@@ -1038,6 +1038,22 @@ export class Simulator {
       this.addToWord(this.releaseHolds());
       cands = this.candidatesFor(token);
     }
+    // Sentence case's lazy Shift expires in firmware. When it prevents an otherwise reachable
+    // lowercase letter, wait for that timeout before trying again. Waiting presses no key and
+    // changes no other one-shot, modifier, layer or adaptive history. Try without waiting first,
+    // so a capital still benefits from sentence case and a pending sentence morph still works.
+    if (this.machine.state.sentencePending) {
+      const before = this.machine.state.snapshot();
+      this.machine.state.sentencePending = false;
+      cands = this.candidatesFor(token);
+      const events = handSet ? this.firstThatWorks(cands, token) : this.cheapest(cands, token);
+      if (events) {
+        this.addToWord(events);
+        return true;
+      }
+      this.machine.state.restore(before);
+      this.machine.recomputeMask();
+    }
     return false;
   }
 

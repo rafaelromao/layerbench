@@ -156,18 +156,63 @@ describe('Magic Romak after the features rewrite', () => {
     expect(sim.tables.stats.wasted_one_shots).toBe(0);
   });
 
-  /**
-   * The capital a sentence's end leaves pending goes to the next letter, as zmk-sentence-case's
-   * does, and only its timeout, which the analysis has no clock for, lets one go by, so a
-   * *lowercase* letter after `. ` is genuinely unproducible. This pins the honest behaviour.
-   */
-  it('cannot type a lowercase letter straight after a sentence-ending space', () => {
+  it('waits for sentence case to expire when prose needs a lowercase letter', () => {
     const capital = explain(compiled, '. H', { caseMode: 'model', crossWord: 'reset' });
     expect(capital.presses).toBe(3);
     expect([...capital.coverage.unproducible.keys()]).toEqual([]);
 
     const lower = explain(compiled, '. h', { caseMode: 'model', crossWord: 'reset' });
-    expect([...lower.coverage.unproducible.keys()]).toEqual(['h']);
+    expect(lower.steps.map((s) => s.symbols).join('')).toBe('. h');
+    expect(lower.presses).toBe(3);
+    expect([...lower.coverage.unproducible.keys()]).toEqual([]);
+  });
+
+  it('keeps e on a thumb and l and i reachable after sentence-ending spaces', () => {
+    const layout = mini({ sentenceCase: {} });
+    layout.layers[0].bindings.R0 = {
+      kind: 'hold_tap',
+      tap: { kind: 'kp', symbol: 'e' },
+      hold: { kind: 'mo', layer: 'sym' },
+    };
+    layout.layers[0].bindings.LHI = { kind: 'kp', symbol: 'l' };
+    layout.layers[0].bindings.RHI = { kind: 'kp', symbol: 'i' };
+    layout.layers.push({ id: 'sym', bindings: { '*': { kind: 'trans' } } });
+    const text = '. e . l . i . E . L . I';
+    for (const caseMode of ['fold', 'model'] as const) {
+      const stream = normalizeText(text, { caseMode });
+      const t = explain(compileLayout(layout), stream, { ...OPTS, caseMode });
+      expect(
+        t.steps
+          .map((s) => s.symbols)
+          .join('')
+          .toLowerCase(),
+      ).toBe(stream.toLowerCase());
+      if (caseMode === 'model') expect(t.steps.map((s) => s.symbols).join('')).toBe(stream);
+      expect([...t.coverage.unproducible]).toEqual([]);
+      expect(t.presses).toBe(stream.length);
+      expect(t.steps.filter((s) => s.symbols.toLowerCase() === 'e').map((s) => s.key)).toEqual([
+        'R0',
+        'R0',
+      ]);
+    }
+  });
+
+  it('still reports a genuinely missing letter after a sentence-ending space', () => {
+    const t = explain(compileLayout(mini({ sentenceCase: {} })), '. zB', {
+      ...OPTS,
+      caseMode: 'model',
+    });
+    expect([...t.coverage.unproducible]).toEqual([['z', 1]]);
+    expect(t.steps.map((s) => s.symbols).join('')).toBe('. B');
+    // A failed timeout retry keeps the pending capital for B, which needs no Shift press.
+    expect(t.presses).toBe(3);
+  });
+
+  it('retries an accented letter through the sentence morph after the timeout', () => {
+    const t = explain(compiled, '. é', { ...OPTS, caseMode: 'model' });
+    expect(t.steps.map((s) => s.symbols).join('')).toBe('. é');
+    expect([...t.coverage.unproducible]).toEqual([]);
+    expect(t.steps.filter((s) => s.keyKind === 'shift')).toEqual([]);
   });
 
   it("starts a sentence with an accented capital through its Alpha 2 key's sentence morph", () => {
