@@ -36,15 +36,11 @@ describe('A report is scored by the rules it was asked for', () => {
     const core = new AnalysisCore(nodeCorpusLoader(testCorporaRoot()));
     const doc = await core.analyze(request(getPreset('layouts_doc')));
     const cyan = await core.analyze(request(getPreset('cyanophage')));
-    const keysolve = await core.analyze(request(getPreset('keysolve')));
 
     expect(cyan.key).not.toBe(doc.key);
     // cyanophage counts bigrams over keystrokes and draws lateral stretches by column pairs.
     expect(value(cyan, 'sfb')).not.toBe(value(doc, 'sfb'));
     expect(value(cyan, 'lsb')).not.toBe(value(doc, 'lsb'));
-    // Keysolve differs from the Doc only in its scissors.
-    expect(value(keysolve, 'sfb')).toBe(value(doc, 'sfb'));
-    expect(value(keysolve, 'fsb')).not.toBe(value(doc, 'fsb'));
     // Effort is cyanophage's own grid under every preset.
     expect(value(cyan, 'effort')).toBe(value(doc, 'effort'));
   });

@@ -60,7 +60,7 @@ describe('rule references', () => {
 
   it('puts the definition in force first under a preset that redefines the rule', () => {
     expect(ruleReferences('lsb', 'cyanophage')[0].url).toContain('cyanophage');
-    expect(ruleReferences('fsb', 'keysolve')[0].url).toContain('keysolve');
+    expect(ruleReferences('fsb', 'cyanophage')[0].url).toContain('cyanophage');
     // A rule the preset leaves alone keeps the catalog's sources only.
     expect(ruleReferences('sfb', 'cyanophage')).toEqual(ruleReferences('sfb'));
   });
