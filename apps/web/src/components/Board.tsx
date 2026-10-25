@@ -104,29 +104,29 @@ export function Board({
         onRename={onRename}
       />
 
-      {(tools || toolsAfter || toolsEnd || room > 0) && (
-        <div className="lb-board-tools flex flex-wrap items-center justify-between gap-2 min-w-0">
-          <div className="flex items-center gap-2 min-w-0">
-            {tools}
-            {room > 0 ? (
-              <span className="grid shrink-0 place-items-center">
-                {/* As wide as the button's longest words, on a layer with it or without. */}
-                <span
-                  aria-hidden="true"
-                  className="btn btn-xs btn-outline invisible [grid-area:1/1]"
-                >
-                  {moreCombos(room)}
-                </span>
-                <span className="[grid-area:1/1]">{button}</span>
+      {/* Always there, hidden while it has nothing, so the combos button is never unmounted. */}
+      <div
+        className={`lb-board-tools flex flex-wrap items-center justify-between gap-2 min-w-0 ${
+          tools || toolsAfter || toolsEnd || room > 0 ? '' : 'hidden'
+        }`}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          {tools}
+          {/* The button stays at one place in the tree as its count changes: unmounted, an open
+                dialog would vanish without closing, and focus would not come back to the board. */}
+          <span className="grid shrink-0 place-items-center">
+            {room > 0 && (
+              // As wide as the button's longest words, on a layer with it or without.
+              <span aria-hidden="true" className="btn btn-xs btn-outline invisible [grid-area:1/1]">
+                {moreCombos(room)}
               </span>
-            ) : (
-              button
             )}
-            {toolsAfter}
-          </div>
-          {toolsEnd}
+            <span className="[grid-area:1/1]">{button}</span>
+          </span>
+          {toolsAfter}
         </div>
-      )}
+        {toolsEnd}
+      </div>
     </div>
   );
 }
