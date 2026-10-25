@@ -138,17 +138,17 @@ function asMod(token: string): Mod | undefined {
 
 /** Resolve a layer argument, which may be written as the id, the name, or the index ZMK uses. */
 function resolveLayer(token: string, ctx: BindingTextContext): string | undefined {
+  if (/^\d+$/.test(token)) return ctx.layers[Number(token)]?.id;
   const lower = token.toLowerCase();
   const byId = ctx.layers.find((l) => l.id.toLowerCase() === lower);
   if (byId) return byId.id;
   const byName = ctx.layers.find((l) => l.name.toLowerCase() === lower);
   if (byName) return byName.id;
-  if (/^\d+$/.test(token)) return ctx.layers[Number(token)]?.id;
   return undefined;
 }
 
 function layerError(token: string, ctx: BindingTextContext): string {
-  const names = ctx.layers.map((l) => l.id).join(', ');
+  const names = ctx.layers.map((l, i) => `${i} (${l.name})`).join(', ');
   return token === ''
     ? `name a layer: ${names}`
     : `no layer called \`${token}\` — try one of: ${names}`;
@@ -274,8 +274,8 @@ function keycodeText(b: { symbol?: string; keycode?: string }): string | null {
   return symbol;
 }
 
-function layerId(compiled: CompiledLayout, id: string): string {
-  return compiled.layers.find((l) => l.id === id)?.id ?? id;
+function layerNumber(compiled: CompiledLayout, id: string): string {
+  return String(compiled.layers.findIndex((l) => l.id === id));
 }
 
 function withTag(text: string, tag: string | undefined): string {
@@ -300,25 +300,25 @@ function exactText(compiled: CompiledLayout, b: Binding): string | null {
         : '&caps_word';
     case 'mo':
     case 'to':
-      return `&${b.kind} ${layerId(compiled, b.layer)}`;
+      return `&${b.kind} ${layerNumber(compiled, b.layer)}`;
     case 'sl':
       return b.quickRelease !== undefined ||
         b.ignoreModifiers !== undefined ||
         b.releaseAfterMs !== undefined
         ? null
-        : `&sl ${layerId(compiled, b.layer)}`;
+        : `&sl ${layerNumber(compiled, b.layer)}`;
     case 'tog':
       return b.mode !== undefined && b.mode !== 'flip'
         ? null
-        : `&tog ${layerId(compiled, b.layer)}`;
+        : `&tog ${layerNumber(compiled, b.layer)}`;
     case 'auto_layer':
-      return b.continueList !== undefined ? null : `&auto_layer ${layerId(compiled, b.layer)}`;
+      return b.continueList !== undefined ? null : `&auto_layer ${layerNumber(compiled, b.layer)}`;
     case 'lt': {
       if (b.tap.kind !== 'kp' || b.tap.shifted !== undefined) return null;
       const token = keycodeText(b.tap);
       return token === null
         ? null
-        : withTag(`&lt ${layerId(compiled, b.layer)} ${token}`, b.tap.tag);
+        : withTag(`&lt ${layerNumber(compiled, b.layer)} ${token}`, b.tap.tag);
     }
     case 'sk':
       return b.quickRelease !== undefined ||
@@ -334,7 +334,7 @@ function exactText(compiled: CompiledLayout, b: Binding): string | null {
       const then = b.then;
       if (then === undefined) return withTag(`&macro ${b.symbols}`, b.tag);
       if (then.length !== 1 || then[0].kind !== 'sl') return null;
-      return withTag(`&macro ${b.symbols} then ${layerId(compiled, then[0].layer)}`, b.tag);
+      return withTag(`&macro ${b.symbols} then ${layerNumber(compiled, then[0].layer)}`, b.tag);
     }
     case 'dead_key':
       return b.shifted ? `&dead ${b.diacritic} ${b.shifted}` : `&dead ${b.diacritic}`;
@@ -441,14 +441,15 @@ export function suggest(text: string, ctx: BindingTextContext): Suggestion[] {
     const prefix = withLayer[2].toLowerCase();
     if (name !== undefined && (LAYER_BEHAVIORS.includes(name) || name === 'lt')) {
       // An argument already written in full needs no menu; offering it again is a dead end.
-      if (ctx.layers.some((l) => l.id.toLowerCase() === prefix)) return [];
+      if (prefix !== '' && resolveLayer(prefix, ctx) !== undefined) return [];
       return ctx.layers
-        .filter((l) => l.id.toLowerCase().startsWith(prefix))
+        .map((l, index) => ({ ...l, index: String(index) }))
+        .filter((l) => l.name.toLowerCase().startsWith(prefix) || l.index.startsWith(prefix))
         .map((l) => ({
           // A layer tap still wants its tap key, so the space that takes it comes along.
-          insert: `&${withLayer[1]} ${l.id}${name === 'lt' ? ' ' : ''}`,
-          label: l.id,
-          hint: l.name,
+          insert: `&${withLayer[1]} ${l.index}${name === 'lt' ? ' ' : ''}`,
+          label: l.name,
+          hint: `layer ${l.index}`,
         }));
     }
     if (name === 'sk' || name === 'kp') {

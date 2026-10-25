@@ -168,7 +168,9 @@ function land(state: EditState, outcome: EditOutcome, say?: string): EditState {
     };
   }
   const { layout, compiled, at, edit } = outcome;
-  const followed = compiled.layerIndex.get(at.layer ?? shownLayer(state));
+  const shown = shownLayer(state);
+  const keepShown = edit.kind === 'renameLayer' && edit.layer !== shown;
+  const followed = compiled.layerIndex.get(keepShown ? shown : (at.layer ?? shown));
   // A combo added opens in the combo editor, which takes the place of any key that was open.
   const keys = edit.kind === 'addCombo' ? [] : (at.keys ?? selectionOf(state));
   const combo = keys.length > 0 ? null : comboAfter(state.combo, edit, layout);

@@ -1,4 +1,4 @@
-import { unusedId } from '../storage/ids.js';
+import { slugWords, unusedId } from '../storage/ids.js';
 import { referencedLayers } from './compile.js';
 import type { Binding, Layout } from './types.js';
 
@@ -104,12 +104,13 @@ export function duplicateLayer(
 ): { layout: Layout; id: string } | null {
   const layer = layout.layers[layerIdx];
   if (!layer) return null;
-  const id = unusedId(`${layer.id}-copy`, new Set(layout.layers.map((l) => l.id)));
+  const name = `${layer.name ?? layer.id} copy`;
+  const id = unusedId(slugWords(name) || 'layer', new Set(layout.layers.map((l) => l.id)));
   const bindings: Record<string, Binding> =
     layerIdx === 0 && layer.bindings['*'] === undefined
       ? { '*': { kind: 'none' }, ...layer.bindings }
       : { ...layer.bindings };
-  const copy = { id, name: `${layer.name ?? layer.id} copy`, bindings };
+  const copy = { id, name, bindings };
   const layers = [...layout.layers];
   layers.splice(layerIdx + 1, 0, copy);
   return { layout: { ...layout, layers }, id };

@@ -920,18 +920,18 @@ describe('Edit', () => {
     await user.clear(field);
     await user.type(field, 'Extra{Enter}');
     await waitFor(() => expect(shownLayer()).toBe('Extra'));
-    expect(screen.getByLabelText('Name of layer nav-copy')).toHaveValue('Extra');
+    expect(screen.getByLabelText('Name of layer Extra')).toHaveValue('Extra');
 
     const info = vi.spyOn(toast, 'info');
     await user.click(screen.getByRole('button', { name: 'Remove Extra' }));
-    await waitFor(() => expect(screen.queryByLabelText('Name of layer nav-copy')).toBeNull());
+    await waitFor(() => expect(screen.queryByLabelText('Name of layer Extra')).toBeNull());
     expect(await screen.findByText('Removed Extra — Undo brings it back')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Undo' }));
-    expect(await screen.findByLabelText('Name of layer nav-copy')).toHaveValue('Extra');
+    expect(await screen.findByLabelText('Name of layer Extra')).toHaveValue('Extra');
     expect(screen.getByText('Undone')).toBeInTheDocument();
     // Undo and Redo are not edits: they say what they did, and the removal is not told again.
     await user.click(screen.getByRole('button', { name: 'Redo' }));
-    await waitFor(() => expect(screen.queryByLabelText('Name of layer nav-copy')).toBeNull());
+    await waitFor(() => expect(screen.queryByLabelText('Name of layer Extra')).toBeNull());
     expect(screen.getByText('Redone')).toBeInTheDocument();
     expect(info.mock.calls.map(([text]) => text)).toEqual(['Removed Extra — Undo brings it back']);
     info.mockRestore();
@@ -942,24 +942,19 @@ describe('Edit', () => {
       /^Numbers is still reached from Base \w+/,
     );
     expect(screen.getAllByText(/^Numbers is still reached from/)).toHaveLength(1);
-    expect(screen.getByLabelText('Name of layer num')).toBeInTheDocument();
+    expect(screen.getByLabelText('Name of layer Numbers')).toBeInTheDocument();
     expect(screen.queryByText('Removed Numbers — Undo brings it back')).toBeNull();
   }, 120_000);
 
-  it("gives a layer the id a keymap's has, and sets one-shot timing", async () => {
+  it('names layers without exposing IDs, and sets one-shot timing', async () => {
     const user = userEvent.setup();
     await openEdit();
 
-    // An id of its own, as Magic Romak's Alpha 1 is: the layer keeps its name.
-    const id = screen.getByLabelText('Id of layer Base');
-    await user.clear(id);
-    await user.type(id, 'alpha1{Enter}');
-    expect(await screen.findByLabelText('Name of layer alpha1')).toHaveValue('Base');
-    // A taken id is refused, and says so.
-    const again = screen.getByLabelText('Id of layer Base');
-    await user.clear(again);
-    await user.type(again, 'num{Enter}');
-    expect(await screen.findByRole('alert')).toHaveTextContent('another layer is num already');
+    expect(screen.queryByLabelText(/^Id of layer /)).toBeNull();
+    const name = screen.getByLabelText('Name of layer Base');
+    await user.clear(name);
+    await user.type(name, 'Main{Enter}');
+    expect(await screen.findByLabelText('Name of layer Main')).toHaveValue('Main');
 
     // One-shot keys release as the next key goes down, or wait, and for how long.
     await user.click(screen.getByRole('tab', { name: 'Geometry' }));
@@ -1034,10 +1029,10 @@ describe('Edit', () => {
     // The behaviours the keymap builds with extra layers, as it once did sentence case, are not
     // layers here.
     await user.click(screen.getByRole('tab', { name: 'Layers' }));
-    expect(screen.getByLabelText('Name of layer alpha1')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Name of layer sen_case')).toBeNull();
-    expect(screen.queryByLabelText('Name of layer sft_a2')).toBeNull();
-    expect(screen.queryByLabelText('Name of layer altrep2')).toBeNull();
+    expect(screen.getByLabelText('Name of layer Alpha 1')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Name of layer Sentence case')).toBeNull();
+    expect(screen.queryByLabelText('Name of layer Shift Alpha 2')).toBeNull();
+    expect(screen.queryByLabelText('Name of layer Alt Repeat 2')).toBeNull();
 
     await user.click(screen.getByRole('tab', { name: 'Features' }));
     expect(screen.getByLabelText('Sentence case')).toBeChecked();
@@ -1929,7 +1924,7 @@ describe('Edit', () => {
     await user.type(first, '&mo nowhere');
     await user.click(combos.getByRole('button', { name: 'Remove LHR+LHM' }));
 
-    expect(await combos.findByLabelText('Output of LHM+LHI')).toHaveValue('&sl accents');
+    expect(await combos.findByLabelText('Output of LHM+LHI')).toHaveValue('&sl 3');
   });
 
   it("stops picking a combo's keys again when told to", async () => {
@@ -2008,7 +2003,7 @@ describe('Edit', () => {
     await user.click(await screen.findByRole('button', { name: /^Key L1:/ }));
     const editor = await inspector('L1');
     expect(within(editor).getByRole('textbox', { name: 'Binding for L1' })).toHaveValue(
-      '&sl alpha2',
+      '&sl 1',
     );
     expect(within(editor).getByRole('radio', { name: 'One-shot' })).toBeChecked();
     // Exactly the layer choice: the editor also has an "On Alpha 2 board" button.
@@ -2048,15 +2043,15 @@ describe('Edit', () => {
     expect(dot()).toContain('var(--lb-layer-4)');
 
     await user.click(screen.getByRole('tab', { name: 'Layers' }));
-    await user.selectOptions(screen.getByLabelText('Colour of layer sym'), 'teal');
+    await user.selectOptions(screen.getByLabelText('Colour of layer Symbols'), 'teal');
     expect(dot()).toContain('var(--lb-layer-6)');
     expect(screen.getByText('unsaved')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Undo' }));
     expect(dot()).toContain('var(--lb-layer-4)');
-    expect(screen.getByLabelText('Colour of layer sym')).toHaveValue('');
+    expect(screen.getByLabelText('Colour of layer Symbols')).toHaveValue('');
     await user.click(screen.getByRole('button', { name: 'Redo' }));
-    expect(screen.getByLabelText('Colour of layer sym')).toHaveValue('teal');
+    expect(screen.getByLabelText('Colour of layer Symbols')).toHaveValue('teal');
 
     await saveCopy(user);
     expect(await screen.findByText('Saved Magic Romak copy')).toBeInTheDocument();
@@ -2070,7 +2065,7 @@ describe('Edit', () => {
     const user = userEvent.setup();
     await openMagicRomak();
     await user.click(screen.getByRole('tab', { name: 'Layers' }));
-    await user.selectOptions(screen.getByLabelText('Colour of layer sym'), 'teal');
+    await user.selectOptions(screen.getByLabelText('Colour of layer Symbols'), 'teal');
 
     // The Ç extension's thumb is a layer key, so its editor offers every layer as a chip.
     await showLayer(user, 'Ç extension');

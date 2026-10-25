@@ -60,6 +60,20 @@ describe('binding text', () => {
     expect(build('&mo 1')).toEqual({ kind: 'mo', layer: byIndex });
   });
 
+  it('uses layer numbers even when an imported internal ID is numeric', () => {
+    const numeric: BindingTextContext = {
+      ...ctx,
+      layers: [
+        { id: '1', name: 'Base' },
+        { id: 'other', name: 'Other' },
+      ],
+    };
+    expect(build('&mo 1', numeric)).toEqual({ kind: 'mo', layer: 'other' });
+    expect(suggest('&mo O', numeric)).toEqual([
+      { insert: '&mo 1', label: 'Other', hint: 'layer 1' },
+    ]);
+  });
+
   it('resolves a keycode to the symbol it types under the symbols host locale', () => {
     // Every bundled layout is `symbols`, where the simulator never reads `keycode` — a keycode
     // left unresolved here would be a key that silently types nothing.
@@ -97,7 +111,7 @@ describe('binding text', () => {
       layer: 'alpha2',
       tap: { kind: 'kp', symbol: 'a', tag: 'a2' },
     });
-    expect(bindingText(compiled, layerTap)).toEqual({ text: '&lt alpha2 a tag:a2', exact: true });
+    expect(bindingText(compiled, layerTap)).toEqual({ text: '&lt 1 a tag:a2', exact: true });
     expect(build('&macro ão then alpha2 tag:a2')).toMatchObject({
       kind: 'macro',
       symbols: 'ão',
@@ -121,7 +135,7 @@ describe('binding text', () => {
     expect(parseBindingText('&sk NOPE', ctx)).toMatchObject({ ok: false });
     expect(parseBindingText('&kp', ctx)).toMatchObject({ ok: false });
     const e = parseBindingText('&mo nowhere', ctx);
-    expect(e.ok === false && e.error).toContain('alpha2');
+    expect(e.ok === false && e.error).toContain('Alpha 2');
   });
 
   it('writes a binding back as the text that parses to it', () => {
@@ -148,7 +162,9 @@ describe('binding text', () => {
       '&kp ç tag:cedilla',
     ];
     for (const text of roundTrips) {
-      expect(bindingText(compiled, build(text))).toEqual({ text, exact: true });
+      const written = bindingText(compiled, build(text));
+      expect(written.exact).toBe(true);
+      expect(build(written.text)).toEqual(build(text));
     }
   });
 
@@ -194,8 +210,8 @@ describe('binding text', () => {
     expect(suggest('&m', ctx).map((s) => s.insert)).toContain('&mo');
     expect(suggest('&m', ctx).map((s) => s.insert)).toContain('&macro');
     expect(suggest('&ada', ctx)).toEqual([]);
-    expect(suggest('&mo ', ctx).map((s) => s.label)).toContain('alpha2');
-    expect(suggest('&mo alph', ctx).map((s) => s.insert)).toContain('&mo alpha2');
+    expect(suggest('&mo ', ctx).map((s) => s.label)).toContain('Alpha 2');
+    expect(suggest('&mo alph', ctx).map((s) => s.insert)).toContain('&mo 1');
     expect(suggest('&sk L', ctx).map((s) => s.label)).toContain('LSHIFT');
     expect(suggest('&kp a b c', ctx)).toEqual([]);
   });
