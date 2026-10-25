@@ -349,7 +349,7 @@ const isObject = (v: unknown): v is JsonObject =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
 
 /** The fields of a binding that hold one binding, and those that hold a list of them. */
-const ONE_BINDING = ['tap', 'hold', 'default', 'morphed', 'active', 'inactive'];
+const ONE_BINDING = ['tap', 'hold', 'default', 'morphed', 'active', 'inactive', 'pending'];
 const BINDING_LISTS = ['bindings', 'steps', 'then'];
 
 /**
@@ -528,6 +528,7 @@ function withoutImported(b: unknown): unknown {
 function withoutImportedKeys(input: unknown): unknown {
   if (!isObject(input)) return input;
   const { layers, combos } = input;
+  let dropped = false;
   return {
     ...input,
     ...(Array.isArray(layers) && {
@@ -543,7 +544,7 @@ function withoutImportedKeys(input: unknown): unknown {
       ),
     }),
     ...(Array.isArray(combos) && {
-      combos: combos.flatMap((c) => {
+      combos: combos.flatMap((c, i) => {
         if (!isObject(c)) return [c];
         const binding = withoutImported(c.binding);
         // Only a combo the conversion left transparent: one already so is the schema's to read.
@@ -552,7 +553,12 @@ function withoutImportedKeys(input: unknown): unknown {
           c.binding.kind !== 'trans' &&
           isObject(binding) &&
           binding.kind === 'trans';
-        return left ? [] : [{ ...c, binding }];
+        if (left) {
+          dropped = true;
+          return [];
+        }
+        // One unnamed keeps the id its place gave it, though a combo before it went.
+        return [dropped ? { id: `combo${i}`, ...c, binding } : { ...c, binding }];
       }),
     }),
   };

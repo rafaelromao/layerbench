@@ -246,7 +246,7 @@ interface Listed {
   ref: string;
   /** Missing while a custom document is still being read, or if it will not parse. */
   layout: Layout | undefined;
-  /** Why a custom document will not open, once it has been read and would not. */
+  /** Why a custom document will not open or compile, once it has been read and would not. */
   unreadable?: string;
   /** Missing as `layout` is, or if it will not compile. */
   compiled: CompiledLayout | undefined;
@@ -544,7 +544,13 @@ export function LibraryView() {
       const unreadable = new Map<string, string>();
       for (const [id, got] of read) {
         if (got.status === 'read') layouts.set(id, got.doc);
-        else if (got.status === 'unreadable') unreadable.set(id, `It cannot be read: ${got.why}`);
+        else if (got.status === 'unreadable')
+          unreadable.set(
+            id,
+            got.unreachable
+              ? `It could not be loaded: ${got.why}`
+              : `It cannot be read: ${got.why}`,
+          );
       }
       setCustomLayouts(layouts);
       setCustomUnreadable(unreadable);
@@ -554,16 +560,18 @@ export function LibraryView() {
     };
   }, [custom.entries, storage]);
 
-  const customCompiled = useMemo(() => {
+  const [customCompiled, customUncompiled] = useMemo(() => {
     const out = new Map<string, CompiledLayout>();
+    const failed = new Map<string, string>();
     for (const [id, layout] of customLayouts) {
       try {
         out.set(id, compileLayout(layout));
-      } catch {
-        // A document that parses but will not compile is listed without its board.
+      } catch (e) {
+        // A document that parses but will not compile is listed without its board, saying why.
+        failed.set(id, `It cannot be read: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
-    return out;
+    return [out, failed] as const;
   }, [customLayouts]);
 
   // Each layout as it is ranked: typed without the features left out, as the engine types it. The
@@ -634,7 +642,7 @@ export function LibraryView() {
         id: entry.id,
         ref: customRef(entry.id),
         layout: customLayouts.get(entry.id),
-        unreadable: customUnreadable.get(entry.id),
+        unreadable: customUnreadable.get(entry.id) ?? customUncompiled.get(entry.id),
         compiled: customCompiled.get(entry.id),
         meta: [
           entry.author,
@@ -654,7 +662,15 @@ export function LibraryView() {
           : undefined,
       })),
     ],
-    [bundled, community, custom.entries, customLayouts, customUnreadable, customCompiled],
+    [
+      bundled,
+      community,
+      custom.entries,
+      customLayouts,
+      customUnreadable,
+      customCompiled,
+      customUncompiled,
+    ],
   );
 
   // Custom and community layouts can be left out of the list, and then they count on no board

@@ -963,7 +963,7 @@ describe('A saved layout that cannot be read', () => {
     await saveAs(storage, 'broken', 'Broken', (doc) => {
       layerOf(doc, 0).LHM = { kind: 'bogus' };
     });
-    renderRoute(LIBRARY, { storage });
+    const page = renderRoute(LIBRARY, { storage });
 
     const card = (await screen.findByRole('heading', { name: 'Broken', level: 3 })).closest(
       'article',
@@ -982,11 +982,13 @@ describe('A saved layout that cannot be read', () => {
     expect(await screen.findByText('This layout cannot be opened.')).toBeInTheDocument();
     await user.click(screen.getByRole('link', { name: 'Open another layout' }));
     expect(await screen.findByRole('heading', { name: 'Mine', level: 3 })).toBeInTheDocument();
+    // The choices the analysis was made with come back with it, as the Library tab's link keeps.
+    expect(page.currentSearch()).toContain('sample=1000');
   });
 
   it('opens one saved with imported keys, as Magic Breeze was, without them', async () => {
     const storage = freshStorage();
-    // Before PR #79: FUN, MEDIA and MACROS held on Numbers and Symbols, kept as imported keys.
+    // Before PR #79: a FUN hold and an Escape on Numbers, kept as imported keys.
     await saveAs(storage, 'breeze', 'Old Breeze', (doc) => {
       const funHeld = {
         kind: 'hold_tap',
@@ -1067,9 +1069,12 @@ describe('Categories', () => {
     };
     await storage.put('layouts', 'broken', toCanonicalJson(broken));
     renderRoute(LIBRARY, { storage });
-    await screen.findByRole('heading', { name: 'Broken', level: 3 });
+    const card = (await screen.findByRole('heading', { name: 'Broken', level: 3 })).closest(
+      'article',
+    ) as HTMLElement;
     await waitFor(() => expect(badgeOf('Qwerty')).toBe('Standard'));
     expect(badgeOf('Broken')).toBeUndefined();
+    expect(within(card).getByText(/^It cannot be read: /)).toBeInTheDocument();
   });
 
   it('lists only the layouts in the categories chosen, and remembers the choice', async () => {

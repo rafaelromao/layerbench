@@ -667,7 +667,10 @@ describe('a document saved while the format had imported keys', () => {
         LHI: holding({ kind: 'none' }, imported('FUN')),
         LTI: { kind: 'macro', steps: [kp('a'), imported('F1'), kp('b')] },
       }),
-      layer('sym', { RHP: holding(kp(')'), imported('MACROS')) }),
+      layer('sym', {
+        RHP: holding(kp(')'), imported('MACROS')),
+        RHR: { kind: 'sentence_morph', default: kp('.'), pending: imported('Esc') },
+      }),
     ],
     combos: [
       { id: 'esc', keys: ['LTM', 'LTI'], binding: imported('Esc') },
@@ -678,6 +681,7 @@ describe('a document saved while the format had imported keys', () => {
         binding: holding(imported('Esc'), { kind: 'mo', layer: 'sym' }),
       },
       { id: 'q', keys: ['RBM', 'RBI'], binding: kp('q') },
+      { keys: ['LBM', 'LBR'], binding: kp('z') },
     ],
   };
 
@@ -701,11 +705,16 @@ describe('a document saved while the format had imported keys', () => {
       LHI: { kind: 'trans' },
       LTI: { kind: 'macro', steps: [kp('a'), kp('b')] },
     });
-    expect(sym.bindings).toEqual({ RHP: kp(')') });
+    expect(sym.bindings).toEqual({
+      RHP: kp(')'),
+      RHR: { kind: 'sentence_morph', default: kp('.'), pending: { kind: 'trans' } },
+    });
     // A combo left transparent goes, as the editor makes none.
     expect(parsed.layout.combos?.map((c) => [c.id, c.binding])).toEqual([
       ['sym', holding({ kind: 'none' }, { kind: 'mo', layer: 'sym' })],
       ['q', kp('q')],
+      // An unnamed one keeps the id its place gave it.
+      ['combo4', kp('z')],
     ]);
     expect(() => compileLayout(parsed.layout)).not.toThrow();
   });

@@ -2,7 +2,7 @@ import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useMemo } from 'react';
 import { useAnalysisClient } from '../engine/client-context.js';
 import { useLayoutSession } from '../layout-session/use-layout-session.js';
-import { useRememberSelection } from '../state/selection.js';
+import { useCarried, useRememberSelection } from '../state/selection.js';
 import {
   DEFAULT_PARAMS,
   type Params,
@@ -30,6 +30,7 @@ export function AnalyzeView() {
   useRememberSelection(params);
   const settings = useAnalysisSettings(settingsOf(params));
   const session = useLayoutSession();
+  const carried = useCarried();
 
   // Settings are written onto whatever the link holds by then, so they never undo a layout the
   // session has just written into it.
@@ -66,7 +67,7 @@ export function AnalyzeView() {
         <div role="alert" className="alert alert-error text-sm flex flex-col items-start gap-2">
           <p className="font-semibold">This layout cannot be opened.</p>
           <p className="whitespace-pre-line [overflow-wrap:anywhere]">{session.error}</p>
-          <Link to="/library" className="btn btn-sm">
+          <Link to="/library" search={carried() as never} className="btn btn-sm">
             Open another layout
           </Link>
         </div>
