@@ -1038,20 +1038,24 @@ export class Simulator {
       this.addToWord(this.releaseHolds());
       cands = this.candidatesFor(token);
     }
-    // Sentence case's lazy Shift expires in firmware. When it prevents an otherwise reachable
-    // lowercase letter, wait for that timeout before trying again. Waiting presses no key and
-    // changes no other one-shot, modifier, layer or adaptive history. Try without waiting first,
-    // so a capital still benefits from sentence case and a pending sentence morph still works.
-    if (this.machine.state.sentencePending) {
-      const before = this.machine.state.snapshot();
-      this.machine.state.sentencePending = false;
+    // Try the pending sentence capital first, then the one-shot layers: firmware lets both
+    // expire. A layer left armed by a macro can hide a perfectly reachable base letter behind
+    // `none`. Waiting presses no key. Never discard held or toggled layers, or the adaptive
+    // history, and restore a failed retry.
+    for (const timeout of ['sentence', 'layers'] as const) {
+      const state = this.machine.state;
+      if (timeout === 'sentence' ? !state.sentencePending : state.oneShots.length === 0) continue;
+      const before = state.snapshot();
+      state.sentencePending = false;
+      if (timeout === 'layers') state.oneShots = [];
+      this.machine.recomputeMask();
       cands = this.candidatesFor(token);
       const events = handSet ? this.firstThatWorks(cands, token) : this.cheapest(cands, token);
       if (events) {
         this.addToWord(events);
         return true;
       }
-      this.machine.state.restore(before);
+      state.restore(before);
       this.machine.recomputeMask();
     }
     return false;

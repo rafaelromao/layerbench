@@ -47,6 +47,10 @@ and the flavor, ZMK's rule for telling a tap from a hold when another key comes 
 A one-shot works on the next key only, then turns itself off, so the layer or modifier does not
 have to be held. On the board it reads `1×`. Choose **Layer** or **Modifier**, then **One-shot**.
 
+If an armed one-shot layer blocks the next character, the analysis lets that layer expire after
+its timeout and tries the character again. Waiting adds no key press. A layer that is held or
+toggled stays on.
+
 A one-shot ends with the next key: a one-shot layer with the next key pressed, a one-shot modifier
 with the next key that types something. Each key is pressed and let go before the next, so whether
 ZMK would end it as that key goes down or as it comes up (`quickRelease`, among the layout's
