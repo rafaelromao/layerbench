@@ -50,6 +50,34 @@ async function expectSkipsBelow(page: Page, { oneRow }: { oneRow: boolean }): Pr
 test.describe('on a phone', () => {
   test.skip(({ isMobile }) => !isMobile, 'phone layout only');
 
+  test('wide previews fit every key inside the card without panning', async ({ page }) => {
+    await page.goto('/library');
+    const card = page
+      .locator('article')
+      .filter({ has: page.getByRole('heading', { name: 'Enthium', exact: true }) });
+    const board = card.locator('.lb-board-scroll');
+    await expect(board.locator('svg')).toBeVisible();
+    for (const width of [320, 360, 393]) {
+      await page.setViewportSize({ width, height: 850 });
+      const drawing = await board.evaluate((el) => {
+        const bounds = el.getBoundingClientRect();
+        const caps = [...el.querySelectorAll('rect.lb-key-cap')];
+        return {
+          count: caps.length,
+          overflow: el.scrollWidth - el.clientWidth,
+          inside: caps.every((cap) => {
+            const box = cap.getBoundingClientRect();
+            return box.left >= bounds.left && box.right <= bounds.right;
+          }),
+        };
+      });
+      expect(drawing.count).toBe(42);
+      expect(drawing.overflow).toBeLessThanOrEqual(1);
+      expect(drawing.inside).toBe(true);
+      expect(await overflow(page)).toBeLessThanOrEqual(0);
+    }
+  });
+
   test('the list never scrolls sideways, with a custom layout in it', async ({ page }) => {
     // A custom layout's card has the most on it: its badge and every action. New layout makes one,
     // and opens it in Analyze, to edit.

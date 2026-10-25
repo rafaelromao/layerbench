@@ -288,8 +288,8 @@ function LayoutCard({
   proposal?: string;
 }) {
   return (
-    <article className="card bg-base-100 border border-base-300 min-w-0">
-      <div className="card-body gap-2 p-3 sm:p-4">
+    <article className="lb-library-card card bg-base-100 border border-base-300 min-w-0">
+      <div className="card-body gap-2 px-1 py-3 sm:p-4">
         <header className="flex flex-wrap items-start justify-between gap-x-2">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-x-2">
@@ -1123,7 +1123,7 @@ export function LibraryView() {
             </span>
           )}
         </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="-mx-2 sm:mx-0 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {sorted.map((item) => (
             <LayoutCard
               key={item.key}
