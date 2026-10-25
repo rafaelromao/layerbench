@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { JsonObject } from '../storage/ids.js';
 import { tellIssues } from './issues.js';
+import { canonicalLanguages } from './languages.js';
 import { LAYER_COLORS, type Layout, MAX_CONDITION_LAYERS } from './types.js';
 
 const ModSchema = z.enum(['LSHIFT', 'RSHIFT', 'LCTRL', 'RCTRL', 'LALT', 'RALT', 'LGUI', 'RGUI']);
@@ -622,7 +623,8 @@ function toRead(input: unknown): { doc: unknown } | undefined {
 export function parseLayout(input: unknown): Layout {
   const read = toRead(input);
   if (!read) throw new Error(TOO_MANY);
-  return LayoutSchema.parse(read.doc) as Layout;
+  const layout = LayoutSchema.parse(read.doc) as Layout;
+  return { ...layout, languages: canonicalLanguages(layout.languages) };
 }
 
 /** Why a document was refused that JavaScript ran out of stack reading. */
@@ -649,7 +651,7 @@ export function safeParseLayout(
     throw e;
   }
   return r.success
-    ? { ok: true, layout: r.data as Layout }
+    ? { ok: true, layout: { ...r.data, languages: canonicalLanguages(r.data.languages) } as Layout }
     : { ok: false, error: tellIssues(r.error.issues) };
 }
 

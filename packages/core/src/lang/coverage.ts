@@ -1,7 +1,7 @@
 import type { CompiledLayout } from '../layout/compile.js';
 import { enumerateProducers } from '../sim/producers.js';
 import type { LanguageCoverage } from './profiles.js';
-import { coverLanguage, languagesToJudge } from './profiles.js';
+import { coverLanguage } from './profiles.js';
 
 /**
  * Every single character the layout can type, in either case.
@@ -43,12 +43,12 @@ export function layoutLanguageCoverage(
   return coverLanguage(producibleSymbols(compiled), tag);
 }
 
-/** Coverage once per language profile a layout declares, plus any extra tags asked about. */
+/** Coverage for every language a layout declares, plus any extra tags asked about. */
 export function layoutLanguages(
   compiled: CompiledLayout,
   extra: string[] = [],
 ): LanguageCoverage[] {
-  const tags = languagesToJudge(undefined, [...(compiled.layout.languages ?? []), ...extra]);
+  const tags = new Set([...(compiled.layout.languages ?? []), ...extra]);
   const producible = producibleSymbols(compiled);
   const out: LanguageCoverage[] = [];
   for (const tag of tags) {

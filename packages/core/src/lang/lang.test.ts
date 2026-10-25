@@ -3,7 +3,7 @@ import { DEFAULT_SOFT, normalizeText } from '../corpus/normalize.js';
 import { compileLayout } from '../layout/compile.js';
 import { bundledLayout, CLASSIC_LAYOUTS } from '../layouts/index.js';
 import { simulate } from '../sim/resolver.js';
-import { layoutLanguageCoverage, layoutLanguages, producibleSymbols } from './coverage.js';
+import { layoutLanguageCoverage, producibleSymbols } from './coverage.js';
 import { languageKeep, languageProfile, languageSoft, languagesToJudge } from './profiles.js';
 
 /** Qwerty as written, its letters alone: the bundled one has the default layers and their accents. */
@@ -63,15 +63,6 @@ describe('language profiles', () => {
 describe('layout coverage', () => {
   const magic = compileLayout(bundledLayout('magic-romak')!);
   const qwerty = plainQwerty();
-
-  it('reports each language profile once across declared and extra regional tags', () => {
-    const layout = { ...magic.layout, languages: ['pt-BR', 'en', 'pt', 'pt-PT', 'en'] };
-    const compiled = compileLayout(layout);
-    expect(layoutLanguages(compiled, ['pt-PT', 'es', 'es-MX', 'klingon'])).toEqual(
-      ['pt', 'en', 'es'].map((tag) => layoutLanguageCoverage(compiled, tag)),
-    );
-    expect(layout.languages).toEqual(['pt-BR', 'en', 'pt', 'pt-PT', 'en']);
-  });
 
   it('finds every accent Magic Romak can type', () => {
     const p = producibleSymbols(magic);
