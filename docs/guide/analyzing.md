@@ -50,8 +50,8 @@ place as its score arrives. This browser remembers the scores, the sort and what
 visit opens already ranked; the scores are checked again quietly, and a layout moves only if its
 numbers changed. **Compare** puts every number for two layouts side by side, with the difference and which
 of the two does better. Each layout's board has its own layer navigator, to look through every layer of
-both, warm by what is pressed on the layer shown. Beside it, a button such as **40 more combos**
-shows the [combos the board does not draw](#combos).
+both. At the right of it, the **Combos** button shows the
+[combos the board does not draw](#combos).
 
 Each card also names the layout's category, so you can rank a layout against its peers. It follows
 from the layout's own keys, whether it came with the app or is yours, and nothing on its
@@ -150,12 +150,14 @@ side, one above the other, or diagonal, is a small box on the gap between them. 
 types, and what it does held under that.
 
 Combos on three or more keys, or on keys apart, are not drawn on the board; nor is one whose box
-has no room on its gap. A button beside **Heat**, such as **40 more combos**, opens them for the
-layer shown. Each is drawn once, on a small board of its own with its keys filled, as Keymap Drawer
+has no room on its gap. The **Combos** button, at the right of the layer navigator, opens them for
+the layer shown. Each is drawn once, on a small board of its own with its keys filled, as Keymap Drawer
 draws a combo apart. Under it are the layers it works on. Pick one to open it in the combo editor.
 
-The boards of the Library's cards, of **Compare** and of the import preview have the same button,
-beside their layer navigator. There it only shows the combos: nothing is edited.
+The boards of the Library's cards, of **Compare** and of the import preview are drawn as Analyze
+draws its board, with the same **Combos** button. They have no heat, and nothing on them is edited:
+the button only shows the combos. A Library card does not list what its numbered keys do; open the
+layout in **Analyze** for that.
 
 In **Analyze**, a box lights up with its keys when a word uses it; for a combo off the board, the
 button lights up. Pointing at a box, or focusing it, outlines its keys. **Combos**, under *On the

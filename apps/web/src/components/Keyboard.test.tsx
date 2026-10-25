@@ -7,6 +7,7 @@ import {
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { Board } from './Board.js';
 import { CombosApart, worksOn } from './CombosApart.js';
 import { type PlacedKey, placeCombos } from './combo-layout.js';
 import { combosApart, drawnX, Keyboard, KeyLegend, reach, typingCombos } from './Keyboard.js';
@@ -702,6 +703,27 @@ describe('the combos on keys apart', () => {
     rerender(<CombosApart compiled={edited} layer={0} combos={[]} onLostFocus={onLostFocus} />);
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(onLostFocus).toHaveBeenCalledTimes(1);
+  });
+
+  it('keep the button in place on the board, so the last of them undone still hands focus back', async () => {
+    const user = userEvent.setup();
+    const onApartLostFocus = vi.fn();
+    const board = (compiled: CompiledLayout) => (
+      <Board
+        compiled={compiled}
+        typed={compiled}
+        layer={0}
+        onLayer={() => {}}
+        combos={typingCombos(compiled, 0)}
+        onApartLostFocus={onApartLostFocus}
+      />
+    );
+    const { rerender } = render(board(t34));
+    await user.click(screen.getByRole('button', { name: /more combos/ }));
+    // An Undo that takes every combo away: the dialog closes rather than vanishing with the button.
+    rerender(board(compileLayout({ ...bundledLayout('t-34')!, combos: [] })));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(onApartLostFocus).toHaveBeenCalledTimes(1);
   });
 
   it('light the button while one of them is the press being played', () => {
