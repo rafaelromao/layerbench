@@ -127,8 +127,8 @@ A **Sentence space**, among the editor's other tiles, types a space. Pressed rig
 `!`, it leaves a capital for the next key pressed. A letter a–z comes out a capital. Any other key,
 a digit, a symbol, a dead key, a modifier or another space, takes it and types as it is, so the
 letter after it is lowercase. A layer key presses no keycode, and leaves the capital for the key
-after it. A lowercase letter right after `. ` cannot be typed: the module lets the capital go after
-a second, and the analysis has no clock.
+after it. If the text needs a lowercase letter instead, the analysis lets the pending capital
+expire, as the module does after its timeout, then types the letter. Waiting adds no key press.
 
 A **Morph** can also change **After a sentence**, while a sentence space has left a capital. Magic
 Romak's Alpha 2 key is one, as in its author's keymap: after a sentence's end it arms Shift with
