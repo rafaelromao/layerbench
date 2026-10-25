@@ -137,7 +137,6 @@ Off by default, and no shipped preset turns it on: in **Rules**, **Composite sco
 |---|---|
 | Layouts Doc | Definitions and bands above. Thumbs included, space excluded, no composite score. |
 | cyanophage-like | LSB = inner-column key with a middle-finger key (any rows); scissors = adjacent fingers two rows apart (no height preference); redirects require three different fingers; pair rules, skipgrams included, normalized over keystrokes plus one space per word. |
-| Keysolve-like | Ring–middle two-row jumps always count as full scissors and one-row jumps as half scissors, on top of the Doc definition. |
 
 ## Rule vocabulary
 

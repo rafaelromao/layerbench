@@ -76,7 +76,6 @@ describe('The plan: what the engine is told', () => {
   it.each([
     ['layouts_doc', 'reset'],
     ['cyanophage', 'reset'],
-    ['keysolve', 'reset'],
   ])('takes cross-word from the rule set: %s → %s', (preset, crossWord) => {
     expect(analysisPlan(settings({ rules: getPreset(preset) })).crossWord).toBe(crossWord);
   });

@@ -10,7 +10,7 @@ describe('reading a custom document', () => {
   it('reads each collection as what it holds', async () => {
     const storage = new MemoryStorage();
     await storage.put('layouts', 'mine', toCanonicalJson({ ...qwerty, name: 'Mine' }));
-    await storage.put('rulesets', 'strict', { ...getPreset('keysolve'), name: 'Strict' });
+    await storage.put('rulesets', 'strict', { ...getPreset('cyanophage'), name: 'Strict' });
     await storage.put('corpora', 'notes', { name: 'Notes', sample: 'the fox' });
 
     const layout = await readCustom(storage, 'layouts', 'mine');
@@ -35,9 +35,11 @@ describe('reading a custom document', () => {
     storage.get = async () => {
       throw new Error('offline');
     };
+    // Storage that failed, not the document: said apart, so it is not told as broken.
     expect(await readCustom(storage, 'layouts', 'mine')).toEqual({
       status: 'unreadable',
       why: 'offline',
+      unreachable: true,
     });
   });
 

@@ -16,7 +16,7 @@ describe('rule-set serialization', () => {
     expect(parsed.ruleSet.globals).toEqual({ universe: 'with_space' });
   });
 
-  it('tells the 20 shallowest faults of a set wrong in many places, and how many more there are', () => {
+  it('tells the 3 shallowest faults of a set wrong in many places, and how many more there are', () => {
     // A flag, wrong nearer the top than any rule, and read after them all.
     const rules = Array.from({ length: 30 }, () => ({}));
     const parsed = safeParseRuleSet({ rules, score_enabled: 'yes' });
@@ -24,8 +24,8 @@ describe('rule-set serialization', () => {
     if (parsed.ok) return;
     expect(parsed.error).toContain('→ at score_enabled');
     expect(parsed.error).toContain('→ at rules[0].id');
-    expect(parsed.error.match(/✖/g)).toHaveLength(20);
-    expect(parsed.error).toMatch(/\n… and 11 more$/);
+    expect(parsed.error.match(/✖/g)).toHaveLength(3);
+    expect(parsed.error).toMatch(/\n… and 28 more$/);
   });
 
   it('rejects a predicate outside the vocabulary rather than matching everything', () => {

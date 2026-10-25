@@ -1,7 +1,7 @@
-import { catalogRules, redirectWhere, scissorWhere } from './catalog.js';
+import { catalogRules, redirectWhere } from './catalog.js';
 import type { Rule, RuleSet } from './types.js';
 
-export const PRESET_IDS = ['layouts_doc', 'cyanophage', 'keysolve'] as const;
+export const PRESET_IDS = ['layouts_doc', 'cyanophage'] as const;
 export type PresetId = (typeof PRESET_IDS)[number];
 
 /** The Layouts Doc definitions, unmodified. */
@@ -84,64 +84,11 @@ export function cyanophage(): RuleSet {
   };
 }
 
-/** Ring–middle row jumps always count as scissors, on top of the Doc definition. */
-export function keysolve(): RuleSet {
-  const rules = catalogRules().map((r): Rule => {
-    if (r.id === 'fsb') {
-      return {
-        ...r,
-        description: 'Keysolve: Doc full scissors plus every ring–middle two-row jump.',
-        where: {
-          any: [
-            scissorWhere(2),
-            {
-              all: [
-                { same_hand: true },
-                { finger_name_pair: ['ring', 'middle'] },
-                { row_delta: { abs: 2 } },
-              ],
-            },
-          ],
-        },
-      };
-    }
-    if (r.id === 'hsb') {
-      return {
-        ...r,
-        where: {
-          any: [
-            scissorWhere(1),
-            {
-              all: [
-                { same_hand: true },
-                { finger_name_pair: ['ring', 'middle'] },
-                { row_delta: { abs: 1 } },
-              ],
-            },
-          ],
-        },
-      };
-    }
-    return r;
-  });
-
-  return {
-    id: 'keysolve',
-    name: 'Keysolve-like',
-    description: 'Ring–middle row jumps always count as scissors; bigram normalization.',
-    globals: {},
-    rules,
-    score_enabled: false,
-  };
-}
-
 /** A preset by id; unknown ids fall back to the Layouts Doc set. */
 export function getPreset(id: string): RuleSet {
   switch (id) {
     case 'cyanophage':
       return cyanophage();
-    case 'keysolve':
-      return keysolve();
     default:
       return layoutsDoc();
   }

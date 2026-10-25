@@ -940,6 +940,81 @@ describe('Community layouts', () => {
   });
 });
 
+describe('A saved layout that cannot be read', () => {
+  const qwerty = bundledLayout('qwerty') as Layout;
+  /** Qwerty saved as `name`, its document changed by `change` as an older app, or a bug, wrote it. */
+  async function saveAs(
+    storage: IndexedDbAdapter,
+    id: string,
+    name: string,
+    change: (doc: Record<string, unknown>) => void = () => {},
+  ) {
+    const doc = toCanonicalJson({ ...qwerty, id, name }) as Record<string, unknown>;
+    change(doc);
+    await storage.put('layouts', id, doc as never);
+  }
+  const layerOf = (doc: Record<string, unknown>, i: number) =>
+    (doc.layers as { bindings: Record<string, unknown> }[])[i].bindings;
+
+  it('leaves the Library working, its card saying why, and Analyze a way back', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    await saveAs(storage, 'mine', 'Mine');
+    await saveAs(storage, 'broken', 'Broken', (doc) => {
+      layerOf(doc, 0).LHM = { kind: 'bogus' };
+    });
+    const page = renderRoute(LIBRARY, { storage });
+
+    const card = (await screen.findByRole('heading', { name: 'Broken', level: 3 })).closest(
+      'article',
+    ) as HTMLElement;
+    expect(
+      await within(card).findByText(/^It cannot be read: ✖ No key is of kind "bogus"/),
+    ).toBeInTheDocument();
+    expect(listed('Qwerty')).toBeInTheDocument();
+    const mine = (screen.getByRole('heading', { name: 'Mine', level: 3 }) as HTMLElement).closest(
+      'article',
+    ) as HTMLElement;
+    expect(await within(mine).findByRole('group', { name: 'Mine layers' })).toBeInTheDocument();
+    expect(within(mine).queryByText(/cannot be read/)).toBeNull();
+
+    await user.click(within(card).getByRole('link', { name: 'Open Broken' }));
+    expect(await screen.findByText('This layout cannot be opened.')).toBeInTheDocument();
+    await user.click(screen.getByRole('link', { name: 'Open another layout' }));
+    expect(await screen.findByRole('heading', { name: 'Mine', level: 3 })).toBeInTheDocument();
+    // The choices the analysis was made with come back with it, as the Library tab's link keeps.
+    expect(page.currentSearch()).toContain('sample=1000');
+  });
+
+  it('opens one saved with imported keys, as Magic Breeze was, without them', async () => {
+    const storage = freshStorage();
+    // Before PR #79: a FUN hold and an Escape on Numbers, kept as imported keys.
+    await saveAs(storage, 'breeze', 'Old Breeze', (doc) => {
+      const funHeld = {
+        kind: 'hold_tap',
+        tap: { kind: 'kp', symbol: '1' },
+        hold: { kind: 'raw', label: 'FUN' },
+      };
+      layerOf(doc, 1).LHP = funHeld;
+      layerOf(doc, 1).R1 = { kind: 'raw', label: 'Esc' };
+    });
+    renderRoute(LIBRARY, { storage });
+
+    const card = (await screen.findByRole('heading', { name: 'Old Breeze', level: 3 })).closest(
+      'article',
+    ) as HTMLElement;
+    expect(
+      await within(card).findByRole('group', { name: 'Old Breeze layers' }),
+    ).toBeInTheDocument();
+    expect(within(card).queryByText(/cannot be read/)).toBeNull();
+
+    cleanup();
+    renderRoute('/analyze?layout=custom:breeze&sample=1000', { storage });
+    expect(await screen.findByRole('group', { name: 'Layers' })).toBeInTheDocument();
+    expect(screen.queryByText('This layout cannot be opened.')).toBeNull();
+  });
+});
+
 describe('Categories', () => {
   /** The category badge on a layout's card. */
   const badgeOf = (name: string) =>
@@ -994,9 +1069,12 @@ describe('Categories', () => {
     };
     await storage.put('layouts', 'broken', toCanonicalJson(broken));
     renderRoute(LIBRARY, { storage });
-    await screen.findByRole('heading', { name: 'Broken', level: 3 });
+    const card = (await screen.findByRole('heading', { name: 'Broken', level: 3 })).closest(
+      'article',
+    ) as HTMLElement;
     await waitFor(() => expect(badgeOf('Qwerty')).toBe('Standard'));
     expect(badgeOf('Broken')).toBeUndefined();
+    expect(within(card).getByText(/^It cannot be read: /)).toBeInTheDocument();
   });
 
   it('lists only the layouts in the categories chosen, and remembers the choice', async () => {
@@ -1112,7 +1190,7 @@ describe('Layers on a card', () => {
     expect(card.querySelectorAll('svg.lb-keyboard')).toHaveLength(1);
   });
 
-  it('draws each key of a card as Analyze does, what a hold does along its bottom, numbered and listed', async () => {
+  it('draws each key of a card as Analyze does, what a hold does along its bottom, numbered but not listed', async () => {
     renderRoute(LIBRARY, { storage: freshStorage() });
     const card = async (name: string) =>
       (await screen.findByRole('heading', { name, level: 3 })).closest('article') as HTMLElement;
@@ -1120,17 +1198,15 @@ describe('Layers on a card', () => {
     // L0 types space and holds Numbers; R0 holds Symbols and taps nothing.
     const holds = [...qwerty.querySelectorAll('.lb-key-hold')].map((t) => t.textContent);
     expect(holds).toEqual(expect.arrayContaining(['Numb', 'Symb']));
-    // An adaptive key's branches do not fit it: it is numbered, and listed under the board.
+    // An adaptive key's branches do not fit it: it is numbered, as on Analyze, but a card is a
+    // glance at the layout, and lists nothing under its board.
     const magic = await card('Magic Romak');
     expect(magic.querySelectorAll('svg.lb-keyboard .lb-key-number').length).toBeGreaterThan(0);
-    const list = within(magic).getByRole('list', { name: 'Key legend' });
-    expect(within(list).getAllByRole('listitem').length).toBeGreaterThan(0);
-    // The navigator stays right under the board, the list after it, as on Analyze.
+    expect(within(magic).queryByRole('list', { name: 'Key legend' })).toBeNull();
+    // The navigator is right under the board.
     const board = magic.querySelector('svg.lb-keyboard') as SVGElement;
     const nav = within(magic).getByRole('group', { name: 'Magic Romak layers' });
-    const follows = (a: Node, b: Node) =>
-      !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-    expect([follows(board, nav), follows(nav, list)]).toEqual([true, true]);
+    expect(board.compareDocumentPosition(nav) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("draws a card's combos as the layout is ranked, as Analyze draws them", async () => {
@@ -1189,16 +1265,14 @@ describe('Layers on a card', () => {
     await screen.findByRole('group', { name: 'Bird layers' });
     const bird = within(cardOf('Bird'));
     expect(bird.getByRole('button', { name: '1 more combo on Base' })).toHaveTextContent(
-      /^1 more combo$/,
+      /^Combos$/,
     );
     // Bird's Numbers has none apart, nor has any layer of Graphite.
     await showLayer(user, 'Numbers', 'Bird layers');
     expect(bird.queryByRole('button', { name: /more combos? on/ })).toBeNull();
-    // The button's room stays, so the arrows do not move as the layers turn.
+    // The navigator keeps the middle of its row, so the arrows do not move as the layers turn.
     const nav = bird.getByRole('group', { name: 'Bird layers' });
-    expect(nav.parentElement?.querySelector('[aria-hidden="true"].invisible')).toHaveTextContent(
-      '1 more combo',
-    );
+    expect(nav).toHaveClass('col-start-2');
     expect(
       within(cardOf('Graphite')).queryByRole('button', { name: /more combos? on/ }),
     ).toBeNull();

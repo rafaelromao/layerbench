@@ -10,7 +10,7 @@ import { BandBadge, SummaryStrip } from '../components/Metrics.js';
 import { PreviewBoard } from '../components/PreviewBoard.js';
 import { customRef } from '../custom/ref.js';
 import { useAnalysisClient } from '../engine/client-context.js';
-import { expandPositions, heatMap } from '../engine/heat.js';
+import { expandPositions } from '../engine/heat.js';
 import type { AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { useAnalysis } from '../engine/use-analysis.js';
 import { carriedRef } from '../layout-session/open.js';
@@ -255,8 +255,6 @@ export function CompareView() {
                         typed={typed}
                         layer={layer}
                         onLayer={setLayer}
-                        // What was pressed on the layer shown, as Analyze's board shows it.
-                        heat={report ? heatMap(report, 'usage', layer) : {}}
                         highlight={highlightFor(report)}
                         label={`Layers of ${side}`}
                       />

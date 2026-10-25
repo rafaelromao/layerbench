@@ -18,7 +18,7 @@ describe('Rules', () => {
   });
 
   it('cites a source under every rule, leading with the definition in force', async () => {
-    renderRoute('/rules?rules=keysolve', { storage: freshStorage() });
+    renderRoute('/rules?rules=cyanophage', { storage: freshStorage() });
     await screen.findByText('Same finger bigrams');
 
     const rows = [...document.querySelectorAll('tbody tr')];
@@ -27,11 +27,11 @@ describe('Rules', () => {
       expect(within(row as HTMLElement).getByText(/^Sources \(\d+\)$/)).toBeInTheDocument();
     }
 
-    // Keysolve redefines full scissors, so its own README is the first source cited for them.
+    // cyanophage redefines full scissors, so its own source is cited first.
     const fsb = rows.find((r) => r.textContent?.includes('fsb')) as HTMLElement;
     const first = within(fsb).getAllByRole('link')[0];
-    expect(first).toHaveTextContent('Keysolve README');
-    expect(first).toHaveAttribute('href', expect.stringContaining('keysolve'));
+    expect(first).toHaveTextContent('cyanophage layout playground');
+    expect(first).toHaveAttribute('href', expect.stringContaining('cyanophage'));
   });
 
   it('adds a composed rule to the set', async () => {
@@ -73,6 +73,9 @@ describe('Rules', () => {
     const { currentSearch } = renderRoute('/rules', { storage: freshStorage() });
     await screen.findByText('Same finger bigrams');
 
+    expect(
+      within(screen.getByLabelText('Rule set')).queryByRole('option', { name: 'Keysolve-like' }),
+    ).toBeNull();
     await user.selectOptions(screen.getByLabelText('Rule set'), 'cyanophage');
 
     await waitFor(() => expect(currentSearch()).toContain('rules=cyanophage'));

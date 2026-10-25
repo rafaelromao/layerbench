@@ -31,12 +31,6 @@ const cyanophage = (locator: string): RuleReference => ({
   locator,
 });
 
-const keysolve = (locator: string): RuleReference => ({
-  title: 'Keysolve README',
-  url: 'https://github.com/grassfedreeve/keysolve-web/blob/master/README.md',
-  locator,
-});
-
 const genkey = (locator: string): RuleReference => ({
   title: 'Genkey documentation',
   url: 'http://www.semilin.dev/genkey/docs.html',
@@ -204,13 +198,6 @@ export const PRESET_REFERENCES: Readonly<Record<string, PresetReferences>> = {
       lsb: [cyanophage('"Lat Stretch Bigrams" — fixed column pairs')],
       fsb: [cyanophage('"Scissors" — adjacent fingers, two or more rows apart')],
       redirect: [cyanophage('"redirect" trigram category')],
-    },
-  },
-  keysolve: {
-    preset: [keysolve('metric definitions'), kld('§6.9 Keysolve analyzer')],
-    rules: {
-      fsb: [keysolve('FS — full scissor'), kld('§6.9 Keysolve analyzer')],
-      hsb: [keysolve('HS — half scissor')],
     },
   },
 };
