@@ -273,7 +273,7 @@ a line of another analyzer's code, or the glossary where the rule is LayerBench'
 ### Presets
 
 A preset is a rule set that follows another analyzer's definitions: *Layouts Doc* (the default),
-*cyanophage-like* and *Keysolve-like*. The [glossary](../METRICS.md#presets) says what each one
+and *cyanophage-like*. The [glossary](../METRICS.md#presets) says what each one
 changes.
 
 ### Writing a rule

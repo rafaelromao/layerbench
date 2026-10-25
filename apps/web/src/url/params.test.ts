@@ -34,6 +34,7 @@ describe('analysis parameters', () => {
     expect(parseParams({ sample: '9999999' }).sample).toBe(5_000_000);
     expect(parseParams({ heat: 'nonsense' }).heat).toBe('usage');
     expect(parseParams({ rules: 'nonsense' }).preset).toBe('layouts_doc');
+    expect(parseParams({ rules: 'keysolve' }).preset).toBe('layouts_doc');
     expect(parseParams({ rules: 'custom:mine' }).preset).toBe('custom:mine');
     expect(parseParams({ rules: 'cyanophage' }).preset).toBe('cyanophage');
     // The old spelling opens nothing.
@@ -122,7 +123,7 @@ describe('analysis parameters', () => {
       corpus: 'en-general',
       corpus2: 'pt-br-general',
       mix: 70,
-      preset: 'keysolve',
+      preset: 'cyanophage',
       caseMode: 'model' as const,
       universe: 'with_space' as const,
       layer: 3,

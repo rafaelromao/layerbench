@@ -9,7 +9,7 @@ import { openSettings, rankingSays, renderRoute } from '../test/render.js';
 /** Storage holding one custom rule set, Strict, under the id `strict`. */
 async function withStrict(): Promise<MemoryStorage> {
   const storage = new MemoryStorage();
-  await storage.put('rulesets', 'strict', { ...getPreset('keysolve'), name: 'Strict' });
+  await storage.put('rulesets', 'strict', { ...getPreset('cyanophage'), name: 'Strict' });
   return storage;
 }
 

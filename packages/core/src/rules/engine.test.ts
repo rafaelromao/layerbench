@@ -10,7 +10,7 @@ import { simulate } from '../sim/resolver.js';
 import { classifyBand } from './bands.js';
 import { BANDS, catalogRules, sfbWhere } from './catalog.js';
 import { evaluate, evaluateFocus } from './engine.js';
-import { cyanophage, getPreset, keysolve, layoutsDoc } from './presets.js';
+import { cyanophage, getPreset, layoutsDoc } from './presets.js';
 import { parseRuleSet, ruleSetFromJson, ruleSetToJson } from './serialize.js';
 import type { RuleSet } from './types.js';
 
@@ -165,7 +165,7 @@ describe('rules engine', () => {
     expect(classifyBand(581, BANDS.effort).label).toBe('max');
     expect(classifyBand(1237, BANDS.effort)).toMatchObject({ label: 'max', quality: 'bad' });
     // Every preset scores Effort with the catalog's rule, so every one carries its bands.
-    for (const preset of [layoutsDoc(), cyanophage(), keysolve()]) {
+    for (const preset of [layoutsDoc(), cyanophage()]) {
       expect(preset.rules.find((r) => r.id === 'effort')?.bands).toEqual(BANDS.effort);
     }
     expect(qwerty.results.find((r) => r.id === 'effort')?.band.label).toBe('max');
@@ -276,7 +276,13 @@ describe('rules engine', () => {
     expect(scored.score.enabled).toBe(true);
     expect(typeof scored.score.value).toBe('number');
     // No preset ships with scoring on, so an unweighted set must leave it off.
-    expect(run('qwerty', keysolve()).score.enabled).toBe(false);
+    for (const preset of [layoutsDoc(), cyanophage()]) {
+      expect(run('qwerty', preset).score.enabled).toBe(false);
+    }
+  });
+
+  it('falls back to the Doc for the removed Keysolve preset', () => {
+    expect(getPreset('keysolve')).toEqual(layoutsDoc());
   });
 
   it('round-trips rule sets through JSON', () => {

@@ -28,7 +28,7 @@ function track(ref: string, adapter?: StorageAdapter) {
 async function storageWith(...names: string[]): Promise<MemoryStorage> {
   const storage = new MemoryStorage();
   for (const name of names) {
-    await storage.put('rulesets', name.toLowerCase(), { ...getPreset('keysolve'), name });
+    await storage.put('rulesets', name.toLowerCase(), { ...getPreset('cyanophage'), name });
   }
   return storage;
 }
@@ -55,11 +55,11 @@ describe('the rule set a reference names', () => {
 
     rerender({ asked: 'custom:loose' });
     await waitFor(() => expect(result.current.name).toBe('Loose'));
-    rerender({ asked: 'keysolve' });
+    rerender({ asked: 'cyanophage' });
     const names: Record<string, string | undefined> = {
       'custom:strict': 'Strict',
       'custom:loose': 'Loose',
-      keysolve: getPreset('keysolve').name,
+      cyanophage: getPreset('cyanophage').name,
     };
     for (const { asked, state } of seen) {
       expect(state.ref).toBe(asked);
@@ -88,7 +88,7 @@ describe('the rule set a reference names', () => {
 
   it('is not taken from the browser copy alone while sign-in is not known, as it may be behind', async () => {
     const id = `kept-${Date.now()}`;
-    await new IndexedDbAdapter().put('rulesets', id, { ...getPreset('keysolve'), name: 'Kept' });
+    await new IndexedDbAdapter().put('rulesets', id, { ...getPreset('cyanophage'), name: 'Kept' });
     const { result } = track(`custom:${id}`);
     await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
     expect(result.current.status).toBe('reading');
