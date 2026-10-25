@@ -48,9 +48,9 @@ of their own, right above the summary; on a phone, under the word typed.
 
 ## Choosing what a key does
 
-The tiles along the top of the editor are the kinds of key. The lit tile is what the key is now,
-and choosing another turns it into that kind, keeping what it can: a symbol stays the symbol when
-the key becomes a tap-hold.
+The tiles under the editor's moves are the kinds of key. The lit tile is what the key is now, and
+choosing another turns it into that kind, keeping what it can: a symbol stays the symbol when the
+key becomes a tap-hold.
 
 | Tile | The key |
 |---|---|
@@ -114,19 +114,19 @@ of it, and a binding typed into the field replaces it.
 
 Drag a key onto another to swap the two. Hold `Alt` while dropping to copy it instead.
 
-The same moves work without dragging. **Swap with…** and **Copy to…** in the editor ask you to
-tap the other key. **Send to layer…** puts a key at the same place on another layer, picked from
-a list, and so is the way to move a key to another layer. `Delete` on a selected key
-makes it do nothing (*Nothing* `∅`), on any layer, rather than let the layer below show through;
-**Clear**, in the editor, does the same for a key with a binding of its own, and is greyed out on
-one that takes its layer's default.
+The same moves work without dragging, and come first in the editor, above everything else.
+**Swap with…** and **Copy to…** ask you to tap the other key. **Send to layer…** puts a key at the
+same place on another layer, picked from a list, and so is the way to move a key to another layer.
+`Delete` on a selected key makes it do nothing (*Nothing* `∅`), on any layer, rather than let the
+layer below show through; **Clear**, at the foot of the editor, does the same for a key with a
+binding of its own, and is greyed out on one that takes its layer's default.
 
 ### Several keys at once
 
 Shift-click a key to select it beside the ones already selected, and again to take it back out; on
 a phone, rest your finger on it and lift. With more than one key selected, the editor gives way to
-what can be done with all of them: **Send to layer…** and **Copy to layer…** put them on another
-layer at the same places, **Make transparent** lets the layer below show through them, and
+what can be done with all of them. First, **Send to layer…** and **Copy to layer…** put them on
+another layer at the same places; **Make transparent** lets the layer below show through them, and
 **Clear** makes them do nothing, as `Delete` does on any one of them. Each is one change, so one **Undo** takes it back, and the keys stay
 selected for the next.
 
