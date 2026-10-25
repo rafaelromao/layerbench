@@ -40,6 +40,7 @@ import { formatValue, qualityBorder } from '../components/format.js';
 import { HelpLink } from '../components/HelpLink.js';
 import { BandBadge } from '../components/Metrics.js';
 import { NameDialog, type TakenLayout } from '../components/NameDialog.js';
+import { readCustom } from '../custom/read.js';
 import { customRef } from '../custom/ref.js';
 import { retryingSaver, type SaveOptions } from '../custom/save-new.js';
 import { rankingKey, recall, rememberBehind } from '../engine/ranking-memory.js';
@@ -51,7 +52,6 @@ import {
   useSummaries,
 } from '../engine/use-summaries.js';
 import { HELP } from '../guide/help.js';
-import { openLayout } from '../layout-session/open.js';
 import { forgetProposal, proposalOf, settleProposals } from '../proposals/proposals.js';
 import { useRememberSelection } from '../state/selection.js';
 import { useSession } from '../state/session.js';
@@ -246,6 +246,8 @@ interface Listed {
   ref: string;
   /** Missing while a custom document is still being read, or if it will not parse. */
   layout: Layout | undefined;
+  /** Why a custom document will not open, once it has been read and would not. */
+  unreadable?: string;
   /** Missing as `layout` is, or if it will not compile. */
   compiled: CompiledLayout | undefined;
   /** Author, board and layers, and when a custom one last changed. */
@@ -325,6 +327,11 @@ function LayoutCard({
             <Ranking summary={summary} bands={bands} lacking={lacking} nobodyCan={nobodyCan} />
           </div>
         </header>
+        {item.unreadable && (
+          <p className="text-error text-xs whitespace-pre-line [overflow-wrap:anywhere]">
+            {item.unreadable}
+          </p>
+        )}
         {item.compiled && (
           <LayerPreview
             id={
@@ -521,17 +528,26 @@ export function LibraryView() {
 
   // Custom layouts are listed from their index; ranking needs the documents themselves.
   const [customLayouts, setCustomLayouts] = useState<Map<string, Layout>>(() => new Map());
+  // Why each that would not open did not: its card says so, and every other layout is listed.
+  const [customUnreadable, setCustomUnreadable] = useState<Map<string, string>>(() => new Map());
   useEffect(() => {
     let cancelled = false;
     (async () => {
       // All at once: from GitHub, each is a round trip of its own.
       const read = await Promise.all(
-        custom.entries.map(async (entry) => {
-          const opened = await openLayout(customRef(entry.id), storage);
-          return opened.ok ? ([entry.id, opened.layout] as const) : null;
-        }),
+        custom.entries.map(
+          async (entry) => [entry.id, await readCustom(storage, 'layouts', entry.id)] as const,
+        ),
       );
-      if (!cancelled) setCustomLayouts(new Map(read.filter((r) => r !== null)));
+      if (cancelled) return;
+      const layouts = new Map<string, Layout>();
+      const unreadable = new Map<string, string>();
+      for (const [id, got] of read) {
+        if (got.status === 'read') layouts.set(id, got.doc);
+        else if (got.status === 'unreadable') unreadable.set(id, `It cannot be read: ${got.why}`);
+      }
+      setCustomLayouts(layouts);
+      setCustomUnreadable(unreadable);
     })();
     return () => {
       cancelled = true;
@@ -618,6 +634,7 @@ export function LibraryView() {
         id: entry.id,
         ref: customRef(entry.id),
         layout: customLayouts.get(entry.id),
+        unreadable: customUnreadable.get(entry.id),
         compiled: customCompiled.get(entry.id),
         meta: [
           entry.author,
@@ -637,7 +654,7 @@ export function LibraryView() {
           : undefined,
       })),
     ],
-    [bundled, community, custom.entries, customLayouts, customCompiled],
+    [bundled, community, custom.entries, customLayouts, customUnreadable, customCompiled],
   );
 
   // Custom and community layouts can be left out of the list, and then they count on no board

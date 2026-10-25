@@ -1,4 +1,4 @@
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useMemo } from 'react';
 import { useAnalysisClient } from '../engine/client-context.js';
 import { useLayoutSession } from '../layout-session/use-layout-session.js';
@@ -61,7 +61,15 @@ export function AnalyzeView() {
     <div className="space-y-4">
       <h1 className="sr-only">Analyze</h1>
       {session.status === 'failed' ? (
-        <div className="alert alert-error text-sm">{session.error}</div>
+        // A layout that will not open leaves the way to every other one: the page is never only
+        // the error.
+        <div role="alert" className="alert alert-error text-sm flex flex-col items-start gap-2">
+          <p className="font-semibold">This layout cannot be opened.</p>
+          <p className="whitespace-pre-line [overflow-wrap:anywhere]">{session.error}</p>
+          <Link to="/library" className="btn btn-sm">
+            Open another layout
+          </Link>
+        </div>
       ) : (
         <span className="loading loading-dots loading-md" />
       )}

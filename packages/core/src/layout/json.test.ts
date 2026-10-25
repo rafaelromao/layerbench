@@ -308,17 +308,17 @@ describe('a document with bindings that are wrong', () => {
   };
   const faultsTold = (error: string) => error.match(/✖/g)?.length;
 
-  it('is refused at once, telling its 20 shallowest faults, however many have no `kind` it knows', () => {
+  it('is refused at once, telling its 3 shallowest faults, however many have no `kind` it knows', () => {
     const keys = Array.from({ length: 20_000 }, (_, i) => [`k${i}`, { kind: 'bogus' }]);
     // A combo of one key, wrong nearer the top than any binding, and read after them all.
     const combos = [{ keys: ['LHM'], binding: { kind: 'none' } }];
     const error = refused(withBindings(Object.fromEntries(keys), { combos }));
     expect(error).toContain('→ at combos[0].keys');
     expect(error).toContain('→ at layers[0].bindings.k0.kind');
-    expect(error).toContain('→ at layers[0].bindings.k18.kind');
-    expect(error).not.toContain('k19.kind');
-    expect(error).toMatch(/\n… and 19981 more$/);
-    expect(faultsTold(error)).toBe(20);
+    expect(error).toContain('→ at layers[0].bindings.k1.kind');
+    expect(error).not.toContain('k2.kind');
+    expect(error).toMatch(/\n… and 19998 more$/);
+    expect(faultsTold(error)).toBe(3);
   });
 
   it('tells one fault for each binding, however many its parts have', () => {
@@ -383,7 +383,7 @@ describe('a document that holds very many values', () => {
     expect(performance.now() - started).toBeLessThan(200);
   });
 
-  it('is refused quickly when every one of its 50,000 values is wrong, telling the shallowest 20', () => {
+  it('is refused quickly when every one of its 50,000 values is wrong, telling the shallowest 3', () => {
     const doc = holding(50_000, 1);
     const started = performance.now();
     const parsed = safeParseLayout(doc);
@@ -393,8 +393,8 @@ describe('a document that holds very many values', () => {
     expect(parsed.error).toMatch(
       /^✖ Invalid input: expected string, received number\n {2}→ at languages\[0\]/,
     );
-    expect(parsed.error.match(/✖/g)).toHaveLength(20);
-    expect(parsed.error).toMatch(new RegExp(`\\n… and ${doc.languages.length - 20} more$`));
+    expect(parsed.error.match(/✖/g)).toHaveLength(3);
+    expect(parsed.error).toMatch(new RegExp(`\\n… and ${doc.languages.length - 3} more$`));
   });
 });
 
@@ -637,5 +637,96 @@ describe('a document saved while layouts named bindings of their own', () => {
       LHR: { kind: 'macro', symbols: 'x' },
       LHP: { kind: 'none' },
     });
+  });
+});
+
+describe('a document saved while the format had imported keys', () => {
+  const kp = (symbol: string) => ({ kind: 'kp', symbol });
+  const imported = (label: string) => ({ kind: 'raw', label });
+  const holding = (tap: unknown, hold: unknown) => ({ kind: 'hold_tap', tap, hold });
+  // As Magic Breeze was saved before PR #79: FUN, MEDIA and MACROS held on Numbers and Symbols.
+  const layer = (id: string, bindings: Record<string, unknown>) => ({ id, bindings });
+  const old = {
+    format: 'layerbench/layout@1',
+    name: 'Magic Breeze',
+    geometry: { preset: '3x5+2' },
+    keys: { space: 'L0' },
+    layers: [
+      layer('base', {
+        LHM: kp('e'),
+        L1: imported('Esc'),
+        R1: holding(imported('Esc'), { kind: 'mo', layer: 'num' }),
+        R0: { kind: 'lt', layer: 'sym', tap: imported('⏎') },
+      }),
+      layer('magic', { LHM: kp('a') }),
+      layer('nav', { LHM: kp('b') }),
+      layer('acc', { LHM: kp('é') }),
+      layer('num', {
+        LHP: holding(kp('1'), imported('FUN')),
+        R1: holding(imported('Tab'), imported('MEDIA')),
+        LHI: holding({ kind: 'none' }, imported('FUN')),
+        LTI: { kind: 'macro', steps: [kp('a'), imported('F1'), kp('b')] },
+      }),
+      layer('sym', { RHP: holding(kp(')'), imported('MACROS')) }),
+    ],
+    combos: [
+      { id: 'esc', keys: ['LTM', 'LTI'], binding: imported('Esc') },
+      { id: 'tab', keys: ['LBM', 'LBI'], binding: holding(imported('Tab'), imported('MEDIA')) },
+      {
+        id: 'sym',
+        keys: ['RTM', 'RTI'],
+        binding: holding(imported('Esc'), { kind: 'mo', layer: 'sym' }),
+      },
+      { id: 'q', keys: ['RBM', 'RBI'], binding: kp('q') },
+    ],
+  };
+
+  it('opens with each imported key made as PR #79 made them', () => {
+    const parsed = safeParseLayout(old);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    const [base, , , , num, sym] = parsed.layout.layers;
+    expect(base.bindings).toEqual({
+      LHM: kp('e'),
+      // Alone: transparent, as a key left unset.
+      L1: { kind: 'trans' },
+      // Tapped under a hold: it taps nothing, and the hold stays.
+      R1: holding({ kind: 'none' }, { kind: 'mo', layer: 'num' }),
+      R0: { kind: 'lt', layer: 'sym', tap: { kind: 'none' } },
+    });
+    // Held: the hold goes, and the key is its tap, or transparent when that taps nothing.
+    expect(num.bindings).toEqual({
+      LHP: kp('1'),
+      R1: { kind: 'trans' },
+      LHI: { kind: 'trans' },
+      LTI: { kind: 'macro', steps: [kp('a'), kp('b')] },
+    });
+    expect(sym.bindings).toEqual({ RHP: kp(')') });
+    // A combo left transparent goes, as the editor makes none.
+    expect(parsed.layout.combos?.map((c) => [c.id, c.binding])).toEqual([
+      ['sym', holding({ kind: 'none' }, { kind: 'mo', layer: 'sym' })],
+      ['q', kp('q')],
+    ]);
+    expect(() => compileLayout(parsed.layout)).not.toThrow();
+  });
+
+  it('saves without them', () => {
+    const written = JSON.stringify(toCanonicalJson(parseLayout(old)));
+    expect(written).not.toContain('"raw"');
+    expect(toCanonicalJson(parseLayout(JSON.parse(written)))).toEqual(JSON.parse(written));
+  });
+
+  it('still refuses a kind of key it never had, telling only its kind', () => {
+    const parsed = safeParseLayout({
+      ...old,
+      layers: [layer('base', { LHM: { kind: 'bogus' }, LHI: { symbol: 'a' } })],
+      combos: [],
+    });
+    expect(parsed.ok).toBe(false);
+    if (parsed.ok) return;
+    expect(parsed.error).toBe(
+      '✖ No key is of kind "bogus"\n  → at layers[0].bindings.LHM.kind\n' +
+        '✖ A key needs a kind\n  → at layers[0].bindings.LHI.kind',
+    );
   });
 });
