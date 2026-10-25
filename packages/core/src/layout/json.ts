@@ -1,3 +1,4 @@
+import { canonicalLanguages } from './languages.js';
 import type {
   ActivatorDef,
   AdaptiveTrigger,
@@ -222,7 +223,7 @@ export function toCanonicalJson(layout: Layout): LayoutJson {
     author: layout.author,
     description: layout.description,
     link: layout.link,
-    languages: layout.languages,
+    languages: canonicalLanguages(layout.languages),
     hostLocale: layout.hostLocale ?? 'symbols',
     geometry: geometryToJson(layout.geometry),
     fingering:

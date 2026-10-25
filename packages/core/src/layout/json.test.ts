@@ -292,6 +292,32 @@ describe("a layout's link", () => {
   });
 });
 
+describe('Portuguese declarations in saved layouts', () => {
+  it.each([
+    [['pt-BR'], ['pt']],
+    [['pt', 'pt-BR', 'pt-PT', 'pt'], ['pt']],
+    [
+      ['en', 'pt-BR', 'es', 'pt', 'pt-PT'],
+      ['en', 'pt', 'es'],
+    ],
+    [
+      ['en-US', 'en-GB', 'custom'],
+      ['en-US', 'en-GB', 'custom'],
+    ],
+  ])('cleans %j to %j when read and saved', (languages, expected) => {
+    const layout = { ...withBranches([]), languages };
+    const doc = { ...toCanonicalJson(withBranches([])), languages };
+    expect(parseLayout(doc).languages).toEqual(expected);
+    const read = safeParseLayout(doc);
+    expect(read.ok).toBe(true);
+    if (!read.ok) return;
+    expect(read.layout.languages).toEqual(expected);
+    expect(toCanonicalJson(layout).languages).toEqual(expected);
+    expect(toCanonicalJson(read.layout).languages).toEqual(expected);
+    expect(doc.languages).toEqual(languages);
+  });
+});
+
 describe('a document with bindings that are wrong', () => {
   const withBindings = (bindings: Record<string, unknown>, rest: Record<string, unknown> = {}) => ({
     ...toCanonicalJson(withBranches([])),
