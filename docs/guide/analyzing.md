@@ -154,8 +154,9 @@ has no room on its gap. A button beside **Heat**, such as **40 more combos**, op
 layer shown. Each is drawn once, on a small board of its own with its keys filled, as Keymap Drawer
 draws a combo apart. Under it are the layers it works on. Pick one to open it in the combo editor.
 
-The boards of the Library's cards, of **Compare** and of the import preview have the same button,
-beside their layer navigator. There it only shows the combos: nothing is edited.
+The boards of the Library's cards, of **Compare** and of the import preview are drawn as Analyze
+draws its board, with the same button under the layer navigator. They have no heat, and nothing on
+them is edited: the button only shows the combos.
 
 In **Analyze**, a box lights up with its keys when a word uses it; for a combo off the board, the
 button lights up. Pointing at a box, or focusing it, outlines its keys. **Combos**, under *On the

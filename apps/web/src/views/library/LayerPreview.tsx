@@ -34,7 +34,6 @@ export const LayerPreview = memo(function LayerPreview({
       layer={layer}
       onLayer={setChosen}
       label={`${name} layers`}
-      className="opacity-90"
     />
   );
 });

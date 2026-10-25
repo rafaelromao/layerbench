@@ -24,22 +24,19 @@ import {
   useState,
 } from 'react';
 import { proposeChange } from '../../auth/github-session.js';
+import { Board } from '../../components/Board.js';
 import { Collapsible } from '../../components/Collapsible.js';
-import { CombosApart } from '../../components/CombosApart.js';
 import { ErrorAlert } from '../../components/ErrorAlert.js';
 import { FamilyFilter, METRIC_FAMILIES, useFamilyShown } from '../../components/FamilyFilter.js';
 import { featureList } from '../../components/FeatureSwitches.js';
 import { HelpLink } from '../../components/HelpLink.js';
 import {
   comboPlace,
-  combosApart,
-  Keyboard,
   type KeyboardHandle,
   KeyLegend,
   typingCombos,
 } from '../../components/Keyboard.js';
 import { type KeyItemSelection, KeyStats } from '../../components/KeyStats.js';
-import { LayerNav, useLayerSwipe } from '../../components/LayerNav.js';
 import { MetricCard, SummaryStrip } from '../../components/Metrics.js';
 import { NameDialog, type TakenLayout } from '../../components/NameDialog.js';
 import { PairBreakdown } from '../../components/PairBreakdown.js';
@@ -564,7 +561,6 @@ export function Workbench({
     setPlay(null);
     send({ type: 'selectLayer', layer });
   };
-  const swipe = useLayerSwipe(state.compiled.layers, boardLayer, selectLayer, true);
 
   const heat = useMemo(
     () => (shown ? heatMap(shown, params.heat, boardLayer) : {}),
@@ -576,13 +572,6 @@ export function Workbench({
     // Hidden, a combo on the board still shows while it is the press being played.
     return showCombos ? all : all.filter((c) => c.active);
   }, [typedCompiled, boardLayer, frame, showCombos]);
-  // The combos the board leaves to the button beside it, none while hidden. The board places the
-  // same list on the same keys (`typedCompiled` keeps `state.compiled`'s), so the two agree on
-  // which combos it draws and which it leaves out.
-  const apart = useMemo(
-    () => (showCombos ? combosApart(typedCompiled, boardCombos) : []),
-    [typedCompiled, boardCombos, showCombos],
-  );
 
   // Everything the board outlines: a key armed for a swap, the keys picked for a combo, the keys of
   // the combo open in the editor or one a panel points at, and an outlined pair or word.
@@ -899,146 +888,126 @@ export function Workbench({
                 {/* The board first, with nothing above it; the layers centred under it, as on a
                     Library card; then Heat and Undo and Redo, in a row of their own. */}
                 <div className="flex flex-col gap-2 min-w-0">
-                  <div className="lb-board relative" {...swipe}>
-                    {/* The board pans inside its own box on a narrow screen. */}
-                    <div className="lb-board-scroll">
-                      <Keyboard
-                        ref={keyboard}
-                        id="kb-analyze"
-                        legendList="separate"
-                        compiled={state.compiled}
-                        layer={boardLayer}
-                        selected={state.selected}
-                        alsoSelected={state.also}
-                        heat={heat}
-                        highlight={highlighted}
-                        pressed={frame?.keys ?? []}
-                        combos={boardCombos}
-                        openCombo={openBox}
-                        onComboClick={(combo) => {
-                          // While keys are being picked for a combo, they are all the board is doing.
-                          if (state.comboPick) return;
-                          stopPlaying();
-                          send({ type: 'selectCombo', combo: placeOf(combo) });
-                        }}
-                        arcs={playing ? [] : arcs}
-                        draggable
-                        onDragStart={() => stopPlaying()}
-                        onKeyClick={(keyId, how) => {
-                          if (state.comboPick) {
-                            send({ type: 'comboPickToggle', keyId });
-                            return;
-                          }
-                          stopPlaying();
-                          if (!state.swapFrom) clearOutline();
-                          // A click, a tap and Space all select; the inspector is where editing
-                          // happens, so a finger and a mouse reach it the same way. With Shift, or a
-                          // finger rested on the key, the key joins the others selected or leaves.
-                          send(
-                            how?.add
-                              ? { type: 'toggleSelect', keyId }
-                              : { type: 'keyClick', keyId },
-                          );
-                        }}
-                        onDropKey={(drop) =>
-                          send({
-                            type: 'dropKey',
-                            ...drop,
-                            say: `${drop.from} ${drop.mode === 'copy' ? 'copied to' : 'swapped with'} ${drop.to}`,
-                          })
-                        }
-                        onKeyShortcut={onKeyShortcut}
-                        onEmptyClick={() => {
-                          // Picking keys for a combo is all the board is doing until it ends.
-                          if (state.comboPick) return;
-                          send({ type: 'deselect' });
-                          // A character tapped in the tray goes down as an armed swap does.
-                          if (state.placing !== null) send({ type: 'armChar', char: null });
-                          // The keys a combo or a feature outlined from a panel go too, as on Escape.
-                          if (state.boardHighlight.length > 0) {
-                            send({ type: 'setBoardHighlight', keys: [] });
-                          }
-                          clearOutline();
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <LayerNav
-                    className="min-w-0 justify-center"
-                    layers={state.compiled.layers}
-                    active={boardLayer}
-                    onSelect={selectLayer}
+                  <Board
+                    ref={keyboard}
+                    id="kb-analyze"
+                    compiled={state.compiled}
+                    layer={boardLayer}
+                    selected={state.selected}
+                    alsoSelected={state.also}
+                    heat={heat}
+                    highlight={highlighted}
+                    pressed={frame?.keys ?? []}
+                    openCombo={openBox}
+                    onComboClick={(combo) => {
+                      // While keys are being picked for a combo, they are all the board is doing.
+                      if (state.comboPick) return;
+                      stopPlaying();
+                      send({ type: 'selectCombo', combo: placeOf(combo) });
+                    }}
+                    arcs={playing ? [] : arcs}
+                    draggable
+                    onDragStart={() => stopPlaying()}
+                    onKeyClick={(keyId, how) => {
+                      if (state.comboPick) {
+                        send({ type: 'comboPickToggle', keyId });
+                        return;
+                      }
+                      stopPlaying();
+                      if (!state.swapFrom) clearOutline();
+                      // A click, a tap and Space all select; the inspector is where editing
+                      // happens, so a finger and a mouse reach it the same way. With Shift, or a
+                      // finger rested on the key, the key joins the others selected or leaves.
+                      send(
+                        how?.add ? { type: 'toggleSelect', keyId } : { type: 'keyClick', keyId },
+                      );
+                    }}
+                    onDropKey={(drop) =>
+                      send({
+                        type: 'dropKey',
+                        ...drop,
+                        say: `${drop.from} ${drop.mode === 'copy' ? 'copied to' : 'swapped with'} ${drop.to}`,
+                      })
+                    }
+                    onKeyShortcut={onKeyShortcut}
+                    onEmptyClick={() => {
+                      // Picking keys for a combo is all the board is doing until it ends.
+                      if (state.comboPick) return;
+                      send({ type: 'deselect' });
+                      // A character tapped in the tray goes down as an armed swap does.
+                      if (state.placing !== null) send({ type: 'armChar', char: null });
+                      // The keys a combo or a feature outlined from a panel go too, as on Escape.
+                      if (state.boardHighlight.length > 0) {
+                        send({ type: 'setBoardHighlight', keys: [] });
+                      }
+                      clearOutline();
+                    }}
+                    typed={typedCompiled}
+                    combos={boardCombos}
+                    showApart={showCombos}
+                    // The board would turn under the dialog as a word plays.
+                    onApartOpen={stopPlaying}
+                    onApartLostFocus={() =>
+                      focusKey(state.selected ?? state.compiled.keys[0]?.id ?? '')
+                    }
+                    onLayer={selectLayer}
                     onRename={(layer, name) =>
                       send({ type: 'edit', edit: { kind: 'renameLayer', layer, name } })
                     }
-                  />
-
-                  <div className="lb-board-tools flex flex-wrap items-center justify-between gap-2 min-w-0">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <label className="label-text text-xs" htmlFor="heat">
-                        Heat
-                      </label>
-                      <select
-                        id="heat"
-                        name="heat"
-                        className="select select-xs select-bordered w-auto"
-                        value={params.heat}
-                        onChange={(e) => setParams({ heat: e.target.value as HeatMode })}
-                      >
-                        {HEAT_MODES.map((m) => (
-                          <option key={m} value={m}>
-                            {HEAT_LABELS[m]}
-                          </option>
-                        ))}
-                      </select>
-                      <CombosApart
-                        compiled={typedCompiled}
-                        layer={boardLayer}
-                        combos={apart}
-                        // The board would turn under the dialog as a word plays.
-                        onOpen={stopPlaying}
-                        onLostFocus={() =>
-                          focusKey(state.selected ?? state.compiled.keys[0]?.id ?? '')
-                        }
-                        onComboClick={(combo) => {
-                          if (state.comboPick) return;
-                          stopPlaying();
-                          send({ type: 'selectCombo', combo: placeOf(combo) });
-                        }}
-                      />
-                      {loading && (
+                    tools={
+                      <>
+                        <label className="label-text text-xs" htmlFor="heat">
+                          Heat
+                        </label>
+                        <select
+                          id="heat"
+                          name="heat"
+                          className="select select-xs select-bordered w-auto"
+                          value={params.heat}
+                          onChange={(e) => setParams({ heat: e.target.value as HeatMode })}
+                        >
+                          {HEAT_MODES.map((m) => (
+                            <option key={m} value={m}>
+                              {HEAT_LABELS[m]}
+                            </option>
+                          ))}
+                        </select>
+                      </>
+                    }
+                    toolsAfter={
+                      loading && (
                         <span
                           className="loading loading-spinner loading-xs"
                           role="status"
                           aria-label="Analyzing"
                         />
-                      )}
-                    </div>
-                    {/* On the right, on a row of its own too when a narrow screen wraps it. */}
-                    <div className="join shrink-0 ml-auto">
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-ghost join-item"
-                        aria-label="Undo"
-                        title="Undo (Ctrl+Z)"
-                        disabled={state.past.length === 0}
-                        onClick={() => undo(false)}
-                      >
-                        ↶
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-ghost join-item"
-                        aria-label="Redo"
-                        title="Redo (Ctrl+Shift+Z)"
-                        disabled={state.future.length === 0}
-                        onClick={() => undo(true)}
-                      >
-                        ↷
-                      </button>
-                    </div>
-                  </div>
+                      )
+                    }
+                    toolsEnd={
+                      <div className="join shrink-0 ml-auto">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-ghost join-item"
+                          aria-label="Undo"
+                          title="Undo (Ctrl+Z)"
+                          disabled={state.past.length === 0}
+                          onClick={() => undo(false)}
+                        >
+                          ↶
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-ghost join-item"
+                          aria-label="Redo"
+                          title="Redo (Ctrl+Shift+Z)"
+                          disabled={state.future.length === 0}
+                          onClick={() => undo(true)}
+                        >
+                          ↷
+                        </button>
+                      </div>
+                    }
+                  />
 
                   <MissingKeysTray
                     chars={tray}
