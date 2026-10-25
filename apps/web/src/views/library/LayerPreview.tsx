@@ -34,6 +34,8 @@ export const LayerPreview = memo(function LayerPreview({
       layer={layer}
       onLayer={setChosen}
       label={`${name} layers`}
+      // A card is a glance at the layout; Analyze lists what the numbered keys do.
+      legend={false}
     />
   );
 });

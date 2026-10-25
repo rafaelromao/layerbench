@@ -71,7 +71,7 @@ export function CombosApart({
             setOpened({ compiled, layer, combos });
           }}
         >
-          {count}
+          Combos
         </button>
       )}
       {opened &&

@@ -1,7 +1,7 @@
 import type { CompiledLayout } from '@layerbench/core';
 import { useMemo } from 'react';
 import { Board } from './Board.js';
-import { combosApart, KeyLegend, typingCombos } from './Keyboard.js';
+import { KeyLegend, typingCombos } from './Keyboard.js';
 
 export interface PreviewBoardProps {
   id: string;
@@ -21,12 +21,14 @@ export interface PreviewBoardProps {
   label?: string;
   /** Positions to outline. */
   highlight?: number[];
+  /** Whether the list of the numbered keys goes under the board. */
+  legend?: boolean;
 }
 
 /**
  * A layer drawn to be looked at, not edited: Analyze's board (`Board`), with no heat, nothing
- * selected and nothing to edit. Under it, the list of the keys whose legend cannot say everything,
- * numbered on the board, which Analyze keeps in its Legend panel.
+ * selected and nothing to edit. Under it, unless `legend` is false, the list of the keys whose
+ * legend cannot say everything, numbered on the board, which Analyze keeps in its Legend panel.
  */
 export function PreviewBoard({
   id,
@@ -36,18 +38,10 @@ export function PreviewBoard({
   onLayer,
   label,
   highlight,
+  legend = true,
 }: PreviewBoardProps) {
   const source = typed ?? compiled;
   const combos = useMemo(() => typingCombos(source, layer), [source, layer]);
-  // The most combos apart on any layer, so the button keeps its room as the layers turn.
-  const room = useMemo(
-    () =>
-      Math.max(
-        0,
-        ...source.layers.map((_, i) => combosApart(source, typingCombos(source, i)).length),
-      ),
-    [source],
-  );
   return (
     <div className="min-w-0">
       <Board
@@ -57,14 +51,15 @@ export function PreviewBoard({
         layer={layer}
         onLayer={onLayer}
         combos={combos}
-        apartRoom={room}
         navLabel={label}
         interactive={false}
         highlight={highlight}
       />
-      <div className="mt-2 empty:hidden">
-        <KeyLegend compiled={compiled} layer={layer} quiet />
-      </div>
+      {legend && (
+        <div className="mt-2 empty:hidden">
+          <KeyLegend compiled={compiled} layer={layer} quiet />
+        </div>
+      )}
     </div>
   );
 }

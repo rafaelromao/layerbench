@@ -39,7 +39,7 @@ function drawn(svg: Element, tools: HTMLElement) {
   const apart =
     within(tools)
       .queryByRole('button', { name: /more combos? on/ })
-      ?.textContent?.trim() ?? null;
+      ?.getAttribute('aria-label') ?? null;
   // The board's own box: the same classes on the drawing and the boxes it pans in, nothing dimmed.
   const frame = [svg, svg.parentElement, svg.parentElement?.parentElement].map((el) =>
     el?.getAttribute('class')?.trim(),
@@ -64,7 +64,14 @@ async function everyLayer(label: string, boardId: () => string) {
     if (!svg) throw new Error(`no board ${boardId()}`);
     // The row under the navigator, where the combos button is.
     const nav = screen.getByRole('group', { name: label });
-    out.push({ name, ...drawn(svg, nav.parentElement as HTMLElement), heated: heated(svg) });
+    const row = nav.parentElement as HTMLElement;
+    out.push({
+      name,
+      ...drawn(svg, row),
+      // The navigator in the middle of its row, the Combos button at the row's right end.
+      row: [row.className, nav.className],
+      heated: heated(svg),
+    });
   }
   return out;
 }
@@ -110,6 +117,10 @@ describe('The board is the same on Analyze, a Library card and Compare', () => {
 
     expect(analyze.length).toBeGreaterThan(1);
     expect(analyze.some((l) => l.combos.length > 0)).toBe(true);
+    expect(analyze[0]?.row).toEqual([
+      expect.stringContaining('grid-cols-[1fr_auto_1fr]'),
+      expect.stringContaining('col-start-2'),
+    ]);
     expect(analyze[0]?.frame).toEqual([
       expect.stringMatching(/^lb-keyboard /),
       'lb-board-scroll',

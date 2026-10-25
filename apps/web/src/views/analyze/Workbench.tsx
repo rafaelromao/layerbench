@@ -972,16 +972,14 @@ export function Workbench({
                             </option>
                           ))}
                         </select>
+                        {loading && (
+                          <span
+                            className="loading loading-spinner loading-xs"
+                            role="status"
+                            aria-label="Analyzing"
+                          />
+                        )}
                       </>
-                    }
-                    toolsAfter={
-                      loading && (
-                        <span
-                          className="loading loading-spinner loading-xs"
-                          role="status"
-                          aria-label="Analyzing"
-                        />
-                      )
                     }
                     toolsEnd={
                       <div className="join shrink-0 ml-auto">

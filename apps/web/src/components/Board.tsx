@@ -1,6 +1,6 @@
 import type { CompiledLayout } from '@layerbench/core';
 import { type ReactNode, useMemo } from 'react';
-import { CombosApart, moreCombos } from './CombosApart.js';
+import { CombosApart } from './CombosApart.js';
 import { combosApart, Keyboard, type KeyboardCombo, type KeyboardProps } from './Keyboard.js';
 import { LayerNav, type LayerNavProps, useLayerSwipe } from './LayerNav.js';
 
@@ -11,15 +11,13 @@ export interface BoardProps extends Omit<KeyboardProps, 'layer' | 'combos' | 'le
   onLayer: (idx: number) => void;
   /**
    * The combos that type on the layer drawn (`typingCombos` of `typed`): the board draws those on
-   * neighbouring keys, the button under it the rest.
+   * neighbouring keys, the Combos button beside the navigator the rest.
    */
   combos: KeyboardCombo[];
   /** The layout the combos come from, as the analysis types it, features left out. */
   typed: CompiledLayout;
   /** Whether the button lists the combos the board does not draw. */
   showApart?: boolean;
-  /** The most combos apart on any layer: the button keeps that room as the layers turn. */
-  apartRoom?: number;
   /** The combos dialog opened. */
   onApartOpen?: () => void;
   /** Focus has nowhere to go back to once the combos dialog closes. */
@@ -27,17 +25,16 @@ export interface BoardProps extends Omit<KeyboardProps, 'layer' | 'combos' | 'le
   /** The navigator's accessible name. */
   navLabel?: string;
   onRename?: LayerNavProps['onRename'];
-  /** On the left of the row under the navigator, before the combos button. */
+  /** On the left of a row under the navigator. */
   tools?: ReactNode;
-  /** After the combos button. */
-  toolsAfter?: ReactNode;
   /** On the right of that row. */
   toolsEnd?: ReactNode;
 }
 
 /**
- * The board as every page draws it: the keys, the layer navigator centred under them, then a row
- * with the button for the combos the board does not draw. Analyze adds its heat, undo and editing;
+ * The board as every page draws it: the keys, then a row with the layer navigator centred under
+ * them and, at its right end, the Combos button for the combos the board does not draw. Analyze
+ * adds a row of its heat and undo under that, and its editing;
  * a Library card, Compare and an import preview draw it with nothing more, so the keys, the combos
  * and the navigator look the same on every page. On a touch screen a wide board keeps its keys at
  * least 28px wide and pans inside its own box.
@@ -49,13 +46,11 @@ export function Board({
   combos,
   typed,
   showApart = true,
-  apartRoom = 0,
   onApartOpen,
   onApartLostFocus,
   navLabel,
   onRename,
   tools,
-  toolsAfter,
   toolsEnd,
   onComboClick,
   draggable = false,
@@ -66,17 +61,6 @@ export function Board({
   const apart = useMemo(
     () => (showApart ? combosApart(typed, combos) : []),
     [typed, combos, showApart],
-  );
-  const room = Math.max(apartRoom, apart.length);
-  const button = (
-    <CombosApart
-      compiled={typed}
-      layer={layer}
-      combos={apart}
-      onOpen={onApartOpen}
-      onLostFocus={onApartLostFocus}
-      onComboClick={onComboClick}
-    />
   );
   return (
     <div className="flex flex-col gap-2 min-w-0">
@@ -95,38 +79,36 @@ export function Board({
         </div>
       </div>
 
-      <LayerNav
-        className="min-w-0 justify-center"
-        label={navLabel}
-        layers={compiled.layers}
-        active={layer}
-        onSelect={onLayer}
-        onRename={onRename}
-      />
-
-      {/* Always there, hidden while it has nothing, so the combos button is never unmounted. */}
-      <div
-        className={`lb-board-tools flex flex-wrap items-center justify-between gap-2 min-w-0 ${
-          tools || toolsAfter || toolsEnd || room > 0 ? '' : 'hidden'
-        }`}
-      >
-        <div className="flex items-center gap-2 min-w-0">
-          {tools}
-          {/* The button stays at one place in the tree as its count changes: unmounted, an open
-                dialog would vanish without closing, and focus would not come back to the board. */}
-          <span className="grid shrink-0 place-items-center">
-            {room > 0 && (
-              // As wide as the button's longest words, on a layer with it or without.
-              <span aria-hidden="true" className="btn btn-xs btn-outline invisible [grid-area:1/1]">
-                {moreCombos(room)}
-              </span>
-            )}
-            <span className="[grid-area:1/1]">{button}</span>
-          </span>
-          {toolsAfter}
+      {/* The navigator in the middle column, centred under the board whatever is beside it; the
+          button in the right one, always mounted: unmounted, an open dialog would vanish without
+          closing, and focus would not come back to the board. */}
+      <div className="grid min-w-0 grid-cols-[1fr_auto_1fr] items-center gap-2">
+        <LayerNav
+          className="col-start-2 min-w-0 justify-center"
+          label={navLabel}
+          layers={compiled.layers}
+          active={layer}
+          onSelect={onLayer}
+          onRename={onRename}
+        />
+        <div className="col-start-3 flex min-w-0 justify-end">
+          <CombosApart
+            compiled={typed}
+            layer={layer}
+            combos={apart}
+            onOpen={onApartOpen}
+            onLostFocus={onApartLostFocus}
+            onComboClick={onComboClick}
+          />
         </div>
-        {toolsEnd}
       </div>
+
+      {(tools || toolsEnd) && (
+        <div className="lb-board-tools flex flex-wrap items-center justify-between gap-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">{tools}</div>
+          {toolsEnd}
+        </div>
+      )}
     </div>
   );
 }

@@ -1112,7 +1112,7 @@ describe('Layers on a card', () => {
     expect(card.querySelectorAll('svg.lb-keyboard')).toHaveLength(1);
   });
 
-  it('draws each key of a card as Analyze does, what a hold does along its bottom, numbered and listed', async () => {
+  it('draws each key of a card as Analyze does, what a hold does along its bottom, numbered but not listed', async () => {
     renderRoute(LIBRARY, { storage: freshStorage() });
     const card = async (name: string) =>
       (await screen.findByRole('heading', { name, level: 3 })).closest('article') as HTMLElement;
@@ -1120,17 +1120,15 @@ describe('Layers on a card', () => {
     // L0 types space and holds Numbers; R0 holds Symbols and taps nothing.
     const holds = [...qwerty.querySelectorAll('.lb-key-hold')].map((t) => t.textContent);
     expect(holds).toEqual(expect.arrayContaining(['Numb', 'Symb']));
-    // An adaptive key's branches do not fit it: it is numbered, and listed under the board.
+    // An adaptive key's branches do not fit it: it is numbered, as on Analyze, but a card is a
+    // glance at the layout, and lists nothing under its board.
     const magic = await card('Magic Romak');
     expect(magic.querySelectorAll('svg.lb-keyboard .lb-key-number').length).toBeGreaterThan(0);
-    const list = within(magic).getByRole('list', { name: 'Key legend' });
-    expect(within(list).getAllByRole('listitem').length).toBeGreaterThan(0);
-    // The navigator stays right under the board, the list after it, as on Analyze.
+    expect(within(magic).queryByRole('list', { name: 'Key legend' })).toBeNull();
+    // The navigator is right under the board.
     const board = magic.querySelector('svg.lb-keyboard') as SVGElement;
     const nav = within(magic).getByRole('group', { name: 'Magic Romak layers' });
-    const follows = (a: Node, b: Node) =>
-      !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-    expect([follows(board, nav), follows(nav, list)]).toEqual([true, true]);
+    expect(board.compareDocumentPosition(nav) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("draws a card's combos as the layout is ranked, as Analyze draws them", async () => {
@@ -1189,16 +1187,14 @@ describe('Layers on a card', () => {
     await screen.findByRole('group', { name: 'Bird layers' });
     const bird = within(cardOf('Bird'));
     expect(bird.getByRole('button', { name: '1 more combo on Base' })).toHaveTextContent(
-      /^1 more combo$/,
+      /^Combos$/,
     );
     // Bird's Numbers has none apart, nor has any layer of Graphite.
     await showLayer(user, 'Numbers', 'Bird layers');
     expect(bird.queryByRole('button', { name: /more combos? on/ })).toBeNull();
-    // The button's room stays, so the arrows do not move as the layers turn.
+    // The navigator keeps the middle of its row, so the arrows do not move as the layers turn.
     const nav = bird.getByRole('group', { name: 'Bird layers' });
-    expect(nav.parentElement?.querySelector('[aria-hidden="true"].invisible')).toHaveTextContent(
-      '1 more combo',
-    );
+    expect(nav).toHaveClass('col-start-2');
     expect(
       within(cardOf('Graphite')).queryByRole('button', { name: /more combos? on/ }),
     ).toBeNull();
