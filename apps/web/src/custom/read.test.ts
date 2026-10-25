@@ -35,9 +35,11 @@ describe('reading a custom document', () => {
     storage.get = async () => {
       throw new Error('offline');
     };
+    // Storage that failed, not the document: said apart, so it is not told as broken.
     expect(await readCustom(storage, 'layouts', 'mine')).toEqual({
       status: 'unreadable',
       why: 'offline',
+      unreachable: true,
     });
   });
 

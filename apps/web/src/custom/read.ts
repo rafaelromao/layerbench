@@ -20,7 +20,7 @@ export type CustomDoc<C extends Collection> = C extends 'layouts'
 export type CustomRead<T> =
   | { status: 'read'; doc: T }
   | { status: 'missing' }
-  | { status: 'unreadable'; why: string };
+  | { status: 'unreadable'; why: string; unreachable?: true };
 
 export type CustomFailure = Exclude<CustomRead<unknown>, { status: 'read' }>;
 
@@ -58,7 +58,11 @@ export async function readCustom<C extends Collection>(
   try {
     stored = await storage.get(collection, id);
   } catch (e) {
-    return { status: 'unreadable', why: e instanceof Error ? e.message : String(e) };
+    return {
+      status: 'unreadable',
+      why: e instanceof Error ? e.message : String(e),
+      unreachable: true,
+    };
   }
   if (!stored) return { status: 'missing' };
   const parsed = parse(collection, stored.doc);

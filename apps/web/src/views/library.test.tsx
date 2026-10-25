@@ -940,6 +940,81 @@ describe('Community layouts', () => {
   });
 });
 
+describe('A saved layout that cannot be read', () => {
+  const qwerty = bundledLayout('qwerty') as Layout;
+  /** Qwerty saved as `name`, its document changed by `change` as an older app, or a bug, wrote it. */
+  async function saveAs(
+    storage: IndexedDbAdapter,
+    id: string,
+    name: string,
+    change: (doc: Record<string, unknown>) => void = () => {},
+  ) {
+    const doc = toCanonicalJson({ ...qwerty, id, name }) as Record<string, unknown>;
+    change(doc);
+    await storage.put('layouts', id, doc as never);
+  }
+  const layerOf = (doc: Record<string, unknown>, i: number) =>
+    (doc.layers as { bindings: Record<string, unknown> }[])[i].bindings;
+
+  it('leaves the Library working, its card saying why, and Analyze a way back', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    await saveAs(storage, 'mine', 'Mine');
+    await saveAs(storage, 'broken', 'Broken', (doc) => {
+      layerOf(doc, 0).LHM = { kind: 'bogus' };
+    });
+    const page = renderRoute(LIBRARY, { storage });
+
+    const card = (await screen.findByRole('heading', { name: 'Broken', level: 3 })).closest(
+      'article',
+    ) as HTMLElement;
+    expect(
+      await within(card).findByText(/^It cannot be read: ✖ No key is of kind "bogus"/),
+    ).toBeInTheDocument();
+    expect(listed('Qwerty')).toBeInTheDocument();
+    const mine = (screen.getByRole('heading', { name: 'Mine', level: 3 }) as HTMLElement).closest(
+      'article',
+    ) as HTMLElement;
+    expect(await within(mine).findByRole('group', { name: 'Mine layers' })).toBeInTheDocument();
+    expect(within(mine).queryByText(/cannot be read/)).toBeNull();
+
+    await user.click(within(card).getByRole('link', { name: 'Open Broken' }));
+    expect(await screen.findByText('This layout cannot be opened.')).toBeInTheDocument();
+    await user.click(screen.getByRole('link', { name: 'Open another layout' }));
+    expect(await screen.findByRole('heading', { name: 'Mine', level: 3 })).toBeInTheDocument();
+    // The choices the analysis was made with come back with it, as the Library tab's link keeps.
+    expect(page.currentSearch()).toContain('sample=1000');
+  });
+
+  it('opens one saved with imported keys, as Magic Breeze was, without them', async () => {
+    const storage = freshStorage();
+    // Before PR #79: a FUN hold and an Escape on Numbers, kept as imported keys.
+    await saveAs(storage, 'breeze', 'Old Breeze', (doc) => {
+      const funHeld = {
+        kind: 'hold_tap',
+        tap: { kind: 'kp', symbol: '1' },
+        hold: { kind: 'raw', label: 'FUN' },
+      };
+      layerOf(doc, 1).LHP = funHeld;
+      layerOf(doc, 1).R1 = { kind: 'raw', label: 'Esc' };
+    });
+    renderRoute(LIBRARY, { storage });
+
+    const card = (await screen.findByRole('heading', { name: 'Old Breeze', level: 3 })).closest(
+      'article',
+    ) as HTMLElement;
+    expect(
+      await within(card).findByRole('group', { name: 'Old Breeze layers' }),
+    ).toBeInTheDocument();
+    expect(within(card).queryByText(/cannot be read/)).toBeNull();
+
+    cleanup();
+    renderRoute('/analyze?layout=custom:breeze&sample=1000', { storage });
+    expect(await screen.findByRole('group', { name: 'Layers' })).toBeInTheDocument();
+    expect(screen.queryByText('This layout cannot be opened.')).toBeNull();
+  });
+});
+
 describe('Categories', () => {
   /** The category badge on a layout's card. */
   const badgeOf = (name: string) =>
@@ -994,9 +1069,12 @@ describe('Categories', () => {
     };
     await storage.put('layouts', 'broken', toCanonicalJson(broken));
     renderRoute(LIBRARY, { storage });
-    await screen.findByRole('heading', { name: 'Broken', level: 3 });
+    const card = (await screen.findByRole('heading', { name: 'Broken', level: 3 })).closest(
+      'article',
+    ) as HTMLElement;
     await waitFor(() => expect(badgeOf('Qwerty')).toBe('Standard'));
     expect(badgeOf('Broken')).toBeUndefined();
+    expect(within(card).getByText(/^It cannot be read: /)).toBeInTheDocument();
   });
 
   it('lists only the layouts in the categories chosen, and remembers the choice', async () => {

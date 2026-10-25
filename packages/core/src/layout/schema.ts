@@ -40,116 +40,130 @@ const firstFaultOnly = <T extends z.ZodType>(schema: T) =>
   );
 
 /**
+ * What a binding of no kind the schema has is told: its kind, briefly, rather than every kind there
+ * is. Any other fault is told as zod tells it.
+ */
+function unknownKind(issue: { code?: string; input?: unknown }): string | undefined {
+  if (issue.code !== 'invalid_union') return undefined;
+  const kind = isObject(issue.input) ? issue.input.kind : undefined;
+  return kind === undefined ? 'A key needs a kind' : `No key is of kind ${JSON.stringify(kind)}`;
+}
+
+/**
  * A binding, read by its `kind`: a plain union would try every kind on a binding that has none of
  * them and keep what each said, which a document of many such bindings could make cost gigabytes.
  * A binding that is wrong tells only its first fault, however many its parts have.
  */
 export const BindingSchema: z.ZodType<unknown> = z.lazy(() =>
   firstFaultOnly(
-    z.discriminatedUnion('kind', [
-      z.object({
-        kind: z.literal('kp'),
-        symbol: z.string().optional(),
-        keycode: z.string().optional(),
-        shifted: z.string().optional(),
-        tag: z.string().optional(),
-      }),
-      z.object({ kind: z.literal('trans') }),
-      z.object({ kind: z.literal('none') }),
-      z.object({ kind: z.literal('mo'), layer: z.string() }),
-      z.object({ kind: z.literal('lt'), layer: z.string(), tap: BindingSchema }),
-      z.object({
-        kind: z.literal('sl'),
-        layer: z.string(),
-        quickRelease: z.boolean().optional(),
-        ignoreModifiers: z.boolean().optional(),
-        releaseAfterMs: z.number().optional(),
-      }),
-      z.object({
-        kind: z.literal('tog'),
-        layer: z.string(),
-        mode: z.enum(['flip', 'on', 'off']).default('flip'),
-      }),
-      z.object({ kind: z.literal('to'), layer: z.string() }),
-      z.object({
-        kind: z.literal('sk'),
-        mod: ModSchema.catch('LSHIFT').default('LSHIFT'),
-        quickRelease: z.boolean().optional(),
-        ignoreModifiers: z.boolean().optional(),
-        releaseAfterMs: z.number().optional(),
-      }),
-      z.object({
-        kind: z.literal('mod'),
-        mod: ModSchema.catch('LSHIFT').default('LSHIFT'),
-        also: z.array(ModSchema).optional(),
-      }),
-      z.object({
-        kind: z.literal('caps_word'),
-        // Defaults live in the machine, not here: the document keeps exactly what it declared.
-        continueList: z.array(z.string()).optional(),
-        mods: z.array(ModSchema).optional(),
-      }),
-      z.object({
-        kind: z.literal('auto_layer'),
-        layer: z.string(),
-        continueList: z.array(z.string()).optional(),
-      }),
-      z.object({ kind: z.literal('key_repeat') }),
-      z.object({
-        kind: z.literal('mod_morph'),
-        mods: z.array(ModSchema).default(['LSHIFT']),
-        default: BindingSchema,
-        morphed: BindingSchema,
-        keepMods: z.array(ModSchema).optional(),
-      }),
-      z.object({
-        kind: z.literal('layer_morph'),
-        layers: z.array(z.string()).default([]),
-        // The writer once put `any` on every layer morph. It is what every morph does, so it is
-        // still read, and written no more. zmk-layer-morph has no other, so nothing else is read.
-        match: z.literal('any', { error: LAYER_MORPH_MATCH }).optional(),
-        active: BindingSchema,
-        inactive: BindingSchema,
-      }),
-      z.object({
-        kind: z.literal('sentence_morph'),
-        default: BindingSchema,
-        pending: BindingSchema,
-      }),
-      z.object({ kind: z.literal('sentence_space') }),
-      z.object({ kind: z.literal('tap_dance'), bindings: z.array(BindingSchema) }),
-      z.object({
-        kind: z.literal('macro'),
-        steps: z.array(BindingSchema).optional(),
-        symbols: z.string().optional(),
-        then: z.array(BindingSchema).optional(),
-        tag: z.string().optional(),
-      }),
-      z.object({
-        kind: z.literal('adaptive'),
-        default: BindingSchema.optional(),
-        triggers: z.array(TriggerSchema).optional(),
-        strictModifiers: z.boolean().optional(),
-        deadKeys: z.array(z.string()).optional(),
-      }),
-      z.object({
-        kind: z.literal('hold_tap'),
-        tap: BindingSchema,
-        hold: BindingSchema,
-        flavor: z.string().optional(),
-        tappingTermMs: z.number().optional(),
-      }),
-      z.object({
-        kind: z.literal('dead_key'),
-        diacritic: z.string().default('\u00b4'),
-        shifted: z.string().optional(),
-      }),
-      z.object({
-        kind: z.literal('unicode'),
-        symbol: z.string().default(''),
-        shiftedSymbol: z.string().optional(),
-      }),
-    ]),
+    z.discriminatedUnion(
+      'kind',
+      [
+        z.object({
+          kind: z.literal('kp'),
+          symbol: z.string().optional(),
+          keycode: z.string().optional(),
+          shifted: z.string().optional(),
+          tag: z.string().optional(),
+        }),
+        z.object({ kind: z.literal('trans') }),
+        z.object({ kind: z.literal('none') }),
+        z.object({ kind: z.literal('mo'), layer: z.string() }),
+        z.object({ kind: z.literal('lt'), layer: z.string(), tap: BindingSchema }),
+        z.object({
+          kind: z.literal('sl'),
+          layer: z.string(),
+          quickRelease: z.boolean().optional(),
+          ignoreModifiers: z.boolean().optional(),
+          releaseAfterMs: z.number().optional(),
+        }),
+        z.object({
+          kind: z.literal('tog'),
+          layer: z.string(),
+          mode: z.enum(['flip', 'on', 'off']).default('flip'),
+        }),
+        z.object({ kind: z.literal('to'), layer: z.string() }),
+        z.object({
+          kind: z.literal('sk'),
+          mod: ModSchema.catch('LSHIFT').default('LSHIFT'),
+          quickRelease: z.boolean().optional(),
+          ignoreModifiers: z.boolean().optional(),
+          releaseAfterMs: z.number().optional(),
+        }),
+        z.object({
+          kind: z.literal('mod'),
+          mod: ModSchema.catch('LSHIFT').default('LSHIFT'),
+          also: z.array(ModSchema).optional(),
+        }),
+        z.object({
+          kind: z.literal('caps_word'),
+          // Defaults live in the machine, not here: the document keeps exactly what it declared.
+          continueList: z.array(z.string()).optional(),
+          mods: z.array(ModSchema).optional(),
+        }),
+        z.object({
+          kind: z.literal('auto_layer'),
+          layer: z.string(),
+          continueList: z.array(z.string()).optional(),
+        }),
+        z.object({ kind: z.literal('key_repeat') }),
+        z.object({
+          kind: z.literal('mod_morph'),
+          mods: z.array(ModSchema).default(['LSHIFT']),
+          default: BindingSchema,
+          morphed: BindingSchema,
+          keepMods: z.array(ModSchema).optional(),
+        }),
+        z.object({
+          kind: z.literal('layer_morph'),
+          layers: z.array(z.string()).default([]),
+          // The writer once put `any` on every layer morph. It is what every morph does, so it is
+          // still read, and written no more. zmk-layer-morph has no other, so nothing else is read.
+          match: z.literal('any', { error: LAYER_MORPH_MATCH }).optional(),
+          active: BindingSchema,
+          inactive: BindingSchema,
+        }),
+        z.object({
+          kind: z.literal('sentence_morph'),
+          default: BindingSchema,
+          pending: BindingSchema,
+        }),
+        z.object({ kind: z.literal('sentence_space') }),
+        z.object({ kind: z.literal('tap_dance'), bindings: z.array(BindingSchema) }),
+        z.object({
+          kind: z.literal('macro'),
+          steps: z.array(BindingSchema).optional(),
+          symbols: z.string().optional(),
+          then: z.array(BindingSchema).optional(),
+          tag: z.string().optional(),
+        }),
+        z.object({
+          kind: z.literal('adaptive'),
+          default: BindingSchema.optional(),
+          triggers: z.array(TriggerSchema).optional(),
+          strictModifiers: z.boolean().optional(),
+          deadKeys: z.array(z.string()).optional(),
+        }),
+        z.object({
+          kind: z.literal('hold_tap'),
+          tap: BindingSchema,
+          hold: BindingSchema,
+          flavor: z.string().optional(),
+          tappingTermMs: z.number().optional(),
+        }),
+        z.object({
+          kind: z.literal('dead_key'),
+          diacritic: z.string().default('\u00b4'),
+          shifted: z.string().optional(),
+        }),
+        z.object({
+          kind: z.literal('unicode'),
+          symbol: z.string().default(''),
+          shiftedSymbol: z.string().optional(),
+        }),
+      ],
+      { error: unknownKind },
+    ),
   ),
 );
 
@@ -335,7 +349,7 @@ const isObject = (v: unknown): v is JsonObject =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
 
 /** The fields of a binding that hold one binding, and those that hold a list of them. */
-const ONE_BINDING = ['tap', 'hold', 'default', 'morphed', 'active', 'inactive'];
+const ONE_BINDING = ['tap', 'hold', 'default', 'morphed', 'active', 'inactive', 'pending'];
 const BINDING_LISTS = ['bindings', 'steps', 'then'];
 
 /**
@@ -472,6 +486,84 @@ function withNamedBindingsInline(input: unknown): unknown {
   };
 }
 
+const NOTHING = { kind: 'none' };
+const TRANSPARENT = { kind: 'trans' };
+const imported = (b: unknown) => isObject(b) && b.kind === 'raw';
+
+/**
+ * `b` with no imported key in it (`raw`, which the format had until PR #79), made as #79 made the
+ * bundled layouts and imports: one alone is transparent, as a key left unset; one tapped under a
+ * hold taps nothing, and the hold stays; and a hold imported drops, leaving the key its tap, or
+ * transparent if that taps nothing. In a macro it is a step that does nothing, and goes.
+ */
+function withoutImported(b: unknown): unknown {
+  if (!isObject(b)) return b;
+  if (imported(b)) return TRANSPARENT;
+  if (b.kind === 'hold_tap' && imported(b.hold)) {
+    const tap = withoutImported(b.tap);
+    return isObject(tap) && tap.kind !== 'none' ? tap : TRANSPARENT;
+  }
+  const out: JsonObject = { ...b };
+  if ((b.kind === 'hold_tap' || b.kind === 'lt') && imported(b.tap)) out.tap = NOTHING;
+  for (const k of ONE_BINDING) if (isObject(out[k])) out[k] = withoutImported(out[k]);
+  for (const k of BINDING_LISTS) {
+    const list = out[k];
+    if (!Array.isArray(list)) continue;
+    const kept = b.kind === 'macro' ? list.filter((x) => !imported(x)) : list;
+    out[k] = kept.map(withoutImported);
+  }
+  if (Array.isArray(out.triggers)) {
+    out.triggers = out.triggers.map((t) =>
+      isObject(t) ? { ...t, binding: withoutImported(t.binding) } : t,
+    );
+  }
+  return out;
+}
+
+/**
+ * A document saved while the format had imported keys (`raw`), read without them
+ * (`withoutImported`), so a layout saved before PR #79 still opens, and saves without them. A combo
+ * left transparent goes, as the editor makes none. Every other fault is the schema's to tell.
+ */
+function withoutImportedKeys(input: unknown): unknown {
+  if (!isObject(input)) return input;
+  const { layers, combos } = input;
+  let dropped = false;
+  return {
+    ...input,
+    ...(Array.isArray(layers) && {
+      layers: layers.map((l) =>
+        isObject(l) && isObject(l.bindings)
+          ? {
+              ...l,
+              bindings: Object.fromEntries(
+                Object.entries(l.bindings).map(([k, b]) => [k, withoutImported(b)]),
+              ),
+            }
+          : l,
+      ),
+    }),
+    ...(Array.isArray(combos) && {
+      combos: combos.flatMap((c, i) => {
+        if (!isObject(c)) return [c];
+        const binding = withoutImported(c.binding);
+        // Only a combo the conversion left transparent: one already so is the schema's to read.
+        const left =
+          isObject(c.binding) &&
+          c.binding.kind !== 'trans' &&
+          isObject(binding) &&
+          binding.kind === 'trans';
+        if (left) {
+          dropped = true;
+          return [];
+        }
+        // One unnamed keeps the id its place gave it, though a combo before it went.
+        return [dropped ? { id: `combo${i}`, ...c, binding } : { ...c, binding }];
+      }),
+    }),
+  };
+}
+
 /**
  * How many values a document may hold: itself, and each object, list, text, number, flag and null
  * in it as JSON writes it, so a field that holds nothing is none; as it is given, and with its
@@ -522,7 +614,7 @@ function holdsMoreThan(doc: unknown, most: number): boolean {
  */
 function toRead(input: unknown): { doc: unknown } | undefined {
   if (holdsMoreThan(input, MAX_VALUES)) return undefined;
-  const doc = withNamedBindingsInline(input);
+  const doc = withoutImportedKeys(withNamedBindingsInline(input));
   return holdsMoreThan(doc, MAX_VALUES) ? undefined : { doc };
 }
 

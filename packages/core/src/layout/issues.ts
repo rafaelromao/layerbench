@@ -3,9 +3,9 @@ import { z } from 'zod';
 /**
  * How many of what is wrong with a document its error tells, the shallowest first, and then how
  * many more there are. A document can be wrong in many places, and a layout in one that a name
- * copied to many.
+ * copied to many; a few are enough to say what is wrong, and fit on a phone.
  */
-const MAX_ISSUES = 20;
+const MAX_ISSUES = 3;
 
 /** What is wrong with a document, as `prettifyError` tells it, up to `MAX_ISSUES` faults. */
 export function tellIssues(issues: readonly z.core.$ZodIssue[]): string {
