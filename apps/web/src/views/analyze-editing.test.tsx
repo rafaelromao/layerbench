@@ -2002,9 +2002,7 @@ describe('Edit', () => {
     await showLayer(user, 'Ç extension');
     await user.click(await screen.findByRole('button', { name: /^Key L1:/ }));
     const editor = await inspector('L1');
-    expect(within(editor).getByRole('textbox', { name: 'Binding for L1' })).toHaveValue(
-      '&sl 1',
-    );
+    expect(within(editor).getByRole('textbox', { name: 'Binding for L1' })).toHaveValue('&sl 1');
     expect(within(editor).getByRole('radio', { name: 'One-shot' })).toBeChecked();
     // Exactly the layer choice: the editor also has an "On Alpha 2 board" button.
     expect(within(editor).getByRole('button', { name: 'Alpha 2' })).toHaveAttribute(
