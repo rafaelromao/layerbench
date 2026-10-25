@@ -9,11 +9,12 @@
   },
   "pt-br-general": {
     "file": "pt-br-general.txt",
-    "name": "Português — notícias 2011 (Leipzig)",
+    "name": "Português — notícias 2023 (Leipzig)",
     "language": "pt",
     "license": "CC BY 4.0 (Leipzig Corpora Collection)",
-    "source": "https://wortschatz.uni-leipzig.de/en/download (por-br_newscrawl_2011_30K)",
-    "description": "30,000 Brazilian Portuguese news sentences from the Leipzig Corpora Collection (por-br_newscrawl_2011_30K)."
+    "source": "https://wortschatz.uni-leipzig.de/en/download (por_news_2023_30K)",
+    "description": "30,000 Portuguese news sentences from the Leipzig Corpora Collection (2023).",
+    "retrieved": "2026-10-25"
   },
   "es-general": {
     "file": "es-general.txt",

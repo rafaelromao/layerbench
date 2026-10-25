@@ -727,6 +727,19 @@ What moved, checked across the 38 reports; nothing else moved:
 - **No report**: what those keys did, they still do in the analysis, and every layout's
   languages, measured by `pnpm languages`, are as they were.
 
+## Thirty-fourth re-baseline: Portuguese news of 2023
+
+The Portuguese text is Leipzig's Portuguese news of 2023 (`por_news_2023_30K`), as the other
+languages' are their news of 2023. It was the Brazilian news crawl of 2011; Leipzig has no Brazilian
+set of 2023. Its id stays `pt-br-general`.
+
+What moved, checked across the 38 reports; nothing else moved:
+
+- **No report**: they read the fixtures, not the served texts.
+- **Hands Down Vibranium's document**: its languages, measured by `pnpm languages`. It is for
+  Portuguese again, its Effort on the new text in the better half.
+- **Nordwind's document** (in `src/layouts/documents`): no longer for Portuguese, by Effort.
+
 ## Not compared
 
 `globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not
