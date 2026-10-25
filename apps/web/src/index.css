@@ -900,6 +900,16 @@ button.lb-combo-apart:focus-visible {
   }
 }
 
+/* Read-only Library boards fit their cards even when their editable versions need to pan. */
+@media (max-width: 639.98px) {
+  /* Library previews are read-only: fit even a wide board inside the card instead of keeping
+     editing-sized keys that hide the outer columns. The editor keeps its touch targets. */
+  .lb-library-card .lb-keyboard {
+    min-width: 0;
+    max-height: none;
+  }
+}
+
 /*
  * On a phone every pixel across is a bigger key. The board runs from edge to edge of the screen, as
  * a keyboard does, with its keys 4px from each side.
