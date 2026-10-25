@@ -1602,6 +1602,34 @@ describe('Edit', () => {
     expect(await inspector('LTM')).toBeInTheDocument();
   });
 
+  it('puts Swap with…, Copy to… and Send to layer… first in the editor, for one key and for several', async () => {
+    const user = userEvent.setup();
+    await openEdit();
+    await user.click(screen.getByRole('tab', { name: 'Layers' }));
+    await user.type(screen.getByLabelText('New layer name'), 'Nav');
+    await user.click(screen.getByRole('button', { name: '+ layer' }));
+    await showLayer(user, 'Base');
+    // The controls under the editor's header, in order, each by what it says or is labelled.
+    const controls = (editor: HTMLElement) =>
+      [...editor.querySelectorAll<HTMLElement>('button, select, input, textarea')]
+        .filter((c) => !c.closest('header'))
+        .map((c) => c.getAttribute('aria-label') ?? c.textContent?.trim());
+
+    await user.click(await screen.findByRole('button', { name: 'Key LHM: d, hold ⌥' }));
+    expect(controls(await inspector('LHM')).slice(0, 3)).toEqual([
+      'Swap with…',
+      'Copy to…',
+      'Send LHM to another layer',
+    ]);
+
+    await user.keyboard('{Shift>}');
+    await user.click(key('Key LHI: f, hold ⇧'));
+    await user.keyboard('{/Shift}');
+    expect(controls(await screen.findByRole('group', { name: 'Edit 2 keys' })).slice(0, 2)).toEqual(
+      ['Send the selected keys to another layer', 'Copy the selected keys to another layer'],
+    );
+  }, 90_000);
+
   it('keeps the board first, with the layers under it and Heat, Undo and Redo under them', async () => {
     await openEdit();
     const region = screen.getByRole('region', { name: 'Board' });

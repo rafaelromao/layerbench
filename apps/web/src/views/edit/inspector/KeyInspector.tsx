@@ -28,8 +28,8 @@ export interface KeyInspectorProps {
 
 /**
  * Everything about the selected key, in one place that is the same on a phone and at a desk: what
- * the key is, the controls for that kind of key, the keys the layout already has to reuse, the
- * binding as text for typing, and what can be done with the key as a whole.
+ * the key is, the moves that put it somewhere else, the controls for that kind of key, the keys the
+ * layout already has to reuse, the binding as text for typing, and clearing it.
  */
 export function KeyInspector(props: KeyInspectorProps) {
   const { state } = props;
@@ -148,41 +148,8 @@ function Inspector({ state, send, focusKey, keyId }: KeyInspectorProps & { keyId
           </button>
         </header>
 
-        {owner ? (
-          <>
-            <div className="rounded-box bg-base-200 p-2 text-xs">
-              This key's tap belongs to <strong>{featureTitle(owner)}</strong> (
-              <span className="font-mono">{owner}</span>), which the layout turns on in Features.
-            </div>
-            <FeatureBody layout={layout} feature={owner} setFeatures={setFeatures} />
-            <details className="text-xs">
-              <summary className="cursor-pointer opacity-70">The key under the feature</summary>
-              <div className="pt-2 space-y-2">
-                <Note>The feature sets what this key taps; the rest of it is set here.</Note>
-                <BindingEditor scope={scope} value={current} onChange={commit} />
-              </div>
-            </details>
-          </>
-        ) : (
-          <>
-            <BindingEditor scope={scope} value={current} onChange={commit} />
-
-            <FromThisLayout compiled={compiled} layout={layout} onPick={commit} />
-
-            <BindingTextLine
-              compiled={compiled}
-              keyId={keyId}
-              binding={authored}
-              ctx={text}
-              focusRequest={state.focusRequest}
-              onCommit={commit}
-              onClear={clear}
-              onDone={() => focusKey(keyId)}
-            />
-          </>
-        )}
-
-        <div className="lb-key-actions border-t border-base-300 pt-2">
+        {/* The moves come first: they are what a key is edited with most. */}
+        <div className="lb-key-actions">
           <button
             type="button"
             className={`btn btn-xs ${state.swapFrom === keyId && state.swapMode === 'swap' ? 'btn-primary' : ''}`}
@@ -226,6 +193,43 @@ function Inspector({ state, send, focusKey, keyId }: KeyInspectorProps & { keyId
               ))}
             </select>
           )}
+        </div>
+
+        {owner ? (
+          <>
+            <div className="rounded-box bg-base-200 p-2 text-xs">
+              This key's tap belongs to <strong>{featureTitle(owner)}</strong> (
+              <span className="font-mono">{owner}</span>), which the layout turns on in Features.
+            </div>
+            <FeatureBody layout={layout} feature={owner} setFeatures={setFeatures} />
+            <details className="text-xs">
+              <summary className="cursor-pointer opacity-70">The key under the feature</summary>
+              <div className="pt-2 space-y-2">
+                <Note>The feature sets what this key taps; the rest of it is set here.</Note>
+                <BindingEditor scope={scope} value={current} onChange={commit} />
+              </div>
+            </details>
+          </>
+        ) : (
+          <>
+            <BindingEditor scope={scope} value={current} onChange={commit} />
+
+            <FromThisLayout compiled={compiled} layout={layout} onPick={commit} />
+
+            <BindingTextLine
+              compiled={compiled}
+              keyId={keyId}
+              binding={authored}
+              ctx={text}
+              focusRequest={state.focusRequest}
+              onCommit={commit}
+              onClear={clear}
+              onDone={() => focusKey(keyId)}
+            />
+          </>
+        )}
+
+        <div className="lb-key-actions border-t border-base-300 pt-2">
           {owner ? (
             <button
               type="button"
