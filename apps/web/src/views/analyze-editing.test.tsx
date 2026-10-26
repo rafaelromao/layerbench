@@ -1953,6 +1953,23 @@ describe('Edit', () => {
     expect(boxes()).toEqual(['Combo LHR + LHM: Acce']);
   });
 
+  it('lists Layers, Features and Special Behaviors as cards', async () => {
+    const user = userEvent.setup();
+    await openMagicRomak();
+    await user.click(screen.getByRole('tab', { name: 'Layers' }));
+    const layers = screen.getByRole('list', { name: 'Layer order' });
+    expect(within(layers).getAllByRole('listitem')).toHaveLength(5);
+    await user.click(screen.getByRole('tab', { name: 'Features' }));
+    expect(
+      within(screen.getByRole('list', { name: 'Features' })).getAllByRole('listitem'),
+    ).toHaveLength(2);
+    await user.click(screen.getByRole('tab', { name: 'Special Behaviors' }));
+    const adaptive = within(screen.getByRole('list', { name: 'Adaptive keys' })).getAllByRole(
+      'listitem',
+    );
+    expect(adaptive.length).toBeGreaterThan(0);
+  }, 60_000);
+
   it('reorders a typing path that was never declared', async () => {
     const user = userEvent.setup();
     renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000', {
@@ -1964,7 +1981,8 @@ describe('Edit', () => {
     const order = () =>
       screen
         .getAllByRole('listitem')
-        .filter((li) => li.querySelector('input[type="checkbox"]'))
+        // A path, not the card of the symbol that holds them.
+        .filter((li) => li.querySelector('input[type="checkbox"]') && !li.querySelector('li'))
         .map((li) => li.textContent);
 
     const before = order();

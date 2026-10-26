@@ -22,6 +22,7 @@ import { Keyboard } from '../../components/Keyboard.js';
 import { layerColourOf } from '../../components/layer-colour.js';
 import type { ProducerDTO } from '../../engine/protocol.js';
 import { toast } from '../../state/toasts.js';
+import { Card, CardGrid } from './Card.js';
 import { LayerChips, ModuleNote, Segment, TextField } from './inspector/controls.js';
 import { type EditAction, type EditState, shownLayer } from './reducer.js';
 
@@ -49,7 +50,7 @@ function FeatureRow({
   children?: ReactNode;
 }) {
   return (
-    <div className="rounded border border-base-300 p-3">
+    <Card>
       <label className="flex items-start gap-2">
         <input
           type="checkbox"
@@ -69,7 +70,7 @@ function FeatureRow({
         </div>
       ) : null}
       {on && children ? <div className="mt-2 pl-8">{children}</div> : null}
-    </div>
+    </Card>
   );
 }
 
@@ -94,38 +95,40 @@ export function FeaturesPanel({ state, send }: PanelProps) {
         tile.
       </p>
 
-      <FeatureRow
-        title="Sentence case"
-        hint="After . ? or ! and a space, the next key, if a letter a–z, is a capital."
-        module={featureModule('sentenceCase')}
-        on={enabled(f.sentenceCase)}
-        onToggle={(on) => set({ ...f, sentenceCase: on ? {} : undefined })}
-      />
+      <CardGrid label="Features">
+        <FeatureRow
+          title="Sentence case"
+          hint="After . ? or ! and a space, the next key, if a letter a–z, is a capital."
+          module={featureModule('sentenceCase')}
+          on={enabled(f.sentenceCase)}
+          onToggle={(on) => set({ ...f, sentenceCase: on ? {} : undefined })}
+        />
 
-      <FeatureRow
-        title="Caps word"
-        hint="Capitals until the word ends, from pressing shift while shift is already on."
-        on={enabled(f.capsWord)}
-        onToggle={(on) => set({ ...f, capsWord: on ? {} : undefined })}
-      >
-        <label className="form-control">
-          <span className="label-text text-xs">Does not end the word</span>
-          <input
-            aria-label="Caps word continue list"
-            className="input input-xs input-bordered w-40 font-mono"
-            value={(f.capsWord?.continueList ?? []).join(' ')}
-            onChange={(e) =>
-              set({
-                ...f,
-                capsWord: {
-                  ...f.capsWord,
-                  continueList: e.target.value.split(/\s+/).filter(Boolean),
-                },
-              })
-            }
-          />
-        </label>
-      </FeatureRow>
+        <FeatureRow
+          title="Caps word"
+          hint="Capitals until the word ends, from pressing shift while shift is already on."
+          on={enabled(f.capsWord)}
+          onToggle={(on) => set({ ...f, capsWord: on ? {} : undefined })}
+        >
+          <label className="form-control">
+            <span className="label-text text-xs">Does not end the word</span>
+            <input
+              aria-label="Caps word continue list"
+              className="input input-xs input-bordered w-40 font-mono"
+              value={(f.capsWord?.continueList ?? []).join(' ')}
+              onChange={(e) =>
+                set({
+                  ...f,
+                  capsWord: {
+                    ...f.capsWord,
+                    continueList: e.target.value.split(/\s+/).filter(Boolean),
+                  },
+                })
+              }
+            />
+          </label>
+        </FeatureRow>
+      </CardGrid>
     </div>
   );
 }
@@ -197,7 +200,7 @@ export function LayersPanel({ state, send }: PanelProps) {
         When two layers are on at once, a key comes from the one further down this list. The first
         is the base layer: every key falls back to it, so it stays first.
       </p>
-      <ol className="space-y-1 list-none p-0 m-0" aria-label="Layer order">
+      <ol className="lb-cards" aria-label="Layer order">
         {layers.map((layer, i) => (
           <li
             key={layer.id}
@@ -220,9 +223,7 @@ export function LayersPanel({ state, send }: PanelProps) {
                 send({ type: 'edit', edit: { kind: 'moveLayer', layer: moved, to: i } });
               }
             }}
-            className={`lb-layer-row rounded px-1 border border-transparent ${
-              i > 0 ? 'hover:border-base-300' : ''
-            } ${dragging === i ? 'opacity-50' : ''}`}
+            className={`lb-card lb-layer-row ${dragging === i ? 'opacity-50' : ''}`}
           >
             <span aria-hidden="true" className={i > 0 ? 'cursor-grab opacity-40' : 'opacity-0'}>
               ⠿
@@ -800,28 +801,32 @@ function SpecialFeatureList({ state, send, onShow }: PanelProps & { onShow?: () 
             <h3 className="text-xs font-semibold">
               {title} <span className="font-normal opacity-60">({group.length})</span>
             </h3>
-            <ul className="flex flex-wrap gap-1" aria-label={title}>
+            <CardGrid label={title}>
               {group.map((f, i) => {
                 const current =
                   f.combo === undefined &&
                   state.selected === f.key &&
                   compiled.layers[state.layer]?.id === f.layer;
                 return (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: one key can hold a feature twice
-                  <li key={`${f.layer}-${f.key}-${f.combo}-${f.label}-${i}`}>
+                  <Card
+                    // biome-ignore lint/suspicious/noArrayIndexKey: one key can hold a feature twice
+                    key={`${f.layer}-${f.key}-${f.combo}-${f.label}-${i}`}
+                    current={current}
+                    className="lb-card-pick"
+                  >
                     <button
                       type="button"
-                      className={`btn btn-xs gap-1 ${current ? 'btn-primary' : 'btn-ghost border-base-300'}`}
+                      className="lb-card-button"
                       aria-current={current ? 'true' : undefined}
                       onClick={() => show(f)}
                     >
-                      <span className="font-mono">{placeOf(f)}</span>
-                      <span className="opacity-70">{f.label}</span>
+                      <span className="font-mono text-xs">{placeOf(f)}</span>
+                      <span className="text-sm">{f.label}</span>
                     </button>
-                  </li>
+                  </Card>
                 );
               })}
-            </ul>
+            </CardGrid>
           </div>
         );
       })}
@@ -875,75 +880,77 @@ export function PathsPanel({
         same-finger pairs with the keys before it, then the least effort. Drag an alternative or use
         the arrows to set an order, and that order is tried instead.
       </p>
-      {multi.map(([symbol]) => (
-        <div key={symbol} className="space-y-1">
-          <h3 className="font-mono text-sm">{symbol === ' ' ? '␣' : symbol}</h3>
-          <ol className="space-y-1">
-            {pathsFor(symbol).map((entry, i, all) => {
-              const meta = producers[symbol]?.find((p) => p.id === entry.producer);
-              const enabled = entry.enabled ?? true;
-              return (
-                <li
-                  key={entry.producer}
-                  draggable
-                  onDragStart={(e) => {
-                    e.dataTransfer.setData('text/plain', String(i));
-                    e.dataTransfer.effectAllowed = 'move';
-                    setDragging(`${symbol}:${i}`);
-                  }}
-                  onDragEnd={() => setDragging(null)}
-                  onDragOver={(e) => {
-                    if (dragging?.startsWith(`${symbol}:`)) e.preventDefault();
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const from = Number(e.dataTransfer.getData('text/plain'));
-                    setDragging(null);
-                    if (Number.isInteger(from)) reorder(symbol, from, i);
-                  }}
-                  className={`flex items-center gap-2 text-xs rounded px-1 cursor-grab border border-transparent hover:border-base-300 ${
-                    enabled ? '' : 'opacity-40'
-                  } ${dragging === `${symbol}:${i}` ? 'opacity-50' : ''}`}
-                >
-                  <span aria-hidden="true" className="opacity-40">
-                    ⠿
-                  </span>
-                  <input
-                    type="checkbox"
-                    className="checkbox checkbox-xs"
-                    aria-label={`Use ${entry.producer}`}
-                    checked={enabled}
-                    onChange={() => toggle(symbol, entry.producer)}
-                  />
-                  <span className="font-mono flex-1 truncate">
-                    {meta
-                      ? `${meta.kind} · ${entry.producer} · ${meta.cost} presses`
-                      : entry.producer}
-                  </span>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-xs"
-                    aria-label={`Move ${entry.producer} up`}
-                    disabled={i === 0}
-                    onClick={() => reorder(symbol, i, i - 1)}
+      <CardGrid label="Typing paths">
+        {multi.map(([symbol]) => (
+          <Card key={symbol} className="space-y-1">
+            <h3 className="font-mono text-sm">{symbol === ' ' ? '␣' : symbol}</h3>
+            <ol className="space-y-1">
+              {pathsFor(symbol).map((entry, i, all) => {
+                const meta = producers[symbol]?.find((p) => p.id === entry.producer);
+                const enabled = entry.enabled ?? true;
+                return (
+                  <li
+                    key={entry.producer}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('text/plain', String(i));
+                      e.dataTransfer.effectAllowed = 'move';
+                      setDragging(`${symbol}:${i}`);
+                    }}
+                    onDragEnd={() => setDragging(null)}
+                    onDragOver={(e) => {
+                      if (dragging?.startsWith(`${symbol}:`)) e.preventDefault();
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const from = Number(e.dataTransfer.getData('text/plain'));
+                      setDragging(null);
+                      if (Number.isInteger(from)) reorder(symbol, from, i);
+                    }}
+                    className={`flex items-center gap-2 text-xs rounded px-1 cursor-grab border border-transparent hover:border-base-300 ${
+                      enabled ? '' : 'opacity-40'
+                    } ${dragging === `${symbol}:${i}` ? 'opacity-50' : ''}`}
                   >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-xs"
-                    aria-label={`Move ${entry.producer} down`}
-                    disabled={i === all.length - 1}
-                    onClick={() => reorder(symbol, i, i + 1)}
-                  >
-                    ↓
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
-        </div>
-      ))}
+                    <span aria-hidden="true" className="opacity-40">
+                      ⠿
+                    </span>
+                    <input
+                      type="checkbox"
+                      className="checkbox checkbox-xs"
+                      aria-label={`Use ${entry.producer}`}
+                      checked={enabled}
+                      onChange={() => toggle(symbol, entry.producer)}
+                    />
+                    <span className="font-mono flex-1 truncate">
+                      {meta
+                        ? `${meta.kind} · ${entry.producer} · ${meta.cost} presses`
+                        : entry.producer}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-xs"
+                      aria-label={`Move ${entry.producer} up`}
+                      disabled={i === 0}
+                      onClick={() => reorder(symbol, i, i - 1)}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-xs"
+                      aria-label={`Move ${entry.producer} down`}
+                      disabled={i === all.length - 1}
+                      onClick={() => reorder(symbol, i, i + 1)}
+                    >
+                      ↓
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          </Card>
+        ))}
+      </CardGrid>
     </div>
   );
 }
