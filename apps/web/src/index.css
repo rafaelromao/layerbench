@@ -956,11 +956,11 @@ button.lb-combo-apart:focus-visible {
   font-size: 0.5rem;
   line-height: 1;
 }
-.lb-geo-key:disabled {
+.lb-geo-key[aria-disabled="true"] {
   opacity: 0.55;
   cursor: not-allowed;
 }
-.lb-geo-key:not(:disabled):hover {
+.lb-geo-key:not([aria-disabled="true"]):hover {
   border-color: var(--color-error);
 }
 .lb-geo-key-add {

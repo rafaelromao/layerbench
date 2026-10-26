@@ -1163,6 +1163,43 @@ describe('changing the board', () => {
     expect(added.compiled.keyIndex.has('LHO')).toBe(true);
   });
 
+  it('is the preset again when the keys are the preset, and keeps the name of a custom board', () => {
+    const withNone: Layout = {
+      ...layout,
+      layers: [
+        { ...layout.layers[0], bindings: { ...layout.layers[0].bindings, RHP: { kind: 'none' } } },
+        layout.layers[1],
+      ],
+    };
+    const smaller = landed(withNone, {
+      kind: 'setGeometry',
+      geometry: geometryWithKeys(withNone, { remove: ['RHP'] }),
+    });
+    expect('custom' in smaller.layout.geometry).toBe(true);
+    const back = geometryWithKeys(smaller.layout, {
+      add: addableKeys(smaller.layout).filter((k) => k.id === 'RHP'),
+    });
+    expect(back).toEqual({ preset: '3x5+2' });
+    const named: Layout = {
+      ...smaller.layout,
+      geometry: { ...(smaller.layout.geometry as { custom: never[] }), name: 'Mine' },
+    };
+    expect(geometryWithKeys(named, { remove: ['RHB'] })).toMatchObject({ name: 'Mine' });
+  });
+
+  it('keeps a key that a default, or an activator, gives something to do', () => {
+    const byDefault: Layout = {
+      ...layout,
+      layers: [layout.layers[0], { ...layout.layers[1], bindings: { '*': kp('x') } }],
+    };
+    expect(keysInUse(byDefault).get('RHP')).toMatch(/gives it what it does by default/);
+    const reached: Layout = {
+      ...layout,
+      activators: { upper: [{ via: 'key:base/RHP' }] },
+    };
+    expect(keysInUse(reached).get('RHP')).toBe('a layer is reached by it');
+  });
+
   it('changes nothing for the board it has', () => {
     expect(applyEdit(layout, { kind: 'setGeometry', geometry: { preset: '3x5+2' } }).status).toBe(
       'unchanged',

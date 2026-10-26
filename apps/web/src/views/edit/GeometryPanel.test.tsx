@@ -18,8 +18,14 @@ describe('the board in the Geometry tab', () => {
   it('lets a key that does nothing go, and keeps one that does', async () => {
     const send = vi.fn();
     render(<GeometryPanel state={state} send={send} />);
-    expect(screen.getByRole('button', { name: 'Remove key LHM' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Remove key R0' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Remove key LHM' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    // A key in use stays, and says why where it can be read.
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Remove key R0' }));
+    expect(screen.getByRole('status')).toHaveTextContent('R0 stays: it is the space key');
+    expect(send).not.toHaveBeenCalled();
     await userEvent.setup().click(screen.getByRole('button', { name: 'Remove key RHP' }));
     const edit = send.mock.calls[0][0].edit;
     expect(edit.kind).toBe('setGeometry');

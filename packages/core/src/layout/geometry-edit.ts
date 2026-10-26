@@ -21,6 +21,23 @@ export function keysInUse(layout: Layout): Map<string, string> {
       if (key !== '*' && !idle(binding)) use(key, `it does something on ${layer.name ?? layer.id}`);
     }
   }
+  // A layer whose default does something gives it to every key it does not list as idle.
+  const board = buildGeometry({ ...layout, fingering: undefined }).keys;
+  for (const layer of layout.layers) {
+    const fallback = layer.bindings['*'];
+    if (!fallback || idle(fallback)) continue;
+    for (const { id } of board) {
+      const own = layer.bindings[id];
+      if (!own || !idle(own)) use(id, `${layer.name ?? layer.id} gives it what it does by default`);
+    }
+  }
+  // An activator names the key that reaches a layer.
+  for (const list of Object.values(layout.activators ?? {})) {
+    for (const a of list) {
+      const key = /^key:[^/]+\/(.+)$/.exec(a.via)?.[1];
+      use(key, 'a layer is reached by it');
+    }
+  }
   for (const combo of layout.combos ?? [])
     for (const key of combo.keys) use(key, 'a combo uses it');
   use(layout.keys.space, 'it is the space key');
@@ -58,7 +75,35 @@ export function addableKeys(layout: Layout): GeometryKey[] {
     for (const key of preset.keys)
       if (!have.has(key.id) && !found.has(key.id)) found.set(key.id, key);
   }
+  // A board that was edited keeps its stagger in the keys: a key added takes its column's.
+  if (!('preset' in layout.geometry)) {
+    for (const [id, key] of found) {
+      const mate = board.keys.find(
+        (k) => k.hand === key.hand && k.col === key.col && k.row < 3 && key.row < 3,
+      );
+      if (mate) found.set(id, { ...key, y: mate.y - mate.row + key.row });
+    }
+  }
   return [...found.values()];
+}
+
+/** The preset whose keys are these, with the stagger they were drawn with, or null. */
+function presetOf(keys: GeometryKey[], layout: Layout): GeometryRef | null {
+  const offsets = 'preset' in layout.geometry ? layout.geometry.columnOffsets : undefined;
+  const numeric = offsets
+    ? Object.fromEntries(Object.entries(offsets).map(([k, v]) => [Number(k), v]))
+    : undefined;
+  for (const id of GEOMETRY_PRESET_IDS) {
+    const preset = getGeometryPreset(id, numeric);
+    if (preset.keys.length !== keys.length) continue;
+    const at = new Map(preset.keys.map((k) => [k.id, k]));
+    const same = keys.every((k) => {
+      const p = at.get(k.id);
+      return p && p.x === k.x && p.y === k.y && p.w === k.w && p.h === k.h;
+    });
+    if (same) return offsets ? { preset: id, columnOffsets: offsets } : { preset: id };
+  }
+  return null;
 }
 
 /** The layout's board with keys added, then keys taken away, as a geometry to set. */
@@ -68,6 +113,10 @@ export function geometryWithKeys(
 ): GeometryRef {
   const gone = new Set(change.remove ?? []);
   const keys = [...boardKeys(layout), ...(change.add ?? [])].filter((k) => !gone.has(k.id));
+  // The keys of a preset are that preset, so a key taken away and put back is the board it was.
+  const preset = presetOf(keys, layout);
+  if (preset) return preset;
+  const name = 'custom' in layout.geometry ? layout.geometry.name : undefined;
   const family = buildGeometry(layout).family;
-  return { custom: keys, family };
+  return { custom: keys, family, ...(name === undefined ? {} : { name }) };
 }

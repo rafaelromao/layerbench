@@ -517,7 +517,7 @@ function OneShotDefaults({
 
 /** Geometry and the keys with a special role. */
 /** The size of a key unit on the board of the Geometry tab, in pixels. */
-const GEO_UNIT = 26;
+const GEO_UNIT = 32;
 
 /**
  * The board's keys, each one to take away, and beside them the places a key can be added. A key
@@ -528,6 +528,7 @@ function GeometryBoard({ state, send }: PanelProps) {
   const keys = useMemo(() => boardKeys(layout), [layout]);
   const addable = useMemo(() => addableKeys(layout), [layout]);
   const used = useMemo(() => keysInUse(layout), [layout]);
+  const [stays, setStays] = useState<string | null>(null);
   const all = [...keys, ...addable];
   const left = Math.min(...all.map((k) => k.x - k.w / 2));
   const top = Math.min(...all.map((k) => k.y - k.h / 2));
@@ -562,10 +563,14 @@ function GeometryBoard({ state, send }: PanelProps) {
                 type="button"
                 className="lb-geo-key"
                 style={place(k)}
-                disabled={why !== undefined}
+                aria-disabled={why !== undefined}
                 aria-label={`Remove key ${k.id}`}
                 title={why === undefined ? `Take ${k.id} away` : `${k.id} stays: ${why}`}
-                onClick={() => set({ remove: [k.id] })}
+                onClick={() => {
+                  // A key in use says why it stays, where a finger or a keyboard can read it.
+                  setStays(why === undefined ? null : `${k.id} stays: ${why}.`);
+                  if (why === undefined) set({ remove: [k.id] });
+                }}
               >
                 {k.id}
               </button>
@@ -586,6 +591,11 @@ function GeometryBoard({ state, send }: PanelProps) {
           ))}
         </fieldset>
       </div>
+      {stays && (
+        <p role="status" className="text-xs">
+          {stays}
+        </p>
+      )}
       <span className="text-[11px] opacity-60 block">
         Tap a key to take it away, or a + to add one. A key can go only when it is Transparent or
         None on every layer and nothing else uses it.
@@ -608,7 +618,16 @@ export function GeometryPanel({ state, send }: PanelProps) {
           onChange={(e) =>
             send({
               type: 'edit',
-              edit: { kind: 'setGeometry', geometry: { preset: e.target.value } },
+              edit: {
+                kind: 'setGeometry',
+                geometry: {
+                  preset: e.target.value,
+                  // The stagger chosen for the columns stays, on a board that has columns.
+                  ...('preset' in layout.geometry && layout.geometry.columnOffsets
+                    ? { columnOffsets: layout.geometry.columnOffsets }
+                    : {}),
+                },
+              },
             })
           }
         >
