@@ -332,7 +332,6 @@ export function accentsCombo(baseLayer: string, geometry: Geometry): ComboDef {
     keys: accentsComboKeys(geometry),
     binding: { kind: 'sl', layer: DEFAULT_LAYER_IDS.accents },
     layers: [baseLayer],
-    role: 'typing',
   };
 }
 

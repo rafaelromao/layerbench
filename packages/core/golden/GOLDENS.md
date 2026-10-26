@@ -740,6 +740,20 @@ What moved, checked across the 38 reports; nothing else moved:
   Portuguese again, its Effort on the new text in the better half.
 - **Nordwind's document** (in `src/layouts/documents`): no longer for Portuguese, by Effort.
 
+## Thirty-fifth re-baseline: no command combos, no combo role
+
+A combo is always a combo that types: its `role` is gone, and the combos that were commands, which
+the analysis never pressed, are gone from every board. Magic Romak's eight shortcuts on Alpha 1
+were the only ones in a bundled layout.
+
+What moved, checked across the 38 reports; nothing else moved:
+
+- **The documents of 11 layouts**: no combo carries a `role`, and Magic Romak has lost its eight
+  command combos.
+- **Magic Romak's report**: the combo indexes. Its combos start eight places earlier, so a combo's
+  position and the positions of the keys listed for it (35 → 27) move; no number moved.
+- **The inline Magic Romak link**: it holds that document.
+
 ## Not compared
 
 `globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not

@@ -294,13 +294,20 @@ export const LayoutSchema = z.object({
         keys: z.array(z.string()).min(2),
         binding: BindingSchema,
         layers: z.array(z.string()).optional(),
+        // Read only for layouts written before every combo was a typing combo.
         role: z.enum(['typing', 'command']).optional(),
         timeoutMs: z.number().optional(),
         slowRelease: z.boolean().optional(),
       }),
     )
-    // Combos are addressed by id everywhere downstream; give unnamed ones their index-based id.
-    .transform((list) => list.map((c, i) => ({ ...c, id: c.id ?? `combo${i}` })))
+    // Combos are addressed by id everywhere downstream; give unnamed ones their index-based id. A
+    // combo an older layout marked as a command is left out: the analysis never pressed it.
+    .transform((list) =>
+      list
+        .map(({ role, ...c }, i) => ({ ...c, id: c.id ?? `combo${i}`, role }))
+        .filter((c) => c.role !== 'command')
+        .map(({ role: _role, ...c }) => c),
+    )
     .optional(),
   conditionalLayers: z
     .array(z.object({ if: z.array(z.string()).min(1).max(MAX_CONDITION_LAYERS), then: z.string() }))

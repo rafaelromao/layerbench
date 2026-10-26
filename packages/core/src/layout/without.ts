@@ -55,11 +55,11 @@ function onlyReachesLayer(b: Binding, depth = 0): boolean {
 }
 
 /**
- * Whether a combo stays when typing combos are left out: one for commands, or one that only turns
- * a layer on, which the analysis needs to reach that layer.
+ * Whether a combo stays when typing combos are left out: one that only turns a layer on, which the
+ * analysis needs to reach that layer.
  */
-export function keptWithoutTypingCombos(c: { role?: string; binding: Binding }): boolean {
-  return c.role !== 'typing' || onlyReachesLayer(c.binding);
+export function keptWithoutTypingCombos(c: { binding: Binding }): boolean {
+  return onlyReachesLayer(c.binding);
 }
 
 /** The text a macro types, as far as its own keys say: `qu`, `ão`, or one accented letter. */

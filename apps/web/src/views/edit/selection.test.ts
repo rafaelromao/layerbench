@@ -208,7 +208,6 @@ describe('the combo open in the combo editor', () => {
       layer: 'base',
       keys: ['LHM', 'LHP'],
       binding: { kind: 'none' },
-      role: 'typing',
     },
   };
 

@@ -178,7 +178,6 @@ function comboToJson(c: ComboDef): Record<string, unknown> {
     keys: c.keys,
     binding: bindingToJson(c.binding),
     layers: c.layers,
-    role: c.role ?? 'command',
     timeoutMs: c.timeoutMs,
     slowRelease: c.slowRelease,
   });

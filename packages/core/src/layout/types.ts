@@ -153,8 +153,6 @@ export interface ComboDef {
   binding: Binding;
   /** Layers on which the combo may fire; omitted = all layers. */
   layers?: string[];
-  /** `typing` combos are offered as producers; `command` combos are not (default: command). */
-  role?: 'typing' | 'command';
   timeoutMs?: number;
   slowRelease?: boolean;
 }

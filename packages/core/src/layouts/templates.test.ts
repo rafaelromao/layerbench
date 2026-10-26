@@ -616,7 +616,6 @@ describe("Magic Romak types `;` as the keymap's combo", () => {
       keys: ['RBM', 'RBR'],
       binding: { kind: 'kp', symbol: ';' },
       layers: ['alpha1', 'num'],
-      role: 'typing',
     });
     // Numbers held for the digits, the combo between them.
     const t = trace(magicRomak, '7;8');

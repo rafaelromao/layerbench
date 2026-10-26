@@ -1149,6 +1149,11 @@ export function importKeymapDrawer(
       continue;
     }
     const b = reading.binding;
+    // Only a combo that types is read: one for a command is not something the analysis presses.
+    if (b.kind !== 'kp' && b.kind !== 'macro') {
+      skipped.push(`${label}: does not type`);
+      continue;
+    }
     // As the editor adds a combo: on the layers it works on (every one, where the file names
     // none), with the editor's timing.
     combos.push({
@@ -1156,7 +1161,6 @@ export function importKeymapDrawer(
       keys: keys as string[],
       binding: b,
       layers: layersOn.length > 0 ? layersOn : [...ids],
-      role: b.kind === 'kp' || b.kind === 'macro' ? 'typing' : 'command',
       timeoutMs: 50,
       slowRelease: false,
     });

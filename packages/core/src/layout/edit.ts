@@ -51,9 +51,8 @@ export type Edit =
       layer: string;
       keys: string[];
       binding: Binding;
-      role: 'typing' | 'command';
     }
-  | { kind: 'removeCombo' | 'toggleComboRole'; combo: number }
+  | { kind: 'removeCombo'; combo: number }
   /**
    * A layer that comes on by itself while every layer it waits for is on, as ZMK's conditional
    * layers: Extras while Numbers and Symbols are both held. Conditions are named by their place in
@@ -73,7 +72,6 @@ export type Edit =
       keys?: string[];
       layers?: string[];
       binding?: Binding;
-      role?: 'typing' | 'command';
       timeoutMs?: number;
     }
   /** One symbol's whole list of producers, in order. */
@@ -456,11 +454,11 @@ const handlers: Handlers = {
     return { layout: moveLayer(layout, indexOf(layout, layer), to) };
   },
 
-  addCombo(layout, { layer, keys, binding, role }) {
+  addCombo(layout, { layer, keys, binding }) {
     if (keys.length < 2) return { refused: 'a combo needs at least two keys and an output' };
     if (binding.kind === 'trans') return { refused: NOT_TRANSPARENT };
     const id = freeComboId(keys, (layout.combos ?? []).map(comboId));
-    const combo = { id, keys, binding, layers: [layer], role, timeoutMs: 50, slowRelease: false };
+    const combo = { id, keys, binding, layers: [layer], timeoutMs: 50, slowRelease: false };
     return { layout: { ...layout, combos: [...(layout.combos ?? []), combo] } };
   },
 
@@ -507,16 +505,6 @@ const handlers: Handlers = {
     return { layout: { ...layout, combos: combos.filter((_, i) => i !== combo) } };
   },
 
-  toggleComboRole(layout, { combo }) {
-    const combos = layout.combos ?? [];
-    const c = combos[combo];
-    if (!c) return same(layout);
-    const role = c.role === 'typing' ? ('command' as const) : ('typing' as const);
-    return {
-      layout: { ...layout, combos: combos.map((x, i) => (i === combo ? { ...c, role } : x)) },
-    };
-  },
-
   updateCombo(layout, edit) {
     const combos = layout.combos ?? [];
     const current = combos[edit.combo];
@@ -556,7 +544,6 @@ const handlers: Handlers = {
       if (edit.binding.kind === 'trans') return { refused: NOT_TRANSPARENT };
       next.binding = edit.binding;
     }
-    if (edit.role) next.role = edit.role;
     if (edit.timeoutMs !== undefined) {
       if (!(edit.timeoutMs > 0)) return { refused: 'a combo timeout is a positive number of ms' };
       next.timeoutMs = edit.timeoutMs;
