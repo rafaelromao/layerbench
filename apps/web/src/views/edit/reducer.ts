@@ -423,7 +423,9 @@ function reduce(state: EditState, action: EditAction): EditState {
       return { ...state, jsonText: action.text };
 
     case 'setPanel':
-      return { ...state, panel: action.panel };
+      // The inspector is not drawn on every tab: a request for its focus, left over, would be
+      // replayed when it comes back, applying a character already cancelled.
+      return { ...state, panel: action.panel, focusRequest: null };
 
     // The layout itself is left as it is: saving changes nothing there is to undo.
     case 'saved':
