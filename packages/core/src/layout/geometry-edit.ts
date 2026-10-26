@@ -88,18 +88,33 @@ export function addableKeys(layout: Layout): GeometryKey[] {
 }
 
 /** The preset whose keys are these, with the stagger they were drawn with, or null. */
-function presetOf(keys: GeometryKey[], layout: Layout): GeometryRef | null {
+function presetOf(keys: GeometryKey[], family: string, layout: Layout): GeometryRef | null {
   const offsets = 'preset' in layout.geometry ? layout.geometry.columnOffsets : undefined;
   const numeric = offsets
     ? Object.fromEntries(Object.entries(offsets).map(([k, v]) => [Number(k), v]))
     : undefined;
   for (const id of GEOMETRY_PRESET_IDS) {
     const preset = getGeometryPreset(id, numeric);
-    if (preset.keys.length !== keys.length) continue;
+    if (preset.family !== family || preset.keys.length !== keys.length) continue;
     const at = new Map(preset.keys.map((k) => [k.id, k]));
     const same = keys.every((k) => {
       const p = at.get(k.id);
-      return p && p.x === k.x && p.y === k.y && p.w === k.w && p.h === k.h;
+      // Everything a key says, so a finger given or a rotation is not lost to a preset.
+      return (
+        p &&
+        p.x === k.x &&
+        p.y === k.y &&
+        p.w === k.w &&
+        p.h === k.h &&
+        p.rotation === k.rotation &&
+        p.hand === k.hand &&
+        p.finger === k.finger &&
+        p.row === k.row &&
+        p.col === k.col &&
+        p.home === k.home &&
+        p.thumb === k.thumb &&
+        p.inner === k.inner
+      );
     });
     if (same) return offsets ? { preset: id, columnOffsets: offsets } : { preset: id };
   }
@@ -114,9 +129,9 @@ export function geometryWithKeys(
   const gone = new Set(change.remove ?? []);
   const keys = [...boardKeys(layout), ...(change.add ?? [])].filter((k) => !gone.has(k.id));
   // The keys of a preset are that preset, so a key taken away and put back is the board it was.
-  const preset = presetOf(keys, layout);
+  const family = buildGeometry(layout).family;
+  const preset = presetOf(keys, family, layout);
   if (preset) return preset;
   const name = 'custom' in layout.geometry ? layout.geometry.name : undefined;
-  const family = buildGeometry(layout).family;
   return { custom: keys, family, ...(name === undefined ? {} : { name }) };
 }

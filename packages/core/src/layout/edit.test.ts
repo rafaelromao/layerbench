@@ -1200,6 +1200,38 @@ describe('changing the board', () => {
     expect(keysInUse(reached).get('RHP')).toBe('a layer is reached by it');
   });
 
+  it('is not the preset when a key says more than the preset does', () => {
+    const smaller = landed(layout, {
+      kind: 'setGeometry',
+      geometry: geometryWithKeys(layout, { remove: ['RHP'] }),
+    });
+    const keys = (smaller.layout.geometry as { custom: { id: string; finger: string }[] }).custom;
+    const fingered: Layout = {
+      ...smaller.layout,
+      geometry: {
+        ...(smaller.layout.geometry as { custom: never[] }),
+        custom: keys.map((k) => (k.id === 'LHM' ? { ...k, finger: 'LI' } : k)) as never[],
+      },
+    };
+    const back = geometryWithKeys(fingered, {
+      add: addableKeys(fingered).filter((k) => k.id === 'RHP'),
+    });
+    expect('custom' in back).toBe(true);
+  });
+
+  it('gives a key it gains nothing to do where a layer has a default that does something', () => {
+    const byDefault: Layout = {
+      ...layout,
+      layers: [
+        { ...layout.layers[0], bindings: { ...layout.layers[0].bindings, '*': kp('x') } },
+        layout.layers[1],
+      ],
+    };
+    const o = landed(byDefault, { kind: 'setGeometry', geometry: { preset: '3x5+3' } });
+    expect(o.layout.layers[0].bindings.L2).toEqual({ kind: 'none' });
+    expect(o.layout.layers[1].bindings.L2).toBeUndefined();
+  });
+
   it('changes nothing for the board it has', () => {
     expect(applyEdit(layout, { kind: 'setGeometry', geometry: { preset: '3x5+2' } }).status).toBe(
       'unchanged',

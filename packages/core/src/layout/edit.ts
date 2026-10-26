@@ -459,14 +459,23 @@ const handlers: Handlers = {
       };
     }
     const goneSet = new Set(gone);
+    const had = new Set(buildGeometry({ ...layout, fingering: undefined }).keys.map((k) => k.id));
+    const gained = [...kept].filter((id) => !had.has(id));
     return {
       layout: {
         ...layout,
         geometry,
-        layers: layout.layers.map((l) => ({
-          ...l,
-          bindings: Object.fromEntries(Object.entries(l.bindings).filter(([k]) => !goneSet.has(k))),
-        })),
+        layers: layout.layers.map((l, i) => {
+          const bindings = Object.fromEntries(
+            Object.entries(l.bindings).filter(([k]) => !goneSet.has(k)),
+          );
+          // A layer whose default does something would give it to a key gained: it starts empty.
+          const fallback = l.bindings['*'];
+          if (fallback && fallback.kind !== 'trans' && fallback.kind !== 'none') {
+            for (const id of gained) bindings[id] = i === 0 ? { kind: 'none' } : { kind: 'trans' };
+          }
+          return { ...l, bindings };
+        }),
       },
     };
   },
