@@ -37,6 +37,9 @@ const atEdge = (button: HTMLElement) => button.getAttribute('aria-disabled') ===
  * with the buttons would. Every step draws the whole board again, so no step is spent on the way.
  */
 export async function showLayer(user: UserEvent, name: string, label = 'Layers'): Promise<void> {
+  // On Analyze the board is the first tab: its navigator is there only while that tab is open.
+  const board = screen.queryByRole('tab', { name: 'Board', selected: false });
+  if (board) await user.click(board);
   const nav = within(layerNav(label));
   for (const direction of ['Next layer', 'Previous layer']) {
     for (;;) {

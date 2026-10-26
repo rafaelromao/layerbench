@@ -890,7 +890,8 @@ describe('Edit', () => {
     const user = userEvent.setup();
     await openEdit();
 
-    // Layers is the panel the editor opens on. New layers go after the default ones Qwerty has.
+    // New layers go after the default ones Qwerty has.
+    await user.click(screen.getByRole('tab', { name: 'Layers' }));
     await user.type(screen.getByLabelText('New layer name'), 'Nav');
     await user.click(screen.getByRole('button', { name: '+ layer' }));
     await user.type(screen.getByLabelText('New layer name'), 'Fun');
@@ -913,6 +914,7 @@ describe('Edit', () => {
     await user.click(screen.getByRole('button', { name: 'Duplicate Nav' }));
     expect(order()).toEqual(['Base', 'Numbers', 'Symbols', 'Accents', 'Fun', 'Nav', 'Nav copy']);
 
+    await user.click(screen.getByRole('tab', { name: 'Board' }));
     // The board has turned to the copy; its name is renamed where it stands.
     expect(shownLayer()).toBe('Nav copy');
     await user.dblClick(layerNameEl());
@@ -920,6 +922,7 @@ describe('Edit', () => {
     await user.clear(field);
     await user.type(field, 'Extra{Enter}');
     await waitFor(() => expect(shownLayer()).toBe('Extra'));
+    await user.click(screen.getByRole('tab', { name: 'Layers' }));
     expect(screen.getByLabelText('Name of layer Extra')).toHaveValue('Extra');
 
     const info = vi.spyOn(toast, 'info');
@@ -950,6 +953,7 @@ describe('Edit', () => {
     const user = userEvent.setup();
     await openEdit();
 
+    await user.click(screen.getByRole('tab', { name: 'Layers' }));
     expect(screen.queryByLabelText(/^Id of layer /)).toBeNull();
     const name = screen.getByLabelText('Name of layer Base');
     await user.clear(name);
@@ -978,6 +982,7 @@ describe('Edit', () => {
   it('brings a layer on by itself while others are on, from the Layers panel', async () => {
     const user = userEvent.setup();
     await openEdit();
+    await user.click(screen.getByRole('tab', { name: 'Layers' }));
     const section = () => within(screen.getByRole('region', { name: 'Conditional layers' }));
     const add = () => section().getByRole('button', { name: '+ condition' });
     await user.click(add());
@@ -1318,6 +1323,7 @@ describe('Edit', () => {
     await user.click(within(await inspector('LHC')).getByRole('button', { name: 'Add branch' }));
     await user.click(screen.getByRole('tab', { name: 'JSON' }));
     await user.click(screen.getByRole('button', { name: 'Load into editor' }));
+    await user.click(screen.getByRole('tab', { name: 'Board' }));
 
     // The document the editor wrote is one it can read: the branch is still there to fill in.
     expect(screen.queryByText(/a trigger needs/)).toBeNull();
@@ -1625,23 +1631,23 @@ describe('Edit', () => {
     );
   }, 90_000);
 
-  it('keeps the board first, with the layers under it and Heat, Undo and Redo under them', async () => {
+  it('keeps the board first, with the layers under it and Heat; Undo and Redo sit with the tabs', async () => {
     await openEdit();
     const region = screen.getByRole('region', { name: 'Board' });
     const board = within(region).getByRole('group', { name: 'Keyboard layout' });
     const layers = within(region).getByRole('group', { name: 'Layers' });
     const heat = within(region).getByLabelText('Heat');
-    const undo = within(region).getByRole('button', { name: 'Undo' });
-    const redo = within(region).getByRole('button', { name: 'Redo' });
     const after = (a: Element, b: Element) =>
       (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
     // Nothing is drawn above the board.
-    for (const control of [layers, heat, undo, redo]) expect(after(board, control)).toBe(true);
-    // Heat and the undo buttons share a row under the layers: Heat first, then Undo and Redo.
+    for (const control of [layers, heat]) expect(after(board, control)).toBe(true);
     expect(after(layers, heat)).toBe(true);
-    expect(after(heat, undo)).toBe(true);
-    expect(heat.closest('.lb-board-tools')).toBe(undo.closest('.lb-board-tools'));
     expect(layers.closest('.lb-board-tools')).toBeNull();
+    // Undo and Redo are on every tab, so they are not on the board.
+    const editor = within(screen.getByRole('region', { name: 'Editor' }));
+    expect(editor.getByRole('button', { name: 'Undo' })).toBeInTheDocument();
+    expect(editor.getByRole('button', { name: 'Redo' })).toBeInTheDocument();
+    expect(within(region).queryByRole('button', { name: 'Undo' })).toBeNull();
   });
 
   it('lets the next click through when a drop was followed by no click at all', async () => {
@@ -2042,11 +2048,13 @@ describe('Edit', () => {
 
     await user.click(screen.getByRole('tab', { name: 'Layers' }));
     await user.selectOptions(screen.getByLabelText('Colour of layer Symbols'), 'teal');
+    await user.click(screen.getByRole('tab', { name: 'Board' }));
     expect(dot()).toContain('var(--lb-layer-6)');
     expect(screen.getByText('unsaved')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Undo' }));
     expect(dot()).toContain('var(--lb-layer-4)');
+    await user.click(screen.getByRole('tab', { name: 'Layers' }));
     expect(screen.getByLabelText('Colour of layer Symbols')).toHaveValue('');
     await user.click(screen.getByRole('button', { name: 'Redo' }));
     expect(screen.getByLabelText('Colour of layer Symbols')).toHaveValue('teal');
@@ -2114,14 +2122,15 @@ describe('Edit', () => {
   });
 });
 
-describe('Behaviors', () => {
+describe('Special Behaviors', () => {
   it("lists Magic Romak's special features, and picking one shows it on the board", async () => {
     const user = userEvent.setup();
     await openMagicRomak();
+    const firstLayer = shownLayer();
     // Reached from the Combos tab with the arrow keys, as any panel is.
     await user.click(screen.getByRole('tab', { name: 'Combos' }));
     await user.keyboard('{ArrowRight}');
-    expect(screen.getByRole('tab', { name: 'Behaviors', selected: true })).toHaveFocus();
+    expect(screen.getByRole('tab', { name: 'Special Behaviors', selected: true })).toHaveFocus();
     const list = screen.getByRole('region', { name: 'Special features' });
     const group = (name: string) =>
       within(within(list).getByRole('list', { name })).getAllByRole('listitem');
@@ -2133,7 +2142,7 @@ describe('Behaviors', () => {
     const keys = within(list)
       .getAllByRole('button')
       .filter((b) => !place(b).startsWith('Combo'));
-    const away = keys.find((b) => !place(b).startsWith(`${shownLayer()} · `)) ?? keys[0];
+    const away = keys.find((b) => !place(b).startsWith(`${firstLayer} · `)) ?? keys[0];
     const [layerName, keyId] = place(away).split(' · ');
     // An n-gram outlined from a card gives way to the feature.
     const outlined = () => document.querySelectorAll('#kb-analyze .lb-key-highlight').length;
@@ -2141,18 +2150,25 @@ describe('Behaviors', () => {
       document.querySelector<HTMLButtonElement>('.lb-items li button') as HTMLElement,
     );
     await waitFor(() => expect(outlined()).toBeGreaterThan(0));
-    await user.click(away);
+    // Back in the list, the feature is picked again: the outline gives way to it.
+    const reopen = async (b: HTMLElement) => {
+      await user.click(screen.getByRole('tab', { name: 'Special Behaviors' }));
+      const list2 = within(screen.getByRole('region', { name: 'Special features' }));
+      return list2.getAllByRole('button').find((x) => place(x) === place(b)) as HTMLElement;
+    };
+    await user.click(await reopen(away));
     expect(outlined()).toBe(0);
     expect(shownLayer()).toBe(layerName);
     expect(await inspector(keyId)).toBeInTheDocument();
-    expect(away).toHaveAttribute('aria-current', 'true');
+    expect(await reopen(away)).toHaveAttribute('aria-current', 'true');
 
     // Picked while a word plays, a feature stops it, so the board shows the feature.
+    await user.click(screen.getByRole('tab', { name: 'Board' }));
     await user.type(screen.getByLabelText('How is this typed?'), 'ação');
     await screen.findByRole('list', { name: 'Presses' }, { timeout: 10_000 });
     const other = keys.find((b) => !place(b).startsWith(`${layerName} · `)) ?? keys[0];
     const [otherLayer] = place(other).split(' · ');
-    await user.click(other);
+    await user.click(await reopen(other));
     expect(shownLayer()).toBe(otherLayer);
 
     // A feature on a combo, the à macro, outlines its keys instead, and a swap armed gives way.
@@ -2161,7 +2177,12 @@ describe('Behaviors', () => {
     ).replace('Edit ', '');
     await user.click(within(await inspector(selected)).getByRole('button', { name: 'Swap with…' }));
     expect(screen.getByText(/is armed/)).toBeInTheDocument();
-    await user.click(within(list).getByRole('button', { name: /^Combo agrave/ }));
+    await user.click(screen.getByRole('tab', { name: 'Special Behaviors' }));
+    await user.click(
+      within(screen.getByRole('region', { name: 'Special features' })).getByRole('button', {
+        name: /^Combo agrave/,
+      }),
+    );
     await waitFor(() =>
       expect(document.querySelectorAll('#kb-analyze .lb-key-highlight').length).toBeGreaterThan(1),
     );
@@ -2173,7 +2194,7 @@ describe('Behaviors', () => {
       screen.getAllByRole('button', { name: /^Pick the keys of .* again on the board$/ })[0],
     );
     expect(screen.getByText(/^Picking keys for a combo:/)).toBeInTheDocument();
-    await user.click(screen.getByRole('tab', { name: 'Behaviors' }));
+    await user.click(screen.getByRole('tab', { name: 'Special Behaviors' }));
     await user.click(
       within(screen.getByRole('region', { name: 'Special features' })).getAllByRole('button')[0],
     );
@@ -2186,7 +2207,7 @@ describe('Behaviors', () => {
       storage: freshStorage(),
     });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
-    await user.click(screen.getByRole('tab', { name: 'Behaviors' }));
+    await user.click(screen.getByRole('tab', { name: 'Special Behaviors' }));
     expect(screen.getByText('This layout has no special features.')).toBeInTheDocument();
   }, 60_000);
 });
@@ -2202,7 +2223,10 @@ describe('Analyze, while editing', () => {
     // In a section of their own, right above the summary, and no longer in the key's editor.
     const numbers = await screen.findByRole('region', { name: 'Key numbers' });
     expect(within(numbers).getByRole('heading', { name: /^Its numbers on / })).toBeInTheDocument();
-    expect(numbers.nextElementSibling).toBe(screen.getByRole('region', { name: 'Summary' }));
+    expect(
+      numbers.compareDocumentPosition(screen.getByRole('region', { name: 'Summary' })) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(within(await inspector('R0')).queryByRole('list', { name: /^Parts of / })).toBeNull();
     const parts = within(numbers).getByRole('list', { name: /^Parts of R0 on / });
     expect(within(parts).getByText('Effort')).toBeInTheDocument();

@@ -642,9 +642,15 @@ button.lb-combo-apart:focus-visible {
   order: 8;
 }
 @media (max-width: 1023.98px) {
-  /* The panels wrap instead: a tab scrolled out of sight is a panel nobody finds. */
+  /* The tabs are one row that pans inside its own strip, so they take one line of the screen and
+     the board stays under them; the selected tab is kept in view. */
   .lb-panel-tabs {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+  .lb-panel-tabs .tab {
+    flex: none;
   }
 }
 @media (min-width: 1024px) {

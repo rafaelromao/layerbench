@@ -110,7 +110,7 @@ test.describe('on a phone', () => {
     // The id and the colour end before the row's first button begins.
     const up = await page.getByRole('button', { name: 'Move Numbers up' }).boundingBox();
     expect(up).not.toBeNull();
-    for (const field of [colour, page.getByRole('textbox', { name: 'Id of layer Numbers' })]) {
+    for (const field of [colour, page.getByRole('textbox', { name: 'Name of layer Numbers' })]) {
       const box = await field.boundingBox();
       expect(box).not.toBeNull();
       if (box && up) expect(box.x + box.width).toBeLessThanOrEqual(up.x);

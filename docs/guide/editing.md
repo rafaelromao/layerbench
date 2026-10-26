@@ -1,8 +1,11 @@
 # Editing a layout
 
 A layout is edited where it is analyzed, in **Analyze**: the board shows one layer at a time, with
-the layer navigator under it. Tap or click a key to select it. The editor beside the board (under it, on
-a phone) says what the key does, what it adds to the numbers, and lets you change it. Tap or click the
+the layer navigator under it. The tabs above it, **Board**, **Layers**, **Features**, **Geometry**,
+**Combos**, **Special Behaviors**, **Typing paths** and **JSON**, hold everything there is to edit:
+**Board** is the first, with the board, the word typed and the legend. The summary and the numbers
+sit under the tabs, whichever is open. Tap or click a key to select it. The editor beside the board
+(under it, on a phone) says what the key does, what it adds to the numbers, and lets you change it. Tap or click the
 board between the keys to put the selection away, cancel a swap or a [missing key](#missing-keys)
 tapped, or clear an outline; a drag or a swipe does not.
 
@@ -11,7 +14,7 @@ tapped, or clear an outline; a drag or a swipe does not.
 3. **Fill in the rest**, such as the symbol it types, the layer it reaches or what a hold does.
 
 Every change is kept as you make it, so there is nothing to apply. **Undo** (↶) and **Redo** (↷),
-under the board beside **Heat**, step back and forth through your changes. **Save**, beside the
+in the bar of tabs, on every tab, step back and forth through your changes. **Save**, beside the
 layout's name at the top, keeps it in **Library**, and until then the name is marked *unsaved*. On a
 layout that is not yours yet, such as one that comes with the app, the first **Save** makes a copy
 in your custom layouts and asks what to call it, or, on one that comes with the app or a community
@@ -387,7 +390,7 @@ layer in the end, which is why it stays first.
 
 ## Combos, typing paths and the rest
 
-The other panels hold what is not on a single key:
+The other tabs hold what is not on a single key:
 
 - **Features** turns on sentence case and caps word. Sentence case needs a ZMK module, which it
   links.
@@ -416,8 +419,8 @@ The other panels hold what is not on a single key:
   one edit that Undo takes back. A change is refused, with its reason, when it would leave fewer
   than two keys, a key or layer the layout does not have, or the same keys as another combo on one
   of its layers.
-- **Behaviors** lists the layout's special features, one group each: adaptive keys, alt repeats,
-  macros and mod morphs. Each names its layer and key, or its combo; pick one to turn the board to
+- **Special Behaviors** lists the layout's special features, one group each: adaptive keys, alt repeats,
+  macros and mod morphs. Each names its layer and key, or its combo; pick one to go to the **Board** tab, turned to
   that layer with the key selected, or to outline the combo's keys.
 - **Typing paths** list the other ways a character can be typed. Left alone, a character is typed
   the cheapest way from where the typist is: the fewest presses, then the one that leaves no layer

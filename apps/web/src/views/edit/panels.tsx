@@ -982,6 +982,8 @@ function SpecialFeatureList({ state, send, onShow }: PanelProps & { onShow?: () 
   const { compiled } = state;
   const show = (f: SpecialFeature) => {
     onShow?.();
+    // The board is the first tab: what is shown is on it.
+    send({ type: 'setPanel', panel: 'board' });
     // Whatever the board is doing gives way: a pick of a combo's keys would keep its clicks, and an
     // armed swap or an open combo would add their keys to the outline.
     send({ type: 'comboPickCancel' });
