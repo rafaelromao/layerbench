@@ -3,6 +3,7 @@ import { bundledLayout } from '../layouts/index.js';
 import { enumerateProducers } from '../sim/producers.js';
 import { compileLayout } from './compile.js';
 import { applyEdit, type Edit, type EditOutcome, freeCondition } from './edit.js';
+import { addableKeys, geometryWithKeys, keysInUse } from './geometry-edit.js';
 import { keyBinding } from './ops.js';
 import type { Binding, Layout } from './types.js';
 
@@ -1090,5 +1091,81 @@ describe('conditional layers', () => {
       then: 'accents',
     }).layout;
     expect(freeCondition(second)).toBeNull();
+  });
+});
+
+describe('changing the board', () => {
+  it('goes to another preset that keeps every key in use, the new keys empty', () => {
+    const o = landed(layout, { kind: 'setGeometry', geometry: { preset: '3x5+3' } });
+    expect(o.compiled.keys.length).toBe(36);
+    expect(o.compiled.keyIndex.has('L2')).toBe(true);
+    expect(keyBinding(o.layout, 0, 'L2')).toBeUndefined();
+  });
+
+  it('takes away keys that are Transparent or None on every layer, and their entries with them', () => {
+    const withNone: Layout = {
+      ...layout,
+      layers: [
+        { ...layout.layers[0], bindings: { ...layout.layers[0].bindings, RHP: { kind: 'none' } } },
+        layout.layers[1],
+      ],
+    };
+    const board = geometryWithKeys(withNone, { remove: ['RHP'] });
+    const o = landed(withNone, { kind: 'setGeometry', geometry: board });
+    expect(o.compiled.keyIndex.has('RHP')).toBe(false);
+    expect(o.compiled.keys.length).toBe(33);
+    expect(o.layout.layers[0].bindings.RHP).toBeUndefined();
+  });
+
+  it('refuses to take away a key that does something, naming why', () => {
+    const o = applyEdit(layout, {
+      kind: 'setGeometry',
+      geometry: geometryWithKeys(layout, { remove: ['LHM'] }),
+    });
+    expect(o).toMatchObject({
+      status: 'refused',
+      message: /LHM is still used: it does something on Base/,
+    });
+  });
+
+  it('refuses the space key, a combo key and a preset that drops what is used', () => {
+    expect(keysInUse(layout).get('L0')).toBe('it is the space key');
+    const withCombo: Layout = {
+      ...layout,
+      combos: [{ id: 'c', keys: ['RHI', 'RHM'], binding: kp('z'), layers: ['base'] }],
+    };
+    expect(keysInUse(withCombo).get('RHI')).toBe('a combo uses it');
+    // A row-stagger board has no second thumb: a key on it would go.
+    const onL1: Layout = {
+      ...layout,
+      layers: [
+        { ...layout.layers[0], bindings: { ...layout.layers[0].bindings, L1: kp('x') } },
+        layout.layers[1],
+      ],
+    };
+    expect(applyEdit(onL1, { kind: 'setGeometry', geometry: { preset: 'ansi' } })).toMatchObject({
+      status: 'refused',
+      message: /L1 is still used/,
+    });
+  });
+
+  it('offers the places a preset of its kind has and the board lacks', () => {
+    const ids = addableKeys(layout).map((k) => k.id);
+    expect(ids).toContain('L2');
+    expect(ids).toContain('LHO');
+    expect(ids).not.toContain('LHM');
+    const added = landed(layout, {
+      kind: 'setGeometry',
+      geometry: geometryWithKeys(layout, {
+        add: addableKeys(layout).filter((k) => k.id === 'LHO'),
+      }),
+    });
+    expect(added.compiled.keyIndex.has('LHO')).toBe(true);
+  });
+
+  it('changes nothing for the board it has', () => {
+    expect(applyEdit(layout, { kind: 'setGeometry', geometry: { preset: '3x5+2' } }).status).toBe(
+      'unchanged',
+    );
   });
 });

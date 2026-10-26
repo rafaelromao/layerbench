@@ -933,6 +933,44 @@ button.lb-combo-apart:focus-visible {
 }
 
 /* A layer in the Layers panel: grip, name over id, then the same four button slots in every row. */
+/* The board of the Geometry tab: its keys to take away, the places to add one dashed. */
+.lb-geo-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.lb-geo {
+  position: relative;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.lb-geo-key {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-base-300);
+  border-radius: 0.25rem;
+  background: var(--color-base-200);
+  font-size: 0.5rem;
+  line-height: 1;
+}
+.lb-geo-key:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.lb-geo-key:not(:disabled):hover {
+  border-color: var(--color-error);
+}
+.lb-geo-key-add {
+  border-style: dashed;
+  background: transparent;
+  font-size: 0.875rem;
+}
+.lb-geo-key-add:hover {
+  border-color: var(--color-primary);
+}
 .lb-layer-row {
   display: grid;
   grid-template-columns: 0.75rem minmax(0, 1fr) auto;

@@ -14,6 +14,7 @@ export * from './layout/compile.js';
 export * from './layout/edit.js';
 export * from './layout/features.js';
 export * from './layout/firmware.js';
+export * from './layout/geometry-edit.js';
 export * from './layout/home-row.js';
 export * from './layout/json.js';
 export * from './layout/labels.js';
