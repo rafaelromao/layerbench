@@ -267,6 +267,15 @@ export function Workbench({
   const { edited } = session;
   useEffect(() => edited(state.layout, state.dirty), [edited, state.layout, state.dirty]);
 
+  // On a phone the tabs and the board fill the screen, so the editor of a key just selected opens
+  // below it: bring it into view, as little as it takes.
+  useEffect(() => {
+    if (state.selected === null || window.innerWidth >= 1024) return;
+    document
+      .querySelector('.lb-edit-inspector')
+      ?.scrollIntoView({ block: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  }, [state.selected]);
+
   // The layer edited is the one the link names, so a link opens on it.
   // biome-ignore lint/correctness/useExhaustiveDependencies: only the editor moves the layer; the link follows it
   useEffect(() => {
@@ -910,11 +919,11 @@ export function Workbench({
 
       <section className="card bg-base-100 border border-base-300 min-w-0" aria-label="Editor">
         <div className="card-body gap-3 p-3 sm:p-4 min-w-0">
-          <div className="flex flex-wrap items-center justify-end gap-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
             <Tabs
               label="Editor panels"
               prefix="editor"
-              className="lb-panel-tabs min-w-0 basis-full lg:basis-0 lg:flex-1"
+              className="lb-panel-tabs min-w-0 flex-1"
               tabs={PANEL_TABS}
               value={state.panel}
               onChange={(panel) => send({ type: 'setPanel', panel })}
