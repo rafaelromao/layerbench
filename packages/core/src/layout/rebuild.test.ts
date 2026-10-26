@@ -38,10 +38,11 @@ function everyKey(bindings: Layout['layers'][number]['bindings'], base: boolean)
 function edits(target: Layout): Edit[] {
   const out: Edit[] = [];
   const [base, ...others] = target.layers;
-  out.push({ kind: 'setLayerId', layer: 'base', id: base.id });
-  out.push({ kind: 'renameLayer', layer: base.id, name: base.name ?? base.id });
+  out.push({ kind: 'renameLayer', layer: 'base', name: base.name ?? base.id });
+  const renamed = applyAll(blank, out).layers[0].id;
+  out.push({ kind: 'setLayerId', layer: renamed, id: base.id });
   for (const l of others) {
-    // A new layer's id follows its name; then it is given the one the keymap has.
+    // IDs stay internal; match the fixture's IDs before comparing its references.
     out.push({ kind: 'addLayer', name: l.name ?? l.id });
   }
   const made = applyAll(blank, out);

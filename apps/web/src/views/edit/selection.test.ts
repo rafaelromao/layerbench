@@ -128,6 +128,19 @@ describe('where the board goes after an edit', () => {
     expect(removed.layer).toBe(NAV);
   });
 
+  it('keeps the shown layer and selection when a rename changes an internal ID', () => {
+    const onBase = pick(withNav(), 'LHM');
+    const elsewhere = edit(onBase, { kind: 'renameLayer', layer: 'nav', name: 'Arrows' });
+    expect(shown(elsewhere)).toBe('base');
+    expect(selectionOf(elsewhere)).toEqual(['LHM']);
+    const renamed = edit(onBase, { kind: 'renameLayer', layer: 'base', name: 'Main' });
+    expect(shown(renamed)).toBe('main');
+    expect(selectionOf(renamed)).toEqual(['LHM']);
+    const undone = reducer(renamed, { type: 'undo' });
+    expect(shown(undone)).toBe('base');
+    expect(shown(reducer(undone, { type: 'redo' }))).toBe('main');
+  });
+
   it('shows the layer before one removed from under the board', () => {
     const onNav = reducer(withNav(), { type: 'selectLayer', layer: NAV });
     const removed = edit(onNav, { kind: 'removeLayer', layer: 'nav' });

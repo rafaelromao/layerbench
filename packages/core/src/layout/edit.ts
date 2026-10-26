@@ -413,7 +413,13 @@ const handlers: Handlers = {
     const trimmed = name.trim();
     const current = layout.layers[indexOf(layout, layer)];
     if (!current || trimmed === '' || trimmed === current.name) return same(layout);
-    return { layout: withLayer(layout, layer, (l) => ({ ...l, name: trimmed })) };
+    const taken = new Set(layout.layers.filter((l) => l.id !== layer).map((l) => l.id));
+    const id = unusedId(slugWords(trimmed) || 'layer', taken);
+    const renamed = withLayer(layout, layer, (l) => ({ ...l, name: trimmed }));
+    return {
+      layout: id === layer ? renamed : changeLayerId(renamed, layer, id),
+      at: { layer: id },
+    };
   },
 
   setLayerId(layout, { layer, id }) {

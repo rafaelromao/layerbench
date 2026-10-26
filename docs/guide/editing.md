@@ -97,12 +97,12 @@ applies it; `Escape` leaves the key as it was. Starting with `&` lists the behav
 |---|---|
 | `ç` · `ão` | types that |
 | `&kp A` · `&kp N1` · `&kp LS(COMMA)` | a key press, by keycode |
-| `&lt num a` · `&mo sym` · `&sl ccedil` · `&to base` · `&tog num` | layer taps and switches |
+| `&lt 1 a` · `&mo 2` · `&sl 3` · `&to 0` · `&tog 1` | layer taps and switches |
 | `&sk LSHIFT` · `&kp LSHIFT` | a one-shot modifier, and a held one |
-| `&macro ão` · `&macro ão then alpha2` | a macro, optionally turning on a layer after it |
+| `&macro ão` · `&macro ão then 1` | a macro, optionally turning on a layer after it |
 | `&trans` · `&none` · `&key_repeat` · `&caps_word` · `&sentence_space` | the rest |
 
-A layer can be named by its id, by its name, or by its number as ZMK counts them. A trailing
+A layer can be named by its name or by its number as ZMK counts them. A trailing
 `tag:name` gives the key a tag that adaptive keys can match on. Under the default `symbols` host
 locale a keycode becomes the symbol it types: `&kp N1` is `1`, and shifted `!`.
 
@@ -150,10 +150,6 @@ The **Layers** panel lists them in order, and does everything else with them:
 
 - **Rename** a layer in its name field, or double-click its name in the navigator (press and hold
   it on a phone, or `F2` on the keyboard).
-- **Id**, under the name, is what links and the keys that reach the layer call it, as a keymap's
-  layer has a name of its own (`alpha1`, `num`). Changing it changes every key, combo and setting
-  that names the layer, so nothing is left pointing at the old one; an id another layer has is
-  refused.
 - **Reorder** with the arrows, or by dragging its row. The base layer stays first.
 - **Duplicate** (⧉) copies a layer, with all its keys, right after it.
 - **Colour**, under the layer's name, picks the colour its name and the keys that reach it are

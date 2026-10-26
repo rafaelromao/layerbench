@@ -196,7 +196,8 @@ describe('layers', () => {
 
   it('renames a layer to the name trimmed, and colours it or gives it back its automatic colour', () => {
     const renamed = landed(layout, { kind: 'renameLayer', layer: 'upper', name: ' Shifted ' });
-    expect(renamed.layout.layers[1].name).toBe('Shifted');
+    expect(renamed.layout.layers[1]).toMatchObject({ id: 'shifted', name: 'Shifted' });
+    expect(renamed.at).toEqual({ layer: 'shifted' });
     const red = landed(layout, { kind: 'colorLayer', layer: 'upper', color: 'red' }).layout;
     expect(red.layers[1].color).toBe('red');
     const automatic = landed(red, { kind: 'colorLayer', layer: 'upper', color: undefined });
@@ -233,12 +234,12 @@ describe("a layer's id", () => {
   };
 
   it('changes, and every key, combo, condition, way in, feature and typing path that names it follows', () => {
-    const next = landed(linked, { kind: 'setLayerId', layer: 'base', id: 'alpha1' }).layout;
+    const next = landed(linked, { kind: 'renameLayer', layer: 'base', name: 'Alpha1' }).layout;
     expect(next.layers.map((l) => l.id)).toEqual(['alpha1', 'upper']);
     expect(next.conditionalLayers).toEqual([{ if: ['alpha1', 'upper'], then: 'upper' }]);
     expect(next.activators).toEqual({ upper: [{ from: 'alpha1', via: 'key:alpha1/L0' }] });
     expect(next.features).toEqual({ sentenceCase: { on: ['alpha1'] } });
-    const up = landed(next, { kind: 'setLayerId', layer: 'upper', id: 'alpha2' }).layout;
+    const up = landed(next, { kind: 'renameLayer', layer: 'upper', name: 'Alpha2' }).layout;
     expect(up.layers[0].bindings.L0).toEqual({
       kind: 'hold_tap',
       tap: kp(' '),
@@ -255,6 +256,27 @@ describe("a layer's id", () => {
     });
     expect(up.typingPaths).toEqual({ '1': [{ producer: 'direct:alpha2/LHM' }] });
     expect(() => compileLayout(up)).not.toThrow();
+  });
+
+  it('derives rename and copy IDs from names, avoiding collisions and handling accents', () => {
+    const renamed = landed(linked, { kind: 'renameLayer', layer: 'upper', name: ' Bâse ' });
+    expect(renamed.layout.layers[1]).toMatchObject({ id: 'base-2', name: 'Bâse' });
+    expect(renamed.at.layer).toBe('base-2');
+    expect(() => compileLayout(renamed.layout)).not.toThrow();
+    const again = landed(renamed.layout, { kind: 'renameLayer', layer: 'base-2', name: 'BASE' });
+    expect(again.at.layer).toBe('base-2');
+    const copied = landed(linked, { kind: 'duplicateLayer', layer: 'base' });
+    expect(copied.layout.layers[1]).toMatchObject({ id: 'base-copy', name: 'base copy' });
+    const legacy = {
+      ...linked,
+      layers: [{ ...linked.layers[0], name: 'Main Letters' }, linked.layers[1]],
+    };
+    expect(landed(legacy, { kind: 'duplicateLayer', layer: 'base' }).at.layer).toBe(
+      'main-letters-copy',
+    );
+    expect(landed(linked, { kind: 'renameLayer', layer: 'upper', name: '数字' }).at.layer).toBe(
+      'layer',
+    );
   });
 
   it('refuses an id another layer has, or one no layer could have', () => {

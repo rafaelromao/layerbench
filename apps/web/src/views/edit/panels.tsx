@@ -149,12 +149,12 @@ const COLOUR_NAMES: Record<LayerColor, string> = {
  * palette's, each tuned for both themes. The swatch shows the colour the layer has now.
  */
 function LayerColourPicker({
-  layerId,
+  layerName,
   index,
   value,
   onChange,
 }: {
-  layerId: string;
+  layerName: string;
   index: number;
   value: LayerColor | undefined;
   onChange: (color: LayerColor | undefined) => void;
@@ -168,7 +168,7 @@ function LayerColourPicker({
         style={shown ? { background: shown } : undefined}
       />
       <select
-        aria-label={`Colour of layer ${layerId}`}
+        aria-label={`Colour of layer ${layerName}`}
         className="select select-xs select-ghost w-auto min-w-0"
         value={value ?? ''}
         onChange={(e) => onChange((e.target.value || undefined) as LayerColor | undefined)}
@@ -233,7 +233,7 @@ export function LayersPanel({ state, send }: PanelProps) {
             </span>
             <div className="min-w-0">
               <TextField
-                label={`Name of layer ${layer.id}`}
+                label={`Name of layer ${nameOf(i)}`}
                 value={layer.name ?? layer.id}
                 className="input-xs w-full"
                 mono={false}
@@ -242,16 +242,8 @@ export function LayersPanel({ state, send }: PanelProps) {
                 }
               />
               <div className="lb-layer-meta">
-                <TextField
-                  label={`Id of layer ${nameOf(i)}`}
-                  value={layer.id}
-                  className="input-xs w-20 text-[10px]"
-                  onCommit={(id) =>
-                    send({ type: 'edit', edit: { kind: 'setLayerId', layer: layer.id, id } })
-                  }
-                />
                 <LayerColourPicker
-                  layerId={layer.id}
+                  layerName={nameOf(i)}
                   index={i}
                   value={layer.color}
                   onChange={(color) =>
