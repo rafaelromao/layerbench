@@ -1964,7 +1964,8 @@ describe('Edit', () => {
     const order = () =>
       screen
         .getAllByRole('listitem')
-        .filter((li) => li.querySelector('input[type="checkbox"]'))
+        // A path, not the card of the symbol that holds them.
+        .filter((li) => li.querySelector('input[type="checkbox"]') && !li.querySelector('li'))
         .map((li) => li.textContent);
 
     const before = order();

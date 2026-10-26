@@ -149,7 +149,7 @@ Swipe the board sideways to do the same on a phone, or press `←` and `→` whi
 focus. The same navigator shows the layers of a card in **Library** and of each layout in
 **Compare**. A key's colour says which layer it reaches.
 
-The **Layers** panel lists them in order, and does everything else with them:
+The **Layers** tab lists them in order, one card each, and does everything else with them:
 
 - **Rename** a layer in its name field, or double-click its name in the navigator (press and hold
   it on a phone, or `F2` on the keyboard).
@@ -390,7 +390,8 @@ layer in the end, which is why it stays first.
 
 ## Combos, typing paths and the rest
 
-The other tabs hold what is not on a single key:
+The other tabs hold what is not on a single key. **Features**, **Special Behaviors** and **Typing
+paths** list what they hold as cards too, as many to a row as the width holds and one on a phone:
 
 - **Features** turns on sentence case and caps word. Sentence case needs a ZMK module, which it
   links.
