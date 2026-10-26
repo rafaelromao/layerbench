@@ -180,7 +180,11 @@ function land(state: EditState, outcome: EditOutcome, say?: string): EditState {
   const keepShown = edit.kind === 'renameLayer' && edit.layer !== shown;
   const followed = compiled.layerIndex.get(keepShown ? shown : (at.layer ?? shown));
   // A combo added opens in the combo editor, which takes the place of any key that was open.
-  const keys = edit.kind === 'addCombo' ? [] : (at.keys ?? selectionOf(state));
+  // A key the edit took off the board is no longer selected.
+  const keys =
+    edit.kind === 'addCombo'
+      ? []
+      : (at.keys ?? selectionOf(state)).filter((k) => compiled.keyIndex.has(k));
   const combo = keys.length > 0 ? null : comboAfter(state.combo, edit, layout);
   return {
     ...state,

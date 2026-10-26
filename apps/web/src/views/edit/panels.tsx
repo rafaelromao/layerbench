@@ -1,9 +1,13 @@
 import {
+  addableKeys,
+  boardKeys,
   type Edit,
   exportKeymapDrawer,
   featureModule,
   freeCondition,
   GEOMETRY_PRESET_IDS,
+  geometryWithKeys,
+  keysInUse,
   LAYER_COLORS,
   type LayerColor,
   type LayoutFeatures,
@@ -513,6 +517,94 @@ function OneShotDefaults({
 }
 
 /** Geometry and the keys with a special role. */
+/** The size of a key unit on the board of the Geometry tab, in pixels. */
+const GEO_UNIT = 32;
+
+/**
+ * The board's keys, each one to take away, and beside them the places a key can be added. A key
+ * can go only when it does nothing on any layer, which a key in use says by being disabled.
+ */
+function GeometryBoard({ state, send }: PanelProps) {
+  const { layout } = state;
+  const keys = useMemo(() => boardKeys(layout), [layout]);
+  const addable = useMemo(() => addableKeys(layout), [layout]);
+  const used = useMemo(() => keysInUse(layout), [layout]);
+  const [stays, setStays] = useState<string | null>(null);
+  const all = [...keys, ...addable];
+  const left = Math.min(...all.map((k) => k.x - k.w / 2));
+  const top = Math.min(...all.map((k) => k.y - k.h / 2));
+  const width = Math.max(...all.map((k) => k.x + k.w / 2)) - left;
+  const height = Math.max(...all.map((k) => k.y + k.h / 2)) - top;
+  const place = (k: (typeof all)[number]) => ({
+    left: (k.x - k.w / 2 - left) * GEO_UNIT,
+    top: (k.y - k.h / 2 - top) * GEO_UNIT,
+    width: k.w * GEO_UNIT - 2,
+    height: k.h * GEO_UNIT - 2,
+    transform: k.rotation ? `rotate(${k.rotation}deg)` : undefined,
+  });
+  const set = (change: Parameters<typeof geometryWithKeys>[1]) =>
+    send({
+      type: 'edit',
+      edit: { kind: 'setGeometry', geometry: geometryWithKeys(layout, change) },
+    });
+  return (
+    <div className="space-y-1">
+      <span className="label-text text-xs">Keys</span>
+      <div className="lb-geo-scroll">
+        <fieldset
+          className="lb-geo"
+          aria-label="Keys of the board"
+          style={{ width: width * GEO_UNIT, height: height * GEO_UNIT }}
+        >
+          {keys.map((k) => {
+            const why = used.get(k.id);
+            return (
+              <button
+                key={k.id}
+                type="button"
+                className="lb-geo-key"
+                style={place(k)}
+                aria-disabled={why !== undefined}
+                aria-label={`Remove key ${k.id}`}
+                title={why === undefined ? `Take ${k.id} away` : `${k.id} stays: ${why}`}
+                onClick={() => {
+                  // A key in use says why it stays, where a finger or a keyboard can read it.
+                  setStays(why === undefined ? null : `${k.id} stays: ${why}.`);
+                  if (why === undefined) set({ remove: [k.id] });
+                }}
+              >
+                {k.id}
+              </button>
+            );
+          })}
+          {addable.map((k) => (
+            <button
+              key={k.id}
+              type="button"
+              className="lb-geo-key lb-geo-key-add"
+              style={place(k)}
+              aria-label={`Add key ${k.id}`}
+              title={`Add ${k.id}`}
+              onClick={() => set({ add: [k] })}
+            >
+              +
+            </button>
+          ))}
+        </fieldset>
+      </div>
+      {stays && (
+        <p role="status" className="text-xs">
+          {stays}
+        </p>
+      )}
+      <span className="text-[11px] opacity-60 block">
+        Tap a key to take it away, or a + to add one. A key can go only when it is Transparent or
+        None on every layer and nothing else uses it.
+      </span>
+    </div>
+  );
+}
+
 export function GeometryPanel({ state, send }: PanelProps) {
   const { layout, compiled } = state;
   const preset = 'preset' in layout.geometry ? layout.geometry.preset : 'custom';
@@ -524,19 +616,39 @@ export function GeometryPanel({ state, send }: PanelProps) {
           aria-label="Geometry preset"
           className="select select-sm select-bordered"
           value={preset}
-          disabled
+          onChange={(e) =>
+            send({
+              type: 'edit',
+              edit: {
+                kind: 'setGeometry',
+                geometry: {
+                  preset: e.target.value,
+                  // The stagger chosen for the columns stays, on a board that has columns.
+                  ...('preset' in layout.geometry && layout.geometry.columnOffsets
+                    ? { columnOffsets: layout.geometry.columnOffsets }
+                    : {}),
+                },
+              },
+            })
+          }
         >
           {GEOMETRY_PRESET_IDS.map((id) => (
             <option key={id} value={id}>
               {id}
             </option>
           ))}
-          {preset === 'custom' && <option value="custom">custom</option>}
+          {preset === 'custom' && (
+            <option value="custom" disabled>
+              custom
+            </option>
+          )}
         </select>
         <span className="text-[11px] opacity-60">
-          Changing geometry moves every key, so it is done from the import in the library.
+          Another preset keeps every key that does something, and is refused if it would lose one.
         </span>
       </label>
+
+      <GeometryBoard state={state} send={send} />
 
       <label className="form-control">
         <span className="label-text text-xs">Space key</span>

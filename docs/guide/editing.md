@@ -395,9 +395,14 @@ paths** list what they hold as cards too, as many to a row as the width holds an
 
 - **Features** turns on sentence case and caps word. Sentence case needs a ZMK module, which it
   links.
-- **Geometry** shows the board, which is chosen when a layout is created or read with **Import**,
-  and cannot be changed here, and says which keys are space and shift, the kind of shift, and how
-  doubled letters are typed. Under **One-shot layers** and **One-shot keys** it says how the
+- **Geometry** is the board itself. Pick another **preset**, or tap a key of the board to take it
+  away and a **+** to add one, where a preset of the same kind has a key the board lacks. A key
+  can go only if it is Transparent or None on every layer and nothing else uses it: not a combo,
+  the space or shift key, or a feature's key. A key in use is grayed, and says why when you tap or point
+  at it. Keys keep their names, not their places: a preset of another kind, such as a row-stagger
+  board, may put a kept key under another finger. A preset that would lose a key in use is refused, with the key named. A key the board
+  gains starts empty. Under them it says which keys are space and shift, the kind of shift, and
+  how doubled letters are typed, and, under **One-shot layers** and **One-shot keys**, how the
   layout's one-shots end: as the next key goes down or not, whether they stay on while a modifier
   is pressed, and after how many milliseconds unused.
 - **Combos** are keys pressed together. The top of the tab is a strip of small boards, one for each

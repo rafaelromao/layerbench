@@ -1,6 +1,7 @@
 import { enumerateProducers, type Producer } from '../sim/producers.js';
 import { ID_PATTERN, slugWords, unusedId } from '../storage/ids.js';
 import { buildGeometry, type CompiledLayout, compileLayout } from './compile.js';
+import { keysInUse } from './geometry-edit.js';
 import {
   changeLayerId,
   copyKey,
@@ -17,6 +18,7 @@ import {
   type BehaviorDefaults,
   type Binding,
   type ConditionalLayerDef,
+  type GeometryRef,
   type LayerColor,
   type Layout,
   type LayoutFeatures,
@@ -40,6 +42,11 @@ export type Edit =
   | { kind: 'renameLayer'; layer: string; name: string }
   /** The layer's id, which links and everything that reaches the layer name it by. */
   | { kind: 'setLayerId'; layer: string; id: string }
+  /**
+   * The board to another: a preset, or a list of keys. Only keys that do nothing, being Transparent
+   * or None on every layer and used by nothing else, may go; keys the board gains start empty.
+   */
+  | { kind: 'setGeometry'; geometry: GeometryRef }
   /** How long one-shot layers and keys wait, and what releases them; empty takes it away. */
   | { kind: 'setBehaviorDefaults'; defaults: BehaviorDefaults }
   /** No colour is Automatic: the one the layer's place in the list gives it. */
@@ -428,6 +435,49 @@ const handlers: Handlers = {
     }
     if (indexOf(layout, trimmed) >= 0) return { refused: `another layer is ${trimmed} already` };
     return { layout: changeLayerId(layout, layer, trimmed), at: { layer: trimmed } };
+  },
+
+  setGeometry(layout, { geometry }) {
+    if (sameValue(layout.geometry, geometry)) return same(layout);
+    let kept: Set<string>;
+    try {
+      kept = new Set(
+        buildGeometry({ ...layout, geometry, fingering: undefined }).keys.map((k) => k.id),
+      );
+    } catch (e) {
+      return { refused: e instanceof Error ? e.message : String(e) };
+    }
+    const gone = buildGeometry({ ...layout, fingering: undefined })
+      .keys.map((k) => k.id)
+      .filter((id) => !kept.has(id));
+    const used = keysInUse(layout);
+    const stays = gone.filter((id) => used.has(id));
+    if (stays.length > 0) {
+      const [first] = stays;
+      return {
+        refused: `${stays.join(', ')} would go, but ${first} is still used: ${used.get(first)}. Only keys that are Transparent or None on every layer can be taken away`,
+      };
+    }
+    const goneSet = new Set(gone);
+    const had = new Set(buildGeometry({ ...layout, fingering: undefined }).keys.map((k) => k.id));
+    const gained = [...kept].filter((id) => !had.has(id));
+    return {
+      layout: {
+        ...layout,
+        geometry,
+        layers: layout.layers.map((l, i) => {
+          const bindings = Object.fromEntries(
+            Object.entries(l.bindings).filter(([k]) => !goneSet.has(k)),
+          );
+          // A layer whose default does something would give it to a key gained: it starts empty.
+          const fallback = l.bindings['*'];
+          if (fallback && fallback.kind !== 'trans' && fallback.kind !== 'none') {
+            for (const id of gained) bindings[id] = i === 0 ? { kind: 'none' } : { kind: 'trans' };
+          }
+          return { ...l, bindings };
+        }),
+      },
+    };
   },
 
   setBehaviorDefaults(layout, { defaults }) {
