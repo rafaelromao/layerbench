@@ -198,7 +198,6 @@ export function discoverActivators(
     }
   }
   for (const combo of c.combos) {
-    if (combo.role !== 'typing') continue;
     for (const mode of ['tap', 'hold'] as const) {
       const targets: LayerTarget[] = [];
       collectLayerTargets(c, combo.binding, mode, targets);

@@ -242,91 +242,12 @@ function alpha2Bindings(): Record<string, Binding> {
   };
 }
 
-/** The shortcuts on Alpha 1 for letters Alpha 2 has; never pressed by the analysis. */
-function alpha1Combos(): ComboDef[] {
-  return [
-    {
-      id: 'ns',
-      keys: ['LHR', 'LHM'],
-      binding: kp('q'),
-      layers: ['alpha1'],
-      role: 'command',
-      timeoutMs: 30,
-      slowRelease: false,
-    },
-    {
-      id: 'mg',
-      keys: ['LTM', 'LTI'],
-      binding: kp('k'),
-      layers: ['alpha1'],
-      role: 'command',
-      timeoutMs: 30,
-      slowRelease: false,
-    },
-    {
-      id: 'st',
-      keys: ['LHM', 'LHI'],
-      binding: kp('w'),
-      layers: ['alpha1'],
-      role: 'command',
-      timeoutMs: 30,
-      slowRelease: false,
-    },
-    {
-      id: 'cp',
-      keys: ['LBM', 'LBI'],
-      binding: kp('v'),
-      layers: ['alpha1'],
-      role: 'command',
-      timeoutMs: 30,
-      slowRelease: false,
-    },
-    {
-      id: 'lo',
-      keys: ['RTI', 'RTM'],
-      binding: kp('x'),
-      layers: ['alpha1'],
-      role: 'command',
-      timeoutMs: 30,
-      slowRelease: false,
-    },
-    {
-      id: 'ra',
-      keys: ['RHI', 'RHM'],
-      binding: kp('z'),
-      layers: ['alpha1'],
-      role: 'command',
-      timeoutMs: 30,
-      slowRelease: false,
-    },
-    {
-      id: 'hcomma',
-      keys: ['RBI', 'RBM'],
-      binding: kp('j'),
-      layers: ['alpha1'],
-      role: 'command',
-      timeoutMs: 30,
-      slowRelease: false,
-    },
-    {
-      id: 'ae',
-      keys: ['RHM', 'RHR'],
-      binding: kp('y'),
-      layers: ['alpha1'],
-      role: 'command',
-      timeoutMs: 30,
-      slowRelease: false,
-    },
-  ];
-}
-
 function typingCombo(id: string, keys: string[], binding: Binding, layers: string[]): ComboDef {
   return {
     id,
     keys,
     binding,
     layers,
-    role: 'typing',
     timeoutMs: 30,
     slowRelease: false,
   };
@@ -371,7 +292,6 @@ const SEMICOLON_COMBO: ComboDef = {
   keys: ['RBM', 'RBR'],
   binding: kp(';'),
   layers: ['alpha1', 'num'],
-  role: 'typing',
   timeoutMs: 30,
   slowRelease: false,
 };
@@ -489,7 +409,6 @@ const chord = (id: string, keys: string, binding: Binding, layers?: string[]): C
   keys: keys.split(' '),
   binding,
   ...(layers && { layers }),
-  role: 'typing',
 });
 
 /** Tapped, one binding; held, another. */
@@ -891,7 +810,7 @@ export const SMALL_DEFS: ClassicDef[] = [
       { id: 'ccedil', name: '\u00c7 extension', byKey: CCEDIL_BINDINGS },
       ...magicRomakLayers().map(({ id, name = id, bindings }) => ({ id, name, byKey: bindings })),
     ],
-    combos: [...alpha1Combos(), SEMICOLON_COMBO, ...alpha2Combos(), ...KEYMAP_SYMBOL_COMBOS],
+    combos: [SEMICOLON_COMBO, ...alpha2Combos(), ...KEYMAP_SYMBOL_COMBOS],
     shift: { key: 'R1', kind: 'sk' },
     behaviorDefaults: {
       sl: { quickRelease: true, ignoreModifiers: false, releaseAfterMs: 1000 },

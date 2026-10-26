@@ -64,8 +64,9 @@ simulate, such as Escape or an arrow, is transparent, as a key left unset is, an
 taps nothing: the layer held on it still works. A layer you left out is named nowhere.
 
 Combos come along too, found by their key positions or by the legends of their keys, on the layers
-you keep, with the timing the editor gives a combo. One left with nothing to do is skipped, as the
-editor makes no transparent combo.
+you keep, with the timing the editor gives a combo. Only a combo that types is read: one that does
+nothing, or does something that is not typing, such as a shortcut, is skipped, as the editor makes
+no transparent combo.
 
 ### What the report says
 

@@ -56,7 +56,6 @@ describe('a layout written in code', () => {
       keys: ['LHM', 'LHI'],
       binding: { kind: 'dead_key', diacritic: '´' } satisfies Binding,
       layers: ['alpha2'],
-      role: 'typing' as const,
       timeoutMs: 30,
       slowRelease: false,
     };
@@ -71,7 +70,7 @@ describe('a layout written in code', () => {
 
     expect(layout.combos).toEqual([
       chord,
-      { id: 'q', keys: ['LTR', 'LTM'], binding: kp('q'), layers: ['base'], role: 'typing' },
+      { id: 'q', keys: ['LTR', 'LTM'], binding: kp('q'), layers: ['base'] },
     ]);
   });
 

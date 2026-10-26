@@ -1732,67 +1732,73 @@ describe('Edit', () => {
     expect(screen.queryByText('unsaved')).toBeNull();
   });
 
-  it('builds a combo from keys picked on the board', async () => {
+  it('builds a combo from keys picked on the board, then gives it an output in the combo editor', async () => {
     const user = userEvent.setup();
     await openEdit();
 
     await user.click(screen.getByRole('tab', { name: 'Combos' }));
-    await user.click(screen.getByRole('button', { name: 'pick on board' }));
+    await user.click(screen.getByRole('button', { name: 'New combo' }));
 
     await user.click(key('Key LHM: d, hold ⌥'));
     await user.click(key('Key LHI: f, hold ⇧'));
     expect(screen.getByLabelText('Combo keys picked')).toHaveTextContent('LHM+LHI');
-
-    // The output takes the same syntax as a key, so a combo is not limited to a single symbol.
-    await user.type(screen.getByLabelText('Combo output'), '&macro ão');
     await user.click(screen.getByRole('button', { name: /^Add combo on/ }));
 
+    // It has a small board in the strip, and is open in the editor, which takes the same syntax as
+    // a key, so a combo is not limited to a single symbol.
     const combos = within(screen.getByRole('region', { name: 'Combos' }));
-    expect(await combos.findByText('LHM+LHI')).toBeInTheDocument();
-    expect(combos.getByDisplayValue('&macro ão')).toBeInTheDocument();
+    expect(await combos.findByRole('button', { name: 'Edit LHM+LHI' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    const editor = within(await screen.findByRole('group', { name: 'Edit combo LHM+LHI' }));
+    const line = editor.getByLabelText('Binding for combo LHM+LHI');
+    await user.clear(line);
+    await user.type(line, '&macro ão{Enter}');
+    await waitFor(() =>
+      expect(combos.getByRole('button', { name: 'Edit LHM+LHI' })).toHaveTextContent('ão'),
+    );
   });
 
   /** What the boxes the board draws for combos say, by their keys and legend. */
   const boxes = () =>
     [...document.querySelectorAll('#kb-analyze .lb-combo title')].map((t) => t.textContent);
 
-  it("changes a combo's output, keys and layers from its row, one undo for each", async () => {
+  it("changes a combo's output, keys and layers in the combo editor, one undo for each", async () => {
     const user = userEvent.setup();
     await openComboEdit();
     await user.click(screen.getByRole('tab', { name: 'Combos' }));
     const combos = within(screen.getByRole('region', { name: 'Combos' }));
     expect(boxes()).toEqual(['Combo LHR + LHM: Acce']);
+    await user.click(combos.getByRole('button', { name: 'Edit LHR+LHM' }));
+    const editor = () => within(screen.getByRole('group', { name: /^Edit combo / }));
 
     // The output: typed in the syntax a key takes, kept when the field is left.
-    const output = combos.getByLabelText('Output of LHR+LHM');
+    const output = editor().getByLabelText('Binding for combo LHR+LHM');
     await user.clear(output);
     await user.type(output, '&macro ão{Enter}');
     await waitFor(() => expect(boxes()).toEqual(['Combo LHR + LHM: ão']));
-    // Typing on goes on in the same field: the keyboard is not sent back to the top of the page.
-    expect(combos.getByLabelText('Output of LHR+LHM')).toHaveFocus();
     // What the syntax cannot read is refused, and the combo keeps what it had.
-    const again = combos.getByLabelText('Output of LHR+LHM');
+    const again = editor().getByLabelText('Binding for combo LHR+LHM');
     await user.clear(again);
     await user.type(again, '&mo nowhere{Enter}');
     expect(await screen.findByText(/no layer called/)).toBeInTheDocument();
     expect(boxes()).toEqual(['Combo LHR + LHM: ão']);
 
     // The keys: picked again on the board, which names the keys the combo is on.
-    await user.click(
-      combos.getByRole('button', { name: 'Pick the keys of LHR+LHM again on the board' }),
-    );
+    await user.click(editor().getByRole('button', { name: 'Pick again on the board' }));
     await user.click(key('Key LHM: d, hold ⌥'));
     await user.click(key('Key LHI: f, hold ⇧'));
-    expect(combos.getByLabelText('Keys picked for LHR+LHM')).toHaveTextContent('LHM+LHI');
-    await user.click(combos.getByRole('button', { name: 'Use the picked keys for LHR+LHM' }));
+    expect(editor().getByLabelText('Keys picked for combo LHR+LHM')).toHaveTextContent('LHM+LHI');
+    await user.click(editor().getByRole('button', { name: 'Use these keys' }));
     await waitFor(() => expect(boxes()).toEqual(['Combo LHM + LHI: ão']));
-    expect(combos.getByRole('button', { name: 'Show the keys of LHM+LHI' })).toBeInTheDocument();
+    expect(combos.getByRole('button', { name: 'Edit LHM+LHI' })).toBeInTheDocument();
 
     // The layers: chosen from all of the layout's, and never none.
-    await user.click(combos.getByLabelText('LHM+LHI on Numbers'));
-    await user.click(combos.getByLabelText('LHM+LHI on Base'));
+    await user.click(editor().getByLabelText('Numbers'));
+    await user.click(editor().getByLabelText('Base'));
     await waitFor(() => expect(boxes()).toEqual([]));
-    await user.click(combos.getByLabelText('LHM+LHI on Numbers'));
+    await user.click(editor().getByLabelText('Numbers'));
     expect(await screen.findByText('a combo needs at least one layer')).toBeInTheDocument();
 
     // Each change is one edit, and one Undo takes it back.
@@ -1829,35 +1835,28 @@ describe('Edit', () => {
       expect(screen.queryByRole('group', { name: 'Edit combo LHR+LHM' })).toBeNull(),
     );
 
-    // A combo's keys shown from its row.
+    // A combo open from the strip outlines its keys.
     await user.click(screen.getByRole('tab', { name: 'Combos' }));
     const combos = within(screen.getByRole('region', { name: 'Combos' }));
-    await user.click(combos.getByRole('button', { name: 'Show the keys of LHR+LHM' }));
+    await user.click(combos.getByRole('button', { name: 'Edit LHR+LHM' }));
     await waitFor(() => expect(outlined()).toBe(2));
     await user.click(board);
     await waitFor(() => expect(outlined()).toBe(0));
 
     // Keys being picked for a combo are all the board is doing: a click between them keeps the pick.
-    await user.click(
-      combos.getByRole('button', { name: 'Pick the keys of LHR+LHM again on the board' }),
-    );
+    await user.click(combos.getByRole('button', { name: 'New combo' }));
     await user.click(key('Key LHM: d, hold ⌥'));
     await user.click(board);
-    expect(combos.getByLabelText('Keys picked for LHR+LHM')).toHaveTextContent('LHM');
+    expect(combos.getByLabelText('Combo keys picked')).toHaveTextContent('LHM');
   });
 
-  it('opens a combo from its box, with any kind of key but Transparent and its role', async () => {
+  it('opens a combo from its box, with any kind of key but Transparent', async () => {
     const user = userEvent.setup();
     await openComboEdit();
     const { editor, tiles } = await openAccents(user);
     expect(tiles.getByRole('button', { name: 'Layer' })).toHaveAttribute('aria-pressed', 'true');
     expect(tiles.queryByRole('button', { name: 'Transparent' })).toBeNull();
-    await user.selectOptions(
-      editor.getByRole('combobox', { name: 'Role of combo LHR+LHM' }),
-      'command',
-    );
-    // A command combo is not drawn among the keys that type.
-    await waitFor(() => expect(boxes()).toEqual([]));
+    expect(editor.queryByRole('combobox', { name: /^Role of combo/ })).toBeNull();
   });
 
   it("changes a combo's kind from the tiles, one undo for each, with the combo still open", async () => {
@@ -1889,7 +1888,9 @@ describe('Edit', () => {
     const user = userEvent.setup();
     await openEdit();
     await user.click(screen.getByRole('tab', { name: 'Combos' }));
-    await user.type(screen.getByLabelText('Combo keys'), 'LHM+LHI');
+    await user.click(screen.getByRole('button', { name: 'New combo' }));
+    await user.click(key('Key LHM: d, hold ⌥'));
+    await user.click(key('Key LHI: f, hold ⇧'));
     await user.click(screen.getByRole('button', { name: /^Add combo on/ }));
 
     const editor = within(await screen.findByRole('group', { name: 'Edit combo LHM+LHI' }));
@@ -1914,61 +1915,42 @@ describe('Edit', () => {
     expect(await screen.findByRole('group', { name: 'Edit combo LHI+LHP' })).toBeInTheDocument();
   });
 
-  it("does not carry what was typed in a removed combo's output to the one that takes its row", async () => {
-    const user = userEvent.setup();
-    await openComboEdit();
-    await user.click(screen.getByRole('tab', { name: 'Combos' }));
-    const combos = within(screen.getByRole('region', { name: 'Combos' }));
-    // A second combo with the same output as the first.
-    await user.type(screen.getByLabelText('Combo keys'), 'LHM+LHI');
-    await user.type(screen.getByLabelText('Combo output'), '&sl accents');
-    await user.click(screen.getByRole('button', { name: /^Add combo on/ }));
-    await combos.findByLabelText('Output of LHM+LHI');
-
-    const first = combos.getByLabelText('Output of LHR+LHM');
-    await user.clear(first);
-    await user.type(first, '&mo nowhere');
-    await user.click(combos.getByRole('button', { name: 'Remove LHR+LHM' }));
-
-    expect(await combos.findByLabelText('Output of LHM+LHI')).toHaveValue('&sl 3');
-  });
-
   it("stops picking a combo's keys again when told to", async () => {
     const user = userEvent.setup();
     await openComboEdit();
     await user.click(screen.getByRole('tab', { name: 'Combos' }));
     const combos = within(screen.getByRole('region', { name: 'Combos' }));
-    await user.click(
-      combos.getByRole('button', { name: 'Pick the keys of LHR+LHM again on the board' }),
+    await user.click(combos.getByRole('button', { name: 'Edit LHR+LHM' }));
+    const editor = () => within(screen.getByRole('group', { name: 'Edit combo LHR+LHM' }));
+    await user.click(editor().getByRole('button', { name: 'Pick again on the board' }));
+    expect(editor().getByLabelText('Keys picked for combo LHR+LHM')).toHaveTextContent(
+      'click the keys',
     );
-    expect(combos.getByLabelText('Keys picked for LHR+LHM')).toHaveTextContent('click the keys');
     // Picking the keys it already has is nothing to change, and ends the pick.
     await user.click(key('Key LHM: d, hold ⌥'));
     await user.click(key('Key LHR: s, hold ⌃'));
-    await user.click(combos.getByRole('button', { name: 'Use the picked keys for LHR+LHM' }));
-    expect(combos.queryByLabelText('Keys picked for LHR+LHM')).toBeNull();
-    await user.click(
-      combos.getByRole('button', { name: 'Pick the keys of LHR+LHM again on the board' }),
-    );
-    // The add form is not the one picking.
-    expect(screen.getByRole('button', { name: 'pick on board' })).toBeInTheDocument();
-    await user.click(combos.getByRole('button', { name: 'Cancel' }));
-    expect(combos.queryByLabelText('Keys picked for LHR+LHM')).toBeNull();
+    await user.click(editor().getByRole('button', { name: 'Use these keys' }));
+    expect(editor().queryByLabelText('Keys picked for combo LHR+LHM')).toBeNull();
+    await user.click(editor().getByRole('button', { name: 'Pick again on the board' }));
+    // The card for a new combo is not the one picking.
+    expect(combos.getByRole('button', { name: 'New combo' })).toBeInTheDocument();
+    await user.click(editor().getByRole('button', { name: 'Cancel' }));
+    expect(editor().queryByLabelText('Keys picked for combo LHR+LHM')).toBeNull();
   });
 
   it('refuses a combo output it cannot read, instead of guessing', async () => {
     const user = userEvent.setup();
-    await openEdit();
-
+    await openComboEdit();
     await user.click(screen.getByRole('tab', { name: 'Combos' }));
-    await user.type(screen.getByLabelText('Combo keys'), 'LHM+LHI');
-    await user.type(screen.getByLabelText('Combo output'), '&mo nowhere');
-    await user.click(screen.getByRole('button', { name: /^Add combo on/ }));
+    await user.click(screen.getByRole('button', { name: 'Edit LHR+LHM' }));
+    const line = within(screen.getByRole('group', { name: 'Edit combo LHR+LHM' })).getByLabelText(
+      'Binding for combo LHR+LHM',
+    );
+    await user.clear(line);
+    await user.type(line, '&mo nowhere{Enter}');
 
     expect(await screen.findByText(/no layer called/)).toBeInTheDocument();
-    expect(
-      within(screen.getByRole('region', { name: 'Combos' })).queryByText('LHM+LHI'),
-    ).toBeNull();
+    expect(boxes()).toEqual(['Combo LHR + LHM: Acce']);
   });
 
   it('reorders a typing path that was never declared', async () => {
@@ -2190,9 +2172,8 @@ describe('Special Behaviors', () => {
 
     // Picked while a combo's keys are being picked, a feature ends the pick.
     await user.click(screen.getByRole('tab', { name: 'Combos' }));
-    await user.click(
-      screen.getAllByRole('button', { name: /^Pick the keys of .* again on the board$/ })[0],
-    );
+    await user.click(screen.getAllByRole('button', { name: /^Edit [A-Z0-9]+\+[A-Z0-9]+$/ })[0]);
+    await user.click(screen.getByRole('button', { name: 'Pick again on the board' }));
     expect(screen.getByText(/^Picking keys for a combo:/)).toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: 'Special Behaviors' }));
     await user.click(

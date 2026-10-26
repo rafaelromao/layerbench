@@ -63,8 +63,7 @@ export interface KeyboardCombo {
 }
 
 /**
- * The combos marked for typing that fire on a layer, as the board draws them. A command combo is
- * a shortcut the analysis never presses, so it is not shown among the keys that type.
+ * The combos that fire on a layer, as the board draws them.
  */
 export function typingCombos(
   compiled: CompiledLayout,
@@ -72,9 +71,7 @@ export function typingCombos(
   active: string | null = null,
 ): KeyboardCombo[] {
   return compiled.combos
-    .filter(
-      (c) => c.role === 'typing' && (c.layerMask === null || (c.layerMask & (1 << layer)) !== 0),
-    )
+    .filter((c) => c.layerMask === null || (c.layerMask & (1 << layer)) !== 0)
     .map((c) => {
       // What it types, and what it types when its keys are held together, as `? / ¿`.
       const l = legend(compiled, c.binding);

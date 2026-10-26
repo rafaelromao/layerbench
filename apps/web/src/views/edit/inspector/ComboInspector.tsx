@@ -13,7 +13,7 @@ const NOT_ON_A_COMBO = ['transparent'] as const;
 
 /**
  * The combo open in the editor, edited as a key is: any kind of key on the tiles, the bindings the
- * layout already has, the binding as text, and what only a combo has, its keys, layers and role.
+ * layout already has, the binding as text, and what only a combo has, its keys, layers and timeout.
  * Every change is one `updateCombo` edit, so one Undo takes it back.
  */
 export function ComboInspector({
@@ -32,8 +32,6 @@ export function ComboInspector({
   const name = c.keys.join('+');
   const shown = legend(compiled, c.binding);
   const layerIds = c.layers ?? layout.layers.map((l) => l.id);
-  // A combo that names no role is a command, as the compiler reads it.
-  const role = c.role ?? 'command';
   const repicking = state.comboPick !== null && state.comboPickFor === combo;
   const picked = state.comboPick ?? [];
 
@@ -156,19 +154,6 @@ export function ComboInspector({
               </label>
             ))}
           </fieldset>
-
-          <label className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold w-16 shrink-0">Role</span>
-            <select
-              aria-label={`Role of combo ${name}`}
-              className="select select-xs select-bordered w-auto"
-              value={role}
-              onChange={(e) => update({ role: e.target.value as 'typing' | 'command' })}
-            >
-              <option value="typing">typing</option>
-              <option value="command">command</option>
-            </select>
-          </label>
 
           <label className="flex flex-wrap items-center gap-2">
             <span className="font-semibold w-16 shrink-0">Timeout</span>

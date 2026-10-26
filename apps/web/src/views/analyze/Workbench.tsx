@@ -576,7 +576,7 @@ export function Workbench({
     () => (shown ? heatMap(shown, params.heat, boardLayer) : {}),
     [shown, params.heat, boardLayer],
   );
-  const hasTypingCombos = typedCompiled.combos.some((c) => c.role === 'typing');
+  const hasTypingCombos = typedCompiled.combos.length > 0;
   const boardCombos = useMemo(() => {
     const all = typingCombos(typedCompiled, boardLayer, frame?.combo ?? null);
     // Hidden, a combo on the board still shows while it is the press being played.
@@ -782,7 +782,7 @@ export function Workbench({
   };
 
   const onBoard = state.panel === 'board';
-  // Combos still draws the board beside its panel, to pick a combo's keys on, until its own editor.
+  // Combos draws the board under its strip of combos, to pick a combo's keys on.
   const showBoard = onBoard || state.panel === 'combos';
   const editorPanel = (
     <div
@@ -959,7 +959,7 @@ export function Workbench({
                 ? `${spoken(state.placing)} armed: tap a key to put it on`
                 : message}
           </p>
-          {!showBoard && editorPanel}
+          {!onBoard && editorPanel}
         </div>
       </section>
 
@@ -1328,12 +1328,6 @@ export function Workbench({
                     )}
                   </div>
                 </>
-              )}
-
-              {state.panel === 'combos' && (
-                <section className="lb-edit-panels card bg-base-100 border border-base-300 min-w-0">
-                  <div className="card-body gap-3 p-3 sm:p-4 min-w-0">{editorPanel}</div>
-                </section>
               )}
             </div>
           </div>

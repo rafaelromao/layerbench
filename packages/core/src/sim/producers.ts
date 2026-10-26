@@ -350,7 +350,6 @@ export function enumerateProducers(
     }
   }
   for (const c of compiled.combos) {
-    if (c.role !== 'typing') continue;
     const tapped = staticOutputs(c.binding).map((o) => [false, o] as const);
     const held = holdOutputs(c.binding).map((o) => [true, o] as const);
     for (const [hold, o] of [...tapped, ...held]) {
@@ -454,7 +453,7 @@ function deadKeyProducers(
     }
   }
   for (const c of compiled.combos) {
-    const dk = c.role === 'typing' ? tappedDeadKey(c.binding) : null;
+    const dk = tappedDeadKey(c.binding);
     if (!dk) continue;
     const onBase = c.layerMask === null || (c.layerMask & 1) !== 0;
     sources.push({

@@ -452,11 +452,13 @@ describe('Machine — a tap dance under a one-shot layer', () => {
 describe('Machine — combos, caps word, holds', () => {
   it('combo fires only when the highest active layer is in its layer list', () => {
     const { m, tap, compiled } = machineFor(magicRomak);
-    const q = compiled.combos.findIndex((c) => c.id === 'ns');
-    expect(m.perform({ type: 'chord', combo: q })[0].symbols).toBe('q');
+    const colon = compiled.combos.findIndex((c) => c.id === 'colon');
+    // The colon combo is Alpha 2's: on Alpha 1 it does not fire.
+    expect(m.comboAvailable(colon)).toBe(false);
+    expect(m.perform({ type: 'chord', combo: colon })[0].symbols).toBe('');
     tap('R0'); // alpha2 armed → highest layer is alpha2
-    expect(m.comboAvailable(q)).toBe(false);
-    expect(m.perform({ type: 'chord', combo: q })[0].symbols).toBe('');
+    expect(m.comboAvailable(colon)).toBe(true);
+    expect(m.perform({ type: 'chord', combo: colon })[0].symbols).toBe(':');
   });
 
   it('caps word carries on through digits and underscore, as ZMK does, and ends on anything else', () => {

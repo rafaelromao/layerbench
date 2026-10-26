@@ -399,26 +399,23 @@ The other tabs hold what is not on a single key:
   doubled letters are typed. Under **One-shot layers** and **One-shot keys** it says how the
   layout's one-shots end: as the next key goes down or not, whether they stay on while a modifier
   is pressed, and after how many milliseconds unused.
-- **Combos** are keys pressed together. **pick on board**, then tap the keys; the output takes the
-  same syntax as **Or type**, and can be left empty. A combo added opens in the **combo editor**, in
-  the key editor's place; so does a combo's box on the board, one picked from the button beside
-  **Heat**, or **edit** on its row. A combo can be any kind of key but Transparent, from the same
-  tiles a key has: a tap-hold, an adaptive key, a macro, a tap dance, a morph, a layer and the rest.
-  **From this layout** and **Or type** work as they do for a key. Under them are its keys (**Pick
-  again on the board**, tap the new keys, then **Use these keys**), the layers it works on, its
-  role, and its timeout, how long its keys have to go down together. One for typing is pressed by
-  the analysis as a key would be: it types, adapts to the key before it, accents the next letter,
+- **Combos** are keys pressed together. The top of the tab is a strip of small boards, one for each
+  combo, with its keys marked and what it types under them; the strip scrolls sideways inside its
+  panel. The last card is **New combo**: tap it, tap the keys on the board, then **Add combo on**
+  the layer shown. A combo added opens in the **combo editor**, in the key editor's place, with
+  nothing to do yet; so does a combo picked in the strip, a combo's box on the board, or one picked
+  from the button beside **Heat**. **✕** on a card removes the combo. A combo can be any kind of key
+  but Transparent, from the same tiles a key has: a tap-hold, an adaptive key, a macro, a tap dance,
+  a morph, a layer and the rest. **From this layout** and **Or type** work as they do for a key.
+  Under them are its keys (**Pick again on the board**, tap the new keys, then **Use these keys**),
+  the layers it works on, and its timeout, how long its keys have to go down together. The analysis
+  presses it as it would a key: it types, adapts to the key before it, accents the next letter,
   turns a layer on, or, held, does what its hold does; a tap dance on a combo types its second part
   when its keys are pressed together twice. The board draws it on the gap between its keys, its hold
   small under what it types; one on three or more keys, on keys apart, or with no room on its gap,
-  is under the button beside **Heat**. Every combo in the list can also be changed where it stands:
-  type another output in its field (what the syntax cannot read is refused, and the combo keeps its
-  output; a combo whose output the syntax cannot write, such as a tap-hold, shows it there and is
-  edited in the combo editor), **pick again** and tap its new keys, then **Use**, tick the layers it
-  works on (one at least), or click its role to switch between typing and command. Each change is
-  one edit that Undo takes back. A change is refused, with its reason, when it would leave fewer
-  than two keys, a key or layer the layout does not have, or the same keys as another combo on one
-  of its layers.
+  is under the button beside **Heat**. Each change is one edit that Undo takes back. A change is
+  refused, with its reason, when it would leave fewer than two keys, a key or layer the layout does
+  not have, or the same keys as another combo on one of its layers.
 - **Special Behaviors** lists the layout's special features, one group each: adaptive keys, alt repeats,
   macros and mod morphs. Each names its layer and key, or its combo; pick one to go to the **Board** tab, turned to
   that layer with the key selected, or to outline the combo's keys.
