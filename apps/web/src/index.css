@@ -642,9 +642,15 @@ button.lb-combo-apart:focus-visible {
   order: 8;
 }
 @media (max-width: 1023.98px) {
-  /* The panels wrap instead: a tab scrolled out of sight is a panel nobody finds. */
+  /* The tabs are one row that pans inside its own strip, so they take one line of the screen and
+     the board stays under them; the selected tab is kept in view. */
   .lb-panel-tabs {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+  .lb-panel-tabs .tab {
+    flex: none;
   }
 }
 @media (min-width: 1024px) {
@@ -978,15 +984,62 @@ button.lb-combo-apart:focus-visible {
   grid-column: 2 / -1;
 }
 
-/* A new combo: keys and output each beside their small companion, the button across both. */
-.lb-combo-form {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.5rem;
+/*
+ * The combos, a strip of small boards in a panel of their own, which scrolls sideways inside it:
+ * the page itself never does.
+ */
+.lb-combo-strip {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  max-width: 100%;
+  scroll-snap-type: x proximity;
 }
-.lb-combo-form > .lb-wide {
-  grid-column: 1 / -1;
+.lb-combo-card {
+  position: relative;
+  flex: none;
+  width: 11rem;
+  scroll-snap-align: start;
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-box);
+  background: var(--color-base-100);
+}
+.lb-combo-card-open {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+.lb-combo-card-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
+  padding: 0.5rem;
+  text-align: left;
+  font-size: 0.75rem;
+}
+.lb-combo-card-out {
+  font-size: 0.875rem;
+}
+.lb-combo-card-layers {
+  opacity: 0.6;
+}
+.lb-combo-card-remove {
+  position: absolute;
+  top: 0.125rem;
+  right: 0.125rem;
+}
+.lb-combo-card-new {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 8rem;
+  border-style: dashed;
+}
+.lb-combo-card-add {
+  align-items: center;
+  justify-content: center;
+  min-height: 8rem;
 }
 
 /*

@@ -66,7 +66,6 @@ function edits(target: Layout): Edit[] {
       layer: c.layers?.[0] ?? base.id,
       keys: c.keys,
       binding: c.binding,
-      role: c.role ?? 'command',
     });
     out.push({ kind: 'updateCombo', combo: i, layers: c.layers, timeoutMs: c.timeoutMs });
   }

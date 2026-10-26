@@ -21,7 +21,6 @@ export interface CompiledCombo {
   binding: Binding;
   /** Bitmask of layers where the combo fires, or null for all layers. */
   layerMask: number | null;
-  role: 'typing' | 'command';
   /** Virtual position index used in the key stream for this chord. */
   pos: number;
 }
@@ -347,7 +346,6 @@ export function compileLayout(authored: Layout): CompiledLayout {
       keys: memberIdx,
       binding,
       layerMask,
-      role: c.role ?? 'command',
       pos,
     };
   });

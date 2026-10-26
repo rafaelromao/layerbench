@@ -7,7 +7,15 @@ import {
 } from '@layerbench/core';
 import { displaced, spoken } from './tray.js';
 
-export type Panel = 'layers' | 'features' | 'geometry' | 'combos' | 'behaviors' | 'paths' | 'json';
+export type Panel =
+  | 'board'
+  | 'layers'
+  | 'features'
+  | 'geometry'
+  | 'combos'
+  | 'behaviors'
+  | 'paths'
+  | 'json';
 
 /**
  * A request to put the caret in the key inspector's text line: a character typed on a key starts
@@ -123,7 +131,7 @@ export function initialState(layout: Layout, compiled: CompiledLayout, layer = 0
     strays: [],
     dirty: false,
     saved: layout,
-    panel: 'layers',
+    panel: 'board',
     error: null,
     jsonText: '',
     jsonError: null,
@@ -415,7 +423,9 @@ function reduce(state: EditState, action: EditAction): EditState {
       return { ...state, jsonText: action.text };
 
     case 'setPanel':
-      return { ...state, panel: action.panel };
+      // The inspector is not drawn on every tab: a request for its focus, left over, would be
+      // replayed when it comes back, applying a character already cancelled.
+      return { ...state, panel: action.panel, focusRequest: null };
 
     // The layout itself is left as it is: saving changes nothing there is to undo.
     case 'saved':

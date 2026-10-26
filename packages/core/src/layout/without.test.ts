@@ -103,7 +103,6 @@ describe('Ranking a layout without some of its features', () => {
       keys,
       binding,
       layers: ['base'],
-      role: 'typing' as const,
     });
     const layout: Layout = {
       ...qwerty,

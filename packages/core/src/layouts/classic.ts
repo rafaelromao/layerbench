@@ -344,7 +344,6 @@ export function classicLayout(def: ClassicDef): Layout {
         keys: keys.split(' ').map((t) => keyFor(base, t, def.name)),
         binding: types.length === 1 ? kp(types) : { kind: 'macro', symbols: types },
         layers: [baseId],
-        role: 'typing',
       };
     });
   }

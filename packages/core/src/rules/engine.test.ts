@@ -404,9 +404,7 @@ describe('what a key that reaches a layer was pressed for', () => {
   it('is the key pressed after a combo that reaches the layer', () => {
     const layout: Layout = {
       ...board(kp('x')),
-      combos: [
-        { id: 'up', keys: ['LHM', 'LHI'], binding: { kind: 'sl', layer: 'up' }, role: 'typing' },
-      ],
+      combos: [{ id: 'up', keys: ['LHM', 'LHI'], binding: { kind: 'sl', layer: 'up' } }],
     };
     const compiled = compileLayout(layout);
     const sim = simulate(compiled, 'aqa', OPTS);

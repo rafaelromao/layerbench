@@ -222,7 +222,6 @@ describe('combos that do more than type a character', () => {
     keys,
     binding,
     layers: ['base'],
-    role: 'typing' as const,
   });
   const board: Layout = {
     format: 'layerbench/layout@1',
@@ -524,7 +523,7 @@ describe('a capital with home row mods and no Shift key of its own', () => {
         },
       },
     ],
-    combos: [{ id: 'z', keys: ['LHR', 'LHI'], binding: kp('z'), role: 'typing' }],
+    combos: [{ id: 'z', keys: ['LHR', 'LHI'], binding: kp('z') }],
   });
   const model = { caseMode: 'model' as const };
 
@@ -616,7 +615,7 @@ describe('a capital with home row mods and no Shift key of its own', () => {
   it("holds no Shift on a chord's own keys when they are on both hands", () => {
     const across: Layout = {
       ...layout,
-      combos: [{ id: 'z', keys: ['LHI', 'RHM'], binding: kp('z'), role: 'typing' }],
+      combos: [{ id: 'z', keys: ['LHI', 'RHM'], binding: kp('z') }],
     };
     const t = trace(across, 'Z', model);
     expect(t.out).toBe('Z');

@@ -909,102 +909,6 @@
   },
   "combos": [
     {
-      "id": "ns",
-      "keys": ["LHR", "LHM"],
-      "binding": {
-        "kind": "kp",
-        "symbol": "q"
-      },
-      "layers": ["alpha1"],
-      "role": "command",
-      "timeoutMs": 30,
-      "slowRelease": false
-    },
-    {
-      "id": "mg",
-      "keys": ["LTM", "LTI"],
-      "binding": {
-        "kind": "kp",
-        "symbol": "k"
-      },
-      "layers": ["alpha1"],
-      "role": "command",
-      "timeoutMs": 30,
-      "slowRelease": false
-    },
-    {
-      "id": "st",
-      "keys": ["LHM", "LHI"],
-      "binding": {
-        "kind": "kp",
-        "symbol": "w"
-      },
-      "layers": ["alpha1"],
-      "role": "command",
-      "timeoutMs": 30,
-      "slowRelease": false
-    },
-    {
-      "id": "cp",
-      "keys": ["LBM", "LBI"],
-      "binding": {
-        "kind": "kp",
-        "symbol": "v"
-      },
-      "layers": ["alpha1"],
-      "role": "command",
-      "timeoutMs": 30,
-      "slowRelease": false
-    },
-    {
-      "id": "lo",
-      "keys": ["RTI", "RTM"],
-      "binding": {
-        "kind": "kp",
-        "symbol": "x"
-      },
-      "layers": ["alpha1"],
-      "role": "command",
-      "timeoutMs": 30,
-      "slowRelease": false
-    },
-    {
-      "id": "ra",
-      "keys": ["RHI", "RHM"],
-      "binding": {
-        "kind": "kp",
-        "symbol": "z"
-      },
-      "layers": ["alpha1"],
-      "role": "command",
-      "timeoutMs": 30,
-      "slowRelease": false
-    },
-    {
-      "id": "hcomma",
-      "keys": ["RBI", "RBM"],
-      "binding": {
-        "kind": "kp",
-        "symbol": "j"
-      },
-      "layers": ["alpha1"],
-      "role": "command",
-      "timeoutMs": 30,
-      "slowRelease": false
-    },
-    {
-      "id": "ae",
-      "keys": ["RHM", "RHR"],
-      "binding": {
-        "kind": "kp",
-        "symbol": "y"
-      },
-      "layers": ["alpha1"],
-      "role": "command",
-      "timeoutMs": 30,
-      "slowRelease": false
-    },
-    {
       "id": "rhm-rhr",
       "keys": ["RHM", "RHR"],
       "binding": {
@@ -1012,7 +916,6 @@
         "symbol": "à"
       },
       "layers": ["alpha2-copy"],
-      "role": "typing",
       "timeoutMs": 50,
       "slowRelease": false
     }

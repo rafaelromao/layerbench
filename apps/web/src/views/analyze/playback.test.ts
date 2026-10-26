@@ -105,7 +105,6 @@ describe("a box's combo in the layout", () => {
           keys: ['LHI', 'LHP'],
           binding: { kind: 'kp', symbol: 'q' },
           layers: ['base'],
-          role: 'typing',
         },
         ...(nordrassil.combos ?? []),
       ],
@@ -120,18 +119,23 @@ describe("a box's combo in the layout", () => {
 
   it('tells twins apart by their layers, then by their order', () => {
     const qwerty = bundledLayout('qwerty') as Layout;
-    const twin = (layer: string, symbol: string) => ({
+    // A combo that only reaches a layer stays when typing combos are left out; one that types goes.
+    const twin = (layer: string) => ({
       id: 'twin',
       keys: ['LHI', 'LHP'],
-      binding: { kind: 'kp' as const, symbol },
+      binding: { kind: 'sl' as const, layer: qwerty.layers[1].id },
       layers: [layer],
-      role: 'command' as const,
     });
-    const typing = { ...twin('base', 'q'), id: 'q', keys: ['RHI', 'RHM'], role: 'typing' as const };
+    const typing = {
+      id: 'q',
+      keys: ['RHI', 'RHM'],
+      binding: { kind: 'kp' as const, symbol: 'q' },
+      layers: ['base'],
+    };
     const second = qwerty.layers[1].id;
     const layout: Layout = {
       ...qwerty,
-      combos: [typing, twin(second, 'b'), twin('base', 'a'), ...(qwerty.combos ?? [])],
+      combos: [typing, twin(second), twin('base'), ...(qwerty.combos ?? [])],
     };
     const full = compileLayout(layout);
     const typed = compileLayout(withoutFeatures(layout, ['combos']));
@@ -150,7 +154,6 @@ describe("a box's combo in the layout", () => {
       keys: ['LHI', 'LHP'],
       binding,
       layers: ['base'],
-      role: 'typing' as const,
     });
     const layout: Layout = {
       ...qwerty,

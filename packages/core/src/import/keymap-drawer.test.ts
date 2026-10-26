@@ -369,7 +369,6 @@ describe('importing', () => {
       keys: ['LTR', 'LTM'],
       binding: { kind: 'kp', symbol: 'v' },
       layers: ['def'],
-      role: 'typing',
       timeoutMs: 50,
       slowRelease: false,
     });

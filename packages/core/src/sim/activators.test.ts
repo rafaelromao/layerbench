@@ -183,7 +183,6 @@ describe('the keys that reach a layer', () => {
               keys: ['LHR', 'LHM'],
               binding: { kind: 'sl', layer: 'up' },
               layers: ['base'],
-              role: 'typing',
             },
           ],
         },
@@ -197,22 +196,6 @@ describe('the keys that reach a layer', () => {
     expect(marks(c, 'up').sort()).toEqual(['LHM tapped', 'LHR tapped']);
     const lhr = reachKeys(c, up).find((k) => keyId(c, k.pos) === 'LHR') as ReachKey;
     expect(describeReach(c, up, lhr)).toBe('tapped from base together with LHM to reach up');
-  });
-
-  it('marks nothing for a command combo, which the analysis never presses', () => {
-    const c = compileLayout(
-      board(
-        [
-          { id: 'base', bindings: {} },
-          { id: 'up', bindings: { '*': { kind: 'trans' } } },
-        ],
-        {
-          combos: [{ id: 'to-up', keys: ['LHR', 'LHM'], binding: { kind: 'sl', layer: 'up' } }],
-        },
-      ),
-    );
-    expect(discoverActivators(c, {}).get(layerOf(c, 'up'))).toBeUndefined();
-    expect(marks(c, 'up')).toEqual([]);
   });
 
   it('drops a declared key once it is rebound to do something else', () => {

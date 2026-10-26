@@ -200,6 +200,15 @@ describe('where the board goes after an edit', () => {
   });
 });
 
+describe('the tabs', () => {
+  it('drop a request for the key editor to take focus, which it is not there to answer', () => {
+    const start = initialUndoState(qwerty, compileLayout(qwerty));
+    const typed = reducer(start, { type: 'typeOnKey', keyId: 'LHM', seed: 'b' });
+    expect(typed.focusRequest).toEqual({ keyId: 'LHM', seed: 'b' });
+    expect(reducer(typed, { type: 'setPanel', panel: 'layers' }).focusRequest).toBeNull();
+  });
+});
+
 describe('the combo open in the combo editor', () => {
   const addCombo: EditAction = {
     type: 'edit',
@@ -208,7 +217,6 @@ describe('the combo open in the combo editor', () => {
       layer: 'base',
       keys: ['LHM', 'LHP'],
       binding: { kind: 'none' },
-      role: 'typing',
     },
   };
 
