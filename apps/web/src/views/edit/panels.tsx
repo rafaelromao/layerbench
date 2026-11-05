@@ -719,77 +719,79 @@ export function GeometryPanel({ state, send }: PanelProps) {
 
         <GeometryBoard state={state} send={send} />
 
-        <Slide className="lb-slide-wide space-y-1.5">
+        <Slide className="lb-geo-fields space-y-1.5">
           <span className="lb-slide-title block">Space, shift and doubled letters</span>
-          <label className="lb-slide-field">
-            <span>Space key</span>
-            <select
-              aria-label="Space key"
-              className="select select-xs select-bordered w-full"
-              value={layout.keys.space}
-              onChange={(e) =>
-                send({ type: 'edit', edit: { kind: 'setKeys', space: e.target.value } })
-              }
-            >
-              {compiled.keys.map((k) => (
-                <option key={k.id} value={k.id}>
-                  {k.id}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="lb-slide-field">
-            <span>Shift key</span>
-            <select
-              aria-label="Shift key"
-              className="select select-xs select-bordered w-full"
-              value={layout.keys.shift?.key ?? ''}
-              onChange={(e) =>
-                send({ type: 'edit', edit: { kind: 'setKeys', shift: e.target.value || null } })
-              }
-            >
-              <option value="">—</option>
-              {compiled.keys.map((k) => (
-                <option key={k.id} value={k.id}>
-                  {k.id}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="lb-slide-field">
-            <span>Shift kind</span>
-            <select
-              aria-label="Shift kind"
-              className="select select-xs select-bordered w-full"
-              value={layout.keys.shift?.kind ?? 'sk'}
-              onChange={(e) =>
-                send({
-                  type: 'edit',
-                  edit: { kind: 'setKeys', shiftKind: e.target.value as 'sk' | 'hold' },
-                })
-              }
-            >
-              <option value="sk">sticky (one-shot)</option>
-              <option value="hold">hold</option>
-            </select>
-          </label>
-          <label className="lb-slide-field">
-            <span>Doubled letters</span>
-            <select
-              aria-label="Doubled letters"
-              className="select select-xs select-bordered w-full"
-              value={layout.repeatPolicy?.doubledLetters ?? 'repeatKey'}
-              onChange={(e) =>
-                send({
-                  type: 'edit',
-                  edit: { kind: 'setKeys', repeat: e.target.value as 'repeatKey' | 'tapTwice' },
-                })
-              }
-            >
-              <option value="repeatKey">repeat key</option>
-              <option value="tapTwice">tap twice</option>
-            </select>
-          </label>
+          <div className="lb-slide-fields">
+            <label className="lb-slide-field">
+              <span>Space key</span>
+              <select
+                aria-label="Space key"
+                className="select select-xs select-bordered w-full"
+                value={layout.keys.space}
+                onChange={(e) =>
+                  send({ type: 'edit', edit: { kind: 'setKeys', space: e.target.value } })
+                }
+              >
+                {compiled.keys.map((k) => (
+                  <option key={k.id} value={k.id}>
+                    {k.id}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="lb-slide-field">
+              <span>Shift key</span>
+              <select
+                aria-label="Shift key"
+                className="select select-xs select-bordered w-full"
+                value={layout.keys.shift?.key ?? ''}
+                onChange={(e) =>
+                  send({ type: 'edit', edit: { kind: 'setKeys', shift: e.target.value || null } })
+                }
+              >
+                <option value="">—</option>
+                {compiled.keys.map((k) => (
+                  <option key={k.id} value={k.id}>
+                    {k.id}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="lb-slide-field">
+              <span>Shift kind</span>
+              <select
+                aria-label="Shift kind"
+                className="select select-xs select-bordered w-full"
+                value={layout.keys.shift?.kind ?? 'sk'}
+                onChange={(e) =>
+                  send({
+                    type: 'edit',
+                    edit: { kind: 'setKeys', shiftKind: e.target.value as 'sk' | 'hold' },
+                  })
+                }
+              >
+                <option value="sk">sticky (one-shot)</option>
+                <option value="hold">hold</option>
+              </select>
+            </label>
+            <label className="lb-slide-field">
+              <span>Doubled letters</span>
+              <select
+                aria-label="Doubled letters"
+                className="select select-xs select-bordered w-full"
+                value={layout.repeatPolicy?.doubledLetters ?? 'repeatKey'}
+                onChange={(e) =>
+                  send({
+                    type: 'edit',
+                    edit: { kind: 'setKeys', repeat: e.target.value as 'repeatKey' | 'tapTwice' },
+                  })
+                }
+              >
+                <option value="repeatKey">repeat key</option>
+                <option value="tapTwice">tap twice</option>
+              </select>
+            </label>
+          </div>
         </Slide>
 
         <OneShotDefaults which="sl" title="One-shot layers" state={state} send={send} />

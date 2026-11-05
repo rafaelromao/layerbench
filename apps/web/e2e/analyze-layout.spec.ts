@@ -60,14 +60,15 @@ test('every panel but the Board is a carousel as tall as the Combos one, its sli
     await expect(strip).toHaveCount(1);
     heights[tab] = (await strip.boundingBox())?.height ?? 0;
     // Wider than its panel or not, it scrolls inside itself, and the page never does.
-    expect(await overflow(page)).toBeLessThanOrEqual(0);
+    expect.soft(await overflow(page), tab).toBeLessThanOrEqual(0);
     // Every slide holds what is in it: one that needs a scroll bar of its own has outgrown the strip.
     const cut = await strip.evaluate((el) =>
       [...el.children]
         .filter((slide) => slide.scrollHeight > slide.clientHeight + 1)
         .map((slide) => slide.textContent?.trim().slice(0, 30)),
     );
-    expect(cut, tab).toEqual([]);
+    // Soft: a failing tab says so and the rest are still looked at, so one run names every tab.
+    expect.soft(cut, tab).toEqual([]);
   }
   for (const [tab, height] of Object.entries(heights)) {
     expect(height, tab).toBeGreaterThan(0);
