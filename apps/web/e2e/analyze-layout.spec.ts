@@ -41,6 +41,31 @@ function smallTargets(page: Page, selector: string): Promise<string[]> {
   }, selector);
 }
 
+test('every panel but the Board is a carousel as tall as the Combos one', async ({ page }) => {
+  await openEdit(page);
+  const heights: Record<string, number> = {};
+  for (const tab of [
+    'Combos',
+    'Layers',
+    'Features',
+    'Geometry',
+    'Special Behaviors',
+    'Typing paths',
+    'JSON',
+  ]) {
+    await page.getByRole('tab', { name: tab }).click();
+    const strip = page.locator('.lb-carousel');
+    await expect(strip).toHaveCount(1);
+    heights[tab] = (await strip.boundingBox())?.height ?? 0;
+    // Wider than its panel or not, it scrolls inside itself, and the page never does.
+    expect(await overflow(page)).toBeLessThanOrEqual(0);
+  }
+  for (const [tab, height] of Object.entries(heights)) {
+    expect(height, tab).toBeGreaterThan(0);
+    expect(Math.abs(height - heights.Combos), tab).toBeLessThanOrEqual(1);
+  }
+});
+
 test.describe('on a phone', () => {
   test.skip(({ isMobile }) => !isMobile, 'phone layout only');
 
@@ -99,21 +124,22 @@ test.describe('on a phone', () => {
     expect((board?.y ?? 0) + (board?.height ?? 0)).toBeLessThanOrEqual(0);
   });
 
-  test("the editor's layers fit the screen, each row's fields clear of its buttons", async ({
+  test("the editor's layers fit the screen, each card's fields clear of its buttons", async ({
     page,
   }) => {
     await openEdit(page);
     await page.getByRole('tab', { name: 'Layers' }).tap();
     const colour = page.getByRole('combobox', { name: 'Colour of layer num' });
     await colour.scrollIntoViewIfNeeded();
+    // The cards scroll sideways inside their panel, and the page itself never does.
     expect(await overflow(page)).toBeLessThanOrEqual(0);
-    // The id and the colour end before the row's first button begins.
-    const up = await page.getByRole('button', { name: 'Move Numbers up' }).boundingBox();
-    expect(up).not.toBeNull();
+    // The name and the colour end above the card's row of buttons.
+    const left = await page.getByRole('button', { name: 'Move Numbers left' }).boundingBox();
+    expect(left).not.toBeNull();
     for (const field of [colour, page.getByRole('textbox', { name: 'Name of layer Numbers' })]) {
       const box = await field.boundingBox();
       expect(box).not.toBeNull();
-      if (box && up) expect(box.x + box.width).toBeLessThanOrEqual(up.x);
+      if (box && left) expect(box.y + box.height).toBeLessThanOrEqual(left.y);
     }
   });
 

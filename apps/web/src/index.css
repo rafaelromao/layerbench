@@ -933,23 +933,42 @@ button.lb-combo-apart:focus-visible {
 }
 
 /*
- * The items of the Layers, Features, Special Behaviors and Typing paths tabs, as cards: as many
- * columns as the width holds, one on a phone.
+ * Every editor panel but the Board, as one strip of cards that scrolls sideways inside its panel
+ * (the page itself never does) and is always as tall as a combo's card, so changing tab moves
+ * nothing under it. The strip is a little taller than its cards, for a scrollbar that takes room.
  */
-.lb-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
-  gap: 0.5rem;
-  list-style: none;
+.lb-carousel {
+  --lb-carousel-h: 10.5rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  height: calc(var(--lb-carousel-h) + 0.75rem + 1px);
+  max-width: 100%;
   margin: 0;
-  padding: 0;
+  /* A pixel for the ring of the card picked, which would be cut off at the strip's edge. */
+  padding: 1px 1px 0;
+  list-style: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
 }
 .lb-card {
+  position: relative;
+  flex: none;
+  width: var(--lb-card-w, 11rem);
+  height: var(--lb-carousel-h);
   min-width: 0;
-  padding: 0.625rem 0.75rem;
+  padding: 0.5rem 0.625rem;
+  /* Meant never to be needed; a card with more than it holds scrolls rather than spills. */
+  overflow-y: auto;
   border: 1px solid var(--color-base-300);
   border-radius: var(--radius-box);
   background: var(--color-base-100);
+}
+/* Cards that hold fields and buttons, not a small board. */
+.lb-card-wide {
+  --lb-card-w: 16rem;
 }
 .lb-card-current {
   border-color: var(--color-primary);
@@ -957,6 +976,53 @@ button.lb-combo-apart:focus-visible {
 }
 .lb-card-pick {
   padding: 0;
+}
+.lb-card-remove {
+  position: absolute;
+  top: 0.125rem;
+  right: 0.125rem;
+}
+/* The card that makes one more: dashed, its call to action in the middle. */
+.lb-card-new {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border-style: dashed;
+  text-align: center;
+}
+.lb-card-new-mark {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+/* The whole card is its button, as the card of a new combo is. */
+.lb-card-new-button {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  width: 100%;
+  cursor: pointer;
+}
+.lb-card-new-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.lb-card-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+/* What kind of thing a card of Special Behaviors is, along its bottom edge. */
+.lb-card-kind {
+  margin-top: auto;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  opacity: 0.6;
 }
 .lb-card-button:hover {
   background: var(--color-base-200);
@@ -968,16 +1034,24 @@ button.lb-combo-apart:focus-visible {
   align-items: flex-start;
   gap: 0.125rem;
   width: 100%;
-  min-height: 2.75rem;
-  padding: 0.5rem 0.75rem;
+  height: 100%;
+  padding: 0.5rem 0.625rem;
   text-align: left;
 }
-/* A layer in the Layers panel: grip, name over id, then the same four button slots in every row. */
-/* The board of the Geometry tab: its keys to take away, the places to add one dashed. */
-.lb-geo-scroll {
-  max-width: 100%;
-  overflow-x: auto;
+/* What a panel says under its carousel, two lines kept for it. */
+.lb-carousel-hint {
+  min-height: 2lh;
+  margin-top: 0.25rem;
 }
+/* A row of a card: a label, then its field, as small as the card is. */
+.lb-card-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+}
+/* The board of the Geometry tab: its keys to take away, the places to add one dashed. */
 .lb-geo {
   position: relative;
   min-width: 0;
@@ -1011,9 +1085,17 @@ button.lb-combo-apart:focus-visible {
 .lb-geo-key-add:hover {
   border-color: var(--color-primary);
 }
-.lb-layer-row {
+/* A layer's card: grip and name, its colour under them, and the same four button slots in every
+   card along the bottom. */
+.lb-layer-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.375rem;
+}
+.lb-layer-head {
   display: grid;
-  grid-template-columns: 0.75rem minmax(0, 1fr) auto;
+  grid-template-columns: 0.75rem minmax(0, 1fr);
   align-items: center;
   gap: 0.375rem;
 }
@@ -1028,14 +1110,10 @@ button.lb-combo-apart:focus-visible {
   grid-column: span 2;
   justify-self: center;
 }
-/* The layer's id and colour, under its name: on a phone the colour goes under the id, clear of the
-   row's buttons, rather than past them. */
+/* A layer's colour, under its name. */
 .lb-layer-meta {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.125rem 0.5rem;
   min-width: 0;
 }
 .lb-layer-swatch {
@@ -1061,39 +1139,27 @@ button.lb-combo-apart:focus-visible {
   grid-column: 2 / -1;
 }
 
-/*
- * The combos, a strip of small boards in a panel of their own, which scrolls sideways inside it:
- * the page itself never does.
- */
-.lb-combo-strip {
-  display: flex;
-  gap: 0.75rem;
-  overflow-x: auto;
-  padding-bottom: 0.5rem;
-  max-width: 100%;
-  scroll-snap-type: x proximity;
-}
-.lb-combo-card {
-  position: relative;
-  flex: none;
-  width: 11rem;
-  scroll-snap-align: start;
-  border: 1px solid var(--color-base-300);
-  border-radius: var(--radius-box);
-  background: var(--color-base-100);
-}
-.lb-combo-card-open {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 1px var(--color-primary);
-}
+/* A combo's card: its small board, filling what the card has left, then what it types, its keys
+   and the layers it works on, each on one line so no card is taller than another. */
 .lb-combo-card-pick {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
   width: 100%;
+  height: 100%;
   padding: 0.5rem;
   text-align: left;
   font-size: 0.75rem;
+}
+.lb-combo-card-board {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+.lb-combo-card-board > svg {
+  max-height: 100%;
 }
 .lb-combo-card-out {
   font-size: 0.875rem;
@@ -1101,22 +1167,60 @@ button.lb-combo-apart:focus-visible {
 .lb-combo-card-layers {
   opacity: 0.6;
 }
-.lb-combo-card-remove {
-  position: absolute;
-  top: 0.125rem;
-  right: 0.125rem;
+.lb-combo-card-out,
+.lb-combo-card-keys,
+.lb-combo-card-layers {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.lb-combo-card-new {
+
+/* A character of the Typing paths tab, on a key's shape, at the left of the card of its ways. */
+.lb-path-card {
+  --lb-card-w: 24rem;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 8rem;
-  border-style: dashed;
+  gap: 0.625rem;
 }
-.lb-combo-card-add {
+.lb-keycap {
+  display: flex;
+  flex: none;
   align-items: center;
   justify-content: center;
-  min-height: 8rem;
+  align-self: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  overflow: hidden;
+  border: 1px solid var(--lb-key-stroke);
+  /* A key's front edge. */
+  border-bottom-width: 4px;
+  border-radius: 0.625rem;
+  background: var(--lb-key-bg);
+  color: var(--lb-key-text);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.lb-path-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.125rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The JSON tab: its controls in a card, the text in a wide one that scrolls inside itself. */
+.lb-json-card {
+  --lb-card-w: 40rem;
+}
+.lb-json-text {
+  display: block;
+  width: 100%;
+  height: 100%;
+  resize: none;
 }
 
 /*

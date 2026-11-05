@@ -149,21 +149,23 @@ Swipe the board sideways to do the same on a phone, or press `←` and `→` whi
 focus. The same navigator shows the layers of a card in **Library** and of each layout in
 **Compare**. A key's colour says which layer it reaches.
 
-The **Layers** tab lists them in order, one card each, and does everything else with them:
+The **Layers** tab lists them in order, one card each in a strip that scrolls sideways, and does
+everything else with them:
 
 - **Rename** a layer in its name field, or double-click its name in the navigator (press and hold
   it on a phone, or `F2` on the keyboard).
-- **Reorder** with the arrows, or by dragging its row. The base layer stays first.
+- **Reorder** with the ← and → buttons, or by dragging its card. The base layer stays first.
 - **Duplicate** (⧉) copies a layer, with all its keys, right after it.
 - **Colour**, under the layer's name, picks the colour its name and the keys that reach it are
   drawn in. **Automatic** follows the layer's place in the list; each of the others keeps a shade
   for the light theme and one for the dark, so legends stay readable in both.
 - **Remove** (✕) deletes a layer. It refuses while a key or combo still reaches the layer, and names
   each one, so nothing is left pointing at a layer that is gone.
-- **+ layer** adds one at the end, whose keys all let the layer below show through.
-- **Conditional layers**, under the list, are layers that come on by themselves while every layer
+- **New layer**, one of the last two cards of the strip, adds one at the end, named as you type in
+  it or `Layer` and its number, whose keys all let the layer below show through.
+- **Conditional layers**, a card each after the layers, are layers that come on by themselves while every layer
   they wait for is on, as ZMK's conditional layers: Extras while Numbers and Symbols are both held.
-  **+ condition** adds one, bringing on a layer nothing else reaches where it can; pick the layers
+  **New condition**, the last card, adds one, bringing on a layer nothing else reaches where it can; pick the layers
   it waits for, up to four, and the layer it brings on.
   The base layer is always on, so it neither waits nor is waited for, a layer never waits for
   itself, and a layer that comes on by a condition is not one another waits for. A layer comes on by
@@ -390,12 +392,15 @@ layer in the end, which is why it stays first.
 
 ## Combos, typing paths and the rest
 
-The other tabs hold what is not on a single key. **Features**, **Special Behaviors** and **Typing
-paths** list what they hold as cards too, as many to a row as the width holds and one on a phone:
+The other tabs hold what is not on a single key. Every tab but **Board** shows what it holds as
+cards in one strip, as tall as a combo's card on every tab, so changing tab moves nothing under it.
+The strip scrolls sideways inside its panel, with its scroll bar, by swiping, or with the mouse
+wheel while the pointer is over it; at either end the wheel goes back to the page:
 
 - **Features** turns on sentence case and caps word. Sentence case needs a ZMK module, which it
   links.
-- **Geometry** is the board itself. Pick another **preset**, or tap a key of the board to take it
+- **Geometry** is the board itself, in cards: the **preset**, the **keys** of the board, which keys
+  are space and shift, and how the one-shots end. Pick another **preset**, or tap a key of the board to take it
   away and a **+** to add one, where a preset of the same kind has a key the board lacks. A key
   can go only if it is Transparent or None on every layer and nothing else uses it: not a combo,
   the space or shift key, or a feature's key. A key in use is grayed, and says why when you tap or point
@@ -406,8 +411,8 @@ paths** list what they hold as cards too, as many to a row as the width holds an
   layout's one-shots end: as the next key goes down or not, whether they stay on while a modifier
   is pressed, and after how many milliseconds unused.
 - **Combos** are keys pressed together. The top of the tab is a strip of small boards, one for each
-  combo, with its keys marked and what it types under them; the strip scrolls sideways inside its
-  panel. The last card is **New combo**: tap it, tap the keys on the board, then **Add combo on**
+  combo, with its keys marked and what it types under them. A combo picked as a box on the board
+  below scrolls into view in the strip and takes focus there. The last card is **New combo**: tap it, tap the keys on the board, then **Add combo on**
   the layer shown. A combo added opens in the **combo editor**, in the key editor's place, with
   nothing to do yet; so does a combo picked in the strip, a combo's box on the board, or one picked
   from the button beside **Heat**. **✕** on a card removes the combo. A combo can be any kind of key
@@ -422,15 +427,17 @@ paths** list what they hold as cards too, as many to a row as the width holds an
   is under the button beside **Heat**. Each change is one edit that Undo takes back. A change is
   refused, with its reason, when it would leave fewer than two keys, a key or layer the layout does
   not have, or the same keys as another combo on one of its layers.
-- **Special Behaviors** lists the layout's special features, one group each: adaptive keys, alt repeats,
+- **Special Behaviors** lists the layout's special features, a card each, kind by kind: adaptive keys, alt repeats,
   macros and mod morphs. Each names its layer and key, or its combo; pick one to go to the **Board** tab, turned to
   that layer with the key selected, or to outline the combo's keys.
-- **Typing paths** list the other ways a character can be typed. Left alone, a character is typed
+- **Typing paths** list the other ways a character can be typed, a card for each, with the character
+  on a key at its left. Left alone, a character is typed
   the cheapest way from where the typist is: the fewest presses, then the one that leaves no layer
   key held, then the one that makes the fewest same-finger pairs with the keys before it in the
   word, then the less effort. Drag or use the arrows to put one way first instead, and that order
   is kept.
-- **JSON** shows the whole layout as LayerBench JSON or as a keymap-drawer file.
+- **JSON** shows the whole layout as LayerBench JSON or as a keymap-drawer file, in a text card
+  that scrolls inside itself, beside the card with its buttons.
 
 ## On a phone
 
