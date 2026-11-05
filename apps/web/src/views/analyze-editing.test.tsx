@@ -893,9 +893,9 @@ describe('Edit', () => {
     // New layers go after the default ones Qwerty has.
     await user.click(screen.getByRole('tab', { name: 'Layers' }));
     await user.type(screen.getByLabelText('New layer name'), 'Nav');
-    await user.click(screen.getByRole('button', { name: '+ layer' }));
+    await user.click(screen.getByRole('button', { name: 'Add layer' }));
     await user.type(screen.getByLabelText('New layer name'), 'Fun');
-    await user.click(screen.getByRole('button', { name: '+ layer' }));
+    await user.click(screen.getByRole('button', { name: 'Add layer' }));
     // Read straight from the panel: a label query over the whole page is slow on a slow runner.
     const order = () =>
       [...document.querySelectorAll<HTMLInputElement>('input[aria-label^="Name of layer "]')].map(
@@ -905,10 +905,10 @@ describe('Edit', () => {
 
     // The base layer, which every key falls back to, stays first and cannot go.
     expect(screen.getByRole('button', { name: 'Remove Base' })).toBeDisabled();
-    expect(screen.queryByRole('button', { name: 'Move Base up' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Move Numbers up' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Move Base left' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Move Numbers left' })).toBeDisabled();
 
-    await user.click(screen.getByRole('button', { name: 'Move Fun up' }));
+    await user.click(screen.getByRole('button', { name: 'Move Fun left' }));
     expect(order()).toEqual(['Base', 'Numbers', 'Symbols', 'Accents', 'Fun', 'Nav']);
 
     await user.click(screen.getByRole('button', { name: 'Duplicate Nav' }));
@@ -983,8 +983,8 @@ describe('Edit', () => {
     const user = userEvent.setup();
     await openEdit();
     await user.click(screen.getByRole('tab', { name: 'Layers' }));
-    const section = () => within(screen.getByRole('region', { name: 'Conditional layers' }));
-    const add = () => section().getByRole('button', { name: '+ condition' });
+    const section = () => within(screen.getByRole('list', { name: 'Layers' }));
+    const add = () => section().getByRole('button', { name: 'New condition' });
     await user.click(add());
     // Every layer is reached already, so the latest comes on: Accents, while Numbers is on.
     const brings = () => section().getByRole('combobox', { name: 'Layer condition 1 brings on' });
@@ -1018,7 +1018,7 @@ describe('Edit', () => {
     expect(brings()).toHaveFocus();
     // Accents is later in the list, so its keys cover Symbols while both are on.
     await user.click(waits('Symbols').getByRole('button', { name: /Accents/ }));
-    expect(section().getByText(/Symbols is above Accents in the list/)).toBeInTheDocument();
+    expect(section().getByText(/Symbols comes before Accents in the list/)).toBeInTheDocument();
     await user.click(section().getByRole('button', { name: 'Remove the condition for Symbols' }));
     expect(section().queryByRole('combobox', { name: 'Layer condition 1 brings on' })).toBeNull();
     expect(add()).toBeEnabled();
@@ -1448,7 +1448,7 @@ describe('Edit', () => {
 
     await user.click(screen.getByRole('tab', { name: 'Layers' }));
     await user.type(screen.getByLabelText('New layer name'), 'Nav');
-    await user.click(screen.getByRole('button', { name: '+ layer' }));
+    await user.click(screen.getByRole('button', { name: 'Add layer' }));
     // Adding a layer moves to it; the key being sent lives on the one before.
     await showLayer(user, 'Base');
     await user.click(await screen.findByRole('button', { name: 'Key LHM: d, hold ⌥' }));
@@ -1471,7 +1471,7 @@ describe('Edit', () => {
 
     await user.click(screen.getByRole('tab', { name: 'Layers' }));
     await user.type(screen.getByLabelText('New layer name'), 'Nav');
-    await user.click(screen.getByRole('button', { name: '+ layer' }));
+    await user.click(screen.getByRole('button', { name: 'Add layer' }));
     await showLayer(user, 'Base');
 
     await user.click(await screen.findByRole('button', { name: 'Key LHM: d, hold ⌥' }));
@@ -1608,7 +1608,7 @@ describe('Edit', () => {
     await openEdit();
     await user.click(screen.getByRole('tab', { name: 'Layers' }));
     await user.type(screen.getByLabelText('New layer name'), 'Nav');
-    await user.click(screen.getByRole('button', { name: '+ layer' }));
+    await user.click(screen.getByRole('button', { name: 'Add layer' }));
     await showLayer(user, 'Base');
     // The controls under the editor's header, in order, each by what it says or is labelled.
     const controls = (editor: HTMLElement) =>
@@ -1957,15 +1957,19 @@ describe('Edit', () => {
     const user = userEvent.setup();
     await openMagicRomak();
     await user.click(screen.getByRole('tab', { name: 'Layers' }));
-    const layers = screen.getByRole('list', { name: 'Layer order' });
-    expect(within(layers).getAllByRole('listitem')).toHaveLength(5);
+    const layers = screen.getByRole('list', { name: 'Layers' });
+    expect(within(layers).getAllByLabelText(/^Name of layer /)).toHaveLength(5);
+    // The two cards that add one more come last.
+    const [addLayer, addCondition] = within(layers).getAllByRole('listitem').slice(-2);
+    expect(addLayer).toHaveTextContent('New layer');
+    expect(addCondition).toHaveTextContent('New condition');
     await user.click(screen.getByRole('tab', { name: 'Features' }));
     expect(
       within(screen.getByRole('list', { name: 'Features' })).getAllByRole('listitem'),
     ).toHaveLength(2);
     await user.click(screen.getByRole('tab', { name: 'Special Behaviors' }));
-    const adaptive = within(screen.getByRole('list', { name: 'Adaptive keys' })).getAllByRole(
-      'listitem',
+    const adaptive = within(screen.getByRole('list', { name: 'Special behaviors' })).getAllByText(
+      'Adaptive key',
     );
     expect(adaptive.length).toBeGreaterThan(0);
   }, 60_000);
@@ -2132,10 +2136,8 @@ describe('Special Behaviors', () => {
     await user.keyboard('{ArrowRight}');
     expect(screen.getByRole('tab', { name: 'Special Behaviors', selected: true })).toHaveFocus();
     const list = screen.getByRole('region', { name: 'Special features' });
-    const group = (name: string) =>
-      within(within(list).getByRole('list', { name })).getAllByRole('listitem');
-    for (const name of ['Adaptive keys', 'Alt repeats', 'Macros'])
-      expect(group(name).length).toBeGreaterThan(0);
+    for (const kind of ['Adaptive key', 'Alt repeat', 'Macro'])
+      expect(within(list).getAllByText(kind).length).toBeGreaterThan(0);
 
     // An adaptive key on a layer other than the one shown: its layer turns up, the key selected.
     const place = (b: HTMLElement) => b.querySelector('.font-mono')?.textContent ?? '';
