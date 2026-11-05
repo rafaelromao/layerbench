@@ -1018,7 +1018,7 @@ describe('Edit', () => {
     expect(brings()).toHaveFocus();
     // Accents is later in the list, so its keys cover Symbols while both are on.
     await user.click(waits('Symbols').getByRole('button', { name: /Accents/ }));
-    expect(section().getByText(/Symbols is above Accents in the list/)).toBeInTheDocument();
+    expect(section().getByText(/Symbols comes before Accents in the list/)).toBeInTheDocument();
     await user.click(section().getByRole('button', { name: 'Remove the condition for Symbols' }));
     expect(section().queryByRole('combobox', { name: 'Layer condition 1 brings on' })).toBeNull();
     expect(add()).toBeEnabled();

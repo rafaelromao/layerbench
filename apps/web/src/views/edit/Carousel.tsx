@@ -7,6 +7,17 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 }
 
+/** Whether `target`, inside `strip`, is in something that scrolls up or down and has room to. */
+function scrollsItself(target: Element | null, strip: Element, down: boolean): boolean {
+  for (let n = target; n && n !== strip; n = n.parentElement) {
+    if (n.scrollHeight <= n.clientHeight) continue;
+    const { overflowY } = getComputedStyle(n);
+    if (overflowY !== 'auto' && overflowY !== 'scroll') continue;
+    if (down ? n.scrollTop + n.clientHeight < n.scrollHeight - 1 : n.scrollTop > 0) return true;
+  }
+  return false;
+}
+
 /**
  * Every editor panel but the Board, as one strip of slides at one height, scrolled sideways inside
  * its panel. The mouse wheel scrolls it too while the pointer is over it, and keeps the page where
@@ -24,9 +35,11 @@ export function Carousel({
     const el = strip.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
-      // Sideways gestures already scroll it, a pinch zooms, and a text area scrolls itself.
+      // Sideways gestures already scroll it, a pinch zooms, and a text area, or a slide with more
+      // than it holds, scrolls itself while it has room to.
       if (e.defaultPrevented || e.ctrlKey || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
-      if ((e.target as Element | null)?.closest?.('textarea')) return;
+      const target = e.target as Element | null;
+      if (target?.closest?.('textarea') || scrollsItself(target, el, e.deltaY > 0)) return;
       // A strip whose slides all fit has nothing to scroll, and leaves the wheel to the page.
       if (el.scrollWidth - el.clientWidth <= 0) return;
       const unit = e.deltaMode === 1 ? LINE_PX : e.deltaMode === 2 ? el.clientWidth : 1;
@@ -92,7 +105,7 @@ export function Keycap({
   );
 }
 
-/** What the panel says under its carousel; two lines are kept for it, so every panel ends alike. */
+/** What the panel says under its carousel; two lines are kept for it, and more where the width needs. */
 export function CarouselHint({ children }: { children: ReactNode }) {
   return <p className="lb-carousel-hint text-[11px] opacity-60">{children}</p>;
 }

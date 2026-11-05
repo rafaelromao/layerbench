@@ -41,7 +41,9 @@ function smallTargets(page: Page, selector: string): Promise<string[]> {
   }, selector);
 }
 
-test('every panel but the Board is a carousel as tall as the Combos one', async ({ page }) => {
+test('every panel but the Board is a carousel as tall as the Combos one, its slides whole', async ({
+  page,
+}) => {
   await openEdit(page);
   const heights: Record<string, number> = {};
   for (const tab of [
@@ -59,6 +61,13 @@ test('every panel but the Board is a carousel as tall as the Combos one', async 
     heights[tab] = (await strip.boundingBox())?.height ?? 0;
     // Wider than its panel or not, it scrolls inside itself, and the page never does.
     expect(await overflow(page)).toBeLessThanOrEqual(0);
+    // Every slide holds what is in it: one that needs a scroll bar of its own has outgrown the strip.
+    const cut = await strip.evaluate((el) =>
+      [...el.children]
+        .filter((slide) => slide.scrollHeight > slide.clientHeight + 1)
+        .map((slide) => slide.textContent?.trim().slice(0, 30)),
+    );
+    expect(cut, tab).toEqual([]);
   }
   for (const [tab, height] of Object.entries(heights)) {
     expect(height, tab).toBeGreaterThan(0);

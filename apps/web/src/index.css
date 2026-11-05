@@ -944,22 +944,22 @@ button.lb-combo-apart:focus-visible {
 /*
  * Every editor panel but the Board, as one strip of slides that scrolls sideways inside its panel
  * (the page itself never does) and is always as tall as a combo's, so changing tab moves nothing
- * under it. The strip is a little taller than its slides, for a scroll bar that takes room.
+ * under it. Its scroll bar is always there, so a platform whose bars take room takes it from every
+ * tab alike, and the strip is its slides and a little more, never less.
  * A slide is not a `.lb-card`: that name is the metric cards' too, and a slide's fixed size would
  * cut them to it.
  */
 .lb-carousel {
-  --lb-carousel-h: 10.5rem;
+  --lb-carousel-h: 11rem;
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
-  height: calc(var(--lb-carousel-h) + 0.75rem + 1px);
   max-width: 100%;
   margin: 0;
   /* A pixel for the ring of the slide picked, which would be cut off at the strip's edge. */
-  padding: 1px 1px 0;
+  padding: 1px 1px 0.25rem;
   list-style: none;
-  overflow-x: auto;
+  overflow-x: scroll;
   overflow-y: hidden;
   overscroll-behavior: contain;
   scrollbar-width: thin;
@@ -996,6 +996,18 @@ button.lb-combo-apart:focus-visible {
   position: absolute;
   top: 0.125rem;
   right: 0.125rem;
+}
+/* A slide clips what is outside it, a focus ring too: the ring of a button that fills its slide, or
+   sits near its edge, is drawn inside. */
+.lb-slide-button:focus-visible,
+.lb-combo-slide-pick:focus-visible,
+.lb-slide-remove:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+.lb-slide-button:focus-visible,
+.lb-combo-slide-pick:focus-visible {
+  border-radius: inherit;
 }
 /* The slide that makes one more: dashed, its call to action in the middle. */
 .lb-slide-new {
@@ -1336,12 +1348,19 @@ button.lb-combo-apart:focus-visible {
   display: flex;
   flex: 1;
   flex-direction: column;
-  justify-content: center;
   gap: 0.25rem;
   min-width: 0;
   margin: 0;
   padding: 0;
   list-style: none;
+}
+/* Centred while the ways fit; from the top, with the slide scrolling, when they do not, which
+   `justify-content: center` would cut off above the first. */
+.lb-path-list > :first-child {
+  margin-top: auto;
+}
+.lb-path-list > :last-child {
+  margin-bottom: auto;
 }
 .lb-path-row {
   display: flex;
@@ -1369,6 +1388,9 @@ button.lb-combo-apart:focus-visible {
 /* The JSON tab: its controls in a slide, the text in a wide one that scrolls inside itself. */
 .lb-json-slide {
   --lb-slide-w: 40rem;
+}
+.lb-json-controls {
+  --lb-slide-w: 21rem;
 }
 .lb-json-text {
   display: block;

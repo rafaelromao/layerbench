@@ -58,6 +58,30 @@ describe('the wheel over a carousel', () => {
     expect(el.scrollLeft).toBe(0);
   });
 
+  it('leaves the wheel to a slide with more than it holds, while that has room to scroll', () => {
+    render(
+      <Carousel label="Strip">
+        <Slide style={{ overflowY: 'auto' }} data-testid="slide">
+          <span data-testid="inside">more than fits</span>
+        </Slide>
+      </Carousel>,
+    );
+    const el = screen.getByRole('list', { name: 'Strip' });
+    Object.defineProperty(el, 'scrollWidth', { configurable: true, value: 1000 });
+    Object.defineProperty(el, 'clientWidth', { configurable: true, value: 400 });
+    const slide = screen.getByTestId('slide');
+    Object.defineProperty(slide, 'scrollHeight', { configurable: true, value: 300 });
+    Object.defineProperty(slide, 'clientHeight', { configurable: true, value: 150 });
+    const inside = screen.getByTestId('inside');
+    // Room below: the slide scrolls down, and the strip is left where it is.
+    expect(wheel(inside, { deltaY: 40 }).defaultPrevented).toBe(false);
+    // Down at its bottom, there is none: the wheel goes to the strip, and holds there.
+    slide.scrollTop = 150;
+    expect(wheel(inside, { deltaY: 40 }).defaultPrevented).toBe(true);
+    // And back up, it scrolls up.
+    expect(wheel(inside, { deltaY: -40 }).defaultPrevented).toBe(false);
+  });
+
   it('leaves a strip whose slides all fit to the page', () => {
     const el = strip(400, 400);
     expect(wheel(el, { deltaY: 80 }).defaultPrevented).toBe(false);

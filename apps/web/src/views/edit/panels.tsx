@@ -203,14 +203,33 @@ export function LayersPanel({ state, send }: PanelProps) {
   const [newLayer, setNewLayer] = useState('');
   const [dragging, setDragging] = useState<number | null>(null);
   const layers = state.layout.layers;
+  const conditions = state.layout.conditionalLayers?.length ?? 0;
   const nameOf = (i: number) => layers[i].name ?? layers[i].id;
+  const panel = useRef<HTMLDivElement>(null);
+  // A layer or a condition added lands before the cards that add them, which move on with it: it is
+  // brought into view, so what was just made is not left off to the side. The board turns to a new
+  // layer, a copy of one included, which is where it stands.
+  const counts = useRef({ layers: layers.length, conditions });
+  useEffect(() => {
+    const before = counts.current;
+    counts.current = { layers: layers.length, conditions };
+    const added =
+      layers.length > before.layers
+        ? `[data-layer="${state.layer}"]`
+        : conditions > before.conditions
+          ? `[data-condition="${conditions - 1}"]`
+          : null;
+    const slide = added && panel.current?.querySelector<HTMLElement>(added);
+    if (slide) revealInCarousel(slide);
+  }, [layers.length, conditions, state.layer]);
 
   return (
-    <div className="space-y-2 min-w-0">
+    <div ref={panel} className="space-y-2 min-w-0">
       <Carousel label="Layers">
         {layers.map((layer, i) => (
           <Slide
             key={layer.id}
+            data-layer={i}
             draggable={i > 0}
             onDragStart={(e) => {
               e.dataTransfer.setData('text/plain', String(i));
@@ -401,6 +420,7 @@ function ConditionCards({ state, send }: PanelProps) {
             '--lb-accent': layerColourOf(placeOf(c.then), layers[placeOf(c.then)]?.color),
           } as CSSProperties
         }
+        data-condition={i}
         className="lb-slide-wide lb-slide-accent space-y-1"
       >
         <div className="flex items-center justify-between gap-2">
@@ -445,8 +465,8 @@ function ConditionCards({ state, send }: PanelProps) {
         </div>
         {over.length > 0 && (
           <p className="text-[11px] text-warning">
-            {nameOf(c.then)} is above {over.map(nameOf).join(' and ')} in the list, so their keys
-            cover it: move it below them.
+            {nameOf(c.then)} comes before {over.map(nameOf).join(' and ')} in the list, so their
+            keys cover it: move it after them.
           </p>
         )}
         {reaching.length > 0 && (
@@ -559,8 +579,11 @@ function OneShotDefaults({
 
 /** The most a key unit of the board of the Geometry tab takes, in pixels. */
 const GEO_UNIT = 30;
-/** The height the board has in its card, in pixels: a taller board has smaller keys. */
-const GEO_BOARD_HEIGHT = 100;
+/**
+ * The height the board has in its slide, in pixels: a taller board has smaller keys, and the
+ * tallest, the columnar ones, still have keys of 24px, which a finger can hit.
+ */
+const GEO_BOARD_HEIGHT = 114;
 
 /**
  * The board's keys, each one to take away, and beside them the places a key can be added. A key
@@ -581,8 +604,8 @@ function GeometryBoard({ state, send }: PanelProps) {
   const place = (k: (typeof all)[number]) => ({
     left: (k.x - k.w / 2 - left) * unit,
     top: (k.y - k.h / 2 - top) * unit,
-    width: k.w * unit - 2,
-    height: k.h * unit - 2,
+    width: k.w * unit - 1,
+    height: k.h * unit - 1,
     transform: k.rotation ? `rotate(${k.rotation}deg)` : undefined,
   });
   const set = (change: Parameters<typeof geometryWithKeys>[1]) =>
@@ -591,8 +614,8 @@ function GeometryBoard({ state, send }: PanelProps) {
       edit: { kind: 'setGeometry', geometry: geometryWithKeys(layout, change) },
     });
   return (
-    // The card is as wide as the board, and the padding and border it adds.
-    <Slide className="space-y-1" style={{ width: Math.max(width * unit, 110) + 22 }}>
+    // The slide is as wide as the board, and the padding (2 × 12px) and border (2 × 1px) it adds.
+    <Slide className="space-y-1" style={{ width: Math.max(width * unit, 220) + 26 }}>
       <span className="lb-slide-title">Keys</span>
       <fieldset
         className="lb-geo"
@@ -795,22 +818,24 @@ export function CombosPanel({ state, send }: PanelProps) {
   const picking = state.comboPick !== null && state.comboPickFor === null;
   const chosen = state.comboPick ?? [];
   const panel = useRef<HTMLElement>(null);
-  // The combo open when the tab came up: shown, but not taken focus for, so arrowing between tabs
-  // keeps focus on the tab.
-  const lastOpen = useRef(state.combo);
+  // The picks made when the tab came up: a combo open then is shown, but not taken focus for, so
+  // arrowing between tabs keeps focus on the tab.
+  const seenPicks = useRef(state.comboPicks);
+  // Brought into view, and given focus, each time a combo is picked, wherever it is picked from: the
+  // card, a box on the board, a new combo added. An Undo or a removal that moves the open combo is
+  // no pick, and takes no focus from the button that was pressed. The combo is read as it stands
+  // when a pick lands: the pick is what this answers to.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see above
   useEffect(() => {
-    if (state.combo === null) {
-      lastOpen.current = null;
-      return;
-    }
+    if (state.combo === null) return;
     const card = panel.current?.querySelector<HTMLElement>(`[data-combo="${state.combo}"]`);
     if (!card) return;
     revealInCarousel(card);
-    if (lastOpen.current !== state.combo) {
+    if (seenPicks.current !== state.comboPicks) {
       card.querySelector<HTMLElement>('.lb-combo-slide-pick')?.focus({ preventScroll: true });
     }
-    lastOpen.current = state.combo;
-  }, [state.combo]);
+    seenPicks.current = state.comboPicks;
+  }, [state.comboPicks]);
   return (
     <section ref={panel} className="space-y-2 min-w-0" aria-label="Combos">
       <Carousel label="Combo boards">
@@ -1224,17 +1249,10 @@ export function JsonPanel({ state, send }: PanelProps) {
     URL.revokeObjectURL(url);
   };
   return (
-    <form
-      className="space-y-2 min-w-0"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (format === 'json') {
-          send({ type: 'edit', edit: { kind: 'replaceLayout', json: text } });
-        }
-      }}
-    >
+    // No form: Enter on a format choice would otherwise load the text into the editor.
+    <div className="space-y-2 min-w-0">
       <Carousel label="JSON">
-        <Slide className="lb-slide-wide space-y-2">
+        <Slide className="lb-json-controls space-y-2">
           <Segment
             label="Format"
             options={[
@@ -1273,7 +1291,13 @@ export function JsonPanel({ state, send }: PanelProps) {
                 >
                   Refresh from editor
                 </button>
-                <button type="submit" className="btn btn-sm btn-primary">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-primary"
+                  onClick={() =>
+                    send({ type: 'edit', edit: { kind: 'replaceLayout', json: text } })
+                  }
+                >
                   Load into editor
                 </button>
               </div>
@@ -1311,6 +1335,6 @@ export function JsonPanel({ state, send }: PanelProps) {
           'The whole layout, as LayerBench JSON to read or to paste one in, or as a keymap-drawer file.'
         )}
       </CarouselHint>
-    </form>
+    </div>
   );
 }

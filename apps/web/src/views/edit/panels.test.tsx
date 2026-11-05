@@ -106,6 +106,13 @@ describe('the Layers carousel', () => {
     expect(send).toHaveBeenCalledWith({ type: 'edit', edit: { kind: 'addLayer', name: 'Nav' } });
   });
 
+  it('adds a layer with no name too, which the layout then names', async () => {
+    const send = vi.fn();
+    render(<LayersPanel state={state} send={send} />);
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Add layer' }));
+    expect(send).toHaveBeenCalledWith({ type: 'edit', edit: { kind: 'addLayer', name: '' } });
+  });
+
   it('adds a condition from its card, and says why when there is no layer for one', async () => {
     const send = vi.fn();
     const { unmount } = render(<LayersPanel state={state} send={send} />);
@@ -134,38 +141,78 @@ describe('the Typing paths carousel', () => {
   });
 });
 
+/** A strip 300 wide, as the browser would lay it out, with the second combo's slide past its edge. */
+function layOut(strip: HTMLElement) {
+  const scrollTo = vi.fn();
+  strip.scrollTo = scrollTo;
+  vi.spyOn(Element.prototype, 'clientWidth', 'get').mockImplementation(function (this: Element) {
+    return this.classList.contains('lb-carousel') ? 300 : 0;
+  });
+  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+    if (this.classList.contains('lb-carousel')) return { left: 0, width: 300 } as DOMRect;
+    const { combo, layer } = (this as HTMLElement).dataset;
+    if (combo === '1' || layer === '3') return { left: 900, width: 176 } as DOMRect;
+    return { left: 0, width: 0 } as DOMRect;
+  });
+  return scrollTo;
+}
+
 describe('a combo opened from the board', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  const open = (combo: number | null) => ({ ...state, combo });
+  /** The combo open, and how many times one has been picked: a pick is what brings it into view. */
+  const open = (combo: number | null, comboPicks = 0) => ({ ...state, combo, comboPicks });
+  const reveal = { left: 900 - (300 - 176) / 2, behavior: 'smooth' };
 
   it('is brought into view in the strip and takes focus there', () => {
     const { rerender } = render(<CombosPanel state={open(null)} send={vi.fn()} />);
-    const strip = screen.getByRole('list', { name: 'Combo boards' });
-    const scrollTo = vi.fn();
-    strip.scrollTo = scrollTo;
-    // The second card lies past the strip's edge.
-    vi.spyOn(Element.prototype, 'clientWidth', 'get').mockImplementation(function (this: Element) {
-      return this.classList.contains('lb-carousel') ? 300 : 0;
-    });
-    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
-      this: Element,
-    ) {
-      if (this.classList.contains('lb-carousel')) return { left: 0, width: 300 } as DOMRect;
-      if ((this as HTMLElement).dataset.combo === '1') return { left: 900, width: 176 } as DOMRect;
-      return { left: 0, width: 0 } as DOMRect;
-    });
-
-    rerender(<CombosPanel state={open(1)} send={vi.fn()} />);
-    expect(scrollTo).toHaveBeenCalledWith({ left: 900 - (300 - 176) / 2, behavior: 'smooth' });
+    const scrollTo = layOut(screen.getByRole('list', { name: 'Combo boards' }));
+    rerender(<CombosPanel state={open(1, 1)} send={vi.fn()} />);
+    expect(scrollTo).toHaveBeenCalledWith(reveal);
     expect(screen.getByRole('button', { name: 'Edit RHM+RHI' })).toHaveFocus();
   });
 
-  it('is shown, without taking focus, when the tab comes up with one already open', () => {
-    render(<CombosPanel state={open(1)} send={vi.fn()} />);
+  it('is brought back when the one already open is picked again from the board', () => {
+    const { rerender } = render(<CombosPanel state={open(1, 1)} send={vi.fn()} />);
+    const scrollTo = layOut(screen.getByRole('list', { name: 'Combo boards' }));
+    screen.getByRole('button', { name: 'Edit RHM+RHI' }).blur();
+    // The same combo, picked once more: nothing about it changed but the pick.
+    rerender(<CombosPanel state={open(1, 2)} send={vi.fn()} />);
+    expect(scrollTo).toHaveBeenCalledWith(reveal);
+    expect(screen.getByRole('button', { name: 'Edit RHM+RHI' })).toHaveFocus();
+  });
+
+  it('takes no focus when it only moved, as an Undo or a removal moves it', () => {
+    const { rerender } = render(<CombosPanel state={open(0, 1)} send={vi.fn()} />);
+    layOut(screen.getByRole('list', { name: 'Combo boards' }));
+    // The open combo is another now, and no one picked it.
+    rerender(<CombosPanel state={open(1, 1)} send={vi.fn()} />);
     expect(document.body).toHaveFocus();
+  });
+
+  it('is shown, without taking focus, when the tab comes up with one already open', () => {
+    render(<CombosPanel state={open(1, 1)} send={vi.fn()} />);
+    expect(document.body).toHaveFocus();
+  });
+});
+
+describe('a layer or a condition added', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('is brought into view, where the cards that add one have moved on', () => {
+    const { rerender } = render(<LayersPanel state={state} send={vi.fn()} />);
+    const scrollTo = layOut(screen.getByRole('list', { name: 'Layers' }));
+    const four: Layout = {
+      ...layout,
+      layers: [...layout.layers, { id: 'nav', name: 'Nav', bindings: { '*': { kind: 'trans' } } }],
+    };
+    // The board turns to the layer added, which is the fourth.
+    rerender(<LayersPanel state={initialState(four, compileLayout(four), 3)} send={vi.fn()} />);
+    expect(scrollTo).toHaveBeenCalledWith({ left: 900 - (300 - 176) / 2, behavior: 'smooth' });
   });
 });
 
@@ -226,5 +273,20 @@ describe('the Features carousel', () => {
     const sentence = screen.getByLabelText('Sentence case').closest('li') as HTMLElement;
     expect(capsWord.style.getPropertyValue('--lb-accent')).toBe('var(--color-primary)');
     expect(sentence.style.getPropertyValue('--lb-accent')).toBe('');
+  });
+});
+
+describe('the JSON carousel', () => {
+  it('loads the text into the editor from its button, with no form for Enter to submit', async () => {
+    const send = vi.fn();
+    const { container } = render(<JsonPanel state={state} send={send} />);
+    expect(container.querySelector('form')).toBeNull();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Load into editor' }));
+    expect(send.mock.calls[0][0].edit.kind).toBe('replaceLayout');
+    // Enter on a format choice is only a choice of format.
+    send.mockClear();
+    screen.getByRole('radio', { name: /keymap-drawer YAML/ }).focus();
+    await userEvent.setup().keyboard('{Enter}');
+    expect(send).not.toHaveBeenCalled();
   });
 });

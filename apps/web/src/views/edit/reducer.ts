@@ -74,6 +74,12 @@ export interface EditState {
    * open together: selecting one closes the other.
    */
   combo: number | null;
+  /**
+   * How many times a combo has been picked: it changes each time, even for the combo already open,
+   * so the Combos panel brings that one into view again, and not for an Undo or a removal that moves
+   * the open combo, which no one picked.
+   */
+  comboPicks: number;
   /** Keys picked on the board for a new combo, or null when not picking. */
   comboPick: string[] | null;
   /** The combo, by place, whose keys are being picked again; null when the pick is for a new one. */
@@ -138,6 +144,7 @@ export function initialState(layout: Layout, compiled: CompiledLayout, layer = 0
     lastEdit: null,
     focusRequest: null,
     combo: null,
+    comboPicks: 0,
     comboPick: null,
     comboPickFor: null,
     boardHighlight: [],
@@ -409,6 +416,7 @@ function reduce(state: EditState, action: EditAction): EditState {
       return {
         ...state,
         combo,
+        comboPicks: combo === null ? state.comboPicks : state.comboPicks + 1,
         // A combo opened is where the board's clicks go next, not to the key that was open.
         ...(combo === null ? {} : { selected: null, also: [], swapFrom: null }),
         // Opening a combo ends a pick of a new combo's keys, or of the keys of the one before it.

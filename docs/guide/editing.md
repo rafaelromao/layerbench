@@ -162,16 +162,17 @@ banded in the colour its keys are drawn in, and does everything else with them:
 - **Remove** (✕) deletes a layer. It refuses while a key or combo still reaches the layer, and names
   each one, so nothing is left pointing at a layer that is gone.
 - **New layer**, one of the last two cards of the strip, adds one at the end, named as you type in
-  it or `Layer` and its number, whose keys all let the layer below show through.
-- **Conditional layers**, a card each after the layers, are layers that come on by themselves while every layer
-  they wait for is on, as ZMK's conditional layers: Extras while Numbers and Symbols are both held.
-  **New condition**, the last card, adds one, bringing on a layer nothing else reaches where it can; pick the layers
-  it waits for, up to four, and the layer it brings on.
+  it or `Layer` and its number, whose keys all let the layer below show through. A layer added is
+  brought into view.
+- **Conditional layers**, a card each after the layers, are layers that come on by themselves while
+  every layer they wait for is on, as ZMK's conditional layers: Extras while Numbers and Symbols are
+  both held. **New condition**, the last card, adds one, bringing on a layer nothing else reaches
+  where it can; pick the layers it waits for, up to four, and the layer it brings on.
   The base layer is always on, so it neither waits nor is waited for, a layer never waits for
   itself, and a layer that comes on by a condition is not one another waits for. A layer comes on by
   one condition at most, and by no other way: a key or combo that reaches it no longer does, and
-  the panel names them. A layer later in the list is drawn over an earlier one, so one brought on
-  should come after the layers it waits for; the panel says so when it does not.
+  the panel names them. A layer later in the list, further right, is drawn over an earlier one, so
+  one brought on should come after the layers it waits for; the panel says so when it does not.
 
 ### The keys that reach a layer
 
@@ -386,34 +387,36 @@ its quotes and German its `ß`.
 
 ### Which layer wins
 
-When two layers are on at once, a key comes from the one further down the list. A key that is
+When two layers are on at once, a key comes from the one later in the list, further right in the
+**Layers** tab. A key that is
 transparent on that layer falls through to the next one up, and every key falls back to the base
 layer in the end, which is why it stays first.
 
 ## Combos, typing paths and the rest
 
 The other tabs hold what is not on a single key. Every tab but **Board** shows what it holds as
-cards in one strip, as tall as a combo's card on every tab, so changing tab moves nothing under it.
-The strip scrolls sideways inside its panel, with its scroll bar, by swiping, or with the mouse
-wheel while the pointer is over it, which keeps the page where it is, at either end too:
+cards in one strip, as tall as a combo's card on every tab. The strip scrolls sideways inside its
+panel, with its scroll bar, by swiping, or with the mouse wheel while the pointer is over it, which
+keeps the page where it is, at either end too:
 
 - **Features** turns on sentence case and caps word. Sentence case needs a ZMK module, which it
   links.
 - **Geometry** is the board itself, in cards: the **preset**, the **keys** of the board, which keys
-  are space and shift, and how the one-shots end. Pick another **preset**, or tap a key of the board to take it
-  away and a **+** to add one, where a preset of the same kind has a key the board lacks. A key
+  are space and shift, and how the one-shots end. Pick another **preset**, or tap a key of the
+  board to take it away and a **+** to add one, where a preset of the same kind has a key the board lacks. A key
   can go only if it is Transparent or None on every layer and nothing else uses it: not a combo,
   the space or shift key, or a feature's key. A key in use is grayed, and says why when you tap or point
   at it. Keys keep their names, not their places: a preset of another kind, such as a row-stagger
-  board, may put a kept key under another finger. A preset that would lose a key in use is refused, with the key named. A key the board
-  gains starts empty. Under them it says which keys are space and shift, the kind of shift, and
-  how doubled letters are typed, and, under **One-shot layers** and **One-shot keys**, how the
-  layout's one-shots end: as the next key goes down or not, whether they stay on while a modifier
-  is pressed, and after how many milliseconds unused.
+  board, may put a kept key under another finger. A preset that would lose a key in use is refused,
+  with the key named. A key the board gains starts empty. The next card says which keys are space
+  and shift, the kind of shift, and how doubled letters are typed, and **One-shot layers** and
+  **One-shot keys** say how the layout's one-shots end: as the next key goes down or not, whether
+  they stay on while a modifier is pressed, and after how many milliseconds unused.
 - **Combos** are keys pressed together. The top of the tab is a strip of small boards, one for each
-  combo, with its keys marked and what it types on a key under them. A combo picked as a box on the board
-  below scrolls into view in the strip and takes focus there. The last card is **New combo**: tap it, tap the keys on the board, then **Add combo on**
-  the layer shown. A combo added opens in the **combo editor**, in the key editor's place, with
+  combo, with its keys marked and what it types on a key under them. A combo picked as a box on
+  the board below, even the one already open, scrolls into view in the strip and takes focus there.
+  The last card is **New combo**: tap it, tap the keys on the board, then **Add combo on** the layer
+  shown. A combo added opens in the **combo editor**, in the key editor's place, with
   nothing to do yet; so does a combo picked in the strip, a combo's box on the board, or one picked
   from the button beside **Heat**. **✕** on a card removes the combo. A combo can be any kind of key
   but Transparent, from the same tiles a key has: a tap-hold, an adaptive key, a macro, a tap dance,
