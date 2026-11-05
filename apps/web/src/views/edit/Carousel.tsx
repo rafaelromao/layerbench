@@ -8,9 +8,9 @@ function prefersReducedMotion(): boolean {
 }
 
 /**
- * Every editor panel but the Board, as one strip of cards at one height, scrolled sideways inside
- * its panel. The mouse wheel scrolls it too while the pointer is over it, up to either end, where
- * the page takes the wheel back.
+ * Every editor panel but the Board, as one strip of slides at one height, scrolled sideways inside
+ * its panel. The mouse wheel scrolls it too while the pointer is over it, and keeps the page where
+ * it is, at either end as well: the page moves only when the pointer is off the strip.
  */
 export function Carousel({
   label,
@@ -27,14 +27,11 @@ export function Carousel({
       // Sideways gestures already scroll it, a pinch zooms, and a text area scrolls itself.
       if (e.defaultPrevented || e.ctrlKey || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
       if ((e.target as Element | null)?.closest?.('textarea')) return;
-      const room = el.scrollWidth - el.clientWidth;
-      if (room <= 0) return;
+      // A strip whose slides all fit has nothing to scroll, and leaves the wheel to the page.
+      if (el.scrollWidth - el.clientWidth <= 0) return;
       const unit = e.deltaMode === 1 ? LINE_PX : e.deltaMode === 2 ? el.clientWidth : 1;
-      const by = e.deltaY * unit;
-      // At the end the wheel pushes toward, the page scrolls on instead of being held here.
-      if ((by < 0 && el.scrollLeft <= 0) || (by > 0 && el.scrollLeft >= room - 1)) return;
       e.preventDefault();
-      el.scrollLeft += by;
+      el.scrollLeft += e.deltaY * unit;
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
@@ -53,15 +50,46 @@ export function Carousel({
 }
 
 /** One item of a carousel. */
-export function Card({
+export function Slide({
   current = false,
   className = '',
   ...rest
 }: ComponentProps<'li'> & {
-  /** The card is the one picked, or the one on the board. */
+  /** The slide is the one picked, or the one on the board. */
   current?: boolean;
 }) {
-  return <li className={`lb-card ${current ? 'lb-card-current' : ''} ${className}`} {...rest} />;
+  return <li className={`lb-slide ${current ? 'lb-slide-current' : ''} ${className}`} {...rest} />;
+}
+
+/**
+ * A symbol on a key's shape, with what it holds under it. A long legend, a word or a macro, is set
+ * smaller to fit; the symbol is what is drawn, so a screen reader is given the slide's own words.
+ */
+export function Keycap({
+  symbol,
+  hold,
+  small = false,
+  as = 'span',
+  className = '',
+  ...rest
+}: Omit<ComponentProps<'span'>, 'children'> & {
+  symbol: string;
+  hold?: string;
+  small?: boolean;
+  /** The heading of a slide that is about this symbol. */
+  as?: 'span' | 'h3';
+}) {
+  const Tag = as as 'span';
+  const long = [...symbol].length > 2;
+  return (
+    <Tag
+      className={`lb-keycap ${small ? 'lb-keycap-sm' : ''} ${long ? 'lb-keycap-long' : ''} ${className}`}
+      {...rest}
+    >
+      <span className="lb-keycap-tap">{symbol}</span>
+      {hold ? <span className="lb-keycap-hold">{hold}</span> : null}
+    </Tag>
+  );
 }
 
 /** What the panel says under its carousel; two lines are kept for it, so every panel ends alike. */
@@ -70,15 +98,15 @@ export function CarouselHint({ children }: { children: ReactNode }) {
 }
 
 /**
- * Scroll a carousel sideways, and only it, until `card` is in view, centred when it was not. The
- * page does not move: a card picked from the board below it is brought to the eye, not the other
+ * Scroll a carousel sideways, and only it, until `slide` is in view, centred when it was not. The
+ * page does not move: a slide picked from the board below it is brought to the eye, not the other
  * way round.
  */
-export function revealInCarousel(card: HTMLElement) {
-  const strip = card.closest<HTMLElement>('.lb-carousel');
+export function revealInCarousel(slide: HTMLElement) {
+  const strip = slide.closest<HTMLElement>('.lb-carousel');
   if (!strip) return;
   const at = strip.getBoundingClientRect();
-  const it = card.getBoundingClientRect();
+  const it = slide.getBoundingClientRect();
   const left = it.left - at.left + strip.scrollLeft;
   if (left >= strip.scrollLeft && left + it.width <= strip.scrollLeft + strip.clientWidth) return;
   const to = Math.max(0, left - (strip.clientWidth - it.width) / 2);

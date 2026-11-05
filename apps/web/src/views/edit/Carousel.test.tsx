@@ -1,14 +1,14 @@
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Card, Carousel, revealInCarousel } from './Card.js';
+import { Carousel, Keycap, revealInCarousel, Slide } from './Carousel.js';
 
 /** A strip as wide as `scrollWidth`, shown `clientWidth` of it: jsdom has no layout of its own. */
 function strip(scrollWidth: number, clientWidth: number) {
   render(
     <Carousel label="Strip">
-      <Card>
+      <Slide>
         <textarea aria-label="Text" />
-      </Card>
+      </Slide>
     </Carousel>,
   );
   const el = screen.getByRole('list', { name: 'Strip' });
@@ -41,13 +41,13 @@ describe('the wheel over a carousel', () => {
     expect(el.scrollLeft).toBe(448);
   });
 
-  it('gives the wheel back to the page at either end', () => {
+  it('holds the wheel at either end too, so the page stays where it is', () => {
     const el = strip(1000, 400);
-    expect(wheel(el, { deltaY: -50 }).defaultPrevented).toBe(false);
-    el.scrollLeft = 600;
-    expect(wheel(el, { deltaY: 50 }).defaultPrevented).toBe(false);
-    // Away from the end it still takes it.
+    // Already at the start, and pushed further back.
     expect(wheel(el, { deltaY: -50 }).defaultPrevented).toBe(true);
+    // Already at the end, and pushed further on.
+    el.scrollLeft = 600;
+    expect(wheel(el, { deltaY: 50 }).defaultPrevented).toBe(true);
   });
 
   it('leaves alone a sideways gesture, a pinch, and a text area', () => {
@@ -58,7 +58,7 @@ describe('the wheel over a carousel', () => {
     expect(el.scrollLeft).toBe(0);
   });
 
-  it('leaves alone a strip whose cards all fit', () => {
+  it('leaves a strip whose slides all fit to the page', () => {
     const el = strip(400, 400);
     expect(wheel(el, { deltaY: 80 }).defaultPrevented).toBe(false);
   });
@@ -73,7 +73,7 @@ describe('bringing a card into view', () => {
   function laidOut(left: number, scrolled = 0) {
     render(
       <Carousel label="Strip">
-        <Card>card</Card>
+        <Slide>card</Slide>
       </Carousel>,
     );
     const el = screen.getByRole('list', { name: 'Strip' });
@@ -106,5 +106,25 @@ describe('bringing a card into view', () => {
     const { card, scrollTo } = laidOut(50, 400);
     revealInCarousel(card);
     expect(scrollTo).toHaveBeenCalledWith({ left: 0, behavior: 'smooth' });
+  });
+});
+
+describe('a symbol on a key', () => {
+  it('draws the symbol, and a hold under it', () => {
+    render(<Keycap symbol="a" hold="Shift" data-testid="key" />);
+    const key = screen.getByTestId('key');
+    expect(key).toHaveClass('lb-keycap');
+    expect(key).not.toHaveClass('lb-keycap-long');
+    expect(key).toHaveTextContent('aShift');
+  });
+
+  it('sets a word or a macro smaller, and a small key for a slide that is not about it', () => {
+    render(<Keycap symbol="ção" small data-testid="key" />);
+    expect(screen.getByTestId('key')).toHaveClass('lb-keycap-long', 'lb-keycap-sm');
+  });
+
+  it('can be the heading of its slide', () => {
+    render(<Keycap as="h3" symbol="␣" />);
+    expect(screen.getByRole('heading', { name: '␣' })).toHaveClass('lb-keycap');
   });
 });

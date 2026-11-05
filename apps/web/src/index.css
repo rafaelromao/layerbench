@@ -932,10 +932,21 @@ button.lb-combo-apart:focus-visible {
   }
 }
 
+/* A card that holds one thing, as the Numbers' metric cards use it. */
+.lb-card {
+  min-width: 0;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-box);
+  background: var(--color-base-100);
+}
+
 /*
- * Every editor panel but the Board, as one strip of cards that scrolls sideways inside its panel
- * (the page itself never does) and is always as tall as a combo's card, so changing tab moves
- * nothing under it. The strip is a little taller than its cards, for a scrollbar that takes room.
+ * Every editor panel but the Board, as one strip of slides that scrolls sideways inside its panel
+ * (the page itself never does) and is always as tall as a combo's, so changing tab moves nothing
+ * under it. The strip is a little taller than its slides, for a scroll bar that takes room.
+ * A slide is not a `.lb-card`: that name is the metric cards' too, and a slide's fixed size would
+ * cut them to it.
  */
 .lb-carousel {
   --lb-carousel-h: 10.5rem;
@@ -945,45 +956,49 @@ button.lb-combo-apart:focus-visible {
   height: calc(var(--lb-carousel-h) + 0.75rem + 1px);
   max-width: 100%;
   margin: 0;
-  /* A pixel for the ring of the card picked, which would be cut off at the strip's edge. */
+  /* A pixel for the ring of the slide picked, which would be cut off at the strip's edge. */
   padding: 1px 1px 0;
   list-style: none;
   overflow-x: auto;
   overflow-y: hidden;
-  overscroll-behavior-x: contain;
+  overscroll-behavior: contain;
   scrollbar-width: thin;
 }
-.lb-card {
+.lb-slide {
   position: relative;
   flex: none;
-  width: var(--lb-card-w, 11rem);
+  width: var(--lb-slide-w, 11rem);
   height: var(--lb-carousel-h);
   min-width: 0;
-  padding: 0.5rem 0.625rem;
-  /* Meant never to be needed; a card with more than it holds scrolls rather than spills. */
+  padding: 0.625rem 0.75rem;
+  /* Meant never to be needed; a slide with more than it holds scrolls rather than spills. */
   overflow-y: auto;
   border: 1px solid var(--color-base-300);
   border-radius: var(--radius-box);
   background: var(--color-base-100);
 }
-/* Cards that hold fields and buttons, not a small board. */
-.lb-card-wide {
-  --lb-card-w: 16rem;
+/* Slides that hold fields and buttons, not a small board. */
+.lb-slide-wide {
+  --lb-slide-w: 16rem;
 }
-.lb-card-current {
+/* A band along the top edge, in the colour the slide says it is: a layer's, a kind's. */
+.lb-slide-accent {
+  border-top: 3px solid var(--lb-accent, var(--color-base-300));
+}
+.lb-slide-current {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 1px var(--color-primary);
 }
-.lb-card-pick {
+.lb-slide-pick {
   padding: 0;
 }
-.lb-card-remove {
+.lb-slide-remove {
   position: absolute;
   top: 0.125rem;
   right: 0.125rem;
 }
-/* The card that makes one more: dashed, its call to action in the middle. */
-.lb-card-new {
+/* The slide that makes one more: dashed, its call to action in the middle. */
+.lb-slide-new {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -992,12 +1007,18 @@ button.lb-combo-apart:focus-visible {
   border-style: dashed;
   text-align: center;
 }
-.lb-card-new-mark {
-  font-size: 1.5rem;
+.lb-slide-new-mark {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  background: var(--color-base-200);
+  font-size: 1.25rem;
   line-height: 1;
 }
-/* The whole card is its button, as the card of a new combo is. */
-.lb-card-new-button {
+/* The whole slide is its button, as the slide of a new combo is. */
+.lb-slide-new-button {
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -1007,35 +1028,29 @@ button.lb-combo-apart:focus-visible {
   width: 100%;
   cursor: pointer;
 }
-.lb-card-new-button:disabled {
+.lb-slide-new-button:hover:not(:disabled) .lb-slide-new-mark {
+  background: var(--color-primary);
+  color: var(--color-primary-content);
+}
+.lb-slide-new-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
-.lb-card-title {
-  font-size: 0.75rem;
+.lb-slide-title {
+  font-size: 0.8125rem;
   font-weight: 600;
 }
-/* What kind of thing a card of Special Behaviors is, along its bottom edge. */
-.lb-card-kind {
-  margin-top: auto;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  opacity: 0.6;
-}
-.lb-card-button:hover {
+.lb-slide-button:hover {
   background: var(--color-base-200);
   border-radius: inherit;
 }
-.lb-card-button {
+.lb-slide-button {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.125rem;
+  align-items: center;
+  gap: 0.625rem;
   width: 100%;
   height: 100%;
-  padding: 0.5rem 0.625rem;
+  padding: 0.625rem 0.75rem;
   text-align: left;
 }
 /* What a panel says under its carousel, two lines kept for it. */
@@ -1043,14 +1058,68 @@ button.lb-combo-apart:focus-visible {
   min-height: 2lh;
   margin-top: 0.25rem;
 }
-/* A row of a card: a label, then its field, as small as the card is. */
-.lb-card-field {
+/* A row of a slide: a label, then its field, as small as the slide is. */
+.lb-slide-field {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
   align-items: center;
   gap: 0.5rem;
   font-size: 0.75rem;
 }
+
+/*
+ * A symbol on a key's shape: the keycap at the left of a typing path, and on a combo's and a
+ * special behavior's slide, smaller. A long legend gets smaller type; a hold sits under the tap.
+ */
+.lb-keycap {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--lb-key-stroke);
+  /* A key's front edge. */
+  border-bottom-width: 4px;
+  border-radius: 0.625rem;
+  background: var(--lb-key-bg);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--color-base-content) 10%, transparent);
+  color: var(--lb-key-text);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 1.5rem;
+  font-weight: 500;
+  line-height: 1;
+}
+.lb-keycap-sm {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-bottom-width: 3px;
+  border-radius: 0.5rem;
+  font-size: 1.125rem;
+}
+.lb-keycap-long {
+  font-size: 0.75rem;
+}
+.lb-keycap-tap {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lb-keycap-hold {
+  max-width: 100%;
+  overflow: hidden;
+  margin-top: 0.125rem;
+  font-size: 0.5625rem;
+  opacity: 0.6;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* The board of the Geometry tab: its keys to take away, the places to add one dashed. */
 .lb-geo {
   position: relative;
@@ -1085,30 +1154,57 @@ button.lb-combo-apart:focus-visible {
 .lb-geo-key-add:hover {
   border-color: var(--color-primary);
 }
-/* A layer's card: grip and name, its colour under them, and the same four button slots in every
-   card along the bottom. */
-.lb-layer-card {
+/* A layer's slide: its number in its colour and its name, then its colour, and along the bottom
+   what can be done with it. */
+.lb-layer-slide {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 0.375rem;
+  gap: 0.5rem;
 }
 .lb-layer-head {
   display: grid;
-  grid-template-columns: 0.75rem minmax(0, 1fr);
+  grid-template-columns: 1.5rem minmax(0, 1fr);
   align-items: center;
-  gap: 0.375rem;
+  gap: 0.5rem;
 }
-.lb-layer-actions {
+.lb-layer-no {
   display: grid;
-  /* The width of a small square button, at a desk's size or a finger's. */
-  grid-template-columns: repeat(4, calc(var(--size-field, 0.25rem) * 6));
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  background: var(--lb-accent, var(--color-base-300));
+  /* Dark on the light shades, light on the dark ones: the colours are tuned for a key cap. */
+  color: var(--color-base-100);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+/* The base layer has no colour of its own: its number is drawn on the card's own ground. */
+.lb-layer-no-base {
+  border: 1px solid var(--lb-key-stroke);
+  background: transparent;
+  color: var(--color-base-content);
+}
+.lb-layer-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 0.375rem;
+  border-top: 1px solid var(--color-base-300);
+}
+.lb-layer-moves,
+.lb-layer-edits {
+  display: flex;
   align-items: center;
   gap: 0.125rem;
+  min-width: 0;
 }
-.lb-layer-base {
-  grid-column: span 2;
-  justify-self: center;
+.lb-layer-grip {
+  width: 1rem;
+  text-align: center;
+  cursor: grab;
+  opacity: 0.4;
 }
 /* A layer's colour, under its name. */
 .lb-layer-meta {
@@ -1139,82 +1235,140 @@ button.lb-combo-apart:focus-visible {
   grid-column: 2 / -1;
 }
 
-/* A combo's card: its small board, filling what the card has left, then what it types, its keys
-   and the layers it works on, each on one line so no card is taller than another. */
-.lb-combo-card-pick {
+/* A combo's slide: its small board, filling what the slide has left, then what it types on a key,
+   its keys and the layers it works on, each on one line so no slide is taller than another. */
+.lb-combo-slide {
+  --lb-slide-w: 12rem;
+}
+.lb-combo-slide-pick {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.375rem;
   width: 100%;
   height: 100%;
-  padding: 0.5rem;
+  padding: 0.5rem 0.625rem;
   text-align: left;
-  font-size: 0.75rem;
 }
-.lb-combo-card-board {
+.lb-combo-slide-board {
   display: flex;
   flex: 1 1 0;
   align-items: center;
   justify-content: center;
   min-height: 0;
 }
-.lb-combo-card-board > svg {
+.lb-combo-slide-board > svg {
   max-height: 100%;
 }
-.lb-combo-card-out {
-  font-size: 0.875rem;
+.lb-combo-slide-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
 }
-.lb-combo-card-layers {
+.lb-combo-slide-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 0.75rem;
+}
+.lb-combo-slide-layers {
   opacity: 0.6;
 }
-.lb-combo-card-out,
-.lb-combo-card-keys,
-.lb-combo-card-layers {
-  min-width: 0;
+.lb-combo-slide-keys,
+.lb-combo-slide-layers {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* A character of the Typing paths tab, on a key's shape, at the left of the card of its ways. */
-.lb-path-card {
-  --lb-card-w: 24rem;
+/* A feature's slide: its name and its switch, what it does under them, the band along the top lit
+   while it is on. */
+.lb-feature-slide {
   display: flex;
-  gap: 0.625rem;
+  flex-direction: column;
+  gap: 0.375rem;
 }
-.lb-keycap {
+.lb-feature-head {
   display: flex;
-  flex: none;
   align-items: center;
-  justify-content: center;
-  align-self: center;
-  width: 3.5rem;
-  height: 3.5rem;
-  overflow: hidden;
-  border: 1px solid var(--lb-key-stroke);
-  /* A key's front edge. */
-  border-bottom-width: 4px;
-  border-radius: 0.625rem;
-  background: var(--lb-key-bg);
-  color: var(--lb-key-text);
-  font-size: 1.5rem;
-  line-height: 1;
+  justify-content: space-between;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+.lb-feature-hint {
+  font-size: 0.6875rem;
+  line-height: 1.35;
+  opacity: 0.7;
+}
+
+/* A special behavior's slide: its symbol on a key, then where it is, what it is called, and, where
+   the name does not say, which kind it is. */
+.lb-behavior-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+.lb-behavior-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.lb-behavior-kind {
+  align-self: flex-start;
+  padding: 0 0.375rem;
+  border-radius: 9999px;
+  background: var(--color-base-200);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+/* A character of the Typing paths tab on a key at the left of the slide of its ways, the way tried
+   first marked. */
+.lb-path-slide {
+  --lb-slide-w: 25rem;
+  display: flex;
+  gap: 0.75rem;
 }
 .lb-path-list {
   display: flex;
   flex: 1;
   flex-direction: column;
   justify-content: center;
-  gap: 0.125rem;
+  gap: 0.25rem;
   min-width: 0;
   margin: 0;
   padding: 0;
   list-style: none;
 }
+.lb-path-row {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem 0.25rem;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  background: var(--color-base-200);
+  font-size: 0.75rem;
+  cursor: grab;
+}
+.lb-path-row:hover {
+  border-color: var(--color-base-300);
+}
+.lb-path-first {
+  border-left: 3px solid var(--color-primary);
+}
+.lb-path-cost {
+  flex: none;
+  font-size: 0.6875rem;
+  opacity: 0.6;
+}
 
-/* The JSON tab: its controls in a card, the text in a wide one that scrolls inside itself. */
-.lb-json-card {
-  --lb-card-w: 40rem;
+/* The JSON tab: its controls in a slide, the text in a wide one that scrolls inside itself. */
+.lb-json-slide {
+  --lb-slide-w: 40rem;
 }
 .lb-json-text {
   display: block;

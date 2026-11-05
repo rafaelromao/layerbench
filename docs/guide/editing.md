@@ -149,8 +149,8 @@ Swipe the board sideways to do the same on a phone, or press `←` and `→` whi
 focus. The same navigator shows the layers of a card in **Library** and of each layout in
 **Compare**. A key's colour says which layer it reaches.
 
-The **Layers** tab lists them in order, one card each in a strip that scrolls sideways, and does
-everything else with them:
+The **Layers** tab lists them in order, one card each in a strip that scrolls sideways, numbered and
+banded in the colour its keys are drawn in, and does everything else with them:
 
 - **Rename** a layer in its name field, or double-click its name in the navigator (press and hold
   it on a phone, or `F2` on the keyboard).
@@ -395,7 +395,7 @@ layer in the end, which is why it stays first.
 The other tabs hold what is not on a single key. Every tab but **Board** shows what it holds as
 cards in one strip, as tall as a combo's card on every tab, so changing tab moves nothing under it.
 The strip scrolls sideways inside its panel, with its scroll bar, by swiping, or with the mouse
-wheel while the pointer is over it; at either end the wheel goes back to the page:
+wheel while the pointer is over it, which keeps the page where it is, at either end too:
 
 - **Features** turns on sentence case and caps word. Sentence case needs a ZMK module, which it
   links.
@@ -411,7 +411,7 @@ wheel while the pointer is over it; at either end the wheel goes back to the pag
   layout's one-shots end: as the next key goes down or not, whether they stay on while a modifier
   is pressed, and after how many milliseconds unused.
 - **Combos** are keys pressed together. The top of the tab is a strip of small boards, one for each
-  combo, with its keys marked and what it types under them. A combo picked as a box on the board
+  combo, with its keys marked and what it types on a key under them. A combo picked as a box on the board
   below scrolls into view in the strip and takes focus there. The last card is **New combo**: tap it, tap the keys on the board, then **Add combo on**
   the layer shown. A combo added opens in the **combo editor**, in the key editor's place, with
   nothing to do yet; so does a combo picked in the strip, a combo's box on the board, or one picked
@@ -428,7 +428,7 @@ wheel while the pointer is over it; at either end the wheel goes back to the pag
   refused, with its reason, when it would leave fewer than two keys, a key or layer the layout does
   not have, or the same keys as another combo on one of its layers.
 - **Special Behaviors** lists the layout's special features, a card each, kind by kind: adaptive keys, alt repeats,
-  macros and mod morphs. Each names its layer and key, or its combo; pick one to go to the **Board** tab, turned to
+  macros and mod morphs, on a key that shows what it types. Each names its layer and key, or its combo; pick one to go to the **Board** tab, turned to
   that layer with the key selected, or to outline the combo's keys.
 - **Typing paths** list the other ways a character can be typed, a card for each, with the character
   on a key at its left. Left alone, a character is typed

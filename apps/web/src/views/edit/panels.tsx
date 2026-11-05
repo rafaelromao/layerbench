@@ -1,5 +1,6 @@
 import {
   addableKeys,
+  type Binding,
   boardKeys,
   type Edit,
   exportKeymapDrawer,
@@ -21,12 +22,21 @@ import {
   toCanonicalJson,
   type ZmkModuleId,
 } from '@layerbench/core';
-import { type Dispatch, type ReactNode, useEffect, useId, useMemo, useRef, useState } from 'react';
+import {
+  type CSSProperties,
+  type Dispatch,
+  type ReactNode,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Keyboard } from '../../components/Keyboard.js';
 import { layerColourOf } from '../../components/layer-colour.js';
 import type { ProducerDTO } from '../../engine/protocol.js';
 import { toast } from '../../state/toasts.js';
-import { Card, Carousel, CarouselHint, revealInCarousel } from './Card.js';
+import { Carousel, CarouselHint, Keycap, revealInCarousel, Slide } from './Carousel.js';
 import { LayerChips, ModuleNote, Segment, TextField } from './inspector/controls.js';
 import { type EditAction, type EditState, shownLayer } from './reducer.js';
 
@@ -54,27 +64,24 @@ function FeatureRow({
   children?: ReactNode;
 }) {
   return (
-    <Card className="lb-card-wide">
-      <label className="flex items-start gap-2">
+    <Slide
+      className="lb-slide-wide lb-slide-accent lb-feature-slide"
+      style={on ? ({ '--lb-accent': 'var(--color-primary)' } as CSSProperties) : undefined}
+    >
+      <label className="lb-feature-head">
+        <span className="lb-slide-title">{title}</span>
         <input
           type="checkbox"
           aria-label={title}
-          className="toggle toggle-sm mt-0.5"
+          className="toggle toggle-sm toggle-primary"
           checked={on}
           onChange={(e) => onToggle(e.target.checked)}
         />
-        <span>
-          <span className="font-medium text-sm">{title}</span>
-          <span className="block text-[11px] opacity-70">{hint}</span>
-        </span>
       </label>
-      {module ? (
-        <div className="mt-1 pl-8">
-          <ModuleNote module={module} />
-        </div>
-      ) : null}
-      {on && children ? <div className="mt-2 pl-8">{children}</div> : null}
-    </Card>
+      <p className="lb-feature-hint">{hint}</p>
+      {module ? <ModuleNote module={module} /> : null}
+      {on && children ? <div>{children}</div> : null}
+    </Slide>
   );
 }
 
@@ -202,7 +209,7 @@ export function LayersPanel({ state, send }: PanelProps) {
     <div className="space-y-2 min-w-0">
       <Carousel label="Layers">
         {layers.map((layer, i) => (
-          <Card
+          <Slide
             key={layer.id}
             draggable={i > 0}
             onDragStart={(e) => {
@@ -223,11 +230,16 @@ export function LayersPanel({ state, send }: PanelProps) {
                 send({ type: 'edit', edit: { kind: 'moveLayer', layer: moved, to: i } });
               }
             }}
-            className={`lb-card-wide lb-layer-card ${dragging === i ? 'opacity-50' : ''}`}
+            // Its band and its number are the colour its keys are drawn in on the board.
+            style={{ '--lb-accent': layerColourOf(i, layer.color) } as CSSProperties}
+            className={`lb-slide-wide lb-slide-accent lb-layer-slide ${dragging === i ? 'opacity-50' : ''}`}
           >
             <div className="lb-layer-head">
-              <span aria-hidden="true" className={i > 0 ? 'cursor-grab opacity-40' : 'opacity-0'}>
-                ⠿
+              <span
+                aria-hidden="true"
+                className={`lb-layer-no ${i === 0 ? 'lb-layer-no-base' : ''}`}
+              >
+                {i + 1}
               </span>
               <TextField
                 label={`Name of layer ${nameOf(i)}`}
@@ -249,73 +261,79 @@ export function LayersPanel({ state, send }: PanelProps) {
                 }
               />
             </div>
-            {/* Four slots in every card, so the buttons line up along the strip. */}
-            <div className="lb-layer-actions">
-              {i === 0 ? (
-                <span className="lb-layer-base badge badge-ghost badge-sm">base</span>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-xs btn-square"
-                    aria-label={`Move ${nameOf(i)} left`}
-                    disabled={i <= 1}
-                    onClick={() =>
-                      send({
-                        type: 'edit',
-                        edit: { kind: 'moveLayer', layer: layer.id, to: i - 1 },
-                      })
-                    }
-                  >
-                    ←
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-xs btn-square"
-                    aria-label={`Move ${nameOf(i)} right`}
-                    disabled={i === layers.length - 1}
-                    onClick={() =>
-                      send({
-                        type: 'edit',
-                        edit: { kind: 'moveLayer', layer: layer.id, to: i + 1 },
-                      })
-                    }
-                  >
-                    →
-                  </button>
-                </>
-              )}
-              <button
-                type="button"
-                className="btn btn-ghost btn-xs btn-square"
-                aria-label={`Duplicate ${nameOf(i)}`}
-                title="Duplicate"
-                onClick={() =>
-                  send({ type: 'edit', edit: { kind: 'duplicateLayer', layer: layer.id } })
-                }
-              >
-                ⧉
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost btn-xs btn-square"
-                aria-label={`Remove ${nameOf(i)}`}
-                title={i === 0 ? 'The base layer cannot be removed' : 'Remove'}
-                disabled={i === 0}
-                // A layer still in use is refused with the keys that use it.
-                onClick={() =>
-                  send({ type: 'edit', edit: { kind: 'removeLayer', layer: layer.id } })
-                }
-              >
-                ✕
-              </button>
+            <div className="lb-layer-foot">
+              <div className="lb-layer-moves">
+                {i === 0 ? (
+                  <span className="badge badge-ghost badge-sm">base</span>
+                ) : (
+                  <>
+                    <span aria-hidden="true" className="lb-layer-grip" title="Drag to move">
+                      ⠿
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-xs btn-square"
+                      aria-label={`Move ${nameOf(i)} left`}
+                      disabled={i <= 1}
+                      onClick={() =>
+                        send({
+                          type: 'edit',
+                          edit: { kind: 'moveLayer', layer: layer.id, to: i - 1 },
+                        })
+                      }
+                    >
+                      ←
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-xs btn-square"
+                      aria-label={`Move ${nameOf(i)} right`}
+                      disabled={i === layers.length - 1}
+                      onClick={() =>
+                        send({
+                          type: 'edit',
+                          edit: { kind: 'moveLayer', layer: layer.id, to: i + 1 },
+                        })
+                      }
+                    >
+                      →
+                    </button>
+                  </>
+                )}
+              </div>
+              <div className="lb-layer-edits">
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs btn-square"
+                  aria-label={`Duplicate ${nameOf(i)}`}
+                  title="Duplicate"
+                  onClick={() =>
+                    send({ type: 'edit', edit: { kind: 'duplicateLayer', layer: layer.id } })
+                  }
+                >
+                  ⧉
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs btn-square"
+                  aria-label={`Remove ${nameOf(i)}`}
+                  title={i === 0 ? 'The base layer cannot be removed' : 'Remove'}
+                  disabled={i === 0}
+                  // A layer still in use is refused with the keys that use it.
+                  onClick={() =>
+                    send({ type: 'edit', edit: { kind: 'removeLayer', layer: layer.id } })
+                  }
+                >
+                  ✕
+                </button>
+              </div>
             </div>
-          </Card>
+          </Slide>
         ))}
 
         <ConditionCards state={state} send={send} />
 
-        <Card className="lb-card-new">
+        <Slide className="lb-slide-new">
           <form
             className="flex w-full flex-col items-center gap-1.5"
             onSubmit={(e) => {
@@ -324,10 +342,10 @@ export function LayersPanel({ state, send }: PanelProps) {
               setNewLayer('');
             }}
           >
-            <span aria-hidden="true" className="lb-card-new-mark">
+            <span aria-hidden="true" className="lb-slide-new-mark">
               +
             </span>
-            <span className="lb-card-title">New layer</span>
+            <span className="lb-slide-title">New layer</span>
             <input
               aria-label="New layer name"
               placeholder={`Layer ${layers.length + 1}`}
@@ -339,7 +357,7 @@ export function LayersPanel({ state, send }: PanelProps) {
               Add layer
             </button>
           </form>
-        </Card>
+        </Slide>
 
         <NewConditionCard state={state} send={send} />
       </Carousel>
@@ -374,10 +392,19 @@ function ConditionCards({ state, send }: PanelProps) {
     // A layer a condition brings on comes on no other way: what reaches it stops doing so.
     const reaching = layerReachedFrom(state.layout, c.then, { tested: false });
     return (
-      // biome-ignore lint/suspicious/noArrayIndexKey: the place is what a card edits, and a key of its layers would change with each edit, the card losing focus
-      <Card key={i} className="lb-card-wide space-y-1">
+      <Slide
+        // biome-ignore lint/suspicious/noArrayIndexKey: the place is what a slide edits, and a key of its layers would change with each edit, the slide losing focus
+        key={i}
+        // The band is the colour of the layer it brings on.
+        style={
+          {
+            '--lb-accent': layerColourOf(placeOf(c.then), layers[placeOf(c.then)]?.color),
+          } as CSSProperties
+        }
+        className="lb-slide-wide lb-slide-accent space-y-1"
+      >
         <div className="flex items-center justify-between gap-2">
-          <span className="lb-card-title">Condition {i + 1}</span>
+          <span className="lb-slide-title">Condition {i + 1}</span>
           <button
             type="button"
             className="btn btn-ghost btn-xs btn-square"
@@ -428,7 +455,7 @@ function ConditionCards({ state, send }: PanelProps) {
             {reaching.join(', ')}.
           </p>
         )}
-      </Card>
+      </Slide>
     );
   });
 }
@@ -438,20 +465,20 @@ function NewConditionCard({ state, send }: PanelProps) {
   const free = freeCondition(state.layout);
   const noneFree = useId();
   return (
-    <Card className="lb-card-new">
+    <Slide className="lb-slide-new">
       <button
         type="button"
-        className="lb-card-new-button"
+        className="lb-slide-new-button"
         disabled={!free}
         aria-describedby={free ? undefined : noneFree}
         onClick={() =>
           free && send({ type: 'edit', edit: { kind: 'addConditionalLayer', ...free } })
         }
       >
-        <span aria-hidden="true" className="lb-card-new-mark">
+        <span aria-hidden="true" className="lb-slide-new-mark">
           +
         </span>
-        <span className="lb-card-title">New condition</span>
+        <span className="lb-slide-title">New condition</span>
       </button>
       {!free && (
         <p id={noneFree} className="text-[11px] opacity-70">
@@ -460,7 +487,7 @@ function NewConditionCard({ state, send }: PanelProps) {
             : 'Every layer besides the base one comes on by a condition or is waited for by one.'}
         </p>
       )}
-    </Card>
+    </Slide>
   );
 }
 
@@ -488,9 +515,9 @@ function OneShotDefaults({
       },
     });
   return (
-    <Card className="lb-card-wide">
+    <Slide className="lb-slide-wide">
       <fieldset className="space-y-1" aria-label={title}>
-        <legend className="lb-card-title">{title}</legend>
+        <legend className="lb-slide-title">{title}</legend>
         <label className="flex items-center gap-2 text-xs">
           <input
             type="checkbox"
@@ -526,7 +553,7 @@ function OneShotDefaults({
           ms
         </label>
       </fieldset>
-    </Card>
+    </Slide>
   );
 }
 
@@ -565,8 +592,8 @@ function GeometryBoard({ state, send }: PanelProps) {
     });
   return (
     // The card is as wide as the board, and the padding and border it adds.
-    <Card className="space-y-1" style={{ width: Math.max(width * unit, 110) + 22 }}>
-      <span className="lb-card-title">Keys</span>
+    <Slide className="space-y-1" style={{ width: Math.max(width * unit, 110) + 22 }}>
+      <span className="lb-slide-title">Keys</span>
       <fieldset
         className="lb-geo"
         aria-label="Keys of the board"
@@ -612,7 +639,7 @@ function GeometryBoard({ state, send }: PanelProps) {
           {stays}
         </p>
       )}
-    </Card>
+    </Slide>
   );
 }
 
@@ -626,9 +653,9 @@ export function GeometryPanel({ state, send }: PanelProps) {
   return (
     <div className="space-y-2 min-w-0">
       <Carousel label="Geometry">
-        <Card className="lb-card-wide space-y-1.5">
+        <Slide className="lb-slide-wide space-y-1.5">
           <label className="block space-y-1.5">
-            <span className="lb-card-title block">Preset</span>
+            <span className="lb-slide-title block">Preset</span>
             <select
               aria-label="Geometry preset"
               className="select select-sm select-bordered w-full"
@@ -665,13 +692,13 @@ export function GeometryPanel({ state, send }: PanelProps) {
               one.
             </span>
           </label>
-        </Card>
+        </Slide>
 
         <GeometryBoard state={state} send={send} />
 
-        <Card className="lb-card-wide space-y-1.5">
-          <span className="lb-card-title block">Space, shift and doubled letters</span>
-          <label className="lb-card-field">
+        <Slide className="lb-slide-wide space-y-1.5">
+          <span className="lb-slide-title block">Space, shift and doubled letters</span>
+          <label className="lb-slide-field">
             <span>Space key</span>
             <select
               aria-label="Space key"
@@ -688,7 +715,7 @@ export function GeometryPanel({ state, send }: PanelProps) {
               ))}
             </select>
           </label>
-          <label className="lb-card-field">
+          <label className="lb-slide-field">
             <span>Shift key</span>
             <select
               aria-label="Shift key"
@@ -706,7 +733,7 @@ export function GeometryPanel({ state, send }: PanelProps) {
               ))}
             </select>
           </label>
-          <label className="lb-card-field">
+          <label className="lb-slide-field">
             <span>Shift kind</span>
             <select
               aria-label="Shift kind"
@@ -723,7 +750,7 @@ export function GeometryPanel({ state, send }: PanelProps) {
               <option value="hold">hold</option>
             </select>
           </label>
-          <label className="lb-card-field">
+          <label className="lb-slide-field">
             <span>Doubled letters</span>
             <select
               aria-label="Doubled letters"
@@ -740,7 +767,7 @@ export function GeometryPanel({ state, send }: PanelProps) {
               <option value="tapTwice">tap twice</option>
             </select>
           </label>
-        </Card>
+        </Slide>
 
         <OneShotDefaults which="sl" title="One-shot layers" state={state} send={send} />
         <OneShotDefaults which="sk" title="One-shot keys" state={state} send={send} />
@@ -780,7 +807,7 @@ export function CombosPanel({ state, send }: PanelProps) {
     if (!card) return;
     revealInCarousel(card);
     if (lastOpen.current !== state.combo) {
-      card.querySelector<HTMLElement>('.lb-combo-card-pick')?.focus({ preventScroll: true });
+      card.querySelector<HTMLElement>('.lb-combo-slide-pick')?.focus({ preventScroll: true });
     }
     lastOpen.current = state.combo;
   }, [state.combo]);
@@ -800,15 +827,15 @@ export function CombosPanel({ state, send }: PanelProps) {
           return (
             // By place: a custom layout can hold two combos under one id.
             // biome-ignore lint/suspicious/noArrayIndexKey: the place is what a card edits
-            <Card key={i} current={open} className="lb-card-pick" data-combo={i}>
+            <Slide key={i} current={open} className="lb-combo-slide lb-slide-pick" data-combo={i}>
               <button
                 type="button"
-                className="lb-combo-card-pick"
+                className="lb-combo-slide-pick"
                 aria-label={`Edit ${name}`}
                 aria-pressed={open}
                 onClick={() => send({ type: 'selectCombo', combo: open ? null : i })}
               >
-                <span className="lb-combo-card-board">
+                <span className="lb-combo-slide-board">
                   <Keyboard
                     compiled={compiled}
                     layer={on}
@@ -817,27 +844,28 @@ export function CombosPanel({ state, send }: PanelProps) {
                     className="w-full"
                   />
                 </span>
-                <span className="lb-combo-card-out font-mono">
-                  {shown.tap || '·'}
-                  {shown.hold && <span className="opacity-60"> / {shown.hold}</span>}
-                </span>
-                <span className="lb-combo-card-keys font-mono">{name}</span>
-                <span className="lb-combo-card-layers" title={layersText}>
-                  {layersText}
+                <span className="lb-combo-slide-foot">
+                  <Keycap small symbol={shown.tap || '·'} hold={shown.hold || undefined} />
+                  <span className="lb-combo-slide-text">
+                    <span className="lb-combo-slide-keys font-mono">{name}</span>
+                    <span className="lb-combo-slide-layers" title={layersText}>
+                      {layersText}
+                    </span>
+                  </span>
                 </span>
               </button>
               <button
                 type="button"
-                className="btn btn-ghost btn-xs lb-card-remove"
+                className="btn btn-ghost btn-xs lb-slide-remove"
                 aria-label={`Remove ${name}`}
                 onClick={() => send({ type: 'edit', edit: { kind: 'removeCombo', combo: i } })}
               >
                 ✕
               </button>
-            </Card>
+            </Slide>
           );
         })}
-        <Card className="lb-card-new">
+        <Slide className="lb-slide-new">
           {picking ? (
             <div className="flex w-full flex-col gap-2">
               <output aria-label="Combo keys picked" className="font-mono text-xs">
@@ -874,16 +902,16 @@ export function CombosPanel({ state, send }: PanelProps) {
           ) : (
             <button
               type="button"
-              className="lb-card-new-button"
+              className="lb-slide-new-button"
               onClick={() => send({ type: 'comboPickStart' })}
             >
-              <span aria-hidden="true" className="lb-card-new-mark">
+              <span aria-hidden="true" className="lb-slide-new-mark">
                 +
               </span>
               <span>New combo</span>
             </button>
           )}
-        </Card>
+        </Slide>
       </Carousel>
       <CarouselHint>
         A combo types when its keys go down together. Pick one to edit it on the board below, or add
@@ -905,18 +933,21 @@ export function BehaviorsPanel({
   return <SpecialFeatureList state={state} send={send} onShow={onShow} />;
 }
 
-/** Each kind of special feature, in the order the panel lists them, and what a card of it says. */
-const FEATURE_GROUPS: [SpecialFeatureKind, string][] = [
-  ['adaptive', 'Adaptive key'],
-  ['alt_repeat', 'Alt repeat'],
-  ['macro', 'Macro'],
-  ['mod_morph', 'Mod morph'],
+/**
+ * Each kind of special feature, in the order the panel lists them, what a slide of it says, and the
+ * theme colour of its band.
+ */
+const FEATURE_GROUPS: [SpecialFeatureKind, string, string][] = [
+  ['adaptive', 'Adaptive key', 'primary'],
+  ['alt_repeat', 'Alt repeat', 'secondary'],
+  ['macro', 'Macro', 'accent'],
+  ['mod_morph', 'Mod morph', 'info'],
 ];
 
 /**
- * The layout's special features, a card each, kind by kind: every use names its layer and key, or
- * its combo, and picking it shows it on the board — the key selected on its layer, or the combo's
- * keys outlined.
+ * The layout's special features, a slide each, kind by kind, on a key that shows what the feature's
+ * key or combo types: every use names its layer and key, or its combo, and picking it shows it on
+ * the board — the key selected on its layer, or the combo's keys outlined.
  */
 function SpecialFeatureList({ state, send, onShow }: PanelProps & { onShow?: () => void }) {
   const features = useMemo(() => specialFeatures(state.layout), [state.layout]);
@@ -941,6 +972,20 @@ function SpecialFeatureList({ state, send, onShow }: PanelProps & { onShow?: () 
     send({ type: 'selectLayer', layer });
     send({ type: 'keyClick', keyId: f.key });
   };
+  /** What the feature's key, or its combo, types, as the board would draw it. */
+  const typedBy = (f: SpecialFeature) => {
+    let binding: Binding | undefined;
+    if (f.combo !== undefined) {
+      binding =
+        f.comboIndex === undefined ? undefined : state.layout.combos?.[f.comboIndex]?.binding;
+    } else {
+      const layer = f.layer === undefined ? undefined : compiled.layerIndex.get(f.layer);
+      const key = f.key === undefined ? undefined : compiled.keyIndex.get(f.key);
+      binding =
+        layer === undefined || key === undefined ? undefined : compiled.layers[layer].bindings[key];
+    }
+    return binding ? legend(compiled, binding) : null;
+  };
   const placeOf = (f: SpecialFeature) => {
     if (f.combo !== undefined) return `Combo ${f.combo}`;
     const layer = f.layer === undefined ? undefined : compiled.layerIndex.get(f.layer);
@@ -951,9 +996,9 @@ function SpecialFeatureList({ state, send, onShow }: PanelProps & { onShow?: () 
     <section className="space-y-2 min-w-0" aria-label="Special features">
       <Carousel label="Special behaviors">
         {features.length === 0 && (
-          <Card className="lb-card-wide text-xs">This layout has no special features.</Card>
+          <Slide className="lb-slide-wide text-xs">This layout has no special features.</Slide>
         )}
-        {FEATURE_GROUPS.flatMap(([kind, title]) =>
+        {FEATURE_GROUPS.flatMap(([kind, title, accent]) =>
           features
             .filter((f) => f.feature === kind)
             .map((f, i) => {
@@ -961,27 +1006,37 @@ function SpecialFeatureList({ state, send, onShow }: PanelProps & { onShow?: () 
                 f.combo === undefined &&
                 state.selected === f.key &&
                 compiled.layers[state.layer]?.id === f.layer;
+              const typed = typedBy(f);
               return (
-                <Card
+                <Slide
                   // biome-ignore lint/suspicious/noArrayIndexKey: one key can hold a feature twice
                   key={`${kind}-${f.layer}-${f.key}-${f.combo}-${f.label}-${i}`}
                   current={current}
-                  className="lb-card-wide lb-card-pick"
+                  style={{ '--lb-accent': `var(--color-${accent})` } as CSSProperties}
+                  className="lb-slide-wide lb-slide-accent lb-slide-pick"
                 >
                   <button
                     type="button"
-                    className="lb-card-button"
+                    className="lb-slide-button"
                     aria-current={current ? 'true' : undefined}
                     onClick={() => show(f)}
                   >
-                    <span className="font-mono text-xs">{placeOf(f)}</span>
-                    <span className="text-sm">{f.label}</span>
-                    {/* The kind, where the card's own name does not already say it. */}
-                    {f.label.toLowerCase() !== title.toLowerCase() && (
-                      <span className="lb-card-kind">{title}</span>
-                    )}
+                    <Keycap
+                      small
+                      aria-hidden="true"
+                      symbol={typed?.tap || '·'}
+                      hold={typed?.hold || undefined}
+                    />
+                    <span className="lb-behavior-text">
+                      <span className="font-mono text-xs opacity-70">{placeOf(f)}</span>
+                      <span className="lb-behavior-label">{f.label}</span>
+                      {/* The kind, where the name does not already say it. */}
+                      {f.label.toLowerCase() !== title.toLowerCase() && (
+                        <span className="lb-behavior-kind">{title}</span>
+                      )}
+                    </span>
                   </button>
-                </Card>
+                </Slide>
               );
             }),
         )}
@@ -995,8 +1050,8 @@ function SpecialFeatureList({ state, send, onShow }: PanelProps & { onShow?: () 
 }
 
 /**
- * Typing paths: which producer wins when a symbol can be typed more than one way. A card for each
- * such symbol, drawn on a key's shape at its left, with the ways it can be typed beside it.
+ * Typing paths: which producer wins when a symbol can be typed more than one way. A slide for each
+ * such symbol, drawn on a key at its left, with the ways it can be typed beside it.
  */
 export function PathsPanel({
   state,
@@ -1036,18 +1091,18 @@ export function PathsPanel({
     <div className="space-y-2 min-w-0">
       <Carousel label="Typing paths">
         {multi.length === 0 && (
-          <Card className="lb-card-wide text-xs">Every symbol has a single producer.</Card>
+          <Slide className="lb-slide-wide text-xs">Every symbol has a single producer.</Slide>
         )}
         {multi.map(([symbol]) => (
-          <Card key={symbol} className="lb-path-card">
-            <h3 className="lb-keycap font-mono">{symbol === ' ' ? '␣' : symbol}</h3>
+          <Slide key={symbol} className="lb-path-slide">
+            <Keycap as="h3" symbol={symbol === ' ' ? '␣' : symbol} />
             <ol className="lb-path-list">
               {pathsFor(symbol).map((entry, i, all) => {
                 const meta = producers[symbol]?.find((p) => p.id === entry.producer);
                 const enabled = entry.enabled ?? true;
-                const text = meta
-                  ? `${meta.kind} · ${entry.producer} · ${meta.cost} presses`
-                  : entry.producer;
+                const presses = meta ? `${meta.cost} ${meta.cost === 1 ? 'press' : 'presses'}` : '';
+                // The first of those in use is the way the analysis types it.
+                const first = enabled && all.findIndex((e) => e.enabled ?? true) === i;
                 return (
                   <li
                     key={entry.producer}
@@ -1067,7 +1122,7 @@ export function PathsPanel({
                       setDragging(null);
                       if (Number.isInteger(from)) reorder(symbol, from, i);
                     }}
-                    className={`flex items-center gap-1.5 text-xs rounded px-1 cursor-grab border border-transparent hover:border-base-300 ${
+                    className={`lb-path-row ${first ? 'lb-path-first' : ''} ${
                       enabled ? '' : 'opacity-40'
                     } ${dragging === `${symbol}:${i}` ? 'opacity-50' : ''}`}
                   >
@@ -1081,12 +1136,18 @@ export function PathsPanel({
                       checked={enabled}
                       onChange={() => toggle(symbol, entry.producer)}
                     />
-                    <span className="font-mono flex-1 min-w-0 truncate" title={text}>
-                      {text}
+                    <span
+                      className="font-mono flex-1 min-w-0 truncate"
+                      title={
+                        meta ? `${meta.kind} · ${entry.producer} · ${presses}` : entry.producer
+                      }
+                    >
+                      {entry.producer}
                     </span>
+                    {presses && <span className="lb-path-cost">{presses}</span>}
                     <button
                       type="button"
-                      className="btn btn-ghost btn-xs"
+                      className="btn btn-ghost btn-xs btn-square"
                       aria-label={`Move ${entry.producer} up`}
                       disabled={i === 0}
                       onClick={() => reorder(symbol, i, i - 1)}
@@ -1095,7 +1156,7 @@ export function PathsPanel({
                     </button>
                     <button
                       type="button"
-                      className="btn btn-ghost btn-xs"
+                      className="btn btn-ghost btn-xs btn-square"
                       aria-label={`Move ${entry.producer} down`}
                       disabled={i === all.length - 1}
                       onClick={() => reorder(symbol, i, i + 1)}
@@ -1106,7 +1167,7 @@ export function PathsPanel({
                 );
               })}
             </ol>
-          </Card>
+          </Slide>
         ))}
       </Carousel>
       <CarouselHint>
@@ -1173,7 +1234,7 @@ export function JsonPanel({ state, send }: PanelProps) {
       }}
     >
       <Carousel label="JSON">
-        <Card className="lb-card-wide space-y-2">
+        <Slide className="lb-slide-wide space-y-2">
           <Segment
             label="Format"
             options={[
@@ -1218,8 +1279,8 @@ export function JsonPanel({ state, send }: PanelProps) {
               </div>
             </>
           )}
-        </Card>
-        <Card className="lb-json-card">
+        </Slide>
+        <Slide className="lb-json-slide">
           {format === 'yaml' ? (
             <textarea
               wrap="off"
@@ -1237,7 +1298,7 @@ export function JsonPanel({ state, send }: PanelProps) {
               onChange={(e) => send({ type: 'jsonChange', text: e.target.value })}
             />
           )}
-        </Card>
+        </Slide>
       </Carousel>
       <CarouselHint>
         {format === 'yaml' ? (
