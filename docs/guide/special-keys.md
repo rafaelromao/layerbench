@@ -75,7 +75,8 @@ A **Layer** key turns another layer on in one of five ways:
 ## Repeat and alt repeat
 
 A **Repeat** key `⟳` presses the key before it again, so a doubled letter is typed with two
-fingers instead of one. It is ZMK's `&key_repeat`.
+fingers instead of one. It is ZMK's `&key_repeat`. Whether the analysis types a doubled letter with
+it or by tapping the key twice is the **Doubled letters** card of **Typing paths**.
 
 An **Alt repeat** key repeats as well, but after chosen keys it types something else: after `a`,
 say, it could type `o`. Each **branch** names the keys it follows and what it types after them. On

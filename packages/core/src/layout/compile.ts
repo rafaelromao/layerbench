@@ -1,6 +1,16 @@
 import { applyFingering, getGeometryPreset } from '../geometry/presets.js';
 import type { Finger, Geometry, GeometryKey, Hand } from '../geometry/types.js';
-import type { BehaviorDefaults, Binding, HostLocale, LayerColor, Layout, Mod } from './types.js';
+import { DOUBLED_WAYS, declaredWays, SHIFT_WAYS } from './rules.js';
+import type {
+  BehaviorDefaults,
+  Binding,
+  DoubledWay,
+  HostLocale,
+  LayerColor,
+  Layout,
+  Mod,
+  ShiftWay,
+} from './types.js';
 
 export interface CompiledLayer {
   idx: number;
@@ -60,6 +70,13 @@ export interface CompiledLayout {
   conditionalLayers: { ifMask: number; then: number }[];
   spaceKey: number;
   shiftKey: { key: number; kind: 'sk' | 'hold' } | null;
+  /**
+   * The ways a capital is typed that the layout declared in `typingRules`, those on, in the order
+   * they are tried; null when it left it to its shift key's kind, which is typed as it always was.
+   */
+  shiftWays: ShiftWay[] | null;
+  /** The same for a doubled letter: null when the layout left it to its `repeatPolicy`. */
+  doubledWays: DoubledWay[] | null;
   hostLocale: HostLocale;
   behaviorDefaults: ResolvedBehaviorDefaults;
   /** Bitmask of layers that are `then` layers of conditional layers. */
@@ -378,6 +395,8 @@ export function compileLayout(authored: Layout): CompiledLayout {
     conditionalLayers,
     spaceKey: spaceKey ?? 0,
     shiftKey,
+    shiftWays: declaredWays(layout.typingRules?.shift, SHIFT_WAYS),
+    doubledWays: declaredWays(layout.typingRules?.doubledLetters, DOUBLED_WAYS),
     hostLocale: layout.hostLocale ?? 'symbols',
     behaviorDefaults: defaults,
     conditionalThenMask,

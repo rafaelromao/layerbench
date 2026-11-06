@@ -5,6 +5,7 @@ import {
   type ActivatorDef,
   type Binding,
   type BindingKind,
+  type DoubledWay,
   MAX_CONDITION_LAYERS,
   type Mod,
   type ModChoice,
@@ -138,6 +139,12 @@ export class Simulator {
   private readonly modAvoid = new Set<number>();
   private readonly fold: boolean;
   private readonly repeatPolicy: 'repeat_key' | 'tap_twice';
+  /**
+   * The ways a doubled letter is typed that the layout declared, those on, in the order they are
+   * tried; null when it left it to its repeat policy. A policy given in the options is the one
+   * used, whatever the layout declared.
+   */
+  private readonly doubledWays: readonly DoubledWay[] | null;
 
   // accumulation
   private readonly presses = recordPresses();
@@ -187,6 +194,7 @@ export class Simulator {
     this.repeatPolicy =
       options.repeatPolicy ??
       (compiled.layout.repeatPolicy?.doubledLetters === 'tapTwice' ? 'tap_twice' : 'repeat_key');
+    this.doubledWays = options.repeatPolicy ? null : compiled.doubledWays;
     this.collectEvents = options.collectEvents ?? false;
     this.softSymbols = new Set(options.softSymbols ?? ['?', '!']);
     this.coverage = {
@@ -241,13 +249,37 @@ export class Simulator {
 
   // ---------------------------------------------------------------- planning
 
-  private candidatesFor(token: string): Producer[] {
-    const out: Producer[] = [];
+  /**
+   * The ways to type a token, in tiers: the first tier that works is used, and inside it the
+   * cheapest way. One tier, except for a doubled letter of a layout that declared how those are
+   * typed, which tries each way that is on in turn: the repeat key's, then tapping the key again.
+   */
+  private candidatesFor(token: string): Producer[][] {
     const last = this.machine.state.lastSymbol;
     const lastCmp = last === null ? null : this.fold ? last.toLowerCase() : last;
-    if (this.repeatPolicy === 'repeat_key' && lastCmp !== null && lastCmp === token) {
-      out.push(...repeatProducers(this.index));
+    const doubled = lastCmp !== null && lastCmp === token;
+    const [symbol, ordinary] = this.ordinaryFor(token);
+    const repeats = doubled ? repeatProducers(this.index) : [];
+    const ways = this.doubledWays;
+    if (ways === null) {
+      const list = this.repeatPolicy === 'repeat_key' ? [...repeats, ...ordinary] : ordinary;
+      return [this.applyUserOrder(symbol, list)];
     }
+    if (!doubled) return [this.applyUserOrder(symbol, ordinary)];
+    // A symbol with an order of its own keeps it for its doubled letter: the rule only says whether
+    // the repeat key is among the ways.
+    if ((this.userPaths.get(symbol)?.length ?? 0) > 0) {
+      const list = ways.includes('repeatKey') ? [...repeats, ...ordinary] : ordinary;
+      return [this.applyUserOrder(symbol, list)];
+    }
+    return ways
+      .map((way) => (way === 'repeatKey' ? repeats : ordinary))
+      .filter((tier) => tier.length > 0);
+  }
+
+  /** The symbol a token's typing paths are kept under, and the producers that type it directly. */
+  private ordinaryFor(token: string): [symbol: string, producers: Producer[]] {
+    const out: Producer[] = [];
     const base = this.index.bySymbol.get(token) ?? [];
     if (!this.fold) {
       const lower = token.toLowerCase();
@@ -265,11 +297,11 @@ export class Simulator {
             cost: p.cost + 1,
           });
         }
-        return this.applyUserOrder(lower, out);
+        return [lower, out];
       }
     }
     out.push(...base);
-    return this.applyUserOrder(token, out);
+    return [token, out];
   }
 
   private applyUserOrder(symbol: string, list: Producer[]): Producer[] {
@@ -584,62 +616,81 @@ export class Simulator {
     const holdable = (pos: number) => free(pos) && !(keys[pos].thumb && busy.has(keys[pos].hand));
     const isShift = mod === 'LSHIFT' || mod === 'RSHIFT';
     const sk = this.compiled.shiftKey;
-    if (isShift && sk && (sk.kind === 'hold' ? holdable(sk.key) : free(sk.key))) {
+    /** The shift key, if it does what `kind` says on this layer: tapped as a sticky Shift, or held. */
+    const shiftKeyAs = (kind: 'sk' | 'hold'): boolean => {
+      if (!sk || !(kind === 'hold' ? holdable(sk.key) : free(sk.key))) return false;
       const r = m.resolve(sk.key);
-      const peeled = peelBinding(m, r.binding, sk.kind === 'hold' ? 'hold' : 'tap');
+      const peeled = peelBinding(m, r.binding, kind === 'hold' ? 'hold' : 'tap');
       if (
-        sk.kind === 'sk' &&
+        kind === 'sk' &&
         (peeled.kind === 'sk' || peeled.kind === 'mod_morph' || peeled.kind === 'adaptive')
       ) {
         events.push(...m.perform({ type: 'tap', pos: sk.key }));
         return true;
       }
-      if (sk.kind === 'hold' && peeled.kind === 'mod') {
+      if (kind === 'hold' && peeled.kind === 'mod') {
         events.push(...m.perform({ type: 'hold_press', pos: sk.key }));
         holdsOut.push(sk.key);
         return true;
       }
       // The shift key is no shift on this layer: another key, or a combo, may give it.
-    }
-    // Search active layers for a sticky or held modifier key, any modifier: a thumb first, as a
-    // layout's shift key is one, then a finger on the other hand from the keys it is held for, as a
-    // home row mod is held by the hand that is not typing.
-    const typing = new Set([...heldFor].map((pos) => positions[pos].hand));
-    const pass = (pos: number) => (keys[pos].thumb ? 0 : typing.has(positions[pos].hand) ? 2 : 1);
-    for (let at = 0; at < 3; at++) {
-      for (let pos = 0; pos < keys.length; pos++) {
-        if (!free(pos) || pass(pos) !== at) continue;
-        const r = m.resolve(pos);
-        const tapPeeled = peelBinding(m, r.binding, 'tap');
-        if (tapPeeled.kind === 'sk' && tapPeeled.mod === mod) {
-          events.push(...m.perform({ type: 'tap', pos }));
-          return true;
+      return false;
+    };
+    /**
+     * Search active layers for a sticky or held modifier key, any modifier: a thumb first, as a
+     * layout's shift key is one, then a finger on the other hand from the keys it is held for, as a
+     * home row mod is held by the hand that is not typing. `sticky` and `held` say which of the two
+     * ways it may be given.
+     */
+    const search = (sticky: boolean, held: boolean): boolean => {
+      const typing = new Set([...heldFor].map((pos) => positions[pos].hand));
+      const pass = (pos: number) => (keys[pos].thumb ? 0 : typing.has(positions[pos].hand) ? 2 : 1);
+      for (let at = 0; at < 3; at++) {
+        for (let pos = 0; pos < keys.length; pos++) {
+          if (!free(pos) || pass(pos) !== at) continue;
+          const r = m.resolve(pos);
+          const tapPeeled = peelBinding(m, r.binding, 'tap');
+          if (sticky && tapPeeled.kind === 'sk' && tapPeeled.mod === mod) {
+            events.push(...m.perform({ type: 'tap', pos }));
+            return true;
+          }
+          const holdPeeled = peelBinding(m, r.binding, 'hold');
+          // A key that holds others with it would hold them for the capital too.
+          if (
+            held &&
+            holdable(pos) &&
+            holdPeeled.kind === 'mod' &&
+            holdPeeled.mod === mod &&
+            !holdPeeled.also?.length
+          ) {
+            events.push(...m.perform({ type: 'hold_press', pos }));
+            holdsOut.push(pos);
+            return true;
+          }
         }
-        const holdPeeled = peelBinding(m, r.binding, 'hold');
-        // A key that holds others with it would hold them for the capital too.
-        if (
-          holdable(pos) &&
-          holdPeeled.kind === 'mod' &&
-          holdPeeled.mod === mod &&
-          !holdPeeled.also?.length
-        ) {
-          events.push(...m.perform({ type: 'hold_press', pos }));
-          holdsOut.push(pos);
+      }
+      // Then a typing combo that taps a sticky modifier. A held chord is let go in the same action,
+      // so a combo can give a modifier only as a one-shot.
+      if (!sticky) return false;
+      for (const c of this.compiled.combos) {
+        if (!m.comboAvailable(c.idx)) continue;
+        const peeled = peelBinding(m, c.binding, 'tap');
+        if (peeled.kind === 'sk' && peeled.mod === mod) {
+          events.push(...m.perform({ type: 'chord', combo: c.idx }));
           return true;
         }
       }
+      return false;
+    };
+    // A layout that declared how a capital is typed tries each way that is on, in its order, on the
+    // shift key and then on every other key, before the next way. Otherwise the shift key's kind
+    // goes first, and then any key, as a layout always was typed.
+    const declared = isShift ? this.compiled.shiftWays : null;
+    if (declared) {
+      return declared.some((way) => shiftKeyAs(way) || search(way === 'sk', way === 'hold'));
     }
-    // Then a typing combo that taps a sticky modifier. A held chord is let go in the same action,
-    // so a combo can give a modifier only as a one-shot.
-    for (const c of this.compiled.combos) {
-      if (!m.comboAvailable(c.idx)) continue;
-      const peeled = peelBinding(m, c.binding, 'tap');
-      if (peeled.kind === 'sk' && peeled.mod === mod) {
-        events.push(...m.perform({ type: 'chord', combo: c.idx }));
-        return true;
-      }
-    }
-    return false;
+    if (isShift && sk && shiftKeyAs(sk.kind)) return true;
+    return search(true, true);
   }
 
   /**
@@ -1027,16 +1078,16 @@ export class Simulator {
   private typeToken(token: string): boolean {
     this.standIns.clear();
     const handSet = (this.userPaths.get(this.pathSymbol(token))?.length ?? 0) > 0;
-    let cands = this.candidatesFor(token);
+    let tiers = this.candidatesFor(token);
     for (let attempt = 0; attempt < 2; attempt++) {
-      const events = handSet ? this.firstThatWorks(cands, token) : this.cheapest(cands, token);
+      const events = this.pick(tiers, token, handSet);
       if (events) {
         this.addToWord(events);
         return true;
       }
       if (this.plannerHolds.size === 0) break;
       this.addToWord(this.releaseHolds());
-      cands = this.candidatesFor(token);
+      tiers = this.candidatesFor(token);
     }
     // Try the pending sentence capital first, then the one-shot layers: firmware lets both
     // expire. A layer left armed by a macro can hide a perfectly reachable base letter behind
@@ -1049,8 +1100,7 @@ export class Simulator {
       state.sentencePending = false;
       if (timeout === 'layers') state.oneShots = [];
       this.machine.recomputeMask();
-      cands = this.candidatesFor(token);
-      const events = handSet ? this.firstThatWorks(cands, token) : this.cheapest(cands, token);
+      const events = this.pick(this.candidatesFor(token), token, handSet);
       if (events) {
         this.addToWord(events);
         return true;
@@ -1059,6 +1109,18 @@ export class Simulator {
       this.machine.recomputeMask();
     }
     return false;
+  }
+
+  /**
+   * Type the token by the first tier of ways that works: in a symbol's own order when it has one,
+   * else the cheapest way of the tier.
+   */
+  private pick(tiers: Producer[][], token: string, handSet: boolean): KeyEvent[] | null {
+    for (const tier of tiers) {
+      const events = handSet ? this.firstThatWorks(tier, token) : this.cheapest(tier, token);
+      if (events) return events;
+    }
+    return null;
   }
 
   /** The symbol a token's typing path is kept under, as `candidatesFor` looks it up. */

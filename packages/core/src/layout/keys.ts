@@ -1,6 +1,7 @@
 import { buildGeometry } from './compile.js';
 import { heldPart, partOf } from './parts.js';
-import type { Binding, Layout, Mod } from './types.js';
+import { SHIFT_WAYS } from './rules.js';
+import type { Binding, Layout, Mod, ShiftWay } from './types.js';
 
 /** Whether a modifier is a Shift, and nothing else held with it. */
 const isShift = (b: { mod: Mod; also?: Mod[] }) =>
@@ -25,6 +26,24 @@ function shiftKindOf(b: Binding | undefined, thumb: boolean): 'sk' | 'hold' | nu
   const held = thumb ? heldPart(b) : null;
   if (held?.kind === 'mod' && isShift(held)) return 'hold';
   return null;
+}
+
+/**
+ * The ways some key of the layout gives Shift, on any layer: a sticky Shift tapped, or one held, a
+ * thumb's or a home row mod's. What a rule for how a capital is typed can choose between.
+ */
+export function shiftWaysOffered(layout: Pick<Layout, 'layers'>): ShiftWay[] {
+  const offered = new Set<ShiftWay>();
+  for (const layer of layout.layers) {
+    for (const b of Object.values(layer.bindings)) {
+      const tap = partOf(b);
+      if (tap.kind === 'sk' && isShift(tap)) offered.add('sk');
+      if (tap.kind === 'mod' && isShift(tap)) offered.add('hold');
+      const held = heldPart(b);
+      if (held?.kind === 'mod' && isShift(held)) offered.add('hold');
+    }
+  }
+  return SHIFT_WAYS.filter((w) => offered.has(w));
 }
 
 /**

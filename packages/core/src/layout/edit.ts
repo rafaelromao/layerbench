@@ -14,15 +14,19 @@ import {
   setKeyBinding,
   swapKeys,
 } from './ops.js';
+import { DOUBLED_WAYS, SHIFT_WAYS, wholeRule } from './rules.js';
 import { isLayoutLink, NOT_A_LINK, safeParseLayout } from './schema.js';
 import {
   type BehaviorDefaults,
   type Binding,
   type ConditionalLayerDef,
+  type DoubledWay,
   type GeometryRef,
   type LayerColor,
   type Layout,
   MAX_CONDITION_LAYERS,
+  type RuleWay,
+  type ShiftWay,
   type TypingPathEntry,
 } from './types.js';
 
@@ -84,10 +88,11 @@ export type Edit =
   /** One symbol's whole list of producers, in order. */
   | { kind: 'setTypingPath'; symbol: string; entries: TypingPathEntry[] }
   /**
-   * How the shift key is used, and how a doubled letter is typed. Which keys are space and shift is
-   * not set: `withDerivedKeys` follows the keys.
+   * How a capital is typed, or a doubled letter: the ways of the rule, in the order they are tried,
+   * each on or off. Which keys are space and shift is not set: `withDerivedKeys` follows the keys.
    */
-  | { kind: 'setKeys'; shiftKind?: 'sk' | 'hold'; repeat?: 'repeatKey' | 'tapTwice' }
+  | { kind: 'setTypingRule'; rule: 'shift'; entries: RuleWay<ShiftWay>[] }
+  | { kind: 'setTypingRule'; rule: 'doubledLetters'; entries: RuleWay<DoubledWay>[] }
   | {
       kind: 'setMeta';
       name?: string;
@@ -627,14 +632,16 @@ const handlers: Handlers = {
     return { layout: { ...layout, typingPaths } };
   },
 
-  setKeys(layout, edit) {
-    const shift = layout.keys.shift;
-    const keys =
-      edit.shiftKind && shift
-        ? { ...layout.keys, shift: { ...shift, kind: edit.shiftKind } }
-        : layout.keys;
-    const repeatPolicy = edit.repeat ? { doubledLetters: edit.repeat } : layout.repeatPolicy;
-    return { layout: { ...layout, keys, repeatPolicy } };
+  setTypingRule(layout, edit) {
+    const entries =
+      edit.rule === 'shift'
+        ? wholeRule(edit.entries as RuleWay<ShiftWay>[], SHIFT_WAYS)
+        : wholeRule(edit.entries as RuleWay<DoubledWay>[], DOUBLED_WAYS);
+    // With every way off nothing types a capital, or a doubled letter, by the rule.
+    if (!entries?.some((e) => e.enabled)) return { refused: 'At least one way has to stay on.' };
+    if (sameValue(entries, wholeRule(layout.typingRules?.[edit.rule] as RuleWay<string>[], [])))
+      return same(layout);
+    return { layout: { ...layout, typingRules: { ...layout.typingRules, [edit.rule]: entries } } };
   },
 
   setMeta(layout, edit) {

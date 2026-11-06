@@ -132,4 +132,25 @@ describe('Ranking a layout without some of its features', () => {
     const tables = simulate(compileLayout(layout), text, OPTS).tables;
     expect(tables.stats.repeat_presses).toBe(0);
   });
+
+  it('drops a declared rule for doubled letters with the repeat key, and keeps the one for shift', () => {
+    const both: Layout = {
+      ...magicRomak,
+      typingRules: {
+        shift: [{ way: 'hold' }, { way: 'sk' }],
+        doubledLetters: [{ way: 'repeatKey' }, { way: 'tapTwice' }],
+      },
+    };
+    const layout = withoutFeatures(both, ['repeat']);
+    expect(layout.typingRules).toEqual({ shift: both.typingRules?.shift });
+    // With only that rule declared, nothing is left declared.
+    const alone = withoutFeatures(
+      { ...magicRomak, typingRules: { doubledLetters: both.typingRules?.doubledLetters } },
+      ['repeat'],
+    );
+    expect(alone.typingRules).toBeUndefined();
+    expect(compileLayout(alone).doubledWays).toBeNull();
+    // The other features leave the rules as they are.
+    expect(withoutFeatures(both, ['combos']).typingRules).toBe(both.typingRules);
+  });
 });

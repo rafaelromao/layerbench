@@ -844,23 +844,79 @@ describe('typing paths, typing rules and details', () => {
     expect(o.layout.typingPaths).toEqual({ a: entries });
   });
 
-  it("sets the shift key's kind once the layout has one, and how doubled letters are typed", () => {
+  it('has the shift key the key that shifts, which no one sets', () => {
     const shifted = landed(layout, {
       kind: 'bind',
       layer: 'base',
       keys: ['R1'],
       binding: { kind: 'sk', mod: 'LSHIFT' },
     }).layout;
-    // The shift key is the one that shifts: no one sets it.
     expect(shifted.keys.shift).toEqual({ key: 'R1', kind: 'sk' });
-    const held = landed(shifted, { kind: 'setKeys', shiftKind: 'hold' }).layout;
-    expect(held.keys.shift).toEqual({ key: 'R1', kind: 'hold' });
-    // Without a shift key there is no kind to set.
-    expect(
-      landed(layout, { kind: 'setKeys', shiftKind: 'hold' }).layout.keys.shift,
-    ).toBeUndefined();
-    const repeat = landed(layout, { kind: 'setKeys', repeat: 'tapTwice' }).layout;
-    expect(repeat.repeatPolicy).toEqual({ doubledLetters: 'tapTwice' });
+  });
+
+  it('declares how a capital is typed: its ways, in the order they are tried, each on or off', () => {
+    const o = landed(layout, {
+      kind: 'setTypingRule',
+      rule: 'shift',
+      entries: [{ way: 'hold' }, { way: 'sk', enabled: false }],
+    });
+    // Each way carries its own `enabled`, and what the entries leave out is one more way, on.
+    expect(o.layout.typingRules).toEqual({
+      shift: [
+        { way: 'hold', enabled: true },
+        { way: 'sk', enabled: false },
+      ],
+    });
+    expect(o.compiled.shiftWays).toEqual(['hold']);
+    expect(o.compiled.doubledWays).toBeNull();
+    // A way named once, alone, leaves the other after it, on.
+    const alone = landed(layout, {
+      kind: 'setTypingRule',
+      rule: 'shift',
+      entries: [{ way: 'hold' }],
+    });
+    expect(alone.compiled.shiftWays).toEqual(['hold', 'sk']);
+    // A layout that declares nothing has none compiled: it is typed as it always was.
+    expect(compileLayout(layout).shiftWays).toBeNull();
+    expect(compileLayout(layout).doubledWays).toBeNull();
+  });
+
+  it('declares how doubled letters are typed, apart from the capitals', () => {
+    const o = landed(layout, {
+      kind: 'setTypingRule',
+      rule: 'doubledLetters',
+      entries: [{ way: 'tapTwice' }, { way: 'repeatKey' }],
+    });
+    expect(o.layout.typingRules).toEqual({
+      doubledLetters: [
+        { way: 'tapTwice', enabled: true },
+        { way: 'repeatKey', enabled: true },
+      ],
+    });
+    expect(o.compiled.doubledWays).toEqual(['tapTwice', 'repeatKey']);
+    const both = landed(o.layout, {
+      kind: 'setTypingRule',
+      rule: 'shift',
+      entries: [{ way: 'sk' }, { way: 'hold' }],
+    });
+    expect(Object.keys(both.layout.typingRules ?? {})).toEqual(['doubledLetters', 'shift']);
+  });
+
+  it('keeps one way on, and takes the same rule again as no change', () => {
+    const refused = applyEdit(layout, {
+      kind: 'setTypingRule',
+      rule: 'doubledLetters',
+      entries: [
+        { way: 'repeatKey', enabled: false },
+        { way: 'tapTwice', enabled: false },
+      ],
+    });
+    expect(refused.status).toBe('refused');
+    const entries = [{ way: 'hold' as const }, { way: 'sk' as const }];
+    const once = landed(layout, { kind: 'setTypingRule', rule: 'shift', entries }).layout;
+    expect(applyEdit(once, { kind: 'setTypingRule', rule: 'shift', entries }).status).toBe(
+      'unchanged',
+    );
   });
 
   it('moves the space key to the key that types a space, once its own does not', () => {

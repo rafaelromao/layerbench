@@ -125,57 +125,192 @@ describe('the Layers carousel', () => {
 });
 
 describe('the Typing paths carousel', () => {
-  it('begins with how a capital and a doubled letter are typed, ahead of the characters', async () => {
-    const send = vi.fn();
-    // A layout with a shift key, so there is a kind of shift to set.
-    const shifted: Layout = {
-      ...layout,
-      keys: { ...layout.keys, shift: { key: 'R1', kind: 'sk' } },
-      layers: [
-        {
-          ...layout.layers[0],
-          bindings: { ...layout.layers[0].bindings, R1: { kind: 'sk', mod: 'LSHIFT' } },
+  /** A layout with a sticky Shift on R1, a Shift held on L1, and so both ways to shift. */
+  const shifted: Layout = {
+    ...layout,
+    keys: { ...layout.keys, shift: { key: 'R1', kind: 'sk' } },
+    layers: [
+      {
+        ...layout.layers[0],
+        bindings: {
+          ...layout.layers[0].bindings,
+          R1: { kind: 'sk', mod: 'LSHIFT' },
+          L1: { kind: 'mod', mod: 'LSHIFT' },
         },
-        ...layout.layers.slice(1),
-      ],
-    };
+      },
+      ...layout.layers.slice(1),
+    ],
+  };
+  const withRepeat = { ...producers, '': [{ id: 'repeat:base/L1', kind: 'repeat', cost: 1 }] };
+  const rule = (name: string) => within(screen.getByRole('list', { name }));
+  const names = (name: string) =>
+    rule(name)
+      .getAllByRole('listitem')
+      .map((li) => li.querySelector('.truncate')?.textContent);
+
+  it('begins with how a capital and a doubled letter are typed, each a slide like the characters', () => {
     const s = initialState(shifted, compileLayout(shifted));
-    render(<PathsPanel state={s} send={send} producers={producers} />);
-    const items = within(screen.getByRole('list', { name: 'Typing paths' })).getAllByRole(
-      'listitem',
-    );
+    render(<PathsPanel state={s} send={vi.fn()} producers={withRepeat} />);
+    // The slides of the strip: the ways inside each are list items too.
+    const items = [...screen.getByRole('list', { name: 'Typing paths' }).children] as HTMLElement[];
     expect(items[0]).toHaveTextContent('Shift kind');
     expect(items[1]).toHaveTextContent('Doubled letters');
-    const user = userEvent.setup();
-    // A layout that says nothing about repeats has the repeat key.
-    expect(screen.getByLabelText('Shift kind')).toHaveValue('sk');
-    expect(screen.getByLabelText('Doubled letters')).toHaveValue('repeatKey');
-    await user.selectOptions(screen.getByLabelText('Shift kind'), 'hold');
-    expect(send).toHaveBeenLastCalledWith({
-      type: 'edit',
-      edit: { kind: 'setKeys', shiftKind: 'hold' },
-    });
-    await user.selectOptions(screen.getByLabelText('Doubled letters'), 'tapTwice');
-    expect(send).toHaveBeenLastCalledWith({
-      type: 'edit',
-      edit: { kind: 'setKeys', repeat: 'tapTwice' },
-    });
+    // A key at the left of each, the ways to type it beside it, as for every character.
+    for (const [item, symbol] of [
+      [items[0], '⇧'],
+      [items[1], 'aa'],
+    ] as const) {
+      const key = within(item).getByRole('heading');
+      expect(key).toHaveClass('lb-keycap');
+      expect(key).toHaveTextContent(symbol);
+      expect(item.firstElementChild).toBe(key);
+    }
+    // Both ways of each are on, in the order the layout has always tried them.
+    expect(names('Shift kind')).toEqual(['Sticky (one-shot)', 'Hold']);
+    expect(names('Doubled letters')).toEqual(['Repeat key', 'Tap twice']);
+    expect(
+      rule('Shift kind')
+        .getAllByRole('checkbox')
+        .map((c) => (c as HTMLInputElement).checked),
+    ).toEqual([true, true]);
+    expect(
+      rule('Doubled letters')
+        .getAllByRole('checkbox')
+        .map((c) => (c as HTMLInputElement).checked),
+    ).toEqual([true, true]);
   });
 
-  it('has no kind of shift to set on a layout with no shift key, and says why', () => {
-    render(<PathsPanel state={state} send={vi.fn()} producers={producers} />);
-    const select = screen.getByLabelText('Shift kind');
-    expect(select).toBeDisabled();
-    // The reason is the select's description, for whoever cannot see the card.
-    expect(select).toHaveAccessibleDescription(/no shift key/);
-    expect(screen.getByLabelText('Doubled letters')).toBeEnabled();
+  it('marks the first way that is on, and that some key gives, as the one in use', () => {
+    const s = initialState(shifted, compileLayout(shifted));
+    render(<PathsPanel state={s} send={vi.fn()} producers={withRepeat} />);
+    const used = (name: string) =>
+      rule(name)
+        .getAllByRole('listitem')
+        .filter((li) => li.classList.contains('lb-path-first'))
+        .map((li) => li.querySelector('.truncate')?.textContent);
+    expect(used('Shift kind')).toEqual(['Sticky (one-shot)']);
+    expect(used('Doubled letters')).toEqual(['Repeat key']);
+  });
+
+  it('orders the ways of a rule with the arrows, and turns one on or off, a whole rule each time', async () => {
+    const send = vi.fn();
+    const s = initialState(shifted, compileLayout(shifted));
+    render(<PathsPanel state={s} send={send} producers={withRepeat} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Move Hold up' }));
+    expect(send).toHaveBeenLastCalledWith({
+      type: 'edit',
+      edit: {
+        kind: 'setTypingRule',
+        rule: 'shift',
+        entries: [
+          { way: 'hold', enabled: true },
+          { way: 'sk', enabled: true },
+        ],
+      },
+    });
+    await user.click(screen.getByRole('checkbox', { name: 'Use Repeat key' }));
+    expect(send).toHaveBeenLastCalledWith({
+      type: 'edit',
+      edit: {
+        kind: 'setTypingRule',
+        rule: 'doubledLetters',
+        entries: [
+          { way: 'repeatKey', enabled: false },
+          { way: 'tapTwice', enabled: true },
+        ],
+      },
+    });
+    // The first and last way have nowhere to move to in their direction.
+    expect(screen.getByRole('button', { name: 'Move Sticky (one-shot) up' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Move Tap twice down' })).toBeDisabled();
+  });
+
+  it('reads a declared rule, and moves the mark to the next way when the first is off', () => {
+    const declared: Layout = {
+      ...shifted,
+      typingRules: {
+        shift: [{ way: 'hold' }, { way: 'sk' }],
+        doubledLetters: [{ way: 'repeatKey', enabled: false }, { way: 'tapTwice' }],
+      },
+    };
+    render(
+      <PathsPanel
+        state={initialState(declared, compileLayout(declared))}
+        send={vi.fn()}
+        producers={withRepeat}
+      />,
+    );
+    expect(names('Shift kind')).toEqual(['Hold', 'Sticky (one-shot)']);
+    const marked = (name: string) =>
+      rule(name)
+        .getAllByRole('listitem')
+        .filter((li) => li.classList.contains('lb-path-first'))
+        .map((li) => li.querySelector('.truncate')?.textContent);
+    expect(marked('Shift kind')).toEqual(['Hold']);
+    expect(marked('Doubled letters')).toEqual(['Tap twice']);
+  });
+
+  it('keeps one way on: the last one cannot be turned off', () => {
+    const declared: Layout = {
+      ...shifted,
+      typingRules: { shift: [{ way: 'sk' }, { way: 'hold', enabled: false }] },
+    };
+    render(
+      <PathsPanel
+        state={initialState(declared, compileLayout(declared))}
+        send={vi.fn()}
+        producers={withRepeat}
+      />,
+    );
+    expect(screen.getByRole('checkbox', { name: 'Use Sticky (one-shot)' })).toBeDisabled();
+    expect(screen.getByRole('checkbox', { name: 'Use Hold' })).toBeEnabled();
+    // The rule with both on can lose either.
+    expect(screen.getByRole('checkbox', { name: 'Use Repeat key' })).toBeEnabled();
+  });
+
+  it('says which way no key gives, and moves the mark past it', () => {
+    // Only a sticky Shift: nothing holds one. And no repeat key among the producers read.
+    const sticky: Layout = {
+      ...shifted,
+      layers: [
+        {
+          ...shifted.layers[0],
+          bindings: { ...shifted.layers[0].bindings, L1: { kind: 'kp', symbol: 'x' } },
+        },
+        ...shifted.layers.slice(1),
+      ],
+    };
+    render(
+      <PathsPanel
+        state={initialState(sticky, compileLayout(sticky))}
+        send={vi.fn()}
+        producers={producers}
+      />,
+    );
+    const hold = rule('Shift kind').getAllByRole('listitem')[1];
+    expect(hold).toHaveTextContent('no key does this');
+    const repeat = rule('Doubled letters').getAllByRole('listitem')[0];
+    expect(repeat).toHaveTextContent('no key does this');
+    const marked = rule('Doubled letters')
+      .getAllByRole('listitem')
+      .filter((li) => li.classList.contains('lb-path-first'));
+    expect(marked.map((li) => li.querySelector('.truncate')?.textContent)).toEqual(['Tap twice']);
+  });
+
+  it('says so, on a layout with no key that gives Shift, and still lists the ways', () => {
+    render(<PathsPanel state={state} send={vi.fn()} producers={withRepeat} />);
+    expect(rule('Shift kind').getAllByRole('listitem')).toHaveLength(2);
+    expect(screen.getByText(/No key taps or holds Shift/)).toBeInTheDocument();
+    expect(screen.getAllByText('no key does this')).toHaveLength(2);
   });
 
   it('draws each character on a key at the left of its slide', () => {
     render(<PathsPanel state={state} send={vi.fn()} producers={producers} />);
-    const cards = within(screen.getByRole('list', { name: 'Typing paths' })).getAllByRole(
-      'heading',
-    );
+    const cards = within(screen.getByRole('list', { name: 'Typing paths' }))
+      .getAllByRole('heading')
+      // The two rules are slides of the same shape; the characters follow them.
+      .slice(2);
     expect(cards.map((h) => h.textContent)).toEqual(['␣', 'a']);
     for (const key of cards) {
       expect(key).toHaveClass('lb-keycap');

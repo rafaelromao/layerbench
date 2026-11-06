@@ -5,6 +5,7 @@ import { FIXTURE_MIXED } from '../fixtures/index.js';
 import { compileLayout } from '../layout/compile.js';
 import { importTextLayout } from '../layout/text.js';
 import type { Binding, Layout, Mod } from '../layout/types.js';
+import { withoutFeatures } from '../layout/without.js';
 import { CLASSIC_LAYOUTS } from '../layouts/classic.js';
 import { BUNDLED_LAYOUTS, bundledLayout, withHomeRowMods } from '../layouts/index.js';
 import { explain, simulate } from './resolver.js';
@@ -656,6 +657,151 @@ describe('a capital with home row mods and no Shift key of its own', () => {
       }
     },
   );
+});
+
+describe('how a layout that declares its rules is typed', () => {
+  const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
+  const model = { caseMode: 'model' as const };
+  const held = (t: ReturnType<typeof trace>) =>
+    t.steps.filter((s) => s.kind === 'hold_press').map((s) => s.key);
+  /** A board with two ways to shift: R1 taps a sticky Shift, and L1 holds one. */
+  const twoShifts = (
+    extra: Partial<Layout> = {},
+    l1: Binding = { kind: 'mod', mod: 'LSHIFT' },
+  ): Layout => ({
+    format: 'layerbench/layout@1',
+    name: 'Two Shifts',
+    hostLocale: 'symbols',
+    geometry: { preset: '3x5+2' },
+    keys: { space: 'L0', shift: { key: 'R1', kind: 'sk' } },
+    layers: [
+      {
+        id: 'base',
+        bindings: {
+          L0: kp(' '),
+          L1: l1,
+          R1: { kind: 'sk', mod: 'LSHIFT' },
+          LHM: kp('a'),
+          RHM: kp('e'),
+        },
+      },
+    ],
+    ...extra,
+  });
+
+  it('presses its shift key as its kind says, and any other key after it, when it declares no rule', () => {
+    const t = trace(twoShifts(), 'A', model);
+    expect(t).toMatchObject({ out: 'A', keys: ['R1', 'LHM'] });
+    expect(held(t)).toEqual([]);
+    // A kind of hold, with a key that only taps: the hold on another key is used.
+    const hold = twoShifts({ keys: { space: 'L0', shift: { key: 'R1', kind: 'hold' } } });
+    const t2 = trace(hold, 'A', model);
+    expect(t2.keys).toEqual(['L1', 'LHM']);
+    expect(held(t2)).toEqual(['L1']);
+  });
+
+  it('tries the ways it declares in their order, on the shift key and on every other key', () => {
+    const holdFirst = twoShifts({ typingRules: { shift: [{ way: 'hold' }, { way: 'sk' }] } });
+    const t = trace(holdFirst, 'A', model);
+    // The shift key only taps, so the hold goes to the key that holds, before the tap is tried.
+    expect(t).toMatchObject({ out: 'A', keys: ['L1', 'LHM'] });
+    expect(held(t)).toEqual(['L1']);
+    const stickyFirst = twoShifts({ typingRules: { shift: [{ way: 'sk' }, { way: 'hold' }] } });
+    expect(trace(stickyFirst, 'A', model)).toMatchObject({ out: 'A', keys: ['R1', 'LHM'] });
+  });
+
+  it('falls to the next way when the first is on no key, and uses none that is off', () => {
+    const noHold = twoShifts(
+      { typingRules: { shift: [{ way: 'hold' }, { way: 'sk' }] } },
+      { kind: 'kp', symbol: 'x' },
+    );
+    expect(trace(noHold, 'A', model)).toMatchObject({ out: 'A', keys: ['R1', 'LHM'] });
+    const holdOff = twoShifts({
+      typingRules: { shift: [{ way: 'hold', enabled: false }, { way: 'sk' }] },
+    });
+    expect(trace(holdOff, 'A', model)).toMatchObject({ out: 'A', keys: ['R1', 'LHM'] });
+    const stickyOff = twoShifts({
+      typingRules: { shift: [{ way: 'sk', enabled: false }, { way: 'hold' }] },
+    });
+    const t = trace(stickyOff, 'A', model);
+    expect(t).toMatchObject({ out: 'A', keys: ['L1', 'LHM'] });
+    expect(held(t)).toEqual(['L1']);
+    // With the only way a layout has turned off, a capital has no way to be typed.
+    const none = twoShifts(
+      {
+        typingRules: {
+          shift: [
+            { way: 'hold', enabled: false },
+            { way: 'sk', enabled: false },
+          ],
+        },
+      },
+      { kind: 'kp', symbol: 'x' },
+    );
+    expect(trace(none, 'A', model).out).not.toBe('A');
+  });
+
+  it('follows its declared shift rule with no shift key of its own, on the keys that give Shift', () => {
+    const noKey = twoShifts({ typingRules: { shift: [{ way: 'sk' }, { way: 'hold' }] } });
+    delete noKey.keys.shift;
+    expect(trace(noKey, 'A', model)).toMatchObject({ out: 'A', keys: ['R1', 'LHM'] });
+    const holdOnly = { ...noKey, typingRules: { shift: [{ way: 'hold' as const }] } };
+    expect(trace(holdOnly, 'A', model)).toMatchObject({ out: 'A', keys: ['L1', 'LHM'] });
+  });
+
+  const withRules = (
+    doubledLetters: NonNullable<Layout['typingRules']>['doubledLetters'],
+  ): Layout => ({
+    ...magicRomak,
+    typingRules: { doubledLetters },
+  });
+  const REPEAT_KEYS = ['RBI', 'RHR', 'RTI', 'L1', 'RTM'];
+  const TAP_KEYS = ['RBI', 'RHR', 'RTI', 'RTI', 'RTM'];
+
+  it('types a doubled letter the first way it declares that works, and none that is off', () => {
+    expect(trace(withRules([{ way: 'repeatKey' }, { way: 'tapTwice' }]), 'hello').keys).toEqual(
+      REPEAT_KEYS,
+    );
+    expect(trace(withRules([{ way: 'tapTwice' }, { way: 'repeatKey' }]), 'hello').keys).toEqual(
+      TAP_KEYS,
+    );
+    expect(
+      trace(withRules([{ way: 'repeatKey', enabled: false }, { way: 'tapTwice' }]), 'hello').keys,
+    ).toEqual(TAP_KEYS);
+    expect(
+      trace(withRules([{ way: 'tapTwice', enabled: false }, { way: 'repeatKey' }]), 'hello').keys,
+    ).toEqual(REPEAT_KEYS);
+  });
+
+  it('taps twice when the repeat key is first and the layout has none', () => {
+    const noRepeat = withoutFeatures(magicRomak, ['repeat']);
+    const declared = {
+      ...noRepeat,
+      typingRules: { doubledLetters: [{ way: 'repeatKey' as const }] },
+    };
+    // Tapping twice is the way it did not name, on after the one it did.
+    expect(trace(declared, 'hello').keys).toEqual(TAP_KEYS);
+  });
+
+  it('keeps the options as they are: a policy given there is the one used', () => {
+    const declared = withRules([{ way: 'repeatKey' }, { way: 'tapTwice' }]);
+    expect(trace(declared, 'hello', { repeatPolicy: 'tap_twice' }).keys).toEqual(TAP_KEYS);
+  });
+
+  it('leaves a symbol with an order of its own as it is, for its doubled letter', () => {
+    const declared = withRules([{ way: 'repeatKey' }, { way: 'tapTwice' }]);
+    const ordered = trace(declared, 'hello', {
+      // `l` set by hand: the key tapped, never the repeat key.
+      typingPaths: { l: [{ producer: 'direct:alpha1/RTI' }] },
+    });
+    expect(ordered.out).toBe('hello');
+    expect(ordered.keys).toEqual(TAP_KEYS);
+  });
+
+  it('types as the layout always was when it declares no rule, at both policies', () => {
+    expect(trace(magicRomak, 'hello').keys).toEqual(REPEAT_KEYS);
+    expect(trace(magicRomak, 'hello', { repeatPolicy: 'tap_twice' }).keys).toEqual(TAP_KEYS);
+  });
 });
 
 describe('a capital on the layer its Shift key taps for', () => {

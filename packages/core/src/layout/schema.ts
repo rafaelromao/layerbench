@@ -344,6 +344,18 @@ export const LayoutSchema = z.object({
   repeatPolicy: z
     .object({ doubledLetters: z.enum(['repeatKey', 'tapTwice']).optional() })
     .optional(),
+  typingRules: z
+    .object({
+      shift: z
+        .array(z.object({ way: z.enum(['sk', 'hold']), enabled: z.boolean().optional() }))
+        .optional(),
+      doubledLetters: z
+        .array(
+          z.object({ way: z.enum(['repeatKey', 'tapTwice']), enabled: z.boolean().optional() }),
+        )
+        .optional(),
+    })
+    .optional(),
   activators: z
     .record(
       z.string(),

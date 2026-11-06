@@ -1380,6 +1380,18 @@ button.lb-combo-apart:focus-visible {
   display: flex;
   gap: 0.75rem;
 }
+/* The body of a rule's slide, the rules for the whole layout: its name, its ways, a line on them. */
+.lb-path-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.lb-path-hint {
+  font-size: 0.6875rem;
+  opacity: 0.6;
+}
 .lb-path-list {
   display: flex;
   flex: 1;
@@ -1441,13 +1453,19 @@ button.lb-combo-apart:focus-visible {
   min-width: 0;
   padding-inline: 0.5rem;
 }
-/* An error of two lines at most, the rest in its title, so the slide never scrolls for it. */
+/* On a phone the slide is as wide as the screen: a label has to fit half of it on one line. */
+@media (max-width: 639.98px) {
+  .lb-export-controls .btn {
+    --fontsize: 0.75rem;
+    white-space: nowrap;
+  }
+}
+/* An error of two lines at most (`line-clamp-2` ends it with an ellipsis where the engine can, and
+   the height is held to two lines where it cannot), the rest in its title: the slide never scrolls. */
 .lb-export-message {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  max-height: 2lh;
   margin: 0;
+  overflow: hidden;
 }
 .lb-export-text {
   display: block;
