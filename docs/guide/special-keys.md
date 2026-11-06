@@ -135,8 +135,10 @@ morph on its shift key, typing as it did.
 
 **Sentence case** is a **Sentence space** on the space key, a tile like any other, for any key. The
 layout's adaptive keys, alt repeats and sentence spaces, which need a ZMK module, are listed in
-**Special Behaviors** with its macros and mod morphs. A layout saved when sentence case was a
-feature opens with the sentence space on its space key, typing as it did.
+**Special Behaviors** with its macros and mod morphs. An adaptive key, an alt repeat too, is one
+card whatever it types: the macros of its branches are in its editor, not cards of their own. A
+layout saved when sentence case was a feature opens with the sentence space on its space key,
+typing as it did.
 
 A **Sentence space**, among the editor's other tiles, types a space. Pressed right after `.`, `?` or
 `!`, it leaves a capital for the next key pressed. A letter a–z comes out a capital. Any other key,

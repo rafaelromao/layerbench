@@ -165,8 +165,12 @@ interface Place {
   comboIndex?: number;
 }
 
-/** The special features a binding is or holds, at the place it is bound. */
-function featuresOf(b: Binding, at: Place, out: SpecialFeature[]): void {
+/**
+ * The special features a binding is or holds, at the place it is bound. `grouped` is on inside the
+ * branches of an adaptive key, an alt repeat among them: what it types after a letter, a macro
+ * included, is the key's own, listed in its editor under the one card the key has.
+ */
+function featuresOf(b: Binding, at: Place, out: SpecialFeature[], grouped = false): void {
   const emit = (feature: SpecialFeatureKind, label: string) =>
     out.push({ feature, ...at, label, binding: b });
   switch (b.kind) {
@@ -182,14 +186,15 @@ function featuresOf(b: Binding, at: Place, out: SpecialFeature[]): void {
       emit('adaptive', FEATURE_LABELS.sentence_space);
       break;
     case 'macro':
-      emit('macro', b.symbols ? `Macro “${b.symbols}”` : 'Macro');
+      if (!grouped) emit('macro', b.symbols ? `Macro “${b.symbols}”` : 'Macro');
       // What it types is not a letter of the layer's, but what its steps use is used.
-      for (const c of [...(b.steps ?? []), ...(b.then ?? [])]) featuresOf(c, at, out);
+      for (const c of [...(b.steps ?? []), ...(b.then ?? [])]) featuresOf(c, at, out, grouped);
       return;
     default:
       break;
   }
-  for (const c of choices(b)) featuresOf(c, at, out);
+  const inside = grouped || b.kind === 'adaptive';
+  for (const c of choices(b)) featuresOf(c, at, out, inside);
 }
 
 /**

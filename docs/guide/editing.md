@@ -424,7 +424,8 @@ keeps the page where it is, at either end too:
   not have, or the same keys as another combo on one of its layers.
 - **Special Behaviors** lists the layout's adaptive keys, alt repeats, macros and mod morphs, and
   its sentence spaces, a card each, kind by kind, on a key that shows what it types. Each names its
-  layer and key, or its combo. The board is under the
+  layer and key, or its combo. An adaptive key, an alt repeat too, is one card: the macros it types
+  after a letter are in the key's editor. The board is under the
   cards, as on **Combos**: pick one and the board turns to its layer with the key selected, or
   opens its combo, with the editor beside the board, and the card is marked. A key or combo picked
   on the board scrolls its card into view in the strip. A shift key that starts caps word is one of

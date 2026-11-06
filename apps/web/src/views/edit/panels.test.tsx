@@ -307,36 +307,52 @@ describe('a symbol on a key, in the slides that name one', () => {
     ).toHaveTextContent('z');
   });
 
-  it('draws a macro in an alt repeat branch as what it types, and one on a key tap as its key', () => {
+  it('has one card for an alt repeat, not one for each macro it types, and draws the rest as they are', () => {
     const altRepeat: Binding = {
       kind: 'adaptive',
       default: { kind: 'key_repeat' },
-      triggers: [{ afterAny: ['LHM'], binding: { kind: 'macro', symbols: 'ões' } }],
+      triggers: [
+        { afterAny: ['LHM'], binding: { kind: 'macro', symbols: 'ões' } },
+        { afterAny: ['LHI'], binding: { kind: 'macro', symbols: 'ê' } },
+      ],
     };
     const holdMacro: Binding = {
       kind: 'hold_tap',
       tap: { kind: 'macro', symbols: 'qu' },
       hold: { kind: 'mo', layer: 'num' },
     };
+    const morphMacro: Binding = {
+      kind: 'mod_morph',
+      mods: ['LSHIFT'],
+      default: kp('x'),
+      morphed: { kind: 'macro', symbols: 'ões' },
+    };
     const [base, ...rest] = layout.layers;
     const nested: Layout = {
       ...layout,
       layers: [
-        { ...base, bindings: { ...base.bindings, LHP: altRepeat, RHP: holdMacro } },
+        {
+          ...base,
+          bindings: { ...base.bindings, LHP: altRepeat, RHP: holdMacro, LHR: morphMacro },
+        },
         ...rest,
       ],
     };
     render(<BehaviorsPanel state={initialState(nested, compileLayout(nested))} send={vi.fn()} />);
     const keycap = (button: HTMLElement) => button.querySelector('.lb-keycap');
-    // Two uses on the key: the alt repeat as the key is drawn, and the macro its branch types.
-    const [repeat, macro] = screen.getAllByRole('button', { name: /^Base · LHP/ });
+    // The alt repeat is alone on its key, drawn as the key is.
+    const [repeat, ...more] = screen.getAllByRole('button', { name: /^Base · LHP/ });
+    expect(more).toEqual([]);
     expect(repeat).toHaveTextContent('Alt repeat');
     expect(keycap(repeat)).toHaveTextContent('⟳');
-    expect(macro).toHaveTextContent('Macro');
-    expect(keycap(macro)).toHaveTextContent('ões');
-    expect(keycap(macro)).not.toHaveTextContent('⟳');
     // A macro that is the tap of the key is the key as the board draws it, its hold included.
     expect(keycap(screen.getByRole('button', { name: /^Base · RHP/ }))).toHaveTextContent('Numb');
+    // A macro in a mod morph's branch is not what its key is drawn as: it is drawn as what it types.
+    // The cards go kind by kind, macros before mod morphs.
+    const [macro, morph] = screen.getAllByRole('button', { name: /^Base · LHR/ });
+    expect(morph).toHaveTextContent('Mod morph');
+    expect(macro).toHaveTextContent('Macro');
+    expect(keycap(macro)).toHaveTextContent('ões');
   });
 
   it('shows what a special behavior types on a key, named by its place and its kind', () => {
