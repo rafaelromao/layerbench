@@ -382,11 +382,11 @@ describe('the Special Behaviors carousel', () => {
     expect(screen.getByText('This layout has no macros or mod morphs.')).toBeInTheDocument();
   });
 
-  it('splits the kinds of special feature between the two panels, as the firmware table splits them', () => {
-    // Every kind in one panel and none in both; the external ones are the ones that need a module.
-    expect([...EXTERNAL_KINDS, ...SPECIAL_KINDS].sort()).toEqual(
-      ['adaptive', 'alt_repeat', 'macro', 'mod_morph'].sort(),
-    );
+  it('lists in External Behaviors the kinds whose keys need a ZMK module, and no other', () => {
+    expect(EXTERNAL_KINDS).toEqual(['adaptive', 'alt_repeat']);
+    expect(SPECIAL_KINDS).toEqual(['macro', 'mod_morph']);
+    // Adaptive keys and alt repeats are the one binding the module is for; macros and morphs are
+    // stock ZMK.
     expect(bindingModule('adaptive')).not.toBeNull();
     expect(bindingModule('macro')).toBeNull();
     expect(bindingModule('mod_morph')).toBeNull();

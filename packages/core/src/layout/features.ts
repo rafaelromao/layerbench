@@ -130,9 +130,9 @@ export type ReadLayout = Omit<Layout, 'features'> & {
 /**
  * The layout with `features.capsWord` written out as the mod morph it made, and not declared: the
  * key's tap is the morph's default, and shift pressed while shift is on starts caps word. What the
- * declaration could not place never compiled to anything, and goes: a feature that was off, one with
- * no `key` and no shift key to go on, a layer in `on` the layout lacks. The layout itself when it
- * declares no caps word.
+ * declaration could not place goes, so the document opens: a feature that was off, one with no `key`
+ * and no shift key to go on, a layer in `on` the layout lacks (those two made the layout fail to
+ * compile). The layout itself when it declares no caps word.
  */
 export function withCapsWordAsMorph(layout: ReadLayout): Layout {
   const { capsWord: f, ...features } = layout.features ?? {};

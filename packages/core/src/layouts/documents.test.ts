@@ -71,6 +71,8 @@ describe('bundled layouts added as documents', () => {
       morphed: { kind: 'caps_word', continueList: ['_'] },
     });
     expect(layout.features).toBeUndefined();
+    // Held to the form it is saved in in all else: the declaration is no way round the check.
+    expect(() => documentLayout('night', { ...doc, junk: 'x' })).toThrow('as LayerBench saves it');
   });
 
   it('turns away a layout that names no author', () => {

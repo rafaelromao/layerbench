@@ -957,13 +957,25 @@ const FEATURE_GROUPS: [SpecialFeatureKind, string, string][] = [
 ];
 
 /**
- * The kinds of special feature whose keys need a ZMK module (zmk-adaptive-key), which External
- * Behaviors lists. They make a layout Special all the same: only the panels split the list.
+ * The tab that lists each kind of special feature: External Behaviors for the kinds whose keys need
+ * a ZMK module (zmk-adaptive-key), Special Behaviors for those stock ZMK has. They make a layout
+ * Special all the same: only the panels split the list. A kind added without a tab is a type error.
  */
-export const EXTERNAL_KINDS: readonly SpecialFeatureKind[] = ['adaptive', 'alt_repeat'];
+const TAB_OF: Record<SpecialFeatureKind, 'external' | 'special'> = {
+  adaptive: 'external',
+  alt_repeat: 'external',
+  macro: 'special',
+  mod_morph: 'special',
+};
 
-/** The kinds stock ZMK has, which Special Behaviors lists. */
-export const SPECIAL_KINDS: readonly SpecialFeatureKind[] = ['macro', 'mod_morph'];
+const kindsOn = (tab: 'external' | 'special') =>
+  FEATURE_GROUPS.filter(([kind]) => TAB_OF[kind] === tab).map(([kind]) => kind);
+
+/** The kinds External Behaviors lists, in the order its slides come. */
+export const EXTERNAL_KINDS: readonly SpecialFeatureKind[] = kindsOn('external');
+
+/** The kinds Special Behaviors lists. */
+export const SPECIAL_KINDS: readonly SpecialFeatureKind[] = kindsOn('special');
 
 /**
  * The layout's special features of these kinds, a slide each, kind by kind, on a key that shows what

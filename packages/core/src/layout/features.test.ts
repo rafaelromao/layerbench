@@ -308,7 +308,7 @@ describe('caps word declared by a document from before it was only a behaviour',
     expect(layout.layers).toHaveLength(2);
   });
 
-  it('goes when it was off, or had no key to go on: it never compiled to anything', () => {
+  it('goes when it was off, or had no key to go on, so the document opens', () => {
     const off = withCapsWordAsMorph(declaring({ enabled: false }));
     expect(off.layers[0].bindings.R1).toEqual({ kind: 'sk', mod: 'LSHIFT' });
     expect('features' in off).toBe(false);

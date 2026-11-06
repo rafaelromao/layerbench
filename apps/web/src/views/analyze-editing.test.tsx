@@ -1769,12 +1769,9 @@ describe('Edit', () => {
     const user = userEvent.setup();
     await openMagicRomak();
     await user.click(screen.getByRole('tab', { name: 'Combos' }));
-    // The combo open on the board, drawn as one that fires on the layer shown: a combo the layer
-    // shown does not work on is drawn dead.
+    // The combo open on the board: a combo the layer shown does not work on is not drawn at all.
     const open = () =>
-      [...document.querySelectorAll('#kb-analyze .lb-combo-open:not(.lb-combo-dead) title')].map(
-        (t) => t.textContent,
-      );
+      [...document.querySelectorAll('#kb-analyze .lb-combo-open title')].map((t) => t.textContent);
     expect(open()).toEqual([]);
     // Two combos share RBM+RBR: the semicolon works on Alpha 1 and Alpha 2, the colon on Alpha 2
     // only, and Alpha 1 is the layer shown.
