@@ -150,19 +150,8 @@ function triggerToJson(t: AdaptiveTrigger): Record<string, unknown> {
  */
 function featuresToJson(f: LayoutFeatures): Record<string, unknown> {
   const s = f.sentenceCase;
-  const c = f.capsWord;
   return compact({
     sentenceCase: s && compact({ enabled: s.enabled ?? true, key: s.key, on: s.on }),
-    capsWord:
-      c &&
-      compact({
-        enabled: c.enabled ?? true,
-        key: c.key,
-        on: c.on,
-        triggerMods: c.triggerMods,
-        mods: c.mods,
-        continueList: c.continueList,
-      }),
   });
 }
 

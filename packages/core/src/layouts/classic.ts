@@ -53,7 +53,7 @@ export interface ClassicDef {
   homeRowMods?: false | Readonly<Record<string, Mod | Binding>>;
   /** The shift key, when the layout has one of its own. */
   shift?: Layout['keys']['shift'];
-  /** Typing behaviours declared rather than built of layers: sentence case, caps word. */
+  /** Typing behaviours declared rather than built of layers: sentence case. */
   features?: Layout['features'];
   /** How long one-shot layers and keys wait, and what releases them. */
   behaviorDefaults?: Layout['behaviorDefaults'];

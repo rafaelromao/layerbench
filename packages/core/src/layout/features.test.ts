@@ -3,8 +3,13 @@ import { normalizeText } from '../corpus/normalize.js';
 import { bundledLayout } from '../layouts/index.js';
 import { explain, simulate } from '../sim/resolver.js';
 import { compileLayout } from './compile.js';
-import { expandFeatures } from './features.js';
-import type { Layout, LayoutFeatures } from './types.js';
+import {
+  expandFeatures,
+  type LegacyCapsWord,
+  type ReadLayout,
+  withCapsWordAsMorph,
+} from './features.js';
+import type { Binding, Layout, LayoutFeatures } from './types.js';
 
 const magicRomak = bundledLayout('magic-romak')!;
 
@@ -68,15 +73,6 @@ describe('feature expansion', () => {
     expect(plain.steps.map((s) => s.key)).toEqual(['RBI', 'L0', 'R1', 'RHI']);
   });
 
-  it('turns caps word into the caps_word behaviour behind the shift key', () => {
-    const { layout } = expandFeatures(mini({ capsWord: {} }));
-    const shift = layout.layers[0].bindings.R1;
-    expect(shift.kind).toBe('mod_morph');
-    if (shift.kind !== 'mod_morph') return;
-    expect(shift.default).toEqual({ kind: 'sk', mod: 'LSHIFT' });
-    expect(shift.morphed.kind).toBe('caps_word');
-  });
-
   it('reports a feature that names a layer the layout does not have', () => {
     const e = expandFeatures(mini({ sentenceCase: { on: ['nope'] } }));
     expect(e.errors).toEqual(['Feature sentenceCase: unknown layer nope']);
@@ -117,14 +113,21 @@ describe('Magic Romak after the features rewrite', () => {
   it('keeps the authored document separate from the expanded one', () => {
     expect(compiled.layout.features?.sentenceCase).toBeDefined();
     // Only the space and shift keys are wrapped; the adaptive keys and the alt repeat are bindings.
-    expect(compiled.featureOwned.get('alpha1')).toEqual(
-      new Map([
-        ['L0', 'sentenceCase'],
-        ['R1', 'capsWord'],
-      ]),
-    );
+    expect(compiled.featureOwned.get('alpha1')).toEqual(new Map([['L0', 'sentenceCase']]));
     const altRepeat = compiled.layout.layers[0].bindings.L1;
     expect(altRepeat.kind === 'adaptive' && altRepeat.default).toEqual({ kind: 'key_repeat' });
+  });
+
+  it('declares sentence case only, and shifts as its keymap does: caps word on shift, shift', () => {
+    expect(magicRomak.features).toEqual({ sentenceCase: {} });
+    // What the caps word feature compiled to, written on the key.
+    expect(compiled.expanded.layers[0].bindings.R1).toEqual({
+      kind: 'mod_morph',
+      mods: ['LSHIFT', 'RSHIFT'],
+      default: { kind: 'sk', mod: 'LSHIFT' },
+      morphed: { kind: 'caps_word', mods: ['LSHIFT'], continueList: ['_', 'Backspace'] },
+    });
+    expect(compiled.layout.layers[0].bindings.R1).toEqual(compiled.expanded.layers[0].bindings.R1);
   });
 
   // The traces from before features replaced layers, unchanged by that rewrite.
@@ -227,5 +230,102 @@ describe('Magic Romak after the features rewrite', () => {
     const e = explain(compiled, 'É', { caseMode: 'model', crossWord: 'reset' });
     expect(e.steps.map((s) => s.key)).toEqual(['R1', 'R0', 'RHR']);
     expect(e.steps.map((s) => s.symbols).join('')).toBe('É');
+  });
+});
+
+/** `mini` as a document from before caps word was only a behaviour declares it. */
+function declaring(capsWord: LegacyCapsWord, features: LayoutFeatures = {}): ReadLayout {
+  return { ...mini(), features: { ...features, capsWord } };
+}
+
+/** What the shift key is once caps word has been written out: shift, then caps word on shift. */
+const SHIFT_SHIFT: Binding = {
+  kind: 'mod_morph',
+  mods: ['LSHIFT', 'RSHIFT'],
+  default: { kind: 'sk', mod: 'LSHIFT' },
+  morphed: { kind: 'caps_word', mods: ['LSHIFT'] },
+};
+
+describe('caps word declared by a document from before it was only a behaviour', () => {
+  it('is the layout itself when none is declared', () => {
+    const layout = mini({ sentenceCase: {} });
+    expect(withCapsWordAsMorph(layout)).toBe(layout);
+    expect(withCapsWordAsMorph(mini())).toEqual(mini());
+  });
+
+  it('makes the shift key a morph that turns into caps word, and declares nothing', () => {
+    const layout = withCapsWordAsMorph(declaring({}));
+    expect(layout.layers[0].bindings.R1).toEqual(SHIFT_SHIFT);
+    expect('features' in layout).toBe(false);
+    expect(compileLayout(layout).errors).toEqual([]);
+  });
+
+  it('keeps the other features, and every setting it declared', () => {
+    const layout = withCapsWordAsMorph(
+      declaring(
+        { key: 'RHM', triggerMods: ['LSHIFT'], mods: ['LCTRL'], continueList: ['-'] },
+        { sentenceCase: {} },
+      ),
+    );
+    expect(layout.features).toEqual({ sentenceCase: {} });
+    // No tap on the key to keep: the default is the modifier the word is capitalised with.
+    expect(layout.layers[0].bindings.RHM).toEqual({
+      kind: 'mod_morph',
+      mods: ['LSHIFT'],
+      default: { kind: 'sk', mod: 'LCTRL' },
+      morphed: { kind: 'caps_word', mods: ['LCTRL'], continueList: ['-'] },
+    });
+  });
+
+  it('wraps the tap of a tap-hold or a layer-tap, and the default of a morph, as it did', () => {
+    const tap: Binding = { kind: 'sk', mod: 'LSHIFT' };
+    const hold: Binding = { kind: 'mo', layer: 'nav' };
+    const lt: Binding = { kind: 'lt', layer: 'nav', tap };
+    const morph: Binding = { kind: 'mod_morph', mods: ['LCTRL'], default: tap, morphed: hold };
+    const doc = (b: Binding): ReadLayout => {
+      const l = declaring({});
+      l.layers[0].bindings.R1 = b;
+      return l;
+    };
+    const holdTap: Binding = { kind: 'hold_tap', tap, hold };
+    expect(withCapsWordAsMorph(doc(holdTap)).layers[0].bindings.R1).toEqual({
+      ...holdTap,
+      tap: SHIFT_SHIFT,
+    });
+    expect(withCapsWordAsMorph(doc(lt)).layers[0].bindings.R1).toEqual({ ...lt, tap: SHIFT_SHIFT });
+    expect(withCapsWordAsMorph(doc(morph)).layers[0].bindings.R1).toEqual({
+      ...morph,
+      default: SHIFT_SHIFT,
+    });
+  });
+
+  it('goes on the layers it named, and none the layout lacks', () => {
+    const l = declaring({ on: ['nav', 'nowhere'] });
+    l.layers.push({ id: 'nav', name: 'Nav', bindings: { R1: { kind: 'sk', mod: 'LSHIFT' } } });
+    const layout = withCapsWordAsMorph(l);
+    expect(layout.layers[0].bindings.R1).toEqual({ kind: 'sk', mod: 'LSHIFT' });
+    expect(layout.layers[1].bindings.R1).toEqual(SHIFT_SHIFT);
+    expect(layout.layers).toHaveLength(2);
+  });
+
+  it('goes when it was off, or had no key to go on, so the document opens', () => {
+    const off = withCapsWordAsMorph(declaring({ enabled: false }));
+    expect(off.layers[0].bindings.R1).toEqual({ kind: 'sk', mod: 'LSHIFT' });
+    expect('features' in off).toBe(false);
+
+    const noShift: ReadLayout = { ...declaring({}), keys: { space: 'L0' } };
+    const dropped = withCapsWordAsMorph(noShift);
+    expect(dropped.layers).toEqual(noShift.layers);
+    expect('features' in dropped).toBe(false);
+  });
+
+  it('compiles with sentence case on the same key as the two features did', () => {
+    const layout = withCapsWordAsMorph(declaring({ key: 'L0' }, { sentenceCase: {} }));
+    const compiled = compileLayout(layout);
+    expect(compiled.expanded.layers[0].bindings.L0).toEqual({
+      ...SHIFT_SHIFT,
+      default: { kind: 'sentence_space' },
+    });
+    expect(compiled.featureOwned.get('base')?.get('L0')).toBe('sentenceCase');
   });
 });

@@ -1,5 +1,6 @@
 import type { Binding, LayerDef, Layout, LayoutFeatures, Mod } from './types.js';
 
+/** The modifiers that make a key morph into caps word when it is shift: either shift. */
 const DEFAULT_TRIGGER_MODS: Mod[] = ['LSHIFT', 'RSHIFT'];
 
 /** A feature that wraps the tap of the key it belongs to. */
@@ -77,36 +78,9 @@ function expandSentenceCase(w: Writer, features: LayoutFeatures, layout: Layout)
   }
 }
 
-function expandCapsWord(w: Writer, features: LayoutFeatures, layout: Layout): void {
-  const f = features.capsWord;
-  if (!f || f.enabled === false) return;
-  const key = f.key ?? layout.keys.shift?.key;
-  if (key === undefined) {
-    w.errors.push('Feature capsWord: no key given and the layout declares no shift key');
-    return;
-  }
-  const layers = f.on ?? [w.layers[0]?.id].filter((x): x is string => x !== undefined);
-  const mods: Mod[] = f.mods ?? ['LSHIFT'];
-  for (const layerId of layers) {
-    place(w, layerId, key, 'capsWord', (tap) => ({
-      kind: 'mod_morph',
-      mods: f.triggerMods ?? DEFAULT_TRIGGER_MODS,
-      default: tap ?? { kind: 'sk', mod: mods[0] ?? 'LSHIFT' },
-      morphed: {
-        kind: 'caps_word',
-        mods,
-        ...(f.continueList === undefined ? {} : { continueList: f.continueList }),
-      },
-    }));
-  }
-}
-
 /**
  * Wrap the keys `features` belong to in ordinary bindings. The identity when `features` is absent,
  * so a document that spells the same behaviours out by hand keeps compiling unchanged.
- *
- * Order is fixed — sentence case, then caps word — so a document that puts both on one key gets a
- * predictable result.
  */
 export function expandFeatures(layout: Layout): ExpandedLayout {
   const features = layout.features;
@@ -119,7 +93,6 @@ export function expandFeatures(layout: Layout): ExpandedLayout {
   };
 
   expandSentenceCase(w, features, layout);
-  expandCapsWord(w, features, layout);
 
   return {
     layout: { ...layout, layers: w.layers },
@@ -134,4 +107,57 @@ export function expandFeatures(layout: Layout): ExpandedLayout {
  */
 export function inlineFeatures(authored: Layout): Layout {
   return { ...expandFeatures(authored).layout, features: undefined };
+}
+
+/**
+ * `features.capsWord` as a document saved before caps word was only a behaviour declares it: the
+ * shift key (or `key`), on the layers `on`, made a mod morph that turns into `caps_word`.
+ */
+export interface LegacyCapsWord {
+  enabled?: boolean;
+  key?: string;
+  on?: string[];
+  triggerMods?: Mod[];
+  mods?: Mod[];
+  continueList?: string[];
+}
+
+/** A layout as the schema reads it: a document from before may still declare caps word. */
+export type ReadLayout = Omit<Layout, 'features'> & {
+  features?: LayoutFeatures & { capsWord?: LegacyCapsWord };
+};
+
+/**
+ * The layout with `features.capsWord` written out as the mod morph it made, and not declared: the
+ * key's tap is the morph's default, and shift pressed while shift is on starts caps word. What the
+ * declaration could not place goes, so the document opens: a feature that was off, one with no `key`
+ * and no shift key to go on, a layer in `on` the layout lacks (those two made the layout fail to
+ * compile). The layout itself when it declares no caps word.
+ */
+export function withCapsWordAsMorph(layout: ReadLayout): Layout {
+  const { capsWord: f, ...features } = layout.features ?? {};
+  if (f === undefined) return layout as Layout;
+  const { features: _declared, ...rest } = layout;
+  const kept = Object.keys(features).length > 0 ? { features } : {};
+  const key = f.key ?? layout.keys.shift?.key;
+  if (f.enabled === false || key === undefined) return { ...rest, ...kept } as Layout;
+
+  const on = f.on ?? [layout.layers[0]?.id];
+  const mods = f.mods ?? ['LSHIFT'];
+  const morph = (tap?: Binding): Binding => ({
+    kind: 'mod_morph',
+    mods: f.triggerMods ?? [...DEFAULT_TRIGGER_MODS],
+    default: tap ?? { kind: 'sk', mod: mods[0] ?? 'LSHIFT' },
+    morphed: {
+      kind: 'caps_word',
+      mods,
+      ...(f.continueList === undefined ? {} : { continueList: f.continueList }),
+    },
+  });
+  const layers = layout.layers.map((l) =>
+    on.includes(l.id)
+      ? { ...l, bindings: { ...l.bindings, [key]: mapTapPart(l.bindings[key], morph) } }
+      : l,
+  );
+  return { ...rest, layers, ...kept } as Layout;
 }

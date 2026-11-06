@@ -961,7 +961,7 @@ describe('Edit', () => {
     expect(await screen.findByLabelText('Name of layer Main')).toHaveValue('Main');
 
     // One-shot keys release as the next key goes down, or wait, and for how long.
-    await user.click(screen.getByRole('tab', { name: 'Geometry' }));
+    await user.click(screen.getByRole('tab', { name: 'Physical Layout' }));
     const keys = within(screen.getByRole('group', { name: 'One-shot keys' }));
     const quick = keys.getByLabelText('Release as the next key goes down');
     expect(quick).not.toBeChecked();
@@ -1039,9 +1039,10 @@ describe('Edit', () => {
     expect(screen.queryByLabelText('Name of layer Shift Alpha 2')).toBeNull();
     expect(screen.queryByLabelText('Name of layer Alt Repeat 2')).toBeNull();
 
-    await user.click(screen.getByRole('tab', { name: 'Features' }));
+    await user.click(screen.getByRole('tab', { name: 'External Behaviors' }));
     expect(screen.getByLabelText('Sentence case')).toBeChecked();
-    expect(screen.getByLabelText('Caps word')).toBeChecked();
+    // Caps word is a key, made and edited on the key, not a feature to turn on.
+    expect(screen.queryByLabelText('Caps word')).toBeNull();
     // Adaptive keys and the alt repeat are keys like any other, made and edited on the key.
     expect(screen.queryByLabelText('Adaptive key')).toBeNull();
     expect(screen.queryByLabelText('Alt repeat')).toBeNull();
@@ -1764,6 +1765,27 @@ describe('Edit', () => {
   const boxes = () =>
     [...document.querySelectorAll('#kb-analyze .lb-combo title')].map((t) => t.textContent);
 
+  it('turns the board to the first layer a combo works on, with the combo selected there', async () => {
+    const user = userEvent.setup();
+    await openMagicRomak();
+    await user.click(screen.getByRole('tab', { name: 'Combos' }));
+    // The combo open on the board: a combo the layer shown does not work on is not drawn at all.
+    const open = () =>
+      [...document.querySelectorAll('#kb-analyze .lb-combo-open title')].map((t) => t.textContent);
+    expect(open()).toEqual([]);
+    // Two combos share RBM+RBR: the semicolon works on Alpha 1 and Alpha 2, the colon on Alpha 2
+    // only, and Alpha 1 is the layer shown.
+    const colon = within(screen.getByRole('region', { name: 'Combos' }))
+      .getAllByRole('button', { name: 'Edit RBM+RBR' })
+      .find(
+        (b) => b.querySelector('.lb-combo-slide-layers')?.textContent === 'Alpha 2',
+      ) as HTMLElement;
+    await user.click(colon);
+    await waitFor(() => expect(open()).toEqual([expect.stringMatching(/^Combo RBM \+ RBR/)]));
+    // The board is turned to Alpha 2, so its navigator and the combo's own layers both say so.
+    expect(screen.getAllByText('Alpha 2').length).toBeGreaterThan(1);
+  }, 60_000);
+
   it("changes a combo's output, keys and layers in the combo editor, one undo for each", async () => {
     const user = userEvent.setup();
     await openComboEdit();
@@ -1953,7 +1975,27 @@ describe('Edit', () => {
     expect(boxes()).toEqual(['Combo LHR + LHM: Acce']);
   });
 
-  it('lists Layers, Features and Special Behaviors as cards', async () => {
+  it('orders its tabs as the guide does, with Physical Layout where Geometry was', async () => {
+    await openMagicRomak();
+    const tabs = (screen.getByRole('tab', { name: 'Board' }).closest('[role="tablist"]') ??
+      document.body) as HTMLElement;
+    expect(
+      within(tabs)
+        .getAllByRole('tab')
+        .map((t) => t.textContent?.trim()),
+    ).toEqual([
+      'Board',
+      'Layers',
+      'Combos',
+      'Special Behaviors',
+      'External Behaviors',
+      'Typing paths',
+      'Physical Layout',
+      'JSON',
+    ]);
+  }, 60_000);
+
+  it('lists Layers, External Behaviors and Special Behaviors as cards', async () => {
     const user = userEvent.setup();
     await openMagicRomak();
     await user.click(screen.getByRole('tab', { name: 'Layers' }));
@@ -1963,15 +2005,17 @@ describe('Edit', () => {
     const [addLayer, addCondition] = within(layers).getAllByRole('listitem').slice(-2);
     expect(addLayer).toHaveTextContent('New layer');
     expect(addCondition).toHaveTextContent('New condition');
-    await user.click(screen.getByRole('tab', { name: 'Features' }));
-    expect(
-      within(screen.getByRole('list', { name: 'Features' })).getAllByRole('listitem'),
-    ).toHaveLength(2);
+    await user.click(screen.getByRole('tab', { name: 'External Behaviors' }));
+    const external = within(screen.getByRole('list', { name: 'External behaviors' }));
+    // Sentence case comes first, then the adaptive keys and the alt repeat that need a module too.
+    expect(external.getAllByRole('listitem')[0]).toHaveTextContent('Sentence case');
+    expect(external.getAllByText('Adaptive key').length).toBeGreaterThan(0);
     await user.click(screen.getByRole('tab', { name: 'Special Behaviors' }));
-    const adaptive = within(screen.getByRole('list', { name: 'Special behaviors' })).getAllByText(
-      'Adaptive key',
-    );
-    expect(adaptive.length).toBeGreaterThan(0);
+    const special = within(screen.getByRole('list', { name: 'Special behaviors' }));
+    expect(special.getAllByText('Macro').length).toBeGreaterThan(0);
+    // Magic Romak's shift key is the mod morph that starts caps word, like any other mod morph.
+    expect(special.getAllByText('Mod morph').length).toBeGreaterThan(0);
+    expect(special.queryByText('Adaptive key')).toBeNull();
   }, 60_000);
 
   it('reorders a typing path that was never declared', async () => {
@@ -2142,10 +2186,10 @@ describe('Special Behaviors', () => {
     await user.keyboard('{ArrowRight}');
     expect(screen.getByRole('tab', { name: 'Special Behaviors', selected: true })).toHaveFocus();
     const list = screen.getByRole('region', { name: 'Special features' });
-    for (const kind of ['Adaptive key', 'Alt repeat', 'Macro'])
+    for (const kind of ['Macro', 'Mod morph'])
       expect(within(list).getAllByText(kind).length).toBeGreaterThan(0);
 
-    // An adaptive key on a layer other than the one shown: its layer turns up, the key selected.
+    // A feature on a layer other than the one shown: its layer turns up, the key selected.
     const place = (b: HTMLElement) => b.querySelector('.font-mono')?.textContent ?? '';
     const keys = within(list)
       .getAllByRole('button')
@@ -2215,7 +2259,28 @@ describe('Special Behaviors', () => {
     });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
     await user.click(screen.getByRole('tab', { name: 'Special Behaviors' }));
-    expect(screen.getByText('This layout has no special features.')).toBeInTheDocument();
+    expect(screen.getByText('This layout has no macros or mod morphs.')).toBeInTheDocument();
+  }, 60_000);
+});
+
+describe('External Behaviors', () => {
+  it("lists Magic Romak's adaptive keys and alt repeat after sentence case, and picking one shows it", async () => {
+    const user = userEvent.setup();
+    await openMagicRomak();
+    const firstLayer = shownLayer();
+    await user.click(screen.getByRole('tab', { name: 'External Behaviors' }));
+    const list = within(screen.getByRole('list', { name: 'External behaviors' }));
+    for (const kind of ['Adaptive key', 'Alt repeat'])
+      expect(list.getAllByText(kind).length).toBeGreaterThan(0);
+    expect(list.queryByText('Mod morph')).toBeNull();
+
+    // The alt repeat is on L1 of the first layer: the board shows it with the key selected.
+    const altRepeat = list
+      .getAllByRole('button')
+      .find((b) => b.textContent?.includes('Alt repeat')) as HTMLElement;
+    await user.click(altRepeat);
+    expect(shownLayer()).toBe(firstLayer);
+    expect(await inspector('L1')).toBeInTheDocument();
   }, 60_000);
 });
 

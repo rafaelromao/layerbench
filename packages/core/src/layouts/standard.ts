@@ -150,7 +150,7 @@ export function withStandardThumbs(
 
   return {
     ...layout,
-    // R1 is the shift key Caps word and Shift itself are reached by: held, it is Shift.
+    // R1 is the shift key: held, it is Shift.
     keys: { ...layout.keys, space, shift: { key: 'R1', kind: 'hold' } },
     layers: [{ ...first, bindings }, ...rest, ...layers],
     ...(defaults.conditionalLayers.length > 0 && {

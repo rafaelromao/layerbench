@@ -14,7 +14,7 @@ const layout: Layout = {
 };
 const state = initialState(layout, compileLayout(layout));
 
-describe('the board in the Geometry tab', () => {
+describe('the board in the Physical Layout tab', () => {
   it('lets a key that does nothing go, and keeps one that does', async () => {
     const send = vi.fn();
     render(<GeometryPanel state={state} send={send} />);
@@ -39,7 +39,7 @@ describe('the board in the Geometry tab', () => {
     expect(send.mock.calls[0][0].edit.geometry.custom.map((k: { id: string }) => k.id)).toContain(
       'LHO',
     );
-    await userEvent.setup().selectOptions(screen.getByLabelText('Geometry preset'), '3x5+3');
+    await userEvent.setup().selectOptions(screen.getByLabelText('Physical layout preset'), '3x5+3');
     expect(send).toHaveBeenLastCalledWith({
       type: 'edit',
       edit: { kind: 'setGeometry', geometry: { preset: '3x5+3' } },

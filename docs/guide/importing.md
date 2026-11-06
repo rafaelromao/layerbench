@@ -95,4 +95,4 @@ unmodified part.
 **Import**, in **Library**, also takes LayerBench JSON under **Text or JSON**, or a layout written
 as text the way layouts are often shared: three rows of letters separated by spaces, with an
 optional thumb row, or a single string of 30 characters as cmini writes them, or of 33 to 35 as
-cyanophage does. A text layout goes onto the board you choose under **Geometry**.
+cyanophage does. A text layout goes onto the board you choose under **Physical layout**.

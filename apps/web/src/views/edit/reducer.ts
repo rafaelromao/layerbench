@@ -110,8 +110,11 @@ export type EditAction =
   | { type: 'comboPickStart'; combo?: number }
   | { type: 'comboPickToggle'; keyId: string }
   | { type: 'comboPickCancel' }
-  /** Open a combo, by place, in the combo editor; null closes it. */
-  | { type: 'selectCombo'; combo: number | null }
+  /**
+   * Open a combo, by place, in the combo editor; null closes it. `layer` is the layer the board
+   * turns to, for a combo picked where it is not drawn.
+   */
+  | { type: 'selectCombo'; combo: number | null; layer?: number }
   | { type: 'setBoardHighlight'; keys: string[] }
   | { type: 'jsonChange'; text: string }
   | { type: 'setPanel'; panel: Panel }
@@ -419,6 +422,7 @@ function reduce(state: EditState, action: EditAction): EditState {
         comboPicks: combo === null ? state.comboPicks : state.comboPicks + 1,
         // A combo opened is where the board's clicks go next, not to the key that was open.
         ...(combo === null ? {} : { selected: null, also: [], swapFrom: null }),
+        ...(combo !== null && action.layer !== undefined ? { layer: action.layer } : {}),
         // Opening a combo ends a pick of a new combo's keys, or of the keys of the one before it.
         ...(state.comboPick !== null && state.comboPickFor !== combo
           ? { comboPick: null, comboPickFor: null }

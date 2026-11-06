@@ -267,3 +267,24 @@ describe('the combo open in the combo editor', () => {
     });
   });
 });
+
+describe('a combo opened from its card', () => {
+  const start = () => initialUndoState(qwerty, compileLayout(qwerty));
+
+  it('turns the board to the layer the card names, and only when the combo opens', () => {
+    const opened = reducer(start(), { type: 'selectCombo', combo: 0, layer: 2 });
+    expect(opened.combo).toBe(0);
+    expect(opened.layer).toBe(2);
+    // The board's own boxes name no layer: what is drawn is on the layer shown, which stays.
+    const onSecond = reducer(start(), { type: 'selectLayer', layer: 1 });
+    expect(reducer(onSecond, { type: 'selectCombo', combo: 0 }).layer).toBe(1);
+    // Closing it leaves the board where it is, whatever layer comes with it.
+    const closed = reducer(opened, { type: 'selectCombo', combo: null, layer: 0 });
+    expect(closed.combo).toBeNull();
+    expect(closed.layer).toBe(2);
+    // A combo the layout does not have opens nothing, and moves nothing.
+    const unknown = reducer(start(), { type: 'selectCombo', combo: 9, layer: 2 });
+    expect(unknown.combo).toBeNull();
+    expect(unknown.layer).toBe(0);
+  });
+});

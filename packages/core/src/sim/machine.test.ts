@@ -485,6 +485,17 @@ describe('Machine — combos, caps word, holds', () => {
     expect(tap('LHP').symbols).toBe('a');
   });
 
+  it("starts caps word with shift pressed while shift is on, on Magic Romak's shift key", () => {
+    const { tap } = machineFor(magicRomak);
+    expect(tap('R1').leafKind).toBe('sk');
+    expect(tap('R1').leafKind).toBe('caps_word');
+    expect(tap('RHM').symbols).toBe('A');
+    expect(tap('RHM').symbols).toBe('A');
+    // A space ends the word, and shift is not on any more.
+    expect(tap('L0').symbols).toBe(' ');
+    expect(tap('RHM').symbols).toBe('a');
+  });
+
   it('hold press activates the layer until release', () => {
     const layout = mini([
       {

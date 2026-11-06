@@ -754,6 +754,22 @@ What moved, checked across the 38 reports; nothing else moved:
   position and the positions of the keys listed for it (35 → 27) move; no number moved.
 - **The inline Magic Romak link**: it holds that document.
 
+## Thirty-sixth re-baseline: caps word is a behaviour, not a feature
+
+Caps word is only the `caps_word` behaviour now. `features.capsWord` is gone from the model: a
+document that declares it is read as the mod morph it made on the shift key, and `features` holds
+only sentence case. Magic Romak writes the morph on its R1 itself, with the settings its feature
+had (`LSHIFT` and `RSHIFT` trigger it, caps word applies `LSHIFT`, `_` and `Backspace` continue it),
+so it compiles to the same bindings as before.
+
+What moved, checked across the 38 reports; nothing else moved:
+
+- **Magic Romak's document** (`layouts/magic-romak.json`): `features` lost `capsWord`, and R1 on
+  Alpha 1 is the `mod_morph` that the feature compiled to.
+- **The inline Magic Romak link** (`inline-magic-romak.txt`): it holds that document.
+- **No report**: the compiled layout is the same, so every statistic, registry entry, run, rule
+  value, score and traced press is unchanged.
+
 ## Not compared
 
 `globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not

@@ -1,5 +1,6 @@
 import { type Binding, compileLayout, type Layout } from '@layerbench/core';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { BindingEditor, type EditorScope } from './bodies.js';
 
@@ -95,5 +96,39 @@ describe('a morph on a layer', () => {
     };
     render(<BindingEditor scope={scope} value={morph} onChange={vi.fn()} />);
     expect(screen.getByText('Changes while any of these is on.')).toBeInTheDocument();
+  });
+});
+
+describe('a morph that turns shift into caps word', () => {
+  const shiftShift: Binding = {
+    kind: 'mod_morph',
+    mods: ['LSHIFT', 'RSHIFT'],
+    default: { kind: 'sk', mod: 'LSHIFT' },
+    morphed: { kind: 'caps_word', continueList: ['_'] },
+  };
+
+  it('is a morph with Shift, plain a modifier and becoming caps word, with its own list', () => {
+    render(<BindingEditor scope={scope} value={shiftShift} onChange={vi.fn()} />);
+    expect(screen.getByLabelText('Plain kind')).toHaveValue('modifier');
+    expect(screen.getByLabelText('Becomes kind')).toHaveValue('capsword');
+    expect(screen.getByLabelText(/symbols that do not end the word/i)).toHaveValue('_');
+    expect(screen.queryAllByRole('link')).toEqual([]);
+  });
+
+  it('is made by choosing Caps word for what the morph becomes', async () => {
+    const onChange = vi.fn();
+    const morph: Binding = { ...shiftShift, morphed: kp('x') } as Binding;
+    render(<BindingEditor scope={scope} value={morph} onChange={onChange} />);
+    const becomes = screen.getByLabelText('Becomes kind');
+    expect(within(becomes).getByRole('option', { name: 'Caps word' })).toBeInTheDocument();
+    await userEvent.selectOptions(becomes, 'capsword');
+    expect(onChange).toHaveBeenLastCalledWith({ ...shiftShift, morphed: { kind: 'caps_word' } });
+  });
+
+  it('offers caps word for what the morph is plain too', () => {
+    render(<BindingEditor scope={scope} value={shiftShift} onChange={vi.fn()} />);
+    expect(
+      within(screen.getByLabelText('Plain kind')).getByRole('option', { name: 'Caps word' }),
+    ).toBeInTheDocument();
   });
 });

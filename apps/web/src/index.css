@@ -1141,7 +1141,7 @@ button.lb-combo-apart:focus-visible {
   white-space: nowrap;
 }
 
-/* The board of the Geometry tab: its keys to take away, the places to add one dashed. */
+/* The board of the Physical Layout tab: its keys to take away, the places to add one dashed. */
 .lb-geo {
   position: relative;
   min-width: 0;

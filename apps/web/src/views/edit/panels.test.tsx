@@ -1,15 +1,17 @@
-import { type Binding, compileLayout, type Layout } from '@layerbench/core';
+import { type Binding, bindingModule, compileLayout, type Layout } from '@layerbench/core';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   BehaviorsPanel,
   CombosPanel,
+  EXTERNAL_KINDS,
   FeaturesPanel,
   GeometryPanel,
   JsonPanel,
   LayersPanel,
   PathsPanel,
+  SPECIAL_KINDS,
 } from './panels.js';
 import { initialState } from './reducer.js';
 
@@ -66,8 +68,8 @@ describe('every panel but the Board and the board of Combos is a carousel', () =
   const send = vi.fn();
   const panels: [string, () => React.ReactElement][] = [
     ['Layers', () => <LayersPanel state={state} send={send} />],
-    ['Features', () => <FeaturesPanel state={state} send={send} />],
-    ['Geometry', () => <GeometryPanel state={state} send={send} />],
+    ['External Behaviors', () => <FeaturesPanel state={state} send={send} />],
+    ['Physical Layout', () => <GeometryPanel state={state} send={send} />],
     ['Combos', () => <CombosPanel state={state} send={send} />],
     ['Special Behaviors', () => <BehaviorsPanel state={state} send={send} />],
     ['Typing paths', () => <PathsPanel state={state} send={send} producers={producers} />],
@@ -156,6 +158,32 @@ function layOut(strip: HTMLElement) {
   });
   return scrollTo;
 }
+
+describe('a combo picked in its card', () => {
+  it('asks for the board to turn to the first layer the combo works on', async () => {
+    const send = vi.fn();
+    const everywhere = layout.combos?.[0];
+    const only: Layout = {
+      ...layout,
+      combos: [everywhere, { ...layout.combos?.[1], layers: ['sym', 'num'] }] as Layout['combos'],
+    };
+    render(<CombosPanel state={initialState(only, compileLayout(only))} send={send} />);
+    const user = userEvent.setup();
+    // A combo with no layers works on every layer: the first is the base layer, as its card draws it.
+    await user.click(screen.getByRole('button', { name: 'Edit LHM+LHI' }));
+    expect(send).toHaveBeenLastCalledWith({ type: 'selectCombo', combo: 0, layer: 0 });
+    // Its list names the layers, and the first named is the one: Symbols, not Numbers.
+    await user.click(screen.getByRole('button', { name: 'Edit RHM+RHI' }));
+    expect(send).toHaveBeenLastCalledWith({ type: 'selectCombo', combo: 1, layer: 2 });
+  });
+
+  it('closes the combo, and leaves the board where it is, when the open one is picked again', async () => {
+    const send = vi.fn();
+    render(<CombosPanel state={{ ...state, combo: 0, comboPicks: 1 }} send={send} />);
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Edit LHM+LHI' }));
+    expect(send).toHaveBeenLastCalledWith({ type: 'selectCombo', combo: null });
+  });
+});
 
 describe('a combo opened from the board', () => {
   afterEach(() => {
@@ -366,15 +394,104 @@ describe("a layer's colour, picked from a group of circles", () => {
   });
 });
 
-describe('the Features carousel', () => {
+/** The layout with an adaptive key, an alt repeat and a macro, as the two behaviour panels list. */
+const behaving: Layout = {
+  ...layout,
+  layers: [
+    {
+      ...layout.layers[0],
+      bindings: {
+        ...layout.layers[0].bindings,
+        LHP: {
+          kind: 'adaptive',
+          default: kp('h'),
+          triggers: [{ afterAny: ['LHM'], binding: kp('v') }],
+        },
+        LHR: {
+          kind: 'adaptive',
+          default: { kind: 'key_repeat' },
+          triggers: [{ afterAny: ['LHM'], binding: kp('e') }],
+        },
+        LTP: { kind: 'macro', symbols: 'xyz' },
+        RHP: { kind: 'mod_morph', mods: ['LSHIFT'], default: kp('x'), morphed: kp('y') },
+      },
+    },
+    ...layout.layers.slice(1),
+  ],
+};
+
+describe('the External Behaviors carousel', () => {
   it('lights the band of a feature that is on', () => {
     // The panel reads the features as written; it does not need them compiled.
-    const on = { ...state, layout: { ...layout, features: { capsWord: {} } } };
+    const on = { ...state, layout: { ...layout, features: { sentenceCase: {} } } };
     render(<FeaturesPanel state={on} send={vi.fn()} />);
-    const capsWord = screen.getByLabelText('Caps word').closest('li') as HTMLElement;
     const sentence = screen.getByLabelText('Sentence case').closest('li') as HTMLElement;
-    expect(capsWord.style.getPropertyValue('--lb-accent')).toBe('var(--color-primary)');
-    expect(sentence.style.getPropertyValue('--lb-accent')).toBe('');
+    expect(sentence.style.getPropertyValue('--lb-accent')).toBe('var(--color-primary)');
+    const off = render(<FeaturesPanel state={state} send={vi.fn()} />);
+    const idle = within(off.container).getByLabelText('Sentence case').closest('li') as HTMLElement;
+    expect(idle.style.getPropertyValue('--lb-accent')).toBe('');
+  });
+
+  it('has sentence case and no caps word, which is a key and not a feature', () => {
+    render(<FeaturesPanel state={state} send={vi.fn()} />);
+    const list = screen.getByRole('list', { name: 'External behaviors' });
+    expect(within(list).getAllByRole('listitem')).toHaveLength(1);
+    expect(within(list).getByLabelText('Sentence case')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Caps word')).toBeNull();
+    expect(screen.queryByLabelText('Caps word continue list')).toBeNull();
+  });
+
+  it('lists the adaptive keys and alt repeats after sentence case, and no macro or morph', () => {
+    const s = initialState(behaving, compileLayout(behaving));
+    render(<FeaturesPanel state={s} send={vi.fn()} />);
+    const items = within(screen.getByRole('list', { name: 'External behaviors' })).getAllByRole(
+      'listitem',
+    );
+    expect(items[0]).toHaveTextContent('Sentence case');
+    expect(items.slice(1).map((li) => li.textContent)).toEqual([
+      expect.stringContaining('Adaptive key'),
+      expect.stringContaining('Alt repeat'),
+    ]);
+  });
+
+  it('shows a use on the board when it is picked, as Special Behaviors does', async () => {
+    const send = vi.fn();
+    const onShow = vi.fn();
+    const s = initialState(behaving, compileLayout(behaving));
+    render(<FeaturesPanel state={s} send={send} onShow={onShow} />);
+    await userEvent.setup().click(screen.getByRole('button', { name: /^Base · LHP/ }));
+    expect(onShow).toHaveBeenCalledOnce();
+    expect(send).toHaveBeenCalledWith({ type: 'setPanel', panel: 'board' });
+    expect(send).toHaveBeenCalledWith({ type: 'keyClick', keyId: 'LHP' });
+  });
+});
+
+describe('the Special Behaviors carousel', () => {
+  it('lists macros and mod morphs, and none of what needs a ZMK module', () => {
+    const s = initialState(behaving, compileLayout(behaving));
+    render(<BehaviorsPanel state={s} send={vi.fn()} />);
+    const items = within(screen.getByRole('list', { name: 'Special behaviors' })).getAllByRole(
+      'listitem',
+    );
+    expect(items.map((li) => li.textContent)).toEqual([
+      expect.stringContaining('Macro'),
+      expect.stringContaining('Mod morph'),
+    ]);
+  });
+
+  it('says so when there is neither', () => {
+    render(<BehaviorsPanel state={state} send={vi.fn()} />);
+    expect(screen.getByText('This layout has no macros or mod morphs.')).toBeInTheDocument();
+  });
+
+  it('lists in External Behaviors the kinds whose keys need a ZMK module, and no other', () => {
+    expect(EXTERNAL_KINDS).toEqual(['adaptive', 'alt_repeat']);
+    expect(SPECIAL_KINDS).toEqual(['macro', 'mod_morph']);
+    // Adaptive keys and alt repeats are the one binding the module is for; macros and morphs are
+    // stock ZMK.
+    expect(bindingModule('adaptive')).not.toBeNull();
+    expect(bindingModule('macro')).toBeNull();
+    expect(bindingModule('mod_morph')).toBeNull();
   });
 });
 

@@ -102,14 +102,14 @@ describe('a layout written in code', () => {
       geometry: '1222+2',
       byKey: { ...PIANO, R1: { kind: 'sk', mod: 'LSHIFT' } },
       shift: { key: 'R1', kind: 'sk' },
-      features: { sentenceCase: {}, capsWord: { continueList: ['_'] } },
+      features: { sentenceCase: {} },
       behaviorDefaults: { sk: { quickRelease: true, releaseAfterMs: 1500 } },
       repeatPolicy: { doubledLetters: 'repeatKey' },
       activators: { alpha2: [{ from: 'base', via: 'key:base/R0' }] },
     });
 
     expect(layout.keys).toEqual({ space: 'L1', shift: { key: 'R1', kind: 'sk' } });
-    expect(layout.features).toEqual({ sentenceCase: {}, capsWord: { continueList: ['_'] } });
+    expect(layout.features).toEqual({ sentenceCase: {} });
     expect(layout.behaviorDefaults).toEqual({ sk: { quickRelease: true, releaseAfterMs: 1500 } });
     expect(layout.repeatPolicy).toEqual({ doubledLetters: 'repeatKey' });
     expect(layout.activators).toEqual({ alpha2: [{ from: 'base', via: 'key:base/R0' }] });

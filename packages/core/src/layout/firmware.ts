@@ -61,13 +61,11 @@ export function bindingModule(kind: BindingKind): ZmkModuleId | null {
 }
 
 /**
- * The module each feature needs, or null where stock ZMK has it. Caps word on the shift key is a
- * mod-morph that turns on caps word. Sentence case makes the space key zmk-sentence-case's
- * `&sentence_space`.
+ * The module each feature needs, or null where stock ZMK has it. Sentence case makes the space key
+ * zmk-sentence-case's `&sentence_space`.
  */
 const FEATURE_MODULES: Record<WrappingFeature, ZmkModuleId | null> = {
   sentenceCase: 'sentenceCase',
-  capsWord: null,
 };
 
 /** The ZMK module a feature needs, or null when stock ZMK has it. */
