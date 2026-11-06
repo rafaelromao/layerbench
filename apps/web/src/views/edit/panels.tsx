@@ -12,6 +12,7 @@ import {
   type LayerColor,
   layerReachedFrom,
   legend,
+  plainPath,
   reachKeys,
   type SpecialFeature,
   type SpecialFeatureKind,
@@ -866,18 +867,26 @@ function useFeatureSlides(
     send({ type: 'selectLayer', layer });
     send({ type: 'keyClick', keyId: f.key });
   };
-  /** What the feature's key, or its combo, types, as the board would draw it. */
+  /**
+   * What the feature types, as the board would draw it: its key, or its combo. A use inside one of
+   * the key's other branches, such as the macro an alt repeat types after a letter, is not what its
+   * key is drawn as, so it is drawn as what it types itself.
+   */
   const typedBy = (f: SpecialFeature) => {
     let binding: Binding | undefined;
+    let held: Binding | undefined;
     if (f.combo !== undefined) {
-      binding =
-        f.comboIndex === undefined ? undefined : state.layout.combos?.[f.comboIndex]?.binding;
+      held = f.comboIndex === undefined ? undefined : state.layout.combos?.[f.comboIndex]?.binding;
+      binding = held;
     } else {
       const layer = f.layer === undefined ? undefined : compiled.layerIndex.get(f.layer);
       const key = f.key === undefined ? undefined : compiled.keyIndex.get(f.key);
       binding =
         layer === undefined || key === undefined ? undefined : compiled.layers[layer].bindings[key];
+      const bindings = layer === undefined ? undefined : state.layout.layers[layer]?.bindings;
+      held = f.key === undefined ? undefined : (bindings?.[f.key] ?? bindings?.['*']);
     }
+    if (held && !plainPath(held).includes(f.binding)) binding = f.binding;
     return binding ? legend(compiled, binding) : null;
   };
   const placeOf = (f: SpecialFeature) => {

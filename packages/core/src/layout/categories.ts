@@ -18,6 +18,8 @@ export interface SpecialFeature {
   /** Where the combo stands in the layout's list: two combos may share an id. */
   comboIndex?: number;
   label: string;
+  /** The binding that is the feature, which is inside the key's or combo's when that is a wrapper. */
+  binding: Binding;
 }
 
 /** Every layout is in exactly one, worked out from its own keys. */
@@ -165,7 +167,8 @@ interface Place {
 
 /** The special features a binding is or holds, at the place it is bound. */
 function featuresOf(b: Binding, at: Place, out: SpecialFeature[]): void {
-  const emit = (feature: SpecialFeatureKind, label: string) => out.push({ feature, ...at, label });
+  const emit = (feature: SpecialFeatureKind, label: string) =>
+    out.push({ feature, ...at, label, binding: b });
   switch (b.kind) {
     case 'adaptive':
       if (b.default?.kind === 'key_repeat') emit('alt_repeat', FEATURE_LABELS.alt_repeat);

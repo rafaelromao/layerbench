@@ -98,7 +98,7 @@ describe('a custom copy of Qwerty', () => {
   it('is Special once one of its keys is adaptive', () => {
     const l = withKey('LHP', { kind: 'adaptive', default: kp('a'), triggers: [] });
     expect(layoutCategory(l)).toBe('special');
-    expect(specialFeatures(l)).toEqual([
+    expect(specialFeatures(l)).toMatchObject([
       { feature: 'adaptive', layer: 'base', key: 'LHP', label: 'Adaptive key' },
     ]);
   });
@@ -143,7 +143,7 @@ describe('a custom copy of Qwerty', () => {
       ...qwerty(),
       combos: [{ id: 'qu', keys: ['LTP', 'LTR'], binding: { kind: 'macro', symbols: 'qu' } }],
     };
-    expect(specialFeatures(l)).toEqual([
+    expect(specialFeatures(l)).toMatchObject([
       { feature: 'macro', combo: 'qu', comboIndex: 0, label: 'Macro “qu”' },
     ]);
     expect(layoutCategory(l)).toBe('special');
@@ -170,12 +170,29 @@ describe('a custom copy of Qwerty', () => {
     ]);
   });
 
+  it('gives each use its own binding, a macro in an alt repeat branch included', () => {
+    const macro: Binding = { kind: 'macro', symbols: 'ões' };
+    const altRepeat: Binding = {
+      kind: 'adaptive',
+      default: { kind: 'key_repeat' },
+      triggers: [{ afterAny: ['LHM'], binding: macro }],
+    };
+    const uses = specialFeatures(withKey('LHP', altRepeat));
+    expect(uses.map((f) => [f.feature, f.key])).toEqual([
+      ['alt_repeat', 'LHP'],
+      ['macro', 'LHP'],
+    ]);
+    // The alt repeat is the key's binding; the macro is the one its branch holds.
+    expect(uses[0].binding).toBe(altRepeat);
+    expect(uses[1].binding).toBe(macro);
+  });
+
   it('names a combo with no id by its place', () => {
     const l: Layout = {
       ...qwerty(),
       combos: [{ keys: ['LTP', 'LTR'], binding: { kind: 'macro' } }],
     };
-    expect(specialFeatures(l)).toEqual([
+    expect(specialFeatures(l)).toMatchObject([
       { feature: 'macro', combo: '#1', comboIndex: 0, label: 'Macro' },
     ]);
   });
@@ -183,7 +200,7 @@ describe('a custom copy of Qwerty', () => {
   it('is Special with a sentence space on a key, once, named Sentence case', () => {
     const key = qwerty().keys.space;
     const sentence = withKey(key, { kind: 'sentence_space' });
-    expect(specialFeatures(sentence)).toEqual([
+    expect(specialFeatures(sentence)).toMatchObject([
       { feature: 'adaptive', layer: 'base', key, label: 'Sentence case' },
     ]);
     expect(layoutCategory(sentence)).toBe('special');
@@ -198,7 +215,7 @@ describe('a custom copy of Qwerty', () => {
       morphed: { kind: 'caps_word' },
     };
     const caps = withKey('R1', morph);
-    expect(specialFeatures(caps)).toEqual([
+    expect(specialFeatures(caps)).toMatchObject([
       { feature: 'mod_morph', layer: 'base', key: 'R1', label: 'Mod morph' },
     ]);
     expect(layoutCategory(caps)).toBe('special');
@@ -232,7 +249,7 @@ describe('a custom copy of Qwerty', () => {
     num.bindings.RHI = { kind: 'macro', symbols: 'xyz' };
     expect(layoutCategory(l)).toBe('standard');
     const own = { ...l, layers: l.layers.filter((x) => x.id !== DEFAULT_LAYER_IDS.accents) };
-    expect(specialFeatures(own)).toEqual([
+    expect(specialFeatures(own)).toMatchObject([
       { feature: 'macro', layer: 'num', key: 'RHI', label: 'Macro “xyz”' },
     ]);
     expect(layoutCategory(own)).toBe('special');

@@ -58,6 +58,21 @@ export function heldPart(b: Binding): Binding | null {
   return null;
 }
 
+/**
+ * The bindings a key goes through to its Plain part, the key's own first and the part it amounts to
+ * last: a tap-hold, then its tap, then an adaptive key's default. A binding inside one of its other
+ * branches, such as the macro an alt repeat types after a letter, is not on the way.
+ */
+export function plainPath(b: Binding): Binding[] {
+  const path = [b];
+  for (let depth = 0; depth < MAX_DEPTH; depth++) {
+    const next = chosen(path[path.length - 1], PLAIN);
+    if (next === null) break;
+    path.push(next);
+  }
+  return path;
+}
+
 function chosen(b: Binding, how: Choosing): Binding | null {
   switch (b.kind) {
     case 'hold_tap':
