@@ -156,9 +156,12 @@ banded in the colour its keys are drawn in, and does everything else with them:
   it on a phone, or `F2` on the keyboard).
 - **Reorder** with the ← and → buttons, or by dragging its card. The base layer stays first.
 - **Duplicate** (⧉) copies a layer, with all its keys, right after it.
-- **Colour**, under the layer's name, picks the colour its name and the keys that reach it are
-  drawn in. **Automatic** follows the layer's place in the list; each of the others keeps a shade
-  for the light theme and one for the dark, so legends stay readable in both.
+- **Colour**, under the layer's name, is a row of circles, one for each colour the layer's name and
+  the keys that reach it can be drawn in. Click one, or move through them with the arrow keys. The
+  circle picked wears a ring and a check. **Automatic**, the first, is dashed and lettered *A*, and
+  filled with the colour the layer's place in the list gives it, none for the base layer; each of
+  the others keeps a shade for the light theme and one for the dark, so legends stay readable in
+  both. Hover a circle for its name.
 - **Remove** (✕) deletes a layer. It refuses while a key or combo still reaches the layer, and names
   each one, so nothing is left pointing at a layer that is gone.
 - **New layer**, one of the last two cards of the strip, adds one at the end, named as you type in

@@ -292,6 +292,108 @@ describe('the Layers carousel, drawn', () => {
   });
 });
 
+describe("a layer's colour, picked from a group of circles", () => {
+  const COLOURS = ['Automatic', 'Blue', 'Green', 'Amber', 'Red', 'Violet', 'Teal', 'Lime'];
+  const group = (layer: string) =>
+    screen.getByRole('radiogroup', { name: `Colour of layer ${layer}` });
+
+  it('offers Automatic and each colour of the palette, one checked', () => {
+    render(<LayersPanel state={state} send={vi.fn()} />);
+    const radios = within(group('Symbols')).getAllByRole('radio');
+    expect(radios.map((r) => r.getAttribute('aria-label'))).toEqual(COLOURS);
+    // Left to its place in the list, a layer is on Automatic and on nothing else.
+    expect(radios.filter((r) => (r as HTMLInputElement).checked)).toEqual([radios[0]]);
+  });
+
+  it('checks the colour the layer chose', () => {
+    const teal: Layout = {
+      ...layout,
+      layers: layout.layers.map((l) => (l.id === 'sym' ? { ...l, color: 'teal' } : l)),
+    };
+    render(<LayersPanel state={initialState(teal, compileLayout(teal))} send={vi.fn()} />);
+    expect(within(group('Symbols')).getByRole('radio', { name: 'Teal' })).toBeChecked();
+    expect(within(group('Symbols')).getByRole('radio', { name: 'Automatic' })).not.toBeChecked();
+    // The layers around it are not touched.
+    expect(within(group('Numbers')).getByRole('radio', { name: 'Automatic' })).toBeChecked();
+  });
+
+  it('draws each circle in the colour it picks, and Automatic in the one the place gives', () => {
+    render(<LayersPanel state={state} send={vi.fn()} />);
+    const fill = (layer: string, name: string) =>
+      within(group(layer)).getByRole('radio', { name }).style.getPropertyValue('--lb-colour');
+    expect(fill('Symbols', 'Teal')).toBe('var(--lb-layer-6)');
+    expect(fill('Symbols', 'Blue')).toBe('var(--lb-layer-1)');
+    // Symbols is the second layer after the base one; Numbers is the first.
+    expect(fill('Symbols', 'Automatic')).toBe('var(--lb-layer-2)');
+    expect(fill('Numbers', 'Automatic')).toBe('var(--lb-layer-1)');
+    // The base layer has none by its place: its Automatic circle is drawn on the card's ground.
+    expect(fill('Base', 'Automatic')).toBe('');
+  });
+
+  it('sends the colour clicked, and none for Automatic', async () => {
+    const send = vi.fn();
+    const user = userEvent.setup();
+    const teal: Layout = {
+      ...layout,
+      layers: layout.layers.map((l) => (l.id === 'sym' ? { ...l, color: 'teal' } : l)),
+    };
+    const { unmount } = render(<LayersPanel state={state} send={send} />);
+    await user.click(within(group('Symbols')).getByRole('radio', { name: 'Teal' }));
+    expect(send).toHaveBeenLastCalledWith({
+      type: 'edit',
+      edit: { kind: 'colorLayer', layer: 'sym', color: 'teal' },
+    });
+    unmount();
+    render(<LayersPanel state={initialState(teal, compileLayout(teal))} send={send} />);
+    await user.click(within(group('Symbols')).getByRole('radio', { name: 'Automatic' }));
+    expect(send).toHaveBeenLastCalledWith({
+      type: 'edit',
+      edit: { kind: 'colorLayer', layer: 'sym', color: undefined },
+    });
+  });
+
+  it('is one group of radios per layer, moved through with the arrow keys', async () => {
+    const send = vi.fn();
+    const user = userEvent.setup();
+    render(<LayersPanel state={state} send={send} />);
+    // One name for a layer's eight and another for each other layer, which is what keeps the
+    // arrows inside the group.
+    const nameOf = (layer: string) => [
+      ...new Set(
+        within(group(layer))
+          .getAllByRole('radio')
+          .map((r) => (r as HTMLInputElement).name),
+      ),
+    ];
+    expect(nameOf('Numbers')).toHaveLength(1);
+    expect(nameOf('Symbols')).toHaveLength(1);
+    expect(nameOf('Numbers')).not.toEqual(nameOf('Symbols'));
+
+    within(group('Symbols')).getByRole('radio', { name: 'Automatic' }).focus();
+    await user.keyboard('{ArrowRight}');
+    expect(send).toHaveBeenLastCalledWith({
+      type: 'edit',
+      edit: { kind: 'colorLayer', layer: 'sym', color: 'blue' },
+    });
+  });
+
+  it('names each circle and says it again as a tooltip', () => {
+    render(<LayersPanel state={state} send={vi.fn()} />);
+    const symbols = within(group('Symbols'));
+    expect(symbols.getByRole('radio', { name: 'Teal' }).closest('label')).toHaveAttribute(
+      'title',
+      'Teal',
+    );
+    expect(symbols.getByRole('radio', { name: 'Automatic' }).closest('label')).toHaveAttribute(
+      'title',
+      'Automatic: by its place in the list',
+    );
+    expect(
+      within(group('Base')).getByRole('radio', { name: 'Automatic' }).closest('label'),
+    ).toHaveAttribute('title', 'Automatic: the text colour');
+  });
+});
+
 /** The layout with an adaptive key, an alt repeat and a macro, as the two behaviour panels list. */
 const behaving: Layout = {
   ...layout,

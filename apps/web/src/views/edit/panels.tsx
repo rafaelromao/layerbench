@@ -135,8 +135,10 @@ const COLOUR_NAMES: Record<LayerColor, string> = {
 };
 
 /**
- * The colour a layer is drawn in: Automatic, the one its place in the list gives it, or one of the
- * palette's, each tuned for both themes. The swatch shows the colour the layer has now.
+ * The colour a layer is drawn in, a circle for each as one group of radios: Automatic, the one its
+ * place in the list gives it, or one of the palette's, each tuned for both themes. The one picked
+ * wears a ring and a check, so it reads without its colour; Automatic is dashed, filled with the
+ * colour the layer has by its place, which is the text colour for the base layer.
  */
 function LayerColourPicker({
   layerName,
@@ -149,28 +151,35 @@ function LayerColourPicker({
   value: LayerColor | undefined;
   onChange: (color: LayerColor | undefined) => void;
 }) {
-  const shown = layerColourOf(index, value);
+  const name = useId();
+  const options: readonly (readonly [LayerColor | undefined, string])[] = [
+    [undefined, 'Automatic'],
+    ...LAYER_COLORS.map((c) => [c, COLOUR_NAMES[c]] as const),
+  ];
   return (
-    <span className="flex min-w-0 items-center gap-1">
-      <span
-        aria-hidden="true"
-        className="lb-layer-swatch"
-        style={shown ? { background: shown } : undefined}
-      />
-      <select
-        aria-label={`Colour of layer ${layerName}`}
-        className="select select-xs select-ghost w-auto min-w-0"
-        value={value ?? ''}
-        onChange={(e) => onChange((e.target.value || undefined) as LayerColor | undefined)}
-      >
-        <option value="">Automatic</option>
-        {LAYER_COLORS.map((c) => (
-          <option key={c} value={c}>
-            {COLOUR_NAMES[c]}
-          </option>
-        ))}
-      </select>
-    </span>
+    <div role="radiogroup" aria-label={`Colour of layer ${layerName}`} className="lb-layer-colours">
+      {options.map(([color, text]) => (
+        <label
+          key={color ?? 'automatic'}
+          className="lb-colour"
+          title={
+            color
+              ? text
+              : `Automatic: ${index === 0 ? 'the text colour' : 'by its place in the list'}`
+          }
+        >
+          <input
+            type="radio"
+            name={name}
+            aria-label={text}
+            className={color ? 'lb-colour-radio' : 'lb-colour-radio lb-colour-auto'}
+            style={{ '--lb-colour': layerColourOf(index, color) } as CSSProperties}
+            checked={value === color}
+            onChange={() => onChange(color)}
+          />
+        </label>
+      ))}
+    </div>
   );
 }
 

@@ -1227,20 +1227,85 @@ button.lb-combo-apart:focus-visible {
   cursor: grab;
   opacity: 0.4;
 }
-/* A layer's colour, under its name. */
+/* A layer's colour, under its name, centred in the room the slide has left over. */
 .lb-layer-meta {
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
   min-width: 0;
 }
-.lb-layer-swatch {
-  width: 0.625rem;
-  height: 0.625rem;
-  border-radius: 9999px;
+/*
+ * One circle per colour, four to a row, as a radio group. The circle is the radio itself, drawn in
+ * the colour it picks; the label around it is the cell a finger or pointer can hit. The one picked
+ * is ringed and checked, and Automatic is dashed and lettered, so none depends on its colour alone.
+ */
+.lb-layer-colours {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  justify-items: center;
+  width: 100%;
+  min-width: 0;
+}
+.lb-colour {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 2rem;
+  cursor: pointer;
+}
+.lb-colour-radio {
+  /* Dark on the light shades, light on the dark ones, as a layer's number is. */
+  --lb-ink: var(--color-base-100);
+  appearance: none;
+  display: grid;
+  place-items: center;
+  width: 1.625rem;
+  height: 1.625rem;
+  margin: 0;
   border: 1px solid var(--lb-key-stroke);
-  background: transparent;
-  /* Round at any width: the select beside it is what gives way. */
-  flex-shrink: 0;
+  border-radius: 9999px;
+  background: var(--lb-colour, transparent);
+  color: var(--lb-ink);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+.lb-colour-radio:hover {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-base-content) 30%, transparent);
+}
+.lb-colour-radio:checked {
+  box-shadow:
+    0 0 0 2px var(--color-base-100),
+    0 0 0 4px var(--color-base-content);
+}
+.lb-colour-radio:checked::after {
+  content: "";
+  width: 0.3125rem;
+  height: 0.5625rem;
+  margin-top: -0.125rem;
+  border: solid var(--lb-ink);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.lb-colour-radio:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.lb-colour-radio:checked:focus-visible {
+  outline-offset: 5px;
+}
+/* Automatic: a dashed ring round the colour its place gives, which is none for the base layer, so
+   its letter and ring are the text colour. */
+.lb-colour-auto {
+  border: 2px dashed var(--color-base-content);
+  background-clip: padding-box;
+}
+.lb-colour-auto:not([style*="--lb-colour"]) {
+  --lb-ink: var(--color-base-content);
+}
+.lb-colour-auto:not(:checked)::before {
+  content: "A";
 }
 
 /* A layer to import: its switch, name and arrows on one line, what was read of it under the name. */

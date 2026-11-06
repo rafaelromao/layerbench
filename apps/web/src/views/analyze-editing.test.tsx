@@ -2082,6 +2082,12 @@ describe('Edit', () => {
     expect(screen.getByRole('button', { name: /^Key R0: A2, hold Symb/ })).toBeInTheDocument();
   });
 
+  /** The circle that picks a colour for the Symbols layer, in the Layers tab. */
+  const symbolsColour = (name: string) =>
+    within(screen.getByRole('radiogroup', { name: 'Colour of layer Symbols' })).getByRole('radio', {
+      name,
+    });
+
   it('draws a layer in the colour chosen for it, undoes the choice, and saves it', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
@@ -2095,7 +2101,7 @@ describe('Edit', () => {
     expect(dot()).toContain('var(--lb-layer-4)');
 
     await user.click(screen.getByRole('tab', { name: 'Layers' }));
-    await user.selectOptions(screen.getByLabelText('Colour of layer Symbols'), 'teal');
+    await user.click(symbolsColour('Teal'));
     await user.click(screen.getByRole('tab', { name: 'Board' }));
     expect(dot()).toContain('var(--lb-layer-6)');
     expect(screen.getByText('unsaved')).toBeInTheDocument();
@@ -2103,9 +2109,9 @@ describe('Edit', () => {
     await user.click(screen.getByRole('button', { name: 'Undo' }));
     expect(dot()).toContain('var(--lb-layer-4)');
     await user.click(screen.getByRole('tab', { name: 'Layers' }));
-    expect(screen.getByLabelText('Colour of layer Symbols')).toHaveValue('');
+    expect(symbolsColour('Automatic')).toBeChecked();
     await user.click(screen.getByRole('button', { name: 'Redo' }));
-    expect(screen.getByLabelText('Colour of layer Symbols')).toHaveValue('teal');
+    expect(symbolsColour('Teal')).toBeChecked();
 
     await saveCopy(user);
     expect(await screen.findByText('Saved Magic Romak copy')).toBeInTheDocument();
@@ -2119,7 +2125,7 @@ describe('Edit', () => {
     const user = userEvent.setup();
     await openMagicRomak();
     await user.click(screen.getByRole('tab', { name: 'Layers' }));
-    await user.selectOptions(screen.getByLabelText('Colour of layer Symbols'), 'teal');
+    await user.click(symbolsColour('Teal'));
 
     // The Ç extension's thumb is a layer key, so its editor offers every layer as a chip.
     await showLayer(user, 'Ç extension');

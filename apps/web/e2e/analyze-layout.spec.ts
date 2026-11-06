@@ -139,7 +139,7 @@ test.describe('on a phone', () => {
   }) => {
     await openEdit(page);
     await page.getByRole('tab', { name: 'Layers' }).tap();
-    const colour = page.getByRole('combobox', { name: 'Colour of layer num' });
+    const colour = page.getByRole('radiogroup', { name: 'Colour of layer Numbers' });
     await colour.scrollIntoViewIfNeeded();
     // The cards scroll sideways inside their panel, and the page itself never does.
     expect(await overflow(page)).toBeLessThanOrEqual(0);
@@ -151,6 +151,18 @@ test.describe('on a phone', () => {
       expect(box).not.toBeNull();
       if (box && left) expect(box.y + box.height).toBeLessThanOrEqual(left.y);
     }
+    // Each colour is a circle of at least 24px (WCAG 2.5.8) in a cell of 30px, as a small button is.
+    const circles = await colour.getByRole('radio').all();
+    expect(circles).toHaveLength(8);
+    for (const circle of circles) {
+      const dot = await circle.boundingBox();
+      const cell = await circle.locator('xpath=..').boundingBox();
+      expect(Math.min(dot?.width ?? 0, dot?.height ?? 0)).toBeGreaterThanOrEqual(24);
+      expect(Math.min(cell?.width ?? 0, cell?.height ?? 0)).toBeGreaterThanOrEqual(30);
+    }
+    await colour.getByRole('radio', { name: 'Red' }).tap();
+    await expect(colour.getByRole('radio', { name: 'Red' })).toBeChecked();
+    expect(await overflow(page)).toBeLessThanOrEqual(0);
   });
 
   test('the layer navigator fits an iPhone SE with no sideways scroll', async ({ page }) => {
