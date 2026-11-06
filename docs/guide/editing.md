@@ -426,11 +426,13 @@ keeps the page where it is, at either end too:
   **One-shot keys**: as the next key goes down or not, whether they stay on while a modifier is
   pressed, and after how many milliseconds unused. After them it lists the layout's adaptive keys,
   alt repeats, macros and mod morphs, and its sentence spaces, a card each, kind by kind, on a key
-  that shows what it types. Each names its layer and key, or its combo; pick one to go to the
-  **Board** tab, turned to that layer with the key selected, or to outline the combo's keys. A shift
-  key that starts caps word is one of the mod morphs. Adaptive keys, alt repeats and sentence spaces
-  need a ZMK module, linked in the key editor. Caps word and the sentence space are keys, made with
-  their tiles like any other, on any key, and not switches.
+  that shows what it types. Each names its layer and key, or its combo. The board is under the
+  cards, as on **Combos**: pick one and the board turns to its layer with the key selected, or
+  opens its combo, with the editor beside the board, and the card is marked. A key or combo picked
+  on the board scrolls its card into view in the strip. A shift key that starts caps word is one of
+  the mod morphs. Adaptive keys, alt repeats and sentence spaces need a ZMK module, linked in the
+  key editor. Caps word and the sentence space are keys, made with their tiles like any other, on
+  any key, and not switches.
 - **Typing paths** list the other ways a character can be typed, a card for each, with the character
   on a key at its left. Left alone, a character is typed
   the cheapest way from where the typist is: the fewest presses, then the one that leaves no layer

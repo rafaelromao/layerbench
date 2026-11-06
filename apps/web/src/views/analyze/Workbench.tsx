@@ -582,7 +582,7 @@ export function Workbench({
   }, [typedCompiled, boardLayer, frame, showCombos]);
 
   // Everything the board outlines: a key armed for a swap, the keys picked for a combo, the keys of
-  // the combo open in the editor or one a panel points at, and an outlined pair or word.
+  // the combo open in the editor, and an outlined pair or word.
   const openCombo = state.combo === null ? undefined : state.layout.combos?.[state.combo];
   const placeOf = (typed: number) => comboPlace(state.compiled, typedCompiled, typed);
   const openBox =
@@ -594,22 +594,12 @@ export function Workbench({
     const ids = [
       ...(state.swapFrom ? [state.swapFrom] : []),
       ...(state.comboPick ?? openCombo?.keys ?? []),
-      ...state.boardHighlight,
     ];
     const edits = ids
       .map((id) => state.compiled.keyIndex.get(id))
       .filter((p): p is number => p !== undefined);
     return [...edits, ...outline];
-  }, [
-    playing,
-    frame,
-    state.swapFrom,
-    state.comboPick,
-    openCombo,
-    state.boardHighlight,
-    state.compiled,
-    outline,
-  ]);
+  }, [playing, frame, state.swapFrom, state.comboPick, openCombo, state.compiled, outline]);
 
   const highlightItem = (ruleId: string, index: number) => {
     const rule = shown?.results.find((r) => r.id === ruleId);
@@ -683,15 +673,9 @@ export function Workbench({
     if (e.key === 'Escape') {
       e.preventDefault();
       // One thing at a time: a swap or pick in progress, then an outline, then the editor.
-      if (
-        state.swapFrom !== null ||
-        state.placing !== null ||
-        state.comboPick !== null ||
-        state.boardHighlight.length > 0
-      ) {
+      if (state.swapFrom !== null || state.placing !== null || state.comboPick !== null) {
         send({ type: 'cancelSwap' });
         send({ type: 'comboPickCancel' });
-        send({ type: 'setBoardHighlight', keys: [] });
       } else if (outline.length > 0 || arcs.length > 0) clearOutline();
       else send({ type: 'deselect' });
       return;
@@ -786,8 +770,9 @@ export function Workbench({
   };
 
   const onBoard = state.panel === 'board';
-  // Combos draws the board under its strip of combos, to pick a combo's keys on.
-  const showBoard = onBoard || state.panel === 'combos';
+  // Combos draws the board under its strip of combos, to pick a combo's keys on. Special Behaviors
+  // draws it under its own, to show the key or combo picked.
+  const showBoard = onBoard || state.panel === 'combos' || state.panel === 'behaviors';
   const editorPanel = (
     <div
       role="tabpanel"
@@ -1033,10 +1018,6 @@ export function Workbench({
                             send({ type: 'deselect' });
                             // A character tapped in the tray goes down as an armed swap does.
                             if (state.placing !== null) send({ type: 'armChar', char: null });
-                            // The keys a combo or a feature outlined from a panel go too, as on Escape.
-                            if (state.boardHighlight.length > 0) {
-                              send({ type: 'setBoardHighlight', keys: [] });
-                            }
                             clearOutline();
                           }}
                           typed={typedCompiled}
