@@ -2,7 +2,6 @@ import {
   type Binding,
   describeReach,
   keyBinding,
-  type LayoutFeatures,
   legend,
   legendText,
   reachKeys,
@@ -12,8 +11,6 @@ import { HelpLink } from '../../../components/HelpLink.js';
 import { HELP } from '../../../guide/help.js';
 import type { EditAction, EditState } from '../reducer.js';
 import { BindingEditor } from './bodies.js';
-import { Note } from './controls.js';
-import { FeatureBody, featureTitle, withoutFeatureAt } from './features.js';
 import { kindInfo, kindOf } from './kinds.js';
 import { SelectionInspector } from './SelectionInspector.js';
 import { FromThisLayout, useEditorScope } from './shared.js';
@@ -76,9 +73,6 @@ function Inspector({ state, send, focusKey, keyId }: KeyInspectorProps & { keyId
   const fallback: Binding =
     layout.layers[layer]?.bindings['*'] ?? (layer === 0 ? { kind: 'none' } : { kind: 'trans' });
   const current = authored ?? fallback;
-  // Sentence case wraps the tap of the key it belongs to; such a key is edited as its feature,
-  // since the next compile would wrap anything written on the key again.
-  const owner = compiled.featureOwned.get(activeLayer.id)?.get(keyId);
   const scope = useEditorScope(compiled);
   const text = scope.text;
   // How this key brings the layer on, said where a phone user can read it.
@@ -99,8 +93,6 @@ function Inspector({ state, send, focusKey, keyId }: KeyInspectorProps & { keyId
       say: `${keyId} set to ${legendText(legend(compiled, binding)) || 'nothing'}`,
     });
   };
-  const setFeatures = (features: LayoutFeatures, say?: string) =>
-    send({ type: 'edit', edit: { kind: 'setFeatures', features }, say });
   // A cleared key does nothing: it does not fall back to the layer's default, which above the base
   // would let the key below show through.
   const clear = () =>
@@ -127,14 +119,14 @@ function Inspector({ state, send, focusKey, keyId }: KeyInspectorProps & { keyId
               <span className="badge badge-neutral badge-sm font-mono">{keyId}</span>
               <span className="opacity-70">{activeLayer.name}</span>
               <span className="opacity-70">
-                {owner ? featureTitle(owner) : kindInfo(kindOf(authored)).label}
-                {authored === undefined && !owner ? ' · layer default' : ''}
+                {kindInfo(kindOf(authored)).label}
+                {authored === undefined ? ' · layer default' : ''}
               </span>
             </p>
             <p className="text-xs opacity-80">{shown.detail}</p>
             {reach && <p className="text-xs opacity-80">{reach}</p>}
           </div>
-          <HelpLink help={owner ? HELP.features : HELP.editKey} className="mt-2" />
+          <HelpLink help={HELP.editKey} className="mt-2" />
           <button
             type="button"
             className="btn btn-ghost btn-sm btn-square"
@@ -195,65 +187,30 @@ function Inspector({ state, send, focusKey, keyId }: KeyInspectorProps & { keyId
           )}
         </div>
 
-        {owner ? (
-          <>
-            <div className="rounded-box bg-base-200 p-2 text-xs">
-              This key's tap belongs to <strong>{featureTitle(owner)}</strong> (
-              <span className="font-mono">{owner}</span>), which the layout turns on in External
-              Behaviors.
-            </div>
-            <FeatureBody feature={owner} />
-            <details className="text-xs">
-              <summary className="cursor-pointer opacity-70">The key under the feature</summary>
-              <div className="pt-2 space-y-2">
-                <Note>The feature sets what this key taps; the rest of it is set here.</Note>
-                <BindingEditor scope={scope} value={current} onChange={commit} />
-              </div>
-            </details>
-          </>
-        ) : (
-          <>
-            <BindingEditor scope={scope} value={current} onChange={commit} />
+        <BindingEditor scope={scope} value={current} onChange={commit} />
 
-            <FromThisLayout compiled={compiled} layout={layout} onPick={commit} />
+        <FromThisLayout compiled={compiled} layout={layout} onPick={commit} />
 
-            <BindingTextLine
-              compiled={compiled}
-              keyId={keyId}
-              binding={authored}
-              ctx={text}
-              focusRequest={state.focusRequest}
-              onCommit={commit}
-              onClear={clear}
-              onDone={() => focusKey(keyId)}
-            />
-          </>
-        )}
+        <BindingTextLine
+          compiled={compiled}
+          keyId={keyId}
+          binding={authored}
+          ctx={text}
+          focusRequest={state.focusRequest}
+          onCommit={commit}
+          onClear={clear}
+          onDone={() => focusKey(keyId)}
+        />
 
         <div className="lb-key-actions border-t border-base-300 pt-2">
-          {owner ? (
-            <button
-              type="button"
-              className="btn btn-xs btn-ghost text-error"
-              onClick={() => {
-                setFeatures(
-                  withoutFeatureAt(layout, owner, activeLayer.id),
-                  `${featureTitle(owner)} removed from ${keyId}`,
-                );
-              }}
-            >
-              Remove {featureTitle(owner)} from this key
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="btn btn-xs btn-ghost text-error"
-              disabled={authored === undefined}
-              onClick={clear}
-            >
-              Clear
-            </button>
-          )}
+          <button
+            type="button"
+            className="btn btn-xs btn-ghost text-error"
+            disabled={authored === undefined}
+            onClick={clear}
+          >
+            Clear
+          </button>
         </div>
       </div>
     </fieldset>

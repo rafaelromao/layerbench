@@ -770,6 +770,23 @@ What moved, checked across the 38 reports; nothing else moved:
 - **No report**: the compiled layout is the same, so every statistic, registry entry, run, rule
   value, score and traced press is unchanged.
 
+## Thirty-seventh re-baseline: sentence case is a behaviour, not a feature
+
+Sentence case is only the `sentence_space` behaviour now, as caps word is. `features` is gone from
+the model: a document that still declares `features.sentenceCase` or `features.capsWord` is read as
+the sentence space on its space key and the mod morph on its shift key that they made. Magic Romak
+writes the sentence space on the tap of its L0 itself, so it compiles to the same bindings as
+before. The space and shift keys are not set by hand either: they are derived from the keys, and a
+layout keeps the ones it was made with while they still do their job, so no bundled layout's moved.
+
+What moved, checked across the 38 reports; nothing else moved:
+
+- **Magic Romak's document** (`layouts/magic-romak.json`): `features` is gone, and the tap of L0 on
+  Alpha 1 is the `sentence_space` the feature compiled to.
+- **The inline Magic Romak link** (`inline-magic-romak.txt`): it holds that document.
+- **No report**: the compiled layout is the same, so every statistic, registry entry, run, rule
+  value, score and traced press is unchanged.
+
 ## Not compared
 
 `globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not

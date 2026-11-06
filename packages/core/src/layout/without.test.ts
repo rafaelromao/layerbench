@@ -3,11 +3,9 @@ import { normalizeText } from '../corpus/normalize.js';
 import { FIXTURE_EN, FIXTURE_PT } from '../fixtures/index.js';
 import { layoutLanguageCoverage } from '../lang/coverage.js';
 import { bundledLayout } from '../layouts/index.js';
-import { SHAPES } from '../presses/press-log.js';
 import { enumerateProducers } from '../sim/producers.js';
 import { simulate } from '../sim/resolver.js';
 import { compileLayout } from './compile.js';
-import { inlineFeatures } from './features.js';
 import { toCanonicalJson } from './json.js';
 import { safeParseLayout } from './schema.js';
 import type { Layout } from './types.js';
@@ -27,14 +25,6 @@ function kinds(off: FeatureKind[]): Map<string, string[]> {
 describe('Ranking a layout without some of its features', () => {
   it('changes nothing when nothing is switched off', () => {
     expect(withoutFeatures(magicRomak, [])).toBe(magicRomak);
-  });
-
-  it('types exactly as before once its features are inlined', () => {
-    const before = simulate(compileLayout(magicRomak), text, OPTS).tables;
-    const after = simulate(compileLayout(inlineFeatures(magicRomak)), text, OPTS).tables;
-    expect(after.stats).toEqual(before.stats);
-    const totals = (t: typeof before) => SHAPES.map((s) => t.presses.ngrams('no_space', s).total);
-    expect(totals(after)).toEqual(totals(before));
   });
 
   it('keeps the adaptive key as the letter it types by default', () => {

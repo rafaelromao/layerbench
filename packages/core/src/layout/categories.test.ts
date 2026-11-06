@@ -180,14 +180,14 @@ describe('a custom copy of Qwerty', () => {
     ]);
   });
 
-  it('is Special with sentence case declared, once on the key it wraps', () => {
-    const sentence: Layout = { ...qwerty(), features: { sentenceCase: {} } };
+  it('is Special with a sentence space on a key, once, named Sentence case', () => {
+    const key = qwerty().keys.space;
+    const sentence = withKey(key, { kind: 'sentence_space' });
     expect(specialFeatures(sentence)).toEqual([
-      { feature: 'adaptive', layer: 'base', key: sentence.keys.space, label: 'Sentence case' },
+      { feature: 'adaptive', layer: 'base', key, label: 'Sentence case' },
     ]);
     expect(layoutCategory(sentence)).toBe('special');
-    const off: Layout = { ...qwerty(), features: { sentenceCase: { enabled: false } } };
-    expect(layoutCategory(off)).toBe('standard');
+    expect(layoutCategory(qwerty())).toBe('standard');
   });
 
   it('counts caps word on the shift key as the mod morph it is, and caps word alone as nothing', () => {

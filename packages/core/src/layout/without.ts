@@ -1,4 +1,3 @@
-import { inlineFeatures } from './features.js';
 import type { Binding, Layout } from './types.js';
 
 /** The special features a layout can be ranked without. */
@@ -123,18 +122,17 @@ export function withoutFeatures(layout: Layout, off: readonly FeatureKind[]): La
     }
   };
 
-  const inlined = inlineFeatures(layout);
   return {
-    ...inlined,
-    layers: inlined.layers.map((l) => ({
+    ...layout,
+    layers: layout.layers.map((l) => ({
       ...l,
       bindings: Object.fromEntries(Object.entries(l.bindings).map(([k, b]) => [k, walk(b)])),
     })),
-    combos: inlined.combos
+    combos: layout.combos
       ?.filter((c) => !drop.has('combos') || keptWithoutTypingCombos(c))
       .map((c) => ({ ...c, binding: walk(c.binding) })),
     ...(drop.has('repeat')
-      ? { repeatPolicy: { ...inlined.repeatPolicy, doubledLetters: 'tapTwice' as const } }
+      ? { repeatPolicy: { ...layout.repeatPolicy, doubledLetters: 'tapTwice' as const } }
       : {}),
   };
 }

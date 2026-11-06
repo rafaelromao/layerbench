@@ -60,7 +60,6 @@ import { KeyInspector } from '../edit/inspector/KeyInspector.js';
 import {
   BehaviorsPanel,
   CombosPanel,
-  FeaturesPanel,
   GeometryPanel,
   JsonPanel,
   LayersPanel,
@@ -104,8 +103,7 @@ const PANELS: [Panel, string, HelpTopic][] = [
   ['board', 'Board', HELP.panels],
   ['layers', 'Layers', HELP.layers],
   ['combos', 'Combos', HELP.panels],
-  ['behaviors', 'Special Behaviors', HELP.panels],
-  ['features', 'External Behaviors', HELP.features],
+  ['behaviors', 'Special Behaviors', HELP.behaviors],
   ['paths', 'Typing paths', HELP.panels],
   ['geometry', 'Physical Layout', HELP.panels],
   ['json', 'JSON', HELP.exporting],
@@ -798,9 +796,6 @@ export function Workbench({
       className="min-w-0"
     >
       {state.panel === 'layers' && <LayersPanel state={state} send={send} />}
-      {state.panel === 'features' && (
-        <FeaturesPanel state={state} send={send} onShow={showOnBoard} />
-      )}
       {state.panel === 'geometry' && <GeometryPanel state={state} send={send} />}
       {state.panel === 'combos' && <CombosPanel state={state} send={send} onShow={showOnBoard} />}
       {state.panel === 'behaviors' && (

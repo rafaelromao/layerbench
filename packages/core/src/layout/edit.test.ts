@@ -107,15 +107,12 @@ describe('adaptive keys move as the bindings they are', () => {
       { ...layout.layers[0], bindings: { ...layout.layers[0].bindings, LHM: adaptiveKey } },
       { ...layout.layers[1], bindings: { ...layout.layers[1].bindings, LHI: altRepeat } },
     ],
-    features: { sentenceCase: {} },
   };
 
   it('carries an adaptive key along when its key is swapped', () => {
     const o = landed(withAdaptive, { kind: 'swap', layer: 'base', from: 'LHM', to: 'LHI' });
     expect(o.layout.layers[0].bindings.LHI).toBe(adaptiveKey);
     expect(o.layout.layers[0].bindings.LHM).toEqual(kp('b'));
-    // A feature that follows a role is left where it was.
-    expect(o.layout.features).toBe(withAdaptive.features);
   });
 
   it('copies an adaptive key onto another key as a copy of its own', () => {
@@ -230,16 +227,14 @@ describe("a layer's id", () => {
     ],
     conditionalLayers: [{ if: ['base', 'upper'], then: 'upper' }],
     activators: { upper: [{ from: 'base', via: 'key:base/L0' }] },
-    features: { sentenceCase: { on: ['base'] } },
     typingPaths: { '1': [{ producer: 'direct:upper/LHM' }] },
   };
 
-  it('changes, and every key, combo, condition, way in, feature and typing path that names it follows', () => {
+  it('changes, and every key, combo, condition, way in and typing path that names it follows', () => {
     const next = landed(linked, { kind: 'renameLayer', layer: 'base', name: 'Alpha1' }).layout;
     expect(next.layers.map((l) => l.id)).toEqual(['alpha1', 'upper']);
     expect(next.conditionalLayers).toEqual([{ if: ['alpha1', 'upper'], then: 'upper' }]);
     expect(next.activators).toEqual({ upper: [{ from: 'alpha1', via: 'key:alpha1/L0' }] });
-    expect(next.features).toEqual({ sentenceCase: { on: ['alpha1'] } });
     const up = landed(next, { kind: 'renameLayer', layer: 'upper', name: 'Alpha2' }).layout;
     expect(up.layers[0].bindings.L0).toEqual({
       kind: 'hold_tap',
@@ -324,7 +319,6 @@ describe('removing a layer', () => {
       { id: 'sym-only', keys: ['LHM', 'LHI'], binding: kp('q'), layers: ['sym'] },
       { id: 'both', keys: ['LHR', 'LHI'], binding: kp('z'), layers: ['base', 'sym'] },
     ],
-    features: { sentenceCase: { on: ['base', 'sym'] } },
     typingPaths: { '!': [{ producer: 'direct:sym/LHI' }, { producer: 'combo:both' }] },
   };
 
@@ -358,7 +352,6 @@ describe('removing a layer', () => {
     const o = landed(unreached, { kind: 'removeLayer', layer: 'sym' });
     expect(ids(o.layout)).toEqual(['base', 'nav']);
     expect(o.layout.combos?.map((c) => [c.id, c.layers])).toEqual([['both', ['base']]]);
-    expect(o.layout.features?.sentenceCase?.on).toEqual(['base']);
     expect(o.layout.typingPaths?.['!']).toEqual([{ producer: 'combo:both' }]);
     // Whoever shows the layout keeps showing what it can: the edit is about no layer of its own.
     expect(o.at).toEqual({});
@@ -844,25 +837,45 @@ describe('changing a combo', () => {
   });
 });
 
-describe('typing paths, keys, details and features', () => {
+describe('typing paths, typing rules and details', () => {
   it("sets one symbol's typing path", () => {
     const entries = [{ producer: 'direct:base/LHM', enabled: false }];
     const o = landed(layout, { kind: 'setTypingPath', symbol: 'a', entries });
     expect(o.layout.typingPaths).toEqual({ a: entries });
   });
 
-  it('sets the shift key, keeping its kind when only the key changes, and takes it away', () => {
-    const shift = landed(layout, { kind: 'setKeys', shift: 'R0' }).layout;
-    expect(shift.keys.shift).toEqual({ key: 'R0', kind: 'sk' });
-    const held = landed(shift, { kind: 'setKeys', shiftKind: 'hold' }).layout;
-    expect(landed(held, { kind: 'setKeys', shift: 'R1' }).layout.keys.shift).toEqual({
-      key: 'R1',
-      kind: 'hold',
-    });
-    expect(landed(held, { kind: 'setKeys', shift: null }).layout.keys.shift).toBeUndefined();
-    expect(landed(layout, { kind: 'setKeys', space: 'R0' }).layout.keys.space).toBe('R0');
+  it("sets the shift key's kind once the layout has one, and how doubled letters are typed", () => {
+    const shifted = landed(layout, {
+      kind: 'bind',
+      layer: 'base',
+      keys: ['R1'],
+      binding: { kind: 'sk', mod: 'LSHIFT' },
+    }).layout;
+    // The shift key is the one that shifts: no one sets it.
+    expect(shifted.keys.shift).toEqual({ key: 'R1', kind: 'sk' });
+    const held = landed(shifted, { kind: 'setKeys', shiftKind: 'hold' }).layout;
+    expect(held.keys.shift).toEqual({ key: 'R1', kind: 'hold' });
+    // Without a shift key there is no kind to set.
+    expect(
+      landed(layout, { kind: 'setKeys', shiftKind: 'hold' }).layout.keys.shift,
+    ).toBeUndefined();
     const repeat = landed(layout, { kind: 'setKeys', repeat: 'tapTwice' }).layout;
     expect(repeat.repeatPolicy).toEqual({ doubledLetters: 'tapTwice' });
+  });
+
+  it('moves the space key to the key that types a space, once its own does not', () => {
+    const typed = landed(layout, { kind: 'bind', layer: 'base', keys: ['L0'], binding: kp(' ') });
+    expect(typed.layout.keys.space).toBe('L0');
+    const moved = landed(typed.layout, {
+      kind: 'bind',
+      layer: 'base',
+      keys: ['L0'],
+      binding: kp('x'),
+    }).layout;
+    // No key types a space now: the declared one stays, as the analysis presses something.
+    expect(moved.keys.space).toBe('L0');
+    const next = landed(moved, { kind: 'bind', layer: 'base', keys: ['R0'], binding: kp(' ') });
+    expect(next.layout.keys.space).toBe('R0');
   });
 
   it('sets the details given and leaves the others', () => {
@@ -891,13 +904,6 @@ describe('typing paths, keys, details and features', () => {
     }
     expect(applyEdit(layout, { kind: 'setMeta', link: '  ' }).status).toBe('unchanged');
   });
-
-  it('takes the features away when none is left in them', () => {
-    const on = landed(layout, { kind: 'setFeatures', features: { sentenceCase: {} } }).layout;
-    expect(on.features).toEqual({ sentenceCase: {} });
-    const off = landed(on, { kind: 'setFeatures', features: { sentenceCase: undefined } });
-    expect('features' in off.layout).toBe(false);
-  });
 });
 
 describe('replacing the whole layout', () => {
@@ -925,7 +931,6 @@ describe('every edit', () => {
       /nowhere/,
     ],
     [{ kind: 'addCombo', layer: 'base', keys: ['LHM', 'NOPE'], binding: kp('q') }, /NOPE/],
-    [{ kind: 'setKeys', shift: 'NOPE' }, /NOPE/],
   ])(
     'is refused with the compile error when the layout it would leave cannot be drawn: %o',
     (edit, error) => {

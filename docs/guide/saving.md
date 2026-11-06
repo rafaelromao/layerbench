@@ -7,7 +7,7 @@ browser you use, sign in with GitHub, and it is kept in your GitHub account as w
 
 A layout of your own starts in **Library**, in one of these ways:
 
-- Press **Open** on any layout's card, change it in **Analyze** and press **Save**: Save asks what
+- Press **Analyze** on any layout's card, change it in **Analyze** and press **Save**: Save asks what
   to call the copy, or, on one that comes with the app or a community layout, whether to propose
   your change instead, and keeps it among your custom layouts. See [Saving a copy](#saving-a-copy)
   below.

@@ -2,6 +2,7 @@ import { enumerateProducers, type Producer } from '../sim/producers.js';
 import { ID_PATTERN, slugWords, unusedId } from '../storage/ids.js';
 import { buildGeometry, type CompiledLayout, compileLayout } from './compile.js';
 import { keysInUse } from './geometry-edit.js';
+import { withDerivedKeys } from './keys.js';
 import {
   changeLayerId,
   copyKey,
@@ -21,7 +22,6 @@ import {
   type GeometryRef,
   type LayerColor,
   type Layout,
-  type LayoutFeatures,
   MAX_CONDITION_LAYERS,
   type TypingPathEntry,
 } from './types.js';
@@ -83,13 +83,11 @@ export type Edit =
     }
   /** One symbol's whole list of producers, in order. */
   | { kind: 'setTypingPath'; symbol: string; entries: TypingPathEntry[] }
-  | {
-      kind: 'setKeys';
-      space?: string;
-      shift?: string | null;
-      shiftKind?: 'sk' | 'hold';
-      repeat?: 'repeatKey' | 'tapTwice';
-    }
+  /**
+   * How the shift key is used, and how a doubled letter is typed. Which keys are space and shift is
+   * not set: `withDerivedKeys` follows the keys.
+   */
+  | { kind: 'setKeys'; shiftKind?: 'sk' | 'hold'; repeat?: 'repeatKey' | 'tapTwice' }
   | {
       kind: 'setMeta';
       name?: string;
@@ -101,7 +99,6 @@ export type Edit =
       languages?: string[];
     }
   /** Features with nothing in them take the field away. */
-  | { kind: 'setFeatures'; features: LayoutFeatures }
   /** The whole layout, from the JSON an author pasted. */
   | { kind: 'replaceLayout'; json: string };
 
@@ -632,15 +629,11 @@ const handlers: Handlers = {
   },
 
   setKeys(layout, edit) {
-    const keys = { ...layout.keys };
-    if (edit.space) keys.space = edit.space;
-    if (edit.shift !== undefined) {
-      keys.shift = edit.shift
-        ? { key: edit.shift, kind: edit.shiftKind ?? keys.shift?.kind ?? 'sk' }
-        : undefined;
-    } else if (edit.shiftKind && keys.shift) {
-      keys.shift = { ...keys.shift, kind: edit.shiftKind };
-    }
+    const shift = layout.keys.shift;
+    const keys =
+      edit.shiftKind && shift
+        ? { ...layout.keys, shift: { ...shift, kind: edit.shiftKind } }
+        : layout.keys;
     const repeatPolicy = edit.repeat ? { doubledLetters: edit.repeat } : layout.repeatPolicy;
     return { layout: { ...layout, keys, repeatPolicy } };
   },
@@ -668,13 +661,6 @@ const handlers: Handlers = {
     return { layout: next };
   },
 
-  setFeatures(layout, { features }) {
-    const next = { ...layout };
-    if (Object.values(features).some((v) => v !== undefined)) next.features = features;
-    else delete next.features;
-    return { layout: next };
-  },
-
   replaceLayout(_layout, { json }) {
     const parsed = parseJson(json);
     if (!parsed.ok) return parsed;
@@ -694,9 +680,11 @@ export function applyEdit(layout: Layout, edit: Edit): EditOutcome {
   const step = handle(layout, edit);
   if ('refused' in step) return { edit, before: layout, status: 'refused', message: step.refused };
   if (step.layout === layout) return { edit, before: layout, status: 'unchanged' };
+  // The space and shift keys follow the keys, whatever the edit did to them.
+  const edited = withDerivedKeys(step.layout);
   let compiled: CompiledLayout;
   try {
-    compiled = compileLayout(step.layout);
+    compiled = compileLayout(edited);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return { edit, before: layout, status: 'refused', message };
@@ -705,7 +693,7 @@ export function applyEdit(layout: Layout, edit: Edit): EditOutcome {
     edit,
     before: layout,
     status: 'landed',
-    layout: step.layout,
+    layout: edited,
     compiled,
     at: step.at ?? {},
   };

@@ -70,8 +70,20 @@ describe('bundled layouts added as documents', () => {
       kind: 'mod_morph',
       morphed: { kind: 'caps_word', continueList: ['_'] },
     });
-    expect(layout.features).toBeUndefined();
+    expect('features' in layout).toBe(false);
     // Held to the form it is saved in in all else: the declaration is no way round the check.
+    expect(() => documentLayout('night', { ...doc, junk: 'x' })).toThrow('as LayerBench saves it');
+  });
+
+  it('takes a document that declares sentence case as a feature, read with the space written out', () => {
+    // How a layout saved before sentence case was only a behaviour is stored: `features.sentenceCase`
+    // and the space key a plain space.
+    const doc = saved();
+    doc.features = { sentenceCase: { enabled: true } };
+    const layout = documentLayout('night', doc);
+    const space = layout.keys.space;
+    expect(layout.layers[0].bindings[space]).toEqual({ kind: 'sentence_space' });
+    expect('features' in layout).toBe(false);
     expect(() => documentLayout('night', { ...doc, junk: 'x' })).toThrow('as LayerBench saves it');
   });
 

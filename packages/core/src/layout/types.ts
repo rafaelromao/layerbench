@@ -192,35 +192,6 @@ export type GeometryRef =
   | { preset: string; columnOffsets?: Record<string, number> }
   | { custom: GeometryKey[]; family?: 'columnar' | 'rowstagger'; name?: string };
 
-/**
- * The space key as a `sentence_space`: after `.`, `?` or `!` and a space, the next key, if a letter
- * a–z, is a capital. Which punctuation ends a sentence, and that a capital is Left Shift, are the
- * module's.
- */
-export interface SentenceCaseFeature {
-  enabled?: boolean;
-  /** Key that types the space; `keys.space` when omitted. */
-  key?: string;
-  /** Layers whose space key gets the behaviour; the base layer when omitted. */
-  on?: string[];
-}
-
-/**
- * Typing behaviours that go on a key by its role — the space key — declared once.
- *
- * The compiler wraps the key they belong to in ordinary bindings, so the layer list stays the set of
- * layers a typist actually reaches, with no pre-shifted copy of a layer, as a keymap once needed for
- * sentence case. `featureModule` says what each needs in ZMK.
- *
- * Adaptive keys, alt repeats and caps word are not features: they are bindings on their keys, made
- * and edited like any other. Caps word is the `caps_word` binding, and shift pressed while shift is
- * on starts it where the shift key is a `mod_morph` that morphs into one. A branch's `afterTags`
- * replaces the one-shot layer an accent macro arms in firmware so the repeat key can follow up.
- */
-export interface LayoutFeatures {
-  sentenceCase?: SentenceCaseFeature;
-}
-
 export interface Layout {
   format: 'layerbench/layout@1';
   id?: string;
@@ -239,7 +210,6 @@ export interface Layout {
   };
   behaviorDefaults?: BehaviorDefaults;
   layers: LayerDef[];
-  features?: LayoutFeatures;
   combos?: ComboDef[];
   conditionalLayers?: ConditionalLayerDef[];
   typingPaths?: Record<string, TypingPathEntry[]>;

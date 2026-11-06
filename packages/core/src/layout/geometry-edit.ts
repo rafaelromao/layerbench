@@ -42,7 +42,6 @@ export function keysInUse(layout: Layout): Map<string, string> {
     for (const key of combo.keys) use(key, 'a combo uses it');
   use(layout.keys.space, 'it is the space key');
   use(layout.keys.shift?.key, 'it is the shift key');
-  use(layout.features?.sentenceCase?.key, 'sentence case is on it');
   if (layout.fingering && typeof layout.fingering === 'object') {
     for (const key of Object.keys(layout.fingering)) use(key, 'it has a finger of its own');
   }

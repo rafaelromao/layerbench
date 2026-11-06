@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { JsonObject } from '../storage/ids.js';
-import { type ReadLayout, withCapsWordAsMorph } from './features.js';
+import { type ReadLayout, withLegacyFeatures } from './features.js';
 import { tellIssues } from './issues.js';
 import { canonicalLanguages } from './languages.js';
 import { LAYER_COLORS, type Layout, MAX_CONDITION_LAYERS } from './types.js';
@@ -193,7 +193,11 @@ const GeometryKeySchema = z
     inner: k.inner ?? k.col === 5,
   }));
 
-/** Declarative special features; the compiler wraps the keys they belong to. */
+/**
+ * Read only, for documents from before sentence case and caps word were only behaviours of a key:
+ * `withLegacyFeatures` turns them into the `sentence_space` on the space key and the mod morph on the
+ * shift key they made, and the layout has no features of its own.
+ */
 const FeaturesSchema = z.object({
   // A document from before sentence case was zmk-sentence-case's may name the punctuation that
   // ends a sentence (`after`) and the modifier it arms (`mod`): the module has its own, so they are
@@ -205,8 +209,6 @@ const FeaturesSchema = z.object({
       on: z.array(z.string()).optional(),
     })
     .optional(),
-  // Read only for documents from before caps word was only a behaviour: `withCapsWordAsMorph` turns
-  // it into the mod morph on the shift key it made, and the layout has none of it.
   capsWord: z
     .object({
       enabled: z.boolean().optional(),
@@ -633,7 +635,7 @@ function toRead(input: unknown): { doc: unknown } | undefined {
 export function parseLayout(input: unknown): Layout {
   const read = toRead(input);
   if (!read) throw new Error(TOO_MANY);
-  const layout = withCapsWordAsMorph(LayoutSchema.parse(read.doc) as ReadLayout);
+  const layout = withLegacyFeatures(LayoutSchema.parse(read.doc) as ReadLayout);
   return { ...layout, languages: canonicalLanguages(layout.languages) };
 }
 
@@ -661,7 +663,7 @@ export function safeParseLayout(
     throw e;
   }
   if (!r.success) return { ok: false, error: tellIssues(r.error.issues) };
-  const layout = withCapsWordAsMorph(r.data as ReadLayout);
+  const layout = withLegacyFeatures(r.data as ReadLayout);
   return { ok: true, layout: { ...layout, languages: canonicalLanguages(layout.languages) } };
 }
 

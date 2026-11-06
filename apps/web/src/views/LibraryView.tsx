@@ -1169,10 +1169,10 @@ export function LibraryView() {
                   <Link
                     to="/analyze"
                     search={analyzeSearch(item.ref)}
-                    aria-label={`Open ${item.name}`}
+                    aria-label={`Analyze ${item.name}`}
                     className="btn btn-primary btn-xs"
                   >
-                    Open
+                    Analyze
                   </Link>
                 </>
               }

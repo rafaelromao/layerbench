@@ -1,27 +1,13 @@
-import type { Binding, LayerDef, Layout, LayoutFeatures, Mod } from './types.js';
+import type { Binding, Layout, Mod } from './types.js';
 
 /** The modifiers that make a key morph into caps word when it is shift: either shift. */
 const DEFAULT_TRIGGER_MODS: Mod[] = ['LSHIFT', 'RSHIFT'];
 
-/** A feature that wraps the tap of the key it belongs to. */
-export type WrappingFeature = keyof LayoutFeatures;
-
-export interface ExpandedLayout {
-  /** The document the layers and combos were compiled from. */
-  layout: Layout;
-  /**
-   * `layerId` → `keyId` → the feature that wraps the key's tap. The editor edits such a key as
-   * that feature, since the next compile would wrap anything written on the key again.
-   */
-  owned: Map<string, Map<string, WrappingFeature>>;
-  errors: string[];
-}
-
 /**
  * Rewrite the part a tap would reach, leaving holds and morph structure alone.
  *
- * A feature has to compose with whatever is already on the key: the space key may be a `hold_tap`
- * that reaches a numbers layer on hold, and sentence case belongs on its tap only.
+ * A behaviour has to compose with whatever is already on the key: the space key may be a `hold_tap`
+ * that reaches a numbers layer on hold, and a sentence space belongs on its tap only.
  */
 export function mapTapPart(
   b: Binding | undefined,
@@ -40,73 +26,14 @@ export function mapTapPart(
   }
 }
 
-interface Writer {
-  layers: LayerDef[];
-  owned: Map<string, Map<string, WrappingFeature>>;
-  errors: string[];
-}
-
-function place(
-  w: Writer,
-  layerId: string,
-  key: string,
-  feature: WrappingFeature,
-  wrap: (tap?: Binding) => Binding,
-) {
-  const layer = w.layers.find((l) => l.id === layerId);
-  if (!layer) {
-    w.errors.push(`Feature ${feature}: unknown layer ${layerId}`);
-    return;
-  }
-  layer.bindings = { ...layer.bindings, [key]: mapTapPart(layer.bindings[key], wrap) };
-  const byKey = w.owned.get(layerId) ?? new Map<string, WrappingFeature>();
-  byKey.set(key, feature);
-  w.owned.set(layerId, byKey);
-}
-
 /**
- * The space key's tap is `&sentence_space`, as zmk-sentence-case has a keymap bind it in place of
- * `&kp SPACE`: it types the space the key typed, and a capital follows a sentence's end.
+ * `features.sentenceCase` as a document saved before sentence case was only a behaviour declares
+ * it: the space key (or `key`), on the layers `on`, its tap made a `sentence_space`.
  */
-function expandSentenceCase(w: Writer, features: LayoutFeatures, layout: Layout): void {
-  const f = features.sentenceCase;
-  if (!f || f.enabled === false) return;
-  const key = f.key ?? layout.keys.space;
-  const layers = f.on ?? [w.layers[0]?.id].filter((x): x is string => x !== undefined);
-  for (const layerId of layers) {
-    place(w, layerId, key, 'sentenceCase', () => ({ kind: 'sentence_space' }));
-  }
-}
-
-/**
- * Wrap the keys `features` belong to in ordinary bindings. The identity when `features` is absent,
- * so a document that spells the same behaviours out by hand keeps compiling unchanged.
- */
-export function expandFeatures(layout: Layout): ExpandedLayout {
-  const features = layout.features;
-  if (!features) return { layout, owned: new Map(), errors: [] };
-
-  const w: Writer = {
-    layers: layout.layers.map((l) => ({ ...l, bindings: { ...l.bindings } })),
-    owned: new Map(),
-    errors: [],
-  };
-
-  expandSentenceCase(w, features, layout);
-
-  return {
-    layout: { ...layout, layers: w.layers },
-    owned: w.owned,
-    errors: w.errors,
-  };
-}
-
-/**
- * The same keymap with its features written out as the bindings they wrap, and none left declared,
- * so a change to its bindings sees each key as it types.
- */
-export function inlineFeatures(authored: Layout): Layout {
-  return { ...expandFeatures(authored).layout, features: undefined };
+export interface LegacySentenceCase {
+  enabled?: boolean;
+  key?: string;
+  on?: string[];
 }
 
 /**
@@ -122,27 +49,46 @@ export interface LegacyCapsWord {
   continueList?: string[];
 }
 
-/** A layout as the schema reads it: a document from before may still declare caps word. */
-export type ReadLayout = Omit<Layout, 'features'> & {
-  features?: LayoutFeatures & { capsWord?: LegacyCapsWord };
+/** A layout as the schema reads it: a document from before may still declare features. */
+export type ReadLayout = Layout & {
+  features?: { sentenceCase?: LegacySentenceCase; capsWord?: LegacyCapsWord };
 };
 
-/**
- * The layout with `features.capsWord` written out as the mod morph it made, and not declared: the
- * key's tap is the morph's default, and shift pressed while shift is on starts caps word. What the
- * declaration could not place goes, so the document opens: a feature that was off, one with no `key`
- * and no shift key to go on, a layer in `on` the layout lacks (those two made the layout fail to
- * compile). The layout itself when it declares no caps word.
- */
-export function withCapsWordAsMorph(layout: ReadLayout): Layout {
-  const { capsWord: f, ...features } = layout.features ?? {};
-  if (f === undefined) return layout as Layout;
-  const { features: _declared, ...rest } = layout;
-  const kept = Object.keys(features).length > 0 ? { features } : {};
-  const key = f.key ?? layout.keys.shift?.key;
-  if (f.enabled === false || key === undefined) return { ...rest, ...kept } as Layout;
+/** `layout` with `bind` applied to `key`'s binding on each of the layers `on` it has. */
+function onLayers(
+  layout: Layout,
+  on: string[],
+  key: string,
+  bind: (b: Binding | undefined) => Binding,
+): Layout {
+  const layers = layout.layers.map((l) =>
+    on.includes(l.id) ? { ...l, bindings: { ...l.bindings, [key]: bind(l.bindings[key]) } } : l,
+  );
+  return { ...layout, layers };
+}
 
+/**
+ * The layout with `f` written out as the sentence space it made: the space key's tap, on the layers
+ * `on` (the base layer when omitted). What the declaration could not place goes, so the document
+ * opens: a feature that was off, a layer in `on` the layout lacks.
+ */
+function withSentenceCaseAsSpace(layout: Layout, f: LegacySentenceCase): Layout {
+  if (f.enabled === false) return layout;
   const on = f.on ?? [layout.layers[0]?.id];
+  return onLayers(layout, on, f.key ?? layout.keys.space, (b) =>
+    mapTapPart(b, () => ({ kind: 'sentence_space' })),
+  );
+}
+
+/**
+ * The layout with `f` written out as the mod morph it made: the key's tap is the morph's default,
+ * and shift pressed while shift is on starts caps word. What the declaration could not place goes,
+ * so the document opens: a feature that was off, one with no `key` and no shift key to go on, a
+ * layer in `on` the layout lacks (those two made the layout fail to compile).
+ */
+function withCapsWordAsMorph(layout: Layout, f: LegacyCapsWord): Layout {
+  const key = f.key ?? layout.keys.shift?.key;
+  if (f.enabled === false || key === undefined) return layout;
   const mods = f.mods ?? ['LSHIFT'];
   const morph = (tap?: Binding): Binding => ({
     kind: 'mod_morph',
@@ -154,10 +100,21 @@ export function withCapsWordAsMorph(layout: ReadLayout): Layout {
       ...(f.continueList === undefined ? {} : { continueList: f.continueList }),
     },
   });
-  const layers = layout.layers.map((l) =>
-    on.includes(l.id)
-      ? { ...l, bindings: { ...l.bindings, [key]: mapTapPart(l.bindings[key], morph) } }
-      : l,
-  );
-  return { ...rest, layers, ...kept } as Layout;
+  return onLayers(layout, f.on ?? [layout.layers[0]?.id], key, (b) => mapTapPart(b, morph));
+}
+
+/**
+ * The layout with the features a document from before declared written out as the bindings they
+ * made, and none left declared: sentence case is a `sentence_space` on the space key's tap, caps word
+ * a mod morph on the shift key. Sentence case and caps word are behaviours of a key, made in the key
+ * editor like any other, and a layout has no declared features. The layout itself when it declares
+ * none.
+ */
+export function withLegacyFeatures(layout: ReadLayout): Layout {
+  const { features, ...rest } = layout;
+  if (features === undefined) return layout;
+  let out: Layout = rest;
+  if (features.sentenceCase) out = withSentenceCaseAsSpace(out, features.sentenceCase);
+  if (features.capsWord) out = withCapsWordAsMorph(out, features.capsWord);
+  return out;
 }

@@ -5,13 +5,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   BehaviorsPanel,
   CombosPanel,
-  EXTERNAL_KINDS,
-  FeaturesPanel,
   GeometryPanel,
   JsonPanel,
   LayersPanel,
   PathsPanel,
-  SPECIAL_KINDS,
 } from './panels.js';
 import { initialState } from './reducer.js';
 
@@ -68,7 +65,6 @@ describe('every panel but the Board and the board of Combos is a carousel', () =
   const send = vi.fn();
   const panels: [string, () => React.ReactElement][] = [
     ['Layers', () => <LayersPanel state={state} send={send} />],
-    ['External Behaviors', () => <FeaturesPanel state={state} send={send} />],
     ['Physical Layout', () => <GeometryPanel state={state} send={send} />],
     ['Combos', () => <CombosPanel state={state} send={send} />],
     ['Special Behaviors', () => <BehaviorsPanel state={state} send={send} />],
@@ -129,6 +125,30 @@ describe('the Layers carousel', () => {
 });
 
 describe('the Typing paths carousel', () => {
+  it('begins with how a capital and a doubled letter are typed, ahead of the characters', async () => {
+    const send = vi.fn();
+    render(<PathsPanel state={state} send={send} producers={producers} />);
+    const items = within(screen.getByRole('list', { name: 'Typing paths' })).getAllByRole(
+      'listitem',
+    );
+    expect(items[0]).toHaveTextContent('Shift kind');
+    expect(items[1]).toHaveTextContent('Doubled letters');
+    const user = userEvent.setup();
+    // A layout that says nothing has a one-shot shift and the repeat key.
+    expect(screen.getByLabelText('Shift kind')).toHaveValue('sk');
+    expect(screen.getByLabelText('Doubled letters')).toHaveValue('repeatKey');
+    await user.selectOptions(screen.getByLabelText('Shift kind'), 'hold');
+    expect(send).toHaveBeenLastCalledWith({
+      type: 'edit',
+      edit: { kind: 'setKeys', shiftKind: 'hold' },
+    });
+    await user.selectOptions(screen.getByLabelText('Doubled letters'), 'tapTwice');
+    expect(send).toHaveBeenLastCalledWith({
+      type: 'edit',
+      edit: { kind: 'setKeys', repeat: 'tapTwice' },
+    });
+  });
+
   it('draws each character on a key at the left of its slide', () => {
     render(<PathsPanel state={state} send={vi.fn()} producers={producers} />);
     const cards = within(screen.getByRole('list', { name: 'Typing paths' })).getAllByRole(
@@ -414,82 +434,81 @@ const behaving: Layout = {
         },
         LTP: { kind: 'macro', symbols: 'xyz' },
         RHP: { kind: 'mod_morph', mods: ['LSHIFT'], default: kp('x'), morphed: kp('y') },
+        R0: { kind: 'sentence_space' },
       },
     },
     ...layout.layers.slice(1),
   ],
 };
 
-describe('the External Behaviors carousel', () => {
-  it('lights the band of a feature that is on', () => {
-    // The panel reads the features as written; it does not need them compiled.
-    const on = { ...state, layout: { ...layout, features: { sentenceCase: {} } } };
-    render(<FeaturesPanel state={on} send={vi.fn()} />);
-    const sentence = screen.getByLabelText('Sentence case').closest('li') as HTMLElement;
-    expect(sentence.style.getPropertyValue('--lb-accent')).toBe('var(--color-primary)');
-    const off = render(<FeaturesPanel state={state} send={vi.fn()} />);
-    const idle = within(off.container).getByLabelText('Sentence case').closest('li') as HTMLElement;
-    expect(idle.style.getPropertyValue('--lb-accent')).toBe('');
-  });
+describe('the Special Behaviors carousel', () => {
+  const items = () =>
+    within(screen.getByRole('list', { name: 'Special behaviors' })).getAllByRole('listitem');
 
-  it('has sentence case and no caps word, which is a key and not a feature', () => {
-    render(<FeaturesPanel state={state} send={vi.fn()} />);
-    const list = screen.getByRole('list', { name: 'External behaviors' });
-    expect(within(list).getAllByRole('listitem')).toHaveLength(1);
-    expect(within(list).getByLabelText('Sentence case')).toBeInTheDocument();
+  it('begins with the one-shots, a card each, and has no sentence case card to turn on', () => {
+    render(<BehaviorsPanel state={state} send={vi.fn()} />);
+    expect(items()[0]).toHaveTextContent('One-shot layers');
+    expect(items()[1]).toHaveTextContent('One-shot keys');
+    expect(screen.queryByLabelText('Sentence case')).toBeNull();
     expect(screen.queryByLabelText('Caps word')).toBeNull();
-    expect(screen.queryByLabelText('Caps word continue list')).toBeNull();
   });
 
-  it('lists the adaptive keys and alt repeats after sentence case, and no macro or morph', () => {
+  it('says how the one-shots end, in a card for the layers and one for the keys', async () => {
+    const send = vi.fn();
+    render(<BehaviorsPanel state={state} send={send} />);
+    const user = userEvent.setup();
+    const keys = within(screen.getByRole('group', { name: 'One-shot keys' }));
+    await user.click(keys.getByLabelText('Release as the next key goes down'));
+    expect(send).toHaveBeenLastCalledWith({
+      type: 'edit',
+      edit: { kind: 'setBehaviorDefaults', defaults: { sk: { quickRelease: true } } },
+    });
+    const layers = within(screen.getByRole('group', { name: 'One-shot layers' }));
+    await user.click(layers.getByLabelText('Stay on while a modifier is pressed'));
+    expect(send).toHaveBeenLastCalledWith({
+      type: 'edit',
+      edit: { kind: 'setBehaviorDefaults', defaults: { sl: { ignoreModifiers: true } } },
+    });
+  });
+
+  it('lists every use after the one-shots, kind by kind, a sentence space as Sentence case', () => {
     const s = initialState(behaving, compileLayout(behaving));
-    render(<FeaturesPanel state={s} send={vi.fn()} />);
-    const items = within(screen.getByRole('list', { name: 'External behaviors' })).getAllByRole(
-      'listitem',
-    );
-    expect(items[0]).toHaveTextContent('Sentence case');
-    expect(items.slice(1).map((li) => li.textContent)).toEqual([
-      expect.stringContaining('Adaptive key'),
-      expect.stringContaining('Alt repeat'),
-    ]);
+    render(<BehaviorsPanel state={s} send={vi.fn()} />);
+    const uses = items()
+      .slice(2)
+      .map((li) => li.textContent ?? '');
+    const at = (text: string) => uses.findIndex((u) => u.includes(text));
+    for (const text of ['Adaptive key', 'Sentence case', 'Alt repeat', 'Macro', 'Mod morph']) {
+      expect(at(text), text).toBeGreaterThanOrEqual(0);
+    }
+    expect(at('Adaptive key')).toBeLessThan(at('Alt repeat'));
+    expect(at('Alt repeat')).toBeLessThan(at('Macro'));
+    expect(at('Macro')).toBeLessThan(at('Mod morph'));
+    // A sentence space is an adaptive kind of key, named as itself.
+    expect(uses[at('Sentence case')]).toContain('Adaptive key');
   });
 
-  it('shows a use on the board when it is picked, as Special Behaviors does', async () => {
+  it('says so, after the one-shots, when the layout has no use', () => {
+    render(<BehaviorsPanel state={state} send={vi.fn()} />);
+    expect(items()[2]).toHaveTextContent(
+      'This layout has no adaptive keys, alt repeats, macros, mod morphs or sentence spaces.',
+    );
+  });
+
+  it('shows a use on the board when it is picked', async () => {
     const send = vi.fn();
     const onShow = vi.fn();
     const s = initialState(behaving, compileLayout(behaving));
-    render(<FeaturesPanel state={s} send={send} onShow={onShow} />);
+    render(<BehaviorsPanel state={s} send={send} onShow={onShow} />);
     await userEvent.setup().click(screen.getByRole('button', { name: /^Base · LHP/ }));
     expect(onShow).toHaveBeenCalledOnce();
     expect(send).toHaveBeenCalledWith({ type: 'setPanel', panel: 'board' });
     expect(send).toHaveBeenCalledWith({ type: 'keyClick', keyId: 'LHP' });
   });
-});
 
-describe('the Special Behaviors carousel', () => {
-  it('lists macros and mod morphs, and none of what needs a ZMK module', () => {
-    const s = initialState(behaving, compileLayout(behaving));
-    render(<BehaviorsPanel state={s} send={vi.fn()} />);
-    const items = within(screen.getByRole('list', { name: 'Special behaviors' })).getAllByRole(
-      'listitem',
-    );
-    expect(items.map((li) => li.textContent)).toEqual([
-      expect.stringContaining('Macro'),
-      expect.stringContaining('Mod morph'),
-    ]);
-  });
-
-  it('says so when there is neither', () => {
-    render(<BehaviorsPanel state={state} send={vi.fn()} />);
-    expect(screen.getByText('This layout has no macros or mod morphs.')).toBeInTheDocument();
-  });
-
-  it('lists in External Behaviors the kinds whose keys need a ZMK module, and no other', () => {
-    expect(EXTERNAL_KINDS).toEqual(['adaptive', 'alt_repeat']);
-    expect(SPECIAL_KINDS).toEqual(['macro', 'mod_morph']);
-    // Adaptive keys and alt repeats are the one binding the module is for; macros and morphs are
-    // stock ZMK.
+  it('knows which kinds need a ZMK module: adaptive keys and sentence spaces, not macros or morphs', () => {
     expect(bindingModule('adaptive')).not.toBeNull();
+    expect(bindingModule('sentence_space')).not.toBeNull();
     expect(bindingModule('macro')).toBeNull();
     expect(bindingModule('mod_morph')).toBeNull();
   });

@@ -181,16 +181,6 @@ export function removeLayer(layout: Layout, layerId: string): Layout {
     }
     next.typingPaths = paths;
   }
-  const f = layout.features;
-  if (f) {
-    const onOther = (on: string[] | undefined) => on?.filter((l) => l !== layerId);
-    next.features = {
-      ...f,
-      ...(f.sentenceCase?.on
-        ? { sentenceCase: { ...f.sentenceCase, on: onOther(f.sentenceCase.on) } }
-        : {}),
-    };
-  }
   return next;
 }
 
@@ -283,15 +273,6 @@ export function changeLayerId(layout: Layout, from: string, to: string): Layout 
     next.typingPaths = mapValues(layout.typingPaths, (entries) =>
       entries.map((e) => ({ ...e, producer: e.producer.replaceAll(`:${from}/`, `:${to}/`) })),
     );
-  }
-  const f = layout.features;
-  if (f) {
-    next.features = {
-      ...f,
-      ...(f.sentenceCase?.on && {
-        sentenceCase: { ...f.sentenceCase, on: f.sentenceCase.on.map(layer) },
-      }),
-    };
   }
   return next;
 }
