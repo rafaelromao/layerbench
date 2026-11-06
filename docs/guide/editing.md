@@ -15,7 +15,9 @@ tapped, or clear an outline; a drag or a swipe does not.
 
 Every change is kept as you make it, so there is nothing to apply. **Undo** (↶) and **Redo** (↷),
 in the bar of tabs, on every tab, step back and forth through your changes. **Save**, beside the
-layout's name at the top, keeps it in **Library**, and until then the name is marked *unsaved*. On a
+layout's name at the top, keeps it in **Library**, and until then the name is marked *unsaved* and
+**Cancel** beside **Save** gives the layout back as it was opened or last saved, in one step that
+**Undo** takes back. On a
 layout that is not yours yet, such as one that comes with the app, the first **Save** makes a copy
 in your custom layouts and asks what to call it, or, on one that comes with the app or a community
 layout, [proposes your change](saving.md#proposing-a-change) to it; after that, **Save** keeps your
@@ -444,10 +446,11 @@ keeps the page where it is, at either end too:
   **Tap twice**, tapping its key again. Both ways of each are on. The one marked is the one the
   analysis uses: the first that is on and that some key of the layout gives; a way no key gives says
   so and is passed over. Left alone, a layout is typed as it always was: its shift key as it is
-  made, and a doubled letter the cheaper of the repeat key and tapping twice. Once you move or turn
-  off a way, the order you set is the rule: Shift is tried in that order on the shift key and then
+  made, and a doubled letter the cheaper of the repeat key and tapping twice, so **Doubled
+  letters** marks no way until you set it. Once you move or turn off a way, the order you set is
+  the rule: Shift is tried in that order on the shift key and then
   on every other key, and a doubled letter by the first way that works. A character with a path of
-  its own keeps it for its doubled letter. One way always stays on.
+  its own keeps it for its doubled letter. One way always stays on: the last that some key gives.
 - **Configuration** has the board itself, in cards: the **preset** and the **keys** of the board,
   and then two cards for how the layout's one-shots end, **One-shot layers** and **One-shot keys**:
   as the next key goes down or not, whether they stay on while a modifier is pressed, and after how

@@ -1,5 +1,5 @@
 import { type Binding, bindingModule, compileLayout, type Layout } from '@layerbench/core';
-import { render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -180,16 +180,38 @@ describe('the Typing paths carousel', () => {
     ).toEqual([true, true]);
   });
 
-  it('marks the first way that is on, and that some key gives, as the one in use', () => {
+  /** The ways marked as the one in use, by the name of their row. */
+  const inUse = (name: string) =>
+    rule(name)
+      .getAllByRole('listitem')
+      .filter((li) => li.getAttribute('aria-current') === 'true')
+      .map((li) => li.querySelector('.truncate')?.textContent);
+
+  it('marks the first way of Shift that is on, and that some key gives, as the one in use', () => {
     const s = initialState(shifted, compileLayout(shifted));
     render(<PathsPanel state={s} send={vi.fn()} producers={withRepeat} />);
-    const used = (name: string) =>
-      rule(name)
-        .getAllByRole('listitem')
-        .filter((li) => li.classList.contains('lb-path-first'))
-        .map((li) => li.querySelector('.truncate')?.textContent);
-    expect(used('Shift kind')).toEqual(['Sticky (one-shot)']);
-    expect(used('Doubled letters')).toEqual(['Repeat key']);
+    expect(inUse('Shift kind')).toEqual(['Sticky (one-shot)']);
+    // The mark is the border too, for whoever sees the card and not its states.
+    const marked = rule('Shift kind').getAllByRole('listitem')[0];
+    expect(marked).toHaveClass('lb-path-first');
+  });
+
+  it('marks no way of Doubled letters while it is left alone, which is the cheaper of the two', () => {
+    const s = initialState(shifted, compileLayout(shifted));
+    render(<PathsPanel state={s} send={vi.fn()} producers={withRepeat} />);
+    expect(inUse('Doubled letters')).toEqual([]);
+    // A layout that taps twice by its policy has exactly one way in use.
+    const taps: Layout = { ...shifted, repeatPolicy: { doubledLetters: 'tapTwice' } };
+    cleanup();
+    render(
+      <PathsPanel
+        state={initialState(taps, compileLayout(taps))}
+        send={vi.fn()}
+        producers={withRepeat}
+      />,
+    );
+    expect(names('Doubled letters')).toEqual(['Tap twice', 'Repeat key']);
+    expect(inUse('Doubled letters')).toEqual(['Tap twice']);
   });
 
   it('orders the ways of a rule with the arrows, and turns one on or off, a whole rule each time', async () => {
@@ -242,13 +264,8 @@ describe('the Typing paths carousel', () => {
       />,
     );
     expect(names('Shift kind')).toEqual(['Hold', 'Sticky (one-shot)']);
-    const marked = (name: string) =>
-      rule(name)
-        .getAllByRole('listitem')
-        .filter((li) => li.classList.contains('lb-path-first'))
-        .map((li) => li.querySelector('.truncate')?.textContent);
-    expect(marked('Shift kind')).toEqual(['Hold']);
-    expect(marked('Doubled letters')).toEqual(['Tap twice']);
+    expect(inUse('Shift kind')).toEqual(['Hold']);
+    expect(inUse('Doubled letters')).toEqual(['Tap twice']);
   });
 
   it('keeps one way on: the last one cannot be turned off', () => {
@@ -292,10 +309,45 @@ describe('the Typing paths carousel', () => {
     expect(hold).toHaveTextContent('no key does this');
     const repeat = rule('Doubled letters').getAllByRole('listitem')[0];
     expect(repeat).toHaveTextContent('no key does this');
-    const marked = rule('Doubled letters')
-      .getAllByRole('listitem')
-      .filter((li) => li.classList.contains('lb-path-first'));
-    expect(marked.map((li) => li.querySelector('.truncate')?.textContent)).toEqual(['Tap twice']);
+    // Declared, the mark moves past the way no key gives.
+    const declared: Layout = {
+      ...sticky,
+      typingRules: { doubledLetters: [{ way: 'repeatKey' }, { way: 'tapTwice' }] },
+    };
+    cleanup();
+    render(
+      <PathsPanel
+        state={initialState(declared, compileLayout(declared))}
+        send={vi.fn()}
+        producers={producers}
+      />,
+    );
+    expect(inUse('Doubled letters')).toEqual(['Tap twice']);
+  });
+
+  it('keeps on the last way that some key gives, not one that no key does', () => {
+    // A sticky Shift and no held one, and no repeat key: the sticky way and tapping twice stay on.
+    const sticky: Layout = {
+      ...shifted,
+      layers: [
+        {
+          ...shifted.layers[0],
+          bindings: { ...shifted.layers[0].bindings, L1: { kind: 'kp', symbol: 'x' } },
+        },
+        ...shifted.layers.slice(1),
+      ],
+    };
+    render(
+      <PathsPanel
+        state={initialState(sticky, compileLayout(sticky))}
+        send={vi.fn()}
+        producers={producers}
+      />,
+    );
+    expect(screen.getByRole('checkbox', { name: 'Use Sticky (one-shot)' })).toBeDisabled();
+    expect(screen.getByRole('checkbox', { name: 'Use Hold' })).toBeEnabled();
+    expect(screen.getByRole('checkbox', { name: 'Use Tap twice' })).toBeDisabled();
+    expect(screen.getByRole('checkbox', { name: 'Use Repeat key' })).toBeEnabled();
   });
 
   it('says so, on a layout with no key that gives Shift, and still lists the ways', () => {

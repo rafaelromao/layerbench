@@ -876,8 +876,8 @@ function useFeatureSlides(
   };
   /**
    * What the feature types, as the board would draw it: its key, or its combo. A use inside one of
-   * the key's other branches, such as the macro an alt repeat types after a letter, is not what its
-   * key is drawn as, so it is drawn as what it types itself.
+   * the key's other branches, such as the macro a mod morph types when shifted, is not what its key
+   * is drawn as, so it is drawn as what it types itself.
    */
   const typedBy = (f: SpecialFeature) => {
     let binding: Binding | undefined;
@@ -1003,6 +1003,7 @@ function PathList({
   scope,
   label,
   rows,
+  used = rows.find((r) => r.enabled && !r.unavailable)?.id,
   dragging,
   setDragging,
   onToggle,
@@ -1012,17 +1013,19 @@ function PathList({
   scope: string;
   label?: string;
   rows: PathRow[];
+  /** The way in use, when it is not the first that is on and that some key gives; null for none. */
+  used?: string | null;
   dragging: string | null;
   setDragging: (at: string | null) => void;
   onToggle: (id: string) => void;
   onMove: (from: number, to: number) => void;
 }) {
-  const used = rows.find((r) => r.enabled && !r.unavailable)?.id;
   return (
     <ol className="lb-path-list" aria-label={label}>
       {rows.map((row, i) => (
         <li
           key={row.id}
+          aria-current={row.id === used ? 'true' : undefined}
           draggable
           onDragStart={(e) => {
             e.dataTransfer.setData('text/plain', String(i));
@@ -1142,14 +1145,25 @@ export function PathsPanel({
     labels: Record<string, string>,
     offered: (way: string) => boolean,
   ): PathRow[] => {
-    const on = list.filter((e) => e.enabled !== false).length;
+    const on = list.filter((e) => e.enabled !== false);
+    // The way that has to stay on is the last one that is on and that some key gives; with none that
+    // a key gives, the last that is on at all.
+    const usable = on.filter((e) => offered(e.way));
+    const keep =
+      usable.length > 0
+        ? usable.length === 1
+          ? usable[0].way
+          : null
+        : on.length === 1
+          ? on[0].way
+          : null;
     return list.map((e) => ({
       id: e.way,
       label: labels[e.way],
       enabled: e.enabled !== false,
       unavailable: !offered(e.way),
       note: offered(e.way) ? undefined : 'no key does this',
-      locked: on === 1 && e.enabled !== false,
+      locked: e.way === keep,
     }));
   };
   const shiftRows = rows(rules.shift, SHIFT_LABELS, (w) => shiftOffered.includes(w as ShiftWay));
@@ -1158,6 +1172,14 @@ export function PathsPanel({
     DOUBLED_LABELS,
     (w) => w !== 'repeatKey' || repeatOffered,
   );
+
+  // Left alone, a layout with a repeat key types a doubled letter the cheaper of the two ways, so no
+  // way is the one in use; once the rule is declared, the first that is on and that some key gives.
+  const doubledUsed =
+    state.layout.typingRules?.doubledLetters === undefined &&
+    doubledRows.some((r) => r.id === 'repeatKey' && r.enabled)
+      ? null
+      : undefined;
 
   /** Send the whole rule back, with a way turned on or off, or one moved from `from` to `to`. */
   const setRule = <R extends 'shift' | 'doubledLetters'>(
@@ -1189,7 +1211,7 @@ export function PathsPanel({
     <div className="space-y-2 min-w-0">
       <Carousel label="Typing paths">
         <Slide className="lb-path-slide">
-          <Keycap as="h3" symbol="⇧" />
+          <Keycap as="h3" symbol="⇧" aria-label="Shift kind" />
           <div className="lb-path-body">
             <span className="lb-slide-title">Shift kind</span>
             <PathList
@@ -1209,13 +1231,14 @@ export function PathsPanel({
           </div>
         </Slide>
         <Slide className="lb-path-slide">
-          <Keycap as="h3" symbol="aa" />
+          <Keycap as="h3" symbol="aa" aria-label="Doubled letters" />
           <div className="lb-path-body">
             <span className="lb-slide-title">Doubled letters</span>
             <PathList
               scope="doubledLetters"
               label="Doubled letters"
               rows={doubledRows}
+              used={doubledUsed}
               dragging={dragging}
               setDragging={setDragging}
               onToggle={toggleWay('doubledLetters', rules.doubledLetters)}

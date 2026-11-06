@@ -173,6 +173,17 @@ describe('the ways a layout gives Shift', () => {
     ).toEqual(['hold']);
   });
 
+  it('include a sticky Shift a combo gives, which the analysis taps', () => {
+    const layout = {
+      ...board({ LHM: kp('a') }),
+      combos: [{ keys: ['LHM', 'LHI'], binding: SHIFT }],
+    };
+    expect(shiftWaysOffered(layout)).toEqual(['sk']);
+    // A combo that holds a Shift is let go in the same action, so it gives none.
+    const held = { ...layout, combos: [{ keys: ['LHM', 'LHI'], binding: HOLD }] };
+    expect(shiftWaysOffered(held)).toEqual([]);
+  });
+
   it('are on any layer, and not a Shift held with another modifier', () => {
     const layout = board({ LHM: kp('a') });
     layout.layers.push({ id: 'num', bindings: { R1: SHIFT } });

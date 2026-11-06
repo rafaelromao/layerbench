@@ -29,10 +29,10 @@ function shiftKindOf(b: Binding | undefined, thumb: boolean): 'sk' | 'hold' | nu
 }
 
 /**
- * The ways some key of the layout gives Shift, on any layer: a sticky Shift tapped, or one held, a
- * thumb's or a home row mod's. What a rule for how a capital is typed can choose between.
+ * The ways some key or combo of the layout gives Shift, on any layer: a sticky Shift tapped, or one
+ * held, a thumb's or a home row mod's. What a rule for how a capital is typed can choose between.
  */
-export function shiftWaysOffered(layout: Pick<Layout, 'layers'>): ShiftWay[] {
+export function shiftWaysOffered(layout: Pick<Layout, 'layers' | 'combos'>): ShiftWay[] {
   const offered = new Set<ShiftWay>();
   for (const layer of layout.layers) {
     for (const b of Object.values(layer.bindings)) {
@@ -42,6 +42,11 @@ export function shiftWaysOffered(layout: Pick<Layout, 'layers'>): ShiftWay[] {
       const held = heldPart(b);
       if (held?.kind === 'mod' && isShift(held)) offered.add('hold');
     }
+  }
+  // The analysis taps a combo that gives a sticky Shift, a held chord being let go in the same action.
+  for (const combo of layout.combos ?? []) {
+    const tap = partOf(combo.binding);
+    if (tap.kind === 'sk' && isShift(tap)) offered.add('sk');
   }
   return SHIFT_WAYS.filter((w) => offered.has(w));
 }

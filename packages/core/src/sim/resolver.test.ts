@@ -726,7 +726,7 @@ describe('how a layout that declares its rules is typed', () => {
     const t = trace(stickyOff, 'A', model);
     expect(t).toMatchObject({ out: 'A', keys: ['L1', 'LHM'] });
     expect(held(t)).toEqual(['L1']);
-    // With the only way a layout has turned off, a capital has no way to be typed.
+    // With every way off, which the editor and a document refuse, a capital has no way to be typed.
     const none = twoShifts(
       {
         typingRules: {

@@ -134,6 +134,19 @@ describe('the rules in the document', () => {
     expect(compileLayout(back).doubledWays).toEqual(['tapTwice', 'repeatKey']);
   });
 
+  it('are refused when every way of a rule is off, as the editor refuses it', () => {
+    const doc = JSON.parse(JSON.stringify(toCanonicalJson(qwerty())));
+    doc.typingRules = {
+      doubledLetters: [
+        { way: 'repeatKey', enabled: false },
+        { way: 'tapTwice', enabled: false },
+      ],
+    };
+    expect(() => parseLayout(doc)).toThrow(/needs a way that is on/);
+    doc.typingRules.doubledLetters[1].enabled = true;
+    expect(() => parseLayout(doc)).not.toThrow();
+  });
+
   it('are refused when a way is not one the rule has', () => {
     const doc = JSON.parse(JSON.stringify(toCanonicalJson(qwerty())));
     doc.typingRules = { shift: [{ way: 'toggle' }] };
