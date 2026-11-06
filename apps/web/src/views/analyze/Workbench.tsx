@@ -788,8 +788,13 @@ export function Workbench({
   };
 
   const onBoard = state.panel === 'board';
-  // Combos draws the board under its strip of combos, to pick a combo's keys on.
-  const showBoard = onBoard || state.panel === 'combos';
+  // Combos draws the board under its strip of combos, to pick a combo's keys on. The two behavior
+  // tabs draw it under theirs, to show the key or combo picked.
+  const showBoard =
+    onBoard ||
+    state.panel === 'combos' ||
+    state.panel === 'behaviors' ||
+    state.panel === 'features';
   const editorPanel = (
     <div
       role="tabpanel"
