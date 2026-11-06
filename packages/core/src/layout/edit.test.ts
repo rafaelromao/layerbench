@@ -864,18 +864,45 @@ describe('typing paths, typing rules and details', () => {
   });
 
   it('moves the space key to the key that types a space, once its own does not', () => {
-    const typed = landed(layout, { kind: 'bind', layer: 'base', keys: ['L0'], binding: kp(' ') });
-    expect(typed.layout.keys.space).toBe('L0');
-    const moved = landed(typed.layout, {
+    // The space key declared, L0, types nothing yet: the first key made a space takes its place.
+    const moved = landed(layout, { kind: 'bind', layer: 'base', keys: ['R0'], binding: kp(' ') });
+    expect(moved.layout.keys.space).toBe('R0');
+    // Another key typing a space as well does not move it.
+    const both = landed(moved.layout, {
       kind: 'bind',
       layer: 'base',
       keys: ['L0'],
+      binding: kp(' '),
+    });
+    expect(both.layout.keys.space).toBe('R0');
+    // Its own binding changed away, the one that still types a space is the space key.
+    const away = landed(both.layout, {
+      kind: 'bind',
+      layer: 'base',
+      keys: ['R0'],
       binding: kp('x'),
+    });
+    expect(away.layout.keys.space).toBe('L0');
+  });
+
+  it('takes the shift key away once nothing shifts, and frees its key', () => {
+    const shifted = landed(layout, {
+      kind: 'bind',
+      layer: 'base',
+      keys: ['R1'],
+      binding: { kind: 'sk', mod: 'LSHIFT' },
     }).layout;
-    // No key types a space now: the declared one stays, as the analysis presses something.
-    expect(moved.keys.space).toBe('L0');
-    const next = landed(moved, { kind: 'bind', layer: 'base', keys: ['R0'], binding: kp(' ') });
-    expect(next.layout.keys.space).toBe('R0');
+    expect(shifted.keys.shift).toEqual({ key: 'R1', kind: 'sk' });
+    expect(keysInUse(shifted).has('R1')).toBe(true);
+    const gone = landed(shifted, {
+      kind: 'bind',
+      layer: 'base',
+      keys: ['R1'],
+      binding: { kind: 'none' },
+    }).layout;
+    expect(gone.keys.shift).toBeUndefined();
+    // Nothing pins the key to the board any more: it does nothing, and is no shift key.
+    expect(keysInUse(gone).has('R1')).toBe(false);
   });
 
   it('sets the details given and leaves the others', () => {
@@ -931,6 +958,11 @@ describe('every edit', () => {
       /nowhere/,
     ],
     [{ kind: 'addCombo', layer: 'base', keys: ['LHM', 'NOPE'], binding: kp('q') }, /NOPE/],
+    // A board that cannot be built is refused like any layout that cannot be drawn, not thrown.
+    [
+      { kind: 'replaceLayout', json: JSON.stringify({ ...layout, geometry: { preset: 'nope' } }) },
+      /Unknown geometry preset: nope/,
+    ],
   ])(
     'is refused with the compile error when the layout it would leave cannot be drawn: %o',
     (edit, error) => {

@@ -50,6 +50,27 @@ describe('the space key', () => {
     const layout = board({ L0: kp('x') });
     expect(withDerivedKeys(layout)).toBe(layout);
   });
+
+  it('stays on a key that chooses between bindings, as long as its plain part types a space', () => {
+    for (const space of [
+      { kind: 'adaptive', default: kp(' '), triggers: [] } as Binding,
+      { kind: 'sentence_morph', default: kp(' '), pending: kp('x') } as Binding,
+      { kind: 'layer_morph', layers: ['num'], active: kp('1'), inactive: kp(' ') } as Binding,
+      { kind: 'tap_dance', bindings: [kp(' '), kp('x')] } as Binding,
+    ]) {
+      // Another key types a space too: an edit elsewhere must not move the space to it.
+      const layout = board({ L0: space, R0: kp(' ') });
+      expect(withDerivedKeys(layout)).toBe(layout);
+    }
+  });
+
+  it("reads a layer's default binding for the keys it does not list", () => {
+    const layout = board({ '*': kp(' ') }, { space: 'R0' });
+    expect(withDerivedKeys(layout)).toBe(layout);
+    // The key declared does not type a space once it lists a binding of its own.
+    const moved = withDerivedKeys(board({ '*': kp(' '), R0: kp('x') }, { space: 'R0' }));
+    expect(moved.keys.space).not.toBe('R0');
+  });
 });
 
 describe('the shift key', () => {
@@ -102,9 +123,28 @@ describe('the shift key', () => {
     expect(withDerivedKeys(layout).keys.shift).toEqual({ key: 'RHM', kind: 'sk' });
   });
 
-  it('stays as declared when no key shifts', () => {
+  it('is gone when no key shifts any more, so nothing pins its key', () => {
     const layout = board({ R1: kp('x') }, { space: 'L0', shift: { key: 'R1', kind: 'sk' } });
-    expect(withDerivedKeys(layout)).toBe(layout);
+    expect(withDerivedKeys(layout).keys).toEqual({ space: 'L0' });
+  });
+
+  it('is found when the one declared is not on the board', () => {
+    const layout = board({ R1: SHIFT }, { space: 'L0', shift: { key: 'NOPE', kind: 'hold' } });
+    expect(withDerivedKeys(layout).keys.shift).toEqual({ key: 'R1', kind: 'sk' });
+  });
+
+  it('stays on a key that chooses between bindings, as long as its plain part shifts', () => {
+    const hold: Binding = { kind: 'mo', layer: 'num' };
+    for (const key of [
+      { kind: 'adaptive', default: SHIFT, triggers: [] } as Binding,
+      { kind: 'sentence_morph', default: SHIFT, pending: kp('x') } as Binding,
+      { kind: 'tap_dance', bindings: [SHIFT, kp('x')] } as Binding,
+      { kind: 'lt', layer: 'num', tap: SHIFT } as Binding,
+      { kind: 'hold_tap', tap: SHIFT, hold } as Binding,
+    ]) {
+      const layout = board({ R1: key }, { space: 'L0', shift: { key: 'R1', kind: 'sk' } });
+      expect(withDerivedKeys(layout)).toBe(layout);
+    }
   });
 });
 

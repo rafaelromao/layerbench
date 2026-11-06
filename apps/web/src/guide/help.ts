@@ -16,11 +16,6 @@ export const HELP = {
   moving: { page: 'editing', section: 'moving-keys-around', topic: 'moving keys' },
   severalKeys: { page: 'editing', section: 'several-keys-at-once', topic: 'editing several keys' },
   layers: { page: 'editing', section: 'layers', topic: 'layers' },
-  behaviors: {
-    page: 'special-keys',
-    section: 'caps-word-and-sentence-case',
-    topic: 'special behaviors',
-  },
   panels: {
     page: 'editing',
     section: 'combos-typing-paths-and-the-rest',

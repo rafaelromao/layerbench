@@ -289,7 +289,7 @@ describe('Creating layouts', () => {
     expect(screen.getByRole('button', { name: 'Delete Mine' })).not.toHaveClass('btn-ghost');
   });
 
-  it('puts Open last on every card, flush right, with Delete to its left on a custom one', async () => {
+  it('puts Analyze last on every card, flush right, with Delete to its left on a custom one', async () => {
     const storage = freshStorage();
     const qwerty = bundledLayout('qwerty') as Layout;
     await storage.put('layouts', 'mine', toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine' }));

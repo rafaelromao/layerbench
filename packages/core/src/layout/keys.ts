@@ -1,27 +1,15 @@
 import { buildGeometry } from './compile.js';
+import { heldPart, partOf } from './parts.js';
 import type { Binding, Layout, Mod } from './types.js';
 
 /** Whether a modifier is a Shift, and nothing else held with it. */
 const isShift = (b: { mod: Mod; also?: Mod[] }) =>
   (b.mod === 'LSHIFT' || b.mod === 'RSHIFT') && !b.also?.length;
 
-/** What a tap of a binding does: through a tap-hold, a layer tap and the plain part of a morph. */
-function tapPart(b: Binding | undefined): Binding | undefined {
-  if (b === undefined) return undefined;
-  switch (b.kind) {
-    case 'hold_tap':
-    case 'lt':
-      return tapPart(b.tap);
-    case 'mod_morph':
-      return tapPart(b.default);
-    default:
-      return b;
-  }
-}
-
+/** Whether tapping a binding types a space: a space, or a sentence space, past whatever chooses. */
 const typesSpace = (b: Binding | undefined) => {
-  const tap = tapPart(b);
-  return tap?.kind === 'sentence_space' || (tap?.kind === 'kp' && tap.symbol === ' ');
+  const part = b && partOf(b);
+  return part?.kind === 'sentence_space' || (part?.kind === 'kp' && part.symbol === ' ');
 };
 
 /**
@@ -30,10 +18,12 @@ const typesSpace = (b: Binding | undefined) => {
  * modifiers, and a Shift held with another modifier is not the shift key.
  */
 function shiftKindOf(b: Binding | undefined, thumb: boolean): 'sk' | 'hold' | null {
-  const tap = tapPart(b);
-  if (tap?.kind === 'sk' && isShift(tap)) return 'sk';
-  if (tap?.kind === 'mod' && isShift(tap)) return 'hold';
-  if (thumb && b?.kind === 'hold_tap' && b.hold.kind === 'mod' && isShift(b.hold)) return 'hold';
+  if (b === undefined) return null;
+  const tap = partOf(b);
+  if (tap.kind === 'sk' && isShift(tap)) return 'sk';
+  if (tap.kind === 'mod' && isShift(tap)) return 'hold';
+  const held = thumb ? heldPart(b) : null;
+  if (held?.kind === 'mod' && isShift(held)) return 'hold';
   return null;
 }
 
@@ -43,9 +33,9 @@ function shiftKindOf(b: Binding | undefined, thumb: boolean): 'sk' | 'hold' | nu
  * taps or holds Shift there.
  *
  * A key declared stays while it still does that, so a layout keeps the keys it was made with, and
- * the numbers they give; once its binding is changed away, the keys that do take its place. Where
- * none does, it stays as it is, as the analysis falls back to another key to press. The layout
- * itself when nothing changes.
+ * the numbers they give; once its binding is changed away, the key that does takes its place. With
+ * none to take it, the shift key is gone, and the space key, which a layout has to have, stays as
+ * it is, as the analysis presses something. The layout itself when nothing changes.
  */
 export function withDerivedKeys(layout: Layout): Layout {
   const keys = buildGeometry(layout).keys;
@@ -67,7 +57,7 @@ export function withDerivedKeys(layout: Layout): Layout {
       return kind ? [{ key: k.id, kind }] : [];
     });
     // A Shift tapped for the next key before one held, as the importer reads a keymap.
-    shift = found.find((f) => f.kind === 'sk') ?? found[0] ?? shift;
+    shift = found.find((f) => f.kind === 'sk') ?? found[0];
   }
 
   if (space === layout.keys.space && shift === was) return layout;

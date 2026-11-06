@@ -127,14 +127,27 @@ describe('the Layers carousel', () => {
 describe('the Typing paths carousel', () => {
   it('begins with how a capital and a doubled letter are typed, ahead of the characters', async () => {
     const send = vi.fn();
-    render(<PathsPanel state={state} send={send} producers={producers} />);
+    // A layout with a shift key, so there is a kind of shift to set.
+    const shifted: Layout = {
+      ...layout,
+      keys: { ...layout.keys, shift: { key: 'R1', kind: 'sk' } },
+      layers: [
+        {
+          ...layout.layers[0],
+          bindings: { ...layout.layers[0].bindings, R1: { kind: 'sk', mod: 'LSHIFT' } },
+        },
+        ...layout.layers.slice(1),
+      ],
+    };
+    const s = initialState(shifted, compileLayout(shifted));
+    render(<PathsPanel state={s} send={send} producers={producers} />);
     const items = within(screen.getByRole('list', { name: 'Typing paths' })).getAllByRole(
       'listitem',
     );
     expect(items[0]).toHaveTextContent('Shift kind');
     expect(items[1]).toHaveTextContent('Doubled letters');
     const user = userEvent.setup();
-    // A layout that says nothing has a one-shot shift and the repeat key.
+    // A layout that says nothing about repeats has the repeat key.
     expect(screen.getByLabelText('Shift kind')).toHaveValue('sk');
     expect(screen.getByLabelText('Doubled letters')).toHaveValue('repeatKey');
     await user.selectOptions(screen.getByLabelText('Shift kind'), 'hold');
@@ -147,6 +160,15 @@ describe('the Typing paths carousel', () => {
       type: 'edit',
       edit: { kind: 'setKeys', repeat: 'tapTwice' },
     });
+  });
+
+  it('has no kind of shift to set on a layout with no shift key, and says why', () => {
+    render(<PathsPanel state={state} send={vi.fn()} producers={producers} />);
+    const select = screen.getByLabelText('Shift kind');
+    expect(select).toBeDisabled();
+    // The reason is the select's description, for whoever cannot see the card.
+    expect(select).toHaveAccessibleDescription(/no shift key/);
+    expect(screen.getByLabelText('Doubled letters')).toBeEnabled();
   });
 
   it('draws each character on a key at the left of its slide', () => {

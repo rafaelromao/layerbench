@@ -8,8 +8,8 @@ const idle = (b: { kind: string }) => b.kind === 'trans' || b.kind === 'none';
 
 /**
  * The keys the layout uses, by what uses them, which is why they stay when the board changes: a
- * binding that does something on any layer, a combo, the space key, the shift key, or a feature's
- * key. A key that is Transparent or None on every layer, and nothing else uses, is free to go.
+ * binding that does something on any layer, a combo, the space key or the shift key. A key that is
+ * Transparent or None on every layer, and nothing else uses, is free to go.
  */
 export function keysInUse(layout: Layout): Map<string, string> {
   const used = new Map<string, string>();

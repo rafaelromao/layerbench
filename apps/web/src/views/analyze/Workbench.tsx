@@ -103,7 +103,7 @@ const PANELS: [Panel, string, HelpTopic][] = [
   ['board', 'Board', HELP.panels],
   ['layers', 'Layers', HELP.layers],
   ['combos', 'Combos', HELP.panels],
-  ['behaviors', 'Special Behaviors', HELP.behaviors],
+  ['behaviors', 'Special Behaviors', HELP.panels],
   ['paths', 'Typing paths', HELP.panels],
   ['geometry', 'Physical Layout', HELP.panels],
   ['json', 'JSON', HELP.exporting],

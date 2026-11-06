@@ -1349,26 +1349,6 @@ button.lb-combo-apart:focus-visible {
   white-space: nowrap;
 }
 
-/* A feature's slide: its name and its switch, what it does under them, the band along the top lit
-   while it is on. */
-.lb-feature-slide {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-}
-.lb-feature-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  cursor: pointer;
-}
-.lb-feature-hint {
-  font-size: 0.6875rem;
-  line-height: 1.35;
-  opacity: 0.7;
-}
-
 /* A special behavior's slide: its symbol on a key, then where it is, what it is called, and, where
    the name does not say, which kind it is. */
 .lb-behavior-text {

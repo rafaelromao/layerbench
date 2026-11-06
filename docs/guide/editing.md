@@ -450,7 +450,8 @@ keeps the page where it is, at either end too:
   with the key named. A key the board gains starts empty. Which keys are space and shift is not
   set: the space key is a key that types a space on the base layer, a thumb if there is one, and
   the shift key one that taps or holds Shift there. A layout keeps the ones it was made with while
-  they still do that, and takes others when they stop.
+  they still do that, and takes others when they stop; with no key that shifts, it has no shift
+  key, and **Shift kind** under **Typing paths** waits for one.
 - **JSON** shows the whole layout as LayerBench JSON or as a keymap-drawer file, in a text card
   that scrolls inside itself, beside the card with its buttons.
 

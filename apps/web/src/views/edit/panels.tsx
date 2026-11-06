@@ -942,21 +942,27 @@ function TypingRule({
   value,
   options,
   onChange,
+  disabled = false,
 }: {
   title: string;
   hint: string;
   value: string;
   options: [value: string, label: string][];
   onChange: (value: string) => void;
+  /** The rule has nothing to act on: the select stays, so it is found, and says why in its hint. */
+  disabled?: boolean;
 }) {
+  const hintId = useId();
   return (
     <Slide className="lb-slide-wide space-y-1.5">
       <label className="block space-y-1.5">
         <span className="lb-slide-title block">{title}</span>
         <select
           aria-label={title}
+          aria-describedby={hintId}
           className="select select-sm select-bordered w-full"
           value={value}
+          disabled={disabled}
           onChange={(e) => onChange(e.target.value)}
         >
           {options.map(([v, label]) => (
@@ -965,7 +971,9 @@ function TypingRule({
             </option>
           ))}
         </select>
-        <span className="block text-[11px] opacity-60">{hint}</span>
+        <span id={hintId} className="block text-[11px] opacity-60">
+          {hint}
+        </span>
       </label>
     </Slide>
   );
@@ -1015,7 +1023,12 @@ export function PathsPanel({
       <Carousel label="Typing paths">
         <TypingRule
           title="Shift kind"
-          hint="How a capital is typed: with the shift key tapped once before the letter, or held while the letter goes down."
+          hint={
+            state.layout.keys.shift
+              ? 'How a capital is typed: with the shift key tapped once before the letter, or held while the letter goes down.'
+              : 'This layout has no shift key. A key that taps or holds Shift makes one.'
+          }
+          disabled={!state.layout.keys.shift}
           value={state.layout.keys.shift?.kind ?? 'sk'}
           options={[
             ['sk', 'sticky (one-shot)'],

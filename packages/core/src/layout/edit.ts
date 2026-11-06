@@ -98,7 +98,6 @@ export type Edit =
       /** The languages the layout is for, by tag; an empty list says none. */
       languages?: string[];
     }
-  /** Features with nothing in them take the field away. */
   /** The whole layout, from the JSON an author pasted. */
   | { kind: 'replaceLayout'; json: string };
 
@@ -680,10 +679,12 @@ export function applyEdit(layout: Layout, edit: Edit): EditOutcome {
   const step = handle(layout, edit);
   if ('refused' in step) return { edit, before: layout, status: 'refused', message: step.refused };
   if (step.layout === layout) return { edit, before: layout, status: 'unchanged' };
-  // The space and shift keys follow the keys, whatever the edit did to them.
-  const edited = withDerivedKeys(step.layout);
+  let edited: Layout;
   let compiled: CompiledLayout;
   try {
+    // The space and shift keys follow the keys, whatever the edit did to them. A layout whose board
+    // cannot be built is refused here with the rest, as it is when it is compiled.
+    edited = withDerivedKeys(step.layout);
     compiled = compileLayout(edited);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

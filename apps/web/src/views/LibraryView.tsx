@@ -282,7 +282,7 @@ function LayoutCard({
   bands: HeadlineBands;
   lacking: Lacking | undefined;
   nobodyCan: boolean;
-  /** Open, last so it is always flush right, and Delete to its left on a custom layout. */
+  /** Analyze, last so it is always flush right, and Delete to its left on a custom layout. */
   actions: ReactNode;
   /** The pull request of the change a custom layout holds, while it is open. */
   proposal?: string;
