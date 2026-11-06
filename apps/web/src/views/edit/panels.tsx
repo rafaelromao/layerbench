@@ -1013,20 +1013,22 @@ function useFeatureSlides(
       : state.selected === null
         ? ''
         : `${compiled.layers[state.layer]?.id} ${state.selected}`;
+  // Whether the open key or combo has a slide here: one that appears for it, as a key is given a
+  // macro, is brought into view too.
+  const hasSlide = features.some((f) => kinds.includes(f.feature) && placeAt(f) === openAt);
   useEffect(() => {
-    if (openAt === '') return;
+    if (openAt === '' || !hasSlide) return;
     // A key can hold two features: the first of its slides is the one brought into view.
     const slides = panel.current?.querySelectorAll<HTMLElement>('[data-at]') ?? [];
     const slide = [...slides].find((s) => s.dataset.at === openAt);
     if (slide) revealInCarousel(slide);
-  }, [panel, openAt]);
+  }, [panel, openAt, hasSlide]);
   const show = (f: SpecialFeature) => {
     onShow?.();
     // Whatever the board is doing gives way: a pick of a combo's keys would keep its clicks, and an
-    // armed swap or an outline would add their keys to the ones shown.
+    // armed swap would add its key to the one shown.
     send({ type: 'comboPickCancel' });
     send({ type: 'cancelSwap' });
-    send({ type: 'setBoardHighlight', keys: [] });
     if (f.combo !== undefined) {
       const combo = f.comboIndex === undefined ? undefined : state.layout.combos?.[f.comboIndex];
       if (f.comboIndex === undefined || combo === undefined) return;
