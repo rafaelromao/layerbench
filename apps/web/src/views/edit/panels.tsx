@@ -53,7 +53,6 @@ function FeatureRow({
   module,
   on,
   onToggle,
-  children,
 }: {
   title: string;
   hint: string;
@@ -61,7 +60,6 @@ function FeatureRow({
   module?: ZmkModuleId | null;
   on: boolean;
   onToggle: (next: boolean) => void;
-  children?: ReactNode;
 }) {
   return (
     <Slide
@@ -80,27 +78,34 @@ function FeatureRow({
       </label>
       <p className="lb-feature-hint">{hint}</p>
       {module ? <ModuleNote module={module} /> : null}
-      {on && children ? <div>{children}</div> : null}
     </Slide>
   );
 }
 
 /**
- * Features: the typing behaviours that go on a key by its role, the space key or the shift key.
+ * External Behaviors: what needs a ZMK module of its own, as the guide says of each.
  *
- * Each wraps the key it belongs to — the space key, the shift key — in ordinary bindings, so the
- * layer list stays the set of layers a typist actually reaches. Adaptive keys and alt repeats are
- * not here: they are made on their keys, like any other kind of key.
+ * Sentence case is declared here, and wraps the space key in ordinary bindings, so the layer list
+ * stays the set of layers a typist actually reaches. Adaptive keys and alt repeats are made on their
+ * keys, like any other kind of key; their uses are listed, a card each, to pick and see on the board.
  */
-export function FeaturesPanel({ state, send }: PanelProps) {
+export function FeaturesPanel({
+  state,
+  send,
+  onShow,
+}: PanelProps & {
+  /** Before a feature is shown on the board: a word playing there would hide it. */
+  onShow?: () => void;
+}) {
   const f: LayoutFeatures = state.layout.features ?? {};
   const set = (next: LayoutFeatures) =>
     send({ type: 'edit', edit: { kind: 'setFeatures', features: next } });
   const enabled = (v: { enabled?: boolean } | undefined) => v !== undefined && v.enabled !== false;
+  const uses = useFeatureSlides(state, send, EXTERNAL_KINDS, onShow);
 
   return (
     <div className="space-y-2 min-w-0">
-      <Carousel label="Features">
+      <Carousel label="External behaviors">
         <FeatureRow
           title="Sentence case"
           hint="After . ? or ! and a space, the next key, if a letter a–z, is a capital."
@@ -108,36 +113,12 @@ export function FeaturesPanel({ state, send }: PanelProps) {
           on={enabled(f.sentenceCase)}
           onToggle={(on) => set({ ...f, sentenceCase: on ? {} : undefined })}
         />
-
-        <FeatureRow
-          title="Caps word"
-          hint="Capitals until the word ends, from pressing shift while shift is already on."
-          on={enabled(f.capsWord)}
-          onToggle={(on) => set({ ...f, capsWord: on ? {} : undefined })}
-        >
-          <label className="form-control">
-            <span className="label-text text-xs">Does not end the word</span>
-            <input
-              aria-label="Caps word continue list"
-              className="input input-xs input-bordered w-40 font-mono"
-              value={(f.capsWord?.continueList ?? []).join(' ')}
-              onChange={(e) =>
-                set({
-                  ...f,
-                  capsWord: {
-                    ...f.capsWord,
-                    continueList: e.target.value.split(/\s+/).filter(Boolean),
-                  },
-                })
-              }
-            />
-          </label>
-        </FeatureRow>
+        {uses}
       </Carousel>
       <CarouselHint>
-        Each goes on the key it belongs to, the space key or the shift key, with no layer of its
-        own. Adaptive keys and alt repeats are made on the key, with its Adaptive or Alt repeat
-        tile.
+        Each needs a ZMK module. Sentence case goes on the space key, with no layer of its own.
+        Adaptive keys and alt repeats are made on the key, with its Adaptive or Alt repeat tile;
+        pick one here to see it on the Board.
       </CarouselHint>
     </div>
   );
@@ -577,7 +558,7 @@ function OneShotDefaults({
   );
 }
 
-/** The most a key unit of the board of the Geometry tab takes, in pixels. */
+/** The most a key unit of the board of the Physical Layout tab takes, in pixels. */
 const GEO_UNIT = 30;
 /**
  * The height the board has in its slide, in pixels: a taller board has smaller keys, and the
@@ -667,7 +648,7 @@ function GeometryBoard({ state, send }: PanelProps) {
 }
 
 /**
- * Geometry: the preset and the board's keys, which key is space and which shift, how doubled
+ * Physical Layout: the preset and the board's keys, which key is space and which shift, how doubled
  * letters are typed, and how the one-shots end, each in a card of its own.
  */
 export function GeometryPanel({ state, send }: PanelProps) {
@@ -675,12 +656,12 @@ export function GeometryPanel({ state, send }: PanelProps) {
   const preset = 'preset' in layout.geometry ? layout.geometry.preset : 'custom';
   return (
     <div className="space-y-2 min-w-0">
-      <Carousel label="Geometry">
+      <Carousel label="Physical layout">
         <Slide className="lb-slide-wide space-y-1.5">
           <label className="block space-y-1.5">
             <span className="lb-slide-title block">Preset</span>
             <select
-              aria-label="Geometry preset"
+              aria-label="Physical layout preset"
               className="select select-sm select-bordered w-full"
               value={preset}
               onChange={(e) =>
@@ -813,7 +794,14 @@ export function GeometryPanel({ state, send }: PanelProps) {
  * A combo opened from anywhere else, such as its box on the board, is brought into view in the
  * strip and takes focus there, so the card and the board name the same one.
  */
-export function CombosPanel({ state, send }: PanelProps) {
+export function CombosPanel({
+  state,
+  send,
+  onShow,
+}: PanelProps & {
+  /** Before a combo is shown on the board: a word playing there would hide it. */
+  onShow?: () => void;
+}) {
   const { compiled, layout } = state;
   const combos = layout.combos ?? [];
   const layerName = compiled.layers[state.layer].name;
@@ -860,7 +848,16 @@ export function CombosPanel({ state, send }: PanelProps) {
                 className="lb-combo-slide-pick"
                 aria-label={`Edit ${name}`}
                 aria-pressed={open}
-                onClick={() => send({ type: 'selectCombo', combo: open ? null : i })}
+                // The board turns to the first layer the combo works on, as its card is drawn, so
+                // the combo is there to be seen selected. Closing it leaves the board as it is.
+                onClick={() => {
+                  if (!open) onShow?.();
+                  send(
+                    open
+                      ? { type: 'selectCombo', combo: null }
+                      : { type: 'selectCombo', combo: i, layer: on },
+                  );
+                }}
               >
                 <span className="lb-combo-slide-board">
                   <Keyboard
@@ -948,20 +945,8 @@ export function CombosPanel({ state, send }: PanelProps) {
   );
 }
 
-/** Behaviors: the layout's special features. */
-export function BehaviorsPanel({
-  state,
-  send,
-  onShow,
-}: PanelProps & {
-  /** Before a feature is shown on the board: a word playing there would hide it. */
-  onShow?: () => void;
-}) {
-  return <SpecialFeatureList state={state} send={send} onShow={onShow} />;
-}
-
 /**
- * Each kind of special feature, in the order the panel lists them, what a slide of it says, and the
+ * Each kind of special feature, in the order the panels list them, what a slide of it says, and the
  * theme colour of its band.
  */
 const FEATURE_GROUPS: [SpecialFeatureKind, string, string][] = [
@@ -972,11 +957,25 @@ const FEATURE_GROUPS: [SpecialFeatureKind, string, string][] = [
 ];
 
 /**
- * The layout's special features, a slide each, kind by kind, on a key that shows what the feature's
- * key or combo types: every use names its layer and key, or its combo, and picking it shows it on
- * the board — the key selected on its layer, or the combo's keys outlined.
+ * The kinds of special feature whose keys need a ZMK module (zmk-adaptive-key), which External
+ * Behaviors lists. They make a layout Special all the same: only the panels split the list.
  */
-function SpecialFeatureList({ state, send, onShow }: PanelProps & { onShow?: () => void }) {
+export const EXTERNAL_KINDS: readonly SpecialFeatureKind[] = ['adaptive', 'alt_repeat'];
+
+/** The kinds stock ZMK has, which Special Behaviors lists. */
+export const SPECIAL_KINDS: readonly SpecialFeatureKind[] = ['macro', 'mod_morph'];
+
+/**
+ * The layout's special features of these kinds, a slide each, kind by kind, on a key that shows what
+ * the feature's key or combo types: every use names its layer and key, or its combo, and picking it
+ * shows it on the board — the key selected on its layer, or the combo's keys outlined.
+ */
+function useFeatureSlides(
+  state: EditState,
+  send: Send,
+  kinds: readonly SpecialFeatureKind[],
+  onShow?: () => void,
+): ReactNode[] {
   const features = useMemo(() => specialFeatures(state.layout), [state.layout]);
   const { compiled } = state;
   const show = (f: SpecialFeature) => {
@@ -1019,54 +1018,67 @@ function SpecialFeatureList({ state, send, onShow }: PanelProps & { onShow?: () 
     return `${layer === undefined ? f.layer : compiled.layers[layer].name} · ${f.key}`;
   };
 
+  return FEATURE_GROUPS.filter(([kind]) => kinds.includes(kind)).flatMap(([kind, title, accent]) =>
+    features
+      .filter((f) => f.feature === kind)
+      .map((f, i) => {
+        const current =
+          f.combo === undefined &&
+          state.selected === f.key &&
+          compiled.layers[state.layer]?.id === f.layer;
+        const typed = typedBy(f);
+        return (
+          <Slide
+            // biome-ignore lint/suspicious/noArrayIndexKey: one key can hold a feature twice
+            key={`${kind}-${f.layer}-${f.key}-${f.combo}-${f.label}-${i}`}
+            current={current}
+            style={{ '--lb-accent': `var(--color-${accent})` } as CSSProperties}
+            className="lb-slide-wide lb-slide-accent lb-slide-pick"
+          >
+            <button
+              type="button"
+              className="lb-slide-button"
+              aria-current={current ? 'true' : undefined}
+              onClick={() => show(f)}
+            >
+              <Keycap
+                small
+                aria-hidden="true"
+                symbol={typed?.tap || '·'}
+                hold={typed?.hold || undefined}
+              />
+              <span className="lb-behavior-text">
+                <span className="font-mono text-xs opacity-70">{placeOf(f)}</span>
+                <span className="lb-behavior-label">{f.label}</span>
+                {/* The kind, where the name does not already say it. */}
+                {f.label.toLowerCase() !== title.toLowerCase() && (
+                  <span className="lb-behavior-kind">{title}</span>
+                )}
+              </span>
+            </button>
+          </Slide>
+        );
+      }),
+  );
+}
+
+/** Behaviors: the layout's special features that stock ZMK has. */
+export function BehaviorsPanel({
+  state,
+  send,
+  onShow,
+}: PanelProps & {
+  /** Before a feature is shown on the board: a word playing there would hide it. */
+  onShow?: () => void;
+}) {
+  const slides = useFeatureSlides(state, send, SPECIAL_KINDS, onShow);
   return (
     <section className="space-y-2 min-w-0" aria-label="Special features">
       <Carousel label="Special behaviors">
-        {features.length === 0 && (
-          <Slide className="lb-slide-wide text-xs">This layout has no special features.</Slide>
+        {slides.length === 0 && (
+          <Slide className="lb-slide-wide text-xs">This layout has no macros or mod morphs.</Slide>
         )}
-        {FEATURE_GROUPS.flatMap(([kind, title, accent]) =>
-          features
-            .filter((f) => f.feature === kind)
-            .map((f, i) => {
-              const current =
-                f.combo === undefined &&
-                state.selected === f.key &&
-                compiled.layers[state.layer]?.id === f.layer;
-              const typed = typedBy(f);
-              return (
-                <Slide
-                  // biome-ignore lint/suspicious/noArrayIndexKey: one key can hold a feature twice
-                  key={`${kind}-${f.layer}-${f.key}-${f.combo}-${f.label}-${i}`}
-                  current={current}
-                  style={{ '--lb-accent': `var(--color-${accent})` } as CSSProperties}
-                  className="lb-slide-wide lb-slide-accent lb-slide-pick"
-                >
-                  <button
-                    type="button"
-                    className="lb-slide-button"
-                    aria-current={current ? 'true' : undefined}
-                    onClick={() => show(f)}
-                  >
-                    <Keycap
-                      small
-                      aria-hidden="true"
-                      symbol={typed?.tap || '·'}
-                      hold={typed?.hold || undefined}
-                    />
-                    <span className="lb-behavior-text">
-                      <span className="font-mono text-xs opacity-70">{placeOf(f)}</span>
-                      <span className="lb-behavior-label">{f.label}</span>
-                      {/* The kind, where the name does not already say it. */}
-                      {f.label.toLowerCase() !== title.toLowerCase() && (
-                        <span className="lb-behavior-kind">{title}</span>
-                      )}
-                    </span>
-                  </button>
-                </Slide>
-              );
-            }),
-        )}
+        {slides}
       </Carousel>
       <CarouselHint>
         Pick one to see it on the Board: its layer turned up with the key selected, or the combo's

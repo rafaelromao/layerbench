@@ -189,7 +189,6 @@ export function removeLayer(layout: Layout, layerId: string): Layout {
       ...(f.sentenceCase?.on
         ? { sentenceCase: { ...f.sentenceCase, on: onOther(f.sentenceCase.on) } }
         : {}),
-      ...(f.capsWord?.on ? { capsWord: { ...f.capsWord, on: onOther(f.capsWord.on) } } : {}),
     };
   }
   return next;
@@ -292,7 +291,6 @@ export function changeLayerId(layout: Layout, from: string, to: string): Layout 
       ...(f.sentenceCase?.on && {
         sentenceCase: { ...f.sentenceCase, on: f.sentenceCase.on.map(layer) },
       }),
-      ...(f.capsWord?.on && { capsWord: { ...f.capsWord, on: f.capsWord.on.map(layer) } }),
     };
   }
   return next;

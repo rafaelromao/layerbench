@@ -19,12 +19,12 @@ export const HELP = {
   features: {
     page: 'special-keys',
     section: 'caps-word-and-sentence-case',
-    topic: 'sentence case and caps word',
+    topic: 'external behaviors',
   },
   panels: {
     page: 'editing',
     section: 'combos-typing-paths-and-the-rest',
-    topic: 'combos, geometry and the other panels',
+    topic: 'combos, the physical layout and the other panels',
   },
   exporting: { page: 'importing', section: 'exporting', topic: 'exporting' },
   headline: { page: 'analyzing', section: 'effort-and-sfb', topic: 'Effort and SFB' },

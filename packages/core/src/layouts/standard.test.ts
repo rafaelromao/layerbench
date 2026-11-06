@@ -46,11 +46,10 @@ describe('the standard thumbs', () => {
     expect(base.R2).toBeUndefined();
   });
 
-  it('declare R1, held, the shift key, so Caps word has a key to go on', () => {
+  it('declare R1, held, the shift key', () => {
     const qwerty = bundledLayout('qwerty') as Layout;
     expect(qwerty.keys.shift).toEqual({ key: 'R1', kind: 'hold' });
-    // Compiling throws on a feature with no key to go on.
-    const compiled = compileLayout({ ...qwerty, features: { capsWord: {} } });
+    const compiled = compileLayout(qwerty);
     const steps = explain(compiled, 'Ab', { caseMode: 'model', crossWord: 'reset' }).steps;
     expect(steps.map((s) => `${s.key}:${s.kind}`)).toEqual([
       'R1:hold_press',

@@ -119,9 +119,9 @@ function TextImport({
             />
           </label>
           <label className="form-control">
-            <span className="label-text text-xs">Geometry (text import)</span>
+            <span className="label-text text-xs">Physical layout (text import)</span>
             <select
-              aria-label="Geometry"
+              aria-label="Physical layout"
               className="select select-sm select-bordered"
               value={preset}
               onChange={(e) => setPreset(e.target.value)}

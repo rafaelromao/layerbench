@@ -205,34 +205,20 @@ export interface SentenceCaseFeature {
   on?: string[];
 }
 
-/** Hold shift for the rest of the word. */
-export interface CapsWordFeature {
-  enabled?: boolean;
-  /** Key that turns it on; `keys.shift.key` when omitted. */
-  key?: string;
-  on?: string[];
-  /** Modifiers that must already be active for the key to turn it on (default: both shifts). */
-  triggerMods?: Mod[];
-  /** Modifiers it applies (default `LSHIFT`). */
-  mods?: Mod[];
-  /** Symbols that do not end the word. */
-  continueList?: string[];
-}
-
 /**
- * Typing behaviours that go on a key by its role — the space key, the shift key — declared once.
+ * Typing behaviours that go on a key by its role — the space key — declared once.
  *
  * The compiler wraps the key they belong to in ordinary bindings, so the layer list stays the set of
  * layers a typist actually reaches, with no pre-shifted copy of a layer, as a keymap once needed for
  * sentence case. `featureModule` says what each needs in ZMK.
  *
- * Adaptive keys and alt repeats are not features: they are `adaptive` bindings on their keys, made
- * and edited like any other. A branch's `afterTags` replaces the one-shot layer an accent macro arms
- * in firmware so the repeat key can follow up.
+ * Adaptive keys, alt repeats and caps word are not features: they are bindings on their keys, made
+ * and edited like any other. Caps word is the `caps_word` binding, and shift pressed while shift is
+ * on starts it where the shift key is a `mod_morph` that morphs into one. A branch's `afterTags`
+ * replaces the one-shot layer an accent macro arms in firmware so the repeat key can follow up.
  */
 export interface LayoutFeatures {
   sentenceCase?: SentenceCaseFeature;
-  capsWord?: CapsWordFeature;
 }
 
 export interface Layout {

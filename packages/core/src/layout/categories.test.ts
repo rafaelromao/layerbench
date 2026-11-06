@@ -180,27 +180,29 @@ describe('a custom copy of Qwerty', () => {
     ]);
   });
 
-  it('is Special with caps word or sentence case declared, each once on the key it wraps', () => {
-    const caps: Layout = { ...qwerty(), keys: { space: 'L0', shift: { key: 'R0', kind: 'sk' } } };
-    caps.features = { capsWord: {} };
-    expect(specialFeatures(caps)).toEqual([
-      { feature: 'mod_morph', layer: 'base', key: 'R0', label: 'Caps word' },
-    ]);
-    expect(layoutCategory(caps)).toBe('special');
+  it('is Special with sentence case declared, once on the key it wraps', () => {
     const sentence: Layout = { ...qwerty(), features: { sentenceCase: {} } };
     expect(specialFeatures(sentence)).toEqual([
       { feature: 'adaptive', layer: 'base', key: sentence.keys.space, label: 'Sentence case' },
     ]);
+    expect(layoutCategory(sentence)).toBe('special');
     const off: Layout = { ...qwerty(), features: { sentenceCase: { enabled: false } } };
     expect(layoutCategory(off)).toBe('standard');
   });
 
-  it('reports caps word and sentence case on the same key as two uses', () => {
-    const l: Layout = {
-      ...qwerty(),
-      features: { sentenceCase: { key: 'R0' }, capsWord: { key: 'R0' } },
+  it('counts caps word on the shift key as the mod morph it is, and caps word alone as nothing', () => {
+    const morph: Binding = {
+      kind: 'mod_morph',
+      mods: ['LSHIFT', 'RSHIFT'],
+      default: { kind: 'sk', mod: 'LSHIFT' },
+      morphed: { kind: 'caps_word' },
     };
-    expect(specialFeatures(l).map((f) => f.label)).toEqual(['Caps word', 'Sentence case']);
+    const caps = withKey('R1', morph);
+    expect(specialFeatures(caps)).toEqual([
+      { feature: 'mod_morph', layer: 'base', key: 'R1', label: 'Mod morph' },
+    ]);
+    expect(layoutCategory(caps)).toBe('special');
+    expect(specialFeatures(withKey('R1', { kind: 'caps_word' }))).toEqual([]);
   });
 
   it('leaves the default layers and the combos only they have out', () => {

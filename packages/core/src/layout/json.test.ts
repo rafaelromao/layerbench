@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { structureHash } from '../analysis/hash.js';
+import breezeJson from '../fixtures/magic-breeze.json';
+import { bundledLayout } from '../layouts/index.js';
 import { compileLayout } from './compile.js';
 import { toCanonicalJson } from './json.js';
 import { duplicateLayer } from './ops.js';
@@ -182,6 +184,54 @@ describe('a layer morph in the document', () => {
       expect(parsed.error).toContain(LAYER_MORPH_MATCH);
       expect(parsed.error).toContain('→ at layers[0].bindings.LHI.match');
     }
+  });
+});
+
+describe('caps word in a document from before it was only a behaviour', () => {
+  const shiftShift = {
+    kind: 'mod_morph',
+    mods: ['LSHIFT', 'RSHIFT'],
+    default: { kind: 'sk', mod: 'LSHIFT' },
+    morphed: { kind: 'caps_word', mods: ['LSHIFT'], continueList: ['_', 'Backspace'] },
+  };
+  const written = {
+    ...toCanonicalJson(withBranches([])),
+    keys: { space: 'L0', shift: { key: 'R1', kind: 'sk' } },
+    layers: [{ id: 'base', bindings: { R1: { kind: 'sk', mod: 'LSHIFT' } } }],
+    features: { sentenceCase: { enabled: true }, capsWord: { continueList: ['_', 'Backspace'] } },
+  };
+
+  it('is read as the mod morph on the shift key it made, whichever way it is read', () => {
+    for (const layout of [parseLayout(written), safeParseLayout(written)]) {
+      const read = 'ok' in layout ? (layout.ok ? layout.layout : undefined) : layout;
+      expect(read?.layers[0].bindings.R1).toEqual(shiftShift);
+      expect(read?.features).toEqual({ sentenceCase: { enabled: true } });
+    }
+  });
+
+  it('is written back as that morph, with no caps word declared, and reads back as it is', () => {
+    const once = toCanonicalJson(parseLayout(written));
+    expect(once.features).toEqual({ sentenceCase: { enabled: true } });
+    const bindings = (once.layers as { bindings: Record<string, unknown> }[])[0].bindings;
+    expect(bindings.R1).toMatchObject({ kind: 'mod_morph', mods: ['LSHIFT', 'RSHIFT'] });
+    expect(toCanonicalJson(parseLayout(once))).toEqual(once);
+  });
+
+  it('keeps Magic Breeze, a stored layout that declared it, typing as Magic Romak does', () => {
+    const breeze = parseLayout(breezeJson);
+    expect(breeze.features).toEqual({ sentenceCase: { enabled: true } });
+    expect(breeze.layers[0].bindings.R1).toEqual(
+      bundledLayout('magic-romak')?.layers[0].bindings.R1,
+    );
+  });
+
+  it('leaves a layout without it, and a read layout with it off, as they are', () => {
+    const plain = { ...written, features: { sentenceCase: { enabled: true } } };
+    expect(parseLayout(plain).layers[0].bindings.R1).toEqual({ kind: 'sk', mod: 'LSHIFT' });
+    const off = { ...written, features: { capsWord: { enabled: false } } };
+    const read = parseLayout(off);
+    expect(read.layers[0].bindings.R1).toEqual({ kind: 'sk', mod: 'LSHIFT' });
+    expect('features' in read).toBe(false);
   });
 });
 

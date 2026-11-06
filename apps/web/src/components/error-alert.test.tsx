@@ -6,11 +6,11 @@ import { ErrorAlert } from './ErrorAlert.js';
 describe('a message about something wrong', () => {
   it('closes, and comes back only when the message changes', async () => {
     const user = userEvent.setup();
-    const { rerender } = render(<ErrorAlert message="Feature capsWord: no key given" />);
+    const { rerender } = render(<ErrorAlert message="Feature sentenceCase: unknown layer nav" />);
     await user.click(screen.getByRole('button', { name: 'Close message' }));
     expect(screen.queryByRole('alert')).toBeNull();
 
-    rerender(<ErrorAlert message="Feature capsWord: no key given" />);
+    rerender(<ErrorAlert message="Feature sentenceCase: unknown layer nav" />);
     expect(screen.queryByRole('alert')).toBeNull();
 
     rerender(<ErrorAlert message="Could not analyze: no corpus" />);

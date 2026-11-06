@@ -57,6 +57,22 @@ describe('bundled layouts added as documents', () => {
     expect(() => documentLayout('night', { name, ...rest })).toThrow('as LayerBench saves it');
   });
 
+  it('takes a document that declares caps word as a feature, read with the morph written out', () => {
+    // How a layout saved before caps word was only a behaviour is stored: `features.capsWord`, and
+    // the shift key a plain one-shot shift. It is read, not held to the form it was saved in.
+    const doc = saved();
+    doc.keys = { space: 'L1', shift: { key: 'R1', kind: 'sk' } };
+    doc.features = { capsWord: { enabled: true, continueList: ['_'] } };
+    const layers = doc.layers as { bindings: Record<string, unknown> }[];
+    layers[0].bindings.R1 = { kind: 'sk', mod: 'LSHIFT' };
+    const layout = documentLayout('night', doc);
+    expect(layout.layers[0].bindings.R1).toMatchObject({
+      kind: 'mod_morph',
+      morphed: { kind: 'caps_word', continueList: ['_'] },
+    });
+    expect(layout.features).toBeUndefined();
+  });
+
   it('turns away a layout that names no author', () => {
     expect(() => documentLayout('night', { ...saved(), author: '' })).toThrow('no author');
   });

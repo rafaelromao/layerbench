@@ -189,12 +189,10 @@ function featuresOf(b: Binding, at: Place, out: SpecialFeature[]): void {
 }
 
 /**
- * What a declared feature makes of the key it goes on: caps word turns the shift key into a mod
- * morph, sentence case the space key into a sentence space, which changes with the key before it as
- * an adaptive key does. Each is one feature, named as itself.
+ * What a declared feature makes of the key it goes on: sentence case makes the space key a sentence
+ * space, which changes with the key before it as an adaptive key does. Named as itself.
  */
 const DECLARED: Record<WrappingFeature, { feature: SpecialFeatureKind; label: string }> = {
-  capsWord: { feature: 'mod_morph', label: 'Caps word' },
   sentenceCase: { feature: 'adaptive', label: 'Sentence case' },
 };
 
@@ -211,7 +209,7 @@ const onDefaultLayersOnly = (isDefault: (id: string) => boolean, layers: string[
  */
 export function specialFeatures(layout: Layout): SpecialFeature[] {
   const out: SpecialFeature[] = [];
-  // One feature at a time: two on one key wrap it twice, and each is a use of its own.
+  // One feature at a time, so each is a use of its own, whatever key it wraps.
   const owned = (Object.keys(DECLARED) as WrappingFeature[]).map(
     (f) => expandFeatures({ ...layout, features: { [f]: layout.features?.[f] } }).owned,
   );

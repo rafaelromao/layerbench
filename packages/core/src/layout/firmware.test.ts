@@ -42,9 +42,8 @@ describe('the ZMK module a binding needs', () => {
 });
 
 describe('the ZMK module a feature needs', () => {
-  it('is zmk-sentence-case for sentence case, and none for caps word', () => {
+  it('is zmk-sentence-case for sentence case', () => {
     expect(featureModule('sentenceCase')).toBe('sentenceCase');
-    expect(featureModule('capsWord')).toBeNull();
   });
 });
 

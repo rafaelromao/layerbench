@@ -103,11 +103,11 @@ const HEAT_LABELS: Record<HeatMode, string> = {
 const PANELS: [Panel, string, HelpTopic][] = [
   ['board', 'Board', HELP.panels],
   ['layers', 'Layers', HELP.layers],
-  ['features', 'Features', HELP.features],
-  ['geometry', 'Geometry', HELP.panels],
   ['combos', 'Combos', HELP.panels],
   ['behaviors', 'Special Behaviors', HELP.panels],
+  ['features', 'External Behaviors', HELP.features],
   ['paths', 'Typing paths', HELP.panels],
+  ['geometry', 'Physical Layout', HELP.panels],
   ['json', 'JSON', HELP.exporting],
 ];
 const PANEL_TABS = PANELS.map(([id, label]) => ({ id, label }));
@@ -781,6 +781,12 @@ export function Workbench({
     return combo ? combo.keys.map((k) => typedCompiled.keys[k]?.id ?? '?').join('+') : key;
   };
 
+  // A combo or feature picked in a panel is what the board shows now: no word, no outlined n-gram.
+  const showOnBoard = () => {
+    setPlay(null);
+    clearOutline();
+  };
+
   const onBoard = state.panel === 'board';
   // Combos draws the board under its strip of combos, to pick a combo's keys on.
   const showBoard = onBoard || state.panel === 'combos';
@@ -792,19 +798,13 @@ export function Workbench({
       className="min-w-0"
     >
       {state.panel === 'layers' && <LayersPanel state={state} send={send} />}
-      {state.panel === 'features' && <FeaturesPanel state={state} send={send} />}
+      {state.panel === 'features' && (
+        <FeaturesPanel state={state} send={send} onShow={showOnBoard} />
+      )}
       {state.panel === 'geometry' && <GeometryPanel state={state} send={send} />}
-      {state.panel === 'combos' && <CombosPanel state={state} send={send} />}
+      {state.panel === 'combos' && <CombosPanel state={state} send={send} onShow={showOnBoard} />}
       {state.panel === 'behaviors' && (
-        <BehaviorsPanel
-          state={state}
-          send={send}
-          onShow={() => {
-            // The feature is what the board shows now: no word, no outlined n-gram.
-            setPlay(null);
-            clearOutline();
-          }}
-        />
+        <BehaviorsPanel state={state} send={send} onShow={showOnBoard} />
       )}
       {state.panel === 'paths' && <PathsPanel state={state} send={send} producers={producers} />}
       {state.panel === 'json' && <JsonPanel state={state} send={send} />}

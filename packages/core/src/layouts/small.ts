@@ -136,6 +136,17 @@ const ALPHA2_OR_SYMBOLS: Binding = {
 };
 
 /**
+ * The shift key: a one-shot Shift, and caps word when shift is pressed while a shift is on. Caps
+ * word lets `_` and Backspace through, as the pre-shifted layer it replaced did.
+ */
+const SHIFT_OR_CAPS_WORD: Binding = {
+  kind: 'mod_morph',
+  mods: ['LSHIFT', 'RSHIFT'],
+  default: { kind: 'sk', mod: 'LSHIFT' },
+  morphed: { kind: 'caps_word', mods: ['LSHIFT'], continueList: ['_', 'Backspace'] },
+};
+
+/**
  * The Numbers and Symbols layers of the author's keymap, `numbers_layer` and `symbols_layer` in
  * `zmk/definitions/keymap.dtsi` of github.com/rafaelromao/keyboards. They use only the 24-key
  * core, and every board's default layers start from them (`templates.ts`). Each key is what it
@@ -780,13 +791,14 @@ export const SMALL_DEFS: ClassicDef[] = [
    * The firmware needs extra layers for these — pre-shifted copies of the alphas for caps word and
    * shifted Alpha 2, and a one-shot layer armed by every accent macro so the repeat key can offer
    * follow-ups — and had one for sentence case, before it was the module zmk-sentence-case. None of
-   * them is a layer a typist reaches. Sentence case and caps word are declared as features, which
-   * go on the space and shift keys: sentence case makes the space a sentence space, caps word is the
-   * `caps_word` behaviour, and shift is simply shift state. The `h`/`v` keys and the alt repeat are
-   * adaptive keys on their own keys, and the alt-repeat follow-ups match on the tag the accent
-   * macro leaves behind. What is left is the layers you can see. It brings its keymap's own Numbers
-   * and Symbols, which the default layers leave as they are, and its keymap's home block mods
-   * (`MAGIC_ROMAK_MODS`) in place of the default ones.
+   * them is a layer a typist reaches. Sentence case is declared as a feature on the space key, which
+   * makes it a sentence space. Caps word is the `caps_word` behaviour, on the shift key in a mod
+   * morph, so shift pressed while shift is on starts it, as in its keymap, and shifted Alpha 2 is
+   * simply shift state. The `h`/`v` keys and the alt repeat are adaptive keys on their own keys, and
+   * the alt-repeat follow-ups match on the tag the accent macro leaves behind. What is left is the
+   * layers you can see. It brings its keymap's own Numbers and Symbols, which the default layers
+   * leave as they are, and its keymap's home block mods (`MAGIC_ROMAK_MODS`) in place of the default
+   * ones.
    */
   {
     id: 'magic-romak',
@@ -802,7 +814,7 @@ export const SMALL_DEFS: ClassicDef[] = [
       L1: ALT_REPEAT,
       L0: SPACE_OR_NUMBERS,
       R0: ALPHA2_OR_SYMBOLS,
-      R1: { kind: 'sk', mod: 'LSHIFT' },
+      R1: SHIFT_OR_CAPS_WORD,
     },
     space: 'L0',
     layers: [
@@ -817,11 +829,7 @@ export const SMALL_DEFS: ClassicDef[] = [
       sk: { quickRelease: true, ignoreModifiers: true, releaseAfterMs: 1500 },
     },
     repeatPolicy: { doubledLetters: 'repeatKey' },
-    features: {
-      sentenceCase: {},
-      // Matches what the pre-shifted layer allowed through before.
-      capsWord: { continueList: ['_', 'Backspace'] },
-    },
+    features: { sentenceCase: {} },
     activators: {
       alpha2: [
         { from: 'alpha1', via: 'key:alpha1/R0' },

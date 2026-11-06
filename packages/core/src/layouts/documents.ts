@@ -14,9 +14,20 @@ const DOCUMENTS: Record<string, unknown> = {
 };
 
 /**
+ * Whether a document still declares caps word as a feature, as those saved before it was only a
+ * behaviour do. Reading turns it into the mod morph it made, which is not the form it was saved in.
+ */
+function declaresCapsWord(doc: unknown): boolean {
+  const features = (doc as { features?: unknown } | null)?.features;
+  return typeof features === 'object' && features !== null && 'capsWord' in features;
+}
+
+/**
  * The layout a document holds, checked: exactly what LayerBench saves, so what is reviewed is what
  * ships; named by its id; and saying who made it. Its link, to where it comes from, is optional;
- * the schema holds one that is given to an http(s) URL.
+ * the schema holds one that is given to an http(s) URL. A document saved with caps word declared as
+ * a feature is read as it is everywhere, with the morph written out, and not held to the form it was
+ * saved in, so a layout already in the Library does not leave it.
  */
 export function documentLayout(file: string, doc: unknown): Layout {
   const parsed = safeParseLayout(doc);
@@ -25,7 +36,7 @@ export function documentLayout(file: string, doc: unknown): Layout {
   if (layout.id !== file) {
     throw new Error(`${file}.json holds the layout "${layout.id}"; name the file by its id`);
   }
-  if (JSON.stringify(toCanonicalJson(layout)) !== JSON.stringify(doc)) {
+  if (!declaresCapsWord(doc) && JSON.stringify(toCanonicalJson(layout)) !== JSON.stringify(doc)) {
     throw new Error(
       `${file}.json is not as LayerBench saves it; copy it from the editor's JSON panel`,
     );

@@ -54,7 +54,7 @@ toggled stays on.
 A one-shot ends with the next key: a one-shot layer with the next key pressed, a one-shot modifier
 with the next key that types something. Each key is pressed and let go before the next, so whether
 ZMK would end it as that key goes down or as it comes up (`quickRelease`, among the layout's
-behaviour defaults, set in the **Geometry** panel) makes no difference to the numbers. A modifier
+behaviour defaults, set in the **Physical Layout** tab) makes no difference to the numbers. A modifier
 pressed in between leaves it armed when those defaults say to ignore modifiers, as ZMK does. ZMK's
 [sticky layer](https://zmk.dev/docs/keymaps/behaviors/sticky-layer) and
 [sticky key](https://zmk.dev/docs/keymaps/behaviors/sticky-key) pages describe the options.
@@ -111,7 +111,7 @@ is a second stage, which firmware builds with a one-shot layer the accent arms.
 An adaptive key lives on its key, like any other. **Copy to…**, or dragging with `Alt`, puts a copy
 on another key, and **From this layout** lists the layout's adaptive keys first. Each copy is a key
 of its own: changing one leaves the others as they were. A custom layout saved when adaptive keys were
-declared in **Features** opens with each one on the keys it was placed on, typing as it did.
+declared as features opens with each one on the keys it was placed on, typing as it did.
 
 ## Macros
 
@@ -123,9 +123,17 @@ step the list has no row for is shown as it is, and can still be moved or remove
 
 ## Caps word and sentence case
 
-**Caps word** `⇪` types capitals until the word ends. **Features** can also put
-caps word on the shift key, so that shift pressed while shift is already on starts it, and turn on
-**sentence case**, which makes the space key a sentence space.
+**Caps word** `⇪` types capitals until the word ends. It is a tile like any other, for any key: on
+its own, as the tap of a tap-hold, or as either part of a **Morph**. Letters, digits and `_` keep it
+going; the symbols you list under **Continues** do too.
+
+To start it by pressing shift while shift is already on, make the shift key a **Morph**: choose
+**With a modifier**, **Shift**, make **Plain** a **Modifier** (Shift), and make **Becomes** **Caps
+word**. Magic Romak's shift key is one. A layout saved when caps word was a feature opens with that
+morph on its shift key, typing as it did.
+
+**External Behaviors** turns on **sentence case**, which makes the space key a sentence space, and
+lists the layout's adaptive keys and alt repeats, which need a ZMK module too.
 
 A **Sentence space**, among the editor's other tiles, types a space. Pressed right after `.`, `?` or
 `!`, it leaves a capital for the next key pressed. A letter a–z comes out a capital. Any other key,
@@ -139,7 +147,8 @@ Romak's Alpha 2 key is one, as in its author's keymap: after a sentence's end it
 Alpha 2, so an accent that starts a sentence is a capital too. The capital alone would not give one,
 as an accent is no letter a–z.
 
-Caps word is ZMK's own `&caps_word`; on the shift key it is a mod-morph. A sentence space and a
+Caps word is ZMK's own `&caps_word`; started by shift pressed while shift is on, it is in a
+mod-morph, which is ZMK's own too. A sentence space and a
 morph after a sentence need the module
 [rafaelromao/zmk-sentence-case](https://github.com/rafaelromao/zmk-sentence-case): they are its
 `&sentence_space` and its sentence-morph. Which punctuation ends a sentence, and that the capital is
@@ -188,7 +197,7 @@ or with a module. Each module's page says how to add it to a keymap.
 | Tap dance | [tap-dance](https://zmk.dev/docs/keymaps/behaviors/tap-dance) |
 | Morph with a modifier | [mod-morph](https://zmk.dev/docs/keymaps/behaviors/mod-morph) |
 | Morph on a layer | the module [rafaelromao/zmk-layer-morph](https://github.com/rafaelromao/zmk-layer-morph) |
-| Caps word | [`&caps_word`](https://zmk.dev/docs/keymaps/behaviors/caps-word); on the shift key, in a mod-morph |
+| Caps word | [`&caps_word`](https://zmk.dev/docs/keymaps/behaviors/caps-word); started by shift pressed while shift is on, in a mod-morph |
 | Sentence case, sentence space, morph after a sentence | the module [rafaelromao/zmk-sentence-case](https://github.com/rafaelromao/zmk-sentence-case) |
 | Unicode | the module [urob/zmk-unicode](https://github.com/urob/zmk-unicode) |
 | Dead key | the host's dead key, sent with `&kp` |

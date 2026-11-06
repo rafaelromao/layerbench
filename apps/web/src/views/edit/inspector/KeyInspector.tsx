@@ -76,8 +76,8 @@ function Inspector({ state, send, focusKey, keyId }: KeyInspectorProps & { keyId
   const fallback: Binding =
     layout.layers[layer]?.bindings['*'] ?? (layer === 0 ? { kind: 'none' } : { kind: 'trans' });
   const current = authored ?? fallback;
-  // Sentence case and caps word wrap the tap of the key they belong to; such a key is edited as
-  // its feature, since the next compile would wrap anything written on the key again.
+  // Sentence case wraps the tap of the key it belongs to; such a key is edited as its feature,
+  // since the next compile would wrap anything written on the key again.
   const owner = compiled.featureOwned.get(activeLayer.id)?.get(keyId);
   const scope = useEditorScope(compiled);
   const text = scope.text;
@@ -199,9 +199,10 @@ function Inspector({ state, send, focusKey, keyId }: KeyInspectorProps & { keyId
           <>
             <div className="rounded-box bg-base-200 p-2 text-xs">
               This key's tap belongs to <strong>{featureTitle(owner)}</strong> (
-              <span className="font-mono">{owner}</span>), which the layout turns on in Features.
+              <span className="font-mono">{owner}</span>), which the layout turns on in External
+              Behaviors.
             </div>
-            <FeatureBody layout={layout} feature={owner} setFeatures={setFeatures} />
+            <FeatureBody feature={owner} />
             <details className="text-xs">
               <summary className="cursor-pointer opacity-70">The key under the feature</summary>
               <div className="pt-2 space-y-2">

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { JsonObject } from '../storage/ids.js';
+import { type ReadLayout, withCapsWordAsMorph } from './features.js';
 import { tellIssues } from './issues.js';
 import { canonicalLanguages } from './languages.js';
 import { LAYER_COLORS, type Layout, MAX_CONDITION_LAYERS } from './types.js';
@@ -204,6 +205,8 @@ const FeaturesSchema = z.object({
       on: z.array(z.string()).optional(),
     })
     .optional(),
+  // Read only for documents from before caps word was only a behaviour: `withCapsWordAsMorph` turns
+  // it into the mod morph on the shift key it made, and the layout has none of it.
   capsWord: z
     .object({
       enabled: z.boolean().optional(),
@@ -630,7 +633,7 @@ function toRead(input: unknown): { doc: unknown } | undefined {
 export function parseLayout(input: unknown): Layout {
   const read = toRead(input);
   if (!read) throw new Error(TOO_MANY);
-  const layout = LayoutSchema.parse(read.doc) as Layout;
+  const layout = withCapsWordAsMorph(LayoutSchema.parse(read.doc) as ReadLayout);
   return { ...layout, languages: canonicalLanguages(layout.languages) };
 }
 
@@ -657,9 +660,9 @@ export function safeParseLayout(
     }
     throw e;
   }
-  return r.success
-    ? { ok: true, layout: { ...r.data, languages: canonicalLanguages(r.data.languages) } as Layout }
-    : { ok: false, error: tellIssues(r.error.issues) };
+  if (!r.success) return { ok: false, error: tellIssues(r.error.issues) };
+  const layout = withCapsWordAsMorph(r.data as ReadLayout);
+  return { ok: true, layout: { ...layout, languages: canonicalLanguages(layout.languages) } };
 }
 
 export function layoutJsonSchema(): unknown {
