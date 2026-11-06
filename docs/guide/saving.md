@@ -25,6 +25,11 @@ ranked with them, and **Delete**, on its card, removes it. Edit it in **Analyze*
 *unsaved*, and your edits live only in the page's link and in this tab: opened in another tab or
 browser, the same link is a layout of its own, and saving it there makes a copy.
 
+While edits are unsaved, **Cancel** sits beside **Save**: it gives the layout back as it was opened
+or last saved, all the edits at once. It does not ask, because **Undo** brings them back, unsaved as
+they were. A layout opened from a link whose edits were unsaved from the start has no saved state to
+go back to, and no **Cancel**; to leave it, pick another layout.
+
 ### Saving a copy
 
 A layout that is not yours is never saved over: one that comes with the app, a community layout,
@@ -38,7 +43,7 @@ refused. **Cancel** saves nothing. Once saved, the layout in the editor is the c
 **Save**s keep your edits to it straight away.
 
 A custom layout is kept in this browser. To keep it anywhere else, sign in with GitHub, below; or
-copy its LayerBench JSON from the editor's **JSON** panel and keep the text, which **Import** reads
+copy its LayerBench JSON from the editor's **Export** panel and keep the text, which **Import** reads
 back.
 
 ### Proposing a change
@@ -164,7 +169,7 @@ joins everyone's Library once the pull request is merged.
 
 1. In **Analyze**, give the layout its name, and in **Settings** its author and, if you can, a
    **Link** to where it comes from: the author's firmware, keymap or page. **Save** it.
-2. Copy its LayerBench JSON from the editor's **JSON** panel.
+2. Copy its LayerBench JSON from the editor's **Export** panel.
 3. Open a pull request on [layerbench](https://github.com/rafaelromao/layerbench) that adds it as a
    file named by the layout's id, with the two lines of code and the line on the landing page that
    go with it. The [README](../../README.md#bundled-layouts) lists each step.

@@ -17,15 +17,21 @@ export function Segment<T extends string>({
   options,
   value,
   onChange,
+  size = 'xs',
+  fill = false,
 }: {
   label: string;
   options: readonly (readonly [T, string])[];
   value: T | null;
   onChange: (v: T) => void;
+  /** The button size: a panel's own choice is a small button, an inspector's an extra-small one. */
+  size?: 'xs' | 'sm';
+  /** The choices share the whole row in equal parts, rather than each taking its own width. */
+  fill?: boolean;
 }) {
   const name = useId();
   return (
-    <fieldset className="join flex-wrap" aria-label={label}>
+    <fieldset className={fill ? 'join w-full' : 'join flex-wrap'} aria-label={label}>
       {options.map(([v, text]) => (
         // daisyUI draws a radio styled as a button from its accessible name.
         <input
@@ -33,7 +39,7 @@ export function Segment<T extends string>({
           type="radio"
           name={name}
           aria-label={text}
-          className="join-item btn btn-xs"
+          className={`join-item btn ${size === 'sm' ? 'btn-sm' : 'btn-xs'} ${fill ? 'flex-1 px-1' : ''}`}
           checked={value === v}
           onChange={() => onChange(v)}
         />

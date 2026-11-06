@@ -224,6 +224,11 @@ const FeaturesSchema = z.object({
 /** Why a layout's link will not do, when `isLayoutLink` says so. */
 export const NOT_A_LINK = 'a link is one http:// or https:// URL';
 
+/** A rule of `typingRules` with every way off types nothing: the editor refuses it, and so does a document. */
+const SOME_WAY_IS_ON = 'a typing rule needs a way that is on';
+const someWayIsOn = (ways: readonly { enabled?: boolean }[]) =>
+  ways.length === 0 || ways.some((w) => w.enabled !== false);
+
 /** Whether `text` will do as a layout's link: one http or https URL, nothing around it. */
 export function isLayoutLink(text: string): boolean {
   if (!/^https?:\/\/\S+$/i.test(text)) return false;
@@ -343,6 +348,20 @@ export const LayoutSchema = z.object({
     .optional(),
   repeatPolicy: z
     .object({ doubledLetters: z.enum(['repeatKey', 'tapTwice']).optional() })
+    .optional(),
+  typingRules: z
+    .object({
+      shift: z
+        .array(z.object({ way: z.enum(['sk', 'hold']), enabled: z.boolean().optional() }))
+        .refine(someWayIsOn, { message: SOME_WAY_IS_ON })
+        .optional(),
+      doubledLetters: z
+        .array(
+          z.object({ way: z.enum(['repeatKey', 'tapTwice']), enabled: z.boolean().optional() }),
+        )
+        .refine(someWayIsOn, { message: SOME_WAY_IS_ON })
+        .optional(),
+    })
     .optional(),
   activators: z
     .record(

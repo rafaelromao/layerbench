@@ -2,6 +2,7 @@ import {
   addableKeys,
   type Binding,
   boardKeys,
+  type DoubledWay,
   type Edit,
   exportKeymapDrawer,
   freeCondition,
@@ -14,8 +15,11 @@ import {
   legend,
   plainPath,
   reachKeys,
+  rulesOf,
+  type ShiftWay,
   type SpecialFeature,
   type SpecialFeatureKind,
+  shiftWaysOffered,
   slug,
   specialFeatures,
   toCanonicalJson,
@@ -489,7 +493,7 @@ function OneShotDefaults({
   );
 }
 
-/** The most a key unit of the board of the Physical Layout tab takes, in pixels. */
+/** The most a key unit of the board of the Configuration tab takes, in pixels. */
 const GEO_UNIT = 30;
 /**
  * The height the board has in its slide, in pixels: a taller board has smaller keys, and the
@@ -579,16 +583,16 @@ function GeometryBoard({ state, send }: PanelProps) {
 }
 
 /**
- * Physical Layout: the preset and the board's keys, a card each. Which keys are space and shift is
- * not set here: they are the keys that type a space and shift. How a capital and a doubled letter
- * are typed is in Typing paths, and how the one-shots end in Special Behaviors.
+ * Configuration: the preset, the board's keys, and how the layout's one-shot layers and keys end, a
+ * card each. Which keys are space and shift is not set here: they are the keys that type a space and
+ * shift. How a capital and a doubled letter are typed is in Typing paths.
  */
-export function GeometryPanel({ state, send }: PanelProps) {
+export function ConfigurationPanel({ state, send }: PanelProps) {
   const { layout } = state;
   const preset = 'preset' in layout.geometry ? layout.geometry.preset : 'custom';
   return (
     <div className="space-y-2 min-w-0">
-      <Carousel label="Physical layout">
+      <Carousel label="Configuration">
         <Slide className="lb-slide-wide space-y-1.5">
           <label className="block space-y-1.5">
             <span className="lb-slide-title block">Preset</span>
@@ -631,10 +635,13 @@ export function GeometryPanel({ state, send }: PanelProps) {
         </Slide>
 
         <GeometryBoard state={state} send={send} />
+        <OneShotDefaults which="sl" title="One-shot layers" state={state} send={send} />
+        <OneShotDefaults which="sk" title="One-shot keys" state={state} send={send} />
       </Carousel>
       <CarouselHint>
         Tap a key to take it away, or a + to add one. A key can go only when it is Transparent or
-        None on every layer and nothing else uses it.
+        None on every layer and nothing else uses it. The one-shot cards say how the layout's
+        one-shots end.
       </CarouselHint>
     </div>
   );
@@ -869,8 +876,8 @@ function useFeatureSlides(
   };
   /**
    * What the feature types, as the board would draw it: its key, or its combo. A use inside one of
-   * the key's other branches, such as the macro an alt repeat types after a letter, is not what its
-   * key is drawn as, so it is drawn as what it types itself.
+   * the key's other branches, such as the macro a mod morph types when shifted, is not what its key
+   * is drawn as, so it is drawn as what it types itself.
    */
   const typedBy = (f: SpecialFeature) => {
     let binding: Binding | undefined;
@@ -939,9 +946,8 @@ function useFeatureSlides(
 }
 
 /**
- * Special Behaviors: how the layout's one-shot layers and keys end, a card each, and then every use
- * of an adaptive key, alt repeat, macro, mod morph and sentence space, a card each, to pick and see
- * on the board.
+ * Special Behaviors: every use of an adaptive key, alt repeat, macro, mod morph and sentence space,
+ * a card each, to pick and see on the board.
  */
 export function BehaviorsPanel({
   state,
@@ -956,8 +962,6 @@ export function BehaviorsPanel({
   return (
     <section ref={panel} className="space-y-2 min-w-0" aria-label="Special features">
       <Carousel label="Special behaviors">
-        <OneShotDefaults which="sl" title="One-shot layers" state={state} send={send} />
-        <OneShotDefaults which="sk" title="One-shot keys" state={state} send={send} />
         {slides.length === 0 && (
           <Slide className="lb-slide-wide text-xs">
             This layout has no adaptive keys, alt repeats, macros, mod morphs or sentence spaces.
@@ -966,69 +970,144 @@ export function BehaviorsPanel({
         {slides}
       </Carousel>
       <CarouselHint>
-        The one-shot cards say how the layout's one-shots end. Pick a use to see it on the board
-        below: its layer turned up with the key selected, or the combo open. Adaptive keys, alt
-        repeats and sentence spaces need a ZMK module, linked in the key editor.
+        Pick a use to see it on the board below: its layer turned up with the key selected, or the
+        combo open. Adaptive keys, alt repeats and sentence spaces need a ZMK module, linked in the
+        key editor.
       </CarouselHint>
     </section>
   );
 }
 
-/** A rule for how the whole layout is typed: its choice in a select, and what each choice means. */
-function TypingRule({
-  title,
-  hint,
-  value,
-  options,
-  onChange,
-  disabled = false,
-}: {
-  title: string;
-  hint: string;
-  value: string;
-  options: [value: string, label: string][];
-  onChange: (value: string) => void;
-  /** The rule has nothing to act on: the select stays, so it is found, and says why in its hint. */
-  disabled?: boolean;
-}) {
-  const hintId = useId();
-  return (
-    <Slide className="lb-slide-wide space-y-1.5">
-      <label className="block space-y-1.5">
-        <span className="lb-slide-title block">{title}</span>
-        <select
-          aria-label={title}
-          aria-describedby={hintId}
-          className="select select-sm select-bordered w-full"
-          value={value}
-          disabled={disabled}
-          onChange={(e) => onChange(e.target.value)}
-        >
-          {options.map(([v, label]) => (
-            <option key={v} value={v}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <span id={hintId} className="block text-[11px] opacity-60">
-          {hint}
-        </span>
-      </label>
-    </Slide>
-  );
+/** One way of a typing path, as its row shows it. */
+interface PathRow {
+  id: string;
+  label: string;
+  enabled: boolean;
+  /** Said where the cost goes: how many presses, or why the way is of no use here. */
+  note?: string;
+  /** Drawn like a code identifier: a producer's id, not a word. */
+  mono?: boolean;
+  title?: string;
+  /** No key of the layout does this: the way stays in the list, dimmed and marked. */
+  unavailable?: boolean;
+  /** The one way on, which cannot be turned off. */
+  locked?: boolean;
 }
 
 /**
- * Typing paths: how a capital and a doubled letter are typed, in a card each, and which producer
- * wins when a symbol can be typed more than one way: a slide for each such symbol, drawn on a key at
- * its left, with the ways it can be typed beside it.
+ * The ways a character or a rule can be typed, a row each, in the order they are tried: a box to
+ * turn it on or off, the order to drag or move with the arrows, and the way the analysis types it
+ * marked, the first that is on and that some key gives.
+ */
+function PathList({
+  scope,
+  label,
+  rows,
+  used = rows.find((r) => r.enabled && !r.unavailable)?.id,
+  dragging,
+  setDragging,
+  onToggle,
+  onMove,
+}: {
+  /** Names the list among the others, so a drag cannot cross from one to another. */
+  scope: string;
+  label?: string;
+  rows: PathRow[];
+  /** The way in use, when it is not the first that is on and that some key gives; null for none. */
+  used?: string | null;
+  dragging: string | null;
+  setDragging: (at: string | null) => void;
+  onToggle: (id: string) => void;
+  onMove: (from: number, to: number) => void;
+}) {
+  return (
+    <ol className="lb-path-list" aria-label={label}>
+      {rows.map((row, i) => (
+        <li
+          key={row.id}
+          aria-current={row.id === used ? 'true' : undefined}
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.setData('text/plain', String(i));
+            e.dataTransfer.effectAllowed = 'move';
+            setDragging(`${scope}:${i}`);
+          }}
+          onDragEnd={() => setDragging(null)}
+          onDragOver={(e) => {
+            if (dragging?.startsWith(`${scope}:`)) e.preventDefault();
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            const from = Number(e.dataTransfer.getData('text/plain'));
+            setDragging(null);
+            if (Number.isInteger(from)) onMove(from, i);
+          }}
+          className={`lb-path-row ${row.id === used ? 'lb-path-first' : ''} ${
+            row.enabled ? '' : 'opacity-40'
+          } ${row.unavailable && row.enabled ? 'opacity-60' : ''} ${
+            dragging === `${scope}:${i}` ? 'opacity-50' : ''
+          }`}
+        >
+          <span aria-hidden="true" className="opacity-40">
+            ⠿
+          </span>
+          <input
+            type="checkbox"
+            className="checkbox checkbox-xs"
+            aria-label={`Use ${row.label}`}
+            checked={row.enabled}
+            disabled={row.locked}
+            title={row.locked ? 'At least one way has to stay on' : undefined}
+            onChange={() => onToggle(row.id)}
+          />
+          <span
+            className={`${row.mono ? 'font-mono ' : ''}flex-1 min-w-0 truncate`}
+            title={row.title ?? row.label}
+          >
+            {row.label}
+          </span>
+          {row.note && <span className="lb-path-cost">{row.note}</span>}
+          <button
+            type="button"
+            className="btn btn-ghost btn-xs btn-square"
+            aria-label={`Move ${row.label} up`}
+            disabled={i === 0}
+            onClick={() => onMove(i, i - 1)}
+          >
+            ↑
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-xs btn-square"
+            aria-label={`Move ${row.label} down`}
+            disabled={i === rows.length - 1}
+            onClick={() => onMove(i, i + 1)}
+          >
+            ↓
+          </button>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+const SHIFT_LABELS: Record<ShiftWay, string> = { sk: 'Sticky (one-shot)', hold: 'Hold' };
+const DOUBLED_LABELS: Record<DoubledWay, string> = {
+  repeatKey: 'Repeat key',
+  tapTwice: 'Tap twice',
+};
+
+/**
+ * Typing paths: how a capital and a doubled letter are typed, and which producer wins when a symbol
+ * can be typed more than one way. Each is a slide drawn on a key at its left, the ways it can be
+ * typed beside it, in the order they are tried: the two rules for the whole layout first.
  */
 export function PathsPanel({
   state,
   send,
   producers,
 }: PanelProps & { producers: Record<string, ProducerDTO[]> }) {
-  // Which chip is in flight, as `symbol:index`, so a drag cannot cross from one symbol to another.
+  // Which row is in flight, as `list:index`, so a drag cannot cross from one list to another.
   const [dragging, setDragging] = useState<string | null>(null);
 
   const multi = Object.entries(producers)
@@ -1057,121 +1136,145 @@ export function PathsPanel({
     send({ type: 'edit', edit: { kind: 'setTypingPath', symbol, entries } });
   };
 
+  const rules = rulesOf(state.layout);
+  const shiftOffered = shiftWaysOffered(state.layout);
+  // The repeat producers are the ones of the symbol ``; until they are read, every way is offered.
+  const repeatOffered = Object.keys(producers).length === 0 || (producers['']?.length ?? 0) > 0;
+  const rows = (
+    list: readonly { way: string; enabled?: boolean }[],
+    labels: Record<string, string>,
+    offered: (way: string) => boolean,
+  ): PathRow[] => {
+    const on = list.filter((e) => e.enabled !== false);
+    // The way that has to stay on is the last one that is on and that some key gives; with none that
+    // a key gives, the last that is on at all.
+    const usable = on.filter((e) => offered(e.way));
+    const keep =
+      usable.length > 0
+        ? usable.length === 1
+          ? usable[0].way
+          : null
+        : on.length === 1
+          ? on[0].way
+          : null;
+    return list.map((e) => ({
+      id: e.way,
+      label: labels[e.way],
+      enabled: e.enabled !== false,
+      unavailable: !offered(e.way),
+      note: offered(e.way) ? undefined : 'no key does this',
+      locked: e.way === keep,
+    }));
+  };
+  const shiftRows = rows(rules.shift, SHIFT_LABELS, (w) => shiftOffered.includes(w as ShiftWay));
+  const doubledRows = rows(
+    rules.doubledLetters,
+    DOUBLED_LABELS,
+    (w) => w !== 'repeatKey' || repeatOffered,
+  );
+
+  // Left alone, a layout with a repeat key types a doubled letter the cheaper of the two ways, so no
+  // way is the one in use; once the rule is declared, the first that is on and that some key gives.
+  const doubledUsed =
+    state.layout.typingRules?.doubledLetters === undefined &&
+    doubledRows.some((r) => r.id === 'repeatKey' && r.enabled)
+      ? null
+      : undefined;
+
+  /** Send the whole rule back, with a way turned on or off, or one moved from `from` to `to`. */
+  const setRule = <R extends 'shift' | 'doubledLetters'>(
+    rule: R,
+    list: readonly { way: string; enabled?: boolean }[],
+    change: (entries: { way: string; enabled?: boolean }[]) => void,
+  ) => {
+    const entries = list.map((e) => ({ way: e.way, enabled: e.enabled !== false }));
+    change(entries);
+    send({ type: 'edit', edit: { kind: 'setTypingRule', rule, entries } as Edit });
+  };
+  const moveWay =
+    (rule: 'shift' | 'doubledLetters', list: readonly { way: string }[]) =>
+    (from: number, to: number) => {
+      if (from === to || to < 0 || to >= list.length) return;
+      setRule(rule, list, (entries) => {
+        const [moved] = entries.splice(from, 1);
+        entries.splice(to, 0, moved);
+      });
+    };
+  const toggleWay =
+    (rule: 'shift' | 'doubledLetters', list: readonly { way: string }[]) => (way: string) =>
+      setRule(rule, list, (entries) => {
+        const e = entries.find((x) => x.way === way);
+        if (e) e.enabled = !e.enabled;
+      });
+
   return (
     <div className="space-y-2 min-w-0">
       <Carousel label="Typing paths">
-        <TypingRule
-          title="Shift kind"
-          hint={
-            state.layout.keys.shift
-              ? 'How a capital is typed: with the shift key tapped once before the letter, or held while the letter goes down.'
-              : 'This layout has no shift key. A key that taps or holds Shift makes one.'
-          }
-          disabled={!state.layout.keys.shift}
-          value={state.layout.keys.shift?.kind ?? 'sk'}
-          options={[
-            ['sk', 'sticky (one-shot)'],
-            ['hold', 'hold'],
-          ]}
-          onChange={(shiftKind) =>
-            send({
-              type: 'edit',
-              edit: { kind: 'setKeys', shiftKind: shiftKind as 'sk' | 'hold' },
-            })
-          }
-        />
-        <TypingRule
-          title="Doubled letters"
-          hint="How a letter typed twice in a row is typed: with the repeat key, or by tapping its key twice."
-          value={state.layout.repeatPolicy?.doubledLetters ?? 'repeatKey'}
-          options={[
-            ['repeatKey', 'repeat key'],
-            ['tapTwice', 'tap twice'],
-          ]}
-          onChange={(repeat) =>
-            send({
-              type: 'edit',
-              edit: { kind: 'setKeys', repeat: repeat as 'repeatKey' | 'tapTwice' },
-            })
-          }
-        />
+        <Slide className="lb-path-slide">
+          <Keycap as="h3" symbol="⇧" aria-label="Shift kind" />
+          <div className="lb-path-body">
+            <span className="lb-slide-title">Shift kind</span>
+            <PathList
+              scope="shift"
+              label="Shift kind"
+              rows={shiftRows}
+              dragging={dragging}
+              setDragging={setDragging}
+              onToggle={toggleWay('shift', rules.shift)}
+              onMove={moveWay('shift', rules.shift)}
+            />
+            <span className="lb-path-hint">
+              {shiftOffered.length === 0
+                ? 'No key taps or holds Shift. A key that does makes this work.'
+                : 'How a capital is typed: Shift tapped once before the letter, or held while it goes down.'}
+            </span>
+          </div>
+        </Slide>
+        <Slide className="lb-path-slide">
+          <Keycap as="h3" symbol="aa" aria-label="Doubled letters" />
+          <div className="lb-path-body">
+            <span className="lb-slide-title">Doubled letters</span>
+            <PathList
+              scope="doubledLetters"
+              label="Doubled letters"
+              rows={doubledRows}
+              used={doubledUsed}
+              dragging={dragging}
+              setDragging={setDragging}
+              onToggle={toggleWay('doubledLetters', rules.doubledLetters)}
+              onMove={moveWay('doubledLetters', rules.doubledLetters)}
+            />
+            <span className="lb-path-hint">
+              A letter twice in a row. Left alone, the cheaper way; set an order, and the first that
+              works.
+            </span>
+          </div>
+        </Slide>
         {multi.length === 0 && (
           <Slide className="lb-slide-wide text-xs">Every symbol has a single producer.</Slide>
         )}
         {multi.map(([symbol]) => (
           <Slide key={symbol} className="lb-path-slide">
             <Keycap as="h3" symbol={symbol === ' ' ? '␣' : symbol} />
-            <ol className="lb-path-list">
-              {pathsFor(symbol).map((entry, i, all) => {
+            <PathList
+              scope={symbol}
+              rows={pathsFor(symbol).map((entry) => {
                 const meta = producers[symbol]?.find((p) => p.id === entry.producer);
-                const enabled = entry.enabled ?? true;
                 const presses = meta ? `${meta.cost} ${meta.cost === 1 ? 'press' : 'presses'}` : '';
-                // The first of those in use is the way the analysis types it.
-                const first = enabled && all.findIndex((e) => e.enabled ?? true) === i;
-                return (
-                  <li
-                    key={entry.producer}
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData('text/plain', String(i));
-                      e.dataTransfer.effectAllowed = 'move';
-                      setDragging(`${symbol}:${i}`);
-                    }}
-                    onDragEnd={() => setDragging(null)}
-                    onDragOver={(e) => {
-                      if (dragging?.startsWith(`${symbol}:`)) e.preventDefault();
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      const from = Number(e.dataTransfer.getData('text/plain'));
-                      setDragging(null);
-                      if (Number.isInteger(from)) reorder(symbol, from, i);
-                    }}
-                    className={`lb-path-row ${first ? 'lb-path-first' : ''} ${
-                      enabled ? '' : 'opacity-40'
-                    } ${dragging === `${symbol}:${i}` ? 'opacity-50' : ''}`}
-                  >
-                    <span aria-hidden="true" className="opacity-40">
-                      ⠿
-                    </span>
-                    <input
-                      type="checkbox"
-                      className="checkbox checkbox-xs"
-                      aria-label={`Use ${entry.producer}`}
-                      checked={enabled}
-                      onChange={() => toggle(symbol, entry.producer)}
-                    />
-                    <span
-                      className="font-mono flex-1 min-w-0 truncate"
-                      title={
-                        meta ? `${meta.kind} · ${entry.producer} · ${presses}` : entry.producer
-                      }
-                    >
-                      {entry.producer}
-                    </span>
-                    {presses && <span className="lb-path-cost">{presses}</span>}
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-xs btn-square"
-                      aria-label={`Move ${entry.producer} up`}
-                      disabled={i === 0}
-                      onClick={() => reorder(symbol, i, i - 1)}
-                    >
-                      ↑
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-xs btn-square"
-                      aria-label={`Move ${entry.producer} down`}
-                      disabled={i === all.length - 1}
-                      onClick={() => reorder(symbol, i, i + 1)}
-                    >
-                      ↓
-                    </button>
-                  </li>
-                );
+                return {
+                  id: entry.producer,
+                  label: entry.producer,
+                  enabled: entry.enabled ?? true,
+                  note: presses || undefined,
+                  mono: true,
+                  title: meta ? `${meta.kind} · ${entry.producer} · ${presses}` : entry.producer,
+                };
               })}
-            </ol>
+              dragging={dragging}
+              setDragging={setDragging}
+              onToggle={(producer) => toggle(symbol, producer)}
+              onMove={(from, to) => reorder(symbol, from, to)}
+            />
           </Slide>
         ))}
       </Carousel>
@@ -1209,10 +1312,11 @@ function keymapDrawerYaml(layout: EditState['layout'], compiled: EditState['comp
 }
 
 /**
- * JSON: the document itself, for reading and for pasting one in — or as keymap-drawer draws it.
- * The controls are a card, and the text a wide one beside it that scrolls inside itself.
+ * Export: the document itself, for reading and for pasting one in — or as keymap-drawer draws it.
+ * The controls are one card, the format choice over two buttons that keep their places in either
+ * format, and the text a wide card beside it that scrolls inside itself.
  */
-export function JsonPanel({ state, send }: PanelProps) {
+export function ExportPanel({ state, send }: PanelProps) {
   const [format, setFormat] = useState<'json' | 'yaml'>('json');
   const { compiled, layout } = state;
   const text = state.jsonText || JSON.stringify(toCanonicalJson(layout), null, 2);
@@ -1228,13 +1332,20 @@ export function JsonPanel({ state, send }: PanelProps) {
     a.click();
     URL.revokeObjectURL(url);
   };
+  const copy = () =>
+    navigator.clipboard
+      ?.writeText(yaml)
+      .then(() => toast.info('Copied the keymap-drawer YAML'))
+      .catch(() => toast.error('The browser would not copy; select the text instead'));
   return (
     // No form: Enter on a format choice would otherwise load the text into the editor.
     <div className="space-y-2 min-w-0">
-      <Carousel label="JSON">
-        <Slide className="lb-json-controls space-y-2">
+      <Carousel label="Export">
+        <Slide className="lb-export-controls">
           <Segment
             label="Format"
+            size="sm"
+            fill
             options={[
               ['json', 'LayerBench JSON'],
               ['yaml', 'keymap-drawer YAML'],
@@ -1242,31 +1353,25 @@ export function JsonPanel({ state, send }: PanelProps) {
             value={format}
             onChange={setFormat}
           />
-          {format === 'yaml' ? (
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="btn btn-sm"
-                onClick={() =>
-                  navigator.clipboard
-                    ?.writeText(yaml)
-                    .then(() => toast.info('Copied the keymap-drawer YAML'))
-                    .catch(() => toast.error('The browser would not copy; select the text instead'))
-                }
-              >
-                Copy
-              </button>
-              <button type="button" className="btn btn-sm" onClick={download}>
-                Download .yaml
-              </button>
-            </div>
-          ) : (
-            <>
-              {state.jsonError && <p className="text-error text-xs">{state.jsonError}</p>}
-              <div className="flex flex-wrap gap-2">
+          {/* The same two places in both formats, the primary action on the right. */}
+          <fieldset
+            aria-label={format === 'yaml' ? 'Export the file' : 'The text'}
+            className="lb-export-actions"
+          >
+            {format === 'yaml' ? (
+              <>
+                <button type="button" className="btn btn-sm btn-outline" onClick={download}>
+                  Download .yaml
+                </button>
+                <button type="button" className="btn btn-sm btn-primary" onClick={copy}>
+                  Copy
+                </button>
+              </>
+            ) : (
+              <>
                 <button
                   type="button"
-                  className="btn btn-sm"
+                  className="btn btn-sm btn-outline"
                   onClick={() => send({ type: 'jsonChange', text: '' })}
                 >
                   Refresh from editor
@@ -1280,24 +1385,33 @@ export function JsonPanel({ state, send }: PanelProps) {
                 >
                   Load into editor
                 </button>
-              </div>
-            </>
+              </>
+            )}
+          </fieldset>
+          {/* Two lines at most, the rest in the title: the slide never scrolls for an error. */}
+          {format === 'json' && state.jsonError && (
+            <p
+              className="lb-export-message line-clamp-2 text-error text-xs"
+              title={state.jsonError}
+            >
+              {state.jsonError}
+            </p>
           )}
         </Slide>
-        <Slide className="lb-json-slide">
+        <Slide className="lb-export-slide">
           {format === 'yaml' ? (
             <textarea
               wrap="off"
               aria-label="keymap-drawer YAML"
               readOnly
-              className="textarea textarea-bordered lb-json-text font-mono text-xs"
+              className="textarea textarea-bordered lb-export-text font-mono text-xs"
               value={yaml}
             />
           ) : (
             <textarea
               wrap="off"
               aria-label="Layout JSON"
-              className="textarea textarea-bordered lb-json-text font-mono text-xs"
+              className="textarea textarea-bordered lb-export-text font-mono text-xs"
               value={text}
               onChange={(e) => send({ type: 'jsonChange', text: e.target.value })}
             />

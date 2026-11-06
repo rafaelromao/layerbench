@@ -5,6 +5,7 @@ export * from './json.js';
 export * from './keys.js';
 export * from './labels.js';
 export { keyBinding } from './ops.js';
+export * from './rules.js';
 export * from './schema.js';
 export * from './text.js';
 export * from './types.js';

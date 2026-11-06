@@ -70,6 +70,16 @@ function macroText(b: Extract<Binding, { kind: 'macro' }>): string {
 }
 
 /**
+ * What a layout's `typingRules` become when its repeat key is dropped: the rule for doubled letters
+ * goes, since tapping twice is all that is left to try, and the rules go with it when it was all.
+ */
+function withoutDoubledLetters(rules: Layout['typingRules']): Pick<Layout, 'typingRules'> {
+  if (!rules?.doubledLetters) return {};
+  const { doubledLetters: _, ...rest } = rules;
+  return { typingRules: Object.keys(rest).length ? rest : undefined };
+}
+
+/**
  * The layout as it would be typed without some of its special features: the typist never presses
  * them, and types the text another way, or leaves out what has no other way.
  *
@@ -132,7 +142,10 @@ export function withoutFeatures(layout: Layout, off: readonly FeatureKind[]): La
       ?.filter((c) => !drop.has('combos') || keptWithoutTypingCombos(c))
       .map((c) => ({ ...c, binding: walk(c.binding) })),
     ...(drop.has('repeat')
-      ? { repeatPolicy: { ...layout.repeatPolicy, doubledLetters: 'tapTwice' as const } }
+      ? {
+          repeatPolicy: { ...layout.repeatPolicy, doubledLetters: 'tapTwice' as const },
+          ...withoutDoubledLetters(layout.typingRules),
+        }
       : {}),
   };
 }

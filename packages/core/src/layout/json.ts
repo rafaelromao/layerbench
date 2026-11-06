@@ -1,4 +1,5 @@
 import { canonicalLanguages } from './languages.js';
+import { DOUBLED_WAYS, SHIFT_WAYS, wholeRule } from './rules.js';
 import type {
   ActivatorDef,
   AdaptiveTrigger,
@@ -7,6 +8,7 @@ import type {
   GeometryRef,
   LayerDef,
   Layout,
+  RuleWay,
   TypingPathEntry,
 } from './types.js';
 
@@ -168,6 +170,17 @@ function pathToJson(e: TypingPathEntry): Record<string, unknown> {
   });
 }
 
+/** Each declared rule whole, every way with its `enabled`; nothing for a rule not declared. */
+function rulesToJson(rules: Layout['typingRules']): Record<string, unknown> | undefined {
+  if (!rules) return undefined;
+  const list = <W extends string>(ways: readonly RuleWay<W>[] | undefined, all: readonly W[]) =>
+    wholeRule(ways, all)?.map((e) => ({ way: e.way, enabled: e.enabled ?? true }));
+  return compact({
+    shift: list(rules.shift, SHIFT_WAYS),
+    doubledLetters: list(rules.doubledLetters, DOUBLED_WAYS),
+  });
+}
+
 function activatorToJson(a: ActivatorDef): Record<string, unknown> {
   const mods = a.requires?.mods ?? [];
   return compact({
@@ -217,6 +230,7 @@ export function toCanonicalJson(layout: Layout): LayoutJson {
     repeatPolicy: {
       doubledLetters: layout.repeatPolicy?.doubledLetters === 'tapTwice' ? 'tapTwice' : 'repeatKey',
     },
+    typingRules: rulesToJson(layout.typingRules),
     activators,
   });
 }

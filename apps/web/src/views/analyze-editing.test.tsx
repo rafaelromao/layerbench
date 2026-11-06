@@ -949,6 +949,37 @@ describe('Edit', () => {
     expect(screen.queryByText('Removed Numbers — Undo brings it back')).toBeNull();
   }, 120_000);
 
+  it('offers Cancel beside Save while changes are unsaved, which discards them and Undo brings back', async () => {
+    const user = userEvent.setup();
+    await openEdit();
+    const cancel = () => within(bar()).queryByRole('button', { name: 'Cancel' });
+    // Nothing to discard on a layout as it was opened.
+    expect(cancel()).toBeNull();
+
+    await user.click(screen.getByRole('tab', { name: 'Layers' }));
+    const name = screen.getByLabelText('Name of layer Base');
+    await user.clear(name);
+    await user.type(name, 'Main{Enter}');
+    expect(await screen.findByLabelText('Name of layer Main')).toHaveValue('Main');
+    expect(screen.getByText('unsaved')).toBeInTheDocument();
+
+    // Cancel gives the layout back as it was opened, with no question asked.
+    const confirm = vi.spyOn(window, 'confirm');
+    await user.click(cancel() as HTMLElement);
+    expect(confirm).not.toHaveBeenCalled();
+    confirm.mockRestore();
+    expect(await screen.findByLabelText('Name of layer Base')).toHaveValue('Base');
+    expect(screen.queryByText('unsaved')).toBeNull();
+    expect(cancel()).toBeNull();
+    expect(await screen.findByText('Discarded the changes — Undo brings them back')).toBeVisible();
+
+    // One Undo brings the change back, as unsaved as it was, and the button with it.
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(await screen.findByLabelText('Name of layer Main')).toHaveValue('Main');
+    expect(screen.getByText('unsaved')).toBeInTheDocument();
+    expect(cancel()).not.toBeNull();
+  }, 120_000);
+
   it('names layers without exposing IDs, and sets one-shot timing', async () => {
     const user = userEvent.setup();
     await openEdit();
@@ -961,7 +992,7 @@ describe('Edit', () => {
     expect(await screen.findByLabelText('Name of layer Main')).toHaveValue('Main');
 
     // One-shot keys release as the next key goes down, or wait, and for how long.
-    await user.click(screen.getByRole('tab', { name: 'Special Behaviors' }));
+    await user.click(screen.getByRole('tab', { name: 'Configuration' }));
     const keys = within(screen.getByRole('group', { name: 'One-shot keys' }));
     const quick = keys.getByLabelText('Release as the next key goes down');
     expect(quick).not.toBeChecked();
@@ -1318,7 +1349,7 @@ describe('Edit', () => {
     await user.click(key('Key LHC: g'));
     await user.click(within(await inspector('LHC')).getByRole('button', { name: 'Adaptive' }));
     await user.click(within(await inspector('LHC')).getByRole('button', { name: 'Add branch' }));
-    await user.click(screen.getByRole('tab', { name: 'JSON' }));
+    await user.click(screen.getByRole('tab', { name: 'Export' }));
     await user.click(screen.getByRole('button', { name: 'Load into editor' }));
     await user.click(screen.getByRole('tab', { name: 'Board' }));
 
@@ -1971,7 +2002,7 @@ describe('Edit', () => {
     expect(boxes()).toEqual(['Combo LHR + LHM: Acce']);
   });
 
-  it('orders its tabs as the guide does, with Physical Layout where Geometry was', async () => {
+  it('orders its tabs as the guide does, with Configuration where Geometry was', async () => {
     await openMagicRomak();
     const tabs = (screen.getByRole('tab', { name: 'Board' }).closest('[role="tablist"]') ??
       document.body) as HTMLElement;
@@ -1985,8 +2016,8 @@ describe('Edit', () => {
       'Combos',
       'Special Behaviors',
       'Typing paths',
-      'Physical Layout',
-      'JSON',
+      'Configuration',
+      'Export',
     ]);
   }, 60_000);
 
@@ -2002,8 +2033,8 @@ describe('Edit', () => {
     expect(addCondition).toHaveTextContent('New condition');
     await user.click(screen.getByRole('tab', { name: 'Special Behaviors' }));
     const special = within(screen.getByRole('list', { name: 'Special behaviors' }));
-    // The one-shots come first, and then the uses, adaptive keys and alt repeats included.
-    expect(special.getAllByRole('listitem')[0]).toHaveTextContent('One-shot layers');
+    // Only the uses, adaptive keys and alt repeats included: the one-shots are in Configuration.
+    expect(special.queryByRole('group', { name: /^One-shot/ })).toBeNull();
     expect(special.getAllByText('Macro').length).toBeGreaterThan(0);
     // Magic Romak's shift key is the mod morph that starts caps word, like any other mod morph.
     expect(special.getAllByText('Mod morph').length).toBeGreaterThan(0);

@@ -19,7 +19,7 @@ export const HELP = {
   panels: {
     page: 'editing',
     section: 'combos-typing-paths-and-the-rest',
-    topic: 'combos, the physical layout and the other panels',
+    topic: 'combos, the configuration and the other panels',
   },
   exporting: { page: 'importing', section: 'exporting', topic: 'exporting' },
   headline: { page: 'analyzing', section: 'effort-and-sfb', topic: 'Effort and SFB' },

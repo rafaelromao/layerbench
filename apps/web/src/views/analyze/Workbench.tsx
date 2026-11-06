@@ -60,8 +60,8 @@ import { KeyInspector } from '../edit/inspector/KeyInspector.js';
 import {
   BehaviorsPanel,
   CombosPanel,
-  GeometryPanel,
-  JsonPanel,
+  ConfigurationPanel,
+  ExportPanel,
   LayersPanel,
   PathsPanel,
 } from '../edit/panels.js';
@@ -105,8 +105,8 @@ const PANELS: [Panel, string, HelpTopic][] = [
   ['combos', 'Combos', HELP.panels],
   ['behaviors', 'Special Behaviors', HELP.panels],
   ['paths', 'Typing paths', HELP.panels],
-  ['geometry', 'Physical Layout', HELP.panels],
-  ['json', 'JSON', HELP.exporting],
+  ['configuration', 'Configuration', HELP.panels],
+  ['export', 'Export', HELP.exporting],
 ];
 const PANEL_TABS = PANELS.map(([id, label]) => ({ id, label }));
 
@@ -448,6 +448,15 @@ export function Workbench({
     [state.layout, session.storedId],
   );
 
+  /**
+   * Cancel: the layout as it was opened or last saved, in one step that Undo takes back, so it does
+   * not ask. A draft brought back from the link has no such state, and no Cancel.
+   */
+  const discard = () => {
+    send({ type: 'discard' });
+    toast.info('Discarded the changes — Undo brings them back');
+  };
+
   const pick = (ref: string) => {
     if (state.dirty && !window.confirm(`Leave ${state.layout.name}? Its unsaved changes are lost.`))
       return;
@@ -781,13 +790,13 @@ export function Workbench({
       className="min-w-0"
     >
       {state.panel === 'layers' && <LayersPanel state={state} send={send} />}
-      {state.panel === 'geometry' && <GeometryPanel state={state} send={send} />}
+      {state.panel === 'configuration' && <ConfigurationPanel state={state} send={send} />}
       {state.panel === 'combos' && <CombosPanel state={state} send={send} onShow={showOnBoard} />}
       {state.panel === 'behaviors' && (
         <BehaviorsPanel state={state} send={send} onShow={showOnBoard} />
       )}
       {state.panel === 'paths' && <PathsPanel state={state} send={send} producers={producers} />}
-      {state.panel === 'json' && <JsonPanel state={state} send={send} />}
+      {state.panel === 'export' && <ExportPanel state={state} send={send} />}
     </div>
   );
 
@@ -812,6 +821,7 @@ export function Workbench({
         saving={session.saving}
         onMeta={(meta) => send({ type: 'edit', edit: { kind: 'setMeta', ...meta } })}
         onSave={save}
+        onCancel={state.dirty && state.saved !== null ? discard : undefined}
         onSubmit={submitted ? () => setSubmitting(true) : undefined}
         copiesOnSave={session.storedId === null}
         // A custom layout is picked as itself, whatever its link carries.

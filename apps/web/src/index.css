@@ -1123,7 +1123,7 @@ button.lb-combo-apart:focus-visible {
   white-space: nowrap;
 }
 
-/* The board of the Physical Layout tab: its keys to take away, the places to add one dashed. */
+/* The board of the Configuration tab: its keys to take away, the places to add one dashed. */
 .lb-geo {
   position: relative;
   min-width: 0;
@@ -1380,6 +1380,18 @@ button.lb-combo-apart:focus-visible {
   display: flex;
   gap: 0.75rem;
 }
+/* The body of a rule's slide, the rules for the whole layout: its name, its ways, a line on them. */
+.lb-path-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.lb-path-hint {
+  font-size: 0.6875rem;
+  opacity: 0.6;
+}
 .lb-path-list {
   display: flex;
   flex: 1;
@@ -1421,14 +1433,41 @@ button.lb-combo-apart:focus-visible {
   opacity: 0.6;
 }
 
-/* The JSON tab: its controls in a slide, the text in a wide one that scrolls inside itself. */
-.lb-json-slide {
+/* The Export tab: its controls in a slide, the text in a wide one that scrolls inside itself. */
+.lb-export-slide {
   --lb-slide-w: 40rem;
 }
-.lb-json-controls {
-  --lb-slide-w: 21rem;
+/* The format over two buttons of equal size, which keep their places in either format. */
+.lb-export-controls {
+  --lb-slide-w: min(24rem, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
-.lb-json-text {
+.lb-export-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.lb-export-actions > .btn {
+  min-width: 0;
+  padding-inline: 0.5rem;
+}
+/* On a phone the slide is as wide as the screen: a label has to fit half of it on one line. */
+@media (max-width: 639.98px) {
+  .lb-export-controls .btn {
+    --fontsize: 0.75rem;
+    white-space: nowrap;
+  }
+}
+/* An error of two lines at most (`line-clamp-2` ends it with an ellipsis where the engine can, and
+   the height is held to two lines where it cannot), the rest in its title: the slide never scrolls. */
+.lb-export-message {
+  max-height: 2lh;
+  margin: 0;
+  overflow: hidden;
+}
+.lb-export-text {
   display: block;
   width: 100%;
   height: 100%;

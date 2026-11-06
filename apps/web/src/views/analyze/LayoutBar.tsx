@@ -27,6 +27,7 @@ export function LayoutBar({
   saving,
   onMeta,
   onSave,
+  onCancel,
   onSubmit,
   copiesOnSave,
   layoutRef,
@@ -50,6 +51,8 @@ export function LayoutBar({
     languages?: string[];
   }) => void;
   onSave: () => void;
+  /** Give the layout back its saved state; absent when there is no saved state to give back. */
+  onCancel?: () => void;
   /** Propose it as a community layout; absent for a layout that is not a custom one. */
   onSubmit?: () => void;
   /** Saving makes a copy, as this layout is not one of the user's custom layouts yet. */
@@ -87,6 +90,18 @@ export function LayoutBar({
         />
         {dirty && (
           <span className="badge badge-warning badge-sm shrink-0 max-sm:px-1.5">unsaved</span>
+        )}
+        {/* Only while there is something to discard; Undo takes it back, so it does not ask. */}
+        {dirty && onCancel && (
+          <button
+            type="button"
+            className="btn btn-sm btn-ghost shrink-0 max-sm:px-2"
+            title="Discard the unsaved changes; Undo brings them back"
+            disabled={saving}
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
         )}
         <button
           type="button"

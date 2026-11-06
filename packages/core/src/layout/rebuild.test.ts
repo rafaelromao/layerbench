@@ -69,9 +69,8 @@ function edits(target: Layout): Edit[] {
     });
     out.push({ kind: 'updateCombo', combo: i, layers: c.layers, timeoutMs: c.timeoutMs });
   }
-  const { keys, repeatPolicy } = target;
-  // Which keys are space and shift follow from the keys bound above: only how shift is used is set.
-  out.push({ kind: 'setKeys', shiftKind: keys.shift?.kind, repeat: repeatPolicy?.doubledLetters });
+  // Which keys are space and shift follow from the keys bound above, and how a capital and a doubled
+  // letter are typed is read from them until an author declares otherwise, as Magic Romak's keymap does not.
   if (target.behaviorDefaults) {
     out.push({ kind: 'setBehaviorDefaults', defaults: target.behaviorDefaults });
   }

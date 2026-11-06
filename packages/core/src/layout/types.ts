@@ -175,6 +175,28 @@ export interface TypingPathEntry {
   when?: { afterAny?: string[] };
 }
 
+/** How a capital is typed with the layout's shift key: tapped once before the letter, or held. */
+export type ShiftWay = 'sk' | 'hold';
+
+/** How a letter typed twice in a row is typed: with the repeat key, or by tapping its key again. */
+export type DoubledWay = 'repeatKey' | 'tapTwice';
+
+/** One way a rule for the whole layout can be followed; on unless `enabled` is false. */
+export interface RuleWay<W extends string> {
+  way: W;
+  enabled?: boolean;
+}
+
+/**
+ * The rules for how the whole layout is typed, each a list of ways in the order they are tried: the
+ * first that is on and works is the one used. A rule not declared here is read from `keys.shift.kind`
+ * and `repeatPolicy` (`rulesOf`).
+ */
+export interface TypingRules {
+  shift?: RuleWay<ShiftWay>[];
+  doubledLetters?: RuleWay<DoubledWay>[];
+}
+
 export interface ActivatorDef {
   /** Source layer id, or `*` for any. */
   from?: string;
@@ -214,5 +236,6 @@ export interface Layout {
   conditionalLayers?: ConditionalLayerDef[];
   typingPaths?: Record<string, TypingPathEntry[]>;
   repeatPolicy?: { doubledLetters?: 'repeatKey' | 'tapTwice' };
+  typingRules?: TypingRules;
   activators?: Record<string, ActivatorDef[]>;
 }

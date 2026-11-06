@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BUNDLED_LAYOUTS } from '../layouts/index.js';
 import { compileLayout } from './compile.js';
-import { withDerivedKeys } from './keys.js';
+import { shiftWaysOffered, withDerivedKeys } from './keys.js';
 import type { Binding, Layout } from './types.js';
 
 const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
@@ -156,4 +156,40 @@ describe('the keys of the bundled layouts', () => {
       expect(() => compileLayout(withDerivedKeys(layout))).not.toThrow();
     },
   );
+});
+
+describe('the ways a layout gives Shift', () => {
+  const HOLD: Binding = { kind: 'mod', mod: 'LSHIFT' };
+
+  it('are a sticky Shift tapped, and a Shift held, wherever the layout has one', () => {
+    expect(shiftWaysOffered(board({ LHM: kp('a') }))).toEqual([]);
+    expect(shiftWaysOffered(board({ R1: SHIFT }))).toEqual(['sk']);
+    expect(shiftWaysOffered(board({ R1: HOLD }))).toEqual(['hold']);
+    // A key that taps one way and holds the other offers both, a home row mod's hold as a thumb's.
+    const both: Binding = { kind: 'hold_tap', tap: SHIFT, hold: HOLD };
+    expect(shiftWaysOffered(board({ R1: both }))).toEqual(['sk', 'hold']);
+    expect(
+      shiftWaysOffered(board({ LHM: { kind: 'hold_tap', tap: kp('a'), hold: HOLD } })),
+    ).toEqual(['hold']);
+  });
+
+  it('include a sticky Shift a combo gives, which the analysis taps', () => {
+    const layout = {
+      ...board({ LHM: kp('a') }),
+      combos: [{ keys: ['LHM', 'LHI'], binding: SHIFT }],
+    };
+    expect(shiftWaysOffered(layout)).toEqual(['sk']);
+    // A combo that holds a Shift is let go in the same action, so it gives none.
+    const held = { ...layout, combos: [{ keys: ['LHM', 'LHI'], binding: HOLD }] };
+    expect(shiftWaysOffered(held)).toEqual([]);
+  });
+
+  it('are on any layer, and not a Shift held with another modifier', () => {
+    const layout = board({ LHM: kp('a') });
+    layout.layers.push({ id: 'num', bindings: { R1: SHIFT } });
+    expect(shiftWaysOffered(layout)).toEqual(['sk']);
+    expect(
+      shiftWaysOffered(board({ R1: { kind: 'mod', mod: 'LSHIFT', also: ['LCTRL'] } })),
+    ).toEqual([]);
+  });
 });

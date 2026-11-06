@@ -170,20 +170,78 @@ describe('a custom copy of Qwerty', () => {
     ]);
   });
 
-  it('gives each use its own binding, a macro in an alt repeat branch included', () => {
+  it('gives an alt repeat one use, and lists no macro among its branches', () => {
     const macro: Binding = { kind: 'macro', symbols: 'ões' };
     const altRepeat: Binding = {
       kind: 'adaptive',
       default: { kind: 'key_repeat' },
-      triggers: [{ afterAny: ['LHM'], binding: macro }],
+      triggers: [
+        { afterAny: ['LHM'], binding: macro },
+        { afterAny: ['LHI'], binding: { kind: 'macro', symbols: 'ê' } },
+      ],
     };
-    const uses = specialFeatures(withKey('LHP', altRepeat));
-    expect(uses.map((f) => [f.feature, f.key])).toEqual([
-      ['alt_repeat', 'LHP'],
-      ['macro', 'LHP'],
-    ]);
-    // The alt repeat is the key's binding; the macro is the one its branch holds.
+    const l = withKey('LHP', altRepeat);
+    const uses = specialFeatures(l);
+    expect(uses.map((f) => [f.feature, f.key])).toEqual([['alt_repeat', 'LHP']]);
+    // The use is the key's own binding, and the key is as special as it was.
     expect(uses[0].binding).toBe(altRepeat);
+    expect(layoutCategory(l)).toBe('special');
+  });
+
+  it("lists no macro among an adaptive key's branches, whatever its default", () => {
+    const l = withKey('LHP', {
+      kind: 'adaptive',
+      default: kp('a'),
+      triggers: [{ afterAny: ['LHM'], binding: { kind: 'macro', symbols: 'ent' } }],
+    });
+    expect(specialFeatures(l).map((f) => f.feature)).toEqual(['adaptive']);
+  });
+
+  it("still lists the other features inside an adaptive key's branches, and a macro's steps", () => {
+    const morph: Binding = {
+      kind: 'mod_morph',
+      mods: ['LSHIFT'],
+      default: kp('u'),
+      morphed: kp('U'),
+    };
+    const l = withKey('LHP', {
+      kind: 'adaptive',
+      default: kp('a'),
+      triggers: [
+        { afterAny: ['LHM'], binding: morph },
+        // A macro in a branch is left out, but what its steps use is not.
+        { afterAny: ['LHI'], binding: { kind: 'macro', steps: [morph] } },
+      ],
+    });
+    expect(specialFeatures(l).map((f) => f.feature)).toEqual([
+      'adaptive',
+      'mod_morph',
+      'mod_morph',
+    ]);
+  });
+
+  it('keeps a macro on its own key as a use, wrapped or not, and in a morph, with its binding', () => {
+    const macro: Binding = { kind: 'macro', symbols: 'qu' };
+    for (const b of [
+      macro,
+      { kind: 'hold_tap', tap: macro, hold: { kind: 'mod', mod: 'LCTRL' } } as Binding,
+      { kind: 'lt', layer: 'num', tap: macro } as Binding,
+      { kind: 'tap_dance', bindings: [kp('a'), macro] } as Binding,
+    ]) {
+      const uses = specialFeatures(withKey('LHP', b));
+      expect(uses.map((f) => f.feature)).toEqual(['macro']);
+      expect(uses[0].binding).toBe(macro);
+    }
+    // A mod morph's branches are its two outputs, not a group: its macro is still a use of its own.
+    const morph: Binding = {
+      kind: 'mod_morph',
+      mods: ['LSHIFT'],
+      default: kp('a'),
+      morphed: macro,
+    };
+    const uses = specialFeatures(withKey('LHP', morph));
+    expect(uses.map((f) => f.feature)).toEqual(['mod_morph', 'macro']);
+    expect(uses[0].binding).toBe(morph);
     expect(uses[1].binding).toBe(macro);
   });
 

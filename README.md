@@ -92,7 +92,7 @@ community layout, by **Submit** in the app ([below](#community-layouts)).
    where it comes from: the author's firmware, keymap or page. Make each home row finger key of its
    base layer a Tap-hold holding Gui, Ctrl, Alt and Shift from the left pinky in, and Shift, Alt,
    Ctrl and Gui from the right index out, the left modifiers on both hands, as every bundled layout
-   but Magic Romak has. Save it, and copy its LayerBench JSON from the editor's **JSON** panel.
+   but Magic Romak has. Save it, and copy its LayerBench JSON from the editor's **Export** panel.
    Signed in, it is also in your "LayerBench: saved layouts" gist.
 2. On a branch made from main, add it as `packages/core/src/layouts/documents/<id>.json`, named by
    its `"id"`, as copied.
