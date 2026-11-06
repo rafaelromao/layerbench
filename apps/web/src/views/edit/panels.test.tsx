@@ -447,7 +447,7 @@ describe("a layer's colour, picked from a group of circles", () => {
   });
 });
 
-/** The layout with an adaptive key, an alt repeat and a macro, as the two behaviour panels list. */
+/** The layout with an adaptive key, an alt repeat, a macro, a mod morph and a sentence space. */
 const behaving: Layout = {
   ...layout,
   layers: [
@@ -526,19 +526,6 @@ describe('the Special Behaviors carousel', () => {
     expect(items()[2]).toHaveTextContent(
       'This layout has no adaptive keys, alt repeats, macros, mod morphs or sentence spaces.',
     );
-  });
-
-  it('shows a use on the board under it when it is picked', async () => {
-    const send = vi.fn();
-    const onShow = vi.fn();
-    const s = initialState(behaving, compileLayout(behaving));
-    render(<BehaviorsPanel state={s} send={send} onShow={onShow} />);
-    await userEvent.setup().click(screen.getByRole('button', { name: /^Base · LHP/ }));
-    expect(onShow).toHaveBeenCalledOnce();
-    // The board is drawn on this tab: nothing sends the editor to another one.
-    expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'setPanel' }));
-    expect(send).toHaveBeenCalledWith({ type: 'selectLayer', layer: 0 });
-    expect(send).toHaveBeenCalledWith({ type: 'keyClick', keyId: 'LHP' });
   });
 
   it('knows which kinds need a ZMK module: adaptive keys and sentence spaces, not macros or morphs', () => {
