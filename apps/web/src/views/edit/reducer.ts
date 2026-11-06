@@ -1,6 +1,7 @@
 import {
   applyEdit,
   type CompiledLayout,
+  compileLayout,
   type Edit,
   type EditOutcome,
   type Layout,
@@ -115,6 +116,11 @@ export type EditAction =
   | { type: 'jsonChange'; text: string }
   | { type: 'setPanel'; panel: Panel }
   | { type: 'saved'; layout: Layout }
+  /**
+   * Give the layout back its saved state: the one step Undo takes back. Nothing to give back when
+   * the layout was never opened or saved here, its edits unsaved from the start.
+   */
+  | { type: 'discard' }
   /**
    * `layout` is `from` under the name its copy was saved as: the editor takes that name, now that
    * the save has gone through, and the copy is what is saved.
@@ -434,6 +440,41 @@ function reduce(state: EditState, action: EditAction): EditState {
       // The inspector is not drawn on every tab: a request for its focus, left over, would be
       // replayed when it comes back, applying a character already cancelled.
       return { ...state, panel: action.panel, focusRequest: null };
+
+    // The layout as it was opened or last saved, as one step: Undo brings the changes back, and is
+    // as unsaved as they were.
+    case 'discard': {
+      const { saved } = state;
+      if (saved === null || saved === state.layout) return state;
+      let compiled: CompiledLayout;
+      try {
+        compiled = compileLayout(saved);
+      } catch {
+        // The saved layout compiled when it was opened; if that stops holding, stay put.
+        return state;
+      }
+      const keys = selectionOf(state).filter((k) => compiled.keyIndex.has(k));
+      return {
+        ...state,
+        layout: saved,
+        compiled,
+        layer: Math.min(state.layer, compiled.layers.length - 1),
+        selected: keys[0] ?? null,
+        also: keys.slice(1),
+        // A combo is named by its place, and the saved list may not be the one it was opened on.
+        combo: null,
+        swapFrom: null,
+        placing: null,
+        comboPick: null,
+        comboPickFor: null,
+        focusRequest: null,
+        error: null,
+        jsonText: '',
+        jsonError: null,
+        lastEdit: null,
+        dirty: false,
+      };
+    }
 
     // The layout itself is left as it is: saving changes nothing there is to undo.
     case 'saved':

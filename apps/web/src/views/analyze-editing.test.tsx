@@ -949,6 +949,37 @@ describe('Edit', () => {
     expect(screen.queryByText('Removed Numbers — Undo brings it back')).toBeNull();
   }, 120_000);
 
+  it('offers Cancel beside Save while changes are unsaved, which discards them and Undo brings back', async () => {
+    const user = userEvent.setup();
+    await openEdit();
+    const cancel = () => within(bar()).queryByRole('button', { name: 'Cancel' });
+    // Nothing to discard on a layout as it was opened.
+    expect(cancel()).toBeNull();
+
+    await user.click(screen.getByRole('tab', { name: 'Layers' }));
+    const name = screen.getByLabelText('Name of layer Base');
+    await user.clear(name);
+    await user.type(name, 'Main{Enter}');
+    expect(await screen.findByLabelText('Name of layer Main')).toHaveValue('Main');
+    expect(screen.getByText('unsaved')).toBeInTheDocument();
+
+    // Cancel gives the layout back as it was opened, with no question asked.
+    const confirm = vi.spyOn(window, 'confirm');
+    await user.click(cancel() as HTMLElement);
+    expect(confirm).not.toHaveBeenCalled();
+    confirm.mockRestore();
+    expect(await screen.findByLabelText('Name of layer Base')).toHaveValue('Base');
+    expect(screen.queryByText('unsaved')).toBeNull();
+    expect(cancel()).toBeNull();
+    expect(await screen.findByText('Discarded the changes — Undo brings them back')).toBeVisible();
+
+    // One Undo brings the change back, as unsaved as it was, and the button with it.
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(await screen.findByLabelText('Name of layer Main')).toHaveValue('Main');
+    expect(screen.getByText('unsaved')).toBeInTheDocument();
+    expect(cancel()).not.toBeNull();
+  }, 120_000);
+
   it('names layers without exposing IDs, and sets one-shot timing', async () => {
     const user = userEvent.setup();
     await openEdit();

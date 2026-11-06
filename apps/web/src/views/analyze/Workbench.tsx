@@ -448,6 +448,15 @@ export function Workbench({
     [state.layout, session.storedId],
   );
 
+  /**
+   * Cancel: the layout as it was opened or last saved, in one step that Undo takes back, so it does
+   * not ask. A draft brought back from the link has no such state, and no Cancel.
+   */
+  const discard = () => {
+    send({ type: 'discard' });
+    toast.info('Discarded the changes — Undo brings them back');
+  };
+
   const pick = (ref: string) => {
     if (state.dirty && !window.confirm(`Leave ${state.layout.name}? Its unsaved changes are lost.`))
       return;
@@ -812,6 +821,7 @@ export function Workbench({
         saving={session.saving}
         onMeta={(meta) => send({ type: 'edit', edit: { kind: 'setMeta', ...meta } })}
         onSave={save}
+        onCancel={state.dirty && state.saved !== null ? discard : undefined}
         onSubmit={submitted ? () => setSubmitting(true) : undefined}
         copiesOnSave={session.storedId === null}
         // A custom layout is picked as itself, whatever its link carries.

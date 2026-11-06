@@ -25,6 +25,11 @@ ranked with them, and **Delete**, on its card, removes it. Edit it in **Analyze*
 *unsaved*, and your edits live only in the page's link and in this tab: opened in another tab or
 browser, the same link is a layout of its own, and saving it there makes a copy.
 
+While edits are unsaved, **Cancel** sits beside **Save**: it gives the layout back as it was opened
+or last saved, all the edits at once. It does not ask, because **Undo** brings them back, unsaved as
+they were. A layout opened from a link whose edits were unsaved from the start has no saved state to
+go back to, and no **Cancel**; to leave it, pick another layout.
+
 ### Saving a copy
 
 A layout that is not yours is never saved over: one that comes with the app, a community layout,
