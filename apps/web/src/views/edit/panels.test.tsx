@@ -5,8 +5,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   BehaviorsPanel,
   CombosPanel,
-  GeometryPanel,
-  JsonPanel,
+  ConfigurationPanel,
+  ExportPanel,
   LayersPanel,
   PathsPanel,
 } from './panels.js';
@@ -65,11 +65,11 @@ describe('every panel but the Board and the board of Combos is a carousel', () =
   const send = vi.fn();
   const panels: [string, () => React.ReactElement][] = [
     ['Layers', () => <LayersPanel state={state} send={send} />],
-    ['Physical Layout', () => <GeometryPanel state={state} send={send} />],
+    ['Configuration', () => <ConfigurationPanel state={state} send={send} />],
     ['Combos', () => <CombosPanel state={state} send={send} />],
     ['Special Behaviors', () => <BehaviorsPanel state={state} send={send} />],
     ['Typing paths', () => <PathsPanel state={state} send={send} producers={producers} />],
-    ['JSON', () => <JsonPanel state={state} send={send} />],
+    ['Export', () => <ExportPanel state={state} send={send} />],
   ];
   it.each(panels)('%s', (_name, panel) => {
     const { container } = render(panel());
@@ -510,38 +510,17 @@ describe('the Special Behaviors carousel', () => {
   const items = () =>
     within(screen.getByRole('list', { name: 'Special behaviors' })).getAllByRole('listitem');
 
-  it('begins with the one-shots, a card each, and has no sentence case card to turn on', () => {
+  it('has no one-shot cards and no sentence case card to turn on', () => {
     render(<BehaviorsPanel state={state} send={vi.fn()} />);
-    expect(items()[0]).toHaveTextContent('One-shot layers');
-    expect(items()[1]).toHaveTextContent('One-shot keys');
+    expect(screen.queryByRole('group', { name: /^One-shot/ })).toBeNull();
     expect(screen.queryByLabelText('Sentence case')).toBeNull();
     expect(screen.queryByLabelText('Caps word')).toBeNull();
   });
 
-  it('says how the one-shots end, in a card for the layers and one for the keys', async () => {
-    const send = vi.fn();
-    render(<BehaviorsPanel state={state} send={send} />);
-    const user = userEvent.setup();
-    const keys = within(screen.getByRole('group', { name: 'One-shot keys' }));
-    await user.click(keys.getByLabelText('Release as the next key goes down'));
-    expect(send).toHaveBeenLastCalledWith({
-      type: 'edit',
-      edit: { kind: 'setBehaviorDefaults', defaults: { sk: { quickRelease: true } } },
-    });
-    const layers = within(screen.getByRole('group', { name: 'One-shot layers' }));
-    await user.click(layers.getByLabelText('Stay on while a modifier is pressed'));
-    expect(send).toHaveBeenLastCalledWith({
-      type: 'edit',
-      edit: { kind: 'setBehaviorDefaults', defaults: { sl: { ignoreModifiers: true } } },
-    });
-  });
-
-  it('lists every use after the one-shots, kind by kind, a sentence space as Sentence case', () => {
+  it('lists every use, kind by kind, a sentence space as Sentence case', () => {
     const s = initialState(behaving, compileLayout(behaving));
     render(<BehaviorsPanel state={s} send={vi.fn()} />);
-    const uses = items()
-      .slice(2)
-      .map((li) => li.textContent ?? '');
+    const uses = items().map((li) => li.textContent ?? '');
     const at = (text: string) => uses.findIndex((u) => u.includes(text));
     for (const text of ['Adaptive key', 'Sentence case', 'Alt repeat', 'Macro', 'Mod morph']) {
       expect(at(text), text).toBeGreaterThanOrEqual(0);
@@ -553,9 +532,9 @@ describe('the Special Behaviors carousel', () => {
     expect(uses[at('Sentence case')]).toContain('Adaptive key');
   });
 
-  it('says so, after the one-shots, when the layout has no use', () => {
+  it('says so when the layout has no use', () => {
     render(<BehaviorsPanel state={state} send={vi.fn()} />);
-    expect(items()[2]).toHaveTextContent(
+    expect(items()[0]).toHaveTextContent(
       'This layout has no adaptive keys, alt repeats, macros, mod morphs or sentence spaces.',
     );
   });
@@ -686,10 +665,10 @@ describe('the Special Behaviors board', () => {
   });
 });
 
-describe('the JSON carousel', () => {
+describe('the Export carousel', () => {
   it('loads the text into the editor from its button, with no form for Enter to submit', async () => {
     const send = vi.fn();
-    const { container } = render(<JsonPanel state={state} send={send} />);
+    const { container } = render(<ExportPanel state={state} send={send} />);
     expect(container.querySelector('form')).toBeNull();
     await userEvent.setup().click(screen.getByRole('button', { name: 'Load into editor' }));
     expect(send.mock.calls[0][0].edit.kind).toBe('replaceLayout');
@@ -698,5 +677,33 @@ describe('the JSON carousel', () => {
     screen.getByRole('radio', { name: /keymap-drawer YAML/ }).focus();
     await userEvent.setup().keyboard('{Enter}');
     expect(send).not.toHaveBeenCalled();
+  });
+
+  it('keeps its two buttons in their places in either format, the primary on the right', async () => {
+    render(<ExportPanel state={state} send={vi.fn()} />);
+    const user = userEvent.setup();
+    const group = () => screen.getByRole('group', { name: /^(The text|Export the file)$/ });
+    const buttons = () => within(group()).getAllByRole('button');
+    // JSON: refresh the text from the editor, or load it into the editor.
+    expect(buttons().map((b) => b.textContent)).toEqual([
+      'Refresh from editor',
+      'Load into editor',
+    ]);
+    expect(buttons()[1]).toHaveClass('btn-primary');
+    expect(buttons()[0]).not.toHaveClass('btn-primary');
+    // YAML: the same two places, for downloading and for copying.
+    await user.click(screen.getByRole('radio', { name: /keymap-drawer YAML/ }));
+    expect(buttons().map((b) => b.textContent)).toEqual(['Download .yaml', 'Copy']);
+    expect(buttons()[1]).toHaveClass('btn-primary');
+    // Both rows are one grid, of equal size, whatever the labels say.
+    expect(group()).toHaveClass('lb-export-actions');
+  });
+
+  it('shows what the text could not be loaded for, clamped to the slide, in full on hover', () => {
+    const s = { ...state, jsonError: 'Unexpected token } in JSON at position 4821' };
+    render(<ExportPanel state={s} send={vi.fn()} />);
+    const message = screen.getByText(/Unexpected token/);
+    expect(message).toHaveClass('lb-export-message');
+    expect(message).toHaveAttribute('title', s.jsonError);
   });
 });

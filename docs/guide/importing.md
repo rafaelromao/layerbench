@@ -77,7 +77,7 @@ out, and which combos were skipped and why.
 
 ## Exporting
 
-**JSON**, among the editor's panels in **Analyze**, shows the layout as LayerBench JSON, or, with
+**Export**, among the editor's panels in **Analyze**, shows the layout as LayerBench JSON, or, with
 **keymap-drawer YAML**, as a file for keymap-drawer. Copy it or **Download .yaml**, then run
 `keymap draw` on it.
 

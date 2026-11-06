@@ -38,7 +38,7 @@ refused. **Cancel** saves nothing. Once saved, the layout in the editor is the c
 **Save**s keep your edits to it straight away.
 
 A custom layout is kept in this browser. To keep it anywhere else, sign in with GitHub, below; or
-copy its LayerBench JSON from the editor's **JSON** panel and keep the text, which **Import** reads
+copy its LayerBench JSON from the editor's **Export** panel and keep the text, which **Import** reads
 back.
 
 ### Proposing a change
@@ -164,7 +164,7 @@ joins everyone's Library once the pull request is merged.
 
 1. In **Analyze**, give the layout its name, and in **Settings** its author and, if you can, a
    **Link** to where it comes from: the author's firmware, keymap or page. **Save** it.
-2. Copy its LayerBench JSON from the editor's **JSON** panel.
+2. Copy its LayerBench JSON from the editor's **Export** panel.
 3. Open a pull request on [layerbench](https://github.com/rafaelromao/layerbench) that adds it as a
    file named by the layout's id, with the two lines of code and the line on the landing page that
    go with it. The [README](../../README.md#bundled-layouts) lists each step.

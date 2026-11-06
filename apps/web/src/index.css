@@ -1123,7 +1123,7 @@ button.lb-combo-apart:focus-visible {
   white-space: nowrap;
 }
 
-/* The board of the Physical Layout tab: its keys to take away, the places to add one dashed. */
+/* The board of the Configuration tab: its keys to take away, the places to add one dashed. */
 .lb-geo {
   position: relative;
   min-width: 0;
@@ -1421,14 +1421,35 @@ button.lb-combo-apart:focus-visible {
   opacity: 0.6;
 }
 
-/* The JSON tab: its controls in a slide, the text in a wide one that scrolls inside itself. */
-.lb-json-slide {
+/* The Export tab: its controls in a slide, the text in a wide one that scrolls inside itself. */
+.lb-export-slide {
   --lb-slide-w: 40rem;
 }
-.lb-json-controls {
-  --lb-slide-w: 21rem;
+/* The format over two buttons of equal size, which keep their places in either format. */
+.lb-export-controls {
+  --lb-slide-w: min(24rem, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
-.lb-json-text {
+.lb-export-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.lb-export-actions > .btn {
+  min-width: 0;
+  padding-inline: 0.5rem;
+}
+/* An error of two lines at most, the rest in its title, so the slide never scrolls for it. */
+.lb-export-message {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  margin: 0;
+}
+.lb-export-text {
   display: block;
   width: 100%;
   height: 100%;

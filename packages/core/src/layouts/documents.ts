@@ -43,7 +43,7 @@ export function documentLayout(file: string, doc: unknown): Layout {
   const checked = saved === doc ? parsed : safeParseLayout(saved);
   if (!checked.ok || JSON.stringify(toCanonicalJson(checked.layout)) !== JSON.stringify(saved)) {
     throw new Error(
-      `${file}.json is not as LayerBench saves it; copy it from the editor's JSON panel`,
+      `${file}.json is not as LayerBench saves it; copy it from the editor's Export panel`,
     );
   }
   const missing = documentMissing(layout);

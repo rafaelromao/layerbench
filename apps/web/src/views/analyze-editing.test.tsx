@@ -961,7 +961,7 @@ describe('Edit', () => {
     expect(await screen.findByLabelText('Name of layer Main')).toHaveValue('Main');
 
     // One-shot keys release as the next key goes down, or wait, and for how long.
-    await user.click(screen.getByRole('tab', { name: 'Special Behaviors' }));
+    await user.click(screen.getByRole('tab', { name: 'Configuration' }));
     const keys = within(screen.getByRole('group', { name: 'One-shot keys' }));
     const quick = keys.getByLabelText('Release as the next key goes down');
     expect(quick).not.toBeChecked();
@@ -1318,7 +1318,7 @@ describe('Edit', () => {
     await user.click(key('Key LHC: g'));
     await user.click(within(await inspector('LHC')).getByRole('button', { name: 'Adaptive' }));
     await user.click(within(await inspector('LHC')).getByRole('button', { name: 'Add branch' }));
-    await user.click(screen.getByRole('tab', { name: 'JSON' }));
+    await user.click(screen.getByRole('tab', { name: 'Export' }));
     await user.click(screen.getByRole('button', { name: 'Load into editor' }));
     await user.click(screen.getByRole('tab', { name: 'Board' }));
 
@@ -1971,7 +1971,7 @@ describe('Edit', () => {
     expect(boxes()).toEqual(['Combo LHR + LHM: Acce']);
   });
 
-  it('orders its tabs as the guide does, with Physical Layout where Geometry was', async () => {
+  it('orders its tabs as the guide does, with Configuration where Geometry was', async () => {
     await openMagicRomak();
     const tabs = (screen.getByRole('tab', { name: 'Board' }).closest('[role="tablist"]') ??
       document.body) as HTMLElement;
@@ -1985,8 +1985,8 @@ describe('Edit', () => {
       'Combos',
       'Special Behaviors',
       'Typing paths',
-      'Physical Layout',
-      'JSON',
+      'Configuration',
+      'Export',
     ]);
   }, 60_000);
 
@@ -2002,8 +2002,8 @@ describe('Edit', () => {
     expect(addCondition).toHaveTextContent('New condition');
     await user.click(screen.getByRole('tab', { name: 'Special Behaviors' }));
     const special = within(screen.getByRole('list', { name: 'Special behaviors' }));
-    // The one-shots come first, and then the uses, adaptive keys and alt repeats included.
-    expect(special.getAllByRole('listitem')[0]).toHaveTextContent('One-shot layers');
+    // Only the uses, adaptive keys and alt repeats included: the one-shots are in Configuration.
+    expect(special.queryByRole('group', { name: /^One-shot/ })).toBeNull();
     expect(special.getAllByText('Macro').length).toBeGreaterThan(0);
     // Magic Romak's shift key is the mod morph that starts caps word, like any other mod morph.
     expect(special.getAllByText('Mod morph').length).toBeGreaterThan(0);

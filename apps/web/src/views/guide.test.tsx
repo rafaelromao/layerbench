@@ -67,7 +67,7 @@ describe('Help from the views', () => {
     expect(help).toHaveAttribute('target', '_blank');
 
     // It follows the panel that is open.
-    await user.click(screen.getByRole('tab', { name: 'JSON' }));
+    await user.click(screen.getByRole('tab', { name: 'Export' }));
     expect(
       screen.getByRole('link', { name: 'Help on exporting (opens in a new tab)' }),
     ).toHaveAttribute('href', '/guide/importing#exporting');

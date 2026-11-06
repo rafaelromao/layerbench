@@ -53,7 +53,7 @@ describe('bundled layouts added as documents', () => {
 
   it('turns away a document that is not as LayerBench saves it', () => {
     const { name, ...rest } = saved();
-    // The same layout, its fields in another order: not what the editor's JSON panel gives.
+    // The same layout, its fields in another order: not what the editor's Export panel gives.
     expect(() => documentLayout('night', { name, ...rest })).toThrow('as LayerBench saves it');
   });
 

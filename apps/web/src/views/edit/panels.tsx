@@ -489,7 +489,7 @@ function OneShotDefaults({
   );
 }
 
-/** The most a key unit of the board of the Physical Layout tab takes, in pixels. */
+/** The most a key unit of the board of the Configuration tab takes, in pixels. */
 const GEO_UNIT = 30;
 /**
  * The height the board has in its slide, in pixels: a taller board has smaller keys, and the
@@ -579,16 +579,16 @@ function GeometryBoard({ state, send }: PanelProps) {
 }
 
 /**
- * Physical Layout: the preset and the board's keys, a card each. Which keys are space and shift is
- * not set here: they are the keys that type a space and shift. How a capital and a doubled letter
- * are typed is in Typing paths, and how the one-shots end in Special Behaviors.
+ * Configuration: the preset, the board's keys, and how the layout's one-shot layers and keys end, a
+ * card each. Which keys are space and shift is not set here: they are the keys that type a space and
+ * shift. How a capital and a doubled letter are typed is in Typing paths.
  */
-export function GeometryPanel({ state, send }: PanelProps) {
+export function ConfigurationPanel({ state, send }: PanelProps) {
   const { layout } = state;
   const preset = 'preset' in layout.geometry ? layout.geometry.preset : 'custom';
   return (
     <div className="space-y-2 min-w-0">
-      <Carousel label="Physical layout">
+      <Carousel label="Configuration">
         <Slide className="lb-slide-wide space-y-1.5">
           <label className="block space-y-1.5">
             <span className="lb-slide-title block">Preset</span>
@@ -631,10 +631,13 @@ export function GeometryPanel({ state, send }: PanelProps) {
         </Slide>
 
         <GeometryBoard state={state} send={send} />
+        <OneShotDefaults which="sl" title="One-shot layers" state={state} send={send} />
+        <OneShotDefaults which="sk" title="One-shot keys" state={state} send={send} />
       </Carousel>
       <CarouselHint>
         Tap a key to take it away, or a + to add one. A key can go only when it is Transparent or
-        None on every layer and nothing else uses it.
+        None on every layer and nothing else uses it. The one-shot cards say how the layout's
+        one-shots end.
       </CarouselHint>
     </div>
   );
@@ -939,9 +942,8 @@ function useFeatureSlides(
 }
 
 /**
- * Special Behaviors: how the layout's one-shot layers and keys end, a card each, and then every use
- * of an adaptive key, alt repeat, macro, mod morph and sentence space, a card each, to pick and see
- * on the board.
+ * Special Behaviors: every use of an adaptive key, alt repeat, macro, mod morph and sentence space,
+ * a card each, to pick and see on the board.
  */
 export function BehaviorsPanel({
   state,
@@ -956,8 +958,6 @@ export function BehaviorsPanel({
   return (
     <section ref={panel} className="space-y-2 min-w-0" aria-label="Special features">
       <Carousel label="Special behaviors">
-        <OneShotDefaults which="sl" title="One-shot layers" state={state} send={send} />
-        <OneShotDefaults which="sk" title="One-shot keys" state={state} send={send} />
         {slides.length === 0 && (
           <Slide className="lb-slide-wide text-xs">
             This layout has no adaptive keys, alt repeats, macros, mod morphs or sentence spaces.
@@ -966,9 +966,9 @@ export function BehaviorsPanel({
         {slides}
       </Carousel>
       <CarouselHint>
-        The one-shot cards say how the layout's one-shots end. Pick a use to see it on the board
-        below: its layer turned up with the key selected, or the combo open. Adaptive keys, alt
-        repeats and sentence spaces need a ZMK module, linked in the key editor.
+        Pick a use to see it on the board below: its layer turned up with the key selected, or the
+        combo open. Adaptive keys, alt repeats and sentence spaces need a ZMK module, linked in the
+        key editor.
       </CarouselHint>
     </section>
   );
@@ -1209,10 +1209,11 @@ function keymapDrawerYaml(layout: EditState['layout'], compiled: EditState['comp
 }
 
 /**
- * JSON: the document itself, for reading and for pasting one in — or as keymap-drawer draws it.
- * The controls are a card, and the text a wide one beside it that scrolls inside itself.
+ * Export: the document itself, for reading and for pasting one in — or as keymap-drawer draws it.
+ * The controls are one card, the format choice over two buttons that keep their places in either
+ * format, and the text a wide card beside it that scrolls inside itself.
  */
-export function JsonPanel({ state, send }: PanelProps) {
+export function ExportPanel({ state, send }: PanelProps) {
   const [format, setFormat] = useState<'json' | 'yaml'>('json');
   const { compiled, layout } = state;
   const text = state.jsonText || JSON.stringify(toCanonicalJson(layout), null, 2);
@@ -1228,13 +1229,20 @@ export function JsonPanel({ state, send }: PanelProps) {
     a.click();
     URL.revokeObjectURL(url);
   };
+  const copy = () =>
+    navigator.clipboard
+      ?.writeText(yaml)
+      .then(() => toast.info('Copied the keymap-drawer YAML'))
+      .catch(() => toast.error('The browser would not copy; select the text instead'));
   return (
     // No form: Enter on a format choice would otherwise load the text into the editor.
     <div className="space-y-2 min-w-0">
-      <Carousel label="JSON">
-        <Slide className="lb-json-controls space-y-2">
+      <Carousel label="Export">
+        <Slide className="lb-export-controls">
           <Segment
             label="Format"
+            size="sm"
+            fill
             options={[
               ['json', 'LayerBench JSON'],
               ['yaml', 'keymap-drawer YAML'],
@@ -1242,31 +1250,25 @@ export function JsonPanel({ state, send }: PanelProps) {
             value={format}
             onChange={setFormat}
           />
-          {format === 'yaml' ? (
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="btn btn-sm"
-                onClick={() =>
-                  navigator.clipboard
-                    ?.writeText(yaml)
-                    .then(() => toast.info('Copied the keymap-drawer YAML'))
-                    .catch(() => toast.error('The browser would not copy; select the text instead'))
-                }
-              >
-                Copy
-              </button>
-              <button type="button" className="btn btn-sm" onClick={download}>
-                Download .yaml
-              </button>
-            </div>
-          ) : (
-            <>
-              {state.jsonError && <p className="text-error text-xs">{state.jsonError}</p>}
-              <div className="flex flex-wrap gap-2">
+          {/* The same two places in both formats, the primary action on the right. */}
+          <fieldset
+            aria-label={format === 'yaml' ? 'Export the file' : 'The text'}
+            className="lb-export-actions"
+          >
+            {format === 'yaml' ? (
+              <>
+                <button type="button" className="btn btn-sm btn-outline" onClick={download}>
+                  Download .yaml
+                </button>
+                <button type="button" className="btn btn-sm btn-primary" onClick={copy}>
+                  Copy
+                </button>
+              </>
+            ) : (
+              <>
                 <button
                   type="button"
-                  className="btn btn-sm"
+                  className="btn btn-sm btn-outline"
                   onClick={() => send({ type: 'jsonChange', text: '' })}
                 >
                   Refresh from editor
@@ -1280,24 +1282,30 @@ export function JsonPanel({ state, send }: PanelProps) {
                 >
                   Load into editor
                 </button>
-              </div>
-            </>
+              </>
+            )}
+          </fieldset>
+          {/* Two lines at most, the rest in the title: the slide never scrolls for an error. */}
+          {format === 'json' && state.jsonError && (
+            <p className="lb-export-message text-error text-xs" title={state.jsonError}>
+              {state.jsonError}
+            </p>
           )}
         </Slide>
-        <Slide className="lb-json-slide">
+        <Slide className="lb-export-slide">
           {format === 'yaml' ? (
             <textarea
               wrap="off"
               aria-label="keymap-drawer YAML"
               readOnly
-              className="textarea textarea-bordered lb-json-text font-mono text-xs"
+              className="textarea textarea-bordered lb-export-text font-mono text-xs"
               value={yaml}
             />
           ) : (
             <textarea
               wrap="off"
               aria-label="Layout JSON"
-              className="textarea textarea-bordered lb-json-text font-mono text-xs"
+              className="textarea textarea-bordered lb-export-text font-mono text-xs"
               value={text}
               onChange={(e) => send({ type: 'jsonChange', text: e.target.value })}
             />

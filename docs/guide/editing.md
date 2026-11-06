@@ -2,7 +2,7 @@
 
 A layout is edited where it is analyzed, in **Analyze**: the board shows one layer at a time, with
 the layer navigator under it. The tabs above it, **Board**, **Layers**, **Combos**, **Special Behaviors**,
-**Typing paths**, **Physical Layout** and **JSON**, hold everything there is to edit:
+**Typing paths**, **Configuration** and **Export**, hold everything there is to edit:
 **Board** is the first, with the board, the word typed and the legend. The summary and the numbers
 sit under the tabs, whichever is open. Tap or click a key to select it. The editor beside the board
 (under it, on a phone) says what the key does, what it adds to the numbers, and lets you change it. Tap or click the
@@ -422,11 +422,9 @@ keeps the page where it is, at either end too:
   is under the button beside **Heat**. Each change is one edit that Undo takes back. A change is
   refused, with its reason, when it would leave fewer than two keys, a key or layer the layout does
   not have, or the same keys as another combo on one of its layers.
-- **Special Behaviors** has two cards for how the layout's one-shots end, **One-shot layers** and
-  **One-shot keys**: as the next key goes down or not, whether they stay on while a modifier is
-  pressed, and after how many milliseconds unused. After them it lists the layout's adaptive keys,
-  alt repeats, macros and mod morphs, and its sentence spaces, a card each, kind by kind, on a key
-  that shows what it types. Each names its layer and key, or its combo. The board is under the
+- **Special Behaviors** lists the layout's adaptive keys, alt repeats, macros and mod morphs, and
+  its sentence spaces, a card each, kind by kind, on a key that shows what it types. Each names its
+  layer and key, or its combo. The board is under the
   cards, as on **Combos**: pick one and the board turns to its layer with the key selected, or
   opens its combo, with the editor beside the board, and the card is marked. A key or combo picked
   on the board scrolls its card into view in the strip. A shift key that starts caps word is one of
@@ -442,7 +440,10 @@ keeps the page where it is, at either end too:
   a capital is typed, with the shift key tapped once before the letter (sticky, one-shot) or held
   while the letter goes down, and **Doubled letters**, how a letter typed twice in a row is typed,
   with the repeat key or by tapping its key twice.
-- **Physical Layout** is the board itself, in cards: the **preset** and the **keys** of the board.
+- **Configuration** has the board itself, in cards: the **preset** and the **keys** of the board,
+  and then two cards for how the layout's one-shots end, **One-shot layers** and **One-shot keys**:
+  as the next key goes down or not, whether they stay on while a modifier is pressed, and after how
+  many milliseconds unused.
   Pick another **preset**, or tap a key of the
   board to take it away and a **+** to add one, where a preset of the same kind has a key the board lacks. A key
   can go only if it is Transparent or None on every layer and nothing else uses it: not a combo,
@@ -454,8 +455,10 @@ keeps the page where it is, at either end too:
   the shift key one that taps or holds Shift there. A layout keeps the ones it was made with while
   they still do that, and takes others when they stop; with no key that shifts, it has no shift
   key, and **Shift kind** under **Typing paths** waits for one.
-- **JSON** shows the whole layout as LayerBench JSON or as a keymap-drawer file, in a text card
-  that scrolls inside itself, beside the card with its buttons.
+- **Export** shows the whole layout as LayerBench JSON or as a keymap-drawer file, in a text card
+  that scrolls inside itself, beside the card with its buttons: the format, and under it two buttons
+  that keep their places in either, **Refresh from editor** and **Load into editor** for the JSON,
+  **Download .yaml** and **Copy** for the YAML.
 
 ## On a phone
 

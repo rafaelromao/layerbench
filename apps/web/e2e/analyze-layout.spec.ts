@@ -51,8 +51,8 @@ test('every panel but the Board is a carousel as tall as the Combos one, its sli
     'Layers',
     'Special Behaviors',
     'Typing paths',
-    'Physical Layout',
-    'JSON',
+    'Configuration',
+    'Export',
   ]) {
     await page.getByRole('tab', { name: tab }).click();
     const strip = page.locator('.lb-carousel');
