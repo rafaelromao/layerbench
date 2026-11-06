@@ -143,19 +143,30 @@ describe('the Typing paths carousel', () => {
   });
 });
 
-/** A strip 300 wide, as the browser would lay it out, with the second combo's slide past its edge. */
-function layOut(strip: HTMLElement) {
-  const scrollTo = vi.fn();
-  strip.scrollTo = scrollTo;
+/**
+ * A strip 300 wide, as the browser would lay it out, with the second combo's slide past its edge, or
+ * the slide of the behavior at `farAt` (by its place) when it is a strip of behaviors. Done before a
+ * panel is rendered, it is what its effects measure as they mount.
+ */
+function mockLayout(farAt = 'base RHP') {
   vi.spyOn(Element.prototype, 'clientWidth', 'get').mockImplementation(function (this: Element) {
     return this.classList.contains('lb-carousel') ? 300 : 0;
   });
   vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
     if (this.classList.contains('lb-carousel')) return { left: 0, width: 300 } as DOMRect;
-    const { combo, layer } = (this as HTMLElement).dataset;
-    if (combo === '1' || layer === '3') return { left: 900, width: 176 } as DOMRect;
+    const { combo, layer, at } = (this as HTMLElement).dataset;
+    if (combo === '1' || layer === '3' || at === farAt) {
+      return { left: 900, width: 176 } as DOMRect;
+    }
     return { left: 0, width: 0 } as DOMRect;
   });
+}
+
+/** The same, for a strip already rendered, which is given a `scrollTo` to look at. */
+function layOut(strip: HTMLElement, farAt = 'base RHP') {
+  const scrollTo = vi.fn();
+  strip.scrollTo = scrollTo;
+  mockLayout(farAt);
   return scrollTo;
 }
 
@@ -454,15 +465,135 @@ describe('the External Behaviors carousel', () => {
     ]);
   });
 
-  it('shows a use on the board when it is picked, as Special Behaviors does', async () => {
+  it('shows a use on the board under it when it is picked, as Special Behaviors does', async () => {
     const send = vi.fn();
     const onShow = vi.fn();
     const s = initialState(behaving, compileLayout(behaving));
     render(<FeaturesPanel state={s} send={send} onShow={onShow} />);
     await userEvent.setup().click(screen.getByRole('button', { name: /^Base · LHP/ }));
     expect(onShow).toHaveBeenCalledOnce();
-    expect(send).toHaveBeenCalledWith({ type: 'setPanel', panel: 'board' });
+    // The board is drawn on this tab: nothing sends the editor to another one.
+    expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'setPanel' }));
+    expect(send).toHaveBeenCalledWith({ type: 'selectLayer', layer: 0 });
     expect(send).toHaveBeenCalledWith({ type: 'keyClick', keyId: 'LHP' });
+  });
+});
+
+describe('the Special Behaviors board', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /** The layout with a macro on a combo, which works on Symbols and then Numbers. */
+  const comboMacro: Layout = {
+    ...layout,
+    combos: [
+      { keys: ['LHM', 'LHI'], binding: { kind: 'macro', symbols: 'xy' }, layers: ['sym', 'num'] },
+    ],
+  };
+
+  it('is the board under the strip: picking a key selects it on its layer, on this tab', async () => {
+    const send = vi.fn();
+    const onShow = vi.fn();
+    const s = initialState(behaving, compileLayout(behaving));
+    render(<BehaviorsPanel state={s} send={send} onShow={onShow} />);
+    await userEvent.setup().click(screen.getByRole('button', { name: /^Base · RHP/ }));
+    expect(onShow).toHaveBeenCalledOnce();
+    expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'setPanel' }));
+    // Whatever the board was doing gives way.
+    expect(send).toHaveBeenCalledWith({ type: 'comboPickCancel' });
+    expect(send).toHaveBeenCalledWith({ type: 'cancelSwap' });
+    expect(send).toHaveBeenCalledWith({ type: 'selectLayer', layer: 0 });
+    expect(send).toHaveBeenLastCalledWith({ type: 'keyClick', keyId: 'RHP' });
+  });
+
+  it('opens the combo of a feature on a combo, turned to the first layer it works on', async () => {
+    const send = vi.fn();
+    const s = initialState(comboMacro, compileLayout(comboMacro));
+    render(<BehaviorsPanel state={s} send={send} />);
+    await userEvent.setup().click(screen.getByRole('button', { name: /^Combo/ }));
+    // As the Combos tab opens one: the combo itself, which outlines its own keys.
+    expect(send).toHaveBeenLastCalledWith({ type: 'selectCombo', combo: 0, layer: 2 });
+    expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'setPanel' }));
+  });
+
+  it('marks the slide of the key that is open, and of the combo that is open', () => {
+    const s = initialState(behaving, compileLayout(behaving));
+    const { rerender } = render(
+      <BehaviorsPanel state={{ ...s, selected: 'RHP' }} send={vi.fn()} />,
+    );
+    const slideOf = (name: RegExp) => screen.getByRole('button', { name }).closest('li');
+    expect(slideOf(/^Base · RHP/)).toHaveClass('lb-slide-current');
+    expect(screen.getByRole('button', { name: /^Base · RHP/ })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(slideOf(/^Base · LTP/)).not.toHaveClass('lb-slide-current');
+    // The same key on another layer is another place.
+    rerender(<BehaviorsPanel state={{ ...s, selected: 'RHP', layer: 1 }} send={vi.fn()} />);
+    expect(slideOf(/^Base · RHP/)).not.toHaveClass('lb-slide-current');
+
+    const c = initialState(comboMacro, compileLayout(comboMacro));
+    rerender(<BehaviorsPanel state={{ ...c, combo: 0, selected: null }} send={vi.fn()} />);
+    expect(slideOf(/^Combo/)).toHaveClass('lb-slide-current');
+  });
+
+  it('brings the slide of a key picked on the board into view, and takes no focus', () => {
+    const s = initialState(behaving, compileLayout(behaving));
+    const { rerender } = render(<BehaviorsPanel state={s} send={vi.fn()} />);
+    const scrollTo = layOut(screen.getByRole('list', { name: 'Special behaviors' }));
+    rerender(<BehaviorsPanel state={{ ...s, selected: 'RHP' }} send={vi.fn()} />);
+    expect(scrollTo).toHaveBeenCalledWith({ left: 900 - (300 - 176) / 2, behavior: 'smooth' });
+    expect(document.body).toHaveFocus();
+  });
+
+  it('brings the slide of a combo opened on the board into view', () => {
+    const s = initialState(comboMacro, compileLayout(comboMacro));
+    const { rerender } = render(<BehaviorsPanel state={s} send={vi.fn()} />);
+    const scrollTo = layOut(screen.getByRole('list', { name: 'Special behaviors' }), 'combo 0');
+    rerender(<BehaviorsPanel state={{ ...s, combo: 0, comboPicks: 1 }} send={vi.fn()} />);
+    expect(scrollTo).toHaveBeenCalledWith({ left: 900 - (300 - 176) / 2, behavior: 'smooth' });
+  });
+
+  it('brings a slide into view when the key already open is given a behavior', () => {
+    const s = initialState(behaving, compileLayout(behaving));
+    const { rerender } = render(
+      <BehaviorsPanel state={{ ...s, selected: 'LHM' }} send={vi.fn()} />,
+    );
+    const scrollTo = layOut(screen.getByRole('list', { name: 'Special behaviors' }), 'base LHM');
+    // The open key is made a macro in its editor: its slide is new, and the key is the same.
+    const [base, ...rest] = behaving.layers;
+    const made: Layout = {
+      ...behaving,
+      layers: [
+        { ...base, bindings: { ...base.bindings, LHM: { kind: 'macro', symbols: 'ab' } } },
+        ...rest,
+      ],
+    };
+    const next = { ...initialState(made, compileLayout(made)), selected: 'LHM' };
+    rerender(<BehaviorsPanel state={next} send={vi.fn()} />);
+    expect(scrollTo).toHaveBeenCalledWith({ left: 900 - (300 - 176) / 2, behavior: 'smooth' });
+  });
+
+  it('moves nothing when no key or combo is open, and moves once one is', () => {
+    // The layout is mocked, and every strip given a scrollTo, before anything is rendered: what
+    // the panel does as it mounts is what is looked at.
+    mockLayout();
+    const scrollTo = vi.fn();
+    const had = Element.prototype.scrollTo;
+    Element.prototype.scrollTo = scrollTo;
+    try {
+      const s = initialState(behaving, compileLayout(behaving));
+      const { rerender } = render(<BehaviorsPanel state={s} send={vi.fn()} />);
+      expect(scrollTo).not.toHaveBeenCalled();
+      expect(screen.getByText(/on the board below/)).toBeInTheDocument();
+      rerender(<BehaviorsPanel state={{ ...s, selected: 'RHP' }} send={vi.fn()} />);
+      expect(scrollTo).toHaveBeenCalledOnce();
+    } finally {
+      // jsdom has no scrollTo on an element: leave it as it was found.
+      if (had) Element.prototype.scrollTo = had;
+      else Reflect.deleteProperty(Element.prototype, 'scrollTo');
+    }
   });
 });
 

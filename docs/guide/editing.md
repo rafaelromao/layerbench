@@ -423,13 +423,16 @@ keeps the page where it is, at either end too:
   refused, with its reason, when it would leave fewer than two keys, a key or layer the layout does
   not have, or the same keys as another combo on one of its layers.
 - **Special Behaviors** lists the layout's macros and mod morphs, a card each, kind by kind, on a
-  key that shows what it types. Each names its layer and key, or its combo; pick one to go to the
-  **Board** tab, turned to that layer with the key selected, or to outline the combo's keys. A
+  key that shows what it types. Each names its layer and key, or its combo. The board is under the
+  cards, as on **Combos**: pick one and the board turns to its layer with the key selected, or
+  opens its combo, with the editor beside the board, and the card is marked. A key or combo picked
+  on the board scrolls its card into view in the strip. A
   shift key that starts caps word is one of the mod morphs. Adaptive keys and alt repeats make a
   layout Special too, but need a ZMK module, so **External Behaviors** lists them.
 - **External Behaviors** turns on sentence case, which needs a ZMK module its card links, and lists
   the layout's adaptive keys and alt repeats, a card each, which need one too, linked in the key
-  editor. Pick a use to go to the **Board** tab, turned to that layer with the key selected. Caps
+  editor. It has the board under its cards too: pick a use and the board turns to that layer with
+  the key selected, as in **Special Behaviors**. Caps
   word is not here: it is a key, made with its tile like any other.
 - **Typing paths** list the other ways a character can be typed, a card for each, with the character
   on a key at its left. Left alone, a character is typed

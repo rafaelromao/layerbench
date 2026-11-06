@@ -2213,6 +2213,9 @@ describe('Special Behaviors', () => {
     expect(shownLayer()).toBe(layerName);
     expect(await inspector(keyId)).toBeInTheDocument();
     expect(await reopen(away)).toHaveAttribute('aria-current', 'true');
+    // The board is under the strip, as on Combos: the pick did not take the editor to the Board tab.
+    expect(screen.getByRole('tab', { name: 'Special Behaviors', selected: true })).toBeVisible();
+    expect(screen.getByRole('region', { name: 'Board' })).toBeInTheDocument();
 
     // Picked while a word plays, a feature stops it, so the board shows the feature.
     await user.click(screen.getByRole('tab', { name: 'Board' }));
@@ -2223,7 +2226,8 @@ describe('Special Behaviors', () => {
     await user.click(await reopen(other));
     expect(shownLayer()).toBe(otherLayer);
 
-    // A feature on a combo, the à macro, outlines its keys instead, and a swap armed gives way.
+    // A feature on a combo, the à macro, opens its combo as the Combos tab does, its keys outlined
+    // and its editor beside the board, and a swap armed gives way.
     const selected = (
       screen.getByRole('group', { name: /^Edit / }).getAttribute('aria-label') ?? ''
     ).replace('Edit ', '');
@@ -2239,6 +2243,8 @@ describe('Special Behaviors', () => {
       expect(document.querySelectorAll('#kb-analyze .lb-key-highlight').length).toBeGreaterThan(1),
     );
     expect(screen.queryByText(/is armed/)).toBeNull();
+    expect(await screen.findByRole('group', { name: /^Edit combo / })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Special Behaviors', selected: true })).toBeVisible();
 
     // Picked while a combo's keys are being picked, a feature ends the pick.
     await user.click(screen.getByRole('tab', { name: 'Combos' }));
@@ -2281,6 +2287,9 @@ describe('External Behaviors', () => {
     await user.click(altRepeat);
     expect(shownLayer()).toBe(firstLayer);
     expect(await inspector('L1')).toBeInTheDocument();
+    // On the board under the strip, on this tab, as Special Behaviors shows its own.
+    expect(screen.getByRole('tab', { name: 'External Behaviors', selected: true })).toBeVisible();
+    expect(screen.getByRole('region', { name: 'Board' })).toBeInTheDocument();
   }, 60_000);
 });
 

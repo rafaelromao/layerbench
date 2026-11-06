@@ -26,6 +26,7 @@ import {
   type CSSProperties,
   type Dispatch,
   type ReactNode,
+  type RefObject,
   useEffect,
   useId,
   useMemo,
@@ -101,10 +102,11 @@ export function FeaturesPanel({
   const set = (next: LayoutFeatures) =>
     send({ type: 'edit', edit: { kind: 'setFeatures', features: next } });
   const enabled = (v: { enabled?: boolean } | undefined) => v !== undefined && v.enabled !== false;
-  const uses = useFeatureSlides(state, send, EXTERNAL_KINDS, onShow);
+  const panel = useRef<HTMLDivElement>(null);
+  const uses = useFeatureSlides(state, send, EXTERNAL_KINDS, panel, onShow);
 
   return (
-    <div className="space-y-2 min-w-0">
+    <div ref={panel} className="space-y-2 min-w-0">
       <Carousel label="External behaviors">
         <FeatureRow
           title="Sentence case"
@@ -118,7 +120,7 @@ export function FeaturesPanel({
       <CarouselHint>
         Each needs a ZMK module. Sentence case goes on the space key, with no layer of its own.
         Adaptive keys and alt repeats are made on the key, with its Adaptive or Alt repeat tile;
-        pick one here to see it on the Board.
+        pick one here to see it on the board below.
       </CarouselHint>
     </div>
   );
@@ -989,33 +991,58 @@ export const SPECIAL_KINDS: readonly SpecialFeatureKind[] = kindsOn('special');
 /**
  * The layout's special features of these kinds, a slide each, kind by kind, on a key that shows what
  * the feature's key or combo types: every use names its layer and key, or its combo, and picking it
- * shows it on the board — the key selected on its layer, or the combo's keys outlined.
+ * shows it on the board under the strip — the key selected on its layer, or the combo open, as the
+ * Combos tab opens one. The slide of the key or combo open is the current one, brought into view in
+ * the strip however it was picked, a click on the board included.
  */
 function useFeatureSlides(
   state: EditState,
   send: Send,
   kinds: readonly SpecialFeatureKind[],
+  panel: RefObject<HTMLElement | null>,
   onShow?: () => void,
 ): ReactNode[] {
   const features = useMemo(() => specialFeatures(state.layout), [state.layout]);
   const { compiled } = state;
+  /** Where a feature is, as the board has it open: a key on its layer, or a combo. */
+  const placeAt = (f: SpecialFeature) =>
+    f.combo !== undefined ? `combo ${f.comboIndex}` : `${f.layer} ${f.key}`;
+  const openAt =
+    state.combo !== null
+      ? `combo ${state.combo}`
+      : state.selected === null
+        ? ''
+        : `${compiled.layers[state.layer]?.id} ${state.selected}`;
+  // Whether the open key or combo has a slide here: one that appears for it, as a key is given a
+  // macro, is brought into view too.
+  const hasSlide = features.some((f) => kinds.includes(f.feature) && placeAt(f) === openAt);
+  useEffect(() => {
+    if (openAt === '' || !hasSlide) return;
+    // A key can hold two features: the first of its slides is the one brought into view.
+    const slides = panel.current?.querySelectorAll<HTMLElement>('[data-at]') ?? [];
+    const slide = [...slides].find((s) => s.dataset.at === openAt);
+    if (slide) revealInCarousel(slide);
+  }, [panel, openAt, hasSlide]);
   const show = (f: SpecialFeature) => {
     onShow?.();
-    // The board is the first tab: what is shown is on it.
-    send({ type: 'setPanel', panel: 'board' });
     // Whatever the board is doing gives way: a pick of a combo's keys would keep its clicks, and an
-    // armed swap or an open combo would add their keys to the outline.
+    // armed swap would add its key to the one shown.
     send({ type: 'comboPickCancel' });
     send({ type: 'cancelSwap' });
     if (f.combo !== undefined) {
-      send({ type: 'selectCombo', combo: null });
       const combo = f.comboIndex === undefined ? undefined : state.layout.combos?.[f.comboIndex];
-      send({ type: 'setBoardHighlight', keys: combo?.keys ?? [] });
+      if (f.comboIndex === undefined || combo === undefined) return;
+      // The board turns to the first layer the combo works on, as the Combos tab does.
+      const first = combo.layers?.[0] ?? state.layout.layers[0]?.id;
+      send({
+        type: 'selectCombo',
+        combo: f.comboIndex,
+        layer: first === undefined ? 0 : (compiled.layerIndex.get(first) ?? 0),
+      });
       return;
     }
     const layer = f.layer === undefined ? undefined : compiled.layerIndex.get(f.layer);
     if (layer === undefined || f.key === undefined) return;
-    send({ type: 'setBoardHighlight', keys: [] });
     send({ type: 'selectLayer', layer });
     send({ type: 'keyClick', keyId: f.key });
   };
@@ -1043,16 +1070,15 @@ function useFeatureSlides(
     features
       .filter((f) => f.feature === kind)
       .map((f, i) => {
-        const current =
-          f.combo === undefined &&
-          state.selected === f.key &&
-          compiled.layers[state.layer]?.id === f.layer;
+        const at = placeAt(f);
+        const current = at === openAt;
         const typed = typedBy(f);
         return (
           <Slide
             // biome-ignore lint/suspicious/noArrayIndexKey: one key can hold a feature twice
             key={`${kind}-${f.layer}-${f.key}-${f.combo}-${f.label}-${i}`}
             current={current}
+            data-at={at}
             style={{ '--lb-accent': `var(--color-${accent})` } as CSSProperties}
             className="lb-slide-wide lb-slide-accent lb-slide-pick"
           >
@@ -1092,9 +1118,10 @@ export function BehaviorsPanel({
   /** Before a feature is shown on the board: a word playing there would hide it. */
   onShow?: () => void;
 }) {
-  const slides = useFeatureSlides(state, send, SPECIAL_KINDS, onShow);
+  const panel = useRef<HTMLElement>(null);
+  const slides = useFeatureSlides(state, send, SPECIAL_KINDS, panel, onShow);
   return (
-    <section className="space-y-2 min-w-0" aria-label="Special features">
+    <section ref={panel} className="space-y-2 min-w-0" aria-label="Special features">
       <Carousel label="Special behaviors">
         {slides.length === 0 && (
           <Slide className="lb-slide-wide text-xs">This layout has no macros or mod morphs.</Slide>
@@ -1102,8 +1129,8 @@ export function BehaviorsPanel({
         {slides}
       </Carousel>
       <CarouselHint>
-        Pick one to see it on the Board: its layer turned up with the key selected, or the combo's
-        keys outlined.
+        Pick one to see it on the board below: its layer turned up with the key selected, or the
+        combo open.
       </CarouselHint>
     </section>
   );

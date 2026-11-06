@@ -84,8 +84,6 @@ export interface EditState {
   comboPick: string[] | null;
   /** The combo, by place, whose keys are being picked again; null when the pick is for a new one. */
   comboPickFor: number | null;
-  /** Keys to outline, so a combo can point at the keys it is made of. */
-  boardHighlight: string[];
 }
 
 /** The last edit made and how it went, with what to tell a screen reader once it has landed. */
@@ -115,7 +113,6 @@ export type EditAction =
    * turns to, for a combo picked where it is not drawn.
    */
   | { type: 'selectCombo'; combo: number | null; layer?: number }
-  | { type: 'setBoardHighlight'; keys: string[] }
   | { type: 'jsonChange'; text: string }
   | { type: 'setPanel'; panel: Panel }
   | { type: 'saved'; layout: Layout }
@@ -150,7 +147,6 @@ export function initialState(layout: Layout, compiled: CompiledLayout, layer = 0
     comboPicks: 0,
     comboPick: null,
     comboPickFor: null,
-    boardHighlight: [],
   };
 }
 
@@ -431,9 +427,6 @@ function reduce(state: EditState, action: EditAction): EditState {
         error: null,
       };
     }
-
-    case 'setBoardHighlight':
-      return { ...state, boardHighlight: action.keys };
 
     case 'jsonChange':
       return { ...state, jsonText: action.text };
