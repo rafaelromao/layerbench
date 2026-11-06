@@ -101,11 +101,9 @@ describe('dead keys as producers', () => {
   });
 
   it('presses shift again when the accent spent the one sentence case armed', () => {
-    const t = trace(
-      board({ kind: 'sl', layer: 'dead' }, { features: { sentenceCase: {} } }),
-      'x. É',
-      'model',
-    );
+    const sentence = board({ kind: 'sl', layer: 'dead' });
+    sentence.layers[0].bindings.L0 = { kind: 'sentence_space' };
+    const t = trace(sentence, 'x. É', 'model');
     expect(t.out).toBe('x. É');
     expect(t.keys.slice(-4)).toEqual(['R0', 'LTI', 'R1', 'LHM']);
   });

@@ -1,5 +1,5 @@
 import { compileLayout, type Layout } from '@layerbench/core';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { GeometryPanel } from './panels.js';
@@ -13,6 +13,25 @@ const layout: Layout = {
   layers: [{ id: 'base', bindings: { LHM: { kind: 'kp', symbol: 'a' } } }],
 };
 const state = initialState(layout, compileLayout(layout));
+
+describe('the Physical Layout tab', () => {
+  it('has the preset and the keys of the board, and nothing else to set', () => {
+    render(<GeometryPanel state={state} send={vi.fn()} />);
+    const items = within(screen.getByRole('list', { name: 'Physical layout' })).getAllByRole(
+      'listitem',
+    );
+    expect(items.map((li) => li.querySelector('.lb-slide-title')?.textContent)).toEqual([
+      'Preset',
+      'Keys',
+    ]);
+    // Which keys are space and shift follows from the keys; how shift and doubled letters are typed
+    // is in Typing paths, and how the one-shots end in Special Behaviors.
+    for (const label of ['Space key', 'Shift key', 'Shift kind', 'Doubled letters']) {
+      expect(screen.queryByLabelText(label)).toBeNull();
+    }
+    expect(screen.queryByRole('group', { name: /^One-shot/ })).toBeNull();
+  });
+});
 
 describe('the board in the Physical Layout tab', () => {
   it('lets a key that does nothing go, and keeps one that does', async () => {

@@ -1,6 +1,5 @@
 import { DEFAULT_LAYER_ID_LIST, hasDefaultLayers } from '../layouts/templates.js';
 import { buildGeometry } from './compile.js';
-import { expandFeatures, type WrappingFeature } from './features.js';
 import type { Binding, LayerDef, Layout } from './types.js';
 
 /**
@@ -19,6 +18,8 @@ export interface SpecialFeature {
   /** Where the combo stands in the layout's list: two combos may share an id. */
   comboIndex?: number;
   label: string;
+  /** The binding that is the feature, which is inside the key's or combo's when that is a wrapper. */
+  binding: Binding;
 }
 
 /** Every layout is in exactly one, worked out from its own keys. */
@@ -149,11 +150,13 @@ export function physicalKeyCount(layout: Layout): number {
   return g.keys.length - (oneBar ? 1 : 0);
 }
 
-const FEATURE_LABELS: Record<Exclude<SpecialFeatureKind, 'macro'>, string> = {
+const FEATURE_LABELS = {
   adaptive: 'Adaptive key',
   alt_repeat: 'Alt repeat',
   mod_morph: 'Mod morph',
-};
+  // A space that changes what follows with what came before it, as an adaptive key does.
+  sentence_space: 'Sentence case',
+} as const;
 
 interface Place {
   layer?: string;
@@ -164,7 +167,8 @@ interface Place {
 
 /** The special features a binding is or holds, at the place it is bound. */
 function featuresOf(b: Binding, at: Place, out: SpecialFeature[]): void {
-  const emit = (feature: SpecialFeatureKind, label: string) => out.push({ feature, ...at, label });
+  const emit = (feature: SpecialFeatureKind, label: string) =>
+    out.push({ feature, ...at, label, binding: b });
   switch (b.kind) {
     case 'adaptive':
       if (b.default?.kind === 'key_repeat') emit('alt_repeat', FEATURE_LABELS.alt_repeat);
@@ -175,7 +179,7 @@ function featuresOf(b: Binding, at: Place, out: SpecialFeature[]): void {
       break;
     // A space that changes what follows with what came before it, as sentence case is.
     case 'sentence_space':
-      emit('adaptive', DECLARED.sentenceCase.label);
+      emit('adaptive', FEATURE_LABELS.sentence_space);
       break;
     case 'macro':
       emit('macro', b.symbols ? `Macro “${b.symbols}”` : 'Macro');
@@ -189,14 +193,6 @@ function featuresOf(b: Binding, at: Place, out: SpecialFeature[]): void {
 }
 
 /**
- * What a declared feature makes of the key it goes on: sentence case makes the space key a sentence
- * space, which changes with the key before it as an adaptive key does. Named as itself.
- */
-const DECLARED: Record<WrappingFeature, { feature: SpecialFeatureKind; label: string }> = {
-  sentenceCase: { feature: 'adaptive', label: 'Sentence case' },
-};
-
-/**
  * Whether a combo can fire on none of the layout's own layers: only on the default layers, or, with
  * an empty list, on none at all. A combo with no list fires on every layer.
  */
@@ -204,15 +200,11 @@ const onDefaultLayersOnly = (isDefault: (id: string) => boolean, layers: string[
   layers?.every(isDefault) === true;
 
 /**
- * Each use of a special feature: on the keys of the layout's own layers, on its combos, and the keys
- * its declared features wrap. Nothing on the default layers counts.
+ * Each use of a special feature: on the keys of the layout's own layers and on its combos. Nothing on
+ * the default layers counts.
  */
 export function specialFeatures(layout: Layout): SpecialFeature[] {
   const out: SpecialFeature[] = [];
-  // One feature at a time, so each is a use of its own, whatever key it wraps.
-  const owned = (Object.keys(DECLARED) as WrappingFeature[]).map(
-    (f) => expandFeatures({ ...layout, features: { [f]: layout.features?.[f] } }).owned,
-  );
   const keys = buildGeometry(layout).keys.map((k) => k.id);
   const isDefault = isDefaultLayer(layout);
   for (const layer of ownLayers(layout)) {
@@ -221,9 +213,6 @@ export function specialFeatures(layout: Layout): SpecialFeature[] {
       const b = bindingAt(layer, key);
       if (b) featuresOf(b, { layer: layer.id, key }, out);
     }
-    for (const byLayer of owned)
-      for (const [key, f] of byLayer.get(layer.id) ?? [])
-        out.push({ ...DECLARED[f], layer: layer.id, key });
   }
   (layout.combos ?? []).forEach((c, i) => {
     if (!onDefaultLayersOnly(isDefault, c.layers))

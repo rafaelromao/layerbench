@@ -14,30 +14,23 @@ const DOCUMENTS: Record<string, unknown> = {
 };
 
 /**
- * The document without `features.capsWord`, which documents saved before caps word was only a
- * behaviour declare, in the order it was written in; itself when it declares none. Reading turns that
- * declaration into the mod morph it made, so it is the one thing a document may hold that LayerBench
- * no longer saves.
+ * The document without `features`, which documents saved before sentence case and caps word were
+ * only behaviours of a key declare; itself when it declares none. Reading turns those declarations
+ * into the sentence space and the mod morph they made, so it is the one thing a document may hold
+ * that LayerBench no longer saves.
  */
-function withoutCapsWord(doc: unknown): unknown {
-  if (typeof doc !== 'object' || doc === null) return doc;
-  const features = (doc as { features?: unknown }).features;
-  if (typeof features !== 'object' || features === null || !('capsWord' in features)) return doc;
-  const { capsWord: _declared, ...others } = features as Record<string, unknown>;
-  return Object.fromEntries(
-    Object.entries(doc).flatMap(([key, value]) => {
-      if (key !== 'features') return [[key, value]];
-      return Object.keys(others).length > 0 ? [[key, others]] : [];
-    }),
-  );
+function withoutDeclaredFeatures(doc: unknown): unknown {
+  if (typeof doc !== 'object' || doc === null || !('features' in doc)) return doc;
+  return Object.fromEntries(Object.entries(doc).filter(([key]) => key !== 'features'));
 }
 
 /**
  * The layout a document holds, checked: exactly what LayerBench saves, so what is reviewed is what
  * ships; named by its id; and saying who made it. Its link, to where it comes from, is optional;
- * the schema holds one that is given to an http(s) URL. A document saved with caps word declared as
- * a feature is read as it is everywhere, with the morph written out, and is held to the saved form
- * in all else, so a layout already in the Library does not leave it.
+ * the schema holds one that is given to an http(s) URL. A document saved with sentence case or caps
+ * word declared as features is read as it is everywhere, with the behaviours written out on their
+ * keys, and is held to the saved form in all else, so a layout already in the Library does not leave
+ * it.
  */
 export function documentLayout(file: string, doc: unknown): Layout {
   const parsed = safeParseLayout(doc);
@@ -46,7 +39,7 @@ export function documentLayout(file: string, doc: unknown): Layout {
   if (layout.id !== file) {
     throw new Error(`${file}.json holds the layout "${layout.id}"; name the file by its id`);
   }
-  const saved = withoutCapsWord(doc);
+  const saved = withoutDeclaredFeatures(doc);
   const checked = saved === doc ? parsed : safeParseLayout(saved);
   if (!checked.ok || JSON.stringify(toCanonicalJson(checked.layout)) !== JSON.stringify(saved)) {
     throw new Error(

@@ -266,7 +266,7 @@ describe('Creating layouts', () => {
     const card = (await screen.findByRole('heading', { name: 'Qwerty', level: 3 })).closest(
       'article',
     ) as HTMLElement;
-    await user.click(within(card).getByRole('link', { name: 'Open Qwerty' }));
+    await user.click(within(card).getByRole('link', { name: 'Analyze Qwerty' }));
     await waitFor(() => expect(currentPath()).toBe('/analyze'));
     expect(currentSearch()).toContain('layout=qwerty');
     expect(currentSearch()).toContain('corpus=pt-br-general');
@@ -289,13 +289,13 @@ describe('Creating layouts', () => {
     expect(screen.getByRole('button', { name: 'Delete Mine' })).not.toHaveClass('btn-ghost');
   });
 
-  it('puts Open last on every card, flush right, with Delete to its left on a custom one', async () => {
+  it('puts Analyze last on every card, flush right, with Delete to its left on a custom one', async () => {
     const storage = freshStorage();
     const qwerty = bundledLayout('qwerty') as Layout;
     await storage.put('layouts', 'mine', toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine' }));
     renderRoute(LIBRARY, { storage });
-    const open = await screen.findByRole('link', { name: 'Open Mine' });
-    expect(open).toHaveTextContent(/^Open$/);
+    const open = await screen.findByRole('link', { name: 'Analyze Mine' });
+    expect(open).toHaveTextContent(/^Analyze$/);
     const actions = open.parentElement as HTMLElement;
     expect([...actions.children]).toEqual([
       screen.getByRole('button', { name: 'Delete Mine' }),
@@ -304,7 +304,7 @@ describe('Creating layouts', () => {
     expect(actions).toHaveClass('ml-auto');
 
     // A bundled card has Open alone, in the same place.
-    const bundled = screen.getByRole('link', { name: 'Open Qwerty' });
+    const bundled = screen.getByRole('link', { name: 'Analyze Qwerty' });
     expect([...(bundled.parentElement as HTMLElement).children]).toEqual([bundled]);
     expect(bundled.parentElement).toHaveClass('ml-auto');
   });
@@ -512,7 +512,7 @@ describe('Ranking layouts', () => {
     const card = cards()[0];
     expect(within(card).getByText('custom')).toBeInTheDocument();
     // Analyze is where it is edited too: there is no separate way in.
-    expect(within(card).getByRole('link', { name: /^Open / })).toHaveAttribute(
+    expect(within(card).getByRole('link', { name: /^Analyze / })).toHaveAttribute(
       'href',
       expect.stringContaining('custom%3Amy-graphite'),
     );
@@ -864,7 +864,7 @@ describe('Community layouts', () => {
     expect(badgesOf('Night owl')).toEqual(expect.arrayContaining(['community', 'Standard']));
     expect(badgesOf('Night owl')).not.toContain('custom');
     expect(badgesOf('Qwerty')).not.toContain('community');
-    expect(screen.getByRole('link', { name: 'Open Night owl' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Analyze Night owl' })).toHaveAttribute(
       'href',
       expect.stringContaining('layout=community%3Anight-owl'),
     );
@@ -978,7 +978,7 @@ describe('A saved layout that cannot be read', () => {
     expect(await within(mine).findByRole('group', { name: 'Mine layers' })).toBeInTheDocument();
     expect(within(mine).queryByText(/cannot be read/)).toBeNull();
 
-    await user.click(within(card).getByRole('link', { name: 'Open Broken' }));
+    await user.click(within(card).getByRole('link', { name: 'Analyze Broken' }));
     expect(await screen.findByText('This layout cannot be opened.')).toBeInTheDocument();
     await user.click(screen.getByRole('link', { name: 'Open another layout' }));
     expect(await screen.findByRole('heading', { name: 'Mine', level: 3 })).toBeInTheDocument();
@@ -1134,7 +1134,7 @@ describe('Choosing what layouts are ranked on', () => {
     expect(currentSearch()).not.toContain('layout=');
 
     const card = document.querySelector('article') as HTMLElement;
-    const analyze = within(card).getByRole('link', { name: /^Open / }) as HTMLAnchorElement;
+    const analyze = within(card).getByRole('link', { name: /^Analyze / }) as HTMLAnchorElement;
     expect(analyze.href).toContain('corpus=pt-br-general');
     expect(analyze.href).toContain('rules=cyanophage');
   });
@@ -1155,7 +1155,7 @@ describe('Choosing which special features a ranking counts', () => {
     await waitFor(() => expect(currentSearch()).toContain('off=macros'));
     expect(macros).not.toBeChecked();
     const card = screen.getByText('Magic Romak', { selector: 'h3' }).closest('article');
-    const analyze = within(card as HTMLElement).getByRole('link', { name: /^Open / });
+    const analyze = within(card as HTMLElement).getByRole('link', { name: /^Analyze / });
     expect((analyze as HTMLAnchorElement).href).toContain('off=macros');
 
     await user.click(macros);

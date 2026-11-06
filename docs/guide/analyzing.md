@@ -65,8 +65,8 @@ Numbers and Symbols among them, do:
   layer.
 - **Special**: a layout with an adaptive key, a macro, an alt repeat or a mod morph, on a key or on
   a combo; or with more than one alpha layer; or on a board of fewer than 34 keys, thumbs included.
-  Sentence case makes the space key a sentence space, which changes with the key before it as an
-  adaptive key does, so it makes a layout Special too. So does a shift key that starts caps word,
+  A sentence space on the space key, which changes with the key before it as an adaptive key does,
+  makes a layout Special too. So does a shift key that starts caps word,
   which is a mod morph.
 
 Untick a category under **Categories**, in **Rank and filter**, to leave its layouts out of the list
@@ -94,7 +94,7 @@ better half of the bundled layouts'. Some, such as Qwerty, are for none.
 letter), the repeat key (doubled letters are tapped twice), typing combos, and macros that type two
 letters or more, such as `qu` or `ão`. A macro typing one letter, like Magic Romak's accents, is how
 the layout reaches that letter, and stays. What a feature typed is typed another way, or skipped if
-there is none. **Open** on a card opens the layout in **Analyze**, ranked the same way, and says so.
+there is none. **Analyze** on a card opens the layout, ranked the same way, and says so.
 
 The same switches are in every view that analyzes, in its **Settings**. **Compare with**, in
 **Compare**, types both layouts without the features left unticked and draws their combos that way;

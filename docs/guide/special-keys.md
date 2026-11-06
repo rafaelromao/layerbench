@@ -54,7 +54,8 @@ toggled stays on.
 A one-shot ends with the next key: a one-shot layer with the next key pressed, a one-shot modifier
 with the next key that types something. Each key is pressed and let go before the next, so whether
 ZMK would end it as that key goes down or as it comes up (`quickRelease`, among the layout's
-behaviour defaults, set in the **Physical Layout** tab) makes no difference to the numbers. A modifier
+behaviour defaults, set on the **One-shot layers** and **One-shot keys** cards of **Special
+Behaviors**) makes no difference to the numbers. A modifier
 pressed in between leaves it armed when those defaults say to ignore modifiers, as ZMK does. ZMK's
 [sticky layer](https://zmk.dev/docs/keymaps/behaviors/sticky-layer) and
 [sticky key](https://zmk.dev/docs/keymaps/behaviors/sticky-key) pages describe the options.
@@ -132,8 +133,10 @@ To start it by pressing shift while shift is already on, make the shift key a **
 word**. Magic Romak's shift key is one. A layout saved when caps word was a feature opens with that
 morph on its shift key, typing as it did.
 
-**External Behaviors** turns on **sentence case**, which makes the space key a sentence space, and
-lists the layout's adaptive keys and alt repeats, which need a ZMK module too.
+**Sentence case** is a **Sentence space** on the space key, a tile like any other, for any key. The
+layout's adaptive keys, alt repeats and sentence spaces, which need a ZMK module, are listed in
+**Special Behaviors** with its macros and mod morphs. A layout saved when sentence case was a
+feature opens with the sentence space on its space key, typing as it did.
 
 A **Sentence space**, among the editor's other tiles, types a space. Pressed right after `.`, `?` or
 `!`, it leaves a capital for the next key pressed. A letter a–z comes out a capital. Any other key,

@@ -50,7 +50,6 @@ test('every panel but the Board is a carousel as tall as the Combos one, its sli
     'Combos',
     'Layers',
     'Special Behaviors',
-    'External Behaviors',
     'Typing paths',
     'Physical Layout',
     'JSON',

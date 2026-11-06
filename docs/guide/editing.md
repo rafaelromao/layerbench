@@ -1,7 +1,7 @@
 # Editing a layout
 
 A layout is edited where it is analyzed, in **Analyze**: the board shows one layer at a time, with
-the layer navigator under it. The tabs above it, **Board**, **Layers**, **Combos**, **Special Behaviors**, **External Behaviors**,
+the layer navigator under it. The tabs above it, **Board**, **Layers**, **Combos**, **Special Behaviors**,
 **Typing paths**, **Physical Layout** and **JSON**, hold everything there is to edit:
 **Board** is the first, with the board, the word typed and the legend. The summary and the numbers
 sit under the tabs, whichever is open. Tap or click a key to select it. The editor beside the board
@@ -422,35 +422,38 @@ keeps the page where it is, at either end too:
   is under the button beside **Heat**. Each change is one edit that Undo takes back. A change is
   refused, with its reason, when it would leave fewer than two keys, a key or layer the layout does
   not have, or the same keys as another combo on one of its layers.
-- **Special Behaviors** lists the layout's macros and mod morphs, a card each, kind by kind, on a
-  key that shows what it types. Each names its layer and key, or its combo. The board is under the
+- **Special Behaviors** has two cards for how the layout's one-shots end, **One-shot layers** and
+  **One-shot keys**: as the next key goes down or not, whether they stay on while a modifier is
+  pressed, and after how many milliseconds unused. After them it lists the layout's adaptive keys,
+  alt repeats, macros and mod morphs, and its sentence spaces, a card each, kind by kind, on a key
+  that shows what it types. Each names its layer and key, or its combo. The board is under the
   cards, as on **Combos**: pick one and the board turns to its layer with the key selected, or
   opens its combo, with the editor beside the board, and the card is marked. A key or combo picked
-  on the board scrolls its card into view in the strip. A
-  shift key that starts caps word is one of the mod morphs. Adaptive keys and alt repeats make a
-  layout Special too, but need a ZMK module, so **External Behaviors** lists them.
-- **External Behaviors** turns on sentence case, which needs a ZMK module its card links, and lists
-  the layout's adaptive keys and alt repeats, a card each, which need one too, linked in the key
-  editor. It has the board under its cards too: pick a use and the board turns to that layer with
-  the key selected, as in **Special Behaviors**. Caps
-  word is not here: it is a key, made with its tile like any other.
+  on the board scrolls its card into view in the strip. A shift key that starts caps word is one of
+  the mod morphs. Adaptive keys, alt repeats and sentence spaces need a ZMK module, linked in the
+  key editor. Caps word and the sentence space are keys, made with their tiles like any other, on
+  any key, and not switches.
 - **Typing paths** list the other ways a character can be typed, a card for each, with the character
   on a key at its left. Left alone, a character is typed
   the cheapest way from where the typist is: the fewest presses, then the one that leaves no layer
   key held, then the one that makes the fewest same-finger pairs with the keys before it in the
   word, then the less effort. Drag or use the arrows to put one way first instead, and that order
-  is kept.
-- **Physical Layout** is the board itself, in cards: the **preset**, the **keys** of the board, which keys
-  are space and shift, and how the one-shots end. Pick another **preset**, or tap a key of the
+  is kept. Two cards come before them, for rules that hold for the whole layout: **Shift kind**, how
+  a capital is typed, with the shift key tapped once before the letter (sticky, one-shot) or held
+  while the letter goes down, and **Doubled letters**, how a letter typed twice in a row is typed,
+  with the repeat key or by tapping its key twice.
+- **Physical Layout** is the board itself, in cards: the **preset** and the **keys** of the board.
+  Pick another **preset**, or tap a key of the
   board to take it away and a **+** to add one, where a preset of the same kind has a key the board lacks. A key
   can go only if it is Transparent or None on every layer and nothing else uses it: not a combo,
-  the space or shift key, or a feature's key. A key in use is grayed, and says why when you tap or point
+  or the space or shift key. A key in use is grayed, and says why when you tap or point
   at it. Keys keep their names, not their places: a preset of another kind, such as a row-stagger
   board, may put a kept key under another finger. A preset that would lose a key in use is refused,
-  with the key named. A key the board gains starts empty. The next card says which keys are space
-  and shift, the kind of shift, and how doubled letters are typed, and **One-shot layers** and
-  **One-shot keys** say how the layout's one-shots end: as the next key goes down or not, whether
-  they stay on while a modifier is pressed, and after how many milliseconds unused.
+  with the key named. A key the board gains starts empty. Which keys are space and shift is not
+  set: the space key is a key that types a space on the base layer, a thumb if there is one, and
+  the shift key one that taps or holds Shift there. A layout keeps the ones it was made with while
+  they still do that, and takes others when they stop; with no key that shifts, it has no shift
+  key, and **Shift kind** under **Typing paths** waits for one.
 - **JSON** shows the whole layout as LayerBench JSON or as a keymap-drawer file, in a text card
   that scrolls inside itself, beside the card with its buttons.
 

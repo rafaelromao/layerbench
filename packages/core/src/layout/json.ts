@@ -7,7 +7,6 @@ import type {
   GeometryRef,
   LayerDef,
   Layout,
-  LayoutFeatures,
   TypingPathEntry,
 } from './types.js';
 
@@ -144,17 +143,6 @@ function triggerToJson(t: AdaptiveTrigger): Record<string, unknown> {
   return compact({ afterAny: t.afterAny, afterTags: t.afterTags, binding });
 }
 
-/**
- * Absent when the layout declares no features, so existing documents stay byte-identical. Fields
- * are written in the schema's order, so a document reads back to exactly the bytes it was.
- */
-function featuresToJson(f: LayoutFeatures): Record<string, unknown> {
-  const s = f.sentenceCase;
-  return compact({
-    sentenceCase: s && compact({ enabled: s.enabled ?? true, key: s.key, on: s.on }),
-  });
-}
-
 function layerToJson(l: LayerDef): Record<string, unknown> {
   const bindings: Record<string, unknown> = {};
   for (const [k, b] of Object.entries(l.bindings)) bindings[k] = bindingToJson(b);
@@ -223,7 +211,6 @@ export function toCanonicalJson(layout: Layout): LayoutJson {
     keys: { space: layout.keys.space, shift: layout.keys.shift ?? null },
     behaviorDefaults,
     layers: layout.layers.map(layerToJson),
-    features: featuresToJson(layout.features ?? {}),
     combos: (layout.combos ?? []).map(comboToJson),
     conditionalLayers: (layout.conditionalLayers ?? []).map((c) => ({ if: c.if, then: c.then })),
     typingPaths,

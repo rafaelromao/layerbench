@@ -56,7 +56,7 @@ describe('One link, the same analysis settings in every view', () => {
     renderRoute(`/library?${LINK}`, { storage: freshStorage(), client: new RecordingClient() });
     // A card's link opens its layout in Analyze.
     const card = await waitFor(() => {
-      const links = screen.getAllByRole('link', { name: /^Open / }) as HTMLAnchorElement[];
+      const links = screen.getAllByRole('link', { name: /^Analyze / }) as HTMLAnchorElement[];
       const found = links.find((l) => new URL(l.href).searchParams.has('layout'));
       if (!found) throw new Error('no card yet');
       return found;

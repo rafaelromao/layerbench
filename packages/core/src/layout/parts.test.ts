@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { heldPart, partOf } from './parts.js';
+import { heldPart, partOf, plainPath } from './parts.js';
 import type { Binding } from './types.js';
 
 const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
@@ -90,5 +90,33 @@ describe('the part a hold reaches', () => {
   it('is nothing for a key that does the same held as tapped', () => {
     expect(heldPart(a)).toBeNull();
     expect(heldPart({ kind: 'mod_morph', mods: ['LSHIFT'], default: a, morphed: b })).toBeNull();
+  });
+});
+
+describe('plainPath', () => {
+  const tap: Binding = { kind: 'adaptive', default: { kind: 'key_repeat' }, triggers: [] };
+  const hold: Binding = { kind: 'mo', layer: 'num' };
+
+  it('is the key alone when nothing chooses', () => {
+    expect(plainPath(a)).toEqual([a]);
+  });
+
+  it('goes from a tap-hold to its tap, then to an adaptive key default, and not to the rest', () => {
+    const holdTap: Binding = { kind: 'hold_tap', tap, hold };
+    const path = plainPath(holdTap);
+    expect(path[0]).toBe(holdTap);
+    expect(path[1]).toBe(tap);
+    expect(path.at(-1)).toEqual({ kind: 'key_repeat' });
+    expect(path).not.toContain(hold);
+  });
+
+  it('leaves out a binding inside one of the other branches of an adaptive key', () => {
+    const branch: Binding = { kind: 'macro', symbols: 'ões' };
+    const key: Binding = {
+      kind: 'adaptive',
+      default: { kind: 'key_repeat' },
+      triggers: [{ afterAny: ['a'], binding: branch }],
+    };
+    expect(plainPath(key)).not.toContain(branch);
   });
 });

@@ -95,21 +95,19 @@ describe('a layout written in code', () => {
     expect(rows.layers[0]).toMatchObject({ id: 'alpha1', name: 'Alpha 1' });
   });
 
-  it('carries its shift key, features, behaviour defaults, repeat policy and ways into layers', () => {
+  it('carries its shift key, behaviour defaults, repeat policy and ways into layers', () => {
     const layout = classicLayout({
       id: 'featured',
       name: 'Featured',
       geometry: '1222+2',
       byKey: { ...PIANO, R1: { kind: 'sk', mod: 'LSHIFT' } },
       shift: { key: 'R1', kind: 'sk' },
-      features: { sentenceCase: {} },
       behaviorDefaults: { sk: { quickRelease: true, releaseAfterMs: 1500 } },
       repeatPolicy: { doubledLetters: 'repeatKey' },
       activators: { alpha2: [{ from: 'base', via: 'key:base/R0' }] },
     });
 
     expect(layout.keys).toEqual({ space: 'L1', shift: { key: 'R1', kind: 'sk' } });
-    expect(layout.features).toEqual({ sentenceCase: {} });
     expect(layout.behaviorDefaults).toEqual({ sk: { quickRelease: true, releaseAfterMs: 1500 } });
     expect(layout.repeatPolicy).toEqual({ doubledLetters: 'repeatKey' });
     expect(layout.activators).toEqual({ alpha2: [{ from: 'base', via: 'key:base/R0' }] });

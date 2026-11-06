@@ -110,10 +110,13 @@ const CCEDIL_BINDINGS: Record<string, Binding> = {
 
 // ---------------------------------------------------------------- Numbers and Symbols
 
-/** The thumbs that reach the two layers from Alpha 1, as `ltn_num_spc` and `msl_sym_a2` do. */
+/**
+ * The thumbs that reach the two layers from Alpha 1, as `ltn_num_spc` and `msl_sym_a2` do. The space
+ * is the keymap's sentence space, which types a space and leaves a capital after a sentence's end.
+ */
 const SPACE_OR_NUMBERS: Binding = {
   kind: 'hold_tap',
-  tap: kp(' '),
+  tap: { kind: 'sentence_space' },
   hold: { kind: 'mo', layer: 'num' },
 };
 /**
@@ -791,10 +794,9 @@ export const SMALL_DEFS: ClassicDef[] = [
    * The firmware needs extra layers for these — pre-shifted copies of the alphas for caps word and
    * shifted Alpha 2, and a one-shot layer armed by every accent macro so the repeat key can offer
    * follow-ups — and had one for sentence case, before it was the module zmk-sentence-case. None of
-   * them is a layer a typist reaches. Sentence case is declared as a feature on the space key, which
-   * makes it a sentence space. Caps word is the `caps_word` behaviour, on the shift key in a mod
-   * morph, so shift pressed while shift is on starts it, as in its keymap, and shifted Alpha 2 is
-   * simply shift state. The `h`/`v` keys and the alt repeat are adaptive keys on their own keys, and
+   * them is a layer a typist reaches. Sentence case is a sentence space on the space key's tap. Caps
+   * word is the `caps_word` behaviour, on the shift key in a mod morph, so shift pressed while shift
+   * is on starts it, as in its keymap, and shifted Alpha 2 is simply shift state. The `h`/`v` keys and the alt repeat are adaptive keys on their own keys, and
    * the alt-repeat follow-ups match on the tag the accent macro leaves behind. What is left is the
    * layers you can see. It brings its keymap's own Numbers and Symbols, which the default layers
    * leave as they are, and its keymap's home block mods (`MAGIC_ROMAK_MODS`) in place of the default
@@ -806,8 +808,8 @@ export const SMALL_DEFS: ClassicDef[] = [
     author: 'Rafael Romão',
     geometry: '1333+2',
     base: { id: 'alpha1', name: 'Alpha 1' },
-    // Holding space reaches the numbers and holding the Alpha 2 key the symbols; the sentence-case
-    // feature makes the space's tap a sentence space, so both live on one key.
+    // Holding space reaches the numbers and holding the Alpha 2 key the symbols; the space's tap is
+    // a sentence space, so both live on one key.
     byKey: {
       ...ALPHA1_24,
       RBI: adaptiveKey('h', 'v'),
@@ -829,7 +831,6 @@ export const SMALL_DEFS: ClassicDef[] = [
       sk: { quickRelease: true, ignoreModifiers: true, releaseAfterMs: 1500 },
     },
     repeatPolicy: { doubledLetters: 'repeatKey' },
-    features: { sentenceCase: {} },
     activators: {
       alpha2: [
         { from: 'alpha1', via: 'key:alpha1/R0' },

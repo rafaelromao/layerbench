@@ -4,23 +4,21 @@ import {
   boardKeys,
   type Edit,
   exportKeymapDrawer,
-  featureModule,
   freeCondition,
   GEOMETRY_PRESET_IDS,
   geometryWithKeys,
   keysInUse,
   LAYER_COLORS,
   type LayerColor,
-  type LayoutFeatures,
   layerReachedFrom,
   legend,
+  plainPath,
   reachKeys,
   type SpecialFeature,
   type SpecialFeatureKind,
   slug,
   specialFeatures,
   toCanonicalJson,
-  type ZmkModuleId,
 } from '@layerbench/core';
 import {
   type CSSProperties,
@@ -38,7 +36,7 @@ import { layerColourOf } from '../../components/layer-colour.js';
 import type { ProducerDTO } from '../../engine/protocol.js';
 import { toast } from '../../state/toasts.js';
 import { Carousel, CarouselHint, Keycap, revealInCarousel, Slide } from './Carousel.js';
-import { LayerChips, ModuleNote, Segment, TextField } from './inspector/controls.js';
+import { LayerChips, Segment, TextField } from './inspector/controls.js';
 import { type EditAction, type EditState, shownLayer } from './reducer.js';
 
 type Send = Dispatch<EditAction>;
@@ -46,84 +44,6 @@ type Send = Dispatch<EditAction>;
 interface PanelProps {
   state: EditState;
   send: Send;
-}
-
-function FeatureRow({
-  title,
-  hint,
-  module,
-  on,
-  onToggle,
-}: {
-  title: string;
-  hint: string;
-  /** The ZMK module the feature needs, said whether it is on or off. */
-  module?: ZmkModuleId | null;
-  on: boolean;
-  onToggle: (next: boolean) => void;
-}) {
-  return (
-    <Slide
-      className="lb-slide-wide lb-slide-accent lb-feature-slide"
-      style={on ? ({ '--lb-accent': 'var(--color-primary)' } as CSSProperties) : undefined}
-    >
-      <label className="lb-feature-head">
-        <span className="lb-slide-title">{title}</span>
-        <input
-          type="checkbox"
-          aria-label={title}
-          className="toggle toggle-sm toggle-primary"
-          checked={on}
-          onChange={(e) => onToggle(e.target.checked)}
-        />
-      </label>
-      <p className="lb-feature-hint">{hint}</p>
-      {module ? <ModuleNote module={module} /> : null}
-    </Slide>
-  );
-}
-
-/**
- * External Behaviors: what needs a ZMK module of its own, as the guide says of each.
- *
- * Sentence case is declared here, and wraps the space key in ordinary bindings, so the layer list
- * stays the set of layers a typist actually reaches. Adaptive keys and alt repeats are made on their
- * keys, like any other kind of key; their uses are listed, a card each, to pick and see on the board.
- */
-export function FeaturesPanel({
-  state,
-  send,
-  onShow,
-}: PanelProps & {
-  /** Before a feature is shown on the board: a word playing there would hide it. */
-  onShow?: () => void;
-}) {
-  const f: LayoutFeatures = state.layout.features ?? {};
-  const set = (next: LayoutFeatures) =>
-    send({ type: 'edit', edit: { kind: 'setFeatures', features: next } });
-  const enabled = (v: { enabled?: boolean } | undefined) => v !== undefined && v.enabled !== false;
-  const panel = useRef<HTMLDivElement>(null);
-  const uses = useFeatureSlides(state, send, EXTERNAL_KINDS, panel, onShow);
-
-  return (
-    <div ref={panel} className="space-y-2 min-w-0">
-      <Carousel label="External behaviors">
-        <FeatureRow
-          title="Sentence case"
-          hint="After . ? or ! and a space, the next key, if a letter a–z, is a capital."
-          module={featureModule('sentenceCase')}
-          on={enabled(f.sentenceCase)}
-          onToggle={(on) => set({ ...f, sentenceCase: on ? {} : undefined })}
-        />
-        {uses}
-      </Carousel>
-      <CarouselHint>
-        Each needs a ZMK module. Sentence case goes on the space key, with no layer of its own.
-        Adaptive keys and alt repeats are made on the key, with its Adaptive or Alt repeat tile;
-        pick one here to see it on the board below.
-      </CarouselHint>
-    </div>
-  );
 }
 
 const COLOUR_NAMES: Record<LayerColor, string> = {
@@ -659,11 +579,12 @@ function GeometryBoard({ state, send }: PanelProps) {
 }
 
 /**
- * Physical Layout: the preset and the board's keys, which key is space and which shift, how doubled
- * letters are typed, and how the one-shots end, each in a card of its own.
+ * Physical Layout: the preset and the board's keys, a card each. Which keys are space and shift is
+ * not set here: they are the keys that type a space and shift. How a capital and a doubled letter
+ * are typed is in Typing paths, and how the one-shots end in Special Behaviors.
  */
 export function GeometryPanel({ state, send }: PanelProps) {
-  const { layout, compiled } = state;
+  const { layout } = state;
   const preset = 'preset' in layout.geometry ? layout.geometry.preset : 'custom';
   return (
     <div className="space-y-2 min-w-0">
@@ -710,84 +631,6 @@ export function GeometryPanel({ state, send }: PanelProps) {
         </Slide>
 
         <GeometryBoard state={state} send={send} />
-
-        <Slide className="lb-geo-fields space-y-1.5">
-          <span className="lb-slide-title block">Space, shift and doubled letters</span>
-          <div className="lb-slide-fields">
-            <label className="lb-slide-field">
-              <span>Space key</span>
-              <select
-                aria-label="Space key"
-                className="select select-xs select-bordered w-full"
-                value={layout.keys.space}
-                onChange={(e) =>
-                  send({ type: 'edit', edit: { kind: 'setKeys', space: e.target.value } })
-                }
-              >
-                {compiled.keys.map((k) => (
-                  <option key={k.id} value={k.id}>
-                    {k.id}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="lb-slide-field">
-              <span>Shift key</span>
-              <select
-                aria-label="Shift key"
-                className="select select-xs select-bordered w-full"
-                value={layout.keys.shift?.key ?? ''}
-                onChange={(e) =>
-                  send({ type: 'edit', edit: { kind: 'setKeys', shift: e.target.value || null } })
-                }
-              >
-                <option value="">—</option>
-                {compiled.keys.map((k) => (
-                  <option key={k.id} value={k.id}>
-                    {k.id}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="lb-slide-field">
-              <span>Shift kind</span>
-              <select
-                aria-label="Shift kind"
-                className="select select-xs select-bordered w-full"
-                value={layout.keys.shift?.kind ?? 'sk'}
-                onChange={(e) =>
-                  send({
-                    type: 'edit',
-                    edit: { kind: 'setKeys', shiftKind: e.target.value as 'sk' | 'hold' },
-                  })
-                }
-              >
-                <option value="sk">sticky (one-shot)</option>
-                <option value="hold">hold</option>
-              </select>
-            </label>
-            <label className="lb-slide-field">
-              <span>Doubled letters</span>
-              <select
-                aria-label="Doubled letters"
-                className="select select-xs select-bordered w-full"
-                value={layout.repeatPolicy?.doubledLetters ?? 'repeatKey'}
-                onChange={(e) =>
-                  send({
-                    type: 'edit',
-                    edit: { kind: 'setKeys', repeat: e.target.value as 'repeatKey' | 'tapTwice' },
-                  })
-                }
-              >
-                <option value="repeatKey">repeat key</option>
-                <option value="tapTwice">tap twice</option>
-              </select>
-            </label>
-          </div>
-        </Slide>
-
-        <OneShotDefaults which="sl" title="One-shot layers" state={state} send={send} />
-        <OneShotDefaults which="sk" title="One-shot keys" state={state} send={send} />
       </Carousel>
       <CarouselHint>
         Tap a key to take it away, or a + to add one. A key can go only when it is Transparent or
@@ -957,7 +800,7 @@ export function CombosPanel({
 }
 
 /**
- * Each kind of special feature, in the order the panels list them, what a slide of it says, and the
+ * Each kind of special feature, in the order the panel lists them, what a slide of it says, and the
  * theme colour of its band.
  */
 const FEATURE_GROUPS: [SpecialFeatureKind, string, string][] = [
@@ -968,28 +811,7 @@ const FEATURE_GROUPS: [SpecialFeatureKind, string, string][] = [
 ];
 
 /**
- * The tab that lists each kind of special feature: External Behaviors for the kinds whose keys need
- * a ZMK module (zmk-adaptive-key), Special Behaviors for those stock ZMK has. They make a layout
- * Special all the same: only the panels split the list. A kind added without a tab is a type error.
- */
-const TAB_OF: Record<SpecialFeatureKind, 'external' | 'special'> = {
-  adaptive: 'external',
-  alt_repeat: 'external',
-  macro: 'special',
-  mod_morph: 'special',
-};
-
-const kindsOn = (tab: 'external' | 'special') =>
-  FEATURE_GROUPS.filter(([kind]) => TAB_OF[kind] === tab).map(([kind]) => kind);
-
-/** The kinds External Behaviors lists, in the order its slides come. */
-export const EXTERNAL_KINDS: readonly SpecialFeatureKind[] = kindsOn('external');
-
-/** The kinds Special Behaviors lists. */
-export const SPECIAL_KINDS: readonly SpecialFeatureKind[] = kindsOn('special');
-
-/**
- * The layout's special features of these kinds, a slide each, kind by kind, on a key that shows what
+ * The layout's special features, a slide each, kind by kind, on a key that shows what
  * the feature's key or combo types: every use names its layer and key, or its combo, and picking it
  * shows it on the board under the strip — the key selected on its layer, or the combo open, as the
  * Combos tab opens one. The slide of the key or combo open is the current one, brought into view in
@@ -998,7 +820,6 @@ export const SPECIAL_KINDS: readonly SpecialFeatureKind[] = kindsOn('special');
 function useFeatureSlides(
   state: EditState,
   send: Send,
-  kinds: readonly SpecialFeatureKind[],
   panel: RefObject<HTMLElement | null>,
   onShow?: () => void,
 ): ReactNode[] {
@@ -1015,7 +836,7 @@ function useFeatureSlides(
         : `${compiled.layers[state.layer]?.id} ${state.selected}`;
   // Whether the open key or combo has a slide here: one that appears for it, as a key is given a
   // macro, is brought into view too.
-  const hasSlide = features.some((f) => kinds.includes(f.feature) && placeAt(f) === openAt);
+  const hasSlide = features.some((f) => placeAt(f) === openAt);
   useEffect(() => {
     if (openAt === '' || !hasSlide) return;
     // A key can hold two features: the first of its slides is the one brought into view.
@@ -1046,18 +867,26 @@ function useFeatureSlides(
     send({ type: 'selectLayer', layer });
     send({ type: 'keyClick', keyId: f.key });
   };
-  /** What the feature's key, or its combo, types, as the board would draw it. */
+  /**
+   * What the feature types, as the board would draw it: its key, or its combo. A use inside one of
+   * the key's other branches, such as the macro an alt repeat types after a letter, is not what its
+   * key is drawn as, so it is drawn as what it types itself.
+   */
   const typedBy = (f: SpecialFeature) => {
     let binding: Binding | undefined;
+    let held: Binding | undefined;
     if (f.combo !== undefined) {
-      binding =
-        f.comboIndex === undefined ? undefined : state.layout.combos?.[f.comboIndex]?.binding;
+      held = f.comboIndex === undefined ? undefined : state.layout.combos?.[f.comboIndex]?.binding;
+      binding = held;
     } else {
       const layer = f.layer === undefined ? undefined : compiled.layerIndex.get(f.layer);
       const key = f.key === undefined ? undefined : compiled.keyIndex.get(f.key);
       binding =
         layer === undefined || key === undefined ? undefined : compiled.layers[layer].bindings[key];
+      const bindings = layer === undefined ? undefined : state.layout.layers[layer]?.bindings;
+      held = f.key === undefined ? undefined : (bindings?.[f.key] ?? bindings?.['*']);
     }
+    if (held && !plainPath(held).includes(f.binding)) binding = f.binding;
     return binding ? legend(compiled, binding) : null;
   };
   const placeOf = (f: SpecialFeature) => {
@@ -1066,7 +895,7 @@ function useFeatureSlides(
     return `${layer === undefined ? f.layer : compiled.layers[layer].name} · ${f.key}`;
   };
 
-  return FEATURE_GROUPS.filter(([kind]) => kinds.includes(kind)).flatMap(([kind, title, accent]) =>
+  return FEATURE_GROUPS.flatMap(([kind, title, accent]) =>
     features
       .filter((f) => f.feature === kind)
       .map((f, i) => {
@@ -1109,7 +938,11 @@ function useFeatureSlides(
   );
 }
 
-/** Behaviors: the layout's special features that stock ZMK has. */
+/**
+ * Special Behaviors: how the layout's one-shot layers and keys end, a card each, and then every use
+ * of an adaptive key, alt repeat, macro, mod morph and sentence space, a card each, to pick and see
+ * on the board.
+ */
 export function BehaviorsPanel({
   state,
   send,
@@ -1119,26 +952,76 @@ export function BehaviorsPanel({
   onShow?: () => void;
 }) {
   const panel = useRef<HTMLElement>(null);
-  const slides = useFeatureSlides(state, send, SPECIAL_KINDS, panel, onShow);
+  const slides = useFeatureSlides(state, send, panel, onShow);
   return (
     <section ref={panel} className="space-y-2 min-w-0" aria-label="Special features">
       <Carousel label="Special behaviors">
+        <OneShotDefaults which="sl" title="One-shot layers" state={state} send={send} />
+        <OneShotDefaults which="sk" title="One-shot keys" state={state} send={send} />
         {slides.length === 0 && (
-          <Slide className="lb-slide-wide text-xs">This layout has no macros or mod morphs.</Slide>
+          <Slide className="lb-slide-wide text-xs">
+            This layout has no adaptive keys, alt repeats, macros, mod morphs or sentence spaces.
+          </Slide>
         )}
         {slides}
       </Carousel>
       <CarouselHint>
-        Pick one to see it on the board below: its layer turned up with the key selected, or the
-        combo open.
+        The one-shot cards say how the layout's one-shots end. Pick a use to see it on the board
+        below: its layer turned up with the key selected, or the combo open. Adaptive keys, alt
+        repeats and sentence spaces need a ZMK module, linked in the key editor.
       </CarouselHint>
     </section>
   );
 }
 
+/** A rule for how the whole layout is typed: its choice in a select, and what each choice means. */
+function TypingRule({
+  title,
+  hint,
+  value,
+  options,
+  onChange,
+  disabled = false,
+}: {
+  title: string;
+  hint: string;
+  value: string;
+  options: [value: string, label: string][];
+  onChange: (value: string) => void;
+  /** The rule has nothing to act on: the select stays, so it is found, and says why in its hint. */
+  disabled?: boolean;
+}) {
+  const hintId = useId();
+  return (
+    <Slide className="lb-slide-wide space-y-1.5">
+      <label className="block space-y-1.5">
+        <span className="lb-slide-title block">{title}</span>
+        <select
+          aria-label={title}
+          aria-describedby={hintId}
+          className="select select-sm select-bordered w-full"
+          value={value}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value)}
+        >
+          {options.map(([v, label]) => (
+            <option key={v} value={v}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <span id={hintId} className="block text-[11px] opacity-60">
+          {hint}
+        </span>
+      </label>
+    </Slide>
+  );
+}
+
 /**
- * Typing paths: which producer wins when a symbol can be typed more than one way. A slide for each
- * such symbol, drawn on a key at its left, with the ways it can be typed beside it.
+ * Typing paths: how a capital and a doubled letter are typed, in a card each, and which producer
+ * wins when a symbol can be typed more than one way: a slide for each such symbol, drawn on a key at
+ * its left, with the ways it can be typed beside it.
  */
 export function PathsPanel({
   state,
@@ -1177,6 +1060,41 @@ export function PathsPanel({
   return (
     <div className="space-y-2 min-w-0">
       <Carousel label="Typing paths">
+        <TypingRule
+          title="Shift kind"
+          hint={
+            state.layout.keys.shift
+              ? 'How a capital is typed: with the shift key tapped once before the letter, or held while the letter goes down.'
+              : 'This layout has no shift key. A key that taps or holds Shift makes one.'
+          }
+          disabled={!state.layout.keys.shift}
+          value={state.layout.keys.shift?.kind ?? 'sk'}
+          options={[
+            ['sk', 'sticky (one-shot)'],
+            ['hold', 'hold'],
+          ]}
+          onChange={(shiftKind) =>
+            send({
+              type: 'edit',
+              edit: { kind: 'setKeys', shiftKind: shiftKind as 'sk' | 'hold' },
+            })
+          }
+        />
+        <TypingRule
+          title="Doubled letters"
+          hint="How a letter typed twice in a row is typed: with the repeat key, or by tapping its key twice."
+          value={state.layout.repeatPolicy?.doubledLetters ?? 'repeatKey'}
+          options={[
+            ['repeatKey', 'repeat key'],
+            ['tapTwice', 'tap twice'],
+          ]}
+          onChange={(repeat) =>
+            send({
+              type: 'edit',
+              edit: { kind: 'setKeys', repeat: repeat as 'repeatKey' | 'tapTwice' },
+            })
+          }
+        />
         {multi.length === 0 && (
           <Slide className="lb-slide-wide text-xs">Every symbol has a single producer.</Slide>
         )}

@@ -70,14 +70,8 @@ function edits(target: Layout): Edit[] {
     out.push({ kind: 'updateCombo', combo: i, layers: c.layers, timeoutMs: c.timeoutMs });
   }
   const { keys, repeatPolicy } = target;
-  out.push({
-    kind: 'setKeys',
-    space: keys.space,
-    shift: keys.shift?.key ?? null,
-    shiftKind: keys.shift?.kind,
-    repeat: repeatPolicy?.doubledLetters,
-  });
-  if (target.features) out.push({ kind: 'setFeatures', features: target.features });
+  // Which keys are space and shift follow from the keys bound above: only how shift is used is set.
+  out.push({ kind: 'setKeys', shiftKind: keys.shift?.kind, repeat: repeatPolicy?.doubledLetters });
   if (target.behaviorDefaults) {
     out.push({ kind: 'setBehaviorDefaults', defaults: target.behaviorDefaults });
   }

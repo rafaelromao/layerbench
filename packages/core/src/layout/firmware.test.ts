@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bindingModule, featureModule, moduleUrl, ZMK_MODULES } from './firmware.js';
+import { bindingModule, moduleUrl, ZMK_MODULES } from './firmware.js';
 import type { BindingKind } from './types.js';
 
 /** The kinds stock ZMK has a behaviour for. */
@@ -38,12 +38,6 @@ describe('the ZMK module a binding needs', () => {
   it("names zmk-sentence-case for a sentence space and a sentence morph, the module's own", () => {
     expect(bindingModule('sentence_space')).toBe('sentenceCase');
     expect(bindingModule('sentence_morph')).toBe('sentenceCase');
-  });
-});
-
-describe('the ZMK module a feature needs', () => {
-  it('is zmk-sentence-case for sentence case', () => {
-    expect(featureModule('sentenceCase')).toBe('sentenceCase');
   });
 });
 

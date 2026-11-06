@@ -60,7 +60,6 @@ import { KeyInspector } from '../edit/inspector/KeyInspector.js';
 import {
   BehaviorsPanel,
   CombosPanel,
-  FeaturesPanel,
   GeometryPanel,
   JsonPanel,
   LayersPanel,
@@ -105,7 +104,6 @@ const PANELS: [Panel, string, HelpTopic][] = [
   ['layers', 'Layers', HELP.layers],
   ['combos', 'Combos', HELP.panels],
   ['behaviors', 'Special Behaviors', HELP.panels],
-  ['features', 'External Behaviors', HELP.features],
   ['paths', 'Typing paths', HELP.panels],
   ['geometry', 'Physical Layout', HELP.panels],
   ['json', 'JSON', HELP.exporting],
@@ -772,13 +770,9 @@ export function Workbench({
   };
 
   const onBoard = state.panel === 'board';
-  // Combos draws the board under its strip of combos, to pick a combo's keys on. The two behavior
-  // tabs draw it under theirs, to show the key or combo picked.
-  const showBoard =
-    onBoard ||
-    state.panel === 'combos' ||
-    state.panel === 'behaviors' ||
-    state.panel === 'features';
+  // Combos draws the board under its strip of combos, to pick a combo's keys on. Special Behaviors
+  // draws it under its own, to show the key or combo picked.
+  const showBoard = onBoard || state.panel === 'combos' || state.panel === 'behaviors';
   const editorPanel = (
     <div
       role="tabpanel"
@@ -787,9 +781,6 @@ export function Workbench({
       className="min-w-0"
     >
       {state.panel === 'layers' && <LayersPanel state={state} send={send} />}
-      {state.panel === 'features' && (
-        <FeaturesPanel state={state} send={send} onShow={showOnBoard} />
-      )}
       {state.panel === 'geometry' && <GeometryPanel state={state} send={send} />}
       {state.panel === 'combos' && <CombosPanel state={state} send={send} onShow={showOnBoard} />}
       {state.panel === 'behaviors' && (

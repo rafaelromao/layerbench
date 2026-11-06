@@ -1,4 +1,3 @@
-import type { WrappingFeature } from './features.js';
 import type { BindingKind } from './types.js';
 
 /**
@@ -58,17 +57,4 @@ const BINDING_MODULES: Record<BindingKind, ZmkModuleId | null> = {
 /** The ZMK module a binding of this kind needs, or null when stock ZMK has it. */
 export function bindingModule(kind: BindingKind): ZmkModuleId | null {
   return BINDING_MODULES[kind];
-}
-
-/**
- * The module each feature needs, or null where stock ZMK has it. Sentence case makes the space key
- * zmk-sentence-case's `&sentence_space`.
- */
-const FEATURE_MODULES: Record<WrappingFeature, ZmkModuleId | null> = {
-  sentenceCase: 'sentenceCase',
-};
-
-/** The ZMK module a feature needs, or null when stock ZMK has it. */
-export function featureModule(feature: WrappingFeature): ZmkModuleId | null {
-  return FEATURE_MODULES[feature];
 }

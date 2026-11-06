@@ -53,8 +53,6 @@ export interface ClassicDef {
   homeRowMods?: false | Readonly<Record<string, Mod | Binding>>;
   /** The shift key, when the layout has one of its own. */
   shift?: Layout['keys']['shift'];
-  /** Typing behaviours declared rather than built of layers: sentence case. */
-  features?: Layout['features'];
   /** How long one-shot layers and keys wait, and what releases them. */
   behaviorDefaults?: Layout['behaviorDefaults'];
   /** Whether a doubled letter is typed with the repeat key. */
@@ -371,7 +369,6 @@ export function classicLayout(def: ClassicDef): Layout {
     .join(' ');
   if (def.link) layout.link = def.link;
   if (def.shift) layout.keys = { ...layout.keys, shift: def.shift };
-  if (def.features) layout.features = def.features;
   if (def.behaviorDefaults) layout.behaviorDefaults = def.behaviorDefaults;
   if (def.repeatPolicy) layout.repeatPolicy = def.repeatPolicy;
   if (def.activators) layout.activators = def.activators;

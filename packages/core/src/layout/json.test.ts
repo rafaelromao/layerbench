@@ -187,7 +187,7 @@ describe('a layer morph in the document', () => {
   });
 });
 
-describe('caps word in a document from before it was only a behaviour', () => {
+describe('features in a document from before they were only behaviours', () => {
   const shiftShift = {
     kind: 'mod_morph',
     mods: ['LSHIFT', 'RSHIFT'],
@@ -201,31 +201,33 @@ describe('caps word in a document from before it was only a behaviour', () => {
     features: { sentenceCase: { enabled: true }, capsWord: { continueList: ['_', 'Backspace'] } },
   };
 
-  it('is read as the mod morph on the shift key it made, whichever way it is read', () => {
+  it('is read as the sentence space and the mod morph they made, whichever way it is read', () => {
     for (const layout of [parseLayout(written), safeParseLayout(written)]) {
       const read = 'ok' in layout ? (layout.ok ? layout.layout : undefined) : layout;
       expect(read?.layers[0].bindings.R1).toEqual(shiftShift);
-      expect(read?.features).toEqual({ sentenceCase: { enabled: true } });
+      expect(read?.layers[0].bindings.L0).toEqual({ kind: 'sentence_space' });
+      expect(read && 'features' in read).toBe(false);
     }
   });
 
-  it('is written back as that morph, with no caps word declared, and reads back as it is', () => {
+  it('is written back as those bindings, with no features declared, and reads back as it is', () => {
     const once = toCanonicalJson(parseLayout(written));
-    expect(once.features).toEqual({ sentenceCase: { enabled: true } });
+    expect('features' in once).toBe(false);
     const bindings = (once.layers as { bindings: Record<string, unknown> }[])[0].bindings;
     expect(bindings.R1).toMatchObject({ kind: 'mod_morph', mods: ['LSHIFT', 'RSHIFT'] });
+    expect(bindings.L0).toEqual({ kind: 'sentence_space' });
     expect(toCanonicalJson(parseLayout(once))).toEqual(once);
   });
 
-  it('keeps Magic Breeze, a stored layout that declared it, typing as Magic Romak does', () => {
+  it('keeps Magic Breeze, a stored layout that declared them, typing as Magic Romak does', () => {
     const breeze = parseLayout(breezeJson);
-    expect(breeze.features).toEqual({ sentenceCase: { enabled: true } });
+    expect('features' in breeze).toBe(false);
     expect(breeze.layers[0].bindings.R1).toEqual(
       bundledLayout('magic-romak')?.layers[0].bindings.R1,
     );
   });
 
-  it('leaves a layout without it, and a read layout with it off, as they are', () => {
+  it('leaves a layout without caps word, and a read layout with it off, as they are', () => {
     const plain = { ...written, features: { sentenceCase: { enabled: true } } };
     expect(parseLayout(plain).layers[0].bindings.R1).toEqual({ kind: 'sk', mod: 'LSHIFT' });
     const off = { ...written, features: { capsWord: { enabled: false } } };
@@ -246,8 +248,9 @@ describe('sentence case in the document', () => {
     const parsed = safeParseLayout(doc({ sentenceCase: { after: ['.', ';'], mod: 'LCTRL' } }));
     expect(parsed.ok, parsed.ok ? '' : parsed.error).toBe(true);
     if (parsed.ok) {
-      expect(parsed.layout.features).toEqual({ sentenceCase: {} });
-      expect(toCanonicalJson(parsed.layout).features).toEqual({ sentenceCase: { enabled: true } });
+      expect(parsed.layout.layers[0].bindings.L0).toEqual({ kind: 'sentence_space' });
+      expect('features' in parsed.layout).toBe(false);
+      expect('features' in toCanonicalJson(parsed.layout)).toBe(false);
     }
   });
 
@@ -572,15 +575,13 @@ describe('a document saved while layouts named bindings of their own', () => {
     });
   });
 
-  it('puts a feature on the tap of a named tap-hold on its key, as on any other key', () => {
+  it('puts a sentence space declared as a feature on the tap of a named tap-hold, as on any key', () => {
     const spaceHold = { kind: 'hold_tap', tap: kp(' '), hold: { kind: 'mod', mod: 'LCTRL' } };
     const layout = parseLayout({
       ...saved({ L0: { kind: 'ref', ref: 'spaceHold' } }, { spaceHold }),
       features: { sentenceCase: {} },
     });
-    expect(layout.layers[0].bindings.L0).toEqual(spaceHold);
-    const space = compileLayout(layout).expanded.layers[0].bindings.L0;
-    expect(space).toMatchObject({ kind: 'hold_tap', tap: { kind: 'sentence_space' } });
+    expect(layout.layers[0].bindings.L0).toEqual({ ...spaceHold, tap: { kind: 'sentence_space' } });
   });
 
   it('keeps a document that names nothing whole, however deep its bindings nest', () => {
