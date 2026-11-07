@@ -308,18 +308,20 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
           Or the address of the file on GitHub: its page, or its Raw link. Nothing is fetched until
           you press Fetch.
         </p>
-        {/* Always there, so that what is put in it is announced. */}
+        {/* Always there, so that what is put in it is announced: that the file is coming, and
+            where the text in the box came from once it has. A failure is the alert below. */}
         <p role="status" className="text-xs opacity-70 empty:sr-only">
-          {fetching ? 'Fetching the file…' : null}
+          {fetching ? (
+            'Fetching the file…'
+          ) : source ? (
+            <>
+              Read from <span className="font-mono break-all">{source}</span>.
+            </>
+          ) : null}
         </p>
         {addressError && (
           <p id={errorId} role="alert" className="text-error text-xs">
             {addressError}
-          </p>
-        )}
-        {source && !fetching && (
-          <p className="text-[11px] opacity-60">
-            Read from <span className="font-mono break-all">{source}</span>.
           </p>
         )}
       </form>

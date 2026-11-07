@@ -155,8 +155,9 @@ describe('Importing a keymap-drawer file by its address', () => {
 
     release(plain(KEYMAP));
     await waitFor(() => expect(yamlBox().value).toBe(KEYMAP));
-    // The region stays, empty, for the next announcement.
-    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    // The region stays, and now says where the text came from: that is announced too.
+    expect(screen.getByRole('status')).toHaveTextContent(`Read from ${RAW}.`);
+    expect(screen.getByRole('status')).not.toHaveTextContent('Fetching');
     expect(fetchButton()).toHaveTextContent('Fetch');
     expect(fetchButton()).toBeEnabled();
     expect(fetchButton()).not.toHaveAttribute('aria-disabled');
@@ -517,6 +518,48 @@ describe('Importing a keymap-drawer file by its address', () => {
     await waitFor(() => expect(yamlBox().value).toBe(KEYMAP));
     expect(yamlBox()).toHaveFocus();
   }, 60_000);
+
+  describe('when the reader chooses a file instead', () => {
+    /** A .yaml file of the reader's own, chosen with the button. */
+    const chosen = (text: string) => {
+      const file = new File([text], 'board.yaml', { type: 'application/yaml' });
+      // The component reads it with `file.text()`, which jsdom's File may not have.
+      if (typeof file.text !== 'function') file.text = async () => text;
+      return file;
+    };
+    const chooser = () => screen.getByLabelText('Choose a .yaml file');
+
+    it('wins over a request still out, and the late answer is dropped', async () => {
+      const user = userEvent.setup();
+      const held = holding(false);
+      render(<KeymapDrawerImport onImport={vi.fn()} />);
+      await fetchFrom(user, RAW);
+      expect(screen.getByRole('status')).toHaveTextContent('Fetching the file…');
+
+      await user.upload(chooser(), chosen('layers: [a, b'));
+      await screen.findByText(/line 1: unclosed \[/);
+      expect(held[0].signal.aborted).toBe(true);
+      expect(screen.getByRole('status')).toBeEmptyDOMElement();
+      expect(fetchButton()).toBeEnabled();
+
+      held[0].resolve(plain(KEYMAP));
+      await settle();
+      expect(yamlBox().value).toBe('layers: [a, b');
+      expect(screen.queryByText(/^Read from/)).toBeNull();
+    });
+
+    it('is not the file an address gave, so where that came from is no longer said', async () => {
+      const user = userEvent.setup();
+      serving(() => plain(KEYMAP));
+      render(<KeymapDrawerImport onImport={vi.fn()} />);
+      await fetchFrom(user, RAW);
+      await screen.findByText(/^Read from/);
+
+      await user.upload(chooser(), chosen(KEYMAP));
+      await waitFor(() => expect(screen.queryByText(/^Read from/)).toBeNull());
+      expect(yamlBox().value).toBe(KEYMAP);
+    }, 60_000);
+  });
 
   it('does not share the name of the box for the file, which a substring query would find twice', () => {
     // Playwright's getByLabel matches a substring, as this regular expression does: the phone
