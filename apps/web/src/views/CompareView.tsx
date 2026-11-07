@@ -308,7 +308,7 @@ export function CompareView() {
                       >
                         <td>
                           <div className="font-medium">{row.label}</div>
-                          <div className="text-[10px] uppercase tracking-wide opacity-50">
+                          <div className="text-[10px] uppercase tracking-wide opacity-60">
                             {row.family}
                           </div>
                         </td>

@@ -9,11 +9,12 @@
  *
  * The dark one's three surfaces (page and cards, hover and bars, borders) are 5 points of lightness
  * above where they were (30.33%, 25.26%, 20.15%), by the same step, so each still reads as its own
- * layer; to nudge the page, move all three by the same amount. What was drawn in a colour on the
- * old page keeps its contrast: key caps stay as they were (`--lb-key-bg`), primary's edges and rings
- * take a lighter shade of it (`--lb-ring`), and secondary, accent, neutral, info, success and error
- * are lifted a little (secondary and accent, which only ever draw outline badges and slide bands,
- * to text contrast).
+ * layer; to nudge the page, move all three by the same amount. What passed 3:1 or 4.5:1 on the old
+ * page still does: key caps stay as they were (`--lb-key-bg`), primary's edges and rings take a
+ * lighter shade of it (`--lb-ring`), and secondary, accent, neutral, info, success and error are
+ * lifted (secondary and accent, which only ever draw outline badges and slide bands, to text
+ * contrast). Mid-tone text that already fell short on the old page, such as `text-error`, falls a
+ * little further.
  */
 @plugin "daisyui/theme" {
   name: "dark";
@@ -179,7 +180,7 @@
   --lb-layer-ink: var(--color-base-300);
   /* Primary drawn as an edge: a selected or current ring, a focus outline, a hover border. Primary
      itself carries the text on a button and the heat on a key, so it stays mid-tone; its edges take
-     the lighter shade of this theme that holds 3:1 on every surface. */
+     the lighter shade of this theme that holds 3:1 on every surface, at full strength. */
   --lb-ring: oklch(70% 0.16 277.117);
   --lb-key-stroke: color-mix(in oklab, var(--color-base-content) 18%, transparent);
   --lb-heat: var(--color-primary);
@@ -235,6 +236,10 @@
   --lb-layer-5: oklch(0.5 0.16 305);
   --lb-layer-6: oklch(0.5 0.1 200);
   --lb-layer-7: oklch(0.5 0.13 120);
+}
+/* daisyUI outlines a focused primary button in primary, which the lighter page leaves under 3:1. */
+.btn-primary:focus-visible {
+  outline-color: var(--lb-ring);
 }
 
 .lb-keyboard {

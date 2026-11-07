@@ -136,6 +136,22 @@ describe('the dark theme keeps its contrast', () => {
         `${opacity} on a key`,
       ).toBeGreaterThanOrEqual(4.5);
     }
+    // A zebra row, a hovered menu item (the text colour at 10% over the page) and the selected one
+    // (neutral): the grounds the sub-labels in the Compare table and the corpus list sit on.
+    const zebra = rgb('--color-base-200');
+    const hovered = faded(text(), page(), 0.1);
+    const selected = rgb('--color-neutral');
+    expect(ratio(faded(text(), zebra, 0.6), zebra), '0.6 on a zebra row').toBeGreaterThanOrEqual(
+      4.5,
+    );
+    expect(
+      ratio(faded(text(), hovered, 0.7), hovered),
+      '0.7 on a hovered item',
+    ).toBeGreaterThanOrEqual(4.5);
+    expect(
+      ratio(faded(rgb('--color-neutral-content'), selected, 0.7), selected),
+      '0.7 on the selected item',
+    ).toBeGreaterThanOrEqual(4.5);
   });
 
   it('keeps each layer colour readable: a name on the page, a mark on a key, its number inside', () => {
