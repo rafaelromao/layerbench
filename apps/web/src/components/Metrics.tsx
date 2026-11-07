@@ -283,34 +283,31 @@ function MetricBody({
             const keys = describeItem?.(item) ?? null;
             const own = item.then ? `${item.label}: what its last key was pressed for` : item.label;
             return (
-              <li
-                // biome-ignore lint/suspicious/noArrayIndexKey: rank is the identity of a row
-                key={`${item.label}-${i}`}
-                className={`flex items-center ${large && keys ? 'flex-wrap gap-x-2' : 'gap-2'} ${text}`}
-              >
-                <button
-                  type="button"
-                  title={keys ? `${own}\n${keys}` : own}
-                  // A pair ending on a layer key opens what that key was pressed for.
-                  aria-haspopup={item.then ? 'dialog' : undefined}
-                  onClick={() => onHighlightItem?.(result.id, i)}
-                  className={`font-mono text-left ${large ? 'w-48 break-words' : 'w-16 truncate'} ${
-                    item.then ? 'underline decoration-dotted underline-offset-2' : ''
-                  } ${selectedItem === i ? 'text-primary font-bold' : ''}`}
-                >
-                  {item.label}
-                </button>
-                <div
-                  className={`flex-1 rounded bg-base-200 overflow-hidden ${large ? 'h-2.5' : 'h-1.5'}`}
-                >
-                  <div className="h-full bg-primary/60" style={{ width: `${width}%` }} />
+              // biome-ignore lint/suspicious/noArrayIndexKey: rank is the identity of a row
+              <li key={`${item.label}-${i}`} className={text}>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    title={keys ? `${own}\n${keys}` : own}
+                    // A pair ending on a layer key opens what that key was pressed for.
+                    aria-haspopup={item.then ? 'dialog' : undefined}
+                    onClick={() => onHighlightItem?.(result.id, i)}
+                    className={`font-mono text-left ${large ? 'w-48 break-words' : 'w-16 truncate'} ${
+                      item.then ? 'underline decoration-dotted underline-offset-2' : ''
+                    } ${selectedItem === i ? 'text-primary font-bold' : ''}`}
+                  >
+                    {item.label}
+                  </button>
+                  <div
+                    className={`flex-1 rounded bg-base-200 overflow-hidden ${large ? 'h-2.5' : 'h-1.5'}`}
+                  >
+                    <div className="h-full bg-primary/60" style={{ width: `${width}%` }} />
+                  </div>
+                  <span className="font-mono tabular-nums opacity-70 w-16 text-right">
+                    {formatItem(item)}
+                  </span>
                 </div>
-                <span className="font-mono tabular-nums opacity-70 w-16 text-right">
-                  {formatItem(item)}
-                </span>
-                {large && keys && (
-                  <p className="basis-full text-xs font-mono opacity-60 break-words">{keys}</p>
-                )}
+                {large && keys && <p className="font-mono opacity-60 break-words">{keys}</p>}
               </li>
             );
           })}

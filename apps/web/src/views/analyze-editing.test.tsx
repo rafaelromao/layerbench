@@ -2393,6 +2393,8 @@ describe('Analyze, while editing', () => {
       if (ending) break;
     }
     expect(ending, 'a pair through the key that ends on a layer key').toBeDefined();
+    // The row names the keys of the pair, as a card's does.
+    expect(ending?.getAttribute('title')).toMatch(/ → /);
     await user.click(ending as HTMLElement);
     const dialog = await screen.findByRole('dialog', {
       name: new RegExp(`^${ending?.textContent}`),

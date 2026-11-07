@@ -45,8 +45,11 @@ export function KeyStats({
   stats,
   updating,
   onSelectItem,
+  typed = compiled,
 }: {
   compiled: CompiledLayout;
+  /** The layout the lists were counted on: `compiled` less the features switched off. */
+  typed?: CompiledLayout;
   report: ReportDTO;
   keyId: string;
   layer: number;
@@ -142,7 +145,7 @@ export function KeyStats({
                   {open === result.id && list && (
                     <KeyItems
                       label={`${result.label} through ${keyId} on ${layerName}`}
-                      compiled={compiled}
+                      compiled={typed}
                       items={list.items}
                       busy={updating}
                       onSelect={(item) => onSelectItem?.({ ruleId: result.id, item })}

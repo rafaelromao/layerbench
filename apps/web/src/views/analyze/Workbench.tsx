@@ -638,6 +638,7 @@ export function Workbench({
     shown && state.selected !== null ? (
       <KeyStats
         compiled={state.compiled}
+        typed={typedCompiled}
         report={shown}
         keyId={state.selected}
         layer={state.layer}

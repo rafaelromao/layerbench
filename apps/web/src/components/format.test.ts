@@ -38,11 +38,43 @@ describe('describeKeys', () => {
     expect(named?.startsWith('L0 (space / Numb) →')).toBe(true);
   });
 
-  it('names a combo by the id its position has', () => {
+  it('names a combo by the keys pressed together, not the id it is stored under', () => {
     const combo = compiled.combos[0];
-    const id = compiled.positions[combo.pos].id;
+    const id = combo.keys.map((k) => compiled.positions[k].id).join('+');
     const named = describeKeys(compiled, { label: 'x', keys: [combo.pos, at('L0')] });
     expect(named?.startsWith(`${id} (`)).toBe(true);
+    expect(named).not.toContain('combo:');
     expect(named).toContain('→ L0 (space / Numb)');
+  });
+
+  it('finds the finger a chord shares with a key, as the rules do', () => {
+    const t34 = compileLayout(
+      bundledLayout('t-34') as NonNullable<ReturnType<typeof bundledLayout>>,
+    );
+    const chord = t34.combos.find((c) => t34.positions[c.pos].fingers.length > 1);
+    expect(chord, 'a combo pressed with two fingers').toBeDefined();
+    const key = (chord as NonNullable<typeof chord>).keys[0];
+    const finger = t34.positions[key].fingers[0];
+    const named = describeKeys(t34, {
+      label: 'x',
+      keys: [(chord as NonNullable<typeof chord>).pos, key],
+    });
+    expect(named?.endsWith(`· same finger, ${finger}`)).toBe(true);
+  });
+
+  it('says the finger once for a run of three keys on it', () => {
+    expect(describeKeys(compiled, item(['L1', 'L0', 'L1']))).toBe(
+      'L1 (Repeat) → L0 (space / Numb) → L1 (Repeat) · same finger, LT',
+    );
+  });
+
+  it('takes a key with no layer given to be on the first, and one it does not know by its number', () => {
+    const named = describeKeys(compiled, item(['L0', 'R0'], { layers: [1] }));
+    expect(named).toContain(`L0 (`);
+    expect(named?.split(' → ')[0]).toContain(`on ${compiled.layers[1].name}`);
+    expect(named?.split(' → ')[1]).not.toContain(' on ');
+    expect(
+      describeKeys(compiled, { label: 'x', keys: [9999, at('L0')] })?.startsWith('9999 →'),
+    ).toBe(true);
   });
 });
