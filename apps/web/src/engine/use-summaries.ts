@@ -145,6 +145,12 @@ export function useSummaries(
   entries: SummaryEntry[],
   settings: AnalysisSettings | null,
   context: string,
+  /**
+   * Whether the list wants each layout's heat as well as its score. A heat is kept whenever a
+   * layout is analyzed, but one let go (see `MAX_HEATS`) is analyzed again only for a list that
+   * wants it: a score alone is never worth it.
+   */
+  withHeat = false,
 ): {
   summaries: Map<string, LayoutSummary>;
   /** What each layout's heat map is drawn from, as it lands with its score; `null` if it failed. */
@@ -210,7 +216,9 @@ export function useSummaries(
     /** A heat shows as soon as it lands: nothing is ordered by it, so there is nothing to hold back. */
     const landHeat = (key: string, heat: HeatSource | null) =>
       setState((prev) =>
-        prev.listing !== listing ? prev : { ...prev, heats: new Map(prev.heats).set(key, heat) },
+        prev.listing !== listing || (prev.heats.has(key) && prev.heats.get(key) === heat)
+          ? prev
+          : { ...prev, heats: new Map(prev.heats).set(key, heat) },
       );
 
     (async () => {
@@ -219,7 +227,14 @@ export function useSummaries(
       await pause(SETTLE_MS);
       for (const r of requests) {
         if (cancelled) return;
-        if (cache.has(r.hash) && heats.has(r.hash)) continue;
+        if (cache.has(r.hash)) {
+          // Another layout of the same analysis may have landed it since this list was opened.
+          if (heats.has(r.hash)) {
+            landHeat(r.key, heats.get(r.hash) as HeatSource | null);
+            continue;
+          }
+          if (!withHeat) continue;
+        }
         // Hand the thread back between layouts. Where the engine runs in-thread rather than in a
         // worker, an unbroken chain of analyses would otherwise starve every timer and click.
         await pause(0);
@@ -265,7 +280,7 @@ export function useSummaries(
       cancelled = true;
       controller.abort();
     };
-  }, [listing, client]);
+  }, [listing, client, withHeat]);
 
   const pending = requests.filter((r) => !shown.summaries.has(r.key)).length;
   return { summaries: shown.summaries, heats: shown.heats, pending };

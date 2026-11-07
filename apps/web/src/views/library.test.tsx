@@ -1682,9 +1682,12 @@ describe('Heatmaps on the cards', () => {
       ['Layer taps', 'layer_taps'],
     ] as const) {
       await user.selectOptions(choice, label);
-      expect(heatPercents(await boardOf('Qwerty'))).toEqual(percentsOf(report, mode));
-      expect(document.querySelector('.lb-heat-legend')?.textContent).toMatch(
-        new RegExp(`(${label}|usage):`, 'i'),
+      const expected = percentsOf(report, mode);
+      // A rule's mode colours something on Qwerty's base layer; layer taps may not.
+      if (mode !== 'layer_taps') expect(expected.length).toBeGreaterThan(0);
+      expect(heatPercents(await boardOf('Qwerty'))).toEqual(expected);
+      expect(document.querySelector('.lb-heat-legend p')?.textContent).toMatch(
+        new RegExp(`^${label}: `),
       );
     }
     expect([analyze.mock.calls.length, peek.mock.calls.length]).toEqual([analyses, peeks]);

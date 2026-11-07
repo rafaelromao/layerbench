@@ -240,9 +240,38 @@ describe('heat of each layout', () => {
 
   it('has none for a score a visit remembers: it is what this visit analyzed', async () => {
     await remembered(CONTEXT, [['qwerty', summary(10, 1.5)]]);
-    const visit = await freshHook(client().client);
+    const c = client();
+    const visit = await freshHook(c.client);
+    // The visit has begun to analyze it again, and has shown the score meanwhile, without a heat.
+    await waitFor(() => expect(c.asked()).toBe(1));
     expect(visit.result.current.summaries.get('qwerty')?.effort).toBe(10);
     expect(visit.result.current.heats.size).toBe(0);
+    c.answer(reportWithHeat(10, 1.5));
+    await waitFor(() => expect(visit.result.current.heats.has('qwerty')).toBe(true));
+  });
+
+  it('lands it for every layout of one analysis, though the analysis is made once', async () => {
+    const c = client();
+    const visit = await freshHook(c.client, [QWERTY, { key: 'copy', layout: QWERTY.layout }]);
+    await waitFor(() => expect(c.asked()).toBe(1));
+    c.answer(reportWithHeat(10, 1.5));
+    await waitFor(() => expect(visit.result.current.heats.has('copy')).toBe(true));
+    expect(visit.result.current.heats.get('copy')).toBe(visit.result.current.heats.get('qwerty'));
+    expect(c.asked()).toBe(1);
+  });
+
+  it('changes nothing, and draws nothing again, for a list that is already scored', async () => {
+    const c = client();
+    const visit = await freshHook(c.client);
+    await waitFor(() => expect(c.asked()).toBe(1));
+    c.answer(reportWithHeat(10, 1.5));
+    await waitFor(() => expect(visit.result.current.heats.has('qwerty')).toBe(true));
+    const shown = visit.result.current;
+    // The same list asked for again, wanting its heat now: nothing is analyzed, nothing replaced.
+    visit.rerender();
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(c.asked()).toBe(1);
+    expect(visit.result.current.heats).toBe(shown.heats);
   });
 
   it('is null for a layout that could not be analyzed, so its card does not wait for one', async () => {
@@ -281,6 +310,7 @@ describe('heat of each layout', () => {
     // Back on the first, it is there at once, without asking again.
     visit.rerender({ settings: OPTS });
     expect(visit.result.current.heats.has('qwerty')).toBe(true);
+    expect(c.asked()).toBe(1);
   });
 });
 

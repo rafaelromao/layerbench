@@ -62,7 +62,10 @@ describe('A card’s board with heat', () => {
 
   it('draws usage, and says so, where the rule set has no rule for the mode asked', () => {
     show(source, 'effort');
-    expect(heatedTitles().every((t) => t.includes('Usage: '))).toBe(true);
+    // The board is not left plain: it is drawn in the mode it has, and says which.
+    const titles = heatedTitles();
+    expect(titles).toHaveLength(2);
+    expect(titles.every((t) => t.includes('Usage: '))).toBe(true);
   });
 
   it('draws the heat of whichever layer is shown, and says when that has none', async () => {

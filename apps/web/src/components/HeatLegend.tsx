@@ -31,7 +31,14 @@ export function HeatLegend({
         <span
           className="h-2.5 w-16 rounded-box border border-base-300"
           style={{
-            background: 'linear-gradient(in oklab to right, var(--lb-key-bg), var(--lb-heat))',
+            // The board's own mix, stop by stop: `color-mix` is there wherever the keys' fill is,
+            // which a gradient interpolated `in oklab` is not.
+            background: `linear-gradient(to right, ${[0, 25, 50, 75, 100]
+              .map(
+                (pct) =>
+                  `color-mix(in oklab, var(--lb-key-bg) ${100 - pct}%, var(--lb-heat) ${pct}%)`,
+              )
+              .join(', ')})`,
           }}
         />
         <span>busiest key</span>
@@ -40,7 +47,7 @@ export function HeatLegend({
         {fallback
           ? `This rule set has no ${HEAT_LABELS[mode]} rule, so ${HEAT_LABELS.usage}: ${HEAT_MEANING.usage}`
           : `${HEAT_LABELS[mode]}: ${HEAT_MEANING[mode]}`}
-        , against the busiest key of its layer. Point at a key for its share.
+        , against the busiest key of its layer. A key's tooltip gives its percentage of that.
       </p>
     </div>
   );

@@ -355,7 +355,9 @@ function LayoutCard({
             compiled={item.compiled}
             typed={typed}
             name={item.name}
-            heat={heat}
+            // With the heat off a card's board does not change as its heat arrives, so it is not
+            // told of it: the board is drawn again only when its layout moves.
+            heat={heatMode === null ? undefined : heat}
             heatMode={heatMode}
           />
         )}
@@ -750,11 +752,6 @@ export function LibraryView() {
   // The last ranking on the same settings is what the list opens with.
   const rankingContext = rankingKey(ranking);
   // Nothing is scored until the rule set is read, and a rule set that will not open scores nothing.
-  const { summaries, heats, pending } = useSummaries(
-    settings.status === 'failed' ? [] : summaryEntries,
-    settings.settings,
-    rankingContext,
-  );
   // How the boards are looked at is this browser's choice, not the link's. A mode a later version
   // no longer has, read back from storage, is usage.
   const heatOn = useSession((s) => s.libraryHeat);
@@ -762,6 +759,12 @@ export function LibraryView() {
   const storedMode = useSession((s) => s.libraryHeatMode);
   const heatMode = HEAT_MODES.includes(storedMode) ? storedMode : 'usage';
   const setHeatMode = useSession((s) => s.setLibraryHeatMode);
+  const { summaries, heats, pending } = useSummaries(
+    settings.status === 'failed' ? [] : summaryEntries,
+    settings.settings,
+    rankingContext,
+    heatOn,
+  );
   // Every layout is scored by one rule set, so one lacking the rule a mode asks for says it for all.
   const heatFallback = useMemo(
     () => heatOn && [...heats.values()].some((h) => h && effectiveHeat(h, heatMode) !== heatMode),

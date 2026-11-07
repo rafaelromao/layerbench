@@ -56,11 +56,13 @@ both. At the right of it, the **Combos** button shows the
 **Heatmaps**, the button beside **Sort by**, colours the keys of every card's board by [heat](#heat),
 as Analyze does. It is off until you press it, and this browser remembers whether it is on. While
 it is, **Heat** beside it chooses what the colour measures, the same five choices as in Analyze, and a
-line under the scores says what the colours mean. A card's colours come from the analysis its numbers
-came from, so they are what **Analyze** shows for that layout on the same text and rules, and they
-appear card by card as each layout is scored. Each layer is coloured against its own busiest key, so a
-card shows the heat of the layer its navigator is on; point at a key for its share in words. A layer
-with nothing to show for the measure stays plain, and says so under the board.
+line under the scores says what the colours mean. A card's colours come from this visit's analysis of
+the layout, the one that checks its numbers, so they are what **Analyze** shows for that layout on the
+same text and rules. They appear card by card as each layout is scored, so after a reload the scores
+are there at once, from the last visit, and the colours follow. Each layer is coloured against its own
+busiest key, so a card shows the heat of the layer its navigator is on; a key's tooltip gives its
+percentage of that key. A layer with nothing to show for the measure stays plain, and says so under
+the board.
 
 Each card also names the layout's category, so you can rank a layout against its peers. It follows
 from the layout's own keys, whether it came with the app or is yours, and nothing on its
@@ -150,7 +152,8 @@ its presses, so the free home-row keys and the space bar stay cold, and travel c
 finger moved to. Each layer counts only what was pressed on it, on the key that typed it. The thumb tapped
 for Alpha 2 is warm on the layer it is tapped on, not on Alpha 2. A key that lets the layer below
 show through is warm on that layer, where the key that types is drawn. A rule set without the rule a
-choice is made of draws **Usage** instead, in the Library as here.
+choice is made of draws **Usage** instead, in the Library as here. The Library's cards have heat
+too, under [Heatmaps](#sorting-and-comparing).
 
 ### Combos
 
