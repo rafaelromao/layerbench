@@ -245,6 +245,16 @@ instead of thirty seconds. Playwright's Chromium comes only from `cdn.playwright
 host is blocked, run the checks on a browser already installed instead: `E2E_CHANNEL=msedge` for
 Microsoft Edge, `E2E_CHANNEL=chrome` for Google Chrome, with nothing to download.
 
+`e2e/keymapdb.spec.ts` reads the keymaps of keymapdb.com that keep a keymap-drawer file through
+Import, and holds each against the picture keymapdb shows for it
+(`docs/research/keymapdb-import.md`). Its files are downloaded at pinned commits into a git-ignored
+folder first, and it skips them until then:
+
+```bash
+node apps/web/e2e/keymapdb/refresh.ts
+pnpm --filter @layerbench/web e2e keymapdb --project=desktop
+```
+
 ## Deploy
 
 The app is a static site on GitHub Pages, at `https://layerbench.github.io`, published from the
