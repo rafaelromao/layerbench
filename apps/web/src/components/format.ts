@@ -1,4 +1,5 @@
-import type { BandResult, RuleItem, Unit } from '@layerbench/core';
+import type { BandResult, CompiledLayout, RuleItem, Unit } from '@layerbench/core';
+import { legend, legendText } from '@layerbench/core';
 
 /** Numbers are read side by side down a column, so every unit has one fixed shape. */
 export function formatValue(value: number | null | undefined, unit: Unit): string {
@@ -40,6 +41,37 @@ export function formatItem(item: RuleItem): string {
   }
   if (item.count !== undefined) return item.count.toFixed(0);
   return '';
+}
+
+/** A key as a sentence names it: its id and what it does, as "L1 (Repeat)". */
+function keyName(compiled: CompiledLayout, pos: number, layer: number): string {
+  const id = compiled.positions[pos]?.id ?? String(pos);
+  const binding =
+    compiled.combos.find((c) => c.pos === pos)?.binding ?? compiled.layers[layer]?.bindings[pos];
+  if (!binding) return id;
+  const what = legendText({ ...legend(compiled, binding), badge: null })
+    .replace(/⟳/g, 'Repeat')
+    .replace(/␣/g, 'space');
+  const on = layer === 0 ? '' : ` on ${compiled.layers[layer]?.name ?? layer}`;
+  return what ? `${id} (${what})${on}` : `${id}${on}`;
+}
+
+/**
+ * The keys of a pair, trigram or other run, by name. An item's label is what its presses typed, so
+ * a doubled letter typed by the Repeat key reads as the letter and not as the key that pressed it;
+ * this says which keys they were. Null where there is less than a run: one key is its own label.
+ */
+export function describeKeys(compiled: CompiledLayout, item: RuleItem): string | null {
+  if (item.keys.length < 2) return null;
+  const names = item.keys.map((k, i) => keyName(compiled, k, item.layers?.[i] ?? 0));
+  // One finger for every key, and not the one key twice: that is a pair the rules call a repeat.
+  const fingers = item.keys.map((k) => compiled.positions[k]?.fingers ?? []);
+  const finger = fingers[0]?.length === 1 ? fingers[0][0] : null;
+  const same =
+    finger !== null &&
+    new Set(item.keys).size > 1 &&
+    fingers.every((f) => f.length === 1 && f[0] === finger);
+  return `${names.join(' → ')}${same ? ` · same finger, ${finger}` : ''}`;
 }
 
 export function qualityBorder(band: BandResult): string {
