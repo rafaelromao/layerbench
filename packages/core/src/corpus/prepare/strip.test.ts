@@ -163,11 +163,56 @@ describe('the comments of other languages, by their own rules', () => {
 
   it('tells a Lua block comment from a line comment that starts the same way', () => {
     const src = 'local a = 1 --[[ one\ntwo ]] local b = 2 -- gone\nlocal s = "-- kept"';
-    expect(lines(stripWith(src, lua))).toEqual(['local a = 1 local b = 2', 'local s = "-- kept"']);
+    expect(lines(stripWith(src, lua))).toEqual([
+      'local a = 1',
+      'local b = 2',
+      'local s = "-- kept"',
+    ]);
   });
 
   it('can leave quotes alone, as in the prose of a LaTeX file', () => {
     const src = "It's text % gone\nIt's more 'text' % gone too";
     expect(lines(stripWith(src, prose))).toEqual(["It's text", "It's more 'text'"]);
+  });
+});
+
+describe('what a scanner must not mistake', () => {
+  it('keeps the line breaks of a block comment, so lines stay lines', () => {
+    expect(stripComments('int a; /* x\ny */ int b;', 'c')).toBe('int a; \n int b;');
+    expect(stripComments('int a; /* x */ int b;', 'c')).toBe('int a;   int b;');
+  });
+
+  it('reads an escaped slash in a regular expression as part of it', () => {
+    const src = "s.replace(/^https?:\\/\\//, ''); // gone\nt.replace(/\\/*/g, ''); /* gone */ u();";
+    expect(lines(stripComments(src, 'jsts'))).toEqual([
+      "s.replace(/^https?:\\/\\//, '');",
+      "t.replace(/\\/*/g, ''); u();",
+    ]);
+  });
+
+  it('takes out the whole of a Nim documentation block', () => {
+    const src = '##[ Doc\nmore text ]##\nvar x = 1 ## gone';
+    expect(lines(stripComments(src, 'nim'))).toEqual(['var x = 1']);
+  });
+
+  it('reads a PHP heredoc as text, however many quotes it has', () => {
+    const src = "$t = <<<EOT\nit's $u = 'http://x';\nEOT;\n$a = 1; // gone";
+    expect(lines(stripComments(src, 'php'))).toEqual([
+      '$t = <<<EOT',
+      "it's $u = 'http://x';",
+      'EOT;',
+      '$a = 1;',
+    ]);
+  });
+
+  it('does not let an apostrophe in a preprocessor line or a digit separator swallow a comment', () => {
+    expect(lines(stripComments("#region Don't touch\nint a; // gone", 'csharp'))).toEqual([
+      "#region Don't touch",
+      'int a;',
+    ]);
+    expect(lines(stripComments("int n = 1'000'0; // gone\nint m = 1'0; // gone", 'cpp'))).toEqual([
+      "int n = 1'000'0;",
+      "int m = 1'0;",
+    ]);
   });
 });

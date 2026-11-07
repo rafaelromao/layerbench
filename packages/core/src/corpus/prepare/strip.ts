@@ -5,7 +5,7 @@ import { CODE_LANGUAGES, type CodeLanguage, type Lexicon } from './languages.js'
  * is where the names, the addresses and the licence headers of a project are. Strings stay: they
  * are typed. This is a scanner, not a parser: it only has to know where a string ends to tell a
  * `//` inside one from a comment, and a string it takes for something else costs a comment's text
- * left in, which `rejectLine` then judges like any other line.
+ * left in, which `rejectReason` then judges like any other line.
  */
 
 const IDENT = /[A-Za-z0-9_$]/;
@@ -14,6 +14,13 @@ const RUST_RAW = /b?r(#*)"/y;
 const CPP_RAW = /(?:u8|u|U|L)?R"([^()\\\s]{0,16})\(/y;
 const VERBATIM = /[$@]{1,2}"/y;
 const CHAR_LITERAL = /'(?:\\.[^\n']{0,9}|[^\\'\n])'/y;
+const HEREDOC = /<<<[ \t]*(['"]?)([A-Za-z_]\w*)\1[ \t]*\n/y;
+
+/** What stands where a block comment was: a space, or the line breaks it had, so lines stay lines. */
+function gap(comment: string): string {
+  const breaks = comment.split('\n').length - 1;
+  return breaks === 0 ? ' ' : '\n'.repeat(breaks);
+}
 
 /** Past the end of a string quoted by `quote` that opens at `i`; at a line's end if it runs over. */
 function endOfQuoted(src: string, i: number, quote: string, lx: Lexicon, escapes = true): number {
@@ -81,6 +88,16 @@ function braceString(src: string, i: number, lx: Lexicon): number {
     const m = VERBATIM.exec(src);
     if (m?.[0].includes('@')) return endOfVerbatim(src, i + m[0].length - 1);
   }
+  if (lx.heredoc && c === '<') {
+    HEREDOC.lastIndex = i;
+    const m = HEREDOC.exec(src);
+    if (m) {
+      const close = new RegExp(`\\n[ \\t]*${m[2]}\\b`, 'g');
+      close.lastIndex = i + m[0].length - 1;
+      const end = close.exec(src);
+      return end ? end.index + end[0].length : src.length;
+    }
+  }
   if (c === '"' && lx.tripleQuote && src.startsWith('"""', i)) {
     return endOfDelimited(src, i + 3, '"""');
   }
@@ -108,8 +125,9 @@ function stripBrace(src: string, lx: Lexicon): string {
     if (starters.has(c)) {
       // A block comment is looked for first: Lua's `--[[` also starts with its line comment.
       if (lx.blockComment && src.startsWith(lx.blockComment.open, i)) {
-        out += `${src.slice(start, i)} `;
-        i = endOfBlock(src, i, lx.blockComment);
+        const end = endOfBlock(src, i, lx.blockComment);
+        out += src.slice(start, i) + gap(src.slice(i, end));
+        i = end;
         start = i;
         continue;
       }
@@ -122,6 +140,11 @@ function stripBrace(src: string, lx: Lexicon): string {
         start = i;
         continue;
       }
+    }
+    // Outside a string a backslash only escapes, as in the `\/\/` of a regular expression.
+    if (c === '\\') {
+      i += 2;
+      continue;
     }
     if (lx.strings === false) {
       i++;
@@ -152,9 +175,14 @@ function stripIndent(src: string, lx: Lexicon): string {
   let i = 0;
   while (i < src.length) {
     if (src[i] === '#') {
-      if (lx.blockComment && src.startsWith(lx.blockComment.open, i)) {
-        out += `${src.slice(start, i)} `;
-        i = endOfBlock(src, i, lx.blockComment);
+      if (lx.docBlock && src.startsWith(lx.docBlock.open, i)) {
+        const end = endOfDelimited(src, i + lx.docBlock.open.length, lx.docBlock.close);
+        out += src.slice(start, i) + gap(src.slice(i, end));
+        i = end;
+      } else if (lx.blockComment && src.startsWith(lx.blockComment.open, i)) {
+        const end = endOfBlock(src, i, lx.blockComment);
+        out += src.slice(start, i) + gap(src.slice(i, end));
+        i = end;
       } else {
         out += src.slice(start, i);
         const eol = src.indexOf('\n', i);

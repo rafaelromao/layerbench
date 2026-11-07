@@ -124,6 +124,17 @@ describe('reading a tar archive', () => {
     ]);
   });
 
+  it('does not yield a file whose data the archive ends in the middle of', async () => {
+    const cut = Buffer.concat([
+      entry('repo-abc/a.c', 'int a;\n'),
+      entry('repo-abc/b.c', 'x'.repeat(600)),
+    ]);
+    const files: string[] = [];
+    for await (const f of readTar(chunked(cut.subarray(0, 1024 + 512 + 100), 64)))
+      files.push(f.path);
+    expect(files).toEqual(['repo-abc/a.c']);
+  });
+
   it('stops at the end of a truncated archive instead of failing', async () => {
     const files: string[] = [];
     for await (const f of readTar(chunked(archive.subarray(0, 2660), 64))) files.push(f.path);

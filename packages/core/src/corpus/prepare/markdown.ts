@@ -3,7 +3,7 @@ import { tidy } from './lines.js';
 /**
  * The lines of a Markdown file as they are typed to an agent or into its instructions: headings,
  * lists, tables, links and prose, with the pictures, the HTML and the long code listings taken out
- * (the code corpora hold code). The lines are judged by `keptLines` afterwards, like any other.
+ * (the code corpora hold code). The lines are judged by `rejectReason` afterwards, like any other.
  */
 
 /** A fenced block of at most this many lines, its fences included, is a command or a snippet. */

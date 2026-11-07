@@ -51,7 +51,10 @@ for each text how its bytes are shared (the languages of the C family text, in p
 single source of truth, and `raw/CODE-SOURCES.md` is its credit file, written from it. Every project
 is under MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC or the Unlicense, or CC0 for rules and
 prompts; the extractor reads each licence file in the archive, and stops if it is not the licence
-the entry says.
+the entry says. A project can carry a file of someone else's, so a file that names another licence
+in its first lines is left out, and `raw/CODE-SOURCES.md` counts them. The credit is by link to each
+project's own licence file at the commit; the notices themselves are not copied into the
+repository.
 
 **How they are made.** Three steps, the first on the network:
 
@@ -74,25 +77,39 @@ The archives are read as bytes, never unpacked or run. From each file the extrac
   cannot type, and its numbers are of what it types. A line that repeats, `}` or `return;`, is kept as
   often as it comes; a long one that repeats is kept once.
 - **Nothing about a person, a secret or a place to find one.** A line is left out whole, never
-  rewritten, if it has an e-mail address, a phone number, an IP address, a long hex run, a word of
-  more than 64 characters (a hash, a token, a URL), a key or token in a known form, `password`,
-  `secret`, `api_key`, `credential` or `bearer`, the words *copyright*, *author*, *licence*,
-  *maintainer*, *contributor* or *et al.*, characters outside ASCII (code) or letters outside it
-  (Markdown), or, in code, a capitalised pair of words in quotes, which is what a name in a test
-  looks like. Markdown loses too the lines with a byline, `Name Name's`, a double-barrelled name, a
-  profile link or an `@mention`, and every link to a site that is not a project, a standard, a paper
-  or a service everyone uses, or to a GitHub or Hugging Face owner that is not an organisation on
-  its short list (`packages/core/src/corpus/prepare/lines.ts`). The same judgement runs in
-  `pnpm test` over the raw text and the sample that ship. No filter can prove a name is not in a
-  string: that is why comments go whole, why the sources are projects' own docs and code, and why
-  the list is strict.
+  rewritten, if it has an e-mail address (or `name [at] host`), a telephone number (digits in groups
+  that add to nine or more, or a literal of ten or more: a date or a version stays, `4294967295`
+  does not), an IP address, a long hex run, a word of more than 40 characters (a hash, a token, a
+  URL) or a mixed run of 24 letters and digits, a key or token in a known form, `password`,
+  `secret`, `api_key`, `credential`, `bearer`, `authorization`, the words *copyright*, *author*,
+  *licence*, *maintainer*, *contributor*, *thanks*, *et al.* or *written/developed/contributed by*,
+  characters outside ASCII (code) or letters outside it (Markdown), or, in code, a capitalised
+  pair of words, or `J. Smith`, in quotes, which is what a name in a test looks like. A link is
+  left out too unless its site is a project, a standard, a paper or a service everyone uses, or
+  made up for examples, and never to a user's page on GitHub, Hugging Face, Docker Hub, npm or
+  Google Scholar, or a raw GitHub file; a GitHub or Hugging Face owner must be an organisation on
+  a short list. Markdown loses too the lines with a byline, `Name Name's`, a double-barrelled
+  name, a profile link or an `@mention`. Then, over the whole text, a line is left out if it has
+  a capitalised word the text never writes in lower case and uses in fewer than five lines, or
+  two capitalised words side by side that come together in fewer than five lines
+  (`packages/core/src/corpus/prepare/names.ts`): `Macron` and `Bill Gates` go, `Claude Code`
+  stays. For code that holds for the lines with prose in them, which is what a string or a
+  documentation block is. What a word is, as against a name, is told by the lower case words of
+  the English news text. A file that says in its first lines it is under another licence (GPL,
+  MPL, PSF, Boost, zlib…) is left out whole, and so is a vendored copy of another project
+  (`_vendor`, `third_party`, `3rdparty`…). `pnpm test` runs the same judgement over the raw texts
+  that ship, and the patterns that need no context over the samples built from them. No filter
+  can prove a name is not in a string: that is why comments go whole, why the sources are
+  projects' own code and docs, and why the list is strict; a person's name inside an ordinary
+  string that no other line repeats can still come through, and the pull request that adds a
+  project is where it is looked for.
 - **A fixed share, in a fixed order.** Each language gets its share of the bytes, each project of a
   language an equal part of that, and what a short project cannot give goes to the others. Within
   a project the lines come in an order of a hash, so the same archives always give the same text.
 
-`scrub` is off for these texts in `sources.json`: the extractor already leaves out the lines the
-phone-number scrub of the news texts would rewrite, and the scrub would rewrite numeric constants,
-dates and versions that were typed.
+`scrub` is off for these texts in `sources.json`: the news scrub is aimed at news and would rewrite
+the numeric constants, dates and versions that were typed, so the extractor leaves out the lines
+that look like a phone number or an e-mail address instead, as above.
 
 Count them with **Counts** on *Letters, numbers and symbols*, or they are read as identifiers and
 words alone.

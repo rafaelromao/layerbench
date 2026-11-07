@@ -16,6 +16,7 @@ import {
   analysisRun,
   analyze,
   BUNDLED_LAYOUTS,
+  CODE_TAG,
   type Corpus,
   DEFAULT_SETTINGS,
   getPreset,
@@ -241,7 +242,7 @@ function corpusOf(text: Text): { corpus: Corpus; stream: string } {
   const corpus: Corpus = {
     id: `research-${text.id}`,
     name: text.name,
-    language: 'code',
+    language: CODE_TAG,
     sample,
     symbols: [...sample].length,
     words: sample.split(' ').length,

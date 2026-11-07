@@ -5,7 +5,7 @@ import { corporaRoot } from '../../golden/paths.js';
 import { CODE_TAG } from '../../lang/profiles.js';
 import { corpusStream } from '../corpus.js';
 import { nodeCorpusLoader } from '../node-loader.js';
-import { CODE_LANGUAGES, isCodeLanguage } from './languages.js';
+import { isCodeLanguage } from './languages.js';
 import { MAX_LINE, REJECTS, rejectReason, type TextKind, tidy } from './lines.js';
 import { lineCost } from './select.js';
 
@@ -44,7 +44,6 @@ describe.each(Object.entries(SOURCES.corpora))('the raw text of %s', (id, plan) 
     const shares = Object.entries(plan.shares ?? {});
     expect(shares.every(([language]) => isCodeLanguage(language))).toBe(true);
     expect(shares.reduce((total, [, share]) => total + share, 0)).toBe(100);
-    expect(CODE_LANGUAGES.python.family).toBe('indent');
   });
 });
 
@@ -93,7 +92,6 @@ describe('the served samples of the code and Markdown corpora', () => {
     for (const ch of ['#', '*', '`', '[', ']', '-']) {
       expect(markdown(ch), ch).toBeGreaterThan(3 * news(ch));
     }
-    expect(CODE_TAG).toBe('code');
   });
 
   it('are listed with the tag they are served under', async () => {

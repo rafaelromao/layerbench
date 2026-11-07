@@ -45,6 +45,10 @@ export interface Lexicon {
   charOnly?: boolean;
   /** `discard """…"""` is a comment, as in Nim. */
   discardComment?: boolean;
+  /** A documentation block that runs over lines, `##[ … ]##` in Nim. */
+  docBlock?: { open: string; close: string };
+  /** `<<<EOT … EOT`: a heredoc, whose body is text and not code. */
+  heredoc?: boolean;
   /** False where a quote is only a quote (HTML, LaTeX prose), so none opens a string. */
   strings?: boolean;
   extensions: string[];
@@ -53,22 +57,36 @@ export interface Lexicon {
 const SLASHES = { lineComment: ['//'], blockComment: { open: '/*', close: '*/', nested: false } };
 
 export const CODE_LANGUAGES: Record<CodeLanguage, Lexicon> = {
-  c: { family: 'brace', ...SLASHES, extensions: ['.c', '.h'] },
+  c: { family: 'brace', ...SLASHES, charOnly: true, extensions: ['.c', '.h'] },
   cpp: {
     family: 'brace',
     ...SLASHES,
     cppRaw: true,
+    charOnly: true,
     extensions: ['.cc', '.cpp', '.cxx', '.hpp', '.hh', '.h', '.ipp'],
   },
-  csharp: { family: 'brace', ...SLASHES, verbatim: true, multiline: true, extensions: ['.cs'] },
-  java: { family: 'brace', ...SLASHES, tripleQuote: true, extensions: ['.java'] },
+  csharp: {
+    family: 'brace',
+    ...SLASHES,
+    verbatim: true,
+    tripleQuote: true,
+    charOnly: true,
+    extensions: ['.cs'],
+  },
+  java: { family: 'brace', ...SLASHES, tripleQuote: true, charOnly: true, extensions: ['.java'] },
   jsts: {
     family: 'brace',
     ...SLASHES,
     backtick: { escapes: true },
     extensions: ['.js', '.mjs', '.cjs', '.jsx', '.ts', '.tsx', '.mts', '.cts'],
   },
-  go: { family: 'brace', ...SLASHES, backtick: { escapes: false }, extensions: ['.go'] },
+  go: {
+    family: 'brace',
+    ...SLASHES,
+    backtick: { escapes: false },
+    charOnly: true,
+    extensions: ['.go'],
+  },
   rust: {
     family: 'brace',
     lineComment: ['//'],
@@ -83,6 +101,7 @@ export const CODE_LANGUAGES: Record<CodeLanguage, Lexicon> = {
     lineComment: ['//', '#'],
     blockComment: { open: '/*', close: '*/', nested: false },
     multiline: true,
+    heredoc: true,
     extensions: ['.php'],
   },
   kotlin: {
@@ -91,6 +110,7 @@ export const CODE_LANGUAGES: Record<CodeLanguage, Lexicon> = {
     blockComment: { open: '/*', close: '*/', nested: true },
     tripleQuote: true,
     backtick: { escapes: false },
+    charOnly: true,
     extensions: ['.kt', '.kts'],
   },
   swift: {
@@ -98,6 +118,7 @@ export const CODE_LANGUAGES: Record<CodeLanguage, Lexicon> = {
     lineComment: ['//'],
     blockComment: { open: '/*', close: '*/', nested: true },
     tripleQuote: true,
+    charOnly: true,
     extensions: ['.swift'],
   },
   python: { family: 'indent', lineComment: ['#'], tripleQuote: true, extensions: ['.py'] },
@@ -108,6 +129,7 @@ export const CODE_LANGUAGES: Record<CodeLanguage, Lexicon> = {
     tripleQuote: true,
     charOnly: true,
     discardComment: true,
+    docBlock: { open: '##[', close: ']##' },
     extensions: ['.nim'],
   },
   gdscript: { family: 'indent', lineComment: ['#'], tripleQuote: true, extensions: ['.gd'] },

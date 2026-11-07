@@ -9,6 +9,8 @@ export interface TarFile {
 }
 
 const BLOCK = 512;
+/** The extended and long-name headers are paths; one larger than this is not skipped to be read. */
+const MAX_HEADER = 65_536;
 
 function text(header: Buffer, from: number, length: number): string {
   const field = header.subarray(from, from + length);
@@ -58,13 +60,14 @@ export async function* readTar(
     const type = String.fromCharCode(header[156]);
     const prefix = text(header, 345, 155);
     const padded = Math.ceil(size / BLOCK) * BLOCK;
-    if (type === 'x' || type === 'L') {
-      await fill(padded);
+    if ((type === 'x' || type === 'L') && size <= MAX_HEADER) {
+      // An archive that ends inside what it was about to hold holds nothing more.
+      if (!(await fill(padded))) return;
       const body = buffer.subarray(0, size).toString('utf8');
       buffer = buffer.subarray(padded);
       pending = type === 'L' ? body.replace(/\0+$/, '') : paxPath(body);
     } else if ((type === '0' || type === '\0') && size <= maxFile) {
-      await fill(padded);
+      if (!(await fill(padded))) return;
       const data = Buffer.from(buffer.subarray(0, size));
       buffer = buffer.subarray(padded);
       yield { path: pending ?? (prefix ? `${prefix}/${name}` : name), data };

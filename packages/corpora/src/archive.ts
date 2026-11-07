@@ -2,6 +2,7 @@ import { createReadStream, existsSync } from 'node:fs';
 import { createGunzip } from 'node:zlib';
 import {
   detectLicenses,
+  foreignLicense,
   isAllowedLicense,
   isGenerated,
   MIN_UNIQUE,
@@ -44,6 +45,8 @@ export interface Candidate {
 export interface RepoRead<R extends ArchiveRepo = ArchiveRepo> {
   repo: R;
   files: number;
+  /** Files left out for saying, in their first lines, that they are under another licence. */
+  foreign: number;
   /** Lines judged, and why those that were left out were. */
   seen: number;
   rejected: Map<string, number>;
@@ -67,7 +70,15 @@ export async function readArchive<R extends ArchiveRepo>(
 ): Promise<RepoRead<R>> {
   const file = tarballPath(repo);
   if (!existsSync(file)) throw new Error(`${repo.id}: not fetched (pnpm corpora:fetch ${repo.id})`);
-  const read: RepoRead<R> = { repo, files: 0, seen: 0, rejected: new Map(), lines: [], taken: [] };
+  const read: RepoRead<R> = {
+    repo,
+    files: 0,
+    foreign: 0,
+    seen: 0,
+    rejected: new Map(),
+    lines: [],
+    taken: [],
+  };
   const exclude = repo.exclude ? new RegExp(repo.exclude) : null;
   let licence: string | undefined;
 
@@ -84,6 +95,10 @@ export async function readArchive<R extends ArchiveRepo>(
     if (repo.include && !repo.include.some((prefix) => path.startsWith(prefix))) continue;
     const text = entry.data.toString('utf8');
     if (isGenerated(text)) continue;
+    if (foreignLicense(text)) {
+      read.foreign++;
+      continue;
+    }
     read.files++;
     let n = 0;
     for (const raw of reading.lines(text, path)) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isGenerated, keptLines, rejectReason, SKIPPED_PATH, tidy } from './lines.js';
+import { foreignLicense, isGenerated, rejectReason, SKIPPED_PATH, tidy } from './lines.js';
 
 describe('the lines that stay in a code corpus', () => {
   it('keeps ordinary code, however many symbols it has', () => {
@@ -27,6 +27,26 @@ describe('the lines that stay in a code corpus', () => {
       ['host = "192.168.0.1";', 'address'],
       ['sha = "a1b2c3d4e5f6a7b8c9d0e1f2";', 'hex'],
       ['const k = "AKIAABCDEFGHIJKLMNOP";', 'secret'],
+      ['const k = "ASIAABCDEFGHIJKLMNOP";', 'secret'],
+      ['key = "sk_live_51HxAbCdEfGhIjKl";', 'secret'],
+      ['"authorization": "Basic dXNlcjpwYXNzd29yZDEyMw==",', 'secret'],
+      ['id = "k3j2h4g5f6d7s8a9q1w2e3r4t5y6";', 'token'],
+      ['mail me: jane at example dot com', 'email'],
+      ['mail me: jane[at]example.com', 'email'],
+      ['Call 555-1234 now', 'phone'],
+      ['Call +1(555)1234567 now', 'phone'],
+      ['host = "fe80::1";', 'address'],
+      ['host = "2a00:1450:4001::200e";', 'address'],
+      ['// tweaked slightly by both someone and myself', 'authorship'],
+      ['// contributed by someone', 'authorship'],
+      ['x = "J. Smith"', 'name'],
+      ['x = "Jane Doe\'s book"', 'name'],
+      ['url: "https://api.github.com/users/somebody",', 'host'],
+      ['avatar: "https://raw.githubusercontent.com/o/r",', 'host'],
+      ['see https://hub.docker.com/r/somebody/foo', 'host'],
+      ['see https://www.npmjs.com/~somebody', 'host'],
+      ['see https://scholar.google.com/x?user=A', 'host'],
+      ['see https://hf.co/somebody/my-model', 'host'],
       ['const password = input();', 'secret'],
       ['api_key = os.environ["K"]', 'secret'],
       ['// Copyright 2015 The Authors', 'authorship'],
@@ -48,6 +68,10 @@ describe('the lines that stay in a code corpus', () => {
       'name = "Hello"',
       'msg = "hello world"',
       'x = 1_000_000;',
+      'released = "2025-10-01"; version = "1.20.30";',
+      'url = "https://www.google.com/search"; // https://developers.google.com/x',
+      'call(std::vector<int>{}, std::move(x));',
+      't = time("10:30:45");',
       'url = "https://example.com/a?b=c"; // or https://github.com/org/repo or http://localhost:8080',
     ]) {
       expect(rejectReason(line, 'code'), line).toBeNull();
@@ -82,6 +106,7 @@ describe('the lines that stay in a Markdown corpus', () => {
       ['docker pull somebody/image', 'profile'],
       ['Read [the blog](https://somebody.substack.com/) now.', 'host'],
       ['By Some Body, on the blog.', 'name'],
+      ['- [Blog on MCP](https://huggingface.co/blog/a/mcp)', 'host'],
       ["Follow Some Body's algorithm.", 'name'],
       ['A Double-Barrelled surname.', 'name'],
       ['Write to me: mailto:x@y.test', 'email'],
@@ -95,12 +120,18 @@ describe('the lines that stay in a Markdown corpus', () => {
 });
 
 describe('what is made of lines', () => {
-  it('tidies white space and keeps only the lines that pass', () => {
-    expect(tidy('  a \t b  c  ')).toBe('a b c');
-    expect(keptLines(['  if (a) {  ', '', 'x = "Jane Doe"', '}'], 'code')).toEqual([
-      'if (a) {',
-      '}',
-    ]);
+  it('tidies white space', () => {
+    expect(tidy('  a \t b\u00a0 c  ')).toBe('a b c');
+    expect(rejectReason(tidy('  if (a) {  '), 'code')).toBeNull();
+    expect(rejectReason(tidy('   '), 'code')).toBe('empty');
+  });
+
+  it('knows a file that says it is under a licence that is not taken', () => {
+    expect(foreignLicense('# Licensed to PSF under a Contributor Agreement.\nx = 1')).toBe(true);
+    expect(foreignLicense('/* Under the Mozilla Public License */')).toBe(true);
+    expect(foreignLicense('// GNU General Public License, version 2\nint a;')).toBe(true);
+    expect(foreignLicense('// Licensed under the Apache License, Version 2.0\nint a;')).toBe(false);
+    expect(foreignLicense('Copyright (c) Acme. All rights reserved.\nMIT\nint a;')).toBe(false);
   });
 
   it('knows generated and binary files, and the paths that hold copies', () => {
@@ -113,6 +144,8 @@ describe('what is made of lines', () => {
       'x/y.min.js',
       'types/a.d.ts',
       'p/testdata/a.go',
+      'src/pip/_vendor/distlib/a.py',
+      'lib/3rdparty/x.c',
     ]) {
       expect(SKIPPED_PATH.test(path), path).toBe(true);
     }

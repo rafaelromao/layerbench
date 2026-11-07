@@ -32,8 +32,9 @@ interface Source {
   retrieved?: string;
   /**
    * Whether e-mail addresses and phone numbers are replaced by others of the same shape (default).
-   * A code or Markdown text is cleaned of them upstream, by leaving their lines out, and would have
-   * its numeric constants, dates and versions rewritten as phone numbers: it sets this to false.
+   * A code or Markdown text sets this to false: the news scrub is aimed at news, and would rewrite
+   * the numeric constants, dates and versions that were typed, while the extractor already leaves
+   * out the lines that look like a phone number or an e-mail address (`pnpm corpora:extract`).
    */
   scrub?: boolean;
 }

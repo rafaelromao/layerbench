@@ -1,7 +1,7 @@
 /**
  * Downloads each repository of `raw/code-sources.json` at its pinned commit into
  * `packages/corpora/.cache/code/<id>.tar.gz`, which git ignores. The archives are only ever read
- * as bytes (`prepare-code.ts`), never unpacked or run. One already there is not fetched again.
+ * as bytes (`extract-code.ts`), never unpacked or run. One already there is not fetched again.
  *
  *   pnpm corpora:fetch               # every repository of the corpora
  *   pnpm corpora:fetch tmux fmt      # those ids

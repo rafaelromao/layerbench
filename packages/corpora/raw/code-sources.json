@@ -596,7 +596,8 @@
       "corpus": "code-python-family",
       "license": "MIT",
       "language": "python",
-      "licenseFile": "LICENSE"
+      "licenseFile": "LICENSE",
+      "exclude": "^src/blib2to3/"
     },
     {
       "id": "httpx",
