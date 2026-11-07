@@ -1397,6 +1397,11 @@ export function ExportPanel({ state, send }: PanelProps) {
               {state.jsonError}
             </p>
           )}
+          {/* On a phone this card fills the strip and the text is out of sight past its right edge:
+              say so. Beside the text, at a desk, there is nothing to say. */}
+          <p className="lb-export-cue sm:hidden" aria-hidden="true">
+            The text is in the next card →
+          </p>
         </Slide>
         <Slide className="lb-export-slide">
           {format === 'yaml' ? (
@@ -1421,12 +1426,13 @@ export function ExportPanel({ state, send }: PanelProps) {
       <CarouselHint>
         {format === 'yaml' ? (
           <>
-            Draw it with <span className="font-mono">keymap draw</span>. Keys whose legends cannot
-            say everything they do come back from this file simpler: an adaptive key as a plain key
-            typing its default, a macro as the text it types, without its other steps.
+            The text is in the next card, to the right of the buttons. Draw it with{' '}
+            <span className="font-mono">keymap draw</span>. Keys whose legends cannot say everything
+            they do come back from this file simpler: an adaptive key as a plain key typing its
+            default, a macro as the text it types, without its other steps.
           </>
         ) : (
-          'The whole layout, as LayerBench JSON to read or to paste one in, or as a keymap-drawer file.'
+          'The text is in the next card, to the right of the buttons: the whole layout, as LayerBench JSON to read or to paste one in, or as a keymap-drawer file.'
         )}
       </CarouselHint>
     </div>

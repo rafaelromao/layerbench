@@ -902,6 +902,22 @@ describe('the Export carousel', () => {
     expect(group()).toHaveClass('lb-export-actions');
   });
 
+  it('says in its card, on a phone, and under the strip, that the text is in the next card', async () => {
+    render(<ExportPanel state={state} send={vi.fn()} />);
+    // The card fills the strip on a phone, with the text out of sight past it: it says so, and says
+    // nothing at a desk, where the text is beside it.
+    const cue = screen.getByText(/The text is in the next card →/);
+    expect(cue).toHaveClass('sm:hidden');
+    expect(cue).toHaveAttribute('aria-hidden', 'true');
+    expect(cue.closest('li')).toHaveClass('lb-export-controls');
+    // The hint under the strip says it for either format, for a screen reader too.
+    const hint = () => document.querySelector('.lb-carousel-hint');
+    expect(hint()).toHaveTextContent(/The text is in the next card, to the right of the buttons/);
+    await userEvent.setup().click(screen.getByRole('radio', { name: /keymap-drawer YAML/ }));
+    expect(hint()).toHaveTextContent(/The text is in the next card, to the right of the buttons/);
+    expect(screen.getByText(/The text is in the next card →/)).toBeInTheDocument();
+  });
+
   it('shows what the text could not be loaded for, clamped to the slide, in full on hover', () => {
     const s = { ...state, jsonError: 'Unexpected token } in JSON at position 4821' };
     render(<ExportPanel state={s} send={vi.fn()} />);
