@@ -4,31 +4,41 @@
   themes: false;
 }
 
-/* Two hand-written themes, carried over from the reference application. */
+/*
+ * Two hand-written themes, carried over from the reference application.
+ *
+ * The dark one's three surfaces (page and cards, hover and bars, borders) are 5 points of lightness
+ * above where they were (30.33%, 25.26%, 20.15%), by the same step, so each still reads as its own
+ * layer; to nudge the page, move all three by the same amount. What was drawn in a colour on the
+ * old page keeps its contrast: key caps stay as they were (`--lb-key-bg`), primary's edges and rings
+ * take a lighter shade of it (`--lb-ring`), and secondary, accent, neutral, info, success and error
+ * are lifted a little (secondary and accent, which only ever draw outline badges and slide bands,
+ * to text contrast).
+ */
 @plugin "daisyui/theme" {
   name: "dark";
   default: false;
   prefersdark: true;
   color-scheme: "dark";
-  --color-base-100: oklch(30.33% 0.016 252.42);
-  --color-base-200: oklch(25.26% 0.014 253.1);
-  --color-base-300: oklch(20.15% 0.012 254.09);
+  --color-base-100: oklch(35.33% 0.016 252.42);
+  --color-base-200: oklch(30.26% 0.014 253.1);
+  --color-base-300: oklch(25.15% 0.012 254.09);
   --color-base-content: oklch(97.807% 0.029 256.847);
   --color-primary: oklch(58% 0.233 277.117);
   --color-primary-content: oklch(96% 0.018 272.314);
-  --color-secondary: oklch(58% 0.233 277.117);
-  --color-secondary-content: oklch(96% 0.018 272.314);
-  --color-accent: oklch(60% 0.25 292.717);
-  --color-accent-content: oklch(96% 0.016 293.756);
-  --color-neutral: oklch(37% 0.044 257.287);
+  --color-secondary: oklch(74% 0.13 277.117);
+  --color-secondary-content: oklch(22% 0.03 277.117);
+  --color-accent: oklch(74% 0.14 292.717);
+  --color-accent-content: oklch(22% 0.03 292.717);
+  --color-neutral: oklch(42% 0.044 257.287);
   --color-neutral-content: oklch(98% 0.003 247.858);
-  --color-info: oklch(58% 0.158 241.966);
-  --color-info-content: oklch(97% 0.013 236.62);
-  --color-success: oklch(60% 0.118 184.704);
+  --color-info: oklch(62% 0.158 241.966);
+  --color-info-content: oklch(22% 0.03 241.966);
+  --color-success: oklch(62% 0.118 184.704);
   --color-success-content: oklch(98% 0.014 180.72);
   --color-warning: oklch(66% 0.179 58.318);
   --color-warning-content: oklch(98% 0.022 95.277);
-  --color-error: oklch(58% 0.253 17.585);
+  --color-error: oklch(61% 0.253 17.585);
   --color-error-content: oklch(96% 0.015 12.422);
   --radius-selector: 0.25rem;
   --radius-field: 0.25rem;
@@ -162,7 +172,15 @@
 
 /* Keyboard canvas and metric styling. */
 :root {
-  --lb-key-bg: color-mix(in oklab, var(--color-base-200) 70%, var(--color-base-100));
+  /* The dark theme's key cap is the shade it had when the page was darker (base-200 70% over
+     base-100, then): every legend, layer colour, ring and heat colour on a key is tuned to it. */
+  --lb-key-bg: oklch(26.78% 0.0146 252.9);
+  /* What a number or a tick is drawn in on a layer's colour: dark, on the light shades of this theme. */
+  --lb-layer-ink: var(--color-base-300);
+  /* Primary drawn as an edge: a selected or current ring, a focus outline, a hover border. Primary
+     itself carries the text on a button and the heat on a key, so it stays mid-tone; its edges take
+     the lighter shade of this theme that holds 3:1 on every surface. */
+  --lb-ring: oklch(70% 0.16 277.117);
   --lb-key-stroke: color-mix(in oklab, var(--color-base-content) 18%, transparent);
   --lb-heat: var(--color-primary);
   --lb-key-text: var(--color-base-content);
@@ -175,7 +193,7 @@
   --lb-layer-1: oklch(0.76 0.13 250);
   --lb-layer-2: oklch(0.78 0.15 150);
   --lb-layer-3: oklch(0.8 0.14 75);
-  --lb-layer-4: oklch(0.74 0.16 20);
+  --lb-layer-4: oklch(0.75 0.16 20);
   --lb-layer-5: oklch(0.76 0.13 305);
   --lb-layer-6: oklch(0.8 0.11 195);
   --lb-layer-7: oklch(0.8 0.13 115);
@@ -200,6 +218,9 @@
   --lb-arc: oklch(0.8 0.18 145);
 }
 [data-theme="light"] {
+  --lb-key-bg: color-mix(in oklab, var(--color-base-200) 70%, var(--color-base-100));
+  --lb-layer-ink: var(--color-base-100);
+  --lb-ring: var(--color-primary);
   --lb-arc: oklch(0.52 0.15 145);
   --lb-legend-layer: oklch(0.45 0.03 264);
   --lb-legend-mod: var(--color-accent);
@@ -390,7 +411,7 @@
 }
 
 .lb-key:hover .lb-key-cap {
-  stroke: var(--color-primary);
+  stroke: var(--lb-ring);
   stroke-width: 2.5;
 }
 /* The selected key: its own edge in the text colour, which reads on any heat. An outlined pair or
@@ -408,7 +429,7 @@
   outline: none;
 }
 .lb-key:focus-visible .lb-key-cap {
-  stroke: var(--color-primary);
+  stroke: var(--lb-ring);
   stroke-width: 3;
 }
 
@@ -419,7 +440,7 @@
 }
 /* The key being pressed, as a word is played on the board. */
 .lb-key-pressed {
-  stroke: var(--color-primary);
+  stroke: var(--lb-ring);
   stroke-width: 3;
 }
 
@@ -433,7 +454,7 @@
 }
 .lb-combo rect {
   fill: var(--color-base-100);
-  stroke: color-mix(in oklab, var(--color-primary) 75%, transparent);
+  stroke: color-mix(in oklab, var(--lb-ring) 75%, transparent);
   stroke-width: 1.5;
   transition: fill 0.25s ease;
 }
@@ -464,11 +485,11 @@
   outline: none;
 }
 .lb-combo-lit rect {
-  stroke: var(--color-primary);
+  stroke: var(--lb-ring);
 }
 .lb-combo-pickable:focus-visible rect,
 .lb-combo-open rect {
-  stroke: var(--color-primary);
+  stroke: var(--lb-ring);
   stroke-width: 3;
 }
 @media (prefers-reduced-motion: reduce) {
@@ -511,7 +532,7 @@ button.lb-combo-apart {
 }
 button.lb-combo-apart:hover,
 button.lb-combo-apart:focus-visible {
-  border-color: var(--color-primary);
+  border-color: var(--lb-ring);
   outline: none;
 }
 /* A long legend, such as a macro's, wraps where it must rather than run out of its card. */
@@ -585,7 +606,7 @@ button.lb-combo-apart:focus-visible {
   font-weight: 600;
   background: var(--color-base-100);
   color: var(--color-base-content);
-  border: 2px solid var(--color-primary);
+  border: 2px solid var(--lb-ring);
   box-shadow: 0 6px 18px rgb(0 0 0 / 0.35);
   pointer-events: none;
 }
@@ -729,7 +750,7 @@ button.lb-combo-apart:focus-visible {
 /* A combo's cap is drawn as its box is on the board. */
 .lb-inspector-cap-combo {
   background: var(--color-base-100);
-  border-color: color-mix(in oklab, var(--color-primary) 75%, transparent);
+  border-color: color-mix(in oklab, var(--lb-ring) 75%, transparent);
 }
 
 /* What kind of key it is, as tiles a finger can hit: 44px tall, five to a phone's row. */
@@ -758,10 +779,10 @@ button.lb-combo-apart:focus-visible {
   cursor: pointer;
 }
 .lb-kind-tile:hover {
-  border-color: var(--color-primary);
+  border-color: var(--lb-ring);
 }
 .lb-kind-tile:focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--lb-ring);
   outline-offset: 1px;
 }
 .lb-kind-tile-on {
@@ -986,8 +1007,8 @@ button.lb-combo-apart:focus-visible {
   border-top: 3px solid var(--lb-accent, var(--color-base-300));
 }
 .lb-slide-current {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 1px var(--color-primary);
+  border-color: var(--lb-ring);
+  box-shadow: 0 0 0 1px var(--lb-ring);
 }
 .lb-slide-pick {
   padding: 0;
@@ -1002,7 +1023,7 @@ button.lb-combo-apart:focus-visible {
 .lb-slide-button:focus-visible,
 .lb-combo-slide-pick:focus-visible,
 .lb-slide-remove:focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--lb-ring);
   outline-offset: -2px;
 }
 .lb-slide-button:focus-visible,
@@ -1155,7 +1176,7 @@ button.lb-combo-apart:focus-visible {
   font-size: 0.875rem;
 }
 .lb-geo-key-add:hover {
-  border-color: var(--color-primary);
+  border-color: var(--lb-ring);
 }
 /* A layer's slide: its number in its colour and its name, then its colour, and along the bottom
    what can be done with it. */
@@ -1178,7 +1199,7 @@ button.lb-combo-apart:focus-visible {
   border-radius: 9999px;
   background: var(--lb-accent, var(--color-base-300));
   /* Dark on the light shades, light on the dark ones: the colours are tuned for a key cap. */
-  color: var(--color-base-100);
+  color: var(--lb-layer-ink);
   font-size: 0.6875rem;
   font-weight: 700;
 }
@@ -1237,7 +1258,7 @@ button.lb-combo-apart:focus-visible {
 }
 .lb-colour-radio {
   /* Dark on the light shades, light on the dark ones, as a layer's number is. */
-  --lb-ink: var(--color-base-100);
+  --lb-ink: var(--lb-layer-ink);
   appearance: none;
   display: grid;
   place-items: center;
@@ -1271,7 +1292,7 @@ button.lb-combo-apart:focus-visible {
   transform: rotate(45deg);
 }
 .lb-colour-radio:focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--lb-ring);
   outline-offset: 2px;
 }
 .lb-colour-radio:checked:focus-visible {
@@ -1425,7 +1446,7 @@ button.lb-combo-apart:focus-visible {
   border-color: var(--color-base-300);
 }
 .lb-path-first {
-  border-left: 3px solid var(--color-primary);
+  border-left: 3px solid var(--lb-ring);
 }
 .lb-path-cost {
   flex: none;
@@ -1639,7 +1660,7 @@ button.lb-combo-apart:focus-visible {
 .lb-help:hover,
 .lb-help:focus-visible {
   opacity: 1;
-  border-color: var(--color-primary);
+  border-color: var(--lb-ring);
 }
 @media (pointer: coarse) {
   .lb-help {
