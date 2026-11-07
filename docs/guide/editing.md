@@ -467,7 +467,8 @@ keeps the page where it is, at either end too:
   they still do that, and takes others when they stop; with no key that shifts, it has no shift
   key, and **Shift kind** under **Typing paths** says no key does.
 - **Export** shows the whole layout as LayerBench JSON or as a keymap-drawer file, in a text card
-  that scrolls inside itself, beside the card with its buttons: the format, and under it two buttons
+  that scrolls inside itself, beside the card with its buttons (on a phone, to the right of it:
+  swipe the strip, and the buttons' card says so): the format, and under it two buttons
   that keep their places in either, **Refresh from editor** and **Load into editor** for the JSON,
   **Download .yaml** and **Copy** for the YAML.
 

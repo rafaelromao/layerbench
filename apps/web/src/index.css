@@ -1460,6 +1460,14 @@ button.lb-combo-apart:focus-visible {
     white-space: nowrap;
   }
 }
+/* A line at the foot of the card that the text is in the next one: on a phone only, where the card is
+   as wide as the strip and the text is out of sight. */
+.lb-export-cue {
+  margin: auto 0 0;
+  font-size: 0.6875rem;
+  opacity: 0.6;
+  text-align: right;
+}
 /* An error of two lines at most (`line-clamp-2` ends it with an ellipsis where the engine can, and
    the height is held to two lines where it cannot), the rest in its title: the slide never scrolls. */
 .lb-export-message {
