@@ -454,6 +454,11 @@ export interface KeyboardProps {
   layer?: number;
   /** Position index to 0–1 heat. */
   heat?: Record<number, number>;
+  /**
+   * What the heat measures, in words. Given, each heated key says how hot it is, as its tooltip and
+   * to a screen reader, so the colour is not all that tells it; left out, only the colour does.
+   */
+  heatName?: string;
   /** Positions to outline, e.g. the keys of a selected n-gram. */
   highlight?: number[];
   /** Positions drawn as being pressed right now, such as a step of how a word is typed. */
@@ -515,6 +520,7 @@ export function Keyboard({
   compiled,
   layer = 0,
   heat = {},
+  heatName,
   highlight = [],
   pressed = [],
   combos = [],
@@ -701,7 +707,13 @@ export function Keyboard({
       {keys.map((k) => {
         const pct = Math.round(k.heat * 100);
         const reachSpoken = k.reach ? `, ${REACH_SPOKEN[k.reach.how]} to reach ${shownName}` : '';
-        const label = `Key ${k.key.id}: ${spokenLegend(k.legend, k.tap)}${reachSpoken}`;
+        const heated =
+          heatName && k.heat > 0
+            ? `${heatName}: ${k.heat < 0.01 ? 'under 1' : pct}% of the busiest key`
+            : '';
+        const label = `Key ${k.key.id}: ${spokenLegend(k.legend, k.tap)}${reachSpoken}${
+          heated ? `, ${heated}` : ''
+        }`;
         const tapY = (k.holdFit ? -BAND / 2 : 0) + (k.shiftedFit ? TOP / 2 : 0) + 1;
         const hot = k.pressed || k.heat >= HOT_HEAT;
         // A hot key's legends are all drawn in its text colour (see `HOT_HEAT`), layer colour too.
@@ -713,7 +725,7 @@ export function Keyboard({
             : k.legend.layerIn === 'hold'
               ? k.colour
               : undefined;
-        const title = [k.legend.detail, k.reach?.text].filter(Boolean).join('; ');
+        const title = [k.legend.detail, k.reach?.text, heated].filter(Boolean).join('; ');
         return (
           // biome-ignore lint/a11y/noStaticElementInteractions: it takes a button role and tab stop whenever it is interactive
           <g

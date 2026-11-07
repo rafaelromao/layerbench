@@ -118,3 +118,42 @@ test.describe('at a desk', () => {
     await expectSkipsBelow(page, { oneRow: true });
   });
 });
+
+test('heatmaps colour the cards in every measure, and the page never scrolls sideways', async ({
+  page,
+  isMobile,
+}) => {
+  test.slow();
+  await page.goto('/library?corpus=pt-br-general&sample=10000');
+  const toggle = page.getByRole('button', { name: 'Heatmaps' });
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.lb-heat-legend')).toBeVisible();
+  await expect(page.getByText(/^Lower is better for both/)).toBeVisible({ timeout: 120_000 });
+
+  const qwerty = page
+    .locator('article')
+    .filter({ has: page.getByRole('heading', { name: 'Qwerty', exact: true }) });
+  const heated = () =>
+    qwerty
+      .locator('.lb-key-cap')
+      .evaluateAll(
+        (caps) =>
+          caps.filter((cap) => /--lb-heat\) [1-9]/.test(cap.getAttribute('style') ?? '')).length,
+      );
+  expect(await heated()).toBeGreaterThan(0);
+  expect(await overflow(page)).toBeLessThanOrEqual(0);
+
+  // Choosing another measure needs no new analysis, and no room the screen does not have. Layer
+  // taps may leave a layer plain; every other measure colours something on Qwerty's base layer.
+  const widths = isMobile ? [undefined, 320] : [undefined];
+  for (const width of widths) {
+    if (width) await page.setViewportSize({ width, height: 800 });
+    const choice = page.getByRole('combobox', { name: 'Heat' });
+    for (const mode of ['sfb', 'effort', 'travel', 'layer_taps', 'usage']) {
+      await choice.selectOption(mode);
+      if (mode !== 'layer_taps') expect(await heated(), mode).toBeGreaterThan(0);
+      expect(await overflow(page), mode).toBeLessThanOrEqual(0);
+    }
+  }
+});

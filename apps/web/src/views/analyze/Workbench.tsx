@@ -44,7 +44,7 @@ import { presetOf } from '../../components/RuleSources.js';
 import { Tabs, tabId, tabPanelId } from '../../components/Tabs.js';
 import { freeCopyName, type SaveOptions } from '../../custom/save-new.js';
 import type { useAnalysisClient } from '../../engine/client-context.js';
-import { expandPositions, heatMap } from '../../engine/heat.js';
+import { expandPositions, HEAT_LABELS, heatMap } from '../../engine/heat.js';
 import type { AnalyzeRequest, ExplainDTO, ProducerDTO, ReportDTO } from '../../engine/protocol.js';
 import { useAnalysis } from '../../engine/use-analysis.js';
 import { useKeyStats } from '../../engine/use-key-stats.js';
@@ -90,13 +90,6 @@ const undoableEditReducer = undoable(editReducer);
 /** How long each press of a played word stays lit, and the rest before it plays again. */
 const PLAY_STEP_MS = 750;
 const PLAY_REST_MS = 1200;
-const HEAT_LABELS: Record<HeatMode, string> = {
-  usage: 'Usage',
-  sfb: 'SFB contribution',
-  effort: 'Effort',
-  travel: 'Finger travel',
-  layer_taps: 'Layer taps',
-};
 
 /** Each panel, and the part of the guide its "?" leads to. */
 const PANELS: [Panel, string, HelpTopic][] = [

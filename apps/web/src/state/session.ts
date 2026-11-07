@@ -1,7 +1,31 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import type { SortKey } from '../engine/use-summaries.js';
+import type { HeatMode } from '../url/params.js';
 import { applyTheme, type ThemeChoice } from './theme.js';
+
+/**
+ * This browser's storage, where a write it refuses (a full quota, a window that keeps nothing) is
+ * let go rather than thrown from the click that made the choice: the choice then holds for the visit
+ * and the page goes on. A storage that cannot be read at all is left as it is, with the defaults.
+ */
+const browserStorage = createJSONStorage(() => ({
+  getItem: (name) => localStorage.getItem(name),
+  setItem: (name, value) => {
+    try {
+      localStorage.setItem(name, value);
+    } catch {
+      // Kept in memory only.
+    }
+  },
+  removeItem: (name) => {
+    try {
+      localStorage.removeItem(name);
+    } catch {
+      // Nothing was stored to remove.
+    }
+  },
+}));
 
 /**
  * Per-browser preferences. Nothing here belongs in a shareable link: the URL carries what an
@@ -30,6 +54,12 @@ interface SessionState {
   /** Categories whose layouts the Library leaves out: `standard`, `thumb_alpha`, `special`. */
   hiddenCategories: string[];
   showCategories: (categories: readonly string[], shown: boolean) => void;
+  /** Whether the Library's boards are coloured by heat. */
+  libraryHeat: boolean;
+  setLibraryHeat: (on: boolean) => void;
+  /** What that heat measures, as Analyze's Heat does. */
+  libraryHeatMode: HeatMode;
+  setLibraryHeatMode: (mode: HeatMode) => void;
   /** The groups of Analyze and Compare folded away, by id; the same in every visit. */
   collapsedGroups: string[];
   toggleGroup: (group: string) => void;
@@ -66,6 +96,10 @@ export const useSession = create<SessionState>()(
         const rest = get().hiddenCategories.filter((c) => !categories.includes(c));
         set({ hiddenCategories: shown ? rest : [...rest, ...categories] });
       },
+      libraryHeat: false,
+      setLibraryHeat: (libraryHeat) => set({ libraryHeat }),
+      libraryHeatMode: 'usage',
+      setLibraryHeatMode: (libraryHeatMode) => set({ libraryHeatMode }),
       collapsedGroups: [],
       toggleGroup: (group) => {
         const current = get().collapsedGroups;
@@ -78,6 +112,7 @@ export const useSession = create<SessionState>()(
     }),
     {
       name: 'layerbench:session',
+      storage: browserStorage,
       partialize: (s) => ({
         theme: s.theme,
         editPanel: s.editPanel,
@@ -87,6 +122,8 @@ export const useSession = create<SessionState>()(
         hideCustom: s.hideCustom,
         hideCommunity: s.hideCommunity,
         hiddenCategories: s.hiddenCategories,
+        libraryHeat: s.libraryHeat,
+        libraryHeatMode: s.libraryHeatMode,
         collapsedGroups: s.collapsedGroups,
       }),
     },

@@ -21,14 +21,19 @@ export interface PreviewBoardProps {
   label?: string;
   /** Positions to outline. */
   highlight?: number[];
+  /** Position index to 0–1 heat, as Analyze draws it; none when absent. */
+  heat?: Record<number, number>;
+  /** What the heat measures, so each heated key says how hot it is in words as well. */
+  heatName?: string;
   /** Whether the list of the numbered keys goes under the board. */
   legend?: boolean;
 }
 
 /**
- * A layer drawn to be looked at, not edited: Analyze's board (`Board`), with no heat, nothing
- * selected and nothing to edit. Under it, unless `legend` is false, the list of the keys whose
- * legend cannot say everything, numbered on the board, which Analyze keeps in its Legend panel.
+ * A layer drawn to be looked at, not edited: Analyze's board (`Board`), with heat only where the
+ * page gives it, nothing selected and nothing to edit. Under it, unless `legend` is false, the list
+ * of the keys whose legend cannot say everything, numbered on the board, which Analyze keeps in its
+ * Legend panel.
  */
 export function PreviewBoard({
   id,
@@ -38,6 +43,8 @@ export function PreviewBoard({
   onLayer,
   label,
   highlight,
+  heat,
+  heatName,
   legend = true,
 }: PreviewBoardProps) {
   const source = typed ?? compiled;
@@ -54,6 +61,8 @@ export function PreviewBoard({
         navLabel={label}
         interactive={false}
         highlight={highlight}
+        heat={heat}
+        heatName={heatName}
       />
       {legend && (
         <div className="mt-2 empty:hidden">
