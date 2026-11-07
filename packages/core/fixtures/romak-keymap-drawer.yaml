@@ -1,0 +1,1143 @@
+# A copy of docs/img/diagrams/keymap-drawer/keymap-drawer.yaml from github.com/rafaelromao/keyboards,
+# commit b5fd65d45fae51d6d52aca13e1391b7c6aba1178 (blob 56aac11a6124984b19ed725ca9e2d5556240b17e), the file
+# its author draws his keymap from. Only these comment lines are added.
+layout:
+  qmk_info_json: docs/img/diagrams/keymap-drawer/diamond-layout.json
+layers:
+  alpha1:
+    - [b, m, g, l, o, u]
+    - [
+        { t: d, h: shortcuts },
+        { h: $$mdi:apple-keyboard-control$$, t: n },
+        { h: $$mdi:apple-keyboard-option$$, t: s },
+        { h: $$mdi:apple-keyboard-shift$$, t: t },
+        { h: $$mdi:apple-keyboard-shift$$, t: r },
+        { h: $$mdi:apple-keyboard-option$$, t: a },
+        { h: $$mdi:apple-keyboard-control$$, t: e },
+        { t: i, h: shortcuts },
+      ]
+    - [
+        { h: $$shift_command$$, t: f },
+        { h: $$shift_command$$, t: c },
+        { h: $$mdi:apple-keyboard-command$$, t: p },
+        { h: $$mdi:apple-keyboard-command$$, t: "h|v", s: magic },
+        { t: ",", h: "→ ,"  },
+        { t: ., h: "→ ." },
+      ]
+    - { t: $$mdi:repeat$$, s: repeat, h: nav }
+    - { t: $$mdi:keyboard-space$$, h: numbers }
+    - { t: alpha2, s: sticky, h: symbols }
+    - { t: $$mdi:apple-keyboard-shift$$, s: sticky, h: media }
+  alpha2:
+    - [q, qu, k, ô, ó, ú]
+    - [y, z, x, w, ã, á, é, í]
+    - [
+        j,
+        { t: ç, s: auto-sticky, h: ç-extension },
+        { t: "v|h", s: magic },
+        õ,
+        â,
+        ê,
+      ]
+    - { t: $$mdi:repeat$$, s: repeat }
+    - { t: _ }
+    - { t: $$mdi:keyboard-space$$ }
+    - "'"
+  shifted1:
+    - [
+        {t: B, type: ghost },
+        {t: M, type: ghost },
+        {t: G, type: ghost },
+        {t: L, type: ghost },
+        {t: O, type: ghost },
+        {t: U, type: ghost },
+      ]
+    - [
+        { t: D, h: shortcuts, type: ghost },
+        { h: $$mdi:apple-keyboard-control$$, t: N, type: ghost },
+        { h: $$mdi:apple-keyboard-option$$, t: S, type: ghost },
+        { h: $$mdi:apple-keyboard-shift$$, t: T, type: ghost },
+        { h: $$mdi:apple-keyboard-shift$$, t: R, type: ghost },
+        { h: $$mdi:apple-keyboard-option$$, t: A, type: ghost },
+        { h: $$mdi:apple-keyboard-control$$, t: E, type: ghost },
+        { t: I, h: shortcuts, type: ghost },
+      ]
+    - [
+        { h: $$shift_command$$, t: F, type: ghost },
+        { h: $$shift_command$$, t: C, type: ghost },
+        { h: $$mdi:apple-keyboard-command$$, t: P, type: ghost },
+        { h: $$mdi:apple-keyboard-command$$, t: "H|V", s: magic, type: ghost },
+        { t: ",", h: "→ ,"  },
+        { t: ., h: "→ ." },
+      ]
+    - { t: CAPS LINE, h: nav, type: ghost }
+    - { t: $$mdi:keyboard-space$$, h: numbers, type: ghost }
+    - { t: shifted2, s: sticky, h: symbols, type: ghost }
+    - { t: CAPS word, h: media, type: ghost }
+  shifted2:
+    - [Q, Qu, K, Ô, Ó, Ú]
+    - [Y, Z, X, W, Ã, Á, É, Í]
+    - [
+        J,
+        { t: Ç, s: auto-sticky, h: ç-extension },
+        { t: "V|H", s: magic },
+        Õ,
+        Â,
+        Ê,
+      ]
+    - "'"
+    - { t: ▽ }
+    - { t: $$mdi:keyboard-space$$ }
+    - "'"
+  ç-extension:
+    - [
+        null,
+        null,
+        null,
+        null,
+        { t: ▽ },
+        { t: ▽ }
+      ]
+    - [
+        null,
+        null,
+        null,
+        { t: ão },
+        { t: ã }, 
+        { t: ▽ },
+        null,
+        null
+      ] 
+    - [
+        null,
+        null,
+        { t: ões }, 
+        { t: õ }, 
+        { t: ▽ },
+        { t: ▽ }
+      ]
+    - { t: alpha2, s: sticky }
+    - null
+    - null
+    - null
+  vim:
+    - [
+        { t: b, h: begin },
+        { t: e, h: end },
+        { t: w, h: word },
+        { t: g, h: go to },
+        { t: o, h: newline },
+        { t: u, h: undo },
+      ]
+    - [
+        { h: alpha1, t: q, s: record },
+        { h: $$mdi:apple-keyboard-control$$, t: n, s: next/prev },
+        { h: $$mdi:apple-keyboard-option$$, t: s, s: surround },
+        { h: $$mdi:apple-keyboard-shift$$, t: r, s: replace },
+        { h: $$mdi:apple-keyboard-shift$$, t: h, s: left },
+        { h: $$mdi:apple-keyboard-option$$, t: j, s: down },
+        { h: $$mdi:apple-keyboard-control$$, t: k, s: up },
+        { h: alpha1, t: l, s: right},
+      ]
+    - [
+        { h: $$shift_command$$, t: f, s: find },
+        { h: $$shift_command$$, t: c, s: change },
+        { h: $$mdi:apple-keyboard-command$$, t: t, s: till},
+        { h: $$mdi:apple-keyboard-command$$, t: i, s: insert },
+        { t: a, s: append },
+        { t: ".", s: repeat },
+      ]
+    - { t: ▽ }
+    - { t: ▽ }
+    - { t: ▽ }
+    - { t: ▽ }
+  numbers:
+    - [ "\\", { t: "{", h: "⇥ {" }, { t: "}", h: "⇥ }" }, 7, 8, 9]
+    - [
+        { t: ",", h: func },
+        "&",
+        { t: "(", h: "⇥ (" },
+        { t: ")", h: "⇥ )" },
+        4,
+        5,
+        6,
+        { t: "." },
+      ]
+    - [ "|", { t: "[", h: "→ [" }, { t: "]", h: "→ ]" }, 1, 2, 3]
+    - { t: ▽ }
+    - { t: ▽, type: held }
+    - { t: $$mdi:keyboard-space$$, h: symbols }
+    - 0
+  symbols:
+    - [
+        "~",
+        "#",
+        { t: "'", h: "⇥ '" },
+        { t: "%", h: "⇥ %" },
+        { t: "=", h: "⇥ =" },
+        { t: ":", h: "⇥ :" },
+      ]
+    - [
+        "@",
+        { t: "^", h: "0" },
+        t: "$",
+        { t: '"', h: '⇥ "' },
+        { t: "?", h: "⇥ ?" },
+        { t: "-", h: "→ -" },
+        { t: "+", h: "→ +" },
+        { t: "_", h: macros },
+      ]
+    - [
+        { t: "<", h: "→ <"},
+        { t: ">", h: "→ >"},
+        { t: "`", h: "⇥ `" }, 
+        { t: "!", h: "⇥ !" }, 
+        { t: "/", h: "→ /" },
+        { t: "*", h: "→ *" },
+      ]
+    - { t: ▽ }
+    - { t: $$mdi:keyboard-space$$, h: numbers }
+    - { type: held }
+    - { t: ▽ }
+  shortcuts:
+    - [
+        { t: $$mdi:calculator$$, s: calc },
+        { t: $$mdi:folder-open$$, s: files},
+        { t: $$mdi:web$$, s: browser },
+        { t: $$mdi:chat-processing-outline$$, s: voxtype },
+        { t: $$mdi:microsoft-visual-studio-code$$, s: editor },
+        { t: $$mdi:poll$$, s: activities},
+      ]
+    - [
+        { type: held },
+        { t: $$mdi:magnify-minus-outline$$, s: zoom -, h: toggles },
+        { t: $$mdi:magnify-plus-outline$$, s: zoom +},
+        { t: $$mdi:open-in-new$$, s: new },
+        { t: $$mdi:ray-start-arrow$$, s: leader-key },
+        { t: $$mdi:docker$$, s: docker},
+        { t: "$$mdi:emoticon-happy-outline$$", s: emojis, h: toggles },
+        { type: held alternate },
+      ]
+    - [
+        { t: $$mdi:close$$, s: close},
+        { t: $$mdi:refresh$$, s: refresh},
+        { t: $$mdi:backup-restore$$, s: reopen },
+        { t: $$mdi:content-cut$$, s: clip },
+        { t: $$mdi:note-multiple-outline$$, s: notes },
+        { t: $$mdi:console-line$$, s: term },
+      ]
+    - { h: text }
+    - { t: $$mdi:keyboard-space$$, h: func }
+    - { t: $$mdi:keyboard-space$$, h: macros }
+    - { h: text }
+  toggles:
+    - [
+        null,
+        { t: $$mdi:bluetooth$$, h: 0 },
+        { t: $$mdi:bluetooth-off$$, h: $$mdi:delete$$ },
+        { t: nav },
+        { t: func },
+        null,
+      ]
+    - [
+        { type: held },
+        { type: held },
+        { t: $$mdi:bluetooth$$, h: $$mdi:arrow-left$$ },
+        { t: $$mdi:bluetooth$$, h: $$mdi:arrow-right$$ },
+        { t: numbers },
+        { t: media },
+        { type: held alternate },
+        { type: held alternate },
+      ]
+    - [
+        { t: $$mdi:flash$$, s: "boot" },
+        { t: omarchy },
+        { t: macos },
+        { t: mehs },
+        null,
+        { t: $$mdi:flash$$, s: "boot" },
+      ]
+    - { t: CAPS LOCK }
+    - { t: NUM LOCK }
+    - { t: $$mdi:lock$$, s: "lock" }
+    - { t: $$mdi:power-sleep$$, s: "sleep"}
+  nav:
+    - [
+        { t: $$mdi:apps$$, s: swapper },
+        { t: $$mdi:tab-search$$, s: tabs},
+        { t: $$mdi:layers-search-outline$$, s: launcher },
+        { t: "↹" },
+        { t: $$mdi:keyboard-return$$ },
+        { t: "⎋" },
+      ]
+    - [
+        { t: $$mdi:cog$$, s: system, h: text},
+        { s: sticky, t: $$mdi:numeric$$, h: $$mdi:apple-keyboard-control$$ },
+        { s: sticky, t: $$mdi:numeric$$, h: $$mdi:apple-keyboard-option$$ },
+        { s: sticky, t: $$mdi:numeric$$, h: $$mdi:apple-keyboard-shift$$ },
+        { t: $$mdi:arrow-left$$, s: left },
+        { t: $$mdi:arrow-down$$, s: down },
+        { t: $$mdi:arrow-up$$, s: up },
+        { t: $$mdi:arrow-right$$, s: right },
+      ]
+    - [
+        { s: sticky, t: $$mdi:numeric$$, h: $$shift_command$$ },
+        { s: sticky, t: $$mdi:numeric$$, h: $$shift_command$$ },
+        { s: sticky, t: $$mdi:numeric$$, h: $$mdi:apple-keyboard-command$$ },
+        { t: $$mdi:backspace-reverse-outline$$, s: del },
+        { t: $$mdi:format-horizontal-align-left$$, s: home },
+        { t: $$mdi:format-horizontal-align-right$$, s: end },
+      ]
+    - { t: ▽, type: held }
+    - { t: ▽ }
+    - { t: $$mdi:keyboard-space$$, h: symbols }
+    - { t: "⎀", s: insert, h: media, type: held alternate }
+  media:
+    - [
+        null,
+        { t: $$mdi:mouse-left-click$$, s: left },
+        { t: $$mdi:mouse-right-click$$, s: right },
+        { t: "↹", h: "⇧ ↹" },
+        { t: "↵", h: "⇥ ↵" },
+        { t: "⎋" },
+      ]
+    - [
+        null,
+        { t: $$mdi:arrow-left-circle$$, s: mouse },
+        { t: $$mdi:arrow-up-circle$$, s: mouse },
+        { t: $$mdi:arrow-right-circle$$, s: mouse },
+        { t: $$mdi:microphone$$, s: mic},
+        { t: $$mdi:volume-medium$$, s: vol- },
+        { t: $$mdi:volume-high$$, s: vol+ },
+        { t: $$mdi:camera$$, h: text, s: cam},
+      ]
+    - [
+        { t: $$mdi:arrow-down-circle-outline$$, s: scroll },
+        { t: $$mdi:arrow-down-circle$$, s: mouse },
+        { t: $$mdi:arrow-up-circle-outline$$, s: scroll },
+        { t: $$mdi:play-pause$$, s: play },
+        { t: $$mdi:skip-backward$$, s: previous },
+        { t: $$mdi:skip-forward$$, s: next },
+      ]
+    - { h: nav }
+    - { t: $$mdi:keyboard-space$$ }
+    - null
+    - { type: held }
+  text:
+    - [
+        { s: select, h: home, t: $$mdi:select-compare$$ },
+        { s: select, h: word, t: $$mdi:select-compare$$ },
+        { s: select, h: line, t: $$mdi:select-compare$$ },
+        { s: tab, t: "↹", h: "⇤ ↹" },
+        { s: enter, t: "↵", h: "⇥ ↵" },
+        { t: "⎋", s: esc },
+      ]
+    - [
+        { type: held },
+        { t: $$mdi:apple-keyboard-control$$},
+        { t: $$mdi:apple-keyboard-option$$},
+        { t: $$mdi:apple-keyboard-shift$$},
+        { t: ← ⓦ , s: word},
+        { t: $$mdi:arrow-down$$, s: line },
+        { t: $$mdi:arrow-up$$, s: line },
+        { t: → ⓦ , s: word, type: held alternate },
+      ]
+    - [
+        { t: $$shift_command$$ },
+        { t: $$shift_command$$ },
+        { t: $$mdi:apple-keyboard-command$$},
+        { t: ⌦ ⓦ, s: delete, h: word },
+        { t: $$mdi:format-horizontal-align-left$$, s: home },
+        { t: $$mdi:format-horizontal-align-right$$, s: end },
+      ]
+    - { type: held }
+    - null
+    - null
+    - { type: held alternate }
+  mehs:
+    - [meh b, meh m, meh g, meh l, meh o, meh u]
+    - [
+        { t: meh d },
+        { t: meh n },
+        meh s,
+        meh t,
+        meh r,
+        meh a,
+        { t: meh e },
+        { t: meh i },
+      ]
+    - [
+        { t: meh f },
+        { t: meh c },
+        { t: meh p },
+        { t: meh h },
+        { t: "meh '" },
+        { t: "meh \\" },
+      ]
+    - { t: ▽ }
+    - {
+        t: meh ␣,
+        h: $$mdi:apple-keyboard-command$$,
+      }
+    - {
+        t: meh ↵,
+        h: $$mdi:apple-keyboard-command$$,
+      }
+    - { t: ▽ }
+  func:
+    - [
+        "F13",
+        "F14",
+        "F15",
+        "F7",
+        "F8",
+        "F9",
+      ]
+    - [
+        { type: held },
+        { t: $$mdi:apple-keyboard-control$$, s: sticky},
+        { t: $$mdi:apple-keyboard-option$$, s: sticky},
+        { t: $$mdi:apple-keyboard-shift$$, s: sticky},
+        "F4",
+        "F5",
+        "F6",
+        "F12" 
+      ]
+    - [
+        { t: $$shift_command$$, s: sticky },
+        { t: $$shift_command$$, s: sticky },
+        { t: $$mdi:apple-keyboard-command$$, s: sticky},
+        "F1",
+        "F2",
+        "F3",
+      ]
+    - null
+    - type: held
+    - "F10"
+    - "F11"
+  macros:
+    - [
+        { t: "~/" },
+        { t: "./" },
+        { t: "../" },
+        { t: ":%s/", s: search, h: replace },
+        { t: "o⎋", s: newline, h: below },
+        { t: 'O⎋', s: newline, h: above },
+      ]
+    - [
+        { t: "exit⏎", s: "terminal"},
+        { t: "[]'s", s: "hugs" },
+        { t: "[[", s: "open ref" },
+        { t: "-␣[␣]␣", s: "new task" },
+        { t: "⇧v", s: visual, h: line },
+        { t: '"0p', s: paste, h: last yank },
+        { t: '"1p', s: paste, h: last delete },
+        { type: held },
+      ]
+    - [
+        { t: "Print OS" },
+        { t: "⌘/|⌃/", s: "comment" },
+        { t: "haha", s: "laugh" },
+        { t: "⌃v", s: visual, h: block },
+        { t: '"+p', s: paste, h: clipboard },
+        { t: '"+y', s: yank, h: clipboard },
+      ]
+    - null
+    - { t: $$mdi:keyboard-space$$, h: normal, s: vim }
+    - type: held
+    - null
+  left-meh-morphs:
+    - [
+        { type: ghost },
+        { type: ghost },
+        { type: ghost },
+        { type: ghost },
+        { type: ghost },
+        { type: ghost },
+      ]
+    - [
+        { type: ghost },
+        { type: held, t: $$mdi:apple-keyboard-control$$ },
+        { type: held, t: $$mdi:apple-keyboard-option$$ },
+        { type: held, t: $$mdi:apple-keyboard-shift$$ },
+        { type: ghost },
+        { type: ghost },
+        { type: ghost },
+        { type: ghost },
+      ]
+    - [
+        { type: ghost },
+        { type: ghost },
+        { type: ghost },
+        { type: ghost },
+        { type: ghost },
+        { type: ghost },
+      ]
+    - { type: ghost }
+    - { type: ghost, t: ▽ }
+    - {
+        type: ghost,
+        s: sticky,
+        h: $$mdi:apple-keyboard-command$$,
+        t: $$mdi:apple-keyboard-command$$,
+      }
+    - { type: ghost }
+  right-meh-morphs:
+    - [
+        { type: ghost },
+        { type: ghost },
+        { type: ghost },
+        { type: ghost },
+        { type: ghost },
+        { type: ghost },
+      ]
+    - [
+        { type: ghost },
+        { type: ghost },
+        { type: ghost },
+        { type: ghost },
+        { type: held, t: $$mdi:apple-keyboard-shift$$ },
+        { type: held, t: $$mdi:apple-keyboard-option$$ },
+        { type: held, t: $$mdi:apple-keyboard-control$$ },
+        { type: ghost },
+      ]
+    - [
+        { type: ghost },
+        { type: ghost },
+        { type: ghost },
+        { type: ghost },
+        { type: ghost },
+        { type: ghost },
+      ]
+    - { type: ghost }
+    - {
+        type: ghost,
+        s: sticky,
+        h: $$mdi:apple-keyboard-command$$,
+        t: $$mdi:apple-keyboard-command$$,
+      }
+    - { type: ghost, t: ▽ }
+    - { type: ghost }
+  desktop-management:
+    - [
+        null,
+        null,
+        null,
+        { s: show, h: desktops, t: $$mdi:monitor-shimmer$$ },
+        { s: prev, h: window, t: $$mdi:dock-window$$ },
+        { s: next, h: window, t: $$mdi:dock-window$$ },
+      ]
+    - [
+        null,
+        type: held,
+        type: held,
+        null,
+        { s: prev, h: desktop, t: $$mdi:remote-desktop$$ },
+        { s: prev, h: display, t: $$mdi:monitor$$ },
+        { s: next, h: display, t: $$mdi:monitor$$ },
+        { s: next, h: desktop, t: $$mdi:remote-desktop$$ },
+      ]
+    - [
+        null,
+        null,
+        null,
+        { s: toggle, h: scratchpad, t: $$mdi:monitor-eye$$ },
+        { s: shrink, h: horizontal, t: $$mdi:arrow-left-bold-outline$$ },
+        { s: expand, h: horizontal, t: $$mdi:arrow-right-bold-outline$$ },
+      ]
+    - type: held
+    - null
+    - null
+    - null
+  window-management:
+    - [
+        null,
+        null,
+        null,
+        { s: show app, h: windows, t: $$mdi:monitor-star$$ },
+        { s: toggle, h: full screen, t: $$mdi:fullscreen$$ },
+        { s: toggle, h: pop up, t: $$mdi:fullscreen-exit$$ },
+      ]
+    - [
+        null,
+        type: held,
+        type: held,
+        null,
+        { s: to prev, h: desktop, t: $$mdi:remote-desktop$$ },
+        { s: to prev, h: display, t: $$mdi:monitor$$ },
+        { s: to next, h: display, t: $$mdi:monitor$$ },
+        { s: to next, h: desktop, t: $$mdi:remote-desktop$$ },
+      ]
+    - [
+        null,
+        null,
+        type: held,
+        { s: move to, h: scratchpad, t: $$mdi:monitor-eye$$ },
+        { s: shrink, h: vertical, t: $$mdi:arrow-down-bold-outline$$ },
+        { s: expand, h: vertical, t: $$mdi:arrow-up-bold-outline$$ },
+      ]
+    - type: held
+    - null
+    - null
+    - null
+  intellij-meh:
+    - [
+        { s: project, t: $$mdi:file-multiple$$ },
+        { s: build, h: project, t: $$mdi:wrench$$ },
+        { s: reformat, h: code, t: $$mdi:format-indent-increase$$ },
+        { s: step, h: out, t: $$mdi:debug-step-out$$ },
+        { s: step, h: over, t: $$mdi:debug-step-over$$ },
+        { s: step, h: into, t: $$mdi:debug-step-into$$ },
+      ]
+    - [
+        null,
+        { s: type, h: matching, t: $$mdi:code-block-braces$$ },
+        { s: complete, h: statement, t: "()" },
+        { s: recent, h: files, t: $$mdi:history$$ },
+        { h: run, t: $$mdi:play$$ },
+        { h: debug, t: $$mdi:bug-play$$ },
+        { s: toggle, h: breakpoint, t: $$mdi:circle$$ },
+        null,
+      ]
+    - [
+        { s: evaluate, h: expression, t: $$mdi:variable$$ },
+        { s: comment, h: line, t: "//" },
+        { s: quick, h: definition, t: $$mdi:feather$$ },
+        { s: quick, h: docs, t: $$mdi:book-open-outline$$ },
+        { s: previous, h: error, t: $$mdi:page-previous-outline$$ },
+        { s: next, h: error, t: $$mdi:page-next-outline$$ },
+      ]
+    - { t: ▽ }
+    - {
+        h: $$mdi:apple-keyboard-command$$,
+        s: assistant,
+        t: $$mdi:brain$$
+      }
+    - {
+        h: $$mdi:apple-keyboard-command$$,
+        s: actions,
+        t: $$mdi:gesture-tap$$
+      }
+    - { t: ▽ }
+  intellij-hyper:
+    - [
+        { s: select in, t: $$mdi:form-select$$ },
+        { s: rebuild, h: project, t: $$mdi:wrench-outline$$ },
+        { s: inspect, h: code, t: $$mdi:sine-wave$$ },
+        { s: search, h: everywhere, t: $$mdi:database-search-outline$$ },
+        { s: go to, h: symbol, t: $$mdi:text-box-search-outline$$ },
+        { s: find, h: action, t: $$mdi:feature-search-outline$$ },
+      ]
+    - [
+        null,
+        { s: basic, h: completion, t: $$mdi:code-block-parentheses$$ },
+        { s: refactor, h: this, t: $$mdi:file-code-outline$$ },
+        { s: switch, h: scheme, t: $$mdi:view-compact$$ },
+        { s: stop, t: $$mdi:stop$$ },
+        { s: resume, t: $$mdi:play-pause$$ },
+        { s: view, h: breakpoints, t: $$mdi:circle-multiple$$ },
+        null,
+      ]
+    - [
+        { s: generate, h: code, t: $$mdi:code-array$$ },
+        { s: comment, h: block, t: "/**/" },
+        { s: find, h: usages, t: $$mdi:book-open-variant-outline$$ },
+        { s: toggle, h: bookmark, t: $$mdi:bookmark-box$$ },
+        { s: previous, h: bookmark, t: $$mdi:page-previous$$ },
+        { s: next, h: bookmark, t: $$mdi:page-next$$ },
+      ]
+    - { t: ▽ }
+    - null
+    - null
+    - { t: ▽ }
+  vscode-meh:
+    - [
+        { s: explorer, t: $$mdi:file-multiple$$ },
+        { s: build, h: task, t: $$mdi:wrench$$ },
+        { s: format, h: document, t: $$mdi:format-indent-increase$$ },
+        { s: step, h: out, t: $$mdi:debug-step-out$$ },
+        { s: step, h: over, t: $$mdi:debug-step-over$$ },
+        { s: step, h: into, t: $$mdi:debug-step-into$$ },
+      ]
+    - [
+        null,
+        { s: trigger, h: suggest, t: $$mdi:code-block-parentheses$$ },
+        { s: insert, h: line below, t: $$mdi:table-row-plus-after$$ },
+        { s: recent, h: editors, t: $$mdi:history$$ },
+        { h: run, t: $$mdi:play$$ },
+        { h: debug, t: $$mdi:bug-play$$ },
+        { s: toggle, h: breakpoint, t: $$mdi:circle$$ },
+        null,
+      ]
+    - [
+        { s: evaluate, h: in console, t: $$mdi:variable$$ },
+        { s: comment, h: line, t: "//" },
+        { s: peek, h: definition, t: $$mdi:feather$$ },
+        { s: show, h: hover, t: $$mdi:book-open-outline$$ },
+        { s: previous, h: problem, t: $$mdi:page-previous-outline$$ },
+        { s: next, h: problem, t: $$mdi:page-next-outline$$ },
+      ]
+    - { t: ▽ }
+    - {
+        h: $$mdi:apple-keyboard-command$$,
+        s: chat,
+        t: $$mdi:brain$$
+      }
+    - {
+        h: $$mdi:apple-keyboard-command$$,
+        s: quick fix,
+        t: $$mdi:gesture-tap$$
+      }
+    - { t: ▽ }
+  vscode-hyper:
+    - [
+        { s: reveal in, h: explorer, t: $$mdi:form-select$$ },
+        { type: ghost },
+        { type: ghost },
+        { s: quick, h: open, t: $$mdi:file-search-outline$$ },
+        { s: go to, h: symbol, t: $$mdi:text-box-search-outline$$ },
+        { s: command, h: palette, t: $$mdi:feature-search-outline$$ },
+      ]
+    - [
+        null,
+        { s: trigger, h: suggest, t: $$mdi:code-block-parentheses$$ },
+        { s: refactor, t: $$mdi:file-code-outline$$ },
+        { type: ghost },
+        { s: stop, t: $$mdi:stop$$ },
+        { s: continue, t: $$mdi:play-pause$$ },
+        { s: view, h: breakpoints, t: $$mdi:circle-multiple$$ },
+        null,
+      ]
+    - [
+        { type: ghost },
+        { s: comment, h: block, t: "/**/" },
+        { s: find, h: references, t: $$mdi:book-open-variant-outline$$ },
+        { type: ghost },
+        { type: ghost },
+        { type: ghost },
+      ]
+    - { t: ▽ }
+    - null
+    - null
+    - { t: ▽ }
+  nvim-meh:
+    - [
+        { s: explorer, t: $$mdi:file-multiple$$ },
+        { s: make, t: $$mdi:wrench$$ },
+        { s: lsp, h: format, t: $$mdi:format-indent-increase$$ },
+        { s: step, h: out, t: $$mdi:debug-step-out$$ },
+        { s: step, h: over, t: $$mdi:debug-step-over$$ },
+        { s: step, h: into, t: $$mdi:debug-step-into$$ },
+      ]
+    - [
+        null,
+        { s: omni, h: complete, t: $$mdi:code-block-parentheses$$ },
+        { type: ghost },
+        { s: recent, h: files, t: $$mdi:history$$ },
+        { s: continue, t: $$mdi:play-pause$$ },
+        { s: continue, t: $$mdi:play-pause$$ },
+        { s: toggle, h: breakpoint, t: $$mdi:circle$$ },
+        null,
+      ]
+    - [
+        { s: evaluate, h: hover, t: $$mdi:variable$$ },
+        { s: comment, h: gcc, t: "//" },
+        { s: go to, h: definition, t: $$mdi:location-enter$$ },
+        { s: lsp, h: hover, t: $$mdi:book-open-outline$$ },
+        { s: previous, h: diagnostic, t: $$mdi:page-previous-outline$$ },
+        { s: next, h: diagnostic, t: $$mdi:page-next-outline$$ },
+      ]
+    - { t: ▽ }
+    - { type: ghost }
+    - { s: code action, t: $$mdi:gesture-tap$$ }
+    - { t: ▽ }
+combos:
+  - {
+      p: [0, 1],
+      k: "⎋",
+      a: mid,
+      layers:
+        [
+          alpha1,
+          alpha2,
+          shifted1,
+          shifted2,
+          ç-extension,
+          mehs,
+        ],
+    }
+  - {
+      p: [4, 5],
+      k: $$mdi:backspace-outline$$,
+      a: mid,
+      layers:
+        [
+          alpha1,
+          alpha2,
+          shifted1,
+          shifted2,
+          ç-extension,
+          nav,
+          media,
+          numbers,
+          symbols,
+        ],
+    }
+  - {
+      p: [4, 5],
+      k: { t: $$mdi:backspace-outline$$, h: word },
+      a: mid,
+      layers:
+        [
+          text
+        ],
+    }
+  - {
+      p: [3, 4, 5],
+      k: "cancel",
+      a: top,
+      w: 48,
+      layers: [alpha1, numbers, mehs, nav, media, func, vim],
+    }
+
+  - { p: [1, 2],   k: "k", a: mid, layers: [alpha1] }
+  - { p: [3, 4],   k: "x", a: mid, layers: [alpha1] }
+  - { p: [7, 8],   k: "q", a: mid, layers: [alpha1] }
+  - { p: [8, 9],   k: "w", a: mid, layers: [alpha1] }
+  - { p: [10, 11], k: "z", a: mid, layers: [alpha1] }
+  - { p: [11, 12], k: "y", a: mid, layers: [alpha1] }
+  - { p: [15, 16], k: "v", a: mid, layers: [alpha1] }
+  - { p: [17, 18], k: "j", a: mid, layers: [alpha1] }
+  - {
+      p: [18, 19],
+      k: { t: ";", h: "⇥ ;" },
+      a: mid,
+      layers: [alpha1, numbers],
+    }
+
+  - { p: [1, 2], k: "K", a: mid, layers: [shifted1] }
+  - { p: [3, 4], k: "X", a: mid, layers: [shifted1] }
+  - { p: [7, 8], k: "Q", a: mid, layers: [shifted1] }
+  - { p: [8, 9], k: "W", a: mid, layers: [shifted1] }
+  - { p: [10, 11], k: "Z", a: mid, layers: [shifted1] }
+  - { p: [11, 12], k: "Y", a: mid, layers: [shifted1] }
+  - { p: [15, 16], k: "V", a: mid, layers: [shifted1] }
+  - { p: [17, 18], k: "J", a: mid, layers: [shifted1] }
+  - { p: [18, 19], k: { t: ":", h: "⇥ :" }, a: mid, layers: [shifted1] }
+
+  - {
+      p: [0, 1, 2],
+      k: { t: vim mode },
+      a: top,
+      layers: [alpha1, vim],
+    }
+  - {
+      p: [0, 1],
+      k: { t: "⎋", h: normal },
+      a: mid,
+      w: 48,
+      layers: [vim],
+    }
+  - {
+      p: [1, 2],
+      k: { t: "`", h: jump },
+      a: mid,
+      w: 48,
+      layers: [vim],
+    }
+  - {
+      p: [3, 4],
+      k: { t: "x", h: cut },
+      a: mid,
+      w: 48,
+      layers: [vim],
+    }
+  - {
+      p: [4, 5],
+      k: { t: "d", h: delete },
+      a: mid,
+      w: 48,
+      layers: [vim],
+    }
+  - {
+      p: [7, 8],
+      k: { t: "z", h: viewport },
+      a: mid,
+      w: 48,
+      layers: [vim],
+    }
+  - {
+      p: [8, 9],
+      k: { t: "m", h: mark },
+      a: mid,
+      w: 48,
+      layers: [vim],
+    }
+  - {
+      p: [10, 11],
+      k: { t: "p", h: paste },
+      a: mid,
+      w: 48,
+      layers: [vim],
+    }
+  - {
+      p: [11, 12],
+      k: { t: "y", h: yank },
+      a: mid,
+      w: 48,
+      layers: [vim],
+    }
+  - {
+      p: [14, 15],
+      k: { t: "@@", h: play again },
+      a: mid,
+      w: 48,
+      layers: [vim],
+    }
+  - {
+      p: [15, 16],
+      k: { t: "@", h: play },
+      a: mid,
+      w: 48,
+      layers: [vim],
+    }
+  - {
+      p: [17, 18],
+      k: { t: "v", h: visual },
+      a: mid,
+      w: 48,
+      layers: [vim],
+    }
+  - {
+      p: [18, 19],
+      k: { t: ";", s: ",", h: next/prev },
+      a: mid,
+      w: 48,
+      layers: [vim],
+    }
+
+  - { p: [1, 2], k: 'dead "',   a: mid, layers: [alpha2, shifted2] }
+  - { p: [3, 4], k: "-",        a: mid, layers: [alpha2, shifted2] }
+  - { p: [7, 8], k: "dead ^",   a: mid, layers: [alpha2, shifted2] }
+  - { p: [8, 9], k: "dead '",   a: mid, layers: [alpha2, shifted2] }
+  - { p: [10, 11], k: "?",      a: mid, layers: [alpha2, shifted2] }
+  - { p: [11, 12], k: "à",      a: mid, layers: [alpha2] }
+  - { p: [11, 12], k: "À",      a: mid, layers: [shifted2] }
+  - { p: [14, 15], k: "dead `", a: mid, layers: [alpha2, shifted2] }
+  - { p: [15, 16], k: "dead ~", a: mid, layers: [alpha2, shifted2] }
+  - { p: [17, 18], k: "!",      a: mid, layers: [alpha2, shifted2] }
+  - { p: [18, 19], k: ":",      a: mid, layers: [alpha2, shifted2] }
+
+  - {
+      p: [7, 8],
+      k: { t: $$mdi:loupe$$, s: 100% },
+      w: 48,
+      a: mid,
+      layers: [shortcuts],
+    }
+  - {
+      p: [14, 15],
+      k: { t: "numbers", s: "auto-layer" },
+      w: 48,
+      a: mid,
+      layers: [alpha1, shifted1],
+    }
+
+  - {
+      p: [7, 8, 9],
+      k: { t: "meh ␣", h: "meh" },
+      layers: [shortcuts],
+      draw_separate: true,
+    }
+  - {
+      p: [10, 11, 12],
+      k: { t: "meh ⏎", h: "meh" },
+      layers: [shortcuts],
+      draw_separate: true,
+    }
+
+  - {
+      p: [14, 15, 16],
+      k: { t: "hyper ␣", h: "hyper" },
+      layers: [shortcuts],
+      draw_separate: true,
+    }
+  - {
+      p: [17, 18, 19],
+      k: { t: "hyper ⏎", h: "hyper" },
+      layers: [shortcuts],
+      draw_separate: true,
+    }
+
+  - { p: [0, 1, 21], k: { t: $$mdi:content-save-check$$, h: "esc save" }, layers: [shortcuts], draw_separate: true }
+  - { p: [7, 8, 21], k: { t: $$mdi:content-save$$, h: "save" }, layers: [shortcuts], draw_separate: true }
+
+  - { p: [4, 5, 22], k: { t: $$mdi:keyboard-tab$$, h: "tab" }, layers: [shortcuts], draw_separate: true }
+  - { p: [11, 12, 22], k: { t: $$mdi:keyboard-return$$, h: "enter" }, layers: [shortcuts], draw_separate: true }
+
+  - { p: [14, 15, 21], k: { t: $$mdi:undo$$, h: "undo" }, layers: [shortcuts], draw_separate: true }
+  - { p: [8, 9, 21], k: { t: $$mdi:fullscreen$$, h: "full screen" }, layers: [shortcuts], draw_separate: true }
+
+  - { p: [10, 11, 22], k: { t: $$mdi:content-copy$$, h: "copy" }, layers: [shortcuts], draw_separate: true }
+  - { p: [17, 18, 22], k: { t: $$mdi:content-paste$$, h: "paste" }, layers: [shortcuts], draw_separate: true }
+
+  - { p: [15, 16, 21], k: { t: $$mdi:magnify$$, h: "find" }, layers: [shortcuts], draw_separate: true }
+  - { p: [18, 19, 22], k: { t: $$mdi:select-all$$, h: "select all" }, layers: [shortcuts], draw_separate: true }
+
+  - {
+      p: [10, 11, 12, 22],
+      k: { s: $$mdi:select-all$$, t: $$mdi:content-copy$$, h: sel. copy },
+      layers: [shortcuts],
+      draw_separate: true,
+    }
+  - {
+      p: [17, 18, 19, 22],
+      k: { s: $$mdi:select-all$$, t: $$mdi:content-paste$$, h: sel. paste },
+      layers: [shortcuts],
+      draw_separate: true,
+    }
+
+  - { p: [3, 4], k: { t: $$mdi:hand-back-right-outline$$, s: hand}, layers: [media] }
+  - {
+      p: [10, 11],
+      k: { t: $$mdi:mouse-left-click$$, s: left },
+      a: mid,
+      layers: [media],
+    }
+  - {
+      p: [11, 12],
+      k: { t: $$mdi:mouse-right-click$$, s: right },
+      a: mid,
+      layers: [media],
+    }
+
+  - { p: [23, 22], k: { t: "0" }, layers: [numbers], draw_separate: true }
+  - { p: [17, 22], k: { t: "1" }, layers: [numbers], draw_separate: true }
+  - { p: [18, 22], k: { t: "2" }, layers: [numbers], draw_separate: true }
+  - { p: [19, 22], k: { t: "3" }, layers: [numbers], draw_separate: true }
+  - { p: [10, 22], k: { t: "4" }, layers: [numbers], draw_separate: true }
+  - { p: [11, 22], k: { t: "5" }, layers: [numbers], draw_separate: true }
+  - { p: [12, 22], k: { t: "6" }, layers: [numbers], draw_separate: true }
+  - { p: [3, 22],  k: { t: "7" }, layers: [numbers], draw_separate: true }
+  - { p: [4, 22],  k: { t: "8" }, layers: [numbers], draw_separate: true }
+  - { p: [5, 22],  k: { t: "9" }, layers: [numbers], draw_separate: true }
+
+  - { p: [1, 21],  k: { t: "{", h: "⇥ {" }, layers: [numbers], draw_separate: true }
+  - { p: [2, 21],  k: { t: "}", h: "⇥ }" }, layers: [numbers], draw_separate: true }
+  - { p: [8, 21],  k: { t: "(", h: "⇥ (" }, layers: [numbers], draw_separate: true }
+  - { p: [9, 21],  k: { t: ")", h: "⇥ )" }, layers: [numbers], draw_separate: true }
+  - { p: [15, 21], k: { t: "[", h: "⇥ [" }, layers: [numbers], draw_separate: true }
+  - { p: [16, 21], k: { t: "]", h: "⇥ ]" }, layers: [numbers], draw_separate: true }
+
+  - { p: [10, 23], k: { t: $$mdi:arrow-left$$,                           h: left  }, layers: [nav], draw_separate: true }
+  - { p: [11, 23], k: { t: $$mdi:arrow-down$$,                           h: down  }, layers: [nav], draw_separate: true }
+  - { p: [12, 23], k: { t: $$mdi:arrow-up$$,                             h: up    }, layers: [nav], draw_separate: true }
+  - { p: [13, 23], k: { t: $$mdi:arrow-right$$,                          h: right }, layers: [nav], draw_separate: true }
+  - { p: [17, 23], k: { t: $$mdi:backspace-reverse-outline$$,            h: del   }, layers: [nav], draw_separate: true }
+  - { p: [18, 23], k: { t: $$mdi:format-horizontal-align-left$$,         h: home  }, layers: [nav], draw_separate: true }
+  - { p: [19, 23], k: { t: $$mdi:format-horizontal-align-right$$,        h: end   }, layers: [nav], draw_separate: true }
+
+  - { p: [0, 1],   k: { t: "⇥{ ⏎" }, a: mid, layers: [numbers] }
+  - { p: [1, 2],   k: { t: "{}", h: "⇥ {}" }, a: mid, layers: [numbers] }
+  - { p: [3, 4],   k: { t: "G", s: "vim" }, a: mid, layers: [numbers] }
+  - { p: [15, 16], k: { t: "[]", h: "⇥ []" }, a: mid, layers: [numbers] }
+  - { p: [10, 11], k: { t: "j", s: "vim" }, a: mid, layers: [numbers] }
+  - { p: [11, 12], k: { t: "k", s: "vim" }, a: mid, layers: [numbers] }
+  - { p: [17, 18], k: { t: "|", s: "vim" }, a: mid, layers: [numbers] }
+  - { p: [8, 9], k: { t: "()", h: "⇥ ()" }, a: mid, layers: [numbers] }
+  - { p: [7, 8], k: { t: "&&", h: "→ &&" }, a: mid, layers: [numbers] }
+  - { p: [14, 15], k: { t: "||", h: "→ ||" }, a: mid, layers: [numbers] }
+  - { p: [0, 1, 2],    k: "(){ ⏎", a: top, w: 48, slide: -1, layers: [numbers] }
+  - { p: [7, 8, 9],    k: { t: "⇥();", h: "⇥();⏎" }, w: 48, a: top, slide: -1, layers: [numbers] }
+  - { p: [14, 15, 16], k: { t: "⇥<>();", h: "⇥<>();⏎" }, w: 48, a: top, slide: -1, layers: [numbers] }
+
+  - { p: [10, 11, 12], k: { t: "º", h: "ª" }, a: top, layers: [numbers] }
+  - { p: [17, 18, 19], k: "°", a: top, layers: [numbers] }
+
+  - { p: [3, 4, 5],    k: { t: "€",   h: "EUR" }, a: top, layers: [symbols] }
+  - { p: [10, 11, 12], k: { t: "R$",  h: "BRL" }, a: top, layers: [symbols] }
+  - { p: [17, 18, 19], k: { t: "US$", h: "USD" }, a: top, layers: [symbols] }
+  - { p: [0, 1], k: { t: "=>", h: "→ =>" }, a: mid, layers: [symbols] }
+  - { p: [7, 8], k: { t: "->", h: "→ ->" }, a: mid, layers: [symbols] }
+  - { p: [14, 15], k: { t: "<>", h: "→ <>" }, a: mid, layers: [symbols] }
+  - { p: [8, 9], k: "${", a: mid, layers: [symbols] }
+  - { p: [1, 2], k: "#{", a: mid, layers: [symbols] }
+  - { p: [0, 1, 2],    k: { t: '\"', h: "\\'" }, a: top, layers: [symbols] }
+  - { p: [7, 8, 9], k: '"""', a: top, layers: [symbols] }
+  - { p: [15, 16], k: { t: "|>", h: "⇥ ⏎ |>" }, a: mid, layers: [symbols] }
+  - { p: [14, 15, 16], k: "```", a: top, layers: [symbols] }
+  - { p: [3, 4], k: "%{", a: mid, layers: [symbols] }
+  - { p: [10, 11], k: { t: "<-", h: "→ <-" }, a: mid, layers: [symbols] }
+  - { p: [11, 12], k: { t: "==", h: "→ ==" }, a: mid, layers: [symbols] }
+  - { p: [17, 18], k: { t: "::", h: "→ ::" }, a: mid, layers: [symbols] }
+  - { p: [18, 19], k: { t: "!=", h: "→ !=" }, a: mid, layers: [symbols] }
+
+
+  - { p: [3, 4], k: "F12", a: mid, layers: [func] }
+  - { p: [10, 11], k: "F11", a: mid, layers: [func] }
+  - { p: [11, 12], k: "F14", a: mid, layers: [func] }
+  - { p: [4, 5], k: "F15", a: mid, layers: [func] }
+  - { p: [17, 18], k: "F10", a: mid, layers: [func] }
+  - { p: [18, 19], k: "F13", a: mid, layers: [func] }
+
+  - { p: [3, 4], k: "↑⇥ ⌦", a: mid, layers: [nav] }
+  - {
+      p: [10, 11],
+      k: { t: $$mdi:arrow-down-bold-outline$$, s: page },
+      a: mid,
+      layers: [nav],
+    }
+  - {
+      p: [11, 12],
+      k: { t: $$mdi:arrow-up-bold-outline$$, s: page },
+      a: mid,
+      layers: [nav],
+    }
+  - { p: [17, 18], k: "↓ ⇥", a: mid, layers: [nav] }
+
+  - { p: [18, 19], k: { t: $$mdi:numeric$$, h: numbers }, a: mid, layers: [nav] }
+
+  - { p: [3, 4], k: { s: enter, t: vim, h: mode }, a: mid, layers: [macros] }
+  - { p: [4, 5], k: { s: leave, t: vim, h: mode }, a: mid, layers: [macros] }
+
+  - { p: [4, 5], k: "⎋", a: mid, layers: [mehs] }
+  - { p: [1, 2], k: meh k, a: mid, layers: [mehs] }
+  - { p: [3, 4], k: meh x, a: mid, layers: [mehs] }
+  - {
+      p: [14, 15],
+      k: { t: "numbers", s: "auto-layer" },
+      w: 48,
+      a: mid,
+      layers: [mehs],
+    }
+  - { p: [15, 16], k: meh v, a: mid, layers: [mehs] }
+  - { p: [17, 18], k: meh j, a: mid, layers: [mehs] }
+  - {
+      p: [18, 19],
+      k: { t: "numbers", s: "auto-layer" },
+      w: 48,
+      a: mid,
+      layers: [mehs],
+    }
+  - { p: [8, 9], k: meh w, a: mid, layers: [mehs] }
+  - { p: [10, 11], k: meh z, a: mid, layers: [mehs] }
+  - { p: [7, 8], k: meh q, a: mid, layers: [mehs] }
+  - { p: [11, 12], k: meh y, a: mid, layers: [mehs] }
+
+  - {
+      p: [11, 12],
+      k: { t: to impl },
+      w: 48,
+      layers: [intellij-meh, vscode-meh, nvim-meh],
+    }
+  - {
+      p: [11, 12],
+      k: { t: go to },
+      layers: [intellij-hyper],
+    }
+  - {
+      p: [11, 12],
+      k: { t: to def },
+      w: 48,
+      layers: [vscode-hyper],
+    }

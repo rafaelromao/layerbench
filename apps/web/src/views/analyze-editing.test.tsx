@@ -2169,7 +2169,7 @@ describe('Edit', () => {
 
     await showLayer(user, 'Symbols');
     expect(
-      await screen.findByRole('button', { name: 'Key R0: empty, held to reach Symbols' }),
+      await screen.findByRole('button', { name: 'Key R0: transparent, held to reach Symbols' }),
     ).toBeInTheDocument();
     expect((await screen.findByRole('list', { name: 'Key legend' })).textContent).toContain(
       'held from Alpha 1 or Numbers to reach Symbols',
@@ -2179,7 +2179,7 @@ describe('Edit', () => {
     await showLayer(user, 'Ç extension');
     await user.click(
       await screen.findByRole('button', {
-        name: 'Key LBM: transparent, tapped to reach Ç extension',
+        name: 'Key LBM: empty, tapped to reach Ç extension',
       }),
     );
     expect(

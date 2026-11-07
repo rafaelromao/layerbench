@@ -72,17 +72,18 @@ describe('Analyze', () => {
     await user.click(within(presses).getByRole('button', { name: /RHM\+RHR/ }));
     const names = () =>
       [...document.querySelectorAll('#kb-analyze .lb-combo title')].map((t) => t.textContent);
+    // In the order of the keymap's file.
     expect(names()).toEqual([
-      'Combo RTI + RTM: -',
       'Combo LTM + LTI: ¨, dead key',
-      'Combo LHM + LHI: ´, dead key',
-      'Combo LBM + LBR: `, dead key',
+      'Combo RTI + RTM: -',
       'Combo LHR + LHM: ^, dead key',
-      'Combo LBI + LBM: ~, dead key',
+      'Combo LHM + LHI: ´, dead key',
       'Combo RHI + RHM: ? / ¿',
+      'Combo RHM + RHR: à',
+      'Combo LBR + LBM: `, dead key',
+      'Combo LBM + LBI: ~, dead key',
       'Combo RBI + RBM: ! / ¡',
       'Combo RBM + RBR: :',
-      'Combo RHM + RHR: à',
     ]);
     const lit = document.querySelector('#kb-analyze .lb-combo-active title');
     expect(lit?.textContent).toBe('Combo RHM + RHR: à');
@@ -142,13 +143,13 @@ describe('Analyze', () => {
     await screen.findByText('Same finger bigrams');
     expect(screen.getByRole('status')).toHaveTextContent('Typed without multi-letter macros.');
 
-    // `qu` is one press with the macro; without it, `q` and then `u`.
-    await user.type(screen.getByLabelText('How is this typed?'), 'qu');
-    expect(await screen.findByText('3 presses')).toBeInTheDocument();
+    // `ão` after `ç` is one press with the macro; without it, `ã` and then `o`.
+    await user.type(screen.getByLabelText('How is this typed?'), 'ção');
+    expect(await screen.findByText('4 presses')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Use every feature' }));
     await waitFor(() => expect(currentSearch()).not.toContain('off='));
-    expect(await screen.findByText('2 presses')).toBeInTheDocument();
+    expect(await screen.findByText('3 presses')).toBeInTheDocument();
   });
 
   it('switches features off from its Settings, as the Library and Compare do', async () => {
@@ -164,8 +165,8 @@ describe('Analyze', () => {
     await user.click(macros);
     await waitFor(() => expect(currentSearch()).toContain('off=macros'));
     expect(screen.getByRole('status')).toHaveTextContent('Typed without multi-letter macros.');
-    await user.type(screen.getByLabelText('How is this typed?'), 'qu');
-    expect(await screen.findByText('3 presses')).toBeInTheDocument();
+    await user.type(screen.getByLabelText('How is this typed?'), 'ção');
+    expect(await screen.findByText('4 presses')).toBeInTheDocument();
   });
 
   it('turns the board to the layer a listed pair happens on when it is clicked', async () => {

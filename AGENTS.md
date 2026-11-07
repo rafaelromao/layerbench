@@ -34,9 +34,18 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
   ([docs/guide/editing.md](docs/guide/editing.md#layouts-with-their-authors-layers)).
   No code singles a layout out: each uses `ClassicDef` fields any layout may use.
   - Magic Romak models its author's keymap (github.com/rafaelromao/keyboards), which has neither
-    Extras nor Accents. The keymap's combos type what those carried: Alpha 2's dead keys and `à`,
-    and `€`, `°` and `º`/`ª` on Symbols and Numbers (`KEYMAP_SYMBOL_COMBOS` in `small.ts`). `¿` and
-    `¡` come from holding Alpha 2's `?` and `!` combos, a hold the model gives them.
+    Extras nor Accents, and is built on the keymap-drawer file its author keeps for it
+    (`packages/core/fixtures/romak-keymap-drawer.yaml`, a copy of `docs/img/diagrams/keymap-drawer/
+    keymap-drawer.yaml` at the commit the file names). Its Alpha 1, Alpha 2, Ç extension, Numbers and
+    Symbols, every key and every combo, are what the importer reads from it
+    (`src/layouts/keymaps/magic-romak.json`, written by `pnpm keymap`, which
+    `magic-romak-source.test.ts` keeps equal to the import). The file's combos type what Extras and
+    Accents carried: Alpha 2's dead keys and `à`, the letters on Alpha 1's chords, and `€`, `°` and
+    `º` on Symbols and Numbers. `small.ts` adds only what keymap-drawer has no field for, and the
+    test names each key: the adaptive `h`/`v` and alt repeat, the sentence space and morph on the
+    thumbs, caps word on the shift key, the accents as macros that tag the press, `qu`, the holds
+    that type `¿`, `¡` and `ª`, and the keymap's 30 ms combo timeout. When the keymap changes, copy
+    the file again, run `pnpm keymap`, then `pnpm goldens`.
 - **The 24-key core is Magic Romak's keymap** (github.com/rafaelromao/keyboards, `numbers_layer` and
   `symbols_layer`). Numbers is a keypad on the right, with the brackets and the arithmetic beside
   them on the left; brackets on Numbers stay on the left hand. Every board gets the same core, so
@@ -60,10 +69,11 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
   Every key there that types gets one, letter or not (Uno's space, T-34's Repeat); one with nothing
   on it, or holding something already, does not, and no other layer does. They go on after the
   default layers, whose standard thumbs keep only plain keys; Nordwind, a document, carries them in
-  its JSON. Magic Romak gives its own, its author's keymap's home block mods (`MAGIC_ROMAK_MODS` in
-  `small.ts`): Ctrl, Alt and Shift from the ring finger in, Shift with Gui on F and C, and Gui on P
-  and the magic key. The keymap's pinkies hold its Shortcuts layer, and `,` and `.` hold to move the
-  cursor: a layer that types nothing, and editing, both left out. Magic Sturdy, the three Hands Down
+  its JSON. Magic Romak gives its own, its author's keymap's home block mods, which its file draws
+  (`homeRowMods: false`, the mods are in its Alpha 1): Ctrl, Alt and Shift from the ring finger in,
+  Shift with Gui on F and C, and Gui on P and the magic key. The keymap's pinkies hold its
+  Shortcuts layer, and `,` and `.` hold to move the cursor: a layer that types nothing, and editing,
+  both left out. Magic Sturdy, the three Hands Down
   with their authors' layers and Ben Vallack Piano give their authors' too (`STURDY_MODS`,
   `HD_MODS`, `PIANO_MODS`), as their keymaps hold their layers on the home row. In the Shift case
   mode a capital holds Shift on no key it presses, the one that reaches its layer included, nor on a

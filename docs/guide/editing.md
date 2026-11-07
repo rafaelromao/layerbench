@@ -382,10 +382,14 @@ keys thirty-four keys lack, Hands Down Neu, whose author's firmware carries the 
 for a later Neu with other letters and thumbs, and Nordrassil, whose author publishes the rest of
 the keymap only outside its repository.
 
-Magic Romak is its author's keymap, and has no Extras and no Accents, as the keymap has none. It
-keeps its own thumbs on Numbers and Symbols, and the keymap's combos type what those two layers
-carried: on Alpha 2, the dead keys `´` `` ` `` `^` `~` `¨` and `à`; on Symbols, `€` (RTR, RTM and
-RTI together); on Numbers, `°` (RBR, RBM and RBI) and `º`, or `ª` when held (RHR, RHM and RHI).
+Magic Romak is its author's keymap, and has no Extras and no Accents, as the keymap has none. Its
+keys, layers and combos are read from the keymap-drawer file its author keeps for it, as the
+[importer](importing.md) reads one. It keeps its own thumbs on Numbers and Symbols, Symbols' left
+thumb reaching Numbers too, and the keymap's combos type what those two layers carried: on Alpha 2,
+the dead keys `´` `` ` `` `^` `~` `¨` and `à`; on Symbols, `€` (RTR, RTM and RTI together); on
+Numbers, `°` (RBR, RBM and RBI) and `º`, or `ª` when held (RHR, RHM and RHI). Alpha 1 has the
+letters the keymap puts on chords, `k` `x` `q` `w` `z` `y` `v` `j`, each two neighbouring keys, and
+Numbers has four more combos: `g`, `j`, `k` and `|`.
 `¿` and `¡` come from holding Alpha 2's `?` and `!` combos, a hold this model gives them. It cannot
 type `£` `§` `«` `»` `ı` `ß` `œ` `æ`, which the keymap has no way to, so French lacks `œ`, `æ` and
 its quotes and German its `ß`.

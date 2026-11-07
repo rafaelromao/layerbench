@@ -35,6 +35,7 @@
     "test:watch": "vitest",
     "goldens": "GOLDENS=1 vitest run src/golden/dump.test.ts",
     "generate": "GENERATE=1 vitest run src/generate/run.test.ts",
+    "keymap": "KEYMAP=1 vitest run src/layouts/magic-romak-source.test.ts",
     "languages": "LANGUAGES=1 vitest run src/lang/write.test.ts",
     "library-edit": "LIBRARY_EDIT=1 vitest run src/layouts/library-edit/write.test.ts",
     "community-cleanup": "vitest run src/layouts/library-edit/cleanup-write.test.ts"

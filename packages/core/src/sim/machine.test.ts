@@ -63,9 +63,20 @@ describe('Machine — one-shot layers', () => {
   });
 
   it('a one-shot consumed by a transparent key falling to base is wasted', () => {
-    const { tap } = machineFor(magicRomak);
-    tap('R0');
-    const ev = tap('L0'); // space: transparent on alpha2 → base
+    const layout = mini([
+      {
+        id: 'base',
+        bindings: {
+          LHP: { kind: 'kp', symbol: 'a' },
+          LHR: { kind: 'sl', layer: 'one' },
+          L0: { kind: 'kp', symbol: ' ' },
+        },
+      },
+      { id: 'one', bindings: { LHP: { kind: 'kp', symbol: 'b' } } },
+    ]);
+    const { tap } = machineFor(layout);
+    tap('LHR');
+    const ev = tap('L0'); // space: transparent on the one-shot layer → base
     expect(ev.symbols).toBe(' ');
     expect(ev.wastedOneShot).toBe(true);
   });
