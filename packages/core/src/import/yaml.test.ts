@@ -258,6 +258,16 @@ layers:
     expect(() => parseYaml(layer(atLimit + 1))).toThrow(/aliases expand to more than/);
   });
 
+  it('weighs a long string by its length, since a walk over the aliases builds text from it', () => {
+    // A 100 KB file of this shape was a 300 MB string through readKeymapDrawer.
+    const long = `s: &s "${'x'.repeat(100_000)}"`;
+    const list = `l: &l [${Array.from({ length: 50 }, () => '*s').join(', ')}]`; // 312 551 nodes
+    const lists = (copies: number) =>
+      `${long}\n${list}\nm: [${Array.from({ length: copies }, () => '*l').join(', ')}]`;
+    expect(parseYaml(lists(2))).toBeTruthy();
+    expect(() => parseYaml(lists(3))).toThrow(/aliases expand to more than/);
+  });
+
   it('says where the text stops making sense', () => {
     expect(() => parseYaml('a: [1, 2')).toThrow(YamlError);
     expect(() => parseYaml('a: [1, 2')).toThrow(/line 1: unclosed \[/);

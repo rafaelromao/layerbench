@@ -71,16 +71,21 @@ interface Props {
 const MAX_DEPTH = 64;
 
 /**
- * How many nodes the aliases of a file may expand to, all together. An alias hands back the shared
- * anchored node, so reading stays instant however it nests, but whoever walks the result (the
- * keymap-drawer reader turns a stray list into text) meets every copy: a list of ten `*a<n-1>` at
- * each of n levels is 450 bytes and 10^n nodes. Measured on 2026-11-07 through `readKeymapDrawer`:
- * 8 levels of it took 0.66 s and 9 levels 7 s, and a file of 343 bytes just under this limit
- * 13 ms. A file at the key limit (`MAX_KEYS`, 10 000) with every legend of every key written out is
- * some 110 000 nodes, and a shared row of 100 keys aliased 200 times is 20 000, so this is about
- * ten times the first: no real file meets it, and a file that comes near costs the reader tens of ms.
+ * How much the aliases of a file may expand to, all together, in nodes: a node weighs 1, a string
+ * one more for every `CHARS_PER_NODE` characters. An alias hands back the shared anchored node, so
+ * reading stays instant however it nests, but whoever walks the result (the keymap-drawer reader
+ * turns a stray list into text) meets every copy: a list of ten `*a<n-1>` at each of n levels
+ * grows tenfold with each, 8 levels are 447 bytes and 4×10^7 nodes, 9 are 506 bytes and 4×10^8.
+ * Measured on 2026-11-07 through `readKeymapDrawer`: 8 levels took 0.66 s and 9 levels 7 s, and a
+ * file of 868 000 nodes (343 bytes), just under this limit, 13 ms. Long text counts because text
+ * is what the walk builds: 100 KB of YAML holding one 100 KB string, a list of it aliased 100
+ * times and that list 30 times came out as a 300 MB string and 700 MB of memory. A file at the key
+ * limit (`MAX_KEYS`, 10 000) with every legend of every key written out is some 110 000 nodes, and
+ * a shared row of 100 keys aliased 200 times is 20 000, so this is about ten times the first: no
+ * real file meets it, and a file that comes near costs the reader tens of ms.
  */
 export const MAX_EXPANDED = 1_000_000;
+const CHARS_PER_NODE = 16;
 
 class Reader {
   private readonly s: string;
@@ -566,18 +571,22 @@ class Reader {
     const value = this.anchors.get(name);
     this.expanded += this.weight(value);
     if (this.expanded > MAX_EXPANDED) {
-      this.fail(`aliases expand to more than ${MAX_EXPANDED} nodes; shorten the nesting`, at);
+      this.fail(
+        `aliases expand to more than ${MAX_EXPANDED} nodes (long text counts for several); use fewer or smaller anchors`,
+        at,
+      );
     }
     return value;
   }
 
   /**
-   * The nodes a value is once its aliases are written out: itself and everything under it. An
+   * What a value weighs once its aliases are written out: itself and everything under it. An
    * anchored node is complete before an alias can reach it, and the aliases inside it were weighed
    * when they were read, so only nodes read as such are walked here, which nest at most `MAX_DEPTH`
    * deep, and each of them once.
    */
   private weight(value: unknown): number {
+    if (typeof value === 'string') return 1 + Math.floor(value.length / CHARS_PER_NODE);
     if (typeof value !== 'object' || value === null) return 1;
     const known = this.weights.get(value);
     if (known !== undefined) return known;
