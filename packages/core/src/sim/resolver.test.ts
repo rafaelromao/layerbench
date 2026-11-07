@@ -198,14 +198,59 @@ describe('the cheapest way to type a character', () => {
     expect(trace(twoWays(), 'y').keys).toEqual(['RHI']);
   });
 
-  it('leaves no layer key held when another way costs the same, so a capital after ! needs no shift', () => {
-    // `!` is two presses either way on Magic Romak: tap Alpha 2 and press a combo, or hold Symbols
-    // and tap. Held, the thumb would still be down through the space, and its release would end
-    // the shift sentence case armed for the capital.
-    const t = trace(magicRomak, 'oi! Ola', { caseMode: 'model' });
-    expect(t.out).toBe('oi! Ola');
-    expect(t.keys).not.toContain('R1');
-    expect(t.presses).toBe(8);
+  it('leaves no layer key held when another way costs the same', () => {
+    // Two presses either way: hold a layer and tap, or tap a one-shot layer and tap. Held, the
+    // thumb would still be down through what follows, and its release can end a one-shot shift.
+    const base = twoWays();
+    const held: Layout = {
+      ...base,
+      layers: base.layers.map((l) =>
+        l.id === 'base'
+          ? { ...l, bindings: { ...l.bindings, R0: { kind: 'mo', layer: 'aa' } } }
+          : l,
+      ),
+    };
+    const t = trace(held, 'x');
+    expect(t.keys).toEqual(['L1', 'RHI']);
+    expect(t.presses).toBe(2);
+  });
+
+  describe('a chord presses each of its keys', () => {
+    const chord = (keys: string[], layout: Layout = twoWays()): Layout => ({
+      ...layout,
+      combos: [
+        { id: 'c', keys, binding: kp('x'), layers: ['base'], timeoutMs: 30, slowRelease: false },
+      ],
+    });
+
+    it('is no cheaper than the same two keys in turn: the tie goes to the less effort', () => {
+      // `x` is two presses through the layer on L1, and two keys pressed together. The chord on the
+      // bottom pinky and ring is the harder of the two, the chord on the home row the easier.
+      expect(trace(chord(['LBP', 'LBR']), 'x').keys).toEqual(['L1', 'RHI']);
+      expect(trace(chord(['LHM', 'LHI']), 'x').keys).toEqual(['combo:c']);
+    });
+
+    it('is cheaper than a way of three presses', () => {
+      const base = twoWays();
+      const noShortcut: Layout = {
+        ...base,
+        layers: base.layers.map((l) =>
+          l.id === 'base' ? { ...l, bindings: { ...l.bindings, L1: kp('e') } } : l,
+        ),
+      };
+      // Two keys, against the three of the way through both layers; the board counts the chord as
+      // the one press it is.
+      const t = trace(chord(['LBP', 'LBR'], noShortcut), 'x');
+      expect(t.keys).toEqual(['combo:c']);
+      expect(t.presses).toBe(1);
+    });
+
+    it('types `!` on Magic Romak by holding Symbols, not by Alpha 2 and a chord', () => {
+      // Hold and tap are two presses; the one-shot and a two-key combo would be three.
+      const t = trace(magicRomak, '!');
+      expect(t.keys).toEqual(['R0', 'RBI']);
+      expect(t.presses).toBe(2);
+    });
   });
 
   it('keeps an order set by hand, whatever it costs', () => {

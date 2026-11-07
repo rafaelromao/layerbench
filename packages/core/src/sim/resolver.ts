@@ -1138,8 +1138,16 @@ export class Simulator {
     return null;
   }
 
+  /** The keys an event presses: one, or for a chord, each key of its combo. A release is none. */
+  private pressesOf(e: KeyEvent): number {
+    if (e.kind === 'hold_release') return 0;
+    if (e.kind !== 'chord') return 1;
+    return this.compiled.combos.find((c) => c.pos === e.pos)?.keys.length ?? 1;
+  }
+
   /**
-   * Every way to type the token, each tried from the same state: the fewest presses win; then the
+   * Every way to type the token, each tried from the same state: the fewest key presses win, a chord
+   * pressing each of its keys, so two keys together are no cheaper than the same two in turn; then the
    * way that leaves fewer layer keys held, since a held key still has to come up, and holding it
    * through what follows can change that (releasing it ends the one-shot shift a sentence armed);
    * then the way that makes the word so far the fewest same-finger bigrams, then skipgrams, then
@@ -1170,7 +1178,7 @@ export class Simulator {
       const events = this.tryProducer(p, token);
       if (events) {
         let presses = 0;
-        for (const e of events) if (e.kind !== 'hold_release') presses++;
+        for (const e of events) presses += this.pressesOf(e);
         const held = this.plannerHolds.size;
         let cost: PressCost | null = null;
         let better =
