@@ -29,21 +29,21 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: oklch(25.26% 0.014 253.1);
-    --surface: oklch(30.33% 0.016 252.42);
-    --sunken: oklch(20.15% 0.012 254.09);
-    --line: oklch(38% 0.02 255);
+    --bg: oklch(30.26% 0.014 253.1);
+    --surface: oklch(35.33% 0.016 252.42);
+    --sunken: oklch(25.15% 0.012 254.09);
+    --line: oklch(43% 0.02 255);
     --text: oklch(97.807% 0.029 256.847);
     --muted: oklch(80% 0.02 256);
     --link: oklch(80% 0.12 280);
     --brand: oklch(70% 0.17 278);
     --fill: oklch(52% 0.23 277);
     --on-fill: oklch(96% 0.018 272.314);
-    --yes: oklch(72% 0.12 184);
+    --yes: oklch(76% 0.12 184);
     --partial: oklch(78% 0.14 75);
-    --claimed: oklch(75% 0.15 300);
-    --none: oklch(62% 0.02 256);
-    --ours: color-mix(in oklch, var(--fill) 16%, var(--surface));
+    --claimed: oklch(79% 0.15 300);
+    --none: oklch(68% 0.02 256);
+    --ours: color-mix(in oklch, var(--fill) 19%, var(--surface));
   }
 }
 
