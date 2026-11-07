@@ -4,16 +4,38 @@
 lists what each key shows, layer by layer. Its `keymap parse` command writes that file from a ZMK
 or QMK keymap, and LayerBench reads it.
 
-1. In **Library**, click **Import**, then **keymap-drawer**, and paste the file or **Choose a .yaml
-   file**.
+1. In **Library**, click **Import**, then **keymap-drawer**, and paste the file, **Choose a .yaml
+   file**, or give the file's address on GitHub and press **Fetch**.
 2. Check the board it goes onto, and look over the preview. A combo it cannot draw on the board is
    behind a button beside the layers, such as **1 more combo**.
 3. Untick the layers you do not want, and rename or reorder the rest. The first one ticked becomes
    the base layer.
 4. Name the layout and press **Import and edit**.
 
-Nothing is saved until you press it, and nothing is fetched from anywhere: the board comes from
-the file, or from you.
+Nothing is saved until you press it, and nothing is fetched until you press **Fetch**: the board
+comes from the file, or from you.
+
+### Fetching a file by its address
+
+**Fetch** reads the file at an address and puts its text in the box, as if you had pasted it, so
+everything after it is the same, and a file gives the same layout whichever way it came. Under the
+box, **Read from** says where the text came from, until you change it. The address is:
+
+- the file's page on GitHub, such as
+  `https://github.com/you/zmk-config/blob/main/keymap-drawer/board.yaml`, which is turned into the
+  file's own address; or
+- its **Raw** address, on `raw.githubusercontent.com`.
+
+Only `https://` addresses on `raw.githubusercontent.com` are fetched. The page's security policy
+lets the browser ask nowhere else, and many hosts do not let other sites read their files anyway
+(the browser calls that a CORS refusal, and a page cannot tell it from a lost connection). For a
+file anywhere else, or in a private repository, open it, copy its text and paste it.
+
+A failure is said under the address and leaves the box as it was: an address that is not one, a
+file that is not there (404) or a server that answers with an error, one that is too slow, a file
+over 1 MB, a web page or other file that is not text. A file that is text but not a keymap-drawer
+file is said in the box's own words, as when pasted. The file is only ever read as text, to be read
+as a keymap: nothing in it is run or followed.
 
 ## The board
 
@@ -25,8 +47,8 @@ lays it out:
 - `ortho_layout`: rows, columns and thumb keys, with the pinky or inner columns shortened;
 - `qmk_keyboard` or `zmk_keyboard`: only the keyboard's name.
 
-A named keyboard is not looked up, since the page fetches nothing. You choose the board instead,
-from the presets; those with as many keys as the file are marked *matches*, and the first of them
+A named keyboard is not looked up: the page reads the file it is given, and asks nowhere else about
+a keyboard. You choose the board instead, from the presets; those with as many keys as the file are marked *matches*, and the first of them
 is chosen for you. **Use a QMK info.json…** reads the keyboard's own layout file, if you have it.
 
 ### How keys find their place

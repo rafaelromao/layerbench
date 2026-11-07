@@ -17,8 +17,9 @@ import {
   type ResolvedBoard,
   readKeymapDrawer,
 } from '@layerbench/core';
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { PreviewBoard } from '../../components/PreviewBoard.js';
+import { fetchKeymapText, KeymapUrlError } from '../../import/keymap-url.js';
 import { TextField } from '../edit/inspector/controls.js';
 
 interface LayerChoice {
@@ -64,10 +65,17 @@ function resolveBoard(
 /**
  * Import a keymap-drawer YAML file: its layers, onto the board it describes — or, when it only
  * names a keyboard, onto a board the reader picks or a QMK `info.json` they have. Every layer can
- * be left out, renamed and put in another order before anything is saved.
+ * be left out, renamed and put in another order before anything is saved. The file is pasted,
+ * chosen, or fetched from an address; each ends as the text below, read the same way.
  */
 export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) => void }) {
   const [text, setText] = useState('');
+  const [address, setAddress] = useState('');
+  const [fetching, setFetching] = useState(false);
+  const [addressError, setAddressError] = useState<string | null>(null);
+  /** Where the text came from, while it is still what was fetched from there. */
+  const [source, setSource] = useState<string | null>(null);
+  const request = useRef<AbortController | null>(null);
   const [doc, setDoc] = useState<KdDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [choices, setChoices] = useState<LayerChoice[]>([]);
@@ -101,6 +109,38 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
     }, 300);
     return () => clearTimeout(timer);
   }, [text]);
+
+  // A request still out when the dialog goes away has nowhere to put its answer.
+  useEffect(() => () => request.current?.abort(), []);
+
+  /** Text the reader typed, pasted or chose is no longer what an address gave. */
+  const enter = (next: string) => {
+    setText(next);
+    setSource(null);
+  };
+
+  /** Ask for the file at the address; only a file that comes back replaces the text. */
+  const fetchAddress = async () => {
+    request.current?.abort();
+    const controller = new AbortController();
+    request.current = controller;
+    setFetching(true);
+    setAddressError(null);
+    try {
+      const file = await fetchKeymapText(address, { signal: controller.signal });
+      setText(file.text);
+      setSource(file.source);
+    } catch (e) {
+      // Stopped by a newer request, or by the dialog going away: nothing to say.
+      if (controller.signal.aborted) return;
+      setAddressError(e instanceof KeymapUrlError ? e.message : message(e));
+    } finally {
+      if (request.current === controller) {
+        request.current = null;
+        setFetching(false);
+      }
+    }
+  };
 
   const resolved = useMemo(
     () => (doc ? resolveBoard(doc, name, preset, info) : null),
@@ -165,7 +205,7 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
             'layout: {cols_thumbs_notation: 33333+2 2+33333}\nlayers:\n  Base:\n  - [Q, W, E, R, T, Y, U, I, O, P]\n  …'
           }
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => enter(e.target.value)}
         />
         <div className="flex flex-col gap-2">
           <label htmlFor={fileId} className="btn btn-sm">
@@ -178,16 +218,58 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
             className="sr-only"
             onChange={async (e) => {
               const file = e.target.files?.[0];
-              if (file) setText(await file.text());
+              if (file) enter(await file.text());
               e.target.value = '';
             }}
           />
           <p className="text-[11px] opacity-60 max-w-56">
-            Written by <span className="font-mono">keymap parse</span> or by hand. Nothing is
-            fetched: the board comes from the file, or from you.
+            Written by <span className="font-mono">keymap parse</span> or by hand. The board comes
+            from the file, or from you.
           </p>
         </div>
       </div>
+
+      <form
+        className="space-y-1"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void fetchAddress();
+        }}
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="text"
+            inputMode="url"
+            aria-label="Address of a keymap-drawer YAML file"
+            className="input input-sm input-bordered min-w-0 flex-1 basis-64 font-mono text-xs"
+            placeholder="https://github.com/you/zmk-config/blob/main/keymap-drawer/board.yaml"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+          />
+          <button
+            type="submit"
+            className="btn btn-sm max-sm:w-full"
+            disabled={fetching || address.trim() === ''}
+          >
+            {fetching ? 'Fetching…' : 'Fetch'}
+          </button>
+        </div>
+        <p className="text-[11px] opacity-60">
+          Or the address of the file on GitHub: its page, or its Raw link. Nothing is fetched until
+          you press Fetch.
+        </p>
+        {fetching && (
+          <p role="status" className="text-xs opacity-70">
+            Fetching the file…
+          </p>
+        )}
+        {addressError && <p className="text-error text-xs">{addressError}</p>}
+        {source && !fetching && (
+          <p className="text-[11px] opacity-60">
+            Read from <span className="font-mono break-all">{source}</span>.
+          </p>
+        )}
+      </form>
 
       {error && <p className="text-error text-xs">{error}</p>}
 

@@ -16,7 +16,8 @@ A layout of your own starts in **Library**, in one of these ways:
   Accents and, where the board needs it, Extras, described under [Default layers](editing.md#default-layers).
 - **Import** opens a dialog. Under **Text or JSON**, it takes LayerBench JSON or a layout written
   as text: **Open in analyzer** to edit it before saving it, **Save to library** to keep it as it
-  is. Under **keymap-drawer**, **Import and edit** saves a keymap-drawer file and opens it. See
+  is. Under **keymap-drawer**, which takes a file pasted, chosen or fetched from its GitHub address,
+  **Import and edit** saves a keymap-drawer file and opens it. See
   [Importing and exporting](importing.md).
 
 Saved, it is a custom layout: listed in **Library** among the layouts that come with the app, marked *custom* and

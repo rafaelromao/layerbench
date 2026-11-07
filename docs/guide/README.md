@@ -44,8 +44,8 @@ shows how each is drawn on the board and made in the editor.
 
 ## Importing and exporting
 
-A [keymap-drawer](https://github.com/caksoylar/keymap-drawer) YAML file brings a whole keymap in,
-and you choose which of its layers to take. The editor writes one back out, as well as
+A [keymap-drawer](https://github.com/caksoylar/keymap-drawer) YAML file, pasted, chosen or fetched
+from its GitHub address, brings a whole keymap in, and you choose which of its layers to take. The editor writes one back out, as well as
 LayerBench's own JSON. See [Importing and exporting](importing.md).
 
 ## Keeping and sharing your work
