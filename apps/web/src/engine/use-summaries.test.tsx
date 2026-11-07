@@ -204,6 +204,86 @@ describe('scores checked again', () => {
   });
 });
 
+/** A report with a heat map to draw, and a rule the heat map has no use for. */
+function reportWithHeat(effort: number, sfb: number): ReportDTO {
+  return {
+    ...report(effort, sfb),
+    results: [
+      { id: 'effort', value: effort, per_layer_key: { 0: { 0: 3 } } },
+      { id: 'sfb', value: sfb, per_layer_key: {} },
+      { id: 'alternation', value: 1, per_layer_key: { 0: { 1: 9 } } },
+    ],
+    usageByLayer: [[4, 2, 0]],
+    usageAll: [4, 2, 0],
+    layerTapsByLayer: [[0, 0, 0]],
+  } as unknown as ReportDTO;
+}
+
+describe('heat of each layout', () => {
+  it('keeps what a heat map is drawn from as each layout lands, and nothing else of the report', async () => {
+    const c = client();
+    const visit = await freshHook(c.client);
+    expect(visit.result.current.heats.size).toBe(0);
+    await waitFor(() => expect(c.asked()).toBe(1));
+    c.answer(reportWithHeat(10, 1.5));
+    await waitFor(() => expect(visit.result.current.heats.has('qwerty')).toBe(true));
+    expect(visit.result.current.heats.get('qwerty')).toEqual({
+      usageByLayer: [[4, 2, 0]],
+      usageAll: [4, 2, 0],
+      layerTapsByLayer: [[0, 0, 0]],
+      results: [
+        { id: 'effort', per_layer_key: { 0: { 0: 3 } } },
+        { id: 'sfb', per_layer_key: {} },
+      ],
+    });
+  });
+
+  it('has none for a score a visit remembers: it is what this visit analyzed', async () => {
+    await remembered(CONTEXT, [['qwerty', summary(10, 1.5)]]);
+    const visit = await freshHook(client().client);
+    expect(visit.result.current.summaries.get('qwerty')?.effort).toBe(10);
+    expect(visit.result.current.heats.size).toBe(0);
+  });
+
+  it('is null for a layout that could not be analyzed, so its card does not wait for one', async () => {
+    const failing = {
+      peek: async () => null,
+      analyze: async () => {
+        throw new Error('no such text');
+      },
+    } as unknown as AnalysisClient;
+    const visit = await freshHook(failing);
+    await waitFor(() => expect(visit.result.current.heats.has('qwerty')).toBe(true));
+    expect(visit.result.current.heats.get('qwerty')).toBeNull();
+  });
+
+  it('is of the analysis a layout was scored on: never drawn from another text or sample', async () => {
+    vi.resetModules();
+    const { useSummaries } = await import('./use-summaries.js');
+    const { AnalysisClientProvider } = await import('./client-context.js');
+    const c = client();
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <AnalysisClientProvider client={c.client}>{children}</AnalysisClientProvider>
+    );
+    const visit = renderHook(({ settings }) => useSummaries(ENTRIES, settings, CONTEXT), {
+      wrapper,
+      initialProps: { settings: OPTS },
+    });
+    await waitFor(() => expect(c.asked()).toBe(1));
+    c.answer(reportWithHeat(10, 1.5));
+    await waitFor(() => expect(visit.result.current.heats.has('qwerty')).toBe(true));
+
+    // The same layout on a longer sample has no heat yet, though its score is still shown.
+    visit.rerender({ settings: { ...OPTS, sample: 20_000 } });
+    expect(visit.result.current.heats.size).toBe(0);
+    expect(visit.result.current.summaries.get('qwerty')?.effort).toBe(10);
+
+    // Back on the first, it is there at once, without asking again.
+    visit.rerender({ settings: OPTS });
+    expect(visit.result.current.heats.has('qwerty')).toBe(true);
+  });
+});
+
 describe('the order of the list', () => {
   const layout = (key: string, name: string, homeRow?: string): Sortable => ({
     key,

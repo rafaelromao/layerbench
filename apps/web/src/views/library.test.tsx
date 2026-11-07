@@ -3,6 +3,7 @@ import {
   bundledLayout,
   CLASSIC_LAYOUTS,
   compileLayout,
+  forRanking,
   getPreset,
   homeRowLetters,
   type Layout,
@@ -15,6 +16,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { initGitHubSession, useGitHubSession } from '../auth/github-session.js';
 import { setCommunitySource } from '../community/community.js';
+import { heatMap } from '../engine/heat.js';
 import type { AnalysisClient, AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { recordProposal } from '../proposals/proposals.js';
 import { useSession } from '../state/session.js';
@@ -32,6 +34,7 @@ import {
   testClient,
   toastShown,
 } from '../test/render.js';
+import { ENGLISH_CORPUS, parseParams, settingsOf } from '../url/params.js';
 
 let counter = 0;
 
@@ -77,6 +80,8 @@ beforeEach(() =>
     hideCustom: false,
     hideCommunity: false,
     hiddenCategories: [],
+    libraryHeat: false,
+    libraryHeatMode: 'usage',
   }),
 );
 
@@ -1584,5 +1589,171 @@ describe('changes proposed from this browser', () => {
       expect(listed('Plain')).not.toBeNull();
       expect(screen.queryByRole('link', { name: 'proposed' })).toBeNull();
     });
+  });
+});
+
+describe('Heatmaps on the cards', () => {
+  /** The heat of each key of a board, in percent, as drawn; keys with none left out, lowest first. */
+  const heatPercents = (svg: Element) =>
+    [...svg.querySelectorAll('.lb-key-cap')]
+      .map((cap) =>
+        Number(/var\(--lb-heat\) (\d+)%/.exec(cap.getAttribute('style') ?? '')?.[1] ?? 0),
+      )
+      .filter((pct) => pct > 0)
+      .sort((a, b) => a - b);
+
+  const boardOf = async (name: string) =>
+    (await screen.findByRole('heading', { name, level: 3 }))
+      .closest('article')
+      ?.querySelector('svg.lb-keyboard') as SVGElement;
+
+  /** Qwerty analyzed as the Library scores it, which is what Analyze would show for it. */
+  async function qwertyReport(client: AnalysisClient): Promise<ReportDTO> {
+    const link = forRanking(
+      settingsOf(parseParams({ corpus: ENGLISH_CORPUS, sample: '1000' }, ENGLISH_CORPUS)),
+    );
+    return client.analyze({
+      layout: toCanonicalJson(bundledLayout('qwerty') as Layout),
+      settings: { ...link, rules: getPreset(link.rules) },
+    });
+  }
+
+  /** What `heatMap` gives for the report, as the board draws it: percents, lowest first. */
+  const percentsOf = (report: ReportDTO, mode: Parameters<typeof heatMap>[1]) =>
+    Object.values(heatMap(report, mode, 0))
+      .map((v) => Math.round(v * 100))
+      .filter((pct) => pct > 0)
+      .sort((a, b) => a - b);
+
+  it('is off until asked: pressed or not, with no Heat choice, no legend and no colour', async () => {
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    const toggle = await screen.findByRole('button', { name: 'Heatmaps' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByRole('combobox', { name: 'Heat' })).toBeNull();
+    expect(document.querySelector('.lb-heat-legend')).toBeNull();
+    await rankingSays(/^Lower is better for both/, 60_000);
+    expect(heatPercents(await boardOf('Qwerty'))).toEqual([]);
+  }, 90_000);
+
+  it('colours each card as it is scored, with what Analyze draws for it on the same settings', async () => {
+    const user = userEvent.setup();
+    const { client } = renderRoute(LIBRARY, { storage: freshStorage() });
+    await user.click(await screen.findByRole('button', { name: 'Heatmaps' }));
+    expect(screen.getByRole('button', { name: 'Heatmaps' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    // The same five measures Analyze offers, usage first, and what the colours mean.
+    const choice = screen.getByRole('combobox', { name: 'Heat' });
+    expect(choice).toHaveValue('usage');
+    expect([...choice.querySelectorAll('option')].map((o) => o.textContent)).toEqual([
+      'Usage',
+      'SFB contribution',
+      'Effort',
+      'Finger travel',
+      'Layer taps',
+    ]);
+    expect(document.querySelector('.lb-heat-legend')?.textContent).toContain(
+      'Usage: how often the key is pressed, against the busiest key of its layer.',
+    );
+
+    await rankingSays(/^Lower is better for both/, 60_000);
+    const expected = percentsOf(await qwertyReport(client), 'usage');
+    expect(expected.length).toBeGreaterThan(10);
+    expect(heatPercents(await boardOf('Qwerty'))).toEqual(expected);
+  }, 120_000);
+
+  it('changes what it measures without analyzing anything again, as Analyze would', async () => {
+    const user = userEvent.setup();
+    const client = testClient();
+    const analyze = vi.spyOn(client, 'analyze');
+    const peek = vi.spyOn(client, 'peek');
+    renderRoute(LIBRARY, { client, storage: freshStorage() });
+    await user.click(await screen.findByRole('button', { name: 'Heatmaps' }));
+    await rankingSays(/^Lower is better for both/, 60_000);
+    const report = await qwertyReport(client);
+    const [analyses, peeks] = [analyze.mock.calls.length, peek.mock.calls.length];
+
+    const choice = screen.getByRole('combobox', { name: 'Heat' });
+    for (const [label, mode] of [
+      ['SFB contribution', 'sfb'],
+      ['Effort', 'effort'],
+      ['Finger travel', 'travel'],
+      ['Layer taps', 'layer_taps'],
+    ] as const) {
+      await user.selectOptions(choice, label);
+      expect(heatPercents(await boardOf('Qwerty'))).toEqual(percentsOf(report, mode));
+      expect(document.querySelector('.lb-heat-legend')?.textContent).toMatch(
+        new RegExp(`(${label}|usage):`, 'i'),
+      );
+    }
+    expect([analyze.mock.calls.length, peek.mock.calls.length]).toEqual([analyses, peeks]);
+  }, 120_000);
+
+  it('says what a key’s colour is, in words, to anyone who cannot see it', async () => {
+    const user = userEvent.setup();
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    await user.click(await screen.findByRole('button', { name: 'Heatmaps' }));
+    await rankingSays(/^Lower is better for both/, 60_000);
+    const keys = [...(await boardOf('Qwerty')).querySelectorAll('.lb-key')];
+    const hottest = keys.find((key) =>
+      key.querySelector('title')?.textContent?.includes('Usage: 100% of the busiest key'),
+    );
+    expect(hottest?.getAttribute('aria-label')).toMatch(/Usage: 100% of the busiest key$/);
+    // A key with no heat says nothing of it.
+    expect(
+      keys.some((key) => !key.querySelector('title')?.textContent?.includes('of the busiest key')),
+    ).toBe(true);
+  }, 120_000);
+
+  it('remembers, in this browser, whether it is on and what it measures', async () => {
+    const user = userEvent.setup();
+    const first = renderRoute(LIBRARY, { storage: freshStorage() });
+    await user.click(await screen.findByRole('button', { name: 'Heatmaps' }));
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Heat' }), 'Layer taps');
+    expect(JSON.parse(localStorage.getItem('layerbench:session') ?? '{}').state).toMatchObject({
+      libraryHeat: true,
+      libraryHeatMode: 'layer_taps',
+    });
+    first.unmount();
+
+    // The next visit reads it back from the browser, and the link carries none of it. Resetting the
+    // store writes its defaults to the browser too, so what was stored is put back before it reads.
+    const stored = localStorage.getItem('layerbench:session') ?? '';
+    useSession.setState({ libraryHeat: false, libraryHeatMode: 'usage' });
+    localStorage.setItem('layerbench:session', stored);
+    await useSession.persist.rehydrate();
+    const { currentSearch } = renderRoute(LIBRARY, { storage: freshStorage() });
+    expect(await screen.findByRole('button', { name: 'Heatmaps' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByRole('combobox', { name: 'Heat' })).toHaveValue('layer_taps');
+    expect(currentSearch()).not.toContain('heat');
+  });
+
+  it('reads a mode it no longer has, from an older visit, as usage', async () => {
+    useSession.setState({ libraryHeat: true, libraryHeatMode: 'gone' as never });
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    expect(await screen.findByRole('combobox', { name: 'Heat' })).toHaveValue('usage');
+  });
+
+  it('keeps working where the browser will not store the choice', async () => {
+    const user = userEvent.setup();
+    const set = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('the quota is exceeded', 'QuotaExceededError');
+    });
+    try {
+      renderRoute(LIBRARY, { storage: freshStorage() });
+      await user.click(await screen.findByRole('button', { name: 'Heatmaps' }));
+      expect(screen.getByRole('button', { name: 'Heatmaps' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+      await user.selectOptions(screen.getByRole('combobox', { name: 'Heat' }), 'Effort');
+      expect(screen.getByRole('combobox', { name: 'Heat' })).toHaveValue('effort');
+    } finally {
+      set.mockRestore();
+    }
   });
 });

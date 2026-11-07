@@ -9,6 +9,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { parseParams, settingsOf } from '../url/params.js';
 import { useAnalysisClient } from './client-context.js';
+import { type HeatSource, heatSourceOf } from './heat.js';
 import type { AnalyzeRequest, ReportDTO } from './protocol.js';
 import { recall, rememberSummary } from './ranking-memory.js';
 
@@ -29,6 +30,22 @@ export interface SummaryEntry {
 
 /** Summaries this page computed itself: current by definition, so never computed twice. */
 const cache = new Map<string, LayoutSummary>();
+
+/**
+ * What a heat map of each layout is drawn from, kept as the layout is scored, by the same key: the
+ * report is in hand for that moment and the Library asks the worker for nothing more. `null` is a
+ * layout that could not be analyzed. In memory only, and no more than `MAX_HEATS` of them, the oldest
+ * let go first: each is a few kilobytes, and a score is a handful of numbers.
+ */
+const heats = new Map<string, HeatSource | null>();
+const MAX_HEATS = 512;
+
+function keepHeat(hash: string, heat: HeatSource | null): void {
+  heats.delete(hash);
+  heats.set(hash, heat);
+  const oldest = heats.keys().next();
+  if (heats.size > MAX_HEATS && !oldest.done) heats.delete(oldest.value);
+}
 
 function sameSummary(a: LayoutSummary | undefined, b: LayoutSummary): boolean {
   return !!a && JSON.stringify(a) === JSON.stringify(b);
@@ -97,6 +114,21 @@ interface Shown {
   listing: string;
   context: string;
   summaries: Map<string, LayoutSummary>;
+  /**
+   * What each layout's heat is drawn from, as it was analyzed on these settings: never what an
+   * older layout of the same name had. A layout still to be analyzed has none yet.
+   */
+  heats: Map<string, HeatSource | null>;
+}
+
+/** The heat already worked out for each of these requests, whatever the list showed before. */
+function openingHeats(requests: { key: string; hash: string }[]): Map<string, HeatSource | null> {
+  const out = new Map<string, HeatSource | null>();
+  for (const { key, hash } of requests) {
+    const known = heats.get(hash);
+    if (known !== undefined) out.set(key, known);
+  }
+  return out;
 }
 
 /**
@@ -113,7 +145,12 @@ export function useSummaries(
   entries: SummaryEntry[],
   settings: AnalysisSettings | null,
   context: string,
-): { summaries: Map<string, LayoutSummary>; pending: number } {
+): {
+  summaries: Map<string, LayoutSummary>;
+  /** What each layout's heat map is drawn from, as it lands with its score; `null` if it failed. */
+  heats: Map<string, HeatSource | null>;
+  pending: number;
+} {
   const client = useAnalysisClient();
   const requests = useMemo(
     () =>
@@ -140,6 +177,7 @@ export function useSummaries(
     listing,
     context,
     summaries: opening(entries, new Map(requests.map((r) => [r.key, r.hash])), context),
+    heats: openingHeats(requests),
   }));
   // A different list is worked out while rendering, not after, so no frame shows the old one. The
   // same ranking keeps what it showed; a different one opens on what is known of it.
@@ -147,7 +185,14 @@ export function useSummaries(
   if (state.listing !== listing) {
     const hashes = new Map(requests.map((r) => [r.key, r.hash]));
     const kept = state.context === context ? state.summaries : undefined;
-    shown = { listing, context, summaries: opening(entries, hashes, context, kept) };
+    // A heat is of the layout as analyzed, so it is found by the analysis it came from, never kept
+    // from the list before: a layout edited since would be drawn on keys it no longer has.
+    shown = {
+      listing,
+      context,
+      summaries: opening(entries, hashes, context, kept),
+      heats: openingHeats(requests),
+    };
     setState(shown);
   }
 
@@ -162,6 +207,11 @@ export function useSummaries(
         const summaries = next(prev.summaries);
         return summaries === prev.summaries ? prev : { ...prev, summaries };
       });
+    /** A heat shows as soon as it lands: nothing is ordered by it, so there is nothing to hold back. */
+    const landHeat = (key: string, heat: HeatSource | null) =>
+      setState((prev) =>
+        prev.listing !== listing ? prev : { ...prev, heats: new Map(prev.heats).set(key, heat) },
+      );
 
     (async () => {
       // Scoring is background work and the list is useful without it, so the page renders and
@@ -169,26 +219,31 @@ export function useSummaries(
       await pause(SETTLE_MS);
       for (const r of requests) {
         if (cancelled) return;
-        if (cache.has(r.hash)) continue;
+        if (cache.has(r.hash) && heats.has(r.hash)) continue;
         // Hand the thread back between layouts. Where the engine runs in-thread rather than in a
         // worker, an unbroken chain of analyses would otherwise starve every timer and click.
         await pause(0);
         if (cancelled) return;
         let summary: LayoutSummary;
+        let heat: HeatSource | null;
         try {
           const report =
             (await client.peek(r.request)) ??
             (await client.analyze(r.request, { signal: controller.signal }));
           summary = summarize(report);
+          heat = heatSourceOf(report);
         } catch (e) {
           if (cancelled || (e instanceof DOMException && e.name === 'AbortError')) return;
           // A layout that cannot be analyzed ranks last rather than stopping the others.
           summary = { effort: null, sfb: null, skipped: 0, missing: [] };
+          heat = null;
         }
         cache.set(r.hash, summary);
+        keepHeat(r.hash, heat);
         // Kept as it lands, so a visit left halfway still opens the next on what it found.
         rememberSummary(context, r.key, summary);
         if (cancelled) return;
+        landHeat(r.key, heat);
         // A layout with no score yet shows it now; one already showing a score waits for the rest.
         change((prev) => (prev.has(r.key) ? prev : new Map(prev).set(r.key, summary)));
       }
@@ -213,7 +268,7 @@ export function useSummaries(
   }, [listing, client]);
 
   const pending = requests.filter((r) => !shown.summaries.has(r.key)).length;
-  return { summaries: shown.summaries, pending };
+  return { summaries: shown.summaries, heats: shown.heats, pending };
 }
 
 export type SortKey = 'effort' | 'sfb' | 'name' | 'home_row';

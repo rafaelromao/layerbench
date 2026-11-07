@@ -1,5 +1,6 @@
+import type { RuleResult } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
-import { expandPositions, heatMap, normalizeHeat } from './heat.js';
+import { effectiveHeat, expandPositions, heatMap, heatSourceOf, normalizeHeat } from './heat.js';
 import type { ReportDTO } from './protocol.js';
 
 function reportWith(overrides: Partial<ReportDTO>): ReportDTO {
@@ -147,5 +148,66 @@ describe('heat maps', () => {
     const dto = reportWith({ members: [[0], [1], [4, 5]] });
     expect(expandPositions(dto, [2])).toEqual([4, 5]);
     expect(expandPositions(dto, [0, 1])).toEqual([0, 1]);
+  });
+});
+
+/** A rule as a report carries it, with only what the heat reads filled in. */
+function rule(id: string, perLayerKey: Record<number, Record<number, number>>): RuleResult {
+  return { id, per_layer_key: perLayerKey, per_key: {} } as unknown as RuleResult;
+}
+
+describe('heat sources', () => {
+  const dto = reportWith({
+    usageByLayer: [
+      [10, 4, 0],
+      [0, 4, 2],
+    ],
+    usageAll: [10, 8, 2],
+    layerTapsByLayer: [
+      [0, 0, 6],
+      [0, 0, 0],
+    ],
+    results: [
+      rule('sfb', { 0: { 0: 4 }, 1: { 0: 2, 1: 2 } }),
+      rule('effort', { 0: { 1: 9 } }),
+      rule('finger_travel', { 1: { 2: 3 } }),
+      rule('alternation', { 0: { 0: 99 } }),
+    ],
+  });
+
+  it('draws every mode and layer as the report it was made from does', () => {
+    const source = heatSourceOf(dto);
+    for (const mode of ['usage', 'sfb', 'effort', 'travel', 'layer_taps'] as const) {
+      for (const layer of [0, 1, 9]) {
+        expect(heatMap(source, mode, layer)).toEqual(heatMap(dto, mode, layer));
+      }
+    }
+  });
+
+  it('keeps only what a heat map reads, so the rest of the report can be let go', () => {
+    const source = heatSourceOf(dto);
+    expect(Object.keys(source).sort()).toEqual([
+      'layerTapsByLayer',
+      'results',
+      'usageAll',
+      'usageByLayer',
+    ]);
+    expect(source.results.map((r) => r.id)).toEqual(['sfb', 'effort', 'finger_travel']);
+    expect(source.results.every((r) => Object.keys(r).sort().join() === 'id,per_layer_key')).toBe(
+      true,
+    );
+  });
+
+  it('says what is really drawn: usage where the rule set lacks the rule asked for', () => {
+    const source = heatSourceOf(dto);
+    expect(effectiveHeat(source, 'usage')).toBe('usage');
+    expect(effectiveHeat(source, 'layer_taps')).toBe('layer_taps');
+    expect(effectiveHeat(source, 'travel')).toBe('travel');
+    const without = heatSourceOf(reportWith({ results: [rule('sfb', {})] }));
+    expect(effectiveHeat(without, 'sfb')).toBe('sfb');
+    expect(effectiveHeat(without, 'effort')).toBe('usage');
+    expect(effectiveHeat(without, 'travel')).toBe('usage');
+    // The map is the one it says: usage, not a blank board.
+    expect(heatMap(without, 'effort', 0)).toEqual(heatMap(without, 'usage', 0));
   });
 });

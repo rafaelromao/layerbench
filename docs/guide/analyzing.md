@@ -53,6 +53,15 @@ of the two does better. Each layout's board has its own layer navigator, to look
 both. At the right of it, the **Combos** button shows the
 [combos the board does not draw](#combos).
 
+**Heatmaps**, the button beside **Sort by**, colours the keys of every card's board by [heat](#heat),
+as Analyze does. It is off until you press it, and this browser remembers whether it is on. While
+it is, **Heat** beside it chooses what the colour measures, the same five choices as in Analyze, and a
+line under the scores says what the colours mean. A card's colours come from the analysis its numbers
+came from, so they are what **Analyze** shows for that layout on the same text and rules, and they
+appear card by card as each layout is scored. Each layer is coloured against its own busiest key, so a
+card shows the heat of the layer its navigator is on; point at a key for its share in words. A layer
+with nothing to show for the measure stays plain, and says so under the board.
+
 Each card also names the layout's category, so you can rank a layout against its peers. It follows
 from the layout's own keys, whether it came with the app or is yours, and nothing on its
 [default layers](editing.md#default-layers) counts; the layers its author defines in their place,
@@ -140,7 +149,8 @@ numbers](#a-keys-numbers) give: a pair counts half on each of its keys, Effort i
 its presses, so the free home-row keys and the space bar stay cold, and travel counts on the key a
 finger moved to. Each layer counts only what was pressed on it, on the key that typed it. The thumb tapped
 for Alpha 2 is warm on the layer it is tapped on, not on Alpha 2. A key that lets the layer below
-show through is warm on that layer, where the key that types is drawn.
+show through is warm on that layer, where the key that types is drawn. A rule set without the rule a
+choice is made of draws **Usage** instead, in the Library as here.
 
 ### Combos
 
@@ -155,8 +165,9 @@ the layer shown. Each is drawn once, on a small board of its own with its keys f
 draws a combo apart. Under it are the layers it works on. Pick one to open it in the combo editor.
 
 The boards of the Library's cards, of **Compare** and of the import preview are drawn as Analyze
-draws its board, with the same **Combos** button. They have no heat, and nothing on them is edited:
-the button only shows the combos. A Library card does not list what its numbered keys do; open the
+draws its board, with the same **Combos** button. They have no heat, except the Library's, where
+[**Heatmaps**](#sorting-and-comparing) turns it on, and nothing on them is edited: the button only
+shows the combos. A Library card does not list what its numbered keys do; open the
 layout in **Analyze** for that.
 
 In **Analyze**, a box lights up with its keys when a word uses it; for a combo off the board, the
