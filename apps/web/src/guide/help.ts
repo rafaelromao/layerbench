@@ -22,6 +22,7 @@ export const HELP = {
     topic: 'combos, the configuration and the other panels',
   },
   exporting: { page: 'importing', section: 'exporting', topic: 'exporting' },
+  heat: { page: 'analyzing', section: 'heat', topic: 'heat' },
   headline: { page: 'analyzing', section: 'effort-and-sfb', topic: 'Effort and SFB' },
   sorting: { page: 'analyzing', section: 'sorting-and-comparing', topic: 'sorting layouts' },
   without: {

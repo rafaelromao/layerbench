@@ -37,12 +37,14 @@ import { refreshCommunity, useCommunity } from '../community/community.js';
 import { communityRef } from '../community/ref.js';
 import { featureList } from '../components/FeatureSwitches.js';
 import { formatValue, qualityBorder } from '../components/format.js';
+import { HeatLegend } from '../components/HeatLegend.js';
 import { HelpLink } from '../components/HelpLink.js';
 import { BandBadge } from '../components/Metrics.js';
 import { NameDialog, type TakenLayout } from '../components/NameDialog.js';
 import { readCustom } from '../custom/read.js';
 import { customRef } from '../custom/ref.js';
 import { retryingSaver, type SaveOptions } from '../custom/save-new.js';
+import { effectiveHeat, type HeatSource } from '../engine/heat.js';
 import { rankingKey, recall, rememberBehind } from '../engine/ranking-memory.js';
 import {
   compareBy,
@@ -60,6 +62,8 @@ import { useCollection, useStorage } from '../storage/use-storage.js';
 import { encodeInline } from '../url/inline.js';
 import {
   ENGLISH_CORPUS,
+  HEAT_MODES,
+  type HeatMode,
   inlineRef,
   type Params,
   parseParams,
@@ -68,6 +72,7 @@ import {
   toSearch,
 } from '../url/params.js';
 import { ChangeDialog } from './library/ChangeDialog.js';
+import { HeatControls } from './library/HeatControls.js';
 import { ImportDialog } from './library/ImportDialog.js';
 import { LayerPreview } from './library/LayerPreview.js';
 import {
@@ -272,6 +277,8 @@ function LayoutCard({
   bands,
   lacking,
   nobodyCan,
+  heat,
+  heatMode,
   actions,
   proposal,
 }: {
@@ -282,6 +289,10 @@ function LayoutCard({
   bands: HeadlineBands;
   lacking: Lacking | undefined;
   nobodyCan: boolean;
+  /** What its board's heat is drawn from, as it was scored; missing while it is being scored. */
+  heat: HeatSource | null | undefined;
+  /** What the heat measures; null leaves the board plain. */
+  heatMode: HeatMode | null;
   /** Analyze, last so it is always flush right, and Delete to its left on a custom layout. */
   actions: ReactNode;
   /** The pull request of the change a custom layout holds, while it is open. */
@@ -344,6 +355,10 @@ function LayoutCard({
             compiled={item.compiled}
             typed={typed}
             name={item.name}
+            // With the heat off a card's board does not change as its heat arrives, so it is not
+            // told of it: the board is drawn again only when its layout moves.
+            heat={heatMode === null ? undefined : heat}
+            heatMode={heatMode}
           />
         )}
         {item.layout?.description && (
@@ -737,10 +752,23 @@ export function LibraryView() {
   // The last ranking on the same settings is what the list opens with.
   const rankingContext = rankingKey(ranking);
   // Nothing is scored until the rule set is read, and a rule set that will not open scores nothing.
-  const { summaries, pending } = useSummaries(
+  // How the boards are looked at is this browser's choice, not the link's. A mode a later version
+  // no longer has, read back from storage, is usage.
+  const heatOn = useSession((s) => s.libraryHeat);
+  const setHeatOn = useSession((s) => s.setLibraryHeat);
+  const storedMode = useSession((s) => s.libraryHeatMode);
+  const heatMode = HEAT_MODES.includes(storedMode) ? storedMode : 'usage';
+  const setHeatMode = useSession((s) => s.setLibraryHeatMode);
+  const { summaries, heats, pending } = useSummaries(
     settings.status === 'failed' ? [] : summaryEntries,
     settings.settings,
     rankingContext,
+    heatOn,
+  );
+  // Every layout is scored by one rule set, so one lacking the rule a mode asks for says it for all.
+  const heatFallback = useMemo(
+    () => heatOn && [...heats.values()].some((h) => h && effectiveHeat(h, heatMode) !== heatMode),
+    [heatOn, heats, heatMode],
   );
   const bands = useMemo(() => headlineBands(settings.settings?.rules), [settings.settings]);
 
@@ -1067,6 +1095,7 @@ export function LibraryView() {
           ))}
         </fieldset>
         <HelpLink help={HELP.sorting} />
+        <HeatControls on={heatOn} mode={heatMode} onToggle={setHeatOn} onMode={setHeatMode} />
       </div>
 
       <div className="space-y-1">
@@ -1095,6 +1124,7 @@ export function LibraryView() {
                           : ''
                     }`}
         </p>
+        {heatOn && <HeatLegend mode={heatMode} fallback={heatFallback} />}
       </div>
 
       <section className="space-y-2" aria-labelledby="library-layouts">
@@ -1133,6 +1163,9 @@ export function LibraryView() {
               bands={bands}
               lacking={lacking.get(item.key)}
               nobodyCan={nobodyCan}
+              // A rule set that will not open scores nothing, and so has no heat to wait for.
+              heat={settings.status === 'failed' ? null : heats.get(item.key)}
+              heatMode={heatOn ? heatMode : null}
               proposal={item.custom ? proposalUrls.get(item.id) : undefined}
               actions={
                 <>
