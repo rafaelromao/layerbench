@@ -1,0 +1,1528 @@
+{
+  "corpora": {
+    "code-c-family": {
+      "kind": "code",
+      "bytes": 1000000,
+      "shares": {
+        "jsts": 22,
+        "java": 14,
+        "csharp": 12,
+        "c": 12,
+        "cpp": 12,
+        "go": 8,
+        "rust": 8,
+        "php": 4,
+        "kotlin": 4,
+        "swift": 4
+      }
+    },
+    "code-python-family": {
+      "kind": "code",
+      "bytes": 1000000,
+      "shares": {
+        "python": 86,
+        "nim": 7,
+        "gdscript": 7
+      }
+    },
+    "en-markdown-agents": {
+      "kind": "markdown",
+      "bytes": 1000000
+    }
+  },
+  "repos": [
+    {
+      "id": "tmux",
+      "repo": "tmux/tmux",
+      "commit": "a73616d781f2af13085691c741cfb0780d365328",
+      "corpus": "code-c-family",
+      "license": "ISC",
+      "language": "c",
+      "licenseFile": "COPYING"
+    },
+    {
+      "id": "nginx",
+      "repo": "nginx/nginx",
+      "commit": "d17f1d249d386de1282222172f526973fcd8a702",
+      "corpus": "code-c-family",
+      "license": "BSD-2-Clause",
+      "language": "c",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "libuv",
+      "repo": "libuv/libuv",
+      "commit": "9e40720a0cdfd99970eacc43b39fa1404c6df38d",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "c",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "libevent",
+      "repo": "libevent/libevent",
+      "commit": "d82464a277d0f42703702c4dfd9af6af38595a83",
+      "corpus": "code-c-family",
+      "license": "BSD-3-Clause",
+      "language": "c",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "cjson",
+      "repo": "DaveGamble/cJSON",
+      "commit": "6d9f2443ab071f86e5d9b43025a40929ec41c46c",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "c",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "jemalloc",
+      "repo": "jemalloc/jemalloc",
+      "commit": "ebf5d2e100e8c9af7b57e7b37d593e8752d73e38",
+      "corpus": "code-c-family",
+      "license": "BSD-2-Clause",
+      "language": "c",
+      "licenseFile": "COPYING"
+    },
+    {
+      "id": "openssl",
+      "repo": "openssl/openssl",
+      "commit": "9262a4302140c6cf01e02ab7517f85239def938c",
+      "corpus": "code-c-family",
+      "license": "Apache-2.0",
+      "language": "c",
+      "licenseFile": "LICENSE.txt"
+    },
+    {
+      "id": "fmt",
+      "repo": "fmtlib/fmt",
+      "commit": "47fcd357ab6a9583f2307d1f78fdd674060efe61",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "cpp",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "googletest",
+      "repo": "google/googletest",
+      "commit": "6450691fd7d07ef932582206fbafb1a513927e08",
+      "corpus": "code-c-family",
+      "license": "BSD-3-Clause",
+      "language": "cpp",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "abseil-cpp",
+      "repo": "abseil/abseil-cpp",
+      "commit": "b652a9f424a1ceeaa86efb77bc7c6c1cab84a2f8",
+      "corpus": "code-c-family",
+      "license": "Apache-2.0",
+      "language": "cpp",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "leveldb",
+      "repo": "google/leveldb",
+      "commit": "bb74ef739973a70ca9f0d90788a1da89b788c0ad",
+      "corpus": "code-c-family",
+      "license": "BSD-3-Clause",
+      "language": "cpp",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "spdlog",
+      "repo": "gabime/spdlog",
+      "commit": "6d9805df3f588402b17073dcd13eb569ceda864d",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "cpp",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "cli11",
+      "repo": "CLIUtils/CLI11",
+      "commit": "1764a057b760e8873eab03f4635b4aaed5303a04",
+      "corpus": "code-c-family",
+      "license": "BSD-3-Clause",
+      "language": "cpp",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "newtonsoft-json",
+      "repo": "JamesNK/Newtonsoft.Json",
+      "commit": "52fa3aef1f2cadcd3a3f874251eddc98d3efbbaa",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "csharp",
+      "licenseFile": "LICENSE.md"
+    },
+    {
+      "id": "polly",
+      "repo": "App-vNext/Polly",
+      "commit": "b6df65905bac5d156043534b99aeb165ccf1d155",
+      "corpus": "code-c-family",
+      "license": "BSD-3-Clause",
+      "language": "csharp",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "serilog",
+      "repo": "serilog/serilog",
+      "commit": "43105b35095337d77f022561a8f2d3db2f9a7937",
+      "corpus": "code-c-family",
+      "license": "Apache-2.0",
+      "language": "csharp",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "benchmarkdotnet",
+      "repo": "dotnet/BenchmarkDotNet",
+      "commit": "04e8bfa38b19930a8c949e5e9f2bd9e6215d3996",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "csharp",
+      "licenseFile": "LICENSE.md"
+    },
+    {
+      "id": "stackexchange-redis",
+      "repo": "StackExchange/StackExchange.Redis",
+      "commit": "9d17974fcade6c89b29b233030fe281e75f9ab1c",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "csharp",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "humanizer",
+      "repo": "Humanizr/Humanizer",
+      "commit": "4574b93883bf48e3f0f3bca73297054537317ab2",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "csharp",
+      "licenseFile": "license.txt"
+    },
+    {
+      "id": "gson",
+      "repo": "google/gson",
+      "commit": "65df6e5a99747f73d386f3a61d887a0257255e0f",
+      "corpus": "code-c-family",
+      "license": "Apache-2.0",
+      "language": "java",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "commons-lang",
+      "repo": "apache/commons-lang",
+      "commit": "d58c7ed8d4d3283ee5fbd01a866ce9a10ecf80a8",
+      "corpus": "code-c-family",
+      "license": "Apache-2.0",
+      "language": "java",
+      "licenseFile": "LICENSE.txt"
+    },
+    {
+      "id": "commons-io",
+      "repo": "apache/commons-io",
+      "commit": "0c640aef74c65292ef313596f58c48b1b121e1e7",
+      "corpus": "code-c-family",
+      "license": "Apache-2.0",
+      "language": "java",
+      "licenseFile": "LICENSE.txt"
+    },
+    {
+      "id": "jackson-core",
+      "repo": "FasterXML/jackson-core",
+      "commit": "b756733180686f115ca15f34a5edb7168a07fae9",
+      "corpus": "code-c-family",
+      "license": "Apache-2.0",
+      "language": "java",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "retrofit",
+      "repo": "square/retrofit",
+      "commit": "d4fc594fe7a41094a2a60e2cbbcb64216051e28b",
+      "corpus": "code-c-family",
+      "license": "Apache-2.0",
+      "language": "java",
+      "licenseFile": "LICENSE.txt"
+    },
+    {
+      "id": "netty",
+      "repo": "netty/netty",
+      "commit": "f1ad6ac01be76858f15ae6620bffa3a1afb3d53b",
+      "corpus": "code-c-family",
+      "license": "Apache-2.0",
+      "language": "java",
+      "licenseFile": "LICENSE.txt"
+    },
+    {
+      "id": "express",
+      "repo": "expressjs/express",
+      "commit": "43fca52d28a422c8be48fd489cbd4f2d6152bab6",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "jsts",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "axios",
+      "repo": "axios/axios",
+      "commit": "a81d62a22e4b291a05d5b087a89fcc9d16075e83",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "jsts",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "prettier",
+      "repo": "prettier/prettier",
+      "commit": "b09dd90022c875f3089f19f37724da6377e52b7f",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "jsts",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "zod",
+      "repo": "colinhacks/zod",
+      "commit": "19c40d2072288b4cafec851e9d056a72a88e5973",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "jsts",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "vite",
+      "repo": "vitejs/vite",
+      "commit": "a579e352a66fbdce6a51d4e1f67006ccf4f91343",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "jsts",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "redux",
+      "repo": "reduxjs/redux",
+      "commit": "61ebf8596654cf3c4b197e426e302fcb3c2bc13e",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "jsts",
+      "licenseFile": "LICENSE.md"
+    },
+    {
+      "id": "query",
+      "repo": "TanStack/query",
+      "commit": "3875d1d19642694dfcb14602cfeb582e393103e3",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "jsts",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "core",
+      "repo": "vuejs/core",
+      "commit": "8b479a89445868d474f17e2d837765e7c9ece5e4",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "jsts",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "lodash",
+      "repo": "lodash/lodash",
+      "commit": "2b5e6f7399a7b48005140b5d5c6bc6c0e62919a8",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "jsts",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "cobra",
+      "repo": "spf13/cobra",
+      "commit": "adbc8813901bba65827259daa8e22ff94ec1f30e",
+      "corpus": "code-c-family",
+      "license": "Apache-2.0",
+      "language": "go",
+      "licenseFile": "LICENSE.txt"
+    },
+    {
+      "id": "gin",
+      "repo": "gin-gonic/gin",
+      "commit": "0f09c3a9b4626d9fe9979cf4d0521d6ae32ab646",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "go",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "testify",
+      "repo": "stretchr/testify",
+      "commit": "87a7b9d57689f6579db2da795ab8deeab29cb724",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "go",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "fzf",
+      "repo": "junegunn/fzf",
+      "commit": "96028e2a54023a8ff8240e985ae9c8e4f25c0089",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "go",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "caddy",
+      "repo": "caddyserver/caddy",
+      "commit": "31f9f0cb99491fdd1a27f82793b78d216c5b2a76",
+      "corpus": "code-c-family",
+      "license": "Apache-2.0",
+      "language": "go",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "tokio",
+      "repo": "tokio-rs/tokio",
+      "commit": "ac57dc8c3f41bb92c0dcad9134f5211ef503413f",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "rust",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "axum",
+      "repo": "tokio-rs/axum",
+      "commit": "4cc51a96df444592ec8276738d4ccd1202e6150d",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "rust",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "ripgrep",
+      "repo": "BurntSushi/ripgrep",
+      "commit": "91f5d22ef48bde459d90a8c7dbeab416e97d0f2b",
+      "corpus": "code-c-family",
+      "license": "Unlicense",
+      "language": "rust",
+      "licenseFile": "UNLICENSE"
+    },
+    {
+      "id": "clap",
+      "repo": "clap-rs/clap",
+      "commit": "ec93e71255c0b833a34f50662a3fdb22f53f6ded",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "rust",
+      "licenseFile": "LICENSE-MIT"
+    },
+    {
+      "id": "regex",
+      "repo": "rust-lang/regex",
+      "commit": "94ac45b2a6e7b1c30927feb5b66c5ded5b7ad447",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "rust",
+      "licenseFile": "LICENSE-MIT"
+    },
+    {
+      "id": "bat",
+      "repo": "sharkdp/bat",
+      "commit": "7187ec3c029dc86c09b714d8fc8f9b4460407609",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "rust",
+      "licenseFile": "LICENSE-MIT"
+    },
+    {
+      "id": "framework",
+      "repo": "laravel/framework",
+      "commit": "3ee9f38b4b840acabe79dbe3212b42e00b9ee4ee",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "php",
+      "licenseFile": "LICENSE.md"
+    },
+    {
+      "id": "composer",
+      "repo": "composer/composer",
+      "commit": "c63c3347b7669960787b43e665f306808f154a10",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "php",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "guzzle",
+      "repo": "guzzle/guzzle",
+      "commit": "7d9b1f430bb65ac664e120af227bf9a795ad6333",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "php",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "monolog",
+      "repo": "Seldaek/monolog",
+      "commit": "3bed304b1905fed5c30d172872f4d890cbb03c6a",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "php",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "kotlinx-coroutines",
+      "repo": "Kotlin/kotlinx.coroutines",
+      "commit": "ead082131ceb45b8e4fda027c74471103c1cd09f",
+      "corpus": "code-c-family",
+      "license": "Apache-2.0",
+      "language": "kotlin",
+      "licenseFile": "LICENSE.txt"
+    },
+    {
+      "id": "kotlinx-serialization",
+      "repo": "Kotlin/kotlinx.serialization",
+      "commit": "6f6a2e66c3dbf4a34e86a030368ecb0f7a734d22",
+      "corpus": "code-c-family",
+      "license": "Apache-2.0",
+      "language": "kotlin",
+      "licenseFile": "LICENSE.txt"
+    },
+    {
+      "id": "okhttp",
+      "repo": "square/okhttp",
+      "commit": "35499d316b97ccc74f7d33cb72b12e466332fd99",
+      "corpus": "code-c-family",
+      "license": "Apache-2.0",
+      "language": "kotlin",
+      "licenseFile": "LICENSE.txt"
+    },
+    {
+      "id": "coil",
+      "repo": "coil-kt/coil",
+      "commit": "3e9e52388db3943edf8042eace817b944d3ac3ae",
+      "corpus": "code-c-family",
+      "license": "Apache-2.0",
+      "language": "kotlin",
+      "licenseFile": "LICENSE.txt"
+    },
+    {
+      "id": "alamofire",
+      "repo": "Alamofire/Alamofire",
+      "commit": "6c2892ea5adb5a03fa81c510933dd782c5ddd9cb",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "swift",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "swift-nio",
+      "repo": "apple/swift-nio",
+      "commit": "02d6d9ada2aac9dd15455548e497824b8a5ae9f3",
+      "corpus": "code-c-family",
+      "license": "Apache-2.0",
+      "language": "swift",
+      "licenseFile": "LICENSE.txt"
+    },
+    {
+      "id": "vapor",
+      "repo": "vapor/vapor",
+      "commit": "80a47681c6adaeabee4434f36e398b40c8fb89c5",
+      "corpus": "code-c-family",
+      "license": "MIT",
+      "language": "swift",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "swift-argument-parser",
+      "repo": "apple/swift-argument-parser",
+      "commit": "38ca4eceb349155836701b88da3e0986eb9d1e1c",
+      "corpus": "code-c-family",
+      "license": "Apache-2.0",
+      "language": "swift",
+      "licenseFile": "LICENSE.txt"
+    },
+    {
+      "id": "requests",
+      "repo": "psf/requests",
+      "commit": "3c7baaa05ab4aa49cc819ce3a819d260de19c157",
+      "corpus": "code-python-family",
+      "license": "Apache-2.0",
+      "language": "python",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "flask",
+      "repo": "pallets/flask",
+      "commit": "49943b5a94413a530761350f04e896f76e8d620e",
+      "corpus": "code-python-family",
+      "license": "BSD-3-Clause",
+      "language": "python",
+      "licenseFile": "LICENSE.txt"
+    },
+    {
+      "id": "click",
+      "repo": "pallets/click",
+      "commit": "8abb77a8432e03ed14a95f972b44f905279415a7",
+      "corpus": "code-python-family",
+      "license": "BSD-3-Clause",
+      "language": "python",
+      "licenseFile": "LICENSE.txt"
+    },
+    {
+      "id": "pytest",
+      "repo": "pytest-dev/pytest",
+      "commit": "08017d9ada4c72a7b6a78f7873c238070e24c982",
+      "corpus": "code-python-family",
+      "license": "MIT",
+      "language": "python",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "rich",
+      "repo": "Textualize/rich",
+      "commit": "9d8f9a372cc5916fd4781fec207ced7ddac2f08f",
+      "corpus": "code-python-family",
+      "license": "MIT",
+      "language": "python",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "black",
+      "repo": "psf/black",
+      "commit": "b4f1fcae48826790b6f93ca9226d20003bce0eaa",
+      "corpus": "code-python-family",
+      "license": "MIT",
+      "language": "python",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "httpx",
+      "repo": "encode/httpx",
+      "commit": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+      "corpus": "code-python-family",
+      "license": "BSD-3-Clause",
+      "language": "python",
+      "licenseFile": "LICENSE.md"
+    },
+    {
+      "id": "attrs",
+      "repo": "python-attrs/attrs",
+      "commit": "9d9f94a043de7fc4012459853a4ed597a5577855",
+      "corpus": "code-python-family",
+      "license": "MIT",
+      "language": "python",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "pip",
+      "repo": "pypa/pip",
+      "commit": "a4a111d0642fc9a46e0e4bddbe929ac731c734e6",
+      "corpus": "code-python-family",
+      "license": "MIT",
+      "language": "python",
+      "licenseFile": "LICENSE.txt"
+    },
+    {
+      "id": "poetry",
+      "repo": "python-poetry/poetry",
+      "commit": "6ecadf5b71309b1da4f00949cc349a79884cff8f",
+      "corpus": "code-python-family",
+      "license": "MIT",
+      "language": "python",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "pydantic",
+      "repo": "pydantic/pydantic",
+      "commit": "dabcc6461dafa4337c52faf3e9941431ea41ce4a",
+      "corpus": "code-python-family",
+      "license": "MIT",
+      "language": "python",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "fastapi",
+      "repo": "fastapi/fastapi",
+      "commit": "1ca09c13584ca45aa0921e5e40b31d49c5e3135a",
+      "corpus": "code-python-family",
+      "license": "MIT",
+      "language": "python",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "django",
+      "repo": "django/django",
+      "commit": "a1f2b45ce5a327f42437bdb620a817839d0bd067",
+      "corpus": "code-python-family",
+      "license": "BSD-3-Clause",
+      "language": "python",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "nim",
+      "repo": "nim-lang/Nim",
+      "commit": "eef623091d033634559d4bf3349b1785e51ac17d",
+      "corpus": "code-python-family",
+      "license": "MIT",
+      "language": "nim",
+      "licenseFile": "copying.txt"
+    },
+    {
+      "id": "nimble",
+      "repo": "nim-lang/nimble",
+      "commit": "e82b6361c936709159976f869323a040db9f0800",
+      "corpus": "code-python-family",
+      "license": "BSD-3-Clause",
+      "language": "nim",
+      "licenseFile": "license.txt"
+    },
+    {
+      "id": "godot-demo-projects",
+      "repo": "godotengine/godot-demo-projects",
+      "commit": "b761b4cd5718a7118f2c95eb55f181d0a5f004f1",
+      "corpus": "code-python-family",
+      "license": "MIT",
+      "language": "gdscript",
+      "licenseFile": "LICENSE.md"
+    },
+    {
+      "id": "agents-md",
+      "repo": "agentsmd/agents.md",
+      "commit": "d001185d792eb6402a58e4cbef1c228b309ec25d",
+      "corpus": "en-markdown-agents",
+      "license": "MIT",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "spec-kit",
+      "repo": "github/spec-kit",
+      "commit": "f3d6fb762c8e6718bf2dedcba38cc5dc93f65645",
+      "corpus": "en-markdown-agents",
+      "license": "MIT",
+      "licenseFile": "LICENSE",
+      "include": [
+        "docs/",
+        "templates/",
+        "README.md",
+        "AGENTS.md"
+      ]
+    },
+    {
+      "id": "codex",
+      "repo": "openai/codex",
+      "commit": "2f742f58856618deaaa86fa7f7048aad57c972a9",
+      "corpus": "en-markdown-agents",
+      "license": "Apache-2.0",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "aider",
+      "repo": "Aider-AI/aider",
+      "commit": "5dc9490bb35f9729ef2c95d00a19ccd30c26339c",
+      "corpus": "en-markdown-agents",
+      "license": "Apache-2.0",
+      "licenseFile": "LICENSE.txt",
+      "include": [
+        "aider/website/docs/",
+        "README.md"
+      ]
+    },
+    {
+      "id": "awesome-cursorrules",
+      "repo": "PatrickJS/awesome-cursorrules",
+      "commit": "b044f956f021b6e8877f16781bcfc466a6a120e9",
+      "corpus": "en-markdown-agents",
+      "license": "CC0-1.0",
+      "licenseFile": "LICENSE",
+      "exclude": "^README\\.md$"
+    },
+    {
+      "id": "awesome-claude-code-subagents",
+      "repo": "VoltAgent/awesome-claude-code-subagents",
+      "commit": "ed74d115b7fb7026a22a4f816a8e3250f425e3b4",
+      "corpus": "en-markdown-agents",
+      "license": "MIT",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "id": "prompt-engineering-guide",
+      "repo": "dair-ai/Prompt-Engineering-Guide",
+      "commit": "57673726396dd94acb23bdb1e67f27c78ee85a8e",
+      "corpus": "en-markdown-agents",
+      "license": "MIT",
+      "licenseFile": "LICENSE.md",
+      "include": [
+        "pages/"
+      ],
+      "exclude": "\\.(?!en\\.)[a-z]{2}(-[A-Za-z]+)?\\.mdx?$"
+    },
+    {
+      "id": "agents-course",
+      "repo": "huggingface/agents-course",
+      "commit": "9b3d6b3887bc489510da0239d4c1bc1ee23fd40f",
+      "corpus": "en-markdown-agents",
+      "license": "Apache-2.0",
+      "licenseFile": "LICENSE",
+      "include": [
+        "units/en/"
+      ]
+    },
+    {
+      "id": "langchain",
+      "repo": "langchain-ai/langchain",
+      "commit": "d9caf083577c43a91c5bf6bd1f7dfc289581184d",
+      "corpus": "en-markdown-agents",
+      "license": "MIT",
+      "licenseFile": "LICENSE",
+      "include": [
+        "openwiki/"
+      ]
+    },
+    {
+      "id": "cline",
+      "repo": "cline/cline",
+      "commit": "94eecbbe1a2f899c66b118d13656651b0a884e1f",
+      "corpus": "en-markdown-agents",
+      "license": "Apache-2.0",
+      "licenseFile": "LICENSE",
+      "include": [
+        ".agents/",
+        "docs/"
+      ]
+    },
+    {
+      "id": "openhands",
+      "repo": "OpenHands/OpenHands",
+      "commit": "9979fa2591681d0801f6b5c1d66fd87ea7230de4",
+      "corpus": "en-markdown-agents",
+      "license": "MIT",
+      "licenseFile": "LICENSE",
+      "include": [
+        ".agents/",
+        "docs/",
+        "AGENTS.md"
+      ]
+    }
+  ],
+  "research": {
+    "bytes": 300000,
+    "groups": {
+      "shell": {
+        "name": "Shell",
+        "lexicon": {
+          "family": "brace",
+          "lineComment": [
+            "#"
+          ],
+          "multiline": true,
+          "extensions": [
+            ".sh",
+            ".bash",
+            ".zsh",
+            ".bats"
+          ]
+        }
+      },
+      "powershell": {
+        "name": "PowerShell",
+        "lexicon": {
+          "family": "brace",
+          "lineComment": [
+            "#"
+          ],
+          "blockComment": {
+            "open": "<#",
+            "close": "#>",
+            "nested": false
+          },
+          "multiline": true,
+          "extensions": [
+            ".ps1",
+            ".psm1",
+            ".psd1"
+          ]
+        }
+      },
+      "sql": {
+        "name": "SQL",
+        "lexicon": {
+          "family": "brace",
+          "lineComment": [
+            "--"
+          ],
+          "blockComment": {
+            "open": "/*",
+            "close": "*/",
+            "nested": false
+          },
+          "multiline": true,
+          "extensions": [
+            ".sql"
+          ]
+        }
+      },
+      "html": {
+        "name": "HTML and XML",
+        "lexicon": {
+          "family": "brace",
+          "lineComment": [],
+          "blockComment": {
+            "open": "<!--",
+            "close": "-->",
+            "nested": false
+          },
+          "strings": false,
+          "extensions": [
+            ".html",
+            ".htm",
+            ".xml",
+            ".xhtml",
+            ".xaml"
+          ]
+        }
+      },
+      "css": {
+        "name": "CSS",
+        "lexicon": {
+          "family": "brace",
+          "lineComment": [],
+          "blockComment": {
+            "open": "/*",
+            "close": "*/",
+            "nested": false
+          },
+          "extensions": [
+            ".css",
+            ".scss",
+            ".less"
+          ]
+        }
+      },
+      "json": {
+        "name": "JSON",
+        "lexicon": {
+          "family": "brace",
+          "lineComment": [],
+          "extensions": [
+            ".json"
+          ]
+        }
+      },
+      "yaml": {
+        "name": "YAML",
+        "lexicon": {
+          "family": "brace",
+          "lineComment": [
+            "#"
+          ],
+          "extensions": [
+            ".yml",
+            ".yaml"
+          ]
+        }
+      },
+      "lisp": {
+        "name": "Lisp",
+        "lexicon": {
+          "family": "brace",
+          "lineComment": [
+            ";"
+          ],
+          "blockComment": {
+            "open": "#|",
+            "close": "|#",
+            "nested": true
+          },
+          "charOnly": true,
+          "extensions": [
+            ".lisp",
+            ".cl",
+            ".scm",
+            ".ss",
+            ".sld",
+            ".rkt",
+            ".clj",
+            ".cljs",
+            ".el"
+          ]
+        }
+      },
+      "haskell": {
+        "name": "ML and functional",
+        "lexicon": {
+          "family": "brace",
+          "lineComment": [
+            "--"
+          ],
+          "blockComment": {
+            "open": "{-",
+            "close": "-}",
+            "nested": true
+          },
+          "charOnly": true,
+          "extensions": [
+            ".hs"
+          ]
+        }
+      },
+      "ocaml": {
+        "name": "ML and functional",
+        "lexicon": {
+          "family": "brace",
+          "lineComment": [],
+          "blockComment": {
+            "open": "(*",
+            "close": "*)",
+            "nested": true
+          },
+          "charOnly": true,
+          "extensions": [
+            ".ml",
+            ".mli"
+          ]
+        }
+      },
+      "fsharp": {
+        "name": "ML and functional",
+        "lexicon": {
+          "family": "brace",
+          "lineComment": [
+            "//"
+          ],
+          "blockComment": {
+            "open": "(*",
+            "close": "*)",
+            "nested": true
+          },
+          "charOnly": true,
+          "extensions": [
+            ".fs",
+            ".fsx"
+          ]
+        }
+      },
+      "elm": {
+        "name": "ML and functional",
+        "lexicon": {
+          "family": "brace",
+          "lineComment": [
+            "--"
+          ],
+          "blockComment": {
+            "open": "{-",
+            "close": "-}",
+            "nested": true
+          },
+          "charOnly": true,
+          "extensions": [
+            ".elm"
+          ]
+        }
+      },
+      "ruby": {
+        "name": "Ruby",
+        "lexicon": {
+          "family": "brace",
+          "lineComment": [
+            "#"
+          ],
+          "multiline": true,
+          "extensions": [
+            ".rb",
+            ".rake",
+            ".gemspec"
+          ]
+        }
+      },
+      "lua": {
+        "name": "Lua",
+        "lexicon": {
+          "family": "brace",
+          "lineComment": [
+            "--"
+          ],
+          "blockComment": {
+            "open": "--[[",
+            "close": "]]",
+            "nested": false
+          },
+          "multiline": true,
+          "extensions": [
+            ".lua"
+          ]
+        }
+      },
+      "julia": {
+        "name": "Julia",
+        "lexicon": {
+          "family": "indent",
+          "lineComment": [
+            "#"
+          ],
+          "blockComment": {
+            "open": "#=",
+            "close": "=#",
+            "nested": true
+          },
+          "tripleQuote": true,
+          "charOnly": true,
+          "extensions": [
+            ".jl"
+          ]
+        }
+      },
+      "latex": {
+        "name": "LaTeX",
+        "lexicon": {
+          "family": "brace",
+          "lineComment": [
+            "%"
+          ],
+          "strings": false,
+          "extensions": [
+            ".tex",
+            ".sty",
+            ".cls"
+          ]
+        }
+      }
+    },
+    "repos": [
+      {
+        "id": "paip-lisp",
+        "repo": "norvig/paip-lisp",
+        "commit": "9cea73837e439d331fe78d7b585e994c7113aac2",
+        "group": "lisp",
+        "license": "MIT",
+        "licenseFile": "LICENSE"
+      },
+      {
+        "id": "chibi-scheme",
+        "repo": "ashinn/chibi-scheme",
+        "commit": "a403df28b3694a4967affb751f7a22c1d33fa0c3",
+        "group": "lisp",
+        "license": "BSD-3-Clause",
+        "licenseFile": "COPYING"
+      },
+      {
+        "id": "quilc",
+        "repo": "rigetti/quilc",
+        "commit": "3d83b665b3addc33be2f696b1cdebc0c4c5a04f9",
+        "group": "lisp",
+        "license": "Apache-2.0",
+        "licenseFile": "LICENSE.txt"
+      },
+      {
+        "id": "kons-9",
+        "repo": "kaveh808/kons-9",
+        "commit": "08770e7fbb839b91fd035f1cd4a50ecc81b42d57",
+        "group": "lisp",
+        "license": "MIT",
+        "licenseFile": "LICENSE"
+      },
+      {
+        "id": "cabal",
+        "repo": "haskell/cabal",
+        "commit": "4b95ffd82ad507bdf8cfe71c5be16e4ed32de805",
+        "group": "haskell",
+        "license": "BSD-3-Clause",
+        "licenseFile": "Cabal/LICENSE"
+      },
+      {
+        "id": "postgrest",
+        "repo": "PostgREST/postgrest",
+        "commit": "912ec8744e9fda961733043a9bd8ea3032bdd5f8",
+        "group": "haskell",
+        "license": "MIT",
+        "licenseFile": "LICENSE"
+      },
+      {
+        "id": "stack",
+        "repo": "commercialhaskell/stack",
+        "commit": "3e8fff0c6875ef85cb184eaba658825aa3c1fbed",
+        "group": "haskell",
+        "license": "BSD-3-Clause",
+        "licenseFile": "LICENSE"
+      },
+      {
+        "id": "dune",
+        "repo": "ocaml/dune",
+        "commit": "b8a141df5191ccc77c416c4ae3a8f86c7df5a926",
+        "group": "ocaml",
+        "license": "MIT",
+        "licenseFile": "LICENSE.md"
+      },
+      {
+        "id": "lwt",
+        "repo": "ocsigen/lwt",
+        "commit": "7c24c6dc3716fabad8bd3e87c3267e473379d02f",
+        "group": "ocaml",
+        "license": "MIT",
+        "licenseFile": "LICENSE.md"
+      },
+      {
+        "id": "base",
+        "repo": "janestreet/base",
+        "commit": "49a861eb32041978d72e369f85f89a4547a50f1f",
+        "group": "ocaml",
+        "license": "MIT",
+        "licenseFile": "LICENSE.md"
+      },
+      {
+        "id": "paket",
+        "repo": "fsprojects/Paket",
+        "commit": "d0e022a831c800479f9d7945c1c9efe292d5acb0",
+        "group": "fsharp",
+        "license": "MIT",
+        "licenseFile": "LICENSE.txt"
+      },
+      {
+        "id": "elm-core",
+        "repo": "elm/core",
+        "commit": "65cea00afa0de03d7dda0487d964a305fc3d58e3",
+        "group": "elm",
+        "license": "BSD-3-Clause",
+        "licenseFile": "LICENSE"
+      },
+      {
+        "id": "nvm",
+        "repo": "nvm-sh/nvm",
+        "commit": "4e8758a801eea9479b32a904f31093e410ddaba4",
+        "group": "shell",
+        "license": "MIT",
+        "licenseFile": "LICENSE.md"
+      },
+      {
+        "id": "ohmyzsh",
+        "repo": "ohmyzsh/ohmyzsh",
+        "commit": "cca3bdfbef8c52ef8939ce7911ff68852b949daa",
+        "group": "shell",
+        "license": "MIT",
+        "licenseFile": "LICENSE.txt"
+      },
+      {
+        "id": "bats-core",
+        "repo": "bats-core/bats-core",
+        "commit": "dd43d25dac55fa30e779381a257d26fb8f21588f",
+        "group": "shell",
+        "license": "MIT",
+        "licenseFile": "LICENSE.md"
+      },
+      {
+        "id": "pyenv",
+        "repo": "pyenv/pyenv",
+        "commit": "0dd55f83b6a85ed5b460311ec60439c66e257208",
+        "group": "shell",
+        "license": "MIT",
+        "licenseFile": "LICENSE"
+      },
+      {
+        "id": "rbenv",
+        "repo": "rbenv/rbenv",
+        "commit": "07e9b1e297a5977298c6aadc9971ae0e9eb7f0dc",
+        "group": "shell",
+        "license": "MIT",
+        "licenseFile": "LICENSE"
+      },
+      {
+        "id": "asdf",
+        "repo": "asdf-vm/asdf",
+        "commit": "ae14f6e673cc45d29e4977c4e9a70c70bef48196",
+        "group": "shell",
+        "license": "MIT",
+        "licenseFile": "LICENSE"
+      },
+      {
+        "id": "bash-it",
+        "repo": "Bash-it/bash-it",
+        "commit": "72ea9e285fe1828977d1cd2bc596b901bcc57440",
+        "group": "shell",
+        "license": "MIT",
+        "licenseFile": "LICENSE"
+      },
+      {
+        "id": "pester",
+        "repo": "pester/Pester",
+        "commit": "98e56d65da1642a7158992b50ded240c42a3ac18",
+        "group": "powershell",
+        "license": "Apache-2.0",
+        "licenseFile": "LICENSE"
+      },
+      {
+        "id": "posh-git",
+        "repo": "dahlbyk/posh-git",
+        "commit": "bbc5ac380018239e0ac70411a59f4e367ca87f2d",
+        "group": "powershell",
+        "license": "MIT",
+        "licenseFile": "LICENSE.txt"
+      },
+      {
+        "id": "psreadline",
+        "repo": "PowerShell/PSReadLine",
+        "commit": "a2d143f78904f8a954f8d4b055e55ceca6939bfc",
+        "group": "powershell",
+        "license": "BSD-2-Clause",
+        "licenseFile": "License.txt"
+      },
+      {
+        "id": "powershell",
+        "repo": "PowerShell/PowerShell",
+        "commit": "1aac7f5e38679b3c1469b67071a4c07f50cc064b",
+        "group": "powershell",
+        "license": "MIT",
+        "licenseFile": "LICENSE.txt"
+      },
+      {
+        "id": "sql-server-samples",
+        "repo": "microsoft/sql-server-samples",
+        "commit": "8fe3fd0c9a825fef3ae6d601e97537b612d7b214",
+        "group": "sql",
+        "license": "MIT",
+        "licenseFile": "license.txt"
+      },
+      {
+        "id": "hasura",
+        "repo": "hasura/graphql-engine",
+        "commit": "e2fe50dc76b934d5c3bb3e14c8b763160be30c7f",
+        "group": "sql",
+        "license": "Apache-2.0",
+        "licenseFile": "LICENSE",
+        "keepFixtures": true
+      },
+      {
+        "id": "html5-boilerplate",
+        "repo": "h5bp/html5-boilerplate",
+        "commit": "b6597338e695dc4a8165c5abcb2bfffa586c3ee5",
+        "group": "html",
+        "license": "MIT",
+        "licenseFile": "LICENSE.txt"
+      },
+      {
+        "id": "bootstrap-html",
+        "repo": "twbs/bootstrap",
+        "commit": "9062790fdb2379593a2973416dc5a3bfb203e4e3",
+        "group": "html",
+        "license": "MIT",
+        "licenseFile": "LICENSE"
+      },
+      {
+        "id": "spring-petclinic",
+        "repo": "spring-projects/spring-petclinic",
+        "commit": "500158f732419217507c7656904b8e6aa1bcc0d6",
+        "group": "html",
+        "license": "Apache-2.0",
+        "licenseFile": "LICENSE.txt"
+      },
+      {
+        "id": "maven",
+        "repo": "apache/maven",
+        "commit": "828acc62c9814ca6745b4ea5ad323372efe0350d",
+        "group": "html",
+        "license": "Apache-2.0",
+        "licenseFile": "LICENSE"
+      },
+      {
+        "id": "normalize-css",
+        "repo": "necolas/normalize.css",
+        "commit": "fc091cce1534909334c1911709a39c22d406977b",
+        "group": "css",
+        "license": "MIT",
+        "licenseFile": "LICENSE.md"
+      },
+      {
+        "id": "bootstrap-css",
+        "repo": "twbs/bootstrap",
+        "commit": "9062790fdb2379593a2973416dc5a3bfb203e4e3",
+        "group": "css",
+        "license": "MIT",
+        "licenseFile": "LICENSE"
+      },
+      {
+        "id": "pico",
+        "repo": "picocss/pico",
+        "commit": "a07563ddc856e6ed31a740e33b0397814227d469",
+        "group": "css",
+        "license": "MIT",
+        "licenseFile": "LICENSE.md"
+      },
+      {
+        "id": "github-markdown-css",
+        "repo": "sindresorhus/github-markdown-css",
+        "commit": "7f38dcb9054bc5d860fac65291f5c98fef47932c",
+        "group": "css",
+        "license": "MIT",
+        "licenseFile": "license"
+      },
+      {
+        "id": "json-schema-test-suite",
+        "repo": "json-schema-org/JSON-Schema-Test-Suite",
+        "commit": "245a45abc90190c0bff04d97e6d2b541b4bb9f12",
+        "group": "json",
+        "license": "MIT",
+        "licenseFile": "LICENSE",
+        "keepFixtures": true
+      },
+      {
+        "id": "schemastore",
+        "repo": "SchemaStore/schemastore",
+        "commit": "d19d607afb543c15c6625a536f895a11e31b85c0",
+        "group": "json",
+        "license": "Apache-2.0",
+        "licenseFile": "LICENSE",
+        "keepFixtures": true
+      },
+      {
+        "id": "starter-workflows",
+        "repo": "actions/starter-workflows",
+        "commit": "e3c451d60f119b71caebf13c98ac45da6e15b4b7",
+        "group": "yaml",
+        "license": "MIT",
+        "licenseFile": "LICENSE"
+      },
+      {
+        "id": "kubernetes-examples",
+        "repo": "kubernetes/examples",
+        "commit": "22934a040acbb0c0aa103023ccbd871507bf17f6",
+        "group": "yaml",
+        "license": "Apache-2.0",
+        "licenseFile": "LICENSE"
+      },
+      {
+        "id": "awesome-compose",
+        "repo": "docker/awesome-compose",
+        "commit": "30f4b7f6a6c3b0c0ecf4d4efb0de203c48d11562",
+        "group": "yaml",
+        "license": "CC0-1.0",
+        "licenseFile": "LICENSE"
+      },
+      {
+        "id": "sinatra",
+        "repo": "sinatra/sinatra",
+        "commit": "cb22afd7902b566b6eaba6c4ea89739494a65d12",
+        "group": "ruby",
+        "license": "MIT",
+        "licenseFile": "LICENSE"
+      },
+      {
+        "id": "rake",
+        "repo": "ruby/rake",
+        "commit": "3f29d39daa688eb51cd975c06b1501320f10b911",
+        "group": "ruby",
+        "license": "MIT",
+        "licenseFile": "MIT-LICENSE"
+      },
+      {
+        "id": "rspec-core",
+        "repo": "rspec/rspec-core",
+        "commit": "aec5f49485d97908183dbe790a7fefb8baaa8091",
+        "group": "ruby",
+        "license": "MIT",
+        "licenseFile": "LICENSE.md"
+      },
+      {
+        "id": "jekyll",
+        "repo": "jekyll/jekyll",
+        "commit": "97c3bdc822df9d5bea4c269b29a28de5a5e29d70",
+        "group": "ruby",
+        "license": "MIT",
+        "licenseFile": "LICENSE"
+      },
+      {
+        "id": "luarocks",
+        "repo": "luarocks/luarocks",
+        "commit": "85bfe36c812465b2f377877939d884a4db829a25",
+        "group": "lua",
+        "license": "MIT",
+        "licenseFile": "COPYING"
+      },
+      {
+        "id": "busted",
+        "repo": "lunarmodules/busted",
+        "commit": "22f8089f461a563fb9553ab56f926c6805850833",
+        "group": "lua",
+        "license": "MIT",
+        "licenseFile": "LICENSE"
+      },
+      {
+        "id": "nvim-lspconfig",
+        "repo": "neovim/nvim-lspconfig",
+        "commit": "993d048db0d83d8e8ba3f9cb376456321acdcce3",
+        "group": "lua",
+        "license": "Apache-2.0",
+        "licenseFile": "LICENSE.md"
+      },
+      {
+        "id": "lazy-nvim",
+        "repo": "folke/lazy.nvim",
+        "commit": "306a05526ada86a7b30af95c5cc81ffba93fef97",
+        "group": "lua",
+        "license": "Apache-2.0",
+        "licenseFile": "LICENSE"
+      },
+      {
+        "id": "telescope-nvim",
+        "repo": "nvim-telescope/telescope.nvim",
+        "commit": "40aedd8a68c78a656a10a8d62d80c54af59420fb",
+        "group": "lua",
+        "license": "MIT",
+        "licenseFile": "LICENSE"
+      },
+      {
+        "id": "flux",
+        "repo": "FluxML/Flux.jl",
+        "commit": "56cffa42fd3823ef994225077b5dd0e796813cb9",
+        "group": "julia",
+        "license": "MIT",
+        "licenseFile": "LICENSE.md"
+      },
+      {
+        "id": "dataframes",
+        "repo": "JuliaData/DataFrames.jl",
+        "commit": "e867c34551ed0654229083ab0616bd9b4f037846",
+        "group": "julia",
+        "license": "MIT",
+        "licenseFile": "LICENSE.md"
+      },
+      {
+        "id": "julia",
+        "repo": "JuliaLang/julia",
+        "commit": "7959b61a8f2b463763e1abdea651ba05a7b57ae7",
+        "group": "julia",
+        "license": "MIT",
+        "licenseFile": "LICENSE.md",
+        "include": [
+          "base/",
+          "stdlib/"
+        ]
+      },
+      {
+        "id": "tectonic",
+        "repo": "tectonic-typesetting/tectonic",
+        "commit": "d2224d9ba4185f952fd3d982eccd1f444dbdf895",
+        "group": "latex",
+        "license": "MIT",
+        "licenseFile": "LICENSE"
+      },
+      {
+        "id": "latex-workshop",
+        "repo": "James-Yu/LaTeX-Workshop",
+        "commit": "2f5a60a11a99f33013c1235f0499546cc831cfcb",
+        "group": "latex",
+        "license": "MIT",
+        "licenseFile": "LICENSE.txt",
+        "keepFixtures": true
+      },
+      {
+        "id": "pandoc-latex-template",
+        "repo": "Wandmalfarbe/pandoc-latex-template",
+        "commit": "93cc5b8e08c658da012d7609491ae72b1aff72fc",
+        "group": "latex",
+        "license": "BSD-3-Clause",
+        "licenseFile": "LICENSE"
+      }
+    ]
+  }
+}

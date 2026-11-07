@@ -30,6 +30,82 @@ form, and shipping an unverifiable unpacker would be worse than one documented i
    text as `raw/<id>.txt`, one sentence per line.
 3. `pnpm corpora <id>`
 
+## Code and Markdown texts
+
+Three texts are not news, since news barely has the symbols, brackets and digits that typing code or
+instructions to an AI agent is made of:
+
+| Id | Name | What it is |
+|---|---|---|
+| `code-c-family` | Code — C family | C, C++, C#, Java, JavaScript and TypeScript, Go, Rust, PHP, Kotlin and Swift: braces and semicolons |
+| `code-python-family` | Code — Python family | Python, with a few Nim and GDScript: colons and indentation |
+| `en-markdown-agents` | Markdown — AI agents | English Markdown: instructions, rules, prompts and docs of open-source agent projects |
+
+The code texts are tagged `code`, which is not a language and has no profile in
+`packages/core/src/lang/profiles.ts`: nothing in them is a letter a keyboard needs beyond ASCII, and
+a layout is not "for" them. The Markdown text is English (`en`).
+
+**Where they come from.** `raw/code-sources.json` names every project (about eighty): its repository
+at a commit, never a branch, the licence its files are taken under and the file that says so, and
+for each text how its bytes are shared (the languages of the C family text, in percent). It is the
+single source of truth, and `raw/CODE-SOURCES.md` is its credit file, written from it. Every project
+is under MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC or the Unlicense, or CC0 for rules and
+prompts; the extractor reads each licence file in the archive, and stops if it is not the licence
+the entry says.
+
+**How they are made.** Three steps, the first on the network:
+
+```bash
+pnpm corpora:fetch      # each project's archive, into packages/corpora/.cache (ignored by git)
+pnpm corpora:extract    # raw/<id>.txt for each text, and raw/CODE-SOURCES.md
+pnpm corpora            # what the app serves, as for every text
+```
+
+The archives are read as bytes, never unpacked or run. From each file the extractor takes:
+
+- **Lines without comments.** A small scanner per language family (`packages/core/src/corpus/prepare`)
+  takes out comments, and the docstrings of the indentation languages, which is where a project's
+  names, addresses and licence headers are. Strings stay, since they are typed. Generated and minified
+  files, copies of other projects (`vendor`, `node_modules`, `third_party`) and test fixtures do not.
+- **Whitespace as the analysis reads it.** The analysis does not press Enter, Tab, Backspace or
+  Escape (AGENTS.md, "A layout is only what the editor can make"), and every run of whitespace in a
+  sample is one space, a word boundary. So a line break and the indentation after it become one
+  space, and a source line is the unit that is shuffled: the text does not keep what the analysis
+  cannot type, and its numbers are of what it types. A line that repeats, `}` or `return;`, is kept as
+  often as it comes; a long one that repeats is kept once.
+- **Nothing about a person, a secret or a place to find one.** A line is left out whole, never
+  rewritten, if it has an e-mail address, a phone number, an IP address, a long hex run, a word of
+  more than 64 characters (a hash, a token, a URL), a key or token in a known form, `password`,
+  `secret`, `api_key`, `credential` or `bearer`, the words *copyright*, *author*, *licence*,
+  *maintainer*, *contributor* or *et al.*, characters outside ASCII (code) or letters outside it
+  (Markdown), or, in code, a capitalised pair of words in quotes, which is what a name in a test
+  looks like. Markdown loses too the lines with a byline, `Name Name's`, a double-barrelled name, a
+  profile link or an `@mention`, and every link to a site that is not a project, a standard, a paper
+  or a service everyone uses, or to a GitHub or Hugging Face owner that is not an organisation on
+  its short list (`packages/core/src/corpus/prepare/lines.ts`). The same judgement runs in
+  `pnpm test` over the raw text and the sample that ship. No filter can prove a name is not in a
+  string: that is why comments go whole, why the sources are projects' own docs and code, and why
+  the list is strict.
+- **A fixed share, in a fixed order.** Each language gets its share of the bytes, each project of a
+  language an equal part of that, and what a short project cannot give goes to the others. Within
+  a project the lines come in an order of a hash, so the same archives always give the same text.
+
+`scrub` is off for these texts in `sources.json`: the extractor already leaves out the lines the
+phone-number scrub of the news texts would rewrite, and the scrub would rewrite numeric constants,
+dates and versions that were typed.
+
+Count them with **Counts** on *Letters, numbers and symbols*, or they are read as identifiers and
+words alone.
+
+**Adding a project.** Add its entry to `raw/code-sources.json` with the commit, its SPDX licence
+and the licence file, then the three commands above. A project that is not under one of the licences
+above does not join; `pnpm test` checks the file.
+
+**Other groups.** `pnpm corpora:fetch research` and `pnpm corpora:research` measure other groups of
+languages (shell, SQL, Lisp…) against these texts, from the projects under `research` in the same
+file, and write `docs/research/code-groups.json`: nothing of them is kept, only the numbers.
+[docs/research/code-corpora.md](../../docs/research/code-corpora.md) is what they say.
+
 ## How a sample is built
 
 - **Sentences, in a fixed shuffle.** The raw text is split into lines, one sentence each, and put in

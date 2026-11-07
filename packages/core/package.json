@@ -18,6 +18,7 @@
     "./rules": "./src/rules/index.ts",
     "./storage": "./src/storage/ids.ts",
     "./corpus": "./src/corpus/index.ts",
+    "./prepare": "./src/corpus/prepare/index.ts",
     "./analysis": "./src/analysis/index.ts",
     "./node": "./src/corpus/node-loader.ts",
     "./lang": "./src/lang/index.ts"

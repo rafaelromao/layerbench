@@ -13,13 +13,19 @@ const CORPORA = [
   text('custom:alpha', 'alpha notes', 'custom'),
   text('fr-general', 'Français — actualités', 'fr'),
   text('de-general', 'Deutsch — Nachrichten', 'de'),
+  text('code-python-family', 'Code — Python family', 'code'),
+  text('en-markdown-agents', 'Markdown — AI agents', 'en'),
+  text('code-c-family', 'Code — C family', 'code'),
 ];
 
 describe('the order of a corpus picker', () => {
-  it('puts English first, the rest by name, and custom texts after them', () => {
+  it('puts English first, the rest by name, and custom texts after them: code among the rest', () => {
     const { texts, custom } = orderCorpora(CORPORA);
     expect(texts.map((c) => c.id)).toEqual([
       'en-general',
+      'en-markdown-agents',
+      'code-c-family',
+      'code-python-family',
       'de-general',
       'es-general',
       'fr-general',

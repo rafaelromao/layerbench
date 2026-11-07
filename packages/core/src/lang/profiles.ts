@@ -17,6 +17,12 @@ export interface LanguageProfile {
   punctuation?: string[];
 }
 
+/**
+ * The language tag of the code corpora. Code is not a language, so it has no profile: nothing in it
+ * is a letter a keyboard must have beyond ASCII, and a layout is not "for" it as it is for Spanish.
+ */
+export const CODE_TAG = 'code';
+
 function letters(s: string): string[] {
   return [...s].filter((c) => c !== ' ');
 }

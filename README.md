@@ -181,9 +181,15 @@ approval.
    says how to add one.
 2. Add its entry to `raw/sources.json`, under an id of lower-case words and hyphens: `file`, `name`,
    `language`, `description`, `source` with a link, and `license`, starting `CC0`, `CC BY 4.0`,
-   `CC BY-SA 4.0` (with its version) or `Public domain`, since the text is published with the app.
-   A source not yet credited goes in the credits at the foot of the landing page.
+   `CC BY-SA 4.0` (with its version) or `Public domain`, since the text is published with the app;
+   a text made of many open-source projects lists the SPDX ids of their licences (`MIT, Apache-2.0
+   (per project: see CODE-SOURCES.md)`), each one of `MIT`, `Apache-2.0`, `BSD-2-Clause`,
+   `BSD-3-Clause`, `ISC`, `Unlicense` or `CC0-1.0`. A source not yet credited goes in the credits at
+   the foot of the landing page.
 3. `pnpm corpora <id>` builds it. Commit `apps/web/public/corpora/<id>/` and `index.json` with it.
+   A code or Markdown text is not downloaded by hand: `pnpm corpora:fetch` and
+   `pnpm corpora:extract` make its raw text from the projects `raw/code-sources.json` lists, under
+   the rules of [packages/corpora/README.md](packages/corpora/README.md#code-and-markdown-texts).
 4. Open the pull request. `pnpm test` checks the entry, and that what the app serves matches it. The
    `corpora` workflow also builds every text again, which must change nothing, and writes a summary
    on its run's page for the review: what the text is, its licence and source, its most frequent
@@ -219,7 +225,9 @@ turn on Submit, which opens real pull requests on GitHub. The dev server answers
 its own origin. Without them the app says sign-in is not set up and saves in the browser only.
 
 `pnpm bench` runs the performance suite, which is skipped by default. `pnpm corpora` rebuilds the
-corpus samples from `packages/corpora/raw`.
+corpus samples from `packages/corpora/raw`; `pnpm corpora:fetch` and `pnpm corpora:extract` make the
+raw text of the code and Markdown texts from their projects, and `pnpm corpora:research` measures
+other groups of languages against them (`docs/research/code-corpora.md`).
 
 `apps/web/e2e` checks, in a real browser at two phone sizes and a desktop one, the layout of
 Analyze, where layouts are edited (nothing wider than the screen, targets a finger can hit, the
