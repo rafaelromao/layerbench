@@ -1,0 +1,1415 @@
+{
+  "layouts": [
+    "magic-romak",
+    "romak",
+    "qwerty",
+    "dvorak",
+    "colemak",
+    "colemak-dh",
+    "graphite",
+    "gallium",
+    "canary",
+    "sturdy",
+    "aptv3",
+    "hands-down-neu",
+    "night",
+    "dusk",
+    "recurva",
+    "focal",
+    "nerps",
+    "engram",
+    "sunlight",
+    "snth",
+    "aptmak",
+    "bird",
+    "bird-30",
+    "hands-down-gold",
+    "hands-down-promethium",
+    "hands-down-vibranium",
+    "rsthd",
+    "t-34",
+    "magic-sturdy",
+    "enthium",
+    "nordrassil",
+    "finch",
+    "caksoylar",
+    "uno",
+    "ben-vallack-piano",
+    "nordwind"
+  ],
+  "rows": [
+    {
+      "id": "code-c-family",
+      "repos": [],
+      "lines": 37622,
+      "bytes": 999962,
+      "characters": 888540,
+      "digits": 1.37,
+      "symbols": 20.31,
+      "capitals": 8.91,
+      "top": [
+        [")", 2.48],
+        ["(", 2.45],
+        [",", 1.67],
+        ["_", 1.56],
+        [".", 1.5],
+        [";", 1.28],
+        ["\"", 1.22],
+        ["=", 1.09],
+        ["}", 1.02],
+        [":", 0.97]
+      ],
+      "digitShares": [27.3, 23.7, 17.2, 9.2, 6.1, 4.5, 4.2, 1.7, 3.9, 2.1],
+      "divergence": {
+        "code-c-family": 0,
+        "code-python-family": 0.088,
+        "en-markdown-agents": 0.291
+      },
+      "rank": {
+        "code-c-family": 1,
+        "code-python-family": 0.812,
+        "en-markdown-agents": 0.747
+      },
+      "rankFold": {
+        "code-c-family": 1,
+        "code-python-family": 0.881,
+        "en-markdown-agents": 0.831
+      },
+      "effort": 758.7,
+      "skipped": 0.44
+    },
+    {
+      "id": "code-python-family",
+      "repos": [],
+      "lines": 36125,
+      "bytes": 999986,
+      "characters": 893578,
+      "digits": 1.86,
+      "symbols": 20.68,
+      "capitals": 4.62,
+      "top": [
+        ["\"", 3.1],
+        ["_", 2.87],
+        [",", 2.06],
+        [")", 1.97],
+        [".", 1.94],
+        ["(", 1.93],
+        ["=", 1.65],
+        [":", 1.65],
+        ["[", 0.48],
+        ["]", 0.47]
+      ],
+      "digitShares": [23.9, 20.6, 16.5, 8.5, 6.1, 5.5, 3.5, 2.3, 7.2, 5.9],
+      "divergence": {
+        "code-c-family": 0.088,
+        "code-python-family": 0,
+        "en-markdown-agents": 0.29
+      },
+      "rank": {
+        "code-c-family": 0.812,
+        "code-python-family": 1,
+        "en-markdown-agents": 0.819
+      },
+      "rankFold": {
+        "code-c-family": 0.881,
+        "code-python-family": 1,
+        "en-markdown-agents": 0.838
+      },
+      "effort": 660.7,
+      "skipped": 0.44
+    },
+    {
+      "id": "en-markdown-agents",
+      "repos": [],
+      "lines": 18689,
+      "bytes": 999988,
+      "characters": 850858,
+      "digits": 0.59,
+      "symbols": 9.05,
+      "capitals": 4.15,
+      "top": [
+        ["-", 1.51],
+        ["`", 1.47],
+        [".", 1.16],
+        [",", 0.79],
+        ["*", 0.78],
+        [":", 0.52],
+        ["#", 0.35],
+        ["\"", 0.33],
+        ["|", 0.3],
+        ["/", 0.29]
+      ],
+      "digitShares": [18, 18.6, 17.6, 11.6, 10.7, 9.7, 4.1, 3.1, 3.6, 3],
+      "divergence": {
+        "code-c-family": 0.291,
+        "code-python-family": 0.29,
+        "en-markdown-agents": 0
+      },
+      "rank": {
+        "code-c-family": 0.747,
+        "code-python-family": 0.819,
+        "en-markdown-agents": 1
+      },
+      "rankFold": {
+        "code-c-family": 0.831,
+        "code-python-family": 0.838,
+        "en-markdown-agents": 1
+      },
+      "effort": 599.5,
+      "skipped": 0.05
+    },
+    {
+      "id": "en-general",
+      "repos": [],
+      "lines": 1,
+      "bytes": 999938,
+      "characters": 831614,
+      "digits": 1.24,
+      "symbols": 3.48,
+      "capitals": 3.81,
+      "top": [
+        [".", 1.11],
+        [",", 1.06],
+        ["'", 0.41],
+        ["\"", 0.34],
+        ["-", 0.27],
+        ["(", 0.05],
+        [")", 0.05],
+        ["$", 0.05],
+        [":", 0.05],
+        ["?", 0.03]
+      ],
+      "digitShares": [23.3, 16.2, 18.1, 8.6, 6.9, 7.3, 4.5, 4.8, 4.9, 5.4],
+      "divergence": {
+        "code-c-family": 0.396,
+        "code-python-family": 0.342,
+        "en-markdown-agents": 0.349
+      },
+      "rank": {
+        "code-c-family": 0.627,
+        "code-python-family": 0.523,
+        "en-markdown-agents": 0.835
+      },
+      "rankFold": {
+        "code-c-family": 0.614,
+        "code-python-family": 0.572,
+        "en-markdown-agents": 0.856
+      },
+      "effort": 552.4,
+      "skipped": 0.03
+    },
+    {
+      "id": "Lisp",
+      "repos": ["paip-lisp", "chibi-scheme", "quilc", "kons-9"],
+      "lines": 8427,
+      "bytes": 300000,
+      "characters": 261095,
+      "digits": 1.9,
+      "symbols": 22.29,
+      "capitals": 1.77,
+      "top": [
+        [")", 6.45],
+        ["(", 6.38],
+        ["-", 4.07],
+        ["\"", 0.92],
+        [":", 0.8],
+        ["?", 0.54],
+        [".", 0.52],
+        ["*", 0.42],
+        ["'", 0.39],
+        ["#", 0.27]
+      ],
+      "digitShares": [25.2, 27.3, 18.2, 8.4, 5.9, 4.6, 3.6, 1.8, 3.2, 1.9],
+      "divergence": {
+        "code-c-family": 0.282,
+        "code-python-family": 0.325,
+        "en-markdown-agents": 0.367
+      },
+      "rank": {
+        "code-c-family": 0.742,
+        "code-python-family": 0.877,
+        "en-markdown-agents": 0.849
+      },
+      "rankFold": {
+        "code-c-family": 0.925,
+        "code-python-family": 0.893,
+        "en-markdown-agents": 0.881
+      },
+      "effort": 596.6,
+      "skipped": 0.5
+    },
+    {
+      "id": "ML and functional",
+      "repos": ["cabal", "postgrest", "stack", "dune", "lwt", "base", "paket", "elm-core"],
+      "lines": 9866,
+      "bytes": 299997,
+      "characters": 255366,
+      "digits": 1.26,
+      "symbols": 17.79,
+      "capitals": 7.24,
+      "top": [
+        [".", 1.78],
+        ["\"", 1.72],
+        ["_", 1.68],
+        [")", 1.46],
+        ["(", 1.46],
+        [">", 1.32],
+        ["=", 1.28],
+        ["-", 1.21],
+        [",", 0.88],
+        [":", 0.82]
+      ],
+      "digitShares": [22.7, 24.3, 18.9, 8.3, 8.2, 4.7, 4.7, 2.2, 3.3, 2.6],
+      "divergence": {
+        "code-c-family": 0.083,
+        "code-python-family": 0.084,
+        "en-markdown-agents": 0.239
+      },
+      "rank": {
+        "code-c-family": 0.772,
+        "code-python-family": 0.836,
+        "en-markdown-agents": 0.878
+      },
+      "rankFold": {
+        "code-c-family": 0.841,
+        "code-python-family": 0.893,
+        "en-markdown-agents": 0.962
+      },
+      "effort": 688.8,
+      "skipped": 0.36
+    },
+    {
+      "id": "Shell",
+      "repos": ["nvm", "ohmyzsh", "bats-core", "pyenv", "rbenv", "asdf", "bash-it"],
+      "lines": 10864,
+      "bytes": 299992,
+      "characters": 260908,
+      "digits": 1.9,
+      "symbols": 23.17,
+      "capitals": 11.9,
+      "top": [
+        ["\"", 4.06],
+        ["_", 3.14],
+        ["-", 2.21],
+        ["$", 1.74],
+        ["}", 1.14],
+        ["{", 1.11],
+        ["=", 1.07],
+        ["'", 1.04],
+        [".", 0.85],
+        ["[", 0.83]
+      ],
+      "digitShares": [21.5, 30.6, 16.6, 10.8, 4.9, 3.6, 3, 2.9, 2.6, 3.6],
+      "divergence": {
+        "code-c-family": 0.177,
+        "code-python-family": 0.18,
+        "en-markdown-agents": 0.334
+      },
+      "rank": {
+        "code-c-family": 0.911,
+        "code-python-family": 0.795,
+        "en-markdown-agents": 0.684
+      },
+      "rankFold": {
+        "code-c-family": 0.906,
+        "code-python-family": 0.838,
+        "en-markdown-agents": 0.819
+      },
+      "effort": 724,
+      "skipped": 0.5
+    },
+    {
+      "id": "PowerShell",
+      "repos": ["pester", "posh-git", "psreadline", "powershell"],
+      "lines": 9979,
+      "bytes": 299998,
+      "characters": 261353,
+      "digits": 0.92,
+      "symbols": 17.55,
+      "capitals": 10.52,
+      "top": [
+        ["$", 2.79],
+        ["-", 2.36],
+        ["\"", 1.44],
+        ["'", 1.39],
+        ["}", 1.24],
+        [".", 1.12],
+        ["{", 1.09],
+        ["=", 1.07],
+        ["(", 0.8],
+        [")", 0.8]
+      ],
+      "digitShares": [23.4, 33.9, 17.6, 7.1, 5.4, 3.7, 3.1, 1.5, 2.2, 2],
+      "divergence": {
+        "code-c-family": 0.2,
+        "code-python-family": 0.26,
+        "en-markdown-agents": 0.32
+      },
+      "rank": {
+        "code-c-family": 0.848,
+        "code-python-family": 0.902,
+        "en-markdown-agents": 0.898
+      },
+      "rankFold": {
+        "code-c-family": 0.884,
+        "code-python-family": 0.882,
+        "en-markdown-agents": 0.921
+      },
+      "effort": 670.4,
+      "skipped": 0.24
+    },
+    {
+      "id": "SQL",
+      "repos": ["sql-server-samples", "hasura"],
+      "lines": 10682,
+      "bytes": 299999,
+      "characters": 265762,
+      "digits": 1.63,
+      "symbols": 15.2,
+      "capitals": 31.9,
+      "top": [
+        [",", 2.14],
+        ["_", 2.1],
+        [".", 1.29],
+        [")", 1.25],
+        ["(", 1.23],
+        ["'", 1.2],
+        ["[", 1.08],
+        ["]", 1.08],
+        ["\"", 0.63],
+        ["=", 0.62]
+      ],
+      "digitShares": [29.3, 23.5, 13, 5, 4.2, 8.4, 4.6, 3.7, 4.6, 3.8],
+      "divergence": {
+        "code-c-family": 0.132,
+        "code-python-family": 0.124,
+        "en-markdown-agents": 0.358
+      },
+      "rank": {
+        "code-c-family": 0.712,
+        "code-python-family": 0.486,
+        "en-markdown-agents": 0.512
+      },
+      "rankFold": {
+        "code-c-family": 0.887,
+        "code-python-family": 0.864,
+        "en-markdown-agents": 0.92
+      },
+      "effort": 766,
+      "skipped": 0.16
+    },
+    {
+      "id": "HTML and XML",
+      "repos": ["html5-boilerplate", "bootstrap-html", "spring-petclinic", "maven"],
+      "lines": 15648,
+      "bytes": 299999,
+      "characters": 274694,
+      "digits": 1.43,
+      "symbols": 21.14,
+      "capitals": 2.28,
+      "top": [
+        [">", 6.69],
+        ["<", 6.68],
+        ["/", 3.62],
+        ["\"", 1.1],
+        ["-", 0.87],
+        ["=", 0.56],
+        [".", 0.43],
+        [":", 0.37],
+        ["}", 0.12],
+        ["{", 0.11]
+      ],
+      "digitShares": [15, 19.4, 15.9, 11.4, 11.3, 9.3, 7.5, 3.3, 3.7, 3.1],
+      "divergence": {
+        "code-c-family": 0.552,
+        "code-python-family": 0.583,
+        "en-markdown-agents": 0.576
+      },
+      "rank": {
+        "code-c-family": 0.776,
+        "code-python-family": 0.838,
+        "en-markdown-agents": 0.756
+      },
+      "rankFold": {
+        "code-c-family": 0.944,
+        "code-python-family": 0.859,
+        "en-markdown-agents": 0.8
+      },
+      "effort": 780,
+      "skipped": 0.51
+    },
+    {
+      "id": "CSS",
+      "repos": ["normalize-css", "bootstrap-css", "pico", "github-markdown-css"],
+      "lines": 16246,
+      "bytes": 299999,
+      "characters": 264888,
+      "digits": 3.72,
+      "symbols": 22.93,
+      "capitals": 0.26,
+      "top": [
+        ["-", 5.68],
+        [":", 3.2],
+        [";", 2.37],
+        ["}", 1.76],
+        [",", 1.4],
+        [".", 1.19],
+        [")", 1.06],
+        ["(", 1.04],
+        ["{", 0.96],
+        ["/", 0.61]
+      ],
+      "digitShares": [33, 16.5, 9.5, 5.5, 4.4, 13.5, 5.8, 4.4, 3.9, 3.5],
+      "divergence": {
+        "code-c-family": 0.222,
+        "code-python-family": 0.296,
+        "en-markdown-agents": 0.269
+      },
+      "rank": {
+        "code-c-family": 0.665,
+        "code-python-family": 0.671,
+        "en-markdown-agents": 0.722
+      },
+      "rankFold": {
+        "code-c-family": 0.843,
+        "code-python-family": 0.703,
+        "en-markdown-agents": 0.766
+      },
+      "effort": 719.6,
+      "skipped": 0.26
+    },
+    {
+      "id": "JSON",
+      "repos": ["json-schema-test-suite", "schemastore"],
+      "lines": 20860,
+      "bytes": 299998,
+      "characters": 257130,
+      "digits": 1.28,
+      "symbols": 30.1,
+      "capitals": 2.66,
+      "top": [
+        ["\"", 13.59],
+        [":", 4.68],
+        [",", 3.72],
+        ["}", 2.41],
+        ["{", 2.32],
+        ["]", 0.55],
+        ["[", 0.53],
+        ["/", 0.39],
+        ["-", 0.37],
+        [".", 0.34]
+      ],
+      "digitShares": [22.6, 26, 17.8, 8.7, 5.9, 4.6, 5.3, 2.1, 3.7, 3.4],
+      "divergence": {
+        "code-c-family": 0.388,
+        "code-python-family": 0.307,
+        "en-markdown-agents": 0.495
+      },
+      "rank": {
+        "code-c-family": 0.784,
+        "code-python-family": 0.726,
+        "en-markdown-agents": 0.682
+      },
+      "rankFold": {
+        "code-c-family": 0.815,
+        "code-python-family": 0.743,
+        "en-markdown-agents": 0.701
+      },
+      "effort": 591.6,
+      "skipped": 1.04
+    },
+    {
+      "id": "YAML",
+      "repos": ["starter-workflows", "kubernetes-examples", "awesome-compose"],
+      "lines": 10502,
+      "bytes": 170283,
+      "characters": 149420,
+      "digits": 2.21,
+      "symbols": 14.89,
+      "capitals": 6.69,
+      "top": [
+        [":", 6.65],
+        ["-", 2.69],
+        ["_", 0.99],
+        [".", 0.76],
+        ["/", 0.65],
+        ["\"", 0.64],
+        ["}", 0.48],
+        ["{", 0.48],
+        ["'", 0.38],
+        ["$", 0.35]
+      ],
+      "digitShares": [29.5, 22.8, 8, 6.8, 6.8, 6.3, 4.2, 3.6, 8.7, 3.2],
+      "divergence": {
+        "code-c-family": 0.383,
+        "code-python-family": 0.332,
+        "en-markdown-agents": 0.341
+      },
+      "rank": {
+        "code-c-family": 0.848,
+        "code-python-family": 0.799,
+        "en-markdown-agents": 0.806
+      },
+      "rankFold": {
+        "code-c-family": 0.876,
+        "code-python-family": 0.848,
+        "en-markdown-agents": 0.848
+      },
+      "effort": 710.1,
+      "skipped": 0.29
+    },
+    {
+      "id": "Ruby",
+      "repos": ["sinatra", "rake", "rspec-core", "jekyll"],
+      "lines": 12191,
+      "bytes": 299996,
+      "characters": 264494,
+      "digits": 0.84,
+      "symbols": 18.89,
+      "capitals": 3.22,
+      "top": [
+        ["_", 2.68],
+        ["\"", 2.38],
+        [".", 1.82],
+        [")", 1.2],
+        ["(", 1.2],
+        [",", 1.1],
+        [":", 1.08],
+        ["'", 1.04],
+        ["=", 0.99],
+        ["/", 0.58]
+      ],
+      "digitShares": [24.8, 29.2, 20.5, 8.6, 6.2, 3.6, 1.5, 1.7, 2.4, 1.7],
+      "divergence": {
+        "code-c-family": 0.085,
+        "code-python-family": 0.056,
+        "en-markdown-agents": 0.274
+      },
+      "rank": {
+        "code-c-family": 0.754,
+        "code-python-family": 0.881,
+        "en-markdown-agents": 0.803
+      },
+      "rankFold": {
+        "code-c-family": 0.854,
+        "code-python-family": 0.9,
+        "en-markdown-agents": 0.838
+      },
+      "effort": 670.7,
+      "skipped": 0.35
+    },
+    {
+      "id": "Lua",
+      "repos": ["luarocks", "busted", "nvim-lspconfig", "lazy-nvim", "telescope-nvim"],
+      "lines": 11608,
+      "bytes": 299999,
+      "characters": 261505,
+      "digits": 0.72,
+      "symbols": 19.73,
+      "capitals": 1.49,
+      "top": [
+        [".", 2.85],
+        [",", 2.16],
+        [")", 1.98],
+        ["(", 1.94],
+        ["_", 1.92],
+        ["=", 1.89],
+        ["\"", 1.68],
+        ["'", 1.5],
+        ["}", 0.69],
+        ["{", 0.66]
+      ],
+      "digitShares": [25.1, 36.6, 16.9, 7.2, 3.4, 4.8, 2.7, 1, 1.4, 0.9],
+      "divergence": {
+        "code-c-family": 0.092,
+        "code-python-family": 0.068,
+        "en-markdown-agents": 0.298
+      },
+      "rank": {
+        "code-c-family": 0.824,
+        "code-python-family": 0.916,
+        "en-markdown-agents": 0.833
+      },
+      "rankFold": {
+        "code-c-family": 0.891,
+        "code-python-family": 0.916,
+        "en-markdown-agents": 0.834
+      },
+      "effort": 634.6,
+      "skipped": 0.33
+    },
+    {
+      "id": "Julia",
+      "repos": ["flux", "dataframes", "julia"],
+      "lines": 8949,
+      "bytes": 299999,
+      "characters": 262266,
+      "digits": 3.89,
+      "symbols": 23.98,
+      "capitals": 4.79,
+      "top": [
+        [",", 3.52],
+        [")", 3.31],
+        ["(", 3.29],
+        ["=", 2.93],
+        [":", 1.72],
+        ["_", 1.45],
+        [".", 1.31],
+        ["\"", 1.28],
+        ["@", 0.8],
+        ["[", 0.7]
+      ],
+      "digitShares": [13.8, 31.8, 21.2, 12.2, 6.5, 5.4, 4.8, 1, 2.3, 0.9],
+      "divergence": {
+        "code-c-family": 0.093,
+        "code-python-family": 0.076,
+        "en-markdown-agents": 0.335
+      },
+      "rank": {
+        "code-c-family": 0.83,
+        "code-python-family": 0.909,
+        "en-markdown-agents": 0.815
+      },
+      "rankFold": {
+        "code-c-family": 0.917,
+        "code-python-family": 0.907,
+        "en-markdown-agents": 0.863
+      },
+      "effort": 698.6,
+      "skipped": 0.36
+    },
+    {
+      "id": "LaTeX",
+      "repos": ["tectonic", "latex-workshop"],
+      "lines": 10600,
+      "bytes": 202896,
+      "characters": 183333,
+      "digits": 6.89,
+      "symbols": 15.67,
+      "capitals": 1.83,
+      "top": [
+        ["\\", 7.12],
+        ["}", 1.92],
+        ["{", 1.85],
+        ["=", 0.74],
+        ["@", 0.68],
+        [".", 0.63],
+        ["#", 0.44],
+        ["-", 0.34],
+        [",", 0.27],
+        ["$", 0.23]
+      ],
+      "digitShares": [11, 21.6, 14.5, 13.3, 16.4, 14.8, 2.7, 2.2, 1.5, 2],
+      "divergence": {
+        "code-c-family": 0.478,
+        "code-python-family": 0.538,
+        "en-markdown-agents": 0.584
+      },
+      "rank": {
+        "code-c-family": 0.622,
+        "code-python-family": 0.735,
+        "en-markdown-agents": 0.918
+      },
+      "rankFold": {
+        "code-c-family": 0.754,
+        "code-python-family": 0.763,
+        "en-markdown-agents": 0.928
+      },
+      "effort": 763.8,
+      "skipped": 0.73
+    },
+    {
+      "id": "jsts (code-c-family)",
+      "repos": ["express", "axios", "prettier", "zod", "vite", "redux", "query", "core", "lodash"],
+      "lines": 12198,
+      "bytes": 299994,
+      "characters": 263211,
+      "digits": 1.12,
+      "symbols": 22.33,
+      "capitals": 4.97,
+      "top": [
+        [")", 2.85],
+        ["(", 2.79],
+        ["'", 2.15],
+        [".", 2.04],
+        [",", 1.93],
+        ["=", 1.37],
+        ["}", 1.33],
+        ["{", 1.27],
+        [":", 1.08],
+        [";", 1]
+      ],
+      "digitShares": [27.9, 24.5, 19.3, 8.8, 6.5, 5.2, 2.2, 1.5, 2.1, 2],
+      "divergence": {
+        "code-c-family": 0.045,
+        "code-python-family": 0.156,
+        "en-markdown-agents": 0.314
+      },
+      "rank": {
+        "code-c-family": 0.828,
+        "code-python-family": 0.941,
+        "en-markdown-agents": 0.754
+      },
+      "rankFold": {
+        "code-c-family": 0.894,
+        "code-python-family": 0.955,
+        "en-markdown-agents": 0.809
+      },
+      "effort": 681.1,
+      "skipped": 0.37
+    },
+    {
+      "id": "java (code-c-family)",
+      "repos": ["gson", "commons-lang", "commons-io", "jackson-core", "retrofit", "netty"],
+      "lines": 10352,
+      "bytes": 299996,
+      "characters": 268809,
+      "digits": 1.37,
+      "symbols": 16.06,
+      "capitals": 10.39,
+      "top": [
+        [")", 2.56],
+        ["(", 2.55],
+        [";", 1.73],
+        [".", 1.7],
+        [",", 1.13],
+        ["\"", 0.98],
+        ["}", 0.94],
+        ["{", 0.79],
+        ["=", 0.78],
+        ["_", 0.48]
+      ],
+      "digitShares": [28.6, 24.2, 16, 8.4, 4.6, 4.4, 4.6, 1.6, 4.9, 2.7],
+      "divergence": {
+        "code-c-family": 0.055,
+        "code-python-family": 0.166,
+        "en-markdown-agents": 0.393
+      },
+      "rank": {
+        "code-c-family": 0.954,
+        "code-python-family": 0.822,
+        "en-markdown-agents": 0.792
+      },
+      "rankFold": {
+        "code-c-family": 0.944,
+        "code-python-family": 0.884,
+        "en-markdown-agents": 0.904
+      },
+      "effort": 670.8,
+      "skipped": 0.31
+    },
+    {
+      "id": "csharp (code-c-family)",
+      "repos": [
+        "newtonsoft-json",
+        "polly",
+        "serilog",
+        "benchmarkdotnet",
+        "stackexchange-redis",
+        "humanizer"
+      ],
+      "lines": 10999,
+      "bytes": 299998,
+      "characters": 268793,
+      "digits": 1.36,
+      "symbols": 15.53,
+      "capitals": 9.99,
+      "top": [
+        [")", 1.92],
+        ["(", 1.91],
+        [",", 1.65],
+        [".", 1.61],
+        [";", 1.46],
+        ["\"", 1.33],
+        ["=", 1.03],
+        ["{", 0.87],
+        ["}", 0.84],
+        [">", 0.43]
+      ],
+      "digitShares": [29.2, 25.9, 15.9, 8.6, 5.2, 4.6, 3.7, 2.2, 2.3, 2.3],
+      "divergence": {
+        "code-c-family": 0.045,
+        "code-python-family": 0.141,
+        "en-markdown-agents": 0.362
+      },
+      "rank": {
+        "code-c-family": 0.883,
+        "code-python-family": 0.758,
+        "en-markdown-agents": 0.762
+      },
+      "rankFold": {
+        "code-c-family": 0.949,
+        "code-python-family": 0.881,
+        "en-markdown-agents": 0.876
+      },
+      "effort": 689.3,
+      "skipped": 0.27
+    },
+    {
+      "id": "c (code-c-family)",
+      "repos": ["tmux", "nginx", "libuv", "libevent", "cjson", "jemalloc", "openssl"],
+      "lines": 11764,
+      "bytes": 299996,
+      "characters": 265870,
+      "digits": 2.11,
+      "symbols": 23.03,
+      "capitals": 15.7,
+      "top": [
+        ["_", 6.06],
+        [")", 2.33],
+        ["(", 2.32],
+        [";", 2.08],
+        [",", 1.93],
+        ["=", 1.31],
+        ["-", 0.82],
+        [">", 0.76],
+        ["*", 0.68],
+        ["}", 0.66]
+      ],
+      "digitShares": [33.5, 21.9, 13.7, 6.2, 5.9, 4.7, 5.9, 1.4, 4.3, 2.5],
+      "divergence": {
+        "code-c-family": 0.101,
+        "code-python-family": 0.175,
+        "en-markdown-agents": 0.362
+      },
+      "rank": {
+        "code-c-family": 0.952,
+        "code-python-family": 0.866,
+        "en-markdown-agents": 0.776
+      },
+      "rankFold": {
+        "code-c-family": 0.974,
+        "code-python-family": 0.862,
+        "en-markdown-agents": 0.82
+      },
+      "effort": 762.6,
+      "skipped": 0.44
+    },
+    {
+      "id": "cpp (code-c-family)",
+      "repos": ["fmt", "googletest", "abseil-cpp", "leveldb", "spdlog", "cli11"],
+      "lines": 9922,
+      "bytes": 299997,
+      "characters": 269227,
+      "digits": 1.89,
+      "symbols": 22.85,
+      "capitals": 11.45,
+      "top": [
+        ["_", 3.44],
+        [")", 2.6],
+        ["(", 2.57],
+        [":", 2.02],
+        [";", 1.86],
+        ["\"", 1.56],
+        [",", 1.53],
+        ["}", 0.91],
+        ["=", 0.88],
+        ["{", 0.85]
+      ],
+      "digitShares": [23.6, 24.2, 18.4, 8.8, 8.1, 4.4, 4.8, 2.1, 3.8, 1.8],
+      "divergence": {
+        "code-c-family": 0.041,
+        "code-python-family": 0.11,
+        "en-markdown-agents": 0.332
+      },
+      "rank": {
+        "code-c-family": 0.942,
+        "code-python-family": 0.885,
+        "en-markdown-agents": 0.742
+      },
+      "rankFold": {
+        "code-c-family": 0.946,
+        "code-python-family": 0.938,
+        "en-markdown-agents": 0.847
+      },
+      "effort": 716.1,
+      "skipped": 0.5
+    },
+    {
+      "id": "go (code-c-family)",
+      "repos": ["cobra", "gin", "testify", "fzf", "caddy"],
+      "lines": 11688,
+      "bytes": 299997,
+      "characters": 263414,
+      "digits": 1.4,
+      "symbols": 21.66,
+      "capitals": 7.23,
+      "top": [
+        ["\"", 2.93],
+        [",", 2.5],
+        [".", 2.25],
+        [")", 2.2],
+        ["(", 2.19],
+        ["}", 1.46],
+        ["{", 1.36],
+        ["=", 1.33],
+        [":", 1.21],
+        ["[", 0.45]
+      ],
+      "digitShares": [23.2, 25.9, 19.9, 11.1, 7.4, 3.5, 3.6, 1.3, 2.7, 1.4],
+      "divergence": {
+        "code-c-family": 0.074,
+        "code-python-family": 0.087,
+        "en-markdown-agents": 0.285
+      },
+      "rank": {
+        "code-c-family": 0.912,
+        "code-python-family": 0.899,
+        "en-markdown-agents": 0.859
+      },
+      "rankFold": {
+        "code-c-family": 0.893,
+        "code-python-family": 0.899,
+        "en-markdown-agents": 0.894
+      },
+      "effort": 679.5,
+      "skipped": 0.45
+    },
+    {
+      "id": "rust (code-c-family)",
+      "repos": ["tokio", "axum", "ripgrep", "clap", "regex", "bat"],
+      "lines": 13120,
+      "bytes": 299997,
+      "characters": 266293,
+      "digits": 0.77,
+      "symbols": 25.91,
+      "capitals": 4.49,
+      "top": [
+        [")", 3.19],
+        ["(", 3.14],
+        [":", 2.73],
+        ["_", 2.37],
+        [".", 1.88],
+        [",", 1.75],
+        ["\"", 1.65],
+        ["}", 1.14],
+        [";", 1.12],
+        ["{", 1.03]
+      ],
+      "digitShares": [18.7, 21.9, 18.4, 9.9, 7.4, 3.9, 6.7, 1.8, 8.9, 2.5],
+      "divergence": {
+        "code-c-family": 0.031,
+        "code-python-family": 0.1,
+        "en-markdown-agents": 0.308
+      },
+      "rank": {
+        "code-c-family": 0.866,
+        "code-python-family": 0.965,
+        "en-markdown-agents": 0.806
+      },
+      "rankFold": {
+        "code-c-family": 0.918,
+        "code-python-family": 0.975,
+        "en-markdown-agents": 0.837
+      },
+      "effort": 691.7,
+      "skipped": 0.52
+    },
+    {
+      "id": "php (code-c-family)",
+      "repos": ["framework", "composer", "guzzle", "monolog"],
+      "lines": 11152,
+      "bytes": 299999,
+      "characters": 266999,
+      "digits": 0.42,
+      "symbols": 21.85,
+      "capitals": 6.07,
+      "top": [
+        ["$", 3.39],
+        [")", 2.03],
+        ["(", 2.01],
+        ["'", 1.77],
+        ["=", 1.5],
+        [";", 1.47],
+        [">", 1.15],
+        [",", 1.09],
+        ["-", 1.05],
+        ["}", 1.01]
+      ],
+      "digitShares": [39.6, 20.4, 8.5, 5.2, 4.8, 5.5, 4.4, 5.5, 3.7, 2.4],
+      "divergence": {
+        "code-c-family": 0.145,
+        "code-python-family": 0.292,
+        "en-markdown-agents": 0.441
+      },
+      "rank": {
+        "code-c-family": 0.785,
+        "code-python-family": 0.892,
+        "en-markdown-agents": 0.846
+      },
+      "rankFold": {
+        "code-c-family": 0.89,
+        "code-python-family": 0.887,
+        "en-markdown-agents": 0.865
+      },
+      "effort": 676.8,
+      "skipped": 0.29
+    },
+    {
+      "id": "kotlin (code-c-family)",
+      "repos": ["kotlinx-coroutines", "kotlinx-serialization", "okhttp", "coil"],
+      "lines": 11775,
+      "bytes": 299999,
+      "characters": 267707,
+      "digits": 1.26,
+      "symbols": 15.08,
+      "capitals": 8.68,
+      "top": [
+        [")", 2.53],
+        ["(", 2.5],
+        [".", 1.9],
+        ["\"", 1.18],
+        [",", 1.09],
+        ["=", 1.08],
+        ["}", 0.93],
+        [":", 0.93],
+        ["{", 0.85],
+        [">", 0.35]
+      ],
+      "digitShares": [24.6, 21.9, 15.5, 13.7, 7, 5.6, 4.2, 2.2, 3.2, 2],
+      "divergence": {
+        "code-c-family": 0.087,
+        "code-python-family": 0.119,
+        "en-markdown-agents": 0.348
+      },
+      "rank": {
+        "code-c-family": 0.911,
+        "code-python-family": 0.845,
+        "en-markdown-agents": 0.781
+      },
+      "rankFold": {
+        "code-c-family": 0.951,
+        "code-python-family": 0.895,
+        "en-markdown-agents": 0.853
+      },
+      "effort": 643.2,
+      "skipped": 0.32
+    },
+    {
+      "id": "swift (code-c-family)",
+      "repos": ["alamofire", "swift-nio", "vapor", "swift-argument-parser"],
+      "lines": 10244,
+      "bytes": 299998,
+      "characters": 266378,
+      "digits": 0.9,
+      "symbols": 15.2,
+      "capitals": 7.69,
+      "top": [
+        [")", 1.79],
+        [".", 1.77],
+        ["(", 1.75],
+        [":", 1.71],
+        ["\"", 1.65],
+        [",", 1.12],
+        ["}", 0.99],
+        ["=", 0.9],
+        ["{", 0.8],
+        ["-", 0.46]
+      ],
+      "digitShares": [28.5, 22.4, 11.5, 6.8, 8.3, 4.7, 6.7, 2.7, 6.4, 1.9],
+      "divergence": {
+        "code-c-family": 0.083,
+        "code-python-family": 0.089,
+        "en-markdown-agents": 0.306
+      },
+      "rank": {
+        "code-c-family": 0.907,
+        "code-python-family": 0.899,
+        "en-markdown-agents": 0.872
+      },
+      "rankFold": {
+        "code-c-family": 0.915,
+        "code-python-family": 0.928,
+        "en-markdown-agents": 0.897
+      },
+      "effort": 618.2,
+      "skipped": 0.26
+    },
+    {
+      "id": "python (code-python-family)",
+      "repos": [
+        "requests",
+        "flask",
+        "click",
+        "pytest",
+        "rich",
+        "black",
+        "httpx",
+        "attrs",
+        "pip",
+        "poetry",
+        "pydantic",
+        "fastapi",
+        "django"
+      ],
+      "lines": 10979,
+      "bytes": 299982,
+      "characters": 268468,
+      "digits": 1.82,
+      "symbols": 20.96,
+      "capitals": 4.18,
+      "top": [
+        ["\"", 3.27],
+        ["_", 2.93],
+        [",", 2.07],
+        [".", 1.99],
+        [")", 1.97],
+        ["(", 1.95],
+        [":", 1.62],
+        ["=", 1.61],
+        ["[", 0.49],
+        ["]", 0.47]
+      ],
+      "digitShares": [24.9, 20.7, 15.9, 8.9, 6.6, 4.7, 3.4, 2.2, 6.8, 6],
+      "divergence": {
+        "code-c-family": 0.092,
+        "code-python-family": 0.001,
+        "en-markdown-agents": 0.29
+      },
+      "rank": {
+        "code-c-family": 0.84,
+        "code-python-family": 0.995,
+        "en-markdown-agents": 0.839
+      },
+      "rankFold": {
+        "code-c-family": 0.899,
+        "code-python-family": 0.995,
+        "en-markdown-agents": 0.857
+      },
+      "effort": 664.6,
+      "skipped": 0.42
+    },
+    {
+      "id": "nim (code-python-family)",
+      "repos": ["nim", "nimble"],
+      "lines": 9452,
+      "bytes": 299998,
+      "characters": 263901,
+      "digits": 1.87,
+      "symbols": 17.23,
+      "capitals": 6.8,
+      "top": [
+        ["\"", 2.22],
+        [".", 2.05],
+        [":", 2.04],
+        [")", 1.89],
+        ["(", 1.88],
+        ["=", 1.83],
+        [",", 1.77],
+        ["]", 0.63],
+        ["[", 0.63],
+        ["*", 0.27]
+      ],
+      "digitShares": [30.2, 25.5, 15.7, 7.5, 5.5, 3.9, 4.5, 1.4, 3.4, 2.4],
+      "divergence": {
+        "code-c-family": 0.112,
+        "code-python-family": 0.062,
+        "en-markdown-agents": 0.293
+      },
+      "rank": {
+        "code-c-family": 0.901,
+        "code-python-family": 0.937,
+        "en-markdown-agents": 0.832
+      },
+      "rankFold": {
+        "code-c-family": 0.944,
+        "code-python-family": 0.966,
+        "en-markdown-agents": 0.865
+      },
+      "effort": 697.5,
+      "skipped": 0.31
+    },
+    {
+      "id": "gdscript (code-python-family)",
+      "repos": ["godot-demo-projects"],
+      "lines": 9054,
+      "bytes": 299999,
+      "characters": 268935,
+      "digits": 2.03,
+      "symbols": 18.19,
+      "capitals": 7.25,
+      "top": [
+        ["_", 5.17],
+        [".", 2.06],
+        [")", 1.73],
+        ["(", 1.72],
+        [":", 1.72],
+        ["=", 1.68],
+        ["\"", 0.93],
+        [",", 0.79],
+        ["-", 0.39],
+        [">", 0.27]
+      ],
+      "digitShares": [35, 18.4, 18.3, 12.8, 3.3, 6.2, 2.4, 1, 1.9, 0.8],
+      "divergence": {
+        "code-c-family": 0.158,
+        "code-python-family": 0.073,
+        "en-markdown-agents": 0.347
+      },
+      "rank": {
+        "code-c-family": 0.941,
+        "code-python-family": 0.844,
+        "en-markdown-agents": 0.788
+      },
+      "rankFold": {
+        "code-c-family": 0.954,
+        "code-python-family": 0.852,
+        "en-markdown-agents": 0.853
+      },
+      "effort": 706.2,
+      "skipped": 0.36
+    }
+  ],
+  "efforts": {
+    "code-c-family": [
+      619.1, 718.5, 1271.2, 967.5, 772.9, 744.8, 737.5, 772.2, 744.4, 781.3, 751.2, 771.5, 753.8,
+      714.9, 788.8, 747.7, 838.1, 821.1, 737.1, 709.8, 721.8, 627.2, 761.3, 830.5, 800.7, 813.2,
+      815.2, 760.7, 646.2, 679.8, 668.4, 748.6, 635.7, 743.1, 534.4, 763.9
+    ],
+    "code-python-family": [
+      488, 564.5, 1173.9, 837.5, 649.3, 616.5, 583.6, 655, 630.3, 706.8, 599.4, 629.1, 673.4, 599.8,
+      722.5, 678.8, 685.5, 677.1, 661.2, 590.9, 597.7, 606.3, 643.1, 717.3, 718.1, 714.5, 695.4,
+      738.4, 625.5, 660.3, 570.6, 710.8, 553.8, 662.8, 437.8, 708.7
+    ],
+    "en-markdown-agents": [
+      436.4, 521.9, 1222.8, 814.2, 630.8, 570.4, 550.8, 596, 560.9, 631.5, 557.5, 567.2, 582.8,
+      545.7, 654.5, 592.6, 621.5, 608.1, 541.8, 507.2, 514.7, 513.3, 558.6, 630.6, 600.7, 604.4,
+      627.1, 652.9, 642, 563.5, 527.2, 594.4, 576.9, 630.1, 426.5, 604.2
+    ],
+    "en-general": [
+      377.6, 481.8, 1246.6, 774.9, 651.3, 546.8, 519.6, 530, 530.7, 583.9, 519.5, 546, 527, 521.5,
+      635.4, 543.4, 589.8, 612.4, 498.8, 462.9, 463.8, 457.9, 508.8, 542.8, 465.5, 499.4, 573.2,
+      529.9, 592.9, 452.7, 465.6, 521.3, 549.7, 582.2, 430.6, 549.4
+    ],
+    "Lisp": [
+      444.2, 499.9, 1044.6, 785.9, 587.7, 554.7, 522.3, 549.9, 564.6, 597.5, 539.7, 532.1, 572.5,
+      516.3, 616.9, 569.4, 622.9, 585.6, 484, 495, 514.8, 505.1, 554.8, 752, 735.5, 733.8, 627.4,
+      685.7, 575.3, 672.9, 564.3, 687.3, 527.7, 611.8, 464.1, 577.7
+    ],
+    "ML and functional": [
+      513.8, 597.7, 1209.2, 897.9, 737.3, 683.2, 625.7, 702.8, 688, 748.8, 642.5, 670.8, 703.7,
+      625.5, 742.9, 723.9, 726, 715.1, 636.2, 604.5, 619.6, 604.3, 677.4, 692.5, 676.2, 672.9,
+      734.8, 737.4, 680.6, 648.7, 569.8, 781.9, 638.1, 677.7, 472.2, 719.2
+    ],
+    "Shell": [
+      589.6, 676.3, 1182.5, 897.7, 724, 727.6, 729.1, 734.8, 701.6, 717.4, 719.7, 713.3, 732.2,
+      670.4, 782.3, 731.2, 778.5, 760.7, 668.5, 669.7, 656.8, 576.3, 712.6, 823.3, 774.4, 821.4,
+      752.4, 694.3, 656, 704.8, 649.4, 746.5, 648.3, 699.9, 503.3, 738.8
+    ],
+    "PowerShell": [
+      523.9, 585.6, 1233.7, 839.6, 688.1, 652.3, 628.2, 651.2, 650.6, 697.6, 629.6, 634.3, 672.7,
+      597.2, 711.8, 683.4, 695.1, 697.9, 589.1, 572.4, 605.5, 571.7, 651.1, 747.2, 705.7, 713.3,
+      717.2, 691.1, 661.6, 651.7, 607.4, 738.8, 610.9, 685.9, 460.3, 682.3
+    ],
+    "SQL": [
+      635.4, 720.4, 1387.8, 1001.6, 834.1, 797.3, 772, 801.6, 776.3, 822.5, 769.6, 796.4, 830.3,
+      764.9, 868.8, 816.5, 823.6, 848.4, 781.4, 712.6, 744.7, 588.3, 784.8, 693.7, 676.8, 672.8,
+      872.4, 698.2, 629.3, 606.2, 569.5, 699.9, 633.8, 723.5, 602.8, 818.4
+    ],
+    "HTML and XML": [
+      598.7, 672, 1266.3, 975.4, 799.4, 749, 707, 765.5, 718.1, 772.1, 724.7, 728.6, 740.7, 661.5,
+      765.4, 759, 801.2, 783.9, 637.5, 658.9, 675.9, 681.3, 743.4, 887.6, 853.9, 876.9, 801.4,
+      893.9, 655.8, 859.5, 689, 1441.6, 689.7, 799.3, 508.8, 737.3
+    ],
+    "CSS": [
+      596.4, 620, 1175.5, 887.7, 739.8, 704.9, 656.6, 687, 678.1, 700.8, 696.1, 698.7, 645.4, 609.9,
+      744, 662.2, 737.2, 725.1, 617.5, 598.4, 628.5, 625.4, 691.4, 963, 904.4, 935.5, 737, 713.3,
+      684.8, 810, 751.7, 726.7, 696.6, 761.5, 448, 648.1
+    ],
+    "JSON": [
+      462.8, 541, 951.2, 840.3, 599.3, 574.4, 551, 589.5, 524.3, 568, 568.3, 572.4, 561.1, 520.6,
+      625.4, 573.9, 634, 625.3, 543.9, 535.6, 507.6, 516.6, 582.3, 759.8, 730.5, 769.5, 612.7,
+      473.8, 567.2, 649.8, 504.3, 573.5, 504.4, 637.4, 359.1, 585.4
+    ],
+    "YAML": [
+      624, 632.3, 1242.9, 853.2, 733.1, 727.2, 672, 734.9, 697.3, 759.3, 680.5, 660.7, 730.6, 666.8,
+      787.2, 741.7, 732.3, 703.6, 639.4, 622.2, 640.9, 639.5, 721.5, 768, 739.6, 755.9, 759.7, 669,
+      659.2, 641.7, 664.7, 703.2, 641.8, 735.7, 449.8, 732.8
+    ],
+    "Ruby": [
+      499.7, 581, 1150.4, 853.3, 727.6, 648.7, 644.1, 650, 656, 668.2, 617, 629.3, 682.6, 586.3,
+      692, 710.4, 677.8, 700, 642.5, 569.2, 621.4, 610, 647.9, 693.6, 703.5, 696, 754.5, 702.1,
+      630.8, 673.4, 561.4, 753.4, 596.2, 735.8, 440, 738.1
+    ],
+    "Lua": [
+      478.7, 542.4, 1165.8, 828.1, 646.3, 585.8, 602.4, 624.8, 602.1, 641, 577.7, 604.9, 646.8,
+      557.4, 664.9, 649.8, 667.7, 708, 606.5, 546.9, 565, 564.7, 595, 672.5, 660.6, 663.4, 682.7,
+      683.8, 590.2, 624.4, 562.4, 652.4, 545.8, 701.4, 445.1, 688.1
+    ],
+    "Julia": [
+      513.7, 607.3, 1157.1, 872, 710, 657.8, 629.9, 671.6, 691.2, 707.8, 636.7, 663.8, 676.7, 637.3,
+      720.6, 661.2, 730.3, 705.1, 648.6, 616.4, 622.3, 592.5, 653.2, 860.6, 842.3, 841.9, 753.9,
+      764.2, 623.1, 726.9, 602, 798.7, 650.2, 702.2, 514.8, 685.3
+    ],
+    "LaTeX": [
+      575.2, 675.3, 1245.7, 972.5, 803, 746.8, 691.9, 740.3, 761.5, 800.4, 725.1, 719.7, 751.6,
+      709.5, 807, 751.4, 823.4, 774.7, 668.6, 657.7, 690.5, 696.6, 744.7, 798.6, 728.6, 769.3,
+      827.9, 907.6, 845.7, 760.9, 678, 827.1, 786.4, 778.3, 499.9, 755.9
+    ],
+    "jsts (code-c-family)": [
+      514.7, 598.3, 1211.8, 827.8, 667.5, 629.6, 640.2, 663.3, 643.2, 720, 628.9, 652.5, 724.7,
+      626.6, 719.1, 709.4, 691.4, 723, 662, 609.2, 625.8, 616.9, 662.2, 742.1, 736.1, 724.9, 707,
+      704, 619.5, 687, 601, 738.6, 595.2, 708.9, 460.1, 728.6
+    ],
+    "java (code-c-family)": [
+      509.6, 603, 1267.7, 896.5, 688.6, 656.2, 625, 676.7, 647.6, 717.8, 651, 650.6, 661.3, 636.8,
+      726.9, 660.6, 732.2, 735.2, 604.3, 622.2, 627, 582.9, 669.1, 707.1, 663.9, 683.5, 697.6, 660,
+      619.4, 615.8, 573.3, 681.6, 599, 645.8, 477.5, 675.9
+    ],
+    "csharp (code-c-family)": [
+      524.4, 642.7, 1316.1, 887.5, 697.7, 689.1, 663.4, 720.3, 666.2, 740.9, 682.1, 671.3, 690.2,
+      659.3, 745.2, 682.8, 737.1, 731.9, 626.1, 623.4, 657.2, 599.8, 700.8, 704.3, 657.6, 671.3,
+      733.6, 690.2, 610.1, 630.1, 589.2, 716.5, 601.9, 687.6, 472.1, 693.5
+    ],
+    "c (code-c-family)": [
+      625.2, 722.2, 1241.6, 961.2, 762.7, 732.5, 736.4, 764.5, 754.8, 786.1, 736.3, 777.2, 755.7,
+      717, 786.8, 737.5, 830.9, 820.3, 732.9, 708.4, 708.1, 630.9, 740.4, 864, 841.6, 837.8, 804.7,
+      765.8, 660.3, 714.7, 701.8, 771.9, 656.1, 784.1, 520.1, 762.2
+    ],
+    "cpp (code-c-family)": [
+      575.6, 647, 1317.3, 920.3, 705.7, 690.9, 668.1, 711.9, 710.6, 750, 682.8, 697.5, 738.2, 677.3,
+      769.2, 718.6, 780.2, 757.8, 688.4, 662.4, 666, 605.6, 703.4, 775.1, 757.7, 744.9, 771.8,
+      728.1, 617.7, 624.5, 626.8, 761.2, 610.4, 673.5, 504.6, 738.7
+    ],
+    "go (code-c-family)": [
+      534.5, 586.7, 1222, 841.9, 699.1, 664.1, 616.1, 684, 665.8, 709.5, 624.7, 692.7, 681.9, 631.3,
+      758.1, 659.3, 737.1, 727.7, 676.8, 620.5, 602.3, 585, 650.2, 728.6, 702.8, 702.4, 714.3,
+      721.6, 626.2, 655.2, 591.5, 690.1, 643.1, 674.1, 463.5, 679
+    ],
+    "rust (code-c-family)": [
+      550.8, 611.5, 1172.8, 855.8, 682.1, 651.7, 626.7, 667.6, 672.4, 726.6, 643.3, 654.9, 686.5,
+      661.9, 759.9, 687.5, 723.9, 730.2, 666.1, 617.2, 631.3, 623.4, 664.7, 788.2, 767.4, 760.4,
+      731.6, 721.6, 633.4, 665.4, 616, 786.6, 569.5, 709.8, 463.4, 717.6
+    ],
+    "php (code-c-family)": [
+      534.7, 582.2, 1223.2, 844.2, 670.1, 635.1, 639.3, 659.8, 624.2, 682, 621.5, 634.3, 690.6,
+      595.2, 678.2, 697.8, 696.7, 729.8, 590.8, 578.3, 597.3, 599.4, 651.1, 765.8, 733.1, 740.8,
+      677.9, 717.1, 659.1, 642.7, 608.1, 836.1, 622.9, 727.5, 479, 700.2
+    ],
+    "kotlin (code-c-family)": [
+      488.3, 601.5, 1222.3, 842, 645.4, 629.7, 601.1, 659.9, 624, 684.4, 635.5, 611.1, 620.2, 587.4,
+      688.4, 625.2, 696, 674.3, 575.5, 569.5, 605.3, 550.4, 648.8, 674.1, 639.3, 649.1, 706, 673.1,
+      601, 612.8, 557.9, 702.7, 526.3, 609, 471.7, 646.2
+    ],
+    "swift (code-c-family)": [
+      479.2, 544.3, 1215.3, 851.2, 619, 581.3, 558.8, 610.1, 583.6, 657.8, 597, 591.3, 615.1, 568.2,
+      688.4, 612.5, 664.5, 665.6, 574.1, 548.2, 579.2, 533.6, 611.4, 637.8, 611.9, 617.3, 688.4,
+      641.6, 592.9, 574.9, 520.9, 628.8, 498, 610.8, 445.3, 636.6
+    ],
+    "python (code-python-family)": [
+      495.2, 572.2, 1180.6, 850.5, 646.6, 617.3, 594, 659, 635.1, 714.7, 605.2, 635.2, 676.2, 607.9,
+      728.8, 678.7, 699.8, 690.5, 655.7, 590.1, 595.7, 596.1, 636.8, 730.6, 725.3, 722.1, 695.5,
+      733, 633.5, 657.5, 576.4, 704.7, 559.5, 665.7, 449.1, 711.6
+    ],
+    "nim (code-python-family)": [
+      542.9, 621.7, 1200.2, 911.9, 714, 679.9, 654.4, 711.6, 679.1, 743.2, 664.3, 677.1, 707.3,
+      644.7, 753.2, 712.9, 746.7, 717.6, 672.9, 618.8, 635.4, 612.7, 682.6, 727.4, 718.9, 718.9,
+      746, 717.7, 629.9, 688.1, 589.2, 740.2, 608.7, 702.6, 490.2, 728.3
+    ],
+    "gdscript (code-python-family)": [
+      537.4, 650.4, 1243.5, 915.5, 717.8, 703.6, 675, 717.8, 683.5, 740.9, 710.2, 701.6, 691.3,
+      646.8, 782.8, 683.6, 773.8, 703.1, 654.2, 632.9, 646.9, 602.6, 709.8, 773.7, 730.4, 754.1,
+      767.4, 755.5, 636.8, 639.4, 613.9, 722.9, 611.2, 686.3, 511.9, 695.7
+    ]
+  }
+}

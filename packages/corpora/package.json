@@ -8,7 +8,10 @@
   "scripts": {
     "build": "esbuild src/build.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/build.mjs --log-level=warning && node dist/build.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "echo 'no tests'"
+    "test": "echo 'no tests'",
+    "fetch-code": "esbuild src/fetch-code.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/fetch-code.mjs --log-level=warning && node dist/fetch-code.mjs",
+    "extract-code": "esbuild src/extract-code.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/extract-code.mjs --log-level=warning && node dist/extract-code.mjs",
+    "research": "esbuild src/research-groups.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/research-groups.mjs --log-level=warning && node dist/research-groups.mjs"
   },
   "dependencies": {
     "@layerbench/core": "workspace:*"

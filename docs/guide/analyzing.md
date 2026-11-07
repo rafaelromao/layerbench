@@ -177,10 +177,24 @@ punctuation, Spanish `¿ ¡` say, is kept in any count.
 
 ### The text itself
 
-**Corpus** lists the texts that come with the app, news in English, Portuguese, Spanish,
-French, Italian and German, each with where it came from, and opens on English. Every list of
-texts is in the same order: English first, then the rest by name. Your own text can be pasted or
-uploaded there and analyzed like any other, and **Save to library** keeps it:
+**Corpus** lists the texts that come with the app, each with where it came from, and opens on
+English. Six are news, in English, Portuguese, Spanish, French, Italian and German. Three are what
+news hardly has: **Code — C family**, lines of C, C++, C#, Java, JavaScript and TypeScript, Go,
+Rust, PHP, Kotlin and Swift, **Code — Python family**, lines of Python, with a few in Nim and
+GDScript, and **Markdown — AI agents**, English as it is typed to work with an AI agent:
+instructions, rules, prompts and docs. Every list of texts is in the same order: the English texts
+first, then the rest by name.
+
+These three are made of symbols, so set **Counts** to *Letters, numbers and symbols* to read them
+as they are typed: with letters only, they are read as identifiers and words alone. The code is
+what open-source projects wrote, under their own licences, with its comments taken out, where the
+names and addresses of a project are; a line break and the indentation after it count as one
+space, since the analysis does not press Enter or Tab. Which projects, and what was left out, is in
+[CODE-SOURCES.md](../../packages/corpora/raw/CODE-SOURCES.md), and
+[the research note](../research/code-corpora.md) says how the texts were chosen.
+
+Your own text can be pasted or uploaded there and analyzed like any other, and **Save to library**
+keeps it:
 custom texts are listed in **Corpus** and offered in every view that analyzes, under **Custom**,
 after the ones that come with the app. A text published under an open licence can join the ones
 that come with the app, by pull request on GitHub; the

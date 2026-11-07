@@ -1,0 +1,243 @@
+/**
+ * Makes the raw texts of the code and Markdown corpora from the archives `fetch-code.ts` left in
+ * `.cache/code`, with no network: for each repository, its files are read, the comments of code are
+ * taken out, every line is judged (`rejectReason`), and each repository gives its share, in an order
+ * that looks random and never changes. Writes `raw/<id>.txt`, a line each, and `raw/CODE-SOURCES.md`.
+ * A repository whose licence file is not the licence its entry says stops everything.
+ *
+ *   pnpm corpora:extract                    # every corpus
+ *   pnpm corpora:extract code-c-family      # one
+ */
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import {
+  allocate,
+  CODE_LANGUAGES,
+  type CodeLanguage,
+  hasProse,
+  lineCost,
+  markdownLines,
+  nameFilter,
+  stripComments,
+  takeLines,
+} from '@layerbench/core/prepare';
+import { type Candidate, type Reading, type RepoRead, readArchive, settle } from './archive.js';
+import {
+  type CodeSources,
+  type CorpusPlan,
+  RAW_DIR,
+  type Repo,
+  readCodeSources,
+} from './code-sources.js';
+
+const MARKDOWN_EXTENSIONS = ['.md', '.mdx', '.mdc', '.cursorrules'];
+/** Files that name people, or whose text is a legal one, however they are written. */
+const MARKDOWN_SKIPPED =
+  /(^|\/)(CHANGELOG|HISTORY|RELEASES?|CODE_OF_CONDUCT|CONTRIBUTORS?|AUTHORS|SECURITY|NOTICE|LICEN[SC]E)[^/]*$|(^|\/)\.github\//i;
+
+function extensionsOf(repo: Repo, plan: CorpusPlan): string[] {
+  if (repo.extensions) return repo.extensions;
+  if (plan.kind === 'markdown') return MARKDOWN_EXTENSIONS;
+  return CODE_LANGUAGES[repo.language as CodeLanguage].extensions;
+}
+
+/** The lines of one file, before they are judged. */
+function fileLines(text: string, path: string, repo: Repo, plan: CorpusPlan): string[] {
+  if (plan.kind === 'markdown') return markdownLines(text, { mdx: path.endsWith('.mdx') });
+  return stripComments(text, repo.language as CodeLanguage).split('\n');
+}
+
+function reading(repo: Repo, plan: CorpusPlan): Reading {
+  const kind = plan.kind;
+  return {
+    kind,
+    extensions: extensionsOf(repo, plan),
+    skip: kind === 'markdown' ? MARKDOWN_SKIPPED : undefined,
+    lines: (text, path) => fileLines(text, path, repo, plan),
+  };
+}
+
+const sum = (lines: Iterable<{ text: string }>): number => {
+  let total = 0;
+  for (const { text } of lines) total += lineCost(text);
+  return total;
+};
+
+/**
+ * The words that English news writes in lower case, which tell a word from a name: news is read
+ * as the app serves it, so the same text always gives the same dictionary.
+ */
+function dictionary(): Set<string> {
+  const served = join(RAW_DIR, '..', '..', '..', 'apps', 'web', 'public', 'corpora');
+  const news = readFileSync(join(served, 'en-general', 'sample.txt'), 'utf8');
+  return new Set(news.match(/\b[a-z]{3,}\b/g));
+}
+
+/**
+ * Leaves out the lines with a name a text writes only a few times and never in lower case (see
+ * `nameFilter`): all the lines of Markdown, and of code those with prose in them, which is what a
+ * string or a documentation block holds.
+ */
+function dropNames(reads: RepoRead<Repo>[], kind: CorpusPlan['kind']): void {
+  const hasName = nameFilter(
+    reads.flatMap((r) => r.lines.map((l) => l.text)),
+    dictionary(),
+  );
+  for (const r of reads) {
+    r.lines = r.lines.filter(({ text }) => {
+      if ((kind === 'markdown' || hasProse(text)) && hasName(text)) {
+        r.rejected.set('rare name', (r.rejected.get('rare name') ?? 0) + 1);
+        return false;
+      }
+      return true;
+    });
+  }
+}
+
+async function extract(id: string, sources: CodeSources): Promise<RepoRead<Repo>[]> {
+  const plan = sources.corpora[id];
+  const repos = sources.repos.filter((r) => r.corpus === id);
+  const best = new Map<string, Candidate & { repo: string }>();
+  const reads: RepoRead<Repo>[] = [];
+  for (const repo of repos) {
+    reads.push(await readArchive(repo, reading(repo, plan), best));
+    console.log(`${id}/${repo.id}: ${reads[reads.length - 1].files} files`);
+  }
+  const bad = reads.flatMap((r) => (r.licenseError ? [r.licenseError] : []));
+  if (bad.length > 0) throw new Error(`Not taken under the licence they say:\n${bad.join('\n')}`);
+  settle(reads, best);
+  dropNames(reads, plan.kind);
+
+  // Each language its share of the bytes, each repository of a language its share of that; what a
+  // short one cannot give goes to the others. Markdown has no languages: the repositories share it.
+  const groups: [string, number, RepoRead<Repo>[]][] =
+    plan.kind === 'markdown'
+      ? [['markdown', 1, reads]]
+      : Object.entries(plan.shares ?? {}).map(([language, share]) => {
+          const members = reads.filter((r) => r.repo.language === language);
+          if (members.length === 0) throw new Error(`${id}: no repository for ${language}`);
+          return [language, share as number, members];
+        });
+  const byGroup = allocate(
+    plan.bytes,
+    groups.map(([key, weight, members]) => ({
+      key,
+      weight,
+      available: members.reduce((total, r) => total + sum(r.lines), 0),
+    })),
+  );
+  for (const [key, , members] of groups) {
+    const byRepo = allocate(
+      byGroup.get(key) ?? 0,
+      members.map((r) => ({ key: r.repo.id, weight: 1, available: sum(r.lines) })),
+    );
+    for (const r of members) r.taken = takeLines(r.lines, byRepo.get(r.repo.id) ?? 0);
+  }
+
+  const out = reads.flatMap((r) => r.taken);
+  writeFileSync(join(RAW_DIR, `${id}.txt`), `${out.join('\n')}\n`);
+  const bytes = sum(out.map((text) => ({ text })));
+  console.log(`${id}: ${out.length} lines, ${Math.round(bytes / 1000)} kB`);
+  return reads;
+}
+
+const KB = (bytes: number): string => `${(bytes / 1000).toFixed(0)} kB`;
+const PERCENT = (part: number, whole: number): string => `${((part / whole) * 100).toFixed(1)}%`;
+
+function report(sources: CodeSources, byCorpus: Map<string, RepoRead<Repo>[]>): string {
+  const lines = [
+    '# Sources of the code and Markdown corpora',
+    '',
+    'Generated by `pnpm corpora:extract` from `code-sources.json`: do not edit it by hand.',
+    '',
+    'Each repository is read at the commit named here, and only for the files under the licence in',
+    'its row, which its licence file in that commit says (the build stops if it does not); a file that',
+    'says in its first lines it is under another licence, and the directories of vendored copies, are',
+    'left out. What is taken from a file is its lines with the comments, and the docstrings of the',
+    'indentation languages, removed. A line is left out whole if it has an address, a phone number, a',
+    'key, a hash, a word of more than 40 characters, text that is not ASCII, a link to a site that is',
+    'not an open project, or the words copyright, author, licence or thanks; if, in Markdown, it',
+    "names a person (a byline, a profile, `Name Name's`); or if it has a name a text writes only a",
+    'few times and never in lower case. Nothing is changed in a line that stays. Each repository',
+    'gives its share of its language, in an order fixed by a hash, so the same sources always make',
+    'the same text. The licence of each file stays that of its repository; its notice is at the link',
+    'in the Licence column. The projects of `docs/research/code-corpora.md` are under `research` in',
+    '`code-sources.json`; nothing of them is kept.',
+    '',
+    'Regenerate, from a checkout of this repository:',
+    '',
+    '```bash',
+    'pnpm corpora:fetch     # downloads the archives into packages/corpora/.cache (network)',
+    'pnpm corpora:extract   # writes raw/code-*.txt, raw/en-markdown-agents.txt and this file',
+    'pnpm corpora           # builds what the app serves from them',
+    '```',
+  ];
+  for (const [id, reads] of byCorpus) {
+    const plan = sources.corpora[id];
+    const total = reads.reduce((t, r) => t + sum(r.taken.map((text) => ({ text }))), 0);
+    lines.push('', `## ${id}`, '');
+    if (plan.kind === 'code') {
+      lines.push('| Language | Share | Taken |', '|---|---|---|');
+      for (const [language, share] of Object.entries(plan.shares ?? {})) {
+        const taken = reads
+          .filter((r) => r.repo.language === language)
+          .reduce((t, r) => t + sum(r.taken.map((text) => ({ text }))), 0);
+        lines.push(`| ${language} | ${share}% | ${PERCENT(taken, total)} |`);
+      }
+      lines.push('');
+    }
+    lines.push('| Repository | Commit | Licence | Files | Lines judged | Left out | Taken |');
+    lines.push('|---|---|---|---|---|---|---|');
+    for (const r of reads) {
+      const { repo } = r;
+      const taken = sum(r.taken.map((text) => ({ text })));
+      const out = [...r.rejected.values()].reduce((a, b) => a + b, 0);
+      lines.push(
+        `| [${repo.repo}](https://github.com/${repo.repo}/tree/${repo.commit}) | \`${repo.commit.slice(0, 7)}\` ` +
+          `| [${repo.license}](https://github.com/${repo.repo}/blob/${repo.commit}/${repo.licenseFile}) ` +
+          `| ${r.files} | ${r.seen} | ${PERCENT(out, r.seen || 1)} | ${KB(taken)} |`,
+      );
+    }
+    const reasons = new Map<string, number>();
+    for (const r of reads) {
+      for (const [why, n] of r.rejected) reasons.set(why, (reasons.get(why) ?? 0) + n);
+    }
+    lines.push(
+      '',
+      `Left out, by reason: ${[...reasons]
+        .sort((a, b) => b[1] - a[1])
+        .map(([why, n]) => `${why} ${n}`)
+        .join(', ')}.`,
+    );
+    const foreign = reads.filter((r) => r.foreign > 0);
+    if (foreign.length > 0) {
+      lines.push(
+        '',
+        `Files left out for saying they are under another licence: ${foreign
+          .map((r) => `${r.repo.id} ${r.foreign}`)
+          .join(', ')}.`,
+      );
+    }
+  }
+  const licences = [...new Set(sources.repos.map((r) => r.license))].sort();
+  lines.push('', `Licences in use: ${licences.join(', ')}.`, '');
+  return lines.join('\n');
+}
+
+async function main(): Promise<void> {
+  const sources = readCodeSources();
+  const requested = process.argv.slice(2);
+  const ids = requested.length > 0 ? requested : Object.keys(sources.corpora);
+  for (const id of ids) if (!sources.corpora[id]) throw new Error(`unknown corpus id: ${id}`);
+  const byCorpus = new Map<string, RepoRead<Repo>[]>();
+  for (const id of Object.keys(sources.corpora)) {
+    if (ids.includes(id)) byCorpus.set(id, await extract(id, sources));
+  }
+  if (ids.length === Object.keys(sources.corpora).length) {
+    writeFileSync(join(RAW_DIR, 'CODE-SOURCES.md'), report(sources, byCorpus));
+  } else {
+    console.log('CODE-SOURCES.md is written when every corpus is extracted.');
+  }
+}
+
+main();

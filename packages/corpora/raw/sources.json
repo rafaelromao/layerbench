@@ -51,5 +51,35 @@
     "source": "https://wortschatz.uni-leipzig.de/en/download (deu_news_2023_30K)",
     "description": "30,000 German news sentences from the Leipzig Corpora Collection (2023).",
     "retrieved": "2026-10-18"
+  },
+  "code-c-family": {
+    "file": "code-c-family.txt",
+    "name": "Code — C family",
+    "language": "code",
+    "license": "Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, MIT, Unlicense (per project: see CODE-SOURCES.md)",
+    "source": "https://github.com/rafaelromao/layerbench/blob/main/packages/corpora/raw/CODE-SOURCES.md",
+    "description": "Lines of open-source projects in C, C++, C#, Java, JavaScript and TypeScript, Go, Rust, PHP, Kotlin and Swift, with their comments taken out: braces, semicolons, brackets, operators and identifiers as they are typed.",
+    "retrieved": "2026-11-06",
+    "scrub": false
+  },
+  "code-python-family": {
+    "file": "code-python-family.txt",
+    "name": "Code — Python family",
+    "language": "code",
+    "license": "Apache-2.0, BSD-3-Clause, MIT (per project: see CODE-SOURCES.md)",
+    "source": "https://github.com/rafaelromao/layerbench/blob/main/packages/corpora/raw/CODE-SOURCES.md",
+    "description": "Lines of open-source Python projects, with a few in Nim and GDScript, with their comments and docstrings taken out: colons, brackets, operators and snake_case identifiers as they are typed.",
+    "retrieved": "2026-11-06",
+    "scrub": false
+  },
+  "en-markdown-agents": {
+    "file": "en-markdown-agents.txt",
+    "name": "Markdown — AI agents",
+    "language": "en",
+    "license": "Apache-2.0, CC0-1.0, MIT (per project: see CODE-SOURCES.md)",
+    "source": "https://github.com/rafaelromao/layerbench/blob/main/packages/corpora/raw/CODE-SOURCES.md",
+    "description": "English Markdown as it is typed to work with AI agents: instructions, rules, prompts, specs and docs of open-source agent projects, with headings, lists, links, tables and inline code.",
+    "retrieved": "2026-11-06",
+    "scrub": false
   }
 }

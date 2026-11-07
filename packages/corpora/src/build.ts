@@ -30,6 +30,13 @@ interface Source {
   description: string;
   /** When the source text was downloaded, for corpora fetched from the web. */
   retrieved?: string;
+  /**
+   * Whether e-mail addresses and phone numbers are replaced by others of the same shape (default).
+   * A code or Markdown text sets this to false: the news scrub is aimed at news, and would rewrite
+   * the numeric constants, dates and versions that were typed, while the extractor already leaves
+   * out the lines that look like a phone number or an e-mail address (`pnpm corpora:extract`).
+   */
+  scrub?: boolean;
 }
 
 interface Manifest {
@@ -75,11 +82,18 @@ const MOJIBAKE = /â[€‚]/u;
  * mis-decoded punctuation, in the order of `placeOf`.
  */
 function sentences(raw: string): string[] {
+  // A line that comes again, as `}` does in code, is placed by its text and how many times it has
+  // come, or all its copies would sit together where one hash falls.
+  const seen = new Map<string, number>();
   return raw
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line.length > 0 && !NON_LATIN_LETTER.test(line) && !MOJIBAKE.test(line))
-    .map((line) => ({ line, place: placeOf(line) }))
+    .map((line) => {
+      const times = seen.get(line) ?? 0;
+      seen.set(line, times + 1);
+      return { line, place: placeOf(times === 0 ? line : `${line}\0${times}`) };
+    })
     .sort((a, b) => a.place - b.place || (a.line < b.line ? -1 : a.line > b.line ? 1 : 0))
     .map(({ line }) => line);
 }
@@ -93,7 +107,7 @@ function build(id: string, meta: Source, previous?: Manifest): Manifest {
   // News text quotes people's phone numbers and addresses; the sample keeps their shape only.
   const kept: string[] = [];
   let bytes = 0;
-  for (const sentence of sentences(scrubContacts(raw))) {
+  for (const sentence of sentences(meta.scrub === false ? raw : scrubContacts(raw))) {
     const text = normalizeText(sentence, {
       caseMode: 'model',
       textClass: SAMPLE_TEXT_CLASS,

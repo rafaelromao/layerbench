@@ -1,0 +1,156 @@
+import { describe, expect, it } from 'vitest';
+import { foreignLicense, isGenerated, rejectReason, SKIPPED_PATH, tidy } from './lines.js';
+
+describe('the lines that stay in a code corpus', () => {
+  it('keeps ordinary code, however many symbols it has', () => {
+    for (const line of [
+      'if (a[i] != null && b->c) { return x ? y : z; }',
+      'def f(self, *args, **kwargs) -> dict[str, int]:',
+      "let v: Vec<&'a str> = it.map(|s| s.trim()).collect();",
+      '}',
+      '@Override',
+      'x = 0xFF & mask | 1 << 3;',
+    ]) {
+      expect(rejectReason(line, 'code'), line).toBeNull();
+    }
+  });
+
+  it('turns away what is not typed by hand or is about a person', () => {
+    const cases: [string, string][] = [
+      ['', 'empty'],
+      ['let s = "café";', 'non-ascii'],
+      [`x = "${'a'.repeat(170)}"`, 'long'],
+      ['const h = "' + 'b'.repeat(70) + '";', 'word'],
+      ['mail("jane.doe@example.com");', 'email'],
+      ['call("+55 11 99999-9999");', 'phone'],
+      ['id = 1234567890123;', 'phone'],
+      ['host = "192.168.0.1";', 'address'],
+      ['sha = "a1b2c3d4e5f6a7b8c9d0e1f2";', 'hex'],
+      ['const k = "AKIAABCDEFGHIJKLMNOP";', 'secret'],
+      ['const k = "ASIAABCDEFGHIJKLMNOP";', 'secret'],
+      ['key = "sk_live_51HxAbCdEfGhIjKl";', 'secret'],
+      ['"authorization": "Basic dXNlcjpwYXNzd29yZDEyMw==",', 'secret'],
+      ['id = "k3j2h4g5f6d7s8a9q1w2e3r4t5y6";', 'token'],
+      ['mail me: jane at example dot com', 'email'],
+      ['mail me: jane[at]example.com', 'email'],
+      ['Call 555-1234 now', 'phone'],
+      ['Call +1(555)1234567 now', 'phone'],
+      ['host = "fe80::1";', 'address'],
+      ['host = "2a00:1450:4001::200e";', 'address'],
+      ['// tweaked slightly by both someone and myself', 'authorship'],
+      ['// contributed by someone', 'authorship'],
+      ['x = "J. Smith"', 'name'],
+      ['x = "Jane Doe\'s book"', 'name'],
+      ['url: "https://api.github.com/users/somebody",', 'host'],
+      ['avatar: "https://raw.githubusercontent.com/o/r",', 'host'],
+      ['see https://hub.docker.com/r/somebody/foo', 'host'],
+      ['see https://www.npmjs.com/~somebody', 'host'],
+      ['see https://scholar.google.com/x?user=A', 'host'],
+      ['see https://hf.co/somebody/my-model', 'host'],
+      ['const password = input();', 'secret'],
+      ['api_key = os.environ["K"]', 'secret'],
+      ['// Copyright 2015 The Authors', 'authorship'],
+      ['@author somebody', 'authorship'],
+      ['name = "Jane Doe"', 'name'],
+      ['url = "https://somebody.example.dev/x"', 'host'],
+      ['url = "http://user:pass@localhost/x"', 'secret'],
+      ['see https://github.com/somebody/project for more', 'host'],
+      ['model at https://huggingface.co/somebody/model', 'host'],
+      ['const t = [10, 20, 30, 40, 50, 60, 70, 80];', 'digits'],
+    ];
+    for (const [line, reason] of cases) expect(rejectReason(line, 'code'), line).toBe(reason);
+  });
+
+  it('keeps the words that only look like those: tokens, authors of a function, one-word strings', () => {
+    for (const line of [
+      'const token = next();',
+      'if (authorized) run();',
+      'name = "Hello"',
+      'msg = "hello world"',
+      'x = 1_000_000;',
+      'released = "2025-10-01"; version = "1.20.30";',
+      'url = "https://www.google.com/search"; // https://developers.google.com/x',
+      'call(std::vector<int>{}, std::move(x));',
+      't = time("10:30:45");',
+      'url = "https://example.com/a?b=c"; // or https://github.com/org/repo or http://localhost:8080',
+    ]) {
+      expect(rejectReason(line, 'code'), line).toBeNull();
+    }
+  });
+});
+
+describe('the lines that stay in a Markdown corpus', () => {
+  it('keeps prose, markup, mentions of a tool and decorators in snippets', () => {
+    for (const line of [
+      '## Working with the agent',
+      '- Run `pnpm test` before you commit.',
+      '| name | description |',
+      'Ask the agent to explain the diff. It is faster than reading it.',
+      'See [the guide](https://example.test/guide) for more.',
+      'Use the `@property` decorator here.',
+      'It said "Hello World" and stopped.',
+      'Retrieval-augmented generation uses a by-product of search.',
+    ]) {
+      expect(rejectReason(line, 'markdown'), line).toBeNull();
+    }
+  });
+
+  it('turns away text in other languages and what names people', () => {
+    const cases: [string, string][] = [
+      ['Ceci est un texte français où é compte.', 'non-ascii'],
+      ['Thanks to everyone who helped.', 'authorship'],
+      ['As Yao et al. (2022) show, it helps.', 'authorship'],
+      ['Follow me on https://github.com/someone', 'host'],
+      ['Ping @someone about it.', 'profile'],
+      ['- **[Some Body](https://huggingface.co/somebody)** helped.', 'host'],
+      ['docker pull somebody/image', 'profile'],
+      ['Read [the blog](https://somebody.substack.com/) now.', 'host'],
+      ['By Some Body, on the blog.', 'name'],
+      ['- [Blog on MCP](https://huggingface.co/blog/a/mcp)', 'host'],
+      ["Follow Some Body's algorithm.", 'name'],
+      ['A Double-Barrelled surname.', 'name'],
+      ['Write to me: mailto:x@y.test', 'email'],
+    ];
+    for (const [line, reason] of cases) expect(rejectReason(line, 'markdown'), line).toBe(reason);
+    expect(rejectReason('Fork https://github.com/org/repo today', 'markdown')).toBeNull();
+    expect(
+      rejectReason('Tabs are fine → and so are “quotes” — and emoji ✓', 'markdown'),
+    ).toBeNull();
+  });
+});
+
+describe('what is made of lines', () => {
+  it('tidies white space', () => {
+    expect(tidy('  a \t b\u00a0 c  ')).toBe('a b c');
+    expect(rejectReason(tidy('  if (a) {  '), 'code')).toBeNull();
+    expect(rejectReason(tidy('   '), 'code')).toBe('empty');
+  });
+
+  it('knows a file that says it is under a licence that is not taken', () => {
+    expect(foreignLicense('# Licensed to PSF under a Contributor Agreement.\nx = 1')).toBe(true);
+    expect(foreignLicense('/* Under the Mozilla Public License */')).toBe(true);
+    expect(foreignLicense('// GNU General Public License, version 2\nint a;')).toBe(true);
+    expect(foreignLicense('// Licensed under the Apache License, Version 2.0\nint a;')).toBe(false);
+    expect(foreignLicense('Copyright (c) Acme. All rights reserved.\nMIT\nint a;')).toBe(false);
+  });
+
+  it('knows generated and binary files, and the paths that hold copies', () => {
+    expect(isGenerated('// Code generated by protoc. DO NOT EDIT.\npackage x')).toBe(true);
+    expect(isGenerated('a\0b')).toBe(true);
+    expect(isGenerated('package x\n\nfunc f() {}\n')).toBe(false);
+    for (const path of [
+      'vendor/x/a.go',
+      'a/node_modules/b.js',
+      'x/y.min.js',
+      'types/a.d.ts',
+      'p/testdata/a.go',
+      'src/pip/_vendor/distlib/a.py',
+      'lib/3rdparty/x.c',
+    ]) {
+      expect(SKIPPED_PATH.test(path), path).toBe(true);
+    }
+    for (const path of ['src/a.go', 'lib/build_tools.rb', 'pkg/generator.ts']) {
+      expect(SKIPPED_PATH.test(path), path).toBe(false);
+    }
+  });
+});

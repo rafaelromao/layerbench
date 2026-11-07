@@ -328,16 +328,20 @@ describe('Corpus', () => {
     expect(screen.getAllByText('English — news 2023 (Leipzig)')).not.toHaveLength(0);
     expect(screen.getAllByText('Español — noticias 2023 (Leipzig)')).not.toHaveLength(0);
     expect(screen.getAllByText('Deutsch — Nachrichten 2023 (Leipzig)')).not.toHaveLength(0);
-    // English first, then the rest by name, and the page opens on English.
+    // The English texts first, the news and then the Markdown, then the rest by name: the code
+    // texts among them. The page opens on English.
     const list = screen.getByRole('heading', { name: 'Corpora' }).parentElement
       ?.nextElementSibling as HTMLElement;
     const names = within(list)
       .getAllByRole('button')
       .map((b) => b.querySelector('span > span')?.textContent ?? '');
     expect(names[0]).toMatch(/^English/);
-    expect(names[1]).toMatch(/^Deutsch/);
-    expect(names.slice(1)).toEqual(
-      [...names.slice(1)].sort((x, y) => x.localeCompare(y, 'en', { sensitivity: 'base' })),
+    expect(names[1]).toMatch(/^Markdown/);
+    expect(names[2]).toMatch(/^Code — C family/);
+    expect(names[3]).toMatch(/^Code — Python family/);
+    expect(names[4]).toMatch(/^Deutsch/);
+    expect(names.slice(2)).toEqual(
+      [...names.slice(2)].sort((x, y) => x.localeCompare(y, 'en', { sensitivity: 'base' })),
     );
     expect(within(list).getAllByRole('button')[0]).toHaveClass('menu-active');
     // Facts are counted over a sample of the selected corpus.
@@ -437,14 +441,15 @@ describe('Custom texts in the pickers', () => {
     const corpus = within(await openSettings()).getByRole('combobox', { name: 'Corpus' });
     const option = await within(corpus).findByRole('option', { name: 'My notes' });
     expect(option.closest('optgroup')).toHaveAttribute('label', 'Custom');
-    // No groups by language: one list, English first, then the rest by name, then Custom.
+    // No groups by language: one list, the English texts first, then the rest by name, then Custom.
     expect([...corpus.querySelectorAll('optgroup')].map((g) => g.label)).toEqual(['Custom']);
     const shipped = [...corpus.children]
       .filter((o) => o.tagName === 'OPTION')
       .map((o) => o.textContent ?? '');
     expect(shipped[0]).toMatch(/^English/);
-    expect(shipped.slice(1)).toEqual(
-      [...shipped.slice(1)].sort((x, y) => x.localeCompare(y, 'en', { sensitivity: 'base' })),
+    expect(shipped[1]).toMatch(/^Markdown/);
+    expect(shipped.slice(2)).toEqual(
+      [...shipped.slice(2)].sort((x, y) => x.localeCompare(y, 'en', { sensitivity: 'base' })),
     );
 
     await user.selectOptions(corpus, 'custom:my-notes');
