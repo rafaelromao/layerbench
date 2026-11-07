@@ -86,6 +86,8 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
   const [shown, setShown] = useState(0);
   const fileId = useId();
   const infoId = useId();
+  const hintId = useId();
+  const errorId = useId();
 
   useEffect(() => {
     if (text.trim() === '') {
@@ -110,11 +112,19 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
     return () => clearTimeout(timer);
   }, [text]);
 
-  // A request still out when the dialog goes away has nowhere to put its answer.
+  // A request still out when the Library is left has nowhere to put its answer. Closing the dialog
+  // does not stop one: this stays mounted, and the file is in the box when it is opened again.
   useEffect(() => () => request.current?.abort(), []);
 
-  /** Text the reader typed, pasted or chose is no longer what an address gave. */
+  /**
+   * Text the reader typed, pasted or chose is no longer what an address gave, and wins over a
+   * request still out, whose answer would otherwise replace it.
+   */
   const enter = (next: string) => {
+    request.current?.abort();
+    request.current = null;
+    setFetching(false);
+    setAddressError(null);
     setText(next);
     setSource(null);
   };
@@ -128,10 +138,12 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
     setAddressError(null);
     try {
       const file = await fetchKeymapText(address, { signal: controller.signal });
+      // Stopped meanwhile, by what the reader entered: that is what is in the box.
+      if (controller.signal.aborted) return;
       setText(file.text);
       setSource(file.source);
     } catch (e) {
-      // Stopped by a newer request, or by the dialog going away: nothing to say.
+      // Stopped by what the reader entered, a newer request or leaving the Library: nothing to say.
       if (controller.signal.aborted) return;
       setAddressError(e instanceof KeymapUrlError ? e.message : message(e));
     } finally {
@@ -233,37 +245,49 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
         className="space-y-1"
         onSubmit={(e) => {
           e.preventDefault();
-          void fetchAddress();
+          if (!fetching) void fetchAddress();
         }}
       >
         <div className="flex flex-wrap items-center gap-2">
           <input
             type="text"
             inputMode="url"
+            spellCheck={false}
+            autoCapitalize="none"
+            autoCorrect="off"
+            autoComplete="off"
             aria-label="Address of a keymap-drawer YAML file"
+            aria-describedby={addressError ? `${hintId} ${errorId}` : hintId}
+            aria-invalid={addressError ? true : undefined}
             className="input input-sm input-bordered min-w-0 flex-1 basis-64 font-mono text-xs"
             placeholder="https://github.com/you/zmk-config/blob/main/keymap-drawer/board.yaml"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
           />
+          {/* Not `disabled` while fetching: a button that is pressed and then disabled drops the
+              keyboard's place in the dialog. */}
           <button
             type="submit"
-            className="btn btn-sm max-sm:w-full"
-            disabled={fetching || address.trim() === ''}
+            className={`btn btn-sm max-sm:w-full${fetching ? ' btn-disabled' : ''}`}
+            aria-disabled={fetching ? true : undefined}
+            disabled={address.trim() === ''}
           >
             {fetching ? 'Fetching…' : 'Fetch'}
           </button>
         </div>
-        <p className="text-[11px] opacity-60">
+        <p id={hintId} className="text-[11px] opacity-60">
           Or the address of the file on GitHub: its page, or its Raw link. Nothing is fetched until
           you press Fetch.
         </p>
-        {fetching && (
-          <p role="status" className="text-xs opacity-70">
-            Fetching the file…
+        {/* Always there, so that what is put in it is announced. */}
+        <p role="status" className="text-xs opacity-70 empty:sr-only">
+          {fetching ? 'Fetching the file…' : null}
+        </p>
+        {addressError && (
+          <p id={errorId} role="alert" className="text-error text-xs">
+            {addressError}
           </p>
         )}
-        {addressError && <p className="text-error text-xs">{addressError}</p>}
         {source && !fetching && (
           <p className="text-[11px] opacity-60">
             Read from <span className="font-mono break-all">{source}</span>.

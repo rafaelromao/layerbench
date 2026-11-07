@@ -115,7 +115,10 @@ const tooLarge = (max: number) =>
 
 /** The body, read only up to `max` bytes: a longer one is dropped as soon as that is clear. */
 async function readCapped(res: Response, max: number): Promise<Uint8Array> {
-  if (Number(res.headers.get('content-length')) > max) throw tooLarge(max);
+  if (Number(res.headers.get('content-length')) > max) {
+    discard(res);
+    throw tooLarge(max);
+  }
   if (!res.body) {
     const bytes = new Uint8Array(await res.arrayBuffer());
     if (bytes.length > max) throw tooLarge(max);
@@ -142,6 +145,36 @@ async function readCapped(res: Response, max: number): Promise<Uint8Array> {
   }
   return bytes;
 }
+
+/** What a refusal by the server says, by what can be done about it. */
+function statusError(res: Response): KeymapUrlError {
+  const said = `${res.status} ${res.statusText}`.trim();
+  if (res.status === 404) {
+    return new KeymapUrlError(
+      'status',
+      'No file at that address (404). Check the repository, the branch and the path.',
+    );
+  }
+  if (res.status === 429) {
+    return new KeymapUrlError(
+      'status',
+      `The server is limiting requests from here (${said}). Try again in a little while. ${PASTE_INSTEAD}`,
+    );
+  }
+  if (res.status >= 500) {
+    return new KeymapUrlError(
+      'status',
+      `The server answered ${said}, which is its own trouble, not the address's. Try again later. ${PASTE_INSTEAD}`,
+    );
+  }
+  return new KeymapUrlError(
+    'status',
+    `The server answered ${said}. Check the address. ${PASTE_INSTEAD}`,
+  );
+}
+
+/** An answer that is not going to be read is not left to download. */
+const discard = (res: Response) => void res.body?.cancel().catch(() => undefined);
 
 const looksLikeHtml = (contentType: string, text: string) =>
   /^text\/html\b/i.test(contentType) || /^\s*<(!doctype\s+html|html)\b/i.test(text);
@@ -188,19 +221,24 @@ export async function fetchKeymapText(
       cache: 'no-cache',
       credentials: 'omit',
     });
-    if (!res.ok) {
+    // The host was checked before asking, but a redirect may have led off it; where no policy
+    // stops that (the dev server sends none), this does.
+    if (res.url && new URL(res.url).origin !== RAW_ORIGIN) {
+      discard(res);
       throw new KeymapUrlError(
-        'status',
-        res.status === 404
-          ? 'No file at that address (404). Check the repository, the branch and the path, and that the repository is public.'
-          : `The server answered ${`${res.status} ${res.statusText}`.trim()}. Check the address. ${PASTE_INSTEAD}`,
+        'host',
+        `That address leads to another host, which is not fetched here. ${PASTE_INSTEAD}`,
       );
     }
+    if (!res.ok) {
+      discard(res);
+      throw statusError(res);
+    }
     const bytes = await readCapped(res, maxBytes);
-    let text: string;
-    try {
-      text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-    } catch {
+    // Decoded as a chosen file is (`File.text()`), so a file reads the same whichever way it came:
+    // bytes that are not UTF-8 become U+FFFD there too. Only a NUL, which no text has, is refused.
+    const text = new TextDecoder('utf-8').decode(bytes);
+    if (text.includes('\0')) {
       throw new KeymapUrlError('not-text', 'That file is not text, so it is not a YAML file.');
     }
     if (looksLikeHtml(res.headers.get('content-type') ?? '', text)) {

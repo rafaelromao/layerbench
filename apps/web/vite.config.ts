@@ -42,7 +42,7 @@ function authOriginFrom(value: string | undefined): string {
  * fetches by its address. It is the whole host, not the folder of the community layouts, because
  * an address is the reader's to give; the code refuses every other host before asking.
  */
-function contentSecurityPolicy(authOrigin: string): string {
+export function contentSecurityPolicy(authOrigin: string): string {
   return [
     "default-src 'self'",
     "base-uri 'self'",

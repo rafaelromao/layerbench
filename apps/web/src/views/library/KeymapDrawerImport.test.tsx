@@ -110,16 +110,21 @@ describe('Importing a keymap-drawer file by its address', () => {
     expect(get).toHaveBeenCalledOnce();
     expect(screen.getByRole('status')).toHaveTextContent('Fetching the file…');
     expect(fetchButton()).toHaveTextContent('Fetching…');
-    expect(fetchButton()).toBeDisabled();
+    // Not `disabled`, which would drop the keyboard's place; pressing it again asks for nothing.
+    expect(fetchButton()).toHaveAttribute('aria-disabled', 'true');
+    await user.click(fetchButton());
+    expect(get).toHaveBeenCalledOnce();
     // The text is not there yet, nor anything said about it.
     expect(yamlBox().value).toBe('');
     expect(screen.queryByText(/^Read from/)).toBeNull();
 
     release(plain(KEYMAP));
     await waitFor(() => expect(yamlBox().value).toBe(KEYMAP));
-    expect(screen.queryByRole('status')).toBeNull();
+    // The region stays, empty, for the next announcement.
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
     expect(fetchButton()).toHaveTextContent('Fetch');
     expect(fetchButton()).toBeEnabled();
+    expect(fetchButton()).not.toHaveAttribute('aria-disabled');
     // Where it was read from, without the query: a private file's address carries its token there.
     const read = screen.getByText(/^Read from/);
     expect(read).toHaveTextContent(`Read from ${RAW}.`);
@@ -147,7 +152,7 @@ describe('Importing a keymap-drawer file by its address', () => {
       'a server error',
       RAW,
       () => plain('', { status: 503, statusText: 'Service Unavailable' }),
-      /^The server answered 503 Service Unavailable\./,
+      /^The server answered 503 Service Unavailable, which is its own trouble/,
     ],
     [
       'a refusal by the network, CORS among its causes',
@@ -177,10 +182,15 @@ describe('Importing a keymap-drawer file by its address', () => {
       await fetchFrom(user, address);
 
       const error = await screen.findByText(said);
-      // Shown the way the dialog shows every other import error.
+      // Shown the way the dialog shows every other import error, and announced.
       expect(error).toHaveClass('text-error', 'text-xs');
+      expect(error).toHaveAttribute('role', 'alert');
+      expect(addressBox()).toHaveAttribute('aria-invalid', 'true');
+      expect(addressBox()).toHaveAccessibleDescription(
+        expect.stringContaining(error.textContent ?? ''),
+      );
       expect(yamlBox().value).toBe('');
-      expect(screen.queryByRole('status')).toBeNull();
+      expect(screen.getByRole('status')).toBeEmptyDOMElement();
       expect(fetchButton()).toBeEnabled();
       expect(screen.queryByText(/^Read from/)).toBeNull();
     },
@@ -249,7 +259,7 @@ describe('Importing a keymap-drawer file by its address', () => {
     expect(screen.queryByText(/^No file at that address/)).toBeNull();
   });
 
-  it('stops a request still out when the dialog goes away, with nothing to say', async () => {
+  it('stops a request still out when the Library is left', async () => {
     const user = userEvent.setup();
     let signal: AbortSignal | null | undefined;
     const get = vi.fn<typeof fetch>(
@@ -269,5 +279,68 @@ describe('Importing a keymap-drawer file by its address', () => {
 
     unmount();
     expect(signal?.aborted).toBe(true);
+  });
+
+  it('lets what the reader pastes or chooses win over a request still out', async () => {
+    const user = userEvent.setup();
+    let release: (response: Response) => void = () => {};
+    let signal: AbortSignal | null | undefined;
+    // A fetch that ignores the abort, as one whose answer was already on its way would.
+    const get = vi.fn<typeof fetch>((_url, init) => {
+      signal = init?.signal;
+      return new Promise<Response>((resolve) => (release = resolve));
+    });
+    vi.stubGlobal('fetch', get);
+    render(<KeymapDrawerImport onImport={vi.fn()} />);
+    await fetchFrom(user, RAW);
+    expect(screen.getByRole('status')).toHaveTextContent('Fetching the file…');
+
+    await user.click(yamlBox());
+    await user.paste('layers: [a, b');
+    // Pasting stops the request, and the box says so: nothing is fetching.
+    expect(signal?.aborted).toBe(true);
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    expect(fetchButton()).toBeEnabled();
+
+    release(plain(KEYMAP));
+    await screen.findByText(/line 1: unclosed \[/);
+    // The answer came and was dropped: the paste is still what is there, with nothing said of it.
+    expect(yamlBox().value).toBe('layers: [a, b');
+    expect(screen.queryByText(/^Read from/)).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('clears an earlier failure when the reader gives the text another way', async () => {
+    const user = userEvent.setup();
+    serving(() => plain('', { status: 404 }));
+    render(<KeymapDrawerImport onImport={vi.fn()} />);
+    await fetchFrom(user, RAW);
+    await screen.findByRole('alert');
+
+    await user.click(yamlBox());
+    await user.paste(KEYMAP);
+    expect(screen.queryByText(/^No file at that address/)).toBeNull();
+    expect(addressBox()).not.toHaveAttribute('aria-invalid');
+  }, 60_000);
+
+  it('describes the field by its hint, and by the failure when there is one', async () => {
+    const user = userEvent.setup();
+    serving(() => plain('', { status: 404 }));
+    render(<KeymapDrawerImport onImport={vi.fn()} />);
+    expect(addressBox()).toHaveAccessibleDescription(/^Or the address of the file on GitHub/);
+    expect(addressBox()).not.toHaveAttribute('aria-invalid');
+    await fetchFrom(user, RAW);
+    await screen.findByRole('alert');
+    expect(addressBox()).toHaveAccessibleDescription(
+      /^Or the address of the file on GitHub.*No file at that address/,
+    );
+  });
+
+  it('asks the phone not to correct or capitalise an address', () => {
+    render(<KeymapDrawerImport onImport={vi.fn()} />);
+    expect(addressBox()).toHaveAttribute('spellcheck', 'false');
+    expect(addressBox()).toHaveAttribute('autocapitalize', 'none');
+    expect(addressBox()).toHaveAttribute('autocomplete', 'off');
+    expect(addressBox()).toHaveAttribute('inputmode', 'url');
   });
 });

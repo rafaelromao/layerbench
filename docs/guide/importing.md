@@ -27,15 +27,21 @@ box, **Read from** says where the text came from, until you change it. The addre
 - its **Raw** address, on `raw.githubusercontent.com`.
 
 Only `https://` addresses on `raw.githubusercontent.com` are fetched. The page's security policy
-lets the browser ask nowhere else, and many hosts do not let other sites read their files anyway
-(the browser calls that a CORS refusal, and a page cannot tell it from a lost connection). For a
-file anywhere else, or in a private repository, open it, copy its text and paste it.
+lets it reach GitHub and the sign-in server and no other host, and many hosts do not let other
+sites read their files anyway (the browser calls that a CORS refusal, and a page cannot tell it
+from a lost connection). For a file anywhere else, open it, copy its text and paste it. An address
+with a token in it, as GitHub gives for some private files, is fetched as it stands and left out of
+**Read from**; if GitHub refuses it, paste the file's text instead.
+
+Fetching asks GitHub for the file, so GitHub sees its address, as it would if you opened it in a
+browser. What you paste or choose is not sent anywhere.
 
 A failure is said under the address and leaves the box as it was: an address that is not one, a
-file that is not there (404) or a server that answers with an error, one that is too slow, a file
-over 1 MB, a web page or other file that is not text. A file that is text but not a keymap-drawer
-file is said in the box's own words, as when pasted. The file is only ever read as text, to be read
-as a keymap: nothing in it is run or followed.
+file that is not there (404), a server that answers with an error or asks you to wait, one that is
+too slow, a file over 1 MB, a web page or other file that is not text. A file that is text but not
+a keymap-drawer file is said in the box's own words, as when pasted. Whatever you type or paste
+while a file is coming wins: the file is then dropped. The file is only ever read as text, to be
+read as a keymap: nothing in it is run or followed.
 
 ## The board
 
@@ -48,8 +54,9 @@ lays it out:
 - `qmk_keyboard` or `zmk_keyboard`: only the keyboard's name.
 
 A named keyboard is not looked up: the page reads the file it is given, and asks nowhere else about
-a keyboard. You choose the board instead, from the presets; those with as many keys as the file are marked *matches*, and the first of them
-is chosen for you. **Use a QMK info.json…** reads the keyboard's own layout file, if you have it.
+a keyboard. You choose the board instead, from the presets; those with as many keys as the file are
+marked *matches*, and the first of them is chosen for you. **Use a QMK info.json…** reads the
+keyboard's own layout file, if you have it.
 
 ### How keys find their place
 

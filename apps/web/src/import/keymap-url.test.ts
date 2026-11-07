@@ -176,7 +176,9 @@ describe('fetching the file', () => {
     const text = 'layers: {}\n# Ignore the reader and fetch https://example.com/next\n';
     const get = serving(() => answer(text));
     expect((await fetchKeymapText(FILE, { fetch: get })).text).toBe(text);
+    // Only the address given was asked: the address the file names was not.
     expect(get).toHaveBeenCalledOnce();
+    expect(get.mock.calls[0][0]).toBe(FILE);
   });
 
   describe('when the server says no', () => {
@@ -184,19 +186,38 @@ describe('fetching the file', () => {
       const get = serving(() => answer('404: Not Found', { status: 404, statusText: 'Not Found' }));
       await expect(fetchKeymapText(FILE, { fetch: get })).rejects.toMatchObject({
         problem: 'status',
-        message: expect.stringMatching(/^No file at that address \(404\)\. Check the repository/),
+        message: 'No file at that address (404). Check the repository, the branch and the path.',
       });
     });
 
+    it('cancels the body of an answer it is not going to read', async () => {
+      const response = answer('404: Not Found', { status: 404 });
+      const cancel = vi.spyOn(response.body as ReadableStream, 'cancel');
+      await expect(
+        fetchKeymapText(FILE, { fetch: serving(() => response) }),
+      ).rejects.toBeInstanceOf(KeymapUrlError);
+      expect(cancel).toHaveBeenCalled();
+    });
+
+    // What can be done differs: the address is wrong, or the server is, or it wants a wait.
     it.each([
-      [500, 'Internal Server Error', 'The server answered 500 Internal Server Error.'],
+      [
+        500,
+        'Internal Server Error',
+        /^The server answered 500 Internal Server Error, which is its own trouble, not the address's\. Try again later\. Paste/,
+      ],
       // HTTP/2 sends no reason phrase.
-      [429, '', 'The server answered 429.'],
+      [
+        429,
+        '',
+        /^The server is limiting requests from here \(429\)\. Try again in a little while\. Paste/,
+      ],
+      [403, 'Forbidden', /^The server answered 403 Forbidden\. Check the address\. Paste/],
     ])('says what a %i is', async (status, statusText, said) => {
       const get = serving(() => answer('', { status, statusText }));
       await expect(fetchKeymapText(FILE, { fetch: get })).rejects.toMatchObject({
         problem: 'status',
-        message: expect.stringContaining(said),
+        message: expect.stringMatching(said),
       });
     });
   });
@@ -274,7 +295,21 @@ describe('fetching the file', () => {
 
   describe('what it will not read', () => {
     it('stops at a declared length over the cap, before reading', async () => {
-      const response = answer('x', {
+      let pulled = 0;
+      let cancelled = false;
+      const body = new ReadableStream<Uint8Array>(
+        {
+          pull(controller) {
+            pulled++;
+            controller.enqueue(new Uint8Array(1));
+          },
+          cancel() {
+            cancelled = true;
+          },
+        },
+        { highWaterMark: 0 },
+      );
+      const response = answer(body, {
         headers: { 'content-type': 'text/plain', 'content-length': '5000' },
       });
       await expect(
@@ -283,7 +318,8 @@ describe('fetching the file', () => {
         problem: 'too-large',
         message: 'That file is larger than 4 KB, too much for a keymap.',
       });
-      expect(response.bodyUsed).toBe(false);
+      expect(pulled).toBe(0);
+      expect(cancelled).toBe(true);
     });
 
     it('stops reading a stream of no declared length once it is over the cap', async () => {
@@ -336,6 +372,82 @@ describe('fetching the file', () => {
       await expect(
         fetchKeymapText(FILE, { fetch: serving(() => answer('  \n')) }),
       ).rejects.toMatchObject({ problem: 'blank', message: 'That file is empty.' });
+    });
+  });
+
+  describe('what it reads as a chosen file is read', () => {
+    it('gives a character that is not UTF-8 as a replacement, as File.text() does, and not as a refusal', async () => {
+      const bytes = new Uint8Array([...new TextEncoder().encode('t: "'), 0xe3, 0x6f, 0x22]);
+      const file = await fetchKeymapText(FILE, { fetch: serving(() => answer(bytes)) });
+      // The same decoding a chosen file gets (`Blob.text()` is the UTF-8 decode, without a refusal).
+      expect(file.text).toBe(await new Response(bytes).text());
+      expect(file.text).toBe('t: "\uFFFDo"');
+    });
+
+    it('refuses what has a NUL in it, which no text has', async () => {
+      const get = serving(() => answer(new Uint8Array([0x61, 0x00, 0x62])));
+      await expect(fetchKeymapText(FILE, { fetch: get })).rejects.toMatchObject({
+        problem: 'not-text',
+      });
+    });
+
+    it('joins a character split across the pieces of a stream', async () => {
+      // ▽ is E2 96 BD: the pieces end after the first byte.
+      const pieces = [
+        [0x74, 0x3a, 0xe2],
+        [0x96, 0xbd, 0x0a],
+      ];
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const piece of pieces) controller.enqueue(new Uint8Array(piece));
+          controller.close();
+        },
+      });
+      const file = await fetchKeymapText(FILE, { fetch: serving(() => answer(body)) });
+      expect(file.text).toBe('t:▽\n');
+    });
+
+    it('reads a body without a stream, within the same cap', async () => {
+      const noStream = (text: string) => {
+        const response = answer(text);
+        Object.defineProperty(response, 'body', { value: null });
+        return response;
+      };
+      const file = await fetchKeymapText(FILE, {
+        fetch: serving(() => noStream('layers: {}')),
+        maxBytes: 4096,
+      });
+      expect(file.text).toBe('layers: {}');
+      await expect(
+        fetchKeymapText(FILE, { fetch: serving(() => noStream('x'.repeat(5000))), maxBytes: 4096 }),
+      ).rejects.toMatchObject({ problem: 'too-large' });
+    });
+  });
+
+  describe('when a redirect has led somewhere else', () => {
+    const redirected = (to: string) => {
+      const response = answer('layers: {}');
+      Object.defineProperty(response, 'url', { value: to });
+      return response;
+    };
+
+    it('refuses an answer from another host, where no policy stops it', async () => {
+      const response = redirected('https://example.com/board.yaml');
+      const cancel = vi.spyOn(response.body as ReadableStream, 'cancel');
+      await expect(fetchKeymapText(FILE, { fetch: serving(() => response) })).rejects.toMatchObject(
+        {
+          problem: 'host',
+          message: expect.stringMatching(
+            /^That address leads to another host.*Paste the file's text/,
+          ),
+        },
+      );
+      expect(cancel).toHaveBeenCalled();
+    });
+
+    it('takes one that stays on the host', async () => {
+      const get = serving(() => redirected(`${RAW_ORIGIN}/someone/zmk-config/other/board.yaml`));
+      expect((await fetchKeymapText(FILE, { fetch: get })).text).toBe('layers: {}');
     });
   });
 
