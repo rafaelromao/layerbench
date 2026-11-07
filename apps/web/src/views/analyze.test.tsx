@@ -213,6 +213,8 @@ describe('Analyze', () => {
       (b) => b.getAttribute('aria-haspopup') === 'dialog' && /→A2$/.test(b.textContent ?? ''),
     );
     expect(ending, 'a listed pair that ends on a layer key').toBeDefined();
+    // Its tooltip names the keys the label's letters came from, the last the thumb for Alpha 2.
+    expect(ending?.getAttribute('title')).toMatch(/\n.+ → R0 \(A2 \/ Symb\)$/);
     expect(
       rows
         .filter((b) => /^→A2[^→]/.test(b.textContent ?? ''))

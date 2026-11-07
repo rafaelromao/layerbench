@@ -4,7 +4,14 @@ import { type KeyNumberRow, keyNumbers } from '../engine/key-numbers.js';
 import type { KeyStatsDTO, ReportDTO } from '../engine/protocol.js';
 import { HELP } from '../guide/help.js';
 import { Collapsible } from './Collapsible.js';
-import { formatItem, formatPart, formatValue, qualityBorder, shortLabel } from './format.js';
+import {
+  describeKeys,
+  formatItem,
+  formatPart,
+  formatValue,
+  qualityBorder,
+  shortLabel,
+} from './format.js';
 import { HelpLink } from './HelpLink.js';
 import { KEY_STATS_IDS } from './Metrics.js';
 import { PressedFor, reachedLayer } from './PairBreakdown.js';
@@ -38,8 +45,11 @@ export function KeyStats({
   stats,
   updating,
   onSelectItem,
+  typed = compiled,
 }: {
   compiled: CompiledLayout;
+  /** The layout the lists were counted on: `compiled` less the features switched off. */
+  typed?: CompiledLayout;
   report: ReportDTO;
   keyId: string;
   layer: number;
@@ -135,6 +145,7 @@ export function KeyStats({
                   {open === result.id && list && (
                     <KeyItems
                       label={`${result.label} through ${keyId} on ${layerName}`}
+                      compiled={typed}
                       items={list.items}
                       busy={updating}
                       onSelect={(item) => onSelectItem?.({ ruleId: result.id, item })}
@@ -199,11 +210,13 @@ export function KeyStats({
 
 function KeyItems({
   label,
+  compiled,
   items,
   busy,
   onSelect,
 }: {
   label: string;
+  compiled: CompiledLayout;
   items: RuleItem[];
   busy: boolean;
   onSelect: (item: RuleItem) => void;
@@ -219,6 +232,7 @@ function KeyItems({
             <button
               type="button"
               className="font-mono text-left flex-1 truncate hover:underline"
+              title={describeKeys(compiled, item) ?? undefined}
               // A pair ending on a layer key opens what that key was pressed for.
               aria-haspopup={item.then?.length ? 'dialog' : undefined}
               onClick={() => onSelect(item)}

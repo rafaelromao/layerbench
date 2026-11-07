@@ -189,6 +189,12 @@ symbols are those a symbol layer carries and those the bundled texts use. Curly 
 `„ ‚` among them, dashes and the ellipsis count as their plain forms, and a language's own
 punctuation, Spanish `¿ ¡` say, is kept in any count.
 
+With **Space** on, a layout whose Repeat key and space bar are on one thumb lists pairs such as
+`l␣` among its SFB: a doubled letter typed by the Repeat key, then the space, is one thumb on two
+keys, and the thumbs count. A row is named for what its presses typed, so it says `l`, not Repeat.
+Point at the row, or enlarge the card, to see the keys: *L1 (Repeat) → L0 (space / Numb) · same
+finger, LT*. A key's numbers name them the same way when a row is pointed at.
+
 ### The text itself
 
 **Corpus** lists the texts that come with the app, each with where it came from, and opens on

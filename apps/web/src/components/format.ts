@@ -1,4 +1,5 @@
-import type { BandResult, RuleItem, Unit } from '@layerbench/core';
+import type { BandResult, CompiledLayout, RuleItem, Unit } from '@layerbench/core';
+import { legend, legendText } from '@layerbench/core';
 
 /** Numbers are read side by side down a column, so every unit has one fixed shape. */
 export function formatValue(value: number | null | undefined, unit: Unit): string {
@@ -40,6 +41,43 @@ export function formatItem(item: RuleItem): string {
   }
   if (item.count !== undefined) return item.count.toFixed(0);
   return '';
+}
+
+/**
+ * A key as a sentence names it: its id and what it does, as "L1 (Repeat)". A combo is named by the
+ * keys pressed together, as the board's combo button is, not by the id it is stored under.
+ */
+function keyName(compiled: CompiledLayout, pos: number, layer: number): string {
+  const combo = compiled.combos.find((c) => c.pos === pos);
+  const id = combo
+    ? combo.keys.map((k) => compiled.positions[k]?.id ?? String(k)).join('+')
+    : (compiled.positions[pos]?.id ?? String(pos));
+  const binding = combo?.binding ?? compiled.layers[layer]?.bindings[pos];
+  if (!binding) return id;
+  const what = legendText({ ...legend(compiled, binding), badge: null })
+    .replace(/⟳/g, 'Repeat')
+    .replace(/␣/g, 'space');
+  const on = layer === 0 ? '' : ` on ${compiled.layers[layer]?.name ?? layer}`;
+  return what ? `${id} (${what})${on}` : `${id}${on}`;
+}
+
+/**
+ * The keys of a pair, trigram or other run, by name. An item's label is what its presses typed, so
+ * a doubled letter typed by the Repeat key reads as the letter and not as the key that pressed it;
+ * this says which keys they were. Null where there is less than a run: one key is its own label.
+ */
+export function describeKeys(compiled: CompiledLayout, item: RuleItem): string | null {
+  if (item.keys.length < 2) return null;
+  const names = item.keys.map((k, i) => keyName(compiled, k, item.layers?.[i] ?? 0));
+  // The finger every key shares, as the rules read it: a chord shares any of its fingers. The one
+  // key twice is not a pair of two keys: the rules call that a repeat.
+  const shared =
+    new Set(item.keys).size > 1
+      ? item.keys
+          .map((k) => compiled.positions[k]?.fingers ?? [])
+          .reduce((a, b) => a.filter((f) => b.includes(f)))
+      : [];
+  return `${names.join(' → ')}${shared.length > 0 ? ` · same finger, ${shared.join('/')}` : ''}`;
 }
 
 export function qualityBorder(band: BandResult): string {
