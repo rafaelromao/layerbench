@@ -82,7 +82,7 @@ export function SummaryStrip({
                 type="button"
                 title={r.note ?? r.label}
                 onClick={() => onSelect(id)}
-                className={`${look} transition hover:border-primary`}
+                className={`${look} transition hover:border-[var(--lb-ring)]`}
               >
                 {body}
               </button>

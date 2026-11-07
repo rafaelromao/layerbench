@@ -160,7 +160,7 @@ export function LayerNav({
           <button
             ref={name}
             type="button"
-            className={`${nameClass} cursor-text rounded px-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary`}
+            className={`${nameClass} cursor-text rounded px-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--lb-ring)]`}
             style={nameStyle}
             title="Double-click or press F2 to rename"
             // Enter and Space reach here with no pointer (detail 0): they are the keyboard's way in.

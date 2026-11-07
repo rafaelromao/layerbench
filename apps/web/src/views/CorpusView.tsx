@@ -72,7 +72,7 @@ function CorpusList({
           >
             <span className="flex flex-col items-start">
               <span className="text-sm">{c.name}</span>
-              <span className="text-[11px] opacity-60">
+              <span className="text-[11px] opacity-70">
                 {c.language} · {c.words.toLocaleString('en-US')} words
               </span>
             </span>
