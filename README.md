@@ -19,8 +19,8 @@ Every layout is shown and ranked by two numbers: **Effort**, cyanophage's measur
 keys are to reach, with thumb presses charged too, and **SFB**, how often one finger presses two
 keys in a row.
 
-Everything runs in the browser, and no account is needed. Nothing leaves the page unless you sign
-in with GitHub to keep your work in your own account.
+Everything runs in the browser, and no account is needed. None of your work leaves the page unless
+you sign in with GitHub to keep it in your own account.
 
 ## Structure
 
@@ -262,8 +262,9 @@ written by `vite.config.ts`, a check at the top of `main.tsx` stands in for `fra
 meta tag sets the referrer policy; `Cross-Origin-Opener-Policy` and `X-Content-Type-Options` have no
 stand-in. The policy's `connect-src` lets the page talk to its own origin, `api.github.com` and the
 sign-in Worker, so the token and the session in the page cannot be sent anywhere but there, and to
-the branch's `community/` folder on `raw.githubusercontent.com`, which the community layouts are
-read from.
+`raw.githubusercontent.com`, GitHub's file server for the files it gives an address, which the
+community layouts are read from and Import fetches a keymap-drawer file from by its address
+(`RAW_ORIGIN` in `src/import/keymap-url.ts`, which the policy reads).
 
 ### Publishing the app
 

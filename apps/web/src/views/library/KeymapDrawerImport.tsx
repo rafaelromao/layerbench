@@ -17,8 +17,9 @@ import {
   type ResolvedBoard,
   readKeymapDrawer,
 } from '@layerbench/core';
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { PreviewBoard } from '../../components/PreviewBoard.js';
+import { fetchKeymapText } from '../../import/keymap-url.js';
 import { TextField } from '../edit/inspector/controls.js';
 
 interface LayerChoice {
@@ -64,10 +65,19 @@ function resolveBoard(
 /**
  * Import a keymap-drawer YAML file: its layers, onto the board it describes — or, when it only
  * names a keyboard, onto a board the reader picks or a QMK `info.json` they have. Every layer can
- * be left out, renamed and put in another order before anything is saved.
+ * be left out, renamed and put in another order before anything is saved. The file is pasted,
+ * chosen, or fetched from an address; each ends as the text below, read the same way.
  */
 export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) => void }) {
   const [text, setText] = useState('');
+  const [address, setAddress] = useState('');
+  const [fetching, setFetching] = useState(false);
+  const [addressError, setAddressError] = useState<string | null>(null);
+  /** Where the text came from, while it is still what was fetched from there. */
+  const [source, setSource] = useState<string | null>(null);
+  const request = useRef<AbortController | null>(null);
+  const addressBox = useRef<HTMLInputElement>(null);
+  const cancelButton = useRef<HTMLButtonElement>(null);
   const [doc, setDoc] = useState<KdDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [choices, setChoices] = useState<LayerChoice[]>([]);
@@ -78,6 +88,8 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
   const [shown, setShown] = useState(0);
   const fileId = useId();
   const infoId = useId();
+  const hintId = useId();
+  const errorId = useId();
 
   useEffect(() => {
     if (text.trim() === '') {
@@ -101,6 +113,60 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
     }, 300);
     return () => clearTimeout(timer);
   }, [text]);
+
+  // A request still out when the Library is left has nowhere to put its answer. Closing the dialog
+  // does not stop one: this stays mounted, and the file is in the box when it is opened again.
+  useEffect(() => () => request.current?.abort(), []);
+
+  /** Stop a request still out, if there is one; nothing is said of it. */
+  const stop = () => {
+    request.current?.abort();
+    setFetching(false);
+  };
+
+  /**
+   * Text the reader typed, pasted or chose is no longer what an address gave, and wins over a
+   * request still out, whose answer would otherwise replace it.
+   */
+  const enter = (next: string) => {
+    stop();
+    setAddressError(null);
+    setText(next);
+    setSource(null);
+  };
+
+  /** A host that does not answer is waited for up to the timeout; this is the way out sooner. */
+  const cancel = () => {
+    stop();
+    addressBox.current?.focus();
+  };
+
+  /** Ask for the file at the address; only a file that comes back replaces the text. */
+  const fetchAddress = async () => {
+    const controller = new AbortController();
+    request.current = controller;
+    setFetching(true);
+    setAddressError(null);
+    try {
+      const file = await fetchKeymapText(address, { signal: controller.signal });
+      // Stopped meanwhile, by what the reader entered: that is what is in the box.
+      if (controller.signal.aborted) return;
+      setText(file.text);
+      setSource(file.source);
+    } catch (e) {
+      // Stopped by what the reader entered, Cancel, a newer request or leaving the Library:
+      // nothing to say.
+      if (controller.signal.aborted) return;
+      setAddressError(message(e));
+    } finally {
+      if (request.current === controller) {
+        request.current = null;
+        // The button the keyboard is on goes with the request: the field takes its place.
+        if (document.activeElement === cancelButton.current) addressBox.current?.focus();
+        setFetching(false);
+      }
+    }
+  };
 
   const resolved = useMemo(
     () => (doc ? resolveBoard(doc, name, preset, info) : null),
@@ -165,7 +231,7 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
             'layout: {cols_thumbs_notation: 33333+2 2+33333}\nlayers:\n  Base:\n  - [Q, W, E, R, T, Y, U, I, O, P]\n  …'
           }
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => enter(e.target.value)}
         />
         <div className="flex flex-col gap-2">
           <label htmlFor={fileId} className="btn btn-sm">
@@ -178,16 +244,87 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
             className="sr-only"
             onChange={async (e) => {
               const file = e.target.files?.[0];
-              if (file) setText(await file.text());
+              if (file) enter(await file.text());
               e.target.value = '';
             }}
           />
           <p className="text-[11px] opacity-60 max-w-56">
-            Written by <span className="font-mono">keymap parse</span> or by hand. Nothing is
-            fetched: the board comes from the file, or from you.
+            Written by <span className="font-mono">keymap parse</span> or by hand. The board comes
+            from the file, or from you.
           </p>
         </div>
       </div>
+
+      <form
+        className="space-y-1"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!fetching) void fetchAddress();
+        }}
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="text"
+            inputMode="url"
+            spellCheck={false}
+            autoCapitalize="none"
+            autoCorrect="off"
+            autoComplete="off"
+            aria-label="Address of the file on GitHub"
+            aria-describedby={addressError ? `${hintId} ${errorId}` : hintId}
+            aria-invalid={addressError ? true : undefined}
+            className="input input-sm input-bordered min-w-0 flex-1 basis-64 font-mono text-xs"
+            placeholder="https://github.com/you/zmk-config/blob/main/keymap-drawer/board.yaml"
+            ref={addressBox}
+            value={address}
+            onChange={(e) => {
+              setAddress(e.target.value);
+              // What failed was the address as it was.
+              setAddressError(null);
+            }}
+          />
+          {/* Not `disabled` while fetching: a button that is pressed and then disabled drops the
+              keyboard's place in the dialog. */}
+          <button
+            type="submit"
+            className={`btn btn-sm max-sm:w-full${fetching ? ' btn-disabled' : ''}`}
+            aria-disabled={fetching ? true : undefined}
+            disabled={address.trim() === ''}
+          >
+            {fetching ? 'Fetching…' : 'Fetch'}
+          </button>
+          {fetching && (
+            <button
+              ref={cancelButton}
+              type="button"
+              className="btn btn-sm btn-ghost max-sm:w-full"
+              onClick={cancel}
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+        <p id={hintId} className="text-[11px] opacity-60">
+          Or the address of the file on GitHub: its page, or its Raw link. Nothing is fetched until
+          you press Fetch or Enter.
+        </p>
+        {/* Always there, so that what is put in it is announced: that the file is coming, and
+            where the text in the box came from once it has. A failure is the alert below. */}
+        <p role="status" className="text-xs opacity-70 empty:sr-only">
+          {fetching ? (
+            'Fetching the file…'
+          ) : source ? (
+            <>
+              Read from <span className="font-mono break-all">{source}</span>.
+            </>
+          ) : null}
+        </p>
+        {addressError && (
+          <p id={errorId} role="alert" className="text-error text-xs">
+            {addressError}
+          </p>
+        )}
+      </form>
 
       {error && <p className="text-error text-xs">{error}</p>}
 

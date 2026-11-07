@@ -2,8 +2,8 @@
 
 LayerBench types a text on your keymap the way your keyboard's firmware would, and measures how
 comfortable that typing is. Layers, one-shots, tap-holds, adaptive and repeat keys are all part of it.
-Everything runs in your browser, and nothing leaves it unless you sign in with GitHub to keep your
-work in your own account.
+Everything runs in your browser, and none of your work leaves it unless you sign in with GitHub to
+keep it in your own account.
 
 1. **Pick a layout.** The site opens on **Library**, first ranked by Effort; choose one, or bring
    your own from a [keymap-drawer file](importing.md).
@@ -44,9 +44,10 @@ shows how each is drawn on the board and made in the editor.
 
 ## Importing and exporting
 
-A [keymap-drawer](https://github.com/caksoylar/keymap-drawer) YAML file brings a whole keymap in,
-and you choose which of its layers to take. The editor writes one back out, as well as
-LayerBench's own JSON. See [Importing and exporting](importing.md).
+A [keymap-drawer](https://github.com/caksoylar/keymap-drawer) YAML file, pasted, chosen or fetched
+from its GitHub address, brings a whole keymap in, and you choose which of its layers to take. The
+editor writes one back out, as well as LayerBench's own JSON. See
+[Importing and exporting](importing.md).
 
 ## Keeping and sharing your work
 
