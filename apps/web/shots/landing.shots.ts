@@ -97,10 +97,13 @@ test.describe('at a desk', () => {
     await expect(page.getByText('Same finger bigrams').first()).toBeVisible({ timeout: 120_000 });
     // The Heat row sits right under the navigator: a narrower margin keeps its picker out of the shot.
     await shootAround(page, 'analyze-board', board(page, 'kb-analyze'), 8);
-    await page.getByLabel('Summary metrics').screenshot({
-      path: file('analyze-summary'),
-      animations: 'disabled',
+    // The summary spans the page, a strip too thin to read where the landing page sets it, beside
+    // the board: shot at the width that block has there, so its cards wrap as a block.
+    const summary = page.getByLabel('Summary metrics');
+    await summary.evaluate((el) => {
+      el.style.maxWidth = '630px';
     });
+    await summary.screenshot({ path: file('analyze-summary'), animations: 'disabled' });
   });
 
   test('trace: a word typed press by press', async ({ page }) => {
