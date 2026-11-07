@@ -70,11 +70,27 @@ interface Props {
 /** Deeper than any keymap nests; a recursive reader must stop before the stack does. */
 const MAX_DEPTH = 64;
 
+/**
+ * How many nodes the aliases of a file may expand to, all together. An alias hands back the shared
+ * anchored node, so reading stays instant however it nests, but whoever walks the result (the
+ * keymap-drawer reader turns a stray list into text) meets every copy: a list of ten `*a<n-1>` at
+ * each of n levels is 450 bytes and 10^n nodes. Measured on 2026-11-07 through `readKeymapDrawer`:
+ * 8 levels of it took 0.66 s and 9 levels 7 s, and a file of 343 bytes just under this limit
+ * 13 ms. A file at the key limit (`MAX_KEYS`, 10 000) with every legend of every key written out is
+ * some 110 000 nodes, and a shared row of 100 keys aliased 200 times is 20 000, so this is about
+ * ten times the first: no real file meets it, and a file that comes near costs the reader tens of ms.
+ */
+export const MAX_EXPANDED = 1_000_000;
+
 class Reader {
   private readonly s: string;
   private i = 0;
   private depth = 0;
   private readonly anchors = new Map<string, unknown>();
+  /** The nodes the aliases read so far stand for, counted as `MAX_EXPANDED` bounds them. */
+  private expanded = 0;
+  /** What `weight` found, so a node shared by many aliases is weighed once. */
+  private readonly weights = new WeakMap<object, number>();
 
   constructor(source: string) {
     this.s = source.replace(/^﻿/, '').replace(/\r\n?/g, '\n');
@@ -547,7 +563,30 @@ class Reader {
     while (this.i < this.s.length && !/[\s,[\]{}]/.test(this.peek())) this.i++;
     const name = this.s.slice(start, this.i);
     if (!this.anchors.has(name)) this.fail(`unknown alias *${name}`, at);
-    return this.anchors.get(name);
+    const value = this.anchors.get(name);
+    this.expanded += this.weight(value);
+    if (this.expanded > MAX_EXPANDED) {
+      this.fail(`aliases expand to more than ${MAX_EXPANDED} nodes; shorten the nesting`, at);
+    }
+    return value;
+  }
+
+  /**
+   * The nodes a value is once its aliases are written out: itself and everything under it. An
+   * anchored node is complete before an alias can reach it, and the aliases inside it were weighed
+   * when they were read, so only nodes read as such are walked here, which nest at most `MAX_DEPTH`
+   * deep, and each of them once.
+   */
+  private weight(value: unknown): number {
+    if (typeof value !== 'object' || value === null) return 1;
+    const known = this.weights.get(value);
+    if (known !== undefined) return known;
+    let total = 1;
+    for (const child of Array.isArray(value) ? value : Object.values(value)) {
+      total += this.weight(child);
+    }
+    this.weights.set(value, total);
+    return total;
   }
 
   /** A line break inside a quoted scalar folds to a space; blank lines keep their breaks. */
