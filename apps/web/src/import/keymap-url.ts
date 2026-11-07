@@ -152,7 +152,7 @@ function statusError(res: Response): KeymapUrlError {
   if (res.status === 404) {
     return new KeymapUrlError(
       'status',
-      'No file at that address (404). Check the repository, the branch and the path.',
+      'No file at that address (404). Check the repository, the branch and the path. GitHub also answers 404 for a file in a private repository.',
     );
   }
   if (res.status === 429) {

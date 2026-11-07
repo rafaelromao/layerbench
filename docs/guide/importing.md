@@ -39,9 +39,10 @@ browser. What you paste or choose is not sent anywhere.
 A failure is said under the address and leaves the box as it was: an address that is not one, a
 file that is not there (404), a server that answers with an error or asks you to wait, one that is
 too slow, a file over 1 MB, a web page or other file that is not text. A file that is text but not
-a keymap-drawer file is said in the box's own words, as when pasted. Whatever you type or paste
-while a file is coming wins: the file is then dropped. The file is only ever read as text, to be
-read as a keymap: nothing in it is run or followed.
+a keymap-drawer file is said in the box's own words, as when pasted. A file that is slow to come
+can be stopped with **Cancel**, and whatever you type or paste while it is coming wins: the file is
+then dropped. The file is only ever read as text, to be read as a keymap: nothing in it is run or
+followed.
 
 ## The board
 

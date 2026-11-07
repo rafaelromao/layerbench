@@ -76,6 +76,7 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
   /** Where the text came from, while it is still what was fetched from there. */
   const [source, setSource] = useState<string | null>(null);
   const request = useRef<AbortController | null>(null);
+  const addressBox = useRef<HTMLInputElement>(null);
   const [doc, setDoc] = useState<KdDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [choices, setChoices] = useState<LayerChoice[]>([]);
@@ -116,17 +117,28 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
   // does not stop one: this stays mounted, and the file is in the box when it is opened again.
   useEffect(() => () => request.current?.abort(), []);
 
+  /** Stop a request still out, if there is one; nothing is said of it. */
+  const stop = () => {
+    request.current?.abort();
+    request.current = null;
+    setFetching(false);
+  };
+
   /**
    * Text the reader typed, pasted or chose is no longer what an address gave, and wins over a
    * request still out, whose answer would otherwise replace it.
    */
   const enter = (next: string) => {
-    request.current?.abort();
-    request.current = null;
-    setFetching(false);
+    stop();
     setAddressError(null);
     setText(next);
     setSource(null);
+  };
+
+  /** A host that does not answer is waited for up to the timeout; this is the way out sooner. */
+  const cancel = () => {
+    stop();
+    addressBox.current?.focus();
   };
 
   /** Ask for the file at the address; only a file that comes back replaces the text. */
@@ -143,7 +155,8 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
       setText(file.text);
       setSource(file.source);
     } catch (e) {
-      // Stopped by what the reader entered, a newer request or leaving the Library: nothing to say.
+      // Stopped by what the reader entered, Cancel, a newer request or leaving the Library:
+      // nothing to say.
       if (controller.signal.aborted) return;
       setAddressError(e instanceof KeymapUrlError ? e.message : message(e));
     } finally {
@@ -261,8 +274,13 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
             aria-invalid={addressError ? true : undefined}
             className="input input-sm input-bordered min-w-0 flex-1 basis-64 font-mono text-xs"
             placeholder="https://github.com/you/zmk-config/blob/main/keymap-drawer/board.yaml"
+            ref={addressBox}
             value={address}
-            onChange={(e) => setAddress(e.target.value)}
+            onChange={(e) => {
+              setAddress(e.target.value);
+              // What failed was the address as it was.
+              setAddressError(null);
+            }}
           />
           {/* Not `disabled` while fetching: a button that is pressed and then disabled drops the
               keyboard's place in the dialog. */}
@@ -274,6 +292,11 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
           >
             {fetching ? 'Fetching…' : 'Fetch'}
           </button>
+          {fetching && (
+            <button type="button" className="btn btn-sm btn-ghost max-sm:w-full" onClick={cancel}>
+              Cancel
+            </button>
+          )}
         </div>
         <p id={hintId} className="text-[11px] opacity-60">
           Or the address of the file on GitHub: its page, or its Raw link. Nothing is fetched until

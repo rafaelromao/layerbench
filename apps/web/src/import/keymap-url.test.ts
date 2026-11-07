@@ -186,7 +186,8 @@ describe('fetching the file', () => {
       const get = serving(() => answer('404: Not Found', { status: 404, statusText: 'Not Found' }));
       await expect(fetchKeymapText(FILE, { fetch: get })).rejects.toMatchObject({
         problem: 'status',
-        message: 'No file at that address (404). Check the repository, the branch and the path.',
+        message:
+          'No file at that address (404). Check the repository, the branch and the path. GitHub also answers 404 for a file in a private repository.',
       });
     });
 

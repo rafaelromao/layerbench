@@ -1,5 +1,5 @@
 import type { Layout } from '@layerbench/core';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { KeymapDrawerImport } from './KeymapDrawerImport.js';
@@ -44,6 +44,41 @@ function serving(reply: () => Response | Promise<Response>) {
 
 const plain = (body: string, init: ResponseInit = {}) =>
   new Response(body, { status: 200, headers: { 'content-type': 'text/plain' }, ...init });
+
+/** One request, held out until the test settles it. */
+interface Held {
+  signal: AbortSignal;
+  resolve: (response: Response) => void;
+  reject: (reason: unknown) => void;
+}
+
+/**
+ * A fetch that keeps every request out, and lists them. With `abortRejects`, as a browser's does, a
+ * request whose signal aborts rejects with `AbortError` at once; without, it is left to the test,
+ * as one that is slow to unwind is.
+ */
+function holding(abortRejects: boolean): Held[] {
+  const held: Held[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn<typeof fetch>(
+      (_url, init) =>
+        new Promise<Response>((resolve, reject) => {
+          const signal = init?.signal as AbortSignal;
+          if (abortRejects) {
+            signal.addEventListener('abort', () =>
+              reject(new DOMException('The operation was aborted.', 'AbortError')),
+            );
+          }
+          held.push({ signal, resolve, reject });
+        }),
+    ),
+  );
+  return held;
+}
+
+/** Let what is settled run: the promises, then a turn of the event loop. */
+const settle = () => act(() => new Promise<void>((done) => setTimeout(done, 0)));
 
 const yamlBox = () => screen.getByLabelText<HTMLTextAreaElement>('keymap-drawer YAML');
 const addressBox = () => screen.getByLabelText('Address of the file on GitHub');
@@ -334,6 +369,85 @@ describe('Importing a keymap-drawer file by its address', () => {
     expect(addressBox()).toHaveAccessibleDescription(
       /^Or the address of the file on GitHub.*No file at that address/,
     );
+  });
+
+  it('says nothing of a request that the reader stopped by pasting, when the browser rejects it', async () => {
+    const user = userEvent.setup();
+    const held = holding(true);
+    render(<KeymapDrawerImport onImport={vi.fn()} />);
+    await fetchFrom(user, RAW);
+    await user.click(yamlBox());
+    await user.paste('layers: [a, b');
+    await settle();
+
+    // The request was rejected with AbortError; that is not a failure to report.
+    expect(held[0].signal.aborted).toBe(true);
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(addressBox()).not.toHaveAttribute('aria-invalid');
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    expect(fetchButton()).toBeEnabled();
+    expect(fetchButton()).not.toHaveAttribute('aria-disabled');
+    expect(yamlBox().value).toBe('layers: [a, b');
+  });
+
+  it('leaves a newer request alone when an older one it stopped settles late', async () => {
+    const user = userEvent.setup();
+    const held = holding(false);
+    render(<KeymapDrawerImport onImport={vi.fn()} />);
+    await fetchFrom(user, RAW);
+    await user.click(yamlBox());
+    await user.paste('layers: [a, b');
+    // The first request is stopped but has not unwound; the reader asks again.
+    expect(held[0].signal.aborted).toBe(true);
+    await user.click(fetchButton());
+    expect(held).toHaveLength(2);
+    expect(screen.getByRole('status')).toHaveTextContent('Fetching the file…');
+
+    held[0].reject(new DOMException('The operation was aborted.', 'AbortError'));
+    await settle();
+    // Its settling changes nothing: the second request is still out, and still stoppable.
+    expect(screen.getByRole('status')).toHaveTextContent('Fetching the file…');
+    expect(fetchButton()).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.queryByRole('alert')).toBeNull();
+    await user.click(yamlBox());
+    await user.paste('x: 1');
+    expect(held[1].signal.aborted).toBe(true);
+  });
+
+  it('lets a slow fetch be cancelled, says nothing of it and gives the field back', async () => {
+    const user = userEvent.setup();
+    const held = holding(true);
+    render(<KeymapDrawerImport onImport={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull();
+    await fetchFrom(user, RAW);
+    expect(screen.getByRole('status')).toHaveTextContent('Fetching the file…');
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await settle();
+    expect(held[0].signal.aborted).toBe(true);
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull();
+    expect(fetchButton()).toBeEnabled();
+    // The button the keyboard was on is gone; the field takes it.
+    expect(addressBox()).toHaveFocus();
+    expect(yamlBox().value).toBe('');
+    // And the reader may ask again.
+    await user.click(fetchButton());
+    expect(held).toHaveLength(2);
+  });
+
+  it('forgets a failure when the address it was for is edited', async () => {
+    const user = userEvent.setup();
+    serving(() => plain('', { status: 404 }));
+    render(<KeymapDrawerImport onImport={vi.fn()} />);
+    await fetchFrom(user, RAW);
+    await screen.findByRole('alert');
+
+    await user.type(addressBox(), 'x');
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(addressBox()).not.toHaveAttribute('aria-invalid');
+    expect(addressBox()).toHaveAccessibleDescription(/^Or the address of the file on GitHub/);
   });
 
   it('does not share the name of the box for the file, which a substring query would find twice', () => {
