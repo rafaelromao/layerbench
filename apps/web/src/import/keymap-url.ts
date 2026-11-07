@@ -12,7 +12,7 @@
  */
 
 /**
- * GitHub's file server, for files of public repositories. It answers with
+ * GitHub's file server, for the files GitHub serves by their address. It answers with
  * `access-control-allow-origin: *`, so a page on any origin may read what it serves.
  */
 export const RAW_ORIGIN = 'https://raw.githubusercontent.com';
@@ -260,7 +260,7 @@ export async function fetchKeymapText(
     if (signal?.aborted) throw e;
     throw new KeymapUrlError(
       'network',
-      `The browser could not fetch the file: the address may be wrong, you may be offline, or the host may not let other sites read its files (a CORS refusal, which a page cannot tell apart from the rest). ${PASTE_INSTEAD}`,
+      `The browser could not fetch the file: you may be offline, GitHub may not be answering, or the request may have been refused by a security policy or by CORS, which a page cannot tell apart. ${PASTE_INSTEAD}`,
     );
   } finally {
     clearTimeout(timer);

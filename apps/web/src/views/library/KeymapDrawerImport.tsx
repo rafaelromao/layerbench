@@ -19,7 +19,7 @@ import {
 } from '@layerbench/core';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { PreviewBoard } from '../../components/PreviewBoard.js';
-import { fetchKeymapText, KeymapUrlError } from '../../import/keymap-url.js';
+import { fetchKeymapText } from '../../import/keymap-url.js';
 import { TextField } from '../edit/inspector/controls.js';
 
 interface LayerChoice {
@@ -77,6 +77,7 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
   const [source, setSource] = useState<string | null>(null);
   const request = useRef<AbortController | null>(null);
   const addressBox = useRef<HTMLInputElement>(null);
+  const cancelButton = useRef<HTMLButtonElement>(null);
   const [doc, setDoc] = useState<KdDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [choices, setChoices] = useState<LayerChoice[]>([]);
@@ -120,7 +121,6 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
   /** Stop a request still out, if there is one; nothing is said of it. */
   const stop = () => {
     request.current?.abort();
-    request.current = null;
     setFetching(false);
   };
 
@@ -143,7 +143,6 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
 
   /** Ask for the file at the address; only a file that comes back replaces the text. */
   const fetchAddress = async () => {
-    request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
     setFetching(true);
@@ -158,10 +157,12 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
       // Stopped by what the reader entered, Cancel, a newer request or leaving the Library:
       // nothing to say.
       if (controller.signal.aborted) return;
-      setAddressError(e instanceof KeymapUrlError ? e.message : message(e));
+      setAddressError(message(e));
     } finally {
       if (request.current === controller) {
         request.current = null;
+        // The button the keyboard is on goes with the request: the field takes its place.
+        if (document.activeElement === cancelButton.current) addressBox.current?.focus();
         setFetching(false);
       }
     }
@@ -293,7 +294,12 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
             {fetching ? 'Fetching…' : 'Fetch'}
           </button>
           {fetching && (
-            <button type="button" className="btn btn-sm btn-ghost max-sm:w-full" onClick={cancel}>
+            <button
+              ref={cancelButton}
+              type="button"
+              className="btn btn-sm btn-ghost max-sm:w-full"
+              onClick={cancel}
+            >
               Cancel
             </button>
           )}

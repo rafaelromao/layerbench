@@ -362,7 +362,7 @@ describe('fetching the file', () => {
       });
     });
 
-    it('says bytes that are not UTF-8 are not text', async () => {
+    it('says a binary file, with the NUL bytes of one, is not text', async () => {
       const get = serving(() => answer(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0xff, 0xfe, 0x00])));
       await expect(fetchKeymapText(FILE, { fetch: get })).rejects.toMatchObject({
         problem: 'not-text',
@@ -383,13 +383,6 @@ describe('fetching the file', () => {
       // The same decoding a chosen file gets (`Blob.text()` is the UTF-8 decode, without a refusal).
       expect(file.text).toBe(await new Response(bytes).text());
       expect(file.text).toBe('t: "\uFFFDo"');
-    });
-
-    it('refuses what has a NUL in it, which no text has', async () => {
-      const get = serving(() => answer(new Uint8Array([0x61, 0x00, 0x62])));
-      await expect(fetchKeymapText(FILE, { fetch: get })).rejects.toMatchObject({
-        problem: 'not-text',
-      });
     });
 
     it('joins a character split across the pieces of a stream', async () => {
@@ -450,6 +443,27 @@ describe('fetching the file', () => {
       const get = serving(() => redirected(`${RAW_ORIGIN}/someone/zmk-config/other/board.yaml`));
       expect((await fetchKeymapText(FILE, { fetch: get })).text).toBe('layers: {}');
     });
+  });
+
+  it('leaves no timer and no listener behind, whether the file came or not', async () => {
+    vi.useFakeTimers();
+    try {
+      const signal = new AbortController().signal;
+      const remove = vi.spyOn(signal, 'removeEventListener');
+      await fetchKeymapText(FILE, { fetch: serving(() => answer('layers: {}')), signal });
+      expect(vi.getTimerCount()).toBe(0);
+      expect(remove).toHaveBeenCalledWith('abort', expect.any(Function));
+
+      remove.mockClear();
+      const failing = serving(() => answer('', { status: 404 }));
+      await expect(fetchKeymapText(FILE, { fetch: failing, signal })).rejects.toBeInstanceOf(
+        KeymapUrlError,
+      );
+      expect(vi.getTimerCount()).toBe(0);
+      expect(remove).toHaveBeenCalledWith('abort', expect.any(Function));
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('lets a YAML file served as YAML through, as GitHub Pages and others do', async () => {

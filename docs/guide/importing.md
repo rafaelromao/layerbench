@@ -27,11 +27,11 @@ box, **Read from** says where the text came from, until you change it. The addre
 - its **Raw** address, on `raw.githubusercontent.com`.
 
 Only `https://` addresses on `raw.githubusercontent.com` are fetched. The page's security policy
-lets it reach GitHub and the sign-in server and no other host, and many hosts do not let other
-sites read their files anyway (the browser calls that a CORS refusal, and a page cannot tell it
-from a lost connection). For a file anywhere else, open it, copy its text and paste it. An address
-with a token in it, as GitHub gives for some private files, is fetched as it stands and left out of
-**Read from**; if GitHub refuses it, paste the file's text instead.
+lets it reach its own site, GitHub and the sign-in server and no other host, and many hosts do not
+let other sites read their files anyway (the browser calls that a CORS refusal, and a page cannot
+tell it from a lost connection). For a file anywhere else, open it, copy its text and paste it. An
+address with a token in it, as GitHub gives for some private files, is fetched as it stands and
+left out of **Read from**; if GitHub refuses it, paste the file's text instead.
 
 Fetching asks GitHub for the file, so GitHub sees its address, as it would if you opened it in a
 browser. What you paste or choose is not sent anywhere.

@@ -37,9 +37,9 @@ function authOriginFrom(value: string | undefined): string {
  * `connect-src` is the one that matters: the GitHub access token and the session it is renewed
  * with are in this page, and this line is what stops any injected code from sending them anywhere
  * but the GitHub API and the sign-in server they came from. The one other origin is GitHub's own
- * file server, `RAW_ORIGIN` in `src/import/keymap-url.ts`, which serves only files of public
- * repositories: the community layouts are read from it, and so is a keymap-drawer file that Import
- * fetches by its address. It is the whole host, not the folder of the community layouts, because
+ * file server, `RAW_ORIGIN` in `src/import/keymap-url.ts`, which only serves the files GitHub
+ * gives an address: the community layouts are read from it, and so is a keymap-drawer file that
+ * Import fetches by its address. It is the whole host, not the folder of the community layouts, because
  * an address is the reader's to give; the code refuses every other host before asking.
  */
 export function contentSecurityPolicy(authOrigin: string): string {

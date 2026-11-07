@@ -1,5 +1,5 @@
 import type { Layout } from '@layerbench/core';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { KeymapDrawerImport } from './KeymapDrawerImport.js';
@@ -449,6 +449,74 @@ describe('Importing a keymap-drawer file by its address', () => {
     expect(addressBox()).not.toHaveAttribute('aria-invalid');
     expect(addressBox()).toHaveAccessibleDescription(/^Or the address of the file on GitHub/);
   });
+
+  it('keeps the page where it is when the form is submitted, as a form that goes to a URL would not', async () => {
+    const user = userEvent.setup();
+    serving(() => plain(KEYMAP));
+    render(<KeymapDrawerImport onImport={vi.fn()} />);
+    await user.click(addressBox());
+    await user.paste(RAW);
+    // Without preventDefault the dev server, which sends no policy, would load /library? afresh.
+    const form = addressBox().closest('form') as HTMLFormElement;
+    expect(fireEvent.submit(form)).toBe(false);
+    await waitFor(() => expect(yamlBox().value).toBe(KEYMAP));
+  }, 60_000);
+
+  it('has nothing to fetch with only spaces in the field', async () => {
+    const user = userEvent.setup();
+    const get = serving(() => plain(KEYMAP));
+    render(<KeymapDrawerImport onImport={vi.fn()} />);
+    await user.click(addressBox());
+    await user.paste('   ');
+    expect(fetchButton()).toBeDisabled();
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  it('hides where the text came from while it is being fetched again', async () => {
+    const user = userEvent.setup();
+    serving(() => plain(KEYMAP));
+    render(<KeymapDrawerImport onImport={vi.fn()} />);
+    await fetchFrom(user, RAW);
+    await screen.findByText(/^Read from/);
+
+    const held = holding(false);
+    await user.click(fetchButton());
+    expect(held).toHaveLength(1);
+    expect(screen.getByRole('status')).toHaveTextContent('Fetching the file…');
+    // The box still holds what the first address gave, but this is not that answer.
+    expect(screen.queryByText(/^Read from/)).toBeNull();
+
+    held[0].resolve(plain(KEYMAP));
+    expect(await screen.findByText(/^Read from/)).toBeInTheDocument();
+  }, 60_000);
+
+  it('gives the keyboard the field when the file comes while it is on Cancel', async () => {
+    const user = userEvent.setup();
+    const held = holding(false);
+    render(<KeymapDrawerImport onImport={vi.fn()} />);
+    await fetchFrom(user, RAW);
+    const cancel = screen.getByRole('button', { name: 'Cancel' });
+    act(() => cancel.focus());
+    expect(cancel).toHaveFocus();
+
+    held[0].resolve(plain(KEYMAP));
+    await waitFor(() => expect(yamlBox().value).toBe(KEYMAP));
+    // Cancel went with the request; focus does not fall to the page behind the dialog.
+    expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull();
+    expect(addressBox()).toHaveFocus();
+  }, 60_000);
+
+  it('does not move the focus when the file comes while it is somewhere else', async () => {
+    const user = userEvent.setup();
+    const held = holding(false);
+    render(<KeymapDrawerImport onImport={vi.fn()} />);
+    await fetchFrom(user, RAW);
+    act(() => yamlBox().focus());
+
+    held[0].resolve(plain(KEYMAP));
+    await waitFor(() => expect(yamlBox().value).toBe(KEYMAP));
+    expect(yamlBox()).toHaveFocus();
+  }, 60_000);
 
   it('does not share the name of the box for the file, which a substring query would find twice', () => {
     // Playwright's getByLabel matches a substring, as this regular expression does: the phone

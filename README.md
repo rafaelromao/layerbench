@@ -262,9 +262,9 @@ written by `vite.config.ts`, a check at the top of `main.tsx` stands in for `fra
 meta tag sets the referrer policy; `Cross-Origin-Opener-Policy` and `X-Content-Type-Options` have no
 stand-in. The policy's `connect-src` lets the page talk to its own origin, `api.github.com` and the
 sign-in Worker, so the token and the session in the page cannot be sent anywhere but there, and to
-`raw.githubusercontent.com`, GitHub's file server for public repositories, which the community
-layouts are read from and Import fetches a keymap-drawer file from by its address (`RAW_ORIGIN` in
-`src/import/keymap-url.ts`, which the policy reads).
+`raw.githubusercontent.com`, GitHub's file server for the files it gives an address, which the
+community layouts are read from and Import fetches a keymap-drawer file from by its address
+(`RAW_ORIGIN` in `src/import/keymap-url.ts`, which the policy reads).
 
 ### Publishing the app
 
