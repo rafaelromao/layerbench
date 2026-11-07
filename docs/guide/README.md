@@ -2,8 +2,8 @@
 
 LayerBench types a text on your keymap the way your keyboard's firmware would, and measures how
 comfortable that typing is. Layers, one-shots, tap-holds, adaptive and repeat keys are all part of it.
-Everything runs in your browser, and nothing leaves it unless you sign in with GitHub to keep your
-work in your own account.
+Everything runs in your browser, and none of your work leaves it unless you sign in with GitHub to
+keep it in your own account.
 
 1. **Pick a layout.** The site opens on **Library**, first ranked by Effort; choose one, or bring
    your own from a [keymap-drawer file](importing.md).

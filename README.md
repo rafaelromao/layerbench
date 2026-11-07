@@ -19,8 +19,8 @@ Every layout is shown and ranked by two numbers: **Effort**, cyanophage's measur
 keys are to reach, with thumb presses charged too, and **SFB**, how often one finger presses two
 keys in a row.
 
-Everything runs in the browser, and no account is needed. Nothing leaves the page unless you sign
-in with GitHub to keep your work in your own account.
+Everything runs in the browser, and no account is needed. None of your work leaves the page unless
+you sign in with GitHub to keep it in your own account.
 
 ## Structure
 

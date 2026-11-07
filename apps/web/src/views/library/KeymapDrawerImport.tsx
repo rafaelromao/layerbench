@@ -306,7 +306,7 @@ export function KeymapDrawerImport({ onImport }: { onImport: (layout: Layout) =>
         </div>
         <p id={hintId} className="text-[11px] opacity-60">
           Or the address of the file on GitHub: its page, or its Raw link. Nothing is fetched until
-          you press Fetch.
+          you press Fetch or Enter.
         </p>
         {/* Always there, so that what is put in it is announced: that the file is coming, and
             where the text in the box came from once it has. A failure is the alert below. */}

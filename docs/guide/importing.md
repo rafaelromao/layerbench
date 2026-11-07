@@ -12,10 +12,10 @@ or QMK keymap, and LayerBench reads it.
    the base layer.
 4. Name the layout and press **Import and edit**.
 
-Nothing is saved until you press it, and nothing is fetched until you press **Fetch**: the board
-comes from the file, or from you.
+Nothing is saved until you press it, and nothing is fetched until you press **Fetch**, or Enter in
+the address field: the board comes from the file, or from you.
 
-### Fetching a file by its address
+## Fetching a file by its address
 
 **Fetch** reads the file at an address and puts its text in the box, as if you had pasted it, so
 everything after it is the same, and a file gives the same layout whichever way it came. Under the
