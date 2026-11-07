@@ -3,11 +3,12 @@
  * form that is rewritten, and what each failure says. Nothing here reads the YAML: the text goes to
  * the reader a pasted file goes to, so the two give the same layout.
  *
- * Only one file server is fetched from, GitHub's `RAW_ORIGIN`, because it is the one the built
- * page's content security policy can name in `connect-src` (`contentSecurityPolicy` in
- * `vite.config.ts`; the dev server sends none) and one that lets any site read what it serves.
- * Every other host is refused before asking: the browser reports a policy block, a CORS refusal and
- * a dead connection alike as a network error, and that tells the reader nothing.
+ * Only one file server is fetched from, GitHub's `RAW_ORIGIN`: the one the built page's content
+ * security policy names in `connect-src` (`contentSecurityPolicy` in `vite.config.ts` reads it from
+ * here, so the two cannot drift, and this file imports nothing so that the config can), and one that
+ * lets any site read what it serves. The dev server sends no policy. Every other host is refused
+ * before asking: the browser reports a policy block, a CORS refusal and a dead connection alike as
+ * a network error, and that tells the reader nothing.
  */
 
 /**

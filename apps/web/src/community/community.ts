@@ -6,6 +6,7 @@ import {
   toCanonicalJson,
 } from '@layerbench/core';
 import { create } from 'zustand';
+import { RAW_ORIGIN } from '../import/keymap-url.js';
 
 /**
  * Community layouts: layouts someone else made, accepted into the Library by merging the pull
@@ -15,9 +16,10 @@ import { create } from 'zustand';
  * Library at its next load, with no deploy.
  *
  * They are read as plain files rather than through the GitHub API, whose unauthenticated calls are
- * limited to 60 an hour for each address. The policy's `connect-src` names this folder of it.
+ * limited to 60 an hour for each address. The policy's `connect-src` names the host they are read
+ * from, which Import's addresses use too.
  */
-export const COMMUNITY_ORIGIN = 'https://raw.githubusercontent.com';
+export const COMMUNITY_ORIGIN = RAW_ORIGIN;
 const COMMUNITY_BASE = `${COMMUNITY_ORIGIN}/rafaelromao/layerbench/layerbench-data/community/`;
 
 /** Where community files are read from: a file's name in, its JSON out. */

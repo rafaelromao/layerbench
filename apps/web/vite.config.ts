@@ -3,6 +3,7 @@ import { extname, resolve, sep } from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { type Connect, defineConfig, loadEnv, type Plugin } from 'vite';
+import { RAW_ORIGIN } from './src/import/keymap-url.js';
 import { type AuthEnv, handleAuth } from './src/server/github-auth.js';
 
 /**
@@ -36,8 +37,10 @@ function authOriginFrom(value: string | undefined): string {
  * `connect-src` is the one that matters: the GitHub access token and the session it is renewed
  * with are in this page, and this line is what stops any injected code from sending them anywhere
  * but the GitHub API and the sign-in server they came from. The one other origin is GitHub's own
- * file server, `COMMUNITY_ORIGIN` in `src/community/community.ts`, which the community layouts are
- * read from, and only its folder of them: GitHub's file server, for files of public repositories.
+ * file server, `RAW_ORIGIN` in `src/import/keymap-url.ts`, which serves only files of public
+ * repositories: the community layouts are read from it, and so is a keymap-drawer file that Import
+ * fetches by its address. It is the whole host, not the folder of the community layouts, because
+ * an address is the reader's to give; the code refuses every other host before asking.
  */
 function contentSecurityPolicy(authOrigin: string): string {
   return [
@@ -49,7 +52,7 @@ function contentSecurityPolicy(authOrigin: string): string {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data:",
     "font-src 'self'",
-    `connect-src 'self' https://api.github.com https://raw.githubusercontent.com/rafaelromao/layerbench/layerbench-data/community/${authOrigin ? ` ${authOrigin}` : ''}`,
+    `connect-src 'self' https://api.github.com ${RAW_ORIGIN}${authOrigin ? ` ${authOrigin}` : ''}`,
     "form-action 'none'",
   ].join('; ');
 }
