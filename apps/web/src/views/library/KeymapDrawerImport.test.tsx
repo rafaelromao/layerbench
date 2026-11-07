@@ -46,7 +46,7 @@ const plain = (body: string, init: ResponseInit = {}) =>
   new Response(body, { status: 200, headers: { 'content-type': 'text/plain' }, ...init });
 
 const yamlBox = () => screen.getByLabelText<HTMLTextAreaElement>('keymap-drawer YAML');
-const addressBox = () => screen.getByLabelText('Address of a keymap-drawer YAML file');
+const addressBox = () => screen.getByLabelText('Address of the file on GitHub');
 const fetchButton = () => screen.getByRole('button', { name: /^Fetch/ });
 
 /** Type an address and press Fetch. */
@@ -334,6 +334,13 @@ describe('Importing a keymap-drawer file by its address', () => {
     expect(addressBox()).toHaveAccessibleDescription(
       /^Or the address of the file on GitHub.*No file at that address/,
     );
+  });
+
+  it('does not share the name of the box for the file, which a substring query would find twice', () => {
+    // Playwright's getByLabel matches a substring, as this regular expression does: the phone
+    // e2e fills the box by 'keymap-drawer YAML' and must find that one element.
+    render(<KeymapDrawerImport onImport={vi.fn()} />);
+    expect(screen.getAllByLabelText(/keymap-drawer YAML/i)).toEqual([yamlBox()]);
   });
 
   it('asks the phone not to correct or capitalise an address', () => {
