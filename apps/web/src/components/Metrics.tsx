@@ -137,7 +137,7 @@ interface MetricProps {
   onHighlightItem?: (ruleId: string, index: number) => void;
   /** The preset in force, whose own definition of a rule is then cited first. */
   presetId?: string;
-  /** Names the keys of an item, which its label does not: the label is what they typed. */
+  /** Names the keys of an item, which its label does not: it says what they typed. */
   describeItem?: (item: RuleItem) => string | null;
 }
 

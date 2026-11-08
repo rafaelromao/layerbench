@@ -636,6 +636,17 @@ describe('Machine — what kind of key a press is', () => {
     const { tap } = board();
     expect(tap('L0').keyKind).toBe('space');
   });
+
+  it('is named for the Repeat key, whatever it repeated, and not by the letter', () => {
+    const { tap } = board();
+    // A Repeat with nothing before it types nothing, and is named as it always was.
+    expect(tap('LTI')).toMatchObject({ symbols: '', label: '⟳' });
+    tap('LHP'); // a
+    expect(tap('LTI')).toMatchObject({ symbols: 'a', label: '⟳' });
+    // An alt repeat is named for what its branch types, and for the Repeat key where it repeats.
+    expect(tap('RHI')).toMatchObject({ symbols: 'v', label: 'v' });
+    expect(tap('RHI')).toMatchObject({ symbols: 'v', label: '⟳' });
+  });
 });
 
 describe('MachineState.matches — two presses that leave the board alike', () => {

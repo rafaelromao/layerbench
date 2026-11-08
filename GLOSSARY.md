@@ -134,7 +134,8 @@ _Avoid_: resting part, default, base binding
 **Press**:
 One key, or one combo, pressed on a layer while typing a text, with what it did: the symbols it typed,
 the modifier it held, or the layer it reached. Presses alike in all of that are the same press, however
-often they happen.
+often they happen. The Repeat key is the exception: its presses are alike whatever letter they repeated,
+and are named `⟳`.
 _Avoid_: logical key, event, keystroke record
 
 **Press log**:

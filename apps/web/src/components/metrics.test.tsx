@@ -13,7 +13,7 @@ const result: RuleResult = {
   value: 1.4,
   unit: 'percent',
   band: { index: null, label: null, quality: 'neutral' },
-  items: [{ label: 'l␣', keys: [20, 21], percent: 0.2 }],
+  items: [{ label: '⟳␣', keys: [20, 21], percent: 0.2 }],
   per_finger: {},
   per_key: {},
   per_layer_key: {},
@@ -27,9 +27,9 @@ const result: RuleResult = {
 };
 
 describe('a metric card’s items', () => {
-  it('names the keys of an item in its tooltip, as the label is what they typed', () => {
+  it('names the keys of an item in its tooltip, which its label does not', () => {
     render(<MetricCard result={result} describeItem={() => KEYS} />);
-    expect(screen.getByRole('button', { name: 'l␣' })).toHaveAttribute('title', `l␣\n${KEYS}`);
+    expect(screen.getByRole('button', { name: '⟳␣' })).toHaveAttribute('title', `⟳␣\n${KEYS}`);
     // The card itself stays as compact as it was.
     expect(screen.queryByText(KEYS)).toBeNull();
   });
@@ -44,7 +44,7 @@ describe('a metric card’s items', () => {
 
   it('is the label alone where nothing describes the keys', () => {
     render(<MetricCard result={result} />);
-    expect(screen.getByRole('button', { name: 'l␣' })).toHaveAttribute('title', 'l␣');
+    expect(screen.getByRole('button', { name: '⟳␣' })).toHaveAttribute('title', '⟳␣');
   });
 
   it('keeps the value, the bar and the keys in separate lines when enlarged', async () => {

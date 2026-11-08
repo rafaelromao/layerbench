@@ -21,7 +21,10 @@ export interface Press {
   /** Position index: a physical key, or a combo's own position. */
   readonly pos: number;
   readonly kind: KeyKind;
-  /** What the board draws for it: what it typed, else the layer or modifier it gives. */
+  /**
+   * What the board draws for it: what it typed, else the layer or modifier it gives; the Repeat key
+   * is `⟳` whatever it repeated.
+   */
   readonly label: string;
   /** The layer it was pressed for, if it typed nothing and named one: see `KeyEvent.reaches`. */
   readonly reaches: number | null;
