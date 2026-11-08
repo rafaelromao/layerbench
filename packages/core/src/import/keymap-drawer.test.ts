@@ -22,7 +22,8 @@ import {
   readKeymapDrawer,
   readLegend,
 } from './keymap-drawer.js';
-import { HUMMINGBIRD } from './yaml.test.js';
+import { YamlError } from './yaml.js';
+import { aliasBomb, HUMMINGBIRD } from './yaml.test.js';
 
 const magicRomak = bundledLayout('magic-romak')!;
 
@@ -830,5 +831,20 @@ describe('bounds on what a file may ask for', () => {
     const layers = Array.from({ length: 2 }, (_, i) => `  l${i}: ${layer}`).join('\n');
     const yaml = `${row}\nlayers:\n${layers}\n`;
     expect(() => readKeymapDrawer(yaml)).toThrow(new RegExp(`more than ${MAX_KEYS} keys`));
+  });
+
+  it('refuses a few hundred bytes of aliases at once, not after seconds of expanding them', () => {
+    // Nine levels of ten took seven seconds, the reader turning each stray list into text.
+    const started = performance.now();
+    expect(() => readKeymapDrawer(aliasBomb(9))).toThrow(YamlError);
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+
+  it('still reads a file of the most keys, every one an alias of a legend written in full', () => {
+    const legend = '{t: a, h: b, s: c, left: d, right: e, tl: f, tr: g, bl: h, br: i, type: j}';
+    const keys = Array.from({ length: MAX_KEYS }, () => '*k').join(', ');
+    const doc = readKeymapDrawer(`k: &k ${legend}\nlayers:\n  base: [${keys}]\n`);
+    expect(doc.layers[0].keys).toHaveLength(MAX_KEYS);
+    expect(doc.layers[0].keys[MAX_KEYS - 1]).toMatchObject({ tap: 'a', hold: 'b', type: 'j' });
   });
 });

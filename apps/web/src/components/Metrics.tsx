@@ -1,4 +1,4 @@
-import { humanBand, type RuleResult } from '@layerbench/core';
+import { humanBand, type RuleItem, type RuleResult } from '@layerbench/core';
 import { type MouseEvent, useEffect, useRef, useState } from 'react';
 import { formatItem, formatValue, qualityBadge, qualityBorder, shortLabel } from './format.js';
 import { RuleSources } from './RuleSources.js';
@@ -137,6 +137,8 @@ interface MetricProps {
   onHighlightItem?: (ruleId: string, index: number) => void;
   /** The preset in force, whose own definition of a rule is then cited first. */
   presetId?: string;
+  /** Names the keys of an item, which its label does not: the label is what they typed. */
+  describeItem?: (item: RuleItem) => string | null;
 }
 
 /** A click on a control inside a card is the control's own; anywhere else it enlarges the card. */
@@ -210,6 +212,7 @@ function MetricBody({
   selectedItem,
   onHighlightItem,
   presetId,
+  describeItem,
   large = false,
   titleId,
   onEnlarge,
@@ -277,31 +280,34 @@ function MetricBody({
           {result.items.map((item, i) => {
             const v = item.percent ?? item.count ?? 0;
             const width = maxItem > 0 ? (v / maxItem) * 100 : 0;
+            const keys = describeItem?.(item) ?? null;
+            const own = item.then ? `${item.label}: what its last key was pressed for` : item.label;
             return (
               // biome-ignore lint/suspicious/noArrayIndexKey: rank is the identity of a row
-              <li key={`${item.label}-${i}`} className={`flex items-center gap-2 ${text}`}>
-                <button
-                  type="button"
-                  title={
-                    item.then ? `${item.label}: what its last key was pressed for` : item.label
-                  }
-                  // A pair ending on a layer key opens what that key was pressed for.
-                  aria-haspopup={item.then ? 'dialog' : undefined}
-                  onClick={() => onHighlightItem?.(result.id, i)}
-                  className={`font-mono text-left ${large ? 'w-48 break-words' : 'w-16 truncate'} ${
-                    item.then ? 'underline decoration-dotted underline-offset-2' : ''
-                  } ${selectedItem === i ? 'text-primary font-bold' : ''}`}
-                >
-                  {item.label}
-                </button>
-                <div
-                  className={`flex-1 rounded bg-base-200 overflow-hidden ${large ? 'h-2.5' : 'h-1.5'}`}
-                >
-                  <div className="h-full bg-primary/60" style={{ width: `${width}%` }} />
+              <li key={`${item.label}-${i}`} className={text}>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    title={keys ? `${own}\n${keys}` : own}
+                    // A pair ending on a layer key opens what that key was pressed for.
+                    aria-haspopup={item.then ? 'dialog' : undefined}
+                    onClick={() => onHighlightItem?.(result.id, i)}
+                    className={`font-mono text-left ${large ? 'w-48 break-words' : 'w-16 truncate'} ${
+                      item.then ? 'underline decoration-dotted underline-offset-2' : ''
+                    } ${selectedItem === i ? 'text-primary font-bold' : ''}`}
+                  >
+                    {item.label}
+                  </button>
+                  <div
+                    className={`flex-1 rounded bg-base-200 overflow-hidden ${large ? 'h-2.5' : 'h-1.5'}`}
+                  >
+                    <div className="h-full bg-primary/60" style={{ width: `${width}%` }} />
+                  </div>
+                  <span className="font-mono tabular-nums opacity-70 w-16 text-right">
+                    {formatItem(item)}
+                  </span>
                 </div>
-                <span className="font-mono tabular-nums opacity-70 w-16 text-right">
-                  {formatItem(item)}
-                </span>
+                {large && keys && <p className="font-mono opacity-60 break-words">{keys}</p>}
               </li>
             );
           })}

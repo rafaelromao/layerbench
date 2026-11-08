@@ -25,6 +25,15 @@ describe('the guide', () => {
     for (const page of GUIDE_PAGES) expect(parseGuide(page.source).title, page.path).not.toBe('');
   });
 
+  it('keeps every subsection inside a section, so that nothing before the first one is a heading', () => {
+    // What comes before a page's first `##` is its intro, always shown and in no section's outline:
+    // a `###` there is a block of the page that cannot be closed and cannot be linked to.
+    for (const page of GUIDE_PAGES) {
+      const headings = parseGuide(page.source).intro.filter((b) => b.kind === 'heading');
+      expect(headings, page.path).toEqual([]);
+    }
+  });
+
   it('only links to pages and sections that exist', () => {
     for (const page of GUIDE_PAGES) {
       for (const href of linksOf(parseBlocks(page.source))) {

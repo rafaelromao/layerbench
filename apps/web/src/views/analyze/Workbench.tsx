@@ -1,6 +1,7 @@
 import {
   type AnalysisSettings,
   BUNDLED_LAYOUTS,
+  type CompiledLayout,
   type CorpusManifest,
   documentMissing,
   type Layout,
@@ -29,6 +30,7 @@ import { Collapsible } from '../../components/Collapsible.js';
 import { ErrorAlert } from '../../components/ErrorAlert.js';
 import { FamilyFilter, METRIC_FAMILIES, useFamilyShown } from '../../components/FamilyFilter.js';
 import { featureList } from '../../components/FeatureSwitches.js';
+import { describeKeys } from '../../components/format.js';
 import { HelpLink } from '../../components/HelpLink.js';
 import {
   comboPlace,
@@ -636,6 +638,7 @@ export function Workbench({
     shown && state.selected !== null ? (
       <KeyStats
         compiled={state.compiled}
+        typed={typedCompiled}
         report={shown}
         keyId={state.selected}
         layer={state.layer}
@@ -1332,6 +1335,7 @@ export function Workbench({
           selectedItem={selectedItem}
           onHighlightItem={highlightItem}
           presetId={presetOf(params.preset)}
+          compiled={typedCompiled}
         />
       )}
 
@@ -1493,14 +1497,18 @@ const MetricFamilies = memo(function MetricFamilies({
   selectedItem,
   onHighlightItem,
   presetId,
+  compiled,
 }: {
   report: ReportDTO;
   selectedRule: string | null;
   selectedItem: number | null;
   onHighlightItem: (ruleId: string, index: number) => void;
   presetId?: string;
+  /** The layout the report was typed on, whose keys an item's label does not name. */
+  compiled: CompiledLayout;
 }) {
   const shown = useFamilyShown();
+  const describeItem = useCallback((item: RuleItem) => describeKeys(compiled, item), [compiled]);
   return (
     <Collapsible id="analyze.numbers" title="Numbers" className="lb-edit-results">
       <div className="space-y-4 min-w-0">
@@ -1519,6 +1527,7 @@ const MetricFamilies = memo(function MetricFamilies({
                     selectedItem={selectedRule === r.id ? selectedItem : null}
                     onHighlightItem={onHighlightItem}
                     presetId={presetId}
+                    describeItem={describeItem}
                   />
                 ))}
               </div>

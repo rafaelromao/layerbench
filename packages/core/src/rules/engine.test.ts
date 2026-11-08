@@ -204,6 +204,27 @@ describe('rules engine', () => {
     expect(withSpace).toBeCloseTo((withSfbs / st.keystrokes) * 100, 9);
   });
 
+  it('lists the Repeat key and the space after it as a same-thumb pair when space is counted', () => {
+    // Magic Romak types a doubled letter as the letter and then its Repeat key (`L1`), and the space
+    // bar is `L0` beside it: two keys of one thumb, so a pair the rule counts, as METRICS.md says of
+    // thumbs. Its label is the press's output, `l`, not the key's; the keys say which they were.
+    const compiled = compileLayout(layoutOf('magic-romak'));
+    const repeat = compiled.keyIndex.get('L1') as number;
+    const space = compiled.keyIndex.get('L0') as number;
+    expect(compiled.positions[repeat].fingers).toEqual(['LT']);
+    expect(compiled.positions[space].fingers).toEqual(['LT']);
+    const sim = simulate(compiled, normalizeText('all ball tall', OPTS), OPTS);
+    const pairs = (universe: 'no_space' | 'with_space') => {
+      const rules: RuleSet = { ...layoutsDoc(), globals: { ...layoutsDoc().globals, universe } };
+      const sfb = evaluate(sim.tables, compiled, rules).results.find((r) => r.id === 'sfb');
+      return (sfb?.items ?? []).filter((i) => i.keys[0] === repeat && i.keys[1] === space);
+    };
+    const counted = pairs('with_space');
+    expect(counted).toHaveLength(1);
+    expect(counted[0].label).toBe('l␣');
+    expect(pairs('no_space')).toEqual([]);
+  });
+
   it('divides pairs by the text’s own pairs, so extra presses do not thin them out', () => {
     const tablesOf = (id: string) => {
       const compiled = compileLayout(layoutOf(id));

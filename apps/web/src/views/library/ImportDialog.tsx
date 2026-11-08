@@ -249,8 +249,9 @@ export function ImportDialog({
             className="space-y-3"
           >
             <p className="text-xs opacity-70">
-              A keymap-drawer YAML file: its layers, legends and combos, onto the board it
-              describes. Choose which layers to bring in, and what to call them.
+              A keymap-drawer YAML file, pasted, chosen or fetched from its address: its layers,
+              legends and combos, onto the board it describes. Choose which layers to bring in, and
+              what to call them.
             </p>
             <KeymapDrawerImport onImport={onImportKeymap} />
           </div>
