@@ -157,6 +157,21 @@ function textKeystrokes(ctx: Ctx): number {
   return text + (ctx.globals.space_per_word_in_keystrokes ? ctx.sim.stats.words : 0);
 }
 
+/**
+ * The text's symbols: its characters without the space, the same whether space is counted or not,
+ * and whether capitals are typed through Shift or folded. What the Doc's analyzer divides by (the
+ * letters on the layout's keys, Genkey's `l.Total`), so that counting the space bar adds pairs to
+ * a rule's count and never to what it is a share of.
+ */
+function textSymbols(ctx: Ctx): number {
+  return ctx.log.ngrams('no_space', 'unigram').textTotal;
+}
+
+/** What an item's percent on a card is a share of: what its rule's value is a share of. */
+function itemsTotal(rule: Rule, ctx: Ctx, pairs: number): number {
+  return rule.aggregate === 'percent_of_symbols' ? textSymbols(ctx) : pairs;
+}
+
 function per100Denominator(stats: SimulationTables['stats'], per?: string): number {
   return per === 'keystrokes' ? stats.keystrokes : per === 'words' ? stats.words : stats.symbols;
 }
@@ -356,6 +371,7 @@ function evalNgram(rule: Rule, ctx: Ctx): RuleResult {
   }
 
   const keystrokes = textKeystrokes(ctx);
+  const symbols = textSymbols(ctx);
   const handPct = distribute(perHand, matched);
 
   let value: number | null;
@@ -366,6 +382,10 @@ function evalNgram(rule: Rule, ctx: Ctx): RuleResult {
     case 'percent_of_keystrokes':
       value = pct(matched, keystrokes);
       keyScale = keystrokes > 0 ? 100 / keystrokes : 0;
+      break;
+    case 'percent_of_symbols':
+      value = pct(matched, symbols);
+      keyScale = symbols > 0 ? 100 / symbols : 0;
       break;
     case 'count':
       value = matched;
@@ -421,7 +441,7 @@ function evalNgram(rule: Rule, ctx: Ctx): RuleResult {
   const itemsOut: RuleItem[] = items
     .sort((a, b) => b.c - a.c)
     .slice(0, ctx.globals.top_items)
-    .map((it) => toItem(ctx, rule, it.ngram, it.c, it.d, total));
+    .map((it) => toItem(ctx, rule, it.ngram, it.c, it.d, itemsTotal(rule, ctx, total)));
 
   return finish(rule, value, {
     unit,
@@ -734,7 +754,7 @@ export function evaluateFocus(
     const items = found
       .sort((a, b) => b.c - a.c)
       .slice(0, limit)
-      .map((it) => toItem(scoped, rule, it.ngram, it.c, it.d, total));
+      .map((it) => toItem(scoped, rule, it.ngram, it.c, it.d, itemsTotal(rule, scoped, total)));
     rules.push({ id: rule.id, count, items });
   }
 

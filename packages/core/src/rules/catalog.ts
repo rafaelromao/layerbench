@@ -173,7 +173,7 @@ export function bigramRules(): Rule[] {
       description: 'Two consecutive keys pressed by the same finger (repeats excluded).',
       ngram: { n: 2, skip: 0 },
       where: sfbWhere(),
-      aggregate: 'percent_of_ngrams',
+      aggregate: 'percent_of_symbols',
       bands: BANDS.sfb,
       score: { weight: 3.0 },
     }),

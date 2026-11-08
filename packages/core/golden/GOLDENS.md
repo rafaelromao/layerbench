@@ -171,7 +171,9 @@ simulator now also counts the text's own totals, the n-grams it would have if ev
 one press (`SimulationTables.text`), and the rules divide by those:
 
 - **Bigram and skipgram rules** (`percent_of_ngrams`, `sum_distance`) by the text's pairs;
-  `percent_of_keystrokes` by its characters, plus one space per word where space is not counted.
+  `percent_of_keystrokes` by its characters, plus one space per word where space is not counted;
+  `percent_of_symbols` (the Layouts Doc's SFB, since the thirty-eighth re-baseline) by its
+  characters without the space, whether space is counted or not.
 - **Effort** by the text's characters, space included — cyanophage's keystrokes on any layout it
   models.
 - **Single-key and trigram rules are unchanged**: they are shares of what was pressed, and the
@@ -786,6 +788,29 @@ What moved, checked across the 38 reports; nothing else moved:
 - **The inline Magic Romak link** (`inline-magic-romak.txt`): it holds that document.
 - **No report**: the compiled layout is the same, so every statistic, registry entry, run, rule
   value, score and traced press is unchanged.
+
+## Thirty-eighth re-baseline: the Layouts Doc's SFB is a share of the letters typed
+
+The Doc took its SFB from Genkey, which divides by the characters on the layout's keys, in practice
+the letters typed, with no space (`docs/research/sfb-bands.md`). The Layouts Doc preset divided by
+the text's bigrams instead, which are 0.8 of its letters, so every layout read about a quarter above
+the Doc's definition. `sfb` is now `percent_of_symbols`: the text's symbols, its characters without
+the space, in either universe, so counting the space bar adds pairs to the count and never to what
+it is a share of. The cyanophage-like preset still divides by keystrokes, and SFS, which Genkey
+divides by the letters too but counts over skips of one to nine keys, is left as it was (the research note says
+why).
+
+What moved, checked across the 38 reports; nothing else moved:
+
+- **`sfb` in the 20 `layouts_doc` reports, and its value, items, key scale and band alone**: space
+  not counted, the value is the old one times the pairs the text has per letter (0.815 on
+  `fixture_en`, 0.825 on `fixture_enpt`, 0.835 on `fixture_pt`; Magic Romak's 0.854 on `fixture_en`
+  is 0.696, Qwerty's 7.041 is 5.740); space counted, it divides by the letters and no longer by the
+  letters and the spaces' pairs, so it rises (1.18 times on `fixture_en`). Twelve bands move with it.
+- **The composite score's value in the same 12 reports**: it is not enabled, but `sfb` carries the
+  heaviest weight, so its value follows `sfb`'s band.
+- **No `cyanophage` report, and no other rule**: `sfs` and every other value, total, registry entry,
+  run, score weight and traced press is unchanged.
 
 ## Not compared
 

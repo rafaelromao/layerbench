@@ -3,7 +3,8 @@
 Research for the SFB badge (`BANDS.sfb`, `packages/core/src/rules/catalog.ts`). The question, from the
 owner: an SFB of 1.56 reads *high*; what does the Layouts Doc recommend instead? Measured 2026-11-08
 on `main` at `cf389aee`. Reddit and Discord are unreachable, so only the Doc, Genkey's source and
-cyanophage's page were read.
+cyanophage's page were read. "The denominator" below records what was done about the number itself
+afterwards (2026-11-08); the sections before it describe the preset as it was at `cf389aee`.
 
 ## What the badge was, and why it reads wrong now
 
@@ -88,7 +89,8 @@ rules give Qwerty 4.38 on the English news sample, as a share of keystrokes with
 
 ## Is the app's number the Doc's?
 
-Only if Shift and Space are off **and** SFB is a share of letters. Measured with `analyze`, Layouts Doc
+Only if Shift and Space are off **and** SFB is a share of letters; at `cf389aee` the preset was not,
+and since "The denominator" below it is. Measured then with `analyze`, Layouts Doc
 rules, English news (`en-general`), first 100,000 symbols, letters, nothing left out, fold, no space,
 once as the preset has it (`percent_of_ngrams`) and once with the SFB rule's `aggregate` set to
 `percent_of_keystrokes` (no space, no space per word: the letters typed, Genkey's denominator):
@@ -123,14 +125,62 @@ and with Shift modelled, the Shift presses; the Doc counted neither.
   or as a share of bigrams, so any would be invented. Hiding the badge when Space or Shift is on would
   take the label from the view the owner reads, and the engine's band is per rule, not per setting.
   The guide and the glossary say what the bands were measured on instead.
-- **Not done: the denominator.** Switching the Layouts Doc preset's SFB to a share of letters would make
-  its number the Doc's (Colemak-DH 1.17, Magic Romak 1.35 *mid high*, Qwerty 5.27) and the bands fit it.
-  It moves every SFB under that preset by 20%, and the same question holds for SFS, which Genkey also
-  divides by `l.Total`; it is the owner's call.
+- **Done afterwards: the denominator.** See the next section.
+
+## The denominator: SFB as a share of the letters typed
+
+Done 2026-11-08, on the owner's decision. The Layouts Doc preset's `sfb` has `aggregate:
+'percent_of_symbols'`, a new aggregate: the matched pairs over the text's symbols, its characters
+without the space (`textSymbols`, `engine.ts`). The cyanophage-like preset is unchanged (its pair
+rules still become `percent_of_keystrokes`), and so is every other rule, SFS included. On English
+news, 100,000 symbols, fold, no space (the Library's settings):
+
+| Layout | before | after | band before → after |
+|---|---:|---:|---|
+| Magic Romak | 1.6935 | 1.3480 | above mid high → mid high |
+| Colemak, Colemak-DH | 1.4736 | 1.1730 | above mid high → mid high |
+| Qwerty | 6.6193 | 5.2690 | above mid high |
+
+After over before is 0.796 on all 36 bundled layouts (0.7958 to 0.7960), as it is the text's bigrams
+per letter. Colemak-DH, 1.177 *mid high* in the Doc, reads 1.173 *mid high*.
+
+- **Space and Shift.** The letters are the denominator whether space is counted or not, and whether
+  capitals go through Shift or are folded; the number does not move because the denominator did.
+  `percent_of_keystrokes` was the alternative, and with Space on it divides by the letters and the
+  spaces, so the Doc's letters-only share would have turned into cyanophage's. What Space and Shift do
+  now is add their pairs to the count: Colemak-DH goes from 1.17 to 1.59 with Space on, `l␣` (Repeat
+  then space, one thumb) 0.22 and `s␣` 0.07 among them, and Magic Romak from 1.35 to 1.77. Before,
+  Space on lowered 28 of the 36 bundled layouts (Qwerty 6.62 to 4.72), because the pairs it was a
+  share of grew with the spaces' pairs too; now it lowers none, raises 28 and leaves 8 as they were.
+  The Doc counted neither Space nor Shift, so those readings are not the Doc's number, and the guide
+  says so; the badge still names the band of the number shown.
+- **SFS was not changed.** Genkey does divide SFS by the letters (`output.go`, `DSFBs: 100 ×
+  SFBs(l, true) / l.Total`), but its numerator is not `sfs`'s: `text.go` adds every skipgram of up to
+  nine keys in between with weight 1, ½, ¼, … (`MaxSkipgramSize = 10`), where `sfs` counts skip 1
+  alone, and the Doc's SFS is two keys with some number of others between them (§4.5). The skipgrams the text has
+  per letter are 0.600, not 0.796, so skip 1 over the letters is 0.600 of today's number, far under
+  the Doc's thresholds (5.3 to 7.3). Through the engine, English news, Library settings, Layouts Doc
+  rules (`skip_weights` 1, ½, ¼; skips past 3 are not recorded and add little, as pairs thin out):
+
+  | Layout | skip 1 over skipgrams (today) | skip 1 over letters | skips 1–3 weighted over letters |
+  |---|---:|---:|---:|
+  | Magic Romak | 6.53 | 3.92 | 6.09 |
+  | Colemak-DH | 8.08 | 4.85 | 7.19 |
+  | Qwerty | 10.25 | 6.15 | 8.70 |
+  | Graphite | 5.31 | 3.19 | 5.45 |
+  | Hands Down Neu | 8.05 | 4.83 | 7.45 |
+  | Dvorak | 6.43 | 3.86 | 6.00 |
+
+  Skip 1 over the letters reads *min* for Magic Romak, Colemak-DH, Graphite and Dvorak and Qwerty
+  *mid low*, where today's number is nearer to the weighted sum the bands' size suggests. Whether the
+  Doc's SFS column is Genkey's DSFB could not be confirmed (the stat tables of §13 were not readable
+  in this pass), so that sum is a comparison, not the Doc's number. Making SFS the Doc's means
+  changing what it counts, with the weights, and then dividing by the letters; that is its own change.
 
 ## Before and after, English news, 100,000 symbols
 
-"Library settings" is fold and no space, "Shift and Space" is model and with space; the labels are
+The labels' change (`high` to `above mid high`), with the numbers as they were at `cf389aee`, before
+the denominator above moved them. "Library settings" is fold and no space, "Shift and Space" is model and with space; the labels are
 the old *high* and the new *above mid high* wherever they differ. Only layouts past 1.375 change.
 
 Layouts Doc rules (the default of a link with no `preset`):

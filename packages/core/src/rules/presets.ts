@@ -10,7 +10,7 @@ export function layoutsDoc(): RuleSet {
     id: 'layouts_doc',
     name: 'Layouts Doc',
     description:
-      'Definitions and bands from the Keyboard Layouts Doc (3rd ed.). Thumbs included, space excluded, no composite score. SFB and SFS are shares of bigrams and skipgrams, where the Doc divides by letters.',
+      'Definitions and bands from the Keyboard Layouts Doc (3rd ed.). Thumbs included, space excluded, no composite score. SFB is a share of the letters typed, as the Doc’s analyzer counts it, with space counted or not.',
     globals: {},
     rules: catalogRules(),
     score_enabled: false,
@@ -65,7 +65,9 @@ export function cyanophage(): RuleSet {
     })
     .map(
       (r): Rule =>
-        r.aggregate === 'percent_of_ngrams' && r.source === 'ngram' && r.ngram?.n === 2
+        (r.aggregate === 'percent_of_ngrams' || r.aggregate === 'percent_of_symbols') &&
+        r.source === 'ngram' &&
+        r.ngram?.n === 2
           ? { ...r, aggregate: 'percent_of_keystrokes' }
           : r,
     );

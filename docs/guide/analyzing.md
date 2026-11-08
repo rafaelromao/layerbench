@@ -299,11 +299,15 @@ The Doc gives SFB six bands, *min* to *mid high*, the last ending at 1.375%; it 
 above that, so a badge there says *above mid high* and not *high*. SFS, scissors, redirects and
 pinky off are named the same way past the Doc's last threshold for each (*above mid high* for SFS,
 *above high* for the others). The SFB bands came from
-numbers counted without the space bar and with capitals folded, as a share of the letters typed. The
-Layouts Doc rules here take SFB as a share of the text's bigrams instead, which reads about a quarter
-higher on the English sample, so even with **Space** and **Shift** off the badge is the Doc's band
-for a number above the Doc's. Turn them on and the SFB includes pairs the Doc never had, such as
-Repeat then space on one thumb. The glossary has the figures.
+numbers counted without the space bar and with capitals folded, as a share of the letters typed, and
+the Layouts Doc rules here count SFB the same way, so with **Space** and **Shift** off the badge is
+the Doc's band for the Doc's number: Colemak-DH reads 1.17 on the English sample, where the Doc has
+1.177, *mid high*. Turn them on and the SFB includes pairs the Doc never had, such as Repeat then
+space on one thumb or the Shift presses, but it is still a share of the letters, not of the letters
+and the spaces. The cyanophage-like rules divide by keystrokes, with a space per word, and read
+lower. SFS is not counted as the Doc's: it is a share of the text's skipgrams, over one skipped key,
+where the Doc's analyzer divides by the letters and counts skips of up to nine keys, each half as much as the one before. The glossary
+has the figures.
 
 ## Rules and their sources
 
