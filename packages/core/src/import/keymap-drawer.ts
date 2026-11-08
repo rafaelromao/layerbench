@@ -932,11 +932,14 @@ export function readLegend(k: KdKey, ctx: LegendContext): LegendReading {
   return readWords(legibleKey(k, ctx), ctx);
 }
 
-/** Whether a legend reads as it stands: as a key's tap, or as a word under one. */
-function reads(legend: string, ctx: LegendContext): boolean {
+/**
+ * Whether a legend reads as it stands: as a word under a key, or as the tap of `key`, whose other
+ * legends (a macro's mark) say how a tap reads.
+ */
+function reads(legend: string, ctx: LegendContext, key: KdKey = EMPTY_KEY): boolean {
   const word = legend.toLowerCase();
   if (STICKY_WORDS.has(word) || LAYER_WORDS.has(word) || heldModsOf(legend)) return true;
-  const alone = readWords({ ...EMPTY_KEY, tap: legend }, ctx);
+  const alone = readWords({ ...key, tap: legend, hold: '' }, ctx);
   return alone.kind === 'transparent' || alone.exact;
 }
 
@@ -952,25 +955,27 @@ function layerBeginning(word: string, ctx: LegendContext): string | undefined {
 /**
  * A legend in the words the reader knows: an icon as the word for its key, a key's name drawn
  * after a mark as the name, and on a tap, a layer's name cut short as that layer's name. A legend
- * that reads as it stands, or that none of these makes read, is itself.
+ * that reads as it stands, or that none of these makes read, is itself. `tapOf` is the key where
+ * the legend is its tap.
  */
-function legible(legend: string, ctx: LegendContext, onTap: boolean): string {
+function legible(legend: string, ctx: LegendContext, tapOf?: KdKey): string {
   const t = legend.trim();
+  if (t === '' || reads(t, ctx, tapOf)) return t;
   const icon = ICON.exec(t)?.[1];
-  if (icon !== undefined) return ICON_WORDS[icon] ?? t;
-  if (t === '' || reads(t, ctx)) return t;
+  // An own property only: every object answers to `constructor`.
+  if (icon !== undefined) return Object.hasOwn(ICON_WORDS, icon) ? ICON_WORDS[icon] : t;
   // Only a name, of two characters or more, is read after a mark: an arrow before a comma types
   // both, and a mark before one character or before text changes what it types.
   const name = MARKED.exec(t)?.[1];
-  if (name && /^\p{L}./u.test(name) && !isText(name) && reads(name, ctx)) return name;
+  if (name && /^\p{L}./u.test(name) && !isText(name) && reads(name, ctx, tapOf)) return name;
   // A hold is often a word for what the key does, `symbol` under a shortcut to go to one, so only
   // a tap names a layer cut short.
-  if (onTap && /^\p{L}{3,}$/u.test(t)) return layerBeginning(t, ctx) ?? t;
+  if (tapOf && /^\p{L}{3,}$/u.test(t)) return layerBeginning(t, ctx) ?? t;
   return t;
 }
 
 function legibleKey(k: KdKey, ctx: LegendContext): KdKey {
-  return { ...k, tap: legible(k.tap, ctx, true), hold: legible(k.hold, ctx, false) };
+  return { ...k, tap: legible(k.tap, ctx, k), hold: legible(k.hold, ctx) };
 }
 
 /** `readLegend`, for a key whose legends are in the words the reader knows. */

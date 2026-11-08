@@ -95,10 +95,11 @@ The layout you get is the one you would make in the editor by hand. A key the an
 simulate, such as Escape or an arrow, is transparent, as a key left unset is, and under a hold it
 taps nothing: the layer held on it still works. A layer you left out is named nowhere.
 
-keymap-drawer's icons are read for space, the modifiers (the Mac's keys, and the Windows logo for
-Gui), repeat, Enter, Tab, Escape, Backspace and the arrows. Any other icon is not read, and is
-listed with the other keys not read. A layer's name cut short is read on a key's tap only: a word
-under a key, such as `symbol`, more often says what the key does.
+keymap-drawer's icons for space, the modifiers (the Mac's keys, and the Windows logo for Gui) and
+repeat read as those keys. Its icons for Enter, Tab, Escape and Backspace, and any `arrow-…` icon,
+an undo arrow included, read as keys the analysis does not simulate. Any other icon is not read,
+and is listed with the other keys not read. A layer's name cut short is read on a key's tap only:
+a word under a key, such as `symbol`, more often says what the key does.
 
 Combos come along too, found by their key positions or by the legends of their keys, on the layers
 you keep, with the timing the editor gives a combo. Only a combo that types is read: one that does

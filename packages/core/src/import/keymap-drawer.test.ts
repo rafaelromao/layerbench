@@ -345,7 +345,8 @@ describe('legends', () => {
       binding: { kind: 'lt', layer: 'nav', tap: { kind: 'none' } },
       exact: true,
     });
-    for (const name of ['chevron-down', 'bluetooth']) {
+    // `constructor` is a name every object answers to, not an icon there is a word for.
+    for (const name of ['chevron-down', 'bluetooth', 'constructor']) {
       expect(readLegend(key({ tap: icon(name) }), ctx)).toEqual(notRead);
     }
   });
@@ -562,7 +563,7 @@ layers:
   Symbols:
     - ["!", "@", "#", "$", "%", "^", "&", "*", "(", ")"]
     - ["\`", "~", "-", "_", "=", "+", "[", "]", "{", "}"]
-    - ["<", ">", ":", ";", "|", "\\\\", "?", ",", ".", "/"]
+    - ["<", ">", ":", ";", "|", "$$mdi:chevron-down$$", "✂ Cut", ",", ".", "/"]
     - [null, null, {t: sym, type: held}, null]
 `);
     const board33 = boardFromKeys(cptKeys('33333+2 2+33333'), '3x5+2');
@@ -590,7 +591,8 @@ layers:
     });
     expect(layout.keys.space).toBe(space);
     expect(report.notes.join(' ')).not.toMatch(/space/);
-    expect(report.layers.map((l) => l.unread)).toEqual([[], []]);
+    // What it cannot read is listed as the file draws it.
+    expect(report.layers.map((l) => l.unread)).toEqual([[], ['$$mdi:chevron-down$$', '✂ Cut']]);
 
     // Cut short or not, a layer left out is named nowhere, and what reached it is said.
     const alone = take([{ source: 'Base', name: 'Base' }]);
@@ -853,6 +855,34 @@ describe('writing a file', () => {
     // and one with no default as a transparent key, not as a key that types ✦.
     expect(back.LTR).toEqual({ kind: 'kp', symbol: 'h' });
     expect(back.LTI).toEqual({ kind: 'trans' });
+  });
+
+  it("reads a macro back as its text, where a layer's name begins with that text", () => {
+    const layout: Layout = {
+      format: 'layerbench/layout@1',
+      name: 'Macro',
+      hostLocale: 'symbols',
+      geometry: { preset: '3x5+2' },
+      keys: { space: 'L0' },
+      layers: [
+        {
+          id: 'base',
+          name: 'Base',
+          bindings: {
+            LTP: { kind: 'macro', symbols: 'num' },
+            L0: { kind: 'kp', symbol: ' ' },
+            R0: { kind: 'mo', layer: 'numbers' },
+          },
+        },
+        {
+          id: 'numbers',
+          name: 'Numbers',
+          bindings: { '*': { kind: 'trans' }, LTP: { kind: 'kp', symbol: '1' } },
+        },
+      ],
+    };
+    expect(write(layout)).toContain('{t: num, tr: ⋯}');
+    expect(roundTrip(layout).layers[0].bindings.LTP).toEqual({ kind: 'macro', symbols: 'num' });
   });
 });
 

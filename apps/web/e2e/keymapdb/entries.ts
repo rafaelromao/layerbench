@@ -52,7 +52,7 @@ export interface Entry {
 export interface Known {
   /**
    * No key of the base layer types a space, on the board the test takes to Analyze: the finding
-   * that says why. None does since F6 and F7 were fixed.
+   * that says why. No entry pins it since F6 and F7 were fixed.
    */
   noSpace?: string;
   /** F8: what the dialog says it read of the base layer, and what it could not read. */
