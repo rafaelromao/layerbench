@@ -27,7 +27,7 @@ cyanophage's page were read.
   (total 1.241); now they start `→A2'` 0.50 (total 1.693), a tap of the one-shot key to Alpha 2
   followed by `'`, on one finger, and the rest of the list is the same to within 0.05. That is a
   layer tap followed by a key on the same finger, the case METRICS lists as `layer_tap_sfb`, a pair
-  the Doc's SFB never had. Whether it belongs in the SFB is the owner's call.
+  the Doc's SFB never had. The owner decided it stays counted (2026-11-08), so nothing changes.
 - 1.56 itself was not found. Runs of the bundled layouts over the seven corpora, both rule sets and
   both settings that read 1.56: Magic Romak on `it-general`, cyanophage-like rules, Library settings
   (1.5614); Ben Vallack Piano on `fr-general`, same rules and settings (1.5573); Nerps on
@@ -115,10 +115,24 @@ and with Shift modelled, the Shift presses; the Doc counted neither.
   high* (`SFB_ABOVE_SCALE`), where it was named *high*, a Doc category that has no SFB cell. The colour
   does not change (red, as *mid high* already is). SFS (*high*), full scissors, redirects and pinky off
   (*very high*) ended on a padded label the Doc has a dash under as well (SFS six thresholds, the others
-  seven), so a scissors reading of 0.8 said *very high*. Asked by the owner, they are named the same
-  way: SFS past 7.3 is *above mid high*, full scissors past 0.7, redirects past 9.0 and pinky off
-  past 6.8 are *above high* (`negativeStat` in `catalog.ts`). LSB's bands are not in the Doc's table at
-  all, so they are LayerBench's own and keep the nine names by position.
+  seven), so a scissors reading of 0.8 said *very high*. Asked by the owner, on the strength of those
+  dashes, they are named the same way: SFS past 7.3 is *above mid high*, full scissors past 0.7,
+  redirects past 9.0 and pinky off past 6.8 are *above high* (`negativeStat` in `catalog.ts`). LSB's
+  bands are not in the Doc's table at all, so they are LayerBench's own and keep the nine names by
+  position.
+- **The Doc's rows do name those four, so for them it is a choice, not the Doc's.** The per-layout
+  rows (columns SFB, SFS, scissors, alt, roll, redirect, in:out roll, pinky off, hand use, each a
+  category then its value; read through `/mobilebasic`, the rows named here checked by hand) give a
+  category to values past the table's last threshold, the next word of the nine: SFS 7.344 (Uciea), 7.483 (Colemak DH) and
+  7.541 (ColemaQ) are *High*, 8.744 (Poutea) *Very high*; scissors 0.71 (Hands Down Neu) and 0.81
+  (Uciea) *Very high*; redirects 12.1 (Colemak DH) and 13.6 (ColemaQ) *Very high*; pinky off 8.1
+  (Journey) and 8.3 (Saiga) *Very high*. Those are the labels the app gave before, so for these four
+  the old names agreed with the Doc's own rows, and the new ones say less than they do. SFB is
+  different: no row has one past 1.375 (the highest is Engram 1.242), so the Doc names nothing there
+  and *above mid high* claims only what it knows. Undoing the rename of the other four is one change
+  (their `negativeStat` back to plain bounds, goldens regenerated); the owner's call.
+- **Layer taps stay in the SFB.** `→A2'` and the like are counted, as the owner decided; the number
+  moves with the keymap, not with the bands.
 - **Not done: bands per setting.** No source gives SFB bands for a number counted with Space or Shift,
   or as a share of bigrams, so any would be invented. Hiding the badge when Space or Shift is on would
   take the label from the view the owner reads, and the engine's band is per rule, not per setting.

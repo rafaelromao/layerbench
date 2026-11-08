@@ -8,8 +8,8 @@ export const SFB_LAST_BOUND = 1.375;
 /**
  * What an SFB above `SFB_LAST_BOUND` is called. The Doc's table gives SFB six categories, Min to
  * Mid high, and a dash under High, Very high and Max (ch. 13.4), so it names nothing above them:
- * `high` there would be the Doc's word for a range it never set. `negativeStat` gives it to
- * `BANDS.sfb`, the way it names what is past SFS's and the others' last threshold.
+ * `high` there would be the Doc's word for a range it never set. `negativeStat` builds the same
+ * name from the last category of the bounds it is given, and the tests pin that this is it.
  */
 export const SFB_ABOVE_SCALE = 'above_mid_high';
 

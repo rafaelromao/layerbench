@@ -290,21 +290,22 @@ number.
 ### What the badges mean
 
 The Keyboard Layouts Doc sorts layouts into bands for the metrics it covers, from *min* to *max*,
-and LayerBench adds its own for Effort, layer taps, wasted one-shots and extra keys. Effort's are
-20 apart, from just above the easiest Standard and Thumb Alpha layouts that come with the app;
-Colemak, and anything harder, is *max*. A badge names the band a number falls in, and its colour
+and LayerBench adds its own for Effort, lateral stretches, layer taps, wasted one-shots and extra
+keys. Effort's are 20 apart, from just above the easiest Standard and Thumb Alpha layouts that come
+with the app; Colemak, and anything harder, is *max*. A badge names the band a number falls in, and its colour
 says whether that is good for that metric. For most metrics lower is better; for alternation, rolls
 and the in:out roll ratio, higher is. The [glossary](../METRICS.md#bands) lists every band.
 
 The Doc gives SFB six bands, *min* to *mid high*, the last ending at 1.375%; it gives no threshold
 above that, so a badge there says *above mid high* and not *high*. SFS, scissors, redirects and
 pinky off are named the same way past the Doc's last threshold for each (*above mid high* for SFS,
-*above high* for the others). The SFB bands came from
-numbers counted without the space bar and with capitals folded, as a share of the letters typed. The
-Layouts Doc rules here take SFB as a share of the text's bigrams instead, which reads about a quarter
-higher on the English sample, so even with **Space** and **Shift** off the badge is the Doc's band
-for a number above the Doc's. Turn them on and the SFB includes pairs the Doc never had, such as
-Repeat then space on one thumb. The glossary has the figures.
+*above high* for the others). The SFB bands came from numbers counted without the space bar and with
+capitals folded, as a share of the letters typed. The Layouts Doc rules here take SFB as a share of
+the text's bigrams instead, which reads about a quarter higher on the English sample, so even with
+**Space** and **Shift** off the badge is the Doc's band for a number above the Doc's. Turn them on and
+the SFB includes pairs the Doc never had, such as Repeat then space on one thumb. A custom rule set
+saved earlier keeps the bands it was saved with, so its badge may still say *high* where these say
+*above mid high*. The glossary has the figures.
 
 ## Rules and their sources
 
