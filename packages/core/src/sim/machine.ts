@@ -950,6 +950,9 @@ function labelFor(
   binding: Binding,
   _layer: number,
 ): string {
+  // The Repeat key is named as the board draws it, not by the letter it repeated: a list of pairs
+  // would else show a thumb's Repeat and its space as `l␣`, a letter and a space on two keys.
+  if (ctx.leaf === 'key_repeat') return '⟳';
   const text = ctx.out.join('');
   if (text.length) return text === ' ' ? '␣' : text;
   // A layer key is named as the board draws it: Alpha 2 is A2.

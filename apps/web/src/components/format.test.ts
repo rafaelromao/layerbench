@@ -8,7 +8,7 @@ const compiled = compileLayout(
 );
 const at = (id: string) => compiled.keyIndex.get(id) as number;
 const item = (ids: string[], extra: Partial<RuleItem> = {}): RuleItem => ({
-  label: 'l␣',
+  label: '⟳␣',
   keys: ids.map(at),
   ...extra,
 });

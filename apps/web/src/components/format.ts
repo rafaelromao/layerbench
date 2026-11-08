@@ -62,9 +62,9 @@ function keyName(compiled: CompiledLayout, pos: number, layer: number): string {
 }
 
 /**
- * The keys of a pair, trigram or other run, by name. An item's label is what its presses typed, so
- * a doubled letter typed by the Repeat key reads as the letter and not as the key that pressed it;
- * this says which keys they were. Null where there is less than a run: one key is its own label.
+ * The keys of a pair, trigram or other run, by name. An item's label is what its presses typed, but
+ * for the Repeat key, which is `⟳`: it does not say which key typed a letter, nor on which layer or
+ * finger; this does. Null where there is less than a run: one key is its own label.
  */
 export function describeKeys(compiled: CompiledLayout, item: RuleItem): string | null {
   if (item.keys.length < 2) return null;
