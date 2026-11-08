@@ -134,7 +134,7 @@ describe('Keyboard', () => {
       const { container } = render(<Keyboard compiled={romak} layer={SYM} />);
       expect(ringed(container)).toEqual(['R0 held']);
       expect(
-        screen.getByRole('button', { name: 'Key R0: empty, held to reach Symbols' }),
+        screen.getByRole('button', { name: 'Key R0: transparent, held to reach Symbols' }),
       ).toBeInTheDocument();
       const band = container.querySelector('g[data-key="R0"] .lb-key-reach-word');
       expect(band?.textContent).toBe('held');
@@ -211,9 +211,10 @@ describe('Keyboard', () => {
   it('marks every transparent key ▽, listed or by default, and leaves a key that does nothing empty', () => {
     const tapOf = (container: HTMLElement, key: string) =>
       container.querySelector(`g[data-key="${key}"] .lb-key-tap`)?.textContent ?? '';
-    // Ç extension lists only a few keys and lets the rest show through.
+    // Ç extension lists the keys it uses, leaves most doing nothing, and lets a few show through.
     const ccedil = render(<Keyboard compiled={romak} layer={romak.layerIndex.get('ccedil')} />);
-    expect(tapOf(ccedil.container, 'LHM')).toBe('▽');
+    expect(tapOf(ccedil.container, 'RTM')).toBe('▽');
+    expect(tapOf(ccedil.container, 'LHM')).toBe('');
     expect(tapOf(ccedil.container, 'RHI')).toBe('ã');
     ccedil.unmount();
     // Numbers leaves its unlisted keys doing nothing; L0, held to get there, shows through.

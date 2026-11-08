@@ -394,7 +394,8 @@ Every number below is the engine's, with all four changes applied. `main+thumbs`
 only the thumb combo and `ı`, so the access change can be told apart from the grid change.
 
 **The thumb combo costs Effort.** The Effort rule charges every thumb press, so a two-thumb chord
-costs 2 per accent. LHR+LHM on home keys cost 0, and a Standard layout's one-shot costs 1. On the
+costs 2 per accent. (Measured so. Since 2026-11-07 a chord costs its costliest key and half of each
+other, 1.5 for two thumbs, so the rise in Effort is a quarter smaller than the figures below say.) LHR+LHM on home keys cost 0, and a Standard layout's one-shot costs 1. On the
 special layouts that's +19 to +24 Effort on the six-language mix, whatever the grid. In exchange their
 SFB drops 0.3–0.8, on all but Uno (+0.11). The ΔEffort column below includes that rise, and the
 special layouts are the top of every range.

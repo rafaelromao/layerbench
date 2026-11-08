@@ -303,6 +303,46 @@ describe('a conditional layer in the document', () => {
   });
 });
 
+describe("a combo's role in the document", () => {
+  const withRoles = (
+    roles: (Layout['combos'] extends (infer C)[] | undefined ? C : never)['role'][],
+  ) => {
+    const l = withBranches([]);
+    return {
+      ...l,
+      combos: roles.map((role, i) => ({
+        id: `c${i}`,
+        keys: i === 0 ? ['LHM', 'LHI'] : ['LHR', 'LHM'],
+        binding: { kind: 'kp' as const, symbol: i === 0 ? 'q' : 'z' },
+        ...(role ? { role } : {}),
+      })),
+    };
+  };
+
+  it('writes a command, and leaves a typing combo with no role: the plain case', () => {
+    const doc = toCanonicalJson(withRoles([undefined, 'command'])) as {
+      combos: { id: string; role?: string }[];
+    };
+    expect(doc.combos.map((c) => [c.id, c.role])).toEqual([
+      ['c0', undefined],
+      ['c1', 'command'],
+    ]);
+    expect(toCanonicalJson(withRoles(['typing']))).toEqual(toCanonicalJson(withRoles([undefined])));
+  });
+
+  it('is read back, a command kept and a combo with none a typing one', () => {
+    const read = parseLayout(toCanonicalJson(withRoles([undefined, 'command'])));
+    expect(read.combos?.map((c) => c.role)).toEqual([undefined, 'command']);
+    const compiled = compileLayout(read);
+    expect(compiled.combos.map((c) => c.role)).toEqual(['typing', 'command']);
+  });
+
+  it('keeps a combo an older layout marked as a command, which the analysis never presses', () => {
+    const old = { ...withRoles([undefined]), combos: [{ ...withRoles(['command']).combos[0] }] };
+    expect(parseLayout(old).combos).toHaveLength(1);
+  });
+});
+
 describe("a layout's link", () => {
   const linked = (link: string): Layout => ({ ...withBranches([]), author: 'Ana', link });
 

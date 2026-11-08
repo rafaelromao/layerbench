@@ -901,6 +901,45 @@ const REPEAT_NAMES = new Set([
   '⟳',
   '↻',
 ]);
+/**
+ * Legends a drawing writes as keymap-drawer glyphs (`$$mdi:apple-keyboard-shift$$`), by the name
+ * between the `$$`, as the legend a keymap would show for the same key. Only glyphs that stand for
+ * a key or a modifier are read; any other is a picture, and stays unread.
+ */
+const GLYPH_LEGENDS: Record<string, string> = {
+  'mdi:apple-keyboard-control': 'LCTRL',
+  'mdi:apple-keyboard-option': 'LALT',
+  'mdi:apple-keyboard-shift': 'LSHFT',
+  'mdi:apple-keyboard-command': 'LGUI',
+  'mdi:repeat': 'REPEAT',
+  'mdi:keyboard-space': 'SPACE',
+  // A glyph a drawing defines for itself, named for what it draws: Shift and Command together.
+  shift_command: 'LS(LGUI)',
+};
+
+function glyphLegend(legend: string): string {
+  const name = /^\$\$(.+)\$\$$/.exec(legend.trim())?.[1];
+  return (name && GLYPH_LEGENDS[name]) || legend;
+}
+
+/** The accent each character a drawing names a dead key by stands for: `dead "` is a diaeresis. */
+const DEAD_KEY_ACCENTS: Record<string, string> = {
+  '"': '¨',
+  "'": '´',
+  '`': '`',
+  '^': '^',
+  '~': '~',
+  '¨': '¨',
+  '´': '´',
+};
+
+/**
+ * A hold that moves the cursor before typing, drawn with an arrow and what it types: `⇥ {` jumps to
+ * the end of the line, `→ ,` steps past the cursor. That is editing, which the analysis does not
+ * simulate: the key keeps its tap.
+ */
+const CURSOR_HOLD = /^[⇥→]\s*\S/u;
+
 const TRANS_LEGENDS = new Set(['▽', '▼', 'TRANS', '_______', 'KC_TRNS']);
 const TRANSPARENT: Binding = { kind: 'trans' };
 const NOTHING: Binding = { kind: 'none' };
@@ -993,6 +1032,10 @@ function tapBinding(k: KdKey): Binding | null {
   if (REPEAT_NAMES.has(upper) || REPEAT_NAMES.has(tap)) return { kind: 'key_repeat' };
   const mod = modOf(tap);
   if (mod) return { kind: 'mod', mod };
+  // A dead key, as a drawing names one: `dead "`, the accent the next letter takes.
+  const dead = /^dead\s+(\S)$/i.exec(tap);
+  const accent = dead ? DEAD_KEY_ACCENTS[dead[1]] : undefined;
+  if (accent) return { kind: 'dead_key', diacritic: accent };
   const symbol = symbolOf(tap);
   if (!symbol) return null;
   const shifted = [...k.shifted.trim()].length === 1 ? k.shifted.trim() : symbol.shifted;
@@ -1008,7 +1051,9 @@ function tapBinding(k: KdKey): Binding | null {
  * named nowhere: what reaches it goes, and the key keeps the rest of what it does. `exact` is
  * false when the reading is a guess the legends leave open, or a legend it could not read.
  */
-export function readLegend(k: KdKey, ctx: LegendContext): LegendReading {
+export function readLegend(source: KdKey, ctx: LegendContext): LegendReading {
+  // A glyph is read as the legend it stands for.
+  const k: KdKey = { ...source, tap: glyphLegend(source.tap), hold: glyphLegend(source.hold) };
   const tap = k.tap.trim();
   const hold = k.hold.trim();
   if (k.type === 'trans' || k.type === 'held' || TRANS_LEGENDS.has(tap.toUpperCase())) {
@@ -1027,6 +1072,45 @@ export function readLegend(k: KdKey, ctx: LegendContext): LegendReading {
     const alone = readLegend({ ...k, hold: '' }, ctx);
     return alone.kind === 'binding' && alone.binding.kind !== 'none' ? alone : null;
   };
+
+  // Some drawings say how a key behaves in its shifted legend, above the tap. A one-shot goes there
+  // as it goes under the tap: `sticky` over a layer's name or a modifier, the hold still its own.
+  const word = k.shifted.trim().toLowerCase();
+  if (STICKY_WORDS.has(word) && !STICKY_WORDS.has(holdWord)) {
+    const oneShot = readLegend({ ...k, shifted: '', hold: 'sticky' }, ctx);
+    if (hold === '' || oneShot.kind !== 'binding' || oneShot.binding.kind === 'trans') {
+      return oneShot;
+    }
+    const holdLayer = layerOf(hold);
+    const holdMods = heldModsOf(hold);
+    // As the editor makes them: a layer held is a layer tap, any other hold a tap-hold.
+    if (holdLayer || holdMods) {
+      const binding: Binding = holdLayer
+        ? { kind: 'lt', layer: holdLayer, tap: oneShot.binding }
+        : {
+            kind: 'hold_tap',
+            tap: oneShot.binding,
+            hold: { kind: 'mod', ...(holdMods as { mod: Mod }) },
+          };
+      return { kind: 'binding', binding, exact: oneShot.exact };
+    }
+    // A hold on a layer left out goes, the one-shot staying; any other hold goes, and is reported.
+    return holdLayer === null ? oneShot : { ...oneShot, exact: false };
+  }
+  // `auto-sticky`: the key types its tap, and the layer in its hold is on for the next key.
+  if (word === 'auto-sticky') {
+    const armed = layerOf(hold);
+    if (armed && tap !== '') {
+      return exact({ kind: 'macro', symbols: tap, then: [{ kind: 'sl', layer: armed }] });
+    }
+    return readLegend({ ...k, shifted: '' }, ctx);
+  }
+  // `magic` over `h|v`: an adaptive key, typing the first after anything but a vowel. What it types
+  // after the others has no field, so the key types its default, and is reported.
+  if (word === 'magic' && tap.includes('|')) {
+    const read = readLegend({ ...k, tap: tap.split('|')[0].trim(), shifted: '' }, ctx);
+    return read.kind === 'binding' ? { ...read, exact: false } : read;
+  }
 
   if (tapLayer === null) {
     const holdLayer = layerOf(hold);
@@ -1054,6 +1138,8 @@ export function readLegend(k: KdKey, ctx: LegendContext): LegendReading {
   if (hold !== '') {
     const holdLayer = layerOf(hold);
     const holdMod = heldModsOf(hold);
+    // A hold that moves the cursor is editing: it goes, and the tap stays, read.
+    if (!holdLayer && !holdMod && CURSOR_HOLD.test(hold)) return tapAlone() ?? exact(TRANSPARENT);
     // A hold it cannot read goes, and the key is reported; a tap it reads stays.
     if (!holdLayer && !holdMod) {
       const alone = tapAlone();
@@ -1270,8 +1356,24 @@ export function importKeymapDrawer(
     }
     const b = reading.binding;
     // Only a combo that types is read: one for a command is not something the analysis presses.
-    if (b.kind !== 'kp' && b.kind !== 'macro') {
+    if (b.kind !== 'kp' && b.kind !== 'macro' && b.kind !== 'dead_key') {
       skipped.push(`${label}: does not type`);
+      continue;
+    }
+    // A combo drawn beside the key held to reach its layer, or typing what one of its own keys
+    // types there, is a picture of that key and not a chord, and is left off that layer.
+    const picture = (id: string): boolean => {
+      const li = ids.indexOf(id);
+      const drawn = doc.layers.find((l) => l.name === opts.layers[li].source)?.keys ?? [];
+      return at.some((p, n) => {
+        if (drawn[p]?.type === 'held') return true;
+        const there = tapOf(layers[li].bindings[keys[n] as string]);
+        return there?.kind === 'kp' && b.kind === 'kp' && there.symbol === b.symbol;
+      });
+    };
+    const works = (layersOn.length > 0 ? layersOn : [...ids]).filter((id) => !picture(id));
+    if (works.length === 0) {
+      skipped.push(`${label}: a key drawn beside its layer's key, not a chord`);
       continue;
     }
     // As the editor adds a combo: on the layers it works on (every one, where the file names
@@ -1280,7 +1382,7 @@ export function importKeymapDrawer(
       id: freeComboId(keys as string[], combos.map(comboId)),
       keys: keys as string[],
       binding: b,
-      layers: layersOn.length > 0 ? layersOn : [...ids],
+      layers: works,
       timeoutMs: 50,
       slowRelease: false,
     });

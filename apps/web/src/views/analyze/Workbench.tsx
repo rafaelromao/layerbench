@@ -578,7 +578,7 @@ export function Workbench({
     () => (shown ? heatMap(shown, params.heat, boardLayer) : {}),
     [shown, params.heat, boardLayer],
   );
-  const hasTypingCombos = typedCompiled.combos.length > 0;
+  const hasTypingCombos = typedCompiled.combos.some((c) => c.role === 'typing');
   const boardCombos = useMemo(() => {
     const all = typingCombos(typedCompiled, boardLayer, frame?.combo ?? null);
     // Hidden, a combo on the board still shows while it is the press being played.

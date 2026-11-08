@@ -1,0 +1,991 @@
+{
+  "source": {
+    "repository": "rafaelromao/keyboards",
+    "path": "docs/img/diagrams/keymap-drawer/keymap-drawer.yaml",
+    "commit": "b5fd65d45fae51d6d52aca13e1391b7c6aba1178"
+  },
+  "layers": [
+    {
+      "id": "alpha1",
+      "name": "Alpha 1",
+      "bindings": {
+        "LTR": {
+          "kind": "kp",
+          "symbol": "b"
+        },
+        "LTM": {
+          "kind": "kp",
+          "symbol": "m"
+        },
+        "LTI": {
+          "kind": "kp",
+          "symbol": "g"
+        },
+        "RTI": {
+          "kind": "kp",
+          "symbol": "l"
+        },
+        "RTM": {
+          "kind": "kp",
+          "symbol": "o"
+        },
+        "RTR": {
+          "kind": "kp",
+          "symbol": "u"
+        },
+        "LHP": {
+          "kind": "kp",
+          "symbol": "d"
+        },
+        "LHR": {
+          "kind": "hold_tap",
+          "tap": {
+            "kind": "kp",
+            "symbol": "n"
+          },
+          "hold": {
+            "kind": "mod",
+            "mod": "LCTRL"
+          }
+        },
+        "LHM": {
+          "kind": "hold_tap",
+          "tap": {
+            "kind": "kp",
+            "symbol": "s"
+          },
+          "hold": {
+            "kind": "mod",
+            "mod": "LALT"
+          }
+        },
+        "LHI": {
+          "kind": "hold_tap",
+          "tap": {
+            "kind": "kp",
+            "symbol": "t"
+          },
+          "hold": {
+            "kind": "mod",
+            "mod": "LSHIFT"
+          }
+        },
+        "RHI": {
+          "kind": "hold_tap",
+          "tap": {
+            "kind": "kp",
+            "symbol": "r"
+          },
+          "hold": {
+            "kind": "mod",
+            "mod": "LSHIFT"
+          }
+        },
+        "RHM": {
+          "kind": "hold_tap",
+          "tap": {
+            "kind": "kp",
+            "symbol": "a"
+          },
+          "hold": {
+            "kind": "mod",
+            "mod": "LALT"
+          }
+        },
+        "RHR": {
+          "kind": "hold_tap",
+          "tap": {
+            "kind": "kp",
+            "symbol": "e"
+          },
+          "hold": {
+            "kind": "mod",
+            "mod": "LCTRL"
+          }
+        },
+        "RHP": {
+          "kind": "kp",
+          "symbol": "i"
+        },
+        "LBR": {
+          "kind": "hold_tap",
+          "tap": {
+            "kind": "kp",
+            "symbol": "f"
+          },
+          "hold": {
+            "kind": "mod",
+            "mod": "LGUI",
+            "also": [
+              "LSHIFT"
+            ]
+          }
+        },
+        "LBM": {
+          "kind": "hold_tap",
+          "tap": {
+            "kind": "kp",
+            "symbol": "c"
+          },
+          "hold": {
+            "kind": "mod",
+            "mod": "LGUI",
+            "also": [
+              "LSHIFT"
+            ]
+          }
+        },
+        "LBI": {
+          "kind": "hold_tap",
+          "tap": {
+            "kind": "kp",
+            "symbol": "p"
+          },
+          "hold": {
+            "kind": "mod",
+            "mod": "LGUI"
+          }
+        },
+        "RBI": {
+          "kind": "hold_tap",
+          "tap": {
+            "kind": "kp",
+            "symbol": "h"
+          },
+          "hold": {
+            "kind": "mod",
+            "mod": "LGUI"
+          }
+        },
+        "RBM": {
+          "kind": "kp",
+          "symbol": ","
+        },
+        "RBR": {
+          "kind": "kp",
+          "symbol": "."
+        },
+        "L1": {
+          "kind": "key_repeat"
+        },
+        "L0": {
+          "kind": "lt",
+          "layer": "num",
+          "tap": {
+            "kind": "kp",
+            "symbol": " "
+          }
+        },
+        "R0": {
+          "kind": "lt",
+          "layer": "sym",
+          "tap": {
+            "kind": "sl",
+            "layer": "alpha2"
+          }
+        },
+        "R1": {
+          "kind": "sk",
+          "mod": "LSHIFT"
+        }
+      }
+    },
+    {
+      "id": "alpha2",
+      "name": "Alpha 2",
+      "bindings": {
+        "*": {
+          "kind": "trans"
+        },
+        "LTR": {
+          "kind": "kp",
+          "symbol": "q"
+        },
+        "LTI": {
+          "kind": "kp",
+          "symbol": "k"
+        },
+        "RTI": {
+          "kind": "kp",
+          "symbol": "ô"
+        },
+        "RTM": {
+          "kind": "kp",
+          "symbol": "ó"
+        },
+        "RTR": {
+          "kind": "kp",
+          "symbol": "ú"
+        },
+        "LHP": {
+          "kind": "kp",
+          "symbol": "y"
+        },
+        "LHR": {
+          "kind": "kp",
+          "symbol": "z"
+        },
+        "LHM": {
+          "kind": "kp",
+          "symbol": "x"
+        },
+        "LHI": {
+          "kind": "kp",
+          "symbol": "w"
+        },
+        "RHI": {
+          "kind": "kp",
+          "symbol": "ã"
+        },
+        "RHM": {
+          "kind": "kp",
+          "symbol": "á"
+        },
+        "RHR": {
+          "kind": "kp",
+          "symbol": "é"
+        },
+        "RHP": {
+          "kind": "kp",
+          "symbol": "í"
+        },
+        "LBR": {
+          "kind": "kp",
+          "symbol": "j"
+        },
+        "LBM": {
+          "kind": "macro",
+          "symbols": "ç",
+          "then": [
+            {
+              "kind": "sl",
+              "layer": "ccedil"
+            }
+          ]
+        },
+        "LBI": {
+          "kind": "kp",
+          "symbol": "v"
+        },
+        "RBI": {
+          "kind": "kp",
+          "symbol": "õ"
+        },
+        "RBM": {
+          "kind": "kp",
+          "symbol": "â"
+        },
+        "RBR": {
+          "kind": "kp",
+          "symbol": "ê"
+        },
+        "L1": {
+          "kind": "key_repeat"
+        },
+        "L0": {
+          "kind": "kp",
+          "symbol": "_"
+        },
+        "R0": {
+          "kind": "kp",
+          "symbol": " "
+        },
+        "R1": {
+          "kind": "kp",
+          "symbol": "'"
+        }
+      }
+    },
+    {
+      "id": "ccedil",
+      "name": "Ç extension",
+      "bindings": {
+        "*": {
+          "kind": "trans"
+        },
+        "LTR": {
+          "kind": "none"
+        },
+        "LTM": {
+          "kind": "none"
+        },
+        "LTI": {
+          "kind": "none"
+        },
+        "RTI": {
+          "kind": "none"
+        },
+        "LHP": {
+          "kind": "none"
+        },
+        "LHR": {
+          "kind": "none"
+        },
+        "LHM": {
+          "kind": "none"
+        },
+        "LHI": {
+          "kind": "macro",
+          "symbols": "ão"
+        },
+        "RHI": {
+          "kind": "kp",
+          "symbol": "ã"
+        },
+        "RHR": {
+          "kind": "none"
+        },
+        "RHP": {
+          "kind": "none"
+        },
+        "LBR": {
+          "kind": "none"
+        },
+        "LBM": {
+          "kind": "none"
+        },
+        "LBI": {
+          "kind": "macro",
+          "symbols": "ões"
+        },
+        "RBI": {
+          "kind": "kp",
+          "symbol": "õ"
+        },
+        "L1": {
+          "kind": "sl",
+          "layer": "alpha2"
+        },
+        "L0": {
+          "kind": "none"
+        },
+        "R0": {
+          "kind": "none"
+        },
+        "R1": {
+          "kind": "none"
+        }
+      }
+    },
+    {
+      "id": "num",
+      "name": "Numbers",
+      "bindings": {
+        "*": {
+          "kind": "trans"
+        },
+        "LTR": {
+          "kind": "kp",
+          "symbol": "\\"
+        },
+        "LTM": {
+          "kind": "kp",
+          "symbol": "{"
+        },
+        "LTI": {
+          "kind": "kp",
+          "symbol": "}"
+        },
+        "RTI": {
+          "kind": "kp",
+          "symbol": "7"
+        },
+        "RTM": {
+          "kind": "kp",
+          "symbol": "8"
+        },
+        "RTR": {
+          "kind": "kp",
+          "symbol": "9"
+        },
+        "LHP": {
+          "kind": "kp",
+          "symbol": ","
+        },
+        "LHR": {
+          "kind": "kp",
+          "symbol": "&"
+        },
+        "LHM": {
+          "kind": "kp",
+          "symbol": "("
+        },
+        "LHI": {
+          "kind": "kp",
+          "symbol": ")"
+        },
+        "RHI": {
+          "kind": "kp",
+          "symbol": "4"
+        },
+        "RHM": {
+          "kind": "kp",
+          "symbol": "5"
+        },
+        "RHR": {
+          "kind": "kp",
+          "symbol": "6"
+        },
+        "RHP": {
+          "kind": "kp",
+          "symbol": "."
+        },
+        "LBR": {
+          "kind": "kp",
+          "symbol": "|"
+        },
+        "LBM": {
+          "kind": "kp",
+          "symbol": "["
+        },
+        "LBI": {
+          "kind": "kp",
+          "symbol": "]"
+        },
+        "RBI": {
+          "kind": "kp",
+          "symbol": "1"
+        },
+        "RBM": {
+          "kind": "kp",
+          "symbol": "2"
+        },
+        "RBR": {
+          "kind": "kp",
+          "symbol": "3"
+        },
+        "R0": {
+          "kind": "lt",
+          "layer": "sym",
+          "tap": {
+            "kind": "kp",
+            "symbol": " "
+          }
+        },
+        "R1": {
+          "kind": "kp",
+          "symbol": "0"
+        }
+      }
+    },
+    {
+      "id": "sym",
+      "name": "Symbols",
+      "bindings": {
+        "*": {
+          "kind": "trans"
+        },
+        "LTR": {
+          "kind": "kp",
+          "symbol": "~"
+        },
+        "LTM": {
+          "kind": "kp",
+          "symbol": "#"
+        },
+        "LTI": {
+          "kind": "kp",
+          "symbol": "'"
+        },
+        "RTI": {
+          "kind": "kp",
+          "symbol": "%"
+        },
+        "RTM": {
+          "kind": "kp",
+          "symbol": "="
+        },
+        "RTR": {
+          "kind": "kp",
+          "symbol": ":"
+        },
+        "LHP": {
+          "kind": "kp",
+          "symbol": "@"
+        },
+        "LHR": {
+          "kind": "kp",
+          "symbol": "^"
+        },
+        "LHM": {
+          "kind": "kp",
+          "symbol": "$"
+        },
+        "LHI": {
+          "kind": "kp",
+          "symbol": "\""
+        },
+        "RHI": {
+          "kind": "kp",
+          "symbol": "?"
+        },
+        "RHM": {
+          "kind": "kp",
+          "symbol": "-"
+        },
+        "RHR": {
+          "kind": "kp",
+          "symbol": "+"
+        },
+        "RHP": {
+          "kind": "kp",
+          "symbol": "_"
+        },
+        "LBR": {
+          "kind": "kp",
+          "symbol": "<"
+        },
+        "LBM": {
+          "kind": "kp",
+          "symbol": ">"
+        },
+        "LBI": {
+          "kind": "kp",
+          "symbol": "`"
+        },
+        "RBI": {
+          "kind": "kp",
+          "symbol": "!"
+        },
+        "RBM": {
+          "kind": "kp",
+          "symbol": "/"
+        },
+        "RBR": {
+          "kind": "kp",
+          "symbol": "*"
+        },
+        "L0": {
+          "kind": "lt",
+          "layer": "num",
+          "tap": {
+            "kind": "kp",
+            "symbol": " "
+          }
+        }
+      }
+    }
+  ],
+  "combos": [
+    {
+      "id": "ltm-lti",
+      "keys": [
+        "LTM",
+        "LTI"
+      ],
+      "binding": {
+        "kind": "kp",
+        "symbol": "k"
+      },
+      "layers": [
+        "alpha1"
+      ],
+      "timeoutMs": 50,
+      "slowRelease": false
+    },
+    {
+      "id": "rti-rtm",
+      "keys": [
+        "RTI",
+        "RTM"
+      ],
+      "binding": {
+        "kind": "kp",
+        "symbol": "x"
+      },
+      "layers": [
+        "alpha1"
+      ],
+      "timeoutMs": 50,
+      "slowRelease": false
+    },
+    {
+      "id": "lhr-lhm",
+      "keys": [
+        "LHR",
+        "LHM"
+      ],
+      "binding": {
+        "kind": "kp",
+        "symbol": "q"
+      },
+      "layers": [
+        "alpha1"
+      ],
+      "timeoutMs": 50,
+      "slowRelease": false
+    },
+    {
+      "id": "lhm-lhi",
+      "keys": [
+        "LHM",
+        "LHI"
+      ],
+      "binding": {
+        "kind": "kp",
+        "symbol": "w"
+      },
+      "layers": [
+        "alpha1"
+      ],
+      "timeoutMs": 50,
+      "slowRelease": false
+    },
+    {
+      "id": "rhi-rhm",
+      "keys": [
+        "RHI",
+        "RHM"
+      ],
+      "binding": {
+        "kind": "kp",
+        "symbol": "z"
+      },
+      "layers": [
+        "alpha1"
+      ],
+      "timeoutMs": 50,
+      "slowRelease": false
+    },
+    {
+      "id": "rhm-rhr",
+      "keys": [
+        "RHM",
+        "RHR"
+      ],
+      "binding": {
+        "kind": "kp",
+        "symbol": "y"
+      },
+      "layers": [
+        "alpha1"
+      ],
+      "timeoutMs": 50,
+      "slowRelease": false
+    },
+    {
+      "id": "lbm-lbi",
+      "keys": [
+        "LBM",
+        "LBI"
+      ],
+      "binding": {
+        "kind": "kp",
+        "symbol": "v"
+      },
+      "layers": [
+        "alpha1"
+      ],
+      "timeoutMs": 50,
+      "slowRelease": false
+    },
+    {
+      "id": "rbi-rbm",
+      "keys": [
+        "RBI",
+        "RBM"
+      ],
+      "binding": {
+        "kind": "kp",
+        "symbol": "j"
+      },
+      "layers": [
+        "alpha1"
+      ],
+      "timeoutMs": 50,
+      "slowRelease": false
+    },
+    {
+      "id": "rbm-rbr",
+      "keys": [
+        "RBM",
+        "RBR"
+      ],
+      "binding": {
+        "kind": "kp",
+        "symbol": ";"
+      },
+      "layers": [
+        "alpha1",
+        "num"
+      ],
+      "timeoutMs": 50,
+      "slowRelease": false
+    },
+    {
+      "id": "ltm-lti-2",
+      "keys": [
+        "LTM",
+        "LTI"
+      ],
+      "binding": {
+        "kind": "dead_key",
+        "diacritic": "¨"
+      },
+      "layers": [
+        "alpha2"
+      ],
+      "timeoutMs": 50,
+      "slowRelease": false
+    },
+    {
+      "id": "rti-rtm-2",
+      "keys": [
+        "RTI",
+        "RTM"
+      ],
+      "binding": {
+        "kind": "kp",
+        "symbol": "-"
+      },
+      "layers": [
+        "alpha2"
+      ],
+      "timeoutMs": 50,
+      "slowRelease": false
+    },
+    {
+      "id": "lhr-lhm-2",
+      "keys": [
+        "LHR",
+        "LHM"
+      ],
+      "binding": {
+        "kind": "dead_key",
+        "diacritic": "^"
+      },
+      "layers": [
+        "alpha2"
+      ],
+      "timeoutMs": 50,
+      "slowRelease": false
+    },
+    {
+      "id": "lhm-lhi-2",
+      "keys": [
+        "LHM",
+        "LHI"
+      ],
+      "binding": {
+        "kind": "dead_key",
+        "diacritic": "´"
+      },
+      "layers": [
+        "alpha2"
+      ],
+      "timeoutMs": 50,
+      "slowRelease": false
+    },
+    {
+      "id": "rhi-rhm-2",
+      "keys": [
+        "RHI",
+        "RHM"
+      ],
+      "binding": {
+        "kind": "kp",
+        "symbol": "?"
+      },
+      "layers": [
+        "alpha2"
+      ],
+      "timeoutMs": 50,
+      "slowRelease": false
+    },
+    {
+      "id": "rhm-rhr-2",
+      "keys": [
+        "RHM",
+        "RHR"
+      ],
+      "binding": {
+        "kind": "kp",
+        "symbol": "à"
+      },
+      "layers": [
+        "alpha2"
+      ],
+      "timeoutMs": 50,
+      "slowRelease": false
+    },
+    {
+      "id": "lbr-lbm",
+      "keys": [
+        "LBR",
+        "LBM"
+      ],
+      "binding": {
+        "kind": "dead_key",
+        "diacritic": "`"
+      },
+      "layers": [
+        "alpha2"
+      ],
+      "timeoutMs": 50,
+      "slowRelease": false
+    },
+    {
+      "id": "lbm-lbi-2",
+      "keys": [
+        "LBM",
+        "LBI"
+      ],
+      "binding": {
+        "kind": "dead_key",
+        "diacritic": "~"
+      },
+      "layers": [
+        "alpha2"
+      ],
+      "timeoutMs": 50,
+      "slowRelease": false
+    },
+    {
+      "id": "rbi-rbm-2",
+      "keys": [
+        "RBI",
+        "RBM"
+      ],
+      "binding": {
+        "kind": "kp",
+        "symbol": "!"
+      },
+      "layers": [
+        "alpha2"
+      ],
+      "timeoutMs": 50,
+      "slowRelease": false
+    },
+    {
+      "id": "rbm-rbr-2",
+      "keys": [
+        "RBM",
+        "RBR"
+      ],
+      "binding": {
+        "kind": "kp",
+        "symbol": ":"
+      },
+      "layers": [
+        "alpha2"
+      ],
+      "timeoutMs": 50,
+      "slowRelease": false
+    },
+    {
+      "id": "rti-rtm-3",
+      "keys": [
+        "RTI",
+        "RTM"
+      ],
+      "binding": {
+        "kind": "kp",
+        "symbol": "g"
+      },
+      "layers": [
+        "num"
+      ],
+      "timeoutMs": 50,
+      "slowRelease": false
+    },
+    {
+      "id": "rhi-rhm-3",
+      "keys": [
+        "RHI",
+        "RHM"
+      ],
+      "binding": {
+        "kind": "kp",
+        "symbol": "j"
+      },
+      "layers": [
+        "num"
+      ],
+      "timeoutMs": 50,
+      "slowRelease": false
+    },
+    {
+      "id": "rhm-rhr-3",
+      "keys": [
+        "RHM",
+        "RHR"
+      ],
+      "binding": {
+        "kind": "kp",
+        "symbol": "k"
+      },
+      "layers": [
+        "num"
+      ],
+      "timeoutMs": 50,
+      "slowRelease": false
+    },
+    {
+      "id": "rbi-rbm-3",
+      "keys": [
+        "RBI",
+        "RBM"
+      ],
+      "binding": {
+        "kind": "kp",
+        "symbol": "|"
+      },
+      "layers": [
+        "num"
+      ],
+      "timeoutMs": 50,
+      "slowRelease": false
+    },
+    {
+      "id": "rhi-rhm-rhr",
+      "keys": [
+        "RHI",
+        "RHM",
+        "RHR"
+      ],
+      "binding": {
+        "kind": "kp",
+        "symbol": "º"
+      },
+      "layers": [
+        "num"
+      ],
+      "timeoutMs": 50,
+      "slowRelease": false
+    },
+    {
+      "id": "rbi-rbm-rbr",
+      "keys": [
+        "RBI",
+        "RBM",
+        "RBR"
+      ],
+      "binding": {
+        "kind": "kp",
+        "symbol": "°"
+      },
+      "layers": [
+        "num"
+      ],
+      "timeoutMs": 50,
+      "slowRelease": false
+    },
+    {
+      "id": "rti-rtm-rtr",
+      "keys": [
+        "RTI",
+        "RTM",
+        "RTR"
+      ],
+      "binding": {
+        "kind": "kp",
+        "symbol": "€"
+      },
+      "layers": [
+        "sym"
+      ],
+      "timeoutMs": 50,
+      "slowRelease": false
+    }
+  ]
+}

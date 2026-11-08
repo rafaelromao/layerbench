@@ -283,6 +283,13 @@ function blockedByLayer(compiled: CompiledLayout): ReadonlySet<number>[] {
 }
 
 /**
+ * Whether a way is a typing combo's own: the combo makes the symbol. A dead key on a combo makes no
+ * letter, it accents the next one, so its letters are ways like any other and the cheapest wins:
+ * the keys that type an accented letter beat the dead key, which types what they do not.
+ */
+export const pressesCombo = (p: Producer) => p.kind === 'combo';
+
+/**
  * Enumerate every way to produce each symbol string on the layout.
  */
 export function enumerateProducers(
@@ -350,6 +357,7 @@ export function enumerateProducers(
     }
   }
   for (const c of compiled.combos) {
+    if (c.role !== 'typing') continue;
     const tapped = staticOutputs(c.binding).map((o) => [false, o] as const);
     const held = holdOutputs(c.binding).map((o) => [true, o] as const);
     for (const [hold, o] of [...tapped, ...held]) {
@@ -390,13 +398,14 @@ export function enumerateProducers(
     if (fold && p.deadMods?.length) excludedByCase.push(p);
     else add(p);
   }
-  // Default ordering: cheapest first, then non-dynamic before dynamic, then non-combo.
+  // Default ordering: a typing combo's own ways first, since it is not weighed against the rest,
+  // then cheapest first, then non-dynamic before dynamic.
   for (const [, list] of bySymbol) {
     list.sort(
       (a, b) =>
+        Number(pressesCombo(b)) - Number(pressesCombo(a)) ||
         a.cost - b.cost ||
         Number(a.dynamic) - Number(b.dynamic) ||
-        Number(a.kind === 'combo') - Number(b.kind === 'combo') ||
         // Byte order, not locale order: this tie-break decides which producer types a symbol, and
         // the pinned reports depend on it.
         (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
@@ -453,7 +462,7 @@ function deadKeyProducers(
     }
   }
   for (const c of compiled.combos) {
-    const dk = tappedDeadKey(c.binding);
+    const dk = c.role === 'typing' ? tappedDeadKey(c.binding) : null;
     if (!dk) continue;
     const onBase = c.layerMask === null || (c.layerMask & 1) !== 0;
     sources.push({

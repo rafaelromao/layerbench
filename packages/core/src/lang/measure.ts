@@ -2,7 +2,7 @@ import { bundledScores } from '../generate/engine.js';
 import { librarySettings, loadSample } from '../generate/tables.js';
 import { compileLayout } from '../layout/compile.js';
 import type { Layout } from '../layout/types.js';
-import { BUNDLED_LAYOUTS } from '../layouts/index.js';
+import { BUNDLED_LAYOUTS, CLASSIC_DEFS, SMALL_DEFS } from '../layouts/index.js';
 import { producibleSymbols } from './coverage.js';
 import {
   LANGUAGE_CORPORA,
@@ -31,18 +31,28 @@ function covers(layout: Layout, tag: string): boolean {
   return coverage !== undefined && languageCovered(coverage);
 }
 
-/** The bundled layouts, by id, that perform well in one language. */
+/** The languages a layout's author made it for, where its definition says so: the only ones it gets. */
+const MADE_FOR = new Map(
+  [...CLASSIC_DEFS, ...SMALL_DEFS].flatMap((d) => (d.madeFor ? [[d.id, d.madeFor] as const] : [])),
+);
+
+/**
+ * The bundled layouts, by id, that perform well in one language, and were not made for others only.
+ * Every layout still counts in the half that decides it, those made for other languages too.
+ */
 export async function measureLanguage(tag: string): Promise<Set<string>> {
   const sample = await loadSample({
     settings: librarySettings(LANGUAGE_CORPORA[tag], LANGUAGES_PRESET),
   });
   const scores = bundledScores(sample);
-  return performsWell(
+  const well = performsWell(
     BUNDLED_LAYOUTS.map((layout) => {
       const id = layout.id as string;
       return { id, effort: scores.get(id)?.effort ?? Number.NaN, covers: covers(layout, tag) };
     }),
   );
+  for (const id of well) if (MADE_FOR.get(id)?.includes(tag) === false) well.delete(id);
+  return well;
 }
 
 /** Every bundled layout's languages, by id, in the order the layouts are listed. */

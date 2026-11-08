@@ -76,15 +76,15 @@ describe('layout coverage', () => {
     expect(layoutLanguageCoverage(qwerty, 'pt')?.missingRequired.length).toBeGreaterThan(0);
   });
 
-  it("writes Spanish and Italian through Alpha 2's dead keys, and not French's œ and quotes nor German's ß", () => {
-    // Alpha 2 carries the Portuguese set; the accents the others add, a grave on any vowel, the
-    // tilde on `n` and the diaeresis, come from its combos' dead keys. Its keymap has no `œ`, `ß`
-    // or French quotes.
+  it('writes every language but what its keymap has no key for', () => {
+    // Alpha 2 carries the Portuguese set, and the dead keys on its combos make the other accents. Its
+    // keymap has no `œ`, `ß`, French quotes, `¿` or `¡`.
     const missing = (tag: string) => {
       const c = layoutLanguageCoverage(magic, tag);
       return [tag, c?.missingRequired, c?.missingPunctuation];
     };
-    for (const tag of ['en', 'es', 'it']) expect(missing(tag)).toEqual([tag, [], []]);
+    for (const tag of ['en', 'pt', 'it']) expect(missing(tag)).toEqual([tag, [], []]);
+    expect(missing('es')).toEqual(['es', [], ['¿', '¡']]);
     expect(missing('fr')).toEqual(['fr', ['œ'], ['«', '»']]);
     expect(missing('de')).toEqual(['de', ['ß'], []]);
   });

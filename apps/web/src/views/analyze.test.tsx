@@ -72,17 +72,14 @@ describe('Analyze', () => {
     await user.click(within(presses).getByRole('button', { name: /RHM\+RHR/ }));
     const names = () =>
       [...document.querySelectorAll('#kb-analyze .lb-combo title')].map((t) => t.textContent);
+    // The à and the dead keys type on Alpha 2: the others the keymap draws there are commands.
     expect(names()).toEqual([
-      'Combo RTI + RTM: -',
       'Combo LTM + LTI: ¨, dead key',
-      'Combo LHM + LHI: ´, dead key',
-      'Combo LBM + LBR: `, dead key',
       'Combo LHR + LHM: ^, dead key',
-      'Combo LBI + LBM: ~, dead key',
-      'Combo RHI + RHM: ? / ¿',
-      'Combo RBI + RBM: ! / ¡',
-      'Combo RBM + RBR: :',
+      'Combo LHM + LHI: ´, dead key',
       'Combo RHM + RHR: à',
+      'Combo LBR + LBM: `, dead key',
+      'Combo LBM + LBI: ~, dead key',
     ]);
     const lit = document.querySelector('#kb-analyze .lb-combo-active title');
     expect(lit?.textContent).toBe('Combo RHM + RHR: à');
@@ -95,19 +92,16 @@ describe('Analyze', () => {
 
   it('lists the combos the board does not draw beside it, and opens one in the editor', async () => {
     const user = userEvent.setup();
-    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000&layer=3');
+    renderRoute('/analyze?layout=t-34&corpus=pt-br-general&sample=20000');
     await screen.findByText('Same finger bigrams');
-    // Magic Romak's Numbers has combos on three keys, which the board leaves to the button.
-    await user.click(await screen.findByRole('button', { name: /^\d+ more combos? on Numbers$/ }));
-    const dialog = screen.getByRole('dialog', { name: 'Combos on Numbers' });
-    const degree = within(dialog).getByRole('button', { name: /^Edit combo .+: °$/ });
+    // T-34's base layer has combos on keys apart, which the board leaves to the button.
+    await user.click(await screen.findByRole('button', { name: /^\d+ more combos? on Base$/ }));
+    const dialog = screen.getByRole('dialog', { name: 'Combos on Base' });
+    const pipe = within(dialog).getByRole('button', { name: 'Edit combo L0 + LHP: |' });
     // The editor names a combo by its keys, as `LHM+LHI`; the dialog, as `LHM + LHI`.
-    const keys = /^Edit combo (.+): °$/.exec(degree.getAttribute('aria-label') ?? '')?.[1] ?? '';
-    await user.click(degree);
-    expect(screen.queryByRole('dialog', { name: 'Combos on Numbers' })).toBeNull();
-    expect(
-      await screen.findByRole('group', { name: `Edit combo ${keys.split(' + ').join('+')}` }),
-    ).toBeInTheDocument();
+    await user.click(pipe);
+    expect(screen.queryByRole('dialog', { name: 'Combos on Base' })).toBeNull();
+    expect(await screen.findByRole('group', { name: 'Edit combo L0+LHP' })).toBeInTheDocument();
 
     // Hidden, from Settings, the combos go, and the button with them.
     const board = within(await openSettings()).getByRole('group', { name: 'On the board' });
@@ -142,13 +136,13 @@ describe('Analyze', () => {
     await screen.findByText('Same finger bigrams');
     expect(screen.getByRole('status')).toHaveTextContent('Typed without multi-letter macros.');
 
-    // `qu` is one press with the macro; without it, `q` and then `u`.
-    await user.type(screen.getByLabelText('How is this typed?'), 'qu');
-    expect(await screen.findByText('3 presses')).toBeInTheDocument();
+    // `ão` after `ç` is one press with the macro; without it, `ã` and then `o`.
+    await user.type(screen.getByLabelText('How is this typed?'), 'ção');
+    expect(await screen.findByText('4 presses')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Use every feature' }));
     await waitFor(() => expect(currentSearch()).not.toContain('off='));
-    expect(await screen.findByText('2 presses')).toBeInTheDocument();
+    expect(await screen.findByText('3 presses')).toBeInTheDocument();
   });
 
   it('switches features off from its Settings, as the Library and Compare do', async () => {
@@ -164,8 +158,8 @@ describe('Analyze', () => {
     await user.click(macros);
     await waitFor(() => expect(currentSearch()).toContain('off=macros'));
     expect(screen.getByRole('status')).toHaveTextContent('Typed without multi-letter macros.');
-    await user.type(screen.getByLabelText('How is this typed?'), 'qu');
-    expect(await screen.findByText('3 presses')).toBeInTheDocument();
+    await user.type(screen.getByLabelText('How is this typed?'), 'ção');
+    expect(await screen.findByText('4 presses')).toBeInTheDocument();
   });
 
   it('turns the board to the layer a listed pair happens on when it is clicked', async () => {

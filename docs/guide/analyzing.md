@@ -99,7 +99,8 @@ it is for, chosen in **Settings** in **Analyze**: one for Spanish that has no `Ã
 card, whatever the text. It is only flagged for that, not ranked after the others: on an English
 text it skipped nothing for Spanish. A layout that comes with the app is for the languages it
 performs well in: it types every letter they need, and its Effort on their news texts is in the
-better half of the bundled layouts'. Some, such as Qwerty, are for none.
+better half of the bundled layouts'. Some, such as Qwerty, are for none, and Magic Romak is for
+English and Portuguese only, the languages its author made it for.
 
 **Rank with** switches special features off for the ranking: adaptive keys (they type their default
 letter), the repeat key (doubled letters are tapped twice), typing combos, and macros that type two

@@ -12,6 +12,7 @@
       "!**/node_modules",
       "!packages/core/golden",
       "!packages/core/src/layouts/documents",
+      "!packages/core/src/layouts/keymaps",
       "!packages/core/fixtures",
       "!packages/corpora/raw",
       "!apps/web/public",

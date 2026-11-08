@@ -700,6 +700,8 @@ export function CombosPanel({
             layerIds.length === layout.layers.length
               ? 'every layer'
               : layerIds.map((id) => layout.layers.find((l) => l.id === id)?.name ?? id).join(', ');
+          // A command stays on the keyboard, and the analysis never presses it.
+          const cardLayers = c.role === 'command' ? `${layersText} · not typed` : layersText;
           return (
             // By place: a custom layout can hold two combos under one id.
             // biome-ignore lint/suspicious/noArrayIndexKey: the place is what a card edits
@@ -733,8 +735,8 @@ export function CombosPanel({
                   <Keycap small symbol={shown.tap || '·'} hold={shown.hold || undefined} />
                   <span className="lb-combo-slide-text">
                     <span className="lb-combo-slide-keys font-mono">{name}</span>
-                    <span className="lb-combo-slide-layers" title={layersText}>
-                      {layersText}
+                    <span className="lb-combo-slide-layers" title={cardLayers}>
+                      {cardLayers}
                     </span>
                   </span>
                 </span>

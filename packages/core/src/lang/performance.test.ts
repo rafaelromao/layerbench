@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { corporaRoot } from '../golden/paths.js';
+import { compileLayout } from '../layout/compile.js';
 import { toCanonicalJson } from '../layout/json.js';
 import type { Layout } from '../layout/types.js';
 import {
@@ -12,6 +13,7 @@ import {
   goldenLayouts,
 } from '../layouts/index.js';
 import stored from '../layouts/languages.json';
+import { layoutLanguageCoverage } from './coverage.js';
 import { measureLanguage } from './measure.js';
 import {
   LANGUAGE_CORPORA,
@@ -84,6 +86,16 @@ describe('bundled layouts’ languages', () => {
       ...DOCUMENT_LAYOUTS.map((l) => l.languages ?? []),
     ];
     for (const list of lists) expect(list).toEqual(orderedLanguages(new Set(list)));
+  });
+
+  it('are only those its author made a layout for, where its definition says so', () => {
+    // Magic Romak types every letter Spanish and Italian need and performs well in them, but it is
+    // for English and Portuguese: its author writes those, and his keymap has no `¿` or `¡`.
+    const magic = bundledLayout('magic-romak') as Layout;
+    expect(magic.languages).toEqual(['en', 'pt']);
+    const compiled = compileLayout(magic);
+    for (const tag of ['es', 'it'])
+      expect(layoutLanguageCoverage(compiled, tag)?.missingRequired, tag).toEqual([]);
   });
 
   it('can be none: a document for no language is written without them, and reads back so', () => {

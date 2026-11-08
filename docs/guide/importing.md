@@ -81,6 +81,13 @@ A legend is what a key shows, not what it does, so the import reads it the way a
 | a layer's name over `sticky` · `toggle` · `to` · `auto` | a one-shot, toggle, switch or auto layer key |
 | `LSHFT` · `LCTRL` · `⇧` · `⌘` | a modifier; over `sticky`, a one-shot modifier |
 | `A` over `LCTRL` | a tap-hold: tap for `a`, hold for Control |
+| `$$mdi:apple-keyboard-control$$` · `-option$$` · `-shift$$` · `-command$$` | the modifier they draw, as a tap or a hold: Control, Alt, Shift, Gui |
+| `$$shift_command$$` | Gui held with Shift, as a drawing that names its own glyph for them |
+| `$$mdi:repeat$$` · `$$mdi:keyboard-space$$` | the repeat key, the space key |
+| `sticky` as the *shifted* legend (`s:`) over a layer's name or a modifier | as under the tap: a one-shot; with a hold of its own, a tap-hold of the one-shot and that hold |
+| `ç` with `s: auto-sticky` over a layer's name | a macro that types it and turns that layer on for the next key |
+| `h\|v` with `s: magic` | the first, `h`; reported as not read in full, since the adaptive key's other branch has no field |
+| `⇥ {` · `→ ,` as a hold | the tap alone: the hold moves the cursor, which is editing |
 | `ESC` over a layer's name | a hold for that layer, tapping nothing |
 | `REPEAT` · `CAPS_WORD` | a repeat key, caps word |
 | `▽` · `{type: trans}` · `{type: held}` | transparent |
@@ -96,7 +103,9 @@ taps nothing: the layer held on it still works. A layer you left out is named no
 Combos come along too, found by their key positions or by the legends of their keys, on the layers
 you keep, with the timing the editor gives a combo. Only a combo that types is read: one that does
 nothing, or does something that is not typing, such as a shortcut, is skipped, as the editor makes
-no transparent combo.
+no transparent combo. A dead key is read from `dead "` or `dead '`, and the others. A combo drawn
+beside the key that is held to reach its layer, or typing what one of its own keys already types
+there, is a picture of that key, not a chord, and is left off that layer.
 
 ### What the report says
 

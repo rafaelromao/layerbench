@@ -153,6 +153,12 @@ export interface ComboDef {
   binding: Binding;
   /** Layers on which the combo may fire; omitted = all layers. */
   layers?: string[];
+  /**
+   * Whether the analysis types with the combo. A `typing` combo is a way to type what it makes, and
+   * the way, wherever it works; a `command` combo is on the keyboard but never pressed by the
+   * analysis, as one whose keys the author does not type with. Omitted = `typing`.
+   */
+  role?: 'typing' | 'command';
   timeoutMs?: number;
   slowRelease?: boolean;
 }

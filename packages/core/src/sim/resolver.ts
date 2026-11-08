@@ -13,7 +13,7 @@ import {
   type TypingPathEntry,
 } from '../layout/types.js';
 import { recordPresses } from '../presses/press-log.js';
-import { cyanophageEffort } from '../rules/effort.js';
+import { chordEffort, cyanophageEffort } from '../rules/effort.js';
 import type {
   FingerTravel,
   RunStats,
@@ -35,6 +35,7 @@ import {
   enumerateProducers,
   type Producer,
   type ProducerIndex,
+  pressesCombo,
   repeatProducers,
 } from './producers.js';
 
@@ -106,6 +107,16 @@ export function findHomeKeys(compiled: CompiledLayout): Record<Finger, number> {
   return home;
 }
 
+/**
+ * A tier with a typing combo's own ways taken first, as a tier of their own: the combo is the way,
+ * wherever it works, and is not weighed against the rest of the tier. A dead key's letters stay in
+ * the rest (`pressesCombo`).
+ */
+function combosFirst(tier: Producer[]): Producer[][] {
+  const combos = tier.filter(pressesCombo);
+  if (combos.length === 0 || combos.length === tier.length) return [tier];
+  return [combos, tier.filter((p) => !pressesCombo(p))];
+}
 /**
  * Text → physical key events → n-gram tables.
  */
@@ -212,10 +223,10 @@ export class Simulator {
       options.activators ?? compiled.layout.activators ?? {},
     );
     this.peers = standInPeers(this.activators);
-    // Effort of a press at each position, a chord's keys summed, on cyanophage's own grid.
+    // Effort of a press at each position, a chord's keys at their shares, on cyanophage's own grid.
     const effort = cyanophageEffort(compiled);
     const pressEffort = compiled.positions.map((p) =>
-      p.members.reduce((sum, m) => sum + (effort[compiled.keys[m].id] ?? 1), 0),
+      chordEffort(p.members.map((m) => effort[compiled.keys[m].id] ?? 1)),
     );
     this.measure = pressMeasure(compiled, pressEffort);
     this.homeKeys = findHomeKeys(compiled);
@@ -251,8 +262,11 @@ export class Simulator {
 
   /**
    * The ways to type a token, in tiers: the first tier that works is used, and inside it the
-   * cheapest way. One tier, except for a doubled letter of a layout that declared how those are
-   * typed, which tries each way that is on in turn: the repeat key's, then tapping the key again.
+   * cheapest way. A typing combo is not weighed against the other ways: where the symbol has no
+   * order of its own, the ways it makes the symbol are the first tier, and the rest follow it, for
+   * where the combo does not work. Otherwise one tier, except for a doubled letter of a layout that
+   * declared how those are typed, which tries each way that is on in turn: the repeat key's, then
+   * tapping the key again.
    */
   private candidatesFor(token: string): Producer[][] {
     const last = this.machine.state.lastSymbol;
@@ -261,6 +275,18 @@ export class Simulator {
     const [symbol, ordinary] = this.ordinaryFor(token);
     const repeats = doubled ? repeatProducers(this.index) : [];
     const ways = this.doubledWays;
+    const handSet = (this.userPaths.get(symbol)?.length ?? 0) > 0;
+    const tiers = this.tiersFor(symbol, ordinary, repeats, doubled, ways);
+    return handSet ? tiers : tiers.flatMap(combosFirst);
+  }
+
+  private tiersFor(
+    symbol: string,
+    ordinary: Producer[],
+    repeats: Producer[],
+    doubled: boolean,
+    ways: readonly DoubledWay[] | null,
+  ): Producer[][] {
     if (ways === null) {
       const list = this.repeatPolicy === 'repeat_key' ? [...repeats, ...ordinary] : ordinary;
       return [this.applyUserOrder(symbol, list)];
@@ -673,7 +699,7 @@ export class Simulator {
       // so a combo can give a modifier only as a one-shot.
       if (!sticky) return false;
       for (const c of this.compiled.combos) {
-        if (!m.comboAvailable(c.idx)) continue;
+        if (c.role !== 'typing' || !m.comboAvailable(c.idx)) continue;
         const peeled = peelBinding(m, c.binding, 'tap');
         if (peeled.kind === 'sk' && peeled.mod === mod) {
           events.push(...m.perform({ type: 'chord', combo: c.idx }));

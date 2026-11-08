@@ -8,6 +8,7 @@ import type { Binding, Layout, Mod } from '../layout/types.js';
 import { withoutFeatures } from '../layout/without.js';
 import { CLASSIC_LAYOUTS } from '../layouts/classic.js';
 import { BUNDLED_LAYOUTS, bundledLayout, withHomeRowMods } from '../layouts/index.js';
+import { enumerateProducers } from './producers.js';
 import { explain, simulate } from './resolver.js';
 
 const magicRomak = bundledLayout('magic-romak')!;
@@ -198,14 +199,21 @@ describe('the cheapest way to type a character', () => {
     expect(trace(twoWays(), 'y').keys).toEqual(['RHI']);
   });
 
-  it('leaves no layer key held when another way costs the same, so a capital after ! needs no shift', () => {
-    // `!` is two presses either way on Magic Romak: tap Alpha 2 and press a combo, or hold Symbols
-    // and tap. Held, the thumb would still be down through the space, and its release would end
-    // the shift sentence case armed for the capital.
-    const t = trace(magicRomak, 'oi! Ola', { caseMode: 'model' });
-    expect(t.out).toBe('oi! Ola');
-    expect(t.keys).not.toContain('R1');
-    expect(t.presses).toBe(8);
+  it('leaves no layer key held when another way costs the same', () => {
+    // Two presses either way: hold a layer and tap, or tap a one-shot layer and tap. Held, the
+    // thumb would still be down through what follows, and its release can end a one-shot shift.
+    const base = twoWays();
+    const held: Layout = {
+      ...base,
+      layers: base.layers.map((l) =>
+        l.id === 'base'
+          ? { ...l, bindings: { ...l.bindings, R0: { kind: 'mo', layer: 'aa' } } }
+          : l,
+      ),
+    };
+    const t = trace(held, 'x');
+    expect(t.keys).toEqual(['L1', 'RHI']);
+    expect(t.presses).toBe(2);
   });
 
   it('keeps an order set by hand, whatever it costs', () => {
@@ -213,6 +221,114 @@ describe('the cheapest way to type a character', () => {
     expect(t.keys).toEqual(['LBP']);
     const far = trace(twoWays({ typingPaths: { x: [{ producer: 'direct:aa/RHI' }] } }), 'x');
     expect(far.keys).toEqual(['R0', 'LHM', 'RHI']);
+  });
+});
+
+describe('a combo is a way to type, or it is not: the cost does not decide', () => {
+  const kp = (symbol: string) => ({ kind: 'kp' as const, symbol });
+  /** `y` on the home row, and on a chord of the bottom pinky and ring, which costs more effort. */
+  const withChord = (
+    extra: Partial<Layout['combos'] extends (infer C)[] | undefined ? C : never> = {},
+  ): Layout => ({
+    format: 'layerbench/layout@1',
+    name: 'A chord',
+    hostLocale: 'symbols',
+    geometry: { preset: '3x5+2' },
+    keys: { space: 'L0' },
+    layers: [
+      {
+        id: 'base',
+        bindings: { L0: kp(' '), R0: { kind: 'sl', layer: 'mid' }, RHI: kp('y') },
+      },
+      { id: 'mid', bindings: { '*': { kind: 'trans' } } },
+      // No key brings it on.
+      { id: 'lost', bindings: { '*': { kind: 'trans' } } },
+    ],
+    combos: [
+      {
+        id: 'c',
+        keys: ['LBP', 'LBR'],
+        binding: kp('y'),
+        layers: ['base'],
+        timeoutMs: 30,
+        slowRelease: false,
+        ...extra,
+      },
+    ],
+  });
+
+  it('is used where it types, though a key does the same for less', () => {
+    expect(trace(withChord(), 'y').keys).toEqual(['combo:c']);
+  });
+
+  it('is listed first among the ways to type its symbol', () => {
+    const ways = enumerateProducers(compileLayout(withChord()), 'fold').bySymbol.get('y') ?? [];
+    expect(ways.map((p) => p.id)).toEqual(['combo:c', 'direct:base/RHI']);
+  });
+
+  it('is never pressed when it is a command, and is no way to type', () => {
+    const layout = withChord({ role: 'command' });
+    expect(trace(layout, 'y').keys).toEqual(['RHI']);
+    const ways = enumerateProducers(compileLayout(layout), 'fold').bySymbol.get('y') ?? [];
+    expect(ways.map((p) => p.id)).toEqual(['direct:base/RHI']);
+  });
+
+  it('is used through the layer key that reaches it, where it works on another layer', () => {
+    expect(trace(withChord({ layers: ['mid'] }), 'y').keys).toEqual(['R0', 'combo:c']);
+  });
+
+  it('falls through to the other ways where nothing brings its layer on', () => {
+    expect(trace(withChord({ layers: ['lost'] }), 'y').keys).toEqual(['RHI']);
+  });
+
+  it('keeps the order set by hand for a symbol, the combo not first', () => {
+    const layout = {
+      ...withChord(),
+      typingPaths: { y: [{ producer: 'direct:base/RHI' }, { producer: 'combo:c' }] },
+    };
+    expect(trace(layout, 'y').keys).toEqual(['RHI']);
+  });
+
+  describe('a dead key on a combo', () => {
+    /** An acute accent on a combo, a key for `é`, and keys for `y` and `e`, which `ý` composes with. */
+    const withDeadKey = (role?: 'command'): Layout => ({
+      format: 'layerbench/layout@1',
+      name: 'A dead key',
+      hostLocale: 'symbols',
+      geometry: { preset: '3x5+2' },
+      keys: { space: 'L0' },
+      layers: [
+        {
+          id: 'base',
+          bindings: { L0: kp(' '), RHI: kp('é'), RHM: kp('e'), RHR: kp('y') },
+        },
+      ],
+      combos: [
+        {
+          id: 'dk',
+          keys: ['LBP', 'LBR'],
+          binding: { kind: 'dead_key', diacritic: '´' },
+          layers: ['base'],
+          timeoutMs: 30,
+          slowRelease: false,
+          ...(role ? { role } : {}),
+        },
+      ],
+    });
+
+    it('types the letters no key types, and leaves the others to the key that does', () => {
+      expect(trace(withDeadKey(), 'ý').keys).toEqual(['combo:dk', 'RHR']);
+      expect(trace(withDeadKey(), 'é').keys).toEqual(['RHI']);
+    });
+
+    it('is not among the first tier: its letters are ways like any other, the cheapest first', () => {
+      const ways = enumerateProducers(compileLayout(withDeadKey()), 'fold').bySymbol.get('é') ?? [];
+      expect(ways.map((p) => p.kind)).toEqual(['direct', 'deadkey']);
+    });
+
+    it('types nothing when it is a command', () => {
+      expect(trace(withDeadKey('command'), 'ý').out.trim()).toBe('');
+    });
   });
 });
 

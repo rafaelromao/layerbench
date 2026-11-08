@@ -630,6 +630,24 @@ describe('changing a combo', () => {
     expect(pathOf(upper.layout, 'q')).toEqual(['direct:base/LHM']);
   });
 
+  it("sets a combo's role: a command gets one, a typing combo none, and its typing paths go with it", () => {
+    const paths: Layout = {
+      ...withCombos,
+      typingPaths: { q: [{ producer: 'combo:lhm-lhi' }, { producer: 'direct:base/LHM' }] },
+    };
+    const command = landed(paths, { kind: 'updateCombo', combo: 0, role: 'command' });
+    expect(command.layout.combos?.[0].role).toBe('command');
+    // Nothing presses it now, so the order that named it keeps only the key.
+    expect(pathOf(command.layout, 'q')).toEqual(['direct:base/LHM']);
+    // Typing again is the plain case: no role written.
+    const back = landed(command.layout, { kind: 'updateCombo', combo: 0, role: 'typing' });
+    expect('role' in (back.layout.combos?.[0] ?? {})).toBe(false);
+    // Typing already: nothing changes.
+    expect(applyEdit(paths, { kind: 'updateCombo', combo: 0, role: 'typing' }).status).toBe(
+      'unchanged',
+    );
+  });
+
   it("reads a path among its symbol's producers when one combo's id is another's id and a suffix", () => {
     const clash: Layout = {
       ...layout,

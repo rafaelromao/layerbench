@@ -396,6 +396,106 @@ describe('legends', () => {
     expect(read({ tap: '⇧' })).toEqual({ kind: 'mod', mod: 'LSHIFT' });
   });
 
+  it('reads the glyphs a drawing uses for modifiers, repeat and space', () => {
+    const held = (hold: object) => ({
+      kind: 'hold_tap',
+      tap: { kind: 'kp', symbol: 'd' },
+      hold,
+    });
+    expect(read({ tap: 'D', hold: '$$mdi:apple-keyboard-control$$' })).toEqual(
+      held({ kind: 'mod', mod: 'LCTRL' }),
+    );
+    expect(read({ tap: 'D', hold: '$$mdi:apple-keyboard-option$$' })).toEqual(
+      held({ kind: 'mod', mod: 'LALT' }),
+    );
+    expect(read({ tap: 'D', hold: '$$mdi:apple-keyboard-shift$$' })).toEqual(
+      held({ kind: 'mod', mod: 'LSHIFT' }),
+    );
+    expect(read({ tap: 'D', hold: '$$mdi:apple-keyboard-command$$' })).toEqual(
+      held({ kind: 'mod', mod: 'LGUI' }),
+    );
+    // A glyph a drawing defines for itself, named for what it draws: Shift and Command together.
+    expect(read({ tap: 'D', hold: '$$shift_command$$' })).toEqual(
+      held({ kind: 'mod', mod: 'LGUI', also: ['LSHIFT'] }),
+    );
+    expect(read({ tap: '$$mdi:repeat$$' })).toEqual({ kind: 'key_repeat' });
+    expect(read({ tap: '$$mdi:keyboard-space$$', hold: 'Nav' })).toEqual({
+      kind: 'lt',
+      layer: 'nav',
+      tap: { kind: 'kp', symbol: ' ' },
+    });
+    // Any other glyph is a picture, not a key.
+    expect(readLegend(key({ tap: '$$mdi:undo$$' }), ctx)).toEqual({
+      kind: 'binding',
+      binding: { kind: 'trans' },
+      exact: false,
+    });
+  });
+
+  it('reads the words a drawing puts above the tap to say how the key behaves', () => {
+    // A one-shot, as under the tap; the hold still its own.
+    expect(read({ tap: 'Nav', shifted: 'sticky' })).toEqual({ kind: 'sl', layer: 'nav' });
+    // A layer held is a layer tap, as the editor makes one.
+    expect(read({ tap: 'Nav', shifted: 'sticky', hold: 'Sym' })).toEqual({
+      kind: 'lt',
+      layer: 'sym',
+      tap: { kind: 'sl', layer: 'nav' },
+    });
+    expect(read({ tap: 'LSHFT', shifted: 'sticky', hold: 'LCTRL' })).toEqual({
+      kind: 'hold_tap',
+      tap: { kind: 'sk', mod: 'LSHIFT' },
+      hold: { kind: 'mod', mod: 'LCTRL' },
+    });
+    // A hold on a layer left out goes, and the one-shot stays.
+    expect(read({ tap: 'LSHFT', shifted: 'sticky', hold: 'Num' })).toEqual({
+      kind: 'sk',
+      mod: 'LSHIFT',
+    });
+    // `auto-sticky`: types its tap, and arms the layer in its hold for the next key.
+    expect(read({ tap: 'ç', shifted: 'auto-sticky', hold: 'Nav' })).toEqual({
+      kind: 'macro',
+      symbols: 'ç',
+      then: [{ kind: 'sl', layer: 'nav' }],
+    });
+    expect(read({ tap: 'ç', shifted: 'auto-sticky', hold: 'Num' })).toEqual({
+      kind: 'kp',
+      symbol: 'ç',
+    });
+    // `magic` over `h|v`: it types the first, and the adaptive branch, which has no field, is
+    // reported.
+    expect(readLegend(key({ tap: 'h|v', shifted: 'magic', hold: 'LGUI' }), ctx)).toEqual({
+      kind: 'binding',
+      binding: {
+        kind: 'hold_tap',
+        tap: { kind: 'kp', symbol: 'h' },
+        hold: { kind: 'mod', mod: 'LGUI' },
+      },
+      exact: false,
+    });
+    expect(read({ tap: '$$mdi:repeat$$', shifted: 'repeat', hold: 'Num' })).toEqual({
+      kind: 'key_repeat',
+    });
+  });
+
+  it('reads a dead key by the accent it names, and a hold that moves the cursor as editing', () => {
+    expect(read({ tap: 'dead "' })).toEqual({ kind: 'dead_key', diacritic: '¨' });
+    expect(read({ tap: "dead '" })).toEqual({ kind: 'dead_key', diacritic: '´' });
+    expect(read({ tap: 'dead `' })).toEqual({ kind: 'dead_key', diacritic: '`' });
+    expect(read({ tap: 'dead ^' })).toEqual({ kind: 'dead_key', diacritic: '^' });
+    expect(read({ tap: 'dead ~' })).toEqual({ kind: 'dead_key', diacritic: '~' });
+    // `⇥ {` jumps to the end of the line, `→ ,` steps past the cursor: the key keeps its tap, read.
+    for (const [tap, hold] of [
+      ['{', '⇥ {'],
+      [',', '→ ,'],
+    ]) {
+      expect(readLegend(key({ tap, hold }), ctx)).toEqual({
+        kind: 'binding',
+        binding: { kind: 'kp', symbol: tap },
+        exact: true,
+      });
+    }
+  });
+
   it('knows empty, transparent, held, caps word and repeat', () => {
     expect(read({})).toEqual({ kind: 'none' });
     expect(read({ tap: '▽', type: 'trans' })).toBe('transparent');
@@ -571,6 +671,46 @@ describe('importing', () => {
     expect(report.combos.taken).toBe(layout.combos?.length);
   });
 
+  it("reads a dead-key combo, and leaves off one that only pictures a key beside its layer's key", () => {
+    const combo = (positions: number[], tap: string, layers: string[]) => ({
+      positions,
+      triggers: null,
+      key: key({ tap }),
+      layers,
+    });
+    const { layout, report } = importKeymapDrawer(
+      {
+        ...doc,
+        combos: [
+          combo([1, 2], 'dead "', ['Def']),
+          // Beside the key held to reach Nav, which is not a chord.
+          combo([0, 26], 'X', ['Nav']),
+          // Typing what one of its own keys types there.
+          combo([0, 1], 'W', ['Def']),
+        ],
+      },
+      {
+        name: 'Hummingbird',
+        layers: [
+          { source: 'Def', name: 'Def' },
+          { source: 'Nav', name: 'Nav' },
+        ],
+        board,
+      },
+    );
+    expect(layout.combos).toEqual([
+      expect.objectContaining({
+        keys: ['LTR', 'LTM'],
+        binding: { kind: 'dead_key', diacritic: '¨' },
+        layers: ['def'],
+      }),
+    ]);
+    expect(report.combos.skipped).toEqual([
+      "X: a key drawn beside its layer's key, not a chord",
+      "W: a key drawn beside its layer's key, not a chord",
+    ]);
+  });
+
   it('makes the keys reaching a layer left out transparent, skips such combos, and says so', () => {
     const toNav = { positions: [0, 1], triggers: null, key: key({ tap: 'Nav' }), layers: [] };
     const onNav = { positions: [0, 1], triggers: null, key: key({ tap: 'Sym' }), layers: ['Nav'] };
@@ -649,13 +789,13 @@ describe('writing a file', () => {
   }
 
   it('writes a key a layer leaves doing nothing as empty, not transparent, and reads it back so', () => {
-    // Magic Romak's Symbols lists its symbols and leaves every other key doing nothing ('*': none).
+    // Magic Romak's Ç extension lists the few keys it uses and leaves the rest doing nothing.
     const before = compileLayout(magicRomak);
     const after = compileLayout(roundTrip(magicRomak));
-    const SYM = 4;
-    expect(after.layers[SYM].name).toBe('Symbols');
+    const CCEDIL = 2;
+    expect(after.layers[CCEDIL].name).toBe('Ç extension');
     const kinds = (c: typeof before) =>
-      Object.fromEntries(c.keys.map((k, pos) => [k.id, c.layers[SYM].bindings[pos].kind]));
+      Object.fromEntries(c.keys.map((k, pos) => [k.id, c.layers[CCEDIL].bindings[pos].kind]));
     const was = kinds(before);
     const now = kinds(after);
     const nothing = Object.keys(was).filter((id) => was[id] === 'none');
@@ -673,14 +813,14 @@ describe('writing a file', () => {
       readKeymapDrawer(write(layout)).layers.map(
         (l) => `${l.name}: ${l.keys.filter((k) => k.type === 'held').length}`,
       );
-    // Numbers is held from L0, transparent there; Symbols' R0 does nothing there, and stays so.
-    // Alpha 2 shows R0, the key that reaches it.
+    // Numbers is held from L0 and Symbols from R0, transparent there. Alpha 2 has a key of its own
+    // where it is reached, and so has the Ç extension.
     expect(held(magicRomak)).toEqual([
       'Alpha 1: 0',
-      'Alpha 2: 1',
-      'Ç extension: 1',
+      'Alpha 2: 0',
+      'Ç extension: 0',
       'Numbers: 1',
-      'Symbols: 0',
+      'Symbols: 1',
     ]);
     const nav: Layout = {
       format: 'layerbench/layout@1',

@@ -6,7 +6,7 @@ import type { Ngrams, PressLog, Shape, Universe } from '../presses/press-log.js'
 import type { SimulationTables } from '../tables/tables.js';
 import { type Attrs, adjacentFingerPair, attrDistance, buildAttrs } from './attrs.js';
 import { classifyBand } from './bands.js';
-import { defaultEffort, keyEffort } from './effort.js';
+import { chordEffort, chordShares, defaultEffort, keyEffort } from './effort.js';
 import { compilePredicate, type Ngram, type PredicateContext } from './predicates.js';
 import {
   type Aggregate,
@@ -315,11 +315,16 @@ function evalNgram(rule: Rule, ctx: Ctx): RuleResult {
 
       const each = (byDistance ? c * (d ?? 0) : c) / ngram.length;
       for (const k of ngram) {
-        for (const m of k.members) {
+        // A chord's keys are charged as `chordShares` says, so the parts add up to its cost.
+        const shares =
+          memberEffort && k.members.length > 1
+            ? chordShares(k.members.map((m) => memberEffort[m]))
+            : null;
+        for (const [slot, m] of k.members.entries()) {
           const part = memberEffort
             ? k.key_kind === 'space'
               ? 0
-              : c * memberEffort[m]
+              : c * (shares ? shares[slot] : memberEffort[m])
             : each / k.members.length;
           if (memberEffort) effortSum += part;
           credit(perKey, perLayerKey, k.layer, m, part);
@@ -505,7 +510,7 @@ function evalWord(rule: Rule, ctx: Ctx): RuleResult {
       if (!a) continue;
       keys.push(a.pos);
       layers.push(a.layer);
-      for (const m of a.members) effort += keyEffort(ctx.compiled, m, table, fallback);
+      effort += chordEffort(a.members.map((m) => keyEffort(ctx.compiled, m, table, fallback)));
     }
     // Extra presses (layer taps and the like) count as effort too.
     const perChar = (effort + (t.presses - len)) / len;

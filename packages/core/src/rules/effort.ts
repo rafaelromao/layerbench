@@ -64,3 +64,31 @@ export function keyEffort(
   if (id === undefined) return 1;
   return table[id] ?? fallback[id] ?? 1;
 }
+
+/**
+ * What each key of a chord costs past the costliest, as a share of its own effort. Neither the
+ * Layouts Doc nor the analyzers it draws on (Genkey, Oxeylyzer, keysolve) say how a combo counts:
+ * they do not model one. The Keystroke-Level Model counts every key of a chord, which is the sum;
+ * keys pressed together overlap in time, which is the costliest alone. A half is between them, as
+ * the Doc halves each further step of a skipgram, and as a chord's static cost here already adds
+ * half a press. A modelling choice, not a measurement: one number to change.
+ */
+export const CHORD_EXTRA_SHARE = 0.5;
+
+/**
+ * What each key of a chord is charged, in the order given: the costliest in full (the first of
+ * equals), every other at `CHORD_EXTRA_SHARE` of its own effort. One key is charged what it costs.
+ */
+export function chordShares(efforts: readonly number[]): number[] {
+  if (efforts.length < 2) return [...efforts];
+  let top = 0;
+  efforts.forEach((e, i) => {
+    if (e > efforts[top]) top = i;
+  });
+  return efforts.map((e, i) => (i === top ? e : e * CHORD_EXTRA_SHARE));
+}
+
+/** What a chord costs in all: its keys' shares added. */
+export function chordEffort(efforts: readonly number[]): number {
+  return chordShares(efforts).reduce((sum, e) => sum + e, 0);
+}
