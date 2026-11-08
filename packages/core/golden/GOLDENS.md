@@ -787,6 +787,24 @@ What moved, checked across the 38 reports; nothing else moved:
 - **No report**: the compiled layout is the same, so every statistic, registry entry, run, rule
   value, score and traced press is unchanged.
 
+## Thirty-eighth re-baseline: the Repeat key is named `⟳`, not by the letter it repeated
+
+A press of the Repeat key was named by what it typed, so a thumb's Repeat followed by its space
+read `l␣`, a letter and a space as if on two keys, and each letter made a press of its own. It is
+named `⟳`, as the board draws it, whatever it repeated: `labelFor` answers `⟳` when the leaf that ran
+is `key_repeat`, a plain Repeat key's and an adaptive key's default alike. What it typed is unchanged.
+
+What moved, checked field by field across the 38 reports, old against new:
+
+- **No metric value, band, per-key or per-finger number, statistic or score.** Only names changed.
+- **Item lists**: a pair, trigram or skipgram through the Repeat key carries `⟳` in its label, and
+  the rows for each letter it repeated are one row, so a list holds more of what comes after it
+  where it was cut off. `then` lists follow.
+- **`registry`**: one press per Repeat key and layer in place of one per letter, in 25 reports; the
+  ids after it move down, and the unigram tables, which are not compared, with them.
+- **`explain`**: the Repeat press of `ll` and `hello` is `⟳` in every report.
+- **`runs.hand_strings`**: the one-hand runs that go through a Repeat press spell it `⟳`.
+
 ## Not compared
 
 `globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not
