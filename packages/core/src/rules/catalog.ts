@@ -7,26 +7,13 @@ export const SFB_LAST_BOUND = 1.375;
 
 /**
  * What an SFB above `SFB_LAST_BOUND` is called. The Doc's table gives SFB six categories, Min to
- * Mid high, and a dash under High, Very high and Max (ch. 13.4), so it names nothing above them:
- * `high` there would be the Doc's word for a range it never set. `negativeStat` builds the same
- * name from the last category of the bounds it is given, and the tests pin that this is it.
+ * Mid high, and a dash under High, Very high and Max (ch. 13.4), and none of its layout rows has an
+ * SFB past that bound, so it names nothing above it: `high` there would be the Doc's word for a
+ * range it never set. SFS, scissors, redirects and pinky off also have dashes under their last
+ * categories, but the Doc's rows do name values past them (SFS 7.483 High, redirects 12.1 Very
+ * high), so they keep the next word of the nine.
  */
 export const SFB_ABOVE_SCALE = 'above_mid_high';
-
-/**
- * Bands for one of the Doc's negative stats, which it gives thresholds for only up to some category
- * (Mid high for SFB and SFS, High for scissors, redirects and pinky off) and a dash under the
- * rest (ch. 13.4). What is past the last threshold is named for where the Doc stops, and not by
- * the next word of its nine, which it never set for that stat.
- */
-function negativeStat(bounds: number[]): Bands {
-  const last = BAND_LABELS[bounds.length - 1];
-  return {
-    direction: 'lower_is_better',
-    bounds,
-    labels: [...BAND_LABELS.slice(0, bounds.length), `above_${last}`],
-  };
-}
 
 /**
  * Band bounds from the Layouts Doc ch. 13.4 (upper bounds of the Min…Max categories), and
@@ -42,11 +29,15 @@ export const BANDS: Record<string, Bands> = {
     bounds: [37.8, 39.7, 41.5, 43.3, 45.2, 47.0, 48.8, 50.6, 52.5],
   },
   in_out: { direction: 'higher_is_better', bounds: [0.8, 1.2, 1.7, 2.1, 2.6, 3.0, 3.5, 3.9, 4.4] },
-  sfb: negativeStat([0.525, 0.625, 0.735, 0.875, 1.075, SFB_LAST_BOUND]),
-  sfs: negativeStat([5.3, 5.7, 6.1, 6.5, 6.9, 7.3]),
-  scissors: negativeStat([0.1, 0.15, 0.25, 0.35, 0.45, 0.55, 0.7]),
-  redir: negativeStat([2.8, 3.6, 4.5, 5.4, 6.2, 7.0, 9.0]),
-  pinky_off: negativeStat([1.8, 2.7, 3.5, 4.3, 5.2, 5.9, 6.8]),
+  sfb: {
+    direction: 'lower_is_better',
+    bounds: [0.525, 0.625, 0.735, 0.875, 1.075, SFB_LAST_BOUND],
+    labels: [...BAND_LABELS.slice(0, 6), SFB_ABOVE_SCALE],
+  },
+  sfs: { direction: 'lower_is_better', bounds: [5.3, 5.7, 6.1, 6.5, 6.9, 7.3] },
+  scissors: { direction: 'lower_is_better', bounds: [0.1, 0.15, 0.25, 0.35, 0.45, 0.55, 0.7] },
+  redir: { direction: 'lower_is_better', bounds: [2.8, 3.6, 4.5, 5.4, 6.2, 7.0, 9.0] },
+  pinky_off: { direction: 'lower_is_better', bounds: [1.8, 2.7, 3.5, 4.3, 5.2, 5.9, 6.8] },
   lsb: { direction: 'lower_is_better', bounds: [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0] },
   hand: {
     direction: 'lower_is_better',
