@@ -2,6 +2,14 @@ import { CYANOPHAGE_EFFORT_SCALE, THUMB_EFFORT } from './effort.js';
 import type { Bands, Direction, Family, Predicate, Rule } from './types.js';
 
 /**
+ * The Doc counts hand balance as even until a 52-48 split and as leaning up to 55-45, shares of the
+ * keystrokes per hand; past that it is heavy (ch. 13.4). The rule's value is `|left − right|`, in
+ * points, so a split is twice its larger share's distance from 50: the Doc's two are 4 and 10.
+ */
+export const HAND_EVEN_BOUND = 4;
+export const HAND_LEANS_BOUND = 10;
+
+/**
  * Band bounds from the Layouts Doc ch. 13.4 (upper bounds of the Min…Max categories), and
  * LayerBench's own for Effort.
  */
@@ -21,10 +29,12 @@ export const BANDS: Record<string, Bands> = {
   redir: { direction: 'lower_is_better', bounds: [2.8, 3.6, 4.5, 5.4, 6.2, 7.0, 9.0] },
   pinky_off: { direction: 'lower_is_better', bounds: [1.8, 2.7, 3.5, 4.3, 5.2, 5.9, 6.8] },
   lsb: { direction: 'lower_is_better', bounds: [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0] },
+  // The Doc's three categories, the last open-ended ("past that it counts as heavy"): no name for
+  // a fourth, which the Doc never gives.
   hand: {
     direction: 'lower_is_better',
-    bounds: [2.0, 5.0, 8.0],
-    labels: ['even', 'leans', 'heavy', 'very_heavy'],
+    bounds: [HAND_EVEN_BOUND, HAND_LEANS_BOUND],
+    labels: ['even', 'leans', 'heavy'],
   },
   /**
    * LayerBench's own, on the Doc's nine steps, from the Effort of the bundled Standard and Thumb

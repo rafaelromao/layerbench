@@ -7,8 +7,8 @@ import type { Binding, Layout } from '../layout/types.js';
 import { bundledLayout, CLASSIC_LAYOUTS } from '../layouts/index.js';
 import { SHAPES } from '../presses/press-log.js';
 import { simulate } from '../sim/resolver.js';
-import { classifyBand } from './bands.js';
-import { BANDS, catalogRules, sfbWhere } from './catalog.js';
+import { classifyBand, humanBand } from './bands.js';
+import { BANDS, catalogRules, HAND_EVEN_BOUND, HAND_LEANS_BOUND, sfbWhere } from './catalog.js';
 import { evaluate, evaluateFocus } from './engine.js';
 import { cyanophage, getPreset, layoutsDoc } from './presets.js';
 import { parseRuleSet, ruleSetFromJson, ruleSetToJson } from './serialize.js';
@@ -154,6 +154,34 @@ describe('rules engine', () => {
     expect(classifyBand(2.0, BANDS.sfb).quality).toBe('bad');
     expect(classifyBand(40.0, BANDS.alt).quality).toBe('good');
     expect(classifyBand(null, BANDS.sfb).quality).toBe('neutral');
+  });
+
+  it('bands hand balance as the Doc counts it: even to 52-48, leans to 55-45, heavy past it', () => {
+    // The Doc's splits are shares per hand; the rule's value is their difference (ch. 13.4).
+    const split = (larger: number) => classifyBand(larger - (100 - larger), BANDS.hand);
+    expect([HAND_EVEN_BOUND, HAND_LEANS_BOUND]).toEqual([4, 10]);
+    expect(BANDS.hand.bounds).toEqual([HAND_EVEN_BOUND, HAND_LEANS_BOUND]);
+    expect(split(50)).toMatchObject({ label: 'even', quality: 'good' });
+    // A 51.5-48.5 split, 3 points apart, is still the Doc's even.
+    expect(split(51.5)).toMatchObject({ label: 'even', quality: 'good' });
+    expect(split(52)).toMatchObject({ label: 'even', quality: 'good' });
+    expect(split(52.1)).toMatchObject({ label: 'leans', quality: 'ok' });
+    expect(split(55)).toMatchObject({ label: 'leans', quality: 'ok' });
+    expect(split(55.1)).toMatchObject({ label: 'heavy', quality: 'bad' });
+    // The Doc names three categories and none above heavy, which is open-ended: a split as lopsided
+    // as 100-0 is still heavy, and no band is called very heavy.
+    expect(split(100)).toMatchObject({ label: 'heavy', quality: 'bad' });
+    expect(BANDS.hand.labels).toEqual(['even', 'leans', 'heavy']);
+    expect(humanBand(classifyBand(18, BANDS.hand).label)).toBe('heavy');
+    // The rule each preset ranks with carries them, and the engine bands its value by them.
+    for (const preset of [layoutsDoc(), cyanophage()]) {
+      expect(preset.rules.find((r) => r.id === 'hand_balance')?.bands, preset.id).toEqual(
+        BANDS.hand,
+      );
+    }
+    const hands = qwerty.results.find((r) => r.id === 'hand_balance')!;
+    expect(hands.band).toEqual(classifyBand(hands.value, BANDS.hand));
+    expect(hands.band.label).toBe('heavy');
   });
 
   it('bands Effort on all nine steps, min to max, lower being better', () => {
