@@ -406,11 +406,54 @@ function median(values: number[]): number {
 }
 
 /**
+ * The first of the rows at heights `rows` that a column's keys, top to bottom, sit on best; where
+ * two fit as well, the one `rather` scores higher, else the upper.
+ */
+function fitColumn(
+  keys: PhysicalKey[],
+  column: number[],
+  rows: number[],
+  rather: (first: number) => number = () => 0,
+): number {
+  let best = 0;
+  let bestCost = Number.POSITIVE_INFINITY;
+  for (let s = 0; s + column.length <= rows.length; s++) {
+    const cost = column.reduce((sum, i, j) => sum + Math.abs(keys[i].y - rows[s + j]), 0);
+    if (cost < bestCost - 1e-9 || (cost < bestCost + 1e-9 && rather(s) > rather(best))) {
+      best = s;
+      bestCost = Math.min(cost, bestCost);
+    }
+  }
+  return best;
+}
+
+/**
+ * Keys grouped into columns, left to right: a key joins a column within half a key of the
+ * column's middle, never through a neighbour, so a key between two columns is a column of its own.
+ */
+function columnsByX(idx: number[], keys: PhysicalKey[]): number[][] {
+  const columns: { keys: number[]; x: number }[] = [];
+  for (const i of [...idx].sort((a, b) => keys[a].x - keys[b].x || keys[a].y - keys[b].y)) {
+    const last = columns[columns.length - 1];
+    if (last && keys[i].x - last.x < 0.5) {
+      last.keys.push(i);
+      last.x += (keys[i].x - last.x) / last.keys.length;
+    } else columns.push({ keys: [i], x: keys[i].x });
+  }
+  return columns.map((c) => c.keys);
+}
+
+/**
  * Put each physical key on the model's grid: a hand, one of three rows or the thumb row, and a
  * column counted from the outer pinky. Keys the model has no place for — a fourth row, a seventh
- * column — come back as null, so the caller can say which were left out.
+ * column — come back as null, so the caller can say which were left out. `weights`, by position,
+ * is what each key is worth keeping (1 where the file's first layer types a letter): a hand taller
+ * than three rows keeps the three worth most.
  */
-export function placeKeys(keys: PhysicalKey[]): {
+export function placeKeys(
+  keys: PhysicalKey[],
+  weights: number[] = [],
+): {
   placed: (Placement | null)[];
   dropped: number[];
 } {
@@ -435,40 +478,103 @@ export function placeKeys(keys: PhysicalKey[]): {
     });
   }
 
-  // Thumbs, where the layout does not say: the keys turned more than a few degrees, or the lowest
-  // band of a hand when it has fewer keys than the band above it.
+  // Thumbs, where the layout does not say:
+  // - the keys turned 5° or more against the rest of their hand, toward the middle of the board
+  //   (clockwise on the left), in the band of such keys at its bottom: a splay turns every column
+  //   a little, either way, and the thumbs further;
+  // - the lowest band of a hand when it has fewer keys than the band above it;
+  // - on a hand with turned thumbs, a key alone in its column, a row or more below the columns
+  //   over it, as the Kyria's flat thumb keys are.
   const thumb: boolean[] = keys.map((k) => k.thumb ?? false);
   if (keys.some((k) => k.thumb === null)) {
     for (const hand of ['L', 'R'] as Hand[]) {
       const idx = keys.map((_, i) => i).filter((i) => hands[i] === hand);
       if (idx.length === 0) continue;
       const maxY = Math.max(...idx.map((i) => keys[i].y));
+      // The hand's own turn, its median; a hand turned less than 5° counts as flat.
+      const usual = median(idx.map((i) => keys[i].r));
+      const turn = Math.abs(usual) >= 5 ? usual : 0;
+      const inward = hand === 'L' ? 1 : -1;
+      const turned = idx
+        .filter((i) => (keys[i].r - turn) * inward >= 5)
+        .sort((a, b) => keys[b].y - keys[a].y);
+      let floor = maxY;
+      for (const i of turned) {
+        if (floor - keys[i].y > 1) break;
+        thumb[i] = true;
+        floor = keys[i].y;
+      }
       const bottom = idx.filter((i) => keys[i].y > maxY - 0.75);
       const above = idx.filter((i) => keys[i].y <= maxY - 0.75 && keys[i].y > maxY - 1.75);
-      for (const i of idx) if (Math.abs(keys[i].r) >= 5) thumb[i] = true;
       if (bottom.length < above.length) for (const i of bottom) thumb[i] = true;
+      if (!turned.some((i) => thumb[i])) continue;
+      const columns = columnsByX(
+        idx.filter((i) => !thumb[i]),
+        keys,
+      );
+      const lowest = (c: number[]) => Math.max(...c.map((j) => keys[j].y));
+      for (const c of columns) {
+        if (c.length > 1) continue;
+        const k = keys[c[0]];
+        const over = columns.filter(
+          (o) => o !== c && o.some((j) => Math.abs(keys[j].x - k.x) < 1 && keys[j].y < k.y),
+        );
+        if (over.length > 0 && over.every((o) => k.y - lowest(o) >= 1 - 1e-9)) thumb[c[0]] = true;
+      }
     }
   }
 
   const placed: (Placement | null)[] = keys.map(() => null);
   const dropped: number[] = [];
   for (const hand of ['L', 'R'] as Hand[]) {
-    // Alpha columns, outermost first.
+    // Alpha columns, outermost first. More than six lose those with the fewest keys, the inner
+    // ones on a tie: the outer pinky column stays.
     const alphas = keys.map((_, i) => i).filter((i) => hands[i] === hand && !thumb[i]);
-    const byX = [...alphas].sort((a, b) => keys[a].x - keys[b].x);
-    const columns: number[][] = [];
-    for (const i of byX) {
-      const last = columns[columns.length - 1];
-      if (last && keys[i].x - keys[last[last.length - 1]].x <= 0.5) last.push(i);
-      else columns.push([i]);
-    }
+    const columns = columnsByX(alphas, keys);
     const outerFirst = hand === 'L' ? columns : [...columns].reverse();
-    const kept = outerFirst.slice(Math.max(0, outerFirst.length - 6));
-    for (const col of outerFirst.slice(0, outerFirst.length - kept.length)) dropped.push(...col);
-    const first = FIRST_COLUMN[kept.length] ?? 0;
-    const cols = kept.map((c) => [...c].sort((a, b) => keys[a].y - keys[b].y));
-    // A column taller than three keeps its bottom three: the extra is a number row.
-    for (const c of cols) if (c.length > 3) dropped.push(...c.splice(0, c.length - 3));
+    const fewest = outerFirst
+      .map((_, k) => k)
+      .sort((a, b) => outerFirst[a].length - outerFirst[b].length || b - a)
+      .slice(0, Math.max(0, outerFirst.length - 6));
+    for (const k of fewest) dropped.push(...outerFirst[k]);
+    const sorted = outerFirst
+      .filter((_, k) => !fewest.includes(k))
+      .map((c) => [...c].sort((a, b) => keys[a].y - keys[b].y));
+    // A hand taller than three rows keeps the three worth most, and the bottom three on a tie: a
+    // number row goes, and so does a row under the letters. The tallest columns set the rows, and
+    // every column taller than three is cut to the three kept; a shorter one keeps all its keys.
+    const height = Math.max(0, ...sorted.map((c) => c.length));
+    if (height > 3) {
+      const tallest = sorted.filter((c) => c.length === height);
+      const rows = Array.from({ length: height }, (_, r) =>
+        median(tallest.map((c) => keys[c[r]].y)),
+      );
+      const over = sorted.filter((c) => c.length > 3);
+      const worth = (top: number) => {
+        let sum = 0;
+        for (const c of over) {
+          const s = fitColumn(keys, c, rows);
+          c.forEach((i, j) => {
+            if (s + j >= top && s + j < top + 3) sum += weights[i] ?? 0;
+          });
+        }
+        return sum;
+      };
+      let top = height - 3;
+      for (let s = top - 1; s >= 0; s--) if (worth(s) > worth(top)) top = s;
+      for (const c of over) {
+        // Half a row off the tallest, a column fits two places as well: the one keeping more.
+        const kept = (s: number) => c.filter((_, j) => s + j >= top && s + j < top + 3).length;
+        const s = fitColumn(keys, c, rows, kept);
+        c.forEach((i, j) => {
+          if (s + j < top || s + j >= top + 3) dropped.push(i);
+        });
+      }
+    }
+    const cols = sorted
+      .map((c) => c.filter((i) => !dropped.includes(i)))
+      .filter((c) => c.length > 0);
+    const first = FIRST_COLUMN[cols.length] ?? 0;
     const full = Math.max(0, ...cols.map((c) => c.length));
     const ref: number[] = [];
     if (full >= 2) {
@@ -480,17 +586,8 @@ export function placeKeys(keys: PhysicalKey[]): {
       ref.push(y - 1, y, y + 1);
     }
     cols.forEach((c, k) => {
-      let best = 0;
-      let bestCost = Number.POSITIVE_INFINITY;
-      for (let s = 0; s + c.length <= 3; s++) {
-        const cost = c.reduce((sum, i, j) => sum + Math.abs(keys[i].y - ref[s + j]), 0);
-        if (cost < bestCost - 1e-9) {
-          best = s;
-          bestCost = cost;
-        }
-      }
       // A board no taller than two keys is its top and home rows, as the 18-key preset has it.
-      if (full === 1) best = 1;
+      const best = full === 1 ? 1 : fitColumn(keys, c, ref);
       c.forEach((i, j) => {
         placed[i] = { hand, row: (best + j) as Row, col: first + k };
       });
@@ -565,10 +662,15 @@ function matchPreset(
 /**
  * The board for a physical layout: a preset when the keys are one of the presets' — so an import
  * gets the preset's drawing and every analysis tuned for it — and otherwise a board of its own,
- * drawn from the file's positions.
+ * drawn from the file's positions. `weights` is what each position is worth keeping, from the file
+ * read onto it (`letterWeights`).
  */
-export function boardFromKeys(keys: PhysicalKey[], name: string): ResolvedBoard {
-  const { placed, dropped } = placeKeys(keys);
+export function boardFromKeys(
+  keys: PhysicalKey[],
+  name: string,
+  weights: number[] = [],
+): ResolvedBoard {
+  const { placed, dropped } = placeKeys(keys, weights);
   const note = dropped.length > 0 ? `; ${dropped.length} keys the model has no place for` : '';
   const preset = matchPreset(placed);
   if (preset) {
@@ -625,6 +727,16 @@ function centredNotation(presetId: string): string {
   const l = counts('L') + (thumbs('L') ? `+${thumbs('L')}` : '');
   const r = (thumbs('R') ? `${thumbs('R')}+` : '') + counts('R');
   return `${l} ${r}`;
+}
+
+/**
+ * For each position, 1 where the file's first layer types a letter there, else 0: the rows a
+ * board keeps of a taller keyboard are the ones with the letters.
+ */
+export function letterWeights(doc: KdDocument): number[] {
+  return (doc.layers[0]?.keys ?? []).map((k) =>
+    /^\p{L}$/u.test(symbolOf(k.tap)?.symbol ?? '') ? 1 : 0,
+  );
 }
 
 /** A preset's keys in the order keymap-drawer lists a keyboard of that shape. */

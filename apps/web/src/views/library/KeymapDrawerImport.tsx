@@ -10,6 +10,7 @@ import {
   importKeymapDrawer,
   type KdDocument,
   type Layout,
+  letterWeights,
   orthoKeys,
   type PhysicalKey,
   presetsWithKeys,
@@ -43,14 +44,22 @@ function resolveBoard(
   info: { keys: PhysicalKey[]; name: string } | null,
 ): { board: ResolvedBoard | null; choose: boolean; error: string | null } {
   const positions = Math.max(...doc.layers.map((l) => l.keys.length));
+  // A keyboard taller than the model keeps the rows with the file's letters.
+  const weights = letterWeights(doc);
   try {
-    if (info) return { board: boardFromKeys(info.keys, info.name), choose: true, error: null };
+    if (info) {
+      return { board: boardFromKeys(info.keys, info.name, weights), choose: true, error: null };
+    }
     if (doc.layout.kind === 'cpt') {
-      return { board: boardFromKeys(cptKeys(doc.layout.spec), name), choose: false, error: null };
+      return {
+        board: boardFromKeys(cptKeys(doc.layout.spec), name, weights),
+        choose: false,
+        error: null,
+      };
     }
     if (doc.layout.kind === 'ortho') {
       return {
-        board: boardFromKeys(orthoKeys(doc.layout.ortho), name),
+        board: boardFromKeys(orthoKeys(doc.layout.ortho), name, weights),
         choose: false,
         error: null,
       };
