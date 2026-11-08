@@ -295,6 +295,12 @@ Colemak, and anything harder, is *max*. A badge names the band a number falls in
 says whether that is good for that metric. For most metrics lower is better; for alternation, rolls
 and the in:out roll ratio, higher is. The [glossary](../METRICS.md#bands) lists every band.
 
+The Doc gives SFB six bands, *min* to *mid high*, the last ending at 1.375%; it names nothing above
+that, so a badge there says *above mid high* and not *high*. Its bands came from numbers counted
+without the space bar and with capitals folded, as a share of the letters typed. Turn **Space** or
+**Shift** on and the SFB includes pairs those numbers never had, such as Repeat then space on one
+thumb, so the badge is the Doc's band for a number the Doc did not measure.
+
 ## Rules and their sources
 
 Every number is a rule: plain data that says which key sequences count, and how. **Rules** lists

@@ -7,8 +7,8 @@ import type { Binding, Layout } from '../layout/types.js';
 import { bundledLayout, CLASSIC_LAYOUTS } from '../layouts/index.js';
 import { SHAPES } from '../presses/press-log.js';
 import { simulate } from '../sim/resolver.js';
-import { classifyBand } from './bands.js';
-import { BANDS, catalogRules, sfbWhere } from './catalog.js';
+import { classifyBand, humanBand } from './bands.js';
+import { BANDS, catalogRules, SFB_ABOVE_SCALE, SFB_LAST_BOUND, sfbWhere } from './catalog.js';
 import { evaluate, evaluateFocus } from './engine.js';
 import { cyanophage, getPreset, layoutsDoc } from './presets.js';
 import { parseRuleSet, ruleSetFromJson, ruleSetToJson } from './serialize.js';
@@ -154,6 +154,34 @@ describe('rules engine', () => {
     expect(classifyBand(2.0, BANDS.sfb).quality).toBe('bad');
     expect(classifyBand(40.0, BANDS.alt).quality).toBe('good');
     expect(classifyBand(null, BANDS.sfb).quality).toBe('neutral');
+  });
+
+  it('names no SFB band the Doc does not give', () => {
+    // The Doc's SFB row has six categories, Min to Mid high, and dashes under High, Very high and
+    // Max (ch. 13.4), so what is past its last bound, 1.375, is not called high.
+    expect(classifyBand(SFB_LAST_BOUND, BANDS.sfb).label).toBe('mid_high');
+    for (const sfb of [1.376, 1.56, 2.5, 6]) {
+      expect(classifyBand(sfb, BANDS.sfb), `SFB ${sfb}`).toMatchObject({
+        label: SFB_ABOVE_SCALE,
+        quality: 'bad',
+      });
+    }
+    expect(humanBand(classifyBand(1.56, BANDS.sfb).label)).toBe('above mid high');
+    // The six the Doc gives are the Doc's, in its order.
+    expect(BANDS.sfb.labels).toEqual([
+      'min',
+      'very_low',
+      'low',
+      'mid_low',
+      'mid',
+      'mid_high',
+      SFB_ABOVE_SCALE,
+    ]);
+    expect(BANDS.sfb.bounds).toEqual([0.525, 0.625, 0.735, 0.875, 1.075, 1.375]);
+    // Metrics beyond this one are named as they were: the top band takes the next label in the scale.
+    expect(classifyBand(8, BANDS.sfs).label).toBe('high');
+    expect(classifyBand(0.8, BANDS.scissors).label).toBe('very_high');
+    expect(classifyBand(10, BANDS.redir).label).toBe('very_high');
   });
 
   it('bands Effort on all nine steps, min to max, lower being better', () => {

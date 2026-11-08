@@ -137,6 +137,27 @@ describe('rule set editing', () => {
     expect(state.ruleSet.rules.find((r) => r.id === 'sfb')?.bands).toBeUndefined();
   });
 
+  it('keeps the names of the bands while there are as many, and drops them when there are not', () => {
+    const sfb = (s: ReturnType<typeof start>) => s.ruleSet.rules.find((r) => r.id === 'sfb')?.bands;
+    const named = sfb(start())?.labels;
+    expect(named?.at(-1)).toBe('above_mid_high');
+    // The same six bounds, moved: the same seven categories keep their names.
+    const moved = rulesReducer(start(), {
+      type: 'setBounds',
+      id: 'sfb',
+      value: '0.5, 0.6, 0.7, 0.8, 0.9, 1.0',
+    });
+    expect(sfb(moved)?.labels).toEqual(named);
+    // A seventh bound would make the last name wrong for the category it lands on.
+    const longer = rulesReducer(start(), {
+      type: 'setBounds',
+      id: 'sfb',
+      value: '0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 2.0',
+    });
+    expect(sfb(longer)?.labels).toBeUndefined();
+    expect(sfb(longer)?.bounds).toHaveLength(7);
+  });
+
   it('reads each global with its own type', () => {
     expect(coerceGlobal('skip_weights', '0.5, 0.25')).toEqual({ skip_weights: [0.5, 0.25] });
     expect(coerceGlobal('lsb_adjacent_u', '2.5')).toEqual({ lsb_adjacent_u: 2.5 });

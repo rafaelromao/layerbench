@@ -446,8 +446,8 @@ describe('Ranking layouts', () => {
     expect(badge(best, 'Effort')?.textContent).toBe('min');
     expect(badge(best, 'Effort')).toHaveClass('badge-success');
     expect(box(best, 'Effort')).toHaveClass('border-success/60');
-    // An SFB of 4% is past the Doc's last bound, its worst band.
-    expect(badge(best, 'SFB')?.textContent).toBe('high');
+    // An SFB of 4% is past the Doc's last bound, which names nothing above Mid high.
+    expect(badge(best, 'SFB')?.textContent).toBe('above mid high');
     expect(box(best, 'SFB')).toHaveClass('border-error/60');
     expect(badge(worst, 'Effort')?.textContent).toBe('max');
     expect(box(worst, 'Effort')).toHaveClass('border-error/60');
