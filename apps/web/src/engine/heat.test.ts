@@ -37,13 +37,14 @@ function reportWith(overrides: Partial<ReportDTO>): ReportDTO {
 }
 
 describe('heat maps', () => {
-  it('scales against the busiest key', () => {
+  it('scales against the busiest key, or against the one it is given', () => {
     expect(normalizeHeat({ 0: 5, 1: 10, 2: 0 })).toEqual({ 0: 0.5, 1: 1 });
+    expect(normalizeHeat({ 0: 5, 1: 10, 2: 0 }, 20)).toEqual({ 0: 0.25, 1: 0.5 });
     expect(normalizeHeat({})).toEqual({});
     expect(normalizeHeat({ 0: 0 })).toEqual({});
   });
 
-  it('reads usage from the selected layer', () => {
+  it('reads usage from the selected layer, against the busiest key of every layer', () => {
     const dto = reportWith({
       usageByLayer: [
         [10, 0, 0],
@@ -51,9 +52,83 @@ describe('heat maps', () => {
       ],
     });
     expect(heatMap(dto, 'usage', 0)).toEqual({ 0: 1 });
-    expect(heatMap(dto, 'usage', 1)).toEqual({ 1: 1, 2: 0.5 });
+    expect(heatMap(dto, 'usage', 1)).toEqual({ 1: 0.4, 2: 0.2 });
     // A layer beyond the end clamps rather than blanking the board.
-    expect(heatMap(dto, 'usage', 9)).toEqual({ 1: 1, 2: 0.5 });
+    expect(heatMap(dto, 'usage', 9)).toEqual({ 1: 0.4, 2: 0.2 });
+  });
+
+  it('gives an equal press share an equal colour on every layer', () => {
+    const dto = reportWith({
+      usageByLayer: [
+        [10, 5, 0],
+        [0, 10, 5],
+        [5, 0, 10],
+      ],
+    });
+    // The same count is the same heat, wherever and on whichever layer the key is.
+    expect(heatMap(dto, 'usage', 0)).toEqual({ 0: 1, 1: 0.5 });
+    expect(heatMap(dto, 'usage', 1)).toEqual({ 1: 1, 2: 0.5 });
+    expect(heatMap(dto, 'usage', 2)).toEqual({ 0: 0.5, 2: 1 });
+  });
+
+  it('leaves a layer whose keys are all cold cold, next to a hot one', () => {
+    const dto = reportWith({
+      usageByLayer: [
+        [1000, 500, 0],
+        [8, 4, 0],
+      ],
+    });
+    // Scaled against its own busiest key, the second layer's 8 would be drawn at full heat.
+    expect(heatMap(dto, 'usage', 1)).toEqual({ 0: 0.008, 1: 0.004 });
+    expect(Math.max(...Object.values(heatMap(dto, 'usage', 1)))).toBeLessThan(0.01);
+  });
+
+  it('gives the hottest key of all layers the top of the scale, and no key more', () => {
+    const dto = reportWith({
+      usageByLayer: [
+        [3, 1, 0],
+        [0, 12, 6],
+        [2, 0, 0],
+      ],
+    });
+    const layers = [0, 1, 2].map((l) => Object.values(heatMap(dto, 'usage', l)));
+    expect(Math.max(...layers.flat())).toBe(1);
+    // Only the layer the busiest key is on reaches it.
+    expect(layers.map((heats) => Math.max(0, ...heats))).toEqual([0.25, 1, 1 / 6]);
+  });
+
+  it('scales every mode against all layers, not the one shown', () => {
+    const dto = reportWith({
+      usageByLayer: [
+        [10, 4, 0],
+        [0, 4, 2],
+      ],
+      layerTapsByLayer: [
+        [0, 0, 6],
+        [0, 0, 3],
+      ],
+      results: [
+        rule('sfb', { 0: { 0: 4 }, 1: { 0: 2, 1: 1 } }),
+        rule('effort', { 0: { 1: 9 }, 1: { 1: 3 } }),
+        rule('finger_travel', { 0: { 2: 2 }, 1: { 2: 8 } }),
+      ],
+    });
+    expect(heatMap(dto, 'usage', 0)).toEqual({ 0: 1, 1: 0.4 });
+    expect(heatMap(dto, 'usage', 1)).toEqual({ 1: 0.4, 2: 0.2 });
+    expect(heatMap(dto, 'layer_taps', 0)).toEqual({ 2: 1 });
+    expect(heatMap(dto, 'layer_taps', 1)).toEqual({ 2: 0.5 });
+    expect(heatMap(dto, 'sfb', 0)).toEqual({ 0: 1 });
+    expect(heatMap(dto, 'sfb', 1)).toEqual({ 0: 0.5, 1: 0.25 });
+    expect(heatMap(dto, 'effort', 0)).toEqual({ 1: 1 });
+    expect(heatMap(dto, 'effort', 1)).toEqual({ 1: 1 / 3 });
+    expect(heatMap(dto, 'travel', 0)).toEqual({ 2: 0.25 });
+    expect(heatMap(dto, 'travel', 1)).toEqual({ 2: 1 });
+  });
+
+  it('draws the usage of all positions when a report has no layers of its own', () => {
+    const dto = reportWith({ usageByLayer: [], usageAll: [2, 8, 0] });
+    expect(heatMap(dto, 'usage', 0)).toEqual({ 0: 0.25, 1: 1 });
+    expect(heatMap(dto, 'usage', 3)).toEqual({ 0: 0.25, 1: 1 });
   });
 
   it('maps the travel mode to the finger travel rule', () => {
@@ -133,7 +208,8 @@ describe('heat maps', () => {
       ],
     });
     expect(heatMap(dto, 'sfb', 0)).toEqual({ 0: 1 });
-    expect(heatMap(dto, 'sfb', 1)).toEqual({ 0: 1, 1: 1 });
+    // Against the 4 on the base layer, the 2 and 2 on the upper one are half.
+    expect(heatMap(dto, 'sfb', 1)).toEqual({ 0: 0.5, 1: 0.5 });
     // The thumb that reaches a layer is pressed on the base layer, so it is warm there only.
     expect(heatMap(dto, 'layer_taps', 0)).toEqual({ 2: 1 });
     expect(heatMap(dto, 'layer_taps', 1)).toEqual({});

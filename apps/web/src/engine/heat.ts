@@ -48,13 +48,18 @@ export function heatSourceOf(dto: ReportDTO): HeatSource {
   };
 }
 
-/** Scale to 0–1 against the busiest key, so colour is comparable within one map only. */
-export function normalizeHeat(values: Record<number, number>): Record<number, number> {
-  const max = Math.max(0, ...Object.values(values));
-  if (!(max > 0)) return {};
+/**
+ * Scale to 0–1 against the busiest key of `values`, or against `top` where the keys scaled are
+ * only some of those it is read beside: `heatMap` scales a layer against the busiest key of all.
+ */
+export function normalizeHeat(
+  values: Record<number, number>,
+  top = Math.max(0, ...Object.values(values)),
+): Record<number, number> {
+  if (!(top > 0)) return {};
   const out: Record<number, number> = {};
   for (const [pos, v] of Object.entries(values)) {
-    if (v > 0) out[Number(pos)] = v / max;
+    if (v > 0) out[Number(pos)] = v / top;
   }
   return out;
 }
@@ -82,21 +87,30 @@ export function effectiveHeat(source: HeatSource, mode: HeatMode): HeatMode {
   return ruleFor(source, mode) ? mode : 'usage';
 }
 
+/** What a mode counts on each key of each layer, before it is scaled: a row per layer. */
+function heatCounts(source: HeatSource, mode: HeatMode): Record<number, Record<number, number>> {
+  if (mode === 'layer_taps') return source.layerTapsByLayer.map(fromArray);
+  const rule = mode === 'usage' ? undefined : ruleFor(source, mode);
+  // A rule that credits nothing on a layer leaves it cold; only a rule switched off in the rule
+  // set falls back to usage.
+  if (rule) return rule.per_layer_key;
+  return source.usageByLayer.length > 0
+    ? source.usageByLayer.map(fromArray)
+    : [fromArray(source.usageAll)];
+}
+
 /**
- * Per-position heat for the selected mode on one layer, normalized to 0–1. Only what was pressed on
- * that layer counts, so each key drawn there shows its own presses and no other layer's.
+ * Per-position heat for the selected mode on one layer, 0–1. Only what was pressed on that layer
+ * counts, so each key drawn there shows its own presses and no other layer's. The scale is shared:
+ * 1 is the busiest key of all layers, so an equal share of presses is an equal colour on every
+ * layer, and a layer of cold keys stays cold beside a hot one.
  */
 export function heatMap(source: HeatSource, mode: HeatMode, layer: number): Record<number, number> {
+  const counts = heatCounts(source, mode);
+  const top = Math.max(0, ...Object.values(counts).flatMap((row) => Object.values(row)));
   // A layer beyond the end clamps rather than blanking the board.
   const l = Math.max(0, Math.min(layer, source.usageByLayer.length - 1));
-  if (mode === 'layer_taps') return normalizeHeat(fromArray(source.layerTapsByLayer[l] ?? []));
-  if (mode !== 'usage') {
-    const rule = ruleFor(source, mode);
-    // A rule that credits nothing on this layer leaves it cold; only a rule switched off in the
-    // rule set falls back to usage.
-    if (rule) return normalizeHeat((rule.per_layer_key[l] ?? {}) as Record<number, number>);
-  }
-  return normalizeHeat(fromArray(source.usageByLayer[l] ?? source.usageAll));
+  return normalizeHeat(counts[l] ?? {}, top);
 }
 
 /** Expand positions to the physical keys behind them, so chords highlight all their members. */

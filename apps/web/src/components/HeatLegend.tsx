@@ -12,9 +12,9 @@ const HEAT_MEANING: Record<HeatMode, string> = {
 
 /**
  * What the colours of a heat map mean: the scale, in the board's own mix of the plain key and the
- * heat colour, and in words what it measures and that each layer is scaled against its own busiest
- * key, so colour is read within one board. The scale is for the eye; the words and each key's
- * tooltip carry the same to everyone else.
+ * heat colour, and in words what it measures and that every layer is scaled against the busiest key
+ * of all of them, so colour is read across layers. The scale is for the eye; the words and each
+ * key's tooltip carry the same to everyone else.
  */
 export function HeatLegend({
   mode,
@@ -47,7 +47,7 @@ export function HeatLegend({
         {fallback
           ? `This rule set has no ${HEAT_LABELS[mode]} rule, so ${HEAT_LABELS.usage}: ${HEAT_MEANING.usage}`
           : `${HEAT_LABELS[mode]}: ${HEAT_MEANING[mode]}`}
-        , against the busiest key of its layer. A key's tooltip gives its percentage of that.
+        , against the busiest key of all layers. A key's tooltip gives its percentage of that.
       </p>
     </div>
   );

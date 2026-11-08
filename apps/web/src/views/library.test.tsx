@@ -1654,7 +1654,7 @@ describe('Heatmaps on the cards', () => {
       'Layer taps',
     ]);
     expect(document.querySelector('.lb-heat-legend')?.textContent).toContain(
-      'Usage: how often the key is pressed, against the busiest key of its layer.',
+      'Usage: how often the key is pressed, against the busiest key of all layers.',
     );
 
     await rankingSays(/^Lower is better for both/, 60_000);
