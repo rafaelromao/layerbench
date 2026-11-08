@@ -15,8 +15,10 @@ import {
   importKeymapDrawer,
   type KdKey,
   KeymapDrawerError,
+  letterWeights,
   MAX_KEYS,
   orthoKeys,
+  type PhysicalKey,
   presetOrder,
   presetsWithKeys,
   readKeymapDrawer,
@@ -156,6 +158,163 @@ describe('boards', () => {
     for (const id of [...columnar, '13332+1', '13331+2']) {
       expect(boardFromKeys(cptKeys(notation(id) as string), id).geometry).toEqual({ preset: id });
     }
+  });
+});
+
+describe("boards from a keyboard's layout file", () => {
+  // Boards the shape of real keyboards' QMK layouts, where nothing says which keys are thumbs.
+  const at = (x: number, y: number, r = 0): PhysicalKey => ({
+    x,
+    y,
+    w: 1,
+    h: 1,
+    r,
+    part: null,
+    thumb: null,
+  });
+  /** A column of keys a row apart from its top key, turned `r` degrees as a whole. */
+  const column = (x: number, y: number, n: number, r = 0): PhysicalKey[] => {
+    const a = (r * Math.PI) / 180;
+    return Array.from({ length: n }, (_, j) => at(x - j * Math.sin(a), y + j * Math.cos(a), r));
+  };
+  /** Both halves, from the left: the right is its mirror image, keys in the same order. */
+  const split = (left: PhysicalKey[], width: number): PhysicalKey[] => [
+    ...left,
+    ...left.map((k) => ({ ...k, x: width - k.x, r: -k.r })),
+  ];
+  /** The model's keys of a hand, column by column from the outer pinky, each top to bottom. */
+  const grid = (hand: 'L' | 'R', cols: string, rows = 'THB') =>
+    [...cols].flatMap((c) => [...rows].map((r) => `${hand}${r}${c}`));
+
+  it('keeps the columns of a Kyria apart, and takes its flat thumb keys for thumbs', () => {
+    // Six staggered columns, two flat thumb keys under the middle ones, half a key off either
+    // column, and five thumb keys turned.
+    const letters = [
+      [0.5, 1.5],
+      [1.5, 1.5],
+      [2.5, 1],
+      [3.5, 0.75],
+      [4.5, 1],
+      [5.5, 1.125],
+    ].flatMap(([x, y]) => column(x, y, 3));
+    const thumbs = [
+      at(3, 4),
+      at(4, 4),
+      at(5.1, 4.15, 15),
+      at(6.1, 4.55, 30),
+      at(6.95, 5.2, 45),
+      at(6.6, 3.7, 30),
+      at(7.65, 4.5, 45),
+    ];
+    const half = letters.length + thumbs.length;
+    const board = boardFromKeys(split([...letters, ...thumbs], 17), 'Kyria');
+    expect(board.ids.slice(0, 18)).toEqual(grid('L', 'OPRMIC'));
+    expect(board.ids.slice(half, half + 18)).toEqual(grid('R', 'OPRMIC'));
+    // Innermost first; the seventh, outermost, has no place.
+    expect(board.ids.slice(18, half)).toEqual([null, 'L5', 'L4', 'L3', 'L1', 'L2', 'L0']);
+    expect(board.description).toBe(
+      'a board of its own, 48 keys; 2 keys the model has no place for',
+    );
+  });
+
+  it('keeps the rows of a Glove80 that hold the letters, the bottom ones where nothing says', () => {
+    // Six rows: function keys, digits, three of letters and one under them; the inner column has
+    // the digit and the letters only. Six thumb keys, turned.
+    const left = [
+      ...column(0.5, 1, 6),
+      ...column(1.5, 1, 6),
+      ...column(2.5, 0.5, 6),
+      ...column(3.5, 0.5, 6),
+      ...column(4.5, 0.5, 6),
+      ...column(5.5, 1.5, 4),
+      at(6.6, 5.6, 30),
+      at(7.5, 6.25, 45),
+      at(8.2, 7.1, 60),
+      at(5.6, 6.2, 20),
+      at(6.6, 6.75, 40),
+      at(7.3, 7.6, 60),
+    ];
+    const keys = split(left, 20);
+    // Letters on the three middle rows, but in the outer column, as Colemak-DH has them.
+    const half = [
+      ...[0, 0, 0, 0, 0, 0],
+      ...[1, 2, 3, 4].flatMap(() => [0, 0, 1, 1, 1, 0]),
+      ...[0, 1, 1, 1],
+      ...[0, 0, 0, 0, 0, 0],
+    ];
+    const lettered = boardFromKeys(keys, 'Glove80', [...half, ...half]);
+    const rows = (c: string) => [`LT${c}`, `LH${c}`, `LB${c}`];
+    expect(lettered.ids.slice(0, 34)).toEqual([
+      ...[...'OPRMI'].flatMap((c) => [null, null, ...rows(c), null]),
+      null,
+      ...rows('C'),
+    ]);
+    expect(lettered.description).toMatch(/48 keys; 32 keys the model has no place for/);
+
+    const bottom = boardFromKeys(keys, 'Glove80');
+    expect(bottom.ids.slice(0, 34)).toEqual([
+      ...[...'OPRMI'].flatMap((c) => [null, null, null, ...rows(c)]),
+      ...[null, null, 'LTC', 'LHC'],
+    ]);
+  });
+
+  it('reads a splayed board by its turn against the rest of its hand, not by its own', () => {
+    // A Diamond: every column turned 3 to 10 degrees, the thumbs 27.
+    const diamond = [
+      ...column(0.5, 2.15, 1, 3),
+      ...column(1.85, 0.6, 3, 7),
+      ...column(3.05, 0.6, 3, 10),
+      ...column(4, 1.1, 3, 10),
+      at(3.4, 4.7, 27),
+      at(4.3, 5.15, 27),
+    ];
+    const board = boardFromKeys(split(diamond, 10.6), 'Diamond');
+    expect(board.geometry).toEqual({ preset: '1333+2' });
+    expect(board.ids.filter((id) => id === null)).toEqual([]);
+    expect(board.ids[0]).toBe('LHP');
+
+    // A Hummingbird whose pinky column turns out, the thumbs flat: the pinky keys are no thumbs.
+    const hummingbird = [
+      ...column(0.55, 1.65, 2, -8),
+      ...column(1.7, 0.8, 3, -3),
+      ...column(2.85, 0.5, 3),
+      ...column(3.95, 0.75, 3),
+      ...column(5.05, 1.25, 2),
+      at(4.25, 4.1),
+      at(5.3, 4.35),
+    ];
+    const splayed = boardFromKeys(split(hummingbird, 13), 'Berylline');
+    expect(splayed.geometry).toEqual({ preset: '23332+2' });
+    expect(splayed.ids.slice(0, 2)).toEqual(['LTP', 'LHP']);
+  });
+
+  it('drops the columns with the fewest keys, the inner ones on a tie', () => {
+    // A Corne with a two-key column inside the index finger's.
+    const corne = [
+      ...[0.875, 0.875, 0.625, 0.5, 0.625, 0.75].flatMap((y, c) => column(c + 0.5, y, 3)),
+      ...column(6.5, 1.25, 2),
+      at(4, 3.65),
+      at(5.1, 3.8, 15),
+      at(6.25, 4, 30),
+    ];
+    const board = boardFromKeys(split(corne, 14), 'Corne');
+    expect(board.geometry).toEqual({ preset: '3x6+3' });
+    expect(board.ids.slice(0, 20)).toEqual([...grid('L', 'OPRMIC'), null, null]);
+    expect(board.ids.slice(23, 43)).toEqual([...grid('R', 'OPRMIC'), null, null]);
+    expect(board.description).toMatch(/Corne\); 4 keys the model has no place for$/);
+
+    // Seven columns of three: the innermost goes, not the outer pinky.
+    const seven = boardFromKeys(cptKeys('3333333+3 3+3333333'), 'seven columns');
+    expect(seven.geometry).toEqual({ preset: '3x6+3' });
+    expect(seven.ids.slice(0, 14)).toEqual([
+      ...['LTO', 'LTP', 'LTR', 'LTM', 'LTI', 'LTC', null],
+      ...[null, 'RTC', 'RTI', 'RTM', 'RTR', 'RTP', 'RTO'],
+    ]);
+  });
+
+  it("weighs each position by whether the file's first layer types a letter there", () => {
+    const doc = readKeymapDrawer('layers:\n  base: [Q, "1", SPACE, ä, LSHFT, ",", ▽]\n');
+    expect(letterWeights(doc)).toEqual([1, 0, 0, 1, 0, 0, 0]);
   });
 });
 
