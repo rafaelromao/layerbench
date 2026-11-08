@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { getGeometryPreset } from '../geometry/presets.js';
 import { producibleSymbols } from '../lang/coverage.js';
 import { layoutCategory } from '../layout/categories.js';
 import { compileLayout } from '../layout/compile.js';
@@ -190,6 +191,47 @@ describe('small-board layouts', () => {
 });
 
 /**
+ * Engram's board has eleven columns and a 34-key split ten. On the author's keyboard
+ * (github.com/binarybottle/engram-2021, `engram.json`, and the Layouts Doc's §15.7.5) each finger
+ * types the keys below, the inner columns' `' , .` with the index fingers; `z` and `q` sit in the
+ * eleventh column, past the right pinky, which the split lacks, so they are on thumbs. Every other
+ * key keeps its finger: with the inner column dropped the right index shared `h` and `t`, and the
+ * middle, ring and pinky fingers each typed the letters of the finger beside them.
+ */
+describe('Engram', () => {
+  const layout = bundledLayout('engram')!;
+  const fingers = new Map(getGeometryPreset('3x5+2').keys.map((k) => [k.id, k.finger]));
+
+  it("types every key but z and q with the finger its author's board gives it", () => {
+    const byFinger: Record<string, string> = {};
+    for (const [key, b] of Object.entries(layout.layers[0].bindings)) {
+      const tap = tapOf(b);
+      const finger = fingers.get(key) ?? '';
+      if (finger.endsWith('T') || tap?.kind !== 'kp' || !tap.symbol) continue;
+      byFinger[finger] = [...((byFinger[finger] ?? '') + tap.symbol)].sort().join('');
+    }
+    expect(byFinger).toEqual({
+      LP: 'bcg',
+      LR: 'ixy',
+      LM: 'ejo',
+      LI: "',aku",
+      RI: '.hlr',
+      RM: 'dmt',
+      RR: 'fsw',
+      RP: 'npv',
+    });
+  });
+
+  it('puts z and q on thumbs, which take the thumb letters, and Repeat on the key ? left', () => {
+    const base = layout.layers[0].bindings;
+    expect(tapOf(base.R0)).toEqual({ kind: 'kp', symbol: 'q' });
+    expect(tapOf(base.L1)).toEqual({ kind: 'kp', symbol: 'z' });
+    expect(base.RBC).toEqual({ kind: 'key_repeat' });
+    expect(layoutCategory(layout)).toBe('thumb_alpha');
+  });
+});
+
+/**
  * The bundled Standard and Thumb Alpha layouts share their main thumbs and their base-layer symbols,
  * so that what tells them apart is their letters.
  */
@@ -289,6 +331,8 @@ describe('the standard thumbs', () => {
     expect(bundledLayout('hands-down-neu')?.layers[0].bindings.RTC).toEqual({ kind: 'key_repeat' });
     expect(thumbs('sunlight').slice(0, 3)).toEqual(['j / Shift', 'space / Numbers', 'r / Symbols']);
     expect(bundledLayout('sunlight')?.layers[0].bindings.RBC).toEqual({ kind: 'key_repeat' });
+    expect(thumbs('engram').slice(0, 3)).toEqual(['z / Shift', 'space / Numbers', 'q / Symbols']);
+    expect(bundledLayout('engram')?.layers[0].bindings.RBC).toEqual({ kind: 'key_repeat' });
   });
 
   it('keep the space and letters their authors placed, and give the rest Accents, then Repeat', () => {
