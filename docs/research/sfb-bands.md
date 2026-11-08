@@ -132,7 +132,8 @@ and with Shift modelled, the Shift presses; the Doc counted neither.
 Done 2026-11-08, on the owner's decision. The Layouts Doc preset's `sfb` has `aggregate:
 'percent_of_symbols'`, a new aggregate: the matched pairs over the text's symbols, its characters
 without the space (`textSymbols`, `engine.ts`). The cyanophage-like preset is unchanged (its pair
-rules still become `percent_of_keystrokes`), and so is every other rule, SFS included. On English
+rules still become `percent_of_keystrokes`). `sfb_2u`, a part of SFB, divides by the same letters, so
+the two cards read in one unit; every other rule, SFS included, is unchanged. On English
 news, 100,000 symbols, fold, no space (the Library's settings):
 
 | Layout | before | after | band before → after |
@@ -147,20 +148,25 @@ per letter. Colemak-DH, 1.177 *mid high* in the Doc, reads 1.173 *mid high*.
 - **Space and Shift.** The letters are the denominator whether space is counted or not, and whether
   capitals go through Shift or are folded; the number does not move because the denominator did.
   `percent_of_keystrokes` was the alternative, and with Space on it divides by the letters and the
-  spaces, so the Doc's letters-only share would have turned into cyanophage's. What Space and Shift do
-  now is add their pairs to the count: Colemak-DH goes from 1.17 to 1.59 with Space on, `⟳␣` (Repeat
-  then space, one thumb) 0.41 of it, and Magic Romak from 1.35 to 1.77. Before,
+  spaces, so the Doc's letters-only share would have turned into cyanophage's. What Space and Shift
+  change now is the count. Space adds the space bar's pairs: Colemak-DH goes from 1.17 to 1.59 with
+  Space on, `⟳␣` (Repeat then space, one thumb) 0.41 of it, and Magic Romak from 1.35 to 1.77. Before,
   Space on lowered 28 of the 36 bundled layouts (Qwerty 6.62 to 4.72), because the pairs it was a
-  share of grew with the spaces' pairs too; now it lowers none, raises 28 and leaves 8 as they were.
-  The Doc counted neither Space nor Shift, so those readings are not the Doc's number, and the guide
-  says so; the badge still names the band of the number shown.
+  share of grew with the spaces' pairs too; now, with the default `cross_word: reset`, it lowers none,
+  raises 28 and leaves 8 as they were. (With `bridge`, pairs cross words without Space and the space
+  press breaks them, so Space can lower it.) Shift puts its presses into the stream, which makes some
+  pairs and breaks others: with Space off, Magic Romak goes from 1.35 to 1.61, Colemak-DH from 1.17 to
+  1.12 and Qwerty from 5.27 to 5.20. The Doc counted neither Space nor Shift, so those readings are
+  not the Doc's number, and the guide says so; the badge still names the band of the number shown.
 - **SFS was not changed.** Genkey does divide SFS by the letters (`output.go`, `DSFBs: 100 ×
   SFBs(l, true) / l.Total`), but its numerator is not `sfs`'s: `text.go` adds every skipgram of up to
   nine keys in between with weight 1, ½, ¼, … (`MaxSkipgramSize = 10`), where `sfs` counts skip 1
   alone, and the Doc's SFS is two keys with some number of others between them (§4.5). The skipgrams the text has
   per letter are 0.600, not 0.796, so skip 1 over the letters is 0.600 of today's number, far under
   the Doc's thresholds (5.3 to 7.3). Through the engine, English news, Library settings, Layouts Doc
-  rules (`skip_weights` 1, ½, ¼; skips past 3 are not recorded and add little, as pairs thin out):
+  rules, with `skip_weights` 1, ½, ¼ (the engine records skips 1 to 3 only; the weights of skips 4 to
+  9 add 0.246 to these 1.75, before their pairs thin out, so the last column is a little short of
+  Genkey's sum):
 
   | Layout | skip 1 over skipgrams (today) | skip 1 over letters | skips 1–3 weighted over letters |
   |---|---:|---:|---:|
@@ -174,8 +180,11 @@ per letter. Colemak-DH, 1.177 *mid high* in the Doc, reads 1.173 *mid high*.
   Skip 1 over the letters reads *min* for Magic Romak, Colemak-DH, Graphite and Dvorak and Qwerty
   *mid low*, where today's number is nearer to the weighted sum the bands' size suggests. Whether the
   Doc's SFS column is Genkey's DSFB could not be confirmed (the stat tables of §13 were not readable
-  in this pass), so that sum is a comparison, not the Doc's number. Making SFS the Doc's means
-  changing what it counts, with the weights, and then dividing by the letters; that is its own change.
+  in this pass), so that sum is a comparison, not the Doc's number. The weights are Genkey's: its
+  DSFB stat weighs skip 1 at 1 and each deeper skip half the one before, where the Doc's §4.6 example,
+  which `sfs_weighted` follows, weighs skip 1 at 0.5 against 1 for an SFB: the ratios between skips
+  agree and the scale does not. Making SFS the Doc's means changing what it counts, with the
+  weights, and then dividing by the letters; that is its own change.
 
 ## Before and after, English news, 100,000 symbols
 

@@ -24,8 +24,9 @@ too, so theirs differs a little. A thumb press costs 1 here, where cyanophage ch
 one-shot tap, a thumb held for a layer and a letter on a thumb are presses too. A space counts as
 a keystroke that costs nothing.
 
-**SFB**, same finger bigrams, is the share of consecutive key pairs that one finger presses on two
-different keys. It is the first measure of the
+**SFB**, same finger bigrams, counts the consecutive key pairs that one finger presses on two
+different keys, as a share of the letters typed (the cyanophage-like rules divide by keystrokes
+instead). It is the first measure of the
 [Keyboard Layouts Doc](https://docs.google.com/document/d/1W0jhfqJI2ueJ2FNseR4YAFpNfsUM-_FlREHbpNGmC2o),
 §4.1. Pressing the same key twice is a repeat, not an SFB.
 
@@ -83,8 +84,8 @@ Numbers and Symbols among them, do:
 Untick a category under **Categories**, in **Rank and filter**, to leave its layouts out of the list
 and the ranking.
 
-Layouts are compared on the text, not on their presses. SFB and the other pair rules are a share of
-the letter pairs the text has, and Effort is per character typed, so a layout's layer taps, holds
+Layouts are compared on the text, not on their presses. The pair rules are a share of the letter
+pairs the text has, SFB of the letters it has, and Effort is per character typed, so a layout's layer taps, holds
 and one-shots, which can never be a same-finger letter pair, do not make it look better than it
 types: each adds its cost to Effort but no keystroke. A layout typing each character with one press
 gets the same numbers either way. A thumb press is never part of a roll or an alternation either,
@@ -307,8 +308,8 @@ the Doc's band for the Doc's number: Colemak-DH reads 1.17 on the English sample
 space on one thumb or the Shift presses, but it is still a share of the letters, not of the letters
 and the spaces. The cyanophage-like rules divide by keystrokes, with a space per word, and read
 lower. SFS is not counted as the Doc's: it is a share of the text's skipgrams, over one skipped key,
-where the Doc's analyzer divides by the letters and counts skips of up to nine keys, each half as much as the one before. The glossary
-has the figures.
+where Genkey divides by the letters and counts skips of up to nine keys, each half as much as the
+one before. The glossary has the figures.
 
 ## Rules and their sources
 

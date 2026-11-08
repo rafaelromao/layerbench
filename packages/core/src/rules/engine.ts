@@ -159,17 +159,21 @@ function textKeystrokes(ctx: Ctx): number {
 
 /**
  * The text's symbols: its characters without the space, the same whether space is counted or not,
- * and whether capitals are typed through Shift or folded. What the Doc's analyzer divides by (the
- * letters on the layout's keys, Genkey's `l.Total`), so that counting the space bar adds pairs to
- * a rule's count and never to what it is a share of.
+ * and whether capitals are typed through Shift or folded. What the Doc's analyzer divides SFB by
+ * (the letters on the layout's keys, Genkey's `l.Total`). Counting the space bar or Shift changes
+ * the presses a rule counts, never what its share is of.
  */
 function textSymbols(ctx: Ctx): number {
   return ctx.log.ngrams('no_space', 'unigram').textTotal;
 }
 
-/** What an item's percent on a card is a share of: what its rule's value is a share of. */
-function itemsTotal(rule: Rule, ctx: Ctx, pairs: number): number {
-  return rule.aggregate === 'percent_of_symbols' ? textSymbols(ctx) : pairs;
+/**
+ * What an item's percent on a card is a share of: the text's symbols where the rule's value is, and
+ * otherwise the pairs or trigrams it counts over, as before (the cyanophage-like preset's items are
+ * still shares of those, not of the keystrokes its values divide by).
+ */
+function itemsTotal(rule: Rule, ctx: Ctx, counted: number): number {
+  return rule.aggregate === 'percent_of_symbols' ? textSymbols(ctx) : counted;
 }
 
 function per100Denominator(stats: SimulationTables['stats'], per?: string): number {

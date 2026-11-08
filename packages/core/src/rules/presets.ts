@@ -10,7 +10,7 @@ export function layoutsDoc(): RuleSet {
     id: 'layouts_doc',
     name: 'Layouts Doc',
     description:
-      'Definitions and bands from the Keyboard Layouts Doc (3rd ed.). Thumbs included, space excluded, no composite score. SFB is a share of the letters typed, as the Doc’s analyzer counts it, with space counted or not.',
+      'Definitions and bands from the Keyboard Layouts Doc (3rd ed.). Thumbs included, no composite score. Space is excluded unless Space is turned on; SFB and its ≥ 2 rows part are shares of the letters typed either way, as the Doc’s analyzer counts SFB.',
     globals: {},
     rules: catalogRules(),
     score_enabled: false,

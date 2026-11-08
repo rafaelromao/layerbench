@@ -473,6 +473,27 @@ describe('SFB as a share of the letters typed', () => {
     expect(cyanophage().rules.find((r) => r.id === 'sfb')?.aggregate).toBe('percent_of_keystrokes');
   });
 
+  it('gives SFB ≥ 2 rows the same letters, so it reads as a part of SFB', () => {
+    const part = catalogRules().find((r) => r.id === 'sfb_2u')!;
+    expect(part.aggregate).toBe('percent_of_symbols');
+    expect(cyanophage().rules.find((r) => r.id === 'sfb_2u')?.aggregate).toBe(
+      'percent_of_keystrokes',
+    );
+    const compiled = compileLayout(bundledLayout('qwerty')!);
+    const sim = simulate(compiled, normalizeText(text, OPTS), OPTS);
+    const set: RuleSet = {
+      ...layoutsDoc(),
+      rules: [sfbRule, part, countOf(sfbRule), { ...countOf(part), id: 'sfb_2u_count' }],
+    };
+    const [share, partShare, count, partCount] = evaluate(sim.tables, compiled, set).results.map(
+      (r) => r.value as number,
+    );
+    expect(partShare).toBeGreaterThan(0);
+    expect(partShare).toBeLessThan(share);
+    // Over the same letters, the two shares are in the ratio of their counts.
+    expect(partShare / share).toBeCloseTo(partCount / count, 9);
+  });
+
   it('divides by the text’s symbols, without the space, whether space is counted or not', () => {
     for (const id of ['qwerty', 'magic-romak']) {
       const without = sfbOn(id, 'no_space');
@@ -500,8 +521,9 @@ describe('SFB as a share of the letters typed', () => {
     const symbols = modelled.sim.tables.stats.symbols;
     expect(symbols).toBe(folded.sim.tables.stats.symbols);
     expect(modelled.share).toBeCloseTo((modelled.count / symbols) * 100, 9);
-    // The Shift presses are pairs the count may gain, never letters the denominator gains.
-    expect(modelled.count).toBeGreaterThanOrEqual(folded.count);
+    // The Shift presses are in the stream: they make some pairs and break others, so the count may
+    // go either way. The letters it is a share of do not.
+    expect(modelled.count).not.toBe(folded.count);
   });
 
   it('is the share of pairs times the pairs the text has per letter, on every bundled layout', () => {
@@ -525,21 +547,41 @@ describe('SFB as a share of the letters typed', () => {
   });
 
   it('lists items and splits the keys’ parts over the same letters as its value', () => {
-    const { results, share } = sfbOn('qwerty', 'no_space');
-    const sfb = results.find((r) => r.id === 'sfb')!;
-    expect(sfb.value).toBeCloseTo(share, 9);
-    // Each item is a share of the letters too, and the listed ones can only add up to the value.
-    const listed = sfb.items.reduce((a, i) => a + (i.percent ?? 0), 0);
-    expect(listed).toBeGreaterThan(0);
-    expect(listed).toBeLessThanOrEqual((sfb.value as number) + 1e-9);
-    // The keys' parts add up to the value through the scale the rule gives them.
-    const parts = Object.values(sfb.per_key).reduce((a, b) => a + b, 0);
-    expect(parts * (sfb.key_scale as number)).toBeCloseTo(sfb.value as number, 9);
+    for (const id of ['qwerty', 'magic-romak']) {
+      for (const universe of ['no_space', 'with_space'] as const) {
+        const { results, sim, share } = sfbOn(id, universe);
+        const symbols = sim.tables.stats.symbols;
+        const sfb = results.find((r) => r.id === 'sfb')!;
+        const where = `${id}, ${universe}`;
+        expect(sfb.value, where).toBeCloseTo(share, 9);
+        expect(sfb.items.length, where).toBeGreaterThan(0);
+        // Each item is its count over the letters, the way the value is, and what was listed can
+        // only add up to the value.
+        for (const item of sfb.items) {
+          expect(item.percent, `${where} ${item.label}`).toBeCloseTo(
+            ((item.count as number) / symbols) * 100,
+            9,
+          );
+          // What was pressed after a pair that ends on a layer key adds up to the pair.
+          if (item.then) {
+            const then = item.then.reduce((a, n) => a + n.percent, 0);
+            expect(then, `${where} ${item.label}`).toBeCloseTo(item.percent as number, 9);
+          }
+        }
+        const listed = sfb.items.reduce((a, i) => a + (i.percent ?? 0), 0);
+        expect(listed, where).toBeLessThanOrEqual((sfb.value as number) + 1e-9);
+        // The keys' parts add up to the value through the scale the rule gives them.
+        const parts = Object.values(sfb.per_key).reduce((a, b) => a + b, 0);
+        expect(parts * (sfb.key_scale as number), where).toBeCloseTo(sfb.value as number, 9);
+        expect(sfb.key_scale, where).toBeCloseTo(100 / symbols, 12);
+      }
+    }
   });
 
   it('is what a closer look at a key lists, in the same percents', () => {
     const compiled = compileLayout(bundledLayout('qwerty')!);
     const sim = simulate(compiled, normalizeText(text, OPTS), OPTS);
+    const symbols = sim.tables.stats.symbols;
     const set = { ...layoutsDoc(), rules: [sfbRule] };
     const sfb = evaluate(sim.tables, compiled, set).results[0];
     const top = sfb.items[0];
@@ -551,6 +593,8 @@ describe('SFB as a share of the letters typed', () => {
       .find((r) => r.id === 'sfb')!
       .items.find((i) => i.label === top.label)!;
     expect(listed.percent).toBeCloseTo(top.percent as number, 9);
+    // Not only the same as the card: the share of the letters the count is.
+    expect(listed.percent).toBeCloseTo(((listed.count as number) / symbols) * 100, 9);
   });
 
   it('gives an empty text no share at all', () => {
@@ -598,11 +642,6 @@ describe('the Layouts Doc’s SFB on English news, as Genkey would divide it', (
     },
     60_000,
   );
-
-  it('puts Colemak-DH in the Doc’s band, mid high, with Shift and Space off', async () => {
-    const colemak = await onLibrary('colemak-dh', layoutsDoc(), 'no_space');
-    expect(colemak.results.find((r) => r.id === 'sfb')?.band.label).toBe('mid_high');
-  }, 60_000);
 });
 
 describe('what a key that reaches a layer was pressed for', () => {
