@@ -19,6 +19,7 @@ import {
   orthoKeys,
   presetOrder,
   presetsWithKeys,
+  qmkInfoKeys,
   readKeymapDrawer,
   readLegend,
 } from './keymap-drawer.js';
@@ -706,5 +707,58 @@ describe('bounds on what a file may ask for', () => {
     const doc = readKeymapDrawer(`k: &k ${legend}\nlayers:\n  base: [${keys}]\n`);
     expect(doc.layers[0].keys).toHaveLength(MAX_KEYS);
     expect(doc.layers[0].keys[MAX_KEYS - 1]).toMatchObject({ tap: 'a', hold: 'b', type: 'j' });
+  });
+});
+
+describe('names every object answers to', () => {
+  // Through its prototype, every object has these; none is a modifier, a key or a layout.
+  const names = ['constructor', 'toString', 'valueOf', 'hasOwnProperty', '__proto__'];
+
+  it('reads them as no legend it knows, alone and as a hold', () => {
+    const ctx = { layers: new Map<string, string | null>() };
+    const notRead = { kind: 'binding', binding: { kind: 'trans' }, exact: false };
+    const tapStays = { kind: 'binding', binding: { kind: 'kp', symbol: 'a' }, exact: false };
+    for (const name of names) {
+      expect(readLegend(key({ tap: name }), ctx)).toEqual(notRead);
+      expect(readLegend(key({ tap: name, hold: 'sticky' }), ctx)).toEqual(notRead);
+      expect(readLegend(key({ hold: name }), ctx)).toEqual(notRead);
+      expect(readLegend(key({ tap: 'A', hold: name }), ctx)).toEqual(tapStays);
+      expect(readLegend(key({ tap: 'A', hold: `LS(${name})` }), ctx)).toEqual(tapStays);
+    }
+  });
+
+  it('imports a file of them, reporting each, and the layout survives the schema', () => {
+    const yaml = [
+      'layers:',
+      '  base:',
+      `    - [${names.join(', ')}]`,
+      '    - [{t: A, h: constructor}, {t: S, h: toString}, {t: D, h: LS(valueOf)}, {t: valueOf, h: sticky}, {h: hasOwnProperty}]',
+      'combos:',
+      '  - {p: [0, 1], k: constructor}',
+      '  - {p: [2, 3], k: {t: E, h: __proto__}}',
+      '',
+    ].join('\n');
+    const { layout, report } = importKeymapDrawer(readKeymapDrawer(yaml), {
+      name: 'Prototype',
+      layers: [{ source: 'base', name: 'Base' }],
+      board: boardFromKeys(cptKeys('33333+2 2+33333'), 'Corne'),
+    });
+    expect(() => compileLayout(layout)).not.toThrow();
+    expect(safeParseLayout(toCanonicalJson(layout)).ok).toBe(true);
+    const kept = Object.values(layout.layers[0].bindings).filter((b) => b.kind !== 'trans');
+    expect(kept).toEqual(['a', 's', 'd'].map((symbol) => ({ kind: 'kp', symbol })));
+    expect(report.layers[0]).toEqual({
+      name: 'Base',
+      keys: 10,
+      read: 0,
+      unread: [...names, 'constructor', 'toString', 'LS(valueOf)', 'valueOf', 'hasOwnProperty'],
+    });
+    expect(layout.combos?.map((c) => c.binding)).toEqual([{ kind: 'kp', symbol: 'e' }]);
+    expect(report.combos.skipped).toEqual(['constructor: does nothing the analysis simulates']);
+  });
+
+  it('takes the first layout of an info.json that has no layout by the name', () => {
+    const info = { layouts: { LAYOUT_split_3x5_2: { layout: [{ x: 0, y: 0 }] } } };
+    for (const name of names) expect(qmkInfoKeys(info, name).name).toBe('LAYOUT_split_3x5_2');
   });
 });
