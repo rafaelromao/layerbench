@@ -557,31 +557,28 @@ describe("Magic Romak's layers: the defaults' Numbers, its keymap's Symbols, and
     expect(named).not.toMatch(/"(extras|accents)"/);
   });
 
-  it("types €, ° and º or ª by its keymap's combos", () => {
+  it("has €, ° and º or ª on its keymap's combos, which are commands: on the keyboard, not typed", () => {
     const combos = magicRomak.combos ?? [];
     // The keys in the order the keymap's file draws them.
     const named = (id: string) => combos.find((c) => c.id === id);
     expect(named('euro')).toMatchObject({ keys: ['RTI', 'RTM', 'RTR'], layers: ['sym'] });
     expect(named('degree')).toMatchObject({ keys: ['RBI', 'RBM', 'RBR'], layers: ['num'] });
     expect(named('ordinal')).toMatchObject({ keys: ['RHI', 'RHM', 'RHR'], layers: ['num'] });
-    const t = trace(magicRomak, '€ ° º ª');
-    expect(t.out).toBe('€ ° º ª');
-    expect(t.keys).toEqual([
-      ...['R0', 'combo:euro', 'L0'],
-      // Numbers held from space through the rest, which taps it for the spaces between them, as the
-      // engine models a held space key.
-      ...['L0', 'combo:degree', 'L0', 'combo:ordinal', 'L0', 'combo:ordinal'],
-    ]);
+    for (const id of ['euro', 'degree', 'ordinal']) expect(named(id)?.role).toBe('command');
+    expect(producibleSymbols(compileLayout(magicRomak)).has('€')).toBe(false);
   });
 
-  it('still types the accents by the dead keys on the combos of Alpha 2', () => {
-    const t = trace(magicRomak, 'ñ è ü');
-    expect(t.out).toBe('ñ è ü');
-    expect(t.keys).toEqual([
-      ...['R0', 'combo:tilde', 'LHR', 'L0'],
-      ...['R0', 'combo:grave', 'RHR', 'L0'],
-      ...['R0', 'combo:diaeresis', 'RTR'],
-    ]);
+  it('has the dead keys on the combos of Alpha 2, which are commands too', () => {
+    const dead = (magicRomak.combos ?? []).filter((c) => c.binding.kind === 'dead_key');
+    expect(dead.map((c) => c.id)).toEqual(['diaeresis', 'circumflex', 'acute', 'grave', 'tilde']);
+    for (const c of dead) expect(c.role).toBe('command');
+    // Nothing types them: only the spaces between come out.
+    expect(trace(magicRomak, 'ñ è ü').out.trim()).toBe('');
+  });
+
+  it('types with two of its combos only: `;` and `à`', () => {
+    const typing = (magicRomak.combos ?? []).filter((c) => c.role !== 'command');
+    expect(typing.map((c) => c.id)).toEqual(['semicolon', 'agrave']);
   });
 });
 
@@ -632,10 +629,11 @@ describe("Magic Romak types `;` as the keymap's combo", () => {
  * What each layout that keeps its author's layers cannot type of the digits, the default layers'
  * symbols and German's letters: nothing is added to its author's layers and combos, and these are
  * what they leave out, for a later edit to add. Magic Romak's keymap has no way to `£ § « » ı ß œ æ`,
- * so French lacks `œ`, `æ` and its quotes, and German its `ß`.
+ * and the combos for the dead keys, `€ ° º ª` and `¿ ¡` are commands there, which the analysis does
+ * not press: it cannot type `ä ö ü ñ` either, so Spanish, French, Italian and German lack letters.
  */
 const UNTYPED: Record<string, string> = {
-  'magic-romak': '£§«»ıßœæ',
+  'magic-romak': '¡£§ª«°º»¿ßäæñöüıœ€',
   'hands-down-gold': '\\ªº«»ı¿¡ß',
   'hands-down-promethium': '\\ªº«»ı¿¡ß',
   'hands-down-vibranium': '\\ªº«»ı¿¡ß',
@@ -662,11 +660,17 @@ const ACCENTLESS = Object.fromEntries(
 
 /**
  * What each layout that keeps its author's layers lacks of each language, where it lacks anything:
- * its required letters, its optional ones and its punctuation. Magic Romak's French lacks `œ`, `æ`
- * and its quotes, its German `ß`.
+ * its required letters, its optional ones and its punctuation. Magic Romak's lack what only the
+ * combos that are commands there make (the dead keys, `¿ ¡`), and what its keymap has no way to.
  */
 const LACKS: Record<string, Record<string, string[][]>> = {
-  'magic-romak': { fr: [['œ'], ['æ'], ['«', '»']], de: [['ß'], [], []] },
+  'magic-romak': {
+    pt: [[], ['ü'], []],
+    es: [['ñ', 'ü'], [], ['¿', '¡']],
+    it: [['è', 'ì', 'î', 'ò', 'ù'], [], []],
+    fr: [['è', 'ë', 'î', 'ï', 'ù', 'û', 'ü', 'ÿ', 'œ'], ['æ'], ['«', '»']],
+    de: [['ä', 'ö', 'ü', 'ß'], [], []],
+  },
   ...Object.fromEntries(
     ['hands-down-gold', 'hands-down-promethium', 'hands-down-vibranium'].map((id) => [
       id,

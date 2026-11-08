@@ -282,6 +282,9 @@ function blockedByLayer(compiled: CompiledLayout): ReadonlySet<number>[] {
   return compiled.layers.map((l) => new Set(blockedThumbs(compiled, l.idx)));
 }
 
+/** Whether a way presses a combo, as its own step or as the key or the letter of a dead key. */
+export const pressesCombo = (p: Producer) => p.steps.some((st) => st.combo !== undefined);
+
 /**
  * Enumerate every way to produce each symbol string on the layout.
  */
@@ -350,6 +353,7 @@ export function enumerateProducers(
     }
   }
   for (const c of compiled.combos) {
+    if (c.role !== 'typing') continue;
     const tapped = staticOutputs(c.binding).map((o) => [false, o] as const);
     const held = holdOutputs(c.binding).map((o) => [true, o] as const);
     for (const [hold, o] of [...tapped, ...held]) {
@@ -390,13 +394,14 @@ export function enumerateProducers(
     if (fold && p.deadMods?.length) excludedByCase.push(p);
     else add(p);
   }
-  // Default ordering: cheapest first, then non-dynamic before dynamic, then non-combo.
+  // Default ordering: the ways that press a combo first, since a typing combo is not weighed
+  // against the rest, then cheapest first, then non-dynamic before dynamic.
   for (const [, list] of bySymbol) {
     list.sort(
       (a, b) =>
+        Number(pressesCombo(b)) - Number(pressesCombo(a)) ||
         a.cost - b.cost ||
         Number(a.dynamic) - Number(b.dynamic) ||
-        Number(a.kind === 'combo') - Number(b.kind === 'combo') ||
         // Byte order, not locale order: this tie-break decides which producer types a symbol, and
         // the pinned reports depend on it.
         (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
@@ -453,7 +458,7 @@ function deadKeyProducers(
     }
   }
   for (const c of compiled.combos) {
-    const dk = tappedDeadKey(c.binding);
+    const dk = c.role === 'typing' ? tappedDeadKey(c.binding) : null;
     if (!dk) continue;
     const onBase = c.layerMask === null || (c.layerMask & 1) !== 0;
     sources.push({

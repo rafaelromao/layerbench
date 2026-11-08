@@ -13,7 +13,7 @@ const NOT_ON_A_COMBO = ['transparent'] as const;
 
 /**
  * The combo open in the editor, edited as a key is: any kind of key on the tiles, the bindings the
- * layout already has, the binding as text, and what only a combo has, its keys, layers and timeout.
+ * layout already has, the binding as text, and what only a combo has, its keys, layers, whether it types and its timeout.
  * Every change is one `updateCombo` edit, so one Undo takes it back.
  */
 export function ComboInspector({
@@ -154,6 +154,20 @@ export function ComboInspector({
               </label>
             ))}
           </fieldset>
+
+          <label className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold w-16 shrink-0">Typing</span>
+            <input
+              type="checkbox"
+              className="checkbox checkbox-xs"
+              aria-label={`Combo ${name} is used for typing`}
+              checked={c.role !== 'command'}
+              onChange={(e) => update({ role: e.target.checked ? 'typing' : 'command' })}
+            />
+            <span className="opacity-60">
+              the analysis types with it; unticked, it is never pressed
+            </span>
+          </label>
 
           <label className="flex flex-wrap items-center gap-2">
             <span className="font-semibold w-16 shrink-0">Timeout</span>

@@ -48,9 +48,20 @@ describe('playing a word on the board', () => {
 });
 
 describe('the combos a board shows', () => {
-  it('shows the combos that type on the layer drawn, and not the shortcuts', () => {
-    // The keymap's: the accents as dead keys, and what `?` and `!` type when held.
-    expect(typingCombos(compiled, layer('alpha2')).map((c) => c.label)).toEqual([
+  it('shows the combos that type on the layer drawn, and not the commands', () => {
+    // Magic Romak types with two of the keymap's combos: `à` on Alpha 2, `;` on Alpha 1.
+    expect(typingCombos(compiled, layer('alpha2')).map((c) => c.label)).toEqual(['à']);
+    expect(typingCombos(compiled, layer('alpha1')).map((c) => c.label)).toEqual([';']);
+  });
+
+  it('draws what a combo types as a dead key, once it types: the accents, and `?` and `!` held', () => {
+    // The same keymap with every combo typing, as a layout that names no role has them.
+    const magic = bundledLayout('magic-romak') as Layout;
+    const all = compileLayout({
+      ...magic,
+      combos: magic.combos?.map(({ role: _role, ...c }) => c),
+    });
+    expect(typingCombos(all, layer('alpha2')).map((c) => c.label)).toEqual([
       '¨',
       '-',
       '^',
@@ -64,12 +75,12 @@ describe('the combos a board shows', () => {
     ]);
     // The accents are drawn as dead keys, not as the letters a combo types.
     expect(
-      typingCombos(compiled, layer('alpha2'))
+      typingCombos(all, layer('alpha2'))
         .filter((c) => c.dead)
         .map((c) => c.label),
     ).toEqual(['¨', '^', '´', '`', '~']);
     // Alpha 1's combos type the letters the keymap puts on chords, and `;`.
-    expect(typingCombos(compiled, layer('alpha1')).map((c) => c.label)).toEqual([
+    expect(typingCombos(all, layer('alpha1')).map((c) => c.label)).toEqual([
       'k',
       'x',
       'q',

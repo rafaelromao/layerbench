@@ -67,7 +67,13 @@ function edits(target: Layout): Edit[] {
       keys: c.keys,
       binding: c.binding,
     });
-    out.push({ kind: 'updateCombo', combo: i, layers: c.layers, timeoutMs: c.timeoutMs });
+    out.push({
+      kind: 'updateCombo',
+      combo: i,
+      layers: c.layers,
+      timeoutMs: c.timeoutMs,
+      ...(c.role ? { role: c.role } : {}),
+    });
   }
   // Which keys are space and shift follow from the keys bound above, and how a capital and a doubled
   // letter are typed is read from them until an author declares otherwise, as Magic Romak's keymap does not.

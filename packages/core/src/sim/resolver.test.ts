@@ -8,6 +8,7 @@ import type { Binding, Layout, Mod } from '../layout/types.js';
 import { withoutFeatures } from '../layout/without.js';
 import { CLASSIC_LAYOUTS } from '../layouts/classic.js';
 import { BUNDLED_LAYOUTS, bundledLayout, withHomeRowMods } from '../layouts/index.js';
+import { enumerateProducers } from './producers.js';
 import { explain, simulate } from './resolver.js';
 
 const magicRomak = bundledLayout('magic-romak')!;
@@ -215,49 +216,77 @@ describe('the cheapest way to type a character', () => {
     expect(t.presses).toBe(2);
   });
 
-  describe('a chord presses each of its keys', () => {
-    const chord = (keys: string[], layout: Layout = twoWays()): Layout => ({
-      ...layout,
-      combos: [
-        { id: 'c', keys, binding: kp('x'), layers: ['base'], timeoutMs: 30, slowRelease: false },
-      ],
-    });
-
-    it('is no cheaper than the same two keys in turn: the tie goes to the less effort', () => {
-      // `x` is two presses through the layer on L1, and two keys pressed together. The chord on the
-      // bottom pinky and ring is the harder of the two, the chord on the home row the easier.
-      expect(trace(chord(['LBP', 'LBR']), 'x').keys).toEqual(['L1', 'RHI']);
-      expect(trace(chord(['LHM', 'LHI']), 'x').keys).toEqual(['combo:c']);
-    });
-
-    it('is cheaper than a way of three presses', () => {
-      const base = twoWays();
-      const noShortcut: Layout = {
-        ...base,
-        layers: base.layers.map((l) =>
-          l.id === 'base' ? { ...l, bindings: { ...l.bindings, L1: kp('e') } } : l,
-        ),
-      };
-      // Two keys, against the three of the way through both layers; the board counts the chord as
-      // the one press it is.
-      const t = trace(chord(['LBP', 'LBR'], noShortcut), 'x');
-      expect(t.keys).toEqual(['combo:c']);
-      expect(t.presses).toBe(1);
-    });
-
-    it('types `!` on Magic Romak by holding Symbols, not by Alpha 2 and a chord', () => {
-      // Hold and tap are two presses; the one-shot and a two-key combo would be three.
-      const t = trace(magicRomak, '!');
-      expect(t.keys).toEqual(['R0', 'RBI']);
-      expect(t.presses).toBe(2);
-    });
-  });
-
   it('keeps an order set by hand, whatever it costs', () => {
     const t = trace(twoWays({ typingPaths: { y: [{ producer: 'direct:base/LBP' }] } }), 'y');
     expect(t.keys).toEqual(['LBP']);
     const far = trace(twoWays({ typingPaths: { x: [{ producer: 'direct:aa/RHI' }] } }), 'x');
     expect(far.keys).toEqual(['R0', 'LHM', 'RHI']);
+  });
+});
+
+describe('a combo is a way to type, or it is not: the cost does not decide', () => {
+  const kp = (symbol: string) => ({ kind: 'kp' as const, symbol });
+  /** `y` on the home row, and on a chord of the bottom pinky and ring, which costs more effort. */
+  const withChord = (
+    extra: Partial<Layout['combos'] extends (infer C)[] | undefined ? C : never> = {},
+  ): Layout => ({
+    format: 'layerbench/layout@1',
+    name: 'A chord',
+    hostLocale: 'symbols',
+    geometry: { preset: '3x5+2' },
+    keys: { space: 'L0' },
+    layers: [
+      {
+        id: 'base',
+        bindings: { L0: kp(' '), R0: { kind: 'sl', layer: 'mid' }, RHI: kp('y') },
+      },
+      { id: 'mid', bindings: { '*': { kind: 'trans' } } },
+      // No key brings it on.
+      { id: 'lost', bindings: { '*': { kind: 'trans' } } },
+    ],
+    combos: [
+      {
+        id: 'c',
+        keys: ['LBP', 'LBR'],
+        binding: kp('y'),
+        layers: ['base'],
+        timeoutMs: 30,
+        slowRelease: false,
+        ...extra,
+      },
+    ],
+  });
+
+  it('is used where it types, though a key does the same for less', () => {
+    expect(trace(withChord(), 'y').keys).toEqual(['combo:c']);
+  });
+
+  it('is listed first among the ways to type its symbol', () => {
+    const ways = enumerateProducers(compileLayout(withChord()), 'fold').bySymbol.get('y') ?? [];
+    expect(ways.map((p) => p.id)).toEqual(['combo:c', 'direct:base/RHI']);
+  });
+
+  it('is never pressed when it is a command, and is no way to type', () => {
+    const layout = withChord({ role: 'command' });
+    expect(trace(layout, 'y').keys).toEqual(['RHI']);
+    const ways = enumerateProducers(compileLayout(layout), 'fold').bySymbol.get('y') ?? [];
+    expect(ways.map((p) => p.id)).toEqual(['direct:base/RHI']);
+  });
+
+  it('is used through the layer key that reaches it, where it works on another layer', () => {
+    expect(trace(withChord({ layers: ['mid'] }), 'y').keys).toEqual(['R0', 'combo:c']);
+  });
+
+  it('falls through to the other ways where nothing brings its layer on', () => {
+    expect(trace(withChord({ layers: ['lost'] }), 'y').keys).toEqual(['RHI']);
+  });
+
+  it('keeps the order set by hand for a symbol, the combo not first', () => {
+    const layout = {
+      ...withChord(),
+      typingPaths: { y: [{ producer: 'direct:base/RHI' }, { producer: 'combo:c' }] },
+    };
+    expect(trace(layout, 'y').keys).toEqual(['RHI']);
   });
 });
 

@@ -83,6 +83,8 @@ export type Edit =
       keys?: string[];
       layers?: string[];
       binding?: Binding;
+      /** Whether the analysis types with it; a combo that does is the plain case, written no role. */
+      role?: 'typing' | 'command';
       timeoutMs?: number;
     }
   /** One symbol's whole list of producers, in order. */
@@ -594,6 +596,10 @@ const handlers: Handlers = {
     if (edit.binding) {
       if (edit.binding.kind === 'trans') return { refused: NOT_TRANSPARENT };
       next.binding = edit.binding;
+    }
+    if (edit.role) {
+      const { role: _was, ...plain } = next;
+      next = edit.role === 'command' ? { ...plain, role: 'command' } : plain;
     }
     if (edit.timeoutMs !== undefined) {
       if (!(edit.timeoutMs > 0)) return { refused: 'a combo timeout is a positive number of ms' };

@@ -5,7 +5,15 @@ import { compileLayout } from '../layout/compile.js';
 import { bundledLayout, tapOf } from '../layouts/index.js';
 import { simulate } from '../sim/resolver.js';
 import { catalogRule } from './catalog.js';
-import { CYANOPHAGE_EFFORT_GRID, cyanophageEffort, defaultEffort, THUMB_EFFORT } from './effort.js';
+import {
+  CHORD_EXTRA_SHARE,
+  CYANOPHAGE_EFFORT_GRID,
+  chordEffort,
+  chordShares,
+  cyanophageEffort,
+  defaultEffort,
+  THUMB_EFFORT,
+} from './effort.js';
 import { evaluate } from './engine.js';
 import type { Globals, RuleSet } from './types.js';
 
@@ -84,5 +92,57 @@ describe('effort', () => {
     expect(effortOf('ab cd')).toBeCloseTo((577 * 11) / 5, 6);
     // Home-row index keys cost nothing at all.
     expect(effortOf('fj fj')).toBe(0);
+  });
+});
+
+describe('what a chord costs', () => {
+  it('charges the costliest key in full and every other at a share of its own', () => {
+    expect(CHORD_EXTRA_SHARE).toBe(0.5);
+    expect(chordShares([3, 1])).toEqual([3, 0.5]);
+    expect(chordShares([1, 3])).toEqual([0.5, 3]);
+    expect(chordShares([5, 0, 2])).toEqual([5, 0, 1]);
+    // Equal keys: the first is the full one.
+    expect(chordShares([2, 2])).toEqual([2, 1]);
+  });
+
+  it('charges one key what it costs, and a chord between one key and two', () => {
+    expect(chordShares([4])).toEqual([4]);
+    expect(chordEffort([4])).toBe(4);
+    expect(chordEffort([2, 2])).toBe(3);
+    expect(chordEffort([2, 2])).toBeGreaterThan(2);
+    expect(chordEffort([2, 2])).toBeLessThan(4);
+    // A free key beside a dear one adds nothing.
+    expect(chordEffort([0, 6])).toBe(6);
+  });
+
+  describe('in the Effort rule', () => {
+    const kp = (symbol: string) => ({ kind: 'kp' as const, symbol });
+    /** `y` on a chord of the bottom pinky (3) and ring (2), the one way to type it. */
+    const layout = compileLayout({
+      format: 'layerbench/layout@1',
+      name: 'A chord',
+      hostLocale: 'symbols',
+      geometry: { preset: '3x5+2' },
+      keys: { space: 'L0' },
+      layers: [{ id: 'base', bindings: { L0: kp(' ') } }],
+      combos: [
+        { id: 'c', keys: ['LBP', 'LBR'], binding: kp('y'), layers: ['base'], timeoutMs: 30 },
+      ],
+    });
+
+    it('is the pair charged 3 + half of 2, not 5', () => {
+      expect(effortOf('y', {}, layout)).toBeCloseTo(577 * 4, 6);
+    });
+
+    it("credits each key with its share, so the keys' parts add up to the value", () => {
+      const sim = simulate(layout, normalizeText('y', OPTS), OPTS);
+      const ruleSet: RuleSet = { globals: {}, rules: [catalogRule('effort')!] };
+      const r = evaluate(sim.tables, layout, ruleSet).results[0];
+      const perKey = r.per_key ?? {};
+      const part = (id: string) => perKey[layout.keys.findIndex((k) => k.id === id)] ?? 0;
+      expect(part('LBP')).toBe(3);
+      expect(part('LBR')).toBe(1);
+      expect((part('LBP') + part('LBR')) * (r.key_scale ?? 0)).toBeCloseTo(r.value as number, 6);
+    });
   });
 });

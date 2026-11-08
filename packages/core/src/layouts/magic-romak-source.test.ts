@@ -139,6 +139,14 @@ describe.skipIf(WRITE)('Magic Romak, built on that source', () => {
     expect(new Set((magicRomak.combos ?? []).map((c) => c.id)).size).toBe(source.combos.length);
   });
 
+  it("types with the combos its author types with, `;` and `à`: the others are the keyboard's, not pressed", () => {
+    // The file draws every combo and says nothing of which type; the layout adds the role.
+    expect(source.combos.every((c) => c.role === undefined)).toBe(true);
+    const typing = (magicRomak.combos ?? []).filter((c) => c.role !== 'command');
+    expect(typing.map(label).sort()).toEqual(['RBM RBR alpha1,num', 'RHM RHR alpha2']);
+    expect(typing.map((c) => c.id)).toEqual(['semicolon', 'agrave']);
+  });
+
   it("differs from the file's combos in their bindings only where the keymap has a hold or a tag", () => {
     const differing = (magicRomak.combos ?? [])
       .filter((c) => {

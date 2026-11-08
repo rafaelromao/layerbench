@@ -1800,17 +1800,45 @@ describe('Edit', () => {
     const open = () =>
       [...document.querySelectorAll('#kb-analyze .lb-combo-open title')].map((t) => t.textContent);
     expect(open()).toEqual([]);
-    // Two combos share RBM+RBR: the semicolon works on Alpha 1 and Alpha 2, the colon on Alpha 2
-    // only, and Alpha 1 is the layer shown.
-    const colon = within(screen.getByRole('region', { name: 'Combos' }))
-      .getAllByRole('button', { name: 'Edit RBM+RBR' })
-      .find(
-        (b) => b.querySelector('.lb-combo-slide-layers')?.textContent === 'Alpha 2',
-      ) as HTMLElement;
-    await user.click(colon);
-    await waitFor(() => expect(open()).toEqual([expect.stringMatching(/^Combo RBM \+ RBR/)]));
+    // The à works on Alpha 2 only, and Alpha 1 is the layer shown.
+    // Three cards share RHM+RHR: a letter chord on Alpha 1, the à on Alpha 2, a letter on Numbers.
+    const agrave = within(screen.getByRole('region', { name: 'Combos' }))
+      .getAllByRole('button', { name: 'Edit RHM+RHR' })
+      .find((b) => b.querySelector('.lb-combo-slide-layers')?.textContent === 'Alpha 2');
+    expect(agrave).toBeDefined();
+    await user.click(agrave as HTMLElement);
+    await waitFor(() => expect(open()).toEqual([expect.stringMatching(/^Combo RHM \+ RHR/)]));
     // The board is turned to Alpha 2, so its navigator and the combo's own layers both say so.
     expect(screen.getAllByText('Alpha 2').length).toBeGreaterThan(1);
+  }, 60_000);
+
+  it('says of a combo that is a command that it is not typed, and draws no box for it on the board', async () => {
+    const user = userEvent.setup();
+    await openMagicRomak();
+    await user.click(screen.getByRole('tab', { name: 'Combos' }));
+    const combos = within(screen.getByRole('region', { name: 'Combos' }));
+    // The colon on Alpha 2: the keymap has it, and the layout types `:` another way.
+    const colon = combos
+      .getAllByRole('button', { name: 'Edit RBM+RBR' })
+      .find(
+        (b) => b.querySelector('.lb-combo-slide-layers')?.textContent === 'Alpha 2 · not typed',
+      );
+    expect(colon).toBeDefined();
+    await user.click(colon as HTMLElement);
+    const editor = within(await screen.findByRole('group', { name: /^Edit combo / }));
+    const typing = editor.getByRole('checkbox', { name: 'Combo RBM+RBR is used for typing' });
+    expect(typing).not.toBeChecked();
+    expect(document.querySelectorAll('#kb-analyze .lb-combo-open')).toHaveLength(0);
+    // Ticked, it types: the box is drawn, and the card no longer says it is not typed.
+    await user.click(typing);
+    await waitFor(() =>
+      expect(document.querySelectorAll('#kb-analyze .lb-combo-open')).toHaveLength(1),
+    );
+    expect(
+      combos
+        .getAllByRole('button', { name: 'Edit RBM+RBR' })
+        .some((b) => b.querySelector('.lb-combo-slide-layers')?.textContent?.includes('not typed')),
+    ).toBe(false);
   }, 60_000);
 
   it("changes a combo's output, keys and layers in the combo editor, one undo for each", async () => {

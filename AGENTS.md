@@ -39,9 +39,10 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
     keymap-drawer.yaml` at the commit the file names). Its Alpha 1, Alpha 2, Ç extension, Numbers and
     Symbols, every key and every combo, are what the importer reads from it
     (`src/layouts/keymaps/magic-romak.json`, written by `pnpm keymap`, which
-    `magic-romak-source.test.ts` keeps equal to the import). The file's combos type what Extras and
-    Accents carried: Alpha 2's dead keys and `à`, the letters on Alpha 1's chords, and `€`, `°` and
-    `º` on Symbols and Numbers. `small.ts` adds only what keymap-drawer has no field for, and the
+    `magic-romak-source.test.ts` keeps equal to the import). The file draws 26 combos, and the
+    layout types with two, `;` and `à` (`TYPING_COMBOS`); the other 24 have `role: 'command'`: on
+    the keyboard, drawn in Combos, never pressed by the analysis. That leaves what only they make
+    untyped: the dead keys' letters, `€`, `°`, `º`, `ª`, `¿` and `¡`. `small.ts` adds only what keymap-drawer has no field for, and the
     test names each key: the adaptive `h`/`v` and alt repeat, the sentence space and morph on the
     thumbs, caps word on the shift key, the accents as macros that tag the press, `qu`, the holds
     that type `¿`, `¡` and `ª`, and the keymap's 30 ms combo timeout. When the keymap changes, copy

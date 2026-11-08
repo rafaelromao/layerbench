@@ -231,7 +231,17 @@ const COMBO_NAMES = new Map<string, string>(
   ).map(([keys, layers, name]) => [`${keys.split(' ').sort().join(' ')}|${layers}`, name]),
 );
 
-/** The file's combos with the keymap's timeout, its holds, its names and the accent combo tagged. */
+/**
+ * The combos the author types with, by name: `;` and `à`. The others are on his keyboard, and the
+ * file draws them, but he reaches what they make some other way (Alpha 2's keys for the letters and
+ * the accents), so the analysis does not press them.
+ */
+const TYPING_COMBOS = new Set(['semicolon', 'agrave']);
+
+/**
+ * The file's combos with the keymap's timeout, its holds, its names and the accent combo tagged,
+ * and a `command` role on those he does not type with.
+ */
 function keymapCombo(c: ComboDef): ComboDef {
   const b = c.binding;
   const held = b.kind === 'kp' && b.symbol !== undefined ? HELD_SYMBOLS[b.symbol] : undefined;
@@ -240,6 +250,7 @@ function keymapCombo(c: ComboDef): ComboDef {
     ...c,
     id: name ?? c.id,
     binding: held ? tapOrHeld(b.kind === 'kp' ? (b.symbol as string) : '', held) : tagging(b),
+    ...(name !== undefined && TYPING_COMBOS.has(name) ? {} : { role: 'command' as const }),
     timeoutMs: 30,
   };
 }
