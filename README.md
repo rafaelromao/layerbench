@@ -81,8 +81,9 @@ left pinky in and mirrored on the right, each key still typing what it did (`wit
 `templates.ts`), but Magic Romak and those whose keymaps hold their layers on the home row, which
 hold their authors'. The languages each is for are measured, not chosen: a layout is for a language
 when it types every letter the language needs and its Effort on that language's news text is in the
-better half of all the bundled layouts', on the rules the Library ranks on (`lang/performance.ts`).
-`pnpm languages` measures them and writes them, to `layouts/languages.json` and into each document,
+better half of all the bundled layouts', on the rules the Library ranks on (`lang/performance.ts`),
+unless its definition says its author made it for fewer (`madeFor`: Magic Romak, for English and
+Portuguese). `pnpm languages` measures them and writes them, to `layouts/languages.json` and into each document,
 and a test fails when they drift. A new one joins them as a document: a custom layout, unchanged but
 for its home row mods, added by pull request. Merging the pull request is the approval, and the
 deploy that follows puts it in everyone's Library. A layout can also join with no deploy, as a

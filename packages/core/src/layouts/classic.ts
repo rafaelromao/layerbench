@@ -67,6 +67,11 @@ export interface ClassicDef {
    * to the description.
    */
   note?: string;
+  /**
+   * The languages its author made it for, when that is fewer than those it performs well in:
+   * `pnpm languages` marks it with these among the ones it measures, and no other.
+   */
+  madeFor?: readonly string[];
 }
 
 const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
