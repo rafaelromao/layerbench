@@ -148,8 +148,8 @@ per letter. Colemak-DH, 1.177 *mid high* in the Doc, reads 1.173 *mid high*.
   capitals go through Shift or are folded; the number does not move because the denominator did.
   `percent_of_keystrokes` was the alternative, and with Space on it divides by the letters and the
   spaces, so the Doc's letters-only share would have turned into cyanophage's. What Space and Shift do
-  now is add their pairs to the count: Colemak-DH goes from 1.17 to 1.59 with Space on, `l␣` (Repeat
-  then space, one thumb) 0.22 and `s␣` 0.07 among them, and Magic Romak from 1.35 to 1.77. Before,
+  now is add their pairs to the count: Colemak-DH goes from 1.17 to 1.59 with Space on, `⟳␣` (Repeat
+  then space, one thumb) 0.41 of it, and Magic Romak from 1.35 to 1.77. Before,
   Space on lowered 28 of the 36 bundled layouts (Qwerty 6.62 to 4.72), because the pairs it was a
   share of grew with the spaces' pairs too; now it lowers none, raises 28 and leaves 8 as they were.
   The Doc counted neither Space nor Shift, so those readings are not the Doc's number, and the guide
