@@ -76,6 +76,29 @@ describe('A card’s board with heat', () => {
     expect(note()).toBe('Nothing on this layer is coloured by Usage.');
   });
 
+  it('scales a layer against the busiest key of every layer, so layers are read side by side', async () => {
+    // The base layer's busiest key has 8 presses; the next layer's has 4, and its other key 2.
+    const presses: number[][] = [
+      [8, 4],
+      [4, 2],
+    ];
+    const both: HeatSource = {
+      ...source,
+      usageByLayer: compiled.layers.map((_, layer) =>
+        Array.from({ length: positions }, (_, i) => presses[layer]?.[i] ?? 0),
+      ),
+    };
+    show(both, 'usage');
+    expect(heatedTitles().some((t) => t.includes('Usage: 100% of the busiest key'))).toBe(true);
+    await userEvent.click(screen.getByRole('button', { name: 'Next layer' }));
+    const titles = heatedTitles();
+    // Against its own busiest key the layer's 4 would read 100%.
+    expect(titles).toHaveLength(2);
+    expect(titles.some((t) => t.includes('Usage: 50% of the busiest key'))).toBe(true);
+    expect(titles.some((t) => t.includes('Usage: 25% of the busiest key'))).toBe(true);
+    expect(titles.some((t) => t.includes('Usage: 100% of the busiest key'))).toBe(false);
+  });
+
   it('says why it is plain while its layout is not scored, or could not be', () => {
     const view = show(undefined, 'usage');
     expect(heatedTitles()).toEqual([]);
