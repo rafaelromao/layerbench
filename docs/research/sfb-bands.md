@@ -114,9 +114,11 @@ and with Shift modelled, the Shift presses; the Doc counted neither.
 - **Done.** The Doc's six bounds stay. What is past the last one is named for what it is, *above mid
   high* (`SFB_ABOVE_SCALE`), where it was named *high*, a Doc category that has no SFB cell. The colour
   does not change (red, as *mid high* already is). SFS (*high*), full scissors, redirects and pinky off
-  (*very high*) end on a padded label the Doc has a dash under as well (SFS six thresholds, the others
-  seven), so a scissors reading of 0.8 still says *very high*; LSB's bands are not in the Doc's table
-  at all. They were left as they are, as asked, and are the owner's call.
+  (*very high*) ended on a padded label the Doc has a dash under as well (SFS six thresholds, the others
+  seven), so a scissors reading of 0.8 said *very high*. Asked by the owner, they are named the same
+  way: SFS past 7.3 is *above mid high*, full scissors past 0.7, redirects past 9.0 and pinky off
+  past 6.8 are *above high* (`negativeStat` in `catalog.ts`). LSB's bands are not in the Doc's table at
+  all, so they are LayerBench's own and keep the nine names by position.
 - **Not done: bands per setting.** No source gives SFB bands for a number counted with Space or Shift,
   or as a share of bigrams, so any would be invented. Hiding the badge when Space or Shift is on would
   take the label from the view the owner reads, and the engine's band is per rule, not per setting.

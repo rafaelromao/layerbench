@@ -183,10 +183,34 @@ describe('rules engine', () => {
       const bands = preset.rules.find((r) => r.id === 'sfb')?.bands;
       expect(classifyBand(1.56, bands).label, preset.id).toBe(SFB_ABOVE_SCALE);
     }
-    // Metrics beyond this one are named as they were: the top band takes the next label in the scale.
-    expect(classifyBand(8, BANDS.sfs).label).toBe('high');
-    expect(classifyBand(0.8, BANDS.scissors).label).toBe('very_high');
-    expect(classifyBand(10, BANDS.redir).label).toBe('very_high');
+  });
+
+  it('stops each negative stat where the Doc does, and names what is past it for that', () => {
+    // SFS has six thresholds in the Doc, scissors, redirects and pinky off seven, and a dash under
+    // the rest (ch. 13.4): past the last one is not the next word of the nine.
+    const stops = [
+      { id: 'sfs', bands: BANDS.sfs, last: 7.3, at: 'mid_high', past: 'above_mid_high' },
+      { id: 'fsb', bands: BANDS.scissors, last: 0.7, at: 'high', past: 'above_high' },
+      { id: 'redirect', bands: BANDS.redir, last: 9, at: 'high', past: 'above_high' },
+      { id: 'pinky_off', bands: BANDS.pinky_off, last: 6.8, at: 'high', past: 'above_high' },
+    ];
+    for (const { id, bands, last, at, past } of stops) {
+      expect(classifyBand(last, bands).label, `${id} at its last threshold`).toBe(at);
+      expect(classifyBand(last + 0.01, bands), `${id} past it`).toMatchObject({
+        label: past,
+        quality: 'bad',
+      });
+      expect(bands.labels?.at(-1), id).toBe(past);
+    }
+    expect(humanBand('above_high')).toBe('above high');
+    // The presets rank with these, not only the table they come from.
+    for (const preset of [layoutsDoc(), cyanophage()]) {
+      for (const { id, bands } of stops) {
+        expect(preset.rules.find((r) => r.id === id)?.bands, `${preset.id} ${id}`).toEqual(bands);
+      }
+    }
+    // LSB's bands are LayerBench's own, not in the Doc's table: its names stay by position.
+    expect(classifyBand(5, BANDS.lsb).label).toBe('very_high');
   });
 
   it('bands Effort on all nine steps, min to max, lower being better', () => {
