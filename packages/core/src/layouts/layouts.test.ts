@@ -193,18 +193,21 @@ describe('small-board layouts', () => {
 /**
  * Engram's board has eleven columns and a 34-key split ten. On the author's keyboard
  * (github.com/binarybottle/engram-2021, `engram.json`, and the Layouts Doc's §15.7.5) each finger
- * types the keys below, the inner columns' `' , .` with the index fingers; `z` and `q` sit in the
- * eleventh column, past the right pinky, which the split lacks, so they are on thumbs. Every other
- * key keeps its finger: with the inner column dropped the right index shared `h` and `t`, and the
- * middle, ring and pinky fingers each typed the letters of the finger beside them.
+ * types the keys below, the inner columns (`' " , . - ?`) with the index fingers; `z` and `q` sit in
+ * the eleventh column, past the right pinky, which the split lacks, so they are on thumbs. Every
+ * other letter keeps its finger: with the inner column dropped the right index shared `h` and `t`,
+ * and the middle, ring and pinky fingers each typed the letters of the finger beside them. `"` `-`
+ * and `?` are not among the symbols a base layer keeps, so their keys are empty, or Repeat's.
  */
 describe('Engram', () => {
   const layout = bundledLayout('engram')!;
-  const fingers = new Map(getGeometryPreset('3x5+2').keys.map((k) => [k.id, k.finger]));
+  const base = layout.layers[0].bindings;
+  const geometry = getGeometryPreset('3x5+2');
+  const fingers = new Map(geometry.keys.map((k) => [k.id, k.finger]));
 
-  it("types every key but z and q with the finger its author's board gives it", () => {
+  it("types each letter but z and q, and the ' , . it keeps, with its author's finger", () => {
     const byFinger: Record<string, string> = {};
-    for (const [key, b] of Object.entries(layout.layers[0].bindings)) {
+    for (const [key, b] of Object.entries(base)) {
       const tap = tapOf(b);
       const finger = fingers.get(key) ?? '';
       if (finger.endsWith('T') || tap?.kind !== 'kp' || !tap.symbol) continue;
@@ -222,8 +225,19 @@ describe('Engram', () => {
     });
   });
 
-  it('puts z and q on thumbs, which take the thumb letters, and Repeat on the key ? left', () => {
-    const base = layout.layers[0].bindings;
+  it("puts each key where the author's rows have it: the inner column's others empty", () => {
+    const tapped = (id: string) => {
+      const tap = tapOf(base[id]);
+      return tap?.kind === 'kp' && tap.symbol ? tap.symbol : tap?.kind === 'key_repeat' ? '⟳' : '·';
+    };
+    expect(geometry.textRows.map((row) => row.map(tapped).join(' '))).toEqual([
+      "b y o u ' · l d w v",
+      'c i e a , . h t s n',
+      'g x j k · ⟳ r m f p',
+    ]);
+  });
+
+  it('puts z and q on the thumbs, which take the thumb letters, and Repeat on the key ? left', () => {
     expect(tapOf(base.R0)).toEqual({ kind: 'kp', symbol: 'q' });
     expect(tapOf(base.L1)).toEqual({ kind: 'kp', symbol: 'z' });
     expect(base.RBC).toEqual({ kind: 'key_repeat' });

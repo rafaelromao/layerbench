@@ -246,8 +246,9 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     rows: 'b y o u \' " l d w v\nc i e a , . h t s n\ng x j k - ⟲ r m f p',
     // The original board has eleven columns: four finger columns a hand with the two inner ones
     // (`' " , . - ?`) between them, and a last one past the right pinky that holds `z` and `q`. A
-    // 34-key split has ten, so every key of those ten stays on its finger and `z` and `q` go on
-    // thumbs. With `z` on the thumb Repeat would have, Repeat takes the key `?` leaves.
+    // 34-key split has ten, so every letter of those ten stays on its finger (`" - ?` have no key
+    // on a base layer, which keeps only `' , . ;`) and `z` and `q` go on thumbs: the first on R0,
+    // the second on L1. With `z` on the thumb Repeat would have, Repeat takes the key `?` leaves.
     thumbs: 'space q z',
     special: { '⟲': REPEAT },
     description:

@@ -816,8 +816,8 @@ What moved, checked field by field across the 38 reports, old against new:
 Engram's board has eleven columns: the two inner ones, `' " , . - ?`, between the four finger
 columns of each hand, and one past the right pinky that holds `z` and `q`. The bundled layout had
 dropped the right inner column, so every right-hand key sat one column over: `h` and `t` shared the
-right index, `s` was on the middle finger, `n` on the ring and `q` on the pinky, and `th` alone was
-3.10% of its bigrams. It now has the ten columns of a 34-key split, each key on the finger its
+right index, `s` was on the middle finger and `n` on the ring, and `th` alone was 3.10% of its
+bigrams. It now has the ten columns of a 34-key split, each key on the finger its
 author's board gives it, and `z` and `q` on the thumbs, as Nerps, Hands Down Neu and Sunlight put the
 keys of their eleventh column. With a second thumb letter Repeat takes the key `?` leaves, as on
 Hands Down Neu and Sunlight. See `docs/research/engram-columns.md`.

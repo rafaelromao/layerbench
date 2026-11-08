@@ -15,8 +15,11 @@ space, the Layouts Doc rules, before and after the fix.
   thumbs.** They are the two keys of the eleventh column, past the right pinky, which a 34-key
   split has no key for: where Nerps, Hands Down Neu and Sunlight put the keys of their eleventh
   column too.
-- **SFB lands on the Doc's number.** 1.559 as the preset reads it (a share of bigrams), 1.241 as a
-  share of letters, which is how the Doc's figure compares: 1.242 there.
+- **SFB lands in the Doc's range.** 1.559 as the preset reads it (a share of bigrams), 1.241 as a
+  share of letters, against the Doc's 1.242. The Doc does not say what its SFB is a share of; as a
+  share of letters the bundled layouts that can be compared read within 0.15 of it (Colemak-DH
+  1.173 against 1.177, Gallium 0.761 against 0.644, Graphite 0.858 against 0.707), so the 0.001
+  here is partly luck. The old 4.976 was four times the Doc's.
 
 ## Sources
 
@@ -60,21 +63,21 @@ SFS by bigrams, which are 0.796 of the letters, so each is also given as a share
 | SFB, as the preset reads it | | 6.251 | 1.559 |
 | SFB, share of letters | 1.242 | 4.976 | **1.241** |
 | SFS, share of letters | 6.294 | 7.72 | 5.63 |
-| Full scissors | 0.30 | 0.44 | 0.44 |
+| Full scissors, share of letters | 0.30 | 0.35 | 0.35 |
 | Alternation | 41.1 | 38.7 | 40.7 |
 | Rolls | 41.5 | 32.7 | 41.8 |
 | Redirects | 4.2 | 3.8 | 4.2 |
 | Pinky off | 6.3 | 5.5 | 6.7 |
 | In:out roll ratio | 2.3 | 1.8 | 1.9 |
-| Hand balance, \|left − right\| | 49–51 | 0.4 | 4.4 |
+| Hand use, left – right | 49 – 51 | 50 – 50 | 48 – 52 |
 | Effort (the Doc has none) | | 592.4 | 443.4 |
 
-- **SFB, rolls, alternation and redirects now read as the Doc does**, within 0.4. The old rolls
-  were 9 points short.
-- **The others were not matched.** Only SFB was reconciled with the Doc's definition; its corpus
-  and analyzer are its own. SFS, pinky off and the in:out ratio are nearer the Doc than before and
-  scissors the same; hand balance is further (the Doc's 49–51 is not what these letters give: the
-  hands are 52–48 here), the old 0.4 being the wrong columns happening to balance.
+- **Rolls, alternation and redirects now read as the Doc does**, within 0.4. The old rolls were 9
+  points short.
+- **The others were not reconciled.** The Doc measures on its own corpus with its own analyzer, and
+  only SFB and the pair metrics' denominator were looked at. SFS, pinky off and the in:out ratio are
+  nearer the Doc than before and scissors the same; hand use is further (the Doc's 49 – 51 is not
+  what these letters give), the old 50 – 50 being the wrong columns happening to balance.
 - **The top SFB pairs were `th` 3.10, `rt` 0.40, `tr` 0.37, `ld` 0.24, `rd` 0.22; now `ak` 0.15,
   `au` 0.15, `r.` 0.10, `hr` 0.09, `ua` 0.09** (percent of bigrams).
 - **On the author's own board, the app's `ansi` preset with the base layer alone, SFB is 1.650
