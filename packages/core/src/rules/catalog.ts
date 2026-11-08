@@ -3,11 +3,14 @@ import type { Bands, Direction, Family, Predicate, Rule } from './types.js';
 
 /**
  * The Doc counts hand balance as even until a 52-48 split and as leaning up to 55-45, shares of the
- * keystrokes per hand; past that it is heavy (ch. 13.4). The rule's value is `|left − right|`, in
- * points, so a split is twice its larger share's distance from 50: the Doc's two are 4 and 10.
+ * keystrokes per hand; past that it is heavy (ch. 13.4). Its splits are whole percents and it files
+ * a layout under the one it prints: every row of its tables with a larger share of 52 is even, of
+ * 55 leaning, of 56 heavy. A category therefore runs to the half point above its share, 52.5-47.5
+ * and 55.5-44.5, and the rule's value, `|left − right|` in points, to twice the distance of that
+ * from 50: 5 and 11.
  */
-export const HAND_EVEN_BOUND = 4;
-export const HAND_LEANS_BOUND = 10;
+export const HAND_EVEN_BOUND = 5;
+export const HAND_LEANS_BOUND = 11;
 
 /**
  * Band bounds from the Layouts Doc ch. 13.4 (upper bounds of the Min…Max categories), and

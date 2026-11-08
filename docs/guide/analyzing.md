@@ -296,10 +296,11 @@ Colemak, and anything harder, is *max*. A badge names the band a number falls in
 says whether that is good for that metric. For most metrics lower is better; for alternation, rolls
 and the in:out roll ratio, higher is. The [glossary](../METRICS.md#bands) lists every band.
 
-Hand balance is read as the Doc reads it, from the share of the keystrokes each hand types: *even*
-up to a 52-48 split, *leans* up to 55-45 and *heavy* past that. Its card, **Hand Δ**, shows the
-difference between the two shares, 4 points for a 52-48 split and 10 for 55-45. The Doc names no
-category past *heavy*, so a 70-30 split is still *heavy*.
+Hand balance is read as the Doc reads it, from the share of the keystrokes each hand types, in whole
+percents: *even* up to a 52-48 split, *leans* up to 55-45 and *heavy* past that, so 52.4-47.6 is
+still *even* and 55.6-44.4 is *heavy*. The card shows the difference between the two shares (**Hand
+Δ** in the summary strip), and the bands end at 5 points, a 52.5-47.5 split, and at 11, a 55.5-44.5
+one. The Doc names no category past *heavy*, so a 70-30 split is still *heavy*.
 
 ## Rules and their sources
 

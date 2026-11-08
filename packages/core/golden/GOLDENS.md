@@ -811,6 +811,22 @@ What moved, checked field by field across the 38 reports, old against new:
 - **An adaptive key's other branches** keep what they typed: Magic Romak's `h␣`, the alt repeat's
   branch after `a`, is still `h␣`. Only the Repeat leaf is `⟳`.
 
+## Thirty-ninth re-baseline: hand balance banded as the Doc counts it
+
+The `hand_balance` rule was banded at 2 · 5 · 8 points of `|left − right|`, half of what the Layouts
+Doc sets (ch. 13.4: even until a 52-48 split, leans up to 55-45, heavy past that), and named a fourth
+band, `very_heavy`, the Doc does not have. It is banded at 5 and 11, the Doc's two splits as it prints
+them, in whole percents, as `even`, `leans` and `heavy`.
+
+What moved, checked field by field across the 38 reports, old against new:
+
+- **`hand_balance`'s `band`**, in 36 reports: `index`, `label`, `quality` and `goodness`. 21 went from
+  `very_heavy` to `heavy`, 5 from `very_heavy` to `leans`, 4 from `heavy` to `leans`, 6 from `leans`
+  to `even`.
+- **Nothing else**: not the value, `per_hand`, the items or any other rule. The two reports that did
+  not move are Magic Romak's `fixture_enpt` ones with the space, at 1.5 points, `even` before and
+  after.
+
 ## Not compared
 
 `globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not

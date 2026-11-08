@@ -36,7 +36,7 @@ The Doc groups layouts into categories per metric (ch. 13.4). LayerBench stores 
 | Redirects | lower is better | 2.8 · 3.6 · 4.5 · 5.4 · 6.2 · 7.0 · 9.0 |
 | Pinky off home | lower is better | 1.8 · 2.7 · 3.5 · 4.3 · 5.2 · 5.9 · 6.8 |
 | LSB | lower is better | 0.5 · 1.0 · 1.5 · 2.0 · 2.5 · 3.0 · 4.0 |
-| Hand balance | lower is better | 4 · 10 points of \|left − right\|, the Doc's 52-48 and 55-45 splits → even · leans · heavy, three categories, the last open-ended |
+| Hand balance | lower is better | 5 · 11 points of \|left − right\|, the Doc's 52-48 and 55-45 splits as it prints them, in whole percents → even · leans · heavy, three categories, the last open-ended |
 | Effort | lower is better | 440 · 460 · 480 · 500 · 520 · 540 · 560 · 580 (effort) |
 
 Effort's bands are LayerBench's own, on the Doc's nine steps, from the Effort of the bundled Standard and Thumb Alpha layouts on the default analysis settings (English news, 100,000 letters, the Layouts Doc rules): 20 apart, from 440, just above Aptmak's 439.9, the lowest of them, to 580, so that Colemak's 630, Dvorak and Qwerty are *max*. A custom rule set saved before Effort had bands keeps its own, none, until they are given in **Rules**.
