@@ -385,18 +385,17 @@ the keymap only outside its repository.
 Magic Romak is its author's keymap, and has no Extras and no Accents, as the keymap has none. Its
 keys, layers and combos are read from the keymap-drawer file its author keeps for it, as the
 [importer](importing.md) reads one. It keeps its own thumbs on Numbers and Symbols, Symbols' left
-thumb reaching Numbers too. The keymap draws 26 combos, and the layout types with two of them: `;`
-(RBM and RBR together, on Alpha 1 and Numbers) and `à` (RHM and RHR, on Alpha 2). The other 24 are
-commands there, on the keyboard and never pressed by the analysis: on Alpha 2, the dead keys `´`
-`` ` `` `^` `~` `¨`, and `-` `?` `!` `:`, which Symbols already has as keys; on Symbols,
-`€` (RTR, RTM and RTI together); on Numbers, `°` (RBR, RBM and RBI), `º`, or `ª` when held (RHR, RHM
-and RHI), and four more, `g`, `j`, `k` and `|`; and on Alpha 1, the letters the keymap puts on
-chords, `k` `x` `q` `w` `z` `y` `v` `j`, each two neighbouring keys, which Alpha 2 types. `¿` and
-`¡` come from holding Alpha 2's `?` and `!` combos, a hold this model gives them. So the analysis
-cannot type what only those commands make: `€` `°` `º` `ª` `¿` `¡` and the letters the dead keys
-accent, `ñ` `ü` `è` and the rest, so Spanish, French, Italian and German lack letters; tick
-**Typing** on a combo, in **Combos**, to let it type. It also cannot type `£` `§` `«` `»` `ı` `ß`
-`œ` `æ`, which the keymap has no way to.
+thumb reaching Numbers too. The keymap draws 26 combos, and the layout types with ten of them:
+`;` (RBM and RBR together, on Alpha 1 and Numbers), `à` (RHM and RHR, on Alpha 2), the dead keys
+`´` `` ` `` `^` `~` `¨` on Alpha 2, `€` on Symbols (RTR, RTM and RTI together) and, on Numbers, `°`
+(RBR, RBM and RBI) and `º`, or `ª` when held (RHR, RHM and RHI). A dead key types the letters no key
+types, `ñ` `ü` `è` and the rest, and leaves `á` `é` `ã` to the Alpha 2 keys that have them. The other
+16 are commands there, on the keyboard and never pressed by the analysis: on Alpha 2, `-` `?` `!`
+`:`, which Symbols already has as keys; on Numbers, `g`, `j`, `k` and `|`; and on Alpha 1, the letters
+the keymap puts on chords, `k` `x` `q` `w` `z` `y` `v` `j`, each two neighbouring keys, which Alpha 2
+types; tick **Typing** on a combo, in **Combos**, to let it type. The keymap draws no `¿` or `¡`, so
+Magic Romak has neither, and Spanish lists them as punctuation it lacks. It also cannot type `£` `§`
+`«` `»` `ı` `ß` `œ` `æ`, which the keymap has no way to, so French lacks `œ` and German `ß`.
 
 ### Which layer wins
 
@@ -429,7 +428,8 @@ keeps the page where it is, at either end too:
   it, accents the next letter, turns a layer on, or, held, does what its hold does; a tap dance on a
   combo types its second part when its keys are pressed together twice. **Typing**, ticked by
   default, makes the combo the way to type what it makes, wherever it works: it is not weighed
-  against the other ways, it goes first, and the others follow where it cannot work. Unticked, it is
+  against the other ways, it goes first, and the others follow where it cannot work. A dead key on a
+  combo makes no letter, so its letters are weighed like any other way: it types what no key does. Unticked, it is
   a command: on the keyboard, never pressed by the analysis, with *not typed* on its card, and not
   drawn on the board. The board draws it on the gap between its keys, its hold
   small under what it types; one on three or more keys, on keys apart, or with no room on its gap,

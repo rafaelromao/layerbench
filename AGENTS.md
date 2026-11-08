@@ -40,12 +40,13 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
     Symbols, every key and every combo, are what the importer reads from it
     (`src/layouts/keymaps/magic-romak.json`, written by `pnpm keymap`, which
     `magic-romak-source.test.ts` keeps equal to the import). The file draws 26 combos, and the
-    layout types with two, `;` and `à` (`TYPING_COMBOS`); the other 24 have `role: 'command'`: on
-    the keyboard, drawn in Combos, never pressed by the analysis. That leaves what only they make
-    untyped: the dead keys' letters, `€`, `°`, `º`, `ª`, `¿` and `¡`. `small.ts` adds only what keymap-drawer has no field for, and the
+    layout types with ten (`TYPING_COMBOS`): `;`, `à`, the five dead keys, `€`, `°` and `º` (`ª`
+    held); the other 16 have `role: 'command'`: on the keyboard, drawn in Combos, never pressed by
+    the analysis (`-` `:` `?` `!`, Numbers' `g` `j` `k` `|`, and Alpha 1's eight letter chords, which
+    Alpha 2's keys type). The file draws no `¿` or `¡`, so Magic Romak has none. `small.ts` adds only what keymap-drawer has no field for, and the
     test names each key: the adaptive `h`/`v` and alt repeat, the sentence space and morph on the
-    thumbs, caps word on the shift key, the accents as macros that tag the press, `qu`, the holds
-    that type `¿`, `¡` and `ª`, and the keymap's 30 ms combo timeout. When the keymap changes, copy
+    thumbs, caps word on the shift key, the accents as macros that tag the press, `qu`, the hold
+    that types `ª`, and the keymap's 30 ms combo timeout. When the keymap changes, copy
     the file again, run `pnpm keymap`, then `pnpm goldens`.
 - **The 24-key core is Magic Romak's keymap** (github.com/rafaelromao/keyboards, `numbers_layer` and
   `symbols_layer`). Numbers is a keypad on the right, with the brackets and the arithmetic beside

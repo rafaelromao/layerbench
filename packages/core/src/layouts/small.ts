@@ -203,8 +203,11 @@ const tapOrHeld = (tap: string, held: string): Binding => ({
   hold: kp(held),
 });
 
-/** What holding `?`, `!` and `º` types in the keymap, which the file does not draw. */
-const HELD_SYMBOLS: Record<string, string> = { '?': '¿', '!': '¡', º: 'ª' };
+/**
+ * What holding `º` types: the file draws `ª` as the hold of that combo, which the importer reads
+ * as its tap only. The file gives `?` and `!` no hold, so Magic Romak has no `¿` or `¡`.
+ */
+const HELD_SYMBOLS: Record<string, string> = { º: 'ª' };
 
 /**
  * The keymap's names for the combos that type accents and symbols, by their keys and the layer they
@@ -232,11 +235,23 @@ const COMBO_NAMES = new Map<string, string>(
 );
 
 /**
- * The combos the author types with, by name: `;` and `à`. The others are on his keyboard, and the
- * file draws them, but he reaches what they make some other way (Alpha 2's keys for the letters and
- * the accents), so the analysis does not press them.
+ * The combos the author types with, by name: `;`, `à`, the dead keys, and `€`, `°` and `º` (`ª`
+ * held). The others are on his keyboard, and the file draws them, but he reaches what they make
+ * some other way (Alpha 2's keys for the letters, `-` `:` `?` `!`, and Symbols and Numbers for the
+ * rest), so the analysis does not press them.
  */
-const TYPING_COMBOS = new Set(['semicolon', 'agrave']);
+const TYPING_COMBOS = new Set([
+  'semicolon',
+  'agrave',
+  'diaeresis',
+  'acute',
+  'grave',
+  'circumflex',
+  'tilde',
+  'euro',
+  'degree',
+  'ordinal',
+]);
 
 /**
  * The file's combos with the keymap's timeout, its holds, its names and the accent combo tagged,

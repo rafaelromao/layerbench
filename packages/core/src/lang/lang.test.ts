@@ -76,23 +76,17 @@ describe('layout coverage', () => {
     expect(layoutLanguageCoverage(qwerty, 'pt')?.missingRequired.length).toBeGreaterThan(0);
   });
 
-  it('writes English and Portuguese, and not what only the combos its author does not type with make', () => {
-    // Alpha 2 carries the Portuguese set. The dead keys, `€ ° º ª` and the held `¿ ¡` are on combos
-    // that are commands there: on the keyboard, and never pressed by the analysis. Its keymap also has
-    // no `œ`, `ß` or French quotes.
+  it('writes every language but what its keymap has no key for', () => {
+    // Alpha 2 carries the Portuguese set, and the dead keys on its combos make the other accents. Its
+    // keymap has no `œ`, `ß`, French quotes, `¿` or `¡`.
     const missing = (tag: string) => {
       const c = layoutLanguageCoverage(magic, tag);
       return [tag, c?.missingRequired, c?.missingPunctuation];
     };
-    for (const tag of ['en', 'pt']) expect(missing(tag)).toEqual([tag, [], []]);
-    expect(missing('es')).toEqual(['es', ['ñ', 'ü'], ['¿', '¡']]);
-    expect(missing('it')).toEqual(['it', ['è', 'ì', 'î', 'ò', 'ù'], []]);
-    expect(missing('fr')).toEqual([
-      'fr',
-      ['è', 'ë', 'î', 'ï', 'ù', 'û', 'ü', 'ÿ', 'œ'],
-      ['«', '»'],
-    ]);
-    expect(missing('de')).toEqual(['de', ['ä', 'ö', 'ü', 'ß'], []]);
+    for (const tag of ['en', 'pt', 'it']) expect(missing(tag)).toEqual([tag, [], []]);
+    expect(missing('es')).toEqual(['es', [], ['¿', '¡']]);
+    expect(missing('fr')).toEqual(['fr', ['œ'], ['«', '»']]);
+    expect(missing('de')).toEqual(['de', ['ß'], []]);
   });
 
   it('names the characters a language still needs on a layout without them', () => {

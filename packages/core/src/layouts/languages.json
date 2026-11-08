@@ -1,5 +1,5 @@
 {
-  "magic-romak": ["en", "pt"],
+  "magic-romak": ["en", "pt", "es", "it"],
   "romak": ["en", "pt", "es", "fr", "it", "de"],
   "qwerty": [],
   "dvorak": [],

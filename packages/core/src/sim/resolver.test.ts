@@ -288,6 +288,48 @@ describe('a combo is a way to type, or it is not: the cost does not decide', () 
     };
     expect(trace(layout, 'y').keys).toEqual(['RHI']);
   });
+
+  describe('a dead key on a combo', () => {
+    /** An acute accent on a combo, a key for `é`, and keys for `y` and `e`, which `ý` composes with. */
+    const withDeadKey = (role?: 'command'): Layout => ({
+      format: 'layerbench/layout@1',
+      name: 'A dead key',
+      hostLocale: 'symbols',
+      geometry: { preset: '3x5+2' },
+      keys: { space: 'L0' },
+      layers: [
+        {
+          id: 'base',
+          bindings: { L0: kp(' '), RHI: kp('é'), RHM: kp('e'), RHR: kp('y') },
+        },
+      ],
+      combos: [
+        {
+          id: 'dk',
+          keys: ['LBP', 'LBR'],
+          binding: { kind: 'dead_key', diacritic: '´' },
+          layers: ['base'],
+          timeoutMs: 30,
+          slowRelease: false,
+          ...(role ? { role } : {}),
+        },
+      ],
+    });
+
+    it('types the letters no key types, and leaves the others to the key that does', () => {
+      expect(trace(withDeadKey(), 'ý').keys).toEqual(['combo:dk', 'RHR']);
+      expect(trace(withDeadKey(), 'é').keys).toEqual(['RHI']);
+    });
+
+    it('is not among the first tier: its letters are ways like any other, the cheapest first', () => {
+      const ways = enumerateProducers(compileLayout(withDeadKey()), 'fold').bySymbol.get('é') ?? [];
+      expect(ways.map((p) => p.kind)).toEqual(['direct', 'deadkey']);
+    });
+
+    it('types nothing when it is a command', () => {
+      expect(trace(withDeadKey('command'), 'ý').out.trim()).toBe('');
+    });
+  });
 });
 
 describe('combos that do more than type a character', () => {

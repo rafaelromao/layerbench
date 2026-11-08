@@ -49,12 +49,19 @@ describe('playing a word on the board', () => {
 
 describe('the combos a board shows', () => {
   it('shows the combos that type on the layer drawn, and not the commands', () => {
-    // Magic Romak types with two of the keymap's combos: `à` on Alpha 2, `;` on Alpha 1.
-    expect(typingCombos(compiled, layer('alpha2')).map((c) => c.label)).toEqual(['à']);
+    // Magic Romak types with `à` and the dead keys on Alpha 2, and `;` on Alpha 1.
+    expect(typingCombos(compiled, layer('alpha2')).map((c) => c.label)).toEqual([
+      '¨',
+      '^',
+      '´',
+      'à',
+      '`',
+      '~',
+    ]);
     expect(typingCombos(compiled, layer('alpha1')).map((c) => c.label)).toEqual([';']);
   });
 
-  it('draws what a combo types as a dead key, once it types: the accents, and `?` and `!` held', () => {
+  it('draws what a combo types as a dead key, once it types: the accents, and `?` and `!` as they are', () => {
     // The same keymap with every combo typing, as a layout that names no role has them.
     const magic = bundledLayout('magic-romak') as Layout;
     const all = compileLayout({
@@ -66,11 +73,11 @@ describe('the combos a board shows', () => {
       '-',
       '^',
       '´',
-      '? / ¿',
+      '?',
       'à',
       '`',
       '~',
-      '! / ¡',
+      '!',
       ':',
     ]);
     // The accents are drawn as dead keys, not as the letters a combo types.

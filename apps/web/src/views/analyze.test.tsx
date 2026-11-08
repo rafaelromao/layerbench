@@ -72,8 +72,15 @@ describe('Analyze', () => {
     await user.click(within(presses).getByRole('button', { name: /RHM\+RHR/ }));
     const names = () =>
       [...document.querySelectorAll('#kb-analyze .lb-combo title')].map((t) => t.textContent);
-    // Only the à types on Alpha 2: the dead keys and the others the keymap draws there are commands.
-    expect(names()).toEqual(['Combo RHM + RHR: à']);
+    // The à and the dead keys type on Alpha 2: the others the keymap draws there are commands.
+    expect(names()).toEqual([
+      'Combo LTM + LTI: ¨, dead key',
+      'Combo LHR + LHM: ^, dead key',
+      'Combo LHM + LHI: ´, dead key',
+      'Combo RHM + RHR: à',
+      'Combo LBR + LBM: `, dead key',
+      'Combo LBM + LBI: ~, dead key',
+    ]);
     const lit = document.querySelector('#kb-analyze .lb-combo-active title');
     expect(lit?.textContent).toBe('Combo RHM + RHR: à');
 

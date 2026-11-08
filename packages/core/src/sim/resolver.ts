@@ -108,8 +108,9 @@ export function findHomeKeys(compiled: CompiledLayout): Record<Finger, number> {
 }
 
 /**
- * A tier with the ways that press a typing combo taken first, as a tier of their own: the combo is
- * the way, wherever it works, and is not weighed against the rest of the tier.
+ * A tier with a typing combo's own ways taken first, as a tier of their own: the combo is the way,
+ * wherever it works, and is not weighed against the rest of the tier. A dead key's letters stay in
+ * the rest (`pressesCombo`).
  */
 function combosFirst(tier: Producer[]): Producer[][] {
   const combos = tier.filter(pressesCombo);
@@ -262,8 +263,8 @@ export class Simulator {
   /**
    * The ways to type a token, in tiers: the first tier that works is used, and inside it the
    * cheapest way. A typing combo is not weighed against the other ways: where the symbol has no
-   * order of its own, the ways that press one are the first tier, and the rest follow it, for where
-   * the combo does not work. Otherwise one tier, except for a doubled letter of a layout that
+   * order of its own, the ways it makes the symbol are the first tier, and the rest follow it, for
+   * where the combo does not work. Otherwise one tier, except for a doubled letter of a layout that
    * declared how those are typed, which tries each way that is on in turn: the repeat key's, then
    * tapping the key again.
    */

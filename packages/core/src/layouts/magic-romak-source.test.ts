@@ -99,10 +99,25 @@ const ADD_ONS: Record<string, string[]> = {
 };
 
 /**
- * The combos that differ in more than their name and timeout, by their keys and layer: `?` and `!`
- * are held for `¿` and `¡`, `º` for `ª`, and the accent combo tags the press.
+ * The combos that differ in more than their name, timeout and role, by their keys and layer: `º` is
+ * held for `ª`, which the file draws as its hold, and the accent combo tags the press. `?` and `!`
+ * have no hold in the file, so no `¿` or `¡`.
  */
-const COMBO_ADD_ONS = ['RHI RHM alpha2', 'RBI RBM alpha2', 'RHM RHR alpha2', 'RHI RHM RHR num'];
+const COMBO_ADD_ONS = ['RHM RHR alpha2', 'RHI RHM RHR num'];
+
+/** The combos the author types with, by their sorted keys and layers: `;`, `à`, the dead keys, `€`, `°` and `º`. */
+const TYPING = [
+  ['RBM RBR alpha1,num', 'semicolon'],
+  ['LTI LTM alpha2', 'diaeresis'],
+  ['LHM LHR alpha2', 'circumflex'],
+  ['LHI LHM alpha2', 'acute'],
+  ['RHM RHR alpha2', 'agrave'],
+  ['LBM LBR alpha2', 'grave'],
+  ['LBI LBM alpha2', 'tilde'],
+  ['RHI RHM RHR num', 'ordinal'],
+  ['RBI RBM RBR num', 'degree'],
+  ['RTI RTM RTR sym', 'euro'],
+];
 
 describe.skipIf(WRITE)('Magic Romak, built on that source', () => {
   const magicRomak = bundledLayout('magic-romak') as Layout;
@@ -139,12 +154,11 @@ describe.skipIf(WRITE)('Magic Romak, built on that source', () => {
     expect(new Set((magicRomak.combos ?? []).map((c) => c.id)).size).toBe(source.combos.length);
   });
 
-  it("types with the combos its author types with, `;` and `à`: the others are the keyboard's, not pressed", () => {
+  it("types with the combos its author types with: the others are the keyboard's, not pressed", () => {
     // The file draws every combo and says nothing of which type; the layout adds the role.
     expect(source.combos.every((c) => c.role === undefined)).toBe(true);
     const typing = (magicRomak.combos ?? []).filter((c) => c.role !== 'command');
-    expect(typing.map(label).sort()).toEqual(['RBM RBR alpha1,num', 'RHM RHR alpha2']);
-    expect(typing.map((c) => c.id)).toEqual(['semicolon', 'agrave']);
+    expect(typing.map((c) => [label(c), c.id]).sort()).toEqual([...TYPING].sort());
   });
 
   it("differs from the file's combos in their bindings only where the keymap has a hold or a tag", () => {

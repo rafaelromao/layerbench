@@ -557,28 +557,58 @@ describe("Magic Romak's layers: the defaults' Numbers, its keymap's Symbols, and
     expect(named).not.toMatch(/"(extras|accents)"/);
   });
 
-  it("has €, ° and º or ª on its keymap's combos, which are commands: on the keyboard, not typed", () => {
+  it("has €, ° and º or ª on its keymap's combos, which type", () => {
     const combos = magicRomak.combos ?? [];
     // The keys in the order the keymap's file draws them.
     const named = (id: string) => combos.find((c) => c.id === id);
     expect(named('euro')).toMatchObject({ keys: ['RTI', 'RTM', 'RTR'], layers: ['sym'] });
     expect(named('degree')).toMatchObject({ keys: ['RBI', 'RBM', 'RBR'], layers: ['num'] });
     expect(named('ordinal')).toMatchObject({ keys: ['RHI', 'RHM', 'RHR'], layers: ['num'] });
-    for (const id of ['euro', 'degree', 'ordinal']) expect(named(id)?.role).toBe('command');
-    expect(producibleSymbols(compileLayout(magicRomak)).has('€')).toBe(false);
+    for (const id of ['euro', 'degree', 'ordinal']) expect(named(id)?.role).toBeUndefined();
+    const made = producibleSymbols(compileLayout(magicRomak));
+    for (const s of '€°ºª') expect(made.has(s)).toBe(true);
+    // Held, the ordinal combo types the feminine one.
+    expect(named('ordinal')?.binding).toMatchObject({ kind: 'hold_tap', hold: { symbol: 'ª' } });
   });
 
-  it('has the dead keys on the combos of Alpha 2, which are commands too', () => {
+  it('has no ¿ or ¡: the keymap draws no hold on ? and !', () => {
+    const combos = magicRomak.combos ?? [];
+    for (const id of ['question', 'exclamation'])
+      expect(combos.find((c) => c.id === id)?.binding.kind).toBe('kp');
+    const made = producibleSymbols(compileLayout(magicRomak));
+    expect(made.has('¿')).toBe(false);
+    expect(made.has('¡')).toBe(false);
+  });
+
+  it('has the dead keys on the combos of Alpha 2, which type what no key does', () => {
     const dead = (magicRomak.combos ?? []).filter((c) => c.binding.kind === 'dead_key');
     expect(dead.map((c) => c.id)).toEqual(['diaeresis', 'circumflex', 'acute', 'grave', 'tilde']);
-    for (const c of dead) expect(c.role).toBe('command');
-    // Nothing types them: only the spaces between come out.
-    expect(trace(magicRomak, 'ñ è ü').out.trim()).toBe('');
+    for (const c of dead) expect(c.role).toBeUndefined();
+    // Alpha 2 has `é` and `ã`, and the dead keys the rest: the cheapest way types each.
+    expect(trace(magicRomak, 'ñ è ü').out).toBe('ñ è ü');
+    expect(trace(magicRomak, 'ñ').keys).toContain('combo:tilde');
+    expect(trace(magicRomak, 'é').keys.join(' ')).not.toContain('combo:');
   });
 
-  it('types with two of its combos only: `;` and `à`', () => {
+  it('types with ten of its combos: `;`, `à`, the dead keys, `€`, `°` and `º`', () => {
     const typing = (magicRomak.combos ?? []).filter((c) => c.role !== 'command');
-    expect(typing.map((c) => c.id)).toEqual(['semicolon', 'agrave']);
+    expect(typing.map((c) => c.id).sort()).toEqual(
+      [
+        'acute',
+        'agrave',
+        'circumflex',
+        'degree',
+        'diaeresis',
+        'euro',
+        'grave',
+        'ordinal',
+        'semicolon',
+        'tilde',
+      ].sort(),
+    );
+    // The rest are the keyboard's: the letters of Alpha 1's chords, `- ? ! :` and Numbers' `g j k |`.
+    const commands = (magicRomak.combos ?? []).filter((c) => c.role === 'command');
+    expect(commands.length).toBe((magicRomak.combos ?? []).length - 10);
   });
 });
 
@@ -629,11 +659,10 @@ describe("Magic Romak types `;` as the keymap's combo", () => {
  * What each layout that keeps its author's layers cannot type of the digits, the default layers'
  * symbols and German's letters: nothing is added to its author's layers and combos, and these are
  * what they leave out, for a later edit to add. Magic Romak's keymap has no way to `£ § « » ı ß œ æ`,
- * and the combos for the dead keys, `€ ° º ª` and `¿ ¡` are commands there, which the analysis does
- * not press: it cannot type `ä ö ü ñ` either, so Spanish, French, Italian and German lack letters.
+ * and its file draws no `¿` or `¡`, so French and German lack a letter, and Spanish its two marks.
  */
 const UNTYPED: Record<string, string> = {
-  'magic-romak': '¡£§ª«°º»¿ßäæñöüıœ€',
+  'magic-romak': '¡£§«»¿ßæıœ',
   'hands-down-gold': '\\ªº«»ı¿¡ß',
   'hands-down-promethium': '\\ªº«»ı¿¡ß',
   'hands-down-vibranium': '\\ªº«»ı¿¡ß',
@@ -660,16 +689,14 @@ const ACCENTLESS = Object.fromEntries(
 
 /**
  * What each layout that keeps its author's layers lacks of each language, where it lacks anything:
- * its required letters, its optional ones and its punctuation. Magic Romak's lack what only the
- * combos that are commands there make (the dead keys, `¿ ¡`), and what its keymap has no way to.
+ * its required letters, its optional ones and its punctuation. Magic Romak's lack what its keymap
+ * has no way to: `ß`, `œ` and `æ`, the French quotes, `¿` and `¡`.
  */
 const LACKS: Record<string, Record<string, string[][]>> = {
   'magic-romak': {
-    pt: [[], ['ü'], []],
-    es: [['ñ', 'ü'], [], ['¿', '¡']],
-    it: [['è', 'ì', 'î', 'ò', 'ù'], [], []],
-    fr: [['è', 'ë', 'î', 'ï', 'ù', 'û', 'ü', 'ÿ', 'œ'], ['æ'], ['«', '»']],
-    de: [['ä', 'ö', 'ü', 'ß'], [], []],
+    es: [[], [], ['¿', '¡']],
+    fr: [['œ'], ['æ'], ['«', '»']],
+    de: [['ß'], [], []],
   },
   ...Object.fromEntries(
     ['hands-down-gold', 'hands-down-promethium', 'hands-down-vibranium'].map((id) => [

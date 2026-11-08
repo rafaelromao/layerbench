@@ -282,8 +282,12 @@ function blockedByLayer(compiled: CompiledLayout): ReadonlySet<number>[] {
   return compiled.layers.map((l) => new Set(blockedThumbs(compiled, l.idx)));
 }
 
-/** Whether a way presses a combo, as its own step or as the key or the letter of a dead key. */
-export const pressesCombo = (p: Producer) => p.steps.some((st) => st.combo !== undefined);
+/**
+ * Whether a way is a typing combo's own: the combo makes the symbol. A dead key on a combo makes no
+ * letter, it accents the next one, so its letters are ways like any other and the cheapest wins:
+ * the keys that type an accented letter beat the dead key, which types what they do not.
+ */
+export const pressesCombo = (p: Producer) => p.kind === 'combo';
 
 /**
  * Enumerate every way to produce each symbol string on the layout.
@@ -394,8 +398,8 @@ export function enumerateProducers(
     if (fold && p.deadMods?.length) excludedByCase.push(p);
     else add(p);
   }
-  // Default ordering: the ways that press a combo first, since a typing combo is not weighed
-  // against the rest, then cheapest first, then non-dynamic before dynamic.
+  // Default ordering: a typing combo's own ways first, since it is not weighed against the rest,
+  // then cheapest first, then non-dynamic before dynamic.
   for (const [, list] of bySymbol) {
     list.sort(
       (a, b) =>

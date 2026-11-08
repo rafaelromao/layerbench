@@ -676,8 +676,8 @@ describe('Ranking layouts', () => {
   }, 90_000);
 
   it('ranks the layouts that can write the language first', async () => {
-    // Every bundled layout writes Spanish but Magic Romak, whose dead keys are commands, and Plain,
-    // which has no ñ.
+    // Every bundled layout writes Spanish but Plain, which has no ñ. Magic Romak's dead keys make it,
+    // and its keymap has no `¿` or `¡`, which Spanish only lists as punctuation.
     const storage = freshStorage();
     await savePlain(storage, 'plain');
     renderRoute('/library?corpus=es-general&sample=10000', { storage });
@@ -694,7 +694,7 @@ describe('Ranking layouts', () => {
     const romak = cards().find((c) => c.querySelector('h3')?.textContent === 'Romak');
     expect(romak?.textContent).not.toMatch(/Cannot type/);
     const magic = cards().find((c) => c.querySelector('h3')?.textContent === 'Magic Romak');
-    expect(magic?.textContent).toMatch(/Cannot type/);
+    expect(magic?.textContent).not.toMatch(/Cannot type/);
   }, 90_000);
   it('ranks by the numbers alone when no layout listed can write the language', async () => {
     // Two layouts without an ñ, on a board no bundled layout is on, and only that board listed.
