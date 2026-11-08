@@ -15,6 +15,7 @@ import {
   importKeymapDrawer,
   type KdKey,
   KeymapDrawerError,
+  type LegendContext,
   MAX_KEYS,
   orthoKeys,
   presetOrder,
@@ -297,6 +298,133 @@ describe('legends', () => {
       exact: true,
     });
   });
+
+  const readExactly = { kind: 'binding', binding: { kind: 'trans' }, exact: true };
+  const notRead = { kind: 'binding', binding: { kind: 'trans' }, exact: false };
+
+  it("reads keymap-drawer's icons for keys as the words for them, and no other icon", () => {
+    const icon = (name: string) => `$$mdi:${name}$$`;
+    expect(read({ tap: icon('keyboard-space') })).toEqual({ kind: 'kp', symbol: ' ' });
+    expect(read({ tap: icon('keyboard-space'), hold: 'Nav' })).toEqual({
+      kind: 'lt',
+      layer: 'nav',
+      tap: { kind: 'kp', symbol: ' ' },
+    });
+    expect(read({ tap: icon('repeat') })).toEqual({ kind: 'key_repeat' });
+    // The Mac's modifier keys, and the Windows logo for Gui: home-row mods and one-shots.
+    const mods = {
+      'apple-keyboard-shift': 'LSHIFT',
+      'apple-keyboard-control': 'LCTRL',
+      'apple-keyboard-option': 'LALT',
+      'apple-keyboard-command': 'LGUI',
+      'microsoft-windows': 'LGUI',
+    };
+    for (const [name, mod] of Object.entries(mods)) {
+      expect(read({ tap: 'A', hold: icon(name) })).toEqual({
+        kind: 'hold_tap',
+        tap: { kind: 'kp', symbol: 'a' },
+        hold: { kind: 'mod', mod },
+      });
+      expect(read({ tap: icon(name), hold: 'sticky' })).toEqual({ kind: 'sk', mod });
+    }
+    // Keys that type no text are read as such, as their words are.
+    for (const name of [
+      'keyboard-return',
+      'keyboard-tab',
+      'keyboard-esc',
+      'backspace',
+      'backspace-outline',
+      'backspace-reverse-outline',
+      'arrow-left',
+      'arrow-up-bold',
+    ]) {
+      expect(readLegend(key({ tap: icon(name) }), ctx)).toEqual(readExactly);
+    }
+    expect(readLegend(key({ tap: icon('keyboard-tab'), hold: 'Nav' }), ctx)).toEqual({
+      kind: 'binding',
+      binding: { kind: 'lt', layer: 'nav', tap: { kind: 'none' } },
+      exact: true,
+    });
+    // `constructor` is a name every object answers to, not an icon there is a word for.
+    for (const name of ['chevron-down', 'bluetooth', 'constructor']) {
+      expect(readLegend(key({ tap: icon(name) }), ctx)).toEqual(notRead);
+    }
+  });
+
+  it("reads a key's name drawn after a mark, and nothing else after one", () => {
+    expect(read({ tap: '␣ SPC' })).toEqual({ kind: 'kp', symbol: ' ' });
+    expect(read({ tap: '⟳ Repeat' })).toEqual({ kind: 'key_repeat' });
+    expect(read({ tap: '⇧ LSHFT', hold: 'sticky' })).toEqual({ kind: 'sk', mod: 'LSHIFT' });
+    expect(read({ tap: '⎈ LCTRL', hold: 'sticky' })).toEqual({ kind: 'sk', mod: 'LCTRL' });
+    expect(read({ tap: 'A', hold: '⌥ LALT' })).toEqual({
+      kind: 'hold_tap',
+      tap: { kind: 'kp', symbol: 'a' },
+      hold: { kind: 'mod', mod: 'LALT' },
+    });
+    expect(readLegend(key({ tap: '⌫ BSPC' }), ctx)).toEqual(readExactly);
+    expect(readLegend(key({ tap: '🡅 Up' }), ctx)).toEqual(readExactly);
+    // A name it does not know stays unread, mark and all.
+    expect(readLegend(key({ tap: '✂ Cut' }), ctx)).toEqual(notRead);
+    // A word is not a mark: what follows one is not read on its own.
+    for (const tap of ['BT 0', 'Mouse 1', 'meh k', 'hyper ␣', 'dead ^']) {
+      expect(readLegend(key({ tap }), ctx)).toEqual(notRead);
+    }
+    // Nor is what follows a mark that is no key's name: an arrow then a comma types two things,
+    // and a mark before one character changes what it types.
+    for (const tap of ['→ ,', '⇥ (', '⇧ ↹', '⇧ A', '→ ção']) {
+      expect(readLegend(key({ tap }), ctx)).toEqual(notRead);
+    }
+  });
+
+  it("reads QMK's words for how a layer comes on, under the layer's name", () => {
+    expect(readLegend(key({ tap: 'NAV', hold: 'MO' }), ctx)).toEqual({
+      kind: 'binding',
+      binding: { kind: 'mo', layer: 'nav' },
+      exact: true,
+    });
+    expect(read({ tap: 'Nav', hold: 'OSL' })).toEqual({ kind: 'sl', layer: 'nav' });
+    expect(read({ tap: 'Nav', hold: 'TG' })).toEqual({ kind: 'tog', layer: 'nav' });
+    // DF makes the layer the one the keyboard rests on: a switch to it.
+    expect(read({ tap: 'Nav', hold: 'DF' })).toEqual({ kind: 'to', layer: 'nav' });
+    expect(readLegend(key({ tap: 'Num', hold: 'DF' }), ctx)).toEqual(readExactly);
+  });
+
+  it("reads a layer's name cut short on a key's tap as the one layer it begins", () => {
+    const named: LegendContext = {
+      layers: new Map<string, string | null>([
+        // A layer taken under a name of its own is known by both.
+        ['symbols', 'sym'],
+        ['symbol keys', 'sym'],
+        ['numbers', 'num'],
+        ['numpad', 'pad'],
+        ['functions', null],
+        ['spacefn', 'spacefn'],
+      ]),
+    };
+    const reading = (spec: Partial<KdKey>) => readLegend(key(spec), named);
+    expect(reading({ tap: 'sym' })).toEqual({
+      kind: 'binding',
+      binding: { kind: 'mo', layer: 'sym' },
+      exact: true,
+    });
+    expect(reading({ tap: 'SYMB', hold: 'sticky' })).toMatchObject({
+      binding: { kind: 'sl', layer: 'sym' },
+    });
+    // A layer left out, cut short, is still the layer left out.
+    expect(reading({ tap: 'fun' })).toEqual(readExactly);
+    // Two layers begin with `num`, and two letters are too few to go on.
+    expect(reading({ tap: 'num' })).toEqual(notRead);
+    expect(reading({ tap: 'sy' })).toEqual(notRead);
+    // A legend it reads is what it reads, whatever layer it begins.
+    expect(reading({ tap: 'SPACE' })).toMatchObject({ binding: { kind: 'kp', symbol: ' ' } });
+    // A hold is often a word for what the key does, `symbol` under a shortcut to go to one: only
+    // a layer's name in full holds a layer.
+    expect(reading({ tap: 'A', hold: 'symbol' })).toEqual({
+      kind: 'binding',
+      binding: { kind: 'kp', symbol: 'a' },
+      exact: false,
+    });
+  });
 });
 
 describe('importing', () => {
@@ -421,6 +549,58 @@ describe('importing', () => {
     );
     expect(report.layers[0].unread).toEqual(['tri', 'BT_CLR', 'BT 0', 'A', 'toggle']);
     expect(layout.layers[0].bindings[board.ids[4] as string]).toEqual({ kind: 'kp', symbol: 'a' });
+  });
+
+  it('reads a file drawn with icons, marks and layer names cut short', () => {
+    const drawn = readKeymapDrawer(`
+layout: {cols_thumbs_notation: 33333+2 2+33333}
+layers:
+  Base:
+    - [Q, W, F, P, B, J, L, U, Y, "'"]
+    - [{t: A, h: "$$mdi:apple-keyboard-control$$"}, R, S, T, G, M, N, E, I, O]
+    - [Z, X, C, D, V, K, H, ",", ".", /]
+    - ["⟳ Repeat", "$$mdi:keyboard-space$$", sym, {t: "$$mdi:keyboard-return$$", h: "⇧ LSHFT"}]
+  Symbols:
+    - ["!", "@", "#", "$", "%", "^", "&", "*", "(", ")"]
+    - ["\`", "~", "-", "_", "=", "+", "[", "]", "{", "}"]
+    - ["<", ">", ":", ";", "|", "$$mdi:chevron-down$$", "✂ Cut", ",", ".", "/"]
+    - [null, null, {t: sym, type: held}, null]
+`);
+    const board33 = boardFromKeys(cptKeys('33333+2 2+33333'), '3x5+2');
+    const [repeat, space, sym, enter] = board33.ids.slice(30) as string[];
+    const take = (layers: { source: string; name: string }[]) =>
+      importKeymapDrawer(drawn, { name: 'Drawn', layers, board: board33 });
+
+    const { layout, report } = take([
+      { source: 'Base', name: 'Base' },
+      { source: 'Symbols', name: 'Symbols' },
+    ]);
+    const base = layout.layers[0].bindings;
+    expect(base[board33.ids[10] as string]).toEqual({
+      kind: 'hold_tap',
+      tap: { kind: 'kp', symbol: 'a' },
+      hold: { kind: 'mod', mod: 'LCTRL' },
+    });
+    expect(base[repeat]).toEqual({ kind: 'key_repeat' });
+    expect(base[space]).toEqual({ kind: 'kp', symbol: ' ' });
+    expect(base[sym]).toEqual({ kind: 'mo', layer: 'symbols' });
+    expect(base[enter]).toEqual({
+      kind: 'hold_tap',
+      tap: { kind: 'none' },
+      hold: { kind: 'mod', mod: 'LSHIFT' },
+    });
+    expect(layout.keys.space).toBe(space);
+    expect(report.notes.join(' ')).not.toMatch(/space/);
+    // What it cannot read is listed as the file draws it.
+    expect(report.layers.map((l) => l.unread)).toEqual([[], ['$$mdi:chevron-down$$', '✂ Cut']]);
+
+    // Cut short or not, a layer left out is named nowhere, and what reached it is said.
+    const alone = take([{ source: 'Base', name: 'Base' }]);
+    expect(alone.layout.layers[0].bindings[sym]).toEqual({ kind: 'trans' });
+    expect(alone.report.layers[0].unread).toEqual([]);
+    expect(alone.report.notes).toContain(
+      'One key reached a layer left out: the reach is dropped, and a key left with nothing to do is transparent.',
+    );
   });
 
   it('leaves unset what a key made in the editor would leave unset, and describes nothing', () => {
@@ -675,6 +855,34 @@ describe('writing a file', () => {
     // and one with no default as a transparent key, not as a key that types ✦.
     expect(back.LTR).toEqual({ kind: 'kp', symbol: 'h' });
     expect(back.LTI).toEqual({ kind: 'trans' });
+  });
+
+  it("reads a macro back as its text, where a layer's name begins with that text", () => {
+    const layout: Layout = {
+      format: 'layerbench/layout@1',
+      name: 'Macro',
+      hostLocale: 'symbols',
+      geometry: { preset: '3x5+2' },
+      keys: { space: 'L0' },
+      layers: [
+        {
+          id: 'base',
+          name: 'Base',
+          bindings: {
+            LTP: { kind: 'macro', symbols: 'num' },
+            L0: { kind: 'kp', symbol: ' ' },
+            R0: { kind: 'mo', layer: 'numbers' },
+          },
+        },
+        {
+          id: 'numbers',
+          name: 'Numbers',
+          bindings: { '*': { kind: 'trans' }, LTP: { kind: 'kp', symbol: '1' } },
+        },
+      ],
+    };
+    expect(write(layout)).toContain('{t: num, tr: ⋯}');
+    expect(roundTrip(layout).layers[0].bindings.LTP).toEqual({ kind: 'macro', symbols: 'num' });
   });
 });
 

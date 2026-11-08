@@ -784,9 +784,32 @@ const REPEAT_NAMES = new Set([
 const TRANS_LEGENDS = new Set(['▽', '▼', 'TRANS', '_______', 'KC_TRNS']);
 const TRANSPARENT: Binding = { kind: 'trans' };
 const NOTHING: Binding = { kind: 'none' };
-const STICKY_WORDS = new Set(['sticky', 'one-shot', 'oneshot', 'one shot', 'os', '1×']);
-/** The other words under a layer's name that say how it comes on: a toggle, a switch, auto. */
-const LAYER_WORDS = new Set(['toggle', 'to', 'switch', 'auto']);
+const STICKY_WORDS = new Set(['sticky', 'one-shot', 'oneshot', 'one shot', 'os', '1×', 'osl']);
+/**
+ * The other words under a layer's name that say how it comes on: a toggle, a switch, auto, and
+ * QMK's `MO`, `TG` and `DF`.
+ */
+const LAYER_WORDS = new Set(['toggle', 'to', 'switch', 'auto', 'mo', 'tg', 'df']);
+
+/**
+ * keymap-drawer's icons (`$$mdi:keyboard-space$$`, from Material Design Icons,
+ * https://pictogrammers.com/library/mdi/) for the keys there are words for. An icon not here, nor
+ * in `NAMED_KEY_ICON`, is not read.
+ */
+const ICON = /^\$\$mdi:([a-z0-9-]+)\$\$$/;
+const ICON_WORDS: Record<string, string> = {
+  'keyboard-space': 'SPACE',
+  'apple-keyboard-shift': 'LSHFT',
+  'apple-keyboard-control': 'LCTRL',
+  'apple-keyboard-option': 'LALT',
+  'apple-keyboard-command': 'LGUI',
+  'microsoft-windows': 'LGUI',
+  repeat: 'REPEAT',
+};
+/** The icons of keys that type no text: Enter, Tab, Escape, Backspace, Delete and the arrows. */
+const NAMED_KEY_ICON = /^(?:keyboard-(?:return|tab|esc)|backspace(?:-[a-z-]+)?|arrow-[a-z-]+)$/;
+/** A mark drawn before a key's name, a token with no letter or digit: `␣ SPC`, `⇧ LSHFT`. */
+const MARKED = /^[^\p{L}\p{N}\s]+\s+(.+)$/u;
 
 /**
  * Keys every keyboard has that type no text — editing, navigation, function and lock keys — in
@@ -818,7 +841,22 @@ const SHORTCUT = /^[LR][SCAG]\(.+\)$/;
 
 function isNamedKey(legend: string): boolean {
   const t = legend.trim();
-  return NAMED_KEY_GLYPHS.has(t) || NAMED_KEY.test(t.toUpperCase()) || SHORTCUT.test(t);
+  return (
+    NAMED_KEY_GLYPHS.has(t) ||
+    NAMED_KEY.test(t.toUpperCase()) ||
+    SHORTCUT.test(t) ||
+    NAMED_KEY_ICON.test(ICON.exec(t)?.[1] ?? '')
+  );
+}
+
+/**
+ * Letters beyond ASCII, several of them: text a macro types, `ão`, `ões`. A word in capitals, or
+ * in plain ASCII, is far likelier to be a key's name.
+ */
+function isText(t: string): boolean {
+  return (
+    [...t].length > 1 && /^\p{L}+$/u.test(t) && /[^\p{ASCII}]/u.test(t) && t === t.toLowerCase()
+  );
 }
 
 function modOf(legend: string): Mod | undefined {
@@ -886,9 +924,62 @@ function tapBinding(k: KdKey): Binding | null {
  * analysis does not simulate (Escape, an arrow, a shortcut, a legend it cannot read) is
  * transparent, and under a hold a tap of nothing, as a key left unset is. A layer left out is
  * named nowhere: what reaches it goes, and the key keeps the rest of what it does. `exact` is
- * false when the reading is a guess the legends leave open, or a legend it could not read.
+ * false when the reading is a guess the legends leave open, or a legend it could not read. An
+ * icon, a mark before a key's name and a layer's name cut short are read as the words they stand
+ * for (`legible`).
  */
 export function readLegend(k: KdKey, ctx: LegendContext): LegendReading {
+  return readWords(legibleKey(k, ctx), ctx);
+}
+
+/**
+ * Whether a legend reads as it stands: as a word under a key, or as the tap of `key`, whose other
+ * legends (a macro's mark) say how a tap reads.
+ */
+function reads(legend: string, ctx: LegendContext, key: KdKey = EMPTY_KEY): boolean {
+  const word = legend.toLowerCase();
+  if (STICKY_WORDS.has(word) || LAYER_WORDS.has(word) || heldModsOf(legend)) return true;
+  const alone = readWords({ ...key, tap: legend, hold: '' }, ctx);
+  return alone.kind === 'transparent' || alone.exact;
+}
+
+/** The one layer whose name begins with a word, ignoring case: `sym` for `symbols`. */
+function layerBeginning(word: string, ctx: LegendContext): string | undefined {
+  const w = word.toLowerCase();
+  const names = [...ctx.layers].filter(([name]) => name.startsWith(w));
+  // A layer taken under a name of its own is known by both names; one left out by its own only.
+  const ids = new Set(names.map(([, id]) => id));
+  return ids.size === 1 && (names.length === 1 || !ids.has(null)) ? names[0][0] : undefined;
+}
+
+/**
+ * A legend in the words the reader knows: an icon as the word for its key, a key's name drawn
+ * after a mark as the name, and on a tap, a layer's name cut short as that layer's name. A legend
+ * that reads as it stands, or that none of these makes read, is itself. `tapOf` is the key where
+ * the legend is its tap.
+ */
+function legible(legend: string, ctx: LegendContext, tapOf?: KdKey): string {
+  const t = legend.trim();
+  if (t === '' || reads(t, ctx, tapOf)) return t;
+  const icon = ICON.exec(t)?.[1];
+  // An own property only: every object answers to `constructor`.
+  if (icon !== undefined) return Object.hasOwn(ICON_WORDS, icon) ? ICON_WORDS[icon] : t;
+  // Only a name, of two characters or more, is read after a mark: an arrow before a comma types
+  // both, and a mark before one character or before text changes what it types.
+  const name = MARKED.exec(t)?.[1];
+  if (name && /^\p{L}./u.test(name) && !isText(name) && reads(name, ctx, tapOf)) return name;
+  // A hold is often a word for what the key does, `symbol` under a shortcut to go to one, so only
+  // a tap names a layer cut short.
+  if (tapOf && /^\p{L}{3,}$/u.test(t)) return layerBeginning(t, ctx) ?? t;
+  return t;
+}
+
+function legibleKey(k: KdKey, ctx: LegendContext): KdKey {
+  return { ...k, tap: legible(k.tap, ctx, k), hold: legible(k.hold, ctx) };
+}
+
+/** `readLegend`, for a key whose legends are in the words the reader knows. */
+function readWords(k: KdKey, ctx: LegendContext): LegendReading {
   const tap = k.tap.trim();
   const hold = k.hold.trim();
   if (k.type === 'trans' || k.type === 'held' || TRANS_LEGENDS.has(tap.toUpperCase())) {
@@ -904,7 +995,7 @@ export function readLegend(k: KdKey, ctx: LegendContext): LegendReading {
   const unread: LegendReading = { kind: 'binding', binding: TRANSPARENT, exact: false };
   // The key without its hold: what is left when the hold goes.
   const tapAlone = (): Extract<LegendReading, { kind: 'binding' }> | null => {
-    const alone = readLegend({ ...k, hold: '' }, ctx);
+    const alone = readWords({ ...k, hold: '' }, ctx);
     return alone.kind === 'binding' && alone.binding.kind !== 'none' ? alone : null;
   };
 
@@ -926,9 +1017,12 @@ export function readLegend(k: KdKey, ctx: LegendContext): LegendReading {
     return unread;
   }
   if (tapLayer) {
-    if (hold === '') return exact({ kind: 'mo', layer: tapLayer });
-    if (holdWord === 'toggle') return exact({ kind: 'tog', layer: tapLayer });
-    if (holdWord === 'to' || holdWord === 'switch') return exact({ kind: 'to', layer: tapLayer });
+    if (hold === '' || holdWord === 'mo') return exact({ kind: 'mo', layer: tapLayer });
+    if (holdWord === 'toggle' || holdWord === 'tg') return exact({ kind: 'tog', layer: tapLayer });
+    // QMK's DF makes the layer the one the keyboard rests on: a switch to it.
+    if (holdWord === 'to' || holdWord === 'switch' || holdWord === 'df') {
+      return exact({ kind: 'to', layer: tapLayer });
+    }
     if (holdWord === 'auto') return exact({ kind: 'auto_layer', layer: tapLayer });
   }
   if (hold !== '') {
@@ -950,16 +1044,7 @@ export function readLegend(k: KdKey, ctx: LegendContext): LegendReading {
   const tapped = tapBinding(k);
   if (tapped) return exact(tapped);
   if (isNamedKey(tap)) return exact(TRANSPARENT);
-  // Letters beyond ASCII, several of them, read as text a macro types: `ão`, `ões`. A word in
-  // capitals, or in plain ASCII, is far likelier to be a key's name.
-  if (
-    [...tap].length > 1 &&
-    /^\p{L}+$/u.test(tap) &&
-    /[^\p{ASCII}]/u.test(tap) &&
-    tap === tap.toLowerCase()
-  ) {
-    return exact({ kind: 'macro', symbols: tap });
-  }
+  if (isText(tap)) return exact({ kind: 'macro', symbols: tap });
   return unread;
 }
 
@@ -1038,18 +1123,23 @@ export function importKeymapDrawer(
   const positions = opts.board.ids.length;
   const layers: LayerDef[] = [];
   const reports: LayerReport[] = [];
-  const leftOut = (legend: string) =>
-    legend.trim() !== '' && ctx.layers.get(legend.trim().toLowerCase()) === null;
-  // The part of a key it could not read: its tap, or its hold where the tap was read or reaches a
-  // layer left out, which is named nowhere.
+  // Whether a legend, in the reader's words, names a layer left out.
+  const leftOut = (word: string) => word !== '' && ctx.layers.get(word.toLowerCase()) === null;
+  const reachesLeftOut = (k: KdKey) => {
+    const words = legibleKey(k, ctx);
+    return leftOut(words.tap) || leftOut(words.hold);
+  };
+  // The part of a key it could not read, as the file draws it: its tap, or its hold where the tap
+  // was read or reaches a layer left out, which is named nowhere.
   const unreadPart = (k: KdKey): string => {
+    const words = legibleKey(k, ctx);
     // A one-shot of what is no layer or modifier cannot be made, and drops the tap: the tap is
     // what was not read, not `sticky`. Any other word that goes leaves the tap typing.
-    const sticky = STICKY_WORDS.has(k.hold.trim().toLowerCase());
+    const sticky = STICKY_WORDS.has(words.hold.toLowerCase());
     const alone = readLegend({ ...k, hold: '' }, ctx);
-    const tapRead = !sticky && (leftOut(k.tap) || alone.kind === 'transparent' || alone.exact);
-    const part = (tapRead ? k.hold : k.tap).trim();
-    return part && !leftOut(part) ? part : '?';
+    const tapRead = !sticky && (leftOut(words.tap) || alone.kind === 'transparent' || alone.exact);
+    const [part, word] = tapRead ? [k.hold.trim(), words.hold] : [k.tap.trim(), words.tap];
+    return part && !leftOut(word) ? part : '?';
   };
   let reachingLeftOut = 0;
   opts.layers.forEach((choice, li) => {
@@ -1074,7 +1164,7 @@ export function importKeymapDrawer(
         report.read++;
         return;
       }
-      if (leftOut(k.tap) || leftOut(k.hold)) reachingLeftOut++;
+      if (reachesLeftOut(k)) reachingLeftOut++;
       const b = reading.binding;
       // What a key left unset already is, it is not set to.
       const unset = li === 0 ? b.kind === 'none' : b.kind === 'trans';
@@ -1122,10 +1212,9 @@ export function importKeymapDrawer(
   const skipped: string[] = [];
   for (const c of doc.combos) {
     // Named by its legend, unless that names a layer left out, which is named nowhere.
-    const label =
-      leftOut(c.key.tap) || leftOut(c.key.hold)
-        ? 'A combo reaching a layer left out'
-        : c.key.tap || c.key.hold || '?';
+    const label = reachesLeftOut(c.key)
+      ? 'A combo reaching a layer left out'
+      : c.key.tap || c.key.hold || '?';
     const at = c.positions ?? triggerPositions(doc, c);
     if (!at) {
       skipped.push(`${label}: its trigger keys are on no layer`);

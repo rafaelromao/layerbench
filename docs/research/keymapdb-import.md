@@ -5,7 +5,9 @@ How well **Library → Import → keymap-drawer** reads real keymaps: every keym
 the dialog and held against the picture keymapdb shows for it, and the files beside them that
 someone could choose by mistake. Measured on 2026-11-07, on main at `0f43f67` (import by address,
 PR #107, included), with `apps/web/e2e/keymapdb.spec.ts`: 34 tests, all passing, 4 of them
-expected failures and the rest of the findings pinned as they stand (see Findings).
+expected failures and the rest of the findings pinned as they stand (see Findings). F6, F7 and F8
+have since been fixed in the reader; the table's *Read* and *Space* give what the dialog reads
+after the fix.
 
 ## In short
 
@@ -21,9 +23,10 @@ expected failures and the rest of the findings pinned as they stand (see Finding
   Corne `_ex2` (F5). Given the keyboard's own layout file, the board model drops 15 of the Kyria's
   letters (F1), the Glove80's top row of letters (F2), 10 of the Diamond's 24 keys (F3) and the
   Corne `_ex2`'s outer column (F4).
-- **Space and home-row mods drawn as icons are lost.** 7 of 16 keymaps end up with no key that
-  types a space, and several lose most of their home-row mods, because their legends are icons
-  (`$$mdi:keyboard-space$$`) or carry a symbol before the name (`␣ SPC`) (F6, F7).
+- **Space and home-row mods drawn as icons, or after a mark, now read (F6, F7, fixed).** 7 of 16
+  keymaps had no key that types a space, and several lost most of their home-row mods, because
+  their legends are icons (`$$mdi:keyboard-space$$`) or carry a symbol before the name
+  (`␣ SPC`). All 16 now have a space bar.
 - **Files that are not keymaps are refused, with a reason, and the dialog recovers.** All 10
   wrong files (keymap-drawer and ZMK configuration, a combos-only file, a character table, the SVG
   and PNG pictures) get a message, nothing is made from them, and a good file chosen next reads.
@@ -81,26 +84,27 @@ expected failures and the rest of the findings pinned as they stand (see Finding
 layout file. *Read* is the keys the dialog reports read, over all layers, on the board offered, or
 on the own file where nothing is offered. *Characters* is the base layer's one-character legends
 found on that board, against the picture's. *Flattened* counts pairs of characters, offered → own
-file. *Space* says whether a base-layer key types a space.
+file. *Space* says whether a base-layer key types a space. *Read* and *Space* are as they stand
+since F6–F8 were fixed, and *Findings* lists the findings still open.
 
 | Keymap | Keyboard, as the file names it | Board offered | Own file | Layers, file / picture | Read | Characters | Flattened | Combos read / left out | Space | Findings |
 |---|---|---|---|---|---|---|---|---|---|---|
 | AlaaSaadAbdo | zmk `rommana` | 23332+2 | its own, 30 keys | 3 / 3 | 76/90 | 26/26 | 20 → 0 | 9 / 11 | yes | F13 |
-| MattSturgeon | zmk `glove80` | none | its own, 48 of 80 keys | 6 / 1 (older) | 243/288 | 24/42 | — | 0 / 1 | no | F2, F5, F6 |
+| MattSturgeon | zmk `glove80` | none | its own, 48 of 80 keys | 6 / 1 (older) | 256/288 | 24/42 | — | 0 / 1 | yes | F2, F5 |
 | ScriBanana | zmk `corne` | 3×6+3 | 3×6+3 | 4 / 4 (by eye) | 132/168 | by eye: all | — | 0 / 0 | yes | — |
 | akioweh | zmk `kyria_rev3` | none | its own, 34 of 50 keys | 10 / 10 | 319/340 | 17/33 | — | 1 / 20 | yes | F1, F5 |
-| caksoylar | qmk `rufous` | 23332+2 | its own, 30 keys | 5 / 5 | 95/150 | 26/26 | 20 → 0 | 14 / 13 | no | F6, F13 |
-| casuanoob | qmk `bastardkb/dilemma/3x5_3` | 3×5+3 | 3×5+3 | 10 / 10 | 244/360 | 28/28 | 6 → 6 | 14 / 15 | no | F7, F13 |
+| caksoylar | qmk `rufous` | 23332+2 | its own, 30 keys | 5 / 5 | 100/150 | 26/26 | 20 → 0 | 14 / 13 | yes | F13 |
+| casuanoob | qmk `bastardkb/dilemma/3x5_3` | 3×5+3 | 3×5+3 | 10 / 10 | 298/360 | 28/28 | 6 → 6 | 14 / 15 | yes | F13 |
 | godalming123 | qmk `corne_rotated` | 3×6+3 | 3×6+3 | 2 / 2 | 84/84 | 26/26 | 0 | 0 / 20 | yes | — |
-| indianpojken | qmk `ferris/sweep` | 3×5+2 | 3×5+2 | 4 / 4 (by eye) | 94/136 | by eye: all | — | 4 / 19 | no | F6 |
-| jcmkk3 | `ortho_layout` 3×5+2, short pinky and inner | 23332+2 (from the file) | — | 4 / 4 | 110/120 | 26/26 | 4 | 9 / 0 | yes | F8 |
+| indianpojken | qmk `ferris/sweep` | 3×5+2 | 3×5+2 | 4 / 4 (by eye) | 119/136 | by eye: all | — | 4 / 19 | yes | — |
+| jcmkk3 | `ortho_layout` 3×5+2, short pinky and inner | 23332+2 (from the file) | — | 4 / 4 | 111/120 | 26/26 | 4 | 9 / 0 | yes | F8 (`upper`) |
 | justinmklam | qmk `crkbd/rev4_0/standard`, `_ex2` | none | its own, 40 of 46 keys | 4 / 4 | 130/160 | 30/31 | — | 8 / 4 | yes | F4, F5 |
-| minusfive | zmk `corneish_zen` | 3×6+3 | 3×6+3 | 3 / 3 | 77/126 | 31/31 | 0 | 11 / 14 | no | F6 |
+| minusfive | zmk `corneish_zen` | 3×6+3 | 3×6+3 | 3 / 3 | 97/126 | 31/31 | 0 | 11 / 14 | yes | — |
 | phaberest | qmk `crkbd/rev1` | 3×6+3 | 3×6+3 | 7 / 7 | 253/294 | 32/32 | 0 | 25 / 4 | yes | — |
-| rafaelromao | `qmk_info_json` (Diamond) | 1333+2 | its own, 14 of 24 keys | 25 / 14 (by eye) | 279/600 | by eye: all on 1333+2 | — | 57 / 92 | no | F3, F6, F14 |
+| rafaelromao | `qmk_info_json` (Diamond) | 1333+2 | its own, 14 of 24 keys | 25 / 14 (by eye) | 338/600 | by eye: all on 1333+2 | — | 57 / 92 | yes | F3, F14 |
 | rearman | qmk `corne_rotated` | 3×6+3 | 3×6+3 | 3 / 3 | 124/126 | 35/35 | 0 | 14 / 19 | yes | — |
-| valdirjunior011 | zmk `temper` | 3×5+3 | — | 5 / 5 | 123/180 | 30/30 | 24 | 0 / 7 | yes | F6, F13 |
-| waffle87 | qmk `ferris/sweep` | 3×5+2 | 3×5+2 | 4 / 4 | 98/136 | 30/30 | 24 → 24 | 1 / 2 | no | F6, F13 |
+| valdirjunior011 | zmk `temper` | 3×5+3 | — | 5 / 5 | 149/180 | 30/30 | 24 | 0 / 7 | yes | F13 |
+| waffle87 | qmk `ferris/sweep` | 3×5+2 | 3×5+2 | 4 / 4 | 113/136 | 30/30 | 24 → 24 | 1 / 2 | yes | F13 |
 
 Notes on the table:
 
@@ -108,7 +112,13 @@ Notes on the table:
   Tab, Delete, mouse buttons, Bluetooth, two-character macros such as `()`), as designed. The
   others are on keys a board dropped: 18 of akioweh's 20, 3 of justinmklam's 4.
 - **Keys not read.** Most keys left unread are editing, media and system keys, which are left out
-  by design, and the icon legends of F6.
+  by design, and icons there is no word for (`$$mdi:close-box$$`, `$$mdi:gesture-tap-hold$$`, a
+  file's own glyphs).
+- **Before F6–F8 were fixed**, 7 keymaps had no space bar, and *Read* was 243 for MattSturgeon, 95
+  for caksoylar, 244 for casuanoob, 94 for indianpojken, 110 for jcmkk3, 77 for minusfive, 279 for
+  rafaelromao, 123 for valdirjunior011 and 98 for waffle87. The new figures come from the dialog's
+  own calls replayed in Node, which give the old figures exactly on the reader before the fix. The
+  other columns are as measured before it.
 - **Pictures that differ from the file.** These are differences in the pictures, not in
   LayerBench:
   - MattSturgeon: keymapdb pins an older picture of one layer, `ColmakDH`. The file now has six,
@@ -125,8 +135,8 @@ Notes on the table:
 Each finding names the test or the recorded result that shows it. The spec holds most of them as
 they stand, so fixing one fails its test until the pin goes with the fix:
 
-- `known` in `entries.ts` pins F1–F4 (the board and the characters lost), F6 and F7 (no space bar)
-  and F8 (what is not read).
+- `known` in `entries.ts` pins F1–F4 (the board and the characters lost) and what is left of F8
+  (jcmkk3's `upper`). F6, F7 and the rest of F8 are fixed, and their pins went with the fix.
 - `test.fail` marks F9, F10, F11 and F15.
 - The mistaken-file tests pin F12's messages.
 - F5, F13 and F14 are in the recorded results only. Severity is about what a user loses: a
@@ -204,13 +214,13 @@ use (medium), or polish (low).
 
   Options 2 and 3 need F1–F4 fixed first; otherwise the layout files lose keys.
 
-### F6 — Space, Enter and the modifiers drawn as icons are not read (high)
+### F6 — Space, Enter and the modifiers drawn as icons are not read (high, fixed)
 
 - **Evidence.** 6 keymaps draw space as `$$mdi:keyboard-space$$`: MattSturgeon, caksoylar,
-  indianpojken, minusfive, rafaelromao and waffle87 (pinned). Their dialogs say "No key on the
-  base layer types a space; the analysis takes the first thumb key as the space bar". Home-row mods drawn as
-  `$$mdi:apple-keyboard-shift$$`, `-control$$`, `-option$$` and `-command$$` are lost; the board
-  keeps this many of the picture's holds on the base layer:
+  indianpojken, minusfive, rafaelromao and waffle87 (pinned until the fix). Their dialogs said
+  "No key on the base layer types a space; the analysis takes the first thumb key as the space
+  bar". Home-row mods drawn as `$$mdi:apple-keyboard-shift$$`, `-control$$`, `-option$$` and
+  `-command$$` were lost; the board kept this many of the picture's holds on the base layer:
 
   | Keymap | Holds kept |
   |---|---|
@@ -232,22 +242,32 @@ use (medium), or polish (low).
   - `keyboard-return`, `keyboard-tab`, `keyboard-esc`, `backspace*` and `arrow-*` as named keys.
 
   An icon not in the table stays unread, as now.
+- **Fixed** as proposed (`ICON_WORDS` and `NAMED_KEY_ICON` in `keymap-drawer.ts`). The six keymaps
+  have their space bar, and their home-row mods drawn as icons are read as holds. An icon there is
+  no word for, such as `$$mdi:close-box$$`, is still reported as not read.
 
-### F7 — A legend with a symbol before its name is not read (medium)
+### F7 — A legend with a symbol before its name is not read (medium, fixed)
 
-- **Evidence.** casuanoob (pinned: no space) writes `␣ SPC`, `⇧ LSHFT`, `⎈ LCTRL`, `⌥ LALT`, `⊞ LGUI`, `⟳ Repeat`,
-  `⌫ BSPC` and `⎋ ESC`. The base layer then has no space and no Repeat, and its other layers keep
-  few of their holds: Nav, Sym and Num 1 of 5, NumRow 2 of 10, Spec 6 of 14.
+- **Evidence.** casuanoob (pinned until the fix: no space) writes `␣ SPC`, `⇧ LSHFT`, `⎈ LCTRL`,
+  `⌥ LALT`, `⊞ LGUI`, `⟳ Repeat`, `⌫ BSPC` and `⎋ ESC`. The base layer then had no space and no
+  Repeat, and its other layers kept few of their holds: Nav, Sym and Num 1 of 5, NumRow 2 of 10,
+  Spec 6 of 14.
 - **Proposed fix.** In `readLegend`, when a legend does not read and starts with a symbol, read
   what follows it: strip a leading token with no letter or digit
   (`/^[^\p{L}\p{N}\s]+\s+(.+)$/u`) and take the rest if it reads. Stripping any first word would
   be wrong: `BT 0`, `Mouse 1`, `meh k`, `hyper ␣` and `dead ^` in this corpus would become `0`,
   `1`, `k`, space and `^`, and combos rightly left out today would type. A test can use casuanoob's
   legends, which are words, not the file.
+- **Fixed**, more narrowly than proposed: what follows the mark is read only when it is a key's
+  name, two characters or more beginning with a letter, and not text a macro types. Taking any
+  rest that reads would misread rafaelromao's file, which draws a mark before a single character
+  on many keys (`→ ,`, `⇥ (`, `⇧ ↹`): the rule as proposed reads them as the bare `,`, `(` and `↹`.
+  casuanoob's base layer now has its space and Repeat. `✂ Cut`, `⎗ Prev Tab` and the like stay
+  unread, as their words would.
 
-### F8 — A layer key named by an abbreviation reaches nothing (medium)
+### F8 — A layer key named by an abbreviation reaches nothing (medium, fixed but for `upper`)
 
-- **Evidence.** `jcmkk3: …` pins "not read: upper, sym". jcmkk3's thumbs say `sym` for the layer
+- **Evidence.** `jcmkk3: …` pinned "not read: upper, sym". jcmkk3's thumbs say `sym` for the layer
   `symbols`, and `upper`, which the reader does not know either. Both become transparent, so
   nothing on the base layer reaches the symbols layer and the analysis cannot type its 22
   characters.
@@ -258,6 +278,14 @@ use (medium), or polish (low).
   reader takes the tap as the layer and reads the key as `mo`. It only reports `MO` and `OSL` as
   "not read". Adding `mo`, `tg` and `df` to `LAYER_WORDS` and `osl` to `STICKY_WORDS`
   (`keymap-drawer.ts:787`, `:789`) would read them exactly.
+- **Fixed** on a key's tap only. A hold is often a word for what the key does: rafaelromao's holds
+  `window`, `desktop` and `symbol` under shortcuts, and `meh` under a combo, would hold the layers
+  `window-management`, `desktop-management`, `symbols` and `mehs`. A layer left out is named
+  nowhere, cut short or not. jcmkk3's thumb now reaches `symbols`. `upper` names no layer of the
+  file and stays unread, pinned as `29 of 30 keys read · not read: upper`. The dialog does not yet
+  offer a choice of layer for a key it cannot read.
+- **The different case is fixed** as proposed: `MO`, `TG`, `DF` and `OSL` under a layer's name read
+  exactly, `DF` as a switch to the layer.
 
 ### F9 — A message about the file is shown, not announced (medium)
 
@@ -351,10 +379,10 @@ use (medium), or polish (low).
 
 ## Suggested order
 
-F6 and F7 together, which give 7 keymaps their space bar back and restore the home-row mods. Then
-F1–F4 in `placeKeys`, with a test per board shape. Then F5's table of names. F9–F11 and F15 are
-small changes in `KeymapDrawerImport.tsx`. Each fix removes its `test.fail` or its pin in `known`,
-and the spec then holds the fixed behaviour.
+F6, F7 and F8 are done, and gave 7 keymaps their space bar back. Next, F1–F4 in `placeKeys`,
+with a test per board shape. Then F5's table of names. F9–F11 and F15 are small changes in
+`KeymapDrawerImport.tsx`. Each fix removes its `test.fail` or its pin in `known`, and the spec
+then holds the fixed behaviour.
 
 ## Not covered
 

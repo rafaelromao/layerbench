@@ -76,22 +76,30 @@ A legend is what a key shows, not what it does, so the import reads it the way a
 | Legend | Becomes |
 |---|---|
 | `W` · `SQT` · `KC_COMM` · `N1` · `,` | the symbol it types: `w` · `'` · `,` · `1` · `,` |
-| `SPACE` · `␣` | the space key |
-| a layer's name | a key that reaches that layer while held |
-| a layer's name over `sticky` · `toggle` · `to` · `auto` | a one-shot, toggle, switch or auto layer key |
-| `LSHFT` · `LCTRL` · `⇧` · `⌘` | a modifier; over `sticky`, a one-shot modifier |
+| `SPACE` · `␣` · `$$mdi:keyboard-space$$` | the space key |
+| a layer's name, alone or over `MO` | a key that reaches that layer while held |
+| three letters or more on a key's tap, as `sym` | the one layer whose name begins with them, as `symbols` |
+| a layer's name over `sticky` · `toggle` · `to` · `auto`, or QMK's `OSL` · `TG` · `DF` | a one-shot, toggle, switch or auto layer key |
+| `LSHFT` · `LCTRL` · `⇧` · `⌘` · `$$mdi:apple-keyboard-shift$$` | a modifier; over `sticky`, a one-shot modifier |
 | `A` over `LCTRL` | a tap-hold: tap for `a`, hold for Control |
 | `ESC` over a layer's name | a hold for that layer, tapping nothing |
-| `REPEAT` · `CAPS_WORD` | a repeat key, caps word |
+| `REPEAT` · `CAPS_WORD` · `$$mdi:repeat$$` | a repeat key, caps word |
+| `␣ SPC` · `⇧ LSHFT`: a mark, then a key's name | what the name is |
 | `▽` · `{type: trans}` · `{type: held}` | transparent |
 | an empty legend | a key that does nothing |
 | `ão` | a macro that types it |
-| `ESC` · `PG UP` · `F1` · `LC(Z)` · `←` | transparent: understood, but not simulated |
+| `ESC` · `PG UP` · `F1` · `LC(Z)` · `←` · `$$mdi:keyboard-return$$` | transparent: understood, but not simulated |
 | a key that reaches a layer you left out | transparent, unless it does something else the analysis simulates, a tap such as `␣` or `A`, or a hold of a layer you kept, which stays |
 
 The layout you get is the one you would make in the editor by hand. A key the analysis does not
 simulate, such as Escape or an arrow, is transparent, as a key left unset is, and under a hold it
 taps nothing: the layer held on it still works. A layer you left out is named nowhere.
+
+keymap-drawer's icons for space, the modifiers (the Mac's keys, and the Windows logo for Gui) and
+repeat read as those keys. Its icons for Enter, Tab, Escape and Backspace, and any `arrow-…` icon,
+an undo arrow included, read as keys the analysis does not simulate. Any other icon is not read,
+and is listed with the other keys not read. A layer's name cut short is read on a key's tap only:
+a word under a key, such as `symbol`, more often says what the key does.
 
 Combos come along too, found by their key positions or by the legends of their keys, on the layers
 you keep, with the timing the editor gives a combo. Only a combo that types is read: one that does
