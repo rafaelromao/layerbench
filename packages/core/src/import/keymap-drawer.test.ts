@@ -725,9 +725,16 @@ describe('names every object answers to', () => {
       expect(readLegend(key({ tap: 'A', hold: name }), ctx)).toEqual(tapStays);
       expect(readLegend(key({ tap: 'A', hold: `LS(${name})` }), ctx)).toEqual(tapStays);
     }
+    // A layer the file does name so is that layer.
+    const named = { layers: new Map<string, string | null>([['constructor', 'constructor']]) };
+    expect(readLegend(key({ tap: 'constructor' }), named)).toEqual({
+      kind: 'binding',
+      binding: { kind: 'mo', layer: 'constructor' },
+      exact: true,
+    });
   });
 
-  it('imports a file of them, reporting each, and the layout survives the schema', () => {
+  it('imports a file of them, reporting each, and keeps only the taps it reads', () => {
     const yaml = [
       'layers:',
       '  base:',
@@ -745,6 +752,7 @@ describe('names every object answers to', () => {
     });
     expect(() => compileLayout(layout)).not.toThrow();
     expect(safeParseLayout(toCanonicalJson(layout)).ok).toBe(true);
+    // The schema alone would not tell: it mends a modifier that is a function into Shift.
     const kept = Object.values(layout.layers[0].bindings).filter((b) => b.kind !== 'trans');
     expect(kept).toEqual(['a', 's', 'd'].map((symbol) => ({ kind: 'kp', symbol })));
     expect(report.layers[0]).toEqual({
