@@ -5,7 +5,10 @@ How well **Library → Import → keymap-drawer** reads real keymaps: every keym
 the dialog and held against the picture keymapdb shows for it, and the files beside them that
 someone could choose by mistake. Measured on 2026-11-07, on main at `0f43f67` (import by address,
 PR #107, included), with `apps/web/e2e/keymapdb.spec.ts`: 34 tests, all passing, 4 of them
-expected failures and the rest of the findings pinned as they stand (see Findings).
+expected failures and the rest of the findings pinned as they stand (see Findings). F1–F4 have
+been fixed since, in `placeKeys`. The table's cells that the fix changes were recomputed with the
+core functions the dialog calls (`boardFromKeys`, `importKeymapDrawer`); run on the code before
+the fix, they give the numbers measured through the dialog.
 
 ## In short
 
@@ -16,11 +19,12 @@ expected failures and the rest of the findings pinned as they stand (see Finding
   for (10 compared by machine, 3 by eye), every letter of the picture's base layer is on the
   board, on its hand, and no two letters are the wrong way round. The board LayerBench offers matches the keyboard's real stagger only on
   the Corne-sized boards.
-- **Three keyboards get no board, and four layout files lose keys.** A file that only names its
-  keyboard is not looked up, and no preset has the 80, 50 or 46 keys of the Glove80, Kyria and
-  Corne `_ex2` (F5). Given the keyboard's own layout file, the board model drops 15 of the Kyria's
-  letters (F1), the Glove80's top row of letters (F2), 10 of the Diamond's 24 keys (F3) and the
-  Corne `_ex2`'s outer column (F4).
+- **Three keyboards get no board; four layout files lost keys, now fixed.** A file that only names
+  its keyboard is not looked up, and no preset has the 80, 50 or 46 keys of the Glove80, Kyria and
+  Corne `_ex2` (F5). Given the keyboard's own layout file, the board model dropped 15 of the
+  Kyria's letters (F1), the Glove80's top row of letters (F2), 10 of the Diamond's 24 keys (F3)
+  and the Corne `_ex2`'s outer column (F4). With F1–F4 fixed, every character of those pictures
+  is on the board but the Glove80's digits, a fourth row the model has no place for.
 - **Space and home-row mods drawn as icons are lost.** 7 of 16 keymaps end up with no key that
   types a space, and several lose most of their home-row mods, because their legends are icons
   (`$$mdi:keyboard-space$$`) or carry a symbol before the name (`␣ SPC`) (F6, F7).
@@ -85,28 +89,32 @@ file. *Space* says whether a base-layer key types a space.
 
 | Keymap | Keyboard, as the file names it | Board offered | Own file | Layers, file / picture | Read | Characters | Flattened | Combos read / left out | Space | Findings |
 |---|---|---|---|---|---|---|---|---|---|---|
-| AlaaSaadAbdo | zmk `rommana` | 23332+2 | its own, 30 keys | 3 / 3 | 76/90 | 26/26 | 20 → 0 | 9 / 11 | yes | F13 |
-| MattSturgeon | zmk `glove80` | none | its own, 48 of 80 keys | 6 / 1 (older) | 243/288 | 24/42 | — | 0 / 1 | no | F2, F5, F6 |
+| AlaaSaadAbdo | zmk `rommana` | 23332+2 | 23332+2 | 3 / 3 | 76/90 | 26/26 | 20 → 20 | 9 / 11 | yes | F13 |
+| MattSturgeon | zmk `glove80` | none | its own, 48 of 80 keys | 6 / 1 (older) | 241/288 | 32/42 | — | 0 / 1 | no | F2 (fixed), F5, F6 |
 | ScriBanana | zmk `corne` | 3×6+3 | 3×6+3 | 4 / 4 (by eye) | 132/168 | by eye: all | — | 0 / 0 | yes | — |
-| akioweh | zmk `kyria_rev3` | none | its own, 34 of 50 keys | 10 / 10 | 319/340 | 17/33 | — | 1 / 20 | yes | F1, F5 |
-| caksoylar | qmk `rufous` | 23332+2 | its own, 30 keys | 5 / 5 | 95/150 | 26/26 | 20 → 0 | 14 / 13 | no | F6, F13 |
+| akioweh | zmk `kyria_rev3` | none | its own, 48 of 50 keys | 10 / 10 | 433/480 | 33/33 | — | 15 / 6 | yes | F1 (fixed), F5 |
+| caksoylar | qmk `rufous` | 23332+2 | 23332+2 | 5 / 5 | 95/150 | 26/26 | 20 → 20 | 14 / 13 | no | F6, F13 |
 | casuanoob | qmk `bastardkb/dilemma/3x5_3` | 3×5+3 | 3×5+3 | 10 / 10 | 244/360 | 28/28 | 6 → 6 | 14 / 15 | no | F7, F13 |
 | godalming123 | qmk `corne_rotated` | 3×6+3 | 3×6+3 | 2 / 2 | 84/84 | 26/26 | 0 | 0 / 20 | yes | — |
 | indianpojken | qmk `ferris/sweep` | 3×5+2 | 3×5+2 | 4 / 4 (by eye) | 94/136 | by eye: all | — | 4 / 19 | no | F6 |
 | jcmkk3 | `ortho_layout` 3×5+2, short pinky and inner | 23332+2 (from the file) | — | 4 / 4 | 110/120 | 26/26 | 4 | 9 / 0 | yes | F8 |
-| justinmklam | qmk `crkbd/rev4_0/standard`, `_ex2` | none | its own, 40 of 46 keys | 4 / 4 | 130/160 | 30/31 | — | 8 / 4 | yes | F4, F5 |
+| justinmklam | qmk `crkbd/rev4_0/standard`, `_ex2` | none | 3×6+3, 42 of 46 keys | 4 / 4 | 137/168 | 31/31 | — | 10 / 2 | yes | F4 (fixed), F5 |
 | minusfive | zmk `corneish_zen` | 3×6+3 | 3×6+3 | 3 / 3 | 77/126 | 31/31 | 0 | 11 / 14 | no | F6 |
 | phaberest | qmk `crkbd/rev1` | 3×6+3 | 3×6+3 | 7 / 7 | 253/294 | 32/32 | 0 | 25 / 4 | yes | — |
-| rafaelromao | `qmk_info_json` (Diamond) | 1333+2 | its own, 14 of 24 keys | 25 / 14 (by eye) | 279/600 | by eye: all on 1333+2 | — | 57 / 92 | no | F3, F6, F14 |
+| rafaelromao | `qmk_info_json` (Diamond) | 1333+2 | 1333+2 | 25 / 14 (by eye) | 279/600 | by eye: all on 1333+2 | — | 57 / 92 | no | F3 (fixed), F6, F14 |
 | rearman | qmk `corne_rotated` | 3×6+3 | 3×6+3 | 3 / 3 | 124/126 | 35/35 | 0 | 14 / 19 | yes | — |
 | valdirjunior011 | zmk `temper` | 3×5+3 | — | 5 / 5 | 123/180 | 30/30 | 24 | 0 / 7 | yes | F6, F13 |
 | waffle87 | qmk `ferris/sweep` | 3×5+2 | 3×5+2 | 4 / 4 | 98/136 | 30/30 | 24 → 24 | 1 / 2 | no | F6, F13 |
 
 Notes on the table:
 
-- **Combos left out.** Most combos left out do something the analysis does not simulate (Escape,
-  Tab, Delete, mouse buttons, Bluetooth, two-character macros such as `()`), as designed. The
-  others are on keys a board dropped: 18 of akioweh's 20, 3 of justinmklam's 4.
+- **Combos left out.** Every combo left out does something the analysis does not simulate
+  (Escape, Tab, Delete, mouse buttons, Bluetooth, two-character macros such as `()`), as designed.
+  Before F1–F4 were fixed, others were on keys a board dropped: 18 of akioweh's 20, 3 of
+  justinmklam's 4.
+- **Own files that are a preset.** Since F3's fix, the layout files of the Rufous and the Rommana
+  (both Berylline's, a splayed Hummingbird) and of the Diamond give the very board the dialog
+  offers, position for position, so their flattened pairs are the offered board's.
 - **Keys not read.** Most keys left unread are editing, media and system keys, which are left out
   by design, and the icon legends of F6.
 - **Pictures that differ from the file.** These are differences in the pictures, not in
@@ -125,15 +133,15 @@ Notes on the table:
 Each finding names the test or the recorded result that shows it. The spec holds most of them as
 they stand, so fixing one fails its test until the pin goes with the fix:
 
-- `known` in `entries.ts` pins F1–F4 (the board and the characters lost), F6 and F7 (no space bar)
-  and F8 (what is not read).
+- `known` in `entries.ts` pins F1–F4 as fixed (the board, and the characters lost: none but the
+  Glove80's digits), F6 and F7 (no space bar) and F8 (what is not read).
 - `test.fail` marks F9, F10, F11 and F15.
 - The mistaken-file tests pin F12's messages.
 - F5, F13 and F14 are in the recorded results only. Severity is about what a user loses: a
 board or letters the analysis needs (high), a part of what the analysis needs or of the dialog's
 use (medium), or polish (low).
 
-### F1 — A Kyria's middle columns are read as one: 15 letters and a comma are lost (high)
+### F1 — A Kyria's middle columns are read as one: 15 letters and a comma are lost (high, fixed)
 
 - **Evidence.** `akioweh: the keymap reads as keymapdb pictures it`, pinned: with
   keymap-drawer's `kyria_rotated.json`, the base layer lacks `w e r u i o s d f j k l x c m ,`.
@@ -148,8 +156,14 @@ use (medium), or polish (low).
     mean), never through a neighbour.
   - Take as a thumb a key that sits a whole row or more below the bottom key of the columns above
     it, on a hand that has rotated thumb keys.
+- **Fixed**, as proposed: a key joins a column within half a key of the column's middle
+  (`columnsByX`), and on a hand with turned thumbs a flat key in no column, a row or more below the
+  columns over it, is a thumb. The Kyria's layout file now gives a board of its own of 48 keys,
+  leaving out the seventh thumb key of each hand (`BRIGHTNESS INC`, `&alt_tab`). Every character of
+  the picture is on it, and 15 of its 21 combos read; the other 6 do nothing the analysis
+  simulates.
 
-### F2 — On a Glove80 the top row of letters is lost (high)
+### F2 — On a Glove80 the top row of letters is lost (high, fixed)
 
 - **Evidence.** `MattSturgeon: …`, pinned: with keymap-drawer's `glove80.json`, the base
   layer lacks `q w f p l u y '` and the digits; 32 of 80 keys are dropped.
@@ -161,8 +175,13 @@ use (medium), or polish (low).
 - **Proposed fix.** Keep, for the whole hand, the three rows that hold the base layer's letters.
   `boardFromKeys` can take a weight per position (1 where the base layer types a letter) from the
   file being read. Choose by that weight, and keep the bottom rows only where it ties.
+- **Fixed**, as proposed. `letterWeights` gives the weights, and the dialog passes them to
+  `boardFromKeys`. A hand is laid on rows as a whole, the tallest columns setting them and the
+  shorter ones fitted to them, and it keeps the three rows with the most letters, the bottom three
+  on a tie. The Glove80's layout file keeps the three rows of letters on both hands: the base
+  layer lacks only the digits, a fourth row the model has no place for.
 
-### F3 — A splayed board's keys are taken for thumbs: the Diamond loses 10 of 24 keys (high)
+### F3 — A splayed board's keys are taken for thumbs: the Diamond loses 10 of 24 keys (high, fixed)
 
 - **Evidence.** `rafaelromao: …` pins "a board of its own, 14 keys; 10 keys the model has no
   place for", and the preview kept 7 keys a hand (on the left `m g t p`, the outer `d` and two
@@ -171,8 +190,14 @@ use (medium), or polish (low).
   than six "thumbs" a hand, the rest are dropped. On the 1333+2 preset the dialog offers, the letters match the picture.
 - **Proposed fix.** Measure a key's turn against its hand's median turn, so a splay does not make
   thumbs. Take a turned key for a thumb only when it is also in the hand's lowest band.
+- **Fixed.** A key turned 5° or more against its hand's median turn is a thumb only in the band of
+  such keys at the hand's bottom, each within a row of the one below it. The Diamond's layout file
+  now gives the 1333+2 preset, every key placed. The same rule fixes the Berylline, the layout file
+  of the Rufous and the Rommana: its outer pinky column turns 8° out and was taken for two thumbs,
+  so the board was one of its own. It is now the 23332+2 preset, position for position the board
+  offered.
 
-### F4 — With seven columns, the outer pinky column is dropped instead of the extra keys (medium)
+### F4 — With seven columns, the outer pinky column is dropped instead of the extra keys (medium, fixed)
 
 - **Evidence.** `justinmklam: …`, pinned: with `corne_rotated.json`'s `LAYOUT_split_3x6_3_ex2`, the base
   layer lacks `'`, and 6 keys are dropped.
@@ -180,6 +205,8 @@ use (medium), or polish (low).
   inside the index finger's, so the outer pinky column goes.
 - **Proposed fix.** When a hand has more than six columns, drop the ones with the fewest keys,
   keeping the outer pinky column on a tie.
+- **Fixed**, as proposed. The `_ex2` layout file now gives the 3×6+3 preset (the Corne), leaving
+  out the two-key column of each hand, 4 keys in all; the base layer lacks nothing.
 
 ### F5 — A keyboard named in the file is not looked up: 3 of 16 get no board (high)
 
@@ -202,7 +229,7 @@ use (medium), or polish (low).
   3. Offering to fetch the keyboard's layout file from raw.githubusercontent.com, the host the
      dialog already fetches YAML files from since PR #107.
 
-  Options 2 and 3 need F1–F4 fixed first; otherwise the layout files lose keys.
+  Options 2 and 3 needed F1–F4 fixed first, as they now are; before, the layout files lost keys.
 
 ### F6 — Space, Enter and the modifiers drawn as icons are not read (high)
 
@@ -300,12 +327,13 @@ use (medium), or polish (low).
 - **Evidence.** The board LayerBench offers puts pairs the picture separates by more than half a
   key under 0.3 key apart, mostly the pinky and inner columns:
   - Sweep and Temper: 24 pairs;
-  - Rufous and Rommana, on the 23332+2 preset: 20 pairs (0 with their own layout files);
+  - Rufous and Rommana, on the 23332+2 preset: 20 pairs. Their own layout files had 0 while F3
+    made them a board of their own; with F3 fixed they are that preset too;
   - Dilemma: 6 pairs;
   - jcmkk3: 4 pairs, its short columns being half a row off.
 
-  Where the keyboard's own layout file is one of the presets (Sweep, Dilemma), the preset's drawing
-  still wins.
+  Where the keyboard's own layout file is one of the presets (Sweep, Dilemma, and since F3's fix
+  Rufous, Rommana and Diamond), the preset's drawing still wins.
 - **Assessment.** By design: `boardFromKeys` gives a preset "so an import gets the preset's
   drawing and every analysis tuned for it". No change proposed beyond, at most, a line in the Board
   box saying the board is drawn as the preset.
@@ -351,10 +379,10 @@ use (medium), or polish (low).
 
 ## Suggested order
 
-F6 and F7 together, which give 7 keymaps their space bar back and restore the home-row mods. Then
-F1–F4 in `placeKeys`, with a test per board shape. Then F5's table of names. F9–F11 and F15 are
-small changes in `KeymapDrawerImport.tsx`. Each fix removes its `test.fail` or its pin in `known`,
-and the spec then holds the fixed behaviour.
+F1–F4, in `placeKeys`, are done, with a test per board shape. Next, F6 and F7 together, which
+give 7 keymaps their space bar back and restore the home-row mods. Then F5's table of names.
+F9–F11 and F15 are small changes in `KeymapDrawerImport.tsx`. Each fix removes its `test.fail` or
+updates its pin in `known`, and the spec then holds the fixed behaviour.
 
 ## Not covered
 

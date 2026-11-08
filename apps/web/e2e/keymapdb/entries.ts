@@ -55,8 +55,9 @@ export interface Known {
   /** F8: what the dialog says it cannot read of the base layer. */
   unread?: { finding: string; says: string };
   /**
-   * F1–F4: on the keyboard's own layout file, what the dialog says of the board, and the base
-   * layer's characters the board lacks against the picture.
+   * F1–F4, fixed: on the keyboard's own layout file, what the dialog says of the board, and the
+   * base layer's characters the board lacks against the picture — none, but the row of digits of
+   * a keyboard taller than the model's three rows.
    */
   ownFile?: { finding: string; board: string; missing?: string[] };
 }
@@ -91,7 +92,7 @@ export const ENTRIES: Entry[] = [
       ownFile: {
         finding: 'F2',
         board: '48 keys; 32 keys the model has no place for',
-        missing: [...'1234567890qwfpluy', "'"],
+        missing: [...'1234567890'],
       },
     },
   },
@@ -116,8 +117,8 @@ export const ENTRIES: Entry[] = [
     known: {
       ownFile: {
         finding: 'F1',
-        board: '34 keys; 16 keys the model has no place for',
-        missing: [...'weruiosdfjklxcm,'],
+        board: 'a board of its own, 48 keys; 2 keys the model has no place for',
+        missing: [],
       },
     },
   },
@@ -185,8 +186,8 @@ export const ENTRIES: Entry[] = [
     known: {
       ownFile: {
         finding: 'F4',
-        board: '40 keys; 6 keys the model has no place for',
-        missing: ["'"],
+        board: 'Split columnar 3×6 + 3 thumbs (42, Corne); 4 keys the model has no place for',
+        missing: [],
       },
     },
   },
@@ -224,7 +225,7 @@ export const ENTRIES: Entry[] = [
     },
     known: {
       noSpace: 'F6',
-      ownFile: { finding: 'F3', board: '14 keys; 10 keys the model has no place for' },
+      ownFile: { finding: 'F3', board: 'Onto Split columnar 1333 + 2 thumbs (24).' },
     },
   },
   {
