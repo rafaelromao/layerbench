@@ -158,8 +158,8 @@ One scale colours every layer: the busiest key of all of them is the hottest col
 key, on whichever layer, is coloured by its share of that. A key with the same share has the same
 colour on every layer, so the layers can be compared at a glance: a layer of rarely pressed keys, such
 as Numbers or Accents, stays pale beside the base layer, where scaled on its own it would have looked
-as busy. A key's tooltip gives the percentage the colour stands for. The Library's cards have heat
-too, under [Heatmaps](#sorting-and-comparing).
+as busy. The Library's cards have heat too, under [Heatmaps](#sorting-and-comparing), where a key's
+tooltip gives the percentage the colour stands for.
 
 ### Combos
 

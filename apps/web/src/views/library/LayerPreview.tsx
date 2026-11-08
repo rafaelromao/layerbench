@@ -25,7 +25,7 @@ export interface LayerPreviewProps {
  * base layer said nothing about the symbols and numbers that decide whether a layout is livable.
  * Drawn again only when the layout moves: the Library redraws every card as each score comes in,
  * and a card's board does not change with its numbers. The heat is worked out here, for the layer
- * on show, so a card nobody turns does not pay for the layers it is not looking at.
+ * on show, against the busiest key of every layer, and again only when that layer or the mode moves.
  */
 export const LayerPreview = memo(function LayerPreview({
   id,

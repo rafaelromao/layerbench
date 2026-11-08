@@ -125,6 +125,12 @@ describe('heat maps', () => {
     expect(heatMap(dto, 'travel', 1)).toEqual({ 2: 1 });
   });
 
+  it('draws the usage of all positions when a report has no layers of its own', () => {
+    const dto = reportWith({ usageByLayer: [], usageAll: [2, 8, 0] });
+    expect(heatMap(dto, 'usage', 0)).toEqual({ 0: 0.25, 1: 1 });
+    expect(heatMap(dto, 'usage', 3)).toEqual({ 0: 0.25, 1: 1 });
+  });
+
   it('maps the travel mode to the finger travel rule', () => {
     const dto = reportWith({
       usageByLayer: [[1, 0, 0]],
