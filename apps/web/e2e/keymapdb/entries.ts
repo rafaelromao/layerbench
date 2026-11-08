@@ -50,9 +50,12 @@ export interface Entry {
  * the test fails when it changes, fixed or not, so the pin goes with the fix.
  */
 export interface Known {
-  /** F6, F7: no key of the base layer types a space, on the board the test takes to Analyze. */
+  /**
+   * No key of the base layer types a space, on the board the test takes to Analyze: the finding
+   * that says why. None does since F6 and F7 were fixed.
+   */
   noSpace?: string;
-  /** F8: what the dialog says it cannot read of the base layer. */
+  /** F8: what the dialog says it read of the base layer, and what it could not read. */
   unread?: { finding: string; says: string };
   /**
    * F1–F4: on the keyboard's own layout file, what the dialog says of the board, and the base
@@ -87,7 +90,6 @@ export const ENTRIES: Entry[] = [
     board: { url: layoutFile('glove80'), why: 'zmk glove80 → glove80' },
     note: 'keymapdb pins an older image, of one layer (ColmakDH); the file has moved on.',
     known: {
-      noSpace: 'F6',
       ownFile: {
         finding: 'F2',
         board: '48 keys; 32 keys the model has no place for',
@@ -134,7 +136,6 @@ export const ENTRIES: Entry[] = [
       sha256: '739c376475c722afb156bbf3eb164a2ae885bd196ba08e5e1caf33b9fb224074',
     },
     board: { url: layoutFile('berylline'), why: 'qmk rufous → berylline' },
-    known: { noSpace: 'F6' },
   },
   {
     slug: 'casuanoob',
@@ -143,7 +144,6 @@ export const ENTRIES: Entry[] = [
     yaml: 'users/casuanoob/assets/split34_keymap_qmk.yaml',
     image: { url: 'users/casuanoob/assets/split34_keymap_qmk.svg', kind: 'kd-svg', pinned: true },
     board: { url: layoutFile('bastardkb@dilemma@3x5_3'), why: 'qmk bastardkb/dilemma/3x5_3' },
-    known: { noSpace: 'F7' },
   },
   {
     slug: 'godalming123',
@@ -160,7 +160,6 @@ export const ENTRIES: Entry[] = [
     yaml: 'ferris/assets/visualization.keymap.yml',
     image: { url: 'ferris/assets/visualization.png', kind: 'raster', pinned: true },
     board: { url: layoutFile('ferris_rotated'), why: 'qmk ferris/sweep → ferris_rotated' },
-    known: { noSpace: 'F6' },
   },
   {
     slug: 'jcmkk3',
@@ -170,7 +169,7 @@ export const ENTRIES: Entry[] = [
     image: { url: 'keymap-drawer.svg', kind: 'kd-svg', pinned: true },
     board: null,
     note: 'The file describes its board (ortho_layout), so nothing is chosen.',
-    known: { unread: { finding: 'F8', says: 'not read: upper, sym' } },
+    known: { unread: { finding: 'F8', says: '29 of 30 keys read · not read: upper' } },
   },
   {
     slug: 'justinmklam',
@@ -198,7 +197,6 @@ export const ENTRIES: Entry[] = [
     // keymapdb links minusfive.com's copy, which is byte for byte this one.
     image: { url: 'img/corneish_zen.svg', kind: 'kd-svg', pinned: true },
     board: { url: layoutFile('corne_rotated'), why: 'zmk corneish_zen → corne_rotated' },
-    known: { noSpace: 'F6' },
   },
   {
     slug: 'phaberest',
@@ -223,7 +221,6 @@ export const ENTRIES: Entry[] = [
       why: 'qmk_info_json, a file in the repository',
     },
     known: {
-      noSpace: 'F6',
       ownFile: { finding: 'F3', board: '14 keys; 10 keys the model has no place for' },
     },
   },
@@ -251,7 +248,6 @@ export const ENTRIES: Entry[] = [
     yaml: 'util/keymap.yaml',
     image: { url: 'util/layout.svg', kind: 'kd-svg', pinned: true },
     board: { url: layoutFile('ferris_rotated'), why: 'qmk ferris/sweep → ferris_rotated' },
-    known: { noSpace: 'F6' },
   },
 ];
 
