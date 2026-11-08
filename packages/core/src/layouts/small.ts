@@ -754,7 +754,7 @@ export const SMALL_DEFS: ClassicDef[] = [
     // Its home row mods are the file's own, in Alpha 1.
     homeRowMods: false,
     description:
-      'Romak 24 with adaptive keys (h/v), alt repeat, sentence case, caps word, and dead keys for Spanish, French and Italian.',
+      'Romak 24 with adaptive keys (h/v), alt repeat, sentence case, caps word, and dead keys, for English and Portuguese.',
     link: 'https://rafaelromao.github.io/romak',
   },
   {
