@@ -96,6 +96,14 @@ const EMPTY_KEY: KdKey = {
 const text = (v: unknown): string =>
   v === null || v === undefined ? '' : typeof v === 'string' ? v : String(v);
 
+/**
+ * A table's entry for a name a file gives. An own property only: through its prototype, every
+ * object answers to `constructor`, `toString` and `__proto__`, none of them an entry.
+ */
+function lookUp<T>(table: Record<string, T>, name: string): T | undefined {
+  return Object.hasOwn(table, name) ? table[name] : undefined;
+}
+
 /** keymap-drawer's `LayoutKey.from_key_spec`: a string or number is the tap, null is empty. */
 function readKey(spec: unknown): KdKey {
   if (spec === null || spec === undefined) return { ...EMPTY_KEY };
@@ -355,7 +363,7 @@ export function qmkInfoKeys(
     throw new KeymapDrawerError('not a QMK info.json: it has no `layouts`');
   }
   const names = Object.keys(layouts);
-  const name = layoutName && layouts[layoutName] ? layoutName : names[0];
+  const name = layoutName && lookUp(layouts, layoutName) ? layoutName : names[0];
   const list = layouts[name]?.layout;
   if (!Array.isArray(list) || list.length === 0) {
     throw new KeymapDrawerError(`layout ${name} in the info.json has no keys`);
@@ -744,7 +752,7 @@ function heldModsOf(legend: string): { mod: Mod; also?: Mod[] } | undefined {
   const also: Mod[] = [];
   let inner = legend.trim();
   for (let m = /^([LR][SCAG])\((.+)\)$/.exec(inner); m; m = /^([LR][SCAG])\((.+)\)$/.exec(inner)) {
-    const wrapping = FUNCTION_MOD[m[1]];
+    const wrapping = lookUp(FUNCTION_MOD, m[1]);
     if (!wrapping) return undefined;
     also.push(wrapping);
     inner = m[2];
@@ -822,7 +830,7 @@ function isNamedKey(legend: string): boolean {
 }
 
 function modOf(legend: string): Mod | undefined {
-  return MOD_NAMES[legend] ?? MOD_NAMES[legend.toUpperCase()];
+  return lookUp(MOD_NAMES, legend) ?? lookUp(MOD_NAMES, legend.toUpperCase());
 }
 
 /** A legend read as the text a key types, where it is one. */
@@ -839,7 +847,7 @@ function symbolOf(legend: string): { symbol: string; shifted?: string } | null {
     return /^[A-Z]$/.test(t) ? { symbol: t.toLowerCase() } : { symbol: t };
   }
   let name = t.toUpperCase().replace(/^KC_/, '');
-  name = QMK_NAMES[name] ?? name;
+  name = lookUp(QMK_NAMES, name) ?? name;
   const number = /^(?:NUMBER_|NUM_)?([0-9])$/.exec(name);
   if (number) name = `N${number[1]}`;
   // A chord with Control, Alt or Command is a shortcut, not text.
