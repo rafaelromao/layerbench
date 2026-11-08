@@ -107,15 +107,16 @@ export function rulesReducer(state: RulesState, action: RulesAction): RulesState
           const { bands: _bands, ...rest } = r;
           return rest;
         }
-        // Names are by position, so they stop meaning anything once the categories are not the same
-        // in number: the standard ones are then given by position again.
+        // Names are by position, so they hold while they reach every category, as they do for as many
+        // bounds or fewer. More bounds run past them, and what a name was said of is lost: the
+        // standard names are then given by position again.
         const labels = r.bands?.labels;
         return {
           ...r,
           bands: {
             direction: r.bands?.direction ?? 'lower_is_better',
             bounds,
-            ...(labels?.length === bounds.length + 1 ? { labels } : {}),
+            ...(labels && labels.length > bounds.length ? { labels } : {}),
           },
         };
       });

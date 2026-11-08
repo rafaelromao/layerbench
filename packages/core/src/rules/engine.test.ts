@@ -178,6 +178,11 @@ describe('rules engine', () => {
       SFB_ABOVE_SCALE,
     ]);
     expect(BANDS.sfb.bounds).toEqual([0.525, 0.625, 0.735, 0.875, 1.075, 1.375]);
+    // The rule each preset ranks with carries those names, not only the table they come from.
+    for (const preset of [layoutsDoc(), cyanophage()]) {
+      const bands = preset.rules.find((r) => r.id === 'sfb')?.bands;
+      expect(classifyBand(1.56, bands).label, preset.id).toBe(SFB_ABOVE_SCALE);
+    }
     // Metrics beyond this one are named as they were: the top band takes the next label in the scale.
     expect(classifyBand(8, BANDS.sfs).label).toBe('high');
     expect(classifyBand(0.8, BANDS.scissors).label).toBe('very_high');

@@ -22,28 +22,47 @@ cyanophage's page were read.
   | either | Shift and Space | 1.43 *high* | 1.69 *high* |
 
   Colemak is the same to the last digit at both commits, so the bands, the engine and the settings
-  did not move; Magic Romak's keys did. Why its SFB rose by 0.3 was not looked into here.
-- The closest to 1.56 that a bundled layout gives is Magic Romak on `pt-br-general`, Layouts Doc
-  rules, Shift and Space: 1.5742. No other run gave 1.56.
+  did not move; Magic Romak's keys did, and the rise is one pair. Magic Romak's SFB items on English
+  news, Layouts Doc rules, Library settings: at `a75396d` they start `e.` 0.18, `ue` 0.12, `sc` 0.12
+  (total 1.241); now they start `→A2'` 0.50 (total 1.693), a tap of the one-shot key to Alpha 2
+  followed by `'`, on one finger, and the rest of the list is the same to within 0.05. That is a
+  layer tap followed by a key on the same finger, the case METRICS lists as `layer_tap_sfb`, a pair
+  the Doc's SFB never had. Whether it belongs in the SFB is the owner's call.
+- 1.56 itself was not found. Runs of the bundled layouts over the seven corpora, both rule sets and
+  both settings that read 1.56: Magic Romak on `it-general`, cyanophage-like rules, Library settings
+  (1.5614); Ben Vallack Piano on `fr-general`, same rules and settings (1.5573); Nerps on
+  `de-general`, Layouts Doc rules, Library settings (1.5623); Bird 30 on `en-markdown-agents`, same
+  (1.5611); Nerps on `en-markdown-agents`, cyanophage-like rules (1.5593). Magic Romak on
+  `pt-br-general`, Layouts Doc rules, Shift and Space, gives 1.5742. Which of them the owner read is
+  not known; the label is the same for all, so the fix does not depend on it.
 
 ## What the Doc says
 
 All from the [Keyboard Layouts Doc, 3rd edition](https://docs.google.com/document/d/1W0jhfqJI2ueJ2FNseR4YAFpNfsUM-_FlREHbpNGmC2o)
 (read through its `/mobilebasic` view).
 
-- **§13.4 Stats thresholds.** One table, nine columns, Min to Max. SFB's cells: 0.525, 0.625, 0.735,
-  0.875, 1.075, 1.375, then a dash under High, Very high and Max. Each cell is the highest value of its
-  category. The text says the "negative" stats (SFB, SFS, scissors, redirects, pinky off) use a limited
-  range, because a 20% SFB layout is never wanted, and that the values chosen "are intrinsically
-  subjective". So the Doc has six SFB categories and says nothing about a value above 1.375.
-- **§13.2** shows each layout's stat with its category: Colemak DH 1.177 is *Mid high* and Engram 1.242
-  is *Mid high*, the highest SFB in any table of the Doc. It says green is good, yellow decent, red
-  poor, without saying which category is which colour, and that "the minimum requirement for a layout
-  is that it performs decently at SFBs and SFSs".
+- **§13.4 Stats thresholds.** Two tables with nine columns each, Min to Max: one for the stats to
+  maximise (alternation, rolls, in:out roll), one for the negative ones (SFB, SFS, scissors, redirects,
+  pinky off). SFB's cells in the second: 0.525, 0.625, 0.735, 0.875, 1.075, 1.375, then a dash under
+  High, Very high and Max. Each cell is the highest value of its category. The Doc says the negative
+  stats use a limited range, because the categories below would lose most of their usefulness (a
+  layout could have 20% SFB, but there is never a need for one that high), and that the values
+  chosen "are intrinsically subjective". So the Doc gives six SFB thresholds and says nothing about a
+  value above 1.375. SFS has six thresholds, scissors, redirects and pinky off seven, and lateral
+  stretches are not in the table at all.
+- **§13.2** (the layout stat table) shows how a layout's stats are listed, each with its category, on
+  three examples (Noctum SFB 0.550 *Very low*, Mtgap 1.048 *Mid*, Isrt 0.599 *Very low*). It says green
+  is good, yellow decent, red poor, without saying which category is which colour, and that "the
+  minimum requirement for a layout is that it performs decently at SFBs and SFSs". The layouts
+  analysed later in the Doc carry their own rows, among them Colemak DH 1.177 *Mid high* (§14.2.1) and
+  Engram 1.242 *Mid high* (§15.7.5). In the 92 rows of those tables that a script could read, no SFB
+  is past *Mid high*, and Engram's 1.242 is the highest.
 - **§4.1** gives reference points, not bands: Qwerty "around 6%", Dvorak 2.5%, Colemak 1.5%, modern
   layouts "as low as 0.5%", and warns that they "can vary greatly depending on the analyzer and corpus"
   (Qwerty "may receive 4.5%" elsewhere): "all that matters is how layouts perform in relation to one
-  another". Dvorak has "noticeably higher SFBs than modern layouts" (§14.1).
+  another". It ends, of Qwerty, that it "will always have high SFBs, regardless of the analyzer": a
+  statement about one layout, not a threshold. Dvorak has "noticeably higher SFBs than modern
+  layouts" (§14.1).
 - **§13.3** says SFB came from the Genkey analyzer, on the MonkeyRacer corpus (MonkeyType and
   TypeRacer quotes, duplicates removed, more punctuation than other texts).
 - **§16.4** says stats are given "disregarding space": with it they would differ wildly and need
@@ -55,9 +74,11 @@ All from the [Keyboard Layouts Doc, 3rd edition](https://docs.google.com/documen
 
 [semilin/genkey](https://github.com/semilin/genkey) at `HEAD` (the last commit to `output.go` is
 2024-03-30; the Doc cites no version): `text.go` lowercases every character; `output.go` prints
-SFBs as `100 * sfb / l.Total`, and `layout.go` makes `l.Total` the sum of the letter counts of the
-layout's keys, which never include a space. So the Doc's SFB is
-same-finger bigrams as a share of the **letters typed**, with case folded and no space.
+SFBs as `100 * sfb / l.Total`, and `layout.go` makes `l.Total` the sum of the counts of the characters
+on the layout's keys (its default valid characters are `a`–`z` and `,./?;:-_'"`; a layout file splits
+its keys on spaces, so none is a space bar). So the Doc's SFB is same-finger bigrams as a share of the
+**characters typed on the layout's keys**, in practice the letters, with case folded and no space.
+The Doc cites no Genkey version, so this is HEAD's behaviour; the Colemak-DH check below fits it.
 
 ## What cyanophage gives
 
@@ -84,16 +105,18 @@ the Doc puts at 1.177 *Mid high*, reads 1.47 in the Library. As a share of lette
 as in the Doc (a different corpus, so a check and not a calibration: Graphite and Sturdy differ from the
 Doc's tables by about 0.1).
 
-The cyanophage-like rules divide by keystrokes with a space per word, 0.83 of the letters, so they read
-lower again. With Space counted, the Repeat key and the space bar on one thumb add pairs (METRICS.md, "Thumbs"; PR #109),
+The cyanophage-like rules divide by keystrokes with a space per word, about 1.2 times the letters, so
+their SFB reads 0.83 times the share of letters (Qwerty 4.38 against 5.269). With Space counted, the Repeat key and the space bar on one thumb add pairs (METRICS.md, "Thumbs"; PR #109),
 and with Shift modelled, the Shift presses; the Doc counted neither.
 
 ## What was done, and what was not
 
 - **Done.** The Doc's six bounds stay. What is past the last one is named for what it is, *above mid
   high* (`SFB_ABOVE_SCALE`), where it was named *high*, a Doc category that has no SFB cell. The colour
-  does not change (red, as *mid high* already is). SFS, full scissors, redirects, pinky off and LSB have
-  the same padded top label and were left as they are, as asked.
+  does not change (red, as *mid high* already is). SFS (*high*), full scissors, redirects and pinky off
+  (*very high*) end on a padded label the Doc has a dash under as well (SFS six thresholds, the others
+  seven), so a scissors reading of 0.8 still says *very high*; LSB's bands are not in the Doc's table
+  at all. They were left as they are, as asked, and are the owner's call.
 - **Not done: bands per setting.** No source gives SFB bands for a number counted with Space or Shift,
   or as a share of bigrams, so any would be invented. Hiding the badge when Space or Shift is on would
   take the label from the view the owner reads, and the engine's band is per rule, not per setting.
@@ -123,6 +146,10 @@ Layouts Doc rules (the default of a link with no `preset`):
 | Hands Down Neu | 1.12 | mid high | 0.76 | mid low |
 | Engram | 6.25 | high → above mid high | 4.52 | high → above mid high |
 | RSTHD | 1.38 | high → above mid high | 3.79 | high → above mid high |
+
+Engram reads 6.25 here, not the Doc's 1.242 *Mid high* (§15.7.5). The bundled one is a 10-column
+version of the Doc's 11-column layout, and its top pair, `th` (3.10), shares a finger there. That is a
+question about the layout's definition, not about the bands, and was not looked into further.
 
 cyanophage-like rules:
 
