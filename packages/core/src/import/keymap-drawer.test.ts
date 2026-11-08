@@ -235,7 +235,7 @@ describe("boards from a keyboard's layout file", () => {
       at(7.3, 7.6, 60),
     ];
     const keys = split(left, 20);
-    // Letters on the three middle rows, but in the outer column, as Colemak-DH has them.
+    // Letters on the three middle rows, but not in the outer column, as Colemak-DH has them.
     const half = [
       ...[0, 0, 0, 0, 0, 0],
       ...[1, 2, 3, 4].flatMap(() => [0, 0, 1, 1, 1, 0]),
@@ -256,6 +256,27 @@ describe("boards from a keyboard's layout file", () => {
       ...[...'OPRMI'].flatMap((c) => [null, null, null, ...rows(c)]),
       ...[null, null, 'LTC', 'LHC'],
     ]);
+  });
+
+  it('keeps a short column whole on a board taller than three rows', () => {
+    // keymap-drawer centres a short column, half a row down: it fits the top three rows of the
+    // four as well as the bottom three, and keeps all its keys either way.
+    const keys = cptKeys('34443+2 2+34443');
+    const digits = keys.map((k) => !k.thumb && k.y < 1);
+    for (const weights of [keys.map((k, i) => (k.thumb || digits[i] ? 0 : 1)), []]) {
+      const board = boardFromKeys(keys, 'with a number row', weights);
+      expect(board.geometry).toEqual({ preset: '3x5+2' });
+      expect(board.ids.map((id) => id === null)).toEqual(digits);
+    }
+    const ortho = orthoKeys({
+      split: true,
+      rows: 4,
+      columns: 6,
+      thumbs: 3,
+      dropPinky: true,
+      dropInner: false,
+    });
+    expect(boardFromKeys(ortho, 'with a number row').geometry).toEqual({ preset: '3x6+3' });
   });
 
   it('reads a splayed board by its turn against the rest of its hand, not by its own', () => {
@@ -286,6 +307,17 @@ describe("boards from a keyboard's layout file", () => {
     const splayed = boardFromKeys(split(hummingbird, 13), 'Berylline');
     expect(splayed.geometry).toEqual({ preset: '23332+2' });
     expect(splayed.ids.slice(0, 2)).toEqual(['LTP', 'LHP']);
+
+    // A gentle splay, out at the pinky and in at the index, and thumbs turned further in, the
+    // pinky's lowest key within a row of them: the thumbs pull the hand's median in, and the pinky
+    // is turned the other way.
+    const gentle = [
+      ...[-4, -2, 0, 2, 4].flatMap((r, c) => column(c + 0.5, c === 0 ? 1 : 0.5, 3, r)),
+      at(3.6, 3.6, 10),
+      at(4.7, 3.85, 20),
+      at(5.75, 4.3, 30),
+    ];
+    expect(boardFromKeys(split(gentle, 12), 'gentle splay').geometry).toEqual({ preset: '3x5+3' });
   });
 
   it('drops the columns with the fewest keys, the inner ones on a tie', () => {

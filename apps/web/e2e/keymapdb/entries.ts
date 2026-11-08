@@ -91,7 +91,7 @@ export const ENTRIES: Entry[] = [
       noSpace: 'F6',
       ownFile: {
         finding: 'F2',
-        board: '48 keys; 32 keys the model has no place for',
+        board: 'Onto a board of its own, 48 keys; 32 keys the model has no place for.',
         missing: [...'1234567890'],
       },
     },
@@ -117,7 +117,7 @@ export const ENTRIES: Entry[] = [
     known: {
       ownFile: {
         finding: 'F1',
-        board: 'a board of its own, 48 keys; 2 keys the model has no place for',
+        board: 'Onto a board of its own, 48 keys; 2 keys the model has no place for.',
         missing: [],
       },
     },
@@ -186,7 +186,7 @@ export const ENTRIES: Entry[] = [
     known: {
       ownFile: {
         finding: 'F4',
-        board: 'Split columnar 3×6 + 3 thumbs (42, Corne); 4 keys the model has no place for',
+        board: 'Onto Split columnar 3×6 + 3 thumbs (42, Corne); 4 keys the model has no place for.',
         missing: [],
       },
     },

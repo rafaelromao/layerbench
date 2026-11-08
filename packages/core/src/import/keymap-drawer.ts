@@ -398,6 +398,28 @@ function median(values: number[]): number {
 }
 
 /**
+ * The first of the rows at heights `rows` that a column's keys, top to bottom, sit on best; where
+ * two fit as well, the one `rather` scores higher, else the upper.
+ */
+function fitColumn(
+  keys: PhysicalKey[],
+  column: number[],
+  rows: number[],
+  rather: (first: number) => number = () => 0,
+): number {
+  let best = 0;
+  let bestCost = Number.POSITIVE_INFINITY;
+  for (let s = 0; s + column.length <= rows.length; s++) {
+    const cost = column.reduce((sum, i, j) => sum + Math.abs(keys[i].y - rows[s + j]), 0);
+    if (cost < bestCost - 1e-9 || (cost < bestCost + 1e-9 && rather(s) > rather(best))) {
+      best = s;
+      bestCost = Math.min(cost, bestCost);
+    }
+  }
+  return best;
+}
+
+/**
  * Keys grouped into columns, left to right: a key joins a column within half a key of the
  * column's middle, never through a neighbour, so a key between two columns is a column of its own.
  */
@@ -449,20 +471,24 @@ export function placeKeys(
   }
 
   // Thumbs, where the layout does not say:
-  // - the keys turned 5° or more against the rest of their hand, in the band of such keys at its
-  //   bottom: a splay turns every column a little, and the thumbs further;
+  // - the keys turned 5° or more against the rest of their hand, toward the middle of the board
+  //   (clockwise on the left), in the band of such keys at its bottom: a splay turns every column
+  //   a little, either way, and the thumbs further;
   // - the lowest band of a hand when it has fewer keys than the band above it;
-  // - on a hand with turned thumbs, a flat key in no column, a row or more below the columns over
-  //   it, as the Kyria's inner thumb keys are.
+  // - on a hand with turned thumbs, a key alone in its column, a row or more below the columns
+  //   over it, as the Kyria's flat thumb keys are.
   const thumb: boolean[] = keys.map((k) => k.thumb ?? false);
   if (keys.some((k) => k.thumb === null)) {
     for (const hand of ['L', 'R'] as Hand[]) {
       const idx = keys.map((_, i) => i).filter((i) => hands[i] === hand);
       if (idx.length === 0) continue;
       const maxY = Math.max(...idx.map((i) => keys[i].y));
-      const turn = median(idx.map((i) => keys[i].r));
+      // The hand's own turn, its median; a hand turned less than 5° counts as flat.
+      const usual = median(idx.map((i) => keys[i].r));
+      const turn = Math.abs(usual) >= 5 ? usual : 0;
+      const inward = hand === 'L' ? 1 : -1;
       const turned = idx
-        .filter((i) => Math.abs(keys[i].r - turn) >= 5)
+        .filter((i) => (keys[i].r - turn) * inward >= 5)
         .sort((a, b) => keys[b].y - keys[a].y);
       let floor = maxY;
       for (const i of turned) {
@@ -478,13 +504,13 @@ export function placeKeys(
         idx.filter((i) => !thumb[i]),
         keys,
       );
+      const lowest = (c: number[]) => Math.max(...c.map((j) => keys[j].y));
       for (const c of columns) {
         if (c.length > 1) continue;
         const k = keys[c[0]];
         const over = columns.filter(
           (o) => o !== c && o.some((j) => Math.abs(keys[j].x - k.x) < 1 && keys[j].y < k.y),
         );
-        const lowest = (o: number[]) => Math.max(...o.map((j) => keys[j].y));
         if (over.length > 0 && over.every((o) => k.y - lowest(o) >= 1 - 1e-9)) thumb[c[0]] = true;
       }
     }
@@ -503,11 +529,45 @@ export function placeKeys(
       .sort((a, b) => outerFirst[a].length - outerFirst[b].length || b - a)
       .slice(0, Math.max(0, outerFirst.length - 6));
     for (const k of fewest) dropped.push(...outerFirst[k]);
-    const kept = outerFirst.filter((_, k) => !fewest.includes(k));
-    const first = FIRST_COLUMN[kept.length] ?? 0;
-    const cols = kept.map((c) => [...c].sort((a, b) => keys[a].y - keys[b].y));
+    const sorted = outerFirst
+      .filter((_, k) => !fewest.includes(k))
+      .map((c) => [...c].sort((a, b) => keys[a].y - keys[b].y));
+    // A hand taller than three rows keeps the three worth most, and the bottom three on a tie: a
+    // number row goes, and so does a row under the letters. The tallest columns set the rows, and
+    // every column taller than three is cut to the three kept; a shorter one keeps all its keys.
+    const height = Math.max(0, ...sorted.map((c) => c.length));
+    if (height > 3) {
+      const tallest = sorted.filter((c) => c.length === height);
+      const rows = Array.from({ length: height }, (_, r) =>
+        median(tallest.map((c) => keys[c[r]].y)),
+      );
+      const over = sorted.filter((c) => c.length > 3);
+      const worth = (top: number) => {
+        let sum = 0;
+        for (const c of over) {
+          const s = fitColumn(keys, c, rows);
+          c.forEach((i, j) => {
+            if (s + j >= top && s + j < top + 3) sum += weights[i] ?? 0;
+          });
+        }
+        return sum;
+      };
+      let top = height - 3;
+      for (let s = top - 1; s >= 0; s--) if (worth(s) > worth(top)) top = s;
+      for (const c of over) {
+        // Half a row off the tallest, a column fits two places as well: the one keeping more.
+        const kept = (s: number) => c.filter((_, j) => s + j >= top && s + j < top + 3).length;
+        const s = fitColumn(keys, c, rows, kept);
+        c.forEach((i, j) => {
+          if (s + j < top || s + j >= top + 3) dropped.push(i);
+        });
+      }
+    }
+    const cols = sorted
+      .map((c) => c.filter((i) => !dropped.includes(i)))
+      .filter((c) => c.length > 0);
+    const first = FIRST_COLUMN[cols.length] ?? 0;
     const full = Math.max(0, ...cols.map((c) => c.length));
-    const height = Math.max(3, full);
     const ref: number[] = [];
     if (full >= 2) {
       const tall = cols.filter((c) => c.length === full);
@@ -517,40 +577,12 @@ export function placeKeys(
       const y = median(cols.map((c) => keys[c[0]].y));
       ref.push(y - 1, y, y + 1);
     }
-    // Each key's row, counted from the hand's top row.
-    const rowOf: number[] = [];
-    for (const c of cols) {
-      let best = 0;
-      let bestCost = Number.POSITIVE_INFINITY;
-      for (let s = 0; s + c.length <= height; s++) {
-        const cost = c.reduce((sum, i, j) => sum + Math.abs(keys[i].y - ref[s + j]), 0);
-        if (cost < bestCost - 1e-9) {
-          best = s;
-          bestCost = cost;
-        }
-      }
-      // A board no taller than two keys is its top and home rows, as the 18-key preset has it.
-      if (full === 1) best = 1;
-      c.forEach((i, j) => {
-        rowOf[i] = best + j;
-      });
-    }
-    // A hand taller than three rows keeps the three worth most, and the bottom three on a tie: a
-    // number row goes, and so does a row under the letters.
-    const worth = (top: number) => {
-      let sum = 0;
-      for (const i of cols.flat())
-        if (rowOf[i] >= top && rowOf[i] < top + 3) sum += weights[i] ?? 0;
-      return sum;
-    };
-    let top = height - 3;
-    for (let s = top - 1; s >= 0; s--) if (worth(s) > worth(top)) top = s;
     cols.forEach((c, k) => {
-      for (const i of c) {
-        const row = rowOf[i] - top;
-        if (row >= 0 && row < 3) placed[i] = { hand, row: row as Row, col: first + k };
-        else dropped.push(i);
-      }
+      // A board no taller than two keys is its top and home rows, as the 18-key preset has it.
+      const best = full === 1 ? 1 : fitColumn(keys, c, ref);
+      c.forEach((i, j) => {
+        placed[i] = { hand, row: (best + j) as Row, col: first + k };
+      });
     });
 
     // Thumbs, innermost first.

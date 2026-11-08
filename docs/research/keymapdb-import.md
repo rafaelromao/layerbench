@@ -24,7 +24,7 @@ the fix, they give the numbers measured through the dialog.
   Corne `_ex2` (F5). Given the keyboard's own layout file, the board model dropped 15 of the
   Kyria's letters (F1), the Glove80's top row of letters (F2), 10 of the Diamond's 24 keys (F3)
   and the Corne `_ex2`'s outer column (F4). With F1–F4 fixed, every character of those pictures
-  is on the board but the Glove80's digits, a fourth row the model has no place for.
+  is on the board but the Glove80's digits, on a row past the three the model keeps.
 - **Space and home-row mods drawn as icons are lost.** 7 of 16 keymaps end up with no key that
   types a space, and several lose most of their home-row mods, because their legends are icons
   (`$$mdi:keyboard-space$$`) or carry a symbol before the name (`␣ SPC`) (F6, F7).
@@ -143,7 +143,7 @@ use (medium), or polish (low).
 
 ### F1 — A Kyria's middle columns are read as one: 15 letters and a comma are lost (high, fixed)
 
-- **Evidence.** `akioweh: the keymap reads as keymapdb pictures it`, pinned: with
+- **Evidence.** `akioweh: the keymap reads as keymapdb pictures it`, pinned until the fix: with
   keymap-drawer's `kyria_rotated.json`, the base layer lacks `w e r u i o s d f j k l x c m ,`.
 - **Cause.** `placeKeys` (`packages/core/src/import/keymap-drawer.ts:405`) groups a hand's alpha
   keys into columns by chaining: a key joins the column when it is within 0.5 key of the column's
@@ -165,7 +165,7 @@ use (medium), or polish (low).
 
 ### F2 — On a Glove80 the top row of letters is lost (high, fixed)
 
-- **Evidence.** `MattSturgeon: …`, pinned: with keymap-drawer's `glove80.json`, the base
+- **Evidence.** `MattSturgeon: …`, pinned until the fix: with keymap-drawer's `glove80.json`, the base
   layer lacks `q w f p l u y '` and the digits; 32 of 80 keys are dropped.
 - **Cause.** `placeKeys` keeps the bottom three keys of a column taller than three ("the extra is a
   number row"). The Glove80 has a row *under* its letters, so the bottom three are the home row,
@@ -176,22 +176,26 @@ use (medium), or polish (low).
   `boardFromKeys` can take a weight per position (1 where the base layer types a letter) from the
   file being read. Choose by that weight, and keep the bottom rows only where it ties.
 - **Fixed**, as proposed. `letterWeights` gives the weights, and the dialog passes them to
-  `boardFromKeys`. A hand is laid on rows as a whole, the tallest columns setting them and the
-  shorter ones fitted to them, and it keeps the three rows with the most letters, the bottom three
-  on a tie. The Glove80's layout file keeps the three rows of letters on both hands: the base
-  layer lacks only the digits, a fourth row the model has no place for.
+  `boardFromKeys`. The rows of a hand are set by its tallest columns, and it keeps the three with
+  the most letters, the bottom three on a tie; every column taller than three is cut to them, and a
+  shorter one keeps all its keys, as before. The Glove80's layout file keeps the three rows of
+  letters on both hands: the base layer lacks only the digits, on a row past the three the model
+  keeps.
 
 ### F3 — A splayed board's keys are taken for thumbs: the Diamond loses 10 of 24 keys (high, fixed)
 
-- **Evidence.** `rafaelromao: …` pins "a board of its own, 14 keys; 10 keys the model has no
+- **Evidence.** `rafaelromao: …` pinned, until the fix, "a board of its own, 14 keys; 10 keys the model has no
   place for", and the preview kept 7 keys a hand (on the left `m g t p`, the outer `d` and two
   thumbs). Every key of the Diamond is turned 3–10° (its columns splay), and every key turned 5°
   or more is taken for a thumb (`keymap-drawer.ts:440`, `Math.abs(keys[i].r) >= 5`). With more
   than six "thumbs" a hand, the rest are dropped. On the 1333+2 preset the dialog offers, the letters match the picture.
 - **Proposed fix.** Measure a key's turn against its hand's median turn, so a splay does not make
   thumbs. Take a turned key for a thumb only when it is also in the hand's lowest band.
-- **Fixed.** A key turned 5° or more against its hand's median turn is a thumb only in the band of
-  such keys at the hand's bottom, each within a row of the one below it. The Diamond's layout file
+- **Fixed.** A key is turned when it is turned 5° or more toward the middle of the board
+  (clockwise on the left hand) against its hand's own turn, the median, or against none where the
+  hand is turned less than 5°. A turned key is a thumb only in the band of such keys at the hand's
+  bottom, each within a row of the one below it. A splay turns some columns out and some in; a
+  column turned out is never a thumb. The Diamond's layout file
   now gives the 1333+2 preset, every key placed. The same rule fixes the Berylline, the layout file
   of the Rufous and the Rommana: its outer pinky column turns 8° out and was taken for two thumbs,
   so the board was one of its own. It is now the 23332+2 preset, position for position the board
@@ -199,7 +203,7 @@ use (medium), or polish (low).
 
 ### F4 — With seven columns, the outer pinky column is dropped instead of the extra keys (medium, fixed)
 
-- **Evidence.** `justinmklam: …`, pinned: with `corne_rotated.json`'s `LAYOUT_split_3x6_3_ex2`, the base
+- **Evidence.** `justinmklam: …`, pinned until the fix: with `corne_rotated.json`'s `LAYOUT_split_3x6_3_ex2`, the base
   layer lacks `'`, and 6 keys are dropped.
 - **Cause.** `placeKeys` keeps the six innermost columns. The `_ex2` layout adds a two-key column
   inside the index finger's, so the outer pinky column goes.
