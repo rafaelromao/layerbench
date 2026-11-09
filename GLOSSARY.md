@@ -80,12 +80,11 @@ change changes nothing. Undo takes back one edit that landed at a time.
 _Avoid_: action, operation, op, mutation
 
 **Home row mods**:
-Modifiers held on the home row's finger keys, each key still typing what it typed when tapped. Every
-bundled layout has Gui, Ctrl, Alt and Shift from the left pinky in, mirrored on the right, on its
-base layer, but those whose authors' keymaps hold their own: Magic Romak its home block mods, as the
-keymap calls them (Ctrl, Alt and Shift from the ring finger in, and Gui, with or without Shift, on
-the bottom row), and a layout whose author's keymap holds its layers on the home row its author's
-modifiers.
+Modifiers held on the home row's finger keys, each key still typing what it typed when tapped. A
+bundled layout has them where its author's keymap holds them: Magic Romak its home block mods, as
+the keymap calls them (Ctrl, Alt and Shift from the ring finger in, and Gui, with or without Shift,
+on the bottom row), and a layout whose author's keymap holds its layers on the home row its
+author's modifiers.
 _Avoid_: HRM, home-row modifiers
 
 **Kind of key**:

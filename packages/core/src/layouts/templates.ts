@@ -793,30 +793,13 @@ export function tapOf(b: Binding | undefined): Binding | undefined {
 }
 
 /**
- * The home row's modifiers, held on its finger keys: Gui, Ctrl, Alt and Shift from the left pinky
- * in, mirrored on the right. Both hands hold the left ones, as the main thumbs' two Shifts do: the
- * analysis types a capital with the left Shift, and the right Alt is AltGr.
- */
-export const HOME_ROW_MODS: Readonly<Record<string, Mod>> = {
-  LHP: 'LGUI',
-  LHR: 'LCTRL',
-  LHM: 'LALT',
-  LHI: 'LSHIFT',
-  RHI: 'LSHIFT',
-  RHM: 'LALT',
-  RHR: 'LCTRL',
-  RHP: 'LGUI',
-};
-
-/**
  * Home row mods on the base layer: each key of `holds` that types something holds what `holds`
- * gives it, a modifier or any other hold, still typing what it typed: `HOME_ROW_MODS` unless a
- * layout gives its own, as its author's keymap has them. A key with nothing on it, or one that
- * holds something already, is left as it is.
+ * gives it, a modifier or any other hold, still typing what it typed, as its author's keymap has
+ * them. A key with nothing on it, or one that holds something already, is left as it is.
  */
 export function withHomeRowMods(
   layout: Layout,
-  holds: Readonly<Record<string, Mod | Binding>> = HOME_ROW_MODS,
+  holds: Readonly<Record<string, Mod | Binding>>,
 ): Layout {
   const [first, ...rest] = layout.layers;
   const bindings = { ...first.bindings };

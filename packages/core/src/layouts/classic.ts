@@ -47,10 +47,10 @@ export interface ClassicDef {
   /** The key that types space, when `byKey` gives it a binding rather than the `space` token. */
   space?: string;
   /**
-   * Home row mods of its own, as its author's keymap holds them: by key, a modifier or any other
-   * hold, in place of the ones every other layout gets (`HOME_ROW_MODS`); or `false` for none.
+   * The home row mods its author's keymap holds: by key, a modifier or any other hold, each key
+   * still typing what it typed. A layout whose keymap holds none has none.
    */
-  homeRowMods?: false | Readonly<Record<string, Mod | Binding>>;
+  homeRowMods?: Readonly<Record<string, Mod | Binding>>;
   /** The shift key, when the layout has one of its own. */
   shift?: Layout['keys']['shift'];
   /** How long one-shot layers and keys wait, and what releases them. */

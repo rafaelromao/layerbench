@@ -35,7 +35,6 @@ export {
   defaultLayers,
   EXTRAS_CONDITION,
   EXTRAS_ORDER,
-  HOME_ROW_MODS,
   hasDefaultLayers,
   mirrorKeyId,
   NUMBERS_CORE,
@@ -72,13 +71,13 @@ function withDefaults(placed: ThumbPlacement) {
 }
 
 /**
- * A layout written in code, built from its definition: its default layers, then the home row mods,
- * its own if its definition gives them.
+ * A layout written in code, built from its definition: its default layers, then the home row mods
+ * its author's keymap holds, where its definition gives them.
  */
 function built(placed: ThumbPlacement) {
   return (def: ClassicDef): Layout => {
     const layout = withDefaults(placed)(classicLayout(def));
-    return def.homeRowMods === false ? layout : withHomeRowMods(layout, def.homeRowMods);
+    return def.homeRowMods ? withHomeRowMods(layout, def.homeRowMods) : layout;
   };
 }
 
@@ -88,12 +87,11 @@ function byBundledOrder(a: Layout, b: Layout): number {
 }
 
 /**
- * The layouts written here in code: the set the app started with, and Romak back among them. Each
- * has the default layers and home row mods, but a layout whose author defines layers of its own
- * keeps those instead of the default ones, and its author's home row mods where its keymap holds
- * its layers on the home row, as any layout may. LayerBench placed the thumbs of the classic
- * layouts, their authors having left them to a space bar; the small-board layouts' authors placed
- * their own. They are listed in the order of `BUNDLED_IDS`, as the languages file is.
+ * The layouts written here in code. Each has the default layers, but a layout whose author defines
+ * layers of its own keeps those instead. Home row mods are held only where the author's keymap
+ * holds them. LayerBench placed the thumbs of the classic layouts, their authors having left them to
+ * a space bar; the small-board layouts' authors placed their own. They are listed in the order of
+ * `BUNDLED_IDS`, as the languages file is.
  */
 const BUILT_IN_LAYOUTS: Layout[] = [
   ...CLASSIC_DEFS.map(built('layerbench')),

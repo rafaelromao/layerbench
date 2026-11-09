@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { eighteenKeys } from '../fixtures/boards.js';
+import { eighteenKeys, HOME_ROW_MODS } from '../fixtures/boards.js';
 import { GEOMETRY_PRESET_IDS, getGeometryPreset } from '../geometry/presets.js';
 import { layoutLanguageCoverage, producibleSymbols } from '../lang/coverage.js';
 import { LANGUAGE_PROFILES } from '../lang/profiles.js';
@@ -29,7 +29,6 @@ import {
   defaultLayers,
   EXTRAS_CONDITION,
   EXTRAS_ORDER,
-  HOME_ROW_MODS,
   hasDefaultLayers,
   mirrorKeyId,
   NUMBERS_CORE,
@@ -732,11 +731,11 @@ describe("the default layers on every bundled layout but those that keep their a
         });
 
         if (original)
-          it('is its definition as it builds it, with its home row mods and nothing more', () => {
+          it("is its definition as it builds it, with its author's home row mods and nothing more", () => {
             const mods = [...CLASSIC_DEFS, ...SMALL_DEFS].find(
               (d) => d.id === layout.id,
             )?.homeRowMods;
-            const built = mods === false ? original : withHomeRowMods(original, mods);
+            const built = mods ? withHomeRowMods(original, mods) : original;
             expect(layout).toEqual({ ...built, languages: layout.languages });
           });
 
@@ -995,52 +994,39 @@ describe('the default layers, layout by layout', () => {
   });
 });
 
-describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, unless a layout gives its own', () => {
-  const KEYS = ['LHP', 'LHR', 'LHM', 'LHI', 'RHI', 'RHM', 'RHR', 'RHP'];
-  const MODS = ['LGUI', 'LCTRL', 'LALT', 'LSHIFT', 'LSHIFT', 'LALT', 'LCTRL', 'LGUI'];
+describe("home row mods: held only where an author's keymap holds them", () => {
   const heldMod = (b: Binding | undefined) =>
     b?.kind === 'hold_tap' && b.hold.kind === 'mod' ? b.hold.mod : undefined;
   const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
 
-  it('mirror the left hand on the right, both holding the left modifiers', () => {
-    expect(Object.keys(HOME_ROW_MODS)).toEqual(KEYS);
-    expect(Object.values(HOME_ROW_MODS)).toEqual(MODS);
-  });
-
-  // A definition may give its own, as its author's keymap has them; a document carries its own in
-  // its JSON, as Magic Romak's would once a change made it one: it holds a modifier on a key off the
-  // home row, as Magic Romak's bottom row holds Gui. Any other is held to the standard ones, so one
-  // that loses a home row mod fails.
-  const standard = (l: Layout) =>
-    KEYS.every((k, i) => heldMod(l.layers[0].bindings[k]) === MODS[i]);
-  const holdsOffHome = (l: Layout) =>
-    Object.entries(l.layers[0].bindings).some(
-      ([k, b]) => !KEYS.includes(k) && heldMod(b) !== undefined,
+  // A layout written in code holds the mods its definition gives, which are its author's: those it
+  // writes on its keys and those of `homeRowMods`. A document carries its own in its JSON.
+  const heldBy = (layout: Layout, thumbs: ReadonlySet<string>) =>
+    Object.fromEntries(
+      Object.entries(layout.layers[0].bindings)
+        .filter(([key]) => !thumbs.has(key))
+        .map(([key, b]) => [key, heldMod(b)] as const)
+        .filter(([, mod]) => mod !== undefined),
     );
-  const own = new Set([
-    ...[...CLASSIC_DEFS, ...SMALL_DEFS].filter((d) => d.homeRowMods !== undefined).map((d) => d.id),
-    ...DOCUMENT_LAYOUTS.filter((l) => !standard(l) && holdsOffHome(l)).map((l) => l.id),
-  ]);
 
-  it.each(BUNDLED_LAYOUTS.filter((l) => !own.has(l.id ?? '')).map((l) => [l.id, l] as const))(
-    '%s holds them on its base layer, each on a key that types, and no other layer holds one',
-    (_id, layout) => {
-      const base = layout.layers[0].bindings;
-      expect(KEYS.map((k) => heldMod(base[k]))).toEqual(MODS);
-      for (const k of KEYS) {
-        const tap = base[k]?.kind === 'hold_tap' ? base[k].tap : undefined;
-        expect([k, tap?.kind]).not.toEqual([k, 'hold_tap']);
-        expect([k, tap?.kind]).not.toEqual([k, 'none']);
-      }
-      // No other layer holds a modifier on a key.
-      for (const l of layout.layers.slice(1)) {
-        for (const b of Object.values(l.bindings))
-          expect(b.kind === 'hold_tap' && b.hold.kind).not.toBe('mod');
-      }
+  it.each([...CLASSIC_DEFS, ...SMALL_DEFS].map((d) => [d.id, d] as const))(
+    '%s holds the modifiers its definition gives on its finger keys, and no others',
+    (id, def) => {
+      const layout = bundledLayout(id) as Layout;
+      const g = layout.geometry;
+      if (!('preset' in g)) throw new Error(`${layout.name} is not on a preset board`);
+      const thumbs = new Set(
+        getGeometryPreset(g.preset)
+          .keys.filter((k) => k.thumb)
+          .map((k) => k.id),
+      );
+      const written = classicLayout(def);
+      const authored = def.homeRowMods ? withHomeRowMods(written, def.homeRowMods) : written;
+      expect(heldBy(layout, thumbs)).toEqual(heldBy(authored, thumbs));
     },
   );
 
-  it("give way to a layout's own: Magic Romak holds its keymap's home block mods", () => {
+  it("Magic Romak holds its keymap's home block mods", () => {
     const base = magicRomak.layers[0].bindings;
     const hold = (k: string) => (base[k]?.kind === 'hold_tap' ? base[k].hold : undefined);
     const gui: Binding = { kind: 'mod', mod: 'LGUI' };
@@ -1074,17 +1060,35 @@ describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, unless a l
   });
 
   it('go on any key that types: a letter, a mark, space, Repeat or an adaptive key', () => {
-    const at = (id: string, key: string) => bundledLayout(id)?.layers[0].bindings[key];
     const mod = (tap: Binding, m: string): Binding => ({
       kind: 'hold_tap',
       tap,
       hold: { kind: 'mod', mod: m as 'LGUI' },
     });
-    expect(at('qwerty', 'LHP')).toEqual(mod(kp('a'), 'LGUI'));
-    expect(at('qwerty', 'RHP')).toEqual(mod(kp(';'), 'LGUI'));
-    expect(at('uno', 'RHM')).toEqual(mod(kp(' '), 'LALT'));
-    expect(at('t-34', 'RHP')).toEqual(mod({ kind: 'key_repeat' }, 'LGUI'));
-    expect(at('uno', 'LHR')?.kind === 'hold_tap' && at('uno', 'LHR')).toMatchObject({
+    const layout: Layout = {
+      format: 'layerbench/layout@1',
+      name: 'Types',
+      geometry: { preset: '3x5+2' },
+      keys: { space: 'L0' },
+      layers: [
+        {
+          id: 'base',
+          bindings: {
+            LHP: kp('a'),
+            RHP: kp(';'),
+            RHM: kp(' '),
+            LHM: { kind: 'key_repeat' },
+            LHR: { kind: 'adaptive', default: kp('h'), triggers: [] },
+          },
+        },
+      ],
+    };
+    const done = withHomeRowMods(layout, HOME_ROW_MODS).layers[0].bindings;
+    expect(done.LHP).toEqual(mod(kp('a'), 'LGUI'));
+    expect(done.RHP).toEqual(mod(kp(';'), 'LGUI'));
+    expect(done.RHM).toEqual(mod(kp(' '), 'LALT'));
+    expect(done.LHM).toEqual(mod({ kind: 'key_repeat' }, 'LALT'));
+    expect(done.LHR).toMatchObject({
       tap: { kind: 'adaptive' },
       hold: { kind: 'mod', mod: 'LCTRL' },
     });
@@ -1111,7 +1115,7 @@ describe('home row mods: Gui, Ctrl, Alt and Shift from each pinky in, unless a l
         { id: 'up', bindings: { LHP: kp('1') } },
       ],
     };
-    const done = withHomeRowMods(layout);
+    const done = withHomeRowMods(layout, HOME_ROW_MODS);
     expect(done.layers[0].bindings).toEqual({
       ...layout.layers[0].bindings,
       LHP: { kind: 'hold_tap', tap: kp('a'), hold: { kind: 'mod', mod: 'LGUI' } },

@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeText } from '../corpus/normalize.js';
+import { HOME_ROW_MODS } from '../fixtures/boards.js';
 import { FIXTURE_EN } from '../fixtures/index.js';
 import { compileLayout } from '../layout/compile.js';
 import { swapKeys } from '../layout/ops.js';
-import { bundledLayout } from '../layouts/index.js';
+import { bundledLayout, withHomeRowMods } from '../layouts/index.js';
 import { layoutsDoc } from '../rules/presets.js';
 import { analyze } from './analyze.js';
 import { relabelEligible, relabelSwap } from './relabel.js';
@@ -86,8 +87,9 @@ describe('relabel after a swap', () => {
       relabelEligible(compiled, 0, compiled.keyIndex.get('LHM')!, compiled.keyIndex.get('RHM')!),
     ).toBe(true);
     // A home row mod holding Shift is a shift key: the analysis may hold it for a capital.
+    const withMods = compileLayout(withHomeRowMods(layout, HOME_ROW_MODS));
     expect(
-      relabelEligible(compiled, 0, compiled.keyIndex.get('LTM')!, compiled.keyIndex.get('RHI')!),
+      relabelEligible(withMods, 0, withMods.keyIndex.get('LTM')!, withMods.keyIndex.get('RHI')!),
     ).toBe(false);
   });
 
