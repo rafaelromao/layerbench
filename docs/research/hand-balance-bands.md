@@ -61,12 +61,12 @@ categories: *even* is green, *leans* amber and *heavy* red, where *leans* was gr
 ## Effect on the bundled layouts
 
 Measured with `analyze` on the Library's settings (English news, 100,000 letters, fold, no space,
-cyanophage-like rules; hand balance is the same on the Layouts Doc rules). 31 of the 36 bundled layouts
+cyanophage-like rules; hand balance is the same on the Layouts Doc rules). 32 of the 36 bundled layouts
 change band; the values do not move.
 
 | | even | leans | heavy | very heavy |
 |---|---|---|---|---|
-| Before | 5 | 9 | 6 | 16 |
+| Before | 4 | 10 | 6 | 16 |
 | After | 14 | 13 | 9 | (none) |
 
 | Layout | Left–right | \|L − R\| | Before | After |
