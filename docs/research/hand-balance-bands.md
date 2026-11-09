@@ -51,10 +51,11 @@ its bound here; the difference is a split no sample of text lands on.
 A value falls in the first category it does not exceed, as for every band.
 
 **`very_heavy` is dropped, not renamed.** The Doc names no category above *heavy*, and `very heavy`
-was LayerBench's. The metrics whose rows stop at a dash (SFB, SFS, scissors, redirects, pinky off)
-leave a range the Doc never named, and what is past it needs a name that does not borrow the next
-word of the Doc's nine. Here nothing is left unnamed: *heavy* is the Doc's own word for everything
-past 55-45, so it stays the last category and takes any split, 100-0 included. The colours follow the
+was LayerBench's. SFB's row stops short of the Doc's scale and none of its layout rows has an SFB past
+the last bound, so what is past it is named for where the Doc stops (`above_mid_high`). Hand balance has
+no such gap: the sentence gives three categories and calls everything past 55-45 *heavy*, and the Doc's
+rows run to a printed 59-41 under that name. So *heavy* is the Doc's own word for the range above the
+last bound, and it stays the last category, taking any split, 100-0 included. The colours follow the
 categories: *even* is green, *leans* amber and *heavy* red, where *leans* was green and *heavy* amber.
 
 ## Effect on the bundled layouts
@@ -92,6 +93,6 @@ change band; the values do not move.
   heavier is on the card, in the two shares, not in its badge.
 - A custom rule set saved before this keeps the bounds and the four names it was saved with. The
   presets take the new ones.
-- The Rules editor keeps a band's names as they are when its bounds are edited. Giving Hand balance a
-  third bound adds a fourth category with no name, and the badge of what is past it reads *beyond*;
-  it did the same for a fourth bound on the four names before.
+- The Rules editor keeps a band's names while they reach every category, and gives the standard names
+  by position once there are more bounds than names: a third Hand balance bound is then named *min*,
+  *very low*, *low*, *mid low*, which say nothing of hand balance.

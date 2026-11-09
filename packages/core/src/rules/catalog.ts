@@ -1,5 +1,19 @@
+import { BAND_LABELS } from './bands.js';
 import { CYANOPHAGE_EFFORT_SCALE, THUMB_EFFORT } from './effort.js';
 import type { Bands, Direction, Family, Predicate, Rule } from './types.js';
+
+/** The Doc's last SFB bound, the top of its Mid high category. */
+export const SFB_LAST_BOUND = 1.375;
+
+/**
+ * What an SFB above `SFB_LAST_BOUND` is called. The Doc's table gives SFB six categories, Min to
+ * Mid high, and a dash under High, Very high and Max (ch. 13.4), and none of its layout rows has an
+ * SFB past that bound, so it names nothing above it: `high` there would be the Doc's word for a
+ * range it never set. SFS, scissors, redirects and pinky off also have dashes under their last
+ * categories, but the Doc's rows do name values past them (SFS 7.483 High, redirects 12.1 Very
+ * high), so they keep the next word of the nine.
+ */
+export const SFB_ABOVE_SCALE = 'above_mid_high';
 
 /**
  * The Doc counts hand balance as even until a 52-48 split and as leaning up to 55-45, shares of the
@@ -14,7 +28,7 @@ export const HAND_LEANS_BOUND = 11;
 
 /**
  * Band bounds from the Layouts Doc ch. 13.4 (upper bounds of the Min…Max categories), and
- * LayerBench's own for Effort.
+ * LayerBench's own for Effort and for LSB, which the Doc's table does not have.
  */
 export const BANDS: Record<string, Bands> = {
   alt: {
@@ -26,7 +40,11 @@ export const BANDS: Record<string, Bands> = {
     bounds: [37.8, 39.7, 41.5, 43.3, 45.2, 47.0, 48.8, 50.6, 52.5],
   },
   in_out: { direction: 'higher_is_better', bounds: [0.8, 1.2, 1.7, 2.1, 2.6, 3.0, 3.5, 3.9, 4.4] },
-  sfb: { direction: 'lower_is_better', bounds: [0.525, 0.625, 0.735, 0.875, 1.075, 1.375] },
+  sfb: {
+    direction: 'lower_is_better',
+    bounds: [0.525, 0.625, 0.735, 0.875, 1.075, SFB_LAST_BOUND],
+    labels: [...BAND_LABELS.slice(0, 6), SFB_ABOVE_SCALE],
+  },
   sfs: { direction: 'lower_is_better', bounds: [5.3, 5.7, 6.1, 6.5, 6.9, 7.3] },
   scissors: { direction: 'lower_is_better', bounds: [0.1, 0.15, 0.25, 0.35, 0.45, 0.55, 0.7] },
   redir: { direction: 'lower_is_better', bounds: [2.8, 3.6, 4.5, 5.4, 6.2, 7.0, 9.0] },
