@@ -243,7 +243,16 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     id: 'engram',
     name: 'Engram',
     author: 'Arno Klein',
-    rows: "b y o u ' l d w v z\nc i e a , h t s n q\ng x j k / ; r m f p",
+    rows: 'b y o u \' " l d w v\nc i e a , . h t s n\ng x j k - ⟲ r m f p',
+    // The original board has eleven columns: four finger columns a hand with the two inner ones
+    // (`' " , . - ?`) between them, and a last one past the right pinky that holds `z` and `q`. A
+    // 34-key split has ten, so every letter of those ten stays on its finger (`" - ?` have no key
+    // on a base layer, which keeps only `' , . ;`) and `z` and `q` go on thumbs: the first on R0,
+    // the second on L1. With `z` on the thumb Repeat would have, Repeat takes the key `?` leaves.
+    thumbs: 'space q z',
+    special: { '⟲': REPEAT },
+    description:
+      "Engram on 34 keys: z and q, which sit past the right pinky on its author's board, go on thumbs.",
     link: 'https://github.com/binarybottle/engram-2021',
   },
   {
