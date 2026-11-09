@@ -1213,10 +1213,10 @@ describe('Layers on a card', () => {
     renderRoute(LIBRARY, { storage: freshStorage() });
     const card = async (name: string) =>
       (await screen.findByRole('heading', { name, level: 3 })).closest('article') as HTMLElement;
-    const uno = (await card('Uno')).querySelector('svg.lb-keyboard') as SVGElement;
-    // Its inner thumbs tap their letters and hold Numbers and Symbols.
-    const holds = [...uno.querySelectorAll('.lb-key-hold')].map((t) => t.textContent);
-    expect(holds).toEqual(expect.arrayContaining(['Numb', 'Symb']));
+    const rsthd = (await card('RSTHD')).querySelector('svg.lb-keyboard') as SVGElement;
+    // Its inner thumbs tap e and space and hold Symbols.
+    const holds = [...rsthd.querySelectorAll('.lb-key-hold')].map((t) => t.textContent);
+    expect(holds).toEqual(['Symb', 'Symb']);
     // An adaptive key's branches do not fit it: it is numbered, as on Analyze, but a card is a
     // glance at the layout, and lists nothing under its board.
     const magic = await card('Magic Romak');
@@ -1281,16 +1281,16 @@ describe('Layers on a card', () => {
   it('counts them on each layer, and shows no button where there are none', async () => {
     const user = userEvent.setup();
     renderRoute(LIBRARY, { storage: freshStorage() });
-    await screen.findByRole('group', { name: 'Bird layers' });
-    const bird = within(cardOf('Bird'));
-    expect(bird.getByRole('button', { name: '1 more combo on Base' })).toHaveTextContent(
+    await screen.findByRole('group', { name: 'Hands Down Gold layers' });
+    const gold = within(cardOf('Hands Down Gold'));
+    expect(gold.getByRole('button', { name: '12 more combos on Base' })).toHaveTextContent(
       /^Combos$/,
     );
-    // Bird's Numbers has none apart, nor has any layer of Graphite.
-    await showLayer(user, 'Numbers', 'Bird layers');
-    expect(bird.queryByRole('button', { name: /more combos? on/ })).toBeNull();
+    // Hands Down Gold's Numbers has none apart, nor has any layer of Graphite.
+    await showLayer(user, 'Numbers', 'Hands Down Gold layers');
+    expect(gold.queryByRole('button', { name: /more combos? on/ })).toBeNull();
     // The navigator keeps the middle of its row, so the arrows do not move as the layers turn.
-    const nav = bird.getByRole('group', { name: 'Bird layers' });
+    const nav = gold.getByRole('group', { name: 'Hands Down Gold layers' });
     expect(nav).toHaveClass('col-start-2');
     expect(
       within(cardOf('Graphite')).queryByRole('button', { name: /more combos? on/ }),

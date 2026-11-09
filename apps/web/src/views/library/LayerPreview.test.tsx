@@ -8,8 +8,8 @@ import { LayerPreview } from './LayerPreview.js';
 
 afterEach(cleanup);
 
-// Uno has layers past its base, to turn through.
-const compiled = compileLayout(bundledLayout('uno') as Layout);
+// RSTHD has a layer past its base, to turn through.
+const compiled = compileLayout(bundledLayout('rsthd') as Layout);
 const positions = compiled.positions.length;
 
 /** Presses on the first two keys of the base layer, and none on any other. */
@@ -24,7 +24,7 @@ const source: HeatSource = {
 
 function show(heat: HeatSource | null | undefined, heatMode: HeatMode | null) {
   return render(
-    <LayerPreview id="kb-test" compiled={compiled} name="Uno" heat={heat} heatMode={heatMode} />,
+    <LayerPreview id="kb-test" compiled={compiled} name="RSTHD" heat={heat} heatMode={heatMode} />,
   );
 }
 

@@ -1,4 +1,4 @@
-import type { Geometry, GeometryKey, Hand } from '../geometry/types.js';
+import type { Geometry, GeometryKey } from '../geometry/types.js';
 import type {
   Binding,
   ComboDef,
@@ -15,14 +15,13 @@ import { cyanophageKeyEffort } from '../rules/effort.js';
  *
  * Numbers and Symbols are Magic Romak's on the 24-key core, which is on every preset but the 18-key
  * one, so every board gets the same grid and the same muscle memory, but for a pair that goes to
- * Extras whole. The keys past the core — the pinky's top and bottom, the inner column — carry what
- * the old Dead keys layer held besides the accents: currency and ordinals on Numbers, and on Symbols
- * each mark beside its look-alike (`;` by `:`, `¿` by `?`, `¡` by `!`), and `«` above `»`. The pairs
- * (`SYMBOL_PAIRS`) stay on one layer, side by side: a board without a key for one half moves the
- * pair to Extras, which comes on while Numbers and Symbols are both held, and fills its prime keys
- * first (`primeKeys`). Accents is one-shot, on the 30 main keys: the dead keys, the letters no dead
- * key makes, and the accented letters the texts use most, each a key of its own, in rows and columns
- * that are easy to remember. A board without one of those keys finds it on Extras too.
+ * Extras whole. The keys past the core — the pinky's top and bottom, the inner column — carry
+ * currency and ordinals on Numbers, and on Symbols each mark beside its look-alike (`;` by `:`, `¿`
+ * by `?`, `¡` by `!`), and `«` above `»`. The pairs (`SYMBOL_PAIRS`) stay on one layer, side by
+ * side: a board without a key for one half moves the pair to Extras, which comes on while Numbers
+ * and Symbols are both held, and fills its prime keys first (`primeKeys`). Accents is one-shot, on
+ * the 30 main keys: the dead keys, the letters no dead key makes, and the accented letters the texts
+ * use most, each a key of its own, in rows and columns that are easy to remember. A board without one of those keys finds it on Extras too.
  *
  * What changes from board to board is decided by which keys it has, not by its name, so a custom
  * geometry gets a sensible result too: where `0` goes, which thumbs reach the layers, which symbols
@@ -284,25 +283,13 @@ export const DEFAULT_LAYER_IDS = {
 /**
  * Every default layer's id. The default layers are the same on every layout that has them, so
  * nothing on them says what kind of layout it is: categories leave them out there
- * (`hasDefaultLayers`), and count an author's own Numbers and Symbols.
+ * (`hasDefaultLayers`), and count the layers of those ids on a layout that has no default ones.
  */
 export const DEFAULT_LAYER_ID_LIST: readonly string[] = Object.values(DEFAULT_LAYER_IDS);
 
 /**
- * Whether a layout, as its definition builds it and before the default layers are added, brings
- * layers of its own in place of them: its author's Numbers or Symbols, by the ids the default layers
- * have. Such a layout gets none of the default layers, nor any key to reach them; what its author's
- * layers do not type, it does not type. Once built, every layout has layers of those ids: whose
- * they are, `hasDefaultLayers` tells. A bundled layout whose layers have other ids, as Romak's
- * Alpha 2 does, is kept from the default layers by `built`, which looks at its definition's `layers`.
- */
-export function bringsOwnLayers(layout: Pick<Layout, 'layers'>): boolean {
-  return layout.layers.some((l) => DEFAULT_LAYER_ID_LIST.includes(l.id));
-}
-
-/**
- * Whether a layout has the default layers: Accents, which every layout that takes them has, and one
- * that brings its own does not. Its layers of the default ids are then the default ones.
+ * Whether a layout has the default layers: Accents, which every layout that has them has. A layout
+ * without them has the layers its author defines, if any.
  */
 export function hasDefaultLayers(layout: Pick<Layout, 'layers'>): boolean {
   return layout.layers.some((l) => l.id === DEFAULT_LAYER_IDS.accents);
@@ -322,10 +309,9 @@ export function accentsComboKeys(geometry: Geometry): string[] {
 }
 
 /**
- * Accents, one-shot, from `accentsComboKeys` pressed together on the base layer. The Special
- * layouts, whose thumbs all type something of their own, and new layouts reach it this way, the
- * same keys on every layout of a board, so none is ranked better or worse for where its own thumbs
- * happen to be free.
+ * Accents, one-shot, from `accentsComboKeys` pressed together on the base layer. A new layout
+ * reaches it this way, the same keys on every board of a geometry, so none is ranked better or
+ * worse for where its own thumbs happen to be free.
  */
 export function accentsCombo(baseLayer: string, geometry: Geometry): ComboDef {
   return {
@@ -447,9 +433,8 @@ function spareThumb(geometry: Geometry, holding: string): string | undefined {
 
 /**
  * The default layers for a board, and the base-layer keys that reach Numbers and Symbols. Accents
- * is reached by `accentsCombo`, on the base layer, which the caller adds with that layer's id, or by
- * a thumb of the caller's; `mirrorAccents` mirrors it, for a layout that types its vowels with the
- * left hand. The Accents keys the board lacks go on Extras, mirrored with it, or past its finger
+ * is reached by `accentsCombo`, on the base layer, which the caller adds with that layer's id;
+ * `mirrorAccents` mirrors it, for a layout that types its vowels with the left hand. The Accents keys the board lacks go on Extras, mirrored with it, or past its finger
  * keys on Accents' thumbs.
  *
  * On a split board the inner thumbs do it, as on Magic Romak: the left types space and holds
@@ -658,134 +643,6 @@ function withLeftOver(
     });
   }
   return out;
-}
-
-/**
- * A layout given the default layers, keeping every key it has: Numbers, Symbols, Extras and Accents
- * after its own layers, and the keys that reach them, as on a new layout. The inner thumbs hold
- * them, as on Magic Romak: the left one Numbers and the right one Symbols, each still typing what it
- * typed. On Numbers the Symbols thumb taps space, and `0` goes on another thumb of its hand. Where
- * there is Extras, the Numbers thumb holds Numbers on Symbols too, so holding both inner thumbs
- * brings Extras on whichever goes down first. Accents is reached the same way on every layout, by
- * `accentsCombo` on the base layer, and is the same layer on every layout but mirrored on one that
- * types its vowels with the left hand (`vowelsOnLeft`).
- *
- * An inner thumb that is a tap-hold already cannot hold another layer. Numbers then goes on the key
- * that types space, or else the first left thumb that can hold it; Symbols on the innermost thumb
- * of the other hand with nothing on it, or else the innermost that can hold it.
- *
- * A layout that brings layers of its own (`bringsOwnLayers`), or a board with one space bar for both
- * thumbs, is left as it is.
- */
-export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
-  const { numbers, symbols } = DEFAULT_LAYER_IDS;
-  if (geometry.family === 'rowstagger') return layout;
-  if (bringsOwnLayers(layout)) return layout;
-
-  const [first, ...rest] = layout.layers;
-  const at = (id: string): Binding | undefined => first.bindings[id] ?? first.bindings['*'];
-  const free = (id: string) => {
-    const b = at(id);
-    return !b || b.kind === 'none' || b.kind === 'trans';
-  };
-  // A tap-hold cannot be the tap of another.
-  const holdable = (id: string) => {
-    const b = at(id);
-    return !b || (b.kind !== 'hold_tap' && b.kind !== 'lt');
-  };
-  const types = (id: string, symbol: string) => {
-    const b = at(id);
-    return b?.kind === 'kp' && b.symbol === symbol;
-  };
-  const thumbs = geometry.keys.filter((k) => k.thumb).sort((a, b) => a.col - b.col);
-  const handOf = (id: string) => thumbs.find((k) => k.id === id)?.hand;
-  const ofHand = (hand: Hand) => thumbs.filter((k) => k.hand === hand).map((k) => k.id);
-
-  const declared = layout.keys.space;
-  const spaceThumb =
-    handOf(declared) && types(declared, ' ')
-      ? declared
-      : thumbs.find((k) => types(k.id, ' ') && holdable(k.id))?.id;
-  const innerLeft = ofHand('L')[0];
-  const numbersKey =
-    innerLeft && holdable(innerLeft) ? innerLeft : (spaceThumb ?? ofHand('L').find(holdable));
-  const hand = numbersKey ? handOf(numbersKey) : undefined;
-  if (!numbersKey || !hand || !holdable(numbersKey)) return layout;
-  const otherHand: Hand = hand === 'L' ? 'R' : 'L';
-  const candidates = ofHand(otherHand).filter(holdable);
-  const symbolsKey =
-    candidates[0] === ofHand(otherHand)[0]
-      ? candidates[0]
-      : (candidates.find(free) ?? candidates[0]);
-  if (!symbolsKey) return layout;
-
-  // A key that types something keeps typing it; one that types nothing taps nothing, and the
-  // board draws only its hold, along the bottom.
-  const holding = (tap: Binding | undefined, layer: string): Binding =>
-    tapOrHold(!tap || tap.kind === 'none' || tap.kind === 'trans' ? { kind: 'none' } : tap, layer);
-  const holdSymbols: Binding = { kind: 'mo', layer: symbols };
-  const baseBindings: Record<string, Binding> = {
-    ...first.bindings,
-    [numbersKey]: holding(at(numbersKey), numbers),
-    [symbolsKey]: holding(at(symbolsKey), symbols),
-  };
-
-  // The defaults' thumbs on Numbers and Symbols assume space on L0 and the Symbols thumb on R0:
-  // those go, and the roles are given to the thumbs chosen here. Numbers' thumbs are all roles, and
-  // so is Symbols' spare one on a board with no bottom row, `ı` beside Numbers' thumb; on Symbols,
-  // what the defaults put on another thumb stays where it does not land on one of the two, and the
-  // one-shot Accents keeps its own, nothing being held there.
-  const thumbIds = new Set(thumbs.map((k) => k.id));
-  const have = (id: string) => geometry.keys.some((k) => k.id === id);
-  const zero = ofHand(otherHand).find((id) => id !== symbolsKey);
-  const roles = new Set(['L0', 'R0', numbersKey, symbolsKey]);
-  const defaults = defaultLayers(geometry, { mirrorAccents: vowelsOnLeft(first.bindings) });
-  const defaultSymbols = defaults.layers.find((l) => l.id === symbols)?.bindings ?? {};
-  const hasExtras = defaults.conditionalLayers.length > 0;
-  const spareLetter = defaultSymbols[spareThumb(geometry, defaults.spaceKey) ?? ''];
-  const layers = defaults.layers.map((l): LayerDef => {
-    const bindings = Object.fromEntries(
-      Object.entries(l.bindings).filter(
-        ([id]) =>
-          !thumbIds.has(id) ||
-          (l.id !== numbers &&
-            (l.id !== symbols || (!roles.has(id) && l.bindings[id] !== spareLetter))),
-      ),
-    );
-    if (l.id === numbers) {
-      bindings[symbolsKey] = { kind: 'hold_tap', tap: kp(' '), hold: holdSymbols };
-      // With no other thumb there, beside the keypad, in the inner column.
-      const spot = zero ?? ['RBC', 'RHC'].find((id) => have(id) && !bindings[id]);
-      if (spot) bindings[spot] = kp('0');
-    }
-    if (l.id === symbols) {
-      // The Numbers thumb types what the defaults put where space would be, or space where it
-      // types space, or else what it types on the base layer. Where there is Extras it holds
-      // Numbers here too, so the inner thumbs bring Extras on in either order; where there is not
-      // and it has nothing else to type, it is left to the base layer's key.
-      const onSpace = tapOf(defaultSymbols[defaults.spaceKey]);
-      const tap =
-        onSpace && !(onSpace.kind === 'kp' && onSpace.symbol === ' ')
-          ? onSpace
-          : types(numbersKey, ' ')
-            ? kp(' ')
-            : undefined;
-      if (hasExtras) bindings[numbersKey] = holding(tap ?? at(numbersKey), numbers);
-      else if (tap) bindings[numbersKey] = tap;
-      const beside = spareThumb(geometry, numbersKey);
-      if (spareLetter && beside) bindings[beside] = spareLetter;
-    }
-    return { ...l, bindings };
-  });
-
-  return {
-    ...layout,
-    layers: [{ ...first, bindings: baseBindings }, ...rest, ...layers],
-    combos: [...(layout.combos ?? []), accentsCombo(first.id, geometry)],
-    ...(hasExtras && {
-      conditionalLayers: [...(layout.conditionalLayers ?? []), ...defaults.conditionalLayers],
-    }),
-  };
 }
 
 /**

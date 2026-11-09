@@ -8,10 +8,9 @@ in [docs/guide/editing.md](docs/guide/editing.md#default-layers). Update the tab
 rule here moves a key, and keep `templates.test.ts` asserting each rule.
 
 - **Who has them.** A layout a user makes with **New layout** can start with Numbers, Symbols and
-  Accents (`defaultLayers`, `newLayout` in the app). A bundled layout is its author's design, with
-  no layer its author does not define; Bird, Nordrassil and Uno, three Special layouts whose
-  sources define no layer that types, take them, keeping every key they have (`withDefaultLayers`), and
-  so does Nordwind, a document, as its author saved it.
+  Accents (`defaultLayers`, `newLayout` in the app, `withNewLayoutDefaults`). A bundled layout is
+  its author's design, with no layer its author does not define; only Nordwind, a document, has
+  them, as its author saved it.
 - **The layers.** Numbers, Symbols and Accents. Extras exists only on a board that needs it: one
   that lacks keys for what Numbers and Symbols carry, or for Accents' 30 keys. Extras comes on while
   Numbers and Symbols are both held: both inner thumbs, in either order, Symbols' left inner thumb
@@ -21,24 +20,23 @@ rule here moves a key, and keep `templates.test.ts` asserting each rule.
   letters and marks of the base layer, the thumbs (a space key on the outer left thumb where the
   source leaves them to a space bar), the combos, and the layers the author's keymap defines past
   the letters. Romak, Magic Romak, Magic Sturdy, Enthium, Hands Down Gold, Promethium and
-  Vibranium, T-34, Finch, Cem Aksoylar's Colemak-DH and Ben Vallack Piano define layers: a
-  definition that writes `layers` gets no default layer and no Accents combo (`built` in
-  `layouts/index.ts`). Numbers and Symbols are written in `layers` by the ids `num` and `sym`
-  (`bringsOwnLayers`, which `withDefaultLayers` checks), the keys that hold them in `holds`, and the
-  author's combos for symbols, digits and accents in `combos`; `drawn` in `small.ts` lays a layer
-  out as the author draws it. Copy only what the keymap types, on the keys the board has: what the
-  author's design lacks, the layout cannot type, left for an edit in the app, and `templates.test.ts`
-  pins it (`UNTYPED` for a layout with Numbers or Symbols, `TYPES` for one with neither, and by
-  language `LACKS`).
-  Keys that type nothing the analysis counts, holds onto layers that type nothing, a toggle to a
-  layer a hold reaches too, modifiers held on a layer's keys and dead keys the analysis cannot
-  compose stay out. Their layers count toward their category, as any layer of their own
+  Vibranium, RSTHD, T-34, Finch, Cem Aksoylar's Colemak-DH and Ben Vallack Piano define layers: they
+  get no default layer and no Accents combo. Numbers and Symbols are written in `layers` by the ids
+  `num` and `sym`, the keys that hold them in `holds`, and the author's combos for symbols, digits
+  and accents in `combos`; `drawn` in `small.ts` lays a layer out as the author draws it. Copy only
+  what the keymap types, on the keys the board has: what the author's design lacks, the layout
+  cannot type, left for an edit in the app, and `templates.test.ts` pins it (`UNTYPED` for a layout
+  with Numbers or Symbols, `TYPES` for one with neither, and by language `LACKS`). Keys that type
+  nothing the analysis counts, holds onto layers that type nothing, a toggle to a layer a hold
+  reaches too, modifiers held on a layer's keys and dead keys the analysis cannot compose stay out. Their layers count toward their category, as any layer of their own
   (`hasDefaultLayers` in `templates.ts`): Hands Down's three are Special by the `z` and `q` on their
   Symbols, a second alpha layer, and their `œu` combo, a macro, and Enthium by the letters on its
   Numbers and its Symbols' macro. Every other layout is its letters and marks alone, as its source
-  has them on 34 keys. RSTHD's author's layers are reached only from ErgoDox thumb keys; Hands Down
-  Neu's author's firmware carries the layers of another set of letters; Nordrassil's author
-  publishes the rest of the keymap outside its repository. The guide lists them all
+  has them on 34 keys: Bird's source defines no layer; Uno's keymap has its digits on a number row
+  and a layer of function keys, which type nothing the analysis counts; Hands Down Neu's author's
+  firmware carries the layers of another set of letters; Nordrassil's author publishes the rest of
+  the keymap outside its repository. RSTHD's Symbols is its keymap's Special layer; its number row
+  and keypad layer are past what is copied. The guide lists them all
   ([docs/guide/editing.md](docs/guide/editing.md#layouts-with-their-authors-layers)).
   No code singles a layout out: each uses `ClassicDef` fields any layout may use.
   - Romak models its author's write-up (rafaelromao.github.io/romak, `docs/index.md`), with
@@ -72,11 +70,12 @@ rule here moves a key, and keep `templates.test.ts` asserting each rule.
 - **Every symbol is its own `kp`**, on one key, never the `shifted` half of another: fold mode drops
   outputs that need a modifier.
 - **Thumbs.** A layout's thumbs are its author's, a space key on the outer left thumb where its
-  author leaves them to a space bar. A Special layout that takes the default layers holds Numbers and
-  Symbols on its inner thumbs, each still typing what it typed; only an inner thumb that is a
-  tap-hold already falls back (`withDefaultLayers`). Accents is the combo `accentsCombo`. On a
-  row-stagger board, a new layout's one space bar (L0 and R0 together) holds Numbers. Ben Vallack
-  Piano taps a one-shot Shift where its keymap has Repeat, and it is its `keys.shift`; Night holds
+  author leaves them to a space bar. Where its keymap holds a layer on a thumb, the thumb holds it
+  (`ClassicDef.holds`), still typing what it typed: RSTHD holds its Symbols on its inner thumbs, e
+  and space, which rank the same on Effort as any other choice and best on SFB, the left outer
+  thumb sharing a finger with `e`. On a new layout the inner thumbs hold Numbers and Symbols, and
+  Accents is the combo `accentsCombo`; on a row-stagger board, its one space bar (L0 and R0
+  together) holds Numbers. Ben Vallack Piano taps a one-shot Shift where its keymap has Repeat, and it is its `keys.shift`; Night holds
   Shift on its outer thumbs, as its author draws them. A thumb that holds and taps nothing is still
   a `hold_tap`, its tap `none`, so the board draws its hold along the bottom, as on every tap-hold;
   `templates.test.ts` (`thumbs that only hold`) checks every bundled layout.
