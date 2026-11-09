@@ -1,16 +1,16 @@
-import { catalogRules, redirectWhere } from './catalog.js';
+import { CYANOPHAGE_BANDS, catalogRules, redirectWhere } from './catalog.js';
 import type { Rule, RuleSet } from './types.js';
 
 export const PRESET_IDS = ['layouts_doc', 'cyanophage'] as const;
 export type PresetId = (typeof PRESET_IDS)[number];
 
-/** The Layouts Doc definitions, unmodified. */
+/** The Layouts Doc definitions, unmodified: each rule carries the ruler the catalog gives it. */
 export function layoutsDoc(): RuleSet {
   return {
     id: 'layouts_doc',
     name: 'Layouts Doc',
     description:
-      'Definitions and bands from the Keyboard Layouts Doc (3rd ed.). Thumbs included, no composite score. Space is excluded unless Space is turned on; SFB and its ≥ 2 rows part are shares of the characters typed either way, the way the Doc’s analyzer counts SFB.',
+      'Definitions and bands from the Keyboard Layouts Doc (3rd ed.), SFB’s carried on past the Doc’s last threshold. Thumbs included, no composite score. Space is excluded unless Space is turned on; SFB and its ≥ 2 rows part are shares of the characters typed either way, the way the Doc’s analyzer counts SFB.',
     globals: {},
     rules: catalogRules(),
     score_enabled: false,
@@ -70,13 +70,15 @@ export function cyanophage(): RuleSet {
         r.ngram?.n === 2
           ? { ...r, aggregate: 'percent_of_keystrokes' }
           : r,
-    );
+    )
+    // The ruler is part of the rule set: this one's SFB reads on cyanophage's own ramp.
+    .map((r): Rule => (CYANOPHAGE_BANDS[r.id] ? { ...r, bands: CYANOPHAGE_BANDS[r.id] } : r));
 
   return {
     id: 'cyanophage',
     name: 'cyanophage-like',
     description:
-      'Column-pair LSBs, adjacency scissors, bigram percentages over keystrokes (+ one space per word), repeats excluded.',
+      'Column-pair LSBs, adjacency scissors, bigram percentages over keystrokes (+ one space per word), repeats excluded. SFB is rated on the ramp cyanophage colours it by.',
     globals: {
       space_per_word_in_keystrokes: true,
       cross_word: 'reset',

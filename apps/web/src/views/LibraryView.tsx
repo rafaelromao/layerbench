@@ -53,7 +53,7 @@ import {
   sortsByMetric,
   useSummaries,
 } from '../engine/use-summaries.js';
-import { HELP } from '../guide/help.js';
+import { HELP, type HelpTopic, rulerHelp } from '../guide/help.js';
 import { forgetProposal, proposalOf, settleProposals } from '../proposals/proposals.js';
 import { useRememberSelection } from '../state/selection.js';
 import { useSession } from '../state/session.js';
@@ -113,15 +113,19 @@ interface Lacking {
   behind: boolean;
 }
 
-/** The bands of the two numbers a card shows, as the rule set ranked on gives them. */
+/**
+ * The bands of the two numbers a card shows, as the rule set ranked on gives them, and the part of
+ * the guide that explains that set's ruler, where their badges lead.
+ */
 interface HeadlineBands {
   effort: Bands | null;
   sfb: Bands | null;
+  ruler: HelpTopic;
 }
 
-function headlineBands(ruleSet: RuleSet | undefined): HeadlineBands {
+function headlineBands(ruleSet: RuleSet | undefined, rulesRef: string): HeadlineBands {
   const bandsOf = (id: string) => ruleSet?.rules.find((r) => r.id === id)?.bands ?? null;
-  return { effort: bandsOf('effort'), sfb: bandsOf('sfb') };
+  return { effort: bandsOf('effort'), sfb: bandsOf('sfb'), ruler: rulerHelp(rulesRef) };
 }
 
 /**
@@ -133,11 +137,13 @@ function HeadlineStat({
   value,
   unit,
   bands,
+  ruler,
 }: {
   name: string;
   value: number | null;
   unit: 'effort' | 'percent';
   bands: Bands | null;
+  ruler: HelpTopic;
 }) {
   const band = classifyBand(value, bands);
   return (
@@ -148,7 +154,7 @@ function HeadlineStat({
       {/* The band is part of the value, so it is read with it. */}
       <dd className="m-0 flex items-center gap-1">
         <span className="font-mono tabular-nums">{formatValue(value, unit)}</span>
-        <BandBadge band={band} />
+        <BandBadge band={band} ruler={ruler} />
       </dd>
     </div>
   );
@@ -180,8 +186,20 @@ function Ranking({
   return (
     <>
       <dl className="flex flex-wrap gap-2 my-1 text-xs">
-        <HeadlineStat name="Effort" value={summary.effort} unit="effort" bands={bands.effort} />
-        <HeadlineStat name="SFB" value={summary.sfb} unit="percent" bands={bands.sfb} />
+        <HeadlineStat
+          name="Effort"
+          value={summary.effort}
+          unit="effort"
+          bands={bands.effort}
+          ruler={bands.ruler}
+        />
+        <HeadlineStat
+          name="SFB"
+          value={summary.sfb}
+          unit="percent"
+          bands={bands.sfb}
+          ruler={bands.ruler}
+        />
       </dl>
       {lacking?.behind ? (
         <p className="lb-skips text-xs text-warning" title={`Letters ${lacking.language} needs`}>
@@ -770,7 +788,10 @@ export function LibraryView() {
     () => heatOn && [...heats.values()].some((h) => h && effectiveHeat(h, heatMode) !== heatMode),
     [heatOn, heats, heatMode],
   );
-  const bands = useMemo(() => headlineBands(settings.settings?.rules), [settings.settings]);
+  const bands = useMemo(
+    () => headlineBands(settings.settings?.rules, settings.linked.rules),
+    [settings.settings, settings.linked.rules],
+  );
 
   // A layout that cannot type letters the corpus's language needs skips them, and skipping is free:
   // it would rank above one that pays to type them. Those go behind, whatever their numbers. A

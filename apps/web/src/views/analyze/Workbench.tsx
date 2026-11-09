@@ -50,7 +50,7 @@ import { expandPositions, HEAT_LABELS, heatMap } from '../../engine/heat.js';
 import type { AnalyzeRequest, ExplainDTO, ProducerDTO, ReportDTO } from '../../engine/protocol.js';
 import { useAnalysis } from '../../engine/use-analysis.js';
 import { useKeyStats } from '../../engine/use-key-stats.js';
-import { HELP, type HelpTopic } from '../../guide/help.js';
+import { HELP, type HelpTopic, rulerHelp } from '../../guide/help.js';
 import type { LayoutSource } from '../../layout-session/open.js';
 import type { OpenSession } from '../../layout-session/use-layout-session.js';
 import { followProposal, forgetProposal, recordProposal } from '../../proposals/proposals.js';
@@ -1325,6 +1325,7 @@ export function Workbench({
         corpusName={corpusName}
         languageGap={languageGap}
         onSelect={selectMetric}
+        ruler={rulerHelp(settings.linked.rules)}
         failed={settings.status === 'failed'}
       />
 
@@ -1335,6 +1336,7 @@ export function Workbench({
           selectedItem={selectedItem}
           onHighlightItem={highlightItem}
           presetId={presetOf(params.preset)}
+          ruler={rulerHelp(settings.linked.rules)}
           compiled={typedCompiled}
         />
       )}
@@ -1364,6 +1366,7 @@ function SummaryCard({
   corpusName,
   languageGap,
   onSelect,
+  ruler,
   failed,
 }: {
   shown: ReportDTO | null;
@@ -1374,6 +1377,8 @@ function SummaryCard({
   corpusName: string;
   languageGap: { name: string; missingRequired: string[] } | null;
   onSelect: (id: string) => void;
+  /** Where the badges of Effort and SFB lead: the ruler of the rule set the numbers were rated on. */
+  ruler: HelpTopic;
   /** Whether there will be no numbers to wait for: the analysis cannot be made. */
   failed: boolean;
 }) {
@@ -1414,7 +1419,7 @@ function SummaryCard({
 
             {shown ? (
               <>
-                <SummaryStrip results={shown.results} onSelect={onSelect} />
+                <SummaryStrip results={shown.results} onSelect={onSelect} ruler={ruler} />
                 {shown.score.enabled && shown.score.value !== null && (
                   <p className="text-sm">
                     Composite score:{' '}
@@ -1497,6 +1502,7 @@ const MetricFamilies = memo(function MetricFamilies({
   selectedItem,
   onHighlightItem,
   presetId,
+  ruler,
   compiled,
 }: {
   report: ReportDTO;
@@ -1504,6 +1510,8 @@ const MetricFamilies = memo(function MetricFamilies({
   selectedItem: number | null;
   onHighlightItem: (ruleId: string, index: number) => void;
   presetId?: string;
+  /** Where the badges of Effort and SFB lead: the ruler of the rule set the numbers were rated on. */
+  ruler?: HelpTopic;
   /** The layout the report was typed on, whose keys an item's label does not name. */
   compiled: CompiledLayout;
 }) {
@@ -1527,6 +1535,7 @@ const MetricFamilies = memo(function MetricFamilies({
                     selectedItem={selectedRule === r.id ? selectedItem : null}
                     onHighlightItem={onHighlightItem}
                     presetId={presetId}
+                    ruler={ruler}
                     describeItem={describeItem}
                   />
                 ))}

@@ -32,10 +32,38 @@ export const HELP = {
   },
   importing: { page: 'importing', topic: 'importing from keymap-drawer' },
   rules: { page: 'analyzing', section: 'rules-and-their-sources', topic: 'rules and sources' },
+  rulers: { page: 'analyzing', section: 'the-rulers', topic: 'the rulers' },
+  rulerLayoutsDoc: {
+    page: 'analyzing',
+    section: 'the-layouts-doc-rule-set',
+    topic: 'the Layouts Doc ruler',
+  },
+  rulerCyanophage: {
+    page: 'analyzing',
+    section: 'the-cyanophage-like-rule-set',
+    topic: 'the cyanophage-like ruler',
+  },
   corpus: { page: 'analyzing', section: 'the-text-itself', topic: 'corpora' },
   keyNumbers: { page: 'analyzing', section: 'a-keys-numbers', topic: "a key's numbers" },
   storage: { page: 'saving', topic: 'saving to GitHub' },
 } as const satisfies Record<string, HelpTopic>;
+
+/**
+ * The part of the guide that explains the ruler of the rule set a number was rated on: the steps,
+ * what each is called and its colour. `rulesRef` is the set as a link names it: a preset's id has
+ * its own section, and any other, a custom set that carries the rulers it was saved with, gets the
+ * one on rulers in general. (A saved set's own `id` is not the reference: it can copy a preset's.)
+ */
+export function rulerHelp(rulesRef: string | undefined): HelpTopic {
+  switch (rulesRef) {
+    case 'layouts_doc':
+      return HELP.rulerLayoutsDoc;
+    case 'cyanophage':
+      return HELP.rulerCyanophage;
+    default:
+      return HELP.rulers;
+  }
+}
 
 /** The guide's address for a topic, under the app's base path. */
 export function helpHref({ page, section }: Pick<HelpTopic, 'page' | 'section'>): string {

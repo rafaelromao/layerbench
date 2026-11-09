@@ -443,14 +443,23 @@ describe('Ranking layouts', () => {
       box(card, metric).querySelector('.lb-band');
 
     const [best, worst] = cards();
-    expect(badge(best, 'Effort')?.textContent).toBe('min');
-    expect(badge(best, 'Effort')).toHaveClass('badge-success');
-    expect(box(best, 'Effort')).toHaveClass('border-success/60');
-    // An SFB of 4% is past the Doc's last bound, which names nothing above Mid high.
-    expect(badge(best, 'SFB')?.textContent).toBe('above mid high');
+    // An Effort of 400 is past the third step, 386, and not the fourth's, 429: mid low, amber.
+    expect(badge(best, 'Effort')?.textContent).toBe('mid low');
+    expect(badge(best, 'Effort')).toHaveClass('badge-warning');
+    expect(box(best, 'Effort')).toHaveClass('border-warning/60');
+    // An SFB of 4% is past the ruler's last bound, 3.425.
+    expect(badge(best, 'SFB')?.textContent).toBe('max');
     expect(box(best, 'SFB')).toHaveClass('border-error/60');
     expect(badge(worst, 'Effort')?.textContent).toBe('max');
     expect(box(worst, 'Effort')).toHaveClass('border-error/60');
+    // Both badges lead to the guide's ruler for the rule set ranked on, the Layouts Doc's by default.
+    for (const metric of ['Effort', 'SFB'] as const) {
+      expect(badge(best, metric), metric).toHaveAttribute(
+        'href',
+        expect.stringMatching(/\/guide\/analyzing#the-layouts-doc-rule-set$/),
+      );
+      expect(badge(best, metric), metric).toHaveAttribute('target', '_blank');
+    }
   }, 90_000);
 
   it('badges a card by the rule set ranked on; a metric without bands is plain', async () => {
@@ -476,6 +485,11 @@ describe('Ranking layouts', () => {
       within(card).getByText(metric, { selector: 'dt' }).parentElement as HTMLElement;
     // On the catalog's bands an Effort of 1000 would be max.
     expect(box('Effort').querySelector('.lb-band')?.textContent).toBe('min');
+    // A custom rule set carries its own rulers: the badge leads to the guide on rulers in general.
+    expect(box('Effort').querySelector('.lb-band')).toHaveAttribute(
+      'href',
+      expect.stringMatching(/\/guide\/analyzing#the-rulers$/),
+    );
     expect(box('SFB').querySelector('.lb-band')).toBeNull();
     expect(box('SFB')).toHaveClass('border-base-300');
   }, 90_000);

@@ -1637,14 +1637,41 @@ button.lb-combo-apart:focus-visible {
     font-size: 1rem;
   }
 }
-/* A band's name can run to three words ("above mid high"), more than a box on a phone holds on one
-   line: the pill grows a line instead of letting the text spill out of its fixed height. */
+/* A band's name can run to two words ("very high", or more in a custom rule set), more than a box on
+   a phone may hold on one line: the pill grows a line instead of letting the text spill out of its
+   fixed height. */
 .lb-band {
   height: auto;
   min-height: var(--size);
   padding-block: 0.0625rem;
   line-height: 1.2;
   text-align: center;
+}
+/* Effort's and SFB's badge leads to the guide's ruler for the rule set: a link, marked as one on
+   hover and focus. */
+.lb-band-link {
+  text-decoration: none;
+}
+.lb-band-link:hover,
+.lb-band-link:focus-visible {
+  outline: 1px solid var(--lb-ring);
+  outline-offset: 1px;
+}
+/* The name and number of a summary stat, as a button beside its badge, which is a link and so cannot
+   sit inside it. */
+.lb-stat-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 .lb-items li button {
   max-width: 5rem;

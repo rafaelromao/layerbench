@@ -290,28 +290,111 @@ number.
 
 ### What the badges mean
 
-The Keyboard Layouts Doc sorts layouts into bands for the metrics it covers, from *min* to *max*,
-and LayerBench adds its own for Effort, lateral stretches, layer taps, wasted one-shots and extra
-keys. Effort's are 20 apart, from just above the easiest Standard and Thumb Alpha layouts that come
-with the app; Colemak, and anything harder, is *max*. A badge names the band a number falls in, and its colour
-says whether that is good for that metric. For most metrics lower is better; for alternation, rolls
-and the in:out roll ratio, higher is. The [glossary](../METRICS.md#bands) lists every band.
+A rule's **ruler** turns its number into a badge: a list of upper bounds, and the name of each step.
+A number falls in the first step whose bound it does not exceed, and above the last bound in the
+step after it. The steps are named *min*, *very low*, *low*, *mid low*, *mid*, *mid high*, *high*,
+*very high* and *max*, as many as the ruler has, and the Keyboard Layouts Doc sets their bounds for
+the metrics it covers; LayerBench adds its own for Effort, lateral stretches, layer taps, wasted
+one-shots and extra keys. The colour is the step's place on the ruler, not a judgement of the value:
+with nine steps the first three are green, the next three amber and the last three red, where lower
+is better (alternation, rolls and the in:out roll ratio are the other way round). The
+[glossary](../METRICS.md#bands) lists every band.
 
-The Doc gives SFB six bands, *min* to *mid high*, the last ending at 1.375%; it gives no threshold
-above that, and none of its layout tables has an SFB there, so a badge there says *above mid high*
-and not *high*. SFS, scissors, redirects and pinky off keep the next name after their last
-threshold, as the Doc's own layout tables name those values. The SFB bands came from numbers
-counted without the space bar and with capitals folded, as a share of the letters typed, and the
-Layouts Doc rules here count SFB the same way, so with **Space** and **Shift** off the badge is the
-Doc's band for the Doc's number: Colemak-DH reads 1.17 on the English sample, where the Doc has
-1.177, *mid high*. Turn them on and the SFB includes pairs the Doc never had, such as Repeat then
-space on one thumb or the Shift presses, so its band can differ from the Doc's for the same layout,
-but it is still a share of the letters, not of the letters and the spaces. The cyanophage-like rules divide by keystrokes, with a space per word, and read
-lower. SFS is not counted as the Doc's: it is a share of the text's skipgrams, over one skipped key,
-where Genkey divides by the letters and counts skips of up to nine keys, each half as much as the
-one before. A custom rule set saved earlier keeps the bands and the denominators it was saved with,
-so its SFB may still be a share of bigrams, and its badge may still say *high* where these say
-*above mid high*. The glossary has the figures.
+The ruler is part of the rule set. Every rule carries its own, so two sets can rate the same number
+differently, and a custom set keeps the rulers it was saved with and edits them in **Rules**. Click
+the badge of **Effort** or **SFB**, on a Library card, in the summary, on its card or in Compare, and
+[the rulers](#the-rulers) open at the one for the rule set the number was rated on.
+
+## The rulers
+
+Effort and SFB are the two numbers a layout is ranked by, and the two whose badge leads here. Each
+rule set draws them as follows.
+
+### The Layouts Doc rule set
+
+**SFB.** The Doc's table gives SFB six bounds, *min* to *mid high*, and a dash under *high*, *very
+high* and *max*; none of its layout tables has an SFB past 1.242 (Engram's). The first five bounds are
+the Doc's. For what the dashes leave open LayerBench carries the Doc's sequence on, whose steps grow
+0.10, 0.11, 0.14, 0.20, 0.30, and then 0.45, 0.66 and 0.94, and each number begins the name it is
+given: *high* above 1.825, *very high* above 2.485, *max* above 3.425. *Mid high* therefore runs to
+1.825, past the 1.375 where the Doc ends it, and every SFB in the Doc's own tables keeps its
+category.
+
+| Step | SFB up to | Colour |
+|---|---|---|
+| min | 0.525 | green |
+| very low | 0.625 | green |
+| low | 0.735 | green |
+| mid low | 0.875 | amber |
+| mid | 1.075 | amber |
+| mid high | 1.825 | amber |
+| high | 2.485 | red |
+| very high | 3.425 | red |
+| max | above 3.425 | red |
+
+Colemak-DH reads 1.17 on the English sample, where the Doc has 1.177: *mid high*. Dvorak, about 2.1, is
+*high*, and Qwerty, about 5.3, *max*.
+
+The Doc's bounds came from numbers counted without the space bar and with capitals folded, as a share
+of the letters typed, and these rules count SFB the same way, so with **Space** and **Shift** off the
+badge is the Doc's band for the Doc's number. Turn them on and the SFB includes pairs the Doc never
+had, such as Repeat then space on one thumb or the Shift presses, so its band can differ from the
+Doc's for the same layout, though it is still a share of the letters. SFS, scissors, redirects and
+pinky off keep the next name after their last threshold, as the Doc's own layout tables name those
+values. SFS is not counted as the Doc's: it is a share of the text's skipgrams, over one skipped key,
+where Genkey divides by the letters and counts skips of up to nine keys, each half as much as the one
+before. The glossary has the figures.
+
+**Effort.** LayerBench's own, on the same nine steps: *min* up to 300 and *max* above 600, the seven
+steps between them equal (42.9 apiece, rounded to whole numbers), as they were equal before. Colemak's
+630, Dvorak and Qwerty are *max*.
+
+| Step | Effort up to | Colour |
+|---|---|---|
+| min | 300 | green |
+| very low | 343 | green |
+| low | 386 | green |
+| mid low | 429 | amber |
+| mid | 471 | amber |
+| mid high | 514 | amber |
+| high | 557 | red |
+| very high | 600 | red |
+| max | above 600 | red |
+
+### The cyanophage-like rule set
+
+Cyanophage rates nothing: his playground prints SFB (Qwerty 4.38%) and Effort (1258.15) as plain
+numbers, with no bands or categories. The only thing it colours SFB by is a finger's bar, a ramp
+from grey to red that is full at 2.117% of the text (`red = 128 + 6000 × share`, clamped to 255). That
+ramp is this set's reference for SFB: nine equal steps from nothing to full red, 0.235 apiece, the
+ninth, *max*, from 1.881 on. It is one finger's share that his ramp colours and this reads it as a
+layout's total, which is LayerBench's assumption and not his.
+
+| Step | SFB up to | Colour |
+|---|---|---|
+| min | 0.235 | green |
+| very low | 0.47 | green |
+| low | 0.706 | green |
+| mid low | 0.941 | amber |
+| mid | 1.176 | amber |
+| mid high | 1.411 | amber |
+| high | 1.646 | red |
+| very high | 1.881 | red |
+| max | above 1.881 | red |
+
+These rules divide by keystrokes, with a space per word, so the same layout reads lower than under
+the Layouts Doc's: Colemak is 0.97 on the English sample, *mid*, Dvorak 1.76, *very high*, and
+Qwerty 4.38, *max*.
+
+**Effort** is the same number in both sets, and he has no ruler for it, so this set uses the Layouts
+Doc set's above, step for step and colour for colour.
+
+### Custom rule sets
+
+A custom rule set carries the rulers it was saved with. One saved earlier keeps the old SFB bounds
+and names, so an SFB above 1.375 may still be called *high* or *above mid high*, until its bounds are
+changed in **Rules**, under **Bands (upper bounds)**. A set made from one of the presets above starts
+with that preset's rulers. Its badge for Effort or SFB leads here.
 
 ## Rules and their sources
 

@@ -84,8 +84,18 @@ The Doc cites no Genkey version, so this is HEAD's behaviour; the Colemak-DH che
 ## What cyanophage gives
 
 [cyanophage.github.io/playground.html](https://cyanophage.github.io/playground.html) prints a layout's
-SFB (Qwerty 4.38% on its English text) with no band, colour or threshold. LayerBench's cyanophage-like
-rules give Qwerty 4.38 on the English news sample, as a share of keystrokes with a space per word.
+SFB (Qwerty 4.38% on its English text) and Effort (1258.15) with no band, category or threshold:
+the text is a fixed colour and compared with nothing (`keyboard_svg.js`, read in full on 2026-11-09,
+with `index.html`, `table.html` and `compare.html`, whose only script sorts). LayerBench's
+cyanophage-like rules give Qwerty 4.38 on the English news sample, as a share of keystrokes with a
+space per word.
+
+What it does colour is a ramp. Each finger's SFB bar is `red = 128 + 6000 * share`, green and blue
+128, red clamped to 16..255: grey at nothing, full red at a share of 127 / 6000 of the input,
+2.117%. The key heat and the usage bars are the same ramp with other constants (key heat against the
+most frequent letter, 11.87% in English). Nothing in it says what a good or a bad layout is, and
+nothing in it is for Effort. It is the only SFB-specific reference the site gives, which is why the
+cyanophage-like rule set's SFB ruler is drawn on it (below).
 
 ## Is the app's number the Doc's?
 
@@ -113,10 +123,13 @@ and with Shift modelled, the Shift presses; the Doc counted neither.
 
 ## What was done, and what was not
 
-- **Done.** The Doc's six bounds stay. What is past the last one is named for what it is, *above mid
-  high* (`SFB_ABOVE_SCALE`), where it was named *high*, a Doc category that has no SFB cell. The colour
-  does not change (red, as *mid high* already is). LSB's bands are not in the Doc's table at all, so
-  they are LayerBench's own and keep the nine names by position.
+- **Done, then superseded (#117).** The Doc's six bounds stayed, and what is past the last one was
+  named *above mid high* (`SFB_ABOVE_SCALE`) where it had been *high*, a Doc category with no SFB
+  cell. The colour did not change (red, as *mid high* already was). It named the gap and left the
+  ranges where they were, and the ranges were what the owner objected to: a Colemak-level SFB was
+  still in the worst step of a ruler built to tell modern layouts apart. See the next section, which
+  redraws it. LSB's bands are not in the Doc's table at all, so they are LayerBench's own and keep the
+  nine names by position.
 - **Not done: renaming what is past the last threshold of SFS, scissors, redirects and pinky off.**
   SFS has six thresholds in the table, scissors, redirects and pinky off seven, and a dash under the
   rest, as SFB does, and the same rename was first made for them (the owner's "same fix", on the
@@ -137,7 +150,49 @@ and with Shift modelled, the Shift presses; the Doc counted neither.
   or as a share of bigrams, so any would be invented. Hiding the badge when Space or Shift is on would
   take the label from the view the owner reads, and the engine's band is per rule, not per setting.
   The guide and the glossary say what the bands were measured on instead.
-- **Done afterwards: the denominator.** See the next section.
+- **Done afterwards: the denominator** (#118, "The denominator" below), **and the ruler** (next section).
+
+## The ruler redrawn (2026-11-09)
+
+Decided by the owner: the ruler is part of the rule set, each rule set draws its own, the old names
+come back (*high*, *very high*, *max*), and the colours follow the steps. Effort's ruler is LayerBench's
+own, so it was redrawn on the owner's word too: *min* up to 300 and *max* above 600, the seven steps
+between them equal (300 / 7 = 42.9, rounded: 300 · 343 · 386 · 429 · 471 · 514 · 557 · 600), where it
+had been 20 apart from 440 to 580, just above the easiest bundled layout. Its colours are the same
+thirds.
+
+**Layouts Doc rule set.** The Doc's first five SFB bounds, then its sequence carried on in place of
+the sixth: its steps are 0.10, 0.11, 0.14, 0.20 and 0.30, and the next three, 0.45, 0.66 and 0.94,
+continue them from its last bound, 1.375, to 1.825, 2.485 and 3.425. Each begins its name (*high* above 1.825, *very high* above
+2.485, *max* above 3.425), so *mid high* runs to 1.825 where the Doc ends it at 1.375. The Doc's rows
+(Noctum 0.550 and Isrt 0.599 *Very low*, Mtgap 1.048 *Mid*, Colemak DH 1.177 and Engram 1.242 *Mid
+high*) keep their categories, which `engine.test.ts` pins. Nine steps are coloured in thirds by
+`classifyBand`'s position rule, so green is *min* to *low*, amber *mid low* to *mid high* and red *high*
+to *max*: *mid high* is no longer red.
+
+**cyanophage-like rule set.** Nine equal steps over his ramp, 2.117% / 9 = 0.2352 each:
+0.235 · 0.470 · 0.706 · 0.941 · 1.176 · 1.411 · 1.646 · 1.881, *max* above. His ramp is one finger's
+share, so reading it as a layout's total is an assumption, said in the guide. Everything else the
+set carries, Effort included, is the Layouts Doc set's, as he has no ruler for it.
+
+Where the layouts read now (`analyze`, English news, the first 100,000 symbols, from the numbers in
+the denominator section; names read off the bounds):
+
+| Layout | Layouts Doc, Library | Layouts Doc, Shift and Space | cyanophage-like, Library |
+|---|---|---|---|
+| Magic Romak | 1.35 mid high | 2.03 high | 1.12 mid |
+| Romak | 1.17 mid high | 1.55 mid high | 0.97 mid |
+| Qwerty | 5.27 max | 5.62 max | 4.38 max |
+| Dvorak | 2.12 high | 2.50 very high | 1.76 very high |
+| Colemak, Colemak-DH | 1.17 mid high | 1.54 mid high | 0.97 mid |
+| Graphite | 0.86 mid low | 1.25 mid high | 0.71 mid low |
+| Sturdy | 0.76 mid low | 1.15 mid high | 0.63 low |
+| Hands Down Neu | 0.89 mid | | 0.74 mid low |
+| RSTHD | 1.10 mid high | | 0.92 mid low |
+
+Under #117 the same numbers read *above mid high* for Qwerty and Dvorak in both columns, and in the
+Shift and Space column for Magic Romak, Romak and the Colemaks (2.03, 1.55, 1.54: now *high*, *mid
+high*, *mid high*); before #117 all of those were *high*.
 
 ## The denominator: SFB as a share of the letters typed
 
@@ -194,7 +249,7 @@ calibration).
   between skips, another scale. Making SFS the Doc's means changing what it counts first, then its
   divisor.
 
-## Before and after, English news, 100,000 symbols
+## Before and after #117, English news, 100,000 symbols
 
 The labels' change (`high` to `above mid high`), with the numbers as they were at `cf389aee`, before
 the denominator above moved them. "Library settings" is fold and no space, "Shift and Space" is model and with space; the labels are

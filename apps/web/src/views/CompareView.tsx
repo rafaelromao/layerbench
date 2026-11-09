@@ -6,13 +6,14 @@ import { ErrorAlert } from '../components/ErrorAlert.js';
 import { FamilyFilter, useFamilyShown } from '../components/FamilyFilter.js';
 import { featureList } from '../components/FeatureSwitches.js';
 import { formatValue } from '../components/format.js';
-import { BandBadge, SummaryStrip } from '../components/Metrics.js';
+import { BandBadge, isHeadline, SummaryStrip } from '../components/Metrics.js';
 import { PreviewBoard } from '../components/PreviewBoard.js';
 import { customRef } from '../custom/ref.js';
 import { useAnalysisClient } from '../engine/client-context.js';
 import { expandPositions } from '../engine/heat.js';
 import type { AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { useAnalysis } from '../engine/use-analysis.js';
+import { rulerHelp } from '../guide/help.js';
 import { carriedRef } from '../layout-session/open.js';
 import { useRememberSelection } from '../state/selection.js';
 import { useCollection } from '../storage/use-storage.js';
@@ -85,6 +86,8 @@ export function CompareView() {
   const settings = useAnalysisSettings(settingsOf(params));
   /** The settings to analyze on: none until the rule set is read, nor when it will not open. */
   const ready = settings.settings;
+  /** Where Effort's and SFB's badges lead: the ruler of the rule set both sides are rated on. */
+  const ruler = rulerHelp(settings.linked.rules);
 
   // Each side as written, on the same settings: the engine types both without the same features.
   const requestA: AnalyzeRequest | null = useMemo(
@@ -261,7 +264,7 @@ export function CompareView() {
                     </div>
                   )}
                   {report ? (
-                    <SummaryStrip results={report.results} />
+                    <SummaryStrip results={report.results} ruler={ruler} />
                   ) : settings.status === 'failed' ? null : (
                     <div className="flex items-center gap-2 py-4">
                       <span className="loading loading-dots loading-xs" />
@@ -313,11 +316,20 @@ export function CompareView() {
                           </div>
                         </td>
                         <td className="text-right font-mono tabular-nums">
-                          {formatValue(row.a.value, row.unit)} <BandBadge band={row.a.band} />
+                          {formatValue(row.a.value, row.unit)}{' '}
+                          <BandBadge
+                            band={row.a.band}
+                            ruler={isHeadline(row.id) ? ruler : undefined}
+                          />
                         </td>
                         <td className="text-right font-mono tabular-nums">
                           {row.b ? formatValue(row.b.value, row.unit) : '–'}{' '}
-                          {row.b && <BandBadge band={row.b.band} />}
+                          {row.b && (
+                            <BandBadge
+                              band={row.b.band}
+                              ruler={isHeadline(row.id) ? ruler : undefined}
+                            />
+                          )}
                         </td>
                         <td
                           className={`text-right font-mono tabular-nums ${
