@@ -189,27 +189,31 @@ describe('rules engine', () => {
     }
   });
 
-  it('stops each negative stat where the Doc does, and names what is past it for that', () => {
-    // SFS has six thresholds in the Doc, scissors, redirects and pinky off seven, and a dash under
-    // the rest (ch. 13.4): past the last one is not the next word of the nine.
-    const stops = [
-      { id: 'sfs', bands: BANDS.sfs, last: 7.3, at: 'mid_high', past: 'above_mid_high' },
-      { id: 'fsb', bands: BANDS.scissors, last: 0.7, at: 'high', past: 'above_high' },
-      { id: 'redirect', bands: BANDS.redir, last: 9, at: 'high', past: 'above_high' },
-      { id: 'pinky_off', bands: BANDS.pinky_off, last: 6.8, at: 'high', past: 'above_high' },
+  it('names what is past the last threshold of SFS, scissors, redirects and pinky off as the Doc does', () => {
+    // The Doc's table stops SFS at six thresholds and scissors, redirects and pinky off at seven
+    // (ch. 13.4), but its layout rows call a value past them the next word of the nine: SFS 7.483
+    // (Colemak DH) is High, scissors 0.71 (Hands Down Neu) and 0.81, redirects 12.1 (Colemak DH)
+    // and 13.6, pinky off 8.1 and 8.3 are Very high. So these four keep the positional names, and
+    // only SFB, which no row of the Doc has past its last bound, is named otherwise. (The Doc calls
+    // an SFS of 8.744 Very high; the table gives no bound for it, so none is made up.)
+    const rows = [
+      { id: 'sfs', bands: BANDS.sfs, values: [7.344, 7.483, 7.541], label: 'high' },
+      { id: 'fsb', bands: BANDS.scissors, values: [0.71, 0.81], label: 'very_high' },
+      { id: 'redirect', bands: BANDS.redir, values: [12.1, 13.6], label: 'very_high' },
+      { id: 'pinky_off', bands: BANDS.pinky_off, values: [8.1, 8.3], label: 'very_high' },
     ];
-    for (const { id, bands, last, at, past } of stops) {
-      expect(classifyBand(last, bands).label, `${id} at its last threshold`).toBe(at);
-      expect(classifyBand(last + 0.01, bands), `${id} past it`).toMatchObject({
-        label: past,
-        quality: 'bad',
-      });
-      expect(bands.labels?.at(-1), id).toBe(past);
+    for (const { id, bands, values, label } of rows) {
+      expect(bands.labels, `${id} has no names of its own`).toBeUndefined();
+      for (const value of values) {
+        expect(classifyBand(value, bands), `${id} ${value}`).toMatchObject({
+          label,
+          quality: 'bad',
+        });
+      }
     }
-    expect(humanBand('above_high')).toBe('above high');
     // The presets rank with these, not only the table they come from.
     for (const preset of [layoutsDoc(), cyanophage()]) {
-      for (const { id, bands } of stops) {
+      for (const { id, bands } of rows) {
         expect(preset.rules.find((r) => r.id === id)?.bands, `${preset.id} ${id}`).toEqual(bands);
       }
     }

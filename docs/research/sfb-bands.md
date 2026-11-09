@@ -28,7 +28,7 @@ afterwards (2026-11-08); the sections before it describe the preset as it was at
   (total 1.241); now they start `→A2'` 0.50 (total 1.693), a tap of the one-shot key to Alpha 2
   followed by `'`, on one finger, and the rest of the list is the same to within 0.05. That is a
   layer tap followed by a key on the same finger, the case METRICS lists as `layer_tap_sfb`, a pair
-  the Doc's SFB never had. Whether it belongs in the SFB is the owner's call.
+  the Doc's SFB never had. The owner decided it stays counted (2026-11-08), so nothing changes.
 - 1.56 itself was not found. Runs of the bundled layouts over the seven corpora, both rule sets and
   both settings that read 1.56: Magic Romak on `it-general`, cyanophage-like rules, Library settings
   (1.5614); Ben Vallack Piano on `fr-general`, same rules and settings (1.5573); Nerps on
@@ -115,12 +115,24 @@ and with Shift modelled, the Shift presses; the Doc counted neither.
 
 - **Done.** The Doc's six bounds stay. What is past the last one is named for what it is, *above mid
   high* (`SFB_ABOVE_SCALE`), where it was named *high*, a Doc category that has no SFB cell. The colour
-  does not change (red, as *mid high* already is). SFS (*high*), full scissors, redirects and pinky off
-  (*very high*) ended on a padded label the Doc has a dash under as well (SFS six thresholds, the others
-  seven), so a scissors reading of 0.8 said *very high*. Asked by the owner, they are named the same
-  way: SFS past 7.3 is *above mid high*, full scissors past 0.7, redirects past 9.0 and pinky off
-  past 6.8 are *above high* (`negativeStat` in `catalog.ts`). LSB's bands are not in the Doc's table at
-  all, so they are LayerBench's own and keep the nine names by position.
+  does not change (red, as *mid high* already is). LSB's bands are not in the Doc's table at all, so
+  they are LayerBench's own and keep the nine names by position.
+- **Not done: renaming what is past the last threshold of SFS, scissors, redirects and pinky off.**
+  SFS has six thresholds in the table, scissors, redirects and pinky off seven, and a dash under the
+  rest, as SFB does, and the same rename was first made for them (the owner's "same fix", on the
+  strength of the dashes). The Doc's per-layout rows then showed that it does name those values, with
+  the next word of the nine (columns SFB, SFS, scissors, alt, roll, redirect, in:out roll, pinky off,
+  hand use, each a category then its value; read through `/mobilebasic`, the rows named here checked
+  by hand): SFS 7.344 (Uciea), 7.483 (Colemak DH) and 7.541 (ColemaQ) are *High*, 8.744 (Poutea) *Very
+  high*; scissors 0.71 (Hands Down Neu) and 0.81 (Uciea) *Very high*; redirects 12.1 (Colemak DH) and
+  13.6 (ColemaQ) *Very high*; pinky off 8.1 (Journey) and 8.3 (Saiga) *Very high*. Those are the
+  labels the app gave, so the owner's decision (2026-11-08) was to put them back: these four keep the
+  next label in the list, and `engine.test.ts` pins the Doc's rows above. (An SFS of 8.744 is *very
+  high* in the Doc and *high* here: the table has no bound for it, and none is made up.) SFB is
+  different: no row has one past 1.375 (the highest is Engram 1.242), so the Doc names nothing there
+  and *above mid high* claims only what it knows.
+- **Layer taps stay in the SFB.** `→A2'` and the like are counted, as the owner decided; the number
+  moves with the keymap, not with the bands.
 - **Not done: bands per setting.** No source gives SFB bands for a number counted with Space or Shift,
   or as a share of bigrams, so any would be invented. Hiding the badge when Space or Shift is on would
   take the label from the view the owner reads, and the engine's band is per rule, not per setting.
@@ -141,9 +153,12 @@ news, 100,000 symbols, fold, no space (the Library's settings):
 | Magic Romak | 1.6935 | 1.3480 | above mid high → mid high |
 | Colemak, Colemak-DH | 1.4736 | 1.1730 | above mid high → mid high |
 | Qwerty | 6.6193 | 5.2690 | above mid high |
+| Engram (ten columns, #120) | 1.5590 | 1.2410 | above mid high → mid high |
 
 After over before is 0.796 on all 36 bundled layouts (0.7958 to 0.7960), as it is the text's bigrams
-per letter. Colemak-DH, 1.177 *mid high* in the Doc, reads 1.173 *mid high*.
+per letter. Colemak-DH, 1.177 *mid high* in the Doc, reads 1.173 *mid high*, and Engram, 1.242 *Mid
+high* in the Doc (§15.7.5), reads 1.241 (other corpus and layout details, so two checks and not a
+calibration).
 
 - **Space and Shift.** The letters are the denominator whether space is counted or not, and whether
   capitals go through Shift or are folded; the number does not move because the denominator did.
@@ -178,9 +193,12 @@ per letter. Colemak-DH, 1.177 *mid high* in the Doc, reads 1.173 *mid high*.
   | Dvorak | 6.43 | 3.86 | 6.00 |
 
   Skip 1 over the letters reads *min* for Magic Romak, Colemak-DH, Graphite and Dvorak and Qwerty
-  *mid low*, where today's number is nearer to the weighted sum the bands' size suggests. Whether the
-  Doc's SFS column is Genkey's DSFB could not be confirmed (the stat tables of §13 were not readable
-  in this pass), so that sum is a comparison, not the Doc's number. The weights are Genkey's: its
+  *mid low*, where today's number is nearer to the weighted sum the bands' size suggests. The Doc's own
+  row for Colemak DH gives SFS 7.483 (*High*, as listed above): the weighted sum reads 7.19 on another
+  text, a third of a point under, which the weights of skips 4 to 9 (0.246 on top of 1.75) can
+  account for, and skip 1 over the letters reads 4.85, two and a half points under. That fits the
+  Doc's SFS being Genkey's stat, without proving it (one layout, another corpus; §13.3 names Genkey
+  for SFB). The weights are Genkey's: its
   DSFB stat weighs skip 1 at 1 and each deeper skip half the one before, where the Doc's §4.6 example,
   which `sfs_weighted` follows, weighs skip 1 at 0.5 against 1 for an SFB: the ratios between skips
   agree and the scale does not. Making SFS the Doc's means changing what it counts, with the
@@ -208,9 +226,11 @@ Layouts Doc rules (the default of a link with no `preset`):
 | Engram | 6.25 | high → above mid high | 4.52 | high → above mid high |
 | RSTHD | 1.38 | high → above mid high | 3.79 | high → above mid high |
 
-Engram reads 6.25 here, not the Doc's 1.242 *Mid high* (§15.7.5). The bundled one is a 10-column
-version of the Doc's 11-column layout, and its top pair, `th` (3.10), shares a finger there. That is a
-question about the layout's definition, not about the bands, and was not looked into further.
+Engram reads 6.25 here, not the Doc's 1.242 *Mid high* (§15.7.5). The bundled one was a 10-column
+version of the Doc's 11-column layout, and its top pair, `th` (3.10), shared a finger there. That was
+a question about the layout's definition, not about the bands; #120 has since put it on ten columns
+as its author's board has them (`docs/research/engram-columns.md`), so its row above is the layout
+as it was at `cf389aee`.
 
 cyanophage-like rules:
 

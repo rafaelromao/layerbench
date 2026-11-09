@@ -50,6 +50,7 @@ const EXPECTED: Record<LayoutCategory, string[]> = {
     'dusk',
     'snth',
     'nerps',
+    'engram',
     'sunlight',
     'aptmak',
     'rsthd',
@@ -68,7 +69,6 @@ const EXPECTED: Record<LayoutCategory, string[]> = {
     'aptv3',
     'recurva',
     'focal',
-    'engram',
     'bird-30',
   ],
 };

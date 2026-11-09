@@ -172,7 +172,7 @@ one press (`SimulationTables.text`), and the rules divide by those:
 
 - **Bigram and skipgram rules** (`percent_of_ngrams`, `sum_distance`) by the text's pairs;
   `percent_of_keystrokes` by its characters, plus one space per word where space is not counted;
-  `percent_of_symbols` (the Layouts Doc's SFB, since the thirty-ninth re-baseline) by its
+  `percent_of_symbols` (the Layouts Doc's SFB, since the fortieth re-baseline) by its
   characters without the space, whether space is counted or not.
 - **Effort** by the text's characters, space included — cyanophage's keystrokes on any layout it
   models.
@@ -813,7 +813,31 @@ What moved, checked field by field across the 38 reports, old against new:
 - **An adaptive key's other branches** keep what they typed: Magic Romak's `h␣`, the alt repeat's
   branch after `a`, is still `h␣`. Only the Repeat leaf is `⟳`.
 
-## Thirty-ninth re-baseline: the Layouts Doc's SFB is a share of the letters typed
+## Thirty-ninth re-baseline: Engram on ten columns
+
+Engram's board has eleven columns: the two inner ones, `' " , . - ?`, between the four finger
+columns of each hand, and one past the right pinky that holds `z` and `q`. The bundled layout had
+dropped the right inner column, so every right-hand key sat one column over: `h` and `t` shared the
+right index, `s` was on the middle finger and `n` on the ring, and `th` alone was 3.10% of its
+bigrams. It now has the ten columns of a 34-key split, each key on the finger its
+author's board gives it, and `z` and `q` on the thumbs, as Nerps, Hands Down Neu and Sunlight put the
+keys of their eleventh column. With a second thumb letter Repeat takes the key `?` leaves, as on
+Hands Down Neu and Sunlight. See `docs/research/engram-columns.md`.
+
+What moved, checked structurally against HEAD, document by document; nothing else moved:
+
+- **Engram's document** (`layouts/engram.json`): its description, and on the base layer the right
+  hand's top and home rows (RTC to RTP, RHC to RHP), whose letters each moved a column over, the
+  bottom row's inner key (RBC, `;` to Repeat), and the thumbs L1 and R0, which tap `z` and `q`. Its
+  Numbers, Symbols and Accents, its combos and its keys are as they were. Its `languages`, measured
+  by `pnpm languages`, are English, Portuguese, Spanish, Italian and German, where it had none.
+- **Five documents' `languages`, and nothing else in them**: with Engram in the better half by
+  Effort, one layout leaves each language's list for it: Gallium (English, now none, so the field
+  is gone), Sturdy (Portuguese), APTv3 (Spanish), Focal (Italian) and Hands Down Neu (German).
+- **No report**: Engram is in none of the fixture reports, and every other document is byte for
+  byte the same.
+
+## Fortieth re-baseline: the Layouts Doc's SFB is a share of the letters typed
 
 The Doc took its SFB from Genkey, which divides by the characters on the layout's keys, in practice
 the letters typed, with no space (`docs/research/sfb-bands.md`). The Layouts Doc preset divided by
