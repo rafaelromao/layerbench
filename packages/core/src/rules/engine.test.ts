@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import { analyze } from '../analysis/analyze.js';
 import { structureHash } from '../analysis/hash.js';
+import { analysisRun, DEFAULT_SETTINGS, loadText } from '../analysis/settings.js';
+import { nodeCorpusLoader } from '../corpus/node-loader.js';
 import { normalizeText } from '../corpus/normalize.js';
 import { FIXTURE_EN, FIXTURE_PT } from '../fixtures/index.js';
+import { corporaRoot } from '../golden/paths.js';
 import { compileLayout } from '../layout/compile.js';
 import type { Binding, Layout } from '../layout/types.js';
-import { bundledLayout, CLASSIC_LAYOUTS } from '../layouts/index.js';
+import { BUNDLED_LAYOUTS, bundledLayout, CLASSIC_LAYOUTS } from '../layouts/index.js';
 import { SHAPES } from '../presses/press-log.js';
 import { simulate } from '../sim/resolver.js';
 import { classifyBand, humanBand } from './bands.js';
@@ -12,7 +16,7 @@ import { BANDS, catalogRules, SFB_ABOVE_SCALE, SFB_LAST_BOUND, sfbWhere } from '
 import { evaluate, evaluateFocus } from './engine.js';
 import { cyanophage, getPreset, layoutsDoc } from './presets.js';
 import { parseRuleSet, ruleSetFromJson, ruleSetToJson } from './serialize.js';
-import type { RuleSet } from './types.js';
+import type { Rule, RuleSet } from './types.js';
 
 const OPTS = { caseMode: 'fold', crossWord: 'reset' } as const;
 const text = `${FIXTURE_EN} ${FIXTURE_PT}`;
@@ -248,9 +252,8 @@ describe('rules engine', () => {
       ...rs,
       globals: { ...rs.globals, universe: u },
     });
-    // The same-finger bigrams themselves, counted over bigrams by the Doc.
-    const sfbs =
-      (sfbOf(layoutsDoc()) / 100) * sim.tables.presses.ngrams('no_space', 'bigram').total;
+    // The same-finger bigrams themselves: the Doc's SFB is a share of the letters typed.
+    const sfbs = (sfbOf(layoutsDoc()) / 100) * st.symbols;
     expect(sfbs).toBeGreaterThan(0);
 
     // Without space: every other keystroke, plus one space per word.
@@ -258,9 +261,7 @@ describe('rules engine', () => {
     expect(without).toBeCloseTo((sfbs / (st.keystrokes - st.space_presses + st.words)) * 100, 9);
 
     // With space: the space presses are keystrokes already, and nothing is added.
-    const withSfbs =
-      (sfbOf(universe(layoutsDoc(), 'with_space')) / 100) *
-      sim.tables.presses.ngrams('with_space', 'bigram').total;
+    const withSfbs = (sfbOf(universe(layoutsDoc(), 'with_space')) / 100) * st.symbols;
     const withSpace = sfbOf(universe(cyanophage(), 'with_space'));
     expect(withSpace).toBeCloseTo((withSfbs / st.keystrokes) * 100, 9);
   });
@@ -310,7 +311,11 @@ describe('rules engine', () => {
     const pairs = m.presses.ngrams('no_space', 'bigram');
     expect(pairs.total).toBeGreaterThan(pairs.textTotal);
     expect(m.presses.ngrams('no_space', 'unigram').textTotal).toBe(m.stats.symbols);
-    const sfb = catalogRules().find((r) => r.id === 'sfb')!;
+    // SFB itself is a share of the letters, below; this is the share of pairs a rule gets by default.
+    const sfb = {
+      ...catalogRules().find((r) => r.id === 'sfb')!,
+      aggregate: 'percent_of_ngrams' as const,
+    };
     const counting: RuleSet = {
       ...layoutsDoc(),
       rules: [sfb, { ...sfb, id: 'sfb_count', aggregate: 'count' }],
@@ -381,7 +386,7 @@ describe('rules engine', () => {
     const sfb = back.ruleSet.rules.find((r) => r.id === 'sfb')!;
     expect(sfb.where).toEqual(sfbWhere());
     expect(sfb.ngram).toEqual({ n: 2, skip: 0 });
-    expect(sfb.aggregate).toBe('percent_of_ngrams');
+    expect(sfb.aggregate).toBe('percent_of_symbols');
     expect(sfb.bands?.direction).toBe('lower_is_better');
   });
 
@@ -428,6 +433,219 @@ describe('rules engine', () => {
     expect(structureHash(bundledLayout('qwerty')!)).toBe(structureHash(layout));
     expect(structureHash(bundledLayout('romak')!)).not.toBe(structureHash(layout));
   });
+});
+
+describe('SFB as a share of the letters typed', () => {
+  const countOf = (rule: Rule): Rule => ({ ...rule, id: 'sfb_count', aggregate: 'count' });
+  const sfbRule = catalogRules().find((r) => r.id === 'sfb')!;
+  const universeOf = (rs: RuleSet, universe: 'no_space' | 'with_space'): RuleSet => ({
+    ...rs,
+    globals: { ...rs.globals, universe },
+  });
+
+  /** The Doc's SFB and its count, on a text typed on a bundled layout, in one universe. */
+  function sfbOn(
+    layoutId: string,
+    universe: 'no_space' | 'with_space',
+    opts: { caseMode: 'fold' | 'model'; crossWord: 'reset' } = OPTS,
+    from = text,
+  ) {
+    const compiled = compileLayout(bundledLayout(layoutId)!);
+    const sim = simulate(compiled, normalizeText(from, opts), opts);
+    const rules: RuleSet = {
+      ...layoutsDoc(),
+      rules: [
+        sfbRule,
+        countOf(sfbRule),
+        { ...sfbRule, id: 'sfb_pairs', aggregate: 'percent_of_ngrams' },
+      ],
+    };
+    const { results } = evaluate(sim.tables, compiled, universeOf(rules, universe));
+    const value = (id: string) => results.find((r) => r.id === id)!.value as number;
+    return {
+      sim,
+      results,
+      share: value('sfb'),
+      count: value('sfb_count'),
+      pairs: value('sfb_pairs'),
+    };
+  }
+
+  it('is a share of symbols in the Layouts Doc preset, and of keystrokes in the cyanophage-like one', () => {
+    expect(layoutsDoc().rules.find((r) => r.id === 'sfb')?.aggregate).toBe('percent_of_symbols');
+    // The cyanophage-like preset keeps dividing by keystrokes, with a space per word.
+    expect(cyanophage().rules.find((r) => r.id === 'sfb')?.aggregate).toBe('percent_of_keystrokes');
+  });
+
+  it('gives SFB ≥ 2 rows the same letters, so it reads as a part of SFB', () => {
+    const part = catalogRules().find((r) => r.id === 'sfb_2u')!;
+    expect(part.aggregate).toBe('percent_of_symbols');
+    expect(cyanophage().rules.find((r) => r.id === 'sfb_2u')?.aggregate).toBe(
+      'percent_of_keystrokes',
+    );
+    const compiled = compileLayout(bundledLayout('qwerty')!);
+    const sim = simulate(compiled, normalizeText(text, OPTS), OPTS);
+    const set: RuleSet = {
+      ...layoutsDoc(),
+      rules: [sfbRule, part, countOf(sfbRule), { ...countOf(part), id: 'sfb_2u_count' }],
+    };
+    const [share, partShare, count, partCount] = evaluate(sim.tables, compiled, set).results.map(
+      (r) => r.value as number,
+    );
+    expect(partShare).toBeGreaterThan(0);
+    expect(partShare).toBeLessThan(share);
+    // Over the same letters, the two shares are in the ratio of their counts.
+    expect(partShare / share).toBeCloseTo(partCount / count, 9);
+  });
+
+  it('divides by the text’s symbols, without the space, whether space is counted or not', () => {
+    for (const id of ['qwerty', 'magic-romak']) {
+      const without = sfbOn(id, 'no_space');
+      const withSpace = sfbOn(id, 'with_space');
+      const symbols = without.sim.tables.stats.symbols;
+      expect(symbols).toBeGreaterThan(0);
+      expect(without.share, id).toBeCloseTo((without.count / symbols) * 100, 9);
+      // Counting the space bar adds same-finger pairs to the count; what they are a share of is
+      // the letters still, not the letters and the spaces.
+      expect(withSpace.share, id).toBeCloseTo((withSpace.count / symbols) * 100, 9);
+      expect(withSpace.count, id).toBeGreaterThanOrEqual(without.count);
+    }
+  });
+
+  it('divides by the same symbols when capitals go through Shift', () => {
+    const capitals =
+      'The Quick Brown Fox Jumps Over The Lazy Dog. Pack My Box With Five Dozen Jugs.';
+    const modelled = sfbOn(
+      'magic-romak',
+      'no_space',
+      { caseMode: 'model', crossWord: 'reset' },
+      capitals,
+    );
+    const folded = sfbOn('magic-romak', 'no_space', OPTS, capitals);
+    const symbols = modelled.sim.tables.stats.symbols;
+    expect(symbols).toBe(folded.sim.tables.stats.symbols);
+    expect(modelled.share).toBeCloseTo((modelled.count / symbols) * 100, 9);
+    // The Shift presses are in the stream: they make some pairs and break others, so the count may
+    // go either way. The letters it is a share of do not.
+    expect(modelled.count).not.toBe(folded.count);
+  });
+
+  it('is the share of pairs times the pairs the text has per letter, on every bundled layout', () => {
+    const sample = 5_000;
+    const opts = { ...OPTS };
+    const stream = normalizeText(`${FIXTURE_EN} ${FIXTURE_PT}`, opts);
+    for (const layout of BUNDLED_LAYOUTS) {
+      const compiled = compileLayout(layout);
+      const sim = simulate(compiled, stream, { ...opts, maxSymbols: sample });
+      const rules: RuleSet = {
+        ...layoutsDoc(),
+        rules: [sfbRule, { ...sfbRule, id: 'sfb_pairs', aggregate: 'percent_of_ngrams' }],
+      };
+      const { results } = evaluate(sim.tables, compiled, rules);
+      const [share, pairs] = results.map((r) => r.value as number);
+      const perLetter =
+        sim.tables.presses.ngrams('no_space', 'bigram').textTotal /
+        sim.tables.presses.ngrams('no_space', 'unigram').textTotal;
+      expect(share, layout.id).toBeCloseTo(pairs * perLetter, 9);
+    }
+  });
+
+  it('lists items and splits the keys’ parts over the same letters as its value', () => {
+    for (const id of ['qwerty', 'magic-romak']) {
+      for (const universe of ['no_space', 'with_space'] as const) {
+        const { results, sim, share } = sfbOn(id, universe);
+        const symbols = sim.tables.stats.symbols;
+        const sfb = results.find((r) => r.id === 'sfb')!;
+        const where = `${id}, ${universe}`;
+        expect(sfb.value, where).toBeCloseTo(share, 9);
+        expect(sfb.items.length, where).toBeGreaterThan(0);
+        // Each item is its count over the letters, the way the value is, and what was listed can
+        // only add up to the value.
+        for (const item of sfb.items) {
+          expect(item.percent, `${where} ${item.label}`).toBeCloseTo(
+            ((item.count as number) / symbols) * 100,
+            9,
+          );
+          // What was pressed after a pair that ends on a layer key adds up to the pair.
+          if (item.then) {
+            const then = item.then.reduce((a, n) => a + n.percent, 0);
+            expect(then, `${where} ${item.label}`).toBeCloseTo(item.percent as number, 9);
+          }
+        }
+        const listed = sfb.items.reduce((a, i) => a + (i.percent ?? 0), 0);
+        expect(listed, where).toBeLessThanOrEqual((sfb.value as number) + 1e-9);
+        // The keys' parts add up to the value through the scale the rule gives them.
+        const parts = Object.values(sfb.per_key).reduce((a, b) => a + b, 0);
+        expect(parts * (sfb.key_scale as number), where).toBeCloseTo(sfb.value as number, 9);
+        expect(sfb.key_scale, where).toBeCloseTo(100 / symbols, 12);
+      }
+    }
+  });
+
+  it('is what a closer look at a key lists, in the same percents', () => {
+    const compiled = compileLayout(bundledLayout('qwerty')!);
+    const sim = simulate(compiled, normalizeText(text, OPTS), OPTS);
+    const symbols = sim.tables.stats.symbols;
+    const set = { ...layoutsDoc(), rules: [sfbRule] };
+    const sfb = evaluate(sim.tables, compiled, set).results[0];
+    const top = sfb.items[0];
+    const focus = evaluateFocus(sim.tables, compiled, set, {
+      key: top.keys[0] as number,
+      layer: top.layers?.[0] ?? 0,
+    });
+    const listed = focus.rules
+      .find((r) => r.id === 'sfb')!
+      .items.find((i) => i.label === top.label)!;
+    expect(listed.percent).toBeCloseTo(top.percent as number, 9);
+    // Not only the same as the card: the share of the letters the count is.
+    expect(listed.percent).toBeCloseTo(((listed.count as number) / symbols) * 100, 9);
+  });
+
+  it('gives an empty text no share at all', () => {
+    const compiled = compileLayout(bundledLayout('qwerty')!);
+    const sim = simulate(compiled, normalizeText('', OPTS), OPTS);
+    const sfb = evaluate(sim.tables, compiled, layoutsDoc()).results.find((r) => r.id === 'sfb')!;
+    expect(sfb.value).toBe(0);
+  });
+});
+
+describe('the Layouts Doc’s SFB on English news, as Genkey would divide it', () => {
+  // The first 100,000 symbols of `en-general`, the Library's settings: fold, no space. The research
+  // note (docs/research/sfb-bands.md) has the measurement. The numbers are the Doc's definition of
+  // SFB; the Doc puts Colemak-DH at 1.177, mid high, on another text.
+  const loader = nodeCorpusLoader(corporaRoot());
+  const LIBRARY = { ...DEFAULT_SETTINGS, corpus: 'en-general', caseMode: 'fold' } as const;
+
+  async function onLibrary(layoutId: string, rules: RuleSet, universe: 'no_space' | 'with_space') {
+    const settings = { ...LIBRARY, rules, universe };
+    const run = analysisRun(settings, await loadText(settings, (id) => loader.load(id)));
+    return analyze(bundledLayout(layoutId)!, run.stream, run.options);
+  }
+
+  it.each([
+    ['magic-romak', 1.348, 1.6935, 'mid_high'],
+    ['colemak-dh', 1.173, 1.4736, 'mid_high'],
+    ['qwerty', 5.269, 6.6193, 'above_mid_high'],
+  ] as const)(
+    '%s reads %s, and %s as a share of bigrams',
+    async (id, letters, bigrams, band) => {
+      const doc = await onLibrary(id, layoutsDoc(), 'no_space');
+      const sfb = doc.results.find((r) => r.id === 'sfb')!;
+      expect(sfb.value as number).toBeCloseTo(letters, 3);
+      expect(sfb.band.label).toBe(band);
+      // The share of bigrams the preset gave before: 1 / 0.796 of the Doc's, for any layout.
+      const old = {
+        ...layoutsDoc(),
+        rules: layoutsDoc().rules.map((r) =>
+          r.id === 'sfb' ? { ...r, aggregate: 'percent_of_ngrams' as const } : r,
+        ),
+      };
+      const before = (await onLibrary(id, old, 'no_space')).results.find((r) => r.id === 'sfb')!;
+      expect(before.value as number).toBeCloseTo(bigrams, 3);
+      expect((sfb.value as number) / (before.value as number)).toBeCloseTo(0.796, 3);
+    },
+    60_000,
+  );
 });
 
 describe('what a key that reaches a layer was pressed for', () => {

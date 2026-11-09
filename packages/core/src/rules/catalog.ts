@@ -164,7 +164,7 @@ export function bigramRules(): Rule[] {
       description: 'Two consecutive keys pressed by the same finger (repeats excluded).',
       ngram: { n: 2, skip: 0 },
       where: sfbWhere(),
-      aggregate: 'percent_of_ngrams',
+      aggregate: 'percent_of_symbols',
       bands: BANDS.sfb,
       score: { weight: 3.0 },
     }),
@@ -178,7 +178,8 @@ export function bigramRules(): Rule[] {
       description: 'Same finger bigrams jumping over the home row.',
       ngram: { n: 2, skip: 0 },
       where: { all: [sfbWhere(), { row_delta: { abs_min: 2 } }] },
-      aggregate: 'percent_of_ngrams',
+      // A part of SFB, so a share of the same thing: the two cards read in one unit.
+      aggregate: 'percent_of_symbols',
     }),
     rule('repeats', 'Repeated keys', 'bigram', {
       description: 'The same key pressed twice in a row.',

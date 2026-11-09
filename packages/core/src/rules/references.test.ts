@@ -65,6 +65,13 @@ describe('rule references', () => {
     expect(ruleReferences('sfb', 'cyanophage')).toEqual(ruleReferences('sfb'));
   });
 
+  it('cites Genkey for the letters SFB is a share of, under the Layouts Doc preset only', () => {
+    const doc = ruleReferences('sfb', 'layouts_doc');
+    expect(doc[0].url).toContain('semilin/genkey');
+    expect(doc.slice(1)).toEqual(ruleReferences('sfb'));
+    expect(ruleReferences('sfb').some((r) => r.url.includes('genkey'))).toBe(false);
+  });
+
   it('links only to headings the glossary actually has', () => {
     const path = fileURLToPath(new URL('../../../../docs/METRICS.md', import.meta.url));
     const headings = slugs(readFileSync(path, 'utf8'));
