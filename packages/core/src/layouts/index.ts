@@ -6,7 +6,7 @@ import { CLASSIC_DEFS, type ClassicDef, classicLayout } from './classic.js';
 import { DOCUMENT_LAYOUTS } from './documents.js';
 import LANGUAGES from './languages.json';
 import { SMALL_DEFS } from './small.js';
-import { bringsOwnLayers, withDefaultLayers, withHomeRowMods } from './templates.js';
+import { withDefaultLayers, withHomeRowMods } from './templates.js';
 
 export { BUNDLED_IDS, DEFAULT_LAYOUT_ID } from './bundled-ids.js';
 export { CLASSIC_DEFS, CLASSIC_LAYOUTS, classicLayout } from './classic.js';
@@ -49,14 +49,14 @@ export const SMALL_LAYOUTS: Layout[] = SMALL_DEFS.map(classicLayout);
 /**
  * A layout written in code, built from its definition: the layout its author designed, with the
  * home row mods its author's keymap holds, where its definition gives them. Only a Special layout
- * takes the default layers, which keep every key it has and reach Accents on one combo; one whose
- * author defines layers of its own keeps those.
+ * whose author defines no layer past its letters takes the default layers, which keep every key it
+ * has and reach Accents on one combo; one whose definition writes layers keeps those.
  */
 function built(def: ClassicDef): Layout {
   const layout = classicLayout(def);
   const g = layout.geometry;
   const withLayers =
-    'preset' in g && !bringsOwnLayers(layout) && layoutCategory(layout) === 'special'
+    'preset' in g && !def.layers && layoutCategory(layout) === 'special'
       ? withDefaultLayers(layout, getGeometryPreset(g.preset))
       : layout;
   return def.homeRowMods ? withHomeRowMods(withLayers, def.homeRowMods) : withLayers;

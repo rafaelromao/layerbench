@@ -21,6 +21,8 @@ const magicRomak = bundledLayout('magic-romak')!;
 
 const romak = bundledLayout('romak')!;
 
+const qwerty = bundledLayout('qwerty')!;
+
 const opts = { caseMode: 'fold' as const, crossWord: 'reset' as const };
 
 /** A layout with the usual home row mods, for the tests that type a capital with one. */
@@ -109,8 +111,8 @@ describe('Romak acceptance traces', () => {
     expect(t.keys).toEqual(['R0', 'LTM', 'RHM', 'LHR', 'LHP', 'RTM']);
   });
 
-  it('Romak types accents and plain letters, given the default layers', () => {
-    const t = trace(withNewLayoutDefaults(romak, getGeometryPreset('3x5+2')), 'não é');
+  it('a layout of letters types accents and plain letters, given the default layers', () => {
+    const t = trace(withNewLayoutDefaults(qwerty, getGeometryPreset('3x5+2')), 'não é');
     expect(t.out).toBe('não é');
   });
 });

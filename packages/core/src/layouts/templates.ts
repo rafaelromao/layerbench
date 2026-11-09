@@ -293,7 +293,8 @@ export const DEFAULT_LAYER_ID_LIST: readonly string[] = Object.values(DEFAULT_LA
  * layers of its own in place of them: its author's Numbers or Symbols, by the ids the default layers
  * have. Such a layout gets none of the default layers, nor any key to reach them; what its author's
  * layers do not type, it does not type. Once built, every layout has layers of those ids: whose
- * they are, `hasDefaultLayers` tells.
+ * they are, `hasDefaultLayers` tells. A bundled layout whose layers have other ids, as Romak's
+ * Alpha 2 does, is kept from the default layers by `built`, which looks at its definition's `layers`.
  */
 export function bringsOwnLayers(layout: Pick<Layout, 'layers'>): boolean {
   return layout.layers.some((l) => DEFAULT_LAYER_ID_LIST.includes(l.id));
@@ -662,7 +663,7 @@ function withLeftOver(
 /**
  * A layout given the default layers, keeping every key it has: Numbers, Symbols, Extras and Accents
  * after its own layers, and the keys that reach them, as on a new layout. The inner thumbs hold
- * them, as on Romak: the left one Numbers and the right one Symbols, each still typing what it
+ * them, as on Magic Romak: the left one Numbers and the right one Symbols, each still typing what it
  * typed. On Numbers the Symbols thumb taps space, and `0` goes on another thumb of its hand. Where
  * there is Extras, the Numbers thumb holds Numbers on Symbols too, so holding both inner thumbs
  * brings Extras on whichever goes down first. Accents is reached the same way on every layout, by

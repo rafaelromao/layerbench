@@ -20,14 +20,16 @@ rule here moves a key, and keep `templates.test.ts` asserting each rule.
   `small.ts`) writes what its source (its `link`, its author's keymap or firmware) publishes: the
   letters and marks of the base layer, the thumbs (a space key on the outer left thumb where the
   source leaves them to a space bar), the combos, and the layers the author's keymap defines past
-  the letters. Magic Romak, Magic Sturdy, Enthium, Hands Down Gold, Promethium and Vibranium, T-34,
-  Finch, Cem Aksoylar's Colemak-DH and Ben Vallack Piano define layers: they get no default layer
-  and no Accents combo. Numbers and Symbols are written in `layers` by the ids `num` and `sym`
+  the letters. Romak, Magic Romak, Magic Sturdy, Enthium, Hands Down Gold, Promethium and
+  Vibranium, T-34, Finch, Cem Aksoylar's Colemak-DH and Ben Vallack Piano define layers: a
+  definition that writes `layers` gets no default layer and no Accents combo (`built` in
+  `layouts/index.ts`). Numbers and Symbols are written in `layers` by the ids `num` and `sym`
   (`bringsOwnLayers`, which `withDefaultLayers` checks), the keys that hold them in `holds`, and the
   author's combos for symbols, digits and accents in `combos`; `drawn` in `small.ts` lays a layer
   out as the author draws it. Copy only what the keymap types, on the keys the board has: what the
   author's design lacks, the layout cannot type, left for an edit in the app, and `templates.test.ts`
-  pins it (`UNTYPED` for a layout with layers, `TYPES` for one with none, and by language `LACKS`).
+  pins it (`UNTYPED` for a layout with Numbers or Symbols, `TYPES` for one with neither, and by
+  language `LACKS`).
   Keys that type nothing the analysis counts, holds onto layers that type nothing, a toggle to a
   layer a hold reaches too, modifiers held on a layer's keys and dead keys the analysis cannot
   compose stay out. Their layers count toward their category, as any layer of their own
@@ -39,6 +41,15 @@ rule here moves a key, and keep `templates.test.ts` asserting each rule.
   publishes the rest of the keymap outside its repository. The guide lists them all
   ([docs/guide/editing.md](docs/guide/editing.md#layouts-with-their-authors-layers)).
   No code singles a layout out: each uses `ClassicDef` fields any layout may use.
+  - Romak models its author's write-up (rafaelromao.github.io/romak, `docs/index.md`), with
+    `ClassicDef` fields other layouts use too: `rows`, `thumbs`, `special`, `layers`, `base` and
+    `repeatPolicy`. Alpha 1 is its 3x5 block, and its thumbs are Repeat, space, a one-shot Alpha 2 and
+    a one-shot Shift (`sk LSHIFT`, which `classicLayout` makes `keys.shift`). Alpha 2 has the accents,
+    `qu` (a macro) and `ç`, a macro that leaves the Ç extension on for the next key, and `'` `_` `_` `'`
+    on its thumbs; the Ç extension has `ão` and `ões` as macros and `ã` and `õ`. The write-up draws no
+    Numbers, Symbols, combo or dead key for 34 keys, and no `à`, so Romak has none of them and
+    Portuguese lacks `à` (`LACKS`). Its macros make it Special. A test names each key
+    (`Romak 34` in `layouts.test.ts`).
   - Magic Romak models its author's keymap (github.com/rafaelromao/keyboards), which has neither
     Extras nor Accents, and is built on the keymap-drawer file its author keeps for it
     (`packages/core/fixtures/romak-keymap-drawer.yaml`, a copy of `docs/img/diagrams/keymap-drawer/

@@ -123,11 +123,58 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     id: 'romak',
     name: 'Romak',
     author: 'Rafael Romão',
+    // His write-up says it is built for Portuguese and English users.
+    madeFor: ['en', 'pt'],
     base: { id: 'alpha1', name: 'Alpha 1' },
-    // Alpha 1 of the author's keymap (github.com/rafaelromao/keyboards) on thirty-four keys: Magic
-    // Romak's, filled out to the outer and inner columns.
+    // Romak 34 as its author writes it up (rafaelromao.github.io/romak, `docs/index.md`): Alpha 1,
+    // a second alpha layer for the accents, `qu` and `ç`, and the Ç extension, a layer for the key
+    // after `ç`. The thumbs are Repeat, space, Alpha 2 for the next key and a one-shot Shift. It
+    // defines no Numbers or Symbols.
     rows: 'q b m g k x l o u ;\nd n s t w z r a e i\ny f c p v j h , . /',
-    description: "Romak's Alpha 1 on 34 keys (3x5+2): one alpha layer.",
+    thumbs: '⟲ space alpha2 shift',
+    special: {
+      '⟲': REPEAT,
+      alpha2: { kind: 'sl', layer: 'alpha2' },
+      shift: { kind: 'sk', mod: 'LSHIFT' },
+    },
+    layers: [
+      {
+        id: 'alpha2',
+        name: 'Alpha 2',
+        byKey: {
+          LTM: { kind: 'macro', symbols: 'qu' },
+          RTI: 'ô',
+          RTM: 'ó',
+          RTR: 'ú',
+          RHI: 'ã',
+          RHM: 'á',
+          RHR: 'é',
+          RHP: 'í',
+          // Typing `ç` leaves the Ç extension on for the next key.
+          LBM: { kind: 'macro', symbols: 'ç', then: [{ kind: 'sl', layer: 'ccedil' }] },
+          RBI: 'õ',
+          RBM: 'â',
+          RBR: 'ê',
+          L1: "'",
+          L0: '_',
+          R0: '_',
+          R1: "'",
+        },
+      },
+      {
+        id: 'ccedil',
+        name: 'Ç extension',
+        byKey: {
+          LHI: { kind: 'macro', symbols: 'ão' },
+          LBI: { kind: 'macro', symbols: 'ões' },
+          RHI: 'ã',
+          RBI: 'õ',
+        },
+      },
+    ],
+    repeatPolicy: { doubledLetters: 'repeatKey' },
+    description:
+      'Romak 34 (3x5+2) for Portuguese and English: a repeat key, Alpha 2 for the accents, qu and ç, and the Ç extension.',
     link: 'https://rafaelromao.github.io/romak',
   },
   {
