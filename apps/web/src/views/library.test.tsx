@@ -443,10 +443,10 @@ describe('Ranking layouts', () => {
       box(card, metric).querySelector('.lb-band');
 
     const [best, worst] = cards();
-    // An Effort of 400 is past the third step, 386, and not the fourth's, 429: mid low, amber.
-    expect(badge(best, 'Effort')?.textContent).toBe('mid low');
-    expect(badge(best, 'Effort')).toHaveClass('badge-warning');
-    expect(box(best, 'Effort')).toHaveClass('border-warning/60');
+    // An Effort of 400 is the first step's last number, min up to 400, green; 1000 is past 900, max.
+    expect(badge(best, 'Effort')?.textContent).toBe('min');
+    expect(badge(best, 'Effort')).toHaveClass('badge-success');
+    expect(box(best, 'Effort')).toHaveClass('border-success/60');
     // An SFB of 4% is past the ruler's last bound, 3.425.
     expect(badge(best, 'SFB')?.textContent).toBe('max');
     expect(box(best, 'SFB')).toHaveClass('border-error/60');
@@ -479,7 +479,7 @@ describe('Ranking layouts', () => {
         expect.stringMatching(/\/guide\/analyzing#the-cyanophage-like-rule-set$/),
       );
     }
-    // An SFB of 2.0 is past his ramp's last step, 1.881; an Effort of 200 is below the first, 300.
+    // An SFB of 2.0 is past his ramp's last step, 1.881; an Effort of 200 is below the first, 400.
     const box = (metric: 'Effort' | 'SFB') =>
       within(best).getByText(metric, { selector: 'dt' }).parentElement;
     expect(box('SFB')?.querySelector('.lb-band')?.textContent).toBe('max');

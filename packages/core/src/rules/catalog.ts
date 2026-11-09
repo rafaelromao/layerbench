@@ -76,11 +76,12 @@ export const BANDS: Record<string, Bands> = {
     labels: ['even', 'leans', 'heavy'],
   },
   /**
-   * LayerBench's own, on the Doc's nine steps: min up to 300 and max above 600, the seven steps
-   * between them equal, 300 / 7 = 42.9 apiece, as the steps were equal before (20 apart from 440 to
-   * 580), rounded to whole numbers. Colemak's 630, Dvorak and Qwerty are max.
+   * LayerBench's own, on the Doc's nine steps: min up to 400 and max above 900, the seven steps
+   * between them equal, 500 / 7 = 71.4 apiece, as the steps were equal before, rounded to whole
+   * numbers. The bundled layouts run from Magic Romak's 353 to Qwerty's 1237: Colemak's 630 is mid,
+   * Dvorak's 756 mid high, and only Qwerty is max.
    */
-  effort: { direction: 'lower_is_better', bounds: [300, 343, 386, 429, 471, 514, 557, 600] },
+  effort: { direction: 'lower_is_better', bounds: [400, 471, 543, 614, 686, 757, 829, 900] },
 };
 
 const NO_THUMBS: Predicate = { any_thumb: false };

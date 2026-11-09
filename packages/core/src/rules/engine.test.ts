@@ -332,31 +332,31 @@ describe('rules engine', () => {
   });
 
   it('bands Effort on all nine steps, min to max, lower being better', () => {
-    // Min up to 300 and max above 600, the steps between them equal.
-    expect(classifyBand(290, BANDS.effort)).toMatchObject({ label: 'min', quality: 'good' });
-    expect(classifyBand(300, BANDS.effort).label).toBe('min');
-    expect(classifyBand(301, BANDS.effort).label).toBe('very_low');
-    expect(classifyBand(500, BANDS.effort)).toMatchObject({ label: 'mid_high', quality: 'ok' });
-    expect(classifyBand(600, BANDS.effort).label).toBe('very_high');
-    expect(classifyBand(601, BANDS.effort).label).toBe('max');
+    // Min up to 400 and max above 900, the steps between them equal.
+    expect(classifyBand(353, BANDS.effort)).toMatchObject({ label: 'min', quality: 'good' });
+    expect(classifyBand(400, BANDS.effort).label).toBe('min');
+    expect(classifyBand(401, BANDS.effort).label).toBe('very_low');
+    expect(classifyBand(630, BANDS.effort)).toMatchObject({ label: 'mid', quality: 'ok' });
+    expect(classifyBand(900, BANDS.effort).label).toBe('very_high');
+    expect(classifyBand(901, BANDS.effort).label).toBe('max');
     expect(classifyBand(1237, BANDS.effort)).toMatchObject({ label: 'max', quality: 'bad' });
     BANDS.effort.bounds.forEach((bound, i) => {
-      expect(Math.abs(bound - (300 + (i * 300) / 7)), `bound ${i + 1}`).toBeLessThanOrEqual(0.5);
+      expect(Math.abs(bound - (400 + (i * 500) / 7)), `bound ${i + 1}`).toBeLessThanOrEqual(0.5);
     });
     // Every preset scores Effort with the catalog's rule, so every one carries its bands, and the
     // names and colours of every step are the same in both: cyanophage's Effort has no ruler of his.
     const effortSteps = [
-      [300, 'min', 'good'],
-      [343, 'very_low', 'good'],
-      [386, 'low', 'good'],
-      [429, 'mid_low', 'ok'],
-      [471, 'mid', 'ok'],
-      [514, 'mid_high', 'ok'],
-      [557, 'high', 'bad'],
-      [600, 'very_high', 'bad'],
-      [601, 'max', 'bad'],
+      [400, 'min', 'good'],
+      [471, 'very_low', 'good'],
+      [543, 'low', 'good'],
+      [614, 'mid_low', 'ok'],
+      [686, 'mid', 'ok'],
+      [757, 'mid_high', 'ok'],
+      [829, 'high', 'bad'],
+      [900, 'very_high', 'bad'],
+      [901, 'max', 'bad'],
     ] as const;
-    expect(BANDS.effort.bounds).toEqual([300, 343, 386, 429, 471, 514, 557, 600]);
+    expect(BANDS.effort.bounds).toEqual([400, 471, 543, 614, 686, 757, 829, 900]);
     for (const preset of [layoutsDoc(), cyanophage()]) {
       const bands = preset.rules.find((r) => r.id === 'effort')?.bands;
       expect(bands, preset.id).toEqual(BANDS.effort);

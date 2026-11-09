@@ -345,21 +345,22 @@ values. SFS is not counted as the Doc's: it is a share of the text's skipgrams, 
 where Genkey divides by the letters and counts skips of up to nine keys, each half as much as the one
 before. The glossary has the figures.
 
-**Effort.** LayerBench's own, on the same nine steps: *min* up to 300 and *max* above 600, the seven
-steps between them equal (42.9 apiece, rounded to whole numbers), as they were equal before. Colemak's
-630, Dvorak and Qwerty are *max*.
+**Effort.** LayerBench's own, on the same nine steps: *min* up to 400 and *max* above 900, the seven
+steps between them equal (71.4 apiece, rounded to whole numbers), as they were equal before. The
+layouts that come with the app run from Magic Romak's 353 to Qwerty's 1237: Colemak, at 630, is *mid*,
+Dvorak, at 756, *mid high*, and only Qwerty is *max*.
 
 | Step | Effort up to | Colour |
 |---|---|---|
-| min | 300 | green |
-| very low | 343 | green |
-| low | 386 | green |
-| mid low | 429 | amber |
-| mid | 471 | amber |
-| mid high | 514 | amber |
-| high | 557 | red |
-| very high | 600 | red |
-| max | above 600 | red |
+| min | 400 | green |
+| very low | 471 | green |
+| low | 543 | green |
+| mid low | 614 | amber |
+| mid | 686 | amber |
+| mid high | 757 | amber |
+| high | 829 | red |
+| very high | 900 | red |
+| max | above 900 | red |
 
 ### The cyanophage-like rule set
 
