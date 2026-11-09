@@ -45,20 +45,11 @@ const EXPECTED: Record<LayoutCategory, string[]> = {
     'ben-vallack-piano',
     'bird',
     'caksoylar',
-  ],
-  thumb_alpha: [
-    'hands-down-neu',
-    'night',
-    'dusk',
-    'snth',
-    'nerps',
-    'engram',
-    'sunlight',
-    'aptmak',
-    'rsthd',
-  ],
-  standard: [
+    // Its Alpha 2 and Ç extension type `qu`, `ç`, `ão` and `ões` as macros.
     'romak',
+  ],
+  thumb_alpha: ['hands-down-neu', 'night', 'dusk', 'snth', 'engram', 'sunlight', 'aptmak', 'rsthd'],
+  standard: [
     'qwerty',
     'dvorak',
     'colemak',
@@ -66,6 +57,7 @@ const EXPECTED: Record<LayoutCategory, string[]> = {
     'graphite',
     'gallium',
     'canary',
+    'nerps',
     'sturdy',
     'aptv3',
     'recurva',

@@ -70,16 +70,16 @@ keeps are in `apps/web/src/auth/github-session.ts`. The server half is
 The layouts the app started with are written as data in `packages/core/src/layouts/` (`classic.ts`,
 `small.ts`), each as its author published it: the letters and marks of its base layer, its author's
 thumbs and the layers its author's keymap defines, as Magic Romak has its keymap's Numbers and
-Symbols. Bird, Nordrassil and Uno, whose sources define no layer that types, have the default
-Numbers, Symbols and Accents layers, keeping every key they have and reaching Accents on one combo
+Symbols and Romak its write-up's Alpha 2 and Ç extension. Bird, Nordrassil and Uno, whose sources
+define no layer that types, have the default Numbers, Symbols and Accents layers, keeping every key they have and reaching Accents on one combo
 (`withDefaultLayers` in `templates.ts`). Home row mods are held only where an author's keymap holds
 them: Magic Romak, Magic Sturdy, the three Hands Down with their own layers and Ben Vallack Piano,
 each key still typing what it did (`withHomeRowMods` in `templates.ts`). The languages each is for
 are measured, not chosen: a layout is for a language when it types every letter the language needs
 and its Effort on that language's news text is in the better half of all the bundled layouts', on
 the rules the Library ranks on (`lang/performance.ts`), unless its definition says its author made
-it for fewer (`madeFor`: Magic Romak, for English and Portuguese). `pnpm languages` measures them and
-writes them, to `layouts/languages.json` and into each document, and a test fails when they drift. A
+it for fewer (`madeFor`: Romak and Magic Romak, for English and Portuguese). `pnpm languages`
+measures them and writes them, to `layouts/languages.json` and into each document, and a test fails when they drift. A
 new one joins them as a document: a custom layout, added by pull request as it is saved. Merging
 the pull request is the approval, and the deploy that follows puts it in everyone's Library. A
 layout can also join with no deploy, as a community layout, by **Submit** in the app
