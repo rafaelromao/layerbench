@@ -13,8 +13,8 @@ space, the Layouts Doc rules, before and after the fix.
   them (`d` `t` `w` `s` `v` `n`), and `th`, on keys of one finger, was 3.10% of the bigrams.
 - **Now every key of the ten columns is on the finger its author gives it, and `z` and `q` are on
   thumbs.** They are the two keys of the eleventh column, past the right pinky, which a 34-key
-  split has no key for: where Nerps, Hands Down Neu and Sunlight put the keys of their eleventh
-  column too.
+  split has no key for: where Hands Down Neu and Sunlight put the keys of their eleventh column
+  too.
 - **SFB lands in the Doc's range.** 1.559 as the preset read it then (a share of bigrams), 1.241 as a
   share of letters, which the preset has given since #118, against the Doc's 1.242. The Doc does not say what its SFB is a share of; as a
   share of letters the bundled layouts that can be compared read within 0.15 of it (Colemak-DH

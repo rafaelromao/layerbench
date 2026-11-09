@@ -91,6 +91,109 @@ describe('Romak numbers and symbols', () => {
 });
 
 /**
+ * Romak 34 as its author writes it up (rafaelromao.github.io/romak, `docs/index.md`): Alpha 1, a
+ * second alpha layer for the accents, `qu` and `ç`, and the Ç extension, a one-shot layer for the key
+ * after `ç`; Repeat, space, Alpha 2 and a one-shot Shift on the thumbs. The write-up defines no
+ * Numbers or Symbols, so the layout has none.
+ */
+describe('Romak 34', () => {
+  const OPTS = { caseMode: 'fold', crossWord: 'reset' } as const;
+  const geometry = getGeometryPreset('3x5+2');
+  const compiled = compileLayout(romak);
+  const what = (b: Binding | undefined) => {
+    if (!b) return '·';
+    switch (b.kind) {
+      case 'kp':
+        return b.symbol === ' ' ? '␣' : (b.symbol ?? '·');
+      case 'macro':
+        return b.symbols ?? '·';
+      case 'key_repeat':
+        return '⟲';
+      case 'sl':
+        return `sl:${b.layer}`;
+      case 'sk':
+        return `sk:${b.mod}`;
+      default:
+        return b.kind;
+    }
+  };
+  /** A layer as the write-up draws it: three rows across both hands, then the thumbs. */
+  const drawn = (id: string) => {
+    const bindings = romak.layers.find((l) => l.id === id)?.bindings ?? {};
+    return [...geometry.textRows, geometry.textThumbs].map((row) =>
+      row.map((key) => what(bindings[key])).join(' '),
+    );
+  };
+  const keys = (text: string, extra: Partial<Parameters<typeof explain>[2]> = {}) =>
+    explain(compiled, text, { ...OPTS, ...extra })
+      .steps.filter((s) => s.kind !== 'hold_release')
+      .map((s) => s.key);
+
+  it('draws Alpha 1 as the write-up does, with its four thumbs', () => {
+    expect(drawn('alpha1')).toEqual([
+      'q b m g k x l o u ;',
+      'd n s t w z r a e i',
+      'y f c p v j h , . /',
+      '⟲ ␣ sl:alpha2 sk:LSHIFT',
+    ]);
+    expect(romak.keys).toEqual({ space: 'L0', shift: { key: 'R1', kind: 'sk' } });
+  });
+
+  it('draws Alpha 2 as the write-up does: the accents, qu and ç, and its thumbs', () => {
+    expect(drawn('alpha2')).toEqual([
+      '· · qu · · · ô ó ú ·',
+      '· · · · · · ã á é í',
+      '· · ç · · · õ â ê ·',
+      "' _ _ '",
+    ]);
+  });
+
+  it('draws the Ç extension on four keys, which typing ç leaves on for the next key', () => {
+    expect(drawn('ccedil')).toEqual([
+      '· · · · · · · · · ·',
+      '· · · ão · · ã · · ·',
+      '· · · ões · · õ · · ·',
+      '· · · ·',
+    ]);
+    expect(romak.layers.find((l) => l.id === 'alpha2')?.bindings.LBM).toEqual({
+      kind: 'macro',
+      symbols: 'ç',
+      then: [{ kind: 'sl', layer: 'ccedil' }],
+    });
+  });
+
+  it('is its letters and these layers alone: no Numbers, Symbols, Accents, combo or hold', () => {
+    expect(romak.layers.map((l) => l.id)).toEqual(['alpha1', 'alpha2', 'ccedil']);
+    expect(romak.combos ?? []).toEqual([]);
+    expect(romak.conditionalLayers ?? []).toEqual([]);
+    expect(
+      Object.values(romak.layers[0].bindings).some((b) => b.kind === 'hold_tap' || b.kind === 'lt'),
+    ).toBe(false);
+  });
+
+  it('is Special, by the macros of its second alpha layer', () => {
+    expect(layoutCategory(romak)).toBe('special');
+    expect(romak).toMatchObject({ id: 'romak', name: 'Romak' });
+  });
+
+  it('types an accent with Alpha 2 for the next key, and ação with ç and the ão macro', () => {
+    expect(keys('é')).toEqual(['R0', 'RHR']);
+    expect(keys('ação')).toEqual(['RHM', 'R0', 'LBM', 'LHI']);
+    expect(keys('ções')).toEqual(['R0', 'LBM', 'LBI']);
+    expect(keys('não é')).toEqual(['LHR', 'R0', 'RHI', 'RTM', 'L0', 'R0', 'RHR']);
+  });
+
+  it('types qu with one press of Alpha 2, and a doubled letter with Repeat', () => {
+    expect(keys('quando')).toEqual(['R0', 'LTM', 'RHM', 'LHR', 'LHP', 'RTM']);
+    expect(keys('hello')).toEqual(['RBI', 'RHR', 'RTI', 'L1', 'RTM']);
+  });
+
+  it('types a capital with its one-shot Shift', () => {
+    expect(keys('Ab', { caseMode: 'model' })).toEqual(['R1', 'RHM', 'LTR']);
+  });
+});
+
+/**
  * The small-board layouts lean on more than their letter blocks: chords, adaptive and repeat keys, a
  * second letter layer. A chord on the wrong keys, or an adaptive key that never fires, still types the
  * alphabet, so these hold each to what its source says.
@@ -267,7 +370,6 @@ describe('layouts as their authors designed them', () => {
         'nordrassil',
         'qwerty',
         'recurva',
-        'romak',
         'snth',
         'sturdy',
         'sunlight',
@@ -281,8 +383,6 @@ describe('layouts as their authors designed them', () => {
         .map((l) => l.id)
         .sort(),
     ).toEqual(['bird', 'nordrassil', 'uno']);
-    expect(layoutCategory(romak)).toBe('standard');
-    expect(romak).toMatchObject({ id: 'romak', name: 'Romak' });
   });
 
   it.each(alone.map((l) => [l.id ?? l.name, l] as const))(
@@ -308,17 +408,64 @@ describe('layouts as their authors designed them', () => {
       'graphite',
       'gallium',
       'canary',
+      'nerps',
       'sturdy',
       'aptv3',
       'recurva',
       'focal',
       'bird-30',
-      'romak',
     ]) {
       const layout = bundledLayout(id) as (typeof BUNDLED_LAYOUTS)[number];
       expect([id, thumbKeys(layout)]).toEqual([id, ['L1']]);
       expect(layout.layers[0].bindings.L1).toEqual({ kind: 'kp', symbol: ' ' });
     }
+  });
+
+  it("have the letters and marks their authors' sources draw, a key their source leaves empty empty", () => {
+    const COLUMNS = ['P', 'R', 'M', 'I', 'C'];
+    const rowOf = (layout: (typeof BUNDLED_LAYOUTS)[number], r: 'T' | 'H' | 'B') =>
+      [...COLUMNS.map((c) => `L${r}${c}`), ...[...COLUMNS].reverse().map((c) => `R${r}${c}`)]
+        .map((k) => {
+          const b = typed(layout.layers[0].bindings[k]);
+          return b?.kind === 'kp' ? b.symbol : '·';
+        })
+        .join(' ');
+    const SOURCES: Record<string, [string, string, string]> = {
+      // The Hands Down site's grid, whose eleventh column holds `z` and `j`: it has no `;`.
+      'hands-down-neu': ['w f m p v / . q " \'', 'r s n t b , a e i h', 'x c l d g - u o y k'],
+      // The grid on the author's site.
+      night: ['b f l k q p g o u .', 'n s h t m y c a e i', "x v j d z ' w / ; ,"],
+      // The author's own page: its last key is free, and holds `_`.
+      dusk: ["x f d p q j ' o u .", 'n s t c y m h a e i', 'b v k g w z l _ / ,'],
+      // Its ortho form: `'` is the right pinky key of the top row, and there is no `;`.
+      canary: ["w l y p b z f o u '", 'c r s t g m n e i a', 'q j v d k x h / , .'],
+      // The Layouts Doc's angle-mod rows, with `q` on the bottom row and no `-`.
+      nerps: ['x l d p v z k o u ;', 'n r t s g y h e i a', "j m c w q b f ' , ."],
+      // Its README draws no `q` or `z`: they are on the inner bottom keys, as cmini has them, and the
+      // pinky bottom keys have nothing.
+      aptmak: ["v w f p b j l u y '", 'r s t h k x n a i o', '· c g d q z m , . ·'],
+    };
+    for (const [id, rows] of Object.entries(SOURCES)) {
+      const layout = bundledLayout(id) as (typeof BUNDLED_LAYOUTS)[number];
+      expect([id, ...(['T', 'H', 'B'] as const).map((r) => rowOf(layout, r))]).toEqual([
+        id,
+        ...rows,
+      ]);
+    }
+  });
+
+  it("put Hands Down Neu's z and j, from its eleventh column, and Aptmak's e on thumbs", () => {
+    const thumbsOf = (id: string) => {
+      const layout = bundledLayout(id) as (typeof BUNDLED_LAYOUTS)[number];
+      return Object.fromEntries(
+        thumbKeys(layout).map((k) => {
+          const b = typed(layout.layers[0].bindings[k]);
+          return [k, b?.kind === 'kp' ? b.symbol : undefined];
+        }),
+      );
+    };
+    expect(thumbsOf('hands-down-neu')).toEqual({ L1: ' ', L0: 'z', R0: 'j' });
+    expect(thumbsOf('aptmak')).toEqual({ L1: ' ', L0: 'e' });
   });
 
   it('give Night and Dusk the thumbs their author draws: r left, space right, and Night its Shifts', () => {

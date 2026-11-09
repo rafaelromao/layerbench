@@ -101,8 +101,8 @@ Down, T-34 and Nordwind type them, and a layout of your own can start with an
 for Spanish that has no `ñ` says so on its card, whatever the text, though on an English text it
 skipped nothing for Spanish. A layout that comes with the app is for the languages it performs well
 in: it types every letter they need, and its Effort on their news texts is in the
-better half of the bundled layouts'. Some, such as Qwerty, are for none, and Magic Romak is for
-English and Portuguese only, the languages its author made it for.
+better half of the bundled layouts'. Some, such as Qwerty, are for none, and Romak and Magic Romak
+are for English and Portuguese at most, the languages their author made them for.
 
 **Rank with** switches special features off for the ranking: adaptive keys (they type their default
 letter), the repeat key (doubled letters are tapped twice), typing combos, and macros that type two

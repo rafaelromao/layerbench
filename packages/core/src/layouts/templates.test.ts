@@ -586,30 +586,31 @@ function everyLetter(tag: string): string[][] {
 }
 
 /**
- * The marks each layout with no layer past its base types: those its author places on its keys,
- * and nothing else. Digits, accents and every other symbol are left to an edit in the app.
+ * The marks each layout with no Numbers or Symbols types: those its author places on its keys, and
+ * on its second alpha layer where it has one (Romak's `'`, `_` and `ç`), and nothing else. Digits, accents
+ * and every other symbol are left to an edit in the app.
  */
 const TYPES: Record<string, string> = {
-  romak: ',./;',
+  romak: "',./;_ç",
   qwerty: ',./;',
   dvorak: "',.;",
   colemak: ',./;',
   'colemak-dh': ',./;',
   graphite: "'-./",
   gallium: "',.;",
-  canary: ',./;',
+  canary: "',./",
   sturdy: "',.;",
   aptv3: "',./",
-  'hands-down-neu': "',-./;",
-  night: "',-./",
-  dusk: "',-./",
+  'hands-down-neu': '\',-./"',
+  night: "',./;",
+  dusk: "',./_",
   recurva: "',.;",
   focal: "',.;",
-  nerps: "',-.;",
+  nerps: "',.;",
   engram: '"\',-.?',
   sunlight: ',-./;=',
   snth: "',./=",
-  aptmak: "',-./",
+  aptmak: "',.",
   bird: "',.",
   'bird-30': "',./",
   nordrassil: "',-./;",
@@ -626,9 +627,17 @@ const ACCENTLESS = Object.fromEntries(
 /**
  * What each layout with layers past its base lacks of each language, where it lacks anything: its
  * required letters, its optional ones and its punctuation. Magic Romak's lack what its keymap has no
- * way to: `ß`, `œ` and `æ`, the French quotes, `¿` and `¡`.
+ * way to: `ß`, `œ` and `æ`, the French quotes, `¿` and `¡`. Romak's lack what its write-up has no
+ * way to: it types Portuguese's accents but `à`, and none of the other languages' own.
  */
 const LACKS: Record<string, Record<string, string[][]>> = {
+  romak: {
+    pt: [['à'], ['ü'], []],
+    es: [['ñ', 'ü'], [], ['¿', '¡']],
+    fr: [['à', 'è', 'ë', 'î', 'ï', 'ù', 'û', 'ü', 'ÿ', 'œ'], ['æ'], ['«', '»']],
+    it: [['à', 'è', 'ì', 'î', 'ò', 'ù'], [], []],
+    de: [['ä', 'ö', 'ü', 'ß'], [], []],
+  },
   'magic-romak': {
     es: [[], [], ['¿', '¡']],
     fr: [['œ'], ['æ'], ['«', '»']],
