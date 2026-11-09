@@ -65,6 +65,21 @@ export function rulerHelp(rulesRef: string | undefined): HelpTopic {
   }
 }
 
+/**
+ * `rulerHelp`, unless the numbers on screen were rated on other rules than the ones now named: after
+ * a switch of rule set the last report, or an estimate made from it, stands until the new analysis
+ * lands, and its badges are on the old ruler, which a link to the new one would misname. `madeOn`
+ * and `now` are the rule sets themselves, compared as objects, so only a change of rules counts:
+ * an edit of the layout or a new sample leaves the ruler as it was.
+ */
+export function rulerShown(
+  rulesRef: string | undefined,
+  madeOn: object | null | undefined,
+  now: object | null | undefined,
+): HelpTopic | undefined {
+  return madeOn && madeOn === now ? rulerHelp(rulesRef) : undefined;
+}
+
 /** The guide's address for a topic, under the app's base path. */
 export function helpHref({ page, section }: Pick<HelpTopic, 'page' | 'section'>): string {
   const base = import.meta.env.BASE_URL.replace(/\/$/, '');

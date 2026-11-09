@@ -1666,12 +1666,16 @@ button.lb-combo-apart:focus-visible {
   inset: 0;
   border-radius: inherit;
 }
-.lb-stat-main:focus-visible {
-  outline: none;
-}
-.lb-stat:has(.lb-stat-main:focus-visible) {
-  outline: 2px solid var(--lb-ring);
-  outline-offset: 2px;
+/* The stat's ring goes round the whole box, which needs :has; a browser without it keeps the button's
+   own. */
+@supports selector(:has(*)) {
+  .lb-stat-main:focus-visible {
+    outline: none;
+  }
+  .lb-stat:has(.lb-stat-main:focus-visible) {
+    outline: 2px solid var(--lb-ring);
+    outline-offset: 2px;
+  }
 }
 .lb-stat-main ~ .lb-band-link {
   position: relative;

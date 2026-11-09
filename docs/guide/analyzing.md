@@ -366,10 +366,11 @@ steps between them equal (42.9 apiece, rounded to whole numbers), as they were e
 Cyanophage rates nothing: his playground prints SFB (Qwerty 4.38%) and Effort (1258.15) as plain
 numbers, with no bands or categories. The one ramp it draws for same-finger bigrams is a finger's bar
 in the finger view of the SFB panel, from grey to a pale red that stops getting redder at 2.117% of
-the text (`red = 128 + 6000 × share`, clamped to 255). That ramp is this set's reference for SFB:
-nine equal steps from nothing to where it stops, 0.235 apiece, the ninth, *max*, from 1.881 on. It
-is one finger's share that his ramp colours and this reads it as a layout's total, which is
-LayerBench's assumption and not his.
+the text (`red = 128 + 6000 × share`, clamped to 255). The same constant colours his per-finger
+skipgram bars, so it is a general ramp and not one he set for SFB, but it is the nearest thing to a
+reference there is, and this set's SFB ruler is drawn on it: nine equal steps from nothing to where
+it stops, 0.235 apiece, the ninth, *max*, from 1.881 on. It is one finger's share that his ramp
+colours and this reads it as a layout's total, which is LayerBench's assumption and not his.
 
 | Step | SFB up to | Colour |
 |---|---|---|

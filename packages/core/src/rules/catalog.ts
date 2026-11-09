@@ -6,7 +6,8 @@ import type { Bands, Direction, Family, Predicate, Rule } from './types.js';
  * to 255 (`keyboard_svg.js`, the "Same Finger Bigrams" panel in its finger view), a ramp from grey to
  * #ff8080 that stops at a share of 127 / 6000 of the input, 2.117%. It is the one ramp his pages
  * draw for a count of same-finger bigrams (the finger-pair matrix colours pairs of fingers by their
- * own share): they rate no layout.
+ * own share), though the same constant colours his per-finger skipgram bars, so it is a general
+ * ramp and not one he set for SFB: they rate no layout.
  */
 export const CYANOPHAGE_SFB_FULL_RED = (127 / 6000) * 100;
 

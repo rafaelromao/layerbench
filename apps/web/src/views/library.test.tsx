@@ -463,7 +463,9 @@ describe('Ranking layouts', () => {
   }, 90_000);
 
   it('rates a card on the ruler of the rules in the link, and leads its badges to it', async () => {
-    const { client } = scoringOnly([1000, 400]);
+    // An Effort of 200 reports an SFB of 2.0, which the two rulers name differently: high on the
+    // Layouts Doc's, max on cyanophage-like's.
+    const { client } = scoringOnly([1000, 200]);
     renderRoute('/library?sample=10005&rules=cyanophage', { client, storage: freshStorage() });
 
     await rankingSays(/^Scoring layouts on a sample of [\d,]+ symbols… 2 of/, 60_000);
@@ -477,9 +479,11 @@ describe('Ranking layouts', () => {
         expect.stringMatching(/\/guide\/analyzing#the-cyanophage-like-rule-set$/),
       );
     }
-    // An SFB of 4% is past his ramp's last step, 1.881; an Effort of 400 is the Layouts Doc set's.
-    const sfb = within(best).getByText('SFB', { selector: 'dt' }).parentElement;
-    expect(sfb?.querySelector('.lb-band')?.textContent).toBe('max');
+    // An SFB of 2.0 is past his ramp's last step, 1.881; an Effort of 200 is below the first, 300.
+    const box = (metric: 'Effort' | 'SFB') =>
+      within(best).getByText(metric, { selector: 'dt' }).parentElement;
+    expect(box('SFB')?.querySelector('.lb-band')?.textContent).toBe('max');
+    expect(box('Effort')?.querySelector('.lb-band')?.textContent).toBe('min');
   }, 90_000);
 
   it('badges a card by the rule set ranked on; a metric without bands is plain', async () => {

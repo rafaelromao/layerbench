@@ -50,7 +50,7 @@ import { expandPositions, HEAT_LABELS, heatMap } from '../../engine/heat.js';
 import type { AnalyzeRequest, ExplainDTO, ProducerDTO, ReportDTO } from '../../engine/protocol.js';
 import { useAnalysis } from '../../engine/use-analysis.js';
 import { useKeyStats } from '../../engine/use-key-stats.js';
-import { HELP, type HelpTopic, rulerHelp } from '../../guide/help.js';
+import { HELP, type HelpTopic, rulerShown } from '../../guide/help.js';
 import type { LayoutSource } from '../../layout-session/open.js';
 import type { OpenSession } from '../../layout-session/use-layout-session.js';
 import { followProposal, forgetProposal, recordProposal } from '../../proposals/proposals.js';
@@ -207,7 +207,11 @@ export function Workbench({
 
   // A swap changes which key types which symbol, nothing else, so the tables already typed can be
   // re-scored in milliseconds — as long as they are of the layout the swap was made on.
-  const [estimate, setEstimate] = useState<{ report: ReportDTO; layout: Layout } | null>(null);
+  const [estimate, setEstimate] = useState<{
+    report: ReportDTO;
+    layout: Layout;
+    settings: AnalysisSettings;
+  } | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: only a new edit can ask for an estimate; a report landing later must not
   useEffect(() => {
     const last = state.lastEdit;
@@ -230,7 +234,7 @@ export function Workbench({
         settings: ready,
       })
       .then((dto) => {
-        if (!cancelled && dto) setEstimate({ report: dto, layout });
+        if (!cancelled && dto) setEstimate({ report: dto, layout, settings: ready });
       })
       .catch(() => {});
     return () => {
@@ -253,10 +257,12 @@ export function Workbench({
         : (landed?.report ?? report);
   const stale = shown !== null && !current && !provisional;
   /**
-   * Where the badges of Effort and SFB lead. Not while the numbers are the last there were, made on
-   * other rules than the link's: they are rated on a ruler the link no longer names.
+   * Where the badges of Effort and SFB lead. Not while the numbers shown, the last analysis or an
+   * estimate made from it, were rated on other rules than the link now names: they are on a ruler
+   * the link no longer names. An edit of the layout leaves the rules, and so the link, alone.
    */
-  const ruler = stale ? undefined : rulerHelp(settings.linked.rules);
+  const shownRules = provisional && estimate ? estimate.settings.rules : landed?.settings?.rules;
+  const ruler = rulerShown(settings.linked.rules, shownRules, ready?.rules);
 
   // ------------------------------------------------------------------ the link
 

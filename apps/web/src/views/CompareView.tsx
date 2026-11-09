@@ -13,7 +13,7 @@ import { useAnalysisClient } from '../engine/client-context.js';
 import { expandPositions } from '../engine/heat.js';
 import type { AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { useAnalysis } from '../engine/use-analysis.js';
-import { rulerHelp } from '../guide/help.js';
+import { rulerShown } from '../guide/help.js';
 import { carriedRef } from '../layout-session/open.js';
 import { useRememberSelection } from '../state/selection.js';
 import { useCollection } from '../storage/use-storage.js';
@@ -102,10 +102,15 @@ export function CompareView() {
   const error = a.error ?? b.error ?? settings.error ?? analysisA.error ?? analysisB.error;
   /**
    * Where Effort's and SFB's badges lead: the ruler of the rule set both sides are rated on. Not
-   * while either is being made again, when the numbers shown may be of other rules.
+   * while the numbers shown are of other rules than the link now names, as after a switch of rule
+   * set until both sides have been made again.
    */
-  const ruler =
-    analysisA.loading || analysisB.loading ? undefined : rulerHelp(settings.linked.rules);
+  const ratedOn = analysisA.answered?.settings.rules;
+  const ruler = rulerShown(
+    settings.linked.rules,
+    ratedOn === analysisB.answered?.settings.rules ? ratedOn : null,
+    ready?.rules,
+  );
 
   const setParams = useCallback(
     (overrides: Partial<Params> & { b?: string }) => {

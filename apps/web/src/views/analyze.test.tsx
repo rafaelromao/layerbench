@@ -1,8 +1,9 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
+import type { AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { layerNames, shownLayer } from '../test/layers.js';
-import { openSettings, renderRoute } from '../test/render.js';
+import { openSettings, renderRoute, testClient } from '../test/render.js';
 
 /**
  * The Analyze view, exercised end to end: a real analysis over a small sample, then the numbers and
@@ -47,6 +48,39 @@ describe('Analyze', () => {
       }
       unmount();
     }
+  }, 60_000);
+
+  it('drops the link to a ruler while the numbers on screen are of the rules it no longer names', async () => {
+    const real = testClient();
+    const client = new Proxy(real, {
+      get(target, prop) {
+        if (prop === 'peek') return async () => null;
+        if (prop === 'analyze') {
+          return (request: AnalyzeRequest, opts?: { signal?: AbortSignal }) =>
+            // The analysis on the new rules never lands: the first is the last there is.
+            request.settings.rules.id === 'cyanophage'
+              ? new Promise<ReportDTO>((_, reject) =>
+                  opts?.signal?.addEventListener('abort', () =>
+                    reject(new DOMException('left', 'AbortError')),
+                  ),
+                )
+              : target.analyze(request, opts);
+        }
+        const member = Reflect.get(target, prop);
+        return typeof member === 'function' ? member.bind(target) : member;
+      },
+    });
+    const user = userEvent.setup();
+    renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000', { client });
+    await screen.findByText('Same finger bigrams');
+    expect(await screen.findAllByRole('link', { name: /how it is rated/ })).toHaveLength(4);
+
+    const dialog = await openSettings();
+    await user.selectOptions(within(dialog).getByLabelText('Rules'), 'cyanophage');
+    // Their pills are still there, rated on the Layouts Doc's ruler; a link to cyanophage-like's
+    // would misname it.
+    await waitFor(() => expect(document.querySelectorAll('.lb-band-link')).toHaveLength(0));
+    expect(document.querySelectorAll('.lb-band').length).toBeGreaterThan(0);
   }, 60_000);
 
   it('explains how a word is typed', async () => {

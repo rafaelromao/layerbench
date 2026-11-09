@@ -111,9 +111,10 @@ describe('Compare', () => {
     // Effort is banded like the Doc's metrics: each side's number carries its badge.
     const effort = within(table).getByText('Effort', { selector: 'div' }).closest('tr');
     expect(effort?.querySelectorAll('.lb-band')).toHaveLength(2);
-    // Effort's and SFB's badges, on both sides, lead to the Layouts Doc's ruler in the guide.
-    const links = within(table).getAllByRole('link', { name: /how it is rated/ });
-    expect(links).toHaveLength(4);
+    // Effort's and SFB's badges lead to the Layouts Doc's ruler in the guide: in the table on both
+    // sides, and in each side's summary.
+    const links = screen.getAllByRole('link', { name: /how it is rated/ });
+    expect(links).toHaveLength(8);
     for (const link of links) {
       expect(link.getAttribute('href')).toMatch(/\/guide\/analyzing#the-layouts-doc-rule-set$/);
     }
@@ -124,9 +125,9 @@ describe('Compare', () => {
       '/compare?layout=magic-romak&b=graphite&corpus=pt-br-general&sample=20000&rules=cyanophage',
       { storage: freshStorage() },
     );
-    const table = await screen.findByRole('table', undefined, { timeout: 25_000 });
-    const links = within(table).getAllByRole('link', { name: /how it is rated/ });
-    expect(links).toHaveLength(4);
+    await screen.findByRole('table', undefined, { timeout: 25_000 });
+    const links = screen.getAllByRole('link', { name: /how it is rated/ });
+    expect(links).toHaveLength(8);
     for (const link of links) {
       expect(link.getAttribute('href')).toMatch(/\/guide\/analyzing#the-cyanophage-like-rule-set$/);
     }

@@ -98,8 +98,10 @@ usage bars are the same ramp with other constants (key heat against the most fre
 11.87% in English), and the finger-pair matrix colours every pair of fingers, same-finger cells
 included, by `128 + 3 * share`, a different quantity. Nothing in it says what a good or a bad layout
 is, and nothing in it is for Effort. The finger bar is the one ramp for a count of same-finger
-bigrams, which is why the cyanophage-like rule set's SFB ruler is drawn on it (below). Read in the
-browser against `keyboard_svg.js` (lines 1883-1893) on 2026-11-09, and checked by the blind review.
+bigrams, which is why the cyanophage-like rule set's SFB ruler is drawn on it (below); the same
+`6000` colours the per-finger skipgram bars (line 1994), so it is a general ramp, not one set for SFB,
+and the choice is an assumption. Read in the browser against `keyboard_svg.js` (lines 1883-1893 and
+1987-1998) on 2026-11-09, and checked again by a second read.
 
 ## Is the app's number the Doc's?
 
