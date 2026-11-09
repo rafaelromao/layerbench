@@ -1637,6 +1637,15 @@ button.lb-combo-apart:focus-visible {
     font-size: 1rem;
   }
 }
+/* A band's name can run to three words ("above mid high"), more than a box on a phone holds on one
+   line: the pill grows a line instead of letting the text spill out of its fixed height. */
+.lb-band {
+  height: auto;
+  min-height: var(--size);
+  padding-block: 0.0625rem;
+  line-height: 1.2;
+  text-align: center;
+}
 .lb-items li button {
   max-width: 5rem;
 }

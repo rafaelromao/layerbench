@@ -23,7 +23,7 @@ Every metric below is a *rule*: plain data that a rule set can enable, disable, 
 
 ## Bands
 
-The Doc groups layouts into categories per metric (ch. 13.4). LayerBench stores each band as a list of ascending *upper bounds*; a value falls in the first category whose bound it does not exceed, and a value above the last bound in one more category after it. The labels are **min · very low · low · mid-low · mid · mid-high · high · very high · max**, as many as there are categories: SFB's six bounds make seven, so its worst band, above 1.375, is *high*; alternation's nine make ten, and above 47.0 is a second *max*. Each band declares whether lower or higher values are better, which drives the green / amber / red badges.
+The Doc groups layouts into categories per metric (ch. 13.4). LayerBench stores each band as a list of ascending *upper bounds*; a value falls in the first category whose bound it does not exceed, and a value above the last bound in one more category after it. The labels are **min · very low · low · mid-low · mid · mid-high · high · very high · max**, as many as there are categories. The Doc stops SFB short of the scale: its six bounds make seven categories, but its table has thresholds for six and dashes under high, very high and max, and none of its layout rows has an SFB past 1.375. What is past the last bound is named for where the Doc stops, a name of LayerBench's for a range the Doc sets no threshold for: an SFB above 1.375 is *above mid high*, not *high*. SFS, scissors, redirects and pinky off have dashes in the table too (SFS stops at six thresholds, the others at seven), but the Doc's own layout rows name values past them (an SFS of 7.483 is *high* and 8.744 *very high*, scissors of 0.71 and redirects of 12.1 *very high*, pinky off of 8.1 *very high*, without printing where one category ends), so they take the next label in the list. A custom rule set saved earlier keeps the bands it was saved with, and so the names it had. LSB's bands are LayerBench's own, not in the Doc's table, so past its last bound it takes the next label in the list, and alternation's nine make ten, so above 47.0 is a second *max*. Each band declares whether lower or higher values are better, which drives the green / amber / red badges.
 
 | Metric | Direction | Upper bounds (%) |
 |---|---|---|
@@ -38,6 +38,8 @@ The Doc groups layouts into categories per metric (ch. 13.4). LayerBench stores 
 | LSB | lower is better | 0.5 · 1.0 · 1.5 · 2.0 · 2.5 · 3.0 · 4.0 |
 | Hand balance | lower is better | 2 · 5 · 8 points of \|left − right\| → even · leans · heavy · very heavy |
 | Effort | lower is better | 440 · 460 · 480 · 500 · 520 · 540 · 560 · 580 (effort) |
+
+**What the SFB bands were measured on.** The Doc took its SFB from the Genkey analyzer on the MonkeyRacer corpus (§13.3). Genkey lowercases the text, never counts the space, and divides by the characters on the layout's keys, in practice the letters typed; the Doc says stats are shared "disregarding space" (§16.4). LayerBench's number matches that only with **Shift** and **Space** off and SFB as a share of letters. The Layouts Doc preset divides SFB by the text's bigrams, which on the English news sample are 0.796 of its letters, so the same layout reads 1.26 times higher; the cyanophage-like preset divides by keystrokes with a space per word, which is lower again; with **Space** counted the thumb pairs, such as Repeat then space, are added, and with **Shift** modelled so are the Shift presses. The badge names the band of the number the view shows, whichever it is. The measurements are in [docs/research/sfb-bands.md](research/sfb-bands.md).
 
 Effort's bands are LayerBench's own, on the Doc's nine steps, from the Effort of the bundled Standard and Thumb Alpha layouts on the default analysis settings (English news, 100,000 letters, the Layouts Doc rules): 20 apart, from 440, just above Aptmak's 439.9, the lowest of them, to 580, so that Colemak's 630, Dvorak and Qwerty are *max*. A custom rule set saved before Effort had bands keeps its own, none, until they are given in **Rules**.
 
@@ -135,7 +137,7 @@ Off by default, and no shipped preset turns it on: in **Rules**, **Composite sco
 
 | Preset | What changes |
 |---|---|
-| Layouts Doc | Definitions and bands above. Thumbs included, space excluded, no composite score. |
+| Layouts Doc | Definitions and bands above. Thumbs included, space excluded, no composite score. SFB and SFS are shares of the text's bigrams and skipgrams, not of its letters as the Doc's are (see Bands). |
 | cyanophage-like | LSB = inner-column key with a middle-finger key (any rows); scissors = adjacent fingers two rows apart (no height preference); redirects require three different fingers; pair rules, skipgrams included, normalized over keystrokes plus one space per word. |
 
 ## Rule vocabulary

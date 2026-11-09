@@ -7,8 +7,8 @@ import type { Binding, Layout } from '../layout/types.js';
 import { bundledLayout, CLASSIC_LAYOUTS } from '../layouts/index.js';
 import { SHAPES } from '../presses/press-log.js';
 import { simulate } from '../sim/resolver.js';
-import { classifyBand } from './bands.js';
-import { BANDS, catalogRules, sfbWhere } from './catalog.js';
+import { classifyBand, humanBand } from './bands.js';
+import { BANDS, catalogRules, SFB_ABOVE_SCALE, SFB_LAST_BOUND, sfbWhere } from './catalog.js';
 import { evaluate, evaluateFocus } from './engine.js';
 import { cyanophage, getPreset, layoutsDoc } from './presets.js';
 import { parseRuleSet, ruleSetFromJson, ruleSetToJson } from './serialize.js';
@@ -154,6 +154,67 @@ describe('rules engine', () => {
     expect(classifyBand(2.0, BANDS.sfb).quality).toBe('bad');
     expect(classifyBand(40.0, BANDS.alt).quality).toBe('good');
     expect(classifyBand(null, BANDS.sfb).quality).toBe('neutral');
+  });
+
+  it('names no SFB band the Doc does not give', () => {
+    // The Doc's SFB row has six categories, Min to Mid high, and dashes under High, Very high and
+    // Max (ch. 13.4), so what is past its last bound, 1.375, is not called high.
+    expect(classifyBand(SFB_LAST_BOUND, BANDS.sfb).label).toBe('mid_high');
+    for (const sfb of [1.376, 1.56, 2.5, 6]) {
+      expect(classifyBand(sfb, BANDS.sfb), `SFB ${sfb}`).toMatchObject({
+        label: SFB_ABOVE_SCALE,
+        quality: 'bad',
+      });
+    }
+    expect(humanBand(classifyBand(1.56, BANDS.sfb).label)).toBe('above mid high');
+    // The six the Doc gives are the Doc's, in its order.
+    expect(BANDS.sfb.labels).toEqual([
+      'min',
+      'very_low',
+      'low',
+      'mid_low',
+      'mid',
+      'mid_high',
+      SFB_ABOVE_SCALE,
+    ]);
+    expect(BANDS.sfb.bounds).toEqual([0.525, 0.625, 0.735, 0.875, 1.075, 1.375]);
+    // The rule each preset ranks with carries those names, not only the table they come from.
+    for (const preset of [layoutsDoc(), cyanophage()]) {
+      const bands = preset.rules.find((r) => r.id === 'sfb')?.bands;
+      expect(classifyBand(1.56, bands).label, preset.id).toBe(SFB_ABOVE_SCALE);
+    }
+  });
+
+  it('names what is past the last threshold of SFS, scissors, redirects and pinky off as the Doc does', () => {
+    // The Doc's table stops SFS at six thresholds and scissors, redirects and pinky off at seven
+    // (ch. 13.4), but its layout rows call a value past them the next word of the nine: SFS 7.483
+    // (Colemak DH) is High, scissors 0.71 (Hands Down Neu) and 0.81, redirects 12.1 (Colemak DH)
+    // and 13.6, pinky off 8.1 and 8.3 are Very high. So these four keep the positional names, and
+    // only SFB, which no row of the Doc has past its last bound, is named otherwise. (The Doc calls
+    // an SFS of 8.744 Very high; the table gives no bound for it, so none is made up.)
+    const rows = [
+      { id: 'sfs', bands: BANDS.sfs, values: [7.344, 7.483, 7.541], label: 'high' },
+      { id: 'fsb', bands: BANDS.scissors, values: [0.71, 0.81], label: 'very_high' },
+      { id: 'redirect', bands: BANDS.redir, values: [12.1, 13.6], label: 'very_high' },
+      { id: 'pinky_off', bands: BANDS.pinky_off, values: [8.1, 8.3], label: 'very_high' },
+    ];
+    for (const { id, bands, values, label } of rows) {
+      expect(bands.labels, `${id} has no names of its own`).toBeUndefined();
+      for (const value of values) {
+        expect(classifyBand(value, bands), `${id} ${value}`).toMatchObject({
+          label,
+          quality: 'bad',
+        });
+      }
+    }
+    // The presets rank with these, not only the table they come from.
+    for (const preset of [layoutsDoc(), cyanophage()]) {
+      for (const { id, bands } of rows) {
+        expect(preset.rules.find((r) => r.id === id)?.bands, `${preset.id} ${id}`).toEqual(bands);
+      }
+    }
+    // LSB's bands are LayerBench's own, not in the Doc's table: its names stay by position.
+    expect(classifyBand(5, BANDS.lsb).label).toBe('very_high');
   });
 
   it('bands Effort on all nine steps, min to max, lower being better', () => {

@@ -10,7 +10,7 @@ export function layoutsDoc(): RuleSet {
     id: 'layouts_doc',
     name: 'Layouts Doc',
     description:
-      'Definitions and bands from the Keyboard Layouts Doc (3rd ed.). Thumbs included, space excluded, no composite score.',
+      'Definitions and bands from the Keyboard Layouts Doc (3rd ed.). Thumbs included, space excluded, no composite score. SFB and SFS are shares of bigrams and skipgrams, where the Doc divides by letters.',
     globals: {},
     rules: catalogRules(),
     score_enabled: false,
