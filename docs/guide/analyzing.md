@@ -305,8 +305,8 @@ counted without the space bar and with capitals folded, as a share of the letter
 Layouts Doc rules here count SFB the same way, so with **Space** and **Shift** off the badge is the
 Doc's band for the Doc's number: Colemak-DH reads 1.17 on the English sample, where the Doc has
 1.177, *mid high*. Turn them on and the SFB includes pairs the Doc never had, such as Repeat then
-space on one thumb or the Shift presses, but it is still a share of the letters, not of the letters
-and the spaces. The cyanophage-like rules divide by keystrokes, with a space per word, and read
+space on one thumb or the Shift presses, so its band can differ from the Doc's for the same layout,
+but it is still a share of the letters, not of the letters and the spaces. The cyanophage-like rules divide by keystrokes, with a space per word, and read
 lower. SFS is not counted as the Doc's: it is a share of the text's skipgrams, over one skipped key,
 where Genkey divides by the letters and counts skips of up to nine keys, each half as much as the
 one before. A custom rule set saved earlier keeps the bands and the denominators it was saved with,

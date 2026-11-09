@@ -851,8 +851,7 @@ why).
 What moved, checked across the 38 reports; nothing else moved:
 
 - **`sfb` and `sfb_2u` in the 20 `layouts_doc` reports, and their value, items, key scale and band
-  alone**: space
-  not counted, the value is the old one times the pairs the text has per letter (0.815 on
+  alone**: with space not counted, the value is the old one times the pairs the text has per letter (0.815 on
   `fixture_en`, 0.825 on `fixture_enpt`, 0.835 on `fixture_pt`; Magic Romak's 0.854 on `fixture_en`
   is 0.696, Qwerty's 7.041 is 5.740); space counted, it divides by the letters and no longer by the
   letters and the spaces' pairs, so it rises (1.18 times on `fixture_en`). Twelve `sfb` bands move

@@ -102,8 +102,8 @@ once as the preset has it (`percent_of_ngrams`) and once with the SFB rule's `ag
 | Qwerty | 6.6193 | 5.2690 | 0.7960 |
 
 The ratio is 0.796 for every bundled layout (36 of 36, 0.7958 to 0.7960), since it is a property of the
-text: its bigrams are 0.796 of its letters. The Layouts Doc preset's SFB is 1.26 times the Doc's definition, and Colemak-DH, which
-the Doc puts at 1.177 *Mid high*, reads 1.47 in the Library. As a share of letters it is 1.173, *mid high*
+text: its bigrams are 0.796 of its letters. The Layouts Doc preset's SFB was 1.26 times the Doc's definition, and Colemak-DH, which
+the Doc puts at 1.177 *Mid high*, read 1.47 in the Library. As a share of letters it is 1.173, *mid high*
 as in the Doc (a different corpus, so a check and not a calibration: Graphite and Sturdy differ from the
 Doc's tables by about 0.1).
 
@@ -173,36 +173,26 @@ calibration).
   pairs and breaks others: with Space off, Magic Romak goes from 1.35 to 1.61, Colemak-DH from 1.17 to
   1.12 and Qwerty from 5.27 to 5.20. The Doc counted neither Space nor Shift, so those readings are
   not the Doc's number, and the guide says so; the badge still names the band of the number shown.
-- **SFS was not changed.** Genkey does divide SFS by the letters (`output.go`, `DSFBs: 100 ×
-  SFBs(l, true) / l.Total`), but its numerator is not `sfs`'s: `text.go` adds every skipgram of up to
-  nine keys in between with weight 1, ½, ¼, … (`MaxSkipgramSize = 10`), where `sfs` counts skip 1
-  alone, and the Doc's SFS is two keys with some number of others between them (§4.5). The skipgrams the text has
-  per letter are 0.600, not 0.796, so skip 1 over the letters is 0.600 of today's number, far under
-  the Doc's thresholds (5.3 to 7.3). Through the engine, English news, Library settings, Layouts Doc
-  rules, with `skip_weights` 1, ½, ¼ (the engine records skips 1 to 3 only; the weights of skips 4 to
-  9 add 0.246 to these 1.75, before their pairs thin out, so the last column is a little short of
-  Genkey's sum):
+- **SFS was not changed**, the owner's call. Genkey divides its skipgram stat by the letters too
+  (`output.go`: `100 × SFBs(l, true) / l.Total`), but counts skips of up to nine keys in between with
+  weight 1, ½, ¼, … (`text.go`), where `sfs` counts skip 1 alone over the text's skipgrams (0.600 of
+  its letters, not 0.796). Skip 1 over the letters reads 0.600 of today's number, far under the
+  Doc's thresholds (5.3 to 7.3); the weighted sum is near them. Through the engine, English news,
+  Library settings, with `skip_weights` 1, ½, ¼ (skips 1 to 3 are all it records; the weights of skips
+  4 to 9 add 0.246 to these 1.75):
 
   | Layout | skip 1 over skipgrams (today) | skip 1 over letters | skips 1–3 weighted over letters |
   |---|---:|---:|---:|
-  | Magic Romak | 6.53 | 3.92 | 6.09 |
-  | Colemak-DH | 8.08 | 4.85 | 7.19 |
-  | Qwerty | 10.25 | 6.15 | 8.70 |
-  | Graphite | 5.31 | 3.19 | 5.45 |
-  | Hands Down Neu | 8.05 | 4.83 | 7.45 |
-  | Dvorak | 6.43 | 3.86 | 6.00 |
+  | Magic Romak | 6.53 | 3.92 *min* | 6.09 |
+  | Colemak-DH | 8.08 | 4.85 *min* | 7.19 |
+  | Qwerty | 10.25 | 6.15 *mid low* | 8.70 |
+  | Graphite | 5.31 | 3.19 *min* | 5.45 |
 
-  Skip 1 over the letters reads *min* for Magic Romak, Colemak-DH, Graphite and Dvorak and Qwerty
-  *mid low*, where today's number is nearer to the weighted sum the bands' size suggests. The Doc's own
-  row for Colemak DH gives SFS 7.483 (*High*, as listed above): the weighted sum reads 7.19 on another
-  text, a third of a point under, which the weights of skips 4 to 9 (0.246 on top of 1.75) can
-  account for, and skip 1 over the letters reads 4.85, two and a half points under. That fits the
-  Doc's SFS being Genkey's stat, without proving it (one layout, another corpus; §13.3 names Genkey
-  for SFB). The weights are Genkey's: its
-  DSFB stat weighs skip 1 at 1 and each deeper skip half the one before, where the Doc's §4.6 example,
-  which `sfs_weighted` follows, weighs skip 1 at 0.5 against 1 for an SFB: the ratios between skips
-  agree and the scale does not. Making SFS the Doc's means changing what it counts, with the
-  weights, and then dividing by the letters; that is its own change.
+  The Doc's own row for Colemak DH has SFS 7.483 (*High*, as listed above): that fits its SFS being
+  Genkey's stat, without proving it (one layout, another corpus). Genkey weighs skip 1 at 1, the
+  Doc's §4.6 example, which `sfs_weighted` follows, at 0.5 against 1 for an SFB: the same ratios
+  between skips, another scale. Making SFS the Doc's means changing what it counts first, then its
+  divisor.
 
 ## Before and after, English news, 100,000 symbols
 

@@ -15,8 +15,8 @@ space, the Layouts Doc rules, before and after the fix.
   thumbs.** They are the two keys of the eleventh column, past the right pinky, which a 34-key
   split has no key for: where Nerps, Hands Down Neu and Sunlight put the keys of their eleventh
   column too.
-- **SFB lands in the Doc's range.** 1.559 as the preset reads it (a share of bigrams), 1.241 as a
-  share of letters, against the Doc's 1.242. The Doc does not say what its SFB is a share of; as a
+- **SFB lands in the Doc's range.** 1.559 as the preset read it then (a share of bigrams), 1.241 as a
+  share of letters, which the preset has given since #118, against the Doc's 1.242. The Doc does not say what its SFB is a share of; as a
   share of letters the bundled layouts that can be compared read within 0.15 of it (Colemak-DH
   1.173 against 1.177, Gallium 0.761 against 0.644, Graphite 0.858 against 0.707), so the 0.001
   here is partly luck. The old 4.976 was four times the Doc's.
@@ -55,12 +55,13 @@ on L1 and `q` on R0, the main thumbs, and Repeat, which L1 would have tapped, is
 
 ## Numbers
 
-Layouts Doc rules, English news, first 100,000 letters, fold, no space. The preset divides SFB and
-SFS by bigrams, which are 0.796 of the letters, so each is also given as a share of letters.
+Layouts Doc rules, English news, first 100,000 letters, fold, no space. The preset then divided SFB and
+SFS by bigrams, which are 0.796 of the letters, so each is also given as a share of letters. Since #118
+SFB is a share of letters, and SFS is still a share of skipgrams.
 
 | | the Doc | before | now |
 | --- | --- | --- | --- |
-| SFB, as the preset reads it | | 6.251 | 1.559 |
+| SFB, as the preset read it (bigrams) | | 6.251 | 1.559 |
 | SFB, share of letters | 1.242 | 4.976 | **1.241** |
 | SFS, share of letters | 6.294 | 7.72 | 5.63 |
 | Full scissors, share of letters | 0.30 | 0.35 | 0.35 |

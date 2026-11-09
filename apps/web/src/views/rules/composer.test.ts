@@ -10,6 +10,7 @@ import {
 import { describe, expect, it } from 'vitest';
 import {
   buildRule,
+  COMPOSER_AGGREGATES,
   type ComposerState,
   coerceGlobal,
   NEW_COMPOSER,
@@ -74,6 +75,14 @@ describe('composing a rule', () => {
     expect(rule.where).toEqual({ all: [{ same_hand: true }, { row_delta: { abs: 2 } }] });
     expect(rule.score).toEqual({ weight: 1.5 });
     expect(rule.aggregate).toBe('percent_of_ngrams');
+  });
+
+  it('offers the share of the symbols, as the Layouts Doc counts SFB, and builds a rule with it', () => {
+    expect(COMPOSER_AGGREGATES).toContain('percent_of_symbols');
+    const rule = buildRule({ ...composer, aggregate: 'percent_of_symbols' });
+    expect(rule.aggregate).toBe('percent_of_symbols');
+    // A built-in rule counted that way is the one the catalog has, so a composed one reads the same.
+    expect(catalogRules().find((r) => r.id === 'sfb')?.aggregate).toBe('percent_of_symbols');
   });
 
   it('falls back to a generated id and uses it as the label', () => {

@@ -611,8 +611,8 @@ describe('SFB as a share of the letters typed', () => {
 
 describe('the Layouts Doc’s SFB on English news, as Genkey would divide it', () => {
   // The first 100,000 symbols of `en-general`, the Library's settings: fold, no space. The research
-  // note (docs/research/sfb-bands.md) has the measurement; the numbers are the Doc's definition,
-  // which the Doc puts Colemak-DH at 1.177, mid high, on another text.
+  // note (docs/research/sfb-bands.md) has the measurement. The numbers are the Doc's definition of
+  // SFB; the Doc puts Colemak-DH at 1.177, mid high, on another text.
   const loader = nodeCorpusLoader(corporaRoot());
   const LIBRARY = { ...DEFAULT_SETTINGS, corpus: 'en-general', caseMode: 'fold' } as const;
 
