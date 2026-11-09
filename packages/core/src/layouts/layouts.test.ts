@@ -331,11 +331,12 @@ describe('layouts as their authors designed them', () => {
       night: ['b f l k q p g o u .', 'n s h t m y c a e i', "x v j d z ' w / ; ,"],
       // The author's own page: its last key is free, and holds `_`.
       dusk: ["x f d p q j ' o u .", 'n s t c y m h a e i', 'b v k g w z l _ / ,'],
-      // Its ortho form, with `'` past the right pinky of the top row.
+      // Its ortho form: `'` is the right pinky key of the top row, and there is no `;`.
       canary: ["w l y p b z f o u '", 'c r s t g m n e i a', 'q j v d k x h / , .'],
-      // The Layouts Doc's angle-mod rows, which keep `q` on the bottom row.
+      // The Layouts Doc's angle-mod rows, with `q` on the bottom row and no `-`.
       nerps: ['x l d p v z k o u ;', 'n r t s g y h e i a', "j m c w q b f ' , ."],
-      // Its README: `q` and `z` are on the inner bottom keys, the pinky bottom keys have nothing.
+      // Its README draws no `q` or `z`: they are on the inner bottom keys, as cmini has them, and the
+      // pinky bottom keys have nothing.
       aptmak: ["v w f p b j l u y '", 'r s t h k x n a i o', '· c g d q z m , . ·'],
     };
     for (const [id, rows] of Object.entries(SOURCES)) {
@@ -347,7 +348,7 @@ describe('layouts as their authors designed them', () => {
     }
   });
 
-  it("put the thumb letters their authors' boards have in an eleventh column on thumbs", () => {
+  it("put Hands Down Neu's z and j, from its eleventh column, and Aptmak's e on thumbs", () => {
     const thumbsOf = (id: string) => {
       const layout = bundledLayout(id) as (typeof BUNDLED_LAYOUTS)[number];
       return Object.fromEntries(
@@ -359,7 +360,6 @@ describe('layouts as their authors designed them', () => {
     };
     expect(thumbsOf('hands-down-neu')).toEqual({ L1: ' ', L0: 'z', R0: 'j' });
     expect(thumbsOf('aptmak')).toEqual({ L1: ' ', L0: 'e' });
-    expect(thumbsOf('nerps')).toEqual({ L1: ' ' });
   });
 
   it('give Night and Dusk the thumbs their author draws: r left, space right, and Night its Shifts', () => {

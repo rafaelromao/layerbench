@@ -117,7 +117,7 @@ function keyFor(bindings: Record<string, Binding>, token: string, layout: string
   return ids[0];
 }
 
-/** Classic single-layer layouts (30-key core), from the Layouts Doc / cyanophage listings. */
+/** Layouts of one layer, as their authors' sources draw them on a 34-key board. */
 export const CLASSIC_DEFS: ClassicDef[] = [
   {
     id: 'romak',
@@ -219,7 +219,7 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     thumbs: '∅ r space',
     special: { '∅': null },
     description:
-      'Dusk, a Night alternative with the same thumb r, on the left, and space on the right; the key its author leaves free holds `_`.',
+      'Dusk, a Night alternative with the same thumb r, on the left, and space on the right; the key its author leaves free holds an underscore.',
     link: 'https://luminespire.github.io/night/alternatives.html',
   },
   {
@@ -279,7 +279,8 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     name: 'Aptmak',
     author: 'Apsu',
     rows: "v w f p b j l u y '\nr s t h k x n a i o\n∅ c g d q z m , . ∅",
-    // Twenty-five letters plus `e` on a thumb: a sub-30 alpha block. The bottom row has no pinky keys.
+    // Twenty-five letters plus `e` on a thumb: a sub-30 alpha block. The bottom row has no pinky
+    // keys, and its README draws no `q` or `z`: they are on the inner bottom keys, as cmini has them.
     thumbs: 'space e',
     special: { '∅': null },
     description: 'Aptmak: e on a thumb, so the alphas fit in twenty-five keys.',
