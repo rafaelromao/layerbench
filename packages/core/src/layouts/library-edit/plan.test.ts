@@ -32,12 +32,14 @@ const nameOf = (id: string) => bundled.find((l) => l.id === id)?.name ?? id;
 const deletable = (ids: readonly string[]) => ids.find((id) => keptInLibrary(id) === null);
 const CLASSIC = deletable(CLASSIC_DEFS.map((d) => d.id)) as string;
 const SMALL = deletable(SMALL_DEFS.map((d) => d.id)) as string;
-const DOCUMENT = deletable(DOCUMENT_IDS);
 /** One the golden reports read, still written in code. */
 const GOLDEN_IN_CODE = GOLDEN_LAYOUTS.find((id) => CLASSIC_DEFS.some((d) => d.id === id));
 
 /** An id no layout has: what is promoted. */
 const NEW = 'new-layout';
+/** A document the Library may not have: promoted first, so the cases on one hold whatever it has. */
+const FIXTURE = 'fixture-layout';
+const FIXTURE_NAME = 'Fixture layout';
 
 /** A layout as LayerBench saves it, under an id and a name. */
 function saved(id: string, name: string, from = CLASSIC): Record<string, unknown> {
@@ -45,7 +47,17 @@ function saved(id: string, name: string, from = CLASSIC): Record<string, unknown
   return JSON.parse(JSON.stringify(toCanonicalJson(layout as never)));
 }
 
-const plan = (request: LibraryRequest, files = tree()) => planRequest(request, files, bundled);
+const plan = (request: LibraryRequest, files = tree(), list = bundled) =>
+  planRequest(request, files, list);
+
+/** The Library with a document of FIXTURE's on this branch, as a promotion would leave it. */
+function withFixture() {
+  const promoted = plan({ action: 'promote', id: FIXTURE, layout: saved(FIXTURE, FIXTURE_NAME) });
+  return {
+    files: { ...tree(), ...promoted.write },
+    list: [...bundled, { id: FIXTURE, name: FIXTURE_NAME }],
+  };
+}
 
 describe('promoting a layout to the Library', () => {
   it('adds its document, registers it, and names it on the landing page', () => {
@@ -62,13 +74,13 @@ describe('promoting a layout to the Library', () => {
 });
 
 describe('changing a bundled layout', () => {
-  it.runIf(DOCUMENT)('overwrites a document, and renames it on the landing page', () => {
-    const id = DOCUMENT as string;
-    const doc = saved(id, `${nameOf(id)} 2`, id);
-    const { write, remove } = plan({ action: 'change', id, layout: doc });
+  it('overwrites a document, and renames it on the landing page', () => {
+    const { files, list } = withFixture();
+    const doc = saved(FIXTURE, `${FIXTURE_NAME} 2`);
+    const { write, remove } = plan({ action: 'change', id: FIXTURE, layout: doc }, files, list);
     expect(remove).toEqual([]);
-    expect(JSON.parse(write[LIBRARY_FILES.document(id)])).toEqual(doc);
-    expect(write[LIBRARY_FILES.landing]).toContain(`>${nameOf(id)} 2 <span>`);
+    expect(JSON.parse(write[LIBRARY_FILES.document(FIXTURE)])).toEqual(doc);
+    expect(write[LIBRARY_FILES.landing]).toContain(`>${FIXTURE_NAME} 2 <span>`);
     expect(write[LIBRARY_FILES.documents]).toBeUndefined();
   });
 
@@ -119,12 +131,12 @@ describe('deleting a bundled layout', () => {
     expect(remove).toEqual([LIBRARY_FILES.golden(SMALL)]);
   });
 
-  it.runIf(DOCUMENT)('takes a document out, and its import and entry', () => {
-    const id = DOCUMENT as string;
-    const { write, remove } = plan({ action: 'delete', id });
-    expect(remove).toEqual([LIBRARY_FILES.document(id)]);
-    expect(write[LIBRARY_FILES.documents]).not.toContain(`/${id}.json`);
-    expect(write[LIBRARY_FILES.landing]).not.toContain(`layout=${id}&amp;`);
+  it('takes a document out, and its import and entry', () => {
+    const { files, list } = withFixture();
+    const { write, remove } = plan({ action: 'delete', id: FIXTURE }, files, list);
+    expect(remove).toEqual([LIBRARY_FILES.document(FIXTURE)]);
+    expect(write[LIBRARY_FILES.documents]).not.toContain(`/${FIXTURE}.json`);
+    expect(write[LIBRARY_FILES.landing]).not.toContain(`layout=${FIXTURE}&amp;`);
   });
 });
 

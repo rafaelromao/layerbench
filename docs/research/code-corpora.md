@@ -15,7 +15,7 @@ measured with the engine; the data is in [code-groups.json](code-groups.json).
   10 digits as a share of the symbols and digits together.
 - **Distance.** Jensen-Shannon divergence (**JSD**, in bits) between two symbol profiles: 0 for the
   same, 1 for nothing in common.
-- **Effect on a layout.** The Effort of the 36 bundled layouts on each text, as the
+- **Effect on a layout.** The Effort of the 35 bundled layouts on each text, as the
   Analyze page computes it: the `layouts_doc` rules, 100,000 symbols, no space, letters, numbers and
   symbols counted. **ρ** is the Spearman correlation of two texts' Effort rankings of the layouts,
   with capitals kept (Shift pressed, as the corpora are meant to be read) and, in the last column of
