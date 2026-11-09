@@ -4,6 +4,8 @@ import type { AnalyzeRequest, Progress, ReportDTO } from './protocol.js';
 
 export interface AnalysisState {
   report: ReportDTO | null;
+  /** The request the report answers: what it was rated on, which the request now standing may not be. */
+  answered: AnalyzeRequest | null;
   loading: boolean;
   progress: Progress | null;
   error: string | null;
@@ -20,6 +22,7 @@ export function useAnalysis(request: AnalyzeRequest | null): AnalysisState & {
   const client = useAnalysisClient();
   const [state, setState] = useState<AnalysisState>({
     report: null,
+    answered: null,
     loading: false,
     progress: null,
     error: null,
@@ -28,7 +31,7 @@ export function useAnalysis(request: AnalyzeRequest | null): AnalysisState & {
 
   useEffect(() => {
     if (!request) {
-      setState({ report: null, loading: false, progress: null, error: null });
+      setState({ report: null, answered: null, loading: false, progress: null, error: null });
       return;
     }
     const mine = ++generation.current;
@@ -40,7 +43,13 @@ export function useAnalysis(request: AnalyzeRequest | null): AnalysisState & {
         const cached = await client.peek(request);
         if (cancelled || mine !== generation.current) return;
         if (cached) {
-          setState({ report: cached, loading: false, progress: null, error: null });
+          setState({
+            report: cached,
+            answered: request,
+            loading: false,
+            progress: null,
+            error: null,
+          });
           return;
         }
         setState((s) => ({ ...s, loading: true, error: null, progress: null }));
@@ -53,12 +62,13 @@ export function useAnalysis(request: AnalyzeRequest | null): AnalysisState & {
           },
         });
         if (cancelled || mine !== generation.current) return;
-        setState({ report, loading: false, progress: null, error: null });
+        setState({ report, answered: request, loading: false, progress: null, error: null });
       } catch (e) {
         if (cancelled || mine !== generation.current) return;
         if (e instanceof DOMException && e.name === 'AbortError') return;
         setState({
           report: null,
+          answered: null,
           loading: false,
           progress: null,
           error: e instanceof Error ? e.message : String(e),

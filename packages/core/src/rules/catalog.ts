@@ -1,19 +1,30 @@
-import { BAND_LABELS } from './bands.js';
 import { CYANOPHAGE_EFFORT_SCALE, THUMB_EFFORT } from './effort.js';
 import type { Bands, Direction, Family, Predicate, Rule } from './types.js';
 
-/** The Doc's last SFB bound, the top of its Mid high category. */
-export const SFB_LAST_BOUND = 1.375;
+/**
+ * Where the colour of cyanophage's per-finger SFB bar saturates: `red = 128 + 6000 * share`, clamped
+ * to 255 (`keyboard_svg.js`, the "Same Finger Bigrams" panel in its finger view), a ramp from grey to
+ * #ff8080 that stops at a share of 127 / 6000 of the input, 2.117%. It is the one ramp his pages
+ * draw for a count of same-finger bigrams (the finger-pair matrix colours pairs of fingers by their
+ * own share), though the same constant colours his per-finger skipgram bars, so it is a general
+ * ramp and not one he set for SFB: they rate no layout.
+ */
+export const CYANOPHAGE_SFB_FULL_RED = (127 / 6000) * 100;
 
 /**
- * What an SFB above `SFB_LAST_BOUND` is called. The Doc's table gives SFB six categories, Min to
- * Mid high, and a dash under High, Very high and Max (ch. 13.4), and none of its layout rows has an
- * SFB past that bound, so it names nothing above it: `high` there would be the Doc's word for a
- * range it never set. SFS, scissors, redirects and pinky off also have dashes under their last
- * categories, but the Doc's rows do name values past them (SFS 7.483 High, redirects 12.1 Very
- * high), so they keep the next word of the nine.
+ * The cyanophage-like rule set's rulers: its own, where it has one. Cyanophage rates nothing, so the
+ * only reference is the ramp above, read as a layout's SFB: nine equal steps of 0.2352 from nothing
+ * to full red, the ninth, *max*, from 1.881 on (it takes what is above full red too, where his bar
+ * stays saturated). Rounded to three decimals, as the Doc's are. His ramp is a finger's share and
+ * this reads it as a layout's total, an assumption the guide names. Every other rule, Effort
+ * included, has no ruler of his and takes the Doc set's.
  */
-export const SFB_ABOVE_SCALE = 'above_mid_high';
+export const CYANOPHAGE_BANDS: Record<string, Bands> = {
+  sfb: {
+    direction: 'lower_is_better',
+    bounds: [0.235, 0.47, 0.706, 0.941, 1.176, 1.411, 1.646, 1.881],
+  },
+};
 
 /**
  * The Doc counts hand balance as even until a 52-48 split and as leaning up to 55-45, shares of the
@@ -29,6 +40,14 @@ export const HAND_LEANS_BOUND = 11;
 /**
  * Band bounds from the Layouts Doc ch. 13.4 (upper bounds of the Min…Max categories), and
  * LayerBench's own for Effort and for LSB, which the Doc's table does not have.
+ *
+ * SFB is the exception to "the Doc's": its table gives six bounds, Min to Mid high, and a dash under
+ * High, Very high and Max, and none of its layout rows has an SFB past 1.375 (the highest is
+ * Engram's 1.242). The first five are the Doc's. The three dashes are filled by carrying its sequence
+ * on, whose steps grow 0.10 · 0.11 · 0.14 · 0.20 · 0.30, then 0.45 · 0.66 · 0.94: 1.825 · 2.485 ·
+ * 3.425, each the start of the name it is said of (high above 1.825, very high above 2.485, max
+ * above 3.425). Mid high therefore runs to 1.825, past the Doc's own 1.375, which no row of the Doc
+ * contradicts.
  */
 export const BANDS: Record<string, Bands> = {
   alt: {
@@ -42,8 +61,7 @@ export const BANDS: Record<string, Bands> = {
   in_out: { direction: 'higher_is_better', bounds: [0.8, 1.2, 1.7, 2.1, 2.6, 3.0, 3.5, 3.9, 4.4] },
   sfb: {
     direction: 'lower_is_better',
-    bounds: [0.525, 0.625, 0.735, 0.875, 1.075, SFB_LAST_BOUND],
-    labels: [...BAND_LABELS.slice(0, 6), SFB_ABOVE_SCALE],
+    bounds: [0.525, 0.625, 0.735, 0.875, 1.075, 1.825, 2.485, 3.425],
   },
   sfs: { direction: 'lower_is_better', bounds: [5.3, 5.7, 6.1, 6.5, 6.9, 7.3] },
   scissors: { direction: 'lower_is_better', bounds: [0.1, 0.15, 0.25, 0.35, 0.45, 0.55, 0.7] },
@@ -58,11 +76,11 @@ export const BANDS: Record<string, Bands> = {
     labels: ['even', 'leans', 'heavy'],
   },
   /**
-   * LayerBench's own, on the Doc's nine steps, from the Effort of the bundled Standard and Thumb
-   * Alpha layouts on the default analysis settings: 20 apart, from 440, just above Aptmak's 439.9,
-   * the lowest of them, to 580, so that Colemak's 630, Dvorak and Qwerty are max.
+   * LayerBench's own, on the Doc's nine steps: min up to 300 and max above 600, the seven steps
+   * between them equal, 300 / 7 = 42.9 apiece, as the steps were equal before (20 apart from 440 to
+   * 580), rounded to whole numbers. Colemak's 630, Dvorak and Qwerty are max.
    */
-  effort: { direction: 'lower_is_better', bounds: [440, 460, 480, 500, 520, 540, 560, 580] },
+  effort: { direction: 'lower_is_better', bounds: [300, 343, 386, 429, 471, 514, 557, 600] },
 };
 
 const NO_THUMBS: Predicate = { any_thumb: false };

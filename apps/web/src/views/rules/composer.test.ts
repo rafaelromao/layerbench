@@ -149,20 +149,12 @@ describe('rule set editing', () => {
   it('keeps the names of the bands while they reach every category, and drops them when they do not', () => {
     const bandsOf = (id: string, s: ReturnType<typeof start>) =>
       s.ruleSet.rules.find((r) => r.id === id)?.bands;
-    const sfb = (s: ReturnType<typeof start>) => bandsOf('sfb', s);
-    const named = sfb(start())?.labels;
-    expect(named?.at(-1)).toBe('above_mid_high');
+    // SFB has no names of its own, the nine by position, whatever bounds it is given.
     const setSfb = (value: string) =>
       rulesReducer(start(), { type: 'setBounds', id: 'sfb', value });
-    // The same six bounds, moved: the same seven categories keep their names.
-    expect(sfb(setSfb('0.5, 0.6, 0.7, 0.8, 0.9, 1.0'))?.labels).toEqual(named);
-    // Fewer bounds are the first names of the list, as the standard ones would be.
-    expect(sfb(setSfb('0.5, 0.6, 0.7, 0.8, 1.0'))?.labels).toEqual(named);
-    // A seventh bound would put the last name on a category it was not said of.
-    const longer = setSfb('0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 2.0');
-    expect(sfb(longer)?.labels).toBeUndefined();
-    expect(sfb(longer)?.bounds).toHaveLength(7);
-    // Another metric's names are kept the same way: hand balance has the Doc's three categories,
+    expect(bandsOf('sfb', start())?.labels).toBeUndefined();
+    expect(bandsOf('sfb', setSfb('0.5, 0.6, 0.7'))?.labels).toBeUndefined();
+    // Hand balance has its own: the Doc's three categories, kept while they reach every category,
     // so its two bounds moved, or one fewer, keep the list of three names, and a third bound makes
     // a fourth category, which the list has no name for.
     const setHand = (value: string) =>
@@ -170,8 +162,10 @@ describe('rule set editing', () => {
     const hand = ['even', 'leans', 'heavy'];
     expect(bandsOf('hand_balance', start())?.labels).toEqual(hand);
     expect(bandsOf('hand_balance', setHand('3, 6'))?.labels).toEqual(hand);
+    // Fewer bounds are the first names of the list, as the standard ones would be.
     expect(bandsOf('hand_balance', setHand('6'))?.labels).toEqual(hand);
     expect(bandsOf('hand_balance', setHand('3, 6, 9'))?.labels).toBeUndefined();
+    expect(bandsOf('hand_balance', setHand('3, 6, 9'))?.bounds).toHaveLength(3);
   });
 
   it('reads each global with its own type', () => {

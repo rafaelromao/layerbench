@@ -14,11 +14,11 @@ import { simulate } from '../sim/resolver.js';
 import { classifyBand, humanBand } from './bands.js';
 import {
   BANDS,
+  CYANOPHAGE_BANDS,
+  CYANOPHAGE_SFB_FULL_RED,
   catalogRules,
   HAND_EVEN_BOUND,
   HAND_LEANS_BOUND,
-  SFB_ABOVE_SCALE,
-  SFB_LAST_BOUND,
   sfbWhere,
 } from './catalog.js';
 import { evaluate, evaluateFocus } from './engine.js';
@@ -204,32 +204,98 @@ describe('rules engine', () => {
     expect(hands.band.label).toBe('heavy');
   });
 
-  it('names no SFB band the Doc does not give', () => {
-    // The Doc's SFB row has six categories, Min to Mid high, and dashes under High, Very high and
-    // Max (ch. 13.4), so what is past its last bound, 1.375, is not called high.
-    expect(classifyBand(SFB_LAST_BOUND, BANDS.sfb).label).toBe('mid_high');
-    for (const sfb of [1.376, 1.56, 2.5, 6]) {
-      expect(classifyBand(sfb, BANDS.sfb), `SFB ${sfb}`).toMatchObject({
-        label: SFB_ABOVE_SCALE,
-        quality: 'bad',
-      });
+  it('rates SFB on the nine steps: the Doc’s first five, then its sequence carried on', () => {
+    // The Doc's SFB row has six bounds, Min to Mid high, and dashes under High, Very high and Max
+    // (ch. 13.4). The three dashes are filled by its sequence carried on (steps 0.10 · 0.11 · 0.14
+    // · 0.20 · 0.30, then 0.45 · 0.66 · 0.94): 1.825, 2.485, 3.425, each the start of its name, so
+    // Mid high runs past the Doc's own 1.375. No name of its own: the nine, by position.
+    expect(BANDS.sfb.bounds).toEqual([0.525, 0.625, 0.735, 0.875, 1.075, 1.825, 2.485, 3.425]);
+    expect(BANDS.sfb.labels).toBeUndefined();
+    const steps = [
+      [0.5, 'min', 'good'],
+      [0.525, 'min', 'good'],
+      [0.526, 'very_low', 'good'],
+      [0.625, 'very_low', 'good'],
+      [0.626, 'low', 'good'],
+      [0.735, 'low', 'good'],
+      [0.736, 'mid_low', 'ok'],
+      [0.875, 'mid_low', 'ok'],
+      [0.876, 'mid', 'ok'],
+      [1.075, 'mid', 'ok'],
+      [1.076, 'mid_high', 'ok'],
+      [1.375, 'mid_high', 'ok'],
+      [1.56, 'mid_high', 'ok'],
+      [1.825, 'mid_high', 'ok'],
+      [1.826, 'high', 'bad'],
+      [2.485, 'high', 'bad'],
+      [2.486, 'very_high', 'bad'],
+      [3.425, 'very_high', 'bad'],
+      [3.426, 'max', 'bad'],
+      [6, 'max', 'bad'],
+    ] as const;
+    for (const [value, label, quality] of steps) {
+      expect(classifyBand(value, BANDS.sfb), `SFB ${value}`).toMatchObject({ label, quality });
     }
-    expect(humanBand(classifyBand(1.56, BANDS.sfb).label)).toBe('above mid high');
-    // The six the Doc gives are the Doc's, in its order.
-    expect(BANDS.sfb.labels).toEqual([
-      'min',
-      'very_low',
-      'low',
-      'mid_low',
-      'mid',
-      'mid_high',
-      SFB_ABOVE_SCALE,
-    ]);
-    expect(BANDS.sfb.bounds).toEqual([0.525, 0.625, 0.735, 0.875, 1.075, 1.375]);
-    // The rule each preset ranks with carries those names, not only the table they come from.
-    for (const preset of [layoutsDoc(), cyanophage()]) {
-      const bands = preset.rules.find((r) => r.id === 'sfb')?.bands;
-      expect(classifyBand(1.56, bands).label, preset.id).toBe(SFB_ABOVE_SCALE);
+    expect(humanBand(classifyBand(2.1, BANDS.sfb).label)).toBe('high');
+    expect(humanBand(classifyBand(3, BANDS.sfb).label)).toBe('very high');
+    // Every SFB the Doc's own rows give keeps its category: Noctum 0.550 and Isrt 0.599 Very low,
+    // Mtgap 1.048 Mid, Colemak DH 1.177 and Engram 1.242 Mid high (§13.2, §14.2.1, §15.7.5).
+    const docRows = [
+      [0.55, 'very_low'],
+      [0.599, 'very_low'],
+      [1.048, 'mid'],
+      [1.177, 'mid_high'],
+      [1.242, 'mid_high'],
+    ] as const;
+    for (const [value, label] of docRows) {
+      expect(classifyBand(value, BANDS.sfb).label, `SFB ${value}`).toBe(label);
+    }
+    // The Layouts Doc rule set carries this ruler, as a part of the set and not only of the catalog.
+    expect(layoutsDoc().rules.find((r) => r.id === 'sfb')?.bands).toEqual(BANDS.sfb);
+  });
+
+  it('rates cyanophage-like SFB on the ramp cyanophage colours it by', () => {
+    // His pages rate no layout; his finger bars are `red = 128 + 6000 * share` clamped to 255, so
+    // full red at 127 / 6000 of the input. Nine equal steps over it, the ninth, max, from 1.881 on.
+    expect(CYANOPHAGE_SFB_FULL_RED).toBeCloseTo(2.1167, 4);
+    const { bounds } = CYANOPHAGE_BANDS.sfb;
+    expect(bounds).toHaveLength(8);
+    bounds.forEach((bound, i) => {
+      expect(bound, `bound ${i + 1}`).toBeCloseTo(((i + 1) * CYANOPHAGE_SFB_FULL_RED) / 9, 3);
+    });
+    const ruler = cyanophage().rules.find((r) => r.id === 'sfb')?.bands;
+    expect(ruler).toEqual(CYANOPHAGE_BANDS.sfb);
+    expect(ruler).not.toEqual(layoutsDoc().rules.find((r) => r.id === 'sfb')?.bands);
+    const steps = [
+      [0.235, 'min', 'good'],
+      [0.236, 'very_low', 'good'],
+      [0.706, 'low', 'good'],
+      [0.71, 'mid_low', 'ok'],
+      [0.98, 'mid', 'ok'],
+      [1.176, 'mid', 'ok'],
+      [1.177, 'mid_high', 'ok'],
+      [1.411, 'mid_high', 'ok'],
+      [1.412, 'high', 'bad'],
+      [1.87, 'very_high', 'bad'],
+      [1.881, 'very_high', 'bad'],
+      [1.882, 'max', 'bad'],
+      [4.39, 'max', 'bad'],
+    ] as const;
+    for (const [value, label, quality] of steps) {
+      expect(classifyBand(value, ruler), `SFB ${value}`).toMatchObject({ label, quality });
+    }
+    // The ruler travels with the set: saved to JSON and read back, it is the same.
+    const back = ruleSetFromJson(ruleSetToJson(cyanophage()));
+    expect(back.ok).toBe(true);
+    if (back.ok) {
+      expect(back.ruleSet.rules.find((r) => r.id === 'sfb')?.bands).toEqual(CYANOPHAGE_BANDS.sfb);
+    }
+    // Only SFB has a ruler of his: every other rule's is the Doc set's.
+    for (const rule of cyanophage().rules) {
+      if (rule.id === 'sfb') continue;
+      expect(rule.bands ?? null, rule.id).toEqual(
+        layoutsDoc().rules.find((r) => r.id === rule.id)?.bands ?? null,
+      );
     }
   });
 
@@ -266,16 +332,40 @@ describe('rules engine', () => {
   });
 
   it('bands Effort on all nine steps, min to max, lower being better', () => {
-    expect(classifyBand(357, BANDS.effort)).toMatchObject({ label: 'min', quality: 'good' });
-    expect(classifyBand(440, BANDS.effort).label).toBe('min');
-    expect(classifyBand(441, BANDS.effort).label).toBe('very_low');
-    expect(classifyBand(510, BANDS.effort)).toMatchObject({ label: 'mid', quality: 'ok' });
-    expect(classifyBand(580, BANDS.effort).label).toBe('very_high');
-    expect(classifyBand(581, BANDS.effort).label).toBe('max');
+    // Min up to 300 and max above 600, the steps between them equal.
+    expect(classifyBand(290, BANDS.effort)).toMatchObject({ label: 'min', quality: 'good' });
+    expect(classifyBand(300, BANDS.effort).label).toBe('min');
+    expect(classifyBand(301, BANDS.effort).label).toBe('very_low');
+    expect(classifyBand(500, BANDS.effort)).toMatchObject({ label: 'mid_high', quality: 'ok' });
+    expect(classifyBand(600, BANDS.effort).label).toBe('very_high');
+    expect(classifyBand(601, BANDS.effort).label).toBe('max');
     expect(classifyBand(1237, BANDS.effort)).toMatchObject({ label: 'max', quality: 'bad' });
-    // Every preset scores Effort with the catalog's rule, so every one carries its bands.
+    BANDS.effort.bounds.forEach((bound, i) => {
+      expect(Math.abs(bound - (300 + (i * 300) / 7)), `bound ${i + 1}`).toBeLessThanOrEqual(0.5);
+    });
+    // Every preset scores Effort with the catalog's rule, so every one carries its bands, and the
+    // names and colours of every step are the same in both: cyanophage's Effort has no ruler of his.
+    const effortSteps = [
+      [300, 'min', 'good'],
+      [343, 'very_low', 'good'],
+      [386, 'low', 'good'],
+      [429, 'mid_low', 'ok'],
+      [471, 'mid', 'ok'],
+      [514, 'mid_high', 'ok'],
+      [557, 'high', 'bad'],
+      [600, 'very_high', 'bad'],
+      [601, 'max', 'bad'],
+    ] as const;
+    expect(BANDS.effort.bounds).toEqual([300, 343, 386, 429, 471, 514, 557, 600]);
     for (const preset of [layoutsDoc(), cyanophage()]) {
-      expect(preset.rules.find((r) => r.id === 'effort')?.bands).toEqual(BANDS.effort);
+      const bands = preset.rules.find((r) => r.id === 'effort')?.bands;
+      expect(bands, preset.id).toEqual(BANDS.effort);
+      for (const [value, label, quality] of effortSteps) {
+        expect(classifyBand(value, bands), `${preset.id} Effort ${value}`).toMatchObject({
+          label,
+          quality,
+        });
+      }
     }
     expect(qwerty.results.find((r) => r.id === 'effort')?.band.label).toBe('max');
   });
@@ -669,7 +759,7 @@ describe('the Layouts Doc’s SFB on English news, as Genkey would divide it', (
   it.each([
     ['magic-romak', 1.348, 1.6935, 'mid_high'],
     ['colemak-dh', 1.173, 1.4736, 'mid_high'],
-    ['qwerty', 5.269, 6.6193, 'above_mid_high'],
+    ['qwerty', 5.269, 6.6193, 'max'],
   ] as const)(
     '%s reads %s, and %s as a share of bigrams',
     async (id, letters, bigrams, band) => {

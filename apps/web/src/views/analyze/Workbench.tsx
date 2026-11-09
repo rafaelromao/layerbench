@@ -50,7 +50,7 @@ import { expandPositions, HEAT_LABELS, heatMap } from '../../engine/heat.js';
 import type { AnalyzeRequest, ExplainDTO, ProducerDTO, ReportDTO } from '../../engine/protocol.js';
 import { useAnalysis } from '../../engine/use-analysis.js';
 import { useKeyStats } from '../../engine/use-key-stats.js';
-import { HELP, type HelpTopic } from '../../guide/help.js';
+import { HELP, type HelpTopic, rulerShown } from '../../guide/help.js';
 import type { LayoutSource } from '../../layout-session/open.js';
 import type { OpenSession } from '../../layout-session/use-layout-session.js';
 import { followProposal, forgetProposal, recordProposal } from '../../proposals/proposals.js';
@@ -207,7 +207,11 @@ export function Workbench({
 
   // A swap changes which key types which symbol, nothing else, so the tables already typed can be
   // re-scored in milliseconds — as long as they are of the layout the swap was made on.
-  const [estimate, setEstimate] = useState<{ report: ReportDTO; layout: Layout } | null>(null);
+  const [estimate, setEstimate] = useState<{
+    report: ReportDTO;
+    layout: Layout;
+    settings: AnalysisSettings;
+  } | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: only a new edit can ask for an estimate; a report landing later must not
   useEffect(() => {
     const last = state.lastEdit;
@@ -230,7 +234,7 @@ export function Workbench({
         settings: ready,
       })
       .then((dto) => {
-        if (!cancelled && dto) setEstimate({ report: dto, layout });
+        if (!cancelled && dto) setEstimate({ report: dto, layout, settings: ready });
       })
       .catch(() => {});
     return () => {
@@ -252,6 +256,13 @@ export function Workbench({
         ? estimate.report
         : (landed?.report ?? report);
   const stale = shown !== null && !current && !provisional;
+  /**
+   * Where the badges of Effort and SFB lead. Not while the numbers shown, the last analysis or an
+   * estimate made from it, were rated on other rules than the link now names: they are on a ruler
+   * the link no longer names. An edit of the layout leaves the rules, and so the link, alone.
+   */
+  const shownRules = provisional && estimate ? estimate.settings.rules : landed?.settings?.rules;
+  const ruler = rulerShown(settings.linked.rules, shownRules, ready?.rules);
 
   // ------------------------------------------------------------------ the link
 
@@ -1325,6 +1336,7 @@ export function Workbench({
         corpusName={corpusName}
         languageGap={languageGap}
         onSelect={selectMetric}
+        ruler={ruler}
         failed={settings.status === 'failed'}
       />
 
@@ -1335,6 +1347,7 @@ export function Workbench({
           selectedItem={selectedItem}
           onHighlightItem={highlightItem}
           presetId={presetOf(params.preset)}
+          ruler={ruler}
           compiled={typedCompiled}
         />
       )}
@@ -1364,6 +1377,7 @@ function SummaryCard({
   corpusName,
   languageGap,
   onSelect,
+  ruler,
   failed,
 }: {
   shown: ReportDTO | null;
@@ -1374,6 +1388,8 @@ function SummaryCard({
   corpusName: string;
   languageGap: { name: string; missingRequired: string[] } | null;
   onSelect: (id: string) => void;
+  /** Where the badges of Effort and SFB lead: the ruler of the rule set the numbers were rated on. */
+  ruler: HelpTopic | undefined;
   /** Whether there will be no numbers to wait for: the analysis cannot be made. */
   failed: boolean;
 }) {
@@ -1414,7 +1430,7 @@ function SummaryCard({
 
             {shown ? (
               <>
-                <SummaryStrip results={shown.results} onSelect={onSelect} />
+                <SummaryStrip results={shown.results} onSelect={onSelect} ruler={ruler} />
                 {shown.score.enabled && shown.score.value !== null && (
                   <p className="text-sm">
                     Composite score:{' '}
@@ -1497,6 +1513,7 @@ const MetricFamilies = memo(function MetricFamilies({
   selectedItem,
   onHighlightItem,
   presetId,
+  ruler,
   compiled,
 }: {
   report: ReportDTO;
@@ -1504,6 +1521,8 @@ const MetricFamilies = memo(function MetricFamilies({
   selectedItem: number | null;
   onHighlightItem: (ruleId: string, index: number) => void;
   presetId?: string;
+  /** Where the badges of Effort and SFB lead: the ruler of the rule set the numbers were rated on. */
+  ruler?: HelpTopic;
   /** The layout the report was typed on, whose keys an item's label does not name. */
   compiled: CompiledLayout;
 }) {
@@ -1527,6 +1546,7 @@ const MetricFamilies = memo(function MetricFamilies({
                     selectedItem={selectedRule === r.id ? selectedItem : null}
                     onHighlightItem={onHighlightItem}
                     presetId={presetId}
+                    ruler={ruler}
                     describeItem={describeItem}
                   />
                 ))}

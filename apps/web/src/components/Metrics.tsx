@@ -1,5 +1,6 @@
 import { humanBand, type RuleItem, type RuleResult } from '@layerbench/core';
 import { type MouseEvent, useEffect, useRef, useState } from 'react';
+import { type HelpTopic, helpHref } from '../guide/help.js';
 import { formatItem, formatValue, qualityBadge, qualityBorder, shortLabel } from './format.js';
 import { RuleSources } from './RuleSources.js';
 
@@ -43,21 +44,46 @@ export const KEY_STATS_IDS = [
 
 const FINGER_ORDER = ['LP', 'LR', 'LM', 'LI', 'LT', 'RT', 'RI', 'RM', 'RR', 'RP'] as const;
 
-export function BandBadge({ band }: { band: RuleResult['band'] }) {
+/**
+ * A band's name on a pill, coloured by whether it is good. Given the part of the guide that
+ * explains the ruler it was read on, the pill is a link to it: Effort and SFB, the two numbers a
+ * layout is ranked by, say how they are rated. It opens in a new tab, as a "?" does.
+ */
+export function BandBadge({ band, ruler }: { band: RuleResult['band']; ruler?: HelpTopic }) {
   if (!band.label) return null;
+  const name = humanBand(band.label);
+  const look = `lb-band badge badge-xs ${qualityBadge(band)}`;
+  if (!ruler) return <span className={look}>{name}</span>;
   return (
-    <span className={`lb-band badge badge-xs ${qualityBadge(band)}`}>{humanBand(band.label)}</span>
+    <a
+      href={helpHref(ruler)}
+      target="_blank"
+      rel="noopener"
+      className={`${look} lb-band-link`}
+      aria-label={`${name}: how it is rated, ${ruler.topic} (opens in a new tab)`}
+      title={`How it is rated: ${ruler.topic}`}
+    >
+      {name}
+    </a>
   );
+}
+
+/** Whether a metric is one of the two a layout is judged by, whose badge leads to its ruler. */
+export function isHeadline(id: string): boolean {
+  return (HEADLINE_IDS as readonly string[]).includes(id);
 }
 
 export function SummaryStrip({
   results,
   ids = SUMMARY_IDS,
   onSelect,
+  ruler,
 }: {
   results: RuleResult[];
   ids?: string[];
   onSelect?: (id: string) => void;
+  /** Where Effort's and SFB's badges lead: the ruler of the rule set the numbers were rated on. */
+  ruler?: HelpTopic;
 }) {
   const byId = new Map(results.map((r) => [r.id, r]));
   return (
@@ -66,14 +92,41 @@ export function SummaryStrip({
       {ids.map((id) => {
         const r = byId.get(id);
         if (!r) return null;
-        const body = (
+        const inner = (
           <>
             <span className="lb-stat-label">{shortLabel(r.id, r.label)}</span>
             <span className="lb-stat-value">{formatValue(r.value, r.unit)}</span>
-            <BandBadge band={r.band} />
           </>
         );
         const look = `lb-stat ${qualityBorder(r.band)}`;
+        if (ruler && isHeadline(id)) {
+          // The badge leads to the guide, and a link cannot sit inside the stat's button: the button
+          // holds the name and the number, stretched over the whole box so that a click anywhere
+          // in it selects the metric, and the badge sits above it in the same box.
+          return (
+            <li key={id}>
+              <div
+                title={r.note ?? r.label}
+                className={`${look} ${onSelect ? 'relative transition hover:border-[var(--lb-ring)]' : ''}`}
+              >
+                {onSelect ? (
+                  <button type="button" className="lb-stat-main" onClick={() => onSelect(id)}>
+                    {inner}
+                  </button>
+                ) : (
+                  inner
+                )}
+                <BandBadge band={r.band} ruler={ruler} />
+              </div>
+            </li>
+          );
+        }
+        const body = (
+          <>
+            {inner}
+            <BandBadge band={r.band} />
+          </>
+        );
         return (
           <li key={id}>
             {/* A card that leads nowhere is not a button: it would be a tab stop that does nothing. */}
@@ -137,6 +190,8 @@ interface MetricProps {
   onHighlightItem?: (ruleId: string, index: number) => void;
   /** The preset in force, whose own definition of a rule is then cited first. */
   presetId?: string;
+  /** Where Effort's and SFB's badge leads: the ruler of the rule set the number was rated on. */
+  ruler?: HelpTopic;
   /** Names the keys of an item, which its label does not: it says what they typed. */
   describeItem?: (item: RuleItem) => string | null;
 }
@@ -212,6 +267,7 @@ function MetricBody({
   selectedItem,
   onHighlightItem,
   presetId,
+  ruler,
   describeItem,
   large = false,
   titleId,
@@ -238,7 +294,7 @@ function MetricBody({
           <div className={`font-mono tabular-nums ${large ? 'text-3xl' : 'text-xl'}`}>
             {formatValue(result.value, result.unit)}
           </div>
-          <BandBadge band={result.band} />
+          <BandBadge band={result.band} ruler={isHeadline(result.id) ? ruler : undefined} />
         </div>
         {onEnlarge && (
           <button
