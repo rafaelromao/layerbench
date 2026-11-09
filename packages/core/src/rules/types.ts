@@ -14,6 +14,7 @@ export type Family = 'bigram' | 'skipgram' | 'trigram' | 'usage' | 'effort' | 'l
 export type Aggregate =
   | 'percent_of_ngrams'
   | 'percent_of_keystrokes'
+  | 'percent_of_symbols'
   | 'count'
   | 'per100'
   | 'sum_distance'

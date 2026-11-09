@@ -188,7 +188,17 @@ export interface PresetReferences {
 export const PRESET_REFERENCES: Readonly<Record<string, PresetReferences>> = {
   layouts_doc: {
     preset: [kld('definitions throughout; §13.4 Stats thresholds')],
-    rules: {},
+    rules: {
+      // The Doc took its SFB from Genkey (§13.3), which divides by the letters it types.
+      sfb: [
+        {
+          title: 'Genkey source, semilin/genkey',
+          url: 'https://github.com/semilin/genkey',
+          locator:
+            'output.go, layout.go — SFBs as a percent of the letters on the layout’s keys (Total), no space',
+        },
+      ],
+    },
   },
   cyanophage: {
     preset: [

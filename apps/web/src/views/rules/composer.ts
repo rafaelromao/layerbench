@@ -64,6 +64,7 @@ export const KEY_KINDS = [
 export const COMPOSER_AGGREGATES: Aggregate[] = [
   'percent_of_ngrams',
   'percent_of_keystrokes',
+  'percent_of_symbols',
   'count',
   'sum_distance',
   'mean_distance',

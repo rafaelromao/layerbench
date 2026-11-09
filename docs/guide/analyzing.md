@@ -24,8 +24,9 @@ too, so theirs differs a little. A thumb press costs 1 here, where cyanophage ch
 one-shot tap, a thumb held for a layer and a letter on a thumb are presses too. A space counts as
 a keystroke that costs nothing.
 
-**SFB**, same finger bigrams, is the share of consecutive key pairs that one finger presses on two
-different keys. It is the first measure of the
+**SFB**, same finger bigrams, counts the consecutive key pairs that one finger presses on two
+different keys, as a share of the letters typed (the cyanophage-like rules divide by keystrokes
+instead). It is the first measure of the
 [Keyboard Layouts Doc](https://docs.google.com/document/d/1W0jhfqJI2ueJ2FNseR4YAFpNfsUM-_FlREHbpNGmC2o),
 §4.1. Pressing the same key twice is a repeat, not an SFB.
 
@@ -83,8 +84,8 @@ Numbers and Symbols among them, do:
 Untick a category under **Categories**, in **Rank and filter**, to leave its layouts out of the list
 and the ranking.
 
-Layouts are compared on the text, not on their presses. SFB and the other pair rules are a share of
-the letter pairs the text has, and Effort is per character typed, so a layout's layer taps, holds
+Layouts are compared on the text, not on their presses. The pair rules are a share of the letter
+pairs the text has, SFB of the letters it has, and Effort is per character typed, so a layout's layer taps, holds
 and one-shots, which can never be a same-finger letter pair, do not make it look better than it
 types: each adds its cost to Effort but no keystroke. A layout typing each character with one press
 gets the same numbers either way. A thumb press is never part of a roll or an alternation either,
@@ -300,11 +301,16 @@ The Doc gives SFB six bands, *min* to *mid high*, the last ending at 1.375%; it 
 above that, and none of its layout tables has an SFB there, so a badge there says *above mid high*
 and not *high*. SFS, scissors, redirects and pinky off keep the next name after their last
 threshold, as the Doc's own layout tables name those values. The SFB bands came from numbers
-counted without the space bar and with capitals folded, as a share of the letters typed. The Layouts Doc rules here take SFB as a share of
-the text's bigrams instead, which reads about a quarter higher on the English sample, so even with
-**Space** and **Shift** off the badge is the Doc's band for a number above the Doc's. Turn them on and
-the SFB includes pairs the Doc never had, such as Repeat then space on one thumb. A custom rule set
-saved earlier keeps the bands it was saved with, so its badge may still say *high* where these say
+counted without the space bar and with capitals folded, as a share of the letters typed, and the
+Layouts Doc rules here count SFB the same way, so with **Space** and **Shift** off the badge is the
+Doc's band for the Doc's number: Colemak-DH reads 1.17 on the English sample, where the Doc has
+1.177, *mid high*. Turn them on and the SFB includes pairs the Doc never had, such as Repeat then
+space on one thumb or the Shift presses, so its band can differ from the Doc's for the same layout,
+but it is still a share of the letters, not of the letters and the spaces. The cyanophage-like rules divide by keystrokes, with a space per word, and read
+lower. SFS is not counted as the Doc's: it is a share of the text's skipgrams, over one skipped key,
+where Genkey divides by the letters and counts skips of up to nine keys, each half as much as the
+one before. A custom rule set saved earlier keeps the bands and the denominators it was saved with,
+so its SFB may still be a share of bigrams, and its badge may still say *high* where these say
 *above mid high*. The glossary has the figures.
 
 Hand balance is read as the Doc reads it, from the share of the keystrokes each hand types. The Doc
