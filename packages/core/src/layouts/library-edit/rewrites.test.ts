@@ -115,10 +115,10 @@ describe('the languages file', () => {
 /** `documents.ts` as written, with one document, so the cases hold whatever the Library has. */
 const DOCUMENTS_TS = [
   "import { toCanonicalJson } from '../layout/json.js';",
-  "import nordwind from './documents/nordwind.json';",
+  "import sample from './documents/sample.json';",
   '',
   'const DOCUMENTS: Record<string, unknown> = {',
-  '  nordwind,',
+  '  sample,',
   '};',
   '',
 ].join('\n');
@@ -138,13 +138,13 @@ describe('the documents module', () => {
     const after = registerDocument(text, 'new-layout');
     expect(after).toContain("import newLayout from './documents/new-layout.json';\n");
     expect(after.indexOf('./documents/new-layout.json')).toBeLessThan(
-      after.indexOf('./documents/nordwind.json'),
+      after.indexOf('./documents/sample.json'),
     );
-    expect(after).toMatch(/ {2}nordwind,\n {2}'new-layout': newLayout,\n\};/);
+    expect(after).toMatch(/ {2}sample,\n {2}'new-layout': newLayout,\n\};/);
     const plain = registerDocument(text, 'zed');
-    expect(plain).toMatch(/ {2}nordwind,\n {2}zed,\n\};/);
+    expect(plain).toMatch(/ {2}sample,\n {2}zed,\n\};/);
     expect(plain.indexOf('./documents/zed.json')).toBeGreaterThan(
-      plain.indexOf('./documents/nordwind.json'),
+      plain.indexOf('./documents/sample.json'),
     );
   });
 
@@ -156,7 +156,7 @@ describe('the documents module', () => {
   });
 
   it('writes the object empty once its last document goes, and takes one again', () => {
-    const none = unregisterDocument(text, 'nordwind');
+    const none = unregisterDocument(text, 'sample');
     expect(none).toContain('const DOCUMENTS: Record<string, unknown> = {};');
     expect(registerDocument(none, 'new-layout')).toMatch(/= \{\n {2}'new-layout': newLayout,\n\};/);
   });
@@ -167,11 +167,11 @@ describe('the documents module', () => {
 
   it('unregisters a document it registered, back to the text it had', () => {
     expect(unregisterDocument(registerDocument(text, 'new-layout'), 'new-layout')).toBe(text);
-    expect(unregisterDocument(text, 'nordwind')).not.toContain('nordwind');
+    expect(unregisterDocument(text, 'sample')).not.toContain('sample');
   });
 
   it('refuses one already there, and one that is not', () => {
-    expect(() => registerDocument(text, 'nordwind')).toThrow(LibraryRequestRefused);
+    expect(() => registerDocument(text, 'sample')).toThrow(LibraryRequestRefused);
     expect(() => unregisterDocument(text, 'new-layout')).toThrow(LibraryRequestRefused);
   });
 });

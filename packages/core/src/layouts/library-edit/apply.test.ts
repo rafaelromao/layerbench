@@ -33,8 +33,8 @@ function copy(): string {
     mkdirSync(dirname(join(root, path)), { recursive: true });
     cpSync(join(REPO, path), join(root, path));
   }
-  const documents = dirname(LIBRARY_FILES.document('x'));
-  cpSync(join(REPO, documents), join(root, documents), { recursive: true });
+  // The folder of documents holds none while the Library has none, and git keeps no empty folder.
+  mkdirSync(join(root, dirname(LIBRARY_FILES.document('x'))), { recursive: true });
   mkdirSync(join(root, dirname(LIBRARY_FILES.golden('x'))), { recursive: true });
   cpSync(join(REPO, LIBRARY_FILES.golden(CLASSIC)), join(root, LIBRARY_FILES.golden(CLASSIC)));
   return root;

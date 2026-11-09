@@ -56,7 +56,6 @@ const EXPECTED: Record<LayoutCategory, string[]> = {
     'sunlight',
     'aptmak',
     'rsthd',
-    'nordwind',
   ],
   standard: [
     'romak',

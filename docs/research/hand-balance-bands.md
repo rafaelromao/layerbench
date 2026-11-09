@@ -65,19 +65,18 @@ categories: *even* is green, *leans* amber and *heavy* red, where *leans* was gr
 ## Effect on the bundled layouts
 
 Measured with `analyze` on the Library's settings (English news, 100,000 letters, fold, no space,
-cyanophage-like rules; hand balance is the same on the Layouts Doc rules). 32 of the 36 bundled layouts
+cyanophage-like rules; hand balance is the same on the Layouts Doc rules). 32 of the 35 bundled layouts
 change band; the values do not move.
 
 | | even | leans | heavy | very heavy |
 |---|---|---|---|---|
-| Before | 4 | 10 | 6 | 16 |
-| After | 14 | 13 | 9 | (none) |
+| Before | 3 | 10 | 6 | 16 |
+| After | 13 | 13 | 9 | (none) |
 
-A selection of 13 of the 36, Nordwind among them as one that does not change band:
+A selection of 12 of the 35:
 
 | Layout | Left–right | \|L − R\| | Before | After |
 |---|---|---|---|---|
-| Nordwind | 49.87–50.13 | 0.26 | even | even |
 | Colemak | 48.82–51.18 | 2.37 | leans | even |
 | Recurva | 48.05–51.95 | 3.91 | leans | even |
 | Cem Aksoylar's Colemak-DH | 47.91–52.09 | 4.19 | leans | even |

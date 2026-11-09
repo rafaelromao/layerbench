@@ -713,12 +713,12 @@ const LACKS: Record<string, Record<string, string[][]>> = {
 };
 
 describe('which bundled layouts have the default layers', () => {
-  it('are the three Special layouts whose sources define no layer that types, and a document', () => {
+  it('are the three Special layouts whose sources define no layer that types', () => {
     expect(
       BUNDLED_LAYOUTS.filter((l) => hasDefaultLayers(l))
         .map((l) => l.id)
         .sort(),
-    ).toEqual(['bird', 'nordrassil', 'nordwind', 'uno']);
+    ).toEqual(['bird', 'nordrassil', 'uno']);
   });
 });
 

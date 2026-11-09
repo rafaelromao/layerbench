@@ -213,8 +213,7 @@ past the letters, with the keys and combos that reach them and the combos its au
 and accents with. Nothing is added to what its author's design types: a character it leaves out, it
 cannot type, until you add it in the editor. [The layouts that come with the app and have layers of
 their own](#layouts-with-their-authors-layers) are listed below. Bird, Nordrassil and Uno, whose
-sources define no layer that types, have the default layers instead, and keep every key they have, as does Nordwind, a document, as it
-was saved.
+sources define no layer that types, have the default layers instead, and keep every key they have.
 
 **Numbers** and **Symbols** are Magic Romak's on the 24 keys most boards have. The pinky's top and
 bottom keys and the inner column add what has no room there: currency and ordinals on Numbers, for
@@ -368,8 +367,7 @@ number row and reaches its layers from thumb keys thirty-four keys lack, Hands D
 author's firmware carries the Hands Down layers for a later Neu with other letters and thumbs, and
 Nordrassil, whose author publishes the rest of the keymap only outside its repository. Each types
 the marks its author places and nothing more, no digit and no accent, until you add them in the
-editor; Bird, Nordrassil and Uno, which keep every key they have, have the default layers, and
-Nordwind, a document, has them as it was saved.
+editor; Bird, Nordrassil and Uno, which keep every key they have, have the default layers.
 
 Magic Romak is its author's keymap, and has no Extras and no Accents, as the keymap has none. Its
 keys, layers and combos are read from the keymap-drawer file its author keeps for it, as the

@@ -10,8 +10,7 @@ rule here moves a key, and keep `templates.test.ts` asserting each rule.
 - **Who has them.** A layout a user makes with **New layout** can start with Numbers, Symbols and
   Accents (`defaultLayers`, `newLayout` in the app). A bundled layout is its author's design, with
   no layer its author does not define; Bird, Nordrassil and Uno, three Special layouts whose
-  sources define no layer that types, take them, keeping every key they have (`withDefaultLayers`), and
-  so does Nordwind, a document, as its author saved it.
+  sources define no layer that types, take them, keeping every key they have (`withDefaultLayers`).
 - **The layers.** Numbers, Symbols and Accents. Extras exists only on a board that needs it: one
   that lacks keys for what Numbers and Symbols carry, or for Accents' 30 keys. Extras comes on while
   Numbers and Symbols are both held: both inner thumbs, in either order, Symbols' left inner thumb
