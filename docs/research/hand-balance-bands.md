@@ -34,8 +34,11 @@ Every 52 is even, every 55 leans and every 56 is heavy. A cut at exactly 52.0 an
 half of the rows printed as 52 or 55 to the category above, since a printed 52 is anything from 51.5
 to 52.5. So the Doc files a layout under the whole-percent split it prints, and a category runs to the
 half point above its share: 52.5-47.5 and 55.5-44.5, a difference of **5** and **11** points. (A few
-rows print 101 in all, 46–55, 47–54 and 45–56: the shares are rounded to the nearest, one at a time,
-not cut, which is why a category ends at the half point above a share and not at the next whole one.) The sentence
+rows print 101 in all, 46–55, 47–54 and 45–56, which cutting the shares never gives, and only a few,
+where rounding every share up would give it nearly everywhere. So the shares read as rounded, not cut,
+and to the nearest: an inference from those rows, not something the Doc says, and the one the half
+point rests on. Rounded to the nearest, a category ends at the half point above a share; cut, it
+would end at the next whole one. The decision itself rests on the rows above.) The sentence
 read as exact bounds, 4 and 10, is the other reading; it would call a layout the Doc prints as
 "Even 52 – 48" leaning about as often as not.
 
@@ -70,7 +73,7 @@ change band; the values do not move.
 | Before | 4 | 10 | 6 | 16 |
 | After | 14 | 13 | 9 | (none) |
 
-The layouts that change band, with Nordwind for one that does not (13 of the 36):
+A selection of 13 of the 36, Nordwind among them as one that does not change band:
 
 | Layout | Left–right | \|L − R\| | Before | After |
 |---|---|---|---|---|
@@ -101,5 +104,6 @@ measurements are LayerBench's own, on its own text and rules.
 - A custom rule set saved before this keeps the bounds and the four names it was saved with. The
   presets take the new ones.
 - The Rules editor keeps a band's names while they reach every category, and gives the standard names
-  by position once there are more bounds than names: a third Hand balance bound is then named *min*,
-  *very low*, *low*, *mid low*, which say nothing of hand balance.
+  by position once the categories outnumber the names: a third Hand balance bound makes four
+  categories for three names, and they are then named *min*, *very low*, *low*, *mid low*, which say
+  nothing of hand balance.

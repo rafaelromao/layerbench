@@ -870,9 +870,10 @@ them, in whole percents, as `even`, `leans` and `heavy`.
 
 What moved, checked field by field across the 38 reports, old against new:
 
-- **`hand_balance`'s `band`**, in 36 reports: `index`, `label`, `quality` and `goodness`. 21 went from
-  `very_heavy` to `heavy`, 5 from `very_heavy` to `leans`, 4 from `heavy` to `leans`, 6 from `leans`
-  to `even`.
+- **`hand_balance`'s `band`**, in 36 reports: `index` and `label` in all of them, `goodness` in 15
+  and `quality` in 5. 21 went from `very_heavy` to `heavy` (`index` and `label` alone), 5 from
+  `very_heavy` to `leans` (all four fields), 4 from `heavy` to `leans` and 6 from `leans` to `even`
+  (the last two without `quality`).
 - **Nothing else**: not the value, `per_hand`, the items or any other rule. The two reports that did
   not move are Magic Romak's `fixture_enpt` ones with the space, at 1.5 points, `even` before and
   after.
