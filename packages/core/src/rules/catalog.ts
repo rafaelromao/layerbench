@@ -2,10 +2,11 @@ import { CYANOPHAGE_EFFORT_SCALE, THUMB_EFFORT } from './effort.js';
 import type { Bands, Direction, Family, Predicate, Rule } from './types.js';
 
 /**
- * Where cyanophage's playground paints a finger's SFB bar fully red: `red = 128 + 6000 * share`,
- * clamped to 255 (`keyboard_svg.js`, the "Same Finger Bigrams" panel), so the bar is saturated at a
- * share of 127 / 6000 of the input, 2.117%. It is the only thing his pages colour SFB by: they
- * rate no layout.
+ * Where the colour of cyanophage's per-finger SFB bar saturates: `red = 128 + 6000 * share`, clamped
+ * to 255 (`keyboard_svg.js`, the "Same Finger Bigrams" panel in its finger view), a ramp from grey to
+ * #ff8080 that stops at a share of 127 / 6000 of the input, 2.117%. It is the one ramp his pages
+ * draw for a count of same-finger bigrams (the finger-pair matrix colours pairs of fingers by their
+ * own share): they rate no layout.
  */
 export const CYANOPHAGE_SFB_FULL_RED = (127 / 6000) * 100;
 

@@ -111,7 +111,26 @@ describe('Compare', () => {
     // Effort is banded like the Doc's metrics: each side's number carries its badge.
     const effort = within(table).getByText('Effort', { selector: 'div' }).closest('tr');
     expect(effort?.querySelectorAll('.lb-band')).toHaveLength(2);
+    // Effort's and SFB's badges, on both sides, lead to the Layouts Doc's ruler in the guide.
+    const links = within(table).getAllByRole('link', { name: /how it is rated/ });
+    expect(links).toHaveLength(4);
+    for (const link of links) {
+      expect(link.getAttribute('href')).toMatch(/\/guide\/analyzing#the-layouts-doc-rule-set$/);
+    }
   });
+
+  it('leads its badges to the ruler of the rules in the link', async () => {
+    renderRoute(
+      '/compare?layout=magic-romak&b=graphite&corpus=pt-br-general&sample=20000&rules=cyanophage',
+      { storage: freshStorage() },
+    );
+    const table = await screen.findByRole('table', undefined, { timeout: 25_000 });
+    const links = within(table).getAllByRole('link', { name: /how it is rated/ });
+    expect(links).toHaveLength(4);
+    for (const link of links) {
+      expect(link.getAttribute('href')).toMatch(/\/guide\/analyzing#the-cyanophage-like-rule-set$/);
+    }
+  }, 60_000);
 
   it("draws each side's keys as Analyze does: as written, holds along the bottom, numbered and listed", async () => {
     renderRoute('/compare?layout=qwerty&b=magic-romak&off=repeat&corpus=en-general&sample=20000', {

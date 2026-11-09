@@ -86,8 +86,6 @@ export function CompareView() {
   const settings = useAnalysisSettings(settingsOf(params));
   /** The settings to analyze on: none until the rule set is read, nor when it will not open. */
   const ready = settings.settings;
-  /** Where Effort's and SFB's badges lead: the ruler of the rule set both sides are rated on. */
-  const ruler = rulerHelp(settings.linked.rules);
 
   // Each side as written, on the same settings: the engine types both without the same features.
   const requestA: AnalyzeRequest | null = useMemo(
@@ -102,6 +100,12 @@ export function CompareView() {
   const analysisA = useAnalysis(requestA);
   const analysisB = useAnalysis(requestB);
   const error = a.error ?? b.error ?? settings.error ?? analysisA.error ?? analysisB.error;
+  /**
+   * Where Effort's and SFB's badges lead: the ruler of the rule set both sides are rated on. Not
+   * while either is being made again, when the numbers shown may be of other rules.
+   */
+  const ruler =
+    analysisA.loading || analysisB.loading ? undefined : rulerHelp(settings.linked.rules);
 
   const setParams = useCallback(
     (overrides: Partial<Params> & { b?: string }) => {

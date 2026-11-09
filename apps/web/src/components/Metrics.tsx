@@ -101,12 +101,13 @@ export function SummaryStrip({
         const look = `lb-stat ${qualityBorder(r.band)}`;
         if (ruler && isHeadline(id)) {
           // The badge leads to the guide, and a link cannot sit inside the stat's button: the button
-          // holds the name and the number, and the badge sits beside it in the same box.
+          // holds the name and the number, stretched over the whole box so that a click anywhere
+          // in it selects the metric, and the badge sits above it in the same box.
           return (
             <li key={id}>
               <div
                 title={r.note ?? r.label}
-                className={`${look} ${onSelect ? 'transition hover:border-[var(--lb-ring)]' : ''}`}
+                className={`${look} ${onSelect ? 'relative transition hover:border-[var(--lb-ring)]' : ''}`}
               >
                 {onSelect ? (
                   <button type="button" className="lb-stat-main" onClick={() => onSelect(id)}>

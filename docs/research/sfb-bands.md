@@ -90,12 +90,16 @@ with `index.html`, `table.html` and `compare.html`, whose only script sorts). La
 cyanophage-like rules give Qwerty 4.38 on the English news sample, as a share of keystrokes with a
 space per word.
 
-What it does colour is a ramp. Each finger's SFB bar is `red = 128 + 6000 * share`, green and blue
-128, red clamped to 16..255: grey at nothing, full red at a share of 127 / 6000 of the input,
-2.117%. The key heat and the usage bars are the same ramp with other constants (key heat against the
-most frequent letter, 11.87% in English). Nothing in it says what a good or a bad layout is, and
-nothing in it is for Effort. It is the only SFB-specific reference the site gives, which is why the
-cyanophage-like rule set's SFB ruler is drawn on it (below).
+What it does colour is a ramp. In the finger view of the SFB panel (the default view lists bigrams in
+fixed-colour bars) each finger's bar is `red = 128 + 6000 * share`, green and blue 128, red clamped
+to 16..255: grey at nothing, a pale red (#ff8080) that stops getting redder at a share of 127 / 6000
+of the input, 2.117%; the bar's height, `30000 * share`, stops at 150px, 0.5%. The key heat and the
+usage bars are the same ramp with other constants (key heat against the most frequent letter,
+11.87% in English), and the finger-pair matrix colours every pair of fingers, same-finger cells
+included, by `128 + 3 * share`, a different quantity. Nothing in it says what a good or a bad layout
+is, and nothing in it is for Effort. The finger bar is the one ramp for a count of same-finger
+bigrams, which is why the cyanophage-like rule set's SFB ruler is drawn on it (below). Read in the
+browser against `keyboard_svg.js` (lines 1883-1893) on 2026-11-09, and checked by the blind review.
 
 ## Is the app's number the Doc's?
 
@@ -142,8 +146,9 @@ and with Shift modelled, the Shift presses; the Doc counted neither.
   labels the app gave, so the owner's decision (2026-11-08) was to put them back: these four keep the
   next label in the list, and `engine.test.ts` pins the Doc's rows above. (An SFS of 8.744 is *very
   high* in the Doc and *high* here: the table has no bound for it, and none is made up.) SFB is
-  different: no row has one past 1.375 (the highest is Engram 1.242), so the Doc names nothing there
-  and *above mid high* claims only what it knows.
+  different: no row has one past 1.375 (the highest is Engram 1.242), so the Doc names nothing
+  there. That was why #117 named it *above mid high*; the ruler redrawn below carries the Doc's
+  sequence on instead, which the Doc's rows do not contradict.
 - **Layer taps stay in the SFB.** `→A2'` and the like are counted, as the owner decided; the number
   moves with the keymap, not with the bands.
 - **Not done: bands per setting.** No source gives SFB bands for a number counted with Space or Shift,

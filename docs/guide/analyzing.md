@@ -364,11 +364,12 @@ steps between them equal (42.9 apiece, rounded to whole numbers), as they were e
 ### The cyanophage-like rule set
 
 Cyanophage rates nothing: his playground prints SFB (Qwerty 4.38%) and Effort (1258.15) as plain
-numbers, with no bands or categories. The only thing it colours SFB by is a finger's bar, a ramp
-from grey to red that is full at 2.117% of the text (`red = 128 + 6000 × share`, clamped to 255). That
-ramp is this set's reference for SFB: nine equal steps from nothing to full red, 0.235 apiece, the
-ninth, *max*, from 1.881 on. It is one finger's share that his ramp colours and this reads it as a
-layout's total, which is LayerBench's assumption and not his.
+numbers, with no bands or categories. The one ramp it draws for same-finger bigrams is a finger's bar
+in the finger view of the SFB panel, from grey to a pale red that stops getting redder at 2.117% of
+the text (`red = 128 + 6000 × share`, clamped to 255). That ramp is this set's reference for SFB:
+nine equal steps from nothing to where it stops, 0.235 apiece, the ninth, *max*, from 1.881 on. It
+is one finger's share that his ramp colours and this reads it as a layout's total, which is
+LayerBench's assumption and not his.
 
 | Step | SFB up to | Colour |
 |---|---|---|
@@ -391,10 +392,11 @@ Doc set's above, step for step and colour for colour.
 
 ### Custom rule sets
 
-A custom rule set carries the rulers it was saved with. One saved earlier keeps the old SFB bounds
-and names, so an SFB above 1.375 may still be called *high* or *above mid high*, until its bounds are
-changed in **Rules**, under **Bands (upper bounds)**. A set made from one of the presets above starts
-with that preset's rulers. Its badge for Effort or SFB leads here.
+A custom rule set carries the rulers it was saved with, and its badge for Effort or SFB leads to
+[The rulers](#the-rulers). One saved earlier keeps the old ones: an SFB above 1.375 may still be
+called *high* or *above mid high*, and Effort's steps may still run from 440 to 580, until the bounds
+are changed in **Rules**, under **Bands (upper bounds)**. A set made from one of the presets above
+starts with that preset's rulers.
 
 ## Rules and their sources
 

@@ -27,6 +27,28 @@ describe('Analyze', () => {
     expect(screen.getByText('every character in the text can be typed')).toBeInTheDocument();
   });
 
+  it('leads the badges of Effort and SFB to the guide’s ruler for the rules in the link', async () => {
+    // Four of them: Effort and SFB in the summary and on their cards, none on another metric.
+    for (const [rules, section] of [
+      ['', 'the-layouts-doc-rule-set'],
+      ['&rules=cyanophage', 'the-cyanophage-like-rule-set'],
+    ] as const) {
+      const { unmount } = renderRoute(
+        `/analyze?layout=qwerty&corpus=en-general&sample=20000${rules}`,
+      );
+      await screen.findByText('Same finger bigrams');
+      const links = await screen.findAllByRole('link', { name: /how it is rated/ });
+      expect(links, rules).toHaveLength(4);
+      for (const link of links) {
+        expect(link.getAttribute('href'), rules).toMatch(
+          new RegExp(`/guide/analyzing#${section}$`),
+        );
+        expect(link).toHaveAttribute('target', '_blank');
+      }
+      unmount();
+    }
+  }, 60_000);
+
   it('explains how a word is typed', async () => {
     const user = userEvent.setup();
     renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000');

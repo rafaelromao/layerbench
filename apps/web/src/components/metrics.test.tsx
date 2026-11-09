@@ -91,6 +91,14 @@ describe('the badge of Effort and SFB', () => {
     }
   });
 
+  it('is the link’s own click: it does not enlarge the card', async () => {
+    render(<MetricCard result={rated('sfb')} ruler={rulerHelp('layouts_doc')} />);
+    const link = screen.getByRole('link', { name: /how it is rated/ });
+    link.addEventListener('click', (e) => e.preventDefault());
+    await userEvent.setup().click(link);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
   it('is a plain pill on any other metric, and where no ruler is given', () => {
     const { rerender } = render(
       <MetricCard result={rated('sfs')} ruler={rulerHelp('layouts_doc')} />,

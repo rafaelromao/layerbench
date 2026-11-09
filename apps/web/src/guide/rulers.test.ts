@@ -65,6 +65,19 @@ describe('the guide’s rulers', () => {
     expect(ruleBands(cyanophage(), 'effort')).toEqual(ruleBands(layoutsDoc(), 'effort'));
   });
 
+  it('are the numbers the glossary gives, row by row', () => {
+    // The glossary's table and its Effort rule row write the same bounds as the presets carry.
+    const metrics = guidePage('metrics')!.source;
+    const dot = (b: Bands) => b.bounds.join(' · ');
+    expect(metrics).toContain(
+      `| SFB | lower is better | ${dot(ruleBands(layoutsDoc(), 'sfb'))}; cyanophage-like: ${dot(ruleBands(cyanophage(), 'sfb'))} |`,
+    );
+    expect(metrics).toContain(
+      `| Effort | lower is better | ${dot(ruleBands(layoutsDoc(), 'effort'))} (effort) |`,
+    );
+    expect(metrics).toContain(`Bands ${dot(ruleBands(layoutsDoc(), 'effort'))}, from *min*`);
+  });
+
   it('colour nine steps in thirds, green then amber then red', () => {
     for (const ruler of tables(section('The Layouts Doc rule set'))) {
       expect(ruler.map((s) => s.colour)).toEqual([

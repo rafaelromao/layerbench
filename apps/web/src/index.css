@@ -1658,7 +1658,32 @@ button.lb-combo-apart:focus-visible {
   outline-offset: 1px;
 }
 /* The name and number of a summary stat, as a button beside its badge, which is a link and so cannot
-   sit inside it. */
+   sit inside it. The button is stretched over the whole box, as a click anywhere in it selects the
+   metric, and the badge is raised above it. */
+.lb-stat-main::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+.lb-stat-main:focus-visible {
+  outline: none;
+}
+.lb-stat:has(.lb-stat-main:focus-visible) {
+  outline: 2px solid var(--lb-ring);
+  outline-offset: 2px;
+}
+.lb-stat-main ~ .lb-band-link {
+  position: relative;
+  z-index: 1;
+}
+@media (pointer: coarse) {
+  /* A finger needs more than the pill's height to hit a link beside a box-wide button. */
+  .lb-band-link {
+    min-height: 1.5rem;
+    padding-inline: 0.625rem;
+  }
+}
 .lb-stat-main {
   display: flex;
   flex-direction: column;

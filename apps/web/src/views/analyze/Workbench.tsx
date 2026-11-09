@@ -252,6 +252,11 @@ export function Workbench({
         ? estimate.report
         : (landed?.report ?? report);
   const stale = shown !== null && !current && !provisional;
+  /**
+   * Where the badges of Effort and SFB lead. Not while the numbers are the last there were, made on
+   * other rules than the link's: they are rated on a ruler the link no longer names.
+   */
+  const ruler = stale ? undefined : rulerHelp(settings.linked.rules);
 
   // ------------------------------------------------------------------ the link
 
@@ -1325,7 +1330,7 @@ export function Workbench({
         corpusName={corpusName}
         languageGap={languageGap}
         onSelect={selectMetric}
-        ruler={rulerHelp(settings.linked.rules)}
+        ruler={ruler}
         failed={settings.status === 'failed'}
       />
 
@@ -1336,7 +1341,7 @@ export function Workbench({
           selectedItem={selectedItem}
           onHighlightItem={highlightItem}
           presetId={presetOf(params.preset)}
-          ruler={rulerHelp(settings.linked.rules)}
+          ruler={ruler}
           compiled={typedCompiled}
         />
       )}
@@ -1378,7 +1383,7 @@ function SummaryCard({
   languageGap: { name: string; missingRequired: string[] } | null;
   onSelect: (id: string) => void;
   /** Where the badges of Effort and SFB lead: the ruler of the rule set the numbers were rated on. */
-  ruler: HelpTopic;
+  ruler: HelpTopic | undefined;
   /** Whether there will be no numbers to wait for: the analysis cannot be made. */
   failed: boolean;
 }) {
