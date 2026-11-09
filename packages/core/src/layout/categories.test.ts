@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { withNewLayoutDefaults } from '../fixtures/boards.js';
 import { BUNDLED_LAYOUTS, bundledLayout } from '../layouts/index.js';
 import { DEFAULT_LAYER_ID_LIST, DEFAULT_LAYER_IDS } from '../layouts/templates.js';
 import {
@@ -14,10 +15,11 @@ import type { Binding, Layout } from './types.js';
 
 const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
 
+/** Qwerty as a user would copy it and give the default layers. */
 function qwerty(): Layout {
   const l = bundledLayout('qwerty');
   if (!l) throw new Error('no Qwerty');
-  return structuredClone(l);
+  return structuredClone(withNewLayoutDefaults(l));
 }
 
 /** Qwerty with `b` on its base layer's key `id`. */

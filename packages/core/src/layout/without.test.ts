@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeText } from '../corpus/normalize.js';
+import { withNewLayoutDefaults } from '../fixtures/boards.js';
 import { FIXTURE_EN, FIXTURE_PT } from '../fixtures/index.js';
 import { layoutLanguageCoverage } from '../lang/coverage.js';
 import { bundledLayout } from '../layouts/index.js';
@@ -81,7 +82,7 @@ describe('Ranking a layout without some of its features', () => {
   });
 
   it('keeps a combo whose every part only turns a layer on, through a tap-hold, a morph or an adaptive key', () => {
-    const qwerty = bundledLayout('qwerty') as Layout;
+    const qwerty = withNewLayoutDefaults(bundledLayout('qwerty') as Layout);
     const layer = qwerty.layers[1].id;
     const sl = { kind: 'sl' as const, layer };
     const combo = (

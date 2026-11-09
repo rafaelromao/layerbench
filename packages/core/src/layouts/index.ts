@@ -6,7 +6,6 @@ import { CLASSIC_DEFS, type ClassicDef, classicLayout } from './classic.js';
 import { DOCUMENT_LAYOUTS } from './documents.js';
 import LANGUAGES from './languages.json';
 import { SMALL_DEFS } from './small.js';
-import { type ThumbPlacement, withStandardThumbs } from './standard.js';
 import { bringsOwnLayers, withDefaultLayers, withHomeRowMods } from './templates.js';
 
 export { BUNDLED_IDS, DEFAULT_LAYOUT_ID } from './bundled-ids.js';
@@ -14,12 +13,6 @@ export { CLASSIC_DEFS, CLASSIC_LAYOUTS, classicLayout } from './classic.js';
 export { DOCUMENT_LAYOUTS, documentLayout, documentMissing } from './documents.js';
 export { keptInLibrary } from './library-edit/request.js';
 export { SMALL_DEFS } from './small.js';
-export {
-  BASE_SYMBOLS,
-  MAIN_THUMBS,
-  type ThumbPlacement,
-  withStandardThumbs,
-} from './standard.js';
 export {
   ACCENTS,
   accentsCombo,
@@ -53,32 +46,19 @@ export {
 export const SMALL_LAYOUTS: Layout[] = SMALL_DEFS.map(classicLayout);
 
 /**
- * A layout with the default layers. A Standard or Thumb Alpha one takes the standard thumbs and
- * base-layer symbols too, `placed` saying whose its thumb keys are; a Special one keeps every key
- * it has, with the thumbs and the combo that reach the default layers. A layout whose author
- * defines layers of its own keeps them, its thumbs and its base layer as they are, whatever its
- * category.
+ * A layout written in code, built from its definition: the layout its author designed, with the
+ * home row mods its author's keymap holds, where its definition gives them. Only a Special layout
+ * takes the default layers, which keep every key it has and reach Accents on one combo; one whose
+ * author defines layers of its own keeps those.
  */
-function withDefaults(placed: ThumbPlacement) {
-  return (layout: Layout): Layout => {
-    const g = layout.geometry;
-    if (!('preset' in g) || bringsOwnLayers(layout)) return layout;
-    const geometry = getGeometryPreset(g.preset);
-    return layoutCategory(layout) === 'special'
-      ? withDefaultLayers(layout, geometry)
-      : withStandardThumbs(layout, geometry, placed);
-  };
-}
-
-/**
- * A layout written in code, built from its definition: its default layers, then the home row mods
- * its author's keymap holds, where its definition gives them.
- */
-function built(placed: ThumbPlacement) {
-  return (def: ClassicDef): Layout => {
-    const layout = withDefaults(placed)(classicLayout(def));
-    return def.homeRowMods ? withHomeRowMods(layout, def.homeRowMods) : layout;
-  };
+function built(def: ClassicDef): Layout {
+  const layout = classicLayout(def);
+  const g = layout.geometry;
+  const withLayers =
+    'preset' in g && !bringsOwnLayers(layout) && layoutCategory(layout) === 'special'
+      ? withDefaultLayers(layout, getGeometryPreset(g.preset))
+      : layout;
+  return def.homeRowMods ? withHomeRowMods(withLayers, def.homeRowMods) : withLayers;
 }
 
 /** Layouts in the order of `BUNDLED_IDS`, the order the Library lists them in. */
@@ -87,16 +67,13 @@ function byBundledOrder(a: Layout, b: Layout): number {
 }
 
 /**
- * The layouts written here in code. Each has the default layers, but a layout whose author defines
- * layers of its own keeps those instead. Home row mods are held only where the author's keymap
- * holds them. LayerBench placed the thumbs of the classic layouts, their authors having left them to
- * a space bar; the small-board layouts' authors placed their own. They are listed in the order of
- * `BUNDLED_IDS`, as the languages file is.
+ * The layouts written here in code, each as its author designed it: one whose author leaves the
+ * thumbs to a space bar has its space on a thumb of its definition's choosing, and the
+ * small-board layouts' authors placed their own. They are listed in the order of `BUNDLED_IDS`, as
+ * the languages file is.
  */
-const BUILT_IN_LAYOUTS: Layout[] = [
-  ...CLASSIC_DEFS.map(built('layerbench')),
-  ...SMALL_DEFS.map(built('author')),
-]
+const BUILT_IN_LAYOUTS: Layout[] = [...CLASSIC_DEFS, ...SMALL_DEFS]
+  .map(built)
   .sort(byBundledOrder)
   .map(withLanguages);
 

@@ -7,6 +7,7 @@ import {
 } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
 import { comboPlace, typingCombos } from '../../components/Keyboard.js';
+import { newLayout } from '../new-layout.js';
 import { playFrames } from './playback.js';
 
 const magicRomak = bundledLayout('magic-romak') as Layout;
@@ -146,7 +147,12 @@ describe("a box's combo in the layout", () => {
   });
 
   it('tells twins apart by their layers, then by their order', () => {
-    const qwerty = bundledLayout('qwerty') as Layout;
+    const qwerty = newLayout({
+      name: 'Qwerty',
+      geometry: '3x5+2',
+      start: 'qwerty',
+      defaultLayers: true,
+    });
     // A combo that only reaches a layer stays when typing combos are left out; one that types goes.
     const twin = (layer: string) => ({
       id: 'twin',
@@ -176,7 +182,12 @@ describe("a box's combo in the layout", () => {
   });
 
   it('skips a twin the analysis left out for the one it kept', () => {
-    const qwerty = bundledLayout('qwerty') as Layout;
+    const qwerty = newLayout({
+      name: 'Qwerty',
+      geometry: '3x5+2',
+      start: 'qwerty',
+      defaultLayers: true,
+    });
     const twin = (binding: Layout['layers'][number]['bindings'][string]) => ({
       id: 'twin',
       keys: ['LHI', 'LHP'],

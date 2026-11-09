@@ -49,9 +49,8 @@ over: `z` and `q` on its two outer-column keys, the inner columns on the index f
 | right ring | w s f | v n f | w s f |
 | right pinky | v n p, z q | z q p | v n p |
 
-`"` `-` `?` are not on the base layer, as no bundled layout that takes the default layers keeps
-more than `' , . ;` there: their keys are empty, and the symbols are on Symbols and Extras. `z` is
-on L1 and `q` on R0, the main thumbs, and Repeat, which L1 would have tapped, is on the key `?` left.
+`"` `-` `?` are on the inner columns, where the author has them. `q` is on L0 and `z` on R0, the
+thumbs beside space.
 
 ## Numbers
 

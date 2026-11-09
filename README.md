@@ -68,14 +68,10 @@ keeps are in `apps/web/src/auth/github-session.ts`. The server half is
 ## Bundled layouts
 
 The layouts the app started with are written as data in `packages/core/src/layouts/` (`classic.ts`,
-`small.ts`), each copied from where its author published it, and given the default Numbers, Symbols
-and Accents layers, plus Extras on a board that needs it, but for those whose authors define layers
-of their own, which keep those instead and nothing more, as Magic Romak keeps its keymap's Numbers
-and Symbols. The Standard and Thumb Alpha ones with the default layers share their main
-thumbs and base-layer symbols, so that they compare on their letters (`withStandardThumbs` in
-`standard.ts`): the four inner thumbs hold Shift, Numbers, Symbols and Shift and tap Repeat, space,
-a thumb alpha or nothing, and Accents, and no symbol stays on the base layer but `'` `,` `.` `;`.
-The Special ones with the default layers keep every key they had and reach Accents on one combo
+`small.ts`), each as its author published it: the letters and marks of its base layer, its author's
+thumbs and the layers its author's keymap defines, as Magic Romak has its keymap's Numbers and
+Symbols. Bird, Nordrassil and Uno, whose sources define no layer that types, have the default
+Numbers, Symbols and Accents layers, keeping every key they have and reaching Accents on one combo
 (`withDefaultLayers` in `templates.ts`). Home row mods are held only where an author's keymap holds
 them: Magic Romak, Magic Sturdy, the three Hands Down with their own layers and Ben Vallack Piano,
 each key still typing what it did (`withHomeRowMods` in `templates.ts`). The languages each is for

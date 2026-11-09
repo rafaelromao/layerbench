@@ -55,14 +55,13 @@ same contents.
 _Avoid_: saved layout, stored layout, my layout
 
 **Default layers**:
-The layers a layout whose authors define none past its letters has besides its own, so that it can
-type every letter and symbol (a layout whose author's keymap defines layers keeps those, and nothing
-more, as Magic Romak keeps its keymap's Numbers and Symbols): Accents, Numbers and Symbols, and
-Extras for whatever those cannot hold. Accents holds the dead keys, and the letters and accented
-letters the supported languages need; Extras comes on while Numbers and Symbols are both held. Every
-bundled layout that has them holds Numbers on its left inner thumb and Symbols on its right inner
-one, so Extras is both inner thumbs, in either order. A Standard or Thumb Alpha layout taps its
-right outer thumb for Accents; a Special one presses a combo.
+The layers a layout you make can start with, besides its own, so that it can type every letter and
+symbol: Accents, Numbers and Symbols, and Extras for whatever those cannot hold. Accents holds the
+dead keys, and the letters and accented letters the supported languages need; Extras comes on while
+Numbers and Symbols are both held. A layout with them holds Numbers on its left inner thumb and
+Symbols on its right inner one, so Extras is both inner thumbs, in either order, and Accents comes on
+from a combo on two thumbs. A bundled layout is its author's design and has none, but for Bird,
+Nordrassil and Uno, whose sources define no layer that types.
 _Avoid_: standard layers, common layers, shared layers
 
 **Draft**:
@@ -107,8 +106,8 @@ not the link that carries a layout in the app, which names it or holds it after 
 _Avoid_: source, source link (in the format)
 
 **Main thumbs**:
-The two innermost thumb keys of each hand. On a bundled Standard or Thumb Alpha layout, holding them
-gives, from left to right, Shift, Numbers, Symbols and Shift.
+The two innermost thumb keys of each hand. With the default layers, the left inner one holds
+Numbers and the right inner one Symbols, and the two outer ones pressed together turn on Accents.
 _Avoid_: thumb cluster, home thumbs
 
 **Mix**:
@@ -162,14 +161,13 @@ _Avoid_: magic, advanced key, extra feature
 
 **Special layout**:
 A layout with a special feature, more than one alpha layer, or a board of fewer than 34 keys. A
-bundled one keeps its author's design, with the default layers added, or with its author's own
-layers where its author defines them, and may bend any rule the other categories follow.
+bundled one is its author's design, with its author's own layers where its author defines them,
+and may bend any rule the other categories follow.
 _Avoid_: exotic layout, advanced layout
 
 **Standard layout**:
 A layout that is neither Special nor Thumb Alpha: no special feature, no thumb alpha, at most one
-alpha layer, on a board of 34 keys or more. The bundled ones share their default layers and main
-thumbs, so they differ in little but their letters.
+alpha layer, on a board of 34 keys or more. The bundled ones are their authors' letters and marks.
 _Avoid_: regular layout, classic layout, normal layout
 
 **Submit**:

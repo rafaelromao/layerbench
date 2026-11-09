@@ -207,13 +207,13 @@ A new layout can start with more layers, the same on every board: **Numbers**, *
 the inner column (P R M I C), the right from the inner column to the pinky, and `·` lets the layer
 below show through.
 
-They are for a layout whose authors define no layers past its letters. A layout whose author's
-keymap defines its own, numbers and symbols say, keeps those instead, as its author has them: on the
-keys its board has, with the keys and combos that reach them and the combos its author types
-symbols and accents with. It has none of the default layers, nor a key to reach them, and nothing is
-added to what its author's layers type: a character they leave out, it cannot type, until you add it
-in the editor. [The layouts that come with the app and keep their authors' layers](#layouts-with-their-authors-layers)
-are listed below.
+They are for a layout you make. A layout that comes with the app is its author's design: the
+letters and marks its author places, its author's thumbs, and the layers its author's keymap defines
+past the letters, with the keys and combos that reach them and the combos its author types symbols
+and accents with. Nothing is added to what its author's design types: a character it leaves out, it
+cannot type, until you add it in the editor. [The layouts that come with the app and have layers of
+their own](#layouts-with-their-authors-layers) are listed below. Bird, Nordrassil and Uno, whose
+sources define no layer that types, have the default layers instead, and keep every key they have.
 
 **Numbers** and **Symbols** are Magic Romak's on the 24 keys most boards have. The pinky's top and
 bottom keys and the inner column add what has no room there: currency and ordinals on Numbers, for
@@ -303,26 +303,12 @@ what the bottom rows carried, and fills Accents with the dead keys, the letters 
 symbols Extras has no room for, on its thumbs too; every accented letter there is its accent and the
 letter. The board shows where everything went.
 
-Every layout that comes with the app whose authors define no layers has them too. Of those, the
-Standard and Thumb Alpha ones, Romak included, also share their main thumbs, the two
-innermost of each hand, so that what tells them apart is their letters. Held, left to right, the
-main thumbs give Shift, Numbers, Symbols and Shift. Tapped, they type Repeat, which types the last
-key again, then space, then the layout's thumb letter or
-nothing, and the right outer one turns on Accents for one key. Where a layout's author put space or a
-letter on a thumb, it stays there, and the main thumbs left tap Accents, then Repeat, from the right:
-RSTHD taps Repeat, `e`, space and Accents. A second thumb letter takes the left outer thumb,
-and Repeat a key of the base layer that a symbol left, as on Hands Down Neu. A main thumb with
-nothing to tap shows only what it holds, along its bottom, as Qwerty's Symbols thumb does. Their
-other thumb keys go, and their base layers keep no symbol but `'` `,` `.` `;`: the rest are on
-Symbols or Extras.
-
-The Special layouts with the default layers keep every key they have. Like every other layout with
-them, they hold Numbers on the left inner thumb and Symbols on the right inner one, each still
-typing what it typed, so Extras is both inner thumbs on every layout that has it. Bird and
-Nordrassil type space on L1, beside the inner thumb, which holds Numbers. An inner thumb that is a
-tap-hold already cannot hold another layer; the key that types space then holds Numbers, and the
-innermost thumb of the other hand with nothing on it Symbols. Accents is the combo on two thumbs,
-as on a new layout.
+Bird, Nordrassil and Uno keep every key they have. They hold Numbers on the left inner thumb and
+Symbols on the right inner one, each still typing what it typed, so Extras is both inner thumbs.
+Bird and Nordrassil type space on L1, beside the inner thumb, which holds Numbers. An inner thumb
+that is a tap-hold already cannot hold another layer; the key that types space then holds Numbers,
+and the innermost thumb of the other hand with nothing on it Symbols. Accents is the combo on two
+thumbs, as on a new layout.
 
 Where an author's keymap has a key that does what the analysis does not simulate, such as Escape,
 Enter, Backspace, Tab or T-34's key for a Shortcuts layer LayerBench does not have, the key is
@@ -342,7 +328,7 @@ hand, where the capital does not press that key; with neither, it types no capit
 
 #### Layouts with their authors' layers
 
-These layouts that come with the app keep their authors' layers, in place of the default ones. Each
+These layouts that come with the app have their authors' layers. Each
 is drawn on the board LayerBench has it on: what its author put on keys that board lacks, a number
 row or an outer column, is left out, as on its base layer. So are the keys that type nothing the
 analysis counts, the holds that reach a layer that types nothing (navigation, functions, media), a
@@ -375,11 +361,13 @@ letter, and `å` `ä` `ö`; its Specials has the dead keys. Finch's type `{` `[`
 `/` `\` and `;`, and `!` on Symbols. Ben Vallack Piano's shifted Alpha 2 has Alpha 2's capitals and
 a comma where Alpha 2 has its full stop.
 
-The other layouts take the default layers. Their sources define only their letters, but for RSTHD,
-whose author's ErgoDox keymap puts its digits on a number row and reaches its layers from thumb
-keys thirty-four keys lack, Hands Down Neu, whose author's firmware carries the Hands Down layers
-for a later Neu with other letters and thumbs, and Nordrassil, whose author publishes the rest of
-the keymap only outside its repository.
+The other layouts are their letters and marks alone, as their sources have them on 34 keys. Their
+sources define only their letters, but for RSTHD, whose author's ErgoDox keymap puts its digits on a
+number row and reaches its layers from thumb keys thirty-four keys lack, Hands Down Neu, whose
+author's firmware carries the Hands Down layers for a later Neu with other letters and thumbs, and
+Nordrassil, whose author publishes the rest of the keymap only outside its repository. Each types
+the marks its author places and nothing more, no digit and no accent, until you add them in the
+editor; Bird, Nordrassil and Uno, which keep every key they have, have the default layers.
 
 Magic Romak is its author's keymap, and has no Extras and no Accents, as the keymap has none. Its
 keys, layers and combos are read from the keymap-drawer file its author keeps for it, as the

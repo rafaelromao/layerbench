@@ -67,7 +67,7 @@ with nothing to show for the measure stays plain, and says so under the board.
 
 Each card also names the layout's category, so you can keep the list to the ones you want. The order is the sort's alone, whatever the category. The category follows
 from the layout's own keys, whether it came with the app or is yours, and nothing on its
-[default layers](editing.md#default-layers) counts; the layers its author defines in their place,
+[default layers](editing.md#default-layers) counts; the layers its author defines,
 Numbers and Symbols among them, do:
 
 - **Standard**: every layout that is neither of the two below. Most have one alpha layer, a layer
@@ -95,11 +95,10 @@ A layout that has no key for letters the text's language needs skips them, and s
 its numbers flatter it. Each card says what share of the text it skips, and which letters, but the
 list stays in one order, by the sort alone: neither a layout that skips them nor its type or category
 is set apart, so on a Portuguese text, say, a layout without `ã` or `ç` sits where its Effort or SFB
-puts it, with its note. Most layouts that come with the app type them, through their
-[Accents](editing.md#default-layers) layer or, on Magic Romak, its own accents; a layout that keeps
-its author's layers types what those type, so on some texts it lacks letters too (on Portuguese,
-five of the bundled ones do, none of them with a layer for accents), and so does a layout of your own
-without them. A layout is also held to the languages it is for, chosen in **Settings** in **Analyze**: one
+puts it, with its note. A layout that comes with the app types what its author's design types, so on
+a Portuguese text most of them lack letters and say so on their cards; Magic Romak, the three Hands
+Down, T-34, Bird, Nordrassil and Uno type them, and a layout of your own can start with an
+[Accents](editing.md#default-layers) layer. A layout is also held to the languages it is for, chosen in **Settings** in **Analyze**: one
 for Spanish that has no `ñ` says so on its card, whatever the text, though on an English text it
 skipped nothing for Spanish. A layout that comes with the app is for the languages it performs well
 in: it types every letter they need, and its Effort on their news texts is in the
