@@ -193,8 +193,8 @@ it has one.
 
 By default capitals count as lower case and the space key is left out of the counts, as the
 Keyboard Layouts Doc does. **Shift** types capitals through the layout's shift key instead, or,
-where it has none, a key that holds Shift, a home row mod of the other hand first; and **Space**
-keeps the space key in. Both are among the feature switches, in **Settings**. **Counts**
+where it has none, a key that holds Shift, a home row mod of the other hand first, and where it has
+no key that gives Shift, no capital at all; and **Space** keeps the space key in. Both are among the feature switches, in **Settings**. **Counts**
 says what of the text is counted: letters only, the default, or numbers and symbols as well. The
 symbols are those a symbol layer carries and those the bundled texts use. Curly quotes, German's
 `„ ‚` among them, dashes and the ellipsis count as their plain forms, and a language's own

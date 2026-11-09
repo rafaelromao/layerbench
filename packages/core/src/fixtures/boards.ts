@@ -5,7 +5,7 @@ import { withDefaultLayers } from '../layouts/templates.js';
 /**
  * A usual set of home row mods, for the tests that type with them: Gui, Ctrl, Alt and Shift from
  * the left pinky in, mirrored on the right, both hands holding the left modifiers. Test-only, as the
- * rest of this folder: no bundled layout holds them but where its author's keymap does.
+ * rest of this folder: no layout written in code holds them but where its author's keymap does.
  */
 export const HOME_ROW_MODS: Readonly<Record<string, Mod>> = {
   LHP: 'LGUI',

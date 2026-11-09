@@ -33,10 +33,9 @@ A **Tap-hold** key has two parts. The **Tap** is what a quick press does, usuall
 **Hold** is a layer or a modifier while the key is held down. A letter on the home row with a
 modifier underneath is a home row mod. A layout that comes with the app has them where its author's
 keymap holds them: Magic Romak, Magic Sturdy, the three Hands Down with their own layers and Ben
-Vallack Piano. A hold may give several
-modifiers together, under **Held with**: Shift and Gui at once, say, as ZMK's `LS(LGUI)`. The Tap
-can also be an adaptive key or an alt repeat, so a thumb can adapt when tapped and reach a layer
-when held.
+Vallack Piano. A hold may give several modifiers together, under **Held with**: Shift and Gui at
+once, say, as ZMK's `LS(LGUI)`. The Tap can also be an adaptive key or an alt repeat, so a thumb can
+adapt when tapped and reach a layer when held.
 
 **Timing**, under the hold, sets the tapping term, how long a press must last to count as a hold,
 and the flavor, ZMK's rule for telling a tap from a hold when another key comes in between. Its

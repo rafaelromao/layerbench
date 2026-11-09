@@ -31,7 +31,7 @@ function thumbs(layout: CompiledLayout): string[] {
   return layout.keys.filter((k) => k.thumb).map((k) => k.id);
 }
 
-/** The key a symbol sits on in Qwerty's base layer, a home row mod's tap among them. */
+/** The key a symbol sits on in Qwerty's base layer. */
 function keyFor(symbol: string): string {
   const base = qwerty.layout.layers[0].bindings;
   const id = Object.entries(base).find(([, b]) => {

@@ -346,8 +346,9 @@ const STURDY_NUMBERS = drawn('3x5+2', [
 ]);
 
 /**
- * His home row mods, and Ctrl and Gui on the bottom row: the left modifiers on both hands, as on
- * every layout. `d` holds his navigation layer and `.` his window layer, which type nothing.
+ * His home row mods, and Ctrl and Gui on the bottom row: the left modifiers on both hands, as the
+ * analysis types a capital with the left Shift and the right Alt is AltGr. `d` holds his
+ * navigation layer and `.` his window layer, which type nothing.
  */
 const STURDY_MODS: Record<string, Mod> = {
   LHP: 'LALT',

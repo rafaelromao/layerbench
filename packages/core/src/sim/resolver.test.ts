@@ -23,6 +23,8 @@ const withMods = (layout: Layout) => withHomeRowMods(layout, HOME_ROW_MODS);
 /** Whether a layout has a key that gives Shift: its shift key, or one that holds or taps it. */
 function givesShift(layout: Layout): boolean {
   if (layout.keys.shift) return true;
+  if (layout.combos?.some((c) => c.binding.kind === 'sk' && /SHIFT/.test(c.binding.mod)))
+    return true;
   return layout.layers.some((l) =>
     Object.values(l.bindings).some((b) => {
       const key = b.kind === 'hold_tap' ? b.hold : b;
@@ -1042,6 +1044,15 @@ describe('a capital on the layer its Shift key taps for', () => {
     expect(t.out).toBe('');
     expect(t.coverage.unproducible.get('É')).toBe(1);
   });
+
+  it.each(BUNDLED_LAYOUTS.filter((l) => !givesShift(l)).map((l) => [l.id, l] as const))(
+    'types on %s no capital E in the Shift case mode: no key gives it Shift',
+    (_id, layout) => {
+      const t = trace(layout, 'E', model);
+      expect(t.out).toBe('');
+      expect(t.coverage.unproducible.get('E')).toBe(1);
+    },
+  );
 
   it.each(BUNDLED_LAYOUTS.map((l) => [l.id, l] as const))(
     'types on %s every capital of a letter it types, holding no key it presses, where it has a Shift',

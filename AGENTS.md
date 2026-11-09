@@ -67,8 +67,10 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
 - **Home row mods.** A layout holds home row mods only where its author's keymap does, and its
   definition gives them (`ClassicDef.homeRowMods`, applied by `withHomeRowMods`); each key still
   types what it typed, a letter or not, and one with nothing on it, or holding something already,
-  does not. Magic Romak holds its keymap's home block mods, which its file draws: Ctrl, Alt and
-  Shift from the ring finger in, Shift with Gui on F and C, and Gui on P and the magic key. The
+  does not. Both hands hold the left modifiers, as the analysis types a capital with the left Shift
+  and the right Alt is AltGr. Magic Romak holds its keymap's home block mods, which its file draws:
+  Ctrl, Alt and Shift from the ring finger in, Shift with Gui on F and C, and Gui on P and the magic
+  key. The
   keymap's pinkies hold its Shortcuts layer, and `,` and `.` hold to move the cursor: a layer that
   types nothing, and editing, both left out. Magic Sturdy, the three Hands Down with their authors'
   layers and Ben Vallack Piano hold their authors' too (`STURDY_MODS`, `HD_MODS`, `PIANO_MODS`), as

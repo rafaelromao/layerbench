@@ -40,15 +40,18 @@ describe('relabel after a swap', () => {
   const ruleSet = layoutsDoc();
 
   it('matches a full re-analysis for every n-gram metric, a home row mod among the keys', () => {
+    // Qwerty with the usual home row mods, so the swap reaches a key that holds Alt.
+    const modded = withHomeRowMods(layout, HOME_ROW_MODS);
+    const moddedCompiled = compileLayout(modded);
     const from = 'LTM';
     // Qwerty's `k`, holding Alt.
     const to = 'RHM';
-    const posA = compiled.keyIndex.get(from)!;
-    const posB = compiled.keyIndex.get(to)!;
-    expect(relabelEligible(compiled, 0, posA, posB)).toBe(true);
+    const posA = moddedCompiled.keyIndex.get(from)!;
+    const posB = moddedCompiled.keyIndex.get(to)!;
+    expect(relabelEligible(moddedCompiled, 0, posA, posB)).toBe(true);
 
-    const before = analyze(compiled, stream, { ...OPTS, ruleSet });
-    const swapped = swapKeys(layout, 0, from, to);
+    const before = analyze(moddedCompiled, stream, { ...OPTS, ruleSet });
+    const swapped = swapKeys(modded, 0, from, to);
     const compiledAfter = compileLayout(swapped);
 
     const estimated = relabelSwap(before, compiledAfter, 0, posA, posB, ruleSet);

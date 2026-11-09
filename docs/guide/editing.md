@@ -332,8 +332,9 @@ A layout that comes with the app has home row mods where its author's keymap hol
 Romak holds Ctrl, Alt and Shift from the ring finger in, and on the bottom row Shift with Gui under
 the left ring and middle fingers and Gui under the index fingers. So do the layouts whose authors'
 keymaps hold their layers on the home row: Magic Sturdy, the three Hands Down with their own
-layers, and Ben Vallack Piano, its modifiers on the top row. Tapped, each key types what it typed.
-They are on the base layer only. In the Shift case mode, a Standard or Thumb Alpha layout types a
+layers, and Ben Vallack Piano, its modifiers on the top row. Both hands hold the left modifiers, as
+the analysis types a capital with the left Shift and the right Alt is AltGr. Tapped, each key types
+what it typed. They are on the base layer only. In the Shift case mode, a Standard or Thumb Alpha layout types a
 capital holding the right Shift thumb, but one on Accents or on a right thumb holding the left, as a
 thumb holding Shift presses nothing else. A layout with no Shift key of its own types a capital
 holding a Shift thumb if it has one that is free, and otherwise the home row Shift of the other

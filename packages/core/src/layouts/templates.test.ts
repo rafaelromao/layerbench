@@ -1026,6 +1026,31 @@ describe("home row mods: held only where an author's keymap holds them", () => {
     },
   );
 
+  it('are given by the definitions of Magic Sturdy, the three Hands Down and Ben Vallack Piano only', () => {
+    expect(
+      [...CLASSIC_DEFS, ...SMALL_DEFS]
+        .filter((d) => d.homeRowMods !== undefined)
+        .map((d) => d.id)
+        .sort(),
+    ).toEqual([
+      'ben-vallack-piano',
+      'hands-down-gold',
+      'hands-down-promethium',
+      'hands-down-vibranium',
+      'magic-sturdy',
+    ]);
+  });
+
+  it.each([...CLASSIC_DEFS, ...SMALL_DEFS].map((d) => [d.id] as const))(
+    '%s holds a modifier on its base layer only',
+    (id) => {
+      for (const l of (bundledLayout(id) as Layout).layers.slice(1)) {
+        for (const b of Object.values(l.bindings))
+          expect(b.kind === 'hold_tap' && b.hold.kind).not.toBe('mod');
+      }
+    },
+  );
+
   it("Magic Romak holds its keymap's home block mods", () => {
     const base = magicRomak.layers[0].bindings;
     const hold = (k: string) => (base[k]?.kind === 'hold_tap' ? base[k].hold : undefined);

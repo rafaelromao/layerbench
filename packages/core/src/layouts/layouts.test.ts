@@ -308,10 +308,11 @@ describe('the standard thumbs', () => {
     '%s keeps only letters, the four marks and Repeat on its base layer, and no other thumb key',
     (_id, layout) => {
       const main = new Set<string>(MAIN_THUMBS);
-      // A document carries its own home row mods: a tap-hold types what its tap types.
+      // A document carries its own home row mods: a tap-hold of a modifier types what its tap types.
       const document = DOCUMENT_LAYOUTS.some((d) => d.id === layout.id);
       const taps = Object.entries(layout.layers[0].bindings).map(
-        ([key, b]) => [key, document ? (tapOf(b) as Binding) : b] as const,
+        ([key, b]) =>
+          [key, document && b.kind === 'hold_tap' && b.hold.kind === 'mod' ? b.tap : b] as const,
       );
       const kept = taps.filter(
         ([key, b]) =>
