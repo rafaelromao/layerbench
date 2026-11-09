@@ -809,8 +809,8 @@ export const SMALL_DEFS: ClassicDef[] = [
     name: 'RSTHD',
     author: 'xsznix',
     rows: 'j c y f k z l , u q\nr s t h d m n a i o\n/ v g p b x w . ; -',
-    // The author's thumbs are e, Backspace, Enter and space: e and space move to the inner thumbs,
-    // where the other layouts have their space and thumb letter.
+    // The author's thumbs are e, Backspace, Enter and space: e and space are on the inner thumbs,
+    // Backspace and Enter on the outer ones, which type nothing the analysis counts.
     thumbs: 'bspc e space ret',
     special: COMMON,
     description:

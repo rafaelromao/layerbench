@@ -6,7 +6,7 @@ import { setCommunitySource } from '../community/community.js';
 import type { AnalysisClient, AnalyzeRequest } from '../engine/protocol.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { branchWith, communityDoc } from '../test/community.js';
-import { layerNames, showLayer, shownLayer } from '../test/layers.js';
+import { layerCounter, layerNames, showLayer, shownLayer } from '../test/layers.js';
 import { RecordingClient } from '../test/recording-client.js';
 import { LIBRARY, openSettings, rankingSays, renderRoute, testClient } from '../test/render.js';
 import { decodeInline } from '../url/inline.js';
@@ -134,9 +134,12 @@ describe('Compare', () => {
   }, 60_000);
 
   it("draws each side's keys as Analyze does: as written, holds along the bottom, numbered and listed", async () => {
-    renderRoute('/compare?layout=qwerty&b=magic-romak&off=repeat&corpus=en-general&sample=20000', {
-      storage: freshStorage(),
-    });
+    renderRoute(
+      '/compare?layout=magic-sturdy&b=magic-romak&off=repeat&corpus=en-general&sample=20000',
+      {
+        storage: freshStorage(),
+      },
+    );
     const board = (side: string) =>
       waitFor(() => {
         const el = document.getElementById(`kb-${side}`);
@@ -177,7 +180,7 @@ describe('Compare', () => {
 
   it('shows every layer of each layout, one at a time', async () => {
     const user = userEvent.setup();
-    renderRoute('/compare?layout=magic-romak&b=graphite&corpus=pt-br-general&sample=20000', {
+    renderRoute('/compare?layout=magic-romak&b=nordrassil&corpus=pt-br-general&sample=20000', {
       storage: freshStorage(),
     });
     await screen.findByRole('group', { name: 'Layers of A' });
@@ -188,7 +191,8 @@ describe('Compare', () => {
       'Numbers',
       'Symbols',
     ]);
-    // Graphite's own layer, then the default ones every bundled layout has.
+    // Nordrassil's own layer, then the default ones it takes, once it is read.
+    await waitFor(() => expect(layerCounter('Layers of B')).toBe('1 / 4'));
     expect(await layerNames(user, 'Layers of B')).toEqual([
       'Base',
       'Numbers',

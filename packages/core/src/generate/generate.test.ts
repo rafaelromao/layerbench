@@ -88,7 +88,7 @@ describe('the sample', () => {
 describe('the exact pass', () => {
   it('scores bundled flat layouts as the engine does', () => {
     let checked = 0;
-    // The bundled layouts as written, one layer each, before the default layers join them.
+    // The bundled layouts as written, one layer each.
     for (const layout of [...CLASSIC_LAYOUTS, ...SMALL_LAYOUTS]) {
       const design = designOf(layout);
       if (!design) continue;

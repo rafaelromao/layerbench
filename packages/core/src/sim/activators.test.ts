@@ -415,9 +415,10 @@ describe('the thumb keys a held thumb blocks', () => {
 
   it('are none on a layer a thumb taps, or one a finger holds', () => {
     expect(blocked(magic, 'alpha2')).toEqual([]);
-    // Romak taps its right outer thumb for Accents.
-    const romak = compileLayout(documentedLayouts().find((l) => l.id === 'romak')!);
-    expect(blocked(romak, 'accents')).toEqual([]);
+    // Uno reaches Accents with two thumbs pressed together, a combo, which holds nothing.
+    const uno = compileLayout(documentedLayouts().find((l) => l.id === 'uno')!);
+    expect(uno.layerIndex.get('accents')).toBeDefined();
+    expect(blocked(uno, 'accents')).toEqual([]);
     const c = compileLayout(
       board([
         { id: 'base', bindings: { LHM: { kind: 'mo', layer: 'nav' } } },

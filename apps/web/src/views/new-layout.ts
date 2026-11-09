@@ -1,11 +1,5 @@
 import type { Layout } from '@layerbench/core';
-import {
-  accentsCombo,
-  defaultLayers,
-  getGeometryPreset,
-  importTextLayout,
-  vowelsOnLeft,
-} from '@layerbench/core';
+import { getGeometryPreset, importTextLayout, withNewLayoutDefaults } from '@layerbench/core';
 
 /** Qwerty, as the starting point for a layout you intend to change rather than design. */
 const QWERTY_ROWS = 'q w e r t y u i o p\na s d f g h j k l ;\nz x c v b n m , . /';
@@ -33,24 +27,7 @@ export function newLayout(spec: NewLayoutSpec): Layout {
       ? importTextLayout(`${QWERTY_ROWS}\nspace`, spec.geometry, spec.name).layout
       : emptyLayout(spec.name, spec.geometry, geometry.textThumbs[0] ?? geometry.keys[0].id);
 
-  if (!spec.defaultLayers) return base;
-  // The defaults choose the space key, on the thumb that also holds Numbers; any other space goes.
-  const [first, ...rest] = base.layers;
-  const defaults = defaultLayers(geometry, { mirrorAccents: vowelsOnLeft(first.bindings) });
-  const letters = Object.entries(first.bindings).filter(
-    ([, b]) => !(b.kind === 'kp' && b.symbol === ' '),
-  );
-  return {
-    ...base,
-    keys: { ...base.keys, space: defaults.spaceKey },
-    layers: [
-      { ...first, bindings: { ...Object.fromEntries(letters), ...defaults.base } },
-      ...rest,
-      ...defaults.layers,
-    ],
-    combos: [...(base.combos ?? []), accentsCombo(first.id, geometry)],
-    ...(defaults.conditionalLayers.length > 0 && { conditionalLayers: defaults.conditionalLayers }),
-  };
+  return spec.defaultLayers ? withNewLayoutDefaults(base, geometry) : base;
 }
 
 function emptyLayout(name: string, preset: string, spaceKey: string): Layout {

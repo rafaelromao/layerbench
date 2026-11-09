@@ -35,6 +35,7 @@ import {
   toastShown,
 } from '../test/render.js';
 import { ENGLISH_CORPUS, parseParams, settingsOf } from '../url/params.js';
+import { newLayout } from './new-layout.js';
 
 let counter = 0;
 
@@ -687,8 +688,8 @@ describe('Ranking layouts', () => {
   }, 90_000);
 
   it('ranks every layout in one order by the numbers, those that skip letters among the rest', async () => {
-    // Plain has no ñ, which Romak and Magic Romak have: Magic Romak's dead keys make it, and its keymap
-    // has no `¿` or `¡`, which Spanish only lists as punctuation.
+    // Plain has no ñ, which Magic Romak has: its dead keys make it, and its keymap has no `¿` or `¡`,
+    // which Spanish only lists as punctuation.
     const storage = freshStorage();
     await savePlain(storage, 'plain');
     renderRoute('/library?corpus=es-general&sample=10000', { storage });
@@ -703,8 +704,9 @@ describe('Ranking layouts', () => {
     // Said on its card, and nothing more: the whole list is by Effort, Plain where its number puts it.
     const efforts = cards().map((c) => valueOn(c, 'Effort'));
     expect(efforts).toEqual([...efforts].sort((a, b) => a - b));
-    const romak = cards().find((c) => c.querySelector('h3')?.textContent === 'Romak');
-    expect(romak?.textContent).not.toMatch(/Cannot type/);
+    // Qwerty, as its author has it, has no ñ either.
+    const qwerty = cards().find((c) => c.querySelector('h3')?.textContent === 'Qwerty');
+    expect(qwerty?.textContent).toMatch(/Cannot type/);
     const magic = cards().find((c) => c.querySelector('h3')?.textContent === 'Magic Romak');
     expect(magic?.textContent).not.toMatch(/Cannot type/);
   }, 90_000);
@@ -725,9 +727,9 @@ describe('Ranking layouts', () => {
     );
     // Its place is its numbers': nothing holds it back, whatever it skips.
     expect(plain.querySelector('.lb-skips')?.textContent).toMatch(/of the text\.$/);
-    // Qwerty as bundled types every letter Portuguese needs, through Accents.
+    // Qwerty as its author has it types no `ã` or `ç` either, and says so.
     const qwerty = cards().find((c) => c.querySelector('h3')?.textContent === 'Qwerty');
-    expect(qwerty?.textContent).not.toMatch(/Cannot type/);
+    expect(qwerty?.textContent).toMatch(/Cannot type/);
   }, 90_000);
   it('shows on a bundled card the languages it performs well in, and none on one for none', async () => {
     renderRoute(LIBRARY, { storage: freshStorage() });
@@ -952,7 +954,13 @@ describe('Community layouts', () => {
 });
 
 describe('A saved layout that cannot be read', () => {
-  const qwerty = bundledLayout('qwerty') as Layout;
+  // Qwerty as a user makes it: with the default layers, which the bundled one lacks.
+  const qwerty = newLayout({
+    name: 'Qwerty',
+    geometry: '3x5+2',
+    start: 'qwerty',
+    defaultLayers: true,
+  });
   /** Qwerty saved as `name`, its document changed by `change` as an older app, or a bug, wrote it. */
   async function saveAs(
     storage: IndexedDbAdapter,
@@ -1205,9 +1213,9 @@ describe('Layers on a card', () => {
     renderRoute(LIBRARY, { storage: freshStorage() });
     const card = async (name: string) =>
       (await screen.findByRole('heading', { name, level: 3 })).closest('article') as HTMLElement;
-    const qwerty = (await card('Qwerty')).querySelector('svg.lb-keyboard') as SVGElement;
-    // L0 types space and holds Numbers; R0 holds Symbols and taps nothing.
-    const holds = [...qwerty.querySelectorAll('.lb-key-hold')].map((t) => t.textContent);
+    const uno = (await card('Uno')).querySelector('svg.lb-keyboard') as SVGElement;
+    // Its inner thumbs tap their letters and hold Numbers and Symbols.
+    const holds = [...uno.querySelectorAll('.lb-key-hold')].map((t) => t.textContent);
     expect(holds).toEqual(expect.arrayContaining(['Numb', 'Symb']));
     // An adaptive key's branches do not fit it: it is numbered, as on Analyze, but a card is a
     // glance at the layout, and lists nothing under its board.

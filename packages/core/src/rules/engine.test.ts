@@ -30,8 +30,7 @@ const OPTS = { caseMode: 'fold', crossWord: 'reset' } as const;
 const text = `${FIXTURE_EN} ${FIXTURE_PT}`;
 
 /**
- * A layout by id, a classic one as written: its letters on one layer, one press a character. The
- * bundled one has the default layers, and types the Portuguese accents through Accents.
+ * A layout by id, a classic one as written: its letters on one layer, one press a character.
  */
 const layoutOf = (id: string) => CLASSIC_LAYOUTS.find((l) => l.id === id) ?? bundledLayout(id)!;
 
@@ -746,7 +745,8 @@ describe('SFB as a share of the letters typed', () => {
 describe('the Layouts Doc’s SFB on English news, as Genkey would divide it', () => {
   // The first 100,000 symbols of `en-general`, the Library's settings: fold, no space. The research
   // note (docs/research/sfb-bands.md) has the measurement. The numbers are the Doc's definition of
-  // SFB; the Doc puts Colemak-DH at 1.177, mid high, on another text.
+  // SFB, of the layouts as the Library has them: Colemak-DH and Qwerty with the keys their authors
+  // place on the 34 keys, and so without the apostrophe, which they leave to a key past them.
   const loader = nodeCorpusLoader(corporaRoot());
   const LIBRARY = { ...DEFAULT_SETTINGS, corpus: 'en-general', caseMode: 'fold' } as const;
 
@@ -757,17 +757,18 @@ describe('the Layouts Doc’s SFB on English news, as Genkey would divide it', (
   }
 
   it.each([
-    ['magic-romak', 1.348, 1.6935, 'mid_high'],
-    ['colemak-dh', 1.173, 1.4736, 'mid_high'],
-    ['qwerty', 5.269, 6.6193, 'max'],
+    ['magic-romak', 1.348, 1.6935, 'mid_high', 0.796],
+    ['colemak-dh', 1.133, 1.4346, 'mid_high', 0.7898],
+    ['qwerty', 5.412, 6.8517, 'max', 0.7898],
   ] as const)(
     '%s reads %s, and %s as a share of bigrams',
-    async (id, letters, bigrams, band) => {
+    async (id, letters, bigrams, band, ratio) => {
       const doc = await onLibrary(id, layoutsDoc(), 'no_space');
       const sfb = doc.results.find((r) => r.id === 'sfb')!;
       expect(sfb.value as number).toBeCloseTo(letters, 3);
       expect(sfb.band.label).toBe(band);
-      // The share of bigrams the preset gave before: 1 / 0.796 of the Doc's, for any layout.
+      // The share of bigrams the preset gave before: the Doc's share over the bigrams the text has
+      // for the keys the layout types, so more of them for a layout that types the whole text.
       const old = {
         ...layoutsDoc(),
         rules: layoutsDoc().rules.map((r) =>
@@ -776,7 +777,7 @@ describe('the Layouts Doc’s SFB on English news, as Genkey would divide it', (
       };
       const before = (await onLibrary(id, old, 'no_space')).results.find((r) => r.id === 'sfb')!;
       expect(before.value as number).toBeCloseTo(bigrams, 3);
-      expect((sfb.value as number) / (before.value as number)).toBeCloseTo(0.796, 3);
+      expect((sfb.value as number) / (before.value as number)).toBeCloseTo(ratio, 3);
     },
     60_000,
   );

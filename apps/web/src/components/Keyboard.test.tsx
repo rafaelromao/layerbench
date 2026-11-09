@@ -251,6 +251,7 @@ describe('Keyboard', () => {
           },
         },
         ...rest,
+        { id: 'num', name: 'Numbers', bindings: {} },
       ],
     });
     const { container } = render(<Keyboard compiled={held} />);

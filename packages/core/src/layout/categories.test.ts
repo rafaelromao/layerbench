@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { BUNDLED_LAYOUTS, bundledLayout } from '../layouts/index.js';
+import { getGeometryPreset } from '../geometry/presets.js';
+import { BUNDLED_LAYOUTS, bundledLayout, withNewLayoutDefaults } from '../layouts/index.js';
 import { DEFAULT_LAYER_ID_LIST, DEFAULT_LAYER_IDS } from '../layouts/templates.js';
 import {
   alphaLayers,
@@ -14,10 +15,11 @@ import type { Binding, Layout } from './types.js';
 
 const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
 
+/** Qwerty as a user would copy it and give the default layers. */
 function qwerty(): Layout {
   const l = bundledLayout('qwerty');
   if (!l) throw new Error('no Qwerty');
-  return structuredClone(l);
+  return structuredClone(withNewLayoutDefaults(l, getGeometryPreset('3x5+2')));
 }
 
 /** Qwerty with `b` on its base layer's key `id`. */

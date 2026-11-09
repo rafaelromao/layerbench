@@ -49,9 +49,12 @@ describe('A report is scored by the rules it was asked for', () => {
     const core = new AnalysisCore(nodeCorpusLoader(testCorporaRoot()));
     const rules = getPreset('layouts_doc');
     const without = await core.analyze(request(rules));
-    const withSpace = await core.analyze(request(rules, 'qwerty', { universe: 'with_space' }));
+    // Uno types space with a finger, so a space between two letters on that finger is a pair.
+    const bare = await core.analyze(request(rules, 'uno'));
+    const withSpace = await core.analyze(request(rules, 'uno', { universe: 'with_space' }));
+    expect(without.globals.universe).toBe('no_space');
     expect(withSpace.globals.universe).toBe('with_space');
-    expect(value(withSpace, 'sfb')).not.toBe(value(without, 'sfb'));
+    expect(value(withSpace, 'sfb')).not.toBe(value(bare, 'sfb'));
   });
 
   it('types a corpus once, whatever it is then scored by', async () => {

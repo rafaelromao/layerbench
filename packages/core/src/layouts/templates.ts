@@ -324,7 +324,7 @@ export function accentsComboKeys(geometry: Geometry): string[] {
  * Accents, one-shot, from `accentsComboKeys` pressed together on the base layer. The Special
  * layouts, whose thumbs all type something of their own, and new layouts reach it this way, the
  * same keys on every layout of a board, so none is ranked better or worse for where its own thumbs
- * happen to be free; the Standard and Thumb Alpha ones tap their right outer thumb instead.
+ * happen to be free.
  */
 export function accentsCombo(baseLayer: string, geometry: Geometry): ComboDef {
   return {
@@ -784,6 +784,30 @@ export function withDefaultLayers(layout: Layout, geometry: Geometry): Layout {
     ...(hasExtras && {
       conditionalLayers: [...(layout.conditionalLayers ?? []), ...defaults.conditionalLayers],
     }),
+  };
+}
+
+/**
+ * A layout given the default layers the way **New layout** gives them: the space key where the
+ * defaults put it, Numbers and Symbols held on the thumbs, Accents on a combo, and Extras where the
+ * board needs it. The keys of the layout stay, but for a space key of its own.
+ */
+export function withNewLayoutDefaults(layout: Layout, geometry: Geometry): Layout {
+  const [first, ...rest] = layout.layers;
+  const defaults = defaultLayers(geometry, { mirrorAccents: vowelsOnLeft(first.bindings) });
+  const letters = Object.entries(first.bindings).filter(
+    ([, b]) => !(b.kind === 'kp' && b.symbol === ' '),
+  );
+  return {
+    ...layout,
+    keys: { ...layout.keys, space: defaults.spaceKey },
+    layers: [
+      { ...first, bindings: { ...Object.fromEntries(letters), ...defaults.base } },
+      ...rest,
+      ...defaults.layers,
+    ],
+    combos: [...(layout.combos ?? []), accentsCombo(first.id, geometry)],
+    ...(defaults.conditionalLayers.length > 0 && { conditionalLayers: defaults.conditionalLayers }),
   };
 }
 

@@ -7,29 +7,19 @@ import type { Binding } from '../layout/types.js';
 import { explain } from '../sim/resolver.js';
 import {
   BUNDLED_LAYOUTS,
-  bringsOwnLayers,
   bundledLayout,
   CLASSIC_DEFS,
   classicLayout,
-  DOCUMENT_LAYOUTS,
   documentedLayouts,
   SMALL_DEFS,
   tapOf,
 } from './index.js';
-import { BASE_SYMBOLS, MAIN_THUMBS } from './standard.js';
 
 const magicRomak = bundledLayout('magic-romak')!;
 
 const romak = bundledLayout('romak')!;
 
 const ALPHABET = [...'abcdefghijklmnopqrstuvwxyz'];
-
-/** The layouts written in code whose definitions bring their authors' layers. */
-const AUTHORED = new Set(
-  [...CLASSIC_DEFS, ...SMALL_DEFS]
-    .filter((d) => bringsOwnLayers(classicLayout(d)))
-    .map((d) => d.id),
-);
 
 /**
  * A layout is data, and a mistyped letter is invisible: it does not fail to compile, it just makes
@@ -79,7 +69,7 @@ describe('bundled layouts', () => {
 describe('Romak numbers and symbols', () => {
   const KEYMAP_CHARACTERS = [...'0123456789\\{}&()|[].,~#@^$"\'<>`%=:?-+_!/*'];
   const OPTS = { caseMode: 'fold', crossWord: 'reset' } as const;
-  const romaks = [magicRomak, romak].map((l) => [l.name, l] as const);
+  const romaks = [magicRomak].map((l) => [l.name, l] as const);
 
   it.each(romaks)('%s types every character the two layers carry', (_name, layout) => {
     const producible = producibleSymbols(compileLayout(layout));
@@ -196,8 +186,7 @@ describe('small-board layouts', () => {
  * types the keys below, the inner columns (`' " , . - ?`) with the index fingers; `z` and `q` sit in
  * the eleventh column, past the right pinky, which the split lacks, so they are on thumbs. Every
  * other letter keeps its finger: with the inner column dropped the right index shared `h` and `t`,
- * and the middle, ring and pinky fingers each typed the letters of the finger beside them. `"` `-`
- * and `?` are not among the symbols a base layer keeps, so their keys are empty, or Repeat's.
+ * and the middle, ring and pinky fingers each typed the letters of the finger beside them.
  */
 describe('Engram', () => {
   const layout = bundledLayout('engram')!;
@@ -205,7 +194,7 @@ describe('Engram', () => {
   const geometry = getGeometryPreset('3x5+2');
   const fingers = new Map(geometry.keys.map((k) => [k.id, k.finger]));
 
-  it("types each letter but z and q, and the ' , . it keeps, with its author's finger", () => {
+  it("types each letter but z and q, and its marks, with its author's finger", () => {
     const byFinger: Record<string, string> = {};
     for (const [key, b] of Object.entries(base)) {
       const tap = tapOf(b);
@@ -217,178 +206,152 @@ describe('Engram', () => {
       LP: 'bcg',
       LR: 'ixy',
       LM: 'ejo',
-      LI: "',aku",
-      RI: '.hlr',
+      LI: "',-aku",
+      RI: '".?hlr',
       RM: 'dmt',
       RR: 'fsw',
       RP: 'npv',
     });
   });
 
-  it("puts each key where the author's rows have it: the inner column's others empty", () => {
+  it("puts each key where the author's rows have it", () => {
     const tapped = (id: string) => {
       const tap = tapOf(base[id]);
-      return tap?.kind === 'kp' && tap.symbol ? tap.symbol : tap?.kind === 'key_repeat' ? '⟳' : '·';
+      return tap?.kind === 'kp' && tap.symbol ? tap.symbol : '·';
     };
     expect(geometry.textRows.map((row) => row.map(tapped).join(' '))).toEqual([
-      "b y o u ' · l d w v",
+      'b y o u \' " l d w v',
       'c i e a , . h t s n',
-      'g x j k · ⟳ r m f p',
+      'g x j k - ? r m f p',
     ]);
   });
 
-  it('puts z and q on the thumbs, which take the thumb letters, and Repeat on the key ? left', () => {
-    expect(tapOf(base.R0)).toEqual({ kind: 'kp', symbol: 'q' });
-    expect(tapOf(base.L1)).toEqual({ kind: 'kp', symbol: 'z' });
-    expect(base.RBC).toEqual({ kind: 'key_repeat' });
+  it('puts q and z on the thumbs beside space', () => {
+    expect(base.L1).toEqual({ kind: 'kp', symbol: ' ' });
+    expect(tapOf(base.L0)).toEqual({ kind: 'kp', symbol: 'q' });
+    expect(tapOf(base.R0)).toEqual({ kind: 'kp', symbol: 'z' });
     expect(layoutCategory(layout)).toBe('thumb_alpha');
   });
 });
 
 /**
- * The bundled Standard and Thumb Alpha layouts share their main thumbs and their base-layer symbols,
- * so that what tells them apart is their letters.
+ * A layout written in code is its author's design: the letters and marks its author places on the
+ * base layer, and its author's thumbs, or a space key where its author leaves the thumbs to a space
+ * bar. It has no layer, combo or key its author does not have.
  */
-describe('the standard thumbs', () => {
-  const standard = BUNDLED_LAYOUTS.filter(
-    (l) => layoutCategory(l) !== 'special' && !AUTHORED.has(l.id ?? ''),
-  );
-  const show = (b: Binding | undefined): string => {
-    if (!b) return 'nothing';
-    switch (b.kind) {
-      case 'none':
-        return 'nothing';
-      case 'trans':
-        return 'transparent';
-      case 'kp':
-        return b.symbol === ' ' ? 'space' : (b.symbol ?? '');
-      case 'key_repeat':
-        return 'Repeat';
-      case 'sl':
-        return b.layer === 'accents' ? 'Accents' : `sl ${b.layer}`;
-      case 'mod':
-        return 'Shift';
-      case 'mo':
-        return { num: 'Numbers', sym: 'Symbols' }[b.layer] ?? b.layer;
-      default:
-        return b.kind;
-    }
-  };
-  /** Each main thumb, left to right: a tap-hold as tap / hold, any other key as itself. */
-  const thumbs = (id: string) => {
-    const base = bundledLayout(id)?.layers[0].bindings ?? {};
-    return MAIN_THUMBS.map((k) => {
-      const b = base[k];
-      return b?.kind === 'hold_tap' ? `${show(b.tap)} / ${show(b.hold)}` : show(b);
-    });
-  };
+describe('layouts as their authors designed them', () => {
+  const written = new Map([...CLASSIC_DEFS, ...SMALL_DEFS].map((d) => [d.id, d] as const));
+  const alone = BUNDLED_LAYOUTS.filter((l) => l.layers.length === 1 && written.has(l.id ?? ''));
+  const thumbKeys = (layout: (typeof BUNDLED_LAYOUTS)[number]) =>
+    Object.keys(layout.layers[0].bindings).filter((k) => /^[LR]\d$/.test(k));
+  const typed = (b: Binding | undefined) => (b?.kind === 'hold_tap' ? b.tap : b);
 
-  it('are on Romak and every Standard and Thumb Alpha layout but Romak 24, which is gone', () => {
-    expect(standard.length).toBeGreaterThan(20);
+  it('are every Standard and Thumb Alpha layout of the Library but those with layers of their own', () => {
+    expect(alone.map((l) => l.id).sort()).toEqual(
+      [
+        'aptmak',
+        'aptv3',
+        'bird-30',
+        'canary',
+        'colemak',
+        'colemak-dh',
+        'dusk',
+        'dvorak',
+        'engram',
+        'focal',
+        'gallium',
+        'graphite',
+        'hands-down-neu',
+        'nerps',
+        'night',
+        'qwerty',
+        'recurva',
+        'romak',
+        'rsthd',
+        'snth',
+        'sturdy',
+        'sunlight',
+      ].sort(),
+    );
+    expect(alone.map((l) => layoutCategory(l)).every((c) => c !== 'special')).toBe(true);
     expect(layoutCategory(romak)).toBe('standard');
     expect(romak).toMatchObject({ id: 'romak', name: 'Romak' });
-    expect(BUNDLED_LAYOUTS.map((l) => l.id)).not.toContain('romak-34');
-    expect(documentedLayouts().some((l) => l.id?.startsWith('romak-'))).toBe(false);
   });
 
-  it.each(standard.map((l) => [l.id ?? l.name, l] as const))(
-    '%s holds Shift, Numbers, Symbols and Shift on its main thumbs, and taps Accents on R1',
-    (id) => {
-      expect(thumbs(id).map((t) => t.split(' / ')[1])).toEqual([
-        'Shift',
-        'Numbers',
-        'Symbols',
-        'Shift',
-      ]);
-      expect(thumbs(id)[3]).toBe('Accents / Shift');
+  it.each(alone.map((l) => [l.id ?? l.name, l] as const))(
+    '%s is its definition, with no layer, combo or Repeat key besides',
+    (id, layout) => {
+      const def = written.get(id);
+      if (!def) throw new Error(`no definition for ${id}`);
+      expect(layout).toEqual({ ...classicLayout(def), languages: layout.languages });
+      expect(layout.combos ?? []).toEqual([]);
+      expect(layout.conditionalLayers ?? []).toEqual([]);
+      expect(Object.values(layout.layers[0].bindings).some((b) => b.kind === 'key_repeat')).toBe(
+        false,
+      );
     },
   );
 
-  it.each(standard.map((l) => [l.id ?? l.name, l] as const))(
-    '%s keeps only letters, the four marks and Repeat on its base layer, and no other thumb key',
-    (_id, layout) => {
-      const main = new Set<string>(MAIN_THUMBS);
-      // A document carries its own home row mods: a tap-hold of a modifier types what its tap types.
-      const document = DOCUMENT_LAYOUTS.some((d) => d.id === layout.id);
-      const taps = Object.entries(layout.layers[0].bindings).map(
-        ([key, b]) =>
-          [key, document && b.kind === 'hold_tap' && b.hold.kind === 'mod' ? b.tap : b] as const,
-      );
-      const kept = taps.filter(
-        ([key, b]) =>
-          !main.has(key) &&
-          b.kind !== 'none' &&
-          !(b.kind === 'kp' && /^[a-z]$/.test(b.symbol ?? '')) &&
-          !(b.kind === 'kp' && BASE_SYMBOLS.includes(b.symbol ?? '') && !/^[LR]\d$/.test(key)) &&
-          !(b.kind === 'key_repeat' && !/^[LR]\d$/.test(key)),
-      );
-      expect(kept).toEqual([]);
-      expect(layout.combos?.some((c) => c.id === 'accents') ?? false).toBe(false);
-    },
-  );
+  it('put space on the outer left thumb where the author leaves the thumbs to a space bar', () => {
+    for (const id of [
+      'qwerty',
+      'dvorak',
+      'colemak',
+      'colemak-dh',
+      'graphite',
+      'gallium',
+      'canary',
+      'sturdy',
+      'aptv3',
+      'recurva',
+      'focal',
+      'bird-30',
+      'romak',
+    ]) {
+      const layout = bundledLayout(id) as (typeof BUNDLED_LAYOUTS)[number];
+      expect([id, thumbKeys(layout)]).toEqual([id, ['L1']]);
+      expect(layout.layers[0].bindings.L1).toEqual({ kind: 'kp', symbol: ' ' });
+    }
+  });
 
-  it('tap Repeat, space, the first thumb letter or nothing, and Accents where LayerBench placed them', () => {
-    expect(thumbs('qwerty')).toEqual([
-      'Repeat / Shift',
-      'space / Numbers',
-      'nothing / Symbols',
-      'Accents / Shift',
+  it('give Night and Dusk the thumbs their author draws: r left, space right, and Night its Shifts', () => {
+    const night = bundledLayout('night')?.layers[0].bindings ?? {};
+    const shift: Binding = {
+      kind: 'hold_tap',
+      tap: { kind: 'none' },
+      hold: { kind: 'mod', mod: 'LSHIFT' },
+    };
+    expect([night.L1, night.L0, night.R0, night.R1]).toEqual([
+      shift,
+      { kind: 'kp', symbol: 'r' },
+      { kind: 'kp', symbol: ' ' },
+      shift,
     ]);
-    expect(thumbs('romak')).toEqual(thumbs('qwerty'));
-    expect(thumbs('night')[2]).toBe('r / Symbols');
-  });
-
-  it('give L1 to a second thumb letter, and Repeat a key the symbols left', () => {
-    expect(thumbs('hands-down-neu').slice(0, 3)).toEqual([
-      'j / Shift',
-      'space / Numbers',
-      'z / Symbols',
+    expect(bundledLayout('night')?.keys.shift).toEqual({ key: 'R1', kind: 'hold' });
+    const dusk = bundledLayout('dusk')?.layers[0].bindings ?? {};
+    expect([dusk.L1, dusk.L0, dusk.R0, dusk.R1]).toEqual([
+      undefined,
+      { kind: 'kp', symbol: 'r' },
+      { kind: 'kp', symbol: ' ' },
+      undefined,
     ]);
-    expect(bundledLayout('hands-down-neu')?.layers[0].bindings.RTC).toEqual({ kind: 'key_repeat' });
-    expect(thumbs('sunlight').slice(0, 3)).toEqual(['j / Shift', 'space / Numbers', 'r / Symbols']);
-    expect(bundledLayout('sunlight')?.layers[0].bindings.RBC).toEqual({ kind: 'key_repeat' });
-    expect(thumbs('engram').slice(0, 3)).toEqual(['z / Shift', 'space / Numbers', 'q / Symbols']);
-    expect(bundledLayout('engram')?.layers[0].bindings.RBC).toEqual({ kind: 'key_repeat' });
   });
 
-  it('keep the space and letters their authors placed, and give the rest Accents, then Repeat', () => {
-    const authored = (letter: string) => [
-      'Repeat / Shift',
-      `${letter} / Numbers`,
-      'space / Symbols',
-      'Accents / Shift',
-    ];
-    expect(thumbs('rsthd')).toEqual(authored('e'));
-    expect(thumbs('nordwind')).toEqual(authored('s'));
+  it('keep the mark their author has where another layout would put a Repeat key', () => {
+    const at = (id: string, key: string) => typed(bundledLayout(id)?.layers[0].bindings[key]);
+    expect(at('hands-down-neu', 'RTC')).toEqual({ kind: 'kp', symbol: '/' });
+    expect(at('engram', 'RBC')).toEqual({ kind: 'kp', symbol: '?' });
+    expect(at('sunlight', 'RBC')).toEqual({ kind: 'kp', symbol: '=' });
   });
 
-  it("are not on a layout that keeps its author's layers, which keeps its author's thumbs", () => {
-    expect(AUTHORED.has('enthium') && AUTHORED.has('hands-down-gold')).toBe(true);
-    expect(standard.some((l) => AUTHORED.has(l.id ?? ''))).toBe(false);
-    // Backspace held for Numbers, the thumb letter, space held for Symbols, Enter: what the
-    // analysis does not simulate taps nothing under a hold, and is transparent on its own.
-    expect(thumbs('hands-down-gold')).toEqual([
-      'nothing / Numbers',
-      't',
-      'space / Symbols',
-      'transparent',
-    ]);
-    // Tab held for Numbers, space, the thumb letter held for Symbols, Backspace.
-    expect(thumbs('enthium')).toEqual(['nothing / Numbers', 'space', 'r / Symbols', 'transparent']);
-    const enthium = bundledLayout('enthium')?.layers[0].bindings ?? {};
-    expect([enthium.L2, enthium.R2]).toEqual([undefined, undefined]);
-  });
-
-  it('type a doubled letter with Repeat, and an accent through the one-shot on R1', () => {
+  it('type a doubled letter by pressing its key twice, and an accent not at all', () => {
     const OPTS = { caseMode: 'fold', crossWord: 'reset' } as const;
     const compiled = compileLayout(bundledLayout('qwerty') as (typeof BUNDLED_LAYOUTS)[number]);
     const keys = (text: string) =>
       explain(compiled, text, OPTS)
         .steps.filter((s) => s.kind !== 'hold_release')
         .map((s) => s.key);
-    expect(keys('book')).toEqual(['LBC', 'RTR', 'L1', 'RHM']);
-    expect(keys('é')).toEqual(['R1', 'RHM']);
-    // `/` left the base layer for Symbols.
-    expect(keys('/')).toEqual(['R0', 'RBM']);
+    expect(keys('book')).toEqual(['LBC', 'RTR', 'RTR', 'RHM']);
+    expect(keys('é')).toEqual([]);
   });
 });

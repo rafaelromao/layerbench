@@ -127,8 +127,7 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     // Alpha 1 of the author's keymap (github.com/rafaelromao/keyboards) on thirty-four keys: Magic
     // Romak's, filled out to the outer and inner columns.
     rows: 'q b m g k x l o u ;\nd n s t w z r a e i\ny f c p v j h , . /',
-    description:
-      'Romak on 34 keys (3x5+2): one alpha layer, with the default layers and the standard thumbs.',
+    description: "Romak's Alpha 1 on 34 keys (3x5+2): one alpha layer.",
     link: 'https://rafaelromao.github.io/romak',
   },
   {
@@ -188,13 +187,10 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     id: 'hands-down-neu',
     name: 'Hands Down Neu',
     author: 'Alan Reiser',
-    rows: "w f m p v ⟲ . q ; '\nr s n t b , a e i h\nx c l d g - u o y k",
+    rows: "w f m p v / . q ; '\nr s n t b , a e i h\nx c l d g - u o y k",
     // `z` and `j` live in an eleventh column on the board this was drawn for. A 34-key split has
-    // no such column, so they go on the free thumbs — until now they were silently dropped, which
-    // left the layout unable to type two letters and every metric flattered by their absence.
-    // With `z` on the thumb Repeat would have, Repeat takes the key `/` leaves.
+    // no such column, so they go on the free thumbs.
     thumbs: 'space z j',
-    special: { '⟲': REPEAT },
     link: 'https://sites.google.com/alanreiser.com/handsdown',
   },
   {
@@ -202,8 +198,12 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     name: 'Night',
     author: 'Luminespire',
     rows: "b f l k q p g o u .\nn s h t m y c a e i\nx v j d z ' w - / ,",
-    // Twenty-five letters on the alphas and `r` on a thumb, which is what the layout is about.
-    thumbs: 'space r',
+    // Twenty-five letters on the alphas and `r` on a thumb, which is what the layout is about: Shift
+    // on the outer thumbs, `r` on the left inner one and space on the right inner one, as its author
+    // draws them.
+    thumbs: '⇧ r space ⇧',
+    special: { '⇧': { kind: 'hold_tap', tap: NOTHING, hold: { kind: 'mod', mod: 'LSHIFT' } } },
+    shift: { key: 'R1', kind: 'hold' },
     description: 'Night: r on a thumb, leaving the home row to the other twenty-five letters.',
     link: 'https://luminespire.github.io/night/home.html',
   },
@@ -212,7 +212,9 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     name: 'Dusk',
     author: 'Luminespire',
     rows: "x f d p q j ' o u .\nn s t c y m h a e i\nb v k g w z l - / ,",
-    thumbs: 'space r',
+    // `r` on the left thumb and space on the right one.
+    thumbs: '∅ r space',
+    special: { '∅': null },
     description: 'Dusk, a Night alternative with the same thumb r.',
     link: 'https://luminespire.github.io/night/alternatives.html',
   },
@@ -243,14 +245,12 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     id: 'engram',
     name: 'Engram',
     author: 'Arno Klein',
-    rows: 'b y o u \' " l d w v\nc i e a , . h t s n\ng x j k - ⟲ r m f p',
+    rows: 'b y o u \' " l d w v\nc i e a , . h t s n\ng x j k - ? r m f p',
     // The original board has eleven columns: four finger columns a hand with the two inner ones
     // (`' " , . - ?`) between them, and a last one past the right pinky that holds `z` and `q`. A
-    // 34-key split has ten, so every letter of those ten stays on its finger (`" - ?` have no key
-    // on a base layer, which keeps only `' , . ;`) and `z` and `q` go on thumbs: the first on R0,
-    // the second on L1. With `z` on the thumb Repeat would have, Repeat takes the key `?` leaves.
+    // 34-key split has ten, so every letter of those ten stays on its finger and `z` and `q` go on
+    // the thumbs beside space.
     thumbs: 'space q z',
-    special: { '⟲': REPEAT },
     description:
       "Engram on 34 keys: z and q, which sit past the right pinky on its author's board, go on thumbs.",
     link: 'https://github.com/binarybottle/engram-2021',
@@ -259,11 +259,9 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     id: 'sunlight',
     name: 'Sunlight',
     author: 'Cyanophage',
-    rows: 'f w h g k , o u y p\ns n l t v . a e i c\nx b m d q ⟲ ; / - z',
+    rows: 'f w h g k , o u y p\ns n l t v . a e i c\nx b m d q = ; / - z',
     // `r` on a thumb by design; `j` on another because the original board has an extra column.
-    // With `j` on the thumb Repeat would have, Repeat takes the key `=` leaves.
     thumbs: 'space r j',
-    special: { '⟲': REPEAT },
     link: 'https://cyanophage.github.io/#sunlight',
   },
   {

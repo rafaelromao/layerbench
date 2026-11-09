@@ -20,6 +20,7 @@ import { layerNameEl, showLayer, shownLayer } from '../test/layers.js';
 import { customInLink, openSettings, renderRoute, testClient } from '../test/render.js';
 import { setPointerKind, setViewportWidth } from '../test/setup.js';
 import { decodeInline } from '../url/inline.js';
+import { newLayout } from './new-layout.js';
 
 let counter = 0;
 const freshStorage = () => new IndexedDbAdapter(`layerbench-edit-${++counter}`);
@@ -69,12 +70,29 @@ async function openEdit(): Promise<void> {
 }
 
 /**
+ * Qwerty as a user makes it: **New layout** from Qwerty, with the default layers. The bundled one
+ * is its author's, with no layer past its base.
+ */
+const qwertyWithDefaults = (): Layout =>
+  newLayout({ name: 'Qwerty', geometry: '3x5+2', start: 'qwerty', defaultLayers: true });
+
+/** Open Analyze on that Qwerty, saved as a custom layout, and wait for its first analysis. */
+async function openEditWithDefaults(): Promise<void> {
+  const storage = freshStorage();
+  await seed(storage, qwertyWithDefaults(), 'qwerty-defaults', {});
+  renderRoute('/analyze?layout=custom%3Aqwerty-defaults&corpus=en-general&sample=20000', {
+    storage,
+  });
+  await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+}
+
+/**
  * Open Analyze on a copy of Qwerty that reaches Accents by LHR and LHM pressed together, a combo on
  * two finger keys for the combo editor to work on, and wait for its first analysis.
  */
 async function openComboEdit(): Promise<void> {
   const storage = freshStorage();
-  await seed(storage, 'qwerty', 'qwerty-combo', {
+  await seed(storage, qwertyWithDefaults(), 'qwerty-combo', {
     combos: [{ ...accentsCombo('base', getGeometryPreset('3x5+2')), keys: ['LHR', 'LHM'] }],
   });
   renderRoute('/analyze?layout=custom%3Aqwerty-combo&corpus=en-general&sample=20000', { storage });
@@ -193,9 +211,14 @@ function recording(): { client: AnalysisClient; requests: AnalyzeRequest[] } {
   return { client, requests };
 }
 
-/** A custom copy of a bundled layout, under its own id and name. */
-async function seed(storage: IndexedDbAdapter, from: string, id: string, extra: Partial<Layout>) {
-  const layout = bundledLayout(from) as Layout;
+/** A custom copy of a bundled layout, or a layout given, under its own id and name. */
+async function seed(
+  storage: IndexedDbAdapter,
+  from: string | Layout,
+  id: string,
+  extra: Partial<Layout>,
+) {
+  const layout = typeof from === 'string' ? (bundledLayout(from) as Layout) : from;
   await storage.put('layouts', id, toCanonicalJson({ ...layout, id, ...extra }), {
     message: 'seed',
   });
@@ -888,7 +911,7 @@ describe('Edit', () => {
 
   it('adds, reorders, duplicates, renames and removes layers', async () => {
     const user = userEvent.setup();
-    await openEdit();
+    await openEditWithDefaults();
 
     // New layers go after the default ones Qwerty has.
     await user.click(screen.getByRole('tab', { name: 'Layers' }));
@@ -1012,7 +1035,7 @@ describe('Edit', () => {
 
   it('brings a layer on by itself while others are on, from the Layers panel', async () => {
     const user = userEvent.setup();
-    await openEdit();
+    await openEditWithDefaults();
     await user.click(screen.getByRole('tab', { name: 'Layers' }));
     const section = () => within(screen.getByRole('list', { name: 'Layers' }));
     const add = () => section().getByRole('button', { name: 'New condition' });
@@ -1415,7 +1438,7 @@ describe('Edit', () => {
 
   it('makes a home-row mod out of a letter', async () => {
     const user = userEvent.setup();
-    await openEdit();
+    await openEditWithDefaults();
 
     await user.click(key('Key LHC: g'));
     await user.click(within(await inspector('LHC')).getByRole('button', { name: 'Tap-hold' }));
@@ -1707,7 +1730,7 @@ describe('Edit', () => {
   it('builds a whole binding by tapping, with nothing typed', async () => {
     setPointerKind('touch');
     const user = userEvent.setup();
-    await openEdit();
+    await openEditWithDefaults();
 
     await user.click(key('Key LHM: d'));
     await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Layer' }));

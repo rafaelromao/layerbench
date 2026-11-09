@@ -16,7 +16,7 @@ const qwerty: Layout = {
   ...(bundledLayout('qwerty') as Layout),
   combos: [accentsCombo('base', getGeometryPreset('3x5+2'))],
 };
-/** Where the Nav layer lands: after Qwerty's own and default layers. */
+/** Where the Nav layer lands: after Qwerty's layers. */
 const NAV = qwerty.layers.length;
 
 /** Qwerty with an empty Nav layer after its base, back on the base layer. */

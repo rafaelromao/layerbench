@@ -6,7 +6,7 @@ import { simulate } from '../sim/resolver.js';
 import { layoutLanguageCoverage, producibleSymbols } from './coverage.js';
 import { languageKeep, languageProfile, languageSoft, languagesToJudge } from './profiles.js';
 
-/** Qwerty as written, its letters alone: the bundled one has the default layers and their accents. */
+/** Qwerty as written, its letters alone. */
 const plainQwerty = () => compileLayout(CLASSIC_LAYOUTS.find((l) => l.id === 'qwerty')!);
 
 describe('language profiles', () => {
