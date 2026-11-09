@@ -91,15 +91,17 @@ types: each adds its cost to Effort but no keystroke. A layout typing each chara
 gets the same numbers either way. A thumb press is never part of a roll or an alternation either,
 so a tap between two letters does not pass for a good trigram.
 
-A layout that has no key for letters the text's language needs skips them, and skipping is free.
-Each card says what share of the text it skips, and on a Portuguese text, say, the layouts that
-cannot type `ã` or `ç` are ranked after the ones that can. Every layout that comes with the app types
-them, through its [Accents](editing.md#default-layers) layer or, on Magic Romak, its
-own accents; a layout of your own without them is the one ranked after. A layout is also held to the languages
-it is for, chosen in **Settings** in **Analyze**: one for Spanish that has no `ñ` says so on its
-card, whatever the text. It is only flagged for that, not ranked after the others: on an English
-text it skipped nothing for Spanish. A layout that comes with the app is for the languages it
-performs well in: it types every letter they need, and its Effort on their news texts is in the
+A layout that has no key for letters the text's language needs skips them, and skipping is free, so
+its numbers flatter it. Each card says what share of the text it skips, and which letters, but the
+list stays in one order, by the sort alone: neither a layout that skips them nor its type or category
+is set apart, so on a Portuguese text, say, a layout without `ã` or `ç` sits where its Effort or SFB
+puts it, with its note. Most layouts that come with the app type them, through their
+[Accents](editing.md#default-layers) layer or, on Magic Romak, its own accents; the few that keep
+their authors' layers, with no accents among them, and a layout of your own without them carry the
+note. A layout is also held to the languages it is for, chosen in **Settings** in **Analyze**: one
+for Spanish that has no `ñ` says so on its card, whatever the text, though on an English text it
+skipped nothing for Spanish. A layout that comes with the app is for the languages it performs well
+in: it types every letter they need, and its Effort on their news texts is in the
 better half of the bundled layouts'. Some, such as Qwerty, are for none, and Magic Romak is for
 English and Portuguese only, the languages its author made it for.
 

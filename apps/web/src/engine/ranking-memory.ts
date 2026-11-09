@@ -3,8 +3,7 @@ import type { LayoutSummary } from './use-summaries.js';
 
 /**
  * The last ranking seen on each set of choices, kept in this browser so the Library opens in the
- * order it was left: each layout's numbers, and which layouts went behind for the text's language.
- * They are kept by layout rather than by what was analyzed, so a custom layout takes its place before
+ * order it was left: each layout's numbers. They are kept by layout rather than by what was analyzed, so a custom layout takes its place before
  * its document is read. They may have been computed by an older engine, rule definition or version
  * of the layout, so they are only shown until the same work is done again in the background.
  */
@@ -22,13 +21,10 @@ try {
 export interface RememberedRanking {
   /** Each layout's numbers, by its key in the list. */
   summaries: Map<string, LayoutSummary>;
-  /** The layouts ranked behind, for lacking letters the text's language needs. */
-  behind: Set<string>;
 }
 
 interface Stored {
   summaries: Record<string, LayoutSummary>;
-  behind: string[];
 }
 
 /**
@@ -60,15 +56,14 @@ function readAll(): Map<string, Stored> {
     if (!parsed || typeof parsed !== 'object') return out;
     for (const [context, value] of Object.entries(parsed)) {
       if (!value || typeof value !== 'object') continue;
-      const { summaries, behind } = value as Record<string, unknown>;
-      const kept: Stored = { summaries: {}, behind: [] };
+      // A ranking kept before the list stopped holding layouts back also has the ones it had, which
+      // nothing reads any more and the next write drops.
+      const { summaries } = value as Record<string, unknown>;
+      const kept: Stored = { summaries: {} };
       if (summaries && typeof summaries === 'object') {
         for (const [key, summary] of Object.entries(summaries)) {
           if (!isOldCustomKey(key) && isSummary(summary)) kept.summaries[key] = summary;
         }
-      }
-      if (Array.isArray(behind)) {
-        kept.behind = behind.filter((k) => typeof k === 'string' && !isOldCustomKey(k));
       }
       out.set(context, kept);
     }
@@ -82,7 +77,7 @@ function readAll(): Map<string, Stored> {
 function update(context: string, change: (ranking: Stored) => void): void {
   try {
     const all = readAll();
-    const ranking = all.get(context) ?? { summaries: {}, behind: [] };
+    const ranking = all.get(context) ?? { summaries: {} };
     all.delete(context);
     change(ranking);
     all.set(context, ranking);
@@ -98,24 +93,11 @@ export function recall(context: string): RememberedRanking {
   const ranking = readAll().get(context);
   return {
     summaries: new Map(Object.entries(ranking?.summaries ?? {})),
-    behind: new Set(ranking?.behind ?? []),
   };
 }
 
 export function rememberSummary(context: string, key: string, summary: LayoutSummary): void {
   update(context, (ranking) => {
     ranking.summaries[key] = summary;
-  });
-}
-
-/** Whether each layout decided went behind; the others keep what was remembered of them. */
-export function rememberBehind(context: string, decided: ReadonlyMap<string, boolean>): void {
-  update(context, (ranking) => {
-    const behind = new Set(ranking.behind);
-    for (const [key, isBehind] of decided) {
-      if (isBehind) behind.add(key);
-      else behind.delete(key);
-    }
-    ranking.behind = [...behind];
   });
 }
