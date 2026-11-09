@@ -102,7 +102,7 @@ describe('small-board layouts', () => {
     if (!found) throw new Error(`no bundled layout ${id}`);
     return found;
   };
-  // A thumb that also holds a default layer still types its letter when tapped.
+  // A thumb that also holds a layer still types its letter when tapped.
   const keyOf = (id: string, symbol: string) =>
     Object.entries(layout(id).layers[0].bindings).find(([, b]) => {
       const tap = b.kind === 'hold_tap' ? b.tap : b;
@@ -110,8 +110,7 @@ describe('small-board layouts', () => {
     })?.[0];
 
   it('puts each chord on the keys its source names', () => {
-    // The layout's own chords for letters; the one to Accents goes with the default layers, and
-    // those of its author's for symbols with its author's layers.
+    // The layout's own chords for letters, not those of its author's for symbols.
     const letters = (b: Binding) =>
       (b.kind === 'kp' && /^[a-z]$/.test(b.symbol ?? '')) ||
       (b.kind === 'macro' && /^[a-z]+$/.test(b.symbols ?? ''));
@@ -246,11 +245,12 @@ describe('layouts as their authors designed them', () => {
     Object.keys(layout.layers[0].bindings).filter((k) => /^[LR]\d$/.test(k));
   const typed = (b: Binding | undefined) => (b?.kind === 'hold_tap' ? b.tap : b);
 
-  it('are every Standard and Thumb Alpha layout of the Library but those with layers of their own', () => {
+  it('are every layout of the Library whose author defines no layer past its letters', () => {
     expect(alone.map((l) => l.id).sort()).toEqual(
       [
         'aptmak',
         'aptv3',
+        'bird',
         'bird-30',
         'canary',
         'colemak',
@@ -264,16 +264,23 @@ describe('layouts as their authors designed them', () => {
         'hands-down-neu',
         'nerps',
         'night',
+        'nordrassil',
         'qwerty',
         'recurva',
         'romak',
-        'rsthd',
         'snth',
         'sturdy',
         'sunlight',
+        'uno',
       ].sort(),
     );
-    expect(alone.map((l) => layoutCategory(l)).every((c) => c !== 'special')).toBe(true);
+    // Special by what is theirs, a twenty-six-key board and adaptive keys, and by no layer.
+    expect(
+      alone
+        .filter((l) => layoutCategory(l) === 'special')
+        .map((l) => l.id)
+        .sort(),
+    ).toEqual(['bird', 'nordrassil', 'uno']);
     expect(layoutCategory(romak)).toBe('standard');
     expect(romak).toMatchObject({ id: 'romak', name: 'Romak' });
   });

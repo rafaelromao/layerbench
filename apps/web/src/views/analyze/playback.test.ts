@@ -101,14 +101,16 @@ describe('the combos a board shows', () => {
     ]);
   });
 
-  it('shows the combo a Special layout with the default layers presses for Accents', () => {
-    const nordrassil = compileLayout(bundledLayout('nordrassil') as Layout);
-    expect(typingCombos(nordrassil, 0)).toEqual([
+  it('shows the combo a layout with the default layers presses for Accents', () => {
+    const withDefaults = compileLayout(
+      newLayout({ name: 'Qwerty', geometry: '3x5+2', start: 'qwerty', defaultLayers: true }),
+    );
+    expect(typingCombos(withDefaults, 0)).toEqual([
       {
         id: 'accents',
         index: 0,
         // The outer thumbs pressed together.
-        keys: ['L1', 'R1'].map((id) => nordrassil.keyIndex.get(id)),
+        keys: ['L1', 'R1'].map((id) => withDefaults.keyIndex.get(id)),
         label: 'Acce',
         tap: 'Acce',
         active: false,
@@ -124,10 +126,15 @@ describe('the combos a board shows', () => {
 
 describe("a box's combo in the layout", () => {
   it('is found by its id and keys when typing combos are left out of the analysis', () => {
-    // A combo that types before Nordrassil's Accents combo, which only reaches a layer and stays.
-    const nordrassil = bundledLayout('nordrassil') as Layout;
+    // A combo that types before the Accents combo, which only reaches a layer and stays.
+    const withDefaults = newLayout({
+      name: 'Qwerty',
+      geometry: '3x5+2',
+      start: 'qwerty',
+      defaultLayers: true,
+    });
     const layout: Layout = {
-      ...nordrassil,
+      ...withDefaults,
       combos: [
         {
           id: 'q',
@@ -135,7 +142,7 @@ describe("a box's combo in the layout", () => {
           binding: { kind: 'kp', symbol: 'q' },
           layers: ['base'],
         },
-        ...(nordrassil.combos ?? []),
+        ...(withDefaults.combos ?? []),
       ],
     };
     const full = compileLayout(layout);

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { eighteenKeys } from '../fixtures/boards.js';
 import { compileLayout } from '../layout/compile.js';
 import type { Binding, Layout, Mod } from '../layout/types.js';
 import { bundledLayout, documentedLayouts } from '../layouts/index.js';
@@ -407,18 +408,19 @@ describe('the thumb keys a held thumb blocks', () => {
     expect(blocked(magic, 'alpha1')).toEqual([]);
     expect(blocked(magic, 'num').sort()).toEqual(['L0', 'L1']);
     expect(blocked(magic, 'sym').sort()).toEqual(['R0', 'R1']);
-    // Magic Romak has no Extras; Bird holds its Numbers and Symbols, so Extras, by a thumb of each
-    // hand.
-    const bird = compileLayout(documentedLayouts().find((l) => l.id === 'bird')!);
-    expect(blocked(bird, 'extras').sort()).toEqual(['L0', 'L1', 'R0', 'R1']);
+    // Magic Romak has no Extras; a board with the default layers holds its Numbers and Symbols, so
+    // Extras, by a thumb of each hand.
+    const eighteen = compileLayout(eighteenKeys());
+    expect(blocked(eighteen, 'extras').sort()).toEqual(['L0', 'L1', 'R0', 'R1']);
   });
 
   it('are none on a layer a thumb taps, or one a finger holds', () => {
     expect(blocked(magic, 'alpha2')).toEqual([]);
-    // Uno reaches Accents with two thumbs pressed together, a combo, which holds nothing.
-    const uno = compileLayout(documentedLayouts().find((l) => l.id === 'uno')!);
-    expect(uno.layerIndex.get('accents')).toBeDefined();
-    expect(blocked(uno, 'accents')).toEqual([]);
+    // The default layers' Accents is reached with two thumbs pressed together, a combo, which holds
+    // nothing.
+    const defaults = compileLayout(eighteenKeys());
+    expect(defaults.layerIndex.get('accents')).toBeDefined();
+    expect(blocked(defaults, 'accents')).toEqual([]);
     const c = compileLayout(
       board([
         { id: 'base', bindings: { LHM: { kind: 'mo', layer: 'nav' } } },

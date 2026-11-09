@@ -180,7 +180,7 @@ describe('Compare', () => {
 
   it('shows every layer of each layout, one at a time', async () => {
     const user = userEvent.setup();
-    renderRoute('/compare?layout=magic-romak&b=nordrassil&corpus=pt-br-general&sample=20000', {
+    renderRoute('/compare?layout=magic-romak&b=rsthd&corpus=pt-br-general&sample=20000', {
       storage: freshStorage(),
     });
     await screen.findByRole('group', { name: 'Layers of A' });
@@ -191,14 +191,9 @@ describe('Compare', () => {
       'Numbers',
       'Symbols',
     ]);
-    // Nordrassil's own layer, then the default ones it takes, once it is read.
-    await waitFor(() => expect(layerCounter('Layers of B')).toBe('1 / 4'));
-    expect(await layerNames(user, 'Layers of B')).toEqual([
-      'Base',
-      'Numbers',
-      'Symbols',
-      'Accents',
-    ]);
+    // RSTHD's base layer, then its Symbols, once it is read.
+    await waitFor(() => expect(layerCounter('Layers of B')).toBe('1 / 2'));
+    expect(await layerNames(user, 'Layers of B')).toEqual(['Base', 'Symbols']);
 
     // Each side turns on its own, and the other keeps the layer it was on.
     const boardA = () => document.getElementById('kb-A')?.textContent ?? '';
@@ -206,7 +201,7 @@ describe('Compare', () => {
     expect(boardA()).not.toContain('qu');
     await showLayer(user, 'Alpha 2', 'Layers of A');
     expect(shownLayer('Layers of A')).toBe('Alpha 2');
-    expect(shownLayer('Layers of B')).toBe('Accents');
+    expect(shownLayer('Layers of B')).toBe('Symbols');
     expect(boardA()).toContain('qu');
   });
 

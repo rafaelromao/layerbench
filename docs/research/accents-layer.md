@@ -340,7 +340,7 @@ it helps are the left-vowel thumb layouts (Dvorak, Engram, Enthium) and Sunlight
 A combo layout must never be mirrored. That would put the right hand's vowels on the combo fingers:
 Nordrassil and Uno have left-hand vowels, but each gets worse mirrored.
 
-If mirroring is adopted, a layout needs an `accents: 'mirrored'` choice that `withDefaultLayers`
+If mirroring is adopted, a layout needs an `accents: 'mirrored'` choice that `withNewLayoutDefaults`
 reads. For a new layout, the default can follow the rule above: mirror when the base layer's vowels
 are on the left and Accents is reached by a thumb. Every bundled layout can store the engine's pick.
 
