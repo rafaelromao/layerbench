@@ -169,7 +169,7 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     id: 'canary',
     name: 'Canary',
     author: 'Eve',
-    rows: 'w l y p b z f o u ;\nc r s t g m n e i a\nq j v d k x h / , .',
+    rows: "w l y p b z f o u '\nc r s t g m n e i a\nq j v d k x h / , .",
   },
   {
     id: 'sturdy',
@@ -187,35 +187,39 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     id: 'hands-down-neu',
     name: 'Hands Down Neu',
     author: 'Alan Reiser',
-    rows: "w f m p v / . q ; '\nr s n t b , a e i h\nx c l d g - u o y k",
+    rows: 'w f m p v / . q " \'\nr s n t b , a e i h\nx c l d g - u o y k',
     // `z` and `j` live in an eleventh column on the board this was drawn for. A 34-key split has
     // no such column, so they go on the free thumbs.
     thumbs: 'space z j',
+    description:
+      'Hands Down Neu on 34 keys: z and j, which its site draws in an eleventh column, go on thumbs.',
     link: 'https://sites.google.com/alanreiser.com/handsdown',
   },
   {
     id: 'night',
     name: 'Night',
     author: 'Luminespire',
-    rows: "b f l k q p g o u .\nn s h t m y c a e i\nx v j d z ' w - / ,",
+    rows: "b f l k q p g o u .\nn s h t m y c a e i\nx v j d z ' w / ; ,",
     // Twenty-five letters on the alphas and `r` on a thumb, which is what the layout is about: Shift
     // on the outer thumbs, `r` on the left inner one and space on the right inner one, as its author
     // draws them.
     thumbs: '⇧ r space ⇧',
     special: { '⇧': { kind: 'hold_tap', tap: NOTHING, hold: { kind: 'mod', mod: 'LSHIFT' } } },
     shift: { key: 'R1', kind: 'hold' },
-    description: 'Night: r on a thumb, leaving the home row to the other twenty-five letters.',
+    description:
+      'Night: r on the left inner thumb, leaving the home row to the other twenty-five letters; space on the right inner thumb, Shift on both outer ones.',
     link: 'https://luminespire.github.io/night/home.html',
   },
   {
     id: 'dusk',
     name: 'Dusk',
     author: 'Luminespire',
-    rows: "x f d p q j ' o u .\nn s t c y m h a e i\nb v k g w z l - / ,",
+    rows: "x f d p q j ' o u .\nn s t c y m h a e i\nb v k g w z l _ / ,",
     // `r` on the left thumb and space on the right one.
     thumbs: '∅ r space',
     special: { '∅': null },
-    description: 'Dusk, a Night alternative with the same thumb r.',
+    description:
+      'Dusk, a Night alternative with the same thumb r, on the left, and space on the right; the key its author leaves free holds `_`.',
     link: 'https://luminespire.github.io/night/alternatives.html',
   },
   {
@@ -236,9 +240,7 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     id: 'nerps',
     name: 'Nerps',
     author: 'Sertain',
-    rows: "x l d p v z k o u ;\nn r t s g y h e i a\nj m c w b f ' , . -",
-    // `q` sits in an eleventh column on the original board; here it goes on a thumb.
-    thumbs: 'space q',
+    rows: "x l d p v z k o u ;\nn r t s g y h e i a\nj m c w q b f ' , .",
     link: 'https://www.reddit.com/r/KeyboardLayouts/comments/tpwyjc/',
   },
   {
@@ -276,9 +278,10 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     id: 'aptmak',
     name: 'Aptmak',
     author: 'Apsu',
-    rows: "v w f p b j l u y '\nr s t h k x n a i o\n/ c g d q z m , . -",
-    // Twenty-five letters plus `e` on a thumb: a sub-30 alpha block.
+    rows: "v w f p b j l u y '\nr s t h k x n a i o\n∅ c g d q z m , . ∅",
+    // Twenty-five letters plus `e` on a thumb: a sub-30 alpha block. The bottom row has no pinky keys.
     thumbs: 'space e',
+    special: { '∅': null },
     description: 'Aptmak: e on a thumb, so the alphas fit in twenty-five keys.',
     link: 'https://github.com/Apsu/aptmak',
   },

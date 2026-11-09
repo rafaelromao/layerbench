@@ -301,6 +301,7 @@ describe('layouts as their authors designed them', () => {
       'graphite',
       'gallium',
       'canary',
+      'nerps',
       'sturdy',
       'aptv3',
       'recurva',
@@ -312,6 +313,53 @@ describe('layouts as their authors designed them', () => {
       expect([id, thumbKeys(layout)]).toEqual([id, ['L1']]);
       expect(layout.layers[0].bindings.L1).toEqual({ kind: 'kp', symbol: ' ' });
     }
+  });
+
+  it("have the letters and marks their authors' sources draw, a key their source leaves empty empty", () => {
+    const COLUMNS = ['P', 'R', 'M', 'I', 'C'];
+    const rowOf = (layout: (typeof BUNDLED_LAYOUTS)[number], r: 'T' | 'H' | 'B') =>
+      [...COLUMNS.map((c) => `L${r}${c}`), ...[...COLUMNS].reverse().map((c) => `R${r}${c}`)]
+        .map((k) => {
+          const b = typed(layout.layers[0].bindings[k]);
+          return b?.kind === 'kp' ? b.symbol : '·';
+        })
+        .join(' ');
+    const SOURCES: Record<string, [string, string, string]> = {
+      // The Hands Down site's grid, whose eleventh column holds `z` and `j`: it has no `;`.
+      'hands-down-neu': ['w f m p v / . q " \'', 'r s n t b , a e i h', 'x c l d g - u o y k'],
+      // The grid on the author's site.
+      night: ['b f l k q p g o u .', 'n s h t m y c a e i', "x v j d z ' w / ; ,"],
+      // The author's own page: its last key is free, and holds `_`.
+      dusk: ["x f d p q j ' o u .", 'n s t c y m h a e i', 'b v k g w z l _ / ,'],
+      // Its ortho form, with `'` past the right pinky of the top row.
+      canary: ["w l y p b z f o u '", 'c r s t g m n e i a', 'q j v d k x h / , .'],
+      // The Layouts Doc's angle-mod rows, which keep `q` on the bottom row.
+      nerps: ['x l d p v z k o u ;', 'n r t s g y h e i a', "j m c w q b f ' , ."],
+      // Its README: `q` and `z` are on the inner bottom keys, the pinky bottom keys have nothing.
+      aptmak: ["v w f p b j l u y '", 'r s t h k x n a i o', '· c g d q z m , . ·'],
+    };
+    for (const [id, rows] of Object.entries(SOURCES)) {
+      const layout = bundledLayout(id) as (typeof BUNDLED_LAYOUTS)[number];
+      expect([id, ...(['T', 'H', 'B'] as const).map((r) => rowOf(layout, r))]).toEqual([
+        id,
+        ...rows,
+      ]);
+    }
+  });
+
+  it("put the thumb letters their authors' boards have in an eleventh column on thumbs", () => {
+    const thumbsOf = (id: string) => {
+      const layout = bundledLayout(id) as (typeof BUNDLED_LAYOUTS)[number];
+      return Object.fromEntries(
+        thumbKeys(layout).map((k) => {
+          const b = typed(layout.layers[0].bindings[k]);
+          return [k, b?.kind === 'kp' ? b.symbol : undefined];
+        }),
+      );
+    };
+    expect(thumbsOf('hands-down-neu')).toEqual({ L1: ' ', L0: 'z', R0: 'j' });
+    expect(thumbsOf('aptmak')).toEqual({ L1: ' ', L0: 'e' });
+    expect(thumbsOf('nerps')).toEqual({ L1: ' ' });
   });
 
   it('give Night and Dusk the thumbs their author draws: r left, space right, and Night its Shifts', () => {
