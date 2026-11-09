@@ -17,12 +17,11 @@ import { cyanophageKeyEffort } from '../rules/effort.js';
  * one, so every board gets the same grid and the same muscle memory, but for a pair that goes to
  * Extras whole. The keys past the core — the pinky's top and bottom, the inner column — carry
  * currency and ordinals on Numbers, and on Symbols each mark beside its look-alike (`;` by `:`, `¿`
- * by `?`, `¡` by `!`), and `«` above `»`. The pairs
- * (`SYMBOL_PAIRS`) stay on one layer, side by side: a board without a key for one half moves the
- * pair to Extras, which comes on while Numbers and Symbols are both held, and fills its prime keys
- * first (`primeKeys`). Accents is one-shot, on the 30 main keys: the dead keys, the letters no dead
- * key makes, and the accented letters the texts use most, each a key of its own, in rows and columns
- * that are easy to remember. A board without one of those keys finds it on Extras too.
+ * by `?`, `¡` by `!`), and `«` above `»`. The pairs (`SYMBOL_PAIRS`) stay on one layer, side by
+ * side: a board without a key for one half moves the pair to Extras, which comes on while Numbers
+ * and Symbols are both held, and fills its prime keys first (`primeKeys`). Accents is one-shot, on
+ * the 30 main keys: the dead keys, the letters no dead key makes, and the accented letters the texts
+ * use most, each a key of its own, in rows and columns that are easy to remember. A board without one of those keys finds it on Extras too.
  *
  * What changes from board to board is decided by which keys it has, not by its name, so a custom
  * geometry gets a sensible result too: where `0` goes, which thumbs reach the layers, which symbols
@@ -290,7 +289,7 @@ export const DEFAULT_LAYER_ID_LIST: readonly string[] = Object.values(DEFAULT_LA
 
 /**
  * Whether a layout has the default layers: Accents, which every layout that has them has. A layout
- * without them has layers of its own, Numbers and Symbols among them by the same ids.
+ * without them has the layers its author defines, if any.
  */
 export function hasDefaultLayers(layout: Pick<Layout, 'layers'>): boolean {
   return layout.layers.some((l) => l.id === DEFAULT_LAYER_IDS.accents);
@@ -434,9 +433,8 @@ function spareThumb(geometry: Geometry, holding: string): string | undefined {
 
 /**
  * The default layers for a board, and the base-layer keys that reach Numbers and Symbols. Accents
- * is reached by `accentsCombo`, on the base layer, which the caller adds with that layer's id, or by
- * a thumb of the caller's; `mirrorAccents` mirrors it, for a layout that types its vowels with the
- * left hand. The Accents keys the board lacks go on Extras, mirrored with it, or past its finger
+ * is reached by `accentsCombo`, on the base layer, which the caller adds with that layer's id;
+ * `mirrorAccents` mirrors it, for a layout that types its vowels with the left hand. The Accents keys the board lacks go on Extras, mirrored with it, or past its finger
  * keys on Accents' thumbs.
  *
  * On a split board the inner thumbs do it, as on Magic Romak: the left types space and holds

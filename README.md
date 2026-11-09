@@ -71,9 +71,9 @@ The layouts the app started with are written as data in `packages/core/src/layou
 `small.ts`), each as its author published it: the letters and marks of its base layer, its author's
 thumbs and the layers its author's keymap defines, as Magic Romak has its keymap's Numbers and
 Symbols. A layout made in the editor can start with the default Numbers, Symbols and Accents layers
-(`defaultLayers` in `templates.ts`), and so does Nordwind, a document, as it was saved. Home row mods
-are held only where an author's keymap holds them: Magic Romak, Magic Sturdy, the three Hands Down with their own layers and Ben Vallack Piano,
-each key still typing what it did (`withHomeRowMods` in `templates.ts`). The languages each is for
+(`defaultLayers` in `templates.ts`); Nordwind, a document, has them as it was saved. Home row mods
+are held only where an author's keymap holds them: Magic Romak, Magic Sturdy, the three Hands Down
+with their own layers and Ben Vallack Piano, each key still typing what it did (`withHomeRowMods` in `templates.ts`). The languages each is for
 are measured, not chosen: a layout is for a language when it types every letter the language needs
 and its Effort on that language's news text is in the better half of all the bundled layouts', on
 the rules the Library ranks on (`lang/performance.ts`), unless its definition says its author made

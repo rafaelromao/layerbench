@@ -31,8 +31,8 @@ export interface ClassicDef {
   combos?: ({ keys: string; types: string } | ComboDef)[];
   /**
    * Further layers: letter layers, reached from the base layer by a `special` key, and the layers
-   * its author's keymap defines past the letters, which take the place of the default ones: its
-   * Numbers and Symbols by the ids the default layers have (`num`, `sym`), the others by their own.
+   * its author's keymap defines past the letters: its Numbers and Symbols by the ids `num` and
+   * `sym`, the others by their own.
    */
   layers?: { id: string; name: string; byKey: Record<string, KeyDef> }[];
   /**

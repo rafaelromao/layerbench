@@ -31,6 +31,7 @@ import {
   SYMBOLS_OUTER,
   vowelsOnLeft,
   withHomeRowMods,
+  withNewLayoutDefaults,
 } from './templates.js';
 
 const magicRomak = bundledLayout('magic-romak')!;
@@ -377,6 +378,25 @@ describe('Accents mirrored for a layout that types its vowels with the left hand
       expect(accents).toEqual(defaults.layers.find((l) => l.id === 'accents')?.bindings);
     });
   }
+
+  it('is given to a new layout that types its vowels with the left hand, and not to one that does not', () => {
+    const geometry = getGeometryPreset('3x5+2');
+    const accentsOf = (id: string) =>
+      withNewLayoutDefaults(bundledLayout(id) as Layout, geometry).layers.find(
+        (l) => l.id === 'accents',
+      )?.bindings;
+    for (const [id, mirrorAccents] of [
+      ['dvorak', true],
+      ['engram', true],
+      ['qwerty', false],
+    ] as const) {
+      const base = (bundledLayout(id) as Layout).layers[0].bindings;
+      expect([id, vowelsOnLeft(base)]).toEqual([id, mirrorAccents]);
+      expect(accentsOf(id)).toEqual(
+        defaultLayers(geometry, { mirrorAccents }).layers.find((l) => l.id === 'accents')?.bindings,
+      );
+    }
+  });
 
   it('mirrors key for key, and the keys it puts on Extras with it', () => {
     const geometry = getGeometryPreset('23332+2');

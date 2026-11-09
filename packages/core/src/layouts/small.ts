@@ -273,8 +273,8 @@ function keymapCombo(c: ComboDef): ComboDef {
 // ---------------------------------------------------------------- Authors' layers
 
 /*
- * The layouts below whose authors define layers past the letters bring those layers, in place of
- * the default ones, on the keys the board has. Each is copied from the author's keymap: what it
+ * The layouts below whose authors define layers past the letters bring those layers, on the keys
+ * the board has. Each is copied from the author's keymap: what it
  * types, and the keys and combos that reach it. What the author put on keys the board lacks is left
  * out, as on the base layer, and so are the keys that type nothing the analysis counts (navigation,
  * functions, a modifier held on a layer's key), the holds that reach a layer that types nothing, a
@@ -609,11 +609,11 @@ const T34_COMBOS: ComboDef[] = [
 // ---------------------------------------------------------------- RSTHD
 
 /**
- * The SPECIAL layer of xsznix's ErgoDox keymap (`keymap.c`), on the thirty-four keys: brackets and
- * `<` `>` over the left hand's first two rows, the marks of the number row on its home row, and the
- * rest on the bottom rows. His Alt-Backspace keys type nothing the analysis counts. His board's
- * outer columns and number row, and its Numpad layer, are past these keys. The thumbs of the hand
- * holding the layer are busy holding it.
+ * The SPECIAL layer of xsznix's ErgoDox keymap (`keymap.c`), on the thirty-four keys: `<` `>` and
+ * the brackets on the left hand's top row, `:` `{` `}` on the right's, the marks of the number row
+ * on both home rows, and `~` `_` `"` `|` and `?` `+` on the bottom row. His Alt-Backspace keys type
+ * nothing the analysis counts. His board's outer columns and number row, and its Numpad layer, are
+ * past these keys. The thumbs are busy holding the layer.
  */
 const RSTHD_SYMBOLS = drawn('3x5+2', [
   '< > [ ] ∅ ∅ : ▽ { }',
@@ -830,9 +830,10 @@ export const SMALL_DEFS: ClassicDef[] = [
     thumbs: 'bspc e space ret',
     special: COMMON,
     layers: [{ id: 'sym', name: 'Symbols', byKey: RSTHD_SYMBOLS }],
-    // His Special layer is held on the lower key of each hand's inner thumb column. Here that is
-    // the inner thumb of each hand, e and space, each still typing what it types: the outer
-    // thumbs would share a finger with e, and a same-finger pair with every symbol after it.
+    // His Special layer is held on the lower key of the inner column of each hand's thumb cluster.
+    // Here that is the inner thumb of each hand, e and space, each still typing what it types. On
+    // the engine's Effort every choice of thumbs ties; the left outer thumb alone would share a
+    // finger with e, a same-finger pair before each symbol, so the inner thumbs have the lowest SFB.
     holds: { L0: 'sym', R0: 'sym' },
     description:
       "RSTHD: e on the left thumb, from its author's ErgoDox firmware, and its Special layer of symbols held on the inner thumbs; the outer columns' = and ' do not fit thirty-four keys.",

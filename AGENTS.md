@@ -23,8 +23,7 @@ rule here moves a key, and keep `templates.test.ts` asserting each rule.
   T-34, Finch, Cem Aksoylar's Colemak-DH and Ben Vallack Piano define layers: they get no default
   layer and no Accents combo. Numbers and Symbols are written in `layers` by the ids `num` and
   `sym`, the keys that hold them in `holds`, and the author's combos for symbols, digits and accents
-  in `combos`; `drawn` in `small.ts` lays a layer
-  out as the author draws it. Copy only what the keymap types, on the keys the board has: what the
+  in `combos`; `drawn` in `small.ts` lays a layer out as the author draws it. Copy only what the keymap types, on the keys the board has: what the
   author's design lacks, the layout cannot type, left for an edit in the app, and `templates.test.ts`
   pins it (`UNTYPED` for a layout with layers, `TYPES` for one with none, and by language `LACKS`).
   Keys that type nothing the analysis counts, holds onto layers that type nothing, a toggle to a
@@ -64,11 +63,10 @@ rule here moves a key, and keep `templates.test.ts` asserting each rule.
 - **Thumbs.** A layout's thumbs are its author's, a space key on the outer left thumb where its
   author leaves them to a space bar. Where its keymap holds a layer on a thumb, the thumb holds it
   (`ClassicDef.holds`), still typing what it typed: RSTHD holds its Symbols on its inner thumbs, e
-  and space, which rank the same on Effort as the outer ones and better on SFB, the outer ones
-  sharing a finger with `e`. On a new layout the inner thumbs hold Numbers and Symbols, and Accents
-  is the combo `accentsCombo`; on a row-stagger board, its one space bar (L0 and R0 together) holds
-  Numbers. Ben Vallack
-  Piano taps a one-shot Shift where its keymap has Repeat, and it is its `keys.shift`; Night holds
+  and space, which rank the same on Effort as any other choice and best on SFB, the left outer
+  thumb sharing a finger with `e`. On a new layout the inner thumbs hold Numbers and Symbols, and
+  Accents is the combo `accentsCombo`; on a row-stagger board, its one space bar (L0 and R0
+  together) holds Numbers. Ben Vallack Piano taps a one-shot Shift where its keymap has Repeat, and it is its `keys.shift`; Night holds
   Shift on its outer thumbs, as its author draws them. A thumb that holds and taps nothing is still
   a `hold_tap`, its tap `none`, so the board draws its hold along the bottom, as on every tap-hold;
   `templates.test.ts` (`thumbs that only hold`) checks every bundled layout.

@@ -355,13 +355,14 @@ letter, and `å` `ä` `ö`; its Specials has the dead keys. Finch's type `{` `[`
 `/` `\` and `;`, and `!` on Symbols. Ben Vallack Piano's shifted Alpha 2 has Alpha 2's capitals and
 a comma where Alpha 2 has its full stop.
 
-RSTHD's Symbols is the Special layer of its author's ErgoDox keymap: brackets and `<` `>` on the
-left hand's first two rows, the marks of the number row on its home row, and the rest on the bottom
-rows, with `:` `{` `}` `^` `&` `*` `(` `)` `?` `+` on the right. Its author holds it on the lower
-thumb key of each hand's cluster; here it is held on the inner thumb of each hand, e and space, each
-still typing when tapped, because the outer thumbs share a finger with `e`. Its Backspace and Enter
-thumbs are transparent keys. Its number row, its outer columns and its keypad layer are past the 34
-keys.
+RSTHD's Symbols is the Special layer of its author's ErgoDox keymap: `<` `>` and the brackets on
+the left hand's top row, `:` `{` `}` on the right's, the marks of the number row on both home rows,
+and `~` `_` `"` `|` and `?` `+` on the bottom row. Its author holds it on the lower key of the
+inner column of each hand's thumb cluster; here it is held on the inner thumb of each hand, e and
+space, each still typing when tapped. Every choice of thumbs ranks the same on Effort; the inner
+ones have the lowest SFB, since the left outer thumb would share a finger with `e`. Its Backspace
+and Enter thumbs are transparent keys. Its number row, its outer columns and its keypad layer are
+past the 34 keys.
 
 The other layouts are their letters and marks alone, as their sources have them on 34 keys. Their
 sources define only their letters, but for Hands Down Neu, whose author's firmware carries the
