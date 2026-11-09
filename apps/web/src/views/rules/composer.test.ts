@@ -154,8 +154,8 @@ describe('rule set editing', () => {
     expect(sfb(longer)?.labels).toBeUndefined();
     expect(sfb(longer)?.bounds).toHaveLength(7);
     // Another metric's names are kept the same way: hand balance has the Doc's three categories,
-    // so its two bounds moved, or one fewer, are still even, leans and heavy, and a third bound
-    // would put heavy on a category it was not said of.
+    // so its two bounds moved, or one fewer, keep the list of three names, and a third bound would
+    // put heavy on a category it was not said of.
     const setHand = (value: string) =>
       rulesReducer(start(), { type: 'setBounds', id: 'hand_balance', value });
     const hand = ['even', 'leans', 'heavy'];

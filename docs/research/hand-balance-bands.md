@@ -34,7 +34,8 @@ Every 52 is even, every 55 leans and every 56 is heavy. A cut at exactly 52.0 an
 half of the rows printed as 52 or 55 to the category above, since a printed 52 is anything from 51.5
 to 52.5. So the Doc files a layout under the whole-percent split it prints, and a category runs to the
 half point above its share: 52.5-47.5 and 55.5-44.5, a difference of **5** and **11** points. (A few
-rows print 101 in all, 46–55, 47–54 and 45–56: the shares are rounded one at a time.) The sentence
+rows print 101 in all, 46–55, 47–54 and 45–56: the shares are rounded to the nearest, one at a time,
+not cut, which is why a category ends at the half point above a share and not at the next whole one.) The sentence
 read as exact bounds, 4 and 10, is the other reading; it would call a layout the Doc prints as
 "Even 52 – 48" leaning about as often as not.
 
@@ -69,6 +70,8 @@ change band; the values do not move.
 | Before | 4 | 10 | 6 | 16 |
 | After | 14 | 13 | 9 | (none) |
 
+The layouts that change band, with Nordwind for one that does not (13 of the 36):
+
 | Layout | Left–right | \|L − R\| | Before | After |
 |---|---|---|---|---|
 | Nordwind | 49.87–50.13 | 0.26 | even | even |
@@ -86,6 +89,10 @@ change band; the values do not move.
 | Qwerty | 58.07–41.93 | 16.14 | very heavy | heavy |
 
 (Bird's two shares sum to 99.88: a press that spans both hands counts for neither.)
+
+The Doc's §13.5 gives Sturdy a 43-57 split, *heavy*; the bundled Sturdy measures 45.09–54.91 here, which
+is *leans*. The Doc's numbers come from another text and analyzer: the bands are the Doc's, the
+measurements are LayerBench's own, on its own text and rules.
 
 ## What it does not do
 

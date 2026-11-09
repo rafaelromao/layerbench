@@ -837,7 +837,7 @@ What moved, checked structurally against HEAD, document by document; nothing els
 
 ## Fortieth re-baseline: hand balance banded as the Doc counts it
 
-The `hand_balance` rule was banded at 2 · 5 · 8 points of `|left − right|`, half of what the Layouts
+The `hand_balance` rule was banded at 2 · 5 · 8 points of `|left − right|`, below what the Layouts
 Doc sets (ch. 13.4: even until a 52-48 split, leans up to 55-45, heavy past that), and named a fourth
 band, `very_heavy`, the Doc does not have. It is banded at 5 and 11, the Doc's two splits as it prints
 them, in whole percents, as `even`, `leans` and `heavy`.

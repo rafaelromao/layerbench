@@ -176,10 +176,15 @@ describe('rules engine', () => {
     expect(split(51.5)).toMatchObject({ label: 'even', quality: 'good' });
     expect(split(52)).toMatchObject({ label: 'even', quality: 'good' });
     expect(split(52.4)).toMatchObject({ label: 'even', quality: 'good' });
+    // A bound is inclusive: 52.5-47.5 is 5 points and 55.5-44.5 is 11, both exact.
+    expect(split(52.5)).toMatchObject({ label: 'even', quality: 'good' });
     expect(split(52.6)).toMatchObject({ label: 'leans', quality: 'ok' });
+    expect(split(53)).toMatchObject({ label: 'leans', quality: 'ok' });
     expect(split(55)).toMatchObject({ label: 'leans', quality: 'ok' });
     expect(split(55.4)).toMatchObject({ label: 'leans', quality: 'ok' });
+    expect(split(55.5)).toMatchObject({ label: 'leans', quality: 'ok' });
     expect(split(55.6)).toMatchObject({ label: 'heavy', quality: 'bad' });
+    expect(split(56)).toMatchObject({ label: 'heavy', quality: 'bad' });
     // The Doc names three categories and none above heavy, which is open-ended: a split as lopsided
     // as 100-0 is still heavy, and no band is called very heavy.
     expect(split(100)).toMatchObject({ label: 'heavy', quality: 'bad' });

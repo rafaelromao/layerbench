@@ -307,11 +307,15 @@ the SFB includes pairs the Doc never had, such as Repeat then space on one thumb
 saved earlier keeps the bands it was saved with, so its badge may still say *high* where these say
 *above mid high*. The glossary has the figures.
 
-Hand balance is read as the Doc reads it, from the share of the keystrokes each hand types, in whole
-percents: *even* up to a 52-48 split, *leans* up to 55-45 and *heavy* past that, so 52.4-47.6 is
-still *even* and 55.6-44.4 is *heavy*. The card shows the difference between the two shares (**Hand
-Δ** in the summary strip), and the bands end at 5 points, a 52.5-47.5 split, and at 11, a 55.5-44.5
-one. The Doc names no category past *heavy*, so a 70-30 split is still *heavy*.
+Hand balance is read as the Doc reads it, from the share of the keystrokes each hand types. The Doc
+prints whole percents and files a split under the one it prints: *even* up to a 52-48 split, *leans*
+up to 55-45 and *heavy* past that, so 52.4-47.6 is still *even* and 55.6-44.4 is *heavy*. The shares
+are not rounded here, the bands end at 5 points of difference, a 52.5-47.5 split, and at 11, a
+55.5-44.5 one. The card shows that difference (**Hand Δ** in the summary strip) and the two shares.
+The Doc names no category past *heavy*, so a 70-30 split is still *heavy*. Like the other numbers,
+it counts what the **Space** setting counts: with Space on, the thumb that types it adds its presses
+to its hand, and a layout can change band. [The research note](../research/hand-balance-bands.md)
+has the Doc's rows.
 
 ## Rules and their sources
 
