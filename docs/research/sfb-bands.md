@@ -167,8 +167,9 @@ own, so it was redrawn on the owner's word too, twice: first *min* up to 300 and
 (300 / 7 = 42.9 apart), then, the same day, *min* up to 400 and *max* above 900, the seven steps
 between them equal (500 / 7 = 71.4, rounded: 400 · 471 · 543 · 614 · 686 · 757 · 829 · 900), where it
 had been 20 apart from 440 to 580, just above the easiest bundled layout. Its colours are the same
-thirds. The bundled layouts run from Magic Romak's 353 (*min*) to Qwerty's 1237 (*max*): Romak 458
-*very low*, Colemak-DH 524 *low*, Colemak 630 *mid*, Dvorak 756 *mid high*.
+thirds. On the English news sample, 100,000 symbols, the bundled layouts run from Magic Romak's 353
+(*min*) to Qwerty's 1237 (*max*): Romak 458 *very low*, Colemak-DH 524 *low*, Colemak 630 *mid*,
+Dvorak 756 *mid high* (on 10,000 symbols 770, *high*: it sits 1.4 under the bound).
 
 **Layouts Doc rule set.** The Doc's first five SFB bounds, then its sequence carried on in place of
 the sixth: its steps are 0.10, 0.11, 0.14, 0.20 and 0.30, and the next three, 0.45, 0.66 and 0.94,

@@ -65,7 +65,7 @@ its navigator is on, coloured against the busiest key of all the layout's layers
 turning through the layers compares them; a key's tooltip gives its percentage of that key. A layer
 with nothing to show for the measure stays plain, and says so under the board.
 
-Each card also names the layout's category, so you can rank a layout against its peers. It follows
+Each card also names the layout's category, so you can keep the list to the ones you want. The order is the sort's alone, whatever the category. The category follows
 from the layout's own keys, whether it came with the app or is yours, and nothing on its
 [default layers](editing.md#default-layers) counts; the layers its author defines in their place,
 Numbers and Symbols among them, do:
@@ -96,9 +96,10 @@ its numbers flatter it. Each card says what share of the text it skips, and whic
 list stays in one order, by the sort alone: neither a layout that skips them nor its type or category
 is set apart, so on a Portuguese text, say, a layout without `ã` or `ç` sits where its Effort or SFB
 puts it, with its note. Most layouts that come with the app type them, through their
-[Accents](editing.md#default-layers) layer or, on Magic Romak, its own accents; the few that keep
-their authors' layers, with no accents among them, and a layout of your own without them carry the
-note. A layout is also held to the languages it is for, chosen in **Settings** in **Analyze**: one
+[Accents](editing.md#default-layers) layer or, on Magic Romak, its own accents; a layout that keeps
+its author's layers types what those type, so on some texts it lacks letters too (on Portuguese,
+five of the bundled ones do, none of them with a layer for accents), and so does a layout of your own
+without them. A layout is also held to the languages it is for, chosen in **Settings** in **Analyze**: one
 for Spanish that has no `ñ` says so on its card, whatever the text, though on an English text it
 skipped nothing for Spanish. A layout that comes with the app is for the languages it performs well
 in: it types every letter they need, and its Effort on their news texts is in the
@@ -348,9 +349,11 @@ where Genkey divides by the letters and counts skips of up to nine keys, each ha
 before. The glossary has the figures.
 
 **Effort.** LayerBench's own, on the same nine steps: *min* up to 400 and *max* above 900, the seven
-steps between them equal (71.4 apiece, rounded to whole numbers), as they were equal before. The
-layouts that come with the app run from Magic Romak's 353 to Qwerty's 1237: Colemak, at 630, is *mid*,
-Dvorak, at 756, *mid high*, and only Qwerty is *max*.
+steps between them equal (71.4 apiece, rounded to whole numbers), as they were equal before. On
+the English news sample, 100,000 symbols, the layouts that come with the app run from Magic Romak's
+353 to Qwerty's 1237: Colemak, at 630, is *mid*, Dvorak, at 756, *mid high*, and only Qwerty is
+*max*. Another text or sample moves them a little: Dvorak, a hair under the 757 that ends *mid high*,
+can be *high*.
 
 | Step | Effort up to | Colour |
 |---|---|---|
@@ -398,7 +401,7 @@ Doc set's above, step for step and colour for colour.
 
 A custom rule set carries the rulers it was saved with, and its badge for Effort or SFB leads to
 [The rulers](#the-rulers). One saved earlier keeps the old ones: an SFB above 1.375 may still be
-called *high* or *above mid high*, and Effort's steps may still run from 440 to 580, until the bounds
+called *high* or *above mid high*, and Effort's steps may still run from 440 to 580, or from 300 to 600, until the bounds
 are changed in **Rules**, under **Bands (upper bounds)**. A set made from one of the presets above
 starts with that preset's rulers.
 

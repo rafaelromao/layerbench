@@ -24,7 +24,7 @@ reaches a layer, holds a modifier, or is a bigger key made of parts.
 _Avoid_: action, mapping, keycode
 
 **Category**:
-Where the Library files a layout so that it is ranked against its peers: Standard, Thumb Alpha or
+Where the Library files a layout, so that the list can be kept to the ones you want: Standard, Thumb Alpha or
 Special. It follows from the layout's own keys, whoever made it, and nothing on its default layers
 counts toward it; the layers its author defines, Numbers and Symbols among them, do. Custom and
 community are where a layout came from, not categories.

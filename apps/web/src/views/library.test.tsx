@@ -44,8 +44,9 @@ function freshStorage(): IndexedDbAdapter {
 }
 
 /**
- * Qwerty as written, its letters alone, saved under the name given: every bundled layout types the
- * accents, through Accents or, on Magic Romak, its dead keys, so the one that cannot is a custom one.
+ * Qwerty as written, its letters alone, saved under the name given: most bundled layouts type the
+ * accents, through Accents or, on Magic Romak, its dead keys, and the few that keep their authors'
+ * layers do not, so a layout that cannot, with nothing else about it, is a custom one.
  */
 async function savePlain(
   storage: IndexedDbAdapter,
@@ -615,6 +616,9 @@ describe('Ranking layouts', () => {
     );
     expect(plain()?.textContent).not.toMatch(/ranked after/);
     expect(cards()[0]).toBe(plain());
+    // And the whole list is by Effort, not in two groups: Plain's 100 is the least, the rest tie at 500.
+    const efforts = cards().map((c) => valueOn(c, 'Effort'));
+    expect(efforts).toEqual([...efforts].sort((a, b) => a - b));
     expect(document.body.textContent).not.toMatch(/come last|ranked after/);
   }, 90_000);
 
@@ -683,23 +687,20 @@ describe('Ranking layouts', () => {
   }, 90_000);
 
   it('ranks every layout in one order by the numbers, those that skip letters among the rest', async () => {
-    // Every bundled layout writes Spanish but Plain, which has no ñ. Magic Romak's dead keys make it,
-    // and its keymap has no `¿` or `¡`, which Spanish only lists as punctuation.
+    // Plain has no ñ, which Romak and Magic Romak have: Magic Romak's dead keys make it, and its keymap
+    // has no `¿` or `¡`, which Spanish only lists as punctuation.
     const storage = freshStorage();
     await savePlain(storage, 'plain');
     renderRoute('/library?corpus=es-general&sample=10000', { storage });
     await rankingSays(/^Lower is better for both/, 60_000);
-    const plain = await waitFor(
+    await waitFor(
       () => {
         const card = cards().find((c) => c.querySelector('h3')?.textContent === 'Plain');
         expect(card?.querySelector('.lb-skips')?.textContent).toMatch(/^Cannot type .*ñ/);
-        return card as HTMLElement;
       },
       { timeout: 30_000 },
     );
     // Said on its card, and nothing more: the whole list is by Effort, Plain where its number puts it.
-    expect(plain.textContent).not.toMatch(/ranked after/);
-    expect(document.body.textContent).not.toMatch(/come last|None of these layouts/);
     const efforts = cards().map((c) => valueOn(c, 'Effort'));
     expect(efforts).toEqual([...efforts].sort((a, b) => a - b));
     const romak = cards().find((c) => c.querySelector('h3')?.textContent === 'Romak');
@@ -723,8 +724,7 @@ describe('Ranking layouts', () => {
       { timeout: 30_000 },
     );
     // Its place is its numbers': nothing holds it back, whatever it skips.
-    expect(plain.textContent).not.toMatch(/ranked after/);
-    expect(document.body.textContent).not.toMatch(/come last/);
+    expect(plain.querySelector('.lb-skips')?.textContent).toMatch(/of the text\.$/);
     // Qwerty as bundled types every letter Portuguese needs, through Accents.
     const qwerty = cards().find((c) => c.querySelector('h3')?.textContent === 'Qwerty');
     expect(qwerty?.textContent).not.toMatch(/Cannot type/);
@@ -763,14 +763,27 @@ describe('Ranking layouts', () => {
     );
     // On an English text it skips nothing for Spanish: ranked by its numbers, beside the same
     // keys saved without the languages.
-    expect(mine.textContent).not.toMatch(/ranked after/);
-    expect(document.body.textContent).not.toMatch(/come last/);
     const plain = await waitFor(() => {
       const card = cards().find((c) => c.querySelector('h3')?.textContent === 'Plain');
       expect(card).toBeTruthy();
       return card as HTMLElement;
     });
     expect(valueOn(mine, 'Effort')).toBe(valueOn(plain, 'Effort'));
+  }, 90_000);
+
+  it('does not set apart a layout flagged for a language it is for but cannot type', async () => {
+    // Mine is for Spanish and has no ñ, which on an English text costs it nothing: it is flagged, and
+    // its numbers, the best, put it first, as they would a layout with no flag at all.
+    const storage = freshStorage();
+    await savePlain(storage, 'mine', { name: 'Mine', languages: ['en', 'es'] });
+    const client = scoringByName((name) => (name === 'Mine' ? 100 : 500));
+    renderRoute('/library?corpus=en-general&sample=10007', { client, storage });
+    await waitFor(() => expect(cards()[0]?.querySelector('.lb-lacks')).toBeTruthy(), {
+      timeout: 60_000,
+    });
+    expect(cards()[0].querySelector('h3')?.textContent).toBe('Mine');
+    const efforts = cards().map((c) => valueOn(c, 'Effort'));
+    expect(efforts).toEqual([...efforts].sort((a, b) => a - b));
   }, 90_000);
 });
 
