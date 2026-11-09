@@ -1,11 +1,6 @@
 import { getGeometryPreset } from '../geometry/presets.js';
 import type { Binding, Layout, Mod } from '../layout/types.js';
-import {
-  accentsCombo,
-  defaultLayers,
-  vowelsOnLeft,
-  withDefaultLayers,
-} from '../layouts/templates.js';
+import { withDefaultLayers } from '../layouts/templates.js';
 
 /**
  * A usual set of home row mods, for the tests that type with them: Gui, Ctrl, Alt and Shift from
@@ -47,32 +42,4 @@ export function eighteenKeys(): Layout {
     },
     getGeometryPreset('1222+2'),
   );
-}
-
-/**
- * A layout given the default layers the way **New layout** gives them: the space key where the
- * defaults put it, Numbers and Symbols held on the thumbs, Accents on a combo. For the tests that
- * type digits, symbols and accents on a layout a user made from one of the bundled ones. Test-only,
- * as the rest of this folder.
- */
-export function withNewLayoutDefaults(layout: Layout): Layout {
-  const g = layout.geometry;
-  if (!('preset' in g)) throw new Error(`${layout.name} is not on a preset board`);
-  const geometry = getGeometryPreset(g.preset);
-  const [first, ...rest] = layout.layers;
-  const defaults = defaultLayers(geometry, { mirrorAccents: vowelsOnLeft(first.bindings) });
-  const letters = Object.entries(first.bindings).filter(
-    ([, b]) => !(b.kind === 'kp' && b.symbol === ' '),
-  );
-  return {
-    ...layout,
-    keys: { ...layout.keys, space: defaults.spaceKey },
-    layers: [
-      { ...first, bindings: { ...Object.fromEntries(letters), ...defaults.base } },
-      ...rest,
-      ...defaults.layers,
-    ],
-    combos: [...(layout.combos ?? []), accentsCombo(first.id, geometry)],
-    ...(defaults.conditionalLayers.length > 0 && { conditionalLayers: defaults.conditionalLayers }),
-  };
 }

@@ -40,6 +40,7 @@ export {
   vowelsOnLeft,
   withDefaultLayers,
   withHomeRowMods,
+  withNewLayoutDefaults,
 } from './templates.js';
 
 /** Layouts made for small boards: thumb letters, chords, adaptive and repeat keys. */

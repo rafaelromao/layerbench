@@ -7,7 +7,6 @@ import type { Binding } from '../layout/types.js';
 import { explain } from '../sim/resolver.js';
 import {
   BUNDLED_LAYOUTS,
-  bringsOwnLayers,
   bundledLayout,
   CLASSIC_DEFS,
   classicLayout,
@@ -21,13 +20,6 @@ const magicRomak = bundledLayout('magic-romak')!;
 const romak = bundledLayout('romak')!;
 
 const ALPHABET = [...'abcdefghijklmnopqrstuvwxyz'];
-
-/** The layouts written in code whose definitions bring their authors' layers. */
-const _AUTHORED = new Set(
-  [...CLASSIC_DEFS, ...SMALL_DEFS]
-    .filter((d) => bringsOwnLayers(classicLayout(d)))
-    .map((d) => d.id),
-);
 
 /**
  * A layout is data, and a mistyped letter is invisible: it does not fail to compile, it just makes
@@ -255,7 +247,32 @@ describe('layouts as their authors designed them', () => {
   const typed = (b: Binding | undefined) => (b?.kind === 'hold_tap' ? b.tap : b);
 
   it('are every Standard and Thumb Alpha layout of the Library but those with layers of their own', () => {
-    expect(alone.length).toBeGreaterThan(20);
+    expect(alone.map((l) => l.id).sort()).toEqual(
+      [
+        'aptmak',
+        'aptv3',
+        'bird-30',
+        'canary',
+        'colemak',
+        'colemak-dh',
+        'dusk',
+        'dvorak',
+        'engram',
+        'focal',
+        'gallium',
+        'graphite',
+        'hands-down-neu',
+        'nerps',
+        'night',
+        'qwerty',
+        'recurva',
+        'romak',
+        'rsthd',
+        'snth',
+        'sturdy',
+        'sunlight',
+      ].sort(),
+    );
     expect(alone.map((l) => layoutCategory(l)).every((c) => c !== 'special')).toBe(true);
     expect(layoutCategory(romak)).toBe('standard');
     expect(romak).toMatchObject({ id: 'romak', name: 'Romak' });

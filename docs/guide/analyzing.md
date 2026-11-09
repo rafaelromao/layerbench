@@ -19,8 +19,7 @@ These are the two numbers every layout is shown and ranked by.
 position has a cost, from 0 under the index, middle and ring fingers on the home row to 8 in the
 inner bottom corners. Effort is the average cost of a keystroke, multiplied by 577 as cyanophage's
 playground does, so a layout scores the same here as there on the same text, as long as its thumbs
-type nothing but space. The layouts that come with the app tap Repeat and Accents on their thumbs
-too, so theirs differs a little. A thumb press costs 1 here, where cyanophage charges nothing: a
+type nothing but space. One with a letter, a Repeat key or a layer on a thumb differs a little. A thumb press costs 1 here, where cyanophage charges nothing: a
 one-shot tap, a thumb held for a layer and a letter on a thumb are presses too. A space counts as
 a keystroke that costs nothing.
 
@@ -97,7 +96,7 @@ list stays in one order, by the sort alone: neither a layout that skips them nor
 is set apart, so on a Portuguese text, say, a layout without `ã` or `ç` sits where its Effort or SFB
 puts it, with its note. A layout that comes with the app types what its author's design types, so on
 a Portuguese text most of them lack letters and say so on their cards; Magic Romak, the three Hands
-Down, T-34, Bird, Nordrassil and Uno type them, and a layout of your own can start with an
+Down, T-34, Bird, Nordrassil, Uno and Nordwind type them, and a layout of your own can start with an
 [Accents](editing.md#default-layers) layer. A layout is also held to the languages it is for, chosen in **Settings** in **Analyze**: one
 for Spanish that has no `ñ` says so on its card, whatever the text, though on an English text it
 skipped nothing for Spanish. A layout that comes with the app is for the languages it performs well
@@ -334,8 +333,9 @@ category.
 | very high | 3.425 | red |
 | max | above 3.425 | red |
 
-Colemak-DH reads 1.17 on the English sample, where the Doc has 1.177: *mid high*. Dvorak, about 2.1, is
-*high*, and Qwerty, about 5.3, *max*.
+Colemak-DH reads 1.133 on the English sample, which cannot type the apostrophe its author puts past
+the 34 keys, where the Doc has 1.177: *mid high*. Dvorak, about 2.2, is *high*, and Qwerty, about
+5.4, *max*.
 
 The Doc's bounds came from numbers counted without the space bar and with capitals folded, as a share
 of the letters typed, and these rules count SFB the same way, so with **Space** and **Shift** off the
@@ -350,9 +350,9 @@ before. The glossary has the figures.
 **Effort.** LayerBench's own, on the same nine steps: *min* up to 400 and *max* above 900, the seven
 steps between them equal (71.4 apiece, rounded to whole numbers), as they were equal before. On
 the English news sample, 100,000 symbols, the layouts that come with the app run from Magic Romak's
-353 to Qwerty's 1237: Colemak, at 630, is *mid*, Dvorak, at 756, *mid high*, and only Qwerty is
-*max*. Another text or sample moves them a little: Dvorak, a hair under the 757 that ends *mid high*,
-can be *high*.
+353 to Qwerty's 1245: Colemak, at 629, is *mid*, Dvorak, at 764, *high*, and only Qwerty is
+*max*. Another text or sample moves them a little: Dvorak, a hair over the 757 that ends *mid high*,
+can be *mid high*.
 
 | Step | Effort up to | Colour |
 |---|---|---|
@@ -390,8 +390,8 @@ colours and this reads it as a layout's total, which is LayerBench's assumption 
 | max | above 1.881 | red |
 
 These rules divide by keystrokes, with a space per word, so the same layout reads lower than under
-the Layouts Doc's: Colemak is 0.97 on the English sample, *mid*, Dvorak 1.76, *very high*, and
-Qwerty 4.38, *max*.
+the Layouts Doc's: Colemak is 0.94 on the English sample, *mid low*, Dvorak 1.82, *very high*, and
+Qwerty 4.47, *max*.
 
 **Effort** is the same number in both sets, and he has no ruler for it, so this set uses the Layouts
 Doc set's above, step for step and colour for colour.

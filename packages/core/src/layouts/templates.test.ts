@@ -712,6 +712,16 @@ const LACKS: Record<string, Record<string, string[][]>> = {
   'ben-vallack-piano': ACCENTLESS,
 };
 
+describe('which bundled layouts have the default layers', () => {
+  it('are the three Special layouts whose sources define no layer that types, and a document', () => {
+    expect(
+      BUNDLED_LAYOUTS.filter((l) => hasDefaultLayers(l))
+        .map((l) => l.id)
+        .sort(),
+    ).toEqual(['bird', 'nordrassil', 'nordwind', 'uno']);
+  });
+});
+
 describe("the default layers on every bundled layout but those that keep their authors' own", () => {
   for (const layout of BUNDLED_LAYOUTS) {
     describe(layout.name, () => {

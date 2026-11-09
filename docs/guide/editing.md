@@ -213,7 +213,8 @@ past the letters, with the keys and combos that reach them and the combos its au
 and accents with. Nothing is added to what its author's design types: a character it leaves out, it
 cannot type, until you add it in the editor. [The layouts that come with the app and have layers of
 their own](#layouts-with-their-authors-layers) are listed below. Bird, Nordrassil and Uno, whose
-sources define no layer that types, have the default layers instead, and keep every key they have.
+sources define no layer that types, have the default layers instead, and keep every key they have, as does Nordwind, a document, as it
+was saved.
 
 **Numbers** and **Symbols** are Magic Romak's on the 24 keys most boards have. The pinky's top and
 bottom keys and the inner column add what has no room there: currency and ordinals on Numbers, for
@@ -320,9 +321,9 @@ the left ring and middle fingers and Gui under the index fingers. So do the layo
 keymaps hold their layers on the home row: Magic Sturdy, the three Hands Down with their own
 layers, and Ben Vallack Piano, its modifiers on the top row. Both hands hold the left modifiers, as
 the analysis types a capital with the left Shift and the right Alt is AltGr. Tapped, each key types
-what it typed. They are on the base layer only. In the Shift case mode, a Standard or Thumb Alpha layout types a
-capital holding the right Shift thumb, but one on Accents or on a right thumb holding the left, as a
-thumb holding Shift presses nothing else. A layout with no Shift key of its own types a capital
+what it typed. They are on the base layer only. In the Shift case mode, a layout with a Shift thumb
+types a capital holding it, the other hand's where the capital's own key is a thumb of that hand, as
+a thumb holding Shift presses nothing else. A layout with no Shift key of its own types a capital
 holding a Shift thumb if it has one that is free, and otherwise the home row Shift of the other
 hand, where the capital does not press that key; with neither, it types no capital there.
 
@@ -367,7 +368,8 @@ number row and reaches its layers from thumb keys thirty-four keys lack, Hands D
 author's firmware carries the Hands Down layers for a later Neu with other letters and thumbs, and
 Nordrassil, whose author publishes the rest of the keymap only outside its repository. Each types
 the marks its author places and nothing more, no digit and no accent, until you add them in the
-editor; Bird, Nordrassil and Uno, which keep every key they have, have the default layers.
+editor; Bird, Nordrassil and Uno, which keep every key they have, have the default layers, and
+Nordwind, a document, has them as it was saved.
 
 Magic Romak is its author's keymap, and has no Extras and no Accents, as the keymap has none. Its
 keys, layers and combos are read from the keymap-drawer file its author keeps for it, as the

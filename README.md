@@ -72,7 +72,7 @@ The layouts the app started with are written as data in `packages/core/src/layou
 thumbs and the layers its author's keymap defines, as Magic Romak has its keymap's Numbers and
 Symbols. Bird, Nordrassil and Uno, whose sources define no layer that types, have the default
 Numbers, Symbols and Accents layers, keeping every key they have and reaching Accents on one combo
-(`withDefaultLayers` in `templates.ts`). Home row mods are held only where an author's keymap holds
+(`withDefaultLayers` in `templates.ts`), and so does Nordwind, a document, as it was saved. Home row mods are held only where an author's keymap holds
 them: Magic Romak, Magic Sturdy, the three Hands Down with their own layers and Ben Vallack Piano,
 each key still typing what it did (`withHomeRowMods` in `templates.ts`). The languages each is for
 are measured, not chosen: a layout is for a language when it types every letter the language needs

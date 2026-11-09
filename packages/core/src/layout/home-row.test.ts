@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { withNewLayoutDefaults } from '../fixtures/boards.js';
-import { bundledLayout } from '../layouts/index.js';
+import { getGeometryPreset } from '../geometry/presets.js';
+import { bundledLayout, withNewLayoutDefaults } from '../layouts/index.js';
 import { compileLayout } from './compile.js';
 import { homeRowLetters } from './home-row.js';
 import type { Layout } from './types.js';
@@ -30,7 +30,10 @@ describe('home-row letters', () => {
   });
 
   it('counts a home-row mod and a layer-tap by their taps, any letter lower-cased', () => {
-    const qwerty = withNewLayoutDefaults(bundledLayout('qwerty') as Layout);
+    const qwerty = withNewLayoutDefaults(
+      bundledLayout('qwerty') as Layout,
+      getGeometryPreset('3x5+2'),
+    );
     const [base, other] = qwerty.layers;
     const layout: Layout = {
       ...qwerty,

@@ -1,13 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeText } from '../corpus/normalize.js';
-import { eighteenKeys, HOME_ROW_MODS, withNewLayoutDefaults } from '../fixtures/boards.js';
+import { eighteenKeys, HOME_ROW_MODS } from '../fixtures/boards.js';
 import { FIXTURE_MIXED } from '../fixtures/index.js';
+import { getGeometryPreset } from '../geometry/presets.js';
 import { compileLayout } from '../layout/compile.js';
 import { importTextLayout } from '../layout/text.js';
 import type { Binding, Layout, Mod } from '../layout/types.js';
 import { withoutFeatures } from '../layout/without.js';
 import { CLASSIC_LAYOUTS } from '../layouts/classic.js';
-import { BUNDLED_LAYOUTS, bundledLayout, withHomeRowMods } from '../layouts/index.js';
+import {
+  BUNDLED_LAYOUTS,
+  bundledLayout,
+  withHomeRowMods,
+  withNewLayoutDefaults,
+} from '../layouts/index.js';
 import { enumerateProducers } from './producers.js';
 import { explain, simulate } from './resolver.js';
 
@@ -104,7 +110,7 @@ describe('Romak acceptance traces', () => {
   });
 
   it('Romak types accents and plain letters, given the default layers', () => {
-    const t = trace(withNewLayoutDefaults(romak), 'não é');
+    const t = trace(withNewLayoutDefaults(romak, getGeometryPreset('3x5+2')), 'não é');
     expect(t.out).toBe('não é');
   });
 });

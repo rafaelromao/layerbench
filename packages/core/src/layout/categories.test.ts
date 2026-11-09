@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { withNewLayoutDefaults } from '../fixtures/boards.js';
-import { BUNDLED_LAYOUTS, bundledLayout } from '../layouts/index.js';
+import { getGeometryPreset } from '../geometry/presets.js';
+import { BUNDLED_LAYOUTS, bundledLayout, withNewLayoutDefaults } from '../layouts/index.js';
 import { DEFAULT_LAYER_ID_LIST, DEFAULT_LAYER_IDS } from '../layouts/templates.js';
 import {
   alphaLayers,
@@ -19,7 +19,7 @@ const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
 function qwerty(): Layout {
   const l = bundledLayout('qwerty');
   if (!l) throw new Error('no Qwerty');
-  return structuredClone(withNewLayoutDefaults(l));
+  return structuredClone(withNewLayoutDefaults(l, getGeometryPreset('3x5+2')));
 }
 
 /** Qwerty with `b` on its base layer's key `id`. */
