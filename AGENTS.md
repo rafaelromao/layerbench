@@ -28,7 +28,7 @@ rule here moves a key, and keep `templates.test.ts` asserting each rule.
   author's combos for symbols, digits and accents in `combos`; `drawn` in `small.ts` lays a layer
   out as the author draws it. Copy only what the keymap types, on the keys the board has: what the
   author's design lacks, the layout cannot type, left for an edit in the app, and `templates.test.ts`
-  pins it (`UNTYPED` for a layout with Numbers and Symbols, `TYPES` for one with none, and by
+  pins it (`UNTYPED` for a layout with Numbers or Symbols, `TYPES` for one with neither, and by
   language `LACKS`).
   Keys that type nothing the analysis counts, holds onto layers that type nothing, a toggle to a
   layer a hold reaches too, modifiers held on a layer's keys and dead keys the analysis cannot
