@@ -861,6 +861,23 @@ What moved, checked across the 38 reports; nothing else moved:
 - **No `cyanophage` report, and no other rule**: `sfs`, `sfb_distance` and every other value, total, registry entry,
   run, score weight and traced press is unchanged.
 
+## Forty-first re-baseline: hand balance banded as the Doc counts it
+
+The `hand_balance` rule was banded at 2 · 5 · 8 points of `|left − right|`, below what the Layouts
+Doc sets (ch. 13.4: even until a 52-48 split, leans up to 55-45, heavy past that), and named a fourth
+band, `very_heavy`, the Doc does not have. It is banded at 5 and 11, the Doc's two splits as it prints
+them, in whole percents, as `even`, `leans` and `heavy`.
+
+What moved, checked field by field across the 38 reports, old against new:
+
+- **`hand_balance`'s `band`**, in 36 reports: `index` and `label` in all of them, `goodness` in 15
+  and `quality` in 5. 21 went from `very_heavy` to `heavy` (`index` and `label` alone), 5 from
+  `very_heavy` to `leans` (all four fields), 4 from `heavy` to `leans` and 6 from `leans` to `even`
+  (the last two without `quality`).
+- **Nothing else**: not the value, `per_hand`, the items or any other rule. The two reports that did
+  not move are Magic Romak's `fixture_enpt` ones with the space, at 1.5 points, `even` before and
+  after.
+
 ## Not compared
 
 `globals`, the unigram tables, `travel`, `stats.per_layer` and the other stats that are not

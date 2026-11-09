@@ -162,10 +162,16 @@ describe('rule set editing', () => {
     const longer = setSfb('0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 2.0');
     expect(sfb(longer)?.labels).toBeUndefined();
     expect(sfb(longer)?.bounds).toHaveLength(7);
-    // Another metric's names are kept the same way: hand balance with a bound fewer is still
-    // even, leans and heavy.
-    const hand = rulesReducer(start(), { type: 'setBounds', id: 'hand_balance', value: '3, 6' });
-    expect(bandsOf('hand_balance', hand)?.labels).toEqual(['even', 'leans', 'heavy', 'very_heavy']);
+    // Another metric's names are kept the same way: hand balance has the Doc's three categories,
+    // so its two bounds moved, or one fewer, keep the list of three names, and a third bound makes
+    // a fourth category, which the list has no name for.
+    const setHand = (value: string) =>
+      rulesReducer(start(), { type: 'setBounds', id: 'hand_balance', value });
+    const hand = ['even', 'leans', 'heavy'];
+    expect(bandsOf('hand_balance', start())?.labels).toEqual(hand);
+    expect(bandsOf('hand_balance', setHand('3, 6'))?.labels).toEqual(hand);
+    expect(bandsOf('hand_balance', setHand('6'))?.labels).toEqual(hand);
+    expect(bandsOf('hand_balance', setHand('3, 6, 9'))?.labels).toBeUndefined();
   });
 
   it('reads each global with its own type', () => {

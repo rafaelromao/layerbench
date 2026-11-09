@@ -16,6 +16,17 @@ export const SFB_LAST_BOUND = 1.375;
 export const SFB_ABOVE_SCALE = 'above_mid_high';
 
 /**
+ * The Doc counts hand balance as even until a 52-48 split and as leaning up to 55-45, shares of the
+ * keystrokes per hand; past that it is heavy (ch. 13.4). Its splits are whole percents and it files
+ * a layout under the one it prints: every row of its tables with a larger share of 52 is even, of
+ * 55 leaning, of 56 heavy. Its shares are rounded, not cut (some rows sum to 101), so a category
+ * runs to the half point above its share, 52.5-47.5 and 55.5-44.5, and the rule's value,
+ * `|left − right|` in points, to twice the distance of that from 50: 5 and 11.
+ */
+export const HAND_EVEN_BOUND = 5;
+export const HAND_LEANS_BOUND = 11;
+
+/**
  * Band bounds from the Layouts Doc ch. 13.4 (upper bounds of the Min…Max categories), and
  * LayerBench's own for Effort and for LSB, which the Doc's table does not have.
  */
@@ -39,10 +50,12 @@ export const BANDS: Record<string, Bands> = {
   redir: { direction: 'lower_is_better', bounds: [2.8, 3.6, 4.5, 5.4, 6.2, 7.0, 9.0] },
   pinky_off: { direction: 'lower_is_better', bounds: [1.8, 2.7, 3.5, 4.3, 5.2, 5.9, 6.8] },
   lsb: { direction: 'lower_is_better', bounds: [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0] },
+  // The Doc's three categories, the last open-ended ("past that it counts as heavy"): no name for
+  // a fourth, which the Doc never gives.
   hand: {
     direction: 'lower_is_better',
-    bounds: [2.0, 5.0, 8.0],
-    labels: ['even', 'leans', 'heavy', 'very_heavy'],
+    bounds: [HAND_EVEN_BOUND, HAND_LEANS_BOUND],
+    labels: ['even', 'leans', 'heavy'],
   },
   /**
    * LayerBench's own, on the Doc's nine steps, from the Effort of the bundled Standard and Thumb
