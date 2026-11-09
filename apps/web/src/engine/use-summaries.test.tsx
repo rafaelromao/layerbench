@@ -327,11 +327,8 @@ describe('the order of the list', () => {
   const EMPTY = layout('c:empty', 'An empty board', '');
   const READING = layout('c:reading', 'Being read');
   const ALL = [READING, BIRD_30, QWERTY_ROW, EMPTY, BIRD, DVORAK];
-  const order = (
-    key: SortKey,
-    behind: ReadonlySet<string> = new Set(),
-    summaries = new Map<string, LayoutSummary>(),
-  ) => [...ALL].sort(compareBy(key, summaries, behind)).map((l) => l.name);
+  const order = (key: SortKey, summaries = new Map<string, LayoutSummary>()) =>
+    [...ALL].sort(compareBy(key, summaries)).map((l) => l.name);
 
   it('puts layouts in the order of their home-row letters, ties by name, one with none last', () => {
     expect(order('home_row')).toEqual([
@@ -344,11 +341,18 @@ describe('the order of the list', () => {
     ]);
   });
 
-  it('holds back a layout that cannot write the language by its numbers only, not its letters', () => {
-    const behind = new Set([DVORAK.key]);
-    expect(order('home_row', behind)[0]).toBe('Dvorak');
-    expect(order('name', behind)[0]).toBe('An empty board');
-    const summaries = new Map(ALL.map((l) => [l.key, summary(10, 1)]));
-    expect(order('effort', behind, summaries).at(-1)).toBe('Dvorak');
+  it('puts every layout in one order, by the numbers alone: nothing is held back for what it skips', () => {
+    // Dvorak skips the most of the text and has the best numbers: it leads, as any other would.
+    const skipping: LayoutSummary = { ...summary(10, 1), skipped: 40, missing: ['ã', 'ç'] };
+    const summaries = new Map(ALL.map((l) => [l.key, l === DVORAK ? skipping : summary(20, 2)]));
+    expect(order('effort', summaries)[0]).toBe('Dvorak');
+    expect(order('sfb', summaries)[0]).toBe('Dvorak');
+    // And by its worst numbers it is last, among the rest, not apart from them.
+    const worst = new Map(
+      ALL.map((l) => [l.key, l === DVORAK ? { ...skipping, effort: 99, sfb: 9 } : summary(20, 2)]),
+    );
+    expect(order('effort', worst).at(-1)).toBe('Dvorak');
+    expect(order('home_row')[0]).toBe('Dvorak');
+    expect(order('name')[0]).toBe('An empty board');
   });
 });

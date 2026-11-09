@@ -1,36 +1,20 @@
 import { type AnalysisSettings, DEFAULT_SETTINGS } from '@layerbench/core';
 import { describe, expect, it, vi } from 'vitest';
-import { rankingKey, recall, rememberBehind, rememberSummary } from './ranking-memory.js';
+import { rankingKey, recall, rememberSummary } from './ranking-memory.js';
 import type { LayoutSummary } from './use-summaries.js';
 
 const SUMMARY: LayoutSummary = { effort: 12.5, sfb: 1.2, skipped: 0, missing: [] };
 
 describe('the last ranking, kept in this browser', () => {
-  it('gives back each layout’s numbers and which went behind, on the same choices only', () => {
+  it('gives back each layout’s numbers, on the same choices only', () => {
     rememberSummary('en', 'b:qwerty', SUMMARY);
     rememberSummary('en', 'c:mine', { ...SUMMARY, effort: null });
-    rememberBehind(
-      'en',
-      new Map([
-        ['c:mine', true],
-        ['b:qwerty', false],
-      ]),
-    );
 
     const en = recall('en');
     expect(en.summaries.get('b:qwerty')).toEqual(SUMMARY);
     expect(en.summaries.get('c:mine')?.effort).toBeNull();
-    expect([...en.behind]).toEqual(['c:mine']);
 
-    const pt = recall('pt');
-    expect(pt.summaries.size).toBe(0);
-    expect(pt.behind.size).toBe(0);
-  });
-
-  it('takes a layout out from behind once it is found to type the language', () => {
-    rememberBehind('pt', new Map([['c:mine', true]]));
-    rememberBehind('pt', new Map([['c:mine', false]]));
-    expect(recall('pt').behind.size).toBe(0);
+    expect(recall('pt').summaries.size).toBe(0);
   });
 
   it('drops what was kept under the old `s:` key of a custom layout', () => {
@@ -45,7 +29,17 @@ describe('the last ranking, kept in this browser', () => {
     );
     const old = recall('old');
     expect([...old.summaries.keys()]).toEqual(['b:qwerty']);
-    expect([...old.behind]).toEqual(['b:dvorak']);
+  });
+
+  it('drops the layouts a ranking kept behind, which the list no longer holds back', () => {
+    localStorage.setItem(
+      'layerbench:ranking',
+      JSON.stringify({ en: { summaries: { 'b:qwerty': SUMMARY }, behind: ['b:qwerty'] } }),
+    );
+    rememberSummary('en', 'b:colemak', SUMMARY);
+    expect(JSON.parse(localStorage.getItem('layerbench:ranking') ?? '{}').en).toEqual({
+      summaries: { 'b:qwerty': SUMMARY, 'b:colemak': SUMMARY },
+    });
   });
 
   it('keeps only the rankings written last', () => {
@@ -68,12 +62,11 @@ describe('the last ranking, kept in this browser', () => {
     localStorage.setItem(
       'layerbench:ranking',
       JSON.stringify({
-        en: { summaries: { 'b:qwerty': SUMMARY, 'b:colemak': { effort: 'high' } }, behind: [3] },
+        en: { summaries: { 'b:qwerty': SUMMARY, 'b:colemak': { effort: 'high' } } },
         pt: 'nothing',
       }),
     );
     expect([...recall('en').summaries.keys()]).toEqual(['b:qwerty']);
-    expect(recall('en').behind.size).toBe(0);
     expect(recall('pt').summaries.size).toBe(0);
     // And writes over it rather than failing.
     rememberSummary('pt', 'b:qwerty', SUMMARY);

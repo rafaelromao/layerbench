@@ -44,8 +44,9 @@ function freshStorage(): IndexedDbAdapter {
 }
 
 /**
- * Qwerty as written, its letters alone, saved under the name given: every bundled layout types the
- * accents, through Accents or, on Magic Romak, its dead keys, so the one that cannot is a custom one.
+ * Qwerty as written, its letters alone, saved under the name given: most bundled layouts type the
+ * accents, through Accents or, on Magic Romak, its dead keys, and the few that keep their authors'
+ * layers do not, so a layout that cannot, with nothing else about it, is a custom one.
  */
 async function savePlain(
   storage: IndexedDbAdapter,
@@ -443,10 +444,10 @@ describe('Ranking layouts', () => {
       box(card, metric).querySelector('.lb-band');
 
     const [best, worst] = cards();
-    // An Effort of 400 is past the third step, 386, and not the fourth's, 429: mid low, amber.
-    expect(badge(best, 'Effort')?.textContent).toBe('mid low');
-    expect(badge(best, 'Effort')).toHaveClass('badge-warning');
-    expect(box(best, 'Effort')).toHaveClass('border-warning/60');
+    // An Effort of 400 is the first step's last number, min up to 400, green; 1000 is past 900, max.
+    expect(badge(best, 'Effort')?.textContent).toBe('min');
+    expect(badge(best, 'Effort')).toHaveClass('badge-success');
+    expect(box(best, 'Effort')).toHaveClass('border-success/60');
     // An SFB of 4% is past the ruler's last bound, 3.425.
     expect(badge(best, 'SFB')?.textContent).toBe('max');
     expect(box(best, 'SFB')).toHaveClass('border-error/60');
@@ -479,7 +480,7 @@ describe('Ranking layouts', () => {
         expect.stringMatching(/\/guide\/analyzing#the-cyanophage-like-rule-set$/),
       );
     }
-    // An SFB of 2.0 is past his ramp's last step, 1.881; an Effort of 200 is below the first, 300.
+    // An SFB of 2.0 is past his ramp's last step, 1.881; an Effort of 200 is below the first, 400.
     const box = (metric: 'Effort' | 'SFB') =>
       within(best).getByText(metric, { selector: 'dt' }).parentElement;
     expect(box('SFB')?.querySelector('.lb-band')?.textContent).toBe('max');
@@ -600,26 +601,25 @@ describe('Ranking layouts', () => {
     });
   });
 
-  it('ranks a layout that cannot write the text’s language after one that can', async () => {
-    // Plain has the best effort by far, but no key for ã or ç: it would skip them for free.
+  it('puts a layout that cannot write the text’s language where its numbers put it, and says what it skips', async () => {
+    // Plain has the best effort by far, but no key for ã or ç: it skips them for free. That is said
+    // on its card; the order is the sort's alone, so it leads, and no layout is held back.
     const storage = freshStorage();
     await savePlain(storage, 'plain');
     const client = scoringByName((name) => (name === 'Plain' ? 100 : 500));
     renderRoute('/library?corpus=pt-br-general&sample=10002', { client, storage });
 
-    // Scored, and checked for the letters Portuguese needs: behind every layout that has them, and
-    // ahead of those that lack them too, by its effort.
     const plain = () => cards().find((c) => c.querySelector('h3')?.textContent === 'Plain');
     await waitFor(
-      () =>
-        expect(plain()?.textContent).toMatch(/Cannot type .*ç.*ranked after the layouts that can/),
+      () => expect(plain()?.querySelector('.lb-skips')?.textContent).toMatch(/Cannot type .*ç/),
       { timeout: 60_000 },
     );
-    const after = (c: Element) => /ranked after the layouts that can/.test(c.textContent ?? '');
-    const at = cards().indexOf(plain() as HTMLElement);
-    expect(at).toBeGreaterThan(0);
-    expect(cards().slice(0, at).some(after)).toBe(false);
-    expect(cards().slice(at).every(after)).toBe(true);
+    expect(plain()?.textContent).not.toMatch(/ranked after/);
+    expect(cards()[0]).toBe(plain());
+    // And the whole list is by Effort, not in two groups: Plain's 100 is the least, the rest tie at 500.
+    const efforts = cards().map((c) => valueOn(c, 'Effort'));
+    expect(efforts).toEqual([...efforts].sort((a, b) => a - b));
+    expect(document.body.textContent).not.toMatch(/come last|ranked after/);
   }, 90_000);
 
   it('sorts by home row with no regard for the language, as by name', async () => {
@@ -628,7 +628,7 @@ describe('Ranking layouts', () => {
     await savePlain(storage, 'plain');
     const client = scoringByName((name) => (name === 'Plain' ? 100 : 500));
     renderRoute('/library?corpus=pt-br-general&sample=10002', { client, storage });
-    await rankingSays(/come last\.$/, 60_000);
+    await rankingSays(/^Lower is better for both/, 60_000);
 
     // Plain has Qwerty's home row: it sits next to it, the name breaking the tie, not last.
     await user.click(screen.getByRole('radio', { name: 'Home row' }));
@@ -676,33 +676,6 @@ describe('Ranking layouts', () => {
     expect(cards()).toHaveLength(left.length);
   }, 90_000);
 
-  it('keeps a layout that cannot write the language last while the texts are being listed', async () => {
-    const storage = freshStorage();
-    await savePlain(storage, 'plain');
-    const client = scoringByName((name) => (name === 'Plain' ? 100 : 500));
-    renderRoute('/library?corpus=pt-br-general&sample=10006', { client, storage });
-    const plain = () => cards().find((c) => c.querySelector('h3')?.textContent === 'Plain');
-    await waitFor(() => expect(plain()?.textContent).toMatch(/ranked after the layouts that can/), {
-      timeout: 60_000,
-    });
-    const at = cards().indexOf(plain() as HTMLElement);
-    expect(at).toBeGreaterThan(0);
-    cleanup();
-
-    // The next visit, with texts that are never listed: which language this one is in is unknown.
-    const unlisted = new Proxy(client, {
-      get(target, prop) {
-        if (prop === 'listCorpora') return () => new Promise(() => {});
-        const member = Reflect.get(target, prop);
-        return typeof member === 'function' ? member.bind(target) : member;
-      },
-    });
-    renderRoute('/library?corpus=pt-br-general&sample=10006', { client: unlisted, storage });
-    await waitFor(() => expect(plain()).toBeTruthy());
-    // Its numbers are the best, and it is still where the last visit found it.
-    expect(cards().indexOf(plain() as HTMLElement)).toBe(at);
-  }, 90_000);
-
   it('scores each layout typed without the features left out of the ranking', async () => {
     const { client, requests } = scoringOnly([500]);
     renderRoute('/library?off=macros&sample=10003', { client, storage: freshStorage() });
@@ -713,48 +686,27 @@ describe('Ranking layouts', () => {
     expect(JSON.stringify(requests[0].layout)).toContain('"symbols":"qu"');
   }, 90_000);
 
-  it('ranks the layouts that can write the language first', async () => {
-    // Every bundled layout writes Spanish but Plain, which has no ñ. Magic Romak's dead keys make it,
-    // and its keymap has no `¿` or `¡`, which Spanish only lists as punctuation.
+  it('ranks every layout in one order by the numbers, those that skip letters among the rest', async () => {
+    // Plain has no ñ, which Romak and Magic Romak have: Magic Romak's dead keys make it, and its keymap
+    // has no `¿` or `¡`, which Spanish only lists as punctuation.
     const storage = freshStorage();
     await savePlain(storage, 'plain');
     renderRoute('/library?corpus=es-general&sample=10000', { storage });
     await rankingSays(/^Lower is better for both/, 60_000);
-    const plain = await waitFor(
+    await waitFor(
       () => {
         const card = cards().find((c) => c.querySelector('h3')?.textContent === 'Plain');
-        expect(card?.textContent).toMatch(/ranked after the layouts that can/);
-        return card as HTMLElement;
+        expect(card?.querySelector('.lb-skips')?.textContent).toMatch(/^Cannot type .*ñ/);
       },
       { timeout: 30_000 },
     );
-    expect(cards().at(-1)).toBe(plain);
+    // Said on its card, and nothing more: the whole list is by Effort, Plain where its number puts it.
+    const efforts = cards().map((c) => valueOn(c, 'Effort'));
+    expect(efforts).toEqual([...efforts].sort((a, b) => a - b));
     const romak = cards().find((c) => c.querySelector('h3')?.textContent === 'Romak');
     expect(romak?.textContent).not.toMatch(/Cannot type/);
     const magic = cards().find((c) => c.querySelector('h3')?.textContent === 'Magic Romak');
     expect(magic?.textContent).not.toMatch(/Cannot type/);
-  }, 90_000);
-  it('ranks by the numbers alone when no layout listed can write the language', async () => {
-    // Two layouts without an ñ, on a board no bundled layout is on, and only that board listed.
-    const storage = freshStorage();
-    await savePlain(storage, 'plain', { geometry: OWN_BOARD });
-    // Another layout written in code, as written, without the layers the Library gives it: any one,
-    // whichever a Library request has left in code.
-    const other = CLASSIC_LAYOUTS.find((l) => l.id !== 'qwerty') as Layout;
-    await storage.put(
-      'layouts',
-      'plain-other',
-      toCanonicalJson({ ...other, id: 'plain-other', name: 'Plain other', geometry: OWN_BOARD }),
-    );
-    useSession.setState({ hiddenBoards: BUNDLED_BOARDS });
-    renderRoute('/library?corpus=es-general&sample=10000', { storage });
-    expect(
-      await rankingSays(/None of these layouts types every letter Español needs\.$/, 60_000),
-    ).toBeTruthy();
-    await waitFor(() => expect(cards()).toHaveLength(2), { timeout: 30_000 });
-    const efforts = cards().map((c) => valueOn(c, 'Effort'));
-    expect(efforts).toEqual([...efforts].sort((a, b) => a - b));
-    expect(document.body.textContent).not.toMatch(/ranked after the layouts that can/);
   }, 90_000);
   it('says what share of the text a layout skips', async () => {
     const storage = freshStorage();
@@ -771,8 +723,8 @@ describe('Ranking layouts', () => {
       },
       { timeout: 30_000 },
     );
-    expect(screen.getByText(/come last\.$/)).toBeInTheDocument();
-    expect(cards().at(-1)).toBe(plain);
+    // Its place is its numbers': nothing holds it back, whatever it skips.
+    expect(plain.querySelector('.lb-skips')?.textContent).toMatch(/of the text\.$/);
     // Qwerty as bundled types every letter Portuguese needs, through Accents.
     const qwerty = cards().find((c) => c.querySelector('h3')?.textContent === 'Qwerty');
     expect(qwerty?.textContent).not.toMatch(/Cannot type/);
@@ -811,14 +763,27 @@ describe('Ranking layouts', () => {
     );
     // On an English text it skips nothing for Spanish: ranked by its numbers, beside the same
     // keys saved without the languages.
-    expect(mine.textContent).not.toMatch(/ranked after/);
-    expect(document.body.textContent).not.toMatch(/come last/);
     const plain = await waitFor(() => {
       const card = cards().find((c) => c.querySelector('h3')?.textContent === 'Plain');
       expect(card).toBeTruthy();
       return card as HTMLElement;
     });
     expect(valueOn(mine, 'Effort')).toBe(valueOn(plain, 'Effort'));
+  }, 90_000);
+
+  it('does not set apart a layout flagged for a language it is for but cannot type', async () => {
+    // Mine is for Spanish and has no ñ, which on an English text costs it nothing: it is flagged, and
+    // its numbers, the best, put it first, as they would a layout with no flag at all.
+    const storage = freshStorage();
+    await savePlain(storage, 'mine', { name: 'Mine', languages: ['en', 'es'] });
+    const client = scoringByName((name) => (name === 'Mine' ? 100 : 500));
+    renderRoute('/library?corpus=en-general&sample=10007', { client, storage });
+    await waitFor(() => expect(cards()[0]?.querySelector('.lb-lacks')).toBeTruthy(), {
+      timeout: 60_000,
+    });
+    expect(cards()[0].querySelector('h3')?.textContent).toBe('Mine');
+    const efforts = cards().map((c) => valueOn(c, 'Effort'));
+    expect(efforts).toEqual([...efforts].sort((a, b) => a - b));
   }, 90_000);
 });
 

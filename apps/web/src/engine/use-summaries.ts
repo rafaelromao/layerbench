@@ -302,21 +302,18 @@ export interface Sortable {
 }
 
 /**
- * Lower is better for both metrics; a layout without a number, or not scored yet, goes last. Layouts
- * in `behind` — those missing letters the text's language cannot be written without — rank after
- * every other, each group in its own order: a layout skipping `ç` is spared what it costs to type.
- * By home row, the letters there go in alphabetical order, as names do, and `behind` is not held
- * back; a layout with no letter there, or not read yet, goes last. Ties go by name.
+ * Lower is better for both metrics; a layout without a number, or not scored yet, goes last. Every
+ * layout is in one order, by the criterion alone: one that skips letters the text needs is flagged on
+ * its card, not held back, and neither its type nor its category comes first. By home row, the
+ * letters there go in alphabetical order, as names do; a layout with no letter there, or not read
+ * yet, goes last. Ties go by name.
  */
 export function compareBy(
   key: SortKey,
   summaries: Map<string, LayoutSummary>,
-  behind: ReadonlySet<string> = new Set(),
 ): (a: Sortable, b: Sortable) => number {
   return (a, b) => {
     if (sortsByMetric(key)) {
-      const group = Number(behind.has(a.key)) - Number(behind.has(b.key));
-      if (group !== 0) return group;
       const va = summaries.get(a.key)?.[key] ?? null;
       const vb = summaries.get(b.key)?.[key] ?? null;
       if (va !== vb) {

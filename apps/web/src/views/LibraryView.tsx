@@ -45,12 +45,11 @@ import { readCustom } from '../custom/read.js';
 import { customRef } from '../custom/ref.js';
 import { retryingSaver, type SaveOptions } from '../custom/save-new.js';
 import { effectiveHeat, type HeatSource } from '../engine/heat.js';
-import { rankingKey, recall, rememberBehind } from '../engine/ranking-memory.js';
+import { rankingKey } from '../engine/ranking-memory.js';
 import {
   compareBy,
   type LayoutSummary,
   type SummaryEntry,
-  sortsByMetric,
   useSummaries,
 } from '../engine/use-summaries.js';
 import { HELP, type HelpTopic, rulerHelp } from '../guide/help.js';
@@ -104,13 +103,15 @@ function boardLabel(id: string): string {
 const MISSING_SHOWN = 5;
 
 /**
- * A language the layout cannot write: the text's, which ranks it behind the layouts that can, or one
- * it says it is for, which is only flagged.
+ * A language the layout cannot write: the text's, whose letters it skips, or one it says it is for,
+ * which is only flagged because on this text it skipped nothing for it. Neither changes its place in
+ * the list: that is the sort's alone.
  */
 interface Lacking {
   language: string;
   letters: string[];
-  behind: boolean;
+  /** Whether the language is the text's, so that the layout skips letters of it. */
+  fromText: boolean;
 }
 
 /**
@@ -168,14 +169,11 @@ function Ranking({
   summary,
   bands,
   lacking,
-  nobodyCan = false,
 }: {
   summary: LayoutSummary | undefined;
   bands: HeadlineBands;
   /** Letters a language the layout is held to needs that it cannot type. */
   lacking?: Lacking;
-  /** Every layout listed lacks some, so none is ranked behind another for it. */
-  nobodyCan?: boolean;
 }) {
   if (!summary) {
     return <p className="text-xs opacity-50">scoring…</p>;
@@ -201,10 +199,9 @@ function Ranking({
           ruler={bands.ruler}
         />
       </dl>
-      {lacking?.behind ? (
+      {lacking?.fromText ? (
         <p className="lb-skips text-xs text-warning" title={`Letters ${lacking.language} needs`}>
-          Cannot type {lacking.letters.join(' ')}: skips {summary.skipped.toFixed(2)}% of the text
-          {nobodyCan ? '.' : ', ranked after the layouts that can.'}
+          Cannot type {lacking.letters.join(' ')}: skips {summary.skipped.toFixed(2)}% of the text.
         </p>
       ) : (
         <>
@@ -294,7 +291,6 @@ function LayoutCard({
   summary,
   bands,
   lacking,
-  nobodyCan,
   heat,
   heatMode,
   actions,
@@ -306,7 +302,6 @@ function LayoutCard({
   summary: LayoutSummary | undefined;
   bands: HeadlineBands;
   lacking: Lacking | undefined;
-  nobodyCan: boolean;
   /** What its board's heat is drawn from, as it was scored; missing while it is being scored. */
   heat: HeatSource | null | undefined;
   /** What the heat measures; null leaves the board plain. */
@@ -353,7 +348,7 @@ function LayoutCard({
           {/* The card's whole width, below the actions: beside them, a phone has no room for both
               numbers on one row. */}
           <div className="basis-full min-w-0">
-            <Ranking summary={summary} bands={bands} lacking={lacking} nobodyCan={nobodyCan} />
+            <Ranking summary={summary} bands={bands} lacking={lacking} />
           </div>
         </header>
         {item.unreadable && (
@@ -793,10 +788,10 @@ export function LibraryView() {
     [settings.settings, settings.linked.rules],
   );
 
-  // A layout that cannot type letters the corpus's language needs skips them, and skipping is free:
-  // it would rank above one that pays to type them. Those go behind, whatever their numbers. A
-  // layout is held to the languages it says it is for as well, but only flagged for those: one for
-  // Spanish without an ñ is not what it claims, yet on this text it skipped nothing for it.
+  // A layout that cannot type letters the corpus's language needs skips them, and says so on its card;
+  // it is not held back for it, the list being in the order of the sort alone. A layout is held to
+  // the languages it says it is for as well, but only flagged for those: one for Spanish without an
+  // ñ is not what it claims, yet on this text it skipped nothing for it.
   const lacking = useMemo(() => {
     const out = new Map<string, Lacking>();
     const fromText = new Set(languagesToJudge(corpusLanguage));
@@ -807,7 +802,7 @@ export function LibraryView() {
           out.set(key, {
             language: coverage.name,
             letters: coverage.missingRequired,
-            behind: fromText.has(tag),
+            fromText: fromText.has(tag),
           });
           return;
         }
@@ -816,38 +811,6 @@ export function LibraryView() {
     for (const [key, compiled] of ranked) check(key, compiled);
     return out;
   }, [corpusLanguage, ranked]);
-  // Which layouts go behind can only be told once the corpora are listed and a layout's document is
-  // read. Until then each is where the last visit found it, so the list does not reorder as they
-  // arrive.
-  const decided = corpora.length > 0;
-  const behindBefore = useMemo(() => recall(rankingContext).behind, [rankingContext]);
-  const behind = useMemo(() => {
-    const out = new Set<string>();
-    for (const { key } of listed) {
-      const known = decided && ranked.has(key);
-      if (known ? lacking.get(key)?.behind : behindBefore.has(key)) out.add(key);
-    }
-    return out;
-  }, [listed, decided, ranked, lacking, behindBefore]);
-  useEffect(() => {
-    if (!decided) return;
-    const found = new Map([...ranked.keys()].map((key) => [key, !!lacking.get(key)?.behind]));
-    rememberBehind(rankingContext, found);
-  }, [decided, ranked, lacking, rankingContext]);
-  // When no layout listed can write the language, none is behind the others: the list keeps its
-  // metric order. One that can, on a board left out, does not count.
-  const nobodyCan =
-    behind.size > 0 &&
-    shownListed.length > 0 &&
-    shownListed.every((item) => !ranked.has(item.key) || behind.has(item.key));
-  // A mixed text has two languages, and the layouts behind may each lack a different one.
-  const lackingLanguages = new Set(
-    [...lacking.values()].filter((l) => l.behind).map((l) => l.language),
-  );
-  const lackingWhat =
-    lackingLanguages.size === 1
-      ? `every letter ${[...lackingLanguages][0]} needs`
-      : "every letter the text's languages need";
   // Every layout failing at once means the corpus or rule set is at fault, not the layouts.
   const unscored =
     summaries.size > 0 && [...summaries.values()].every((s) => s.effort === null && s.sfb === null);
@@ -855,8 +818,8 @@ export function LibraryView() {
   // The chosen order applies from the first score on: each layout takes its place as its score
   // lands, and those still being scored wait below the ranked ones.
   const sorted = useMemo(
-    () => [...shownListed].sort(compareBy(sortBy, summaries, behind)),
-    [shownListed, sortBy, summaries, behind],
+    () => [...shownListed].sort(compareBy(sortBy, summaries)),
+    [shownListed, sortBy, summaries],
   );
 
   /** An import opened before it is saved travels whole in the link, as an unsaved edit does. */
@@ -1137,13 +1100,7 @@ export function LibraryView() {
                   ? `Could not score the layouts on ${corpusName}.`
                   : `Lower is better for both. Ranked on a sample of ${ranking.sample.toLocaleString('en-US')} symbols of ${corpusName}, ${settings.rulesName}${
                       without.length > 0 ? `, typed without ${featureList(without)}` : ''
-                    }.${
-                      nobodyCan
-                        ? ` None of these layouts types ${lackingWhat}.`
-                        : behind.size > 0 && sortsByMetric(sortBy)
-                          ? ` Layouts that cannot type ${lackingWhat} come last.`
-                          : ''
-                    }`}
+                    }.`}
         </p>
         {heatOn && <HeatLegend mode={heatMode} fallback={heatFallback} />}
       </div>
@@ -1183,7 +1140,6 @@ export function LibraryView() {
               summary={summaries.get(item.key)}
               bands={bands}
               lacking={lacking.get(item.key)}
-              nobodyCan={nobodyCan}
               // A rule set that will not open scores nothing, and so has no heat to wait for.
               heat={settings.status === 'failed' ? null : heats.get(item.key)}
               heatMode={heatOn ? heatMode : null}
