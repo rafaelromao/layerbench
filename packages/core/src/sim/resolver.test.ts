@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeText } from '../corpus/normalize.js';
-import { eighteenKeys } from '../fixtures/boards.js';
+import { eighteenKeys, HOME_ROW_MODS } from '../fixtures/boards.js';
 import { FIXTURE_MIXED } from '../fixtures/index.js';
 import { compileLayout } from '../layout/compile.js';
 import { importTextLayout } from '../layout/text.js';
@@ -16,6 +16,22 @@ const magicRomak = bundledLayout('magic-romak')!;
 const romak = bundledLayout('romak')!;
 
 const opts = { caseMode: 'fold' as const, crossWord: 'reset' as const };
+
+/** A layout with the usual home row mods, for the tests that type a capital with one. */
+const withMods = (layout: Layout) => withHomeRowMods(layout, HOME_ROW_MODS);
+
+/** Whether a layout has a key that gives Shift: its shift key, or one that holds or taps it. */
+function givesShift(layout: Layout): boolean {
+  if (layout.keys.shift) return true;
+  if (layout.combos?.some((c) => c.binding.kind === 'sk' && /SHIFT/.test(c.binding.mod)))
+    return true;
+  return layout.layers.some((l) =>
+    Object.values(l.bindings).some((b) => {
+      const key = b.kind === 'hold_tap' ? b.hold : b;
+      return (key.kind === 'mod' || key.kind === 'sk') && /SHIFT/.test(key.mod);
+    }),
+  );
+}
 
 function trace(layout: Layout, text: string, extra: Partial<Parameters<typeof explain>[2]> = {}) {
   const compiled = compileLayout(layout);
@@ -618,7 +634,7 @@ describe('the kind of key a press is, in the statistics', () => {
 
 describe('a capital with home row mods and no Shift key of its own', () => {
   const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
-  const layout = withHomeRowMods({
+  const layout = withMods({
     format: 'layerbench/layout@1',
     name: 'Home row mods',
     hostLocale: 'symbols',
@@ -651,7 +667,7 @@ describe('a capital with home row mods and no Shift key of its own', () => {
   });
 
   it('holds no Shift on the key that typed the accent of an accented capital', () => {
-    const accented = withHomeRowMods({
+    const accented = withMods({
       ...layout,
       layers: [
         {
@@ -672,7 +688,7 @@ describe('a capital with home row mods and no Shift key of its own', () => {
 
   it('cannot type an accented capital when the only Shifts are on the keys it presses', () => {
     // The accent on the right index, the letter on the left one: no Shift is left to hold.
-    const accented = withHomeRowMods({
+    const accented = withMods({
       ...layout,
       layers: [
         {
@@ -699,7 +715,7 @@ describe('a capital with home row mods and no Shift key of its own', () => {
   });
 
   it('holds a Shift thumb first, but none on the hand whose thumb types the letter', () => {
-    const thumbs = withHomeRowMods({
+    const thumbs = withMods({
       ...layout,
       keys: { space: 'R0' },
       layers: [
@@ -740,7 +756,9 @@ describe('a capital with home row mods and no Shift key of its own', () => {
     expect(t.steps.filter((s) => s.kind === 'hold_press').map((s) => s.key)).toEqual(['RHI']);
   });
 
-  it.each(BUNDLED_LAYOUTS.filter((l) => !l.keys.shift).map((l) => [l.id, l] as const))(
+  it.each(
+    BUNDLED_LAYOUTS.filter((l) => !l.keys.shift && givesShift(l)).map((l) => [l.id, l] as const),
+  )(
     'types on %s the capital of every letter it types alone, with a home row Shift',
     (_id, layout) => {
       const compiled = compileLayout(layout);
@@ -957,7 +975,7 @@ describe('a capital on the layer its Shift key taps for', () => {
 
   it('holds the other Shift thumb, never the one it taps for the layer', () => {
     // A thumb before a home row Shift, whichever hand types the letter.
-    const thumbs = withHomeRowMods(board());
+    const thumbs = withMods(board());
     for (const [capital, letter] of [
       ['É', 'RHM'],
       ['Ã', 'LHM'],
@@ -1015,7 +1033,7 @@ describe('a capital on the layer its Shift key taps for', () => {
   });
 
   it("holds the other hand's home row Shift when no other thumb holds Shift", () => {
-    const t = trace(withHomeRowMods(board(kp('x'))), 'É', model);
+    const t = trace(withMods(board(kp('x'))), 'É', model);
     expect(t.out).toBe('É');
     expect(t.keys).toEqual(['LHI', 'R1', 'RHM']);
     expect(held(t)).toEqual(['LHI']);
@@ -1027,10 +1045,22 @@ describe('a capital on the layer its Shift key taps for', () => {
     expect(t.coverage.unproducible.get('É')).toBe(1);
   });
 
+  it.each(BUNDLED_LAYOUTS.filter((l) => !givesShift(l)).map((l) => [l.id, l] as const))(
+    'types on %s no capital E in the Shift case mode: no key gives it Shift',
+    (_id, layout) => {
+      const t = trace(layout, 'E', model);
+      expect(t.out).toBe('');
+      expect(t.coverage.unproducible.get('E')).toBe(1);
+    },
+  );
+
   it.each(BUNDLED_LAYOUTS.map((l) => [l.id, l] as const))(
-    'types on %s every capital of a letter it types, holding no key it presses',
+    'types on %s every capital of a letter it types, holding no key it presses, where it has a Shift',
     (_id, layout) => {
       const compiled = compileLayout(layout);
+      // No key gives it Shift, so there is none to hold: a capital is typed by a key of its own,
+      // or not at all.
+      if (!givesShift(layout)) return;
       const members = (id: string) => {
         const at = compiled.positions.find((p) => p.id === id);
         return at ? at.members.map((i) => compiled.positions[i].id) : [id];

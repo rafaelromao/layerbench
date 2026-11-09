@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeText } from '../corpus/normalize.js';
+import { HOME_ROW_MODS } from '../fixtures/boards.js';
 import { FIXTURE_EN } from '../fixtures/index.js';
 import { compileLayout } from '../layout/compile.js';
 import { swapKeys } from '../layout/ops.js';
-import { bundledLayout } from '../layouts/index.js';
+import { bundledLayout, withHomeRowMods } from '../layouts/index.js';
 import { layoutsDoc } from '../rules/presets.js';
 import { analyze } from './analyze.js';
 import { relabelEligible, relabelSwap } from './relabel.js';
@@ -39,15 +40,18 @@ describe('relabel after a swap', () => {
   const ruleSet = layoutsDoc();
 
   it('matches a full re-analysis for every n-gram metric, a home row mod among the keys', () => {
+    // Qwerty with the usual home row mods, so the swap reaches a key that holds Alt.
+    const modded = withHomeRowMods(layout, HOME_ROW_MODS);
+    const moddedCompiled = compileLayout(modded);
     const from = 'LTM';
     // Qwerty's `k`, holding Alt.
     const to = 'RHM';
-    const posA = compiled.keyIndex.get(from)!;
-    const posB = compiled.keyIndex.get(to)!;
-    expect(relabelEligible(compiled, 0, posA, posB)).toBe(true);
+    const posA = moddedCompiled.keyIndex.get(from)!;
+    const posB = moddedCompiled.keyIndex.get(to)!;
+    expect(relabelEligible(moddedCompiled, 0, posA, posB)).toBe(true);
 
-    const before = analyze(compiled, stream, { ...OPTS, ruleSet });
-    const swapped = swapKeys(layout, 0, from, to);
+    const before = analyze(moddedCompiled, stream, { ...OPTS, ruleSet });
+    const swapped = swapKeys(modded, 0, from, to);
     const compiledAfter = compileLayout(swapped);
 
     const estimated = relabelSwap(before, compiledAfter, 0, posA, posB, ruleSet);
@@ -86,8 +90,9 @@ describe('relabel after a swap', () => {
       relabelEligible(compiled, 0, compiled.keyIndex.get('LHM')!, compiled.keyIndex.get('RHM')!),
     ).toBe(true);
     // A home row mod holding Shift is a shift key: the analysis may hold it for a capital.
+    const withMods = compileLayout(withHomeRowMods(layout, HOME_ROW_MODS));
     expect(
-      relabelEligible(compiled, 0, compiled.keyIndex.get('LTM')!, compiled.keyIndex.get('RHI')!),
+      relabelEligible(withMods, 0, withMods.keyIndex.get('LTM')!, withMods.keyIndex.get('RHI')!),
     ).toBe(false);
   });
 

@@ -64,25 +64,23 @@ there whenever a rule here moves a key, and keep `templates.test.ts` asserting e
   one-shot Shift where its keymap has Repeat, and it is its `keys.shift`. A thumb that holds and
   taps nothing is still a `hold_tap`, its tap `none`, so the board draws its hold along the bottom,
   as on every tap-hold; `templates.test.ts` (`thumbs that only hold`) checks every bundled layout.
-- **Home row mods.** Every bundled layout holds Gui, Ctrl, Alt and Shift on its base layer's home
-  row from the left pinky in, mirrored on the right (`HOME_ROW_MODS`, `withHomeRowMods`), unless its
-  definition gives its own (`ClassicDef.homeRowMods`). Both hands hold the left modifiers, as the
-  two Shift thumbs do: the analysis types a capital with the left Shift, and the right Alt is AltGr.
-  Every key there that types gets one, letter or not (Uno's space, T-34's Repeat); one with nothing
-  on it, or holding something already, does not, and no other layer does. They go on after the
-  default layers, whose standard thumbs keep only plain keys; Nordwind, a document, carries them in
-  its JSON. Magic Romak gives its own, its author's keymap's home block mods, which its file draws
-  (`homeRowMods: false`, the mods are in its Alpha 1): Ctrl, Alt and Shift from the ring finger in,
-  Shift with Gui on F and C, and Gui on P and the magic key. The keymap's pinkies hold its
-  Shortcuts layer, and `,` and `.` hold to move the cursor: a layer that types nothing, and editing,
-  both left out. Magic Sturdy, the three Hands Down
-  with their authors' layers and Ben Vallack Piano give their authors' too (`STURDY_MODS`,
-  `HD_MODS`, `PIANO_MODS`), as their keymaps hold their layers on the home row. In the Shift case
-  mode a capital holds Shift on no key it presses, the one that reaches its layer included, nor on a
-  thumb of a hand whose thumb presses one, and on a thumb before a finger: on the standard thumbs
-  R1, and L1 for one on Accents, which R1 taps, or on a right thumb. A layout with no Shift key of
-  its own holds a Shift thumb if it has one it can, else the other hand's home row Shift where it
-  can, never a key that holds other modifiers with it (`holdMod` in `resolver.ts`).
+- **Home row mods.** A layout holds home row mods only where its author's keymap does, and its
+  definition gives them (`ClassicDef.homeRowMods`, applied by `withHomeRowMods`); each key still
+  types what it typed, a letter or not, and one with nothing on it, or holding something already,
+  does not. Both hands hold the left modifiers, as the analysis types a capital with the left Shift
+  and the right Alt is AltGr. Magic Romak holds its keymap's home block mods, which its file draws:
+  Ctrl, Alt and Shift from the ring finger in, Shift with Gui on F and C, and Gui on P and the magic
+  key. The
+  keymap's pinkies hold its Shortcuts layer, and `,` and `.` hold to move the cursor: a layer that
+  types nothing, and editing, both left out. Magic Sturdy, the three Hands Down with their authors'
+  layers and Ben Vallack Piano hold their authors' too (`STURDY_MODS`, `HD_MODS`, `PIANO_MODS`), as
+  their keymaps hold their layers on the home row. A document carries its own in its JSON. In the
+  Shift case mode a capital holds Shift on no key it presses, the one that reaches its layer
+  included, nor on a thumb of a hand whose thumb presses one, and on a thumb before a finger: on the
+  standard thumbs R1, and L1 for one on Accents, which R1 taps, or on a right thumb. A layout with
+  no Shift key of its own holds a Shift thumb if it has one it can, else the other hand's home row
+  Shift where it can, never a key that holds other modifiers with it (`holdMod` in `resolver.ts`);
+  with neither, it types no capital there.
 - **No layer that types nothing.** No bundled layout reaches a layer of functions, media or
   macros, by a hold or a key: an author's keymap's own such holds are left out, as Magic Romak's
   are. `templates.test.ts` checks that every layer of every bundled layout types something

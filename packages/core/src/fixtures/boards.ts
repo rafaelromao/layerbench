@@ -1,6 +1,22 @@
 import { getGeometryPreset } from '../geometry/presets.js';
-import type { Binding, Layout } from '../layout/types.js';
+import type { Binding, Layout, Mod } from '../layout/types.js';
 import { withDefaultLayers } from '../layouts/templates.js';
+
+/**
+ * A usual set of home row mods, for the tests that type with them: Gui, Ctrl, Alt and Shift from
+ * the left pinky in, mirrored on the right, both hands holding the left modifiers. Test-only, as the
+ * rest of this folder: no layout written in code holds them but where its author's keymap does.
+ */
+export const HOME_ROW_MODS: Readonly<Record<string, Mod>> = {
+  LHP: 'LGUI',
+  LHR: 'LCTRL',
+  LHM: 'LALT',
+  LHI: 'LSHIFT',
+  RHI: 'LSHIFT',
+  RHM: 'LALT',
+  RHR: 'LCTRL',
+  RHP: 'LGUI',
+};
 
 /**
  * Eighteen keys, a letter on each finger key and space on the outer left thumb, with the default

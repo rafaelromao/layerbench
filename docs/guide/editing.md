@@ -328,18 +328,17 @@ Where an author's keymap has a key that does what the analysis does not simulate
 Enter, Backspace, Tab or T-34's key for a Shortcuts layer LayerBench does not have, the key is
 transparent, as one left unset is; under a hold it taps nothing, and shows only what it holds.
 
-Every layout that comes with the app has home row mods too: held, the home row's finger keys give
-Gui, Ctrl, Alt and Shift from the left pinky in, and Shift, Alt, Ctrl and Gui from the right index
-out. Magic Romak holds its author's keymap's instead: Ctrl, Alt and Shift from the ring finger in,
-and on the bottom row Shift with Gui under the left ring and middle fingers and Gui under the index
-fingers. So do the layouts whose authors' keymaps hold their layers on the home row: Magic Sturdy,
-the three Hands Down with their own layers, and Ben Vallack Piano, its modifiers on the top row.
-Both hands hold the left modifiers, as both Shift thumbs do. Tapped, each key types what it typed, a
-letter or anything else: Uno's space holds Alt. They are on the base layer only. In the Shift case
-mode, a Standard or Thumb Alpha layout types a capital holding the right Shift thumb, but one on
-Accents or on a right thumb holding the left, as a thumb holding Shift presses nothing else. A
-layout with no Shift key of its own types a capital holding a Shift thumb if it has one that is
-free, and otherwise the home row Shift of the other hand, where the capital does not press that key.
+A layout that comes with the app has home row mods where its author's keymap holds them. Magic
+Romak holds Ctrl, Alt and Shift from the ring finger in, and on the bottom row Shift with Gui under
+the left ring and middle fingers and Gui under the index fingers. So do the layouts whose authors'
+keymaps hold their layers on the home row: Magic Sturdy, the three Hands Down with their own
+layers, and Ben Vallack Piano, its modifiers on the top row. Both hands hold the left modifiers, as
+the analysis types a capital with the left Shift and the right Alt is AltGr. Tapped, each key types
+what it typed. They are on the base layer only. In the Shift case mode, a Standard or Thumb Alpha layout types a
+capital holding the right Shift thumb, but one on Accents or on a right thumb holding the left, as a
+thumb holding Shift presses nothing else. A layout with no Shift key of its own types a capital
+holding a Shift thumb if it has one that is free, and otherwise the home row Shift of the other
+hand, where the capital does not press that key; with neither, it types no capital there.
 
 #### Layouts with their authors' layers
 
