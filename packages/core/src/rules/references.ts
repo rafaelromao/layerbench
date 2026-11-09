@@ -118,7 +118,11 @@ export const RULE_REFERENCES: Readonly<Record<string, readonly RuleReference[]>>
     kld('§4.8 Distributing movement across the fingers'),
     glossary('usage', 'Finger usage'),
   ],
-  hand_balance: [kld('§13.5 Hand balance nuances'), kld('§16.4.5 Hand balance and space')],
+  hand_balance: [
+    THRESHOLDS,
+    kld('§13.5 Hand balance nuances'),
+    kld('§16.4.5 Hand balance and space'),
+  ],
   row_usage: [kld('§6.10.1 Reducing bottom row use — background'), glossary('usage', 'Row usage')],
   column_usage: [
     kld('§7.6.1 Reducing center column use — background'),

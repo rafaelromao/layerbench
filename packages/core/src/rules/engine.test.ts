@@ -17,6 +17,8 @@ import {
   CYANOPHAGE_BANDS,
   CYANOPHAGE_SFB_FULL_RED,
   catalogRules,
+  HAND_EVEN_BOUND,
+  HAND_LEANS_BOUND,
   sfbWhere,
 } from './catalog.js';
 import { evaluate, evaluateFocus } from './engine.js';
@@ -164,6 +166,42 @@ describe('rules engine', () => {
     expect(classifyBand(2.0, BANDS.sfb).quality).toBe('bad');
     expect(classifyBand(40.0, BANDS.alt).quality).toBe('good');
     expect(classifyBand(null, BANDS.sfb).quality).toBe('neutral');
+  });
+
+  it('bands hand balance as the Doc counts it: even to 52-48, leans to 55-45, heavy past it', () => {
+    // The Doc's splits are shares per hand; the rule's value is their difference (ch. 13.4). It
+    // prints whole percents and files a split under the one it prints, so 52-48 is even and 53-47
+    // leans: a category runs to the half point above its larger share.
+    const split = (larger: number) => classifyBand(larger - (100 - larger), BANDS.hand);
+    const bound = (share: number) => 2 * (share + 0.5 - 50);
+    expect(BANDS.hand.bounds).toEqual([bound(52), bound(55)]);
+    expect(BANDS.hand.bounds).toEqual([HAND_EVEN_BOUND, HAND_LEANS_BOUND]);
+    expect(split(50)).toMatchObject({ label: 'even', quality: 'good' });
+    expect(split(51.5)).toMatchObject({ label: 'even', quality: 'good' });
+    expect(split(52)).toMatchObject({ label: 'even', quality: 'good' });
+    expect(split(52.4)).toMatchObject({ label: 'even', quality: 'good' });
+    // A bound is inclusive: 52.5-47.5 is 5 points and 55.5-44.5 is 11, both exact.
+    expect(split(52.5)).toMatchObject({ label: 'even', quality: 'good' });
+    expect(split(52.6)).toMatchObject({ label: 'leans', quality: 'ok' });
+    expect(split(53)).toMatchObject({ label: 'leans', quality: 'ok' });
+    expect(split(55)).toMatchObject({ label: 'leans', quality: 'ok' });
+    expect(split(55.4)).toMatchObject({ label: 'leans', quality: 'ok' });
+    expect(split(55.5)).toMatchObject({ label: 'leans', quality: 'ok' });
+    expect(split(55.6)).toMatchObject({ label: 'heavy', quality: 'bad' });
+    expect(split(56)).toMatchObject({ label: 'heavy', quality: 'bad' });
+    // The Doc names three categories and none above heavy, which is open-ended: a split as lopsided
+    // as 100-0 is still heavy, and no band is called very heavy.
+    expect(split(100)).toMatchObject({ label: 'heavy', quality: 'bad' });
+    expect(BANDS.hand.labels).toEqual(['even', 'leans', 'heavy']);
+    // The rule each preset ranks with carries them, and the engine bands its value by them.
+    for (const preset of [layoutsDoc(), cyanophage()]) {
+      expect(preset.rules.find((r) => r.id === 'hand_balance')?.bands, preset.id).toEqual(
+        BANDS.hand,
+      );
+    }
+    const hands = qwerty.results.find((r) => r.id === 'hand_balance')!;
+    expect(hands.band).toEqual(classifyBand(hands.value, BANDS.hand));
+    expect(hands.band.label).toBe('heavy');
   });
 
   it('rates SFB on the nine steps: the Doc’s first five, then its sequence carried on', () => {

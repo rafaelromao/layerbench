@@ -154,19 +154,18 @@ describe('rule set editing', () => {
       rulesReducer(start(), { type: 'setBounds', id: 'sfb', value });
     expect(bandsOf('sfb', start())?.labels).toBeUndefined();
     expect(bandsOf('sfb', setSfb('0.5, 0.6, 0.7'))?.labels).toBeUndefined();
-    // Hand balance has its own: kept while they reach every category.
-    const named = ['even', 'leans', 'heavy', 'very_heavy'];
-    const hand = (value: string) =>
-      bandsOf(
-        'hand_balance',
-        rulesReducer(start(), { type: 'setBounds', id: 'hand_balance', value }),
-      );
-    expect(hand('3, 6, 9')?.labels).toEqual(named);
+    // Hand balance has its own: the Doc's three categories, kept while they reach every category,
+    // so its two bounds moved, or one fewer, keep the list of three names, and a third bound makes
+    // a fourth category, which the list has no name for.
+    const setHand = (value: string) =>
+      rulesReducer(start(), { type: 'setBounds', id: 'hand_balance', value });
+    const hand = ['even', 'leans', 'heavy'];
+    expect(bandsOf('hand_balance', start())?.labels).toEqual(hand);
+    expect(bandsOf('hand_balance', setHand('3, 6'))?.labels).toEqual(hand);
     // Fewer bounds are the first names of the list, as the standard ones would be.
-    expect(hand('3, 6')?.labels).toEqual(named);
-    // A fourth bound would put the last name on a category it was not said of.
-    expect(hand('3, 6, 9, 12')?.labels).toBeUndefined();
-    expect(hand('3, 6, 9, 12')?.bounds).toHaveLength(4);
+    expect(bandsOf('hand_balance', setHand('6'))?.labels).toEqual(hand);
+    expect(bandsOf('hand_balance', setHand('3, 6, 9'))?.labels).toBeUndefined();
+    expect(bandsOf('hand_balance', setHand('3, 6, 9'))?.bounds).toHaveLength(3);
   });
 
   it('reads each global with its own type', () => {
