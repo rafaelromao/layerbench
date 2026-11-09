@@ -45,6 +45,8 @@ const EXPECTED: Record<LayoutCategory, string[]> = {
     'ben-vallack-piano',
     'bird',
     'caksoylar',
+    // Its Alpha 2 and Ç extension type `qu`, `ç`, `ão` and `ões` as macros.
+    'romak',
   ],
   thumb_alpha: [
     'hands-down-neu',
@@ -59,7 +61,6 @@ const EXPECTED: Record<LayoutCategory, string[]> = {
     'nordwind',
   ],
   standard: [
-    'romak',
     'qwerty',
     'dvorak',
     'colemak',
