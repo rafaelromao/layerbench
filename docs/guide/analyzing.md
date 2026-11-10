@@ -146,7 +146,8 @@ bar's press is, and named with the space as the board draws it: `,␣`. With **S
 with the letters on either side, as the space bar does; with it off, the words on either side do
 not pair, unless pairs cross words. Where no space follows the mark, the key's other ways type it,
 such as a hold that types the mark alone. A macro is matched only where its space is the last
-thing it types.
+thing it types, after marks alone: one that types a word and its space, `and `, is not pressed,
+and the word is typed letter by letter.
 
 Type a word into **How is this typed?** and the board plays it: each press lights up in turn, on
 the layer it lands on, and a thumb held for a layer stays marked while it is held. The ring on a

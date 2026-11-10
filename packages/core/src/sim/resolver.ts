@@ -890,7 +890,12 @@ export class Simulator {
 
   // ------------------------------------------------------------ accumulation
 
-  private commit(events: KeyEvent[], isSpace: boolean): void {
+  /**
+   * Presses enter the tables. Those of a space, `isSpace`, are counted with space only and kept out
+   * of the word's runs; `inWord` keeps them among the word's presses, as the press that typed its
+   * last mark with its space.
+   */
+  private commit(events: KeyEvent[], isSpace: boolean, inWord = false): void {
     const c = this.compiled;
     for (const ev of events) {
       if (this.collectEvents) this.events.push(ev);
@@ -938,7 +943,13 @@ export class Simulator {
         }
         this.lastFingerPosWord[f] = member;
       });
-      if (ev.keyKind === 'space' || isSpace) continue;
+      if (ev.keyKind === 'space' || isSpace) {
+        if (inWord) {
+          this.curWordKeys.push(id);
+          this.curWordPresses++;
+        }
+        continue;
+      }
       this.curWordKeys.push(id);
       this.curWordPresses++;
       // same-hand runs
@@ -1098,7 +1109,9 @@ export class Simulator {
           }
           const cp = stream.codePointAt(j) as number;
           const g = String.fromCodePoint(cp);
-          if (g === ' ' && (k === 0 || k < len - 1)) {
+          // A space ends a token only after marks: a word with its space would type letters the
+          // tables could count only with space on.
+          if (g === ' ' && (k === 0 || k < len - 1 || HAS_LETTER.test(s))) {
             bad = true;
             break;
           }
@@ -1270,8 +1283,10 @@ export class Simulator {
    */
   private endWord(): void {
     const events = this.wordEnd.splice(0);
+    // The word's presses first, then this one, the word's last: it typed its mark.
+    this.commitWord();
+    this.commit(events, true, true);
     this.wordBoundary(false);
-    this.commit(events, true);
     this.presses.symbol('with_space');
   }
 
@@ -1376,12 +1391,17 @@ export class Simulator {
   }
 }
 
+/** A letter or a digit: what a token that ends on a space may not have before it. */
+const HAS_LETTER = /[\p{L}\p{N}]/u;
+
 /**
- * A press that typed a space after something else, as a macro typing `, ` does: the space is the
- * word's, so the press ends it. Only a token's last symbol can be a space (`tokenCandidates`).
+ * A press that typed a space after marks, as a macro typing `, ` does: the space is the word's, so
+ * the press ends it. Only a token's last symbol can be a space, and only after marks
+ * (`tokenCandidates`).
  */
 function endsWord(e: KeyEvent): boolean {
-  return e.symbols.length > 1 && e.symbols.endsWith(' ');
+  const s = e.symbols;
+  return s.length > 1 && s.endsWith(' ') && !HAS_LETTER.test(s);
 }
 
 export function simulate(

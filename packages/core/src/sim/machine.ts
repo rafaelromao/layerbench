@@ -955,7 +955,7 @@ function labelFor(
   if (ctx.leaf === 'key_repeat') return '⟳';
   const text = ctx.out.join('');
   // A space is drawn as the space bar draws it, alone or after a macro's text: `,␣`.
-  if (text.length) return text.replaceAll(' ', '␣');
+  if (text.length) return text.includes(' ') ? text.replaceAll(' ', '␣') : text;
   // A layer key is named as the board draws it: Alpha 2 is A2.
   const layerName = (id: string) =>
     short(compiled.layers[compiled.layerIndex.get(id) ?? 0]?.name ?? id);

@@ -72,6 +72,7 @@ function run(layout: Layout, text: string, opts: SimulateOptions = fold) {
     log,
     labels,
     words: [...r.tables.words.keys()],
+    traces: r.tables.words,
   };
 }
 
@@ -129,6 +130,55 @@ describe('a macro that types a mark and a space', () => {
     expect(r.keys).toEqual(['LHR', 'RHR', 'RTR', 'RHI']);
     expect(r.labels('with_space', 'bigram')).toContain('n ,␣');
     expect(r.labels('no_space', 'bigram')).not.toContain('n ,␣');
+  });
+
+  it('is the last press of its word in the words table, as the comma key is', () => {
+    const r = run(withMacro, 'ab, cd');
+    const apart = run(withComma, 'ab, cd');
+    const word = (x: typeof r) => {
+      const t = x.traces.get('ab,');
+      return t && { presses: t.presses, labels: t.keys.map((id) => x.log.presses[id].label) };
+    };
+    expect(word(r)).toEqual({ presses: 3, labels: ['a', 'b', ',␣'] });
+    expect(word(apart)).toEqual({ presses: 3, labels: ['a', 'b', ','] });
+  });
+
+  it('leaves a word with its space alone: its letters are typed one by one', () => {
+    const words = board({ R0: macro(kp('a'), kp('n'), kp('d'), kp(' ')), RTI: kp(',') });
+    const r = run(words, 'b and c');
+    expect(r.out).toBe('b and c');
+    expect(r.stats.macro_presses).toBe(0);
+    expect(r.keys).toEqual(['LHM', 'L0', 'LHR', 'RHR', 'RHI', 'L0', 'LHI']);
+  });
+
+  it('is pressed on a layer held for it, and on a one-shot layer', () => {
+    const layered = (hold: Binding): Layout => {
+      const l = board({ R0: hold });
+      l.layers.push({ id: 'marks', bindings: { RTI: commaSpace } });
+      return l;
+    };
+    const held = run(layered({ kind: 'mo', layer: 'marks' }), 'ab, cd');
+    expect(held.out).toBe('ab, cd');
+    expect(held.keys).toEqual(['LHR', 'LHM', 'R0', 'RTI', 'LHI', 'RHI']);
+    expect(held.stats.words).toBe(2);
+    expect(held.labels('with_space', 'unigram')).toContain(',␣');
+    const once = run(layered({ kind: 'sl', layer: 'marks' }), 'ab, cd');
+    expect(once.keys).toEqual(['LHR', 'LHM', 'R0', 'RTI', 'LHI', 'RHI']);
+    // The one-shot is the word's, in both universes; the macro, Space on only.
+    expect(once.log.ngrams('no_space', 'unigram').total).toBe(5);
+    expect(once.log.ngrams('with_space', 'unigram').total).toBe(6);
+    expect(once.stats.words).toBe(2);
+  });
+
+  it('is pressed as a combo', () => {
+    const combo = board();
+    combo.combos = [{ id: 'cs', keys: ['RHI', 'RHM'], binding: commaSpace }];
+    const r = run(combo, 'ab, cd');
+    expect(r.out).toBe('ab, cd');
+    expect(r.stats.chords).toBe(1);
+    expect(r.stats.words).toBe(2);
+    expect(r.labels('with_space', 'unigram')).toContain(',␣');
+    expect(r.labels('no_space', 'unigram')).not.toContain(',␣');
   });
 
   it('types the same in the model case', () => {
