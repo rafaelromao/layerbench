@@ -1148,7 +1148,6 @@ describe('Languages', () => {
       const box = languageBox(new RegExp(`^${label(tag)} \\(${declaring(tag)}\\)$`));
       expect(box, tag).toBeChecked();
     }
-    expect(languageBox('English (' + BUNDLED_LAYOUTS.length + ')')).toBeChecked();
     expect(languageBox(/^All$/)).toBeChecked();
     expect(languageBox(/^None$/)).not.toBeChecked();
     // Everything is listed, and nothing is said to be left out.
@@ -1226,6 +1225,23 @@ describe('Languages', () => {
     await user.click(languageBox(new RegExp(`^${label('en')} `)));
     expect(listed('Plain')).toBeNull();
     expect(listed('Magic Romak')).toBeInTheDocument();
+  });
+
+  it('reads a layout for a language it has no box for as one for English', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    await savePlain(storage, 'plain', { languages: ['xx'] });
+    renderRoute(LIBRARY, { storage });
+    await screen.findByRole('heading', { name: 'Plain', level: 3 });
+    await openRanking();
+    await waitFor(() =>
+      expect(languageBox(`${label('en')} (${declaring('en') + 1})`)).toBeInTheDocument(),
+    );
+    await user.click(languageBox(/^None$/));
+    await user.click(languageBox(new RegExp(`^${label('pt')} `)));
+    expect(listed('Plain')).toBeNull();
+    await user.click(languageBox(new RegExp(`^${label('en')} `)));
+    expect(listed('Plain')).toBeInTheDocument();
   });
 
   it('remembers the choice in this browser, across a reload, and not in the link', async () => {

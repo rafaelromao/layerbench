@@ -119,7 +119,7 @@ stays listed while one of the languages it is for is ticked, so Magic Romak, for
 Portuguese, is listed with Portuguese alone. It goes by the languages a layout is for, not by those
 it can type. Each box says how many layouts are for its language, a layout for two counted in both.
 A layout that names no language, one saved before layouts had to say, is for English, here and on
-its card; a layout made with **New layout** or with **Import** starts as one for English too. All
+its card, and so, for this filter, is one for a language the app has no text for; a layout made with **New layout** or with **Import** starts as one for English too. All
 are ticked at first; **All** ticks them again and **None** clears them, and with none ticked the
 Library lists nothing and says so. The choice is kept in this browser, not in the link, as the
 categories and boards are.

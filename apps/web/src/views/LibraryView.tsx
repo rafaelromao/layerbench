@@ -292,12 +292,17 @@ interface Listed {
 /** The languages the filter has a box for, in the order of their profiles. */
 const LANGUAGE_TAGS = Object.keys(LANGUAGE_PROFILES);
 
-/** The languages a layout declares, by their profiles' tags (`pt-BR` is `pt`), English when none. */
+/**
+ * The languages a layout declares that the filter has a box for, by their profiles' tags (`pt-BR` is
+ * `pt`), English when it declares none of them: a layout for a language the app has no profile for
+ * is counted and filtered as one for English, rather than listed whatever is ticked.
+ */
 function filterLanguages(layout: Layout | undefined): string[] | undefined {
   if (!layout) return undefined;
-  return [
-    ...new Set(declaredLanguages(layout.languages).map((tag) => languageProfile(tag)?.tag ?? tag)),
-  ];
+  const known = declaredLanguages(layout.languages)
+    .map((tag) => languageProfile(tag)?.tag)
+    .filter((tag): tag is string => tag !== undefined);
+  return declaredLanguages([...new Set(known)]);
 }
 
 function layerCount(n: number): string {
