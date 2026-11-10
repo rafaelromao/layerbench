@@ -337,7 +337,7 @@ with `ñ` `ç` `ä` `ö` `ü`.
 | Layout | Its author's layers | Reached by | Cannot type |
 |---|---|---|---|
 | Romak | Alpha 2, Ç extension, Numbers, Symbols | the right inner thumb, one-shot; `ç` on Alpha 2; space held, the Alpha 2 thumb held | £ § « » ı ¿ ¡ ß œ æ ñ ä ö ü |
-| Magic Romak | Numbers, Symbols | space held, the Alpha 2 thumb held | £ § « » ı ß œ æ |
+| Magic Romak | Numbers, Symbols | space held, the Alpha 2 thumb held | £ § « » ı ¿ ¡ ß œ æ |
 | Magic Sturdy | Symbols, Numbers | `t` or `a` held, `n` held | € £ § ª º ° `?` « » ı ¿ ¡ ß œ æ ñ ç ä ö ü |
 | Enthium | Numbers, Symbols | L1 (Tab in its keymap) held, `r` held | `&` `(` `)` € £ § ª º ° « » ı ¿ ¡ ß œ æ ñ ç ä ö ü |
 | Hands Down Gold, Promethium, Vibranium | Symbols, Numbers, Numpad | space held; L1 (Backspace in its keymap) or `,` (`f` on Promethium) held; `b` (`k`) held | `\` ª º « » ı ¿ ¡ ß |
@@ -380,7 +380,8 @@ for the next key, with `ão` and `ões` in one press each, and `ã` and `õ`. Th
 space, Alpha 2 and a one-shot Shift. The write-up lists one combo, `á` and `é` together on Alpha 2,
 which types `à`. Holding space reaches Numbers and holding the Alpha 2 thumb Symbols, each still
 typing when tapped: the two layers are Magic Romak's key for key, with their combos `º` (`ª` when
-held) and `°` on Numbers and `€` on Symbols, and the ten keys Romak's board adds left empty on them.
+held) and `°` on Numbers and `€` on Symbols, and the ten keys Romak's board adds left unset on them,
+so Alpha 1 shows through.
 Romak has no dead key, so it cannot type `ñ` `ä` `ö` `ü`.
 
 Magic Romak is its author's keymap, and has no Extras and no Accents, as the keymap has none. Its

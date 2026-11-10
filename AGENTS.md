@@ -49,8 +49,9 @@ rule here moves a key, and keep `templates.test.ts` asserting each rule.
     one combo, `áé = à`, which Romak has on Alpha 2 (RHM and RHR), and draws no dead key, so it types
     Portuguese but for `ü` (`LACKS`). Numbers and Symbols are Magic Romak's, read from the same
     keymap file key for key, held on L0 (space) and R0 (Alpha 2) as there, each thumb keeping its
-    tap; the ten keys Romak's board adds stay empty on them. Their typing combos come with them
-    (`º`, `ª` held, and `°` on Numbers, `€` on Symbols), not the command ones. Its macros make it
+    tap; the ten keys Romak's board adds are left unset on them, so Alpha 1 shows through. The
+    typing combos on Numbers or Symbols alone come with them (`º`, `ª` held, and `°` on Numbers,
+    `€` on Symbols), not the command ones nor `;`, which is Alpha 1's too. Its macros make it
     Special.
     A test names each key (`Romak 34` in `layouts.test.ts`).
   - Magic Romak models its author's keymap (github.com/rafaelromao/keyboards), which has neither

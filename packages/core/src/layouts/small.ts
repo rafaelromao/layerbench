@@ -723,7 +723,7 @@ export const SMALL_DEFS: ClassicDef[] = [
     // write-up lists `áé = à` among its Alpha 2 combos: `à` is typed by `á` and `é` together. Its
     // Numbers and Symbols are Magic Romak's (the owner's decision, 2026-11-10), key for key from the
     // keymap file, held on space and the Alpha 2 thumb as there, with their combos; the ten keys
-    // Romak's board adds stay empty on them.
+    // Romak's board adds are left unset on them.
     rows: 'q b m g k x l o u ;\nd n s t w z r a e i\ny f c p v j h , . /',
     thumbs: '⟲ space alpha2 shift',
     special: {

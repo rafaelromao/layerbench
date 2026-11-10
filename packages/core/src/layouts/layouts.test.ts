@@ -167,7 +167,7 @@ describe('Romak 34', () => {
     });
   });
 
-  it("draws Magic Romak's Numbers key for key, the keys Romak's board adds left empty", () => {
+  it("draws Magic Romak's Numbers key for key, the keys Romak's board adds left unset", () => {
     expect(drawn('num')).toEqual([
       '· \\ { } · · 7 8 9 ·',
       ', & ( ) · · 4 5 6 .',
@@ -176,7 +176,7 @@ describe('Romak 34', () => {
     ]);
   });
 
-  it("draws Magic Romak's Symbols key for key, the keys Romak's board adds left empty", () => {
+  it("draws Magic Romak's Symbols key for key, the keys Romak's board adds left unset", () => {
     expect(drawn('sym')).toEqual([
       "· ~ # ' · · % = : ·",
       '@ ^ $ " · · ? - + _',
@@ -196,6 +196,20 @@ describe('Romak 34', () => {
       ],
     );
     expect(romak.conditionalLayers ?? []).toEqual([]);
+  });
+
+  it('types º, ª, ° and € by the combos of Numbers and Symbols, and lets Alpha 1 show through the keys those layers leave unset', () => {
+    expect(keys('º')).toEqual(['L0', 'combo:ordinal']);
+    // `ª` is the same chord held.
+    expect(keys('ª')).toEqual(['L0', 'combo:ordinal']);
+    expect(explain(compiled, 'ª', OPTS).steps.find((s) => s.key === 'combo:ordinal')?.symbols).toBe(
+      'ª',
+    );
+    expect(keys('°')).toEqual(['L0', 'combo:degree']);
+    expect(keys('€')).toEqual(['R0', 'combo:euro']);
+    for (const id of ['num', 'sym']) {
+      expect(romak.layers.find((l) => l.id === id)?.bindings['*']).toEqual({ kind: 'trans' });
+    }
   });
 
   it('is Special, by the macros of its second alpha layer', () => {
