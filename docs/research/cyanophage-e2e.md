@@ -57,7 +57,10 @@ layouts and he would type a plain letter, so each is pasted as `#`, which his pa
   not; a character it lacks is skipped, costs nothing and ends the pair it was in. The cyanophage-like
   rules now count the same (`untyped_in_keystrokes`), in the pair rules' percentages and in Effort's
   divisor; LayerBench skips such a character and ends the pair, as he does. On the sample that is
-  303 `?` and `!` and about 70 accented letters.
+  303 `?` and `!` and about 70 accented letters. One difference stays: LayerBench ends the word at
+  such a character, so one inside a word (`caf#s`) makes two words and two of the spaces the pair
+  rules add per word, where he counts one. That is a few dozen keystrokes in 980,000, far below the
+  second decimal; Effort divides by the text's own spaces and is not touched by it.
 - **Scissors are keys in adjacent columns.** His scissors are two keys of one hand, in adjacent
   columns, two rows apart, typed by two fingers. The rule set counted adjacent fingers, which takes
   an index finger's stretch column with the middle finger's, two columns apart (Qwerty's `ct`):

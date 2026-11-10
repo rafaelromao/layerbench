@@ -234,7 +234,10 @@ export function randomDesign(
 export interface Score {
   /** Effort, as the Library shows it. */
   effort: number;
-  /** Same-finger bigrams, percent of characters plus words, as the cyanophage-like rules count. */
+  /**
+   * Same-finger bigrams, percent of characters plus words (plus the untyped characters, where the
+   * rules count them), as the cyanophage-like rules count.
+   */
   sfb: number;
   /** One-shot taps per 100 symbols. */
   taps: number;

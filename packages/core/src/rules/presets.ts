@@ -20,7 +20,10 @@ export function layoutsDoc(): RuleSet {
   };
 }
 
-/** Column-pair lateral stretches, adjacency scissors, bigrams normalized over keystrokes. */
+/**
+ * Column-pair lateral stretches, adjacent-column scissors, bigrams normalized over keystrokes, the
+ * characters the layout cannot type among them.
+ */
 export function cyanophage(): RuleSet {
   const rules = catalogRules()
     .map((r): Rule => {

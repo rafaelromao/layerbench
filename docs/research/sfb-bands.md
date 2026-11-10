@@ -241,7 +241,8 @@ position.
 ## Where the bundled layouts read
 
 The 35 bundled layouts on the Effort ruler, Layouts Doc rules, Library settings (`analyze`; cyanophage
-gives Effort no ruler, so the cyanophage-like set rates the same numbers on the same ruler):
+gives Effort no ruler, so the cyanophage-like set rates its Effort on the same ruler; its numbers are
+a little lower where a layout cannot type a character of the text, which it counts as a keystroke):
 
 | Step | Layouts |
 |---|---|

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -17,6 +18,7 @@ import { cyanophage } from './presets.js';
 
 interface Fixture {
   corpus: string;
+  text: { sha256: string };
   layouts: { name: string; layout: string; shown: Record<string, string> }[];
 }
 
@@ -34,6 +36,14 @@ describe('the cyanophage-like rules read what his playground reads', async () =>
     { ...DEFAULT_SETTINGS, corpus: fixture.corpus, sample: 1_000_000, rules: cyanophage() },
     text,
   );
+
+  it('his numbers were read on the text the engine types', () => {
+    // The e2e's text (`apps/web/e2e/cyanophage/text.ts`): this stream, with the letters his popup
+    // turns into plain ones pasted as `#`. A different hash means LayerBench's text changed: read
+    // his page again (docs/research/cyanophage-e2e.md) before the numbers can be compared.
+    const pasted = stream.replace(/[äåáàâöóíüéèçæßğ]/g, '#');
+    expect(createHash('sha256').update(pasted).digest('hex')).toBe(fixture.text.sha256);
+  });
 
   for (const { name, layout, shown } of fixture.layouts) {
     it(name, { timeout: 120_000 }, () => {

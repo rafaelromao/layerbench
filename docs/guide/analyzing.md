@@ -18,8 +18,10 @@ These are the two numbers every layout is shown and ranked by.
 **Effort** is [cyanophage's](https://cyanophage.github.io/playground.html) measure. Each key
 position has a cost, from 0 under the index, middle and ring fingers on the home row to 8 in the
 inner bottom corners. Effort is the average cost of a keystroke, multiplied by 577 as cyanophage's
-playground does, so a layout scores the same here as there on the same text, as long as its thumbs
-type nothing but space. One with a letter, a Repeat key or a layer on a thumb differs a little. A thumb press costs 1 here, where cyanophage charges nothing: a
+playground does, so under the cyanophage-like rules a layout scores the same here as there on the
+same text, as long as its thumbs type nothing but space. One with a letter, a Repeat key or a layer
+on a thumb differs a little. The Layouts Doc rules leave the characters a layout cannot type out of
+the keystrokes, where he counts them, so they read a little higher on a layout that lacks some. A thumb press costs 1 here, where cyanophage charges nothing: a
 one-shot tap, a thumb held for a layer and a letter on a thumb are presses too. A space counts as
 a keystroke that costs nothing.
 

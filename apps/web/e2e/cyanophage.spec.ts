@@ -87,8 +87,10 @@ async function analyze(page: Page, layout: string): Promise<Shown> {
   await page.goto(`/library?corpus=${CORPUS}&rules=cyanophage`);
   await page.getByRole('button', { name: 'Import', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Import a layout' });
-  await dialog.getByLabel('Layout to import', { exact: true }).fill(layout);
+  // The board first: the preview is built from the text a moment after it is typed, and the button
+  // opens the last preview built, which must already be on this board.
   await dialog.getByLabel('Physical layout', { exact: true }).selectOption(BOARD);
+  await dialog.getByLabel('Layout to import', { exact: true }).fill(layout);
   await dialog.getByRole('button', { name: 'Open in analyzer', exact: true }).click();
   await page.waitForURL(/\/analyze/);
   // The Library ranks on a smaller sample; the analysis types the whole text.
