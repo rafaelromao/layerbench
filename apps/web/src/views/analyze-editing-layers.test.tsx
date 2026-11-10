@@ -12,6 +12,7 @@ import {
   openMagicRomak,
   recording,
 } from '../test/analyze-editing.js';
+import { keyNamed } from '../test/keys.js';
 import { layerNameEl, showLayer, shownLayer } from '../test/layers.js';
 import { openSettings, renderRoute } from '../test/render.js';
 import { setViewportWidth } from '../test/setup.js';
@@ -32,7 +33,7 @@ describe('Edit', () => {
 
     key('Key LHM: d').focus();
     await user.keyboard('ç{Enter}');
-    await screen.findByRole('button', { name: 'Key LHM: ç' });
+    await screen.findByRole('button', { name: keyNamed('Key LHM: ç') });
 
     await waitFor(() => expect(within(corpus).getAllByRole('option').length).toBeGreaterThan(1));
     await user.selectOptions(corpus, 'en-general');
@@ -72,7 +73,7 @@ describe('Edit', () => {
     await user.clear(symbol);
     await user.type(symbol, 'ç{Enter}');
 
-    expect(await screen.findByRole('button', { name: 'Key LHC: ç' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: keyNamed('Key LHC: ç') })).toBeInTheDocument();
     expect(screen.getByText('unsaved')).toBeInTheDocument();
   });
 
@@ -312,7 +313,7 @@ describe('Edit', () => {
     expect(input).toHaveValue('ç');
 
     await user.keyboard('{Enter}');
-    expect(await screen.findByRole('button', { name: 'Key LHM: ç' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: keyNamed('Key LHM: ç') })).toBeInTheDocument();
     expect(screen.getByText('unsaved')).toBeInTheDocument();
     // Focus goes back to the key, so the next arrow press or keystroke lands where it should.
     expect(document.activeElement).toBe(key('Key LHM: ç'));
@@ -333,7 +334,9 @@ describe('Edit', () => {
     expect(screen.getByRole('group', { name: 'Edit LHC' }).textContent).toContain('· / Base');
 
     await user.keyboard('{Enter}');
-    expect(await screen.findByRole('button', { name: 'Key LHC: hold Base' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: keyNamed('Key LHC: hold Base') }),
+    ).toBeInTheDocument();
   });
 
   it('says what is wrong instead of applying it', async () => {
@@ -382,7 +385,9 @@ describe('Edit', () => {
     expect(document.activeElement).toBe(key('Key LHC: g'));
 
     await user.keyboard('{Delete}');
-    expect(await screen.findByRole('button', { name: 'Key LHC: empty' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: keyNamed('Key LHC: empty') }),
+    ).toBeInTheDocument();
     // Said once it has landed, since the key's new legend is not announced on its own.
     expect(screen.getByText('LHC does nothing')).toBeInTheDocument();
 
@@ -438,7 +443,7 @@ describe('Edit', () => {
 
     // A kind change keeps what carries over: the adaptive key's default letter.
     await user.click(within(await inspector('LBI')).getByRole('button', { name: 'Symbol' }));
-    expect(await screen.findByRole('button', { name: 'Key LBI: v' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: keyNamed('Key LBI: v') })).toBeInTheDocument();
   });
 
   it("puts a copy of one of the layout's adaptive keys on another key", async () => {
@@ -446,13 +451,13 @@ describe('Edit', () => {
     await openMagicRomak();
 
     // Its home block mod holds Alt there.
-    await user.click(await screen.findByRole('button', { name: 'Key LHM: s, hold ⌥' }));
+    await user.click(await screen.findByRole('button', { name: keyNamed('Key LHM: s, hold ⌥') }));
     const editor = await inspector('LHM');
     // Adaptive keys come first among the keys the layout already has, in sight without "All".
     await user.click(within(editor).getByRole('button', { name: 'Use h ✦' }));
 
     // The adaptive key types its default, h, until a vowel comes before it.
-    expect(await screen.findByRole('button', { name: 'Key LHM: h' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: keyNamed('Key LHM: h') })).toBeInTheDocument();
     const copy = await inspector('LHM');
     expect(within(copy).getByRole('button', { name: 'Adaptive' })).toHaveAttribute(
       'aria-pressed',
@@ -468,7 +473,7 @@ describe('Edit', () => {
     await user.click(key('Key LHM: d'));
     const editor = await inspector('LHM');
     await user.click(within(editor).getByRole('button', { name: 'Alt repeat' }));
-    expect(await screen.findByRole('button', { name: 'Key LHM: ⟳' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: keyNamed('Key LHM: ⟳') })).toBeInTheDocument();
 
     await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Add branch' }));
     await user.type(within(await inspector('LHM')).getByLabelText('Branch 1 after'), 'a{Enter}');
@@ -484,7 +489,7 @@ describe('Edit', () => {
 
     await user.click(key('Key LHM: d'));
     await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Alt repeat' }));
-    await screen.findByRole('button', { name: 'Key LHM: ⟳' });
+    await screen.findByRole('button', { name: keyNamed('Key LHM: ⟳') });
 
     const field = async (label: string, text: string) =>
       user.type(within(await inspector('LHM')).getByLabelText(label), `${text}{Enter}`);

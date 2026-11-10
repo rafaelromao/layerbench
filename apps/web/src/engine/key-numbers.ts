@@ -23,6 +23,34 @@ export interface KeyNumbers {
   rows: KeyNumberRow[];
 }
 
+/** Every press counted, on every layer: what a key's share of the presses is a share of. */
+function totalPresses(dto: Pick<ReportDTO, 'usageAll'>): number {
+  return dto.usageAll.reduce((a, b) => a + b, 0);
+}
+
+/**
+ * Each position's share of all the presses of the text on one layer, 0–1: its presses there over
+ * every press counted on every layer, the share a key's numbers open with. A press counts on the
+ * layer whose key was pressed, so a thumb tapped for a layer is counted where it is tapped, and the
+ * shares of every position of every layer, combos included, add up to 1. Positions with no
+ * presses are left out. `undefined` for a layer the report does not have, as one just added: a
+ * share there would be another layer's.
+ */
+export function pressShares(
+  dto: Pick<ReportDTO, 'usageByLayer' | 'usageAll'>,
+  layer: number,
+): Record<number, number> | undefined {
+  const onLayer = dto.usageByLayer[layer];
+  if (!onLayer) return undefined;
+  const total = totalPresses(dto);
+  const out: Record<number, number> = {};
+  if (!(total > 0)) return out;
+  onLayer.forEach((presses, pos) => {
+    if (presses > 0) out[pos] = presses / total;
+  });
+  return out;
+}
+
 /**
  * Read off the report on the main thread, so the numbers follow whatever report is shown, an
  * estimate after a swap included.
@@ -42,7 +70,7 @@ export function keyNumbers(dto: ReportDTO, key: number, layer: number): KeyNumbe
   }
   return {
     presses: onLayer[key] ?? 0,
-    total: dto.usageAll.reduce((a, b) => a + b, 0),
+    total: totalPresses(dto),
     chordPresses,
     layerTaps: dto.layerTapsByLayer[layer]?.[key] ?? 0,
     rows,
