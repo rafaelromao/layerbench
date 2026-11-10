@@ -1,9 +1,11 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { normalizeText } from '../corpus/normalize.js';
 import { eighteenKeys, HOME_ROW_MODS } from '../fixtures/boards.js';
 import { FIXTURE_MIXED } from '../fixtures/index.js';
 import { getGeometryPreset } from '../geometry/presets.js';
 import { compileLayout } from '../layout/compile.js';
+import { parseLayout } from '../layout/schema.js';
 import { importTextLayout } from '../layout/text.js';
 import type { Binding, Layout, Mod } from '../layout/types.js';
 import { withoutFeatures } from '../layout/without.js';
@@ -1190,6 +1192,52 @@ describe('a Repeat on a one-shot layer', () => {
     expect(trace(taps, 'zz').keys.slice(1)).toEqual(['LBM', trace(taps, 'zz').keys[2], 'LBM']);
     expect(repeats(trace(taps, 'zz'))).toBe(0);
     expect(repeats(trace(gust(), 'zz', { repeatPolicy: 'tap_twice' }))).toBe(0);
+  });
+
+  /**
+   * The owner's Magic Gust as they saved it on 2026-11-10 (`packages/core/fixtures/magic-gust.json`,
+   * its author left out): a real Repeat on Alpha 2's RBR and Alpha 3's RBM, each reached by the other
+   * key's one-shot, and doubled letters by the repeat key in its repeat policy.
+   */
+  const magicGust = parseLayout(
+    JSON.parse(readFileSync(new URL('../../fixtures/magic-gust.json', import.meta.url), 'utf8')),
+  );
+  const firstRepeat = (declared: boolean) => {
+    const layout = declared
+      ? {
+          ...magicGust,
+          typingRules: {
+            doubledLetters: [{ way: 'repeatKey' as const }, { way: 'tapTwice' as const }],
+          },
+        }
+      : magicGust;
+    return (word: string) => trace(layout, word);
+  };
+
+  it("considers Magic Gust's Repeats, two presses each, against tapping the letter again", () => {
+    const typed = firstRepeat(false);
+    // `z` on Alpha 2: its one-shot, then the Repeat on the same layer, as the second `z`.
+    const pizza = typed('pizza');
+    expect(pizza).toMatchObject({ out: 'pizza', presses: 7 });
+    expect(pizza.keys.slice(4, 6)).toEqual(['RBM', 'RBR']);
+    expect(repeats(pizza)).toBe(1);
+    // A letter on Alpha 1 is one press again, against two: it is tapped again.
+    const hello = typed('hello');
+    expect(hello).toMatchObject({ out: 'hello', presses: 5 });
+    expect(repeats(hello)).toBe(0);
+  });
+
+  it("takes Magic Gust's Repeat on either one-shot layer where the repeat key is declared first", () => {
+    const typed = firstRepeat(true);
+    // `l` is on LTI: Alpha 2's Repeat, through RBM.
+    expect(typed('hello')).toMatchObject({
+      out: 'hello',
+      keys: ['RTR', 'R0', 'LTI', 'RBM', 'RBR', 'RHR'],
+      presses: 6,
+    });
+    // After `a` on RHM, Alpha 3's Repeat, through RBR: RBM there would be the middle finger twice.
+    expect(typed('all')).toMatchObject({ out: 'all', keys: ['RHM', 'LTI', 'RBR', 'RBM'] });
+    expect(repeats(typed('all'))).toBe(1);
   });
 });
 
