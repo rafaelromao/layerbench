@@ -1100,6 +1100,35 @@ describe('the Shift a capital takes: the cheapest press that gives it, part of t
     expect(trace(two, 'R', model).keys).toEqual(['R1', 'L0']);
   });
 
+  it('chooses each Shift of a way on its own: a shifted accent, then its capital', () => {
+    // Shift held on both index fingers; the accent on the left index, `¨` with Shift; `e` on the
+    // right middle finger.
+    const accent = withMods({
+      format: 'layerbench/layout@1',
+      name: 'A shifted accent',
+      hostLocale: 'symbols',
+      geometry: { preset: '3x5+2' },
+      keys: { space: 'L0' },
+      layers: [
+        {
+          id: 'base',
+          bindings: {
+            L0: kp(' '),
+            LTI: { kind: 'dead_key', diacritic: '´', shifted: '¨' },
+            LHI: kp('t'),
+            RHI: kp('n'),
+            RTM: kp('e'),
+          },
+        },
+      ],
+    });
+    const t = trace(accent, 'Ë', model);
+    // The right index holds Shift for the accent and again for the letter: the left one, after the
+    // accent on the left index, would be the same finger twice.
+    expect(t).toMatchObject({ out: 'Ë', keys: ['RHI', 'LTI', 'RHI', 'RTM'] });
+    expect(held(t)).toEqual(['RHI', 'RHI']);
+  });
+
   it('chooses no Shift where the text is folded', () => {
     expect(trace(twoThumbs(), 'R').keys).toEqual(['L0']);
   });

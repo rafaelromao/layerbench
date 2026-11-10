@@ -88,11 +88,12 @@ rule here moves a key, and keep `templates.test.ts` asserting each rule.
   types nothing, and editing, both left out. Magic Sturdy, the three Hands Down with their authors'
   layers and Ben Vallack Piano hold their authors' too (`STURDY_MODS`, `HD_MODS`, `PIANO_MODS`), as
   their keymaps hold their layers on the home row. A document carries its own in its JSON. In the
-  Shift case mode Shift is part of the word: a capital takes it from the cheapest press that gives
-  it, any key or combo, held or one-shot, ranked as any way of typing it (`cheapest` in
-  `resolver.ts`, which tries each one `holdMod` finds, by `shiftPick`, where `shiftKeysOffered` counts
-  more than one). Never a key it presses, the one that reaches its layer included, nor a thumb of a
-  hand whose thumb presses one, nor a key that holds other modifiers with it; on a tie the shift key,
+  Shift case mode Shift is part of the word: a capital, or any character typed with Shift, takes it
+  from the cheapest press that gives it, any key or combo, held or one-shot, ranked as any way of
+  typing it (`cheapest` in `resolver.ts`, which tries the presses `holdMod` finds, each time the way
+  asks for Shift on its own, by `shiftPicks`, where `shiftKeysOffered` counts more than one). Never
+  a key it presses, the one that reaches its layer included, nor held on a thumb of a hand whose
+  thumb presses one, nor a key that holds other modifiers with it; on a tie the shift key,
   then a thumb, then the other hand's, then the typing hand's. A declared `typingRules.shift` takes
   the first way some key gives, and the cheapest key of that way. With no key that gives Shift, it
   types no capital there. Its effort is cyanophage's grid, thumbs free, never the rule set's.

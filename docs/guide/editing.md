@@ -313,10 +313,10 @@ keymaps hold their layers on the home row: Magic Sturdy, the three Hands Down wi
 layers, and Ben Vallack Piano, its modifiers on the top row. Both hands hold the left modifiers, as
 the analysis types a capital with the left Shift and the right Alt is AltGr. Tapped, each key types
 what it typed. They are on the base layer only. In the Shift case mode, the Shift press is part of
-the word: a capital takes it from the cheapest key that gives it, the shift key, a Shift thumb or a
-home row Shift, held or tapped as a one-shot, weighed as the ways to type a character are (see
-**Typing paths**). It is never a key the capital presses, nor a thumb of a hand whose thumb presses
-one, as a thumb holding Shift presses nothing else. Where two cost the same, the shift key comes
+the word: a capital, or any character typed with Shift, takes it from the cheapest key that gives
+it, the shift key, a Shift thumb or a home row Shift, held or tapped as a one-shot, weighed as the
+ways to type a character are (see **Typing paths**). It is never a key the capital presses, nor
+held on a thumb of a hand whose thumb presses one, as a thumb holding Shift presses nothing else. Where two cost the same, the shift key comes
 first, then a thumb, then the other hand's. With no key that gives Shift, it types no capital.
 
 #### Layouts with their authors' layers

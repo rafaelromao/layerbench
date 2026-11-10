@@ -60,6 +60,9 @@ const WORD_LIMIT = 128;
 /** How many times a way of typing a symbol is tried, each time with other modifiers held. */
 const MOD_TRIES = 8;
 
+/** How many choices of the presses that give Shift a way of typing a symbol is tried with. */
+const SHIFT_TRIES = 16;
+
 /** Layer taps another key can make instead: nothing they do depends on which key it was. */
 const STAND_IN_KINDS: ReadonlySet<BindingKind> = new Set(['sl', 'tog', 'to']);
 
@@ -166,10 +169,14 @@ export class Simulator {
   private readonly shiftCombos: CompiledLayout['combos'];
   /** Every key, in order: where `holdMod` looks for any other modifier. */
   private readonly allKeys: number[];
-  /** For the way being tried, which of the presses that give Shift it takes, in `holdMod`'s order. */
-  private shiftPick = 0;
-  /** How many presses could give Shift where the way being tried asked for it. */
-  private shiftsFound = 0;
+  /**
+   * For the way being tried, each time it asks for Shift (a shifted accent, then its letter, say):
+   * which of the presses that give it the way takes, in `holdMod`'s order, and how many there were.
+   * `shiftAt` counts the times so far in the try.
+   */
+  private readonly shiftPicks: number[] = [];
+  private readonly shiftsFound: number[] = [];
+  private shiftAt = 0;
   private readonly fold: boolean;
   private readonly repeatPolicy: 'repeat_key' | 'tap_twice';
   /**
@@ -672,8 +679,9 @@ export class Simulator {
     const isShift = mod === 'LSHIFT' || mod === 'RSHIFT';
     const sk = this.compiled.shiftKey;
     // The presses that give the modifier, in the order below. Where Shift is a choice of the word,
-    // every one is found, and the way takes the one `shiftPick` says; otherwise the first.
-    const pick = isShift ? this.shiftPick : 0;
+    // every one is found, and the way takes the one `shiftPicks` says; otherwise the first.
+    const at = isShift ? this.shiftAt++ : -1;
+    const pick = isShift ? (this.shiftPicks[at] ?? 0) : 0;
     const want = isShift && this.shiftChoice ? Infinity : pick + 1;
     const found: ModPress[] = [];
     const add = (press: ModPress) => {
@@ -753,7 +761,7 @@ export class Simulator {
       if (isShift && sk) shiftKeyAs(sk.kind);
       search(true, true);
     }
-    if (isShift) this.shiftsFound = Math.max(this.shiftsFound, found.length);
+    if (isShift) this.shiftsFound[at] = Math.max(this.shiftsFound[at] ?? 0, found.length);
     const press = found[pick];
     if (press === undefined) return false;
     if (press.type === 'chord') events.push(...m.perform({ type: 'chord', combo: press.combo }));
@@ -840,6 +848,7 @@ export class Simulator {
 
   private tryProducerOnce(p: Producer, token: string): KeyEvent[] | null {
     const m = this.machine;
+    this.shiftAt = 0;
     const snap = m.state.snapshot();
     const holdsBefore = [...this.plannerHolds];
     const events: KeyEvent[] = [];
@@ -1210,6 +1219,24 @@ export class Simulator {
     return null;
   }
 
+  /**
+   * The next choice of the presses that give Shift: the last time the way asked for Shift that has
+   * another press left takes it, the times before it what they took, and those after it start over.
+   * False when none has one left.
+   */
+  private nextShiftPicks(): boolean {
+    const picks = this.shiftPicks;
+    const found = this.shiftsFound;
+    let k = found.length - 1;
+    while (k >= 0 && (picks[k] ?? 0) + 1 >= found[k]) k--;
+    if (k < 0) return false;
+    for (let j = 0; j < k; j++) picks[j] ??= 0;
+    picks[k] = (picks[k] ?? 0) + 1;
+    picks.length = k + 1;
+    found.length = k + 1;
+    return true;
+  }
+
   /** Whether the key this way takes Shift from is a choice of the word (`shiftChoice`). */
   private asksShift(p: Producer): boolean {
     if (!this.shiftChoice) return false;
@@ -1250,9 +1277,9 @@ export class Simulator {
     } | null = null;
     for (const p of cands) {
       const shifts = this.asksShift(p);
-      this.shiftsFound = 0;
-      for (let pick = 0; ; pick++) {
-        this.shiftPick = pick;
+      this.shiftPicks.length = 0;
+      this.shiftsFound.length = 0;
+      for (let tries = 1; ; tries++) {
         const events = this.tryProducer(p, token);
         if (events) {
           let presses = 0;
@@ -1279,10 +1306,10 @@ export class Simulator {
           }
         }
         restore(start, holds);
-        if (!shifts || pick + 1 >= this.shiftsFound) break;
+        if (!shifts || tries === SHIFT_TRIES || !this.nextShiftPicks()) break;
       }
     }
-    this.shiftPick = 0;
+    this.shiftPicks.length = 0;
     if (best === null) return null;
     restore(best.state, best.holds);
     return best.events;

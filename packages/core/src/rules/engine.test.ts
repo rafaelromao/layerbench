@@ -667,6 +667,9 @@ describe('SFB as a share of the letters typed', () => {
     expect(modelled.share).toBeCloseTo((modelled.count / symbols) * 100, 9);
     // The Shift presses are in the stream, each the cheapest key that gives it, so here none makes
     // a same-finger pair. The letters the count is a share of are the same either way.
+    expect(modelled.sim.tables.stats.keystrokes).toBeGreaterThan(
+      folded.sim.tables.stats.keystrokes,
+    );
     expect(modelled.count).toBe(folded.count);
   });
 
