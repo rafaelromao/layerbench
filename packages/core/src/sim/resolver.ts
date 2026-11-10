@@ -158,6 +158,14 @@ export class Simulator {
    * tried with each of them, and the cheapest is kept (`cheapest`).
    */
   private readonly shiftChoice: boolean;
+  /**
+   * The keys that may give Shift on some layer, and the combos: every one whose binding names a
+   * Shift anywhere in it, in order. The only ones `holdMod` looks at for a Shift.
+   */
+  private readonly shiftKeys: number[];
+  private readonly shiftCombos: CompiledLayout['combos'];
+  /** Every key, in order: where `holdMod` looks for any other modifier. */
+  private readonly allKeys: number[];
   /** For the way being tried, which of the presses that give Shift it takes, in `holdMod`'s order. */
   private shiftPick = 0;
   /** How many presses could give Shift where the way being tried asked for it. */
@@ -216,6 +224,12 @@ export class Simulator {
     this.machine = new Machine(compiled);
     this.fold = options.caseMode === 'fold';
     this.shiftChoice = !this.fold && shiftKeysOffered(compiled.layout) > 1;
+    const namesShift = (b: Binding) => JSON.stringify(b).includes('SHIFT');
+    this.allKeys = compiled.keys.map((_, pos) => pos);
+    this.shiftKeys = this.allKeys.filter((pos) =>
+      compiled.layers.some((l) => namesShift(l.bindings[pos])),
+    );
+    this.shiftCombos = compiled.combos.filter((c) => namesShift(c.binding));
     this.index = options.producerIndex ?? enumerateProducers(compiled, options.caseMode);
     this.repeatPolicy =
       options.repeatPolicy ??
@@ -689,11 +703,12 @@ export class Simulator {
      * home row mod is held by the hand that is not typing. `sticky` and `held` say which of the two
      * ways it may be given.
      */
+    const candidates = isShift ? this.shiftKeys : this.allKeys;
     const search = (sticky: boolean, held: boolean) => {
       const typing = new Set([...heldFor].map((pos) => positions[pos].hand));
       const pass = (pos: number) => (keys[pos].thumb ? 0 : typing.has(positions[pos].hand) ? 2 : 1);
       for (let at = 0; at < 3; at++) {
-        for (let pos = 0; pos < keys.length; pos++) {
+        for (const pos of candidates) {
           if (found.length >= want) return;
           if (!free(pos) || pass(pos) !== at) continue;
           const r = m.resolve(pos);
@@ -717,7 +732,7 @@ export class Simulator {
       // Then a typing combo that taps a sticky modifier. A held chord is let go in the same action,
       // so a combo can give a modifier only as a one-shot.
       if (!sticky) return;
-      for (const c of this.compiled.combos) {
+      for (const c of isShift ? this.shiftCombos : this.compiled.combos) {
         if (found.length >= want) return;
         if (c.role !== 'typing' || !m.comboAvailable(c.idx)) continue;
         const peeled = peelBinding(m, c.binding, 'tap');
