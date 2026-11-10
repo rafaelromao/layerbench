@@ -1,5 +1,6 @@
 import type { Collection } from '@layerbench/core';
 import { useEffect, useRef, useState } from 'react';
+import { documentsChanged } from '../state/documents-changed.js';
 import { toast } from '../state/toasts.js';
 import { review, settledConflict, syncNow, useSync } from './auto-sync.js';
 import { CompositeStorage, type Conflict } from './composite.js';
@@ -14,6 +15,17 @@ const NOUN: Record<Collection, string> = {
 };
 
 const NO_CONFLICTS: Conflict[] = [];
+
+/** Whether focus is in something a person types in, which a dialog must not open over. */
+function isTyping(element: Element | null): boolean {
+  if (!(element instanceof HTMLElement)) return false;
+  return (
+    element instanceof HTMLTextAreaElement ||
+    (element instanceof HTMLInputElement &&
+      !['button', 'checkbox', 'radio', 'submit'].includes(element.type)) ||
+    element.isContentEditable
+  );
+}
 
 const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
@@ -55,17 +67,40 @@ export function ConflictDialog() {
   useEffect(() => {
     const element = dialog.current;
     if (!element) return;
-    if (open && !element.open) element.showModal();
-    else if (!open && element.open) element.close();
+    if (!open) {
+      if (element.open) element.close();
+      return;
+    }
+    if (element.open) return;
+    // Never over someone typing: the next key would land on a button that overwrites a version.
+    // It waits until they leave the field, however long that is.
+    let cancelled = false;
+    const tryOpen = () => {
+      if (cancelled || element.open) return;
+      if (isTyping(document.activeElement)) {
+        document.addEventListener('focusout', () => setTimeout(tryOpen), { once: true });
+      } else {
+        element.showModal();
+        // It opens by itself, so onto the one button that overwrites nothing: the browser's own
+        // choice is the first button, which Space or Enter would press.
+        element.querySelector<HTMLElement>('[data-first]')?.focus();
+      }
+    };
+    tryOpen();
+    return () => {
+      cancelled = true;
+    };
   }, [open]);
 
   useEffect(() => {
     setCompare(null);
     if (!current) return;
     let cancelled = false;
-    void compareLink(current).then((link) => {
-      if (!cancelled) setCompare(link);
-    });
+    compareLink(current)
+      .then((link) => {
+        if (!cancelled) setCompare(link);
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -80,6 +115,8 @@ export function ConflictDialog() {
         choice === 'mine' ? await storage.keepMine(current) : await storage.keepTheirs(current);
       if (result === 'kept') {
         settledConflict(current);
+        // This browser's copy was replaced by the account's: an editor that has it open is told.
+        if (choice === 'theirs') documentsChanged([`${current.collection}/${current.id}`]);
         toast.info(`Kept ${kept} version of ${current.name}`);
       } else if (result === 'gone') {
         // Deleted from the account since: nothing there to keep, and this browser's is not thrown away.
@@ -100,6 +137,10 @@ export function ConflictDialog() {
       );
     } finally {
       setBusy(false);
+      // Back to the safe place, rather than wherever the disabled buttons left it.
+      requestAnimationFrame(() =>
+        dialog.current?.querySelector<HTMLElement>('[data-first]')?.focus(),
+      );
     }
   };
 
@@ -174,7 +215,14 @@ export function ConflictDialog() {
             browser's with the account's.
           </p>
           <div className="modal-action">
-            <button type="button" className="btn btn-sm btn-ghost" onClick={() => review(false)}>
+            {/* Where focus lands when it opens, as it can open under someone's fingers: the one
+                button that overwrites nothing (it is put there when the dialog opens). */}
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost"
+              data-first
+              onClick={() => review(false)}
+            >
               Decide later
             </button>
           </div>

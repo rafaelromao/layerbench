@@ -100,15 +100,17 @@ private: anyone with a gist's address can read it.
 Syncing is automatic, and where your work stands is always said, never left to guess. It is
 described here in the order things happen.
 
-**Signed in**, a save is written to this browser and to your gists together. If your account could
-not be written (no connection, GitHub down, a sign-in that ended), the save is still kept in this
-browser, and says so: **Save failed**, with the reason. The document is then marked as not sent, and
-the page tries again by itself, a few seconds later, then after 30 seconds, a minute, two, five,
-until it goes through. It also tries when the browser comes back online and when you come back to
-the tab. Sending stops at the first document that cannot be sent, and the status says why; it
-carries on from there when it tries again. While a document is marked, this browser shows it as you
-last saved it, not the older copy in your account, and its next saves stay in this browser too, to go
-up together with the rest.
+**Signed in**, a save is kept in this browser first, and marked as not sent before anything else is
+done with it, so a tab closed or put to sleep while it is on its way to your account loses nothing.
+It is then written to your gists, and the mark goes once they hold it. If your account could not be
+written (no connection, GitHub down, a sign-in that ended), the save is still kept in this browser,
+and says so: **Save failed**, with the reason. The page then tries again by itself, a few seconds
+later, then after 30 seconds, a minute, two, five, until it goes through. It also tries when the
+browser comes back online and when you come back to the tab, from one tab at a time. A document that
+cannot be sent is named, with why, and the rest go on; several in a row, which means GitHub is out of
+reach, end that attempt. While a document is marked, this browser shows it as you last saved it, not
+the older copy in your account, and its next saves stay in this browser too, to go up together with
+the rest. With no connection, the status says so and what waits.
 
 A save is only written to your account over the version it is an edit of. If another browser saved
 the same document since this one last held it, such as when an editor was left open, the save stays in
@@ -122,8 +124,17 @@ pressed. A browser that was signed in and no longer is, because the sign-in ende
 says that instead, with the same button, on every visit until you sign in or out, rather than
 carrying on as if nothing had changed.
 
-Only what is marked goes up by itself. A document this browser holds that was never marked is left
-alone, so a layout you deleted on another browser is not brought back by one that still has it.
+Only what is marked goes up by itself. A document this browser holds that was never marked is not
+sent: a layout you deleted on another browser is not put back in your account by one that still has
+it. The copy this browser still holds stays in this browser, and saving it there creates it in your
+account again.
+
+Opening a layout, rule set or text from your account brings this browser's copy up to the version
+you opened, so what you edit offline afterwards is an edit of it. Once a day, and when you sign in,
+this browser's documents are also compared with your account's by their **contents**, never by when each
+was saved: the same in both is recorded as such; one this browser holds an unedited older copy of is
+brought up to your account's; any other that differs is marked, and sent or asked about like the rest.
+**Storage** says how many documents here your account lacks.
 
 **If this browser's last account is not the one signed in.** What is marked is held back, and the
 status says so, naming both accounts: a browser that someone else used may hold what is theirs. **Send
@@ -146,12 +157,16 @@ same way.
 ### When both have changed
 
 A document that you changed in this browser and that was changed in your account since, from
-another browser, is never written over in either place by itself. The page asks you, in one dialog
+another browser, is never written over in either place by itself, whether the change here was made
+offline or in an editor that was left open: a save that finds your account holding a version it is
+not an edit of stays in this browser and is asked about, as is a delete. The page asks you, in one dialog
 that holds all of them in turn: it shows the two versions with when each was saved, what differs in a
 few lines (a name or a note as it reads in each, a layer as how many keys differ) and, for a layout, a
 link that opens the two side by side in **Compare**. **Keep mine** sends this browser's version to
-your account; **Keep theirs** makes this browser's copy the account's. Neither is done until you
-choose, and if the account changes again meanwhile, nothing is written and you choose again.
+your account; **Keep theirs** makes this browser's copy the account's, and a layout open in
+**Analyze** is opened again as it. Neither is done until you choose, and if the account changes again
+meanwhile, or this browser's copy was edited after the dialog showed it, nothing is written and you
+choose again. The dialog never opens over a field you are typing in, and opens onto **Decide later**.
 
 **Decide later**, or closing the dialog any way, leaves both as they are. The status on **Storage**
 and under the layout's name says *changed in this browser and in your GitHub account*, with a
@@ -168,8 +183,10 @@ A layout with the same name as another one in your account, under a different id
 it but another layout: it stays in this browser, and the status says so. Rename it, or open it and
 save to overwrite the other one.
 
-A document you edited here that was deleted from your account since is not a conflict: your edit is
-sent, and the document is back. If you chose **Keep theirs** for one that has since been deleted
+**Deleting** a document while signed in is checked against your account first: if another browser saved
+it since this one last held it (which this browser keeps a record of), nothing is deleted, and if your account cannot be reached, nothing is
+deleted, edits not sent yet included. A document you edited here that was deleted from your account
+since is not a conflict: your edit is sent, and the document is back. If you chose **Keep theirs** for one that has since been deleted
 there, nothing is thrown away: your version stays and is sent.
 
 Deleting a layout while you are not signed in is not sent: it comes back from your account the next
@@ -180,11 +197,13 @@ deletion, so only the new one goes up, and the old name stays in your account un
 
 **Copy this browser's documents up**, in **Storage** once you are signed in, weighs every layout,
 rule set and text this browser holds, whether or not it is marked. It is for what was saved before
-edits were marked, and for anything that looks missing; you should not need it otherwise. It sends
-each that this browser saved later than your account did, and leaves the rest: a document your account
-lacks is sent too, so use it only for what you want in your account. It says how many it sent, how
-many were already up to date, how many are waiting for you to choose, and how many it left for their
-names. If it stops partway, what went up stays, and copying again carries on from there.
+edits were marked, and for anything that looks missing; you should not need it otherwise. A document
+your account lacks is sent, so use it only for what you want in your account. One that differs from
+your account's and has no record of which version it is an edit of is sent if this browser saved it
+later, by the two clocks, and otherwise left as your account has it, and counted as differing, not as
+up to date. It says how many it sent, how many are the same, how many differ and were left, how many
+are waiting for you to choose, how many it left for their names, and which could not be sent, with why.
+If it stops partway, what went up stays, and copying again carries on from there.
 
 ## Signing out
 

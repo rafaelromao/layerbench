@@ -1,8 +1,8 @@
-import type { StorageAdapter } from '@layerbench/core';
+import { COLLECTIONS, type StorageAdapter } from '@layerbench/core';
 import { useEffect } from 'react';
 import { create } from 'zustand';
 import { toast } from '../state/toasts.js';
-import { CompositeStorage, type Conflict, type CopiedUp } from './composite.js';
+import { CompositeStorage, type Conflict, type CopiedUp, CopyUpError } from './composite.js';
 import { type Unsynced, unsynced } from './unsynced.js';
 
 /** Where sending this browser's documents to the gists stands. */
@@ -19,9 +19,21 @@ export interface SyncState {
    * another account than the one signed in now: they may not be this account's to have.
    */
   held: { account: string } | null;
+  /** Whether an attempt is waiting on a timer: about to run, or to be tried again. */
+  scheduled: boolean;
+  /** How many documents this browser holds that the account lacks, as last looked; null if not yet. */
+  lacking: number | null;
 }
 
-const IDLE: SyncState = { phase: 'idle', error: null, last: null, reviewing: false, held: null };
+const IDLE: SyncState = {
+  phase: 'idle',
+  error: null,
+  last: null,
+  reviewing: false,
+  held: null,
+  scheduled: false,
+  lacking: null,
+};
 
 export const useSync = create<SyncState>(() => IDLE);
 
@@ -33,6 +45,8 @@ const RETRY_MS = [30_000, 60_000, 120_000, 300_000];
 const MIN_GAP_MS = 15_000;
 /** An attempt that has not finished by now has failed, so the next one can be made. */
 const ATTEMPT_LIMIT_MS = 120_000;
+/** This browser's documents are looked at against the account's at most this often. */
+const AUDIT_EVERY_MS = 12 * 3_600_000;
 
 const documents = (n: number) => `${n} document${n === 1 ? '' : 's'}`;
 
@@ -107,20 +121,28 @@ export function sendHeld(): void {
 export function startAutoSync(
   storage: CompositeStorage,
   marks: Unsynced = unsynced,
-  timing: { settleMs?: number; retryMs?: readonly number[]; attemptMs?: number } = {},
+  timing: {
+    settleMs?: number;
+    retryMs?: readonly number[];
+    attemptMs?: number;
+    auditEveryMs?: number;
+  } = {},
   login: string | null = null,
 ): () => void {
   if (!storage.reachesRemote) return () => {};
   const settleMs = timing.settleMs ?? SETTLE_MS;
   const retryMs = timing.retryMs ?? RETRY_MS;
   const attemptMs = timing.attemptMs ?? ATTEMPT_LIMIT_MS;
+  const auditEveryMs = timing.auditEveryMs ?? AUDIT_EVERY_MS;
   let stopped = false;
+  /** Marks changed while an attempt was out, which it did not look at. */
+  let dirty = false;
   let running = false;
   let held = false;
   let failures = 0;
   let lastRun = 0;
-  /** How many marks the last attempt left that it neither sent nor reported, to stop at no progress. */
-  let lastLeft = -1;
+  /** Which marks the last attempt left that it neither sent nor reported, to stop at no progress. */
+  let lastLeft: string | null = null;
   let settle: ReturnType<typeof setTimeout> | null = null;
   let retry: ReturnType<typeof setTimeout> | null = null;
 
@@ -129,23 +151,49 @@ export function startAutoSync(
     if (retry) clearTimeout(retry);
     settle = null;
     retry = null;
+    if (useSync.getState().scheduled) useSync.setState({ scheduled: false });
+  };
+
+  const later = (which: 'settle' | 'retry', ms: number) => {
+    const timer = setTimeout(() => void run(), ms);
+    if (which === 'settle') settle = timer;
+    else retry = timer;
+    useSync.setState({ scheduled: true });
   };
 
   /** The attempt, or a failure once it has gone on too long: one stuck request must not stop every later one. */
-  const attempt = (): Promise<CopiedUp> => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const given = new AbortController();
-    const limit = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => {
-        // Stopped, not only given up on: it ends at the next document, keeping what went up.
-        given.abort();
-        reject(new Error('GitHub did not answer in time'));
-      }, attemptMs);
-    });
-    const copying = storage.copyUp({ signal: given.signal });
-    // One that finishes after the limit has been given up on is nobody's to hear about.
-    copying.catch(() => {});
-    return Promise.race([copying, limit]).finally(() => clearTimeout(timer));
+  const attempt = (): Promise<CopiedUp | null> => {
+    const work = (): Promise<CopiedUp> => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const given = new AbortController();
+      const limit = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          // Stopped, not only given up on: it ends at the next document, keeping what went up.
+          given.abort();
+          reject(new Error('GitHub did not answer in time'));
+        }, attemptMs);
+      });
+      const copying = storage.copyUp({ signal: given.signal });
+      // One that finishes after the limit has been given up on is nobody's to hear about.
+      copying.catch(() => {});
+      return Promise.race([copying, limit]).finally(() => clearTimeout(timer));
+    };
+    // One tab at a time: they all hear the same online event at once, and two sending the same
+    // documents would each edit the gist's index from what the other had not written yet. null:
+    // another tab is sending.
+    const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+    if (!locks) return work();
+    return locks.request('layerbench:send', { ifAvailable: true }, (lock) =>
+      lock ? work() : null,
+    );
+  };
+
+  /** The marks an attempt left that it neither sent nor reported as conflicts or for names. */
+  const leftBy = (result: CopiedUp): string[] => {
+    const reported = new Set(result.conflicts.map((c) => `${c.collection}/${c.id}`));
+    return COLLECTIONS.flatMap((c) => marks.marked(c).map((id) => `${c}/${id}`))
+      .filter((k) => !reported.has(k))
+      .sort();
   };
 
   const run = async (): Promise<void> => {
@@ -153,33 +201,53 @@ export function startAutoSync(
     running = true;
     cancelTimers();
     useSync.setState({ phase: 'syncing', error: null });
+    dirty = false;
     let result: CopiedUp | null = null;
     try {
       result = await attempt();
       if (stopped) return;
-      failures = 0;
+      if (result === null) {
+        // Another tab is sending these: this one looks again later, in case it is not, or fails.
+        useSync.setState({ phase: 'idle', error: null });
+        later('retry', retryMs[0] ?? 30_000);
+        return;
+      }
       // What this browser holds has been sent to this account, whose it is from now on.
       if (login) marks.setAccount(login);
-      useSync.setState({ phase: 'idle', error: null });
       noteResult(result);
       announce(result);
+      const first = result.failed[0];
+      if (first) {
+        // Some could not be sent: it says which, and why, and tries again later.
+        failures++;
+        const more = result.failed.length > 1 ? ` (and ${result.failed.length - 1} more)` : '';
+        useSync.setState({ phase: 'failed', error: `${first.name}: ${first.error}${more}` });
+        later('retry', retryMs[Math.min(failures, retryMs.length) - 1]);
+      } else {
+        failures = 0;
+        useSync.setState({ phase: 'idle', error: null });
+      }
     } catch (e) {
       if (stopped) return;
       failures++;
+      // What it did before it stopped is still what it found.
+      if (e instanceof CopyUpError) noteResult(e.result);
       useSync.setState({ phase: 'failed', error: e instanceof Error ? e.message : String(e) });
-      retry = setTimeout(() => void run(), retryMs[Math.min(failures, retryMs.length) - 1]);
+      later('retry', retryMs[Math.min(failures, retryMs.length) - 1]);
     } finally {
       running = false;
       lastRun = Date.now();
     }
-    // Something saved while it ran, and not one it left for the user, has not been looked at. Once
-    // an attempt has left as many as the one before it, it can do nothing more with them.
-    if (result) {
-      const left = marks.count() - result.conflicts.length - result.taken;
-      if (left > 0 && left !== lastLeft && !settle) {
-        settle = setTimeout(() => void run(), settleMs);
+    // Something saved while it ran has not been looked at, and neither has a mark it left that is not
+    // one for the user to settle. Once an attempt leaves the same ones as the one before, there is
+    // nothing more it can do with them.
+    if (result && result.failed.length === 0) {
+      const left = leftBy(result);
+      const key = left.join(',');
+      if ((dirty || (left.length > result.taken && key !== lastLeft)) && !settle) {
+        later('settle', settleMs);
       }
-      lastLeft = left;
+      lastLeft = key;
     }
   };
 
@@ -194,8 +262,10 @@ export function startAutoSync(
       if (!running && useSync.getState().phase === 'failed') {
         useSync.setState({ phase: 'idle', error: null });
       }
-    } else if (!running && !settle && !retry && !held) {
-      settle = setTimeout(() => void run(), settleMs);
+    } else if (running) {
+      dirty = true;
+    } else if (!settle && !retry && !held) {
+      later('settle', settleMs);
     }
   };
   const unsubscribe = marks.subscribe(onMarks);
@@ -224,11 +294,33 @@ export function startAutoSync(
   const handle = { now: () => void run(), release };
   active = handle;
 
+  /**
+   * Look at every document this browser holds against the account's by content, once in a while:
+   * what it finds that differs is marked, and sent or asked about like any other.
+   */
+  const audit = async () => {
+    if (stopped || held || Date.now() - marks.audited() < auditEveryMs) return;
+    const given = new AbortController();
+    const timer = setTimeout(() => given.abort(), attemptMs);
+    try {
+      const found = await storage.audit({ signal: given.signal });
+      if (stopped) return;
+      marks.setAudited(Date.now());
+      useSync.setState({ lacking: found.lacking });
+      if (found.marked > 0) void run();
+    } catch {
+      // Looked at again on the next visit.
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
   const before = marks.account();
   if (marks.count() === 0) {
     // Nothing is waiting, so there is nothing to send, and nothing to ask: the browser is the
     // account's that signed in.
     if (login) marks.setAccount(login);
+    void audit();
   } else if (login && before !== null && before !== login) {
     held = true;
     useSync.setState({ held: { account: before } });
@@ -236,7 +328,7 @@ export function startAutoSync(
     // The first account to sign in with documents waiting is the browser's from here on, whether
     // or not this attempt goes through: another that signs in after it has them held.
     if (login) marks.setAccount(login);
-    void run();
+    void run().then(audit);
   }
 
   return () => {

@@ -21,6 +21,8 @@ const BASE: SyncInput = {
   taken: 0,
   conflicts: 0,
   held: null,
+  offline: false,
+  scheduled: false,
 };
 
 describe('what the status says', () => {
@@ -78,7 +80,9 @@ describe('what the status says', () => {
       kind: 'syncing',
       notable: false,
     });
-    expect(summarize({ ...signedIn, pending: 1 })).toMatchObject({ kind: 'syncing' });
+    expect(summarize({ ...signedIn, pending: 1, scheduled: true })).toMatchObject({
+      kind: 'syncing',
+    });
   });
 
   it('says why a send failed, and that it tries again', () => {
@@ -137,6 +141,26 @@ describe('what the status says', () => {
     expect(summary.text).toContain('@you');
   });
 
+  it('says documents not sent that nothing is about to send are waiting, rather than sending', () => {
+    const summary = summarize({ ...BASE, status: 'signed-in', login: 'you', pending: 2 });
+    expect(summary).toMatchObject({ kind: 'waiting', action: 'retry-sync', notable: true });
+    expect(summary.text).toBe(
+      '2 documents saved in this browser have not been sent to your GitHub account yet.',
+    );
+  });
+
+  it('says it when there is no connection, with what waits', () => {
+    const signedIn = { ...BASE, status: 'signed-in', login: 'you', offline: true } as const;
+    expect(summarize(signedIn)).toMatchObject({
+      kind: 'offline',
+      label: ' · offline',
+      notable: true,
+    });
+    expect(summarize({ ...signedIn, pending: 1 }).text).toBe(
+      'You are offline. 1 saved here waits to be sent. They are sent when you are back online.',
+    );
+  });
+
   it('does not say a send failed when nothing is waiting to be sent', () => {
     expect(
       summarize({ ...BASE, status: 'signed-in', login: 'you', phase: 'failed', error: 'x' }),
@@ -145,7 +169,14 @@ describe('what the status says', () => {
 
   it('is still syncing while documents other than the ones left for names are waiting', () => {
     expect(
-      summarize({ ...BASE, status: 'signed-in', login: 'you', pending: 3, taken: 1 }),
+      summarize({
+        ...BASE,
+        status: 'signed-in',
+        login: 'you',
+        pending: 3,
+        taken: 1,
+        scheduled: true,
+      }),
     ).toMatchObject({ kind: 'syncing' });
   });
 });

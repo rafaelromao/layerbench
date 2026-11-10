@@ -44,6 +44,7 @@ export function StorageSettings() {
   // What is held back for another account is for the user to release from the status, not to be
   // sent past that by a copy of everything.
   const held = useSync((s) => s.held !== null);
+  const lacking = useSync((s) => s.lacking);
 
   const signedIn = status === 'signed-in' && !!login;
 
@@ -54,11 +55,19 @@ export function StorageSettings() {
       const result = await copyUp();
       // Conflicts found are the dialog's to ask about, as any other attempt's are.
       noteResult(result);
-      const { copied, current, conflicts, taken } = result;
+      const { copied, current, differing, conflicts, taken, failed } = result;
       toast.info(
         `Copied ${documents(copied)} to GitHub${current > 0 ? `; ${current} ${current === 1 ? 'was' : 'were'} already up to date` : ''}${
           conflicts.length > 0
             ? `; ${conflicts.length} ${conflicts.length === 1 ? 'was' : 'were'} changed here and in GitHub, and ${conflicts.length === 1 ? 'waits' : 'wait'} for you to choose`
+            : ''
+        }${
+          differing > 0
+            ? `; ${differing} ${differing === 1 ? 'differs' : 'differ'} from GitHub's and ${differing === 1 ? 'was' : 'were'} left as GitHub has ${differing === 1 ? 'it' : 'them'}`
+            : ''
+        }${
+          failed.length > 0
+            ? `; ${failed.length} could not be sent (${failed[0].name}: ${failed[0].error})`
             : ''
         }${
           taken > 0
@@ -147,6 +156,13 @@ export function StorageSettings() {
                   {copying ? 'Copying…' : "Copy this browser's documents up"}
                 </button>
               </div>
+              {lacking !== null && lacking > 0 && (
+                <p className="text-xs">
+                  {lacking} {lacking === 1 ? 'document' : 'documents'} saved in this browser{' '}
+                  {lacking === 1 ? 'is' : 'are'} not in your account: never sent, or deleted from it
+                  elsewhere. Copying sends {lacking === 1 ? 'it' : 'them'}.
+                </p>
+              )}
               <p className="text-xs opacity-70">
                 What you save is sent to your account by itself: after you sign in, and again if a
                 save could not reach it. This sends everything again, to repair what looks missing.

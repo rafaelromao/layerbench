@@ -66,3 +66,22 @@ describe('Storage', () => {
     expect(screen.getByRole('button', { name: "Copy this browser's documents up" })).toBeDisabled();
   });
 });
+
+describe('what the account lacks', () => {
+  it('says how many documents here are not in it, as last looked at', async () => {
+    const user = userEvent.setup();
+    const storage = new CompositeStorage(new MemoryStorage('local'), new MemoryStorage('github'));
+    useGitHubSession.setState({ status: 'signed-in', login: 'me' });
+    useSync.setState({ lacking: 2 });
+    render(
+      <StorageProvider adapter={storage}>
+        <StorageSettings />
+      </StorageProvider>,
+    );
+    await user.click(screen.getByRole('button', { name: /^Storage/ }));
+    expect(
+      screen.getByText(/2 documents saved in this browser are not in your account/),
+    ).toBeInTheDocument();
+    useSync.setState({ lacking: null });
+  });
+});

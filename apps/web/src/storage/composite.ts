@@ -29,26 +29,62 @@ export interface Conflict {
   theirs: { name: string; doc: JsonObject; updatedAt: string; sha: string };
 }
 
+/** A document that could not be sent, and why. */
+export interface Failure {
+  collection: Collection;
+  id: string;
+  name: string;
+  error: string;
+}
+
 /**
- * What copying up did: the documents sent to the gists, those they had as new already, the
- * documents changed in both places, which are left as they are for the user to settle, and the
- * layouts left here because the gists have another of the same name.
+ * What copying up did: the documents sent to the gists, those that are the same in both, those
+ * never edited here that differ from the gists' and were left as the gists have them, the
+ * documents changed in both places, which are left as they are for the user to settle, the layouts
+ * left here because the gists have another of the same name, and the documents that could not be
+ * sent, each with why.
  */
 export interface CopiedUp {
   copied: number;
   current: number;
+  differing: number;
   conflicts: Conflict[];
   taken: number;
+  failed: Failure[];
 }
 
-/** Copying up stopped partway; what went up before it is in the gists. */
+/** Copying up stopped partway; what it did before is in `result`, and what went up is in the gists. */
 export class CopyUpError extends Error {
   constructor(
-    readonly copied: number,
+    readonly result: CopiedUp,
     cause: unknown,
   ) {
     super(cause instanceof Error ? cause.message : String(cause), { cause });
     this.name = 'CopyUpError';
+  }
+
+  get copied(): number {
+    return this.result.copied;
+  }
+}
+
+/** What looking at every document this browser holds, against the gists', found. */
+export interface Audited {
+  /** The same in both. */
+  equal: number;
+  /** Not edited here, the gists' being newer: this browser's copy was brought up to it. */
+  adopted: number;
+  /** Differing, and not known to be an older copy: marked, for sending to weigh. */
+  marked: number;
+  /** In this browser and not in the gists. */
+  lacking: number;
+}
+
+/** Thrown when a copy up is told to stop. */
+class Stopped extends Error {
+  constructor() {
+    super('GitHub did not answer in time');
+    this.name = 'Stopped';
   }
 }
 
@@ -63,11 +99,16 @@ function newer(here: IndexEntry, there: IndexEntry | undefined): boolean {
   return there === undefined || Date.parse(here.updatedAt) > Date.parse(there.updatedAt);
 }
 
+const messageOf = (e: unknown) => (e instanceof Error ? e.message : String(e));
+
+/** This many documents in a row that cannot be sent end a copy up: the gists are out of reach, not the documents. */
+const FAILURES_IN_A_ROW = 3;
+
 /**
- * Both stores at once. The browser copy is always written, so work is never lost to a network
- * problem, and the gists are the shared copy when someone is signed in. What reaches only the
- * browser is marked, so it can be sent later (`copyUp`), and until it is, it is what this browser
- * shows, since it is the latest work.
+ * Both stores at once. The browser copy is always written, and marked as not sent before anything
+ * else is done with it, so work is never lost to a network problem or a tab that is closed
+ * meanwhile, and the gists are the shared copy when someone is signed in. What is marked can be
+ * sent later (`copyUp`), and until it is, it is what this browser shows, since it is the latest work.
  */
 export class CompositeStorage implements StorageAdapter {
   readonly id = 'composite';
@@ -82,9 +123,9 @@ export class CompositeStorage implements StorageAdapter {
   private readonly partial = new Set<Collection>();
 
   /**
-   * One thing at a time: a save, a delete, and one document's turn in a copy up each read a
-   * document and then write it, which must not interleave with another's, or one writes over the
-   * other with what it read before.
+   * One thing at a time: what reads a document and then writes it, a copy up's turn with each
+   * document, a save's with the gists, a delete, must not interleave with another's, or one writes
+   * over the other with what it read before. Only this storage's own: another tab has its own.
    */
   private turn: Promise<unknown> = Promise.resolve();
 
@@ -92,6 +133,11 @@ export class CompositeStorage implements StorageAdapter {
     const run = this.turn.then(work, work);
     this.turn = run.catch(() => {});
     return run;
+  }
+
+  /** Resolves once everything asked of this storage so far has finished, as a read's bringing this browser's copy up to date. */
+  whenIdle(): Promise<void> {
+    return this.turn.then(() => {});
   }
 
   /**
@@ -103,8 +149,9 @@ export class CompositeStorage implements StorageAdapter {
   }
 
   async list(collection: Collection): Promise<IndexEntry[]> {
+    // A browser store that cannot be read is not an empty one, where it is all there is.
+    if (!this.remote) return this.local.list(collection);
     const local = await this.local.list(collection).catch(() => [] as IndexEntry[]);
-    if (!this.remote) return local;
     try {
       const remote = await this.remote.list(collection);
       this.partial.delete(collection);
@@ -134,9 +181,7 @@ export class CompositeStorage implements StorageAdapter {
       try {
         const remote = await this.remote.get(collection, id);
         if (remote) {
-          // What is handed out is what an edit of it is made on: a save that finds the gists
-          // holding another version since is an edit of a version that is no longer there.
-          this.marks.setBase(collection, id, remote.meta.sha);
+          this.adopt(collection, id, remote);
           return remote;
         }
       } catch (e) {
@@ -150,77 +195,178 @@ export class CompositeStorage implements StorageAdapter {
     return local;
   }
 
-  put(
+  /**
+   * Bring this browser's copy up to a version just read from the gists, and record it as the one
+   * both hold: what an edit of the document is made on is what was handed out, and an edit made
+   * on it, offline too, is an edit of that. Not where edits are waiting to be sent, which are not
+   * replaced; and if this browser's copy cannot be brought up (a name it has for another layout),
+   * the version both last held stays what it was, and an edit of it is weighed as a conflict.
+   * It does not hold the read up.
+   */
+  private adopt(
+    collection: Collection,
+    id: string,
+    remote: { doc: JsonObject; meta: StorageMeta },
+  ) {
+    void this.exclusive(async () => {
+      if (this.marks.has(collection, id)) return;
+      const mine = await this.local.get(collection, id).catch(() => null);
+      if (!mine || !sameDocument(mine.doc, remote.doc)) {
+        try {
+          await this.local.put(collection, id, remote.doc, { message: `Read ${collection} ${id}` });
+        } catch {
+          return;
+        }
+      }
+      this.marks.setBase(collection, id, remote.meta.sha);
+    }).catch(() => {});
+  }
+
+  /** Mark a document as not sent before it is written here, so a save cut short leaves its mark. */
+  private async writeAhead<T>(collection: Collection, id: string, write: () => Promise<T>) {
+    const was = this.marks.has(collection, id);
+    this.marks.mark(collection, id);
+    try {
+      const written = await write();
+      // Marked again once it is written: a send that finished while it was being written looked
+      // at the copy from before, and cleared the mark of that one.
+      this.marks.mark(collection, id);
+      return written;
+    } catch (e) {
+      if (!was) this.marks.clear(collection, id);
+      throw e;
+    }
+  }
+
+  async put(
     collection: Collection,
     id: string,
     doc: JsonObject,
     opts: PutOptions = {},
   ): Promise<StorageMeta> {
-    return this.exclusive(async () => {
-      const here = { message: opts.message, replacing: opts.replacing };
-      if (!this.remote) {
-        const meta = await this.local.put(collection, id, doc, here);
-        this.marks.mark(collection, id);
-        this.marks.notify();
-        return meta;
-      }
-      // A document with edits not sent yet is not written to the gists by its next save either: they
-      // may hold a version this browser has not seen, which is for sending to settle, with a check
-      // against it. It is sent a moment later.
-      if (this.marks.has(collection, id)) {
-        const meta = await this.local.put(collection, id, doc, here);
-        this.marks.notify();
-        return meta;
-      }
-      // The gists may have a layout of this name the browser does not know of. They are asked
-      // first, so the browser takes no copy of one they would refuse; unreachable, they refuse
-      // nothing yet, and the browser's copy is the work kept. Each store judges its own names: a
-      // duplicate made before that the gists have twice and the browser once is refused by the
-      // browser, and Overwrite then makes one of the two.
-      if (collection === 'layouts') {
-        const there = await this.remote.list(collection).catch(() => null);
-        const name = indexSummary(collection, id, doc).name;
-        const taken = there && nameTaken(there, name, id, opts.replacing);
-        if (taken) throw new NameTakenError(taken);
-      }
-      // The gists may hold a version this save is not an edit of: another browser saved the
-      // document since this one last held it. Writing over it would lose that save, so this one
-      // stays here, marked, and is sent as a conflict for the user to settle.
+    const here = { message: opts.message, replacing: opts.replacing };
+    const remote = this.remote;
+    if (!remote) {
+      const meta = await this.writeAhead(collection, id, () =>
+        this.local.put(collection, id, doc, here),
+      );
+      this.marks.notify();
+      return meta;
+    }
+    // The gists may have a layout of this name the browser does not know of. They are asked
+    // first, so the browser takes no copy of one they would refuse; unreachable, they refuse
+    // nothing yet, and the browser's copy is the work kept. Each store judges its own names: a
+    // duplicate made before that the gists have twice and the browser once is refused by the
+    // browser, and Overwrite then makes one of the two. Nothing is saved yet, so a tab closed
+    // while this waits loses only a save not made.
+    if (collection === 'layouts') {
+      const there = await remote.list(collection).catch(() => null);
+      const name = indexSummary(collection, id, doc).name;
+      const taken = there && nameTaken(there, name, id, opts.replacing);
+      if (taken) throw new NameTakenError(taken);
+    }
+    const waiting = this.marks.has(collection, id);
+    const before = waiting ? null : await this.local.get(collection, id).catch(() => null);
+    // Written ahead: from here on, whatever happens to the gists, a mark says it is not sent.
+    const saved = await this.writeAhead(collection, id, () =>
+      this.local.put(collection, id, doc, here),
+    );
+    // Edits not sent yet are not written to the gists by their next save either: the gists may
+    // hold a version this browser has not seen, which the sender weighs, with a check against it.
+    if (waiting) {
+      this.marks.notify();
+      return saved;
+    }
+    return this.exclusive(() => this.sendSave(collection, id, doc, opts, saved, before));
+  }
+
+  /** A save's turn with the gists: write over the version it is an edit of, or leave it marked. */
+  private async sendSave(
+    collection: Collection,
+    id: string,
+    doc: JsonObject,
+    opts: PutOptions,
+    saved: StorageMeta,
+    before: { doc: JsonObject } | null,
+  ): Promise<StorageMeta> {
+    const remote = this.remote as StorageAdapter;
+    // What is behind is not known if the gists cannot be read: it stays here, marked, and the
+    // sender looks again when they can be.
+    let seen: Awaited<ReturnType<StorageAdapter['get']>>;
+    try {
+      seen = await remote.get(collection, id);
+    } catch {
+      this.marks.notify();
+      return saved;
+    }
+    if (seen && sameDocument(seen.doc, doc)) {
+      await this.settled(collection, id, seen.meta.sha, doc);
+      return saved;
+    }
+    if (seen) {
+      // The gists hold a version this save is not an edit of: another browser saved it since this
+      // one last held it. Writing over it would lose that save, so this one stays here, marked, and
+      // is sent as a conflict for the user to settle. With no record of the version it is an edit
+      // of, that is so where this browser held a copy of the document already (one from before
+      // versions were kept); a document it never held is one the user knowingly writes to, as when
+      // they choose to overwrite a layout of the same name.
       const base = this.marks.base(collection, id);
-      if (base !== null) {
-        const seen = await this.remote.get(collection, id).catch(() => null);
-        if (seen && seen.meta.sha !== base) {
-          const meta = await this.local.put(collection, id, doc, here);
-          this.marks.mark(collection, id);
-          this.marks.notify();
-          return meta;
-        }
+      if (base === null ? before !== null : seen.meta.sha !== base) {
+        this.marks.notify();
+        return saved;
       }
-      await this.local.put(collection, id, doc, here);
-      try {
-        const meta = await this.remote.put(collection, id, doc, opts);
-        // Both now hold this version.
-        await this.settled(collection, id, meta.sha, doc);
-        return meta;
-      } catch (e) {
-        // The work is safe locally. A failure to write is marked, and the document is sent when
-        // the gists can be written again; one the gists refused for what they hold (a version
-        // that changed, a name that is taken) is the user's to decide about, so not sent unasked.
-        // Either propagates, for the user to see.
-        if (!(e instanceof StorageConflictError) && !(e instanceof NameTakenError)) {
-          this.marks.mark(collection, id);
-        }
+    }
+    try {
+      const meta = await remote.put(collection, id, doc, {
+        ...opts,
+        expectedSha: opts.expectedSha !== undefined ? opts.expectedSha : (seen?.meta.sha ?? null),
+      });
+      // Both now hold this version.
+      await this.settled(collection, id, meta.sha, doc);
+      return meta;
+    } catch (e) {
+      if (e instanceof StorageConflictError && opts.expectedSha === undefined) {
+        // Saved in the gists in between: the sender weighs it, with what is there now.
+        this.marks.notify();
+        return saved;
+      }
+      if (e instanceof StorageConflictError || e instanceof NameTakenError) {
+        // Refused for what the gists hold, and so for the caller to decide about: not left here to
+        // be sent unasked, nor as a copy of what was refused.
+        await this.undo(collection, id, before);
         throw e;
       }
-    });
+      // Any other failure leaves it marked, to be sent when the gists can be written again, and
+      // propagates, for the user to see.
+      throw e;
+    }
+  }
+
+  /** Put back what this browser held before a save that was then refused. */
+  private async undo(collection: Collection, id: string, before: { doc: JsonObject } | null) {
+    try {
+      if (before) await this.local.put(collection, id, before.doc, {});
+      else await this.local.delete(collection, id);
+    } catch {
+      // Left as it is, and marked: the user is told, and it is weighed when sent.
+      return;
+    }
+    this.marks.clear(collection, id);
   }
 
   delete(collection: Collection, id: string, opts: { message?: string } = {}): Promise<void> {
     return this.exclusive(async () => {
-      await this.local.delete(collection, id, opts).catch(() => {});
+      if (this.remote) {
+        // The gists first: if they cannot be reached, nothing is deleted, edits not sent included.
+        const seen = await this.remote.get(collection, id);
+        const base = this.marks.base(collection, id);
+        // Another browser saved it since this one last held it: that save is not deleted unseen.
+        if (seen && base !== null && seen.meta.sha !== base) throw new StorageConflictError();
+        await this.remote.delete(collection, id, opts);
+      }
+      await this.local.delete(collection, id, opts);
       // Gone from this browser, there is nothing left of it to send.
       this.marks.forget(collection, id);
-      if (this.remote) await this.remote.delete(collection, id, opts);
     });
   }
 
@@ -230,46 +376,120 @@ export class CompositeStorage implements StorageAdapter {
   }
 
   /**
+   * Look at every document this browser holds that is not marked, against the gists' by content,
+   * never by when each was saved: the same in both, and what both hold is recorded; not edited here
+   * since the version both last held, with the gists' since changed, and this browser's copy is
+   * brought up to it; any other that differs is marked, for `copyUp` to send or raise as a conflict.
+   * One the gists lack is counted and left: another browser may have deleted it.
+   */
+  async audit(opts: { signal?: AbortSignal } = {}): Promise<Audited> {
+    const found: Audited = { equal: 0, adopted: 0, marked: 0, lacking: 0 };
+    const remote = this.remote;
+    if (!remote) return found;
+    for (const collection of COLLECTIONS) {
+      if (opts.signal?.aborted) throw new Stopped();
+      const [here, there] = await Promise.all([
+        this.local.list(collection),
+        remote.list(collection),
+      ]);
+      const theirs = new Set(there.map((e) => e.id));
+      for (const { id } of here) {
+        if (this.marks.has(collection, id)) continue;
+        if (!theirs.has(id)) {
+          found.lacking++;
+          continue;
+        }
+        await this.exclusive(async () => {
+          if (opts.signal?.aborted) throw new Stopped();
+          if (this.marks.has(collection, id)) return;
+          const [mine, seen] = await Promise.all([
+            this.local.get(collection, id),
+            remote.get(collection, id),
+          ]);
+          if (!mine) return;
+          if (!seen) {
+            found.lacking++;
+            return;
+          }
+          if (sameDocument(mine.doc, seen.doc)) {
+            this.marks.setBase(collection, id, seen.meta.sha);
+            found.equal++;
+            return;
+          }
+          const base = this.marks.base(collection, id);
+          if (base !== null && mine.meta.sha === base) {
+            try {
+              await this.local.put(collection, id, seen.doc, {
+                message: `Read ${collection} ${id}`,
+              });
+              this.marks.setBase(collection, id, seen.meta.sha);
+              found.adopted++;
+            } catch {
+              // Not brought up: left as it is, and not an edit.
+            }
+            return;
+          }
+          this.marks.mark(collection, id);
+          found.marked++;
+        });
+      }
+    }
+    return found;
+  }
+
+  /**
    * Copy up: send the gists each document edited here that nobody has touched in the gists since
    * they last held it, or that they lack. A document edited here and in the gists since is a
    * conflict: it is left as it is in both and returned, for the user to settle with `keepMine` or
    * `keepTheirs`. One saved in the gists while copying is left as it is, as a conflict if it was
-   * edited here, and nothing is deleted or comes down. It stops at the first failure, keeping what
-   * went up before it, so trying again carries on from there. What it sends, or finds the gists
-   * hold already, is no longer marked as unsent; a layout left for its name, and a conflict, are.
+   * edited here, and nothing is deleted or comes down. A document that cannot be sent is reported
+   * with why, and the rest go on; several in a row end it, as the gists are then out of reach,
+   * keeping what went up. What it sends, or finds the gists hold already, is no longer marked as
+   * unsent; a layout left for its name, a conflict, and one that could not be sent, are.
    *
    * With `everything`, the documents never marked are weighed too, as those saved before edits
-   * were marked have to be: each is sent that this browser saved later than the gists, by when each
-   * was saved, and left as it is otherwise. That is for the user to ask for, as a document the gists
-   * lack may be one another browser deleted.
+   * were marked have to be: each that differs and has no version on record is sent if this browser
+   * saved it later than the gists, by when each was saved, and left as it is otherwise. That is for
+   * the user to ask for, as a document the gists lack may be one another browser deleted.
    */
   async copyUp(opts: { everything?: boolean; signal?: AbortSignal } = {}): Promise<CopiedUp> {
     const everything = opts.everything === true;
+    const remote = this.remote;
+    const done: CopiedUp = {
+      copied: 0,
+      current: 0,
+      differing: 0,
+      conflicts: [],
+      taken: 0,
+      failed: [],
+    };
+    if (!remote) return done;
     const stopped = () => {
       // Given up on by whoever asked: it stops at the next document, keeping what went up.
-      if (opts.signal?.aborted) throw new Error('GitHub did not answer in time');
+      if (opts.signal?.aborted) throw new Stopped();
     };
-    const remote = this.remote;
-    const done: CopiedUp = { copied: 0, current: 0, conflicts: [], taken: 0 };
-    if (!remote) return done;
     try {
       for (const collection of COLLECTIONS) {
         stopped();
-        const [here, there] = await Promise.all([
-          this.local.list(collection),
-          remote.list(collection),
-        ]);
+        const here = await this.local.list(collection);
         await this.prune(collection, new Set(here.map((e) => e.id)));
-        const theirs = new Map(there.map((e) => [e.id, e]));
+        let inARow = 0;
         for (const entry of here) {
-          await this.exclusive(async () => {
-            stopped();
-            await this.sendOne(collection, entry, theirs.get(entry.id), everything, done);
-          });
+          try {
+            await this.exclusive(async () => {
+              stopped();
+              await this.sendOne(collection, entry, everything, done, true);
+            });
+            inARow = 0;
+          } catch (e) {
+            if (e instanceof Stopped) throw e;
+            done.failed.push({ collection, id: entry.id, name: entry.name, error: messageOf(e) });
+            if (++inARow >= FAILURES_IN_A_ROW) throw e;
+          }
         }
       }
     } catch (e) {
-      throw new CopyUpError(done.copied, e);
+      throw new CopyUpError(done, e);
     }
     return done;
   }
@@ -293,16 +513,13 @@ export class CompositeStorage implements StorageAdapter {
   private async sendOne(
     collection: Collection,
     listed: IndexEntry,
-    first: IndexEntry | undefined,
     everything: boolean,
     done: CopiedUp,
+    again: boolean,
   ): Promise<void> {
     const remote = this.remote as StorageAdapter;
     const id = listed.id;
-    if (!this.marks.has(collection, id) && !(everything && newer(listed, first))) {
-      if (everything) done.current++;
-      return;
-    }
+    if (!everything && !this.marks.has(collection, id)) return;
     const stored = await this.local.get(collection, id);
     // Listed, but with nothing behind it to send.
     if (!stored) {
@@ -343,7 +560,12 @@ export class CompositeStorage implements StorageAdapter {
       // Saved there since it was read: what is there now is what to weigh it against.
       seen = await remote.get(collection, id);
       now = (await remote.list(collection)).find((x) => x.id === id);
-      if (seen && sameDocument(seen.doc, stored.doc)) {
+      if (!seen) {
+        // Deleted there in between: nothing to weigh it against, so once more as new.
+        if (again) return this.sendOne(collection, listed, everything, done, false);
+        throw e;
+      }
+      if (sameDocument(seen.doc, stored.doc)) {
         await this.settled(collection, id, seen.meta.sha, stored.doc);
         done.current++;
       } else this.leave(collection, entry, stored.doc, seen, now, marked, done);
@@ -371,7 +593,8 @@ export class CompositeStorage implements StorageAdapter {
    * Whether this browser's copy goes over the gists' version. One edited here goes over the
    * version it was an edit of, which is what the gists hold if nobody has touched it since, and
    * over no other; with no record of which version that was, it is not known to be an edit of this
-   * one. One never marked, weighed by a copy of everything, goes over an older one.
+   * one. One never marked, weighed by a copy of everything, goes over an older one if no version of
+   * it is on record.
    */
   private ahead(
     collection: Collection,
@@ -390,7 +613,7 @@ export class CompositeStorage implements StorageAdapter {
   /**
    * Leave a document as it is in both places. Edited here, with the gists' version not the one the
    * edit was made on, it is a conflict, which is returned and stays marked. Not edited here, the
-   * gists' copy is the newer and nothing is to be done.
+   * gists' copy is the one this browser's differs from, and is counted as that, not as up to date.
    */
   private leave(
     collection: Collection,
@@ -402,7 +625,7 @@ export class CompositeStorage implements StorageAdapter {
     done: CopiedUp,
   ): void {
     if (!marked || !seen) {
-      done.current++;
+      done.differing++;
       return;
     }
     done.conflicts.push({
@@ -449,9 +672,10 @@ export class CompositeStorage implements StorageAdapter {
 
   /**
    * Settle a conflict by keeping the gists' version: this browser's copy becomes it. If it is not
-   * the version the user was shown any more, nothing is written, and `changed` says so; if it is
-   * gone, deleted from the gists since, there is nothing to keep, and `gone` says so: this
-   * browser's version is not written over, and is sent again.
+   * the version the user was shown any more, or this browser's copy has been saved again since the
+   * user was shown it, nothing is written, and `changed` says so; if the gists' is gone, deleted
+   * since, there is nothing to keep, and `gone` says so: this browser's version is not written
+   * over, and is sent again.
    */
   keepTheirs(conflict: Conflict): Promise<'kept' | 'changed' | 'gone'> {
     return this.exclusive(async () => {
@@ -460,6 +684,9 @@ export class CompositeStorage implements StorageAdapter {
       const seen = await this.remote.get(collection, id);
       if (!seen) return 'gone';
       if (seen.meta.sha !== conflict.theirs.sha) return 'changed';
+      // An edit made here since the user was shown the two is not one they chose to throw away.
+      const mine = await this.local.get(collection, id);
+      if (mine && !sameDocument(mine.doc, conflict.mine.doc)) return 'changed';
       await this.local.put(collection, id, seen.doc, {
         message: `Keep GitHub's ${collection} ${conflict.name}`,
       });

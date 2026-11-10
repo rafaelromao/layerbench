@@ -6,7 +6,14 @@ import { MemoryStorage } from '../test/memory-storage.js';
 import { forgetOffered, review, sendHeld, startAutoSync, syncNow, useSync } from './auto-sync.js';
 import { CompositeStorage } from './composite.js';
 
-const TIMING = { settleMs: 1_000, retryMs: [5_000, 10_000], attemptMs: 20_000 };
+/** Looking at every document is for the tests of it: elsewhere it would add requests that are not the point. */
+const NO_AUDIT = Number.MAX_SAFE_INTEGER;
+const TIMING = {
+  settleMs: 1_000,
+  retryMs: [5_000, 10_000],
+  attemptMs: 20_000,
+  auditEveryMs: NO_AUDIT,
+};
 
 function texts(): string[] {
   return useToasts.getState().toasts.map((t) => t.text);
@@ -40,7 +47,16 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
-  useSync.setState({ phase: 'idle', error: null, last: null, reviewing: false, held: null });
+  vi.unstubAllGlobals();
+  useSync.setState({
+    phase: 'idle',
+    error: null,
+    last: null,
+    reviewing: false,
+    held: null,
+    scheduled: false,
+    lacking: null,
+  });
 });
 
 describe('sending by itself', () => {
@@ -112,7 +128,8 @@ describe('sending by itself', () => {
     const down = breakable(remote);
     const stop = startAutoSync(storage, marks, TIMING);
     await vi.waitFor(() => expect(useSync.getState().phase).toBe('failed'));
-    expect(useSync.getState().error).toBe('GitHub responded 503');
+    // It says which document, as well as why.
+    expect(useSync.getState().error).toBe('Mine: GitHub responded 503');
     // Nothing is lost meanwhile.
     expect(marks.count()).toBe(1);
 
@@ -150,11 +167,19 @@ describe('sending by itself', () => {
     stop();
   });
 
-  it('gives up on an attempt that never ends, so the next one can be made', async () => {
+  it('gives up on an attempt that is taking too long, so the next one can be made', async () => {
     const { storage, remote, marks } = await offlineEdit();
     const list = remote.list.bind(remote);
+    // A request that is slow to give up, as one with a limit of its own is.
     let hang = true;
-    remote.list = (collection) => (hang ? new Promise(() => {}) : list(collection));
+    let unblock: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      unblock = resolve;
+    });
+    remote.list = async (collection) => {
+      if (hang) await gate;
+      return list(collection);
+    };
     const stop = startAutoSync(storage, marks, TIMING);
     await vi.advanceTimersByTimeAsync(21_000);
     expect(useSync.getState()).toMatchObject({
@@ -163,6 +188,7 @@ describe('sending by itself', () => {
     });
 
     hang = false;
+    unblock();
     syncNow();
     await vi.waitFor(() => expect(useSync.getState().phase).toBe('idle'));
     expect(marks.count()).toBe(0);
@@ -292,6 +318,160 @@ describe('an attempt that is given up on', () => {
     // Once for the first attempt, once more for the mark it left, and no more.
     const lists = listed.mock.calls.filter(([c]) => c === 'layouts').length;
     expect(lists).toBeLessThanOrEqual(4);
+    stop();
+  });
+});
+
+describe('documents that cannot be sent', () => {
+  it('says which one, and why, and tries again later', async () => {
+    const marks = memoryMarks();
+    const local = new MemoryStorage('local');
+    const remote = new MemoryStorage('github');
+    const offline = new CompositeStorage(local, null, marks);
+    await offline.put('layouts', 'a', { name: 'Alpha' });
+    await offline.put('layouts', 'b', { name: 'Beta' });
+    const put = remote.put.bind(remote);
+    remote.put = async (collection, id, doc, opts) => {
+      if (id === 'b') throw new Error('GitHub responded 422');
+      return put(collection, id, doc, opts);
+    };
+    const stop = startAutoSync(new CompositeStorage(local, remote, marks), marks, TIMING);
+    await vi.waitFor(() => expect(useSync.getState().phase).toBe('failed'));
+    expect(useSync.getState().error).toBe('Beta: GitHub responded 422');
+    // The one that could be sent was, and said so.
+    expect(await remote.get('layouts', 'a')).not.toBeNull();
+    expect(texts()).toEqual(['Sent 1 document saved in this browser to your GitHub account']);
+    expect(useSync.getState().scheduled).toBe(true);
+    stop();
+  });
+
+  it('keeps what a copy up that ended found, conflicts included', async () => {
+    const marks = memoryMarks();
+    const local = new MemoryStorage('local');
+    const remote = new MemoryStorage('github');
+    const signedIn = new CompositeStorage(local, remote, marks);
+    await signedIn.put('layouts', 'gust', { name: 'Gust' });
+    await new CompositeStorage(local, null, marks).put('layouts', 'gust', { name: 'Gust (phone)' });
+    await remote.put('layouts', 'gust', { name: 'Gust (laptop)' });
+    const offline = new CompositeStorage(local, null, marks);
+    for (const id of ['x1', 'x2', 'x3']) await offline.put('layouts', id, { name: id });
+    const put = remote.put.bind(remote);
+    remote.put = async (collection, id, doc, opts) => {
+      if (id.startsWith('x')) throw new Error('too large');
+      return put(collection, id, doc, opts);
+    };
+
+    const stop = startAutoSync(signedIn, marks, TIMING);
+    await vi.waitFor(() => expect(useSync.getState().phase).toBe('failed'));
+    // Ended after several in a row: the conflict found before is still shown.
+    expect(useSync.getState().last?.conflicts.map((c) => c.id)).toEqual(['gust']);
+    stop();
+  });
+
+  it('shows no attempt waiting once nothing is left to send', async () => {
+    const { storage, remote, marks } = await offlineEdit();
+    breakable(remote);
+    const stop = startAutoSync(storage, marks, TIMING);
+    await vi.waitFor(() => expect(useSync.getState().phase).toBe('failed'));
+    expect(useSync.getState().scheduled).toBe(true);
+    marks.forget('layouts', 'mine');
+    expect(useSync.getState().scheduled).toBe(false);
+    stop();
+  });
+});
+
+describe('one tab sends at a time', () => {
+  /** Web Locks as the browser has them when another tab holds the lock for as long as `other.holds`. */
+  function locks(other: { holds: boolean }) {
+    const request = vi.fn(
+      async (_name: string, _opts: unknown, work: (lock: object | null) => unknown) =>
+        work(other.holds ? null : { name: 'layerbench:send' }),
+    );
+    vi.stubGlobal('navigator', { ...navigator, locks: { request } });
+    return request;
+  }
+
+  it('leaves it to the tab that has the lock, and looks again later', async () => {
+    const { storage, remote, marks } = await offlineEdit();
+    const other = { holds: true };
+    const request = locks(other);
+    const copyUp = vi.spyOn(storage, 'copyUp');
+    const stop = startAutoSync(storage, marks, TIMING);
+    await vi.waitFor(() => expect(request).toHaveBeenCalled());
+    expect(request).toHaveBeenCalledWith(
+      'layerbench:send',
+      { ifAvailable: true },
+      expect.any(Function),
+    );
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(copyUp).not.toHaveBeenCalled();
+    expect(useSync.getState()).toMatchObject({ phase: 'idle', scheduled: true });
+
+    // The other tab is done, or gone.
+    other.holds = false;
+    await vi.advanceTimersByTimeAsync(5_000);
+    await vi.waitFor(async () => expect(await remote.get('layouts', 'mine')).not.toBeNull());
+    expect(marks.count()).toBe(0);
+    stop();
+  });
+});
+
+describe('looking at every document, once in a while', () => {
+  it('marks what differs and is not known to be older, and asks about it as a conflict', async () => {
+    const marks = memoryMarks();
+    const local = new MemoryStorage('local');
+    const remote = new MemoryStorage('github');
+    await local.put('layouts', 'gust', { name: 'Gust (phone)' });
+    await remote.put('layouts', 'gust', { name: 'Gust (laptop)' });
+    await local.put('layouts', 'only-here', { name: 'Only here' });
+    const storage = new CompositeStorage(local, remote, marks);
+
+    const stop = startAutoSync(storage, marks, { ...TIMING, auditEveryMs: 0 });
+    await vi.waitFor(() => expect(useSync.getState().last?.conflicts).toHaveLength(1));
+    expect(useSync.getState().lacking).toBe(1);
+    expect(useSync.getState().reviewing).toBe(true);
+    // Neither was written over, and the one the account lacks was not sent: it may have been deleted.
+    expect((await remote.get('layouts', 'gust'))?.doc.name).toBe('Gust (laptop)');
+    expect(await remote.get('layouts', 'only-here')).toBeNull();
+    stop();
+  });
+
+  it('is not repeated within the time it is given', async () => {
+    const marks = memoryMarks();
+    const local = new MemoryStorage('local');
+    const remote = new MemoryStorage('github');
+    await local.put('layouts', 'a', { name: 'A' });
+    await remote.put('layouts', 'a', { name: 'A' });
+    const storage = new CompositeStorage(local, remote, marks);
+    const timing = { ...TIMING, auditEveryMs: 3_600_000 };
+
+    const first = startAutoSync(storage, marks, timing);
+    await vi.waitFor(() => expect(marks.audited()).toBeGreaterThan(0));
+    first();
+    const listed = vi.spyOn(remote, 'list');
+    startAutoSync(storage, marks, timing)();
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(listed).not.toHaveBeenCalled();
+  });
+
+  it('is not made for documents held back for another account', async () => {
+    const marks = memoryMarks();
+    const local = new MemoryStorage('local');
+    const remote = new MemoryStorage('github');
+    await new CompositeStorage(local, null, marks).put('layouts', 'mine', { name: 'Mine' });
+    marks.setAccount('someone-else');
+    const listed = vi.spyOn(remote, 'list');
+    const stop = startAutoSync(
+      new CompositeStorage(local, remote, marks),
+      marks,
+      {
+        ...TIMING,
+        auditEveryMs: 0,
+      },
+      'you',
+    );
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(listed).not.toHaveBeenCalled();
     stop();
   });
 });

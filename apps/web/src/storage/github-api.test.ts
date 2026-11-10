@@ -56,3 +56,15 @@ describe('a limit on a wait', () => {
     }
   });
 });
+
+describe('what a request to GitHub is asked for', () => {
+  it('is revalidated, not taken from the browser cache, which would show an older version', async () => {
+    let cache: RequestCache | undefined;
+    vi.stubGlobal('fetch', async (_url: string, init?: RequestInit) => {
+      cache = init?.cache;
+      return new Response('[]');
+    });
+    await gitHubFetch({ token: async () => 't' }, `${API}/gists`);
+    expect(cache).toBe('no-cache');
+  });
+});

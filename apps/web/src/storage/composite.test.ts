@@ -44,19 +44,19 @@ describe('two stores at once', () => {
     await expect(composite.get('layouts', 'only-there')).rejects.toThrow('offline');
   });
 
-  it('saves locally before reporting a conflict, so the work survives', async () => {
+  it('saves locally and leaves it marked when the gists changed in between, rather than losing it', async () => {
+    const marks = memoryMarks();
     const local = localAdapter();
     const remote = fakeRemote({
       async put() {
         throw new StorageConflictError();
       },
     });
-    const composite = new CompositeStorage(local, remote);
+    const composite = new CompositeStorage(local, remote, marks);
 
-    await expect(composite.put('layouts', 'mine', { name: 'Mine' })).rejects.toBeInstanceOf(
-      StorageConflictError,
-    );
+    await composite.put('layouts', 'mine', { name: 'Mine' });
     expect((await local.get('layouts', 'mine'))?.doc).toEqual({ name: 'Mine' });
+    expect(marks.has('layouts', 'mine')).toBe(true);
   });
 
   it('writes nothing in the browser when the gists already have a layout of that name', async () => {
@@ -117,8 +117,10 @@ describe('two stores at once', () => {
     expect(await composite.copyUp({ everything: true })).toEqual({
       copied: 0,
       current: 0,
+      differing: 0,
       conflicts: [],
       taken: 0,
+      failed: [],
     });
   });
 });
@@ -151,9 +153,11 @@ describe('copying up everything this browser holds', () => {
     expect(composite.reachesRemote).toBe(true);
     expect(await composite.copyUp({ everything: true })).toEqual({
       copied: 3,
-      current: 1,
+      current: 0,
+      differing: 1,
       conflicts: [],
       taken: 0,
+      failed: [],
     });
 
     const name = async (c: Collection, id: string) => (await remote.get(c, id))?.doc.name;
@@ -173,12 +177,14 @@ describe('copying up everything this browser holds', () => {
     expect(await composite.copyUp({ everything: true })).toEqual({
       copied: 0,
       current: 1,
+      differing: 0,
       conflicts: [],
       taken: 0,
+      failed: [],
     });
   });
 
-  it('stops at the first failure, keeping what went up, and carries on when tried again', async () => {
+  it('goes on past a document that cannot be sent, and says which it was and why', async () => {
     const local = localAdapter();
     await local.put('layouts', 'a', { name: 'A' });
     await local.put('layouts', 'b', { name: 'B' });
@@ -191,16 +197,18 @@ describe('copying up everything this browser holds', () => {
     };
     const composite = new CompositeStorage(local, remote);
 
-    const stopped = await composite.copyUp({ everything: true }).catch((e: unknown) => e);
-    expect(stopped).toBeInstanceOf(CopyUpError);
-    expect(stopped).toMatchObject({ copied: 1, message: 'offline' });
+    const first = await composite.copyUp({ everything: true });
+    expect(first).toMatchObject({ copied: 1 });
+    expect(first.failed).toEqual([{ collection: 'layouts', id: 'b', name: 'B', error: 'offline' }]);
 
     fail = false;
     expect(await composite.copyUp({ everything: true })).toEqual({
       copied: 1,
       current: 1,
+      differing: 0,
       conflicts: [],
       taken: 0,
+      failed: [],
     });
   });
 
@@ -214,8 +222,10 @@ describe('copying up everything this browser holds', () => {
     expect(await new CompositeStorage(local, remote).copyUp({ everything: true })).toEqual({
       copied: 1,
       current: 0,
+      differing: 0,
       conflicts: [],
       taken: 1,
+      failed: [],
     });
     expect((await remote.list('layouts')).map((e) => e.id)).toEqual(['mine', 'other']);
   });
@@ -230,7 +240,7 @@ describe('copying up everything this browser holds', () => {
     let lists = 0;
     remote.list = async (collection) => {
       const listed = await list(collection);
-      if (collection === 'layouts' && ++lists === 2) {
+      if (collection === 'layouts' && ++lists === 1) {
         await remote.put('layouts', 'busy', { name: 'theirs' });
       }
       return listed;
@@ -238,9 +248,11 @@ describe('copying up everything this browser holds', () => {
 
     expect(await new CompositeStorage(local, remote).copyUp({ everything: true })).toEqual({
       copied: 0,
-      current: 1,
+      current: 0,
+      differing: 1,
       conflicts: [],
       taken: 0,
+      failed: [],
     });
     expect((await remote.get('layouts', 'busy'))?.doc.name).toBe('theirs');
   });
@@ -253,7 +265,7 @@ describe('copying up everything this browser holds', () => {
     let lists = 0;
     remote.list = async (collection) => {
       const listed = await list(collection);
-      if (collection === 'layouts' && ++lists === 2) {
+      if (collection === 'layouts' && ++lists === 1) {
         await remote.put('layouts', 'new', { name: 'theirs' });
       }
       return listed;
@@ -261,9 +273,11 @@ describe('copying up everything this browser holds', () => {
 
     expect(await new CompositeStorage(local, remote).copyUp({ everything: true })).toEqual({
       copied: 0,
-      current: 1,
+      current: 0,
+      differing: 1,
       conflicts: [],
       taken: 0,
+      failed: [],
     });
     expect((await remote.get('layouts', 'new'))?.doc.name).toBe('theirs');
   });
@@ -297,7 +311,14 @@ describe('what is waiting to be sent', () => {
     expect(marks.has('layouts', 'mine')).toBe(true);
 
     const signedIn = new CompositeStorage(local, remote, marks);
-    expect(await signedIn.copyUp()).toEqual({ copied: 1, current: 0, conflicts: [], taken: 0 });
+    expect(await signedIn.copyUp()).toEqual({
+      copied: 1,
+      current: 0,
+      differing: 0,
+      conflicts: [],
+      taken: 0,
+      failed: [],
+    });
     expect((await remote.get('layouts', 'mine'))?.doc).toEqual({ name: 'Mine' });
     expect(marks.count()).toBe(0);
   });
@@ -316,7 +337,14 @@ describe('what is waiting to be sent', () => {
     await local.put('layouts', 'old', { name: 'Old' });
 
     const composite = new CompositeStorage(local, remote, marks);
-    expect(await composite.copyUp()).toEqual({ copied: 0, current: 0, conflicts: [], taken: 0 });
+    expect(await composite.copyUp()).toEqual({
+      copied: 0,
+      current: 0,
+      differing: 0,
+      conflicts: [],
+      taken: 0,
+      failed: [],
+    });
     expect(await remote.get('layouts', 'old')).toBeNull();
     expect(await composite.copyUp({ everything: true })).toMatchObject({ copied: 1 });
     expect(await remote.get('layouts', 'old')).not.toBeNull();
@@ -326,7 +354,14 @@ describe('what is waiting to be sent', () => {
     const { marks, local, remote, composite } = await agreed();
     // Deleted from the account elsewhere; this browser still holds it, saved and sent as it was.
     await remote.delete('layouts', 'gust');
-    expect(await composite.copyUp()).toEqual({ copied: 0, current: 0, conflicts: [], taken: 0 });
+    expect(await composite.copyUp()).toEqual({
+      copied: 0,
+      current: 0,
+      differing: 0,
+      conflicts: [],
+      taken: 0,
+      failed: [],
+    });
     expect(await remote.get('layouts', 'gust')).toBeNull();
     expect((await local.get('layouts', 'gust'))?.doc).toEqual({ name: 'Gust' });
     expect(marks.count()).toBe(0);
@@ -352,23 +387,6 @@ describe('what is waiting to be sent', () => {
     expect(await composite.copyUp()).toMatchObject({ copied: 1 });
     expect((await remote.get('layouts', 'mine'))?.doc).toEqual({ name: 'Mine' });
     expect(marks.count()).toBe(0);
-  });
-
-  it('does not mark a save the gists refused for what they hold: that is for the user to decide', async () => {
-    for (const refusal of [
-      new StorageConflictError(),
-      new NameTakenError({ id: 'x', name: 'X' }),
-    ]) {
-      const marks = memoryMarks();
-      const remote = fakeRemote({
-        async put() {
-          throw refusal;
-        },
-      });
-      const composite = new CompositeStorage(localAdapter(), remote, marks);
-      await expect(composite.put('layouts', 'mine', { name: 'Mine' })).rejects.toBe(refusal);
-      expect(marks.count()).toBe(0);
-    }
   });
 
   it('keeps a document waiting to be sent where its next save goes, and sends it a moment later', async () => {
@@ -406,7 +424,14 @@ describe('what is waiting to be sent', () => {
     await offline.put('layouts', 'gust', { name: 'Gust, edited on the phone' });
     expect(marks.has('layouts', 'gust')).toBe(true);
 
-    expect(await composite.copyUp()).toEqual({ copied: 1, current: 0, conflicts: [], taken: 0 });
+    expect(await composite.copyUp()).toEqual({
+      copied: 1,
+      current: 0,
+      differing: 0,
+      conflicts: [],
+      taken: 0,
+      failed: [],
+    });
     expect((await remote.get('layouts', 'gust'))?.doc.name).toBe('Gust, edited on the phone');
     expect(marks.count()).toBe(0);
   });
@@ -473,7 +498,7 @@ describe('what is waiting to be sent', () => {
     let lists = 0;
     remote.list = async (collection) => {
       const listed = await list(collection);
-      if (collection === 'layouts' && ++lists === 2) {
+      if (collection === 'layouts' && ++lists === 1) {
         await remote.put('layouts', 'gust', { name: 'Gust (laptop)' });
       }
       return listed;
@@ -538,7 +563,7 @@ describe('what is waiting to be sent', () => {
     expect(marks.has('layouts', 'mine-2')).toBe(true);
   });
 
-  it('keeps every mark that is not sent when copying stops partway', async () => {
+  it('keeps the mark of each document it could not send', async () => {
     const marks = memoryMarks();
     const local = localAdapter();
     const offline = new CompositeStorage(local, null, marks);
@@ -551,9 +576,8 @@ describe('what is waiting to be sent', () => {
       return put(collection, id, doc, opts);
     };
 
-    await expect(new CompositeStorage(local, remote, marks).copyUp()).rejects.toBeInstanceOf(
-      CopyUpError,
-    );
+    const result = await new CompositeStorage(local, remote, marks).copyUp();
+    expect(result.failed.map((f) => f.id)).toEqual(['b']);
     expect(marks.has('layouts', 'a')).toBe(false);
     expect(marks.has('layouts', 'b')).toBe(true);
   });
@@ -628,22 +652,6 @@ describe('a signed-in save of a document the gists hold another version of', () 
     await composite.put('layouts', 'gust', { name: 'Gust, edited' });
     expect((await remote.get('layouts', 'gust'))?.doc.name).toBe('Gust, edited');
     expect(marks.count()).toBe(0);
-  });
-
-  it('counts the version it handed out as the one an edit of it is made on', async () => {
-    const marks = memoryMarks();
-    const local = localAdapter();
-    const remote = fakeRemote();
-    // Another browser saved it; this one has never held it, and opens it from the account.
-    await remote.put('layouts', 'gust', { name: 'Gust (laptop)' });
-    const composite = new CompositeStorage(local, remote, marks);
-    const opened = await composite.get('layouts', 'gust');
-    expect(marks.base('layouts', 'gust')).toBe(opened?.meta.sha);
-
-    // Edited offline from it: its base is what the account held, so it goes up if nobody has touched it.
-    await new CompositeStorage(local, null, marks).put('layouts', 'gust', { name: 'Gust (phone)' });
-    expect(await composite.copyUp()).toMatchObject({ copied: 1, conflicts: [] });
-    expect((await remote.get('layouts', 'gust'))?.doc.name).toBe('Gust (phone)');
   });
 });
 
@@ -762,6 +770,17 @@ describe('settling a conflict', () => {
     expect((await composite.copyUp()).conflicts[0].theirs.name).toBe('Gust (laptop, again)');
   });
 
+  it("writes nothing when this browser's copy was saved again since the user was shown the two", async () => {
+    const { marks, local, remote, composite, conflict } = await conflicted();
+    // Put off with "decide later", and edited again meanwhile: not what they were shown.
+    await composite.put('layouts', 'gust', { name: 'Gust (phone, edited since)' });
+
+    expect(await composite.keepTheirs(conflict)).toBe('changed');
+    expect((await local.get('layouts', 'gust'))?.doc.name).toBe('Gust (phone, edited since)');
+    expect((await remote.get('layouts', 'gust'))?.doc.name).toBe('Gust (laptop)');
+    expect(marks.has('layouts', 'gust')).toBe(true);
+  });
+
   it("keeps this browser's version, and says the gists' is gone, when it was deleted since", async () => {
     const { marks, local, remote, composite, conflict } = await conflicted();
     await remote.delete('layouts', 'gust');
@@ -770,5 +789,416 @@ describe('settling a conflict', () => {
     expect((await local.get('layouts', 'gust'))?.doc.name).toBe('Gust (phone)');
     expect(marks.has('layouts', 'gust')).toBe(true);
     expect(await composite.copyUp()).toMatchObject({ copied: 1, conflicts: [] });
+  });
+});
+
+describe('a save is marked before anything else is done with it', () => {
+  it('has a mark at every wait after it is written here, so a tab closed meanwhile loses nothing', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = fakeRemote();
+    const composite = new CompositeStorage(local, remote, marks);
+    await composite.put('layouts', 'gust', { name: 'Gust' });
+    // The gists answer slowly to the read before the write, then to the write.
+    let release: () => void = () => {};
+    const slow = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let releaseWrite: () => void = () => {};
+    const slowWrite = new Promise<void>((resolve) => {
+      releaseWrite = resolve;
+    });
+    const get = remote.get.bind(remote);
+    const put = remote.put.bind(remote);
+    let stage = 'read';
+    remote.get = async (collection, id) => {
+      if (stage === 'read') await slow;
+      return get(collection, id);
+    };
+    remote.put = async (collection, id, doc, opts) => {
+      stage = 'write';
+      await slowWrite;
+      return put(collection, id, doc, opts);
+    };
+
+    // The mark is there at the moment the browser's copy is written, not only after: a tab killed
+    // between the two would leave an edit with no mark, which the gists' older copy then hides.
+    let markedAtWrite: boolean | null = null;
+    const write = local.put.bind(local);
+    local.put = async (collection, id, doc, opts) => {
+      markedAtWrite = marks.has(collection, id);
+      return write(collection, id, doc, opts);
+    };
+    const saving = composite.put('layouts', 'gust', { name: 'Gust, edited on the phone' });
+    // Waiting on the read: written here, marked.
+    await vi.waitFor(async () =>
+      expect((await local.get('layouts', 'gust'))?.doc.name).toBe('Gust, edited on the phone'),
+    );
+    expect(markedAtWrite).toBe(true);
+    expect(marks.has('layouts', 'gust')).toBe(true);
+    release();
+    // Waiting on the write: still marked.
+    await vi.waitFor(() => expect(stage).toBe('write'));
+    expect(marks.has('layouts', 'gust')).toBe(true);
+    releaseWrite();
+    await saving;
+    expect(marks.has('layouts', 'gust')).toBe(false);
+  });
+
+  it('does not leave a mark for a save the browser refused', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    await local.put('layouts', 'other', { name: 'Same' });
+    const composite = new CompositeStorage(local, null, marks);
+    await expect(composite.put('layouts', 'mine', { name: 'Same' })).rejects.toBeInstanceOf(
+      NameTakenError,
+    );
+    expect(marks.count()).toBe(0);
+  });
+
+  it('puts back what it held, and leaves nothing marked, when the gists refuse the name', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = fakeRemote();
+    await local.put('layouts', 'gust', { name: 'Gust before' });
+    const composite = new CompositeStorage(local, remote, marks);
+    // The gists' list does not show it, then their write refuses it: a layout made meanwhile.
+    remote.put = async () => {
+      throw new NameTakenError({ id: 'x', name: 'Gust' });
+    };
+    await expect(composite.put('layouts', 'gust', { name: 'Gust' })).rejects.toBeInstanceOf(
+      NameTakenError,
+    );
+    expect((await local.get('layouts', 'gust'))?.doc.name).toBe('Gust before');
+    expect(marks.count()).toBe(0);
+
+    // A document that was not there at all is not left behind.
+    await expect(composite.put('layouts', 'new', { name: 'Gust' })).rejects.toBeInstanceOf(
+      NameTakenError,
+    );
+    expect(await local.get('layouts', 'new')).toBeNull();
+  });
+
+  it("does not leave what a caller's own check refused to be sent unasked", async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = fakeRemote();
+    await remote.put('rulesets', 'mine', { name: 'Theirs' });
+    const composite = new CompositeStorage(local, remote, marks);
+    await expect(
+      composite.put('rulesets', 'mine', { name: 'Mine' }, { expectedSha: 'a-version-long-gone' }),
+    ).rejects.toBeInstanceOf(StorageConflictError);
+    expect(marks.count()).toBe(0);
+    expect(await local.get('rulesets', 'mine')).toBeNull();
+  });
+});
+
+describe('a signed-in save that cannot be weighed against the gists', () => {
+  it('stays here, marked, when the gists cannot be read', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = fakeRemote();
+    const composite = new CompositeStorage(local, remote, marks);
+    await composite.put('layouts', 'gust', { name: 'Gust' });
+    remote.get = async () => {
+      throw new Error('GitHub did not answer in time');
+    };
+    const put = vi.spyOn(remote, 'put');
+
+    await composite.put('layouts', 'gust', { name: 'Gust, edited' });
+    expect(put).not.toHaveBeenCalled();
+    expect((await local.get('layouts', 'gust'))?.doc.name).toBe('Gust, edited');
+    expect(marks.has('layouts', 'gust')).toBe(true);
+  });
+
+  it('is written over the version just read, and no other', async () => {
+    const marks = memoryMarks();
+    const remote = fakeRemote();
+    const composite = new CompositeStorage(localAdapter(), remote, marks);
+    await composite.put('layouts', 'gust', { name: 'Gust' });
+    const put = vi.spyOn(remote, 'put');
+    const before = (await remote.get('layouts', 'gust'))?.meta.sha;
+
+    await composite.put('layouts', 'gust', { name: 'Gust, edited' });
+    expect(put).toHaveBeenCalledWith(
+      'layouts',
+      'gust',
+      { name: 'Gust, edited' },
+      expect.objectContaining({ expectedSha: before }),
+    );
+  });
+
+  it('stays here, marked, for a document this browser held a copy of with no record of its version', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = fakeRemote();
+    await local.put('layouts', 'gust', { name: 'Gust, from before versions were kept' });
+    await remote.put('layouts', 'gust', { name: 'Gust (laptop)' });
+
+    await new CompositeStorage(local, remote, marks).put('layouts', 'gust', {
+      name: 'Gust, edited here',
+    });
+    expect((await remote.get('layouts', 'gust'))?.doc.name).toBe('Gust (laptop)');
+    expect(marks.has('layouts', 'gust')).toBe(true);
+  });
+
+  it('is not weighed again when it already is what the gists hold', async () => {
+    const marks = memoryMarks();
+    const remote = fakeRemote();
+    const composite = new CompositeStorage(localAdapter(), remote, marks);
+    await remote.put('layouts', 'gust', { name: 'Gust' });
+    const put = vi.spyOn(remote, 'put');
+    await composite.put('layouts', 'gust', { name: 'Gust' });
+    expect(put).not.toHaveBeenCalled();
+    expect(marks.count()).toBe(0);
+  });
+});
+
+describe('what an edit is made on', () => {
+  it('is the version this browser was handed, which its own copy is brought up to', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = fakeRemote();
+    const composite = new CompositeStorage(local, remote, marks);
+    await composite.put('layouts', 'x', { name: 'X v1' });
+    // The laptop edits; the phone opens it, signed in.
+    await remote.put('layouts', 'x', { name: 'X v2' });
+    expect((await composite.get('layouts', 'x'))?.doc.name).toBe('X v2');
+    await composite.whenIdle();
+    expect((await local.get('layouts', 'x'))?.doc.name).toBe('X v2');
+
+    // Then offline, from the copy it holds: an edit of v2.
+    await new CompositeStorage(local, null, marks).put('layouts', 'x', { name: 'X v2 edited' });
+    expect(await composite.copyUp()).toMatchObject({ copied: 1, conflicts: [] });
+    expect((await remote.get('layouts', 'x'))?.doc.name).toBe('X v2 edited');
+  });
+
+  it("is a conflict, not an overwrite, when the laptop edits again after the phone's copy was brought up", async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = fakeRemote();
+    const composite = new CompositeStorage(local, remote, marks);
+    await composite.put('layouts', 'x', { name: 'X v1' });
+    await remote.put('layouts', 'x', { name: 'X v2' });
+    await composite.get('layouts', 'x');
+    await composite.whenIdle();
+    await new CompositeStorage(local, null, marks).put('layouts', 'x', { name: 'X v2 edited' });
+    await remote.put('layouts', 'x', { name: 'X v3' });
+
+    const { conflicts, copied } = await composite.copyUp();
+    expect(copied).toBe(0);
+    expect(conflicts.map((c) => c.theirs.doc.name)).toEqual(['X v3']);
+    expect((await remote.get('layouts', 'x'))?.doc.name).toBe('X v3');
+  });
+
+  it("is not moved to the gists' version when this browser could not bring its copy up to it", async () => {
+    const marks = memoryMarks();
+    const inner = localAdapter();
+    const remote = fakeRemote();
+    // The browser refuses what it is told to read in, as a name it holds for another layout would.
+    const local = Object.assign(Object.create(inner) as typeof inner, {
+      put: async (...args: Parameters<typeof inner.put>) => {
+        if (args[3]?.message?.startsWith('Read')) throw new Error('refused');
+        return inner.put(...args);
+      },
+    });
+    const composite = new CompositeStorage(local, remote, marks);
+    await composite.put('layouts', 'x', { name: 'X v1' });
+    await remote.put('layouts', 'x', { name: 'X v2' });
+    await composite.get('layouts', 'x');
+    await composite.whenIdle();
+    expect((await inner.get('layouts', 'x'))?.doc.name).toBe('X v1');
+
+    // Offline, an edit of v1: the gists hold v2, so it is weighed, not sent over it.
+    await new CompositeStorage(inner, null, marks).put('layouts', 'x', { name: 'X v1 edited' });
+    const { conflicts, copied } = await composite.copyUp();
+    expect(copied).toBe(0);
+    expect(conflicts).toHaveLength(1);
+    expect((await remote.get('layouts', 'x'))?.doc.name).toBe('X v2');
+  });
+});
+
+describe('looking at every document against the gists by content', () => {
+  const sha = async (doc: object) => (await import('./indexeddb.js')).sha1Hex(JSON.stringify(doc));
+
+  it('records what both hold where it is the same, and says it is', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = fakeRemote();
+    await local.put('layouts', 'same', { name: 'Same' });
+    await remote.put('layouts', 'same', { name: 'Same' });
+    const found = await new CompositeStorage(local, remote, marks).audit();
+    expect(found).toEqual({ equal: 1, adopted: 0, marked: 0, lacking: 0 });
+    expect(marks.base('layouts', 'same')).toBe((await remote.get('layouts', 'same'))?.meta.sha);
+  });
+
+  it("brings this browser's copy up to the gists' when it was not edited here since they agreed", async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = fakeRemote();
+    const v1 = { name: 'X v1' };
+    await local.put('layouts', 'x', v1);
+    await remote.put('layouts', 'x', { name: 'X v2' });
+    // Both held v1 when they last agreed.
+    marks.setBase('layouts', 'x', await sha(v1));
+
+    const found = await new CompositeStorage(local, remote, marks).audit();
+    expect(found).toMatchObject({ adopted: 1, marked: 0 });
+    expect((await local.get('layouts', 'x'))?.doc.name).toBe('X v2');
+    expect(marks.count()).toBe(0);
+  });
+
+  it('marks a document that differs and is not known to be an older copy, never deciding by clocks', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = fakeRemote();
+    // The phone's, saved before edits were marked, and never sent; the gists have an older one.
+    await remote.put('layouts', 'gust', { name: 'Gust (older, in the account)' });
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(Date.now() + 3_600_000));
+    await local.put('layouts', 'gust', { name: 'Gust (phone)' });
+    vi.useRealTimers();
+
+    const composite = new CompositeStorage(local, remote, marks);
+    expect(await composite.audit()).toMatchObject({ marked: 1 });
+    expect(marks.has('layouts', 'gust')).toBe(true);
+    // Weighed like any other: with no version on record it is a conflict, even though it is later.
+    const { conflicts } = await composite.copyUp();
+    expect(conflicts.map((c) => c.id)).toEqual(['gust']);
+    expect((await remote.get('layouts', 'gust'))?.doc.name).toBe('Gust (older, in the account)');
+  });
+
+  it('counts what the gists lack and leaves it alone, as another browser may have deleted it', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = fakeRemote();
+    await local.put('layouts', 'only-here', { name: 'Only here' });
+    const found = await new CompositeStorage(local, remote, marks).audit();
+    expect(found).toMatchObject({ lacking: 1, marked: 0 });
+    expect(marks.count()).toBe(0);
+    expect(await remote.get('layouts', 'only-here')).toBeNull();
+  });
+
+  it('leaves alone what is waiting to be sent', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = fakeRemote();
+    await local.put('layouts', 'a', { name: 'A (here)' });
+    await remote.put('layouts', 'a', { name: 'A (there)' });
+    marks.mark('layouts', 'a');
+    const found = await new CompositeStorage(local, remote, marks).audit();
+    expect(found).toEqual({ equal: 0, adopted: 0, marked: 0, lacking: 0 });
+  });
+
+  it('does not say a document is up to date when it differs', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = fakeRemote();
+    await local.put('layouts', 'a', { name: 'A (here)' });
+    await remote.put('layouts', 'a', { name: 'A (there)' });
+    // Never edited here, with a version on record: the gists' is another's, and is left as it is.
+    marks.setBase('layouts', 'a', 'a-version-this-browser-no-longer-has');
+    const result = await new CompositeStorage(local, remote, marks).copyUp({ everything: true });
+    expect(result).toMatchObject({ current: 0, differing: 1, copied: 0 });
+  });
+});
+
+describe('deleting', () => {
+  it('does not delete a version another browser saved since this one last held it', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = fakeRemote();
+    const composite = new CompositeStorage(local, remote, marks);
+    await composite.put('layouts', 'gust', { name: 'Gust' });
+    await remote.put('layouts', 'gust', { name: 'Gust (laptop)' });
+
+    await expect(composite.delete('layouts', 'gust')).rejects.toBeInstanceOf(StorageConflictError);
+    expect((await remote.get('layouts', 'gust'))?.doc.name).toBe('Gust (laptop)');
+    expect(await local.get('layouts', 'gust')).not.toBeNull();
+  });
+
+  it('keeps an edit not sent yet, and the mark, when the gists cannot be reached to delete from', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = fakeRemote();
+    const composite = new CompositeStorage(local, remote, marks);
+    await new CompositeStorage(local, null, marks).put('layouts', 'gust', { name: 'Gust (phone)' });
+    remote.get = async () => {
+      throw new Error('GitHub did not answer in time');
+    };
+
+    await expect(composite.delete('layouts', 'gust')).rejects.toThrow('did not answer');
+    expect((await local.get('layouts', 'gust'))?.doc.name).toBe('Gust (phone)');
+    expect(marks.has('layouts', 'gust')).toBe(true);
+  });
+
+  it('deletes from both, and forgets it, when nobody else has touched it', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = fakeRemote();
+    const composite = new CompositeStorage(local, remote, marks);
+    await composite.put('layouts', 'gust', { name: 'Gust' });
+    await composite.delete('layouts', 'gust');
+    expect(await local.get('layouts', 'gust')).toBeNull();
+    expect(await remote.get('layouts', 'gust')).toBeNull();
+    expect(marks.base('layouts', 'gust')).toBeNull();
+  });
+
+  it('keeps the mark of an unsent document when the browser fails to delete it', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const composite = new CompositeStorage(local, null, marks);
+    await composite.put('layouts', 'gust', { name: 'Gust' });
+    local.delete = async () => {
+      throw new Error('the browser refused');
+    };
+    await expect(composite.delete('layouts', 'gust')).rejects.toThrow('the browser refused');
+    expect(marks.has('layouts', 'gust')).toBe(true);
+  });
+});
+
+describe('where the browser is all there is', () => {
+  it('says so when it cannot be read, rather than listing nothing', async () => {
+    const local = localAdapter();
+    local.list = async () => {
+      throw new Error('the browser refused to open its database');
+    };
+    await expect(new CompositeStorage(local, null).list('layouts')).rejects.toThrow('refused');
+  });
+
+  it('still lists the gists when signed in and the browser cannot be read', async () => {
+    const local = localAdapter();
+    local.list = async () => {
+      throw new Error('refused');
+    };
+    const remote = fakeRemote();
+    await remote.put('layouts', 'there', { name: 'There' });
+    expect((await new CompositeStorage(local, remote).list('layouts')).map((e) => e.id)).toEqual([
+      'there',
+    ]);
+  });
+});
+
+describe('a copy up that meets documents it cannot send', () => {
+  it('goes on to the rest, and ends once several in a row fail, with what it did', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const offline = new CompositeStorage(local, null, marks);
+    for (const id of ['a', 'b', 'c', 'd', 'e']) await offline.put('layouts', id, { name: id });
+    const remote = fakeRemote();
+    const put = remote.put.bind(remote);
+    remote.put = async (collection, id, doc, opts) => {
+      if (id !== 'a') throw new Error(`too large: ${id}`);
+      return put(collection, id, doc, opts);
+    };
+
+    const error = await new CompositeStorage(local, remote, marks)
+      .copyUp()
+      .catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(CopyUpError);
+    const { result } = error as CopyUpError;
+    expect(result.copied).toBe(1);
+    expect(result.failed.map((f) => f.id)).toEqual(['b', 'c', 'd']);
+    expect(marks.marked('layouts').sort()).toEqual(['b', 'c', 'd', 'e']);
   });
 });

@@ -42,6 +42,9 @@ export async function gitHubFetch(
     method: init.method,
     body: init.body,
     signal: timeoutSignal(REQUEST_MS),
+    // Asked again each time: GitHub lets a browser keep an answer for a minute, which would show a
+    // version another browser has since replaced.
+    cache: 'no-cache',
     headers: {
       // The browser sets its own user agent; GitHub accepts that.
       Authorization: `Bearer ${token}`,

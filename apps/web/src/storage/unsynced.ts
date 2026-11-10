@@ -40,12 +40,15 @@ interface Kept {
   base: Record<string, string>;
   /** Who this browser's documents were last sent to: the login of a GitHub account. */
   account?: string;
+  /** When this browser's documents were last looked at against the gists', in epoch milliseconds. */
+  audited?: number;
 }
 
 interface Read {
   unsent: Set<string>;
   base: Map<string, string>;
   account: string | null;
+  audited: number;
 }
 
 /**
@@ -74,9 +77,10 @@ export class Unsynced {
         (e): e is [string, string] => typeof e[1] === 'string',
       );
       const account = typeof parsed?.account === 'string' ? parsed.account : null;
-      return { unsent: new Set(unsent), base: new Map(base), account };
+      const audited = typeof parsed?.audited === 'number' ? parsed.audited : 0;
+      return { unsent: new Set(unsent), base: new Map(base), account, audited };
     } catch {
-      return { unsent: new Set(), base: new Map(), account: null };
+      return { unsent: new Set(), base: new Map(), account: null, audited: 0 };
     }
   }
 
@@ -85,6 +89,7 @@ export class Unsynced {
       unsent: [...kept.unsent].sort(),
       base: Object.fromEntries([...kept.base].sort(([a], [b]) => a.localeCompare(b))),
       ...(kept.account !== null && { account: kept.account }),
+      ...(kept.audited > 0 && { audited: kept.audited }),
     } satisfies Kept);
     this.backing.write(text);
     this.notify();
@@ -148,6 +153,17 @@ export class Unsynced {
     const kept = this.read();
     if (kept.account === login) return;
     kept.account = login;
+    this.write(kept);
+  }
+
+  /** When this browser's documents were last looked at against the gists': 0 if never. */
+  audited(): number {
+    return this.read().audited;
+  }
+
+  setAudited(at: number): void {
+    const kept = this.read();
+    kept.audited = at;
     this.write(kept);
   }
 

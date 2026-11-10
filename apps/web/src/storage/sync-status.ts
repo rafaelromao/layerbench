@@ -18,7 +18,9 @@ import { unsynced } from './unsynced.js';
  * - `here-only`: saved in this browser, not signed in to send it.
  * - `ended`: signed out without having asked to be: the session is over.
  * - `unreachable`: the sign-in server did not answer, so it is not known whether anyone is signed in.
+ * - `offline`: signed in, with no connection: what is saved is kept here, to be sent when there is.
  * - `failed`: signed in, but the last try to send did not go through.
+ * - `waiting`: signed in, with documents not sent that nothing is about to send, which is said, never shown as sending.
  * - `conflict`: signed in, with documents changed here and in the account, for the user to settle.
  * - `held`: signed in, with documents saved here not sent, as this browser last sent to another account.
  * - `attention`: signed in, with layouts that stay here for their names.
@@ -31,7 +33,9 @@ export type SyncKind =
   | 'here-only'
   | 'ended'
   | 'unreachable'
+  | 'offline'
   | 'failed'
+  | 'waiting'
   | 'conflict'
   | 'held'
   | 'attention';
@@ -67,6 +71,10 @@ export interface SyncInput {
   conflicts: number;
   /** The account this browser last sent to, while unsent documents are held back from this one. */
   held: string | null;
+  /** Whether the browser has no connection. */
+  offline: boolean;
+  /** Whether an attempt to send is waiting on a timer. */
+  scheduled: boolean;
 }
 
 const waiting = (n: number) => `${n} saved here ${n === 1 ? 'waits' : 'wait'} to be sent.`;
@@ -84,6 +92,15 @@ export function summarize(i: SyncInput): SyncSummary {
         text: `${n} ${n === 1 ? 'document' : 'documents'} saved in this browser ${n === 1 ? 'has' : 'have'} not been sent: this browser last sent to @${i.held}, and you are signed in as @${i.login}. Send ${n === 1 ? 'it' : 'them'} to your account only if ${n === 1 ? 'it is' : 'they are'} yours.`,
         label: ' · unsynced',
         action: 'send-held',
+        notable: true,
+      };
+    }
+    if (i.offline) {
+      return {
+        kind: 'offline',
+        text: `You are offline. ${i.pending > 0 ? `${waiting(i.pending)} They are sent` : 'What you save is kept in this browser and sent'} when you are back online.`,
+        label: ' · offline',
+        ...none,
         notable: true,
       };
     }
@@ -116,12 +133,22 @@ export function summarize(i: SyncInput): SyncSummary {
         notable: true,
       };
     }
-    if (i.phase === 'syncing' || i.pending > 0) {
+    if (i.phase === 'syncing' || (i.scheduled && i.pending > 0)) {
       return {
         kind: 'syncing',
         text: 'Sending what this browser holds to your GitHub account…',
         label: ' · syncing…',
         ...none,
+      };
+    }
+    const left = Math.max(0, i.pending - i.conflicts - i.taken);
+    if (left > 0) {
+      return {
+        kind: 'waiting',
+        text: `${left} ${left === 1 ? 'document saved' : 'documents saved'} in this browser ${left === 1 ? 'has' : 'have'} not been sent to your GitHub account yet.`,
+        label: ' · unsynced',
+        action: 'retry-sync',
+        notable: true,
       };
     }
     return {
@@ -164,6 +191,17 @@ export function summarize(i: SyncInput): SyncSummary {
   return { kind: 'plain', text: 'Saved in this browser.', label: '', ...none };
 }
 
+const isOnline = () => typeof navigator === 'undefined' || navigator.onLine !== false;
+
+function subscribeOnline(listener: () => void): () => void {
+  window.addEventListener('online', listener);
+  window.addEventListener('offline', listener);
+  return () => {
+    window.removeEventListener('online', listener);
+    window.removeEventListener('offline', listener);
+  };
+}
+
 /** The status of the user's work, for whatever shows it. */
 export function useSyncSummary(): SyncSummary {
   const status = useGitHubSession((s) => s.status);
@@ -175,7 +213,21 @@ export function useSyncSummary(): SyncSummary {
   const taken = useSync((s) => s.last?.taken ?? 0);
   const conflicts = useSync((s) => s.last?.conflicts.length ?? 0);
   const held = useSync((s) => s.held?.account ?? null);
-  return summarize({ status, login, problem, pending, phase, error, taken, conflicts, held });
+  const scheduled = useSync((s) => s.scheduled);
+  const online = useSyncExternalStore(subscribeOnline, isOnline, () => true);
+  return summarize({
+    status,
+    login,
+    problem,
+    pending,
+    phase,
+    error,
+    taken,
+    conflicts,
+    held,
+    offline: !online,
+    scheduled,
+  });
 }
 
 /** Do what a status offers. */

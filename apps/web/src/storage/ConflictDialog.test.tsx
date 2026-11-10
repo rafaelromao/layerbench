@@ -2,6 +2,7 @@ import { bundledLayout, toCanonicalJson } from '@layerbench/core';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { useDocumentsChanged } from '../state/documents-changed.js';
 import { useToasts } from '../state/toasts.js';
 import { memoryMarks } from '../test/memory-marks.js';
 import { MemoryStorage } from '../test/memory-storage.js';
@@ -45,6 +46,49 @@ beforeEach(() => {
 
 afterEach(() => {
   useSync.setState({ phase: 'idle', error: null, last: null, reviewing: false, held: null });
+});
+
+describe('a dialog that opens by itself', () => {
+  it('opens onto the button that overwrites nothing', async () => {
+    const { storage } = await conflicted();
+    show(storage);
+    await screen.findByRole('dialog', { name: 'Two versions of Gust' });
+    expect(screen.getByRole('button', { name: 'Decide later' })).toHaveFocus();
+  });
+
+  it('does not open over someone typing, and opens once they have left the field', async () => {
+    const { storage } = await conflicted();
+    act(() => review(false));
+    render(
+      <>
+        <input aria-label="A layout's name" />
+        <StorageProvider adapter={storage}>
+          <ConflictDialog />
+        </StorageProvider>
+      </>,
+    );
+    const field = screen.getByLabelText("A layout's name");
+    field.focus();
+
+    act(() => review(true));
+    // Typing carries on into the field, not onto a button.
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByRole('dialog', { name: /Two versions/ })).toBeNull();
+    expect(field).toHaveFocus();
+
+    act(() => field.blur());
+    expect(await screen.findByRole('dialog', { name: 'Two versions of Gust' })).toBeInTheDocument();
+  });
+
+  it('puts focus back on the safe button after a choice, for the next one', async () => {
+    const user = userEvent.setup();
+    const { storage } = await conflicted(['Gust', 'Breeze']);
+    show(storage);
+    await screen.findByRole('dialog', { name: /Two versions of / });
+
+    await user.click(screen.getByRole('button', { name: 'Keep mine' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Decide later' })).toHaveFocus());
+  });
 });
 
 describe('choosing between two versions', () => {
@@ -115,6 +159,8 @@ describe('choosing between two versions', () => {
     expect(useToasts.getState().toasts.map((t) => t.text)).toContain(
       "Kept GitHub's version of Gust",
     );
+    // Whatever has the layout open is told its copy was replaced.
+    expect(useDocumentsChanged.getState().changed).toContain('layouts/gust');
     await waitFor(() => expect(screen.queryByRole('dialog', { name: /Two versions/ })).toBeNull());
   });
 

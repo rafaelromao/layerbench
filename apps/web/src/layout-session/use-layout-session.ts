@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { customRef } from '../custom/ref.js';
+import { useDocumentsChanged } from '../state/documents-changed.js';
 import { useStorage } from '../storage/use-storage.js';
 import { tabDrafts } from './drafts.js';
 import { useRouterLink } from './router-link.js';
@@ -43,6 +45,19 @@ export function useLayoutSession(): LayoutSessionView {
     }
     if (session && session.getState().status !== 'open') setAttempt((n) => n + 1);
   }, [storage]);
+
+  // A layout replaced in storage under the editor (the user chose the account's version of it) is
+  // opened again, so the next Save is not of the copy that was replaced.
+  const replaced = useDocumentsChanged((s) => s.tick);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a document replaced asks for this
+  useEffect(() => {
+    if (!session) return;
+    const now = session.getState();
+    const { changed } = useDocumentsChanged.getState();
+    if (now.status === 'open' && now.storedId && changed.includes(`layouts/${now.storedId}`)) {
+      void session.open(customRef(now.storedId));
+    }
+  }, [replaced]);
 
   const state = useSyncExternalStore(
     session?.subscribe ?? nothing,
