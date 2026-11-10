@@ -1014,7 +1014,9 @@ export function Workbench({
                           selected={state.selected}
                           alsoSelected={state.also}
                           heat={heat}
-                          layerShare={shown ? layerShare(shown, boardLayer) : undefined}
+                          // The numbers on show are those of the board only when not stale: an edit can have moved or
+                          // removed the layer the last analysis counted at this index.
+                          layerShare={shown && !stale ? layerShare(shown, boardLayer) : null}
                           highlight={highlighted}
                           pressed={frame?.keys ?? []}
                           openCombo={openBox}

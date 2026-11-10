@@ -1289,9 +1289,16 @@ describe('Layers on a card', () => {
     // Hands Down Gold's Numbers has none apart, nor has any layer of Graphite.
     await showLayer(user, 'Numbers', 'Hands Down Gold layers');
     expect(gold.queryByRole('button', { name: /more combos? on/ })).toBeNull();
-    // The navigator keeps the middle of its row, so the arrows do not move as the layers turn.
+    // The navigator keeps the middle of its row, so the arrows do not move as the layers turn; its
+    // sides keep room for the button on Numbers too, which has none.
     const nav = gold.getByRole('group', { name: 'Hands Down Gold layers' });
     expect(nav).toHaveClass('col-start-2');
+    expect(nav.parentElement?.className).toContain('minmax(4.75rem,1fr)');
+    // A board with nothing beside its navigator on any layer gives the room to the name.
+    const plain = within(cardOf('Graphite')).getByRole('group', { name: 'Graphite layers' });
+    expect(plain.parentElement?.className).toContain(
+      'grid-cols-[minmax(0,1fr)_minmax(0,auto)_minmax(0,1fr)]',
+    );
     expect(
       within(cardOf('Graphite')).queryByRole('button', { name: /more combos? on/ }),
     ).toBeNull();

@@ -117,17 +117,29 @@ export function heatMap(source: HeatSource, mode: HeatMode, layer: number): Reco
  * The part of the typing done on one layer, 0–1: the presses on that layer's keys over all presses,
  * whatever the heat mode. 0 where nothing was pressed, and on a layer the report does not have yet,
  * as one just added: `heatMap` clamps it to colour the board, but a number would claim another
- * layer's share.
+ * layer's share. A source with no presses by layer is all on the first, as `heatMap` draws it.
  */
 export function layerShare(source: HeatSource, layer: number): number {
   const total = source.usageAll.reduce((a, b) => a + b, 0);
   if (!(total > 0)) return 0;
-  const on = (source.usageByLayer[layer] ?? []).reduce((a, b) => a + b, 0);
-  return on / total;
+  const row =
+    source.usageByLayer.length > 0
+      ? source.usageByLayer[layer]
+      : layer === 0
+        ? source.usageAll
+        : undefined;
+  return (row ?? []).reduce((a, b) => a + b, 0) / total;
 }
 
-/** A share as the board writes it: one decimal at most, `0%` for none. */
+/**
+ * A share as the board writes it: one decimal at most, `0%` for none at all. A share too small to
+ * show a tenth is `under 0.1%`, and one a tenth short of all is `over 99.9%`, so `0%` and `100%`
+ * are never rounded to.
+ */
 export function formatShare(share: number): string {
+  if (!(share > 0)) return '0%';
+  if (share < 0.0005) return 'under 0.1%';
+  if (share < 1 && share >= 0.9995) return 'over 99.9%';
   return `${Number((share * 100).toFixed(1))}%`;
 }
 

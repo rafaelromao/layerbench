@@ -44,11 +44,22 @@ describe('the layer navigator', () => {
     // every layer, the one box between the arrows.
     for (const layer of layers) {
       expect(within(slot).getByText(layer.name)).toBeInTheDocument();
-      expect(slot).toHaveClass('w-40', 'max-w-full');
+      // min-w-0 lets a long name shrink the slot in a narrow box as a short one would; without it
+      // the slot would be as wide as a long name, and the arrows would move with the name.
+      expect(slot).toHaveClass('w-40', 'max-w-full', 'min-w-0');
       expect(slot.className).not.toMatch(/max-w-\[|w-(auto|fit|max|min)\b/);
       expect([...nav().children]).toEqual([previous(), slot, next()]);
       if (layer !== layers.at(-1)) await user.click(next());
     }
+  });
+
+  it('gives a name that may be cut short in full, as its tooltip', () => {
+    const long = 'A rather long layer name that would not fit';
+    render(<Harness layers={[{ idx: 0, id: 'a', name: long }]} onRename={vi.fn()} />);
+    expect(within(nav()).getByRole('button', { name: long })).toHaveAttribute(
+      'title',
+      `${long}: double-click or press F2 to rename`,
+    );
   });
 
   it('fits the rename field in the slot, so on a narrow screen it does not cover the arrows', async () => {

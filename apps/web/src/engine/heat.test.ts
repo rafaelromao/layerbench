@@ -321,10 +321,25 @@ describe('the share of the typing on a layer', () => {
     expect(layerShare(source, 3)).toBe(0);
   });
 
+  it('puts every press on the first layer where the source has none by layer, as heatMap does', () => {
+    const flat = heatSourceOf(reportWith({ usageByLayer: [], usageAll: [3, 1, 0] }));
+    expect(layerShare(flat, 0)).toBe(1);
+    expect(layerShare(flat, 1)).toBe(0);
+    expect(Object.keys(heatMap(flat, 'usage', 0))).toEqual(['0', '1']);
+  });
+
   it('is written with one decimal at most', () => {
     expect(formatShare(0.925)).toBe('92.5%');
     expect(formatShare(0.075)).toBe('7.5%');
     expect(formatShare(0)).toBe('0%');
     expect(formatShare(1)).toBe('100%');
+  });
+
+  it('never rounds a share that is there to 0%, nor one short of all to 100%', () => {
+    expect(formatShare(0.0004)).toBe('under 0.1%');
+    expect(formatShare(0.0005)).toBe('0.1%');
+    expect(formatShare(0.9994)).toBe('99.9%');
+    expect(formatShare(0.9996)).toBe('over 99.9%');
+    expect(formatShare(Number.NaN)).toBe('0%');
   });
 });

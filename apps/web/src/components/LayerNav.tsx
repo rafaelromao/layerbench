@@ -166,7 +166,8 @@ export function LayerNav({
             type="button"
             className={`${nameClass} cursor-text rounded px-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--lb-ring)]`}
             style={nameStyle}
-            title="Double-click or press F2 to rename"
+            // The name may be cut short: the tooltip has it whole.
+            title={`${layer.name}: double-click or press F2 to rename`}
             // Enter and Space reach here with no pointer (detail 0): they are the keyboard's way in.
             onClick={(e) => e.detail === 0 && setRenaming(layer.id)}
             onDoubleClick={() => setRenaming(layer.id)}

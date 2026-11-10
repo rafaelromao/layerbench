@@ -2,7 +2,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import type { AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
-import { layerNames, layerShareIn, shownLayer } from '../test/layers.js';
+import { layerNames, layerShareIn, showLayer, shownLayer } from '../test/layers.js';
 import { openSettings, renderRoute, testClient } from '../test/render.js';
 
 /**
@@ -59,6 +59,75 @@ describe('Analyze', () => {
     const sum = Object.values(shares).reduce((a, b) => a + b, 0);
     expect(Math.abs(sum - 100)).toBeLessThanOrEqual(0.05 * 5 + 1e-9);
   });
+
+  it('writes no share while the numbers on show are those of the layout before an edit', async () => {
+    const real = testClient();
+    let hold = false;
+    const client = new Proxy(real, {
+      get(target, prop) {
+        if (prop === 'peek') return async () => null;
+        if (prop === 'analyze') {
+          return (request: AnalyzeRequest, opts?: { signal?: AbortSignal }) =>
+            // Once held, the analysis of the edited layout never lands: the last there was stands.
+            hold
+              ? new Promise<ReportDTO>((_, reject) =>
+                  opts?.signal?.addEventListener('abort', () =>
+                    reject(new DOMException('left', 'AbortError')),
+                  ),
+                )
+              : target.analyze(request, opts);
+        }
+        const member = Reflect.get(target, prop);
+        return typeof member === 'function' ? member.bind(target) : member;
+      },
+    });
+    const user = userEvent.setup();
+    renderRoute('/analyze?layout=magic-romak&corpus=en-general&sample=20000', { client });
+    await screen.findByText('Same finger bigrams');
+    const board = screen.getByRole('region', { name: 'Board' });
+    await waitFor(() => expect(layerShareIn(board)).not.toBeNull());
+    const row = within(board).getByRole('group', { name: 'Layers' }).parentElement as HTMLElement;
+    const columns = row.className;
+
+    // An edit the last analysis does not know: its numbers stay up until the new ones land, and
+    // an edit can move a layer to another index, so no share is written meanwhile.
+    hold = true;
+    fireEvent.keyDown(within(board).getByRole('button', { name: 'Alpha 1' }), { key: 'F2' });
+    const field = await within(board).findByRole('textbox', { name: 'Rename Alpha 1' });
+    await user.clear(field);
+    await user.type(field, 'First{Enter}');
+    expect(await screen.findByText('updating…')).toBeInTheDocument();
+    expect(layerShareIn(board)).toBeNull();
+    // Its room is kept, so the arrows do not move while the share is away.
+    expect(row.className).toBe(columns);
+  }, 60_000);
+
+  it('writes the share of the layer a word being played is on, not the one chosen', async () => {
+    const user = userEvent.setup();
+    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000');
+    await screen.findByText('Same finger bigrams');
+    const board = screen.getByRole('region', { name: 'Board' });
+    const next = within(board).getByRole('button', { name: 'Next layer' });
+    const shares = new Map<string, number>();
+    for (;;) {
+      const share = await waitFor(() => {
+        const v = layerShareIn(board);
+        expect(v).not.toBeNull();
+        return v as number;
+      });
+      shares.set(shownLayer(), share);
+      if (next.getAttribute('aria-disabled') === 'true') break;
+      await user.click(next);
+    }
+    await showLayer(user, 'Alpha 1');
+    expect(shares.get('Alpha 1')).not.toBe(shares.get('Alpha 2'));
+
+    // The word plays on its own; its ç is on Alpha 2 while Alpha 1 stays the layer chosen.
+    await user.type(screen.getByLabelText('How is this typed?'), 'ação');
+    await waitFor(() => expect(shownLayer()).toBe('Alpha 2'), { timeout: 15_000, interval: 5 });
+    expect(screen.queryByRole('button', { name: '▶ Play' })).toBeNull();
+    expect(layerShareIn(board)).toBe(shares.get('Alpha 2'));
+  }, 60_000);
 
   it('leads the badges of Effort and SFB to the guide’s ruler for the rules in the link', async () => {
     // Four of them: Effort and SFB in the summary and on their cards, none on another metric.

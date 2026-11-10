@@ -72,14 +72,17 @@ const SHARE_SAID = 'Share of key presses on this layer: ';
 
 /**
  * The share of the typing written beside the navigator, in percent, or null where there is none (no
- * heat). It must be said to a screen reader with what it is, and written as Board writes it.
+ * heat, or numbers not of this board). It must be said to a screen reader with what it is, and
+ * written as Board writes it; `under 0.1%` reads as 0 and `over 99.9%` as 100.
  */
 export function layerShareIn(scope: HTMLElement): number | null {
   const el = within(scope).queryByTestId('layer-share');
   if (!el) return null;
-  const text = el.textContent ?? '';
-  if (!text.startsWith(SHARE_SAID)) throw new Error(`share not announced: ${text}`);
-  const shown = text.slice(SHARE_SAID.length);
+  const said = el.querySelector('.sr-only')?.textContent ?? '';
+  if (said !== SHARE_SAID) throw new Error(`share not said for what it is: ${said}`);
+  const shown = el.querySelector('[data-share-value]')?.textContent ?? '';
+  if (shown === 'under 0.1%') return 0;
+  if (shown === 'over 99.9%') return 100;
   if (!/^\d+(\.\d)?%$/.test(shown)) throw new Error(`share written as ${shown}`);
   return Number.parseFloat(shown);
 }

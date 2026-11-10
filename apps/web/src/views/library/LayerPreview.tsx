@@ -62,7 +62,8 @@ export const LayerPreview = memo(function LayerPreview({
         label={`${name} layers`}
         heat={colours}
         heatName={drawn}
-        layerShare={heatMode !== null && heat ? layerShare(heat, layer) : undefined}
+        // Room for it as soon as heat is on, so the arrows do not move when the score comes in.
+        layerShare={heatMode === null ? undefined : heat ? layerShare(heat, layer) : null}
         // A card is a glance at the layout; Analyze lists what the numbered keys do.
         legend={false}
       />
