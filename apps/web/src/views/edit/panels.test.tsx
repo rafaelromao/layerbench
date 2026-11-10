@@ -188,12 +188,29 @@ describe('the Typing paths carousel', () => {
       .map((li) => li.querySelector('.truncate')?.textContent);
 
   it('marks the first way of Shift that is on, and that some key gives, as the one in use', () => {
-    const s = initialState(shifted, compileLayout(shifted));
+    // Only a sticky Shift: the one way there is.
+    const sticky: Layout = {
+      ...shifted,
+      layers: [
+        {
+          ...shifted.layers[0],
+          bindings: { ...shifted.layers[0].bindings, L1: { kind: 'kp', symbol: 'x' } },
+        },
+        ...shifted.layers.slice(1),
+      ],
+    };
+    const s = initialState(sticky, compileLayout(sticky));
     render(<PathsPanel state={s} send={vi.fn()} producers={withRepeat} />);
     expect(inUse('Shift kind')).toEqual(['Sticky (one-shot)']);
     // The mark is the border too, for whoever sees the card and not its states.
     const marked = rule('Shift kind').getAllByRole('listitem')[0];
     expect(marked).toHaveClass('lb-path-first');
+  });
+
+  it('marks no way of Shift while it is left alone and keys both tap and hold it: the cheapest key is used', () => {
+    const s = initialState(shifted, compileLayout(shifted));
+    render(<PathsPanel state={s} send={vi.fn()} producers={withRepeat} />);
+    expect(inUse('Shift kind')).toEqual([]);
   });
 
   it('marks no way of Doubled letters while it is left alone, which is the cheaper of the two', () => {

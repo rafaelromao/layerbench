@@ -52,6 +52,32 @@ export function shiftWaysOffered(layout: Pick<Layout, 'layers' | 'combos'>): Shi
 }
 
 /**
+ * How many presses give Shift, on any layer, as `shiftWaysOffered` finds them: each key that taps
+ * it as a one-shot, each that holds it (a key that does both, twice), each typing combo that taps
+ * it; a key that does it on several layers once. With two or more, which one a capital is typed
+ * with is a choice of the word.
+ */
+export function shiftKeysOffered(layout: Pick<Layout, 'layers' | 'combos'>): number {
+  const presses = new Set<string>();
+  for (const layer of layout.layers) {
+    for (const [key, b] of Object.entries(layer.bindings)) {
+      const tap = partOf(b);
+      if (tap.kind === 'sk' && isShift(tap)) presses.add(`${key} tap`);
+      if (tap.kind === 'mod' && isShift(tap)) presses.add(`${key} hold`);
+      const held = heldPart(b);
+      if (held?.kind === 'mod' && isShift(held)) presses.add(`${key} hold`);
+    }
+  }
+  let combos = 0;
+  for (const combo of layout.combos ?? []) {
+    if (combo.role === 'command') continue;
+    const tap = partOf(combo.binding);
+    if (tap.kind === 'sk' && isShift(tap)) combos++;
+  }
+  return presses.size + combos;
+}
+
+/**
  * The layout with its space and shift keys following its keys. They are not set by hand: the space
  * key is a key that types a space on the base layer, preferably a thumb, and the shift key one that
  * taps or holds Shift there.
