@@ -659,12 +659,12 @@ const LACKS: Record<string, Record<string, string[][]>> = {
 };
 
 describe('which bundled layouts have the default layers', () => {
-  it('is a document only: every layout written in code is its author’s design', () => {
+  it('is none: every bundled layout is its author’s design', () => {
     expect(
       BUNDLED_LAYOUTS.filter((l) => hasDefaultLayers(l))
         .map((l) => l.id)
         .sort(),
-    ).toEqual(['nordwind']);
+    ).toEqual([]);
   });
 
   it('names every layout written in code in exactly one of UNTYPED and TYPES', () => {

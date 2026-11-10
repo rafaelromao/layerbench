@@ -75,7 +75,7 @@ describe('a layout written in code, taken out of its file', () => {
 
   it('refuses an id the list does not define, or a list the file does not have', () => {
     const text = read('classic.ts');
-    expect(() => removeDef(text, 'CLASSIC_DEFS', 'nordwind')).toThrow(LibraryRequestRefused);
+    expect(() => removeDef(text, 'CLASSIC_DEFS', 'zed')).toThrow(LibraryRequestRefused);
     expect(() => removeDef(text, 'SMALL_DEFS', 'qwerty')).toThrow(LibraryRequestRefused);
   });
 });

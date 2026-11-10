@@ -1,7 +1,6 @@
 import { toCanonicalJson } from '../layout/json.js';
 import { safeParseLayout } from '../layout/schema.js';
 import type { Layout } from '../layout/types.js';
-import nordwind from './documents/nordwind.json';
 
 /**
  * Bundled layouts added as documents: each file in `documents/` is a layout exactly as LayerBench
@@ -9,9 +8,7 @@ import nordwind from './documents/nordwind.json';
  * pull request (README → Bundled layouts): the file, one import and one entry below, and a line on
  * the landing page.
  */
-const DOCUMENTS: Record<string, unknown> = {
-  nordwind,
-};
+const DOCUMENTS: Record<string, unknown> = {};
 
 /**
  * The document without `features`, which documents saved before sentence case and caps word were

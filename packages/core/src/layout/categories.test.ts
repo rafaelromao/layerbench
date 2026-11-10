@@ -48,17 +48,7 @@ const EXPECTED: Record<LayoutCategory, string[]> = {
     // Its Alpha 2 and Ç extension type `qu`, `ç`, `ão` and `ões` as macros.
     'romak',
   ],
-  thumb_alpha: [
-    'hands-down-neu',
-    'night',
-    'dusk',
-    'snth',
-    'engram',
-    'sunlight',
-    'aptmak',
-    'rsthd',
-    'nordwind',
-  ],
+  thumb_alpha: ['hands-down-neu', 'night', 'dusk', 'snth', 'engram', 'sunlight', 'aptmak', 'rsthd'],
   standard: [
     'qwerty',
     'dvorak',

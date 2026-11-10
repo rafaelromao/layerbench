@@ -212,8 +212,7 @@ letters and marks its author places, its author's thumbs, and the layers its aut
 past the letters, with the keys and combos that reach them and the combos its author types symbols
 and accents with. Nothing is added to what its author's design types: a character it leaves out, it
 cannot type, until you add it in the editor. [The layouts that come with the app and have layers of
-their own](#layouts-with-their-authors-layers) are listed below. Nordwind, a document, has the
-default layers as it was saved.
+their own](#layouts-with-their-authors-layers) are listed below.
 
 **Numbers** and **Symbols** are Magic Romak's on the 24 keys most boards have. The pinky's top and
 bottom keys and the inner column add what has no room there: currency and ordinals on Numbers, for
@@ -370,8 +369,7 @@ sources define only their letters, but for Hands Down Neu, whose author's firmwa
 Hands Down layers for a later Neu with other letters and thumbs, and Nordrassil, whose author
 publishes the rest of the keymap only outside its repository; Uno's keymap has its digits on a
 number row and a layer of function keys, which type nothing the analysis counts. Each types the
-marks its author places and nothing more, no digit and no accent, until you add them in the editor;
-Nordwind, a document, has the default layers as it was saved.
+marks its author places and nothing more, no digit and no accent, until you add them in the editor.
 
 Romak is its author's write-up ([rafaelromao.github.io/romak](https://rafaelromao.github.io/romak)),
 and has no Numbers, Symbols, Extras or Accents, as the write-up has none for 34 keys. Tapping the

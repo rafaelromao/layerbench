@@ -60,8 +60,7 @@ symbol: Accents, Numbers and Symbols, and Extras for whatever those cannot hold.
 dead keys, and the letters and accented letters the supported languages need; Extras comes on while
 Numbers and Symbols are both held. A layout with them holds Numbers on its left inner thumb and
 Symbols on its right inner one, so Extras is both inner thumbs, in either order, and Accents comes on
-from a combo on two thumbs. A bundled layout is its author's design and has none, but for Nordwind,
-a document that carries them as it was saved.
+from a combo on two thumbs. A bundled layout is its author's design and has none.
 _Avoid_: standard layers, common layers, shared layers
 
 **Draft**:
