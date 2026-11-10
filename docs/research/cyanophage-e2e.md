@@ -111,10 +111,8 @@ CYANOPHAGE_CAPTURE=1 E2E_PORT=4021 pnpm --filter @layerbench/web e2e --project=c
 It rewrites `fixture.json` with the date, his script's hash and every number. Commit it only after
 reading the diff: a number that moved is either his change or ours, and the PR says which.
 
-**The capture has not yet run end to end.** The pinned fixture was read in a browser with the
-capture's own `measure` (`cyanophage/playground.ts`) on his page's HTML and script, served from
-LayerBench's dev server so it could fetch the text, not by the capture test on his own page. Its
-numbers equal what LayerBench gives on all seventy, and his script's hash is the one his live page
-serves. Its first run on his page should change nothing in `fixture.json` but the date; any other
-change is a difference between the two ways of reading his page, to be explained before the fixture
-is committed.
+The pinned fixture was first read in a browser with the capture's own `measure`
+(`cyanophage/playground.ts`) on his page's HTML and script, served from LayerBench's dev server so
+it could fetch the text. The capture test then ran end to end on his live page (2026-11-10, Edge)
+and wrote the same `fixture.json`, byte for byte: all seventy numbers, his script's hash and the
+text's.
