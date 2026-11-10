@@ -109,7 +109,7 @@ describe('Magic Romak, with its behaviours on its keys', () => {
     });
   });
 
-  // The traces from before features replaced layers, unchanged by that rewrite.
+  // The keys each word is typed with.
   it.each([
     ['ação', ['RHM', 'R0', 'LBM', 'LHI']],
     ['chave', ['LBM', 'RBI', 'RHM', 'RBI', 'RHR']],
@@ -212,7 +212,7 @@ describe('Magic Romak, with its behaviours on its keys', () => {
   });
 });
 
-/** `mini` as a document from before caps word was only a behaviour declares it. */
+/** `mini` as a document that declares caps word as a feature. */
 function declaring(capsWord: LegacyCapsWord, sentenceCase?: LegacySentenceCase): ReadLayout {
   return { ...mini(), features: { ...(sentenceCase ? { sentenceCase } : {}), capsWord } };
 }
@@ -225,7 +225,7 @@ const SHIFT_SHIFT: Binding = {
   morphed: { kind: 'caps_word', mods: ['LSHIFT'] },
 };
 
-describe('features declared by a document from before they were only behaviours', () => {
+describe('features declared by a document', () => {
   it('is the layout itself when none is declared', () => {
     const layout = mini();
     expect(withLegacyFeatures(layout)).toBe(layout);

@@ -413,10 +413,9 @@ Doc set's above, step for step and colour for colour.
 ### Custom rule sets
 
 A custom rule set carries the rulers it was saved with, and its badge for Effort or SFB leads to
-[The rulers](#the-rulers). One saved earlier keeps the old ones: an SFB above 1.375 may still be
-called *high* or *above mid high*, and Effort's steps may still run from 440 to 580, from 300 to 600 or from 400 to 900, until the bounds
-are changed in **Rules**, under **Bands (upper bounds)**. A set made from one of the presets above
-starts with that preset's rulers.
+[The rulers](#the-rulers). The bounds belong to the set, so one saved with other bounds keeps
+them, and its badges name bands by them, until they are changed in **Rules**, under **Bands (upper
+bounds)**. A set made from one of the presets above starts with that preset's rulers.
 
 Hand balance is read as the Doc reads it, from the share of the keystrokes each hand types. The Doc
 prints whole percents and files a split under the one it prints: *even* up to a 52-48 split, *leans*

@@ -97,7 +97,7 @@ describe('a layout that declares no rules', () => {
     expect(rules.doubledLetters).toEqual(defaultRules(l).doubledLetters);
   });
 
-  it('is typed as before: every bundled layout declares nothing, and compiles to no declared ways', () => {
+  it('is typed by the engine’s own ways: every bundled layout declares nothing, and compiles to no declared ways', () => {
     for (const l of BUNDLED_LAYOUTS) {
       expect(l.typingRules, l.id).toBeUndefined();
       const compiled = compileLayout(l);

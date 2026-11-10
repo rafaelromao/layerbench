@@ -37,7 +37,7 @@ describe('analysis parameters', () => {
     expect(parseParams({ rules: 'keysolve' }).preset).toBe('layouts_doc');
     expect(parseParams({ rules: 'custom:mine' }).preset).toBe('custom:mine');
     expect(parseParams({ rules: 'cyanophage' }).preset).toBe('cyanophage');
-    // The old spelling opens nothing.
+    // `saved:` names no custom document.
     expect(parseParams({ rules: 'saved:mine' }).preset).toBe('layouts_doc');
     // A custom id is a word; a link cannot name a path.
     expect(parseParams({ rules: 'custom:../../x' }).preset).toBe('layouts_doc');

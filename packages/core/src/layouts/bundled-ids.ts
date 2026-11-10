@@ -47,8 +47,8 @@ const BUILT_IN_IDS = [
 export const DEFAULT_LAYOUT_ID = 'magic-romak';
 
 /**
- * The id of every bundled layout: those written in code, and those added as documents, the layout a
- * visit opens first wherever it is written, as once a change has made it a document.
+ * The id of every bundled layout, those written in code and those added as documents: the layout a
+ * visit opens first leads, wherever it is written.
  */
 export const BUNDLED_IDS: readonly string[] = [
   DEFAULT_LAYOUT_ID,

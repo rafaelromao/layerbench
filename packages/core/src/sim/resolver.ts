@@ -710,7 +710,7 @@ export class Simulator {
     };
     // A layout that declared how a capital is typed tries each way that is on, in its order, on the
     // shift key and then on every other key, before the next way. Otherwise the shift key's kind
-    // goes first, and then any key, as a layout always was typed.
+    // goes first, and then any key.
     const declared = isShift ? this.compiled.shiftWays : null;
     if (declared) {
       return declared.some((way) => shiftKeyAs(way) || search(way === 'sk', way === 'hold'));

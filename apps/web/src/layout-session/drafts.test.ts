@@ -29,7 +29,7 @@ describe('the drafts a tab made', () => {
     expect(drafts.originOf('inline:aaa')).toBeNull();
     expect(drafts.sourceOf('inline:bbb')).toBeNull();
     expect(drafts.sourceOf('inline:ccc')).toBeNull();
-    // Kept as a tab kept them before it knew where a draft came from.
+    // An origin kept with no source still reads: where the draft came from is not known.
     store.setItem('layerbench:origins', JSON.stringify({ 'inline:old': 'mine' }));
     expect(webDrafts(store).originOf('inline:old')).toBe('mine');
     expect(webDrafts(store).sourceOf('inline:old')).toBeNull();

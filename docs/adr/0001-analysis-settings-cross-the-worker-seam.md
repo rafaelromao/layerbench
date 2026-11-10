@@ -9,7 +9,7 @@ links carry the cap, so a layout it opens shows the numbers its card showed.
 
 ## Considered Options
 
-- **Each view builds its request** (as before): the copies drifted. The Library hard-coded cross-word
-  `reset`, and Compare ignored a mix its own summary named.
+- **Each view builds its request**: the copies drift. One view hard-codes a cross-word rule, another
+  ignores a mix its own summary names.
 - **The main thread derives the request with the core module**: one definition too, but every caller
   must remember to call it, and the worker cannot tell a derived request from a hand-built one.

@@ -961,7 +961,7 @@ describe('A saved layout that cannot be read', () => {
     start: 'qwerty',
     defaultLayers: true,
   });
-  /** Qwerty saved as `name`, its document changed by `change` as an older app, or a bug, wrote it. */
+  /** Qwerty saved as `name`, its document changed by `change`, as one written by another app, or a bug, can be. */
   async function saveAs(
     storage: IndexedDbAdapter,
     id: string,
@@ -1007,7 +1007,7 @@ describe('A saved layout that cannot be read', () => {
 
   it('opens one saved with imported keys, as Magic Breeze was, without them', async () => {
     const storage = freshStorage();
-    // Before PR #79: a FUN hold and an Escape on Numbers, kept as imported keys.
+    // A FUN hold and an Escape on Numbers, kept as imported keys.
     await saveAs(storage, 'breeze', 'Old Breeze', (doc) => {
       const funHeld = {
         kind: 'hold_tap',
@@ -1749,7 +1749,7 @@ describe('Heatmaps on the cards', () => {
     expect(currentSearch()).not.toContain('heat');
   });
 
-  it('reads a mode it no longer has, from an older visit, as usage', async () => {
+  it('reads a heat mode it does not have as usage', async () => {
     useSession.setState({ libraryHeat: true, libraryHeatMode: 'gone' as never });
     renderRoute(LIBRARY, { storage: freshStorage() });
     expect(await screen.findByRole('combobox', { name: 'Heat' })).toHaveValue('usage');

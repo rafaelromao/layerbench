@@ -3,7 +3,7 @@ export type CaseMode = 'fold' | 'model';
 /**
  * Which classes of non-letter text survive normalisation.
  *
- * `letters` is the historical behaviour and stays the default: digits are dropped and only the
+ * `letters` is the default: digits are dropped and only the
  * shared punctuation set survives. A layout with no number layer cannot type a digit, and an
  * unproducible symbol is a hard word boundary, so counting numbers has to be an explicit choice.
  */

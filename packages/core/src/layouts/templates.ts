@@ -300,7 +300,8 @@ export function hasDefaultLayers(layout: Pick<Layout, 'layers'>): boolean {
  * inner ones on a board with one thumb a hand. Thumbs press none of Accents' 30 main keys, so the
  * chord is never a same-finger pair with the accent after it there. A board with one space bar for
  * both thumbs has no two to chord: it takes the left ring and middle fingers' home keys, the one
- * board where `ä` and `ü`, on those keys, follow the chord with the same finger.
+ * board where the accents on those two fingers' columns, `ä` and `ü` among them, follow the chord
+ * with the same finger.
  */
 export function accentsComboKeys(geometry: Geometry): string[] {
   if (geometry.family === 'rowstagger') return ['LHR', 'LHM'];

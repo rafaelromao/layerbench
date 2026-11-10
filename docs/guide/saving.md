@@ -93,9 +93,9 @@ work in GitHub.
 rule sets, one for corpora and one for the changes you proposed. Secret gists are unlisted, not
 private: anyone with a gist's address can read it.
 
-## Moving what you saved before
+## Copying what this browser holds
 
-Signing in does not move what this browser saved before. Click **Copy this browser's documents
+Signing in does not copy what this browser already holds. Click **Copy this browser's documents
 up** in **Storage** to send what this browser holds to where **Storage** now saves: each layout,
 rule set and text GitHub has not got, or has an older copy of. One saved there since, from another
 browser, stays as it is, so a browser that has fallen behind never overwrites newer work. A layout
@@ -163,7 +163,7 @@ community layout. Your own copy stays one of your custom layouts.
 
 ### Bundled with the app
 
-The layouts LayerBench came with were written into it from where their authors published them. A
+The layouts that come with LayerBench are written into it from where their authors published them. A
 new one joins them as a custom layout in LayerBench, added unchanged by pull request on GitHub.
 Anyone can propose one, their own or someone else's that is published, and it
 joins everyone's Library once the pull request is merged.

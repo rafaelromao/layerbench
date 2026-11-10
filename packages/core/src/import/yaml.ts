@@ -76,7 +76,7 @@ const MAX_DEPTH = 64;
  * reading stays instant however it nests, but whoever walks the result (the keymap-drawer reader
  * turns a stray list into text) meets every copy: a list of ten `*a<n-1>` at each of n levels
  * grows tenfold with each, 8 levels are 447 bytes and 4×10^7 nodes, 9 are 506 bytes and 4×10^8.
- * Measured on 2026-11-07 through `readKeymapDrawer`: 8 levels took 0.66 s and 9 levels 7 s, and a
+ * Measured through `readKeymapDrawer`: 8 levels took 0.66 s and 9 levels 7 s, and a
  * file of 868 000 nodes (343 bytes), just under this limit, 13 ms. Long text counts because text
  * is what the walk builds: 100 KB of YAML holding one 100 KB string, a list of it aliased 100
  * times and that list 30 times came out as a 300 MB string and 700 MB of memory. A file at the key

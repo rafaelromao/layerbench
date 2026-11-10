@@ -165,8 +165,7 @@ export function slug(name: string): string {
 
 /**
  * An id for a new document called `name` that none in `taken` has: its slug, numbered (`-2`, `-3`,
- * …) while that is in use. Two documents whose names slug alike used to overwrite each other
- * silently, because nothing checked.
+ * …) while that is in use, so two documents whose names slug alike never share an id.
  */
 export function freeId(name: string, taken: ReadonlySet<string>): string {
   return unusedId(slug(name), { has: (id) => taken.has(id) || RESERVED_IDS.has(id) });
@@ -174,8 +173,7 @@ export function freeId(name: string, taken: ReadonlySet<string>): string {
 
 /**
  * `base`, or `base` numbered `-2`, `-3`, … while that is taken: the one rule for every new id,
- * whether of a document, a layer or a combo. Layers numbered by how many there were used to land
- * on an id still in use.
+ * whether of a document, a layer or a combo, so a new one never lands on an id in use.
  */
 export function unusedId(base: string, taken: { has(id: string): boolean }): string {
   let id = base;

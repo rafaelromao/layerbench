@@ -11,10 +11,9 @@ import type { Layout } from '../layout/types.js';
 const DOCUMENTS: Record<string, unknown> = {};
 
 /**
- * The document without `features`, which documents saved before sentence case and caps word were
- * only behaviours of a key declare; itself when it declares none. Reading turns those declarations
- * into the sentence space and the mod morph they made, so it is the one thing a document may hold
- * that LayerBench no longer saves.
+ * The document without `features`, which a document may declare for sentence case and caps word;
+ * itself when it declares none. Reading turns those declarations into the sentence space and the
+ * mod morph they make; LayerBench does not save them.
  */
 function withoutDeclaredFeatures(doc: unknown): unknown {
   if (typeof doc !== 'object' || doc === null || !('features' in doc)) return doc;

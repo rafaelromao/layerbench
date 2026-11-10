@@ -250,7 +250,7 @@ export const CLASSIC_DEFS: ClassicDef[] = [
   {
     id: 'night',
     name: 'Night',
-    author: 'Luminespire',
+    author: 'Valorance',
     rows: "b f l k q p g o u .\nn s h t m y c a e i\nx v j d z ' w / ; ,",
     // Twenty-five letters on the alphas and `r` on a thumb, which is what the layout is about: Shift
     // on the outer thumbs, `r` on the left inner one and space on the right inner one, as its author
@@ -260,19 +260,20 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     shift: { key: 'R1', kind: 'hold' },
     description:
       'Night: r on the left inner thumb, leaving the home row to the other twenty-five letters; space on the right inner thumb, Shift on both outer ones.',
-    link: 'https://luminespire.github.io/night/home.html',
+    link: 'https://github.com/va1orance/valorance-website/tree/main/night',
+    note: "The link is the source of its author's site, valorance.net/night.",
   },
   {
     id: 'dusk',
     name: 'Dusk',
-    author: 'Luminespire',
+    author: 'Aorta3698',
     rows: "x f d p q j ' o u .\nn s t c y m h a e i\nb v k g w z l _ / ,",
     // `r` on the left thumb and space on the right one.
     thumbs: '∅ r space',
     special: { '∅': null },
     description:
-      'Dusk, a Night alternative with the same thumb r, on the left, and space on the right; the key its author leaves free holds an underscore.',
-    link: 'https://luminespire.github.io/night/alternatives.html',
+      'Dusk: r on the left thumb and space on the right one; its author draws an underscore on the bottom key of the right middle finger.',
+    link: 'https://github.com/Aorta3698/dusk',
   },
   {
     id: 'recurva',
@@ -291,9 +292,10 @@ export const CLASSIC_DEFS: ClassicDef[] = [
   {
     id: 'nerps',
     name: 'Nerps',
-    author: 'Sertain',
+    author: 'Smudge',
     rows: "x l d p v z k o u ;\nn r t s g y h e i a\nj m c w q b f ' , .",
     link: 'https://www.reddit.com/r/KeyboardLayouts/comments/tpwyjc/',
+    note: "Its author is Smudge in the Layouts Doc, in Gallium's README and in cmini.",
   },
   {
     id: 'engram',
@@ -331,11 +333,12 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     name: 'Aptmak',
     author: 'Apsu',
     rows: "v w f p b j l u y '\nr s t h k x n a i o\n∅ c g d q z m , . ∅",
-    // Twenty-five letters plus `e` on a thumb: a sub-30 alpha block. The bottom row has no pinky
-    // keys, and its README draws no `q` or `z`: they are on the inner bottom keys, as cmini has them.
-    thumbs: 'space e',
+    // Twenty-five letters plus `e` on the right thumb, as its README draws it: a sub-30 alpha block.
+    // The bottom row has no pinky keys, and its README draws no `q` or `z`: they are on the inner
+    // bottom keys, as cmini has them.
+    thumbs: 'space ∅ e',
     special: { '∅': null },
-    description: 'Aptmak: e on a thumb, so the alphas fit in twenty-five keys.',
+    description: 'Aptmak: e on the right thumb, so the alphas fit in twenty-five keys.',
     link: 'https://github.com/Apsu/aptmak',
   },
   {
