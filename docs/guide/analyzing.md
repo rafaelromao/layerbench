@@ -114,6 +114,16 @@ added, and why not the others: the letters it lacks, or the Effort and how many 
 it. The languages are added as one edit, which **Undo** takes back, to a layout of your own and to a
 copy of a bundled one alike. It never takes a language away.
 
+**Languages**, in **Rank and filter**, lists only the layouts for the languages you tick: a layout
+stays listed while one of the languages it is for is ticked, so Magic Romak, for English and
+Portuguese, is listed with Portuguese alone. It goes by the languages a layout is for, not by those
+it can type. Each box says how many layouts are for its language, a layout for two counted in both.
+A layout that names no language, one saved before layouts had to say, is for English, here and on
+its card; a layout made with **New layout** or with **Import** starts as one for English too. All
+are ticked at first; **All** ticks them again and **None** clears them, and with none ticked the
+Library lists nothing and says so. The choice is kept in this browser, not in the link, as the
+categories and boards are.
+
 **Rank with** switches special features off for the ranking: adaptive keys (they type their default
 letter), the repeat key (doubled letters are tapped twice), typing combos, and macros that type two
 letters or more, such as `qu` or `ão`. A macro typing one letter, like Magic Romak's accents, is how

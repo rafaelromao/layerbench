@@ -1,5 +1,10 @@
 import type { Layout } from '@layerbench/core';
-import { getGeometryPreset, importTextLayout, withNewLayoutDefaults } from '@layerbench/core';
+import {
+  DEFAULT_LANGUAGES,
+  getGeometryPreset,
+  importTextLayout,
+  withNewLayoutDefaults,
+} from '@layerbench/core';
 
 /** Qwerty, as the starting point for a layout you intend to change rather than design. */
 const QWERTY_ROWS = 'q w e r t y u i o p\na s d f g h j k l ;\nz x c v b n m , . /';
@@ -18,7 +23,7 @@ export interface NewLayoutSpec {
  *
  * An empty base layer is a legitimate starting point — the editor draws the board and every key is
  * yours to fill — but it needs a space key, or nothing can be typed at all and the analysis has
- * nothing to say.
+ * nothing to say. It starts as a layout for English, as an import does.
  */
 export function newLayout(spec: NewLayoutSpec): Layout {
   const geometry = getGeometryPreset(spec.geometry);
@@ -38,5 +43,7 @@ function emptyLayout(name: string, preset: string, spaceKey: string): Layout {
     geometry: { preset },
     keys: { space: spaceKey },
     layers: [{ id: 'base', name: 'Base', bindings: { [spaceKey]: { kind: 'kp', symbol: ' ' } } }],
+    // A new layout is for English until its maker says otherwise.
+    languages: [...DEFAULT_LANGUAGES],
   };
 }

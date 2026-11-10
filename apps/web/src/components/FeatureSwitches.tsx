@@ -14,12 +14,15 @@ export interface AllSwitch {
   shown: number;
   total: number;
   onChange: (on: boolean) => void;
+  /** Draw a "None" box after it as well: ticked when no other one is, and ticking it clears them. */
+  none?: boolean;
 }
 
 /**
  * Checkboxes under a legend, in a grid: two to a line on a phone, three from 640px, so every box of
  * every group lines up with the ones above it. With `all`, an "All" box comes first: ticked when
- * every other one is, and neither ticked nor clear when only some are.
+ * every other one is, and neither ticked nor clear when only some are; with its `none`, a "None"
+ * box follows it.
  */
 export function SwitchGroup({
   legend,
@@ -56,6 +59,14 @@ export function SwitchGroup({
           checked={all.total > 0 && all.shown === all.total}
           indeterminate={all.shown > 0 && all.shown < all.total}
           onChange={all.onChange}
+        />
+      )}
+      {all?.none && (
+        <Switch
+          label="None"
+          strong
+          checked={all.shown === 0}
+          onChange={(on) => all.onChange(!on)}
         />
       )}
       {children}

@@ -73,6 +73,18 @@ export function languageProfile(tag: string | undefined): LanguageProfile | unde
   return byBase;
 }
 
+/** The languages a layout is for when it declares none: a layout whose source states none is for English. */
+export const DEFAULT_LANGUAGES: readonly string[] = ['en'];
+
+/**
+ * The languages a layout declares, English when it declares none: a layout saved before it had to
+ * say, or with its list left empty, is read as one for English, so nothing reading it loses it.
+ */
+export function declaredLanguages(languages: readonly string[] | undefined): string[] {
+  const tags = (languages ?? []).filter((tag) => tag !== '');
+  return tags.length > 0 ? tags : [...DEFAULT_LANGUAGES];
+}
+
 /**
  * The languages a layout is held to: the text's, a mixed text's each, then those the layout says
  * it is for. A layout that claims Spanish is judged on `ñ` even on an English text. A language

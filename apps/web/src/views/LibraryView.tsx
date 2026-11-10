@@ -5,16 +5,19 @@ import {
   type CompiledLayout,
   classifyBand,
   compileLayout,
+  declaredLanguages,
   forRanking,
   freeName,
   GEOMETRY_PRESET_IDS,
   getGeometryPreset,
   homeRowLetters,
   keptInLibrary,
+  LANGUAGE_PROFILES,
   LAYOUT_CATEGORIES,
   type Layout,
   type LayoutCategory,
   languageCovered,
+  languageProfile,
   languagesToJudge,
   layoutCategory,
   layoutLanguageCoverage,
@@ -77,6 +80,7 @@ import { LayerPreview } from './library/LayerPreview.js';
 import {
   type BoardChoice,
   type CategoryChoice,
+  type LanguageChoice,
   RankFilters,
   SORTS,
 } from './library/RankFilters.js';
@@ -276,8 +280,24 @@ interface Listed {
   board: string;
   /** Worked out from its keys; missing while a custom document is still being read. */
   category: LayoutCategory | undefined;
+  /**
+   * The languages it declares, by their profiles' tags, English when it declares none: what the
+   * language filter goes by. Missing while a custom document is still being read.
+   */
+  languages: string[] | undefined;
   /** The letters on its base layer's home row, what Home row sorts by; missing as `compiled` is. */
   homeRow: string | undefined;
+}
+
+/** The languages the filter has a box for, in the order of their profiles. */
+const LANGUAGE_TAGS = Object.keys(LANGUAGE_PROFILES);
+
+/** The languages a layout declares, by their profiles' tags (`pt-BR` is `pt`), English when none. */
+function filterLanguages(layout: Layout | undefined): string[] | undefined {
+  if (!layout) return undefined;
+  return [
+    ...new Set(declaredLanguages(layout.languages).map((tag) => languageProfile(tag)?.tag ?? tag)),
+  ];
 }
 
 function layerCount(n: number): string {
@@ -644,6 +664,7 @@ export function LibraryView() {
           .join(' · '),
         board: boardOf(layout),
         category: layoutCategory(layout),
+        languages: filterLanguages(layout),
         homeRow: homeRowLetters(compiled),
       })),
       ...community.map(({ id, layout, compiled }) => ({
@@ -660,6 +681,7 @@ export function LibraryView() {
           .join(' · '),
         board: boardOf(layout),
         category: layoutCategory(layout),
+        languages: filterLanguages(layout),
         homeRow: homeRowLetters(compiled),
       })),
       ...custom.entries.map((entry) => ({
@@ -685,6 +707,7 @@ export function LibraryView() {
         category: customCompiled.has(entry.id)
           ? layoutCategory(customLayouts.get(entry.id) as Layout)
           : undefined,
+        languages: filterLanguages(customLayouts.get(entry.id)),
         homeRow: customCompiled.has(entry.id)
           ? homeRowLetters(customCompiled.get(entry.id) as CompiledLayout)
           : undefined,
@@ -736,15 +759,38 @@ export function LibraryView() {
     (item: Listed) => item.category === undefined || !hiddenCategories.includes(item.category),
     [hiddenCategories],
   );
+  // The languages, each with how many layouts declare it; a layout for two counts in both.
+  const hiddenLanguages = useSession((s) => s.hiddenLanguages);
+  const languages: LanguageChoice[] = useMemo(
+    () =>
+      LANGUAGE_TAGS.map((tag) => ({
+        tag,
+        count: pool.filter((item) => item.languages?.includes(tag)).length,
+      })),
+    [pool],
+  );
+  const noLanguage = LANGUAGE_TAGS.every((tag) => hiddenLanguages.includes(tag));
+  // With no language ticked nothing is listed, not even a layout for a language without a box.
+  const languageShown = useCallback(
+    (item: Listed) =>
+      !noLanguage &&
+      (item.languages === undefined ||
+        item.languages.some((tag) => !hiddenLanguages.includes(tag))),
+    [hiddenLanguages, noLanguage],
+  );
   const shownListed = useMemo(
-    () => pool.filter((item) => !hiddenBoards.includes(item.board) && categoryShown(item)),
-    [pool, hiddenBoards, categoryShown],
+    () =>
+      pool.filter(
+        (item) => !hiddenBoards.includes(item.board) && categoryShown(item) && languageShown(item),
+      ),
+    [pool, hiddenBoards, categoryShown, languageShown],
   );
   /** Why fewer layouts are listed than there are, for the line under the sort. */
   const leftOut = [
     hideCustom && listed.some((item) => item.custom) ? 'without the custom ones' : '',
     hideCommunity && listed.some((item) => item.community) ? 'without the community ones' : '',
     pool.some((item) => !categoryShown(item)) ? 'in the categories chosen' : '',
+    pool.some((item) => !languageShown(item)) ? 'in the languages chosen' : '',
     pool.some((item) => hiddenBoards.includes(item.board)) ? 'on the boards chosen' : '',
   ].filter(Boolean);
   const shownKeys = useMemo(() => new Set(shownListed.map((item) => item.key)), [shownListed]);
@@ -1059,6 +1105,7 @@ export function LibraryView() {
             corpora={corpora}
             boards={boards}
             categories={categories}
+            languages={languages}
             customCount={custom.entries.length}
             communityCount={community.length}
           />
@@ -1131,6 +1178,14 @@ export function LibraryView() {
             </span>
           )}
         </div>
+        {/* Rank and filter can leave nothing to list: the page says why rather than stand empty. */}
+        {sorted.length === 0 && pool.length > 0 && (
+          <p className="text-sm opacity-70">
+            {noLanguage
+              ? 'No language is ticked in Rank and filter, so no layout is listed. Tick one to list the layouts for it.'
+              : 'No layout is left by the choices in Rank and filter.'}
+          </p>
+        )}
         <div className="-mx-2 sm:mx-0 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {sorted.map((item) => (
             <LayoutCard

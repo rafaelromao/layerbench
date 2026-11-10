@@ -210,6 +210,13 @@ describe('bundled layouts’ languages', () => {
     expect(written).toEqual(STATED);
   });
 
+  // Not one is left without: a layout whose author states none is for English.
+  it('are at least one for every bundled layout, documents too', () => {
+    for (const layout of BUNDLED_LAYOUTS) {
+      expect(layout.languages?.length ?? 0, layout.id).toBeGreaterThan(0);
+    }
+  });
+
   it('name only languages the app knows, each once, in the profiles’ order', () => {
     for (const layout of BUNDLED_LAYOUTS) {
       const list = layout.languages ?? [];

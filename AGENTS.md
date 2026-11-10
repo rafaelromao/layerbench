@@ -64,8 +64,9 @@ rule here moves a key, and keep `templates.test.ts` asserting each rule.
     the file again, run `pnpm keymap`, then `pnpm goldens`.
 - **Languages are the author's; the editor measures the rest.** A definition's `languages` are the
   ones its source states, by a page, a keymap or a corpus: a corpus of a language counts as the
-  language, and a layout whose source states none is for English (`DEFAULT_LANGUAGES` in
-  `layouts/index.ts`). `lang/performance.test.ts` pins every layout's list (`STATED`) and that the
+  language, and a layout whose source states none is for English (`DEFAULT_LANGUAGES` and
+  `declaredLanguages` in `lang/profiles.ts`): any layout that names none is read as English, and
+  New layout and both imports start with `['en']`. `lang/performance.test.ts` pins every layout's list (`STATED`) and that the
   layout types every letter its languages need (`lang/coverage.ts`, `lang/profiles.ts`): Romak and
   Magic Romak state Portuguese and English, and type `à` by a combo. A layout added as a document
   carries the languages it was saved with. **Measure languages**, in Settings in Analyze, adds each language a

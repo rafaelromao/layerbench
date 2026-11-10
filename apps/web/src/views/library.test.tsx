@@ -3,9 +3,11 @@ import {
   bundledLayout,
   CLASSIC_LAYOUTS,
   compileLayout,
+  declaredLanguages,
   forRanking,
   getPreset,
   homeRowLetters,
+  LANGUAGE_PROFILES,
   type Layout,
   layoutCategory,
   type Rule,
@@ -82,6 +84,7 @@ beforeEach(() =>
     hideCustom: false,
     hideCommunity: false,
     hiddenCategories: [],
+    hiddenLanguages: [],
     libraryHeat: false,
     libraryHeatMode: 'usage',
   }),
@@ -1125,6 +1128,125 @@ describe('Categories', () => {
     await user.click(all);
     expect(all.indeterminate).toBe(false);
     expect(listed('Magic Romak')).toBeInTheDocument();
+  });
+});
+
+describe('Languages', () => {
+  /** A box of the Languages group, by its label and count. */
+  const languageBox = (name: string | RegExp) =>
+    within(screen.getByRole('group', { name: 'Languages' })).getByRole('checkbox', { name });
+  /** How many bundled layouts declare a language, English for one that declares none. */
+  const declaring = (tag: string) =>
+    BUNDLED_LAYOUTS.filter((l) => declaredLanguages(l.languages).includes(tag)).length;
+  const label = (tag: string) => LANGUAGE_PROFILES[tag].name;
+  const shownCards = () => document.querySelectorAll('article h3').length;
+
+  it('has a box for every language, named and counted, all of them ticked, with All and None', async () => {
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    await openRanking();
+    for (const tag of Object.keys(LANGUAGE_PROFILES)) {
+      const box = languageBox(new RegExp(`^${label(tag)} \\(${declaring(tag)}\\)$`));
+      expect(box, tag).toBeChecked();
+    }
+    expect(languageBox('English (' + BUNDLED_LAYOUTS.length + ')')).toBeChecked();
+    expect(languageBox(/^All$/)).toBeChecked();
+    expect(languageBox(/^None$/)).not.toBeChecked();
+    // Everything is listed, and nothing is said to be left out.
+    expect(screen.queryByText(/in the languages chosen/)).toBeNull();
+  });
+
+  it('lists a layout while a language it declares is ticked: one for English and Portuguese with Portuguese alone', async () => {
+    const user = userEvent.setup();
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    await openRanking();
+    await user.click(languageBox(/^None$/));
+    await user.click(languageBox(new RegExp(`^${label('pt')} `)));
+    expect(bundledLayout('magic-romak')?.languages).toEqual(['en', 'pt']);
+    expect(listed('Magic Romak')).toBeInTheDocument();
+    expect(listed('Romak')).toBeInTheDocument();
+    expect(listed('Qwerty')).toBeNull();
+    expect(shownCards()).toBe(declaring('pt'));
+    const says = screen.getByText(
+      `${declaring('pt')} of ${BUNDLED_LAYOUTS.length} layouts, in the languages chosen.`,
+    );
+    expect(says.tagName).toBe('P');
+    expect(languageBox(/^None$/)).not.toBeChecked();
+    expect((languageBox(/^All$/) as HTMLInputElement).indeterminate).toBe(true);
+
+    await user.click(languageBox(/^All$/));
+    expect(listed('Qwerty')).toBeInTheDocument();
+    expect(shownCards()).toBe(BUNDLED_LAYOUTS.length);
+  });
+
+  it('lists nothing with None ticked, and says why rather than stand empty', async () => {
+    const user = userEvent.setup();
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    await openRanking();
+    await user.click(languageBox(/^None$/));
+    expect(languageBox(/^None$/)).toBeChecked();
+    expect(languageBox(/^All$/)).not.toBeChecked();
+    for (const tag of Object.keys(LANGUAGE_PROFILES)) {
+      expect(languageBox(new RegExp(`^${label(tag)} `))).not.toBeChecked();
+    }
+    expect(shownCards()).toBe(0);
+    expect(screen.getByText(/^No language is ticked in Rank and filter/)).toBeInTheDocument();
+    expect(
+      screen.getByText(`0 of ${BUNDLED_LAYOUTS.length} layouts, in the languages chosen.`),
+    ).toBeInTheDocument();
+
+    // Unticking None ticks them all again.
+    await user.click(languageBox(/^None$/));
+    expect(shownCards()).toBe(BUNDLED_LAYOUTS.length);
+    expect(screen.queryByText(/^No language is ticked/)).toBeNull();
+  });
+
+  it('reads a custom layout that declares no language as one for English', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    await savePlain(storage, 'plain', { languages: undefined });
+    renderRoute(LIBRARY, { storage });
+    const card = (await screen.findByRole('heading', { name: 'Plain', level: 3 })).closest(
+      'article',
+    ) as HTMLElement;
+    await waitFor(() =>
+      expect(
+        [...card.querySelectorAll('[title^="Types everything"]')].map((b) => b.textContent),
+      ).toEqual(['en']),
+    );
+    await openRanking();
+    // Counted with English, and listed with English alone.
+    await waitFor(() =>
+      expect(languageBox(`${label('en')} (${declaring('en') + 1})`)).toBeInTheDocument(),
+    );
+    await user.click(languageBox(/^None$/));
+    await user.click(languageBox(new RegExp(`^${label('en')} `)));
+    expect(listed('Plain')).toBeInTheDocument();
+    // Gone without English, whatever else is ticked.
+    await user.click(languageBox(/^All$/));
+    await user.click(languageBox(new RegExp(`^${label('en')} `)));
+    expect(listed('Plain')).toBeNull();
+    expect(listed('Magic Romak')).toBeInTheDocument();
+  });
+
+  it('remembers the choice in this browser, across a reload, and not in the link', async () => {
+    const user = userEvent.setup();
+    const first = renderRoute(LIBRARY, { storage: freshStorage() });
+    await openRanking();
+    await user.click(languageBox(new RegExp(`^${label('en')} `)));
+    expect(JSON.parse(localStorage.getItem('layerbench:session') ?? '{}').state).toMatchObject({
+      hiddenLanguages: ['en'],
+    });
+    first.unmount();
+
+    const stored = localStorage.getItem('layerbench:session') ?? '';
+    useSession.setState({ hiddenLanguages: [] });
+    localStorage.setItem('layerbench:session', stored);
+    await useSession.persist.rehydrate();
+    const { currentSearch } = renderRoute(LIBRARY, { storage: freshStorage() });
+    expect(await screen.findByRole('heading', { name: 'Magic Romak', level: 3 })).toBeTruthy();
+    expect(listed('Qwerty')).toBeNull();
+    expect(screen.getByText(/of [0-9]+ layouts, in the languages chosen\./)).toBeInTheDocument();
+    expect(currentSearch()).not.toContain('lang');
   });
 });
 
