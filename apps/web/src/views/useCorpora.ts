@@ -7,10 +7,19 @@ export function useCorpora(): CorpusManifest[] {
   const client = useAnalysisClient();
   const [corpora, setCorpora] = useState<CorpusManifest[]>([]);
   useEffect(() => {
+    // A list that comes back after the picker is gone, as when a test ends first, is let go.
+    let cancelled = false;
     client
       .listCorpora()
-      .then(setCorpora)
-      .catch(() => setCorpora([]));
+      .then((list) => {
+        if (!cancelled) setCorpora(list);
+      })
+      .catch(() => {
+        if (!cancelled) setCorpora([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [client]);
   return corpora;
 }

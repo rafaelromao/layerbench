@@ -115,8 +115,7 @@ export function LayerNav({
   };
 
   const nameStyle = colour ? { color: colour } : undefined;
-  // The column holds the cap and the name fills it, so that a long name squeezed by what is beside
-  // the navigator shortens rather than covering the arrows.
+  // The name is centred in the slot and shortens rather than covering the arrows.
   const nameClass = 'min-w-0 max-w-full truncate text-sm font-medium';
 
   return (
@@ -136,13 +135,18 @@ export function LayerNav({
       }}
     >
       {many && arrow(-1, '‹', 'Previous layer')}
-      {/* The counter sits under the name, so a long name and the arrows keep one line. */}
-      <div className="flex min-w-0 max-w-[10rem] flex-col items-center leading-tight">
+      {/* The counter sits under the name, so a long name and the arrows keep one line. The slot has
+          one width whatever the name, so the arrows stay where they are and a second click lands on
+          the same spot; a page cannot move the pointer to follow them. */}
+      <div
+        data-testid="layer-name-slot"
+        className="flex w-40 min-w-0 max-w-full flex-col items-center leading-tight"
+      >
         {renaming === layer.id ? (
           <input
             ref={field}
             aria-label={`Rename ${layer.name}`}
-            className="input input-xs w-28"
+            className="input input-xs w-full max-w-28"
             defaultValue={layer.name}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
@@ -162,7 +166,8 @@ export function LayerNav({
             type="button"
             className={`${nameClass} cursor-text rounded px-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--lb-ring)]`}
             style={nameStyle}
-            title="Double-click or press F2 to rename"
+            // The name may be cut short: the tooltip has it whole.
+            title={`${layer.name}: double-click or press F2 to rename`}
             // Enter and Space reach here with no pointer (detail 0): they are the keyboard's way in.
             onClick={(e) => e.detail === 0 && setRenaming(layer.id)}
             onDoubleClick={() => setRenaming(layer.id)}
@@ -189,7 +194,7 @@ export function LayerNav({
             {layer.name}
           </button>
         ) : (
-          <span className={nameClass} style={nameStyle}>
+          <span className={nameClass} style={nameStyle} title={layer.name}>
             {layer.name}
           </span>
         )}
