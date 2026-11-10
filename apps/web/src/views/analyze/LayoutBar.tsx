@@ -5,6 +5,7 @@ import {
   LANGUAGE_PROFILES,
   type LanguageVerdict,
   type Layout,
+  toCanonicalJson,
   withAddedLanguages,
 } from '@layerbench/core';
 import { useState } from 'react';
@@ -180,6 +181,7 @@ export function LayoutBar({
                 {/* A layout opened anew is a Workbench, and so a Link field, of its own. */}
                 <LinkField link={layout.link ?? ''} onChange={(link) => onMeta({ link })} />
                 <LanguagesField
+                  layout={layout}
                   languages={layout.languages ?? []}
                   onChange={(languages) => onMeta({ languages })}
                   onMeasure={onMeasureLanguages}
@@ -281,6 +283,11 @@ function LinkField({ link, onChange }: { link: string; onChange: (link: string) 
   );
 }
 
+/** The layout as an analysis reads it, whatever languages it is for. */
+function layoutWithoutLanguages(layout: Layout): string {
+  return JSON.stringify(toCanonicalJson({ ...layout, languages: [] }));
+}
+
 /**
  * The languages the layout is for. Analyze and the Library hold it to them, as well as to the
  * text's: one that is for Spanish and has no `ñ` is told so on any text. A tag with no profile here,
@@ -288,10 +295,12 @@ function LinkField({ link, onChange }: { link: string; onChange: (link: string) 
  * and performs well in, and says which it added and why not the others.
  */
 function LanguagesField({
+  layout,
   languages,
   onChange,
   onMeasure,
 }: {
+  layout: Layout;
   languages: string[];
   onChange: (languages: string[]) => void;
   onMeasure: () => Promise<LanguageVerdict[]>;
@@ -303,31 +312,49 @@ function LanguagesField({
     onChange([...chosen, ...others]);
   };
   const [measuring, setMeasuring] = useState(false);
-  const [failed, setFailed] = useState<string | null>(null);
-  /** What the last measurement found, and the languages the layout had once it was added. */
-  const [found, setFound] = useState<{ verdicts: LanguageVerdict[]; languages: string[] } | null>(
-    null,
-  );
+  /**
+   * What the last measurement came to: what it found and the languages the layout had once they
+   * were added, or why it failed; and the layout it was of, without its languages.
+   */
+  const [outcome, setOutcome] = useState<
+    | { kind: 'found'; layout: string; verdicts: LanguageVerdict[]; languages: string[] }
+    | { kind: 'failed'; layout: string; error: string }
+    | null
+  >(null);
   const measure = async () => {
+    const measured = layoutWithoutLanguages(layout);
     setMeasuring(true);
-    setFailed(null);
     try {
       const verdicts = await onMeasure();
-      setFound({ verdicts, languages: withAddedLanguages(languages, verdicts) });
+      setOutcome({
+        kind: 'found',
+        layout: measured,
+        verdicts,
+        // The languages as the edit leaves them: as they are when it adds none.
+        languages: verdicts.some((v) => v.kind === 'added')
+          ? withAddedLanguages(languages, verdicts)
+          : languages,
+      });
     } catch (e) {
-      setFound(null);
-      setFailed(e instanceof Error ? e.message : String(e));
+      setOutcome({
+        kind: 'failed',
+        layout: measured,
+        error: e instanceof Error ? e.message : String(e),
+      });
     } finally {
       setMeasuring(false);
     }
   };
-  // What was found is said while it is still so: another change to the languages, Undo included,
-  // leaves it saying what is no longer the case.
+  // What was found is said while it is still so: the Effort and the letters are the layout's as it
+  // was measured, and the languages are those it left. Another edit, Undo included, leaves it
+  // saying what is no longer the case.
+  const current = outcome && outcome.layout === layoutWithoutLanguages(layout) ? outcome : null;
+  const failed = current?.kind === 'failed' ? current.error : null;
   const shown =
-    found &&
-    found.languages.length === languages.length &&
-    found.languages.every((t, i) => languages[i] === t)
-      ? found.verdicts
+    current?.kind === 'found' &&
+    current.languages.length === languages.length &&
+    current.languages.every((t, i) => languages[i] === t)
+      ? current.verdicts
       : null;
   return (
     <fieldset className="form-control min-w-0">

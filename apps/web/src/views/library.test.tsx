@@ -731,7 +731,7 @@ describe('Ranking layouts', () => {
     const qwerty = cards().find((c) => c.querySelector('h3')?.textContent === 'Qwerty');
     expect(qwerty?.textContent).toMatch(/Cannot type/);
   }, 90_000);
-  it('shows on a bundled card the languages it performs well in, and none on one for none', async () => {
+  it('shows on a bundled card the languages its author states, and none on one for none', async () => {
     renderRoute(LIBRARY, { storage: freshStorage() });
     const chips = async (name: string) => {
       const card = await waitFor(() => {

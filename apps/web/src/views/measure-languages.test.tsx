@@ -1,4 +1,4 @@
-import { bundledLayout, type Layout, toCanonicalJson } from '@layerbench/core';
+import { BUNDLED_EFFORTS, bundledLayout, type Layout, toCanonicalJson } from '@layerbench/core';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
@@ -37,7 +37,9 @@ describe('Measure languages, in the Settings of the editor', () => {
     const found = await measure(settings);
     expect(found).toHaveTextContent('Added English. Undo takes it back.');
     expect(found).toHaveTextContent(
-      /English: added, its Effort \d+\.\d\d is beaten by \d+ of 3\d bundled/,
+      new RegExp(
+        `English: added, its Effort \\d+\\.\\d\\d is beaten by \\d+ of ${BUNDLED_EFFORTS.en.length} bundled`,
+      ),
     );
     // It types no Portuguese accent, and says which it lacks.
     expect(found).toHaveTextContent(/Português: not added, it does not type á/);
@@ -56,16 +58,49 @@ describe('Measure languages, in the Settings of the editor', () => {
   it('adds nothing, and says why, for a layout that does not perform well', async () => {
     await openOn('/analyze?layout=qwerty&corpus=en-general&sample=20000');
     const settings = await openSettings();
+    // Qwerty is the layout with the highest Effort on English: every other bundled layout beats it.
+    const worst = (BUNDLED_EFFORTS.en.at(-1) as number).toFixed(2);
 
     const found = await measure(settings);
     expect(found).toHaveTextContent('No language to add.');
     expect(found).toHaveTextContent(
-      /English: not added, its Effort 1245\.37 is beaten by 34 of 35 bundled layouts, and fewer than half may beat it/,
+      new RegExp(
+        `English: not added, its Effort ${worst} is beaten by ${BUNDLED_EFFORTS.en.length - 1} of ${BUNDLED_EFFORTS.en.length} bundled layouts, and fewer than half may beat it`,
+      ),
     );
     expect(language(settings, 'English')).not.toBeChecked();
     // Nothing changed: nothing to save, nothing to undo.
     expect(within(bar()).queryByText('unsaved')).toBeNull();
     expect(screen.getByRole('button', { name: 'Undo' })).toBeDisabled();
+  }, 120_000);
+
+  it('says what it found, though it adds nothing, for languages kept as they were written', async () => {
+    const storage = freshStorage();
+    const layout = {
+      ...(bundledLayout('qwerty') as Layout),
+      id: 'my-qwerty',
+      name: 'My qwerty',
+      languages: ['pt', 'en', 'en'],
+    };
+    await storage.put('layouts', 'my-qwerty', toCanonicalJson(layout), { message: 'seed' });
+    await openOn('/analyze?layout=custom%3Amy-qwerty&corpus=en-general&sample=20000', storage);
+    const settings = await openSettings();
+
+    expect(await measure(settings)).toHaveTextContent('No language to add.');
+    expect(within(settings).getByText(/Español: not added, it does not type ñ/)).toBeVisible();
+    expect(within(bar()).queryByText('unsaved')).toBeNull();
+  }, 120_000);
+
+  it('stops saying what it found once the layout is changed', async () => {
+    const user = userEvent.setup();
+    await openOn('/analyze?layout=qwerty&corpus=en-general&sample=20000');
+    const settings = await openSettings();
+    await measure(settings);
+
+    // The Effort and the letters it names are of the layout as it was measured.
+    await user.type(within(settings).getByLabelText('Author'), 'Ana');
+    await user.tab();
+    expect(within(settings).queryByRole('status')).toBeNull();
   }, 120_000);
 
   it('works on a custom layout, and keeps the languages it had', async () => {
