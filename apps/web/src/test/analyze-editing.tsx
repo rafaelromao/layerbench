@@ -15,6 +15,7 @@ import type { AnalysisClient, AnalyzeRequest } from '../engine/protocol.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { decodeInline } from '../url/inline.js';
 import { newLayout } from '../views/new-layout.js';
+import { keyNamed } from './keys.js';
 import { renderRoute, testClient } from './render.js';
 
 let counter = 0;
@@ -94,7 +95,7 @@ export async function openComboEdit(): Promise<void> {
   await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
 }
 
-export const key = (name: string) => screen.getByRole('button', { name });
+export const key = (name: string) => screen.getByRole('button', { name: keyNamed(name) });
 
 /** A key of the board being edited, as the pointer meets it. */
 export const svgKey = (keyId: string) =>
