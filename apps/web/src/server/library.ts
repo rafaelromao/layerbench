@@ -144,7 +144,7 @@ async function requestPull(
     body: [
       `${what}, asked by @${login} with LayerBench.`,
       '',
-      `The \`library-edit\` workflow applies \`${LIBRARY_REQUEST}\` on this branch, measures the languages and goldens again and pushes the result, and CI then checks it. Merging it changes the Library with the next deploy.`,
+      `The \`library-edit\` workflow applies \`${LIBRARY_REQUEST}\` on this branch, writes the bundled layouts' Efforts and the goldens again and pushes the result, and CI then checks it. Merging it changes the Library with the next deploy.`,
     ].join('\n'),
   });
   return reused ? { status: 200, answer: { url, reused } } : { status: 201, answer: { url } };

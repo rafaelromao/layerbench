@@ -16,7 +16,9 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  # Formatting, lint, types and the build. The tests run beside it, one job a package: the web tests
+  # take the longest, and nothing they do waits on the engine's.
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -40,8 +42,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
       - run: pnpm typecheck
-      # Tests with coverage: a package below 80% on lines, statements, functions or branches fails here.
-      - run: pnpm test:coverage
       # The sign-in Worker's address goes into the page's code and its content security policy. It
       # is set for this step only: the unit tests expect the page's own origin.
       - run: pnpm build
@@ -59,12 +59,36 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  # A pull request runs the tests; a push to main runs them with coverage, about three times slower,
+  # and fails when a package covers less than 80% of its lines, statements, functions or branches.
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ['@layerbench/core', '@layerbench/web']
+    name: test (${{ matrix.package }})
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter "$PACKAGE" run "$SCRIPT"
+        env:
+          PACKAGE: ${{ matrix.package }}
+          SCRIPT: ${{ github.event_name == 'push' && 'test:coverage' || 'test' }}
+
   # The app at https://layerbench.github.io is the GitHub Pages site of the repository
   # layerbench/layerbench.github.io. Pages publishes only the repository a workflow runs in, so the
   # build is pushed there, with a deploy key that can write to that repository and nothing else. The
   # key is a secret of the `app` environment, which only main may use.
   deploy:
-    needs: test
+    needs: [build, test]
     if: github.event_name == 'push' && github.repository == 'rafaelromao/layerbench'
     runs-on: ubuntu-latest
     environment:

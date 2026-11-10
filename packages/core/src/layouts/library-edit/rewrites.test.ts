@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { LibraryRequestRefused } from './request.js';
 import {
-  dropLanguages,
   landingAdd,
   landingRemove,
   landingRename,
@@ -89,26 +88,6 @@ describe('the ids of the layouts written in code', () => {
   it('refuse an id they do not list', () => {
     expect(() => removeBuiltInId(text, 'new-layout')).toThrow(LibraryRequestRefused);
     expect(() => removeBuiltInId(text, 'qwert')).toThrow(LibraryRequestRefused);
-  });
-});
-
-describe('the languages file', () => {
-  const text = read('languages.json');
-
-  it('loses the one layout, keeping one a line as the writer keeps it', () => {
-    const languages = JSON.parse(text) as Record<string, string[]>;
-    const [first, second] = Object.keys(languages);
-    const after = dropLanguages(text, first);
-    expect(JSON.parse(after)).not.toHaveProperty(first);
-    const lines = after.split('\n');
-    expect(lines).toHaveLength(text.split('\n').length - 1);
-    const kept = JSON.stringify(languages[second]).replaceAll(',', ', ');
-    expect(lines).toContain(`  "${second}": ${kept},`);
-    expect(after.endsWith('}\n')).toBe(true);
-  });
-
-  it('refuses a layout it has no line for', () => {
-    expect(() => dropLanguages(text, 'new-layout')).toThrow(LibraryRequestRefused);
   });
 });
 
