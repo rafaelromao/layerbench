@@ -163,13 +163,21 @@ and with Shift modelled, the Shift presses; the Doc counted neither.
 
 Decided by the owner: the ruler is part of the rule set, each rule set draws its own, the old names
 come back (*high*, *very high*, *max*), and the colours follow the steps. Effort's ruler is LayerBench's
-own, so it was redrawn on the owner's word too, twice: first *min* up to 300 and *max* above 600
-(300 / 7 = 42.9 apart), then, the same day, *min* up to 400 and *max* above 900, the seven steps
-between them equal (500 / 7 = 71.4, rounded: 400 · 471 · 543 · 614 · 686 · 757 · 829 · 900), where it
-had been 20 apart from 440 to 580, just above the easiest bundled layout. Its colours are the same
-thirds. On the English news sample, 100,000 symbols, the bundled layouts run from Magic Romak's 353
-(*min*) to Qwerty's 1237 (*max*): Romak 458 *very low*, Colemak-DH 524 *low*, Colemak 630 *mid*,
-Dvorak 756 *mid high* (on 10,000 symbols 770, *high*: it sits 1.4 under the bound).
+own, so it was redrawn on the owner's word too, three times: first *min* up to 300 and *max* above 600
+(300 / 7 = 42.9 apart), then *min* up to 400 and *max* above 900 with the seven steps between them
+equal (71.4 apart: 400 · 471 · 543 · 614 · 686 · 757 · 829 · 900), where it had been 20 apart from
+440 to 580, just above the easiest bundled layout. The equal steps put almost every bundled layout
+below *mid*, so the owner asked for the Doc's SFB progression instead, with the same ends: the Doc's bounds 0.525 · 0.625 · 0.735 ·
+0.875 · 1.075 · 1.375 and the next two of its sequence, 1.825 · 2.485, at the same relative places
+between 400 and 900 (255.1 Effort to the unit of SFB), rounded: 400 · 426 · 454 · 489 · 540 · 617 ·
+732 · 900, steps of 26 · 28 · 35 · 51 · 77 · 115 · 168. (Scaling the SFB ruler as built, with
+1.375 left out, would put a 129-point step in the middle and most layouts in *mid high*; the shipped
+SFB ruler does leave it out, so the two rulers are not step for step the same.) Its colours are the
+same thirds. On the English news sample, 100,000 symbols, on `main` after the restored layouts
+(#123 to #128), the 36 bundled layouts land: min 1 (Magic Romak, 353), very low 1 (Ben Vallack Piano,
+412), low 5, mid low 6 (Romak, 456), mid 15 (Colemak-DH, 523), mid high 4, high 2 (Colemak, 629),
+very high 1 (Dvorak, 764), max 1 (Qwerty, 1245): 7 green, 25 amber, 4 red. (A Library with custom
+layouts has more, the empty ones at *min*.) Counted by a blind review, which ran the engine on them.
 
 **Layouts Doc rule set.** The Doc's first five SFB bounds, then its sequence carried on in place of
 the sixth: its steps are 0.10, 0.11, 0.14, 0.20 and 0.30, and the next three, 0.45, 0.66 and 0.94,

@@ -76,6 +76,9 @@ describe('the guide’s rulers', () => {
       `| Effort | lower is better | ${dot(ruleBands(layoutsDoc(), 'effort'))} (effort) |`,
     );
     expect(metrics).toContain(`Bands ${dot(ruleBands(layoutsDoc(), 'effort'))}, from *min*`);
+    // And the paragraph on Effort's bands, which lists them a third time: all three agree.
+    const effort = dot(ruleBands(layoutsDoc(), 'effort'));
+    expect(metrics.split(effort).length - 1, 'places the glossary writes Effort’s bounds').toBe(3);
   });
 
   it('colour nine steps in thirds, green then amber then red', () => {

@@ -347,22 +347,26 @@ values. SFS is not counted as the Doc's: it is a share of the text's skipgrams, 
 where Genkey divides by the letters and counts skips of up to nine keys, each half as much as the one
 before. The glossary has the figures.
 
-**Effort.** LayerBench's own, on the same nine steps: *min* up to 400 and *max* above 900, the seven
-steps between them equal (71.4 apiece, rounded to whole numbers), as they were equal before. On
-the English news sample, 100,000 symbols, the layouts that come with the app run from Magic Romak's
-353 to Qwerty's 1245: Colemak, at 629, is *mid*, Dvorak, at 764, *high*, and only Qwerty is
-*max*. Another text or sample moves them a little: Dvorak, a hair over the 757 that ends *mid high*,
-can be *mid high*.
+**Effort.** LayerBench's own, on the same nine steps: *min* up to 400 and *max* above 900, and
+between them the progression of the Doc's SFB bounds (0.525, 0.625, 0.735, 0.875, 1.075, 1.375,
+1.825, 2.485, whose steps of 0.10, 0.11, 0.14, 0.20, 0.30, 0.45 and 0.66 each grow, by a tenth at
+first and by about half from the fourth) at the same relative places, so the steps are 26, 28, 35,
+51, 77, 115 and 168 points, rounded to whole numbers: narrow where the layouts cluster, wide where
+only the worst are. The SFB ruler above leaves 1.375 out, its *mid high* running to 1.825, and
+Effort's keeps it, so the two are not step for step the same. On the English news
+sample, 100,000 symbols, the layouts that come with the app run from Magic Romak's 353 to Qwerty's
+1245: Romak, at 456, is *mid low*, Colemak-DH, at 523, *mid*, Colemak, at 629, *high*, Dvorak, at
+764, *very high*, and only Qwerty is *max*. Another text or sample moves them a little.
 
 | Step | Effort up to | Colour |
 |---|---|---|
 | min | 400 | green |
-| very low | 471 | green |
-| low | 543 | green |
-| mid low | 614 | amber |
-| mid | 686 | amber |
-| mid high | 757 | amber |
-| high | 829 | red |
+| very low | 426 | green |
+| low | 454 | green |
+| mid low | 489 | amber |
+| mid | 540 | amber |
+| mid high | 617 | amber |
+| high | 732 | red |
 | very high | 900 | red |
 | max | above 900 | red |
 
@@ -400,7 +404,7 @@ Doc set's above, step for step and colour for colour.
 
 A custom rule set carries the rulers it was saved with, and its badge for Effort or SFB leads to
 [The rulers](#the-rulers). One saved earlier keeps the old ones: an SFB above 1.375 may still be
-called *high* or *above mid high*, and Effort's steps may still run from 440 to 580, or from 300 to 600, until the bounds
+called *high* or *above mid high*, and Effort's steps may still run from 440 to 580, from 300 to 600 or from 400 to 900, until the bounds
 are changed in **Rules**, under **Bands (upper bounds)**. A set made from one of the presets above
 starts with that preset's rulers.
 
