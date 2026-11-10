@@ -12,6 +12,7 @@ import {
   svgKey,
   touchEvent,
 } from '../test/analyze-editing.js';
+import { keyNamed } from '../test/keys.js';
 import { showLayer, shownLayer } from '../test/layers.js';
 import { setPointerKind } from '../test/setup.js';
 
@@ -24,14 +25,16 @@ describe('Edit', () => {
     await user.click(within(await inspector('LHC')).getByRole('button', { name: 'Tap-hold' }));
     // A letter keeps its tap; a layer is the first thing a hold is given.
     expect(
-      await screen.findByRole('button', { name: 'Key LHC: g, hold Numb' }),
+      await screen.findByRole('button', { name: keyNamed('Key LHC: g, hold Numb') }),
     ).toBeInTheDocument();
 
     await user.selectOptions(
       within(await inspector('LHC')).getByLabelText('Hold kind'),
       'modifier',
     );
-    expect(await screen.findByRole('button', { name: 'Key LHC: g, hold ⇧' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: keyNamed('Key LHC: g, hold ⇧') }),
+    ).toBeInTheDocument();
   });
 
   it('gives a hold anything a tap can be, such as a symbol', async () => {
@@ -45,7 +48,9 @@ describe('Edit', () => {
     expect([...(kinds as HTMLSelectElement).options].map((o) => o.value)).not.toContain('taphold');
     await user.selectOptions(kinds, 'symbol');
     await user.type(within(await inspector('LHM')).getByLabelText('Hold symbol'), '!{Enter}');
-    expect(await screen.findByRole('button', { name: 'Key LHM: d, hold !' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: keyNamed('Key LHM: d, hold !') }),
+    ).toBeInTheDocument();
   });
 
   it('moves between keys with the arrow keys, from one tab stop', async () => {
@@ -69,7 +74,9 @@ describe('Edit', () => {
 
     await dragKey('LHM', 'LHI', { altKey: true });
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: /^Key LH[MI]: d$/ })).toHaveLength(2);
+      expect(
+        screen.getAllByRole('button', { name: keyNamed('Key LHM: d', 'Key LHI: d') }),
+      ).toHaveLength(2);
     });
   });
 
@@ -82,7 +89,7 @@ describe('Edit', () => {
     await user.click(screen.getByRole('button', { name: 'Add layer' }));
     // Adding a layer moves to it; the key being sent lives on the one before.
     await showLayer(user, 'Base');
-    await user.click(await screen.findByRole('button', { name: 'Key LHM: d' }));
+    await user.click(await screen.findByRole('button', { name: keyNamed('Key LHM: d') }));
 
     await user.selectOptions(
       await screen.findByRole('combobox', { name: 'Send LHM to another layer' }),
@@ -91,9 +98,11 @@ describe('Edit', () => {
 
     // The view follows the binding to the layer it landed on, and the source is left empty.
     await waitFor(() => expect(shownLayer()).toBe('Nav'));
-    expect(await screen.findByRole('button', { name: 'Key LHM: d' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: keyNamed('Key LHM: d') })).toBeInTheDocument();
     await showLayer(user, 'Base');
-    expect(await screen.findByRole('button', { name: 'Key LHM: empty' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: keyNamed('Key LHM: empty') }),
+    ).toBeInTheDocument();
   }, 90_000);
 
   it('sends keys picked with Shift to another layer together, and one Undo takes them all back', async () => {
@@ -105,7 +114,7 @@ describe('Edit', () => {
     await user.click(screen.getByRole('button', { name: 'Add layer' }));
     await showLayer(user, 'Base');
 
-    await user.click(await screen.findByRole('button', { name: 'Key LHM: d' }));
+    await user.click(await screen.findByRole('button', { name: keyNamed('Key LHM: d') }));
     await user.keyboard('{Shift>}');
     await user.click(key('Key LHI: f'));
     await user.click(key('Key LHR: s'));
@@ -119,13 +128,13 @@ describe('Edit', () => {
       'Nav',
     );
     await waitFor(() => expect(shownLayer()).toBe('Nav'));
-    expect(await screen.findByRole('button', { name: 'Key LHM: d' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: keyNamed('Key LHM: d') })).toBeInTheDocument();
     expect(key('Key LHI: f')).toBeInTheDocument();
     expect(key('Key LHR: transparent')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Undo' }));
     await waitFor(() => expect(shownLayer()).toBe('Base'));
-    expect(await screen.findByRole('button', { name: 'Key LHM: d' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: keyNamed('Key LHM: d') })).toBeInTheDocument();
     expect(key('Key LHI: f')).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Edit 2 keys' })).toBeInTheDocument();
   }, 90_000);
@@ -146,7 +155,9 @@ describe('Edit', () => {
 
     const editor = await screen.findByRole('group', { name: 'Edit 2 keys' });
     await user.click(within(editor).getByRole('button', { name: 'Clear' }));
-    expect(await screen.findByRole('button', { name: 'Key LHM: empty' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: keyNamed('Key LHM: empty') }),
+    ).toBeInTheDocument();
     expect(key('Key LHI: empty')).toBeInTheDocument();
   });
 
@@ -160,7 +171,7 @@ describe('Edit', () => {
     if (all) await user.click(all);
     await user.click(within(editor).getByRole('button', { name: 'Use q' }));
 
-    expect(await screen.findByRole('button', { name: 'Key LHM: q' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: keyNamed('Key LHM: q') })).toBeInTheDocument();
   });
 
   it('takes back an edit, and puts it back again', async () => {
@@ -169,20 +180,20 @@ describe('Edit', () => {
 
     key('Key LHM: d').focus();
     await user.keyboard('ç{Enter}');
-    await screen.findByRole('button', { name: 'Key LHM: ç' });
+    await screen.findByRole('button', { name: keyNamed('Key LHM: ç') });
 
     await user.keyboard('{Control>}z{/Control}');
-    expect(await screen.findByRole('button', { name: 'Key LHM: d' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: keyNamed('Key LHM: d') })).toBeInTheDocument();
 
     await user.keyboard('{Control>}{Shift>}z{/Shift}{/Control}');
-    expect(await screen.findByRole('button', { name: 'Key LHM: ç' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: keyNamed('Key LHM: ç') })).toBeInTheDocument();
 
     // A finger has no Ctrl+Z, so the same is a button away.
     await user.click(screen.getByRole('button', { name: 'Undo' }));
-    expect(await screen.findByRole('button', { name: 'Key LHM: d' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: keyNamed('Key LHM: d') })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Undo' })).toBeDisabled();
     await user.click(screen.getByRole('button', { name: 'Redo' }));
-    expect(await screen.findByRole('button', { name: 'Key LHM: ç' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: keyNamed('Key LHM: ç') })).toBeInTheDocument();
   });
 
   it('puts away whatever is picked on a click between the keys, but not after a drag or a swipe', async () => {
@@ -228,7 +239,7 @@ describe('Edit', () => {
     // So does a drop: the board holds the pointer while a key is dragged, so the click its release
     // sends lands on the board, and must not put away the key the drop picked.
     await dragKey('LTR', 'LTM');
-    expect(await screen.findByRole('button', { name: 'Key LTR: e' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: keyNamed('Key LTR: e') })).toBeInTheDocument();
     await inspector('LTM');
     fireEvent.click(board, { clientX: 20, clientY: 20 });
     expect(await inspector('LTM')).toBeInTheDocument();
@@ -247,7 +258,7 @@ describe('Edit', () => {
         .filter((c) => !c.closest('header'))
         .map((c) => c.getAttribute('aria-label') ?? c.textContent?.trim());
 
-    await user.click(await screen.findByRole('button', { name: 'Key LHM: d' }));
+    await user.click(await screen.findByRole('button', { name: keyNamed('Key LHM: d') }));
     expect(controls(await inspector('LHM')).slice(0, 3)).toEqual([
       'Swap with…',
       'Copy to…',
@@ -288,7 +299,7 @@ describe('Edit', () => {
     // A pointer released away from the board fires no click, so the suppression a drop arms must
     // not survive to eat an unrelated click later.
     await dragKey('LHM', 'LHI');
-    await screen.findByRole('button', { name: 'Key LHM: f' });
+    await screen.findByRole('button', { name: keyNamed('Key LHM: f') });
 
     await user.click(key('Key LTR: w'));
     expect(await screen.findByLabelText('Symbol')).toHaveValue('w');
@@ -314,12 +325,16 @@ describe('Edit', () => {
 
     await user.click(key('Key LHM: d'));
     await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Layer' }));
-    expect(await screen.findByRole('button', { name: 'Key LHM: hold Numb' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: keyNamed('Key LHM: hold Numb') }),
+    ).toBeInTheDocument();
     // Said by its hold, since it taps nothing.
     expect(screen.getByText('LHM set to hold Numb')).toBeInTheDocument();
 
     await user.click(within(await inspector('LHM')).getByRole('radio', { name: 'One-shot' }));
-    expect(await screen.findByRole('button', { name: 'Key LHM: Numb (1×)' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: keyNamed('Key LHM: Numb (1×)') }),
+    ).toBeInTheDocument();
     expect(screen.getByText('unsaved')).toBeInTheDocument();
   });
 
@@ -333,7 +348,9 @@ describe('Edit', () => {
     await user.click(key('Key LHI: f'));
 
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: /^Key LH[MI]: d$/ })).toHaveLength(2);
+      expect(
+        screen.getAllByRole('button', { name: keyNamed('Key LHM: d', 'Key LHI: d') }),
+      ).toHaveLength(2);
     });
   });
 

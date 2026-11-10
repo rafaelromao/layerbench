@@ -23,6 +23,7 @@ import { useSession } from '../state/session.js';
 import { CompositeStorage } from '../storage/composite.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { branchWith, communityDoc } from '../test/community.js';
+import { keyNamed } from '../test/keys.js';
 import { layerShareIn, showLayer } from '../test/layers.js';
 import { MemoryStorage } from '../test/memory-storage.js';
 import {
@@ -1378,7 +1379,7 @@ describe('Importing from keymap-drawer', () => {
     expect(stored.layers[0].bindings.R1).toEqual({ kind: 'trans' });
     expect(stored.combos[0].keys).toEqual(['LTR', 'LTM']);
     // And every key can be selected in the editor like any other.
-    expect(await screen.findByRole('button', { name: 'Key LTP: w' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: keyNamed('Key LTP: w') })).toBeInTheDocument();
   }, 60_000);
 
   it('previews the file with what a hold does, since that is half of a binding', async () => {
