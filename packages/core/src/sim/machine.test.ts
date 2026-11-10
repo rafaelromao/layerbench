@@ -639,7 +639,7 @@ describe('Machine — what kind of key a press is', () => {
 
   it('is named for the Repeat key, whatever it repeated, and not by the letter', () => {
     const { tap } = board();
-    // A Repeat with nothing before it types nothing, and is named as it always was.
+    // A Repeat with nothing before it types nothing, and is named the same.
     expect(tap('LTI')).toMatchObject({ symbols: '', label: '⟳' });
     tap('LHP'); // a
     expect(tap('LTI')).toMatchObject({ symbols: 'a', label: '⟳' });

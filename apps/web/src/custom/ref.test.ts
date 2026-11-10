@@ -14,7 +14,7 @@ describe('the reference to a custom document', () => {
     }
   });
 
-  it('no longer reads `saved:`, the spelling links had before documents were called custom', () => {
+  it('does not read `saved:`, which names no custom document', () => {
     expect(customId('saved:mine')).toBeNull();
   });
 

@@ -159,6 +159,6 @@ the `corpora` workflow checks the pull request.
 
 ## Two things worth knowing
 
-- The picker groups corpora by language, and `index.json` is rewritten on every run — a partial
-  build used to leave it describing corpora that had since changed.
+- The picker groups corpora by language, and `index.json` is rewritten on every run, so a partial
+  build never leaves it describing corpora that have changed.
 - `built_at` is preserved when a sample has not moved, so a rebuild does not dirty every file.

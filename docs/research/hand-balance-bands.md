@@ -1,8 +1,8 @@
 # Hand balance bands
 
-`BANDS.hand` in `packages/core/src/rules/catalog.ts` was `2 · 5 · 8`, labelled even · leans · heavy ·
-very heavy. The Keyboard Layouts Doc (3rd edition) sets other bounds, and has three categories, not
-four.
+`BANDS.hand` in `packages/core/src/rules/catalog.ts` is `5 · 11` points of `|left − right|`, labelled
+even · leans · heavy. The Keyboard Layouts Doc (3rd edition) sets the splits it is read from, and has
+three categories.
 
 ## What the Doc says
 
@@ -16,8 +16,7 @@ shares of the keystrokes per hand, which sum to 100:
 
 So there is no ambiguity about what a split is: 52-48 is not a difference of 52 and 48. The rule's
 value is `|left − right|` in points (`per_hand` in `rules/engine.ts`, `METRICS.md`), twice the larger
-share's distance from 50. The old bounds, 2 and 5, were those two splits read as that distance, where
-the value is the difference of the two shares, and the 8 and the name past it are LayerBench's.
+share's distance from 50. The Doc's 52-48 and 55-45, read as that distance, are 4 and 10.
 
 ## Where a category ends
 
@@ -45,63 +44,80 @@ read as exact bounds, 4 and 10, is the other reading; it would call a layout the
 At exactly 52.5-47.5 or 55.5-44.5 the Doc's rounding would go up and a value of 5 or 11 is not past
 its bound here; the difference is a split no sample of text lands on.
 
-## What changed
+## The bands
 
-| | Bounds (`\|left − right\|`) | Labels |
-|---|---|---|
-| Before | 2 · 5 · 8 | even · leans · heavy · very heavy |
-| After | 5 · 11 (`HAND_EVEN_BOUND`, `HAND_LEANS_BOUND`) | even · leans · heavy |
+| Bounds (`\|left − right\|`) | Labels |
+|---|---|
+| 5 · 11 (`HAND_EVEN_BOUND`, `HAND_LEANS_BOUND`) | even · leans · heavy |
 
 A value falls in the first category it does not exceed, as for every band.
 
-**`very_heavy` is dropped, not renamed.** The Doc names no category above *heavy*, and `very heavy`
-was LayerBench's. SFB's row stops short of the Doc's scale and none of its layout rows has an SFB past
-the last bound, so what is past it is named for where the Doc stops (`above_mid_high`). Hand balance has
-no such gap: the sentence gives three categories and calls everything past 55-45 *heavy*, and the Doc's
-rows run to a printed 59-41 under that name. So *heavy* is the Doc's own word for the range above the
-last bound, and it stays the last category, taking any split, 100-0 included. The colours follow the
-categories: *even* is green, *leans* amber and *heavy* red, where *leans* was green and *heavy* amber.
+**There is no *very heavy*.** The Doc names no category above *heavy*. SFB's row stops short of the
+Doc's scale (a dash under *high*, *very high* and *max*) and none of its layout rows has an SFB past the
+last bound, so SFB's ruler carries the Doc's progression on and names what is past it by its own
+steps (`docs/METRICS.md`). Hand balance has no such gap: the sentence gives three categories and calls
+everything past 55-45 *heavy*, and the Doc's rows run to a printed 59-41 under that name. So *heavy*
+is the Doc's own word for the range above the last bound, and it is the last category, taking any
+split, 100-0 included. The colours follow the categories: *even* is green, *leans* amber and *heavy*
+red.
 
-## Effect on the bundled layouts
+## The bundled layouts
 
-Measured with `analyze` on the Library's settings (English news, 100,000 letters, fold, no space,
-cyanophage-like rules; hand balance is the same on the Layouts Doc rules). 32 of the 35 bundled layouts
-change band; the values do not move.
+Measured with `analyze` on the Library's settings: English news (`en-general`), 100,000 letters, fold,
+Space not counted, and the Layouts Doc rules (hand balance is the same on the cyanophage-like rules).
+Of the 35 bundled layouts, 14 are *even*, 12 *leans* and 9 *heavy*; Night is the most even
+(0.97) and Uno the most unbalanced (18.40).
 
-| | even | leans | heavy | very heavy |
-|---|---|---|---|---|
-| Before | 3 | 10 | 6 | 16 |
-| After | 13 | 13 | 9 | (none) |
+| Layout | Left–right | \|L − R\| | Band |
+|---|---|---|---|
+| Night | 49.52–50.48 | 0.97 | even |
+| Nerps | 49.38–50.62 | 1.24 | even |
+| Bird 30 | 49.03–50.97 | 1.93 | even |
+| Graphite | 48.99–51.01 | 2.01 | even |
+| Dusk | 48.80–51.20 | 2.40 | even |
+| Gallium | 48.70–51.30 | 2.60 | even |
+| Focal | 51.37–48.63 | 2.74 | even |
+| SNTH | 51.56–48.44 | 3.12 | even |
+| Hands Down Vibranium | 51.61–48.39 | 3.22 | even |
+| Engram | 48.34–51.66 | 3.31 | even |
+| Bird | 47.97–52.03 | 4.06 | even |
+| Cem Aksoylar's Colemak-DH | 47.91–52.09 | 4.19 | even |
+| Colemak | 47.88–52.12 | 4.24 | even |
+| Colemak-DH | 47.88–52.12 | 4.24 | even |
+| Hands Down Neu | 52.56–47.44 | 5.13 | leans |
+| Hands Down Gold | 52.85–47.15 | 5.70 | leans |
+| Recurva | 47.11–52.89 | 5.78 | leans |
+| APTv3 | 47.04–52.96 | 5.91 | leans |
+| Sunlight | 53.13–46.87 | 6.27 | leans |
+| Nordrassil | 46.66–53.34 | 6.68 | leans |
+| Enthium | 46.20–53.80 | 7.59 | leans |
+| Romak | 46.15–53.85 | 7.71 | leans |
+| Hands Down Promethium | 53.89–46.11 | 7.77 | leans |
+| T-34 | 45.65–54.34 | 8.69 | leans |
+| Dvorak | 44.92–55.08 | 10.15 | leans |
+| Sturdy | 44.65–55.35 | 10.71 | leans |
+| Canary | 43.84–56.16 | 12.33 | heavy |
+| Aptmak | 56.29–43.71 | 12.59 | heavy |
+| RSTHD | 56.40–43.60 | 12.80 | heavy |
+| Magic Sturdy | 43.28–56.72 | 13.43 | heavy |
+| Magic Romak | 43.06–56.94 | 13.88 | heavy |
+| Finch | 42.95–57.05 | 14.09 | heavy |
+| Qwerty | 57.44–42.56 | 14.88 | heavy |
+| Ben Vallack Piano | 40.84–59.16 | 18.33 | heavy |
+| Uno | 59.20–40.80 | 18.40 | heavy |
 
-A selection of 12 of the 35:
+(T-34's two shares sum to 99.99: a press that spans both hands counts for neither.)
 
-| Layout | Left–right | \|L − R\| | Before | After |
-|---|---|---|---|---|
-| Colemak | 48.82–51.18 | 2.37 | leans | even |
-| Recurva | 48.05–51.95 | 3.91 | leans | even |
-| Cem Aksoylar's Colemak-DH | 47.91–52.09 | 4.19 | leans | even |
-| Bird | 47.65–52.23 | 4.58 | leans | even |
-| Hands Down Neu | 52.56–47.44 | 5.12 | heavy | leans |
-| Enthium | 46.20–53.80 | 7.59 | heavy | leans |
-| Dvorak | 45.93–54.07 | 8.14 | very heavy | leans |
-| Sturdy | 45.09–54.91 | 9.81 | very heavy | leans |
-| Canary | 44.59–55.41 | 10.82 | very heavy | leans |
-| Night | 43.82–56.18 | 12.36 | very heavy | heavy |
-| Magic Romak | 43.06–56.94 | 13.88 | very heavy | heavy |
-| Qwerty | 58.07–41.93 | 16.14 | very heavy | heavy |
-
-(Bird's two shares sum to 99.88: a press that spans both hands counts for neither.)
-
-The Doc's §13.5 gives Sturdy a 43-57 split, *heavy*; the bundled Sturdy measures 45.09–54.91 here, which
+The Doc's §13.5 gives Sturdy a 43-57 split, *heavy*; the bundled Sturdy measures 44.65–55.35 here, which
 is *leans*. The Doc's numbers come from another text and analyzer: the bands are the Doc's, the
 measurements are LayerBench's own, on its own text and rules.
 
-## What it does not do
+## Limits
 
 - The value is a difference, so the Doc's *leans left* and *leans right* are one band; which hand is
   heavier is on the card, in the two shares, not in its badge.
-- A custom rule set saved before this keeps the bounds and the four names it was saved with. The
-  presets take the new ones.
+- A custom rule set carries the bounds and names it was saved with; a set made from a preset starts
+  with the preset's.
 - The Rules editor keeps a band's names while they reach every category, and gives the standard names
   by position once the categories outnumber the names: a third Hand balance bound makes four
   categories for three names, and they are then named *min*, *very low*, *low*, *mid low*, which say

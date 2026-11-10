@@ -187,7 +187,7 @@ describe('a layer morph in the document', () => {
   });
 });
 
-describe('features in a document from before they were only behaviours', () => {
+describe('features in a document', () => {
   const shiftShift = {
     kind: 'mod_morph',
     mods: ['LSHIFT', 'RSHIFT'],
@@ -337,7 +337,7 @@ describe("a combo's role in the document", () => {
     expect(compiled.combos.map((c) => c.role)).toEqual(['typing', 'command']);
   });
 
-  it('keeps a combo an older layout marked as a command, which the analysis never presses', () => {
+  it('keeps a combo marked as a command, which the analysis never presses', () => {
     const old = { ...withRoles([undefined]), combos: [{ ...withRoles(['command']).combos[0] }] };
     expect(parseLayout(old).combos).toHaveLength(1);
   });
@@ -757,11 +757,11 @@ describe('a document saved while layouts named bindings of their own', () => {
   });
 });
 
-describe('a document saved while the format had imported keys', () => {
+describe('a document with imported keys', () => {
   const kp = (symbol: string) => ({ kind: 'kp', symbol });
   const imported = (label: string) => ({ kind: 'raw', label });
   const holding = (tap: unknown, hold: unknown) => ({ kind: 'hold_tap', tap, hold });
-  // As Magic Breeze was saved before PR #79: FUN, MEDIA and MACROS held on Numbers and Symbols.
+  // FUN, MEDIA and MACROS held on Numbers and Symbols, as Magic Breeze has them.
   const layer = (id: string, bindings: Record<string, unknown>) => ({ id, bindings });
   const old = {
     format: 'layerbench/layout@1',
@@ -802,7 +802,7 @@ describe('a document saved while the format had imported keys', () => {
     ],
   };
 
-  it('opens with each imported key made as PR #79 made them', () => {
+  it('opens with each imported key made transparent, a tap of nothing or dropped', () => {
     const parsed = safeParseLayout(old);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;

@@ -31,7 +31,7 @@ describe('the last ranking, kept in this browser', () => {
     expect([...old.summaries.keys()]).toEqual(['b:qwerty']);
   });
 
-  it('drops the layouts a ranking kept behind, which the list no longer holds back', () => {
+  it('keeps only the scores of a stored ranking, whatever else it holds', () => {
     localStorage.setItem(
       'layerbench:ranking',
       JSON.stringify({ en: { summaries: { 'b:qwerty': SUMMARY }, behind: ['b:qwerty'] } }),
@@ -73,7 +73,7 @@ describe('the last ranking, kept in this browser', () => {
     expect(recall('pt').summaries.size).toBe(1);
   });
 
-  it('drops the scores kept by what was analyzed, from before they were kept by layout', async () => {
+  it('drops the store of scores kept by what was analyzed', async () => {
     localStorage.setItem('layerbench:summaries', JSON.stringify({ abc123: SUMMARY }));
     vi.resetModules();
     await import('./ranking-memory.js');

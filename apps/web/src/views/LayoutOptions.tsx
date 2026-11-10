@@ -16,7 +16,7 @@ const BUNDLED_BY_NAME = [...BUNDLED_LAYOUTS].sort((a, b) =>
 /**
  * The options of a layout picker: the bundled layouts, the community ones, then the custom ones,
  * each group by name, and the layout the link names when it is neither (one carried inline, or not
- * stored any more).
+ * stored).
  */
 export function LayoutOptions({
   custom,

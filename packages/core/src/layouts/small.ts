@@ -129,7 +129,7 @@ const ALPHA2_OR_SYMBOLS: Binding = {
 
 /**
  * The shift key: a one-shot Shift, and caps word when shift is pressed while a shift is on. Caps
- * word lets `_` and Backspace through, as the pre-shifted layer it replaced did.
+ * word lets `_` and Backspace through.
  */
 const SHIFT_OR_CAPS_WORD: Binding = {
   kind: 'mod_morph',

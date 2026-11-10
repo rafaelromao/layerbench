@@ -70,7 +70,7 @@ rule here moves a key, and keep `templates.test.ts` asserting each rule.
   outputs that need a modifier.
 - **Thumbs.** A layout's thumbs are its author's, a space key on the outer left thumb where its
   author leaves them to a space bar. Where its keymap holds a layer on a thumb, the thumb holds it
-  (`ClassicDef.holds`), still typing what it typed: RSTHD holds its Symbols on its inner thumbs, e
+  (`ClassicDef.holds`), and keeps typing what it types: RSTHD holds its Symbols on its inner thumbs, e
   and space, which rank the same on Effort as any other choice and best on SFB, the left outer
   thumb sharing a finger with `e`. On a new layout the inner thumbs hold Numbers and Symbols, and
   Accents is the combo `accentsCombo`; on a row-stagger board, its one space bar (L0 and R0
@@ -79,8 +79,8 @@ rule here moves a key, and keep `templates.test.ts` asserting each rule.
   a `hold_tap`, its tap `none`, so the board draws its hold along the bottom, as on every tap-hold;
   `templates.test.ts` (`thumbs that only hold`) checks every bundled layout.
 - **Home row mods.** A layout holds home row mods only where its author's keymap does, and its
-  definition gives them (`ClassicDef.homeRowMods`, applied by `withHomeRowMods`); each key still
-  types what it typed, a letter or not, and one with nothing on it, or holding something already,
+  definition gives them (`ClassicDef.homeRowMods`, applied by `withHomeRowMods`); each key keeps
+  typing what it types, a letter or not, and one with nothing on it, or holding something already,
   does not. Both hands hold the left modifiers, as the analysis types a capital with the left Shift
   and the right Alt is AltGr. Magic Romak holds its keymap's home block mods, which its file draws:
   Ctrl, Alt and Shift from the ring finger in, Shift with Gui on F and C, and Gui on P and the magic

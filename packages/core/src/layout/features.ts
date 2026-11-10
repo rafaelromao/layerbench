@@ -27,8 +27,8 @@ export function mapTapPart(
 }
 
 /**
- * `features.sentenceCase` as a document saved before sentence case was only a behaviour declares
- * it: the space key (or `key`), on the layers `on`, its tap made a `sentence_space`.
+ * `features.sentenceCase` as a document declares it: the space key (or `key`), on the layers `on`,
+ * its tap made a `sentence_space`.
  */
 export interface LegacySentenceCase {
   enabled?: boolean;
@@ -37,8 +37,8 @@ export interface LegacySentenceCase {
 }
 
 /**
- * `features.capsWord` as a document saved before caps word was only a behaviour declares it: the
- * shift key (or `key`), on the layers `on`, made a mod morph that turns into `caps_word`.
+ * `features.capsWord` as a document declares it: the shift key (or `key`), on the layers `on`, made
+ * a mod morph that turns into `caps_word`.
  */
 export interface LegacyCapsWord {
   enabled?: boolean;
@@ -49,7 +49,7 @@ export interface LegacyCapsWord {
   continueList?: string[];
 }
 
-/** A layout as the schema reads it: a document from before may still declare features. */
+/** A layout as the schema reads it: a document may declare features. */
 export type ReadLayout = Layout & {
   features?: { sentenceCase?: LegacySentenceCase; capsWord?: LegacyCapsWord };
 };
@@ -104,11 +104,10 @@ function withCapsWordAsMorph(layout: Layout, f: LegacyCapsWord): Layout {
 }
 
 /**
- * The layout with the features a document from before declared written out as the bindings they
- * made, and none left declared: sentence case is a `sentence_space` on the space key's tap, caps word
- * a mod morph on the shift key. Sentence case and caps word are behaviours of a key, made in the key
- * editor like any other, and a layout has no declared features. The layout itself when it declares
- * none.
+ * The layout with the features a document declares written out as the bindings they make, and none
+ * left declared: sentence case is a `sentence_space` on the space key's tap, caps word a mod morph on
+ * the shift key. Sentence case and caps word are behaviours of a key, made in the key editor like any
+ * other, and a layout has no declared features. The layout itself when it declares none.
  */
 export function withLegacyFeatures(layout: ReadLayout): Layout {
   const { features, ...rest } = layout;

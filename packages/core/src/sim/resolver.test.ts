@@ -940,7 +940,7 @@ describe('how a layout that declares its rules is typed', () => {
     expect(ordered.keys).toEqual(TAP_KEYS);
   });
 
-  it('types as the layout always was when it declares no rule, at both policies', () => {
+  it('types by the engine’s own ways when the layout declares no rule, at both policies', () => {
     expect(trace(magicRomak, 'hello').keys).toEqual(REPEAT_KEYS);
     expect(trace(magicRomak, 'hello', { repeatPolicy: 'tap_twice' }).keys).toEqual(TAP_KEYS);
   });

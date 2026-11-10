@@ -296,7 +296,7 @@ describe('Edit', () => {
       storage,
     });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
-    // Saving is no longer a panel to go looking for.
+    // Saving is a button in the bar, not a panel.
     expect(screen.queryByRole('tab', { name: 'Save' })).toBeNull();
     expect(within(bar()).getByRole('button', { name: 'Save' })).toHaveAttribute(
       'title',
@@ -2380,7 +2380,7 @@ describe('Analyze, while editing', () => {
     });
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
     await user.click(screen.getByRole('button', { name: /^Key R0:/ }));
-    // In a section of their own, right above the summary, and no longer in the key's editor.
+    // In a section of their own, right above the summary, not in the key's editor.
     const numbers = await screen.findByRole('region', { name: 'Key numbers' });
     expect(within(numbers).getByRole('heading', { name: /^Its numbers on / })).toBeInTheDocument();
     expect(

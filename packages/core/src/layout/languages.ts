@@ -1,4 +1,4 @@
-/** Old Portuguese declarations become the one supported tag, `pt`, in the document itself. */
+/** Any Portuguese tag (`pt-BR`, `pt-PT`) becomes the one supported tag, `pt`, in the document itself. */
 export function canonicalLanguages(languages: readonly string[] | undefined): string[] | undefined {
   if (!languages) return undefined;
   const out: string[] = [];

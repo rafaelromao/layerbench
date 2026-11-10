@@ -20,13 +20,22 @@ measured with the engine; the data is in [code-groups.json](code-groups.json).
   symbols counted. **ρ** is the Spearman correlation of two texts' Effort rankings of the layouts,
   with capitals kept (Shift pressed, as the corpora are meant to be read) and, in the last column of
   each table, folded to lower case (the analysis's default).
-- **Calibration.** The two new code texts are 0.088 apart (JSD) and rank the layouts
-  with ρ = 0.81 (0.88 folded). English news is 0.40 from the
-  C family text, with ρ = 0.63. Two questions follow, answered separately: does a group
-  **press other keys** (further than 0.15 from every text, since 0.09 is the gap between the two code
-  texts), and does it **reorder the layouts** (ρ below 0.85 with every text, since the code texts
-  keep 0.81 to 0.88 between them)? Differences in ρ of less than 0.05 are not claimed: the Effort of
-  many layouts is close, and the sampling error was not measured.
+- **Calibration.** The two code texts are 0.088 apart (JSD) and rank the layouts with ρ = 0.81 (0.88
+  folded) in the recorded run (next bullet). English news is 0.40 from the C family text, with ρ = 0.63.
+  Two questions follow, answered separately: does a group **press other keys** (further than 0.15
+  from every text, since 0.09 is the gap between the two code texts), and does it **reorder the
+  layouts** (ρ below 0.85 with every text, since the code texts keep 0.81 to 0.88 between them)?
+  Differences in ρ of less than 0.05 are not claimed: the Effort of many layouts is close, and the
+  sampling error is not measured.
+- **Where ρ comes from.** Every ρ in the tables is in `code-groups.json`, the output of `pnpm
+  corpora:research`, which needs the groups' projects fetched into a git-ignored cache. ρ ranks the
+  bundled layouts by Effort, so it moves with them, and it is not re-derived without that run. The
+  four texts of the first table, which are committed, rank the 35 layouts as they ship with ρ (capitals
+  kept, folded in brackets) of 0.78 (0.81) between the C family and Python texts, 0.78 (0.85) between
+  C family and Markdown, 0.80 (0.77) between Python and Markdown, 0.85 (0.87) between Markdown and
+  English news, and 0.54 (0.62) and 0.56 (0.53) between news and the C family and Python texts. The
+  groups' ρ, and the calls made from them below, are the recorded run's; running the script on the
+  layouts as they ship refreshes them.
 
 ## What the three texts have that news does not
 
@@ -111,8 +120,9 @@ Read against the calibration above:
   HTML with XML (`<`, `>` and `/` are 17% of its characters; 0.84, 0.94 folded; the
   furthest profile of all with LaTeX, 0.48 or more from every text). YAML is on the line (0.85,
   0.88) and 0.33 or more from every text.
-- **Array languages** were not measured: APL and BQN are written with glyphs outside ASCII that no
-  bundled layout types, so every one would be skipped, and J and K were not looked for.
+- **Array languages** are not measured: APL and BQN are written mostly with glyphs outside ASCII
+  (`⍳`, `⍴`, `⌈`…) that the bundled layouts do not type (the only ones among them are the arrows
+  `← ↑ → ↓` and `≠`), so most of such a text would be skipped; J and K are not covered.
 
 The projects each group was read from:
 
@@ -132,7 +142,8 @@ The projects each group was read from:
 
 ## Recommendation
 
-Add next, in this order, each as its own corpus if the owner agrees:
+None of these groups has a corpus: `apps/web/public/corpora/index.json` lists the three above and
+the news texts. The groups worth a corpus next, in this order, each as its own:
 
 1. **Data: JSON and YAML.** Configuration, manifests and agent settings, typed all day when working
    with agents. JSON reorders the layouts in both case modes (best ρ 0.78 and 0.81), YAML is
@@ -150,10 +161,10 @@ family, Ruby, Lua, Julia, Lisp and LaTeX unless someone types them: they repeat 
 layouts as one does.
 
 Caveats: a group of two or three projects (JSON, SQL, LaTeX, YAML) is an estimate of a language,
-and the JSON test suite is data written for tests. YAML at 170 kB and LaTeX at 203 kB are under the 300 kB the others have,
-because the projects had no more lines left after the filters. The samples are 300 kB where the
-corpora are a megabyte. The ranking is of the bundled layouts' Effort under the `layouts_doc` rules;
-SFB and the other rules were not ranked.
+and the JSON test suite is data written for tests. YAML at 170 kB and LaTeX at 203 kB are under the
+300 kB the others have, because the projects have no more lines left after the filters. The samples
+are 300 kB where the corpora are a megabyte. The ranking is of the bundled layouts' Effort under the
+`layouts_doc` rules; SFB and the other rules are not ranked.
 
 ## Reproducing
 
@@ -161,3 +172,7 @@ SFB and the other rules were not ranked.
 pnpm corpora:fetch research   # the projects of the groups, once (network)
 pnpm corpora:research         # writes docs/research/code-groups.json
 ```
+
+`pnpm corpora:research` measures the three corpora (`packages/corpora/raw/*.txt`), English news and
+each group and language, with `BUNDLED_LAYOUTS` and the `layouts_doc` rules, so a change to the
+layouts' Effort changes every ρ in the tables.

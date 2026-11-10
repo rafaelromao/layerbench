@@ -15,7 +15,7 @@ suite('legends', () => {
     expect(legendText(layer)).toBe('hold Numb');
     const shift = legend(c, { kind: 'mod', mod: 'LSHIFT' });
     expect([shift.tap, shift.hold, shift.kind]).toEqual(['', '⇧', 'mod']);
-    // Said as what it does, as before.
+    // Said as what it does.
     expect(layer.detail).toBe(describe(c, { kind: 'mo', layer: 'num' }));
   });
 

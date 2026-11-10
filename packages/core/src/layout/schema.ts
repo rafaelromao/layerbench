@@ -119,8 +119,8 @@ export const BindingSchema: z.ZodType<unknown> = z.lazy(() =>
         z.object({
           kind: z.literal('layer_morph'),
           layers: z.array(z.string()).default([]),
-          // The writer once put `any` on every layer morph. It is what every morph does, so it is
-          // still read, and written no more. zmk-layer-morph has no other, so nothing else is read.
+          // `any` is what every layer morph does, so it is read and never written. zmk-layer-morph
+          // has no other match, so nothing else is read.
           match: z.literal('any', { error: LAYER_MORPH_MATCH }).optional(),
           active: BindingSchema,
           inactive: BindingSchema,
@@ -194,14 +194,14 @@ const GeometryKeySchema = z
   }));
 
 /**
- * Read only, for documents from before sentence case and caps word were only behaviours of a key:
+ * Read only, for a document that declares sentence case or caps word as features:
  * `withLegacyFeatures` turns them into the `sentence_space` on the space key and the mod morph on the
- * shift key they made, and the layout has no features of its own.
+ * shift key they make, and the layout has no features of its own.
  */
 const FeaturesSchema = z.object({
-  // A document from before sentence case was zmk-sentence-case's may name the punctuation that
-  // ends a sentence (`after`) and the modifier it arms (`mod`): the module has its own, so they are
-  // read and left out, as any field the schema does not name is.
+  // A document may name the punctuation that ends a sentence (`after`) and the modifier it arms
+  // (`mod`): zmk-sentence-case has its own, so they are read and left out, as any field the schema
+  // does not name is.
   sentenceCase: z
     .object({
       enabled: z.boolean().optional(),
@@ -516,10 +516,9 @@ const TRANSPARENT = { kind: 'trans' };
 const imported = (b: unknown) => isObject(b) && b.kind === 'raw';
 
 /**
- * `b` with no imported key in it (`raw`, which the format had until PR #79), made as #79 made the
- * bundled layouts and imports: one alone is transparent, as a key left unset; one tapped under a
- * hold taps nothing, and the hold stays; and a hold imported drops, leaving the key its tap, or
- * transparent if that taps nothing. In a macro it is a step that does nothing, and goes.
+ * `b` with no imported key in it (`raw`): one alone is transparent, as a key left unset; one tapped
+ * under a hold taps nothing, and the hold stays; and a hold imported drops, leaving the key its tap,
+ * or transparent if that taps nothing. In a macro it is a step that does nothing, and goes.
  */
 function withoutImported(b: unknown): unknown {
   if (!isObject(b)) return b;
@@ -546,9 +545,9 @@ function withoutImported(b: unknown): unknown {
 }
 
 /**
- * A document saved while the format had imported keys (`raw`), read without them
- * (`withoutImported`), so a layout saved before PR #79 still opens, and saves without them. A combo
- * left transparent goes, as the editor makes none. Every other fault is the schema's to tell.
+ * A document that holds imported keys (`raw`), read without them (`withoutImported`), so it still
+ * opens, and saves without them. A combo left transparent goes, as the editor makes none. Every
+ * other fault is the schema's to tell.
  */
 function withoutImportedKeys(input: unknown): unknown {
   if (!isObject(input)) return input;

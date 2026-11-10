@@ -95,8 +95,8 @@ export function typingCombos(
 /**
  * The place in the layout of a combo the board draws from the analysis' compile, which renumbers
  * them when typing combos are left out of it. Combos are only ever dropped, never moved, so the
- * place is found among the combos kept, by id, keys and layers; twins alike in all three, which an
- * older layout can hold, by their order. Null when it has none.
+ * place is found among the combos kept, by id, keys and layers; twins alike in all three, which a
+ * layout can hold, by their order. Null when it has none.
  */
 export function comboPlace(
   compiled: CompiledLayout,

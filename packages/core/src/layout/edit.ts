@@ -624,7 +624,7 @@ const handlers: Handlers = {
         refused: `${shared[0]} would name an output of another combo too. Give that combo another id first.`,
       };
     }
-    // Twins under one id (older saved layouts) are told apart by the symbol a path is for; one both
+    // Twins under one id, which a saved layout can hold, are told apart by the symbol a path is for; one both
     // make is left to whichever the resolver reads it as.
     if (layout.typingPaths) {
       const paths = followCombo(layout, out, edit.combo);

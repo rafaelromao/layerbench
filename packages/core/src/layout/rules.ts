@@ -26,7 +26,7 @@ export function wholeRule<W extends string>(
 /**
  * The rules as a layout that has not declared them reads: shift the way `keys.shift.kind` says first
  * and the other after it, doubled letters the repeat key and tapping twice, or, for a layout whose
- * `repeatPolicy` is tap twice, tapping twice alone. Both on, and tried as the layout always was.
+ * `repeatPolicy` is tap twice, tapping twice alone. Both on, in that order.
  */
 export function defaultRules(layout: Pick<Layout, 'keys' | 'repeatPolicy'>): Required<TypingRules> {
   const hold = layout.keys.shift?.kind === 'hold';
@@ -48,7 +48,7 @@ export function defaultRules(layout: Pick<Layout, 'keys' | 'repeatPolicy'>): Req
   };
 }
 
-/** The rules of a layout, declared or read from what it always had: what the editor shows. */
+/** The rules of a layout, declared or read from its keys and repeat policy: what the editor shows. */
 export function rulesOf(
   layout: Pick<Layout, 'keys' | 'repeatPolicy' | 'typingRules'>,
 ): Required<TypingRules> {
@@ -62,7 +62,8 @@ export function rulesOf(
 
 /**
  * The ways of a rule the layout declared, those on in the order they are tried; null for a rule it
- * left to what it always had, which is typed as before, and an empty list for one with every way off.
+ * declares nothing for, which is typed by the ways the engine finds, and an empty list for one with
+ * every way off.
  */
 export function declaredWays<W extends string>(
   declared: readonly RuleWay<W>[] | undefined,

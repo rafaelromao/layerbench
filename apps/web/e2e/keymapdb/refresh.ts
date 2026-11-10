@@ -40,7 +40,7 @@ async function main(): Promise<void> {
     const image = join(dir, `image${ext}`);
     lines.push(`image ${await fetchTo(imageUrl(e), image)}`);
     if (e.image.sha256) {
-      // No commit pins it: say when it is no longer the picture the findings were measured on.
+      // No commit pins it: say when it is no longer the picture the note was measured on.
       const now = createHash('sha256').update(readFileSync(image)).digest('hex');
       lines.push(now === e.image.sha256 ? 'image as measured' : 'IMAGE CHANGED since measured');
     }
