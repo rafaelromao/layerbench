@@ -108,6 +108,27 @@ describe.skipIf(!RUN)('performance budget (BENCH=1)', () => {
     expect(ms).toBeLessThan(1500);
   });
 
+  it('analyzes 300k symbols with capitals within 1.5 s, each Shift a choice of the word', async () => {
+    const corpus = await nodeCorpusLoader(corporaRoot()).load('pt-br-general');
+    const cased = corpusStream(corpus, 'model');
+    const t = performance.now();
+    analyze(compiled, cased, { caseMode: 'model', maxSymbols: 300_000, ruleSet });
+    const ms = performance.now() - t;
+    logLine(`300k, capitals: ${ms.toFixed(0)}ms`);
+    expect(ms).toBeLessThan(1500);
+  });
+
+  it('analyzes 300k symbols of code, thick with capitals, within 1.5 s', async () => {
+    // camelCase and CONSTANTS: a Shift for many a word, on Magic Romak's three.
+    const corpus = await nodeCorpusLoader(corporaRoot()).load('code-c-family');
+    const cased = corpusStream(corpus, 'model');
+    const t = performance.now();
+    analyze(compiled, cased, { caseMode: 'model', maxSymbols: 300_000, ruleSet });
+    const ms = performance.now() - t;
+    logLine(`300k code, capitals: ${ms.toFixed(0)}ms`);
+    expect(ms).toBeLessThan(1500);
+  });
+
   it('analyzes 1M symbols within 5 s', () => {
     const t = performance.now();
     const r = analyze(compiled, stream, { caseMode: 'fold', maxSymbols: 1_000_000, ruleSet });
