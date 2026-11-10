@@ -24,6 +24,7 @@ import {
 } from 'react';
 import { fmt, placeCombos } from './combo-layout.js';
 import { type Fit, fitLabel, legendNumber, textWidth } from './fit-label.js';
+import { formatKeyShare } from './format.js';
 import { type Direction, nearestKey } from './key-nav.js';
 import { layerColourOf } from './layer-colour.js';
 import { type KeyDrop, TAP_SLOP, THRESHOLD, useKeyDrag } from './use-key-drag.js';
@@ -376,6 +377,7 @@ interface ModelOptions {
   /** Give a number to each key whose legend cannot say everything. */
   numbered: boolean;
   heat?: Record<number, number>;
+  share?: Record<number, number>;
   highlighted?: Set<number>;
   pressed?: Set<number>;
   selected?: string | null;
@@ -422,6 +424,7 @@ function modelKeys(compiled: CompiledLayout, layerIdx: number, opts: ModelOption
       opts.numbered &&
       !implicit &&
       (tapFit.overflow || !!holdFit?.overflow || needsDetail(binding));
+    const trans = l.kind === 'trans' || implicit;
     return {
       idx,
       key: k,
@@ -437,9 +440,12 @@ function modelKeys(compiled: CompiledLayout, layerIdx: number, opts: ModelOption
       badge: opts.showHold && !implicit ? l.badge : null,
       colour: layerColour(compiled, l.layer),
       number: listed ? ++numbered : null,
-      trans: l.kind === 'trans' || implicit,
+      trans,
       dead: l.dead && tap !== '',
       heat: opts.heat?.[idx] ?? 0,
+      // A key with nothing on it, or that lets another layer show through, has no presses to share:
+      // those are counted where the key that types is drawn.
+      share: opts.share && !trans && binding.kind !== 'none' ? (opts.share[idx] ?? 0) : null,
       highlighted: opts.highlighted?.has(idx) ?? false,
       pressed: opts.pressed?.has(idx) ?? false,
       selected: opts.selected === k.id || (opts.alsoSelected?.includes(k.id) ?? false),
@@ -462,6 +468,12 @@ export interface KeyboardProps {
    * to a screen reader, so the colour is not all that tells it; left out, only the colour does.
    */
   heatName?: string;
+  /**
+   * Position index to its share of all the presses of the text on the layer drawn, 0–1. Given,
+   * each key that types something says its share, as its tooltip and to a screen reader, `0%`
+   * when the text never presses it; left out, a key says nothing of it.
+   */
+  share?: Record<number, number>;
   /** Positions to outline, e.g. the keys of a selected n-gram. */
   highlight?: number[];
   /** Positions drawn as being pressed right now, such as a step of how a word is typed. */
@@ -524,6 +536,7 @@ export function Keyboard({
   layer = 0,
   heat = {},
   heatName,
+  share,
   highlight = [],
   pressed = [],
   combos = [],
@@ -623,6 +636,7 @@ export function Keyboard({
     showHold,
     numbered: legendList !== false,
     heat,
+    share,
     highlighted: outlined,
     pressed: pressing,
     selected,
@@ -714,9 +728,10 @@ export function Keyboard({
           heatName && k.heat > 0
             ? `${heatName}: ${k.heat < 0.01 ? 'under 1' : pct}% of the busiest key`
             : '';
+        const used = k.share === null ? '' : `${formatKeyShare(k.share)} of presses`;
         const label = `Key ${k.key.id}: ${spokenLegend(k.legend, k.tap)}${reachSpoken}${
-          heated ? `, ${heated}` : ''
-        }`;
+          used ? `, ${used}` : ''
+        }${heated ? `, ${heated}` : ''}`;
         const tapY = (k.holdFit ? -BAND / 2 : 0) + (k.shiftedFit ? TOP / 2 : 0) + 1;
         const hot = k.pressed || k.heat >= HOT_HEAT;
         // A hot key's legends are all drawn in its text colour (see `HOT_HEAT`), layer colour too.
@@ -728,7 +743,7 @@ export function Keyboard({
             : k.legend.layerIn === 'hold'
               ? k.colour
               : undefined;
-        const title = [k.legend.detail, k.reach?.text, heated].filter(Boolean).join('; ');
+        const title = [k.legend.detail, k.reach?.text, used, heated].filter(Boolean).join('; ');
         return (
           // biome-ignore lint/a11y/noStaticElementInteractions: it takes a button role and tab stop whenever it is interactive
           <g

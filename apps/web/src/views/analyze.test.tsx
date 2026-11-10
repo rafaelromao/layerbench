@@ -2,8 +2,33 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import type { AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
-import { layerNames, shownLayer } from '../test/layers.js';
+import { layerNames, showLayer, shownLayer } from '../test/layers.js';
 import { openSettings, renderRoute, testClient } from '../test/render.js';
+
+/**
+ * The analysis client, except that an analysis on the cyanophage-like rules never lands: the first
+ * report is the last there is, so what is on screen after a switch to them is of the rules before.
+ */
+function neverLandingOnCyanophage() {
+  const real = testClient();
+  return new Proxy(real, {
+    get(target, prop) {
+      if (prop === 'peek') return async () => null;
+      if (prop === 'analyze') {
+        return (request: AnalyzeRequest, opts?: { signal?: AbortSignal }) =>
+          request.settings.rules.id === 'cyanophage'
+            ? new Promise<ReportDTO>((_, reject) =>
+                opts?.signal?.addEventListener('abort', () =>
+                  reject(new DOMException('left', 'AbortError')),
+                ),
+              )
+            : target.analyze(request, opts);
+      }
+      const member = Reflect.get(target, prop);
+      return typeof member === 'function' ? member.bind(target) : member;
+    },
+  });
+}
 
 /**
  * The Analyze view, exercised end to end: a real analysis over a small sample, then the numbers and
@@ -51,25 +76,7 @@ describe('Analyze', () => {
   }, 60_000);
 
   it('drops the link to a ruler while the numbers on screen are of the rules it no longer names', async () => {
-    const real = testClient();
-    const client = new Proxy(real, {
-      get(target, prop) {
-        if (prop === 'peek') return async () => null;
-        if (prop === 'analyze') {
-          return (request: AnalyzeRequest, opts?: { signal?: AbortSignal }) =>
-            // The analysis on the new rules never lands: the first is the last there is.
-            request.settings.rules.id === 'cyanophage'
-              ? new Promise<ReportDTO>((_, reject) =>
-                  opts?.signal?.addEventListener('abort', () =>
-                    reject(new DOMException('left', 'AbortError')),
-                  ),
-                )
-              : target.analyze(request, opts);
-        }
-        const member = Reflect.get(target, prop);
-        return typeof member === 'function' ? member.bind(target) : member;
-      },
-    });
+    const client = neverLandingOnCyanophage();
     const user = userEvent.setup();
     renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000', { client });
     await screen.findByText('Same finger bigrams');
@@ -296,5 +303,84 @@ describe('Analyze', () => {
     expect(effort?.querySelector('.lb-band')).toHaveTextContent('max');
     // Qwerty never leaves its base layer.
     expect(screen.getByText('Layer taps per 100 symbols')).toBeInTheDocument();
+  });
+
+  describe("a key's share of the presses", () => {
+    /** The share each key of the layer shown says in its name, by key. */
+    const shown = () =>
+      [...document.querySelectorAll<SVGGElement>('#kb-analyze g[data-key]')].map((g) => ({
+        id: g.getAttribute('data-key') as string,
+        label: g.getAttribute('aria-label') ?? '',
+        tooltip: g.querySelector('title')?.textContent ?? '',
+        share: Number(/([\d.]+)% of presses/.exec(g.getAttribute('aria-label') ?? '')?.[1] ?? NaN),
+      }));
+
+    it('is in every key’s tooltip and name, whatever the heat measures, and is the share its numbers give', async () => {
+      const user = userEvent.setup();
+      renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000');
+      await screen.findByText('Same finger bigrams');
+
+      for (const heat of ['usage', 'effort']) {
+        await user.selectOptions(screen.getByLabelText('Heat'), heat);
+        const keys = shown();
+        expect(keys.length).toBeGreaterThan(0);
+        for (const k of keys) {
+          // An empty key, as Qwerty's thumbs are, has nothing to share.
+          if (k.label.endsWith(': empty')) {
+            expect(k.tooltip, `${heat} ${k.id}`).not.toMatch(/ of presses/);
+            continue;
+          }
+          expect(k.tooltip, `${heat} ${k.id}`).toMatch(/(?:\d+\.\d\d%|0%|under 0\.01%) of presses/);
+          expect(k.label, `${heat} ${k.id}`).toMatch(/ of presses/);
+        }
+        // Qwerty has one layer and no combos, so its keys have every press between them.
+        const sum = keys.reduce((a, k) => a + (Number.isNaN(k.share) ? 0 : k.share), 0);
+        expect(sum, heat).toBeGreaterThan(99.5);
+        expect(sum, heat).toBeLessThan(100.5);
+      }
+
+      const busiest = shown().reduce((a, b) => (b.share > a.share ? b : a));
+      await user.click(screen.getByRole('button', { name: new RegExp(`^Key ${busiest.id}: `) }));
+      const numbers = await screen.findByRole('region', { name: 'Key numbers' });
+      expect(numbers.querySelector('.lb-key-stats p')?.textContent).toContain(
+        `${busiest.share.toFixed(2)}% of the presses`,
+      );
+    }, 60_000);
+
+    it('is left out while the numbers on screen are of an analysis since changed', async () => {
+      const user = userEvent.setup();
+      renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000', {
+        client: neverLandingOnCyanophage(),
+      });
+      await screen.findByText('Same finger bigrams');
+      expect(shown().filter((k) => !Number.isNaN(k.share)).length).toBeGreaterThan(0);
+
+      const dialog = await openSettings();
+      await user.selectOptions(within(dialog).getByLabelText('Rules'), 'cyanophage');
+      // The last report stands, but its presses are of what the keys were: no key claims them.
+      await waitFor(() => expect(shown().filter((k) => !Number.isNaN(k.share))).toHaveLength(0));
+      expect(shown().every((k) => !/ of presses/.test(k.tooltip))).toBe(true);
+    }, 60_000);
+
+    it('adds up to 100% over the keys of every layer', async () => {
+      const user = userEvent.setup();
+      renderRoute('/analyze?layout=romak&corpus=pt-br-general&sample=20000');
+      await screen.findByText('Same finger bigrams');
+
+      let sum = 0;
+      const names = await layerNames(user);
+      expect(names.length).toBeGreaterThan(1);
+      for (const name of names) {
+        await showLayer(user, name);
+        // A key that types nothing here says nothing; the others say their share, 0% included.
+        for (const k of shown()) {
+          if (/transparent|empty/.test(k.label)) expect(k.label).not.toMatch(/ of presses/);
+          else expect(k.label, `${name} ${k.id}`).toMatch(/ of presses/);
+          if (!Number.isNaN(k.share)) sum += k.share;
+        }
+      }
+      expect(sum).toBeGreaterThan(99);
+      expect(sum).toBeLessThan(101);
+    }, 90_000);
   });
 });

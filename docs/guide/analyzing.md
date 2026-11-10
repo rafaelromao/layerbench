@@ -157,6 +157,21 @@ tapped for Alpha 2 is warm on the layer it is tapped on, not on Alpha 2. A key t
 below show through is warm on that layer, where the key that types is drawn. A rule set without the
 rule a choice is made of draws **Usage** instead, in the Library as here.
 
+Whatever the heat measures, a key's tooltip on Analyze's board also gives its share of the
+presses, `12.34% of presses`, and a screen reader reads it with the key's name. It is the share
+[its numbers](#a-keys-numbers) open with: the key's presses on the layer shown out of all the presses
+counted, on every layer, so a layer's keys add up to that layer's share and the keys of every layer to
+100%, less the presses of combos, which are the combo's and not any one key's: a key pressed only in
+combos reads `0%`, and its numbers count them apart. It is written, there and here, with two
+decimals, as `under 0.01%` for a key pressed rarely, and `0%` for one the text never presses. While an
+edit waits for its analysis the board says no share, as the last one's was of what the key was. A press
+counts on the layer whose key was pressed, so a key that holds or taps for a layer is counted on the
+layer it is pressed on; on the layer it leads to it is usually transparent, and a transparent key,
+like one with nothing on it, says nothing. By default the space key is not counted
+([Case and space](#case-and-space)), so it reads `0%` until **Space** keeps it in. A touch screen has
+no tooltip: tap the key, and its numbers say the same share. The Library's cards give the percentage
+of the busiest key instead, as above.
+
 One scale colours every layer: the busiest key of all of them is the hottest colour, and every other
 key, on whichever layer, is coloured by its share of that. A key with the same share has the same
 colour on every layer, so the layers can be compared at a glance: a layer of rarely pressed keys, such
@@ -249,7 +264,8 @@ text. A link still opens exactly what it names, and a new visit starts from its 
 Select a key and a section of its own opens right above the **Summary**, **Its numbers on** the
 layer shown: what the key adds to the analysis there:
 
-- its share of the presses, and how many were made to reach a layer;
+- its share of the presses, the one its tooltip on the board gives (see [Heat](#heat)), and how many
+  were made to reach a layer;
 - its part of each number that adds up over keys, with that number and the share it makes of it.
   A pair counts half on each of its keys, a combo's share is split between the keys pressed
   together, Effort is the key's cost times its presses and Finger travel the distance its finger

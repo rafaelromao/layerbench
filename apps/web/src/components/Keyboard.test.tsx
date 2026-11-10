@@ -3,6 +3,7 @@ import {
   bundledLayout,
   type CompiledLayout,
   compileLayout,
+  type Layout,
 } from '@layerbench/core';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -292,6 +293,106 @@ describe('Keyboard', () => {
     const { container } = render(<Keyboard compiled={qwerty} highlight={[pos]} />);
     const cap = container.querySelector('g[data-key="RHI"] .lb-key-cap');
     expect(cap?.classList.contains('lb-key-highlight')).toBe(true);
+  });
+});
+
+describe("a key's share of the presses", () => {
+  const SYM = romak.layerIndex.get('sym') as number;
+  const at = (c: CompiledLayout, id: string) => c.keyIndex.get(id) as number;
+  const tooltip = (container: HTMLElement, id: string) =>
+    container.querySelector(`g[data-key="${id}"] title`)?.textContent;
+  const name = (container: HTMLElement, id: string) =>
+    container.querySelector(`g[data-key="${id}"]`)?.getAttribute('aria-label');
+
+  it('is said by a key with the heat off, in its tooltip and to a screen reader', () => {
+    const { container } = render(
+      <Keyboard compiled={qwerty} share={{ [at(qwerty, 'LHM')]: 0.1234 }} />,
+    );
+    expect(tooltip(container, 'LHM')).toBe('types d; 12.34% of presses');
+    expect(name(container, 'LHM')).toBe('Key LHM: d, 12.34% of presses');
+    expect(screen.getByRole('button', { name: /12\.34% of presses$/ })).toBeInTheDocument();
+  });
+
+  it('is said with the heat on too, ahead of what the heat says', () => {
+    const lhm = at(qwerty, 'LHM');
+    const { container } = render(
+      <Keyboard compiled={qwerty} heat={{ [lhm]: 1 }} heatName="Usage" share={{ [lhm]: 0.1234 }} />,
+    );
+    expect(tooltip(container, 'LHM')).toBe(
+      'types d; 12.34% of presses; Usage: 100% of the busiest key',
+    );
+    expect(name(container, 'LHM')).toBe(
+      'Key LHM: d, 12.34% of presses, Usage: 100% of the busiest key',
+    );
+  });
+
+  it('is said by a key the heat leaves cold, as 0% when the text never presses it', () => {
+    const { container } = render(
+      <Keyboard
+        compiled={qwerty}
+        heat={{}}
+        heatName="Usage"
+        share={{ [at(qwerty, 'LHM')]: 0.2 }}
+      />,
+    );
+    expect(tooltip(container, 'LHI')).toBe('types f; 0% of presses');
+    expect(name(container, 'LHI')).toBe('Key LHI: f, 0% of presses');
+  });
+
+  it('says under 0.01% for a key pressed too rarely for two decimals', () => {
+    const { container } = render(
+      <Keyboard compiled={qwerty} share={{ [at(qwerty, 'LHM')]: 0.00004 }} />,
+    );
+    expect(tooltip(container, 'LHM')).toBe('types d; under 0.01% of presses');
+  });
+
+  it('is left out where the board is not given it, as on a Library card', () => {
+    const { container } = render(<Keyboard compiled={qwerty} heat={{}} heatName="Usage" />);
+    expect(tooltip(container, 'LHM')).toBe('types d');
+    expect(name(container, 'LHM')).toBe('Key LHM: d');
+  });
+
+  it('is said by a key that holds or taps for a layer, where it is pressed', () => {
+    const everyKey = Object.fromEntries(romak.keys.map((_, pos) => [pos, 0.01]));
+    const { container } = render(<Keyboard compiled={romak} share={everyKey} />);
+    // The right inner thumb taps to Alpha 2 and holds for Symbols; a home row key taps and holds.
+    expect(name(container, 'R0')).toMatch(/^Key R0: .*, 1\.00% of presses$/);
+    expect(tooltip(container, 'R0')).toContain('1.00% of presses');
+    expect(name(container, 'LHM')).toMatch(/, hold .*, 1\.00% of presses$/);
+  });
+
+  it('is left to the layer where the key is pressed: a key that reaches a layer says none there', () => {
+    const everyKey = Object.fromEntries(romak.keys.map((_, pos) => [pos, 0.01]));
+    const { container } = render(<Keyboard compiled={romak} layer={SYM} share={everyKey} />);
+    // The thumb held for Symbols is transparent on Symbols: its presses are on the layer it is
+    // pressed on, so it says how it is reached and nothing of its share.
+    expect(name(container, 'R0')).toBe('Key R0: transparent, held to reach Symbols');
+    expect(tooltip(container, 'R0')).not.toContain('presses');
+    // A key that types on Symbols says its own share.
+    const typing = [...container.querySelectorAll('g[data-key]')].filter((g) =>
+      g.getAttribute('aria-label')?.includes('1.00% of presses'),
+    );
+    expect(typing.length).toBeGreaterThan(0);
+    for (const g of typing) expect(g).not.toHaveClass('lb-key-trans');
+  });
+
+  it('is left out of a key with nothing on it, which no press can reach', () => {
+    const empty: Layout = {
+      format: 'layerbench/layout@1',
+      name: 'one key',
+      geometry: { preset: '3x5+2' },
+      keys: { space: 'L0' },
+      layers: [
+        { id: 'base', bindings: { LHP: { kind: 'kp', symbol: 'a' }, LHR: { kind: 'none' } } },
+      ],
+    };
+    const compiled = compileLayout(empty);
+    const { container } = render(
+      <Keyboard compiled={compiled} share={{ [at(compiled, 'LHP')]: 0.5 }} />,
+    );
+    expect(name(container, 'LHP')).toBe('Key LHP: a, 50.00% of presses');
+    expect(name(container, 'LHR')).toBe('Key LHR: empty');
+    expect(tooltip(container, 'LHR')).toBe('does nothing');
   });
 });
 

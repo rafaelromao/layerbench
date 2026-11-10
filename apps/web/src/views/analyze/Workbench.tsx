@@ -47,6 +47,7 @@ import { Tabs, tabId, tabPanelId } from '../../components/Tabs.js';
 import { freeCopyName, type SaveOptions } from '../../custom/save-new.js';
 import type { useAnalysisClient } from '../../engine/client-context.js';
 import { expandPositions, HEAT_LABELS, heatMap } from '../../engine/heat.js';
+import { pressShares } from '../../engine/key-numbers.js';
 import type { AnalyzeRequest, ExplainDTO, ProducerDTO, ReportDTO } from '../../engine/protocol.js';
 import { useAnalysis } from '../../engine/use-analysis.js';
 import { useKeyStats } from '../../engine/use-key-stats.js';
@@ -589,6 +590,12 @@ export function Workbench({
     () => (shown ? heatMap(shown, params.heat, boardLayer) : {}),
     [shown, params.heat, boardLayer],
   );
+  // Each key's share of the presses, whatever the heat measures: the key's tooltip says it. Not
+  // while an edited layout waits for its analysis: the last one's share is of what the key was.
+  const shares = useMemo(
+    () => (shown && !stale ? pressShares(shown, boardLayer) : undefined),
+    [shown, stale, boardLayer],
+  );
   const hasTypingCombos = typedCompiled.combos.some((c) => c.role === 'typing');
   const boardCombos = useMemo(() => {
     const all = typingCombos(typedCompiled, boardLayer, frame?.combo ?? null);
@@ -993,6 +1000,7 @@ export function Workbench({
                           selected={state.selected}
                           alsoSelected={state.also}
                           heat={heat}
+                          share={shares}
                           highlight={highlighted}
                           pressed={frame?.keys ?? []}
                           openCombo={openBox}
