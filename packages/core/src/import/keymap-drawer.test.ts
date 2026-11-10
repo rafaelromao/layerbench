@@ -621,6 +621,8 @@ describe('importing', () => {
     // The file's layer names still reach a layer that was renamed on the way in.
     expect(base.R1).toEqual({ kind: 'sl', layer: 'symbols' });
     expect(layout.keys).toEqual({ space: 'L0', shift: { key: 'R0', kind: 'sk' } });
+    // A keymap states no language: the layout is for English, as a new one is.
+    expect(layout.languages).toEqual(['en']);
 
     expect(nav.LHP).toEqual({ kind: 'sk', mod: 'LGUI' });
     // A key the analysis does not simulate (F1) is left unset, as on a layer added in the

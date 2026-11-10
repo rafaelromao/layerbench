@@ -6,6 +6,7 @@ import {
 } from '../geometry/presets.js';
 import type { GeometryFamily, GeometryKey, Hand, Row } from '../geometry/types.js';
 import { parseKeycode, translateKeycode } from '../host/locale.js';
+import { DEFAULT_LANGUAGES } from '../lang/profiles.js';
 import { comboId, freeComboId } from '../layout/edit.js';
 import { BADGE } from '../layout/labels.js';
 import type { Binding, ComboDef, GeometryRef, LayerDef, Layout, Mod } from '../layout/types.js';
@@ -1401,6 +1402,8 @@ export function importKeymapDrawer(
     },
     layers,
     ...(combos.length > 0 ? { combos } : {}),
+    // A keymap states no language: the layout is for English, as one made with New layout is.
+    languages: [...DEFAULT_LANGUAGES],
   };
   return {
     layout,

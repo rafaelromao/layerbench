@@ -48,8 +48,9 @@ the Library accepted, are ranked there too, marked *community*, each in the cate
 it; untick **Community layouts** to leave them out. They are read from GitHub each time the Library
 opens, with no sign-in, and kept in this browser, so the ones read last are listed at once, and
 still there offline. A link names one as `community:` and its id, and opens it in **Analyze** or
-**Compare** for anyone. When those, the categories or the boards leave
-some layouts out, a line under **Sort by** says how many are listed and why. Each layout takes its
+**Compare** for anyone. When those, the categories, the languages or the boards leave
+some layouts out, a line under **Sort by** says how many are listed and why; when they leave none,
+the list says so instead of standing empty. Each layout takes its
 place as its score arrives. This browser remembers the scores, the sort and what you chose to list, so the next
 visit opens already ranked; the scores are checked again quietly, and a layout moves only if its
 numbers changed. **Compare** puts every number for two layouts side by side, with the difference and which
@@ -117,6 +118,18 @@ stored with the app for the bundled layouts that are lower than its own. It says
 added, and why not the others: the letters it lacks, or the Effort and how many bundled layouts beat
 it. The languages are added as one edit, which **Undo** takes back, to a layout of your own and to a
 copy of a bundled one alike. It never takes a language away.
+
+**Languages**, in **Rank and filter**, lists only the layouts for the languages you tick: a layout
+stays listed while one of the languages it is for is ticked, so Magic Romak, for English and
+Portuguese, is listed with Portuguese alone. It goes by the languages a layout is for, not by those
+it can type. Each box says how many layouts are for its language, a layout for two counted in both.
+In the Library, its filter, counts and cards, a layout that names no language is for English, and
+so, for the filter, is one that names only languages the app has no text for; such a language gets
+no chip on the card. A layout made with **New layout**, or imported from text or from a
+keymap-drawer file, starts as one for English; one pasted as JSON keeps the languages it names.
+Every layout that comes with the app names at least one. All are ticked at first; **All** ticks them all and **None** clears them, and
+unticking **None** ticks them all again. With none ticked the Library lists nothing and says so. The
+choice is kept in this browser, not in the link, as the categories and boards are.
 
 **Rank with** switches special features off for the ranking: adaptive keys (they type their default
 letter), the repeat key (doubled letters are tapped twice), typing combos, and macros that type two

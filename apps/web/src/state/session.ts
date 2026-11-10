@@ -54,6 +54,12 @@ interface SessionState {
   /** Categories whose layouts the Library leaves out: `standard`, `thumb_alpha`, `special`. */
   hiddenCategories: string[];
   showCategories: (categories: readonly string[], shown: boolean) => void;
+  /**
+   * Languages whose layouts the Library leaves out, by tag: a layout stays listed while a language
+   * it declares is not among them.
+   */
+  hiddenLanguages: string[];
+  showLanguages: (languages: readonly string[], shown: boolean) => void;
   /** Whether the Library's boards are coloured by heat. */
   libraryHeat: boolean;
   setLibraryHeat: (on: boolean) => void;
@@ -96,6 +102,11 @@ export const useSession = create<SessionState>()(
         const rest = get().hiddenCategories.filter((c) => !categories.includes(c));
         set({ hiddenCategories: shown ? rest : [...rest, ...categories] });
       },
+      hiddenLanguages: [],
+      showLanguages: (languages, shown) => {
+        const rest = get().hiddenLanguages.filter((l) => !languages.includes(l));
+        set({ hiddenLanguages: shown ? rest : [...rest, ...languages] });
+      },
       libraryHeat: false,
       setLibraryHeat: (libraryHeat) => set({ libraryHeat }),
       libraryHeatMode: 'usage',
@@ -122,6 +133,7 @@ export const useSession = create<SessionState>()(
         hideCustom: s.hideCustom,
         hideCommunity: s.hideCommunity,
         hiddenCategories: s.hiddenCategories,
+        hiddenLanguages: s.hiddenLanguages,
         libraryHeat: s.libraryHeat,
         libraryHeatMode: s.libraryHeatMode,
         collapsedGroups: s.collapsedGroups,

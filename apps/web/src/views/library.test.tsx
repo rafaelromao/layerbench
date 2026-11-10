@@ -3,9 +3,11 @@ import {
   bundledLayout,
   CLASSIC_LAYOUTS,
   compileLayout,
+  declaredLanguages,
   forRanking,
   getPreset,
   homeRowLetters,
+  LANGUAGE_PROFILES,
   type Layout,
   layoutCategory,
   type Rule,
@@ -83,6 +85,7 @@ beforeEach(() =>
     hideCustom: false,
     hideCommunity: false,
     hiddenCategories: [],
+    hiddenLanguages: [],
     libraryHeat: false,
     libraryHeatMode: 'usage',
   }),
@@ -1129,6 +1132,207 @@ describe('Categories', () => {
   });
 });
 
+describe('Languages', () => {
+  /** A box of the Languages group, by its label and count. */
+  const languageBox = (name: string | RegExp) =>
+    within(screen.getByRole('group', { name: 'Languages' })).getByRole('checkbox', { name });
+  /** How many bundled layouts declare a language, English for one that declares none. */
+  const declaring = (tag: string) =>
+    BUNDLED_LAYOUTS.filter((l) => declaredLanguages(l.languages).includes(tag)).length;
+  const label = (tag: string) => LANGUAGE_PROFILES[tag].name;
+  const shownCards = () => document.querySelectorAll('article h3').length;
+
+  it('has a box for every language, named and counted, all of them ticked, with All and None', async () => {
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    await openRanking();
+    for (const tag of Object.keys(LANGUAGE_PROFILES)) {
+      const box = languageBox(new RegExp(`^${label(tag)} \\(${declaring(tag)}\\)$`));
+      expect(box, tag).toBeChecked();
+    }
+    expect(languageBox(/^All$/)).toBeChecked();
+    expect(languageBox(/^None$/)).not.toBeChecked();
+    // Everything is listed, and nothing is said to be left out.
+    expect(screen.queryByText(/in the languages chosen/)).toBeNull();
+  });
+
+  it('lists a layout while a language it declares is ticked: one for English and Portuguese with Portuguese alone', async () => {
+    const user = userEvent.setup();
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    await openRanking();
+    await user.click(languageBox(/^None$/));
+    await user.click(languageBox(new RegExp(`^${label('pt')} `)));
+    expect(bundledLayout('magic-romak')?.languages).toEqual(['en', 'pt']);
+    expect(listed('Magic Romak')).toBeInTheDocument();
+    expect(listed('Romak')).toBeInTheDocument();
+    expect(listed('Qwerty')).toBeNull();
+    expect(shownCards()).toBe(declaring('pt'));
+    const says = screen.getByText(
+      `${declaring('pt')} of ${BUNDLED_LAYOUTS.length} layouts, in the languages chosen.`,
+    );
+    expect(says.tagName).toBe('P');
+    expect(languageBox(/^None$/)).not.toBeChecked();
+    expect((languageBox(/^All$/) as HTMLInputElement).indeterminate).toBe(true);
+
+    await user.click(languageBox(/^All$/));
+    expect(listed('Qwerty')).toBeInTheDocument();
+    expect(shownCards()).toBe(BUNDLED_LAYOUTS.length);
+  });
+
+  it('lists nothing with None ticked, and says why rather than stand empty', async () => {
+    const user = userEvent.setup();
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    await openRanking();
+    await user.click(languageBox(/^None$/));
+    expect(languageBox(/^None$/)).toBeChecked();
+    expect(languageBox(/^All$/)).not.toBeChecked();
+    for (const tag of Object.keys(LANGUAGE_PROFILES)) {
+      expect(languageBox(new RegExp(`^${label(tag)} `))).not.toBeChecked();
+    }
+    expect(shownCards()).toBe(0);
+    expect(screen.getByText(/^No language is ticked in Rank and filter/)).toBeInTheDocument();
+    expect(
+      screen.getByText(`0 of ${BUNDLED_LAYOUTS.length} layouts, in the languages chosen.`),
+    ).toBeInTheDocument();
+
+    // Unticking None ticks them all again.
+    await user.click(languageBox(/^None$/));
+    expect(shownCards()).toBe(BUNDLED_LAYOUTS.length);
+    expect(screen.queryByText(/^No language is ticked/)).toBeNull();
+  });
+
+  it('reads a custom layout that declares no language as one for English', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    await savePlain(storage, 'plain', { languages: undefined });
+    renderRoute(LIBRARY, { storage });
+    const card = (await screen.findByRole('heading', { name: 'Plain', level: 3 })).closest(
+      'article',
+    ) as HTMLElement;
+    await waitFor(() =>
+      expect(
+        [...card.querySelectorAll('[title^="Types everything"]')].map((b) => b.textContent),
+      ).toEqual(['en']),
+    );
+    await openRanking();
+    // Counted with English, and listed with English alone.
+    await waitFor(() =>
+      expect(languageBox(`${label('en')} (${declaring('en') + 1})`)).toBeInTheDocument(),
+    );
+    await user.click(languageBox(/^None$/));
+    await user.click(languageBox(new RegExp(`^${label('en')} `)));
+    expect(listed('Plain')).toBeInTheDocument();
+    // Gone without English, whatever else is ticked.
+    await user.click(languageBox(/^All$/));
+    await user.click(languageBox(new RegExp(`^${label('en')} `)));
+    expect(listed('Plain')).toBeNull();
+    expect(listed('Magic Romak')).toBeInTheDocument();
+  });
+
+  it('reads a layout for a language it has no box for as one for English', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    await savePlain(storage, 'plain', { languages: ['xx'] });
+    // Tags are matched as written: `ES` is not Spanish.
+    await savePlain(storage, 'upper', { name: 'Upper', languages: ['ES'] });
+    renderRoute(LIBRARY, { storage });
+    const card = (await screen.findByRole('heading', { name: 'Plain', level: 3 })).closest(
+      'article',
+    ) as HTMLElement;
+    await screen.findByRole('heading', { name: 'Upper', level: 3 });
+    // A language the app has no profile for gets no chip.
+    await within(card).findByText(/Effort/);
+    expect(
+      card.querySelectorAll('[title^="Types everything"], [title^="Cannot type"]'),
+    ).toHaveLength(0);
+    await openRanking();
+    await waitFor(() =>
+      expect(languageBox(`${label('en')} (${declaring('en') + 2})`)).toBeInTheDocument(),
+    );
+    expect(languageBox(`${label('es')} (${declaring('es')})`)).toBeInTheDocument();
+    await user.click(languageBox(/^None$/));
+    await user.click(languageBox(new RegExp(`^${label('pt')} `)));
+    await user.click(languageBox(new RegExp(`^${label('es')} `)));
+    expect(listed('Plain')).toBeNull();
+    expect(listed('Upper')).toBeNull();
+    await user.click(languageBox(new RegExp(`^${label('en')} `)));
+    expect(listed('Plain')).toBeInTheDocument();
+    expect(listed('Upper')).toBeInTheDocument();
+  });
+
+  it('lists a custom layout that will not open under any language ticked, and not under None', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const doc = toCanonicalJson({
+      ...(CLASSIC_LAYOUTS.find((l) => l.id === 'qwerty') as Layout),
+      id: 'broken',
+      name: 'Broken',
+    }) as Record<string, unknown>;
+    (doc.layers as { bindings: Record<string, unknown> }[])[0].bindings.LHM = { kind: 'bogus' };
+    await storage.put('layouts', 'broken', doc as never);
+    renderRoute(LIBRARY, { storage });
+    const card = (await screen.findByRole('heading', { name: 'Broken', level: 3 })).closest(
+      'article',
+    ) as HTMLElement;
+    await within(card).findByText(/^It cannot be read: /);
+    await openRanking();
+    await user.click(languageBox(/^None$/));
+    expect(listed('Broken')).toBeNull();
+    await user.click(languageBox(new RegExp(`^${label('de')} `)));
+    expect(listed('Broken')).toBeInTheDocument();
+  });
+
+  it('says so when the other filters leave nothing to list', async () => {
+    const user = userEvent.setup();
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    await openRanking();
+    await user.click(
+      within(screen.getByRole('group', { name: 'Categories' })).getByRole('checkbox', {
+        name: 'All',
+      }),
+    );
+    expect(shownCards()).toBe(0);
+    expect(
+      screen.getByText('No layout is left by the choices in Rank and filter.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/^No language is ticked/)).toBeNull();
+  });
+
+  it('reads a stored choice from before the filter as every language ticked', async () => {
+    localStorage.setItem(
+      'layerbench:session',
+      JSON.stringify({ state: { librarySort: 'effort', hiddenCategories: [] }, version: 0 }),
+    );
+    // What was stored has no languages: the store keeps its default, every language ticked.
+    await useSession.persist.rehydrate();
+    expect(useSession.getState().hiddenLanguages).toEqual([]);
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    expect(await screen.findByRole('heading', { name: 'Qwerty', level: 3 })).toBeTruthy();
+    expect(screen.queryByText(/in the languages chosen/)).toBeNull();
+  });
+
+  it('remembers the choice in this browser, across a reload, and not in the link', async () => {
+    const user = userEvent.setup();
+    const first = renderRoute(LIBRARY, { storage: freshStorage() });
+    await openRanking();
+    await user.click(languageBox(new RegExp(`^${label('en')} `)));
+    expect(JSON.parse(localStorage.getItem('layerbench:session') ?? '{}').state).toMatchObject({
+      hiddenLanguages: ['en'],
+    });
+    expect(first.currentSearch()).not.toContain('lang');
+    first.unmount();
+
+    const stored = localStorage.getItem('layerbench:session') ?? '';
+    useSession.setState({ hiddenLanguages: [] });
+    localStorage.setItem('layerbench:session', stored);
+    await useSession.persist.rehydrate();
+    const { currentSearch } = renderRoute(LIBRARY, { storage: freshStorage() });
+    expect(await screen.findByRole('heading', { name: 'Magic Romak', level: 3 })).toBeTruthy();
+    expect(listed('Qwerty')).toBeNull();
+    expect(screen.getByText(/of [0-9]+ layouts, in the languages chosen\./)).toBeInTheDocument();
+    expect(currentSearch()).not.toContain('lang');
+  });
+});
+
 describe('Choosing what layouts are ranked on', () => {
   it('ranks on English news with the Layouts Doc rules unless told otherwise', async () => {
     renderRoute(LIBRARY, { storage: freshStorage() });
@@ -1461,7 +1665,8 @@ describe("the Library's maintainers", () => {
   it('promote a custom layout by a pull request, asked about first', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
-    await savePlain(storage, 'plain', { author: 'Ana' });
+    // Saved without languages, as a layout from before they were asked for may be.
+    await savePlain(storage, 'plain', { author: 'Ana', languages: undefined });
     const sent: Record<string, unknown>[] = [];
     localStorage.setItem('layerbench:github-session', 'sealed');
     const reply = (body: unknown, status = 200) =>
@@ -1503,7 +1708,7 @@ describe("the Library's maintainers", () => {
     expect(sent[0]).toMatchObject({
       action: 'promote',
       target: { kind: 'custom', id: 'plain' },
-      layout: { id: 'plain', name: 'Plain', author: 'Ana' },
+      layout: { id: 'plain', name: 'Plain', author: 'Ana', languages: ['en'] },
     });
 
     await user.click(within(dialog).getByRole('button', { name: 'Close' }));

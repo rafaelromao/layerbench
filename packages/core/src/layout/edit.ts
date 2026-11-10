@@ -102,7 +102,10 @@ export type Edit =
       description?: string;
       /** Where the layout comes from, an http(s) URL; an empty one takes the link away. */
       link?: string;
-      /** The languages the layout is for, by tag; an empty list says none. */
+      /**
+       * The languages the layout is for, by tag. An empty list says none in the editor, which
+       * measures it as such; the Library reads it, as an unset list, as English.
+       */
       languages?: string[];
     }
   /** The whole layout, from the JSON an author pasted. */

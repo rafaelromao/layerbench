@@ -1,4 +1,9 @@
-import { CATEGORY_NAMES, type CorpusManifest, type LayoutCategory } from '@layerbench/core';
+import {
+  CATEGORY_NAMES,
+  type CorpusManifest,
+  LANGUAGE_PROFILES,
+  type LayoutCategory,
+} from '@layerbench/core';
 import { Switch, SwitchGroup } from '../../components/FeatureSwitches.js';
 import type { SortKey } from '../../engine/use-summaries.js';
 import { useSession } from '../../state/session.js';
@@ -22,6 +27,13 @@ export interface BoardChoice {
 export interface CategoryChoice {
   id: LayoutCategory;
   /** How many listed layouts are in it. */
+  count: number;
+}
+
+export interface LanguageChoice {
+  /** A tag of `LANGUAGE_PROFILES`. */
+  tag: string;
+  /** How many listed layouts declare it. */
   count: number;
 }
 
@@ -79,6 +91,37 @@ function CategoryFilter({ categories }: { categories: CategoryChoice[] }) {
   );
 }
 
+/**
+ * Checkboxes for the languages whose layouts are listed, with one for all of them and one for none:
+ * a layout stays listed while a language it declares is ticked.
+ */
+function LanguageFilter({ languages }: { languages: LanguageChoice[] }) {
+  const hidden = useSession((s) => s.hiddenLanguages);
+  const showLanguages = useSession((s) => s.showLanguages);
+  const tags = languages.map((l) => l.tag);
+  return (
+    <SwitchGroup
+      legend="Languages"
+      all={{
+        shown: tags.filter((tag) => !hidden.includes(tag)).length,
+        total: tags.length,
+        onChange: (on) => showLanguages(tags, on),
+        none: true,
+      }}
+    >
+      {languages.map((l) => (
+        <Switch
+          key={l.tag}
+          label={LANGUAGE_PROFILES[l.tag]?.name ?? l.tag}
+          count={l.count}
+          checked={!hidden.includes(l.tag)}
+          onChange={(on) => showLanguages([l.tag], on)}
+        />
+      ))}
+    </SwitchGroup>
+  );
+}
+
 /** Checkboxes for the boards whose layouts are listed, with one for all of them. */
 function BoardFilter({ boards }: { boards: BoardChoice[] }) {
   const hidden = useSession((s) => s.hiddenBoards);
@@ -110,8 +153,8 @@ function BoardFilter({ boards }: { boards: BoardChoice[] }) {
 
 /**
  * What the Library ranks and lists by, drawn in its Rank and filter dialog: the text, rules and
- * switches the layouts are scored with, whether custom and community layouts are listed, and which categories
- * and boards are. The order stays on the page, beside it.
+ * switches the layouts are scored with, whether custom and community layouts are listed, and which categories,
+ * languages and boards are. The order stays on the page, beside it.
  */
 export function RankFilters({
   params,
@@ -119,6 +162,7 @@ export function RankFilters({
   corpora,
   boards,
   categories,
+  languages,
   customCount,
   communityCount,
 }: {
@@ -127,6 +171,7 @@ export function RankFilters({
   corpora: CorpusManifest[];
   boards: BoardChoice[];
   categories: CategoryChoice[];
+  languages: LanguageChoice[];
   /** How many custom layouts there are, listed or not. */
   customCount: number;
   /** How many community layouts there are, listed or not. */
@@ -139,6 +184,7 @@ export function RankFilters({
       </div>
       <SourceFilter custom={customCount} community={communityCount} />
       <CategoryFilter categories={categories} />
+      <LanguageFilter languages={languages} />
       <BoardFilter boards={boards} />
     </>
   );
