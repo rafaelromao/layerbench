@@ -68,10 +68,11 @@ export interface ClassicDef {
    */
   note?: string;
   /**
-   * The languages its author made it for, when that is fewer than those it performs well in:
-   * `pnpm languages` marks it with these among the ones it measures, and no other.
+   * The languages its author states it is for, by tag: a text in a language, or a corpus of one,
+   * that the author's own page or keymap names counts. A layout whose author states none is for
+   * English. Each is a language the layout types, every letter it needs (`lang/coverage.ts`).
    */
-  madeFor?: readonly string[];
+  languages?: readonly string[];
 }
 
 const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
@@ -124,12 +125,13 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     name: 'Romak',
     author: 'Rafael Romão',
     // His write-up says it is built for Portuguese and English users.
-    madeFor: ['en', 'pt'],
+    languages: ['en', 'pt'],
     base: { id: 'alpha1', name: 'Alpha 1' },
     // Romak 34 as its author writes it up (rafaelromao.github.io/romak, `docs/index.md`): Alpha 1,
     // a second alpha layer for the accents, `qu` and `ç`, and the Ç extension, a layer for the key
     // after `ç`. The thumbs are Repeat, space, Alpha 2 for the next key and a one-shot Shift. It
-    // defines no Numbers or Symbols.
+    // defines no Numbers or Symbols, and lists `áé = à` among its Alpha 2 combos: `à` is typed by
+    // `á` and `é` together.
     rows: 'q b m g k x l o u ;\nd n s t w z r a e i\ny f c p v j h , . /',
     thumbs: '⟲ space alpha2 shift',
     special: {
@@ -172,9 +174,12 @@ export const CLASSIC_DEFS: ClassicDef[] = [
         },
       },
     ],
+    combos: [
+      { id: 'à', keys: ['RHM', 'RHR'], binding: { kind: 'kp', symbol: 'à' }, layers: ['alpha2'] },
+    ],
     repeatPolicy: { doubledLetters: 'repeatKey' },
     description:
-      'Romak 34 (3x5+2) for Portuguese and English: a repeat key, Alpha 2 for the accents, qu and ç, and the Ç extension.',
+      'Romak 34 (3x5+2) for Portuguese and English: a repeat key, Alpha 2 for the accents, qu and ç, the combo of á and é that types à, and the Ç extension.',
     link: 'https://rafaelromao.github.io/romak',
   },
   {

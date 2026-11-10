@@ -39,14 +39,14 @@ rule here moves a key, and keep `templates.test.ts` asserting each rule.
   ([docs/guide/editing.md](docs/guide/editing.md#layouts-with-their-authors-layers)).
   No code singles a layout out: each uses `ClassicDef` fields any layout may use.
   - Romak models its author's write-up (rafaelromao.github.io/romak, `docs/index.md`), with
-    `ClassicDef` fields other layouts use too: `rows`, `thumbs`, `special`, `layers`, `base` and
-    `repeatPolicy`. Alpha 1 is its 3x5 block, and its thumbs are Repeat, space, a one-shot Alpha 2 and
+    `ClassicDef` fields other layouts use too: `rows`, `thumbs`, `special`, `layers`, `base`,
+    `combos` and `repeatPolicy`. Alpha 1 is its 3x5 block, and its thumbs are Repeat, space, a one-shot Alpha 2 and
     a one-shot Shift (`sk LSHIFT`, which `classicLayout` makes `keys.shift`). Alpha 2 has the accents,
     `qu` (a macro) and `ç`, a macro that leaves the Ç extension on for the next key, and `'` `_` `_` `'`
     on its thumbs; the Ç extension has `ão` and `ões` as macros and `ã` and `õ`. The write-up draws no
-    Numbers, Symbols, combo or dead key for 34 keys, and no `à`, so Romak has none of them and
-    Portuguese lacks `à` (`LACKS`). Its macros make it Special. A test names each key
-    (`Romak 34` in `layouts.test.ts`).
+    Numbers, Symbols or dead key for 34 keys, and lists one combo, `áé = à`, which Romak has on
+    Alpha 2 (RHM and RHR), so it types Portuguese but for `ü` (`LACKS`). Its macros make it Special.
+    A test names each key (`Romak 34` in `layouts.test.ts`).
   - Magic Romak models its author's keymap (github.com/rafaelromao/keyboards), which has neither
     Extras nor Accents, and is built on the keymap-drawer file its author keeps for it
     (`packages/core/fixtures/romak-keymap-drawer.yaml`, a copy of `docs/img/diagrams/keymap-drawer/
@@ -62,6 +62,19 @@ rule here moves a key, and keep `templates.test.ts` asserting each rule.
     thumbs, caps word on the shift key, the accents as macros that tag the press, `qu`, the hold
     that types `ª`, and the keymap's 30 ms combo timeout. When the keymap changes, copy
     the file again, run `pnpm keymap`, then `pnpm goldens`.
+- **Languages are the author's; the editor measures the rest.** A definition's `languages` are the
+  ones its source states, by a page, a keymap or a corpus: a corpus of a language counts as the
+  language, and a layout whose source states none is for English (`DEFAULT_LANGUAGES` in
+  `layouts/index.ts`). `lang/performance.test.ts` pins every layout's list (`STATED`) and that the
+  layout types every letter its languages need (`lang/coverage.ts`, `lang/profiles.ts`): Romak and
+  Magic Romak state Portuguese and English, and type `à` by a combo. A layout added as a document
+  carries the languages it was saved with. **Measure languages**, in Settings in Analyze, adds each language a
+  layout types and performs well in: its Effort on the language's news text (`LANGUAGE_CORPORA`, the
+  Library's settings) is in the better half of the bundled layouts' (`performsWell`). The browser
+  analyzes the layout in hand once a language and counts the stored Efforts below its own;
+  `pnpm languages` writes those, the bundled layouts' Efforts on each language lowest first, to
+  `lang/efforts.json`, and a test fails when the file drifts, so run it after a change that moves a
+  layout's Effort or adds or removes a layout.
 - **The 24-key core is Magic Romak's keymap** (github.com/rafaelromao/keyboards, `numbers_layer` and
   `symbols_layer`). Numbers is a keypad on the right, with the brackets and the arithmetic beside
   them on the left; brackets on Numbers stay on the left hand. Every board gets the same core, so

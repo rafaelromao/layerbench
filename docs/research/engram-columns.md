@@ -103,5 +103,5 @@ them is on which inner thumb is a convention and does not move SFB or Effort.
 
 - **Engram is Thumb Alpha, not Standard**, as every layout with a thumb letter is: the Library
   groups it with them, and `categories.test.ts` says so.
-- **`languages.json`** (`pnpm languages`) lists Engram for English alone: it types none of the accented
-  letters Portuguese, Spanish, French, Italian or German need.
+- **Engram's languages** are English alone: its author states English, and it types none of the
+  accented letters Portuguese, Spanish, French, Italian or German need.
