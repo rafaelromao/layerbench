@@ -48,6 +48,7 @@ import { Tabs, tabId, tabPanelId } from '../../components/Tabs.js';
 import { freeCopyName, type SaveOptions } from '../../custom/save-new.js';
 import type { useAnalysisClient } from '../../engine/client-context.js';
 import { expandPositions, HEAT_LABELS, heatMap } from '../../engine/heat.js';
+import { pressShares } from '../../engine/key-numbers.js';
 import { measureLanguagesOf } from '../../engine/measure-languages.js';
 import type { AnalyzeRequest, ExplainDTO, ProducerDTO, ReportDTO } from '../../engine/protocol.js';
 import { useAnalysis } from '../../engine/use-analysis.js';
@@ -591,6 +592,13 @@ export function Workbench({
     () => (shown ? heatMap(shown, params.heat, boardLayer) : {}),
     [shown, params.heat, boardLayer],
   );
+  // Each key's share of the presses, whatever the heat measures: the key's tooltip says it. Once
+  // the layout or the settings are not those the report was made on (`stale`), it says so, as the
+  // key's numbers do: the report's share of a position is not that of the key now there.
+  const shares = useMemo(
+    () => (shown ? pressShares(shown, boardLayer) : undefined),
+    [shown, boardLayer],
+  );
   const hasTypingCombos = typedCompiled.combos.some((c) => c.role === 'typing');
   const boardCombos = useMemo(() => {
     const all = typingCombos(typedCompiled, boardLayer, frame?.combo ?? null);
@@ -1014,6 +1022,9 @@ export function Workbench({
                           selected={state.selected}
                           alsoSelected={state.also}
                           heat={heat}
+                          share={shares}
+                          spaceCounted={shown?.globals.universe === 'with_space'}
+                          shareUpdating={stale}
                           highlight={highlighted}
                           pressed={frame?.keys ?? []}
                           openCombo={openBox}

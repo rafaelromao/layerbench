@@ -22,6 +22,7 @@ import {
   toCopy,
 } from '../test/analyze-editing.js';
 import { branchWith, communityDoc } from '../test/community.js';
+import { keyNamed } from '../test/keys.js';
 import { showLayer } from '../test/layers.js';
 import { openSettings, renderRoute, testClient } from '../test/render.js';
 
@@ -50,12 +51,32 @@ describe('Edit', () => {
     // estimate is derived from.
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
 
+    // What the keys say of their share of the presses, by key.
+    const shares = () =>
+      Object.fromEntries(
+        [...document.querySelectorAll('#kb-analyze g[data-key]')].map((g) => [
+          g.getAttribute('data-key'),
+          /([\d.]+)% of presses/.exec(g.getAttribute('aria-label') ?? '')?.[1],
+        ]),
+      );
+    const before = shares();
+    expect(before.LTP).toBeDefined();
+    expect(before.LTR).toBeDefined();
+
     // From here on, the next analysis parks until released.
     release = () => {};
     await dragKey('LTP', 'LTR');
 
     expect(await screen.findByText('unsaved')).toBeInTheDocument();
     expect(await screen.findByText(/estimate after swap/)).toBeInTheDocument();
+    // The estimate is of the layout as swapped, so each key says the share of the key now on it,
+    // and not that it is updating: it is not the last report's.
+    await waitFor(() => expect(shares()).toMatchObject({ LTP: before.LTR, LTR: before.LTP }));
+    expect(
+      [...document.querySelectorAll('#kb-analyze g[data-key]')].some((g) =>
+        /updating/.test(g.getAttribute('aria-label') ?? ''),
+      ),
+    ).toBe(false);
 
     // Letting the real analysis finish replaces the estimate.
     release = null;
@@ -159,7 +180,7 @@ describe('Edit', () => {
 
     key('Key LHM: d').focus();
     await user.keyboard('ç{Enter}');
-    await screen.findByRole('button', { name: 'Key LHM: ç' });
+    await screen.findByRole('button', { name: keyNamed('Key LHM: ç') });
     expect(screen.getByText('unsaved')).toBeInTheDocument();
     await user.click(within(bar()).getByRole('button', { name: 'Save' }));
 
@@ -216,7 +237,7 @@ describe('Edit', () => {
       await user.click(within(choice).getByRole('button', { name: 'Close' }));
       key('Key LHM: s').focus();
       await user.keyboard('ç{Enter}');
-      await screen.findByRole('button', { name: 'Key LHM: ç' });
+      await screen.findByRole('button', { name: keyNamed('Key LHM: ç') });
       await user.click(within(bar()).getByRole('button', { name: 'Save' }));
       expect(
         await screen.findByText('Your proposed change to Colemak has this version'),
@@ -331,7 +352,7 @@ describe('Edit', () => {
       pull.state = 'closed';
       key('Key LHM: s').focus();
       await user.keyboard('ç{Enter}');
-      await screen.findByRole('button', { name: 'Key LHM: ç' });
+      await screen.findByRole('button', { name: keyNamed('Key LHM: ç') });
       await user.click(within(bar()).getByRole('button', { name: 'Save' }));
       expect(
         await screen.findByText(
@@ -594,7 +615,7 @@ describe('Edit', () => {
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
     key('Key LHM: d').focus();
     await user.keyboard('ç{Enter}');
-    await screen.findByRole('button', { name: 'Key LHM: ç' });
+    await screen.findByRole('button', { name: keyNamed('Key LHM: ç') });
     // Straight away, before the link has caught up with the edit.
     await user.click(within(bar()).getByRole('button', { name: 'Compare' }));
     await waitFor(() => expect(currentPath()).toBe('/compare'));

@@ -12,6 +12,7 @@ import {
   seed,
   svgKey,
 } from '../test/analyze-editing.js';
+import { keyNamed, withoutShare } from '../test/keys.js';
 import { layerNameEl, showLayer, shownLayer } from '../test/layers.js';
 import { customInLink, renderRoute } from '../test/render.js';
 
@@ -64,7 +65,9 @@ describe('Edit', () => {
     expect(screen.queryByText('unsaved')).toBeNull();
 
     await user.click(within(editor).getByRole('radio', { name: 'Momentary' }));
-    expect(await screen.findByRole('button', { name: 'Key L1: hold A2' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: keyNamed('Key L1: hold A2') }),
+    ).toBeInTheDocument();
   });
 
   it('reaches the symbols from the Alpha 2 thumb, as the author’s keymap does', async () => {
@@ -144,7 +147,9 @@ describe('Edit', () => {
 
     await showLayer(user, 'Symbols');
     expect(
-      await screen.findByRole('button', { name: 'Key R0: transparent, held to reach Symbols' }),
+      await screen.findByRole('button', {
+        name: keyNamed('Key R0: transparent, held to reach Symbols'),
+      }),
     ).toBeInTheDocument();
     expect((await screen.findByRole('list', { name: 'Key legend' })).textContent).toContain(
       'held from Alpha 1 or Numbers to reach Symbols',
@@ -154,7 +159,7 @@ describe('Edit', () => {
     await showLayer(user, 'Ç extension');
     await user.click(
       await screen.findByRole('button', {
-        name: 'Key LBM: empty, tapped to reach Ç extension',
+        name: keyNamed('Key LBM: empty, tapped to reach Ç extension'),
       }),
     );
     expect(
@@ -166,10 +171,12 @@ describe('Edit', () => {
     // Ç extension's L1 re-arms Alpha 2 for one key; made a hold, it is held to get there too.
     await user.click(await screen.findByRole('button', { name: /^Key L1:/ }));
     await user.click(within(await inspector('L1')).getByRole('radio', { name: 'Momentary' }));
-    await screen.findByRole('button', { name: 'Key L1: hold A2' });
+    await screen.findByRole('button', { name: keyNamed('Key L1: hold A2') });
     await showLayer(user, 'Alpha 2');
     expect(
-      await screen.findByRole('button', { name: /^Key L1: .*, held or tapped to reach Alpha 2$/ }),
+      await screen.findByRole('button', {
+        name: (name) => /^Key L1: .*, held or tapped to reach Alpha 2$/.test(withoutShare(name)),
+      }),
     ).toBeInTheDocument();
   });
 });
@@ -339,7 +346,7 @@ describe('Analyze, while editing', () => {
       .getAllByRole('button', { name: /^Key \w+: / })
       // The letter alone, or the letter and what a home block mod holds there.
       .find((b) => {
-        const label = b.getAttribute('aria-label') ?? '';
+        const label = withoutShare(b.getAttribute('aria-label') ?? '');
         return label.endsWith(`: ${letter}`) || label.includes(`: ${letter}, hold `);
       });
     await user.click(first as HTMLElement);
@@ -385,7 +392,7 @@ describe('Analyze, while editing', () => {
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
     key('Key LHM: d').focus();
     await user.keyboard('ç{Enter}');
-    await screen.findByRole('button', { name: 'Key LHM: ç' });
+    await screen.findByRole('button', { name: keyNamed('Key LHM: ç') });
 
     const picker = within(bar()).getByRole('combobox', { name: 'Layout' });
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
@@ -396,7 +403,7 @@ describe('Analyze, while editing', () => {
     confirm.mockReturnValue(true);
     await user.selectOptions(picker, 'colemak');
     expect(
-      await screen.findByRole('button', { name: 'Key LHM: s' }, { timeout: 25_000 }),
+      await screen.findByRole('button', { name: keyNamed('Key LHM: s') }, { timeout: 25_000 }),
     ).toBeInTheDocument();
     expect(screen.queryByText('unsaved')).toBeNull();
     confirm.mockRestore();
@@ -455,7 +462,7 @@ describe('the missing-keys tray', () => {
     expect(chip('d')).toBeNull();
 
     dragChip(chip('ç') as HTMLElement, 'LHM');
-    expect(await screen.findByRole('button', { name: 'Key LHM: ç' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: keyNamed('Key LHM: ç') })).toBeInTheDocument();
     // Nothing else types d now: it waits in the tray, and ç is not missing any more.
     expect(chip('d')).toBeInTheDocument();
     expect(chip('ç')).toBeNull();
@@ -475,13 +482,13 @@ describe('the missing-keys tray', () => {
     expect(cedilla).toHaveAttribute('aria-pressed', 'true');
 
     await user.click(key('Key LHM: d'));
-    expect(await screen.findByRole('button', { name: 'Key LHM: ç' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: keyNamed('Key LHM: ç') })).toBeInTheDocument();
     expect(chip('d')).toHaveAttribute('aria-pressed', 'false');
 
     // The character it displaced goes back the same way, on another key.
     await user.click(chip('d') as HTMLElement);
     await user.click(key('Key LHI: f'));
-    expect(await screen.findByRole('button', { name: 'Key LHI: d' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: keyNamed('Key LHI: d') })).toBeInTheDocument();
     expect(chip('f')).toBeInTheDocument();
     expect(chip('d')).toBeNull();
   }, 60_000);
@@ -497,7 +504,7 @@ describe('the missing-keys tray', () => {
     await user.click(cedilla);
     key('Key LHM: d').focus();
     await user.keyboard('{Enter}');
-    expect(await screen.findByRole('button', { name: 'Key LHM: ç' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: keyNamed('Key LHM: ç') })).toBeInTheDocument();
   }, 60_000);
 
   it('puts a character tapped down on a click between the keys', async () => {
