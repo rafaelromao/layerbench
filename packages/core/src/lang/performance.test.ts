@@ -1,11 +1,10 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { corporaRoot } from '../golden/paths.js';
 import { compileLayout } from '../layout/compile.js';
 import { toCanonicalJson } from '../layout/json.js';
 import type { Layout } from '../layout/types.js';
 import {
-  BUNDLED_LAYOUTS,
   bundledLayout,
   DEFAULT_LAYOUT_ID,
   DOCUMENT_LAYOUTS,
@@ -14,7 +13,6 @@ import {
 } from '../layouts/index.js';
 import stored from '../layouts/languages.json';
 import { layoutLanguageCoverage } from './coverage.js';
-import { measureLanguage } from './measure.js';
 import {
   LANGUAGE_CORPORA,
   orderedLanguages,
@@ -22,6 +20,19 @@ import {
   performsWell,
 } from './performance.js';
 import { LANGUAGE_PROFILES } from './profiles.js';
+
+/** The languages measured by a `performance-<tag>.test.ts` of their own, as the files say. */
+const measuringFiles = (): string[] => {
+  const dir = new URL('.', import.meta.url);
+  return readdirSync(dir)
+    .flatMap((name) => {
+      const tag = /^performance-(\w+)\.test\.ts$/.exec(name)?.[1];
+      if (tag === undefined) return [];
+      const text = readFileSync(new URL(name, dir), 'utf8');
+      return text.includes(`declaresPerformance('${tag}')`) ? [tag] : [];
+    })
+    .sort();
+};
 
 const entry = (id: string, effort: number, covers = true) => ({ id, effort, covers });
 
@@ -105,16 +116,9 @@ describe('bundled layouts’ languages', () => {
     expect(documentLayout(layout.id as string, doc).languages ?? []).toEqual([]);
   });
 
-  for (const tag of PERFORMANCE_LANGUAGES) {
-    // An analysis of every bundled layout, about three times slower under coverage on a CI runner.
-    it(`for ${tag}: the layouts that type it and are in the better half by Effort`, {
-      timeout: 180_000,
-    }, async () => {
-      const measured = await measureLanguage(tag);
-      const declared = BUNDLED_LAYOUTS.filter((l) => l.languages?.includes(tag)).map((l) => l.id);
-      expect(declared, 'run `pnpm languages`').toEqual(
-        BUNDLED_LAYOUTS.filter((l) => measured.has(l.id as string)).map((l) => l.id),
-      );
-    });
-  }
+  // The analysis of every bundled layout, per language, is one file each (performance-<tag>.test.ts):
+  // a file's tests run one after another, and these take close to a minute each on a CI runner.
+  it('has one measuring file for each language', () => {
+    expect(measuringFiles()).toEqual([...PERFORMANCE_LANGUAGES].sort());
+  });
 });
