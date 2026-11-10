@@ -121,6 +121,11 @@ key presses, layer changes and modifiers, in order. Switching between the two ne
 the macro does: steps after its letters still run after them as text, and come back as steps. A
 step the list has no row for is shown as it is, and can still be moved or removed.
 
+A macro whose text ends in a space, such as `, ` or `. `, types the word's space as well: the
+analysis presses it where the text has the mark before a space, and counts it as the word's space
+(see [How a text is typed](analyzing.md#how-a-text-is-typed)). Ending it with a **Sentence space**
+step instead of a space leaves the next letter a capital, as the space key's sentence space does.
+
 ## Caps word and sentence case
 
 **Caps word** `⇪` types capitals until the word ends. It is a tile like any other, for any key: on

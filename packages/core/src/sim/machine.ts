@@ -954,7 +954,8 @@ function labelFor(
   // would else show a thumb's Repeat and its space as `l␣`, a letter and a space on two keys.
   if (ctx.leaf === 'key_repeat') return '⟳';
   const text = ctx.out.join('');
-  if (text.length) return text === ' ' ? '␣' : text;
+  // A space is drawn as the space bar draws it, alone or after a macro's text: `,␣`.
+  if (text.length) return text.replaceAll(' ', '␣');
   // A layer key is named as the board draws it: Alpha 2 is A2.
   const layerName = (id: string) =>
     short(compiled.layers[compiled.layerIndex.get(id) ?? 0]?.name ?? id);

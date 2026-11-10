@@ -190,6 +190,11 @@ export class Simulator {
   private readonly wordKeys: number[] = [];
   /** The word's presses that another key could make. */
   private readonly slots: WordSlot[] = [];
+  /**
+   * The press that ended the word with its space, as a macro typing `, ` does, and the releases
+   * after it: kept out of the word, it enters the tables as the space bar would, once the word is in.
+   */
+  private readonly wordEnd: KeyEvent[] = [];
   readonly events: KeyEvent[] = [];
   private readonly collectEvents: boolean;
   private readonly softSymbols: Set<string>;
@@ -990,9 +995,17 @@ export class Simulator {
     this.runLayer = -1;
   }
 
-  /** Keep a token's presses with the word they belong to, noting the ones another key could make. */
+  /**
+   * Keep a token's presses with the word they belong to, noting the ones another key could make. A
+   * press that types the word's space with what it types, and what follows it, end the word instead
+   * (`wordEnd`).
+   */
   private addToWord(events: KeyEvent[]): void {
     for (const e of events) {
+      if (this.wordEnd.length || endsWord(e)) {
+        this.wordEnd.push(e);
+        continue;
+      }
       this.word.push(e);
       if (e.kind === 'hold_release') continue;
       const others = this.standIns.get(e);
@@ -1066,7 +1079,9 @@ export class Simulator {
 
   /**
    * Candidate tokens starting at code-unit index `i`, longest first (multi-symbol producer strings,
-   * then the single symbol). Tokens never cross a space. Returns `[token, symbolCount, nextIndex]`.
+   * then the single symbol). A token never crosses a space, but may end on one: a macro that types
+   * `, ` types the comma and the word's space. Returns `[token, symbolCount, nextIndex]`, the space
+   * among the symbols counted.
    */
   private tokenCandidates(stream: string, i: number): [string, number, number][] {
     const first = String.fromCodePoint(stream.codePointAt(i) as number);
@@ -1083,7 +1098,7 @@ export class Simulator {
           }
           const cp = stream.codePointAt(j) as number;
           const g = String.fromCodePoint(cp);
-          if (g === ' ') {
+          if (g === ' ' && (k === 0 || k < len - 1)) {
             bad = true;
             break;
           }
@@ -1249,6 +1264,17 @@ export class Simulator {
     return cost;
   }
 
+  /**
+   * The word ends on the press that typed its space (`wordEnd`): it enters the tables as the space
+   * bar's press does, counted with space only, and the next symbol starts a word.
+   */
+  private endWord(): void {
+    const events = this.wordEnd.splice(0);
+    this.wordBoundary(false);
+    this.commit(events, true);
+    this.presses.symbol('with_space');
+  }
+
   /** Always typed right after `wordBoundary`, so no word is waiting and the space commits at once. */
   private typeSpace(): void {
     const m = this.machine;
@@ -1307,14 +1333,18 @@ export class Simulator {
       let typed = false;
       for (const [token, len, next] of this.tokenCandidates(stream, i)) {
         if (this.typeToken(token)) {
-          this.curWord.push(token);
-          for (let k = 0; k < len; k++) {
+          // A token that ends on a space typed it with its last press, which ends the word.
+          const spaced = this.wordEnd.length > 0;
+          const n = spaced ? len - 1 : len;
+          this.curWord.push(spaced ? token.slice(0, -1) : token);
+          for (let k = 0; k < n; k++) {
             this.presses.symbol('both');
           }
-          this.stats.symbols += len;
-          symbols += len;
+          this.stats.symbols += n;
+          symbols += n;
           i = next;
           typed = true;
+          if (spaced) this.endWord();
           break;
         }
       }
@@ -1344,6 +1374,14 @@ export class Simulator {
       producers: this.index,
     };
   }
+}
+
+/**
+ * A press that typed a space after something else, as a macro typing `, ` does: the space is the
+ * word's, so the press ends it. Only a token's last symbol can be a space (`tokenCandidates`).
+ */
+function endsWord(e: KeyEvent): boolean {
+  return e.symbols.length > 1 && e.symbols.endsWith(' ');
 }
 
 export function simulate(

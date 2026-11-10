@@ -1,8 +1,11 @@
 import { type CompiledLayout, producibleSymbols } from '@layerbench/core';
 
-/** How a character reads on a chip or a key: a space is drawn, not left blank. */
+/**
+ * How a character reads on a chip or a key: a space is drawn, not left blank, alone or after what
+ * a press typed with it, as a macro's `,␣`.
+ */
 export function charLabel(c: string): string {
-  return c === ' ' ? '␣' : c;
+  return c.replaceAll(' ', '␣');
 }
 
 /** How a character is read out: a space by its name. */
