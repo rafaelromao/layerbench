@@ -81,10 +81,10 @@ The e2e needs a browser and is not run by CI. `E2E_PORT` picks a port no other c
 server holds:
 
 ```bash
-E2E_PORT=4021 pnpm --filter @layerbench/web e2e cyanophage --project=desktop
+E2E_PORT=4021 pnpm --filter @layerbench/web e2e cyanophage.spec.ts --project=desktop
 ```
 
-`E2E_CHANNEL=msedge` runs it on an installed Edge. Each layout types the whole text in the app, about
+Name the spec file: Playwright matches its filter against the whole path, so a bare `cyanophage` runs every spec in a checkout whose folder name has the word in it. `E2E_CHANNEL=msedge` runs it on an installed Edge, where Playwright's own Chromium is not downloaded. Each layout types the whole text in the app, about
 half a minute.
 
 ## Reading his page again
@@ -93,7 +93,7 @@ When his page or LayerBench's text changes (the e2e fails first on the text's ha
 his page again; it needs the network:
 
 ```bash
-CYANOPHAGE_CAPTURE=1 E2E_PORT=4021 pnpm --filter @layerbench/web e2e cyanophage --project=desktop
+CYANOPHAGE_CAPTURE=1 E2E_PORT=4021 pnpm --filter @layerbench/web e2e cyanophage.spec.ts --project=desktop
 ```
 
 It rewrites `fixture.json` with the date, his script's hash and every number. Commit it only after

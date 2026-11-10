@@ -258,8 +258,8 @@ offline; `CYANOPHAGE_CAPTURE=1` reads his page again and rewrites the fixture. W
 the two tools and how it is settled is in `docs/research/cyanophage-e2e.md`.
 
 ```bash
-pnpm --filter @layerbench/web e2e cyanophage --project=desktop
-CYANOPHAGE_CAPTURE=1 pnpm --filter @layerbench/web e2e cyanophage --project=desktop
+pnpm --filter @layerbench/web e2e cyanophage.spec.ts --project=desktop
+CYANOPHAGE_CAPTURE=1 pnpm --filter @layerbench/web e2e cyanophage.spec.ts --project=desktop
 ```
 
 ## Deploy
