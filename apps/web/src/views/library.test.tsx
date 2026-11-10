@@ -1689,10 +1689,19 @@ describe('Heatmaps on the cards', () => {
     const user = userEvent.setup();
     renderRoute(LIBRARY, { storage: freshStorage() });
     const card = (await boardOf('Hands Down Gold')).closest('article') as HTMLElement;
+    // Qwerty has no Combos button on any layer: with heat off nothing is beside its navigator.
+    const qwerty = (await boardOf('Qwerty')).closest('article') as HTMLElement;
+    const qwertyRow = () =>
+      (within(qwerty).getByTestId('layer-name-slot').closest('fieldset') as HTMLElement)
+        .parentElement?.className ?? '';
     await rankingSays(/^Lower is better for both/, 60_000);
     expect(layerShareIn(card)).toBeNull();
+    expect(qwertyRow()).toContain('grid-cols-[minmax(0,1fr)_minmax(0,auto)_minmax(0,1fr)]');
 
     await user.click(screen.getByRole('button', { name: 'Heatmaps' }));
+    // The share alone is beside it now, and both sides keep room on every layer for it.
+    await waitFor(() => expect(layerShareIn(qwerty)).not.toBeNull());
+    expect(qwertyRow()).toContain('minmax(4.75rem,1fr)');
     const nav = within(card).getByRole('group', { name: 'Hands Down Gold layers' });
     const next = within(nav).getByRole('button', { name: 'Next layer' });
     const previous = within(nav).getByRole('button', { name: 'Previous layer' });
