@@ -80,7 +80,9 @@ SFB (Qwerty 4.38% on its own English word list) and Effort (1258.15) with no ban
 the text is a fixed colour and compared with nothing (`keyboard_svg.js`, with `index.html`,
 `table.html` and `compare.html`, whose only script sorts; read 2026-11-09). LayerBench's
 cyanophage-like rules give Qwerty 4.45 on the English news sample, as a share of keystrokes with a
-space per word and the characters it cannot type, and an Effort of 1238.
+space per word and the characters it cannot type, and an Effort of 1238. On the same text the two
+read the same: the e2e `apps/web/e2e/cyanophage.spec.ts` holds the app to his page's numbers on
+the whole sample, Qwerty 4.52% and 1254.51 on both (see [cyanophage-e2e.md](cyanophage-e2e.md)).
 
 What the page does colour is a ramp. In the finger view of the SFB panel (the default view lists
 bigrams in fixed-colour bars) each finger's bar is `red = 128 + 6000 * share`, green and blue 128, red

@@ -396,6 +396,9 @@ colours and this reads it as a layout's total, which is LayerBench's assumption 
 These rules divide by keystrokes, with a space per word, and count the characters a layout cannot
 type as keystrokes too, as he does, so the same layout reads lower than under the Layouts Doc's:
 Colemak is 0.93 on the English sample, *mid low*, Dvorak 1.81, *very high*, and Qwerty 4.45, *max*.
+Typed on the same text, a layout reads here what his playground reads, to the two decimals he
+prints: SFB, its two-row part, lateral stretches, skipgrams and scissors, and Effort (see
+[the cyanophage check](../research/cyanophage-e2e.md)).
 
 **Effort** is the same rule in both sets, and he has no ruler for it, so this set uses the Layouts
 Doc set's above, step for step and colour for colour. Its number is a little lower here where the

@@ -248,6 +248,17 @@ node apps/web/e2e/keymapdb/refresh.ts
 pnpm --filter @layerbench/web e2e keymapdb --project=desktop
 ```
 
+`e2e/cyanophage.spec.ts` holds the cyanophage-like rules to cyanophage's playground: ten layouts
+built from the strings his index gives them, on the text LayerBench types, must read what his page
+prints, to two decimals. His numbers are pinned in `e2e/cyanophage/fixture.json`, so it runs
+offline; `CYANOPHAGE_CAPTURE=1` reads his page again and rewrites the fixture. What differs between
+the two tools and how it is settled is in `docs/research/cyanophage-e2e.md`.
+
+```bash
+pnpm --filter @layerbench/web e2e cyanophage --project=desktop
+CYANOPHAGE_CAPTURE=1 pnpm --filter @layerbench/web e2e cyanophage --project=desktop
+```
+
 ## Deploy
 
 The app is a static site on GitHub Pages, at `https://layerbench.github.io`, published from the
