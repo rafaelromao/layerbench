@@ -169,7 +169,7 @@ describe('a layer morph in the document', () => {
     expect(morphOf(morphing())).not.toHaveProperty('match');
   });
 
-  it('reads `any`, as it was written on every morph, and is written without it again', () => {
+  it('reads `any` on a morph, and writes the morph without it', () => {
     const parsed = safeParseLayout(morphing('any'));
     expect(parsed.ok, parsed.ok ? '' : parsed.error).toBe(true);
     if (parsed.ok) {
@@ -537,7 +537,7 @@ describe('a binding in the document', () => {
   });
 });
 
-describe('a document saved while layouts named bindings of their own', () => {
+describe('a document that names bindings of its own', () => {
   const kp = (symbol: string) => ({ kind: 'kp', symbol });
   const hv = {
     kind: 'adaptive',

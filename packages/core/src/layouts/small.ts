@@ -713,7 +713,7 @@ export const SMALL_DEFS: ClassicDef[] = [
    *
    * The firmware needs extra layers for these — pre-shifted copies of the alphas for caps word and
    * shifted Alpha 2, and a one-shot layer armed by every accent macro so the repeat key can offer
-   * follow-ups — and had one for sentence case, before it was the module zmk-sentence-case. None of
+   * follow-ups — and, without the module zmk-sentence-case, one for sentence case. None of
    * them is a layer a typist reaches. Sentence case is a sentence space on the space key's tap. Caps
    * word is the `caps_word` behaviour, on the shift key in a mod morph, so shift pressed while shift
    * is on starts it, as in its keymap, and shifted Alpha 2 is simply shift state. The alt-repeat

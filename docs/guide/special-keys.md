@@ -129,15 +129,14 @@ going; the symbols you list under **Continues** do too.
 
 To start it by pressing shift while shift is already on, make the shift key a **Morph**: choose
 **With a modifier**, **Shift**, make **Plain** a **Modifier** (Shift), and make **Becomes** **Caps
-word**. Magic Romak's shift key is one. A layout saved when caps word was a feature opens with that
-morph on its shift key, typing as it did.
+word**. Magic Romak's shift key is one. A document that declares caps word as a feature opens with
+that morph on its shift key.
 
 **Sentence case** is a **Sentence space** on the space key, a tile like any other, for any key. The
 layout's adaptive keys, alt repeats and sentence spaces, which need a ZMK module, are listed in
 **Special Behaviors** with its macros and mod morphs. An adaptive key, an alt repeat too, is one
 card whatever it types: the macros of its branches are in its editor, not cards of their own. A
-layout saved when sentence case was a feature opens with the sentence space on its space key,
-typing as it did.
+document that declares sentence case as a feature opens with the sentence space on its space key.
 
 A **Sentence space**, among the editor's other tiles, types a space. Pressed right after `.`, `?` or
 `!`, it leaves a capital for the next key pressed. A letter a–z comes out a capital. Any other key,

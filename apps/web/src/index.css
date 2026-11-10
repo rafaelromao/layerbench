@@ -9,11 +9,11 @@
  *
  * The dark one's three surfaces (page and cards, hover and bars, borders) are 35.33%, 30.26% and
  * 25.15% in lightness, one step apart, so each reads as its own layer; to nudge the page, move all
- * three by the same amount. Key caps hold their own colour (`--lb-key-bg`), primary's edges and
- * rings take a lighter shade of it (`--lb-ring`), and secondary, accent, neutral, info, success and
- * error are lifted so that what passes 3:1 or 4.5:1 on the page does (secondary and accent, which
- * only ever draw outline badges and slide bands, to text contrast). Mid-tone text, such as
- * `text-error`, falls short of 4.5:1 on it.
+ * three by the same amount. Key caps hold their own colour (`--lb-key-bg`). On the page, secondary
+ * and accent, which only ever draw outline badges and slide bands, read at text contrast (about
+ * 4.7:1), and info, success and warning at 3.1 to 3.4:1. Primary and error read at 2.4:1 and 2.7:1:
+ * primary's edges and rings take a lighter shade of it (`--lb-ring`), and mid-tone text such as
+ * `text-error` falls short of 4.5:1.
  */
 @plugin "daisyui/theme" {
   name: "dark";

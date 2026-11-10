@@ -58,8 +58,8 @@ describe('bundled layouts added as documents', () => {
   });
 
   it('takes a document that declares caps word as a feature, read with the morph written out', () => {
-    // How a layout saved before caps word was only a behaviour is stored: `features.capsWord`, and
-    // the shift key a plain one-shot shift. It is read, not held to the form it was saved in.
+    // `features.capsWord`, and the shift key a plain one-shot shift. It is read, not held to the form
+    // it was saved in.
     const doc = saved();
     doc.keys = { space: 'L1', shift: { key: 'R1', kind: 'sk' } };
     doc.features = { capsWord: { enabled: true, continueList: ['_'] } };
@@ -76,8 +76,7 @@ describe('bundled layouts added as documents', () => {
   });
 
   it('takes a document that declares sentence case as a feature, read with the space written out', () => {
-    // How a layout saved before sentence case was only a behaviour is stored: `features.sentenceCase`
-    // and the space key a plain space.
+    // `features.sentenceCase` and the space key a plain space.
     const doc = saved();
     doc.features = { sentenceCase: { enabled: true } };
     const layout = documentLayout('night', doc);

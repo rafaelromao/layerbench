@@ -124,7 +124,7 @@ The alternative, measured on the same 13 layouts and U\*'s grid with the chord o
   cost 0, so the thumb chord adds 17.8 to Effort on every layout (the mix), and takes 0.99 to 1.72
   off the Library's SFB.
 - **On a row-stagger board that is what the defaults have.** Qwerty given the defaults on `ansi` or
-  `iso` reads an Accents SFB of 1.030 on the mix (2.190 on Spanish), against 0.062 on the 34-key split,
+  `iso` reads an Accents SFB of 1.030 on the mix (2.190 on Portuguese), against 0.062 on the 34-key split,
   and an Effort 2.9 lower (1106.9 against 1109.9). The grid there is U\* unchanged, not one arranged for
   the combo fingers. Mirroring still helps there: Dvorak's letters on `ansi` read an Accents SFB of
   1.394 as drawn and 0.939 mirrored.
@@ -137,8 +137,8 @@ Each is a 30-key grid with the same symbols, each key a macro, a letter or a dea
 **U\* — rows by accent, columns by vowel (the grid above).** On the right, each row is an accent
 (grave, acute, circumflex) and each column a vowel, with `^` where `û` would be. On the left, the
 German letters are on home, the tilde letters with `ç` on the bottom, and the ligatures with `qu` and
-`ß` on top, each row's dead key at its inner end (`` ` `` on the top row's pinky, `´` and `~` at the
-inner end of home and bottom).
+`ß` on top, with the dead keys beside their rows: `´` and `~` at the inner end of home and bottom,
+`` ` `` and `¨` on the pinky of top and bottom.
 
 **U — the same rule, the left top row `æ œ qu ß` `` ` `` and the home row `ñ ö ü ä ´`.**
 

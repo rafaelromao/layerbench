@@ -51,14 +51,15 @@ by the web app's `url/inline.test.ts`.
 
 - **The fixtures are small and synthetic.** `fixture_en` is a shuffled word bag, with 136 lowercase
   sentence starts and no uppercase ones. A fixture holds letters, spaces, full stops, a few digits
-  and, in Portuguese, accented letters, and none of the symbols a layout's Numbers and Symbols layers
-  carry. The reports cannot tell a misplaced one, so `src/layouts/layouts.test.ts` types every
-  character of Magic Romak's two layers and checks the keys used.
-- **The model-mode cells measure a fixture artifact, not shift modelling.** A one-shot shift cannot
-  be cancelled, so a lowercase letter straight after `. ` is unproducible, as it is on the
-  firmware, and `fixture_en` has 136 of them. On real cased prose the same layout reports no
-  unproducible symbols and spends no shift press at a sentence start, which
-  `src/layout/features.test.ts` pins directly.
+  (which the default `letters` text class drops) and, in Portuguese, accented letters, and none of
+  the symbols a layout's Numbers and Symbols layers carry. The reports cannot tell a misplaced
+  key, so `src/layouts/layouts.test.ts` types every character of Magic Romak's two layers and checks
+  the keys used.
+- **The model-mode cells type the same text as the fold cells**, since the fixtures hold no capital.
+  They differ where modelling case changes what a key can do: the producers, the keys excluded by
+  case, the typing traces and, on `fixture_pt`, a few presses (keystrokes, chords, macro presses).
+  They press no Shift for a capital, and no symbol is unproducible in either mode.
+  `src/layout/features.test.ts` pins sentence case on real cased prose.
 - **Effort is cyanophage's grid.** `effort` follows `keyboard_svg.js`: the grid by canonical column,
   `577 × Σ effort ÷ keystrokes`, scored over the text's own characters, space included. A thumb
   press costs 1 (`THUMB_EFFORT`) where cyanophage's grid leaves thumbs free, and a space costs
@@ -69,7 +70,8 @@ by the web app's `url/inline.test.ts`.
 - **Rules divide by the text's totals, not by the presses.** The simulator also counts the n-grams
   the text would have if every character took one press (`SimulationTables.text`). Bigram and
   skipgram rules (`percent_of_ngrams`, `sum_distance`) divide by the text's pairs;
-  `percent_of_keystrokes` by its characters, plus one space per word where space is not counted;
+  `percent_of_keystrokes` by its characters, space included where the universe counts it, plus one
+  space per word where the `space_per_word_in_keystrokes` global is on and it does not;
   `percent_of_symbols` (the Layouts Doc's SFB, over the letters typed) by its characters without
   the space, in either universe; Effort by its characters, space included. Single-key and trigram
   rules are shares of what was pressed. `src/rules/engine.test.ts` pins every denominator.

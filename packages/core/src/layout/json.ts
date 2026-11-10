@@ -157,7 +157,7 @@ function comboToJson(c: ComboDef): Record<string, unknown> {
     keys: c.keys,
     binding: bindingToJson(c.binding),
     layers: c.layers,
-    // A typing combo is the plain case, as in a layout written before the option existed.
+    // A typing combo is the plain case: only a command is written.
     role: c.role === 'command' ? 'command' : undefined,
     timeoutMs: c.timeoutMs,
     slowRelease: c.slowRelease,

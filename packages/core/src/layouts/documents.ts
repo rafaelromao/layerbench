@@ -13,7 +13,7 @@ const DOCUMENTS: Record<string, unknown> = {};
 /**
  * The document without `features`, which a document may declare for sentence case and caps word;
  * itself when it declares none. Reading turns those declarations into the sentence space and the
- * mod morph they make, so it is the one thing a document may hold that LayerBench does not save.
+ * mod morph they make; LayerBench does not save them.
  */
 function withoutDeclaredFeatures(doc: unknown): unknown {
   if (typeof doc !== 'object' || doc === null || !('features' in doc)) return doc;

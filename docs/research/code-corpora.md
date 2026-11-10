@@ -122,7 +122,7 @@ Read against the calibration above:
   0.88) and 0.33 or more from every text.
 - **Array languages** are not measured: APL and BQN are written mostly with glyphs outside ASCII
   (`⍳`, `⍴`, `⌈`…) that the bundled layouts do not type (the only ones among them are the arrows
-  `← ↑ → ↓` and `≠`), so most of such a text would be skipped; J and K are not covered.
+  `← ↑ → ↓`, `≠` and, on three layouts, `÷`), so most of such a text would be skipped; J and K are not covered.
 
 The projects each group was read from:
 

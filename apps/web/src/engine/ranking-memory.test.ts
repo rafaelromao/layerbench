@@ -17,7 +17,7 @@ describe('the last ranking, kept in this browser', () => {
     expect(recall('pt').summaries.size).toBe(0);
   });
 
-  it('drops what was kept under the old `s:` key of a custom layout', () => {
+  it('drops what is kept under the `s:` key of a custom layout', () => {
     localStorage.setItem(
       'layerbench:ranking',
       JSON.stringify({

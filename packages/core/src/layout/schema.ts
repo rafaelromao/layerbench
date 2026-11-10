@@ -422,19 +422,17 @@ function weightOf(b: JsonObject): number {
 }
 
 /**
- * A document saved while layouts could name bindings of their own (`behaviors`), with each name
- * written out where it was used, as the compiler read it, and the names dropped. A `ref` key is the
- * binding it names. A macro or adaptive key that names one is that binding with its own fields over
- * it; a name the named binding itself builds on was left unread, and still is. One thing reads
- * otherwise: the compiler put sentence case or caps word around a named tap-hold, layer-tap or
- * morph on their key whole, and now they go on its tap, as on any other key. What the compiler
- * could not read made the layout fail to compile: a name the document does not have, a macro or
- * adaptive key built on a binding of another kind, or names read more than 16 bindings deep, as
- * round a loop. Such a key that is only a name becomes Nothing, one built on a name keeps its own
- * fields, and what a name holds deeper than 16 bindings is Nothing. So is a binding below a name
- * that would take what is written out past `MAX_NAMED_WEIGHT`: the compiler read one key at a time,
- * but a document is read whole, and a name used round a loop, or made heavy, must not hang it. A
- * document that names nothing reads as it is.
+ * A document that names bindings of its own (`behaviors`), with each name written out where it is
+ * used, and the names dropped. A `ref` key is the binding it names. A macro or adaptive key that
+ * names one is that binding with its own fields over it; a name the named binding itself builds on
+ * is left unread. One thing reads otherwise: sentence case or caps word on a named tap-hold,
+ * layer-tap or morph goes on its tap, as on any other key. What cannot be read is Nothing: a name
+ * the document does not have, a macro or adaptive key built on a binding of another kind, or names
+ * more than 16 bindings deep, as round a loop. Such a key that is only a name becomes Nothing, one
+ * built on a name keeps its own fields, and what a name holds deeper than 16 bindings is Nothing.
+ * So is a binding below a name that would take what is written out past `MAX_NAMED_WEIGHT`: a
+ * document is read whole, and a name used round a loop, or made heavy, must not hang it. A document
+ * that names nothing reads as it is.
  */
 function withNamedBindingsInline(input: unknown): unknown {
   if (!isObject(input)) return input;
