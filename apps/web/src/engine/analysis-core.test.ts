@@ -41,8 +41,14 @@ describe('A report is scored by the rules it was asked for', () => {
     // cyanophage counts bigrams over keystrokes and draws lateral stretches by column pairs.
     expect(value(cyan, 'sfb')).not.toBe(value(doc, 'sfb'));
     expect(value(cyan, 'lsb')).not.toBe(value(doc, 'lsb'));
-    // Effort is cyanophage's own grid under every preset.
-    expect(value(cyan, 'effort')).toBe(value(doc, 'effort'));
+    // Effort is cyanophage's own grid under every preset. The cyanophage set also counts what the
+    // layout cannot type among the keystrokes, as he does, so it reads lower where the text has some.
+    const cyanRules = getPreset('cyanophage');
+    const typedOnly = await core.analyze(
+      request({ ...cyanRules, globals: { ...cyanRules.globals, untyped_in_keystrokes: false } }),
+    );
+    expect(value(typedOnly, 'effort')).toBe(value(doc, 'effort'));
+    expect(value(cyan, 'effort')).toBeLessThan(value(doc, 'effort') as number);
   });
 
   it('counts space when asked to, and not otherwise', async () => {

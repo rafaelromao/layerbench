@@ -20,7 +20,10 @@ export function layoutsDoc(): RuleSet {
   };
 }
 
-/** Column-pair lateral stretches, adjacency scissors, bigrams normalized over keystrokes. */
+/**
+ * Column-pair lateral stretches, adjacent-column scissors, bigrams normalized over keystrokes, the
+ * characters the layout cannot type among them.
+ */
 export function cyanophage(): RuleSet {
   const rules = catalogRules()
     .map((r): Rule => {
@@ -44,13 +47,14 @@ export function cyanophage(): RuleSet {
         return {
           ...r,
           label: 'Scissors (adjacent columns, 2 rows)',
-          description: 'cyanophage: adjacent fingers, two rows apart, same hand.',
+          description:
+            'cyanophage: keys in adjacent columns, two rows apart, typed by two fingers of one hand.',
           where: {
             all: [
               { same_hand: true },
               { same_finger: false },
               { any_thumb: false },
-              { adjacent_fingers: true },
+              { col_delta: { abs: 1 } },
               { row_delta: { abs_min: 2 } },
             ],
           },
@@ -62,6 +66,21 @@ export function cyanophage(): RuleSet {
           ...r,
           where: { all: [redirectWhere(), { same_finger: false, at: [0, 2] }] },
           description: 'cyanophage: direction change with three different fingers.',
+        };
+      }
+      if (r.id === 'weak_redirect') {
+        // His weak redirect is one of his redirects, three different fingers, with no index finger.
+        return {
+          ...r,
+          where: {
+            all: [
+              redirectWhere(),
+              { same_finger: false, at: [0, 2] },
+              { none: [{ includes_finger_name: { in: ['index', 'thumb'] } }] },
+            ],
+          },
+          description:
+            'cyanophage: a redirect with three different fingers, none of them an index.',
         };
       }
       return r;
@@ -81,9 +100,10 @@ export function cyanophage(): RuleSet {
     id: 'cyanophage',
     name: 'cyanophage-like',
     description:
-      'Column-pair LSBs, adjacency scissors, bigram percentages over keystrokes (+ one space per word), repeats excluded. SFB is rated on the ramp cyanophage colours it by.',
+      'Column-pair LSBs, adjacent-column scissors, bigram percentages over keystrokes (+ one space per word, and the characters the layout cannot type), repeats excluded. SFB is rated on the ramp cyanophage colours it by.',
     globals: {
       space_per_word_in_keystrokes: true,
+      untyped_in_keystrokes: true,
       cross_word: 'reset',
     },
     rules,

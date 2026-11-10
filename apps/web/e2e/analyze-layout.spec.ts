@@ -178,6 +178,31 @@ test.describe('on a phone', () => {
     await nav.getByRole('button', { name: 'Next layer' }).click();
     expect(await overflow(page)).toBeLessThanOrEqual(0);
   });
+
+  test('the layer arrows stay put as names of different lengths turn', async ({ page }) => {
+    await openEdit(page);
+    const nav = page.getByRole('group', { name: 'Layers' });
+    const previous = nav.getByRole('button', { name: 'Previous layer' });
+    const next = nav.getByRole('button', { name: 'Next layer' });
+    const where = async () => {
+      const [p, n] = [await previous.boundingBox(), await next.boundingBox()];
+      return `${Math.round(p?.x ?? -1)} ${Math.round(n?.x ?? -1)}`;
+    };
+    // Magic Romak's layer names run from Alpha 1 to Ç extension in length: a second tap lands where
+    // the first did.
+    const names: string[] = [];
+    const seen = new Set<string>();
+    for (;;) {
+      names.push(
+        (await nav.locator('[data-testid="layer-name-slot"] > :first-child').textContent()) ?? '',
+      );
+      seen.add(await where());
+      if ((await next.getAttribute('aria-disabled')) === 'true') break;
+      await next.tap();
+    }
+    expect(new Set(names.map((n) => n.length)).size).toBeGreaterThan(1);
+    expect([...seen]).toHaveLength(1);
+  });
 });
 
 test.describe('at a desk', () => {
