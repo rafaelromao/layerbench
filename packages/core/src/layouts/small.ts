@@ -6,7 +6,7 @@ import magicRomakKeymap from './keymaps/magic-romak.json';
 
 /*
  * Layouts made for small boards: a letter on a thumb, letters on chords, adaptive and repeat keys,
- * boards under thirty keys. Each arrangement is copied from its author's own firmware or page,
+ * boards under thirty keys; and the layouts whose authors' keymaps define layers past the letters. Each arrangement is copied from its author's own firmware or page,
  * its `link`; where a source left something out, the description says what.
  */
 
@@ -254,8 +254,8 @@ const TYPING_COMBOS = new Set([
 ]);
 
 /**
- * The file's combos with the keymap's timeout, its holds, its names and the accent combo tagged,
- * and a `command` role on those he does not type with.
+ * The file's combos with the keymap's timeout, its holds and its names, and a `command` role on
+ * those he does not type with.
  */
 function keymapCombo(c: ComboDef): ComboDef {
   const b = c.binding;
@@ -264,7 +264,7 @@ function keymapCombo(c: ComboDef): ComboDef {
   return {
     ...c,
     id: name ?? c.id,
-    binding: held ? tapOrHeld(b.kind === 'kp' ? (b.symbol as string) : '', held) : tagging(b),
+    binding: held ? tapOrHeld(b.kind === 'kp' ? (b.symbol as string) : '', held) : b,
     ...(name !== undefined && TYPING_COMBOS.has(name) ? {} : { role: 'command' as const }),
     timeoutMs: 30,
   };
@@ -701,7 +701,83 @@ const PIANO_MODS: Record<string, Mod> = {
   RTR: 'LCTRL',
 };
 
+/**
+ * The combos Magic Romak types with on its Numbers and Symbols alone: `º` (`ª` held) and `°` on
+ * Numbers, `€` on Symbols. Romak brings them with the two layers.
+ */
+const NUM_SYM_COMBOS = structuredClone(KEYMAP.combos)
+  .map(keymapCombo)
+  .filter((c) => c.role !== 'command' && c.layers?.every((l) => l === 'num' || l === 'sym'));
+
 export const SMALL_DEFS: ClassicDef[] = [
+  {
+    id: 'romak',
+    name: 'Romak',
+    author: 'Rafael Romão',
+    // His write-up says it is built for Portuguese and English users.
+    languages: ['en', 'pt'],
+    base: { id: 'alpha1', name: 'Alpha 1' },
+    // Romak 34 as its author writes it up (rafaelromao.github.io/romak, `docs/index.md`): Alpha 1,
+    // a second alpha layer for the accents, `qu` and `ç`, and the Ç extension, a layer for the key
+    // after `ç`. The thumbs are Repeat, space, Alpha 2 for the next key and a one-shot Shift. The
+    // write-up lists `áé = à` among its Alpha 2 combos: `à` is typed by `á` and `é` together. Its
+    // Numbers and Symbols are Magic Romak's (the owner's decision, 2026-11-10), key for key from the
+    // keymap file, held on space and the Alpha 2 thumb as there, with their combos; the ten keys
+    // Romak's board adds are left unset on them.
+    rows: 'q b m g k x l o u ;\nd n s t w z r a e i\ny f c p v j h , . /',
+    thumbs: '⟲ space alpha2 shift',
+    special: {
+      '⟲': REPEAT,
+      alpha2: { kind: 'sl', layer: 'alpha2' },
+      shift: { kind: 'sk', mod: 'LSHIFT' },
+    },
+    layers: [
+      {
+        id: 'alpha2',
+        name: 'Alpha 2',
+        byKey: {
+          LTM: { kind: 'macro', symbols: 'qu' },
+          RTI: 'ô',
+          RTM: 'ó',
+          RTR: 'ú',
+          RHI: 'ã',
+          RHM: 'á',
+          RHR: 'é',
+          RHP: 'í',
+          // Typing `ç` leaves the Ç extension on for the next key.
+          LBM: { kind: 'macro', symbols: 'ç', then: [{ kind: 'sl', layer: 'ccedil' }] },
+          RBI: 'õ',
+          RBM: 'â',
+          RBR: 'ê',
+          L1: "'",
+          L0: '_',
+          R0: '_',
+          R1: "'",
+        },
+      },
+      {
+        id: 'ccedil',
+        name: 'Ç extension',
+        byKey: {
+          LHI: { kind: 'macro', symbols: 'ão' },
+          LBI: { kind: 'macro', symbols: 'ões' },
+          RHI: 'ã',
+          RBI: 'õ',
+        },
+      },
+      keymapLayer('num', (b) => b),
+      keymapLayer('sym', (b) => b),
+    ],
+    holds: { L0: 'num', R0: 'sym' },
+    combos: [
+      { id: 'à', keys: ['RHM', 'RHR'], binding: { kind: 'kp', symbol: 'à' }, layers: ['alpha2'] },
+      ...NUM_SYM_COMBOS,
+    ],
+    repeatPolicy: { doubledLetters: 'repeatKey' },
+    description:
+      "Romak 34 (3x5+2) for Portuguese and English: a repeat key, Alpha 2 for the accents, qu and ç, the combo of á and é that types à, the Ç extension, and Magic Romak's Numbers and Symbols.",
+    link: 'https://rafaelromao.github.io/romak',
+  },
   /**
    * Magic Romak: Romak on 24 keys, two alpha layers and the adaptive behaviours.
    *
@@ -750,7 +826,10 @@ export const SMALL_DEFS: ClassicDef[] = [
       keymapLayer('num', (b) => b),
       keymapLayer('sym', (b) => b),
     ],
-    combos: structuredClone(KEYMAP.combos).map(keymapCombo),
+    // The accent combo tagged, as Alpha 2's accents are.
+    combos: structuredClone(KEYMAP.combos)
+      .map(keymapCombo)
+      .map((c) => ({ ...c, binding: tagging(c.binding) })),
     shift: { key: 'R1', kind: 'sk' },
     behaviorDefaults: {
       sl: { quickRelease: true, ignoreModifiers: false, releaseAfterMs: 1000 },

@@ -9,13 +9,15 @@ rule here moves a key, and keep `templates.test.ts` asserting each rule.
 
 - **Who has them.** A layout a user makes with **New layout** can start with Numbers, Symbols and
   Accents (`defaultLayers`, `newLayout` in the app, `withNewLayoutDefaults`). A bundled layout is
-  its author's design, with no layer its author does not define.
+  its author's design, with no layer its author does not define (Romak's Numbers and Symbols are
+  its author's too, from his Magic Romak keymap: see below).
 - **The layers.** Numbers, Symbols and Accents. Extras exists only on a board that needs it: one
   that lacks keys for what Numbers and Symbols carry, or for Accents' 30 keys. Extras comes on while
   Numbers and Symbols are both held: both inner thumbs, in either order, Symbols' left inner thumb
   holding Numbers there too. Each layer spans at most 34 keys.
 - **A bundled layout is its author's design.** Its definition (`ClassicDef`, in `classic.ts` and
-  `small.ts`) writes what its source (its `link`, its author's keymap or firmware) publishes: the
+  `small.ts`) writes what its source (its `link`, its author's keymap or firmware) publishes, but
+  for Romak, whose Numbers and Symbols come from its author's Magic Romak keymap (below): the
   letters and marks of the base layer, the thumbs (a space key on the outer left thumb where the
   source leaves them to a space bar), the combos, and the layers the author's keymap defines past
   the letters. Romak, Magic Romak, Magic Sturdy, Enthium, Hands Down Gold, Promethium and
@@ -38,14 +40,21 @@ rule here moves a key, and keep `templates.test.ts` asserting each rule.
   and keypad layer are past what is copied. The guide lists them all
   ([docs/guide/editing.md](docs/guide/editing.md#layouts-with-their-authors-layers)).
   No code singles a layout out: each uses `ClassicDef` fields any layout may use.
-  - Romak models its author's write-up (rafaelromao.github.io/romak, `docs/index.md`), with
-    `ClassicDef` fields other layouts use too: `rows`, `thumbs`, `special`, `layers`, `base`,
-    `combos` and `repeatPolicy`. Alpha 1 is its 3x5 block, and its thumbs are Repeat, space, a one-shot Alpha 2 and
+  - Romak models its author's write-up (rafaelromao.github.io/romak, `docs/index.md`) plus Magic
+    Romak's Numbers and Symbols (the owner's decision, 2026-11-10), with `ClassicDef` fields other
+    layouts use too: `rows`, `thumbs`, `special`, `layers`, `base`, `holds`, `combos` and
+    `repeatPolicy`. It is written in `small.ts`, beside the keymap file it shares with Magic Romak.
+    Alpha 1 is its 3x5 block, and its thumbs are Repeat, space, a one-shot Alpha 2 and
     a one-shot Shift (`sk LSHIFT`, which `classicLayout` makes `keys.shift`). Alpha 2 has the accents,
     `qu` (a macro) and `ç`, a macro that leaves the Ç extension on for the next key, and `'` `_` `_` `'`
-    on its thumbs; the Ç extension has `ão` and `ões` as macros and `ã` and `õ`. The write-up draws no
-    Numbers, Symbols or dead key for 34 keys, and lists one combo, `áé = à`, which Romak has on
-    Alpha 2 (RHM and RHR), so it types Portuguese but for `ü` (`LACKS`). Its macros make it Special.
+    on its thumbs; the Ç extension has `ão` and `ões` as macros and `ã` and `õ`. The write-up lists
+    one combo, `áé = à`, which Romak has on Alpha 2 (RHM and RHR), and draws no dead key, so it types
+    Portuguese but for `ü` (`LACKS`). Numbers and Symbols are Magic Romak's, read from the same
+    keymap file key for key, held on L0 (space) and R0 (Alpha 2) as there, each thumb keeping its
+    tap; the ten keys Romak's board adds are left unset on them, so Alpha 1 shows through. The
+    typing combos on Numbers or Symbols alone come with them (`º`, `ª` held, and `°` on Numbers,
+    `€` on Symbols), not the command ones nor `;`, which is Alpha 1's too. Its macros make it
+    Special.
     A test names each key (`Romak 34` in `layouts.test.ts`).
   - Magic Romak models its author's keymap (github.com/rafaelromao/keyboards), which has neither
     Extras nor Accents, and is built on the keymap-drawer file its author keeps for it
