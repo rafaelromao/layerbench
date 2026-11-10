@@ -30,6 +30,15 @@ function neverLandingOnCyanophage() {
   });
 }
 
+/** Each key of the board as it is named and described: what it says of its share of the presses. */
+const shown = () =>
+  [...document.querySelectorAll<SVGGElement>('#kb-analyze g[data-key]')].map((g) => ({
+    id: g.getAttribute('data-key') as string,
+    label: g.getAttribute('aria-label') ?? '',
+    tooltip: g.querySelector('title')?.textContent ?? '',
+    share: Number(/([\d.]+)% of presses/.exec(g.getAttribute('aria-label') ?? '')?.[1] ?? NaN),
+  }));
+
 /**
  * The Analyze view, exercised end to end: a real analysis over a small sample, then the numbers and
  * the typing trace it produces.
@@ -121,6 +130,13 @@ describe('Analyze', () => {
     expect(shownLayer()).toBe('Alpha 2');
     const key = screen.getByRole('button', { name: /^Key LBM:/ });
     expect(key.querySelector('.lb-key-pressed')).not.toBeNull();
+    // The keys say the shares they have on that layer, though the navigator still stands on the
+    // first: the same as when the layer is chosen on it.
+    const played = shown().map((k) => k.label);
+    expect(played.some((label) => /% of presses/.test(label))).toBe(true);
+    await showLayer(user, 'Alpha 1');
+    await showLayer(user, 'Alpha 2');
+    expect(shown().map((k) => k.label)).toEqual(played);
     // The board shows the press, not a path of arrows.
     expect(document.querySelectorAll('#kb-analyze .lb-arc path')).toHaveLength(0);
   });
@@ -306,15 +322,6 @@ describe('Analyze', () => {
   });
 
   describe("a key's share of the presses", () => {
-    /** The share each key of the layer shown says in its name, by key. */
-    const shown = () =>
-      [...document.querySelectorAll<SVGGElement>('#kb-analyze g[data-key]')].map((g) => ({
-        id: g.getAttribute('data-key') as string,
-        label: g.getAttribute('aria-label') ?? '',
-        tooltip: g.querySelector('title')?.textContent ?? '',
-        share: Number(/([\d.]+)% of presses/.exec(g.getAttribute('aria-label') ?? '')?.[1] ?? NaN),
-      }));
-
     it('is in every key’s tooltip and name, whatever the heat measures, and is the share its numbers give', async () => {
       const user = userEvent.setup();
       renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000');
@@ -330,9 +337,16 @@ describe('Analyze', () => {
             expect(k.tooltip, `${heat} ${k.id}`).not.toMatch(/ of presses/);
             continue;
           }
+          // The space is not counted by default: its key says so, below.
+          if (k.tooltip.includes('space not counted')) continue;
           expect(k.tooltip, `${heat} ${k.id}`).toMatch(/(?:\d+\.\d\d%|0%|under 0\.01%) of presses/);
           expect(k.label, `${heat} ${k.id}`).toMatch(/ of presses/);
         }
+        // The space is not counted unless the Space setting keeps it in, so its key says that and
+        // not a share, which would read 0% for the key pressed most.
+        const space = keys.find((k) => k.tooltip.startsWith('types a space'));
+        expect(space?.tooltip, heat).toBe('types a space; space not counted (Space is off)');
+        expect(space?.label, heat).not.toMatch(/% of presses/);
         // Qwerty has one layer and no combos, so its keys have every press between them.
         const sum = keys.reduce((a, k) => a + (Number.isNaN(k.share) ? 0 : k.share), 0);
         expect(sum, heat).toBeGreaterThan(99.5);
@@ -347,7 +361,7 @@ describe('Analyze', () => {
       );
     }, 60_000);
 
-    it('is left out while the numbers on screen are of an analysis since changed', async () => {
+    it('says it is updating while the numbers on screen are of an analysis since changed', async () => {
       const user = userEvent.setup();
       renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000', {
         client: neverLandingOnCyanophage(),
@@ -357,12 +371,20 @@ describe('Analyze', () => {
       await waitFor(() =>
         expect(shown().filter((k) => !Number.isNaN(k.share)).length).toBeGreaterThan(0),
       );
+      expect(shown().some((k) => /\(updating\)/.test(k.label))).toBe(false);
 
       const dialog = await openSettings();
       await user.selectOptions(within(dialog).getByLabelText('Rules'), 'cyanophage');
-      // The last report stands, but its presses are of what the keys were: no key claims them.
-      await waitFor(() => expect(shown().filter((k) => !Number.isNaN(k.share))).toHaveLength(0));
-      expect(shown().every((k) => !/ of presses/.test(k.tooltip))).toBe(true);
+      // The last report stands, but it is of what the keys were: each share says so in its name
+      // and tooltip, as the key's numbers say they are updating.
+      await waitFor(() => {
+        const said = shown().filter((k) => !Number.isNaN(k.share));
+        expect(said.length).toBeGreaterThan(0);
+        for (const k of said) {
+          expect(k.label, k.id).toMatch(/% of presses \(updating\)/);
+          expect(k.tooltip, k.id).toMatch(/% of presses \(updating\)/);
+        }
+      });
     }, 60_000);
 
     it('adds up to 100% over the keys of every layer', async () => {
@@ -378,6 +400,7 @@ describe('Analyze', () => {
         // A key that types nothing here says nothing; the others say their share, 0% included.
         for (const k of shown()) {
           if (/transparent|empty/.test(k.label)) expect(k.label).not.toMatch(/ of presses/);
+          else if (/space not counted/.test(k.label)) expect(k.share).toBeNaN();
           else expect(k.label, `${name} ${k.id}`).toMatch(/ of presses/);
           if (!Number.isNaN(k.share)) sum += k.share;
         }

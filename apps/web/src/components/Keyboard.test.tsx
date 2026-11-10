@@ -394,6 +394,62 @@ describe("a key's share of the presses", () => {
     expect(name(container, 'LHR')).toBe('Key LHR: empty');
     expect(tooltip(container, 'LHR')).toBe('does nothing');
   });
+  it('says that space is not counted, in place of a share, for a key that types one', () => {
+    const space = qwerty.keys[qwerty.spaceKey].id;
+    const every = Object.fromEntries(qwerty.keys.map((_, pos) => [pos, 0.01]));
+    const { container, rerender } = render(
+      <Keyboard compiled={qwerty} share={every} spaceCounted={false} />,
+    );
+    expect(tooltip(container, space)).toBe('types a space; space not counted (Space is off)');
+    expect(name(container, space)).toBe(`Key ${space}: ␣, space not counted (Space is off)`);
+    // Every other key is counted, whatever the Space setting.
+    expect(name(container, 'LHM')).toBe('Key LHM: d, 1.00% of presses');
+
+    // With the Space on, its presses are in the shares like any other's.
+    rerender(<Keyboard compiled={qwerty} share={every} spaceCounted />);
+    expect(name(container, space)).toBe(`Key ${space}: ␣, 1.00% of presses`);
+  });
+
+  it('says it too for a space key that holds a layer, whose hold would be all its share', () => {
+    const every = Object.fromEntries(romak.keys.map((_, pos) => [pos, 0.01]));
+    const { container } = render(<Keyboard compiled={romak} share={every} spaceCounted={false} />);
+    expect(name(container, 'L0')).toMatch(
+      /^Key L0: ␣, hold .*, space not counted \(Space is off\)$/,
+    );
+    expect(name(container, 'L0')).not.toMatch(/% of presses/);
+  });
+
+  it('marks the share as updating while it is of an analysis since changed', () => {
+    const { container } = render(
+      <Keyboard compiled={qwerty} share={{ [at(qwerty, 'LHM')]: 0.1234 }} shareUpdating />,
+    );
+    expect(tooltip(container, 'LHM')).toBe('types d; 12.34% of presses (updating)');
+    expect(name(container, 'LHM')).toBe('Key LHM: d, 12.34% of presses (updating)');
+  });
+
+  it('is said by a key that takes a layer’s default that types, as one that has its own binding', () => {
+    const layout: Layout = {
+      format: 'layerbench/layout@1',
+      name: 'wildcard',
+      geometry: { preset: '3x5+2' },
+      keys: { space: 'L0' },
+      layers: [
+        { id: 'base', bindings: { LHP: { kind: 'kp', symbol: 'a' } } },
+        {
+          id: 'up',
+          name: 'Up',
+          bindings: { '*': { kind: 'kp', symbol: 'x' }, LHP: { kind: 'trans' } },
+        },
+      ],
+    };
+    const compiled = compileLayout(layout);
+    const every = Object.fromEntries(compiled.keys.map((_, pos) => [pos, 0.02]));
+    const { container } = render(<Keyboard compiled={compiled} layer={1} share={every} />);
+    // No binding of its own, but the layer's default types, so the presses count on it.
+    expect(name(container, 'LHR')).toMatch(/^Key LHR: .*, 2\.00% of presses$/);
+    // A transparent key lets the layer below show through, and has none of its own.
+    expect(name(container, 'LHP')).toBe('Key LHP: transparent');
+  });
 });
 
 describe('the legend under the board', () => {

@@ -592,11 +592,12 @@ export function Workbench({
     () => (shown ? heatMap(shown, params.heat, boardLayer) : {}),
     [shown, params.heat, boardLayer],
   );
-  // Each key's share of the presses, whatever the heat measures: the key's tooltip says it. Not
-  // while an edited layout waits for its analysis: the last one's share is of what the key was.
+  // Each key's share of the presses, whatever the heat measures: the key's tooltip says it. Once
+  // the layout or the settings are not those the report was made on (`stale`), it says so, as the
+  // key's numbers do: the report's share of a position is not that of the key now there.
   const shares = useMemo(
-    () => (shown && !stale ? pressShares(shown, boardLayer) : undefined),
-    [shown, stale, boardLayer],
+    () => (shown ? pressShares(shown, boardLayer) : undefined),
+    [shown, boardLayer],
   );
   const hasTypingCombos = typedCompiled.combos.some((c) => c.role === 'typing');
   const boardCombos = useMemo(() => {
@@ -1022,6 +1023,8 @@ export function Workbench({
                           alsoSelected={state.also}
                           heat={heat}
                           share={shares}
+                          spaceCounted={shown?.globals.universe === 'with_space'}
+                          shareUpdating={stale}
                           highlight={highlighted}
                           pressed={frame?.keys ?? []}
                           openCombo={openBox}

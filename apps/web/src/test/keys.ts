@@ -1,5 +1,9 @@
-/** What Analyze's board adds to a key's name once the analysis lands: its share, and the heat's. */
-const SHARE = /, (?:under 0\.01|[\d.]+)% of presses(?:, .*)?$/;
+/**
+ * What Analyze's board adds to a key's name once the analysis lands: its share, marked while the
+ * share is of an analysis since changed, or that its space is not counted; and the heat's.
+ */
+const SHARE =
+  /, (?:(?:under 0\.01|[\d.]+)% of presses(?: \(updating\))?|space not counted \(Space is off\))(?:, .*)?$/;
 
 /** A key's accessible name as the board names it before the analysis lands. */
 export const withoutShare = (name: string): string => name.replace(SHARE, '');
