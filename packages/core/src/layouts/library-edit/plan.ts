@@ -5,7 +5,6 @@ import { documentLayout } from '../documents.js';
 import { pruneUnused, removeDef } from './code.js';
 import { keptInLibrary, type LibraryRequest, LibraryRequestRefused } from './request.js';
 import {
-  dropLanguages,
   landingAdd,
   landingRemove,
   landingRename,
@@ -22,7 +21,6 @@ export const LIBRARY_FILES = {
   small: 'packages/core/src/layouts/small.ts',
   builtInIds: 'packages/core/src/layouts/bundled-ids.ts',
   documents: 'packages/core/src/layouts/documents.ts',
-  languages: 'packages/core/src/layouts/languages.json',
   landing: 'docs/site/index.html',
   document: (id: string) => `packages/core/src/layouts/documents/${id}.json`,
   golden: (id: string) => `packages/core/golden/layouts/${id}.json`,
@@ -102,7 +100,6 @@ export function planRequest(
     const [[path, list]] = holding;
     rewrite(path, (t) => pruneUnused(removeDef(t, list, id)));
     rewrite(LIBRARY_FILES.builtInIds, (t) => removeBuiltInId(t, id));
-    rewrite(LIBRARY_FILES.languages, (t) => dropLanguages(t, id));
     if (!(GOLDEN_LAYOUTS as readonly string[]).includes(id)) remove.push(LIBRARY_FILES.golden(id));
   }
   if (action === 'delete') {
