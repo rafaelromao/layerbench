@@ -23,6 +23,8 @@ export interface PreviewBoardProps {
   highlight?: number[];
   /** Position index to 0–1 heat, as Analyze draws it; none when absent. */
   heat?: Record<number, number>;
+  /** The part of the typing done on the layer drawn, 0–1, shown beside the navigator (`Board`). */
+  layerShare?: number | null;
   /** What the heat measures, so each heated key says how hot it is in words as well. */
   heatName?: string;
   /** Whether the list of the numbered keys goes under the board. */
@@ -45,6 +47,7 @@ export function PreviewBoard({
   highlight,
   heat,
   heatName,
+  layerShare,
   legend = true,
 }: PreviewBoardProps) {
   const source = typed ?? compiled;
@@ -63,6 +66,7 @@ export function PreviewBoard({
         highlight={highlight}
         heat={heat}
         heatName={heatName}
+        layerShare={layerShare}
       />
       {legend && (
         <div className="mt-2 empty:hidden">

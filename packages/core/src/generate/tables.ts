@@ -50,6 +50,11 @@ export interface Sample {
   chars: number;
   spaces: number;
   words: number;
+  /**
+   * Characters of the cut that no symbol stands for, which a rule set counting what the layout
+   * cannot type (`untyped_in_keystrokes`) adds to its keystrokes, and 0 where it does not.
+   */
+  untyped: number;
   /** Per symbol: how often it is typed. */
   count: Float64Array;
   /** `bigram[a * S + b]`: ordered pairs `ab` inside one run of typed characters. */
@@ -107,6 +112,7 @@ export function buildSample(
   let chars = 0;
   let spaces = 0;
   let words = 0;
+  let untyped = 0;
   let run = 0;
   // The last two typed symbols of the run; -1 past a boundary.
   let prev = -1;
@@ -114,6 +120,7 @@ export function buildSample(
   for (const t of tokens) {
     if (t < 0) {
       if (t === SPACE) spaces++;
+      else untyped++;
       if (run > 0) words++;
       run = 0;
       prev = -1;
@@ -146,6 +153,7 @@ export function buildSample(
     chars,
     spaces,
     words,
+    untyped: settings.rules.globals.untyped_in_keystrokes ? untyped : 0,
     count,
     bigram,
     doubles,

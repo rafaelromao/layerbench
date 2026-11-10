@@ -26,7 +26,7 @@ import { type Sample, SPACE } from './tables.js';
  * - Effort is the Effort rule's grid (cyanophage's, a thumb at `THUMB_EFFORT`) summed over presses,
  *   one-shot and repeat taps included, times 577, over characters typed plus spaces; SFB is
  *   same-finger pairs on different keys over characters typed plus words, a word being a run of
- *   typed characters.
+ *   typed characters; both add the characters the layout cannot type where the rules count them.
  */
 
 export const PRESET = '3x5+2';
@@ -234,7 +234,10 @@ export function randomDesign(
 export interface Score {
   /** Effort, as the Library shows it. */
   effort: number;
-  /** Same-finger bigrams, percent of characters plus words, as the cyanophage-like rules count. */
+  /**
+   * Same-finger bigrams, percent of characters plus words (plus the untyped characters, where the
+   * rules count them), as the cyanophage-like rules count.
+   */
   sfb: number;
   /** One-shot taps per 100 symbols. */
   taps: number;
@@ -283,6 +286,7 @@ export function scoreExact(sample: Sample, d: Design): Score {
   let chars = 0;
   let spaces = 0;
   let words = 0;
+  let untyped = 0;
   let run = 0;
   let effortSum = 0;
   let sfbPairs = 0;
@@ -312,6 +316,7 @@ export function scoreExact(sample: Sample, d: Design): Score {
       continue;
     }
     if (t < 0 || first[t] < 0) {
+      untyped++;
       if (run > 0) words++;
       run = 0;
       prev = -1;
@@ -348,10 +353,13 @@ export function scoreExact(sample: Sample, d: Design): Score {
     lastSym = t;
   }
   if (run > 0) words++;
+  // Counted as keystrokes only where the rules count what the layout cannot type.
+  const u = sample.settings.rules.globals.untyped_in_keystrokes ? untyped : 0;
 
   return {
-    effort: chars + spaces > 0 ? (CYANOPHAGE_EFFORT_SCALE * effortSum) / (chars + spaces) : 0,
-    sfb: chars + words > 0 ? (100 * sfbPairs) / (chars + words) : 0,
+    effort:
+      chars + spaces + u > 0 ? (CYANOPHAGE_EFFORT_SCALE * effortSum) / (chars + spaces + u) : 0,
+    sfb: chars + words + u > 0 ? (100 * sfbPairs) / (chars + words + u) : 0,
     taps: chars > 0 ? (100 * oslTaps) / chars : 0,
     sfbPairs,
     effortSum,
@@ -410,13 +418,15 @@ export class FastScorer {
   }
 
   get effort(): number {
-    const { chars, spaces } = this.sample;
-    return chars + spaces > 0 ? (CYANOPHAGE_EFFORT_SCALE * this.effortSum) / (chars + spaces) : 0;
+    const { chars, spaces, untyped } = this.sample;
+    const k = chars + spaces + untyped;
+    return k > 0 ? (CYANOPHAGE_EFFORT_SCALE * this.effortSum) / k : 0;
   }
 
   get sfb(): number {
-    const { chars, words } = this.sample;
-    return chars + words > 0 ? (100 * this.sfbPairs) / (chars + words) : 0;
+    const { chars, words, untyped } = this.sample;
+    const k = chars + words + untyped;
+    return k > 0 ? (100 * this.sfbPairs) / k : 0;
   }
 
   get taps(): number {

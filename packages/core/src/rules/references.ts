@@ -205,12 +205,13 @@ export const PRESET_REFERENCES: Readonly<Record<string, PresetReferences>> = {
       {
         title: 'cyanophage keyboard layout playground',
         url: 'https://cyanophage.github.io/playground.html',
-        locator: 'bigram percentages over keystrokes, one space per word',
+        locator:
+          'bigram percentages over keystrokes: one space per word, and every character, typed or not',
       },
     ],
     rules: {
       lsb: [cyanophage('"Lat Stretch Bigrams" — fixed column pairs')],
-      fsb: [cyanophage('"Scissors" — adjacent fingers, two or more rows apart')],
+      fsb: [cyanophage('"Scissors" — adjacent columns, two or more rows apart, two fingers')],
       redirect: [cyanophage('"redirect" trigram category')],
     },
   },

@@ -309,6 +309,7 @@ export class Simulator {
       repeat_presses: 0,
       per_layer: compiled.layers.map(() => 0),
       unproducible: this.coverage.unproducible,
+      soft_dropped: this.coverage.softDropped,
     };
   }
 

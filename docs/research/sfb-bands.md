@@ -76,11 +76,13 @@ fit it.
 ## What cyanophage gives
 
 [cyanophage.github.io/playground.html](https://cyanophage.github.io/playground.html) prints a layout's
-SFB (Qwerty 4.38% on its English text) and Effort (1258.15) with no band, category or threshold:
+SFB (Qwerty 4.38% on its own English word list) and Effort (1258.15) with no band, category or threshold:
 the text is a fixed colour and compared with nothing (`keyboard_svg.js`, with `index.html`,
 `table.html` and `compare.html`, whose only script sorts; read 2026-11-09). LayerBench's
-cyanophage-like rules give Qwerty 4.47 on the English news sample, as a share of keystrokes with a
-space per word, and an Effort of 1245.
+cyanophage-like rules give Qwerty 4.45 on the English news sample, as a share of keystrokes with a
+space per word and the characters it cannot type, and an Effort of 1238. On the same text the two
+read the same: the e2e `apps/web/e2e/cyanophage.spec.ts` holds the app to his page's numbers on
+the whole sample, Qwerty 4.52% and 1254.51 on both (see [cyanophage-e2e.md](cyanophage-e2e.md)).
 
 What the page does colour is a ramp. In the finger view of the SFB panel (the default view lists
 bigrams in fixed-colour bars) each finger's bar is `red = 128 + 6000 * share`, green and blue 128, red
@@ -122,7 +124,7 @@ from the Doc's rows by up to about 0.2 (Gallium 0.777 here and 0.644 in the Doc,
 0.707).
 
 The cyanophage-like rules divide by keystrokes with a space per word, about 1.2 times the letters, so
-their SFB reads 0.826 to 0.831 times the share of letters on the bundled layouts (Qwerty 4.47 against
+their SFB reads 0.821 to 0.831 times the share of letters on the bundled layouts (Qwerty 4.45 against
 5.41). Every other pair rule, SFS included, is a share of the text's pairs.
 
 ### Space and Shift
@@ -242,7 +244,8 @@ position.
 ## Where the bundled layouts read
 
 The 35 bundled layouts on the Effort ruler, Layouts Doc rules, Library settings (`analyze`; cyanophage
-gives Effort no ruler, so the cyanophage-like set rates the same numbers on the same ruler):
+gives Effort no ruler, so the cyanophage-like set rates its Effort on the same ruler; its numbers are
+a little lower where a layout cannot type a character of the text, which it counts as a keystroke):
 
 | Step | Layouts |
 |---|---|
@@ -259,7 +262,7 @@ gives Effort no ruler, so the cyanophage-like set rates the same numbers on the 
 That is 7 green, 24 amber and 4 red. The same layouts on the Layouts Doc SFB ruler: min 4 (Magic
 Sturdy 0.445, SNTH 0.486, Dusk 0.509, Night 0.521), low 4, mid low 9, mid 8, mid high 7, high 2
 (Uno 2.094, Dvorak 2.192) and max 1 (Qwerty 5.412): 8 green, 24 amber, 3 red. On the cyanophage-like
-SFB ruler: very low 4, low 13, mid low 10, mid 5, very high 2 (Uno 1.739, Dvorak 1.818), max 1: 17
+SFB ruler: very low 4, low 13, mid low 10, mid 5, very high 2 (Uno 1.738, Dvorak 1.812), max 1: 17
 green, 15 amber, 3 red. A Library with custom layouts has more, the empty ones at *min*.
 
 Where a few well-known layouts read on SFB, with the band each ruler gives the number:
@@ -268,11 +271,11 @@ Where a few well-known layouts read on SFB, with the band each ruler gives the n
 |---|---|---|---|
 | Magic Romak | 1.35 mid high | 1.72 mid high | 1.12 mid |
 | Romak | 1.07 mid | 1.49 mid high | 0.88 mid low |
-| Qwerty | 5.41 max | 5.25 max | 4.47 max |
-| Dvorak | 2.19 high | 2.17 high | 1.82 very high |
-| Colemak, Colemak-DH | 1.13 mid high | 1.09 mid high | 0.94 mid low |
-| Graphite | 0.91 mid | 0.86 mid low | 0.75 mid low |
-| Sturdy | 0.78 mid low | 0.75 mid low | 0.65 low |
+| Qwerty | 5.41 max | 5.25 max | 4.45 max |
+| Dvorak | 2.19 high | 2.17 high | 1.81 very high |
+| Colemak, Colemak-DH | 1.13 mid high | 1.09 mid high | 0.93 mid low |
+| Graphite | 0.91 mid | 0.86 mid low | 0.74 mid low |
+| Sturdy | 0.78 mid low | 0.75 mid low | 0.64 low |
 | Hands Down Neu | 0.96 mid | 0.90 mid | 0.80 mid low |
 | RSTHD | 0.83 mid low | 0.80 mid low | 0.69 low |
 | Engram | 1.31 mid high | 1.25 mid high | 1.08 mid |
