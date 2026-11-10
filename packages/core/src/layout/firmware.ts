@@ -1,4 +1,5 @@
-import type { BindingKind } from './types.js';
+import { bindingParts } from './compile.js';
+import type { Binding, BindingKind } from './types.js';
 
 /**
  * ZMK modules: firmware outside stock ZMK, which a keymap adds to its build (its `west.yml`, or
@@ -57,4 +58,22 @@ const BINDING_MODULES: Record<BindingKind, ZmkModuleId | null> = {
 /** The ZMK module a binding of this kind needs, or null when stock ZMK has it. */
 export function bindingModule(kind: BindingKind): ZmkModuleId | null {
   return BINDING_MODULES[kind];
+}
+
+/**
+ * The ZMK modules a binding needs, its own and those of every part it holds: a macro's steps, a
+ * tap-hold's tap and hold, a morph's parts, an adaptive key's branches, a tap dance's taps. In the
+ * order `ZMK_MODULES` lists them, each once; none when stock ZMK runs all of it. A macro is stock
+ * ZMK, so what it needs is what its steps do: one with a sentence space needs zmk-sentence-case.
+ */
+export function bindingModules(b: Binding): ZmkModuleId[] {
+  const found = new Set<ZmkModuleId>();
+  const walk = (x: Binding, depth: number): void => {
+    if (depth > 32) return;
+    const own = BINDING_MODULES[x.kind];
+    if (own) found.add(own);
+    for (const part of bindingParts(x)) walk(part, depth + 1);
+  };
+  walk(b, 0);
+  return (Object.keys(ZMK_MODULES) as ZmkModuleId[]).filter((m) => found.has(m));
 }

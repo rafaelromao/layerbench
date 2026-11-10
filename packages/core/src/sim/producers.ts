@@ -1,8 +1,8 @@
-import { deadKeyCompositions } from '../host/locale.js';
+import { composeDeadKey, deadKeyCompositions, shiftSymbol } from '../host/locale.js';
 import type { CompiledLayout } from '../layout/compile.js';
 import type { Binding, Mod, ModChoice } from '../layout/types.js';
 import { blockedThumbs } from './activators.js';
-import type { ProducerKind } from './machine.js';
+import { isAlphaSymbol, type ProducerKind, SENTENCE_ENDS, SENTENCE_LETTER_RE } from './machine.js';
 import { heldChoices, throughMorph } from './mod-needs.js';
 
 export interface ProducerStep {
@@ -58,7 +58,7 @@ interface StaticOutput {
   dynamic: boolean;
 }
 
-const MAX_DEPTH = 8;
+const MAX_DEPTH = 16;
 
 /** Enumerate the textual outputs a binding can produce when tapped (static analysis). */
 export function staticOutputs(b: Binding, depth = 0): StaticOutput[] {
@@ -95,38 +95,9 @@ export function staticOutputs(b: Binding, depth = 0): StaticOutput[] {
         });
       return out;
     }
-    case 'macro': {
-      const steps: Binding[] = [];
-      if (b.steps) steps.push(...b.steps);
-      else if (b.symbols !== undefined)
-        for (const g of Array.from(b.symbols.normalize('NFC')))
-          steps.push({ kind: 'kp', symbol: g });
-      // `then` steps are side effects; they may also emit text (rare) — include them.
-      if (b.then) steps.push(...b.then);
-      let combos: { symbols: string; afterAny?: string[]; mods?: ModChoice[]; dynamic: boolean }[] =
-        [{ symbols: '', dynamic: false }];
-      for (const step of steps) {
-        const outs = staticOutputs(step, depth + 1);
-        if (outs.length === 0) {
-          // Non-emitting step (layer change, mod) — keep going.
-          if (emitsText(step)) return [];
-          continue;
-        }
-        const next: typeof combos = [];
-        for (const c of combos) {
-          for (const o of outs) {
-            if (o.mods?.length) continue; // shifted variants inside macros are not producers
-            next.push({
-              symbols: c.symbols + o.symbols,
-              afterAny: c.afterAny ?? o.afterAny,
-              dynamic: c.dynamic || o.dynamic,
-            });
-          }
-        }
-        combos = next;
-        if (combos.length > 8) combos = combos.slice(0, 8);
-      }
-      return combos
+    case 'macro':
+      // A macro that types nothing is no way to type anything.
+      return macroOutputs(b, depth)
         .filter((c) => c.symbols.length > 0)
         .map((c, i) => ({
           symbols: c.symbols,
@@ -134,9 +105,9 @@ export function staticOutputs(b: Binding, depth = 0): StaticOutput[] {
           kind: 'macro' as ProducerKind,
           suffix: i ? `#${i}` : '',
           afterAny: c.afterAny,
+          afterTags: c.afterTags,
           dynamic: c.dynamic,
         }));
-    }
     case 'adaptive': {
       const out: StaticOutput[] = [];
       (b.triggers ?? []).forEach((t, i) => {
@@ -246,16 +217,212 @@ function inMorph(
   return { ...o, mods: [...needs.choices], forbid: [...needs.forbid] };
 }
 
-function emitsText(b: Binding): boolean {
-  return (
-    b.kind === 'kp' ||
-    b.kind === 'sentence_space' ||
-    b.kind === 'unicode' ||
-    b.kind === 'key_repeat' ||
-    b.kind === 'adaptive' ||
-    b.kind === 'macro' ||
-    b.kind === 'dead_key'
-  );
+// ---------------------------------------------------------------------------- macros
+
+/**
+ * What a macro's steps typed so far, and what they leave for the next step, as the machine runs
+ * them one after another in one press.
+ */
+interface SoFar {
+  symbols: string;
+  /** The conditions on what came before the press, from a first step that depends on it. */
+  afterAny?: string[];
+  afterTags?: string[];
+  dynamic: boolean;
+  /** The last symbol pressed, before a dead key composed it: what a repeat repeats. */
+  last: string | null;
+  /** A sticky Shift a step armed, for the next keycode. */
+  shift: boolean;
+  /** Caps word, turned on by a step: letters are capitals. */
+  caps: boolean;
+  /** A dead key pressed, waiting for the next character. */
+  dead: string | null;
+  /** The last keycode ended a sentence: a sentence space now leaves a capital. */
+  endsSentence: boolean;
+  /** A capital a sentence space left, for the next keycode. */
+  pending: boolean;
+  /** The tag of the binding that typed last: the macro's, or a step's own. */
+  tag: string | null;
+}
+
+/** Alternatives a macro is followed through, at most: a branch a step depends on doubles them. */
+const MACRO_WAYS = 8;
+
+/** The steps a macro runs, in order: its text a press a character, its steps, then `then`. */
+export function macroSteps(b: Extract<Binding, { kind: 'macro' }>): Binding[] {
+  const steps: Binding[] = [];
+  if (b.steps) steps.push(...b.steps);
+  else if (b.symbols !== undefined)
+    for (const g of Array.from(b.symbols.normalize('NFC'))) steps.push({ kind: 'kp', symbol: g });
+  if (b.then) steps.push(...b.then);
+  return steps;
+}
+
+/**
+ * What a macro types, each way it can: its steps run in order, each as a key would on its own and
+ * tapped once, as ZMK's macro taps it. A step arms what the next one types with, as the machine has
+ * it: a sticky Shift, caps word, a dead key, a sentence's capital. A repeat repeats the macro's own
+ * text, and an adaptive key after text takes the branch that text chooses; one before any text, as
+ * its first step, depends on what came before the press, and makes the macro's ways conditions on
+ * it. A repeat with nothing before it in the macro repeats what came before the press, which cannot
+ * be known here: that way is none. So is one that types a keycode with no symbol.
+ */
+function macroOutputs(
+  b: Extract<Binding, { kind: 'macro' }>,
+  depth: number,
+  from: SoFar = {
+    symbols: '',
+    dynamic: false,
+    last: null,
+    shift: false,
+    caps: false,
+    dead: null,
+    endsSentence: false,
+    pending: false,
+    tag: null,
+  },
+): SoFar[] {
+  if (depth > MAX_DEPTH) return [];
+  let ways: SoFar[] = [{ ...from, tag: b.tag ?? from.tag }];
+  for (const step of macroSteps(b)) {
+    ways = ways.flatMap((w) => stepOutputs(step, w, depth + 1)).slice(0, MACRO_WAYS);
+    if (ways.length === 0) return [];
+  }
+  return ways;
+}
+
+/** What one step of a macro leaves, from what the steps before it left: one way, or several. */
+function stepOutputs(step: Binding, w: SoFar, depth: number): SoFar[] {
+  if (depth > MAX_DEPTH) return [];
+  const tagged = (b: Binding): SoFar => {
+    const tag = (b as { tag?: string }).tag;
+    return tag === undefined ? w : { ...w, tag };
+  };
+  const at = tagged(step);
+  switch (step.kind) {
+    // A part chooser runs the part a tap chooses: a tap-hold's tap, a layer-tap's, a tap dance's
+    // first.
+    case 'hold_tap':
+    case 'lt':
+      return stepOutputs(step.tap, at, depth + 1);
+    case 'tap_dance':
+      return step.bindings[0] ? stepOutputs(step.bindings[0], at, depth + 1) : [at];
+    case 'sentence_morph':
+      return stepOutputs(at.pending ? step.pending : step.default, at, depth + 1);
+    case 'layer_morph':
+      // Which layers are on is not known here: either part, the changed one depending on it.
+      return [
+        ...stepOutputs(step.inactive, at, depth + 1),
+        ...stepOutputs(step.active, at, depth + 1).map((x) => ({ ...x, dynamic: true })),
+      ];
+    case 'mod_morph': {
+      // Only a Shift a step armed is known held: with it, a Shift morph changes, and uses it up.
+      const shiftMorph = step.mods.some((m) => m === 'LSHIFT' || m === 'RSHIFT');
+      if (at.shift && shiftMorph) {
+        const keep = step.keepMods?.some((m) => m === 'LSHIFT' || m === 'RSHIFT') ?? false;
+        return stepOutputs(step.morphed, { ...at, shift: keep }, depth + 1).map((x) => ({
+          ...x,
+          shift: x.shift && keep ? false : x.shift,
+        }));
+      }
+      return stepOutputs(step.default, at, depth + 1);
+    }
+    case 'adaptive': {
+      if (at.symbols !== '' || at.last !== null) {
+        // After text, the branch that text chooses, as the machine picks it: the first that matches.
+        const t = (step.triggers ?? []).find((t) => afterMatches(t, at));
+        const chosen = t?.binding ?? step.default;
+        return chosen ? stepOutputs(chosen, at, depth + 1) : [at];
+      }
+      // First: each branch is a way, on what came before the press.
+      const out: SoFar[] = [];
+      for (const t of step.triggers ?? []) {
+        const cond = {
+          ...(t.afterAny?.length ? { afterAny: t.afterAny } : {}),
+          ...(t.afterTags?.length ? { afterTags: t.afterTags } : {}),
+        };
+        if (!cond.afterAny && !cond.afterTags) continue;
+        for (const x of stepOutputs(t.binding, at, depth + 1))
+          out.push({ ...x, ...cond, dynamic: true });
+      }
+      if (step.default)
+        for (const x of stepOutputs(step.default, at, depth + 1)) out.push({ ...x, dynamic: true });
+      return out;
+    }
+    case 'macro':
+      return macroOutputs(step, depth + 1, at);
+    case 'kp':
+      if (step.symbol === undefined) return [];
+      return [typed(at, step.symbol, step.shifted)];
+    case 'unicode': {
+      const shifted = at.shift || (at.caps && isAlphaSymbol(step.symbol));
+      const text = shifted && step.shiftedSymbol ? step.shiftedSymbol : step.symbol;
+      // zmk-unicode's run of keys takes a capital, keeps the character's case, and leaves nothing a
+      // repeat can follow.
+      const next = typed({ ...at, pending: false, shift: false, caps: false }, text);
+      return [{ ...next, caps: at.caps, last: null, endsSentence: false }];
+    }
+    case 'key_repeat':
+      if (at.last === null) return [];
+      return [typed(at, at.last)];
+    case 'sentence_space': {
+      const ends = at.endsSentence;
+      const next = typed({ ...at, shift: false, caps: false }, ' ', undefined, true);
+      return [{ ...next, caps: at.caps, shift: false, pending: ends }];
+    }
+    case 'dead_key': {
+      const dead = at.shift && step.shifted !== undefined ? step.shifted : step.diacritic;
+      return [{ ...at, dead, shift: false, pending: false, endsSentence: false }];
+    }
+    case 'sk':
+      return [
+        {
+          ...at,
+          shift: at.shift || step.mod === 'LSHIFT' || step.mod === 'RSHIFT',
+          pending: false,
+          endsSentence: false,
+        },
+      ];
+    case 'mod':
+      return [{ ...at, pending: false, endsSentence: false }];
+    case 'caps_word':
+      return [{ ...at, caps: !at.caps }];
+    default:
+      // A layer key, transparent, nothing: no text, and the next step types as it would.
+      return [at];
+  }
+}
+
+/**
+ * A symbol pressed in a macro, as `emit` types it: shifted by a sticky Shift, or by caps word if a
+ * letter; a sentence's capital on a letter a–z; composed with a dead key waiting. A sentence space
+ * is pressed unshifted.
+ */
+function typed(w: SoFar, symbol: string, shifted?: string, space = false): SoFar {
+  const alpha = isAlphaSymbol(symbol);
+  let pressed = !space && (w.shift || (w.caps && alpha)) ? shiftSymbol(symbol, shifted) : symbol;
+  if (w.pending && SENTENCE_LETTER_RE.test(pressed)) pressed = pressed.toUpperCase();
+  const text = w.dead !== null && pressed.length ? composeDeadKey(w.dead, pressed) : pressed;
+  return {
+    ...w,
+    symbols: w.symbols + text,
+    last: pressed.length ? pressed : w.last,
+    shift: false,
+    dead: null,
+    pending: false,
+    endsSentence: SENTENCE_ENDS.has(pressed),
+  };
+}
+
+/** Does an adaptive branch follow what a macro typed? As the machine matches it, by symbol. */
+function afterMatches(t: { afterAny?: string[]; afterTags?: string[] }, w: SoFar): boolean {
+  const tags = t.afterTags?.length ? t.afterTags : undefined;
+  const keys = t.afterAny?.length ? t.afterAny : undefined;
+  if (tags && (w.tag === null || !tags.includes(w.tag))) return false;
+  if (keys === undefined) return tags !== undefined;
+  const last = w.last;
+  if (last === null) return false;
+  return keys.some((a) => a === last || a.toLowerCase() === last.toLowerCase());
 }
 
 export interface ProducerIndex {

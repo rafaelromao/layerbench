@@ -280,8 +280,8 @@ const ALPHA_RE = /^\p{L}$/u;
  * the symbol typed is the same on the `symbols` host, while on a keycode host it lets `?` typed with
  * Right Shift end a sentence too.
  */
-const SENTENCE_ENDS: ReadonlySet<string> = new Set(['.', '?', '!']);
-const SENTENCE_LETTER_RE = /^[a-z]$/;
+export const SENTENCE_ENDS: ReadonlySet<string> = new Set(['.', '?', '!']);
+export const SENTENCE_LETTER_RE = /^[a-z]$/;
 /** What keeps caps word on besides its continue list, as ZMK has it: letters, digits, underscore. */
 const CAPS_WORD_RE = /^[\p{L}0-9_]$/u;
 
@@ -862,19 +862,30 @@ export class Machine {
           else if (b.symbols !== undefined)
             for (const g of splitGraphemes(b.symbols)) steps.push({ kind: 'kp', symbol: g });
           if (b.then) steps.push(...b.then);
+          // Each step is tapped once, as ZMK's macro taps it: a tap-hold's tap, a tap dance's first.
           const savedMode = ctx.mode;
+          const savedTaps = ctx.taps;
           ctx.mode = 'tap';
+          ctx.taps = 1;
           // The last step that turned a layer on, and what it was.
           let layerLeaf: BindingKind | null = null;
           for (const step of steps) {
             const reached = ctx.reaches;
             ctx.reaches = null;
+            // A sticky modifier is used up by the next keycode, a step's in the macro too.
+            const sticky = this.state.stickyMods.slice();
+            const emitted = ctx.emittedKeycode;
+            ctx.emittedKeycode = false;
             this.run(step, ctx);
+            if (ctx.emittedKeycode)
+              this.state.stickyMods = this.state.stickyMods.filter((m) => !sticky.includes(m));
+            ctx.emittedKeycode ||= emitted;
             if (ctx.reaches !== null) layerLeaf = ctx.leaf;
             else ctx.reaches = reached;
             this.recomputeMask();
           }
           ctx.mode = savedMode;
+          ctx.taps = savedTaps;
           // One that types nothing and turns a layer on is pressed as the layer key it turns it on
           // with.
           ctx.leaf = ctx.out.length === 0 && layerLeaf !== null ? layerLeaf : 'macro';
