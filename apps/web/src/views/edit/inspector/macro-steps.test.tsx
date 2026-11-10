@@ -138,4 +138,41 @@ describe('the steps of a macro', () => {
       }),
     ).toHaveAttribute('aria-pressed', 'true');
   });
+
+  it('offers no macro step deeper than a layout can hold macros', () => {
+    edit({
+      kind: 'macro',
+      steps: [{ kind: 'macro', steps: [{ kind: 'macro', steps: [kp('a'), kp('b')] }] }],
+    });
+    const options = (label: string) =>
+      [...(screen.getByLabelText(label) as HTMLSelectElement).options].map((o) => o.value);
+    expect(options('Step 1 kind')).toContain('macro');
+    expect(options('Step 1 step 1 kind')).toContain('macro');
+    // The third macro's steps: a macro there would be a fourth.
+    expect(options('Step 1 step 1 step 1 kind')).not.toContain('macro');
+  });
+
+  it('says a layer or a modifier held in a macro does nothing', async () => {
+    const { user } = edit({ kind: 'macro', steps: [{ kind: 'sl', layer: 'num' }] });
+    expect(screen.queryByText(/In a macro this does nothing/)).toBeNull();
+    await user.click(
+      within(screen.getByRole('group', { name: 'Step 1 how the layer comes on' })).getByRole(
+        'radio',
+        { name: 'Momentary' },
+      ),
+    );
+    expect(screen.getByText(/In a macro this does nothing/)).toBeInTheDocument();
+  });
+
+  it('names the module its steps need once, on the outermost macro', () => {
+    edit({
+      kind: 'macro',
+      steps: [kp('.'), { kind: 'macro', steps: [{ kind: 'sentence_space' }] }],
+    });
+    // The sentence space's own note, and the outer macro's: the inner macro adds none.
+    const notes = screen
+      .getAllByRole('link')
+      .filter((a) => a.getAttribute('href')?.endsWith('rafaelromao/zmk-sentence-case'));
+    expect(notes).toHaveLength(2);
+  });
 });

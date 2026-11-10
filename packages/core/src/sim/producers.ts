@@ -241,6 +241,11 @@ interface SoFar {
   endsSentence: boolean;
   /** A capital a sentence space left, for the next keycode. */
   pending: boolean;
+  /**
+   * Whether a keycode was pressed in the macro yet: until one is, a capital a sentence space left
+   * before the press may still be pending, which is not known here.
+   */
+  pressed: boolean;
   /** The tag of the binding that typed last: the macro's, or a step's own. */
   tag: string | null;
 }
@@ -279,6 +284,7 @@ function macroOutputs(
     dead: null,
     endsSentence: false,
     pending: false,
+    pressed: false,
     tag: null,
   },
 ): SoFar[] {
@@ -308,6 +314,16 @@ function stepOutputs(step: Binding, w: SoFar, depth: number): SoFar[] {
     case 'tap_dance':
       return step.bindings[0] ? stepOutputs(step.bindings[0], at, depth + 1) : [at];
     case 'sentence_morph':
+      // Before any keycode in the macro, a capital left before the press may be pending: either
+      // part, the pending one depending on it.
+      if (!at.pressed)
+        return [
+          ...stepOutputs(step.default, at, depth + 1),
+          ...stepOutputs(step.pending, { ...at, pending: true }, depth + 1).map((x) => ({
+            ...x,
+            dynamic: true,
+          })),
+        ];
       return stepOutputs(at.pending ? step.pending : step.default, at, depth + 1);
     case 'layer_morph':
       // Which layers are on is not known here: either part, the changed one depending on it.
@@ -316,14 +332,15 @@ function stepOutputs(step: Binding, w: SoFar, depth: number): SoFar[] {
         ...stepOutputs(step.active, at, depth + 1).map((x) => ({ ...x, dynamic: true })),
       ];
     case 'mod_morph': {
-      // Only a Shift a step armed is known held: with it, a Shift morph changes, and uses it up.
+      // Only a Shift a step armed is known held: with it, a Shift morph changes, typing without
+      // it unless it keeps it. The Shift is used up only if the part pressed a keycode.
       const shiftMorph = step.mods.some((m) => m === 'LSHIFT' || m === 'RSHIFT');
       if (at.shift && shiftMorph) {
         const keep = step.keepMods?.some((m) => m === 'LSHIFT' || m === 'RSHIFT') ?? false;
-        return stepOutputs(step.morphed, { ...at, shift: keep }, depth + 1).map((x) => ({
-          ...x,
-          shift: x.shift && keep ? false : x.shift,
-        }));
+        return stepOutputs(step.morphed, { ...at, shift: keep }, depth + 1).map((x) => {
+          const typedSome = x.symbols !== at.symbols || (x.dead !== null && x.dead !== at.dead);
+          return { ...x, shift: typedSome ? x.shift : at.shift || x.shift };
+        });
       }
       return stepOutputs(step.default, at, depth + 1);
     }
@@ -347,6 +364,8 @@ function stepOutputs(step: Binding, w: SoFar, depth: number): SoFar[] {
       }
       if (step.default)
         for (const x of stepOutputs(step.default, at, depth + 1)) out.push({ ...x, dynamic: true });
+      // With no default, a press after nothing a branch follows does nothing here.
+      else out.push({ ...at, dynamic: true });
       return out;
     }
     case 'macro':
@@ -360,10 +379,12 @@ function stepOutputs(step: Binding, w: SoFar, depth: number): SoFar[] {
       // zmk-unicode's run of keys takes a capital, keeps the character's case, and leaves nothing a
       // repeat can follow.
       const next = typed({ ...at, pending: false, shift: false, caps: false }, text);
-      return [{ ...next, caps: at.caps, last: null, endsSentence: false }];
+      return [{ ...next, caps: at.caps, last: null, endsSentence: false, tag: null }];
     }
     case 'key_repeat':
-      if (at.last === null) return [];
+      // Nothing to repeat: after a Unicode character in the macro, the repeat types nothing but is
+      // a keycode; first in the macro, it repeats what came before the press, not known here.
+      if (at.last === null) return at.pressed ? [{ ...at, shift: false, dead: null }] : [];
       return [typed(at, at.last)];
     case 'sentence_space': {
       const ends = at.endsSentence;
@@ -372,7 +393,7 @@ function stepOutputs(step: Binding, w: SoFar, depth: number): SoFar[] {
     }
     case 'dead_key': {
       const dead = at.shift && step.shifted !== undefined ? step.shifted : step.diacritic;
-      return [{ ...at, dead, shift: false, pending: false, endsSentence: false }];
+      return [{ ...at, dead, shift: false, pending: false, endsSentence: false, pressed: true }];
     }
     case 'sk':
       return [
@@ -381,10 +402,11 @@ function stepOutputs(step: Binding, w: SoFar, depth: number): SoFar[] {
           shift: at.shift || step.mod === 'LSHIFT' || step.mod === 'RSHIFT',
           pending: false,
           endsSentence: false,
+          pressed: true,
         },
       ];
     case 'mod':
-      return [{ ...at, pending: false, endsSentence: false }];
+      return [{ ...at, pending: false, endsSentence: false, pressed: true }];
     case 'caps_word':
       return [{ ...at, caps: !at.caps }];
     default:
@@ -410,6 +432,7 @@ function typed(w: SoFar, symbol: string, shifted?: string, space = false): SoFar
     shift: false,
     dead: null,
     pending: false,
+    pressed: true,
     endsSentence: SENTENCE_ENDS.has(pressed),
   };
 }

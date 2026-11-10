@@ -5,9 +5,10 @@ import {
   type CompiledLayout,
   legend,
   legendText,
+  MAX_MACRO_NESTING,
   type ModFamily,
 } from '@layerbench/core';
-import { useRef, useState } from 'react';
+import { createContext, useContext, useRef, useState } from 'react';
 import { useDismiss } from '../../../components/use-dismiss.js';
 import { useMediaQuery, WIDE } from '../../../components/use-media-query.js';
 import type { BindingTextContext } from '../binding-text.js';
@@ -53,6 +54,13 @@ interface BodyProps<K extends KindOfKey> {
 function named(prefix: string, what: string): string {
   return prefix ? `${prefix} ${what.charAt(0).toLowerCase()}${what.slice(1)}` : what;
 }
+
+/**
+ * How many macros hold the part being edited: 0 on a key, 1 in a macro's steps, more nested. A
+ * macro taps its steps, so a layer or modifier held in one does nothing; and no macro is offered
+ * deeper than the layout can run.
+ */
+const MacroNesting = createContext(0);
 
 /** Nested parts stop being drawn as editors past this depth; they are still shown and kept. */
 const MAX_DEPTH = 4;
@@ -337,6 +345,7 @@ const LAYER_HINT: Record<LayerMode, string> = {
 };
 
 function LayerBody({ scope, fields: { view, set }, onChange, name }: BodyProps<'layer'>) {
+  const inMacro = useContext(MacroNesting) > 0;
   return (
     <div className="space-y-2">
       <Row label="Layer">
@@ -355,6 +364,7 @@ function LayerBody({ scope, fields: { view, set }, onChange, name }: BodyProps<'
           onChange={(mode) => onChange(set.mode(mode))}
         />
         <Note>{LAYER_HINT[view.mode]}</Note>
+        {inMacro && view.mode === 'mo' && <HeldInMacro />}
         <ModuleNote module={bindingModule(view.mode)} />
       </Row>
     </div>
@@ -363,7 +373,17 @@ function LayerBody({ scope, fields: { view, set }, onChange, name }: BodyProps<'
 
 // ---------------------------------------------------------------------------- modifier
 
+/** Held, as a macro's step, a layer or a modifier comes up again before anything uses it. */
+function HeldInMacro() {
+  return (
+    <Note>
+      In a macro this does nothing: the macro lets go at once. One-shot arms it for the next key.
+    </Note>
+  );
+}
+
 function ModifierBody({ fields: { view, set }, onChange, name }: BodyProps<'modifier'>) {
+  const inMacro = useContext(MacroNesting) > 0;
   return (
     <div className="space-y-2">
       <Row label="Modifier">
@@ -384,6 +404,7 @@ function ModifierBody({ fields: { view, set }, onChange, name }: BodyProps<'modi
           onChange={(acts) => onChange(set.acts(acts))}
         />
         <Note>{view.acts === 'sk' ? 'Applies to the next key only.' : 'Applies while held.'}</Note>
+        {inMacro && view.acts === 'mod' && <HeldInMacro />}
       </Row>
       {view.acts === 'mod' && (
         <Row label="Held with">
@@ -632,8 +653,10 @@ function AdaptiveBody({
 
 function MacroBody({ scope, fields, onChange, name, depth }: BodyProps<'macro'>) {
   const { view, set } = fields;
+  const nesting = useContext(MacroNesting) + 1;
   // A macro is stock ZMK; what its steps do may need a module, a sentence space zmk-sentence-case.
-  const modules = bindingModules(fields.binding);
+  // Said once, on the outermost macro.
+  const modules = nesting === 1 ? bindingModules(fields.binding) : [];
   return (
     <div className="space-y-2">
       <Segment
@@ -646,22 +669,25 @@ function MacroBody({ scope, fields, onChange, name, depth }: BodyProps<'macro'>)
         onChange={(form) => onChange(set.form(form))}
       />
       {view.form === 'steps' ? (
-        <MacroStepsEditor
-          compiled={scope.compiled}
-          ctx={scope.text}
-          fields={fields}
-          onChange={onChange}
-          name={name}
-          body={(step, change, stepName) => (
-            <KindBody
-              scope={scope}
-              fields={keyFields(step, scope.text)}
-              onChange={change}
-              name={stepName}
-              depth={depth + 1}
-            />
-          )}
-        />
+        <MacroNesting.Provider value={nesting}>
+          <MacroStepsEditor
+            nests={nesting < MAX_MACRO_NESTING}
+            compiled={scope.compiled}
+            ctx={scope.text}
+            fields={fields}
+            onChange={onChange}
+            name={name}
+            body={(step, change, stepName) => (
+              <KindBody
+                scope={scope}
+                fields={keyFields(step, scope.text)}
+                onChange={change}
+                name={stepName}
+                depth={depth + 1}
+              />
+            )}
+          />
+        </MacroNesting.Provider>
       ) : (
         <>
           <Row label="Types">

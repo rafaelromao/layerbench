@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { compileLayout, LayoutCompileError, MAX_MACRO_NESTING } from '../layout/compile.js';
 import { specialFeatures } from '../layout/categories.js';
+import { compileLayout, LayoutCompileError, MAX_MACRO_NESTING } from '../layout/compile.js';
 import { bindingModules } from '../layout/firmware.js';
 import type { Binding, Layout } from '../layout/types.js';
 import { Machine } from './machine.js';
@@ -181,6 +181,50 @@ describe('a macro step', () => {
     expect(reads(deeper)).toEqual(['abC']);
   });
 
+  it('types nothing for a repeat after a Unicode character, which leaves nothing to repeat', () => {
+    const m = macro(kp('b'), { kind: 'unicode', symbol: 'ç' }, { kind: 'key_repeat' });
+    expect(press(board(m), 'RHI').out).toBe('bç');
+    expect(reads(m)).toEqual(['bç']);
+  });
+
+  it('keeps a Shift armed through a Shift morph whose part types nothing', () => {
+    const morph: Binding = {
+      kind: 'mod_morph',
+      mods: ['LSHIFT'],
+      default: kp(','),
+      morphed: { kind: 'sl', layer: 'other' },
+    };
+    const m = macro(kp('b'), { kind: 'sk', mod: 'LSHIFT' }, morph, {
+      kind: 'unicode',
+      symbol: 'ç',
+      shiftedSymbol: 'Ç',
+    });
+    expect(press(board(m), 'RHI').out).toBe('bÇ');
+    expect(reads(m)).toEqual(['bÇ']);
+  });
+
+  it('offers both parts of a sentence morph before any keycode, the capital’s depending on it', () => {
+    const m = macro({ kind: 'sentence_morph', default: kp('x'), pending: kp('y') });
+    expect(staticOutputs(m).map((o) => [o.symbols, o.dynamic])).toEqual([
+      ['x', false],
+      ['Y', true],
+    ]);
+    expect(press(board(m, { L0: { kind: 'sentence_space' } }), 'LHI', 'L0', 'RHI').out).toBe('. Y');
+  });
+
+  it('types nothing for a first adaptive step no branch follows, when it has no default', () => {
+    const adaptive: Binding = {
+      kind: 'adaptive',
+      triggers: [{ afterAny: ['a'], binding: kp('h') }],
+    };
+    const m = macro(adaptive, kp('b'));
+    expect(staticOutputs(m).map((o) => [o.symbols, o.afterAny])).toEqual([
+      ['hb', ['a']],
+      ['b', undefined],
+    ]);
+    expect(press(board(m), 'LHR', 'RHI').out).toBe('bb');
+  });
+
   it('is typed by the analysis as the machine types it', () => {
     const m = macro(kp('l'), { kind: 'key_repeat' }, { kind: 'caps_word' }, kp('a'));
     const t = explain(compileLayout(board(m, { LHP: kp('l') })), 'llA', {
@@ -257,5 +301,11 @@ describe('a macro’s card in Special Behaviors', () => {
     expect(label(macro(kp('.'), { kind: 'sentence_space' }))).toBe('Macro “.␣”');
     expect(label({ kind: 'macro', symbols: 'qu' })).toBe('Macro “qu”');
     expect(label(macro({ kind: 'caps_word' }))).toBe('Macro');
+  });
+
+  it('is one for a macro and the macros among its steps', () => {
+    const nested = macro(kp('a'), macro(kp('b'), macro(kp('c'))));
+    const macros = specialFeatures(board(nested)).filter((f) => f.feature === 'macro');
+    expect(macros.map((f) => f.label)).toEqual(['Macro “a”']);
   });
 });

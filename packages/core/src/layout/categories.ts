@@ -191,7 +191,13 @@ function macroText(b: Extract<Binding, { kind: 'macro' }>): string {
  * branches of an adaptive key, an alt repeat among them: what it types after a letter, a macro
  * included, is the key's own, listed in its editor under the one card the key has.
  */
-function featuresOf(b: Binding, at: Place, out: SpecialFeature[], grouped = false): void {
+function featuresOf(
+  b: Binding,
+  at: Place,
+  out: SpecialFeature[],
+  grouped = false,
+  inMacro = false,
+): void {
   const emit = (feature: SpecialFeatureKind, label: string) =>
     out.push({ feature, ...at, label, binding: b });
   switch (b.kind) {
@@ -207,18 +213,20 @@ function featuresOf(b: Binding, at: Place, out: SpecialFeature[], grouped = fals
       emit('adaptive', FEATURE_LABELS.sentence_space);
       break;
     case 'macro':
-      if (!grouped) {
+      // A macro among another's steps is that macro's: edited in its card, not a card of its own.
+      if (!grouped && !inMacro) {
         const text = macroText(b);
         emit('macro', text ? `Macro “${text}”` : 'Macro');
       }
       // What it types is not a letter of the layer's, but what its steps use is used.
-      for (const c of [...(b.steps ?? []), ...(b.then ?? [])]) featuresOf(c, at, out, grouped);
+      for (const c of [...(b.steps ?? []), ...(b.then ?? [])])
+        featuresOf(c, at, out, grouped, true);
       return;
     default:
       break;
   }
   const inside = grouped || b.kind === 'adaptive';
-  for (const c of choices(b)) featuresOf(c, at, out, inside);
+  for (const c of choices(b)) featuresOf(c, at, out, inside, inMacro);
 }
 
 /**

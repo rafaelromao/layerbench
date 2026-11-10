@@ -42,6 +42,7 @@ export function MacroStepsEditor({
   onChange,
   body,
   name = '',
+  nests = true,
 }: {
   compiled: CompiledLayout;
   ctx: BindingTextContext;
@@ -50,6 +51,8 @@ export function MacroStepsEditor({
   body: StepBody;
   /** Prefix for the controls' accessible names, for a macro inside another. */
   name?: string;
+  /** Whether a step may be a macro: not past the macros a layout can hold one inside another. */
+  nests?: boolean;
 }) {
   const [rows, setRows] = useState<MacroRow[]>(() => macroRows(binding));
   const produced = useRef<Binding>(binding);
@@ -83,10 +86,11 @@ export function MacroStepsEditor({
       <ol className="space-y-2 list-none p-0 m-0" aria-label={named(name, 'Macro steps')}>
         {rows.map((row, i) => {
           const kind = rowKind(row);
+          const offered = nests ? STEP_KINDS : STEP_KINDS.filter((k) => k !== 'macro');
           const kinds: readonly RowKind[] =
-            kind === 'text' || STEP_KINDS.includes(kind)
-              ? ['text', ...STEP_KINDS]
-              : ['text', ...STEP_KINDS, kind];
+            kind === 'text' || offered.includes(kind)
+              ? ['text', ...offered]
+              : ['text', ...offered, kind];
           return (
             <li key={row.id} className="lb-macro-step space-y-1">
               <div className="flex flex-wrap items-center gap-1">
