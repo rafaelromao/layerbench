@@ -185,9 +185,28 @@ describe("the owner's Magic Gust", () => {
     JSON.parse(readFileSync(new URL('../../fixtures/magic-gust.json', import.meta.url), 'utf8')),
   );
 
-  it('types `, ` and `. ` with the tap of Alpha 2’s and Alpha 3’s left thumb', () => {
+  it('has the `, ` and `. ` macros on the taps of Alpha 2’s and Alpha 3’s left thumbs', () => {
+    for (const id of ['alpha-2', 'alpha-3']) {
+      const b = gust.layers.find((l) => l.id === id)?.bindings ?? {};
+      expect(b.L0).toEqual({ kind: 'hold_tap', tap: commaSpace, hold: macro(kp(',')) });
+      expect(b.L1).toEqual({
+        kind: 'hold_tap',
+        tap: macro(kp('.'), kp(' ')),
+        hold: macro(kp('.')),
+      });
+    }
+  });
+
+  it('types `, ` and `. ` with those taps', () => {
     const r = run(gust, 'tea, cat. no');
     expect(r.out).toBe('tea, cat. no');
+    const steps = explain(compileLayout(gust), 'tea, cat. no', fold).steps;
+    const macros = steps.filter((s) => s.symbols.endsWith(' '));
+    expect(macros.map((s) => [s.key, s.symbols])).toEqual([
+      ['L0', ', '],
+      ['L1', '. '],
+    ]);
+    expect(macros.every((s) => s.layer === 'Alpha 2' || s.layer === 'Alpha 3')).toBe(true);
     expect(r.stats.macro_presses).toBe(2);
     expect(r.stats.words).toBe(3);
     expect(r.labels('with_space', 'unigram')).toEqual(expect.arrayContaining([',␣', '.␣']));
