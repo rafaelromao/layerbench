@@ -169,6 +169,7 @@ const GlobalsSchema = z.object({
   lsb_semi_adjacent_u: z.number().optional(),
   top_items: z.number().int().optional(),
   space_per_word_in_keystrokes: z.boolean().optional(),
+  untyped_in_keystrokes: z.boolean().optional(),
 });
 
 export const RuleSetSchema = z.object({

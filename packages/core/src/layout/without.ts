@@ -61,11 +61,22 @@ export function keptWithoutTypingCombos(c: { role?: string; binding: Binding }):
   return c.role === 'command' || onlyReachesLayer(c.binding);
 }
 
-/** The text a macro types, as far as its own keys say: `qu`, `ão`, or one accented letter. */
+/**
+ * The text a macro types, as far as its own keys say: `qu`, `ão`, one accented letter, or a mark
+ * and a space, the space a key's or a sentence space's.
+ */
 function macroText(b: Extract<Binding, { kind: 'macro' }>): string {
   if (b.symbols !== undefined) return b.symbols;
   return (b.steps ?? [])
-    .map((s) => (s.kind === 'kp' ? (s.symbol ?? '') : s.kind === 'unicode' ? s.symbol : ''))
+    .map((s) =>
+      s.kind === 'kp'
+        ? (s.symbol ?? '')
+        : s.kind === 'unicode'
+          ? s.symbol
+          : s.kind === 'sentence_space'
+            ? ' '
+            : '',
+    )
     .join('');
 }
 

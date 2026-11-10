@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const PORT = Number(process.env.E2E_PORT ?? 4011);
+const CYANOPHAGE = /cyanophage\.spec\.ts$/;
 
 /**
  * What a unit test cannot see: layout, sizes and overflow, measured in a real browser at a phone's
@@ -22,12 +23,29 @@ export default defineConfig({
   projects: [
     // The smallest phone still in wide use, and a common large one; both on Chromium, which is
     // what the dev container and CI have.
-    { name: 'phone-small', use: { ...devices['iPhone SE'], browserName: 'chromium' } },
-    { name: 'phone', use: { ...devices['Pixel 7'] } },
+    {
+      name: 'phone-small',
+      use: { ...devices['iPhone SE'], browserName: 'chromium' },
+      testIgnore: CYANOPHAGE,
+    },
+    { name: 'phone', use: { ...devices['Pixel 7'] }, testIgnore: CYANOPHAGE },
     {
       name: 'desktop',
       use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 } },
+      testIgnore: CYANOPHAGE,
     },
+    // LayerBench held to cyanophage's playground: ten analyses of the whole English sample, run on
+    // their own and only when asked (`E2E_CYANOPHAGE=1 … --project=cyanophage`), never with the
+    // checks above.
+    ...(process.env.E2E_CYANOPHAGE || process.env.CYANOPHAGE_CAPTURE
+      ? [
+          {
+            name: 'cyanophage',
+            use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 } },
+            testMatch: CYANOPHAGE,
+          },
+        ]
+      : []),
   ],
   webServer: {
     command: `pnpm exec vite --port ${PORT} --strictPort`,

@@ -47,7 +47,7 @@ import { presetOf } from '../../components/RuleSources.js';
 import { Tabs, tabId, tabPanelId } from '../../components/Tabs.js';
 import { freeCopyName, type SaveOptions } from '../../custom/save-new.js';
 import type { useAnalysisClient } from '../../engine/client-context.js';
-import { expandPositions, HEAT_LABELS, heatMap } from '../../engine/heat.js';
+import { expandPositions, HEAT_LABELS, heatMap, layerShare } from '../../engine/heat.js';
 import { pressShares } from '../../engine/key-numbers.js';
 import { measureLanguagesOf } from '../../engine/measure-languages.js';
 import type { AnalyzeRequest, ExplainDTO, ProducerDTO, ReportDTO } from '../../engine/protocol.js';
@@ -1022,6 +1022,9 @@ export function Workbench({
                           selected={state.selected}
                           alsoSelected={state.also}
                           heat={heat}
+                          // The numbers on show are those of the board only when not stale: an edit can have moved or
+                          // removed the layer the last analysis counted at this index.
+                          layerShare={shown && !stale ? layerShare(shown, boardLayer) : null}
                           share={shares}
                           spaceCounted={shown?.globals.universe === 'with_space'}
                           shareUpdating={stale}

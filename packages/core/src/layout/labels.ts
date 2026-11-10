@@ -198,7 +198,12 @@ export function tapLabel(c: CompiledLayout, b: Binding): string {
     case 'key_repeat':
       return '⟳';
     case 'macro':
-      return p.symbols ?? (p.steps ? p.steps.map((s) => tapLabel(c, s)).join('') : '⋯');
+      // A space drawn as a space key draws it, in text as in steps: `,␣`.
+      return p.symbols !== undefined
+        ? p.symbols.replaceAll(' ', '␣')
+        : p.steps
+          ? p.steps.map((s) => tapLabel(c, s)).join('')
+          : '⋯';
     // The spacing accent, which every font has; a combining mark on a dotted circle draws as a box in
     // a phone's fallback font. That the key is dead is the board's styling to show (`Legend.dead`).
     case 'dead_key':
