@@ -460,8 +460,12 @@ keeps the page where it is, at either end too:
   one-shot layer counting the press that reaches it; so **Shift kind**, where keys both tap and
   hold Shift, and **Doubled letters** mark no way until you set them. Once you move or turn off a
   way, the order you set is the rule: a capital takes the cheapest key of the first way in that
-  order that some key gives, and a doubled letter the first way that works. A character with a path of
-  its own keeps it for its doubled letter. One way always stays on: the last that some key gives.
+  order that some key gives, and a doubled letter the first way that works. A Repeat on a one-shot
+  layer is two presses, the layer key and Repeat: left alone it is used where that is the cheapest
+  way, as for a letter that is on a one-shot layer too, and loses to tapping a base layer letter
+  again, one press; with **Repeat key** first it is used for every doubled letter. A character with a
+  path of its own keeps it for its doubled letter. One way always stays on: the last that some key
+  gives.
 - **Configuration** has the board itself, in cards: the **preset** and the **keys** of the board,
   and then two cards for how the layout's one-shots end, **One-shot layers** and **One-shot keys**:
   as the next key goes down or not, whether they stay on while a modifier is pressed, and after how
