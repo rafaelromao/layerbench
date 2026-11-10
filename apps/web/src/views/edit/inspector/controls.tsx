@@ -5,7 +5,16 @@ import {
   ZMK_MODULES,
   type ZmkModuleId,
 } from '@layerbench/core';
-import { type KeyboardEvent, type ReactNode, type Ref, useEffect, useId, useState } from 'react';
+import {
+  createContext,
+  type KeyboardEvent,
+  type ReactNode,
+  type Ref,
+  useContext,
+  useEffect,
+  useId,
+  useState,
+} from 'react';
 import { LayerDot } from '../../../components/LayerDot.js';
 
 /**
@@ -275,8 +284,23 @@ export function ModuleLink({ module }: { module: ZmkModuleId }) {
 }
 
 /** The ZMK module a key needs, or nothing where stock ZMK has it. */
+/**
+ * How many macros hold the part being edited: 0 on a key, 1 in a macro's steps, more nested. A
+ * macro names the modules its steps need once, on the outermost macro, and offers no macro deeper
+ * than the editor lets macros nest.
+ */
+export const MacroNesting = createContext(0);
+
+/**
+ * Whether the binding being edited is a macro's step itself, not a part of one, as a tap-hold
+ * step's hold: a layer or modifier step held does nothing, since the macro lets go at once.
+ */
+export const MacroStep = createContext(false);
+
 export function ModuleNote({ module }: { module: ZmkModuleId | null }) {
-  if (module === null) return null;
+  // Inside a macro, the outermost macro names the modules its steps need.
+  const inMacro = useContext(MacroNesting) > 0;
+  if (module === null || inMacro) return null;
   return (
     <Note>
       Needs the ZMK module <ModuleLink module={module} />.

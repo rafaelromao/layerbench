@@ -46,7 +46,8 @@ export type RowKind = 'text' | KindOfKey;
  */
 export type MacroRow = { id: string } & (
   | { kind: 'text'; text: string }
-  | { kind: 'step'; step: Binding }
+  /** `text`: the text the row had before it was made a step, given back if it is made text again. */
+  | { kind: 'step'; step: Binding; text?: string }
 );
 type Nothing = Record<never, never>;
 
@@ -701,26 +702,42 @@ export function freshRow(kind: RowKind, ctx: BindingTextContext, id = rowId()): 
   return { id, kind: 'step', step: forMacro(keyFields(undefined, ctx).set.kind(kind)) };
 }
 
+/** The text a step types by itself, as text would write it: a symbol, a macro's, a character. */
+function stepText(step: Binding): string {
+  if (step.kind === 'kp') return step.symbol ?? '';
+  if (step.kind === 'unicode') return step.symbol;
+  if (step.kind === 'macro') return step.symbols ?? (step.steps ?? []).map(stepText).join('');
+  return '';
+}
+
 /**
  * The row made another kind, keeping its place and what carries over, as a key made another kind
- * keeps its symbol: a step's symbol becomes a tap-hold's tap, one character of text a symbol.
+ * keeps its symbol: a step's symbol becomes a tap-hold's tap, text a macro's text, one character a
+ * symbol. Text made a step is kept on the row, and is its text again if it is made text again.
  */
 export function rowAs(row: MacroRow, kind: RowKind, ctx: BindingTextContext): MacroRow {
   if (kind === rowKind(row)) return row;
   if (row.kind === 'text') {
     const chars = characters(row.text);
-    if (chars.length === 1 && kind !== 'text' && kind !== 'layer' && kind !== 'modifier') {
+    const kept = chars.length > 1 ? { text: row.text } : {};
+    if (kind === 'macro' && row.text)
+      return { id: row.id, kind: 'step', step: { kind: 'macro', symbols: row.text }, ...kept };
+    if (chars.length >= 1 && kind !== 'text' && kind !== 'layer' && kind !== 'modifier') {
       const step = forMacro(keyFields(press(chars[0]), ctx).set.kind(kind));
-      return { id: row.id, kind: 'step', step };
+      return { id: row.id, kind: 'step', step, ...kept };
     }
-    return freshRow(kind, ctx, row.id);
+    return { ...freshRow(kind, ctx, row.id), ...kept } as MacroRow;
   }
   if (kind === 'text') {
-    const text = row.step.kind === 'kp' && row.step.symbol ? row.step.symbol : '';
+    // The text it had, while the step still types the start of it; else what the step types.
+    const now = stepText(row.step);
+    const text = row.text?.startsWith(now) ? row.text : now;
     return { id: row.id, kind: 'text', text };
   }
-  if (kind === 'layer' || kind === 'modifier') return freshRow(kind, ctx, row.id);
-  return { id: row.id, kind: 'step', step: forMacro(keyFields(row.step, ctx).set.kind(kind)) };
+  if (kind === 'layer' || kind === 'modifier')
+    return { ...freshRow(kind, ctx, row.id), ...(row.text ? { text: row.text } : {}) } as MacroRow;
+  const step = forMacro(keyFields(row.step, ctx).set.kind(kind));
+  return { id: row.id, kind: 'step', step, ...(row.text ? { text: row.text } : {}) };
 }
 
 /** A copy of a row, with an identity of its own, its step a binding of its own. */

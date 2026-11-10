@@ -64,11 +64,20 @@ export function MacroStepsEditor({
     setRows(macroRows(binding));
   }, [binding]);
 
+  // What the key holds now, for the check after an edit below.
+  const held = useRef<Binding>(binding);
+  held.current = binding;
   const commit = (next: MacroRow[]) => {
     setRows(next);
     const b = set.rows(next);
     produced.current = b;
     onChange(b);
+    // An edit the layout refuses leaves the key as it was: the rows go back to what it holds.
+    setTimeout(() => {
+      if (held.current === b || produced.current !== b) return;
+      produced.current = held.current;
+      setRows(macroRows(held.current as FieldsOf<'macro'>['binding']));
+    }, 0);
   };
   const replace = (i: number, row: MacroRow) => commit(rows.map((r, j) => (j === i ? row : r)));
   const move = (i: number, by: number) => {

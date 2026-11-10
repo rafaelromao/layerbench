@@ -125,19 +125,27 @@ copy it and remove it. Switching between Text and Steps never changes what the m
 after its letters still run after them as text, and come back as steps.
 
 The macro taps each step in turn, as a ZMK macro does, and each does what it would on a key of its
-own: a tap-hold its tap, a tap dance its first tap, a layer or a modifier armed for the next key
-(held, it would come up before anything used it, so a new layer or modifier step is one-shot, and
-one switched to held says it does nothing there). What
-a step arms is for the step after it: a sticky Shift shifts the next character only, caps word the
-letters after it, a dead key accents the next character, a sentence space after a sentence's end
-leaves the next letter a capital. A repeat repeats the character before it in the macro (after a
-Unicode character it repeats nothing, as zmk-unicode leaves nothing to repeat), and an
-adaptive key after the macro's own text takes the branch that text chooses; one first in the macro
-follows what came before the press, as on its own key. A macro of a sentence space and then a space
-types both. A macro that would hold itself, which only a layout built in code can, is refused with
-that error, as are macros held more than three deep; the editor offers no macro step past that. A
-macro among another's steps is part of that macro's card in **Special Behaviors**, and the ZMK
-modules the steps need are named once, on the outermost macro.
+own: a tap-hold its tap, a layer or a modifier armed for the next key (held, it would come up before
+anything used it, so a new layer or modifier step is one-shot, and a step switched to held says it
+does nothing there). ZMK sees each step's keycodes as they come, so what a step arms is for what
+comes after it: a sticky Shift shifts the next character only, whether a step armed it or it was
+armed before the press (`[sticky Shift, a, b]` types `Ab`, as ZMK's sticky key lets go after the
+next key); caps word holds for the letters after it and ends at the first character that does not
+keep it on, a space in the macro included; a dead key accents the next character; a sentence space
+after `.`, `?` or `!` leaves the next letter a capital. A repeat repeats the character before it
+in the macro (after a Unicode character it repeats nothing, as zmk-unicode leaves nothing to
+repeat), and an adaptive key after the macro's own text takes the branch that text chooses; one
+first in the macro follows what came before the press, as on its own key. A **tap dance** decides
+when its tapping term runs out, and a macro's own keys do not interrupt it, so with ZMK's usual
+timings, a macro's taps far shorter than the tapping term, it types its first tap after the macro's
+other steps: `[tap dance (a, b), c]` types `ca`. A macro of a sentence space and then a space types
+both.
+
+The editor lets macros nest three deep, a macro in a macro in a macro, and offers no macro past
+that, in a step or in any part of one; a layout written with deeper ones still loads, and is typed
+as far as the simulator follows it. A macro that would hold itself, which only a layout built in
+code can, is refused with that error. A macro among another's steps is part of that macro's card in
+**Special Behaviors**, and the ZMK modules its steps need are named once, on the outermost macro.
 
 ## Caps word and sentence case
 

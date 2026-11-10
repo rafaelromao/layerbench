@@ -8,7 +8,7 @@ import {
   MAX_MACRO_NESTING,
   type ModFamily,
 } from '@layerbench/core';
-import { createContext, useContext, useRef, useState } from 'react';
+import { useContext, useRef, useState } from 'react';
 import { useDismiss } from '../../../components/use-dismiss.js';
 import { useMediaQuery, WIDE } from '../../../components/use-media-query.js';
 import type { BindingTextContext } from '../binding-text.js';
@@ -21,7 +21,17 @@ import {
   type LayerMode,
   type ListChanges,
 } from './binding-changes.js';
-import { LayerChips, ModChips, ModuleNote, Note, Row, Segment, TextField } from './controls.js';
+import {
+  LayerChips,
+  MacroNesting,
+  MacroStep,
+  ModChips,
+  ModuleNote,
+  Note,
+  Row,
+  Segment,
+  TextField,
+} from './controls.js';
 import { SentenceSpaceNote } from './features.js';
 import {
   type KindInfo,
@@ -54,13 +64,6 @@ interface BodyProps<K extends KindOfKey> {
 function named(prefix: string, what: string): string {
   return prefix ? `${prefix} ${what.charAt(0).toLowerCase()}${what.slice(1)}` : what;
 }
-
-/**
- * How many macros hold the part being edited: 0 on a key, 1 in a macro's steps, more nested. A
- * macro taps its steps, so a layer or modifier held in one does nothing; and no macro is offered
- * deeper than the layout can run.
- */
-const MacroNesting = createContext(0);
 
 /** Nested parts stop being drawn as editors past this depth; they are still shown and kept. */
 const MAX_DEPTH = 4;
@@ -194,7 +197,10 @@ export function PartEditor({
   const fields = keyFields(value, scope.text);
   const kind = fields.kind;
   const prefix = name ?? label;
-  const options = kinds.includes(kind) ? kinds : [...kinds, kind];
+  // No macro past the macros the editor lets nest, in a step's parts as in its steps.
+  const nests = useContext(MacroNesting) < MAX_MACRO_NESTING;
+  const offered = nests ? kinds : kinds.filter((k) => k !== 'macro');
+  const options = offered.includes(kind) ? offered : [...offered, kind];
   return (
     <div className="space-y-1">
       <div className="flex flex-wrap items-center gap-2">
@@ -213,13 +219,15 @@ export function PartEditor({
         </select>
       </div>
       <div className="lb-part">
-        <KindBody
-          scope={scope}
-          fields={fields}
-          onChange={onChange}
-          name={prefix}
-          depth={depth + 1}
-        />
+        <MacroStep.Provider value={false}>
+          <KindBody
+            scope={scope}
+            fields={fields}
+            onChange={onChange}
+            name={prefix}
+            depth={depth + 1}
+          />
+        </MacroStep.Provider>
       </div>
     </div>
   );
@@ -345,7 +353,7 @@ const LAYER_HINT: Record<LayerMode, string> = {
 };
 
 function LayerBody({ scope, fields: { view, set }, onChange, name }: BodyProps<'layer'>) {
-  const inMacro = useContext(MacroNesting) > 0;
+  const inMacro = useContext(MacroStep);
   return (
     <div className="space-y-2">
       <Row label="Layer">
@@ -383,7 +391,7 @@ function HeldInMacro() {
 }
 
 function ModifierBody({ fields: { view, set }, onChange, name }: BodyProps<'modifier'>) {
-  const inMacro = useContext(MacroNesting) > 0;
+  const inMacro = useContext(MacroStep);
   return (
     <div className="space-y-2">
       <Row label="Modifier">
@@ -678,13 +686,15 @@ function MacroBody({ scope, fields, onChange, name, depth }: BodyProps<'macro'>)
             onChange={onChange}
             name={name}
             body={(step, change, stepName) => (
-              <KindBody
-                scope={scope}
-                fields={keyFields(step, scope.text)}
-                onChange={change}
-                name={stepName}
-                depth={depth + 1}
-              />
+              <MacroStep.Provider value={true}>
+                <KindBody
+                  scope={scope}
+                  fields={keyFields(step, scope.text)}
+                  onChange={change}
+                  name={stepName}
+                  depth={depth + 1}
+                />
+              </MacroStep.Provider>
             )}
           />
         </MacroNesting.Provider>

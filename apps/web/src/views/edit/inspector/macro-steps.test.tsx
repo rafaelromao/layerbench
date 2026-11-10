@@ -1,5 +1,5 @@
 import { type Binding, compileLayout, type Layout } from '@layerbench/core';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
@@ -24,24 +24,29 @@ const scope: EditorScope = {
 const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
 
 /** The key editor on a macro, keeping what it is changed to, as the inspector does. */
-function edit(start: Binding) {
+function edit(start: Binding, { refuse = false } = {}) {
   const seen: { current: Binding } = { current: start };
+  const outside: { set: (b: Binding) => void } = { set: () => {} };
   function Harness() {
     const [value, setValue] = useState<Binding>(start);
+    outside.set = setValue;
     return (
       <BindingEditor
         scope={scope}
         value={value}
         onChange={(b) => {
           seen.current = b;
-          setValue(b);
+          // A layout that refuses the edit keeps the key as it was.
+          if (!refuse) setValue(b);
         }}
       />
     );
   }
   render(<Harness />);
   const steps = () => screen.getByRole('list', { name: 'Macro steps' });
-  return { seen, steps, user: userEvent.setup() };
+  /** A change made elsewhere: an undo, the text line. */
+  const from = (b: Binding) => act(() => outside.set(b));
+  return { seen, steps, from, user: userEvent.setup() };
 }
 
 describe('the steps of a macro', () => {
@@ -169,10 +174,57 @@ describe('the steps of a macro', () => {
       kind: 'macro',
       steps: [kp('.'), { kind: 'macro', steps: [{ kind: 'sentence_space' }] }],
     });
-    // The sentence space's own note, and the outer macro's: the inner macro adds none.
+    // Said by the outermost macro alone: neither the inner macro nor the step repeats it.
     const notes = screen
       .getAllByRole('link')
       .filter((a) => a.getAttribute('href')?.endsWith('rafaelromao/zmk-sentence-case'));
-    expect(notes).toHaveLength(2);
+    expect(notes).toHaveLength(1);
+  });
+
+  it('offers no macro in a step’s parts past the macros the editor lets nest', () => {
+    const tapHold: Binding = { kind: 'hold_tap', tap: kp('a'), hold: kp('b') };
+    edit({
+      kind: 'macro',
+      steps: [{ kind: 'macro', steps: [{ kind: 'macro', steps: [tapHold] }] }],
+    });
+    const options = (label: string) =>
+      [...(screen.getByLabelText(label) as HTMLSelectElement).options].map((o) => o.value);
+    expect(options('Step 1 step 1 step 1 tap kind')).not.toContain('macro');
+    expect(options('Step 1 step 1 step 1 hold kind')).not.toContain('macro');
+  });
+
+  it('goes back to what the key holds when the layout refuses an edit', async () => {
+    const { user } = edit(
+      { kind: 'macro', steps: [kp('a'), { kind: 'caps_word' }] },
+      { refuse: true },
+    );
+    await user.selectOptions(screen.getByLabelText('Step 2 kind'), 'repeat');
+    await waitFor(() => expect(screen.getByLabelText('Step 2 kind')).toHaveValue('capsword'));
+  });
+
+  it('follows a change made elsewhere, nested rows included', async () => {
+    const { from } = edit({ kind: 'macro', steps: [kp('a'), { kind: 'macro', steps: [kp('b')] }] });
+    await from({ kind: 'macro', steps: [kp('a'), { kind: 'macro', steps: [kp('c'), kp(' ')] }] });
+    expect(screen.getByLabelText('Step 2 step 1 text')).toHaveValue('c ');
+  });
+
+  it('keeps a step’s text through a kind it does not hold, and back', async () => {
+    const { seen, user } = edit({ kind: 'macro', steps: [kp('q'), kp('u')] });
+    await user.selectOptions(screen.getByLabelText('Step 1 kind'), 'macro');
+    expect(seen.current).toEqual({ kind: 'macro', steps: [{ kind: 'macro', symbols: 'qu' }] });
+    await user.selectOptions(screen.getByLabelText('Step 1 kind'), 'repeat');
+    await user.selectOptions(screen.getByLabelText('Step 1 kind'), 'text');
+    expect(screen.getByLabelText('Step 1 text')).toHaveValue('qu');
+  });
+
+  it('says a held layer does nothing only on the step itself, not on a tap-hold step’s hold', () => {
+    edit({
+      kind: 'macro',
+      steps: [
+        { kind: 'hold_tap', tap: kp('a'), hold: { kind: 'mo', layer: 'num' } },
+        { kind: 'mo', layer: 'num' },
+      ],
+    });
+    expect(screen.getAllByText(/In a macro this does nothing/)).toHaveLength(1);
   });
 });

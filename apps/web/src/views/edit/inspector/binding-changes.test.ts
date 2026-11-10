@@ -577,6 +577,17 @@ describe('a macro, written as text or as steps', () => {
     });
     const step = { id: 's', kind: 'step' as const, step: kp('b') };
     expect(rowAs(step, 'text', ctx)).toEqual({ id: 's', kind: 'text', text: 'b' });
+    // Text of several characters: a macro's text, or kept on the row through another kind.
+    const qu = { id: 'q', kind: 'text' as const, text: 'qu' };
+    expect(rowAs(qu, 'macro', ctx)).toMatchObject({ step: { kind: 'macro', symbols: 'qu' } });
+    expect(rowAs(rowAs(qu, 'symbol', ctx), 'text', ctx)).toEqual(qu);
+    expect(rowAs(rowAs(qu, 'layer', ctx), 'text', ctx)).toEqual(qu);
+    const written = {
+      id: 'm',
+      kind: 'step' as const,
+      step: { kind: 'macro' as const, symbols: 'ab' },
+    };
+    expect(rowAs(written, 'text', ctx)).toEqual({ id: 'm', kind: 'text', text: 'ab' });
     expect(rowAs(step, 'layer', ctx)).toMatchObject({ id: 's', step: { kind: 'sl' } });
     expect(rowAs(step, 'symbol', ctx)).toBe(step);
   });
