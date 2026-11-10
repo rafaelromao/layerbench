@@ -108,8 +108,9 @@ goes once they hold it. If your account could not be
 written (no connection, GitHub down, a sign-in that ended), the save is still kept in this browser,
 and **Save** does not refuse it: the status says it is not sent, and why, and a save made meanwhile
 goes on from it. The page tries again by itself, a few seconds later, then after 30 seconds, a minute,
-two, five, until it goes through. A save is waited on for ten seconds at most; past that it is said to
-be kept, and what comes of sending it, a name your account already has included, is left to the status.
+two, five, until it goes through. A save waits up to five seconds for the check of its name against your account and up to ten for
+the send; past that it is said to be kept, and what comes of sending it, a name your account already has
+included, is left to the status: it is not taken back, and what the account refuses afterwards is asked about.
 What your account refuses for what it holds, a name or a version that changed under a check of its
 own, is refused, and the copy is taken back to what it was, if it is still what that save wrote. It also tries when the
 browser comes back online and when you come back to the tab, from one tab at a time. A document that
@@ -191,7 +192,8 @@ that holds all of them in turn: it shows the two versions with when each was sav
 few lines (a name or a note as it reads in each, a layer as how many keys differ) and, for a layout, a
 link that opens the two side by side in **Compare**. **Keep mine** sends this browser's version to
 your account; **Keep theirs** makes this browser's copy the account's, and a layout open in
-**Analyze** is opened again as it. Neither is done until you choose, and if the account changes again
+**Analyze** with nothing unsaved is opened again as it. One with edits not saved yet is left as it
+is, and when saved is weighed against the version those edits were made on. Neither is done until you choose, and if the account changes again
 meanwhile, or this browser's copy was edited after the dialog showed it, nothing is written and you
 choose again. The dialog never opens over a field you are typing in, opens onto **Decide later**, and
 ignores the two choices for about half a second after it opens by itself, so a tap meant for what was
@@ -264,7 +266,17 @@ from there. One tab sends at a time.
   an account that signs in becomes the browser's at once, and the comparison can then mark documents
   whose ids collide with that account's.
 - A rename done while signed out is a new document and a deletion that is not sent, so the old name
-  stays in your account.
+  stays in your account. Signed in, a rename whose new copy could not be sent yet, or is asked about,
+  leaves the old copy where it is, here and in your account, and says so.
+- **Overwrite**, when saving over another layout of the same name, is bound to that layout's id, not to
+  the version the dialog showed: if that layout changed in your account since, the save is asked about
+  as any other, but it is not refused for being a different layout.
+- When a layout's id is already taken in your account by one of another name, **Keep mine** or **Keep
+  theirs** are offered as if the two were versions of one layout; the dialog shows both names, and
+  nothing is replaced until you choose.
+- A gist file whose text was written with its keys in another order than the app writes them is a
+  different version to this browser, though it reads alike: it is asked about once, and the answer
+  settles it.
 - A document in your account over a megabyte cannot be read, and so cannot be compared or sent.
 
 ## Signing out

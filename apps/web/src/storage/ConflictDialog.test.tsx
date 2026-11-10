@@ -1,15 +1,21 @@
 import { bundledLayout, toCanonicalJson } from '@layerbench/core';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useDocumentsChanged } from '../state/documents-changed.js';
 import { useToasts } from '../state/toasts.js';
 import { memoryMarks } from '../test/memory-marks.js';
 import { MemoryStorage } from '../test/memory-storage.js';
-import { forgetOffered, noteResult, review, startAutoSync, useSync } from './auto-sync.js';
+import { forgetOffered, noteResult, review, startAutoSync, syncNow, useSync } from './auto-sync.js';
 import { ConflictDialog } from './ConflictDialog.js';
 import { CompositeStorage } from './composite.js';
 import { StorageProvider } from './use-storage.js';
+
+// Everything of auto-sync is real; only the call that asks for a send is counted.
+vi.mock('./auto-sync.js', async (original) => {
+  const actual = await original<typeof import('./auto-sync.js')>();
+  return { ...actual, syncNow: vi.fn(actual.syncNow) };
+});
 
 /** The phone's edit, made offline, and the laptop's, made in the account, of each of `names`. */
 async function conflicted(names: string[] = ['Gust']) {
@@ -270,6 +276,25 @@ describe('choosing between two versions', () => {
       ),
     );
     stop();
+  });
+
+  it('says it was this browser that changed, not the account, when Keep mine finds it edited since', async () => {
+    const user = userEvent.setup();
+    const { storage, remote } = await conflicted();
+    show(storage);
+    await screen.findByRole('dialog', { name: 'Two versions of Gust' });
+    await storage.put('layouts', 'gust', { name: 'Gust', description: 'edited since' });
+    vi.mocked(syncNow).mockClear();
+
+    await choose(user, 'Keep mine');
+    await waitFor(() =>
+      expect(useToasts.getState().toasts.map((t) => t.text)).toContain(
+        'Gust was edited in this browser since you were shown it, so nothing was replaced. Choose again.',
+      ),
+    );
+    expect(await description(remote, 'gust')).toBe('Gust on the laptop');
+    // Asked about afresh as it now is, not left to the next attempt.
+    expect(syncNow).toHaveBeenCalled();
   });
 
   it("writes nothing, and says it was this browser's copy that changed, when it was edited since", async () => {

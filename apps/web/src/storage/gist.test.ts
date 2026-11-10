@@ -204,6 +204,33 @@ describe('gists as storage', () => {
     expect(results.map((r) => r.status)).toEqual(['rejected', 'fulfilled']);
   });
 
+  it('gives a document the same version however its text is written, so a hand edit is no change', async () => {
+    const doc = { name: 'Mine', description: 'a' };
+    const pretty = JSON.stringify(doc, null, 2);
+    responder = (call) =>
+      call.url.includes('/gists?')
+        ? json(200, [{ id: 'g1', files: { [indexFile('layouts')]: {} } }])
+        : json(200, {
+            id: 'g1',
+            files: {
+              [indexFile('layouts')]: {
+                content: JSON.stringify([
+                  { id: 'mine', name: 'Mine', updatedAt: '2026-01-01T00:00:00Z' },
+                ]),
+              },
+              [documentFile('layouts', 'mine')]: { content: pretty },
+            },
+          });
+    const adapter = new GistAdapter(access, memoryIds());
+    const read = await adapter.get('layouts', 'mine');
+    // The version a browser holding the same document gives it: the hash of its compact text.
+    expect(read?.meta.sha).toBe(await sha1Hex(JSON.stringify(doc)));
+    // And a write that names it is not refused as a change.
+    await expect(
+      adapter.put('layouts', 'mine', { ...doc, description: 'b' }, { expectedSha: read?.meta.sha }),
+    ).resolves.toBeDefined();
+  });
+
   it('drops index rows that are not index rows, including ids that are not ids', async () => {
     const rows = [
       { id: 'mine', name: 'Mine', updatedAt: '2026-01-01T00:00:00Z' },

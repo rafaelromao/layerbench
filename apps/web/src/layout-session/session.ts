@@ -12,6 +12,7 @@ import {
 } from '@layerbench/core';
 import { customRef } from '../custom/ref.js';
 import { type SaveOptions, sameDocument, saveNewLayout } from '../custom/save-new.js';
+import { CompositeStorage } from '../storage/composite.js';
 import { encodeInline } from '../url/inline.js';
 import { inlineRef } from '../url/params.js';
 import type { Drafts } from './drafts.js';
@@ -142,10 +143,17 @@ async function store(
   });
   let leftBehind = false;
   if (id !== storedId) {
-    try {
-      await storage.delete('layouts', storedId, { message: `Rename layout to ${layout.name}` });
-    } catch {
+    // The old copy goes only once the new one is safely stored: signed in, a save that was only
+    // kept here (the account could not be reached, or held something at that id or name to ask
+    // about) leaves the old copy where it is, in the account and here, until the user has dealt with it.
+    if (storage instanceof CompositeStorage && storage.unsentToAccount('layouts', id)) {
       leftBehind = true;
+    } else {
+      try {
+        await storage.delete('layouts', storedId, { message: `Rename layout to ${layout.name}` });
+      } catch {
+        leftBehind = true;
+      }
     }
   }
   return { id, leftBehind, sha: written.sha };

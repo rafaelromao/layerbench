@@ -1911,3 +1911,165 @@ describe('a version that comes back', () => {
     expect((await remote.get('layouts', 'x'))?.doc.name).toBe('A edited');
   });
 });
+
+describe('a save over a copy that another tab saves at the last moment', () => {
+  /** A browser store that commits `competing` just before it writes what is asked of it. */
+  function racing(inner: MemoryStorage, competing: () => Promise<unknown>, message: string) {
+    return Object.assign(Object.create(inner) as MemoryStorage, {
+      put: async (...args: Parameters<MemoryStorage['put']>) => {
+        if (args[3]?.message === message) await competing();
+        return inner.put(...args);
+      },
+    });
+  }
+
+  it("is refused, and the other tab's save kept", async () => {
+    const inner = new MemoryStorage('local');
+    await inner.put('rulesets', 'r', { name: 'R v1' });
+    const local = racing(
+      inner,
+      () => inner.put('rulesets', 'r', { name: 'R from another tab' }),
+      'S',
+    );
+    const composite = new CompositeStorage(local, null, memoryMarks());
+
+    await expect(
+      composite.put('rulesets', 'r', { name: 'R mine' }, { message: 'S' }),
+    ).rejects.toBeInstanceOf(StorageConflictError);
+    expect((await inner.get('rulesets', 'r'))?.doc.name).toBe('R from another tab');
+  });
+
+  it('is not made blind when the browser cannot be read', async () => {
+    const local = new MemoryStorage('local');
+    local.get = async () => {
+      throw new Error('the browser refused to read');
+    };
+    await expect(
+      new CompositeStorage(local, null, memoryMarks()).put('rulesets', 'r', { name: 'R' }),
+    ).rejects.toThrow('refused to read');
+  });
+});
+
+describe('edits whose mark was lost, refused', () => {
+  it('are marked again, so the status and the sender know of them', async () => {
+    const marks = memoryMarks();
+    const local = new MemoryStorage('local');
+    const composite = new CompositeStorage(local, null, marks);
+    await composite.put('layouts', 'x', { name: 'X' });
+    marks.clear('layouts', 'x');
+    const read = (await local.get('layouts', 'x'))?.meta.sha as string;
+    await local.put('layouts', 'x', { name: 'X', description: 'D2, unsent' });
+
+    await expect(
+      composite.put('layouts', 'x', { name: 'X', description: 'E3' }, { basedOn: read }),
+    ).rejects.toBeInstanceOf(StorageConflictError);
+    expect(marks.has('layouts', 'x')).toBe(true);
+    expect((await local.get('layouts', 'x'))?.doc.description).toBe('D2, unsent');
+  });
+});
+
+describe('taking a save back, atomically', () => {
+  it('does not delete a document another tab saved between the look and the delete', async () => {
+    const marks = memoryMarks();
+    const inner = new MemoryStorage('local');
+    const remote = new MemoryStorage('github');
+    remote.put = async () => {
+      throw new NameTakenError({ id: 'other', name: 'X' });
+    };
+    // Another tab saves the document just before it would be taken back.
+    const local = Object.assign(Object.create(inner) as MemoryStorage, {
+      delete: async (...args: Parameters<MemoryStorage['delete']>) => {
+        await inner.put('layouts', 'x', { name: 'X', description: 'another tab' });
+        return inner.delete(...args);
+      },
+    });
+    await expect(
+      new CompositeStorage(local, remote, marks).put('layouts', 'x', { name: 'X' }),
+    ).rejects.toBeInstanceOf(NameTakenError);
+    expect((await inner.get('layouts', 'x'))?.doc.description).toBe('another tab');
+  });
+
+  it('does not put back a copy over a save another tab made between the look and the write', async () => {
+    const marks = memoryMarks();
+    const inner = new MemoryStorage('local');
+    const remote = new MemoryStorage('github');
+    await inner.put('layouts', 'x', { name: 'X', description: 'before' });
+    remote.put = async () => {
+      throw new NameTakenError({ id: 'other', name: 'X' });
+    };
+    const local = Object.assign(Object.create(inner) as MemoryStorage, {
+      put: async (...args: Parameters<MemoryStorage['put']>) => {
+        // The put that takes the save back names the version it wrote and nothing else.
+        if (args[3]?.expectedSha !== undefined && args[3].message === undefined) {
+          await inner.put('layouts', 'x', { name: 'X', description: 'another tab' });
+        }
+        return inner.put(...args);
+      },
+    });
+    const held = (await inner.get('layouts', 'x'))?.meta.sha as string;
+    await expect(
+      new CompositeStorage(local, remote, marks).put(
+        'layouts',
+        'x',
+        { name: 'X' },
+        { basedOn: held, message: 'S' },
+      ),
+    ).rejects.toBeInstanceOf(NameTakenError);
+    expect((await inner.get('layouts', 'x'))?.doc.description).toBe('another tab');
+  });
+});
+
+describe("a refusal under a caller's own check that comes after the save was said kept", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('is not taken back: it stays, marked, and the sender is woken', async () => {
+    vi.useFakeTimers();
+    const marks = memoryMarks();
+    const local = new MemoryStorage('local');
+    const remote = new MemoryStorage('github');
+    await remote.put('proposals', 'p', { note: 'one' });
+    const sha = (await remote.get('proposals', 'p'))?.meta.sha as string;
+    let refuse: () => void = () => {};
+    remote.put = () =>
+      new Promise((_, reject) => {
+        refuse = () => reject(new StorageConflictError());
+      });
+    const composite = new CompositeStorage(local, remote, marks);
+    let kept = false;
+    void composite.put('proposals', 'p', { note: 'two' }, { expectedSha: sha }).then(() => {
+      kept = true;
+    });
+    await vi.waitFor(
+      async () => {
+        await vi.advanceTimersByTimeAsync(1_000);
+        expect(kept).toBe(true);
+      },
+      { timeout: 25_000, interval: 10 },
+    );
+
+    const heard = vi.fn();
+    marks.subscribe(heard);
+    refuse();
+    await composite.whenIdle();
+    expect(heard).toHaveBeenCalled();
+    expect((await local.get('proposals', 'p'))?.doc.note).toBe('two');
+    expect(marks.has('proposals', 'p')).toBe(true);
+  });
+});
+
+describe('what is kept here and not in the account', () => {
+  it('is known to the composite, signed in only', async () => {
+    const marks = memoryMarks();
+    const remote = new MemoryStorage('github');
+    remote.put = async () => {
+      throw new Error('GitHub responded 503');
+    };
+    const signedIn = new CompositeStorage(new MemoryStorage('local'), remote, marks);
+    await signedIn.put('layouts', 'x', { name: 'X' });
+    expect(signedIn.unsentToAccount('layouts', 'x')).toBe(true);
+    expect(signedIn.unsentToAccount('layouts', 'other')).toBe(false);
+    // Signed out, nothing is in the account to be kept apart from.
+    const signedOut = new CompositeStorage(new MemoryStorage('local'), null, marks);
+    expect(signedOut.unsentToAccount('layouts', 'x')).toBe(false);
+  });
+});

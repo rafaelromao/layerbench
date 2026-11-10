@@ -122,7 +122,7 @@ describe('sending by itself', () => {
     const storage = new CompositeStorage(local, remote, marks);
     const stop = startAutoSync(storage, marks, TIMING);
 
-    // A save while signed in that GitHub turns down: the browser has it, the user sees the failure.
+    // A save while signed in that GitHub turns down: the browser keeps it, marked, and the status says why.
     await storage.put('layouts', 'mine', { name: 'Mine' });
     expect(marks.count()).toBe(1);
     expect(await remote.get('layouts', 'mine')).toBeNull();

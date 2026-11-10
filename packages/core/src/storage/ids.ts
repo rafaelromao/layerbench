@@ -52,7 +52,15 @@ export interface StorageAdapter {
      */
     opts?: PutOptions,
   ): Promise<StorageMeta>;
-  delete(collection: Collection, id: string, opts?: { message?: string }): Promise<void>;
+  /**
+   * `expectedSha`: delete only that version; another is a conflict, and a document already missing is
+   * not one.
+   */
+  delete(
+    collection: Collection,
+    id: string,
+    opts?: { message?: string; expectedSha?: string },
+  ): Promise<void>;
 }
 
 export interface PutOptions {

@@ -157,10 +157,22 @@ export class IndexedDbAdapter implements StorageAdapter {
     return { sha, path: documentPath(collection, id) };
   }
 
-  async delete(collection: Collection, id: string): Promise<void> {
+  async delete(
+    collection: Collection,
+    id: string,
+    opts: { message?: string; expectedSha?: string } = {},
+  ): Promise<void> {
     assertDocumentId(id);
     const db = await this.conn();
     const tx = db.transaction([collection, INDEX_STORE], 'readwrite');
+    if (opts.expectedSha !== undefined) {
+      // Only the version decided on, checked in the same transaction as the delete.
+      const existing = (await tx.objectStore(collection).get(id)) as StoredDoc | undefined;
+      if (existing && existing.sha !== opts.expectedSha) {
+        await tx.done.catch(() => {});
+        throw new StorageConflictError();
+      }
+    }
     await tx.objectStore(collection).delete(id);
     const indexStore = tx.objectStore(INDEX_STORE);
     const current = ((await indexStore.get(collection)) as IndexEntry[] | undefined) ?? [];

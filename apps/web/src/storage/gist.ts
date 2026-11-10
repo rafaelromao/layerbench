@@ -31,6 +31,19 @@ const DESCRIPTIONS: Record<Collection, string> = {
 export const indexFile = (collection: Collection) => `${collection}.index.json`;
 export const documentFile = (collection: Collection, id: string) => `${collection}.${id}.json`;
 
+/**
+ * A document's version: the hash of the text it is saved as, as the browser's store hashes it. A file
+ * whose text is the same document written another way (spacing, say, from a hand edit or another
+ * tool) has the same version, so it is not taken for a change.
+ */
+async function versionOf(text: string): Promise<string> {
+  try {
+    return await sha1Hex(JSON.stringify(JSON.parse(text)));
+  } catch {
+    return sha1Hex(text);
+  }
+}
+
 function isIndexEntry(value: unknown): value is IndexEntry {
   if (!value || typeof value !== 'object') return false;
   const o = value as Record<string, unknown>;
@@ -227,7 +240,10 @@ export class GistAdapter implements StorageAdapter {
     const path = documentFile(collection, id);
     const content = gist ? GistAdapter.content(gist, path) : null;
     if (content === null) return null;
-    return { doc: JSON.parse(content) as JsonObject, meta: { sha: await sha1Hex(content), path } };
+    return {
+      doc: JSON.parse(content) as JsonObject,
+      meta: { sha: await versionOf(content), path },
+    };
   }
 
   /**
@@ -258,7 +274,7 @@ export class GistAdapter implements StorageAdapter {
     const current = gist ? GistAdapter.content(gist, path) : null;
     if (opts.expectedSha !== undefined && current !== null) {
       // Expected to be absent, or expected at another version.
-      if (opts.expectedSha === null || (await sha1Hex(current)) !== opts.expectedSha) {
+      if (opts.expectedSha === null || (await versionOf(current)) !== opts.expectedSha) {
         throw new StorageConflictError();
       }
     }

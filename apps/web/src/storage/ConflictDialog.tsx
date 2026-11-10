@@ -144,6 +144,8 @@ export function ConflictDialog() {
         toast.error(
           `${current.name} was edited in this browser since you were shown it, so nothing was replaced. Choose again.`,
         );
+        // Asked about afresh, as it now is, rather than at the next attempt.
+        syncNow();
       } else if (result === 'gone') {
         // Deleted from the account since: nothing there to keep, and this browser's is not thrown away.
         settledConflict(current);

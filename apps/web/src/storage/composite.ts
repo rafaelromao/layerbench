@@ -70,7 +70,7 @@ export class CopyUpError extends Error {
 export interface Audited {
   /** The same in both. */
   equal: number;
-  /** Not edited here, the gists' being newer: this browser's copy was brought up to it. */
+  /** Not edited here, the gists' version having moved on: this browser's copy was brought up to it. */
   adopted: number;
   /** Differing, and not known to be an older copy: marked, for sending to weigh. */
   marked: number;
@@ -339,7 +339,8 @@ export class CompositeStorage implements StorageAdapter {
     // Edits waiting to be sent are the latest work, and a save of them is written over exactly the
     // version the editor read: a tab opened before another saved them is refused, not written over
     // the other's, and what is waiting is kept.
-    const before = waiting ? null : await this.local.get(collection, id).catch(() => null);
+    // A browser that cannot be read is no copy to decide from: the save is not made blind.
+    const before = waiting ? null : await this.local.get(collection, id);
     // Unsent edits whose mark was lost are the same: a copy that is neither the version recorded nor
     // the one the editor read has been edited here since, and is not written over by an editor that
     // did not see it.
@@ -349,17 +350,29 @@ export class CompositeStorage implements StorageAdapter {
       typeof opts.basedOn === 'string' &&
       before.meta.sha !== opts.basedOn &&
       before.meta.sha !== previousBase;
+    // Any other save is written over the copy it read, in the store's own transaction: a save from
+    // another tab that lands between the read and the write is refused, not written over.
     const guard =
       (waiting || unmarkedEdit) && typeof opts.basedOn === 'string'
         ? { expectedSha: opts.basedOn }
-        : undefined;
+        : before !== null
+          ? { expectedSha: before.meta.sha }
+          : undefined;
     const write = () => this.local.put(collection, id, doc, { ...here, ...guard });
+    /** A save refused over edits whose mark was lost: they are unsent, and are marked again. */
+    const refused = () => {
+      restoreBase();
+      if (unmarkedEdit) {
+        this.marks.mark(collection, id);
+        this.marks.notify();
+      }
+    };
     if (!remote) {
       let meta: StorageMeta;
       try {
         meta = await this.writeAhead(collection, id, write);
       } catch (e) {
-        restoreBase();
+        refused();
         throw e;
       }
       this.marks.notify();
@@ -371,7 +384,7 @@ export class CompositeStorage implements StorageAdapter {
     try {
       saved = await this.writeAhead(collection, id, write);
     } catch (e) {
-      restoreBase();
+      refused();
       throw e;
     }
     // Edits not sent yet are not written to the gists by their next save either: the gists may
@@ -463,9 +476,9 @@ export class CompositeStorage implements StorageAdapter {
         this.marks.notify();
         return saved;
       }
-      if (e instanceof NameTakenError && late.slow) {
+      if ((e instanceof NameTakenError || e instanceof StorageConflictError) && late.slow) {
         // The caller was told it is kept, so it is not taken back: it stays marked, and is left for
-        // the sender, which finds the name taken and says so in the status.
+        // the sender, which weighs it against what the gists hold, and says so in the status.
         this.marks.notify();
         return saved;
       }
@@ -499,9 +512,10 @@ export class CompositeStorage implements StorageAdapter {
     if (!now || now.meta.sha !== writtenSha) return;
     try {
       if (before) await this.local.put(collection, id, before.doc, { expectedSha: writtenSha });
-      else await this.local.delete(collection, id);
+      else await this.local.delete(collection, id, { expectedSha: writtenSha });
     } catch {
-      // Left as it is, and marked: the user is told, and it is weighed when sent.
+      // Left as it is, and marked: the user is told, and it is weighed when sent. A save that landed
+      // between the look and the write refuses the delete as it does the restore.
       return;
     }
     this.marks.clear(collection, id);
@@ -530,6 +544,14 @@ export class CompositeStorage implements StorageAdapter {
       // Gone from this browser, there is nothing left of it to send.
       this.marks.forget(collection, id);
     });
+  }
+
+  /**
+   * Whether a document is kept here and not in the account: signed in, with its save not sent. What it
+   * replaced, a renamed layout's old copy, is not deleted from the account until it is.
+   */
+  unsentToAccount(collection: Collection, id: string): boolean {
+    return this.remote !== null && this.marks.has(collection, id);
   }
 
   /** Whether there are gists to copy up to, rather than the browser store alone. */
@@ -711,7 +733,7 @@ export class CompositeStorage implements StorageAdapter {
     if (seen && !this.marks.has(collection, id)) {
       const base = this.marks.base(collection, id);
       // Never edited here since the version both last held, with the gists' since moved on: an
-      // older copy, not an edit. It is brought up, not sent over what is newer.
+      // older copy, not an edit. It is brought up, not sent over a version that moved on.
       if (base !== null && stored.meta.sha === base) {
         if (await this.replaceLocal(collection, id, seen.doc, stored.meta)) {
           this.marks.setBase(collection, id, seen.meta.sha);

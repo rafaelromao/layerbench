@@ -63,32 +63,34 @@ export class MemoryStorage implements StorageAdapter {
     opts: PutOptions = {},
   ): Promise<StorageMeta> {
     assertDocumentId(id);
+    // What takes time first, then the check and the write with nothing awaited between them, as a
+    // store's transaction is.
+    const json = JSON.stringify(doc);
+    const sha = await sha1Hex(json);
+    const entries = collection === 'layouts' ? await this.list(collection) : [];
     const existing = this.docs.get(`${collection}/${id}`);
     // A missing document is not a conflict: the first write of an id always wins.
     if (opts.expectedSha !== undefined && existing && existing.sha !== opts.expectedSha) {
       throw new StorageConflictError();
     }
     if (collection === 'layouts') {
-      const taken = nameTaken(
-        await this.list(collection),
-        indexSummary(collection, id, doc).name,
-        id,
-        opts.replacing,
-      );
+      const taken = nameTaken(entries, indexSummary(collection, id, doc).name, id, opts.replacing);
       if (taken) throw new NameTakenError(taken);
     }
-    const json = JSON.stringify(doc);
-    const sha = await sha1Hex(json);
-    this.docs.set(`${collection}/${id}`, {
-      json,
-      sha,
-      updatedAt: new Date().toISOString(),
-    });
+    this.docs.set(`${collection}/${id}`, { json, sha, updatedAt: new Date().toISOString() });
     return { sha };
   }
 
-  async delete(collection: Collection, id: string): Promise<void> {
+  async delete(
+    collection: Collection,
+    id: string,
+    opts: { message?: string; expectedSha?: string } = {},
+  ): Promise<void> {
     assertDocumentId(id);
+    const existing = this.docs.get(`${collection}/${id}`);
+    if (opts.expectedSha !== undefined && existing && existing.sha !== opts.expectedSha) {
+      throw new StorageConflictError();
+    }
     this.docs.delete(`${collection}/${id}`);
   }
 }
