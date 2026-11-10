@@ -9,8 +9,9 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
-import { gistIds, gitHubAccess, useGitHubSession } from '../auth/github-session.js';
+import { gistIds, gitHubAccess, retrySignIn, useGitHubSession } from '../auth/github-session.js';
 import { toast } from '../state/toasts.js';
+import { AutoSync } from './auto-sync.js';
 import { CompositeStorage, type CopiedUp } from './composite.js';
 import { GistAdapter } from './gist.js';
 import { IndexedDbAdapter } from './indexeddb.js';
@@ -32,7 +33,23 @@ export function StorageProvider({
 }) {
   const status = useGitHubSession((s) => s.status);
   const login = useGitHubSession((s) => s.login);
+  const problem = useGitHubSession((s) => s.problem);
   const settled = !!adapter || status !== 'unknown';
+
+  // A sign-in server that did not answer is asked again when the browser is back online, or the
+  // tab is shown again: a phone out of coverage comes back to it, and must not stay signed out.
+  useEffect(() => {
+    if (adapter || problem !== 'unreachable') return;
+    const again = () => {
+      if (document.visibilityState === 'visible') void retrySignIn();
+    };
+    window.addEventListener('online', again);
+    document.addEventListener('visibilitychange', again);
+    return () => {
+      window.removeEventListener('online', again);
+      document.removeEventListener('visibilitychange', again);
+    };
+  }, [adapter, problem]);
 
   const value = useMemo(() => {
     if (adapter) return adapter;
@@ -42,13 +59,16 @@ export function StorageProvider({
       ),
     );
     // GitHub only joins in once someone is signed in: their documents go to their secret gists.
-    if (status !== 'signed-in' || !login) return local;
+    // Until then what is saved is marked, to be sent once they are.
+    if (status !== 'signed-in' || !login) return new CompositeStorage(local, null);
     return new CompositeStorage(local, new GistAdapter(gitHubAccess, gistIds(login)));
   }, [adapter, status, login]);
 
   return (
     <StorageContext.Provider value={value}>
       <SettledContext.Provider value={settled}>
+        {/* Tests that pass their own adapter run the sending themselves, or not at all. */}
+        {!adapter && <AutoSync storage={value} login={status === 'signed-in' ? login : null} />}
         <ListingsProvider>{children}</ListingsProvider>
       </SettledContext.Provider>
     </StorageContext.Provider>
@@ -69,7 +89,10 @@ export function useCopyUp(): (() => Promise<CopiedUp>) | null {
   const storage = useStorage();
   return useMemo(
     () =>
-      storage instanceof CompositeStorage && storage.reachesRemote ? () => storage.copyUp() : null,
+      storage instanceof CompositeStorage && storage.reachesRemote
+        ? // Everything this browser holds, not only what it knows to be unsent: what the user asks for.
+          () => storage.copyUp({ everything: true })
+        : null,
     [storage],
   );
 }

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { useGitHubSession } from '../auth/github-session.js';
 import { useToasts } from '../state/toasts.js';
 import { MemoryStorage } from '../test/memory-storage.js';
+import { useSync } from './auto-sync.js';
 import { CompositeStorage } from './composite.js';
 import { StorageSettings } from './StorageSettings.js';
 import { StorageProvider } from './use-storage.js';
@@ -34,6 +35,22 @@ describe('Storage', () => {
       ),
     );
     expect((await remote.get('layouts', 'mine'))?.doc).toEqual({ name: 'Mine' });
+  });
+
+  it('does not copy up what is held back for another account, which the status releases', async () => {
+    const user = userEvent.setup();
+    const storage = new CompositeStorage(new MemoryStorage('local'), new MemoryStorage('github'));
+    useGitHubSession.setState({ status: 'signed-in', login: 'me' });
+    useSync.setState({ held: { account: 'someone-else' } });
+    render(
+      <StorageProvider adapter={storage}>
+        <StorageSettings />
+      </StorageProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /^Storage/ }));
+    expect(screen.getByRole('button', { name: "Copy this browser's documents up" })).toBeDisabled();
+    useSync.setState({ held: null });
   });
 
   it('cannot copy up where storage is this browser alone', async () => {

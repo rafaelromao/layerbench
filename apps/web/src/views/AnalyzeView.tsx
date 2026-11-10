@@ -1,5 +1,6 @@
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useMemo } from 'react';
+import { StillWorking } from '../components/StillWorking.js';
 import { useAnalysisClient } from '../engine/client-context.js';
 import { useLayoutSession } from '../layout-session/use-layout-session.js';
 import { useCarried, useRememberSelection } from '../state/selection.js';
@@ -72,7 +73,13 @@ export function AnalyzeView() {
           </Link>
         </div>
       ) : (
-        <span className="loading loading-dots loading-md" />
+        <>
+          <span className="loading loading-dots loading-md" />
+          <StillWorking after={10_000}>
+            This layout is taking longer than it should to open. If LayerBench is open in another
+            tab, close that tab, then reload.
+          </StillWorking>
+        </>
       )}
     </div>
   );

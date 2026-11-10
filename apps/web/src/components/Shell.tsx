@@ -5,7 +5,9 @@ import { useCarried } from '../state/selection.js';
 import { useSession } from '../state/session.js';
 import type { ThemeChoice } from '../state/theme.js';
 import { useToasts } from '../state/toasts.js';
+import { ConflictDialog } from '../storage/ConflictDialog.js';
 import { StorageSettings } from '../storage/StorageSettings.js';
+import { StillWorking } from './StillWorking.js';
 import { useDismiss } from './use-dismiss.js';
 
 /** The Library comes first: it is where the site opens, and where a layout is picked. */
@@ -239,6 +241,11 @@ export function Shell({ children }: { children: ReactNode }) {
           />
         )}
       </header>
+      {busy && (
+        <StillWorking after={30_000} className="mx-3 mt-2 sm:mx-4 lg:mx-6">
+          Still working. This can take a while on a phone; if it does not finish, reload.
+        </StillWorking>
+      )}
       <main
         id="main"
         ref={main}
@@ -248,6 +255,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <div className="mx-auto max-w-[1600px] space-y-4">{children}</div>
       </main>
       <ToastRegion />
+      <ConflictDialog />
     </>
   );
 }

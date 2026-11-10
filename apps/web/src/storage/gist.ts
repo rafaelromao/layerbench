@@ -86,17 +86,40 @@ function isGist(value: unknown): value is Gist {
 export class GistAdapter implements StorageAdapter {
   readonly id = 'gist';
   private readonly cache = new Map<string, { gist: Gist; etag: string | null }>();
-  private searched = false;
+  /** The look through the user's gists, shared by everything that asks while it is out. */
+  private searching: Promise<void> | null = null;
+  /**
+   * One write at a time. A write reads the gist and then edits it whole, so two at once each edit
+   * what the other has not landed in: one drops the other's row from the index, or, with no gist
+   * yet, both make one.
+   */
+  private turn: Promise<unknown> = Promise.resolve();
+
+  private exclusive<T>(work: () => Promise<T>): Promise<T> {
+    const run = this.turn.then(work, work);
+    this.turn = run.catch(() => {});
+    return run;
+  }
 
   constructor(
     private readonly access: GitHubAccess,
     private readonly ids: GistIds,
   ) {}
 
-  /** Look through the user's gists once for any of ours that are not remembered yet. */
-  private async search(): Promise<void> {
-    if (this.searched) return;
-    this.searched = true;
+  /**
+   * Look through the user's gists once for any of ours that are not remembered yet. Whoever asks
+   * while it is out waits for it, rather than finding no gist and starting a second one; a look
+   * that failed is made again by the next ask.
+   */
+  private search(): Promise<void> {
+    this.searching ??= this.scan().catch((e: unknown) => {
+      this.searching = null;
+      throw e;
+    });
+    return this.searching;
+  }
+
+  private async scan(): Promise<void> {
     for (let page = 1; page <= MAX_LIST_PAGES; page++) {
       const res = await gitHubFetch(this.access, `${API}/gists?per_page=100&page=${page}`);
       if (!res.ok) throw new Error(`GitHub responded ${res.status}`);
@@ -133,7 +156,7 @@ export class GistAdapter implements StorageAdapter {
       this.cache.delete(id);
       this.ids.set(collection, undefined);
       if (retried) return null;
-      this.searched = false;
+      this.searching = null;
       return this.read(collection, true);
     }
     if (!res.ok) throw new Error(`GitHub responded ${res.status}`);
@@ -158,21 +181,32 @@ export class GistAdapter implements StorageAdapter {
     gist: Gist | null,
     files: Record<string, { content: string } | null>,
   ): Promise<void> {
-    const res = gist
-      ? await gitHubFetch(this.access, `${API}/gists/${encodeURIComponent(gist.id)}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ files }),
-        })
-      : await gitHubFetch(this.access, `${API}/gists`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ description: DESCRIPTIONS[collection], public: false, files }),
-        });
+    let res: Response;
+    try {
+      res = gist
+        ? await gitHubFetch(this.access, `${API}/gists/${encodeURIComponent(gist.id)}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ files }),
+          })
+        : await gitHubFetch(this.access, `${API}/gists`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ description: DESCRIPTIONS[collection], public: false, files }),
+          });
+    } catch (e) {
+      // A gist made for the first time may have been made though the answer never came: the next
+      // look finds it by its index file, rather than starting a second one.
+      if (!gist) this.searching = null;
+      throw e;
+    }
 
     if (gist) this.cache.delete(gist.id);
     if (res.status === 404 && gist) this.ids.set(collection, undefined);
-    if (!res.ok) throw new Error(`GitHub responded ${res.status}`);
+    if (!res.ok) {
+      if (!gist) this.searching = null;
+      throw new Error(`GitHub responded ${res.status}`);
+    }
     const written: unknown = await res.json();
     if (!isGist(written)) throw new Error('GitHub returned something other than a gist');
     this.ids.set(collection, written.id);
@@ -208,6 +242,15 @@ export class GistAdapter implements StorageAdapter {
     opts: PutOptions = {},
   ): Promise<StorageMeta> {
     assertDocumentId(id);
+    return this.exclusive(() => this.putNow(collection, id, doc, opts));
+  }
+
+  private async putNow(
+    collection: Collection,
+    id: string,
+    doc: JsonObject,
+    opts: PutOptions,
+  ): Promise<StorageMeta> {
     const path = documentFile(collection, id);
     const content = JSON.stringify(doc);
     const gist = await this.read(collection);
@@ -239,6 +282,10 @@ export class GistAdapter implements StorageAdapter {
 
   async delete(collection: Collection, id: string): Promise<void> {
     assertDocumentId(id);
+    return this.exclusive(() => this.deleteNow(collection, id));
+  }
+
+  private async deleteNow(collection: Collection, id: string): Promise<void> {
     const path = documentFile(collection, id);
     const gist = await this.read(collection);
     if (!gist) return;

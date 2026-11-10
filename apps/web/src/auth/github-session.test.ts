@@ -7,11 +7,17 @@ import {
   initGitHubSession,
   maintainLibrary,
   proposeChange,
+  retrySignIn,
   returnFromGitHub,
   signOut,
   submitLayout,
   useGitHubSession,
 } from './github-session.js';
+
+/** The work a lock is asked for, which the API takes with or without options before it. */
+type Work = () => Promise<unknown>;
+const lockWork = (a: object | Work, b?: Work): Work =>
+  typeof a === 'function' ? (a as Work) : (b as Work);
 
 interface Call {
   url: string;
@@ -66,6 +72,7 @@ beforeEach(() => {
   useGitHubSession.setState({
     status: 'unknown',
     login: null,
+    problem: null,
     clientId: '',
     maintainer: false,
   });
@@ -133,10 +140,16 @@ describe('the GitHub session in the page', () => {
   });
 
   it('renews one tab at a time, since a refresh token works once', async () => {
-    const request = vi.fn((_name: string, work: () => Promise<unknown>) => work());
+    const request = vi.fn((_name: string, a: object | Work, b?: Work) => lockWork(a, b)());
     vi.stubGlobal('navigator', { ...navigator, locks: { request } });
     await initGitHubSession();
-    expect(request).toHaveBeenCalledWith('layerbench:github-session', expect.any(Function));
+    // Waiting for the lock is limited by a signal that aborts, so a tab that never lets go does not
+    // hold this one up for ever.
+    expect(request).toHaveBeenCalledWith(
+      'layerbench:github-session',
+      { signal: expect.any(AbortSignal) },
+      expect.any(Function),
+    );
   });
 });
 
@@ -151,10 +164,10 @@ describe('the session this browser keeps', () => {
 
   it('reads the session only once it holds the lock, after the tab before it is done', async () => {
     localStorage.setItem(SESSION, 'sealed-old');
-    const request = (_name: string, work: () => Promise<unknown>) => {
+    const request = (_name: string, a: object | Work, b?: Work) => {
       // The tab that held the lock renewed the session and stored the new one.
       localStorage.setItem(SESSION, 'sealed-new');
-      return work();
+      return lockWork(a, b)();
     };
     vi.stubGlobal('navigator', { ...navigator, locks: { request } });
     await initGitHubSession();
@@ -229,6 +242,265 @@ describe('the session this browser keeps', () => {
   });
 });
 
+describe('a check that does not end', () => {
+  const never = () => new Promise<Response>(() => {});
+
+  it('gives up on a server that does not answer, and says so when a session was kept', async () => {
+    vi.useFakeTimers();
+    localStorage.setItem(SESSION, 'sealed-1');
+    vi.stubGlobal('fetch', never);
+    const done = initGitHubSession();
+    expect(useGitHubSession.getState().status).toBe('unknown');
+
+    await vi.advanceTimersByTimeAsync(10_000);
+    await done;
+    expect(useGitHubSession.getState()).toMatchObject({
+      status: 'signed-out',
+      problem: 'unreachable',
+    });
+    // Not known to be over, so not forgotten.
+    expect(localStorage.getItem(SESSION)).toBe('sealed-1');
+  });
+
+  it('says nothing of a server it cannot reach to a browser that never signed in', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('fetch', never);
+    const done = initGitHubSession();
+    await vi.advanceTimersByTimeAsync(10_000);
+    await done;
+    expect(useGitHubSession.getState()).toMatchObject({ status: 'signed-out', problem: null });
+  });
+
+  it('gives up on a tab that never lets go of the lock', async () => {
+    vi.useFakeTimers();
+    localStorage.setItem(SESSION, 'sealed-1');
+    const request = vi.fn(() => new Promise(() => {}));
+    vi.stubGlobal('navigator', { ...navigator, locks: { request } });
+    const done = initGitHubSession();
+    await vi.advanceTimersByTimeAsync(10_000);
+    await done;
+    expect(useGitHubSession.getState()).toMatchObject({
+      status: 'signed-out',
+      problem: 'unreachable',
+    });
+  });
+
+  it('still takes an answer that comes after the limit', async () => {
+    vi.useFakeTimers();
+    localStorage.setItem(SESSION, 'sealed-1');
+    let answerLate: (r: Response) => void = () => {};
+    vi.stubGlobal(
+      'fetch',
+      () =>
+        new Promise<Response>((resolve) => {
+          answerLate = resolve;
+        }),
+    );
+    const done = initGitHubSession();
+    await vi.advanceTimersByTimeAsync(10_000);
+    await done;
+    expect(useGitHubSession.getState().status).toBe('signed-out');
+
+    answerLate(reply(SIGNED_IN));
+    await vi.waitFor(() => expect(useGitHubSession.getState().status).toBe('signed-in'));
+    expect(useGitHubSession.getState().problem).toBeNull();
+  });
+
+  it('is asked again on request, and answers', async () => {
+    vi.useFakeTimers();
+    localStorage.setItem(SESSION, 'sealed-1');
+    vi.stubGlobal('fetch', never);
+    const first = initGitHubSession();
+    await vi.advanceTimersByTimeAsync(10_000);
+    await first;
+    expect(useGitHubSession.getState().problem).toBe('unreachable');
+
+    vi.stubGlobal('fetch', async () => reply(SIGNED_IN));
+    const again = retrySignIn();
+    // Asking again is asking: the page does not claim to know in the meantime.
+    expect(useGitHubSession.getState()).toMatchObject({ status: 'unknown', problem: null });
+    await again;
+    expect(useGitHubSession.getState()).toMatchObject({ status: 'signed-in', problem: null });
+  });
+
+  it('stops waiting for a token the sign-in server is slow to give, and says why', async () => {
+    vi.useFakeTimers();
+    answer = () => reply(SIGNED_OUT);
+    await initGitHubSession();
+    localStorage.setItem(SESSION, 'sealed-1');
+    vi.stubGlobal('fetch', never);
+    const asked = expect(getToken()).rejects.toThrow('the sign-in server did not answer in time');
+    await vi.advanceTimersByTimeAsync(10_000);
+    await asked;
+  });
+
+  it('does not cancel a request the server may already have spent the session on', async () => {
+    vi.useFakeTimers();
+    localStorage.setItem(SESSION, 'sealed-1');
+    let signal: AbortSignal | null | undefined;
+    vi.stubGlobal('fetch', (_url: string, init?: RequestInit) => {
+      signal = init?.signal;
+      return never();
+    });
+    const asking = initGitHubSession();
+    await vi.advanceTimersByTimeAsync(30_000);
+    await asking;
+    // The server spends the refresh token it is sent and answers with the next session: an answer
+    // thrown away would leave the browser holding one that is retired, and signed out.
+    expect(signal ?? null).toBeNull();
+  });
+
+  it('keeps the session an answer that comes late carries', async () => {
+    vi.useFakeTimers();
+    localStorage.setItem(SESSION, 'sealed-1');
+    let answerLate: (r: Response) => void = () => {};
+    vi.stubGlobal(
+      'fetch',
+      () =>
+        new Promise<Response>((resolve) => {
+          answerLate = resolve;
+        }),
+    );
+    const asking = initGitHubSession();
+    await vi.advanceTimersByTimeAsync(10_000);
+    await asking;
+
+    answerLate(reply({ ...SIGNED_IN, session: 'sealed-next' }));
+    await vi.waitFor(() => expect(localStorage.getItem(SESSION)).toBe('sealed-next'));
+    expect(useGitHubSession.getState().status).toBe('signed-in');
+  });
+
+  it('names a lock that was waited for in vain', async () => {
+    answer = () => reply(SIGNED_OUT);
+    await initGitHubSession();
+    const request = async () => {
+      throw new DOMException('signal timed out', 'TimeoutError');
+    };
+    vi.stubGlobal('navigator', { ...navigator, locks: { request } });
+    await expect(getToken()).rejects.toThrow('another tab of LayerBench is holding up the sign-in');
+  });
+
+  it('signs out even when another tab holds the lock', async () => {
+    localStorage.setItem(SESSION, 'sealed-1');
+    await initGitHubSession();
+    const request = async () => {
+      throw new DOMException('signal timed out', 'TimeoutError');
+    };
+    vi.stubGlobal('navigator', { ...navigator, locks: { request } });
+    await signOut();
+    expect(localStorage.getItem(SESSION)).toBeNull();
+    expect(useGitHubSession.getState()).toMatchObject({ status: 'signed-out', problem: null });
+  });
+});
+
+describe('an answer that is not a no', () => {
+  it('is not taken for there being no sign-in when the server is down or too busy', async () => {
+    for (const status of [500, 503, 504, 429]) {
+      useGitHubSession.setState({ status: 'unknown', problem: null });
+      localStorage.setItem(SESSION, 'sealed-1');
+      answer = () => reply({ error: 'down' }, status);
+      await initGitHubSession();
+      expect(useGitHubSession.getState()).toMatchObject({
+        status: 'signed-out',
+        problem: 'unreachable',
+      });
+      expect(localStorage.getItem(SESSION)).toBe('sealed-1');
+    }
+  });
+
+  it('is not taken for there being no sign-in when a browser that had a session is answered by a page', async () => {
+    localStorage.setItem(SESSION, 'sealed-1');
+    answer = () => new Response('<!doctype html>', { headers: { 'Content-Type': 'text/html' } });
+    await initGitHubSession();
+    expect(useGitHubSession.getState()).toMatchObject({
+      status: 'signed-out',
+      problem: 'unreachable',
+    });
+    expect(localStorage.getItem(SESSION)).toBe('sealed-1');
+  });
+});
+
+describe('signing out while an answer is out', () => {
+  it('throws the answer away, rather than signing the user in again', async () => {
+    localStorage.setItem(SESSION, 'sealed-1');
+    let answerLate: (r: Response) => void = () => {};
+    vi.stubGlobal('fetch', (url: string) =>
+      url.endsWith('/logout')
+        ? Promise.resolve(new Response(null, { status: 204 }))
+        : new Promise<Response>((resolve) => {
+            answerLate = resolve;
+          }),
+    );
+    const asking = initGitHubSession();
+    await vi.waitFor(() => expect(localStorage.getItem(SESSION)).toBe('sealed-1'));
+    await signOut();
+    expect(localStorage.getItem(SESSION)).toBeNull();
+
+    // The server answers a renewal the user has since ended.
+    answerLate(reply({ ...SIGNED_IN, session: 'sealed-next' }));
+    await asking;
+    expect(localStorage.getItem(SESSION)).toBeNull();
+    expect(useGitHubSession.getState().status).not.toBe('signed-in');
+    expect(useGitHubSession.getState().problem).toBeNull();
+  });
+});
+
+describe('a session that ends', () => {
+  it('is said to have ended when this browser had one and the server turns it down', async () => {
+    localStorage.setItem(SESSION, 'sealed-1');
+    answer = () => reply(SIGNED_OUT);
+    await initGitHubSession();
+    expect(useGitHubSession.getState()).toMatchObject({ status: 'signed-out', problem: 'ended' });
+  });
+
+  it('is told again on the next visit, until the user signs in or out', async () => {
+    localStorage.setItem(SESSION, 'sealed-1');
+    answer = () => reply(SIGNED_OUT);
+    await initGitHubSession();
+    expect(useGitHubSession.getState().problem).toBe('ended');
+
+    // The visit after: no session is kept any more, and still it is said.
+    useGitHubSession.setState({ status: 'unknown', problem: null });
+    await initGitHubSession();
+    expect(useGitHubSession.getState()).toMatchObject({ status: 'signed-out', problem: 'ended' });
+
+    await signOut();
+    useGitHubSession.setState({ status: 'unknown', problem: null });
+    await initGitHubSession();
+    expect(useGitHubSession.getState().problem).toBeNull();
+  });
+
+  it('is nothing to report in a browser that had none', async () => {
+    answer = () => reply(SIGNED_OUT);
+    await initGitHubSession();
+    expect(useGitHubSession.getState()).toMatchObject({ status: 'signed-out', problem: null });
+  });
+
+  it('is said to have ended when GitHub turns the token down and the session cannot be renewed', async () => {
+    localStorage.setItem(SESSION, 'sealed-1');
+    answer = (call) => reply(call.body?.renew ? SIGNED_OUT : SIGNED_IN);
+    await initGitHubSession();
+    expect(useGitHubSession.getState().problem).toBeNull();
+    gitHubAccess.onUnauthorized?.('ghu_one');
+    await vi.waitFor(() =>
+      expect(useGitHubSession.getState()).toMatchObject({ status: 'signed-out', problem: 'ended' }),
+    );
+  });
+
+  it('is nothing to report once the user signs out themselves, or signs in again', async () => {
+    localStorage.setItem(SESSION, 'sealed-1');
+    answer = () => reply(SIGNED_OUT);
+    await initGitHubSession();
+    expect(useGitHubSession.getState().problem).toBe('ended');
+
+    answer = () => reply(SIGNED_IN);
+    await retrySignIn();
+    expect(useGitHubSession.getState()).toMatchObject({ status: 'signed-in', problem: null });
+    await signOut();
+    expect(useGitHubSession.getState().problem).toBeNull();
+  });
+});
+
 describe('a token GitHub turns down', () => {
   /** Signed in with `ghu_one` from `sealed-1`; asked to renew, the server gives `ghu_two`. */
   async function signedIn(
@@ -274,8 +546,8 @@ describe('a token GitHub turns down', () => {
   it('is renewed once, however many requests GitHub turned down with it', async () => {
     // Tabs and requests take turns, as the browser's lock makes them.
     let queue: Promise<unknown> = Promise.resolve();
-    const request = (_name: string, work: () => Promise<unknown>) => {
-      const turn = queue.then(work);
+    const request = (_name: string, a: object | Work, b?: Work) => {
+      const turn = queue.then(lockWork(a, b));
       queue = turn.catch(() => {});
       return turn;
     };

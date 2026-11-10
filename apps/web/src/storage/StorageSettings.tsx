@@ -3,7 +3,10 @@ import { signIn, signOut, useGitHubSession } from '../auth/github-session.js';
 import { HelpLink } from '../components/HelpLink.js';
 import { HELP } from '../guide/help.js';
 import { toast } from '../state/toasts.js';
+import { noteResult, useSync } from './auto-sync.js';
 import { CopyUpError } from './composite.js';
+import { SyncNote } from './SyncNote.js';
+import { useSyncSummary } from './sync-status.js';
 import { useCopyUp } from './use-storage.js';
 
 function Where({ login }: { login: string }) {
@@ -37,6 +40,10 @@ export function StorageSettings() {
   const login = useGitHubSession((s) => s.login);
   const [copying, setCopying] = useState(false);
   const copyUp = useCopyUp();
+  const summary = useSyncSummary();
+  // What is held back for another account is for the user to release from the status, not to be
+  // sent past that by a copy of everything.
+  const held = useSync((s) => s.held !== null);
 
   const signedIn = status === 'signed-in' && !!login;
 
@@ -44,9 +51,16 @@ export function StorageSettings() {
     if (!copyUp) return;
     setCopying(true);
     try {
-      const { copied, current, taken } = await copyUp();
+      const result = await copyUp();
+      // Conflicts found are the dialog's to ask about, as any other attempt's are.
+      noteResult(result);
+      const { copied, current, conflicts, taken } = result;
       toast.info(
         `Copied ${documents(copied)} to GitHub${current > 0 ? `; ${current} ${current === 1 ? 'was' : 'were'} already up to date` : ''}${
+          conflicts.length > 0
+            ? `; ${conflicts.length} ${conflicts.length === 1 ? 'was' : 'were'} changed here and in GitHub, and ${conflicts.length === 1 ? 'waits' : 'wait'} for you to choose`
+            : ''
+        }${
           taken > 0
             ? `; ${taken} ${taken === 1 ? 'layout stays' : 'layouts stay'} in this browser, as GitHub has another of the same name`
             : ''
@@ -68,11 +82,16 @@ export function StorageSettings() {
         type="button"
         className="btn btn-ghost btn-xs"
         aria-label={
-          signedIn ? `Storage: this browser and GitHub (@${login})` : 'Storage: this browser only'
+          summary.kind === 'plain' || summary.kind === 'checking' || summary.kind === 'synced'
+            ? signedIn
+              ? `Storage: this browser and GitHub (@${login})`
+              : 'Storage: this browser only'
+            : // The words on the button come first, so the name has them in it.
+              `Storage${summary.label}: ${summary.text}`
         }
         onClick={() => dialog.current?.showModal()}
       >
-        Storage{signedIn ? ' ✓' : ''}
+        Storage{summary.label}
       </button>
 
       <dialog ref={dialog} className="modal" aria-labelledby="storage-settings-title">
@@ -91,6 +110,8 @@ export function StorageSettings() {
                 ? ' They are kept in your GitHub account as well, so they follow you to other browsers.'
                 : ' Sign in with GitHub to keep them in secret gists in your account as well, so they follow you to other browsers.'}
           </p>
+
+          <SyncNote without="sign-in" />
 
           {(status === 'signed-out' || status === 'unknown') && (
             <button
@@ -120,12 +141,16 @@ export function StorageSettings() {
                 <button
                   type="button"
                   className="btn btn-sm"
-                  disabled={!copyUp || copying}
+                  disabled={!copyUp || copying || held}
                   onClick={() => void copy()}
                 >
                   {copying ? 'Copying…' : "Copy this browser's documents up"}
                 </button>
               </div>
+              <p className="text-xs opacity-70">
+                What you save is sent to your account by itself: after you sign in, and again if a
+                save could not reach it. This sends everything again, to repair what looks missing.
+              </p>
             </>
           )}
 

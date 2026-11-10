@@ -82,6 +82,128 @@ describe('gists as storage', () => {
     expect(calls[0].headers.Authorization).toBe('Bearer secret-token');
   });
 
+  it('looks through the user’s gists once however many ask at the same time', async () => {
+    const ids = memoryIds();
+    responder = (call) =>
+      call.url.includes('/gists?')
+        ? json(200, [{ id: 'g1', files: { [indexFile('layouts')]: {} } }])
+        : json(200, layoutsGist());
+    const adapter = new GistAdapter(access, ids);
+
+    // Two asks before the first has an answer: neither may conclude there is no gist, or a save
+    // sent at that moment would start a second one.
+    const [one, two] = await Promise.all([adapter.list('layouts'), adapter.list('layouts')]);
+    expect(one.map((e) => e.id)).toEqual(['mine']);
+    expect(two.map((e) => e.id)).toEqual(['mine']);
+    expect(calls.filter((c) => c.url.includes('/gists?'))).toHaveLength(1);
+    expect(calls.some((c) => c.method === 'POST')).toBe(false);
+  });
+
+  it('does not take a look that failed for one that found nothing, and makes it again', async () => {
+    const ids = memoryIds();
+    let down = true;
+    responder = (call) => {
+      if (!call.url.includes('/gists?')) return json(200, layoutsGist());
+      return down
+        ? json(503, { message: 'Unavailable' })
+        : json(200, [{ id: 'g1', files: { [indexFile('layouts')]: {} } }]);
+    };
+    const adapter = new GistAdapter(access, ids);
+
+    await expect(adapter.list('layouts')).rejects.toThrow('503');
+    // Not an empty answer, which a save would take for leave to start a gist of its own.
+    await expect(adapter.put('layouts', 'new', { name: 'New' })).rejects.toThrow('503');
+    expect(calls.some((c) => c.method === 'POST')).toBe(false);
+
+    down = false;
+    expect((await adapter.list('layouts')).map((e) => e.id)).toEqual(['mine']);
+  });
+
+  it('writes one at a time: two saves at once make one gist, and neither drops the other from its index', async () => {
+    const files: Record<string, { content: string }> = {};
+    let created = 0;
+    responder = (call) => {
+      if (call.url.includes('/gists?')) return json(200, []);
+      const sent = (call.body?.files ?? {}) as Record<string, { content: string } | null>;
+      if (call.method === 'POST') {
+        created++;
+        Object.assign(files, sent);
+        return json(201, { id: 'g1', files });
+      }
+      if (call.method === 'PATCH') {
+        for (const [name, file] of Object.entries(sent)) {
+          if (file) files[name] = file;
+          else delete files[name];
+        }
+      }
+      return json(200, { id: 'g1', files });
+    };
+    const adapter = new GistAdapter(access, memoryIds());
+
+    await Promise.all([
+      adapter.put('layouts', 'a', { name: 'A' }),
+      adapter.put('layouts', 'b', { name: 'B' }),
+      adapter.put('layouts', 'c', { name: 'C' }),
+    ]);
+
+    expect(created).toBe(1);
+    const index = JSON.parse(files[indexFile('layouts')].content) as { id: string }[];
+    expect(index.map((e) => e.id).sort()).toEqual(['a', 'b', 'c']);
+  });
+
+  it('looks for a gist it made for the first time though the answer never came, rather than making a second', async () => {
+    const files: Record<string, { content: string }> = {};
+    let made = false;
+    let created = 0;
+    let cutOff = true;
+    responder = (call) => {
+      const sent = (call.body?.files ?? {}) as Record<string, { content: string } | null>;
+      if (call.url.includes('/gists?')) {
+        return json(200, made ? [{ id: 'g1', files: { [indexFile('layouts')]: {} } }] : []);
+      }
+      if (call.method === 'POST') {
+        created++;
+        made = true;
+        Object.assign(files, sent);
+        // The gist is made, and the answer is lost.
+        if (cutOff) throw new Error('GitHub did not answer in time');
+        return json(201, { id: 'g1', files });
+      }
+      if (call.method === 'PATCH') {
+        for (const [name, file] of Object.entries(sent)) {
+          if (file) files[name] = file;
+        }
+      }
+      return json(200, { id: 'g1', files });
+    };
+    const adapter = new GistAdapter(access, memoryIds());
+
+    await expect(adapter.put('layouts', 'a', { name: 'A' })).rejects.toThrow('did not answer');
+    cutOff = false;
+    await adapter.put('layouts', 'b', { name: 'B' });
+
+    expect(created).toBe(1);
+    const index = JSON.parse(files[indexFile('layouts')].content) as { id: string }[];
+    expect(index.map((e) => e.id).sort()).toEqual(['a', 'b']);
+  });
+
+  it('goes on with the writes after one that failed', async () => {
+    responder = (call) => {
+      if (call.url.includes('/gists?')) return json(200, []);
+      const sent = (call.body?.files ?? {}) as Record<string, unknown>;
+      // The first save's gist is refused; the second finds none, and makes its own.
+      return documentFile('layouts', 'a') in sent
+        ? json(500, { message: 'Server Error' })
+        : json(201, { id: 'g1', files: {} });
+    };
+    const adapter = new GistAdapter(access, memoryIds());
+    const results = await Promise.allSettled([
+      adapter.put('layouts', 'a', { name: 'A' }),
+      adapter.put('layouts', 'b', { name: 'B' }),
+    ]);
+    expect(results.map((r) => r.status)).toEqual(['rejected', 'fulfilled']);
+  });
+
   it('drops index rows that are not index rows, including ids that are not ids', async () => {
     const rows = [
       { id: 'mine', name: 'Mine', updatedAt: '2026-01-01T00:00:00Z' },

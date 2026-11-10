@@ -1,7 +1,8 @@
 # Saving and sharing
 
 Everything you save — your custom layouts, rule sets and texts — is kept in this browser. To have it on every
-browser you use, sign in with GitHub, and it is kept in your GitHub account as well.
+browser you use, sign in with GitHub, and it is kept in your GitHub account as well, by itself: see
+[Syncing](#syncing).
 
 ## Saving your own layouts
 
@@ -81,8 +82,9 @@ is saved until you choose.
 1. Click **Storage** in the header.
 2. Click **Sign in with GitHub**, and approve LayerBench on GitHub.
 
-You come back to the page you were on, unsaved edits included. From then on, every save is also
-kept in your GitHub account, and **Storage** shows a ✓.
+You come back to the page you were on, unsaved edits included. What this browser saved before you
+signed in is sent to your account at once, with nothing to press, and from then on every save is
+also kept there. **Storage** shows a ✓ once everything is there. See [Syncing](#syncing).
 
 This browser stays signed in until you sign out, or until six months pass without using it. Safari
 is stricter: once you have used it for seven days without opening LayerBench, it clears what
@@ -93,23 +95,102 @@ work in GitHub.
 rule sets, one for corpora and one for the changes you proposed. Secret gists are unlisted, not
 private: anyone with a gist's address can read it.
 
-## Copying what this browser holds
+## Syncing
 
-Signing in does not copy what this browser already holds. Click **Copy this browser's documents
-up** in **Storage** to send what this browser holds to where **Storage** now saves: each layout,
-rule set and text GitHub has not got, or has an older copy of. One saved there since, from another
-browser, stays as it is, so a browser that has fallen behind never overwrites newer work. A layout
-whose name GitHub has for another layout stays in this browser: open it and save it to overwrite
-GitHub's, or rename it. It says how many it copied, how many were already up to date and how many
-it left; if it stops partway, what went up stays, and copying again carries on from there. Copy
-while no other browser is saving to the same account: a save landing at the very moment one is
-copied may be written over.
+Syncing is automatic, and where your work stands is always said, never left to guess. It is
+described here in the order things happen.
+
+**Signed in**, a save is written to this browser and to your gists together. If your account could
+not be written (no connection, GitHub down, a sign-in that ended), the save is still kept in this
+browser, and says so: **Save failed**, with the reason. The document is then marked as not sent, and
+the page tries again by itself, a few seconds later, then after 30 seconds, a minute, two, five,
+until it goes through. It also tries when the browser comes back online and when you come back to
+the tab. Sending stops at the first document that cannot be sent, and the status says why; it
+carries on from there when it tries again. While a document is marked, this browser shows it as you
+last saved it, not the older copy in your account, and its next saves stay in this browser too, to go
+up together with the rest.
+
+A save is only written to your account over the version it is an edit of. If another browser saved
+the same document since this one last held it, such as when an editor was left open, the save stays in
+this browser, marked, and you are asked which to keep: see [When both have changed](#when-both-have-changed).
+
+**Not signed in**, a save stays in this browser only and is marked as not sent, and the page says so
+for as long as it is so: under the layout's name in **Analyze**, and on the **Storage** button,
+*Saved in this browser only. Sign in with GitHub to sync it.*, with a **Sign in with GitHub**
+button. Once you sign in, what is marked goes up by itself, a message says how many, and nothing is
+pressed. A browser that was signed in and no longer is, because the sign-in ended on GitHub's side,
+says that instead, with the same button, on every visit until you sign in or out, rather than
+carrying on as if nothing had changed.
+
+Only what is marked goes up by itself. A document this browser holds that was never marked is left
+alone, so a layout you deleted on another browser is not brought back by one that still has it.
+
+**If this browser's last account is not the one signed in.** What is marked is held back, and the
+status says so, naming both accounts: a browser that someone else used may hold what is theirs. **Send
+to my account** releases it. Signing in again to the account the browser last sent to needs no
+answer.
+
+If a browser that was signed in gets no answer from the sign-in server within ten seconds, an answer
+that is an error, or an answer that is not the server's (a hotel Wi-Fi's page), the page stops waiting and
+says so, with a **Try again** button, which it also presses by itself when the browser is back online
+or the tab is shown again. It is never taken for there being no sign-in. Meanwhile it shows this
+browser's copies, and a layout or rule set kept only in your account is not among them until the
+server answers. The request is not cancelled: an answer that comes late is still kept, and one that
+comes after you signed out is thrown away.
+
+A layout that takes more than ten seconds to open says so, with a **Reload** button: the usual
+cause is another tab of LayerBench, of an older version, keeping this browser's storage closed.
+Close that tab and reload. An analysis or a text still loading after thirty seconds says so in the
+same way.
+
+### When both have changed
+
+A document that you changed in this browser and that was changed in your account since, from
+another browser, is never written over in either place by itself. The page asks you, in one dialog
+that holds all of them in turn: it shows the two versions with when each was saved, what differs in a
+few lines (a name or a note as it reads in each, a layer as how many keys differ) and, for a layout, a
+link that opens the two side by side in **Compare**. **Keep mine** sends this browser's version to
+your account; **Keep theirs** makes this browser's copy the account's. Neither is done until you
+choose, and if the account changes again meanwhile, nothing is written and you choose again.
+
+**Decide later**, or closing the dialog any way, leaves both as they are. The status on **Storage**
+and under the layout's name says *changed in this browser and in your GitHub account*, with a
+**Choose** button, for as long as it is so; the dialog does not open again by itself until the next
+visit.
+
+Which version an edit was made on is what tells a conflict from an edit nobody else touched, so
+the page keeps, for each document, the version both stores last held the same of. An edit made on
+that version goes up; an edit made on any other, or on one the page has no record of (a document
+that was last sent before this was kept), is a conflict, even if its date is later, as the two
+browsers' clocks are not trusted.
+
+A layout with the same name as another one in your account, under a different id, is not a copy of
+it but another layout: it stays in this browser, and the status says so. Rename it, or open it and
+save to overwrite the other one.
+
+A document you edited here that was deleted from your account since is not a conflict: your edit is
+sent, and the document is back. If you chose **Keep theirs** for one that has since been deleted
+there, nothing is thrown away: your version stays and is sent.
+
+Deleting a layout while you are not signed in is not sent: it comes back from your account the next
+time you sign in, and you delete it again. Renaming one while signed out is a new document and a
+deletion, so only the new one goes up, and the old name stays in your account until you delete it.
+
+### Copying everything again
+
+**Copy this browser's documents up**, in **Storage** once you are signed in, weighs every layout,
+rule set and text this browser holds, whether or not it is marked. It is for what was saved before
+edits were marked, and for anything that looks missing; you should not need it otherwise. It sends
+each that this browser saved later than your account did, and leaves the rest: a document your account
+lacks is sent too, so use it only for what you want in your account. It says how many it sent, how
+many were already up to date, how many are waiting for you to choose, and how many it left for their
+names. If it stops partway, what went up stays, and copying again carries on from there.
 
 ## Signing out
 
 **Sign out**, in **Storage**, stops saving to GitHub. What was saved from this browser stays in it,
 and everything in your GitHub account stays there; what is only in your account leaves the lists
-here until you sign in again.
+here until you sign in again. What you save while signed out is sent when you sign in again.
 
 ## Sharing a link
 
