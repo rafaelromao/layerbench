@@ -36,7 +36,8 @@ jobs:
       # A document is exactly what LayerBench saves, named by its id, with an author (its link is
       # optional, an http(s) URL when given); every bundled layout has a name and an id of its own
       # and types the alphabet and a space; the layouts written in code still match their documents;
-      # every one carries the languages it performs well in, as `pnpm languages` measures them.
+      # every language a layout states is one it types, and the Efforts the editor measures languages
+      # against are the bundled layouts' own, as `pnpm languages` writes them.
       - name: Check the layouts
         run: pnpm --filter @layerbench/core exec vitest run src/layouts src/golden/layouts.test.ts src/lang/performance
       - name: Check the landing page names every one

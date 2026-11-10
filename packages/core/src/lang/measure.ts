@@ -1,68 +1,43 @@
 import { bundledScores } from '../generate/engine.js';
 import { librarySettings, loadSample } from '../generate/tables.js';
-import { compileLayout } from '../layout/compile.js';
-import type { Layout } from '../layout/types.js';
-import { BUNDLED_LAYOUTS, CLASSIC_DEFS, SMALL_DEFS } from '../layouts/index.js';
-import { producibleSymbols } from './coverage.js';
+import { BUNDLED_LAYOUTS } from '../layouts/index.js';
 import {
   LANGUAGE_CORPORA,
   LANGUAGES_PRESET,
   PERFORMANCE_LANGUAGES,
-  performsWell,
+  storedEffort,
 } from './performance.js';
-import { coverLanguage, languageCovered } from './profiles.js';
 
 /**
- * The languages of the bundled layouts measured with the engine, on the shipped corpora: Node only,
- * for `pnpm languages` and the test that holds the stored languages to it. Not exported from the
- * package, so the app never bundles the corpus loader.
+ * The Effort of every bundled layout on each language's text, measured with the engine on the
+ * shipped corpora: Node only, for `pnpm languages` and the test that holds the stored Efforts to
+ * it. Not exported from the package, so the app never bundles the corpus loader.
  */
 
-/** What each layout can type, worked out once whatever the language asked about. */
-const producible = new WeakMap<Layout, Set<string>>();
-
-function covers(layout: Layout, tag: string): boolean {
-  let symbols = producible.get(layout);
-  if (!symbols) {
-    symbols = producibleSymbols(compileLayout(layout));
-    producible.set(layout, symbols);
-  }
-  const coverage = coverLanguage(symbols, tag);
-  return coverage !== undefined && languageCovered(coverage);
-}
-
-/** The languages a layout's author made it for, where its definition says so: the only ones it gets. */
-const MADE_FOR = new Map(
-  [...CLASSIC_DEFS, ...SMALL_DEFS].flatMap((d) => (d.madeFor ? [[d.id, d.madeFor] as const] : [])),
-);
-
-/**
- * The bundled layouts, by id, that perform well in one language, and were not made for others only.
- * Every layout still counts in the half that decides it, those made for other languages too.
- */
-export async function measureLanguage(tag: string): Promise<Set<string>> {
+/** Every bundled layout's Effort on one language's text, by id. */
+export async function bundledEfforts(tag: string): Promise<Map<string, number>> {
   const sample = await loadSample({
     settings: librarySettings(LANGUAGE_CORPORA[tag], LANGUAGES_PRESET),
   });
   const scores = bundledScores(sample);
-  const well = performsWell(
-    BUNDLED_LAYOUTS.map((layout) => {
-      const id = layout.id as string;
-      return { id, effort: scores.get(id)?.effort ?? Number.NaN, covers: covers(layout, tag) };
-    }),
-  );
-  for (const id of well) if (MADE_FOR.get(id)?.includes(tag) === false) well.delete(id);
-  return well;
-}
-
-/** Every bundled layout's languages, by id, in the order the layouts are listed. */
-export async function measureLanguages(): Promise<Record<string, string[]>> {
-  const byTag = new Map<string, Set<string>>();
-  for (const tag of PERFORMANCE_LANGUAGES) byTag.set(tag, await measureLanguage(tag));
-  const out: Record<string, string[]> = {};
+  const out = new Map<string, number>();
   for (const layout of BUNDLED_LAYOUTS) {
     const id = layout.id as string;
-    out[id] = PERFORMANCE_LANGUAGES.filter((tag) => byTag.get(tag)?.has(id));
+    const effort = scores.get(id)?.effort ?? Number.NaN;
+    if (!Number.isFinite(effort)) throw new Error(`${id} has no Effort on ${tag}`);
+    out.set(id, effort);
   }
+  return out;
+}
+
+/** Every bundled layout's Effort on one language's text, lowest first, as stored. */
+export async function measureEfforts(tag: string): Promise<number[]> {
+  return [...(await bundledEfforts(tag)).values()].map(storedEffort).sort((a, b) => a - b);
+}
+
+/** Every language's Efforts, in the order of the profiles. */
+export async function measureAllEfforts(): Promise<Record<string, number[]>> {
+  const out: Record<string, number[]> = {};
+  for (const tag of PERFORMANCE_LANGUAGES) out[tag] = await measureEfforts(tag);
   return out;
 }

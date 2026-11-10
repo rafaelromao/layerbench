@@ -1,3 +1,3 @@
-import { declaresPerformance } from './performance-measured.js';
+import { measuresEfforts } from './performance-measured.js';
 
-declaresPerformance('fr');
+measuresEfforts('fr');

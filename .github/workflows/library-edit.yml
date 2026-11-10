@@ -2,8 +2,8 @@ name: library-edit
 
 # A change to the Library — a bundled layout changed, deleted, or a layout promoted to it — comes as
 # a pull request from a `library/**` branch, which the sign-in server opens as the GitHub App with
-# `.library/request.json` on it. This applies the request, measures the languages and goldens again,
-# checks the result and pushes it as the App, so CI and the layouts workflow run on what the pull
+# `.library/request.json` on it. This applies the request, writes the bundled layouts' Efforts and
+# the goldens again, checks the result and pushes it as the App, so CI and the layouts workflow run on what the pull
 # request would merge. A branch with no request is left as it is: the App's own push, and any fix
 # pushed by hand after it, change nothing. A request it refuses fails here, writing nothing.
 # Deleting a layout leaves the tests that pin something of it by its id failing in CI, until they
@@ -51,7 +51,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - if: steps.request.outputs.found == 'true'
         run: pnpm library-edit
-      # Languages first: the golden documents carry them.
+      # The Efforts the editor measures a layout's languages against: the bundled layouts changed.
       - if: steps.request.outputs.found == 'true'
         run: pnpm languages
       - if: steps.request.outputs.found == 'true'
