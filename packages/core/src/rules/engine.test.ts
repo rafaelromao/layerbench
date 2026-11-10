@@ -665,9 +665,9 @@ describe('SFB as a share of the letters typed', () => {
     const symbols = modelled.sim.tables.stats.symbols;
     expect(symbols).toBe(folded.sim.tables.stats.symbols);
     expect(modelled.share).toBeCloseTo((modelled.count / symbols) * 100, 9);
-    // The Shift presses are in the stream: they make some pairs and break others, so the count may
-    // go either way. The letters it is a share of do not.
-    expect(modelled.count).not.toBe(folded.count);
+    // The Shift presses are in the stream, each the cheapest key that gives it, so here none makes
+    // a same-finger pair. The letters the count is a share of are the same either way.
+    expect(modelled.count).toBe(folded.count);
   });
 
   it('is the share of pairs times the pairs the text has per letter, on every bundled layout', () => {

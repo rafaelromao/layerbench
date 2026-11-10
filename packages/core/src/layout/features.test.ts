@@ -207,7 +207,9 @@ describe('Magic Romak, with its behaviours on its keys', () => {
 
   it('types accented capitals from shift state, with no pre-shifted layer', () => {
     const e = explain(compiled, 'É', { caseMode: 'model', crossWord: 'reset' });
-    expect(e.steps.map((s) => s.key)).toEqual(['R1', 'R0', 'RHR']);
+    // Not the thumb's one-shot Shift, R1, which would make a same-finger pair with R0: the other
+    // hand's home row Shift, held.
+    expect(e.steps.map((s) => s.key)).toEqual(['LHI', 'R0', 'RHR', 'LHI']);
     expect(e.steps.map((s) => s.symbols).join('')).toBe('É');
   });
 });

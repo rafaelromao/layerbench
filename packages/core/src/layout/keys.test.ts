@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BUNDLED_LAYOUTS } from '../layouts/index.js';
 import { compileLayout } from './compile.js';
-import { shiftWaysOffered, withDerivedKeys } from './keys.js';
+import { shiftKeysOffered, shiftWaysOffered, withDerivedKeys } from './keys.js';
 import type { Binding, Layout } from './types.js';
 
 const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
@@ -191,5 +191,17 @@ describe('the ways a layout gives Shift', () => {
     expect(
       shiftWaysOffered(board({ R1: { kind: 'mod', mod: 'LSHIFT', also: ['LCTRL'] } })),
     ).toEqual([]);
+  });
+
+  it('are counted press by press: a tap, a hold, a combo', () => {
+    expect(shiftKeysOffered(board({ LHM: kp('a') }))).toBe(0);
+    expect(shiftKeysOffered(board({ R1: SHIFT }))).toBe(1);
+    expect(shiftKeysOffered(board({ L1: SHIFT, R1: SHIFT }))).toBe(2);
+    expect(shiftKeysOffered(board({ R1: { kind: 'hold_tap', tap: SHIFT, hold: HOLD } }))).toBe(2);
+    const combo = { ...board({ R1: SHIFT }), combos: [{ keys: ['LHM', 'LHI'], binding: SHIFT }] };
+    expect(shiftKeysOffered(combo)).toBe(2);
+    expect(shiftKeysOffered(board({ R1: { kind: 'mod', mod: 'LSHIFT', also: ['LCTRL'] } }))).toBe(
+      0,
+    );
   });
 });

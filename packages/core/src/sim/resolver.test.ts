@@ -98,10 +98,12 @@ describe('Romak acceptance traces', () => {
     expect(t2.steps.filter((s) => s.keyKind === 'shift').length).toBe(1);
   });
 
-  it('shifted alpha-2 twin: an uppercase accented letter uses shift then the layer key', () => {
+  it('shifted alpha-2 twin: an uppercase accented letter holds shift, then taps the layer key', () => {
     const t = trace(magicRomak, 'É', { caseMode: 'model' });
     expect(t.out).toBe('É');
-    expect(t.keys[0]).toBe('R1');
+    // The thumb's one-shot Shift (R1) and then Alpha 2 (R0) is a same-finger pair: the left home
+    // row Shift, held, is the cheaper way.
+    expect(t.keys[0]).toBe('LHI');
     expect(t.keys).toContain('R0');
   });
 
@@ -943,6 +945,161 @@ describe('how a layout that declares its rules is typed', () => {
   it('types by the engine’s own ways when the layout declares no rule, at both policies', () => {
     expect(trace(magicRomak, 'hello').keys).toEqual(REPEAT_KEYS);
     expect(trace(magicRomak, 'hello', { repeatPolicy: 'tap_twice' }).keys).toEqual(TAP_KEYS);
+  });
+});
+
+describe('the Shift a capital takes: the cheapest press that gives it, part of the word', () => {
+  const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
+  const SK: Binding = { kind: 'sk', mod: 'LSHIFT' };
+  const model = { caseMode: 'model' as const };
+  const held = (t: ReturnType<typeof trace>) =>
+    t.steps.filter((s) => s.kind === 'hold_press').map((s) => s.key);
+  /**
+   * A one-shot Shift on each inner thumb, L1 the shift key; the outer left thumb types `r`, the
+   * outer right one a space, and the home row `a` `n` `e`.
+   */
+  const twoThumbs = (extra: Record<string, Binding> = {}, shift = 'L1'): Layout => ({
+    format: 'layerbench/layout@1',
+    name: 'Two one-shot Shifts',
+    hostLocale: 'symbols',
+    geometry: { preset: '3x5+2' },
+    keys: { space: 'R0', shift: { key: shift, kind: 'sk' } },
+    layers: [
+      {
+        id: 'base',
+        bindings: {
+          L0: kp('r'),
+          L1: SK,
+          R0: kp(' '),
+          R1: SK,
+          LHM: kp('a'),
+          RHI: kp('n'),
+          RHM: kp('e'),
+          ...extra,
+        },
+      },
+    ],
+  });
+
+  it('takes the other thumb when the shift key would make a same-finger pair with the letter', () => {
+    // L1 then L0 is the left thumb twice: R1's one-shot Shift is the cheaper.
+    expect(trace(twoThumbs(), 'R', model)).toMatchObject({ out: 'R', keys: ['R1', 'L0'] });
+    // The same with the shift key on the right and the letter on the right thumb.
+    const right = twoThumbs({ L0: kp(' '), R0: kp('r') }, 'R1');
+    right.keys.space = 'L0';
+    expect(trace(right, 'R', model)).toMatchObject({ out: 'R', keys: ['L1', 'R0'] });
+  });
+
+  it('keeps the shift key where the two cost the same, whichever side it is on', () => {
+    expect(trace(twoThumbs(), 'A', model).keys).toEqual(['L1', 'LHM']);
+    expect(trace(twoThumbs({}, 'R1'), 'A', model).keys).toEqual(['R1', 'LHM']);
+    // And the same every time.
+    for (let i = 0; i < 3; i++) expect(trace(twoThumbs(), 'An', model).keys[0]).toBe('L1');
+  });
+
+  it('chooses again for each capital of a word, the one after a capital included', () => {
+    // `A` takes the shift key; `R`, after it, the right thumb, as the left one would press L1 then L0.
+    expect(trace(twoThumbs(), 'AR', model)).toMatchObject({
+      out: 'AR',
+      keys: ['L1', 'LHM', 'R1', 'L0'],
+    });
+    // `R` takes the right thumb; `A` too, as L1 right after L0 is the left thumb twice.
+    expect(trace(twoThumbs(), 'RA', model)).toMatchObject({
+      out: 'RA',
+      keys: ['R1', 'L0', 'R1', 'LHM'],
+    });
+    // Each word starts a new choice: the capital at the start of the second is typed as the first.
+    expect(trace(twoThumbs(), 'Ra Ra', model).keys).toEqual([
+      'R1',
+      'L0',
+      'LHM',
+      'R0',
+      'R1',
+      'L0',
+      'LHM',
+    ]);
+  });
+
+  it('weighs a thumb against a home row one-shot by their effort and pairs', () => {
+    // The shift key on the left pinky's home key, and a one-shot Shift on the right inner thumb.
+    const pinky = twoThumbs({ L1: kp('x'), LHP: SK }, 'LHP');
+    // The thumb costs no effort: it is taken over the shift key.
+    expect(trace(pinky, 'A', model).keys).toEqual(['R1', 'LHM']);
+    // With the letter on the right thumb, R1 would make a same-finger pair: the pinky it is.
+    const thumbLetter = twoThumbs({ L0: kp(' '), L1: kp('x'), LHP: SK, R0: kp('r') }, 'LHP');
+    thumbLetter.keys.space = 'L0';
+    expect(trace(thumbLetter, 'R', model).keys).toEqual(['LHP', 'R0']);
+  });
+
+  it('takes the one-shot Shift of the other hand when the typing hand’s is on the letter’s finger', () => {
+    // One-shot Shifts on both pinkies' home keys, the left one the shift key, and no thumb's.
+    const pinkies = twoThumbs({ L1: kp('x'), R1: kp('y'), LHP: SK, RHP: SK, LTP: kp('p') }, 'LHP');
+    // `P` is on the left pinky: LHP then LTP is a same-finger pair, so the right pinky shifts.
+    expect(trace(pinkies, 'P', model).keys).toEqual(['RHP', 'LTP']);
+    // `A` is on the left middle finger: both cost the same, and the shift key is kept.
+    expect(trace(pinkies, 'A', model).keys).toEqual(['LHP', 'LHM']);
+    // `N` is on the right index: the left pinky's, the shift key, makes no pair either.
+    expect(trace(pinkies, 'N', model).keys).toEqual(['LHP', 'RHI']);
+  });
+
+  it('weighs a held Shift against a one-shot one', () => {
+    // Home row mods hold Shift on both index fingers; R1 is the one-shot shift key; `e` on R0.
+    const mods = withMods(
+      twoThumbs(
+        { L0: kp(' '), L1: kp('x'), LHI: kp('t'), RHI: kp('n'), RHM: kp('m'), R0: kp('e') },
+        'R1',
+      ),
+    );
+    mods.keys.space = 'L0';
+    // `T` on the left index: the thumb's one-shot Shift costs no effort.
+    const t = trace(mods, 'T', model);
+    expect(t).toMatchObject({ out: 'T', keys: ['R1', 'LHI'] });
+    expect(held(t)).toEqual([]);
+    // `E` on the right thumb: R1 then R0 is the right thumb twice, so the left index holds Shift.
+    const e = trace(mods, 'E', model);
+    expect(e).toMatchObject({ out: 'E', keys: ['LHI', 'R0'] });
+    expect(held(e)).toEqual(['LHI']);
+  });
+
+  it('presses the only Shift a layout has, whatever it costs', () => {
+    const one = twoThumbs({ L1: kp('x') }, 'R1');
+    one.keys.space = 'R0';
+    const single = { ...one, layers: [{ ...one.layers[0] }] };
+    single.layers[0].bindings = { ...single.layers[0].bindings, R0: kp('r'), L0: kp(' ') };
+    single.keys.space = 'L0';
+    // R1 then R0 is the right thumb twice, and there is no other Shift.
+    expect(trace(single, 'R', model).keys).toEqual(['R1', 'R0']);
+  });
+
+  it('keeps a declared rule: its first way that some key gives, the cheapest key of that way', () => {
+    const mods = withMods(
+      twoThumbs(
+        { L0: kp(' '), L1: kp('x'), LHI: kp('t'), RHI: kp('n'), RHM: kp('m'), R0: kp('e') },
+        'R1',
+      ),
+    );
+    mods.keys.space = 'L0';
+    // One-shot first: R1, though it makes a same-finger pair with R0.
+    const sticky = {
+      ...mods,
+      typingRules: { shift: [{ way: 'sk' as const }, { way: 'hold' as const }] },
+    };
+    expect(trace(sticky, 'E', model).keys).toEqual(['R1', 'R0']);
+    // Held first: the cheaper of the two index fingers, the left one for a letter on the right.
+    const hold = {
+      ...mods,
+      typingRules: { shift: [{ way: 'hold' as const }, { way: 'sk' as const }] },
+    };
+    const t = trace(hold, 'E', model);
+    expect(t.keys).toEqual(['LHI', 'R0']);
+    expect(held(t)).toEqual(['LHI']);
+    // One-shot only, with two one-shot Shifts: the cheaper of them.
+    const two = { ...twoThumbs(), typingRules: { shift: [{ way: 'sk' as const }] } };
+    expect(trace(two, 'R', model).keys).toEqual(['R1', 'L0']);
+  });
+
+  it('chooses no Shift where the text is folded', () => {
+    expect(trace(twoThumbs(), 'R').keys).toEqual(['L0']);
   });
 });
 
