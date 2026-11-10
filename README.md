@@ -69,7 +69,8 @@ keeps are in `apps/web/src/auth/github-session.ts`. The server half is
 The layouts that come with the app are written as data in `packages/core/src/layouts/` (`classic.ts`,
 `small.ts`), each as its author published it: the letters and marks of its base layer, its author's
 thumbs and the layers its author's keymap defines, as Magic Romak has its keymap's Numbers and
-Symbols and Romak its write-up's Alpha 2 and Ç extension. A layout made in the editor can start
+Symbols and Romak its write-up's Alpha 2 and Ç extension, with the Numbers and Symbols of its
+author's Magic Romak keymap. A layout made in the editor can start
 with the default Numbers, Symbols and Accents layers (`defaultLayers` in `templates.ts`). Home row mods are held only where an author's keymap holds
 them: Magic Romak, Magic Sturdy, the three Hands Down with their own layers and Ben Vallack Piano,
 each key still typing what it did (`withHomeRowMods` in `templates.ts`). The languages each is for
@@ -100,8 +101,9 @@ layout can also join with no deploy, as a community layout, by **Submit** in the
    languages**, and the documents are written again.
 6. `pnpm test` checks that it is exactly what LayerBench saves, is named by its id, names an author
    (a link is optional, and an http(s) URL when given), has a name and an id no other layout has,
-   types the whole alphabet and a space, names only languages it types every letter of, and is on
-   the landing page.
+   types the whole alphabet and a space, names at least one language (`"languages": ["en"]` when
+   its author states none; one the Library sends to join them is given that when it names none),
+   names only languages it types every letter of, and is on the landing page.
 7. Open the pull request. The `layouts` workflow runs those checks in a few minutes, sooner than the
    whole of CI, and writes a summary on its run's page for the review: each new or changed layout
    with its link, a link that opens it in the app as it would be bundled, and its Effort and SFB

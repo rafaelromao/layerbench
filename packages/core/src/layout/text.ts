@@ -1,5 +1,6 @@
 import { getGeometryPreset } from '../geometry/presets.js';
 import type { Geometry } from '../geometry/types.js';
+import { DEFAULT_LANGUAGES } from '../lang/profiles.js';
 import type { Binding, Layout } from './types.js';
 
 export interface TextImportResult {
@@ -110,6 +111,8 @@ export function importTextLayout(
     geometry: { preset: presetId },
     keys: { space: spaceKey },
     layers: [{ id: 'base', name: 'Base', bindings }],
+    // A layout made from its letters states no language yet: it is for English until it does.
+    languages: [...DEFAULT_LANGUAGES],
   };
   return { layout, overflow, warnings };
 }

@@ -1,12 +1,14 @@
 import {
   type Binding,
   bindingModule,
+  bindingModules,
   type CompiledLayout,
   legend,
   legendText,
+  MAX_MACRO_NESTING,
   type ModFamily,
 } from '@layerbench/core';
-import { useRef, useState } from 'react';
+import { useContext, useRef, useState } from 'react';
 import { useDismiss } from '../../../components/use-dismiss.js';
 import { useMediaQuery, WIDE } from '../../../components/use-media-query.js';
 import type { BindingTextContext } from '../binding-text.js';
@@ -19,7 +21,17 @@ import {
   type LayerMode,
   type ListChanges,
 } from './binding-changes.js';
-import { LayerChips, ModChips, ModuleNote, Note, Row, Segment, TextField } from './controls.js';
+import {
+  LayerChips,
+  MacroNesting,
+  MacroStep,
+  ModChips,
+  ModuleNote,
+  Note,
+  Row,
+  Segment,
+  TextField,
+} from './controls.js';
 import { SentenceSpaceNote } from './features.js';
 import {
   type KindInfo,
@@ -185,7 +197,10 @@ export function PartEditor({
   const fields = keyFields(value, scope.text);
   const kind = fields.kind;
   const prefix = name ?? label;
-  const options = kinds.includes(kind) ? kinds : [...kinds, kind];
+  // No macro past the macros the editor lets nest, in a step's parts as in its steps.
+  const nests = useContext(MacroNesting) < MAX_MACRO_NESTING;
+  const offered = nests ? kinds : kinds.filter((k) => k !== 'macro');
+  const options = offered.includes(kind) ? offered : [...offered, kind];
   return (
     <div className="space-y-1">
       <div className="flex flex-wrap items-center gap-2">
@@ -204,13 +219,15 @@ export function PartEditor({
         </select>
       </div>
       <div className="lb-part">
-        <KindBody
-          scope={scope}
-          fields={fields}
-          onChange={onChange}
-          name={prefix}
-          depth={depth + 1}
-        />
+        <MacroStep.Provider value={false}>
+          <KindBody
+            scope={scope}
+            fields={fields}
+            onChange={onChange}
+            name={prefix}
+            depth={depth + 1}
+          />
+        </MacroStep.Provider>
       </div>
     </div>
   );
@@ -336,6 +353,7 @@ const LAYER_HINT: Record<LayerMode, string> = {
 };
 
 function LayerBody({ scope, fields: { view, set }, onChange, name }: BodyProps<'layer'>) {
+  const inMacro = useContext(MacroStep);
   return (
     <div className="space-y-2">
       <Row label="Layer">
@@ -354,6 +372,7 @@ function LayerBody({ scope, fields: { view, set }, onChange, name }: BodyProps<'
           onChange={(mode) => onChange(set.mode(mode))}
         />
         <Note>{LAYER_HINT[view.mode]}</Note>
+        {inMacro && view.mode === 'mo' && <HeldInMacro />}
         <ModuleNote module={bindingModule(view.mode)} />
       </Row>
     </div>
@@ -362,7 +381,17 @@ function LayerBody({ scope, fields: { view, set }, onChange, name }: BodyProps<'
 
 // ---------------------------------------------------------------------------- modifier
 
+/** Held, as a macro's step, a layer or a modifier comes up again before anything uses it. */
+function HeldInMacro() {
+  return (
+    <Note>
+      In a macro this does nothing: the macro lets go at once. One-shot arms it for the next key.
+    </Note>
+  );
+}
+
 function ModifierBody({ fields: { view, set }, onChange, name }: BodyProps<'modifier'>) {
+  const inMacro = useContext(MacroStep);
   return (
     <div className="space-y-2">
       <Row label="Modifier">
@@ -383,6 +412,7 @@ function ModifierBody({ fields: { view, set }, onChange, name }: BodyProps<'modi
           onChange={(acts) => onChange(set.acts(acts))}
         />
         <Note>{view.acts === 'sk' ? 'Applies to the next key only.' : 'Applies while held.'}</Note>
+        {inMacro && view.acts === 'mod' && <HeldInMacro />}
       </Row>
       {view.acts === 'mod' && (
         <Row label="Held with">
@@ -629,8 +659,12 @@ function AdaptiveBody({
 
 // ---------------------------------------------------------------------------- macro
 
-function MacroBody({ scope, fields, onChange, name }: BodyProps<'macro'>) {
+function MacroBody({ scope, fields, onChange, name, depth }: BodyProps<'macro'>) {
   const { view, set } = fields;
+  const nesting = useContext(MacroNesting) + 1;
+  // A macro is stock ZMK; what its steps do may need a module, a sentence space zmk-sentence-case.
+  // Said once, on the outermost macro.
+  const modules = nesting === 1 ? bindingModules(fields.binding) : [];
   return (
     <div className="space-y-2">
       <Segment
@@ -643,12 +677,27 @@ function MacroBody({ scope, fields, onChange, name }: BodyProps<'macro'>) {
         onChange={(form) => onChange(set.form(form))}
       />
       {view.form === 'steps' ? (
-        <MacroStepsEditor
-          compiled={scope.compiled}
-          ctx={scope.text}
-          fields={fields}
-          onChange={onChange}
-        />
+        <MacroNesting.Provider value={nesting}>
+          <MacroStepsEditor
+            nests={nesting < MAX_MACRO_NESTING}
+            compiled={scope.compiled}
+            ctx={scope.text}
+            fields={fields}
+            onChange={onChange}
+            name={name}
+            body={(step, change, stepName) => (
+              <MacroStep.Provider value={true}>
+                <KindBody
+                  scope={scope}
+                  fields={keyFields(step, scope.text)}
+                  onChange={change}
+                  name={stepName}
+                  depth={depth + 1}
+                />
+              </MacroStep.Provider>
+            )}
+          />
+        </MacroNesting.Provider>
       ) : (
         <>
           <Row label="Types">
@@ -690,6 +739,9 @@ function MacroBody({ scope, fields, onChange, name }: BodyProps<'macro'>) {
         />
         <Note>An adaptive key can branch on the tag of the key pressed before it.</Note>
       </Row>
+      {modules.map((m) => (
+        <ModuleNote key={m} module={m} />
+      ))}
     </div>
   );
 }

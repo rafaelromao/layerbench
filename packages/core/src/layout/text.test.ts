@@ -54,6 +54,8 @@ describe('importing a text layout onto a geometry', () => {
     expect(Object.values(base).filter((b) => b.kind === 'kp' && b.symbol === 'q')).toHaveLength(1);
     expect(base[layout.keys?.space as string]).toEqual({ kind: 'kp', symbol: ' ' });
     expect(layout.name).toBe('My layout');
+    // Letters state no language: the layout is for English until its maker says otherwise.
+    expect(layout.languages).toEqual(['en']);
   });
 
   it('names the layout and lets a thumb token pick the space key', () => {

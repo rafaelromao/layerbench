@@ -11,8 +11,16 @@ import {
 } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
 import type { BindingTextContext } from '../binding-text.js';
-import { type FieldsOf, freshRow, keyFields, macroRows } from './binding-changes.js';
-import { type KindOfKey, kindOf, MORE_KINDS, PRIMARY_KINDS } from './kinds.js';
+import {
+  copyRow,
+  type FieldsOf,
+  freshRow,
+  keyFields,
+  macroRows,
+  rowAs,
+  rowKind,
+} from './binding-changes.js';
+import { ALL_KINDS, type KindOfKey, kindOf, MORE_KINDS, PRIMARY_KINDS } from './kinds.js';
 
 /** The context the key inspector builds for a layout. */
 function contextOf(compiled: CompiledLayout): BindingTextContext {
@@ -454,7 +462,7 @@ describe('a macro, written as text or as steps', () => {
     expect(macros).toBeGreaterThan(0);
   });
 
-  it('keeps a step its rows cannot edit, to be moved or removed', () => {
+  it('reads every step that is not a character as a step, written back as it is', () => {
     const quick: Binding = { kind: 'sl', layer: 'alpha2', quickRelease: true };
     const toggle: Binding = { kind: 'tog', layer: 'alpha2' };
     const odd: Extract<Binding, { kind: 'macro' }> = {
@@ -462,7 +470,8 @@ describe('a macro, written as text or as steps', () => {
       steps: [kp('a'), toggle, kp('b'), quick],
     };
     const rows = macroRows(odd);
-    expect(rows.map((r) => r.kind)).toEqual(['text', 'fixed', 'text', 'fixed']);
+    expect(rows.map((r) => r.kind)).toEqual(['text', 'step', 'text', 'step']);
+    expect(rows.map(rowKind)).toEqual(['text', 'layer', 'text', 'layer']);
     const set = fieldsOf('macro', odd).set;
     expect(set.rows(rows)).toBe(odd);
     expect(set.rows([rows[1], rows[0], rows[2], rows[3]])).toEqual({
@@ -519,7 +528,7 @@ describe('a macro, written as text or as steps', () => {
       then: [toAlpha2],
     };
     const rows = macroRows(both);
-    expect(rows.map((r) => r.kind)).toEqual(['text', 'sl']);
+    expect(rows.map((r) => r.kind)).toEqual(['text', 'step']);
     expect(fieldsOf('macro', both).set.rows([rows[1], rows[0]])).toEqual({
       kind: 'macro',
       steps: [toAlpha2, kp('a')],
@@ -527,7 +536,14 @@ describe('a macro, written as text or as steps', () => {
   });
 
   it('starts a new row doing something, and becomes text again with no rows left', () => {
-    expect(freshRow('sl', ctx)).toMatchObject({ kind: 'sl', layer: 'alpha2' });
+    expect(freshRow('layer', ctx)).toMatchObject({
+      kind: 'step',
+      step: { kind: 'sl', layer: 'alpha2' },
+    });
+    expect(freshRow('modifier', ctx)).toMatchObject({
+      kind: 'step',
+      step: { kind: 'sk', mod: 'LSHIFT' },
+    });
     expect(freshRow('text', ctx, 'kept')).toEqual({ id: 'kept', kind: 'text', text: '' });
     const stepped: Binding = { kind: 'macro', steps: [kp('a')], tag: 'x' };
     expect(fieldsOf('macro', stepped).set.rows([])).toEqual({
@@ -535,6 +551,69 @@ describe('a macro, written as text or as steps', () => {
       symbols: '',
       tag: 'x',
     });
+  });
+
+  it('starts a step of every kind of key as that kind', () => {
+    for (const { kind } of ALL_KINDS) {
+      const row = freshRow(kind, ctx);
+      expect(row.kind, kind).toBe('step');
+      if (row.kind === 'step') expect(kindOf(row.step), kind).toBe(kind);
+    }
+  });
+
+  it('makes a row another kind, keeping what carries over', () => {
+    const text = { id: 'r', kind: 'text' as const, text: 'a' };
+    expect(rowAs(text, 'symbol', ctx)).toEqual({ id: 'r', kind: 'step', step: kp('a') });
+    expect(rowAs(text, 'taphold', ctx)).toMatchObject({
+      id: 'r',
+      kind: 'step',
+      // As a key made a tap-hold does: its symbol is the tap, a layer the hold.
+      step: { kind: 'lt', tap: kp('a') },
+    });
+    expect(rowAs(text, 'sentencespace', ctx)).toEqual({
+      id: 'r',
+      kind: 'step',
+      step: { kind: 'sentence_space' },
+    });
+    const step = { id: 's', kind: 'step' as const, step: kp('b') };
+    expect(rowAs(step, 'text', ctx)).toEqual({ id: 's', kind: 'text', text: 'b' });
+    // Text of several characters: a macro's text, or kept on the row through another kind.
+    const qu = { id: 'q', kind: 'text' as const, text: 'qu' };
+    expect(rowAs(qu, 'macro', ctx)).toMatchObject({ step: { kind: 'macro', symbols: 'qu' } });
+    expect(rowAs(rowAs(qu, 'symbol', ctx), 'text', ctx)).toEqual(qu);
+    expect(rowAs(rowAs(qu, 'layer', ctx), 'text', ctx)).toEqual(qu);
+    const written = {
+      id: 'm',
+      kind: 'step' as const,
+      step: { kind: 'macro' as const, symbols: 'ab' },
+    };
+    expect(rowAs(written, 'text', ctx)).toEqual({ id: 'm', kind: 'text', text: 'ab' });
+    expect(rowAs(step, 'layer', ctx)).toMatchObject({ id: 's', step: { kind: 'sl' } });
+    expect(rowAs(step, 'symbol', ctx)).toBe(step);
+  });
+
+  it('copies a row with an identity and a step of its own', () => {
+    const row = { id: 's', kind: 'step' as const, step: { kind: 'macro' as const, symbols: 'qu' } };
+    const copy = copyRow(row);
+    expect(copy.id).not.toBe('s');
+    expect(copy).toMatchObject({ kind: 'step', step: row.step });
+    if (copy.kind === 'step') expect(copy.step).not.toBe(row.step);
+  });
+
+  it('writes a macro of any steps, nested macros among them, back as it is', () => {
+    const nested: Extract<Binding, { kind: 'macro' }> = {
+      kind: 'macro',
+      steps: [
+        { kind: 'sentence_space' },
+        kp(' '),
+        { kind: 'macro', steps: [{ kind: 'caps_word' }, kp('a')] },
+        { kind: 'tap_dance', bindings: [kp('x'), kp('y')] },
+        { kind: 'key_repeat' },
+      ],
+    };
+    const rows = macroRows(nested);
+    expect(rows.map(rowKind)).toEqual(['sentencespace', 'text', 'macro', 'tapdance', 'repeat']);
+    expect(fieldsOf('macro', nested).set.rows(rows)).toBe(nested);
   });
 });
 

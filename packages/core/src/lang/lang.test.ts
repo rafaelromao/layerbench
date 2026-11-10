@@ -1,15 +1,33 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SOFT, normalizeText } from '../corpus/normalize.js';
 import { compileLayout } from '../layout/compile.js';
+import type { Layout } from '../layout/types.js';
 import { bundledLayout, CLASSIC_LAYOUTS } from '../layouts/index.js';
 import { simulate } from '../sim/resolver.js';
-import { layoutLanguageCoverage, producibleSymbols } from './coverage.js';
-import { languageKeep, languageProfile, languageSoft, languagesToJudge } from './profiles.js';
+import { layoutLanguageCoverage, layoutLanguages, producibleSymbols } from './coverage.js';
+import {
+  declaredLanguages,
+  languageKeep,
+  languageProfile,
+  languageSoft,
+  languagesToJudge,
+} from './profiles.js';
 
 /** Qwerty as written, its letters alone. */
 const plainQwerty = () => compileLayout(CLASSIC_LAYOUTS.find((l) => l.id === 'qwerty')!);
 
 describe('language profiles', () => {
+  it('reads a layout that declares no language as one for English', () => {
+    expect(declaredLanguages(undefined)).toEqual(['en']);
+    expect(declaredLanguages([])).toEqual(['en']);
+    expect(declaredLanguages([''])).toEqual(['en']);
+    expect(declaredLanguages(['pt', 'en'])).toEqual(['pt', 'en']);
+    // On its card as well: a layout saved without languages shows English, and what it lacks.
+    const qwerty = bundledLayout('qwerty') as Layout;
+    const unset = compileLayout({ ...qwerty, languages: undefined });
+    expect(layoutLanguages(unset).map((c) => c.tag)).toEqual(['en']);
+  });
+
   it('matches an exact tag, then falls back to the base language', () => {
     expect(languageProfile('pt')?.name).toBe('Português');
     expect(languageProfile('pt-BR')?.tag).toBe('pt');

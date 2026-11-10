@@ -117,9 +117,35 @@ of its own: changing one leaves the others as they are.
 
 A **Macro** `⋯` types several things with one press. As **Text** it types the letters given, such
 as `qu` or `ão`, and can turn a layer on for the next key after them. As **Steps** it is a list of
-key presses, layer changes and modifiers, in order. Switching between the two never changes what
-the macro does: steps after its letters still run after them as text, and come back as steps. A
-step the list has no row for is shown as it is, and can still be moved or removed.
+steps, in order, each one **Text** or any kind of key, edited with the same controls a key or a
+combo has: a symbol, a layer or a modifier armed for the next key, a repeat, an adaptive key, a
+tap dance, a morph, caps word, a sentence space, a Unicode character, a dead key, or another macro,
+whose own steps are edited inside it. Each step has its kind, and buttons to move it up or down,
+copy it and remove it. Switching between Text and Steps never changes what the macro does: steps
+after its letters still run after them as text, and come back as steps.
+
+The macro taps each step in turn, as a ZMK macro does, and each does what it would on a key of its
+own: a tap-hold its tap, a layer or a modifier armed for the next key (held, it would come up before
+anything used it, so a new layer or modifier step is one-shot, and a step switched to held says it
+does nothing there). ZMK sees each step's keycodes as they come, so what a step arms is for what
+comes after it: a sticky Shift shifts the next character only, whether a step armed it or it was
+armed before the press (`[sticky Shift, a, b]` types `Ab`, as ZMK's sticky key lets go after the
+next key); caps word holds for the letters after it and ends at the first character that does not
+keep it on, a space in the macro included; a dead key accents the next character; a sentence space
+after `.`, `?` or `!` leaves the next letter a capital. A repeat repeats the character before it
+in the macro (after a Unicode character it repeats nothing, as zmk-unicode leaves nothing to
+repeat), and an adaptive key after the macro's own text takes the branch that text chooses; one
+first in the macro follows what came before the press, as on its own key. A **tap dance** decides
+when its tapping term runs out, and a macro's own keys do not interrupt it, so with ZMK's usual
+timings, a macro's taps far shorter than the tapping term, it types its first tap after the macro's
+other steps: `[tap dance (a, b), c]` types `ca`. A macro of a sentence space and then a space types
+both.
+
+The editor lets macros nest three deep, a macro in a macro in a macro, and offers no macro past
+that, in a step or in any part of one; a layout written with deeper ones still loads, and is typed
+as far as the simulator follows it. A macro that would hold itself, which only a layout built in
+code can, is refused with that error. A macro among another's steps is part of that macro's card in
+**Special Behaviors**, and the ZMK modules its steps need are named once, on the outermost macro.
 
 A macro whose text ends in a space, such as `, ` or `. `, types the word's space as well: the
 analysis presses it where the text has the mark before a space, and its space ends the word (see
@@ -202,7 +228,7 @@ or with a module. Each module's page says how to add it to a keymap.
 | Tap-hold, home row mods | [hold-tap](https://zmk.dev/docs/keymaps/behaviors/hold-tap) |
 | Repeat | [`&key_repeat`](https://zmk.dev/docs/keymaps/behaviors/key-repeat) |
 | Adaptive key, alt repeat | the module [urob/zmk-adaptive-key](https://github.com/urob/zmk-adaptive-key) |
-| Macro | [macros](https://zmk.dev/docs/keymaps/behaviors/macros) |
+| Macro | [macros](https://zmk.dev/docs/keymaps/behaviors/macros), which can run any behaviour; a step that needs a module needs it in the macro too, as a sentence space needs zmk-sentence-case, and the macro's editor says so |
 | Tap dance | [tap-dance](https://zmk.dev/docs/keymaps/behaviors/tap-dance) |
 | Morph with a modifier | [mod-morph](https://zmk.dev/docs/keymaps/behaviors/mod-morph) |
 | Morph on a layer | the module [rafaelromao/zmk-layer-morph](https://github.com/rafaelromao/zmk-layer-morph) |

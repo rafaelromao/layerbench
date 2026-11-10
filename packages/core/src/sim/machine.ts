@@ -271,6 +271,16 @@ interface ExecContext {
   /** Tag of the most recently entered tagged binding, recorded on the next emit. */
   tag: string | null;
   depth: number;
+  /**
+   * How much of `out` caps word and the auto layer have already judged: a macro judges each step as
+   * it is typed, as ZMK sees each of its keycodes, and the press's end judges the rest.
+   */
+  judged: number;
+  /**
+   * Inside a macro, the tap dances its steps tapped: ZMK decides a tap dance when its tapping term
+   * runs out, after the macro's other steps, so they run when the outermost macro is done.
+   */
+  deferred: Binding[] | null;
 }
 
 const ALPHA_RE = /^\p{L}$/u;
@@ -280,10 +290,10 @@ const ALPHA_RE = /^\p{L}$/u;
  * the symbol typed is the same on the `symbols` host, while on a keycode host it lets `?` typed with
  * Right Shift end a sentence too.
  */
-const SENTENCE_ENDS: ReadonlySet<string> = new Set(['.', '?', '!']);
-const SENTENCE_LETTER_RE = /^[a-z]$/;
+export const SENTENCE_ENDS: ReadonlySet<string> = new Set(['.', '?', '!']);
+export const SENTENCE_LETTER_RE = /^[a-z]$/;
 /** What keeps caps word on besides its continue list, as ZMK has it: letters, digits, underscore. */
-const CAPS_WORD_RE = /^[\p{L}0-9_]$/u;
+export const CAPS_WORD_RE = /^[\p{L}0-9_]$/u;
 
 export function isAlphaSymbol(s: string): boolean {
   return ALPHA_RE.test(s);
@@ -422,6 +432,8 @@ export class Machine {
       suppressMods: new Set(),
       tag: null,
       depth: 0,
+      judged: 0,
+      deferred: null,
     };
   }
 
@@ -555,31 +567,38 @@ export class Machine {
         if (i >= 0) s.stickyMods.splice(i, 1);
       }
     }
-    if (ctx.emittedKeycode) {
-      if (s.capsWord) {
-        for (const sym of ctx.out) {
-          for (const g of splitGraphemes(sym)) {
-            if (!(CAPS_WORD_RE.test(g) || s.capsWord.continueList.has(g))) {
-              s.capsWord = null;
-              break;
-            }
+    if (ctx.emittedKeycode) this.judgeWord(ctx.out.slice(ctx.judged));
+    return wasted;
+  }
+
+  /**
+   * What was typed ends caps word, or the auto layer, unless each character keeps it going: a
+   * letter, a digit or `_` for caps word, a letter for the auto layer, or one on its continue list.
+   */
+  private judgeWord(typed: readonly string[]): void {
+    const s = this.state;
+    if (s.capsWord) {
+      for (const sym of typed) {
+        for (const g of splitGraphemes(sym)) {
+          if (!(CAPS_WORD_RE.test(g) || s.capsWord.continueList.has(g))) {
+            s.capsWord = null;
+            break;
           }
-          if (!s.capsWord) break;
         }
-      }
-      if (s.autoLayer) {
-        for (const sym of ctx.out) {
-          for (const g of splitGraphemes(sym)) {
-            if (!(isAlphaSymbol(g) || s.autoLayer.continueList.has(g))) {
-              s.autoLayer = null;
-              break;
-            }
-          }
-          if (!s.autoLayer) break;
-        }
+        if (!s.capsWord) break;
       }
     }
-    return wasted;
+    if (s.autoLayer) {
+      for (const sym of typed) {
+        for (const g of splitGraphemes(sym)) {
+          if (!(isAlphaSymbol(g) || s.autoLayer.continueList.has(g))) {
+            s.autoLayer = null;
+            break;
+          }
+        }
+        if (!s.autoLayer) break;
+      }
+    }
   }
 
   private effectiveShift(ctx: ExecContext, forAlpha: boolean): boolean {
@@ -852,6 +871,11 @@ export class Machine {
           return;
         }
         case 'tap_dance': {
+          // In a macro it types after the macro's other steps, when its tapping term runs out.
+          if (ctx.deferred !== null) {
+            ctx.deferred.push(b);
+            return;
+          }
           const n = Math.max(1, Math.min(ctx.taps || 1, b.bindings.length));
           this.run(b.bindings[n - 1], ctx);
           return;
@@ -862,19 +886,42 @@ export class Machine {
           else if (b.symbols !== undefined)
             for (const g of splitGraphemes(b.symbols)) steps.push({ kind: 'kp', symbol: g });
           if (b.then) steps.push(...b.then);
+          // Each step is tapped once, as ZMK's macro taps it: a tap-hold's tap, a tap dance's first.
           const savedMode = ctx.mode;
+          const savedTaps = ctx.taps;
           ctx.mode = 'tap';
+          ctx.taps = 1;
+          const outermost = ctx.deferred === null;
+          if (outermost) ctx.deferred = [];
           // The last step that turned a layer on, and what it was.
           let layerLeaf: BindingKind | null = null;
-          for (const step of steps) {
+          const runStep = (step: Binding) => {
             const reached = ctx.reaches;
             ctx.reaches = null;
+            // ZMK sees each step's keycodes as they come: a sticky modifier is used up by the next
+            // one, and caps word and the auto layer judge each.
+            const sticky = this.state.stickyMods.slice();
+            const emitted = ctx.emittedKeycode;
+            ctx.emittedKeycode = false;
             this.run(step, ctx);
+            if (ctx.emittedKeycode) {
+              this.state.stickyMods = this.state.stickyMods.filter((m) => !sticky.includes(m));
+              this.judgeWord(ctx.out.slice(ctx.judged));
+            }
+            ctx.judged = ctx.out.length;
+            ctx.emittedKeycode ||= emitted;
             if (ctx.reaches !== null) layerLeaf = ctx.leaf;
             else ctx.reaches = reached;
             this.recomputeMask();
+          };
+          for (const step of steps) runStep(step);
+          if (outermost) {
+            const later = ctx.deferred ?? [];
+            ctx.deferred = null;
+            for (const dance of later) runStep(dance);
           }
           ctx.mode = savedMode;
+          ctx.taps = savedTaps;
           // One that types nothing and turns a layer on is pressed as the layer key it turns it on
           // with.
           ctx.leaf = ctx.out.length === 0 && layerLeaf !== null ? layerLeaf : 'macro';

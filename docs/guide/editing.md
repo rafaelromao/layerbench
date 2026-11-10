@@ -339,8 +339,8 @@ with `ñ` `ç` `ä` `ö` `ü`.
 
 | Layout | Its author's layers | Reached by | Cannot type |
 |---|---|---|---|
-| Romak | Alpha 2, Ç extension | the right inner thumb, one-shot; `ç` on Alpha 2 | every digit and symbol but `'` `,` `.` `/` `;` `_`, and ı ß œ æ ñ ä ö ü |
-| Magic Romak | Numbers, Symbols | space held, the Alpha 2 thumb held | £ § « » ı ß œ æ |
+| Romak | Alpha 2, Ç extension, Numbers, Symbols | the right inner thumb, one-shot; `ç` on Alpha 2; space held, the Alpha 2 thumb held | £ § « » ı ¿ ¡ ß œ æ ñ ä ö ü |
+| Magic Romak | Numbers, Symbols | space held, the Alpha 2 thumb held | £ § « » ı ¿ ¡ ß œ æ |
 | Magic Sturdy | Symbols, Numbers | `t` or `a` held, `n` held | € £ § ª º ° `?` « » ı ¿ ¡ ß œ æ ñ ç ä ö ü |
 | Enthium | Numbers, Symbols | L1 (Tab in its keymap) held, `r` held | `&` `(` `)` € £ § ª º ° « » ı ¿ ¡ ß œ æ ñ ç ä ö ü |
 | Hands Down Gold, Promethium, Vibranium | Symbols, Numbers, Numpad | space held; L1 (Backspace in its keymap) or `,` (`f` on Promethium) held; `b` (`k`) held | `\` ª º « » ı ¿ ¡ ß |
@@ -376,12 +376,17 @@ number row and a layer of function keys, which type nothing the analysis counts.
 marks its author places and nothing more, no digit and no accent, until you add them in the editor.
 
 Romak is its author's write-up ([rafaelromao.github.io/romak](https://rafaelromao.github.io/romak)),
-and has no Numbers, Symbols, Extras or Accents, as the write-up has none for 34 keys. Tapping the
+with Magic Romak's Numbers and Symbols, and has no Extras or Accents. Tapping the
 right inner thumb turns Alpha 2 on for the next key: the accents `ô` `ó` `ú` `ã` `á` `é` `í` `õ` `â`
 `ê`, `qu` in one press, and `ç`, with `'` and `_` on its thumbs. Typing `ç` leaves the Ç extension on
 for the next key, with `ão` and `ões` in one press each, and `ã` and `õ`. The thumbs are Repeat,
 space, Alpha 2 and a one-shot Shift. The write-up lists one combo, `á` and `é` together on Alpha 2,
-which types `à`.
+which types `à`. Holding space reaches Numbers and holding the Alpha 2 thumb Symbols, each still
+typing when tapped: the two layers are Magic Romak's key for key, with their combos `º` (`ª` when
+held) and `°` on Numbers and `€` on Symbols, and the ten keys Romak's board adds left unset on them,
+so Alpha 1 shows through. They keep Magic Romak's thumbs: on Numbers the right inner thumb taps
+space and holds Symbols, and `0` is on the right outer thumb; on Symbols the left inner thumb taps
+space and holds Numbers. Romak has no dead key, so it cannot type `ñ` `ä` `ö` `ü`.
 
 Magic Romak is its author's keymap, and has no Extras and no Accents, as the keymap has none. Its
 keys, layers and combos are read from the keymap-drawer file its author keeps for it, as the
@@ -440,7 +445,8 @@ keeps the page where it is, at either end too:
 - **Special Behaviors** lists the layout's adaptive keys, alt repeats, macros and mod morphs, and
   its sentence spaces, a card each, kind by kind, on a key that shows what it types. Each names its
   layer and key, or its combo. An adaptive key, an alt repeat too, is one card: the macros it types
-  after a letter are in the key's editor. The board is under the
+  after a letter are in the key's editor. A macro's card opens it with its steps in the key's
+  editor, where each step is edited as a key is ([Macros](special-keys.md#macros)). The board is under the
   cards, as on **Combos**: pick one and the board turns to its layer with the key selected, or
   opens its combo, with the editor beside the board, and the card is marked. A key or combo picked
   on the board scrolls its card into view in the strip. A shift key that starts caps word is one of

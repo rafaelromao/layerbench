@@ -91,8 +91,8 @@ Of the 35 bundled layouts, 14 are *even*, 12 *leans* and 9 *heavy*; Night is the
 | Sunlight | 53.13–46.87 | 6.27 | leans |
 | Nordrassil | 46.66–53.34 | 6.68 | leans |
 | Enthium | 46.20–53.80 | 7.59 | leans |
-| Romak | 46.15–53.85 | 7.71 | leans |
 | Hands Down Promethium | 53.89–46.11 | 7.77 | leans |
+| Romak | 45.86–54.14 | 8.27 | leans |
 | T-34 | 45.65–54.34 | 8.69 | leans |
 | Dvorak | 44.92–55.08 | 10.15 | leans |
 | Sturdy | 44.65–55.35 | 10.71 | leans |

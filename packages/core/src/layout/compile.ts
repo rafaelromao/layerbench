@@ -93,6 +93,59 @@ export class LayoutCompileError extends Error {
   }
 }
 
+/**
+ * How deep the editor lets macros hold macros: a macro in a macro in a macro. A layout written
+ * otherwise still loads; the simulator follows bindings as deep as it can and stops past that.
+ */
+export const MAX_MACRO_NESTING = 3;
+
+/**
+ * What is wrong with a binding that no part of the layout can run: a macro that holds itself,
+ * however deep (a layout built in code can; a document cannot). Null when nothing is. Checked
+ * before anything walks the binding, since a binding that holds itself would never end.
+ */
+export function bindingFault(b: Binding): string | null {
+  const path = new Set<object>();
+  const walk = (x: Binding): string | null => {
+    if (path.has(x)) return 'a macro contains itself';
+    path.add(x);
+    try {
+      for (const part of bindingParts(x)) {
+        const fault = walk(part);
+        if (fault) return fault;
+      }
+      return null;
+    } finally {
+      path.delete(x);
+    }
+  };
+  return walk(b);
+}
+
+/** Every binding a binding holds: its parts, branches, taps and steps. */
+export function bindingParts(b: Binding): Binding[] {
+  switch (b.kind) {
+    case 'lt':
+      return [b.tap];
+    case 'hold_tap':
+      return [b.tap, b.hold];
+    case 'mod_morph':
+      return [b.default, b.morphed];
+    case 'layer_morph':
+      return [b.active, b.inactive];
+    case 'sentence_morph':
+      return [b.default, b.pending];
+    case 'tap_dance':
+      return b.bindings;
+    case 'macro':
+      return [...(b.steps ?? []), ...(b.then ?? [])];
+    case 'adaptive':
+      return [...(b.default ? [b.default] : []), ...(b.triggers ?? []).map((t) => t.binding)];
+    default:
+      return [];
+  }
+}
+
 function applyDefaults(b: Binding, defaults: ResolvedBehaviorDefaults): Binding {
   const walk = (x: Binding): Binding => {
     switch (x.kind) {
@@ -259,11 +312,17 @@ export function compileLayout(authored: Layout): CompiledLayout {
   if (layout.layers.length > 32) errors.push('At most 32 layers are supported');
 
   const defaults = resolveDefaults(layout.behaviorDefaults);
-  const prep = (b: Binding): Binding => applyDefaults(b, defaults);
+  /** A binding as the layout runs it; one that cannot run is told, and does nothing. */
+  const prep = (b: Binding, where: string): Binding => {
+    const fault = bindingFault(b);
+    if (fault === null) return applyDefaults(b, defaults);
+    errors.push(`${where}: ${fault}`);
+    return { kind: 'none' };
+  };
 
   const layers: CompiledLayer[] = layout.layers.map((l, idx) => {
     const fallback: Binding = l.bindings['*']
-      ? prep(l.bindings['*'])
+      ? prep(l.bindings['*'], `Layer ${l.id}, every key`)
       : idx === 0
         ? { kind: 'none' }
         : { kind: 'trans' };
@@ -276,7 +335,7 @@ export function compileLayout(authored: Layout): CompiledLayout {
         errors.push(`Layer ${l.id}: unknown key id ${keyId}`);
         continue;
       }
-      bindings[ki] = prep(b);
+      bindings[ki] = prep(b, `Layer ${l.id}, key ${keyId}`);
       explicit[ki] = true;
     }
     for (const b of bindings) {
@@ -327,7 +386,7 @@ export function compileLayout(authored: Layout): CompiledLayout {
         else layerMask |= 1 << li;
       }
     }
-    const binding = prep(c.binding);
+    const binding = prep(c.binding, `Combo ${c.id ?? idx}`);
     const memberKeys = memberIdx.map((i) => keys[i]);
     const hands = new Set(memberKeys.map((k) => k.hand));
     const pos = positions.length;
