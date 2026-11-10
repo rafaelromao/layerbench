@@ -112,8 +112,14 @@ async function store(
   basedOn: string | null,
 ): Promise<{ id: string; leftBehind: boolean; sha: string | null }> {
   if (storedId === null) {
-    const { id } = await saveNewLayout(storage, layout, `Save layout ${layout.name}`, onNew, opts);
-    return { id, leftBehind: false, sha: null };
+    const { id, sha } = await saveNewLayout(
+      storage,
+      layout,
+      `Save layout ${layout.name}`,
+      onNew,
+      opts,
+    );
+    return { id, leftBehind: false, sha };
   }
   const entries = await storage.list('layouts');
   // One renamed since it was offered to overwrite is not overwritten: the name is asked about anew.

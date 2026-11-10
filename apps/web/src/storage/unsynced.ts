@@ -152,6 +152,12 @@ export class Unsynced {
       .map((k) => k.slice(prefix.length));
   }
 
+  /** Forget the version a document was last held at, as before something recorded it. */
+  clearBase(collection: Collection, id: string): void {
+    const kept = this.read();
+    if (kept.base.delete(`${collection}/${id}`)) this.write(kept);
+  }
+
   /** Forget everything known of a document: it is gone from this browser. */
   forget(collection: Collection, id: string): void {
     const kept = this.read();

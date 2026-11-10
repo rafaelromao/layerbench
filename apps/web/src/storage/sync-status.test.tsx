@@ -25,6 +25,7 @@ const BASE: SyncInput = {
   scheduled: false,
   lacking: null,
   auditFailed: false,
+  auditing: false,
 };
 
 describe('what the status says', () => {
@@ -168,10 +169,22 @@ describe('what the status says', () => {
     const summary = summarize({ ...signedIn, lacking: 2 });
     expect(summary).toMatchObject({ kind: 'lacking', action: 'send-all', notable: true });
     expect(summary.text).toBe(
-      '2 documents saved in this browser are not in your GitHub account: never sent, or deleted from it elsewhere.',
+      '2 documents saved in this browser are not in your GitHub account: never sent, or deleted from it elsewhere. Send them, or delete them here.',
     );
     expect(summary.label).not.toBe(' ✓');
     expect(summarize({ ...signedIn, lacking: 0 })).toMatchObject({ kind: 'synced' });
+  });
+
+  it('is not a check mark before the first look at this browser has finished', () => {
+    const signedIn = { ...BASE, status: 'signed-in', login: 'you' } as const;
+    expect(summarize({ ...signedIn, auditing: true })).toMatchObject({
+      kind: 'checking',
+      notable: false,
+    });
+    // Once something is known, a look made again does not take it away.
+    expect(summarize({ ...signedIn, auditing: true, lacking: 0 })).toMatchObject({
+      kind: 'synced',
+    });
   });
 
   it('says when this browser could not be checked against the account, and offers to check again', () => {

@@ -31,7 +31,7 @@ export async function saveNewLayout(
   message: string,
   onAttempt: (id: string, doc: JsonObject) => void = () => {},
   { overwrite }: SaveOptions = {},
-): Promise<{ id: string }> {
+): Promise<{ id: string; sha: string }> {
   const entries = await storage.list('layouts');
   // One renamed since it was offered to overwrite is not overwritten: the name is asked about anew.
   const target = entries.find((e) => e.id === overwrite);
@@ -43,8 +43,8 @@ export async function saveNewLayout(
   }
   const doc = toCanonicalJson({ ...layout, id });
   onAttempt(id, doc);
-  await storage.put('layouts', id, doc, { message });
-  return { id };
+  const written = await storage.put('layouts', id, doc, { message });
+  return { id, sha: written.sha };
 }
 
 /** Keys in order and nothing else, so two documents read alike however each was stored. */

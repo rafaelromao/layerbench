@@ -7,6 +7,7 @@ import {
 import { describe, expect, it, vi } from 'vitest';
 import { CompositeStorage } from '../storage/composite.js';
 import { MemoryLink } from '../test/memory-link.js';
+import { memoryMarks } from '../test/memory-marks.js';
 import { MemoryStorage } from '../test/memory-storage.js';
 import { decodeInline } from '../url/inline.js';
 import { type Drafts, webDrafts } from './drafts.js';
@@ -326,6 +327,45 @@ describe('Saving what was read', () => {
     const state = await opened(s);
     await s.save(state.layout);
     expect(asked().filter((b) => b !== undefined)).toEqual([]);
+  });
+
+  it('is an edit of what its first save wrote, for the next save', async () => {
+    const storage = new MemoryStorage();
+    const asked = basedOns(storage);
+    const { s } = session('qwerty', { storage });
+    const state = await opened(s);
+    const first = await s.save(state.layout);
+    if (!first.ok) throw new Error(first.error);
+    const written = (await storage.get('layouts', first.id))?.meta.sha;
+    await s.save({ ...state.layout, description: 'edited after' });
+    expect(asked().at(-1)).toBe(written);
+  });
+
+  it('is refused by a second session opened before the first saved, and what was saved is kept', async () => {
+    const marks = memoryMarks();
+    const local = new MemoryStorage('local', true);
+    await seed(local, 'qwerty', 'mine', { name: 'Mine' });
+    // Offline, as every save of a signed-out phone is: nothing reaches the account, all of it waits.
+    const storage = new CompositeStorage(local, null, marks);
+    const open = (drafts: Drafts) =>
+      createLayoutSession(
+        { storage: () => storage, drafts, link: new MemoryLink('custom:mine') },
+        { linkDelayMs: 5 },
+      );
+    const tabA = open(webDrafts(mapStore()));
+    const tabB = open(webDrafts(mapStore()));
+    const a = await opened(tabA);
+    const b = await opened(tabB);
+
+    // Tab B saves S2; tab A, opened before it, saves S3.
+    expect(await tabB.save({ ...b.layout, description: 'S2' })).toMatchObject({ ok: true });
+    const refused = await tabA.save({ ...a.layout, description: 'S3' });
+    expect(refused).toMatchObject({ ok: false, reason: 'conflict' });
+    expect((await local.get('layouts', 'mine'))?.doc.description).toBe('S2');
+
+    // The tab that saved goes on from what it saved.
+    expect(await tabB.save({ ...b.layout, description: 'S2b' })).toMatchObject({ ok: true });
+    expect((await local.get('layouts', 'mine'))?.doc.description).toBe('S2b');
   });
 
   it('keeps the version a draft was made from, across a reload, and saves against that', async () => {

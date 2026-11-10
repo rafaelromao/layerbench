@@ -25,6 +25,8 @@ export interface SyncState {
   lacking: number | null;
   /** Whether the last look at this browser's documents against the account's did not finish. */
   auditFailed: boolean;
+  /** Whether this browser's documents are being looked at against the account's now. */
+  auditing: boolean;
 }
 
 const IDLE: SyncState = {
@@ -36,6 +38,7 @@ const IDLE: SyncState = {
   scheduled: false,
   lacking: null,
   auditFailed: false,
+  auditing: false,
 };
 
 export const useSync = create<SyncState>(() => IDLE);
@@ -157,10 +160,25 @@ export async function copyEverything(copy: () => Promise<CopiedUp>): Promise<voi
     noteResult(result);
     toast.info(copyMessage(result));
   } catch (e) {
-    if (e instanceof CopyUpError) noteResult(e.result);
+    if (e instanceof CopyUpError) noteResult(mergedWithShown(e.result));
     const copied = e instanceof CopyUpError ? e.copied : 0;
     toast.error(`Copying stopped after ${documents(copied)}: ${messageOf(e)}`);
+  } finally {
+    // What the account lacks is not what it lacked: looked at again, so the status says so.
+    active?.audit();
   }
+}
+
+/**
+ * A result that stopped partway, with the conflicts already shown for documents it did not reach: they
+ * are still there, and must not vanish from the status, or close the dialog, because it ended early.
+ */
+function mergedWithShown(result: CopiedUp): CopiedUp {
+  const shown = useSync.getState().last?.conflicts ?? [];
+  const kept = shown.filter(
+    (p) => !result.conflicts.some((c) => c.collection === p.collection && c.id === p.id),
+  );
+  return { ...result, conflicts: [...result.conflicts, ...kept] };
 }
 
 let active: {
@@ -310,7 +328,7 @@ export function startAutoSync(
       if (stopped) return;
       failures++;
       // What it did before it stopped is still what it found.
-      if (e instanceof CopyUpError) noteResult(e.result);
+      if (e instanceof CopyUpError) noteResult(mergedWithShown(e.result));
       useSync.setState({ phase: 'failed', error: e instanceof Error ? e.message : String(e) });
       later('retry', retryMs[Math.min(failures, retryMs.length) - 1]);
     } finally {
@@ -393,21 +411,27 @@ export function startAutoSync(
     }
     const given = new AbortController();
     const timer = setTimeout(() => given.abort(), attemptMs);
+    useSync.setState({ auditing: true });
     try {
       const found = await storage.audit({ signal: given.signal });
       if (stopped) return;
-      marks.setAudit({ account: login ?? '', at: Date.now(), lacking: found.lacking });
-      useSync.setState({ lacking: found.lacking, auditFailed: false });
+      // On a browser another account last sent to, what the account lacks is not for the user to be
+      // offered: it may be that account's, and is not this one's to have.
+      const lacking = accountChanged ? 0 : found.lacking;
+      marks.setAudit({ account: login ?? '', at: Date.now(), lacking });
+      useSync.setState({ lacking, auditFailed: false });
       if (found.marked > 0) void run();
     } catch {
       // Said in the status, with a way to try again; looked at again on the next visit too.
       if (!stopped) useSync.setState({ auditFailed: true });
     } finally {
       clearTimeout(timer);
+      if (!stopped) useSync.setState({ auditing: false });
     }
   };
 
   const before = marks.account();
+  const accountChanged = login !== null && before !== null && before !== login;
   if (marks.count() === 0) {
     // Nothing is waiting, so there is nothing to send, and nothing to ask: the browser is the
     // account's that signed in.

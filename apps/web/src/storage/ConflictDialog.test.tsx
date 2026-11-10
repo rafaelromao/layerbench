@@ -36,6 +36,13 @@ function show(storage: CompositeStorage) {
   );
 }
 
+/** A choice, once the dialog lets it be made: it ignores input for a moment after it opens. */
+async function choose(user: ReturnType<typeof userEvent.setup>, name: 'Keep mine' | 'Keep theirs') {
+  const button = await screen.findByRole('button', { name });
+  await waitFor(() => expect(button).toBeEnabled());
+  await user.click(button);
+}
+
 const description = async (store: MemoryStorage, id: string) =>
   (await store.get('layouts', id))?.doc.description;
 
@@ -86,8 +93,25 @@ describe('a dialog that opens by itself', () => {
     show(storage);
     await screen.findByRole('dialog', { name: /Two versions of / });
 
-    await user.click(screen.getByRole('button', { name: 'Keep mine' }));
+    await choose(user, 'Keep mine');
     await waitFor(() => expect(screen.getByRole('button', { name: 'Decide later' })).toHaveFocus());
+  });
+});
+
+describe('a tap meant for something else', () => {
+  it('lands on nothing for a moment after the dialog opens by itself', async () => {
+    const { storage, remote } = await conflicted();
+    show(storage);
+    await screen.findByRole('dialog', { name: 'Two versions of Gust' });
+    const mine = screen.getByRole('button', { name: 'Keep mine' });
+    const theirs = screen.getByRole('button', { name: 'Keep theirs' });
+    expect(mine).toBeDisabled();
+    expect(theirs).toBeDisabled();
+    // The way out is never held up.
+    expect(screen.getByRole('button', { name: 'Decide later' })).toBeEnabled();
+    expect(await description(remote, 'gust')).toBe('Gust on the laptop');
+    await waitFor(() => expect(mine).toBeEnabled());
+    expect(theirs).toBeEnabled();
   });
 });
 
@@ -133,7 +157,7 @@ describe('choosing between two versions', () => {
     show(storage);
     await screen.findByRole('dialog', { name: 'Two versions of Gust' });
 
-    await user.click(screen.getByRole('button', { name: 'Keep mine' }));
+    await choose(user, 'Keep mine');
 
     await waitFor(async () => expect(await description(remote, 'gust')).toBe('Gust on the phone'));
     expect(await description(local, 'gust')).toBe('Gust on the phone');
@@ -151,7 +175,7 @@ describe('choosing between two versions', () => {
     show(storage);
     await screen.findByRole('dialog', { name: 'Two versions of Gust' });
 
-    await user.click(screen.getByRole('button', { name: 'Keep theirs' }));
+    await choose(user, 'Keep theirs');
 
     await waitFor(async () => expect(await description(local, 'gust')).toBe('Gust on the laptop'));
     expect(await description(remote, 'gust')).toBe('Gust on the laptop');
@@ -203,13 +227,13 @@ describe('choosing between two versions', () => {
     expect(dialog).toHaveTextContent('Layout 1 of 2 to choose');
     const first = (dialog.querySelector('h2')?.textContent ?? '').replace('Two versions of ', '');
 
-    await user.click(screen.getByRole('button', { name: 'Keep mine' }));
+    await choose(user, 'Keep mine');
     const next = await screen.findByRole('dialog', {
       name: (name) => name.startsWith('Two versions of ') && !name.endsWith(first),
     });
     expect(next).toHaveTextContent('One layout to choose');
 
-    await user.click(screen.getByRole('button', { name: 'Keep theirs' }));
+    await choose(user, 'Keep theirs');
     await waitFor(() => expect(screen.queryByRole('dialog', { name: /Two versions/ })).toBeNull());
 
     // One of each, as the user chose, and nothing else touched.
@@ -229,7 +253,7 @@ describe('choosing between two versions', () => {
     await screen.findByRole('dialog', { name: 'Two versions of Gust' });
     await remote.put('layouts', 'gust', { name: 'Gust', description: 'Gust on the laptop, again' });
 
-    await user.click(screen.getByRole('button', { name: 'Keep mine' }));
+    await choose(user, 'Keep mine');
 
     await waitFor(() =>
       expect(useToasts.getState().toasts.map((t) => t.text)).toContain(
@@ -256,7 +280,7 @@ describe('choosing between two versions', () => {
     // Edited here while the dialog was showing the two.
     await storage.put('layouts', 'gust', { name: 'Gust', description: 'edited since' });
 
-    await user.click(screen.getByRole('button', { name: 'Keep theirs' }));
+    await choose(user, 'Keep theirs');
     await waitFor(() =>
       expect(useToasts.getState().toasts.map((t) => t.text)).toContain(
         'Gust was edited in this browser since you were shown it, so nothing was replaced. Choose again.',
@@ -274,7 +298,7 @@ describe('choosing between two versions', () => {
     await screen.findByRole('dialog', { name: 'Two versions of Gust' });
     await remote.delete('layouts', 'gust');
 
-    await user.click(screen.getByRole('button', { name: 'Keep theirs' }));
+    await choose(user, 'Keep theirs');
 
     await waitFor(() =>
       expect(useToasts.getState().toasts.map((t) => t.text)).toContain(
@@ -297,7 +321,7 @@ describe('choosing between two versions', () => {
       throw new Error('GitHub responded 503');
     };
 
-    await user.click(screen.getByRole('button', { name: 'Keep mine' }));
+    await choose(user, 'Keep mine');
     await waitFor(() =>
       expect(useToasts.getState().toasts.map((t) => t.text)).toContain(
         "Could not keep this browser's version of Gust: GitHub responded 503",

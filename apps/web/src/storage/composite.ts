@@ -116,6 +116,8 @@ function patient<T>(read: Promise<T>, ms: number): Promise<T | typeof SLOW> {
  * goes on without it: on mobile data a request can take a minute to give up, and a person cannot.
  */
 const READ_PATIENCE_MS = 5_000;
+/** How long a save waits for its turn with the gists before it says it is kept, and carries on in the background. */
+const SEND_PATIENCE_MS = 10_000;
 
 const messageOf = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
@@ -171,7 +173,12 @@ export class CompositeStorage implements StorageAdapter {
     if (!this.remote) return this.local.list(collection);
     const local = await this.local.list(collection).catch(() => [] as IndexEntry[]);
     try {
-      const remote = await this.remote.list(collection);
+      // Waited for a while, as a save is: on a bad connection a list is no reason for it to hang.
+      const remote = await patient(this.remote.list(collection), READ_PATIENCE_MS);
+      if (remote === SLOW) {
+        this.partial.add(collection);
+        return local;
+      }
       this.partial.delete(collection);
       // The gists are the shared truth, so their entry wins where both hold the same id, unless
       // this browser's has edits not sent yet: those are the latest work.
@@ -190,8 +197,10 @@ export class CompositeStorage implements StorageAdapter {
     id: string,
   ): Promise<{ doc: JsonObject; meta: StorageMeta } | null> {
     // Edits not sent yet are the latest work, so the gists' older copy does not stand in for them.
+    // A browser that cannot be read is not a copy that is missing: the account's older one does not
+    // stand in for it, as the next save would then be of that.
     if (this.marks.has(collection, id)) {
-      const waiting = await this.local.get(collection, id).catch(() => null);
+      const waiting = await this.local.get(collection, id);
       if (waiting) return waiting;
     }
     let unreachable: unknown = null;
@@ -218,8 +227,10 @@ export class CompositeStorage implements StorageAdapter {
               return mine;
             }
           }
-          // Only a copy that is here is kept up to date: not one made of everything read.
+          // Only a copy that is here is kept up to date: not one made of everything read. One that is
+          // not has only the version recorded, which an edit of it, saved here, is made on.
           if (mine) this.adopt(collection, id, remote);
+          else this.marks.setBase(collection, id, remote.meta.sha);
           return remote;
         }
       } catch (e) {
@@ -277,7 +288,12 @@ export class CompositeStorage implements StorageAdapter {
     if (!now || now.meta.sha !== was.sha) return false;
     if (this.marks.has(collection, id)) return false;
     try {
-      await this.local.put(collection, id, doc, { message: `Read ${collection} ${id}` });
+      // Written only over the version decided on, in the store's own transaction: a save that
+      // commits after the look above and before this write refuses it, rather than being written over.
+      await this.local.put(collection, id, doc, {
+        message: `Read ${collection} ${id}`,
+        expectedSha: was.sha,
+      });
     } catch {
       return false;
     }
@@ -309,24 +325,44 @@ export class CompositeStorage implements StorageAdapter {
     const here = { message: opts.message, replacing: opts.replacing };
     const remote = this.remote;
     const waiting = this.marks.has(collection, id);
+    const previousBase = this.marks.base(collection, id);
     // The version this save is an edit of is what it is weighed against for as long as it is not
-    // sent, not whatever is read of the document meanwhile. Edits already waiting keep theirs.
-    if (!waiting && typeof opts.basedOn === 'string') {
-      this.marks.setBase(collection, id, opts.basedOn);
-    }
+    // sent, not whatever is read of the document meanwhile. Edits already waiting keep theirs. If the
+    // save is then refused or fails, the version recorded before it is put back.
+    const recorded = !waiting && typeof opts.basedOn === 'string';
+    if (recorded) this.marks.setBase(collection, id, opts.basedOn as string);
+    const restoreBase = () => {
+      if (!recorded) return;
+      if (previousBase === null) this.marks.clearBase(collection, id);
+      else this.marks.setBase(collection, id, previousBase);
+    };
+    // Edits waiting to be sent are the latest work, and a save of them is written over exactly the
+    // version the editor read: a tab opened before another saved them is refused, not written over
+    // the other's, and what is waiting is kept.
+    const guard =
+      waiting && typeof opts.basedOn === 'string' ? { expectedSha: opts.basedOn } : undefined;
+    const write = () => this.local.put(collection, id, doc, { ...here, ...guard });
     if (!remote) {
-      const meta = await this.writeAhead(collection, id, () =>
-        this.local.put(collection, id, doc, here),
-      );
+      let meta: StorageMeta;
+      try {
+        meta = await this.writeAhead(collection, id, write);
+      } catch (e) {
+        restoreBase();
+        throw e;
+      }
       this.marks.notify();
       return meta;
     }
     const before = waiting ? null : await this.local.get(collection, id).catch(() => null);
     // Written ahead, before the gists are asked anything: a save made on a bad connection must not
     // wait on it to be kept, and from here on, whatever happens, a mark says it is not sent.
-    const saved = await this.writeAhead(collection, id, () =>
-      this.local.put(collection, id, doc, here),
-    );
+    let saved: StorageMeta;
+    try {
+      saved = await this.writeAhead(collection, id, write);
+    } catch (e) {
+      restoreBase();
+      throw e;
+    }
     // Edits not sent yet are not written to the gists by their next save either: the gists may
     // hold a version this browser has not seen, which the sender weighs, with a check against it.
     if (waiting) {
@@ -345,11 +381,18 @@ export class CompositeStorage implements StorageAdapter {
           ? nameTaken(there, indexSummary(collection, id, doc).name, id, opts.replacing)
           : null;
       if (taken) {
-        await this.undo(collection, id, before);
+        await this.undo(collection, id, before, restoreBase);
         throw new NameTakenError(taken);
       }
     }
-    return this.exclusive(() => this.sendSave(collection, id, doc, opts, saved, before));
+    // The send is waited for for a while: it queues behind whatever else is being sent, and a save
+    // that is kept does not wait on that to say so. What it finds after that is the sender's.
+    const sending = this.exclusive(() =>
+      this.sendSave(collection, id, doc, opts, saved, before, restoreBase),
+    );
+    sending.catch(() => {});
+    const outcome = await patient(sending, SEND_PATIENCE_MS);
+    return outcome === SLOW ? saved : outcome;
   }
 
   /** A save's turn with the gists: write over the version it is an edit of, or leave it marked. */
@@ -360,6 +403,7 @@ export class CompositeStorage implements StorageAdapter {
     opts: PutOptions,
     saved: StorageMeta,
     before: { doc: JsonObject } | null,
+    restoreBase: () => void,
   ): Promise<StorageMeta> {
     const remote = this.remote as StorageAdapter;
     // What is behind is not known if the gists cannot be read: it stays here, marked, and the
@@ -375,15 +419,17 @@ export class CompositeStorage implements StorageAdapter {
       await this.settled(collection, id, seen.meta.sha, doc);
       return saved;
     }
-    if (seen) {
+    if (seen && opts.expectedSha === undefined) {
       // The gists hold a version this save is not an edit of: another browser saved it since this
       // one last held it. Writing over it would lose that save, so this one stays here, marked, and
       // is sent as a conflict for the user to settle. With no record of the version it is an edit
-      // of, that is so where this browser held a copy of the document already (one from before
-      // versions were kept); a document it never held is one the user knowingly writes to, as when
-      // they choose to overwrite a layout of the same name.
+      // of, that is so wherever it could be an edit of an older one: where this browser held a copy
+      // already, and for a rule set or a text, which two devices can both make under the same name.
+      // Only a layout it never held is one the user knowingly writes to, as when they choose to
+      // overwrite a layout of the same name.
       const base = this.marks.base(collection, id);
-      if (base === null ? before !== null : seen.meta.sha !== base) {
+      const knowingly = collection === 'layouts' && before === null;
+      if (base === null ? !knowingly : seen.meta.sha !== base) {
         this.marks.notify();
         return saved;
       }
@@ -406,7 +452,7 @@ export class CompositeStorage implements StorageAdapter {
       if (e instanceof StorageConflictError || e instanceof NameTakenError) {
         // Refused for what the gists hold, and so for the caller to decide about: not left here to
         // be sent unasked, nor as a copy of what was refused.
-        await this.undo(collection, id, before);
+        await this.undo(collection, id, before, restoreBase);
         throw e;
       }
       // Any other failure leaves it marked, to be sent when the gists can be written again, and
@@ -416,7 +462,12 @@ export class CompositeStorage implements StorageAdapter {
   }
 
   /** Put back what this browser held before a save that was then refused. */
-  private async undo(collection: Collection, id: string, before: { doc: JsonObject } | null) {
+  private async undo(
+    collection: Collection,
+    id: string,
+    before: { doc: JsonObject } | null,
+    restoreBase: () => void,
+  ) {
     try {
       if (before) await this.local.put(collection, id, before.doc, {});
       else await this.local.delete(collection, id);
@@ -425,6 +476,8 @@ export class CompositeStorage implements StorageAdapter {
       return;
     }
     this.marks.clear(collection, id);
+    // What it was an edit of is not recorded for a copy that is back as it was.
+    restoreBase();
   }
 
   delete(collection: Collection, id: string, opts: { message?: string } = {}): Promise<void> {
@@ -433,8 +486,15 @@ export class CompositeStorage implements StorageAdapter {
         // The gists first: if they cannot be reached, nothing is deleted, edits not sent included.
         const seen = await this.remote.get(collection, id);
         const base = this.marks.base(collection, id);
-        // Another browser saved it since this one last held it: that save is not deleted unseen.
-        if (seen && base !== null && seen.meta.sha !== base) throw new StorageConflictError();
+        // Another browser saved it since this one last held it: that save is not deleted unseen. With
+        // no record of which version this was, a copy that differs from the account's is not either.
+        const mine = base === null && seen ? await this.local.get(collection, id) : null;
+        if (
+          seen &&
+          (base === null ? mine && !sameDocument(mine.doc, seen.doc) : seen.meta.sha !== base)
+        ) {
+          throw new StorageConflictError();
+        }
         await this.remote.delete(collection, id, opts);
       }
       await this.local.delete(collection, id, opts);
@@ -517,9 +577,9 @@ export class CompositeStorage implements StorageAdapter {
    * unsent; a layout left for its name, a conflict, and one that could not be sent, are.
    *
    * With `everything`, the documents never marked are weighed too, as those saved before edits
-   * were marked have to be: each that differs and has no version on record is sent if this browser
-   * saved it later than the gists, by when each was saved, and left as it is otherwise. That is for
-   * the user to ask for, as a document the gists lack may be one another browser deleted.
+   * were marked have to be: each that differs is marked, and sent only if the gists hold the version
+   * it was an edit of, never by when each was saved, and asked about otherwise. That is for the user
+   * to ask for, as a document the gists lack may be one another browser deleted.
    */
   async copyUp(opts: { everything?: boolean; signal?: AbortSignal } = {}): Promise<CopiedUp> {
     const everything = opts.everything === true;
@@ -602,6 +662,19 @@ export class CompositeStorage implements StorageAdapter {
     let seen = await remote.get(collection, id);
     let now = (await remote.list(collection)).find((e) => e.id === id);
     if (seen && sameDocument(seen.doc, stored.doc)) {
+      // The same, but missing from the account's list: an index rewritten from a stale read by
+      // another tab dropped its row, which leaves the document unseen by every browser without a
+      // copy. Written again, over the version just read, it is listed.
+      if (now === undefined) {
+        try {
+          await remote.put(collection, id, stored.doc, {
+            expectedSha: seen.meta.sha,
+            message: `List ${collection} ${entry.name}`,
+          });
+        } catch (e) {
+          if (!(e instanceof StorageConflictError) && !(e instanceof NameTakenError)) throw e;
+        }
+      }
       await this.settled(collection, id, seen.meta.sha, stored.doc);
       done.current++;
       return;
@@ -756,9 +829,16 @@ export class CompositeStorage implements StorageAdapter {
       // An edit made here since the user was shown the two is not one they chose to throw away.
       const mine = await this.local.get(collection, id);
       if (mine && !sameDocument(mine.doc, conflict.mine.doc)) return 'edited';
-      await this.local.put(collection, id, seen.doc, {
-        message: `Keep GitHub's ${collection} ${conflict.name}`,
-      });
+      try {
+        await this.local.put(collection, id, seen.doc, {
+          message: `Keep GitHub's ${collection} ${conflict.name}`,
+          // Only over the copy the user was shown, even if one is saved between the look and the write.
+          expectedSha: mine?.meta.sha ?? null,
+        });
+      } catch (e) {
+        if (e instanceof StorageConflictError) return 'edited';
+        throw e;
+      }
       await this.settled(collection, id, seen.meta.sha, seen.doc);
       return 'kept';
     });

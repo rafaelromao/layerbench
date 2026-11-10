@@ -16,6 +16,12 @@ const NOUN: Record<Collection, string> = {
 
 const NO_CONFLICTS: Conflict[] = [];
 
+/**
+ * The choices do nothing for this long after the dialog opens by itself: a tap meant for what was on
+ * the screen a moment ago must not land on a button that overwrites a version.
+ */
+const ARM_MS = 400;
+
 /** Whether focus is in something a person types in, which a dialog must not open over. */
 function isTyping(element: Element | null): boolean {
   if (!(element instanceof HTMLElement)) return false;
@@ -60,6 +66,7 @@ export function ConflictDialog() {
   const conflicts = useSync((s) => s.last?.conflicts ?? NO_CONFLICTS);
   const dialog = useRef<HTMLDialogElement>(null);
   const [busy, setBusy] = useState(false);
+  const [armed, setArmed] = useState(false);
   const [compare, setCompare] = useState<string | null>(null);
   // The one being shown stays so while it is there: a list made again by each attempt must not swap
   // the document under the user's finger.
@@ -95,6 +102,15 @@ export function ConflictDialog() {
     return () => {
       cancelled = true;
     };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      setArmed(false);
+      return;
+    }
+    const timer = setTimeout(() => setArmed(true), ARM_MS);
+    return () => clearTimeout(timer);
   }, [open]);
 
   useEffect(() => {
@@ -176,8 +192,10 @@ export function ConflictDialog() {
             </p>
           </div>
           <p className="text-xs">
-            You changed this {NOUN[current.collection]} in this browser, and it was changed in your
-            GitHub account since. Choose the version to keep: nothing is replaced until you do.
+            This {NOUN[current.collection]} is not the same in this browser and in your GitHub
+            account, and neither is known to be an edit of the other: both were changed since they
+            last agreed, or this browser cannot tell which is the older. Choose the version to keep:
+            nothing is replaced until you do.
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
             <Version title="This browser" name={current.name} savedAt={current.mine.updatedAt} />
@@ -206,16 +224,16 @@ export function ConflictDialog() {
           <div className="flex flex-col gap-2 sm:flex-row">
             <button
               type="button"
-              className="btn btn-sm btn-outline flex-1"
-              disabled={busy}
+              className="btn btn-outline flex-1"
+              disabled={busy || !armed}
               onClick={() => void settle('mine')}
             >
               Keep mine
             </button>
             <button
               type="button"
-              className="btn btn-sm btn-outline flex-1"
-              disabled={busy}
+              className="btn btn-outline flex-1"
+              disabled={busy || !armed}
               onClick={() => void settle('theirs')}
             >
               Keep theirs

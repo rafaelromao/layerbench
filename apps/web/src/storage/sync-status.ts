@@ -90,6 +90,8 @@ export interface SyncInput {
   lacking: number | null;
   /** Whether the last look at this browser's documents against the account's did not finish. */
   auditFailed: boolean;
+  /** Whether that look is being made now. */
+  auditing: boolean;
 }
 
 const waiting = (n: number) => `${n} saved here ${n === 1 ? 'waits' : 'wait'} to be sent.`;
@@ -166,6 +168,15 @@ export function summarize(i: SyncInput): SyncSummary {
         notable: true,
       };
     }
+    // Not a check mark before the first look has finished: it may find documents the account lacks.
+    if (i.auditing && i.lacking === null) {
+      return {
+        kind: 'checking',
+        text: "Checking this browser's documents against your GitHub account…",
+        label: '',
+        ...none,
+      };
+    }
     if (i.auditFailed) {
       return {
         kind: 'unchecked',
@@ -179,7 +190,7 @@ export function summarize(i: SyncInput): SyncSummary {
       const n = i.lacking;
       return {
         kind: 'lacking',
-        text: `${n} ${n === 1 ? 'document saved' : 'documents saved'} in this browser ${n === 1 ? 'is' : 'are'} not in your GitHub account: never sent, or deleted from it elsewhere.`,
+        text: `${n} ${n === 1 ? 'document saved' : 'documents saved'} in this browser ${n === 1 ? 'is' : 'are'} not in your GitHub account: never sent, or deleted from it elsewhere. Send ${n === 1 ? 'it' : 'them'}, or delete ${n === 1 ? 'it' : 'them'} here.`,
         label: ' · unsynced',
         action: 'send-all',
         notable: true,
@@ -250,6 +261,7 @@ export function useSyncSummary(): SyncSummary {
   const scheduled = useSync((s) => s.scheduled);
   const lacking = useSync((s) => s.lacking);
   const auditFailed = useSync((s) => s.auditFailed);
+  const auditing = useSync((s) => s.auditing);
   const online = useSyncExternalStore(subscribeOnline, isOnline, () => true);
   return summarize({
     status,
@@ -265,6 +277,7 @@ export function useSyncSummary(): SyncSummary {
     scheduled,
     lacking,
     auditFailed,
+    auditing,
   });
 }
 

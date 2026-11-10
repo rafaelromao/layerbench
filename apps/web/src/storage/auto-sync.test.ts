@@ -5,15 +5,17 @@ import { memoryMarks } from '../test/memory-marks.js';
 import { MemoryStorage } from '../test/memory-storage.js';
 import {
   checkAgain,
+  copyEverything,
   forgetOffered,
   review,
+  sendEverything,
   sendHeld,
   startAutoSync,
   syncNow,
   useSync,
   whileSending,
 } from './auto-sync.js';
-import { CompositeStorage } from './composite.js';
+import { CompositeStorage, type Conflict, CopyUpError } from './composite.js';
 
 /** Looking at every document is for the tests of it: elsewhere it would add requests that are not the point. */
 const NO_AUDIT = Number.POSITIVE_INFINITY;
@@ -66,6 +68,7 @@ afterEach(() => {
     scheduled: false,
     lacking: null,
     auditFailed: false,
+    auditing: false,
   });
 });
 
@@ -458,6 +461,84 @@ describe('sending behind a lock that may not be there', () => {
     const work = vi.fn(async () => 'sent');
     expect(await whileSending(work)).toBeNull();
     expect(work).not.toHaveBeenCalled();
+  });
+});
+
+describe('what the account lacks, once documents are sent', () => {
+  it('is looked at again after a copy of everything, so the status can say it lacks nothing', async () => {
+    const marks = memoryMarks();
+    const local = new MemoryStorage('local');
+    const remote = new MemoryStorage('github');
+    await local.put('layouts', 'only-here', { name: 'Only here' });
+    const storage = new CompositeStorage(local, remote, marks);
+    const stop = startAutoSync(storage, marks, { ...TIMING, auditEveryMs: 0 });
+    await vi.waitFor(() => expect(useSync.getState().lacking).toBe(1));
+
+    sendEverything();
+    await vi.waitFor(() => expect(useSync.getState().lacking).toBe(0));
+    expect(await remote.get('layouts', 'only-here')).not.toBeNull();
+    expect(marks.audit()?.lacking).toBe(0);
+    stop();
+  });
+
+  it('is not offered on a browser another account last sent to', async () => {
+    const marks = memoryMarks();
+    marks.setAccount('alice');
+    const local = new MemoryStorage('local');
+    await local.put('layouts', 'alices', { name: "Alice's" });
+    const storage = new CompositeStorage(local, new MemoryStorage('github'), marks);
+    const stop = startAutoSync(storage, marks, { ...TIMING, auditEveryMs: 0 }, 'bob');
+    await vi.waitFor(() => expect(marks.audit()?.account).toBe('bob'));
+    expect(useSync.getState().lacking).toBe(0);
+    expect(marks.audit()?.lacking).toBe(0);
+    stop();
+  });
+
+  it('is said to be being checked until the first look has finished', async () => {
+    const marks = memoryMarks();
+    const local = new MemoryStorage('local');
+    const remote = new MemoryStorage('github');
+    await local.put('layouts', 'a', { name: 'A' });
+    const list = remote.list.bind(remote);
+    let release: () => void = () => {};
+    const slow = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    remote.list = async (collection) => {
+      await slow;
+      return list(collection);
+    };
+    const stop = startAutoSync(new CompositeStorage(local, remote, marks), marks, {
+      ...TIMING,
+      auditEveryMs: 0,
+    });
+    await vi.waitFor(() => expect(useSync.getState().auditing).toBe(true));
+    release();
+    await vi.waitFor(() => expect(useSync.getState().auditing).toBe(false));
+    stop();
+  });
+});
+
+describe('a copy of everything that stops partway', () => {
+  it('keeps the conflicts already shown for documents it did not reach', async () => {
+    const shown = {
+      collection: 'layouts',
+      id: 'gust',
+      name: 'Gust',
+      mine: { doc: { name: 'Gust' }, updatedAt: '2026-11-10T09:00:00Z' },
+      theirs: { name: 'Gust', doc: { name: 'G2' }, updatedAt: '2026-11-10T10:00:00Z', sha: 's' },
+    } as Conflict;
+    useSync.setState({
+      last: { copied: 0, current: 0, conflicts: [shown], taken: 0, failed: [] },
+    });
+    await copyEverything(async () => {
+      throw new CopyUpError(
+        { copied: 1, current: 0, conflicts: [], taken: 0, failed: [] },
+        new Error('GitHub did not answer in time'),
+      );
+    });
+    expect(useSync.getState().last?.conflicts.map((c) => c.id)).toEqual(['gust']);
+    expect(useSync.getState().last?.copied).toBe(1);
   });
 });
 

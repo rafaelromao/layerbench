@@ -114,9 +114,18 @@ reach, end that attempt. While a document is marked, this browser shows it as yo
 the older copy in your account, and its next saves stay in this browser too, to go up together with
 the rest. With no connection, the status says so and what waits.
 
-A save is only written to your account over the version it is an edit of. If another browser saved
-the same document since this one last held it, such as when an editor was left open, the save stays in
-this browser, marked, and you are asked which to keep: see [When both have changed](#when-both-have-changed).
+A save is only written to your account over the version it is an edit of. For a layout, that is the
+version **Analyze** opened (or a draft was made from); for a rule set or a text, the version this browser
+last read or held. If your account holds another, such as when an editor was left open or another
+browser saved it since, the save stays in this browser, marked, and you are asked which to keep: see
+[When both have changed](#when-both-have-changed). A rule set or a text this browser never read or held,
+which your account has under the same name (as two devices that each make **My rules** do), is asked
+about too, not written over it. A layout is written over one it never held only where you chose
+**Overwrite**.
+
+A save of edits that are waiting to be sent is written over exactly the version its editor read: a
+tab opened before another tab saved them is refused, with the other tab's save kept, rather than
+written over it.
 
 **Not signed in**, a save stays in this browser only and is marked as not sent, and the page says so
 for as long as it is so: under the layout's name in **Analyze**, and on the **Storage** button,
@@ -180,7 +189,9 @@ link that opens the two side by side in **Compare**. **Keep mine** sends this br
 your account; **Keep theirs** makes this browser's copy the account's, and a layout open in
 **Analyze** is opened again as it. Neither is done until you choose, and if the account changes again
 meanwhile, or this browser's copy was edited after the dialog showed it, nothing is written and you
-choose again. The dialog never opens over a field you are typing in, and opens onto **Decide later**.
+choose again. The dialog never opens over a field you are typing in, opens onto **Decide later**, and
+ignores the two choices for about half a second after it opens by itself, so a tap meant for what was
+on the screen does not land on one.
 
 **Decide later**, or closing the dialog any way, leaves both as they are. The status on **Storage**
 and under the layout's name says *changed in this browser and in your GitHub account*, with a
@@ -198,7 +209,8 @@ it but another layout: it stays in this browser, and the status says so. Rename 
 save to overwrite the other one.
 
 **Deleting** a document while signed in is checked against your account first: if another browser saved
-it since this one last held it (which this browser keeps a record of), nothing is deleted, and if your account cannot be reached, nothing is
+it since this one last held it, nothing is deleted, and with no record of which version this one held, a copy that differs
+from your account's is not deleted either; open it first. If your account cannot be reached, nothing is
 deleted, edits not sent yet included. A document you edited here that was deleted from your account
 since is not a conflict: your edit is sent, and the document is back. If you chose **Keep theirs** for one that has since been deleted
 there, nothing is thrown away: your version stays and is sent.
@@ -222,13 +234,17 @@ from there. One tab sends at a time.
 ### Known limits
 
 - Two tabs of the same browser saving the same document at the same instant are only partly
-  protected: sending is one tab at a time, saving is not.
+  protected: sending is one tab at a time, saving is not. Two tabs writing to your account at once can
+  each rewrite a gist's list from a read that lacks the other's row; the document is then in your
+  account but not listed, and the next send of it writes it again, so it is listed.
+- A rule set or a text is weighed against the version this browser last read or held, which any read
+  in another tab moves on, not the version its editor opened, as a layout's is.
+- Documents here that your account lacks stay in the status until you send them or delete them here:
+  one deleted from your account on purpose looks the same as one never sent.
 - What is not sent is remembered in this browser's site data, apart from the documents. A browser that
   loses it (Safari after a week unused, or a tab killed at the wrong moment) loses the memory of what was
   unsent, not the documents: a copy that differs from your account's is then treated as an edit when
   it is next read, and asked about.
-- Deleting a document is only checked against your account if this browser has a record of the
-  version it held; a document from before that was kept is deleted without it.
 - A very large number of documents waiting is sent a few at a time, and an attempt that takes more than
   two minutes is stopped and resumed; the status may say it could not send while it is progressing.
 - A document in your account over a megabyte cannot be read, and so cannot be compared or sent.
