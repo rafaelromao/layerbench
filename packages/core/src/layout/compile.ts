@@ -93,25 +93,25 @@ export class LayoutCompileError extends Error {
   }
 }
 
-/** How deep macros may hold macros: a macro in a macro in a macro, and no deeper. */
+/**
+ * How deep the editor lets macros hold macros: a macro in a macro in a macro. A layout written
+ * otherwise still loads; the simulator follows bindings as deep as it can and stops past that.
+ */
 export const MAX_MACRO_NESTING = 3;
 
 /**
  * What is wrong with a binding that no part of the layout can run: a macro that holds itself,
- * however deep (a layout built in code can; a document cannot), or macros held deeper than
- * `MAX_MACRO_NESTING`. Null when nothing is. Checked before anything walks the binding, since a
- * binding that holds itself would never end.
+ * however deep (a layout built in code can; a document cannot). Null when nothing is. Checked
+ * before anything walks the binding, since a binding that holds itself would never end.
  */
 export function bindingFault(b: Binding): string | null {
   const path = new Set<object>();
-  const walk = (x: Binding, macros: number): string | null => {
+  const walk = (x: Binding): string | null => {
     if (path.has(x)) return 'a macro contains itself';
-    const inside = x.kind === 'macro' ? macros + 1 : macros;
-    if (inside > MAX_MACRO_NESTING) return `macros are nested more than ${MAX_MACRO_NESTING} deep`;
     path.add(x);
     try {
       for (const part of bindingParts(x)) {
-        const fault = walk(part, inside);
+        const fault = walk(part);
         if (fault) return fault;
       }
       return null;
@@ -119,7 +119,7 @@ export function bindingFault(b: Binding): string | null {
       path.delete(x);
     }
   };
-  return walk(b, 0);
+  return walk(b);
 }
 
 /** Every binding a binding holds: its parts, branches, taps and steps. */

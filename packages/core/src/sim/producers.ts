@@ -2,7 +2,13 @@ import { composeDeadKey, deadKeyCompositions, shiftSymbol } from '../host/locale
 import type { CompiledLayout } from '../layout/compile.js';
 import type { Binding, Mod, ModChoice } from '../layout/types.js';
 import { blockedThumbs } from './activators.js';
-import { isAlphaSymbol, type ProducerKind, SENTENCE_ENDS, SENTENCE_LETTER_RE } from './machine.js';
+import {
+  CAPS_WORD_RE,
+  isAlphaSymbol,
+  type ProducerKind,
+  SENTENCE_ENDS,
+  SENTENCE_LETTER_RE,
+} from './machine.js';
 import { heldChoices, throughMorph } from './mod-needs.js';
 
 export interface ProducerStep {
@@ -233,8 +239,12 @@ interface SoFar {
   last: string | null;
   /** A sticky Shift a step armed, for the next keycode. */
   shift: boolean;
-  /** Caps word, turned on by a step: letters are capitals. */
-  caps: boolean;
+  /** Caps word, turned on by a step: letters are capitals; what keeps it on past them, else null. */
+  caps: readonly string[] | null;
+  /** The tap dances the steps tapped, which type when the outermost macro is done. */
+  deferred: Binding[];
+  /** Inside a macro not yet done: a tap dance waits; outside, as the waiting ones run, it types. */
+  deferring: boolean;
   /** A dead key pressed, waiting for the next character. */
   dead: string | null;
   /** The last keycode ended a sentence: a sentence space now leaves a capital. */
@@ -280,7 +290,9 @@ function macroOutputs(
     dynamic: false,
     last: null,
     shift: false,
-    caps: false,
+    caps: null,
+    deferred: [],
+    deferring: false,
     dead: null,
     endsSentence: false,
     pending: false,
@@ -289,12 +301,31 @@ function macroOutputs(
   },
 ): SoFar[] {
   if (depth > MAX_DEPTH) return [];
-  let ways: SoFar[] = [{ ...from, tag: b.tag ?? from.tag }];
+  // As the machine has it: the macro that starts the waiting runs the tap dances when it is done.
+  const outermost = !from.deferring;
+  let ways: SoFar[] = [{ ...from, tag: b.tag ?? from.tag, deferring: true }];
   for (const step of macroSteps(b)) {
     ways = ways.flatMap((w) => stepOutputs(step, w, depth + 1)).slice(0, MACRO_WAYS);
     if (ways.length === 0) return [];
   }
+  // The tap dances the steps tapped type now, each its first tap, as their tapping terms run out.
+  if (!outermost) return ways;
+  ways = ways
+    .flatMap((w) => {
+      let now: SoFar[] = [{ ...w, deferred: [], deferring: false }];
+      for (const dance of w.deferred) now = now.flatMap((x) => stepOutputs(dance, x, depth + 1));
+      return now;
+    })
+    .slice(0, MACRO_WAYS);
   return ways;
+}
+
+/** What caps word is after this text is typed: still on only if each character keeps it on. */
+function capsAfter(caps: readonly string[] | null, text: string): readonly string[] | null {
+  if (caps === null) return null;
+  for (const g of Array.from(text.normalize('NFC')))
+    if (!(CAPS_WORD_RE.test(g) || caps.includes(g))) return null;
+  return caps;
 }
 
 /** What one step of a macro leaves, from what the steps before it left: one way, or several. */
@@ -311,7 +342,9 @@ function stepOutputs(step: Binding, w: SoFar, depth: number): SoFar[] {
     case 'hold_tap':
     case 'lt':
       return stepOutputs(step.tap, at, depth + 1);
+    // ZMK decides a tap dance when its tapping term runs out: after the macro's other steps.
     case 'tap_dance':
+      if (at.deferring) return [{ ...at, deferred: [...at.deferred, step] }];
       return step.bindings[0] ? stepOutputs(step.bindings[0], at, depth + 1) : [at];
     case 'sentence_morph':
       // Before any keycode in the macro, a capital left before the press may be pending: either
@@ -374,22 +407,31 @@ function stepOutputs(step: Binding, w: SoFar, depth: number): SoFar[] {
       if (step.symbol === undefined) return [];
       return [typed(at, step.symbol, step.shifted)];
     case 'unicode': {
-      const shifted = at.shift || (at.caps && isAlphaSymbol(step.symbol));
+      const shifted = at.shift || (at.caps !== null && isAlphaSymbol(step.symbol));
       const text = shifted && step.shiftedSymbol ? step.shiftedSymbol : step.symbol;
       // zmk-unicode's run of keys takes a capital, keeps the character's case, and leaves nothing a
       // repeat can follow.
-      const next = typed({ ...at, pending: false, shift: false, caps: false }, text);
-      return [{ ...next, caps: at.caps, last: null, endsSentence: false, tag: null }];
+      const next = typed({ ...at, pending: false, shift: false, caps: null }, text);
+      return [
+        {
+          ...next,
+          // Judged on what came out, a dead key's accent included.
+          caps: capsAfter(at.caps, next.symbols.slice(at.symbols.length)),
+          last: null,
+          endsSentence: false,
+          tag: null,
+        },
+      ];
     }
     case 'key_repeat':
       // Nothing to repeat: after a Unicode character in the macro, the repeat types nothing but is
       // a keycode; first in the macro, it repeats what came before the press, not known here.
-      if (at.last === null) return at.pressed ? [{ ...at, shift: false, dead: null }] : [];
+      if (at.last === null) return at.pressed ? [{ ...at, shift: false }] : [];
       return [typed(at, at.last)];
     case 'sentence_space': {
       const ends = at.endsSentence;
-      const next = typed({ ...at, shift: false, caps: false }, ' ', undefined, true);
-      return [{ ...next, caps: at.caps, shift: false, pending: ends }];
+      const next = typed({ ...at, shift: false }, ' ', undefined, true);
+      return [{ ...next, shift: false, pending: ends }];
     }
     case 'dead_key': {
       const dead = at.shift && step.shifted !== undefined ? step.shifted : step.diacritic;
@@ -408,7 +450,12 @@ function stepOutputs(step: Binding, w: SoFar, depth: number): SoFar[] {
     case 'mod':
       return [{ ...at, pending: false, endsSentence: false, pressed: true }];
     case 'caps_word':
-      return [{ ...at, caps: !at.caps }];
+      return [
+        {
+          ...at,
+          caps: at.caps !== null ? null : (step.continueList ?? ['_', 'Backspace', 'Delete']),
+        },
+      ];
     default:
       // A layer key, transparent, nothing: no text, and the next step types as it would.
       return [at];
@@ -422,12 +469,14 @@ function stepOutputs(step: Binding, w: SoFar, depth: number): SoFar[] {
  */
 function typed(w: SoFar, symbol: string, shifted?: string, space = false): SoFar {
   const alpha = isAlphaSymbol(symbol);
-  let pressed = !space && (w.shift || (w.caps && alpha)) ? shiftSymbol(symbol, shifted) : symbol;
+  let pressed =
+    !space && (w.shift || (w.caps !== null && alpha)) ? shiftSymbol(symbol, shifted) : symbol;
   if (w.pending && SENTENCE_LETTER_RE.test(pressed)) pressed = pressed.toUpperCase();
   const text = w.dead !== null && pressed.length ? composeDeadKey(w.dead, pressed) : pressed;
   return {
     ...w,
     symbols: w.symbols + text,
+    caps: capsAfter(w.caps, text),
     last: pressed.length ? pressed : w.last,
     shift: false,
     dead: null,

@@ -225,6 +225,45 @@ describe('a macro step', () => {
     expect(press(board(m), 'LHR', 'RHI').out).toBe('bb');
   });
 
+  it('turns caps word on for what follows the press, judged step by step as ZMK sees them', () => {
+    const after = macro(kp(','), { kind: 'caps_word' });
+    expect(press(board(after), 'RHI', 'LHP').out).toBe(',A');
+    const word = macro({ kind: 'caps_word' }, kp('a'), kp(' '), kp('b'));
+    expect(press(board(word), 'RHI').out).toBe('A b');
+    expect(reads(word)).toEqual(['A b']);
+  });
+
+  it('turns the auto layer on for what follows the press, judged step by step', () => {
+    const m = macro(kp(','), { kind: 'auto_layer', layer: 'other' });
+    expect(press(board(m), 'RHI', 'LHP').out).toBe(',x');
+  });
+
+  it('types a tap dance after the macro’s other steps, when its tapping term runs out', () => {
+    const dance: Binding = { kind: 'tap_dance', bindings: [kp('a'), kp('b')] };
+    const m = macro(dance, kp('c'));
+    expect(press(board(m), 'RHI').out).toBe('ca');
+    expect(reads(m)).toEqual(['ca']);
+    // A nested macro's tap dances wait for the outermost macro.
+    const nested = macro(macro(dance, kp('c')), kp('d'));
+    expect(press(board(nested), 'RHI').out).toBe('cda');
+    expect(reads(nested)).toEqual(['cda']);
+  });
+
+  it('runs a nested macro’s own `then` and tag', () => {
+    const armed = macro(kp('a'), {
+      kind: 'macro',
+      symbols: 'b',
+      then: [{ kind: 'sl', layer: 'other' }],
+    });
+    expect(press(board(armed), 'RHI', 'LHP').out).toBe('abx');
+    const tagged = macro(
+      { kind: 'macro', symbols: 'q', tag: 't' },
+      { kind: 'adaptive', triggers: [{ afterTags: ['t'], binding: kp('h') }], default: kp('v') },
+    );
+    expect(press(board(tagged), 'RHI').out).toBe('qh');
+    expect(reads(tagged)).toEqual(['qh']);
+  });
+
   it('is typed by the analysis as the machine types it', () => {
     const m = macro(kp('l'), { kind: 'key_repeat' }, { kind: 'caps_word' }, kp('a'));
     const t = explain(compileLayout(board(m, { LHP: kp('l') })), 'llA', {
@@ -253,20 +292,100 @@ describe('a macro that holds itself', () => {
     expect(() => compileLayout(layout)).toThrow('Combo loop: a macro contains itself');
   });
 
-  it('is told apart from macros nested too deep', () => {
+  it('is told apart from macros nested deep, which load and type as far as they go', () => {
     let deep: Binding = kp('a');
-    for (let i = 0; i <= MAX_MACRO_NESTING; i++) deep = macro(deep);
-    expect(() => compileLayout(board(deep))).toThrow(
-      `Layer base, key RHI: macros are nested more than ${MAX_MACRO_NESTING} deep`,
-    );
-    let ok: Binding = kp('a');
-    for (let i = 0; i < MAX_MACRO_NESTING; i++) ok = macro(ok);
-    expect(() => compileLayout(board(ok))).not.toThrow();
+    for (let i = 0; i <= MAX_MACRO_NESTING + 2; i++) deep = macro(deep, kp('b'));
+    expect(() => compileLayout(board(deep))).not.toThrow();
+    expect(press(board(deep), 'RHI').out).toBe(`a${'b'.repeat(MAX_MACRO_NESTING + 3)}`);
   });
 
   it('may hold the same step twice: only a step inside itself is a loop', () => {
     const step = kp('a');
     expect(press(board(macro(step, step)), 'RHI').out).toBe('aa');
+  });
+});
+
+describe('every part a binding holds', () => {
+  /** Each kind that holds bindings, built around one part, at each of its places. */
+  const places: ((part: Binding) => Binding)[] = [
+    (part) => ({ kind: 'lt', layer: 'other', tap: part }),
+    (part) => ({ kind: 'hold_tap', tap: part, hold: kp('a') }),
+    (part) => ({ kind: 'hold_tap', tap: kp('a'), hold: part }),
+    (part) => ({ kind: 'mod_morph', mods: ['LSHIFT'], default: part, morphed: kp('a') }),
+    (part) => ({ kind: 'mod_morph', mods: ['LSHIFT'], default: kp('a'), morphed: part }),
+    (part) => ({ kind: 'layer_morph', layers: ['other'], active: part, inactive: kp('a') }),
+    (part) => ({ kind: 'layer_morph', layers: ['other'], active: kp('a'), inactive: part }),
+    (part) => ({ kind: 'sentence_morph', default: part, pending: kp('a') }),
+    (part) => ({ kind: 'sentence_morph', default: kp('a'), pending: part }),
+    (part) => ({ kind: 'tap_dance', bindings: [kp('a'), part] }),
+    (part) => ({ kind: 'macro', steps: [kp('a'), part] }),
+    (part) => ({ kind: 'macro', symbols: 'a', then: [part] }),
+    (part) => ({ kind: 'adaptive', default: part }),
+    (part) => ({ kind: 'adaptive', triggers: [{ afterAny: ['a'], binding: part }] }),
+  ];
+
+  it('is followed for the modules a key needs', () => {
+    for (const [i, at] of places.entries())
+      expect(bindingModules(at({ kind: 'sentence_space' })), String(i)).toContain('sentenceCase');
+  });
+
+  it('is followed for a macro that holds itself', () => {
+    for (const [i, at] of places.entries()) {
+      const self: Binding = { kind: 'macro', steps: [] };
+      (self as { steps: Binding[] }).steps.push(at(self));
+      expect(() => compileLayout(board(self)), String(i)).toThrow('a macro contains itself');
+    }
+  });
+});
+
+describe('the machine and the analysis', () => {
+  it('agree on what random macros of every kind of step type', () => {
+    let seed = 7;
+    const rnd = () => {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      return seed / 2147483648;
+    };
+    const pick = <T>(a: readonly T[]): T => a[Math.floor(rnd() * a.length)];
+    const step = (depth: number): Binding => {
+      const ways: (() => Binding)[] = [
+        () => kp(pick(['a', 'b', 'e', '.', ' ', '?', ','])),
+        () => ({ kind: 'sentence_space' }),
+        () => ({ kind: 'caps_word' }),
+        () => ({ kind: 'sk', mod: 'LSHIFT' }),
+        () => ({ kind: 'key_repeat' }),
+        () => ({ kind: 'dead_key', diacritic: '´' }),
+        () => ({ kind: 'unicode', symbol: 'ç', shiftedSymbol: 'Ç' }),
+        () => ({
+          kind: 'mod_morph',
+          mods: ['LSHIFT'],
+          default: kp(','),
+          morphed: pick<Binding>([kp(';'), { kind: 'caps_word' }, { kind: 'sl', layer: 'other' }]),
+        }),
+        () => ({ kind: 'sentence_morph', default: kp('x'), pending: kp('y') }),
+        () => ({ kind: 'tap_dance', bindings: [step(depth + 1), kp('z')] }),
+        () => ({ kind: 'hold_tap', tap: step(depth + 1), hold: { kind: 'mod', mod: 'LCTRL' } }),
+        () => ({
+          kind: 'adaptive',
+          triggers: [{ afterAny: ['a'], binding: kp('h') }],
+          default: kp('v'),
+        }),
+        () => ({ kind: 'sl', layer: 'other' }),
+      ];
+      if (depth < 2)
+        ways.push(() =>
+          macro(...Array.from({ length: 1 + Math.floor(rnd() * 3) }, () => step(depth + 1))),
+        );
+      return pick(ways)();
+    };
+    const misses: string[] = [];
+    for (let i = 0; i < 400; i++) {
+      const m = macro(kp('b'), ...Array.from({ length: 1 + Math.floor(rnd() * 4) }, () => step(1)));
+      const out = press(board(m), 'RHI').out;
+      const read = reads(m);
+      if (!(read.length === 1 ? read[0] === out : read.length === 0 && out === ''))
+        misses.push(`${JSON.stringify(m)}: ${out} / ${read}`);
+    }
+    expect(misses).toEqual([]);
   });
 });
 
