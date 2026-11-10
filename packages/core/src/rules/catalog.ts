@@ -76,12 +76,15 @@ export const BANDS: Record<string, Bands> = {
     labels: ['even', 'leans', 'heavy'],
   },
   /**
-   * LayerBench's own, on the Doc's nine steps: min up to 400 and max above 900, the seven steps
-   * between them equal, 500 / 7 = 71.4 apiece, as the steps were equal before, rounded to whole
-   * numbers. On the English news sample, 100,000 symbols, the bundled layouts run from Magic Romak's
-   * 353 to Qwerty's 1237: Colemak's 630 is mid, Dvorak's 756 mid high, and only Qwerty is max.
+   * LayerBench's own, on the Doc's nine steps: min up to 400 and max above 900, and between them the
+   * progression of the Doc's SFB bounds (0.525 · 0.625 · 0.735 · 0.875 · 1.075 · 1.375 · 1.825 ·
+   * 2.485, steps of 0.10 · 0.11 · 0.14 · 0.20 · 0.30 · 0.45 · 0.66, each larger than the one before,
+   * by a tenth at first and about half from the fourth) at the same relative places, so 255.1 Effort
+   * to the unit of SFB, rounded to whole
+   * numbers: steps of 26 · 28 · 35 · 51 · 77 · 115 · 168. The steps are narrow where the layouts
+   * cluster and wide where only the worst are, as the Doc's are for SFB.
    */
-  effort: { direction: 'lower_is_better', bounds: [400, 471, 543, 614, 686, 757, 829, 900] },
+  effort: { direction: 'lower_is_better', bounds: [400, 426, 454, 489, 540, 617, 732, 900] },
 };
 
 const NO_THUMBS: Predicate = { any_thumb: false };
