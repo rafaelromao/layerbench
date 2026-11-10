@@ -7,6 +7,7 @@ import { normalizeText } from '../corpus/normalize.js';
 import { FIXTURE_EN, FIXTURE_PT } from '../fixtures/index.js';
 import { corporaRoot } from '../golden/paths.js';
 import { compileLayout } from '../layout/compile.js';
+import { importTextLayout } from '../layout/text.js';
 import type { Binding, Layout } from '../layout/types.js';
 import { BUNDLED_LAYOUTS, bundledLayout, CLASSIC_LAYOUTS } from '../layouts/index.js';
 import { SHAPES } from '../presses/press-log.js';
@@ -441,6 +442,55 @@ describe('rules engine', () => {
     );
     // The Layouts Doc set counts only what is typed.
     expect(layoutsDoc().globals.untyped_in_keystrokes).toBeUndefined();
+  });
+
+  it('counts no thumb in cyanophage’s scissors, a letter on a thumb included', () => {
+    // On the 3x5+2 board the left thumb L1 is column 1, three rows below the ring finger's top key
+    // (column 2): adjacent columns, two rows apart or more, two fingers. A letter there and that key
+    // make the pair his scissors leave out, as his thumbs have none.
+    const { layout } = importTextLayout(
+      'q w e r t y u i o p\na s d f g h j k l ;\nz x c v b n m , . /\nç space',
+      '3x5+2',
+    );
+    const compiled = compileLayout(layout);
+    expect(compiled.keyIndex.has('L1')).toBe(true);
+    const sim = simulate(compiled, normalizeText('çw çw çw', OPTS), OPTS);
+    const fsbOf = (rs: RuleSet) =>
+      evaluate(sim.tables, compiled, rs).results.find((r) => r.id === 'fsb')?.value as number;
+    const preset = cyanophage();
+    expect(fsbOf(preset)).toBe(0);
+    // Without its thumb clause the same rule counts them: the clause is what keeps them out.
+    const withThumbs: RuleSet = {
+      ...preset,
+      rules: preset.rules.map((r) =>
+        r.id === 'fsb' && r.where && 'all' in r.where
+          ? { ...r, where: { all: r.where.all.filter((p) => !('any_thumb' in p)) } }
+          : r,
+      ),
+    };
+    expect(fsbOf(withThumbs)).toBeGreaterThan(0);
+  });
+
+  it('counts cyanophage’s redirects with three different fingers, the weak ones without an index', () => {
+    // Qwerty: `esd` is middle, ring, middle (two keys of one finger), `sfd` ring, index, middle, and
+    // `sad` ring, pinky, middle: each changes direction.
+    const compiled = compileLayout(layoutOf('qwerty'));
+    const of = (words: string, rs: RuleSet, id: string) => {
+      const sim = simulate(compiled, normalizeText(words, OPTS), OPTS);
+      return evaluate(sim.tables, compiled, rs).results.find((r) => r.id === id)?.value as number;
+    };
+    // His redirects need three different fingers; the Layouts Doc's do not.
+    expect(of('esd esd esd', cyanophage(), 'redirect')).toBe(0);
+    expect(of('esd esd esd', cyanophage(), 'weak_redirect')).toBe(0);
+    expect(of('esd esd esd', layoutsDoc(), 'redirect')).toBeGreaterThan(0);
+    expect(of('esd esd esd', layoutsDoc(), 'weak_redirect')).toBeGreaterThan(0);
+    // With an index finger it is a redirect and not a weak one; without, both.
+    expect(of('sfd sfd sfd', cyanophage(), 'redirect')).toBeGreaterThan(0);
+    expect(of('sfd sfd sfd', cyanophage(), 'weak_redirect')).toBe(0);
+    expect(of('sad sad sad', cyanophage(), 'redirect')).toBeGreaterThan(0);
+    expect(of('sad sad sad', cyanophage(), 'weak_redirect')).toBe(
+      of('sad sad sad', cyanophage(), 'redirect'),
+    );
   });
 
   it('counts cyanophage’s scissors on adjacent columns, not adjacent fingers', () => {

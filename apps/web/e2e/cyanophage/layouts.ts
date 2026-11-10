@@ -40,10 +40,11 @@ export function playgroundUrl(layout: string): string {
 }
 
 /**
- * The numbers compared, by LayerBench's rule id, each as his page prints it: two decimals. His
- * redirects are left out: he prints redirects and weak redirects apart, and LayerBench's one rule is
- * their sum, which two rounded numbers cannot be held to.
+ * The numbers compared, by LayerBench's rule id, each as his page prints it: two decimals. His weak
+ * redirects are `weak_redirect`; his redirects are left out: he prints the ones with an index finger
+ * apart from the weak ones, and LayerBench's `redirect` is both, which two rounded numbers cannot be
+ * held to.
  */
-export const METRICS = ['effort', 'sfb', 'sfb_2u', 'lsb', 'sfs', 'fsb'] as const;
+export const METRICS = ['effort', 'sfb', 'sfb_2u', 'lsb', 'sfs', 'fsb', 'weak_redirect'] as const;
 export type Metric = (typeof METRICS)[number];
 export type Shown = Record<Metric, string>;

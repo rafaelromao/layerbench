@@ -18,11 +18,10 @@ import { CORPUS, pastedText, SAMPLE } from './cyanophage/text.ts';
  * LayerBench's cyanophage-like rules held to cyanophage's playground: the same layouts, typed on the
  * same text, must read what his page prints, to the two decimals it prints. His numbers are a pinned
  * fixture, `cyanophage/fixture.json`, read from his page once; the comparison runs offline.
- * `CYANOPHAGE_CAPTURE=1` reads his page again and writes the fixture instead. What differs between
+ * `CYANOPHAGE_CAPTURE=1` reads his page again and writes the fixture instead. It runs as its own
+ * Playwright project, `--project=cyanophage`, which the other projects leave out. What differs between
  * the two tools, and how each difference is settled, is in docs/research/cyanophage-e2e.md.
  */
-
-test.skip(({ isMobile }) => isMobile, 'once is enough: the numbers do not depend on the screen');
 
 const FIXTURE = fileURLToPath(new URL('./cyanophage/fixture.json', import.meta.url));
 const CAPTURE = process.env.CYANOPHAGE_CAPTURE === '1';

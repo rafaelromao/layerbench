@@ -256,12 +256,15 @@ pnpm --filter @layerbench/web e2e keymapdb --project=desktop
 `e2e/cyanophage.spec.ts` holds the cyanophage-like rules to cyanophage's playground: ten layouts
 built from the strings his index gives them, on the text LayerBench types, must read what his page
 prints, to two decimals. His numbers are pinned in `e2e/cyanophage/fixture.json`, so it runs
-offline; `CYANOPHAGE_CAPTURE=1` reads his page again and rewrites the fixture. What differs between
+offline. It is a project of its own, which runs only when `E2E_CYANOPHAGE=1` is set, so the checks
+above leave it out. `CYANOPHAGE_CAPTURE=1` reads his page again and rewrites the fixture; that
+capture has not yet run end to end on his page (the fixture was read in a browser with its own code
+on a copy of his page), so its first run should change nothing but the date. What differs between
 the two tools and how it is settled is in `docs/research/cyanophage-e2e.md`.
 
 ```bash
-pnpm --filter @layerbench/web e2e cyanophage.spec.ts --project=desktop
-CYANOPHAGE_CAPTURE=1 pnpm --filter @layerbench/web e2e cyanophage.spec.ts --project=desktop
+E2E_CYANOPHAGE=1 pnpm --filter @layerbench/web e2e --project=cyanophage
+CYANOPHAGE_CAPTURE=1 pnpm --filter @layerbench/web e2e --project=cyanophage
 ```
 
 ## Deploy

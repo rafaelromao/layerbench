@@ -68,6 +68,21 @@ export function cyanophage(): RuleSet {
           description: 'cyanophage: direction change with three different fingers.',
         };
       }
+      if (r.id === 'weak_redirect') {
+        // His weak redirect is one of his redirects, three different fingers, with no index finger.
+        return {
+          ...r,
+          where: {
+            all: [
+              redirectWhere(),
+              { same_finger: false, at: [0, 2] },
+              { none: [{ includes_finger_name: { in: ['index', 'thumb'] } }] },
+            ],
+          },
+          description:
+            'cyanophage: a redirect with three different fingers, none of them an index.',
+        };
+      }
       return r;
     })
     .map(
