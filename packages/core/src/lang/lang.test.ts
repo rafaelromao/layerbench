@@ -109,7 +109,7 @@ describe('layout coverage', () => {
 describe('text classes', () => {
   const raw = 'Ligue 2 vezes: "olá!" — custa $5 (50%).';
 
-  it('drops digits and symbols by default, as it always has', () => {
+  it('drops digits and symbols by default', () => {
     expect(normalizeText(raw, { caseMode: 'fold' })).toBe('ligue vezes olá! - custa .');
   });
 

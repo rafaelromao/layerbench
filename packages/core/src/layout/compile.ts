@@ -74,7 +74,7 @@ export interface CompiledLayout {
   shiftKey: { key: number; kind: 'sk' | 'hold' } | null;
   /**
    * The ways a capital is typed that the layout declared in `typingRules`, those on, in the order
-   * they are tried; null when it left it to its shift key's kind, which is typed as it always was.
+   * they are tried; null when it left it to its shift key's kind.
    */
   shiftWays: ShiftWay[] | null;
   /** The same for a doubled letter: null when the layout left it to its `repeatPolicy`. */

@@ -54,8 +54,8 @@ export const EXPLAIN_WORDS = [
 ];
 
 /**
- * Every case the goldens cover: the full fold-mode grid, plus two model-mode runs that are the only
- * coverage of shift modelling.
+ * Every case the goldens cover: the full fold-mode grid, plus two model-mode runs, the only cells
+ * that model case.
  */
 export function goldenMatrix(): GoldenCase[] {
   const cases: GoldenCase[] = [];

@@ -50,8 +50,7 @@ you sign in with GitHub to keep it in your own account.
 request too long for GitHub Pages to answer (`apps/web/src/url/fragment.ts`). Analyze writes every
 layout it has open into its link that way, a custom one too, with its id inside, so the link can be
 sent: opened where that id is saved with the same contents, it is the custom layout again, and
-anywhere else a layout of its own, saved as a copy. Links name a custom document as `custom:<id>`;
-`saved:` links from before the name changed no longer open.
+anywhere else a layout of its own, saved as a copy. Links name a custom document as `custom:<id>`.
 
 ## Storage in the code
 
@@ -67,7 +66,7 @@ keeps are in `apps/web/src/auth/github-session.ts`. The server half is
 
 ## Bundled layouts
 
-The layouts the app started with are written as data in `packages/core/src/layouts/` (`classic.ts`,
+The layouts that come with the app are written as data in `packages/core/src/layouts/` (`classic.ts`,
 `small.ts`), each as its author published it: the letters and marks of its base layer, its author's
 thumbs and the layers its author's keymap defines, as Magic Romak has its keymap's Numbers and
 Symbols and Romak its write-up's Alpha 2 and Ç extension. A layout made in the editor can start
@@ -157,8 +156,8 @@ git fetch origin layerbench-data
 git push origin "$(git commit-tree "$(git rev-parse HEAD:data-branch)" -p origin/layerbench-data -m 'Community: start the community layouts')":refs/heads/layerbench-data
 ```
 
-Run it from a checkout of main with this change merged. A change to `data-branch/` later is put on
-the branch by a pull request into it.
+Run it from a checkout of main. A change to `data-branch/` is put on the branch by a pull request
+into it.
 
 ## Bundled corpora
 
@@ -377,19 +376,6 @@ stay valid until then.
 
 The Worker answers only the origins in `ALLOWED_ORIGINS`, and its own, and sets its own headers
 (`Cache-Control: no-store` among them).
-
-**GitHub-side clean-up.** Documents were once saved to forks as well as gists. Nothing reads what
-only that used, so a deployment set up before can drop it:
-
-- People who installed the App on their forks can uninstall it there: GitHub → **Settings** →
-  **Applications** → **Installed GitHub Apps**.
-- Remove `GITHUB_APP_SLUG` from `worker/wrangler.jsonc` and `apps/web/.env.local`, and
-  `UPSTREAM_REPO` wherever it was set (a Worker variable, `.env.local`); redeploy the Worker.
-- Sign-in and gists keep the App's Client ID, its client secrets, the Worker's `SESSION_SECRET` and
-  `ALLOWED_ORIGINS`, its callback URLs, its **Gists** permission, and **Any account**.
-- The App stays installed on `rafaelromao/layerbench`, with **Contents** and **Pull requests**
-  read and write, for Submit.
-- The `layerbench-data` branch stays: it holds the community layouts (below).
 
 ### Landing page
 

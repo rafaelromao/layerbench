@@ -106,7 +106,7 @@ describe('the GitHub session in the page', () => {
     expect(useGitHubSession.getState().maintainer).toBe(true);
   });
 
-  it('forgets the fork it once saved to, and asks GitHub nothing about forks', async () => {
+  it('forgets a remembered fork, and asks GitHub nothing about forks', async () => {
     const remembered = 'layerbench:storage-target:you';
     localStorage.setItem(
       remembered,

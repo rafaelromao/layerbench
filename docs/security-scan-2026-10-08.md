@@ -1,5 +1,8 @@
 # Security scan, 2026-10-08
 
+A report of the scan made on 2026-10-08. File names, line numbers, commit counts and versions are
+those of that day; run the checks again for the state of the repository now.
+
 Scope: this repository (source, all git history, workflows, local build) and the published app at
 https://layerbench.github.io, whose source is the public repository `layerbench/layerbench.github.io`.
 Goal: confirm no credential is exposed. Values are never quoted here; occurrences are referenced
@@ -43,7 +46,7 @@ belong.
 
 | Check | Result |
 |---|---|
-| Files ever published, outside `assets/` and `corpora/` | `.assets`, `.nojekyll`, `404.html`, `README.md` (GitHub's one-line default, since removed), favicons, `index.html`. No source maps, no `.env`, no `.git` leftovers. |
+| Files ever published, outside `assets/` and `corpora/` | `.assets`, `.nojekyll`, `404.html`, `README.md` (GitHub's one-line default), favicons, `index.html`. No source maps, no `.env`, no `.git` leftovers. |
 | Token patterns and secret names in the checkout and in all history (same regexes as above, plus `client_secret`) | 0 matches. |
 | GitHub App client id in the bundle | Not present. The page receives it from the Worker at runtime. |
 | External origins the bundle names | `github.com`, `api.github.com`, `gist.github.com`, the Worker `https://layerbench-auth.rafaelromao.workers.dev`, the landing page, documentation links, and a `http://localhost` fallback inside the TanStack Router library. All expected. |
@@ -79,14 +82,13 @@ belong.
 ### 5. Dependency audit (`pnpm audit`, run by the user on 2026-10-08)
 
 One advisory, high severity: GHSA-68fv-2mgg-jv7q, an event-loop denial of service in
-`source-map-js` below 1.2.2. The lockfile had 1.2.1, reached only through Vite, PostCSS and
+`source-map-js` below 1.2.2. The lockfile held 1.2.1, reached only through Vite, PostCSS and
 jsdom under Vitest. It is a build-time and test-time dependency, never part of the shipped
-bundle, and the only input it would parse is the project's own source maps. Fixed with an
-`overrides` entry in `pnpm-workspace.yaml` (pnpm 11 no longer reads the `pnpm` field of
-`package.json`) pinning `source-map-js` to `>=1.2.2`; `pnpm install`
-refreshes the lockfile.
+bundle, and the only input it would parse is the project's own source maps. An `overrides` entry
+in `pnpm-workspace.yaml` (pnpm 11 reads overrides there, not from the `pnpm` field of
+`package.json`) pins `source-map-js` to `>=1.2.2`; `pnpm install` refreshes the lockfile.
 
-## Steps that need the user's terminal (network)
+## Steps that need a terminal with network access
 
 ```bash
 pnpm install

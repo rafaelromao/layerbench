@@ -163,8 +163,8 @@ function main(): void {
   const requested = process.argv.slice(2);
   const ids = requested.length > 0 ? requested : Object.keys(sources).sort();
 
-  // The index is what the browser's picker reads, so it is rewritten on every run — a partial
-  // build used to leave it describing corpora that had since changed.
+  // The index is what the browser's picker reads, so it is rewritten on every run: a partial
+  // build must not leave it describing corpora that have changed.
   const previous = new Map<string, Manifest>(
     (JSON.parse(readIfPresent(join(OUT_DIR, 'index.json')) ?? '[]') as Manifest[]).map((m) => [
       m.id,

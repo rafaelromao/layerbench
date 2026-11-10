@@ -22,7 +22,7 @@ layout that is not yours yet, such as one that comes with the app, the first **S
 in your custom layouts and asks what to call it, or, on one that comes with the app or a community
 layout, [proposes your change](saving.md#proposing-a-change) to it; after that, **Save** keeps your
 edits to the copy. A layout's link follows its name: rename one already in **Library** and save it,
-and it moves to a link of its new name, so a link to it from before no longer opens it.
+and it moves to a link of its new name; a link of the old name opens nothing.
 
 The address follows your edits too: a moment after each one, the link holds the layout as it now
 is. Reload the page, or go back to it, in the same tab, and the edits are still there, still
@@ -454,7 +454,7 @@ keeps the page where it is, at either end too:
   **Doubled letters**, how a letter typed twice in a row is typed, with the **Repeat key** or by
   **Tap twice**, tapping its key again. Both ways of each are on. The one marked is the one the
   analysis uses: the first that is on and that some key of the layout gives; a way no key gives says
-  so and is passed over. Left alone, a layout is typed as it always was: its shift key as it is
+  so and is passed over. Left alone, a layout is typed by its shift key as it is
   made, and a doubled letter the cheaper of the repeat key and tapping twice, so **Doubled
   letters** marks no way until you set it. Once you move or turn off a way, the order you set is
   the rule: Shift is tried in that order on the shift key and then

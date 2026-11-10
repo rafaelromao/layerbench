@@ -17,7 +17,7 @@ beforeEach(() => {
   adapter = new IndexedDbAdapter(`layerbench-test-${++counter}`);
 });
 
-describe('a browser that saved before proposals', () => {
+describe('a browser whose database has no store for proposals', () => {
   it('keeps what it had, and gains a place for the changes it proposes', async () => {
     const name = `layerbench-old-${++counter}`;
     const old = await openDB(name, 1, {

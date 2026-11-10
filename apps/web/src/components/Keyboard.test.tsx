@@ -552,7 +552,7 @@ describe("T-34's combos, as Keymap Drawer draws them", () => {
   const t34 = compileLayout(bundledLayout('t-34')!);
   const combos = typingCombos(t34, 0);
 
-  it('draws those on two neighbouring keys on the board, named as before', () => {
+  it('draws those on two neighbouring keys on the board, named by their keys', () => {
     const { boxes, keys } = drawn(t34, 0);
     const names = boxes.map((b) => b.name);
     expect(names).toContain('Edit combo LHM + LHI: · / Symb');

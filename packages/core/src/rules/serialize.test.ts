@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ruleSetFromJson, safeParseRuleSet } from './serialize.js';
 
 describe('rule-set serialization', () => {
-  it('drops globals the engine no longer has, so sets saved with them still load', () => {
+  it('drops globals the engine does not have, so a set that names them still loads', () => {
     const parsed = safeParseRuleSet({
       globals: {
         universe: 'with_space',

@@ -119,8 +119,8 @@ export const BindingSchema: z.ZodType<unknown> = z.lazy(() =>
         z.object({
           kind: z.literal('layer_morph'),
           layers: z.array(z.string()).default([]),
-          // The writer once put `any` on every layer morph. It is what every morph does, so it is
-          // still read, and written no more. zmk-layer-morph has no other, so nothing else is read.
+          // `any` is what every layer morph does, so it is read and never written. zmk-layer-morph
+          // has no other match, so nothing else is read.
           match: z.literal('any', { error: LAYER_MORPH_MATCH }).optional(),
           active: BindingSchema,
           inactive: BindingSchema,
@@ -194,14 +194,14 @@ const GeometryKeySchema = z
   }));
 
 /**
- * Read only, for documents from before sentence case and caps word were only behaviours of a key:
+ * Read only, for a document that declares sentence case or caps word as features:
  * `withLegacyFeatures` turns them into the `sentence_space` on the space key and the mod morph on the
- * shift key they made, and the layout has no features of its own.
+ * shift key they make, and the layout has no features of its own.
  */
 const FeaturesSchema = z.object({
-  // A document from before sentence case was zmk-sentence-case's may name the punctuation that
-  // ends a sentence (`after`) and the modifier it arms (`mod`): the module has its own, so they are
-  // read and left out, as any field the schema does not name is.
+  // A document may name the punctuation that ends a sentence (`after`) and the modifier it arms
+  // (`mod`): zmk-sentence-case has its own, so they are read and left out, as any field the schema
+  // does not name is.
   sentenceCase: z
     .object({
       enabled: z.boolean().optional(),
@@ -422,19 +422,17 @@ function weightOf(b: JsonObject): number {
 }
 
 /**
- * A document saved while layouts could name bindings of their own (`behaviors`), with each name
- * written out where it was used, as the compiler read it, and the names dropped. A `ref` key is the
- * binding it names. A macro or adaptive key that names one is that binding with its own fields over
- * it; a name the named binding itself builds on was left unread, and still is. One thing reads
- * otherwise: the compiler put sentence case or caps word around a named tap-hold, layer-tap or
- * morph on their key whole, and now they go on its tap, as on any other key. What the compiler
- * could not read made the layout fail to compile: a name the document does not have, a macro or
- * adaptive key built on a binding of another kind, or names read more than 16 bindings deep, as
- * round a loop. Such a key that is only a name becomes Nothing, one built on a name keeps its own
- * fields, and what a name holds deeper than 16 bindings is Nothing. So is a binding below a name
- * that would take what is written out past `MAX_NAMED_WEIGHT`: the compiler read one key at a time,
- * but a document is read whole, and a name used round a loop, or made heavy, must not hang it. A
- * document that names nothing reads as it is.
+ * A document that names bindings of its own (`behaviors`), with each name written out where it is
+ * used, and the names dropped. A `ref` key is the binding it names. A macro or adaptive key that
+ * names one is that binding with its own fields over it; a name the named binding itself builds on
+ * is left unread. One thing reads otherwise: sentence case or caps word on a named tap-hold,
+ * layer-tap or morph goes on its tap, as on any other key. What cannot be read is Nothing: a name
+ * the document does not have, a macro or adaptive key built on a binding of another kind, or names
+ * more than 16 bindings deep, as round a loop. Such a key that is only a name becomes Nothing, one
+ * built on a name keeps its own fields, and what a name holds deeper than 16 bindings is Nothing.
+ * So is a binding below a name that would take what is written out past `MAX_NAMED_WEIGHT`: a
+ * document is read whole, and a name used round a loop, or made heavy, must not hang it. A document
+ * that names nothing reads as it is.
  */
 function withNamedBindingsInline(input: unknown): unknown {
   if (!isObject(input)) return input;
@@ -516,10 +514,9 @@ const TRANSPARENT = { kind: 'trans' };
 const imported = (b: unknown) => isObject(b) && b.kind === 'raw';
 
 /**
- * `b` with no imported key in it (`raw`, which the format had until PR #79), made as #79 made the
- * bundled layouts and imports: one alone is transparent, as a key left unset; one tapped under a
- * hold taps nothing, and the hold stays; and a hold imported drops, leaving the key its tap, or
- * transparent if that taps nothing. In a macro it is a step that does nothing, and goes.
+ * `b` with no imported key in it (`raw`): one alone is transparent, as a key left unset; one tapped
+ * under a hold taps nothing, and the hold stays; and a hold imported drops, leaving the key its tap,
+ * or transparent if that taps nothing. In a macro it is a step that does nothing, and goes.
  */
 function withoutImported(b: unknown): unknown {
   if (!isObject(b)) return b;
@@ -546,9 +543,9 @@ function withoutImported(b: unknown): unknown {
 }
 
 /**
- * A document saved while the format had imported keys (`raw`), read without them
- * (`withoutImported`), so a layout saved before PR #79 still opens, and saves without them. A combo
- * left transparent goes, as the editor makes none. Every other fault is the schema's to tell.
+ * A document that holds imported keys (`raw`), read without them (`withoutImported`), so it still
+ * opens, and saves without them. A combo left transparent goes, as the editor makes none. Every
+ * other fault is the schema's to tell.
  */
 function withoutImportedKeys(input: unknown): unknown {
   if (!isObject(input)) return input;

@@ -43,9 +43,9 @@ _Avoid_: sync, push, upload
 **Custom document**:
 A layout, rule set or text the user keeps, saved in this browser and, once they sign in, on GitHub
 too, under an id that follows its name. A link names it by `custom:<id>`; where it is not saved it
-does not open, and nothing opens in its place. Links once named it `saved:<id>`, and those no longer
-open. What is kept beside a custom layout for a proposed change is stored the same way, but is not a
-custom document of its own: nothing opens it.
+does not open, and nothing opens in its place. A link with `saved:<id>` does not open either. What is
+kept beside a custom layout for a proposed change is stored the same way, but is not a custom
+document of its own: nothing opens it.
 _Avoid_: saved document, stored document, saved item
 
 **Custom layout**:
@@ -171,7 +171,7 @@ _Avoid_: regular layout, classic layout, normal layout
 
 **Submit**:
 Proposing a custom layout as a community layout: it goes to the maintainer for review, and joins the
-Library once accepted.
+Library when the maintainer accepts it.
 _Avoid_: publish, contribute, share
 
 **Thumb alpha**:

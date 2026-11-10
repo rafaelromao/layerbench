@@ -20,7 +20,7 @@ import { getPreset } from '../rules/presets.js';
 
 /**
  * What the Library ranks on, the generator's numbers included: English news unless another text is
- * named, with the cyanophage-like rules, as the generator has always been scored.
+ * named, with the cyanophage-like rules, which the generator scores by.
  */
 export function librarySettings(corpus = 'en-general', preset = 'cyanophage'): AnalysisSettings {
   return forRanking({ ...DEFAULT_SETTINGS, corpus, rules: getPreset(preset) });

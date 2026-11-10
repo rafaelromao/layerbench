@@ -169,8 +169,8 @@ function textSymbols(ctx: Ctx): number {
 
 /**
  * What an item's percent on a card is a share of: the text's symbols where the rule's value is, and
- * otherwise the pairs or trigrams it counts over, as before (the cyanophage-like preset's items are
- * still shares of those, not of the keystrokes its values divide by).
+ * otherwise the pairs or trigrams it counts over (the cyanophage-like preset's items are shares of
+ * those, not of the keystrokes its values divide by).
  */
 function itemsTotal(rule: Rule, ctx: Ctx, counted: number): number {
   return rule.aggregate === 'percent_of_symbols' ? textSymbols(ctx) : counted;

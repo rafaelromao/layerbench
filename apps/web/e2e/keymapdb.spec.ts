@@ -310,10 +310,7 @@ test.describe('a file that does not read', () => {
   });
 
   test('empty, says it is empty', async ({ page }) => {
-    test.fail(
-      true,
-      'F10: an empty file is met with nothing at all (docs/research/keymapdb-import.md)',
-    );
+    test.fail(true, 'An empty file is met with nothing at all (docs/research/keymapdb-import.md)');
     const errors = watch(page);
     const panel = await keymapPanel(page);
     await choose(panel, yaml('empty.yaml', ''));
@@ -324,7 +321,7 @@ test.describe('a file that does not read', () => {
   test('is announced, not only shown', async ({ page }) => {
     test.fail(
       true,
-      'F9: the reason is a plain paragraph, not an alert (docs/research/keymapdb-import.md)',
+      'The reason is a plain paragraph, not an alert (docs/research/keymapdb-import.md)',
     );
     test.skip(!existsSync(mistakePath(MISTAKES[0])), REFRESH);
     const errors = watch(page);
@@ -384,7 +381,7 @@ test.describe("the dialog's own errors", () => {
   test('with a layout file given, the board box stops asking for one', async ({ page }) => {
     test.fail(
       true,
-      'F15: the sentence about the board offered stays (docs/research/keymapdb-import.md)',
+      'The sentence about the board offered stays (docs/research/keymapdb-import.md)',
     );
     const entry = ENTRIES.find((e) => e.slug === 'akioweh');
     test.skip(!entry || !existsSync(join(entryDir(entry), 'board.json')), REFRESH);
@@ -404,7 +401,7 @@ test.describe("the dialog's own errors", () => {
   test('columns and thumbs it cannot read leave a board to choose', async ({ page }) => {
     test.fail(
       true,
-      'F11: the notation error stays whatever board is chosen (docs/research/keymapdb-import.md)',
+      'The notation error stays whatever board is chosen (docs/research/keymapdb-import.md)',
     );
     const errors = watch(page);
     const panel = await keymapPanel(page);

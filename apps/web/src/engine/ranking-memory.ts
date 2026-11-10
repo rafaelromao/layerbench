@@ -11,7 +11,7 @@ const STORE_KEY = 'layerbench:ranking';
 /** Enough for a few texts and rule sets; the one written longest ago goes first. */
 const CONTEXT_LIMIT = 10;
 
-// Scores used to be kept by a hash of what was analyzed; nothing reads them any more.
+// The store under this key holds scores kept by a hash of what was analyzed, which nothing reads.
 try {
   localStorage.removeItem('layerbench:summaries');
 } catch {
@@ -43,7 +43,7 @@ export function isSummary(value: unknown): value is LayoutSummary {
   return num(o.effort) && num(o.sfb) && typeof o.skipped === 'number' && Array.isArray(o.missing);
 }
 
-/** A custom layout was once kept as `s:<id>`, now `c:<id>`; the old scores are dropped, not read. */
+/** A custom layout's key is `c:<id>`; a score under `s:<id>` is dropped, not read. */
 function isOldCustomKey(key: string): boolean {
   return key.startsWith('s:');
 }
@@ -56,8 +56,8 @@ function readAll(): Map<string, Stored> {
     if (!parsed || typeof parsed !== 'object') return out;
     for (const [context, value] of Object.entries(parsed)) {
       if (!value || typeof value !== 'object') continue;
-      // A ranking kept before the list stopped holding layouts back also has the ones it had, which
-      // nothing reads any more and the next write drops.
+      // Whatever a stored ranking holds that does not read as a score is left out, and the next
+      // write drops it.
       const { summaries } = value as Record<string, unknown>;
       const kept: Stored = { summaries: {} };
       if (summaries && typeof summaries === 'object') {

@@ -263,11 +263,11 @@ describe("a layer's id", () => {
     expect(again.at.layer).toBe('base-2');
     const copied = landed(linked, { kind: 'duplicateLayer', layer: 'base' });
     expect(copied.layout.layers[1]).toMatchObject({ id: 'base-copy', name: 'base copy' });
-    const legacy = {
+    const mismatched = {
       ...linked,
       layers: [{ ...linked.layers[0], name: 'Main Letters' }, linked.layers[1]],
     };
-    expect(landed(legacy, { kind: 'duplicateLayer', layer: 'base' }).at.layer).toBe(
+    expect(landed(mismatched, { kind: 'duplicateLayer', layer: 'base' }).at.layer).toBe(
       'main-letters-copy',
     );
     expect(landed(linked, { kind: 'renameLayer', layer: 'upper', name: '数字' }).at.layer).toBe(
@@ -390,7 +390,7 @@ describe('combos', () => {
     });
   });
 
-  // Saved layouts can hold two combos under one id, from before ids were kept apart.
+  // A saved layout can hold two combos under one id.
   it('removes the combo at its place, even when another has its id', () => {
     const twins: Layout = {
       ...layout,
@@ -894,7 +894,7 @@ describe('typing paths, typing rules and details', () => {
       entries: [{ way: 'hold' }],
     });
     expect(alone.compiled.shiftWays).toEqual(['hold', 'sk']);
-    // A layout that declares nothing has none compiled: it is typed as it always was.
+    // A layout that declares nothing has none compiled: it is typed by the engine's own ways.
     expect(compileLayout(layout).shiftWays).toBeNull();
     expect(compileLayout(layout).doubledWays).toBeNull();
   });
