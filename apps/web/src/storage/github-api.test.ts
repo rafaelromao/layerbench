@@ -50,7 +50,7 @@ describe('a limit on a wait', () => {
       expect(signal?.aborted).toBe(false);
       vi.advanceTimersByTime(1_000);
       expect(signal?.aborted).toBe(true);
-      expect((signal?.reason as DOMException).name).toBe('TimeoutError');
+      expect((signal?.reason as DOMException | undefined)?.name).toBe('TimeoutError');
     } finally {
       Object.defineProperty(AbortSignal, 'timeout', { value: original, configurable: true });
     }
