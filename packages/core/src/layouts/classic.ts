@@ -256,7 +256,7 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     description:
       'Night: r on the left inner thumb, leaving the home row to the other twenty-five letters; space on the right inner thumb, Shift on both outer ones.',
     link: 'https://github.com/va1orance/valorance-website/tree/main/night',
-    note: "The source of its author's site, valorance.net/night.",
+    note: "The link is the source of its author's site, valorance.net/night.",
   },
   {
     id: 'dusk',
@@ -267,7 +267,7 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     thumbs: '∅ r space',
     special: { '∅': null },
     description:
-      'Dusk: r on the left thumb and space on the right one; the key its author leaves free holds an underscore.',
+      'Dusk: r on the left thumb and space on the right one; its author draws an underscore on the bottom key of the right middle finger.',
     link: 'https://github.com/Aorta3698/dusk',
   },
   {

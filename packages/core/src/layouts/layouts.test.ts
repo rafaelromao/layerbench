@@ -465,7 +465,7 @@ describe('layouts as their authors designed them', () => {
       );
     };
     expect(thumbsOf('hands-down-neu')).toEqual({ L1: ' ', L0: 'z', R0: 'j' });
-    expect(thumbsOf('aptmak')).toEqual({ L1: ' ', R0: 'e' });
+    expect(thumbsOf('aptmak')).toStrictEqual({ L1: ' ', R0: 'e' });
   });
 
   it('give Night and Dusk the thumbs their author draws: r left, space right, and Night its Shifts', () => {
