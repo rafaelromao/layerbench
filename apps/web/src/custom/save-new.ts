@@ -43,7 +43,11 @@ export async function saveNewLayout(
   }
   const doc = toCanonicalJson({ ...layout, id });
   onAttempt(id, doc);
-  const written = await storage.put('layouts', id, doc, { message });
+  const written = await storage.put('layouts', id, doc, {
+    message,
+    // The user chose to replace this layout, which is not the same as a new one's id colliding with it.
+    ...(overwrite !== undefined && id === overwrite && { overwriting: true }),
+  });
   return { id, sha: written.sha };
 }
 

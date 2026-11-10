@@ -89,7 +89,7 @@ export class IndexedDbAdapter implements StorageAdapter {
     if (stored) return stored;
     // No index yet: rebuild it from whatever documents are there.
     const docs = (await db.getAll(collection)) as StoredDoc[];
-    // Each as of when it was saved, not now: copying up goes by which copy is newer.
+    // Each as of when it was saved, not now: the index is of when each was saved, as a save made it.
     const entries = docs.map((d) => ({
       ...indexSummary(collection, d.id, JSON.parse(d.json)),
       updatedAt: d.updatedAt,

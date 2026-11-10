@@ -123,7 +123,7 @@ describe('sending by itself', () => {
     const stop = startAutoSync(storage, marks, TIMING);
 
     // A save while signed in that GitHub turns down: the browser has it, the user sees the failure.
-    await expect(storage.put('layouts', 'mine', { name: 'Mine' })).rejects.toThrow('401');
+    await storage.put('layouts', 'mine', { name: 'Mine' });
     expect(marks.count()).toBe(1);
     expect(await remote.get('layouts', 'mine')).toBeNull();
 

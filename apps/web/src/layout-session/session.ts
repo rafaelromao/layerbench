@@ -137,6 +137,8 @@ async function store(
     replacing: id === storedId ? [] : [storedId],
     // Only where it is saved over itself: written to another id, it is an edit of nothing there.
     ...(id === storedId && basedOn !== null && { basedOn }),
+    // Chosen, when it is saved over another layout of the same name after asking.
+    ...(opts.overwrite !== undefined && id === opts.overwrite && { overwriting: true }),
   });
   let leftBehind = false;
   if (id !== storedId) {

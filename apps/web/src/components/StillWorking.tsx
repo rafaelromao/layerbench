@@ -29,7 +29,7 @@ export function StillWorking({
       <span className="min-w-0 flex-1 basis-48 [overflow-wrap:anywhere]">{children}</span>
       <button
         type="button"
-        className="btn btn-xs btn-outline shrink-0"
+        className="btn btn-sm btn-outline shrink-0"
         onClick={() => location.reload()}
       >
         Reload

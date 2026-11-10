@@ -106,8 +106,12 @@ done with it, a layout's name checked against your account included, so a tab cl
 while it is on its way to your account loses nothing. It is then written to your gists, and the mark
 goes once they hold it. If your account could not be
 written (no connection, GitHub down, a sign-in that ended), the save is still kept in this browser,
-and says so: **Save failed**, with the reason. The page then tries again by itself, a few seconds
-later, then after 30 seconds, a minute, two, five, until it goes through. It also tries when the
+and **Save** does not refuse it: the status says it is not sent, and why, and a save made meanwhile
+goes on from it. The page tries again by itself, a few seconds later, then after 30 seconds, a minute,
+two, five, until it goes through. A save is waited on for ten seconds at most; past that it is said to
+be kept, and what comes of sending it, a name your account already has included, is left to the status.
+What your account refuses for what it holds, a name or a version that changed under a check of its
+own, is refused, and the copy is taken back to what it was, if it is still what that save wrote. It also tries when the
 browser comes back online and when you come back to the tab, from one tab at a time. A document that
 cannot be sent is named, with why, and the rest go on; several in a row, which means GitHub is out of
 reach, end that attempt. While a document is marked, this browser shows it as you last saved it, not
@@ -247,6 +251,20 @@ from there. One tab sends at a time.
   it is next read, and asked about.
 - A very large number of documents waiting is sent a few at a time, and an attempt that takes more than
   two minutes is stopped and resumed; the status may say it could not send while it is progressing.
+  Three documents in a row that cannot be sent end an attempt, so documents after them wait until
+  those are dealt with.
+- A gist takes no conditional write: between the check of a version and its write, one round trip,
+  another browser can save the same document, whether by a save, a delete or **Keep mine**. Deleting
+  is also not one step: if it is cut short between your account and this browser, the document is gone
+  from the account and still listed here until it is deleted again.
+- Marks are kept in site data as one entry, so two tabs updating them at once can lose an update for a
+  moment; it is found again on the next read or comparison, but the check mark is not to be trusted
+  until then.
+- Which account this browser belongs to is only asked about for documents with unsent edits. With none,
+  an account that signs in becomes the browser's at once, and the comparison can then mark documents
+  whose ids collide with that account's.
+- A rename done while signed out is a new document and a deletion that is not sent, so the old name
+  stays in your account.
 - A document in your account over a megabyte cannot be read, and so cannot be compared or sent.
 
 ## Signing out

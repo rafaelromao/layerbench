@@ -6,6 +6,20 @@ import { tabDrafts } from './drafts.js';
 import { useRouterLink } from './router-link.js';
 import { createLayoutSession, type LayoutSession, type SessionState } from './session.js';
 
+/**
+ * Whether a layout replaced in storage under an editor is to be opened again in it: only one with
+ * nothing unsaved, which is the custom layout's own link. Opened over unsaved edits it would drop
+ * them; left, they are weighed against the version they were made on when they are saved.
+ */
+export function reopenAfterReplace(state: SessionState, changed: readonly string[]): boolean {
+  return (
+    state.status === 'open' &&
+    state.storedId !== null &&
+    changed.includes(`layouts/${state.storedId}`) &&
+    state.pickedRef === customRef(state.storedId)
+  );
+}
+
 export type LayoutSessionView = SessionState &
   Pick<LayoutSession, 'edited' | 'save' | 'open' | 'link'>;
 
@@ -54,7 +68,7 @@ export function useLayoutSession(): LayoutSessionView {
     if (!session) return;
     const now = session.getState();
     const { changed } = useDocumentsChanged.getState();
-    if (now.status === 'open' && now.storedId && changed.includes(`layouts/${now.storedId}`)) {
+    if (reopenAfterReplace(now, changed) && now.status === 'open' && now.storedId) {
       void session.open(customRef(now.storedId));
     }
   }, [replaced]);

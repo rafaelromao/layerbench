@@ -21,23 +21,16 @@ interface Stored {
 
 /**
  * Storage held in memory, for tests: what the browser's store does, without a database. Documents
- * are kept as text, so each read is a copy, as from any real store, and each write gives the
- * document a new version, so a write that names an older one is a conflict. To make an operation
+ * are kept as text, so each read is a copy, as from any real store, and a document's version is the
+ * hash of that text, as a gist's is and as the browser's store gives it, so the same text is the same
+ * version in any store, and a write that names another version is a conflict. To make an operation
  * fail, replace it on the instance. As every store does, it keeps no second custom layout of a name
  * another has.
  */
 export class MemoryStorage implements StorageAdapter {
   private readonly docs = new Map<string, Stored>();
-  private writes = 0;
 
-  /**
-   * `contentShas`: a document's version is the hash of its text, as a gist's is and as the browser's
-   * store gives it, so that the same text has the same version in two stores. Otherwise it is a count.
-   */
-  constructor(
-    readonly id = 'memory',
-    private readonly contentShas = false,
-  ) {}
+  constructor(readonly id = 'memory') {}
 
   async list(collection: Collection): Promise<IndexEntry[]> {
     const entries: IndexEntry[] = [];
@@ -85,7 +78,7 @@ export class MemoryStorage implements StorageAdapter {
       if (taken) throw new NameTakenError(taken);
     }
     const json = JSON.stringify(doc);
-    const sha = this.contentShas ? await sha1Hex(json) : `${this.id}-${++this.writes}`;
+    const sha = await sha1Hex(json);
     this.docs.set(`${collection}/${id}`, {
       json,
       sha,

@@ -10,7 +10,7 @@ let counter = 0;
 const localAdapter = () => new IndexedDbAdapter(`layerbench-composite-${++counter}`);
 
 /** The gists as a gist's adapter is: a version is the hash of its text, as the browser's store gives it too. */
-const contentRemote = () => new MemoryStorage('github', true);
+const contentRemote = () => new MemoryStorage('github');
 
 /** A stand-in for the gists, so the tests are about the composition, not the network. */
 function fakeRemote(overrides: Partial<StorageAdapter> = {}): StorageAdapter {
@@ -25,7 +25,7 @@ describe('two stores at once', () => {
 
     await composite.put('layouts', 'mine', { name: 'Mine' });
     expect((await local.get('layouts', 'mine'))?.doc).toEqual({ name: 'Mine' });
-    expect((await composite.get('layouts', 'mine'))?.meta.sha).toMatch(/^github-/);
+    expect((await composite.get('layouts', 'mine'))?.meta.sha).toMatch(/^[0-9a-f]{40}$/);
   });
 
   it('keeps working when the gists are unreachable', async () => {
@@ -93,7 +93,7 @@ describe('two stores at once', () => {
       'layouts',
       'mine',
       { name: 'Mine', description: 'here' },
-      { replacing: ['mine-2'] },
+      { replacing: ['mine-2'], overwriting: true },
     );
     await composite.delete('layouts', 'mine-2');
     expect((await composite.list('layouts')).map((e) => e.id)).toEqual(['mine']);
@@ -360,7 +360,9 @@ describe('what is waiting to be sent', () => {
       return put(collection, id, doc, opts);
     };
     const composite = new CompositeStorage(local, remote, marks);
-    await expect(composite.put('layouts', 'mine', { name: 'Mine' })).rejects.toThrow('401');
+    // Kept, marked, and not refused: the editor has not moved on, and a refusal would leave it
+    // unable to save again.
+    await composite.put('layouts', 'mine', { name: 'Mine' });
     // The work is safe here, and waiting.
     expect((await local.get('layouts', 'mine'))?.doc).toEqual({ name: 'Mine' });
     expect(marks.has('layouts', 'mine')).toBe(true);
@@ -1404,7 +1406,7 @@ describe('a save and a read on a slow connection', () => {
 describe('a stale tab saving over what another tab has not sent', () => {
   it('is refused, and what is waiting is kept, rather than written over', async () => {
     const marks = memoryMarks();
-    const local = new MemoryStorage('local', true);
+    const local = new MemoryStorage('local');
     const remote = contentRemote();
     const signedIn = new CompositeStorage(local, remote, marks);
     await signedIn.put('layouts', 'x', { name: 'X B' });
@@ -1427,7 +1429,7 @@ describe('a stale tab saving over what another tab has not sent', () => {
 
   it('is refused signed in too: waiting edits are not written over by a tab that read before them', async () => {
     const marks = memoryMarks();
-    const local = new MemoryStorage('local', true);
+    const local = new MemoryStorage('local');
     const remote = contentRemote();
     const composite = new CompositeStorage(local, remote, marks);
     await composite.put('layouts', 'x', { name: 'X B' });
@@ -1447,7 +1449,7 @@ describe('a stale tab saving over what another tab has not sent', () => {
 
   it('writes as before when the editor passes nothing (rule sets and texts)', async () => {
     const marks = memoryMarks();
-    const local = new MemoryStorage('local', true);
+    const local = new MemoryStorage('local');
     const composite = new CompositeStorage(local, null, marks);
     await composite.put('rulesets', 'r', { name: 'R1' });
     await composite.put('rulesets', 'r', { name: 'R2' });
@@ -1461,13 +1463,14 @@ describe('a save that is refused or fails', () => {
     const local = localAdapter();
     const remote = contentRemote();
     await local.put('layouts', 'x', { name: 'X older, unedited' });
+    const held = (await local.get('layouts', 'x'))?.meta.sha as string;
     const composite = new CompositeStorage(local, remote, marks);
     remote.put = async () => {
       throw new NameTakenError({ id: 'other', name: 'X' });
     };
 
     await expect(
-      composite.put('layouts', 'x', { name: 'X' }, { basedOn: 'the-accounts-version' }),
+      composite.put('layouts', 'x', { name: 'X' }, { basedOn: held }),
     ).rejects.toBeInstanceOf(NameTakenError);
     expect(marks.base('layouts', 'x')).toBeNull();
     expect((await local.get('layouts', 'x'))?.doc.name).toBe('X older, unedited');
@@ -1603,10 +1606,12 @@ describe('a rule set or a text that two devices both write', () => {
   it('keeps writing a layout it never held to the layout the user chose to overwrite', async () => {
     const remote = contentRemote();
     await remote.put('layouts', 'mine', { name: 'Mine' });
-    await new CompositeStorage(localAdapter(), remote, memoryMarks()).put('layouts', 'mine', {
-      name: 'Mine',
-      description: 'overwritten',
-    });
+    await new CompositeStorage(localAdapter(), remote, memoryMarks()).put(
+      'layouts',
+      'mine',
+      { name: 'Mine', description: 'overwritten' },
+      { overwriting: true },
+    );
     expect((await remote.get('layouts', 'mine'))?.doc.description).toBe('overwritten');
   });
 });
@@ -1701,5 +1706,208 @@ describe('a document the account holds but does not list', () => {
     expect(put).toHaveBeenCalledTimes(1);
     expect(put.mock.calls[0][3]).toMatchObject({ message: 'List layouts X' });
     expect(marks.count()).toBe(0);
+  });
+});
+
+describe('a save that could not be sent', () => {
+  it('is kept, not refused, so the editor can save again, and the retry goes on from it', async () => {
+    const marks = memoryMarks();
+    const local = new MemoryStorage('local');
+    const remote = new MemoryStorage('github');
+    const composite = new CompositeStorage(local, remote, marks);
+    await composite.put('layouts', 'x', { name: 'X s0' });
+    const s0 = (await local.get('layouts', 'x'))?.meta.sha as string;
+    const put = remote.put.bind(remote);
+    let down = true;
+    remote.put = async (collection, id, doc, opts) => {
+      if (down) throw new Error('GitHub responded 503');
+      return put(collection, id, doc, opts);
+    };
+
+    // The send fails: the save is kept, and what the editor is given to go on from is what was kept.
+    const e1 = await composite.put('layouts', 'x', { name: 'X e1' }, { basedOn: s0 });
+    expect(marks.has('layouts', 'x')).toBe(true);
+    // The natural retry, from the version that save wrote, is not refused as another's change.
+    const e2 = await composite.put('layouts', 'x', { name: 'X e2' }, { basedOn: e1.sha });
+    expect((await local.get('layouts', 'x'))?.doc.name).toBe('X e2');
+    expect(e2.sha).toBe((await local.get('layouts', 'x'))?.meta.sha);
+
+    down = false;
+    expect(await composite.copyUp()).toMatchObject({ copied: 1, conflicts: [] });
+    expect((await remote.get('layouts', 'x'))?.doc.name).toBe('X e2');
+  });
+
+  it('is still refused to a caller with a check of its own, which is told', async () => {
+    const remote = new MemoryStorage('github');
+    await remote.put('proposals', 'p', { note: 'one' });
+    const sha = (await remote.get('proposals', 'p'))?.meta.sha as string;
+    remote.put = async () => {
+      throw new Error('GitHub responded 503');
+    };
+    await expect(
+      new CompositeStorage(new MemoryStorage('local'), remote, memoryMarks()).put(
+        'proposals',
+        'p',
+        { note: 'two' },
+        { expectedSha: sha },
+      ),
+    ).rejects.toThrow('503');
+  });
+});
+
+describe('a new layout whose id is one the account already holds', () => {
+  it('is asked about, not written over, unless the user chose to overwrite', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = contentRemote();
+    // The laptop's layout, whose row in the account's list is missing (a slow list, or a dropped row).
+    await remote.put('layouts', 'foo', { name: 'Foo', description: 'the laptop' });
+    const list = remote.list.bind(remote);
+    remote.list = async (collection) => (await list(collection)).filter((e) => e.id !== 'foo');
+    const composite = new CompositeStorage(local, remote, marks);
+
+    await composite.put('layouts', 'foo', { name: 'Foo', description: 'the phone, new' });
+    expect((await remote.get('layouts', 'foo'))?.doc.description).toBe('the laptop');
+    expect(marks.has('layouts', 'foo')).toBe(true);
+    const { conflicts } = await composite.copyUp();
+    expect(conflicts.map((c) => c.id)).toEqual(['foo']);
+    expect((await remote.get('layouts', 'foo'))?.doc.description).toBe('the laptop');
+  });
+});
+
+describe('taking a save back', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('does not erase a later save', async () => {
+    const marks = memoryMarks();
+    const local = new MemoryStorage('local');
+    const remote = new MemoryStorage('github');
+    // The account refuses the name, but only after another save has landed here.
+    remote.put = async () => {
+      await local.put('layouts', 'x', { name: 'X', description: 'a later save' });
+      throw new NameTakenError({ id: 'other', name: 'X' });
+    };
+    await expect(
+      new CompositeStorage(local, remote, marks).put('layouts', 'x', { name: 'X' }),
+    ).rejects.toBeInstanceOf(NameTakenError);
+    expect((await local.get('layouts', 'x'))?.doc.description).toBe('a later save');
+  });
+
+  it('is not done after the save was said to be kept: it stays, marked, for the status to say', async () => {
+    vi.useFakeTimers();
+    const marks = memoryMarks();
+    const local = new MemoryStorage('local');
+    const remote = new MemoryStorage('github');
+    const list = remote.list.bind(remote);
+    let asked = false;
+    // A slow list skips the name check; a slow send has the save said to be kept.
+    remote.list = (collection) => {
+      if (asked) return list(collection);
+      asked = true;
+      return new Promise(() => {});
+    };
+    let refuse: () => void = () => {};
+    remote.put = () =>
+      new Promise((_, reject) => {
+        refuse = () => reject(new NameTakenError({ id: 'other', name: 'X' }));
+      });
+    const composite = new CompositeStorage(local, remote, marks);
+
+    let kept: Awaited<ReturnType<typeof composite.put>> | null = null;
+    void composite.put('layouts', 'x', { name: 'X' }).then((m) => {
+      kept = m;
+    });
+    // The time passes in steps, so the real work between (hashing a document) can finish and the
+    // waits that follow it begin.
+    await vi.waitFor(
+      async () => {
+        await vi.advanceTimersByTimeAsync(1_000);
+        expect(kept).not.toBeNull();
+      },
+      { timeout: 25_000, interval: 10 },
+    );
+    const saved = kept as unknown as { sha: string };
+    // Said to be kept; the user saves again.
+    await composite.put(
+      'layouts',
+      'x',
+      { name: 'X', description: 'edit 2' },
+      { basedOn: saved.sha },
+    );
+
+    // The refusal wakes the sender, which finds the name taken and says so in the status; nothing is
+    // taken back, and nothing is thrown at a caller that has moved on.
+    const heard = vi.fn();
+    marks.subscribe(heard);
+    refuse();
+    await composite.whenIdle();
+    expect(heard).toHaveBeenCalled();
+    expect((await local.get('layouts', 'x'))?.doc.description).toBe('edit 2');
+    expect(marks.has('layouts', 'x')).toBe(true);
+  });
+});
+
+describe('edits whose mark was lost', () => {
+  it('are not written over by an editor that read before them', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = contentRemote();
+    const composite = new CompositeStorage(local, remote, marks);
+    await composite.put('layouts', 'x', { name: 'X' });
+    const read = (await local.get('layouts', 'x'))?.meta.sha as string;
+    // Edited here with the mark lost (an update from another tab dropped it).
+    await local.put('layouts', 'x', { name: 'X', description: 'D2, unsent' });
+
+    await expect(
+      composite.put('layouts', 'x', { name: 'X', description: 'E3' }, { basedOn: read }),
+    ).rejects.toBeInstanceOf(StorageConflictError);
+    expect((await local.get('layouts', 'x'))?.doc.description).toBe('D2, unsent');
+    expect((await remote.get('layouts', 'x'))?.doc.description).toBeUndefined();
+  });
+
+  it('are not mistaken for an older copy nobody edited, which is written over as ever', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = contentRemote();
+    const composite = new CompositeStorage(local, remote, marks);
+    await composite.put('layouts', 'x', { name: 'X v1' });
+    // The account moved on; this browser's copy is still v1, which is the version on record.
+    await remote.put('layouts', 'x', { name: 'X v2' });
+    const v2 = (await remote.get('layouts', 'x'))?.meta.sha as string;
+    await composite.put('layouts', 'x', { name: 'X v2 edited' }, { basedOn: v2 });
+    expect((await remote.get('layouts', 'x'))?.doc.name).toBe('X v2 edited');
+  });
+});
+
+describe("keeping this browser's version", () => {
+  it('does not send an edit made here since the user was shown the two', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = contentRemote();
+    const composite = new CompositeStorage(local, remote, marks);
+    await composite.put('layouts', 'gust', { name: 'Gust' });
+    await new CompositeStorage(local, null, marks).put('layouts', 'gust', { name: 'Gust (phone)' });
+    await remote.put('layouts', 'gust', { name: 'Gust (laptop)' });
+    const [conflict] = (await composite.copyUp()).conflicts;
+    await composite.put('layouts', 'gust', { name: 'Gust (phone, edited since)' });
+
+    expect(await composite.keepMine(conflict)).toBe('edited');
+    expect((await remote.get('layouts', 'gust'))?.doc.name).toBe('Gust (laptop)');
+  });
+});
+
+describe('a version that comes back', () => {
+  it('is the same version: a document changed and changed back is not a change', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = contentRemote();
+    const composite = new CompositeStorage(local, remote, marks);
+    await composite.put('layouts', 'x', { name: 'A' });
+    const a = (await remote.get('layouts', 'x'))?.meta.sha as string;
+    await remote.put('layouts', 'x', { name: 'B' });
+    await remote.put('layouts', 'x', { name: 'A' });
+    // An editor that read A saves over an account that holds A again: written, which loses nothing.
+    await composite.put('layouts', 'x', { name: 'A edited' }, { basedOn: a });
+    expect((await remote.get('layouts', 'x'))?.doc.name).toBe('A edited');
   });
 });

@@ -177,6 +177,7 @@ export function ConflictDialog() {
       ref={dialog}
       className="modal"
       aria-labelledby="conflict-title"
+      aria-describedby="conflict-about"
       onClose={() => review(false)}
     >
       {current && (
@@ -191,7 +192,7 @@ export function ConflictDialog() {
                 : `One ${NOUN[current.collection]} to choose`}
             </p>
           </div>
-          <p className="text-xs">
+          <p id="conflict-about" className="text-xs">
             This {NOUN[current.collection]} is not the same in this browser and in your GitHub
             account, and neither is known to be an edit of the other: both were changed since they
             last agreed, or this browser cannot tell which is the older. Choose the version to keep:

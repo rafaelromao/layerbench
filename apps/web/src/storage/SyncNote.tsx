@@ -22,7 +22,7 @@ export function SyncNote({ without }: { without?: SyncAction }) {
       {action && (
         <button
           type="button"
-          className="btn btn-xs btn-outline shrink-0"
+          className="btn btn-sm btn-outline shrink-0"
           onClick={() => act(action)}
         >
           {ACTION_LABEL[action]}

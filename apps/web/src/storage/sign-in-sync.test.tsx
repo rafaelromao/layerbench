@@ -183,9 +183,9 @@ describe('a layout saved in this browser, as the app is wired', () => {
     await waitFor(() => expect(useGitHubSession.getState().status).toBe('signed-in'));
 
     github.down(true);
-    await expect(
-      app.storage?.put('layouts', 'strict-down', { name: 'Strict down' }),
-    ).rejects.toThrow('503');
+    // Kept, not refused: the editor has not moved on, and refusing it would leave it unable to save
+    // again. The status says why it is not sent.
+    await app.storage?.put('layouts', 'strict-down', { name: 'Strict down' });
     expect(unsynced.has('layouts', 'strict-down')).toBe(true);
     expect((await app.storage?.get('layouts', 'strict-down'))?.doc).toEqual({
       name: 'Strict down',

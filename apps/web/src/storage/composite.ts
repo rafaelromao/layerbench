@@ -339,8 +339,20 @@ export class CompositeStorage implements StorageAdapter {
     // Edits waiting to be sent are the latest work, and a save of them is written over exactly the
     // version the editor read: a tab opened before another saved them is refused, not written over
     // the other's, and what is waiting is kept.
+    const before = waiting ? null : await this.local.get(collection, id).catch(() => null);
+    // Unsent edits whose mark was lost are the same: a copy that is neither the version recorded nor
+    // the one the editor read has been edited here since, and is not written over by an editor that
+    // did not see it.
+    const unmarkedEdit =
+      !waiting &&
+      before !== null &&
+      typeof opts.basedOn === 'string' &&
+      before.meta.sha !== opts.basedOn &&
+      before.meta.sha !== previousBase;
     const guard =
-      waiting && typeof opts.basedOn === 'string' ? { expectedSha: opts.basedOn } : undefined;
+      (waiting || unmarkedEdit) && typeof opts.basedOn === 'string'
+        ? { expectedSha: opts.basedOn }
+        : undefined;
     const write = () => this.local.put(collection, id, doc, { ...here, ...guard });
     if (!remote) {
       let meta: StorageMeta;
@@ -353,7 +365,6 @@ export class CompositeStorage implements StorageAdapter {
       this.marks.notify();
       return meta;
     }
-    const before = waiting ? null : await this.local.get(collection, id).catch(() => null);
     // Written ahead, before the gists are asked anything: a save made on a bad connection must not
     // wait on it to be kept, and from here on, whatever happens, a mark says it is not sent.
     let saved: StorageMeta;
@@ -381,17 +392,19 @@ export class CompositeStorage implements StorageAdapter {
           ? nameTaken(there, indexSummary(collection, id, doc).name, id, opts.replacing)
           : null;
       if (taken) {
-        await this.undo(collection, id, before, restoreBase);
+        await this.undo(collection, id, before, saved.sha, restoreBase);
         throw new NameTakenError(taken);
       }
     }
     // The send is waited for for a while: it queues behind whatever else is being sent, and a save
     // that is kept does not wait on that to say so. What it finds after that is the sender's.
+    const late = { slow: false };
     const sending = this.exclusive(() =>
-      this.sendSave(collection, id, doc, opts, saved, before, restoreBase),
+      this.sendSave(collection, id, doc, opts, saved, before, restoreBase, late),
     );
     sending.catch(() => {});
     const outcome = await patient(sending, SEND_PATIENCE_MS);
+    if (outcome === SLOW) late.slow = true;
     return outcome === SLOW ? saved : outcome;
   }
 
@@ -404,6 +417,7 @@ export class CompositeStorage implements StorageAdapter {
     saved: StorageMeta,
     before: { doc: JsonObject } | null,
     restoreBase: () => void,
+    late: { slow: boolean },
   ): Promise<StorageMeta> {
     const remote = this.remote as StorageAdapter;
     // What is behind is not known if the gists cannot be read: it stays here, marked, and the
@@ -425,17 +439,17 @@ export class CompositeStorage implements StorageAdapter {
       // is sent as a conflict for the user to settle. With no record of the version it is an edit
       // of, that is so wherever it could be an edit of an older one: where this browser held a copy
       // already, and for a rule set or a text, which two devices can both make under the same name.
-      // Only a layout it never held is one the user knowingly writes to, as when they choose to
-      // overwrite a layout of the same name.
+      // Only a layout the user chose to overwrite is one they knowingly write over: a new one whose id
+      // merely collides with a document the account holds, which a list that was slow or missing a row
+      // would let it, is asked about.
       const base = this.marks.base(collection, id);
-      const knowingly = collection === 'layouts' && before === null;
-      if (base === null ? !knowingly : seen.meta.sha !== base) {
+      if (base === null ? opts.overwriting !== true : seen.meta.sha !== base) {
         this.marks.notify();
         return saved;
       }
     }
     try {
-      const { basedOn: _readAt, ...forwarded } = opts;
+      const { basedOn: _readAt, overwriting: _chosen, ...forwarded } = opts;
       const meta = await remote.put(collection, id, doc, {
         ...forwarded,
         expectedSha: opts.expectedSha !== undefined ? opts.expectedSha : (seen?.meta.sha ?? null),
@@ -449,14 +463,25 @@ export class CompositeStorage implements StorageAdapter {
         this.marks.notify();
         return saved;
       }
+      if (e instanceof NameTakenError && late.slow) {
+        // The caller was told it is kept, so it is not taken back: it stays marked, and is left for
+        // the sender, which finds the name taken and says so in the status.
+        this.marks.notify();
+        return saved;
+      }
       if (e instanceof StorageConflictError || e instanceof NameTakenError) {
         // Refused for what the gists hold, and so for the caller to decide about: not left here to
         // be sent unasked, nor as a copy of what was refused.
-        await this.undo(collection, id, before, restoreBase);
+        await this.undo(collection, id, before, saved.sha, restoreBase);
         throw e;
       }
-      // Any other failure leaves it marked, to be sent when the gists can be written again, and
-      // propagates, for the user to see.
+      // Any other failure is not one to refuse a save for: it is kept, marked, and the status says
+      // why it is not sent, as it does when the gists cannot be read. Refusing it would leave the
+      // editor, which has not moved on, unable to save again. A caller with a check of its own is told.
+      if (opts.expectedSha === undefined) {
+        this.marks.notify();
+        return saved;
+      }
       throw e;
     }
   }
@@ -466,10 +491,14 @@ export class CompositeStorage implements StorageAdapter {
     collection: Collection,
     id: string,
     before: { doc: JsonObject } | null,
+    writtenSha: string,
     restoreBase: () => void,
   ) {
+    // Only a copy that is still exactly what this save wrote is put back: a later save is not undone.
+    const now = await this.local.get(collection, id).catch(() => null);
+    if (!now || now.meta.sha !== writtenSha) return;
     try {
-      if (before) await this.local.put(collection, id, before.doc, {});
+      if (before) await this.local.put(collection, id, before.doc, { expectedSha: writtenSha });
       else await this.local.delete(collection, id);
     } catch {
       // Left as it is, and marked: the user is told, and it is weighed when sent.
@@ -789,7 +818,7 @@ export class CompositeStorage implements StorageAdapter {
    * user was shown. If that has changed again meanwhile nothing is written, and `changed` says so:
    * the conflict is a new one, to be looked at again.
    */
-  keepMine(conflict: Conflict): Promise<'kept' | 'changed'> {
+  keepMine(conflict: Conflict): Promise<'kept' | 'changed' | 'edited'> {
     return this.exclusive(async () => {
       const { collection, id } = conflict;
       const stored = await this.local.get(collection, id);
@@ -797,6 +826,8 @@ export class CompositeStorage implements StorageAdapter {
         this.marks.forget(collection, id);
         return 'kept';
       }
+      // What is sent is what the user chose: not an edit made here since they were shown the two.
+      if (!sameDocument(stored.doc, conflict.mine.doc)) return 'edited';
       if (!this.remote) throw new Error('GitHub is not set up here');
       try {
         const meta = await this.remote.put(collection, id, stored.doc, {

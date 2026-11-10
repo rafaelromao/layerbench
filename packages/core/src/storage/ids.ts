@@ -63,6 +63,12 @@ export interface PutOptions {
    * rather than written over it. Not a condition any one store enforces; a null says nothing was read.
    */
   basedOn?: string | null;
+  /**
+   * For a store that keeps a copy in the browser and one in the cloud: the caller chose to replace the
+   * document that is there, as when a layout is saved over another of the same name after asking. A
+   * document that merely has the same id is not that: it is asked about.
+   */
+  overwriting?: boolean;
   message?: string;
   replacing?: readonly string[];
 }

@@ -287,6 +287,50 @@ describe('A custom layout sent by its link', () => {
 });
 
 describe('Saving what was read', () => {
+  it('can save again after a send failed: the editor goes on from what was kept', async () => {
+    const marks = memoryMarks();
+    const local = new MemoryStorage('local');
+    const remote = new MemoryStorage('github');
+    await seed(local, 'qwerty', 'mine', { name: 'Mine' });
+    await remote.put('layouts', 'mine', (await local.get('layouts', 'mine'))?.doc ?? {});
+    const storage = new CompositeStorage(local, remote, marks);
+    const put = remote.put.bind(remote);
+    let down = true;
+    remote.put = async (collection, id, doc, opts) => {
+      if (down) throw new Error('GitHub responded 503');
+      return put(collection, id, doc, opts);
+    };
+    const s = createLayoutSession(
+      {
+        storage: () => storage,
+        drafts: webDrafts(mapStore()),
+        link: new MemoryLink('custom:mine'),
+      },
+      { linkDelayMs: 5 },
+    );
+    const state = await opened(s);
+
+    // The first save is kept though the send failed, and the retry is not refused as another's change.
+    expect(await s.save({ ...state.layout, description: 'E1' })).toMatchObject({ ok: true });
+    expect(await s.save({ ...state.layout, description: 'E2' })).toMatchObject({ ok: true });
+    expect((await local.get('layouts', 'mine'))?.doc.description).toBe('E2');
+
+    down = false;
+    await storage.copyUp();
+    expect((await remote.get('layouts', 'mine'))?.doc.description).toBe('E2');
+  });
+
+  it('says it is overwriting only where the user chose to overwrite another layout', async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'qwerty', 'taken', { name: 'Taken' });
+    const put = vi.spyOn(storage, 'put');
+    const { s } = session('qwerty', { storage });
+    const state = await opened(s);
+    // A plain first save of a layout under a free name is not an overwrite.
+    await s.save({ ...state.layout, name: 'Free name' });
+    expect(put.mock.calls.at(-1)?.[3]?.overwriting).toBeUndefined();
+  });
+
   /** What `storage.put` was asked, as `basedOn`, by each save. */
   function basedOns(storage: MemoryStorage) {
     const put = vi.spyOn(storage, 'put');
@@ -343,7 +387,7 @@ describe('Saving what was read', () => {
 
   it('is refused by a second session opened before the first saved, and what was saved is kept', async () => {
     const marks = memoryMarks();
-    const local = new MemoryStorage('local', true);
+    const local = new MemoryStorage('local');
     await seed(local, 'qwerty', 'mine', { name: 'Mine' });
     // Offline, as every save of a signed-out phone is: nothing reaches the account, all of it waits.
     const storage = new CompositeStorage(local, null, marks);
