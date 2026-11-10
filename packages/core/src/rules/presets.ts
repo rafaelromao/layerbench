@@ -44,13 +44,14 @@ export function cyanophage(): RuleSet {
         return {
           ...r,
           label: 'Scissors (adjacent columns, 2 rows)',
-          description: 'cyanophage: adjacent fingers, two rows apart, same hand.',
+          description:
+            'cyanophage: keys in adjacent columns, two rows apart, typed by two fingers of one hand.',
           where: {
             all: [
               { same_hand: true },
               { same_finger: false },
               { any_thumb: false },
-              { adjacent_fingers: true },
+              { col_delta: { abs: 1 } },
               { row_delta: { abs_min: 2 } },
             ],
           },
@@ -81,9 +82,10 @@ export function cyanophage(): RuleSet {
     id: 'cyanophage',
     name: 'cyanophage-like',
     description:
-      'Column-pair LSBs, adjacency scissors, bigram percentages over keystrokes (+ one space per word), repeats excluded. SFB is rated on the ramp cyanophage colours it by.',
+      'Column-pair LSBs, adjacent-column scissors, bigram percentages over keystrokes (+ one space per word, and the characters the layout cannot type), repeats excluded. SFB is rated on the ramp cyanophage colours it by.',
     globals: {
       space_per_word_in_keystrokes: true,
+      untyped_in_keystrokes: true,
       cross_word: 'reset',
     },
     rules,

@@ -190,10 +190,11 @@ function unigrams(log: PressLog, universe: Universe): Record<string, number> {
 
 /**
  * Simulation statistics as the report files hold them: `per_layer` becomes an index map, and
- * `unproducible` is dropped because the same counts are already reported under `coverage`.
+ * `unproducible` and `soft_dropped` are dropped because the same counts are already reported under
+ * `coverage`.
  */
 function statsOf(s: SimulationStats): Record<string, number | Record<string, number>> {
-  const { per_layer, unproducible: _unproducible, ...rest } = s;
+  const { per_layer, unproducible: _unproducible, soft_dropped: _softDropped, ...rest } = s;
   return { ...rest, per_layer: dense(per_layer) };
 }
 

@@ -27,6 +27,7 @@ import { parseRuleSet, ruleSetFromJson, ruleSetToJson } from './serialize.js';
 import type { Rule, RuleSet } from './types.js';
 
 const OPTS = { caseMode: 'fold', crossWord: 'reset' } as const;
+const sum = (m: Map<string, number>) => [...m.values()].reduce((a, b) => a + b, 0);
 const text = `${FIXTURE_EN} ${FIXTURE_PT}`;
 
 /**
@@ -396,14 +397,69 @@ describe('rules engine', () => {
     const sfbs = (sfbOf(layoutsDoc()) / 100) * st.symbols;
     expect(sfbs).toBeGreaterThan(0);
 
+    // What Qwerty cannot type (the fixture's Portuguese accents) is a keystroke too, as for him.
+    const untyped = sum(st.unproducible) + sum(st.soft_dropped);
+    expect(untyped).toBeGreaterThan(0);
+
     // Without space: every other keystroke, plus one space per word.
     const without = sfbOf(universe(cyanophage(), 'no_space'));
-    expect(without).toBeCloseTo((sfbs / (st.keystrokes - st.space_presses + st.words)) * 100, 9);
+    expect(without).toBeCloseTo(
+      (sfbs / (st.keystrokes - st.space_presses + st.words + untyped)) * 100,
+      9,
+    );
 
     // With space: the space presses are keystrokes already, and nothing is added.
     const withSfbs = (sfbOf(universe(layoutsDoc(), 'with_space')) / 100) * st.symbols;
     const withSpace = sfbOf(universe(cyanophage(), 'with_space'));
-    expect(withSpace).toBeCloseTo((withSfbs / st.keystrokes) * 100, 9);
+    expect(withSpace).toBeCloseTo((withSfbs / (st.keystrokes + untyped)) * 100, 9);
+  });
+
+  it('counts what the layout cannot type as keystrokes in cyanophage’s percentages and Effort, at no cost', () => {
+    const compiled = compileLayout(layoutOf('qwerty'));
+    const sim = simulate(compiled, normalizeText(text, OPTS), OPTS);
+    const st = sim.tables.stats;
+    const untyped = sum(st.unproducible) + sum(st.soft_dropped);
+    expect(untyped).toBeGreaterThan(0);
+    const ruleValue = (rs: RuleSet, id: string) =>
+      evaluate(sim.tables, compiled, rs).results.find((r) => r.id === id)?.value as number;
+    const counted = cyanophage();
+    expect(counted.globals.untyped_in_keystrokes).toBe(true);
+    const left: RuleSet = {
+      ...counted,
+      globals: { ...counted.globals, untyped_in_keystrokes: false },
+    };
+    // The same pairs and the same cost, over more keystrokes.
+    const pairs = st.keystrokes - st.space_presses + st.words;
+    expect(ruleValue(counted, 'sfb') * (pairs + untyped)).toBeCloseTo(
+      ruleValue(left, 'sfb') * pairs,
+      6,
+    );
+    const chars = sim.tables.presses.ngrams('with_space', 'unigram').textTotal;
+    expect(ruleValue(counted, 'effort') * (chars + untyped)).toBeCloseTo(
+      ruleValue(left, 'effort') * chars,
+      6,
+    );
+    // The Layouts Doc set counts only what is typed.
+    expect(layoutsDoc().globals.untyped_in_keystrokes).toBeUndefined();
+  });
+
+  it('counts cyanophage’s scissors on adjacent columns, not adjacent fingers', () => {
+    // Qwerty's `c` is the left middle finger's bottom key and `t` the index finger's stretch
+    // column two rows up: adjacent fingers, two columns apart, which he does not count. `r`, the
+    // index finger's own column, is a scissor.
+    const compiled = compileLayout(layoutOf('qwerty'));
+    const fsbOf = (words: string) => {
+      const sim = simulate(compiled, normalizeText(words, OPTS), OPTS);
+      return evaluate(sim.tables, compiled, cyanophage()).results.find((r) => r.id === 'fsb')
+        ?.value as number;
+    };
+    expect(fsbOf('ct ct ct')).toBe(0);
+    expect(fsbOf('cr cr cr')).toBeGreaterThan(0);
+    // The Layouts Doc's scissors still go by fingers.
+    const sim = simulate(compiled, normalizeText('ct ct ct', OPTS), OPTS);
+    expect(
+      evaluate(sim.tables, compiled, layoutsDoc()).results.find((r) => r.id === 'fsb')?.value,
+    ).toBeGreaterThan(0);
   });
 
   it('lists the Repeat key and the space after it as one same-thumb pair when space is counted', () => {

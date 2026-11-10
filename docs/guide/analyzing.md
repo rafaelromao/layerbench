@@ -372,8 +372,8 @@ sample, 100,000 symbols, the layouts that come with the app run from Magic Romak
 
 ### The cyanophage-like rule set
 
-Cyanophage rates nothing: his playground prints SFB (Qwerty 4.38%) and Effort (1258.15) as plain
-numbers, with no bands or categories. The one ramp it draws for same-finger bigrams is a finger's bar
+Cyanophage rates nothing: his playground prints SFB (Qwerty 4.38% on his own word list) and Effort
+(1258.15) as plain numbers, with no bands or categories. The one ramp it draws for same-finger bigrams is a finger's bar
 in the finger view of the SFB panel, from grey to a pale red that stops getting redder at 2.117% of
 the text (`red = 128 + 6000 × share`, clamped to 255). The same constant colours his per-finger
 skipgram bars, so it is a general ramp and not one he set for SFB, but it is the nearest thing to a
@@ -393,12 +393,13 @@ colours and this reads it as a layout's total, which is LayerBench's assumption 
 | very high | 1.881 | red |
 | max | above 1.881 | red |
 
-These rules divide by keystrokes, with a space per word, so the same layout reads lower than under
-the Layouts Doc's: Colemak is 0.94 on the English sample, *mid low*, Dvorak 1.82, *very high*, and
-Qwerty 4.47, *max*.
+These rules divide by keystrokes, with a space per word, and count the characters a layout cannot
+type as keystrokes too, as he does, so the same layout reads lower than under the Layouts Doc's:
+Colemak is 0.93 on the English sample, *mid low*, Dvorak 1.81, *very high*, and Qwerty 4.45, *max*.
 
-**Effort** is the same number in both sets, and he has no ruler for it, so this set uses the Layouts
-Doc set's above, step for step and colour for colour.
+**Effort** is the same rule in both sets, and he has no ruler for it, so this set uses the Layouts
+Doc set's above, step for step and colour for colour. Its number is a little lower here where the
+text has characters the layout cannot type, as they count among the keystrokes it is divided by.
 
 ### Custom rule sets
 

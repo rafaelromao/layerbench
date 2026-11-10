@@ -149,12 +149,25 @@ function pairDistance(ngram: Ngram, model: Globals['distance_model']): number | 
  * counts it. Counting the layout's own presses instead would let its layer taps, holds
  * and one-shots, which no pair rule can match, thin out every percentage. cyanophage counts one
  * space per word, which `space_per_word_in_keystrokes` adds where space is not counted; where it
- * is, the spaces are already there, and adding a word's space on top would count it twice.
+ * is, the spaces are already there, and adding a word's space on top would count it twice. With
+ * `untyped_in_keystrokes` the characters the layout cannot type count too, as they do for him.
  */
 function textKeystrokes(ctx: Ctx): number {
-  const text = ctx.log.ngrams(ctx.universe, 'unigram').textTotal;
+  const text = ctx.log.ngrams(ctx.universe, 'unigram').textTotal + untyped(ctx);
   if (ctx.universe === 'with_space') return text;
   return text + (ctx.globals.space_per_word_in_keystrokes ? ctx.sim.stats.words : 0);
+}
+
+/**
+ * The text's characters the layout could not type, where the rule set counts them as keystrokes:
+ * cyanophage counts every character of a word, and skips the ones his layout lacks.
+ */
+function untyped(ctx: Ctx): number {
+  if (!ctx.globals.untyped_in_keystrokes) return 0;
+  let n = 0;
+  for (const c of ctx.sim.stats.unproducible.values()) n += c;
+  for (const c of ctx.sim.stats.soft_dropped.values()) n += c;
+  return n;
 }
 
 /**
@@ -430,8 +443,9 @@ function evalNgram(rule: Rule, ctx: Ctx): RuleResult {
     case 'weighted_sum': {
       // Per character typed, space included, which is cyanophage's keystrokes on the layouts it
       // models. The layout's own presses would make its layer taps, which cost less than most
-      // letters, lower the average: they add their cost, never a keystroke.
-      const k = ctx.log.ngrams('with_space', 'unigram').textTotal;
+      // letters, lower the average: they add their cost, never a keystroke. What it cannot type
+      // costs nothing, and is a keystroke where the rule set counts it as one.
+      const k = ctx.log.ngrams('with_space', 'unigram').textTotal + untyped(ctx);
       value = k > 0 ? (effortSum / k) * (rule.scale ?? 1) : 0;
       keyScale = k > 0 ? (rule.scale ?? 1) / k : 0;
       unit = 'effort';

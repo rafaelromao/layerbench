@@ -201,6 +201,8 @@ export function coerceGlobal(name: string, value: string): Partial<Globals> {
       return { top_items: Math.trunc(parseNumber(value, 12)) };
     case 'space_per_word_in_keystrokes':
       return { space_per_word_in_keystrokes: value === 'true' };
+    case 'untyped_in_keystrokes':
+      return { untyped_in_keystrokes: value === 'true' };
     default:
       return { [name]: value } as Partial<Globals>;
   }
