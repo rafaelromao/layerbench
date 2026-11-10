@@ -23,6 +23,8 @@ export interface SyncState {
   scheduled: boolean;
   /** How many documents this browser holds that the account lacks, as last looked; null if not yet. */
   lacking: number | null;
+  /** Whether the last look at this browser's documents against the account's did not finish. */
+  auditFailed: boolean;
 }
 
 const IDLE: SyncState = {
@@ -33,6 +35,7 @@ const IDLE: SyncState = {
   held: null,
   scheduled: false,
   lacking: null,
+  auditFailed: false,
 };
 
 export const useSync = create<SyncState>(() => IDLE);
@@ -94,7 +97,78 @@ export function settledConflict(conflict: Conflict): void {
   }));
 }
 
-let active: { now: () => void; release: () => void } | null = null;
+/**
+ * Run `work` if no other tab is sending, and say so (null) if one is: they all hear the same online
+ * event at once, and two sending would each edit a gist's index from what the other had not written
+ * yet. Where the browser has no Web Locks, or refuses to give one (site data blocked), it runs.
+ */
+export async function whileSending<T>(work: () => Promise<T>): Promise<T | null> {
+  const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+  if (!locks) return work();
+  let started = false;
+  try {
+    return await locks.request('layerbench:send', { ifAvailable: true }, (lock) => {
+      if (!lock) return null;
+      started = true;
+      return work();
+    });
+  } catch (e) {
+    // The work failing is its own error; only a lock that could not be asked for is got round.
+    if (started) throw e;
+    return work();
+  }
+}
+
+const messageOf = (e: unknown) => (e instanceof Error ? e.message : String(e));
+
+/** What a copy of everything did, in a sentence. */
+function copyMessage({ copied, current, conflicts, taken, failed }: CopiedUp): string {
+  const parts = [`Copied ${documents(copied)} to GitHub`];
+  if (current > 0) parts.push(`${current} ${current === 1 ? 'was' : 'were'} already up to date`);
+  if (conflicts.length > 0) {
+    const n = conflicts.length;
+    parts.push(
+      `${n} ${n === 1 ? 'was' : 'were'} changed here and in GitHub, and ${n === 1 ? 'waits' : 'wait'} for you to choose`,
+    );
+  }
+  if (failed.length > 0) {
+    parts.push(`${failed.length} could not be sent (${failed[0].name}: ${failed[0].error})`);
+  }
+  if (taken > 0) {
+    parts.push(
+      `${taken} ${taken === 1 ? 'layout stays' : 'layouts stay'} in this browser, as GitHub has another of the same name`,
+    );
+  }
+  return parts.join('; ');
+}
+
+/**
+ * What the user asks for with "copy everything": the documents this browser holds are weighed
+ * against the account's, as `copy` does, one tab at a time, and what came of it is said. Conflicts
+ * found are asked about like any other, and kept even if it stopped partway.
+ */
+export async function copyEverything(copy: () => Promise<CopiedUp>): Promise<void> {
+  try {
+    const result = await whileSending(copy);
+    if (result === null) {
+      toast.info('Another tab of LayerBench is sending right now. Try again in a moment.');
+      return;
+    }
+    noteResult(result);
+    toast.info(copyMessage(result));
+  } catch (e) {
+    if (e instanceof CopyUpError) noteResult(e.result);
+    const copied = e instanceof CopyUpError ? e.copied : 0;
+    toast.error(`Copying stopped after ${documents(copied)}: ${messageOf(e)}`);
+  }
+}
+
+let active: {
+  now: () => void;
+  release: () => void;
+  audit: () => void;
+  everything: () => Promise<void>;
+} | null = null;
 
 /** Try sending now, rather than waiting for the next attempt; nothing while storage is this browser's alone. */
 export function syncNow(): void {
@@ -104,6 +178,16 @@ export function syncNow(): void {
 /** Send what was held back, as the user has said it is theirs to send to the account signed in. */
 export function sendHeld(): void {
   active?.release();
+}
+
+/** Copy everything this browser holds, as the status offers when the account lacks some of it. */
+export function sendEverything(): void {
+  void active?.everything();
+}
+
+/** Look at this browser's documents against the account's again, whatever was found the last time. */
+export function checkAgain(): void {
+  active?.audit();
 }
 
 /**
@@ -154,11 +238,12 @@ export function startAutoSync(
     if (useSync.getState().scheduled) useSync.setState({ scheduled: false });
   };
 
-  const later = (which: 'settle' | 'retry', ms: number) => {
+  const later = (which: 'settle' | 'retry', ms: number, shown = true) => {
     const timer = setTimeout(() => void run(), ms);
     if (which === 'settle') settle = timer;
     else retry = timer;
-    useSync.setState({ scheduled: true });
+    // An attempt waiting for another tab to finish is not one that is about to send.
+    if (shown) useSync.setState({ scheduled: true });
   };
 
   /** The attempt, or a failure once it has gone on too long: one stuck request must not stop every later one. */
@@ -178,14 +263,8 @@ export function startAutoSync(
       copying.catch(() => {});
       return Promise.race([copying, limit]).finally(() => clearTimeout(timer));
     };
-    // One tab at a time: they all hear the same online event at once, and two sending the same
-    // documents would each edit the gist's index from what the other had not written yet. null:
-    // another tab is sending.
-    const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
-    if (!locks) return work();
-    return locks.request('layerbench:send', { ifAvailable: true }, (lock) =>
-      lock ? work() : null,
-    );
+    // One tab at a time. null: another tab is sending.
+    return whileSending(work);
   };
 
   /** The marks an attempt left that it neither sent nor reported as conflicts or for names. */
@@ -209,7 +288,7 @@ export function startAutoSync(
       if (result === null) {
         // Another tab is sending these: this one looks again later, in case it is not, or fails.
         useSync.setState({ phase: 'idle', error: null });
-        later('retry', retryMs[0] ?? 30_000);
+        later('retry', retryMs[0] ?? 30_000, false);
         return;
       }
       // What this browser holds has been sent to this account, whose it is from now on.
@@ -291,25 +370,38 @@ export function startAutoSync(
     useSync.setState({ held: null });
     void run();
   };
-  const handle = { now: () => void run(), release };
+  const handle = {
+    now: () => void run(),
+    release,
+    audit: () => void audit(true),
+    everything: () => copyEverything(() => storage.copyUp({ everything: true })),
+  };
   active = handle;
 
   /**
    * Look at every document this browser holds against the account's by content, once in a while:
    * what it finds that differs is marked, and sent or asked about like any other.
    */
-  const audit = async () => {
-    if (stopped || held || Date.now() - marks.audited() < auditEveryMs) return;
+  const audit = async (force = false) => {
+    // An infinite interval is never: for the tests of what is not about looking at everything.
+    if (stopped || held || !Number.isFinite(auditEveryMs)) return;
+    // Once for each account in a while: another account that signs in is looked at at once.
+    const last = marks.audit();
+    if (!force && last && last.account === (login ?? '') && Date.now() - last.at < auditEveryMs) {
+      useSync.setState({ lacking: last.lacking });
+      return;
+    }
     const given = new AbortController();
     const timer = setTimeout(() => given.abort(), attemptMs);
     try {
       const found = await storage.audit({ signal: given.signal });
       if (stopped) return;
-      marks.setAudited(Date.now());
-      useSync.setState({ lacking: found.lacking });
+      marks.setAudit({ account: login ?? '', at: Date.now(), lacking: found.lacking });
+      useSync.setState({ lacking: found.lacking, auditFailed: false });
       if (found.marked > 0) void run();
     } catch {
-      // Looked at again on the next visit.
+      // Said in the status, with a way to try again; looked at again on the next visit too.
+      if (!stopped) useSync.setState({ auditFailed: true });
     } finally {
       clearTimeout(timer);
     }
@@ -328,7 +420,7 @@ export function startAutoSync(
     // The first account to sign in with documents waiting is the browser's from here on, whether
     // or not this attempt goes through: another that signs in after it has them held.
     if (login) marks.setAccount(login);
-    void run().then(audit);
+    void run().then(() => audit());
   }
 
   return () => {

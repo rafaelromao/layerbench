@@ -23,6 +23,8 @@ const BASE: SyncInput = {
   held: null,
   offline: false,
   scheduled: false,
+  lacking: null,
+  auditFailed: false,
 };
 
 describe('what the status says', () => {
@@ -159,6 +161,28 @@ describe('what the status says', () => {
     expect(summarize({ ...signedIn, pending: 1 }).text).toBe(
       'You are offline. 1 saved here waits to be sent. They are sent when you are back online.',
     );
+  });
+
+  it('does not say synced while documents here were never sent, and offers to send them', () => {
+    const signedIn = { ...BASE, status: 'signed-in', login: 'you' } as const;
+    const summary = summarize({ ...signedIn, lacking: 2 });
+    expect(summary).toMatchObject({ kind: 'lacking', action: 'send-all', notable: true });
+    expect(summary.text).toBe(
+      '2 documents saved in this browser are not in your GitHub account: never sent, or deleted from it elsewhere.',
+    );
+    expect(summary.label).not.toBe(' ✓');
+    expect(summarize({ ...signedIn, lacking: 0 })).toMatchObject({ kind: 'synced' });
+  });
+
+  it('says when this browser could not be checked against the account, and offers to check again', () => {
+    const summary = summarize({
+      ...BASE,
+      status: 'signed-in',
+      login: 'you',
+      auditFailed: true,
+    });
+    expect(summary).toMatchObject({ kind: 'unchecked', action: 'check-again', notable: true });
+    expect(summary.label).not.toBe(' ✓');
   });
 
   it('does not say a send failed when nothing is waiting to be sent', () => {

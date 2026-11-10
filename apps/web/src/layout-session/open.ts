@@ -21,7 +21,14 @@ export interface LayoutSource {
  * it is, if it is one; or why it would not open.
  */
 export type Opened =
-  | { ok: true; layout: Layout; storedId: string | null; source: LayoutSource | null }
+  | {
+      ok: true;
+      layout: Layout;
+      storedId: string | null;
+      source: LayoutSource | null;
+      /** The version of the custom layout that was read, which an edit of it is made on. */
+      sha?: string;
+    }
   | { ok: false; error: string };
 
 const same = (a: Layout, b: Layout) =>
@@ -47,7 +54,13 @@ export async function openLayout(ref: string, storage: StorageAdapter): Promise<
     if (!id || !isDocumentId(id)) return { ok: true, layout, storedId: null, source: null };
     const stored = await readCustom(storage, 'layouts', id);
     const saved = stored.status === 'read' && same(stored.doc, layout);
-    return { ok: true, layout, storedId: saved ? id : null, source: null };
+    return {
+      ok: true,
+      layout,
+      storedId: saved ? id : null,
+      source: null,
+      ...(saved && stored.sha && { sha: stored.sha }),
+    };
   }
 
   if (parsed.kind === 'community') {
@@ -75,7 +88,7 @@ export async function openLayout(ref: string, storage: StorageAdapter): Promise<
   const id = parsed.value;
   const read = await readCustom(storage, 'layouts', id);
   return read.status === 'read'
-    ? { ok: true, layout: read.doc, storedId: id, source: null }
+    ? { ok: true, layout: read.doc, storedId: id, source: null, ...(read.sha && { sha: read.sha }) }
     : { ok: false, error: customError('layouts', id, read) };
 }
 

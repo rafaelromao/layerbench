@@ -61,8 +61,13 @@ export function ConflictDialog() {
   const dialog = useRef<HTMLDialogElement>(null);
   const [busy, setBusy] = useState(false);
   const [compare, setCompare] = useState<string | null>(null);
-  const current = conflicts[0];
+  // The one being shown stays so while it is there: a list made again by each attempt must not swap
+  // the document under the user's finger.
+  const [pinned, setPinned] = useState<string | null>(null);
+  const current = conflicts.find((c) => `${c.collection}/${c.id}` === pinned) ?? conflicts[0];
   const open = reviewing && current !== undefined;
+  const shown = current ? `${current.collection}/${current.id}` : null;
+  useEffect(() => setPinned(shown), [shown]);
 
   useEffect(() => {
     const element = dialog.current;
@@ -118,6 +123,11 @@ export function ConflictDialog() {
         // This browser's copy was replaced by the account's: an editor that has it open is told.
         if (choice === 'theirs') documentsChanged([`${current.collection}/${current.id}`]);
         toast.info(`Kept ${kept} version of ${current.name}`);
+      } else if (result === 'edited') {
+        // Not the account that changed: this browser's own copy was edited after the dialog showed it.
+        toast.error(
+          `${current.name} was edited in this browser since you were shown it, so nothing was replaced. Choose again.`,
+        );
       } else if (result === 'gone') {
         // Deleted from the account since: nothing there to keep, and this browser's is not thrown away.
         settledConflict(current);
@@ -180,8 +190,9 @@ export function ConflictDialog() {
           <div className="text-xs">
             <p className="font-semibold">What differs</p>
             <ul className="list-disc space-y-0.5 pl-4">
-              {differences.map((line) => (
-                <li key={line} className="[overflow-wrap:anywhere]">
+              {differences.map((line, position) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: lines are text, and two can read alike
+                <li key={`${position}:${line}`} className="[overflow-wrap:anywhere]">
                   {line}
                 </li>
               ))}

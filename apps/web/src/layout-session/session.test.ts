@@ -285,6 +285,72 @@ describe('A custom layout sent by its link', () => {
   });
 });
 
+describe('Saving what was read', () => {
+  /** What `storage.put` was asked, as `basedOn`, by each save. */
+  function basedOns(storage: MemoryStorage) {
+    const put = vi.spyOn(storage, 'put');
+    return () => put.mock.calls.map((c) => c[3]?.basedOn);
+  }
+
+  it('passes the version it opened with the save, not whatever is in storage by then', async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'qwerty', 'mine', { name: 'Mine' });
+    const readAt = (await storage.get('layouts', 'mine'))?.meta.sha;
+    const asked = basedOns(storage);
+    const { s } = session('custom:mine', { storage });
+    const state = await opened(s);
+    // Another browser saves it meanwhile: the version the editor holds is the one it opened.
+    await seed(storage, 'qwerty', 'mine', { name: 'Mine', description: 'from elsewhere' });
+    s.edited(state.layout, false);
+    await s.save({ ...state.layout, description: 'edited here' });
+    expect(asked().at(-1)).toBe(readAt);
+  });
+
+  it('is an edit of what it saved, for the next save', async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'qwerty', 'mine', { name: 'Mine' });
+    const asked = basedOns(storage);
+    const { s } = session('custom:mine', { storage });
+    const state = await opened(s);
+    s.edited(state.layout, false);
+    await s.save({ ...state.layout, description: 'one' });
+    const saved = (await storage.get('layouts', 'mine'))?.meta.sha;
+    await s.save({ ...state.layout, description: 'two' });
+    expect(asked().at(-1)).toBe(saved);
+  });
+
+  it('passes nothing for a layout not saved yet, which is an edit of nothing', async () => {
+    const storage = new MemoryStorage();
+    const asked = basedOns(storage);
+    const { s } = session('qwerty', { storage });
+    const state = await opened(s);
+    await s.save(state.layout);
+    expect(asked().filter((b) => b !== undefined)).toEqual([]);
+  });
+
+  it('keeps the version a draft was made from, across a reload, and saves against that', async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'qwerty', 'mine', { name: 'Mine' });
+    const readAt = (await storage.get('layouts', 'mine'))?.meta.sha;
+    const drafts = webDrafts(mapStore());
+    const first = session('custom:mine', { storage, drafts });
+    const state = await opened(first.s);
+    first.s.edited(withCedilla(state.layout), true);
+    const draft = await first.s.link();
+    first.s.dispose();
+    expect(drafts.shaOf(draft)).toBe(readAt);
+
+    // The account moves on, and the draft is opened again from its link, as Back does.
+    await seed(storage, 'qwerty', 'mine', { name: 'Mine', description: 'from elsewhere' });
+    const asked = basedOns(storage);
+    const again = session(draft, { storage, drafts });
+    const reopened = await opened(again.s);
+    again.s.edited(reopened.layout, true);
+    await again.s.save(reopened.layout);
+    expect(asked().at(-1)).toBe(readAt);
+  });
+});
+
 describe('Saving', () => {
   it('stores a layout under the id its name gives, beside a custom one whose name slugs the same, and puts it in the link', async () => {
     const storage = new MemoryStorage();

@@ -6,7 +6,7 @@ import {
   signIn,
   useGitHubSession,
 } from '../auth/github-session.js';
-import { review, sendHeld, syncNow, useSync } from './auto-sync.js';
+import { checkAgain, review, sendEverything, sendHeld, syncNow, useSync } from './auto-sync.js';
 import { unsynced } from './unsynced.js';
 
 /**
@@ -21,6 +21,8 @@ import { unsynced } from './unsynced.js';
  * - `offline`: signed in, with no connection: what is saved is kept here, to be sent when there is.
  * - `failed`: signed in, but the last try to send did not go through.
  * - `waiting`: signed in, with documents not sent that nothing is about to send, which is said, never shown as sending.
+ * - `lacking`: signed in, with documents in this browser that the account does not have.
+ * - `unchecked`: signed in, and this browser's documents could not be checked against the account's.
  * - `conflict`: signed in, with documents changed here and in the account, for the user to settle.
  * - `held`: signed in, with documents saved here not sent, as this browser last sent to another account.
  * - `attention`: signed in, with layouts that stay here for their names.
@@ -36,12 +38,21 @@ export type SyncKind =
   | 'offline'
   | 'failed'
   | 'waiting'
+  | 'lacking'
+  | 'unchecked'
   | 'conflict'
   | 'held'
   | 'attention';
 
 /** What the user can do about it from where the status is shown. */
-export type SyncAction = 'sign-in' | 'retry-sign-in' | 'retry-sync' | 'review' | 'send-held';
+export type SyncAction =
+  | 'sign-in'
+  | 'retry-sign-in'
+  | 'retry-sync'
+  | 'review'
+  | 'send-held'
+  | 'send-all'
+  | 'check-again';
 
 export interface SyncSummary {
   kind: SyncKind;
@@ -75,6 +86,10 @@ export interface SyncInput {
   offline: boolean;
   /** Whether an attempt to send is waiting on a timer. */
   scheduled: boolean;
+  /** How many documents here the account lacks, as last looked at; null if it has not been. */
+  lacking: number | null;
+  /** Whether the last look at this browser's documents against the account's did not finish. */
+  auditFailed: boolean;
 }
 
 const waiting = (n: number) => `${n} saved here ${n === 1 ? 'waits' : 'wait'} to be sent.`;
@@ -151,6 +166,25 @@ export function summarize(i: SyncInput): SyncSummary {
         notable: true,
       };
     }
+    if (i.auditFailed) {
+      return {
+        kind: 'unchecked',
+        text: "Could not check this browser's documents against your GitHub account, so some may not be in it.",
+        label: ' · unchecked',
+        action: 'check-again',
+        notable: true,
+      };
+    }
+    if (i.lacking !== null && i.lacking > 0) {
+      const n = i.lacking;
+      return {
+        kind: 'lacking',
+        text: `${n} ${n === 1 ? 'document saved' : 'documents saved'} in this browser ${n === 1 ? 'is' : 'are'} not in your GitHub account: never sent, or deleted from it elsewhere.`,
+        label: ' · unsynced',
+        action: 'send-all',
+        notable: true,
+      };
+    }
     return {
       kind: 'synced',
       text: `Saved in this browser and in your GitHub account (@${i.login}).`,
@@ -214,6 +248,8 @@ export function useSyncSummary(): SyncSummary {
   const conflicts = useSync((s) => s.last?.conflicts.length ?? 0);
   const held = useSync((s) => s.held?.account ?? null);
   const scheduled = useSync((s) => s.scheduled);
+  const lacking = useSync((s) => s.lacking);
+  const auditFailed = useSync((s) => s.auditFailed);
   const online = useSyncExternalStore(subscribeOnline, isOnline, () => true);
   return summarize({
     status,
@@ -227,6 +263,8 @@ export function useSyncSummary(): SyncSummary {
     held,
     offline: !online,
     scheduled,
+    lacking,
+    auditFailed,
   });
 }
 
@@ -236,6 +274,8 @@ export function act(action: SyncAction): void {
   else if (action === 'retry-sign-in') void retrySignIn();
   else if (action === 'review') review(true);
   else if (action === 'send-held') sendHeld();
+  else if (action === 'send-all') sendEverything();
+  else if (action === 'check-again') checkAgain();
   else syncNow();
 }
 
@@ -246,4 +286,6 @@ export const ACTION_LABEL: Record<SyncAction, string> = {
   'retry-sync': 'Try now',
   review: 'Choose',
   'send-held': 'Send to my account',
+  'send-all': 'Send them',
+  'check-again': 'Check again',
 };

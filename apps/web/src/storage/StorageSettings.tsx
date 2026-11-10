@@ -2,9 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { signIn, signOut, useGitHubSession } from '../auth/github-session.js';
 import { HelpLink } from '../components/HelpLink.js';
 import { HELP } from '../guide/help.js';
-import { toast } from '../state/toasts.js';
-import { noteResult, useSync } from './auto-sync.js';
-import { CopyUpError } from './composite.js';
+import { copyEverything, useSync } from './auto-sync.js';
 import { SyncNote } from './SyncNote.js';
 import { useSyncSummary } from './sync-status.js';
 import { useCopyUp } from './use-storage.js';
@@ -26,8 +24,6 @@ function Where({ login }: { login: string }) {
     </p>
   );
 }
-
-const documents = (n: number) => `${n} document${n === 1 ? '' : 's'}`;
 
 /**
  * Where custom documents live. Layouts, rule sets and corpora are always kept in this browser;
@@ -52,34 +48,7 @@ export function StorageSettings() {
     if (!copyUp) return;
     setCopying(true);
     try {
-      const result = await copyUp();
-      // Conflicts found are the dialog's to ask about, as any other attempt's are.
-      noteResult(result);
-      const { copied, current, differing, conflicts, taken, failed } = result;
-      toast.info(
-        `Copied ${documents(copied)} to GitHub${current > 0 ? `; ${current} ${current === 1 ? 'was' : 'were'} already up to date` : ''}${
-          conflicts.length > 0
-            ? `; ${conflicts.length} ${conflicts.length === 1 ? 'was' : 'were'} changed here and in GitHub, and ${conflicts.length === 1 ? 'waits' : 'wait'} for you to choose`
-            : ''
-        }${
-          differing > 0
-            ? `; ${differing} ${differing === 1 ? 'differs' : 'differ'} from GitHub's and ${differing === 1 ? 'was' : 'were'} left as GitHub has ${differing === 1 ? 'it' : 'them'}`
-            : ''
-        }${
-          failed.length > 0
-            ? `; ${failed.length} could not be sent (${failed[0].name}: ${failed[0].error})`
-            : ''
-        }${
-          taken > 0
-            ? `; ${taken} ${taken === 1 ? 'layout stays' : 'layouts stay'} in this browser, as GitHub has another of the same name`
-            : ''
-        }`,
-      );
-    } catch (e) {
-      const copied = e instanceof CopyUpError ? e.copied : 0;
-      toast.error(
-        `Copying stopped after ${documents(copied)}: ${e instanceof Error ? e.message : String(e)}`,
-      );
+      await copyEverything(copyUp);
     } finally {
       setCopying(false);
     }

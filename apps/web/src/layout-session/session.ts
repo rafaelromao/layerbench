@@ -108,10 +108,12 @@ async function store(
   /** Hears the id and document a layout not stored yet is saved as, before it is written. */
   onNew: (id: string, doc: JsonObject) => void,
   opts: SaveOptions,
-): Promise<{ id: string; leftBehind: boolean }> {
+  /** The version of this layout the editor opened it at, which this save is an edit of. */
+  basedOn: string | null,
+): Promise<{ id: string; leftBehind: boolean; sha: string | null }> {
   if (storedId === null) {
     const { id } = await saveNewLayout(storage, layout, `Save layout ${layout.name}`, onNew, opts);
-    return { id, leftBehind: false };
+    return { id, leftBehind: false, sha: null };
   }
   const entries = await storage.list('layouts');
   // One renamed since it was offered to overwrite is not overwritten: the name is asked about anew.
@@ -122,11 +124,13 @@ async function store(
     if (taken) throw new NameTakenError(taken);
     id = idForName(layout.name, storedId, new Set(entries.map((e) => e.id)));
   }
-  await storage.put('layouts', id, toCanonicalJson({ ...layout, id }), {
+  const written = await storage.put('layouts', id, toCanonicalJson({ ...layout, id }), {
     message: `Save layout ${layout.name}`,
     // Its old copy, deleted below, may go by the name too: one only the browser has, beside the
     // gists' layout of the name.
     replacing: id === storedId ? [] : [storedId],
+    // Only where it is saved over itself: written to another id, it is an edit of nothing there.
+    ...(id === storedId && basedOn !== null && { basedOn }),
   });
   let leftBehind = false;
   if (id !== storedId) {
@@ -136,7 +140,7 @@ async function store(
       leftBehind = true;
     }
   }
-  return { id, leftBehind };
+  return { id, leftBehind, sha: written.sha };
 }
 
 /**
@@ -160,6 +164,8 @@ export function createLayoutSession(
   /** What the link holds when nothing is unsaved. */
   let cleanRef = '';
   let storedId: string | null = null;
+  /** The version of the custom layout the editor was opened at, or last saved: what an edit is made on. */
+  let basedOn: string | null = null;
   let source: LayoutSource | null = null;
   let opened: { layout: Layout; startsUnsaved: boolean } | null = null;
   let editor: { layout: Layout; unsaved: boolean } | null = null;
@@ -211,7 +217,7 @@ export function createLayoutSession(
   const writeDraft = async (layout: Layout, opening: number): Promise<string> => {
     const ref = inlineRef(await encodeInline(layout));
     if (state.opening === opening && !disposed) {
-      drafts.remember(ref, storedId, source);
+      drafts.remember(ref, storedId, source, basedOn);
       write(ref);
     }
     return ref;
@@ -244,6 +250,8 @@ export function createLayoutSession(
     }
     const startsUnsaved = origin !== undefined;
     storedId = startsUnsaved ? origin : result.storedId;
+    // What was read, or what a draft was made from: not what happens to be in storage by the time it is saved.
+    basedOn = startsUnsaved ? drafts.shaOf(ref) : (result.sha ?? null);
     source = startsUnsaved ? drafts.sourceOf(ref) : result.source;
     attempted = null;
     // A custom layout opened by its id gets the link that carries it whole, which opens anywhere.
@@ -322,7 +330,7 @@ export function createLayoutSession(
             if (there && sameDocument(there.doc, attempted.doc)) from = attempted.id;
           }
           // Only this opening's own attempt is kept: a save of a layout since left may land late.
-          const { id, leftBehind } = await store(
+          const { id, leftBehind, sha } = await store(
             ports.storage(),
             layout,
             from,
@@ -330,6 +338,7 @@ export function createLayoutSession(
               if (state.opening === opening) attempted = { id: taken, doc };
             },
             opts,
+            basedOn,
           );
           if (state.opening === opening) attempted = null;
           // Its link from now on carries it whole, so it can still be sent. A moment ago that may
@@ -339,6 +348,8 @@ export function createLayoutSession(
             drafts.forget(ref);
             cleanRef = ref;
             storedId = id;
+            // What was saved is what the next edit is an edit of.
+            basedOn = sha;
             // Saved here, it is a custom layout of its own, whatever it was made from.
             source = null;
             // Saved with nothing unsaved, it is in the link at once; otherwise once the editor says

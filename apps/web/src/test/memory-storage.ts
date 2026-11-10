@@ -11,6 +11,7 @@ import {
   StorageConflictError,
   type StorageMeta,
 } from '@layerbench/core';
+import { sha1Hex } from '../storage/indexeddb.js';
 
 interface Stored {
   json: string;
@@ -29,7 +30,14 @@ export class MemoryStorage implements StorageAdapter {
   private readonly docs = new Map<string, Stored>();
   private writes = 0;
 
-  constructor(readonly id = 'memory') {}
+  /**
+   * `contentShas`: a document's version is the hash of its text, as a gist's is and as the browser's
+   * store gives it, so that the same text has the same version in two stores. Otherwise it is a count.
+   */
+  constructor(
+    readonly id = 'memory',
+    private readonly contentShas = false,
+  ) {}
 
   async list(collection: Collection): Promise<IndexEntry[]> {
     const entries: IndexEntry[] = [];
@@ -76,9 +84,10 @@ export class MemoryStorage implements StorageAdapter {
       );
       if (taken) throw new NameTakenError(taken);
     }
-    const sha = `${this.id}-${++this.writes}`;
+    const json = JSON.stringify(doc);
+    const sha = this.contentShas ? await sha1Hex(json) : `${this.id}-${++this.writes}`;
     this.docs.set(`${collection}/${id}`, {
-      json: JSON.stringify(doc),
+      json,
       sha,
       updatedAt: new Date().toISOString(),
     });

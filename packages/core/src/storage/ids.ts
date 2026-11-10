@@ -57,6 +57,12 @@ export interface StorageAdapter {
 
 export interface PutOptions {
   expectedSha?: string | null;
+  /**
+   * For a store that keeps a copy in the browser and one in the cloud: the version of the document
+   * the caller read and edited, so that a save made over another version is weighed as a conflict
+   * rather than written over it. Not a condition any one store enforces; a null says nothing was read.
+   */
+  basedOn?: string | null;
   message?: string;
   replacing?: readonly string[];
 }

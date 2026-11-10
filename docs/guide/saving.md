@@ -84,7 +84,8 @@ is saved until you choose.
 
 You come back to the page you were on, unsaved edits included. What this browser saved before you
 signed in is sent to your account at once, with nothing to press, and from then on every save is
-also kept there. **Storage** shows a ✓ once everything is there. See [Syncing](#syncing).
+also kept there. **Storage** shows a ✓ only once nothing is waiting to be sent and your account lacks
+nothing this browser holds; otherwise it says what is not. See [Syncing](#syncing).
 
 This browser stays signed in until you sign out, or until six months pass without using it. Safari
 is stricter: once you have used it for seven days without opening LayerBench, it clears what
@@ -101,8 +102,9 @@ Syncing is automatic, and where your work stands is always said, never left to g
 described here in the order things happen.
 
 **Signed in**, a save is kept in this browser first, and marked as not sent before anything else is
-done with it, so a tab closed or put to sleep while it is on its way to your account loses nothing.
-It is then written to your gists, and the mark goes once they hold it. If your account could not be
+done with it, a layout's name checked against your account included, so a tab closed or put to sleep
+while it is on its way to your account loses nothing. It is then written to your gists, and the mark
+goes once they hold it. If your account could not be
 written (no connection, GitHub down, a sign-in that ended), the save is still kept in this browser,
 and says so: **Save failed**, with the reason. The page then tries again by itself, a few seconds
 later, then after 30 seconds, a minute, two, five, until it goes through. It also tries when the
@@ -129,12 +131,24 @@ sent: a layout you deleted on another browser is not put back in your account by
 it. The copy this browser still holds stays in this browser, and saving it there creates it in your
 account again.
 
-Opening a layout, rule set or text from your account brings this browser's copy up to the version
-you opened, so what you edit offline afterwards is an edit of it. Once a day, and when you sign in,
-this browser's documents are also compared with your account's by their **contents**, never by when each
-was saved: the same in both is recorded as such; one this browser holds an unedited older copy of is
-brought up to your account's; any other that differs is marked, and sent or asked about like the rest.
-**Storage** says how many documents here your account lacks.
+Opening a layout, rule set or text from your account, when this browser holds a copy of it, brings
+that copy up to the version you opened, so what you edit offline afterwards is an edit of it, but
+only if the copy is the version both last held. A copy that differs in any other way is an edit
+whose mark was never written or was lost (as with documents saved before edits were marked): it is
+kept, shown, and weighed like any other, and asked about if it is not an edit of what your account
+holds. Where the account is slow to answer, the copy this browser has is shown after five seconds.
+Anything a layout opened in **Analyze** is saved over is the version Analyze opened, or the draft was
+made from, however many reads of it have happened since: if your account holds another version, the
+save stays here and is asked about. A rule set or a text is weighed against the version this
+browser last held.
+
+When you sign in, and at most every twelve hours for each account, this browser's documents are also
+compared with your account's by their **contents**, never by when each was saved: the same in both
+is recorded as such; one this browser holds an unedited older copy of is brought up to your
+account's; any other that differs is marked, and sent or asked about like the rest. A document your
+account lacks is not sent by itself, since another browser may have deleted it, but is counted:
+**Storage** says how many, with a button to send them, and does not show a ✓ until there are none.
+If the comparison cannot finish, it says so, with a button to run it again.
 
 **If this browser's last account is not the one signed in.** What is marked is held back, and the
 status says so, naming both accounts: a browser that someone else used may hold what is theirs. **Send
@@ -174,10 +188,10 @@ and under the layout's name says *changed in this browser and in your GitHub acc
 visit.
 
 Which version an edit was made on is what tells a conflict from an edit nobody else touched, so
-the page keeps, for each document, the version both stores last held the same of. An edit made on
-that version goes up; an edit made on any other, or on one the page has no record of (a document
-that was last sent before this was kept), is a conflict, even if its date is later, as the two
-browsers' clocks are not trusted.
+the page keeps, for each document, the version it was made on. An edit made on the version your
+account still holds goes up; an edit made on any other, or on one the page has no record of (a
+document that was last sent before this was kept), is a conflict, even if its date is later: the
+dates, which are the two browsers' clocks, never decide.
 
 A layout with the same name as another one in your account, under a different id, is not a copy of
 it but another layout: it stays in this browser, and the status says so. Rename it, or open it and
@@ -199,11 +213,25 @@ deletion, so only the new one goes up, and the old name stays in your account un
 rule set and text this browser holds, whether or not it is marked. It is for what was saved before
 edits were marked, and for anything that looks missing; you should not need it otherwise. A document
 your account lacks is sent, so use it only for what you want in your account. One that differs from
-your account's and has no record of which version it is an edit of is sent if this browser saved it
-later, by the two clocks, and otherwise left as your account has it, and counted as differing, not as
-up to date. It says how many it sent, how many are the same, how many differ and were left, how many
-are waiting for you to choose, how many it left for their names, and which could not be sent, with why.
-If it stops partway, what went up stays, and copying again carries on from there.
+your account's is never sent over it by the clocks: it is marked, and sent only if your account still
+holds the version it was an edit of, and otherwise asked about. It says how many it sent, how many
+are the same, how many are waiting for you to choose, how many it left for their names, and which
+could not be sent, with why. If it stops partway, what went up stays, and copying again carries on
+from there. One tab sends at a time.
+
+### Known limits
+
+- Two tabs of the same browser saving the same document at the same instant are only partly
+  protected: sending is one tab at a time, saving is not.
+- What is not sent is remembered in this browser's site data, apart from the documents. A browser that
+  loses it (Safari after a week unused, or a tab killed at the wrong moment) loses the memory of what was
+  unsent, not the documents: a copy that differs from your account's is then treated as an edit when
+  it is next read, and asked about.
+- Deleting a document is only checked against your account if this browser has a record of the
+  version it held; a document from before that was kept is deleted without it.
+- A very large number of documents waiting is sent a few at a time, and an attempt that takes more than
+  two minutes is stopped and resumed; the status may say it could not send while it is progressing.
+- A document in your account over a megabyte cannot be read, and so cannot be compared or sent.
 
 ## Signing out
 

@@ -9,6 +9,9 @@ import { IndexedDbAdapter } from './indexeddb.js';
 let counter = 0;
 const localAdapter = () => new IndexedDbAdapter(`layerbench-composite-${++counter}`);
 
+/** The gists as a gist's adapter is: a version is the hash of its text, as the browser's store gives it too. */
+const contentRemote = () => new MemoryStorage('github', true);
+
 /** A stand-in for the gists, so the tests are about the composition, not the network. */
 function fakeRemote(overrides: Partial<StorageAdapter> = {}): StorageAdapter {
   return Object.assign(new MemoryStorage('github'), overrides);
@@ -117,7 +120,6 @@ describe('two stores at once', () => {
     expect(await composite.copyUp({ everything: true })).toEqual({
       copied: 0,
       current: 0,
-      differing: 0,
       conflicts: [],
       taken: 0,
       failed: [],
@@ -136,33 +138,29 @@ describe('copying up everything this browser holds', () => {
     vi.useRealTimers();
   }
 
-  it('sends what the gists lack, or have older, and leaves the rest as it is', async () => {
+  it('sends what the gists lack, and asks about what differs, whichever was saved later', async () => {
     const local = localAdapter();
     const remote = fakeRemote();
-    // Saved here after the gists' copy, so this one goes up.
+    // Saved here after the gists' copy, with no record of which version it is an edit of: asked about.
     await saveAt(remote, '2026-10-01T10:00:00Z', 'layouts', 'edited-here');
     await saveAt(local, '2026-10-02T10:00:00Z', 'layouts', 'edited-here');
-    // Saved in the gists since, from another browser: its copy stays.
+    // Saved in the gists after this one's: asked about too, and not sent over.
     await saveAt(local, '2026-10-01T10:00:00Z', 'layouts', 'edited-there');
     await saveAt(remote, '2026-10-02T10:00:00Z', 'layouts', 'edited-there');
-    // Only here, in each collection.
+    // Only here, in each collection: sent.
     await saveAt(local, '2026-10-01T10:00:00Z', 'rulesets', 'mine');
     await saveAt(local, '2026-10-01T10:00:00Z', 'corpora', 'notes');
 
     const composite = new CompositeStorage(local, remote);
     expect(composite.reachesRemote).toBe(true);
-    expect(await composite.copyUp({ everything: true })).toEqual({
-      copied: 3,
-      current: 0,
-      differing: 1,
-      conflicts: [],
-      taken: 0,
-      failed: [],
-    });
+    const result = await composite.copyUp({ everything: true });
+    expect(result).toMatchObject({ copied: 2, current: 0, taken: 0, failed: [] });
+    expect(result.conflicts.map((c) => c.id).sort()).toEqual(['edited-here', 'edited-there']);
 
     const name = async (c: Collection, id: string) => (await remote.get(c, id))?.doc.name;
+    // Neither was written over, by clock or otherwise.
     expect(await name('layouts', 'edited-here')).toBe(
-      'edited-here from local at 2026-10-02T10:00:00Z',
+      'edited-here from github at 2026-10-01T10:00:00Z',
     );
     expect(await name('layouts', 'edited-there')).toBe(
       'edited-there from github at 2026-10-02T10:00:00Z',
@@ -177,7 +175,6 @@ describe('copying up everything this browser holds', () => {
     expect(await composite.copyUp({ everything: true })).toEqual({
       copied: 0,
       current: 1,
-      differing: 0,
       conflicts: [],
       taken: 0,
       failed: [],
@@ -205,7 +202,6 @@ describe('copying up everything this browser holds', () => {
     expect(await composite.copyUp({ everything: true })).toEqual({
       copied: 1,
       current: 1,
-      differing: 0,
       conflicts: [],
       taken: 0,
       failed: [],
@@ -222,7 +218,6 @@ describe('copying up everything this browser holds', () => {
     expect(await new CompositeStorage(local, remote).copyUp({ everything: true })).toEqual({
       copied: 1,
       current: 0,
-      differing: 0,
       conflicts: [],
       taken: 1,
       failed: [],
@@ -246,14 +241,9 @@ describe('copying up everything this browser holds', () => {
       return listed;
     };
 
-    expect(await new CompositeStorage(local, remote).copyUp({ everything: true })).toEqual({
-      copied: 0,
-      current: 0,
-      differing: 1,
-      conflicts: [],
-      taken: 0,
-      failed: [],
-    });
+    const result = await new CompositeStorage(local, remote).copyUp({ everything: true });
+    expect(result).toMatchObject({ copied: 0, current: 0, taken: 0 });
+    expect(result.conflicts.map((c) => c.id)).toEqual(['busy']);
     expect((await remote.get('layouts', 'busy'))?.doc.name).toBe('theirs');
   });
 
@@ -271,14 +261,9 @@ describe('copying up everything this browser holds', () => {
       return listed;
     };
 
-    expect(await new CompositeStorage(local, remote).copyUp({ everything: true })).toEqual({
-      copied: 0,
-      current: 0,
-      differing: 1,
-      conflicts: [],
-      taken: 0,
-      failed: [],
-    });
+    const result = await new CompositeStorage(local, remote).copyUp({ everything: true });
+    expect(result).toMatchObject({ copied: 0, current: 0, taken: 0 });
+    expect(result.conflicts.map((c) => c.id)).toEqual(['new']);
     expect((await remote.get('layouts', 'new'))?.doc.name).toBe('theirs');
   });
 });
@@ -314,7 +299,6 @@ describe('what is waiting to be sent', () => {
     expect(await signedIn.copyUp()).toEqual({
       copied: 1,
       current: 0,
-      differing: 0,
       conflicts: [],
       taken: 0,
       failed: [],
@@ -340,7 +324,6 @@ describe('what is waiting to be sent', () => {
     expect(await composite.copyUp()).toEqual({
       copied: 0,
       current: 0,
-      differing: 0,
       conflicts: [],
       taken: 0,
       failed: [],
@@ -357,7 +340,6 @@ describe('what is waiting to be sent', () => {
     expect(await composite.copyUp()).toEqual({
       copied: 0,
       current: 0,
-      differing: 0,
       conflicts: [],
       taken: 0,
       failed: [],
@@ -427,7 +409,6 @@ describe('what is waiting to be sent', () => {
     expect(await composite.copyUp()).toEqual({
       copied: 1,
       current: 0,
-      differing: 0,
       conflicts: [],
       taken: 0,
       failed: [],
@@ -678,10 +659,10 @@ describe('what a send clears', () => {
     );
   });
 
-  it('never writes over a document never edited here that the gists hold another version of', async () => {
+  it('brings up a copy never edited here, rather than sending it over a version that moved on', async () => {
     const marks = memoryMarks();
     const local = localAdapter();
-    const remote = fakeRemote();
+    const remote = contentRemote();
     const composite = new CompositeStorage(local, remote, marks);
     await composite.put('layouts', 'gust', { name: 'Gust' });
     // Later by its clock, but another's version: this browser's copy was never edited here.
@@ -696,6 +677,7 @@ describe('what a send clears', () => {
       conflicts: [],
     });
     expect((await remote.get('layouts', 'gust'))?.doc.name).toBe('Gust (laptop)');
+    expect((await local.get('layouts', 'gust'))?.doc.name).toBe('Gust (laptop)');
   });
 });
 
@@ -775,7 +757,7 @@ describe('settling a conflict', () => {
     // Put off with "decide later", and edited again meanwhile: not what they were shown.
     await composite.put('layouts', 'gust', { name: 'Gust (phone, edited since)' });
 
-    expect(await composite.keepTheirs(conflict)).toBe('changed');
+    expect(await composite.keepTheirs(conflict)).toBe('edited');
     expect((await local.get('layouts', 'gust'))?.doc.name).toBe('Gust (phone, edited since)');
     expect((await remote.get('layouts', 'gust'))?.doc.name).toBe('Gust (laptop)');
     expect(marks.has('layouts', 'gust')).toBe(true);
@@ -958,7 +940,7 @@ describe('what an edit is made on', () => {
   it('is the version this browser was handed, which its own copy is brought up to', async () => {
     const marks = memoryMarks();
     const local = localAdapter();
-    const remote = fakeRemote();
+    const remote = contentRemote();
     const composite = new CompositeStorage(local, remote, marks);
     await composite.put('layouts', 'x', { name: 'X v1' });
     // The laptop edits; the phone opens it, signed in.
@@ -976,7 +958,7 @@ describe('what an edit is made on', () => {
   it("is a conflict, not an overwrite, when the laptop edits again after the phone's copy was brought up", async () => {
     const marks = memoryMarks();
     const local = localAdapter();
-    const remote = fakeRemote();
+    const remote = contentRemote();
     const composite = new CompositeStorage(local, remote, marks);
     await composite.put('layouts', 'x', { name: 'X v1' });
     await remote.put('layouts', 'x', { name: 'X v2' });
@@ -994,7 +976,7 @@ describe('what an edit is made on', () => {
   it("is not moved to the gists' version when this browser could not bring its copy up to it", async () => {
     const marks = memoryMarks();
     const inner = localAdapter();
-    const remote = fakeRemote();
+    const remote = contentRemote();
     // The browser refuses what it is told to read in, as a name it holds for another layout would.
     const local = Object.assign(Object.create(inner) as typeof inner, {
       put: async (...args: Parameters<typeof inner.put>) => {
@@ -1090,16 +1072,17 @@ describe('looking at every document against the gists by content', () => {
     expect(found).toEqual({ equal: 0, adopted: 0, marked: 0, lacking: 0 });
   });
 
-  it('does not say a document is up to date when it differs', async () => {
+  it('does not say a document is up to date when it differs: it is asked about', async () => {
     const marks = memoryMarks();
     const local = localAdapter();
     const remote = fakeRemote();
     await local.put('layouts', 'a', { name: 'A (here)' });
     await remote.put('layouts', 'a', { name: 'A (there)' });
-    // Never edited here, with a version on record: the gists' is another's, and is left as it is.
+    // A version on record that this browser's copy is not: it is an edit, whatever the clocks say.
     marks.setBase('layouts', 'a', 'a-version-this-browser-no-longer-has');
     const result = await new CompositeStorage(local, remote, marks).copyUp({ everything: true });
-    expect(result).toMatchObject({ current: 0, differing: 1, copied: 0 });
+    expect(result).toMatchObject({ current: 0, copied: 0 });
+    expect(result.conflicts.map((c) => c.id)).toEqual(['a']);
   });
 });
 
@@ -1200,5 +1183,220 @@ describe('a copy up that meets documents it cannot send', () => {
     expect(result.copied).toBe(1);
     expect(result.failed.map((f) => f.id)).toEqual(['b', 'c', 'd']);
     expect(marks.marked('layouts').sort()).toEqual(['b', 'c', 'd', 'e']);
+  });
+});
+
+describe('a read of a document whose copy here may be an edit', () => {
+  it('keeps and marks a copy that differs and has no version on record, rather than overwriting it', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = contentRemote();
+    // Saved by the first version, which kept no mark and no record: an edit, and an older gist copy.
+    await remote.put('layouts', 'x', { name: 'X in the account' });
+    await local.put('layouts', 'x', { name: 'X edited on the phone' });
+    const composite = new CompositeStorage(local, remote, marks);
+
+    expect((await composite.get('layouts', 'x'))?.doc.name).toBe('X edited on the phone');
+    await composite.whenIdle();
+    expect((await local.get('layouts', 'x'))?.doc.name).toBe('X edited on the phone');
+    expect(marks.has('layouts', 'x')).toBe(true);
+    // And weighed like any other edit: asked about, not sent over the account's.
+    expect((await composite.copyUp()).conflicts.map((c) => c.id)).toEqual(['x']);
+    expect((await remote.get('layouts', 'x'))?.doc.name).toBe('X in the account');
+  });
+
+  it('does the same where a mark was lost, though a version is on record', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = contentRemote();
+    const composite = new CompositeStorage(local, remote, marks);
+    await composite.put('layouts', 'x', { name: 'X v1' });
+    // Edited here without the mark (lost): the record is still of v1, which this copy is not.
+    await local.put('layouts', 'x', { name: 'X v1, edited' });
+    await remote.put('layouts', 'x', { name: 'X v2' });
+
+    expect((await composite.get('layouts', 'x'))?.doc.name).toBe('X v1, edited');
+    expect(marks.has('layouts', 'x')).toBe(true);
+    expect((await local.get('layouts', 'x'))?.doc.name).toBe('X v1, edited');
+  });
+
+  it("survives the Library's bulk reads and the audit all at once", async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = contentRemote();
+    for (const id of ['a', 'b', 'c', 'x'])
+      await remote.put('layouts', id, { name: `${id} in the account` });
+    for (const id of ['a', 'b', 'c'])
+      await local.put('layouts', id, { name: `${id} in the account` });
+    await local.put('layouts', 'x', { name: 'x edited on the phone' });
+    const composite = new CompositeStorage(local, remote, marks);
+
+    await Promise.all([
+      composite.audit(),
+      ...['a', 'b', 'c', 'x'].map((id) => composite.get('layouts', id)),
+      ...['a', 'b', 'c', 'x'].map((id) => composite.get('layouts', id)),
+    ]);
+    await composite.whenIdle();
+    expect((await local.get('layouts', 'x'))?.doc.name).toBe('x edited on the phone');
+    expect(marks.has('layouts', 'x')).toBe(true);
+  });
+
+  it('does not bring a copy up that a save changed while the account was being read', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = contentRemote();
+    const composite = new CompositeStorage(local, remote, marks);
+    await composite.put('layouts', 'd', { name: 'D v1' });
+    // The account moved on; this browser's copy is unedited, so the audit means to bring it up.
+    await remote.put('layouts', 'd', { name: 'D v2' });
+    let release: () => void = () => {};
+    const slow = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const get = remote.get.bind(remote);
+    remote.get = async (collection, id) => {
+      const seen = await get(collection, id);
+      await slow;
+      return seen;
+    };
+
+    const auditing = composite.audit();
+    await new Promise((r) => setTimeout(r, 20));
+    // Saved while it waits.
+    await new CompositeStorage(local, null, marks).put('layouts', 'd', { name: 'D v1, edited' });
+    release();
+    await auditing;
+
+    expect((await local.get('layouts', 'd'))?.doc.name).toBe('D v1, edited');
+    expect(marks.has('layouts', 'd')).toBe(true);
+  });
+
+  it('does not bring a copy up that a save marked while a read was being settled', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = contentRemote();
+    const composite = new CompositeStorage(local, remote, marks);
+    await composite.put('layouts', 'd', { name: 'D v1' });
+    await remote.put('layouts', 'd', { name: 'D v2' });
+    // Read, which would bring this copy up to v2 in its own turn; a save lands first.
+    await composite.get('layouts', 'd');
+    await new CompositeStorage(local, null, marks).put('layouts', 'd', { name: 'D v1, edited' });
+    await composite.whenIdle();
+    expect((await local.get('layouts', 'd'))?.doc.name).toBe('D v1, edited');
+  });
+});
+
+describe('a save weighed against the version the editor read', () => {
+  it('stays here, and is a conflict, when the account moved on, though a read since moved the record on', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = contentRemote();
+    const composite = new CompositeStorage(local, remote, marks);
+    await composite.put('layouts', 'x', { name: 'X R1' });
+    const r1 = (await remote.get('layouts', 'x'))?.meta.sha as string;
+    // The laptop saves R2; the Library's read brings this browser's copy and its record up to R2.
+    await remote.put('layouts', 'x', { name: 'X R2' });
+    await composite.get('layouts', 'x');
+    await composite.whenIdle();
+    expect(marks.base('layouts', 'x')).toBe((await remote.get('layouts', 'x'))?.meta.sha);
+
+    // The editor, still on R1 with edits, saves.
+    await composite.put('layouts', 'x', { name: 'X R1, edited' }, { basedOn: r1 });
+    expect((await remote.get('layouts', 'x'))?.doc.name).toBe('X R2');
+    expect(marks.has('layouts', 'x')).toBe(true);
+    // And it is asked about, not sent over R2.
+    expect((await composite.copyUp()).conflicts.map((c) => c.theirs.doc.name)).toEqual(['X R2']);
+    expect((await remote.get('layouts', 'x'))?.doc.name).toBe('X R2');
+  });
+
+  it('is written through when the account still holds the version the editor read', async () => {
+    const marks = memoryMarks();
+    const remote = contentRemote();
+    const composite = new CompositeStorage(localAdapter(), remote, marks);
+    await composite.put('layouts', 'x', { name: 'X R1' });
+    const r1 = (await remote.get('layouts', 'x'))?.meta.sha as string;
+    await composite.put('layouts', 'x', { name: 'X R1, edited' }, { basedOn: r1 });
+    expect((await remote.get('layouts', 'x'))?.doc.name).toBe('X R1, edited');
+    expect(marks.count()).toBe(0);
+  });
+
+  it('records the version an offline edit was made on, for the sender', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = contentRemote();
+    const composite = new CompositeStorage(local, remote, marks);
+    await composite.put('layouts', 'x', { name: 'X R1' });
+    const r1 = (await remote.get('layouts', 'x'))?.meta.sha as string;
+    await remote.put('layouts', 'x', { name: 'X R2' });
+    await composite.get('layouts', 'x');
+    await composite.whenIdle();
+
+    // Signed out, the editor that read R1 saves: its edit is of R1, whatever was read since.
+    await new CompositeStorage(local, null, marks).put(
+      'layouts',
+      'x',
+      { name: 'X R1, edited' },
+      { basedOn: r1 },
+    );
+    expect(marks.base('layouts', 'x')).toBe(r1);
+    expect((await composite.copyUp()).conflicts).toHaveLength(1);
+  });
+});
+
+describe('a save and a read on a slow connection', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('keeps a layout before the gists are asked about its name, and goes on when they are slow', async () => {
+    vi.useFakeTimers();
+    const marks = memoryMarks();
+    const local = new MemoryStorage('local');
+    const remote = new MemoryStorage('github');
+    const list = remote.list.bind(remote);
+    // The name check never answers; everything after it does.
+    let asked = false;
+    remote.list = (collection) => {
+      if (asked) return list(collection);
+      asked = true;
+      return new Promise(() => {});
+    };
+    const composite = new CompositeStorage(local, remote, marks);
+
+    const saving = composite.put('layouts', 'mine', { name: 'Mine' });
+    // Written and marked at once, long before the gists give up.
+    await vi.advanceTimersByTimeAsync(10);
+    expect((await local.get('layouts', 'mine'))?.doc.name).toBe('Mine');
+    expect(marks.has('layouts', 'mine')).toBe(true);
+
+    await vi.advanceTimersByTimeAsync(6_000);
+    await saving;
+  });
+
+  it('shows the copy it has rather than waiting for slow gists', async () => {
+    vi.useFakeTimers();
+    const marks = memoryMarks();
+    const local = new MemoryStorage('local');
+    const remote = new MemoryStorage('github');
+    await local.put('layouts', 'mine', { name: 'Mine' });
+    remote.get = () => new Promise(() => {});
+    const composite = new CompositeStorage(local, remote, marks);
+
+    const read = composite.get('layouts', 'mine');
+    await vi.advanceTimersByTimeAsync(5_500);
+    expect((await read)?.doc.name).toBe('Mine');
+  });
+
+  it('still waits for the gists when it has no copy to show', async () => {
+    vi.useFakeTimers();
+    const local = new MemoryStorage('local');
+    const remote = new MemoryStorage('github');
+    await remote.put('layouts', 'there', { name: 'There' });
+    const get = remote.get.bind(remote);
+    remote.get = async (collection, id) => {
+      await new Promise((r) => setTimeout(r, 8_000));
+      return get(collection, id);
+    };
+    const read = new CompositeStorage(local, remote).get('layouts', 'there');
+    await vi.advanceTimersByTimeAsync(9_000);
+    expect((await read)?.doc.name).toBe('There');
   });
 });

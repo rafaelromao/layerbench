@@ -40,15 +40,24 @@ interface Kept {
   base: Record<string, string>;
   /** Who this browser's documents were last sent to: the login of a GitHub account. */
   account?: string;
-  /** When this browser's documents were last looked at against the gists', in epoch milliseconds. */
-  audited?: number;
+  /** The last look at this browser's documents against an account's: whose, when, how many it lacked. */
+  audit?: Audit;
+}
+
+/** A look at every document this browser holds against an account's gists. */
+export interface Audit {
+  account: string;
+  /** Epoch milliseconds. */
+  at: number;
+  /** How many documents this browser held that the account lacked. */
+  lacking: number;
 }
 
 interface Read {
   unsent: Set<string>;
   base: Map<string, string>;
   account: string | null;
-  audited: number;
+  audit: Audit | null;
 }
 
 /**
@@ -77,10 +86,17 @@ export class Unsynced {
         (e): e is [string, string] => typeof e[1] === 'string',
       );
       const account = typeof parsed?.account === 'string' ? parsed.account : null;
-      const audited = typeof parsed?.audited === 'number' ? parsed.audited : 0;
-      return { unsent: new Set(unsent), base: new Map(base), account, audited };
+      const a = parsed?.audit;
+      const audit =
+        a &&
+        typeof a.account === 'string' &&
+        typeof a.at === 'number' &&
+        typeof a.lacking === 'number'
+          ? a
+          : null;
+      return { unsent: new Set(unsent), base: new Map(base), account, audit };
     } catch {
-      return { unsent: new Set(), base: new Map(), account: null, audited: 0 };
+      return { unsent: new Set(), base: new Map(), account: null, audit: null };
     }
   }
 
@@ -89,7 +105,7 @@ export class Unsynced {
       unsent: [...kept.unsent].sort(),
       base: Object.fromEntries([...kept.base].sort(([a], [b]) => a.localeCompare(b))),
       ...(kept.account !== null && { account: kept.account }),
-      ...(kept.audited > 0 && { audited: kept.audited }),
+      ...(kept.audit !== null && { audit: kept.audit }),
     } satisfies Kept);
     this.backing.write(text);
     this.notify();
@@ -156,14 +172,14 @@ export class Unsynced {
     this.write(kept);
   }
 
-  /** When this browser's documents were last looked at against the gists': 0 if never. */
-  audited(): number {
-    return this.read().audited;
+  /** The last look at this browser's documents against an account's, if any. */
+  audit(): Audit | null {
+    return this.read().audit;
   }
 
-  setAudited(at: number): void {
+  setAudit(audit: Audit): void {
     const kept = this.read();
-    kept.audited = at;
+    kept.audit = audit;
     this.write(kept);
   }
 

@@ -3,11 +3,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useToasts } from '../state/toasts.js';
 import { memoryMarks } from '../test/memory-marks.js';
 import { MemoryStorage } from '../test/memory-storage.js';
-import { forgetOffered, review, sendHeld, startAutoSync, syncNow, useSync } from './auto-sync.js';
+import {
+  checkAgain,
+  forgetOffered,
+  review,
+  sendHeld,
+  startAutoSync,
+  syncNow,
+  useSync,
+  whileSending,
+} from './auto-sync.js';
 import { CompositeStorage } from './composite.js';
 
 /** Looking at every document is for the tests of it: elsewhere it would add requests that are not the point. */
-const NO_AUDIT = Number.MAX_SAFE_INTEGER;
+const NO_AUDIT = Number.POSITIVE_INFINITY;
 const TIMING = {
   settleMs: 1_000,
   retryMs: [5_000, 10_000],
@@ -56,6 +65,7 @@ afterEach(() => {
     held: null,
     scheduled: false,
     lacking: null,
+    auditFailed: false,
   });
 });
 
@@ -405,7 +415,8 @@ describe('one tab sends at a time', () => {
     );
     await vi.advanceTimersByTimeAsync(1_000);
     expect(copyUp).not.toHaveBeenCalled();
-    expect(useSync.getState()).toMatchObject({ phase: 'idle', scheduled: true });
+    // Waiting for another tab is not about to send: the status does not say it is sending.
+    expect(useSync.getState()).toMatchObject({ phase: 'idle', scheduled: false });
 
     // The other tab is done, or gone.
     other.holds = false;
@@ -416,7 +427,101 @@ describe('one tab sends at a time', () => {
   });
 });
 
+describe('sending behind a lock that may not be there', () => {
+  it('goes on with the work where the lock cannot be asked for', async () => {
+    const request = vi.fn(async () => {
+      throw new DOMException('denied', 'SecurityError');
+    });
+    vi.stubGlobal('navigator', { ...navigator, locks: { request } });
+    const work = vi.fn(async () => 'sent');
+    expect(await whileSending(work)).toBe('sent');
+    expect(work).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not run the work twice when the work itself fails', async () => {
+    const request = vi.fn(async (_n: string, _o: unknown, cb: (lock: object | null) => unknown) =>
+      cb({}),
+    );
+    vi.stubGlobal('navigator', { ...navigator, locks: { request } });
+    const work = vi.fn(async () => {
+      throw new Error('its own');
+    });
+    await expect(whileSending(work)).rejects.toThrow('its own');
+    expect(work).toHaveBeenCalledTimes(1);
+  });
+
+  it('says another tab has it, by not running the work', async () => {
+    const request = vi.fn(async (_n: string, _o: unknown, cb: (lock: object | null) => unknown) =>
+      cb(null),
+    );
+    vi.stubGlobal('navigator', { ...navigator, locks: { request } });
+    const work = vi.fn(async () => 'sent');
+    expect(await whileSending(work)).toBeNull();
+    expect(work).not.toHaveBeenCalled();
+  });
+});
+
 describe('looking at every document, once in a while', () => {
+  it('is made for each account, not once for the browser', async () => {
+    const marks = memoryMarks();
+    const local = new MemoryStorage('local');
+    const remote = new MemoryStorage('github');
+    await local.put('layouts', 'a', { name: 'A' });
+    await remote.put('layouts', 'a', { name: 'A' });
+    const storage = new CompositeStorage(local, remote, marks);
+    const timing = { ...TIMING, auditEveryMs: 3_600_000 };
+
+    const first = startAutoSync(storage, marks, timing, 'alice');
+    await vi.waitFor(() => expect(marks.audit()?.account).toBe('alice'));
+    first();
+    const listed = vi.spyOn(remote, 'list');
+    // The same account again soon: not looked at, and what was found is still said.
+    marks.setAudit({ account: 'alice', at: Date.now(), lacking: 3 });
+    startAutoSync(storage, marks, timing, 'alice')();
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(listed).not.toHaveBeenCalled();
+
+    // Another account on the same browser: looked at at once.
+    const second = startAutoSync(storage, marks, timing, 'bob');
+    await vi.waitFor(() => expect(marks.audit()?.account).toBe('bob'));
+    second();
+    expect(listed).toHaveBeenCalled();
+  });
+
+  it('keeps what it found for the status, even when it is not repeated', async () => {
+    const marks = memoryMarks();
+    marks.setAudit({ account: 'alice', at: Date.now(), lacking: 2 });
+    const storage = new CompositeStorage(new MemoryStorage('l'), new MemoryStorage('g'), marks);
+    const stop = startAutoSync(storage, marks, { ...TIMING, auditEveryMs: 3_600_000 }, 'alice');
+    await vi.advanceTimersByTimeAsync(10);
+    expect(useSync.getState().lacking).toBe(2);
+    stop();
+  });
+
+  it('says when it could not look, and looks again when asked', async () => {
+    const marks = memoryMarks();
+    const local = new MemoryStorage('local');
+    const remote = new MemoryStorage('github');
+    await local.put('layouts', 'a', { name: 'A (here)' });
+    await remote.put('layouts', 'a', { name: 'A (there)' });
+    const list = remote.list.bind(remote);
+    let down = true;
+    remote.list = async (collection) => {
+      if (down) throw new Error('GitHub did not answer in time');
+      return list(collection);
+    };
+    const storage = new CompositeStorage(local, remote, marks);
+    const stop = startAutoSync(storage, marks, { ...TIMING, auditEveryMs: 0 });
+    await vi.waitFor(() => expect(useSync.getState().auditFailed).toBe(true));
+    expect(marks.audit()).toBeNull();
+
+    down = false;
+    checkAgain();
+    await vi.waitFor(() => expect(useSync.getState().auditFailed).toBe(false));
+    expect(marks.audit()).not.toBeNull();
+    stop();
+  });
+
   it('marks what differs and is not known to be older, and asks about it as a conflict', async () => {
     const marks = memoryMarks();
     const local = new MemoryStorage('local');
@@ -446,7 +551,7 @@ describe('looking at every document, once in a while', () => {
     const timing = { ...TIMING, auditEveryMs: 3_600_000 };
 
     const first = startAutoSync(storage, marks, timing);
-    await vi.waitFor(() => expect(marks.audited()).toBeGreaterThan(0));
+    await vi.waitFor(() => expect(marks.audit()).not.toBeNull());
     first();
     const listed = vi.spyOn(remote, 'list');
     startAutoSync(storage, marks, timing)();

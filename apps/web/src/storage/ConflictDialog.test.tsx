@@ -248,6 +248,24 @@ describe('choosing between two versions', () => {
     stop();
   });
 
+  it("writes nothing, and says it was this browser's copy that changed, when it was edited since", async () => {
+    const user = userEvent.setup();
+    const { storage, local, remote } = await conflicted();
+    show(storage);
+    await screen.findByRole('dialog', { name: 'Two versions of Gust' });
+    // Edited here while the dialog was showing the two.
+    await storage.put('layouts', 'gust', { name: 'Gust', description: 'edited since' });
+
+    await user.click(screen.getByRole('button', { name: 'Keep theirs' }));
+    await waitFor(() =>
+      expect(useToasts.getState().toasts.map((t) => t.text)).toContain(
+        'Gust was edited in this browser since you were shown it, so nothing was replaced. Choose again.',
+      ),
+    );
+    expect(await description(local, 'gust')).toBe('edited since');
+    expect(await description(remote, 'gust')).toBe('Gust on the laptop');
+  });
+
   it("keeps this browser's version, and says so, when the account's was deleted since", async () => {
     const user = userEvent.setup();
     const { storage, local, remote, marks } = await conflicted();
