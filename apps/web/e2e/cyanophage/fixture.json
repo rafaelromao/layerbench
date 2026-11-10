@@ -1,0 +1,156 @@
+{
+  "captured": "2026-11-10",
+  "playground": "https://cyanophage.github.io/playground.html",
+  "script": {
+    "url": "https://cyanophage.github.io/keyboard_svg.js",
+    "sha256": "dc31188a705d6209c388829856e3212ea49346c0d32399a59a3448a5b1b7e286"
+  },
+  "corpus": "en-general",
+  "text": {
+    "sha256": "fbf7c7bdcfde303d83d59f4d655e0cb3d245e8d7c6e2cf43c346e6c4cae29db9",
+    "characters": 983213,
+    "words": 28020
+  },
+  "layouts": [
+    {
+      "name": "qwerty",
+      "layout": "qwertyuiop-asdfghjkl;'zxcvbnm,./\\^",
+      "url": "https://cyanophage.github.io/playground.html?layout=qwertyuiop-asdfghjkl%3B%27zxcvbnm%2C.%2F%5C%5E&mode=ergo&lan=english&thumb=l",
+      "shown": {
+        "effort": "1254.51",
+        "sfb": "4.52",
+        "sfb_2u": "1.43",
+        "lsb": "4.64",
+        "sfs": "5.39",
+        "fsb": "1.46",
+        "weak_redirect": "0.47"
+      }
+    },
+    {
+      "name": "dvorak",
+      "layout": "',.pyfgcrl/aoeuidhtns-;qjkxbmwvz\\^",
+      "url": "https://cyanophage.github.io/playground.html?layout=%27%2C.pyfgcrl%2Faoeuidhtns-%3Bqjkxbmwvz%5C%5E&mode=ergo&lan=english&thumb=l",
+      "shown": {
+        "effort": "769.78",
+        "sfb": "1.85",
+        "sfb_2u": "0.12",
+        "lsb": "0.90",
+        "sfs": "3.36",
+        "fsb": "0.08",
+        "weak_redirect": "0.65"
+      }
+    },
+    {
+      "name": "colemak",
+      "layout": "qwfpgjluy;-arstdhneio'zxcvbkm,./\\^",
+      "url": "https://cyanophage.github.io/playground.html?layout=qwfpgjluy%3B-arstdhneio%27zxcvbkm%2C.%2F%5C%5E&mode=ergo&lan=english&thumb=l",
+      "shown": {
+        "effort": "642.30",
+        "sfb": "0.94",
+        "sfb_2u": "0.13",
+        "lsb": "2.36",
+        "sfs": "4.21",
+        "fsb": "0.26",
+        "weak_redirect": "0.78"
+      }
+    },
+    {
+      "name": "colemak-dh",
+      "layout": "qwfpbjluy;-arstgmneio'zxcdvkh,./\\^",
+      "url": "https://cyanophage.github.io/playground.html?layout=qwfpbjluy%3B-arstgmneio%27zxcdvkh%2C.%2F%5C%5E&mode=ergo&lan=english&thumb=l",
+      "shown": {
+        "effort": "537.49",
+        "sfb": "0.94",
+        "sfb_2u": "0.12",
+        "lsb": "1.30",
+        "sfs": "4.21",
+        "fsb": "0.18",
+        "weak_redirect": "0.78"
+      }
+    },
+    {
+      "name": "graphite",
+      "layout": "bldwz'fouj;nrtsgyhaei,qxmcvkp.-/\\^",
+      "url": "https://cyanophage.github.io/playground.html?layout=bldwz%27fouj%3Bnrtsgyhaei%2Cqxmcvkp.-%2F%5C%5E&mode=ergo&lan=english&thumb=l",
+      "shown": {
+        "effort": "516.22",
+        "sfb": "0.72",
+        "sfb_2u": "0.05",
+        "lsb": "0.73",
+        "sfs": "2.78",
+        "fsb": "0.46",
+        "weak_redirect": "0.29"
+      }
+    },
+    {
+      "name": "gallium",
+      "layout": "bldcvzyou,-nrtsgphaei/qxmwjkf';.\\^",
+      "url": "https://cyanophage.github.io/playground.html?layout=bldcvzyou%2C-nrtsgphaei%2Fqxmwjkf%27%3B.%5C%5E&mode=ergo&lan=english&thumb=l",
+      "shown": {
+        "effort": "516.43",
+        "sfb": "0.65",
+        "sfb_2u": "0.05",
+        "lsb": "1.01",
+        "sfs": "2.77",
+        "fsb": "0.94",
+        "weak_redirect": "0.27"
+      }
+    },
+    {
+      "name": "aptv3",
+      "layout": "wgdfbqluoy-rsthkjneai;xcmpvz,.'/\\^",
+      "url": "https://cyanophage.github.io/playground.html?layout=wgdfbqluoy-rsthkjneai%3Bxcmpvz%2C.%27%2F%5C%5E&mode=ergo&lan=english&thumb=l",
+      "shown": {
+        "effort": "507.11",
+        "sfb": "0.82",
+        "sfb_2u": "0.06",
+        "lsb": "0.34",
+        "sfs": "3.05",
+        "fsb": "0.10",
+        "weak_redirect": "0.54"
+      }
+    },
+    {
+      "name": "sturdy",
+      "layout": "vmlcpxfouj-strdy.naei/zkqgwbh';,\\^",
+      "url": "https://cyanophage.github.io/playground.html?layout=vmlcpxfouj-strdy.naei%2Fzkqgwbh%27%3B%2C%5C%5E&mode=ergo&lan=english&thumb=l",
+      "shown": {
+        "effort": "572.95",
+        "sfb": "0.64",
+        "sfb_2u": "0.03",
+        "lsb": "1.47",
+        "sfs": "2.74",
+        "fsb": "0.43",
+        "weak_redirect": "0.17"
+      }
+    },
+    {
+      "name": "recurva",
+      "layout": "frdpvqjuoy-sntcb.heai/zxkgwml;',\\^",
+      "url": "https://cyanophage.github.io/playground.html?layout=frdpvqjuoy-sntcb.heai%2Fzxkgwml%3B%27%2C%5C%5E&mode=ergo&lan=english&thumb=l",
+      "shown": {
+        "effort": "629.75",
+        "sfb": "0.64",
+        "sfb_2u": "0.10",
+        "lsb": "1.19",
+        "sfs": "2.73",
+        "fsb": "0.42",
+        "weak_redirect": "0.86"
+      }
+    },
+    {
+      "name": "focal",
+      "layout": "vlhgkqfouj-srntbycaei/zxmdp'w.;,\\^",
+      "url": "https://cyanophage.github.io/playground.html?layout=vlhgkqfouj-srntbycaei%2Fzxmdp%27w.%3B%2C%5C%5E&mode=ergo&lan=english&thumb=l",
+      "shown": {
+        "effort": "532.45",
+        "sfb": "0.59",
+        "sfb_2u": "0.06",
+        "lsb": "0.83",
+        "sfs": "3.25",
+        "fsb": "0.45",
+        "weak_redirect": "0.15"
+      }
+    }
+  ]
+}

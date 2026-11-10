@@ -28,6 +28,15 @@ describe('rule-set serialization', () => {
     expect(parsed.error).toMatch(/\n… and 28 more$/);
   });
 
+  it('keeps whether a set counts what the layout cannot type, through JSON and back', () => {
+    const parsed = safeParseRuleSet({ globals: { untyped_in_keystrokes: true }, rules: [] });
+    expect(parsed.ok && parsed.ruleSet.globals.untyped_in_keystrokes).toBe(true);
+    const back = ruleSetFromJson(
+      JSON.stringify({ globals: { untyped_in_keystrokes: true }, rules: [] }),
+    );
+    expect(back.ok && back.ruleSet.globals.untyped_in_keystrokes).toBe(true);
+  });
+
   it('rejects a predicate outside the vocabulary rather than matching everything', () => {
     const of = (where: unknown) => ruleSetFromJson(JSON.stringify({ rules: [{ id: 'r', where }] }));
     const bare = of({ min_run: 3 });
