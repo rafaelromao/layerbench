@@ -31,6 +31,46 @@ const next = () => within(nav()).getByRole('button', { name: 'Next layer' });
 const previous = () => within(nav()).getByRole('button', { name: 'Previous layer' });
 
 describe('the layer navigator', () => {
+  it('keeps the name slot one width, so the arrows stay put across names of any length', async () => {
+    const user = userEvent.setup();
+    const layers: NavLayer[] = [
+      { idx: 0, id: 'a', name: 'A' },
+      { idx: 1, id: 'b', name: 'A rather long layer name that would stretch a content-sized slot' },
+      { idx: 2, id: 'c', name: 'Mid' },
+    ];
+    render(<Harness layers={layers} />);
+    const slot = screen.getByTestId('layer-name-slot');
+    // jsdom has no layout, so the width is pinned by its classes: one width, not the name's, on
+    // every layer, the one box between the arrows.
+    for (const layer of layers) {
+      expect(within(slot).getByText(layer.name)).toBeInTheDocument();
+      // min-w-0 lets a long name shrink the slot in a narrow box as a short one would; without it
+      // the slot would be as wide as a long name, and the arrows would move with the name.
+      expect(slot).toHaveClass('w-40', 'max-w-full', 'min-w-0');
+      expect(slot.className).not.toMatch(/max-w-\[|w-(auto|fit|max|min)\b/);
+      expect([...nav().children]).toEqual([previous(), slot, next()]);
+      if (layer !== layers.at(-1)) await user.click(next());
+    }
+  });
+
+  it('gives a name that may be cut short in full, as its tooltip', () => {
+    const long = 'A rather long layer name that would not fit';
+    render(<Harness layers={[{ idx: 0, id: 'a', name: long }]} onRename={vi.fn()} />);
+    expect(within(nav()).getByRole('button', { name: long })).toHaveAttribute(
+      'title',
+      `${long}: double-click or press F2 to rename`,
+    );
+  });
+
+  it('fits the rename field in the slot, so on a narrow screen it does not cover the arrows', async () => {
+    render(<Harness onRename={vi.fn()} />);
+    fireEvent.keyDown(within(nav()).getByRole('button', { name: 'Base' }), { key: 'F2' });
+    const field = await within(nav()).findByRole('textbox', { name: 'Rename Base' });
+    expect(field.parentElement).toBe(screen.getByTestId('layer-name-slot'));
+    expect(field).toHaveClass('w-full', 'max-w-28');
+    expect(field.className).not.toMatch(/(^|\s)w-28\b/);
+  });
+
   it('steps through the layers with its buttons, and says where it is', async () => {
     const user = userEvent.setup();
     render(<Harness />);

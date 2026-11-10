@@ -51,6 +51,8 @@ export interface SimulationStats {
   repeat_presses: number;
   per_layer: number[];
   unproducible: Map<string, number>;
+  /** Punctuation the layout cannot type that is let go, `?` and `!` by default: not typed either. */
+  soft_dropped: Map<string, number>;
 }
 
 export interface SimulationTables {

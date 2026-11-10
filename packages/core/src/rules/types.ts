@@ -165,6 +165,12 @@ export interface Globals {
   lsb_semi_adjacent_u: number;
   top_items: number;
   space_per_word_in_keystrokes: boolean;
+  /**
+   * Whether the characters the layout cannot type count as keystrokes, in the percentages over
+   * keystrokes and in Effort, as cyanophage counts every character of a word whether his layout has
+   * it or not.
+   */
+  untyped_in_keystrokes: boolean;
 }
 
 export const DEFAULT_GLOBALS: Globals = {
@@ -176,6 +182,7 @@ export const DEFAULT_GLOBALS: Globals = {
   lsb_semi_adjacent_u: 3.5,
   top_items: 12,
   space_per_word_in_keystrokes: false,
+  untyped_in_keystrokes: false,
 };
 
 export interface RuleSet {

@@ -18,8 +18,12 @@ These are the two numbers every layout is shown and ranked by.
 **Effort** is [cyanophage's](https://cyanophage.github.io/playground.html) measure. Each key
 position has a cost, from 0 under the index, middle and ring fingers on the home row to 8 in the
 inner bottom corners. Effort is the average cost of a keystroke, multiplied by 577 as cyanophage's
-playground does, so a layout scores the same here as there on the same text, as long as its thumbs
-type nothing but space. One with a letter, a Repeat key or a layer on a thumb differs a little. A thumb press costs 1 here, where cyanophage charges nothing: a
+playground does. Under the cyanophage-like rules, ten layouts whose thumb types nothing but space
+read here what his playground prints, to his two decimals, when both are given the text as
+LayerBench types it ([the cyanophage check](../research/cyanophage-e2e.md)); a text pasted into his
+page as it is reads a little differently, as the two read text differently. A layout with a letter,
+a Repeat key or a layer on a thumb differs a little more. The Layouts Doc rules leave the characters a layout cannot type out of
+the keystrokes, where he counts them, so they read a little higher on a layout that lacks some. A thumb press costs 1 here, where cyanophage charges nothing: a
 one-shot tap, a thumb held for a layer and a letter on a thumb are presses too. A space counts as
 a keystroke that costs nothing.
 
@@ -207,6 +211,16 @@ colour on every layer, so the layers can be compared at a glance: a layer of rar
 as Numbers or Accents, stays pale beside the base layer, where scaled on its own it would have looked
 as busy. The Library's cards have heat too, under [Heatmaps](#sorting-and-comparing), where a key's
 tooltip gives the percentage the colour stands for.
+
+With heat on, the percentage at the left of the layer's name, **of presses**, is the share of the
+typing done on that layer: the key presses made on its keys, out of all the key presses counted, the
+space key's left out unless **Space** keeps it in ([Case and space](#case-and-space)). It is the
+same in every heat mode, and the layers' shares add up to 100%, give or take the rounding to a tenth.
+A layer the text never reaches reads 0%, and one it reaches too rarely to show a tenth reads
+**under 0.1%**; by default **Counts** counts letters only, so a layer of digits or symbols reads
+little or nothing there. It is on every board that draws heat: Analyze's, and the Library's cards
+under Heatmaps; Compare draws none. While Analyze is **updating…** after an edit, the numbers on show
+are those of the layout before it, so no share is written until the new ones land.
 
 ### Combos
 
@@ -417,8 +431,8 @@ sample, 100,000 symbols, the layouts that come with the app run from Magic Romak
 
 ### The cyanophage-like rule set
 
-Cyanophage rates nothing: his playground prints SFB (Qwerty 4.38%) and Effort (1258.15) as plain
-numbers, with no bands or categories. The one ramp it draws for same-finger bigrams is a finger's bar
+Cyanophage rates nothing: his playground prints SFB (Qwerty 4.38% on his own word list) and Effort
+(1258.15) as plain numbers, with no bands or categories. The one ramp it draws for same-finger bigrams is a finger's bar
 in the finger view of the SFB panel, from grey to a pale red that stops getting redder at 2.117% of
 the text (`red = 128 + 6000 × share`, clamped to 255). The same constant colours his per-finger
 skipgram bars, so it is a general ramp and not one he set for SFB, but it is the nearest thing to a
@@ -438,12 +452,18 @@ colours and this reads it as a layout's total, which is LayerBench's assumption 
 | very high | 1.881 | red |
 | max | above 1.881 | red |
 
-These rules divide by keystrokes, with a space per word, so the same layout reads lower than under
-the Layouts Doc's: Colemak is 0.94 on the English sample, *mid low*, Dvorak 1.82, *very high*, and
-Qwerty 4.47, *max*.
+These rules divide by keystrokes, with a space per word, and count the characters a layout cannot
+type as keystrokes too, as he does (on the English sample, `'` and `-` are some 0.6% of the
+characters, which a 30-key layout without those keys does not type), so the same layout reads lower than under the Layouts Doc's:
+Colemak is 0.93 on the English sample, *mid low*, Dvorak 1.81, *very high*, and Qwerty 4.45, *max*.
+Given the text as LayerBench types it, ten layouts whose thumb only shifts read here what his
+playground prints, to his two decimals: SFB, its two-row part, lateral stretches, skipgrams,
+scissors, weak redirects and Effort (see [the cyanophage check](../research/cyanophage-e2e.md)).
+How far that holds for other texts and layouts is in that note.
 
-**Effort** is the same number in both sets, and he has no ruler for it, so this set uses the Layouts
-Doc set's above, step for step and colour for colour.
+**Effort** is the same rule in both sets, and he has no ruler for it, so this set uses the Layouts
+Doc set's above, step for step and colour for colour. Its number is a little lower here where the
+text has characters the layout cannot type, as they count among the keystrokes it is divided by.
 
 ### Custom rule sets
 
