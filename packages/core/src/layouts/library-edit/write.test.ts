@@ -13,7 +13,7 @@ const WRITE = process.env.LIBRARY_EDIT === '1';
  *   pnpm library-edit
  *
  * It applies `.library/request.json` to the repository and deletes it; with no request it does
- * nothing. Then `pnpm languages` and `pnpm goldens` measure what changed.
+ * nothing. Then `pnpm languages` writes the bundled layouts' Efforts again and `pnpm goldens` their documents.
  */
 describe.skipIf(!WRITE)('Library request writer (LIBRARY_EDIT=1)', () => {
   it('applies the request the branch carries', () => {
