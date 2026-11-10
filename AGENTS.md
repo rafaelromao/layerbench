@@ -88,11 +88,14 @@ rule here moves a key, and keep `templates.test.ts` asserting each rule.
   types nothing, and editing, both left out. Magic Sturdy, the three Hands Down with their authors'
   layers and Ben Vallack Piano hold their authors' too (`STURDY_MODS`, `HD_MODS`, `PIANO_MODS`), as
   their keymaps hold their layers on the home row. A document carries its own in its JSON. In the
-  Shift case mode a capital holds Shift on no key it presses, the one that reaches its layer
-  included, nor on a thumb of a hand whose thumb presses one, and on a thumb before a finger. A layout with
-  no Shift key of its own holds a Shift thumb if it has one it can, else the other hand's home row
-  Shift where it can, never a key that holds other modifiers with it (`holdMod` in `resolver.ts`);
-  with neither, it types no capital there.
+  Shift case mode Shift is part of the word: a capital takes it from the cheapest press that gives
+  it, any key or combo, held or one-shot, ranked as any way of typing it (`cheapest` in
+  `resolver.ts`, which tries each one `holdMod` finds, by `shiftPick`, where `shiftKeysOffered` counts
+  more than one). Never a key it presses, the one that reaches its layer included, nor a thumb of a
+  hand whose thumb presses one, nor a key that holds other modifiers with it; on a tie the shift key,
+  then a thumb, then the other hand's, then the typing hand's. A declared `typingRules.shift` takes
+  the first way some key gives, and the cheapest key of that way. With no key that gives Shift, it
+  types no capital there. Its effort is cyanophage's grid, thumbs free, never the rule set's.
 - **No layer that types nothing.** No bundled layout reaches a layer of functions, media or
   macros, by a hold or a key: an author's keymap's own such holds are left out, as Magic Romak's
   are. `templates.test.ts` checks that every layer of every bundled layout types something

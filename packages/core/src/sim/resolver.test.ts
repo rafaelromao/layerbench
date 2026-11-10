@@ -1103,6 +1103,55 @@ describe('the Shift a capital takes: the cheapest press that gives it, part of t
   });
 });
 
+describe('a Repeat on a one-shot layer', () => {
+  const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
+  /** R1 taps a one-shot Alpha 2, where L1 repeats and `z` is; `l` and `e` on the base layer. */
+  const oneShot = (extra: Partial<Layout> = {}): Layout => ({
+    format: 'layerbench/layout@1',
+    name: 'Repeat on a one-shot layer',
+    hostLocale: 'symbols',
+    geometry: { preset: '3x5+2' },
+    keys: { space: 'L0' },
+    layers: [
+      {
+        id: 'base',
+        bindings: { L0: kp(' '), R1: { kind: 'sl', layer: 'alpha2' }, LHI: kp('l'), RHM: kp('e') },
+      },
+      { id: 'alpha2', bindings: { L1: { kind: 'key_repeat' }, LHM: kp('z') } },
+    ],
+    repeatPolicy: { doubledLetters: 'repeatKey' },
+    ...extra,
+  });
+  const repeats = (t: ReturnType<typeof trace>) =>
+    t.steps.filter((s) => s.keyKind === 'repeat').length;
+
+  it('is a way to type a doubled letter, two presses with the one that reaches it', () => {
+    // `z` is on Alpha 2 too: the layer key and Repeat cost what the layer key and `z` do, and the
+    // thumb's Repeat costs no effort.
+    const t = trace(oneShot(), 'zz');
+    expect(t).toMatchObject({ out: 'zz', keys: ['R1', 'LHM', 'R1', 'L1'], presses: 4 });
+    expect(repeats(t)).toBe(1);
+  });
+
+  it('loses to tapping a base letter again, one press against two, when the repeat policy weighs them', () => {
+    expect(trace(oneShot(), 'ell')).toMatchObject({ out: 'ell', keys: ['RHM', 'LHI', 'LHI'] });
+  });
+
+  it('is taken first where the layout declares the repeat key first', () => {
+    const declared = oneShot({
+      typingRules: { doubledLetters: [{ way: 'repeatKey' }, { way: 'tapTwice' }] },
+    });
+    const t = trace(declared, 'ell');
+    expect(t).toMatchObject({ out: 'ell', keys: ['RHM', 'LHI', 'R1', 'L1'], presses: 4 });
+    expect(repeats(t)).toBe(1);
+  });
+
+  it('is no way at all where the layout taps twice', () => {
+    const taps = oneShot({ repeatPolicy: { doubledLetters: 'tapTwice' } });
+    expect(trace(taps, 'zz').keys).toEqual(['R1', 'LHM', 'R1', 'LHM']);
+  });
+});
+
 describe('a capital on the layer its Shift key taps for', () => {
   const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
   const shift: Binding = { kind: 'mod', mod: 'LSHIFT' };

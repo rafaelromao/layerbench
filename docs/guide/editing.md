@@ -312,11 +312,12 @@ the left ring and middle fingers and Gui under the index fingers. So do the layo
 keymaps hold their layers on the home row: Magic Sturdy, the three Hands Down with their own
 layers, and Ben Vallack Piano, its modifiers on the top row. Both hands hold the left modifiers, as
 the analysis types a capital with the left Shift and the right Alt is AltGr. Tapped, each key types
-what it typed. They are on the base layer only. In the Shift case mode, a layout with a Shift thumb
-types a capital holding it, the other hand's where the capital's own key is a thumb of that hand, as
-a thumb holding Shift presses nothing else. A layout with no Shift key of its own types a capital
-holding a Shift thumb if it has one that is free, and otherwise the home row Shift of the other
-hand, where the capital does not press that key; with neither, it types no capital there.
+what it typed. They are on the base layer only. In the Shift case mode, the Shift press is part of
+the word: a capital takes it from the cheapest key that gives it, the shift key, a Shift thumb or a
+home row Shift, held or tapped as a one-shot, weighed as the ways to type a character are (see
+**Typing paths**). It is never a key the capital presses, nor a thumb of a hand whose thumb presses
+one, as a thumb holding Shift presses nothing else. Where two cost the same, the shift key comes
+first, then a thumb, then the other hand's. With no key that gives Shift, it types no capital.
 
 #### Layouts with their authors' layers
 
@@ -454,11 +455,12 @@ keeps the page where it is, at either end too:
   **Doubled letters**, how a letter typed twice in a row is typed, with the **Repeat key** or by
   **Tap twice**, tapping its key again. Both ways of each are on. The one marked is the one the
   analysis uses: the first that is on and that some key of the layout gives; a way no key gives says
-  so and is passed over. Left alone, a layout is typed by its shift key as it is
-  made, and a doubled letter the cheaper of the repeat key and tapping twice, so **Doubled
-  letters** marks no way until you set it. Once you move or turn off a way, the order you set is
-  the rule: Shift is tried in that order on the shift key and then
-  on every other key, and a doubled letter by the first way that works. A character with a path of
+  so and is passed over. Left alone, a capital takes the cheapest key that gives Shift, held or
+  tapped, and a doubled letter the cheaper of the repeat key and tapping twice, a Repeat on a
+  one-shot layer counting the press that reaches it; so **Shift kind**, where keys both tap and
+  hold Shift, and **Doubled letters** mark no way until you set them. Once you move or turn off a
+  way, the order you set is the rule: a capital takes the cheapest key of the first way in that
+  order that some key gives, and a doubled letter the first way that works. A character with a path of
   its own keeps it for its doubled letter. One way always stays on: the last that some key gives.
 - **Configuration** has the board itself, in cards: the **preset** and the **keys** of the board,
   and then two cards for how the layout's one-shots end, **One-shot layers** and **One-shot keys**:
