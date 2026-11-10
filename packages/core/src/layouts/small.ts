@@ -273,8 +273,8 @@ function keymapCombo(c: ComboDef): ComboDef {
 // ---------------------------------------------------------------- Authors' layers
 
 /*
- * The layouts below whose authors define layers past the letters bring those layers, in place of
- * the default ones, on the keys the board has. Each is copied from the author's keymap: what it
+ * The layouts below whose authors define layers past the letters bring those layers, on the keys
+ * the board has. Each is copied from the author's keymap: what it
  * types, and the keys and combos that reach it. What the author put on keys the board lacks is left
  * out, as on the base layer, and so are the keys that type nothing the analysis counts (navigation,
  * functions, a modifier held on a layer's key), the holds that reach a layer that types nothing, a
@@ -606,6 +606,22 @@ const T34_COMBOS: ComboDef[] = [
   ).map(([keys, symbol]) => chord(`thumb-${symbol}`, keys, kp(symbol))),
 ];
 
+// ---------------------------------------------------------------- RSTHD
+
+/**
+ * The SPECIAL layer of xsznix's ErgoDox keymap (`keymap.c`), on the thirty-four keys: `<` `>` and
+ * the brackets on the left hand's top row, `:` `{` `}` on the right's, the marks of the number row
+ * on both home rows, and `~` `_` `"` `|` and `?` `+` on the bottom row. His Alt-Backspace keys type
+ * nothing the analysis counts. His board's outer columns and number row, and its Numpad layer, are
+ * past these keys. The thumbs are busy holding the layer.
+ */
+const RSTHD_SYMBOLS = drawn('3x5+2', [
+  '< > [ ] ∅ ∅ : ▽ { }',
+  '! @ # $ % ^ & * ( )',
+  '▽ ~ _ " | ? + ▽ ▽ ▽',
+  '∅ ∅ ∅ ∅',
+]);
+
 // ---------------------------------------------------------------- Finch
 
 /**
@@ -702,7 +718,7 @@ export const SMALL_DEFS: ClassicDef[] = [
    * word is the `caps_word` behaviour, on the shift key in a mod morph, so shift pressed while shift
    * is on starts it, as in its keymap, and shifted Alpha 2 is simply shift state. The alt-repeat
    * follow-ups match on the tag the accent macro leaves behind. What is left is the layers you can
-   * see: it brings its keymap's own Numbers and Symbols, which the default layers leave as they are.
+   * see: its keymap's own Numbers and Symbols.
    */
   {
     id: 'magic-romak',
@@ -813,8 +829,14 @@ export const SMALL_DEFS: ClassicDef[] = [
     // Backspace and Enter on the outer ones, which type nothing the analysis counts.
     thumbs: 'bspc e space ret',
     special: COMMON,
+    layers: [{ id: 'sym', name: 'Symbols', byKey: RSTHD_SYMBOLS }],
+    // His Special layer is held on the lower key of the inner column of each hand's thumb cluster.
+    // Here that is the inner thumb of each hand, e and space, each still typing what it types. On
+    // the engine's Effort every choice of thumbs ties; the left outer thumb alone would share a
+    // finger with e, a same-finger pair before each symbol, so the inner thumbs have the lowest SFB.
+    holds: { L0: 'sym', R0: 'sym' },
     description:
-      "RSTHD: e on the left thumb, from its author's ErgoDox firmware; the outer columns' = and ' do not fit thirty-four keys.",
+      "RSTHD: e on the left thumb, from its author's ErgoDox firmware, and its Special layer of symbols held on the inner thumbs; the outer columns' = and ' do not fit thirty-four keys.",
     link: 'https://github.com/xsznix/qmk_firmware/blob/master/keyboards/ergodox_ez/keymaps/rsthd/keymap.c',
   },
   {

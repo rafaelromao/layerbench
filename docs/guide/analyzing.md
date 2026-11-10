@@ -96,7 +96,7 @@ list stays in one order, by the sort alone: neither a layout that skips them nor
 is set apart, so on a Portuguese text, say, a layout without `ã` or `ç` sits where its Effort or SFB
 puts it, with its note. A layout that comes with the app types what its author's design types, so on
 a Portuguese text most of them lack letters and say so on their cards; Magic Romak, the three Hands
-Down, T-34, Bird, Nordrassil and Uno type them, and a layout of your own can start with an
+Down and T-34 type them, and a layout of your own can start with an
 [Accents](editing.md#default-layers) layer. A layout is also held to the languages it is for, chosen in **Settings** in **Analyze**: one
 for Spanish that has no `ñ` says so on its card, whatever the text, though on an English text it
 skipped nothing for Spanish. A layout that comes with the app is for the languages it performs well

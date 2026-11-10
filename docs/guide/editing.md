@@ -212,8 +212,7 @@ letters and marks its author places, its author's thumbs, and the layers its aut
 past the letters, with the keys and combos that reach them and the combos its author types symbols
 and accents with. Nothing is added to what its author's design types: a character it leaves out, it
 cannot type, until you add it in the editor. [The layouts that come with the app and have layers of
-their own](#layouts-with-their-authors-layers) are listed below. Bird, Nordrassil and Uno, whose
-sources define no layer that types, have the default layers instead, and keep every key they have.
+their own](#layouts-with-their-authors-layers) are listed below.
 
 **Numbers** and **Symbols** are Magic Romak's on the 24 keys most boards have. The pinky's top and
 bottom keys and the inner column add what has no room there: currency and ordinals on Numbers, for
@@ -303,13 +302,6 @@ what the bottom rows carried, and fills Accents with the dead keys, the letters 
 symbols Extras has no room for, on its thumbs too; every accented letter there is its accent and the
 letter. The board shows where everything went.
 
-Bird, Nordrassil and Uno keep every key they have. They hold Numbers on the left inner thumb and
-Symbols on the right inner one, each still typing what it typed, so Extras is both inner thumbs.
-Bird and Nordrassil type space on L1, beside the inner thumb, which holds Numbers. An inner thumb
-that is a tap-hold already cannot hold another layer; the key that types space then holds Numbers,
-and the innermost thumb of the other hand with nothing on it Symbols. Accents is the combo on two
-thumbs, as on a new layout.
-
 Where an author's keymap has a key that does what the analysis does not simulate, such as Escape,
 Enter, Backspace, Tab or T-34's key for a Shortcuts layer LayerBench does not have, the key is
 transparent, as one left unset is; under a hold it taps nothing, and shows only what it holds.
@@ -348,6 +340,7 @@ with `ñ` `ç` `ä` `ö` `ü`.
 | Magic Sturdy | Symbols, Numbers | `t` or `a` held, `n` held | € £ § ª º ° `?` « » ı ¿ ¡ ß œ æ ñ ç ä ö ü |
 | Enthium | Numbers, Symbols | L1 (Tab in its keymap) held, `r` held | `&` `(` `)` € £ § ª º ° « » ı ¿ ¡ ß œ æ ñ ç ä ö ü |
 | Hands Down Gold, Promethium, Vibranium | Symbols, Numbers, Numpad | space held; L1 (Backspace in its keymap) or `,` (`f` on Promethium) held; `b` (`k`) held | `\` ª º « » ı ¿ ¡ ß |
+| RSTHD | Symbols | `e` and space held, the lower thumb key of each hand in its keymap | `0`-`9` `'` `=` `\` `` ` `` € £ § ª º ° « » ı ¿ ¡ ß œ æ ñ ç ä ö ü |
 | T-34 | Swedish, Numbers, Symbols, Specials | `l ( )` toggles it; both inner thumbs, a num word; `t h` or `n a` held; R1, one-shot | € £ § ª º ° « » ı ¿ ¡ ß œ æ |
 | Finch | Symbols and numbers | `e` held | € £ § ª º ° `~` `^` `"` `?` « » ı ¿ ¡ ß œ æ ñ ç ä ö ü |
 | Cem Aksoylar's Colemak-DH | Symbols | the right inner thumb held | `{` `}` `\|` € £ § ª º ° `~` `"` `<` `>` `:` `?` « » ı ¡ ß œ æ ñ ç ä ö ü |
@@ -362,13 +355,21 @@ letter, and `å` `ä` `ö`; its Specials has the dead keys. Finch's type `{` `[`
 `/` `\` and `;`, and `!` on Symbols. Ben Vallack Piano's shifted Alpha 2 has Alpha 2's capitals and
 a comma where Alpha 2 has its full stop.
 
+RSTHD's Symbols is the Special layer of its author's ErgoDox keymap: `<` `>` and the brackets on
+the left hand's top row, `:` `{` `}` on the right's, the marks of the number row on both home rows,
+and `~` `_` `"` `|` and `?` `+` on the bottom row. Its author holds it on the lower key of the
+inner column of each hand's thumb cluster; here it is held on the inner thumb of each hand, e and
+space, each still typing when tapped. Every choice of thumbs ranks the same on Effort; the inner
+ones have the lowest SFB, since the left outer thumb would share a finger with `e`. Its Backspace
+and Enter thumbs are transparent keys. Its number row, its outer columns and its keypad layer are
+past the 34 keys.
+
 The other layouts are their letters and marks alone, as their sources have them on 34 keys. Their
-sources define only their letters, but for RSTHD, whose author's ErgoDox keymap puts its digits on a
-number row and reaches its layers from thumb keys thirty-four keys lack, Hands Down Neu, whose
-author's firmware carries the Hands Down layers for a later Neu with other letters and thumbs, and
-Nordrassil, whose author publishes the rest of the keymap only outside its repository. Each types
-the marks its author places and nothing more, no digit and no accent, until you add them in the
-editor; Bird, Nordrassil and Uno, which keep every key they have, have the default layers.
+sources define only their letters, but for Hands Down Neu, whose author's firmware carries the
+Hands Down layers for a later Neu with other letters and thumbs, and Nordrassil, whose author
+publishes the rest of the keymap only outside its repository; Uno's keymap has its digits on a
+number row and a layer of function keys, which type nothing the analysis counts. Each types the
+marks its author places and nothing more, no digit and no accent, until you add them in the editor.
 
 Romak is its author's write-up ([rafaelromao.github.io/romak](https://rafaelromao.github.io/romak)),
 and has no Numbers, Symbols, Extras or Accents, as the write-up has none for 34 keys. Tapping the

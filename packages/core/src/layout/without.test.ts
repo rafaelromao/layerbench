@@ -73,9 +73,12 @@ describe('Ranking a layout without some of its features', () => {
   });
 
   it('keeps a combo that only turns a layer on: the way to Accents stays, and the accents with it', () => {
-    // A Special layout reaches Accents by a combo; the others, by a thumb.
-    const nordrassil = bundledLayout('nordrassil') as Layout;
-    const without = withoutFeatures(nordrassil, ['combos']);
+    // A new layout reaches Accents by a combo.
+    const qwerty = withNewLayoutDefaults(
+      bundledLayout('qwerty') as Layout,
+      getGeometryPreset('3x5+2'),
+    );
+    const without = withoutFeatures(qwerty, ['combos']);
     expect(without.combos?.map((c) => c.id)).toEqual(['accents']);
     const coverage = layoutLanguageCoverage(compileLayout(without), 'pt');
     expect(coverage?.missingRequired).toEqual([]);

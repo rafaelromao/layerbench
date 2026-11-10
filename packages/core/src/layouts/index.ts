@@ -1,12 +1,10 @@
-import { getGeometryPreset } from '../geometry/presets.js';
-import { layoutCategory } from '../layout/categories.js';
 import type { Layout } from '../layout/types.js';
 import { BUNDLED_IDS } from './bundled-ids.js';
 import { CLASSIC_DEFS, type ClassicDef, classicLayout } from './classic.js';
 import { DOCUMENT_LAYOUTS } from './documents.js';
 import LANGUAGES from './languages.json';
 import { SMALL_DEFS } from './small.js';
-import { withDefaultLayers, withHomeRowMods } from './templates.js';
+import { withHomeRowMods } from './templates.js';
 
 export { BUNDLED_IDS, DEFAULT_LAYOUT_ID } from './bundled-ids.js';
 export { CLASSIC_DEFS, CLASSIC_LAYOUTS, classicLayout } from './classic.js';
@@ -17,7 +15,6 @@ export {
   ACCENTS,
   accentsCombo,
   accentsComboKeys,
-  bringsOwnLayers,
   CORE_SPLIT_PAIRS,
   DEFAULT_LAYER_ID_LIST,
   DEFAULT_LAYER_IDS,
@@ -38,7 +35,6 @@ export {
   SYMBOLS_OUTER,
   tapOf,
   vowelsOnLeft,
-  withDefaultLayers,
   withHomeRowMods,
   withNewLayoutDefaults,
 } from './templates.js';
@@ -48,18 +44,11 @@ export const SMALL_LAYOUTS: Layout[] = SMALL_DEFS.map(classicLayout);
 
 /**
  * A layout written in code, built from its definition: the layout its author designed, with the
- * home row mods its author's keymap holds, where its definition gives them. Only a Special layout
- * whose author defines no layer past its letters takes the default layers, which keep every key it
- * has and reach Accents on one combo; one whose definition writes layers keeps those.
+ * home row mods its author's keymap holds, where its definition gives them.
  */
 function built(def: ClassicDef): Layout {
   const layout = classicLayout(def);
-  const g = layout.geometry;
-  const withLayers =
-    'preset' in g && !def.layers && layoutCategory(layout) === 'special'
-      ? withDefaultLayers(layout, getGeometryPreset(g.preset))
-      : layout;
-  return def.homeRowMods ? withHomeRowMods(withLayers, def.homeRowMods) : withLayers;
+  return def.homeRowMods ? withHomeRowMods(layout, def.homeRowMods) : layout;
 }
 
 /** Layouts in the order of `BUNDLED_IDS`, the order the Library lists them in. */
