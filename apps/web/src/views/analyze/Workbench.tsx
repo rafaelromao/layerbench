@@ -46,7 +46,7 @@ import { presetOf } from '../../components/RuleSources.js';
 import { Tabs, tabId, tabPanelId } from '../../components/Tabs.js';
 import { freeCopyName, type SaveOptions } from '../../custom/save-new.js';
 import type { useAnalysisClient } from '../../engine/client-context.js';
-import { expandPositions, HEAT_LABELS, heatMap } from '../../engine/heat.js';
+import { expandPositions, HEAT_LABELS, heatMap, layerShare } from '../../engine/heat.js';
 import type { AnalyzeRequest, ExplainDTO, ProducerDTO, ReportDTO } from '../../engine/protocol.js';
 import { useAnalysis } from '../../engine/use-analysis.js';
 import { useKeyStats } from '../../engine/use-key-stats.js';
@@ -993,6 +993,7 @@ export function Workbench({
                           selected={state.selected}
                           alsoSelected={state.also}
                           heat={heat}
+                          layerShare={shown ? layerShare(shown, boardLayer) : undefined}
                           highlight={highlighted}
                           pressed={frame?.keys ?? []}
                           openCombo={openBox}

@@ -1,5 +1,6 @@
 import type { CompiledLayout } from '@layerbench/core';
 import { type ReactNode, useMemo } from 'react';
+import { formatShare } from '../engine/heat.js';
 import { CombosApart } from './CombosApart.js';
 import { combosApart, Keyboard, type KeyboardCombo, type KeyboardProps } from './Keyboard.js';
 import { LayerNav, type LayerNavProps, useLayerSwipe } from './LayerNav.js';
@@ -25,6 +26,11 @@ export interface BoardProps extends Omit<KeyboardProps, 'layer' | 'combos' | 'le
   /** The navigator's accessible name. */
   navLabel?: string;
   onRename?: LayerNavProps['onRename'];
+  /**
+   * The part of the typing done on the layer drawn, 0–1, written left of the navigator; absent
+   * where the board has no heat.
+   */
+  layerShare?: number;
   /** On the left of a row under the navigator. */
   tools?: ReactNode;
   /** On the right of that row. */
@@ -52,6 +58,7 @@ export function Board({
   onRename,
   tools,
   toolsEnd,
+  layerShare,
   onComboClick,
   draggable = false,
   ...keyboard
@@ -80,18 +87,31 @@ export function Board({
       </div>
 
       {/* The navigator in the middle column, centred under the board whatever is beside it; the
-          button in the right one, always mounted: unmounted, an open dialog would vanish without
-          closing, and focus would not come back to the board. */}
-      <div className="grid min-w-0 grid-cols-[1fr_auto_1fr] items-center gap-2">
+          share of the typing on the layer, with heat on, in the left one; the button in the right
+          one, always mounted: unmounted, an open dialog would vanish without closing, and focus
+          would not come back to the board. Each side keeps room for the button (4.75rem) whether
+          its layer has one or not, so on a narrow screen the middle gives way to the screen alone:
+          the button never covers an arrow, and the arrows stay put as the layers turn. */}
+      <div className="grid min-w-0 grid-cols-[minmax(4.75rem,1fr)_minmax(0,auto)_minmax(4.75rem,1fr)] items-center gap-2">
+        {layerShare !== undefined && (
+          <span
+            className="col-start-1 row-start-1 justify-self-start text-xs tabular-nums opacity-70"
+            role="img"
+            aria-label={`Share of key presses on this layer: ${formatShare(layerShare)}`}
+            title="Share of key presses made on this layer"
+          >
+            {formatShare(layerShare)}
+          </span>
+        )}
         <LayerNav
-          className="col-start-2 min-w-0 justify-center"
+          className="col-start-2 row-start-1 min-w-0 justify-center"
           label={navLabel}
           layers={compiled.layers}
           active={layer}
           onSelect={onLayer}
           onRename={onRename}
         />
-        <div className="col-start-3 flex min-w-0 justify-end">
+        <div className="col-start-3 row-start-1 flex justify-end">
           <CombosApart
             compiled={typed}
             layer={layer}

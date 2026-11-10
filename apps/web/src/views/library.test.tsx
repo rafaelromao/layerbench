@@ -1677,6 +1677,49 @@ describe('Heatmaps on the cards', () => {
     expect(heatPercents(await boardOf('Qwerty'))).toEqual(expected);
   }, 120_000);
 
+  it('writes the share of the presses made on the layer shown, in every mode, only with heat on', async () => {
+    const user = userEvent.setup();
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    const shareOn = (card: HTMLElement) =>
+      within(card).queryByRole('img', { name: /^Share of key presses on this layer: / });
+    const card = (await boardOf('Hands Down Gold')).closest('article') as HTMLElement;
+    await rankingSays(/^Lower is better for both/, 60_000);
+    expect(shareOn(card)).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Heatmaps' }));
+    const nav = within(card).getByRole('group', { name: 'Hands Down Gold layers' });
+    const next = within(nav).getByRole('button', { name: 'Next layer' });
+    const previous = within(nav).getByRole('button', { name: 'Previous layer' });
+    /** The share written on each layer, from the first to the last. */
+    const shares = async () => {
+      while (previous.getAttribute('aria-disabled') !== 'true') await user.click(previous);
+      const out: number[] = [];
+      for (;;) {
+        const text = (await waitFor(() => shareOn(card) as HTMLElement)).textContent ?? '';
+        expect(text).toMatch(/^\d+(\.\d)?%$/);
+        out.push(Number.parseFloat(text));
+        if (next.getAttribute('aria-disabled') === 'true') return out;
+        await user.click(next);
+      }
+    };
+    const usage = await shares();
+    expect(usage.length).toBeGreaterThan(1);
+    expect(usage[0]).toBeGreaterThan(50);
+    // Each share is rounded to a tenth, so the sum is within a tenth per layer of 100.
+    const sum = usage.reduce((a, b) => a + b, 0);
+    expect(Math.abs(sum - 100)).toBeLessThanOrEqual(0.05 * usage.length + 1e-9);
+
+    // A usage fact, the same whatever the colours measure.
+    const choice = screen.getByRole('combobox', { name: 'Heat' });
+    for (const mode of ['sfb', 'effort', 'travel', 'layer_taps']) {
+      await user.selectOptions(choice, mode);
+      expect(await shares()).toEqual(usage);
+    }
+
+    await user.click(screen.getByRole('button', { name: 'Heatmaps' }));
+    expect(shareOn(card)).toBeNull();
+  }, 120_000);
+
   it('changes what it measures without analyzing anything again, as Analyze would', async () => {
     const user = userEvent.setup();
     const client = testClient();

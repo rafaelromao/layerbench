@@ -31,6 +31,28 @@ const next = () => within(nav()).getByRole('button', { name: 'Next layer' });
 const previous = () => within(nav()).getByRole('button', { name: 'Previous layer' });
 
 describe('the layer navigator', () => {
+  it('keeps the name slot one width, so the arrows stay put across names of any length', async () => {
+    const user = userEvent.setup();
+    const layers: NavLayer[] = [
+      { idx: 0, id: 'a', name: 'A' },
+      { idx: 1, id: 'b', name: 'A rather long layer name that would stretch a content-sized slot' },
+      { idx: 2, id: 'c', name: 'Mid' },
+    ];
+    render(<Harness layers={layers} />);
+    const slot = screen.getByTestId('layer-name-slot');
+    // jsdom has no layout: a slot sized by its content would lose these classes.
+    expect(slot).toHaveClass('w-40', 'max-w-full');
+    expect(slot).not.toHaveClass('max-w-[10rem]');
+    // The slot is the one box between the arrows, its width not the name's.
+    const widths: string[] = [];
+    for (let i = 0; i < layers.length; i++) {
+      widths.push(`${slot.className}|${[...nav().children].indexOf(slot)}`);
+      if (i < layers.length - 1) await user.click(next());
+    }
+    expect(new Set(widths).size).toBe(1);
+    expect([...nav().children]).toEqual([previous(), slot, next()]);
+  });
+
   it('steps through the layers with its buttons, and says where it is', async () => {
     const user = userEvent.setup();
     render(<Harness />);

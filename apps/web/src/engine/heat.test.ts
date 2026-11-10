@@ -1,6 +1,14 @@
 import type { RuleResult } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
-import { effectiveHeat, expandPositions, heatMap, heatSourceOf, normalizeHeat } from './heat.js';
+import {
+  effectiveHeat,
+  expandPositions,
+  formatShare,
+  heatMap,
+  heatSourceOf,
+  layerShare,
+  normalizeHeat,
+} from './heat.js';
 import type { ReportDTO } from './protocol.js';
 
 function reportWith(overrides: Partial<ReportDTO>): ReportDTO {
@@ -285,5 +293,37 @@ describe('heat sources', () => {
     expect(effectiveHeat(without, 'travel')).toBe('usage');
     // The map is the one it says: usage, not a blank board.
     expect(heatMap(without, 'effort', 0)).toEqual(heatMap(without, 'usage', 0));
+  });
+});
+
+describe('the share of the typing on a layer', () => {
+  const source = heatSourceOf(
+    reportWith({
+      usageByLayer: [
+        [30, 20, 25],
+        [0, 15, 10],
+        [0, 0, 0],
+      ],
+      usageAll: [30, 35, 35],
+    }),
+  );
+
+  it('is the presses on the layer over all presses, and sums to 1 over the layers', () => {
+    expect(layerShare(source, 0)).toBeCloseTo(0.75);
+    expect(layerShare(source, 1)).toBeCloseTo(0.25);
+    expect(layerShare(source, 2)).toBe(0);
+    const sum = [0, 1, 2].reduce((a, l) => a + layerShare(source, l), 0);
+    expect(sum).toBeCloseTo(1);
+  });
+
+  it('does not depend on the heat mode, and is 0 where nothing was pressed', () => {
+    expect(layerShare(heatSourceOf(reportWith({})), 0)).toBe(0);
+  });
+
+  it('is written with one decimal at most', () => {
+    expect(formatShare(0.925)).toBe('92.5%');
+    expect(formatShare(0.075)).toBe('7.5%');
+    expect(formatShare(0)).toBe('0%');
+    expect(formatShare(1)).toBe('100%');
   });
 });

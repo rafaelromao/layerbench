@@ -113,6 +113,23 @@ export function heatMap(source: HeatSource, mode: HeatMode, layer: number): Reco
   return normalizeHeat(counts[l] ?? {}, top);
 }
 
+/**
+ * The part of the typing done on one layer, 0–1: the presses on that layer's keys over all presses,
+ * whatever the heat mode. 0 where nothing was pressed. A layer beyond the end clamps, as `heatMap`.
+ */
+export function layerShare(source: HeatSource, layer: number): number {
+  const total = source.usageAll.reduce((a, b) => a + b, 0);
+  if (!(total > 0) || source.usageByLayer.length === 0) return 0;
+  const l = Math.max(0, Math.min(layer, source.usageByLayer.length - 1));
+  const on = (source.usageByLayer[l] ?? []).reduce((a, b) => a + b, 0);
+  return on / total;
+}
+
+/** A share as the board writes it: one decimal at most, `0%` for none. */
+export function formatShare(share: number): string {
+  return `${Number((share * 100).toFixed(1))}%`;
+}
+
 /** Expand positions to the physical keys behind them, so chords highlight all their members. */
 export function expandPositions(dto: ReportDTO, positions: number[]): number[] {
   const out: number[] = [];

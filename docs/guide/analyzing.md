@@ -164,6 +164,12 @@ as Numbers or Accents, stays pale beside the base layer, where scaled on its own
 as busy. The Library's cards have heat too, under [Heatmaps](#sorting-and-comparing), where a key's
 tooltip gives the percentage the colour stands for.
 
+With heat on, the percentage at the left of the layer's name is the share of the typing done on that
+layer: the key presses made on its keys, out of all the key presses of the text. It is the same in
+every heat mode, and the layers' shares add up to 100%. A layer the text never reaches reads 0%; the
+default text is letters only, so a layer of digits or symbols reads little or nothing there. It is
+on every board that draws heat: Analyze's, and the Library's cards under Heatmaps.
+
 ### Combos
 
 Combos marked for typing are drawn on the layers where they work, as

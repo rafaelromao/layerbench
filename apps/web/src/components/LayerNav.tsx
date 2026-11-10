@@ -115,8 +115,7 @@ export function LayerNav({
   };
 
   const nameStyle = colour ? { color: colour } : undefined;
-  // The column holds the cap and the name fills it, so that a long name squeezed by what is beside
-  // the navigator shortens rather than covering the arrows.
+  // The name is centred in the slot and shortens rather than covering the arrows.
   const nameClass = 'min-w-0 max-w-full truncate text-sm font-medium';
 
   return (
@@ -136,8 +135,13 @@ export function LayerNav({
       }}
     >
       {many && arrow(-1, '‹', 'Previous layer')}
-      {/* The counter sits under the name, so a long name and the arrows keep one line. */}
-      <div className="flex min-w-0 max-w-[10rem] flex-col items-center leading-tight">
+      {/* The counter sits under the name, so a long name and the arrows keep one line. The slot has
+          one width whatever the name, so the arrows stay where they are and a second click lands on
+          the same spot; a page cannot move the pointer to follow them. */}
+      <div
+        data-testid="layer-name-slot"
+        className="flex w-40 min-w-0 max-w-full flex-col items-center leading-tight"
+      >
         {renaming === layer.id ? (
           <input
             ref={field}
@@ -189,7 +193,7 @@ export function LayerNav({
             {layer.name}
           </button>
         ) : (
-          <span className={nameClass} style={nameStyle}>
+          <span className={nameClass} style={nameStyle} title={layer.name}>
             {layer.name}
           </span>
         )}

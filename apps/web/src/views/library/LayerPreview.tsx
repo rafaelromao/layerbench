@@ -1,7 +1,13 @@
 import type { CompiledLayout } from '@layerbench/core';
 import { memo, useMemo, useState } from 'react';
 import { PreviewBoard } from '../../components/PreviewBoard.js';
-import { effectiveHeat, HEAT_LABELS, type HeatSource, heatMap } from '../../engine/heat.js';
+import {
+  effectiveHeat,
+  HEAT_LABELS,
+  type HeatSource,
+  heatMap,
+  layerShare,
+} from '../../engine/heat.js';
 import type { HeatMode } from '../../url/params.js';
 
 export interface LayerPreviewProps {
@@ -56,6 +62,7 @@ export const LayerPreview = memo(function LayerPreview({
         label={`${name} layers`}
         heat={colours}
         heatName={drawn}
+        layerShare={heatMode !== null && heat ? layerShare(heat, layer) : undefined}
         // A card is a glance at the layout; Analyze lists what the numbered keys do.
         legend={false}
       />
