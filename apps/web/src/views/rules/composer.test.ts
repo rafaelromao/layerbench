@@ -176,6 +176,10 @@ describe('rule set editing', () => {
     expect(coerceGlobal('space_per_word_in_keystrokes', 'true')).toEqual({
       space_per_word_in_keystrokes: true,
     });
+    expect(coerceGlobal('untyped_in_keystrokes', 'true')).toEqual({ untyped_in_keystrokes: true });
+    expect(coerceGlobal('untyped_in_keystrokes', 'false')).toEqual({
+      untyped_in_keystrokes: false,
+    });
     expect(coerceGlobal('universe', 'with_space')).toEqual({ universe: 'with_space' });
   });
 

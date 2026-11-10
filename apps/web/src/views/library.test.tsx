@@ -24,7 +24,7 @@ import { CompositeStorage } from '../storage/composite.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { branchWith, communityDoc } from '../test/community.js';
 import { keyNamed } from '../test/keys.js';
-import { showLayer } from '../test/layers.js';
+import { layerShareIn, showLayer } from '../test/layers.js';
 import { MemoryStorage } from '../test/memory-storage.js';
 import {
   customInLink,
@@ -1290,9 +1290,16 @@ describe('Layers on a card', () => {
     // Hands Down Gold's Numbers has none apart, nor has any layer of Graphite.
     await showLayer(user, 'Numbers', 'Hands Down Gold layers');
     expect(gold.queryByRole('button', { name: /more combos? on/ })).toBeNull();
-    // The navigator keeps the middle of its row, so the arrows do not move as the layers turn.
+    // The navigator keeps the middle of its row, so the arrows do not move as the layers turn; its
+    // sides keep room for the button on Numbers too, which has none.
     const nav = gold.getByRole('group', { name: 'Hands Down Gold layers' });
     expect(nav).toHaveClass('col-start-2');
+    expect(nav.parentElement?.className).toContain('minmax(4.75rem,1fr)');
+    // A board with nothing beside its navigator on any layer gives the room to the name.
+    const plain = within(cardOf('Graphite')).getByRole('group', { name: 'Graphite layers' });
+    expect(plain.parentElement?.className).toContain(
+      'grid-cols-[minmax(0,1fr)_minmax(0,auto)_minmax(0,1fr)]',
+    );
     expect(
       within(cardOf('Graphite')).queryByRole('button', { name: /more combos? on/ }),
     ).toBeNull();
@@ -1676,6 +1683,59 @@ describe('Heatmaps on the cards', () => {
     const expected = percentsOf(await qwertyReport(client), 'usage');
     expect(expected.length).toBeGreaterThan(10);
     expect(heatPercents(await boardOf('Qwerty'))).toEqual(expected);
+  }, 120_000);
+
+  it('writes the share of the presses made on the layer shown, in every mode, only with heat on', async () => {
+    const user = userEvent.setup();
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    const card = (await boardOf('Hands Down Gold')).closest('article') as HTMLElement;
+    // Qwerty has no Combos button on any layer: with heat off nothing is beside its navigator.
+    const qwerty = (await boardOf('Qwerty')).closest('article') as HTMLElement;
+    const qwertyRow = () =>
+      (within(qwerty).getByTestId('layer-name-slot').closest('fieldset') as HTMLElement)
+        .parentElement?.className ?? '';
+    await rankingSays(/^Lower is better for both/, 60_000);
+    expect(layerShareIn(card)).toBeNull();
+    expect(qwertyRow()).toContain('grid-cols-[minmax(0,1fr)_minmax(0,auto)_minmax(0,1fr)]');
+
+    await user.click(screen.getByRole('button', { name: 'Heatmaps' }));
+    // The share alone is beside it now, and both sides keep room on every layer for it.
+    await waitFor(() => expect(layerShareIn(qwerty)).not.toBeNull());
+    expect(qwertyRow()).toContain('minmax(4.75rem,1fr)');
+    const nav = within(card).getByRole('group', { name: 'Hands Down Gold layers' });
+    const next = within(nav).getByRole('button', { name: 'Next layer' });
+    const previous = within(nav).getByRole('button', { name: 'Previous layer' });
+    /** The share written on each layer, from the first to the last. */
+    const shares = async () => {
+      while (previous.getAttribute('aria-disabled') !== 'true') await user.click(previous);
+      const out: number[] = [];
+      for (;;) {
+        const share = await waitFor(() => {
+          const v = layerShareIn(card);
+          expect(v).not.toBeNull();
+          return v as number;
+        });
+        out.push(share);
+        if (next.getAttribute('aria-disabled') === 'true') return out;
+        await user.click(next);
+      }
+    };
+    const usage = await shares();
+    expect(usage.length).toBeGreaterThan(1);
+    expect(usage[0]).toBeGreaterThan(50);
+    // Each share is rounded to a tenth, so the sum is within a tenth per layer of 100.
+    const sum = usage.reduce((a, b) => a + b, 0);
+    expect(Math.abs(sum - 100)).toBeLessThanOrEqual(0.05 * usage.length + 1e-9);
+
+    // A usage fact, the same whatever the colours measure.
+    const choice = screen.getByRole('combobox', { name: 'Heat' });
+    for (const mode of ['sfb', 'effort', 'travel', 'layer_taps']) {
+      await user.selectOptions(choice, mode);
+      expect(await shares()).toEqual(usage);
+    }
+
+    await user.click(screen.getByRole('button', { name: 'Heatmaps' }));
+    expect(layerShareIn(card)).toBeNull();
   }, 120_000);
 
   it('changes what it measures without analyzing anything again, as Analyze would', async () => {

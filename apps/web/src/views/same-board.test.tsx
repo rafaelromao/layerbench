@@ -118,7 +118,7 @@ describe('The board is the same on Analyze, a Library card and Compare', () => {
     expect(analyze.length).toBeGreaterThan(1);
     expect(analyze.some((l) => l.combos.length > 0)).toBe(true);
     expect(analyze[0]?.row).toEqual([
-      expect.stringContaining('grid-cols-[1fr_auto_1fr]'),
+      expect.stringContaining('grid-cols-[minmax(4.75rem,1fr)_minmax(0,auto)_minmax(4.75rem,1fr)]'),
       expect.stringContaining('col-start-2'),
     ]);
     expect(analyze[0]?.frame).toEqual([

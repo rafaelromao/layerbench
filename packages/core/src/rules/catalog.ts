@@ -452,7 +452,7 @@ export function usageRules(): Rule[] {
 export function effortRules(): Rule[] {
   return [
     rule('effort', 'Effort', 'effort', {
-      description: `cyanophage's Effort: its per-key grid, 577 × effort ÷ keystrokes; a thumb press costs ${THUMB_EFFORT} and a space nothing (the grid is editable).`,
+      description: `cyanophage's Effort: its per-key grid, 577 × effort ÷ keystrokes (where the rule set counts them, the characters the layout cannot type among the keystrokes); a thumb press costs ${THUMB_EFFORT} and a space nothing (the grid is editable).`,
       ngram: { n: 1 },
       aggregate: 'weighted_sum',
       scale: CYANOPHAGE_EFFORT_SCALE,
