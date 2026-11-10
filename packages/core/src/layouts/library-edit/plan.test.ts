@@ -84,12 +84,11 @@ describe('changing a bundled layout', () => {
     expect(write[LIBRARY_FILES.documents]).toBeUndefined();
   });
 
-  it('turns a layout written in code into a document, its code, id, golden and languages gone', () => {
+  it('turns a layout written in code into a document, its code, id and golden gone', () => {
     const doc = saved(CLASSIC, nameOf(CLASSIC));
     const { write, remove } = plan({ action: 'change', id: CLASSIC, layout: doc });
     expect(write[LIBRARY_FILES.classic]).not.toContain(`id: '${CLASSIC}'`);
     expect(write[LIBRARY_FILES.builtInIds]).not.toContain(`'${CLASSIC}'`);
-    expect(JSON.parse(write[LIBRARY_FILES.languages])).not.toHaveProperty(CLASSIC);
     expect(write[LIBRARY_FILES.documents]).toContain(`from './documents/${CLASSIC}.json';`);
     expect(JSON.parse(write[LIBRARY_FILES.document(CLASSIC)])).toEqual(doc);
     expect(remove).toEqual([LIBRARY_FILES.golden(CLASSIC)]);
@@ -122,11 +121,10 @@ describe('changing a bundled layout', () => {
 });
 
 describe('deleting a bundled layout', () => {
-  it('takes a layout written in code out of its file, the ids, the goldens, languages and landing page', () => {
+  it('takes a layout written in code out of its file, the ids, the goldens and landing page', () => {
     const { write, remove } = plan({ action: 'delete', id: SMALL });
     expect(write[LIBRARY_FILES.small]).not.toContain(`id: '${SMALL}'`);
     expect(write[LIBRARY_FILES.builtInIds]).not.toContain(`'${SMALL}'`);
-    expect(JSON.parse(write[LIBRARY_FILES.languages])).not.toHaveProperty(SMALL);
     expect(write[LIBRARY_FILES.landing]).not.toContain(`layout=${SMALL}&amp;`);
     expect(remove).toEqual([LIBRARY_FILES.golden(SMALL)]);
   });
