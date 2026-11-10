@@ -36,7 +36,8 @@ describe('measuring a layout’s languages in the app', () => {
   }, 120_000);
 
   it('adds nothing a layout cannot type, and names what it lacks', async () => {
-    const found = byTag(await measureLanguagesOf(testClient(), bundled('qwerty')));
+    const qwerty: Layout = { ...bundled('qwerty'), languages: [] };
+    const found = byTag(await measureLanguagesOf(testClient(), qwerty));
     expect(found.get('en')).toMatchObject({ kind: 'worse', beaten: BUNDLED_EFFORTS.en.length - 1 });
     expect(found.get('pt')).toMatchObject({ kind: 'lacks' });
     expect(verdictText(found.get('pt') as LanguageVerdict)).toMatch(

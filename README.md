@@ -76,7 +76,7 @@ them: Magic Romak, Magic Sturdy, the three Hands Down with their own layers and 
 each key still typing what it did (`withHomeRowMods` in `templates.ts`). The languages each is for
 are the ones its author states, in its definition (`languages`): a text in a language, or a corpus
 of one, that the author's page or keymap names counts, and a layout whose author states none is for
-none. A test holds each language to one the layout types every letter of. The editor's **Measure
+English. A test holds each language to one the layout types every letter of. The editor's **Measure
 languages** adds the languages a layout performs well in: its Effort on the language's news text,
 on the rules the Library ranks on, is in the better half of the bundled layouts' (`lang/performance.ts`).
 `pnpm languages` writes those layouts' Efforts on each language, lowest first, to

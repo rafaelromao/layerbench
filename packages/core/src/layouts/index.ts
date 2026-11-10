@@ -41,16 +41,19 @@ export {
 /** Layouts made for small boards: thumb letters, chords, adaptive and repeat keys. */
 export const SMALL_LAYOUTS: Layout[] = SMALL_DEFS.map(classicLayout);
 
+/** The language of a bundled layout whose author states none. */
+const DEFAULT_LANGUAGES: readonly string[] = ['en'];
+
 /**
  * A layout written in code, built from its definition: the layout its author designed, with the
  * home row mods its author's keymap holds, where its definition gives them, and the languages its
- * author states.
+ * author states, English when it states none.
  */
 function built(def: ClassicDef): Layout {
   const layout = classicLayout(def);
   return {
     ...(def.homeRowMods ? withHomeRowMods(layout, def.homeRowMods) : layout),
-    languages: [...(def.languages ?? [])],
+    languages: [...(def.languages ?? DEFAULT_LANGUAGES)],
   };
 }
 

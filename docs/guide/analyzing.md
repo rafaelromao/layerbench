@@ -95,13 +95,13 @@ its numbers flatter it. Each card says what share of the text it skips, and whic
 list stays in one order, by the sort alone: neither a layout that skips them nor its type or category
 is set apart, so on a Portuguese text, say, a layout without `ã` or `ç` sits where its Effort or SFB
 puts it, with its note. A layout that comes with the app types what its author's design types, so on
-a Portuguese text most of them lack letters and say so on their cards; Magic Romak, the three Hands
-Down and T-34 type them, and a layout of your own can start with an
+a Portuguese text most of them lack letters and say so on their cards; Romak, Magic Romak, the three
+Hands Down and T-34 type them, and a layout of your own can start with an
 [Accents](editing.md#default-layers) layer. A layout is also held to the languages it is for, chosen in **Settings** in **Analyze**: one
 for Spanish that has no `ñ` says so on its card, whatever the text, though on an English text it
 skipped nothing for Spanish. A layout that comes with the app is for the languages its author
-states: English for most, English and Portuguese for Magic Romak, and none for those whose author
-names none, Qwerty among them.
+states: English and Portuguese for Romak and Magic Romak, and English for the rest, including
+those whose author names no language, Qwerty among them.
 
 **Measure languages**, beside them in **Settings**, adds the languages a layout performs well in.
 A layout performs well in a language when it types every letter the language needs and its Effort

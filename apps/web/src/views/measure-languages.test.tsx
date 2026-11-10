@@ -32,6 +32,9 @@ describe('Measure languages, in the Settings of the editor', () => {
     const user = userEvent.setup();
     await openOn('/analyze?layout=snth&corpus=en-general&sample=20000');
     const settings = await openSettings();
+    // SNTH's author states none, so it is for English; take that away to have it measured.
+    expect(language(settings, 'English')).toBeChecked();
+    await user.click(language(settings, 'English'));
     expect(language(settings, 'English')).not.toBeChecked();
 
     const found = await measure(settings);
@@ -56,7 +59,12 @@ describe('Measure languages, in the Settings of the editor', () => {
   }, 120_000);
 
   it('adds nothing, and says why, for a layout that does not perform well', async () => {
-    await openOn('/analyze?layout=qwerty&corpus=en-general&sample=20000');
+    const storage = freshStorage();
+    const layout = { ...(bundledLayout('qwerty') as Layout), id: 'my-qwerty', languages: [] };
+    await storage.put('layouts', 'my-qwerty', toCanonicalJson({ ...layout, name: 'My qwerty' }), {
+      message: 'seed',
+    });
+    await openOn('/analyze?layout=custom%3Amy-qwerty&corpus=en-general&sample=20000', storage);
     const settings = await openSettings();
     // Qwerty is the layout with the highest Effort on English: every other bundled layout beats it.
     const worst = (BUNDLED_EFFORTS.en.at(-1) as number).toFixed(2);
@@ -137,6 +145,7 @@ describe('Measure languages, in the Settings of the editor', () => {
     await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
     const settings = await openSettings();
     const user = userEvent.setup();
+    await user.click(language(settings, 'English'));
 
     await user.click(within(settings).getByRole('button', { name: 'Measure languages' }));
     expect(await within(settings).findByRole('alert')).toHaveTextContent(

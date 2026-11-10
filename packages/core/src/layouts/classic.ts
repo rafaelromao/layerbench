@@ -69,8 +69,8 @@ export interface ClassicDef {
   note?: string;
   /**
    * The languages its author states it is for, by tag: a text in a language, or a corpus of one,
-   * that the author's own page or keymap names counts. A layout whose author states none has none.
-   * Each is a language the layout types, every letter it needs (`lang/coverage.ts`).
+   * that the author's own page or keymap names counts. A layout whose author states none is for
+   * English. Each is a language the layout types, every letter it needs (`lang/coverage.ts`).
    */
   languages?: readonly string[];
 }
@@ -124,14 +124,14 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     id: 'romak',
     name: 'Romak',
     author: 'Rafael Romão',
-    // His write-up says it is built for Portuguese and English users, and draws no `à` for Romak 34,
-    // which Portuguese needs: the one language it types of the two is English.
-    languages: ['en'],
+    // His write-up says it is built for Portuguese and English users.
+    languages: ['en', 'pt'],
     base: { id: 'alpha1', name: 'Alpha 1' },
     // Romak 34 as its author writes it up (rafaelromao.github.io/romak, `docs/index.md`): Alpha 1,
     // a second alpha layer for the accents, `qu` and `ç`, and the Ç extension, a layer for the key
     // after `ç`. The thumbs are Repeat, space, Alpha 2 for the next key and a one-shot Shift. It
-    // defines no Numbers or Symbols.
+    // defines no Numbers or Symbols, and lists `áé = à` among its Alpha 2 combos: `à` is typed by
+    // `á` and `é` together.
     rows: 'q b m g k x l o u ;\nd n s t w z r a e i\ny f c p v j h , . /',
     thumbs: '⟲ space alpha2 shift',
     special: {
@@ -174,9 +174,12 @@ export const CLASSIC_DEFS: ClassicDef[] = [
         },
       },
     ],
+    combos: [
+      { id: 'à', keys: ['RHM', 'RHR'], binding: { kind: 'kp', symbol: 'à' }, layers: ['alpha2'] },
+    ],
     repeatPolicy: { doubledLetters: 'repeatKey' },
     description:
-      'Romak 34 (3x5+2) for Portuguese and English: a repeat key, Alpha 2 for the accents, qu and ç, and the Ç extension.',
+      'Romak 34 (3x5+2) for Portuguese and English: a repeat key, Alpha 2 for the accents, qu and ç, the combo of á and é that types à, and the Ç extension.',
     link: 'https://rafaelromao.github.io/romak',
   },
   {
@@ -188,63 +191,54 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     id: 'dvorak',
     name: 'Dvorak',
     author: 'August Dvorak',
-    languages: ['en'],
     rows: "' , . p y f g c r l\na o e u i d h t n s\n; q j k x b m w v z",
   },
   {
     id: 'colemak',
     name: 'Colemak',
     author: 'Shai Coleman',
-    languages: ['en'],
     rows: 'q w f p g j l u y ;\na r s t d h n e i o\nz x c v b k m , . /',
   },
   {
     id: 'colemak-dh',
     name: 'Colemak-DH',
     author: 'Shai Coleman / Steve P',
-    languages: ['en'],
     rows: 'q w f p b j l u y ;\na r s t g m n e i o\nz x c d v k h , . /',
   },
   {
     id: 'graphite',
     name: 'Graphite',
     author: 'StronglyTyped',
-    languages: ['en'],
     rows: "b l d w z ' f o u j\nn r t s g y h a e i\nq x m c v k p . - /",
   },
   {
     id: 'gallium',
     name: 'Gallium',
     author: 'Bryson',
-    languages: ['en'],
     rows: "b l d c v z y o u ,\nn r t s g p h a e i\nq x m w j k f ' ; .",
   },
   {
     id: 'canary',
     name: 'Canary',
     author: 'Eve',
-    languages: ['en'],
     rows: "w l y p b z f o u '\nc r s t g m n e i a\nq j v d k x h / , .",
   },
   {
     id: 'sturdy',
     name: 'Sturdy',
     author: 'Oxey',
-    languages: ['en'],
     rows: "v m l c p x f o u j\ns t r d y . n a e i\nz k q g w b h ' ; ,",
   },
   {
     id: 'aptv3',
     name: 'APTv3',
     author: 'Apsu',
-    languages: ['en'],
     rows: "w g d f b q l u o y\nr s t h k j n e a i\nx c m p v z , . ' /",
   },
   {
     id: 'hands-down-neu',
     name: 'Hands Down Neu',
     author: 'Alan Reiser',
-    languages: ['en'],
     rows: 'w f m p v / . q " \'\nr s n t b , a e i h\nx c l d g - u o y k',
     // `z` and `j` live in an eleventh column on the board this was drawn for. A 34-key split has
     // no such column, so they go on the free thumbs.
@@ -257,7 +251,6 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     id: 'night',
     name: 'Night',
     author: 'Luminespire',
-    languages: ['en'],
     rows: "b f l k q p g o u .\nn s h t m y c a e i\nx v j d z ' w / ; ,",
     // Twenty-five letters on the alphas and `r` on a thumb, which is what the layout is about: Shift
     // on the outer thumbs, `r` on the left inner one and space on the right inner one, as its author
@@ -273,7 +266,6 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     id: 'dusk',
     name: 'Dusk',
     author: 'Luminespire',
-    languages: ['en'],
     rows: "x f d p q j ' o u .\nn s t c y m h a e i\nb v k g w z l _ / ,",
     // `r` on the left thumb and space on the right one.
     thumbs: '∅ r space',
@@ -286,7 +278,6 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     id: 'recurva',
     name: 'Recurva',
     author: 'GalileoBlues',
-    languages: ['en'],
     rows: "f r d p v q j u o y\ns n t c b . h e a i\nz x k g w m l ; ' ,",
     link: 'https://github.com/GalileoBlues/Recurva',
   },
@@ -301,7 +292,6 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     id: 'nerps',
     name: 'Nerps',
     author: 'Sertain',
-    languages: ['en'],
     rows: "x l d p v z k o u ;\nn r t s g y h e i a\nj m c w q b f ' , .",
     link: 'https://www.reddit.com/r/KeyboardLayouts/comments/tpwyjc/',
   },
@@ -309,7 +299,6 @@ export const CLASSIC_DEFS: ClassicDef[] = [
     id: 'engram',
     name: 'Engram',
     author: 'Arno Klein',
-    languages: ['en'],
     rows: 'b y o u \' " l d w v\nc i e a , . h t s n\ng x j k - ? r m f p',
     // The original board has eleven columns: four finger columns a hand with the two inner ones
     // (`' " , . - ?`) between them, and a last one past the right pinky that holds `z` and `q`. A

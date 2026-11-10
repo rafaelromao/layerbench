@@ -93,7 +93,7 @@ _Avoid_: binding kind, key type
 
 **Languages**:
 The languages a layout is for, which Analyze and the Library hold it to: one for Spanish that has no
-`ñ` is told so on any text. A bundled layout is for the languages its author states. **Measure
+`ñ` is told so on any text. A bundled layout is for the languages its author states, English when it states none. **Measure
 languages**, in Settings in Analyze, adds the languages a layout types every letter of and performs
 well in: its Effort on the language's news text is in the better half of the bundled layouts'.
 _Avoid_: locales, tags

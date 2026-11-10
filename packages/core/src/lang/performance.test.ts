@@ -71,7 +71,8 @@ describe('measuring a layout’s languages', () => {
   const efforts = Object.fromEntries(
     PERFORMANCE_LANGUAGES.map((tag) => [tag, [250, 280, 300, 400]]),
   );
-  const qwerty = bundledLayout('qwerty') as Layout;
+  // Qwerty as a layout for no language yet: bundled, it is for English.
+  const qwerty: Layout = { ...(bundledLayout('qwerty') as Layout), languages: [] };
   const kinds = (layout: Layout, effort: (tag: string) => number) =>
     measureLayoutLanguages(layout, async (tag) => effort(tag), efforts).then((verdicts) =>
       Object.fromEntries(verdicts.map((v) => [v.tag, v.kind])),
@@ -144,47 +145,51 @@ describe('what each language is measured on', () => {
 
 /**
  * The languages each bundled layout is for are the ones its author states, in its definition (a
- * layout added as a document carries its own). An English corpus counts as English; a layout whose
- * author states none has none, and the editor's "Measure languages" can add the ones it performs
- * well in.
+ * layout added as a document carries its own): a text in a language, or a corpus of one, that the
+ * author's page or keymap names. A layout whose author states none is for English, and the editor's
+ * "Measure languages" can add the others it performs well in.
  */
 const STATED: Record<string, string[]> = {
-  // The write-up says Portuguese and English, and draws no `à` for Romak 34, which Portuguese needs.
-  romak: ['en'],
+  // Both write Portuguese and English: Romak types `à` with the combo of `á` and `é` on Alpha 2.
+  romak: ['en', 'pt'],
   'magic-romak': ['en', 'pt'],
-  qwerty: [],
-  dvorak: ['en'],
-  colemak: ['en'],
-  'colemak-dh': ['en'],
-  graphite: ['en'],
-  gallium: ['en'],
-  canary: ['en'],
-  sturdy: ['en'],
-  aptv3: ['en'],
-  'hands-down-neu': ['en'],
-  night: ['en'],
-  dusk: ['en'],
-  recurva: ['en'],
-  focal: [],
-  nerps: ['en'],
-  engram: ['en'],
-  sunlight: [],
-  snth: [],
-  aptmak: [],
-  bird: [],
-  'bird-30': [],
-  'hands-down-gold': ['en'],
-  'hands-down-promethium': [],
-  'hands-down-vibranium': ['en'],
-  rsthd: [],
-  't-34': [],
-  'magic-sturdy': ['en'],
-  enthium: ['en'],
-  nordrassil: ['en'],
-  finch: ['en'],
-  caksoylar: [],
-  uno: ['en'],
-  'ben-vallack-piano': [],
+  ...Object.fromEntries(
+    [
+      'qwerty',
+      'dvorak',
+      'colemak',
+      'colemak-dh',
+      'graphite',
+      'gallium',
+      'canary',
+      'sturdy',
+      'aptv3',
+      'hands-down-neu',
+      'night',
+      'dusk',
+      'recurva',
+      'focal',
+      'nerps',
+      'engram',
+      'sunlight',
+      'snth',
+      'aptmak',
+      'bird',
+      'bird-30',
+      'hands-down-gold',
+      'hands-down-promethium',
+      'hands-down-vibranium',
+      'rsthd',
+      't-34',
+      'magic-sturdy',
+      'enthium',
+      'nordrassil',
+      'finch',
+      'caksoylar',
+      'uno',
+      'ben-vallack-piano',
+    ].map((id) => [id, ['en']]),
+  ),
 };
 
 describe('bundled layouts’ languages', () => {

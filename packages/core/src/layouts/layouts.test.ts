@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getGeometryPreset } from '../geometry/presets.js';
-import { producibleSymbols } from '../lang/coverage.js';
+import { layoutLanguageCoverage, producibleSymbols } from '../lang/coverage.js';
 import { layoutCategory } from '../layout/categories.js';
 import { compileLayout } from '../layout/compile.js';
 import type { Binding } from '../layout/types.js';
@@ -94,7 +94,7 @@ describe('Romak numbers and symbols', () => {
  * Romak 34 as its author writes it up (rafaelromao.github.io/romak, `docs/index.md`): Alpha 1, a
  * second alpha layer for the accents, `qu` and `ç`, and the Ç extension, a one-shot layer for the key
  * after `ç`; Repeat, space, Alpha 2 and a one-shot Shift on the thumbs. The write-up defines no
- * Numbers or Symbols, so the layout has none.
+ * Numbers or Symbols, so the layout has none, and lists `áé = à` among the combos of Alpha 2.
  */
 describe('Romak 34', () => {
   const OPTS = { caseMode: 'fold', crossWord: 'reset' } as const;
@@ -162,9 +162,11 @@ describe('Romak 34', () => {
     });
   });
 
-  it('is its letters and these layers alone: no Numbers, Symbols, Accents, combo or hold', () => {
+  it('is its letters and these layers alone: no Numbers, Symbols, Accents or hold, and one combo', () => {
     expect(romak.layers.map((l) => l.id)).toEqual(['alpha1', 'alpha2', 'ccedil']);
-    expect(romak.combos ?? []).toEqual([]);
+    expect(romak.combos).toEqual([
+      { id: 'à', keys: ['RHM', 'RHR'], binding: { kind: 'kp', symbol: 'à' }, layers: ['alpha2'] },
+    ]);
     expect(romak.conditionalLayers ?? []).toEqual([]);
     expect(
       Object.values(romak.layers[0].bindings).some((b) => b.kind === 'hold_tap' || b.kind === 'lt'),
@@ -181,6 +183,11 @@ describe('Romak 34', () => {
     expect(keys('ação')).toEqual(['RHM', 'R0', 'LBM', 'LHI']);
     expect(keys('ções')).toEqual(['R0', 'LBM', 'LBI']);
     expect(keys('não é')).toEqual(['LHR', 'R0', 'RHI', 'RTM', 'L0', 'R0', 'RHR']);
+  });
+
+  it('types à with the combo of á and é on Alpha 2, which Portuguese needs', () => {
+    expect(keys('à')).toEqual(['R0', 'combo:à']);
+    expect(layoutLanguageCoverage(compiled, 'pt')?.missingRequired).toEqual([]);
   });
 
   it('types qu with one press of Alpha 2, and a doubled letter with Repeat', () => {
@@ -390,7 +397,7 @@ describe('layouts as their authors designed them', () => {
     (id, layout) => {
       const def = written.get(id);
       if (!def) throw new Error(`no definition for ${id}`);
-      expect(layout).toEqual({ ...classicLayout(def), languages: [...(def.languages ?? [])] });
+      expect(layout).toEqual({ ...classicLayout(def), languages: [...(def.languages ?? ['en'])] });
       expect(layout.combos ?? []).toEqual([]);
       expect(layout.conditionalLayers ?? []).toEqual([]);
       expect(Object.values(layout.layers[0].bindings).some((b) => b.kind === 'key_repeat')).toBe(

@@ -377,8 +377,8 @@ and has no Numbers, Symbols, Extras or Accents, as the write-up has none for 34 
 right inner thumb turns Alpha 2 on for the next key: the accents `ô` `ó` `ú` `ã` `á` `é` `í` `õ` `â`
 `ê`, `qu` in one press, and `ç`, with `'` and `_` on its thumbs. Typing `ç` leaves the Ç extension on
 for the next key, with `ão` and `ões` in one press each, and `ã` and `õ`. The thumbs are Repeat,
-space, Alpha 2 and a one-shot Shift. The write-up has no combo and no `à`, so Portuguese lists `à`
-as a letter Romak lacks.
+space, Alpha 2 and a one-shot Shift. The write-up lists one combo, `á` and `é` together on Alpha 2,
+which types `à`.
 
 Magic Romak is its author's keymap, and has no Extras and no Accents, as the keymap has none. Its
 keys, layers and combos are read from the keymap-drawer file its author keeps for it, as the

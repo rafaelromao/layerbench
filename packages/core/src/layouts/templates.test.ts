@@ -628,14 +628,14 @@ const ACCENTLESS = Object.fromEntries(
  * What each layout with layers past its base lacks of each language, where it lacks anything: its
  * required letters, its optional ones and its punctuation. Magic Romak's lack what its keymap has no
  * way to: `ß`, `œ` and `æ`, the French quotes, `¿` and `¡`. Romak's lack what its write-up has no
- * way to: it types Portuguese's accents but `à`, and none of the other languages' own.
+ * way to: it types Portuguese in full but for `ü`, and none of the other languages' own.
  */
 const LACKS: Record<string, Record<string, string[][]>> = {
   romak: {
-    pt: [['à'], ['ü'], []],
+    pt: [[], ['ü'], []],
     es: [['ñ', 'ü'], [], ['¿', '¡']],
-    fr: [['à', 'è', 'ë', 'î', 'ï', 'ù', 'û', 'ü', 'ÿ', 'œ'], ['æ'], ['«', '»']],
-    it: [['à', 'è', 'ì', 'î', 'ò', 'ù'], [], []],
+    fr: [['è', 'ë', 'î', 'ï', 'ù', 'û', 'ü', 'ÿ', 'œ'], ['æ'], ['«', '»']],
+    it: [['è', 'ì', 'î', 'ò', 'ù'], [], []],
     de: [['ä', 'ö', 'ü', 'ß'], [], []],
   },
   'magic-romak': {
@@ -697,7 +697,7 @@ describe("every bundled layout is its author's design, with what its layers leav
           it("is its definition as it builds it, with its author's home row mods and nothing more", () => {
             const def = [...CLASSIC_DEFS, ...SMALL_DEFS].find((d) => d.id === layout.id);
             const built = def?.homeRowMods ? withHomeRowMods(original, def.homeRowMods) : original;
-            expect(layout).toEqual({ ...built, languages: [...(def?.languages ?? [])] });
+            expect(layout).toEqual({ ...built, languages: [...(def?.languages ?? ['en'])] });
           });
 
         it(
