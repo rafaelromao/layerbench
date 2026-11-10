@@ -74,7 +74,9 @@ rule here moves a key, and keep `templates.test.ts` asserting each rule.
   analyzes the layout in hand once a language and counts the stored Efforts below its own;
   `pnpm languages` writes those, the bundled layouts' Efforts on each language lowest first, to
   `lang/efforts.json`, and a test fails when the file drifts, so run it after a change that moves a
-  layout's Effort or adds or removes a layout.
+  layout's Effort or adds or removes a layout. The tests that measure the Efforts are one file a
+  language (`lang/performance-<tag>.test.ts`), so they run in parallel; `performance.test.ts` fails
+  when a language has none.
 - **The 24-key core is Magic Romak's keymap** (github.com/rafaelromao/keyboards, `numbers_layer` and
   `symbols_layer`). Numbers is a keypad on the right, with the brackets and the arithmetic beside
   them on the left; brackets on Numbers stay on the left hand. Every board gets the same core, so

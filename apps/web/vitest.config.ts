@@ -10,10 +10,10 @@ export default defineConfig({
     // Analyses run for real in these tests, on a small sample.
     // Coverage slows every test, and the heavy ones run for tens of seconds on a CI runner with
     // dozens of jsdom workers sharing a few cores; one that passes in a minute on a laptop has
-    // been seen to miss its limit there. A second try tells that apart from a test that is broken.
-    // An editing test of 8 seconds here has taken over 30 on all three tries on a busy runner.
+    // been seen to miss its limit there. A second try tells that apart from a test that is broken;
+    // a third gave a broken test two more minutes to fail in, and no more certainty.
     testTimeout: process.env.CI ? 60_000 : 30_000,
-    retry: process.env.CI ? 2 : 0,
+    retry: process.env.CI ? 1 : 0,
     coverage: {
       provider: 'v8',
       include: ['src/**'],

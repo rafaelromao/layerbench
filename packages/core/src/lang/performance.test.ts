@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { corporaRoot } from '../golden/paths.js';
 import { compileLayout } from '../layout/compile.js';
@@ -13,7 +13,6 @@ import {
   goldenLayouts,
 } from '../layouts/index.js';
 import { layoutLanguageCoverage } from './coverage.js';
-import { bundledEfforts, measureEfforts } from './measure.js';
 import {
   BUNDLED_EFFORTS,
   beatenBy,
@@ -26,6 +25,19 @@ import {
   withAddedLanguages,
 } from './performance.js';
 import { LANGUAGE_PROFILES } from './profiles.js';
+
+/** The languages measured by a `performance-<tag>.test.ts` of their own, as the files say. */
+const measuringFiles = (): string[] => {
+  const dir = new URL('.', import.meta.url);
+  return readdirSync(dir)
+    .flatMap((name) => {
+      const tag = /^performance-(\w+)\.test\.ts$/.exec(name)?.[1];
+      if (tag === undefined) return [];
+      const text = readFileSync(new URL(name, dir), 'utf8');
+      return text.includes(`measuresEfforts('${tag}')`) ? [tag] : [];
+    })
+    .sort();
+};
 
 describe('performing well in a language', () => {
   // The Efforts of four bundled layouts: fewer than half of them must beat a layout's Effort.
@@ -259,23 +271,10 @@ describe('the bundled layouts’ Efforts on each language', () => {
     expect(effortsFileText(BUNDLED_EFFORTS), 'run `pnpm languages`').toBe(text);
   });
 
-  for (const tag of PERFORMANCE_LANGUAGES) {
-    // An analysis of every bundled layout, about three times slower under coverage on a CI runner.
-    it(`for ${tag}: are what the engine measures`, { timeout: 180_000 }, async () => {
-      expect(await measureEfforts(tag), 'run `pnpm languages`').toEqual(BUNDLED_EFFORTS[tag]);
-    });
-
-    it(`for ${tag}: put each bundled layout where counting the others puts it`, {
-      timeout: 180_000,
-    }, async () => {
-      const measured = await bundledEfforts(tag);
-      for (const [id, effort] of measured) {
-        // The rule on the unrounded Efforts of the others, with this layout counted among them.
-        const better = [...measured.values()].filter((other) => other < effort).length;
-        expect(performsWell(effort, BUNDLED_EFFORTS[tag]), `${id} ${tag}`).toBe(
-          better * 2 < measured.size,
-        );
-      }
-    });
-  }
+  // The analyses of every bundled layout, per language, are one file each
+  // (performance-<tag>.test.ts): a file's tests run one after another, and these take close to a
+  // minute each on a CI runner.
+  it('are measured by one file for each language', () => {
+    expect(measuringFiles()).toEqual([...PERFORMANCE_LANGUAGES].sort());
+  });
 });
