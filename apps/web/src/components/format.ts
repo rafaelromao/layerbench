@@ -34,6 +34,16 @@ export function formatPart(value: number, unit: Unit): string {
   }
 }
 
+/**
+ * A key's share of the presses (0–1) as its tooltip writes it: two places, the way the key's
+ * numbers give it, `under 0.01%` for a key too rare to show one and `0%` for none.
+ */
+export function formatKeyShare(share: number): string {
+  if (!(share > 0)) return '0%';
+  const percent = share * 100;
+  return percent < 0.01 ? 'under 0.01%' : `${percent.toFixed(2)}%`;
+}
+
 /** Item shares run small, so sub-one-percent values keep an extra digit. */
 export function formatItem(item: RuleItem): string {
   if (item.percent !== undefined) {

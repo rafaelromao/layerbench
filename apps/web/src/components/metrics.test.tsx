@@ -35,28 +35,19 @@ describe('a metric card’s items', () => {
     expect(screen.queryByText(KEYS)).toBeNull();
   });
 
-  it('writes them under the item when the card is enlarged', async () => {
+  it('keeps them in the tooltip alone when the card is enlarged', async () => {
     render(<MetricCard result={result} describeItem={() => KEYS} />);
     await userEvent
       .setup()
       .click(screen.getByRole('button', { name: 'Enlarge Same finger bigrams' }));
-    expect(within(screen.getByRole('dialog')).getByText(KEYS)).toBeInTheDocument();
+    const dialog = within(screen.getByRole('dialog'));
+    expect(dialog.getByRole('button', { name: '⟳␣' })).toHaveAttribute('title', `⟳␣\n${KEYS}`);
+    expect(dialog.queryByText(KEYS)).toBeNull();
   });
 
   it('is the label alone where nothing describes the keys', () => {
     render(<MetricCard result={result} />);
     expect(screen.getByRole('button', { name: '⟳␣' })).toHaveAttribute('title', '⟳␣');
-  });
-
-  it('keeps the value, the bar and the keys in separate lines when enlarged', async () => {
-    render(<MetricCard result={result} describeItem={() => KEYS} />);
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'Enlarge Same finger bigrams' }));
-    const row = within(screen.getByRole('dialog')).getByText(KEYS).closest('li');
-    // The keys' line is the row's own, under the label, bar and value, which share one line.
-    expect(row?.firstElementChild?.querySelector('button')).not.toBeNull();
-    expect(row?.firstElementChild?.textContent).not.toContain(KEYS);
   });
 });
 
