@@ -1,6 +1,7 @@
 import { keyDistance } from '../geometry/distance.js';
 import { FINGERS, type Finger } from '../geometry/types.js';
 import type { CompiledLayout } from '../layout/compile.js';
+import { shiftKeysOffered } from '../layout/keys.js';
 import {
   type ActivatorDef,
   type Binding,
@@ -59,10 +60,31 @@ const WORD_LIMIT = 128;
 /** How many times a way of typing a symbol is tried, each time with other modifiers held. */
 const MOD_TRIES = 8;
 
+/**
+ * How many choices of the presses that give Shift a way of typing a symbol is tried with. The
+ * one-shot Shifts count as one press, the others standing in for it, so a way rarely has more: a
+ * shifted accent and its capital on a board with several held Shifts. Past it, the presses after the
+ * first that `holdMod` finds are not tried for the earlier times the way asks for Shift.
+ */
+const SHIFT_TRIES = 16;
+
 /** Layer taps another key can make instead: nothing they do depends on which key it was. */
 const STAND_IN_KINDS: ReadonlySet<BindingKind> = new Set(['sl', 'tog', 'to']);
 
 const NO_KEYS: ReadonlySet<number> = new Set();
+
+/** A press that gives a modifier: a key tapped as a sticky one or held, or a combo tapped. */
+type ModPress = { type: 'tap' | 'hold'; pos: number } | { type: 'chord'; combo: number };
+
+/** Either Shift: what a capital asks for, the left or the right one alike. */
+const isShiftMod = (mod: Mod) => mod === 'LSHIFT' || mod === 'RSHIFT';
+const asksForShift = (choice: readonly Mod[]) => choice.some(isShiftMod);
+
+/** Whether a choice of modifiers is met by those held, either Shift standing for a Shift. */
+function choiceMet(choice: ModChoice, held: ReadonlySet<Mod>): boolean {
+  if (modsMet(choice, held)) return true;
+  return asksForShift(choice) && (held.has('LSHIFT') || held.has('RSHIFT'));
+}
 
 /** A press of the word another key could make: where it is, and every key's event for it. */
 interface WordSlot extends Choosable {
@@ -148,6 +170,31 @@ export class Simulator {
    * (`tryProducer`).
    */
   private readonly modAvoid = new Set<number>();
+  /**
+   * Whether the key a capital takes its Shift from is a choice of the word: in model case, on a
+   * layout with more than one key or combo that gives Shift. A way that asks for Shift is then
+   * tried with each of them, and the cheapest is kept (`cheapest`).
+   */
+  private readonly shiftChoice: boolean;
+  /**
+   * The keys that may give Shift on some layer, and the combos: every one whose binding names a
+   * Shift anywhere in it, in order. The only ones `holdMod` looks at for a Shift.
+   */
+  private readonly shiftKeys: number[];
+  private readonly shiftCombos: CompiledLayout['combos'];
+  /** Every key, in order: where `holdMod` looks for any other modifier. */
+  private readonly allKeys: number[];
+  /**
+   * For the way being tried, each time it asks for Shift (a shifted accent, then its letter, say):
+   * which of the presses that give it the way takes, in `holdMod`'s order, and how many there were.
+   * `shiftAt` counts the times so far in the try.
+   */
+  private readonly shiftPicks: number[] = [];
+  /** `holdMod`'s presses found, and the other one-shot Shifts, kept from call to call. */
+  private readonly modFound: ModPress[] = [];
+  private readonly stickyOthers: number[] = [];
+  private readonly shiftsFound: number[] = [];
+  private shiftAt = 0;
   private readonly fold: boolean;
   private readonly repeatPolicy: 'repeat_key' | 'tap_twice';
   /**
@@ -201,6 +248,13 @@ export class Simulator {
   ) {
     this.machine = new Machine(compiled);
     this.fold = options.caseMode === 'fold';
+    this.shiftChoice = !this.fold && shiftKeysOffered(compiled.layout) > 1;
+    const namesShift = (b: Binding) => JSON.stringify(b).includes('SHIFT');
+    this.allKeys = compiled.keys.map((_, pos) => pos);
+    this.shiftKeys = this.allKeys.filter((pos) =>
+      compiled.layers.some((l) => namesShift(l.bindings[pos])),
+    );
+    this.shiftCombos = compiled.combos.filter((c) => namesShift(c.binding));
     this.index = options.producerIndex ?? enumerateProducers(compiled, options.caseMode);
     this.repeatPolicy =
       options.repeatPolicy ??
@@ -577,8 +631,9 @@ export class Simulator {
   ): boolean {
     const m = this.machine;
     for (const choice of choices) {
-      if (modsMet(choice, m.activeMods())) continue;
-      const several = choice.length > 1;
+      if (choiceMet(choice, m.activeMods())) continue;
+      // Either Shift is one choice: `holdMod` finds the keys of both.
+      const several = choice.length > 1 && !choice.every(isShiftMod);
       const at = this.modPicks.length;
       let took = choice.length;
       for (let i = several ? (this.modStarts[at] ?? 0) : 0; i < choice.length; i++) {
@@ -589,7 +644,7 @@ export class Simulator {
         const holdsAt = holdsOut.length;
         if (
           this.holdMod(choice[i], events, holdsOut, pressed, heldFor) &&
-          modsMet(choice, m.activeMods())
+          choiceMet(choice, m.activeMods())
         ) {
           took = i;
           break;
@@ -640,83 +695,143 @@ export class Simulator {
     const busy = new Set<string>();
     for (const pos of [...pressed, ...this.modAvoid]) if (keys[pos].thumb) busy.add(keys[pos].hand);
     const holdable = (pos: number) => free(pos) && !(keys[pos].thumb && busy.has(keys[pos].hand));
-    const isShift = mod === 'LSHIFT' || mod === 'RSHIFT';
+    const isShift = isShiftMod(mod);
+    // Either Shift gives a Shift.
+    const sameMod = (other: Mod) => other === mod || (isShift && isShiftMod(other));
     const sk = this.compiled.shiftKey;
+    // The presses that give the modifier, in the order below. Where Shift is a choice of the word,
+    // every one is found, and the way takes the one `shiftPicks` says; otherwise the first. The
+    // one-shot Shifts are one press, the first of them, and the others stand in for it, chosen
+    // with the whole word as a layer key is (`offerShiftStandIns`).
+    const at = isShift ? this.shiftAt++ : -1;
+    const pick = isShift ? (this.shiftPicks[at] ?? 0) : 0;
+    const want = isShift && this.shiftChoice ? Infinity : pick + 1;
+    const found = this.modFound;
+    const others = this.stickyOthers;
+    found.length = 0;
+    others.length = 0;
+    const add = (type: 'tap' | 'hold', pos: number) => {
+      for (const f of found) if (f.type === type && f.pos === pos) return;
+      if (type === 'tap' && isShift && this.shiftChoice) {
+        for (const f of found) {
+          if (f.type !== 'tap') continue;
+          if (!others.includes(pos)) others.push(pos);
+          return;
+        }
+      }
+      found.push({ type, pos });
+    };
     /** The shift key, if it does what `kind` says on this layer: tapped as a sticky Shift, or held. */
-    const shiftKeyAs = (kind: 'sk' | 'hold'): boolean => {
-      if (!sk || !(kind === 'hold' ? holdable(sk.key) : free(sk.key))) return false;
+    const shiftKeyAs = (kind: 'sk' | 'hold') => {
+      if (!sk || !(kind === 'hold' ? holdable(sk.key) : free(sk.key))) return;
       const r = m.resolve(sk.key);
       const peeled = peelBinding(m, r.binding, kind === 'hold' ? 'hold' : 'tap');
       if (
         kind === 'sk' &&
         (peeled.kind === 'sk' || peeled.kind === 'mod_morph' || peeled.kind === 'adaptive')
-      ) {
-        events.push(...m.perform({ type: 'tap', pos: sk.key }));
-        return true;
-      }
-      if (kind === 'hold' && peeled.kind === 'mod') {
-        events.push(...m.perform({ type: 'hold_press', pos: sk.key }));
-        holdsOut.push(sk.key);
-        return true;
-      }
-      // The shift key is no shift on this layer: another key, or a combo, may give it.
-      return false;
+      )
+        add('tap', sk.key);
+      else if (kind === 'hold' && peeled.kind === 'mod') add('hold', sk.key);
+      // Else the shift key is no shift on this layer: another key, or a combo, may give it.
     };
     /**
      * Search active layers for a sticky or held modifier key, any modifier: a thumb first, as a
      * layout's shift key is one, then a finger on the other hand from the keys it is held for, as a
      * home row mod is held by the hand that is not typing. `sticky` and `held` say which of the two
-     * ways it may be given.
+     * ways it may be given; a key that taps it and holds it offers both.
      */
-    const search = (sticky: boolean, held: boolean): boolean => {
+    const candidates = isShift ? this.shiftKeys : this.allKeys;
+    const search = (sticky: boolean, held: boolean) => {
       const typing = new Set([...heldFor].map((pos) => positions[pos].hand));
       const pass = (pos: number) => (keys[pos].thumb ? 0 : typing.has(positions[pos].hand) ? 2 : 1);
       for (let at = 0; at < 3; at++) {
-        for (let pos = 0; pos < keys.length; pos++) {
+        for (const pos of candidates) {
+          if (found.length >= want) return;
           if (!free(pos) || pass(pos) !== at) continue;
           const r = m.resolve(pos);
           const tapPeeled = peelBinding(m, r.binding, 'tap');
-          if (sticky && tapPeeled.kind === 'sk' && tapPeeled.mod === mod) {
-            events.push(...m.perform({ type: 'tap', pos }));
-            return true;
-          }
+          if (sticky && tapPeeled.kind === 'sk' && sameMod(tapPeeled.mod)) add('tap', pos);
+          if (found.length >= want) return;
           const holdPeeled = peelBinding(m, r.binding, 'hold');
           // A key that holds others with it would hold them for the capital too.
           if (
             held &&
             holdable(pos) &&
             holdPeeled.kind === 'mod' &&
-            holdPeeled.mod === mod &&
+            sameMod(holdPeeled.mod) &&
             !holdPeeled.also?.length
-          ) {
-            events.push(...m.perform({ type: 'hold_press', pos }));
-            holdsOut.push(pos);
-            return true;
-          }
+          )
+            add('hold', pos);
         }
       }
       // Then a typing combo that taps a sticky modifier. A held chord is let go in the same action,
       // so a combo can give a modifier only as a one-shot.
-      if (!sticky) return false;
-      for (const c of this.compiled.combos) {
+      if (!sticky) return;
+      for (const c of isShift ? this.shiftCombos : this.compiled.combos) {
+        if (found.length >= want) return;
         if (c.role !== 'typing' || !m.comboAvailable(c.idx)) continue;
         const peeled = peelBinding(m, c.binding, 'tap');
-        if (peeled.kind === 'sk' && peeled.mod === mod) {
-          events.push(...m.perform({ type: 'chord', combo: c.idx }));
-          return true;
-        }
+        if (peeled.kind === 'sk' && sameMod(peeled.mod))
+          found.push({ type: 'chord', combo: c.idx });
       }
-      return false;
     };
-    // A layout that declared how a capital is typed tries each way that is on, in its order, on the
-    // shift key and then on every other key, before the next way. Otherwise the shift key's kind
-    // goes first, and then any key.
+    // A layout that declared how a capital is typed takes the first way that is on and that some
+    // key gives, in its order: the shift key, and then every other key, that give it that way.
+    // Otherwise the shift key's kind goes first, and then any key.
     const declared = isShift ? this.compiled.shiftWays : null;
     if (declared) {
-      return declared.some((way) => shiftKeyAs(way) || search(way === 'sk', way === 'hold'));
+      for (const way of declared) {
+        shiftKeyAs(way);
+        search(way === 'sk', way === 'hold');
+        if (found.length > 0) break;
+      }
+    } else {
+      if (isShift && sk) shiftKeyAs(sk.kind);
+      search(true, true);
     }
-    if (isShift && sk && shiftKeyAs(sk.kind)) return true;
-    return search(true, true);
+    if (isShift) this.shiftsFound[at] = Math.max(this.shiftsFound[at] ?? 0, found.length);
+    const press = found[pick];
+    if (press === undefined) return false;
+    if (press.type === 'chord') events.push(...m.perform({ type: 'chord', combo: press.combo }));
+    else if (press.type === 'tap') {
+      const before = others.length ? m.state.snapshot() : null;
+      const evs = m.perform({ type: 'tap', pos: press.pos });
+      events.push(...evs);
+      if (before && evs.length === 1) this.offerShiftStandIns(evs[0], [...others], before);
+    } else {
+      events.push(...m.perform({ type: 'hold_press', pos: press.pos }));
+      holdsOut.push(press.pos);
+    }
+    return true;
+  }
+
+  /**
+   * The other keys that tap a one-shot Shift where the planner tapped one: each is tapped from
+   * where the board was just before, and stands in if it types nothing and leaves the board where
+   * the planner's key left it, either Shift standing for the other. Which of them the word presses
+   * is chosen when it ends, as for a layer tap.
+   */
+  private offerShiftStandIns(tapped: KeyEvent, others: number[], before: Snapshot): void {
+    const m = this.machine;
+    const after = m.state.snapshot();
+    const found: KeyEvent[] = [];
+    for (const pos of others) {
+      m.state.restore(before);
+      m.recomputeMask();
+      const evs = m.perform({ type: 'tap', pos });
+      if (evs.length !== 1 || evs[0].symbols !== '') continue;
+      const sticky = m.state.stickyMods;
+      if (sticky.length === after.stickyMods.length)
+        sticky.forEach((s, i) => {
+          const planned = after.stickyMods[i].mod;
+          if (s.mod !== planned && isShiftMod(s.mod) && isShiftMod(planned))
+            sticky[i] = { ...s, mod: planned };
+        });
+      if (m.state.matches(after)) found.push(evs[0]);
+    }
+    m.state.restore(after);
+    m.recomputeMask();
+    if (found.length) this.standIns.set(tapped, found);
   }
 
   /**
@@ -794,6 +909,7 @@ export class Simulator {
 
   private tryProducerOnce(p: Producer, token: string): KeyEvent[] | null {
     const m = this.machine;
+    this.shiftAt = 0;
     const snap = m.state.snapshot();
     const holdsBefore = [...this.plannerHolds];
     const events: KeyEvent[] = [];
@@ -1158,10 +1274,34 @@ export class Simulator {
 
   private firstThatWorks(cands: Producer[], token: string): KeyEvent[] | null {
     for (const p of cands) {
-      const events = this.tryProducer(p, token);
+      const events = this.asksShift(p) ? this.cheapest([p], token) : this.tryProducer(p, token);
       if (events) return events;
     }
     return null;
+  }
+
+  /**
+   * The next choice of the presses that give Shift: the last time the way asked for Shift that has
+   * another press left takes it, the times before it what they took, and those after it start over.
+   * False when none has one left.
+   */
+  private nextShiftPicks(): boolean {
+    const picks = this.shiftPicks;
+    const found = this.shiftsFound;
+    let k = found.length - 1;
+    while (k >= 0 && (picks[k] ?? 0) + 1 >= found[k]) k--;
+    if (k < 0) return false;
+    for (let j = 0; j < k; j++) picks[j] ??= 0;
+    picks[k] = (picks[k] ?? 0) + 1;
+    picks.length = k + 1;
+    found.length = k + 1;
+    return true;
+  }
+
+  /** Whether the key this way takes Shift from is a choice of the word (`shiftChoice`). */
+  private asksShift(p: Producer): boolean {
+    if (!this.shiftChoice) return false;
+    return (p.mods?.some(asksForShift) ?? false) || (p.deadMods?.some(asksForShift) ?? false);
   }
 
   /**
@@ -1171,10 +1311,12 @@ export class Simulator {
    * then the way that makes the word so far the fewest same-finger bigrams, then skipgrams, then
    * the least effort (`wordCostWith`); then the candidates' own order. Those measures are fixed —
    * the default effort grid, not the rule set's — so what is typed never depends on the rules it
-   * is scored by.
+   * is scored by. A way that asks for Shift, where more than one key gives it, is a way for each of
+   * them, in `holdMod`'s order: Shift is part of the word, held or one-shot.
    */
   private cheapest(cands: Producer[], token: string): KeyEvent[] | null {
-    if (cands.length <= 1) return this.firstThatWorks(cands, token);
+    if (cands.length === 0 || (cands.length === 1 && !this.asksShift(cands[0])))
+      return this.firstThatWorks(cands, token);
     const m = this.machine;
     const start = m.state.snapshot();
     const holds = [...this.plannerHolds];
@@ -1193,33 +1335,40 @@ export class Simulator {
       holds: number[];
     } | null = null;
     for (const p of cands) {
-      const events = this.tryProducer(p, token);
-      if (events) {
-        let presses = 0;
-        for (const e of events) if (e.kind !== 'hold_release') presses++;
-        const held = this.plannerHolds.size;
-        let cost: PressCost | null = null;
-        let better =
-          best === null ||
-          presses < best.presses ||
-          (presses === best.presses && held < best.holds.length);
-        if (!better && best !== null && presses === best.presses && held === best.holds.length) {
-          cost = this.wordCostWith(events);
-          best.cost ??= this.wordCostWith(best.events);
-          better = compareCost(cost, best.cost) < 0;
+      const shifts = this.asksShift(p);
+      this.shiftPicks.length = 0;
+      this.shiftsFound.length = 0;
+      for (let tries = 1; ; tries++) {
+        const events = this.tryProducer(p, token);
+        if (events) {
+          let presses = 0;
+          for (const e of events) if (e.kind !== 'hold_release') presses++;
+          const held = this.plannerHolds.size;
+          let cost: PressCost | null = null;
+          let better =
+            best === null ||
+            presses < best.presses ||
+            (presses === best.presses && held < best.holds.length);
+          if (!better && best !== null && presses === best.presses && held === best.holds.length) {
+            cost = this.wordCostWith(events);
+            best.cost ??= this.wordCostWith(best.events);
+            better = compareCost(cost, best.cost) < 0;
+          }
+          if (better) {
+            best = {
+              events,
+              presses,
+              cost,
+              state: m.state.snapshot(),
+              holds: [...this.plannerHolds],
+            };
+          }
         }
-        if (better) {
-          best = {
-            events,
-            presses,
-            cost,
-            state: m.state.snapshot(),
-            holds: [...this.plannerHolds],
-          };
-        }
+        restore(start, holds);
+        if (!shifts || tries === SHIFT_TRIES || !this.nextShiftPicks()) break;
       }
-      restore(start, holds);
     }
+    this.shiftPicks.length = 0;
     if (best === null) return null;
     restore(best.state, best.holds);
     return best.events;
