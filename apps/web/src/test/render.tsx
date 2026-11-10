@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import type { StorageAdapter } from '@layerbench/core';
+import type { Corpus, CorpusLoader, StorageAdapter } from '@layerbench/core';
 import { nodeCorpusLoader } from '@layerbench/core/node';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import { type RenderResult, render, screen, waitFor, within } from '@testing-library/react';
@@ -58,8 +58,29 @@ export async function openSettings(): Promise<HTMLElement> {
   return screen.getByRole('dialog', { name: 'Settings' });
 }
 
+/**
+ * The corpora, read from disk once for each test file and handed to every engine it makes. Each
+ * engine still starts with no report: a test sees its analysis run, as the app's first one does.
+ */
+const corpora: CorpusLoader = (() => {
+  const disk = nodeCorpusLoader(testCorporaRoot());
+  const read = new Map<string, Promise<Corpus>>();
+  return {
+    list: () => disk.list(),
+    load(id) {
+      let corpus = read.get(id);
+      if (!corpus) {
+        corpus = disk.load(id);
+        read.set(id, corpus);
+        corpus.catch(() => read.delete(id));
+      }
+      return corpus;
+    },
+  };
+})();
+
 export function testClient(): AnalysisClient {
-  return new DirectClient(new AnalysisCore(nodeCorpusLoader(testCorporaRoot())));
+  return new DirectClient(new AnalysisCore(corpora));
 }
 
 /**

@@ -12,6 +12,7 @@ import {
   type RuleItem,
   sameName,
   toCanonicalJson,
+  withAddedLanguages,
 } from '@layerbench/core';
 import type { useNavigate } from '@tanstack/react-router';
 import {
@@ -47,6 +48,7 @@ import { Tabs, tabId, tabPanelId } from '../../components/Tabs.js';
 import { freeCopyName, type SaveOptions } from '../../custom/save-new.js';
 import type { useAnalysisClient } from '../../engine/client-context.js';
 import { expandPositions, HEAT_LABELS, heatMap, layerShare } from '../../engine/heat.js';
+import { measureLanguagesOf } from '../../engine/measure-languages.js';
 import type { AnalyzeRequest, ExplainDTO, ProducerDTO, ReportDTO } from '../../engine/protocol.js';
 import { useAnalysis } from '../../engine/use-analysis.js';
 import { useKeyStats } from '../../engine/use-key-stats.js';
@@ -678,6 +680,24 @@ export function Workbench({
   }, [client, state.panel, state.layout, params.caseMode]);
 
   const focusKey = useCallback((keyId: string) => keyboard.current?.focusKey(keyId), []);
+  /**
+   * Measure the languages the layout performs well in and add them, one edit like any other: Undo
+   * takes them back. A layout edited while it is measured is not the one measured, and is left as
+   * it is.
+   */
+  const measureLanguages = async () => {
+    const measured = state.layout;
+    const verdicts = await measureLanguagesOf(client, measured);
+    if (layoutNow.current !== measured) {
+      throw new Error('The layout changed while its languages were measured: measure them again.');
+    }
+    if (verdicts.some((v) => v.kind === 'added')) {
+      const languages = withAddedLanguages(measured.languages ?? [], verdicts);
+      send({ type: 'edit', edit: { kind: 'setMeta', languages } });
+    }
+    return verdicts;
+  };
+
   const undo = (redo: boolean) => {
     send({ type: redo ? 'redo' : 'undo' });
     setMessage(redo ? 'Redone' : 'Undone');
@@ -827,6 +847,7 @@ export function Workbench({
         dirty={state.dirty}
         saving={session.saving}
         onMeta={(meta) => send({ type: 'edit', edit: { kind: 'setMeta', ...meta } })}
+        onMeasureLanguages={measureLanguages}
         onSave={save}
         onCancel={state.dirty && state.saved !== null ? discard : undefined}
         onSubmit={submitted ? () => setSubmitting(true) : undefined}
