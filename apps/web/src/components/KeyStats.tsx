@@ -7,6 +7,7 @@ import { Collapsible } from './Collapsible.js';
 import {
   describeKeys,
   formatItem,
+  formatKeyShare,
   formatPart,
   formatValue,
   qualityBorder,
@@ -92,7 +93,7 @@ export function KeyStats({
           ) : (
             <>
               <span className="font-mono tabular-nums">
-                {numbers.total > 0 ? ((numbers.presses / numbers.total) * 100).toFixed(2) : '0.00'}%
+                {formatKeyShare(numbers.total > 0 ? numbers.presses / numbers.total : 0)}
               </span>{' '}
               of the presses ({numbers.presses.toLocaleString('en-US')})
               {numbers.chordPresses > 0 && (

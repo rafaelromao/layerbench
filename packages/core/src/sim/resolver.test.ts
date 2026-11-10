@@ -1,9 +1,11 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { normalizeText } from '../corpus/normalize.js';
 import { eighteenKeys, HOME_ROW_MODS } from '../fixtures/boards.js';
 import { FIXTURE_MIXED } from '../fixtures/index.js';
 import { getGeometryPreset } from '../geometry/presets.js';
 import { compileLayout } from '../layout/compile.js';
+import { parseLayout } from '../layout/schema.js';
 import { importTextLayout } from '../layout/text.js';
 import type { Binding, Layout, Mod } from '../layout/types.js';
 import { withoutFeatures } from '../layout/without.js';
@@ -98,10 +100,12 @@ describe('Romak acceptance traces', () => {
     expect(t2.steps.filter((s) => s.keyKind === 'shift').length).toBe(1);
   });
 
-  it('shifted alpha-2 twin: an uppercase accented letter uses shift then the layer key', () => {
+  it('shifted alpha-2 twin: an uppercase accented letter holds shift, then taps the layer key', () => {
     const t = trace(magicRomak, 'É', { caseMode: 'model' });
     expect(t.out).toBe('É');
-    expect(t.keys[0]).toBe('R1');
+    // The thumb's one-shot Shift (R1) and then Alpha 2 (R0) is a same-finger pair: the left home
+    // row Shift, held, is the cheaper way.
+    expect(t.keys[0]).toBe('LHI');
     expect(t.keys).toContain('R0');
   });
 
@@ -943,6 +947,386 @@ describe('how a layout that declares its rules is typed', () => {
   it('types by the engine’s own ways when the layout declares no rule, at both policies', () => {
     expect(trace(magicRomak, 'hello').keys).toEqual(REPEAT_KEYS);
     expect(trace(magicRomak, 'hello', { repeatPolicy: 'tap_twice' }).keys).toEqual(TAP_KEYS);
+  });
+});
+
+describe('the Shift a capital takes: the cheapest press that gives it, part of the word', () => {
+  const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
+  const SK: Binding = { kind: 'sk', mod: 'LSHIFT' };
+  const model = { caseMode: 'model' as const };
+  const held = (t: ReturnType<typeof trace>) =>
+    t.steps.filter((s) => s.kind === 'hold_press').map((s) => s.key);
+  /**
+   * A one-shot Shift on each inner thumb, L1 the shift key; the outer left thumb types `r`, the
+   * outer right one a space, and the home row `a` `n` `e`.
+   */
+  const twoThumbs = (extra: Record<string, Binding> = {}, shift = 'L1'): Layout => ({
+    format: 'layerbench/layout@1',
+    name: 'Two one-shot Shifts',
+    hostLocale: 'symbols',
+    geometry: { preset: '3x5+2' },
+    keys: { space: 'R0', shift: { key: shift, kind: 'sk' } },
+    layers: [
+      {
+        id: 'base',
+        bindings: {
+          L0: kp('r'),
+          L1: SK,
+          R0: kp(' '),
+          R1: SK,
+          LHM: kp('a'),
+          RHI: kp('n'),
+          RHM: kp('e'),
+          ...extra,
+        },
+      },
+    ],
+  });
+
+  it('takes the other thumb when the shift key would make a same-finger pair with the letter', () => {
+    // L1 then L0 is the left thumb twice: R1's one-shot Shift is the cheaper.
+    expect(trace(twoThumbs(), 'R', model)).toMatchObject({ out: 'R', keys: ['R1', 'L0'] });
+    // The same with the shift key on the right and the letter on the right thumb.
+    const right = twoThumbs({ L0: kp(' '), R0: kp('r') }, 'R1');
+    right.keys.space = 'L0';
+    expect(trace(right, 'R', model)).toMatchObject({ out: 'R', keys: ['L1', 'R0'] });
+  });
+
+  it('keeps the shift key where the two cost the same, whichever side it is on', () => {
+    expect(trace(twoThumbs(), 'A', model).keys).toEqual(['L1', 'LHM']);
+    expect(trace(twoThumbs({}, 'R1'), 'A', model).keys).toEqual(['R1', 'LHM']);
+    // And the same every time.
+    for (let i = 0; i < 3; i++) expect(trace(twoThumbs(), 'An', model).keys[0]).toBe('L1');
+  });
+
+  it('chooses again for each capital of a word, the one after a capital included', () => {
+    // `A` takes the shift key; `R`, after it, the right thumb, as the left one would press L1 then L0.
+    expect(trace(twoThumbs(), 'AR', model)).toMatchObject({
+      out: 'AR',
+      keys: ['L1', 'LHM', 'R1', 'L0'],
+    });
+    // `R` takes the right thumb; `A` too, as L1 right after L0 is the left thumb twice.
+    expect(trace(twoThumbs(), 'RA', model)).toMatchObject({
+      out: 'RA',
+      keys: ['R1', 'L0', 'R1', 'LHM'],
+    });
+    // Each word starts a new choice: the capital at the start of the second is typed as the first.
+    expect(trace(twoThumbs(), 'Ra Ra', model).keys).toEqual([
+      'R1',
+      'L0',
+      'LHM',
+      'R0',
+      'R1',
+      'L0',
+      'LHM',
+    ]);
+  });
+
+  it('weighs a thumb against a home row one-shot by their effort and pairs', () => {
+    // The shift key on the left pinky's home key, and a one-shot Shift on the right inner thumb.
+    const pinky = twoThumbs({ L1: kp('x'), LHP: SK }, 'LHP');
+    // The thumb costs no effort: it is taken over the shift key.
+    expect(trace(pinky, 'A', model).keys).toEqual(['R1', 'LHM']);
+    // With the letter on the right thumb, R1 would make a same-finger pair: the pinky it is.
+    const thumbLetter = twoThumbs({ L0: kp(' '), L1: kp('x'), LHP: SK, R0: kp('r') }, 'LHP');
+    thumbLetter.keys.space = 'L0';
+    expect(trace(thumbLetter, 'R', model).keys).toEqual(['LHP', 'R0']);
+  });
+
+  it('takes the one-shot Shift of the other hand when the typing hand’s is on the letter’s finger', () => {
+    // One-shot Shifts on both pinkies' home keys, the left one the shift key, and no thumb's.
+    const pinkies = twoThumbs({ L1: kp('x'), R1: kp('y'), LHP: SK, RHP: SK, LTP: kp('p') }, 'LHP');
+    // `P` is on the left pinky: LHP then LTP is a same-finger pair, so the right pinky shifts.
+    expect(trace(pinkies, 'P', model).keys).toEqual(['RHP', 'LTP']);
+    // `A` is on the left middle finger: both cost the same, and the shift key is kept.
+    expect(trace(pinkies, 'A', model).keys).toEqual(['LHP', 'LHM']);
+    // `N` is on the right index: the left pinky's, the shift key, makes no pair either.
+    expect(trace(pinkies, 'N', model).keys).toEqual(['LHP', 'RHI']);
+  });
+
+  it('weighs a held Shift against a one-shot one', () => {
+    // Home row mods hold Shift on both index fingers; R1 is the one-shot shift key; `e` on R0.
+    const mods = withMods(
+      twoThumbs(
+        { L0: kp(' '), L1: kp('x'), LHI: kp('t'), RHI: kp('n'), RHM: kp('m'), R0: kp('e') },
+        'R1',
+      ),
+    );
+    mods.keys.space = 'L0';
+    // `T` on the left index: the thumb's one-shot Shift costs no effort.
+    const t = trace(mods, 'T', model);
+    expect(t).toMatchObject({ out: 'T', keys: ['R1', 'LHI'] });
+    expect(held(t)).toEqual([]);
+    // `E` on the right thumb: R1 then R0 is the right thumb twice, so the left index holds Shift.
+    const e = trace(mods, 'E', model);
+    expect(e).toMatchObject({ out: 'E', keys: ['LHI', 'R0'] });
+    expect(held(e)).toEqual(['LHI']);
+  });
+
+  it('presses the only Shift a layout has, whatever it costs', () => {
+    const one = twoThumbs({ L1: kp('x') }, 'R1');
+    one.keys.space = 'R0';
+    const single = { ...one, layers: [{ ...one.layers[0] }] };
+    single.layers[0].bindings = { ...single.layers[0].bindings, R0: kp('r'), L0: kp(' ') };
+    single.keys.space = 'L0';
+    // R1 then R0 is the right thumb twice, and there is no other Shift.
+    expect(trace(single, 'R', model).keys).toEqual(['R1', 'R0']);
+  });
+
+  it('keeps a declared rule: its first way that some key gives, the cheapest key of that way', () => {
+    const mods = withMods(
+      twoThumbs(
+        { L0: kp(' '), L1: kp('x'), LHI: kp('t'), RHI: kp('n'), RHM: kp('m'), R0: kp('e') },
+        'R1',
+      ),
+    );
+    mods.keys.space = 'L0';
+    // One-shot first: R1, though it makes a same-finger pair with R0.
+    const sticky = {
+      ...mods,
+      typingRules: { shift: [{ way: 'sk' as const }, { way: 'hold' as const }] },
+    };
+    expect(trace(sticky, 'E', model).keys).toEqual(['R1', 'R0']);
+    // Held first: the cheaper of the two index fingers, the left one for a letter on the right.
+    const hold = {
+      ...mods,
+      typingRules: { shift: [{ way: 'hold' as const }, { way: 'sk' as const }] },
+    };
+    const t = trace(hold, 'E', model);
+    expect(t.keys).toEqual(['LHI', 'R0']);
+    expect(held(t)).toEqual(['LHI']);
+    // One-shot only, with two one-shot Shifts: the cheaper of them.
+    const two = { ...twoThumbs(), typingRules: { shift: [{ way: 'sk' as const }] } };
+    expect(trace(two, 'R', model).keys).toEqual(['R1', 'L0']);
+  });
+
+  it('chooses each Shift of a way on its own: a shifted accent, then its capital', () => {
+    // Shift held on both index fingers; the accent on the left index, `¨` with Shift; `e` on the
+    // right middle finger.
+    const accent = withMods({
+      format: 'layerbench/layout@1',
+      name: 'A shifted accent',
+      hostLocale: 'symbols',
+      geometry: { preset: '3x5+2' },
+      keys: { space: 'L0' },
+      layers: [
+        {
+          id: 'base',
+          bindings: {
+            L0: kp(' '),
+            LTI: { kind: 'dead_key', diacritic: '´', shifted: '¨' },
+            LHI: kp('t'),
+            RHI: kp('n'),
+            RTM: kp('e'),
+          },
+        },
+      ],
+    });
+    const t = trace(accent, 'Ë', model);
+    // The right index holds Shift for the accent and again for the letter: the left one, after the
+    // accent on the left index, would be the same finger twice.
+    expect(t).toMatchObject({ out: 'Ë', keys: ['RHI', 'LTI', 'RHI', 'RTM'] });
+    expect(held(t)).toEqual(['RHI', 'RHI']);
+  });
+
+  it('chooses a one-shot Shift with the rest of the word, as a layer key is', () => {
+    // `A` alone ties, and keeps the shift key; `r` after it on L0 would make L1, LHM, L0 a
+    // same-thumb skipgram, so the word takes R1.
+    expect(trace(twoThumbs(), 'A', model).keys).toEqual(['L1', 'LHM']);
+    expect(trace(twoThumbs(), 'Ar', model)).toMatchObject({
+      out: 'Ar',
+      keys: ['R1', 'LHM', 'L0'],
+    });
+  });
+
+  it('takes either Shift, the right one as the left', () => {
+    // The left thumb taps the left Shift, the right thumb the right one.
+    const sides = twoThumbs({ R1: { kind: 'sk', mod: 'RSHIFT' } });
+    expect(trace(sides, 'R', model)).toMatchObject({ out: 'R', keys: ['R1', 'L0'] });
+    expect(trace(sides, 'Ar', model)).toMatchObject({ out: 'Ar', keys: ['R1', 'LHM', 'L0'] });
+    // A layout whose only Shift is the right one types its capitals with it.
+    const right = twoThumbs({ L1: kp('x'), R1: { kind: 'sk', mod: 'RSHIFT' } }, 'R1');
+    expect(trace(right, 'A', model)).toMatchObject({ out: 'A', keys: ['R1', 'LHM'] });
+    // Held, too: the right index holds the right Shift for `E` on the right thumb.
+    const held = twoThumbs({
+      L1: kp('x'),
+      R0: kp('e'),
+      RHM: kp('m'),
+      RHI: { kind: 'hold_tap', tap: kp('n'), hold: { kind: 'mod', mod: 'RSHIFT' } },
+    });
+    held.keys = { space: 'L0' };
+    held.layers[0].bindings.L0 = kp(' ');
+    const e = trace(held, 'E', model);
+    expect(e).toMatchObject({ out: 'E', keys: ['RHI', 'R0'] });
+  });
+
+  it('weighs a combo that taps a one-shot Shift', () => {
+    // The only key Shift is R1, which would press the right thumb twice for `R` on R0; the combo
+    // of the left top ring and pinky taps one too.
+    const combo: Layout = {
+      ...twoThumbs({ L0: kp(' '), L1: kp('x'), R0: kp('r'), LTR: kp('w'), LTP: kp('q') }, 'R1'),
+      combos: [{ id: 'shift', keys: ['LTR', 'LTP'], binding: SK }],
+    };
+    combo.keys.space = 'L0';
+    expect(trace(combo, 'R', model)).toMatchObject({ out: 'R', keys: ['combo:shift', 'R0'] });
+  });
+
+  it('takes a held Shift of the typing hand where it costs less effort than the other hand’s', () => {
+    // Shift held on the left index's home key and on the right pinky's top key, and no shift key:
+    // for `A` on the left middle finger the old order took the other hand's, now the cheaper one.
+    const hold = { kind: 'mod' as const, mod: 'LSHIFT' as const };
+    const effort = twoThumbs({
+      L1: kp('x'),
+      R1: kp('y'),
+      LHI: { kind: 'hold_tap', tap: kp('t'), hold },
+      RTP: { kind: 'hold_tap', tap: kp('p'), hold },
+    });
+    effort.keys = { space: 'R0' };
+    const t = trace(effort, 'A', model);
+    expect(t).toMatchObject({ out: 'A', keys: ['LHI', 'LHM'] });
+    expect(held(t)).toEqual(['LHI']);
+  });
+
+  it('chooses no Shift where the text is folded', () => {
+    expect(trace(twoThumbs(), 'R').keys).toEqual(['L0']);
+  });
+});
+
+describe('a Repeat on a one-shot layer', () => {
+  const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
+  const REPEAT: Binding = { kind: 'key_repeat' };
+  /**
+   * Shaped as the owner's Magic Gust: a 1333+2 board, space on L0, and RBM and RBR tapping the
+   * one-shot Alpha 2 and Alpha 3, where L1 repeats and `z` and `x` are; the base layer's letters as
+   * Magic Gust's. The owner's own Magic Gust is below.
+   */
+  const gust = (
+    extra: Partial<Layout> = {},
+    alpha3: Record<string, Binding> = { L1: REPEAT },
+  ): Layout => ({
+    format: 'layerbench/layout@1',
+    name: 'Repeat on a one-shot layer',
+    hostLocale: 'symbols',
+    geometry: { preset: '1333+2' },
+    keys: { space: 'L0' },
+    layers: [
+      {
+        id: 'base',
+        bindings: {
+          L0: kp(' '),
+          R0: kp('e'),
+          LTM: kp('l'),
+          RTM: kp('o'),
+          RTR: kp('h'),
+          RHM: kp('a'),
+          RBM: { kind: 'sl', layer: 'alpha-2' },
+          RBR: { kind: 'sl', layer: 'alpha-3' },
+        },
+      },
+      { id: 'alpha-2', bindings: { L1: REPEAT, LBM: kp('z'), LHR: kp('x') } },
+      { id: 'alpha-3', bindings: { ...alpha3, LBM: kp('z'), LHR: kp('x') } },
+    ],
+    repeatPolicy: { doubledLetters: 'repeatKey' },
+    ...extra,
+  });
+  const ONE_SHOTS = ['RBM', 'RBR'];
+  const repeats = (t: ReturnType<typeof trace>) =>
+    t.steps.filter((s) => s.keyKind === 'repeat').length;
+
+  it('is a way to type a doubled letter, two presses with the layer key that reaches it', () => {
+    // `z` is on the one-shot layers too: the layer key and Repeat cost what the layer key and `z`
+    // do, and the thumb's Repeat costs no effort, so it is the one taken.
+    for (const word of ['zz', 'xx']) {
+      const t = trace(gust(), word);
+      expect(t.out).toBe(word);
+      expect(t.presses).toBe(4);
+      expect(ONE_SHOTS).toContain(t.keys[0]);
+      expect(ONE_SHOTS).toContain(t.keys[2]);
+      expect(t.keys[3]).toBe('L1');
+      expect(repeats(t)).toBe(1);
+    }
+  });
+
+  it('is found on whichever one-shot layer has it', () => {
+    // Alpha 3 has no Repeat: Alpha 2's is the one, after `z` from either layer.
+    const t = trace(gust({}, {}), 'zz');
+    expect(t).toMatchObject({ out: 'zz', presses: 4 });
+    expect(t.keys.slice(2)).toEqual(['RBM', 'L1']);
+  });
+
+  it('loses to tapping a base letter again, one press against two, under the repeat policy', () => {
+    expect(trace(gust(), 'hello')).toMatchObject({
+      out: 'hello',
+      keys: ['RTR', 'R0', 'LTM', 'LTM', 'RTM'],
+      presses: 5,
+    });
+  });
+
+  it('is taken first where the layout declares the repeat key first', () => {
+    const declared = gust({
+      typingRules: { doubledLetters: [{ way: 'repeatKey' }, { way: 'tapTwice' }] },
+    });
+    const t = trace(declared, 'hello');
+    expect(t.out).toBe('hello');
+    expect(t.presses).toBe(6);
+    expect(ONE_SHOTS).toContain(t.keys[3]);
+    expect(t.keys[4]).toBe('L1');
+    expect(repeats(t)).toBe(1);
+  });
+
+  it('is no way at all where the layout, or the options, tap twice', () => {
+    const taps = gust({ repeatPolicy: { doubledLetters: 'tapTwice' } });
+    expect(trace(taps, 'zz').keys.slice(1)).toEqual(['LBM', trace(taps, 'zz').keys[2], 'LBM']);
+    expect(repeats(trace(taps, 'zz'))).toBe(0);
+    expect(repeats(trace(gust(), 'zz', { repeatPolicy: 'tap_twice' }))).toBe(0);
+  });
+
+  /**
+   * The owner's Magic Gust as they saved it on 2026-11-10 (`packages/core/fixtures/magic-gust.json`,
+   * its author left out): a real Repeat on Alpha 2's RBR and Alpha 3's RBM, each reached by the other
+   * key's one-shot, and doubled letters by the repeat key in its repeat policy. Its `keys.shift`
+   * says R1 is held while R1 taps a one-shot Shift; that is the owner's file, kept as it is, and no
+   * test here types a capital with it.
+   */
+  const magicGust = parseLayout(
+    JSON.parse(readFileSync(new URL('../../fixtures/magic-gust.json', import.meta.url), 'utf8')),
+  );
+  const firstRepeat = (declared: boolean) => {
+    const layout = declared
+      ? {
+          ...magicGust,
+          typingRules: {
+            doubledLetters: [{ way: 'repeatKey' as const }, { way: 'tapTwice' as const }],
+          },
+        }
+      : magicGust;
+    return (word: string) => trace(layout, word);
+  };
+
+  it("considers Magic Gust's Repeats, two presses each, against tapping the letter again", () => {
+    const typed = firstRepeat(false);
+    // `z` on Alpha 2: its one-shot, then the Repeat on the same layer, as the second `z`.
+    const pizza = typed('pizza');
+    expect(pizza).toMatchObject({ out: 'pizza', presses: 7 });
+    expect(pizza.keys.slice(4, 6)).toEqual(['RBM', 'RBR']);
+    expect(repeats(pizza)).toBe(1);
+    // A letter on Alpha 1 is one press again, against two: it is tapped again.
+    const hello = typed('hello');
+    expect(hello).toMatchObject({ out: 'hello', presses: 5 });
+    expect(repeats(hello)).toBe(0);
+  });
+
+  it("takes Magic Gust's Repeat on either one-shot layer where the repeat key is declared first", () => {
+    const typed = firstRepeat(true);
+    // `l` is on LTI: Alpha 2's Repeat, through RBM.
+    expect(typed('hello')).toMatchObject({
+      out: 'hello',
+      keys: ['RTR', 'R0', 'LTI', 'RBM', 'RBR', 'RHR'],
+      presses: 6,
+    });
+    // After `a` on RHM, Alpha 3's Repeat, through RBR: RBM there would be the middle finger twice.
+    expect(typed('all')).toMatchObject({ out: 'all', keys: ['RHM', 'LTI', 'RBR', 'RBM'] });
+    expect(repeats(typed('all'))).toBe(1);
   });
 });
 

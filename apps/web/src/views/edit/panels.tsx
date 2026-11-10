@@ -1175,6 +1175,11 @@ export function PathsPanel({
     (w) => w !== 'repeatKey' || repeatOffered,
   );
 
+  // Left alone, a layout that taps and holds Shift types a capital with the cheapest key that gives
+  // it, held or tapped, so no way is the one in use; once the rule is declared, the first that is on
+  // and that some key gives.
+  const shiftUsed =
+    state.layout.typingRules?.shift === undefined && shiftOffered.length > 1 ? null : undefined;
   // Left alone, a layout with a repeat key types a doubled letter the cheaper of the two ways, so no
   // way is the one in use; once the rule is declared, the first that is on and that some key gives.
   const doubledUsed =
@@ -1220,6 +1225,7 @@ export function PathsPanel({
               scope="shift"
               label="Shift kind"
               rows={shiftRows}
+              used={shiftUsed}
               dragging={dragging}
               setDragging={setDragging}
               onToggle={toggleWay('shift', rules.shift)}
@@ -1228,7 +1234,7 @@ export function PathsPanel({
             <span className="lb-path-hint">
               {shiftOffered.length === 0
                 ? 'No key taps or holds Shift. A key that does makes this work.'
-                : 'How a capital is typed: Shift tapped once before the letter, or held while it goes down.'}
+                : 'How a capital is typed: Shift tapped once before the letter, or held while it goes down. Left alone, the cheapest key that gives it; set an order, and the cheapest key of the first way that works.'}
             </span>
           </div>
         </Slide>

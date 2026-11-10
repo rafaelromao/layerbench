@@ -363,7 +363,6 @@ function MetricBody({
                     {formatItem(item)}
                   </span>
                 </div>
-                {large && keys && <p className="font-mono opacity-60 break-words">{keys}</p>}
               </li>
             );
           })}
