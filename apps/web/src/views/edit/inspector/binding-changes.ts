@@ -35,21 +35,18 @@ export type MorphBy = 'mod_morph' | 'layer_morph' | 'sentence_morph';
 /** How a macro is written: the letters it types, or its steps one by one. */
 export type MacroForm = 'text' | 'steps';
 
-/** The rows an author can add to a macro's steps, in the order they are offered. */
-export const ROW_KINDS = ['text', 'sl', 'sk'] as const;
-export type RowKind = (typeof ROW_KINDS)[number];
+/** What a row of a macro's steps is: text, or a step of a kind of key. */
+export type RowKind = 'text' | KindOfKey;
 
 /**
- * One row of a macro's steps: text to type, or a layer or a modifier to arm for the next key. A
- * step no row can hold whole is a fixed row, kept as it is and only moved or removed, so a macro
- * read into rows and written back does what it did. Rows are reordered and can be alike, so each
- * carries an identity of its own.
+ * One row of a macro's steps: text to type, a press a character, or a step that is any behaviour a
+ * key can be, edited as a key is: a layer or a modifier armed for the next key, a sentence space,
+ * another macro. A macro read into rows and written back does what it did. Rows are reordered and
+ * can be alike, so each carries an identity of its own.
  */
 export type MacroRow = { id: string } & (
   | { kind: 'text'; text: string }
-  | { kind: 'sl'; layer: string }
-  | { kind: 'sk'; mod: Mod }
-  | { kind: 'fixed'; step: Binding }
+  | { kind: 'step'; step: Binding }
 );
 type Nothing = Record<never, never>;
 
@@ -656,31 +653,12 @@ function rowId(): string {
 }
 
 function stepsOf(row: MacroRow): Binding[] {
-  switch (row.kind) {
-    case 'text':
-      return characters(row.text).map(press);
-    case 'sl':
-      return [{ kind: 'sl', layer: row.layer }];
-    case 'sk':
-      return [{ kind: 'sk', mod: row.mod }];
-    case 'fixed':
-      return [row.step];
-  }
+  return row.kind === 'text' ? characters(row.text).map(press) : [row.step];
 }
 
-/** The row a step reads as: one that writes it back as it is, or a fixed row that keeps it. */
+/** The row a step reads as: a step row, which writes it back as it is. */
 function rowOf(step: Binding): MacroRow {
-  const id = rowId();
-  const row: MacroRow =
-    step.kind === 'sl'
-      ? { id, kind: 'sl', layer: step.layer }
-      : step.kind === 'sk'
-        ? { id, kind: 'sk', mod: step.mod }
-        : { id, kind: 'fixed', step };
-  const back = stepsOf(row);
-  return back.length === 1 && written(back[0]) === written(step)
-    ? row
-    : { id, kind: 'fixed', step };
+  return { id: rowId(), kind: 'step', step };
 }
 
 /**
@@ -699,16 +677,57 @@ export function macroRows(macro: Of<'macro'>): MacroRow[] {
   return rows;
 }
 
+/** What a row is, as its kind list shows it. */
+export function rowKind(row: MacroRow): RowKind {
+  return row.kind === 'text' ? 'text' : kindOf(row.step);
+}
+
+/**
+ * A step as a macro uses it. A macro taps its steps, so a layer or a modifier it turns on is armed
+ * for the next key, one-shot: held, it would come up again before anything used it.
+ */
+function forMacro(step: Binding): Binding {
+  if (step.kind === 'mo') return { kind: 'sl', layer: step.layer };
+  if (step.kind === 'mod' && !step.also?.length) return { kind: 'sk', mod: step.mod };
+  return step;
+}
+
 /** A new row of a kind, that already does something: a layer row never names none. */
 export function freshRow(kind: RowKind, ctx: BindingTextContext, id = rowId()): MacroRow {
-  switch (kind) {
-    case 'text':
-      return { id, kind, text: '' };
-    case 'sl':
-      return { id, kind, layer: likeliestLayer(ctx) };
-    case 'sk':
-      return { id, kind, mod: 'LSHIFT' };
+  if (kind === 'text') return { id, kind, text: '' };
+  if (kind === 'layer')
+    return { id, kind: 'step', step: { kind: 'sl', layer: likeliestLayer(ctx) } };
+  if (kind === 'modifier') return { id, kind: 'step', step: { kind: 'sk', mod: 'LSHIFT' } };
+  return { id, kind: 'step', step: forMacro(keyFields(undefined, ctx).set.kind(kind)) };
+}
+
+/**
+ * The row made another kind, keeping its place and what carries over, as a key made another kind
+ * keeps its symbol: a step's symbol becomes a tap-hold's tap, one character of text a symbol.
+ */
+export function rowAs(row: MacroRow, kind: RowKind, ctx: BindingTextContext): MacroRow {
+  if (kind === rowKind(row)) return row;
+  if (row.kind === 'text') {
+    const chars = characters(row.text);
+    if (chars.length === 1 && kind !== 'text' && kind !== 'layer' && kind !== 'modifier') {
+      const step = forMacro(keyFields(press(chars[0]), ctx).set.kind(kind));
+      return { id: row.id, kind: 'step', step };
+    }
+    return freshRow(kind, ctx, row.id);
   }
+  if (kind === 'text') {
+    const text = row.step.kind === 'kp' && row.step.symbol ? row.step.symbol : '';
+    return { id: row.id, kind: 'text', text };
+  }
+  if (kind === 'layer' || kind === 'modifier') return freshRow(kind, ctx, row.id);
+  return { id: row.id, kind: 'step', step: forMacro(keyFields(row.step, ctx).set.kind(kind)) };
+}
+
+/** A copy of a row, with an identity of its own, its step a binding of its own. */
+export function copyRow(row: MacroRow): MacroRow {
+  return row.kind === 'text'
+    ? { ...row, id: rowId() }
+    : { id: rowId(), kind: 'step', step: structuredClone(row.step) };
 }
 
 /** What a macro does, press by press, however it is written. */

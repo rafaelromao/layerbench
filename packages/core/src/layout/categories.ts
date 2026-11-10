@@ -166,6 +166,27 @@ interface Place {
 }
 
 /**
+ * What a macro's card is named by: the text it types, as written, or what its steps type that a
+ * key says by itself — a symbol, a Unicode character, a sentence space — a space drawn `␣`.
+ */
+function macroText(b: Extract<Binding, { kind: 'macro' }>): string {
+  const text =
+    b.symbols ??
+    (b.steps ?? [])
+      .map((s) =>
+        s.kind === 'kp'
+          ? (s.symbol ?? '')
+          : s.kind === 'unicode'
+            ? s.symbol
+            : s.kind === 'sentence_space'
+              ? ' '
+              : '',
+      )
+      .join('');
+  return text.replaceAll(' ', '␣');
+}
+
+/**
  * The special features a binding is or holds, at the place it is bound. `grouped` is on inside the
  * branches of an adaptive key, an alt repeat among them: what it types after a letter, a macro
  * included, is the key's own, listed in its editor under the one card the key has.
@@ -186,7 +207,10 @@ function featuresOf(b: Binding, at: Place, out: SpecialFeature[], grouped = fals
       emit('adaptive', FEATURE_LABELS.sentence_space);
       break;
     case 'macro':
-      if (!grouped) emit('macro', b.symbols ? `Macro “${b.symbols}”` : 'Macro');
+      if (!grouped) {
+        const text = macroText(b);
+        emit('macro', text ? `Macro “${text}”` : 'Macro');
+      }
       // What it types is not a letter of the layer's, but what its steps use is used.
       for (const c of [...(b.steps ?? []), ...(b.then ?? [])]) featuresOf(c, at, out, grouped);
       return;

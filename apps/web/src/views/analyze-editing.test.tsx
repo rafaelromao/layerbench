@@ -1121,8 +1121,10 @@ describe('Edit', () => {
     await user.clear(first);
     await user.type(first, 'ão{Enter}');
     await user.click(within(editor).getByRole('button', { name: 'Add step' }));
-    await user.selectOptions(within(editor).getByLabelText('Step 2 kind'), 'sl');
-    await user.selectOptions(within(editor).getByLabelText('Step 2 layer'), 'alpha2');
+    // A layer step is armed for the next key, edited with the layer controls a key has.
+    await user.selectOptions(within(editor).getByLabelText('Step 2 kind'), 'layer');
+    const layers = within(editor).getByRole('group', { name: 'Step 2 layer' });
+    await user.click(within(layers).getByRole('button', { name: /Alpha 2/ }));
     await user.type(within(editor).getByLabelText('Binding tag'), 'alpha2{Enter}');
 
     // The key now types the text and arms the layer, and says so on its legend.

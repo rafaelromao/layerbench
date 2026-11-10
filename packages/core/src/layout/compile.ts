@@ -107,8 +107,7 @@ export function bindingFault(b: Binding): string | null {
   const walk = (x: Binding, macros: number): string | null => {
     if (path.has(x)) return 'a macro contains itself';
     const inside = x.kind === 'macro' ? macros + 1 : macros;
-    if (inside > MAX_MACRO_NESTING)
-      return `macros are nested more than ${MAX_MACRO_NESTING} deep`;
+    if (inside > MAX_MACRO_NESTING) return `macros are nested more than ${MAX_MACRO_NESTING} deep`;
     path.add(x);
     try {
       for (const part of bindingParts(x)) {

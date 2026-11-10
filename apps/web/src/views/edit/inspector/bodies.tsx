@@ -1,6 +1,7 @@
 import {
   type Binding,
   bindingModule,
+  bindingModules,
   type CompiledLayout,
   legend,
   legendText,
@@ -629,8 +630,10 @@ function AdaptiveBody({
 
 // ---------------------------------------------------------------------------- macro
 
-function MacroBody({ scope, fields, onChange, name }: BodyProps<'macro'>) {
+function MacroBody({ scope, fields, onChange, name, depth }: BodyProps<'macro'>) {
   const { view, set } = fields;
+  // A macro is stock ZMK; what its steps do may need a module, a sentence space zmk-sentence-case.
+  const modules = bindingModules(fields.binding);
   return (
     <div className="space-y-2">
       <Segment
@@ -648,6 +651,16 @@ function MacroBody({ scope, fields, onChange, name }: BodyProps<'macro'>) {
           ctx={scope.text}
           fields={fields}
           onChange={onChange}
+          name={name}
+          body={(step, change, stepName) => (
+            <KindBody
+              scope={scope}
+              fields={keyFields(step, scope.text)}
+              onChange={change}
+              name={stepName}
+              depth={depth + 1}
+            />
+          )}
         />
       ) : (
         <>
@@ -690,6 +703,9 @@ function MacroBody({ scope, fields, onChange, name }: BodyProps<'macro'>) {
         />
         <Note>An adaptive key can branch on the tag of the key pressed before it.</Note>
       </Row>
+      {modules.map((m) => (
+        <ModuleNote key={m} module={m} />
+      ))}
     </div>
   );
 }

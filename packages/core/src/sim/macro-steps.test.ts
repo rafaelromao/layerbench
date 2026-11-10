@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { compileLayout, LayoutCompileError, MAX_MACRO_NESTING } from '../layout/compile.js';
+import { specialFeatures } from '../layout/categories.js';
 import { bindingModules } from '../layout/firmware.js';
 import type { Binding, Layout } from '../layout/types.js';
 import { Machine } from './machine.js';
@@ -147,7 +148,12 @@ describe('a macro step', () => {
   });
 
   it('can be a morph: a Shift the macro armed changes a Shift morph', () => {
-    const morph: Binding = { kind: 'mod_morph', mods: ['LSHIFT'], default: kp(','), morphed: kp(';') };
+    const morph: Binding = {
+      kind: 'mod_morph',
+      mods: ['LSHIFT'],
+      default: kp(','),
+      morphed: kp(';'),
+    };
     const m = macro({ kind: 'sk', mod: 'LSHIFT' }, morph, kp('a'));
     expect(press(board(m), 'RHI').out).toBe(';a');
     expect(reads(m)).toEqual([';a']);
@@ -240,5 +246,16 @@ describe('the ZMK modules a macro needs', () => {
       hold: { kind: 'auto_layer', layer: 'other' },
     };
     expect(bindingModules(b)).toEqual(['adaptiveKey', 'autoLayer', 'sentenceCase', 'unicode']);
+  });
+});
+
+describe('a macro’s card in Special Behaviors', () => {
+  it('is named by what its steps type, a space drawn', () => {
+    const label = (m: Binding) =>
+      specialFeatures(board(m)).find((f) => f.feature === 'macro')?.label;
+    expect(label(macro(kp(','), kp(' ')))).toBe('Macro “,␣”');
+    expect(label(macro(kp('.'), { kind: 'sentence_space' }))).toBe('Macro “.␣”');
+    expect(label({ kind: 'macro', symbols: 'qu' })).toBe('Macro “qu”');
+    expect(label(macro({ kind: 'caps_word' }))).toBe('Macro');
   });
 });
