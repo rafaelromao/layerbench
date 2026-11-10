@@ -204,14 +204,16 @@ pnpm dev          # http://localhost:4011
 
 ### Checks
 
-CI runs `pnpm check`, `pnpm typecheck`, `pnpm test:coverage` and `pnpm build`. `test:coverage` runs
-each package's tests under Vitest's v8 coverage and fails when a package covers less than 80% of its
-lines, statements, functions or branches. The gate is per package (`packages/core` and `apps/web`),
-set in each `vitest.config.ts`, and the thresholds are not lowered to make a change pass: add tests
-instead. `src/main.tsx`, the analysis worker's entry, `src/test`, `e2e`, `shots`, type declarations,
-test files and config files do not count. The table of each file's coverage is printed by
-`pnpm --filter @layerbench/core test:coverage` (or `@layerbench/web`), and `coverage/` is git
-ignored.
+CI runs `pnpm check`, `pnpm typecheck` and `pnpm build` in one job, and each package's tests in a
+job of its own beside it: the tests on a pull request, `test:coverage` on a push to main.
+`test:coverage` runs them under Vitest's v8 coverage, about three times slower, and fails when a
+package covers less than 80% of its lines, statements, functions or branches: run it before opening
+a pull request that adds code, as the pull request's own checks do not. The gate is per package
+(`packages/core` and `apps/web`), set in each `vitest.config.ts`, and the thresholds are not lowered
+to make a change pass: add tests instead. `src/main.tsx`, the analysis worker's entry, `src/test`,
+`e2e`, `shots`, type declarations, test files and config files do not count. The table of each
+file's coverage is printed by `pnpm --filter @layerbench/core test:coverage` (or `@layerbench/web`),
+and `coverage/` is git ignored.
 
 To sign in on the dev server, set up the GitHub App first (see
 [Setting up sign-in](#setting-up-sign-in)). Then put `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` and

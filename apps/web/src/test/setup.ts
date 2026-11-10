@@ -104,6 +104,11 @@ afterEach(() => {
   setViewportWidth(DESKTOP_WIDTH);
 });
 
+// jsdom defines window.scrollTo as a stub that reports "Not implemented" on every call, and the
+// router calls it on every render and navigation. Nothing here scrolls, so it is replaced outright:
+// not behind a check, as jsdom's stub is already there.
+window.scrollTo = (() => {}) as typeof window.scrollTo;
+
 if (!Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = () => {};
 }
