@@ -454,7 +454,7 @@ describe('layouts as their authors designed them', () => {
     }
   });
 
-  it("put Hands Down Neu's z and j, from its eleventh column, and Aptmak's e on thumbs", () => {
+  it("put Hands Down Neu's z and j, from its eleventh column, and Aptmak's e on a right thumb", () => {
     const thumbsOf = (id: string) => {
       const layout = bundledLayout(id) as (typeof BUNDLED_LAYOUTS)[number];
       return Object.fromEntries(
@@ -465,7 +465,7 @@ describe('layouts as their authors designed them', () => {
       );
     };
     expect(thumbsOf('hands-down-neu')).toEqual({ L1: ' ', L0: 'z', R0: 'j' });
-    expect(thumbsOf('aptmak')).toEqual({ L1: ' ', L0: 'e' });
+    expect(thumbsOf('aptmak')).toEqual({ L1: ' ', R0: 'e' });
   });
 
   it('give Night and Dusk the thumbs their author draws: r left, space right, and Night its Shifts', () => {
