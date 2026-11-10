@@ -138,12 +138,15 @@ or are folded; what Space and Shift change is the count.
   space bar's finger, so they do not move. Of the 35 bundled layouts Space raises 11, lowers none and leaves
   24 as they are. (With `cross_word: bridge`, pairs cross words without Space and the space press
   breaks them, so Space can lower the number: Colemak-DH reads 3.193 without it and 1.133 with it.)
-- **Shift** puts its presses into the stream, which makes some pairs and breaks others. With Space
-  off it lowers 31 of the 35 layouts and raises 4 (Magic Romak, 1.348 to 1.612, and the three Hands
-  Down with their authors' layers): Colemak-DH goes from 1.133 to 1.090 and Qwerty from 5.412 to
-  5.246.
+- **Shift** puts its presses into the stream, which could make pairs and breaks others. Each
+  capital takes the Shift that makes its word fewest, so with Space off it lowers all 35 layouts:
+  Magic Romak from 1.348 to 1.304, Hands Down Gold from 0.802 to 0.782. Colemak-DH, 1.133 to 1.090,
+  and Qwerty, 5.412 to 5.246, have no key that gives Shift: their capitals go untyped. (Before
+  #136, which took the first Shift in a fixed order, it raised 4: Magic Romak to 1.612, and the
+  three Hands Down with their authors' layers.)
 - **Both** can add a thumb's Shift to its space: Night reads 0.521 with Shift and Space off and 3.939
-  with both on (`␣⇧` 3.45), and Ben Vallack Piano 0.690 and 3.081.
+  with both on (`␣⇧` 3.45), and Ben Vallack Piano 0.690 and 3.081. The Shift is chosen within its
+  word, and the space comes before it, so that pair is not weighed.
 
 The Doc counted neither Space nor Shift, so those readings are not the Doc's number, and the guide
 says so. The badge still names the band of the number shown.
@@ -263,7 +266,7 @@ Where a few well-known layouts read on SFB, with the band each ruler gives the n
 
 | Layout | Layouts Doc, Library | Layouts Doc, Shift and Space | cyanophage-like, Library |
 |---|---|---|---|
-| Magic Romak | 1.35 mid high | 2.03 high | 1.12 mid |
+| Magic Romak | 1.35 mid high | 1.72 mid high | 1.12 mid |
 | Romak | 1.07 mid | 1.49 mid high | 0.88 mid low |
 | Qwerty | 5.41 max | 5.25 max | 4.47 max |
 | Dvorak | 2.19 high | 2.17 high | 1.82 very high |
