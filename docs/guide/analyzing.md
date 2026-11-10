@@ -127,8 +127,7 @@ In the Library, its filter, counts and cards, a layout that names no language is
 so, for the filter, is one that names only languages the app has no text for; such a language gets
 no chip on the card. A layout made with **New layout**, or imported from text or from a
 keymap-drawer file, starts as one for English; one pasted as JSON keeps the languages it names.
-**Promote** gives a layout that names none English, as every layout that comes with the app names
-at least one. All are ticked at first; **All** ticks them all and **None** clears them, and
+Every layout that comes with the app names at least one. All are ticked at first; **All** ticks them all and **None** clears them, and
 unticking **None** ticks them all again. With none ticked the Library lists nothing and says so. The
 choice is kept in this browser, not in the link, as the categories and boards are.
 

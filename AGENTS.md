@@ -66,7 +66,8 @@ rule here moves a key, and keep `templates.test.ts` asserting each rule.
   ones its source states, by a page, a keymap or a corpus: a corpus of a language counts as the
   language, and a layout whose source states none is for English (`DEFAULT_LANGUAGES` and
   `declaredLanguages` in `lang/profiles.ts`). In the Library (its Languages filter, counts and
-  chips, and Promote) a layout that names none is read as English; the editor and Measure
+  chips, and the layout it sends to join the bundled ones) a layout that names none is read as
+  English; the editor and Measure
   languages read the list as written. New layout and the text and keymap-drawer imports start
   with `['en']`; a JSON document keeps its own. Every bundled layout names at least one.
   `lang/performance.test.ts` pins every layout's list (`STATED`) and that the
