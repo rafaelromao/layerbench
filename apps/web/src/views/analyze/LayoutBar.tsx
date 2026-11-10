@@ -3,10 +3,14 @@ import {
   type IndexEntry,
   isLayoutLink,
   LANGUAGE_PROFILES,
+  type LanguageVerdict,
   type Layout,
+  toCanonicalJson,
+  withAddedLanguages,
 } from '@layerbench/core';
 import { useState } from 'react';
 import { Switch, SwitchGroup } from '../../components/FeatureSwitches.js';
+import { addedText, verdictText } from '../../engine/measure-languages.js';
 import type { Params } from '../../url/params.js';
 import { SampleSelect, SettingsFields } from '../AnalysisSelects.js';
 import { TextAreaField, TextField } from '../edit/inspector/controls.js';
@@ -26,6 +30,7 @@ export function LayoutBar({
   dirty,
   saving,
   onMeta,
+  onMeasureLanguages,
   onSave,
   onCancel,
   onSubmit,
@@ -50,6 +55,11 @@ export function LayoutBar({
     link?: string;
     languages?: string[];
   }) => void;
+  /**
+   * Measure the languages the layout performs well in, adding them as an edit that Undo takes back;
+   * what it found, or why it could not.
+   */
+  onMeasureLanguages: () => Promise<LanguageVerdict[]>;
   onSave: () => void;
   /** Give the layout back its saved state; absent when there is no saved state to give back. */
   onCancel?: () => void;
@@ -171,8 +181,10 @@ export function LayoutBar({
                 {/* A layout opened anew is a Workbench, and so a Link field, of its own. */}
                 <LinkField link={layout.link ?? ''} onChange={(link) => onMeta({ link })} />
                 <LanguagesField
+                  layout={layout}
                   languages={layout.languages ?? []}
                   onChange={(languages) => onMeta({ languages })}
+                  onMeasure={onMeasureLanguages}
                 />
               </fieldset>
               <h3 className="text-xs font-semibold">What the numbers are made with</h3>
@@ -271,17 +283,27 @@ function LinkField({ link, onChange }: { link: string; onChange: (link: string) 
   );
 }
 
+/** The layout as an analysis reads it, whatever languages it is for. */
+function layoutWithoutLanguages(layout: Layout): string {
+  return JSON.stringify(toCanonicalJson({ ...layout, languages: [] }));
+}
+
 /**
  * The languages the layout is for. Analyze and the Library hold it to them, as well as to the
  * text's: one that is for Spanish and has no `ñ` is told so on any text. A tag with no profile here,
- * written into the JSON, is kept as it is.
+ * written into the JSON, is kept as it is. "Measure languages" adds each language the layout types
+ * and performs well in, and says which it added and why not the others.
  */
 function LanguagesField({
+  layout,
   languages,
   onChange,
+  onMeasure,
 }: {
+  layout: Layout;
   languages: string[];
   onChange: (languages: string[]) => void;
+  onMeasure: () => Promise<LanguageVerdict[]>;
 }) {
   const known = Object.values(LANGUAGE_PROFILES);
   const others = languages.filter((tag) => !known.some((p) => p.tag === tag));
@@ -289,10 +311,55 @@ function LanguagesField({
     const chosen = known.map((p) => p.tag).filter((t) => (t === tag ? on : languages.includes(t)));
     onChange([...chosen, ...others]);
   };
+  const [measuring, setMeasuring] = useState(false);
+  /**
+   * What the last measurement came to: what it found and the languages the layout had once they
+   * were added, or why it failed; and the layout it was of, without its languages.
+   */
+  const [outcome, setOutcome] = useState<
+    | { kind: 'found'; layout: string; verdicts: LanguageVerdict[]; languages: string[] }
+    | { kind: 'failed'; layout: string; error: string }
+    | null
+  >(null);
+  const measure = async () => {
+    const measured = layoutWithoutLanguages(layout);
+    setMeasuring(true);
+    try {
+      const verdicts = await onMeasure();
+      setOutcome({
+        kind: 'found',
+        layout: measured,
+        verdicts,
+        // The languages as the edit leaves them: as they are when it adds none.
+        languages: verdicts.some((v) => v.kind === 'added')
+          ? withAddedLanguages(languages, verdicts)
+          : languages,
+      });
+    } catch (e) {
+      setOutcome({
+        kind: 'failed',
+        layout: measured,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setMeasuring(false);
+    }
+  };
+  // What was found is said while it is still so: the Effort and the letters are the layout's as it
+  // was measured, and the languages are those it left. Another edit, Undo included, leaves it
+  // saying what is no longer the case.
+  const current = outcome && outcome.layout === layoutWithoutLanguages(layout) ? outcome : null;
+  const failed = current?.kind === 'failed' ? current.error : null;
+  const shown =
+    current?.kind === 'found' &&
+    current.languages.length === languages.length &&
+    current.languages.every((t, i) => languages[i] === t)
+      ? current.verdicts
+      : null;
   return (
     <fieldset className="form-control min-w-0">
       <legend className="label-text text-xs">Languages it is for</legend>
-      <div className="flex flex-wrap gap-x-3 gap-y-1">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         {known.map((p) => (
           <label key={p.tag} className="label cursor-pointer gap-1.5 py-0">
             <input
@@ -304,7 +371,32 @@ function LanguagesField({
             <span className="label-text text-xs">{p.name}</span>
           </label>
         ))}
+        <button
+          type="button"
+          className="btn btn-xs btn-outline"
+          title="Add each language it types whose news text it performs well in: its Effort there is in the better half of the bundled layouts'"
+          disabled={measuring}
+          onClick={measure}
+        >
+          {measuring ? 'Measuring…' : 'Measure languages'}
+        </button>
       </div>
+      {failed !== null && (
+        <p role="alert" className="text-xs text-error">
+          {failed}
+        </p>
+      )}
+      {shown && (
+        <div role="status" className="mt-1 grid gap-0.5 text-xs">
+          <p className="font-semibold">{addedText(shown)}</p>
+          <ul className="grid gap-0.5">
+            {shown.map((v) => {
+              const line = verdictText(v);
+              return line === null ? null : <li key={v.tag}>{line}</li>;
+            })}
+          </ul>
+        </div>
+      )}
     </fieldset>
   );
 }

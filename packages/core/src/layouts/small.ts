@@ -725,7 +725,7 @@ export const SMALL_DEFS: ClassicDef[] = [
     name: 'Magic Romak',
     author: 'Rafael Romão',
     // He writes English and Portuguese: his keymap has no `¿` `¡`, `œ` or `ß`.
-    madeFor: ['en', 'pt'],
+    languages: ['en', 'pt'],
     geometry: '1333+2',
     base: { id: 'alpha1', name: 'Alpha 1' },
     // Holding space reaches the numbers and holding the Alpha 2 key the symbols; the space's tap is
