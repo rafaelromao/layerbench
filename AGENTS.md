@@ -9,13 +9,15 @@ rule here moves a key, and keep `templates.test.ts` asserting each rule.
 
 - **Who has them.** A layout a user makes with **New layout** can start with Numbers, Symbols and
   Accents (`defaultLayers`, `newLayout` in the app, `withNewLayoutDefaults`). A bundled layout is
-  its author's design, with no layer its author does not define.
+  its author's design, with no layer its author does not define (Romak's Numbers and Symbols are
+  its author's too, from his Magic Romak keymap: see below).
 - **The layers.** Numbers, Symbols and Accents. Extras exists only on a board that needs it: one
   that lacks keys for what Numbers and Symbols carry, or for Accents' 30 keys. Extras comes on while
   Numbers and Symbols are both held: both inner thumbs, in either order, Symbols' left inner thumb
   holding Numbers there too. Each layer spans at most 34 keys.
 - **A bundled layout is its author's design.** Its definition (`ClassicDef`, in `classic.ts` and
-  `small.ts`) writes what its source (its `link`, its author's keymap or firmware) publishes: the
+  `small.ts`) writes what its source (its `link`, its author's keymap or firmware) publishes, but
+  for Romak, whose Numbers and Symbols come from its author's Magic Romak keymap (below): the
   letters and marks of the base layer, the thumbs (a space key on the outer left thumb where the
   source leaves them to a space bar), the combos, and the layers the author's keymap defines past
   the letters. Romak, Magic Romak, Magic Sturdy, Enthium, Hands Down Gold, Promethium and

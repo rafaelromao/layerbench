@@ -132,8 +132,8 @@ or are folded; what Space and Shift change is the count.
 
 - **Space** adds the pairs the space bar makes. Where a layout's space key shares a finger with
   another thumb key, those are same-finger bigrams: Magic Romak goes from 1.348 to 1.766 with Space
-  on, `⟳␣` (the Repeat key, then space, on one thumb) being 0.41 of it, and Romak from 1.067 to 1.520
-  (`⟳␣` 0.42). Sunlight goes from 0.642 to 2.355 (`r␣` 1.11, `␣r` 0.61: a letter on the space bar's
+  on, `⟳␣` (the Repeat key, then space, on one thumb) being 0.41 of it, and Romak from 1.094 to 1.547
+  (`⟳␣` 0.41). Sunlight goes from 0.642 to 2.355 (`r␣` 1.11, `␣r` 0.61: a letter on the space bar's
   thumb) and Aptmak from 0.979 to 4.949 (`e␣` 3.50). Colemak-DH and Qwerty have no other key on the
   space bar's finger, so they do not move. Of the 35 bundled layouts Space raises 11, lowers none and leaves
   24 as they are. (With `cross_word: bridge`, pairs cross words without Space and the space press
@@ -257,7 +257,7 @@ gives Effort no ruler, so the cyanophage-like set rates the same numbers on the 
 | max | Qwerty 1245 |
 
 That is 7 green, 24 amber and 4 red. The same layouts on the Layouts Doc SFB ruler: min 4 (Magic
-Sturdy 0.445, SNTH 0.486, Dusk 0.509, Night 0.521), low 4, mid low 9, mid 8, mid high 7, high 2
+Sturdy 0.445, SNTH 0.486, Dusk 0.509, Night 0.521), low 4, mid low 9, mid 7, mid high 8, high 2
 (Uno 2.094, Dvorak 2.192) and max 1 (Qwerty 5.412): 8 green, 24 amber, 3 red. On the cyanophage-like
 SFB ruler: very low 4, low 13, mid low 10, mid 5, very high 2 (Uno 1.739, Dvorak 1.818), max 1: 17
 green, 15 amber, 3 red. A Library with custom layouts has more, the empty ones at *min*.
@@ -267,7 +267,7 @@ Where a few well-known layouts read on SFB, with the band each ruler gives the n
 | Layout | Layouts Doc, Library | Layouts Doc, Shift and Space | cyanophage-like, Library |
 |---|---|---|---|
 | Magic Romak | 1.35 mid high | 1.72 mid high | 1.12 mid |
-| Romak | 1.07 mid | 1.49 mid high | 0.88 mid low |
+| Romak | 1.09 mid high | 1.52 mid high | 0.91 mid low |
 | Qwerty | 5.41 max | 5.25 max | 4.47 max |
 | Dvorak | 2.19 high | 2.17 high | 1.82 very high |
 | Colemak, Colemak-DH | 1.13 mid high | 1.09 mid high | 0.94 mid low |

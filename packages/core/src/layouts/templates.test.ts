@@ -589,8 +589,7 @@ function everyLetter(tag: string): string[][] {
 
 /**
  * The marks each layout with no Numbers or Symbols types: those its author places on its keys, and
- * on its second alpha layer where it has one, and nothing else. Digits, accents
- * and every other symbol are left to an edit in the app.
+ * nothing else. Digits, accents and every other symbol are left to an edit in the app.
  */
 const TYPES: Record<string, string> = {
   qwerty: ',./;',

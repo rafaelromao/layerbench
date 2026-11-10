@@ -198,7 +198,7 @@ describe('Romak 34', () => {
     expect(romak.conditionalLayers ?? []).toEqual([]);
   });
 
-  it('types º, ª, ° and € by the combos of Numbers and Symbols, and lets Alpha 1 show through the keys those layers leave unset', () => {
+  it('types º, ª, ° and € by the combos of Numbers and Symbols, which leave the keys they do not set transparent', () => {
     expect(keys('º')).toEqual(['L0', 'combo:ordinal']);
     // `ª` is the same chord held.
     expect(keys('ª')).toEqual(['L0', 'combo:ordinal']);
@@ -215,6 +215,11 @@ describe('Romak 34', () => {
   it('is Special, by the macros of its second alpha layer', () => {
     expect(layoutCategory(romak)).toBe('special');
     expect(romak).toMatchObject({ id: 'romak', name: 'Romak' });
+  });
+
+  it("types ' and _ on Alpha 2's thumbs, not on Symbols", () => {
+    expect(keys("'")).toEqual(['R0', 'L1']);
+    expect(keys('_')).toEqual(['R0', 'L0']);
   });
 
   it('types an accent with Alpha 2 for the next key, and ação with ç and the ão macro', () => {

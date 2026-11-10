@@ -384,8 +384,9 @@ space, Alpha 2 and a one-shot Shift. The write-up lists one combo, `á` and `é`
 which types `à`. Holding space reaches Numbers and holding the Alpha 2 thumb Symbols, each still
 typing when tapped: the two layers are Magic Romak's key for key, with their combos `º` (`ª` when
 held) and `°` on Numbers and `€` on Symbols, and the ten keys Romak's board adds left unset on them,
-so Alpha 1 shows through.
-Romak has no dead key, so it cannot type `ñ` `ä` `ö` `ü`.
+so Alpha 1 shows through. They keep Magic Romak's thumbs: on Numbers the right inner thumb taps
+space and holds Symbols, and `0` is on the right outer thumb; on Symbols the left inner thumb taps
+space and holds Numbers. Romak has no dead key, so it cannot type `ñ` `ä` `ö` `ü`.
 
 Magic Romak is its author's keymap, and has no Extras and no Accents, as the keymap has none. Its
 keys, layers and combos are read from the keymap-drawer file its author keeps for it, as the

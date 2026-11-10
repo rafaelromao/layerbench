@@ -6,7 +6,7 @@ import magicRomakKeymap from './keymaps/magic-romak.json';
 
 /*
  * Layouts made for small boards: a letter on a thumb, letters on chords, adaptive and repeat keys,
- * boards under thirty keys. Each arrangement is copied from its author's own firmware or page,
+ * boards under thirty keys; and the layouts whose authors' keymaps define layers past the letters. Each arrangement is copied from its author's own firmware or page,
  * its `link`; where a source left something out, the description says what.
  */
 
