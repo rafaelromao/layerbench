@@ -695,11 +695,9 @@ describe("every bundled layout is its author's design, with what its layers leav
 
         if (original)
           it("is its definition as it builds it, with its author's home row mods and nothing more", () => {
-            const mods = [...CLASSIC_DEFS, ...SMALL_DEFS].find(
-              (d) => d.id === layout.id,
-            )?.homeRowMods;
-            const built = mods ? withHomeRowMods(original, mods) : original;
-            expect(layout).toEqual({ ...built, languages: layout.languages });
+            const def = [...CLASSIC_DEFS, ...SMALL_DEFS].find((d) => d.id === layout.id);
+            const built = def?.homeRowMods ? withHomeRowMods(original, def.homeRowMods) : original;
+            expect(layout).toEqual({ ...built, languages: [...(def?.languages ?? [])] });
           });
 
         it(

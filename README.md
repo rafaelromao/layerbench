@@ -74,12 +74,14 @@ Symbols and Romak its write-up's Alpha 2 and Ç extension. A layout made in the 
 with the default Numbers, Symbols and Accents layers (`defaultLayers` in `templates.ts`). Home row mods are held only where an author's keymap holds
 them: Magic Romak, Magic Sturdy, the three Hands Down with their own layers and Ben Vallack Piano,
 each key still typing what it did (`withHomeRowMods` in `templates.ts`). The languages each is for
-are measured, not chosen: a layout is for a language when it types every letter the language needs
-and its Effort on that language's news text is in the better half of all the bundled layouts', on
-the rules the Library ranks on (`lang/performance.ts`), unless its definition says its author made
-it for fewer (`madeFor`: Romak and Magic Romak, for English and Portuguese). `pnpm languages`
-measures them and writes them, to `layouts/languages.json` and into each document, and a test fails when they drift. A
-new one joins them as a document: a custom layout, added by pull request as it is saved. Merging
+are the ones its author states, in its definition (`languages`): a text in a language, or a corpus
+of one, that the author's page or keymap names counts, and a layout whose author states none is for
+none. A test holds each language to one the layout types every letter of. The editor's **Measure
+languages** adds the languages a layout performs well in: its Effort on the language's news text,
+on the rules the Library ranks on, is in the better half of the bundled layouts' (`lang/performance.ts`).
+`pnpm languages` writes those layouts' Efforts on each language, lowest first, to
+`lang/efforts.json`, which the button counts a layout's own Effort against, and a test fails when
+the file drifts. A new one joins them as a document: a custom layout, added by pull request as it is saved. Merging
 the pull request is the approval, and the deploy that follows puts it in everyone's Library. A
 layout can also join with no deploy, as a community layout, by **Submit** in the app
 ([below](#community-layouts)).
@@ -94,12 +96,13 @@ layout can also join with no deploy, as a community layout, by **Submit** in the
    id.
 4. Name it on the landing page, in the list under the layouts heading in `docs/site/index.html`,
    and update the count in that heading.
-5. Run `pnpm languages`, then `pnpm goldens`: a new layout takes the languages it performs well in,
-   and may move other layouts out of the better half of one.
+5. Run `pnpm languages`, then `pnpm goldens`: the new layout's Effort on each language joins the
+   stored ones, which may move another layout out of the better half of one for **Measure
+   languages**, and the documents are written again.
 6. `pnpm test` checks that it is exactly what LayerBench saves, is named by its id, names an author
    (a link is optional, and an http(s) URL when given), has a name and an id no other layout has,
-   types the whole alphabet and a space, carries the languages it performs well in, and is on the
-   landing page.
+   types the whole alphabet and a space, names only languages it types every letter of, and is on
+   the landing page.
 7. Open the pull request. The `layouts` workflow runs those checks in a few minutes, sooner than the
    whole of CI, and writes a summary on its run's page for the review: each new or changed layout
    with its link, a link that opens it in the app as it would be bundled, and its Effort and SFB

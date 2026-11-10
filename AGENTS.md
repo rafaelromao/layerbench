@@ -62,6 +62,19 @@ rule here moves a key, and keep `templates.test.ts` asserting each rule.
     thumbs, caps word on the shift key, the accents as macros that tag the press, `qu`, the hold
     that types `ª`, and the keymap's 30 ms combo timeout. When the keymap changes, copy
     the file again, run `pnpm keymap`, then `pnpm goldens`.
+- **Languages are the author's; the editor measures the rest.** A definition's `languages` are the
+  ones its source states, by a page, a keymap or a corpus: a corpus of a language counts as the
+  language, and a layout whose source states none is for none. `lang/performance.test.ts` pins every
+  layout's list (`STATED`) and that the layout types every letter its languages need
+  (`lang/coverage.ts`, `lang/profiles.ts`): Romak's write-up names Portuguese and English and draws
+  no `à`, which Portuguese needs, so Romak states English. A layout added as a document carries the
+  languages it was saved with. **Measure languages**, in Settings in Analyze, adds each language a
+  layout types and performs well in: its Effort on the language's news text (`LANGUAGE_CORPORA`, the
+  Library's settings) is in the better half of the bundled layouts' (`performsWell`). The browser
+  analyzes the layout in hand once a language and counts the stored Efforts below its own;
+  `pnpm languages` writes those, the bundled layouts' Efforts on each language lowest first, to
+  `lang/efforts.json`, and a test fails when the file drifts, so run it after a change that moves a
+  layout's Effort or adds or removes a layout.
 - **The 24-key core is Magic Romak's keymap** (github.com/rafaelromao/keyboards, `numbers_layer` and
   `symbols_layer`). Numbers is a keypad on the right, with the brackets and the arithmetic beside
   them on the left; brackets on Numbers stay on the left hand. Every board gets the same core, so

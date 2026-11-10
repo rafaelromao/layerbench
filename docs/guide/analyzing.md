@@ -99,10 +99,20 @@ a Portuguese text most of them lack letters and say so on their cards; Magic Rom
 Down and T-34 type them, and a layout of your own can start with an
 [Accents](editing.md#default-layers) layer. A layout is also held to the languages it is for, chosen in **Settings** in **Analyze**: one
 for Spanish that has no `ñ` says so on its card, whatever the text, though on an English text it
-skipped nothing for Spanish. A layout that comes with the app is for the languages it performs well
-in: it types every letter they need, and its Effort on their news texts is in the
-better half of the bundled layouts'. Some, such as Qwerty, are for none, and Romak and Magic Romak
-are for English and Portuguese at most, the languages their author made them for.
+skipped nothing for Spanish. A layout that comes with the app is for the languages its author
+states: English for most, English and Portuguese for Magic Romak, and none for those whose author
+names none, Qwerty among them.
+
+**Measure languages**, beside them in **Settings**, adds the languages a layout performs well in.
+A layout performs well in a language when it types every letter the language needs and its Effort
+on the language's news text is in the better half of the bundled layouts': fewer than half of them
+beat it. The text is the one the Library ranks on, the language's Leipzig news corpus on the
+[Layouts Doc rules](#the-layouts-doc-rule-set), letters only, 100,000 symbols. The button analyzes
+the layout in hand once for each language it types and is not for yet, and counts the Efforts
+stored with the app for the bundled layouts that are lower than its own. It says which languages it
+added, and why not the others: the letters it lacks, or the Effort and how many bundled layouts beat
+it. The languages are added as one edit, which **Undo** takes back, to a layout of your own and to a
+copy of a bundled one alike. It never takes a language away.
 
 **Rank with** switches special features off for the ranking: adaptive keys (they type their default
 letter), the repeat key (doubled letters are tapped twice), typing combos, and macros that type two

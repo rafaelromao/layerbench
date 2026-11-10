@@ -390,7 +390,7 @@ describe('layouts as their authors designed them', () => {
     (id, layout) => {
       const def = written.get(id);
       if (!def) throw new Error(`no definition for ${id}`);
-      expect(layout).toEqual({ ...classicLayout(def), languages: layout.languages });
+      expect(layout).toEqual({ ...classicLayout(def), languages: [...(def.languages ?? [])] });
       expect(layout.combos ?? []).toEqual([]);
       expect(layout.conditionalLayers ?? []).toEqual([]);
       expect(Object.values(layout.layers[0].bindings).some((b) => b.kind === 'key_repeat')).toBe(

@@ -1,4 +1,3 @@
-import { languagesFileText } from '../../lang/performance.js';
 import { codeOf } from './code.js';
 import { LibraryRequestRefused } from './request.js';
 
@@ -33,15 +32,6 @@ export function removeBuiltInId(text: string, id: string): string {
   const [start, end] = block(lines, 'const BUILT_IN_IDS = [', '];', 'BUILT_IN_IDS');
   lines.splice(onlyLine(lines, `  '${id}',`, start, end, `the id ${id}`), 1);
   return lines.join('\n');
-}
-
-/** `languages.json` without one layout's line. */
-export function dropLanguages(text: string, id: string): string {
-  const languages = JSON.parse(text) as Record<string, string[]>;
-  if (!Object.hasOwn(languages, id)) {
-    throw new LibraryRequestRefused(`languages.json has no line for ${id}`);
-  }
-  return languagesFileText(Object.entries(languages).filter(([key]) => key !== id));
 }
 
 /** A layout as the landing page names it. */

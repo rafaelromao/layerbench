@@ -2,7 +2,6 @@ import type { Layout } from '../layout/types.js';
 import { BUNDLED_IDS } from './bundled-ids.js';
 import { CLASSIC_DEFS, type ClassicDef, classicLayout } from './classic.js';
 import { DOCUMENT_LAYOUTS } from './documents.js';
-import LANGUAGES from './languages.json';
 import { SMALL_DEFS } from './small.js';
 import { withHomeRowMods } from './templates.js';
 
@@ -44,11 +43,15 @@ export const SMALL_LAYOUTS: Layout[] = SMALL_DEFS.map(classicLayout);
 
 /**
  * A layout written in code, built from its definition: the layout its author designed, with the
- * home row mods its author's keymap holds, where its definition gives them.
+ * home row mods its author's keymap holds, where its definition gives them, and the languages its
+ * author states.
  */
 function built(def: ClassicDef): Layout {
   const layout = classicLayout(def);
-  return def.homeRowMods ? withHomeRowMods(layout, def.homeRowMods) : layout;
+  return {
+    ...(def.homeRowMods ? withHomeRowMods(layout, def.homeRowMods) : layout),
+    languages: [...(def.languages ?? [])],
+  };
 }
 
 /** Layouts in the order of `BUNDLED_IDS`, the order the Library lists them in. */
@@ -59,22 +62,9 @@ function byBundledOrder(a: Layout, b: Layout): number {
 /**
  * The layouts written here in code, each as its author designed it: one whose author leaves the
  * thumbs to a space bar has its space on a thumb of its definition's choosing, and the
- * small-board layouts' authors placed their own. They are listed in the order of `BUNDLED_IDS`, as
- * the languages file is.
+ * small-board layouts' authors placed their own. They are listed in the order of `BUNDLED_IDS`.
  */
-const BUILT_IN_LAYOUTS: Layout[] = [...CLASSIC_DEFS, ...SMALL_DEFS]
-  .map(built)
-  .sort(byBundledOrder)
-  .map(withLanguages);
-
-/**
- * A layout written in code, with the languages it performs well in: measured, not chosen, by
- * `pnpm languages` (`lang/performance.ts`), which writes them to `languages.json`. A layout added
- * as a document carries its own, written the same way.
- */
-function withLanguages(layout: Layout): Layout {
-  return { ...layout, languages: (LANGUAGES as Record<string, string[]>)[layout.id ?? ''] ?? [] };
-}
+const BUILT_IN_LAYOUTS: Layout[] = [...CLASSIC_DEFS, ...SMALL_DEFS].map(built).sort(byBundledOrder);
 
 /**
  * The layouts the app offers, those written here and those added as documents, in the order of

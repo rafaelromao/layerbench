@@ -1,10 +1,15 @@
+import { compileLayout } from '../layout/compile.js';
+import type { Layout } from '../layout/types.js';
+import { layoutLanguageCoverage } from './coverage.js';
+import EFFORTS from './efforts.json';
 import { LANGUAGE_PROFILES } from './profiles.js';
 
 /**
- * Which languages a bundled layout is for. It is for a language when it performs well in it: it
- * types every letter the language needs, and its Effort on the language's news text is in the
- * better half of every bundled layout's. `pnpm languages` measures this and writes it; a test fails
- * when what is written drifts from what is measured.
+ * Which languages a layout performs well in. It performs well in a language when it types every
+ * letter the language needs, and its Effort on the language's news text is in the better half of
+ * the bundled layouts': fewer than half of them beat it. The editor measures this for the layout in
+ * hand, against the Efforts of the bundled layouts that `pnpm languages` writes to `efforts.json`,
+ * so it runs one analysis a language and never the bundled layouts'.
  */
 
 /** The languages measured: every one with a profile, in the profiles' order. */
@@ -23,31 +28,90 @@ export const LANGUAGE_CORPORA: Readonly<Record<string, string>> = {
 /** The rules a bare visit to the Library ranks on (the web's `DEFAULT_PARAMS.preset`). */
 export const LANGUAGES_PRESET = 'layouts_doc';
 
-/** One bundled layout on one language's text. */
-export interface LanguageEntry {
-  id: string;
-  effort: number;
-  /** Whether it types every letter the language needs. */
-  covers: boolean;
+/**
+ * The Effort of every bundled layout on each language's text, lowest first, as `pnpm languages`
+ * writes them: the half is of every bundled layout, one that cannot type the language included.
+ */
+export const BUNDLED_EFFORTS: Readonly<Record<string, readonly number[]>> = EFFORTS;
+
+/** Decimals an Effort is kept and compared at, so the same layout is the same number everywhere. */
+const EFFORT_DECIMALS = 3;
+
+export function storedEffort(effort: number): number {
+  const scale = 10 ** EFFORT_DECIMALS;
+  return Math.round(effort * scale) / scale;
+}
+
+/** How many of the Efforts are lower than this one. */
+export function beatenBy(effort: number, efforts: readonly number[]): number {
+  const mine = storedEffort(effort);
+  return efforts.filter((other) => other < mine).length;
 }
 
 /**
- * The layouts that perform well in a language: those that type it and that fewer than half of all
- * the layouts beat on Effort. Layouts of equal Effort are in or out together, and the middle one of
- * an odd number is in. A layout that cannot type the language still counts among the whole, since
- * the half is of every bundled layout.
+ * Whether an Effort performs well among those of the bundled layouts: fewer than half of them beat
+ * it. Layouts of equal Effort are in or out together, and the middle one of an odd number is in.
  */
-export function performsWell(entries: readonly LanguageEntry[]): Set<string> {
-  // No Effort is beaten by nothing, and would pass for the best.
-  const unscored = entries.find((e) => !Number.isFinite(e.effort));
-  if (unscored) throw new Error(`${unscored.id} has no Effort`);
-  const out = new Set<string>();
-  for (const e of entries) {
-    if (!e.covers) continue;
-    const better = entries.filter((o) => o.effort < e.effort).length;
-    if (better * 2 < entries.length) out.add(e.id);
+export function performsWell(effort: number, efforts: readonly number[]): boolean {
+  if (!Number.isFinite(effort)) throw new Error('A layout with no Effort is beaten by nothing');
+  return beatenBy(effort, efforts) * 2 < efforts.length;
+}
+
+/** What measuring one language found for a layout, and so why it was or was not added. */
+export type LanguageVerdict = { tag: string } & (
+  | { kind: 'already' }
+  /** It lacks letters the language cannot be written without. */
+  | { kind: 'lacks'; missing: string[] }
+  | { kind: 'added' | 'worse'; effort: number; beaten: number; of: number }
+);
+
+/**
+ * What each language comes to for a layout: one it is for already is left as it is; one it cannot
+ * type is not added, naming the letters it lacks; and for each other, `effortOn` is asked for the
+ * layout's Effort on that language's text, and it is added when that performs well. The layout is
+ * judged as it is, whether it is a layout of the user's or a copy of a bundled one.
+ */
+export async function measureLayoutLanguages(
+  layout: Layout,
+  effortOn: (tag: string) => Promise<number>,
+  efforts: Readonly<Record<string, readonly number[]>> = BUNDLED_EFFORTS,
+): Promise<LanguageVerdict[]> {
+  const compiled = compileLayout(layout);
+  const verdicts: LanguageVerdict[] = [];
+  for (const tag of PERFORMANCE_LANGUAGES) {
+    if (layout.languages?.includes(tag)) {
+      verdicts.push({ tag, kind: 'already' });
+      continue;
+    }
+    const missing = layoutLanguageCoverage(compiled, tag)?.missingRequired ?? [];
+    if (missing.length > 0) {
+      verdicts.push({ tag, kind: 'lacks', missing });
+      continue;
+    }
+    const effort = await effortOn(tag);
+    const among = efforts[tag] ?? [];
+    verdicts.push({
+      tag,
+      kind: performsWell(effort, among) ? 'added' : 'worse',
+      effort,
+      beaten: beatenBy(effort, among),
+      of: among.length,
+    });
   }
-  return out;
+  return verdicts;
+}
+
+/**
+ * The layout's languages with those a measurement added: those the profiles know in their order,
+ * then any other tag it carries, as the editor's own choice keeps them.
+ */
+export function withAddedLanguages(
+  languages: readonly string[],
+  verdicts: readonly LanguageVerdict[],
+): string[] {
+  const added = new Set(verdicts.filter((v) => v.kind === 'added').map((v) => v.tag));
+  const known = PERFORMANCE_LANGUAGES.filter((t) => languages.includes(t) || added.has(t));
+  return [...known, ...languages.filter((t) => !PERFORMANCE_LANGUAGES.includes(t))];
 }
 
 /** Languages in the order the profiles give them, as a layout lists them. */
@@ -55,15 +119,27 @@ export function orderedLanguages(tags: ReadonlySet<string>): string[] {
   return PERFORMANCE_LANGUAGES.filter((t) => tags.has(t));
 }
 
+/** The widest a line of `efforts.json` goes, as the formatter fills it. */
+const FILE_WIDTH = 100;
+
 /**
- * `layouts/languages.json` as `pnpm languages` writes it: one layout a line, in the order given, as
- * the formatter keeps it.
+ * `efforts.json` as `pnpm languages` writes it, as the formatter keeps it: each language's Efforts
+ * filled into lines of the file's width.
  */
-export function languagesFileText(
-  entries: readonly (readonly [string, readonly string[]])[],
-): string {
-  const lines = entries.map(
-    ([id, tags]) => `  ${JSON.stringify(id)}: ${JSON.stringify(tags).replaceAll(',', ', ')}`,
-  );
-  return `{\n${lines.join(',\n')}\n}\n`;
+export function effortsFileText(efforts: Readonly<Record<string, readonly number[]>>): string {
+  const blocks = Object.entries(efforts).map(([tag, values]) => {
+    const lines: string[] = [];
+    let line = '';
+    values.forEach((value, i) => {
+      const token = i < values.length - 1 ? `${value},` : `${value}`;
+      if (line && `    ${line} ${token}`.length > FILE_WIDTH) {
+        lines.push(`    ${line}`);
+        line = '';
+      }
+      line = line ? `${line} ${token}` : token;
+    });
+    if (line) lines.push(`    ${line}`);
+    return `  ${JSON.stringify(tag)}: [\n${lines.join('\n')}\n  ]`;
+  });
+  return `{\n${blocks.join(',\n')}\n}\n`;
 }
