@@ -146,7 +146,7 @@ export function LayerNav({
           <input
             ref={field}
             aria-label={`Rename ${layer.name}`}
-            className="input input-xs w-28"
+            className="input input-xs w-full max-w-28"
             defaultValue={layer.name}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {

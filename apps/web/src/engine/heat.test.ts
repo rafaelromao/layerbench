@@ -316,8 +316,9 @@ describe('the share of the typing on a layer', () => {
     expect(sum).toBeCloseTo(1);
   });
 
-  it('does not depend on the heat mode, and is 0 where nothing was pressed', () => {
+  it('is 0 where nothing was pressed, and on a layer the report does not have yet', () => {
     expect(layerShare(heatSourceOf(reportWith({})), 0)).toBe(0);
+    expect(layerShare(source, 3)).toBe(0);
   });
 
   it('is written with one decimal at most', () => {

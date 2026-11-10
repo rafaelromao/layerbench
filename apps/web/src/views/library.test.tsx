@@ -23,7 +23,7 @@ import { useSession } from '../state/session.js';
 import { CompositeStorage } from '../storage/composite.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { branchWith, communityDoc } from '../test/community.js';
-import { showLayer } from '../test/layers.js';
+import { layerShareIn, showLayer } from '../test/layers.js';
 import { MemoryStorage } from '../test/memory-storage.js';
 import {
   customInLink,
@@ -1680,11 +1680,9 @@ describe('Heatmaps on the cards', () => {
   it('writes the share of the presses made on the layer shown, in every mode, only with heat on', async () => {
     const user = userEvent.setup();
     renderRoute(LIBRARY, { storage: freshStorage() });
-    const shareOn = (card: HTMLElement) =>
-      within(card).queryByRole('img', { name: /^Share of key presses on this layer: / });
     const card = (await boardOf('Hands Down Gold')).closest('article') as HTMLElement;
     await rankingSays(/^Lower is better for both/, 60_000);
-    expect(shareOn(card)).toBeNull();
+    expect(layerShareIn(card)).toBeNull();
 
     await user.click(screen.getByRole('button', { name: 'Heatmaps' }));
     const nav = within(card).getByRole('group', { name: 'Hands Down Gold layers' });
@@ -1695,9 +1693,12 @@ describe('Heatmaps on the cards', () => {
       while (previous.getAttribute('aria-disabled') !== 'true') await user.click(previous);
       const out: number[] = [];
       for (;;) {
-        const text = (await waitFor(() => shareOn(card) as HTMLElement)).textContent ?? '';
-        expect(text).toMatch(/^\d+(\.\d)?%$/);
-        out.push(Number.parseFloat(text));
+        const share = await waitFor(() => {
+          const v = layerShareIn(card);
+          expect(v).not.toBeNull();
+          return v as number;
+        });
+        out.push(share);
         if (next.getAttribute('aria-disabled') === 'true') return out;
         await user.click(next);
       }
@@ -1717,7 +1718,7 @@ describe('Heatmaps on the cards', () => {
     }
 
     await user.click(screen.getByRole('button', { name: 'Heatmaps' }));
-    expect(shareOn(card)).toBeNull();
+    expect(layerShareIn(card)).toBeNull();
   }, 120_000);
 
   it('changes what it measures without analyzing anything again, as Analyze would', async () => {

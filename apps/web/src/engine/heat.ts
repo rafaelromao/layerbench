@@ -115,13 +115,14 @@ export function heatMap(source: HeatSource, mode: HeatMode, layer: number): Reco
 
 /**
  * The part of the typing done on one layer, 0–1: the presses on that layer's keys over all presses,
- * whatever the heat mode. 0 where nothing was pressed. A layer beyond the end clamps, as `heatMap`.
+ * whatever the heat mode. 0 where nothing was pressed, and on a layer the report does not have yet,
+ * as one just added: `heatMap` clamps it to colour the board, but a number would claim another
+ * layer's share.
  */
 export function layerShare(source: HeatSource, layer: number): number {
   const total = source.usageAll.reduce((a, b) => a + b, 0);
-  if (!(total > 0) || source.usageByLayer.length === 0) return 0;
-  const l = Math.max(0, Math.min(layer, source.usageByLayer.length - 1));
-  const on = (source.usageByLayer[l] ?? []).reduce((a, b) => a + b, 0);
+  if (!(total > 0)) return 0;
+  const on = (source.usageByLayer[layer] ?? []).reduce((a, b) => a + b, 0);
   return on / total;
 }
 

@@ -40,17 +40,24 @@ describe('the layer navigator', () => {
     ];
     render(<Harness layers={layers} />);
     const slot = screen.getByTestId('layer-name-slot');
-    // jsdom has no layout: a slot sized by its content would lose these classes.
-    expect(slot).toHaveClass('w-40', 'max-w-full');
-    expect(slot).not.toHaveClass('max-w-[10rem]');
-    // The slot is the one box between the arrows, its width not the name's.
-    const widths: string[] = [];
-    for (let i = 0; i < layers.length; i++) {
-      widths.push(`${slot.className}|${[...nav().children].indexOf(slot)}`);
-      if (i < layers.length - 1) await user.click(next());
+    // jsdom has no layout, so the width is pinned by its classes: one width, not the name's, on
+    // every layer, the one box between the arrows.
+    for (const layer of layers) {
+      expect(within(slot).getByText(layer.name)).toBeInTheDocument();
+      expect(slot).toHaveClass('w-40', 'max-w-full');
+      expect(slot.className).not.toMatch(/max-w-\[|w-(auto|fit|max|min)\b/);
+      expect([...nav().children]).toEqual([previous(), slot, next()]);
+      if (layer !== layers.at(-1)) await user.click(next());
     }
-    expect(new Set(widths).size).toBe(1);
-    expect([...nav().children]).toEqual([previous(), slot, next()]);
+  });
+
+  it('fits the rename field in the slot, so on a narrow screen it does not cover the arrows', async () => {
+    render(<Harness onRename={vi.fn()} />);
+    fireEvent.keyDown(within(nav()).getByRole('button', { name: 'Base' }), { key: 'F2' });
+    const field = await within(nav()).findByRole('textbox', { name: 'Rename Base' });
+    expect(field.parentElement).toBe(screen.getByTestId('layer-name-slot'));
+    expect(field).toHaveClass('w-full', 'max-w-28');
+    expect(field.className).not.toMatch(/(^|\s)w-28\b/);
   });
 
   it('steps through the layers with its buttons, and says where it is', async () => {

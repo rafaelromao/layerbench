@@ -2,7 +2,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import type { AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
-import { layerNames, shownLayer } from '../test/layers.js';
+import { layerNames, layerShareIn, shownLayer } from '../test/layers.js';
 import { openSettings, renderRoute, testClient } from '../test/render.js';
 
 /**
@@ -26,6 +26,38 @@ describe('Analyze', () => {
     expect(await screen.findByText('Same finger bigrams')).toBeInTheDocument();
     expect(screen.getByText('Layer taps per 100 symbols')).toBeInTheDocument();
     expect(screen.getByText('every character in the text can be typed')).toBeInTheDocument();
+  });
+
+  it('writes the share of the typing on the layer the board shows, turning with it', async () => {
+    const user = userEvent.setup();
+    renderRoute('/analyze?layout=magic-romak&corpus=en-general&sample=20000');
+    await screen.findByText('Same finger bigrams');
+    const board = screen.getByRole('region', { name: 'Board' });
+    const nav = within(board).getByRole('group', { name: 'Layers' });
+    const next = within(nav).getByRole('button', { name: 'Next layer' });
+    const shares: Record<string, number> = {};
+    for (;;) {
+      const share = await waitFor(() => {
+        const v = layerShareIn(board);
+        expect(v).not.toBeNull();
+        return v as number;
+      });
+      shares[shownLayer()] = share;
+      if (next.getAttribute('aria-disabled') === 'true') break;
+      await user.click(next);
+    }
+    expect(Object.keys(shares)).toEqual([
+      'Alpha 1',
+      'Alpha 2',
+      'Ç extension',
+      'Numbers',
+      'Symbols',
+    ]);
+    // Letters only, by default: Alpha 1 types most of them, and Numbers none.
+    expect(shares['Alpha 1']).toBeGreaterThan(85);
+    expect(shares.Numbers).toBe(0);
+    const sum = Object.values(shares).reduce((a, b) => a + b, 0);
+    expect(Math.abs(sum - 100)).toBeLessThanOrEqual(0.05 * 5 + 1e-9);
   });
 
   it('leads the badges of Effort and SFB to the guide’s ruler for the rules in the link', async () => {

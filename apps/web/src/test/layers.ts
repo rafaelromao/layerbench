@@ -67,3 +67,19 @@ export async function layerNames(user: UserEvent, label = 'Layers'): Promise<str
     names.push(shownLayer(label));
   }
 }
+
+const SHARE_SAID = 'Share of key presses on this layer: ';
+
+/**
+ * The share of the typing written beside the navigator, in percent, or null where there is none (no
+ * heat). It must be said to a screen reader with what it is, and written as Board writes it.
+ */
+export function layerShareIn(scope: HTMLElement): number | null {
+  const el = within(scope).queryByTestId('layer-share');
+  if (!el) return null;
+  const text = el.textContent ?? '';
+  if (!text.startsWith(SHARE_SAID)) throw new Error(`share not announced: ${text}`);
+  const shown = text.slice(SHARE_SAID.length);
+  if (!/^\d+(\.\d)?%$/.test(shown)) throw new Error(`share written as ${shown}`);
+  return Number.parseFloat(shown);
+}

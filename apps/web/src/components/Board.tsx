@@ -94,12 +94,14 @@ export function Board({
           the button never covers an arrow, and the arrows stay put as the layers turn. */}
       <div className="grid min-w-0 grid-cols-[minmax(4.75rem,1fr)_minmax(0,auto)_minmax(4.75rem,1fr)] items-center gap-2">
         {layerShare !== undefined && (
+          // Announced as the layer turns, as the counter is.
           <span
             className="col-start-1 row-start-1 justify-self-start text-xs tabular-nums opacity-70"
-            role="img"
-            aria-label={`Share of key presses on this layer: ${formatShare(layerShare)}`}
+            aria-live="polite"
+            data-testid="layer-share"
             title="Share of key presses made on this layer"
           >
+            <span className="sr-only">Share of key presses on this layer: </span>
             {formatShare(layerShare)}
           </span>
         )}
