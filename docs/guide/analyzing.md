@@ -202,7 +202,7 @@ With **Space** on, a layout whose Repeat key and space bar are on one thumb list
 `⟳␣` among its SFB: a doubled letter typed by the Repeat key, then the space, is one thumb on two
 keys, and the thumbs count. A press of the Repeat key is named `⟳`, as the board draws it, not by
 the letter it repeated; an adaptive key's other branches, Magic Romak's `h` after `a`, keep the
-letter they typed. Point at the row, or enlarge the card, to see the keys: *L1 (Repeat) → L0
+letter they typed. Point at the row to see the keys: *L1 (Repeat) → L0
 (space / Numb) · same finger, LT*. A key's numbers name them the same way when a row is pointed at.
 
 ### The text itself
