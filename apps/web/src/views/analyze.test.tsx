@@ -353,7 +353,10 @@ describe('Analyze', () => {
         client: neverLandingOnCyanophage(),
       });
       await screen.findByText('Same finger bigrams');
-      expect(shown().filter((k) => !Number.isNaN(k.share)).length).toBeGreaterThan(0);
+      // The share is there once the report has landed, a moment after the metrics are.
+      await waitFor(() =>
+        expect(shown().filter((k) => !Number.isNaN(k.share)).length).toBeGreaterThan(0),
+      );
 
       const dialog = await openSettings();
       await user.selectOptions(within(dialog).getByLabelText('Rules'), 'cyanophage');
