@@ -563,10 +563,12 @@ describe("Magic Romak types `;` as the keymap's combo", () => {
  * symbols and German's letters: its author's layers and combos type what they type, and these are
  * what they leave out, for an edit in the app to add. Magic Romak's keymap has no way to
  * `£ § « » ı ß œ æ`, and its file draws no `¿` or `¡`, so French and German lack a letter, and
- * Spanish its two marks. RSTHD's Special layer types symbols and no digit.
+ * Spanish its two marks. Romak has Magic Romak's Numbers and Symbols and no dead key, so it lacks
+ * those and `ñ ä ö ü` too. RSTHD's Special layer types symbols and no digit.
  */
 const UNTYPED: Record<string, string> = {
   'magic-romak': '¡£§«»¿ßæıœ',
+  romak: '¡£§«»¿ßæıœñäöü',
   'hands-down-gold': '\\ªº«»ı¿¡ß',
   'hands-down-promethium': '\\ªº«»ı¿¡ß',
   'hands-down-vibranium': '\\ªº«»ı¿¡ß',
@@ -587,11 +589,10 @@ function everyLetter(tag: string): string[][] {
 
 /**
  * The marks each layout with no Numbers or Symbols types: those its author places on its keys, and
- * on its second alpha layer where it has one (Romak's `'`, `_` and `ç`), and nothing else. Digits, accents
+ * on its second alpha layer where it has one, and nothing else. Digits, accents
  * and every other symbol are left to an edit in the app.
  */
 const TYPES: Record<string, string> = {
-  romak: "',./;_ç",
   qwerty: ',./;',
   dvorak: "',.;",
   colemak: ',./;',
@@ -627,8 +628,9 @@ const ACCENTLESS = Object.fromEntries(
 /**
  * What each layout with layers past its base lacks of each language, where it lacks anything: its
  * required letters, its optional ones and its punctuation. Magic Romak's lack what its keymap has no
- * way to: `ß`, `œ` and `æ`, the French quotes, `¿` and `¡`. Romak's lack what its write-up has no
- * way to: it types Portuguese in full but for `ü`, and none of the other languages' own.
+ * way to: `ß`, `œ` and `æ`, the French quotes, `¿` and `¡`. Romak's lack what its write-up and
+ * Magic Romak's Numbers and Symbols have no way to: it types Portuguese in full but for `ü`, and none
+ * of the other languages' own.
  */
 const LACKS: Record<string, Record<string, string[][]>> = {
   romak: {

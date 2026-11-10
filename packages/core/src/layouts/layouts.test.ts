@@ -69,7 +69,7 @@ describe('bundled layouts', () => {
 describe('Romak numbers and symbols', () => {
   const KEYMAP_CHARACTERS = [...'0123456789\\{}&()|[].,~#@^$"\'<>`%=:?-+_!/*'];
   const OPTS = { caseMode: 'fold', crossWord: 'reset' } as const;
-  const romaks = [magicRomak].map((l) => [l.name, l] as const);
+  const romaks = [magicRomak, romak].map((l) => [l.name, l] as const);
 
   it.each(romaks)('%s types every character the two layers carry', (_name, layout) => {
     const producible = producibleSymbols(compileLayout(layout));
@@ -93,14 +93,15 @@ describe('Romak numbers and symbols', () => {
 /**
  * Romak 34 as its author writes it up (rafaelromao.github.io/romak, `docs/index.md`): Alpha 1, a
  * second alpha layer for the accents, `qu` and `ç`, and the Ç extension, a one-shot layer for the key
- * after `ç`; Repeat, space, Alpha 2 and a one-shot Shift on the thumbs. The write-up defines no
- * Numbers or Symbols, so the layout has none, and lists `áé = à` among the combos of Alpha 2.
+ * after `ç`; Repeat, space, Alpha 2 and a one-shot Shift on the thumbs; and `áé = à` among the combos
+ * of Alpha 2. Its Numbers and Symbols are Magic Romak's (the owner's decision, 2026-11-10), held on
+ * space and the Alpha 2 thumb, with their combos.
  */
 describe('Romak 34', () => {
   const OPTS = { caseMode: 'fold', crossWord: 'reset' } as const;
   const geometry = getGeometryPreset('3x5+2');
   const compiled = compileLayout(romak);
-  const what = (b: Binding | undefined) => {
+  const what = (b: Binding | undefined): string => {
     if (!b) return '·';
     switch (b.kind) {
       case 'kp':
@@ -113,6 +114,10 @@ describe('Romak 34', () => {
         return `sl:${b.layer}`;
       case 'sk':
         return `sk:${b.mod}`;
+      case 'hold_tap':
+        return `${what(b.tap)}↓${b.hold.kind === 'mo' ? b.hold.layer : b.hold.kind}`;
+      case 'lt':
+        return `${what(b.tap)}↓${b.layer}`;
       default:
         return b.kind;
     }
@@ -129,12 +134,12 @@ describe('Romak 34', () => {
       .steps.filter((s) => s.kind !== 'hold_release')
       .map((s) => s.key);
 
-  it('draws Alpha 1 as the write-up does, with its four thumbs', () => {
+  it('draws Alpha 1 as the write-up does, with its four thumbs, space and Alpha 2 holding Numbers and Symbols', () => {
     expect(drawn('alpha1')).toEqual([
       'q b m g k x l o u ;',
       'd n s t w z r a e i',
       'y f c p v j h , . /',
-      '⟲ ␣ sl:alpha2 sk:LSHIFT',
+      '⟲ ␣↓num sl:alpha2↓sym sk:LSHIFT',
     ]);
     expect(romak.keys).toEqual({ space: 'L0', shift: { key: 'R1', kind: 'sk' } });
   });
@@ -162,15 +167,35 @@ describe('Romak 34', () => {
     });
   });
 
-  it('is its letters and these layers alone: no Numbers, Symbols, Accents or hold, and one combo', () => {
-    expect(romak.layers.map((l) => l.id)).toEqual(['alpha1', 'alpha2', 'ccedil']);
-    expect(romak.combos).toEqual([
-      { id: 'à', keys: ['RHM', 'RHR'], binding: { kind: 'kp', symbol: 'à' }, layers: ['alpha2'] },
+  it("draws Magic Romak's Numbers key for key, the keys Romak's board adds left empty", () => {
+    expect(drawn('num')).toEqual([
+      '· \\ { } · · 7 8 9 ·',
+      ', & ( ) · · 4 5 6 .',
+      '· | [ ] · · 1 2 3 ·',
+      '· · ␣↓sym 0',
     ]);
+  });
+
+  it("draws Magic Romak's Symbols key for key, the keys Romak's board adds left empty", () => {
+    expect(drawn('sym')).toEqual([
+      "· ~ # ' · · % = : ·",
+      '@ ^ $ " · · ? - + _',
+      '· < > ` · · ! / * ·',
+      '· ␣↓num · ·',
+    ]);
+  });
+
+  it("is its letters, Magic Romak's Numbers and Symbols and their typing combos: no Accents, no command combo", () => {
+    expect(romak.layers.map((l) => l.id)).toEqual(['alpha1', 'alpha2', 'ccedil', 'num', 'sym']);
+    expect(romak.combos?.map((c) => [c.id, c.keys.join(' '), c.layers?.join(','), c.role])).toEqual(
+      [
+        ['à', 'RHM RHR', 'alpha2', undefined],
+        ['ordinal', 'RHI RHM RHR', 'num', undefined],
+        ['degree', 'RBI RBM RBR', 'num', undefined],
+        ['euro', 'RTI RTM RTR', 'sym', undefined],
+      ],
+    );
     expect(romak.conditionalLayers ?? []).toEqual([]);
-    expect(
-      Object.values(romak.layers[0].bindings).some((b) => b.kind === 'hold_tap' || b.kind === 'lt'),
-    ).toBe(false);
   });
 
   it('is Special, by the macros of its second alpha layer', () => {

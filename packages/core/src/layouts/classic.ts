@@ -121,68 +121,6 @@ function keyFor(bindings: Record<string, Binding>, token: string, layout: string
 /** Layouts of one layer, as their authors' sources draw them on a 34-key board. */
 export const CLASSIC_DEFS: ClassicDef[] = [
   {
-    id: 'romak',
-    name: 'Romak',
-    author: 'Rafael Romão',
-    // His write-up says it is built for Portuguese and English users.
-    languages: ['en', 'pt'],
-    base: { id: 'alpha1', name: 'Alpha 1' },
-    // Romak 34 as its author writes it up (rafaelromao.github.io/romak, `docs/index.md`): Alpha 1,
-    // a second alpha layer for the accents, `qu` and `ç`, and the Ç extension, a layer for the key
-    // after `ç`. The thumbs are Repeat, space, Alpha 2 for the next key and a one-shot Shift. It
-    // defines no Numbers or Symbols, and lists `áé = à` among its Alpha 2 combos: `à` is typed by
-    // `á` and `é` together.
-    rows: 'q b m g k x l o u ;\nd n s t w z r a e i\ny f c p v j h , . /',
-    thumbs: '⟲ space alpha2 shift',
-    special: {
-      '⟲': REPEAT,
-      alpha2: { kind: 'sl', layer: 'alpha2' },
-      shift: { kind: 'sk', mod: 'LSHIFT' },
-    },
-    layers: [
-      {
-        id: 'alpha2',
-        name: 'Alpha 2',
-        byKey: {
-          LTM: { kind: 'macro', symbols: 'qu' },
-          RTI: 'ô',
-          RTM: 'ó',
-          RTR: 'ú',
-          RHI: 'ã',
-          RHM: 'á',
-          RHR: 'é',
-          RHP: 'í',
-          // Typing `ç` leaves the Ç extension on for the next key.
-          LBM: { kind: 'macro', symbols: 'ç', then: [{ kind: 'sl', layer: 'ccedil' }] },
-          RBI: 'õ',
-          RBM: 'â',
-          RBR: 'ê',
-          L1: "'",
-          L0: '_',
-          R0: '_',
-          R1: "'",
-        },
-      },
-      {
-        id: 'ccedil',
-        name: 'Ç extension',
-        byKey: {
-          LHI: { kind: 'macro', symbols: 'ão' },
-          LBI: { kind: 'macro', symbols: 'ões' },
-          RHI: 'ã',
-          RBI: 'õ',
-        },
-      },
-    ],
-    combos: [
-      { id: 'à', keys: ['RHM', 'RHR'], binding: { kind: 'kp', symbol: 'à' }, layers: ['alpha2'] },
-    ],
-    repeatPolicy: { doubledLetters: 'repeatKey' },
-    description:
-      'Romak 34 (3x5+2) for Portuguese and English: a repeat key, Alpha 2 for the accents, qu and ç, the combo of á and é that types à, and the Ç extension.',
-    link: 'https://rafaelromao.github.io/romak',
-  },
-  {
     id: 'qwerty',
     name: 'Qwerty',
     rows: 'q w e r t y u i o p\na s d f g h j k l ;\nz x c v b n m , . /',
