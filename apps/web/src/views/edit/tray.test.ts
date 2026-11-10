@@ -1,7 +1,7 @@
 import { CLASSIC_LAYOUTS, compileLayout, type Layout, producibleSymbols } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
 import { type EditAction, editReducer } from './reducer.js';
-import { missingKeys } from './tray.js';
+import { charLabel, missingKeys } from './tray.js';
 import { initialUndoState, type UndoState, undoable } from './undo.js';
 
 const reducer = undoable(editReducer);
@@ -155,5 +155,13 @@ describe('the missing-keys tray', () => {
       producible,
     });
     expect(tray).toEqual([{ char: 'c' }]);
+  });
+});
+
+describe('charLabel', () => {
+  it('draws a space, alone or after what a press typed with it', () => {
+    expect(charLabel(' ')).toBe('␣');
+    expect(charLabel(', ')).toBe(',␣');
+    expect(charLabel('qu')).toBe('qu');
   });
 });

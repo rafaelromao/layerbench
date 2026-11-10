@@ -151,6 +151,17 @@ is typed never depends on what a thumb costs. When several keys reach a layer th
 word is typed with the one that makes it the fewest same-finger pairs, so the key tapped for a
 layer can change from word to word, as **How is this typed?** shows.
 
+A macro or any key that types several characters at once is pressed wherever the text has them all,
+before typing them one at a time is tried. One that types a mark and then a space, such as `, ` or
+`. `, types the word's space with its mark, when that takes no more presses than the mark and then
+the space bar: it is one press, the word's last, counted as the mark's key would be, with **Space**
+on or off, and named with the space as the board draws it: `,␣`. Its space ends the word, so the
+next letter starts one, and the words are counted as with the space bar; with **Space** on it pairs
+with the next word's first letter too, as the space bar does. Where no space follows the mark, the
+key's other ways type it, such as a hold that types the mark alone. A macro is matched only where its
+space is the last thing it types, after marks alone: one that types a word and its space, `and `,
+is not pressed, and the word is typed letter by letter.
+
 Type a word into **How is this typed?** and the board plays it: each press lights up in turn, on
 the layer it lands on, and a thumb held for a layer stays marked while it is held. The ring on a
 layer's reach keys, the keys held or tapped to get to it, stays all along. The presses are

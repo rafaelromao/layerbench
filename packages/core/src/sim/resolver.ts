@@ -1183,7 +1183,9 @@ export class Simulator {
 
   /**
    * Candidate tokens starting at code-unit index `i`, longest first (multi-symbol producer strings,
-   * then the single symbol). Tokens never cross a space. Returns `[token, symbolCount, nextIndex]`.
+   * then the single symbol). A token never crosses a space, but may end on one: a macro that types
+   * `, ` types the comma and the word's space. Returns `[token, symbolCount, nextIndex]`, the space
+   * among the symbols counted.
    */
   private tokenCandidates(stream: string, i: number): [string, number, number][] {
     const first = String.fromCodePoint(stream.codePointAt(i) as number);
@@ -1200,7 +1202,9 @@ export class Simulator {
           }
           const cp = stream.codePointAt(j) as number;
           const g = String.fromCodePoint(cp);
-          if (g === ' ') {
+          // A space ends a token only after marks, as a macro's `, ` or `. `: a word typed with its
+          // space is typed letter by letter, then the space bar.
+          if (g === ' ' && (k === 0 || k < len - 1 || HAS_LETTER.test(s))) {
             bad = true;
             break;
           }
@@ -1399,6 +1403,36 @@ export class Simulator {
     return cost;
   }
 
+  /**
+   * Whether a token that ends on a space, a macro's `, `, is typed in one press rather than its mark
+   * and then the space bar: by the fewest presses, as any way of typing is chosen, the press that
+   * types both winning a tie. Each is tried from where the board is, and the board is left there.
+   */
+  private together(token: string): boolean {
+    const both = this.pressesFor(token);
+    if (both === null) return false;
+    const apart = this.pressesFor(token.slice(0, -1));
+    return apart === null || both <= apart + 1;
+  }
+
+  /** How many presses the cheapest way of typing the token takes from here, or null. */
+  private pressesFor(token: string): number | null {
+    const m = this.machine;
+    const start = m.state.snapshot();
+    const holds = [...this.plannerHolds];
+    const handSet = (this.userPaths.get(this.pathSymbol(token))?.length ?? 0) > 0;
+    const events = this.pick(this.candidatesFor(token), token, handSet);
+    m.state.restore(start);
+    m.recomputeMask();
+    this.plannerHolds.clear();
+    for (const pos of holds) this.plannerHolds.add(pos);
+    this.standIns.clear();
+    if (events === null) return null;
+    let presses = 0;
+    for (const e of events) if (e.kind !== 'hold_release') presses++;
+    return presses;
+  }
+
   /** Always typed right after `wordBoundary`, so no word is waiting and the space commits at once. */
   private typeSpace(): void {
     const m = this.machine;
@@ -1456,15 +1490,25 @@ export class Simulator {
       }
       let typed = false;
       for (const [token, len, next] of this.tokenCandidates(stream, i)) {
+        // A token that ends on a space types the word's space with its mark, when that is cheaper.
+        const spaced = len > 1 && token.endsWith(' ');
+        if (spaced && !this.together(token)) continue;
         if (this.typeToken(token)) {
-          this.curWord.push(token);
-          for (let k = 0; k < len; k++) {
+          const n = spaced ? len - 1 : len;
+          this.curWord.push(spaced ? token.slice(0, -1) : token);
+          for (let k = 0; k < n; k++) {
             this.presses.symbol('both');
           }
-          this.stats.symbols += len;
-          symbols += len;
+          this.stats.symbols += n;
+          symbols += n;
           i = next;
           typed = true;
+          // Its press is the word's last, counted as the mark's key is; its space ends the word, and
+          // is counted with space only, as every space is.
+          if (spaced) {
+            this.wordBoundary(false);
+            this.presses.symbol('with_space');
+          }
           break;
         }
       }
@@ -1495,6 +1539,9 @@ export class Simulator {
     };
   }
 }
+
+/** A letter or a digit: what a token that ends on a space may not have before it. */
+const HAS_LETTER = /[\p{L}\p{N}]/u;
 
 export function simulate(
   compiled: CompiledLayout,

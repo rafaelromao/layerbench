@@ -1,12 +1,14 @@
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { analyze } from '../analysis/analyze.js';
 import { relabelEligible, relabelSwap } from '../analysis/relabel.js';
+import type { Corpus } from '../corpus/corpus.js';
 import { corpusStream } from '../corpus/corpus.js';
 import { nodeCorpusLoader } from '../corpus/node-loader.js';
 import { corporaRoot } from '../golden/paths.js';
 import { compileLayout } from '../layout/compile.js';
 import { swapKeys } from '../layout/ops.js';
+import { parseLayout } from '../layout/schema.js';
 import { bundledLayout } from '../layouts/index.js';
 import { evaluate, evaluateFocus } from '../rules/engine.js';
 import { layoutsDoc } from '../rules/presets.js';
@@ -27,9 +29,10 @@ describe.skipIf(!RUN)('performance budget (BENCH=1)', () => {
   const layout = bundledLayout('magic-romak')!;
   const compiled = compileLayout(layout);
   let stream = '';
+  let corpus: Corpus;
 
   beforeAll(async () => {
-    const corpus = await nodeCorpusLoader(corporaRoot()).load('pt-br-general');
+    corpus = await nodeCorpusLoader(corporaRoot()).load('pt-br-general');
     stream = corpusStream(corpus, 'fold');
   });
 
@@ -82,6 +85,26 @@ describe.skipIf(!RUN)('performance budget (BENCH=1)', () => {
     analyze(threeKeys, stream, { caseMode: 'fold', maxSymbols: 300_000, ruleSet });
     const ms = performance.now() - t;
     logLine(`300k, three Alpha 2 keys: ${ms.toFixed(0)}ms`);
+    expect(ms).toBeLessThan(1500);
+  });
+
+  it('analyzes 300k symbols with marks within 1.5 s on a layout whose macros type `, ` and `. `', () => {
+    // Magic Gust as its author saved it: each comma and dot before a space is weighed both ways.
+    const gust = compileLayout(
+      parseLayout(
+        JSON.parse(
+          readFileSync(new URL('../../fixtures/magic-gust.json', import.meta.url), 'utf8'),
+        ),
+      ),
+    );
+    const marks = corpusStream(corpus, 'fold', 'letters+digits+symbols');
+    const t = performance.now();
+    const r = analyze(gust, marks, { caseMode: 'fold', maxSymbols: 300_000, ruleSet });
+    const ms = performance.now() - t;
+    logLine(
+      `300k with marks, Magic Gust: ${ms.toFixed(0)}ms macro presses=${r.stats.macro_presses}`,
+    );
+    expect(r.stats.macro_presses).toBeGreaterThan(0);
     expect(ms).toBeLessThan(1500);
   });
 
