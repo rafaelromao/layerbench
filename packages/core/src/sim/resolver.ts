@@ -190,11 +190,6 @@ export class Simulator {
   private readonly wordKeys: number[] = [];
   /** The word's presses that another key could make. */
   private readonly slots: WordSlot[] = [];
-  /**
-   * The press that ended the word with its space, as a macro typing `, ` does, and the releases
-   * after it: kept out of the word, it enters the tables as the space bar would, once the word is in.
-   */
-  private readonly wordEnd: KeyEvent[] = [];
   readonly events: KeyEvent[] = [];
   private readonly collectEvents: boolean;
   private readonly softSymbols: Set<string>;
@@ -890,12 +885,7 @@ export class Simulator {
 
   // ------------------------------------------------------------ accumulation
 
-  /**
-   * Presses enter the tables. Those of a space, `isSpace`, are counted with space only and kept out
-   * of the word's runs; `inWord` keeps them among the word's presses, as the press that typed its
-   * last mark with its space.
-   */
-  private commit(events: KeyEvent[], isSpace: boolean, inWord = false): void {
+  private commit(events: KeyEvent[], isSpace: boolean): void {
     const c = this.compiled;
     for (const ev of events) {
       if (this.collectEvents) this.events.push(ev);
@@ -943,13 +933,7 @@ export class Simulator {
         }
         this.lastFingerPosWord[f] = member;
       });
-      if (ev.keyKind === 'space' || isSpace) {
-        if (inWord) {
-          this.curWordKeys.push(id);
-          this.curWordPresses++;
-        }
-        continue;
-      }
+      if (ev.keyKind === 'space' || isSpace) continue;
       this.curWordKeys.push(id);
       this.curWordPresses++;
       // same-hand runs
@@ -1006,17 +990,9 @@ export class Simulator {
     this.runLayer = -1;
   }
 
-  /**
-   * Keep a token's presses with the word they belong to, noting the ones another key could make. A
-   * press that types the word's space with what it types, and what follows it, end the word instead
-   * (`wordEnd`).
-   */
+  /** Keep a token's presses with the word they belong to, noting the ones another key could make. */
   private addToWord(events: KeyEvent[]): void {
     for (const e of events) {
-      if (this.wordEnd.length || endsWord(e)) {
-        this.wordEnd.push(e);
-        continue;
-      }
       this.word.push(e);
       if (e.kind === 'hold_release') continue;
       const others = this.standIns.get(e);
@@ -1109,8 +1085,8 @@ export class Simulator {
           }
           const cp = stream.codePointAt(j) as number;
           const g = String.fromCodePoint(cp);
-          // A space ends a token only after marks: a word with its space would type letters the
-          // tables could count only with space on.
+          // A space ends a token only after marks, as a macro's `, ` or `. `: a word typed with its
+          // space is typed letter by letter, then the space bar.
           if (g === ' ' && (k === 0 || k < len - 1 || HAS_LETTER.test(s))) {
             bad = true;
             break;
@@ -1278,16 +1254,33 @@ export class Simulator {
   }
 
   /**
-   * The word ends on the press that typed its space (`wordEnd`): it enters the tables as the space
-   * bar's press does, counted with space only, and the next symbol starts a word.
+   * Whether a token that ends on a space, a macro's `, `, is typed in one press rather than its mark
+   * and then the space bar: by the fewest presses, as any way of typing is chosen, the press that
+   * types both winning a tie. Each is tried from where the board is, and the board is left there.
    */
-  private endWord(): void {
-    const events = this.wordEnd.splice(0);
-    // The word's presses first, then this one, the word's last: it typed its mark.
-    this.commitWord();
-    this.commit(events, true, true);
-    this.wordBoundary(false);
-    this.presses.symbol('with_space');
+  private together(token: string): boolean {
+    const both = this.pressesFor(token);
+    if (both === null) return false;
+    const apart = this.pressesFor(token.slice(0, -1));
+    return apart === null || both <= apart + 1;
+  }
+
+  /** How many presses the cheapest way of typing the token takes from here, or null. */
+  private pressesFor(token: string): number | null {
+    const m = this.machine;
+    const start = m.state.snapshot();
+    const holds = [...this.plannerHolds];
+    const handSet = (this.userPaths.get(this.pathSymbol(token))?.length ?? 0) > 0;
+    const events = this.pick(this.candidatesFor(token), token, handSet);
+    m.state.restore(start);
+    m.recomputeMask();
+    this.plannerHolds.clear();
+    for (const pos of holds) this.plannerHolds.add(pos);
+    this.standIns.clear();
+    if (events === null) return null;
+    let presses = 0;
+    for (const e of events) if (e.kind !== 'hold_release') presses++;
+    return presses;
   }
 
   /** Always typed right after `wordBoundary`, so no word is waiting and the space commits at once. */
@@ -1347,9 +1340,10 @@ export class Simulator {
       }
       let typed = false;
       for (const [token, len, next] of this.tokenCandidates(stream, i)) {
+        // A token that ends on a space types the word's space with its mark, when that is cheaper.
+        const spaced = len > 1 && token.endsWith(' ');
+        if (spaced && !this.together(token)) continue;
         if (this.typeToken(token)) {
-          // A token that ends on a space typed it with its last press, which ends the word.
-          const spaced = this.wordEnd.length > 0;
           const n = spaced ? len - 1 : len;
           this.curWord.push(spaced ? token.slice(0, -1) : token);
           for (let k = 0; k < n; k++) {
@@ -1359,7 +1353,12 @@ export class Simulator {
           symbols += n;
           i = next;
           typed = true;
-          if (spaced) this.endWord();
+          // Its press is the word's last, counted as the mark's key is; its space ends the word, and
+          // is counted with space only, as every space is.
+          if (spaced) {
+            this.wordBoundary(false);
+            this.presses.symbol('with_space');
+          }
           break;
         }
       }
@@ -1393,16 +1392,6 @@ export class Simulator {
 
 /** A letter or a digit: what a token that ends on a space may not have before it. */
 const HAS_LETTER = /[\p{L}\p{N}]/u;
-
-/**
- * A press that typed a space after marks, as a macro typing `, ` does: the space is the word's, so
- * the press ends it. Only a token's last symbol can be a space, and only after marks
- * (`tokenCandidates`).
- */
-function endsWord(e: KeyEvent): boolean {
-  const s = e.symbols;
-  return s.length > 1 && s.endsWith(' ') && !HAS_LETTER.test(s);
-}
 
 export function simulate(
   compiled: CompiledLayout,

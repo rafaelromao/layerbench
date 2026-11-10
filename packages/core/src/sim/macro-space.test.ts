@@ -1,15 +1,18 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { analyze } from '../analysis/analyze.js';
 import { compileLayout } from '../layout/compile.js';
 import { parseLayout } from '../layout/schema.js';
 import type { Binding, Layout } from '../layout/types.js';
 import { withoutFeatures } from '../layout/without.js';
 import type { Universe } from '../presses/press-log.js';
+import { layoutsDoc } from '../rules/presets.js';
 import { explain, type SimulateOptions, simulate } from './resolver.js';
 
 /**
- * A macro that types a mark and then a space, `, ` or `. `, on one key: one press whose space is the
- * word's. It ends the word, and it is counted with Space on only, as the space bar's press is.
+ * A macro that types a mark and then a space, `, ` or `. `, on one key: one press, the word's last,
+ * counted as the mark's key is, whose space ends the word and counts only with Space on, as every
+ * space does.
  */
 
 const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
@@ -73,6 +76,7 @@ function run(layout: Layout, text: string, opts: SimulateOptions = fold) {
     labels,
     words: [...r.tables.words.keys()],
     traces: r.tables.words,
+    runs: r.tables.runs,
   };
 }
 
@@ -99,12 +103,12 @@ describe('a macro that types a mark and a space', () => {
     expect(apart.words).toEqual(r.words);
   });
 
-  it('is counted with Space on, not with it off', () => {
+  it('is counted with Space on and off, as the mark’s own key is; its space with Space on only', () => {
     const r = run(withMacro, 'ab, cd');
     expect(r.labels('with_space', 'unigram')).toContain(',␣');
-    expect(r.labels('no_space', 'unigram')).not.toContain(',␣');
+    expect(r.labels('no_space', 'unigram')).toContain(',␣');
     expect(r.log.ngrams('with_space', 'unigram').total).toBe(5);
-    expect(r.log.ngrams('no_space', 'unigram').total).toBe(4);
+    expect(r.log.ngrams('no_space', 'unigram').total).toBe(5);
     // The text is the text, however it is typed: five symbols and a space.
     expect(r.log.ngrams('no_space', 'unigram').textTotal).toBe(5);
     expect(r.log.ngrams('with_space', 'unigram').textTotal).toBe(6);
@@ -113,23 +117,32 @@ describe('a macro that types a mark and a space', () => {
     expect(apart.log.ngrams('with_space', 'unigram').textTotal).toBe(6);
   });
 
-  it('pairs with the letters on each side of it with Space on, as the space bar does', () => {
+  it('pairs with the letter before it, and with Space on with the one after, as the space bar does', () => {
     const r = run(withMacro, 'ab, cd');
     expect(r.labels('with_space', 'bigram')).toEqual(['a b', 'b ,␣', ',␣ c', 'c d']);
-    // With Space off the words do not pair across it (`reset`)…
-    expect(r.labels('no_space', 'bigram')).toEqual(['a b', 'c d']);
-    // …and do when pairs bridge words, the macro left out.
+    // With Space off it is the word's last press: the words do not pair across it (`reset`)…
+    expect(r.labels('no_space', 'bigram')).toEqual(['a b', 'b ,␣', 'c d']);
+    // …and do when pairs bridge words, as the comma key and the next letter do.
     const bridged = run(withMacro, 'ab, cd', { ...fold, crossWord: 'bridge' });
-    expect(bridged.labels('no_space', 'bigram')).toEqual(['a b', 'b c', 'c d']);
+    expect(bridged.labels('no_space', 'bigram')).toEqual(['a b', 'b ,␣', ',␣ c', 'c d']);
+    const apart = run(withComma, 'ab, cd', { ...fold, crossWord: 'bridge' });
+    expect(apart.labels('no_space', 'bigram')).toEqual(['a b', 'b ,', ', c', 'c d']);
   });
 
-  it('makes a same-finger pair with the letter before it on its finger, with Space on', () => {
+  it('is in the word’s runs, as the comma key is', () => {
+    const r = run(withMacro, 'ab, cd');
+    const apart = run(withComma, 'ab, cd');
+    expect(r.runs).toEqual(apart.runs);
+    expect(r.runs.handRuns.reduce((sum, n, len) => sum + n * len, 0)).toBe(5);
+  });
+
+  it('makes a same-finger pair with the letter before it on its finger, with Space on or off', () => {
     // `n` is on the right ring finger; the macro on the right ring finger's top key.
     const ring = board({ RTR: commaSpace });
     const r = run(ring, 'an, d');
     expect(r.keys).toEqual(['LHR', 'RHR', 'RTR', 'RHI']);
     expect(r.labels('with_space', 'bigram')).toContain('n ,␣');
-    expect(r.labels('no_space', 'bigram')).not.toContain('n ,␣');
+    expect(r.labels('no_space', 'bigram')).toContain('n ,␣');
   });
 
   it('is the last press of its word in the words table, as the comma key is', () => {
@@ -164,8 +177,8 @@ describe('a macro that types a mark and a space', () => {
     expect(held.labels('with_space', 'unigram')).toContain(',␣');
     const once = run(layered({ kind: 'sl', layer: 'marks' }), 'ab, cd');
     expect(once.keys).toEqual(['LHR', 'LHM', 'R0', 'RTI', 'LHI', 'RHI']);
-    // The one-shot is the word's, in both universes; the macro, Space on only.
-    expect(once.log.ngrams('no_space', 'unigram').total).toBe(5);
+    // The one-shot and the macro are the word's, in both universes.
+    expect(once.log.ngrams('no_space', 'unigram').total).toBe(6);
     expect(once.log.ngrams('with_space', 'unigram').total).toBe(6);
     expect(once.stats.words).toBe(2);
   });
@@ -178,7 +191,40 @@ describe('a macro that types a mark and a space', () => {
     expect(r.stats.chords).toBe(1);
     expect(r.stats.words).toBe(2);
     expect(r.labels('with_space', 'unigram')).toContain(',␣');
-    expect(r.labels('no_space', 'unigram')).not.toContain(',␣');
+    expect(r.labels('no_space', 'unigram')).toContain(',␣');
+  });
+
+  it('is typed apart when that takes fewer presses: a macro two layers away loses', () => {
+    // Base taps `a1`, which taps `a2`, which has the macro: three presses, against two for the
+    // comma key and the space bar.
+    const far = board({ RTI: kp(','), R1: { kind: 'sl', layer: 'a1' } });
+    far.layers.push(
+      { id: 'a1', bindings: { R1: { kind: 'sl', layer: 'a2' } } },
+      { id: 'a2', bindings: { RTM: commaSpace } },
+    );
+    const r = run(far, 'ab, cd');
+    expect(r.out).toBe('ab, cd');
+    expect(r.stats.macro_presses).toBe(0);
+    expect(r.keys).toEqual(['LHR', 'LHM', 'RTI', 'L0', 'LHI', 'RHI']);
+    // Without the comma key, the macro is the way.
+    const only = board({ R1: { kind: 'sl', layer: 'a1' } });
+    only.layers.push(...far.layers.slice(1));
+    expect(run(only, 'ab, cd').keys).toEqual(['LHR', 'LHM', 'R1', 'R1', 'RTM', 'LHI', 'RHI']);
+    // One layer away it ties, two presses each, and the macro wins.
+    const near = board({ RTI: kp(','), R1: { kind: 'sl', layer: 'a2' } });
+    near.layers.push({ id: 'a2', bindings: { RTM: commaSpace } });
+    expect(run(near, 'ab, cd').keys).toEqual(['LHR', 'LHM', 'R1', 'RTM', 'LHI', 'RHI']);
+  });
+
+  it('is counted with the word when the key to its layer is chosen', () => {
+    // Two keys tap Alpha 2: the right ring's home key costs less, but makes a same-finger pair with
+    // the macro above it; the left index's top key makes none.
+    const choose = board({ RHR: { kind: 'sl', layer: 'a2' }, LTI: { kind: 'sl', layer: 'a2' } });
+    choose.layers[0].bindings.RHR = { kind: 'sl', layer: 'a2' };
+    choose.layers.push({ id: 'a2', bindings: { RTR: commaSpace } });
+    const r = run(choose, 'ab, cd');
+    expect(r.out).toBe('ab, cd');
+    expect(r.keys).toEqual(['LHR', 'LHM', 'LTI', 'RTR', 'LHI', 'RHI']);
   });
 
   it('types the same in the model case', () => {
@@ -227,6 +273,61 @@ describe('a macro that types a mark and a space', () => {
     // The capital is the sentence's: no Shift is pressed for it.
     expect(r.keys).toEqual(['LHR', 'LHM', 'R0', 'LHI', 'RHI']);
     expect(r.stats.words).toBe(2);
+  });
+});
+
+describe('a macro with a space, at the edges', () => {
+  it('is dropped with the multi-letter macros, its space a key’s or a sentence space', () => {
+    for (const end of [kp(' '), { kind: 'sentence_space' } as Binding]) {
+      const l = withoutFeatures(board({ R0: macro(kp('.'), end), RTI: kp('.') }), ['macros']);
+      const r = run(l, 'ab. cd');
+      expect(r.stats.macro_presses).toBe(0);
+      expect(r.keys).toEqual(['LHR', 'LHM', 'RTI', 'L0', 'LHI', 'RHI']);
+    }
+  });
+
+  it('is matched after marks alone: not after a digit, and not with a second space', () => {
+    const digit = board({ R0: macro(kp('1'), kp('.'), kp(' ')), RTI: kp('1'), RTM: kp('.') });
+    expect(run(digit, 'a 1. b').stats.macro_presses).toBe(0);
+    const twice = board({ R0: macro(kp('.'), kp(' '), kp('.'), kp(' ')), RTM: kp('.') });
+    expect(run(twice, 'a. . b').stats.macro_presses).toBe(0);
+    const marks = board({ R0: macro(kp('?'), kp('!'), kp(' ')) });
+    expect(run(marks, 'ab?! cd').stats.macro_presses).toBe(1);
+  });
+
+  it('types at the start of the text, at its end, and before a second space', () => {
+    for (const text of [', ab', 'ab, ', 'ab,  cd']) {
+      const r = run(withMacro, text);
+      const apart = run(withComma, text);
+      expect(r.out, text).toBe(text);
+      expect(r.stats.macro_presses, text).toBe(1);
+      expect(r.words, text).toEqual(apart.words);
+    }
+  });
+
+  it('stops where the symbols run out, the mark counted and the space not', () => {
+    const compiled = compileLayout(withMacro);
+    const r = simulate(compiled, 'ab, cd', { ...fold, maxSymbols: 3 });
+    expect(r.tables.stats.symbols).toBe(3);
+    expect(r.tables.stats.macro_presses).toBe(1);
+  });
+
+  it('leaves the next letter to Shift after a plain space, in the model case', () => {
+    const shift = board({ R0: macro(kp('.'), kp(' ')), R1: { kind: 'sk', mod: 'LSHIFT' } });
+    const r = run(shift, 'ab. Cd', model);
+    expect(r.out).toBe('ab. Cd');
+    expect(r.keys).toEqual(['LHR', 'LHM', 'R0', 'R1', 'LHI', 'RHI']);
+  });
+
+  it('gives the rules the same words and one press for its symbol, as the comma key does', () => {
+    const text = 'ab, cd, ac, db';
+    const score = (l: Layout) => {
+      const r = analyze(l, text, { caseMode: 'fold', ruleSet: layoutsDoc() });
+      const value = (id: string) => r.results.find((x) => x.id === id)?.value;
+      return { words: r.stats.words, extra: value('extra_keystrokes'), symbols: r.stats.symbols };
+    };
+    expect(score(withMacro)).toEqual(score(withComma));
+    expect(score(withMacro)).toEqual({ words: 4, extra: 0, symbols: 11 });
   });
 });
 
