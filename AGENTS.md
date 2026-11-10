@@ -96,17 +96,21 @@ rule here moves a key, and keep `templates.test.ts` asserting each rule.
 - **Home row mods.** A layout holds home row mods only where its author's keymap does, and its
   definition gives them (`ClassicDef.homeRowMods`, applied by `withHomeRowMods`); each key keeps
   typing what it types, a letter or not, and one with nothing on it, or holding something already,
-  does not. Both hands hold the left modifiers, as the analysis types a capital with the left Shift
-  and the right Alt is AltGr. Magic Romak holds its keymap's home block mods, which its file draws:
+  does not. Both hands hold the left modifiers, as the right Alt is AltGr; a capital takes either
+  Shift. Magic Romak holds its keymap's home block mods, which its file draws:
   Ctrl, Alt and Shift from the ring finger in, Shift with Gui on F and C, and Gui on P and the magic
   key. The keymap's pinkies hold its Shortcuts layer, and `,` and `.` hold to move the cursor: a layer that
   types nothing, and editing, both left out. Magic Sturdy, the three Hands Down with their authors'
   layers and Ben Vallack Piano hold their authors' too (`STURDY_MODS`, `HD_MODS`, `PIANO_MODS`), as
   their keymaps hold their layers on the home row. A document carries its own in its JSON. In the
   Shift case mode Shift is part of the word: a capital, or any character typed with Shift, takes it
-  from the cheapest press that gives it, any key or combo, held or one-shot, ranked as any way of
-  typing it (`cheapest` in `resolver.ts`, which tries the presses `holdMod` finds, each time the way
-  asks for Shift on its own, by `shiftPicks`, where `shiftKeysOffered` counts more than one). Never
+  from the cheapest press that gives it, the left or the right Shift, any key or combo, held or
+  one-shot, ranked as any way of typing it (`cheapest` in `resolver.ts`, which tries the presses
+  `holdMod` finds, each time the way asks for Shift on its own, by `shiftPicks`, where
+  `shiftKeysOffered` counts more than one). The one-shot Shift keys are one press, the others
+  standing in for it (`offerShiftStandIns`), so which of them the word taps is chosen with the
+  whole word at its end, as a layer key is (`chooseKeys`); a held Shift, or a combo, with the word
+  so far. Never
   a key it presses, the one that reaches its layer included, nor held on a thumb of a hand whose
   thumb presses one, nor a key that holds other modifiers with it; on a tie the shift key,
   then a thumb, then the other hand's, then the typing hand's. A declared `typingRules.shift` takes

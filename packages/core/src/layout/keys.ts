@@ -52,24 +52,29 @@ export function shiftWaysOffered(layout: Pick<Layout, 'layers' | 'combos'>): Shi
 }
 
 /**
- * How many presses give Shift, on any layer, as `shiftWaysOffered` finds them: a key's tap, its
- * hold, a combo. With two or more, which one a capital is typed with is a choice of the word.
+ * How many presses give Shift, on any layer, as `shiftWaysOffered` finds them: each key that taps
+ * it as a one-shot, each that holds it (a key that does both, twice), each typing combo that taps
+ * it; a key that does it on several layers once. With two or more, which one a capital is typed
+ * with is a choice of the word.
  */
 export function shiftKeysOffered(layout: Pick<Layout, 'layers' | 'combos'>): number {
-  let n = 0;
+  const presses = new Set<string>();
   for (const layer of layout.layers) {
-    for (const b of Object.values(layer.bindings)) {
+    for (const [key, b] of Object.entries(layer.bindings)) {
       const tap = partOf(b);
-      if ((tap.kind === 'sk' || tap.kind === 'mod') && isShift(tap)) n++;
+      if (tap.kind === 'sk' && isShift(tap)) presses.add(`${key} tap`);
+      if (tap.kind === 'mod' && isShift(tap)) presses.add(`${key} hold`);
       const held = heldPart(b);
-      if (held?.kind === 'mod' && isShift(held)) n++;
+      if (held?.kind === 'mod' && isShift(held)) presses.add(`${key} hold`);
     }
   }
+  let combos = 0;
   for (const combo of layout.combos ?? []) {
+    if (combo.role === 'command') continue;
     const tap = partOf(combo.binding);
-    if (tap.kind === 'sk' && isShift(tap)) n++;
+    if (tap.kind === 'sk' && isShift(tap)) combos++;
   }
-  return n;
+  return presses.size + combos;
 }
 
 /**

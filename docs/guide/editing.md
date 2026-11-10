@@ -312,11 +312,13 @@ Romak holds Ctrl, Alt and Shift from the ring finger in, and on the bottom row S
 the left ring and middle fingers and Gui under the index fingers. So do the layouts whose authors'
 keymaps hold their layers on the home row: Magic Sturdy, the three Hands Down with their own
 layers, and Ben Vallack Piano, its modifiers on the top row. Both hands hold the left modifiers, as
-the analysis types a capital with the left Shift and the right Alt is AltGr. Tapped, each key types
+the right Alt is AltGr; a capital takes either Shift. Tapped, each key types
 what it typed. They are on the base layer only. In the Shift case mode, the Shift press is part of
 the word: a capital, or any character typed with Shift, takes it from the cheapest key that gives
-it, the shift key, a Shift thumb or a home row Shift, held or tapped as a one-shot, weighed as the
-ways to type a character are (see **Typing paths**). It is never a key the capital presses, nor
+it, the shift key, a Shift thumb or a home row Shift, left or right, held or tapped as a one-shot,
+weighed as the ways to type a character are (see **Typing paths**). Which one-shot Shift key is
+tapped is chosen with the whole word, as a key that taps a layer is; a held one with the word up to
+its capital. It is never a key the capital presses, nor
 held on a thumb of a hand whose thumb presses one, as a thumb holding Shift presses nothing else. Where two cost the same, the shift key comes
 first, then a thumb, then the other hand's. With no key that gives Shift, it types no capital.
 

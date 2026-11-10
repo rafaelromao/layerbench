@@ -1129,6 +1129,64 @@ describe('the Shift a capital takes: the cheapest press that gives it, part of t
     expect(held(t)).toEqual(['RHI', 'RHI']);
   });
 
+  it('chooses a one-shot Shift with the rest of the word, as a layer key is', () => {
+    // `A` alone ties, and keeps the shift key; `r` after it on L0 would make L1, LHM, L0 a
+    // same-thumb skipgram, so the word takes R1.
+    expect(trace(twoThumbs(), 'A', model).keys).toEqual(['L1', 'LHM']);
+    expect(trace(twoThumbs(), 'Ar', model)).toMatchObject({
+      out: 'Ar',
+      keys: ['R1', 'LHM', 'L0'],
+    });
+  });
+
+  it('takes either Shift, the right one as the left', () => {
+    // The left thumb taps the left Shift, the right thumb the right one.
+    const sides = twoThumbs({ R1: { kind: 'sk', mod: 'RSHIFT' } });
+    expect(trace(sides, 'R', model)).toMatchObject({ out: 'R', keys: ['R1', 'L0'] });
+    expect(trace(sides, 'Ar', model)).toMatchObject({ out: 'Ar', keys: ['R1', 'LHM', 'L0'] });
+    // A layout whose only Shift is the right one types its capitals with it.
+    const right = twoThumbs({ L1: kp('x'), R1: { kind: 'sk', mod: 'RSHIFT' } }, 'R1');
+    expect(trace(right, 'A', model)).toMatchObject({ out: 'A', keys: ['R1', 'LHM'] });
+    // Held, too: the right index holds the right Shift for `E` on the right thumb.
+    const held = twoThumbs({
+      L1: kp('x'),
+      R0: kp('e'),
+      RHM: kp('m'),
+      RHI: { kind: 'hold_tap', tap: kp('n'), hold: { kind: 'mod', mod: 'RSHIFT' } },
+    });
+    held.keys = { space: 'L0' };
+    held.layers[0].bindings.L0 = kp(' ');
+    const e = trace(held, 'E', model);
+    expect(e).toMatchObject({ out: 'E', keys: ['RHI', 'R0'] });
+  });
+
+  it('weighs a combo that taps a one-shot Shift', () => {
+    // The only key Shift is R1, which would press the right thumb twice for `R` on R0; the combo
+    // of the left top ring and pinky taps one too.
+    const combo: Layout = {
+      ...twoThumbs({ L0: kp(' '), L1: kp('x'), R0: kp('r'), LTR: kp('w'), LTP: kp('q') }, 'R1'),
+      combos: [{ id: 'shift', keys: ['LTR', 'LTP'], binding: SK }],
+    };
+    combo.keys.space = 'L0';
+    expect(trace(combo, 'R', model)).toMatchObject({ out: 'R', keys: ['combo:shift', 'R0'] });
+  });
+
+  it('takes a held Shift of the typing hand where it costs less effort than the other hand’s', () => {
+    // Shift held on the left index's home key and on the right pinky's top key, and no shift key:
+    // for `A` on the left middle finger the old order took the other hand's, now the cheaper one.
+    const hold = { kind: 'mod' as const, mod: 'LSHIFT' as const };
+    const effort = twoThumbs({
+      L1: kp('x'),
+      R1: kp('y'),
+      LHI: { kind: 'hold_tap', tap: kp('t'), hold },
+      RTP: { kind: 'hold_tap', tap: kp('p'), hold },
+    });
+    effort.keys = { space: 'R0' };
+    const t = trace(effort, 'A', model);
+    expect(t).toMatchObject({ out: 'A', keys: ['LHI', 'LHM'] });
+    expect(held(t)).toEqual(['LHI']);
+  });
+
   it('chooses no Shift where the text is folded', () => {
     expect(trace(twoThumbs(), 'R').keys).toEqual(['L0']);
   });
@@ -1140,7 +1198,7 @@ describe('a Repeat on a one-shot layer', () => {
   /**
    * Shaped as the owner's Magic Gust: a 1333+2 board, space on L0, and RBM and RBR tapping the
    * one-shot Alpha 2 and Alpha 3, where L1 repeats and `z` and `x` are; the base layer's letters as
-   * Magic Gust's. Magic Gust itself waits on the owner's layout, as its saved copy has no Repeat.
+   * Magic Gust's. The owner's own Magic Gust is below.
    */
   const gust = (
     extra: Partial<Layout> = {},
@@ -1226,7 +1284,9 @@ describe('a Repeat on a one-shot layer', () => {
   /**
    * The owner's Magic Gust as they saved it on 2026-11-10 (`packages/core/fixtures/magic-gust.json`,
    * its author left out): a real Repeat on Alpha 2's RBR and Alpha 3's RBM, each reached by the other
-   * key's one-shot, and doubled letters by the repeat key in its repeat policy.
+   * key's one-shot, and doubled letters by the repeat key in its repeat policy. Its `keys.shift`
+   * says R1 is held while R1 taps a one-shot Shift; that is the owner's file, kept as it is, and no
+   * test here types a capital with it.
    */
   const magicGust = parseLayout(
     JSON.parse(readFileSync(new URL('../../fixtures/magic-gust.json', import.meta.url), 'utf8')),

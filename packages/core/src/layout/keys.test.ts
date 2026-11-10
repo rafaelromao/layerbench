@@ -200,6 +200,18 @@ describe('the ways a layout gives Shift', () => {
     expect(shiftKeysOffered(board({ R1: { kind: 'hold_tap', tap: SHIFT, hold: HOLD } }))).toBe(2);
     const combo = { ...board({ R1: SHIFT }), combos: [{ keys: ['LHM', 'LHI'], binding: SHIFT }] };
     expect(shiftKeysOffered(combo)).toBe(2);
+    // A combo only drawn, never pressed by the analysis, gives none.
+    const command = {
+      ...board({ R1: SHIFT }),
+      combos: [{ keys: ['LHM', 'LHI'], binding: SHIFT, role: 'command' as const }],
+    };
+    expect(shiftKeysOffered(command)).toBe(1);
+    // The same key on two layers is one press; the right Shift counts as the left one does.
+    const twoLayers: Layout = {
+      ...board({ R1: SHIFT, L1: { kind: 'sk', mod: 'RSHIFT' } }),
+    };
+    twoLayers.layers = [...twoLayers.layers, { id: 'more', bindings: { R1: SHIFT } }];
+    expect(shiftKeysOffered(twoLayers)).toBe(2);
     expect(shiftKeysOffered(board({ R1: { kind: 'mod', mod: 'LSHIFT', also: ['LCTRL'] } }))).toBe(
       0,
     );
