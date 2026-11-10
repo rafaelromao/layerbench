@@ -213,7 +213,10 @@ describe('bundled layouts’ languages', () => {
   // Not one is left without: a layout whose author states none is for English.
   it('are at least one for every bundled layout, documents too', () => {
     for (const layout of BUNDLED_LAYOUTS) {
-      expect(layout.languages?.length ?? 0, layout.id).toBeGreaterThan(0);
+      expect(
+        layout.languages?.length ?? 0,
+        `${layout.id} names no language: give its document "languages", ["en"] when its author states none`,
+      ).toBeGreaterThan(0);
     }
   });
 

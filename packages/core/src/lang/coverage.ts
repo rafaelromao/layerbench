@@ -43,7 +43,10 @@ export function layoutLanguageCoverage(
   return coverLanguage(producibleSymbols(compiled), tag);
 }
 
-/** Coverage for every language a layout declares (English when it declares none), plus any extra tags asked about. */
+/**
+ * Coverage for every language a layout declares (English when it declares none), plus any extra
+ * tags asked about.
+ */
 export function layoutLanguages(
   compiled: CompiledLayout,
   extra: string[] = [],

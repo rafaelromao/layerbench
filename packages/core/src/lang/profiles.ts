@@ -73,12 +73,15 @@ export function languageProfile(tag: string | undefined): LanguageProfile | unde
   return byBase;
 }
 
-/** The languages a layout is for when it declares none: a layout whose source states none is for English. */
+/**
+ * The languages a layout is for when it declares none: a layout whose source states none is for
+ * English.
+ */
 export const DEFAULT_LANGUAGES: readonly string[] = ['en'];
 
 /**
- * The languages a layout declares, English when it declares none: a layout saved before it had to
- * say, or with its list left empty, is read as one for English, so nothing reading it loses it.
+ * The languages a layout declares, English when it declares none: `['en']` is made up for a list
+ * that is unset or empty, as the Library reads one. Tags are kept as written.
  */
 export function declaredLanguages(languages: readonly string[] | undefined): string[] {
   const tags = (languages ?? []).filter((tag) => tag !== '');

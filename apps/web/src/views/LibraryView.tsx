@@ -1030,7 +1030,12 @@ export function LibraryView() {
           ? maintainLibrary(
               'promote',
               targetOf(item),
-              toCanonicalJson({ ...item.layout, id: item.id }),
+              // A layout saved without languages is the Library's English: a bundled one must say so.
+              toCanonicalJson({
+                ...item.layout,
+                id: item.id,
+                languages: declaredLanguages(item.layout.languages),
+              }),
             )
           : { kind: 'failed', error: 'the layout could not be read' },
     });
