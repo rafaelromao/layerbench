@@ -1,6 +1,6 @@
 import { bundledLayout, compileLayout, type RuleItem } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
-import { describeKeys } from './format.js';
+import { describeKeys, formatKeyShare } from './format.js';
 
 // Magic Romak types a doubled letter with its Repeat key, on the left thumb beside the space bar.
 const compiled = compileLayout(
@@ -76,5 +76,21 @@ describe('describeKeys', () => {
     expect(
       describeKeys(compiled, { label: 'x', keys: [9999, at('L0')] })?.startsWith('9999 →'),
     ).toBe(true);
+  });
+});
+
+describe('formatKeyShare', () => {
+  it('writes a key’s share of the presses with two decimals', () => {
+    expect(formatKeyShare(0.1234)).toBe('12.34%');
+    expect(formatKeyShare(0.0537)).toBe('5.37%');
+    expect(formatKeyShare(0.0001)).toBe('0.01%');
+    expect(formatKeyShare(1)).toBe('100.00%');
+  });
+
+  it('says under 0.01% for a key too rare to show a digit, and 0% for none', () => {
+    expect(formatKeyShare(0.00009)).toBe('under 0.01%');
+    expect(formatKeyShare(1e-9)).toBe('under 0.01%');
+    expect(formatKeyShare(0)).toBe('0%');
+    expect(formatKeyShare(Number.NaN)).toBe('0%');
   });
 });
