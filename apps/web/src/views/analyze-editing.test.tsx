@@ -951,7 +951,9 @@ describe('Edit', () => {
     const info = vi.spyOn(toast, 'info');
     await user.click(screen.getByRole('button', { name: 'Remove Extra' }));
     await waitFor(() => expect(screen.queryByLabelText('Name of layer Extra')).toBeNull());
-    expect(await screen.findByText('Removed Extra — Undo brings it back')).toBeInTheDocument();
+    // The toast lives six seconds of real time, which a loaded runner can outlast between finding
+    // it and looking at it: what it said is what `info` was called with.
+    await waitFor(() => expect(info).toHaveBeenCalledWith('Removed Extra — Undo brings it back'));
     await user.click(screen.getByRole('button', { name: 'Undo' }));
     expect(await screen.findByLabelText('Name of layer Extra')).toHaveValue('Extra');
     expect(screen.getByText('Undone')).toBeInTheDocument();
