@@ -21,6 +21,7 @@ import { heatMap } from '../engine/heat.js';
 import type { AnalysisClient, AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { recordProposal } from '../proposals/proposals.js';
 import { useSession } from '../state/session.js';
+import { useToasts } from '../state/toasts.js';
 import { CompositeStorage } from '../storage/composite.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { branchWith, communityDoc } from '../test/community.js';
@@ -1786,9 +1787,26 @@ describe("the Library's maintainers", () => {
 describe('changes proposed from this browser', () => {
   const PULL = 'https://github.com/rafaelromao/layerbench/pull/100';
 
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
 
-  async function withProposal(state: 'open' | 'merged' | 'closed', storage = freshStorage()) {
+  const MERGE = 'a'.repeat(40);
+  const BUILD = 'b'.repeat(40);
+
+  /**
+   * `landing` is merged, with the app built before the merge: GitHub says the build is behind the
+   * merge commit. The others are as GitHub says, with an app that was not built from a commit.
+   */
+  async function withProposal(
+    state: 'open' | 'merged' | 'closed' | 'landing',
+    storage = freshStorage(),
+    kind: 'bundled' | 'community' = 'bundled',
+  ) {
+    // A community layout's change needs no deploy, so the app is built from a commit to show that
+    // it asks nothing of it; GitHub would say this one is behind the merge.
+    if (state === 'landing' || kind === 'community') vi.stubEnv('VITE_BUILD_COMMIT', BUILD);
     // No bundled layout is listed. The Library draws and scores every layout it lists on the test's
     // thread, and settling a proposal goes through IndexedDB a turn of that thread at a time: with
     // every bundled layout listed too, under coverage on a busy runner, the toast came too late.
@@ -1796,20 +1814,28 @@ describe('changes proposed from this browser', () => {
     useSession.setState({ hiddenBoards: BUNDLED_BOARDS });
     await recordProposal(storage, 'plain', {
       name: 'Plain',
-      target: { kind: 'bundled', id: 'qwerty' },
+      target: { kind, id: 'qwerty' },
       url: PULL,
     });
     const real = globalThis.fetch;
-    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) =>
-      String(input) === 'https://api.github.com/repos/rafaelromao/layerbench/pulls/100'
-        ? new Response(
-            JSON.stringify({
-              state: state === 'open' ? 'open' : 'closed',
-              merged: state === 'merged',
-            }),
-          )
-        : real(input, init),
-    );
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === 'https://api.github.com/repos/rafaelromao/layerbench/pulls/100') {
+        return new Response(
+          JSON.stringify({
+            state: state === 'open' ? 'open' : 'closed',
+            merged: state === 'merged' || state === 'landing',
+            merge_commit_sha: MERGE,
+          }),
+        );
+      }
+      if (
+        url.startsWith(`https://api.github.com/repos/rafaelromao/layerbench/compare/${MERGE}...`)
+      ) {
+        return new Response(JSON.stringify({ status: 'behind' }));
+      }
+      return real(input, init);
+    });
     renderRoute(LIBRARY, { storage });
     return storage;
   }
@@ -1823,6 +1849,26 @@ describe('changes proposed from this browser', () => {
     expect(badge).toHaveAttribute('href', PULL);
     expect(badge.closest('article')).toBe(listed('Plain')?.closest('article'));
     expect(listed('Mine')).not.toBeNull();
+  });
+
+  it('keep their copy, told as merged, while the app that is open was built before the merge', async () => {
+    // The Library comes with the app: the layout the merge changed is the old one here until the
+    // deploy after the merge, and this page is loaded again. The copy is all that is left of it.
+    const storage = await withProposal('landing');
+    const badge = await screen.findByRole('link', { name: 'merged' });
+    expect(badge).toHaveAttribute('href', PULL);
+    expect(badge.closest('article')).toBe(listed('Plain')?.closest('article'));
+    expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['plain']);
+    expect((await storage.list('proposals')).map((e) => e.id)).toEqual(['plain']);
+    expect(useToasts.getState().toasts).toEqual([]);
+  });
+
+  it('go with their copy at once, whatever the app was built from, for a community layout', async () => {
+    // Community layouts are files the app reads when the Library opens: nothing is waiting for a deploy.
+    const storage = await withProposal('merged', freshStorage(), 'community');
+    await toastShown(/Your change to Plain was accepted/);
+    await waitFor(async () => expect(await storage.list('layouts')).toEqual([]));
+    expect(await storage.list('proposals')).toEqual([]);
   });
 
   it('go with their copy when it is deleted', async () => {

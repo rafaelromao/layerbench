@@ -4,8 +4,8 @@ import type { SubmitOutcome } from '../auth/github-session.js';
 /**
  * A change someone proposed to a bundled or community layout. Its layout is saved like any custom
  * layout, and this is kept beside it, in the `proposals` collection under the same id, until the
- * pull request it opened is merged, when the copy goes, the Library having the change, or closed,
- * when the copy stays an ordinary custom layout.
+ * pull request it opened is merged and the app that is open has the change, when the copy goes, the
+ * Library having it, or closed, when the copy stays an ordinary custom layout.
  */
 export interface Proposal {
   /**
@@ -67,18 +67,74 @@ export async function proposalOf(storage: StorageAdapter, id: string): Promise<P
   return readProposal(stored?.doc);
 }
 
-/** What a proposal's pull request is now; `unknown` when GitHub could not say. */
-export type PullState = 'open' | 'merged' | 'closed' | 'unknown';
+/**
+ * What a proposal's pull request is now; `unknown` when GitHub could not say. `landing` is merged,
+ * but the app that is open was built before the merge: the Library's bundled layouts are the app's
+ * own, so the change reaches them with the deploy that follows the merge, a quarter of an hour later
+ * (the tests of a push to main run first), and reaches this page when it is loaded again.
+ */
+export type PullState = 'open' | 'merged' | 'landing' | 'closed' | 'unknown';
 
-/** Read from GitHub, as anyone may for the public repository; any failure is `unknown`. */
-export async function readPullState(url: string): Promise<PullState> {
+/**
+ * The commit the app that is open was built from, which the deploy sets (`VITE_BUILD_COMMIT`);
+ * empty for an app built anywhere else, which cannot say. A value that is no commit is returned as
+ * it is, so that it is not taken for that: `builtWith` cannot compare it, and the copy is kept.
+ */
+export function buildCommit(): string {
+  return (import.meta.env.VITE_BUILD_COMMIT ?? '').trim().toLowerCase();
+}
+
+const GITHUB = 'https://api.github.com/repos/rafaelromao/layerbench';
+const SHA = /^[0-9a-f]{40}$/;
+
+/**
+ * Whether the commit `build` has `commit` in its history, as GitHub compares them (`ahead` or
+ * `identical` has it, `behind` or `diverged` does not); null when GitHub could not say.
+ */
+async function builtWith(build: string, commit: string): Promise<boolean | null> {
+  if (!SHA.test(build) || !SHA.test(commit)) return null;
+  try {
+    // One commit and one file a page: only the verdict is read, not the changes between them.
+    const res = await fetch(`${GITHUB}/compare/${commit}...${build}?per_page=1`, {
+      headers: { Accept: 'application/vnd.github+json' },
+    });
+    if (!res.ok) return null;
+    const { status } = (await res.json()) as { status?: unknown };
+    if (status === 'identical' || status === 'ahead') return true;
+    return status === 'behind' || status === 'diverged' ? false : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Read from GitHub, as anyone may for the public repository; any failure is `unknown`. A merged
+ * pull request to a bundled layout is `merged` for an app built from a commit that has the merge,
+ * `landing` for one built before it, and for an app built from no commit, which cannot tell,
+ * `merged` at once. One to a community layout is `merged` at once: its file is on the
+ * `layerbench-data` branch, which the app reads each time the Library opens, with no deploy, and
+ * whose commits the app's own are not in the history of.
+ */
+export async function readPullState(
+  url: string,
+  kind: Proposal['target']['kind'] = 'bundled',
+  build = buildCommit(),
+): Promise<PullState> {
   const api = pullApi(url);
   if (!api) return 'unknown';
   try {
     const res = await fetch(api, { headers: { Accept: 'application/vnd.github+json' } });
     if (!res.ok) return 'unknown';
-    const pull = (await res.json()) as { state?: unknown; merged?: unknown };
-    if (pull.merged === true) return 'merged';
+    const pull = (await res.json()) as {
+      state?: unknown;
+      merged?: unknown;
+      merge_commit_sha?: unknown;
+    };
+    if (pull.merged === true) {
+      if (kind === 'community' || !build) return 'merged';
+      const has = await builtWith(build, String(pull.merge_commit_sha));
+      return has === null ? 'unknown' : has ? 'merged' : 'landing';
+    }
     if (pull.state === 'open') return 'open';
     return pull.state === 'closed' ? 'closed' : 'unknown';
   } catch {
@@ -87,16 +143,20 @@ export async function readPullState(url: string): Promise<PullState> {
 }
 
 /**
- * Each proposal whose pull request is done, settled: merged, the copy and the proposal go; closed,
- * only the proposal goes, and the copy is an ordinary custom layout. One whose pull request is
- * open, or could not be read, is left for another time. The names of those accepted and declined.
+ * Each proposal whose pull request is done, settled: merged, the copy and the proposal go, the
+ * Library having the change; closed, only the proposal goes, and the copy is an ordinary custom
+ * layout. One whose pull request is open, or could not be read, is left for another time, and so is
+ * one merged whose change the app that is open does not have yet (`landing`): its copy is all the
+ * owner has of it until a build with the change is loaded. The names of those accepted and
+ * declined, and the ids of the copies still waiting for it.
  */
 export async function settleProposals(
   storage: StorageAdapter,
-  state: (url: string) => Promise<PullState> = readPullState,
-): Promise<{ accepted: string[]; declined: string[] }> {
+  state: (url: string, kind: Proposal['target']['kind']) => Promise<PullState> = readPullState,
+): Promise<{ accepted: string[]; declined: string[]; landing: string[] }> {
   const accepted: string[] = [];
   const declined: string[] = [];
+  const landing: string[] = [];
   for (const entry of await storage.list('proposals')) {
     const proposal = await proposalOf(storage, entry.id);
     if (!proposal) continue;
@@ -106,17 +166,19 @@ export async function settleProposals(
       continue;
     }
     if (!proposal.url) continue;
-    const now = await state(proposal.url);
+    const now = await state(proposal.url, proposal.target.kind);
     if (now === 'merged') {
       await storage.delete('layouts', entry.id);
       await storage.delete('proposals', entry.id);
       accepted.push(proposal.name);
+    } else if (now === 'landing') {
+      landing.push(entry.id);
     } else if (now === 'closed') {
       await storage.delete('proposals', entry.id);
       declined.push(proposal.name);
     }
   }
-  return { accepted, declined };
+  return { accepted, declined, landing };
 }
 
 /** What saving a proposal's copy again did with it. */
@@ -139,15 +201,16 @@ export async function followProposal(
   from: string,
   to: string,
   send: (proposal: Proposal) => Promise<SubmitOutcome>,
-  state: (url: string) => Promise<PullState> = readPullState,
+  state: (url: string, kind: Proposal['target']['kind']) => Promise<PullState> = readPullState,
 ): Promise<Followed> {
   const proposal = await proposalOf(storage, from);
   if (!proposal) return { kind: 'none' };
   // One not sent yet, or whose send failed, is sent now.
-  const now = proposal.url ? await state(proposal.url) : 'unknown';
-  if (now === 'merged' || now === 'closed') {
+  const now = proposal.url ? await state(proposal.url, proposal.target.kind) : 'unknown';
+  if (now === 'merged' || now === 'landing' || now === 'closed') {
     await storage.delete('proposals', from);
-    return { kind: 'done', proposal, state: now };
+    // Merged is merged here, whether or not this app has the change yet: the copy stays either way.
+    return { kind: 'done', proposal, state: now === 'closed' ? 'closed' : 'merged' };
   }
   const outcome = await send(proposal);
   // Refused before any pull request was open, it would be refused again: the copy is one's own.
