@@ -1,3 +1,4 @@
+import { MissingDocuments } from './MissingDocuments.js';
 import { ACTION_LABEL, act, type SyncAction, useSyncSummary } from './sync-status.js';
 
 /**
@@ -5,6 +6,7 @@ import { ACTION_LABEL, act, type SyncAction, useSyncSummary } from './sync-statu
  * browser only, not sent because the sign-in ended or could not be asked, or not sent for a
  * failure. It stays for as long as that is so, and offers the one thing to do about it. Nothing
  * while all is well. `without` leaves out an action the place it is shown has a button for already.
+ * When the account lacks documents that are saved here, it lists them, each to be sent or deleted.
  */
 export function SyncNote({ without }: { without?: SyncAction }) {
   const summary = useSyncSummary();
@@ -14,11 +16,12 @@ export function SyncNote({ without }: { without?: SyncAction }) {
     summary.kind === 'ended' || summary.kind === 'unreachable' || summary.kind === 'failed';
   return (
     <div
-      role="status"
       className={`alert ${failing ? 'alert-error' : 'alert-warning'} flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-1.5 text-xs`}
       data-sync={summary.kind}
     >
-      <span className="min-w-0 flex-1 basis-48 [overflow-wrap:anywhere]">{summary.text}</span>
+      <span role="status" className="min-w-0 flex-1 basis-48 [overflow-wrap:anywhere]">
+        {summary.text}
+      </span>
       {action && (
         <button
           type="button"
@@ -28,6 +31,7 @@ export function SyncNote({ without }: { without?: SyncAction }) {
           {ACTION_LABEL[action]}
         </button>
       )}
+      {summary.kind === 'lacking' && <MissingDocuments />}
     </div>
   );
 }

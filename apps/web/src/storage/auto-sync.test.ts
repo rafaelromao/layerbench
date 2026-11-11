@@ -66,7 +66,7 @@ afterEach(() => {
     reviewing: false,
     held: null,
     scheduled: false,
-    lacking: null,
+    missing: null,
     auditFailed: false,
     auditing: false,
   });
@@ -472,10 +472,10 @@ describe('what the account lacks, once documents are sent', () => {
     await local.put('layouts', 'only-here', { name: 'Only here' });
     const storage = new CompositeStorage(local, remote, marks);
     const stop = startAutoSync(storage, marks, { ...TIMING, auditEveryMs: 0 });
-    await vi.waitFor(() => expect(useSync.getState().lacking).toBe(1));
+    await vi.waitFor(() => expect(useSync.getState().missing).toHaveLength(1));
 
     sendEverything();
-    await vi.waitFor(() => expect(useSync.getState().lacking).toBe(0));
+    await vi.waitFor(() => expect(useSync.getState().missing).toEqual([]));
     expect(await remote.get('layouts', 'only-here')).not.toBeNull();
     expect(marks.audit()?.lacking).toBe(0);
     stop();
@@ -489,7 +489,7 @@ describe('what the account lacks, once documents are sent', () => {
     const storage = new CompositeStorage(local, new MemoryStorage('github'), marks);
     const stop = startAutoSync(storage, marks, { ...TIMING, auditEveryMs: 0 }, 'bob');
     await vi.waitFor(() => expect(marks.audit()?.account).toBe('bob'));
-    expect(useSync.getState().lacking).toBe(0);
+    expect(useSync.getState().missing).toEqual([]);
     expect(marks.audit()?.lacking).toBe(0);
     stop();
   });
@@ -557,7 +557,7 @@ describe('looking at every document, once in a while', () => {
     first();
     const listed = vi.spyOn(remote, 'list');
     // The same account again soon: not looked at, and what was found is still said.
-    marks.setAudit({ account: 'alice', at: Date.now(), lacking: 3 });
+    marks.setAudit({ account: 'alice', at: Date.now(), lacking: 0, missing: [] });
     startAutoSync(storage, marks, timing, 'alice')();
     await vi.advanceTimersByTimeAsync(1_000);
     expect(listed).not.toHaveBeenCalled();
@@ -571,11 +571,32 @@ describe('looking at every document, once in a while', () => {
 
   it('keeps what it found for the status, even when it is not repeated', async () => {
     const marks = memoryMarks();
-    marks.setAudit({ account: 'alice', at: Date.now(), lacking: 2 });
+    const found = [
+      { collection: 'layouts', id: 'a', name: 'A', sent: false },
+      { collection: 'corpora', id: 'b', name: 'B', sent: true },
+    ] as const;
+    marks.setAudit({ account: 'alice', at: Date.now(), lacking: 2, missing: [...found] });
     const storage = new CompositeStorage(new MemoryStorage('l'), new MemoryStorage('g'), marks);
     const stop = startAutoSync(storage, marks, { ...TIMING, auditEveryMs: 3_600_000 }, 'alice');
     await vi.advanceTimersByTimeAsync(10);
-    expect(useSync.getState().lacking).toBe(2);
+    expect(useSync.getState().missing).toEqual(found);
+    stop();
+  });
+
+  it('looks again when what it kept is only a count, so the documents can be named', async () => {
+    const marks = memoryMarks();
+    const local = new MemoryStorage('l');
+    await local.put('layouts', 'only-here', { name: 'Only here' });
+    // As an earlier version kept it: how many, not which.
+    marks.setAudit({ account: 'alice', at: Date.now(), lacking: 1 });
+    const storage = new CompositeStorage(local, new MemoryStorage('g'), marks);
+    const stop = startAutoSync(storage, marks, { ...TIMING, auditEveryMs: 3_600_000 }, 'alice');
+    await vi.waitFor(() =>
+      expect(useSync.getState().missing).toEqual([
+        { collection: 'layouts', id: 'only-here', name: 'Only here', sent: false },
+      ]),
+    );
+    expect(marks.audit()?.missing).toHaveLength(1);
     stop();
   });
 
@@ -614,7 +635,7 @@ describe('looking at every document, once in a while', () => {
 
     const stop = startAutoSync(storage, marks, { ...TIMING, auditEveryMs: 0 });
     await vi.waitFor(() => expect(useSync.getState().last?.conflicts).toHaveLength(1));
-    expect(useSync.getState().lacking).toBe(1);
+    expect(useSync.getState().missing).toHaveLength(1);
     expect(useSync.getState().reviewing).toBe(true);
     // Neither was written over, and the one the account lacks was not sent: it may have been deleted.
     expect((await remote.get('layouts', 'gust'))?.doc.name).toBe('Gust (laptop)');

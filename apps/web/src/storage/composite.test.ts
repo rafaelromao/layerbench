@@ -1012,7 +1012,7 @@ describe('looking at every document against the gists by content', () => {
     await local.put('layouts', 'same', { name: 'Same' });
     await remote.put('layouts', 'same', { name: 'Same' });
     const found = await new CompositeStorage(local, remote, marks).audit();
-    expect(found).toEqual({ equal: 1, adopted: 0, marked: 0, lacking: 0 });
+    expect(found).toEqual({ equal: 1, adopted: 0, marked: 0, lacking: 0, missing: [] });
     expect(marks.base('layouts', 'same')).toBe((await remote.get('layouts', 'same'))?.meta.sha);
   });
 
@@ -1063,6 +1063,37 @@ describe('looking at every document against the gists by content', () => {
     expect(await remote.get('layouts', 'only-here')).toBeNull();
   });
 
+  it('names what the gists lack, and says which of them they held once', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = fakeRemote();
+    await local.put('layouts', 'never-sent', { name: 'Never sent' });
+    await local.put('rulesets', 'deleted-there', { name: 'Deleted there' });
+    // Both stores held it once, as the version on record says; the gists have not now.
+    marks.setBase('rulesets', 'deleted-there', 'a-version');
+    // One the gists have is not missing.
+    await local.put('corpora', 'both', { name: 'Both' });
+    await remote.put('corpora', 'both', { name: 'Both' });
+
+    const found = await new CompositeStorage(local, remote, marks).audit();
+    expect(found.lacking).toBe(2);
+    expect(found.missing).toEqual([
+      { collection: 'layouts', id: 'never-sent', name: 'Never sent', sent: false },
+      { collection: 'rulesets', id: 'deleted-there', name: 'Deleted there', sent: true },
+    ]);
+  });
+
+  it('names a document whose own look found the gists lacking it, not only one their list lacked', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    // Listed by the gists, and gone when read: deleted in between.
+    const remote = fakeRemote({ get: async () => null });
+    await local.put('layouts', 'a', { name: 'A' });
+    await remote.put('layouts', 'a', { name: 'A' });
+    const found = await new CompositeStorage(local, remote, marks).audit();
+    expect(found.missing).toEqual([{ collection: 'layouts', id: 'a', name: 'A', sent: false }]);
+  });
+
   it('leaves alone what is waiting to be sent', async () => {
     const marks = memoryMarks();
     const local = localAdapter();
@@ -1071,7 +1102,7 @@ describe('looking at every document against the gists by content', () => {
     await remote.put('layouts', 'a', { name: 'A (there)' });
     marks.mark('layouts', 'a');
     const found = await new CompositeStorage(local, remote, marks).audit();
-    expect(found).toEqual({ equal: 0, adopted: 0, marked: 0, lacking: 0 });
+    expect(found).toEqual({ equal: 0, adopted: 0, marked: 0, lacking: 0, missing: [] });
   });
 
   it('does not say a document is up to date when it differs: it is asked about', async () => {
@@ -2071,5 +2102,67 @@ describe('what is kept here and not in the account', () => {
     // Signed out, nothing is in the account to be kept apart from.
     const signedOut = new CompositeStorage(new MemoryStorage('local'), null, marks);
     expect(signedOut.unsentToAccount('layouts', 'x')).toBe(false);
+  });
+});
+
+describe('deleting from this browser alone', () => {
+  /** Every request to the gists, as a list to assert is empty. */
+  function watched(remote: StorageAdapter) {
+    return (['list', 'get', 'put', 'delete'] as const).map((m) => vi.spyOn(remote, m));
+  }
+
+  it('deletes the browser copy and its mark, and never asks the gists anything', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = fakeRemote();
+    await local.put('layouts', 'mine', { name: 'Mine' });
+    marks.setBase('layouts', 'mine', 'a-version');
+    const calls = watched(remote);
+
+    const gone = await new CompositeStorage(local, remote, marks).deleteHere('layouts', 'mine');
+    expect(gone).toEqual(['layouts/mine']);
+    expect(await local.get('layouts', 'mine')).toBeNull();
+    expect(marks.base('layouts', 'mine')).toBeNull();
+    for (const call of calls) expect(call).not.toHaveBeenCalled();
+  });
+
+  it('leaves a document the gists hold under the same id where it is', async () => {
+    const local = localAdapter();
+    const remote = fakeRemote();
+    await local.put('layouts', 'same-id', { name: 'Here' });
+    await remote.put('layouts', 'same-id', { name: 'There' });
+
+    await new CompositeStorage(local, remote, memoryMarks()).deleteHere('layouts', 'same-id');
+    expect(await local.get('layouts', 'same-id')).toBeNull();
+    expect((await remote.get('layouts', 'same-id'))?.doc).toEqual({ name: 'There' });
+  });
+
+  it("takes a layout's proposal with it, and only a proposal that is there", async () => {
+    const local = localAdapter();
+    const composite = new CompositeStorage(local, fakeRemote(), memoryMarks());
+    await local.put('layouts', 'mine', { name: 'Mine' });
+    await local.put('proposals', 'mine', { name: 'Mine' });
+    await local.put('proposals', 'other', { name: 'Other' });
+
+    expect(await composite.deleteHere('layouts', 'mine', ['proposals'])).toEqual([
+      'layouts/mine',
+      'proposals/mine',
+    ]);
+    expect(await local.get('proposals', 'other')).not.toBeNull();
+    await local.put('layouts', 'lone', { name: 'Lone' });
+    expect(await composite.deleteHere('layouts', 'lone', ['proposals'])).toEqual(['layouts/lone']);
+  });
+
+  it('does not delete one saved since it was shown, which is marked to be sent', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    await local.put('layouts', 'edited', { name: 'Edited' });
+    marks.mark('layouts', 'edited');
+
+    expect(
+      await new CompositeStorage(local, fakeRemote(), marks).deleteHere('layouts', 'edited'),
+    ).toBeNull();
+    expect(await local.get('layouts', 'edited')).not.toBeNull();
+    expect(marks.has('layouts', 'edited')).toBe(true);
   });
 });

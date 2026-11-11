@@ -136,3 +136,45 @@ describe('the documents saved here and not sent', () => {
     }
   });
 });
+
+describe('the look at the account, with the documents it lacked', () => {
+  const missing = [
+    { collection: 'layouts', id: 'a', name: 'A', sent: false },
+    { collection: 'corpora', id: 'b', name: 'B', sent: true },
+  ] as const;
+
+  it('keeps which documents the account lacked, not only how many', () => {
+    const kept = memory();
+    new Unsynced(kept.backing).setAudit({
+      account: 'me',
+      at: 5,
+      lacking: 2,
+      missing: [...missing],
+    });
+    expect(new Unsynced(kept.backing).audit()).toEqual({
+      account: 'me',
+      at: 5,
+      lacking: 2,
+      missing,
+    });
+  });
+
+  it('reads one kept as a count only, as before they were listed, as having no list', () => {
+    const kept = memory(
+      JSON.stringify({ unsent: [], base: {}, audit: { account: 'me', at: 5, lacking: 2 } }),
+    );
+    expect(new Unsynced(kept.backing).audit()).toEqual({ account: 'me', at: 5, lacking: 2 });
+  });
+
+  it('reads a list that is not whole as no list, never as a shorter one', () => {
+    const bad = { collection: 'nothing', id: 'x', name: 'X', sent: false };
+    const kept = memory(
+      JSON.stringify({
+        unsent: [],
+        base: {},
+        audit: { account: 'me', at: 5, lacking: 2, missing: [missing[0], bad] },
+      }),
+    );
+    expect(new Unsynced(kept.backing).audit()).toEqual({ account: 'me', at: 5, lacking: 2 });
+  });
+});

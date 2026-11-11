@@ -109,11 +109,16 @@ describe('a copy that stops partway', () => {
 });
 
 describe('what the account lacks', () => {
-  it('says how many documents here are not in it, as last looked at', async () => {
+  it('names the documents in it, each to be sent or deleted from there', async () => {
     const user = userEvent.setup();
     const storage = new CompositeStorage(new MemoryStorage('local'), new MemoryStorage('github'));
     useGitHubSession.setState({ status: 'signed-in', login: 'me' });
-    useSync.setState({ lacking: 2 });
+    useSync.setState({
+      missing: [
+        { collection: 'layouts', id: 'alpha', name: 'Alpha', sent: false },
+        { collection: 'rulesets', id: 'beta', name: 'Beta', sent: true },
+      ],
+    });
     render(
       <StorageProvider adapter={storage}>
         <StorageSettings />
@@ -121,8 +126,16 @@ describe('what the account lacks', () => {
     );
     await user.click(screen.getByRole('button', { name: /^Storage/ }));
     expect(
-      screen.getByText(/2 documents saved in this browser are not in your account/),
+      screen.getByText(/2 documents saved in this browser are not in your GitHub account/),
     ).toBeInTheDocument();
-    useSync.setState({ lacking: null });
+    for (const name of ['Alpha', 'Beta']) {
+      expect(
+        screen.getByRole('button', { name: `Send ${name} to your GitHub account` }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: `Delete ${name} from this browser` }),
+      ).toBeInTheDocument();
+    }
+    useSync.setState({ missing: null });
   });
 });

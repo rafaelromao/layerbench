@@ -12,7 +12,7 @@ import {
   type StorageMeta,
   stableStringify,
 } from '@layerbench/core';
-import { type Unsynced, unsynced } from './unsynced.js';
+import { type Missing, type Unsynced, unsynced } from './unsynced.js';
 
 /**
  * A document changed here since the gists last held it, and in the gists since: neither version is
@@ -74,8 +74,10 @@ export interface Audited {
   adopted: number;
   /** Differing, and not known to be an older copy: marked, for sending to weigh. */
   marked: number;
-  /** In this browser and not in the gists. */
+  /** In this browser and not in the gists, as `missing` lists them. */
   lacking: number;
+  /** Those documents, by name. */
+  missing: Missing[];
 }
 
 /** Thrown when a copy up is told to stop. */
@@ -547,6 +549,32 @@ export class CompositeStorage implements StorageAdapter {
   }
 
   /**
+   * Delete a document from this browser alone, as the user chooses for one the account lacks: the
+   * gists are neither read nor written, so one they hold under the same id stays there, and nothing
+   * is deleted from the account unseen. `alongside` are other collections' documents under the same
+   * id that go with it, as a layout's proposal does. Returns the documents deleted, as
+   * `collection/id`; null, with nothing deleted, when it has been saved since the user was shown it
+   * (a save marks it, to be sent), which is not the document they chose to throw away.
+   */
+  deleteHere(
+    collection: Collection,
+    id: string,
+    alongside: readonly Collection[] = [],
+  ): Promise<string[] | null> {
+    return this.exclusive(async () => {
+      if (this.marks.has(collection, id)) return null;
+      const gone: string[] = [];
+      for (const c of [collection, ...alongside]) {
+        if (c !== collection && (await this.local.get(c, id).catch(() => null)) === null) continue;
+        await this.local.delete(c, id);
+        this.marks.forget(c, id);
+        gone.push(`${c}/${id}`);
+      }
+      return gone;
+    });
+  }
+
+  /**
    * Whether a document is kept here and not in the account: signed in, with its save not sent. What it
    * replaced, a renamed layout's old copy, is not deleted from the account until it is.
    */
@@ -567,7 +595,7 @@ export class CompositeStorage implements StorageAdapter {
    * One the gists lack is counted and left: another browser may have deleted it.
    */
   async audit(opts: { signal?: AbortSignal } = {}): Promise<Audited> {
-    const found: Audited = { equal: 0, adopted: 0, marked: 0, lacking: 0 };
+    const found: Audited = { equal: 0, adopted: 0, marked: 0, lacking: 0, missing: [] };
     const remote = this.remote;
     if (!remote) return found;
     for (const collection of COLLECTIONS) {
@@ -577,10 +605,20 @@ export class CompositeStorage implements StorageAdapter {
         remote.list(collection),
       ]);
       const theirs = new Set(there.map((e) => e.id));
-      for (const { id } of here) {
+      /** One the gists lack. A version on record means they held it once: it was deleted from them. */
+      const lack = (id: string, name: string) => {
+        found.lacking++;
+        found.missing.push({
+          collection,
+          id,
+          name,
+          sent: this.marks.base(collection, id) !== null,
+        });
+      };
+      for (const { id, name } of here) {
         if (this.marks.has(collection, id)) continue;
         if (!theirs.has(id)) {
-          found.lacking++;
+          lack(id, name);
           continue;
         }
         await this.exclusive(async () => {
@@ -592,7 +630,7 @@ export class CompositeStorage implements StorageAdapter {
           ]);
           if (!mine) return;
           if (!seen) {
-            found.lacking++;
+            lack(id, name);
             return;
           }
           if (sameDocument(mine.doc, seen.doc)) {

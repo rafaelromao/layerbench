@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { create } from 'zustand';
 import { toast } from '../state/toasts.js';
 import { CompositeStorage, type Conflict, type CopiedUp, CopyUpError } from './composite.js';
-import { type Unsynced, unsynced } from './unsynced.js';
+import { type Missing, type Unsynced, unsynced } from './unsynced.js';
 
 /** Where sending this browser's documents to the gists stands. */
 export interface SyncState {
@@ -21,8 +21,8 @@ export interface SyncState {
   held: { account: string } | null;
   /** Whether an attempt is waiting on a timer: about to run, or to be tried again. */
   scheduled: boolean;
-  /** How many documents this browser holds that the account lacks, as last looked; null if not yet. */
-  lacking: number | null;
+  /** The documents this browser holds that the account lacks, as last looked; null if not yet. */
+  missing: Missing[] | null;
   /** Whether the last look at this browser's documents against the account's did not finish. */
   auditFailed: boolean;
   /** Whether this browser's documents are being looked at against the account's now. */
@@ -36,7 +36,7 @@ const IDLE: SyncState = {
   reviewing: false,
   held: null,
   scheduled: false,
-  lacking: null,
+  missing: null,
   auditFailed: false,
   auditing: false,
 };
@@ -186,6 +186,7 @@ let active: {
   release: () => void;
   audit: () => void;
   everything: () => Promise<void>;
+  send: (document: Missing) => void;
 } | null = null;
 
 /** Try sending now, rather than waiting for the next attempt; nothing while storage is this browser's alone. */
@@ -206,6 +207,47 @@ export function sendEverything(): void {
 /** Look at this browser's documents against the account's again, whatever was found the last time. */
 export function checkAgain(): void {
   active?.audit();
+}
+
+const keyOf = (d: { collection: string; id: string }) => `${d.collection}/${d.id}`;
+
+/**
+ * Take documents (`collection/id`) off what the account is said to lack, in the status and in the
+ * look kept for the next visit: they were sent, or deleted here, so they are not what was found.
+ */
+export function dropMissing(keys: readonly string[], marks: Unsynced = unsynced): void {
+  const gone = new Set(keys);
+  const left = useSync.getState().missing?.filter((d) => !gone.has(keyOf(d)));
+  if (!left || left.length === useSync.getState().missing?.length) return;
+  useSync.setState({ missing: left });
+  const audit = marks.audit();
+  if (audit) marks.setAudit({ ...audit, lacking: left.length, missing: left });
+}
+
+/** Send one document the account lacks, as the status offers: marked as unsent, which sending takes up. */
+export function sendMissing(document: Missing): void {
+  active?.send(document);
+}
+
+/**
+ * Delete a document the account lacks from this browser, as the status offers once the user has
+ * confirmed: nothing of the account is touched. The documents deleted, as `collection/id`; null when
+ * it was saved since it was listed, so that nothing was.
+ */
+export async function deleteMissing(
+  storage: CompositeStorage,
+  document: Missing,
+  marks: Unsynced = unsynced,
+): Promise<string[] | null> {
+  // A layout's proposal goes with it, as when the Library deletes it: no layout saved there later
+  // under the same id inherits it.
+  const gone = await storage.deleteHere(
+    document.collection,
+    document.id,
+    document.collection === 'layouts' ? ['proposals'] : [],
+  );
+  if (gone !== null) dropMissing(gone, marks);
+  return gone;
 }
 
 /**
@@ -349,6 +391,9 @@ export function startAutoSync(
   };
 
   const onMarks = () => {
+    // One saved or sent since it was found missing is not what the account lacks to be told of.
+    const waiting = useSync.getState().missing?.filter((d) => marks.has(d.collection, d.id));
+    if (waiting?.length) dropMissing(waiting.map(keyOf), marks);
     if (marks.count() === 0) {
       // Nothing is left to send, so nothing is held back, waiting to be tried again, or failing.
       cancelTimers();
@@ -393,6 +438,11 @@ export function startAutoSync(
     release,
     audit: () => void audit(true),
     everything: () => copyEverything(() => storage.copyUp({ everything: true })),
+    send: (document: Missing) => {
+      // Marked, it is what sending takes up, over what the account holds of it, which is nothing.
+      marks.mark(document.collection, document.id);
+      void run();
+    },
   };
   active = handle;
 
@@ -405,8 +455,16 @@ export function startAutoSync(
     if (stopped || held || !Number.isFinite(auditEveryMs)) return;
     // Once for each account in a while: another account that signs in is looked at at once.
     const last = marks.audit();
-    if (!force && last && last.account === (login ?? '') && Date.now() - last.at < auditEveryMs) {
-      useSync.setState({ lacking: last.lacking });
+    // A look made before the documents were listed has only a count, so it is made again if that
+    // is more than none.
+    if (
+      !force &&
+      last &&
+      last.account === (login ?? '') &&
+      Date.now() - last.at < auditEveryMs &&
+      (last.missing || last.lacking === 0)
+    ) {
+      useSync.setState({ missing: last.missing ?? [] });
       return;
     }
     const given = new AbortController();
@@ -417,9 +475,9 @@ export function startAutoSync(
       if (stopped) return;
       // On a browser another account last sent to, what the account lacks is not for the user to be
       // offered: it may be that account's, and is not this one's to have.
-      const lacking = accountChanged ? 0 : found.lacking;
-      marks.setAudit({ account: login ?? '', at: Date.now(), lacking });
-      useSync.setState({ lacking, auditFailed: false });
+      const missing = accountChanged ? [] : found.missing;
+      marks.setAudit({ account: login ?? '', at: Date.now(), lacking: missing.length, missing });
+      useSync.setState({ missing, auditFailed: false });
       if (found.marked > 0) void run();
     } catch {
       // Said in the status, with a way to try again; looked at again on the next visit too.
