@@ -44,4 +44,17 @@ describe("main's ruleset", () => {
       required_review_thread_resolution: false,
     });
   });
+
+  it("needs the title check to pass, by the name of pr-title's job", () => {
+    // 15368 is GitHub Actions: a check of that name from another app does not count. Not strict:
+    // the title needs no catching up with main.
+    expect(rule('required_status_checks')).toEqual({
+      required_status_checks: [{ context: 'title', integration_id: 15368 }],
+      strict_required_status_checks_policy: false,
+      do_not_enforce_on_create: false,
+    });
+    // A check run is named by its job: a job renamed would leave the ruleset waiting for a check
+    // that never comes, and no pull request could merge.
+    expect(read('.github/workflows/pr-title.yml')).toMatch(/^jobs:\n {2}title:$/m);
+  });
 });
