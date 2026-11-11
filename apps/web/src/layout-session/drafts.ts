@@ -12,14 +12,21 @@ export interface Drafts {
   originOf(ref: string): string | null | undefined;
   /** The bundled or community layout a draft of one never saved was made from; null if none. */
   sourceOf(ref: string): LayoutSource | null;
-  remember(ref: string, storedId: string | null, source?: LayoutSource | null): void;
+  /** The version of the custom layout a draft was made from, which saving it is weighed against. */
+  shaOf(ref: string): string | null;
+  remember(
+    ref: string,
+    storedId: string | null,
+    source?: LayoutSource | null,
+    sha?: string | null,
+  ): void;
   /** No longer a draft: what it holds was saved, so opening it again is opening the custom layout. */
   forget(ref: string): void;
 }
 
 const STORE_KEY = 'layerbench:origins';
 
-type Kept = string | null | { storedId: string | null; source: LayoutSource | null };
+type Kept = string | null | { storedId: string | null; source: LayoutSource | null; sha?: string };
 /** Drafts kept; the oldest are forgotten first. */
 const KEEP = 30;
 
@@ -38,7 +45,9 @@ export function webDrafts(store: Store | null, keep = KEEP): Drafts {
   } catch {
     // Nothing readable was kept: no drafts.
   }
-  const kept = (ref: string): { storedId: string | null; source: LayoutSource | null } => {
+  const kept = (
+    ref: string,
+  ): { storedId: string | null; source: LayoutSource | null; sha?: string } => {
     const k = byRef[ref];
     return k !== null && typeof k === 'object' ? k : { storedId: k ?? null, source: null };
   };
@@ -52,9 +61,10 @@ export function webDrafts(store: Store | null, keep = KEEP): Drafts {
   return {
     originOf: (ref) => (ref in byRef ? kept(ref).storedId : undefined),
     sourceOf: (ref) => (ref in byRef ? kept(ref).source : null),
-    remember(ref, storedId, source = null) {
+    shaOf: (ref) => (ref in byRef ? (kept(ref).sha ?? null) : null),
+    remember(ref, storedId, source = null, sha = null) {
       const { [ref]: _old, ...rest } = byRef;
-      const value: Kept = source ? { storedId, source } : storedId;
+      const value: Kept = source || sha ? { storedId, source, ...(sha && { sha }) } : storedId;
       byRef = Object.fromEntries(Object.entries({ ...rest, [ref]: value }).slice(-keep));
       save();
     },

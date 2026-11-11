@@ -11,6 +11,7 @@ import {
 import { useState } from 'react';
 import { Switch, SwitchGroup } from '../../components/FeatureSwitches.js';
 import { addedText, verdictText } from '../../engine/measure-languages.js';
+import { SyncNote } from '../../storage/SyncNote.js';
 import type { Params } from '../../url/params.js';
 import { SampleSelect, SettingsFields } from '../AnalysisSelects.js';
 import { TextAreaField, TextField } from '../edit/inspector/controls.js';
@@ -133,6 +134,8 @@ export function LayoutBar({
           </button>
         )}
       </div>
+      {/* Where what was just saved is: kept in this browser only, or not sent for a reason. */}
+      <SyncNote />
       {/* On a phone one line, so the board and the editor under it start within the first screen:
           the picker shows the layout's name without a caption, and Settings is a gear. */}
       <div id="analyze-toolbar" className="flex items-end gap-2 sm:gap-3">

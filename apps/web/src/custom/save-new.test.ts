@@ -49,7 +49,7 @@ describe('saveNewLayout', () => {
       undefined,
       { overwrite: 'magic-breeze' },
     );
-    expect(saved).toEqual({ id: 'magic-breeze' });
+    expect(saved).toMatchObject({ id: 'magic-breeze' });
     expect(await storage.list('layouts')).toHaveLength(1);
     expect((await storage.get('layouts', 'magic-breeze'))?.doc).toMatchObject({
       id: 'magic-breeze',
@@ -68,16 +68,16 @@ describe('saveNewLayout', () => {
       await saveNewLayout(storage, { ...qwerty, name: 'Gust' }, 'Overwrite', undefined, {
         overwrite: 'gust',
       }),
-    ).toEqual({ id: 'gust-2' });
+    ).toMatchObject({ id: 'gust-2' });
     expect((await storage.get('layouts', 'gust'))?.doc.name).toBe('Gale');
   });
 
   it('saves under another name picked instead, beside the one that had it', async () => {
     const storage = new MemoryStorage();
     await saveNewLayout(storage, { ...qwerty, name: 'Magic Breeze' }, 'First');
-    expect(await saveNewLayout(storage, { ...qwerty, name: 'Magic Breeze 2' }, 'Second')).toEqual({
-      id: 'magic-breeze-2',
-    });
+    expect(
+      await saveNewLayout(storage, { ...qwerty, name: 'Magic Breeze 2' }, 'Second'),
+    ).toMatchObject({ id: 'magic-breeze-2' });
     expect((await storage.list('layouts')).map((e) => e.name)).toEqual([
       'Magic Breeze',
       'Magic Breeze 2',
@@ -160,10 +160,16 @@ describe('retryingSaver', () => {
     };
   }
 
+  it('gives the version it wrote, which the editor then saves over', async () => {
+    const storage = new MemoryStorage();
+    const saved = await saveNewLayout(storage, { ...qwerty, name: 'Fresh' }, 'First');
+    expect(saved.sha).toBe((await storage.get('layouts', saved.id))?.meta.sha);
+  });
+
   it('saves as saveNewLayout does when nothing failed before', async () => {
     const storage = new MemoryStorage();
     const save = retryingSaver();
-    expect(await save(storage, { ...qwerty, name: 'Mine' }, 'One')).toEqual({ id: 'mine' });
+    expect(await save(storage, { ...qwerty, name: 'Mine' }, 'One')).toMatchObject({ id: 'mine' });
     await expect(save(storage, { ...qwerty, name: 'Mine' }, 'Two')).rejects.toBeInstanceOf(
       NameTakenError,
     );
@@ -171,7 +177,7 @@ describe('retryingSaver', () => {
       await save(storage, { ...qwerty, name: 'Mine', description: 'newer' }, 'Three', {
         overwrite: 'mine',
       }),
-    ).toEqual({ id: 'mine' });
+    ).toMatchObject({ id: 'mine' });
     expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['mine']);
     expect((await storage.get('layouts', 'mine'))?.doc.description).toBe('newer');
   });
@@ -182,7 +188,7 @@ describe('retryingSaver', () => {
     const mend = writesThenFails(storage);
     await expect(save(storage, { ...qwerty, name: 'Mine' }, 'One')).rejects.toThrow('offline');
     mend();
-    expect(await save(storage, { ...qwerty, name: 'Mine' }, 'Two')).toEqual({ id: 'mine' });
+    expect(await save(storage, { ...qwerty, name: 'Mine' }, 'Two')).toMatchObject({ id: 'mine' });
     expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['mine']);
   });
 
@@ -192,7 +198,7 @@ describe('retryingSaver', () => {
     const mend = writesThenFails(storage);
     await expect(save(storage, { ...qwerty, name: 'Mine' }, 'One')).rejects.toThrow('offline');
     mend();
-    expect(await save(storage, { ...qwerty, name: 'Yours' }, 'Two')).toEqual({ id: 'yours' });
+    expect(await save(storage, { ...qwerty, name: 'Yours' }, 'Two')).toMatchObject({ id: 'yours' });
     expect((await storage.list('layouts')).map((e) => e.id).sort()).toEqual(['mine', 'yours']);
   });
 
@@ -212,7 +218,7 @@ describe('retryingSaver', () => {
       id: 'mine',
       name: 'Theirs too',
     });
-    expect(await save(storage, { ...qwerty, name: 'Mine' }, 'Two')).toEqual({ id: 'mine-2' });
+    expect(await save(storage, { ...qwerty, name: 'Mine' }, 'Two')).toMatchObject({ id: 'mine-2' });
     expect((await storage.get('layouts', 'mine'))?.doc.description).toBe('not mine');
   });
 });

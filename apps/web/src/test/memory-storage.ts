@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   assertDocumentId,
   type Collection,
@@ -20,14 +21,14 @@ interface Stored {
 
 /**
  * Storage held in memory, for tests: what the browser's store does, without a database. Documents
- * are kept as text, so each read is a copy, as from any real store, and each write gives the
- * document a new version, so a write that names an older one is a conflict. To make an operation
+ * are kept as text, so each read is a copy, as from any real store, and a document's version is the
+ * hash of that text, as a gist's is and as the browser's store gives it, so the same text is the same
+ * version in any store, and a write that names another version is a conflict. To make an operation
  * fail, replace it on the instance. As every store does, it keeps no second custom layout of a name
  * another has.
  */
 export class MemoryStorage implements StorageAdapter {
   private readonly docs = new Map<string, Stored>();
-  private writes = 0;
 
   constructor(readonly id = 'memory') {}
 
@@ -62,31 +63,36 @@ export class MemoryStorage implements StorageAdapter {
     opts: PutOptions = {},
   ): Promise<StorageMeta> {
     assertDocumentId(id);
+    // What takes time first, then the check and the write with nothing awaited between them, as a
+    // store's transaction is. The hash is the same SHA-1 the stores give, taken in one step: the
+    // browser's digest is asynchronous in real time, which a test on fake timers cannot wait out.
+    const json = JSON.stringify(doc);
+    const sha = createHash('sha1').update(json).digest('hex');
+    const entries =
+      collection === 'layouts' ? await this.list(collection) : await Promise.resolve([]);
     const existing = this.docs.get(`${collection}/${id}`);
     // A missing document is not a conflict: the first write of an id always wins.
     if (opts.expectedSha !== undefined && existing && existing.sha !== opts.expectedSha) {
       throw new StorageConflictError();
     }
     if (collection === 'layouts') {
-      const taken = nameTaken(
-        await this.list(collection),
-        indexSummary(collection, id, doc).name,
-        id,
-        opts.replacing,
-      );
+      const taken = nameTaken(entries, indexSummary(collection, id, doc).name, id, opts.replacing);
       if (taken) throw new NameTakenError(taken);
     }
-    const sha = `${this.id}-${++this.writes}`;
-    this.docs.set(`${collection}/${id}`, {
-      json: JSON.stringify(doc),
-      sha,
-      updatedAt: new Date().toISOString(),
-    });
+    this.docs.set(`${collection}/${id}`, { json, sha, updatedAt: new Date().toISOString() });
     return { sha };
   }
 
-  async delete(collection: Collection, id: string): Promise<void> {
+  async delete(
+    collection: Collection,
+    id: string,
+    opts: { message?: string; expectedSha?: string } = {},
+  ): Promise<void> {
     assertDocumentId(id);
+    const existing = this.docs.get(`${collection}/${id}`);
+    if (opts.expectedSha !== undefined && existing && existing.sha !== opts.expectedSha) {
+      throw new StorageConflictError();
+    }
     this.docs.delete(`${collection}/${id}`);
   }
 }

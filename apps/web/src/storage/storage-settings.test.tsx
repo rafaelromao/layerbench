@@ -4,7 +4,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { useGitHubSession } from '../auth/github-session.js';
 import { useToasts } from '../state/toasts.js';
 import { MemoryStorage } from '../test/memory-storage.js';
-import { CompositeStorage } from './composite.js';
+import { useSync } from './auto-sync.js';
+import { CompositeStorage, type Conflict, CopyUpError } from './composite.js';
 import { StorageSettings } from './StorageSettings.js';
 import { StorageProvider } from './use-storage.js';
 
@@ -36,6 +37,22 @@ describe('Storage', () => {
     expect((await remote.get('layouts', 'mine'))?.doc).toEqual({ name: 'Mine' });
   });
 
+  it('does not copy up what is held back for another account, which the status releases', async () => {
+    const user = userEvent.setup();
+    const storage = new CompositeStorage(new MemoryStorage('local'), new MemoryStorage('github'));
+    useGitHubSession.setState({ status: 'signed-in', login: 'me' });
+    useSync.setState({ held: { account: 'someone-else' } });
+    render(
+      <StorageProvider adapter={storage}>
+        <StorageSettings />
+      </StorageProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /^Storage/ }));
+    expect(screen.getByRole('button', { name: "Copy this browser's documents up" })).toBeDisabled();
+    useSync.setState({ held: null });
+  });
+
   it('cannot copy up where storage is this browser alone', async () => {
     const user = userEvent.setup();
     useGitHubSession.setState({ status: 'signed-in', login: 'me' });
@@ -47,5 +64,65 @@ describe('Storage', () => {
 
     await user.click(screen.getByRole('button', { name: /^Storage/ }));
     expect(screen.getByRole('button', { name: "Copy this browser's documents up" })).toBeDisabled();
+  });
+});
+
+describe('a copy that stops partway', () => {
+  it('says how far it got, and keeps the conflicts it found before', async () => {
+    const user = userEvent.setup();
+    const storage = new CompositeStorage(new MemoryStorage('local'), new MemoryStorage('github'));
+    const found = {
+      collection: 'layouts',
+      id: 'gust',
+      name: 'Gust',
+      mine: { doc: { name: 'Gust' }, updatedAt: '2026-11-10T09:00:00Z' },
+      theirs: {
+        name: 'Gust',
+        doc: { name: 'Gust 2' },
+        updatedAt: '2026-11-10T10:00:00Z',
+        sha: 's',
+      },
+    } as Conflict;
+    storage.copyUp = async () => {
+      throw new CopyUpError(
+        { copied: 2, current: 0, conflicts: [found], taken: 0, failed: [] },
+        new Error('GitHub did not answer in time'),
+      );
+    };
+    useGitHubSession.setState({ status: 'signed-in', login: 'me' });
+    render(
+      <StorageProvider adapter={storage}>
+        <StorageSettings />
+      </StorageProvider>,
+    );
+    await user.click(screen.getByRole('button', { name: /^Storage/ }));
+    await user.click(screen.getByRole('button', { name: "Copy this browser's documents up" }));
+
+    await waitFor(() =>
+      expect(useToasts.getState().toasts.map((t) => t.text)).toContain(
+        'Copying stopped after 2 documents: GitHub did not answer in time',
+      ),
+    );
+    expect(useSync.getState().last?.conflicts.map((c) => c.id)).toEqual(['gust']);
+    useSync.setState({ last: null, reviewing: false });
+  });
+});
+
+describe('what the account lacks', () => {
+  it('says how many documents here are not in it, as last looked at', async () => {
+    const user = userEvent.setup();
+    const storage = new CompositeStorage(new MemoryStorage('local'), new MemoryStorage('github'));
+    useGitHubSession.setState({ status: 'signed-in', login: 'me' });
+    useSync.setState({ lacking: 2 });
+    render(
+      <StorageProvider adapter={storage}>
+        <StorageSettings />
+      </StorageProvider>,
+    );
+    await user.click(screen.getByRole('button', { name: /^Storage/ }));
+    expect(
+      screen.getByText(/2 documents saved in this browser are not in your account/),
+    ).toBeInTheDocument();
+    useSync.setState({ lacking: null });
   });
 });

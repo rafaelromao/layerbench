@@ -35,6 +35,17 @@ describe('the drafts a tab made', () => {
     expect(webDrafts(store).sourceOf('inline:old')).toBeNull();
   });
 
+  it('knows the version of the custom layout a draft was made from, across a reload', () => {
+    const store = mapStore();
+    webDrafts(store).remember('inline:aaa', 'mine', null, 'a-version');
+    webDrafts(store).remember('inline:bbb', 'mine');
+    const again = webDrafts(store);
+    expect(again.shaOf('inline:aaa')).toBe('a-version');
+    expect(again.originOf('inline:aaa')).toBe('mine');
+    expect(again.shaOf('inline:bbb')).toBeNull();
+    expect(again.shaOf('inline:unknown')).toBeNull();
+  });
+
   it('keeps them for the tab, across a reload', () => {
     const store = mapStore();
     webDrafts(store).remember('inline:aaa', 'mine');

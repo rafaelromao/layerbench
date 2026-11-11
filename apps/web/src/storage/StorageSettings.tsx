@@ -2,8 +2,9 @@ import { useCallback, useRef, useState } from 'react';
 import { signIn, signOut, useGitHubSession } from '../auth/github-session.js';
 import { HelpLink } from '../components/HelpLink.js';
 import { HELP } from '../guide/help.js';
-import { toast } from '../state/toasts.js';
-import { CopyUpError } from './composite.js';
+import { copyEverything, useSync } from './auto-sync.js';
+import { SyncNote } from './SyncNote.js';
+import { useSyncSummary } from './sync-status.js';
 import { useCopyUp } from './use-storage.js';
 
 function Where({ login }: { login: string }) {
@@ -24,8 +25,6 @@ function Where({ login }: { login: string }) {
   );
 }
 
-const documents = (n: number) => `${n} document${n === 1 ? '' : 's'}`;
-
 /**
  * Where custom documents live. Layouts, rule sets and corpora are always kept in this browser;
  * signing in with GitHub keeps them in secret gists in the user's account too, so they follow
@@ -37,6 +36,11 @@ export function StorageSettings() {
   const login = useGitHubSession((s) => s.login);
   const [copying, setCopying] = useState(false);
   const copyUp = useCopyUp();
+  const summary = useSyncSummary();
+  // What is held back for another account is for the user to release from the status, not to be
+  // sent past that by a copy of everything.
+  const held = useSync((s) => s.held !== null);
+  const lacking = useSync((s) => s.lacking);
 
   const signedIn = status === 'signed-in' && !!login;
 
@@ -44,19 +48,7 @@ export function StorageSettings() {
     if (!copyUp) return;
     setCopying(true);
     try {
-      const { copied, current, taken } = await copyUp();
-      toast.info(
-        `Copied ${documents(copied)} to GitHub${current > 0 ? `; ${current} ${current === 1 ? 'was' : 'were'} already up to date` : ''}${
-          taken > 0
-            ? `; ${taken} ${taken === 1 ? 'layout stays' : 'layouts stay'} in this browser, as GitHub has another of the same name`
-            : ''
-        }`,
-      );
-    } catch (e) {
-      const copied = e instanceof CopyUpError ? e.copied : 0;
-      toast.error(
-        `Copying stopped after ${documents(copied)}: ${e instanceof Error ? e.message : String(e)}`,
-      );
+      await copyEverything(copyUp);
     } finally {
       setCopying(false);
     }
@@ -68,11 +60,16 @@ export function StorageSettings() {
         type="button"
         className="btn btn-ghost btn-xs"
         aria-label={
-          signedIn ? `Storage: this browser and GitHub (@${login})` : 'Storage: this browser only'
+          summary.kind === 'plain' || summary.kind === 'checking' || summary.kind === 'synced'
+            ? signedIn
+              ? `Storage: this browser and GitHub (@${login})`
+              : 'Storage: this browser only'
+            : // The words on the button come first, so the name has them in it.
+              `Storage${summary.label}: ${summary.text}`
         }
         onClick={() => dialog.current?.showModal()}
       >
-        Storage{signedIn ? ' ✓' : ''}
+        Storage{summary.label}
       </button>
 
       <dialog ref={dialog} className="modal" aria-labelledby="storage-settings-title">
@@ -91,6 +88,8 @@ export function StorageSettings() {
                 ? ' They are kept in your GitHub account as well, so they follow you to other browsers.'
                 : ' Sign in with GitHub to keep them in secret gists in your account as well, so they follow you to other browsers.'}
           </p>
+
+          <SyncNote without="sign-in" />
 
           {(status === 'signed-out' || status === 'unknown') && (
             <button
@@ -120,12 +119,23 @@ export function StorageSettings() {
                 <button
                   type="button"
                   className="btn btn-sm"
-                  disabled={!copyUp || copying}
+                  disabled={!copyUp || copying || held}
                   onClick={() => void copy()}
                 >
                   {copying ? 'Copying…' : "Copy this browser's documents up"}
                 </button>
               </div>
+              {lacking !== null && lacking > 0 && (
+                <p className="text-xs">
+                  {lacking} {lacking === 1 ? 'document' : 'documents'} saved in this browser{' '}
+                  {lacking === 1 ? 'is' : 'are'} not in your account: never sent, or deleted from it
+                  elsewhere. Copying sends {lacking === 1 ? 'it' : 'them'}.
+                </p>
+              )}
+              <p className="text-xs opacity-70">
+                What you save is sent to your account by itself: after you sign in, and again if a
+                save could not reach it. This sends everything again, to repair what looks missing.
+              </p>
             </>
           )}
 

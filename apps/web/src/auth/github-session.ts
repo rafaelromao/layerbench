@@ -4,7 +4,7 @@ import type { SessionAnswer } from '../server/github-auth.js';
 import type { SubmitAnswer } from '../server/submit.js';
 import { toast } from '../state/toasts.js';
 import type { GistIds } from '../storage/gist.js';
-import type { GitHubAccess } from '../storage/github-api.js';
+import { type GitHubAccess, timeoutSignal } from '../storage/github-api.js';
 
 /**
  * - `unknown`: not asked yet.
@@ -13,9 +13,19 @@ import type { GitHubAccess } from '../storage/github-api.js';
  */
 export type SignInStatus = 'unknown' | 'unavailable' | 'signed-out' | 'signed-in';
 
+/**
+ * What went wrong with a session this browser had, which the page says rather than leaves a user
+ * to guess:
+ * - `ended`: the server or GitHub no longer honours it.
+ * - `unreachable`: neither answered in time, so it is not known whether the session still holds.
+ */
+export type SignInProblem = 'ended' | 'unreachable';
+
 interface GitHubSessionState {
   status: SignInStatus;
   login: string | null;
+  /** Why a browser that had a session is not signed in; null otherwise. */
+  problem: SignInProblem | null;
   /** The app's public id, which the trip to GitHub starts with. */
   clientId: string;
   /** Whether the server says the user may change the Library: GitHub lets them push to it. */
@@ -25,6 +35,7 @@ interface GitHubSessionState {
 const INITIAL: GitHubSessionState = {
   status: 'unknown',
   login: null,
+  problem: null,
   clientId: '',
   maintainer: false,
 };
@@ -56,6 +67,15 @@ const SIGN_IN = 'layerbench:sign-in';
 /** A trip to GitHub that takes longer than this is abandoned; signing in again starts a new one. */
 const SIGN_IN_MAX_AGE_MS = 10 * 60_000;
 const SIGN_IN_FAILED = 'Signing in with GitHub did not complete';
+/**
+ * How long the sign-in server, or another tab holding the session's lock, has to answer before the
+ * page stops waiting for it: a check that never ended would leave the page asking for ever. Only the
+ * waiting stops. The request is not cancelled: the server spends the refresh token it is sent and
+ * answers with the next session, which an answer that arrives late must still be there to keep.
+ */
+const SIGN_IN_CHECK_MS = 10_000;
+/** Set when the session ended without the user asking, until they sign in or out: told on every visit. */
+const ENDED = 'layerbench:sign-in-ended';
 /**
  * Where a signed-in user's documents went when they could be saved to a fork. Gists hold them now;
  * what was remembered is forgotten.
@@ -112,7 +132,19 @@ function keepSession(value: string | null): void {
  */
 async function exclusively<T>(work: () => Promise<T>): Promise<T> {
   const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
-  return locks ? locks.request('layerbench:github-session', () => work()) : work();
+  if (!locks) return work();
+  // Only the wait is limited: a tab frozen in the middle of renewing would otherwise hold every
+  // other tab up for ever. Work that has the lock is never cut short.
+  const signal = timeoutSignal(SIGN_IN_CHECK_MS);
+  try {
+    return await locks.request('layerbench:github-session', signal ? { signal } : {}, () => work());
+  } catch (e) {
+    throw isTimeout(e) ? new Error('another tab of LayerBench is holding up the sign-in') : e;
+  }
+}
+
+function isTimeout(e: unknown): boolean {
+  return e instanceof DOMException && (e.name === 'TimeoutError' || e.name === 'AbortError');
 }
 
 function isAnswer(value: unknown): value is SessionAnswer {
@@ -135,12 +167,31 @@ function post(route: Route, body: object): Promise<Response> {
 async function ask(route: 'session' | 'token', body: object): Promise<SessionAnswer | null> {
   const res = await post(route, body);
   if (res.status === 502) throw new Error('GitHub could not be reached');
+  // A server that is down or too busy has not said there is no sign-in: only a host with no such
+  // route, which answers with the app instead, has.
+  if (res.status >= 500 || res.status === 429) {
+    throw new Error(`the sign-in server answered ${res.status}`);
+  }
   if (!res.ok || !res.headers.get('Content-Type')?.includes('application/json')) return null;
   const answer: unknown = await res.json().catch(() => null);
   return isAnswer(answer) ? answer : null;
 }
 
-function apply(answer: SessionAnswer | null): void {
+/**
+ * `work`, or an error once it has gone on for `ms`. The work is not stopped: it goes on to
+ * its end, and what it does then still counts.
+ */
+function within<T>(work: Promise<T>, ms: number, message: string): Promise<T> {
+  work.catch(() => {});
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const limit = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([work, limit]).finally(() => clearTimeout(timer));
+}
+
+/** `lapsed`: this browser had a session, and the server says there is none now. */
+function apply(answer: SessionAnswer | null, lapsed = false): void {
   if (!answer?.available) {
     token = null;
     useGitHubSession.setState({ ...INITIAL, status: 'unavailable' });
@@ -149,15 +200,24 @@ function apply(answer: SessionAnswer | null): void {
   const config = { clientId: answer.clientId ?? '' };
   if (!answer.signedIn || !answer.token || !answer.login) {
     token = null;
-    useGitHubSession.setState({ ...INITIAL, ...config, status: 'signed-out' });
+    // A session that ended is told of until the user signs in or out, not only on the visit it ended.
+    if (lapsed) writeJson(ENDED, true);
+    useGitHubSession.setState({
+      ...INITIAL,
+      ...config,
+      status: 'signed-out',
+      problem: lapsed || readJson<boolean>(ENDED) ? 'ended' : null,
+    });
     return;
   }
+  forget(ENDED);
   token = { value: answer.token, expiresAt: answer.expiresAt ?? null };
   forget(targetKey(answer.login));
   useGitHubSession.setState({
     ...config,
     status: 'signed-in',
     login: answer.login,
+    problem: null,
     maintainer: answer.maintainer === true,
   });
 }
@@ -169,6 +229,7 @@ function apply(answer: SessionAnswer | null): void {
  * GitHub cannot be reached.
  */
 async function renew(rejected?: string): Promise<void> {
+  const started = signOutEpoch;
   const sent = storedSession();
   let used = sent;
   let answer = await ask('session', sent ? { session: sent } : {});
@@ -185,12 +246,20 @@ async function renew(rejected?: string): Promise<void> {
   if (rejected !== undefined && used && answer?.signedIn && answer.token === rejected) {
     answer = await ask('session', { session: used, renew: true });
   }
+  // A browser that had a session and was answered by something that is not the server (a captive
+  // portal's page, a proxy's) has not been told there is no sign-in: it is not known.
+  if (answer === null && used) throw new Error('the sign-in server did not answer as expected');
+  // The user signed out while this was out: its answer is of a session they ended.
+  if (started !== signOutEpoch) return;
   if (answer?.available) {
     if (answer.session) keepSession(answer.session);
     else if (!answer.signedIn && used && storedSession() === used) keepSession(null);
   }
-  apply(answer);
+  apply(answer, !!used && answer?.available === true && !answer.signedIn);
 }
+
+/** How many times the user has signed out in this page: an answer that was out meanwhile is thrown away. */
+let signOutEpoch = 0;
 
 /** Trade the code GitHub came back with for a session. Called under the lock. */
 async function exchange(back: SignInReturn): Promise<void> {
@@ -220,9 +289,13 @@ function usable(t: typeof token): t is NonNullable<typeof token> {
 /** A token for GitHub's API, renewed when it is close to expiring. Throws once signed out. */
 export async function getToken(): Promise<string> {
   if (usable(token)) return token.value;
-  await exclusively(async () => {
-    if (!usable(token)) await renew();
-  });
+  await within(
+    exclusively(async () => {
+      if (!usable(token)) await renew();
+    }),
+    SIGN_IN_CHECK_MS,
+    'the sign-in server did not answer in time',
+  );
   // Read again: the work done under the lock replaced it.
   const renewed = current();
   if (!usable(renewed)) throw new Error('signed out of GitHub');
@@ -379,12 +452,36 @@ export function returnFromGitHub(): SignInReturn | null {
  * session from before signing in cannot land after the new one and undo it.
  */
 export async function initGitHubSession(back: SignInReturn | null = null): Promise<void> {
+  const check = exclusively(() => (back ? exchange(back) : renew()));
+  // An answer that comes late still counts, but nothing waits on it past the limit.
+  check.catch(() => {});
+  const late = Symbol('late');
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const limit = new Promise<typeof late>((resolve) => {
+    timer = setTimeout(() => resolve(late), SIGN_IN_CHECK_MS);
+  });
+  let reached = false;
   try {
-    await exclusively(() => (back ? exchange(back) : renew()));
+    reached = (await Promise.race([check, limit])) !== late;
   } catch {
-    // The server or GitHub is unreachable: the browser keeps working on its own.
-    useGitHubSession.setState({ status: 'signed-out' });
+    // Reported below, with a check that took too long.
+  } finally {
+    clearTimeout(timer);
   }
+  // The server or GitHub is unreachable: the browser keeps working on its own. A browser that had
+  // a session is told it could not be checked; one that had none has nothing to be told.
+  if (!reached && useGitHubSession.getState().status === 'unknown') {
+    useGitHubSession.setState({
+      status: 'signed-out',
+      problem: storedSession() ? 'unreachable' : readJson<boolean>(ENDED) ? 'ended' : null,
+    });
+  }
+}
+
+/** Ask again after the sign-in server could not be reached. */
+export async function retrySignIn(): Promise<void> {
+  useGitHubSession.setState({ status: 'unknown', problem: null });
+  await initGitHubSession();
 }
 
 export async function signIn(): Promise<void> {
@@ -466,12 +563,18 @@ export function maintainLibrary(
 }
 
 export async function signOut(): Promise<void> {
+  signOutEpoch++;
+  forget(ENDED);
   await exclusively(async () => {
     const sent = storedSession();
     keepSession(null);
     token = null;
     // Revoked as a courtesy; signing out does not depend on the server answering.
     if (sent) await post('logout', { session: sent }).catch(() => {});
+  }).catch(() => {
+    // Signing out does not depend on another tab letting go of the lock either.
+    keepSession(null);
+    token = null;
   });
   const { clientId } = useGitHubSession.getState();
   useGitHubSession.setState({ ...INITIAL, clientId, status: 'signed-out' });

@@ -333,7 +333,7 @@ export function Workbench({
       void customLayouts.refresh();
       if (saved.leftBehind) {
         toast.error(
-          `Saved ${layout.name}; its copy under the old name could not be removed and is still in the Library`,
+          `Saved ${layout.name}; its copy under the old name was not removed and is still in the Library`,
         );
       } else toast.info(`Saved ${layout.name}`);
       // Saved under another id than it was stored by, as a new custom layout or over another one: a

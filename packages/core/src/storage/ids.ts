@@ -52,11 +52,31 @@ export interface StorageAdapter {
      */
     opts?: PutOptions,
   ): Promise<StorageMeta>;
-  delete(collection: Collection, id: string, opts?: { message?: string }): Promise<void>;
+  /**
+   * `expectedSha`: delete only that version; another is a conflict, and a document already missing is
+   * not one.
+   */
+  delete(
+    collection: Collection,
+    id: string,
+    opts?: { message?: string; expectedSha?: string },
+  ): Promise<void>;
 }
 
 export interface PutOptions {
   expectedSha?: string | null;
+  /**
+   * For a store that keeps a copy in the browser and one in the cloud: the version of the document
+   * the caller read and edited, so that a save made over another version is weighed as a conflict
+   * rather than written over it. Not a condition any one store enforces; a null says nothing was read.
+   */
+  basedOn?: string | null;
+  /**
+   * For a store that keeps a copy in the browser and one in the cloud: the caller chose to replace the
+   * document that is there, as when a layout is saved over another of the same name after asking. A
+   * document that merely has the same id is not that: it is asked about.
+   */
+  overwriting?: boolean;
   message?: string;
   replacing?: readonly string[];
 }

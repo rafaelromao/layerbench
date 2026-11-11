@@ -18,7 +18,8 @@ export type CustomDoc<C extends Collection> = C extends 'layouts'
 
 /** A custom document read: there and readable, not saved here, or there but not readable. */
 export type CustomRead<T> =
-  | { status: 'read'; doc: T }
+  /** `sha`: the version that was read, which an edit of it is made on. */
+  | { status: 'read'; doc: T; sha?: string }
   | { status: 'missing' }
   | { status: 'unreadable'; why: string; unreachable?: true };
 
@@ -67,7 +68,7 @@ export async function readCustom<C extends Collection>(
   if (!stored) return { status: 'missing' };
   const parsed = parse(collection, stored.doc);
   return parsed.ok
-    ? { status: 'read', doc: parsed.doc as CustomDoc<C> }
+    ? { status: 'read', doc: parsed.doc as CustomDoc<C>, sha: stored.meta.sha }
     : { status: 'unreadable', why: parsed.error };
 }
 

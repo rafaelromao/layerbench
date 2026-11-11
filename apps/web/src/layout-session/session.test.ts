@@ -7,6 +7,7 @@ import {
 import { describe, expect, it, vi } from 'vitest';
 import { CompositeStorage } from '../storage/composite.js';
 import { MemoryLink } from '../test/memory-link.js';
+import { memoryMarks } from '../test/memory-marks.js';
 import { MemoryStorage } from '../test/memory-storage.js';
 import { decodeInline } from '../url/inline.js';
 import { type Drafts, webDrafts } from './drafts.js';
@@ -282,6 +283,155 @@ describe('A custom layout sent by its link', () => {
         toCanonicalJson({ ...(bundledLayout('colemak') as Layout), id: 'mine', name: 'Mine' }),
       ),
     );
+  });
+});
+
+describe('Saving what was read', () => {
+  it('can save again after a send failed: the editor goes on from what was kept', async () => {
+    const marks = memoryMarks();
+    const local = new MemoryStorage('local');
+    const remote = new MemoryStorage('github');
+    await seed(local, 'qwerty', 'mine', { name: 'Mine' });
+    await remote.put('layouts', 'mine', (await local.get('layouts', 'mine'))?.doc ?? {});
+    const storage = new CompositeStorage(local, remote, marks);
+    const put = remote.put.bind(remote);
+    let down = true;
+    remote.put = async (collection, id, doc, opts) => {
+      if (down) throw new Error('GitHub responded 503');
+      return put(collection, id, doc, opts);
+    };
+    const s = createLayoutSession(
+      {
+        storage: () => storage,
+        drafts: webDrafts(mapStore()),
+        link: new MemoryLink('custom:mine'),
+      },
+      { linkDelayMs: 5 },
+    );
+    const state = await opened(s);
+
+    // The first save is kept though the send failed, and the retry is not refused as another's change.
+    expect(await s.save({ ...state.layout, description: 'E1' })).toMatchObject({ ok: true });
+    expect(await s.save({ ...state.layout, description: 'E2' })).toMatchObject({ ok: true });
+    expect((await local.get('layouts', 'mine'))?.doc.description).toBe('E2');
+
+    down = false;
+    await storage.copyUp();
+    expect((await remote.get('layouts', 'mine'))?.doc.description).toBe('E2');
+  });
+
+  it('says it is overwriting only where the user chose to overwrite another layout', async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'qwerty', 'taken', { name: 'Taken' });
+    const put = vi.spyOn(storage, 'put');
+    const { s } = session('qwerty', { storage });
+    const state = await opened(s);
+    // A plain first save of a layout under a free name is not an overwrite.
+    await s.save({ ...state.layout, name: 'Free name' });
+    expect(put.mock.calls.at(-1)?.[3]?.overwriting).toBeUndefined();
+  });
+
+  /** What `storage.put` was asked, as `basedOn`, by each save. */
+  function basedOns(storage: MemoryStorage) {
+    const put = vi.spyOn(storage, 'put');
+    return () => put.mock.calls.map((c) => c[3]?.basedOn);
+  }
+
+  it('passes the version it opened with the save, not whatever is in storage by then', async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'qwerty', 'mine', { name: 'Mine' });
+    const readAt = (await storage.get('layouts', 'mine'))?.meta.sha;
+    const asked = basedOns(storage);
+    const { s } = session('custom:mine', { storage });
+    const state = await opened(s);
+    // Another browser saves it meanwhile: the version the editor holds is the one it opened.
+    await seed(storage, 'qwerty', 'mine', { name: 'Mine', description: 'from elsewhere' });
+    s.edited(state.layout, false);
+    await s.save({ ...state.layout, description: 'edited here' });
+    expect(asked().at(-1)).toBe(readAt);
+  });
+
+  it('is an edit of what it saved, for the next save', async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'qwerty', 'mine', { name: 'Mine' });
+    const asked = basedOns(storage);
+    const { s } = session('custom:mine', { storage });
+    const state = await opened(s);
+    s.edited(state.layout, false);
+    await s.save({ ...state.layout, description: 'one' });
+    const saved = (await storage.get('layouts', 'mine'))?.meta.sha;
+    await s.save({ ...state.layout, description: 'two' });
+    expect(asked().at(-1)).toBe(saved);
+  });
+
+  it('passes nothing for a layout not saved yet, which is an edit of nothing', async () => {
+    const storage = new MemoryStorage();
+    const asked = basedOns(storage);
+    const { s } = session('qwerty', { storage });
+    const state = await opened(s);
+    await s.save(state.layout);
+    expect(asked().filter((b) => b !== undefined)).toEqual([]);
+  });
+
+  it('is an edit of what its first save wrote, for the next save', async () => {
+    const storage = new MemoryStorage();
+    const asked = basedOns(storage);
+    const { s } = session('qwerty', { storage });
+    const state = await opened(s);
+    const first = await s.save(state.layout);
+    if (!first.ok) throw new Error(first.error);
+    const written = (await storage.get('layouts', first.id))?.meta.sha;
+    await s.save({ ...state.layout, description: 'edited after' });
+    expect(asked().at(-1)).toBe(written);
+  });
+
+  it('is refused by a second session opened before the first saved, and what was saved is kept', async () => {
+    const marks = memoryMarks();
+    const local = new MemoryStorage('local');
+    await seed(local, 'qwerty', 'mine', { name: 'Mine' });
+    // Offline, as every save of a signed-out phone is: nothing reaches the account, all of it waits.
+    const storage = new CompositeStorage(local, null, marks);
+    const open = (drafts: Drafts) =>
+      createLayoutSession(
+        { storage: () => storage, drafts, link: new MemoryLink('custom:mine') },
+        { linkDelayMs: 5 },
+      );
+    const tabA = open(webDrafts(mapStore()));
+    const tabB = open(webDrafts(mapStore()));
+    const a = await opened(tabA);
+    const b = await opened(tabB);
+
+    // Tab B saves S2; tab A, opened before it, saves S3.
+    expect(await tabB.save({ ...b.layout, description: 'S2' })).toMatchObject({ ok: true });
+    const refused = await tabA.save({ ...a.layout, description: 'S3' });
+    expect(refused).toMatchObject({ ok: false, reason: 'conflict' });
+    expect((await local.get('layouts', 'mine'))?.doc.description).toBe('S2');
+
+    // The tab that saved goes on from what it saved.
+    expect(await tabB.save({ ...b.layout, description: 'S2b' })).toMatchObject({ ok: true });
+    expect((await local.get('layouts', 'mine'))?.doc.description).toBe('S2b');
+  });
+
+  it('keeps the version a draft was made from, across a reload, and saves against that', async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'qwerty', 'mine', { name: 'Mine' });
+    const readAt = (await storage.get('layouts', 'mine'))?.meta.sha;
+    const drafts = webDrafts(mapStore());
+    const first = session('custom:mine', { storage, drafts });
+    const state = await opened(first.s);
+    first.s.edited(withCedilla(state.layout), true);
+    const draft = await first.s.link();
+    first.s.dispose();
+    expect(drafts.shaOf(draft)).toBe(readAt);
+
+    // The account moves on, and the draft is opened again from its link, as Back does.
+    await seed(storage, 'qwerty', 'mine', { name: 'Mine', description: 'from elsewhere' });
+    const asked = basedOns(storage);
+    const again = session(draft, { storage, drafts });
+    const reopened = await opened(again.s);
+    again.s.edited(reopened.layout, true);
+    await again.s.save(reopened.layout);
+    expect(asked().at(-1)).toBe(readAt);
   });
 });
 
@@ -649,5 +799,187 @@ describe('Saving', () => {
     expect(a).toMatchObject({ ok: true, id: 'qwerty' });
     expect(b).toMatchObject({ ok: true, id: 'qwerty' });
     expect(await ids(storage)).toEqual(['qwerty']);
+  });
+});
+
+describe('Renaming a saved layout, signed in', () => {
+  /** A layout saved in the browser and in the account, a session on it, and the stores. */
+  async function renaming() {
+    const marks = memoryMarks();
+    const local = new MemoryStorage('local');
+    const remote = new MemoryStorage('github');
+    await seed(local, 'qwerty', 'mine', { name: 'Mine' });
+    await remote.put('layouts', 'mine', (await local.get('layouts', 'mine'))?.doc ?? {});
+    const storage = new CompositeStorage(local, remote, marks);
+    const s = createLayoutSession(
+      {
+        storage: () => storage,
+        drafts: webDrafts(mapStore()),
+        link: new MemoryLink('custom:mine'),
+      },
+      { linkDelayMs: 5 },
+    );
+    return { s, storage, local, remote, marks, state: await opened(s) };
+  }
+
+  it('deletes the old copy once the new one is in the account', async () => {
+    const { s, state, local, remote } = await renaming();
+    expect(await s.save({ ...state.layout, name: 'Mine renamed' })).toMatchObject({
+      ok: true,
+      id: 'mine-renamed',
+      leftBehind: false,
+    });
+    expect(await local.get('layouts', 'mine')).toBeNull();
+    expect(await remote.get('layouts', 'mine')).toBeNull();
+    expect(await remote.get('layouts', 'mine-renamed')).not.toBeNull();
+  });
+
+  it('keeps the old copy, here and in the account, while the new one is only kept here', async () => {
+    const { s, state, local, remote } = await renaming();
+    remote.put = async () => {
+      throw new Error('GitHub responded 503');
+    };
+    expect(await s.save({ ...state.layout, name: 'Mine renamed' })).toMatchObject({
+      ok: true,
+      leftBehind: true,
+    });
+    expect(await local.get('layouts', 'mine')).not.toBeNull();
+    expect(await remote.get('layouts', 'mine')).not.toBeNull();
+    expect(await local.get('layouts', 'mine-renamed')).not.toBeNull();
+  });
+
+  it('keeps the old copy when the new id is one the account holds under a list that missed it', async () => {
+    const { s, state, local, remote } = await renaming();
+    await remote.put('layouts', 'foo', {
+      ...(state.layout as object),
+      name: 'Foo',
+      id: 'foo',
+    } as never);
+    const list = remote.list.bind(remote);
+    remote.list = async (collection) => (await list(collection)).filter((e) => e.id !== 'foo');
+
+    expect(await s.save({ ...state.layout, name: 'Foo' })).toMatchObject({
+      ok: true,
+      leftBehind: true,
+    });
+    // Neither the laptop's layout nor this one's old copy is gone, and the new one waits to be asked about.
+    expect((await remote.get('layouts', 'foo'))?.doc.name).toBe('Foo');
+    expect(await remote.get('layouts', 'mine')).not.toBeNull();
+    expect(await local.get('layouts', 'mine')).not.toBeNull();
+  });
+
+  it('still deletes the old copy while signed out, where nothing in the account is at stake', async () => {
+    const marks = memoryMarks();
+    const local = new MemoryStorage('local');
+    await seed(local, 'qwerty', 'mine', { name: 'Mine' });
+    const storage = new CompositeStorage(local, null, marks);
+    const s = createLayoutSession(
+      {
+        storage: () => storage,
+        drafts: webDrafts(mapStore()),
+        link: new MemoryLink('custom:mine'),
+      },
+      { linkDelayMs: 5 },
+    );
+    const state = await opened(s);
+    expect(await s.save({ ...state.layout, name: 'Mine renamed' })).toMatchObject({
+      ok: true,
+      leftBehind: false,
+    });
+    expect(await local.get('layouts', 'mine')).toBeNull();
+  });
+});
+
+describe('Saving over another layout, signed in', () => {
+  async function stores() {
+    const local = new MemoryStorage('local');
+    const remote = new MemoryStorage('github');
+    await seed(local, 'qwerty', 'taken', { name: 'Taken' });
+    await seed(local, 'qwerty', 'mine', { name: 'Mine' });
+    await remote.put('layouts', 'taken', (await local.get('layouts', 'taken'))?.doc ?? {});
+    await remote.put('layouts', 'mine', (await local.get('layouts', 'mine'))?.doc ?? {});
+    const storage = new CompositeStorage(local, remote, memoryMarks());
+    const open = (ref: string) =>
+      createLayoutSession(
+        { storage: () => storage, drafts: webDrafts(mapStore()), link: new MemoryLink(ref) },
+        { linkDelayMs: 5 },
+      );
+    return { storage, local, remote, open };
+  }
+
+  it('says it is overwriting when a saved layout is renamed over another and the user chose to', async () => {
+    const { storage, remote, open } = await stores();
+    const put = vi.spyOn(storage, 'put');
+    const s = open('custom:mine');
+    const state = await opened(s);
+    expect(await s.save({ ...state.layout, name: 'Taken' }, { overwrite: 'taken' })).toMatchObject({
+      ok: true,
+      id: 'taken',
+    });
+    expect(put).toHaveBeenCalledWith(
+      'layouts',
+      'taken',
+      expect.anything(),
+      expect.objectContaining({ overwriting: true }),
+    );
+    expect((await remote.get('layouts', 'taken'))?.doc.name).toBe('Taken');
+  });
+
+  it('says it too in the first save of a layout over another one of the same name', async () => {
+    const { storage, open } = await stores();
+    const put = vi.spyOn(storage, 'put');
+    const s = open('qwerty');
+    const state = await opened(s);
+    expect(await s.save({ ...state.layout, name: 'Taken' }, { overwrite: 'taken' })).toMatchObject({
+      ok: true,
+      id: 'taken',
+    });
+    expect(put).toHaveBeenCalledWith(
+      'layouts',
+      'taken',
+      expect.anything(),
+      expect.objectContaining({ overwriting: true }),
+    );
+  });
+});
+
+describe('A draft reloaded after a send failed', () => {
+  it('goes on from what the failed save kept, and is saved', async () => {
+    const marks = memoryMarks();
+    const local = new MemoryStorage('local');
+    const remote = new MemoryStorage('github');
+    await seed(local, 'qwerty', 'mine', { name: 'Mine' });
+    await remote.put('layouts', 'mine', (await local.get('layouts', 'mine'))?.doc ?? {});
+    const storage = new CompositeStorage(local, remote, marks);
+    const put = remote.put.bind(remote);
+    let down = true;
+    remote.put = async (collection, id, doc, opts) => {
+      if (down) throw new Error('GitHub responded 503');
+      return put(collection, id, doc, opts);
+    };
+    const drafts = webDrafts(mapStore());
+    const open = (ref: string) =>
+      createLayoutSession(
+        { storage: () => storage, drafts, link: new MemoryLink(ref) },
+        { linkDelayMs: 5 },
+      );
+    const first = open('custom:mine');
+    const state = await opened(first);
+    // Save E1: the send fails, the save is kept. Then more edits, unsaved, as a draft.
+    expect(await first.save({ ...state.layout, description: 'E1' })).toMatchObject({ ok: true });
+    first.edited({ ...state.layout, description: 'E1 and more' }, true);
+    const draft = await first.link();
+    first.dispose();
+
+    // The tab is reloaded onto the draft, and the draft is saved.
+    const again = open(draft);
+    const reopened = await opened(again);
+    again.edited(reopened.layout, true);
+    expect(await again.save(reopened.layout)).toMatchObject({ ok: true });
+    expect((await local.get('layouts', 'mine'))?.doc.description).toBe('E1 and more');
+
+    down = false;
+    await storage.copyUp();
+    expect((await remote.get('layouts', 'mine'))?.doc.description).toBe('E1 and more');
   });
 });

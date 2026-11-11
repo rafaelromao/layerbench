@@ -18,7 +18,12 @@ describe('reading a custom document', () => {
     const ruleSet = await readCustom(storage, 'rulesets', 'strict');
     expect(ruleSet.status === 'read' && ruleSet.doc.rules.length).toBeGreaterThan(0);
     const text = await readCustom(storage, 'corpora', 'notes');
-    expect(text).toEqual({ status: 'read', doc: { name: 'Notes', sample: 'the fox' } });
+    // With the version that was read, which an edit of it is made on.
+    expect(text).toEqual({
+      status: 'read',
+      doc: { name: 'Notes', sample: 'the fox' },
+      sha: (await storage.get('corpora', 'notes'))?.meta.sha,
+    });
   });
 
   it('says a document storage does not hold is missing', async () => {
