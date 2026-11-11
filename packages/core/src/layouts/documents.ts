@@ -1,6 +1,7 @@
 import { toCanonicalJson } from '../layout/json.js';
 import { safeParseLayout } from '../layout/schema.js';
 import type { Layout } from '../layout/types.js';
+import enthium from './documents/enthium.json';
 
 /**
  * Bundled layouts added as documents: each file in `documents/` is a layout exactly as LayerBench
@@ -8,7 +9,9 @@ import type { Layout } from '../layout/types.js';
  * pull request (README → Bundled layouts): the file, one import and one entry below, and a line on
  * the landing page.
  */
-const DOCUMENTS: Record<string, unknown> = {};
+const DOCUMENTS: Record<string, unknown> = {
+  enthium,
+};
 
 /**
  * The document without `features`, which a document may declare for sentence case and caps word;

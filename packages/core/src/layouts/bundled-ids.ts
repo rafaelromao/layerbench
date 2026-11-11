@@ -35,7 +35,6 @@ const BUILT_IN_IDS = [
   'rsthd',
   't-34',
   'magic-sturdy',
-  'enthium',
   'nordrassil',
   'finch',
   'caksoylar',
