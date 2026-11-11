@@ -136,18 +136,22 @@ or is yours. The name on each card in the Library leads here. Three rules decide
 this order, and the first that fits is the category:
 
 1. **Special**: a layout with an adaptive key, a macro, an alt repeat or a mod morph, on a key or on
-   a combo; or with more than one alpha layer; or on a board of fewer than 34 keys, thumbs included.
-   A sentence space on the space key, which changes with the key before it as an adaptive key does,
-   makes a layout Special too. So does a shift key that starts caps word, which is a mod morph.
+   a combo; or with more than one alpha layer; or on a board of fewer than 34 keys, thumbs included
+   (a row-stagger board's one space bar counts once). A sentence space, which changes with the key
+   before it as an adaptive key does, makes a layout Special too. So does a shift key that starts
+   caps word, which is a mod morph.
 2. **Thumb Alpha**: a layout that is not Special, but where a thumb key types a letter on an alpha
    layer.
-3. **Standard**: every layout that is neither. Most have one alpha layer and no letter on a thumb,
-   on a board of 34 keys or more.
+3. **Standard**: a layout that is neither: no special feature, no letter on a thumb, at most one
+   alpha layer, and a board of 34 keys or more.
 
-An *alpha layer* is a layer where a key types a letter from a to z by itself, which a tap-hold, a
-morph or a tap dance can do as well; the letters a macro types do not count. Nothing on a layout's
-[default layers](editing.md#default-layers) counts toward its category, but the layers its author
-defines, Numbers and Symbols among them, do.
+An *alpha layer* is a layer where a key types a letter from a to z by itself: as a plain key, as the
+tap or the hold of a tap-hold, as a layer-tap's tap, on either side of a morph, in a tap dance, or
+as an adaptive key's default or one of its branches. The letters a macro types do not count. A
+layout that has an Accents layer has the [default layers](editing.md#default-layers), Numbers,
+Symbols and Accents, and nothing on them counts toward its category, nor does a combo that fires
+only on them. One without Accents has the layers its author defines, Numbers and Symbols among them,
+and they count.
 
 ### Changing the costs
 

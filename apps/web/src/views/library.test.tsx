@@ -1087,7 +1087,7 @@ describe('Categories', () => {
     expect(chip).toHaveAttribute('target', '_blank');
     expect(chip).toHaveAttribute('rel', 'noopener');
 
-    // Each card's own name, and a layout's the keys give, lead to the same place.
+    // Whatever category a card's keys give it, its chip leads to the same place.
     const neu = (await screen.findByRole('heading', { name: 'Hands Down Neu', level: 3 })).closest(
       'article',
     ) as HTMLElement;
@@ -1097,8 +1097,10 @@ describe('Categories', () => {
       }),
     ).toHaveAttribute('href', '/guide/analyzing#categories');
 
-    // A link takes focus, so the keyboard reaches it, and following it, by key or click, leaves the
-    // Library and the card as they were: the guide opens in its own tab.
+    // In the tab order, so the keyboard reaches it, and following it, by key or click, leaves the
+    // Library and the card as they were: the guide opens in its own tab. (The card has no click
+    // behaviour of its own: Analyze is a link beside the chip, so this guards a later one.)
+    expect(chip).toHaveProperty('tabIndex', 0);
     chip.focus();
     expect(chip).toHaveFocus();
     await user.keyboard('{Enter}');

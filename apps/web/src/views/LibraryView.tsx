@@ -364,7 +364,7 @@ function LayoutCard({
                 <HelpWord
                   help={HELP.categories}
                   word={CATEGORY_NAMES[item.category]}
-                  className="lb-category badge badge-ghost badge-xs hover:underline"
+                  className="lb-category badge badge-ghost badge-xs"
                 />
               )}
             </div>
