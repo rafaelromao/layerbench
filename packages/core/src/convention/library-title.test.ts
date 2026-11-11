@@ -98,6 +98,11 @@ describe('libraryRetitle', () => {
     expect(libraryRetitle({}, '')).toBe(null);
   });
 
+  it('leaves a title that was not read: it could be a person’s own', () => {
+    expect(libraryRetitle({ action: 'change', id: 'enthium' }, '')).toBe(null);
+    expect(libraryRetitle({ action: 'change', id: 'enthium' }, '  \n')).toBe(null);
+  });
+
   it('is a title the convention accepts, for every action a request has', () => {
     for (const action of ['change', 'delete', 'promote']) {
       const title = libraryRetitle({ action, id: 'a_b-C-2' }, 'Library: something');

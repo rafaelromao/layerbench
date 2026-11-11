@@ -14,7 +14,9 @@ name: library-edit
 # The pull request is titled as the convention asks (CONTRIBUTING.md), by the run itself and not
 # only by the sign-in server: that is a program deployed by hand, and one deployed before the
 # convention goes on opening pull requests with the old titles until it is deployed again. The
-# title is only set when the one it has fails the convention, so a person's own is kept.
+# title is only set when the one it has fails the convention, so a person's own is kept. It never
+# stands in the way of applying the request: each of its steps may fail, and the App's token is in
+# the two that run no code of the repository's.
 on:
   push:
     branches: ['library/**']
@@ -67,17 +69,18 @@ jobs:
       - if: steps.request.outputs.found == 'true'
         run: pnpm install --frozen-lockfile
       # Before the request is applied, which deletes it. The pull request is opened a moment after
-      # its branch is pushed, so it is waited for. The title is the pull request's own text: it goes
-      # in through the environment and never into a command.
-      - if: steps.request.outputs.found == 'true'
+      # its branch is pushed, so it is waited for; `head=owner:branch` is this repository's, not a
+      # fork's branch of the same name. The title is the pull request's own text: it goes through a
+      # file and the environment and never into a command.
+      - id: current
+        if: steps.request.outputs.found == 'true'
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
-          GH_REPO: ${{ github.repository }}
-          RETITLE_OUT: ${{ runner.temp }}/title.txt
         run: |
           number=
           for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do
-            number=$(gh pr list --head "$GITHUB_REF_NAME" --state open --json number --jq '.[0].number // empty')
+            number=$(gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&head=${GITHUB_REPOSITORY_OWNER}:${GITHUB_REF_NAME}" --jq '.[0].number // empty' || true)
             [ -n "$number" ] && break
             sleep 10
           done
@@ -85,9 +88,22 @@ jobs:
             echo "::warning::No open pull request for this branch to title."
             exit 0
           fi
-          PR_TITLE=$(gh pr view "$number" --json title --jq .title) pnpm library-retitle
-          if [ -s "$RETITLE_OUT" ]; then
-            gh pr edit "$number" --title "$(cat "$RETITLE_OUT")"
+          echo "number=${number}" >> "$GITHUB_OUTPUT"
+          gh api "repos/${GITHUB_REPOSITORY}/pulls/${number}" --jq .title > "${RUNNER_TEMP}/current-title.txt"
+      # No token here: this runs the repository's code. A title that was not read changes nothing.
+      - if: steps.current.outputs.number != ''
+        continue-on-error: true
+        env:
+          RETITLE_OUT: ${{ runner.temp }}/title.txt
+        run: PR_TITLE="$(cat "${RUNNER_TEMP}/current-title.txt")" pnpm library-retitle
+      - if: steps.current.outputs.number != ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          NUMBER: ${{ steps.current.outputs.number }}
+        run: |
+          if [ -s "${RUNNER_TEMP}/title.txt" ]; then
+            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/pulls/${NUMBER}" -F "title=@${RUNNER_TEMP}/title.txt" --silent
           fi
       - if: steps.request.outputs.found == 'true'
         run: pnpm library-edit

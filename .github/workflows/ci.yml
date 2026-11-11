@@ -33,25 +33,34 @@ jobs:
       # would be merged is not what it asks for yet. library-edit applies it in a few minutes and
       # pushes the result, which starts this workflow again and replaces this run, so a request is
       # waited for here and not failed at once, as a proposal that opens red is taken for broken. It
-      # fails when library-edit ended and nothing replaced this run: the request was refused, or
-      # the application failed, and that run says why.
+      # fails when library-edit ended and nothing replaced this run: the request was refused, the
+      # application failed, or its result left a conflict, which starts no run; the run says why.
+      # Only a pull request from a branch of this repository has such a run to wait for.
       - env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           [ -e .library ] || exit 0
-          echo "A Library request is on this branch: waiting for the library-edit run that applies it."
-          state=
-          for _ in $(seq 1 80); do
-            state=$(gh run list --workflow library-edit.yml --commit "$SHA" --limit 1 --json status,conclusion --jq '.[0] | "\(.status) \(.conclusion)"' || true)
-            case "$state" in completed*) break ;; esac
-            sleep 15
-          done
-          echo "library-edit: ${state:-no run found}"
-          # Applied, its push replaces this run within seconds: what follows is for when it did not.
-          sleep 90
-          echo "::error::The Library request was not applied: see the library-edit workflow's run for this commit."
+          if [ "$EVENT" = pull_request ] && [ "$HEAD_REPO" = "$GH_REPO" ]; then
+            echo "A Library request is on this branch: waiting for the library-edit run that applies it."
+            state=
+            missing=0
+            for _ in $(seq 1 80); do
+              state=$(gh run list --workflow library-edit.yml --commit "$SHA" --limit 1 --json status,conclusion --jq '.[0] // empty | "\(.status) \(.conclusion)"' || true)
+              case "$state" in
+                completed*) break ;;
+                '') missing=$((missing + 1)); [ "$missing" -ge 20 ] && break ;;
+              esac
+              sleep 15
+            done
+            echo "library-edit: ${state:-no run found}"
+            # Applied, its push replaces this run within seconds: what follows is for when it did not.
+            sleep 90
+          fi
+          echo "::error::A Library request is on this branch and its result has not replaced it: see the library-edit run for this commit."
           exit 1
       # No version here: the action reads `packageManager` from package.json, and specifying both
       # makes it fail with "Multiple versions of pnpm specified".

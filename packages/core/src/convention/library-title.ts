@@ -53,13 +53,15 @@ export function libraryPull(
  * opens the pull request, but it is a deployed program of its own, and one deployed before the
  * convention goes on writing the old titles until it is deployed again: `library-edit` retitles
  * the pull request with this, from the request on its branch, so that no proposal waits on a
- * deploy. An action or an id a request cannot have is null too: it is refused when it is applied.
+ * deploy. An action or an id a request cannot have is null too: it is refused when it is applied,
+ * and so is a title that was not read (a pull request has none empty): nothing is made of what is
+ * not known, which could be a person's own.
  */
 export function libraryRetitle(
   request: { action?: unknown; id?: unknown },
   current: string,
 ): string | null {
-  if (pullTitleProblems(current).length === 0) return null;
+  if (current.trim() === '' || pullTitleProblems(current).length === 0) return null;
   const { action, id } = request;
   if (action !== 'change' && action !== 'delete' && action !== 'promote') return null;
   if (typeof id !== 'string' || !isDocumentId(id)) return null;

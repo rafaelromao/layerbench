@@ -93,8 +93,10 @@ changes or takes out is a fix.
 The sign-in server is deployed by hand (README → Worker), so one deployed before this rule goes on
 opening pull requests into `main` with the old titles, as `Library: change enthium`, until it is
 deployed again. The `library-edit` workflow does not wait for that: it titles the pull request as
-the table says, from the request, as its first step, unless the title it has follows the check
-already, in which case a person's own is kept. The check runs again by itself when the title is
+the table says, from the request, before it applies it, unless the title it has follows the check
+already, in which case a person's own is kept. The check runs again within a minute or so of the
+pull request being opened, once the workflow has installed what it needs; failing to title never
+stops the request from being applied. The check runs again by itself when the title is
 edited. And CI does not fail a pull request for the request still being on its branch while
 `library-edit` applies it: it waits for that run, which replaces it with the result's own.
 
