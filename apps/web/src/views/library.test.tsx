@@ -1073,6 +1073,41 @@ describe('Categories', () => {
     expect(badgeOf('Magic Romak')).toBe('Special');
   });
 
+  it("leads each card's category to the guide's rules for categories, in a tab of its own", async () => {
+    const user = userEvent.setup();
+    const view = renderRoute(LIBRARY, { storage: freshStorage() });
+    const qwerty = (await screen.findByRole('heading', { name: 'Qwerty', level: 3 })).closest(
+      'article',
+    ) as HTMLElement;
+    const chip = await within(qwerty).findByRole('link', {
+      name: 'Standard, help on how layouts are categorized (opens in a new tab)',
+    });
+    expect(chip).toHaveTextContent(/^Standard$/);
+    expect(chip).toHaveAttribute('href', '/guide/analyzing#categories');
+    expect(chip).toHaveAttribute('target', '_blank');
+    expect(chip).toHaveAttribute('rel', 'noopener');
+
+    // Each card's own name, and a layout's the keys give, lead to the same place.
+    const neu = (await screen.findByRole('heading', { name: 'Hands Down Neu', level: 3 })).closest(
+      'article',
+    ) as HTMLElement;
+    expect(
+      within(neu).getByRole('link', {
+        name: 'Thumb Alpha, help on how layouts are categorized (opens in a new tab)',
+      }),
+    ).toHaveAttribute('href', '/guide/analyzing#categories');
+
+    // A link takes focus, so the keyboard reaches it, and following it, by key or click, leaves the
+    // Library and the card as they were: the guide opens in its own tab.
+    chip.focus();
+    expect(chip).toHaveFocus();
+    await user.keyboard('{Enter}');
+    await user.click(chip);
+    expect(view.currentPath()).toBe('/library');
+    expect(listed('Qwerty')).toBeInTheDocument();
+    expect(within(qwerty).getByRole('link', { name: 'Analyze Qwerty' })).toBeInTheDocument();
+  }, 30_000);
+
   it('gives a custom layout that will not compile no category', async () => {
     const storage = freshStorage();
     const qwerty = bundledLayout('qwerty') as Layout;

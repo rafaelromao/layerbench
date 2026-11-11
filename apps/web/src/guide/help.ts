@@ -30,6 +30,7 @@ export const HELP = {
     section: 'sorting-and-comparing',
     topic: 'typing without special features',
   },
+  categories: { page: 'analyzing', section: 'categories', topic: 'how layouts are categorized' },
   importing: { page: 'importing', topic: 'importing from keymap-drawer' },
   rules: { page: 'analyzing', section: 'rules-and-their-sources', topic: 'rules and sources' },
   rulers: { page: 'analyzing', section: 'the-rulers', topic: 'the rulers' },

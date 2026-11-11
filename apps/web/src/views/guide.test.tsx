@@ -28,6 +28,18 @@ describe('Guide', () => {
     expect(section('On a phone').open).toBe(false);
   });
 
+  it('says how a layout is put in a category: three rules, in the order they are checked', async () => {
+    renderRoute('/guide/analyzing#categories');
+    await screen.findByRole('heading', { level: 1, name: 'Analyzing a layout' });
+    await waitFor(() => expect(section('Categories').open).toBe(true));
+    // Special decides first, so the Standard rule can say "neither" and be the last.
+    const rules = within(section('Categories'))
+      .getAllByRole('listitem')
+      .map((item) => item.querySelector('strong')?.textContent);
+    expect(rules).toEqual(['Special', 'Thumb Alpha', 'Standard']);
+    expect(section('Categories')).toHaveTextContent(/checked in this order/);
+  }, 30_000);
+
   it('opens and closes every section at once', async () => {
     const user = userEvent.setup();
     renderRoute('/guide/special-keys');
